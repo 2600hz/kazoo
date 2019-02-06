@@ -44,9 +44,59 @@
             },
             "type": "object"
         },
+        "firebase": {
+            "default": {},
+            "description": "pusher firebase",
+            "properties": {
+                "api_key": {
+                    "description": "API Key for firebase",
+                    "type": "string"
+                },
+                "extra_headers": {
+                    "default": {},
+                    "description": "Additional headers for INVITEs sent to push devices in the UA",
+                    "properties": {
+                        "Invite-Format": {
+                            "description": "When set to push_and_invite, sets the X-KAZOO-PUSHER-Invite-Format header to push_and_invite, resulting in both a push notification and a SIP INVITE being sent to the endpoint.",
+                            "enum": [
+                                "invite",
+                                "push",
+                                "push_and_invite"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
         "google": {
+            "default": {},
             "description": "pusher google",
-            "type": "string"
+            "properties": {
+                "api_key": {
+                    "description": "API Key for gcm",
+                    "type": "string"
+                },
+                "extra_headers": {
+                    "default": {},
+                    "description": "Additional headers for INVITEs sent to push devices in the UA",
+                    "properties": {
+                        "Invite-Format": {
+                            "description": "When set to push_and_invite, sets the X-KAZOO-PUSHER-Invite-Format header to push_and_invite, resulting in both a push notification and a SIP INVITE being sent to the endpoint.",
+                            "enum": [
+                                "invite",
+                                "push",
+                                "push_and_invite"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "type": "object"
         },
         "modules": {
             "default": [],
