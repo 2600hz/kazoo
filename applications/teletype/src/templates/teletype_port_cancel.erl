@@ -99,7 +99,7 @@ handle_port_request(DataJObj) ->
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
 
-    lager:debug("sending ~s to port authority: ~p"
+    lager:debug("sending ~s to port sumbitter (or template default): ~p"
                ,[?TEMPLATE_ID, props:get_value(<<"to">>, Emails)]
                ),
     _ = teletype_util:send_email(Emails, Subject, RenderedTemplates),
@@ -109,9 +109,10 @@ handle_port_request(DataJObj) ->
                                      ,Emails
                                      ),
 
-    lager:debug("sending ~s to port sumbitter (or template default): ~p"
+    lager:debug("sending ~s to port authority: ~p"
                ,[?TEMPLATE_ID, props:get_value(<<"to">>, AuthorityEmails)]
                ),
+    _ = put('skip_smtp_log', 'true'),
     case teletype_util:send_email(AuthorityEmails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
         {'error', Reason} ->

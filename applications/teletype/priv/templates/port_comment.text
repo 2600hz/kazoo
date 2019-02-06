@@ -1,6 +1,6 @@
                 Port Request Comment
 
-{{port_request.author}} commented on your port request.
+{{port_request.comment.author}} commented on your port request.
 
 {{port_request.comment.date.local|date:"F j, Y H:i A"}}
 
