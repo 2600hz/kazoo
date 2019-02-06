@@ -24201,6 +24201,14 @@
                     "description": "Determines if the account would like to allow per-minute calls if they have no available credit",
                     "type": "boolean"
                 },
+                "authz_resource_types": {
+                    "default": [],
+                    "description": "List of Resource-Types that will authorize the call; bypassing limit checks and billing",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "burst_trunks": {
                     "description": "The number of two-way, flat-rate trunks used only if no other trunks are available",
                     "minimum": 0,

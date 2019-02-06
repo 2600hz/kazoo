@@ -24,7 +24,7 @@
 -export([allow_postpay/1]).
 -export([reserve_amount/1]).
 -export([max_postpay/1]).
--export([onnet_termination_exempt/1]).
+-export([authz_resource_types/1]).
 
 -include("jonny5.hrl").
 
@@ -47,7 +47,7 @@
                 ,allotments = kz_json:new() :: kz_json:object()
                 ,soft_limit_inbound = 'false' :: boolean()
                 ,soft_limit_outbound = 'false' :: boolean()
-                ,onnet_termination_exempt = 'false' :: boolean()
+                ,authz_resource_types = [] :: list()
                 }).
 
 -type limits() :: #limits{}.
@@ -220,8 +220,8 @@ max_postpay(#limits{max_postpay_amount=MaxPostpay}) -> MaxPostpay.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec onnet_termination_exempt(limits()) -> boolean().
-onnet_termination_exempt(#limits{onnet_termination_exempt=OnnetExempt}) -> OnnetExempt.
+-spec authz_resource_types(limits()) -> list().
+authz_resource_types(#limits{authz_resource_types=AuthzResourceTypes}) -> AuthzResourceTypes.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -297,6 +297,28 @@ get_public_limit_boolean(Key, _, Default) ->
 -spec get_default_limit_boolean(kz_term:ne_binary(), boolean()) -> boolean().
 get_default_limit_boolean(Key, Default) ->
     kapps_config:get_is_true(?APP_NAME, <<"default_", Key/binary>>, Default).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_limit_list(kz_term:ne_binary(), kz_json:object(), list()) -> list().
+get_limit_list(Key, JObj, Default) ->
+    case kz_json:get_list_value(<<"pvt_", Key/binary>>, JObj) of
+        'undefined' -> get_public_limit_list(Key, JObj, Default);
+        Value -> Value
+    end.
+
+-spec get_public_limit_list(kz_term:ne_binary(), kz_json:object(), list()) -> list().
+get_public_limit_list(Key, JObj, Default) ->
+    case kz_json:get_list_value(Key, JObj, Default) of
+        'undefined' -> get_default_limit_list(Key, Default);
+        Value -> Value
+    end.
+
+-spec get_default_limit_list(kz_term:ne_binary(), list()) -> list().
+get_default_limit_list(Key, Default) ->
+    kapps_config:get_ne_binaries(?APP_NAME, <<"default_", Key/binary>>, Default).
+
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -369,5 +391,5 @@ create_limits(AccountId, AccountDb, JObj) ->
            ,allotments = kz_json:get_value(<<"pvt_allotments">>, JObj, kz_json:new())
            ,soft_limit_inbound = get_limit_boolean(<<"soft_limit_inbound">>, JObj, 'false')
            ,soft_limit_outbound = get_limit_boolean(<<"soft_limit_outbound">>, JObj, 'false')
-           ,onnet_termination_exempt = get_limit_boolean(<<"onnet_exempt">>, JObj, 'false')
+           ,authz_resource_types = get_limit_list(<<"authz_resource_types">>, JObj, [])
            }.
