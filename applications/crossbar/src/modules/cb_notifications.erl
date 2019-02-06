@@ -1442,34 +1442,32 @@ load_smtp_log_doc(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
                           ),
     case cb_context:resp_status(C1) of
         'success' ->
-            TemplateId = kz_json:get_ne_binary_value(<<"template_id">>, cb_context:doc(C1)),
-            maybe_remove_private_comment(C1, TemplateId, IsSuperAdmin);
+            Doc = cb_context:doc(C1),
+            TemplateId = kz_json:get_ne_binary_value(<<"template_id">>, Doc),
+            JObj = maybe_remove_private_data(Doc, TemplateId, IsSuperAdmin),
+            Setters = [{fun cb_context:set_doc/2, JObj}
+                      ,{fun cb_context:set_resp_data/2, JObj}
+                      ],
+            cb_context:setters(C1, Setters);
         _ ->
             C1
     end.
 
--spec maybe_remove_private_comment(cb_context:context(), kz_term:ne_binary(), boolean()) -> cb_context:context().
-maybe_remove_private_comment(Context, <<"port_comment">>, 'false') ->
-    case kz_json:is_true([<<"macros">>, <<"port_request">>, <<"comment">>, <<"superduper_comment">>]
-                        ,cb_context:doc(Context)
-                        ,'false'
-                        )
-    of
+-spec maybe_remove_private_data(kz_json:object(), kz_term:ne_binary(), boolean()) -> kz_json:object().
+maybe_remove_private_data(JObj, <<"port_comment">>, 'false') ->
+    CommentPath = [<<"macros">>, <<"port_request">>, <<"comment">>],
+    SuperPath = CommentPath ++ [<<"superduper_comment">>],
+    case kz_json:is_true(SuperPath, JObj, 'false') of
         'true' ->
-            Doc = kz_json:delete_keys([[<<"macros">>, <<"port_request">>, <<"comment">>]
-                                      ,<<"rendered_templates">>
-                                      ]
-                                     ,cb_context:doc(Context)
-                                     ),
-            Setters = [{fun cb_context:set_doc/2, Doc}
-                      ,{fun cb_context:set_resp_data/2, Doc}
-                      ],
-            cb_context:setters(Context, Setters);
+            DeletePaths = [CommentPath
+                          ,<<"rendered_templates">>
+                          ],
+            kz_json:delete_keys(DeletePaths, JObj);
         'false' ->
-            Context
+            JObj
     end;
-maybe_remove_private_comment(Context, _, _) ->
-    Context.
+maybe_remove_private_data(JObj, _, _) ->
+    JObj.
 
 -spec maybe_update_db(cb_context:context()) -> cb_context:context().
 maybe_update_db(Context) ->
