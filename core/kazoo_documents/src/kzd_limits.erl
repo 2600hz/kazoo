@@ -122,4 +122,3 @@ twoway_trunks(Doc, Default) ->
 -spec set_twoway_trunks(doc(), integer()) -> doc().
 set_twoway_trunks(Doc, TwowayTrunks) ->
     kz_json:set_value([<<"twoway_trunks">>], TwowayTrunks, Doc).
-
