@@ -295,6 +295,8 @@ fix_filter_call_id(CallId) ->
 load_cdr_summary(Context) ->
     lager:debug("loading cdr summary for account ~s", [cb_context:account_id(Context)]),
     Options = [{'mapper', fun normalize_summary_results/2}
+              ,{'range_start_keymap', []}
+              ,{'range_end_keymap', crossbar_view:suffix_key_fun([kz_json:new()])}
               ,{'list', ?CB_SUMMARY_LIST}
               ],
     C1 = crossbar_view:load_modb(Context, ?CB_SUMMARY_VIEW, Options),
@@ -329,13 +331,15 @@ normalize_summary_results(JObj, Acc) -> [JObj|Acc].
 get_view_options([{<<"cdrs">>, []}, {?KZ_ACCOUNTS_DB, _}|_]) ->
     {?CB_LIST
     ,[{'mapper', fun cdrs_listing_mapper/3}
+     ,{'range_start_keymap', []}
+     ,{'range_end_keymap', crossbar_view:suffix_key_fun([kz_json:new()])}
      ,'include_docs'
      ]
     };
 get_view_options([{<<"cdrs">>, []}, {<<"users">>, [OwnerId]}|_]) ->
     {?CB_LIST_BY_USER
     ,[{'range_start_keymap', [OwnerId]}
-     ,{'range_end_keymap', [OwnerId]}
+     ,{'range_end_keymap', fun(Ts) -> [OwnerId, Ts, kz_json:new()] end}
      ,{'mapper', fun cdrs_listing_mapper/3}
      ,'include_docs'
      ]
