@@ -86,7 +86,7 @@ send_park(#ts_callflow_state{route_req_jobj=JObj
            ,{<<"Method">>, <<"park">>}
            ,{<<"From-Realm">>, kzd_accounts:fetch_realm(AccountId)}
            ,{<<"Custom-Channel-Vars">>, kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())}
-           ,{<<"Custom-Application-Vars">>, kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj)}
+           ,{<<"Custom-Application-Vars">>, kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj)}
             | kz_api:default_headers(get_worker_queue(State)
                                     ,?APP_NAME, ?APP_VERSION
                                     )
