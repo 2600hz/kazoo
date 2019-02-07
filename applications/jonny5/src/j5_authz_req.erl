@@ -223,7 +223,7 @@ maybe_authorize_mobile(Request, Limits) ->
         'false' -> Request
     end.
 
--spec maybe_authorize_resource_type(kz_term:api_ne_binary(), j5_limits:limits()) -> j5_request:request().
+-spec maybe_authorize_resource_type(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_authorize_resource_type(Request, Limits) ->
     ResourceType = kz_json:get_value(<<"Resource-Type">>, j5_request:ccvs(Request)),
 
@@ -234,7 +234,7 @@ maybe_authorize_resource_type(Request, Limits) ->
         'false' -> Request
     end.
 
--spec maybe_authorize_classification(kz_term:api_ne_binary(), j5_limits:limits()) -> j5_request:request().
+-spec maybe_authorize_classification(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_authorize_classification(Request, Limits) ->
     Classification = j5_request:classification(Request),
     CallDirection = j5_request:call_direction(Request),
