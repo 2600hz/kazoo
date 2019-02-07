@@ -55,8 +55,6 @@
 -record(state, {queue_id :: kz_term:ne_binary()
                ,account_id :: kz_term:ne_binary()
 
-                              %% PIDs of the gang
-               ,worker_sup :: pid()
                ,mgr_pid :: pid()
                ,fsm_pid :: kz_term:api_pid()
                ,shared_pid :: kz_term:api_pid()
@@ -209,13 +207,10 @@ delivery(Srv) ->
 init([WorkerSup, MgrPid, AccountId, QueueId]) ->
     kz_util:put_callid(QueueId),
     lager:debug("starting queue ~s", [QueueId]),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    {'ok', QueueJObj} = kz_datamgr:open_cache_doc(AccountDb, QueueId),
-    gen_listener:cast(self(), {'start_friends', QueueJObj}),
+    gen_listener:cast(self(), {'get_friends', WorkerSup}),
     {'ok', #state{queue_id = QueueId
                  ,account_id = AccountId
                  ,my_id = acdc_util:proc_id()
-                 ,worker_sup = WorkerSup
                  ,mgr_pid = MgrPid
                  }}.
 
@@ -238,49 +233,15 @@ handle_call(_Request, _From, State) ->
 %% @doc Handling cast messages.
 %% @end
 %%------------------------------------------------------------------------------
-find_pid_from_supervisor({'ok', P}) when is_pid(P) ->
-    {'ok', P};
-find_pid_from_supervisor({'error', {'already_started', P}}) when is_pid(P) ->
-    {'ok', P};
-find_pid_from_supervisor(E) -> E.
-
--spec start_shared_queue(state(), pid(), kz_term:api_integer()) -> {'noreply', state()}.
-start_shared_queue(#state{account_id=AccountId
-                         ,queue_id=QueueId
-                         ,worker_sup=WorkerSup
-                         }=State, FSMPid, Priority) ->
-    {'ok', SharedPid} =
-        find_pid_from_supervisor(
-          acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AccountId, QueueId, Priority)
-         ),
-    lager:debug("started shared queue listener: ~p", [SharedPid]),
-
-    {'noreply', State#state{fsm_pid = FSMPid
-                           ,shared_pid = SharedPid
-                           ,my_id = acdc_util:proc_id(FSMPid)
-                           }
-    }.
-
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
-handle_cast({'start_friends', QueueJObj}, #state{worker_sup=WorkerSup
-                                                ,mgr_pid=MgrPid
-                                                }=State) ->
-    Priority = kz_json:get_integer_value(<<"max_priority">>, QueueJObj),
-    case find_pid_from_supervisor(acdc_queue_worker_sup:start_fsm(WorkerSup, MgrPid, QueueJObj)) of
-        {'ok', FSMPid} ->
-            lager:debug("started queue FSM: ~p", [FSMPid]),
-            start_shared_queue(State, FSMPid, Priority);
-        {'error', 'already_present'} ->
-            lager:debug("queue FSM is already present"),
-            case acdc_queue_worker_sup:fsm(WorkerSup) of
-                FSMPid when is_pid(FSMPid) ->
-                    lager:debug("found queue FSM pid: ~p", [FSMPid]),
-                    start_shared_queue(State, FSMPid, Priority);
-                'undefined' ->
-                    lager:debug("no queue FSM pid found"),
-                    {'stop', 'failed_fsm', State}
-            end
-    end;
+handle_cast({'get_friends', WorkerSup}, State) ->
+    FSMPid = acdc_queue_worker_sup:fsm(WorkerSup),
+    lager:debug("got queue FSM: ~p", [FSMPid]),
+    SharedPid = acdc_queue_worker_sup:shared_queue(WorkerSup),
+    lager:debug("got shared queue listener: ~p", [SharedPid]),
+    {'noreply', State#state{fsm_pid=FSMPid
+                           ,shared_pid=SharedPid
+                           }};
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{my_q='undefined'}=State) ->
     {'noreply', State#state{my_q=Q}, 'hibernate'};
 
