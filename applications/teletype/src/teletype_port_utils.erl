@@ -49,7 +49,7 @@ port_request_data(DataJObj, TemplateId, PortReqJObj) ->
                       ,Routines
                       ),
     NewData = kz_json:set_value(<<"port_request">>, JObj, DataJObj),
-    maybe_get_attachments(maybe_fix_emails(NewData, TemplateId), TemplateId).
+    maybe_add_attachments(maybe_fix_emails(NewData, TemplateId), TemplateId).
 
 -spec fix_numbers(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 fix_numbers(_DataJObj, _TemplateId, PortReqJObj) ->
@@ -136,7 +136,8 @@ fix_port_state(_DataJObj, _TemplateId, PortReqJObj) ->
 
 -spec fix_comments(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 fix_comments(DataJObj, _TemplateId, PortReqJObj) ->
-    case kz_json:get_json_value(<<"comment">>, DataJObj) of
+    IsPreview = teletype_util:is_preview(DataJObj),
+    case get_the_comment(DataJObj, PortReqJObj, IsPreview) of
         'undefined' -> kz_json:delete_key(<<"comments">>, PortReqJObj);
         Comment ->
             Timestamp = kz_json:get_integer_value(<<"timestamp">>, Comment),
@@ -151,9 +152,16 @@ fix_comments(DataJObj, _TemplateId, PortReqJObj) ->
                              )
     end.
 
+-spec get_the_comment(kz_json:object(), kz_json:object(), boolean()) -> kz_term:api_object().
+get_the_comment(_, PortReqJObj, 'true') ->
+    hd(kz_json:get_value(<<"comments">>, PortReqJObj));
+get_the_comment(DataJObj, _, 'false') ->
+    kz_json:get_json_value(<<"comment">>, DataJObj).
+
 -spec fix_dates(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
-fix_dates(_DataJObj, _TemplateId, PortReqJObj) ->
-    lists:foldl(fun fix_date_fold/2
+fix_dates(DataJObj, _TemplateId, PortReqJObj) ->
+    IsPreview= teletype_util:is_preview(DataJObj),
+    lists:foldl(fun(Key, Value) -> fix_date_fold(Key, Value, IsPreview) end
                ,kz_json:set_value(<<"created">>, kz_doc:created(PortReqJObj), PortReqJObj)
                ,[<<"transfer_date">>, <<"scheduled_date">>
                 ,<<"created">>, <<"ported_date">>
@@ -161,8 +169,11 @@ fix_dates(_DataJObj, _TemplateId, PortReqJObj) ->
                 ]
                ).
 
--spec fix_date_fold(kz_json:path(), kz_json:object()) -> kz_json:object().
-fix_date_fold(<<"ported_date">> = Key, JObj) ->
+-spec fix_date_fold(kz_json:path(), kz_json:object(), boolean()) -> kz_json:object().
+fix_date_fold(Key, JObj, 'true') ->
+    Date = kz_json:from_list(teletype_util:fix_timestamp(kz_time:now_s(), JObj)),
+    kz_json:set_value(Key, Date, JObj);
+fix_date_fold(<<"ported_date">> = Key, JObj, 'false') ->
     case [TransitionJObj
           || TransitionJObj <- kz_json:get_list_value(<<"pvt_transitions">>, JObj, []),
              kz_json:get_ne_binary_value([<<"transition">>, <<"new">>], TransitionJObj) =:= ?PORT_COMPLETED
@@ -174,7 +185,7 @@ fix_date_fold(<<"ported_date">> = Key, JObj) ->
             Date = kz_json:from_list(teletype_util:fix_timestamp(Timestamp, JObj)),
             kz_json:set_value(Key, Date, JObj)
     end;
-fix_date_fold(Key, JObj) ->
+fix_date_fold(Key, JObj, 'false') ->
     case kz_json:get_integer_value(Key, JObj) of
         'undefined' -> JObj;
         Timestamp ->
@@ -224,7 +235,8 @@ fix_ui_metadata(_DataJObj, _TemplateId, PortReqJObj) ->
 
 -spec maybe_add_reason(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 maybe_add_reason(DataJObj, _TemplateId, PortReqJObj) ->
-    case kz_json:get_ne_json_value(<<"reason">>, DataJObj) of
+    IsPreview = teletype_util:is_preview(DataJObj),
+    case get_the_reason(DataJObj, PortReqJObj, IsPreview) of
         'undefined' -> PortReqJObj;
         Reason ->
             UserInfo = get_commenter_info(DataJObj),
@@ -237,6 +249,13 @@ maybe_add_reason(DataJObj, _TemplateId, PortReqJObj) ->
             kz_json:set_value(<<"transition_reason">>, kz_json:from_list(Props), PortReqJObj)
     end.
 
+-spec get_the_reason(kz_json:object(), kz_json:object(), boolean()) -> kz_term:api_object().
+get_the_reason(_, PortReqJObj, 'true') ->
+    kz_json:get_json_value(<<"reason">>, PortReqJObj);
+get_the_reason(DataJObj, _, 'false') ->
+    kz_json:get_json_value(<<"reason">>, DataJObj).
+
+
 -spec get_commenter_info(kz_json:object()) -> kz_term:proplist().
 get_commenter_info(DataJObj) ->
     maybe_add_user_data(DataJObj
@@ -246,10 +265,12 @@ get_commenter_info(DataJObj) ->
                        ).
 
 -spec maybe_add_user_data(kz_json:object(), kz_term:api_binary()) -> kz_term:proplist().
+maybe_add_user_data(DataJObj, <<>>) ->
+    maybe_add_user_data(DataJObj, 'undefined');
 maybe_add_user_data(DataJObj, Author) ->
     maybe_add_user_data(DataJObj, Author, teletype_util:is_preview(DataJObj)).
 
--spec maybe_add_user_data(kz_json:object(), kz_term:api_binary(), boolean()) -> kz_term:proplist().
+-spec maybe_add_user_data(kz_json:object(), kz_term:api_ne_binary(), boolean()) -> kz_term:proplist().
 maybe_add_user_data(DataJObj, Author, 'true') ->
     AccountId = kz_json:get_ne_binary_value(<<"account_id">>, DataJObj),
     case teletype_util:find_account_admin(AccountId) of
@@ -257,12 +278,8 @@ maybe_add_user_data(DataJObj, Author, 'true') ->
             [{<<"author">>, <<"An agent">>}];
         'undefined' ->
             [{<<"author">>, Author}];
-        UserDoc when Author =:= 'undefined' ->
-            [{<<"author">>, first_last_name(kzd_user:first_name(UserDoc), kzd_user:last_name(UserDoc))}
-             | teletype_util:user_params(UserDoc)
-            ];
         UserDoc ->
-            [{<<"author">>, Author}
+            [{<<"author">>, first_last_name(kzd_users:first_name(UserDoc), kzd_users:last_name(UserDoc))}
              | teletype_util:user_params(UserDoc)
             ]
     end;
@@ -282,12 +299,8 @@ maybe_add_user_data(DataJObj, Author, 'false') ->
             [{<<"author">>, <<"An agent">>}];
         {'error', _} ->
             [{<<"author">>, Author}];
-        {'ok', UserDoc} when Author =:= 'undefined' ->
-            [{<<"author">>, first_last_name(kzd_user:first_name(UserDoc), kzd_user:last_name(UserDoc))}
-             | teletype_util:user_params(UserDoc)
-            ];
         {'ok', UserDoc} ->
-            [{<<"author">>, Author}
+            [{<<"author">>, first_last_name(kzd_users:first_name(UserDoc), kzd_users:last_name(UserDoc))}
              | teletype_util:user_params(UserDoc)
             ]
     end.
@@ -310,13 +323,14 @@ is_attachable_template(TemplateId) ->
                  ]
                 ).
 
--spec maybe_get_attachments(kz_json:object(), kz_term:ne_binary()) -> attachments().
-maybe_get_attachments(DataJObj, TemplateId) ->
-    maybe_get_attachments(DataJObj, is_attachable_template(TemplateId), teletype_util:is_preview(DataJObj)).
+-spec maybe_add_attachments(kz_json:object(), kz_term:ne_binary()) -> attachments().
+maybe_add_attachments(DataJObj, TemplateId) ->
+    maybe_add_attachments(DataJObj, is_attachable_template(TemplateId), teletype_util:is_preview(DataJObj)).
 
--spec maybe_get_attachments(kz_json:object(), boolean(), boolean()) -> attachments().
-maybe_get_attachments(_DataJObj, _, 'true') -> [];
-maybe_get_attachments(DataJObj, 'true', 'false') ->
+-spec maybe_add_attachments(kz_json:object(), boolean(), boolean()) -> attachments().
+maybe_add_attachments(DataJObj, _, 'true') ->
+    DataJObj;
+maybe_add_attachments(DataJObj, 'true', 'false') ->
     PortReqId = kz_json:get_value(<<"port_request_id">>, DataJObj),
     Doc = kz_json:get_value(<<"port_request">>, DataJObj),
     Attachments = lists:foldl(fun(Name, Acc) -> get_attachment_fold(Name, Acc, PortReqId, Doc) end
@@ -324,7 +338,7 @@ maybe_get_attachments(DataJObj, 'true', 'false') ->
                              ,kz_doc:attachment_names(Doc)
                              ),
     kz_json:set_value(<<"attachments">>, Attachments, DataJObj);
-maybe_get_attachments(DataJObj, _, 'false') ->
+maybe_add_attachments(DataJObj, _, 'false') ->
     DataJObj.
 
 -spec get_attachment_fold(kz_json:key(), attachments(), kz_term:ne_binary(), kz_json:object()) ->
