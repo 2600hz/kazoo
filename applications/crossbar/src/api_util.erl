@@ -1229,17 +1229,29 @@ get_encode_options(Context) ->
                                      {{'file', file:filename_all()}, cowboy_req:req(), cb_context:context()}.
 create_csv_resp_content(Req, Context) ->
     Context1 = csv_body(Context, cb_context:resp_data(Context)),
-    Acc = cb_context:fetch(Context, 'csv_acc'),
-    lager:debug("finishing CSV file ~p", [Acc]),
-    {File, _} = kz_csv:write_header_to_file(Acc, ?CSV_HEADER_MAP),
-    lager:debug("wrote header to ~p", [File]),
+    create_csv_resp_content(Req, Context1, cb_context:fetch(Context1, 'csv_acc')).
 
-    ContextHeaders = cb_context:resp_headers(Context1),
+create_csv_resp_content(Req, Context, 'undefined') ->
+    ContextHeaders = cb_context:resp_headers(Context),
+
+    ContentType = maps:get(<<"content-type">>, ContextHeaders, <<"text/csv">>),
+    lager:info("sending empty CSV for ~s", [ContentType]),
+    {'stop', Req, Context};
+create_csv_resp_content(Req, Context, {_File, _}=CSVAcc) ->
+    lager:debug("finishing CSV file ~s", [_File]),
+    {File, _} = kz_csv:write_header_to_file(CSVAcc, ?CSV_HEADER_MAP),
+    lager:debug("wrote header to '~s'", [File]),
+
+    ContextHeaders = cb_context:resp_headers(Context),
     FileName = csv_file_name(Context, File),
+    lager:debug("csv filename ~s", [FileName]),
     Headers = #{<<"content-type">> => maps:get(<<"content-type">>, ContextHeaders, <<"text/csv">>)
                ,<<"content-disposition">> => maps:get(<<"content-disposition">>, ContextHeaders, <<"attachment; filename=\"", FileName/binary, "\"">>)
                },
-    {{'file', File}, maps:fold(fun(H, V, R) -> cowboy_req:set_resp_header(H, V, R) end, Req, Headers), Context1}.
+    {{'file', File}
+    ,maps:fold(fun(H, V, R) -> cowboy_req:set_resp_header(H, V, R) end, Req, Headers)
+    ,Context
+    }.
 
 -spec create_resp_file(cowboy_req:req(), cb_context:context()) ->
                               {resp_file(), cowboy_req:req()}.
@@ -1350,6 +1362,9 @@ init_chunk_stream(Req, <<"to_csv">>) -> Req.
 
 -spec csv_body(cb_context:context(), kz_json:object() | kz_json:objects()) ->
                       cb_context:context().
+csv_body(Context, []) ->
+    lager:debug("no resp data to build CSV from"),
+    Context;
 csv_body(Context, JObjs) when is_list(JObjs) ->
     Acc1 = case cb_context:fetch(Context, 'csv_acc') of
                'undefined' -> kz_csv:jobjs_to_file(JObjs);
@@ -1421,8 +1436,10 @@ maybe_set_pull_response_stream({'file', File}, Req, Context) ->
 maybe_set_pull_response_stream({FileLength, TransportFun}, Req, Context)
   when is_integer(FileLength)
        andalso is_function(TransportFun, 2) ->
+    lager:debug("streaming file"),
     {{'stream', FileLength, TransportFun}, Req, Context};
 maybe_set_pull_response_stream(Other, Req, Context) ->
+    lager:debug("pull response: ~s", [Other]),
     {Other, Req, Context}.
 
 %%------------------------------------------------------------------------------
@@ -1522,6 +1539,7 @@ decode_start_key(Encoded) ->
 set_resp_headers(Req0, #{}=Headers) ->
     maps:fold(fun(Header, Value, ReqAcc) ->
                       {H, V} = fix_header(Header, Value, ReqAcc),
+                      lager:debug("adding resp header ~s: ~p", [H, V]),
                       cowboy_req:set_resp_header(H, V, ReqAcc)
               end
              ,Req0

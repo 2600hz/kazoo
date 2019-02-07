@@ -31,7 +31,7 @@
 
 -type expected_code() :: 200..600.
 -type expected_codes() :: [expected_code()].
--type expected_headers() :: [{string(), string()}].
+-type expected_headers() :: [{kz_term:text(), kz_term:text()}].
 -type expectation() :: #{'response_codes' => expected_codes()
                         ,'response_headers' => expected_headers()
                         }.
@@ -195,7 +195,6 @@ make_request(#{'response_codes' := _}=Expectation, HTTP, URL, RequestHeaders) ->
     make_request([Expectation], HTTP, URL, RequestHeaders);
 make_request([#{}|_]=Expectations, HTTP, URL, RequestHeaders) ->
     ?INFO("~p(~p, ~p)", [HTTP, URL, RequestHeaders]),
-
     handle_response(Expectations, HTTP(URL, RequestHeaders)).
 
 -spec make_request(expectations() | expectation() | expected_code() | expected_codes(), fun_3(), string(), kz_term:proplist(), iodata()) ->
@@ -223,11 +222,12 @@ create_envelope(Data, Envelope) ->
     kz_json:set_value(<<"data">>, Data, Envelope).
 
 -spec handle_response(expectations(), kz_http:ret()) -> response().
-handle_response(Expectations, {'ok', ActualCode, RespHeaders, RespBody}) ->
+handle_response([#{}|_]=Expectations, {'ok', ActualCode, RespHeaders, RespBody}) ->
     case expectations_met(Expectations, ActualCode, RespHeaders) of
         'true' -> RespBody;
         'false' ->
-            lager:info("resp headers: ~p", [RespHeaders]),
+            lager:info("expectations not met: ~p", [Expectations]),
+            lager:debug("~p: ~p", [ActualCode, RespHeaders]),
             {'error', RespBody}
     end;
 handle_response(_Expectations, {'error','socket_closed_remotely'}=E) ->
@@ -270,18 +270,7 @@ response_headers_match(_Expectation, _RespHeaders) -> 'true'.
 
 -spec response_header_matches({string(), string()}, response_headers()) -> boolean().
 response_header_matches({ExpectedHeader, ExpectedValue}, RespHeaders) ->
-    Value = kz_term:to_list(ExpectedValue),
-    case kz_http_util:get_resp_header(kz_term:to_list(ExpectedHeader), RespHeaders) of
-        Value -> 'true';
-        'undefined' ->
-            lager:error("failed expectation: header '~s' missing from response", [ExpectedHeader]),
-            'false';
-        _ActualValue ->
-            lager:error("failed expectation: header '~s' is not ~p but ~p"
-                       ,[ExpectedHeader, ExpectedValue, _ActualValue]
-                       ),
-            'false'
-    end.
+    kz_term:to_list(ExpectedValue) =:= kz_http_util:get_resp_header(kz_term:to_list(ExpectedHeader), RespHeaders).
 
 -spec start_trace() -> {'ok', kz_data_tracing:trace_ref()}.
 start_trace() ->

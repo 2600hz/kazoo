@@ -1,3 +1,8 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2019-, 2600Hz
+%%% @doc
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(pqc_cb_ledgers).
 
 %% API functions
@@ -46,9 +51,11 @@ fetch_by_source(API, ?NE_BINARY=AccountId, SourceType, ?NE_BINARY=AcceptType) ->
     LedgersURL = ledgers_source_url(AccountId, SourceType),
     RequestHeaders = pqc_cb_api:request_headers(API, [{<<"accept">>, AcceptType}]),
 
-    Expectations = #{'response_codes' => [200]
-                    ,'response_headers' => [{<<"content-type">>, AcceptType}]
-                    },
+    Expectations = [#{'response_codes' => [200]
+                     ,'response_headers' => [{<<"content-type">>, AcceptType}]
+                     }
+                   ,#{'response_codes' => [204]}
+                   ],
 
     pqc_cb_api:make_request(Expectations
                            ,fun kz_http:get/2
@@ -137,6 +144,9 @@ seq() ->
     lager:info("created account: ~s", [AccountResp]),
 
     AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
+
+    EmptySourceFetchCSV = fetch_by_source(API, AccountId, <<?MODULE_STRING>>, <<"text/csv">>),
+    lager:info("empty source fetch CSV: ~s", [EmptySourceFetchCSV]),
 
     Ledger2 = ledger_doc(<<"baseball">>),
     CreditResp2 = credit(API, AccountId, Ledger2),
