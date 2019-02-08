@@ -117,7 +117,7 @@ send_emails(DataJObj, TemplateMetaJObj, Subject, RenderedTemplates, 'false') ->
     _ = teletype_util:send_email(Emails, Subject, RenderedTemplates),
 
     AuthorityEmails = props:set_value(<<"to">>
-                                     ,kz_json:get_value(<<"authority_emails">>, DataJObj, [])
+                                     ,kz_json:delete_keys([<<"bcc">>, <<"cc">>], Emails)
                                      ,Emails
                                      ),
 
