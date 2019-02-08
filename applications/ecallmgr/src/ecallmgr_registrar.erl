@@ -92,6 +92,7 @@
                       ,initial_registration = kz_time:now_s() :: kz_time:gregorian_seconds() | '_'
                       ,registrar_node :: kz_term:api_ne_binary() | '_'
                       ,registrar_hostname :: kz_term:api_ne_binary() | '_'
+                      ,registrar_zone :: atom() | '_'
                       ,suppress_unregister = 'true' :: boolean() | '_'
                       ,register_overwrite_notify = 'false' :: boolean() | '_'
                       ,account_db :: kz_term:api_binary() | '_'
@@ -807,6 +808,11 @@ create_registration(JObj) ->
                                  ,JObj
                                  ,Reg#registration.registrar_hostname
                                  ),
+    RegistrarZone =
+        kz_term:to_atom(kz_json:get_ne_binary_value(<<"AMQP-Broker-Zone">>
+                                                   ,JObj
+                                                   ,kz_nodes:local_zone()
+                                                   ), 'true'),
     augment_registration(Reg#registration{username=Username
                                          ,realm=Realm
                                          ,proxy=Proxy
@@ -816,6 +822,7 @@ create_registration(JObj) ->
                                          ,expires=Expires
                                          ,registrar_node=RegistrarNode
                                          ,registrar_hostname=RegistrarHostname
+                                         ,registrar_zone=RegistrarZone
                                          ,contact=fix_contact(OriginalContact)
                                          ,original_contact=OriginalContact
                                          ,bridge_uri=bridge_uri(OriginalContact, Proxy, Username, Realm)
@@ -1085,8 +1092,11 @@ update_registration(#registration{authorizing_id=AuthorizingId
 -spec maybe_send_register_notice(registration()) -> registration().
 maybe_send_register_notice(#registration{username=Username
                                         ,realm=Realm
+                                        ,registrar_zone=Zone
                                         }=Reg) ->
-    case oldest_registrar() of
+    case kz_nodes:local_zone() =:= Zone
+        andalso oldest_registrar()
+    of
         'false' -> Reg;
         'true' ->
             lager:debug("sending register notice for ~s@~s", [Username, Realm]),
@@ -1111,9 +1121,12 @@ maybe_send_deregister_notice(#registration{username=Username
 maybe_send_deregister_notice(#registration{username=Username
                                           ,realm=Realm
                                           ,call_id=CallId
+                                          ,registrar_zone=Zone
                                           }=Reg) ->
     kz_util:put_callid(CallId),
-    case oldest_registrar() of
+    case kz_nodes:local_zone() =:= Zone
+        andalso oldest_registrar()
+    of
         'false' -> 'ok';
         'true' ->
             lager:debug("sending deregister notice for ~s@~s", [Username, Realm]),
@@ -1200,7 +1213,7 @@ to_props(Reg) ->
 -spec oldest_registrar() -> boolean().
 oldest_registrar() ->
     kz_nodes:whapp_zone_count(?APP_NAME) =:= 1
-        orelse kz_nodes:whapp_oldest_node(?APP_NAME, 'true') =:= node().
+        orelse kz_nodes:whapp_oldest_node(?APP_NAME) =:= node().
 
 -spec get_fs_contact(kz_term:proplist()) -> kz_term:ne_binary().
 get_fs_contact(Props) ->
