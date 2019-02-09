@@ -6,12 +6,16 @@
         "bill": {
             "description": "Billing information of the losing carrier",
             "properties": {
-                "carrier": {
-                    "description": "The name of the losing carrier",
+                "account_number": {
+                    "description": "Account Number to identify account",
                     "type": "string"
                 },
-                "extended_address": {
-                    "description": "The suite/floor/apt of the billing address the losing carrier has on record",
+                "btn": {
+                    "description": "Billing Telephone Number (BTN) to identify account",
+                    "type": "string"
+                },
+                "carrier": {
+                    "description": "The name of the losing carrier",
                     "type": "string"
                 },
                 "locality": {
@@ -20,6 +24,10 @@
                 },
                 "name": {
                     "description": "The losing carrier billing/account name",
+                    "type": "string"
+                },
+                "pin": {
+                    "description": "Personal Identification Number (PIN) to identify account",
                     "type": "string"
                 },
                 "postal_code": {
@@ -38,6 +46,34 @@
                     "description": "The street number of the billing address the losing carrier has on record",
                     "type": "string"
                 },
+                "street_post_dir": {
+                    "description": "Street Post-Direction",
+                    "enum": [
+                        "E",
+                        "N",
+                        "NE",
+                        "NW",
+                        "S",
+                        "SE",
+                        "SW",
+                        "W"
+                    ],
+                    "type": "string"
+                },
+                "street_pre_dir": {
+                    "description": "Street Pre-Direction",
+                    "enum": [
+                        "E",
+                        "N",
+                        "NE",
+                        "NW",
+                        "S",
+                        "SE",
+                        "SW",
+                        "W"
+                    ],
+                    "type": "string"
+                },
                 "street_type": {
                     "description": "The street type of the billing address the losing carrier has on record",
                     "type": "string"
@@ -48,7 +84,7 @@
         "comments": {
             "description": "The history of comments made on a port request",
             "items": {
-                "type": "object"
+                "$ref": "comment"
             },
             "type": "array"
         },
@@ -96,18 +132,8 @@
             },
             "type": "object"
         },
-        "port_state": {
-            "default": "unconfirmed",
-            "description": "What state the port request is currently in",
-            "enum": [
-                "unconfirmed",
-                "pending",
-                "submitted",
-                "scheduled",
-                "completed",
-                "rejected",
-                "canceled"
-            ],
+        "reference_number": {
+            "description": "Winning carrier reference number or order ID",
             "type": "string"
         },
         "signee_name": {
@@ -121,6 +147,10 @@
         "transfer_date": {
             "description": "Requested transfer date in Gregorian timestamp",
             "type": "integer"
+        },
+        "winning_carrier": {
+            "description": "The name of winning carrier",
+            "type": "string"
         }
     },
     "required": [

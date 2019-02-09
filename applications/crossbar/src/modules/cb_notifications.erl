@@ -1325,7 +1325,7 @@ normalize_available_port(Value, Acc, Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
 
     case kz_services_reseller:is_reseller(AuthAccountId)
-        andalso cb_port_requests:authority(AccountId)
+        andalso kzd_port_requests:find_port_authority(AccountId)
     of
         'false' -> Acc;
 
@@ -1487,8 +1487,10 @@ load_smtp_log_doc(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
 -spec maybe_remove_private_data(kz_json:object(), kz_term:ne_binary(), boolean()) -> kz_json:object().
 maybe_remove_private_data(JObj, <<"port_comment">>, 'false') ->
     CommentPath = [<<"macros">>, <<"port_request">>, <<"comment">>],
-    SuperPath = CommentPath ++ [<<"superduper_comment">>],
-    case kz_json:is_true(SuperPath, JObj, 'false') of
+    SuperPaths = [CommentPath ++ [<<"superduper_comment">>]
+                 ,CommentPath ++ [<<"is_private">>]
+                 ],
+    case kz_term:is_true(kz_json:get_first_defined(SuperPaths, JObj, 'false')) of
         'true' ->
             DeletePaths = [CommentPath
                           ,<<"rendered_templates">>

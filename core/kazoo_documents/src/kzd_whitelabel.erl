@@ -28,6 +28,7 @@
 -export([twoway_trunks_price/1, twoway_trunks_price/2, set_twoway_trunks_price/2]).
 
 -export([fetch/1]).
+-export([fetch_port_authority/2]).
 
 -include("kz_documents.hrl").
 
@@ -185,14 +186,15 @@ port(Doc, Default) ->
 set_port(Doc, Port) ->
     kz_json:set_value([<<"port">>], Port, Doc).
 
--spec port_authority(doc()) -> any().
+-spec port_authority(doc()) -> kz_term:api_ne_binary().
 port_authority(Doc) ->
     port_authority(Doc, 'undefined').
 
--spec port_authority(doc(), Default) -> any() | Default.
+-spec port_authority(doc(), Default) -> kz_term:api_ne_binary() | Default.
 port_authority(Doc, Default) ->
-    %% I'm not sure port.authority is set to other values than account id or not
-    %% but to be safe let's check if it is really an account id.
+    %% I'm not sure whether port.authority should be an account_id
+    %% or email address or etc... but to be safe let's check if it
+    %% is really an account id.
     %% FYI: teletype port request admin template was using port authority
     %% as 'to' Email address but the UI was setting that as account id!
     case kz_json:get_ne_binary_value([<<"port">>, <<"authority">>], Doc) of
@@ -299,3 +301,16 @@ fetch('undefined') ->
 fetch(Account) ->
     AccoundDb = kz_util:format_account_db(Account),
     kz_datamgr:open_cache_doc(AccoundDb, ?ID).
+
+-spec fetch_port_authority(kz_term:api_binary(), Default) -> kz_term:api_ne_binary() | Default.
+fetch_port_authority(Account, Default) ->
+    case fetch(Account) of
+        {'ok', Doc} ->
+            port_authority(Doc, Default);
+        {'error', 'not_found'} ->
+            lager:debug("account ~s is not whitelabeled", [Account]),
+            Default;
+        {'error', _} ->
+            lager:debug("failed to open whitelabel doc for ~s", [Account]),
+            Default
+    end.
