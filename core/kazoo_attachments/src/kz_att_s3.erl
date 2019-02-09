@@ -19,6 +19,9 @@
 -define(AMAZON_S3_HOST, <<"s3.amazonaws.com">>).
 -define(AMAZON_S3_UPLOAD_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 30).
 
+-define(AMAZON_S3_HTTP_DEFAULT_CLIENT, 'lhttpc').
+%% httpc seems broken in otp 21.2.5
+
 -type s3_error() :: {'aws_error'
                     ,{'socket_error', binary()} |
                      {'http_error', pos_integer(), string(), binary()}
@@ -143,7 +146,7 @@ aws_config(#{'key' := Key
     BucketAfterHost = kz_term:is_true(maps:get('bucket_after_host', Map, 'false')),
     BucketAccess = aws_bucket_access(Map),
     Timeout = kz_term:to_integer(maps:get('upload_timeout', Map, ?AMAZON_S3_UPLOAD_TIMEOUT)),
-    HttpClient = kz_term:to_atom(maps:get('http_client', Map, 'httpc'), 'true'),
+    HttpClient = kz_term:to_atom(maps:get('http_client', Map, ?AMAZON_S3_HTTP_DEFAULT_CLIENT), 'true'),
 
     Host = aws_host(Map),
     Scheme = fix_scheme(maps:get('scheme', Map,  <<"https://">>)),
@@ -288,7 +291,7 @@ get_object(Bucket, FilePath, #aws_config{s3_host=Host} = Config) ->
 %% `erlcloud_s3:s3_request2/8'.
 -spec handle_s3_error(s3_error(), kz_att_error:update_routines()) -> kz_att_error:error().
 handle_s3_error({'aws_error'
-                ,{'http_error', RespCode, RespStatusLine, RespBody}
+                ,{'http_error', RespCode, _RespStatusLine, RespBody}
                 } = _E
                ,Routines
                ) ->
@@ -313,7 +316,10 @@ handle_s3_error(_E, Routines) ->
 -spec get_reason(atom() | pos_integer(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_reason(RespCode, RespBody) when RespCode >= 400 ->
     %% If the `RespCode' value is >= 400 then the resp_body must contain an error object
-    {Xml, _} = xmerl_scan:string(binary_to_list(RespBody)),
-    kz_xml:get_value("//Message/text()", Xml);
+    try xmerl_scan:string(binary_to_list(RespBody)) of
+        {Xml, _} -> kz_xml:get_value("//Message/text()", Xml)
+    catch
+        _:_ -> kz_http_util:http_code_to_status_line(RespCode)
+    end;
 get_reason(RespCode, _RespBody) ->
     kz_http_util:http_code_to_status_line(RespCode).

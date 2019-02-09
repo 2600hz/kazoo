@@ -17,6 +17,9 @@
 
 -define(GRAPH_HTTP_OPTIONS, [{'version', "HTTP/1.1"}
                             ,{'ssl', [{'versions', ['tlsv1.2']}]}
+                            ,{'follow_redirect', 'true'}
+                            ,{'max_redirect', 5}
+                            ,'with_body'
                             ]).
 
 -define(GRAPH_API_URL, <<"https://graph.microsoft.com/v1.0">>).
@@ -143,8 +146,10 @@ do_fetch_attachment({'ok', #{'token' := #{'authorization' := Authorization}}},
                     DriveId, ContentId, HandlerProps, DbName, DocId, AName) ->
     Headers = [{<<"Authorization">>, Authorization}],
     Url = ?DRV_FETCH_URL(DriveId, ContentId),
-    lager:debug("getting ~p", [Url]),
-    case kz_http:get(Url, Headers, ?GRAPH_HTTP_OPTIONS) of
+    lager:debug("getting ~p : ~p", [Url, Headers]),
+    %% case kz_http:get(Url, Headers, ?GRAPH_HTTP_OPTIONS) of
+    %% SEEMS HTTPC IS BROKEN IN OTP 21.2.5
+    case hackney:request('get', Url, Headers, <<>>, ?GRAPH_HTTP_OPTIONS) of
         {'ok', 200, _ResponseHeaders, ResponseBody} ->
             {'ok', ResponseBody};
         Resp ->
