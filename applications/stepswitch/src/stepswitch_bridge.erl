@@ -109,7 +109,7 @@ init([Endpoints, OffnetReq]) ->
                          ,request_handler=self()
                          ,control_queue=ControlQ
                          ,response_queue=kapi_offnet_resource:server_id(OffnetReq)
-                         ,timeout=erlang:send_after(30000, self(), 'bridge_timeout')
+                         ,timeout=erlang:send_after(120000, self(), 'bridge_timeout')
                          ,call_id=kapi_offnet_resource:call_id(OffnetReq)
                          }}
     end.
