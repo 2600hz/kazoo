@@ -38,16 +38,16 @@
 -define(BASE64_ENCODED, 'true').
 -define(SEND_MULTIPART, 'true').
 
--spec create(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object()) ->
+-spec create(pqc_cb_api:state(), kz_term:api_ne_binary(), kz_term:ne_binary() | kz_json:object()) ->
                     pqc_cb_api:response().
-create(API, ?NE_BINARY=AccountId, StorageDoc) ->
+create(API, AccountId, StorageDoc) ->
     create(API, AccountId, StorageDoc, 'undefined').
 
--spec create(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), kz_term:api_boolean()) ->
+-spec create(pqc_cb_api:state(), kz_term:api_ne_binary(), kz_term:ne_binary() | kz_json:object(), kz_term:api_boolean()) ->
                     pqc_cb_api:response().
-create(API, ?NE_BINARY=AccountId, ?NE_BINARY=UUID, ValidateSettings) ->
+create(API, AccountId, ?NE_BINARY=UUID, ValidateSettings) ->
     create(API, AccountId, storage_doc(UUID), ValidateSettings);
-create(API, ?NE_BINARY=AccountId, StorageDoc, ValidateSettings) ->
+create(API, AccountId, StorageDoc, ValidateSettings) ->
     StorageURL = storage_url(AccountId, ValidateSettings),
     RequestHeaders = pqc_cb_api:request_headers(API, [{<<"content-type">>, <<"application/json">>}]),
     pqc_cb_api:make_request([201, 400]
@@ -57,6 +57,8 @@ create(API, ?NE_BINARY=AccountId, StorageDoc, ValidateSettings) ->
                            ,kz_json:encode(pqc_cb_api:create_envelope(StorageDoc))
                            ).
 
+storage_url('undefined') ->
+    string:join([pqc_cb_api:v2_base_url(), "storage"], "/");
 storage_url(AccountId) ->
     string:join([pqc_cb_accounts:account_url(AccountId), "storage"], "/").
 
@@ -93,18 +95,18 @@ seq() ->
     _ = base_test(),
     cleanup(),
     _ = skip_validation_test(),
+    cleanup(),
+    _ = global_test(),
     cleanup().
 
 skip_validation_test() ->
-    Model = initial_state(),
-    API = pqc_kazoo_model:api(Model),
+    ?INFO("SKIP TEST"),
+
+    API = init_api(),
+
+    AccountId = create_account(API),
 
     StorageDoc = storage_doc(kz_binary:rand_hex(16)),
-    AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
-    ?INFO("created account: ~s", [AccountResp]),
-
-    AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
-
     ShouldFailToCreate = create(API, AccountId, StorageDoc, 'false'),
     ?INFO("should fail: ~s", [ShouldFailToCreate]),
 
@@ -130,27 +132,58 @@ skip_validation_test() ->
     cleanup(API),
     ?INFO("FINISHED NON-VALIDATION").
 
+create_account(API) ->
+    AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
+    ?INFO("created account: ~s", [AccountResp]),
+
+    kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)).
+
 check_if_allowed(RespJObj, ShouldAllow) ->
     Errored = 'undefined' =:= kz_json:get_json_value([<<"data">>, <<"validate_settings">>], RespJObj),
     ?INFO("request errored: ~p", [Errored]),
     ShouldAllow = Errored.
 
 base_test() ->
-    Model = initial_state(),
-    API = pqc_kazoo_model:api(Model),
+    ?INFO("BASE TEST"),
+    API = init_api(),
+
+    AccountId = create_account(API),
 
     StorageDoc = storage_doc(kz_binary:rand_hex(16)),
-    AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
-    ?INFO("created account: ~s", [AccountResp]),
-
-    AccountId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)),
-
     CreatedStorage = create(API, AccountId, StorageDoc),
     ?INFO("created storage: ~p", [CreatedStorage]),
 
     Test = pqc_httpd:get_req([<<?MODULE_STRING>>, AccountId]),
     ?INFO("test created ~p", [Test]),
 
+    _ = test_vm_message(API, AccountId),
+
+    cleanup(API),
+    ?INFO("FINISHED").
+
+init_api() ->
+    Model = initial_state(),
+    pqc_kazoo_model:api(Model).
+
+global_test() ->
+    ?INFO("GLOBAL TEST"),
+
+    API = init_api(),
+
+    AccountId = create_account(API),
+
+    StorageDoc = storage_doc(kz_binary:rand_hex(16)),
+    CreatedStorage = create(API, 'undefined', StorageDoc),
+    ?INFO("created storage: ~p", [CreatedStorage]),
+
+    Test = pqc_httpd:get_req([<<?MODULE_STRING>>, <<"system_data">>]),
+    ?INFO("test created ~p", [Test]),
+
+    _ = test_vm_message(API, AccountId),
+    cleanup(API),
+    ?INFO("FINISHED").
+
+test_vm_message(API, AccountId) ->
     CreateBox = pqc_cb_vmboxes:create_box(API, AccountId, <<"1010">>),
     ?INFO("create VM box: ~p", [CreateBox]),
     BoxId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(CreateBox)),
@@ -178,10 +211,7 @@ base_test() ->
 
     MessageBin = pqc_cb_vmboxes:fetch_message_binary(API, AccountId, BoxId, MediaId),
     ?INFO("message bin =:= MP3: ~p", [MessageBin =:= MP3]),
-    MessageBin = MP3,
-
-    cleanup(API),
-    ?INFO("FINISHED").
+    MessageBin = MP3.
 
 create_voicemail(API, AccountId, BoxId, MP3) ->
     MessageJObj = default_message(),
@@ -255,6 +285,7 @@ cleanup(API) ->
 
 cleanup_system() ->
     kzs_plan:disallow_validation_overrides(),
+    kzs_plan:reset_system_dataplan(),
     pqc_httpd:stop().
 
 -spec storage_doc(kz_term:ne_binary()) -> kzd_storage:doc().

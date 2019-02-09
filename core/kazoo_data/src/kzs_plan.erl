@@ -15,6 +15,8 @@
 
 -export([init/0, reload/0, reload/1, reload/2, flush/0]).
 
+-export([reset_system_dataplan/0]).
+
 -include("kz_data.hrl").
 
 -define(IS_JSON_GUARD(Obj), is_tuple(Obj)
@@ -504,12 +506,17 @@ flush() ->
 
 -spec reload() -> 'ok'.
 reload() ->
-    load_dataplan(?SYSTEM_DATAPLAN, fun fetch_simple_dataplan/1),
+    _ = load_dataplan(?SYSTEM_DATAPLAN, fun fetch_simple_dataplan/1),
     case kz_datamgr:get_result_ids(?KZ_DATA_DB, ?KZS_PLAN_INIT_VIEW, []) of
         {'ok', []} -> lager:info("no dataplans to load");
         {'ok', Accounts} -> load_accounts(Accounts);
         Error -> lager:error_unsafe("error reloading dataplans ~p", [Error])
     end.
+
+-spec reset_system_dataplan() -> 'ok'.
+reset_system_dataplan() ->
+    _D =  kz_datamgr:del_doc(?KZ_DATA_DB, ?SYSTEM_DATAPLAN),
+    reload().
 
 -spec reload(kz_term:ne_binary()) -> 'ok'.
 reload(AccountId) ->

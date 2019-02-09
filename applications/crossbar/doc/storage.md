@@ -504,3 +504,11 @@ We can create the following generated URLs:
 | http://my_server.com/storage?path=/account000/abc123/call.mp3 | `[{"const":"?path="}, {"arg":"account_id"}, {"arg":"id"}, {"arg":"attachment"}]` |   |
 | http://my_server.com/storage/bar/call.mp3 | `[{"field":"foo"}, {"arg":"attachment"}]` |   |
 | http://my_server.com/storage/account001_call.mp3 | `[{"group":[{"arg":"account_id"}, {"const":"_"}, {"arg":"attachment"}]}]` |   |
+
+## Global Storage settings
+
+If you are the super-duper admin you can setup storage policy across your cluster by using the URL `/v2/storage` instead of per-account.
+
+The validation request will arrive with `/system_data/{DOC_ID}/{ANAME}` on the end of the URL.
+
+If you need to revert back to the standard settings you can run `sup kzs_plan reset_system_dataplan`; and changes will be removed and the initial version reinstalled.

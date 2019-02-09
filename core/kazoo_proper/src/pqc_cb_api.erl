@@ -155,9 +155,10 @@ default_request_headers(RequestId) ->
 -type expected_code() :: 200..600.
 -type expected_codes() :: [expected_code()].
 -type expected_headers() :: [{string(), string()}].
--type expectations() :: #{'response_codes' => expected_codes()
-                         ,'response_headers' => expected_headers()
-                         }.
+-type expectation() :: #{'response_codes' => expected_codes()
+                        ,'response_headers' => expected_headers()
+                        }.
+-type expectations() :: [expectations()].
 
 -type response() :: binary() |
                     kz_http:ret() |
@@ -166,24 +167,28 @@ default_request_headers(RequestId) ->
 -type fun_2() :: fun((string(), kz_term:proplist()) -> kz_http:ret()).
 -type fun_3() :: fun((string(), kz_term:proplist(), iodata()) -> kz_http:ret()).
 
--spec make_request(expectations() | expected_code() | expected_codes(), fun_2(), string(), kz_term:proplist()) ->
+-spec make_request(expectations() | expectation() | expected_code() | expected_codes(), fun_2(), string(), kz_term:proplist()) ->
                           response().
 make_request(Code, HTTP, URL, RequestHeaders) when is_integer(Code) ->
     make_request(#{'response_codes' => [Code]}, HTTP, URL, RequestHeaders);
 make_request([Code|_]=Codes, HTTP, URL, RequestHeaders) when is_integer(Code) ->
     make_request(#{'response_codes' => Codes}, HTTP, URL, RequestHeaders);
-make_request(Expectations, HTTP, URL, RequestHeaders) ->
+make_request(#{}=Expectation, HTTP, URL, RequestHeaders) ->
+    make_request([Expectation], HTTP, URL, RequestHeaders);
+make_request(Expectations, HTTP, URL, RequestHeaders) when is_list(Expectations) ->
     ?INFO("~p(~p, ~p)", [HTTP, URL, RequestHeaders]),
 
     handle_response(Expectations, HTTP(URL, RequestHeaders)).
 
--spec make_request(expectations() | expected_code() | expected_codes(), fun_3(), string(), kz_term:proplist(), iodata()) ->
+-spec make_request(expectations() | expectation() | expected_code() | expected_codes(), fun_3(), string(), kz_term:proplist(), iodata()) ->
                           response().
 make_request(Code, HTTP, URL, RequestHeaders, RequestBody) when is_integer(Code) ->
     make_request(#{'response_codes' => [Code]}, HTTP, URL, RequestHeaders, RequestBody);
 make_request([Code|_]=Codes, HTTP, URL, RequestHeaders, RequestBody) when is_integer(Code) ->
     make_request(#{'response_codes' => Codes}, HTTP, URL, RequestHeaders, RequestBody);
-make_request(Expectations, HTTP, URL, RequestHeaders, RequestBody) ->
+make_request(#{}=Expectation, HTTP, URL, RequestHeaders, RequestBody) ->
+    make_request([Expectation], HTTP, URL, RequestHeaders, RequestBody);
+make_request(Expectations, HTTP, URL, RequestHeaders, RequestBody) when is_list(Expectations) ->
     ?INFO("~p: ~s", [HTTP, URL]),
     ?DEBUG("headers: ~p", [RequestHeaders]),
     ?DEBUG("body: ~s", [RequestBody]),
@@ -216,8 +221,13 @@ handle_response(_ExpectedCode, {'error', _}=E) ->
     E.
 
 expectations_met(Expectations, RespCode, RespHeaders) ->
-    response_code_matches(Expectations, RespCode)
-        andalso response_headers_match(Expectations, RespHeaders).
+    lists:any(fun(E) -> expectation_met(E, RespCode, RespHeaders) end
+             ,Expectations
+             ).
+
+expectation_met(Expectation, RespCode, RespHeaders) ->
+    response_code_matches(Expectation, RespCode)
+        andalso response_headers_match(Expectation, RespHeaders).
 
 response_code_matches(#{'response_codes' := ResponseCodes}, ResponseCode) ->
     case lists:member(ResponseCode, ResponseCodes) of
@@ -228,14 +238,13 @@ response_code_matches(#{'response_codes' := ResponseCodes}, ResponseCode) ->
                   ),
             'false'
     end;
-response_code_matches(_Expectations, _Code) -> 'true'.
+response_code_matches(_Expectation, _Code) -> 'true'.
 
 response_headers_match(#{'response_headers' := ExpectedHeaders}, RespHeaders) ->
     lists:all(fun(ExpectedHeader) -> response_header_matches(ExpectedHeader, RespHeaders) end
              ,ExpectedHeaders
              );
-response_headers_match(_Expectations, _RespHeaders) -> 'true'.
-
+response_headers_match(_Expectation, _RespHeaders) -> 'true'.
 
 response_header_matches({ExpectedHeader, ExpectedValue}, RespHeaders) ->
     case props:get_value(ExpectedHeader, RespHeaders) of
