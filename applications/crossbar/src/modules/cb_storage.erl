@@ -343,7 +343,7 @@ on_successful_validation(Id, ?HTTP_PATCH, Context) ->
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"doc">>, JObj)|Acc].
 
--spec scope(cb_context:context()) -> scope().
+-spec scope(cb_context:context()) -> scope() | 'undefined'.
 scope(Context) ->
     cb_context:fetch(Context, 'scope').
 
