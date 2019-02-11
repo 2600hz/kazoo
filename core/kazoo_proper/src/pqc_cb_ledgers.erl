@@ -172,7 +172,7 @@ seq() ->
     {'ok', _} = kapps_config:set_default(<<"crossbar">>, <<"load_view_chunk_size">>, PriorChunkSize),
 
     cleanup(API),
-    lager:info("FINISHED NON-VALIDATION").
+    lager:info("FINISHED SEQ").
 
 -spec cleanup() -> 'ok'.
 cleanup() ->
