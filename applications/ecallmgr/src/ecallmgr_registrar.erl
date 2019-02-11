@@ -1094,9 +1094,7 @@ maybe_send_register_notice(#registration{username=Username
                                         ,realm=Realm
                                         ,registrar_zone=Zone
                                         }=Reg) ->
-    case kz_nodes:local_zone() =:= Zone
-        andalso oldest_registrar()
-    of
+    case should_handle_reg_notice(Zone) of
         'false' -> Reg;
         'true' ->
             lager:debug("sending register notice for ~s@~s", [Username, Realm]),
@@ -1124,9 +1122,7 @@ maybe_send_deregister_notice(#registration{username=Username
                                           ,registrar_zone=Zone
                                           }=Reg) ->
     kz_util:put_callid(CallId),
-    case kz_nodes:local_zone() =:= Zone
-        andalso oldest_registrar()
-    of
+    case should_handle_reg_notice(Zone) of
         'false' -> 'ok';
         'true' ->
             lager:debug("sending deregister notice for ~s@~s", [Username, Realm]),
@@ -1210,10 +1206,21 @@ to_props(Reg) ->
       ]
      ).
 
--spec oldest_registrar() -> boolean().
-oldest_registrar() ->
+-spec should_handle_reg_notice(atom()) -> boolean().
+should_handle_reg_notice(Zone) ->
+    (kz_nodes:local_zone() =:= Zone
+     andalso oldest_registrar('false'))
+        orelse (no_registrar_in_reg_zone(Zone)
+                andalso oldest_registrar('true')).
+
+-spec no_registrar_in_reg_zone(atom()) -> boolean().
+no_registrar_in_reg_zone(Zone) ->
+    kz_nodes:whapp_oldest_node(?APP_NAME, Zone) =:= 'undefined'.
+
+-spec oldest_registrar(boolean()) -> boolean().
+oldest_registrar(Federated) ->
     kz_nodes:whapp_zone_count(?APP_NAME) =:= 1
-        orelse kz_nodes:whapp_oldest_node(?APP_NAME) =:= node().
+        orelse kz_nodes:whapp_oldest_node(?APP_NAME, Federated) =:= node().
 
 -spec get_fs_contact(kz_term:proplist()) -> kz_term:ne_binary().
 get_fs_contact(Props) ->
