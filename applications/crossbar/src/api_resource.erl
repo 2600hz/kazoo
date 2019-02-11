@@ -1084,20 +1084,20 @@ process_chunk(#{context := Context
                }=ChunkMap) ->
     case cb_context:resp_data(Context) of
         0 ->
-            lager:debug("resp data is 0, resetting"),
+            lager:debug("(chunked) ~s did not send data", [ToFun]),
             next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)
                                      ,chunking_started => IsStarted
                                      }
                            );
         SentLength when is_integer(SentLength) ->
-            lager:debug("resp data is ~p, resetting", [SentLength]),
+            lager:debug("(chunked) ~s sent ~p data", [ToFun, SentLength]),
             next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, 'true')
                                      ,chunking_started => 'true'
                                      ,previous_chunk_length => SentLength
                                      }
                            );
         [] ->
-            lager:debug("empty resp data list, resetting"),
+            lager:debug("(chunked) ~s did not send data", [ToFun]),
             next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context, IsStarted)
                                      ,chunking_started => IsStarted
                                      ,previous_chunk_length => 0 %% the module filtered all queried result
@@ -1106,7 +1106,7 @@ process_chunk(#{context := Context
         Resp when is_list(Resp) ->
             PrevLength = length(Resp),
             {StartedChunk, Req1, Context1} = send_chunk_response(ToFun, Req, Context),
-            lager:debug("sent ~p chunked resp", [PrevLength]),
+            lager:debug("(chunked) ~s sent ~p chunked resp", [ToFun, PrevLength]),
             next_chunk_fold(ChunkMap#{context => reset_context_between_chunks(Context1, StartedChunk)
                                      ,cowboy_req => Req1
                                      ,chunking_started => StartedChunk
