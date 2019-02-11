@@ -6,7 +6,9 @@
 -define(HARD_DELETE, 'false').
 -define(SOFT_DELETE, 'true').
 
--type crossbar_status() :: 'success' | 'accepted' | 'error' | 'fatal' | 'stop'.
+-type successful_status() :: 'success' | 'accepted'.
+-type error_status() :: 'error' | 'fatal' | 'stop'.
+-type crossbar_status() :: successful_status() | error_status().
 -type crossbar_module_result() :: {crossbar_status(), kz_term:proplist()} |
                                   {crossbar_status(), kz_term:proplist(), string()} |
                                   {crossbar_status(), kz_term:proplist(), string(), integer()}.
