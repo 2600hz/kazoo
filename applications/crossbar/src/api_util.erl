@@ -1096,7 +1096,13 @@ process_billing_response(Context, NewContext) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec succeeded(cb_context:context()) -> boolean().
-succeeded(Context) -> cb_context:resp_status(Context) =:= 'success'.
+succeeded(Context) ->
+    is_successful_status(cb_context:resp_status(Context)).
+
+-spec is_successful_status(crossbar_status()) -> boolean().
+is_successful_status('success') -> 'true';
+is_successful_status('accepted') -> 'true';
+is_successful_status(_Status) -> 'false'.
 
 -spec execute_request(cowboy_req:req(), cb_context:context()) ->
                              {boolean() | 'stop', cowboy_req:req(), cb_context:context()}.
@@ -1146,18 +1152,12 @@ execute_request_failure(Req, Context, _E) ->
     lager:debug("unexpected return from the fold: ~p", [_E]),
     {'false', Req, Context}.
 
--spec execute_request_results(cowboy_req:req(), cb_context:context()) ->
-                                     {'true' | 'stop', cowboy_req:req(), cb_context:context()}.
-execute_request_results(Req, Context) ->
-    case succeeded(Context) of
-        'false' -> ?MODULE:stop(Req, Context);
-        'true' -> {'true', Req, Context}
-    end.
-
 -spec execute_request_results(cowboy_req:req(), cb_context:context(), crossbar_status()) ->
                                      {'true' | 'stop', cowboy_req:req(), cb_context:context()}.
 execute_request_results(Req, Context, 'success') ->
-    execute_request_results(Req, Context);
+    {'true', Req, Context};
+execute_request_results(Req, Context, 'accepted') ->
+    {'true', Req, Context};
 execute_request_results(Req, Context, _RespStatus) ->
     ?MODULE:stop(Req, Context).
 

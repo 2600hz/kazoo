@@ -411,9 +411,9 @@ malformed_request(Req, Context, _ReqVerb) ->
             {'false', Req, Context};
         [?MATCH_ACCOUNT_RAW(_) | _] = AccountArgs ->
             Context1 = validate_account_resource(Context, AccountArgs),
-            case cb_context:resp_status(Context1) of
-                'success' -> {'false', Req, Context1};
-                _RespStatus -> api_util:stop(Req, Context1)
+            case api_util:succeeded(Context1) of
+                'true' -> {'false', Req, Context1};
+                'false' -> api_util:stop(Req, Context1)
             end;
         [<<>> | _] ->
             Error = kz_json:from_list([{<<"message">>, <<"missing account_id">>}]),
@@ -1113,7 +1113,7 @@ reset_context_between_chunks(Context, StartedChunk) ->
                                   ,{fun cb_context:store/3, 'chunking_started', StartedChunk}
                                   ]
                                  ),
-    reset_context_between_chunks(Context1, StartedChunk, cb_context:resp_status(Context)).
+    reset_context_between_chunks(Context1, StartedChunk, api_util:succeeded(Context)).
 
 %%------------------------------------------------------------------------------
 %% @doc Reset response data to an empty or check an error message is set.
@@ -1122,9 +1122,9 @@ reset_context_between_chunks(Context, StartedChunk) ->
 %% and if not set it to an empty list.
 %% @end
 %%------------------------------------------------------------------------------
-reset_context_between_chunks(Context, _StartedChunk, 'success') ->
+reset_context_between_chunks(Context, _StartedChunk, 'true') ->
     cb_context:set_resp_data(Context, []);
-reset_context_between_chunks(Context, _StartedChunk, _) ->
+reset_context_between_chunks(Context, _StartedChunk, 'false') ->
     RespData = cb_context:resp_data(Context),
     case {kz_json:is_json_object(RespData)
          ,kz_term:is_ne_binary(RespData)
