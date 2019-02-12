@@ -237,9 +237,9 @@ response_code_matches(#{'response_codes' := ExpectedCodes}, ResponseCode) ->
     case lists:member(ResponseCode, ExpectedCodes) of
         'true' -> 'true';
         'false' ->
-            ?ERROR("failed expectation: got code ~w but expected ~w"
-                  ,[ResponseCode, ExpectedCodes]
-                  ),
+            ?INFO("failed expectation: code ~w but expected ~w"
+                 ,[ResponseCode, ExpectedCodes]
+                 ),
             'false'
     end;
 response_code_matches(_Expectation, _Code) -> 'true'.
