@@ -3609,7 +3609,6 @@
             "description": "Validator for the set_variables callflow data object",
             "properties": {
                 "custom_application_vars": {
-                    "default": {},
                     "description": "Key-value pairs to set as custom_application_vars on the channel",
                     "type": "object"
                 },

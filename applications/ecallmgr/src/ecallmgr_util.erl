@@ -559,11 +559,11 @@ fs_args_to_binary(Args, Sep, Prefix) ->
 fs_arg_encode(Source = ?NE_BINARY) ->
     fs_arg_encode(Source, <<>>, <<>>).
 
--spec fs_arg_encode(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec fs_arg_encode(kz_term:ne_binary(), binary()) -> kz_term:ne_binary().
 fs_arg_encode(Source = ?NE_BINARY, Sep) ->
     fs_arg_encode(Source, Sep, <<>>).
 
--spec fs_arg_encode(kz_term:ne_binary(), kz_term:ne_binary(), binary()) -> kz_term:ne_binary().
+-spec fs_arg_encode(binary(), binary() | byte(), binary()) -> binary().
 fs_arg_encode(<<>>, _Sep, Acc) -> Acc;
 
 fs_arg_encode(<<C, R/binary>>, C, Acc) ->

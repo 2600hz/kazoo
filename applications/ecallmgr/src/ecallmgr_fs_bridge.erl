@@ -320,7 +320,7 @@ build_channels_vars(Node, UUID, Endpoints, JObj) ->
     Props = lists:foldl(fun(F, Acc) -> Acc ++ F(Node, UUID, Endpoints, JObj) end, [], Routines),
     ecallmgr_fs_xml:get_channel_vars(kz_json:set_values(Props, JObj)).
 
--spec maybe_force_fax(atom(), kz_term:ne_binary(), kz_json:objects(), kz_json:object()) -> kz_term:ne_binaries().
+-spec maybe_force_fax(atom(), kz_term:ne_binary(), kz_json:objects(), kz_json:object()) -> kz_term:proplist().
 maybe_force_fax(_Node, _UUID, Endpoints, JObj) ->
     case kz_json:find(<<"Force-Fax">>, Endpoints, kz_json:get_value(<<"Force-Fax">>, JObj)) of
         'undefined' -> [];
@@ -398,7 +398,7 @@ endpoint_action_cmd(Event) ->
         {_, Prefix} -> Prefix
     end.
 
--spec add_bridge_actions(atom(), kz_term:ne_binary(), kz_json:objects(), kz_json:object()) -> kz_term:ne_binaries().
+-spec add_bridge_actions(atom(), kz_term:ne_binary(), kz_json:objects(), kz_json:object()) -> kz_term:proplist().
 add_bridge_actions(Node, UUID, _Endpoints, JObj) ->
     BridgeActions = kz_json:get_json_value(<<"Bridge-Actions">>, JObj, kz_json:new()),
     Fun = fun(K, V, Acc)-> build_bridge_actions(Node, UUID, K, V, Acc) end,
