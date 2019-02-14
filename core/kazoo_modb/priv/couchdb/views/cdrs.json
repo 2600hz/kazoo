@@ -24,6 +24,7 @@
                 "        callee_id_name: doc.callee_id_name,",
                 "        callee_id_number: doc.callee_id_number,",
                 "        duration_seconds: doc.duration_seconds,",
+                "        interaction_id: doc.interaction_id,",
                 "        billing_seconds: doc.billing_seconds,",
                 "        timestamp: doc.timestamp,",
                 "        hangup_cause: doc.hangup_cause,",

@@ -221,6 +221,7 @@ handle_response(_ExpectedCode, {'error', _}=E) ->
     E.
 
 expectations_met(Expectations, RespCode, RespHeaders) ->
+    ?INFO("checking expectations against ~p: ~p", [RespCode, RespHeaders]),
     lists:any(fun(E) -> expectation_met(E, RespCode, RespHeaders) end
              ,Expectations
              ).
@@ -233,7 +234,7 @@ response_code_matches(#{'response_codes' := ResponseCodes}, ResponseCode) ->
     case lists:member(ResponseCode, ResponseCodes) of
         'true' -> 'true';
         'false' ->
-            ?ERROR("failed expectation: code ~w but expected ~w"
+            ?ERROR("failed expectation: got code ~w but expected ~w"
                   ,[ResponseCode, ResponseCodes]
                   ),
             'false'

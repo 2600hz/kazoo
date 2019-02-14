@@ -15,6 +15,7 @@
 -export([callee_id_number/1, callee_id_number/2, set_callee_id_number/2]).
 -export([caller_id_name/1, caller_id_name/2, set_caller_id_name/2]).
 -export([caller_id_number/1, caller_id_number/2, set_caller_id_number/2]).
+-export([custom_application_vars/1, custom_application_vars/2, set_custom_application_vars/2]).
 -export([custom_channel_vars/1, custom_channel_vars/2, set_custom_channel_vars/2]).
 -export([custom_sip_headers/1, custom_sip_headers/2, set_custom_sip_headers/2]).
 -export([digits_dialed/1, digits_dialed/2, set_digits_dialed/2]).
@@ -29,9 +30,11 @@
 -export([fax_transfer_rate/1, fax_transfer_rate/2, set_fax_transfer_rate/2]).
 -export([fax_transferred_pages/1, fax_transferred_pages/2, set_fax_transferred_pages/2]).
 -export([from/1, from/2, set_from/2]).
+-export([from_tag/1, from_tag/2, set_from_tag/2]).
 -export([from_uri/1, from_uri/2, set_from_uri/2]).
 -export([hangup_cause/1, hangup_cause/2, set_hangup_cause/2]).
 -export([hangup_code/1, hangup_code/2, set_hangup_code/2]).
+-export([interaction_id/1, interaction_id/2, set_interaction_id/2]).
 -export([local_sdp/1, local_sdp/2, set_local_sdp/2]).
 -export([media_server/1, media_server/2, set_media_server/2]).
 -export([node/1, node/2, set_node/2]).
@@ -46,9 +49,13 @@
 -export([ringing_seconds/1, ringing_seconds/2, set_ringing_seconds/2]).
 -export([timestamp/1, timestamp/2, set_timestamp/2]).
 -export([to/1, to/2, set_to/2]).
+-export([to_tag/1, to_tag/2, set_to_tag/2]).
 -export([to_uri/1, to_uri/2, set_to_uri/2]).
 -export([user_agent/1, user_agent/2, set_user_agent/2]).
 
+-export([create_doc_id/1, create_doc_id/2, create_doc_id/3
+        ,type/0
+        ]).
 
 -include("kz_documents.hrl").
 
@@ -56,6 +63,7 @@
 -export_type([doc/0]).
 
 -define(SCHEMA, <<"cdrs">>).
+-define(PVT_TYPE, <<"cdr">>).
 
 -spec new() -> doc().
 new() ->
@@ -85,15 +93,15 @@ app_version(Doc, Default) ->
 set_app_version(Doc, AppVersion) ->
     kz_json:set_value([<<"app_version">>], AppVersion, Doc).
 
--spec billing_seconds(doc()) -> kz_term:api_binary().
+-spec billing_seconds(doc()) -> kz_term:api_integer().
 billing_seconds(Doc) ->
     billing_seconds(Doc, 'undefined').
 
--spec billing_seconds(doc(), Default) -> binary() | Default.
+-spec billing_seconds(doc(), Default) -> integer() | Default.
 billing_seconds(Doc, Default) ->
-    kz_json:get_binary_value([<<"billing_seconds">>], Doc, Default).
+    kz_json:get_integer_value([<<"billing_seconds">>], Doc, Default).
 
--spec set_billing_seconds(doc(), binary()) -> doc().
+-spec set_billing_seconds(doc(), integer()) -> doc().
 set_billing_seconds(Doc, BillingSeconds) ->
     kz_json:set_value([<<"billing_seconds">>], BillingSeconds, Doc).
 
@@ -169,6 +177,18 @@ caller_id_number(Doc, Default) ->
 set_caller_id_number(Doc, CallerIdNumber) ->
     kz_json:set_value([<<"caller_id_number">>], CallerIdNumber, Doc).
 
+-spec custom_application_vars(doc()) -> kz_term:api_object().
+custom_application_vars(Doc) ->
+    custom_application_vars(Doc, 'undefined').
+
+-spec custom_application_vars(doc(), Default) -> kz_json:object() | Default.
+custom_application_vars(Doc, Default) ->
+    kz_json:get_json_value([<<"custom_application_vars">>], Doc, Default).
+
+-spec set_custom_application_vars(doc(), kz_json:object()) -> doc().
+set_custom_application_vars(Doc, CustomApplicationVars) ->
+    kz_json:set_value([<<"custom_application_vars">>], CustomApplicationVars, Doc).
+
 -spec custom_channel_vars(doc()) -> kz_term:api_object().
 custom_channel_vars(Doc) ->
     custom_channel_vars(Doc, 'undefined').
@@ -217,15 +237,15 @@ disposition(Doc, Default) ->
 set_disposition(Doc, Disposition) ->
     kz_json:set_value([<<"disposition">>], Disposition, Doc).
 
--spec duration_seconds(doc()) -> kz_term:api_binary().
+-spec duration_seconds(doc()) -> kz_term:api_integer().
 duration_seconds(Doc) ->
     duration_seconds(Doc, 'undefined').
 
--spec duration_seconds(doc(), Default) -> binary() | Default.
+-spec duration_seconds(doc(), Default) -> integer() | Default.
 duration_seconds(Doc, Default) ->
-    kz_json:get_binary_value([<<"duration_seconds">>], Doc, Default).
+    kz_json:get_integer_value([<<"duration_seconds">>], Doc, Default).
 
--spec set_duration_seconds(doc(), binary()) -> doc().
+-spec set_duration_seconds(doc(), integer()) -> doc().
 set_duration_seconds(Doc, DurationSeconds) ->
     kz_json:set_value([<<"duration_seconds">>], DurationSeconds, Doc).
 
@@ -337,6 +357,18 @@ from(Doc, Default) ->
 set_from(Doc, From) ->
     kz_json:set_value([<<"from">>], From, Doc).
 
+-spec from_tag(doc()) -> kz_term:api_binary().
+from_tag(Doc) ->
+    from_tag(Doc, 'undefined').
+
+-spec from_tag(doc(), Default) -> binary() | Default.
+from_tag(Doc, Default) ->
+    kz_json:get_binary_value([<<"from_tag">>], Doc, Default).
+
+-spec set_from_tag(doc(), binary()) -> doc().
+set_from_tag(Doc, FromTag) ->
+    kz_json:set_value([<<"from_tag">>], FromTag, Doc).
+
 -spec from_uri(doc()) -> kz_term:api_binary().
 from_uri(Doc) ->
     from_uri(Doc, 'undefined').
@@ -372,6 +404,18 @@ hangup_code(Doc, Default) ->
 -spec set_hangup_code(doc(), binary()) -> doc().
 set_hangup_code(Doc, HangupCode) ->
     kz_json:set_value([<<"hangup_code">>], HangupCode, Doc).
+
+-spec interaction_id(doc()) -> kz_term:api_binary().
+interaction_id(Doc) ->
+    interaction_id(Doc, 'undefined').
+
+-spec interaction_id(doc(), Default) -> binary() | Default.
+interaction_id(Doc, Default) ->
+    kz_json:get_binary_value([<<"interaction_id">>], Doc, Default).
+
+-spec set_interaction_id(doc(), binary()) -> doc().
+set_interaction_id(Doc, InteractionId) ->
+    kz_json:set_value([<<"interaction_id">>], InteractionId, Doc).
 
 -spec local_sdp(doc()) -> kz_term:api_binary().
 local_sdp(Doc) ->
@@ -505,25 +549,25 @@ request(Doc, Default) ->
 set_request(Doc, Request) ->
     kz_json:set_value([<<"request">>], Request, Doc).
 
--spec ringing_seconds(doc()) -> kz_term:api_binary().
+-spec ringing_seconds(doc()) -> kz_term:api_integer().
 ringing_seconds(Doc) ->
     ringing_seconds(Doc, 'undefined').
 
--spec ringing_seconds(doc(), Default) -> binary() | Default.
+-spec ringing_seconds(doc(), Default) -> integer() | Default.
 ringing_seconds(Doc, Default) ->
-    kz_json:get_binary_value([<<"ringing_seconds">>], Doc, Default).
+    kz_json:get_integer_value([<<"ringing_seconds">>], Doc, Default).
 
--spec set_ringing_seconds(doc(), binary()) -> doc().
+-spec set_ringing_seconds(doc(), integer()) -> doc().
 set_ringing_seconds(Doc, RingingSeconds) ->
     kz_json:set_value([<<"ringing_seconds">>], RingingSeconds, Doc).
 
--spec timestamp(doc()) -> kz_term:api_binary().
+-spec timestamp(doc()) -> kz_term:api_integer().
 timestamp(Doc) ->
     timestamp(Doc, 'undefined').
 
--spec timestamp(doc(), Default) -> binary() | Default.
+-spec timestamp(doc(), Default) -> kz_time:gregorian_seconds() | Default.
 timestamp(Doc, Default) ->
-    kz_json:get_binary_value([<<"timestamp">>], Doc, Default).
+    kz_json:get_integer_value([<<"timestamp">>], Doc, Default).
 
 -spec set_timestamp(doc(), binary()) -> doc().
 set_timestamp(Doc, Timestamp) ->
@@ -540,6 +584,18 @@ to(Doc, Default) ->
 -spec set_to(doc(), binary()) -> doc().
 set_to(Doc, To) ->
     kz_json:set_value([<<"to">>], To, Doc).
+
+-spec to_tag(doc()) -> kz_term:api_binary().
+to_tag(Doc) ->
+    to_tag(Doc, 'undefined').
+
+-spec to_tag(doc(), Default) -> binary() | Default.
+to_tag(Doc, Default) ->
+    kz_json:get_binary_value([<<"to_tag">>], Doc, Default).
+
+-spec set_to_tag(doc(), binary()) -> doc().
+set_to_tag(Doc, ToTag) ->
+    kz_json:set_value([<<"to_tag">>], ToTag, Doc).
 
 -spec to_uri(doc()) -> kz_term:api_binary().
 to_uri(Doc) ->
@@ -564,3 +620,27 @@ user_agent(Doc, Default) ->
 -spec set_user_agent(doc(), binary()) -> doc().
 set_user_agent(Doc, UserAgent) ->
     kz_json:set_value([<<"user_agent">>], UserAgent, Doc).
+
+
+-spec create_doc_id(kz_term:ne_binary()) -> kz_term:ne_binary().
+create_doc_id(?NE_BINARY=CallId) ->
+    {Year, Month, _} = erlang:date(),
+    create_doc_id(CallId, Year, Month).
+
+-spec create_doc_id(kz_term:ne_binary(), kz_time:gregorian_seconds()) -> kz_term:ne_binary().
+create_doc_id(?NE_BINARY=CallId, Timestamp) when is_integer(Timestamp) ->
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    create_doc_id(CallId, Year, Month).
+
+-spec create_doc_id(kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> kz_term:ne_binary().
+create_doc_id(?NE_BINARY=CallId, Year, Month)
+  when is_integer(Year),
+       is_integer(Month) ->
+    list_to_binary([kz_term:to_binary(Year)
+                   ,kz_date:pad_month(Month)
+                   ,"-"
+                   ,CallId
+                   ]).
+
+-spec type() -> binary().
+type() -> ?PVT_TYPE.
