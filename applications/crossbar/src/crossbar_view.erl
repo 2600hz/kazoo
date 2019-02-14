@@ -34,7 +34,7 @@
 -include("crossbar.hrl").
 
 -define(CB_SPECIFIC_VIEW_OPTIONS,
-        ['ascending', 'databases', 'mapper'
+        ['ascending', 'databases', 'mapper', 'filter'
 
          %% non-range query
         ,'end_keymap', 'keymap', 'start_keymap'
