@@ -155,7 +155,7 @@ default_request_headers(RequestId) ->
 -type expected_code() :: 200..600.
 -type expected_codes() :: [expected_code()].
 -type expected_headers() :: [{string(), string()}].
--type expectation() :: #{'response_codes' => expected_codes()
+-type expectation() :: #{'response_codes' := expected_codes()
                         ,'response_headers' => expected_headers()
                         }.
 -type expectations() :: [expectations()].
@@ -176,9 +176,9 @@ make_request(Code, HTTP, URL, RequestHeaders) when is_integer(Code) ->
     make_request([#{'response_codes' => [Code]}], HTTP, URL, RequestHeaders);
 make_request([Code|_]=Codes, HTTP, URL, RequestHeaders) when is_integer(Code) ->
     make_request([#{'response_codes' => Codes}], HTTP, URL, RequestHeaders);
-make_request(Expectation, HTTP, URL, RequestHeaders) when is_map(Expectation) ->
+make_request(#{'response_codes' := _}=Expectation, HTTP, URL, RequestHeaders) ->
     make_request([Expectation], HTTP, URL, RequestHeaders);
-make_request(Expectations, HTTP, URL, RequestHeaders) when is_list(Expectations) ->
+make_request([#{}|_]=Expectations, HTTP, URL, RequestHeaders) ->
     ?INFO("~p(~p, ~p)", [HTTP, URL, RequestHeaders]),
 
     handle_response(Expectations, HTTP(URL, RequestHeaders)).
@@ -189,9 +189,9 @@ make_request(Code, HTTP, URL, RequestHeaders, RequestBody) when is_integer(Code)
     make_request([#{'response_codes' => [Code]}], HTTP, URL, RequestHeaders, RequestBody);
 make_request([Code|_]=Codes, HTTP, URL, RequestHeaders, RequestBody) when is_integer(Code) ->
     make_request([#{'response_codes' => Codes}], HTTP, URL, RequestHeaders, RequestBody);
-make_request(Expectation, HTTP, URL, RequestHeaders, RequestBody) when is_map(Expectation) ->
+make_request(#{'response_codes' := _}=Expectation, HTTP, URL, RequestHeaders, RequestBody) ->
     make_request([Expectation], HTTP, URL, RequestHeaders, RequestBody);
-make_request(Expectations, HTTP, URL, RequestHeaders, RequestBody) when is_list(Expectations) ->
+make_request([#{}|_]=Expectations, HTTP, URL, RequestHeaders, RequestBody) ->
     ?INFO("~p: ~s", [HTTP, URL]),
     ?DEBUG("headers: ~p", [RequestHeaders]),
     ?DEBUG("body: ~s", [RequestBody]),
