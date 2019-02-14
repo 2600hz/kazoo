@@ -621,7 +621,9 @@ load_legs(<<BinTimestamp:11/binary, "-", _Key/binary>>=InteractionId, Context) -
               ,{'databases', [MODB]}
               ,'include_docs'
               ],
-    crossbar_view:load_modb(Context, ?CB_INTERACTION_LIST_BY_ID, Options).
+    crossbar_view:load_modb(Context, ?CB_INTERACTION_LIST_BY_ID, Options);
+load_legs(Id, Context) ->
+    crossbar_util:response_bad_identifier(Id, Context).
 
 -spec normalize_leg_view_results(kz_json:object(), kz_json:objects()) ->
                                         kz_json:objects().
