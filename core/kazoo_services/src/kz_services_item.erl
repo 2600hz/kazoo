@@ -305,7 +305,7 @@ rate(Item) ->
 %%------------------------------------------------------------------------------
 -spec minimum(item()) -> non_neg_integer().
 minimum(Item) ->
-    kzd_item_plan:minimum(item_plan(Item)).
+    kzd_item_plan:minimum(item_plan(Item), 0).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -313,7 +313,7 @@ minimum(Item) ->
 %%------------------------------------------------------------------------------
 -spec maximum(item()) -> non_neg_integer().
 maximum(Item) ->
-    kzd_item_plan:maximum(item_plan(Item)).
+    kzd_item_plan:maximum(item_plan(Item), quantity(Item)).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -502,13 +502,9 @@ get_item_quantity(Services, Item) ->
 -spec calculate_billable_quantity(kz_services:services(), item()) -> item().
 calculate_billable_quantity(_Services, Item) ->
     Step = kzd_item_plan:step(item_plan(Item)),
-    Minimum = minimum(Item),
-    Maximum = maximum(Item),
-    case
-        kz_term:ceiling(
-          quantity(Item) / Step
-         )
-    of
+    Minimum = handle_step(minimum(Item), Step),
+    Maximum = handle_step(maximum(Item), Step),
+    case handle_step(quantity(Item), Step) of
         BillableQuantity when BillableQuantity < Minimum ->
             lager:debug("minimum '~s' not met with ~p, enforcing quantity ~p"
                        ,[display_name(Item), BillableQuantity, Minimum]
@@ -522,6 +518,11 @@ calculate_billable_quantity(_Services, Item) ->
         BillableQuantity ->
             set_billable_quantity(Item, BillableQuantity)
     end.
+
+
+-spec handle_step(non_neg_integer(), non_neg_integer()) -> non_neg_integer().
+handle_step(Quantity, Step) ->
+    kz_term:ceiling(Quantity / Step) * Step.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -563,8 +564,8 @@ calculate_flat_rates(_Services, Item) ->
 
 -spec calculate_flat_rate(kz_services:services(), item()) -> item() | 'undefined'.
 calculate_flat_rate(_Services, Item) ->
-    case kzd_item_plan:flat_rate(item_plan(Item)) of
-        'undefined' -> 'undefined';
+    case kzd_item_plan:flat_rate(item_plan(Item), 0) of
+        Rate when Rate =< 0 -> 'undefined';
         Rate ->
             lager:debug("~s should be billed as a flat rate"
                        ,[display_name(Item)]
