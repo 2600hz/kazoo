@@ -244,9 +244,8 @@ get_asserted_identity(_Data, Call) ->
             CallerId = kzd_devices:caller_id(Endpoint),
             DefaultRealm = kapps_call:account_realm(Call),
             DefaultName = get_asserted_default_name(CallerId, Call),
-            Number = kzd_caller_id:external_number(CallerId),
-            Name = kzd_caller_id:external_name(CallerId),
-            {kzd_caller_id:asserted_number(CallerId, Number)
+            DefaultNumber = kzd_caller_id:external_number(CallerId),
+            {kzd_caller_id:asserted_number(CallerId, DefaultNumber)
             ,kzd_caller_id:asserted_name(CallerId, DefaultName)
             ,kzd_caller_id:asserted_realm(CallerId, DefaultRealm)
             }
