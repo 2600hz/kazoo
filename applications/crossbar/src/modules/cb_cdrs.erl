@@ -615,9 +615,8 @@ load_legs(<<BinTimestamp:11/binary, "-", _Key/binary>>=InteractionId, Context) -
     MODB = kazoo_modb:get_modb(cb_context:account_id(Context), kz_term:to_integer(BinTimestamp)),
 
     Options = [{'mapper', fun normalize_leg_view_results/2}
-              ,{'range_start_keymap', [InteractionId]}
-              ,{'range_endkey_keymap', [InteractionId, kz_json:new()]}
-              ,{'range_keymap', 'nil'}
+              ,{'range_start_keymap',  fun(_) -> [InteractionId] end}
+              ,{'range_end_keymap', fun(_) -> [InteractionId, kz_json:new()] end}
               ,{'databases', [MODB]}
               ,'include_docs'
               ],
