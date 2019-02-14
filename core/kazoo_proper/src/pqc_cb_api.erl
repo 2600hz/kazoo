@@ -160,6 +160,9 @@ default_request_headers(RequestId) ->
                         }.
 -type expectations() :: [expectations()].
 
+-type response_code() :: 200..600.
+-type response_headers() :: [{string(), string()}].
+
 -type response() :: binary() |
                     kz_http:ret() |
                     {'error', binary()}.
@@ -170,10 +173,10 @@ default_request_headers(RequestId) ->
 -spec make_request(expectations() | expectation() | expected_code() | expected_codes(), fun_2(), string(), kz_term:proplist()) ->
                           response().
 make_request(Code, HTTP, URL, RequestHeaders) when is_integer(Code) ->
-    make_request(#{'response_codes' => [Code]}, HTTP, URL, RequestHeaders);
+    make_request([#{'response_codes' => [Code]}], HTTP, URL, RequestHeaders);
 make_request([Code|_]=Codes, HTTP, URL, RequestHeaders) when is_integer(Code) ->
-    make_request(#{'response_codes' => Codes}, HTTP, URL, RequestHeaders);
-make_request(#{}=Expectation, HTTP, URL, RequestHeaders) ->
+    make_request([#{'response_codes' => Codes}], HTTP, URL, RequestHeaders);
+make_request(Expectation, HTTP, URL, RequestHeaders) when is_map(Expectation) ->
     make_request([Expectation], HTTP, URL, RequestHeaders);
 make_request(Expectations, HTTP, URL, RequestHeaders) when is_list(Expectations) ->
     ?INFO("~p(~p, ~p)", [HTTP, URL, RequestHeaders]),
@@ -183,10 +186,10 @@ make_request(Expectations, HTTP, URL, RequestHeaders) when is_list(Expectations)
 -spec make_request(expectations() | expectation() | expected_code() | expected_codes(), fun_3(), string(), kz_term:proplist(), iodata()) ->
                           response().
 make_request(Code, HTTP, URL, RequestHeaders, RequestBody) when is_integer(Code) ->
-    make_request(#{'response_codes' => [Code]}, HTTP, URL, RequestHeaders, RequestBody);
+    make_request([#{'response_codes' => [Code]}], HTTP, URL, RequestHeaders, RequestBody);
 make_request([Code|_]=Codes, HTTP, URL, RequestHeaders, RequestBody) when is_integer(Code) ->
-    make_request(#{'response_codes' => Codes}, HTTP, URL, RequestHeaders, RequestBody);
-make_request(#{}=Expectation, HTTP, URL, RequestHeaders, RequestBody) ->
+    make_request([#{'response_codes' => Codes}], HTTP, URL, RequestHeaders, RequestBody);
+make_request(Expectation, HTTP, URL, RequestHeaders, RequestBody) when is_map(Expectation) ->
     make_request([Expectation], HTTP, URL, RequestHeaders, RequestBody);
 make_request(Expectations, HTTP, URL, RequestHeaders, RequestBody) when is_list(Expectations) ->
     ?INFO("~p: ~s", [HTTP, URL]),
@@ -220,33 +223,38 @@ handle_response(_ExpectedCode, {'error', _}=E) ->
     ?ERROR("broken req: ~p", [E]),
     E.
 
+-spec expectations_met(expectations(), response_code(), response_headers()) -> boolean().
 expectations_met(Expectations, RespCode, RespHeaders) ->
     ?INFO("checking expectations against ~p: ~p", [RespCode, RespHeaders]),
     lists:any(fun(E) -> expectation_met(E, RespCode, RespHeaders) end
              ,Expectations
              ).
 
-expectation_met(Expectation, RespCode, RespHeaders) ->
+-spec expectation_met(expectation(), response_code(), response_headers()) -> boolean().
+expectation_met(#{}=Expectation, RespCode, RespHeaders) ->
     response_code_matches(Expectation, RespCode)
         andalso response_headers_match(Expectation, RespHeaders).
 
-response_code_matches(#{'response_codes' := ResponseCodes}, ResponseCode) ->
-    case lists:member(ResponseCode, ResponseCodes) of
+-spec response_code_matches(expectation(), response_code()) -> boolean().
+response_code_matches(#{'response_codes' := ExpectedCodes}, ResponseCode) ->
+    case lists:member(ResponseCode, ExpectedCodes) of
         'true' -> 'true';
         'false' ->
             ?ERROR("failed expectation: got code ~w but expected ~w"
-                  ,[ResponseCode, ResponseCodes]
+                  ,[ResponseCode, ExpectedCodes]
                   ),
             'false'
     end;
 response_code_matches(_Expectation, _Code) -> 'true'.
 
+-spec response_headers_match(expectation(), response_headers()) -> boolean().
 response_headers_match(#{'response_headers' := ExpectedHeaders}, RespHeaders) ->
     lists:all(fun(ExpectedHeader) -> response_header_matches(ExpectedHeader, RespHeaders) end
              ,ExpectedHeaders
              );
 response_headers_match(_Expectation, _RespHeaders) -> 'true'.
 
+-spec response_header_matches({string(), string()}, response_headers()) -> boolean().
 response_header_matches({ExpectedHeader, ExpectedValue}, RespHeaders) ->
     case props:get_value(ExpectedHeader, RespHeaders) of
         ExpectedValue -> 'true';
