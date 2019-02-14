@@ -68,6 +68,18 @@
                      }
                     ]).
 
+-define(NOTIFICATION_INBOUND_EMAIL, [<<"notifications">>
+                                    ,<<"inbound">>
+                                    ,<<"email">>
+                                    ,<<"send_to">>
+                                    ]
+       ).
+-define(NOTIFICATION_EMAIL, [<<"notifications">>
+                            ,<<"email">>
+                            ,<<"send_to">>
+                            ]
+       ).
+
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -325,31 +337,32 @@ maybe_update_fax_settings(#state{call=Call
         {'error', _} -> maybe_update_fax_settings_from_account(State)
     end.
 
--spec get_faxbox_notify_list(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
-get_faxbox_notify_list(FaxBoxDoc, AccountDb) ->
-    DefaultNotify = default_notify(FaxBoxDoc),
+-spec faxbox_notify_emails(kz_json:object()) -> kz_term:ne_binaries().
+faxbox_notify_emails(JObj) ->
+    Emails = kz_json:get_first_defined([?NOTIFICATION_INBOUND_EMAIL
+                                       ,?NOTIFICATION_EMAIL
+                                       ], JObj, []),
+    fax_util:notify_email_list(Emails).
+
+-spec get_faxbox_user_email(kz_json:object(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
+get_faxbox_user_email(FaxBoxDoc, AccountDb) ->
     case kz_json:get_value(<<"owner_id">>, FaxBoxDoc) of
-        'undefined' -> DefaultNotify;
+        'undefined' -> 'undefined';
         OwnerId ->
             case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
-                {'ok', UserDoc} ->
-                    List = kz_json:get_value([<<"email">>,<<"send_to">>], DefaultNotify, []),
-                    maybe_add_owner_to_notify_list(List, kz_json:get_value(<<"email">>, UserDoc));
+                {'ok', UserDoc} -> kz_json:get_ne_binary_value(<<"email">>, UserDoc);
                 _ ->
-                    DefaultNotify
+                    lager:debug("faxbox ~s has invalid owner_id ~s", [kz_doc:id(FaxBoxDoc), OwnerId]),
+                    'undefined'
             end
     end.
 
--spec default_notify(kz_json:object()) -> kz_json:object().
-default_notify(FaxBoxDoc) ->
-    kz_json:get_value([<<"notifications">>,<<"inbound">>], FaxBoxDoc, kz_json:new()).
-
--spec maybe_add_owner_to_notify_list(list(), kz_term:api_binary()) -> kz_json:object().
-maybe_add_owner_to_notify_list(List, 'undefined') ->
-    kz_json:set_value([<<"email">>, <<"send_to">>], List, kz_json:new());
-maybe_add_owner_to_notify_list(List, OwnerEmail) ->
-    NotifyList = fax_util:notify_email_list('undefined', OwnerEmail, List),
-    kz_json:set_value([<<"email">>, <<"send_to">>], NotifyList, kz_json:new()).
+-spec get_faxbox_notify_list(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
+get_faxbox_notify_list(FaxBoxDoc, AccountDb) ->
+    UserEmail = get_faxbox_user_email(FaxBoxDoc, AccountDb),
+    FaxBoxEmails = faxbox_notify_emails(FaxBoxDoc),
+    EMails = fax_util:notify_email_list(UserEmail, FaxBoxEmails),
+    kz_json:set_value([<<"email">>, <<"send_to">>], EMails, kz_json:new()).
 
 -spec maybe_update_fax_settings_from_account(state()) -> any().
 maybe_update_fax_settings_from_account(#state{call=Call}=State) ->
