@@ -89,6 +89,18 @@
 -define(ENSURE_CID_KEY, <<"ensure_valid_caller_id">>).
 -define(DEFAULT_ENSURE_CID, kapps_config:get_is_true(?CONFIG_CAT, ?ENSURE_CID_KEY, 'true')).
 
+-define(NOTIFICATION_OUTBOUND_EMAIL, [<<"notifications">>
+                                     ,<<"outbound">>
+                                     ,<<"email">>
+                                     ,<<"send_to">>
+                                     ]
+       ).
+-define(NOTIFICATION_EMAIL, [<<"notifications">>
+                            ,<<"email">>
+                            ,<<"send_to">>
+                            ]
+       ).
+
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -685,6 +697,13 @@ fax_error(JObj) ->
                               , [<<"tx_result">>, <<"result_text">>]
                               ], JObj).
 
+-spec notify_emails(kz_json:object()) -> kz_term:ne_binaries().
+notify_emails(JObj) ->
+    Emails = kz_json:get_first_defined([?NOTIFICATION_OUTBOUND_EMAIL
+                                       ,?NOTIFICATION_EMAIL
+                                       ], JObj, []),
+    fax_util:notify_email_list(Emails).
+
 -spec notify_fields(kz_json:object(), kz_json:object()) -> kz_term:proplist().
 notify_fields(JObj, Resp) ->
     <<"sip:", HangupCode/binary>> = kz_json:get_value(<<"Hangup-Code">>, Resp, <<"sip:0">>),
@@ -696,10 +715,7 @@ notify_fields(JObj, Resp) ->
 
     ToNumber = kz_term:to_binary(kz_json:get_value(<<"to_number">>, JObj)),
     ToName = kz_term:to_binary(kz_json:get_value(<<"to_name">>, JObj, ToNumber)),
-    Emails = kz_json:get_first_defined([[<<"notifications">>, <<"email">>, <<"send_to">>]
-                                       ,[<<"notifications">>, <<"outbound">>, <<"email">>, <<"send_to">>]
-                                       ], JObj, []),
-    Notify = [E || E <- Emails, not kz_term:is_empty(E)],
+    Notify = [E || E <- notify_emails(JObj), not kz_term:is_empty(E)],
 
     props:filter_empty(
       [{<<"Caller-ID-Name">>, kz_json:get_value(<<"from_name">>, JObj)}
