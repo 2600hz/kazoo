@@ -186,6 +186,8 @@ ctp(Context) ->
                     {cowboy_req:req(), cb_context:context()}.
 to_csv({Req, Context}) ->
     Filename = download_filename(Context, requested_attachment_name(Context)),
+    lager:debug("download named ~s", [Filename]),
+
     Headers0 = cowboy_req:resp_headers(Req),
     Headers = maps:merge(#{<<"content-type">> => <<"text/csv">>
                           ,<<"content-disposition">> => <<"attachment; filename=\"", Filename/binary, "\"">>

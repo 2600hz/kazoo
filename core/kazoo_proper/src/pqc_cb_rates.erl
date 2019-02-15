@@ -132,20 +132,31 @@ service_plan_id(RatedeckId) ->
 
 wait_for_task(API, TaskId) ->
     GetResp = pqc_cb_tasks:fetch(API, TaskId),
-    case is_binary(GetResp)
-        andalso kz_json:get_value([<<"data">>, <<"_read_only">>, <<"status">>]
-                                 ,kz_json:decode(GetResp)
-                                 )
+    GetJObj = kz_json:decode(GetResp),
+
+    case kz_json:get_value([<<"data">>, <<"_read_only">>, <<"status">>]
+                          ,GetJObj
+                          )
     of
-        'false' ->
-            ?ERROR("failed to query for task: ~p~n", [GetResp]),
-            throw(GetResp);
-        <<"success">> -> pqc_cb_tasks:delete(API, TaskId);
+        <<"success">> ->
+            %% fetch csv
+            ?INFO("task fininshed: ~s", [GetResp]),
+            get_csvs(API, TaskId, kz_json:get_list_value([<<"data">>, <<"_read_only">>, <<"csvs">>], GetJObj, [])),
+            pqc_cb_tasks:delete(API, TaskId);
         _Status ->
-            lager:info("wrong status(~s) for task in ~s", [_Status, GetResp]),
+            ?DEBUG("wrong status(~s) for task in ~s", [_Status, GetResp]),
             timer:sleep(1000),
             wait_for_task(API, TaskId)
     end.
+
+get_csvs(_API, _TaskId, []) -> 'ok';
+get_csvs(API, TaskId, [CSV|CSVs]) ->
+    get_csv(API, TaskId, CSV),
+    get_csvs(API, TaskId, CSVs).
+
+get_csv(API, TaskId, CSV) ->
+    FetchResp = pqc_cb_tasks:fetch_csv(API, TaskId, CSV),
+    ?INFO("fetching ~s(~s): ~s", [TaskId, CSV, FetchResp]).
 
 -spec delete_rate(pqc_cb_api:state(), kz_term:ne_binary() | kzd_rates:doc()) -> pqc_cb_api:response().
 delete_rate(API, <<_/binary>>=RatedeckId) ->
