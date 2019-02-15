@@ -75,7 +75,7 @@ legs_url(AccountId, InteractionId) ->
     string:join([pqc_cb_accounts:account_url(AccountId), "cdrs", "legs", kz_term:to_list(InteractionId)], "/").
 
 interactions_url(AccountId) ->
-    string:join([pqc_cb_accounts:account_url(AccountId), "cdrs", "interactions"], "/").
+    string:join([pqc_cb_accounts:account_url(AccountId), "cdrs", "interaction"], "/").
 
 cdr_url(AccountId, CDRId) ->
     string:join([pqc_cb_accounts:account_url(AccountId), "cdrs", kz_term:to_list(CDRId)], "/").

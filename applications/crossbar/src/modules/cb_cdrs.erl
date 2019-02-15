@@ -602,17 +602,19 @@ load_cdr(CDRId, Context) ->
 -spec load_legs(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_legs(<<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId, Context) ->
     AccountId = cb_context:account_id(Context),
-    AccountDb = kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)),
-    Context1 = cb_context:set_account_db(Context, AccountDb),
-    case kz_datamgr:open_cache_doc(AccountDb, {kzd_cdrs:type(), DocId}) of
+    MODB = kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)),
+    case kz_datamgr:open_cache_doc(MODB, {kzd_cdrs:type(), DocId}) of
         {'ok', JObj} ->
-            load_legs(kzd_cdrs:interaction_id(JObj), Context1);
-        _ ->
+            lager:debug("finding interaction id in ~s / ~s", [MODB, DocId]),
+            load_legs(kzd_cdrs:interaction_id(JObj), Context);
+        {'error', _} ->
             lager:debug("error loading legs for cdr id ~p", [DocId]),
-            crossbar_util:response('error', <<"could not find legs for supplied id">>, 404, Context1)
+            crossbar_util:response('error', <<"could not find legs for supplied id">>, 404, Context)
     end;
 load_legs(<<BinTimestamp:11/binary, "-", _Key/binary>>=InteractionId, Context) ->
     MODB = kazoo_modb:get_modb(cb_context:account_id(Context), kz_term:to_integer(BinTimestamp)),
+
+    lager:debug("finding legs for ~s / ~s", [MODB, InteractionId]),
 
     Options = [{'mapper', fun normalize_leg_view_results/2}
               ,{'range_start_keymap',  fun(_) -> [InteractionId] end}
