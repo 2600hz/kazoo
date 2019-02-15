@@ -1228,16 +1228,39 @@ get_encode_options(Context) ->
 -spec create_csv_resp_content(cowboy_req:req(), cb_context:context()) ->
                                      {{'file', file:filename_all()}, cowboy_req:req(), cb_context:context()}.
 create_csv_resp_content(Req, Context) ->
-    Context1 = csv_body(Context, cb_context:resp_data(Context)),
-    create_csv_resp_content(Req, Context1, cb_context:fetch(Context1, 'csv_acc')).
+    create_csv_resp_content(Req, Context, cb_context:resp_data(Context)).
 
 create_csv_resp_content(Req, Context, 'undefined') ->
+    create_empty_csv_resp(Req, Context);
+create_csv_resp_content(Req, Context, []) ->
+    create_empty_csv_resp(Req, Context);
+create_csv_resp_content(Req, Context, <<>>) ->
+    create_empty_csv_resp(Req, Context);
+
+create_csv_resp_content(Req, Context, ?NE_BINARY=Content) ->
+    lager:debug("returning CSV content"),
+    {Content, Req, Context};
+create_csv_resp_content(Req, Context, [First|_]=Content) ->
+    case kz_json:is_json_object(First) of
+        'true' -> create_csv_resp_content_from_jobjs(Req, Context, Content);
+        'false' ->
+            lager:debug("already CSVd: ~s", [Content]),
+            {Content, Req, Context}
+    end;
+create_csv_resp_content(Req, Context, JObj) ->
+    create_csv_resp_content(Req, Context, [JObj]).
+
+create_csv_resp_content_from_jobjs(Req, Context, JObjs) ->
+    Context1 = csv_body(Context, JObjs),
+    create_csv_resp_content_from_csv_acc(Req, Context1, cb_context:fetch(Context1, 'csv_acc')).
+
+create_csv_resp_content_from_csv_acc(Req, Context, 'undefined') ->
     ContextHeaders = cb_context:resp_headers(Context),
 
     ContentType = maps:get(<<"content-type">>, ContextHeaders, <<"text/csv">>),
     lager:info("sending empty CSV for ~s", [ContentType]),
     {'stop', Req, Context};
-create_csv_resp_content(Req, Context, {_File, _}=CSVAcc) ->
+create_csv_resp_content_from_csv_acc(Req, Context, {_File, _}=CSVAcc) ->
     lager:debug("finishing CSV file ~s", [_File]),
     {File, _} = kz_csv:write_header_to_file(CSVAcc, ?CSV_HEADER_MAP),
     lager:debug("wrote header to '~s'", [File]),
@@ -1252,6 +1275,12 @@ create_csv_resp_content(Req, Context, {_File, _}=CSVAcc) ->
     ,maps:fold(fun(H, V, R) -> cowboy_req:set_resp_header(H, V, R) end, Req, Headers)
     ,Context
     }.
+
+create_empty_csv_resp(Req, Context) ->
+    ContextHeaders = cb_context:resp_headers(Context),
+    ContentType = maps:get(<<"content-type">>, ContextHeaders, <<"text/csv">>),
+    lager:info("sending empty CSV for ~s", [ContentType]),
+    {'stop', Req, Context}.
 
 -spec create_resp_file(cowboy_req:req(), cb_context:context()) ->
                               {resp_file(), cowboy_req:req()}.
