@@ -519,6 +519,8 @@ maybe_add_extra_data(<<"transaction_failed">>, API) ->
     props:set_value(<<"Success">>, 'false', API);
 maybe_add_extra_data(<<"port_", _/binary>>, API) ->
     props:set_value(<<"Reason">>, kz_json:new(), API);
+maybe_add_extra_data(<<"ported">>, API) ->
+    props:set_value(<<"Reason">>, kz_json:new(), API);
 maybe_add_extra_data(_Id, API) -> API.
 
 -spec publish_fun(kz_term:ne_binary()) -> fun((kz_term:api_terms()) -> 'ok').

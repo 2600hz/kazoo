@@ -72,10 +72,12 @@ handle_req(JObj, 'true') ->
 
 -spec process_req(kz_json:object()) -> template_response().
 process_req(DataJObj) ->
-    NewData = teletype_port_utils:port_request_data(DataJObj, ?TEMPLATE_ID),
-    case teletype_util:is_preview(NewData) of
-        'false' -> handle_port_request(NewData);
-        'true' -> handle_port_request(kz_json:merge_jobjs(DataJObj, NewData))
+    case teletype_util:is_preview(DataJObj) of
+        'false' ->
+            NewData = teletype_port_utils:port_request_data(DataJObj, ?TEMPLATE_ID),
+            handle_port_request(NewData);
+        'true' ->
+            lager:debug("notification is preview, let's teletype_port_request sends the email")
     end.
 
 -spec handle_port_request(kz_json:object()) -> template_response().
@@ -103,7 +105,7 @@ handle_port_request(DataJObj) ->
 
     AuthorityEmails = props:set_value(<<"to">>
                                      ,kz_json:get_value(<<"authority_emails">>, DataJObj, [])
-                                     ,Emails
+                                     ,kz_json:delete_keys([<<"bcc">>, <<"cc">>], Emails)
                                      ),
 
     lager:debug("sending ~s to port authority: ~p"
