@@ -312,14 +312,7 @@ merge_attribute(<<"caller_id">> = Key, Account, Endpoint, Owner) ->
     EndpointAttr = kz_json:get_ne_value(Key, Endpoint, kz_json:new()),
     OwnerAttr = caller_id_owner_attr(Owner),
     Merged = merge_attribute_caller_id(Account, AccountAttr, OwnerAttr, EndpointAttr),
-    L = [<<"emergency">>, <<"number">>],
-    case kz_json:get_ne_value(L, EndpointAttr) of
-        'undefined' ->
-            kz_json:set_value(Key, Merged, Endpoint);
-        Number ->
-            CallerId = kz_json:set_value(L, Number, Merged),
-            kz_json:set_value(Key, CallerId, Endpoint)
-    end;
+    kz_json:set_value(Key, Merged, Endpoint);
 merge_attribute(<<"do_not_disturb">> = Key, Account, Endpoint, Owner) ->
     L = [Key, <<"enabled">>],
     AccountAttr = kz_json:is_true(L, Account, 'false'),
@@ -371,7 +364,24 @@ merge_attribute_caller_id(AccountJObj, AccountJAttr, UserJAttr, EndpointJAttr) -
             'true' -> [AccountJAttr, UserJAttr, EndpointJAttr];
             'false' -> [AccountJAttr, EndpointJAttr, UserJAttr]
         end,
-    kz_json:merge_recursive(Merging, fun(_, V) -> not kz_term:is_empty(V) end).
+    Merged = kz_json:merge_recursive(Merging, fun(_, V) -> not kz_term:is_empty(V) end),
+    merge_attribute_caller_id_emergency(Merged, EndpointJAttr).
+
+-spec merge_attribute_caller_id_emergency(kz_json:object(), kz_json:object()) -> kz_json:object().
+merge_attribute_caller_id_emergency(Endpoint, EndpointAttr) ->
+    Attributes = [<<"number">>, <<"name">>],
+    Fun = fun(Attr, EP)->
+                  merge_attribute_caller_id_emergency(Attr, EP, EndpointAttr)
+          end,
+    lists:foldl(Fun, Endpoint, Attributes).
+
+-spec merge_attribute_caller_id_emergency(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
+merge_attribute_caller_id_emergency(Attribute, Endpoint, EndpointAttr) ->
+    Key = [<<"emergency">>, Attribute],
+    case kz_json:get_ne_binary_value(Key, EndpointAttr) of
+        'undefined' -> Endpoint;
+        Value -> kz_json:set_value(Key, Value, Endpoint)
+    end.
 
 -spec merge_call_recording(kz_json:object()) -> kz_json:object().
 merge_call_recording(JObj) ->
