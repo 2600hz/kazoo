@@ -31,11 +31,14 @@
 
 -type expected_code() :: 200..600.
 -type expected_codes() :: [expected_code()].
--type expected_headers() :: [{kz_term:text(), kz_term:text()}].
--type expectation() :: #{'response_codes' => expected_codes()
+-type expected_headers() :: [{string(), string()}].
+-type expectation() :: #{'response_codes' := expected_codes()
                         ,'response_headers' => expected_headers()
                         }.
 -type expectations() :: [expectation()].
+
+-type response_code() :: 200..600.
+-type response_headers() :: [{string(), string()}].
 
 -type response() :: binary() |
                     kz_http:ret() |
