@@ -23,6 +23,13 @@
 -record(state, {tab :: ets:tid()}).
 -type state() :: #state{}.
 
+-define(GOOGLE_MAP, [{<<"Alert-Key">>, [<<"alert">>, <<"loc-key">>]}
+                    ,{<<"Alert-Params">>, [<<"alert">>, <<"loc-args">>]}
+                    ,{<<"Sound">>, [<<"sound">>]}
+                    ,{<<"Call-ID">>, [<<"Call-ID">>]}
+                    ,{<<"Payload">>, fun kz_json:merge/2}
+                    ]).
+
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [],[]).
@@ -63,12 +70,23 @@ code_change(_OldVsn, State, _Extra) ->
 maybe_send_push_notification('undefined', _JObj) -> lager:debug("no pid to send push");
 maybe_send_push_notification(Pid, JObj) ->
     TokenID = kz_json:get_value(<<"Token-ID">>, JObj),
-    CallId = kz_json:get_value(<<"Call-ID">>, JObj),
-    Message = kz_json:from_list([{<<"data">>,kz_json:from_list([{<<"Call-ID">>, CallId}])}]),
+    Message = kz_json:from_list([{<<"data">>, build_payload(JObj)}]),
 
     lager:debug("pushing to ~p: ~s: ~p", [Pid, TokenID, Message]),
 
     gcm:push(Pid, [TokenID], Message).
+
+-spec build_payload(kz_json:object()) -> map().
+build_payload(JObj) ->
+    kz_json:foldl(fun map_key/3, kz_json:new(), JObj).
+
+-spec map_key(term(), term(), kz_json:object()) -> kz_json:object().
+map_key(K, V, JObj) ->
+    case lists:keyfind(K, 1, ?GOOGLE_MAP) of
+        'false' -> JObj;
+        {_, Fun} when is_function(Fun, 2) -> Fun(V, JObj);
+        {_, K1} -> kz_json:set_value(K1, V, JObj)
+    end.
 
 -spec get_gcm(kz_term:api_binary(), ets:tid()) -> kz_term:api_pid().
 get_gcm('undefined', _) -> 'undefined';

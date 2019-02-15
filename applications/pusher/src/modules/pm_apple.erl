@@ -122,8 +122,8 @@ maybe_load_apns(App, ETS, CertBin, Host) ->
             ets:insert(ETS, {App, Pid}),
             Pid;
         {'error', {'already_started', Pid}} ->
-            ets:insert(ETS, {App, Pid}),
-            Pid;
+            apns:close_connection(Pid),
+            maybe_load_apns(App, ETS, CertBin, Host);
         {'error', Reason} ->
             lager:error("error loading apns ~p", [Reason]),
             'undefined'
