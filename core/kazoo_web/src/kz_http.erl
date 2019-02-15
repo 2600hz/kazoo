@@ -36,7 +36,9 @@
 
 -type http_body() :: iodata().
 
--type httpc_result() :: {any(), headers(), http_body()} |
+-type status_line() :: {string(), integer(), string()}.
+
+-type httpc_result() :: {status_line(), headers(), http_body()} |
                         {string(), string() | binary()} |
                         reference().
 
