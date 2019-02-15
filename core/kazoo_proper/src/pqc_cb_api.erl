@@ -31,11 +31,14 @@
 
 -type expected_code() :: 200..600.
 -type expected_codes() :: [expected_code()].
--type expected_headers() :: [{kz_term:text(), kz_term:text()}].
--type expectation() :: #{'response_codes' => expected_codes()
+-type expected_headers() :: [{string(), string()}].
+-type expectation() :: #{'response_codes' := expected_codes()
                         ,'response_headers' => expected_headers()
                         }.
 -type expectations() :: [expectations()].
+
+-type response_code() :: 200..600.
+-type response_headers() :: [{string(), string()}].
 
 -type response() :: binary() |
                     kz_http:ret() |
@@ -167,24 +170,6 @@ default_request_headers(RequestId) ->
      | default_request_headers()
     ].
 
--type expected_code() :: 200..600.
--type expected_codes() :: [expected_code()].
--type expected_headers() :: [{string(), string()}].
--type expectation() :: #{'response_codes' := expected_codes()
-                        ,'response_headers' => expected_headers()
-                        }.
--type expectations() :: [expectations()].
-
--type response_code() :: 200..600.
--type response_headers() :: [{string(), string()}].
-
--type response() :: binary() |
-                    kz_http:ret() |
-                    {'error', binary()}.
-
--type fun_2() :: fun((string(), kz_term:proplist()) -> kz_http:ret()).
--type fun_3() :: fun((string(), kz_term:proplist(), iodata()) -> kz_http:ret()).
-
 -spec make_request(expectations() | expectation() | expected_code() | expected_codes(), fun_2(), string(), kz_term:proplist()) ->
                           response().
 make_request(Code, HTTP, URL, RequestHeaders) when is_integer(Code) ->
@@ -255,7 +240,7 @@ response_code_matches(#{'response_codes' := ExpectedCodes}, ResponseCode) ->
         'true' -> 'true';
         'false' ->
             lager:info("failed expectation: code ~w but expected ~w"
-                      ,[ResponseCode, ResponseCodes]
+                      ,[ResponseCode, ExpectedCodes]
                       ),
             'false'
     end;
