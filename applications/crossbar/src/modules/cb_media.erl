@@ -675,7 +675,7 @@ load_media_docs_by_prompt(Context, PromptId, 'undefined') ->
                             ,[{'startkey_fun', fun(Ctx) -> prompt_start_key(Ctx, PromptId) end}
                              ,{'endkey', [PromptId, kz_json:new()]}
                              ,{'reduce', 'false'}
-                             ,{'include_docs', 'false'}
+                             ,'include_docs'
                              ]
                             ,cb_context:set_account_db(Context, ?KZ_MEDIA_DB)
                             ,fun normalize_prompt_results/2
@@ -687,7 +687,7 @@ load_media_docs_by_prompt(Context, PromptId, _AccountId) ->
                             ,[{'startkey_fun', fun(Ctx) -> prompt_start_key(Ctx, PromptId) end}
                              ,{'endkey', [PromptId, kz_json:new()]}
                              ,{'reduce', 'false'}
-                             ,{'include_docs', 'false'}
+                             ,'include_docs'
                              ]
                             ,Context
                             ,fun normalize_prompt_results/2
