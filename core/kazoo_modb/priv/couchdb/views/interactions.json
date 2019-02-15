@@ -41,7 +41,7 @@
                 "function(doc) {",
                 "  if (doc.pvt_type != 'cdr' || doc.pvt_deleted) return;",
                 "  var channel_time = doc.channel_created_time || (doc.timestamp - doc.duration_seconds);",
-                "  emit([doc.interaction_id, created_time], null)",
+                "  emit([doc.interaction_id, channel_time], null)",
                 "}"
             ]
         },
