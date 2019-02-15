@@ -1231,11 +1231,11 @@ create_csv_resp_content(Req, Context) ->
     create_csv_resp_content(Req, Context, cb_context:resp_data(Context)).
 
 create_csv_resp_content(Req, Context, 'undefined') ->
-    create_empty_csv_resp(Req, Context);
+    maybe_create_empty_csv_resp(Req, Context);
 create_csv_resp_content(Req, Context, []) ->
-    create_empty_csv_resp(Req, Context);
+    maybe_create_empty_csv_resp(Req, Context);
 create_csv_resp_content(Req, Context, <<>>) ->
-    create_empty_csv_resp(Req, Context);
+    maybe_create_empty_csv_resp(Req, Context);
 
 create_csv_resp_content(Req, Context, ?NE_BINARY=Content) ->
     lager:debug("returning CSV content"),
@@ -1275,6 +1275,12 @@ create_csv_resp_content_from_csv_acc(Req, Context, {_File, _}=CSVAcc) ->
     ,maps:fold(fun(H, V, R) -> cowboy_req:set_resp_header(H, V, R) end, Req, Headers)
     ,Context
     }.
+
+maybe_create_empty_csv_resp(Req, Context) ->
+    case cb_context:fetch(Context, 'csv_acc') of
+        'undefined' -> create_empty_csv_resp(Req, Context);
+        Acc -> create_csv_resp_content_from_csv_acc(Req, Context, Acc)
+    end.
 
 create_empty_csv_resp(Req, Context) ->
     ContextHeaders = cb_context:resp_headers(Context),
