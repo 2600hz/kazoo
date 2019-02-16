@@ -1072,7 +1072,6 @@ add_validation_error(Property, Code, Message, Context) ->
                                          )
                                        ),
     ErrorsJObj = validation_errors(Context),
-
     Context#cb_context{validation_errors=kz_json:merge_jobjs(ErrorJObj, ErrorsJObj)
                       ,resp_status='error'
                       ,resp_error_code=ErrorCode
