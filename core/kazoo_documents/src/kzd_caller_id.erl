@@ -50,7 +50,7 @@ asserted_name(Doc) ->
 
 -spec asserted_name(doc(), Default) -> binary() | Default.
 asserted_name(Doc, Default) ->
-    kz_json:get_binary_value([<<"asserted">>, <<"name">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"asserted">>, <<"name">>], Doc, Default).
 
 -spec set_asserted_name(doc(), binary()) -> doc().
 set_asserted_name(Doc, AssertedName) ->
@@ -62,7 +62,7 @@ asserted_number(Doc) ->
 
 -spec asserted_number(doc(), Default) -> binary() | Default.
 asserted_number(Doc, Default) ->
-    kz_json:get_binary_value([<<"asserted">>, <<"number">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"asserted">>, <<"number">>], Doc, Default).
 
 -spec set_asserted_number(doc(), binary()) -> doc().
 set_asserted_number(Doc, AssertedNumber) ->
@@ -74,7 +74,7 @@ asserted_realm(Doc) ->
 
 -spec asserted_realm(doc(), Default) -> binary() | Default.
 asserted_realm(Doc, Default) ->
-    kz_json:get_binary_value([<<"asserted">>, <<"realm">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"asserted">>, <<"realm">>], Doc, Default).
 
 -spec set_asserted_realm(doc(), binary()) -> doc().
 set_asserted_realm(Doc, AssertedRealm) ->
@@ -98,7 +98,7 @@ emergency_name(Doc) ->
 
 -spec emergency_name(doc(), Default) -> binary() | Default.
 emergency_name(Doc, Default) ->
-    kz_json:get_binary_value([<<"emergency">>, <<"name">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"emergency">>, <<"name">>], Doc, Default).
 
 -spec set_emergency_name(doc(), binary()) -> doc().
 set_emergency_name(Doc, EmergencyName) ->
@@ -110,7 +110,7 @@ emergency_number(Doc) ->
 
 -spec emergency_number(doc(), Default) -> binary() | Default.
 emergency_number(Doc, Default) ->
-    kz_json:get_binary_value([<<"emergency">>, <<"number">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"emergency">>, <<"number">>], Doc, Default).
 
 -spec set_emergency_number(doc(), binary()) -> doc().
 set_emergency_number(Doc, EmergencyNumber) ->
@@ -134,7 +134,7 @@ external_name(Doc) ->
 
 -spec external_name(doc(), Default) -> binary() | Default.
 external_name(Doc, Default) ->
-    kz_json:get_binary_value([<<"external">>, <<"name">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"external">>, <<"name">>], Doc, Default).
 
 -spec set_external_name(doc(), binary()) -> doc().
 set_external_name(Doc, ExternalName) ->
@@ -146,7 +146,7 @@ external_number(Doc) ->
 
 -spec external_number(doc(), Default) -> binary() | Default.
 external_number(Doc, Default) ->
-    kz_json:get_binary_value([<<"external">>, <<"number">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"external">>, <<"number">>], Doc, Default).
 
 -spec set_external_number(doc(), binary()) -> doc().
 set_external_number(Doc, ExternalNumber) ->
@@ -170,7 +170,7 @@ internal_name(Doc) ->
 
 -spec internal_name(doc(), Default) -> binary() | Default.
 internal_name(Doc, Default) ->
-    kz_json:get_binary_value([<<"internal">>, <<"name">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"internal">>, <<"name">>], Doc, Default).
 
 -spec set_internal_name(doc(), binary()) -> doc().
 set_internal_name(Doc, InternalName) ->
@@ -182,7 +182,7 @@ internal_number(Doc) ->
 
 -spec internal_number(doc(), Default) -> binary() | Default.
 internal_number(Doc, Default) ->
-    kz_json:get_binary_value([<<"internal">>, <<"number">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"internal">>, <<"number">>], Doc, Default).
 
 -spec set_internal_number(doc(), binary()) -> doc().
 set_internal_number(Doc, InternalNumber) ->
