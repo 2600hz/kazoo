@@ -444,16 +444,21 @@ build_bridge(#state{endpoints=Endpoints
        | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--type emergency_override() :: {boolean(), kz_term:ne_binary(), kz_term:ne_binary()}.
--type caller_id() :: {kz_term:ne_binary(), kz_term:ne_binary()}.
+-type emergency_override() :: {boolean(), kz_term:api_binary(), kz_term:api_binary()}.
+-type caller_id() :: {kz_term:api_ne_binary(), kz_term:api_ne_binary()}.
 
 -spec maybe_override_asserted_identity(kapi_offnet_resource:req(), emergency_override()) -> caller_id().
 maybe_override_asserted_identity(OffnetReq, {'false', _, _}) ->
     {kapi_offnet_resource:asserted_identity_number(OffnetReq)
     ,kapi_offnet_resource:asserted_identity_name(OffnetReq)
     };
-maybe_override_asserted_identity(_OffnetReq, {'true', Number, Name}) ->
-    {Number, Name}.
+maybe_override_asserted_identity(OffnetReq, {'true', Number, Name}) ->
+    AssertedNumber = kapi_offnet_resource:asserted_identity_number(OffnetReq),
+    AssertedName = kapi_offnet_resource:asserted_identity_name(OffnetReq),
+    case {AssertedNumber, AssertedName} of
+        {'undefined', 'undefined'}=Undef -> Undef;
+        {_, _} -> {Number, Name}
+    end.
 
 -spec bridge_from_uri(kz_term:api_binary(), kapi_offnet_resource:req()) ->
                              kz_term:api_binary().
