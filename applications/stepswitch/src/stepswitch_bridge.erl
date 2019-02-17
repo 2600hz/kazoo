@@ -300,7 +300,7 @@ maybe_bridge(#state{endpoints=Endpoints
             Name = bridge_outbound_cid_name(OffnetReq),
             Number = bridge_outbound_cid_number(OffnetReq),
             kapi_dialplan:publish_command(ControlQ
-                                         ,build_bridge(State, Number, Name)
+                                         ,build_bridge(State, Number, Name, 'false')
                                          ),
             lager:debug("sent bridge command to ~s", [ControlQ])
     end.
@@ -320,7 +320,7 @@ maybe_bridge_emergency(#state{resource_req=OffnetReq
         _Else ->
             Number = bridge_emergency_cid_number(OffnetReq),
             lager:debug("not enforcing emergency caller id validation when using resource from account ~s", [_Else]),
-            kapi_dialplan:publish_command(ControlQ, build_bridge(State, Number, Name)),
+            kapi_dialplan:publish_command(ControlQ, build_bridge(State, Number, Name, 'true')),
             lager:debug("sent bridge command to ~s", [ControlQ])
     end.
 
@@ -342,7 +342,7 @@ maybe_deny_emergency_bridge(#state{control_queue=ControlQ
                                   }=State, Number, Name) ->
     UpdatedEndpoints = update_endpoints_emergency_cid(Endpoints, Number, Name),
     kapi_dialplan:publish_command(ControlQ
-                                 ,build_bridge(State#state{endpoints=UpdatedEndpoints}, Number, Name)
+                                 ,build_bridge(State#state{endpoints=UpdatedEndpoints}, Number, Name, 'true')
                                  ),
     lager:debug("sent bridge command to ~s", [ControlQ]).
 
@@ -376,7 +376,7 @@ outbound_flags(OffnetReq) ->
         Flags -> kz_binary:join(Flags, <<"|">>)
     end.
 
--spec build_bridge(state(), kz_term:api_binary(), kz_term:api_binary()) ->
+-spec build_bridge(state(), kz_term:api_binary(), kz_term:api_binary(), boolean()) ->
                           kz_term:proplist().
 build_bridge(#state{endpoints=Endpoints
                    ,resource_req=OffnetReq
@@ -384,6 +384,7 @@ build_bridge(#state{endpoints=Endpoints
                    }
             ,Number
             ,Name
+            ,IsEmergency
             ) ->
     lager:debug("set outbound caller id to ~s '~s'", [Number, Name]),
     AccountId = kapi_offnet_resource:account_id(OffnetReq),
@@ -411,6 +412,8 @@ build_bridge(#state{endpoints=Endpoints
 
     Realm = kzd_accounts:fetch_realm(AccountId),
 
+    {AssertedNumber, AssertedName} = maybe_override_asserted_identity(OffnetReq, {IsEmergency, Number, Name}),
+
     props:filter_undefined(
       [{<<"Application-Name">>, <<"bridge">>}
       ,{<<"Dial-Endpoint-Method">>, <<"single">>}
@@ -432,14 +435,30 @@ build_bridge(#state{endpoints=Endpoints
       ,{<<"Fax-Identity-Name">>, kapi_offnet_resource:fax_identity_name(OffnetReq, Name)}
       ,{<<"Outbound-Callee-ID-Number">>, kapi_offnet_resource:outbound_callee_id_number(OffnetReq)}
       ,{<<"Outbound-Callee-ID-Name">>, kapi_offnet_resource:outbound_callee_id_name(OffnetReq)}
-      ,{<<"Asserted-Identity-Number">>, kapi_offnet_resource:asserted_identity_number(OffnetReq)}
-      ,{<<"Asserted-Identity-Name">>, kapi_offnet_resource:asserted_identity_name(OffnetReq)}
+      ,{<<"Asserted-Identity-Number">>, AssertedNumber}
+      ,{<<"Asserted-Identity-Name">>, AssertedName}
       ,{<<"Asserted-Identity-Realm">>, kapi_offnet_resource:asserted_identity_realm(OffnetReq, Realm)}
       ,{<<"B-Leg-Events">>, kapi_offnet_resource:b_leg_events(OffnetReq, [])}
       ,{<<"Endpoints">>, FmtEndpoints}
       ,{<<"Bridge-Actions">>, kapi_offnet_resource:outbound_actions(OffnetReq)}
        | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
+
+-type emergency_override() :: {boolean(), kz_term:api_binary(), kz_term:api_binary()}.
+-type caller_id() :: {kz_term:api_ne_binary(), kz_term:api_ne_binary()}.
+
+-spec maybe_override_asserted_identity(kapi_offnet_resource:req(), emergency_override()) -> caller_id().
+maybe_override_asserted_identity(OffnetReq, {'false', _, _}) ->
+    {kapi_offnet_resource:asserted_identity_number(OffnetReq)
+    ,kapi_offnet_resource:asserted_identity_name(OffnetReq)
+    };
+maybe_override_asserted_identity(OffnetReq, {'true', Number, Name}) ->
+    AssertedNumber = kapi_offnet_resource:asserted_identity_number(OffnetReq),
+    AssertedName = kapi_offnet_resource:asserted_identity_name(OffnetReq),
+    case {AssertedNumber, AssertedName} of
+        {'undefined', 'undefined'}=Undef -> Undef;
+        {_, _} -> {Number, Name}
+    end.
 
 -spec bridge_from_uri(kz_term:api_binary(), kapi_offnet_resource:req()) ->
                              kz_term:api_binary().

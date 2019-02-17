@@ -241,12 +241,23 @@ get_asserted_identity(_Data, Call) ->
     case get_endpoint(Call) of
         {'error', _E} -> {'undefined', 'undefined', 'undefined'};
         {'ok', Endpoint} ->
-            DefaultRealm = kapps_call:account_realm(Call),
             CallerId = kzd_devices:caller_id(Endpoint),
-            {kzd_caller_id:asserted_number(CallerId)
-            ,kzd_caller_id:asserted_name(CallerId)
+            DefaultRealm = kapps_call:account_realm(Call),
+            DefaultName = get_asserted_default_name(CallerId, Call),
+            DefaultNumber = kzd_caller_id:external_number(CallerId),
+            {kzd_caller_id:asserted_number(CallerId, DefaultNumber)
+            ,kzd_caller_id:asserted_name(CallerId, DefaultName)
             ,kzd_caller_id:asserted_realm(CallerId, DefaultRealm)
             }
+    end.
+
+-spec get_asserted_default_name(kz_json:object(), kapps_call:call()) -> kz_term:api_binary().
+get_asserted_default_name(CallerId, Call) ->
+    case kzd_caller_id:external_name(CallerId) of
+        'undefined' ->
+            AccountId = kapps_call:account_id(Call),
+            kzd_accounts:fetch_name(AccountId);
+        Name -> Name
     end.
 
 -spec get_hunt_account_id(kz_json:object(), kapps_call:call()) -> kz_term:api_binary().
