@@ -527,7 +527,7 @@ editable_fields_to_json(Fields) ->
 -spec editable_fields_to_json(kz_term:proplist(), kz_json:object(), kz_json:object()) -> kz_json:object().
 editable_fields_to_json([], _Properties, JObj) -> JObj;
 editable_fields_to_json([{Category, Items}|Fields], Properties, JObj) ->
-    Props = [{[Category, <<"_all">>], Properties}
+    Props = [{[Category, kzd_service_plan:all_items_key()], Properties}
              | [{[Category, Item], kz_json:delete_key(<<"as">>, Properties)}
                 || Item <- Items
                ]
