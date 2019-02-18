@@ -322,7 +322,7 @@ play_confirm_match(Call, User) ->
 -spec username_audio_macro(kapps_call:call(), directory_user()) -> kapps_call_command:audio_macro_prompt().
 username_audio_macro(Call, User) ->
     case media_name(User) of
-        'undefined' -> {'tts', <<39, (full_name(User))/binary, 39>>}; % 39 is ASCII '
+        'undefined' -> {'tts', full_name(User)};
         MediaID     -> maybe_play_media(Call, User, MediaID)
     end.
 
@@ -332,12 +332,12 @@ maybe_play_media(Call, User, MediaId) ->
     AccountDb = kapps_call:account_db(Call),
 
     case kz_datamgr:open_cache_doc(AccountDb, MediaId) of
-        {'ok', Doc}    ->
+        {'ok', Doc} ->
             case kz_doc:attachments(Doc) of
-                'undefined'  -> {'tts', <<39, (full_name(User))/binary, 39>>};
+                'undefined'  -> {'tts', full_name(User)};
                 _ValidAttach -> {'play', <<$/, AccountDb/binary, $/, MediaId/binary>>}
             end;
-        {'error', _} -> {'tts', <<39, (full_name(User))/binary, 39>>}
+        {'error', _} -> {'tts', full_name(User)}
     end.
 
 -spec play_directory_instructions(kapps_call:call(), search_field()) ->
