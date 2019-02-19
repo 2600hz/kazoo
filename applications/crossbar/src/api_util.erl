@@ -1273,7 +1273,7 @@ final_csv_resp_type(_, 'true') ->
     'to_csv';
 final_csv_resp_type(Context, 'false') ->
     case cb_context:fetch(Context, 'is_chunked', 'false')
-         andalso not cb_context:fetch(Context, 'chunk_is_file', 'false')
+        andalso not cb_context:fetch(Context, 'chunk_is_file', 'false')
     of
         'true' -> 'is_chunked';
         'false' -> 'binary'
