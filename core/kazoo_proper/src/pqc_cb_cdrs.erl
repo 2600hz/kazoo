@@ -117,13 +117,19 @@ seq() ->
     ?INFO("empty summary resp: ~s", [EmptySummaryResp]),
     [] = kz_json:get_list_value(<<"data">>, kz_json:decode(EmptySummaryResp)),
 
+    EmptyCSVResp = summary(API, AccountId, <<"text/csv">>),
+    ?INFO("empty CSV resp: ~s", [EmptyCSVResp]),
+
     CDRs = seed_cdrs(AccountId),
     ?INFO("CDRs: ~p~n", [CDRs]),
 
     SummaryResp = summary(API, AccountId),
     ?INFO("summary resp: ~s", [SummaryResp]),
-    cdrs_exist(CDRs, kz_json:get_list_value(<<"data">>, kz_json:decode(SummaryResp))),
+    'true' = cdrs_exist(CDRs, kz_json:get_list_value(<<"data">>, kz_json:decode(SummaryResp))),
     ?INFO("all cdrs found in response"),
+
+    CSVResp = summary(API, AccountId, <<"text/csv">>),
+    ?INFO("CSV resp: ~s", [CSVResp]),
 
     InteractionsResp = interactions(API, AccountId),
     ?INFO("interactions resp: ~s", [InteractionsResp]),
@@ -139,19 +145,24 @@ seq_cdr(API, AccountId, CDR) ->
 
     FetchResp = fetch(API, AccountId, CDRId),
     ?INFO("~s: fetch resp ~s", [CDRId, FetchResp]),
-    cdrs_exist([CDR], [kz_json:get_json_value(<<"data">>, kz_json:decode(FetchResp))]),
+    'true' = cdrs_exist([CDR], [kz_json:get_json_value(<<"data">>, kz_json:decode(FetchResp))]),
 
     LegsResp = legs(API, AccountId, CDRId),
     ?INFO("~s: legs by id resp: ~s", [CDRId, LegsResp]),
-    cdrs_exist([CDR], kz_json:get_list_value(<<"data">>, kz_json:decode(LegsResp))),
+    'true' = cdrs_exist([CDR], kz_json:get_list_value(<<"data">>, kz_json:decode(LegsResp))),
 
     InteractionResp = legs(API, AccountId, InteractionId),
     ?INFO("~s: legs by interaction resp: ~s", [CDRId, InteractionResp]),
-    cdrs_exist([CDR], kz_json:get_list_value(<<"data">>, kz_json:decode(InteractionResp))).
+    'true' = cdrs_exist([CDR], kz_json:get_list_value(<<"data">>, kz_json:decode(InteractionResp))).
 
-cdrs_exist([], []) -> 'ok';
+-spec cdrs_exist(kz_json:objects(), kz_json:object()) -> boolean().
+cdrs_exist([], []) -> 'true';
+cdrs_exist(CDRs, []) ->
+    IDs = [kz_doc:id(CDR) || CDR <- CDRs],
+    ?INFO("  failed to find CDR(s) ~s", [kz_binary:join(IDs, <<", ">>)]),
+    'false';
 cdrs_exist([_|_]=CDRs, [API|APIs]) ->
-    cdrs_exist(lists:filter(fun(CDR) -> kz_doc:id(CDR) =/= kz_doc:id(API) end, CDRs)
+    cdrs_exist([CDR || CDR <- CDRs, kz_doc:id(CDR) =/= kz_doc:id(API)]
               ,APIs
               ).
 
