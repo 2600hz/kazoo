@@ -1297,8 +1297,9 @@ create_csv_resp_content_from_csv_acc(Req, Context, {_File, _}=CSVAcc) ->
     ContextHeaders = cb_context:resp_headers(Context),
     FileName = csv_file_name(Context, File),
     lager:debug("csv filename ~s", [FileName]),
+    ContentDisposition = <<"attachment; filename=\"", (filename:basename(FileName))/binary, "\"">>,
     Headers = #{<<"content-type">> => maps:get(<<"content-type">>, ContextHeaders, <<"text/csv">>)
-               ,<<"content-disposition">> => maps:get(<<"content-disposition">>, ContextHeaders, <<"attachment; filename=\"", FileName/binary, "\"">>)
+               ,<<"content-disposition">> => maps:get(<<"content-disposition">>, ContextHeaders, ContentDisposition)
                },
     {{'file', File}
     ,maps:fold(fun(H, V, R) -> cowboy_req:set_resp_header(H, V, R) end, Req, Headers)
@@ -1473,7 +1474,7 @@ init_chunk_stream(Req, _, <<"to_json">>) ->
     Req1;
 init_chunk_stream(Req, Context, <<"to_csv">>) ->
     ContextHeaders = cb_context:resp_headers(Context),
-    FileName = csv_file_name(Context, ?DEFAULT_CSV_FILE_NAME),
+    FileName = filename:basename(csv_file_name(Context, ?DEFAULT_CSV_FILE_NAME)),
     DefaultDisposition = <<"attachment; filename=\"", FileName/binary, "\"">>,
     Headers = #{<<"content-type">> => maps:get(<<"content-type">>, ContextHeaders, <<"text/csv">>)
                ,<<"content-disposition">> => maps:get(<<"content-disposition">>, ContextHeaders, DefaultDisposition)
