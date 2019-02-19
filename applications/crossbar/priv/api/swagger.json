@@ -6178,6 +6178,39 @@
             ],
             "type": "object"
         },
+        "ip": {
+            "description": "IP address assigned to the cluster",
+            "properties": {
+                "host": {
+                    "description": "The hostname the IP belongs to",
+                    "minLength": 1,
+                    "type": "string"
+                },
+                "ip": {
+                    "description": "The IP addresses",
+                    "oneOf": [
+                        {
+                            "format": "ipv4",
+                            "type": "string"
+                        },
+                        {
+                            "format": "ipv6",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "zone": {
+                    "description": "The zone name the IP belongs to",
+                    "minLength": 1,
+                    "type": "string"
+                }
+            },
+            "required": [
+                "ip",
+                "zone",
+                "host"
+            ]
+        },
         "ips": {
             "description": "IP addresses assigned to the account",
             "properties": {
@@ -6185,7 +6218,16 @@
                     "description": "List of IP addresses",
                     "items": {
                         "description": "IP address",
-                        "type": "string"
+                        "oneOf": [
+                            {
+                                "format": "ipv4",
+                                "type": "string"
+                            },
+                            {
+                                "format": "ipv6",
+                                "type": "string"
+                            }
+                        ]
                     },
                     "minItems": 1,
                     "type": "array"
@@ -39628,6 +39670,21 @@
             }
         },
         "/accounts/{ACCOUNT_ID}/ips": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
             "get": {
                 "parameters": [
                     {

@@ -853,6 +853,8 @@ validation_error(Property, <<"disabled">> = C, Message, Options) ->
 validation_error(Property, <<"expired">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 %% Generic
+validation_error(Property, <<"superfluous">> = C, Message, Options) ->
+    depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, <<"invalid">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, <<"schema">> = C, Message, Options) ->
