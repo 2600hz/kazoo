@@ -115,15 +115,30 @@ assign(Account, IPDoc) ->
                     ,{<<"pvt_status">>, ?ASSIGNED}
                     ],
             JObj = kz_json:set_values(Props, IPJObj),
-            maybe_save_in_account(AccountId, JObj, save(JObj))
+            maybe_save_in_account(AccountId, save(JObj))
     end.
 
--spec maybe_save_in_account(kz_term:ne_binary(), kz_json:object(), std_return()) -> std_return().
-maybe_save_in_account(AccountId, JObj, {'ok', _}=Ok) ->
+-spec maybe_save_in_account(kz_term:ne_binary(), std_return()) -> std_return().
+maybe_save_in_account(AccountId, {'ok', JObj}=Ok) ->
     AccountDb = kz_util:format_account_db(AccountId),
-    _ = kz_datamgr:ensure_saved(AccountDb, JObj),
-    Ok;
-maybe_save_in_account(_, _, Return) -> Return.
+    case kz_datamgr:open_doc(AccountDb, kz_doc:id(JObj)) of
+        {'error', 'not_found'} ->
+            _ = kz_datamgr:save_doc(AccountDb, kz_doc:delete_revision(JObj)),
+            Ok;
+        {'error', _R}=E ->
+            lager:info("failed to save ip doc to accounts: ~p", [_R]),
+            E;
+        {'ok', CurrentJObj} ->
+            Update = [{kz_doc:path_revision(), kz_doc:revision(CurrentJObj)}
+                      | kz_json:to_proplist(JObj)
+                     ],
+            UpdateOptions = [{'update', Update}
+                            ,{'ensure_saved', 'true'}
+                            ],
+            _ = kz_datamgr:update_doc(AccountDb, kz_doc:id(JObj), UpdateOptions),
+            Ok
+    end;
+maybe_save_in_account(_, Return) -> Return.
 
 %%------------------------------------------------------------------------------
 %% @doc
