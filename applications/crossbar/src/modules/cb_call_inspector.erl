@@ -156,11 +156,15 @@ sanitize(JObjs) ->
 %%------------------------------------------------------------------------------
 -spec get_view_options(req_nouns()) -> {kz_term:api_ne_binary(), crossbar_view:options()}.
 get_view_options([{<<"call_inspector">>, []}, {?KZ_ACCOUNTS_DB, _}|_]) ->
-    {?CB_LIST, []};
+    {?CB_LIST
+    ,[{'range_start_keymap', []}
+     ,{'range_end_keymap', crossbar_view:suffix_key_fun([kz_json:new()])}
+     ]
+    };
 get_view_options([{<<"call_inspector">>, []}, {<<"users">>, [OwnerId]}|_]) ->
     {?CB_LIST_BY_USER
     ,[{'range_start_keymap', [OwnerId]}
-     ,{'range_end_keymap', [OwnerId]}
+     ,{'range_end_keymap', fun(Ts) -> [OwnerId, Ts, kz_json:new()] end}
      ]
     };
 get_view_options(_) ->
