@@ -130,8 +130,10 @@ TEST_CONFIG=$(ROOT)/rel/config-test.ini
 ## Use this one when debugging
 test: compile-test
 	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript $(TEST_MODULE_NAMES)
-test.%: compile-test
+test.%: check-compile-test
 	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript $*
+
+check-compile-test: $(COMPILE_MOAR) test/$(PROJECT).app
 
 COVER_REPORT_DIR=cover
 

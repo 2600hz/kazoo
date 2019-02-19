@@ -8,7 +8,7 @@
 
 -export([create/3
         ,execute/2
-        ,fetch/2
+        ,fetch/2, fetch_csv/3
         ,delete/2
         ,query/3
         ]).
@@ -44,6 +44,19 @@ fetch(API, TaskId) ->
                            ,pqc_cb_api:request_headers(API)
                            ).
 
+-spec fetch_csv(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
+fetch_csv(API, TaskId, CSV) ->
+    Expectations = [#{'response_codes' => [200]
+                     ,'response_headers' => [{"content-type", "text/csv"}]
+                     }
+                   ,#{'response_codes' => [204]}
+                   ],
+    pqc_cb_api:make_request(Expectations
+                           ,fun kz_http:get/2
+                           ,task_csv_url(TaskId, CSV)
+                           ,pqc_cb_api:request_headers(API, [{<<"accept">>, <<"text/csv">>}])
+                           ).
+
 -spec delete(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
 delete(API, TaskId) ->
     pqc_cb_api:make_request([200]
@@ -65,8 +78,11 @@ query(API, Category, Action) ->
                            ,pqc_cb_api:request_headers(API)
                            ).
 
--spec task_url(kz_term:ne_binary()) -> string().
+-spec task_csv_url(kz_term:ne_binary(), kz_term:ne_binary()) -> string().
+task_csv_url(TaskId, CSV) ->
+    task_url(TaskId) ++ "?csv_name=" ++ kz_term:to_list(CSV).
 
+-spec task_url(kz_term:ne_binary()) -> string().
 task_url(TaskId) ->
     string:join([pqc_cb_api:v2_base_url(), "tasks", kz_term:to_list(TaskId)], "/").
 

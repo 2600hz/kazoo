@@ -378,7 +378,7 @@ check_low_balance(Context, {'ok', AvailableDollars}, ThresholdDollars)
 check_low_balance(Context, {'ok', _AvailableDollars}, _ThresholdDollars) ->
     Context.
 
--spec low_balance_alert(cb_context:context(), float(), float() | 'undefined') -> cb_context:context().
+-spec low_balance_alert(cb_context:context(), kz_currency:dollars(), number() | 'undefined') -> cb_context:context().
 low_balance_alert(Context, AvailableDollars, ThresholdDollars) ->
     AccountId = cb_context:account_id(Context),
     Metadata = kz_json:from_list(

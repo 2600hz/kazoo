@@ -271,3 +271,23 @@ files_test_() ->
 gen_file_tests(File, Tests) ->
     {'ok', CSV} = file:read_file(File),
     [{File, ?_assert(0 < kz_csv:count_rows(CSV))} | Tests].
+
+variable_json_test() ->
+    JSONs = [<<"{\"a\":1}">>
+            ,<<"{\"a\":2, \"b\":3}">>
+            ,<<"{\"b\":3, \"a\":4}">>
+            ,<<"{\"c\":3, \"a\":4}">>
+            ],
+    JObjs = [kz_json:decode(JSON) || JSON <- JSONs],
+    {File, CellOrdering} = kz_csv:jobjs_to_file(JObjs),
+    {File, CellOrdering} = kz_csv:write_header_to_file({File, CellOrdering}),
+
+    ?assert(filelib:is_regular(File)),
+    ?assertEqual([[<<"a">>], [<<"b">>], [<<"c">>]], CellOrdering),
+
+    {'ok', CSV} = file:read_file(File),
+    Expected = <<"\"a\",\"b\",\"c\"\n\"1\"\n\"2\",\"3\"\n\"4\",\"3\"\n\"4\",\"\",\"3\"\n">>,
+
+    ?assertEqual(Expected, CSV),
+
+    kz_util:delete_file(File).

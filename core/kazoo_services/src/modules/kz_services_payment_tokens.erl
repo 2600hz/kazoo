@@ -82,7 +82,7 @@ update(Services, Bookkeeper, Token) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec updates(kz_servics:services() | kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+-spec updates(kz_servics:services() | kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) ->
                      kz_services:services().
 updates(?NE_BINARY = AccountId, Bookkeeper, ProposedTokens) ->
     updates(kz_services:fetch(AccountId), Bookkeeper, ProposedTokens);

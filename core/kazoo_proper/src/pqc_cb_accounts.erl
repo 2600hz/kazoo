@@ -36,7 +36,7 @@ command(Model, Name) ->
 symbolic_account_id(Model, Name) ->
     {'call', 'pqc_kazoo_model', 'account_id_by_name', [Model, Name]}.
 
--spec create_account(pqc_cb_api:state(), kz_term:ne_binary()) -> binary().
+-spec create_account(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
 create_account(API, NewAccountName) ->
     RequestData = kz_json:from_list([{<<"name">>, NewAccountName}]),
     RequestEnvelope = pqc_cb_api:create_envelope(RequestData),
@@ -57,7 +57,7 @@ allow_number_additions(AccountId) ->
                                           ,[{kzd_accounts:path_allow_number_additions(), 'true'}]
                                           ).
 
--spec delete_account(pqc_cb_api:state(), kz_term:ne_binary()) -> binary().
+-spec delete_account(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
 delete_account(API, AccountId) ->
     URL = account_url(AccountId),
     RequestHeaders = pqc_cb_api:request_headers(API),
