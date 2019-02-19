@@ -1248,18 +1248,11 @@ check_csv_resp_content(Req, Context, []) ->
 check_csv_resp_content(Req, Context, <<>>) ->
     maybe_create_empty_csv_resp(Req, Context);
 
-check_csv_resp_content(Req, Context, [First|_]=Content) ->
-    case final_csv_resp_type(Context, should_convert_csv(First)) of
+check_csv_resp_content(Req, Context, Content) when is_list(Content) ->
+    case final_csv_resp_type(Context, should_convert_csv(Content)) of
         'binary' ->
             lager:debug("returning csv content"),
-
-            ContextHeaders = cb_context:resp_headers(Context),
-            FileName = csv_file_name(Context, ?DEFAULT_CSV_FILE_NAME),
-            DefaultDisposition = <<"attachment; filename=\"", FileName/binary, "\"">>,
-            Headers = #{<<"content-type">> => maps:get(<<"content-type">>, ContextHeaders, <<"text/csv">>)
-                       ,<<"content-disposition">> => maps:get(<<"content-disposition">>, ContextHeaders, DefaultDisposition)
-                       },
-            {Content, maps:merge(Headers, cowboy_req:resp_headers(Req)), Context};
+            {Content, Req, Context};
         'is_chunked' ->
             IsStarted = cb_context:fetch(Context, 'chunking_started', 'false'),
             _ = create_csv_chunk_response(Req, Context, Content, IsStarted),
@@ -1271,8 +1264,8 @@ check_csv_resp_content(Req, Context, [First|_]=Content) ->
         'to_csv' ->
             create_csv_resp_content_from_jobjs(Req, Context, Content)
     end;
-check_csv_resp_content(Req, Context, JObj) ->
-    check_csv_resp_content(Req, Context, [JObj]).
+check_csv_resp_content(Req, Context, Content) ->
+    check_csv_resp_content(Req, Context, [Content]).
 
 
 -spec final_csv_resp_type(cb_context:context(), boolean()) -> 'binary' | 'is_chunked' | 'to_csv'.
@@ -1423,12 +1416,12 @@ create_csv_chunk_response(Req, Context, <<>>, IsStarted) ->
 create_csv_chunk_response(Req, Context, [], IsStarted) ->
     {IsStarted, Req, Context};
 
-create_csv_chunk_response(Req, Context, [_|_]=Things, 'true') ->
-    stream_or_create_csv_chunk(Req, Context, Things, should_convert_csv(Things));
-create_csv_chunk_response(Req, Context, [_|_]=Things, 'false') ->
-    ShouldConvert = should_convert_csv(Things),
+create_csv_chunk_response(Req, Context, Content, 'true') when is_list(Content) ->
+    stream_or_create_csv_chunk(Req, Context, Content, should_convert_csv(Content));
+create_csv_chunk_response(Req, Context, Content, 'false') when is_list(Content) ->
+    ShouldConvert = should_convert_csv(Content),
     Req1 = maybe_init_csv_chunk_stream(Req, Context, ShouldConvert),
-    stream_or_create_csv_chunk(Req1, Context, Things, ShouldConvert);
+    stream_or_create_csv_chunk(Req1, Context, Content, ShouldConvert);
 
 create_csv_chunk_response(Req, Context, Thing, IsStarted) ->
     create_csv_chunk_response(Req, Context, [Thing], IsStarted).
@@ -1437,12 +1430,12 @@ create_csv_chunk_response(Req, Context, Thing, IsStarted) ->
 
 -spec stream_or_create_csv_chunk(cowboy_req:req(), cb_context:context(), kz_json:objects() | kz_term:ne_binaries(), boolean()) ->
                                         {boolean(), cowboy_req:req(), cb_context:context()}.
-stream_or_create_csv_chunk(Req, Context, Things, 'true') ->
+stream_or_create_csv_chunk(Req, Context, JObjs, 'true') ->
     lager:debug("(chunked) continuing convertion of CSV chunks"),
-    {'true', Req, csv_body(Context, Things)};
-stream_or_create_csv_chunk(Req, Context, Things, 'false') ->
+    {'true', Req, csv_body(Context, JObjs)};
+stream_or_create_csv_chunk(Req, Context, CSVs, 'false') ->
     lager:debug("(chunked) continuing stream of CSV chunks"),
-    'ok' = cowboy_req:stream_body(Things, 'nofin', Req),
+    'ok' = cowboy_req:stream_body(CSVs, 'nofin', Req),
     {'true', Req, Context}.
 
 -spec should_convert_csv(kz_json:objects() | kz_term:ne_binaries()) -> boolean().
@@ -1485,7 +1478,7 @@ init_chunk_stream(Req, Context, <<"to_csv">>) ->
     Headers = #{<<"content-type">> => maps:get(<<"content-type">>, ContextHeaders, <<"text/csv">>)
                ,<<"content-disposition">> => maps:get(<<"content-disposition">>, ContextHeaders, DefaultDisposition)
                },
-    cowboy_req:stream_reply(200, maps:merge(Headers, cowboy_req:resp_headers(Req)), Req).
+    cowboy_req:stream_reply(200, maps:merge(cowboy_req:resp_headers(Req), Headers), Req).
 
 -spec csv_body(cb_context:context(), kz_json:object() | kz_json:objects()) ->
                       cb_context:context().
