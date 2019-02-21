@@ -78,6 +78,8 @@
         ]).
 -export([prompt/2, prompt/3]).
 
+-export([seek/1, seek/2, seek/3]).
+
 -export([tts/2, tts/3, tts/4, tts/5, tts/6
         ,b_tts/2, b_tts/3, b_tts/4, b_tts/5, b_tts/6
         ,tts_command/2, tts_command/3, tts_command/4, tts_command/5, tts_command/6
@@ -267,6 +269,7 @@
 
 -define(BRIDGE_EXPORT_VARS, kapps_config:get_ne_binaries(?CONFIG_CAT, <<"export_bridge_variables">>, ?BRIDGE_DEFAULT_EXPORT_VARS)).
 -define(BRIDGE_DEFAULT_EXPORT_VARS, [<<"hold_music">>]).
+-define(DEFAULT_SEEK_DURATION, 10000).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -1518,6 +1521,33 @@ b_play(Media, Terminators, Leg, Call) ->
                     kapps_api_std_return().
 b_play(Media, Terminators, Leg, Endless, Call) ->
     wait_for_noop(Call, play(Media, Terminators, Leg, Endless, Call)).
+
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to seek through the playing media.
+%% This request will execute immediately.
+%% @end
+%%------------------------------------------------------------------------------
+-spec seek(kapps_call:call()) -> 'ok'.
+seek(Call) ->
+    seek(?DEFAULT_SEEK_DURATION, Call).
+
+-spec seek(kz_term:api_integer(), kapps_call:call()) -> 'ok'.
+seek(Duration, Call) when Duration > 0 ->
+    seek(fastforward, Duration, Call);
+seek(Duration, Call) when Duration < 0 ->
+    seek(rewind, -Duration, Call);
+seek(_Duration, _Call) ->
+    ok.
+
+-spec seek(atom(), kz_term:api_pos_integer(), kapps_call:call()) -> 'ok'.
+seek(_Direction, 0, _Call) -> 
+    ok;
+seek(Direction, Duration, Call) ->
+    Command = [{<<"Application-Name">>, <<"playseek">>}
+               ,{<<"Seek-Direction">>,Direction}
+               ,{<<"Seek-Milliseconds">>,Duration}
+              ],
+    send_command(Command, Call).
 
 %%------------------------------------------------------------------------------
 %% @doc requests the TTS engine to create an audio file to play the desired
