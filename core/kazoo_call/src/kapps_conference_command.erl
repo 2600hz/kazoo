@@ -121,7 +121,6 @@ get_media_prompt(Media, Conference) ->
     Call = kapps_conference:call(Conference),
     kapps_call:get_prompt(Call, Media).
 
-
 -spec play_command(kz_term:ne_binary()) -> kz_term:proplist().
 play_command(Media) ->
     play_command(Media, 'undefined').
@@ -132,7 +131,6 @@ play_command(Media, ParticipantId) ->
     ,{<<"Media-Name">>, Media}
     ,{<<"Participant-ID">>, ParticipantId}
     ].
-
 
 -spec play(kz_term:ne_binary(), kapps_conference:conference()) -> 'ok'.
 play(Media, Conference) ->
@@ -153,7 +151,6 @@ recordstop(Conference) ->
     Command = [{<<"Application-Name">>, <<"recordstop">>}],
     send_command(Command, Conference).
 
-
 -spec relate_participants(non_neg_integer(), non_neg_integer(), kapps_conference:conference()) -> 'ok'.
 relate_participants(ParticipantId, OtherParticipantId, Conference) ->
     relate_participants(ParticipantId, OtherParticipantId, 'undefined', Conference).
@@ -167,14 +164,13 @@ relate_participants(ParticipantId, OtherParticipantId, Relationship, Conference)
               ],
     send_command(Command, Conference).
 
-
 -spec stop_play(kapps_conference:conference()) -> 'ok'.
 stop_play(Conference) ->
     stop_play('undefined', Conference).
 
 -spec stop_play(non_neg_integer() | 'undefined', kapps_conference:conference()) -> 'ok'.
 stop_play(ParticipantId, Conference) ->
-    stop_play(ParticipantId, undefined, Conference).
+    stop_play(ParticipantId, 'undefined', Conference).
 
 -spec stop_play(non_neg_integer() | 'undefined', kz_term:api_binary(), kapps_conference:conference()) -> 'ok'.
 stop_play(ParticipantId, Affects, Conference) ->

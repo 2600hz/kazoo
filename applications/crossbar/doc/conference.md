@@ -100,6 +100,41 @@ curl -v -X PUT \
  `unlock` | Unlock the conference; new participants may join
  `dial` | Dial an endpoint (user/device/DID)
  `play` | Play media to the conference (all participants)
+ `record` | Start/stop the recording of the conference
+
+### Lock / unlock
+
+Lock and unlock take no additional data.
+
+```shell
+curl -v -X PUT \
+    -d '{"action": "lock", "data": {}}' \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+```
+
+### Play media into a conference
+
+The `play` action takes the media ID to play into the conference.
+
+```shell
+curl -v -X PUT \
+    -d '{"action": "play", "data": {"media_id":"{MEDIA_TO_PLAY}"}}' \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+```
+
+### Start/Stop recording the conference
+
+The `record` action takes a toggle of "start" or "stop":
+
+```shell
+curl -v -X PUT \
+    -d '{"action": "record", "data": {"action":"start"}}' \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+```
+
 
 ### Dialing an endpoint
 
@@ -528,33 +563,6 @@ The last field, `play_entry_tone`, is at the root of the document: meaning this 
     * `true` means play the default tone when someone joins (or leaves) the conference
     * `false` disables the tone from being played
     * A string like a *tone string* or a *URI to a media file* can be inputted.
-
-#### Actions
-
-Actions are JSON objects in format:
-
-```json
-{
-    "action": "{ACTION}"
-}
-```
-
-#### Conference actions
-
-    lock: lock conference (prevent participants to join)
-    unlock: unlock conference (allow everybody to join)
-
-#### Participants actions
-
-    mute/unmute: mute/unmute all participants except moderators
-    deaf/undeaf: deaf/undeaf all participants except moderators
-    kick: kick every participant out
-
-#### Participant actions
-
-    mute/unmute: mute/unmute participant
-    deaf/undeaf: deaf/undeaf participant
-    kick: kick participant
 
 ### Web-socket events
 

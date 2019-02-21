@@ -354,9 +354,46 @@ handle_conference_action(Context, ConferenceId, ?PLAY) ->
     play(Context, ConferenceId, cb_context:req_value(Context, <<"data">>));
 handle_conference_action(Context, ConferenceId, <<"dial">>) ->
     dial(Context, ConferenceId, cb_context:req_value(Context, <<"data">>));
+handle_conference_action(Context, ConferenceId, <<"record">>) ->
+    record_conference(Context, ConferenceId, cb_context:req_value(Context, <<"data">>));
 handle_conference_action(Context, ConferenceId, Action) ->
     lager:error("unhandled conference id ~p action: ~p", [ConferenceId, Action]),
     cb_context:add_system_error('faulty_request', Context).
+
+-spec record_conference(cb_context:context(), kz_term:ne_binary(), kz_json:api_object()) ->
+                               cb_context:context().
+record_conference(Context, ConferenceId, 'undefined') ->
+    data_required(Context, <<"record">>);
+record_conference(Context, ConferenceId, RecordingData) ->
+    toggle_recording(Context, ConferenceId, kz_json:get_ne_binary_value(<<"action">>, RecordingData)).
+
+-spec toggle_recording(cb_context:context(), kz_term:ne_binary(), kz_json:api_ne_binary()) ->
+                              cb_context:context().
+toggle_recording(Context, ConferenceId, <<"start">>) ->
+    lager:info("starting the recording of conference ~s", [ConferenceId]),
+    kapps_conference_command:record(conference(ConferenceId)),
+    crossbar_util:response_202(<<"starting recording">>, Context);
+toggle_recording(Context, ConferenceId, <<"stop">>) ->
+    lager:info("stopping the recording of conference ~s", [ConferenceId]),
+    kapps_conference_command:recordstop(conference(ConferenceId)),
+    crossbar_util:response_202(<<"stopping recording">>, Context);
+toggle_recording(Context, ConferenceId, 'undefined') ->
+    cb_context:add_validation_error([<<"data">>, <<"action">>]
+                                   ,<<"required">>
+                                   ,kz_json:from_list([{<<"message">>, <<"recording requires an action">>}])
+                                   ,Context
+                                   );
+toggle_recording(Context, ConferenceId, Action) ->
+    lager:debug("invalid action: ~p", [Action]),
+    cb_context:add_validation_error([<<"data">>, <<"action">>]
+                                   ,<<"enum">>
+                                   ,kz_json:from_list(
+                                      [{<<"message">>, <<"Value not found in enumerated list of values">>}
+                                      ,{<<"target">>, [<<"start">>, <<"stop">>]}
+                                      ,{<<"value">>, Action}
+                                      ])
+                                   ,Context
+                                   ).
 
 -spec play(cb_context:context(), path_token(), kz_term:api_object()) ->
                   cb_context:context().
