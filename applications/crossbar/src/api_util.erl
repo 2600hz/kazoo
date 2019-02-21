@@ -1563,7 +1563,6 @@ maybe_set_pull_response_stream({FileLength, TransportFun}, Req, Context)
     lager:debug("streaming file"),
     {{'stream', FileLength, TransportFun}, Req, Context};
 maybe_set_pull_response_stream(Other, Req, Context) ->
-    lager:debug("pull response: ~s", [Other]),
     {Other, Req, Context}.
 
 %%------------------------------------------------------------------------------
