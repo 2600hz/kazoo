@@ -105,7 +105,7 @@ handle_port_request(DataJObj) ->
 
     AuthorityEmails = props:set_value(<<"to">>
                                      ,kz_json:get_value(<<"authority_emails">>, DataJObj, [])
-                                     ,kz_json:delete_keys([<<"bcc">>, <<"cc">>], Emails)
+                                     ,props:delete_keys([<<"bcc">>, <<"cc">>], Emails)
                                      ),
 
     lager:debug("sending ~s to port authority: ~p"
