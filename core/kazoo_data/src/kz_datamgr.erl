@@ -367,7 +367,26 @@ db_exists_all(DbName) ->
 -spec db_info() -> {'ok', kz_term:ne_binaries()} |
                    data_error().
 db_info() ->
-    kzs_db:db_info(kzs_plan:plan()).
+    Connections = get_connections(),
+    Databases = build_db_list(Connections),
+    {'ok', Databases}.
+
+-spec get_connections() -> map().
+get_connections() ->
+    [#{tag => Tag, server => kz_dataconnections:get_server(Tag)}
+     || {_, _, _, _, _, _, _, Tag}
+            <- ets:tab2list('kz_dataconnections')].
+
+-spec build_db_list(map()) -> kz_term:ne_binaries().
+build_db_list(Connections) ->
+    build_db_list(Connections, []).
+
+-spec build_db_list(map(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
+build_db_list([], Acc) ->
+    Acc;
+build_db_list([Connection | Rest], Acc) ->
+    {'ok', Dbs}  = kzs_db:db_info(Connection),
+    build_db_list(Rest, Dbs ++ Acc).
 
 %%------------------------------------------------------------------------------
 %% @doc Retrieve information regarding a database.
