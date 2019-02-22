@@ -252,7 +252,6 @@ bill_reminder_definition() ->
                     ,required_headers = [<<"Account-ID">>
                                         ,<<"Due-Date">>
                                         ,<<"Items">>
-                                        ,<<"Payment-Token">>
                                         ,<<"Timestamp">>
                                         ]
                     ,optional_headers = [<<"Payment-Token">>
