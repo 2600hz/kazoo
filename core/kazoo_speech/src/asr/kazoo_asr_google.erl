@@ -26,10 +26,7 @@ commands(_Bin, _Commands, _ContentType, _Locale, _Opts) ->
 -spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
 freeform(Content, _ContentType, Locale, Options) ->
     BaseUrl = ?GOOGLE_ASR_URL,
-    URI = list_to_binary([BaseUrl, <<"?key=">>, ?GOOGLE_ASR_KEY]),
-    Headers = [{"Content-Type", "application/json; charset=UTF-8"}
-              ,{"User-Agent", kz_term:to_list(node())}
-              ],
+    Headers = req_headers(),
     lager:debug("sending request to ~s", [BaseUrl]),
 
     AudioConfig = [{<<"languageCode">>, Locale}
@@ -43,7 +40,14 @@ freeform(Content, _ContentType, Locale, Options) ->
     Body = kz_json:encode(Req),
     lager:debug("asr req body: ~s", [Body]),
 
-    handle_response(make_request(URI, Headers, Body, Options)).
+    handle_response(make_request(BaseUrl, Headers, Body, Options)).
+
+-spec req_headers() -> kz_http:headers().
+req_headers() ->
+    [{"Content-Type", "application/json; charset=UTF-8"}
+    ,{"X-Goog-Api-Key", ?GOOGLE_ASR_KEY}
+    ,{"User-Agent", kz_term:to_list(node())}
+    ].
 
 -spec make_request(kz_term:ne_binary(), kz_term:proplist(), iolist(), kz_term:proplist()) -> kz_http:ret().
 make_request(BaseUrl, Headers, Body, Opts) ->
@@ -66,7 +70,7 @@ handle_response({'http_req_id', ReqID}) ->
     {'ok', ReqID};
 handle_response({'ok', 200, _Headers, Content2}) ->
     lager:debug("ASR of media succeeded: ~s", [Content2]),
-    Results = kz_json:get_list_value(<<"results">>, kz_json:decode(Content2)),
+    Results = kz_json:get_list_value(<<"results">>, kz_json:decode(Content2), []),
     Alternatives = lists:map(fun(Alternative) -> [Value|_] = kz_json:get_list_value(<<"alternatives">>, Alternative)
                                                      ,Value
                              end, Results),
