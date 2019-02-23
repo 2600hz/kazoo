@@ -32,7 +32,7 @@ Key | Description | Type | Default | Required | Support Level
 `dial_plan` | A list of rules used to modify dialed numbers | [#/definitions/dialplans](#dialplans) |   | `false` |  
 `directories` | Provides the mappings for what directory the user is a part of (the key), and what callflow (the value) to invoke if the user is selected by the caller. | `object()` |   | `false` |  
 `do_not_disturb.enabled` | Is do-not-disturb enabled for this user? | `boolean()` |   | `false` |  
-`do_not_disturb` | DND Parameters | `object()` |   | `false` |  
+`do_not_disturb` | DND Parameters | [#/definitions/do_not_disturb](#do_not_disturb) |   | `false` |  
 `email` | The email of the user | `string(1..254)` |   | `false` | `supported`
 `enabled` | Determines if the user is currently enabled | `boolean()` | `true` | `false` | `supported`
 `feature_level` | The user level for assigning feature sets | `string()` |   | `false` |  
@@ -141,6 +141,15 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `system.[]` |   | `string()` |   | `false` |  
 `system` | List of system dial plans | `array(string())` |   | `false` |  
+
+### do_not_disturb
+
+Parameters for server-side do-not-disturb
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`enabled` | Determines if server side do-not-disturb is enabled/disabled | `boolean()` |   | `false` |  
 
 ### endpoint.media
 
