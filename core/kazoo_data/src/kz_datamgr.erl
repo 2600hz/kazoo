@@ -127,16 +127,15 @@
 %% a file.
 %% @end
 %%------------------------------------------------------------------------------
--spec update_doc_from_file(kz_term:ne_binary(), atom(), nonempty_string() | kz_term:ne_binary()) ->
+-spec update_doc_from_file(kz_term:ne_binary(), nonempty_string() | kz_term:ne_binary()) ->
                                   {'ok', kz_json:object()} |
                                   data_error().
-update_doc_from_file(DbName, App, File) when ?VALID_DBNAME(DbName) ->
-    Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
+update_doc_from_file(DbName, Path) when ?VALID_DBNAME(DbName) ->
     lager:debug("update db ~s from CouchDB file: ~s", [DbName, Path]),
     try
         {'ok', Bin} = file:read_file(Path),
         JObj = maybe_adapt_multilines(kz_json:decode(Bin)),
-        maybe_update_doc(DbName, JObj)
+        maybe_update_doc_from_file(DbName, JObj, open_doc(DbName, kz_doc:id(JObj)))
     catch
         _Type:{'badmatch',{'error',Reason}} ->
             lager:debug("bad match: ~p", [Reason]),
@@ -145,11 +144,30 @@ update_doc_from_file(DbName, App, File) when ?VALID_DBNAME(DbName) ->
             lager:debug("exception: ~p", [Reason]),
             {'error', Reason}
     end;
-update_doc_from_file(DbName, App, File) ->
+update_doc_from_file(DbName, File) ->
     case maybe_convert_dbname(DbName) of
-        {'ok', Db} -> update_doc_from_file(Db, App, File);
+        {'ok', Db} -> update_doc_from_file(Db, File);
         {'error', _}=E -> E
     end.
+
+-spec maybe_update_doc_from_file(kz_term:ne_binary(), kz_json:object(), any()) ->
+                                        {'ok', kz_json:object()} |
+                                        data_error().
+maybe_update_doc_from_file(DbName, JObj, {'ok', Doc}=OK) ->
+    case should_update(DbName, JObj, OK) of
+        'false' ->
+            {'ok', Doc};
+        'undefined' ->
+            save_doc(DbName, kz_doc:update_pvt_parameters(JObj, DbName));
+        'true' ->
+            PrivateFields = kz_json:to_proplist(kz_doc:private_fields(Doc)),
+            NewJObj = kz_doc:update_pvt_parameters(kz_json:set_values(PrivateFields, JObj), DbName),
+            save_doc(DbName, kz_doc:set_revision(NewJObj, kz_doc:revision(Doc)))
+    end;
+maybe_update_doc_from_file(DbName, JObj, {'error', 'not_found'}) ->
+    save_doc(DbName, kz_doc:update_pvt_parameters(JObj, DbName));
+maybe_update_doc_from_file(_, _, {'error', _}=Error) ->
+    Error.
 
 %%------------------------------------------------------------------------------
 %% @doc Create or overwrite the existing contents of a document with the
@@ -160,7 +178,8 @@ update_doc_from_file(DbName, App, File) ->
                                   {'ok', kz_json:object()} |
                                   data_error().
 revise_doc_from_file(DbName, App, File) ->
-    case update_doc_from_file(DbName, App, File) of
+    Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
+    case update_doc_from_file(DbName, Path) of
         {'error', _E}=R ->
             lager:debug("failed to update doc: ~p", [_E]),
             R;
@@ -192,7 +211,6 @@ revise_docs_from_folder(DbName, App, Folder, Sleep) ->
     case code:priv_dir(App) of
         {'error', 'bad_name'} ->
             lager:error("tried to revise docs for db ~p for invalid priv directory. app: ~p", [DbName, App]);
-
         ValidDir ->
             Files = filelib:wildcard([ValidDir, "/couchdb/", kz_term:to_list(Folder), "/*.json"]),
             lager:debug("refreshing ~B documents in db ~s for ~s", [length(Files), DbName, App]),
@@ -203,9 +221,7 @@ revise_docs_from_folder(DbName, App, Folder, Sleep) ->
 do_revise_docs_from_folder(_, _, []) -> 'ok';
 do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
     try
-        {'ok', Bin} = file:read_file(H),
-        JObj = maybe_adapt_multilines(kz_json:decode(Bin)),
-        _ = maybe_update_doc(DbName, JObj),
+        {'ok', _} = update_doc_from_file(DbName, H),
         Sleep
             andalso timer:sleep(250),
         do_revise_docs_from_folder(DbName, Sleep, T)
@@ -234,11 +250,15 @@ maybe_update_doc(DbName, JObj) ->
 
 -spec should_update(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_boolean().
 should_update(DbName, JObj) ->
-    case open_doc(DbName, kz_doc:id(JObj)) of
-        {'ok', Doc} -> kz_doc:document_hash(JObj) =/= kz_doc:document_hash(Doc);
-        {'error', 'not_found'} -> 'undefined';
-        {'error', _} -> 'true'
-    end.
+    should_update(DbName, JObj, open_doc(DbName, kz_doc:id(JObj))).
+
+-spec should_update(kz_term:ne_binary(), kz_json:object(), any()) -> kz_term:api_boolean().
+should_update(_, JObj, {'ok', Doc}) ->
+    kz_doc:document_hash(JObj) =/= kz_doc:document_hash(Doc);
+should_update(_, _, {'error', 'not_found'}) ->
+    'undefined';
+should_update(_, _, {'error', _}) ->
+    'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc Replaces multi-line Javascript into single line, on the fly
