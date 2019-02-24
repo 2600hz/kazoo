@@ -103,6 +103,12 @@ get_fs_app(Node, UUID, JObj, <<"play">>) ->
         'true' -> play(Node, UUID, JObj)
     end;
 
+get_fs_app(Node, UUID, JObj, <<"playseek">>) ->
+    case kapi_dialplan:playseek_v(JObj) of
+        'false' -> {'error', <<"playseek failed to execute as JObj did not validate">>};
+        'true' -> playseek(Node, UUID, JObj)
+    end;
+
 get_fs_app(_Node, _UUID, JObj, <<"break">>) ->
     case kapi_dialplan:break_v(JObj) of
         'false' -> {'error', <<"break failed to execute as JObj did not validate">>};
@@ -1348,6 +1354,16 @@ tts(Node, UUID, JObj) ->
 %% @doc Playback command helpers
 %% @end
 %%------------------------------------------------------------------------------
+-spec playseek(atom(), kz_term:ne_binary(), kz_json:object()) -> fs_apps().
+playseek(_Node, _UUID, JObj) ->
+    Duration = kz_json:get_ne_binary_value(<<"Duration">>, JObj),
+    Args = case kz_json:get_ne_binary_value(<<"Direction">>, JObj) of
+               <<"fastforward">> -> <<"seek:+", Duration/bytes>>;
+               <<"rewind">> -> <<"seek:-", Duration/bytes>>
+           end,
+    {<<"playseek">>, Args}.
+
+
 -spec play(atom(), kz_term:ne_binary(), kz_json:object()) -> fs_apps().
 play(Node, UUID, JObj) ->
     [play_vars(Node, UUID, JObj)

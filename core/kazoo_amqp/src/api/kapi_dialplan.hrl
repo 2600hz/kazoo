@@ -589,6 +589,15 @@
                               ]).
 -define(PLAY_STOP_REQ_TYPES, []).
 
+%% PlaySeek Request
+-define(PLAY_SEEK_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Duration">>, <<"Direction">>]).
+-define(OPTIONAL_PLAY_SEEK_REQ_HEADERS, []).
+-define(PLAY_SEEK_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                              ,{<<"Event-Name">>, <<"command">>}
+                              ,{<<"Application-Name">>, <<"playseek">>}
+                              ]).
+-define(PLAY_SEEK_REQ_TYPES, []).
+
 %% Record Request
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_RECORD_REQ_HEADERS, [<<"Insert-At">>

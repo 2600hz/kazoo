@@ -133,6 +133,8 @@
               ,prev = <<"4">> :: kz_term:ne_binary()
               ,next = <<"6">> :: kz_term:ne_binary()
               ,delete = <<"7">> :: kz_term:ne_binary()
+              ,rw = <<"5">> :: kz_term:ne_binary()
+              ,ff = <<"8">> :: kz_term:ne_binary()
 
                                    %% Greeting or instructions
               ,continue = 'undefined' :: kz_term:api_ne_binary()
@@ -835,6 +837,8 @@ play_messages(Messages, Count, Box, Call) ->
                            'ok' | 'complete'.
 play_messages([H|T]=Messages, PrevMessages, Count, Box, Call) ->
     AccountId = kapps_call:account_id(Call),
+    %Node = kapps_call:switch_nodename(Call),
+    %UUID = kapps_call:call_id(Call),
     Message = kvm_message:media_url(AccountId, H),
     lager:info("playing mailbox message ~p (~s)", [Count, Message]),
     Prompt = message_prompt(Messages, Message, Count, Box),
@@ -869,6 +873,15 @@ play_messages([H|T]=Messages, PrevMessages, Count, Box, Call) ->
             {_, NMessage} = kvm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
             _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
             play_messages(T, [NMessage|PrevMessages], Count, Box, Call);
+        {ok, rewind} ->
+            lager:notice("caller chose to rewind 10 sec of the message"),
+            _ = kapps_call_command:b_seek(rewind, 10000, Call),
+            %ecallmgr_util:send_cmd(kz_term:to_atom(Node), UUID, <<"playseek">>, ["seek", ":", "+1000"]),
+            play_messages(Messages, PrevMessages, Count, Box, Call);
+        {ok, fastforward} ->
+            lager:notice("caller chose to fastforward 10 sec of the message"),
+            _ = kapps_call_command:b_seek(fastforward, 10000, Call),
+            play_messages(Messages, PrevMessages, Count, Box, Call);
         {'error', _} ->
             lager:info("error during message playback")
     end;
@@ -1043,6 +1056,8 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
                                         ,prev=Prev
                                         ,next=Next
                                         ,return_main=ReturnMain
+                                        ,rw=RW
+                                        ,ff=FF
                                         }
                              ,interdigit_timeout=Interdigit
                              }=Box, Call) ->
@@ -1063,6 +1078,8 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
         {'ok', Replay} -> {'ok', 'replay'};
         {'ok', Prev} -> {'ok', 'prev'};
         {'ok', Next} -> {'ok', 'next'};
+        {'ok', RW} -> {'ok', 'rewind'};
+        {'ok', FF} -> {'ok', 'fastforward'};
         {'error', _}=E -> E;
         _ ->
             _ = kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
