@@ -14,6 +14,8 @@
         ,<<"Call-Direction">>
         ,<<"Call-ID">>
         ,<<"Call-Setup">>
+        ,<<"Callee-ID-Name">>
+        ,<<"Callee-ID-Number">>
         ,<<"Caller-Callee-ID-Name">>
         ,<<"Caller-Callee-ID-Number">>
         ,<<"Caller-Caller-ID-Name">>
@@ -22,6 +24,8 @@
         ,<<"Caller-Context">>
         ,<<"Caller-Destination-Number">>
         ,<<"Caller-Dialplan">>
+        ,<<"Caller-ID-Name">>
+        ,<<"Caller-ID-Number">>
         ,<<"Caller-Unique-ID">>
         ,<<"Channel-Call-State">>
         ,<<"Channel-Call-UUID">>
