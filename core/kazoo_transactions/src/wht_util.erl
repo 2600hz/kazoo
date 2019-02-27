@@ -145,7 +145,8 @@ get_balance(Account, Options) ->
                    | Options
                   ],
     case kazoo_modb:get_results(Account, View, ViewOptions) of
-        {'ok', []} -> get_balance_from_previous(Account, Options);
+        {'ok', []} ->
+            get_balance_from_previous(Account, Options);
         {'ok', [ViewRes|_]} ->
             Balance = kz_json:get_integer_value(<<"value">>, ViewRes, 0),
             maybe_rollup(Account, Options, Balance);
@@ -157,10 +158,17 @@ get_balance(Account, Options) ->
 -spec get_balance_from_previous(ne_binary(), kazoo_modb:view_options()) -> balance_ret().
 -spec get_balance_from_previous(ne_binary(), kazoo_modb:view_options(), integer()) -> balance_ret().
 get_balance_from_previous(Account, ViewOptions) ->
-    Retries = props:get_value('retry', ViewOptions, 3),
-    get_balance_from_previous(Account, ViewOptions, Retries).
+    case kapps_config:get_is_true(<<"ledgers">>, <<"rollover_monthly_balance">>, 'true') of
+        'true' ->
+            Retries = props:get_value('retry', ViewOptions, 3),
+            get_balance_from_previous(Account, ViewOptions, Retries);
+        'false' ->
+            lager:debug("monthly balance rollover is disabled, assuming previous balance was 0", []),
+            {'ok', 0}
+    end.
 
 get_balance_from_previous(Account, ViewOptions, Retries) when Retries >= 0 ->
+    lager:debug("marker 5: ~p", [Retries]),
     {DefaultYear, DefaultMonth, _} = erlang:date(),
     Y = props:get_integer_value('year', ViewOptions, DefaultYear),
     M = props:get_integer_value('month', ViewOptions, DefaultMonth),
@@ -206,11 +214,20 @@ verify_monthly_rollup_exists(Account, Balance) ->
 
 -spec maybe_rollup_previous_month(ne_binary(), units()) -> balance_ret().
 maybe_rollup_previous_month(Account, Balance) ->
-    case get_rollup_from_previous(Account) of
+    case maybe_get_rollup_from_previous(Account) of
         {'error', _} -> {'ok', Balance};
         {'ok', PrevBalance} ->
             _ = rollup(Account, PrevBalance),
             {'ok', Balance - PrevBalance}
+    end.
+
+-spec maybe_get_rollup_from_previous(ne_binary()) -> balance_ret().
+maybe_get_rollup_from_previous(Account) ->
+    case kapps_config:get_is_true(<<"ledgers">>, <<"rollover_monthly_balance">>, 'true') of
+        'true' -> get_rollup_from_previous(Account);
+        'false' ->
+            lager:debug("monthly balance rollover is disabled, assuming previous balance was 0", []),
+            {'ok', 0}
     end.
 
 -spec get_rollup_from_previous(ne_binary()) -> balance_ret().
@@ -230,7 +247,7 @@ get_rollup_from_previous(Account) ->
             E
     end.
 
--spec get_rollup_balance(ne_binary(), kazoo_modb:view_options()) -> balance_ret().
+-spec get_rollup_balance(kz_term:ne_binary(), kazoo_modb:view_options()) -> balance_ret().
 get_rollup_balance(Account, Options) ->
     View = <<"transactions/credit_remaining">>,
     ViewOptions = ['reduce'
@@ -243,9 +260,7 @@ get_rollup_balance(Account, Options) ->
         {'ok', [ViewRes|_]} ->
             {'ok', kz_json:get_integer_value(<<"value">>, ViewRes, 0)};
         {'error', _R}=E ->
-            lager:warning("unable to get rollup balance for ~s: ~p"
-                         ,[Account, _R]
-                         ),
+            lager:warning("unable to get rollup balance for ~s: ~p", [Account, _R]),
             E
     end.
 
