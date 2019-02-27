@@ -1,9 +1,8 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Validate JSON schemas using python2's jsonschema tool
 
-from __future__ import print_function
 import json
 import jsonschema
 import os
@@ -64,7 +63,7 @@ def default_matches_type(Default, Type):
         return True
     if Type == 'array' and isinstance(Default, list):
         return True
-    if Type == 'string' and isinstance(Default, unicode):
+    if Type == 'string' and isinstance(Default, str):
         return True
     if isinstance(Type, list):
         verifier = lambda t, acc: acc or default_matches_type(Default, t)

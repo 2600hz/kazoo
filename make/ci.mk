@@ -1,6 +1,6 @@
 .PHONY: ci ci-config ci-steps ci-pre ci-fmt ci-build ci-codechecks ci-docs ci-schemas ci-dialyze ci-release ci-unstaged
 
-PIP2 := $(shell { command -v pip || command -v pip2; } 2>/dev/null)
+PIP := $(shell { command -v pip; } 2>/dev/null)
 CI_DIR := $(CURDIR)/make
 CI_VALIDATOR := $(CI_DIR)/circleci
 CI_CONFIG := $(CURDIR)/.circleci/config.yml
@@ -24,13 +24,13 @@ ci-steps: ci-pre ci-fmt ci-build ci-codechecks ci-docs ci-schemas ci-dialyze ci-
 	@$(ROOT)/scripts/check-unstaged.bash
 
 ci-pre:
-ifneq ($(PIP2),)
+ifneq ($(PIP),)
 ## needs root access
 	@echo $(CHANGED)
-	@$(PIP2) install --user --upgrade pip
-	@$(PIP2) install --user PyYAML mkdocs pyembed-markdown jsonschema
+	@$(PIP) install --user --upgrade pip
+	@$(PIP) install --user PyYAML mkdocs pyembed-markdown jsonschema
 else
-	$(error "pip/pip2 is not available, please install python2-pip package")
+	$(error "pip is not available, please install python2-pip package")
 endif
 
 ci-docs:
@@ -43,7 +43,7 @@ ci-codechecks:
 	@./scripts/code_checks.bash $(CHANGED)
 	@$(MAKE) code_checks
 	@$(MAKE) app_applications
-	@./scripts/validate-js.sh $(find {core,applications}/*/priv/**/* -name *.json)
+	@$(MAKE) validate-js
 
 ci-fmt:
 	@$(MAKE) fmt
