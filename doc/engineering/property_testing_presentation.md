@@ -1,5 +1,3 @@
-
-
 # Property-based testing with KAZOO
 
 
@@ -15,10 +13,17 @@
 
 ## KAZOO
 
+-   <https://github.com/2600hz/kazoo>
+-   Started in 2010
 -   Telecom platform
+    -   Clustering layer over FreeSWITCH / Kamailio
 -   API-driven
--   Clustering layer
--   Hobbyists to Enterprise
+-   Scales from Hobbyists to Enterprise
+-   Built on:
+    -   RabbitMQ
+    -   CouchDB
+-   275K lines of Erlang in the core project in 1315 modules
+-   106 contributors (~25 that are 2600Hz)
 
 
 # Stateless testing - JSON
@@ -26,15 +31,21 @@
 
 ## JSON
 
--   Need to generate "deep" objects but not too deep
--   Naive approach: `test_object()`
-    -   Generate list of Key/Value pairs
--   Better approach: `deep_object()`
-    -   Symbolic calls to build up the object
+-   [kz\_json.erl](https://github.com/2600hz/kazoo/blob/master/core/kazoo_stdlib/src/kz_json.erl)
+    -   Provides lists-esque functionality - maps/folds/filters/etc
+    -   getters/setters, merging, diffing, and more
+    -   Hides data structure used - enforced throughout the code
+-   [kz\_json\_tests.erl](https://github.com/2600hz/kazoo/blob/master/core/kazoo_stdlib/test/kz_json_tests.erl) and [kz\_json\_generators.erl](https://github.com/2600hz/kazoo/blob/master/core/kazoo_stdlib/test/kz_json_generators.erl)
+    -   Need to generate "deep" objects but not too deep
+    -   Naive approach: `test_object()`
+        -   Generate list of Key/Value pairs
+    -   Better approach: `deep_object()`
+        -   Symbolic calls to build up the object
 
 
 ## `test_object()` generated
 
+```erlang
     1> proper_gen:pick(kz_json_generators:test_object()).
     {ok,{[{<<14,141,161>>,-19},
           {<<37,53,158>>,<<>>},
@@ -43,19 +54,21 @@
           {<<155,65,38,243,136,74,115>>,<<>>},
           {<<176,5,171,200>>,<<>>},
           {<<"ãO">>,<<>>}]}}
-
+```
 
 ## `test_object()` spread
 
+```erlang
     2> proper:quickcheck(kz_json_tests:prop_test_object_gen(), 1000).
     58% {0,2}
     38% {2,4}
     2% {4,6}
     true
-
+```
 
 ## `deep_object()` generated
 
+```erlang
     1> {ok, Calls} = proper_gen:pick(kz_json_generators:deep_object()).
     {ok, {'$call',kz_json,set_value,
      [<<"ðg">>,
@@ -69,10 +82,11 @@
           [],
           {'$call',kz_json,set_value,
     ...
-
+```
 
 ## `deep_object()` eval'd
 
+```erlang
     2> proper_symb:eval([], Calls).
     {[{<<4,133,215,252,0>>,[]},
       {<<"lËÉx&'">>,[]},
@@ -87,17 +101,18 @@
           {<<107,119,61,244,188,157,110,28>>,
            {[{<<133,246,158,227,95,35,251,39,...>>,<<>>},
            ...
-
+```
 
 ## `deep_object()` spread
 
+```erlang
     3> proper:quickcheck(kz_json_tests:prop_deep_object_gen(), 1000).
     56% {2,4}
     37% {0,2}
     5% {4,6}
     0% {6,8}
     true
-
+```
 
 ## JSON
 
@@ -105,6 +120,7 @@
 -   More control over depth
 -   Create EUnit tests from failing PropEr tests
     -   Shrinking is huge!
+-   Actually had good EUnit test coverage prior
 
 
 # Stateless testing - Bindings server
@@ -124,10 +140,12 @@
 
 Generates a binding key, a routing key, and whether there should be a match.
 
+```erlang
     1> proper_gen:pick(kazoo_bindings_tests:expanded_paths()).
-    {ok,[{<<"*.1Oj.#.t863f4e3Xu">>,<<"1Oj.t863f4e3Xu">>,false},
-         {<<"*.1Oj.#.t863f4e3Xu">>,<<"lLTW1.1Oj.t863f4e3Xu">>,true}]}
-
+    {ok,[{<<"*.1Oj.#.t863f4e3Xu">>,<<"1Oj.t863f4e3Xu">>,false}
+        ,{<<"*.1Oj.#.t863f4e3Xu">>,<<"lLTW1.1Oj.t863f4e3Xu">>,true}
+    ]}
+```
 
 ## Bindings - Binding Key
 
@@ -207,15 +225,17 @@ Generates a binding key, a routing key, and whether there should be a match.
 
 ## Cache - Sample commands
 
+```erlang
     1> proper_gen:pick(kz_cache_pqc:command({state, [], 0})).
     {ok,{call,kz_cache,store_local,
               [kz_cache_pqc,113,8,[{expires,1}]]}}
     2> proper_gen:pick(kz_cache_pqc:command({state, [], 0})).
     {ok,{call,kz_cache,erase_local,[kz_cache_pqc,99]}}
-
+```
 
 ## Cache - Running the tests
 
+```erlang
     1> proper:quickcheck(kz_cache_pqc:correct()).
     ...
     13% {kz_cache,peek_local,2}
@@ -227,7 +247,7 @@ Generates a binding key, a routing key, and whether there should be a match.
     11% {kz_cache,store_local,4}
     10% {kz_cache,wait_for_key_local,3}
     true
-
+```
 
 ## Cache - Challenges with time
 
@@ -292,6 +312,7 @@ Generates a binding key, a routing key, and whether there should be a match.
 
 ## Crossbar - Counterexample
 
+```erlang
     pqc_util:simple_counterexample().
     [{pqc_cb_ips,remove_ips,['{API}',<<"pqc_cb_ips">>]},
      {pqc_cb_accounts,create_account,['{API}',<<"pqc_cb_ips">>]},
@@ -309,7 +330,7 @@ Generates a binding key, a routing key, and whether there should be a match.
      {pqc_cb_ips,create_ip,
                  ['{API}',
                   {dedicated,<<"1.2.3.4">>,<<"a.host.com">>,<<"zone-1">>}]}]
-
+```
 
 ## Crossbar - Bugs found (so far!)
 
@@ -326,6 +347,14 @@ Generates a binding key, a routing key, and whether there should be a match.
 -   Calculate whether changeset is covered by test suite
 
 
+## Crossbar - Advice
+
+-   `next_state/3` API result can be dynamic or concrete
+    -   Use "concrete" values as indexes; find dynamic values in SUT shims
+-   Cleanup properly after testing
+-   Write the properties from the docs (you have those, right?)
+
+
 # Wrapping Up
 
 
@@ -334,6 +363,7 @@ Generates a binding key, a routing key, and whether there should be a match.
 -   KISS for reals!
 -   Property testing is a mindset and skillset
     -   There will be a learning curve
+-   Read 'Property-Based Testing with PropEr, Erlang, and Elixir' by Fred Hebert
 -   Read the PropEr code
     -   Especially as you get more practice
 -   Practice!
@@ -342,3 +372,6 @@ Generates a binding key, a routing key, and whether there should be a match.
 ## Questions?
 
 Thanks!
+
+-   <https://github.com/2600hz/kazoo>
+-   <https://2600hz.com>
