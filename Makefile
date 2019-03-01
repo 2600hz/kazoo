@@ -4,15 +4,26 @@ ELVIS = $(ROOT)/deps/elvis
 FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
 ERLANG_MK_COMMIT = d30dda39b08e6ed9e12b44533889eaf90aba86de
 
+BASE_BRANCH := $(shell cat $(ROOT)/.base_branch)
+
+CHANGED := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts)
+CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
+
 # You can override this when calling make, e.g. make JOBS=1
 # to prevent parallel builds, or make JOBS="8".
 JOBS ?= 1
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas circle circle-pre circle-fmt circle-codechecks circle-build circle-docs circle-schemas circle-dialyze circle-release circle-unstaged fixture_shell code_checks
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas circle circle-pre circle-fmt circle-codechecks circle-build circle-docs circle-schemas circle-dialyze circle-release circle-unstaged fixture_shell code_checks changed changed_swagger validate-js
 
 all: compile
+
+changed:
+	@git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts
+
+changed_swagger:
+	@git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json
 
 compile: ACTION = all
 compile: deps kazoo
@@ -143,8 +154,8 @@ dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
 dialyze: dialyze-it
 
 dialyze-it: $(PLT)
-	@if [ -n "$(TO_DIALYZE)" ]; then \
-	export TO_DIALYZE="$(TO_DIALYZE)"; \
+	@if [ -n "$(strip $(filter %.beam %.erl %/ebin,$(TO_DIALYZE)))" ]; then \
+	export TO_DIALYZE="$(strip $(filter %.beam %.erl %/ebin,$(TO_DIALYZE)))"; \
 	ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt; \
 	fi;
 
@@ -182,7 +193,7 @@ bump-copyright:
 $(FMT):
 	wget -qO - 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/master' | tar xz -C $(ROOT)/make/
 
-fmt: TO_FMT ?= $(shell git --no-pager diff --name-only HEAD origin/4.2 -- "*.erl" "*.hrl" "*.escript")
+fmt: TO_FMT ?= $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- "*.erl" "*.hrl" "*.escript")
 fmt: $(FMT)
 	@$(if $(TO_FMT), @$(FMT) $(TO_FMT))
 
@@ -238,14 +249,15 @@ fs-headers:
 validate-swagger:
 	@$(ROOT)/scripts/validate-swagger.sh
 
+validate-js:
+	@./scripts/validate-js.sh $(find {core,applications}/*/priv/**/* -name *.json)
+
 sdks:
 	@$(ROOT)/scripts/make-swag.sh
 
 validate-schemas:
 	@$(ROOT)/scripts/validate-schemas.sh $(ROOT)/applications/crossbar/priv/couchdb/schemas
 
-CHANGED := $(shell git --no-pager diff --name-only HEAD origin/4.2 -- applications core scripts)
-CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD origin/4.2 -- applications/crossbar/priv/api/swagger.json)
 PIP2 := $(shell { command -v pip || command -v pip2; } 2>/dev/null)
 
 circle-pre:
