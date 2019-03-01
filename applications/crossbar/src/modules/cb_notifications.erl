@@ -394,7 +394,7 @@ set_system_macros(Context) ->
             SysContext2 = read_system(Context, <<"notification.customer_update">>),
             case cb_context:resp_status(SysContext2) of
                 'success' ->
-                    lager:debug("Template ~s is not exist in `system_config` database. Setting macros from 'customer_update' template", [Id]),
+                    lager:debug("template ~s is not exist in `system_config` database. Setting macros from 'customer_update' template", [Id]),
                     SysDoc2 = cb_context:doc(SysContext2),
                     Macros2 = kz_json:get_value(?MACROS, SysDoc2, kz_json:new()),
                     JObj2 = cb_context:doc(Context),
@@ -528,6 +528,8 @@ maybe_add_extra_data(<<"transaction">>, API) ->
 maybe_add_extra_data(<<"transaction_failed">>, API) ->
     props:set_value(<<"Success">>, 'false', API);
 maybe_add_extra_data(<<"port_", _/binary>>, API) ->
+    props:set_value(<<"Reason">>, kz_json:new(), API);
+maybe_add_extra_data(<<"ported">>, API) ->
     props:set_value(<<"Reason">>, kz_json:new(), API);
 maybe_add_extra_data(_Id, API) -> API.
 
@@ -1464,9 +1466,39 @@ leak_attachments_fold(_Attachment, Props, Acc) ->
 load_smtp_log_doc(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
     Year  = kz_term:to_integer(YYYY),
     Month = kz_term:to_integer(MM),
-    crossbar_doc:load(Id
-                     ,cb_context:set_account_modb(Context, Year, Month)
-                     ,?TYPE_CHECK_OPTION(?PVT_TYPE_SMTPLOG)).
+    IsSuperAdmin = cb_context:is_superduper_admin(Context),
+    C1 = crossbar_doc:load(Id
+                          ,cb_context:set_account_modb(Context, Year, Month)
+                          ,?TYPE_CHECK_OPTION(?PVT_TYPE_SMTPLOG)
+                          ),
+    case cb_context:resp_status(C1) of
+        'success' ->
+            Doc = cb_context:doc(C1),
+            TemplateId = kz_json:get_ne_binary_value(<<"template_id">>, Doc),
+            JObj = maybe_remove_private_data(Doc, TemplateId, IsSuperAdmin),
+            Setters = [{fun cb_context:set_doc/2, JObj}
+                      ,{fun cb_context:set_resp_data/2, JObj}
+                      ],
+            cb_context:setters(C1, Setters);
+        _ ->
+            C1
+    end.
+
+-spec maybe_remove_private_data(kz_json:object(), kz_term:ne_binary(), boolean()) -> kz_json:object().
+maybe_remove_private_data(JObj, <<"port_comment">>, 'false') ->
+    CommentPath = [<<"macros">>, <<"port_request">>, <<"comment">>],
+    SuperPath = CommentPath ++ [<<"superduper_comment">>],
+    case kz_json:is_true(SuperPath, JObj, 'false') of
+        'true' ->
+            DeletePaths = [CommentPath
+                          ,<<"rendered_templates">>
+                          ],
+            kz_json:delete_keys(DeletePaths, JObj);
+        'false' ->
+            JObj
+    end;
+maybe_remove_private_data(JObj, _, _) ->
+    JObj.
 
 -spec maybe_update_db(cb_context:context()) -> cb_context:context().
 maybe_update_db(Context) ->

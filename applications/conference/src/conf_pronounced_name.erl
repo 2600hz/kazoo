@@ -133,12 +133,12 @@ save_recording(RecordName, MediaDocId, Call) ->
     _ = kapps_call_command:b_store(RecordName, get_new_attachment_url(RecordName, MediaDocId, Call), Call),
     case kz_datamgr:open_cache_doc(AccountDb, UserId) of
         {'ok', UserJObj} ->
-            lager:debug("Updating user's doc"),
+            lager:debug("updating user's doc"),
             JObj1 = kz_json:set_value(?PRONOUNCED_NAME_KEY, MediaDocId, UserJObj),
             _ = kz_datamgr:save_doc(AccountDb, JObj1),
             {'media_doc_id', AccountId, MediaDocId};
         {'error', _Err} ->
-            lager:info("Can't update user's doc due to error ~p", [_Err]),
+            lager:info("can't update user's doc due to error ~p", [_Err]),
             {'temp_doc_id', AccountId, MediaDocId}
     end.
 

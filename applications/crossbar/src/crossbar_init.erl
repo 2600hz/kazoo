@@ -61,7 +61,7 @@ start_link() ->
     Dispatch = cowboy_router:compile(crossbar_routes()),
 
     DefaultIP = kz_network_utils:default_binding_ip(),
-    IP = kapps_config:get_string(?CONFIG_CAT, <<"ip">>, DefaultIP),
+    IP = kapps_config:get_ne_binary(?CONFIG_CAT, <<"ip">>, DefaultIP),
     IPAddress = kz_network_utils:get_supported_binding_ip(IP, DefaultIP),
 
     maybe_start_plaintext(Dispatch, IPAddress),

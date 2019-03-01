@@ -176,7 +176,7 @@ participant_get(CallId) ->
         [Participant=#participant{}] ->
             Participant;
         _ ->
-            lager:error("No participant data by call-id ~p", [CallId])
+            lager:error("no participant data by call-id ~p", [CallId])
     end.
 
 -spec participant_destroy(kz_term:ne_binary()) -> 'ok'.
@@ -419,7 +419,7 @@ handle_event(_JObj, _State) ->
 terminate(_Reason, _State) ->
     _ = ets:delete(?CONFERENCES_TBL),
     _ = ets:delete(?PARTICIPANTS_TBL),
-    lager:debug("FreeSWITCH conference tracker going down: ~p", [_Reason]).
+    lager:debug("freeSWITCH conference tracker going down: ~p", [_Reason]).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.

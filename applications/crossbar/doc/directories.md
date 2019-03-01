@@ -4,7 +4,7 @@
 
 Directories provide the ability to route a caller to a user by having the caller enter DTMF corresponding to the directory users' first or last names (versus having to know the user's extension).
 
-## Schema
+#### Schema
 
 Allow a caller to search for a user/device by name instead of extension/DID
 

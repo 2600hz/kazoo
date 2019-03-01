@@ -196,26 +196,58 @@ maybe_authorize(Request, Limits) ->
 
 -spec maybe_authorize_exception(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_authorize_exception(Request, Limits) ->
-    CallDirection = j5_request:call_direction(Request),
+
+    Routines = [fun maybe_authorize_mobile/2
+               ,fun maybe_authorize_resource_type/2
+               ,fun maybe_authorize_classification/2
+               ],
+    Result = lists:foldl(fun(F, R) ->
+                                 case j5_request:is_authorized(R, Limits) of
+                                     'false' -> F(R, Limits);
+                                     'true' -> R
+                                 end
+                         end
+                        ,Request
+                        ,Routines
+                        ),
+    maybe_hard_limit(Result, Limits).
+
+-spec maybe_authorize_mobile(j5_request:request(), j5_limits:limits()) -> j5_request:request().
+maybe_authorize_mobile(Request, Limits) ->
     AuthType = kz_json:get_value(<<"Authorizing-Type">>, j5_request:ccvs(Request)),
-    case not is_authorizing_mobile(AuthType)
-        andalso j5_request:classification(Request)
-    of
-        'false' ->
+
+    case AuthType =:= <<"mobile">> of
+        'true' ->
             lager:debug("allowing mobile call"),
             j5_per_minute:authorize(Request, Limits);
+        'false' -> Request
+    end.
+
+-spec maybe_authorize_resource_type(j5_request:request(), j5_limits:limits()) -> j5_request:request().
+maybe_authorize_resource_type(Request, Limits) ->
+    ResourceType = kz_json:get_value(<<"Resource-Type">>, j5_request:ccvs(Request)),
+
+    case lists:member(ResourceType, j5_limits:authz_resource_types(Limits)) of
+        'true' ->
+            lager:debug("allowing ~s call", [ResourceType]),
+            j5_request:authorize(<<"limits_disabled">>, Request, Limits);
+        'false' -> Request
+    end.
+
+-spec maybe_authorize_classification(j5_request:request(), j5_limits:limits()) -> j5_request:request().
+maybe_authorize_classification(Request, Limits) ->
+    Classification = j5_request:classification(Request),
+    CallDirection = j5_request:call_direction(Request),
+
+    case Classification of
         <<"emergency">> ->
             lager:debug("allowing emergency call"),
             j5_request:authorize(<<"limits_disabled">>, Request, Limits);
         <<"tollfree_us">> when CallDirection =:= <<"outbound">> ->
             lager:debug("allowing outbound tollfree call"),
             j5_request:authorize(<<"limits_disabled">>, Request, Limits);
-        _Else -> maybe_hard_limit(Request, Limits)
+        _Else -> Request
     end.
-
--spec is_authorizing_mobile(kz_term:api_ne_binary()) -> boolean().
-is_authorizing_mobile(<<"mobile">>) -> 'true';
-is_authorizing_mobile(_) -> 'false'.
 
 -spec maybe_hard_limit(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_hard_limit(Request, Limits) ->

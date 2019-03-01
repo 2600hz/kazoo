@@ -1255,6 +1255,26 @@
         "caller_id": {
             "description": "Defines caller ID settings based on the type of call being made",
             "properties": {
+                "asserted": {
+                    "description": "Used to convey the proven identity of the originator of a request within a trusted network.",
+                    "properties": {
+                        "name": {
+                            "description": "The asserted identity name for the object type",
+                            "maxLength": 35,
+                            "type": "string"
+                        },
+                        "number": {
+                            "description": "The asserted identity number for the object type",
+                            "maxLength": 35,
+                            "type": "string"
+                        },
+                        "realm": {
+                            "description": "The asserted identity realm for the object type",
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
                 "emergency": {
                     "description": "The caller ID used when a resource is flagged as 'emergency'",
                     "properties": {
@@ -1264,7 +1284,7 @@
                             "type": "string"
                         },
                         "number": {
-                            "description": "The caller id name for the object type",
+                            "description": "The caller id number for the object type",
                             "maxLength": 35,
                             "type": "string"
                         }
@@ -1280,7 +1300,7 @@
                             "type": "string"
                         },
                         "number": {
-                            "description": "The caller id name for the object type",
+                            "description": "The caller id number for the object type",
                             "maxLength": 35,
                             "type": "string"
                         }
@@ -1296,7 +1316,7 @@
                             "type": "string"
                         },
                         "number": {
-                            "description": "The caller id name for the object type",
+                            "description": "The caller id number for the object type",
                             "maxLength": 35,
                             "type": "string"
                         }
@@ -1576,6 +1596,9 @@
                                 "type": "string"
                             }
                         },
+                        "required": [
+                            "macro"
+                        ],
                         "type": "object"
                     },
                     "minItems": 1,
@@ -3931,7 +3954,7 @@
                 },
                 "billing_seconds": {
                     "description": "The number of seconds the call leg can be billed for (typically from when the call leg is answered",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "call_direction": {
                     "description": "Direction of the call, relative to the media switch",
@@ -3960,6 +3983,10 @@
                 "caller_id_number": {
                     "description": "The indicated number of the caller",
                     "type": "string"
+                },
+                "custom_application_vars": {
+                    "description": "Any custom-set values",
+                    "type": "object"
                 },
                 "custom_channel_vars": {
                     "additionalProperties": {
@@ -3999,7 +4026,7 @@
                 },
                 "duration_seconds": {
                     "description": "The duration of the call leg, in seconds",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "fax_bad_rows": {
                     "type": "string"
@@ -4029,6 +4056,10 @@
                     "description": "Built by Kazoo, depending on direction, to represent the From user",
                     "type": "string"
                 },
+                "from_tag": {
+                    "description": "SIP From TAG",
+                    "type": "string"
+                },
                 "from_uri": {
                     "description": "The From SIP URI",
                     "type": "string"
@@ -4039,6 +4070,10 @@
                 },
                 "hangup_code": {
                     "description": "The SIP hangup code, if available",
+                    "type": "string"
+                },
+                "interaction_id": {
+                    "description": "correlating ID among related call legs",
                     "type": "string"
                 },
                 "local_sdp": {
@@ -4087,14 +4122,18 @@
                 },
                 "ringing_seconds": {
                     "description": "How many seconds the leg was ringing (pre-answer)",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "timestamp": {
                     "description": "UTC timestamp, in Gregorian seconds, of when the CDR was generated",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "to": {
                     "description": "Built by Kazoo, depending on direction, to represent the To user",
+                    "type": "string"
+                },
+                "to_tag": {
+                    "description": "SIP TO Tag",
                     "type": "string"
                 },
                 "to_uri": {
@@ -6139,6 +6178,39 @@
             ],
             "type": "object"
         },
+        "ip": {
+            "description": "IP address assigned to the cluster",
+            "properties": {
+                "host": {
+                    "description": "The hostname the IP belongs to",
+                    "minLength": 1,
+                    "type": "string"
+                },
+                "ip": {
+                    "description": "The IP addresses",
+                    "oneOf": [
+                        {
+                            "format": "ipv4",
+                            "type": "string"
+                        },
+                        {
+                            "format": "ipv6",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "zone": {
+                    "description": "The zone name the IP belongs to",
+                    "minLength": 1,
+                    "type": "string"
+                }
+            },
+            "required": [
+                "ip",
+                "zone",
+                "host"
+            ]
+        },
         "ips": {
             "description": "IP addresses assigned to the account",
             "properties": {
@@ -6146,7 +6218,16 @@
                     "description": "List of IP addresses",
                     "items": {
                         "description": "IP address",
-                        "type": "string"
+                        "oneOf": [
+                            {
+                                "format": "ipv4",
+                                "type": "string"
+                            },
+                            {
+                                "format": "ipv6",
+                                "type": "string"
+                            }
+                        ]
                     },
                     "minItems": 1,
                     "type": "array"
@@ -11579,6 +11660,15 @@
                     "enum": [
                         "bridge"
                     ],
+                    "type": "string"
+                },
+                "Asserted-Identity-Name": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Number": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Realm": {
                     "type": "string"
                 },
                 "B-Leg-Events": {
@@ -19501,6 +19591,15 @@
                     ],
                     "type": "string"
                 },
+                "Asserted-Identity-Name": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Number": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Realm": {
+                    "type": "string"
+                },
                 "B-Leg-Events": {
                     "items": {
                         "enum": [
@@ -21140,6 +21239,15 @@
                 "Application-Data": {
                     "type": "string"
                 },
+                "Asserted-Identity-Name": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Number": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Realm": {
+                    "type": "string"
+                },
                 "B-Leg-Events": {
                     "type": "string"
                 },
@@ -21374,6 +21482,15 @@
                         "fax",
                         "eavesdrop"
                     ],
+                    "type": "string"
+                },
+                "Asserted-Identity-Name": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Number": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Realm": {
                     "type": "string"
                 },
                 "B-Leg-Events": {
@@ -22907,6 +23024,15 @@
                     ],
                     "type": "string"
                 },
+                "Asserted-Identity-Name": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Number": {
+                    "type": "string"
+                },
+                "Asserted-Identity-Realm": {
+                    "type": "string"
+                },
                 "B-Leg-Events": {
                     "type": "string"
                 },
@@ -24200,6 +24326,14 @@
                     "default": true,
                     "description": "Determines if the account would like to allow per-minute calls if they have no available credit",
                     "type": "boolean"
+                },
+                "authz_resource_types": {
+                    "default": [],
+                    "description": "List of Resource-Types that will authorize the call; bypassing limit checks and billing",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
                 },
                 "burst_trunks": {
                     "description": "The number of two-way, flat-rate trunks used only if no other trunks are available",
@@ -27237,6 +27371,7 @@
             "description": "Describes a service plan item",
             "properties": {
                 "activation_charge": {
+                    "default": 0.0,
                     "description": "What to charge when activating an Item",
                     "type": "number"
                 },
@@ -27245,6 +27380,7 @@
                     "type": "string"
                 },
                 "cascade": {
+                    "default": false,
                     "description": "Whether to count quantities among all sub-accounts or just the account",
                     "type": "boolean"
                 },
@@ -27259,6 +27395,10 @@
                                 "rate": {
                                     "description": "The discount to apply, up to maximum Items (if applicable)",
                                     "type": "number"
+                                },
+                                "rates": {
+                                    "description": "Takes precedence over rate, sets the discount based on the billable quantity",
+                                    "type": "object"
                                 }
                             },
                             "type": "object"
@@ -27266,13 +27406,27 @@
                         "single": {
                             "properties": {
                                 "rate": {
-                                    "description": "A single discount amount to apply if there are more than 0 units",
+                                    "description": "A single discount amount to apply if there are more than 0 units and no match in rates",
                                     "type": "number"
+                                },
+                                "rates": {
+                                    "description": "Takes precedence over rate, sets the discount based on the billable quantity",
+                                    "type": "object"
                                 }
                             },
                             "type": "object"
                         }
                     },
+                    "type": "object"
+                },
+                "flat_rate": {
+                    "default": 0.0,
+                    "description": "Takes precedence over rates and rate, charges only the provided amount",
+                    "type": "number"
+                },
+                "flat_rates": {
+                    "default": {},
+                    "description": "Takes precedence over flat_rate, rates and rate, charges only the provided amount",
                     "type": "object"
                 },
                 "markup_type": {
@@ -27284,25 +27438,38 @@
                     ],
                     "type": "string"
                 },
+                "maximum": {
+                    "description": "The maximum quantity of items to bill for",
+                    "type": "integer"
+                },
                 "minimum": {
-                    "description": "The minimum quantity to charge for, if 'quantity' is less than 'minimum'",
+                    "default": 0,
+                    "description": "The minimum quantity of items to bill for",
                     "type": "integer"
                 },
                 "name": {
                     "description": "Friendly name for this Item",
                     "type": "string"
                 },
-                "quantity": {
-                    "description": "How many of the item are allowed",
-                    "type": "integer"
+                "prorate": {
+                    "default": false,
+                    "description": "Should this item be prorated",
+                    "type": "boolean"
                 },
                 "rate": {
-                    "description": "The rate to charge",
+                    "default": 0.0,
+                    "description": "Used if no flat_rates, flat_rate or rates apply, resulting charges is billable quantity multipled with rate",
                     "type": "number"
                 },
                 "rates": {
-                    "description": "Tiers of rates based on quantities",
+                    "default": {},
+                    "description": "Takes precedence over rate, resulting charges is billable quantity multipled with tiered rate",
                     "type": "object"
+                },
+                "step": {
+                    "default": 1,
+                    "description": "Step size for quantity",
+                    "type": "integer"
                 },
                 "taxes": {
                     "items": {
@@ -27450,20 +27617,17 @@
         "storage": {
             "properties": {
                 "attachments": {
-                    "$ref": "#/definitions/storage.attachments",
-                    "description": "Defines where and how to store attachments"
+                    "$ref": "#/definitions/storage.attachments"
                 },
                 "connections": {
-                    "$ref": "#/definitions/storage.connections",
-                    "description": "Describes alternative connections to use (such as alternative CouchDB instances"
+                    "$ref": "#/definitions/storage.connections"
                 },
                 "id": {
                     "description": "ID of the storage document",
                     "type": "string"
                 },
                 "plan": {
-                    "$ref": "#/definitions/storage.plan",
-                    "description": "Describes how to store documents depending on the database or document type"
+                    "$ref": "#/definitions/storage.plan"
                 }
             },
             "type": "object"
@@ -27718,13 +27882,14 @@
                     ],
                     "type": "string"
                 },
-                "name": {
-                    "description": "Friendly name for this attachment handler",
-                    "type": "string"
-                },
                 "settings": {
                     "description": "HTTP server settings",
                     "properties": {
+                        "base64_encode_data": {
+                            "default": false,
+                            "description": "Toggles whether to base64-encode the attachment data",
+                            "type": "boolean"
+                        },
                         "send_multipart": {
                             "description": "Toggle whether to send multipart payload when storing attachment - will include metadata JSON if true",
                             "type": "boolean"
@@ -27788,8 +27953,62 @@
             "type": "object"
         },
         "storage.attachments": {
-            "description": "Keys are 32-character identifiers to be used in storage plans",
+            "description": "Defines where and how to store attachments. Keys are 32-character identifiers to be used in storage plans",
             "type": "object"
+        },
+        "storage.attachments.field": {
+            "description": "field used when composing destination url",
+            "oneOf": [
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "arg": {
+                            "description": "an argument passed to the handler",
+                            "enum": [
+                                "account_id",
+                                "db",
+                                "id",
+                                "attachment"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "const": {
+                            "description": "a constant value added to the string",
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "field": {
+                            "description": "a field from the metadata document",
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "group": {
+                            "description": "group the inner fields definitions with an empty separator",
+                            "items": {
+                                "$ref": "storage.attachments.field"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "type": "object"
+                }
+            ]
         },
         "storage.connection.couchdb": {
             "description": "schema for CouchDB connection entry",
@@ -27872,10 +28091,11 @@
             "type": "object"
         },
         "storage.connections": {
+            "description": "Describes alternative connections to use (such as alternative CouchDB instances",
             "type": "object"
         },
         "storage.plan": {
-            "description": "schema for storage plan",
+            "description": "Describes how to store documents depending on the database or document type",
             "properties": {
                 "account": {
                     "$ref": "#/definitions/storage.plan.database"
@@ -28837,7 +29057,8 @@
                             },
                             "type": "array"
                         }
-                    }
+                    },
+                    "type": "object"
                 },
                 "entry_tone": {
                     "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
@@ -30461,10 +30682,10 @@
                             "prefix": "image"
                         },
                         {
-                            "prefix": "application/vnd.openxmlformats-officedocument."
+                            "prefix": "application/vnd.openxmlformats-officedocument"
                         },
                         {
-                            "prefix": "application/vnd.oasis.opendocument."
+                            "prefix": "application/vnd.oasis.opendocument"
                         },
                         "application/msword",
                         "application/vnd.ms-excel",
@@ -30472,7 +30693,22 @@
                     ],
                     "description": "fax allowed content types",
                     "items": {
-                        "type": "string"
+                        "oneOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "properties": {
+                                    "prefix": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "prefix"
+                                ],
+                                "type": "object"
+                            }
+                        ]
                     },
                     "type": "array"
                 },
@@ -31355,6 +31591,11 @@
                         "type": "object"
                     },
                     "type": "array"
+                },
+                "rollover_monthly_balance": {
+                    "default": true,
+                    "description": "ledgers rollover_monthly_balance",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -32952,9 +33193,59 @@
                     },
                     "type": "object"
                 },
+                "firebase": {
+                    "default": {},
+                    "description": "pusher firebase",
+                    "properties": {
+                        "api_key": {
+                            "description": "API Key for firebase",
+                            "type": "string"
+                        },
+                        "extra_headers": {
+                            "default": {},
+                            "description": "Additional headers for INVITEs sent to push devices in the UA",
+                            "properties": {
+                                "Invite-Format": {
+                                    "description": "When set to push_and_invite, sets the X-KAZOO-PUSHER-Invite-Format header to push_and_invite, resulting in both a push notification and a SIP INVITE being sent to the endpoint.",
+                                    "enum": [
+                                        "invite",
+                                        "push",
+                                        "push_and_invite"
+                                    ],
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "type": "object"
+                },
                 "google": {
+                    "default": {},
                     "description": "pusher google",
-                    "type": "string"
+                    "properties": {
+                        "api_key": {
+                            "description": "API Key for gcm",
+                            "type": "string"
+                        },
+                        "extra_headers": {
+                            "default": {},
+                            "description": "Additional headers for INVITEs sent to push devices in the UA",
+                            "properties": {
+                                "Invite-Format": {
+                                    "description": "When set to push_and_invite, sets the X-KAZOO-PUSHER-Invite-Format header to push_and_invite, resulting in both a push notification and a SIP INVITE being sent to the endpoint.",
+                                    "enum": [
+                                        "invite",
+                                        "push",
+                                        "push_and_invite"
+                                    ],
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "type": "object"
                 },
                 "modules": {
                     "default": [],
@@ -33118,6 +33409,11 @@
                 "default_allow_updates": {
                     "default": true,
                     "description": "services default allow updates",
+                    "type": "boolean"
+                },
+                "enforce_good_standing": {
+                    "default": false,
+                    "description": "services enforce_good_standing",
                     "type": "boolean"
                 },
                 "get_items_from_quantities": {
@@ -34037,6 +34333,9 @@
                     "type": "object"
                 }
             },
+            "required": [
+                "default"
+            ],
             "type": "object"
         },
         "tasks": {
@@ -39371,6 +39670,21 @@
             }
         },
         "/accounts/{ACCOUNT_ID}/ips": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
             "get": {
                 "parameters": [
                     {

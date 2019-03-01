@@ -19,9 +19,9 @@ Key | Description | Type | Default | Required | Support Level
 `call_forward.require_keypress` | Determines if the callee is prompted to press 1 to accept the call | `boolean()` | `true` | `false` | `supported`
 `call_forward.substitute` | Determines if the call forwarding replaces the device | `boolean()` | `true` | `false` | `supported`
 `call_forward` | The device call forward parameters | `object()` |   | `false` |  
-`call_recording` |   | [#/definitions/call_recording](#call_recording) |   | `false` |  
+`call_recording` | endpoint recording settings | [#/definitions/call_recording](#call_recording) |   | `false` |  
 `call_restriction` | Device level call restrictions for each available number classification | `object()` | `{}` | `false` |  
-`call_waiting` |   | [#/definitions/call_waiting](#call_waiting) |   | `false` |  
+`call_waiting` | Parameters for server-side call waiting | [#/definitions/call_waiting](#call_waiting) |   | `false` |  
 `caller_id` | The device caller ID parameters | [#/definitions/caller_id](#caller_id) |   | `false` |  
 `caller_id_options.outbound_privacy` | Determines what appears as caller id for offnet outbound calls. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing | `string('full' | 'name' | 'number' | 'none')` |   | `false` |  
 `caller_id_options` | custom properties for configuring caller_id | `object()` |   | `false` |  
@@ -33,7 +33,7 @@ Key | Description | Type | Default | Required | Support Level
 `do_not_disturb` | DND Parameters | `object()` |   | `false` |  
 `enabled` | Determines if the device is currently enabled | `boolean()` | `true` | `false` | `supported`
 `exclude_from_queues` | Do not ring this device when calling user/agent in queue | `boolean()` | `false` | `false` |  
-`formatters` |   | [#/definitions/formatters](#formatters) |   | `false` |  
+`formatters` | Schema for request formatters | [#/definitions/formatters](#formatters) |   | `false` |  
 `hotdesk` | The hotdesk status of this device | `object()` |   | `false` |  
 `language` | The language for the device | `string()` |   | `false` | `supported`
 `mac_address` | The MAC Address of the device (if applicable) | `string()` |   | `false` | `supported`
@@ -46,12 +46,12 @@ Key | Description | Type | Default | Required | Support Level
 `outbound_flags` | List of flags (features) this device requires when making outbound calls | `array(string()) | object()` |   | `false` |  
 `owner_id` | The ID of the user object that 'owns' the device | `string(32)` |   | `false` |  
 `presence_id` | Static presence ID (used instead of SIP username) | `string()` |   | `false` | `supported`
-`provision.combo_keys./^[0-9]+$/` |   | [#/definitions/devices.combo_key](#devicescombo_key) |   | `false` |  
+`provision.combo_keys./^[0-9]+$/` | Device provisioner Combo/Feature Key | [#/definitions/devices.combo_key](#devicescombo_key) |   | `false` |  
 `provision.combo_keys` |   | `object()` |   | `false` |  
 `provision.endpoint_brand` | Brand of the phone | `string()` |   | `false` |  
 `provision.endpoint_family` | Family name of the phone | `string()` |   | `false` |  
 `provision.endpoint_model` | Model name of the phone | `string() | array(string())` |   | `false` |  
-`provision.feature_keys./^[0-9]+$/` |   | [#/definitions/devices.combo_key](#devicescombo_key) |   | `false` |  
+`provision.feature_keys./^[0-9]+$/` | Device provisioner Combo/Feature Key | [#/definitions/devices.combo_key](#devicescombo_key) |   | `false` |  
 `provision.feature_keys` |   | `object()` |   | `false` |  
 `provision.id` | Provisioner Template ID | `string()` |   | `false` |  
 `provision` | Provision data | `object()` |   | `false` |  
@@ -128,14 +128,18 @@ Defines caller ID settings based on the type of call being made
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
+`asserted.name` | The asserted identity name for the object type | `string(0..35)` |   | `false` |  
+`asserted.number` | The asserted identity number for the object type | `string(0..35)` |   | `false` |  
+`asserted.realm` | The asserted identity realm for the object type | `string()` |   | `false` |  
+`asserted` | Used to convey the proven identity of the originator of a request within a trusted network. | `object()` |   | `false` |  
 `emergency.name` | The caller id name for the object type | `string(0..35)` |   | `false` |  
-`emergency.number` | The caller id name for the object type | `string(0..35)` |   | `false` |  
+`emergency.number` | The caller id number for the object type | `string(0..35)` |   | `false` |  
 `emergency` | The caller ID used when a resource is flagged as 'emergency' | `object()` |   | `false` |  
 `external.name` | The caller id name for the object type | `string(0..35)` |   | `false` |  
-`external.number` | The caller id name for the object type | `string(0..35)` |   | `false` |  
+`external.number` | The caller id number for the object type | `string(0..35)` |   | `false` |  
 `external` | The default caller ID used when dialing external numbers | `object()` |   | `false` |  
 `internal.name` | The caller id name for the object type | `string(0..35)` |   | `false` |  
-`internal.number` | The caller id name for the object type | `string(0..35)` |   | `false` |  
+`internal.number` | The caller id number for the object type | `string(0..35)` |   | `false` |  
 `internal` | The default caller ID used when dialing internal extensions | `object()` |   | `false` |  
 
 ### custom_sip_headers
@@ -218,7 +222,7 @@ A metaflow node defines a module to execute, data to provide to that module, and
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`children./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false` |  
+`children./.+/` | A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to | [#/definitions/metaflow](#metaflow) |   | `false` |  
 `children` | Children metaflows | `object()` |   | `false` |  
 `data` | The data/arguments of the metaflow module | `object()` | `{}` | `false` |  
 `module` | The name of the metaflow module to execute at this node | `string(1..64)` |   | `true` |  
@@ -233,9 +237,9 @@ Key | Description | Type | Default | Required | Support Level
 `binding_digit` | What DTMF will trigger the collection and analysis of the subsequent DTMF sequence | `string('1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0' | '*' | '#')` | `*` | `false` |  
 `digit_timeout` | How long to wait between DTMF presses before processing the collected sequence (milliseconds) | `integer()` |   | `false` |  
 `listen_on` | Which leg(s) of the call to listen for DTMF | `string('both' | 'self' | 'peer')` |   | `false` |  
-`numbers./^[0-9]+$/` |   | [#/definitions/metaflow](#metaflow) |   | `false` |  
+`numbers./^[0-9]+$/` | A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to | [#/definitions/metaflow](#metaflow) |   | `false` |  
 `numbers` | A list of static numbers with their flows | `object()` |   | `false` |  
-`patterns./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false` |  
+`patterns./.+/` | A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to | [#/definitions/metaflow](#metaflow) |   | `false` |  
 `patterns` | A list of patterns with their flows | `object()` |   | `false` |  
 
 

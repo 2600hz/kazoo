@@ -226,12 +226,12 @@ do_reorder_dialog(RefParser, Chunks) ->
     GroupedByCSeq = lists:keysort(1, group_by(fun c_seq_number/1, Chunks)),
     lists:flatmap(fun({_CSeq, ByCSeq}) ->
                           {ByRefParser, Others} = sort_split_uniq(RefParser, ByCSeq),
-                          %% _ = [lager:debug("ByRefParser ~s", [kz_json:encode(to_json(C))]) || C <- ByRefParser],
+                          %% _ = [lager:debug("byRefParser ~s", [kz_json:encode(to_json(C))]) || C <- ByRefParser],
                           {Done, Rest} = first_pass(ByRefParser, Others),
-                          %% _ = [lager:debug("Done ~s", [kz_json:encode(to_json(C))]) || C <- Done],
+                          %% _ = [lager:debug("done ~s", [kz_json:encode(to_json(C))]) || C <- Done],
                           {ReallyDone, NewRest} = second_pass(Done, Rest),
-                          %% _ = [lager:debug("ReallyDone ~s", [kz_json:encode(to_json(C))]) || C <- ReallyDone],
-                          %% _ = [lager:debug("NewRest ~s", [kz_json:encode(to_json(C))]) || C <- NewRest],
+                          %% _ = [lager:debug("reallyDone ~s", [kz_json:encode(to_json(C))]) || C <- ReallyDone],
+                          %% _ = [lager:debug("newRest ~s", [kz_json:encode(to_json(C))]) || C <- NewRest],
                           ReallyDone ++ NewRest
                   end
                  ,GroupedByCSeq

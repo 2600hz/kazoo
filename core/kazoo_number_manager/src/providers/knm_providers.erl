@@ -17,7 +17,9 @@
         ]).
 -export([e911_caller_name/2]).
 -export([features_denied/1]).
--export([system_allowed_features/0]).
+-export([reseller_allowed_features/1
+        ,system_allowed_features/0
+        ]).
 -export([activate_feature/2]).
 -export([deactivate_features/2
         ,deactivate_feature/2
@@ -201,10 +203,12 @@ list_allowed_features(Parameters) ->
         NumberAllowed -> NumberAllowed
     end.
 
--spec reseller_allowed_features(feature_parameters()) -> kz_term:ne_binaries().
+-spec reseller_allowed_features(kz_term:api_binary() | feature_parameters()) -> kz_term:ne_binaries().
 reseller_allowed_features(#feature_parameters{assigned_to = 'undefined'}) ->
     system_allowed_features();
 reseller_allowed_features(#feature_parameters{assigned_to = AccountId}=_Params) ->
+    reseller_allowed_features(AccountId);
+reseller_allowed_features(AccountId) ->
     case ?FEATURES_ALLOWED_RESELLER(AccountId) of
         'undefined' -> system_allowed_features();
         Providers ->

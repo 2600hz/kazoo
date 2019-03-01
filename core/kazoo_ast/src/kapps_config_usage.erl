@@ -344,8 +344,15 @@ guess_type_by_default(?ATOM('false')) -> <<"boolean">>;
 guess_type_by_default(?ATOM(_)) -> <<"string">>;
 guess_type_by_default(?VAR(_V)) -> 'undefined';
 guess_type_by_default(?EMPTY_LIST) -> <<"array">>;
-guess_type_by_default(?LIST(?BINARY_MATCH(_), _Tail)) -> [<<"string">>];
-guess_type_by_default(?LIST(Head, _Tail)) -> [guess_type_by_default(Head)];
+guess_type_by_default(?LIST(?BINARY_MATCH(_), {nil, _})) -> [<<"string">>];
+guess_type_by_default(?LIST(Head, {nil, _})) -> [guess_type_by_default(Head)];
+guess_type_by_default(?LIST(Head, Tail)) ->
+    H = [guess_type_by_default(Head)],
+    T = guess_type_by_default(Tail),
+    case H =:= T of
+        'true' -> H;
+        'false' -> ['undefined']
+    end;
 guess_type_by_default(?BINARY_MATCH(_V)) -> <<"string">>;
 guess_type_by_default(?INTEGER(_I)) -> <<"integer">>;
 guess_type_by_default(?FLOAT(_F)) -> <<"float">>;
@@ -449,9 +456,9 @@ default_value(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
 default_value(?MOD_FUN_ARGS('kz_util', 'rand_hex_binary', [_Arg])) ->
     ?UNKNOWN_DEFAULT;
 default_value(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_number', _Args)) ->
-    default_value(kz_privacy:anonymous_caller_id_number());
+    kz_privacy:anonymous_caller_id_number();
 default_value(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_name', _Args)) ->
-    default_value(kz_privacy:anonymous_caller_id_name());
+    kz_privacy:anonymous_caller_id_name();
 default_value(?MOD_FUN_ARGS('kz_term', 'to_binary', [Arg])) ->
     default_value(Arg);
 default_value(?MOD_FUN_ARGS('kz_term', 'to_integer', [Arg])) ->

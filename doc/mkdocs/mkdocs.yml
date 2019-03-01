@@ -263,6 +263,7 @@ pages:
     - 'Custom notifications': 'applications/callflow/doc/notification.md'
     - 'Deprecated':
         - 'Offnet': 'applications/callflow/doc/offnet.md'
+    - 'Skeleton Callflow Action': 'applications/callflow/doc/skel.md'
   - 'Call Inspector':
     - 'applications/call_inspector/doc/README.md'
   - 'CCCP':
@@ -457,12 +458,13 @@ pages:
   - 'Documenting Kazoo': 'doc/blog/documenting_kazoo.md'
 - 'Engineering':
   - 'Announcements': 'doc/announcements.md'
-  - 'Install/Build Kazoo': 'doc/installation.md'
-  - 'The Makefile': 'doc/engineering/make.md'
-  - 'Continuous Integration (CI)': 'doc/engineering/ci.md'
+  - 'Attachment Handlers Errors': 'applications/crossbar/doc/att_handlers_errors.md'
+  - 'Attachments': 'core/kazoo_attachments/README.md'
   - 'Call Recording': 'doc/engineering/call_recording.md'
   - 'Caller ID Formatting': 'doc/reference/caller_id_formatting.md'
+  - 'Continuous Integration (CI)': 'doc/engineering/ci.md'
   - 'CouchDB Views': 'doc/engineering/couch_views.md'
+  - 'Crossbar CSVs': 'doc/engineering/crossbar-csvs.md'
   - 'Documentation':
     - 'How to write docs': 'doc/engineering/documentation.md'
     - 'How to Write Erlang Documentation': 'doc/engineering/erlang-documentation.md'
@@ -470,15 +472,15 @@ pages:
   - 'Erlang Releases': 'doc/engineering/releases.md'
   - 'Erlang VM Tracing': 'doc/engineering/tracing.md'
   - 'Flame Graphs': 'doc/engineering/flame_graphs.md'
+  - 'Install/Build Kazoo': 'doc/installation.md'
   - 'Kazoo Globals Registry': 'doc/engineering/kz_globals.md'
-  - 'Loopback Channels': 'doc/engineering/loopback.md'
   - 'Kazoo Scripts': 'scripts/README.md'
+  - 'Loopback Channels': 'doc/engineering/loopback.md'
+  - 'Makefile': 'doc/engineering/make.md'
   - 'Running Dev Shells': 'scripts/dev/README.md'
   - 'Testing': 'doc/engineering/testing.md'
   - 'Using Dialyzer': 'doc/engineering/dialyzer.md'
   - 'Webhooks': 'doc/engineering/webhooks.md'
-  - 'Attachments': 'core/kazoo_attachments/README.md'
-  - 'Attachment Handlers Errors': 'applications/crossbar/doc/att_handlers_errors.md'
 - 'App Exchange':
   - 'doc/appexchange/style_guide.md'
   - 'doc/appexchange/planning.md'

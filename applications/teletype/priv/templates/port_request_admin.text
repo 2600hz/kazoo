@@ -1,7 +1,7 @@
                 Port Request Submitted (Admin Report)
 
 
-Submitted On: {{port_request.created.local|date:"l, F j, Y h:i A"}} ({{port_request.created.timezone}})
+Submitted on: {{port_request.created.local|date:"l, F j, Y h:i A"}} ({{port_request.created.timezone}})
 
 Request "{{port_request.name}}" to port numbers into account '{{account.name}}' has been submitted.
 
@@ -12,18 +12,36 @@ Request "{{port_request.name}}" to port numbers into account '{{account.name}}' 
     Port ID:  {{port_request.id}}
     State:  {{port_request.port_state}}
     Numbers:  Numbers: {{ port_request.numbers|join:", "|stringformat:"s"|wordwrap:40 }}
-    Requested Port Date:  {% if port_request.requested_port_date %}{{port_request.requested_port_date.local|date:"l, F j, Y h:i A"}} ({{port_request.requested_port_date.timezone}}){% else %}Not scheduled{% endif %}
+    Requested Port Date:  {% if port_request.requested_port_date %}{{port_request.requested_port_date.local|date:"l, F j, Y h:i A"}} ({{port_request.requested_port_date.timezone}}){% else %}not scheduled yet{% endif %}
     Losing Carrier:  {{port_request.losing_carrier}}
     Winning Carrier:  {{port_request.winning_carrier}}
-    Carrier Reference Number:  {{port_request.carrier_reference_number}}
+    Carrier Reference Number:  {{port_request.reference_number}}
     Customer Contact:  {{ port_request.customer_contact|join:", "}}
-    Billing Name:  {{port_request.bill_name}}
-    Billing Street Number:  {{port_request.bill_street_number}}
-    Billing Street:  {{port_request.bill_street_address}}
-    Billing Street Type:  {{port_request.bill_street_type}}
-    Billing City:  {{port_request.bill_locality}}
-    Billing State:  {{port_request.bill_region}}
-    Billing Postal Code:  {{port_request.bill_postal_code}}
+
+=== Billing Details ===
+
+    Account Name on Bill:  {{port_request.bill.address.name}}
+    Street Pre-Direction:  {{port_request.bill.address.street_pre_dir}}
+    Street Number:  {{port_request.bill.address.street_number}}
+    Street Name:  {{port_request.bill.address.street_name}}
+    Street Type:  {{port_request.bill.address.street_type}}
+    Street Post-Direction:  {{port_request.bill.address.street_post_dir}}
+    Address Line 2:  {{port_request.bill.address.extended_address}}
+    City:  {{port_request.bill.address.locality}}
+    State:  {{port_request.bill.address.region}}
+    Postal Code:  {{port_request.bill.address.postal_code}}
+
+=== Carrier Account Details ===
+
+    Account Name:  {{port_request.bill.account.number}}
+    PIN:  {{port_request.bill.account.pin}}
+    BTN:  {{port_request.bill.account.btn}}
+
+
+
+Signee Name:  {% firstof port_request.signee_name "-" %}
+Signing Date:  {% firstof port_request.signing_date.local|date:"l, F j, Y h:i A" %}
+
 
 
 

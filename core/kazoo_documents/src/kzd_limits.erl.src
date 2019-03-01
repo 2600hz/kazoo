@@ -7,6 +7,7 @@
 
 -export([new/0]).
 -export([allow_prepay/1, allow_prepay/2, set_allow_prepay/2]).
+-export([authz_resource_types/1, authz_resource_types/2, set_authz_resource_types/2]).
 -export([burst_trunks/1, burst_trunks/2, set_burst_trunks/2]).
 -export([calls/1, calls/2, set_calls/2]).
 -export([inbound_trunks/1, inbound_trunks/2, set_inbound_trunks/2]).
@@ -37,6 +38,18 @@ allow_prepay(Doc, Default) ->
 -spec set_allow_prepay(doc(), boolean()) -> doc().
 set_allow_prepay(Doc, AllowPrepay) ->
     kz_json:set_value([<<"allow_prepay">>], AllowPrepay, Doc).
+
+-spec authz_resource_types(doc()) -> kz_term:ne_binaries().
+authz_resource_types(Doc) ->
+    authz_resource_types(Doc, []).
+
+-spec authz_resource_types(doc(), Default) -> kz_term:ne_binaries() | Default.
+authz_resource_types(Doc, Default) ->
+    kz_json:get_list_value([<<"authz_resource_types">>], Doc, Default).
+
+-spec set_authz_resource_types(doc(), kz_term:ne_binaries()) -> doc().
+set_authz_resource_types(Doc, AuthzResourceTypes) ->
+    kz_json:set_value([<<"authz_resource_types">>], AuthzResourceTypes, Doc).
 
 -spec burst_trunks(doc()) -> kz_term:api_integer().
 burst_trunks(Doc) ->

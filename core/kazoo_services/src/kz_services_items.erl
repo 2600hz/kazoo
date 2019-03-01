@@ -238,13 +238,13 @@ maybe_annotate(Type, Difference, Reason, Item) ->
 split_items(Items, ProposedItem) ->
     CategoryName = kz_services_item:category_name(ProposedItem),
     ItemName = kz_services_item:item_name(ProposedItem),
-    Masqueraded = kz_services_item:masqueraded(ProposedItem),
+    Masqueraded = kz_services_item:is_masquerading(ProposedItem),
     case lists:splitwith(fun(Item) ->
                                  kz_services_item:category_name(Item) =:= CategoryName
                                      andalso
                                      kz_services_item:item_name(Item) =:= ItemName
                                      andalso
-                                     kz_services_item:masqueraded(Item) =:= Masqueraded
+                                     kz_services_item:is_masquerading(Item) =:= Masqueraded
                          end, Items)
     of
         {[], RemainingItems} ->

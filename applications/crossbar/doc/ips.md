@@ -6,7 +6,7 @@ The IPs API allows users to manage the IP addresses assigned to their accounts. 
 
 The common use case is adding proxy IPs that must be used when routing calls to upstream resources. If the upstream requires traffic to come from a specific set of IPs, adding those IPs here will cause outbound calls to carriers to be routed through the IP(s) supplied.
 
-## Schema
+#### Schema
 
 IP addresses assigned to the account
 
@@ -14,8 +14,8 @@ IP addresses assigned to the account
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`ips.[]` |   | `string()` |   | `false` |
-`ips` | List of IP addresses | `array(string())` |   | `false` |
+`ips.[]` |   | `string()|string()` |   |   |  
+`ips` | List of IP addresses | `array()` |   | `false` |  
 
 
 
@@ -53,24 +53,38 @@ curl -v -X GET \
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data":["1.2.3.4"]}' \
+    -d '{"data": {"ips" :["1.2.3.4", "5.6.7.8"]}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips
 ```
 
 ```json
 {
     "auth_token": "{AUTH_TOKEN}",
-    "data": [
-        {
-            "assigned_to": "{ACCOUNT_ID}",
-            "host": "proxy1.us-east.myswitch.com",
-            "id": "1.2.3.4",
-            "ip": "1.2.3.4",
-            "status": "assigned",
-            "type": "dedicated_ip",
-            "zone": "us-east"
-        }
-    ],
+    "data": {
+        "ips": ["1.2.3.4", "5.6.7.8"]
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
+## Remove IPs from Account
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/ips
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "ips": ["1.2.3.4", "5.6.7.8"]
+    },
     "request_id": "{REQUEST_ID}",
     "revision": "{REVISION}",
     "status": "success"

@@ -8,7 +8,7 @@
 
 -export([fax_properties/1]).
 -export([collect_channel_props/1]).
--export([notify_email_list/3]).
+-export([notify_email_list/1, notify_email_list/2, notify_email_list/3]).
 -export([filter_numbers/1]).
 -export([is_valid_caller_id/2]).
 
@@ -44,6 +44,14 @@ collect_channel_prop(<<"Hangup-Code">> = Key, JObj) ->
     {Key, Code};
 collect_channel_prop(Key, JObj) ->
     {Key, kz_json:get_value(Key, JObj)}.
+
+-spec notify_email_list(kz_term:ne_binary() | list()) -> list().
+notify_email_list(Email) ->
+    notify_email_list('undefined', 'undefined', Email).
+
+-spec notify_email_list(kz_term:api_binary(), kz_term:ne_binary() | list()) -> list().
+notify_email_list(OwnerEmail, Email) ->
+    notify_email_list('undefined', OwnerEmail, Email).
 
 -spec notify_email_list(kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary() | list()) -> list().
 notify_email_list(From, OwnerEmail, Email) when is_binary(Email) ->

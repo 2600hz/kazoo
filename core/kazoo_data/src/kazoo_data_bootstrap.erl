@@ -23,5 +23,5 @@ start_link() ->
     #data_connection{tag=Tag} = Connection,
     Server = #{tag => Tag, server => kz_dataconnections:get_server(Tag)},
     kz_datamgr:init_dbs(Server),
-    kzs_plan:init(Server),
+    kzs_plan:init(),
     'ignore'.

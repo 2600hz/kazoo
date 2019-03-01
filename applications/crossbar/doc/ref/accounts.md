@@ -10,11 +10,11 @@ Accounts represent tenants or customers on the system. Each account represents a
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`call_recording.account` |   | [#/definitions/call_recording](#call_recording) |   | `false` |  
-`call_recording.endpoint` |   | [#/definitions/call_recording](#call_recording) |   | `false` |  
+`call_recording.account` | endpoint recording settings | [#/definitions/call_recording](#call_recording) |   | `false` |  
+`call_recording.endpoint` | endpoint recording settings | [#/definitions/call_recording](#call_recording) |   | `false` |  
 `call_recording` | call recording configuration | `object()` |   | `false` |  
 `call_restriction` | Account level call restrictions for each available number classification | `object()` | `{}` | `false` |  
-`call_waiting` |   | [#/definitions/call_waiting](#call_waiting) |   | `false` |  
+`call_waiting` | Parameters for server-side call waiting | [#/definitions/call_waiting](#call_waiting) |   | `false` |  
 `caller_id` | The account default caller ID parameters | [#/definitions/caller_id](#caller_id) |   | `false` |  
 `caller_id_options.outbound_privacy` | Determines what appears as caller id for offnet outbound calls. Values: full - hides name and number; name - hides only name; number - hides only number; none - hides nothing | `string('full' | 'name' | 'number' | 'none')` |   | `false` |  
 `caller_id_options.show_rate` | Whether to show the rate | `boolean()` |   | `false` |  
@@ -23,9 +23,9 @@ Key | Description | Type | Default | Required | Support Level
 `do_not_disturb.enabled` | The default value for do-not-disturb | `boolean()` |   | `false` |  
 `do_not_disturb` |   | `object()` |   | `false` |  
 `enabled` | Determines if the account is currently enabled | `boolean()` | `true` | `false` | `supported`
-`formatters` |   | [#/definitions/formatters](#formatters) |   | `false` |  
+`formatters` | Schema for request formatters | [#/definitions/formatters](#formatters) |   | `false` |  
 `language` | The language for this account | `string()` |   | `false` | `supported`
-`metaflows` |   | [#/definitions/metaflows](#metaflows) |   | `false` |  
+`metaflows` | Actions applied to a call outside of the normal callflow, initiated by the caller(s) | [#/definitions/metaflows](#metaflows) |   | `false` |  
 `music_on_hold.media_id` | The ID of a media object that should be used as the default music on hold | `string(0..2048)` |   | `false` |  
 `music_on_hold` | The default music on hold parameters | `object()` | `{}` | `false` |  
 `name` | A friendly name for the account | `string(1..128)` |   | `true` | `supported`
@@ -48,7 +48,7 @@ Key | Description | Type | Default | Required | Support Level
 `timezone` | The default timezone | `string(5..32)` |   | `false` | `supported`
 `topup.threshold` | The account balance when topup occurs | `number()` |   | `false` |  
 `topup` | Topup settings for the account | `object()` |   | `false` |  
-`voicemail.notify.callback` |   | [#/definitions/notify.callback](#notifycallback) |   | `false` |  
+`voicemail.notify.callback` | Schema for a callback options | [#/definitions/notify.callback](#notifycallback) |   | `false` |  
 `voicemail.notify` |   | `object()` |   | `false` |  
 `voicemail` |   | `object()` |   | `false` |  
 `zones.home` | Which zone is considered the account's home zone | `string()` |   | `false` |  
@@ -104,14 +104,18 @@ Defines caller ID settings based on the type of call being made
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
+`asserted.name` | The asserted identity name for the object type | `string(0..35)` |   | `false` |  
+`asserted.number` | The asserted identity number for the object type | `string(0..35)` |   | `false` |  
+`asserted.realm` | The asserted identity realm for the object type | `string()` |   | `false` |  
+`asserted` | Used to convey the proven identity of the originator of a request within a trusted network. | `object()` |   | `false` |  
 `emergency.name` | The caller id name for the object type | `string(0..35)` |   | `false` |  
-`emergency.number` | The caller id name for the object type | `string(0..35)` |   | `false` |  
+`emergency.number` | The caller id number for the object type | `string(0..35)` |   | `false` |  
 `emergency` | The caller ID used when a resource is flagged as 'emergency' | `object()` |   | `false` |  
 `external.name` | The caller id name for the object type | `string(0..35)` |   | `false` |  
-`external.number` | The caller id name for the object type | `string(0..35)` |   | `false` |  
+`external.number` | The caller id number for the object type | `string(0..35)` |   | `false` |  
 `external` | The default caller ID used when dialing external numbers | `object()` |   | `false` |  
 `internal.name` | The caller id name for the object type | `string(0..35)` |   | `false` |  
-`internal.number` | The caller id name for the object type | `string(0..35)` |   | `false` |  
+`internal.number` | The caller id number for the object type | `string(0..35)` |   | `false` |  
 `internal` | The default caller ID used when dialing internal extensions | `object()` |   | `false` |  
 
 ### dialplans
@@ -155,7 +159,7 @@ A metaflow node defines a module to execute, data to provide to that module, and
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`children./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false` |  
+`children./.+/` | A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to | [#/definitions/metaflow](#metaflow) |   | `false` |  
 `children` | Children metaflows | `object()` |   | `false` |  
 `data` | The data/arguments of the metaflow module | `object()` | `{}` | `false` |  
 `module` | The name of the metaflow module to execute at this node | `string(1..64)` |   | `true` |  
@@ -170,9 +174,9 @@ Key | Description | Type | Default | Required | Support Level
 `binding_digit` | What DTMF will trigger the collection and analysis of the subsequent DTMF sequence | `string('1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0' | '*' | '#')` | `*` | `false` |  
 `digit_timeout` | How long to wait between DTMF presses before processing the collected sequence (milliseconds) | `integer()` |   | `false` |  
 `listen_on` | Which leg(s) of the call to listen for DTMF | `string('both' | 'self' | 'peer')` |   | `false` |  
-`numbers./^[0-9]+$/` |   | [#/definitions/metaflow](#metaflow) |   | `false` |  
+`numbers./^[0-9]+$/` | A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to | [#/definitions/metaflow](#metaflow) |   | `false` |  
 `numbers` | A list of static numbers with their flows | `object()` |   | `false` |  
-`patterns./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false` |  
+`patterns./.+/` | A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to | [#/definitions/metaflow](#metaflow) |   | `false` |  
 `patterns` | A list of patterns with their flows | `object()` |   | `false` |  
 
 ### notify.callback

@@ -19,7 +19,7 @@ Key | Description | Type | Default | Required | Support Level
 `media_extension` | Voicemail audio format | `string('mp3' | 'mp4' | 'wav')` | `mp3` | `false` | `supported`
 `name` | A friendly name for the voicemail box | `string(1..128)` |   | `true` | `supported`
 `not_configurable` | Determines if the user can configure this voicemail. | `boolean()` | `false` | `false` | `supported`
-`notify.callback` |   | [#/definitions/notify.callback](#notifycallback) |   | `false` |  
+`notify.callback` | Schema for a callback options | [#/definitions/notify.callback](#notifycallback) |   | `false` |  
 `notify` |   | `object()` |   | `false` | `supported`
 `notify_email_addresses.[]` |   | `string()` |   | `false` | `supported`
 `notify_email_addresses` | List of email addresses to send notifications to (in addition to owner's email, if any) | `array(string())` | `[]` | `false` | `supported`

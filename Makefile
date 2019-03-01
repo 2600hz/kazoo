@@ -255,12 +255,14 @@ code_checks:
 	@$(ROOT)/scripts/check-spelling.bash
 	@$(ROOT)/scripts/kz_diaspora.bash
 	@$(ROOT)/scripts/edocify.escript
+	@$(ROOT)/scripts/kzd_module_check.bash
+	@$(ROOT)/scripts/check-loglines.bash
 
 apis:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-schemas.escript
 	@$(ROOT)/scripts/format-json.sh $(shell find applications core -wholename '*/schemas/*.json')
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-api-endpoints.escript
-	@$(ROOT)/scripts/generate-doc-schemas.sh `grep -rl '#### Schema' core/ applications/ | grep -v '.erl'`
+	@$(ROOT)/scripts/generate-doc-schemas.sh `egrep -rl '(#+) Schema' core/ applications/ | grep -v '.[h|e]rl'`
 	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/api/swagger.json
 	@$(ROOT)/scripts/format-json.sh $(shell find applications core -wholename '*/api/*.json')
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
@@ -275,6 +277,7 @@ docs: docs-validate docs-report docs-setup docs-build
 docs-validate:
 	@$(ROOT)/scripts/check-scripts-readme.bash
 	@$(ROOT)/scripts/empty_schema_descriptions.bash
+	@$(ROOT)/scripts/check-ref-docs.bash
 
 docs-report:
 	@$(ROOT)/scripts/reconcile_docs_to_index.bash

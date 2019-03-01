@@ -203,7 +203,7 @@ send_park(State, Command) ->
         {'won', State1} ->
             case ts_util:maybe_restrict_call(State1, Command) of
                 'true' ->
-                    lager:debug("Trunkstore call to ~p restricted", [props:get_value(<<"To-DID">>, Command)]),
+                    lager:debug("trunkstore call to ~p restricted", [props:get_value(<<"To-DID">>, Command)]),
                     ts_callflow:send_hangup(State1, <<"403">>);
                 _ ->
                     send_offnet(State1, Command)

@@ -51,8 +51,14 @@
 
 -define(MOVE, <<"move">>).
 
+-define(ACCOUNT_REALM_SUFFIX
+       ,kapps_config:get_binary(?ACCOUNTS_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>)
+       ).
+-define(RANDOM_REALM_STRENGTH
+       ,kapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"random_realm_strength">>, 3)
+       ).
 -define(ALLOW_DIRECT_CLIENTS
-       ,kapps_config:get_is_true(?KZ_ACCOUNTS_DB, 'allow_subaccounts_for_direct', 'true')
+       ,kapps_config:get_is_true(?KZ_ACCOUNTS_DB, <<"allow_subaccounts_for_direct">>, 'true')
        ).
 
 -spec init() -> 'ok'.

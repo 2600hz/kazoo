@@ -109,11 +109,11 @@ filter_extensions(BuilIn, Options) ->
 -spec handle_MAIL(binary(), state()) -> {'ok', state()}.
 handle_MAIL(FromHeader, #state{to='undefined'}=State) ->
     From = kz_term:to_lower_binary(FromHeader),
-    lager:debug("Mail from ~s", [From]),
+    lager:debug("mail from ~s", [From]),
     {'ok', State#state{from=From}};
 handle_MAIL(FromHeader, State) ->
     From = kz_term:to_lower_binary(FromHeader),
-    lager:debug("Checking Mail from ~s", [From]),
+    lager:debug("checking Mail from ~s", [From]),
     check_faxbox((reset(State))#state{from=From}).
 
 -spec handle_MAIL_extension(binary(), state()) ->
@@ -128,11 +128,11 @@ handle_MAIL_extension(Extension, _State) ->
                          {'error', string(), state()}.
 handle_RCPT(ToHeader, #state{from='undefined'}=State) ->
     To = kz_term:to_lower_binary(ToHeader),
-    lager:debug("Mail to ~s", [To]),
+    lager:debug("mail to ~s", [To]),
     {'ok', State#state{to=To}};
 handle_RCPT(ToHeader, State) ->
     To = kz_term:to_lower_binary(ToHeader),
-    lager:debug("Checking Mail to ~s", [To]),
+    lager:debug("checking Mail to ~s", [To]),
     check_faxbox((reset(State))#state{to=To}).
 
 -spec handle_RCPT_extension(binary(), state()) ->
@@ -158,7 +158,7 @@ handle_DATA(From, To, Data, #state{doc='undefined'}=State) ->
         Error -> Error
     end;
 handle_DATA(From, To, Data, #state{options=Options}=State) ->
-    lager:debug("Handle Data From ~p to ~p", [From,To]),
+    lager:debug("handle Data From ~p to ~p", [From,To]),
 
     %% JMA: Can this be done with kz_binary:rand_hex() ?
     Reference = lists:flatten(
@@ -168,7 +168,7 @@ handle_DATA(From, To, Data, #state{options=Options}=State) ->
 
     try mimemail:decode(Data) of
         {Type, SubType, Headers, Parameters, Body} ->
-            lager:debug("Message decoded successfully!"),
+            lager:debug("message decoded successfully!"),
             case process_message(Type, SubType, Headers, Parameters, Body, State) of
                 {ProcessResult, #state{errors=[]}=NewState} ->
                     {ProcessResult, Reference, NewState};
@@ -177,7 +177,7 @@ handle_DATA(From, To, Data, #state{options=Options}=State) ->
             end
     catch
         _What:_Why ->
-            lager:debug("Message decode FAILED with ~p:~p", [_What, _Why]),
+            lager:debug("message decode FAILED with ~p:~p", [_What, _Why]),
             handle_DATA_exception(Options, Reference, Data),
             {'error', "554 Message decode failed", State#state{errors=[<<"Message decode failed">>]
                                                               ,has_smtp_errors='true'

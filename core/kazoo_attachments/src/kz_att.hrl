@@ -7,7 +7,14 @@
 
 -define(CONFIG_CAT, <<"attachments">>).
 
+%% {Db, DocId, AttachmentName}
 -type attachment_info() :: {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
+
+-type url_field() :: {'arg', kz_term:ne_binary()} |
+                     {'field', kz_term:ne_binary()} |
+                     {'const', kz_term:ne_binary()} |
+                     {'group', url_fields()}.
+-type url_fields() :: [url_field()].
 
 -define(KZ_ATT_HRL, 'true').
 -endif.

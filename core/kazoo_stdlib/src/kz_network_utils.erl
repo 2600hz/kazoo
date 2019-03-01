@@ -63,8 +63,8 @@
 -define(LOOKUP_TIMEOUT, 500).
 -define(LOOKUP_OPTIONS, [{'timeout', ?LOOKUP_TIMEOUT}]).
 
--define(BIND_ALL_INTERFACE_4, "0.0.0.0").
--define(BIND_ALL_INTERFACE_6, "::").
+-define(BIND_ALL_INTERFACE_4, <<"0.0.0.0">>).
+-define(BIND_ALL_INTERFACE_6, <<"::">>).
 
 -type srvtuple() :: {integer(), integer(), integer(), string()}.
 -type naptrtuple() :: {integer(), integer(), string(), string(), string(), string()}.
@@ -135,11 +135,11 @@ is_cidr(Address) ->
 -spec get_supported_binding_ip() -> inet:ip_address().
 get_supported_binding_ip() ->
     DefaultIP = default_binding_ip(),
-    {'ok', DefaultIPAddress} = inet:parse_address(DefaultIP),
+    {'ok', DefaultIPAddress} = inet:parse_address(kz_term:to_list(DefaultIP)),
     DefaultIPAddress.
 
 %% @equiv get_supported_binding_ip(IP, default_binding_ip())
--spec get_supported_binding_ip(kz_term:api_string()) -> inet:ip_address().
+-spec get_supported_binding_ip(kz_term:text() | 'undefined') -> inet:ip_address().
 get_supported_binding_ip('undefined') ->
     get_supported_binding_ip();
 get_supported_binding_ip(IP) ->
@@ -167,7 +167,8 @@ get_supported_binding_ip(IP) ->
 %% @throws {error, Reason::kz_term:ne_binary()}
 %% @end
 %%------------------------------------------------------------------------------
--spec get_supported_binding_ip(kz_term:api_string(), kz_term:api_string()) -> inet:ip_address().
+-spec get_supported_binding_ip(kz_term:text() | 'undefined', kz_term:text() | 'undefined') ->
+                                      inet:ip_address().
 get_supported_binding_ip('undefined', 'undefined') ->
     get_supported_binding_ip();
 get_supported_binding_ip('undefined', DefaultIP) ->
@@ -227,13 +228,13 @@ detect_ip_family(IP) ->
 %% @throws {error, Reason::kz_term:ne_binary()}
 %% @end
 %%------------------------------------------------------------------------------
--spec default_binding_ip() -> string().
+-spec default_binding_ip() -> kz_term:ne_binary().
 default_binding_ip() ->
     default_binding_ip(is_protocol_family_supported('inet')
                       ,is_protocol_family_supported('inet6')
                       ).
 
--spec default_binding_ip(boolean(), boolean()) -> string().
+-spec default_binding_ip(boolean(), boolean()) -> kz_term:ne_binary().
 default_binding_ip('true', _) -> ?BIND_ALL_INTERFACE_4;
 default_binding_ip('false', 'true') -> ?BIND_ALL_INTERFACE_6;
 default_binding_ip('false', 'false') ->
@@ -256,7 +257,7 @@ is_protocol_family_supported(Family) ->
 %% @see get_supported_binding_ip/2
 %% @end
 %%------------------------------------------------------------------------------
--spec detect_ip_is_bindable('inet' | 'inet6' | kz_term:ne_binary() | string() | {'inet' | 'inet6', inet:ip_address()} | {'error', 'einval'}) ->
+-spec detect_ip_is_bindable('inet' | 'inet6' | kz_term:text() | {'inet' | 'inet6', inet:ip_address()} | {'error', 'einval'}) ->
                                    {'ok', 'inet' | 'inet6', inet:ip_address()} |
                                    {'error', 'inet' | 'inet6'| 'einval', string()}.
 detect_ip_is_bindable(IP) when is_binary(IP) ->

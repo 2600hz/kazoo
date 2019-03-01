@@ -36,20 +36,17 @@
     },
     "properties": {
         "attachments": {
-            "$ref": "storage.attachments",
-            "description": "Defines where and how to store attachments"
+            "$ref": "storage.attachments"
         },
         "connections": {
-            "$ref": "storage.connections",
-            "description": "Describes alternative connections to use (such as alternative CouchDB instances"
+            "$ref": "storage.connections"
         },
         "id": {
             "description": "ID of the storage document",
             "type": "string"
         },
         "plan": {
-            "$ref": "storage.plan",
-            "description": "Describes how to store documents depending on the database or document type"
+            "$ref": "storage.plan"
         }
     },
     "type": "object"

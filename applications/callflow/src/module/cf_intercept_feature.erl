@@ -71,7 +71,7 @@ handle(Data, Call) ->
         {'ok', Params} ->
             maybe_intercept(Data, Call, Params);
         {'error', _E} ->
-            lager:info("Error <<~s>> processing intercept '~s' for number ~s"
+            lager:info("error <<~s>> processing intercept '~s' for number ~s"
                       ,[_E, InterceptType, Number]
                       ),
             _ = kapps_call_command:b_play(<<"park-no_caller">>, Call),

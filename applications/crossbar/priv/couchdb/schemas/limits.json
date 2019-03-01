@@ -9,6 +9,15 @@
             "support_level": "supported",
             "type": "boolean"
         },
+        "authz_resource_types": {
+            "default": [],
+            "description": "List of Resource-Types that will authorize the call; bypassing limit checks and billing",
+            "items": {
+                "type": "string"
+            },
+            "support_level": "beta",
+            "type": "array"
+        },
         "burst_trunks": {
             "description": "The number of two-way, flat-rate trunks used only if no other trunks are available",
             "minimum": 0,

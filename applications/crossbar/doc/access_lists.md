@@ -16,7 +16,7 @@ Sections:
     * `cidrs` - array containing IPv4 subnet addresses in CIDR notation that should be allowed or denied (CIDR array looks much like one in ecallmgr configuration document)
     * `user_agent` - regex for `user_agent` field specified in SIP packet. Useful for protecting hardware phone accounts from various brute-force attacks
 
-## Schema
+#### Schema
 
 Access Control List entries for device or account
 
@@ -24,10 +24,10 @@ Access Control List entries for device or account
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`cidrs.[]` |   | `string()` |   | `true` |
-`cidrs` | Classless Inter-Domain Routing IP notation for use on the access lists | `array(string())` |   | `true` |
-`order` | Allow-Deny or Deny-Allow? | `string('allow,deny' | 'deny,allow')` |   | `true` |
-`user_agent` | Regexp to match valid user agent strings | `string()` |   | `false` |
+`cidrs.[]` |   | `string()` |   | `true` |  
+`cidrs` | Classless Inter-Domain Routing IP notation for use on the access lists | `array(string())` |   | `true` |  
+`order` | Allow-Deny or Deny-Allow? | `string('allow,deny' | 'deny,allow')` |   | `true` |  
+`user_agent` | Regexp to match valid user agent strings | `string()` |   | `false` |  
 
 
 

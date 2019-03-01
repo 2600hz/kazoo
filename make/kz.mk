@@ -39,7 +39,13 @@ else
 endif
 ERLC_OPTS += -Iinclude -Isrc -I../ +'{parse_transform, lager_transform}'
 ## Use pedantic flags when compiling apps from applications/ & core/
-ERLC_OPTS += -Werror +warn_export_all +warn_unused_import +warn_unused_vars +warn_missing_spec +deterministic
+ERLC_OPTS += +warn_export_all +warn_unused_import +warn_unused_vars +warn_missing_spec +deterministic
+
+ifneq (,$(findstring 21._,$(OTP_VERSION)))
+    ERLC_OPTS += -Werror
+endif
+
+
 #ERLC_OPTS += +warn_untyped_record
 
 ELIBS ?= $(if $(ERL_LIBS),$(ERL_LIBS):)$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications
@@ -129,8 +135,10 @@ TEST_CONFIG=$(ROOT)/rel/config-test.ini
 ## Use this one when debugging
 test: compile-test
 	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript $(TEST_MODULE_NAMES)
-test.%: compile-test
+test.%: check-compile-test
 	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript $*
+
+check-compile-test: $(COMPILE_MOAR) test/$(PROJECT).app
 
 COVER_REPORT_DIR=cover
 

@@ -14,8 +14,13 @@
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
+-export([aws_default_fields/0]).
+
 -define(AMAZON_S3_HOST, <<"s3.amazonaws.com">>).
 -define(AMAZON_S3_UPLOAD_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 30).
+
+-define(AMAZON_S3_HTTP_DEFAULT_CLIENT, 'lhttpc').
+%% httpc seems broken in otp 21.2.5
 
 -type s3_error() :: {'aws_error'
                     ,{'socket_error', binary()} |
@@ -50,8 +55,9 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
                    ]};
         {'error', _FilePath, Error} ->
             Routines = [{fun kz_att_error:set_req_url/2, FilePath}
-                        | kz_att_error:put_routines(Params, DbName, DocId, AName,
-                                                    <<>>, Options)
+                        | kz_att_error:put_routines(Params, DbName, DocId, AName
+                                                   ,<<>>, Options
+                                                   )
                        ],
             handle_s3_error(Error, Routines)
     end.
@@ -88,7 +94,7 @@ fetch_attachment(Conn, DbName, DocId, AName) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec bucket(map()) -> string().
+-spec bucket(gen_attachment:settings()) -> string().
 bucket(#{bucket := Bucket}) -> kz_term:to_list(Bucket).
 
 -spec fix_scheme(kz_term:ne_binary()) -> kz_term:ne_binary().
@@ -131,15 +137,16 @@ aws_default_bucket_access(Map) ->
 aws_bucket_access(Map) ->
     kz_term:to_atom(maps:get('bucket_access_method', Map, aws_default_bucket_access(Map)), 'true').
 
--spec aws_config(map()) -> aws_config().
+-spec aws_config(gen_attachment:settings()) -> aws_config().
 aws_config(#{'key' := Key
             ,'secret' := Secret
-            }=Map) ->
+            }=Map
+          ) ->
     Region = aws_region(Map),
     BucketAfterHost = kz_term:is_true(maps:get('bucket_after_host', Map, 'false')),
     BucketAccess = aws_bucket_access(Map),
     Timeout = kz_term:to_integer(maps:get('upload_timeout', Map, ?AMAZON_S3_UPLOAD_TIMEOUT)),
-    HttpClient = kz_term:to_atom(maps:get('http_client', Map, 'httpc'), 'true'),
+    HttpClient = kz_term:to_atom(maps:get('http_client', Map, ?AMAZON_S3_HTTP_DEFAULT_CLIENT), 'true'),
 
     Host = aws_host(Map),
     Scheme = fix_scheme(maps:get('scheme', Map,  <<"https://">>)),
@@ -159,16 +166,16 @@ aws_config(#{'key' := Key
                ,aws_region=Region
                }.
 
--spec aws_default_fields() -> kz_term:proplist().
+-spec aws_default_fields() -> url_fields().
 aws_default_fields() ->
-    [{arg, <<"db">>}
-    ,{group, [{arg, <<"id">>}
-             ,<<"_">>
-             ,{arg, <<"attachment">>}
-             ]}
+    [{'arg', <<"db">>}
+    ,{'group', [{'arg', <<"id">>}
+               ,{'const', <<"_">>}
+               ,{'arg', <<"attachment">>}
+               ]}
     ].
 
--spec aws_format_url(map(), attachment_info()) -> kz_term:ne_binary().
+-spec aws_format_url(gen_attachment:settings(), attachment_info()) -> kz_term:ne_binary().
 aws_format_url(Map, AttInfo) ->
     kz_att_util:format_url(Map, AttInfo, aws_default_fields()).
 
@@ -186,11 +193,11 @@ merge_params(S3, M2)
     M1 = decode_retrieval(S3),
     merge_params(M1, M2).
 
--spec aws_bpc(map(), attachment_info()) -> {string(), kz_term:api_ne_binary(), aws_config()}.
+-spec aws_bpc(gen_attachment:settings(), attachment_info()) -> {string(), kz_term:api_ne_binary(), aws_config()}.
 aws_bpc(Map, AttInfo) ->
     {bucket(Map), aws_format_url(Map, AttInfo), aws_config(Map)}.
 
--spec aws_bpc(kz_term:ne_binary(), map() | undefined, attachment_info()) -> {string(), kz_term:api_ne_binary(), aws_config()}.
+-spec aws_bpc(kz_term:ne_binary(), map() | 'undefined', attachment_info()) -> {string(), kz_term:api_ne_binary(), aws_config()}.
 aws_bpc(S3, Handler, Attinfo) ->
     aws_bpc(merge_params(S3, Handler), Attinfo).
 
@@ -284,7 +291,7 @@ get_object(Bucket, FilePath, #aws_config{s3_host=Host} = Config) ->
 %% `erlcloud_s3:s3_request2/8'.
 -spec handle_s3_error(s3_error(), kz_att_error:update_routines()) -> kz_att_error:error().
 handle_s3_error({'aws_error'
-                ,{'http_error', RespCode, RespStatusLine, RespBody}
+                ,{'http_error', RespCode, _RespStatusLine, RespBody}
                 } = _E
                ,Routines
                ) ->
@@ -309,7 +316,10 @@ handle_s3_error(_E, Routines) ->
 -spec get_reason(atom() | pos_integer(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_reason(RespCode, RespBody) when RespCode >= 400 ->
     %% If the `RespCode' value is >= 400 then the resp_body must contain an error object
-    {Xml, _} = xmerl_scan:string(binary_to_list(RespBody)),
-    kz_xml:get_value("//Message/text()", Xml);
+    try xmerl_scan:string(binary_to_list(RespBody)) of
+        {Xml, _} -> kz_xml:get_value("//Message/text()", Xml)
+    catch
+        _:_ -> kz_http_util:http_code_to_status_line(RespCode)
+    end;
 get_reason(RespCode, _RespBody) ->
     kz_http_util:http_code_to_status_line(RespCode).

@@ -47,7 +47,6 @@
         ]).
 
 -export([does_schema_exist/1]).
--export([check_system_configs/0]).
 -export([update_schemas/0]).
 
 -export([db_init/0]).
@@ -1180,8 +1179,7 @@ read_image(File) ->
                            {'invalid_data', kz_term:proplist()}.
 find_metadata(AppPath) ->
     {'ok', JSON} = file:read_file(filename:join([AppPath, <<"metadata">>, <<"app.json">>])),
-    {'ok', Schema} = kz_json_schema:load(<<"app">>),
-    case jesse:validate_with_schema(Schema, kz_doc:public_fields(kz_json:decode(JSON))) of
+    case kz_json_schema:validate(<<"app">>, kz_doc:public_fields(kz_json:decode(JSON))) of
         {'ok', _}=OK -> OK;
         {'error', Errors} ->
             {'invalid_data', [Error || {'data_invalid', _, Error, _, _} <- Errors]}
@@ -1304,21 +1302,6 @@ set_app_screenshots(AppId, PathToScreenshotsFolder) ->
     update_screenshots(AppId, MA, SShots).
 
 %%------------------------------------------------------------------------------
-%% @doc Validate system schemas inside `system_schemas' database.
-%%
-%% @see kapps_maintenance:validate_system_configs/0
-%% @end
-%%------------------------------------------------------------------------------
--spec check_system_configs() -> 'ok'.
-check_system_configs() ->
-    lager:notice("starting system schemas validation"),
-    _ = [lager:warning("System config ~s validation error:~p", [Config, Error])
-         || {Config, Error} <- kapps_maintenance:validate_system_configs()
-        ],
-    lager:notice("finished system schemas validation"),
-    'ok'.
-
-%%------------------------------------------------------------------------------
 %% @doc Updates system schemas using files in Crossbar `priv' folder during
 %% start up.
 %%
@@ -1346,7 +1329,7 @@ db_init_schemas() ->
     kz_datamgr:suppress_change_notice(),
     update_schemas(),
     kz_datamgr:enable_change_notice(),
-    check_system_configs().
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Updating system schemas.

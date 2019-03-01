@@ -14,6 +14,8 @@
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
+-export([dropbox_default_fields/0]).
+
 -define(DRV_UPLOAD_URL, <<"https://content.dropboxapi.com/2/files/upload">>).
 -define(DRV_FETCH_URL, <<"https://content.dropboxapi.com/2/files/download">>).
 -define(DRV_DROPBOX_HEADER(I), {<<"Dropbox-API-Arg">>, kz_json:encode(kz_json:from_list([{<<"path">>, I}]))}).
@@ -33,8 +35,9 @@
                     ,gen_attachment:contents()
                     ,gen_attachment:options()
                     ) -> gen_attachment:put_response().
-put_attachment(#{'oauth_doc_id' := TokenDocId} = Settings,
-               DbName, DocId, AName, Contents, _Options) ->
+put_attachment(#{'oauth_doc_id' := TokenDocId} = Settings
+              ,DbName, DocId, AName, Contents, _Options
+              ) ->
     Authorization = kz_auth_client:token_for_auth_id(TokenDocId),
     do_put_attachment(Authorization, Settings, DbName, DocId, AName, Contents, _Options).
 
@@ -47,7 +50,8 @@ put_attachment(#{'oauth_doc_id' := TokenDocId} = Settings,
                        ,gen_attachment:options()
                        ) -> gen_attachment:put_response().
 do_put_attachment({'ok', #{'token' := #{'authorization' := Authorization}}}
-                 ,Settings ,DbName, DocId, AName, Contents, Options) ->
+                 ,Settings ,DbName, DocId, AName, Contents, Options
+                 ) ->
     Url = resolve_path(Settings, {DbName, DocId, AName}),
     Headers = [{<<"Authorization">>, Authorization}
               ,{<<"Content-Type">>, <<"application/octet-stream">>}
@@ -55,7 +59,7 @@ do_put_attachment({'ok', #{'token' := #{'authorization' := Authorization}}}
               ],
     Routines = kz_att_error:put_routines(Settings, DbName, DocId, AName, Contents, Options),
     case dropbox_post(?DRV_UPLOAD_URL, Headers, Contents) of
-        {ok, ContentId, ResponseHeaders} ->
+        {'ok', ContentId, ResponseHeaders} ->
             Data = base64:encode(term_to_binary({Settings, ContentId})),
             {'ok', [{'attachment', [{<<"dropbox">>, Data}
                                    ,{<<"metadata">>, kz_json:from_list(ResponseHeaders)}
@@ -131,10 +135,10 @@ do_fetch_attachment({'error', _}, _, HandlerProps, DbName, DocId, AName) ->
 resolve_path(Settings, AttInfo) ->
     <<"/", (dropbox_format_url(Settings, AttInfo))/binary>>.
 
--spec dropbox_default_fields() -> kz_term:proplist().
+-spec dropbox_default_fields() -> url_fields().
 dropbox_default_fields() ->
     [{'group', [{'arg', <<"id">>}
-               ,<<"_">>
+               ,{'const', <<"_">>}
                ,{'arg', <<"attachment">>}
                ]}
     ].
@@ -151,8 +155,14 @@ dropbox_post(Url, Headers, Body) ->
         {'ok', 200, ResponseHeaders, ResponseBody} ->
             BodyJObj = kz_json:decode(ResponseBody),
             case kz_json:get_value(<<"id">>, BodyJObj) of
-                undefined -> {'error', Url, 'return_id_missing'};
-                ContentId -> {'ok', ContentId, [{<<"body">>, BodyJObj} | kz_att_util:headers_as_binaries(ResponseHeaders)]}
+                'undefined' -> {'error', Url, 'return_id_missing'};
+                ContentId ->
+                    {'ok'
+                    ,ContentId
+                    ,[{<<"body">>, BodyJObj}
+                      | kz_att_util:headers_as_binaries(ResponseHeaders)
+                     ]
+                    }
             end;
         Resp ->
             {'error', Url, Resp}

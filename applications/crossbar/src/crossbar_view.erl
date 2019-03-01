@@ -34,7 +34,7 @@
 -include("crossbar.hrl").
 
 -define(CB_SPECIFIC_VIEW_OPTIONS,
-        ['ascending', 'databases', 'mapper'
+        ['ascending', 'databases', 'mapper', 'no_filter'
 
          %% non-range query
         ,'end_keymap', 'keymap', 'start_keymap'
@@ -66,7 +66,7 @@
 %% A function of arity 1. The timestamp from `create_from' or `created_to' will pass to this function
 %% to construct the start or end key.
 -type range_keymap() :: 'nil' | api_range_key() | range_keymap_fun().
-%% Creates a start/key key for ranged queries. A binary or integer or a list of binary or integer
+%% Creates a start/end key for ranged queries. A binary or integer or a list of binary or integer
 %% to create start/end key. The timestamp will added to end of it.
 %% If `undefined' only the timestamp will be used as the key. If timestamp in the view key is at start of the key,
 %% use {@link suffix_key_fun}. If the view doesn't need any start/end key you can set this `nil' to bypass setting

@@ -147,6 +147,13 @@ Typically \`TO\_DIALYZE\` would be a generated list of files.
 
 Do note: this will only check the file itself for issues. To really leverage Dialyzer, you'll want to include remote project modules for Dialyzer to use as well.
 
+## check-loglines.bash
+
+Checks code for log lines that start with a capital letter.
+
+## check-ref-docs.bash
+
+Compares ref docs to their real version
 
 ## check-scripts-readme.bash
 
@@ -463,6 +470,9 @@ Parses the core/applications code looking for calls to kapps\_config (module use
 
 Also parses callflow's action modules looking for keys used to access values in the Data JSON object to build a base JSON schema file for each callflow action.
 
+## `kzd_module_check.bash`
+
+Check kazoo document auto-gen .src modules against the corresponding .erl files.
 
 ## `kz_diaspora.bash`
 

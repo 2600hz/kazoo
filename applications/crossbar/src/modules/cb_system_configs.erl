@@ -304,9 +304,18 @@ set_db_to_system(Context) ->
 -spec maybe_set_private_fields(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 maybe_set_private_fields(ConfigId, JObj) ->
     case kapps_config:fetch_category(ConfigId) of
-        {ok, Doc} -> kz_json:merge(JObj, kz_doc:private_fields(Doc));
-        _ -> kz_doc:set_id(JObj, ConfigId)
+        {ok, Doc} -> update_pvt_fields(ConfigId, kz_json:merge(JObj, kz_doc:private_fields(Doc)));
+        _ -> update_pvt_fields(ConfigId, JObj)
     end.
+
+-spec update_pvt_fields(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+update_pvt_fields(Category, JObj) ->
+    kz_doc:update_pvt_parameters(JObj
+                                ,?KZ_CONFIG_DB
+                                ,[{'type', <<"config">>}
+                                 ,{'id', Category}
+                                 ]
+                                ).
 
 -spec set_id(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 set_id(Id, JObj) ->

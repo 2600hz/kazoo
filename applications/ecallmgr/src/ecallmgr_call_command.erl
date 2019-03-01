@@ -472,13 +472,14 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
         'true' ->
             ChannelVars = kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
             CallVars = kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Call-Vars">>, JObj, kz_json:new())),
-            AppVars = kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, kz_json:new())),
+            {JSONAppVars, AppVars} = split_json_cavs(kz_json:to_proplist(kz_json:get_json_value(<<"Custom-Application-Vars">>, JObj, kz_json:new()))),
 
             Command = get_set_command(JObj),
 
             props:filter_undefined(
               [{Command, maybe_multi_set(Node, UUID, ChannelVars)}
               ,{Command, maybe_multi_set(Node, UUID, [{?CAV(K), V} || {K, V} <- AppVars])}
+              ,{Command, maybe_multi_set(Node, UUID, [{?JSON_CAV(K), V} || {K, V} <- JSONAppVars])}
                %% CallVars are always exported
               ,{<<"kz_export">>, maybe_multi_set(Node, UUID, CallVars)}
               ])
@@ -574,6 +575,10 @@ media_macro_to_file_string(Macro) ->
     Paths = lists:map(fun ecallmgr_util:media_path/1, Macro),
     list_to_binary(["file_string://", kz_binary:join(Paths, <<"!">>)]).
 
+-spec split_json_cavs(kz_term:proplist()) -> {kz_term:proplist(), kz_term:proplist()}.
+split_json_cavs(AppVars) ->
+    lists:partition(fun({_, V}) -> kz_json:is_json_object(V) end, AppVars).
+
 -spec get_set_command(kz_json:object()) -> kz_term:ne_binary().
 get_set_command(JObj) ->
     case kz_json:get_boolean_value(<<"Export-All">>, JObj, 'false') of
@@ -607,7 +612,7 @@ fixup_redirect_node(Node) ->
 -spec maybe_add_redirect_header(atom(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
 maybe_add_redirect_header(_Node, _UUID, 'undefined') -> 'ok';
 maybe_add_redirect_header(Node, UUID, RedirectServer) ->
-    lager:debug("Set X-Redirect-Server to ~s", [RedirectServer]),
+    lager:debug("set X-Redirect-Server to ~s", [RedirectServer]),
     ecallmgr_fs_command:set(Node, UUID, [{<<"sip_rh_X-Redirect-Server">>, RedirectServer}]).
 
 %%------------------------------------------------------------------------------

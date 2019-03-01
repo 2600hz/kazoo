@@ -420,9 +420,9 @@ maybe_restrict_call(#ts_callflow_state{acctid=AccountId
                    ) ->
     Number = props:get_value(<<"To-DID">>, Command),
     Classification = knm_converters:classify(Number),
-    lager:debug("Trunkstore classified number as ~p", [Classification]),
+    lager:debug("trunkstore classified number as ~p", [Classification]),
     Username = kz_json:get_value([<<"Custom-Channel-Vars">>,<<"Username">>], RRObj),
     Realm = kz_json:get_value([<<"Custom-Channel-Vars">>,<<"Realm">>], RRObj),
     {'ok', Opts} = lookup_user_flags(Username, Realm, AccountId),
-    lager:debug("Trunkstore lookup_user_flag results: ~p", [Opts]),
+    lager:debug("trunkstore lookup_user_flag results: ~p", [Opts]),
     <<"deny">> =:= kz_json:get_value([<<"call_restriction">>, Classification, <<"action">>], Opts).

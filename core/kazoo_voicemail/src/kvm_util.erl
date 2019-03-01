@@ -383,8 +383,11 @@ maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
                                   ,kz_json:get_value(<<"text">>, Resp)
                                   ,Resp
                                   );
-        {'error', _E} ->
-            lager:info("error transcribing: ~p", [_E]),
+        {'error', ErrorCode} ->
+            lager:info("error transcribing: ~p", [ErrorCode]),
+            'undefined';
+        {'error', ErrorCode, Description} ->
+            lager:info("error transcribing: ~p, ~p", [ErrorCode, Description]),
             'undefined'
     end.
 

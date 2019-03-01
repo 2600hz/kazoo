@@ -682,20 +682,24 @@ find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
                 ,kz_json:find([Key, <<"type">>]
                              ,[DataJObj, TemplateMetaJObj]
                              )
+                ,is_preview(DataJObj)
                 ).
 
--spec find_address(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
+-spec find_address(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), boolean()) ->
                           email_pair().
-find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
+find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined', _) ->
     lager:debug("email type for '~s' not defined in template, checking just the key", [Key]),
     {Key, find_first_defined_address(Key, [Key], [DataJObj, TemplateMetaJObj])};
-find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_SPECIFIED) ->
+find_address(DataJObj, _TemplateMetaJObj, _ConfigCat, <<"to">> = Key, ?EMAIL_SPECIFIED, 'true') ->
+    lager:debug("notification is preview, checking data only for '~s' email addresses", [Key]),
+    {Key, find_first_defined_address(Key, [[Key, <<"email_addresses">>], Key], [DataJObj])};
+find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_SPECIFIED, _) ->
     lager:debug("checking template for '~s' email addresses", [Key]),
     {Key, find_first_defined_address(Key, [[Key, <<"email_addresses">>], Key], [TemplateMetaJObj, DataJObj])};
-find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_ORIGINAL) ->
+find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_ORIGINAL, _) ->
     lager:debug("checking data for '~s' email address(es)", [Key]),
     {Key, find_first_defined_address(Key, [Key, [Key, <<"email_addresses">>]], [DataJObj, TemplateMetaJObj])};
-find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
+find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS, _) ->
     lager:debug("looking for admin emails for '~s'", [Key]),
     {Key, find_admin_emails(DataJObj, ConfigCat, Key)}.
 

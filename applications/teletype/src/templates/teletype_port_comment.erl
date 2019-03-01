@@ -98,12 +98,46 @@ handle_port_request(DataJObj) ->
                                     ,Macros
                                     ),
 
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
+    send_emails(DataJObj, TemplateMetaJObj, Subject, RenderedTemplates, teletype_util:is_preview(DataJObj)).
 
+
+-spec send_emails(kz_json:object(), kz_json:object(), kz_term:ne_binary(), rendered_templates(), boolean()) -> template_response().
+send_emails(DataJObj, TemplateMetaJObj, Subject, RenderedTemplates, 'true') ->
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
-        {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
+        {'error', Reason} ->
+            teletype_util:notification_failed(?TEMPLATE_ID, Reason)
+    end;
+send_emails(DataJObj, TemplateMetaJObj, Subject, RenderedTemplates, 'false') ->
+    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
+    maybe_send_to_submitter(Emails, Subject, RenderedTemplates),
+
+    AuthorityEmails = props:set_value(<<"to">>
+                                     ,kz_json:get_value(<<"authority_emails">>, DataJObj, [])
+                                     ,props:delete_keys([<<"bcc">>, <<"cc">>], Emails)
+                                     ),
+
+    lager:debug("sending ~s to port authority: ~p"
+               ,[?TEMPLATE_ID, props:get_value(<<"to">>, AuthorityEmails)]
+               ),
+    _ = put('skip_smtp_log', 'true'),
+    case teletype_util:send_email(AuthorityEmails, Subject, RenderedTemplates) of
+        'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
+        {'error', Reason} ->
+            lager:debug("unable to send emails to port authority: ~p", [Reason]),
+            teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
+
+-spec maybe_send_to_submitter(email_map(), kz_term:ne_binary(), rendered_templates()) -> 'ok'.
+maybe_send_to_submitter([], _, _) ->
+    lager:debug("no port submitter email addresses were found in data or template");
+maybe_send_to_submitter(Emails, Subject, RenderedTemplates) ->
+    lager:debug("sending ~s to port sumbitter (or template default): ~p"
+               ,[?TEMPLATE_ID, props:get_value(<<"to">>, Emails)]
+               ),
+    _ = teletype_util:send_email(Emails, Subject, RenderedTemplates),
+    'ok'.
 
 -spec user_data(kz_json:object()) -> kz_term:proplist().
 user_data(DataJObj) ->

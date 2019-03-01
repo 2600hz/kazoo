@@ -40,7 +40,8 @@
             "map": [
                 "function(doc) {",
                 "  if (doc.pvt_type != 'cdr' || doc.pvt_deleted) return;",
-                "  emit([doc.interaction_id, doc.channel_created_time], null)",
+                "  var channel_time = doc.channel_created_time || (doc.timestamp - doc.duration_seconds);",
+                "  emit([doc.interaction_id, channel_time], null)",
                 "}"
             ]
         },
@@ -48,9 +49,10 @@
             "map": [
                 "function(doc) {",
                 "  if (doc.pvt_deleted || doc.pvt_type != 'cdr' || !doc.custom_channel_vars || !doc.custom_channel_vars.owner_id) return;",
+                "  var channel_time = doc.channel_created_time || (doc.timestamp - doc.duration_seconds);",
                 "  emit([doc.custom_channel_vars.owner_id, doc.interaction_time, doc.interaction_key, doc.channel_created_time], {",
                 "    id: doc._id,",
-                "    channel_time: doc.channel_created_time,",
+                "    channel_time: channel_time,",
                 "    leg: doc.channel_loopback_leg || '_'",
                 "  });",
                 "}"

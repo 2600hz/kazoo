@@ -84,11 +84,11 @@ maybe_hook_call(Call) ->
 -spec send_init_hook(kapps_call:call()) -> boolean().
 send_init_hook(Call) ->
     lager:debug("===CALL STARTED===", []),
-    lager:debug("Event: init", []),
-    lager:debug("Call-ID: ~s", [kapps_call:call_id_direct(Call)]),
-    lager:debug("To: ~s", [knm_converters:normalize(kapps_call:to_user(Call))]),
-    lager:debug("From: ~s", [knm_converters:normalize(kapps_call:caller_id_number(Call))]),
-    lager:debug("Inception: ~s", [get_inception(Call)]),
+    lager:debug("event: init", []),
+    lager:debug("call-ID: ~s", [kapps_call:call_id_direct(Call)]),
+    lager:debug("to: ~s", [knm_converters:normalize(kapps_call:to_user(Call))]),
+    lager:debug("from: ~s", [knm_converters:normalize(kapps_call:caller_id_number(Call))]),
+    lager:debug("inception: ~s", [get_inception(Call)]),
     lager:debug("================", []),
 
     JObj = kz_json:from_list(
@@ -108,7 +108,7 @@ send_init_hook(Call) ->
                      )
     of
         {'error', Reason} ->
-            lager:warning("Error when sending singular call init hook: ~p", [Reason]),
+            lager:warning("error when sending singular call init hook: ~p", [Reason]),
             'false';
         _ ->
             'true'
@@ -123,14 +123,14 @@ send_init_hook(Call) ->
 -spec send_end_hook(kapps_call:call(), kz_json:object()) -> boolean().
 send_end_hook(Call, Event) ->
     lager:debug("===CALL ENDED===", []),
-    lager:debug("Event: end", []),
-    lager:debug("Call-ID: ~s", [kapps_call:call_id_direct(Call)]),
-    lager:debug("To: ~s", [knm_converters:normalize(kapps_call:to_user(Call))]),
-    lager:debug("From: ~s", [knm_converters:normalize(kapps_call:caller_id_number(Call))]),
-    lager:debug("Inception: ~s", [get_inception(Call)]),
-    lager:debug("CallDuration: ~s", [kz_json:get_value(<<"Duration-Seconds">>, Event)]),
-    lager:debug("HangupReason: ~s", [kz_json:get_value(<<"Hangup-Cause">>, Event)]),
-    lager:debug("Disposition: ~s", [kz_json:get_value(<<"Disposition">>, Event)]),
+    lager:debug("event: end", []),
+    lager:debug("call-ID: ~s", [kapps_call:call_id_direct(Call)]),
+    lager:debug("to: ~s", [knm_converters:normalize(kapps_call:to_user(Call))]),
+    lager:debug("from: ~s", [knm_converters:normalize(kapps_call:caller_id_number(Call))]),
+    lager:debug("inception: ~s", [get_inception(Call)]),
+    lager:debug("callDuration: ~s", [kz_json:get_value(<<"Duration-Seconds">>, Event)]),
+    lager:debug("hangupReason: ~s", [kz_json:get_value(<<"Hangup-Cause">>, Event)]),
+    lager:debug("disposition: ~s", [kz_json:get_value(<<"Disposition">>, Event)]),
     lager:debug("================", []),
 
     ReferredBy = kapps_call:custom_channel_var(<<"Referred-By">>, Call),
@@ -161,7 +161,7 @@ send_end_hook(Call, Event) ->
                      )
     of
         {'error', Reason} ->
-            lager:warning("Error when sending singular end of call hook: ~p", [Reason]),
+            lager:warning("error when sending singular end of call hook: ~p", [Reason]),
             'false';
         _ ->
             'true'

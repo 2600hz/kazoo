@@ -34,7 +34,9 @@
 
 -define(CB_ACCOUNT_TOKEN_RESTRICTIONS, <<"token_restrictions">>).
 
--define(CONTENT_PROVIDED, [{'to_json', ?JSON_CONTENT_TYPES}]).
+-define(CONTENT_PROVIDED, [{'to_json', ?JSON_CONTENT_TYPES}
+                          ,{'to_csv', ?CSV_CONTENT_TYPES}
+                          ]).
 -define(CONTENT_ACCEPTED, [{'from_json', ?JSON_CONTENT_TYPES}
                           ,{'from_form', ?MULTIPART_CONTENT_TYPES}
                           ,{'from_binary', ?CSV_CONTENT_TYPES}
@@ -165,7 +167,7 @@
                     ,resp_error_code :: kz_term:api_integer()
                     ,resp_file = <<>> :: binary()
                     ,resp_data :: resp_data()
-                    ,resp_headers = #{} :: cowboy:http_headers() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
+                    ,resp_headers = #{<<"content-type">> => <<"application/json">>} :: cowboy:http_headers() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
                     ,resp_envelope = kz_json:new() :: kz_json:object()
                     ,start = os:timestamp() :: kz_time:now()
                     ,req_id = ?DEFAULT_LOG_SYSTEM_ID :: binary()

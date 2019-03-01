@@ -92,15 +92,15 @@ fetch_attachment(HandlerProps, AName) ->
 handle_fetch_attachment_resp({'ok', _Body} = Resp, _Routines) ->
     Resp;
 handle_fetch_attachment_resp({'error', Reason} = _E, Routines) when not is_tuple(Reason) ->
-    lager:debug("Error fetching attachment: ~p", [_E]),
+    lager:debug("error fetching attachment: ~p", [_E]),
     kz_att_error:new(Reason, Routines);
 handle_fetch_attachment_resp({'error', {Code, Body}} = _E, Routines) ->
-    lager:debug("Error fetching attachment: ~p", [_E]),
+    lager:debug("error fetching attachment: ~p", [_E]),
     NewRoutines = [{fun kz_att_error:set_resp_code/2, Code}
                   ,{fun kz_att_error:set_resp_body/2, Body}
                    | Routines
                   ],
     kz_att_error:new('request_error', NewRoutines);
 handle_fetch_attachment_resp(_E, Routines) ->
-    lager:debug("Error fetching attachment: ~p", [_E]),
+    lager:debug("error fetching attachment: ~p", [_E]),
     kz_att_error:new('request_error', Routines).

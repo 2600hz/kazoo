@@ -48,6 +48,11 @@
     "pvt_port_state": "submitted",
     "pvt_type": "port_request",
     "pvt_vsn": "1",
+    "reason": {
+        "content": "This is for a good reasons!",
+        "timestamp": 63594532177,
+        "user_id": "df9274b450ea6795cdb381055c3f9b45"
+    },
     "scheduled_date": 63594532177,
     "sent": false,
     "transfer_date": 63594399600

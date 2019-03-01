@@ -51,7 +51,7 @@ handle_route_win(JObj, _Props) ->
         {'ok', Call} ->
             handle_cccp_call(kapps_call:from_route_win(JObj, Call));
         {'error', _R} ->
-            lager:debug("Unable to find call record during route_win")
+            lager:debug("unable to find call record during route_win")
     end.
 
 -spec handle_config_change(kz_json:object(), kz_term:proplist()) -> 'ok'.
@@ -82,7 +82,7 @@ handle_callback(Call) ->
         {'ok', AuthJObj} ->
             maybe_call_back(AuthJObj, Call);
         E ->
-            lager:info("No caller information found for ~p. Won't call it back. (~p)", [CallerNumber, E])
+            lager:info("no caller information found for ~p. Won't call it back. (~p)", [CallerNumber, E])
     end.
 
 -spec maybe_call_back(kz_json:object(), kapps_call:call()) -> any().

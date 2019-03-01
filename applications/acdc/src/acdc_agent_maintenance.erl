@@ -27,7 +27,7 @@ acct_status(AcctId) ->
     case acdc_agents_sup:find_acct_supervisors(AcctId) of
         [] -> lager:info("no agents with account id ~s available", [AcctId]);
         As ->
-            lager:info("Agent Statuses in ~s", [AcctId]),
+            lager:info("agent Statuses in ~s", [AcctId]),
             lists:foreach(fun acdc_agent_sup:status/1, As)
     end.
 
@@ -48,9 +48,9 @@ acct_restart(AcctId) ->
     case acdc_agents_sup:find_acct_supervisors(AcctId) of
         [] -> lager:info("no agents with account id ~s available", [AcctId]);
         As ->
-            lager:debug("Terminating existing agent processes in ~s", [AcctId]),
+            lager:debug("terminating existing agent processes in ~s", [AcctId]),
             _ = [exit(Sup, 'kill') || Sup <- As],
-            lager:info("Restarting agents in ~s", [AcctId]),
+            lager:info("restarting agents in ~s", [AcctId]),
             acdc_init:init_acct_agents(AcctId),
             'ok'
     end.
@@ -63,9 +63,9 @@ agent_restart(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' -> lager:info("no agent ~s in account ~s available", [AgentId, AcctId]);
         S ->
-            lager:info("Terminating existing agent process ~p", [S]),
+            lager:info("terminating existing agent process ~p", [S]),
             exit(S, 'kill'),
-            lager:info("Restarting agent ~s in ~s", [AgentId, AcctId]),
+            lager:info("restarting agent ~s in ~s", [AgentId, AcctId]),
             _ = acdc_agents_sup:new(AcctId, AgentId),
             'ok'
     end.

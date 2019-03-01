@@ -13,6 +13,8 @@
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
+-export([azure_default_fields/0]).
+
 %%%=============================================================================
 %%% `gen_attachment' behaviour callbacks (API)
 %%%=============================================================================
@@ -55,7 +57,7 @@ put_attachment(Settings, DbName, DocId, AName, Contents, Options) ->
         %% Next line left just for reference (cause it's not easy to spot it in the code)
         %%_:{{{'case_clause', {'error', {'failed_connect', _}}}, _StackTrace}, _FnFailing} ->
         _:{{{'case_clause', ErrorResp}, _StackTrace}, _FnFailing} ->
-            lager:debug("Failed to put the attachment.~nStackTrace: ~p~nFnFailing: ~p",
+            lager:debug("failed to put the attachment.~nStackTrace: ~p~nFnFailing: ~p",
                         [_StackTrace, _FnFailing]),
             handle_erlazure_error_response(ErrorResp, Routines)
     end.
@@ -97,12 +99,12 @@ resolve_path(#{container := Container} = Settings, AttInfo) ->
     Url = azure_format_url(Settings, AttInfo),
     {kz_term:to_list(Container), kz_term:to_list(Url)}.
 
--spec azure_default_fields() -> kz_term:proplist().
+-spec azure_default_fields() -> url_fields().
 azure_default_fields() ->
-    [{group, [{arg, <<"id">>}
-             ,<<"_">>
-             ,{arg, <<"attachment">>}
-             ]}
+    [{'group', [{'arg', <<"id">>}
+               ,{'const', <<"_">>}
+               ,{'arg', <<"attachment">>}
+               ]}
     ].
 
 -spec azure_format_url(map(), attachment_info()) -> kz_term:ne_binary().
@@ -114,10 +116,10 @@ azure_pid(#{account := Account, key := Key}) ->
 
 azure_pid(Account, Key) ->
     case kz_att_azure_sup:worker(Account) of
-        undefined ->
+        'undefined' ->
             case kz_att_azure_sup:start_azure(Account, Key) of
-                {ok, Pid} -> Pid;
-                {error,{already_started,Pid}} -> Pid
+                {'ok', Pid} -> Pid;
+                {'error',{'already_started',Pid}} -> Pid
             end;
         Pid -> Pid
     end.
@@ -125,11 +127,11 @@ azure_pid(Account, Key) ->
 -spec handle_erlazure_error_response({'error', string() | binary() | atom()},
                                      kz_att_error:update_routines()) -> kz_att_error:error().
 handle_erlazure_error_response({'error', {'failed_connect', _}} = _E, Routines) ->
-    lager:error("Azure request failed: ~p", [_E]),
+    lager:error("azure request failed: ~p", [_E]),
     kz_att_error:new('failed_to_connect', Routines);
 handle_erlazure_error_response({'error', Reason} = _E, Routines) -> % from erlazure:execute_request/2
-    lager:error("Azure request failed : ~p", [_E]),
+    lager:error("azure request failed : ~p", [_E]),
     kz_att_error:new(Reason, Routines);
 handle_erlazure_error_response(_E, Routines) ->
-    lager:error("Azure request failed: ~p", [_E]),
+    lager:error("azure request failed: ~p", [_E]),
     kz_att_error:new('request_error', Routines).

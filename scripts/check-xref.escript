@@ -7,6 +7,7 @@
 -export([main/1]).
 
 -define(SERVER, 'kazoo').
+-define(IGNORED_UNDEFINED_FUNCTION_CALLS, 'ignored_undefined_function_calls').
 
 %% API
 
@@ -27,6 +28,7 @@ main(Paths) ->
 %% Internals
 
 xref(Pass, Paths) ->
+    put(?IGNORED_UNDEFINED_FUNCTION_CALLS, sets:new()),
     io:format("Pass: ~s\n", [Pass]),
     AllPaths = all_paths(Paths),
     {'ok', _Pid} = xref:start(?SERVER),
@@ -119,7 +121,7 @@ filter('undefined_function_calls', Results) ->
         ({{_,_,_}, {qdate,to_unixtime,1}}) -> 'false';
         ({{_,_,_}, {qdate,unixtime,0}}) -> 'false';
 
-        (_) -> 'true'
+        ({Caller, Callee}) -> ignore_xref_filter(Caller, Callee)
                                             end,
 lists:filter(ToKeep, Results);
 filter(undefined_functions, Results) ->
@@ -153,11 +155,31 @@ filter(undefined_functions, Results) ->
         ({qdate, to_unixtime, 1}) -> false;
         ({qdate, unixtime, 0}) -> false;
 
-        (_) -> true
+        (MFA) -> ignore_xref_filter(MFA)
                                      end,
 lists:filter(ToKeep, Results);
 filter(_Xref, Results) ->
     Results.
+
+-spec ignore_xref_filter(mfa(), mfa()) -> boolean().
+ignore_xref_filter({CallerModule, _, _}, Callee) ->
+    ModuleAttrs = CallerModule:module_info('attributes'),
+    case props:get_value('ignore_xref', ModuleAttrs) of
+        'undefined' -> 'true';
+        IgnoreXref ->
+            Ignored = lists:any(fun(Ignore) -> Ignore =:= Callee end, IgnoreXref),
+            Ignored andalso add_to_ignored_undefined_function_calls(Callee),
+            not Ignored
+    end.
+
+-spec ignore_xref_filter(mfa()) -> boolean().
+ignore_xref_filter(MFA) ->
+    not sets:is_element(MFA, get(?IGNORED_UNDEFINED_FUNCTION_CALLS)).
+
+-spec add_to_ignored_undefined_function_calls(mfa()) -> term().
+add_to_ignored_undefined_function_calls(MFA) ->
+    IgnoredCalls = get(?IGNORED_UNDEFINED_FUNCTION_CALLS),
+    put(?IGNORED_UNDEFINED_FUNCTION_CALLS, sets:add_element(MFA, IgnoredCalls)).
 
 print('undefined_function_calls'=Xref, Results) ->
     io:format("Xref: listing ~p\n", [Xref]),

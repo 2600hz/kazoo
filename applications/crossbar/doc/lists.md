@@ -4,7 +4,7 @@ Lists API provide to create list of numbers ore prefix numbers to match and rout
 
 In the new behavior of List API, list is a collection of list entries (number, user, prefix numbers) allows you more flexibility to create and assign multi entries to different match list.
 
-## Schema
+#### Schema
 
 Schema for a match list
 
@@ -12,9 +12,9 @@ Schema for a match list
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`description` | A friendly list description | `string(1..128)` |   | `false` |
-`name` | A friendly match list name | `string(1..128)` |   | `true` |
-`org` | Full legal name of the organization | `string()` |   | `false` |
+`description` | A friendly list description | `string(1..128)` |   | `false` |  
+`name` | A friendly match list name | `string(1..128)` |   | `true` |  
+`org` | Full legal name of the organization | `string()` |   | `false` |  
 
 
 

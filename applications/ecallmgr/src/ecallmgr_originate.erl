@@ -418,10 +418,13 @@ get_originate_action(_, _) ->
 get_transfer_action(_JObj, 'undefined') -> <<"error">>;
 get_transfer_action(JObj, Route) ->
     Context = ?DEFAULT_FREESWITCH_CONTEXT,
-    list_to_binary(["'m:^:", get_unset_vars(JObj)
-                   ,"transfer:", Route
-                   ," XML ", Context, "' inline"
-                   ]).
+    UnsetVars = get_unset_vars(JObj),
+    list_to_binary(
+      ["'m:^:", UnsetVars
+      ,"transfer:", Route
+      ," XML ", Context, "' inline"
+      ]
+     ).
 
 -spec intercept_unbridged_only(kz_term:ne_binary() | 'undefined', kz_json:object()) -> kz_term:ne_binary().
 intercept_unbridged_only('undefined', JObj) ->
@@ -440,7 +443,12 @@ get_bridge_action(JObj) ->
     case ecallmgr_util:build_channel(Data) of
         {'error', _} -> <<"error">>;
         {'ok', Channel} ->
-            list_to_binary(["'m:^:", get_unset_vars(JObj), "bridge:", Channel, "' inline"])
+            UnsetVars = get_unset_vars(JObj),
+            list_to_binary(
+              ["'m:^:", UnsetVars
+              ,"bridge:", Channel, "' inline"
+              ]
+             )
     end.
 
 -spec maybe_update_node(kz_json:object(), atom()) -> atom().
@@ -611,14 +619,14 @@ create_uuid(Endpoint, _JObj, Node) ->
 get_unset_vars(JObj) ->
     %% Refactor (Karl wishes he had unit tests here for you to use)
     ExportProps = [{K, <<>>} || K <- kz_json:get_value(<<"Export-Custom-Channel-Vars">>, JObj, [])],
-    Export = [K || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2
+    Export = [K || KV <- lists:foldr(fun ecallmgr_fs_xml:kazoo_var_to_fs_var/2
                                     ,[]
                                     ,[{<<"Custom-Channel-Vars">>, kz_json:from_list(ExportProps)}]
                                     ),
                    ([K, _] = string:tokens(binary_to_list(KV), "=")) =/= 'undefined'
              ],
     case ["unset:" ++ K
-          || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], kz_json:to_proplist(JObj))
+          || KV <- lists:foldr(fun ecallmgr_fs_xml:kazoo_var_to_fs_var/2, [], kz_json:to_proplist(JObj))
                  ,not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export)]
     of
         [] -> "";

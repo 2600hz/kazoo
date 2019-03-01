@@ -48,10 +48,10 @@ maybe_terminate(Macros, _, 'true') ->
     lager:debug("this is a preview, no attachments"),
     {Macros, []};
 maybe_terminate(_, 'true', 'false') ->
-    lager:debug("No attachments were found for this fax"),
+    lager:debug("no attachments were found for this fax"),
     throw({'error', 'no_attachment'});
 maybe_terminate(Macros, 'false', 'false') ->
-    lager:debug("No attachments were found for this fax"),
+    lager:debug("no attachments were found for this fax"),
     {Macros, []}.
 
 -spec add_document_data(kz_json:object(), kz_term:proplist(), attachments()) -> kz_term:proplist().

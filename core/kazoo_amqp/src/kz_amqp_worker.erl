@@ -763,7 +763,7 @@ handle_cast({'gen_listener', {'confirm', Msg}}, State) ->
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'server_confirms',ServerConfirms}}, State) ->
-    lager:debug("Server confirms status : ~p", [ServerConfirms]),
+    lager:debug("server confirms status : ~p", [ServerConfirms]),
     {'noreply', State#state{confirms=ServerConfirms}};
 handle_cast({'gen_listener',{'channel_flow', 'true'}}, State) ->
     lager:debug("channel flow enabled"),

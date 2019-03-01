@@ -34,7 +34,7 @@ regexp_validation(Value, State) ->
     case re:compile(Value) of
         {error, _Reason} ->
             ErrMsg = <<"invalid regular expression: '", Value/binary,"'">>,
-            jesse_error:handle_data_invalid('external_error', ErrMsg, State);
+            jesse_error:handle_data_invalid({'external_error', ErrMsg}, Value, State);
         _ ->
             State
     end.
@@ -70,7 +70,7 @@ extra_validation(<<"metaflow.module">>, Value, State) ->
     State1 = jesse_state:resolve_ref(State, Schema),
     State2 = case jesse_state:get_current_schema_id(State1) of
                  Schema -> State1;
-                 _OtherSchema -> jesse_error:handle_data_invalid('external_error', <<"unable to find metaflow schema for module ", Value/binary>>, State)
+                 _OtherSchema -> jesse_error:handle_data_invalid({'external_error', <<"unable to find metaflow schema for module ", Value/binary>>}, Value, State)
              end,
     jesse_state:undo_resolve_ref(State2, State);
 extra_validation(<<"callflows.action.data">>, Value, State) ->
@@ -86,7 +86,7 @@ extra_validation(<<"callflows.action.module">>, Value, State) ->
     State1 = jesse_state:resolve_ref(State, Schema),
     State2 = case jesse_state:get_current_schema_id(State1) of
                  Schema -> State1;
-                 _OtherSchema -> jesse_error:handle_data_invalid(external_error, <<"unable to find callflow schema for module ", Value/binary>>, State)
+                 _OtherSchema -> jesse_error:handle_data_invalid({'external_error', <<"unable to find callflow schema for module ", Value/binary>>}, Value, State)
              end,
     jesse_state:undo_resolve_ref(State2, State);
 extra_validation(<<"storage.plan.database.document.connection">>, Value, State) ->
@@ -94,8 +94,8 @@ extra_validation(<<"storage.plan.database.document.connection">>, Value, State) 
     Keys = kz_json:get_keys(<<"connections">>, JObj),
     case lists:member(Value, Keys) of
         'true' -> State;
-        'false' -> jesse_error:handle_data_invalid('external_error'
-                                                  ,?INVALID_STORAGE_CONNECTION_REFERENCE(Value)
+        'false' -> jesse_error:handle_data_invalid({'external_error' ,?INVALID_STORAGE_CONNECTION_REFERENCE(Value)}
+                                                  ,Value
                                                   ,State
                                                   )
     end;
@@ -104,8 +104,8 @@ extra_validation(<<"storage.plan.database.attachment.handler">>, Value, State) -
     Keys = kz_json:get_keys(<<"attachments">>, JObj),
     case lists:member(Value, Keys) of
         'true' -> State;
-        'false' -> jesse_error:handle_data_invalid('external_error'
-                                                  ,?INVALID_STORAGE_ATTACHMENT_REFERENCE(Value)
+        'false' -> jesse_error:handle_data_invalid({'external_error', ?INVALID_STORAGE_ATTACHMENT_REFERENCE(Value)}
+                                                  ,Value
                                                   ,State
                                                   )
     end;
@@ -132,35 +132,35 @@ validate_module_data(Schema, Value, State) ->
     jesse_state:undo_resolve_ref(State2, State).
 
 validate_attachment_oauth_doc_id(Value, State) ->
-    lager:debug("Validating oauth_doc_id: ~s", [Value]),
+    lager:debug("validating oauth_doc_id: ~s", [Value]),
     case kz_datamgr:open_doc(<<"system_auth">>, Value) of
         {ok, _Obj} ->
             State;
         {error, empty_doc_id} ->
             ErrorMsg = <<"empty oauth_doc_id">>,
-            jesse_error:handle_data_invalid('external_error', ErrorMsg, State);
+            jesse_error:handle_data_invalid({'external_error', ErrorMsg}, Value, State);
         {error, not_found} ->
             ErrorMsg = <<"Invalid oauth_doc_id: ", Value/binary>>,
             lager:debug("~s", [ErrorMsg]),
-            jesse_error:handle_data_invalid('external_error', ErrorMsg, State);
+            jesse_error:handle_data_invalid({'external_error', ErrorMsg}, Value, State);
         {error, _Err} ->
             ErrorMsg = <<"Error validating oauth_doc_id: ", Value/binary>>,
             lager:debug("~s : ~p", [ErrorMsg, _Err]),
-            jesse_error:handle_data_invalid('external_error', ErrorMsg, State)
+            jesse_error:handle_data_invalid({'external_error', ErrorMsg}, Value, State)
     end.
 
 -spec stability_level(jesse:json_term(), jesse_state:state(), kz_json_schema:extra_validator_options()) -> jesse_state:state().
-stability_level(_Value, State, Options) ->
+stability_level(Value, State, Options) ->
     Schema = jesse_state:get_current_schema(State),
     SystemSL = props:get_ne_binary_value('stability_level', Options),
     ParamSL = kz_json:get_value(<<"stability_level">>, Schema),
-    maybe_check_param_stability_level(SystemSL, ParamSL, State).
+    maybe_check_param_stability_level(SystemSL, ParamSL, Value, State).
 
-maybe_check_param_stability_level('undefined', _ParamSL, State) ->
+maybe_check_param_stability_level('undefined', _ParamSL, _Value, State) ->
     State; %% SystemSL is undefined, skip checking
-maybe_check_param_stability_level(_SystemSL, 'undefined', State) ->
+maybe_check_param_stability_level(_SystemSL, 'undefined', _Value, State) ->
     State; %% ParamSL is undefined, skip checking
-maybe_check_param_stability_level(SystemSL, ParamSL, State) ->
+maybe_check_param_stability_level(SystemSL, ParamSL, Value, State) ->
     SystemSLInt = stability_level_to_int(SystemSL),
     ParamSLInt = stability_level_to_int(ParamSL),
     case check_param_stability_level(SystemSLInt, ParamSLInt) of
@@ -171,7 +171,7 @@ maybe_check_param_stability_level(SystemSL, ParamSL, State) ->
                          ParamSL/binary, ") than system's stability level (",
                          SystemSL/binary, ")">>,
             lager:debug("~s", [ErrorMsg]),
-            jesse_error:handle_data_invalid('external_error', ErrorMsg, State)
+            jesse_error:handle_data_invalid({'external_error', ErrorMsg}, Value, State)
     end.
 
 check_param_stability_level(SystemSLInt, ParamSLInt) when ParamSLInt < SystemSLInt ->

@@ -1,4 +1,4 @@
-.PHONY: ci ci-config ci-steps ci-pre ci-fmt ci-build ci-codechecks ci-docs ci-schemas ci-dialyze ci-release
+.PHONY: ci ci-config ci-steps ci-pre ci-fmt ci-build ci-codechecks ci-docs ci-schemas ci-dialyze ci-release ci-unstaged
 
 PIP2 := $(shell { command -v pip || command -v pip2; } 2>/dev/null)
 CI_DIR := $(CURDIR)/make
@@ -21,7 +21,7 @@ $(CI_DIR):
 	@mkdir $(CI_DIR)
 
 ci-steps: ci-pre ci-fmt ci-build ci-codechecks ci-docs ci-schemas ci-dialyze ci-release
-	@$(if $(git status --porcelain | wc -l), $(MAKE) ci-unstaged)
+	@$(ROOT)/scripts/check-unstaged.bash
 
 ci-pre:
 ifneq ($(PIP2),)

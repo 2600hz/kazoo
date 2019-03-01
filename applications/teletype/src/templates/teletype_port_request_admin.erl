@@ -72,10 +72,12 @@ handle_req(JObj, 'true') ->
 
 -spec process_req(kz_json:object()) -> template_response().
 process_req(DataJObj) ->
-    NewData = teletype_port_utils:port_request_data(DataJObj, ?TEMPLATE_ID),
-    case teletype_util:is_preview(NewData) of
-        'false' -> handle_port_request(NewData);
-        'true' -> handle_port_request(kz_json:merge_jobjs(DataJObj, NewData))
+    case teletype_util:is_preview(DataJObj) of
+        'false' ->
+            NewData = teletype_port_utils:port_request_data(DataJObj, ?TEMPLATE_ID),
+            handle_port_request(NewData);
+        'true' ->
+            lager:debug("notification is preview, let's teletype_port_request sends the email")
     end.
 
 -spec handle_port_request(kz_json:object()) -> template_response().
@@ -96,9 +98,25 @@ handle_port_request(DataJObj) ->
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?TEMPLATE_ID),
     EmailAttachements = kz_json:get_value(<<"attachments">>, DataJObj),
 
-    case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
+    lager:debug("sending ~s to port sumbitter (or template default): ~p"
+               ,[?TEMPLATE_ID, props:get_value(<<"to">>, Emails)]
+               ),
+    _ = teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements),
+
+    AuthorityEmails = props:set_value(<<"to">>
+                                     ,kz_json:get_value(<<"authority_emails">>, DataJObj, [])
+                                     ,props:delete_keys([<<"bcc">>, <<"cc">>], Emails)
+                                     ),
+
+    lager:debug("sending ~s to port authority: ~p"
+               ,[?TEMPLATE_ID, props:get_value(<<"to">>, AuthorityEmails)]
+               ),
+    _ = put('skip_smtp_log', 'true'),
+    case teletype_util:send_email(AuthorityEmails, Subject, RenderedTemplates, EmailAttachements) of
         'ok' -> teletype_util:notification_completed(?TEMPLATE_ID);
-        {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
+        {'error', Reason} ->
+            lager:debug("unable to send emails to port authority: ~p", [Reason]),
+            teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
 -spec account_tree(kz_term:ne_binary()) -> kz_term:proplist().
