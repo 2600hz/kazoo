@@ -7,7 +7,11 @@ ERLANG_MK_COMMIT = d30dda39b08e6ed9e12b44533889eaf90aba86de
 BASE_BRANCH := $(shell cat $(ROOT)/.base_branch)
 
 ## list files changed for more focused checks
-CHANGED := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts)
+ifeq ($(strip $(CHANGED)),)
+	CHANGED := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts)
+else
+	CHANGED := $(CHANGED)
+endif
 CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
 
 # You can override this when calling make, e.g. make JOBS=1
@@ -40,10 +44,10 @@ JOBS ?= 1
 all: compile
 
 changed:
-	@git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts
+	@echo "$(CHANGED)"
 
 changed_swagger:
-	@git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json
+	@echo "$(CHANGED_SWAGGER)"
 
 compile: ACTION = all
 compile: deps kazoo

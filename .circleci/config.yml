@@ -46,13 +46,20 @@ jobs:
           at: .
       - restore_cache:
           keys:
-            - deps-v2-{{ checksum "make/deps.mk" }}
+            - deps-v3-{{ checksum "make/deps.mk" }}
       - run: make fmt
+      - run: |
+          deps_hash=$(md5sum make/deps.mk | cut -d" " -f1)
+          if [ x"$(cat .git/.kz_deps_hash)" = x"$deps_hash" ]; then
+            touch "make/.deps.mk.$deps_hash"
+          fi
       - run: JOBS="2" make
+      - run: echo -n $(md5sum make/deps.mk | cut -d" " -f1) > .git/.kz_deps_hash
       - save_cache:
-          key: deps-v2-{{ checksum "make/deps.mk" }}
+          key: deps-v3-{{ checksum "make/deps.mk" }}
           paths:
             - deps/
+            - .git/.kz_deps_hash
       - persist_to_workspace:
           root: .
           paths:
