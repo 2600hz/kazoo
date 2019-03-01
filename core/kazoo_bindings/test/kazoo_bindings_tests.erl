@@ -19,9 +19,9 @@
 %%%-----------------------------------------------------------------------------
 -module(kazoo_bindings_tests).
 
+-ifdef(PROPER).
 -export([expanded_paths/0]).
 
--ifdef(PROPER).
 - include_lib("proper/include/proper.hrl").
 -endif.
 -include_lib("eunit/include/eunit.hrl").
