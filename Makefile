@@ -5,6 +5,11 @@ FMT = $(ROOT)/make/erlang-formatter/fmt.sh
 TAGS = $(ROOT)/TAGS
 ERLANG_MK_COMMIT = d30dda39b08e6ed9e12b44533889eaf90aba86de
 
+BASE_BRANCH := $(shell cat $(ROOT)/.base_branch)
+
+CHANGED := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts)
+CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
+
 # You can override this when calling make, e.g. make JOBS=1
 # to prevent parallel builds, or make JOBS="8".
 JOBS ?= 1
@@ -20,9 +25,17 @@ KAZOODIRS = core/Makefile applications/Makefile
 	elvis install ci diff \
 	fixture_shell code_checks \
 	fmt clean-fmt \
-	xref xref_release
+	xref xref_release \
+	changed changed_swagger \
+	validate-js
 
 all: compile
+
+changed:
+	@git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts
+
+changed_swagger:
+	@git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json
 
 compile: ACTION = all
 compile: deps kazoo
@@ -178,7 +191,11 @@ dialyze-it-hard: $(PLT)
 	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --hard $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
 
 dialyze-it-changed: $(PLT)
+ifeq ($(strip $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))),)
+	@echo "no erlang changes to dialyze"
+else
 	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --bulk $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
+endif
 
 xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
 xref:
@@ -217,7 +234,7 @@ $(FMT):
 fmt-all: $(FMT)
 	@$(FMT) $(shell find core applications scripts -name "*.erl" -or -name "*.hrl" -or -name "*.escript")
 
-fmt: TO_FMT ?= $(shell git --no-pager diff --name-only HEAD origin/4.3 -- "*.erl" "*.hrl" "*.escript")
+fmt: TO_FMT ?= $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- "*.erl" "*.hrl" "*.escript")
 fmt: $(FMT)
 	@$(if $(TO_FMT), @$(FMT) $(TO_FMT))
 
@@ -276,14 +293,15 @@ fs-headers:
 validate-swagger:
 	@$(ROOT)/scripts/validate-swagger.sh
 
+validate-js:
+	@./scripts/validate-js.sh $(find {core,applications}/*/priv/**/* -name *.json)
+
 sdks:
 	@$(ROOT)/scripts/make-swag.sh
 
 validate-schemas:
 	@$(ROOT)/scripts/validate-schemas.sh $(ROOT)/applications/crossbar/priv/couchdb/schemas
 
-CHANGED := $(shell git --no-pager diff --name-only HEAD origin/4.3 -- applications core scripts)
-CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD origin/4.3 -- applications/crossbar/priv/api/swagger.json)
 PIP2 := $(shell { command -v pip || command -v pip2; } 2>/dev/null)
 
 circle-pre:
