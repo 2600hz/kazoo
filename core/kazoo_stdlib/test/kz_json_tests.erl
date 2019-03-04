@@ -57,6 +57,14 @@ proper_test_() ->
 
 prop_test_object_gen() ->
     ?FORALL(JObj
+           ,kz_json_generators:test_object()
+           ,collect(to_range(2, kz_json_generators:max_depth(JObj))
+                   ,kz_json:is_valid_json_object(JObj)
+                   )
+           ).
+
+prop_deep_object_gen() ->
+    ?FORALL(JObj
            ,resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
            ,collect(to_range(2, kz_json_generators:max_depth(JObj))
                    ,kz_json:is_valid_json_object(JObj)

@@ -477,6 +477,7 @@ pages:
   - 'Kazoo Scripts': 'scripts/README.md'
   - 'Loopback Channels': 'doc/engineering/loopback.md'
   - 'Makefile': 'doc/engineering/make.md'
+  - 'Property Testing Presentation': 'doc/engineering/property_testing_presentation.md'
   - 'Running Dev Shells': 'scripts/dev/README.md'
   - 'Testing': 'doc/engineering/testing.md'
   - 'Using Dialyzer': 'doc/engineering/dialyzer.md'
