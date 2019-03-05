@@ -246,7 +246,7 @@ get_rollup_from_previous(Account) ->
             E
     end.
 
--spec get_rollup_balance(kz_term:ne_binary(), kazoo_modb:view_options()) -> balance_ret().
+-spec get_rollup_balance(ne_binary(), kazoo_modb:view_options()) -> balance_ret().
 get_rollup_balance(Account, Options) ->
     View = <<"transactions/credit_remaining">>,
     ViewOptions = ['reduce'
