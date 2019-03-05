@@ -168,7 +168,6 @@ get_balance_from_previous(Account, ViewOptions) ->
     end.
 
 get_balance_from_previous(Account, ViewOptions, Retries) when Retries >= 0 ->
-    lager:debug("marker 5: ~p", [Retries]),
     {DefaultYear, DefaultMonth, _} = erlang:date(),
     Y = props:get_integer_value('year', ViewOptions, DefaultYear),
     M = props:get_integer_value('month', ViewOptions, DefaultMonth),
