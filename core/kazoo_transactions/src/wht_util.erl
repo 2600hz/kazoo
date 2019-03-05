@@ -237,7 +237,7 @@ maybe_rollup_previous_month(Account, Balance) ->
             {'ok', Balance - PrevBalance}
     end.
 
--spec maybe_get_rollup_from_previous(ne_binary()) -> balance_ret().
+-spec maybe_get_rollup_from_previous(kz_term:ne_binary()) -> balance_ret().
 maybe_get_rollup_from_previous(Account) ->
     case kapps_config:get_is_true(<<"ledgers">>, <<"rollover_monthly_balance">>, 'true') of
         'true' -> get_rollup_from_previous(Account);
@@ -246,7 +246,7 @@ maybe_get_rollup_from_previous(Account) ->
             {'ok', 0}
     end.
 
--spec get_rollup_from_previous(ne_binary()) -> balance_ret().
+-spec get_rollup_from_previous(kz_term:ne_binary()) -> balance_ret().
 get_rollup_from_previous(Account) ->
     {Y, M, _} = erlang:date(),
     {Year, Month} = kazoo_modb_util:prev_year_month(Y, M),
