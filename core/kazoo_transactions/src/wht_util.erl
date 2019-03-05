@@ -163,7 +163,8 @@ get_balance(Account, Options) ->
                    | Options
                   ],
     case kazoo_modb:get_results(Account, View, ViewOptions) of
-        {'ok', []} -> get_balance_from_previous(Account, Options);
+        {'ok', []} ->
+            get_balance_from_previous(Account, Options);
         {'ok', [ViewRes|_]} ->
             Balance = kz_json:get_integer_value(<<"value">>, ViewRes, 0),
             maybe_rollup(Account, Options, Balance);
@@ -174,8 +175,14 @@ get_balance(Account, Options) ->
 
 -spec get_balance_from_previous(kz_term:ne_binary(), kazoo_modb:view_options()) -> balance_ret().
 get_balance_from_previous(Account, ViewOptions) ->
-    Retries = props:get_value('retry', ViewOptions, 3),
-    get_balance_from_previous(Account, ViewOptions, Retries).
+    case kapps_config:get_is_true(<<"ledgers">>, <<"rollover_monthly_balance">>, 'true') of
+        'true' ->
+            Retries = props:get_value('retry', ViewOptions, 3),
+            get_balance_from_previous(Account, ViewOptions, Retries);
+        'false' ->
+            lager:debug("monthly balance rollover is disabled, assuming previous balance was 0", []),
+            {'ok', 0}
+    end.
 
 -spec get_balance_from_previous(kz_term:ne_binary(), kazoo_modb:view_options(), integer()) -> balance_ret().
 get_balance_from_previous(Account, ViewOptions, Retries) when Retries >= 0 ->
@@ -223,14 +230,23 @@ verify_monthly_rollup_exists(Account, Balance) ->
 
 -spec maybe_rollup_previous_month(kz_term:ne_binary(), units()) -> balance_ret().
 maybe_rollup_previous_month(Account, Balance) ->
-    case get_rollup_from_previous(Account) of
+    case maybe_get_rollup_from_previous(Account) of
         {'error', _} -> {'ok', Balance};
         {'ok', PrevBalance} ->
             _ = rollup(Account, PrevBalance),
             {'ok', Balance - PrevBalance}
     end.
 
--spec get_rollup_from_previous(kz_term:ne_binary()) -> balance_ret().
+-spec maybe_get_rollup_from_previous(ne_binary()) -> balance_ret().
+maybe_get_rollup_from_previous(Account) ->
+    case kapps_config:get_is_true(<<"ledgers">>, <<"rollover_monthly_balance">>, 'true') of
+        'true' -> get_rollup_from_previous(Account);
+        'false' ->
+            lager:debug("monthly balance rollover is disabled, assuming previous balance was 0", []),
+            {'ok', 0}
+    end.
+
+-spec get_rollup_from_previous(ne_binary()) -> balance_ret().
 get_rollup_from_previous(Account) ->
     {Y, M, _} = erlang:date(),
     {Year, Month} = kazoo_modb_util:prev_year_month(Y, M),
@@ -249,23 +265,19 @@ get_rollup_from_previous(Account) ->
 
 -spec get_rollup_balance(kz_term:ne_binary(), kazoo_modb:view_options()) -> balance_ret().
 get_rollup_balance(Account, Options) ->
-    case kapps_config:get_is_true(<<"ledgers">>, <<"rollover_monthly_balance">>, 'true') of
-        'false' -> {'ok', 0};
-        'true' ->
-            View = <<"transactions/credit_remaining">>,
-            ViewOptions = ['reduce'
-                          ,'group'
-                          ,{'group_level', 1}
-                           | Options
-                          ],
-            case kazoo_modb:get_results(Account, View, ViewOptions) of
-                {'ok', []} -> {'error', 'not_found'};
-                {'ok', [ViewRes|_]} ->
-                    {'ok', kz_json:get_integer_value(<<"value">>, ViewRes, 0)};
-                {'error', _R}=E ->
-                    lager:warning("unable to get rollup balance for ~s: ~p", [Account, _R]),
-                    E
-            end
+    View = <<"transactions/credit_remaining">>,
+    ViewOptions = ['reduce'
+                  ,'group'
+                  ,{'group_level', 1}
+                   | Options
+                  ],
+    case kazoo_modb:get_results(Account, View, ViewOptions) of
+        {'ok', []} -> {'error', 'not_found'};
+        {'ok', [ViewRes|_]} ->
+            {'ok', kz_json:get_integer_value(<<"value">>, ViewRes, 0)};
+        {'error', _R}=E ->
+            lager:warning("unable to get rollup balance for ~s: ~p", [Account, _R]),
+            E
     end.
 
 %%------------------------------------------------------------------------------
