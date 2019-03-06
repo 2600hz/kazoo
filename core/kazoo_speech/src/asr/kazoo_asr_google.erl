@@ -49,7 +49,7 @@ req_headers() ->
     ,{"User-Agent", kz_term:to_list(node())}
     ].
 
--spec make_request(kz_term:ne_binary(), kz_term:proplist(), iolist(), kz_term:proplist()) -> kz_http:ret().
+-spec make_request(kz_term:text(), kz_term:proplist(), iodata(), kz_term:proplist()) -> kz_http:ret().
 make_request(BaseUrl, Headers, Body, Opts) ->
     case props:get_value('receiver', Opts) of
         Pid when is_pid(Pid) ->
