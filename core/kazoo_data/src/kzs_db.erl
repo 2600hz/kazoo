@@ -108,7 +108,10 @@ db_view_cleanup(#{}=Map, DbName) ->
 do_db_view_cleanup(#{server := {App, Conn}}, DbName) ->
     App:db_view_cleanup(Conn, DbName).
 
--spec db_info(map()) -> {'ok', kz_term:ne_binaries()} |data_error().
+-spec db_info([map()] | map()) -> {'ok', kz_term:ne_binaries()} |data_error().
+db_info([#{server := {_App, _Conn}} | _]=Servers) ->
+    DbList = lists:foldl(fun(Server, Acc) -> {'ok', Dbs} = db_info(Server), Acc ++ Dbs end, [], Servers),
+    {'ok', lists:usort(DbList)};
 db_info(#{server := {App, Conn}}) -> App:db_info(Conn).
 
 -spec db_info(map(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | data_error().
@@ -159,7 +162,10 @@ db_import(#{server := {App, Conn}}=Server, DbName, Filename) ->
         'false' -> 'ok'
     end.
 
--spec db_list(map(), view_options()) -> {'ok', kz_term:ne_binaries()} | data_error().
+-spec db_list([map()] | map(), view_options()) -> {'ok', kz_term:ne_binaries()} | data_error().
+db_list([#{server := {_, _}} | _]=Servers, Options) ->
+    DBList = lists:foldl(fun(Server, Acc) -> {'ok', Dbs}=db_list(Server, Options), Acc ++ Dbs end, [], Servers),
+    {'ok', lists:usort(DBList)};
 db_list(#{server := {App, Conn}}=Map, Options) ->
     db_list_all(App:db_list(Conn, Options), Options, maps:get('others', Map, [])).
 
