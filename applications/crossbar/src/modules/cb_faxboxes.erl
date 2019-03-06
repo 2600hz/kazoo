@@ -548,15 +548,11 @@ faxbox_doc_save(Context) ->
                                ),
 
     DocId = kz_doc:id(ToSave),
-    Ctx3 = crossbar_doc:update(cb_context:set_account_db(Ctx2, ?KZ_FAXES_DB)
-                              ,DocId
-                              ,kz_json:to_proplist(kz_json:flatten(ToSave))
-                              ),
+    Ctx3 = crossbar_doc:load_merge(DocId
+                                  ,cb_context:set_account_db(Ctx2, ?KZ_FAXES_DB)
+                                  ,?TYPE_CHECK_OPTION(kzd_fax_box:type())),
+    crossbar_doc:save(Ctx3).
 
-    case cb_context:resp_status(Ctx3) of
-        'success' -> Ctx2;
-        _ -> Ctx3
-    end.
 
 -spec faxbox_doc_delete(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 faxbox_doc_delete(Context, Id) ->
