@@ -13,7 +13,7 @@
         ,no_change_required/1
         ,service_restriction/2
         ,carrier_not_specified/1
-        ,not_enough_credit/2
+        ,billing_issue/2
         ,invalid/2
         ,multiple_choice/2
         ,assign_failure/2
@@ -81,9 +81,9 @@ service_restriction(Number, Message) ->
 carrier_not_specified(Number) ->
     throw({'error', 'carrier_not_specified', Number}).
 
--spec not_enough_credit(kz_term:ne_binary(), kz_term:ne_binary()) -> no_return().
-not_enough_credit(AccountId, Reason) ->
-    throw({'error', 'not_enough_credit', AccountId, Reason}).
+-spec billing_issue(kz_term:ne_binary(), kz_json:object()) -> no_return().
+billing_issue(AccountId, Reason) ->
+    throw({'error', 'billing_issue', AccountId, Reason}).
 
 -spec invalid(kn(), kz_term:ne_binary()) -> no_return().
 invalid(Number, Reason) ->

@@ -25,12 +25,12 @@ authorize(Request, Limits) ->
     Options = #{allow_postpay => j5_limits:allow_postpay(Limits)
                ,max_postpay_amount => j5_limits:max_postpay(Limits)
                },
-    authorize(Request, Limits, kz_services:is_good_standing(j5_limits:account_id(Limits), Options)).
+    authorize(Request, Limits, kz_services_standing:acceptable(j5_limits:account_id(Limits), Options)).
 
--spec authorize(j5_request:request(), j5_limits:limits(), {boolean(), kz_term:ne_binary()}) -> j5_request:request().
-authorize(Request, Limits, {'false', Reason}) ->
-    lager:debug("account ~s does not have enough credit for flat rate trunks: ~s"
-               ,[j5_limits:account_id(Limits), Reason]
+-spec authorize(j5_request:request(), j5_limits:limits(), kz_services_standing:acceptable_return()) -> j5_request:request().
+authorize(Request, Limits, {'false', _Reason}) ->
+    lager:debug("account ~s is not in good standing (~s) and can not use flat rate trunks"
+               ,[j5_limits:account_id(Limits)]
                ),
     Request;
 authorize(Request, Limits, {'true', _Reason}) ->

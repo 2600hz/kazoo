@@ -15,6 +15,7 @@
 -export([minimum/1, minimum/2
         ,maximum/1, maximum/2
         ,prorate/1, prorate/2
+        ,unprorate/1, unprorate/2
         ,step/1, step/2
         ,flat_rates/1, flat_rates/2
         ,flat_rate/1, flat_rate/2
@@ -59,6 +60,7 @@
 -define(CUMULATIVE, <<"cumulative">>).
 -define(MAXIMUM, <<"maximum">>).
 -define(PRORATE, <<"prorate">>).
+-define(UNPRORATE, <<"unprorate">>).
 -define(STEP, <<"step">>).
 
 -spec cumulative_merge_scheme() -> [{kz_json:key(), fun((kz_json:path(), kz_json:object()|kz_json:objects()) -> kz_json:api_json_term())}].
@@ -66,6 +68,7 @@ cumulative_merge_scheme() ->
     [{?ACTIVATION_CHARGE, fun kz_json:find/2}
     ,{?MINIMUM, fun ?MODULE:cumulative_merge_sum/2}
     ,{?PRORATE, fun ?MODULE:cumulative_merge_or/2}
+    ,{?UNPRORATE, fun ?MODULE:cumulative_merge_or/2}
     ,{?STEP, fun kz_json:find/2}
     ,{?FLAT_RATES, fun ?MODULE:cumulative_merge_object/2}
     ,{?FLAT_RATE, fun kz_json:find/2}
@@ -172,6 +175,14 @@ prorate(ItemPlan) ->
 -spec prorate(doc(), Default) -> boolean() | Default.
 prorate(ItemPlan, Default) ->
     kz_json:is_true(?PRORATE, ItemPlan, Default).
+
+-spec unprorate(doc()) -> boolean().
+unprorate(ItemPlan) ->
+    unprorate(ItemPlan, prorate(ItemPlan)).
+
+-spec unprorate(doc(), Default) -> boolean() | Default.
+unprorate(ItemPlan, Default) ->
+    kz_json:is_true(?UNPRORATE, ItemPlan, Default).
 
 -spec step(doc()) -> integer().
 step(ItemPlan) ->

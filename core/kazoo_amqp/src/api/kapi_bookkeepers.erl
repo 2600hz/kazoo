@@ -28,6 +28,12 @@
 -export([update_resp/1, update_resp_v/1
         ,publish_update_resp/2, publish_update_resp/3
         ]).
+-export([standing_req/1, standing_req_v/1
+        ,publish_standing_req/1, publish_standing_req/2
+        ]).
+-export([standing_resp/1, standing_resp_v/1
+        ,publish_standing_resp/2, publish_standing_resp/3
+        ]).
 
 -include_lib("kz_amqp_util.hrl").
 
@@ -191,6 +197,55 @@ update_resp_definition() ->
                     ,types = []
                     }.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec standing_req_definition() -> kapi_definition:api().
+standing_req_definition() ->
+    #kapi_definition{name = <<"standing_req">>
+                    ,friendly_name = <<"Currnet Status (Standing) Request">>
+                    ,description = <<"A request to a bookkeeper to get the current standing of an account">>
+                    ,build_fun = fun standing_req/1
+                    ,validate_fun = fun standing_req_v/1
+                    ,publish_fun = fun publish_standing_req/1
+                    ,binding = ?BINDING_STRING(<<"standing">>, <<"request">>)
+                    ,restrict_to = 'standing'
+                    ,required_headers = [<<"Account-ID">>
+                                        ,<<"Bookkeeper-ID">>
+                                        ,<<"Bookkeeper-Type">>
+                                        ,<<"Vendor-ID">>
+                                        ,<<"Items">>
+                                        ,<<"Estimated-Withdrawal">>
+                                        ]
+                    ,optional_headers = []
+                    ,values = [{<<"Event-Category">>, <<"bookkeepers">>}
+                              ,{<<"Event-Name">>, <<"standing_req">>}
+                              ]
+                    ,types = []
+                    }.
+
+-spec standing_resp_definition() -> kapi_definition:api().
+standing_resp_definition() ->
+    #kapi_definition{name = <<"standing_resp">>
+                    ,friendly_name = <<"Current Status (Standing) Response">>
+                    ,description = <<"The result of a standing request">>
+                    ,build_fun = fun standing_resp/1
+                    ,validate_fun = fun standing_resp_v/1
+                    ,publish_fun = fun publish_standing_resp/2
+                    ,binding = ?BINDING_STRING(<<"standing">>, <<"response">>)
+                    ,restrict_to = 'standing'
+                    ,required_headers = [<<"Status">>]
+                    ,optional_headers = [<<"Message">>
+                                        ,<<"Reason">>
+                                        ,<<"Details">>
+                                        ]
+                    ,values = [{<<"Event-Category">>, <<"bookkeepers">>}
+                              ,{<<"Event-Name">>, <<"standing_resp">>}
+                              ]
+                    ,types = []
+                    }.
+
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -207,6 +262,8 @@ api_definitions() ->
     ,refund_resp_definition()
     ,update_req_definition()
     ,update_resp_definition()
+    ,standing_req_definition()
+    ,standing_resp_definition()
     ].
 
 %%------------------------------------------------------------------------------
@@ -230,7 +287,11 @@ api_definition(<<"refund_resp">>) ->
 api_definition(<<"update_req">>) ->
     update_req_definition();
 api_definition(<<"update_resp">>) ->
-    update_resp_definition().
+    update_resp_definition();
+api_definition(<<"standing_req">>) ->
+    standing_req_definition();
+api_definition(<<"standing_resp">>) ->
+    standing_resp_definition().
 
 %%------------------------------------------------------------------------------
 %% @doc Bind to a queue to this API exchange and events.
@@ -462,4 +523,47 @@ publish_update_resp(RespQ, JObj) ->
 publish_update_resp(RespQ, API, ContentType) ->
     #kapi_definition{values = Values} = update_resp_definition(),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun update_resp/1),
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
+
+%%------------------------------------------------------------------------------
+%% @doc Current Account Standing Query
+%% Takes prop-list, creates JSON string and publish it on AMQP.
+%% @end
+%%------------------------------------------------------------------------------
+-spec standing_req(kz_term:api_terms()) -> api_formatter_return().
+standing_req(Prop) ->
+    build_message(Prop, standing_req_definition()).
+
+-spec standing_req_v(kz_term:api_terms()) -> boolean().
+standing_req_v(Prop) ->
+    validate(Prop, standing_req_definition()).
+
+-spec publish_standing_req(kz_term:api_terms()) -> 'ok'.
+publish_standing_req(JObj) ->
+    publish_standing_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_standing_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_standing_req(API, ContentType) ->
+    #kapi_definition{binding = Binding
+                    ,values = Values
+                    } = standing_req_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun standing_req/1),
+    kz_amqp_util:bookkeepers_publish(Binding, Payload, ContentType).
+
+-spec standing_resp(kz_term:api_terms()) -> api_formatter_return().
+standing_resp(Prop) ->
+    build_message(Prop, standing_resp_definition()).
+
+-spec standing_resp_v(kz_term:api_terms()) -> boolean().
+standing_resp_v(Prop) ->
+    validate(Prop, standing_resp_definition()).
+
+-spec publish_standing_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_standing_resp(RespQ, JObj) ->
+    publish_standing_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_standing_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_standing_resp(RespQ, API, ContentType) ->
+    #kapi_definition{values = Values} = standing_resp_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun standing_resp/1),
     kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
