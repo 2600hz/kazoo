@@ -121,6 +121,12 @@
             "description": "The price to show for twoway trunks, this is currently only for display purposes",
             "support_level": "beta",
             "type": "string"
+        },
+        "sso_providers":{
+            "type":"array",
+            "items":{
+                "$ref":"sso_provider"
+            }
         }
     },
     "type": "object"
