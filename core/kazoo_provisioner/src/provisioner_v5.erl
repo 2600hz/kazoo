@@ -360,6 +360,13 @@ get_label(User) ->
     end.
 
 -spec get_feature_key(kz_term:ne_binary(), kz_term:api_ne_binary() | 0..10 | kz_json:object(), binary(), binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:api_object().
+get_feature_key(<<"line">>=Type, _Value, Brand, Family, _AccountId, Assoc) ->
+    kz_json:from_list(
+      [{<<"label">>, <<>>}
+      ,{<<"value">>, <<>>}
+      ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
+      ,{<<"account">>, get_line_key(Brand, Family)}
+      ]);
 get_feature_key(_Type, 'undefined', _Brand, _Family, _AccountId, _Assoc) ->
     'undefined';
 get_feature_key(<<"presence">>=Type, Value, Brand, Family, AccountId, Assoc) ->
@@ -405,14 +412,7 @@ get_feature_key(<<"parking">>=Type, Value, Brand, Family, _AccountId, Assoc) ->
               ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
               ,{<<"account">>, get_line_key(Brand, Family)}
               ])
-    end;
-get_feature_key(<<"line">>=Type, _Value, Brand, Family, _AccountId, Assoc) ->
-    kz_json:from_list(
-      [{<<"label">>, <<>>}
-      ,{<<"value">>, <<>>}
-      ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
-      ,{<<"account">>, get_line_key(Brand, Family)}
-      ]).
+    end.
 
 -spec get_line_key(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binary().
 get_line_key(<<"grandstream">>, _) -> <<"1">>;
