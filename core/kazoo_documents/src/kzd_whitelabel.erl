@@ -27,8 +27,11 @@
 -export([port_terms/1, port_terms/2, set_port_terms/2]).
 -export([twoway_trunks_price/1, twoway_trunks_price/2, set_twoway_trunks_price/2]).
 
--export([fetch/1]).
 -export([fetch_port_authority/2]).
+-export([fetch/1
+        ,type/0
+        ,id/0
+        ]).
 
 -include("kz_documents.hrl").
 
@@ -37,10 +40,21 @@
 
 -define(SCHEMA, <<"whitelabel">>).
 -define(ID, <<"whitelabel">>).
+-define(PVT_TYPE, <<"whitelabel">>).
 
 -spec new() -> doc().
 new() ->
-    kz_json_schema:default_object(?SCHEMA).
+    kz_json:exec([fun(J) -> kz_doc:set_id(J, ?ID) end
+                 ,fun(J) -> kz_doc:set_type(J, ?PVT_TYPE) end
+                 ]
+                ,kz_json_schema:default_object(?SCHEMA)
+                ).
+
+-spec type() -> kz_term:ne_binary().
+type() -> ?PVT_TYPE.
+
+-spec id() -> kz_term:ne_binary().
+id() -> ?ID.
 
 -spec company_name(doc()) -> kz_term:api_binary().
 company_name(Doc) ->
