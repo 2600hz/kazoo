@@ -551,7 +551,7 @@ faxbox_doc_create(Context) ->
             case cb_context:resp_status(Ctx3) of
                 'success' -> Ctx2;
                 _ ->
-                    lager:error("failed to save doc ~s to faxes db, rolling back", kz_doc:id(ToSave)),
+                    lager:error("failed to save doc ~s to faxes db, rolling back", [kz_doc:id(ToSave)]),
                     crossbar_doc:delete(Ctx2),
                     Ctx3
             end;
@@ -571,20 +571,21 @@ faxbox_doc_update(Context) ->
                                        ,cb_context:doc(Ctx2)
                                        ),
             DocId = kz_doc:id(ToSave),
-            Ctx3 = cb_context:load_merge(DocId
+            Ctx3 = crossbar_doc:load_merge(DocId
                                         ,cb_context:setters(Ctx2
                                                            ,[{fun cb_context:set_account_db/2, ?KZ_FAXES_DB}
-                                                            ,{fun cb_context:doc/2, ToSave}
+                                                            ,{fun cb_context:set_doc/2, ToSave}
                                                             ])
                                         ,?TYPE_CHECK_OPTION(kzd_fax_box:type())
                                         ),
+            lager:debug("updating doc in faxes db with id ~s", [DocId]),
             Ctx4 = crossbar_doc:save(Ctx3),
             case cb_context:resp_status(Ctx4) of
                 'success' -> Ctx2;
                 _ ->
-                    lager:error("reverting doc ~s failed to save to faxdb", DocId),
+                    lager:error("reverting doc ~s failed to save to faxdb", [DocId]),
                     crossbar_doc:save(cb_context:load_merged(DocId
-                                                            ,cb_context:fetch(Ctx2, 'db_doc')
+                                                            ,cb_contest:set_doc(Ctx2, cb_context:fetch(Ctx2, 'db_doc'))
                                                             ,?TYPE_CHECK_OPTION(kdz_fax_box:type())
                                                             )
                                      ),
