@@ -35,6 +35,9 @@
                     ,{'braintree_update_req'
                      ,[{<<"bookkeepers">>, <<"update_req">>}]
                      }
+                    ,{'braintree_standing_req'
+                     ,[{<<"bookkeepers">>, <<"standing_req">>}]
+                     }
                     ]).
 -define(QUEUE_NAME, <<"braintree_shared_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
