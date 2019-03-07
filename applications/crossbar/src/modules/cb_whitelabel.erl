@@ -22,7 +22,7 @@
 
 -include("crossbar.hrl").
 
--define(WHITELABEL_ID, <<"whitelabel">>).
+-define(WHITELABEL_ID, kzd_whitelabel:id()).
 -define(LOGO_REQ, <<"logo">>).
 -define(ICON_REQ, <<"icon">>).
 -define(DOMAINS_REQ, <<"domains">>).
@@ -622,7 +622,7 @@ find_whitelabel(Context, Domain) ->
 %%------------------------------------------------------------------------------
 -spec load_whitelabel_meta(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_whitelabel_meta(Context, WhitelabelId) ->
-    crossbar_doc:load(WhitelabelId, Context, ?TYPE_CHECK_OPTION(<<"whitelabel">>)).
+    crossbar_doc:load(WhitelabelId, Context, ?TYPE_CHECK_OPTION(kzd_whitelabel:type())).
 
 -spec find_whitelabel_meta(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 find_whitelabel_meta(Context, Domain) ->
@@ -705,7 +705,7 @@ filter_attachment_type([AttachmentId|AttachmentIds], AttachType) ->
 -spec update_response_with_attachment(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
                                              cb_context:context().
 update_response_with_attachment(Context, AttachmentId, JObj) ->
-    LoadedContext = crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, ?TYPE_CHECK_OPTION(<<"whitelabel">>), Context),
+    LoadedContext = crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, ?TYPE_CHECK_OPTION(kzd_whitelabel:type()), Context),
     WithHeaders = cb_context:add_resp_headers(LoadedContext
 
                                              ,#{<<"content-disposition">> => <<"attachment; filename=", AttachmentId/binary>>
@@ -747,12 +747,14 @@ check_whitelabel_schema(Context, WhitelabelId) ->
 
 -spec on_successful_validation(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 on_successful_validation(Context, 'undefined') ->
-    Doc = kz_json:set_values([{<<"pvt_type">>, <<"whitelabel">>}
-                             ,{<<"_id">>, ?WHITELABEL_ID}
-                             ], cb_context:doc(Context)),
+    Doc = kz_json:set_values([{<<"pvt_type">>, kzd_whitelabel:type()}
+                             ,{<<"_id">>, kzd_whitelabel:id()}
+                             ]
+                            ,cb_context:doc(Context)
+                            ),
     cb_context:set_doc(Context, Doc);
 on_successful_validation(Context, WhitelabelId) ->
-    crossbar_doc:load_merge(WhitelabelId, Context, ?TYPE_CHECK_OPTION(<<"whitelabel">>)).
+    crossbar_doc:load_merge(WhitelabelId, Context, ?TYPE_CHECK_OPTION(kzd_whitelabel:type())).
 
 %%------------------------------------------------------------------------------
 %% @doc Update the binary attachment of a whitelabel doc
@@ -765,7 +767,7 @@ update_whitelabel_binary(AttachType, WhitelabelId, Context) ->
     [{Filename, FileObj}] = cb_context:req_files(Context),
     Contents = kz_json:get_value(<<"contents">>, FileObj),
     CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
-    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(<<"whitelabel">>)],
+    Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(kzd_whitelabel:type())],
 
     JObj1 = case whitelabel_binary_meta(Context, AttachType) of
                 'undefined' -> JObj;
