@@ -111,11 +111,11 @@ has_no_expired_payment_tokens(Services, _Options) ->
     DefaultTokens = kz_json:values(kz_services_payment_tokens:defaults(Services)),
     Now = kz_time:now_s(),
     case DefaultTokens =/= []
-         andalso [T || T <- DefaultTokens,
-                       Expiration <- [kz_json:get_integer_value(<<"expiration">>, T)],
-                       Expiration =/= 'undefined',
-                       Expiration > Now
-                 ]
+        andalso [T || T <- DefaultTokens,
+                      Expiration <- [kz_json:get_integer_value(<<"expiration">>, T)],
+                      Expiration =/= 'undefined',
+                      Expiration > Now
+                ]
     of
         'false' -> 'not_applicable';
         [] ->
