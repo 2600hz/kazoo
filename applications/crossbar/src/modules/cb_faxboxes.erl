@@ -201,7 +201,7 @@ validate_patch(Context) ->
 %%------------------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    Context1 = faxbox_doc_create(maybe_register_cloud_printer(Context)),
+    Context1 = save_faxbox_doc(maybe_register_cloud_printer(Context), 'create'),
     case cb_context:resp_status(Context1) of
         'success' ->
             RespData = kz_doc:public_fields(leak_private_fields(cb_context:doc(Context1))),
@@ -216,7 +216,7 @@ put(Context) ->
 %%------------------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _Id) ->
-    Context1 = faxbox_doc_update(maybe_register_cloud_printer(Context)),
+    Context1 = save_faxbox_doc(maybe_register_cloud_printer(Context), 'update'),
     case cb_context:resp_status(Context1) of
         'success' ->
             RespData = kz_doc:public_fields(leak_private_fields(cb_context:doc(Context1))),
@@ -371,7 +371,7 @@ maybe_reregister_cloud_printer(Context) ->
     Ctx = maybe_reregister_cloud_printer(CurrentState, Context),
     Ctx1 = case kz_json:get_value(<<"pvt_cloud_state">>, cb_context:doc(Ctx)) of
                CurrentState -> cb_context:set_resp_status(Context, 'success');
-               _ -> faxbox_doc_update(Ctx)
+               _ -> save_faxbox_doc(Ctx, 'update')
            end,
     case cb_context:resp_status(Ctx1) of
         'success' ->
@@ -537,74 +537,65 @@ oauth_req(Doc, OAuthRefresh, Context) ->
                                                          ,{<<"token">>, TokenString}
                                                          ], kz_json:new())).
 
--spec faxbox_doc_create(cb_context:context()) -> cb_context:context().
-faxbox_doc_create(Context) ->
-    Ctx2 = crossbar_doc:save(Context),
-    case cb_context:resp_status(Ctx2) of
-        'success' ->
-            Ctx3 = crossbar_doc:save(prepare_faxes_doc(Ctx2)),
-            case cb_context:resp_status(Ctx3) of
-                'success' -> Ctx2;
-                _ ->
-                    lager:error("failed to save doc ~s to faxes db, rolling back", [kz_doc:id(cb_context:doc(Ctx2))]),
-                    crossbar_doc:delete(Ctx2),
-                    Ctx3
-            end;
-        _ ->
+-spec save_faxbox_doc(cb_context:context(), 'create' | 'update') -> cb_context:context().
+save_faxbox_doc(Context0, Action) ->
+    case maybe_save_faxbox_doc(Context0) of
+        {'ok', Context1} ->
+            save_doc_to_faxdb(Context1, Action);
+        {'error', Context1} ->
             lager:error("failed to save doc to account db"),
-            Ctx2
+            Context1
     end.
 
--spec faxbox_doc_update(cb_context:context()) -> cb_context:context().
-faxbox_doc_update(Context) ->
-    Ctx2 = crossbar_doc:save(Context),
-    DocId = kz_doc:id(cb_context:doc(Ctx2)),
-    case cb_context:resp_status(Ctx2) of
-        'success' ->
-            Ctx3 = prepare_faxes_doc_update(prepare_faxes_doc(Ctx2), DocId),
-            case cb_context:resp_status(Ctx3) of
-                'success' ->
-                    lager:debug("updating doc in faxes db with id ~s", [DocId]),
-                    Ctx4 = crossbar_doc:save(Ctx3),
-                    case cb_context:resp_status(Ctx4) of
-                        'success' -> Ctx2;
-                        _ ->
-                            lager:error("reverting doc ~s failed to save to faxdb", [DocId]),
-                            rollback_account_update(Ctx2, DocId),
-                            Ctx4
-                    end;
-                _ ->
-                    lager:error("failed to load doc from faxes db"),
-                    rollback_account_update(Ctx2, DocId),
-                    Ctx3
-            end;
-        _ ->
-            lager:error("failed to save doc to account db"),
-            Ctx2
+-spec maybe_save_faxbox_doc(cb_context:context()) -> {'ok' | 'error', cb_context:context()}.
+maybe_save_faxbox_doc(Context) ->
+    maybe_save_faxbox_doc(Context, cb_context:resp_status(Context) =:= 'success').
+
+-spec maybe_save_faxbox_doc(cb_context:context(), boolean()) -> {'ok' | 'error', cb_context:context()}.
+maybe_save_faxbox_doc(Context, 'true') ->
+    Context1 = crossbar_doc:save(Context),
+    case cb_context:resp_status(Context1) =:= 'success' of
+        'true' -> {'ok', Context1};
+        'false' -> {'error', Context1}
+    end;
+maybe_save_faxbox_doc(Context, 'false') ->
+    {'error', Context}.
+
+-spec save_doc_to_faxdb(cb_context:context(), 'create' | 'update') -> cb_context:context().
+save_doc_to_faxdb(Context, Action) ->
+    case maybe_save_faxbox_doc(prepare_faxes_doc(Context, Action)) of
+        {'ok', Context1} -> Context1;
+        {'error', Context1} ->
+            _ = rollback_doc(Context, Action),
+            Context1
     end.
 
--spec rollback_account_update(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-rollback_account_update(Context, DocId) ->
-    crossbar_doc:save(
-      crossbar_doc:load_merge(DocId
-                             ,cb_context:set_doc(Context, cb_context:fetch(Context, 'db_doc'))
-                             ,?TYPE_CHECK_OPTION(kzd_fax_box:type())
-                             )).
+-spec rollback_doc(cb_context:context(), 'create' | 'update') -> cb_context:context().
+rollback_doc(Context, 'create') ->
+    lager:error("failed to save doc to faxes db, rolling back"),
+    crossbar_doc:delete(Context);
+rollback_doc(Context, 'update') ->
+    lager:debug("failed to save to faxdb, revert doc in account db"),
+    crossbar_doc:save(cb_context:set_doc(Context, cb_context:fetch(Context, 'db_doc'))).
 
--spec prepare_faxes_doc(cb_context:context()) -> cb_context:context().
-prepare_faxes_doc(Context) ->
+-spec prepare_faxes_doc(cb_context:context(), 'create' | 'update') -> cb_context:context().
+prepare_faxes_doc(Context, Action) ->
     ToSave = kz_json:set_values([{kz_doc:path_account_db(), ?KZ_FAXES_DB}
                                 ,{kz_doc:path_revision(), 'null'}
                                 ]
                                ,cb_context:doc(Context)
                                ),
-    cb_context:setters(Context
-                      ,[{fun cb_context:set_account_db/2, ?KZ_FAXES_DB}
-                       ,{fun cb_context:set_doc/2, ToSave}
-                       ]).
+    Context1 = cb_context:setters(Context
+                                 ,[{fun cb_context:set_account_db/2, ?KZ_FAXES_DB}
+                                  ,{fun cb_context:set_doc/2, ToSave}
+                                  ]),
+    maybe_load_merge(Context1, Action).
 
--spec prepare_faxes_doc_update(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-prepare_faxes_doc_update(Context, DocId) ->
+-spec maybe_load_merge(cb_context:context(), 'create' | 'update') -> cb_context:context().
+maybe_load_merge(Context, 'create') ->
+    Context;
+maybe_load_merge(Context, 'update') ->
+    DocId = kz_doc:id(cb_context:doc(Context)),
     crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(kzd_fax_box:type())).
 
 -spec faxbox_doc_delete(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
