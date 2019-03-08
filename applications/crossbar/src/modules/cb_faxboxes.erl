@@ -586,10 +586,10 @@ faxbox_doc_update(Context) ->
 -spec rollback_account_update(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 rollback_account_update(Context, DocId) ->
     crossbar_doc:save(
-      crossbar_doc:load_merged(DocId
-                            ,cb_context:set_doc(Context, cb_context:fetch(Context, 'db_doc'))
-                            ,?TYPE_CHECK_OPTION(kzd_fax_box:type())
-                            )).
+      crossbar_doc:load_merge(DocId
+                             ,cb_context:set_doc(Context, cb_context:fetch(Context, 'db_doc'))
+                             ,?TYPE_CHECK_OPTION(kzd_fax_box:type())
+                             )).
 
 -spec prepare_faxes_doc(cb_context:context()) -> cb_context:context().
 prepare_faxes_doc(Context) ->
