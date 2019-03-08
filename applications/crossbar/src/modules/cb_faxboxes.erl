@@ -570,15 +570,12 @@ faxbox_doc_update(Context) ->
                         'success' -> Ctx2;
                         _ ->
                             lager:error("reverting doc ~s failed to save to faxdb", [DocId]),
-                            crossbar_doc:save(cb_context:load_merged(DocId
-                                                                    ,cb_contest:set_doc(Ctx2, cb_context:fetch(Ctx2, 'db_doc'))
-                                                                    ,?TYPE_CHECK_OPTION(kdz_fax_box:type())
-                                                                    )
-                                             ),
+                            rollback_account_update(Ctx2, DocId),
                             Ctx4
                     end;
                 _ ->
                     lager:error("failed to load doc from faxes db"),
+                    rollback_account_update(Ctx2, DocId),
                     Ctx3
             end;
         _ ->
@@ -586,17 +583,25 @@ faxbox_doc_update(Context) ->
             Ctx2
     end.
 
+-spec rollback_account_update(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+rollback_account_update(Context, DocId) ->
+    crossbar_doc:save(
+      cb_context:load_merged(DocId
+                            ,cb_contest:set_doc(Context, cb_context:fetch(Context, 'db_doc'))
+                            ,?TYPE_CHECK_OPTION(kdz_fax_box:type())
+                            )).
+
 -spec prepare_faxes_doc(cb_context:context()) -> cb_context:context().
 prepare_faxes_doc(Context) ->
     ToSave = kz_json:set_values([{kz_doc:path_account_db(), ?KZ_FAXES_DB}
-                       ,{kz_doc:path_revision(), 'null'}
-                       ]
-                      ,cb_context:doc(Context)
-                      ),
-   cb_context:setters(Context
-                     ,[{fun cb_context:set_account_db/2, ?KZ_FAXES_DB}
-                      ,{fun cb_context:set_doc/2, ToSave}
-                      ]).
+                                ,{kz_doc:path_revision(), 'null'}
+                                ]
+                               ,cb_context:doc(Context)
+                               ),
+    cb_context:setters(Context
+                      ,[{fun cb_context:set_account_db/2, ?KZ_FAXES_DB}
+                       ,{fun cb_context:set_doc/2, ToSave}
+                       ]).
 
 -spec prepare_faxes_doc_update(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 prepare_faxes_doc_update(Context, DocId) ->
