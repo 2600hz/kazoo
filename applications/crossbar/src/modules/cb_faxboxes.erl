@@ -542,21 +542,16 @@ faxbox_doc_create(Context) ->
     Ctx2 = crossbar_doc:save(Context),
     case cb_context:resp_status(Ctx2) of
         'success' ->
-            ToSave = kz_json:set_values([{kz_doc:path_account_db(), ?KZ_FAXES_DB}
-                                        ,{kz_doc:path_revision(), 'null'}
-                                        ]
-                                        ,cb_context:doc(Ctx2)
-                                        ),
-            Ctx3 = crossbar_doc:save(cb_context:set_account_db(Ctx2, ?KZ_FAXES_DB)),
+            Ctx3 = crossbar_doc:save(prepare_faxes_doc(Ctx2));
             case cb_context:resp_status(Ctx3) of
                 'success' -> Ctx2;
                 _ ->
-                    lager:error("failed to save doc ~s to faxes db, rolling back", [kz_doc:id(ToSave)]),
+                    lager:error("failed to save doc ~s to faxes db, rolling back", [kz_doc:id(cb_context:doc(Ctx2))]),
                     crossbar_doc:delete(Ctx2),
                     Ctx3
             end;
         _ ->
-            crossbar_doc:delete(Ctx2),
+            lager:error("failed to save doc to account db"),
             Ctx2
     end.
 
@@ -565,36 +560,46 @@ faxbox_doc_update(Context) ->
     Ctx2 = crossbar_doc:save(Context),
     case cb_context:resp_status(Ctx2) of
         'success' ->
-            ToSave = kz_json:set_values([{kz_doc:path_account_db(), ?KZ_FAXES_DB}
-                                        ,{kz_doc:path_revision(), 'null'}
-                                        ]
-                                       ,cb_context:doc(Ctx2)
-                                       ),
-            DocId = kz_doc:id(ToSave),
-            Ctx3 = crossbar_doc:load_merge(DocId
-                                        ,cb_context:setters(Ctx2
-                                                           ,[{fun cb_context:set_account_db/2, ?KZ_FAXES_DB}
-                                                            ,{fun cb_context:set_doc/2, ToSave}
-                                                            ])
-                                        ,?TYPE_CHECK_OPTION(kzd_fax_box:type())
-                                        ),
-            lager:debug("updating doc in faxes db with id ~s", [DocId]),
-            Ctx4 = crossbar_doc:save(Ctx3),
-            case cb_context:resp_status(Ctx4) of
-                'success' -> Ctx2;
+            Ctx3 = prepare_faxes_doc_update(prepare_fax_doc(Ctx2), DocId),
+            case cb_context:resp_status(Ctx3) of
+                'success' ->
+                    lager:debug("updating doc in faxes db with id ~s", [DocId]),
+                    Ctx4 = crossbar_doc:save(Ctx3),
+                    case cb_context:resp_status(Ctx4) of
+                        'success' -> Ctx2;
+                        _ ->
+                            lager:error("reverting doc ~s failed to save to faxdb", [DocId]),
+                            crossbar_doc:save(cb_context:load_merged(DocId
+                                                                    ,cb_contest:set_doc(Ctx2, cb_context:fetch(Ctx2, 'db_doc'))
+                                                                    ,?TYPE_CHECK_OPTION(kdz_fax_box:type())
+                                                                    )
+                                             ),
+                            Ctx4
+                    end;
                 _ ->
-                    lager:error("reverting doc ~s failed to save to faxdb", [DocId]),
-                    crossbar_doc:save(cb_context:load_merged(DocId
-                                                            ,cb_contest:set_doc(Ctx2, cb_context:fetch(Ctx2, 'db_doc'))
-                                                            ,?TYPE_CHECK_OPTION(kdz_fax_box:type())
-                                                            )
-                                     ),
-                    Ctx4
+                    lager:error("failed to load doc from faxes db"),
+                    Ctx3
             end;
         _ ->
             lager:error("failed to save doc to account db"),
             Ctx2
     end.
+
+-spec prepare_faxes_doc(cb_context:context()) -> cb_context:context().
+prepare_faxes_doc(Context) ->
+    ToSave = kz_json:set_values([{kz_doc:path_account_db(), ?KZ_FAXES_DB}
+                       ,{kz_doc:path_revision(), 'null'}
+                       ]
+                      ,cb_context:doc(Context)
+                      ),
+   cb_context:setters(Context
+                     ,[{fun cb_context:set_account_db/2, ?KZ_FAXES_DB}
+                      ,{fun cb_context:set_doc/2, ToSave}
+                      ]).
+
+-spec prepare_faxes_doc_update(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+prepare_faxes_doc_update(Context, DocId) ->
+    crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(kzd_fax_box:type())).
 
 -spec faxbox_doc_delete(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 faxbox_doc_delete(Context, Id) ->
