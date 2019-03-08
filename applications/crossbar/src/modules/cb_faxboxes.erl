@@ -542,7 +542,7 @@ faxbox_doc_create(Context) ->
     Ctx2 = crossbar_doc:save(Context),
     case cb_context:resp_status(Ctx2) of
         'success' ->
-            Ctx3 = crossbar_doc:save(prepare_faxes_doc(Ctx2));
+            Ctx3 = crossbar_doc:save(prepare_faxes_doc(Ctx2)),
             case cb_context:resp_status(Ctx3) of
                 'success' -> Ctx2;
                 _ ->
@@ -558,9 +558,10 @@ faxbox_doc_create(Context) ->
 -spec faxbox_doc_update(cb_context:context()) -> cb_context:context().
 faxbox_doc_update(Context) ->
     Ctx2 = crossbar_doc:save(Context),
+    DocId = kz_doc:id(cb_context:doc(Ctx2)),
     case cb_context:resp_status(Ctx2) of
         'success' ->
-            Ctx3 = prepare_faxes_doc_update(prepare_fax_doc(Ctx2), DocId),
+            Ctx3 = prepare_faxes_doc_update(prepare_faxes_doc(Ctx2), DocId),
             case cb_context:resp_status(Ctx3) of
                 'success' ->
                     lager:debug("updating doc in faxes db with id ~s", [DocId]),
