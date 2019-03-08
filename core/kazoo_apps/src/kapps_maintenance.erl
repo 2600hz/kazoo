@@ -101,7 +101,6 @@
 -define(PMEDIA_VIEW, <<"media/listing_private_media">>).
 
 -define(DEFAULT_PAUSE, 1 * ?MILLISECONDS_IN_SECOND).
--define(FIRST_MONTH, 1).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -417,7 +416,8 @@ modb_before_start(StartDate, MODbYear, MODbMonth) ->
                  ,StartDate rem 100
                  }
         end,
-    MODbYear >= StartYear andalso MODbMonth >= StartMonth.
+    MODbYear >= StartYear 
+        andalso MODbMonth >= StartMonth.
 
 -spec modb_after_end(integer(), integer(), integer()) -> boolean().
 modb_after_end(EndDate, MODbYear, MODbMonth) ->
@@ -428,7 +428,8 @@ modb_after_end(EndDate, MODbYear, MODbMonth) ->
                  ,EndDate rem 100
                  }
         end,
-    MODbYear =< EndYear andalso MODbMonth =< EndMonth.
+    MODbYear =< EndYear 
+        andalso MODbMonth =< EndMonth.
 
 %%------------------------------------------------------------------------------
 %% @doc Register views from all applications that have binding to
