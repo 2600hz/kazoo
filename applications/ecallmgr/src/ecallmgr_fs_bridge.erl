@@ -34,7 +34,7 @@ call_command(Node, UUID, JObj) ->
 
             {'ok', Channel} = ecallmgr_fs_channel:fetch(UUID, 'record'),
 
-            _ = handle_ringback(Node, UUID, JObj),
+            ecallmgr_call_command:set_ringback(Node, UUID, JObj),
             _ = maybe_early_media(Node, UUID, JObj, Endpoints),
             _ = maybe_b_leg_events(Node, UUID, JObj),
             BridgeJObj = add_endpoints_channel_actions(Node, UUID, JObj),
@@ -79,23 +79,6 @@ unbridge(UUID, JObj) ->
 %% @doc Bridge command helpers
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_ringback(atom(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-handle_ringback(Node, UUID, JObj) ->
-    case kz_json:get_first_defined([<<"Ringback">>
-                                   ,[<<"Custom-Channel-Vars">>, <<"Ringback">>]
-                                   ]
-                                  ,JObj
-                                  )
-    of
-        'undefined' ->
-            {'ok', Default} = ecallmgr_util:get_setting(<<"default_ringback">>),
-            ecallmgr_fs_command:set(Node, UUID, [{<<"ringback">>, kz_term:to_binary(Default)}]);
-        Media ->
-            Stream = ecallmgr_util:media_path(Media, 'extant', UUID, JObj),
-            lager:debug("bridge has custom ringback: ~s", [Stream]),
-            ecallmgr_fs_command:set(Node, UUID, [{<<"ringback">>, Stream}])
-    end.
-
 -spec maybe_early_media(atom(), kz_term:ne_binary(), kz_json:object(), kz_json:objects()) -> ecallmgr_util:send_cmd_ret().
 maybe_early_media(Node, UUID, JObj, Endpoints) ->
     Separator = ecallmgr_util:get_dial_separator(JObj, Endpoints),

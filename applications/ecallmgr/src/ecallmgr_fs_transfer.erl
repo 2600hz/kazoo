@@ -22,6 +22,8 @@ attended(Node, UUID, JObj) ->
 
     ReqURI = <<TransferTo/binary, "@", Realm/binary>>,
 
+    ecallmgr_call_command:set_ringback(Node, UUID, JObj),
+
     Vars = [{<<"Ignore-Early-Media">>, <<"ring_ready">>}
            ,{<<"Simplify-Loopback">>, <<"false">>}
            ,{<<"Loopback-Bowout">>, <<"true">>}
