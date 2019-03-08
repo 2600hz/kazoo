@@ -416,7 +416,7 @@ modb_before_start(StartDate, MODbYear, MODbMonth) ->
                  ,StartDate rem 100
                  }
         end,
-    MODbYear >= StartYear 
+    MODbYear >= StartYear
         andalso MODbMonth >= StartMonth.
 
 -spec modb_after_end(integer(), integer(), integer()) -> boolean().
@@ -428,7 +428,7 @@ modb_after_end(EndDate, MODbYear, MODbMonth) ->
                  ,EndDate rem 100
                  }
         end,
-    MODbYear =< EndYear 
+    MODbYear =< EndYear
         andalso MODbMonth =< EndMonth.
 
 %%------------------------------------------------------------------------------
