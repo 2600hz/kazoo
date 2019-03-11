@@ -327,6 +327,17 @@ maybe_migrate_legacy_rollover(Account, Options) ->
     %%  if the MODb was created during a period where transactions
     %%  where used to track balance (and transactions were rolled over)
     %%  create the ledger rollover from the transaction balance
+    case should_rollover_monthly_balance() of
+        'true' -> migrate_legacy_rollover(Account, Options, Year, Month);
+        'false' ->
+            lager:debug("monthly balance rollover is disabled, assuming previous balance was 0", []),
+            _ = rollover(Account, Year, Month, 0),
+            get_sources_total(Account, Options)
+    end.
+
+-spec migrate_legacy_rollover(kz_tern:ne_binary(), kazoo_modb:view_options(), kz_time:year(), kz_time:month()) ->
+                                     kz_currency:available_units_return().
+migrate_legacy_rollover(Account, Options, Year, Month) ->
     case kz_transactions:legacy_total(Account, Year, Month) of
         {'ok', Amount} ->
             lager:debug("found transaction rollover, migrating $~p to ledger balance"
@@ -355,9 +366,11 @@ rollover(Account) ->
                       {'ok', kz_ledger:ledger()} |
                       {'error', any()}.
 rollover(Account, Year, Month) ->
-    case kapps_config:get_is_true(?CONFIG_CAT, <<"rollover_monthly_balance">>, 'true') of
-        'false' -> rollover(Account, Year, Month, 0);
-        'true' -> rollover_past_available_units(Account, Year, Month)
+    case should_rollover_monthly_balance() of
+        'true' -> rollover_past_available_units(Account, Year, Month);
+        'false' ->
+            lager:debug("monthly balance rollover is disabled, assuming previous balance was 0", []),
+            rollover(Account, Year, Month, 0)
     end.
 
 -spec rollover_past_available_units(kz_term:ne_binary(),  kz_time:year(), kz_time:month()) ->
@@ -440,3 +453,11 @@ sum_amount(Ledgers) ->
 -spec sum_amount(kz_ledger:ledger(), kz_currency:units()) -> kz_currency:units().
 sum_amount(Ledger, Sum) ->
     kz_ledger:unit_amount(Ledger) + Sum.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec should_rollover_monthly_balance() -> boolean().
+should_rollover_monthly_balance() ->
+    kapps_config:get_is_true(?CONFIG_CAT, <<"rollover_monthly_balance">>, 'true').
