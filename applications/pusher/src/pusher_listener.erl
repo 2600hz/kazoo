@@ -67,50 +67,64 @@ handle_push(JObj, _Props) ->
 
 -spec handle_reg_success(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_reg_success(JObj, _Props) ->
-    UserAgent = kz_json:get_value(<<"User-Agent">>, JObj),
-    UserAgentProperties = pusher_util:user_agent_push_properties(UserAgent),
-    maybe_process_reg_success(UserAgentProperties, JObj).
-
--spec maybe_process_reg_success(kz_term:api_object(), kz_json:object()) -> 'ok'.
-maybe_process_reg_success('undefined', _JObj) -> 'ok';
-maybe_process_reg_success(UA, JObj) ->
-    Contact = kz_json:get_value(<<"Contact">>, JObj),
-    [#uri{opts=A, ext_opts=B}] = kzsip_uri:uris(Contact),
-    Params = A ++ B,
-    TokenKey = kz_json:get_value(?TOKEN_KEY, UA),
-    Token = props:get_value(TokenKey, Params),
-    maybe_process_reg_success(Token, kz_json:set_value(<<"Token-Proxy">>, ?TOKEN_PROXY_KEY, UA) , JObj, Params).
-
--spec maybe_process_reg_success(kz_term:api_binary(), kz_json:object(), kz_json:object(), kz_term:proplist()) -> 'ok'.
-maybe_process_reg_success('undefined', _UA, _JObj, _Params) -> 'ok';
-maybe_process_reg_success(_Token, UA, JObj, Params) ->
-    maybe_update_push_token(UA, JObj, Params).
-
--spec maybe_update_push_token(kz_json:object(), kz_json:object(), kz_term:proplist()) -> 'ok'.
-maybe_update_push_token(UA, JObj, Params) ->
     AccountId = kz_json:get_first_defined([[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
                                           ,<<"Account-ID">>
                                           ], JObj),
     AuthorizingId = kz_json:get_first_defined([[<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>]
                                               ,<<"Authorizing-ID">>
                                               ], JObj),
-    maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params).
+    maybe_process_reg_success(AccountId, AuthorizingId, JObj).
 
--spec maybe_update_push_token(kz_term:api_binary(), kz_term:api_binary(), kz_json:object(), kz_json:object(), kz_term:proplist()) -> 'ok'.
-maybe_update_push_token('undefined', _AuthorizingId, _UA, _JObj, _Params) -> 'ok';
-maybe_update_push_token(_AccountId, 'undefined', _UA, _JObj, _Params) -> 'ok';
-maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params) ->
+-spec maybe_process_reg_success(kz_term:api_binary(), kz_term:api_binary(), kz_json:object()) -> 'ok'.
+maybe_process_reg_success('undefined', _, _) -> 'ok';
+maybe_process_reg_success(_, 'undefined', _) -> 'ok';
+maybe_process_reg_success(AccountId, AuthorizingId, JObj) ->
+    UserAgent = kz_json:get_value(<<"User-Agent">>, JObj),
+    UserAgentProperties = pusher_util:user_agent_push_properties(UserAgent),
+    process_reg_success(AccountId, AuthorizingId, UserAgentProperties, JObj).
+
+-spec process_reg_success(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object(), kz_json:object()) -> 'ok'.
+process_reg_success(AccountId, AuthorizingId, 'undefined', _) ->
+    maybe_clear_push_token(AccountId, AuthorizingId, get_endpoint(AccountId, AuthorizingId));
+process_reg_success(AccountId, AuthorizingId, UA, JObj) ->
+    Contact = kz_json:get_value(<<"Contact">>, JObj),
+    [#uri{opts=A, ext_opts=B}] = kzsip_uri:uris(Contact),
+    Params = A ++ B,
+    maybe_update_push_token(AccountId, AuthorizingId, kz_json:set_value(<<"Token-Proxy">>, ?TOKEN_PROXY_KEY, UA), JObj, Params
+                           ,get_endpoint(AccountId, AuthorizingId)
+                           ).
+
+-spec get_endpoint(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:api_object().
+get_endpoint(AccountId, AuthorizingId) ->
     AccountDb = kz_util:format_account_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDb, AuthorizingId) of
-        {'ok', Doc} ->
-            Push = kz_json:get_value(<<"push">>, Doc),
-            case build_push(UA, JObj, Params, kz_json:new()) of
-                Push -> lager:debug("push exists: ~p", [Push]);
-                NewPush ->
-                    {'ok', _} = kz_datamgr:save_doc(AccountDb, kz_json:set_value(<<"push">>, NewPush, Doc)),
-                    lager:debug("setting push object for ~s: ~s: ~p", [AccountId, AuthorizingId, NewPush])
-            end;
-        {'error', _} -> lager:debug("failed to open ~s in ~s", [AuthorizingId, AccountId])
+        {'ok', Doc} -> Doc;
+        {'error', _} ->
+            lager:debug("failed to open ~s in ~s", [AuthorizingId, AccountId]),
+            'undefined'
+    end.
+
+-spec maybe_clear_push_token(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:api_object()) -> 'ok'.
+maybe_clear_push_token(_, _, 'undefined') -> 'ok';
+maybe_clear_push_token(AccountId, AuthorizingId, Doc) ->
+    case kzd_devices:push(Doc) of
+        'undefined' -> 'ok';
+        _ ->
+            AccountDb = kz_util:format_account_db(AccountId),
+            {'ok', _} = kz_datamgr:save_doc(AccountDb, kzd_devices:delete_push(Doc)),
+            lager:debug("clearing push object for ~s: ~s", [AccountId, AuthorizingId])
+    end.
+
+-spec maybe_update_push_token(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_json:object(), kz_term:proplist(), kz_json:api_object()) -> 'ok'.
+maybe_update_push_token(_, _, _, _, _, 'undefined') -> 'ok';
+maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params, Doc) ->
+    Push = kz_json:get_value(<<"push">>, Doc),
+    case build_push(UA, JObj, Params, kz_json:new()) of
+        Push -> lager:debug("push exists: ~p", [Push]);
+        NewPush ->
+            AccountDb = kz_util:format_account_db(AccountId),
+            {'ok', _} = kz_datamgr:save_doc(AccountDb, kzd_devices:set_push(Doc, NewPush)),
+            lager:debug("setting push object for ~s: ~s: ~p", [AccountId, AuthorizingId, NewPush])
     end.
 
 -spec build_push(kz_json:object(), kz_json:object(), kz_term:proplist(), kz_json:object()) ->

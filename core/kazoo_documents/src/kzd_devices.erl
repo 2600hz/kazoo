@@ -49,6 +49,7 @@
 -export([provision_feature_keys/1, provision_feature_keys/2, set_provision_feature_keys/2]).
 -export([provision_feature_key/2, provision_feature_key/3, set_provision_feature_key/3]).
 -export([provision_id/1, provision_id/2, set_provision_id/2]).
+-export([push/1, push/2, set_push/2, delete_push/1]).
 -export([register_overwrite_notify/1, register_overwrite_notify/2, set_register_overwrite_notify/2]).
 -export([ringtones/1, ringtones/2, set_ringtones/2]).
 -export([ringtones_external/1, ringtones_external/2, set_ringtones_external/2]).
@@ -649,6 +650,22 @@ provision_id(Doc, Default) ->
 -spec set_provision_id(doc(), binary()) -> doc().
 set_provision_id(Doc, ProvisionId) ->
     kz_json:set_value([<<"provision">>, <<"id">>], ProvisionId, Doc).
+
+-spec push(doc()) -> kz_json:api_object().
+push(Doc) ->
+    push(Doc, 'undefined').
+
+-spec push(doc(), Default) -> kz_json:object() | Default.
+push(Doc, Default) ->
+    kz_json:get_json_value(<<"push">>, Doc, Default).
+
+-spec set_push(doc(), kz_json:object()) -> doc().
+set_push(Doc, Push) ->
+    kz_json:set_value(<<"push">>, Push, Doc).
+
+-spec delete_push(doc()) -> doc().
+delete_push(Doc) ->
+    kz_json:delete_key(<<"push">>, Doc).
 
 -spec register_overwrite_notify(doc()) -> boolean().
 register_overwrite_notify(Doc) ->
