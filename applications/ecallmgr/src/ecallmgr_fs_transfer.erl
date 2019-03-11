@@ -31,6 +31,7 @@ attended(Node, UUID, JObj) ->
            ,{<<"Outbound-Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj)}
            ,{<<"Outbound-Callee-ID-Number">>, TransferTo}
            ,{<<"Outbound-Callee-ID-Name">>, TransferTo}
+           ,{<<"Timeout">>, 60}
            ],
 
     Props = add_transfer_ccvs_to_vars(CCVs, Vars),

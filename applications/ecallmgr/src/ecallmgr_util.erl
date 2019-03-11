@@ -689,6 +689,10 @@ get_fs_key_and_value(<<"ringback">>=Key, Value, _UUID) ->
     [{<<"ringback">>, maybe_sanitize_fs_value(Key, Value)}
     ,{<<"transfer_ringback">>, maybe_sanitize_fs_value(<<"transfer_ringback">>, Value)}
     ];
+get_fs_key_and_value(<<"Timeout">>, Value, _UUID) ->
+    [{<<"call_timeout">>, maybe_sanitize_fs_value(<<"call_timeout">>, Value)}
+    ,{<<"originate_timeout">>, maybe_sanitize_fs_value(<<"originate_timeout">>, Value)}
+    ];
 get_fs_key_and_value(?CCV(Key), Val, UUID) ->
     get_fs_key_and_value(Key, Val, UUID);
 get_fs_key_and_value(?JSON_CAV(_)=JSONCAV, Val, _UUID) ->
