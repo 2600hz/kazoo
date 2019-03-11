@@ -1310,7 +1310,7 @@ get_registered_view(Plan, DbName, DesignDoc) ->
            ],
     case kzs_view:get_results(Plan, ?KZ_DATA_DB, <<"views/registered">>, Opts) of
         {'ok', []} -> 'not_registered';
-        {'ok', [JObj | _]} -> kz_json:get_json_value(<<"doc">>, JObj);
+        {'ok', [JObj | _]} -> maybe_adapt_multilines(kz_json:get_json_value(<<"doc">>, JObj));
         {'error', _Err} ->
             lager:error("error getting registered view : ~p", [_Err]),
             'not_registered'
