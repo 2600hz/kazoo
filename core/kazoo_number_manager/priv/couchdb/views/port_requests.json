@@ -17,6 +17,14 @@
                 "}"
             ]
         },
+        "agent_listing_by_state": {
+            "map": [
+                "function(doc) {",
+                "    if (doc.pvt_type != 'port_request' || doc.pvt_deleted) return;",
+                "    emit([doc.pvt_port_authority, doc.pvt_port_state, doc.pvt_modified], null);",
+                "}"
+            ]
+        },
         "all_port_in_numbers": {
             "map": [
                 "function(doc) {",

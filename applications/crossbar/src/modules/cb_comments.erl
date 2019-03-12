@@ -17,6 +17,8 @@
         ,post/2
         ,delete/1 ,delete/2
         ,finish_request/1
+
+        ,sort/1
         ]).
 
 -include("crossbar.hrl").
@@ -102,11 +104,49 @@ resource_exists(_) -> 'true'.
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    validate_comments(set_resource(Context), cb_context:req_verb(Context)).
+    C1 = set_resource(Context),
+    {Type, _} = cb_context:fetch(C1, 'resource'),
+    validate_comments(C1, Type, cb_context:req_verb(Context)).
 
+-spec validate_comments(cb_context:context(), path_token(), http_method()) ->
+                               cb_context:context().
+validate_comments(Context, _, ?HTTP_GET) ->
+    summary(Context);
+validate_comments(Context, _, ?HTTP_PUT) ->
+    load_doc(Context);
+validate_comments(Context, <<"port_requests">>, ?HTTP_DELETE) ->
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"delete operation on comments is not allowed">>}
+            ,{<<"cause">>, <<"comments">>}
+            ]),
+    cb_context:add_validation_error(<<"comments">>, <<"forbidden">>, Msg, Context);
+validate_comments(Context, _, ?HTTP_DELETE) ->
+    load_doc(Context).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------`
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
-    validate_comment(set_resource(Context), Id, cb_context:req_verb(Context)).
+    C1 = set_resource(Context),
+    {Type, _} = cb_context:fetch(C1, 'resource'),
+    validate_comment(C1, Id, Type, cb_context:req_verb(Context)).
+
+-spec validate_comment(cb_context:context(), path_token(), path_token(), http_method()) ->
+                              cb_context:context().
+validate_comment(Context, _, <<"port_requests">>, _) ->
+    Msg = kz_json:from_list(
+            [{<<"message">>, <<"operation on a single comment is not allowed">>}
+            ,{<<"cause">>, <<"comments">>}
+            ]),
+    cb_context:add_validation_error(<<"comments">>, <<"forbidden">>, Msg, Context);
+validate_comment(Context, Id, _, ?HTTP_GET) ->
+    read(Context, Id);
+validate_comment(Context, Id, _, ?HTTP_POST) ->
+    check_comment_number(Context, Id);
+validate_comment(Context, Id, _, ?HTTP_DELETE) ->
+    check_comment_number(Context, Id).
 
 %%------------------------------------------------------------------------------
 %% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
@@ -137,7 +177,6 @@ post(Context, Id) ->
 %% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
     Context1 = remove(Context),
@@ -172,7 +211,6 @@ finish_request(Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec set_resource(cb_context:context()) -> cb_context:context().
 set_resource(Context) ->
     set_resource(Context, cb_context:req_nouns(Context)).
@@ -180,32 +218,6 @@ set_resource(Context) ->
 -spec set_resource(cb_context:context(), req_nouns()) -> cb_context:context().
 set_resource(Context, [{?COMMENTS, _}, Data | _]) ->
     cb_context:store(Context, 'resource', Data).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec validate_comments(cb_context:context(), http_method()) ->
-                               cb_context:context().
-validate_comments(Context, ?HTTP_GET) ->
-    summary(Context);
-validate_comments(Context, ?HTTP_PUT) ->
-    load_doc(Context);
-validate_comments(Context, ?HTTP_DELETE) ->
-    load_doc(Context).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------`
--spec validate_comment(cb_context:context(), path_token(), http_method()) ->
-                              cb_context:context().
-validate_comment(Context, Id, ?HTTP_GET) ->
-    read(Context, Id);
-validate_comment(Context, Id, ?HTTP_POST) ->
-    check_comment_number(Context, Id);
-validate_comment(Context, Id, ?HTTP_DELETE) ->
-    check_comment_number(Context, Id).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -237,23 +249,24 @@ read(Context, Id) ->
 %%------------------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
+    create(Context, cb_context:fetch(Context, 'resource')).
+
+-spec create(cb_context:context(), {kz_term:ne_binary(), kz_term:ne_binaries()}) -> cb_context:context().
+create(Context, {<<"port_requests">>, _}) ->
+    NewComments = cb_context:fetch(Context, 'req_comments', []),
+    case phonebook:maybe_add_comment(Context, NewComments) of
+        {'ok', _} ->
+            crossbar_doc:save(Context);
+        {'error', _} ->
+            cb_context:add_system_error('datastore_fault', <<"unable to submit comment to carrier">>, Context)
+    end;
+create(Context, _Resource) ->
     Doc = cb_context:doc(Context),
     Comments = kz_json:get_value(?COMMENTS, Doc, []),
     ReqData = cb_context:req_data(Context),
     NewComments = kz_json:get_value(?COMMENTS, ReqData, []),
-    Doc1 = kz_json:set_value(?COMMENTS, Comments ++ NewComments, Doc),
-    maybe_save(Context, Doc1, NewComments, cb_context:fetch(Context, 'resource')).
-
--spec maybe_save(cb_context:context(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binaries()) -> cb_context:context().
-maybe_save(Context, Doc, Comments, {<<"port_requests">>, _}) ->
-    case phonebook:maybe_add_comment(Context, Comments) of
-        {'ok', _} ->
-            crossbar_doc:save(cb_context:set_doc(Context, Doc));
-        {'error', _} ->
-            cb_context:add_system_error('datastore_fault', <<"unable to submit comment to carrier">>, Context)
-    end;
-maybe_save(Context, Doc, _, _) ->
-    crossbar_doc:save(cb_context:set_doc(Context, Doc)).
+    Doc1 = kz_json:set_value(?COMMENTS, sort(Comments ++ NewComments), Doc),
+    crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -271,10 +284,10 @@ update(Context, Id) ->
 
     Doc1 =
         kz_json:set_value(?COMMENTS
-                         ,lists:append([Head1, [Comment], Tail])
+                         ,sort(lists:append([Head1, [Comment], Tail]))
                          ,Doc
                          ),
-    maybe_save(Context, Doc1, lists:flatten([Comment]), cb_context:fetch(Context, 'resource')).
+    crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -307,9 +320,9 @@ remove(Context, Id) ->
 finish_req(_, 'undefined', _) ->
     'ok';
 finish_req(Context, {<<"port_requests">>, [PortReqId]}, ?HTTP_PUT) ->
-    send_port_comment_notification(Context, PortReqId);
+    cb_port_requests:send_port_comment_notifications(Context, PortReqId);
 finish_req(Context, {<<"port_requests">>, [PortReqId]}, ?HTTP_POST) ->
-    send_port_comment_notification(Context, PortReqId);
+    cb_port_requests:send_port_comment_notifications(Context, PortReqId);
 finish_req(_Context, _Type, _Verb) -> 'ok'.
 
 %%------------------------------------------------------------------------------
@@ -337,19 +350,23 @@ check_comment_number(Context, Id) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
-
--spec load_doc(cb_context:context()) ->
-                      cb_context:context().
+-spec load_doc(cb_context:context()) -> cb_context:context().
 load_doc(Context) ->
     {Type, Id} = cb_context:fetch(Context, 'resource'),
     load_doc(Context, Type, Id).
 
 -spec load_doc(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
                       cb_context:context().
-load_doc(Context, <<"port_requests">>, [Id]) ->
-    crossbar_doc:load(Id
-                     ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
-                     ,?TYPE_CHECK_OPTION(<<"port_request">>));
+load_doc(Context0, <<"port_requests">>, [Id]) ->
+    Comments = kzd_port_requests:comments(cb_context:req_data(Context0), []),
+    Context1 = cb_context:store(Context0, 'req_comments', Comments),
+    Context2 = cb_port_requests:load_port_request(cb_port_requests:set_port_authority(Context1), Id),
+    case cb_context:resp_status(Context2) =:= 'success' of
+        'true' ->
+            cb_port_requests:validate_port_comments(Context2, fun kz_term:identity/1);
+        'false' ->
+            Context2
+    end;
 load_doc(Context, _Type, [Id]) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION_ANY);
 load_doc(Context, _Type, _) ->
@@ -361,8 +378,7 @@ load_doc(Context, _Type, _) ->
 %%------------------------------------------------------------------------------
 -spec only_return_comments(cb_context:context()) -> cb_context:context().
 only_return_comments(Context) ->
-    Doc = cb_context:doc(Context),
-    Comments = kz_json:get_value(?COMMENTS, Doc, []),
+    Comments = get_comments(Context),
     cb_context:set_resp_data(Context
                             ,kz_json:from_list([{?COMMENTS, Comments}])
                             ).
@@ -381,6 +397,16 @@ only_return_comment(Context, Id) ->
                             ,lists:nth(Number, Comments)
                             ).
 
+get_comments(Context) ->
+    {Type, _} = cb_context:fetch(Context, 'resource'),
+    get_comments(Context, Type).
+
+get_comments(Context, <<"port_requests">>) ->
+    Doc = cb_context:doc(Context),
+    kzd_port_requests:comments(cb_port_requests:filter_private_comments(Context, Doc), []);
+get_comments(Context, _) ->
+    kz_json:get_value(?COMMENTS, cb_context:doc(Context), []).
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -392,21 +418,10 @@ id_to_number(Id) -> kz_term:to_integer(Id) + 1.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec send_port_comment_notification(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
-send_port_comment_notification(Context, PortReqId) ->
-    Props = [{<<"user_id">>, cb_context:auth_user_id(Context)}
-            ,{<<"account_id">>, cb_context:auth_account_id(Context)}
-            ],
-    Comment = kz_json:set_values(Props, lists:last(kz_json:get_value(?COMMENTS, cb_context:req_data(Context), []))),
+-spec sort(kz_json:objects()) -> boolean().
+sort(Comments) ->
+    lists:sort(fun sort_fun/2, Comments).
 
-    Req = [{<<"Account-ID">>, cb_context:account_id(Context)}
-          ,{<<"Authorized-By">>, cb_context:auth_account_id(Context)}
-          ,{<<"Port-Request-ID">>, PortReqId}
-          ,{<<"Comment">>, Comment}
-          ,{<<"Version">>, cb_context:api_version(Context)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    lager:debug("sending port request notification for new comment by user ~s in account ~s"
-               ,[cb_context:auth_user_id(Context), cb_context:auth_account_id(Context)]
-               ),
-    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_comment/1).
+-spec sort_fun(kz_json:object(), kz_json:object()) -> boolean().
+sort_fun(CommentA, CommentB) ->
+    kz_json:get_integer_value(<<"timestamp">>, CommentA, 0) =< kz_json:get_integer_value(<<"timestamp">>, CommentB, 0).

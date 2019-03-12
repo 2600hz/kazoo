@@ -4281,6 +4281,59 @@
             ],
             "type": "object"
         },
+        "comment": {
+            "description": "Schema for a single comment",
+            "properties": {
+                "account_id": {
+                    "description": "Account ID of the commenter.",
+                    "type": "string"
+                },
+                "action_required": {
+                    "default": false,
+                    "description": "Specficied if an action is required by the user.",
+                    "type": "boolean"
+                },
+                "author": {
+                    "description": "Full name of the author",
+                    "type": "string"
+                },
+                "content": {
+                    "description": "Content of the comment",
+                    "type": "string"
+                },
+                "is_private": {
+                    "default": false,
+                    "description": "Specified if this comment is private",
+                    "type": "boolean"
+                },
+                "timestamp": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "description": "User ID of the commenter",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "author",
+                "content",
+                "timestamp"
+            ],
+            "type": "object"
+        },
+        "comments": {
+            "description": "Schema for comments",
+            "properties": {
+                "comments": {
+                    "description": "The history of comments made on a object",
+                    "items": {
+                        "$ref": "#/definitions/comment"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        },
         "conferences": {
             "description": "Schema for conferences",
             "properties": {
@@ -18079,6 +18132,9 @@
                 },
                 "To": {
                     "type": "string"
+                },
+                "Version": {
+                    "type": "string"
                 }
             },
             "required": [
@@ -18159,6 +18215,9 @@
                     "type": "string"
                 },
                 "To": {
+                    "type": "string"
+                },
+                "Version": {
                     "type": "string"
                 }
             },
@@ -18318,6 +18377,9 @@
                     "type": "string"
                 },
                 "To": {
+                    "type": "string"
+                },
+                "Version": {
                     "type": "string"
                 }
             },
@@ -18642,6 +18704,9 @@
                     "type": "string"
                 },
                 "To": {
+                    "type": "string"
+                },
+                "Version": {
                     "type": "string"
                 }
             },
@@ -25837,12 +25902,16 @@
                 "bill": {
                     "description": "Billing information of the losing carrier",
                     "properties": {
-                        "carrier": {
-                            "description": "The name of the losing carrier",
+                        "account_number": {
+                            "description": "Account Number to identify account",
                             "type": "string"
                         },
-                        "extended_address": {
-                            "description": "The suite/floor/apt of the billing address the losing carrier has on record",
+                        "btn": {
+                            "description": "Billing Telephone Number (BTN) to identify account",
+                            "type": "string"
+                        },
+                        "carrier": {
+                            "description": "The name of the losing carrier",
                             "type": "string"
                         },
                         "locality": {
@@ -25851,6 +25920,10 @@
                         },
                         "name": {
                             "description": "The losing carrier billing/account name",
+                            "type": "string"
+                        },
+                        "pin": {
+                            "description": "Personal Identification Number (PIN) to identify account",
                             "type": "string"
                         },
                         "postal_code": {
@@ -25869,6 +25942,34 @@
                             "description": "The street number of the billing address the losing carrier has on record",
                             "type": "string"
                         },
+                        "street_post_dir": {
+                            "description": "Street Post-Direction",
+                            "enum": [
+                                "E",
+                                "N",
+                                "NE",
+                                "NW",
+                                "S",
+                                "SE",
+                                "SW",
+                                "W"
+                            ],
+                            "type": "string"
+                        },
+                        "street_pre_dir": {
+                            "description": "Street Pre-Direction",
+                            "enum": [
+                                "E",
+                                "N",
+                                "NE",
+                                "NW",
+                                "S",
+                                "SE",
+                                "SW",
+                                "W"
+                            ],
+                            "type": "string"
+                        },
                         "street_type": {
                             "description": "The street type of the billing address the losing carrier has on record",
                             "type": "string"
@@ -25879,7 +25980,7 @@
                 "comments": {
                     "description": "The history of comments made on a port request",
                     "items": {
-                        "type": "object"
+                        "$ref": "#/definitions/comment"
                     },
                     "type": "array"
                 },
@@ -25922,18 +26023,8 @@
                     "minProperties": 1,
                     "type": "object"
                 },
-                "port_state": {
-                    "default": "unconfirmed",
-                    "description": "What state the port request is currently in",
-                    "enum": [
-                        "unconfirmed",
-                        "pending",
-                        "submitted",
-                        "scheduled",
-                        "completed",
-                        "rejected",
-                        "canceled"
-                    ],
+                "reference_number": {
+                    "description": "Winning carrier reference number or order ID",
                     "type": "string"
                 },
                 "signee_name": {
@@ -25947,6 +26038,10 @@
                 "transfer_date": {
                     "description": "Requested transfer date in Gregorian timestamp",
                     "type": "integer"
+                },
+                "winning_carrier": {
+                    "description": "The name of winning carrier",
+                    "type": "string"
                 }
             },
             "required": [
@@ -35592,7 +35687,7 @@
                     "description": "Parameters related to white-labeling port requests",
                     "properties": {
                         "authority": {
-                            "description": "The email(s) to be used for admin port requests",
+                            "description": "The account ID(s) to be used for administrating port requests",
                             "oneOf": [
                                 {
                                     "type": "string"
@@ -37956,6 +38051,14 @@
             "put": {
                 "parameters": [
                     {
+                        "in": "body",
+                        "name": "comments",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/comments"
+                        }
+                    },
+                    {
                         "$ref": "#/parameters/auth_token_header"
                     },
                     {
@@ -38008,6 +38111,14 @@
             },
             "post": {
                 "parameters": [
+                    {
+                        "in": "body",
+                        "name": "comments",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/comments"
+                        }
+                    },
                     {
                         "$ref": "#/parameters/auth_token_header"
                     },
@@ -41991,126 +42102,7 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/canceled": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/port_requests/completed": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
         "/accounts/{ACCOUNT_ID}/port_requests/last_submitted": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/port_requests/pending": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/port_requests/rejected": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/port_requests/scheduled": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/port_requests/submitted": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/port_requests/unconfirmed": {
             "get": {
                 "parameters": [
                     {

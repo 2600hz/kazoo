@@ -6,7 +6,7 @@
 %%%-----------------------------------------------------------------------------
 -module(pqc_cb_accounts).
 
--export([create_account/2
+-export([create_account/2, create_account/3
         ,delete_account/2
         ,cleanup_accounts/1, cleanup_accounts/2
 
@@ -38,17 +38,21 @@ symbolic_account_id(Model, Name) ->
 
 -spec create_account(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
 create_account(API, NewAccountName) ->
+    create_account(API, NewAccountName, pqc_cb_api:auth_account_id(API)).
+
+-spec create_account(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
+create_account(API, NewAccountName, AccountId) ->
     RequestData = kz_json:from_list([{<<"name">>, NewAccountName}]),
     RequestEnvelope = pqc_cb_api:create_envelope(RequestData),
 
     Resp = pqc_cb_api:make_request([201, 500]
                                   ,fun kz_http:put/3
-                                  ,account_url(pqc_cb_api:auth_account_id(API))
+                                  ,account_url(AccountId)
                                   ,pqc_cb_api:request_headers(API)
                                   ,kz_json:encode(RequestEnvelope)
                                   ),
-    is_binary(NewAccountId = pqc_cb_response:account_id(Resp))
-        andalso allow_number_additions(NewAccountId),
+    is_binary(Resp)
+        andalso allow_number_additions(pqc_cb_response:account_id(Resp)),
     Resp.
 
 -spec allow_number_additions(kz_term:ne_binary()) -> {'ok', kzd_accounts:doc()}.

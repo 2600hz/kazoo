@@ -69,6 +69,9 @@
 -export([name/1]).
 -export([is_account_admin/1, is_account_admin/2]).
 -export([classifier_restriction/2, classifier_restriction/3, set_classifier_restriction/3]).
+-export([full_name/1, full_name/2]).
+
+-export([full_name/3]).
 
 -include("kz_documents.hrl").
 
@@ -948,3 +951,21 @@ set_classifier_restriction(Doc, Classifier, Action) ->
     set_call_restriction(Doc
                         ,kz_json:set_value([Classifier, <<"action">>], Action, Restrictions)
                         ).
+
+-spec full_name(kz_json:object()) -> kz_term:api_ne_binary().
+full_name(Doc) ->
+    full_name(Doc, 'undefined').
+
+-spec full_name(kz_json:object(), Default) -> kz_term:api_ne_binary() | Default.
+full_name(Doc, Default) ->
+    full_name(first_name(Doc), last_name(Doc), Default).
+
+-spec full_name(kz_term:api_binary(), kz_term:api_binary(), Default) -> kz_term:ne_binary() | Default.
+full_name(?NE_BINARY = First, ?NE_BINARY = Last, _) ->
+    <<First/binary, " ", Last/binary>>;
+full_name(_, ?NE_BINARY = Last, _) ->
+    <<Last/binary>>;
+full_name(?NE_BINARY = First, _, _) ->
+    <<First/binary>>;
+full_name(_, _, Default) ->
+    Default.

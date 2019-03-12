@@ -7,6 +7,7 @@
 -module(pqc_cb_api).
 
 -export([authenticate/0
+        ,authenticate/3
         ,v2_base_url/0
         ,auth_account_id/1
 
@@ -81,6 +82,25 @@ api_base() ->
 authenticate() ->
     URL =  api_base() ++ "/api_auth",
     Data = kz_json:from_list([{<<"api_key">>, api_key()}]),
+    Envelope = create_envelope(Data),
+
+    {'ok', Trace} = start_trace(),
+
+    Resp = make_request([201]
+                       ,fun kz_http:put/3
+                       ,URL
+                       ,default_request_headers(kz_util:get_callid())
+                       ,kz_json:encode(Envelope)
+                       ),
+    create_api_state(Resp, Trace).
+
+-spec authenticate(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> state().
+authenticate(AccountName, Username, Password) ->
+    URL =  api_base() ++ "/user_auth",
+    Creds = kz_term:to_hex_binary(crypto:hash('md5', <<Username/binary, ":", Password/binary>>)),
+    Data = kz_json:from_list([{<<"account_name">>, AccountName}
+                             ,{<<"credentials">>, Creds}
+                             ]),
     Envelope = create_envelope(Data),
 
     {'ok', Trace} = start_trace(),

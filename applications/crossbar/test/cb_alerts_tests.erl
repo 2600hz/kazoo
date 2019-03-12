@@ -341,11 +341,11 @@ account_active_ports() ->
 
 -spec unconfirmed_port_request() -> kzd_port_requests:doc().
 unconfirmed_port_request() ->
-    kzd_port_requests:set_port_state(example_port_request(), <<"unconfirmed">>).
+    kz_json:set_value(<<"pvt_port_state">>, <<"unconfirmed">>, example_port_request()).
 
 -spec rejected_port_request() -> kzd_port_requests:doc().
 rejected_port_request() ->
-    kzd_port_requests:set_port_state(example_port_request(), <<"rejected">>).
+    kz_json:set_value(<<"pvt_port_state">>, <<"unconfirmed">>, example_port_request()).
 
 -spec swap_comments(kzd_port_requests:doc()) -> kzd_port_requests:doc().
 swap_comments(Port) ->
