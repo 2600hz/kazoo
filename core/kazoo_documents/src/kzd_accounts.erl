@@ -244,7 +244,7 @@ caller_id_options_outbound_privacy(Doc) ->
 
 -spec caller_id_options_outbound_privacy(doc(), Default) -> binary() | Default.
 caller_id_options_outbound_privacy(Doc, Default) ->
-    kz_json:get_binary_value([<<"caller_id_options">>, <<"outbound_privacy">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"caller_id_options">>, <<"outbound_privacy">>], Doc, Default).
 
 -spec set_caller_id_options_outbound_privacy(doc(), binary()) -> doc().
 set_caller_id_options_outbound_privacy(Doc, CallerIdOptionsOutboundPrivacy) ->
@@ -328,7 +328,7 @@ language(Doc) ->
 
 -spec language(doc(), Default) -> binary() | Default.
 language(Doc, Default) ->
-    kz_json:get_binary_value([<<"language">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"language">>], Doc, Default).
 
 -spec set_language(doc(), binary()) -> doc().
 set_language(Doc, Language) ->
@@ -364,7 +364,7 @@ music_on_hold_media_id(Doc) ->
 
 -spec music_on_hold_media_id(doc(), Default) -> binary() | Default.
 music_on_hold_media_id(Doc, Default) ->
-    kz_json:get_binary_value([<<"music_on_hold">>, <<"media_id">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"music_on_hold">>, <<"media_id">>], Doc, Default).
 
 -spec set_music_on_hold_media_id(doc(), binary()) -> doc().
 set_music_on_hold_media_id(Doc, MusicOnHoldMediaId) ->
@@ -504,7 +504,7 @@ org(Doc) ->
 
 -spec org(doc(), Default) -> binary() | Default.
 org(Doc, Default) ->
-    kz_json:get_binary_value([<<"org">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"org">>], Doc, Default).
 
 -spec set_org(doc(), binary()) -> doc().
 set_org(Doc, Org) ->
@@ -528,7 +528,7 @@ preflow_always(Doc) ->
 
 -spec preflow_always(doc(), Default) -> binary() | Default.
 preflow_always(Doc, Default) ->
-    kz_json:get_binary_value([<<"preflow">>, <<"always">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"preflow">>, <<"always">>], Doc, Default).
 
 -spec set_preflow_always(doc(), binary()) -> doc().
 set_preflow_always(Doc, PreflowAlways) ->
@@ -564,7 +564,7 @@ ringtones_external(Doc) ->
 
 -spec ringtones_external(doc(), Default) -> binary() | Default.
 ringtones_external(Doc, Default) ->
-    kz_json:get_binary_value([<<"ringtones">>, <<"external">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"ringtones">>, <<"external">>], Doc, Default).
 
 -spec set_ringtones_external(doc(), binary()) -> doc().
 set_ringtones_external(Doc, RingtonesExternal) ->
@@ -576,7 +576,7 @@ ringtones_internal(Doc) ->
 
 -spec ringtones_internal(doc(), Default) -> binary() | Default.
 ringtones_internal(Doc, Default) ->
-    kz_json:get_binary_value([<<"ringtones">>, <<"internal">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"ringtones">>, <<"internal">>], Doc, Default).
 
 -spec set_ringtones_internal(doc(), binary()) -> doc().
 set_ringtones_internal(Doc, RingtonesInternal) ->
@@ -728,7 +728,7 @@ zones_home(Doc) ->
 
 -spec zones_home(doc(), Default) -> binary() | Default.
 zones_home(Doc, Default) ->
-    kz_json:get_binary_value([<<"zones">>, <<"home">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"zones">>, <<"home">>], Doc, Default).
 
 -spec set_zones_home(doc(), binary()) -> doc().
 set_zones_home(Doc, ZonesHome) ->

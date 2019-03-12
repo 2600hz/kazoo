@@ -9,6 +9,7 @@
         ,validate_auth_token/1, validate_auth_token/2
         ,authorize_auth_token/1
         ,reset_identity_secret/1
+        ,has_identity_secret/1
         ,log_success_auth/4, log_success_auth/5, log_success_auth/6
         ,log_failed_auth/4, log_failed_auth/5, log_failed_auth/6
         ,get_inherited_config/1
@@ -183,6 +184,14 @@ maybe_db_token(AuthToken) ->
 reset_identity_secret(Context) ->
     Doc = kz_auth_identity:reset_doc_secret(cb_context:doc(Context)),
     cb_context:set_doc(Context, Doc).
+
+%%------------------------------------------------------------------------------
+%% @doc Check if user has a non-empty `pvt_signature_secret'
+%% @end
+%%------------------------------------------------------------------------------
+-spec has_identity_secret(cb_context:context()) -> boolean().
+has_identity_secret(Context) ->
+    kz_auth_identity:has_doc_secret(cb_context:doc(Context)).
 
 %%------------------------------------------------------------------------------
 %% @doc Get merge result of account and its parents, reseller and system
