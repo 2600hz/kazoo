@@ -591,10 +591,11 @@
 
 %% PlaySeek Request
 -define(PLAY_SEEK_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Duration">>, <<"Direction">>]).
--define(OPTIONAL_PLAY_SEEK_REQ_HEADERS, []).
+-define(OPTIONAL_PLAY_SEEK_REQ_HEADERS, [<<"Insert-At">>]).
 -define(PLAY_SEEK_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                               ,{<<"Event-Name">>, <<"command">>}
                               ,{<<"Application-Name">>, <<"playseek">>}
+                              ,{<<"Insert-At">>, <<"now">>}
                               ]).
 -define(PLAY_SEEK_REQ_TYPES, []).
 
