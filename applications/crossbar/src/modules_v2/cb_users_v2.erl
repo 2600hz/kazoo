@@ -562,7 +562,7 @@ check_username(UserId, Context) ->
     CurrentUsername = kzd_users:username(CurrentJObj),
     AccountDb = cb_context:account_db(Context),
     case kz_term:is_empty(Username)
-        orelse Username =:= CurrentUsername 
+        orelse Username =:= CurrentUsername
         orelse is_username_unique(AccountDb, UserId, Username)
     of
         'true' ->
@@ -679,7 +679,9 @@ maybe_rehash_creds(_UserId, Context) ->
     Password = kz_json:get_ne_binary_value(<<"password">>, JObj),
     GeneratePassword = kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"generate_password_if_empty">>, 'false'),
     GenerateUsername = kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"generate_username_if_empty">>, 'true'),
-    GenerateCreds = GenerateUsername andalso GeneratePassword,
+    GenerateCreds =
+        GenerateUsername
+        andalso GeneratePassword,
     case
         {Username =:= CurrentUsername
         ,kz_term:is_empty(Username)
@@ -747,7 +749,7 @@ maybe_generated_creds_hash('false', Context) ->
 maybe_generated_creds_hash('true', Context) ->
     Username = generate_username(),
     JObj = kzd_users:set_username(Username, cb_context:doc(Context)),
-    rehash_creds(Username, generate_password(), cb_context:set_doc(Context, JObj)).    
+    rehash_creds(Username, generate_password(), cb_context:set_doc(Context, JObj)).
 
 -spec generate_username() -> kz_term:ne_binary().
 generate_username() ->
