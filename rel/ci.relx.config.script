@@ -20,13 +20,15 @@ ToFilterOut = [rabbitmq_codegen
 Preparer = fun (List) -> [{E,load} || E <- List, not lists:member(E, ToFilterOut)] end,
 Base = [tools
        ,sasl
+       ,eunit
+       ,common_test
        ],
 
 BASE = [{default_release, {kazoo, VSN}}
        ,{release, {kazoo, VSN}
        ,Base ++ Preparer(Apps ++ Core ++ Deps)
        }],
-       
+
 APPS = [begin
           {ok, [{application, App, Settings}]} = file:consult(list_to_binary(["applications/", atom_to_list(App), "/ebin/", atom_to_list(App), ".app"])),
           AppDeps = proplists:get_value(applications, Settings, []),

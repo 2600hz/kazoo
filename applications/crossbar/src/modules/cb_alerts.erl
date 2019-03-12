@@ -182,7 +182,7 @@ read(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Context1 = load_summary(Context),
+    Context1 = load_summary(cb_port_requests:set_port_authority(Context)),
     case cb_context:resp_status(Context1) of
         'success' ->
             fix_envelope(Context1);
@@ -221,7 +221,7 @@ set_success_resp_status(Context) ->
 %%------------------------------------------------------------------------------
 -spec check_port_requests(cb_context:context()) -> cb_context:context().
 check_port_requests(Context) ->
-    case get_active_port_requests(Context) of
+    case knm_port_request:account_active_ports(cb_context:account_id(Context)) of
         {'error', _R} ->
             lager:debug("unable to fetch port requests: ~p", [_R]),
             Context;
@@ -243,15 +243,6 @@ check_port_requests([PortRequest|PortRequests], Context) ->
                           ),
     check_port_requests(PortRequests, Context1).
 
--spec get_active_port_requests(cb_context:context()) -> {'ok', kz_json:objects()} |
-                                                        {'error', 'not_found'}.
-get_active_port_requests(Context) ->
-    AuthAccountId = cb_context:auth_account_id(Context),
-    case kz_services_reseller:is_reseller(AuthAccountId) of
-        'true' -> knm_port_request:descendant_active_ports(AuthAccountId);
-        'false' -> knm_port_request:account_active_ports(cb_context:account_id(Context))
-    end.
-
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -259,13 +250,13 @@ get_active_port_requests(Context) ->
 -spec check_port_action_required(kzd_port_requests:doc(), cb_context:context()) ->
                                         cb_context:context().
 check_port_action_required(PortRequest, Context) ->
-    LastComment = port_request_last_comment(PortRequest),
-    case kz_json:get_boolean_value(<<"action_required">>, LastComment, 'false') of
+    LastComment = port_request_last_comment(Context, PortRequest),
+    case kzd_comment:action_required(LastComment) of
         'false' -> Context;
         'true' ->
             Metadata = kz_json:from_list(
                          [{<<"name">>, kzd_port_requests:name(PortRequest)}
-                         ,{<<"state">>, kzd_port_requests:port_state(PortRequest)}
+                         ,{<<"state">>, kzd_port_requests:pvt_port_state(PortRequest)}
                          ]
                         ),
             From = kz_json:from_list(
@@ -286,12 +277,12 @@ check_port_action_required(PortRequest, Context) ->
             append_alert(Context, PortAlert)
     end.
 
--spec port_request_last_comment(kzd_port_requests:doc()) -> kz_json:object().
-port_request_last_comment(PortRequest) ->
-    case kzd_port_requests:comments(PortRequest) of
-        'undefined' -> kz_json:new();
+-spec port_request_last_comment(cb_context:context(), kzd_port_requests:doc()) -> kz_json:object().
+port_request_last_comment(Context, PortRequest) ->
+    JObj = cb_port_requests:filter_private_comments(Context, PortRequest),
+    case kzd_port_requests:comments(JObj, []) of
         [] -> kz_json:new();
-        Comments -> hd(lists:reverse(Comments))
+        Comments -> lists:last(Comments)
     end.
 
 %%------------------------------------------------------------------------------
@@ -301,13 +292,17 @@ port_request_last_comment(PortRequest) ->
 -spec check_port_suspended(kzd_port_requests:doc(), cb_context:context()) ->
                                   cb_context:context().
 check_port_suspended(PortRequest, Context) ->
-    State = kzd_port_requests:port_state(PortRequest),
-    case lists:member(State, ?PORT_SUSPENDED_STATES) of
+    State = kzd_port_requests:pvt_port_state(PortRequest),
+    Transition = kzd_port_requests:get_transition(PortRequest, State),
+    case lists:member(State, ?PORT_SUSPENDED_STATES)
+        andalso Transition =/= []
+    of
         'false' -> Context;
         'true' ->
             Metadata = kz_json:from_list(
                          [{<<"name">>, kzd_port_requests:name(PortRequest)}
                          ,{<<"state">>, State}
+                         ,{<<"transition">>, hd(Transition)}
                          ]
                         ),
             From = kz_json:from_list(

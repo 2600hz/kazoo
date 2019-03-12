@@ -9,9 +9,12 @@
 -export([maybe_create_port_in/1
         ,maybe_add_comment/2
         ,maybe_cancel_port_in/1
+
+        ,should_send_to_phonebook/1
         ]).
 
 -include("crossbar.hrl").
+-include_lib("kazoo_number_manager/include/knm_port_request.hrl").
 
 -define(MOD_CONFIG_CAT, <<"crossbar.phonebook">>).
 
@@ -22,9 +25,7 @@
 
 -spec maybe_create_port_in(cb_context:context()) -> {'ok', kz_json:object() | 'disabled'} | {'error', kz_term:ne_binary() | {integer(), kz_json:object()}}.
 maybe_create_port_in(Context) ->
-    case should_send_to_phonebook(Context)
-        andalso not req_from_phonebook(Context)
-    of
+    case should_send_to_phonebook(Context) of
         'true' ->
             create_port_in(cb_context:doc(Context), cb_context:auth_token(Context));
         'false' -> {'ok', 'disabled'}
@@ -32,9 +33,7 @@ maybe_create_port_in(Context) ->
 
 -spec maybe_add_comment(cb_context:context(), kz_json:objects()) -> {'ok', kz_json:object() | 'disabled'} | {'error', kz_term:ne_binary() | {integer(), kz_json:object()}}.
 maybe_add_comment(Context, Comment) ->
-    case should_send_to_phonebook(Context)
-        andalso not req_from_phonebook(Context)
-    of
+    case should_send_to_phonebook(Context) of
         'true' ->
             add_comment(cb_context:doc(Context), cb_context:auth_token(Context), Comment);
         'false' -> {'ok', 'disabled'}
@@ -42,9 +41,7 @@ maybe_add_comment(Context, Comment) ->
 
 -spec maybe_cancel_port_in(cb_context:context()) -> {'ok', kz_json:object() | 'disabled'} | {'error', kz_term:ne_binary() | {integer(), kz_json:object()}}.
 maybe_cancel_port_in(Context) ->
-    case should_send_to_phonebook(Context)
-        andalso not req_from_phonebook(Context)
-    of
+    case should_send_to_phonebook(Context) of
         'true' ->
             %%TODO: implement support for this in phonebook
             %% cancel_port_in(cb_context:doc(Context), cb_context:auth_token(Context));
@@ -57,6 +54,16 @@ maybe_cancel_port_in(Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec should_send_to_phonebook(cb_context:context()) -> boolean().
+should_send_to_phonebook(Context) ->
+    MasterId = case kapps_util:get_master_account_id() of
+                   {'ok', Id} -> Id;
+                   {'error', _} ->
+                       cb_context:fetch(Context, 'port_authority_id')
+               end,
+    phonebook_enabled()
+        andalso cb_context:fetch(Context, 'port_authority_id', MasterId) =:= MasterId
+        andalso not req_from_phonebook(Context).
 
 -spec phonebook_enabled() -> boolean().
 phonebook_enabled() ->
@@ -69,11 +76,10 @@ req_from_phonebook(Context) ->
         _ -> 'false'
     end.
 
--spec should_send_to_phonebook(cb_context:context()) -> boolean().
-should_send_to_phonebook(Context) ->
-    cb_context:resp_status(Context) =:= 'success'
-        andalso phonebook_enabled().
-
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec create_port_in(kz_json:object(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary() | {integer(), kz_json:object()}}.
 create_port_in(JObj, AuthToken) ->
     Url = phonebook_uri([<<"accounts">>
@@ -173,7 +179,7 @@ create_alert(Response, JObj, Type) ->
             ,{<<"port_id">>, kz_doc:id(JObj)}
             ,{<<"phone_numbers">>, kz_json:get_keys(kzd_port_requests:numbers(JObj))}
             ,{<<"account_id">>, kz_doc:account_id(JObj)}
-            ,{<<"port_state">>, kzd_port_requests:port_state(JObj)}
+            ,{<<"port_state">>, kz_json:get_ne_binary_value(?PORT_PVT_STATE, JObj)}
              | Response
             ],
     kz_notify:detailed_alert(Subject, Msg, Props, []).
