@@ -67,12 +67,14 @@ test() ->
 -spec seq() -> any().
 seq() ->
     _ = init_system(),
-    eunit:test([{'setup'
-                ,fun initial_state/0
-                ,fun cleanup/1
-                ,fun all_port_seq/1
-                }
-               ], [verbose]).
+    'ok' = eunit:test([{'setup'
+                       ,fun initial_state/0
+                       ,fun cleanup/1
+                       ,fun all_port_seq/1
+                       }
+                      ]
+                     ,[verbose]
+                     ).
 
 -spec init_system() -> 'ok'.
 init_system() ->
@@ -122,10 +124,7 @@ initialize_account(API, AccountName, StateAcc) ->
     AccountId = kz_doc:id(AccountJObj),
     ?debugFmt("created account ~s(~s)", [AccountName, AccountId]),
 
-    _ = timer:sleep(500), %% too fast for kazoo
-    IsAuthority = maps:get(<<"is_port_authority">>, maps:get(AccountName, ?ACCOUNTS_SETTINGS), false),
-    Whitelabel = create_whitelabel(API, AccountId, AccountName, IsAuthority),
-    true = kz_term:is_ne_binary(Whitelabel),
+    _ = timer:sleep(1000), %% too fast for kazoo
 
     UserResp = create_admin_user(API, AccountId, AccountName),
     true = kz_term:is_ne_binary(UserResp),
@@ -135,7 +134,13 @@ initialize_account(API, AccountName, StateAcc) ->
                                         ,kzd_users:username(User)
                                         ,<<"qwerty">>
                                         ),
-    _ = timer:sleep(500), %% too fast for kazoo
+
+    _ = timer:sleep(1000), %% too fast for kazoo
+
+    IsAuthority = maps:get(<<"is_port_authority">>, maps:get(AccountName, ?ACCOUNTS_SETTINGS), false),
+    Whitelabel = create_whitelabel(AccountApi, AccountId, AccountName, IsAuthority),
+    true = kz_term:is_ne_binary(Whitelabel),
+
     StateAcc#{AccountName => #{model => pqc_kazoo_model:new(AccountApi)
                               ,account_id => AccountId
                               ,account_name => AccountName
