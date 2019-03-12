@@ -792,7 +792,6 @@ db_list() ->
 db_list(Options) ->
     kzs_db:db_list(kzs_plan:plan(), Options).
 
-
 -spec all_design_docs(kz_term:text()) -> {'ok', kz_json:objects()} |
                                          data_error().
 all_design_docs(DbName) ->

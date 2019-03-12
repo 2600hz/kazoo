@@ -87,7 +87,7 @@
                        {'endkey', key_range()} |
                        {'group_level', 'exact' | integer()} |
                        {'key', binary()} |
-                       {'keys', [binary()]} |
+                       {'keys', [binary()] | [[binary()]]} |
                        {'limit', integer()} |
                        {'list', binary()} |
                        {'reduce', boolean()} |
