@@ -367,7 +367,7 @@ db_exists_all(DbName) ->
 -spec db_info() -> {'ok', kz_term:ne_binaries()} |
                    data_error().
 db_info() ->
-    kzs_db:db_info(kzs_plan:plans()).
+    kzs_db:db_info(kzs_plan:plan()).
 
 %%------------------------------------------------------------------------------
 %% @doc Retrieve information regarding a database.
@@ -791,8 +791,7 @@ db_list() ->
 
 -spec db_list(kz_term:proplist()) -> {'ok', kz_term:ne_binaries()} | data_error().
 db_list(Options) ->
-    kzs_db:db_list(kzs_plan:plans(), Options).
-
+    kzs_db:db_list(kzs_plan:plan(), Options).
 
 -spec all_design_docs(kz_term:text()) -> {'ok', kz_json:objects()} |
                                          data_error().
