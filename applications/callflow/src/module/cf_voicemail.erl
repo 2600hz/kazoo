@@ -43,6 +43,12 @@
 -define(KEY_FORCE_REQUIRE_PIN, <<"force_require_pin">>).
 -define(MAX_INVALID_PIN_LOOPS, 3).
 
+-define(VM_MESSAGE_TERMINATORS, [<<"1">>, <<"2">>, <<"3">>
+                   ,<<"4">>,  <<"6">>
+                   ,<<"7">>,  <<"9">>
+                   ,<<"*">>, <<"0">>, <<"#">>
+                   ]).
+
 -define(MAILBOX_DEFAULT_SIZE
        ,kapps_config:get_integer(?CF_CONFIG_CAT
                                 ,[?KEY_VOICEMAIL, ?KEY_MAX_MESSAGE_COUNT]
@@ -809,7 +815,7 @@ message_prompt([H|_]=Messages, Message, Count, #mailbox{timezone=Timezone
                                                        }) ->
     [{'prompt', <<"vm-message_number">>}
     ,{'say', kz_term:to_binary(Count - length(Messages) + 1), <<"number">>}
-    ,{'play', Message}
+    ,{'play', Message, ?VM_MESSAGE_TERMINATORS}
     ,{'prompt', <<"vm-received">>}
     ,{'say',  get_unix_epoch(kz_json:get_integer_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
     ,{'prompt', <<"vm-message_menu">>}
@@ -818,7 +824,7 @@ message_prompt(Messages, Message, Count, #mailbox{skip_envelope='true'}) ->
     lager:debug("mailbox is set to skip playing message envelope"),
     [{'prompt', <<"vm-message_number">>}
     ,{'say', kz_term:to_binary(Count - length(Messages) + 1), <<"number">>}
-    ,{'play', Message}
+    ,{'play', Message, ?VM_MESSAGE_TERMINATORS}
     ,{'prompt', <<"vm-message_menu">>}
     ].
 
@@ -837,8 +843,6 @@ play_messages(Messages, Count, Box, Call) ->
                            'ok' | 'complete'.
 play_messages([H|T]=Messages, PrevMessages, Count, Box, Call) ->
     AccountId = kapps_call:account_id(Call),
-    %Node = kapps_call:switch_nodename(Call),
-    %UUID = kapps_call:call_id(Call),
     Message = kvm_message:media_url(AccountId, H),
     lager:info("playing mailbox message ~p (~s)", [Count, Message]),
     Prompt = message_prompt(Messages, Message, Count, Box),
@@ -875,12 +879,11 @@ play_messages([H|T]=Messages, PrevMessages, Count, Box, Call) ->
             play_messages(T, [NMessage|PrevMessages], Count, Box, Call);
         {ok, rewind} ->
             lager:notice("caller chose to rewind 10 sec of the message"),
-            _ = kapps_call_command:b_seek(rewind, 10000, Call),
-            %ecallmgr_util:send_cmd(kz_term:to_atom(Node), UUID, <<"playseek">>, ["seek", ":", "+1000"]),
+            _ = kapps_call_command:b_seek(rewind, 2000, Call),
             play_messages(Messages, PrevMessages, Count, Box, Call);
         {ok, fastforward} ->
             lager:notice("caller chose to fastforward 10 sec of the message"),
-            _ = kapps_call_command:b_seek(fastforward, 10000, Call),
+            _ = kapps_call_command:seek(fastforward, 2000, Call),
             play_messages(Messages, PrevMessages, Count, Box, Call);
         {'error', _} ->
             lager:info("error during message playback")
@@ -1050,25 +1053,25 @@ message_menu(Box, Call) ->
                           {'error', 'channel_hungup' | 'channel_unbridge' | kz_json:object()} |
                           message_menu_returns().
 message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
-                                        ,keep=Keep
-                                        ,forward=Forward
-                                        ,delete=Delete
-                                        ,prev=Prev
-                                        ,next=Next
-                                        ,return_main=ReturnMain
-                                        ,rw=RW
-                                        ,ff=FF
-                                        }
-                             ,interdigit_timeout=Interdigit
-                             }=Box, Call) ->
+                                              ,keep=Keep
+                                              ,forward=Forward
+                                              ,delete=Delete
+                                              ,prev=Prev
+                                              ,next=Next
+                                              ,return_main=ReturnMain
+                                              ,rw=RW
+                                              ,ff=FF
+                                             }
+                                   ,interdigit_timeout=Interdigit
+                                  }=Box, Call) ->
     lager:info("playing message menu"),
     NoopId = kapps_call_command:audio_macro(Prompt, Call),
 
     case kapps_call_command:collect_digits(?KEY_LENGTH
-                                          ,kapps_call_command:default_collect_timeout()
-                                          ,Interdigit
-                                          ,NoopId
-                                          ,Call
+                                           ,kapps_call_command:default_collect_timeout()
+                                           ,Interdigit
+                                           ,NoopId
+                                           ,Call
                                           )
     of
         {'ok', Keep} -> {'ok', 'keep'};
