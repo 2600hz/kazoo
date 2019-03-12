@@ -1550,6 +1550,7 @@ seek(Direction, Duration, Call) ->
     Command = [{<<"Application-Name">>, <<"playseek">>}
                ,{<<"Direction">>,Direction}
                ,{<<"Duration">>,Duration}
+               ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, Call).
 
@@ -2459,7 +2460,7 @@ do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
                                      ,interdigit=Interdigit
                                      ,noop_id=NoopId
                                      ,terminators=Terminators
-                                     ,call=Call
+                                     %,call=Call
                                      ,digits_collected=Digits
                                      ,after_timeout=After
                                      }=Collect) ->
@@ -2480,8 +2481,8 @@ do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
                     do_collect_digits(Collect#wcc_collect_digits{after_timeout=kz_time:decr_timeout(After, Start)});
                 {'ok', Digit} ->
                     %% DTMF received, collect and start interdigit timeout
-                    Digits =:= <<>>
-                        andalso flush(Call),
+                    %Digits =:= <<>>
+                    %    andalso flush(Call),
 
                     case lists:member(Digit, Terminators) of
                         'true' ->
