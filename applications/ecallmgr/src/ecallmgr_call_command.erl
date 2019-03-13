@@ -1491,12 +1491,14 @@ record_call(Node, UUID, <<"start">>, JObj) ->
     RecordingName = ecallmgr_util:recording_filename(MediaName),
     RecodingBaseName = filename:basename(RecordingName),
     RecordingId = kz_json:get_ne_binary_value(<<"Media-Recording-ID">>, JObj),
+    TimeLimit = record_call_limit(JObj),
+    RecordArg = kz_binary:strip(list_to_binary([RecordingName, " +", kz_term:to_binary(TimeLimit)])),
 
     [{<<"kz_multiset">>, AppArgs}
     ,{<<"unshift">>, <<"media_recordings=", RecordingName/binary>>}
     ,{<<"unshift">>, <<(?CCV(<<"Media-Names">>))/binary, "=", RecodingBaseName/binary>>}
     ,{<<"unshift">>, <<(?CCV(<<"Media-Recordings">>))/binary, "=", RecordingId/binary>>}
-    ,{<<"record_session">>, RecordingName}
+    ,{<<"record_session">>, RecordArg}
     ];
 record_call(_Node, _UUID, <<"stop">>, JObj) ->
     RecordingName = case kz_json:get_ne_binary_value(<<"Media-Name">>, JObj) of
@@ -1504,6 +1506,15 @@ record_call(_Node, _UUID, <<"stop">>, JObj) ->
                         MediaName -> ecallmgr_util:recording_filename(MediaName)
                     end,
     {<<"stop_record_session">>, RecordingName}.
+
+-spec record_call_limit(kz_json:object()) -> integer().
+record_call_limit(JObj) ->
+    AllowInfinity = kapps_config:get_boolean(?APP_NAME, <<"allow_endless_recording">>, 'false'),
+    case kz_json:get_integer_value(<<"Time-Limit">>, JObj, ?SECONDS_IN_HOUR) of
+        0 when AllowInfinity -> 0;
+        0 -> ?SECONDS_IN_HOUR;
+        Limit -> Limit
+    end.
 
 -spec record_call_vars(kz_json:object()) -> kz_term:proplist().
 record_call_vars(JObj) ->
@@ -1525,7 +1536,6 @@ record_call_vars(JObj) ->
                 ,{<<"Record-Min-Sec">>, RecordMinSec}
                 ,{<<"record_sample_rate">>, kz_term:to_binary(SampleRate)}
                 ,{<<"Media-Recorder">>, kz_json:get_value(<<"Media-Recorder">>, JObj)}
-                ,{<<"Time-Limit">>, kz_json:get_value(<<"Time-Limit">>, JObj)}
                 ,{<<"Media-Name">>, kz_json:get_value(<<"Media-Name">>, JObj)}
                 ,{<<"Media-Recording-ID">>, kz_json:get_ne_binary_value(<<"Media-Recording-ID">>, JObj)}
                 ,{<<"Media-Recording-Endpoint-ID">>, kz_json:get_ne_binary_value(<<"Media-Recording-Endpoint-ID">>, JObj)}
