@@ -174,7 +174,7 @@ call_forward_number(Doc) ->
 
 -spec call_forward_number(doc(), Default) -> binary() | Default.
 call_forward_number(Doc, Default) ->
-    kz_json:get_binary_value([<<"call_forward">>, <<"number">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"call_forward">>, <<"number">>], Doc, Default).
 
 -spec set_call_forward_number(doc(), binary()) -> doc().
 set_call_forward_number(Doc, CallForwardNumber) ->
@@ -282,7 +282,7 @@ device_type(Doc) ->
 
 -spec device_type(doc(), Default) -> binary() | Default.
 device_type(Doc, Default) ->
-    kz_json:get_binary_value([<<"device_type">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"device_type">>], Doc, Default).
 
 -spec set_device_type(doc(), binary()) -> doc().
 set_device_type(Doc, DeviceType) ->
@@ -378,7 +378,7 @@ language(Doc) ->
 
 -spec language(doc(), Default) -> binary() | Default.
 language(Doc, Default) ->
-    kz_json:get_binary_value([<<"language">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"language">>], Doc, Default).
 
 -spec set_language(doc(), binary()) -> doc().
 set_language(Doc, Language) ->
@@ -390,7 +390,7 @@ mac_address(Doc) ->
 
 -spec mac_address(doc(), Default) -> binary() | Default.
 mac_address(Doc, Default) ->
-    kz_json:get_binary_value([<<"mac_address">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"mac_address">>], Doc, Default).
 
 -spec set_mac_address(doc(), binary()) -> doc().
 set_mac_address(Doc, MacAddress) ->
@@ -438,7 +438,7 @@ music_on_hold_media_id(Doc) ->
 
 -spec music_on_hold_media_id(doc(), Default) -> binary() | Default.
 music_on_hold_media_id(Doc, Default) ->
-    kz_json:get_binary_value([<<"music_on_hold">>, <<"media_id">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"music_on_hold">>, <<"media_id">>], Doc, Default).
 
 -spec set_music_on_hold_media_id(doc(), binary()) -> doc().
 set_music_on_hold_media_id(Doc, MusicOnHoldMediaId) ->
@@ -531,7 +531,7 @@ presence_id(Doc) ->
 
 -spec presence_id(doc(), Default) -> binary() | Default.
 presence_id(Doc, Default) ->
-    kz_json:get_binary_value([<<"presence_id">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"presence_id">>], Doc, Default).
 
 -spec set_presence_id(doc(), binary()) -> doc().
 set_presence_id(Doc, PresenceId) ->
@@ -579,7 +579,7 @@ provision_endpoint_brand(Doc) ->
 
 -spec provision_endpoint_brand(doc(), Default) -> binary() | Default.
 provision_endpoint_brand(Doc, Default) ->
-    kz_json:get_binary_value([<<"provision">>, <<"endpoint_brand">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"provision">>, <<"endpoint_brand">>], Doc, Default).
 
 -spec set_provision_endpoint_brand(doc(), binary()) -> doc().
 set_provision_endpoint_brand(Doc, ProvisionEndpointBrand) ->
@@ -591,7 +591,7 @@ provision_endpoint_family(Doc) ->
 
 -spec provision_endpoint_family(doc(), Default) -> binary() | Default.
 provision_endpoint_family(Doc, Default) ->
-    kz_json:get_binary_value([<<"provision">>, <<"endpoint_family">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"provision">>, <<"endpoint_family">>], Doc, Default).
 
 -spec set_provision_endpoint_family(doc(), binary()) -> doc().
 set_provision_endpoint_family(Doc, ProvisionEndpointFamily) ->
@@ -663,7 +663,7 @@ ringtones_external(Doc) ->
 
 -spec ringtones_external(doc(), Default) -> binary() | Default.
 ringtones_external(Doc, Default) ->
-    kz_json:get_binary_value([<<"ringtones">>, <<"external">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"ringtones">>, <<"external">>], Doc, Default).
 
 -spec set_ringtones_external(doc(), binary()) -> doc().
 set_ringtones_external(Doc, RingtonesExternal) ->
@@ -675,7 +675,7 @@ ringtones_internal(Doc) ->
 
 -spec ringtones_internal(doc(), Default) -> binary() | Default.
 ringtones_internal(Doc, Default) ->
-    kz_json:get_binary_value([<<"ringtones">>, <<"internal">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"ringtones">>, <<"internal">>], Doc, Default).
 
 -spec set_ringtones_internal(doc(), binary()) -> doc().
 set_ringtones_internal(Doc, RingtonesInternal) ->
@@ -735,7 +735,7 @@ sip_invite_format(Doc) ->
 
 -spec sip_invite_format(doc(), Default) -> binary() | Default.
 sip_invite_format(Doc, Default) ->
-    kz_json:get_binary_value([<<"sip">>, <<"invite_format">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"sip">>, <<"invite_format">>], Doc, Default).
 
 -spec set_sip_invite_format(doc(), binary()) -> doc().
 set_sip_invite_format(Doc, SipInviteFormat) ->
@@ -747,7 +747,7 @@ sip_ip(Doc) ->
 
 -spec sip_ip(doc(), Default) -> binary() | Default.
 sip_ip(Doc, Default) ->
-    kz_json:get_binary_value([<<"sip">>, <<"ip">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"sip">>, <<"ip">>], Doc, Default).
 
 -spec set_sip_ip(doc(), binary()) -> doc().
 set_sip_ip(Doc, SipIP) ->
@@ -759,7 +759,7 @@ sip_method(Doc) ->
 
 -spec sip_method(doc(), Default) -> binary() | Default.
 sip_method(Doc, Default) ->
-    kz_json:get_binary_value([<<"sip">>, <<"method">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"sip">>, <<"method">>], Doc, Default).
 
 -spec set_sip_method(doc(), binary()) -> doc().
 set_sip_method(Doc, SipMethod) ->
@@ -771,7 +771,7 @@ sip_number(Doc) ->
 
 -spec sip_number(doc(), Default) -> binary() | Default.
 sip_number(Doc, Default) ->
-    kz_json:get_binary_value([<<"sip">>, <<"number">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"sip">>, <<"number">>], Doc, Default).
 
 -spec set_sip_number(doc(), binary()) -> doc().
 set_sip_number(Doc, SipNumber) ->
@@ -807,7 +807,7 @@ sip_route(Doc) ->
 
 -spec sip_route(doc(), Default) -> binary() | Default.
 sip_route(Doc, Default) ->
-    kz_json:get_binary_value([<<"sip">>, <<"route">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"sip">>, <<"route">>], Doc, Default).
 
 -spec set_sip_route(doc(), binary()) -> doc().
 set_sip_route(Doc, SipRoute) ->
@@ -819,7 +819,7 @@ sip_static_route(Doc) ->
 
 -spec sip_static_route(doc(), Default) -> binary() | Default.
 sip_static_route(Doc, Default) ->
-    kz_json:get_binary_value([<<"sip">>, <<"static_route">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"sip">>, <<"static_route">>], Doc, Default).
 
 -spec set_sip_static_route(doc(), binary()) -> doc().
 set_sip_static_route(Doc, SipStaticRoute) ->
@@ -855,7 +855,7 @@ timezone(Doc) ->
 
 -spec timezone(doc(), Default) -> binary() | Default.
 timezone(Doc, Default) ->
-    kz_json:get_binary_value([<<"timezone">>], Doc, Default).
+    kz_json:get_ne_binary_value([<<"timezone">>], Doc, Default).
 
 -spec set_timezone(doc(), binary()) -> doc().
 set_timezone(Doc, Timezone) ->
