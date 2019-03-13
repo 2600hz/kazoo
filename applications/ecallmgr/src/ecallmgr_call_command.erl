@@ -1512,8 +1512,8 @@ record_call_limit(JObj) ->
     AllowInfinity = kapps_config:get_boolean(?APP_NAME, <<"allow_endless_recording">>, 'false'),
     case kz_json:get_integer_value(<<"Time-Limit">>, JObj, ?SECONDS_IN_HOUR) of
         0 when AllowInfinity -> 0;
-        0 -> ?SECONDS_IN_HOUR * ?MILLISECONDS_IN_SECOND;
-        Limit -> Limit * ?MILLISECONDS_IN_SECOND
+        0 -> ?SECONDS_IN_HOUR;
+        Limit -> Limit
     end.
 
 -spec record_call_vars(kz_json:object()) -> kz_term:proplist().
