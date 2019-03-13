@@ -9109,6 +9109,83 @@
             ],
             "type": "object"
         },
+        "kapi.bookkeepers.standing_req_definition": {
+            "description": "AMQP API for bookkeepers.standing_req_definition",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Bookkeeper-ID": {
+                    "type": "string"
+                },
+                "Bookkeeper-Type": {
+                    "type": "string"
+                },
+                "Estimated-Withdrawal": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "standing_req"
+                    ],
+                    "type": "string"
+                },
+                "Items": {
+                    "type": "string"
+                },
+                "Vendor-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Bookkeeper-ID",
+                "Bookkeeper-Type",
+                "Estimated-Withdrawal",
+                "Items",
+                "Vendor-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.bookkeepers.standing_resp_definition": {
+            "description": "AMQP API for bookkeepers.standing_resp_definition",
+            "properties": {
+                "Details": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "standing_resp"
+                    ],
+                    "type": "string"
+                },
+                "Message": {
+                    "type": "string"
+                },
+                "Reason": {
+                    "type": "string"
+                },
+                "Status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Status"
+            ],
+            "type": "object"
+        },
         "kapi.bookkeepers.update_req_definition": {
             "description": "AMQP API for bookkeepers.update_req_definition",
             "properties": {
@@ -31184,6 +31261,11 @@
         "system_config.jonny5": {
             "description": "Schema for jonny5 system_config",
             "properties": {
+                "check_service_standing": {
+                    "default": true,
+                    "description": "jonny5 check_service_standing",
+                    "type": "boolean"
+                },
                 "default_allow_postpay": {
                     "description": "jonny5 default_allow_postpay",
                     "type": "boolean"
@@ -31214,6 +31296,16 @@
                     "default": false,
                     "description": "lookup flat rate regexps per resource",
                     "type": "boolean"
+                },
+                "service_standing_cache_acceptable": {
+                    "default": true,
+                    "description": "jonny5 service_standing_cache_acceptable",
+                    "type": "boolean"
+                },
+                "service_standing_cache_expiration_s": {
+                    "default": 1800,
+                    "description": "jonny5 service_standing_cache_expiration_s",
+                    "type": "integer"
                 }
             },
             "type": "object"

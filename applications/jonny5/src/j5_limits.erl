@@ -220,6 +220,14 @@ max_postpay(#limits{max_postpay_amount=MaxPostpay}) -> MaxPostpay.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec authz_resource_types(limits()) -> list().
+authz_resource_types(#limits{authz_resource_types=AuthzResourceTypes}) ->
+     AuthzResourceTypes.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec create_limits(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> limits().
 create_limits(AccountId, AccountDb, JObj) ->
     #limits{account_id = AccountId

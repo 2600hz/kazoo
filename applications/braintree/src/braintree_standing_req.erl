@@ -88,8 +88,8 @@ check_card_expiration(#request{card = Card} = Request) ->
             {'ok', Request};
         'true' ->
             lager:debug("default payment token has expired: ~p"
-               ,[calendar:gregorian_seconds_to_datetime(Expiration)]
-               ),
+                       ,[calendar:gregorian_seconds_to_datetime(Expiration)]
+                       ),
             reply_expired_payment_token(Request)
     end.
 
