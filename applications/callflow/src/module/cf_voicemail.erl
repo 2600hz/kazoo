@@ -849,30 +849,37 @@ play_messages([H|T]=Messages, PrevMessages, Count, Box, Call) ->
     case message_menu(Prompt, Box, Call) of
         {'ok', 'keep'} ->
             lager:info("caller chose to save the message"),
+            _ = kapps_call_command:flush(Call),
             _ = kapps_call_command:b_prompt(<<"vm-saved">>, Call),
             {_, NMessage} = kvm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
             play_messages(T, [NMessage|PrevMessages], Count, Box, Call);
         {'ok', 'prev'} ->
             lager:info("caller chose to listen to previous message"),
+            _ = kapps_call_command:flush(Call),
             play_prev_message(Messages, PrevMessages, Count, Box, Call);
         {'ok', 'next'} ->
             lager:info("caller chose to listen to next message"),
+            _ = kapps_call_command:flush(Call),
             play_next_message(Messages, PrevMessages, Count, Box, Call);
         {'ok', 'delete'} ->
             lager:info("caller chose to delete the message"),
+            _ = kapps_call_command:flush(Call),
             _ = kapps_call_command:b_prompt(<<"vm-deleted">>, Call),
             _ = kvm_message:set_folder({?VM_FOLDER_DELETED, 'false'}, H, AccountId),
             play_messages(T, PrevMessages, Count, Box, Call);
         {'ok', 'return'} ->
             lager:info("caller chose to return to the main menu"),
+            _ = kapps_call_command:flush(Call),
             _ = kapps_call_command:b_prompt(<<"vm-saved">>, Call),
             _ = kvm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
             'complete';
         {'ok', 'replay'} ->
             lager:info("caller chose to replay"),
+            _ = kapps_call_command:flush(Call),
             play_messages(Messages, PrevMessages, Count, Box, Call);
         {'ok', 'forward'} ->
             lager:info("caller chose to forward the message"),
+            _ = kapps_call_command:flush(Call),
             forward_message(H, Box, Call),
             {_, NMessage} = kvm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
             _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
@@ -886,6 +893,7 @@ play_messages([H|T]=Messages, PrevMessages, Count, Box, Call) ->
             _ = kapps_call_command:seek(fastforward, 10000, Call),
             play_messages(Messages, PrevMessages, Count, Box, Call);
         {'error', _} ->
+            _ = kapps_call_command:flush(Call),
             lager:info("error during message playback")
     end;
 play_messages([], _, _, _, _) ->
@@ -1071,6 +1079,8 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
                                            ,kapps_call_command:default_collect_timeout()
                                            ,Interdigit
                                            ,NoopId
+                                           ,[<<"#">>]
+                                           ,false
                                            ,Call
                                           )
     of
