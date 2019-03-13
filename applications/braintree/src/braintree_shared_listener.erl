@@ -26,7 +26,10 @@
 -define(BINDINGS, [{'bookkeepers', []}
                   ,{'self', []}
                   ]).
--define(RESPONDERS, [{'braintree_sale'
+-define(RESPONDERS, [{'braintree_collect_recurring_req'
+                     ,[{<<"bookkeepers">>, <<"collect_recurring_req">>}]
+                     }
+                    ,{'braintree_sale'
                      ,[{<<"bookkeepers">>, <<"sale_req">>}]
                      }
                     ,{'braintree_refund'

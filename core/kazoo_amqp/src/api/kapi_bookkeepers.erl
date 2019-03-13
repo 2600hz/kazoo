@@ -10,6 +10,14 @@
 
 -export([api_definitions/0, api_definition/1]).
 
+-export([collect_recurring_req/1, collect_recurring_req_v/1
+        ,publish_collect_recurring_req/1, publish_collect_recurring_req/2
+        ]).
+
+-export([collect_recurring_resp/1, collect_recurring_resp_v/1
+        ,publish_collect_recurring_resp/2, publish_collect_recurring_resp/3
+        ]).
+
 -export([sale_req/1, sale_req_v/1
         ,publish_sale_req/1, publish_sale_req/2
         ]).
@@ -42,6 +50,64 @@
 %%%=============================================================================
 %%% Internal Bookkeeper Definitions
 %%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec collect_recurring_req_definition() -> kapi_definition:api().
+collect_recurring_req_definition() ->
+    #kapi_definition{name = <<"collect_recurring_req">>
+                    ,friendly_name = <<"Collect Recurring Charges Request">>
+                    ,description = <<"Will trigger the appropriate bookkeeper to collect recurring charges">>
+                    ,build_fun = fun collect_recurring_req/1
+                    ,validate_fun = fun collect_recurring_req_v/1
+                    ,publish_fun = fun collect_recurring_req/1
+                    ,binding = ?BINDING_STRING(<<"collect_recurring">>, <<"request">>)
+                    ,restrict_to = 'collect_recurring'
+                    ,required_headers = [<<"Account-ID">>
+                                        ,<<"Bookkeeper-ID">>
+                                        ,<<"Bookkeeper-Type">>
+                                        ,<<"Vendor-ID">>
+                                        ]
+                    ,optional_headers = [<<"Audit-Log">>
+                                        ]
+                    ,values = [{<<"Event-Category">>, <<"bookkeepers">>}
+                              ,{<<"Event-Name">>, <<"collect_recurring_req">>}
+                              ]
+                    ,types = []
+                    }.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec collect_recurring_resp_definition() -> kapi_definition:api().
+collect_recurring_resp_definition() ->
+    #kapi_definition{name = <<"collect_recurring_resp">>
+                    ,friendly_name = <<"Collect Recurring Charges Response">>
+                    ,description = <<"Result of request to collect recurring charges via the bookkeeper">>
+                    ,build_fun = fun collect_recurring_resp/1
+                    ,validate_fun = fun collect_recurring_resp_v/1
+                    ,publish_fun = fun publish_collect_recurring_resp/2
+                    ,binding = ?BINDING_STRING(<<"collect_recurring">>, <<"response">>)
+                    ,restrict_to = 'collect_recurring'
+                    ,required_headers = [<<"Account-ID">>
+                                        ,<<"Bookkeeper-ID">>
+                                        ,<<"Bookkeeper-Type">>
+                                        ,<<"Status">>
+                                        ]
+                    ,optional_headers = [<<"Details">>
+                                        ,<<"Message">>
+                                        ,<<"Reason">>
+                                        ,<<"Transaction-ID">>
+                                        ,<<"Transaction-DB">>
+                                        ]
+                    ,values = [{<<"Event-Category">>, <<"bookkeepers">>}
+                              ,{<<"Event-Name">>, <<"collect_recurring_resp">>}
+                              ]
+                    ,types = []
+                    }.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -256,7 +322,9 @@ standing_resp_definition() ->
 %%------------------------------------------------------------------------------
 -spec api_definitions() -> kapi_definition:apis().
 api_definitions() ->
-    [sale_req_definition()
+    [collect_recurring_req_definition()
+    ,collect_recurring_resp_definition()
+    ,sale_req_definition()
     ,sale_resp_definition()
     ,refund_req_definition()
     ,refund_resp_definition()
@@ -276,6 +344,10 @@ api_definition(Name) when is_atom(Name) ->
     api_definition(kz_term:to_binary(Name));
 api_definition(Name) when is_list(Name) ->
     api_definition(kz_term:to_binary(Name));
+api_definition(<<"collect_recurring_req">>) ->
+    collect_recurring_req_definition();
+api_definition(<<"collect_recurring_resp">>) ->
+    collect_recurring_resp_definition();
 api_definition(<<"sale_req">>) ->
     sale_req_definition();
 api_definition(<<"sale_resp">>) ->
@@ -395,6 +467,48 @@ validate(JObj, Definition) ->
 %%% Internal Bookkeepers Functions
 %%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc Collect Recurring.
+%% Takes prop-list, creates JSON string and publish it on AMQP.
+%% @end
+%%------------------------------------------------------------------------------
+-spec collect_recurring_req(kz_term:api_terms()) -> api_formatter_return().
+collect_recurring_req(Prop) ->
+    build_message(Prop, collect_recurring_req_definition()).
+
+-spec collect_recurring_req_v(kz_term:api_terms()) -> boolean().
+collect_recurring_req_v(Prop) ->
+    validate(Prop, collect_recurring_req_definition()).
+
+-spec publish_collect_recurring_req(kz_term:api_terms()) -> 'ok'.
+publish_collect_recurring_req(JObj) ->
+    publish_collect_recurring_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_collect_recurring_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_collect_recurring_req(API, ContentType) ->
+    #kapi_definition{binding = Binding
+                    ,values = Values
+                    } = collect_recurring_req_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun collect_recurring_req/1),
+    kz_amqp_util:bookkeepers_publish(Binding, Payload, ContentType).
+
+-spec collect_recurring_resp(kz_term:api_terms()) -> api_formatter_return().
+collect_recurring_resp(Prop) ->
+    build_message(Prop, collect_recurring_resp_definition()).
+
+-spec collect_recurring_resp_v(kz_term:api_terms()) -> boolean().
+collect_recurring_resp_v(Prop) ->
+    validate(Prop, collect_recurring_resp_definition()).
+
+-spec publish_collect_recurring_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_collect_recurring_resp(RespQ, JObj) ->
+    publish_collect_recurring_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_collect_recurring_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_collect_recurring_resp(RespQ, API, ContentType) ->
+    #kapi_definition{values = Values} = collect_recurring_resp_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun collect_recurring_resp/1),
+    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Sale
