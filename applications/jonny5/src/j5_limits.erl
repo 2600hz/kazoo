@@ -222,7 +222,7 @@ max_postpay(#limits{max_postpay_amount=MaxPostpay}) -> MaxPostpay.
 %%------------------------------------------------------------------------------
 -spec authz_resource_types(limits()) -> list().
 authz_resource_types(#limits{authz_resource_types=AuthzResourceTypes}) ->
-     AuthzResourceTypes.
+    AuthzResourceTypes.
 
 %%------------------------------------------------------------------------------
 %% @doc
