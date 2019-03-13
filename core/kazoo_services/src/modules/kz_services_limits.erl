@@ -14,7 +14,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec fetch(kz_services:services() | kz_term:ne_binary()) -> kz_json:object().
+-spec fetch(kz_services:services() | kz_term:ne_binary()) -> kzd_limits:doc().
 fetch(?NE_BINARY = AccountId) ->
     fetch(kz_services:fetch(AccountId));
 fetch(Services) ->
@@ -78,17 +78,7 @@ get_account_limits(Services) ->
 
 -spec create_account_limits_jobj(kz_term:ne_binary()) -> {origin_tuples(), kz_json:object()}.
 create_account_limits_jobj(AccountDb) ->
-    TStamp = kz_time:now_s(),
-    JObj = kz_json:from_list(
-             [{<<"_id">>, <<"limits">>}
-             ,{<<"pvt_account_db">>, AccountDb}
-             ,{<<"pvt_account_id">>, kz_util:format_account_id(AccountDb)}
-             ,{<<"pvt_type">>, <<"limits">>}
-             ,{<<"pvt_created">>, TStamp}
-             ,{<<"pvt_modified">>, TStamp}
-             ,{<<"pvt_vsn">>, 1}
-             ]),
-    case kz_datamgr:save_doc(AccountDb, JObj) of
+    case kz_datamgr:save_doc(AccountDb, kzd_limits:new(AccountDb)) of
         {'ok', SavedJObj} ->
             lager:debug("created initial limits document in db ~s", [AccountDb]),
             {[{'db', AccountDb, <<"limits">>}], SavedJObj};

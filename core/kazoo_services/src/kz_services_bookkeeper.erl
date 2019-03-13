@@ -64,7 +64,7 @@ invoices_foldl_fun(Services) ->
     fun(Invoice, Results) ->
             Type = kz_services_invoice:bookkeeper_type(Invoice),
             AuditJObj = maybe_store_audit_log(Services, Invoice),
-            Result = 
+            Result =
                 case kzd_services:default_bookkeeper_type() =:= Type of
                     'false' -> update_bookkeeper(Type, Invoice, Services, AuditJObj);
                     'true' ->

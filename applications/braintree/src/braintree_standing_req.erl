@@ -27,7 +27,6 @@
 handle_req(JObj, _Props) ->
     'true' = kapi_bookkeepers:standing_req_v(JObj),
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
-    lager:debug("received service standing check for ~s", [AccountId]),
     case kz_json:get_value(<<"Bookkeeper-Type">>, JObj) =:= ?APP_NAME of
         'false' ->
             lager:debug("skipping service standing check for another bookkeeper");
@@ -37,6 +36,7 @@ handle_req(JObj, _Props) ->
                               },
             Routines = [fun find_braintree_customer/1
                        ,fun find_payment_token/1
+                       ,fun check_card_expiration/1
                        ,fun check_subscriptions/1
                        ],
             check_braintree(Request, Routines)
@@ -54,11 +54,13 @@ check_braintree(Request, [Routine|Routines]) ->
 
 -spec find_braintree_customer(request()) -> routine_return().
 find_braintree_customer(#request{account_id = AccountId} = Request) ->
-    lager:debug("requesting braintree customer ~s", [AccountId]),
     try Request#request{customer = braintree_customer:find(AccountId)} of
-        UpdatedRequest -> {'ok', UpdatedRequest}
+        UpdatedRequest ->
+            lager:debug("found braintree customer ~s", [AccountId]),
+            {'ok', UpdatedRequest}
     catch
         _:_ ->
+            lager:debug("braintree customer ~s does not exists", [AccountId]),
             reply_missing_payment_token(Request)
     end.
 
@@ -66,18 +68,41 @@ find_braintree_customer(#request{account_id = AccountId} = Request) ->
 find_payment_token(#request{customer = #bt_customer{credit_cards = Cards}} = Request) ->
     lager:debug("requesting braintree default payment card"),
     try Request#request{card = braintree_card:default_payment_card(Cards)} of
-        UpdatedRequest -> {'ok', UpdatedRequest}
+        UpdatedRequest ->
+            lager:debug("found default payment token"),
+            {'ok', UpdatedRequest}
     catch
         _:_ ->
+            lager:debug("default payment token missing"),
             reply_missing_payment_token(Request)
+    end.
+
+-spec check_card_expiration(request()) -> routine_return().
+check_card_expiration(#request{card = Card} = Request) ->
+    Now = kz_time:now_s(),
+    JObj = braintree_card:record_to_payment_token(Card),
+    Expiration = kz_json:get_integer_value(<<"expiration">>, JObj, Now),
+    case Expiration =< Now of
+        'false' ->
+            lager:debug("default payment token has not expired"),
+            {'ok', Request};
+        'true' ->
+            lager:debug("default payment token has expired: ~p"
+               ,[calendar:gregorian_seconds_to_datetime(Expiration)]
+               ),
+            reply_expired_payment_token(Request)
     end.
 
 -spec check_subscriptions(request()) -> routine_return().
 check_subscriptions(#request{customer = Customer} = Request) ->
     Subscriptions = braintree_customer:get_subscriptions(Customer),
     case lists:any(fun braintree_subscription:is_past_due/1, Subscriptions) of
-        'true' -> reply_past_due(Request);
-        'false' -> {'ok', Request}
+        'false' ->
+            lager:debug("no braintree subscriptions are past due"),
+            {'ok', Request};
+        'true' ->
+            lager:debug("found a braintree subscription that is past due"),
+            reply_past_due(Request)
     end.
 
 %%------------------------------------------------------------------------------
@@ -99,6 +124,18 @@ reply_good_standing(Request) ->
 reply_missing_payment_token(Request) ->
     Reply = [{<<"Status">>, <<"error">>}
             ,{<<"Message">>, <<"There is no credit card on file for this account">>}
+            ,{<<"Reason">>, <<"no_payment_token">>}
+            ],
+    reply(Request, Reply).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec reply_expired_payment_token(request()) -> 'ok'.
+reply_expired_payment_token(Request) ->
+    Reply = [{<<"Status">>, <<"error">>}
+            ,{<<"Message">>, <<"The credit card on file has expired">>}
             ,{<<"Reason">>, <<"no_payment_token">>}
             ],
     reply(Request, Reply).
