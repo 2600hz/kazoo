@@ -115,7 +115,7 @@ reply_good_standing(Request) ->
             ,{<<"Message">>, <<"Credit card on file and all active subscriptions valid">>}
             ],
     reply(Request, Reply).
-    
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -151,7 +151,7 @@ reply_past_due(Request) ->
             ,{<<"Reason">>, <<"delinquent">>}
             ],
     reply(Request, Reply).
-        
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
