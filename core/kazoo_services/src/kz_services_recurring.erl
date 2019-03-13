@@ -132,7 +132,7 @@ collect(AccountId) ->
     lager:debug("attempting to collect recurring charges for ~s", [AccountId]),
     Services = kz_services:fetch(AccountId, ['hydrate_plans']),
     Invoices = kz_services:invoices(Services),
-    Results = kz_serivces_invoices:foldl(collect_invoices_fold_fun(Services), [], Invoices),
+    Results = kz_services_invoices:foldl(collect_invoices_fold_fun(Services), [], Invoices),
     handle_collect_bookkeeper_results(Results).
 
 collect_invoices_fold_fun(Services) ->
