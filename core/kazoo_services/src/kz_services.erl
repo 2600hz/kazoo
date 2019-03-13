@@ -648,8 +648,25 @@ summary_quantities(Services) ->
 
 -spec summary_status(services()) -> kz_json:object().
 summary_status(Services) ->
-    {Status, Reason} = kz_services_standing:acceptable(Services),
-    kz_json:from_map(maps:put(<<"acceptable">>, Status, Reason)).
+    case kz_services_standing:acceptable(Services) of
+        {'true', Reason} ->
+            kz_json:from_list(
+              [{<<"acceptable">>, 'true'}
+              ,{<<"reason">>, Reason}
+              ]
+             );
+        {'false'
+        ,#{reason := Reason
+          ,message := Message
+          }
+        } ->
+            kz_json:from_list(
+              [{<<"acceptable">>, 'false'}
+              ,{<<"reason">>, Reason}
+              ,{<<"message">>, Message}
+              ]
+             )
+    end.
 
 -spec summary_billing_cycle(services()) -> kz_json:object().
 summary_billing_cycle(_Services) ->

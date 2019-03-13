@@ -73,7 +73,7 @@ fetch(Account) ->
     CacheOrigins = kz_json:get_ne_value(<<"pvt_cache_origins">>, JObj, []),
     case kz_term:is_empty(JObj) of
         'true' ->
-            create_limits(AccountId, AccountDb, kz_json:new());
+            create_limits(AccountId, AccountDb, kzd_limits:new(AccountId));
         'false' when CacheOrigins =/= [] ->
             Limits = create_limits(AccountId, AccountDb, kz_json:delete_key(<<"pvt_cache_origins">>,JObj)),
             CacheProps = [{'origin', CacheOrigins}],
@@ -218,146 +218,25 @@ max_postpay(#limits{max_postpay_amount=MaxPostpay}) -> MaxPostpay.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_limit(kz_term:ne_binary(), kz_json:object(), tristate_integer()) ->
-                       tristate_integer().
-get_limit(Key, JObj, Default) ->
-    PrivateValue = get_private_limit(Key, JObj),
-    PublicValue = get_public_limit(Key, JObj, Default),
-    case PrivateValue =/= 'undefined'
-        andalso PrivateValue < PublicValue
-    of
-        'true' -> PrivateValue;
-        'false' -> PublicValue
-    end.
-
--spec get_public_limit(kz_term:ne_binary(), kz_json:object(), tristate_integer()) ->
-                              non_neg_integer().
-get_public_limit(Key, JObj, Default) ->
-    case kz_json:get_integer_value(Key, JObj) of
-        'undefined' -> get_default_limit(Key, Default);
-        Value when Value < 0 -> 0;
-        Value -> Value
-    end.
-
--spec get_private_limit(kz_term:ne_binary(), kz_json:object()) -> tristate_integer().
-get_private_limit(Key, JObj) ->
-    kz_json:get_integer_value(<<"pvt_", Key/binary>>, JObj).
-
--spec get_default_limit(kz_term:ne_binary(), tristate_integer()) -> tristate_integer().
-get_default_limit(Key, Default) ->
-    kapps_config:get_integer(?APP_NAME, <<"default_", Key/binary>>, Default).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec get_limit_units(kz_term:ne_binary(), kz_json:object(), float()) -> non_neg_integer().
-get_limit_units(Key, JObj, Default) ->
-    case kz_json:get_float_value(<<"pvt_", Key/binary>>, JObj) of
-        'undefined' -> get_default_limit_units(Key, Default);
-        Value -> kz_currency:dollars_to_units(abs(Value))
-    end.
-
--spec get_default_limit_units(kz_term:ne_binary(), float()) -> non_neg_integer().
-get_default_limit_units(Key, Default) ->
-    Value = kapps_config:get_float(?APP_NAME, <<"default_", Key/binary>>, Default),
-    kz_currency:dollars_to_units(abs(Value)).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec get_limit_boolean(kz_term:ne_binary(), kz_json:object(), boolean()) -> boolean().
-get_limit_boolean(Key, JObj, Default) ->
-    case kz_json:get_value(<<"pvt_", Key/binary>>, JObj) of
-        'undefined' -> get_public_limit_boolean(Key, JObj, Default);
-        Value -> kz_term:is_true(Value)
-    end.
-
--spec get_public_limit_boolean(kz_term:ne_binary(), kz_json:object(), boolean()) -> boolean().
-%% NOTE: all other booleans (inbound_soft_limit, allow_postpay, etc) should
-%%  not be made public via this helper.
-get_public_limit_boolean(<<"allow_prepay">> = Key, JObj, Default) ->
-    case kz_json:get_value(Key, JObj) of
-        'undefined' -> get_default_limit_boolean(Key, Default);
-        Value -> kz_term:is_true(Value)
-    end;
-get_public_limit_boolean(Key, _, Default) ->
-    get_default_limit_boolean(Key, Default).
-
--spec get_default_limit_boolean(kz_term:ne_binary(), boolean()) -> boolean().
-get_default_limit_boolean(Key, Default) ->
-    kapps_config:get_is_true(?APP_NAME, <<"default_", Key/binary>>, Default).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec get_bundled_inbound_limit(kz_term:ne_binary(), kz_json:object()) -> non_neg_integer().
-get_bundled_inbound_limit(AccountDb, JObj) ->
-    case kz_json:get_ne_value(<<"pvt_bundled_inbound_trunks">>, JObj) of
-        'undefined' -> 0;
-        Type ->
-            View = <<Type/binary, "/crossbar_listing">>,
-            get_bundled_limit(AccountDb, View)
-    end.
-
--spec get_bundled_outbound_limit(kz_term:ne_binary(), kz_json:object()) -> non_neg_integer().
-get_bundled_outbound_limit(AccountDb, JObj) ->
-    case kz_json:get_ne_value(<<"pvt_bundled_outbound_trunks">>, JObj) of
-        'undefined' -> 0;
-        Type ->
-            View = <<Type/binary, "/crossbar_listing">>,
-            get_bundled_limit(AccountDb, View)
-    end.
-
--spec get_bundled_twoway_limit(kz_term:ne_binary(), kz_json:object()) -> non_neg_integer().
-get_bundled_twoway_limit(AccountDb, JObj) ->
-    case kz_json:get_ne_value(<<"pvt_bundled_twoway_trunks">>, JObj) of
-        'undefined' -> 0;
-        Type ->
-            View = <<Type/binary, "/crossbar_listing">>,
-            get_bundled_limit(AccountDb, View)
-    end.
-
--spec get_bundled_limit(kz_term:ne_binary(), kz_term:ne_binary()) -> non_neg_integer().
-get_bundled_limit(AccountDb, View) ->
-    case kz_datamgr:get_results(AccountDb, View, []) of
-        {'ok', JObjs} -> filter_bundled_limit(JObjs);
-        {'error', _R} ->
-            lager:debug("failed get bundled limit from ~s in ~s: ~p"
-                       ,[View, AccountDb, _R]),
-            0
-    end.
-
--spec filter_bundled_limit(kz_json:objects()) -> non_neg_integer().
-filter_bundled_limit(JObjs) ->
-    length([JObj
-            || JObj <- JObjs
-                   ,kz_json:is_true([<<"value">>, <<"enabled">>]
-                                   ,JObj
-                                   ,'true')
-           ]).
-
 -spec create_limits(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> limits().
 create_limits(AccountId, AccountDb, JObj) ->
     #limits{account_id = AccountId
            ,account_db = AccountDb
-           ,enabled = get_limit_boolean(<<"enabled">>, JObj, 'true')
-           ,calls = get_limit(<<"calls">>, JObj, -1)
-           ,resource_consuming_calls = get_limit(<<"resource_consuming_calls">>, JObj, -1)
-           ,inbound_trunks = get_limit(<<"inbound_trunks">>, JObj, 0)
-           ,outbound_trunks = get_limit(<<"outbound_trunks">>, JObj, 0)
-           ,twoway_trunks = get_limit(<<"twoway_trunks">>, JObj, -1)
-           ,bundled_inbound_trunks = get_bundled_inbound_limit(AccountDb, JObj)
-           ,bundled_outbound_trunks = get_bundled_outbound_limit(AccountDb, JObj)
-           ,bundled_twoway_trunks = get_bundled_twoway_limit(AccountDb, JObj)
-           ,burst_trunks = get_limit(<<"burst_trunks">>, JObj, 0)
-           ,max_postpay_amount = get_limit_units(<<"max_postpay_amount">>, JObj, 0.0) * -1
-           ,reserve_amount = get_limit_units(<<"reserve_amount">>, JObj, ?DEFAULT_RATE)
-           ,allow_prepay = get_limit_boolean(<<"allow_prepay">>, JObj, 'true')
-           ,allow_postpay = get_limit_boolean(<<"allow_postpay">>, JObj, 'false')
-           ,allotments = kz_json:get_value(<<"pvt_allotments">>, JObj, kz_json:new())
-           ,soft_limit_inbound = get_limit_boolean(<<"soft_limit_inbound">>, JObj, 'false')
-           ,soft_limit_outbound = get_limit_boolean(<<"soft_limit_outbound">>, JObj, 'false')
+           ,enabled = kzd_limits:enabled(JObj)
+           ,calls = kzd_limits:calls(JObj)
+           ,resource_consuming_calls = kzd_limits:resource_consuming_calls(JObj)
+           ,inbound_trunks = kzd_limits:inbound_trunks(JObj)
+           ,outbound_trunks = kzd_limits:outbound_trunks(JObj)
+           ,twoway_trunks = kzd_limits:twoway_trunks(JObj)
+           ,bundled_inbound_trunks = kzd_limits:bundled_inbound_trunks(JObj, AccountDb)
+           ,bundled_outbound_trunks = kzd_limits:bundled_outbound_trunks(JObj, AccountDb)
+           ,bundled_twoway_trunks = kzd_limits:bundled_twoway_trunks(JObj, AccountDb)
+           ,burst_trunks = kzd_limits:burst_trunks(JObj)
+           ,max_postpay_amount = kzd_limits:max_postpay_units(JObj) * -1
+           ,reserve_amount = kzd_limits:reserve_units(JObj, ?DEFAULT_RATE)
+           ,allow_prepay = kzd_limits:allow_prepay(JObj)
+           ,allow_postpay = kzd_limits:allow_postpay(JObj)
+           ,allotments = kzd_limits:allotments(JObj)
+           ,soft_limit_inbound = kzd_limits:soft_limit_inbound(JObj)
+           ,soft_limit_outbound = kzd_limits:soft_limit_outbound(JObj)
            }.
