@@ -32,6 +32,7 @@
 -export([increment_discount_quantity/2]).
 -export([is_canceled/1]).
 -export([is_expired/1]).
+-export([is_past_due/1]).
 
 -include("braintree.hrl").
 
@@ -423,6 +424,14 @@ is_canceled(#bt_subscription{}) -> 'false'.
 -spec is_expired(subscription()) -> boolean().
 is_expired(#bt_subscription{status = ?BT_EXPIRED}) -> 'true';
 is_expired(#bt_subscription{}) -> 'false'.
+
+%%------------------------------------------------------------------------------
+%% @doc Returns whether subscription is past due (impossible to update).
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_past_due(subscription()) -> boolean().
+is_past_due(#bt_subscription{status = ?BT_PAST_DUE}) -> 'true';
+is_past_due(#bt_subscription{}) -> 'false'.
 
 %% @equiv xml_to_record(Xml, "/subscription")
 
