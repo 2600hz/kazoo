@@ -15,7 +15,8 @@
 -export([minimum/1, minimum/2
         ,maximum/1, maximum/2
         ,prorate/1, prorate/2
-        ,unprorate/1, unprorate/2
+        ,prorate_additions/1, prorate_additions/2
+        ,prorate_removals/1, prorate_removals/2
         ,step/1, step/2
         ,flat_rates/1, flat_rates/2
         ,flat_rate/1, flat_rate/2
@@ -60,6 +61,8 @@
 -define(CUMULATIVE, <<"cumulative">>).
 -define(MAXIMUM, <<"maximum">>).
 -define(PRORATE, <<"prorate">>).
+-define(PRORATE_ADDITIONS, [?PRORATE, <<"additions">>]).
+-define(PRORATE_REMOVALS, [?PRORATE, <<"removals">>]).
 -define(UNPRORATE, <<"unprorate">>).
 -define(STEP, <<"step">>).
 
@@ -67,8 +70,8 @@
 cumulative_merge_scheme() ->
     [{?ACTIVATION_CHARGE, fun kz_json:find/2}
     ,{?MINIMUM, fun ?MODULE:cumulative_merge_sum/2}
-    ,{?PRORATE, fun ?MODULE:cumulative_merge_or/2}
-    ,{?UNPRORATE, fun ?MODULE:cumulative_merge_or/2}
+    ,{?PRORATE_ADDITIONS, fun ?MODULE:cumulative_merge_or/2}
+    ,{?PRORATE_REMOVALS, fun ?MODULE:cumulative_merge_or/2}
     ,{?STEP, fun kz_json:find/2}
     ,{?FLAT_RATES, fun ?MODULE:cumulative_merge_object/2}
     ,{?FLAT_RATE, fun kz_json:find/2}
@@ -170,19 +173,35 @@ maximum(ItemPlan, Default) ->
 
 -spec prorate(doc()) -> boolean().
 prorate(ItemPlan) ->
-    prorate(ItemPlan, 'false').
+    case prorate(ItemPlan, 'undefined') of
+        'undefined' ->
+            kz_json:from_list(
+              [{<<"additions">>, 'true'}
+              ,{<<"removals">>, 'false'}
+              ]
+             );
+        Else -> Else
+    end.
 
--spec prorate(doc(), Default) -> boolean() | Default.
+-spec prorate(doc(), Default) -> kz_json:object() | Default.
 prorate(ItemPlan, Default) ->
-    kz_json:is_true(?PRORATE, ItemPlan, Default).
+    kz_json:get_ne_json_value(?PRORATE, ItemPlan, Default).
 
--spec unprorate(doc()) -> boolean().
-unprorate(ItemPlan) ->
-    unprorate(ItemPlan, prorate(ItemPlan)).
+-spec prorate_additions(doc()) -> boolean().
+prorate_additions(ItemPlan) ->
+    prorate_additions(ItemPlan, 'true').
 
--spec unprorate(doc(), Default) -> boolean() | Default.
-unprorate(ItemPlan, Default) ->
-    kz_json:is_true(?UNPRORATE, ItemPlan, Default).
+-spec prorate_additions(doc(), Default) -> boolean() | Default.
+prorate_additions(ItemPlan, Default) ->
+    kz_json:is_true(?PRORATE_ADDITIONS, ItemPlan, Default).
+
+-spec prorate_removals(doc()) -> boolean().
+prorate_removals(ItemPlan) ->
+    prorate_removals(ItemPlan, 'false').
+
+-spec prorate_removals(doc(), Default) -> boolean() | Default.
+prorate_removals(ItemPlan, Default) ->
+    kz_json:is_true(?PRORATE_REMOVALS, ItemPlan, Default).
 
 -spec step(doc()) -> integer().
 step(ItemPlan) ->

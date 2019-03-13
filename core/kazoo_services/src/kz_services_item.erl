@@ -380,7 +380,6 @@ public_json(Item) ->
           ,{<<"minimum">>, undefine_empty(minimum(Item))}
           ,{<<"maximum">>, undefine_empty(maximum(Item))}
           ,{<<"prorate">>, kzd_item_plan:prorate(item_plan(Item))}
-          ,{<<"unprorate">>, kzd_item_plan:unprorate(item_plan(Item))}
           ,{<<"taxes">>, undefine_empty(taxes(Item))}
           ,{<<"total">>, calculate_total(Item)}
           ,{<<"changes">>, undefine_empty(changes(Item))}
