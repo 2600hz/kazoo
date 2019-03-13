@@ -21,7 +21,7 @@ Key | Description | Type | Default | Required | Support Level
 `nav.learn_more` | The URL to use when the 'Learn More!' link is clicked | `string()` |   | `false` | `supported`
 `nav` | Properties related to navigation in the UI | `object()` |   | `false` |  
 `outbound_trunks_price` | The price to show for outbound trunks, this is currently only for display purposes | `string()` |   | `false` | `beta`
-`port.authority` | The email(s) to be used for admin port requests | `string() | array(string())` |   | `false` | `supported`
+`port.authority` | The account ID(s) to be used for administrating port requests | `string() | array(string())` |   | `false` | `supported`
 `port.features` | The URL to use when the features link is clicked | `string()` |   | `false` | `supported`
 `port.loa` | The URL to use when the LOA link is clicked | `string()` |   | `false` | `supported`
 `port.resporg` | The URL to use when the resporg link is clicked | `string()` |   | `false` | `supported`

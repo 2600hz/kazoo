@@ -60,6 +60,8 @@
         ]).
 -export([ensure_adminonly_features_are_reachable/0]).
 
+-export([migrate_port_requests/0]).
+
 -define(TIME_BETWEEN_ACCOUNTS_MS
        ,kapps_config:get_pos_integer(?KNM_CONFIG_CAT, <<"time_between_accounts_ms">>, ?MILLISECONDS_IN_SECOND)).
 
@@ -1013,3 +1015,7 @@ ensure_adminonly_features_are_reachable() ->
                      ,[list_features(ToAdd)]),
             set_features_on_system_config(ToAdd ++ Configured)
     end.
+
+-spec migrate_port_requests() -> 'ok'.
+migrate_port_requests() ->
+    knm_port_request:migrate().

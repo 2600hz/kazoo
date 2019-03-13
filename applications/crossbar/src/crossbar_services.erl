@@ -14,6 +14,10 @@
         ]).
 -export([reconcile/1]).
 -export([audit_log/1]).
+-export([audit_log_auth/1
+        ,audit_log_agent/1
+        ,audit_log_request/1
+        ]).
 -export([transaction_to_error/2]).
 
 -include("crossbar.hrl").
@@ -147,14 +151,14 @@ audit_log_request(Context) ->
     ,{<<"path">>, cb_context:raw_path(Context)}
     ].
 
--spec audit_log_agent(cb_context:context()) -> kz_term:proplist().
+-spec audit_log_agent(cb_context:context()) -> kz_term:api_proplist().
 audit_log_agent(Context) ->
     case cb_context:auth_user_id(Context) of
         'undefined' -> 'undefined';
         UserId -> audit_log_user(Context, UserId)
     end.
 
--spec audit_log_user(cb_context:context(), kz_term:ne_binary()) -> kz_term:proplist().
+-spec audit_log_user(cb_context:context(), kz_term:ne_binary()) -> kz_term:api_proplist().
 audit_log_user(Context, UserId) ->
     AccountDb = kz_util:format_account_db(
                   cb_context:auth_account_id(Context)
@@ -165,8 +169,9 @@ audit_log_user(Context, UserId) ->
             [{<<"type">>, <<"user">>}
             ,{<<"type_id">>, kz_doc:id(JObj)}
             ,{<<"account_id">>, cb_context:auth_account_id(Context)}
-            ,{<<"first_name">>, kzd_user:first_name(JObj)}
-            ,{<<"last_name">>, kzd_user:last_name(JObj)}
+            ,{<<"first_name">>, kzd_users:first_name(JObj)}
+            ,{<<"last_name">>, kzd_users:last_name(JObj)}
+            ,{<<"full_name">>, kzd_users:full_name(JObj, kzd_users:username(JObj, kzd_users:email(JObj)))}
             ]
     end.
 

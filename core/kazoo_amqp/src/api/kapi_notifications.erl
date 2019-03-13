@@ -615,8 +615,8 @@ cnam_request_definition() ->
                                ,<<"Number">>
                                ,<<"Number-State">>
                                ,<<"Port">>
-                               ,<<"Port-Request-ID">>
                                ,<<"Reason">>
+                               ,<<"Version">> %% for stupid notify app (port_request)
                                     | ?DEFAULT_OPTIONAL_HEADERS
                                ]).
 %%------------------------------------------------------------------------------
@@ -634,6 +634,7 @@ port_cancel_definition() ->
                     ,binding = ?BINDING_STRING(<<"number">>, <<"port_cancel">>)
                     ,restrict_to = 'port_cancel'
                     ,required_headers = [<<"Account-ID">>
+                                        ,<<"Port-Request-ID">>
                                         ]
                     ,optional_headers = ?PORT_OPTIONAL_HEADERS
                     ,values = ?NOTIFY_VALUES(<<"port_cancel">>)
@@ -654,6 +655,7 @@ port_comment_definition() ->
                     ,binding = ?BINDING_STRING(<<"number">>, <<"port_comment">>)
                     ,restrict_to = 'port_comment'
                     ,required_headers = [<<"Account-ID">>
+                                        ,<<"Port-Request-ID">>
                                         ,<<"Comment">>
                                         ]
                     ,optional_headers = ?PORT_OPTIONAL_HEADERS -- [<<"Reason">>]
@@ -675,6 +677,7 @@ port_pending_definition() ->
                     ,binding = ?BINDING_STRING(<<"number">>, <<"port_pending">>)
                     ,restrict_to = 'port_pending'
                     ,required_headers = [<<"Account-ID">>
+                                        ,<<"Port-Request-ID">>
                                         ]
                     ,optional_headers = ?PORT_OPTIONAL_HEADERS
                     ,values = ?NOTIFY_VALUES(<<"port_pending">>)
@@ -695,6 +698,7 @@ port_rejected_definition() ->
                     ,binding = ?BINDING_STRING(<<"number">>, <<"port_rejected">>)
                     ,restrict_to = 'port_rejected'
                     ,required_headers = [<<"Account-ID">>
+                                        ,<<"Port-Request-ID">>
                                         ]
                     ,optional_headers = ?PORT_OPTIONAL_HEADERS
                     ,values = ?NOTIFY_VALUES(<<"port_rejected">>)
@@ -715,10 +719,9 @@ port_request_definition() ->
                     ,binding = ?BINDING_STRING(<<"number">>, <<"port_request">>)
                     ,restrict_to = 'port_request'
                     ,required_headers = [<<"Account-ID">>
+                                        ,<<"Port-Request-ID">>
                                         ]
-                    ,optional_headers = [<<"Version">> %% for stupid notify app
-                                             |?PORT_OPTIONAL_HEADERS
-                                        ]
+                    ,optional_headers = ?PORT_OPTIONAL_HEADERS
                     ,values = ?NOTIFY_VALUES(<<"port_request">>)
                     ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
                     }.
@@ -737,6 +740,7 @@ port_scheduled_definition() ->
                     ,binding = ?BINDING_STRING(<<"number">>, <<"port_scheduled">>)
                     ,restrict_to = 'port_scheduled'
                     ,required_headers = [<<"Account-ID">>
+                                        ,<<"Port-Request-ID">>
                                         ]
                     ,optional_headers = ?PORT_OPTIONAL_HEADERS
                     ,values = ?NOTIFY_VALUES(<<"port_scheduled">>)
@@ -757,6 +761,7 @@ port_unconfirmed_definition() ->
                     ,binding = ?BINDING_STRING(<<"number">>, <<"port_unconfirmed">>)
                     ,restrict_to = 'port_unconfirmed'
                     ,required_headers = [<<"Account-ID">>
+                                        ,<<"Port-Request-ID">>
                                         ]
                     ,optional_headers = ?PORT_OPTIONAL_HEADERS
                     ,values = ?NOTIFY_VALUES(<<"port_unconfirmed">>)
@@ -777,6 +782,7 @@ ported_definition() ->
                     ,binding = ?BINDING_STRING(<<"number">>, <<"ported">>)
                     ,restrict_to = 'ported'
                     ,required_headers = [<<"Account-ID">>
+                                        ,<<"Port-Request-ID">>
                                         ]
                     ,optional_headers = ?PORT_OPTIONAL_HEADERS
                     ,values = ?NOTIFY_VALUES(<<"ported">>)
