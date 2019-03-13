@@ -18,6 +18,11 @@
             "description": "ecallmgr acls",
             "type": "object"
         },
+        "allow_endless_recording": {
+            "default": false,
+            "description": "ecallmgr allow_endless_recording",
+            "type": "boolean"
+        },
         "authz_default_action": {
             "default": "deny",
             "description": "ecallmgr authz default action",
