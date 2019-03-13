@@ -31,6 +31,8 @@
 
 -include("crossbar.hrl").
 
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".users">>).
+
 -define(CB_LIST, <<"users/crossbar_listing">>).
 -define(LIST_BY_HOTDESK_ID, <<"users/list_by_hotdesk_id">>).
 -define(LIST_BY_PRESENCE_ID, <<"devices/listing_by_presence_id">>).
@@ -88,6 +90,11 @@ allowed_methods(_UserId, ?PHOTO) ->
 allowed_methods(_UserId, ?VCARD) ->
     [?HTTP_GET].
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+
 -spec content_types_provided(cb_context:context()) ->
                                     cb_context:context().
 content_types_provided(Context) ->
@@ -133,6 +140,7 @@ resource_exists(_UserId, ?PHOTO) -> 'true'.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec authenticate(cb_context:context()) -> 'true'.
 authenticate(Context) ->
     authenticate_users(cb_context:req_nouns(Context), cb_context:req_verb(Context)).
@@ -243,6 +251,11 @@ validate_photo(Context, UserId, ?HTTP_DELETE) ->
 validate_photo(Context, UserId, ?HTTP_GET) ->
     load_attachment(UserId, ?PHOTO, Context).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
     _ = crossbar_util:maybe_refresh_fs_xml('user', Context),
@@ -276,6 +289,11 @@ post(Context, UserId, ?PHOTO) ->
     Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(kzd_users:type())],
     crossbar_doc:save_attachment(UserId, ?PHOTO, Content, Context, Opts).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     Context1 = crossbar_doc:save(Context),
@@ -286,6 +304,11 @@ put(Context) ->
         _ -> Context1
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _Id) ->
     crossbar_doc:delete(Context).
@@ -293,6 +316,11 @@ delete(Context, _Id) ->
 -spec delete(cb_context:context(), kz_term:ne_binary(), path_token()) -> cb_context:context().
 delete(Context, UserId, ?PHOTO) ->
     crossbar_doc:delete_attachment(UserId, ?PHOTO, Context).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, Id) ->
@@ -330,6 +358,7 @@ load_attachment(UserId, AttachmentId, Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec maybe_update_devices_presence(cb_context:context()) -> 'ok'.
 maybe_update_devices_presence(Context) ->
     DbDoc = cb_context:fetch(Context, 'db_doc'),
@@ -388,6 +417,7 @@ update_device_presence(Context, DeviceDoc) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec maybe_send_email(cb_context:context()) -> 'ok'.
 maybe_send_email(Context) ->
     case kz_term:is_true(cb_context:req_value(Context, <<"send_email_on_creation">>, 'true')) of
@@ -399,6 +429,7 @@ maybe_send_email(Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec send_email(cb_context:context()) -> 'ok'.
 send_email(Context) ->
     lager:debug("trying to publish new user notification"),
@@ -416,6 +447,7 @@ send_email(Context) ->
 %% account summary.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec load_user_summary(cb_context:context()) -> cb_context:context().
 load_user_summary(Context) ->
     fix_envelope(
@@ -434,6 +466,7 @@ fix_envelope(Context) ->
 %% @doc Load a user document from the database
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec load_user(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_users:type())).
 
@@ -441,38 +474,131 @@ load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPT
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-validate_request(UserId, Context) ->
-    Context1 = prepare_username(UserId, Context),
-    check_hotdesk_id(UserId, Context1).
 
 -spec validate_patch(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_patch(UserId, Context) ->
     crossbar_doc:patch_and_validate(UserId, Context, fun validate_request/2).
 
--spec prepare_username(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-prepare_username(UserId, Context) ->
+-spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+validate_request(UserId, Context) ->
+    Routines = [fun normalize_username/2
+               ,fun normalize_emergency_caller_id/2
+               ,fun maybe_import_credintials/2
+                %% check_user_schema will load and merge the current doc as well
+               ,fun check_user_schema/2
+                %% this check must have the current doc
+               ,fun maybe_set_identity_secret/2
+                %% this check must have the current doc
+               ,fun check_username/2
+                %% this check must have the current doc
+               ,fun check_hotdesk_id/2
+                %% this check must have the current doc
+               ,fun maybe_rehash_creds/2
+               ],
+    lists:foldl(fun(F, C) ->
+                        F(UserId, C)
+                end
+               ,Context
+               ,Routines
+               ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+
+-spec normalize_username(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+normalize_username(_UserId, Context) ->
     JObj = cb_context:req_data(Context),
-    case kz_json:get_ne_value(<<"username">>, JObj) of
-        'undefined' -> check_user_name(UserId, Context);
+    case kzd_users:username(JObj) of
+        'undefined' -> Context;
         Username ->
-            JObj1 = kz_json:set_value(<<"username">>, kz_term:to_lower_binary(Username), JObj),
-            check_user_name(UserId, cb_context:set_req_data(Context, JObj1))
+            NormalizedUsername = kz_term:to_lower_binary(Username),
+            cb_context:set_req_data(Context, kzd_users:set_username(JObj, NormalizedUsername))
     end.
 
--spec check_user_name(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-check_user_name(UserId, Context) ->
-    JObj = cb_context:req_data(Context),
-    UserName = kz_json:get_ne_value(<<"username">>, JObj),
-    AccountDb = cb_context:account_db(Context),
-    case is_username_unique(AccountDb, UserId, UserName) of
-        'true' ->
-            lager:debug("username ~p is unique", [UserName]),
-            check_emergency_caller_id(UserId, Context);
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+
+-spec normalize_emergency_caller_id(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+normalize_emergency_caller_id(_UserId, Context) ->
+    crossbar_util:format_emergency_caller_id_number(Context).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+
+-spec maybe_import_credintials(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+maybe_import_credintials(_UserId, Context) ->
+    JObj = cb_context:doc(Context),
+    case kz_json:get_ne_value(<<"credentials">>, JObj) of
+        'undefined' -> Context;
+        Creds ->
+            RemoveKeys = [<<"credentials">>, <<"pvt_sha1_auth">>],
+            UpdatedJObj =
+                kz_json:set_value(<<"pvt_md5_auth">>
+                                 ,Creds
+                                 ,kz_json:delete_keys(RemoveKeys, JObj)
+                                 ),
+            cb_context:set_doc(Context, UpdatedJObj)
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+
+-spec maybe_set_identity_secret(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+maybe_set_identity_secret(_UserId, Context) ->
+    case crossbar_auth:has_identity_secret(Context) of
+        'true' -> Context;
         'false' ->
-            Context1 = non_unique_username_error(Context, UserName),
-            lager:error("username ~p is already used", [UserName]),
-            check_emergency_caller_id(UserId, Context1)
+            lager:debug("initalizing identity secret"),
+            crossbar_auth:reset_identity_secret(Context)
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+
+-spec check_username(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+check_username(UserId, Context) ->
+    JObj = cb_context:req_data(Context),
+    Username = kzd_users:username(JObj),
+    CurrentJObj = cb_context:fetch(Context, 'db_doc', kz_json:new()),
+    CurrentUsername = kzd_users:username(CurrentJObj),
+    AccountDb = cb_context:account_db(Context),
+    case kz_term:is_empty(Username)
+        orelse Username =:= CurrentUsername
+        orelse is_username_unique(AccountDb, UserId, Username)
+    of
+        'true' ->
+            lager:debug("username ~s (currently ~s) is unique"
+                       ,[Username, CurrentUsername]
+                       ),
+            Context;
+        'false' ->
+            lager:error("username ~s (currently ~s) is already used"
+                       ,[Username, CurrentUsername]
+                       ),
+            non_unique_username_error(Context, Username)
+    end.
+
+-spec is_username_unique(kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary()) -> boolean().
+is_username_unique(AccountDb, UserId, UserName) ->
+    ViewOptions = [{'key', UserName}],
+    case kz_datamgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
+        {'ok', []} -> 'true';
+        {'ok', [JObj|_]} -> kz_doc:id(JObj) =:= UserId;
+        {'error', _R} ->
+            lager:error("error checking view ~p in ~p"
+                       ,[?LIST_BY_USERNAME, AccountDb, _R]
+                       ),
+            'false'
     end.
 
 -spec non_unique_username_error(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -483,40 +609,32 @@ non_unique_username_error(Context, Username) ->
             ]),
     cb_context:add_validation_error([<<"username">>], <<"unique">>, Msg, Context).
 
--spec check_emergency_caller_id(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-check_emergency_caller_id(UserId, Context) ->
-    Context1 = crossbar_util:format_emergency_caller_id_number(Context),
-    check_user_schema(UserId, Context1).
-
--spec is_username_unique(kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary()) -> boolean().
-is_username_unique(AccountDb, UserId, UserName) ->
-    ViewOptions = [{'key', UserName}],
-    case kz_datamgr:get_results(AccountDb, ?LIST_BY_USERNAME, ViewOptions) of
-        {'ok', []} -> 'true';
-        {'ok', [JObj|_]} -> kz_doc:id(JObj) =:= UserId;
-        _Else ->
-            lager:error("error ~p checking view ~p in ~p", [_Else, ?LIST_BY_USERNAME, AccountDb]),
-            'false'
-    end.
-
--spec check_user_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-check_user_schema(UserId, Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(UserId, C) end,
-    cb_context:validate_request_data(<<"users">>, Context, OnSuccess).
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 
 -spec check_hotdesk_id(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 check_hotdesk_id(UserId, Context) ->
     JObj = cb_context:req_data(Context),
-    HotdeskId = kz_json:get_ne_value([<<"hotdesk">>, <<"id">>], JObj),
+    HotdeskId = kzd_users:hotdesk_id(JObj),
+    CurrentJObj = cb_context:fetch(Context, 'db_doc', kz_json:new()),
+    CurrentHotdeskId = kzd_users:hotdesk_id(CurrentJObj),
     AccountDb = cb_context:account_db(Context),
-    case is_hotdesk_id_unique(AccountDb, UserId, HotdeskId) of
+    case kz_term:is_empty(HotdeskId)
+        orelse HotdeskId =:= CurrentHotdeskId
+        orelse is_hotdesk_id_unique(AccountDb, UserId, HotdeskId)
+    of
         'true' ->
+            lager:debug("hotdesk ID ~s (currently ~s) is unique"
+                       ,[HotdeskId, CurrentHotdeskId]
+                       ),
             Context;
         'false' ->
-            lager:debug("hotdesk.id ~p is already used", [HotdeskId]),
-            non_unique_hotdesk_id_error(Context, HotdeskId);
-        {'error', DatamgrError} ->
-            crossbar_doc:handle_datamgr_errors(DatamgrError, HotdeskId, Context)
+            lager:debug("hotdesk ID ~s (currently ~s) is already used"
+                       ,[HotdeskId, CurrentHotdeskId]
+                       ),
+            non_unique_hotdesk_id_error(Context, HotdeskId)
     end.
 
 -spec is_hotdesk_id_unique(kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary()) -> boolean() | kz_datamgr:data_error().
@@ -525,141 +643,172 @@ is_hotdesk_id_unique(AccountDb, UserId, HotdeskId) ->
     case kz_datamgr:get_results(AccountDb, ?LIST_BY_HOTDESK_ID, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj|_]} -> kz_doc:id(JObj) =:= UserId;
-        Else ->
-            lager:debug("error ~p checking view ~p in ~p", [Else, ?LIST_BY_HOTDESK_ID, AccountDb]),
-            Else
+        {'error', _R} ->
+            lager:error("error checking view ~p in ~p: ~p"
+                       ,[?LIST_BY_HOTDESK_ID, AccountDb, _R]
+                       ),
+            'false'
     end.
 
 -spec non_unique_hotdesk_id_error(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 non_unique_hotdesk_id_error(Context, HotdeskId) ->
     Msg = kz_json:from_list(
-            [{<<"message">>, <<"Hotdesk.id is not unique for this account">>}
+            [{<<"message">>, <<"Hotdesk ID is not unique for this account">>}
             ,{<<"cause">>, HotdeskId}
             ]),
     cb_context:add_validation_error([<<"hotdesk">>, <<"id">>], <<"unique">>, Msg, Context).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+
+-spec check_user_schema(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+check_user_schema(UserId, Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(UserId, C) end,
+    cb_context:validate_request_data(<<"users">>, Context, OnSuccess).
+
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, kzd_users:type()}],
-    maybe_import_credintials('undefined'
-                            ,cb_context:set_doc(Context
-                                               ,kz_json:set_values(Props, cb_context:doc(Context))
-                                               )
-                            );
+    JObj = kz_json:set_values(Props, cb_context:doc(Context)),
+    maybe_import_credintials('undefined', cb_context:set_doc(Context, JObj));
 on_successful_validation(UserId, Context) ->
     maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context, ?TYPE_CHECK_OPTION(kzd_users:type()))).
 
--spec maybe_import_credintials(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-maybe_import_credintials(UserId, Context) ->
-    JObj = cb_context:doc(Context),
-    case kz_json:get_ne_value(<<"credentials">>, JObj) of
-        'undefined' -> maybe_validate_username(UserId, Context);
-        Creds ->
-            RemoveKeys = [<<"credentials">>, <<"pvt_sha1_auth">>],
-            C = cb_context:set_doc(Context
-                                  ,kz_json:set_value(<<"pvt_md5_auth">>, Creds
-                                                    ,kz_json:delete_keys(RemoveKeys, JObj)
-                                                    )
-                                  ),
-            maybe_validate_username(UserId, C)
-    end.
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 
--spec maybe_validate_username(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-maybe_validate_username(UserId, Context) ->
+-spec maybe_rehash_creds(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+maybe_rehash_creds(_UserId, Context) ->
     JObj = cb_context:doc(Context),
-    NewUsername = kz_json:get_ne_value(<<"username">>, JObj),
-    CurrentUsername =
-        case cb_context:fetch(Context, 'db_doc') of
-            'undefined' -> NewUsername;
-            CurrentJObj ->
-                kz_json:get_ne_value(<<"username">>, CurrentJObj, NewUsername)
-        end,
-    case kz_term:is_empty(NewUsername)
-        orelse CurrentUsername =:= NewUsername
-        orelse username_doc_id(NewUsername, Context)
+    Username = kzd_users:username(JObj),
+    CurrentJObj = cb_context:fetch(Context, 'db_doc', kz_json:new()),
+    CurrentUsername = kzd_users:username(CurrentJObj),
+    Password = kz_json:get_ne_binary_value(<<"password">>, JObj),
+    GeneratePassword = kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"generate_password_if_empty">>, 'false'),
+    GenerateUsername = kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"generate_username_if_empty">>, 'true'),
+    GenerateCreds =
+        GenerateUsername
+        andalso GeneratePassword,
+    case
+        {Username =:= CurrentUsername
+        ,kz_term:is_empty(Username)
+        ,kz_term:is_empty(Password)}
     of
-        %% username is unchanged
-        'true' -> maybe_rehash_creds(UserId, NewUsername, Context);
-        %% updated username that doesn't exist
-        'undefined' ->
-            manditory_rehash_creds(UserId, NewUsername, Context);
-        %% updated username to existing, collect any further errors...
-        _Else ->
-            Context1 = non_unique_username_error(Context, NewUsername),
-            manditory_rehash_creds(UserId, NewUsername, Context1)
+        {'false', 'false', 'false'} ->
+            lager:debug("requested different username (new: ~s current: ~s) with a password"
+                       ,[Username, CurrentUsername]
+                       ),
+            rehash_creds(Username, Password, Context);
+        {'false', 'false', 'true'} ->
+            lager:debug("requested different username (new: ~s current: ~s) without a password"
+                       ,[Username, CurrentUsername]
+                       ),
+            maybe_generated_password_hash(GeneratePassword, Username, Context);
+        {'false', 'true', 'false'} ->
+            lager:debug("requested no username but provided a password"),
+            maybe_generated_username_hash(GenerateUsername, Password, Context);
+        {'false', 'true', 'true'} ->
+            lager:debug("requested no username or password"),
+            maybe_generated_creds_hash(GenerateCreds, Context);
+        {'true', 'false', 'false'} ->
+            lager:debug("requested same username (new: ~s current: ~s) with a password"
+                       ,[Username, CurrentUsername]
+                       ),
+            rehash_creds(Username, Password, Context);
+        {'true', 'false', 'true'} ->
+            lager:debug("requested same username (new: ~s current: ~s) without a password"
+                       ,[Username, CurrentUsername]
+                       ),
+            Context;
+        {'true', 'true', 'false'} ->
+            lager:debug("requested no username (new: ~s current: ~s) with a password"
+                       ,[Username, CurrentUsername]
+                       ),
+            maybe_generated_username_hash(GenerateUsername, Password, Context);
+        {'true', 'true', 'true'} ->
+            lager:debug("requested no username, no current username, and no password"),
+            maybe_generated_creds_hash(GenerateCreds, Context)
     end.
 
--spec maybe_rehash_creds(kz_term:api_binary(), kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-maybe_rehash_creds(UserId, Username, Context) ->
-    case kz_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
-        %% No user name or hash, no creds for you!
-        'undefined' when Username =:= 'undefined' ->
-            HashKeys = [<<"pvt_md5_auth">>, <<"pvt_sha1_auth">>],
-            cb_context:set_doc(Context, kz_json:delete_keys(HashKeys, cb_context:doc(Context)));
-        %% User name without password, creds status quo
-        'undefined' -> Context;
-        %% Got a password, hope you also have a user name...
-        Password -> rehash_creds(UserId, Username, Password, Context)
-    end.
-
--spec manditory_rehash_creds(kz_term:api_binary(), kz_term:api_binary(), cb_context:context()) ->
-                                    cb_context:context().
-manditory_rehash_creds(UserId, Username, Context) ->
-    case kz_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
-        'undefined' ->
-            required_password_error(Context);
-        Password -> rehash_creds(UserId, Username, Password, Context)
-    end.
-
--spec required_password_error(cb_context:context()) -> cb_context:context().
-required_password_error(Context) ->
+-spec maybe_generated_password_hash(boolean(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+maybe_generated_password_hash('false', _Username, Context) ->
     Msg = kz_json:from_list(
             [{<<"message">>, <<"The password must be provided when updating the user name">>}
             ]),
-    cb_context:add_validation_error(<<"password">>, <<"required">>, Msg, Context).
+    cb_context:add_validation_error(<<"password">>, <<"required">>, Msg, Context);
+maybe_generated_password_hash('true', Username, Context) ->
+    rehash_creds(Username, generate_password(), Context).
 
--spec rehash_creds(kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) ->
-                          cb_context:context().
-rehash_creds(_UserId, 'undefined', _Password, Context) ->
+-spec maybe_generated_username_hash(boolean(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+maybe_generated_username_hash('false', _Password, Context) ->
     Msg = kz_json:from_list(
-            [{<<"message">>, <<"The user name must be provided when updating the password">>}
+            [{<<"message">>, <<"The username must be provided when updating the password">>}
             ]),
     cb_context:add_validation_error(<<"username">>, <<"required">>, Msg, Context);
-rehash_creds(_UserId, Username, Password, Context) ->
-    lager:debug("password set on doc, updating hashes for ~s", [Username]),
-    {MD5, SHA1} = cb_modules_util:pass_hashes(Username, Password),
-    JObj1 = kz_json:set_values([{<<"pvt_md5_auth">>, MD5}
-                               ,{<<"pvt_sha1_auth">>, SHA1}
-                               ]
-                              ,cb_context:doc(Context)
-                              ),
-    crossbar_auth:reset_identity_secret(
-      cb_context:set_doc(Context, kz_json:delete_key(<<"password">>, JObj1))
-     ).
+maybe_generated_username_hash('true', Password, Context) ->
+    Username = generate_username(),
+    JObj = kzd_users:set_username(Username, cb_context:doc(Context)),
+    rehash_creds(Username, Password, cb_context:set_doc(Context, JObj)).
 
-%%------------------------------------------------------------------------------
-%% @doc This function will determine if the user name in the request is
-%% unique or belongs to the request being made
-%% @end
-%%------------------------------------------------------------------------------
--spec username_doc_id(kz_term:api_binary(), cb_context:context()) -> kz_term:api_binary().
-username_doc_id(Username, Context) ->
-    username_doc_id(Username, Context, cb_context:account_db(Context)).
-username_doc_id(_, _, 'undefined') -> 'undefined';
-username_doc_id(Username, Context, _AccountDb) ->
-    Username = kz_term:to_lower_binary(Username),
-    Context1 = crossbar_doc:load_view(?LIST_BY_USERNAME, [{'key', Username}], Context),
-    case cb_context:resp_status(Context1) =:= 'success'
-        andalso cb_context:doc(Context1)
+-spec maybe_generated_creds_hash(boolean(), cb_context:context()) -> cb_context:context().
+maybe_generated_creds_hash('false', Context) ->
+    remove_creds(Context);
+maybe_generated_creds_hash('true', Context) ->
+    Username = generate_username(),
+    JObj = kzd_users:set_username(Username, cb_context:doc(Context)),
+    rehash_creds(Username, generate_password(), cb_context:set_doc(Context, JObj)).
+
+-spec generate_username() -> kz_term:ne_binary().
+generate_username() ->
+    lager:debug("generating random username"),
+    <<"user_", (kz_binary:rand_hex(8))/binary>>.
+
+-spec generate_password() -> kz_term:ne_binary().
+generate_password() ->
+    lager:debug("generating random password"),
+    kz_binary:rand_hex(32).
+
+-spec remove_creds(cb_context:context()) -> cb_context:context().
+remove_creds(Context) ->
+    lager:debug("removing user creds"),
+    HashKeys = [<<"pvt_md5_auth">>, <<"pvt_sha1_auth">>],
+    cb_context:set_doc(Context, kz_json:delete_keys(HashKeys, cb_context:doc(Context))).
+
+-spec rehash_creds(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) ->
+                          cb_context:context().
+rehash_creds(Username, Password, Context) ->
+    lager:debug("updating cred hashes for ~s", [Username]),
+    CurrentJObj = cb_context:doc(Context),
+    CurrentMD5 = kz_json:get_ne_value(<<"pvt_md5_auth">>, CurrentJObj),
+    CurrentSHA1 = kz_json:get_ne_value(<<"pvt_sha1_auth">>, CurrentJObj),
+    {MD5, SHA1} = cb_modules_util:pass_hashes(Username, Password),
+    JObj = kz_json:set_values([{<<"pvt_md5_auth">>, MD5}
+                              ,{<<"pvt_sha1_auth">>, SHA1}
+                              ]
+                             ,CurrentJObj
+                             ),
+    case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"reset_identity_secret_on_rehash">>, 'true')
+        andalso (CurrentMD5 =/= MD5
+                 orelse CurrentSHA1 =/= SHA1)
     of
-        [JObj] -> kz_doc:id(JObj);
-        _ -> 'undefined'
+        'false' ->
+            cb_context:set_doc(Context, kz_json:delete_key(<<"password">>, JObj));
+        'true' ->
+            lager:debug("resetting identity secret", []),
+            crossbar_auth:reset_identity_secret(
+              cb_context:set_doc(Context, kz_json:delete_key(<<"password">>, JObj))
+             )
     end.
 
 %%------------------------------------------------------------------------------
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec(normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects()).
 normalize_view_results(JObj, Acc) -> [kz_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -667,6 +816,7 @@ normalize_view_results(JObj, Acc) -> [kz_json:get_value(<<"value">>, JObj)|Acc].
 %% @doc Converts context to vcard
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec convert_to_vcard(cb_context:context()) -> cb_context:context().
 convert_to_vcard(Context) ->
     JObj = cb_context:doc(Context),
