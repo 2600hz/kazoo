@@ -83,18 +83,15 @@ check_creditably(Context, Services, Quotes, 'true') ->
     check_creditably(Context, Services, Quotes, lists:sum(Additions));
 check_creditably(Context, _Services, _Quotes, Amount) when Amount =< 0 ->
     Context;
-check_creditably(Context, Services, _Quotes, Amount) ->
-    Options = #{amount => kz_currency:dollars_to_units(Amount)},
-    case kz_services:is_good_standing(Services, Options) of
+check_creditably(Context, Services, Quotes, Amount) ->
+    Options = #{amount => kz_currency:dollars_to_units(Amount)
+               ,quotes => Quotes
+               },
+    case kz_services_standing:acceptable(Services, Options) of
         {'true', _} -> Context;
         {'false', Reason} ->
-            Msg = io_lib:format("account ~s does not have enough credit to perform the operation"
-                               ,[kz_services:account_id(Services)]
-                               ),
-            ErrorJObj = kz_json:from_list([{<<"message">>, kz_term:to_binary(Msg)}
-                                          ,{<<"reason">>, Reason}
-                                          ]),
-            cb_context:add_system_error(402, 'no_credit', ErrorJObj, Context)
+            ErrorJObj = kz_json:from_map(Reason),
+            cb_context:add_system_error(402, 'billing_issue', ErrorJObj, Context)
     end.
 
 %%------------------------------------------------------------------------------

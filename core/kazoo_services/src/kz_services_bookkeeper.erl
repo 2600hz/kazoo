@@ -64,7 +64,14 @@ invoices_foldl_fun(Services) ->
     fun(Invoice, Results) ->
             Type = kz_services_invoice:bookkeeper_type(Invoice),
             AuditJObj = maybe_store_audit_log(Services, Invoice),
-            Result = update_bookkeeper(Type, Invoice, Services, AuditJObj),
+            Result =
+                case kzd_services:default_bookkeeper_type() =:= Type of
+                    'false' -> update_bookkeeper(Type, Invoice, Services, AuditJObj);
+                    'true' ->
+                        [{<<"status">>, ?STATUS_COMPLETED}
+                        ,{[<<"bookkeeper">>, <<"results">>], []}
+                        ]
+                end,
             FinalAuditJObj = update_audit_log(Services, AuditJObj, Result),
             _ = notify_reseller(Services, Invoice, FinalAuditJObj),
             [{Invoice, Result} | Results]
@@ -126,31 +133,35 @@ store_audit_log(Services, Invoice) ->
 -spec update_audit_log(kz_services:services(), kz_term:api_object(), kz_amqp_worker:request_result()) ->
                               kz_term:api_object().
 update_audit_log(_Services, 'undefined', _Result) -> 'undefined';
-update_audit_log(Services, AuditJObj, {'ok', Details}) ->
-    Results =
-        [kz_json:normalize(JObj)
-         || JObj <- kz_json:get_list_value(<<"Details">>, Details, [])
-        ],
-    update_audit_log(Services, AuditJObj, Results);
 update_audit_log(Services, AuditJObj, {'error', 'timeout'}) ->
-    Results = kz_json:from_list([{<<"status">>, ?STATUS_FAILED}
-                                ,{<<"reason">>, <<"timeout">>}
-                                ,{<<"message">>, <<"bookkeeper did not respond to update request">>}
-                                ]
-                               ),
-    update_audit_log(Services, AuditJObj, Results);
-update_audit_log(Services, AuditLog, Result) ->
-    AccountId = kz_services:account_id(Services),
-    Props = [{<<"status">>, ?STATUS_COMPLETED}
-            ,{<<"reason">>, kz_json:get_value(<<"reason">>, Result)}
-            ,{<<"message">>, kz_json:get_value(<<"message">>, Result)}
-            ,{[<<"bookkeeper">>, <<"results">>], Result}
+    Props = [{<<"status">>, ?STATUS_FAILED}
+            ,{<<"reason">>, <<"timeout">>}
+            ,{<<"message">>, <<"bookkeeper did not respond to update request">>}
             ],
+    update_audit_log(Services, AuditJObj, Props);
+update_audit_log(Services, AuditJObj, {'ok', Result}) ->
+    Props = [{<<"status">>, final_status(Result)}
+            ,{<<"reason">>, kz_json:get_value(<<"Reason">>, Result)}
+            ,{<<"message">>, kz_json:get_value(<<"Message">>, Result)}
+            ,{[<<"bookkeeper">>, <<"results">>]
+             ,kz_json:get_ne_value(<<"Details">>, Result, [])
+             }
+            ],
+    update_audit_log(Services, AuditJObj, Props);
+update_audit_log(Services, AuditLog, Props) ->
+    AccountId = kz_services:account_id(Services),
     case kazoo_modb:save_doc(AccountId, kz_json:set_values(Props, AuditLog)) of
         {'ok', FinalAuditJObj} -> FinalAuditJObj;
         {'error', _R} ->
             lager:debug("failed to update audit log: ~p", [_R]),
             'undefined'
+    end.
+
+-spec final_status(kz_json:object()) -> kz_term:ne_binary().
+final_status(JObj) ->
+    case kz_json:get_ne_value(<<"Status">>, JObj) =:= <<"success">> of
+        'true' -> ?STATUS_COMPLETED;
+        'false' -> ?STATUS_FAILED
     end.
 
 %%------------------------------------------------------------------------------
@@ -194,7 +205,7 @@ update_bookkeeper(_Type, Invoice, Services, AuditJObj) ->
                  )
                }
               ,{<<"Call-ID">>, kz_util:get_callid()}
-              ,{<<"Audit-Log">>, AuditJObj}
+              ,{<<"Audit-Log">>, kz_doc:public_fields(AuditJObj)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:call(Request

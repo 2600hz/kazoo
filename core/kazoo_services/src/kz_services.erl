@@ -92,8 +92,6 @@
 
 -export([is_services/1]).
 
--export([is_good_standing/1, is_good_standing/2]).
-
 -include("services.hrl").
 
 -define(DONT_CASCADE_MASTER, kapps_config:get_is_false(?CONFIG_CAT, <<"cascade_commits_to_master_account">>, 'true')).
@@ -129,22 +127,12 @@
                         {'audit_log', kz_json:object()}.
 -type fetch_options() :: [fetch_option()].
 
--type good_standing_options() :: #{amount => integer()
-                                   %% Additional units amount to add to the current balance. Default is 0.
-                                  ,allow_postpay => boolean()
-                                   %% Should post pay be allowed or not. Default is `false'.
-                                  ,max_postpay_amount => kz_currency:units()
-                                   %% Maximum amount of post pay if it is allowed. Default is 0.
-                                  }.
-%% Good standing options.
-
 -export_type([services/0
              ,plans_foldl/0
              ,invoices_foldl/0
              ,setter_fun/0
              ,setter_funs/0
              ,fetch_options/0
-             ,good_standing_options/0
              ]).
 
 %%------------------------------------------------------------------------------
@@ -660,12 +648,25 @@ summary_quantities(Services) ->
 
 -spec summary_status(services()) -> kz_json:object().
 summary_status(Services) ->
-    {Status, Reason} = is_good_standing(Services),
-    kz_json:from_list(
-      [{<<"good_standing">>, Status}
-      ,{<<"reason">>, Reason}
-      ]
-     ).
+    case kz_services_standing:acceptable(Services) of
+        {'true', Reason} ->
+            kz_json:from_list(
+              [{<<"acceptable">>, 'true'}
+              ,{<<"reason">>, Reason}
+              ]
+             );
+        {'false'
+        ,#{reason := Reason
+          ,message := Message
+          }
+        } ->
+            kz_json:from_list(
+              [{<<"acceptable">>, 'false'}
+              ,{<<"reason">>, Reason}
+              ,{<<"message">>, Message}
+              ]
+             )
+    end.
 
 -spec summary_billing_cycle(services()) -> kz_json:object().
 summary_billing_cycle(_Services) ->
@@ -682,172 +683,6 @@ summary_billing_cycle(_Services) ->
       ,{<<"unit">>, <<"month">>}
       ]
      ).
-
-%% @equiv is_good_standing(Thing, 0)
--spec is_good_standing(kz_term:ne_binary() | services()) -> {boolean(), kz_term:ne_binary()}.
-is_good_standing(Thing) ->
-    is_good_standing(Thing, #{}).
-
-%%------------------------------------------------------------------------------
-%% @doc Check if the account is in good standing.
-%%
-%% Good standing rules:
-%% * If an account has no service plans assigned, it is in good standing
-%% * If an account has service plans and a default payment token it is in good standing
-%% * If an account has service plans, post pay is disabled and the balance is greater
-%%   than 0 then it is in good standing
-%% * If an account has service plans, post pay is enabled, and the balance is greater
-%%   than the max post pay amount then the account is in good standing
-%% * All other cases the account is not in good standing
-%% @end
-%%------------------------------------------------------------------------------
--spec is_good_standing(kz_term:ne_binary() | services(), good_standing_options()) ->
-                              {boolean(), kz_term:ne_binary()}.
-is_good_standing(?NE_BINARY=Account, Options) ->
-    FetchOptions = ['hydrate_plans'],
-    is_good_standing(fetch(Account, FetchOptions), Options);
-is_good_standing(Services, Options) ->
-    GoodFuns = [fun should_enforce_good_standing/2
-               ,fun no_plan_is_good/2
-               ,fun has_no_expired_payment_tokens/2
-               ,fun has_good_balance/2
-               ],
-    lager:debug("checking if account ~s is in good standing", [account_id(Services)]),
-    NewOptions = #{amount => maps:get(amount, Options, 0)},
-    is_good_standing_fold(Services, NewOptions, GoodFuns).
-
-is_good_standing_fold(Services, _Options, []) ->
-    Msg = io_lib:format("account ~s is delinquent, all checks have failed"
-                       ,[account_id(Services)]
-                       ),
-    lager:debug("~s", [Msg]),
-    {'false', Msg};
-is_good_standing_fold(Services, Options, [Fun | Funs]) ->
-    case Fun(Services, Options) of
-        {'true', Reason} = _TheGood ->
-            lager:debug("account ~s is in good standing: ~s"
-                       ,[account_id(Services), Reason]
-                       ),
-            {'true', Reason};
-        {'false', Reason} = _TheBad ->
-            lager:debug("account ~s is delinquent: ~s"
-                       ,[account_id(Services), Reason]
-                       ),
-            {'false', Reason};
-        'not_applicable' -> is_good_standing_fold(Services, Options, Funs)
-    end.
-
--type good_funs_ret() :: {boolean(), kz_term:ne_binary()} |
-                         'not_applicable'.
-
--spec should_enforce_good_standing(services(), good_standing_options()) -> good_funs_ret().
-should_enforce_good_standing(_Services, _Options) ->
-    case ?KZ_SERVICE_ENFORCE_GOOD_STANDING of
-        'true' -> 'not_applicable';
-        'false' ->
-            {'true', <<"good standing not required">>}
-    end.
-
--spec no_plan_is_good(services(), good_standing_options()) -> good_funs_ret().
-no_plan_is_good(Services, _Options) ->
-    case has_plans(Services) of
-        'false' ->
-            {'true', <<"no service plans assigned">>};
-        'true' -> 'not_applicable'
-    end.
-
--spec has_no_expired_payment_tokens(services(), good_standing_options()) -> good_funs_ret().
-has_no_expired_payment_tokens(Services, _Options) ->
-    DefaultTokens = kz_json:values(kz_services_payment_tokens:defaults(Services)),
-    Now = kz_time:now_s(),
-    case DefaultTokens =/= []
-        andalso [T || T <- DefaultTokens,
-                      Expiration <- [kz_json:get_integer_value(<<"expiration">>, T)],
-                      Expiration =/= 'undefined',
-                      Expiration > Now
-                ]
-    of
-        'false' -> 'not_applicable';
-        [] ->
-            {'false', <<"default payment tokens are expired">>};
-        _NotExpired ->
-            'not_applicable'
-    end.
-
--spec has_good_balance(services(), good_standing_options()) -> good_funs_ret().
-has_good_balance(Services, #{amount := Amount}=Options) ->
-    #{allow_postpay := IsPostPay
-     ,max_postpay_amount := MaxPostPay
-     } = maybe_fetch_limits_options(Services, Options),
-    Balance = kz_currency:available_units(account_id(Services), 0),
-    has_good_balance(Balance, Amount, IsPostPay, MaxPostPay).
-
--spec has_good_balance(kz_currency:units(), kz_currency:units(), boolean(), kz_currency:units()) -> good_funs_ret().
-has_good_balance(Balance, Amount, 'false', _) when (Balance - Amount) > 0 ->
-    Msg = io_lib:format("debit of ~.2f from ~.2f results in a positive balance"
-                       ,[kz_currency:units_to_dollars(Amount)
-                        ,kz_currency:units_to_dollars(Balance)
-                        ]
-                       ),
-    {'true', kz_term:to_binary(Msg)};
-has_good_balance(Balance, Amount, 'false', _) when (Balance - Amount) =< 0 ->
-    Msg = io_lib:format("debit of ~.2f from ~.2f results in a negative balance"
-                       ,[kz_currency:units_to_dollars(Amount)
-                        ,kz_currency:units_to_dollars(Balance)
-                        ]
-                       ),
-    {'false', kz_term:to_binary(Msg)};
-has_good_balance(Balance, Amount, 'true', MaxPostPay) ->
-    case (Balance - Amount) > MaxPostPay of
-        'true' ->
-            {'true', <<"enough postpay balance">>};
-        'false' ->
-            Msg = io_lib:format("debit of ~.2f from ~.2f exceeds the maximum postpay amount ~.2f"
-                               ,[kz_currency:units_to_dollars(Amount)
-                                ,kz_currency:units_to_dollars(Balance)
-                                ,kz_currency:units_to_dollars(MaxPostPay)
-                                ]
-                               ),
-            {'false', kz_term:to_binary(Msg)}
-    end.
-
--spec maybe_fetch_limits_options(services(), good_standing_options()) -> good_standing_options().
-maybe_fetch_limits_options(_Services, #{allow_postpay := 'true', max_postpay_amount := Amount}=Options)
-  when is_integer(Amount) ->
-    Options;
-maybe_fetch_limits_options(Services, #{allow_postpay := 'true'}=Options) ->
-    Limits = kz_services_limits:fetch(Services),
-    AllowPostPay = is_post_pay_allowed(Limits),
-    MaxPostPay = get_max_postpay(Limits) * -1,
-    Options#{allow_postpay => AllowPostPay
-            ,max_postpay_amount => MaxPostPay
-            };
-maybe_fetch_limits_options(_Services, Options) ->
-    Options#{allow_postpay => 'false'
-            ,max_postpay_amount => 0
-            }.
-
--spec is_post_pay_allowed(kz_json:object()) -> boolean().
-is_post_pay_allowed(JObj) ->
-    case kz_json:get_value(<<"pvt_allow_postpay">>, JObj) of
-        'undefined' ->
-            case kapps_config:get_is_true(<<"jonny5">>, <<"default_allow_postpay">>) of
-                'undefined' -> 'false';
-                Value -> kz_term:is_true(Value)
-            end;
-        Value -> kz_term:is_true(Value)
-    end.
-
--spec get_max_postpay(kz_json:object()) -> kz_currency:units().
-get_max_postpay(JObj) ->
-    case kz_json:get_float_value(<<"pvt_max_postpay_amount">>, JObj) of
-        'undefined' ->
-            case kapps_config:get_float(<<"jonny5">>, <<"default_max_postpay_amount">>) of
-                'undefined' -> 0;
-                Value -> kz_currency:dollars_to_units(abs(Value))
-            end;
-        Value -> kz_currency:dollars_to_units(abs(Value))
-    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Fetch the services doc for a give account from the services database

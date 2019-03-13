@@ -698,14 +698,16 @@ check_creditably(Services, Quotes, 'true') ->
     check_creditably(Services, Quotes, lists:sum(Additions));
 check_creditably(_Services, _Quotes, Amount) when Amount =< 0 ->
     'ok';
-check_creditably(Services, _Quotes, Amount) ->
-    Options = #{amount => kz_currency:dollars_to_units(Amount)},
-    case kz_services:is_good_standing(Services, Options) of
+check_creditably(Services, Quotes, Amount) ->
+    Options = #{amount => kz_currency:dollars_to_units(Amount)
+               ,quotes => Quotes
+               },
+    case kz_services_standing:acceptable(Services, Options) of
         {'true', _} -> 'ok';
         {'false', Reason} ->
-            knm_errors:not_enough_credit(kz_services:account_id(Services)
-                                        ,Reason
-                                        )
+            knm_errors:billing_issue(kz_services:account_id(Services)
+                                    ,kz_json:from_map(Reason)
+                                    )
     end.
 
 -spec maybe_dry_run_services(collection()) -> collection().
