@@ -16,6 +16,7 @@
                          ,'bh_object'
                          ,'bh_fax'
                          ,'bh_conference'
+                         ,'bh_registration'
                          ]).
 
 -define(COMMAND_MODULES, ['bh_events'
