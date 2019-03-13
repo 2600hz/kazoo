@@ -879,11 +879,11 @@ play_messages([H|T]=Messages, PrevMessages, Count, Box, Call) ->
             play_messages(T, [NMessage|PrevMessages], Count, Box, Call);
         {ok, rewind} ->
             lager:notice("caller chose to rewind 10 sec of the message"),
-            _ = kapps_call_command:b_seek(rewind, 2000, Call),
+            _ = kapps_call_command:seek(rewind, 10000, Call),
             play_messages(Messages, PrevMessages, Count, Box, Call);
         {ok, fastforward} ->
             lager:notice("caller chose to fastforward 10 sec of the message"),
-            _ = kapps_call_command:seek(fastforward, 2000, Call),
+            _ = kapps_call_command:seek(fastforward, 10000, Call),
             play_messages(Messages, PrevMessages, Count, Box, Call);
         {'error', _} ->
             lager:info("error during message playback")
@@ -1717,6 +1717,8 @@ populate_keys(Call) ->
          ,replay = kz_json:get_binary_value(<<"replay">>, JObj, Default#keys.replay)
          ,prev = kz_json:get_binary_value(<<"prev">>, JObj, Default#keys.prev)
          ,next = kz_json:get_binary_value(<<"next">>, JObj, Default#keys.next)
+         ,ff = kz_json:get_binary_value(<<"ff">>, JObj, Default#keys.ff)
+         ,rw = kz_json:get_binary_value(<<"rw">>, JObj, Default#keys.rw)
          ,delete = kz_json:get_binary_value(<<"delete">>, JObj, Default#keys.delete)
          ,continue = kz_json:get_binary_value(<<"continue">>, JObj, Default#keys.continue)
          }.
