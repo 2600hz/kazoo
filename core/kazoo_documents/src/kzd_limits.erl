@@ -433,7 +433,7 @@ authz_resource_types(Doc) ->
 -spec authz_resource_types(doc(), Default) -> list() | Default.
 authz_resource_types(Doc, Default) ->
     get_limit_list(<<"authz_resource_types">>, Doc, Default).
-    
+
 -spec set_authz_resource_types(doc(), list()) -> doc().
 set_authz_resource_types(Doc, Types) ->
     kz_json:set_value(<<"authz_resource_types">>, Types, Doc).
@@ -510,7 +510,7 @@ get_default_limit_units(Key, Default) ->
         Value when is_integer(Value) -> abs(Value);
         Default when is_float(Default) -> kz_currency:dollars_to_units(abs(Default));
         Default when is_integer(Default) -> abs(Default);
-        Default -> Default                   
+        Default -> Default
     end.
 
 %%------------------------------------------------------------------------------
@@ -519,7 +519,7 @@ get_default_limit_units(Key, Default) ->
 %%------------------------------------------------------------------------------
 -spec get_limit_dollars(kz_term:ne_binary(), kz_json:object(), kz_currency:dollars()) -> kz_currency:dollars().
 get_limit_dollars(Key, Doc, Default) ->
-    case kz_json:get_value(<<"pvt_", Key/binary>>, Doc) of       
+    case kz_json:get_value(<<"pvt_", Key/binary>>, Doc) of
         Value when is_float(Value) -> abs(Value);
         Value when is_integer(Value) -> kz_currency:units_to_dollars(abs(Value));
         _Else -> get_default_limit_dollars(Key, Default)
