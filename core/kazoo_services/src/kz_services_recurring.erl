@@ -11,10 +11,15 @@
         ,force_collect/1
         ,force_reminder/1
 
-        ,is_collected/1
-        ,is_collected/3
-
         ,status_good/0
+        ]).
+
+-export([is_current_month_collected/1
+
+        ,is_last_month_collected/1
+        ,is_last_month_collected/3
+
+        ,is_collected/3
         ]).
 
 -include("services.hrl").
@@ -82,13 +87,41 @@ status_good() -> <<"successful">>.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_collected(kz_term:ne_binary()) -> boolean().
-is_collected(?MATCH_MODB_SUFFIX_RAW(_, Year, Month) = AccountMODB) ->
+-spec is_current_month_collected(kz_term:ne_binary()) -> boolean().
+is_current_month_collected(?MATCH_MODB_SUFFIX_RAW(_, Year, Month) = AccountMODB) ->
     is_collected(AccountMODB, Year, Month);
-is_collected(?MATCH_MODB_SUFFIX_UNENCODED(_, Year, Month) = AccountMODB) ->
+is_current_month_collected(?MATCH_MODB_SUFFIX_UNENCODED(_, Year, Month) = AccountMODB) ->
     is_collected(AccountMODB, Year, Month);
-is_collected(?MATCH_MODB_SUFFIX_ENCODED(_, Year, Month) = AccountMODB) ->
-    is_collected(AccountMODB, Year, Month).
+is_current_month_collected(?MATCH_MODB_SUFFIX_ENCODED(_, Year, Month) = AccountMODB) ->
+    is_collected(AccountMODB, Year, Month);
+is_current_month_collected(Account) ->
+    ?MATCH_MODB_SUFFIX_ENCODED(_, Year, Month) = kz_util:format_account_mod_id(Account),
+    is_collected(Account, Year, Month).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_last_month_collected(kz_term:ne_binary()) -> boolean().
+is_last_month_collected(?MATCH_MODB_SUFFIX_RAW(_, Year, Month) = AccountMODB) ->
+    is_last_month_collected(AccountMODB, Year, Month);
+is_last_month_collected(?MATCH_MODB_SUFFIX_UNENCODED(_, Year, Month) = AccountMODB) ->
+    is_last_month_collected(AccountMODB, Year, Month);
+is_last_month_collected(?MATCH_MODB_SUFFIX_ENCODED(_, Year, Month) = AccountMODB) ->
+    is_last_month_collected(AccountMODB, Year, Month);
+is_last_month_collected(Account) ->
+    MODB = ?MATCH_MODB_SUFFIX_ENCODED(_, _, _) = kz_util:format_account_mod_id(Account),
+    is_last_month_collected(MODB).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_last_month_collected(kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> boolean().
+is_last_month_collected(Account, Year, Month) ->
+    Timestamp = calendar:datetime_to_gregorian_seconds({{Year, Month, 1}, {0, 0, 0}}),
+    {PrevYear, PrevMonth, _} = get_previous_month(Timestamp),
+    is_collected(Account, PrevYear, PrevMonth).
 
 %%------------------------------------------------------------------------------
 %% @doc
