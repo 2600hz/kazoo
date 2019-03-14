@@ -324,7 +324,7 @@ put(Context) ->
 
 -spec put(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 put(Context, PathAccountId) ->
-    Doc = cb_context:context(Context),
+    Doc = cb_context:doc(Context),
     ReqJObj =
         kz_json:set_value(<<"pvt_hello_payload">>
                          ,kz_json:get_ne_json_value(<<"hello_payload">>, Doc)
