@@ -17,6 +17,7 @@
         ,pin/1, pin/2
         ,mailbox_number/1, mailbox_number/2
         ,pin_required/1, pin_required/2
+        ,allow_ff_rw/1, allow_ff_rw/2
         ,check_if_owner/1, check_if_owner/2
         ,is_setup/1, is_setup/2
 
@@ -39,6 +40,7 @@
 -define(KEY_PIN, <<"pin">>).
 -define(KEY_MAILBOX_NUMBER, <<"mailbox">>).
 -define(KEY_PIN_REQUIRED, <<"require_pin">>).
+-define(KEY_ALLOW_FF_RW, <<"allow_ff_rw">>).
 -define(KEY_CHECK_IF_OWNER, <<"check_if_owner">>).
 -define(KEY_IS_SETUP, <<"is_setup">>).
 
@@ -160,6 +162,14 @@ pin_required(Box) ->
 -spec pin_required(doc(), Default) -> boolean() | Default.
 pin_required(Box, Default) ->
     kz_json:is_true(?KEY_PIN_REQUIRED, Box, Default).
+
+-spec allow_ff_rw(doc()) -> boolean().
+allow_ff_rw(Box) ->
+    allow_ff_rw(Box, 'false').
+
+-spec allow_ff_rw(doc(), Default) -> boolean() | Default.
+allow_ff_rw(Box, Default) ->
+    kz_json:is_true(?KEY_ALLOW_FF_RW, Box, Default).
 
 -spec check_if_owner(doc()) -> boolean().
 check_if_owner(Box) ->

@@ -102,6 +102,11 @@
         },
         "voicemail": {
             "properties": {
+                "allow_ff_rw": {
+                    "default": false,
+                    "description": "callflow allow fastforward and rewind during voicemail message playback",
+                    "type": "boolean"
+                },
                 "delete_after_notify": {
                     "default": false,
                     "description": "callflow delete after notify",
