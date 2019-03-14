@@ -80,7 +80,7 @@ is_days_early_yet({Year, Month, Day}, EarlyDays) ->
     LastDay = calendar:last_day_of_the_month(Year, Month),
     DueTimestamp =
         calendar:datetime_to_gregorian_seconds({kz_date:normalize({Year, Month, LastDay + 1})
-                                               ,{0, 0, 0}
+                                               ,{0, 0, 1}
                                                }),
     {DueTimestamp, LastDay - EarlyDays < Day}.
 

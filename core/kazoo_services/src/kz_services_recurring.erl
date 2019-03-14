@@ -8,8 +8,8 @@
 -export([early_collect/2
         ,send_early_reminder/2
 
-        ,force_collect/1
-        ,force_reminder/1
+        ,force_collect/1, force_collect/2
+        ,force_reminder/1, force_reminder/2
 
         ,status_good/0
         ]).
@@ -35,17 +35,26 @@
                       {'error', error_details()}.
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Attempt to collect recurring charges for the due timestamp.
+%%
+%% This get services for the provided account ID and send collect recurring AMQP
+%% messages to all invoice's bookkeeper.
+%%
+%% `DueTimestamp' is due date for recurring, and will be used to check to get
+%% previous month database to check if the money is collected already or not.
 %% @end
 %%------------------------------------------------------------------------------
 -spec early_collect(kz_term:ne_binary(), kz_time:gregorian_seconds()) -> run_return().
 early_collect(AccountId, DueTimestamp) ->
     {PrevYear, PrevMonth, _} = get_previous_month(DueTimestamp),
     ShouldCollect = should_process(AccountId, ?COLLECT_RECURRING_MARKER_ID, PrevYear, PrevMonth),
-    early_collect(AccountId, PrevYear, PrevMonth, ShouldCollect).
+    early_collect(AccountId, DueTimestamp, PrevYear, PrevMonth, ShouldCollect).
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Attempt to send a remonder for recurring charges for the due timestamp.
+%%
+%% `DueTimestamp' is due date for recurring, and will be used to check to get
+%% previous month database to check if the notification is send already or not.
 %% @end
 %%------------------------------------------------------------------------------
 -spec send_early_reminder(kz_term:ne_binary(), non_neg_integer()) -> {'ok', kz_term:ne_binary()}.
@@ -55,25 +64,46 @@ send_early_reminder(AccountId, DueTimestamp) ->
     send_early_reminder(AccountId, DueTimestamp, PrevYear, PrevMonth, ShouldCollect).
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Collect recurring charges now without checking if it already collect.
+%%
+%% It doesn't not check and set the marker to see if the it ran before.
 %% @end
 %%------------------------------------------------------------------------------
 -spec force_collect(kz_term:ne_binary()) -> run_return().
 force_collect(AccountId) ->
-    collect(AccountId).
+    force_collect(AccountId, kz_time:now_s()).
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Collect recurring charges for `DueTimestamp' without checking if
+%% it already collect.
+%%
+%% It doesn't not check and set the marker to see if the it ran before.
+%% @end
+%%------------------------------------------------------------------------------
+-spec force_collect(kz_term:ne_binary(), kz_time:gregorian_seconds()) -> run_return().
+force_collect(AccountId, DueTimestamp) ->
+    collect(AccountId, DueTimestamp).
+
+%%------------------------------------------------------------------------------
+%% @doc Send recurring charges reminder now without checking if it
+%% already collect.
+%%
+%% It doesn't not check and set the marker to see if the it ran before.
 %% @end
 %%------------------------------------------------------------------------------
 -spec force_reminder(kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()}.
 force_reminder(AccountId) ->
-    {Year, Month, _} = erlang:date(),
-    LastDay = calendar:last_day_of_the_month(Year, Month),
-    DueTimestamp =
-        calendar:datetime_to_gregorian_seconds({kz_date:normalize({Year, Month, LastDay + 1})
-                                               ,{0, 0, 0}
-                                               }),
+    force_reminder(AccountId, kz_time:now_s()).
+
+%%------------------------------------------------------------------------------
+%% @doc Send recurring charges reminder with `DueTimestamp' without checking if
+%% it already collect.
+%%
+%% It doesn't not check and set the marker to see if the it ran before.
+%% @end
+%%------------------------------------------------------------------------------
+-spec force_reminder(kz_term:ne_binary(), kz_time:gregorian_seconds()) -> {'ok', kz_term:ne_binary()}.
+force_reminder(AccountId, DueTimestamp) ->
     send_reminder(AccountId, DueTimestamp).
 
 %%------------------------------------------------------------------------------
@@ -140,11 +170,11 @@ is_collected(Account, Year, Month) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec early_collect(kz_term:ne_binary(), kz_time:year(), kz_time:month(), boolean()) -> run_return().
-early_collect(AccountId, Year, Month, 'false') ->
+-spec early_collect(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:year(), kz_time:month(), boolean()) -> run_return().
+early_collect(AccountId, DueTimestamp, Year, Month, 'false') ->
     case set_marker(AccountId, ?COLLECT_RECURRING_MARKER_ID, Year, Month) of
         {'ok', _} ->
-            collect(AccountId);
+            collect(AccountId, DueTimestamp);
         {'error', _Reason} ->
             ErrMessage = <<"unabled to set marker to collect recurring charges">>,
             lager:debug("charging account ~s failed: ~s", [AccountId, ErrMessage]),
@@ -153,22 +183,24 @@ early_collect(AccountId, Year, Month, 'false') ->
                        }
             }
     end;
-early_collect(_, _, _, 'true') ->
+early_collect(_, _, _, _, 'true') ->
     {'ok', <<"account is already processed">>}.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec collect(kz_term:ne_binary()) -> run_return().
-collect(AccountId) ->
+-spec collect(kz_term:ne_binary(), kz_time:gregorian_seconds()) -> run_return().
+collect(AccountId, DueTimestamp) ->
     lager:debug("attempting to collect recurring charges for ~s", [AccountId]),
     Services = kz_services:fetch(AccountId, ['hydrate_plans']),
     Invoices = kz_services:invoices(Services),
-    Results = kz_services_invoices:foldl(collect_invoices_fold_fun(Services), [], Invoices),
+    Results = kz_services_invoices:foldl(collect_invoices_fold_fun(Services, DueTimestamp), [], Invoices),
     handle_collect_bookkeeper_results(Results).
 
-collect_invoices_fold_fun(Services) ->
+-type collect_invoice_fold() :: fun((kz_services_invoice:invoice(), kz_amqp_worker:request_return()) -> [kz_amqp_worker:request_return()]).
+-spec collect_invoices_fold_fun(kz_services:services(), kz_time:gregorian_seconds()) -> collect_invoice_fold().
+collect_invoices_fold_fun(Services, DueTimestamp) ->
     fun(Invoice, Results) ->
             Type = kz_services_invoice:bookkeeper_type(Invoice),
             case kzd_services:default_bookkeeper_type() =:= Type of
@@ -176,19 +208,20 @@ collect_invoices_fold_fun(Services) ->
                     Result = kz_json:from_list([{<<"Status">>, status_good()}]),
                     [{'ok', Result} | Results];
                 'false' ->
-                    Result = collect_bookkeeper(Invoice, Services),
+                    Result = collect_bookkeeper(Invoice, Services, DueTimestamp),
                     [Result | Results]
             end
     end.
 
--spec collect_bookkeeper(kz_services_invoice:invoice(), kz_services:services()) ->
+-spec collect_bookkeeper(kz_services_invoice:invoice(), kz_services:services(), kz_time:gregorian_seconds()) ->
                                 kz_amqp_worker:request_return().
-collect_bookkeeper(Invoice, Services) ->
+collect_bookkeeper(Invoice, Services, DueTimestamp) ->
     Request = [{<<"Account-ID">>, kz_services:account_id(Services)}
               ,{<<"Bookkeeper-ID">>, kz_services_invoice:bookkeeper_id(Invoice)}
               ,{<<"Bookkeeper-Type">>, kz_services_invoice:bookkeeper_type(Invoice)}
-              ,{<<"Vendor-ID">>, kz_services_invoice:bookkeeper_vendor_id(Invoice)}
               ,{<<"Call-ID">>, kz_util:get_callid()}
+              ,{<<"Due-Timestamp">>, DueTimestamp}
+              ,{<<"Vendor-ID">>, kz_services_invoice:bookkeeper_vendor_id(Invoice)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:call(Request
@@ -286,7 +319,7 @@ maybe_add_payment_token(Services, Invoice) ->
 -spec get_previous_month(kz_time:gregorian_seconds()) -> kz_time:date().
 get_previous_month(DueTimestamp) ->
     {{DueYear, DueMonth, _}, _} = calendar:gregorian_seconds_to_datetime(DueTimestamp),
-    calendar:datetime_to_gregorian_seconds({kz_date:normalize({DueYear, DueMonth - 1,1}), {0, 0, 0}}).
+    calendar:datetime_to_gregorian_seconds({kz_date:normalize({DueYear, DueMonth - 1,1}), {0, 0, 1}}).
 
 %%------------------------------------------------------------------------------
 %% @doc
