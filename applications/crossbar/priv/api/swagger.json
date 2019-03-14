@@ -8764,6 +8764,9 @@
                 "Bookkeeper-Type": {
                     "type": "string"
                 },
+                "Due-Timestamp": {
+                    "type": "string"
+                },
                 "Event-Category": {
                     "enum": [
                         "bookkeepers"

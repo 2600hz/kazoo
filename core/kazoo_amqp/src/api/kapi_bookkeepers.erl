@@ -68,6 +68,7 @@ collect_recurring_req_definition() ->
                     ,required_headers = [<<"Account-ID">>
                                         ,<<"Bookkeeper-ID">>
                                         ,<<"Bookkeeper-Type">>
+                                        ,<<"Due-Timestamp">>
                                         ,<<"Vendor-ID">>
                                         ]
                     ,optional_headers = [<<"Audit-Log">>
