@@ -721,6 +721,7 @@ leak_pvt_fields(AccountId, Context, 'success') ->
                ,{fun leak_billing_mode/2, AccountId}
                ,fun leak_notification_preference/1
                ,fun leak_trial_time_left/1
+               ,fun leak_pvt_hello/1
                ],
     cb_context:setters(Context, Routines);
 leak_pvt_fields(_AccountId, Context, _Status) -> Context.
@@ -862,6 +863,25 @@ leak_trial_time_left(Context, JObj, _Expiration) ->
                                 ,cb_context:resp_data(Context)
                                 ),
     cb_context:set_resp_data(Context, RespData).
+
+
+-spec leak_pvt_hello(cb_context:context()) -> cb_context:context().
+leak_pvt_hello(Context) ->
+    case cb_context:is_superduper_admin(Context)
+        orelse cb_context:is_account_admin(Context)
+    of
+        'true' ->
+            RespData =
+                kz_json:set_value([<<"_read_only">>, <<"hello">>]
+                                 ,kz_json:get_value(<<"pvt_hello_payload">>
+                                                   ,cb_context:doc(Context)
+                                                   )
+                                 ,cb_context:resp_data(Context)
+                                 ),
+            cb_context:set_resp_data(Context, RespData);
+        'false' ->
+            Context
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Load a summary of the children of this account
@@ -1344,7 +1364,12 @@ create_account_definition(Context) ->
     Doc = crossbar_doc:update_pvt_parameters(cb_context:doc(Context), Context),
     JObj = maybe_set_trial_expires(kz_doc:set_id(Doc, cb_context:account_id(Context))),
 
-    case kzd_accounts:save(JObj) of
+    NewJObj = kz_json:set_value(<<"pvt_hello_payload">>
+                               ,kz_json:get_ne_json_value(<<"hello_payload">>, JObj)
+                               ,kz_json:delete_key(<<"hello_payload">>, JObj)
+                               ),
+
+    case kzd_accounts:save(NewJObj) of
         {'ok', AccountDef} ->
             lager:debug("account definition created: ~s", [kz_doc:revision(AccountDef)]),
             cb_context:setters(Context
