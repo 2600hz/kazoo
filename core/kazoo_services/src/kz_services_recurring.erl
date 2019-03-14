@@ -315,11 +315,9 @@ is_account_enabled(AccountId) ->
 is_proccessed(AccountId, MarkerId, Year, Month) ->
     AccountMODB = kz_util:format_account_mod_id(AccountId, Year, Month),
     case kazoo_modb:open_doc(AccountMODB, MarkerId) of
-        {'ok', _} ->
-            LastDay = calendar:last_day_of_the_month(Year, Month),
-            {_NextYear, _NextMonth, _} = kz_date:normalize({Year, Month, LastDay + 1}),
-            lager:debug("(early) recurring charges for account ~s already processed for ~s-~s"
-                       ,[AccountId, _NextYear, _NextMonth]
+        {'ok', JObj} ->
+            lager:debug("recurring charges for account ~s for ~b-~b is processed on ~s"
+                       ,[AccountId, Year, Month, kz_time:format_datetime(kz_doc:created(JObj))]
                        ),
             'true';
         {'error', 'not_found'} ->
