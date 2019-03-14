@@ -1,1 +1,41 @@
-{"type":"object","required":["Account-ID","Bookkeeper-ID","Bookkeeper-Type","Vendor-ID"],"properties":{"Vendor-ID":{"type":"string"},"Event-Name":{"type":"string","enum":["collect_recurring_req"]},"Event-Category":{"type":"string","enum":["bookkeepers"]},"Bookkeeper-Type":{"type":"string"},"Bookkeeper-ID":{"type":"string"},"Audit-Log":{"type":"string"},"Account-ID":{"type":"string"}},"description":"AMQP API for bookkeepers.collect_recurring_req_definition","_id":"kapi.bookkeepers.collect_recurring_req_definition","$schema":"http://json-schema.org/draft-04/schema#"}
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.bookkeepers.collect_recurring_req_definition",
+    "description": "AMQP API for bookkeepers.collect_recurring_req_definition",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Audit-Log": {
+            "type": "string"
+        },
+        "Bookkeeper-ID": {
+            "type": "string"
+        },
+        "Bookkeeper-Type": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "bookkeepers"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "collect_recurring_req"
+            ],
+            "type": "string"
+        },
+        "Vendor-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Bookkeeper-ID",
+        "Bookkeeper-Type",
+        "Vendor-ID"
+    ],
+    "type": "object"
+}
