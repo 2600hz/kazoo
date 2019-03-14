@@ -90,9 +90,16 @@ process_reg_success(AccountId, AuthorizingId, UA, JObj) ->
     Contact = kz_json:get_value(<<"Contact">>, JObj),
     [#uri{opts=A, ext_opts=B}] = kzsip_uri:uris(Contact),
     Params = A ++ B,
-    maybe_update_push_token(AccountId, AuthorizingId, kz_json:set_value(<<"Token-Proxy">>, ?TOKEN_PROXY_KEY, UA), JObj, Params
-                           ,get_endpoint(AccountId, AuthorizingId)
-                           ).
+    TokenKey = kz_json:get_value(?TOKEN_KEY, UA),
+    case props:is_defined(TokenKey, Params) of
+        'false' ->
+            maybe_clear_push_token(AccountId, AuthorizingId, get_endpoint(AccountId, AuthorizingId));
+        'true' ->
+            maybe_update_push_token(AccountId, AuthorizingId
+                                   ,kz_json:set_value(<<"Token-Proxy">>, ?TOKEN_PROXY_KEY, UA)
+                                   ,JObj, Params, get_endpoint(AccountId, AuthorizingId)
+                                   )
+    end.
 
 -spec get_endpoint(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:api_object().
 get_endpoint(AccountId, AuthorizingId) ->
