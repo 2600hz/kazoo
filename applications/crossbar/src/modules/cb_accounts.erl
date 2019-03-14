@@ -324,7 +324,12 @@ put(Context) ->
 
 -spec put(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 put(Context, PathAccountId) ->
-    ReqJObj = cb_context:doc(Context),
+    Doc = cb_context:context(Context),
+    ReqJObj =
+        kz_json:set_value(<<"pvt_hello_payload">>
+                         ,kz_json:get_ne_json_value(<<"hello_payload">>, Doc)
+                         ,kz_json:delete_key(<<"hello_payload">>, Doc)
+                         ),
     NewAccountId = kz_doc:id(ReqJObj, kz_datamgr:get_uuid()),
 
     WithPVTs = crossbar_doc:update_pvt_parameters(ReqJObj, Context),
@@ -680,6 +685,7 @@ leak_pvt_fields(AccountId, Context, 'success') ->
                ,{fun leak_billing_mode/2, AccountId}
                ,fun leak_notification_preference/1
                ,fun leak_trial_time_left/1
+               ,fun leak_pvt_hello/1
                ],
     cb_context:setters(Context, Routines);
 leak_pvt_fields(_AccountId, Context, _Status) -> Context.
@@ -777,6 +783,24 @@ leak_billing_mode(Context, PathAccountId) ->
             cb_context:set_resp_data(Context
                                     ,kz_json:set_value(<<"billing_mode">>, <<"manual">>, RespJObj)
                                     )
+    end.
+
+-spec leak_pvt_hello(cb_context:context()) -> cb_context:context().
+leak_pvt_hello(Context) ->
+    case cb_context:is_superduper_admin(Context)
+         orelse cb_context:is_account_admin(Context)
+    of
+        'true' ->
+            RespData =
+                kz_json:set_value([<<"_read_only">>, <<"hello">>]
+                                 ,kz_json:get_value(<<"pvt_hello_payload">>
+                                                   ,cb_context:doc(Context)
+                                                   )
+                                 ,cb_context:resp_data(Context)
+                                 ),
+            cb_context:set_resp_data(Context, RespData);
+        'false' ->
+            Context
     end.
 
 -spec find_reseller_id(cb_context:context(), kz_term:api_binary()) -> kz_term:api_binary().
