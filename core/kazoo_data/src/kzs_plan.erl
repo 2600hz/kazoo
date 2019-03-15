@@ -356,14 +356,14 @@ fetch_cached_dataconnection(Classification, DocType, AccountId) ->
 cache_dataconnection(Classification, AccountId, Connection) ->
     CacheProps = [{'expires', 'infinity'}],
     Key = {'connection', Classification, AccountId},
-    lager:debug("Caching ~p connection for account ~p.", [Classification, AccountId]),
+    lager:debug("caching ~p connection for account ~p.", [Classification, AccountId]),
     kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, Key, Connection, CacheProps).
 
 -spec cache_dataconnection(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), map()) -> server() | {'error', 'not_found'}.
 cache_dataconnection(Classification, DocType, AccountId, Connection) ->
     CacheProps = [{'expires', 'infinity'}],
     Key = {'connection', Classification, DocType, AccountId},
-    lager:debug("Caching ~p => ~p type connection for account ~p.", [Classification, DocType, AccountId]),
+    lager:debug("caching ~p => ~p type connection for account ~p.", [Classification, DocType, AccountId]),
     kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, Key, Connection, CacheProps).
 
 -type storage_key() :: kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:ne_binary()}.
