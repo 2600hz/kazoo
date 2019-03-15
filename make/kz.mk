@@ -64,7 +64,7 @@ empty :=
 space := $(empty) $(empty)
 
 KZ_VERSION ?= $(shell $(ROOT)/scripts/next_version)
-OTP_MACRO := $(shell if [[ $(OTP_VERSION) == 21.* ]]; then echo "-DOTP_VERSION='$(OTP_VERSION)'"; else echo ""; fi)
+OTP_MACRO := $(shell if [[ $(OTP_VERSION) =~ 2[1..9].* ]]; then echo "-DOTP_VERSION='$(OTP_VERSION)'"; else echo ""; fi)
 
 ## SOURCES provides a way to specify compilation order (left to right)
 SOURCES     ?= $(wildcard src/*.erl) $(wildcard src/*/*.erl)
