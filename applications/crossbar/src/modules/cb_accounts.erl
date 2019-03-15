@@ -788,7 +788,7 @@ leak_billing_mode(Context, PathAccountId) ->
 -spec leak_pvt_hello(cb_context:context()) -> cb_context:context().
 leak_pvt_hello(Context) ->
     case cb_context:is_superduper_admin(Context)
-         orelse cb_context:is_account_admin(Context)
+        orelse cb_context:is_account_admin(Context)
     of
         'true' ->
             RespData =
