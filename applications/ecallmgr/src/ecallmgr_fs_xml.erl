@@ -41,6 +41,7 @@
 -include("ecallmgr.hrl").
 
 -define(DEFAULT_USER_CACHE_TIME_IN_MS, ?MILLISECONDS_IN_HOUR). %% 1 hour
+-define(ALEG_CALLID_HEADER, kapps_config:get_ne_binary(?APP_NAME, <<"aleg_callid_header">>)).
 
 -spec acl_xml(kz_json:object()) -> {'ok', iolist()}.
 acl_xml(AclsJObj) ->
@@ -427,6 +428,13 @@ route_resp_ringback(JObj) ->
             MsgId = kz_api:msg_id(JObj),
             Stream = ecallmgr_util:media_path(Media, 'extant', MsgId, JObj),
             action_el(<<"set">>, <<"ringback=", (kz_term:to_binary(Stream))/binary>>)
+    end.
+
+-spec maybe_emmit_aleg_callid() -> kz_types:xml_el() | 'undefined'.
+maybe_emmit_aleg_callid() ->
+    case ?ALEG_CALLID_HEADER of
+        'undefined' -> 'undefined';
+        HeaderName -> action_el(<<"set">>, <<"sip_h_", HeaderName/binary, "=${uuid}">>)
     end.
 
 -spec route_resp_ccvs(kz_json:object()) -> kz_types:xml_el().
@@ -1415,6 +1423,7 @@ route_resp_park_xml(JObj, DialplanContext) ->
             ,unset_custom_sip_headers()
             ,route_resp_set_control_info(DialplanContext)
             ,route_resp_fire_route_win(JObj, DialplanContext)
+            ,maybe_emmit_aleg_callid()
             ,route_resp_park()
             ],
     [E || E <- Exten, E =/= 'undefined'].
