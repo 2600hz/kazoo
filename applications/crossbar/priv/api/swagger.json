@@ -30864,6 +30864,17 @@
             },
             "type": "object"
         },
+        "system_config.epmd": {
+            "description": "Schema for epmd system_config",
+            "properties": {
+                "check_every_s": {
+                    "default": 60,
+                    "description": "epmd check_every_s",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
         "system_config.fax": {
             "description": "Schema for fax system_config",
             "properties": {
