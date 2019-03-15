@@ -18,6 +18,10 @@
             "description": "ecallmgr acls",
             "type": "object"
         },
+        "aleg_callid_header": {
+            "description": "Header to emit aleg uuid into bleg",
+            "type": "string"
+        },
         "allow_endless_recording": {
             "default": false,
             "description": "ecallmgr allow_endless_recording",
