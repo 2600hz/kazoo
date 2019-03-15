@@ -272,5 +272,15 @@
 -define(DEV_LOG(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
 -define(DEV_LOG(F), ?DEV_LOG(F, [])).
 
+%% From https://github.com/tomas-abrahamsson/gpb/issues/134#issuecomment-386892877
+%% kz.mk defines the macro if OTP version is >= 21
+-ifdef(OTP_VERSION).
+%% >= OTP 21
+-define(STACKTRACE(Type, Reason, Stacktrace), Type:Reason:Stacktrace ->).
+-else.
+%% =< OTP 20
+-define(STACKTRACE(Type, Reason, Stacktrace), Type:Reason -> Stacktrace = erlang:get_stacktrace(), ).
+-endif.
+
 -define(KAZOO_TYPES_INCLUDED, 'true').
 -endif.
