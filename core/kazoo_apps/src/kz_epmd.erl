@@ -71,6 +71,9 @@ code_change(_OldVsn, State, _Extra) ->
 
 start_check_timer() ->
     CheckS = kapps_config:get_integer(<<"epmd">>, <<"check_every_s">>, 60),
+    start_check_timer(CheckS).
+
+start_check_timer(CheckS) ->
     erlang:start_timer(CheckS * ?MILLISECONDS_IN_SECOND, self(), ?CHECK_EPMD).
 
 check_epmd(#state{name=Name
@@ -93,12 +96,17 @@ register_with_epmd(#state{name=Name
                          ,epmd_mod=Mod
                          ,port=Port
                          }=State) ->
-    log_register_result(Mod:register_node(Name, Port)),
-    State#state{tref=start_check_timer()}.
+    check_register_result(State, Mod:register_node(Name, Port)).
 
-log_register_result({'ok', _Creation}) ->
-    lager:info("created registration: ~p", [_Creation]);
-log_register_result({'error', 'already_registered'}) ->
-    lager:info("already registered with EPMD");
-log_register_result(_Term) ->
-    lager:info("unexpected return from registering: ~p", [_Term]).
+check_register_result(State, {'ok', _Creation}) ->
+    lager:info("created EPMD registration: ~p", [_Creation]),
+    State#state{tref=start_check_timer()};
+check_register_result(State, {'error', 'already_registered'}) ->
+    lager:info("already registered with EPMD"),
+    State#state{tref=start_check_timer()};
+check_register_result(State, {'error', 'econnrefused'}) ->
+    lager:error("refused connection to EPMD"),
+    State#state{tref=start_check_timer(1)};
+check_register_result(State, _Term) ->
+    lager:info("unexpected return from registering: ~p", [_Term]),
+    State#state{tref=start_check_timer(1)}.
