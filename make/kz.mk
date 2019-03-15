@@ -2,6 +2,8 @@
 
 .PHONY: compile compile-lean json compile-test clean clean-test eunit dialyze xref proper fixture_shell app_src depend $(DEPS_RULES) splchk
 
+OTP_VERSION ?= $(file < $(ROOT)/make/erlang_version)
+
 ## Platform detection.
 ifeq ($(PLATFORM),)
     UNAME_S := $(shell uname -s)
@@ -30,7 +32,7 @@ ifeq ($(PLATFORM),)
 endif
 
 ## pipefail enforces that the command fails even when run through a pipe
-SHELL = /bin/bash -o pipefail
+SHELL := /bin/bash -o pipefail
 
 ifndef ERLC_OPTS_SUPERSECRET
     ERLC_OPTS += +debug_info
@@ -44,7 +46,6 @@ ERLC_OPTS += +warn_export_all +warn_unused_import +warn_unused_vars +warn_missin
 ifneq (,$(findstring 21._,$(OTP_VERSION)))
     ERLC_OPTS += -Werror
 endif
-
 
 #ERLC_OPTS += +warn_untyped_record
 
@@ -63,6 +64,7 @@ empty :=
 space := $(empty) $(empty)
 
 KZ_VERSION ?= $(shell $(ROOT)/scripts/next_version)
+OTP_MACRO := $(shell if [[ $(OTP_VERSION) == 21.* ]]; then echo "-DOTP_VERSION='$(OTP_VERSION)'"; else echo ""; fi)
 
 ## SOURCES provides a way to specify compilation order (left to right)
 SOURCES     ?= $(wildcard src/*.erl) $(wildcard src/*/*.erl)
@@ -86,15 +88,15 @@ compile-lean: compile
 
 ebin/$(PROJECT).app:
 	@mkdir -p ebin/
-	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(SOURCES)
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(OTP_MACRO) $(PA) -o ebin/ $(SOURCES)
 	@sed "s/{modules,[[:space:]]*\[\]}/{modules, \[$(MODULES)\]}/" src/$(PROJECT).app.src \
 	| sed -e "s/{vsn,\([^}]*\)}/\{vsn,\"$(KZ_VERSION)\"}/g" > $@
 
 ebin/%.beam: src/%.erl
-	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(OTP_MACRO) $(PA) -o ebin/ $<
 
 ebin/%.beam: src/*/%.erl
-	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
+	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(OTP_MACRO) $(PA) -o ebin/ $<
 
 depend: $(DEPS_RULES)
 
@@ -116,7 +118,7 @@ test/$(PROJECT).app: ERLC_OPTS += -DTEST
 test/$(PROJECT).app: $(TEST_SOURCES)
 	@mkdir -p test/
 	@mkdir -p ebin/
-	ERL_LIBS=$(ELIBS) erlc -v +nowarn_missing_spec $(ERLC_OPTS) $(TEST_PA) -o ebin/ $?
+	ERL_LIBS=$(ELIBS) erlc -v +nowarn_missing_spec $(ERLC_OPTS) $(OTP_MACRO) $(TEST_PA) -o ebin/ $?
 
 	@sed "s/{modules,\s*\[\]}/{modules, \[$(TEST_MODULES)\]}/" src/$(PROJECT).app.src > $@
 	@sed "s/{modules,\s*\[\]}/{modules, \[$(TEST_MODULES)\]}/" src/$(PROJECT).app.src > ebin/$(PROJECT).app
