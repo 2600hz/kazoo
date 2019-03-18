@@ -7,7 +7,7 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_util).
 
--export([log_stacktrace/0, log_stacktrace/1, log_stacktrace/2
+-export([log_stacktrace/0, log_stacktrace/1, log_stacktrace/2, log_stacktrace/3
         ,format_account_id/1, format_account_id/2, format_account_id/3
         ,format_account_mod_id/1, format_account_mod_id/2, format_account_mod_id/3
         ,format_account_db/1
@@ -76,22 +76,49 @@
 
 %%------------------------------------------------------------------------------
 %% @doc Standardized way of logging the stack-trace.
+%% @deprecated `erlang:get_stacktrace/0' used by this function is deprecated
+%% in OTP 21, please use the new try/catch syntax and pass stacktrace to
+%% {@link kz_util:log_stacktrace/1} instead.
 %% @end
 %%------------------------------------------------------------------------------
 -spec log_stacktrace() -> 'ok'.
 log_stacktrace() ->
-    ST = erlang:get_stacktrace(),
+    ST = try throw('get_stacktrace')
+         catch
+             ?STACKTRACE(_E, _R, Stack)
+                Stack
+         end,
     log_stacktrace(ST).
 
+%%------------------------------------------------------------------------------
+%% @doc Standardized way of logging the stack-trace.
+%% @end
+%%------------------------------------------------------------------------------
 -spec log_stacktrace(list()) -> ok.
 log_stacktrace(ST) ->
     log_stacktrace(ST, "", []).
 
+%%------------------------------------------------------------------------------
+%% @doc Standardized way of logging the stack-trace.
+%% @deprecated `erlang:get_stacktrace/0' used by this function is deprecated
+%% in OTP 21, please use the new try/catch syntax and pass stacktrace to
+%% {@link kz_util:log_stacktrace/3} instead.
+%% @end
+%%------------------------------------------------------------------------------
 -spec log_stacktrace(string(), list()) -> ok.
 log_stacktrace(Fmt, Args) ->
-    ST = erlang:get_stacktrace(),
+    ST = try throw('get_stacktrace')
+         catch
+             ?STACKTRACE(_E, _R, Stack)
+                Stack
+         end,
     log_stacktrace(ST, Fmt, Args).
 
+%%------------------------------------------------------------------------------
+%% @doc Standardized way of logging the stack-trace.
+%% @end
+%%------------------------------------------------------------------------------
+-spec log_stacktrace(list(), string(), list()) -> ok.
 log_stacktrace(ST, Fmt, Args) ->
     ?LOG_ERROR("stacktrace: " ++ Fmt, Args),
     _ = [log_stacktrace_mfa(M, F, A, Info)

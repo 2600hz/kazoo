@@ -19,8 +19,8 @@ main(_) ->
 run_generator(F) ->
     try F()
     catch
-        'throw':'no_type' ->
-            ST = [{M, _F, _A, Props}|_] = erlang:get_stacktrace(),
+        ?STACKTRACE('throw', 'no_type', ST)
+            [{M, _F, _A, Props}|_] = ST,
             CompileOpts = M:module_info(compile),
             SrcModule = props:get_value(source, CompileOpts),
             Line = props:get_value('line', Props),

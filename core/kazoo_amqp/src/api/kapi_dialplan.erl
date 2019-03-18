@@ -1124,8 +1124,9 @@ build_command(Prop, DPApp) when is_list(Prop) ->
                     ?MODULE:BuildMsgFun(kz_api:set_missing_values(Prop, ?DEFAULT_VALUES))
             end
     catch
-        _:R -> kz_util:log_stacktrace(),
-               throw({R, Prop})
+        ?STACKTRACE(_, R, ST)
+            kz_util:log_stacktrace(ST),
+            throw({R, Prop})
     end;
 build_command(JObj, DPApp) ->
     build_command(kz_json:to_proplist(JObj), DPApp).

@@ -108,9 +108,9 @@ initial_state() ->
                    ,lists:reverse(?ACCOUNT_NAMES)
                    )
     catch
-        _R:_T ->
+        ?STACKTRACE(_R, _T, ST)
             ?debugFmt("exception ~p:~p", [_R, _T]),
-            kz_util:log_stacktrace(),
+            kz_util:log_stacktrace(ST),
             cleanup(State),
             throw(failed)
     end.

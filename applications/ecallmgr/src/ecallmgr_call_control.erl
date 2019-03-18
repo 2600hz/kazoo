@@ -1077,8 +1077,7 @@ execute_control_request(Cmd, #state{node=Node
             send_error_resp(CallId, Cmd, Msg),
             Srv ! {'force_queue_advance', CallId},
             'ok';
-        'error':{'badmatch', {'error', ErrMsg}} ->
-            ST = erlang:get_stacktrace(),
+        ?STACKTRACE('error', {'badmatch', {'error', ErrMsg}}, ST)
             lager:debug("invalid command ~s: ~p", [Application, ErrMsg]),
             kz_util:log_stacktrace(ST),
             maybe_send_error_resp(CallId, Cmd),

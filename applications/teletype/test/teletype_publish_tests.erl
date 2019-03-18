@@ -1,7 +1,7 @@
 -module(teletype_publish_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include("teletype.hrl").
+-include("../src/teletype.hrl").
 
 -define(TEST_POOL_ARGS, [{worker_module, teletype_renderer}
                         ,{name, {local, teletype_render_farm}}
@@ -98,9 +98,9 @@ kz_amqp_worker_call_collect() ->
             try PublishFun(Req) of
                 ok -> wait_collect_until(UntilFun, [], erlang:start_timer(Timeout, self(), req_timeout))
             catch
-                _E:T ->
+                ?STACKTRACE(_E, T, ST)
                     ?LOG_DEBUG("failed to publish: ~p:~p", [_E, T]),
-                    kz_util:log_stacktrace(),
+                    kz_util:log_stacktrace(ST),
                     {error, T}
             end
     end.

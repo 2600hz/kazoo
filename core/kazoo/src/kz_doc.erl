@@ -228,8 +228,9 @@ type(JObj) ->
 -spec type(doc(), Default) -> kz_term:ne_binary() | Default.
 type(JObj, Default) ->
     try kz_json:get_ne_binary_value(?KEY_PVT_TYPE, JObj, Default)
-    catch 'error':'badarg' ->
-            kz_util:log_stacktrace("~s:type(~s)", [?MODULE, kz_json:encode(JObj)]),
+    catch
+        ?STACKTRACE('error', 'badarg', ST)
+            kz_util:log_stacktrace(ST, "~s:type(~s)", [?MODULE, kz_json:encode(JObj)]),
             Default
     end.
 

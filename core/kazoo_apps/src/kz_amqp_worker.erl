@@ -528,9 +528,9 @@ send_request(CallId, Self, PublishFun, ReqProps)
     try PublishFun(Props) of
         'ok' -> 'ok'
     catch
-        _R:E ->
+        ?STACKTRACE(_R, E, ST)
             lager:debug("failed to publish: ~s: ~p", [_R, E]),
-            kz_util:log_stacktrace(),
+            kz_util:log_stacktrace(ST),
             {'error', E}
     end.
 

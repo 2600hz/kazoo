@@ -190,9 +190,9 @@ authenticate_fold(Token, [Fun | Routines]) ->
     try Fun(Token) of
         NewToken -> authenticate_fold(NewToken, Routines)
     catch
-        _E:_R ->
+        ?STACKTRACE(_E, _R, ST)
             lager:debug("exception executing ~p : ~p , ~p", [Fun, _E, _R]),
-            kz_util:log_stacktrace(),
+            kz_util:log_stacktrace(ST),
             authenticate_fold(Token, Routines)
     end.
 

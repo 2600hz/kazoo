@@ -68,8 +68,13 @@ proper_test_() ->
 
 %% Just to please coverage :)
 log_test_() ->
+    ST = try throw('just_for_fun')
+         catch
+             ?STACKTRACE(_E, _R, Stack)
+                Stack
+         end,
     [?_assertEqual(ok, kz_util:log_stacktrace())
-    ,?_assertEqual(ok, kz_util:log_stacktrace(erlang:get_stacktrace()))
+    ,?_assertEqual(ok, kz_util:log_stacktrace(ST))
     ].
 
 calling_app_test_() ->

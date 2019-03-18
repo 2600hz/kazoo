@@ -98,9 +98,8 @@ restore_system_template(TemplateId) ->
     try Mod:init() of
         'ok' -> io:format("  finished~n")
     catch
-        _E:_T ->
+        ?STACKTRACE(_E, _T, ST)
             io:format("  crashed for reason ~p:~p ~n", [_E, _T]),
-            ST = erlang:get_stacktrace(),
             kz_util:log_stacktrace(ST),
             io:format("St: ~p~n~n", [ST])
 

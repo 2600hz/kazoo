@@ -930,9 +930,9 @@ try_create_endpoint(Routine, Endpoints, Endpoint, Properties, Call) when is_func
             lager:debug("created endpoint from ~s", [kz_doc:id(Endpoint)]),
             [JObj|Endpoints]
     catch
-        _E:_R ->
+        ?STACKTRACE(_E, _R, ST)
             lager:warning("unable to build endpoint(~s): ~p", [_E, _R]),
-            kz_util:log_stacktrace(),
+            kz_util:log_stacktrace(ST),
             Endpoints
     end.
 

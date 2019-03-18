@@ -81,10 +81,9 @@ process_req(FaxDoc, JObj, _Props) ->
     notify_util:send_update(kz_api:server_id(JObj), kz_api:msg_id(JObj), <<"pending">>),
     try build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_empty(Props), AccountDb)
     catch
-        C:R ->
+        ?STACKTRACE(C, R, ST)
             Msg = io_lib:format("failed: ~s:~p", [C, R]),
             lager:debug(Msg),
-            ST = erlang:get_stacktrace(),
             kz_util:log_stacktrace(ST),
             {'error', Msg}
     end.

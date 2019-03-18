@@ -407,8 +407,8 @@ create_account(AccountName, Realm, Username, Password)
     try create_account_and_user(Account, User) of
         {'ok', _Context} -> 'ok'
     catch
-        Type:Reason ->
-            log_error(Type, Reason, erlang:get_stacktrace(), AccountName)
+        ?STACKTRACE(Type, Reason, ST)
+            log_error(Type, Reason, ST, AccountName)
     end;
 create_account(AccountName, Realm, Username, Password) ->
     create_account(kz_term:to_binary(AccountName)
