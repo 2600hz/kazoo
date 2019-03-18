@@ -72,9 +72,8 @@ log_test_() ->
          catch
              ?STACKTRACE(_E, _R, Stack)
              Stack
-             end,
-    [?_assertEqual(ok, kz_util:log_stacktrace())
-    ,?_assertEqual(ok, kz_util:log_stacktrace(ST))
+         end,
+    [?_assertEqual(ok, kz_util:log_stacktrace(ST))
     ].
 
 calling_app_test_() ->

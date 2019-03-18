@@ -63,6 +63,9 @@
 -export([resolve_uri_path/2]).
 -endif.
 
+-deprecated({'log_stacktrace', 0, 'next_major_release'}).
+-deprecated({'log_stacktrace', 2, 'next_major_release'}).
+
 -include_lib("kernel/include/inet.hrl").
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
@@ -83,12 +86,11 @@
 %%------------------------------------------------------------------------------
 -spec log_stacktrace() -> 'ok'.
 log_stacktrace() ->
-    ST = try throw('get_stacktrace')
-         catch
-             ?STACKTRACE(_E, _R, Stack)
-             Stack
-             end,
-    log_stacktrace(ST).
+    try throw('get_stacktrace')
+    catch
+        ?STACKTRACE(_E, _R, ST)
+        log_stacktrace(ST, "log_stacktrace/0 is deprecated: ", [])
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Standardized way of logging the stack-trace.
@@ -107,12 +109,11 @@ log_stacktrace(ST) ->
 %%------------------------------------------------------------------------------
 -spec log_stacktrace(string(), list()) -> ok.
 log_stacktrace(Fmt, Args) ->
-    ST = try throw('get_stacktrace')
-         catch
-             ?STACKTRACE(_E, _R, Stack)
-             Stack
-             end,
-    log_stacktrace(ST, Fmt, Args).
+    try throw('get_stacktrace')
+    catch
+        ?STACKTRACE(_E, _R, ST)
+        log_stacktrace(ST, "log_stacktrace/2 is deprecated: " ++ Fmt, Args)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Standardized way of logging the stack-trace.
