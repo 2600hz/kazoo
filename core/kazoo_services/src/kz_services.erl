@@ -826,8 +826,20 @@ commit_updates(Services, FetchOptions) ->
         'false' -> UpdatedServices;
         'true' ->
             Tree = lists:reverse(kzd_services:tree(services_jobj(Services))),
-            _ = cascade_commit_updates(FetchOptions, Tree),
+            CascadeFetchOptions = cascade_commits_fetch_options(FetchOptions),
+            _ = cascade_commit_updates(CascadeFetchOptions, Tree),
             UpdatedServices
+    end.
+
+-spec cascade_commits_fetch_options(kz_term:proplist()) -> kz_term:proplist().
+cascade_commits_fetch_options(FetchOptions) ->
+    case kapps_config:get_is_true(?CONFIG_CAT, <<"hydrate_cascade_commits">>, 'true') of
+        'false' -> FetchOptions;
+        'true' ->
+            ['hydrate_cascade_quantities'
+            ,'hydrate_account_quantities'
+             | FetchOptions
+            ]
     end.
 
 -spec cascade_commit_updates(kz_term:proplist(), kz_term:ne_binaries()) -> 'ok'.
