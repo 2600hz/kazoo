@@ -544,6 +544,9 @@ rate_for_number(Phonenumber, Context) ->
                 ,{<<"Msg-ID">>, cb_context:req_id(Context)}
                 ,{<<"Account-ID">>, cb_context:account_id(Context)}
                 ,{<<"Ratedeck-ID">>, cb_context:req_value(Context, <<"ratedeck_id">>)}
+                ,{<<"Direction">>, cb_context:req_value(Context, <<"direction">>)}
+                ,{<<"From-DID">>, cb_context:req_value(Context, <<"caller_id_number">>)}
+                ,{<<"Resource-ID">>, cb_context:req_value(Context, <<"resource_id">>)}
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]
                ),
