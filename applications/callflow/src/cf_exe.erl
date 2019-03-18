@@ -825,14 +825,14 @@ cf_module_task(CFModule, Data, Call, AMQPWorker) ->
     kz_util:put_callid(kapps_call:call_id_direct(Call)),
     try CFModule:handle(Data, Call)
     catch
+
         'exit':'normal' ->
             lager:info("action ~s finished", [CFModule]);
-        _E:R ->
-            ST = erlang:get_stacktrace(),
-            lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, R]),
-            kz_util:log_stacktrace(ST),
-            throw(R)
-    end.
+        ?STACKTRACE(_E, R, ST)
+        lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, R]),
+        kz_util:log_stacktrace(ST),
+        throw(R)
+        end.
 
 %%------------------------------------------------------------------------------
 %% @doc Unlike the kapps_call_command this send command does not call the

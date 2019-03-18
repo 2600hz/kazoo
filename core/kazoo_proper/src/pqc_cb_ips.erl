@@ -334,8 +334,7 @@ seq() ->
             lager:info("finished running IPs test")
 
         catch
-            _E:_R ->
-                ST = erlang:get_stacktrace(),
+            ?STACKTRACE(_E, _R, ST)
                 ?INFO("failed ~s: ~p", [_E, _R]),
                 [?INFO("st: ~p", [S]) || S <- ST]
         after
@@ -525,8 +524,7 @@ correct() ->
                                     ,aggregate(command_names(Cmds), Result =:= 'ok')
                                     )
                    catch
-                       _E:_R ->
-                           ST = erlang:get_stacktrace(),
+                       ?STACKTRACE(_E, _R, ST)
                            io:format("exception running commands: ~s:~p~n", [_E, _R]),
                            [io:format("~p~n", [S]) || S <- ST],
                            _ = cleanup(),

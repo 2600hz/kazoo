@@ -160,8 +160,7 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
         lager:debug("we know how to route this call, sending park route response"),
         send_park(State, Command)
     catch
-        _A:_B ->
-            ST = erlang:get_stacktrace(),
+        ?STACKTRACE(_A, _B, ST)
             lager:info("exception ~p:~p", [_A, _B]),
             kz_util:log_stacktrace(ST),
             ts_callflow:send_hangup(State)

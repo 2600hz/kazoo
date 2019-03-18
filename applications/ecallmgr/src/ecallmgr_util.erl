@@ -1025,8 +1025,7 @@ build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
         _E:{'badmatch', {'error', 'not_found'}} ->
             lager:warning("failed to build sip channel trying failover", []),
             maybe_failover(Failover);
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
+        ?STACKTRACE(_E, _R, ST)
             lager:warning("failed to build sip channel (~s): ~p", [_E, _R]),
             kz_util:log_stacktrace(ST),
             {'error', 'invalid'}

@@ -662,8 +662,7 @@ fold_bind_results([#kz_responder{module=M
             ST = erlang:get_stacktrace(),
             log_undefined(M, F, length(Payload), ST),
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
-        _T:_E ->
-            ST = erlang:get_stacktrace(),
+        ?STACKTRACE(_T, _E, ST)
             lager:error("excepted: ~s: ~p", [_T, _E]),
             kz_util:log_stacktrace(ST),
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders)
@@ -840,8 +839,7 @@ apply_map_responder(#kz_responder{module=M
             lager:error("exception: error:~p", [Exp]),
             kz_util:log_stacktrace(ST),
             {'EXIT', {Exp, ST}};
-        _Type:Exp ->
-            ST = erlang:get_stacktrace(),
+        ?STACKTRACE(_Type, Exp, ST)
             lager:error("exception: ~s:~p", [_Type, Exp]),
             kz_util:log_stacktrace(ST),
             {'EXIT', Exp}

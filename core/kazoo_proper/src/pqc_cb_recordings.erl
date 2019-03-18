@@ -199,8 +199,7 @@ seq() ->
 
         io:format(?MODULE_STRING":seq/0 was successful~n")
     catch
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
+        ?STACKTRACE(_E, _R, ST)
             ?INFO(?MODULE_STRING ":seq/0 failed ~s: ~p", [_E, _R]),
             _ = [?INFO("st: ~p", [S]) || S <- ST],
             io:format(?MODULE_STRING ":seq/0 failed: ~s: ~p", [_E, _R])
