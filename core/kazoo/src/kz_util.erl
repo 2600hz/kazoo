@@ -7,7 +7,7 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_util).
 
--export([log_stacktrace/0, log_stacktrace/1, log_stacktrace/2
+-export([log_stacktrace/1, log_stacktrace/2
         ,format_account_id/1, format_account_id/2, format_account_id/3
         ,format_account_mod_id/1, format_account_mod_id/2, format_account_mod_id/3
         ,format_account_db/1
@@ -78,11 +78,6 @@
 %% @doc Standardized way of logging the stack-trace.
 %% @end
 %%------------------------------------------------------------------------------
--spec log_stacktrace() -> 'ok'.
-log_stacktrace() ->
-    ST = erlang:get_stacktrace(),
-    log_stacktrace(ST).
-
 -spec log_stacktrace(list()) -> ok.
 log_stacktrace(ST) ->
     log_stacktrace(ST, "", []).
