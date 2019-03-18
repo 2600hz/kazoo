@@ -6,6 +6,8 @@
 
 -export([main/1]).
 
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+
 main(_) ->
     lists:foreach(fun run_generator/1
                  ,[fun cf_data_usage:to_schema_docs/0
