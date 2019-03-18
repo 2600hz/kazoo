@@ -712,9 +712,16 @@ evaluate_rules_for_creation(Endpoint, Properties, Call) ->
 
 -spec should_create_endpoint_fold(ep_routine_v(), create_ep_acc()) -> create_ep_acc().
 should_create_endpoint_fold(Routine, {Endpoint, Properties, Call}=Acc) when is_function(Routine, 3) ->
-    case Routine(Endpoint, Properties, Call) of
+    try Routine(Endpoint, Properties, Call) of
         'ok' -> Acc;
         Error -> Error
+    catch
+        _E:_R:ST ->
+            %% We want stack trace only for "maybe_missing_resource_type('undefined')"
+            %% Other cases returns error tuple
+            lager:error("kapps_call resource type is undefined"),
+            kz_util:log_stacktrace(ST),
+            {'error', 'no_resource_type'}
     end;
 should_create_endpoint_fold(_Routine, Error) -> Error.
 
@@ -727,11 +734,7 @@ maybe_missing_resource_type(_Endpoint, _Properties, Call) ->
 -spec maybe_missing_resource_type(kz_term:api_binary()) ->
                                          'ok' |
                                          {'error', 'no_resource_type'}.
-maybe_missing_resource_type('undefined') ->
-    lager:error("kapps_call resource type is undefined"),
-    kz_util:log_stacktrace(),
-    {'error', 'no_resource_type'};
-maybe_missing_resource_type(_) -> 'ok'.
+maybe_missing_resource_type(Type) when Type /= 'undefined' -> 'ok'.
 
 -spec maybe_owner_called_self(kz_json:object(), kz_json:object(),  kapps_call:call()) ->
                                      'ok' |
