@@ -188,7 +188,7 @@ account_modb_dataplan(AccountMODB, DocType, StorageId) ->
     Plan = ?CACHED_STORAGE_DATAPLAN(AccountId, StorageId),
     dataplan_type_match(<<"modb">>, DocType, Plan, AccountId).
 
--spec system_connections([map()]) -> [{atom(), server()}].
+-spec system_connections(map()) -> [{atom(), server()}].
 system_connections(Connections) ->
     [maybe_start_connection(Tag, Server)
      || {Tag, Server}
@@ -336,15 +336,17 @@ fetch_cached_dataplan(Key, _Fun) ->
         {'error', 'not_found'} -> ?CACHED_SYSTEM_DATAPLAN
     end.
 
--spec fetch_cached_dataconnection(kz_term:ne_binary(), map()) -> server() | {'error', 'not_found'}.
-fetch_cached_dataconnection(Classification, AccountId) ->
-    Key = {'connection', Classification, AccountId},
+-spec fetch_cached_dataconnection(atom() | kz_term:ne_binary(), tuple() | kz_term:api_ne_binary()) -> server() | {'error', 'not_found'}.
+fetch_cached_dataconnection(_Classification, {'connection', _, _}=Key) ->
     case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, Key) of
         {'ok', Server} -> Server;
         {'error', 'not_found'} -> {'error', 'not_found'}
-    end.
+    end;
+fetch_cached_dataconnection(Classification, AccountId) ->
+    fetch_cached_dataconnection(Classification, {'connection', Classification, AccountId}).
 
--spec fetch_cached_dataconnection(kz_term:ne_binary(), kz_term:ne_binary(), map()) -> server() | {'error', 'not_found'}.
+-spec fetch_cached_dataconnection(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
+                                         server() | {'error', 'not_found'}.
 fetch_cached_dataconnection(Classification, DocType, AccountId) ->
     Key = {'connection', Classification, DocType, AccountId},
     case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, Key) of
@@ -352,14 +354,14 @@ fetch_cached_dataconnection(Classification, DocType, AccountId) ->
         {'error', 'not_found'} -> {'error', 'not_found'}
     end.
 
--spec cache_dataconnection(kz_term:ne_binary(), kz_term:ne_binary(), map()) -> server() | {'error', 'not_found'}.
+-spec cache_dataconnection(atom() | kz_term:ne_binary(), tuple() | kz_term:ne_binary(), map()) -> 'error' | 'ok'.
 cache_dataconnection(Classification, AccountId, Connection) ->
     CacheProps = [{'expires', 'infinity'}],
     Key = {'connection', Classification, AccountId},
     lager:debug("caching ~p connection for account ~p.", [Classification, AccountId]),
     kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, Key, Connection, CacheProps).
 
--spec cache_dataconnection(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), map()) -> server() | {'error', 'not_found'}.
+-spec cache_dataconnection(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary(), map()) -> 'error' | 'ok'.
 cache_dataconnection(Classification, DocType, AccountId, Connection) ->
     CacheProps = [{'expires', 'infinity'}],
     Key = {'connection', Classification, DocType, AccountId},
