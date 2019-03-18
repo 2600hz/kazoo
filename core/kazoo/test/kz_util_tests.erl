@@ -72,7 +72,7 @@ log_test_() ->
          catch
              ?STACKTRACE(_E, _R, Stack)
              Stack
-         end,
+             end,
     [?_assertEqual(ok, kz_util:log_stacktrace(ST))
     ].
 

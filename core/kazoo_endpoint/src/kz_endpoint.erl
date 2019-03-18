@@ -727,7 +727,7 @@ should_create_endpoint_fold(Routine, {Endpoint, Properties, Call}=Acc) when is_f
         lager:debug("exception ~p:~p", [_E, _R]),
         kz_util:log_stacktrace(ST),
         {'error', 'exception'}
-    end;
+        end;
 should_create_endpoint_fold(_Routine, Error) -> Error.
 
 -spec maybe_missing_resource_type(kz_json:object(), kz_json:object(),  kapps_call:call()) ->

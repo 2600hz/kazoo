@@ -90,7 +90,7 @@ log_stacktrace() ->
     catch
         ?STACKTRACE(_E, _R, ST)
         log_stacktrace(ST, "log_stacktrace/0 is deprecated: ", [])
-    end.
+        end.
 
 %%------------------------------------------------------------------------------
 %% @doc Standardized way of logging the stack-trace.
@@ -113,7 +113,7 @@ log_stacktrace(Fmt, Args) ->
     catch
         ?STACKTRACE(_E, _R, ST)
         log_stacktrace(ST, "log_stacktrace/2 is deprecated: " ++ Fmt, Args)
-    end.
+        end.
 
 %%------------------------------------------------------------------------------
 %% @doc Standardized way of logging the stack-trace.
