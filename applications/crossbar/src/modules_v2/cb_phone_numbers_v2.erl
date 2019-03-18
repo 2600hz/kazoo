@@ -557,8 +557,8 @@ maybe_add_port_request_numbers(_Context, 'false') -> kz_json:new();
 maybe_add_port_request_numbers(Context, 'true') ->
     AccountId = cb_context:account_id(Context),
     HasQs = crossbar_filter:is_defined(Context),
-    ViewOptions = [{'startkey', [cb_context:account_id(Context)]}
-                  ,{'endkey', [cb_context:account_id(Context), kz_json:new()]}
+    ViewOptions = [{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, kz_json:new()]}
                   ],
     case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?PORT_NUM_LISTING, ViewOptions) of
         {'error', _} -> kz_json:new();

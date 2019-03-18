@@ -931,12 +931,12 @@ merge_ancestor_attachments(Context, Id, AccountId, ResellerId) ->
         'undefined' -> Context;
         ParentAccountId ->
             lager:debug("trying attachments in account ~s", [ParentAccountId]),
-            try_parent_attachments(Context, Id, AccountId, ParentAccountId, ResellerId)
+            try_parent_attachments(Context, Id, ParentAccountId, ResellerId)
     end.
 
--spec try_parent_attachments(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+-spec try_parent_attachments(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                     cb_context:context().
-try_parent_attachments(Context, Id, AccountId, ParentAccountId, ResellerId) ->
+try_parent_attachments(Context, Id, ParentAccountId, ResellerId) ->
     ParentNotificationContext = crossbar_doc:load(Id
                                                  ,masquerade(Context, ParentAccountId)
                                                  ,?TYPE_CHECK_OPTION(kz_notification:pvt_type())),
