@@ -632,8 +632,7 @@ cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
     try CFModule:handle(Data, Call) of
         _ -> 'ok'
     catch
-        _E:R ->
-            ST = erlang:get_stacktrace(),
+        _E:R:ST ->
             lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, R]),
             kz_util:log_stacktrace(ST),
             throw(R)

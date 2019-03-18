@@ -103,13 +103,11 @@ render_template(Module, TemplateData) ->
             ?LOG_DEBUG("failed to render template: ~p", [_E]),
             E
     catch
-        'error':'undef' ->
-            ST = erlang:get_stacktrace(),
+        'error':'undef':ST ->
             ?LOG_DEBUG("something in the template ~s is undefined", [Module]),
             kz_util:log_stacktrace(ST),
             {'error', 'undefined'};
-        _E:R ->
-            ST = erlang:get_stacktrace(),
+        _E:R:ST ->
             ?LOG_DEBUG("crashed rendering template ~s: ~s: ~p", [Module, _E, R]),
             kz_util:log_stacktrace(ST),
             {'error', R}

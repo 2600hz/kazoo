@@ -77,9 +77,9 @@ run_counterexample(PQC) ->
             ?INFO("call: ~s:~s(~p)", [M, F, A]),
             ?INFO("SUT resp: ~p", [Resp]),
             {RequestId, 'postcondition_failed'};
-        E:R ->
+        E:R:ST ->
             #{'request_id' := RequestId} = pqc_kazoo_model:api(InitialState),
-            {RequestId, E, R, erlang:get_stacktrace()}
+            {RequestId, E, R, ST}
     after
         PQC:cleanup()
     end.

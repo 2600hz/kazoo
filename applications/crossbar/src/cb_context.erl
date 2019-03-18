@@ -898,8 +898,7 @@ validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, _SchemaRequired
             lager:debug("validation errors but not strictly validating, trying to fix request"),
             maybe_fix_js_types(SchemaJObj, Context, OnSuccess, OnFailure, Errors)
     catch
-        'error':'function_clause' ->
-            ST = erlang:get_stacktrace(),
+        'error':'function_clause':ST ->
             lager:debug("function clause failure"),
             kz_util:log_stacktrace(ST),
             Context#cb_context{resp_status = 'fatal'

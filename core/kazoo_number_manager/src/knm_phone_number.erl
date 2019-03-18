@@ -811,8 +811,7 @@ setters_pn(PN, Routines) ->
         #knm_phone_number{}=NewPN -> {'ok', NewPN}
     catch
         'throw':{'stop', Error} -> Error;
-        'error':'function_clause' ->
-            ST = erlang:get_stacktrace(),
+        'error':'function_clause':ST ->
             {FName, Arg} =
                 case ST of
                     [{'lists', 'foldl', [Name|_aPN], Arg2}|_] -> {Name, Arg2};
@@ -821,8 +820,8 @@ setters_pn(PN, Routines) ->
             ?LOG_ERROR("~s failed, argument: ~p", [FName, Arg]),
             kz_util:log_stacktrace(ST),
             {'error', FName};
-        'error':Reason ->
-            kz_util:log_stacktrace(),
+        'error':Reason:ST ->
+            kz_util:log_stacktrace(ST),
             {'error', Reason}
     end.
 

@@ -226,8 +226,8 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
             andalso timer:sleep(250),
         do_revise_docs_from_folder(DbName, Sleep, T)
     catch
-        _:_ ->
-            kz_util:log_stacktrace(),
+        _:_:ST ->
+            kz_util:log_stacktrace(ST),
             do_revise_docs_from_folder(DbName, Sleep, T)
     end.
 

@@ -115,9 +115,9 @@ from_token_fold(Token, [Fun | Routines]) ->
     try Fun(Token) of
         NewToken -> from_token_fold(NewToken, Routines)
     catch
-        _E:_R ->
+        _E:_R:ST ->
             lager:debug("error running public key routine ~p : ~p , ~p", [Fun, _E, _R]),
-            kz_util:log_stacktrace(),
+            kz_util:log_stacktrace(ST),
             from_token_fold(Token, Routines)
     end.
 

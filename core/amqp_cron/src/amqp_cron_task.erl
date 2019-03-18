@@ -325,8 +325,7 @@ apply_task(Exec) ->
                 apply(F, A)
         end
     catch
-        Error:Reason ->
-            Stacktrace = erlang:get_stacktrace(),
+        Error:Reason:Stacktrace ->
             Format = "Task ~p in process ~p with value:~n~p",
             Message = lists:flatten(io_lib:format(
                                       Format,

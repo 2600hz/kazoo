@@ -85,8 +85,7 @@ rule_to_resource(Rule, Resources, Number, OffnetJObj, SelectorsDb) ->
                       ),
             Res
     catch
-        'error':R ->
-            ST = erlang:get_stacktrace(),
+        'error':R:ST ->
             lager:error("failed to run module: ~p, error: ~p",[Module, R]),
             kz_util:log_stacktrace(ST),
             [];

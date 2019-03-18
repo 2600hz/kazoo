@@ -177,8 +177,7 @@ relay_email(To, From, {_Type
         'error':'missing_from' ->
             lager:warning("no From address: ~s: ~p", [From, Addresses]),
             {'error', 'missing_from'};
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
+        _E:_R:ST ->
             lager:warning("failed to encode email: ~s: ~p", [_E, _R]),
             kz_util:log_stacktrace(ST),
             {'error', 'email_encoding_failed'}

@@ -65,8 +65,8 @@ init_from_doc(Url, Req, StreamType) ->
                     {'ok', Req1, 'ok'}
             end
     catch
-        _E:_R ->
-            kz_util:log_stacktrace(),
+        _E:_R:ST ->
+            kz_util:log_stacktrace(ST),
             lager:debug("exception thrown: ~s: ~p", [_E, _R]),
             Req1 = cowboy_req:reply(404, Req),
             {'ok', Req1, 'ok'}

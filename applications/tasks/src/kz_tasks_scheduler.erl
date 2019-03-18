@@ -180,8 +180,7 @@ try_to_salvage_output(TaskId=?NE_BINARY) ->
 
 try_maybe_strip_columns(Columns, CSVPath) ->
     try maybe_strip_columns(Columns, CSVPath)
-    catch _E:_R ->
-            ST = erlang:get_stacktrace(),
+    catch _E:_R:ST ->
             lager:warning("stripping empty columns failed: ~p:~p", [_E, _R]),
             kz_util:log_stacktrace(ST)
     end.

@@ -93,8 +93,8 @@ run(Token, [Fun | Routines]) ->
         {'error', Error} -> {'error', Token#{error => Error}};
         NewToken -> run(NewToken, Routines)
     catch
-        _E:_R ->
+        _E:_R:ST ->
             lager:debug("exception executing ~p : ~p , ~p, ~p", [Fun, _E, _R, Token]),
-            kz_util:log_stacktrace(),
+            kz_util:log_stacktrace(ST),
             {'error', Token}
     end.

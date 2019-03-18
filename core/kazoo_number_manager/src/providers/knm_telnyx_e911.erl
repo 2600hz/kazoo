@@ -170,8 +170,7 @@ assign_address(Number, AddressId) ->
                     {'error', reason(Rep)}
             end
     catch
-        _T:E ->
-            ST = erlang:get_stacktrace(),
+        _T:E:ST ->
             lager:error("~p ~p", [_T, E]),
             kz_util:log_stacktrace(ST),
             {'error', kz_term:to_binary(E)}
