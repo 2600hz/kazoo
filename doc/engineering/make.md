@@ -150,6 +150,7 @@ Runs various code-checking scripts to ensure project standards are met.
 - Dead-simple spell checker looking for low-hanging fruit.
 - Auto-migration of older modules/functions to newer ones (or more appropriately-named ones)
 - [Edoc](http://erlang.org/doc/apps/edoc/chapter.html) checks
+- Auto-conversion of `get_stacktrace/0` usage
 
 ## `make apis`
 
