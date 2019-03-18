@@ -936,7 +936,7 @@ merge_ancestor_attachments(Context, Id, AccountId, ResellerId) ->
 
 -spec try_parent_attachments(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                     cb_context:context().
-try_parent_attachments(Context, Id, AccountId, ParentAccountId, ResellerId) ->
+try_parent_attachments(Context, Id, _AccountId, ParentAccountId, ResellerId) ->
     ParentNotificationContext = crossbar_doc:load(Id
                                                  ,masquerade(Context, ParentAccountId)
                                                  ,?TYPE_CHECK_OPTION(kz_notification:pvt_type())),

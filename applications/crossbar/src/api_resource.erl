@@ -867,7 +867,7 @@ to_binary(Req, Context, 'undefined') ->
         'undefined' ->
             {RespData, api_util:set_resp_headers(Req, Context), Context};
         RangeHeader ->
-            RangeData={Content, Start, End, Length, FileLength} = get_range(RespData, RangeHeader),
+            RangeData={Content, Start, End, _Length, FileLength} = get_range(RespData, RangeHeader),
             ErrorCode = resp_error_code_for_range(RangeData),
             Setters = [{fun cb_context:set_resp_data/2, Content}
                       ,{fun cb_context:set_resp_error_code/2, ErrorCode}
