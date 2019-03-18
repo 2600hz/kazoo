@@ -812,8 +812,7 @@ setters_pn(PN, Routines) ->
         #knm_phone_number{}=NewPN -> {'ok', NewPN}
     catch
         'throw':{'stop', Error} -> Error;
-        'error':'function_clause' ->
-            ST = erlang:get_stacktrace(),
+        ?STACKTRACE('error', 'function_clause', ST)
             {FName, Arg} =
                 case ST of
                     [{'lists', 'foldl', [Name|_aPN], Arg2}|_] -> {Name, Arg2};

@@ -250,8 +250,7 @@ schema_to_table(SchemaJObj) ->
             ,cb_api_endpoints:ref_tables_to_doc(RefTables), "\n\n"
             ]
     catch
-        'throw':'no_type' ->
-            ST = erlang:get_stacktrace(),
+        ?STACKTRACE('throw', 'no_type', ST)
             io:format("failed to build table from schema ~s~n", [kz_doc:id(SchemaJObj)]),
             io:format("~p~n", [ST]),
             throw('no_type')
