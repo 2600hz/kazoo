@@ -7,7 +7,7 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_util).
 
--export([log_stacktrace/1, log_stacktrace/2
+-export([log_stacktrace/1, log_stacktrace/3
         ,format_account_id/1, format_account_id/2, format_account_id/3
         ,format_account_mod_id/1, format_account_mod_id/2, format_account_mod_id/3
         ,format_account_db/1
@@ -82,11 +82,7 @@
 log_stacktrace(ST) ->
     log_stacktrace(ST, "", []).
 
--spec log_stacktrace(string(), list()) -> ok.
-log_stacktrace(Fmt, Args) ->
-    ST = erlang:get_stacktrace(),
-    log_stacktrace(ST, Fmt, Args).
-
+-spec log_stacktrace(list(), string(), list()) -> ok.
 log_stacktrace(ST, Fmt, Args) ->
     ?LOG_ERROR("stacktrace: " ++ Fmt, Args),
     _ = [log_stacktrace_mfa(M, F, A, Info)
