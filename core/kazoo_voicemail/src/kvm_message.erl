@@ -753,15 +753,15 @@ prepend_and_notify(Call, ForwardId, Metadata, SrcBoxId, Props) ->
             forward_to_vmbox(Call, Metadata, SrcBoxId, Props, UpdateFuns)
     catch
         ?STACKTRACE(_T, _E, ST)
-            remove_malform_vm(Call, ForwardId),
-            ErrorMessage = kz_term:to_binary(io_lib:format("exception occurred during prepend and joining audio files: ~p:~p", [_T, _E])),
-            lager:error(ErrorMessage),
-            kz_util:log_stacktrace(ST),
+        remove_malform_vm(Call, ForwardId),
+        ErrorMessage = kz_term:to_binary(io_lib:format("exception occurred during prepend and joining audio files: ~p:~p", [_T, _E])),
+        lager:error(ErrorMessage),
+        kz_util:log_stacktrace(ST),
 
-            %% prepend failed, so at least try to forward without a prepend message
-            UpdateFuns = [fun(J) -> kz_json:set_value(<<"forward_join_error">>, ErrorMessage, J) end],
-            forward_to_vmbox(Call, Metadata, SrcBoxId, Props, UpdateFuns)
-    end.
+        %% prepend failed, so at least try to forward without a prepend message
+        UpdateFuns = [fun(J) -> kz_json:set_value(<<"forward_join_error">>, ErrorMessage, J) end],
+        forward_to_vmbox(Call, Metadata, SrcBoxId, Props, UpdateFuns)
+        end.
 
 -spec prepend_forward_message(kapps_call:call(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:proplist()) -> db_ret().
 prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->

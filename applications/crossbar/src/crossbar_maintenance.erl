@@ -408,8 +408,8 @@ create_account(AccountName, Realm, Username, Password)
         {'ok', _Context} -> 'ok'
     catch
         ?STACKTRACE(Type, Reason, ST)
-            log_error(Type, Reason, ST, AccountName)
-    end;
+        log_error(Type, Reason, ST, AccountName)
+        end;
 create_account(AccountName, Realm, Username, Password) ->
     create_account(kz_term:to_binary(AccountName)
                   ,kz_term:to_binary(Realm)

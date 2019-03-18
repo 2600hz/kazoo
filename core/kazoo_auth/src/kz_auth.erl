@@ -191,10 +191,10 @@ authenticate_fold(Token, [Fun | Routines]) ->
         NewToken -> authenticate_fold(NewToken, Routines)
     catch
         ?STACKTRACE(_E, _R, ST)
-            lager:debug("exception executing ~p : ~p , ~p", [Fun, _E, _R]),
-            kz_util:log_stacktrace(ST),
-            authenticate_fold(Token, Routines)
-    end.
+        lager:debug("exception executing ~p : ~p , ~p", [Fun, _E, _R]),
+        kz_util:log_stacktrace(ST),
+        authenticate_fold(Token, Routines)
+        end.
 
 -spec link(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                   'ok' | kz_datamgr:data_error().

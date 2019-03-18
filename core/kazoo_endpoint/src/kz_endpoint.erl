@@ -931,10 +931,10 @@ try_create_endpoint(Routine, Endpoints, Endpoint, Properties, Call) when is_func
             [JObj|Endpoints]
     catch
         ?STACKTRACE(_E, _R, ST)
-            lager:warning("unable to build endpoint(~s): ~p", [_E, _R]),
-            kz_util:log_stacktrace(ST),
-            Endpoints
-    end.
+        lager:warning("unable to build endpoint(~s): ~p", [_E, _R]),
+        kz_util:log_stacktrace(ST),
+        Endpoints
+        end.
 
 -spec maybe_create_fwd_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                        kz_json:object() |

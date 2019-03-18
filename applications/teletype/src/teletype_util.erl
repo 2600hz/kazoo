@@ -178,10 +178,10 @@ relay_email(To, From, {_Type
             lager:warning("no From address: ~s: ~p", [From, Addresses]),
             {'error', 'missing_from'};
         ?STACKTRACE(_E, _R, ST)
-            lager:warning("failed to encode email: ~s: ~p", [_E, _R]),
-            kz_util:log_stacktrace(ST),
-            {'error', 'email_encoding_failed'}
-    end.
+        lager:warning("failed to encode email: ~s: ~p", [_E, _R]),
+        kz_util:log_stacktrace(ST),
+        {'error', 'email_encoding_failed'}
+        end.
 
 -spec maybe_relay_to_bcc(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binaries()) -> 'ok'.
 maybe_relay_to_bcc(_From, _Encoded, 'undefined') -> 'ok';

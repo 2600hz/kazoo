@@ -828,10 +828,10 @@ handle_callback_info(Message
             {'stop', Reason, State#state{module_state=ModuleState1}}
     catch
         ?STACKTRACE(_E, R, ST)
-            lager:debug("handle_info exception: ~s: ~p", [_E, R]),
-            kz_util:log_stacktrace(ST),
-            {'stop', R, State}
-    end.
+        lager:debug("handle_info exception: ~s: ~p", [_E, R]),
+        kz_util:log_stacktrace(ST),
+        {'stop', R, State}
+        end.
 
 -spec format_status('normal' | 'terminate', [kz_term:proplist() | state()]) -> any().
 format_status(_Opt
@@ -1149,10 +1149,10 @@ handle_module_call(Request, From, #state{module=Module
             {'stop', Reason, Reply, State#state{module_state=ModuleState1}}
     catch
         ?STACKTRACE(_E, R, ST)
-            lager:debug("handle_call exception: ~s: ~p", [_E, R]),
-            kz_util:log_stacktrace(ST),
-            {'stop', R, State}
-    end.
+        lager:debug("handle_call exception: ~s: ~p", [_E, R]),
+        kz_util:log_stacktrace(ST),
+        {'stop', R, State}
+        end.
 
 -spec handle_module_cast(any(), state()) -> handle_cast_return().
 handle_module_cast(Msg, #state{module=Module
@@ -1173,10 +1173,10 @@ handle_module_cast(Msg, #state{module=Module
             {'stop', Reason, State#state{module_state=ModuleState1}}
     catch
         ?STACKTRACE(_E, R, ST)
-            lager:debug("handle_cast exception: ~s: ~p", [_E, R]),
-            kz_util:log_stacktrace(ST),
-            {'stop', R, State}
-    end.
+        lager:debug("handle_cast exception: ~s: ~p", [_E, R]),
+        kz_util:log_stacktrace(ST),
+        {'stop', R, State}
+        end.
 
 -spec handle_rm_binding(binding(), kz_term:proplist(), state()) -> state().
 handle_rm_binding(Binding, Props, #state{queue=Q

@@ -1078,11 +1078,11 @@ execute_control_request(Cmd, #state{node=Node
             Srv ! {'force_queue_advance', CallId},
             'ok';
         ?STACKTRACE('error', {'badmatch', {'error', ErrMsg}}, ST)
-            lager:debug("invalid command ~s: ~p", [Application, ErrMsg]),
-            kz_util:log_stacktrace(ST),
-            maybe_send_error_resp(CallId, Cmd),
-            Srv ! {'force_queue_advance', CallId},
-            'ok';
+        lager:debug("invalid command ~s: ~p", [Application, ErrMsg]),
+        kz_util:log_stacktrace(ST),
+        maybe_send_error_resp(CallId, Cmd),
+        Srv ! {'force_queue_advance', CallId},
+        'ok';
         'throw':{'msg', ErrMsg} ->
             lager:debug("error while executing command ~s: ~s", [Application, ErrMsg]),
             send_error_resp(CallId, Cmd),
@@ -1096,12 +1096,12 @@ execute_control_request(Cmd, #state{node=Node
             Srv ! {'force_queue_advance', CallId},
             'ok';
         ?STACKTRACE(_A, _B, ST)
-            lager:debug("exception (~s) while executing ~s: ~p", [_A, Application, _B]),
-            kz_util:log_stacktrace(ST),
-            send_error_resp(CallId, Cmd),
-            Srv ! {'force_queue_advance', CallId},
-            'ok'
-    end.
+        lager:debug("exception (~s) while executing ~s: ~p", [_A, Application, _B]),
+        kz_util:log_stacktrace(ST),
+        send_error_resp(CallId, Cmd),
+        Srv ! {'force_queue_advance', CallId},
+        'ok'
+        end.
 
 -spec which_call_leg(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_term:ne_binary().
 which_call_leg(CmdLeg, OtherLegs, CallId) ->

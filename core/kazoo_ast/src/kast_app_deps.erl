@@ -341,11 +341,11 @@ remote_calls_from_module(Module, Acc, {M, AST}) ->
         Modules -> ?DEBUG("  ~p~n", [Module]), lists:delete(M, Modules)
     catch
         ?STACKTRACE(_E, R, ST)
-            io:format("process module '~s' failed: ~s: ~p~n", [Module, _E, R]),
-            [io:format("st: ~p~n", [S]) || S <- ST],
-            ?DEBUG("~s failed: ~s ~r~n~p~n", [Module, _E, R, ST]),
-            throw(R)
-    end.
+        io:format("process module '~s' failed: ~s: ~p~n", [Module, _E, R]),
+        [io:format("st: ~p~n", [S]) || S <- ST],
+        ?DEBUG("~s failed: ~s ~r~n~p~n", [Module, _E, R, ST]),
+        throw(R)
+        end.
 
 remote_calls_from_functions(Fs, Acc) ->
     lists:foldl(fun remote_calls_from_function/2

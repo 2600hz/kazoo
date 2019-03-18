@@ -82,11 +82,11 @@ process_req(FaxDoc, JObj, _Props) ->
     try build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_empty(Props), AccountDb)
     catch
         ?STACKTRACE(C, R, ST)
-            Msg = io_lib:format("failed: ~s:~p", [C, R]),
-            lager:debug(Msg),
-            kz_util:log_stacktrace(ST),
-            {'error', Msg}
-    end.
+        Msg = io_lib:format("failed: ~s:~p", [C, R]),
+        lager:debug(Msg),
+        kz_util:log_stacktrace(ST),
+        {'error', Msg}
+        end.
 
 %%------------------------------------------------------------------------------
 %% @doc create the props used by the template render function

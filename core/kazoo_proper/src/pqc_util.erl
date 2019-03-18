@@ -78,8 +78,8 @@ run_counterexample(PQC) ->
             ?INFO("SUT resp: ~p", [Resp]),
             {RequestId, 'postcondition_failed'};
         ?STACKTRACE(E, R, ST)
-            #{'request_id' := RequestId} = pqc_kazoo_model:api(InitialState),
-            {RequestId, E, R, ST}
+        #{'request_id' := RequestId} = pqc_kazoo_model:api(InitialState),
+        {RequestId, E, R, ST}
     after
         PQC:cleanup()
     end.

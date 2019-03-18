@@ -125,10 +125,10 @@ fold_over_module(Module, Config0, Routines) ->
                    )
     catch
         ?STACKTRACE(_E, R, ST)
-            io:format("error processing ~s: '~s': ~p~n", [Module, _E, R]),
-            [io:format("~p~n", [S]) || S <- ST],
-            throw({'error', Module, R})
-    end.
+        io:format("error processing ~s: '~s': ~p~n", [Module, _E, R]),
+        [io:format("~p~n", [S]) || S <- ST],
+        throw({'error', Module, R})
+        end.
 
 process_records(Records, Config0) ->
     lists:foldl(fun process_record_fields/2, Config0, Records).

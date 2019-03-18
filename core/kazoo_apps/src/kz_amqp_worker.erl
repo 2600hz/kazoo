@@ -529,10 +529,10 @@ send_request(CallId, Self, PublishFun, ReqProps)
         'ok' -> 'ok'
     catch
         ?STACKTRACE(_R, E, ST)
-            lager:debug("failed to publish: ~s: ~p", [_R, E]),
-            kz_util:log_stacktrace(ST),
-            {'error', E}
-    end.
+        lager:debug("failed to publish: ~s: ~p", [_R, E]),
+        kz_util:log_stacktrace(ST),
+        {'error', E}
+        end.
 
 -spec request_filter(kz_term:proplist()) -> kz_term:proplist().
 request_filter(Props) ->
@@ -1008,14 +1008,14 @@ publish_api(PublishFun, ReqProps) ->
             {'error', Other}
     catch
         ?STACKTRACE('error', 'badarg', ST)
-            lager:error("badarg error when publishing:"),
-            kz_util:log_stacktrace(ST),
-            {'error', 'badarg'};
+        lager:error("badarg error when publishing:"),
+        kz_util:log_stacktrace(ST),
+        {'error', 'badarg'};
         ?STACKTRACE('error', 'function_clause', ST)
-            lager:error("function clause error when publishing:"),
-            kz_util:log_stacktrace(ST),
-            lager:error("pub fun: ~p", [PublishFun]),
-            {'error', 'function_clause'};
+        lager:error("function clause error when publishing:"),
+        kz_util:log_stacktrace(ST),
+        lager:error("pub fun: ~p", [PublishFun]),
+        {'error', 'function_clause'};
         _E:R ->
             lager:error("error when publishing: ~s:~p", [_E, R]),
             {'error', R}

@@ -63,10 +63,10 @@ exec_elements(Call, [El|Els]) ->
             lager:error("unknown element in response: ~s", [Name]),
             {'error', kzt_util:add_error(Call, <<"unknown_element">>, Name)};
         ?STACKTRACE(_E, _R, ST)
-            lager:error("'~s' when execing el ~p: ~p", [_E, El, _R]),
-            kz_util:log_stacktrace(ST),
-            {'error', Call}
-    end.
+        lager:error("'~s' when execing el ~p: ~p", [_E, El, _R]),
+        kz_util:log_stacktrace(ST),
+        {'error', Call}
+        end.
 
 -spec exec_element(kapps_call:call(), kz_types:xml_el()) ->
                           {'ok', kapps_call:call()} |

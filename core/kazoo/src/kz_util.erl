@@ -86,8 +86,8 @@ log_stacktrace() ->
     ST = try throw('get_stacktrace')
          catch
              ?STACKTRACE(_E, _R, Stack)
-                Stack
-         end,
+             Stack
+             end,
     log_stacktrace(ST).
 
 %%------------------------------------------------------------------------------
@@ -110,8 +110,8 @@ log_stacktrace(Fmt, Args) ->
     ST = try throw('get_stacktrace')
          catch
              ?STACKTRACE(_E, _R, Stack)
-                Stack
-         end,
+             Stack
+             end,
     log_stacktrace(ST, Fmt, Args).
 
 %%------------------------------------------------------------------------------

@@ -105,9 +105,9 @@ check_numbers(Module, Nums) ->
         {error, _} -> {#{}, maps:from_list([{Num,<<"error">>} || Num <- Nums])}
     catch
         ?STACKTRACE(_, _, ST)
-            kz_util:log_stacktrace(ST),
-            {#{}, maps:from_list([{Num,<<"error">>} || Num <- Nums])}
-    end.
+        kz_util:log_stacktrace(ST),
+        {#{}, maps:from_list([{Num,<<"error">>} || Num <- Nums])}
+        end.
 
 %%------------------------------------------------------------------------------
 %% @doc Create a list of all carrier modules available to a subaccount.
@@ -195,9 +195,9 @@ info_fold(Module, Info=#{?CARRIER_INFO_MAX_PREFIX := MaxPrefix}) ->
         _ -> Info
     catch
         ?STACKTRACE(_E, _R, ST)
-            kz_util:log_stacktrace(ST),
-            Info
-    end.
+        kz_util:log_stacktrace(ST),
+        Info
+        end.
 
 -spec usable_carriers() -> kz_term:ne_binaries().
 usable_carriers() ->
@@ -343,9 +343,9 @@ is_local(Carrier) ->
     try apply(Carrier, is_local, [])
     catch
         ?STACKTRACE(_E, _R, ST)
-            kz_util:log_stacktrace(ST),
-            true
-    end.
+        kz_util:log_stacktrace(ST),
+        true
+        end.
 
 %%------------------------------------------------------------------------------
 %% @doc

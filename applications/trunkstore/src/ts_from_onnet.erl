@@ -161,9 +161,9 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
         send_park(State, Command)
     catch
         ?STACKTRACE(_A, _B, ST)
-            lager:info("exception ~p:~p", [_A, _B]),
-            kz_util:log_stacktrace(ST),
-            ts_callflow:send_hangup(State)
+        lager:info("exception ~p:~p", [_A, _B]),
+        kz_util:log_stacktrace(ST),
+        ts_callflow:send_hangup(State)
     after
         ts_callflow:cleanup_amqp(State)
     end.

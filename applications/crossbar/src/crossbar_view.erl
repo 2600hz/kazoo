@@ -217,10 +217,10 @@ build_load_params(Context, View, Options) ->
         Ctx -> Ctx
     catch
         ?STACKTRACE(_E, _T, ST)
-            lager:debug("exception occurred during building view options for ~s", [View]),
-            kz_util:log_stacktrace(ST),
-            cb_context:add_system_error('datastore_fault', Context)
-    end.
+        lager:debug("exception occurred during building view options for ~s", [View]),
+        kz_util:log_stacktrace(ST),
+        cb_context:add_system_error('datastore_fault', Context)
+        end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -260,10 +260,10 @@ build_load_range_params(Context, View, Options) ->
         Ctx -> Ctx
     catch
         ?STACKTRACE(_E, _T, ST)
-            lager:debug("exception occurred during building range view options for ~s", [View]),
-            kz_util:log_stacktrace(ST),
-            cb_context:add_system_error('datastore_fault', Context)
-    end.
+        lager:debug("exception occurred during building range view options for ~s", [View]),
+        kz_util:log_stacktrace(ST),
+        cb_context:add_system_error('datastore_fault', Context)
+        end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -807,10 +807,10 @@ get_results(#{databases := [Db|RestDbs]=Dbs
             try handle_query_result(LoadMap, Dbs, JObjs, LimitWithLast)
             catch
                 ?STACKTRACE(_E, _T, ST)
-                    lager:debug("exception occurred during querying db ~s for view ~s : ~p:~p", [Db, View, _E, _T]),
-                    kz_util:log_stacktrace(ST),
-                    LoadMap#{context => cb_context:add_system_error('datastore_fault', Context)}
-            end
+                lager:debug("exception occurred during querying db ~s for view ~s : ~p:~p", [Db, View, _E, _T]),
+                kz_util:log_stacktrace(ST),
+                LoadMap#{context => cb_context:add_system_error('datastore_fault', Context)}
+                end
     end.
 
 %%------------------------------------------------------------------------------

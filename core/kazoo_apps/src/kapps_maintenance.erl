@@ -1572,10 +1572,10 @@ check_release() ->
             lager:error("check_release/0 failed: ~p", [Error]),
             init:stop(1);
         ?STACKTRACE(_E, _R, ST)
-            lager:error("check_release/0 crashed: ~s: ~p", [_E, _R]),
-            kz_util:log_stacktrace(ST),
-            init:stop(1)
-    end.
+        lager:error("check_release/0 crashed: ~s: ~p", [_E, _R]),
+        kz_util:log_stacktrace(ST),
+        init:stop(1)
+        end.
 
 -spec run_check(fun()) -> 'ok'.
 run_check(CheckFun) ->

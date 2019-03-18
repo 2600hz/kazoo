@@ -1557,10 +1557,10 @@ validate_account_schema(ParentId, AccountId, Doc, ValidationErrors, SchemaJObj) 
             maybe_fix_js_types(ParentId, AccountId, Doc, ValidationErrors, SchemaErrors, SchemaJObj)
     catch
         ?STACKTRACE('error', 'function_clause', ST)
-            lager:error("function clause failure"),
-            kz_util:log_stacktrace(ST),
-            throw({'system_error', <<"validation failed to run on the server">>})
-    end.
+        lager:error("function clause failure"),
+        kz_util:log_stacktrace(ST),
+        throw({'system_error', <<"validation failed to run on the server">>})
+        end.
 
 -spec maybe_fix_js_types(kz_term:api_ne_binary(), kz_term:api_ne_binary(), doc(), validation_errors(), [jesse_error:error_message()], kz_json:object()) ->
                                 validate_acc().

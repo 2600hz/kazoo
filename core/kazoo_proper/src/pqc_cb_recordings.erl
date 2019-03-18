@@ -200,9 +200,9 @@ seq() ->
         io:format(?MODULE_STRING":seq/0 was successful~n")
     catch
         ?STACKTRACE(_E, _R, ST)
-            ?INFO(?MODULE_STRING ":seq/0 failed ~s: ~p", [_E, _R]),
-            _ = [?INFO("st: ~p", [S]) || S <- ST],
-            io:format(?MODULE_STRING ":seq/0 failed: ~s: ~p", [_E, _R])
+        ?INFO(?MODULE_STRING ":seq/0 failed ~s: ~p", [_E, _R]),
+        _ = [?INFO("st: ~p", [S]) || S <- ST],
+        io:format(?MODULE_STRING ":seq/0 failed: ~s: ~p", [_E, _R])
     after
         pqc_cb_accounts:cleanup_accounts(API, ?ACCOUNT_NAMES),
         pqc_cb_api:cleanup(API)

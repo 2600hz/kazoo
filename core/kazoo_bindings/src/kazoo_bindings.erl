@@ -655,16 +655,16 @@ fold_bind_results([#kz_responder{module=M
             fold_bind_results(Responders, [Pay1|Tokens], Route, RespondersLen, ReRunResponders)
     catch
         ?STACKTRACE('error', 'function_clause', ST)
-            log_function_clause(M, F, length(Payload), ST),
-            fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
+        log_function_clause(M, F, length(Payload), ST),
+        fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
         ?STACKTRACE('error', 'undef', ST)
-            log_undefined(M, F, length(Payload), ST),
-            fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
+        log_undefined(M, F, length(Payload), ST),
+        fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
         ?STACKTRACE(_T, _E, ST)
-            lager:error("excepted: ~s: ~p", [_T, _E]),
-            kz_util:log_stacktrace(ST),
-            fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders)
-    end;
+        lager:error("excepted: ~s: ~p", [_T, _E]),
+        kz_util:log_stacktrace(ST),
+        fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders)
+        end;
 fold_bind_results([#kz_responder{}=_R | Responders]
                  ,Payload
                  ,Route
@@ -825,20 +825,20 @@ apply_map_responder(#kz_responder{module=M
     try apply_map_responder(M, F, Payload)
     catch
         ?STACKTRACE('error', 'function_clause', ST)
-            maybe_log_function_clause(M, F, Payload, ST),
-            {'EXIT', {'function_clause', ST}};
+        maybe_log_function_clause(M, F, Payload, ST),
+        {'EXIT', {'function_clause', ST}};
         ?STACKTRACE('error', 'undef', ST)
-            maybe_log_undefined(M, F, Payload, ST),
-            {'EXIT', {'undef', ST}};
+        maybe_log_undefined(M, F, Payload, ST),
+        {'EXIT', {'undef', ST}};
         ?STACKTRACE('error', Exp, ST)
-            lager:error("exception: error:~p", [Exp]),
-            kz_util:log_stacktrace(ST),
-            {'EXIT', {Exp, ST}};
+        lager:error("exception: error:~p", [Exp]),
+        kz_util:log_stacktrace(ST),
+        {'EXIT', {Exp, ST}};
         ?STACKTRACE(_Type, Exp, ST)
-            lager:error("exception: ~s:~p", [_Type, Exp]),
-            kz_util:log_stacktrace(ST),
-            {'EXIT', Exp}
-    end.
+        lager:error("exception: ~s:~p", [_Type, Exp]),
+        kz_util:log_stacktrace(ST),
+        {'EXIT', Exp}
+        end.
 
 -spec apply_map_responder(module() | 'undefined', responder_fun(), payload()) -> payload().
 apply_map_responder('undefined', Fun, Payload) ->

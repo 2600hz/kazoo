@@ -153,10 +153,10 @@ handle_config_req(Node, FetchId, ConfFile, FSData) ->
     try process_config_req(Node, FetchId, ConfFile, FSData)
     catch
         ?STACKTRACE(_E, _R, ST)
-            lager:info("failed to process config request for ~s: ~s: ~p", [ConfFile, _E, _R]),
-            kz_util:log_stacktrace(ST),
-            config_req_not_handled(Node, FetchId, ConfFile)
-    end.
+        lager:info("failed to process config request for ~s: ~s: ~p", [ConfFile, _E, _R]),
+        kz_util:log_stacktrace(ST),
+        config_req_not_handled(Node, FetchId, ConfFile)
+        end.
 
 -spec process_config_req(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist() | 'undefined') -> fs_sendmsg_ret().
 process_config_req(Node, FetchId, <<"acl.conf">>, _Props) ->

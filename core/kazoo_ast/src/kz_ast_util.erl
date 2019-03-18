@@ -251,10 +251,10 @@ schema_to_table(SchemaJObj) ->
             ]
     catch
         ?STACKTRACE('throw', 'no_type', ST)
-            io:format("failed to build table from schema ~s~n", [kz_doc:id(SchemaJObj)]),
-            io:format("~p~n", [ST]),
-            throw('no_type')
-    end.
+        io:format("failed to build table from schema ~s~n", [kz_doc:id(SchemaJObj)]),
+        io:format("~p~n", [ST]),
+        throw('no_type')
+        end.
 
 schema_to_table(SchemaJObj, BaseRefs) ->
     Description = kz_json:get_binary_value(<<"description">>, SchemaJObj, <<>>),

@@ -228,10 +228,10 @@ maybe_extract_multipart(Context, Req0, QS) ->
     try extract_multipart(Context, Req0, QS)
     catch
         ?STACKTRACE(_E, _R, ST)
-            lager:debug("failed to extract multipart ~s: ~p", [_E, _R]),
-            kz_util:log_stacktrace(ST),
-            handle_failed_multipart(Context, Req0, QS)
-    end.
+        lager:debug("failed to extract multipart ~s: ~p", [_E, _R]),
+        kz_util:log_stacktrace(ST),
+        handle_failed_multipart(Context, Req0, QS)
+        end.
 
 -spec handle_failed_multipart(cb_context:context(), cowboy_req:req(), kz_json:object()) ->
                                      {cb_context:context(), cowboy_req:req()} |

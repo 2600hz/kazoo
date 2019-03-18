@@ -1125,9 +1125,9 @@ build_command(Prop, DPApp) when is_list(Prop) ->
             end
     catch
         ?STACKTRACE(_, R, ST)
-            kz_util:log_stacktrace(ST),
-            throw({R, Prop})
-    end;
+        kz_util:log_stacktrace(ST),
+        throw({R, Prop})
+        end;
 build_command(JObj, DPApp) ->
     build_command(kz_json:to_proplist(JObj), DPApp).
 

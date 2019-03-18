@@ -667,10 +667,10 @@ maybe_start_node_handlers(#node{node=NodeName
             {'error', 'failed_starting_handlers'}
     catch
         ?STACKTRACE(_, Reason, ST)
-            lager:warning("exception starting node ~s handlers: ~p", [NodeName, Reason]),
-            kz_util:log_stacktrace(ST),
-            {'error', Reason}
-    end.
+        lager:warning("exception starting node ~s handlers: ~p", [NodeName, Reason]),
+        kz_util:log_stacktrace(ST),
+        {'error', Reason}
+        end.
 
 -spec initialize_node_connection(fs_node()) -> 'ok'.
 initialize_node_connection(#node{}=Node) ->

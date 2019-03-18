@@ -73,11 +73,11 @@ send(JObj, AcctObj) ->
     try build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_empty(Props))
     catch
         ?STACKTRACE(C, R, ST)
-            Msg = io_lib:format("failed: ~s:~p", [C, R]),
-            lager:debug(Msg),
-            kz_util:log_stacktrace(ST),
-            {'error', Msg}
-    end.
+        Msg = io_lib:format("failed: ~s:~p", [C, R]),
+        lager:debug(Msg),
+        kz_util:log_stacktrace(ST),
+        {'error', Msg}
+        end.
 
 -spec is_notice_enabled(kz_json:object()) -> boolean().
 is_notice_enabled(JObj) ->

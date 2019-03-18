@@ -71,8 +71,8 @@ log_test_() ->
     ST = try throw('just_for_fun')
          catch
              ?STACKTRACE(_E, _R, Stack)
-                Stack
-         end,
+             Stack
+             end,
     [?_assertEqual(ok, kz_util:log_stacktrace())
     ,?_assertEqual(ok, kz_util:log_stacktrace(ST))
     ].

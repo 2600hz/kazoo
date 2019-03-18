@@ -899,14 +899,14 @@ validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, _SchemaRequired
             maybe_fix_js_types(SchemaJObj, Context, OnSuccess, OnFailure, Errors)
     catch
         ?STACKTRACE('error', 'function_clause', ST)
-            lager:debug("function clause failure"),
-            kz_util:log_stacktrace(ST),
-            Context#cb_context{resp_status = 'fatal'
-                              ,resp_error_code = 500
-                              ,resp_data = kz_json:new()
-                              ,resp_error_msg = <<"validation failed to run on the server">>
-                              }
-    end.
+        lager:debug("function clause failure"),
+        kz_util:log_stacktrace(ST),
+        Context#cb_context{resp_status = 'fatal'
+                          ,resp_error_code = 500
+                          ,resp_data = kz_json:new()
+                          ,resp_error_msg = <<"validation failed to run on the server">>
+                          }
+        end.
 
 -spec validate_failed(kz_json:object(), context(), validation_errors(), after_fun()) -> context().
 validate_failed(SchemaJObj, Context, Errors, OnFailure) ->

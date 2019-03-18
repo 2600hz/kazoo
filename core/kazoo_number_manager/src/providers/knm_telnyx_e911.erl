@@ -171,10 +171,10 @@ assign_address(Number, AddressId) ->
             end
     catch
         ?STACKTRACE(_T, E, ST)
-            lager:error("~p ~p", [_T, E]),
-            kz_util:log_stacktrace(ST),
-            {'error', kz_term:to_binary(E)}
-    end.
+        lager:error("~p ~p", [_T, E]),
+        kz_util:log_stacktrace(ST),
+        {'error', kz_term:to_binary(E)}
+        end.
 
 toogle('true') -> "enable";
 toogle('false') -> "disable".

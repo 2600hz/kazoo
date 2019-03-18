@@ -99,10 +99,10 @@ kz_amqp_worker_call_collect() ->
                 ok -> wait_collect_until(UntilFun, [], erlang:start_timer(Timeout, self(), req_timeout))
             catch
                 ?STACKTRACE(_E, T, ST)
-                    ?LOG_DEBUG("failed to publish: ~p:~p", [_E, T]),
-                    kz_util:log_stacktrace(ST),
-                    {error, T}
-            end
+                ?LOG_DEBUG("failed to publish: ~p:~p", [_E, T]),
+                kz_util:log_stacktrace(ST),
+                {error, T}
+                end
     end.
 wait_collect_until(UntilFun, Resps, ReqRef) ->
     receive

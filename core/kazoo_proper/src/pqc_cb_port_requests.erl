@@ -109,11 +109,11 @@ initial_state() ->
                    )
     catch
         ?STACKTRACE(_R, _T, ST)
-            ?debugFmt("exception ~p:~p", [_R, _T]),
-            kz_util:log_stacktrace(ST),
-            cleanup(State),
-            throw(failed)
-    end.
+        ?debugFmt("exception ~p:~p", [_R, _T]),
+        kz_util:log_stacktrace(ST),
+        cleanup(State),
+        throw(failed)
+        end.
 
 -spec initialize_account(pqc_cb_api:state(), kz_term:ne_binary(), state()) -> state().
 initialize_account(API, AccountName, StateAcc) ->
