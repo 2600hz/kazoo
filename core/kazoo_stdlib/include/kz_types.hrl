@@ -2,15 +2,6 @@
 -include_lib("xmerl/include/xmerl.hrl").
 -include_lib("kazoo_stdlib/include/kz_records.hrl").
 
--ifdef(OTP_RELEASE).
--define(STACKTRACE(Type, Reason, Stacktrace), Type:Reason:Stacktrace ->).
--define(G_STACKTRACE(Type, Reason, Stacktrace, Guards), Type:Reason:Stacktrace Guards ->).
--else.
--define(STACKTRACE(Type, Reason, Stacktrace), Type:Reason -> Stacktrace = erlang:get_stacktrace(), ).
--define(G_STACKTRACE(Type, Reason, Stacktrace, Guards), Type:Reason Guards -> Stacktrace = erlang:get_stacktrace(), ).
--endif.
-
-
 -define(MILLISECONDS_IN_SECOND, 1000).
 -define(MILLISECONDS_IN_MINUTE, (?MILLISECONDS_IN_SECOND * ?SECONDS_IN_MINUTE)).
 -define(MILLISECONDS_IN_HOUR, (?MILLISECONDS_IN_SECOND * ?SECONDS_IN_HOUR)).
