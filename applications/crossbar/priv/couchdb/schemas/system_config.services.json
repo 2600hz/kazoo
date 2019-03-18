@@ -27,6 +27,11 @@
             "description": "services get_items_from_quantities",
             "type": "boolean"
         },
+        "hydrate_cascade_commits": {
+            "default": true,
+            "description": "When an account makes a change it triggers a propagation up the account hiearchy updating the cascade quantities, if this is set to false the cascade quantities are summed with the account update deltas.  If this is set to true then the views will be invoked to fully reconcile the quantities (hydrate) during the cascade commits, a more expensive DB operation but provides self-corrective quantities.",
+            "type": "boolean"
+        },
         "master_account_bookkeeper": {
             "default": "kz_bookkeeper_local",
             "description": "services master account bookkeeper",
