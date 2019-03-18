@@ -273,6 +273,15 @@
 -define(DEV_LOG(F), ?DEV_LOG(F, [])).
 
 %% From https://github.com/tomas-abrahamsson/gpb/issues/134#issuecomment-386892877
+%% Usage:
+%% try
+%%     ...
+%% catch
+%%     error:badarg ->
+%%         whatever;
+%%     ?STACKTRACE(E, R, Stack)
+%%         {error, {E,R, Stack}}
+%% end
 %% kz.mk defines the macro if OTP version is >= 21
 -ifdef(OTP_VERSION).
 %% >= OTP 21
