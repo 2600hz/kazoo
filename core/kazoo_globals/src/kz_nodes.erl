@@ -16,6 +16,7 @@
         ,whapp_oldest_node/2
         ]).
 -export([status/0]).
+-export([status_to_json/0]).
 -export([flush/0]).
 -export([handle_advertise/2]).
 -export([notify_new/0
@@ -261,6 +262,62 @@ determine_whapp_zones_fold({Zone, Whapps}, {Whapp, Zones, C}=Acc) ->
         'true' -> {Whapp, [Zone | Zones], C+ 1};
         'false' -> Acc
     end.
+
+-spec status_to_json() -> kz_json:object().
+status_to_json() ->
+    try
+        Nodes = lists:sort(fun compare_nodes/2, ets:tab2list(?MODULE)),
+        lists:foldl(fun node_status_to_json/2, kz_json:new(), Nodes)
+    catch
+        'error':'badarg' ->
+            kz_json:set_value(<<"error">>
+                             ,<<"status unknown until node is fully initialized, try again in a moment\n">>
+                             ,kz_json:new()
+                             )
+    end.
+
+-spec node_status_to_json(kz_types:kz_node(), atom()) -> kz_json:object().
+node_status_to_json(#kz_node{zone=NodeZone
+                          ,node=N
+                          ,md5=MD5
+                          ,version=Version
+                          ,processes=Processes
+                          ,ports=Ports
+                          ,used_memory=UsedMemory
+                          ,broker=Broker
+                          ,kapps=Kapps
+                          ,globals=Globals
+                          ,node_info=NodeInfo
+                          ,roles=Roles
+                          ,media_servers=MediaServers
+                          ,registrations=Regs
+                          ,channels=Channels
+                          ,conferences=Conferences
+                          }=_Node
+                 ,Acc
+                 ) ->
+    StatusProps = props:filter_empty(
+        [{<<"node">>, kz_term:to_binary(N)}
+        ,{<<"md5">>, MD5}
+        ,{<<"version">>, Version}
+        ,{<<"used_memory">>, kz_term:to_binary(kz_network_utils:pretty_print_bytes(UsedMemory))}
+        ,{<<"processes">>, Processes}
+        ,{<<"ports">>, Ports}
+        ,{<<"zone">>, kz_term:to_binary(NodeZone)}
+        ,{<<"broker">>, Broker}
+        ,{<<"kapps">>, [K || {K, _} <- Kapps]}
+        ,{<<"globals">>, kz_json:from_list(Globals)}
+        ,{<<"node_info">>, NodeInfo}
+        ,{<<"roles">>, kz_json:from_list(Roles)}
+        ,{<<"media_servers">>, [K || {K, _} <- MediaServers]}
+        ,{<<"channels">>, Channels}
+        ,{<<"conferences">>, Conferences}
+        ,{<<"registrations">>, Regs}
+        ]),
+    [NodeType,_] = binary:split(kz_term:to_binary(N), <<"@">>),
+    kz_json:set_value([kz_term:to_binary(NodeZone),NodeType,kz_term:to_binary(N)]
+                      ,kz_json:from_list(StatusProps)
+                      ,Acc).
 
 -spec status() -> 'no_return'.
 status() ->
