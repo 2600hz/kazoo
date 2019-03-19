@@ -109,7 +109,7 @@ json: JSON = $(shell find . -name '*.json')
 json:
 	@$(ROOT)/scripts/format-json.sh $(JSON)
 
-compile-test: clean-test $(COMPILE_MOAR) test/$(PROJECT).app json
+compile-test: $(COMPILE_MOAR) test/$(PROJECT).app json
 
 test/$(PROJECT).app: ERLC_OPTS += -DTEST
 test/$(PROJECT).app: $(TEST_SOURCES)
@@ -132,7 +132,7 @@ clean-test: $(CLEAN_MOAR)
 TEST_CONFIG=$(ROOT)/rel/config-test.ini
 
 ## Use this one when debugging
-test: compile-test
+test: test/$(PROJECT).app
 	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript $(TEST_MODULE_NAMES)
 test.%: check-compile-test
 	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript $*
@@ -142,7 +142,7 @@ check-compile-test: $(COMPILE_MOAR) test/$(PROJECT).app
 COVER_REPORT_DIR=cover
 
 ## Use this one when CI
-eunit: compile-test eunit-run
+eunit: test/$(PROJECT).app eunit-run
 
 eunit-run:
 	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript --with-cover \
@@ -164,7 +164,7 @@ $(ROOT)/make/core.mk:
 proper: compile-proper eunit-run
 
 compile-proper: ERLC_OPTS += -DPROPER
-compile-proper: compile-test
+compile-proper: clean-test compile-test
 
 PLT ?= $(ROOT)/.kazoo.plt
 $(PLT):

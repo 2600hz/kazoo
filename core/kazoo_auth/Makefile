@@ -13,7 +13,7 @@ ifeq ($(PLATFORM),darwin)
 	CFLAGS = -c -O3 -std=c99 -fstack-protector -Wall -Wmissing-prototypes -fPIC
 	LDFLAGS = -bundle -flat_namespace -undefined suppress
 
-	# Apple has deprecated use of OpenSSL in favor of its own TLS and crypto libraries
+# Apple has deprecated use of OpenSSL in favor of its own TLS and crypto libraries
 	OSXRELEASE = $(shell uname -r | sed 's/\..*//')
 	ifeq ($(filter $(OSXRELEASE), 15-16),) #El Capitan, Sierra
 		OPENSSL_BREW_PREFIX = $(shell brew --prefix openssl)
