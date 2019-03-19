@@ -96,7 +96,7 @@ log_stacktrace() ->
 %% @doc Standardized way of logging the stack-trace.
 %% @end
 %%------------------------------------------------------------------------------
--spec log_stacktrace(list()) -> ok.
+-spec log_stacktrace(list()) -> 'ok'.
 log_stacktrace(ST) ->
     log_stacktrace(ST, "", []).
 
@@ -107,7 +107,7 @@ log_stacktrace(ST) ->
 %% {@link kz_util:log_stacktrace/3} instead.
 %% @end
 %%------------------------------------------------------------------------------
--spec log_stacktrace(string(), list()) -> ok.
+-spec log_stacktrace(string(), list()) -> 'ok'.
 log_stacktrace(Fmt, Args) ->
     try throw('get_stacktrace')
     catch
@@ -119,7 +119,7 @@ log_stacktrace(Fmt, Args) ->
 %% @doc Standardized way of logging the stack-trace.
 %% @end
 %%------------------------------------------------------------------------------
--spec log_stacktrace(list(), string(), list()) -> ok.
+-spec log_stacktrace(list(), string(), list()) -> 'ok'.
 log_stacktrace(ST, Fmt, Args) ->
     ?LOG_ERROR("stacktrace: " ++ Fmt, Args),
     _ = [log_stacktrace_mfa(M, F, A, Info)

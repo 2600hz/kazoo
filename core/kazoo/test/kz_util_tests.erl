@@ -189,15 +189,15 @@ account_formats_test_() ->
      || {Fun, Expected} <- Funs,
         Format <- Formats
     ] ++
-        [?_assertEqual(undefined, kz_util:format_account_id(undefined, raw))
-        ,?_assertEqual(<<"accounts">>, kz_util:format_account_id(<<"accounts">>, raw))
+        [?_assertEqual('undefined', kz_util:format_account_id('undefined', 'raw'))
+        ,?_assertEqual(<<"accounts">>, kz_util:format_account_id(<<"accounts">>, 'raw'))
         ,?_assertEqual(MODbEn, kz_util:format_account_id(AccountDbEn, TS))
         ,?_assertEqual(MODbEn, kz_util:format_account_mod_id(AccountDbEn, TS))
-        ,?_assertEqual(undefined, kz_util:format_account_id(undefined, Year, Month))
+        ,?_assertEqual('undefined', kz_util:format_account_id('undefined', Year, Month))
         ,?_assertEqual(MODbEn, kz_util:format_account_id(AccountDbEn, Year, Month))
         ,?_assertEqual(MODbEn, kz_util:format_account_id(AccountDbEn, Year, M))
-        ,?_assertEqual(?KZ_TASKS_DB, kz_util:format_account_id(?KZ_TASKS_DB, raw))
-        ,?_assertEqual(<<"bla">>, kz_util:format_account_id(<<"bla">>, raw))
+        ,?_assertEqual(?KZ_TASKS_DB, kz_util:format_account_id(?KZ_TASKS_DB, 'raw'))
+        ,?_assertEqual(<<"bla">>, kz_util:format_account_id(<<"bla">>, 'raw'))
         ].
 
 format_assert(Fun, Format, Expected) ->
