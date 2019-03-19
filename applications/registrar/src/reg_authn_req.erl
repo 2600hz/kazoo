@@ -103,7 +103,8 @@ create_ccvs(#auth_user{doc=JObj}=AuthUser) ->
       ,{<<"Register-Overwrite-Notify">>, AuthUser#auth_user.register_overwrite_notify}
       ,{<<"Pusher-Application">>, kz_json:get_value([<<"push">>, <<"Token-App">>], JObj)}
        | (create_specific_ccvs(AuthUser, AuthUser#auth_user.method)
-          ++ generate_security_ccvs(AuthUser))
+          ++ generate_security_ccvs(AuthUser)
+          ++ maybe_add_hotdesk_current_id(AuthUser))
       ]).
 
 -spec maybe_get_presence_id(auth_user()) -> kz_term:api_binary().
@@ -502,3 +503,10 @@ maybe_enforce_security({#auth_user{doc=JObj}=User, Acc}) ->
 -spec maybe_set_encryption_flags({auth_user(), kz_term:proplist()}) -> {auth_user(), kz_term:proplist()}.
 maybe_set_encryption_flags({#auth_user{doc=JObj}=User, Acc}) ->
     {User, encryption_method_map(Acc, JObj)}.
+
+-spec maybe_add_hotdesk_current_id(auth_user()) -> kz_term:proplist().
+maybe_add_hotdesk_current_id(#auth_user{doc=JObj}) ->
+    case kzd_devices:hotdesk_ids(JObj, []) of
+        [] -> [];
+        [Id | _] -> [{<<"Hotdesk-Current-ID">>, Id}]
+    end.
