@@ -5,7 +5,7 @@ notifications:
     - operations@2600hz.com
   irc:
     channels:
-      - "irc.freenode.org#2600hz-dev"
+      - "irc.freenode.org#2600hz"
 
 otp_release:
   - 19.3
@@ -28,6 +28,9 @@ cache:
 
 before_install:
   - set -e
+
+before_script:
+  - kerl list installations
 
 script:
   - ERLC_OPTS='-DPROPER' make compile-test
