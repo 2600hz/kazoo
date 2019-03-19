@@ -283,7 +283,7 @@
 %%         {error, {E,R, Stack}}
 %% end
 %% kz.mk defines the macro if OTP version is >= 21
--ifdef(OTP_VERSION).
+-ifdef(OTP_RELEASE).
 %% >= OTP 21
 -define(STACKTRACE(Type, Reason, Stacktrace), Type:Reason:Stacktrace ->).
 -else.
