@@ -251,11 +251,14 @@ release_assignments({[#kz_amqp_assignment{channel=Channel
     Commands = kz_amqp_history:get(Consumer),
     _ = (catch kz_amqp_channel:close(Channel, Commands)),
     release_assignments({[Assignment#kz_amqp_assignment{channel='undefined'}]
-                        ,Continuation});
+                        ,Continuation
+                        });
 release_assignments({[#kz_amqp_assignment{timestamp=Timestamp
                                          ,consumer=Consumer
                                          }
-                     ], Continuation}) ->
+                     ]
+                    ,Continuation
+                    }) ->
     lager:debug("removed assignment for consumer ~p", [Consumer]),
     _ = ets:delete(?TAB, Timestamp),
     release_assignments(ets:match(Continuation)).
