@@ -129,7 +129,6 @@ release() -> release(consumer_pid()).
 -spec release(pid()) -> 'ok'.
 release(Pid) when is_pid(Pid) ->
     lager:debug("release consumer ~p channel assignment", [Pid]),
-    _ = kz_amqp_history:remove(Pid),
     kz_amqp_assignments:release(Pid).
 
 -spec close(kz_term:api_pid()) -> 'ok'.
@@ -268,7 +267,9 @@ maybe_split_routing_key(RoutingKey) ->
 
 -spec command(kz_amqp_command()) -> command_ret().
 command(#'exchange.declare'{exchange=_Ex, type=_Ty}=Exchange) ->
-    kz_amqp_history:add_exchange(Exchange);
+    [catch kz_amqp_connection:new_exchange(Connection, Exchange)
+     || Connection <- kz_amqp_connections:connection_pids()
+    ];
 command(Command) ->
     %% This will wait forever for a valid channel before publishing...
     %% all commands need to block till completion...
@@ -293,11 +294,11 @@ exec_command(#kz_amqp_assignment{consumer=Consumer
                                 ,channel=Channel
                                 ,reconnect='true'
                                 }
-            ,#'basic.consume'{consumer_tag=OldTag}=Command) ->
+            ,#'basic.consume'{consumer_tag=_OldTag}=Command
+            ) ->
     C = Command#'basic.consume'{consumer_tag = <<>>},
     case amqp_channel:subscribe(Channel, C, Consumer) of
-        #'basic.consume_ok'{consumer_tag=NewTag} ->
-            kz_amqp_history:update_consumer_tag(Consumer, OldTag, NewTag);
+        #'basic.consume_ok'{consumer_tag=_NewTag} -> 'ok';
         _Else ->
             lager:warning("failed to re-establish consumer for ~p: ~p"
                          ,[Consumer, _Else]
@@ -306,18 +307,15 @@ exec_command(#kz_amqp_assignment{consumer=Consumer
 exec_command(#kz_amqp_assignment{consumer=Consumer
                                 ,channel=Channel
                                 }=Assignment
-            ,#'basic.consume'{queue=Queue}=Command) ->
-    case kz_amqp_history:is_consuming(Consumer, Queue) of
-        'true' ->
-            lager:debug("skipping existing basic consume for queue ~s", [Queue]);
-        'false' ->
-            Result = amqp_channel:subscribe(Channel, Command, Consumer),
-            handle_command_result(Result, Command, Assignment)
-    end;
+            ,#'basic.consume'{queue=_Queue}=Command
+            ) ->
+    Result = amqp_channel:subscribe(Channel, Command, Consumer),
+    handle_command_result(Result, Command, Assignment);
 exec_command(#kz_amqp_assignment{channel=Channel
                                 ,consumer=Consumer
                                 }=Assignment
-            ,#'basic.cancel'{nowait=NoWait}) ->
+            ,#'basic.cancel'{nowait=NoWait}
+            ) ->
     lists:foreach(fun(#'basic.consume'{consumer_tag=CTag}) ->
                           Command = #'basic.cancel'{consumer_tag=CTag, nowait=NoWait},
                           lager:debug("sending cancel for consumer ~s to ~p", [CTag, Channel]),
@@ -356,17 +354,13 @@ handle_command_result({'error', _}=Error, _, _) -> Error;
 handle_command_result({'ok', Ok}, Command, Assignment) ->
     handle_command_result(Ok, Command, Assignment);
 handle_command_result(#'basic.qos_ok'{}
-                     ,#'basic.qos'{prefetch_count=Prefetch}=Command
-                     ,#kz_amqp_assignment{channel=Channel}=Assignment) ->
-    lager:debug("applied QOS prefetch ~p to channel ~p", [Prefetch, Channel]),
-    _ = kz_amqp_history:add_command(Assignment, Command),
-    'ok';
+                     ,#'basic.qos'{prefetch_count=Prefetch}=_Command
+                     ,#kz_amqp_assignment{channel=Channel}=_Assignment) ->
+    lager:debug("applied QOS prefetch ~p to channel ~p", [Prefetch, Channel]);
 handle_command_result(#'queue.delete_ok'{}
-                     ,#'queue.delete'{queue=Q}=Command
-                     ,#kz_amqp_assignment{channel=Channel}=Assignment) ->
-    lager:debug("deleted queue ~s via channel ~p", [Q, Channel]),
-    _ = kz_amqp_history:add_command(Assignment, Command),
-    'ok';
+                     ,#'queue.delete'{queue=Q}=_Command
+                     ,#kz_amqp_assignment{channel=Channel}=_Assignment) ->
+    lager:debug("deleted queue ~s via channel ~p", [Q, Channel]);
 handle_command_result(#'exchange.declare_ok'{}=Ok
                      ,#'exchange.declare'{passive='true',exchange=Ex}
                      ,#kz_amqp_assignment{channel=Channel}) ->
@@ -383,69 +377,61 @@ handle_command_result(#'queue.declare_ok'{queue=Q}=Ok
     lager:debug("passive declared queue ~s via channel ~p", [Q, Channel]),
     {'ok', Ok};
 handle_command_result(#'queue.declare_ok'{queue=Q}=Ok
-                     ,#'queue.declare'{}=Command
-                     ,#kz_amqp_assignment{channel=Channel}=Assignment) ->
+                     ,#'queue.declare'{}=_Command
+                     ,#kz_amqp_assignment{channel=Channel}=_Assignment) ->
     lager:debug("declared queue ~s via channel ~p", [Q, Channel]),
-    _ = kz_amqp_history:add_command(Assignment, Command#'queue.declare'{queue=Q}),
     {'ok', Ok};
 handle_command_result(#'queue.unbind_ok'{}
                      ,#'queue.unbind'{exchange=Exchange
                                      ,routing_key=RoutingKey
                                      ,queue=Queue
-                                     }=Command
-                     ,#kz_amqp_assignment{channel=Channel}=Assignment) ->
+                                     }=_Command
+                     ,#kz_amqp_assignment{channel=Channel}=_Assignment) ->
     lager:debug("unbound ~s from ~s exchange (routing key ~s) via channel ~p"
-               ,[Queue, Exchange, RoutingKey, Channel]),
-    _ = kz_amqp_history:add_command(Assignment, Command, 'sync'),
-    'ok';
+               ,[Queue, Exchange, RoutingKey, Channel]
+               );
 handle_command_result(#'queue.bind_ok'{}
                      ,#'queue.bind'{exchange=_Exchange
                                    ,routing_key=_RK
                                    ,queue=_Q
-                                   }=Command
-                     ,#kz_amqp_assignment{channel=Channel}=Assignment) ->
+                                   }=_Command
+                     ,#kz_amqp_assignment{channel=Channel}=_Assignment
+                     ) ->
     lager:debug("bound ~s to ~s exchange (routing key ~s) via channel ~p"
-               ,[_Q, _Exchange, _RK, Channel]),
-    _ = kz_amqp_history:add_command(Assignment, Command),
-    'ok';
+               ,[_Q, _Exchange, _RK, Channel]
+               );
 handle_command_result(#'basic.consume_ok'{consumer_tag=CTag}
-                     ,#'basic.consume'{}=Command
-                     ,#kz_amqp_assignment{channel=Channel}=Assignment) ->
-    lager:debug("created consumer ~s via channel ~p", [CTag, Channel]),
-    _ = kz_amqp_history:add_command(Assignment, Command#'basic.consume'{consumer_tag=CTag}),
-    'ok';
+                     ,#'basic.consume'{}=_Command
+                     ,#kz_amqp_assignment{channel=Channel}=_Assignment
+                     ) ->
+    lager:debug("created consumer ~s via channel ~p", [CTag, Channel]);
 handle_command_result(#'basic.cancel_ok'{consumer_tag=CTag}
-                     ,#'basic.cancel'{}=Command
-                     ,#kz_amqp_assignment{channel=Channel}=Assignment) ->
-    lager:debug("canceled consumer ~s via channel ~p", [CTag, Channel]),
-    _ = kz_amqp_history:add_command(Assignment, Command),
-    'ok';
+                     ,#'basic.cancel'{}=_Command
+                     ,#kz_amqp_assignment{channel=Channel}=_Assignment
+                     ) ->
+    lager:debug("canceled consumer ~s via channel ~p", [CTag, Channel]);
 handle_command_result(#'confirm.select_ok'{}
-                     ,Command
+                     ,_Command
                      ,#kz_amqp_assignment{channel=Channel
                                          ,consumer=Consumer
-                                         }=Assignment) ->
-    lager:debug("publisher confirms activated on channel ~p", [Channel]),
+                                         }=_Assignment
+                     ) ->
     Consumer ! {'$server_confirms', 'true'},
-    _ = kz_amqp_history:add_command(Assignment, Command),
-    'ok';
+    lager:debug("publisher confirms activated on channel ~p", [Channel]);
 handle_command_result(#'channel.flow_ok'{active=Active}
-                     ,Command
+                     ,_Command
                      ,#kz_amqp_assignment{channel=Channel
                                          ,consumer=Consumer
-                                         }=Assignment) ->
-    lager:debug("channel flow ~p on channel ~p", [Active, Channel]),
+                                         }=_Assignment
+                     ) ->
     Consumer ! {'$channel_flow', Active},
-    _ = kz_amqp_history:add_command(Assignment, Command),
-    'ok';
-handle_command_result('ok', Command, #kz_amqp_assignment{channel=Channel}=Assignment) ->
+    lager:debug("channel flow ~p on channel ~p", [Active, Channel]);
+handle_command_result('ok', Command, #kz_amqp_assignment{channel=Channel}=_Assignment) ->
     lager:debug("executed AMQP command ~s with no_wait option via channel ~p"
-               ,[element(1, Command), Channel]),
-    _ = kz_amqp_history:add_command(Assignment, Command),
-    'ok';
+               ,[element(1, Command), Channel]
+               );
 handle_command_result(_Else, _R, _) ->
-    lager:warning("unexpected AMQP command result: ~p"
-                 ,[lager:pr(_Else, ?MODULE)]),
+    lager:warning("unexpected AMQP command result: ~p", [lager:pr(_Else, ?MODULE)]),
     {'error', 'unexpected_result'}.
 
 -spec assert_valid_amqp_method(kz_amqp_command()) -> 'ok'.

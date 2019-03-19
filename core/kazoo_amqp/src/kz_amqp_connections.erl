@@ -14,7 +14,9 @@
         ,add/3
         ]).
 -export([remove/1]).
--export([broker_connections/1]).
+-export([broker_connections/1
+        ,connection_pids/0, connection_pids/1
+        ]).
 -export([broker_available_connections/1]).
 -export([primary_broker/0]).
 -export([arbitrator_broker/0]).
@@ -77,7 +79,6 @@ new(<<_/binary>> = Broker, Zone) ->
     end;
 new(Broker, Zone) ->
     new(kz_term:to_binary(Broker), Zone).
-
 
 -spec add(kz_amqp_connection() | kz_term:text()) ->
                  kz_amqp_connection() |
@@ -182,6 +183,27 @@ broker_connections(Broker) ->
                   ['true']}
                 ],
     ets:select_count(?TAB, MatchSpec).
+
+-spec connection_pids() -> [kz_amqp_connection()].
+connection_pids() ->
+    MatchSpec = [{#kz_amqp_connections{connection='$1'
+                                      ,_='_'
+                                      },
+                  [],
+                  ['$1']}
+                ],
+    ets:select(?TAB, MatchSpec).
+
+-spec connection_pids(kz_term:ne_binary()) -> [kz_amqp_connection()].
+connection_pids(Broker) ->
+    MatchSpec = [{#kz_amqp_connections{broker=Broker
+                                      ,connection='$1'
+                                      ,_='_'
+                                      },
+                  [],
+                  ['$1']}
+                ],
+    ets:select(?TAB, MatchSpec).
 
 -spec broker_available_connections(kz_term:ne_binary()) -> non_neg_integer().
 broker_available_connections(Broker) ->
