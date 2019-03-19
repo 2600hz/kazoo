@@ -318,7 +318,19 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/rates/number/{PHONE_NUMBER}
 ```
 
-**Success Response**
+### Query String Options
+
+The request can take a number of parameters:
+
+Key | Description | Type
+--- | ----------- | ----
+`ratedeck_id` | If using custom ratedecks, select which ratedeck to rate the number against | `string(32)`
+`direction` | What direction is the hypothetical call going | `string('inbound' | 'outbound')`
+`caller_id_number` | The caller's number (if rates differentiate based on caller information) | `string()`
+`resource_id` | Resource ID for rate filtering | `string(32)`
+
+
+### Success Response
 
 ```json
 {
@@ -339,7 +351,7 @@ curl -v -X GET \
 }
 ```
 
-**Error: unrateable phone number**
+### Error: unrateable phone number
 
 ```json
 {
