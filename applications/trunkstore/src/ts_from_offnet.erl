@@ -446,10 +446,9 @@ callee_id([JObj | T]) ->
 
 -spec maybe_anonymize_caller_id(ts_callflow:state(), {kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:api_object()) ->
                                        kz_term:proplist().
-maybe_anonymize_caller_id(State, DefaultCID, CidFormat) ->
-    AccountId = ts_callflow:get_account_id(State),
+maybe_anonymize_caller_id(State, {Name, Number}, CidFormat) ->
     CCVs = ts_callflow:get_custom_channel_vars(State),
-    {Name, Number} = kz_privacy:maybe_cid_privacy(kz_json:set_value(<<"Account-ID">>, AccountId, CCVs), DefaultCID),
     [{<<"Outbound-Caller-ID-Number">>, kapps_call:maybe_format_caller_id_str(Number, CidFormat)}
     ,{<<"Outbound-Caller-ID-Name">>, Name}
+     | kz_privacy:flags(CCVs)
     ].

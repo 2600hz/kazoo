@@ -732,8 +732,15 @@ set_caller_id(CIDNumber, CIDName, #kapps_call{}=Call)
 set_caller_id(CIDNumber, CIDName, #kapps_call{}=Call)
   when is_binary(CIDNumber)
        andalso is_binary(CIDName) ->
+    CCVs = custom_channel_vars(Call),
     JObj = kz_json:from_list([{<<"Caller-ID-Number">>, CIDNumber}
                              ,{<<"Caller-ID-Name">>, CIDName}
+                             ,{<<"Privacy-Hide-Name">>
+                              ,kz_privacy:should_hide_name(CCVs)
+                              }
+                             ,{<<"Privacy-Hide-Number">>
+                              ,kz_privacy:should_hide_number(CCVs)
+                              }
                              ]),
     kapps_call_command:set(JObj, 'undefined', Call),
     Call#kapps_call{caller_id_number=CIDNumber
@@ -751,7 +758,13 @@ set_caller_id_name(CIDName, Call) ->
     Call#kapps_call{caller_id_name=CIDName}.
 -else.
 set_caller_id_name(CIDName, #kapps_call{}=Call) when is_binary(CIDName) ->
-    kapps_call_command:set(kz_json:from_list([{<<"Caller-ID-Name">>, CIDName}]), 'undefined', Call),
+    CCVs = custom_channel_vars(Call),
+    Props = [{<<"Caller-ID-Name">>, CIDName}
+            ,{<<"Privacy-Hide-Name">>
+             ,kz_privacy:should_hide_name(CCVs)
+             }
+            ],
+    kapps_call_command:set(kz_json:from_list(Props), 'undefined', Call),
     Call#kapps_call{caller_id_name=CIDName}.
 -endif.
 
@@ -784,7 +797,13 @@ set_caller_id_number(CIDNumber, Call) ->
     Call#kapps_call{caller_id_number=CIDNumber}.
 -else.
 set_caller_id_number(CIDNumber, #kapps_call{}=Call) ->
-    kapps_call_command:set(kz_json:from_list([{<<"Caller-ID-Number">>, CIDNumber}]), 'undefined', Call),
+    CCVs = custom_channel_vars(Call),
+    Props = [{<<"Caller-ID-Number">>, CIDNumber}
+            ,{<<"Privacy-Hide-Number">>
+             ,kz_privacy:should_hide_number(CCVs)
+             }
+            ],
+    kapps_call_command:set(kz_json:from_list(Props), 'undefined', Call),
     Call#kapps_call{caller_id_number=CIDNumber}.
 -endif.
 
@@ -1228,7 +1247,10 @@ maybe_update_call_ccvs(Call, NewCCVs, ExistingCCVs) ->
 
 -spec updateable_ccvs(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 updateable_ccvs(New, Existing) ->
-    New -- Existing.
+    Exceptions = [<<"Privacy-Hide-Name">>
+                 ,<<"Privacy-Hide-Number">>
+                 ],
+    New -- props:delete_keys(Exceptions, Existing).
 
 -spec update_custom_channel_vars([fun((kz_json:object()) -> kz_json:object()),...], call()) -> call().
 -ifdef(TEST).
