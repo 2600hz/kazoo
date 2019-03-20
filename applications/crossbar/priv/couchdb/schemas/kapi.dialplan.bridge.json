@@ -188,6 +188,15 @@
         "Outbound-Caller-ID-Number": {
             "type": "string"
         },
+        "Privacy-Hide-Name": {
+            "type": "string"
+        },
+        "Privacy-Hide-Number": {
+            "type": "string"
+        },
+        "Privacy-Method": {
+            "type": "string"
+        },
         "Ringback": {
             "type": "string"
         },
