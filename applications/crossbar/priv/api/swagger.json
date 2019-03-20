@@ -46991,6 +46991,15 @@
                 }
             }
         },
+        "/system_status": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
         "/templates": {
             "get": {
                 "responses": {
