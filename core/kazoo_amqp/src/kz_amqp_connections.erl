@@ -194,7 +194,7 @@ connection_pids() ->
                 ],
     ets:select(?TAB, MatchSpec).
 
--spec connection_pids(kz_term:ne_binary()) -> [kz_amqp_connection()].
+-spec connection_pids(kz_term:ne_binary()) -> [pid()].
 connection_pids(Broker) ->
     MatchSpec = [{#kz_amqp_connections{broker=Broker
                                       ,connection='$1'
