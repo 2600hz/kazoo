@@ -15,7 +15,7 @@
         ]).
 -export([remove/1]).
 -export([broker_connections/1
-        ,connection_pids/0, connection_pids/1
+        ,connections/0, connections/1
         ]).
 -export([broker_available_connections/1]).
 -export([primary_broker/0]).
@@ -184,24 +184,24 @@ broker_connections(Broker) ->
                 ],
     ets:select_count(?TAB, MatchSpec).
 
--spec connection_pids() -> [kz_amqp_connection()].
-connection_pids() ->
+-spec connections() -> [kz_amqp_connection()].
+connections() ->
     MatchSpec = [{#kz_amqp_connections{connection='$1'
                                       ,_='_'
                                       },
                   [],
-                  ['$1']}
+                  ['$$']}
                 ],
     ets:select(?TAB, MatchSpec).
 
--spec connection_pids(kz_term:ne_binary()) -> [pid()].
-connection_pids(Broker) ->
+-spec connections(kz_term:ne_binary()) -> [kz_amqp_connection()].
+connections(Broker) ->
     MatchSpec = [{#kz_amqp_connections{broker=Broker
                                       ,connection='$1'
                                       ,_='_'
                                       },
                   [],
-                  ['$1']}
+                  ['$$']}
                 ],
     ets:select(?TAB, MatchSpec).
 

@@ -11,7 +11,7 @@
 -export([update_consumer_tag/3]).
 -export([remove/1]).
 -export([get/1]).
--export([add_exchange/1]).
+
 -export([list_exchanges/0]).
 -export([list_consume/1]).
 -export([is_consuming/2
@@ -103,10 +103,6 @@ get(Consumer) ->
             <- ets:match_object(?TAB, Pattern)
     ].
 
--spec add_exchange(kz_amqp_exchange()) -> 'ok'.
-add_exchange(#'exchange.declare'{}=Exchange) ->
-    gen_server:call(?SERVER, {'add_exchange', Exchange}, ?MILLISECONDS_IN_DAY).
-
 -spec list_exchanges() -> kz_amqp_exchanges().
 list_exchanges() ->
     gen_server:call(?SERVER, 'list_exchanges').
@@ -181,18 +177,6 @@ handle_call('list_exchanges', {Connection, _}, #state{exchanges=Exchanges
     _Ref = monitor('process', Connection),
     {'reply', [Exchange || {_, Exchange} <- dict:to_list(Exchanges)]
     ,State#state{connections=sets:add_element(Connection, Connections)}};
-handle_call({'add_exchange', #'exchange.declare'{exchange=Name}=Exchange}
-           , _From
-           ,#state{exchanges=Exchanges
-                  ,connections=Connections}=State) ->
-    case dict:find(Name, Exchanges) of
-        'error' ->
-            _ = [(catch kz_amqp_connection:new_exchange(Connection, Exchange))
-                 || Connection <- sets:to_list(Connections)
-                ],
-            {'reply', 'ok', State#state{exchanges=dict:store(Name, Exchange, Exchanges)}};
-        {'ok', _Exits} -> {'reply', 'ok', State}
-    end;
 handle_call(_Msg, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -240,13 +224,6 @@ handle_cast({'remove', Consumer}, #state{consumers=Consumers}=State) ->
     Pattern = #kz_amqp_history{consumer=Consumer, _='_'},
     _ = ets:match_delete(?TAB, Pattern),
     {'noreply', State#state{consumers=sets:del_element(Consumer, Consumers)}};
-handle_cast({'add_exchange', #'exchange.declare'{exchange=Name}=Exchange}
-           ,#state{exchanges=Exchanges
-                  ,connections=Connections}=State) ->
-    _ = [(catch kz_amqp_connection:new_exchange(Connection, Exchange))
-         || Connection <- sets:to_list(Connections)
-        ],
-    {'noreply', State#state{exchanges=dict:store(Name, Exchange, Exchanges)}};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 

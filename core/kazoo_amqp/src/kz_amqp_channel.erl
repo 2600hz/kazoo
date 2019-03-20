@@ -206,8 +206,8 @@ basic_publish(#kz_amqp_assignment{channel=Channel
              ,#'basic.publish'{exchange=_Exchange
                               ,routing_key=_RK
                               }=BasicPub
-             ,AmqpMsg)
-  when is_pid(Channel) ->
+             ,AmqpMsg
+             ) when is_pid(Channel) ->
     assert_valid_amqp_method(BasicPub),
     _ = basic_publish(Assignment, BasicPub, AmqpMsg, channel_publish_method()),
     MsgId = extract_msg_id(AmqpMsg#'amqp_msg'.payload),
@@ -218,7 +218,8 @@ basic_publish({'error', 'no_channel'}
              ,#'basic.publish'{exchange=_Exchange
                               ,routing_key=_RK
                               }
-             ,AmqpMsg) ->
+             ,AmqpMsg
+             ) ->
     lager:debug("dropping payload to ~s exchange (routing key ~s): ~s"
                ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload]
                );
@@ -226,8 +227,8 @@ basic_publish(Channel
              ,#'basic.publish'{exchange=_Exchange
                               ,routing_key=_RK
                               }=BasicPub
-             ,AmqpMsg)
-  when is_pid(Channel) ->
+             ,AmqpMsg
+             ) when is_pid(Channel) ->
     assert_valid_amqp_method(BasicPub),
     _ = basic_publish(Channel, BasicPub, AmqpMsg, channel_publish_method()),
     lager:debug("published to ~s(direct) exchange (routing key ~s) via ~p"
@@ -236,7 +237,8 @@ basic_publish(Channel
 basic_publish(_, #'basic.publish'{exchange=_Exchange
                                  ,routing_key=_RK
                                  }
-             ,AmqpMsg) ->
+             ,AmqpMsg
+             ) ->
     lager:debug("dropping payload to ~s exchange (routing key ~s): ~s"
                ,[_Exchange, _RK, AmqpMsg#'amqp_msg'.payload]
                ).
@@ -245,14 +247,14 @@ basic_publish(_, #'basic.publish'{exchange=_Exchange
 basic_publish(#kz_amqp_assignment{channel=Channel}
              ,#'basic.publish'{}=BasicPub
              ,AmqpMsg
-             ,Method)
-  when is_pid(Channel) ->
+             ,Method
+             ) when is_pid(Channel) ->
     amqp_channel:Method(Channel, BasicPub, AmqpMsg);
 basic_publish(Channel
              ,#'basic.publish'{}=BasicPub
              ,AmqpMsg
-             ,Method)
-  when is_pid(Channel) ->
+             ,Method
+             ) when is_pid(Channel) ->
     amqp_channel:Method(Channel, BasicPub, AmqpMsg).
 
 -spec maybe_split_routing_key(binary()) -> {kz_term:api_pid(), binary()}.
@@ -268,7 +270,7 @@ maybe_split_routing_key(RoutingKey) ->
 -spec command(kz_amqp_command()) -> command_ret().
 command(#'exchange.declare'{exchange=_Ex, type=_Ty}=Exchange) ->
     [catch kz_amqp_connection:new_exchange(Connection, Exchange)
-     || Connection <- kz_amqp_connections:connection_pids()
+     || Connection <- kz_amqp_connections:connections()
     ];
 command(Command) ->
     %% This will wait forever for a valid channel before publishing...
@@ -313,32 +315,27 @@ exec_command(#kz_amqp_assignment{consumer=Consumer
     handle_command_result(Result, Command, Assignment);
 exec_command(#kz_amqp_assignment{channel=Channel
                                 ,consumer=Consumer
-                                }=Assignment
-            ,#'basic.cancel'{nowait=NoWait}
+                                }=_Assignment
+            ,#'basic.cancel'{nowait=_NoWait}
             ) ->
-    lists:foreach(fun(#'basic.consume'{consumer_tag=CTag}) ->
-                          Command = #'basic.cancel'{consumer_tag=CTag, nowait=NoWait},
-                          lager:debug("sending cancel for consumer ~s to ~p", [CTag, Channel]),
-                          Result = amqp_channel:call(Channel, Command),
-                          handle_command_result(Result, Command, Assignment);
-                     (_) -> 'ok'
-                  end
-                 ,kz_amqp_history:list_consume(Consumer)
-                 );
-exec_command(#kz_amqp_assignment{channel=Channel
-                                ,consumer=Consumer
-                                }=Assignment
+    lager:debug("a wild cancel appears from consumer ~p channel ~p", [Consumer, Channel]);
+%% lists:foreach(fun(#'basic.consume'{consumer_tag=CTag}) ->
+%%                       Command = #'basic.cancel'{consumer_tag=CTag, nowait=NoWait},
+%%                       lager:debug("sending cancel for consumer ~s to ~p", [CTag, Channel]),
+%%                       Result = amqp_channel:call(Channel, Command),
+%%                       handle_command_result(Result, Command, Assignment);
+%%                  (_) -> 'ok'
+%%               end
+%%              ,kz_amqp_history:list_consume(Consumer)
+%%              );
+exec_command(#kz_amqp_assignment{channel=Channel}=Assignment
             ,#'queue.unbind'{queue=QueueName
                             ,exchange=Exchange
                             ,routing_key=RoutingKey
-                            }=Command) ->
-    case kz_amqp_history:is_bound(Consumer, Exchange, QueueName, RoutingKey) of
-        'true' ->
-            lager:debug("unbinding ~s from ~s(~s)", [QueueName, Exchange, RoutingKey]),
-            handle_command_result(amqp_channel:call(Channel, Command), Command, Assignment);
-        'false' ->
-            lager:debug("queue ~s is not bound to ~s(~s)", [QueueName, Exchange, RoutingKey])
-    end;
+                            }=Command
+            ) ->
+    lager:debug("unbinding ~s from ~s(~s)", [QueueName, Exchange, RoutingKey]),
+    handle_command_result(amqp_channel:call(Channel, Command), Command, Assignment);
 exec_command(#kz_amqp_assignment{channel=Channel}=Assignment, Command) ->
     Result = try amqp_channel:call(Channel, Command)
              catch
@@ -355,30 +352,36 @@ handle_command_result({'ok', Ok}, Command, Assignment) ->
     handle_command_result(Ok, Command, Assignment);
 handle_command_result(#'basic.qos_ok'{}
                      ,#'basic.qos'{prefetch_count=Prefetch}=_Command
-                     ,#kz_amqp_assignment{channel=Channel}=_Assignment) ->
+                     ,#kz_amqp_assignment{channel=Channel}=_Assignment
+                     ) ->
     lager:debug("applied QOS prefetch ~p to channel ~p", [Prefetch, Channel]);
 handle_command_result(#'queue.delete_ok'{}
                      ,#'queue.delete'{queue=Q}=_Command
-                     ,#kz_amqp_assignment{channel=Channel}=_Assignment) ->
+                     ,#kz_amqp_assignment{channel=Channel}=_Assignment
+                     ) ->
     lager:debug("deleted queue ~s via channel ~p", [Q, Channel]);
 handle_command_result(#'exchange.declare_ok'{}=Ok
                      ,#'exchange.declare'{passive='true',exchange=Ex}
-                     ,#kz_amqp_assignment{channel=Channel}) ->
+                     ,#kz_amqp_assignment{channel=Channel}
+                     ) ->
     lager:debug("passive declared exchange ~s via channel ~p", [Ex, Channel]),
     {'ok', Ok};
 handle_command_result(#'exchange.declare_ok'{}=Ok
                      ,#'exchange.declare'{exchange=Ex}
-                     ,#kz_amqp_assignment{channel=Channel}) ->
+                     ,#kz_amqp_assignment{channel=Channel}
+                     ) ->
     lager:debug("declared exchanged ~s via channel ~p", [Ex, Channel]),
     {'ok', Ok};
 handle_command_result(#'queue.declare_ok'{queue=Q}=Ok
                      ,#'queue.declare'{passive='true'}
-                     ,#kz_amqp_assignment{channel=Channel}) ->
+                     ,#kz_amqp_assignment{channel=Channel}
+                     ) ->
     lager:debug("passive declared queue ~s via channel ~p", [Q, Channel]),
     {'ok', Ok};
 handle_command_result(#'queue.declare_ok'{queue=Q}=Ok
                      ,#'queue.declare'{}=_Command
-                     ,#kz_amqp_assignment{channel=Channel}=_Assignment) ->
+                     ,#kz_amqp_assignment{channel=Channel}=_Assignment
+                     ) ->
     lager:debug("declared queue ~s via channel ~p", [Q, Channel]),
     {'ok', Ok};
 handle_command_result(#'queue.unbind_ok'{}
@@ -386,7 +389,8 @@ handle_command_result(#'queue.unbind_ok'{}
                                      ,routing_key=RoutingKey
                                      ,queue=Queue
                                      }=_Command
-                     ,#kz_amqp_assignment{channel=Channel}=_Assignment) ->
+                     ,#kz_amqp_assignment{channel=Channel}=_Assignment
+                     ) ->
     lager:debug("unbound ~s from ~s exchange (routing key ~s) via channel ~p"
                ,[Queue, Exchange, RoutingKey, Channel]
                );
