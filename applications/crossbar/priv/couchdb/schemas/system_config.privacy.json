@@ -40,6 +40,21 @@
             "description": "use the anonymous_cid_numbers values to check if a name is anonymous",
             "type": "boolean"
         },
+        "default_privacy_name": {
+            "default": "Anonymous",
+            "description": "privacy default_privacy_name",
+            "type": "string"
+        },
+        "default_privacy_number": {
+            "default": "anonymous",
+            "description": "privacy default_privacy_number",
+            "type": "string"
+        },
+        "method": {
+            "default": "kazoo",
+            "description": "privacy method",
+            "type": "string"
+        },
         "privacy_mode": {
             "default": "kazoo",
             "description": "Default privacy mode for anonymous calls",

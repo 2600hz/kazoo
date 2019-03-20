@@ -1074,6 +1074,8 @@ guess_endpoint_type(Endpoint, []) ->
               ,caller_name :: kz_term:api_binary()
               ,callee_name :: kz_term:api_binary()
               ,callee_number :: kz_term:api_binary()
+              ,hide_name :: 'undefined' | 'true'
+              ,hide_number :: 'undefined' | 'true'
               }).
 -type clid() :: #clid{}.
 
@@ -1084,7 +1086,7 @@ get_clid(Endpoint, Properties, Call) ->
 -spec get_clid(kz_json:object(), kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> clid().
 get_clid(Endpoint, Properties, Call, Type) ->
     case kz_json:is_true(<<"suppress_clid">>, Properties) of
-        'true' -> maybe_privacy_cid(#clid{}, Call, Type);
+        'true' -> maybe_move_privacy(Endpoint, Properties, Call, #clid{});
         'false' ->
             {Number, Name} = kz_attributes:caller_id(Type, Call),
             CallerNumber = case kapps_call:caller_id_number(Call) of
@@ -1096,26 +1098,40 @@ get_clid(Endpoint, Properties, Call, Type) ->
                              _Name -> Name
                          end,
             {CalleeNumber, CalleeName} = kz_attributes:callee_id(Endpoint, Call),
-            maybe_privacy_cid(#clid{caller_number=CallerNumber
-                                   ,caller_name=CallerName
-                                   ,callee_number=CalleeNumber
-                                   ,callee_name=CalleeName
-                                   }, Call, Type)
+            maybe_move_privacy(Endpoint
+                              ,Properties
+                              ,Call
+                              ,#clid{caller_number=CallerNumber
+                                    ,caller_name=CallerName
+                                    ,callee_number=CalleeNumber
+                                    ,callee_name=CalleeName
+                                    }
+                              )
     end.
 
--spec maybe_privacy_cid(clid(), kapps_call:call(), kz_term:ne_binary()) -> clid().
-maybe_privacy_cid(#clid{caller_name=CallerName
-                       ,caller_number=CallerNumber
-                       }=Clid, Call, Type) ->
-    case kz_privacy:maybe_cid_privacy(kapps_call:custom_channel_vars(Call), {CallerName, CallerNumber}) of
-        {CallerName, CallerNumber} -> Clid;
-        %% Ensure prepend is applied after privacy
-        {Name, Number} ->
-            {NewName, NewNumber} = kz_attributes:maybe_prefix_cid(Name, Number, 'false', Type, Call),
-            Clid#clid{caller_number=NewNumber
-                     ,caller_name=NewName
-                     }
-    end.
+-spec maybe_move_privacy(kz_json:object(), kz_json:object(), kapps_call:call(), clid()) -> clid().
+maybe_move_privacy(Endpoint, _Properties, Call, Clid) ->
+    CallForward = kz_json:get_ne_value(<<"call_forward">>, Endpoint, kz_json:new()),
+    CCVs = kapps_call:custom_channel_vars(Call),
+    RetainCID = kz_json:is_true(<<"keep_caller_id">>, CallForward)
+        orelse kz_json:is_true(<<"Retain-CID">>, CCVs),
+    HideName = kz_privacy:should_hide_name(CCVs),
+    HideNumber = kz_privacy:should_hide_number(CCVs),
+    move_privacy(RetainCID, HideName, HideNumber, Clid).
+
+-spec move_privacy(boolean(), boolean(), boolean(), clid()) -> clid().
+move_privacy('false', _HideName, _HideNumber, Clid) ->
+    Clid;
+move_privacy('true', 'false', 'false', Clid) ->
+    Clid;
+move_privacy('true', 'false', 'true', Clid) ->
+    Clid#clid{hide_number = 'true'};
+move_privacy('true', 'true', 'false', Clid) ->
+    Clid#clid{hide_name = 'true'};
+move_privacy('true', 'true', 'true', Clid) ->
+    Clid#clid{hide_name = 'true'
+             ,hide_number = 'true'
+             }.
 
 -spec create_sip_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                  kz_json:object().
@@ -1144,12 +1160,13 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
                       ,{<<"Caller-ID-Number">>, Clid#clid.caller_number}
                       ,{<<"Outbound-Caller-ID-Number">>, Clid#clid.caller_number}
                       ,{<<"Outbound-Caller-ID-Name">>, Clid#clid.caller_name}
-
                       ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
                       ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
                       ,{<<"Outbound-Callee-ID-Name">>, Clid#clid.callee_name}
                       ,{<<"Outbound-Callee-ID-Number">>, Clid#clid.callee_number}
-
+                      ,{<<"Privacy-Hide-Name">>, Clid#clid.hide_name}
+                      ,{<<"Privacy-Hide-Number">>, Clid#clid.hide_number}
+                      ,{<<"Privacy-Method">>, kz_privacy:get_method(Endpoint)}
                       ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Endpoint)}
                       ,{<<"Bypass-Media">>, get_bypass_media(Endpoint)}
                       ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
@@ -1220,6 +1237,9 @@ create_push_endpoint(Endpoint, Properties, Call) ->
         ,{<<"Outbound-Callee-ID-Number">>, Clid#clid.callee_number}
         ,{<<"Outbound-Caller-ID-Number">>, Clid#clid.caller_number}
         ,{<<"Outbound-Caller-ID-Name">>, Clid#clid.caller_name}
+        ,{<<"Privacy-Hide-Name">>, Clid#clid.hide_name}
+        ,{<<"Privacy-Hide-Number">>, Clid#clid.hide_number}
+        ,{<<"Privacy-Method">>, kz_privacy:get_method(Endpoint)}
         ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Endpoint)}
         ,{<<"Bypass-Media">>, get_bypass_media(Endpoint)}
         ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
@@ -1327,7 +1347,7 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
                        end,
     Clid = case kapps_call:inception(Call) of
                'undefined' -> get_clid(Endpoint, Properties, Call, <<"external">>);
-               _Else -> #clid{}
+               _Else -> maybe_move_privacy(Endpoint, Properties, Call, #clid{})
            end,
 
     kz_json:from_list(
@@ -1346,6 +1366,9 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
       ,{<<"Outbound-Callee-ID-Number">>, Clid#clid.callee_number}
       ,{<<"Outbound-Caller-ID-Number">>, Clid#clid.caller_number}
       ,{<<"Outbound-Caller-ID-Name">>, Clid#clid.caller_name}
+      ,{<<"Privacy-Hide-Name">>, Clid#clid.hide_name}
+      ,{<<"Privacy-Hide-Number">>, Clid#clid.hide_number}
+      ,{<<"Privacy-Method">>, kz_privacy:get_method(Endpoint)}
       ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, <<"forward">>, Call)}
       ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, CallForward)}
       ]).

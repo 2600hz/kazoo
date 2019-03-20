@@ -12064,6 +12064,15 @@
                 "Outbound-Caller-ID-Number": {
                     "type": "string"
                 },
+                "Privacy-Hide-Name": {
+                    "type": "string"
+                },
+                "Privacy-Hide-Number": {
+                    "type": "string"
+                },
+                "Privacy-Method": {
+                    "type": "string"
+                },
                 "Ringback": {
                     "type": "string"
                 },
@@ -12273,6 +12282,15 @@
                     "type": "string"
                 },
                 "Presence-ID": {
+                    "type": "string"
+                },
+                "Privacy-Hide-Name": {
+                    "type": "string"
+                },
+                "Privacy-Hide-Number": {
+                    "type": "string"
+                },
+                "Privacy-Method": {
                     "type": "string"
                 },
                 "Proxy-IP": {
@@ -20004,6 +20022,15 @@
                 "Presence-ID": {
                     "type": "string"
                 },
+                "Privacy-Hide-Name": {
+                    "type": "string"
+                },
+                "Privacy-Hide-Number": {
+                    "type": "string"
+                },
+                "Privacy-Method": {
+                    "type": "string"
+                },
                 "Requestor-Custom-Channel-Vars": {
                     "type": "object"
                 },
@@ -21644,6 +21671,15 @@
                 "Outbound-Caller-ID-Number": {
                     "type": "string"
                 },
+                "Privacy-Hide-Name": {
+                    "type": "string"
+                },
+                "Privacy-Hide-Number": {
+                    "type": "string"
+                },
+                "Privacy-Method": {
+                    "type": "string"
+                },
                 "Ringback": {
                     "type": "string"
                 },
@@ -21902,6 +21938,15 @@
                 "Outbound-Caller-ID-Number": {
                     "type": "string"
                 },
+                "Privacy-Hide-Name": {
+                    "type": "string"
+                },
+                "Privacy-Hide-Number": {
+                    "type": "string"
+                },
+                "Privacy-Method": {
+                    "type": "string"
+                },
                 "Ringback": {
                     "type": "string"
                 },
@@ -22073,6 +22118,15 @@
                     "type": "string"
                 },
                 "Presence-ID": {
+                    "type": "string"
+                },
+                "Privacy-Hide-Name": {
+                    "type": "string"
+                },
+                "Privacy-Hide-Number": {
+                    "type": "string"
+                },
+                "Privacy-Method": {
                     "type": "string"
                 },
                 "Proxy-IP": {
@@ -23411,6 +23465,15 @@
                 "Outbound-Caller-ID-Number": {
                     "type": "string"
                 },
+                "Privacy-Hide-Name": {
+                    "type": "string"
+                },
+                "Privacy-Hide-Number": {
+                    "type": "string"
+                },
+                "Privacy-Method": {
+                    "type": "string"
+                },
                 "Ringback": {
                     "type": "string"
                 },
@@ -23599,6 +23662,15 @@
                     "type": "string"
                 },
                 "Presence-ID": {
+                    "type": "string"
+                },
+                "Privacy-Hide-Name": {
+                    "type": "string"
+                },
+                "Privacy-Hide-Number": {
+                    "type": "string"
+                },
+                "Privacy-Method": {
                     "type": "string"
                 },
                 "Proxy-IP": {
@@ -29164,9 +29236,14 @@
         "system_config.callflow.resources": {
             "description": "Schema for callflow.resources system_config",
             "properties": {
+                "default_asserted_identity": {
+                    "default": false,
+                    "description": "When set to true, the asserted identity will have defaults and force the use of P-Asserted-Identity (instead of RPID) on all outbound offnet calls.  When set to false, P-Asserted-Identity is only used if explicitly set in the account/user/device hierarchy.",
+                    "type": "boolean"
+                },
                 "default_emit_account_id": {
                     "default": false,
-                    "description": "callflow.resources default emit account id",
+                    "description": "When set to true, all outbound offnet calls will include a SIP header X-Account-ID with a value of the Kazoo account UUID.",
                     "type": "boolean"
                 }
             },
@@ -33339,6 +33416,21 @@
                     "default": false,
                     "description": "use the anonymous_cid_numbers values to check if a name is anonymous",
                     "type": "boolean"
+                },
+                "default_privacy_name": {
+                    "default": "Anonymous",
+                    "description": "privacy default_privacy_name",
+                    "type": "string"
+                },
+                "default_privacy_number": {
+                    "default": "anonymous",
+                    "description": "privacy default_privacy_number",
+                    "type": "string"
+                },
+                "method": {
+                    "default": "kazoo",
+                    "description": "privacy method",
+                    "type": "string"
                 },
                 "privacy_mode": {
                     "default": "kazoo",
