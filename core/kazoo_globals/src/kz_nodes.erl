@@ -319,7 +319,7 @@ node_status_to_json(#kz_node{zone=NodeZone
                     ,{<<"registrations">>, Regs}
                     ]),
     [NodeType,_] = binary:split(kz_term:to_binary(N), <<"@">>),
-    kz_json:set_value([kz_term:to_binary(NodeZone),NodeType,kz_term:to_binary(N)]
+    kz_json:set_value([kz_term:to_binary(NodeZone), NodeType, kz_term:to_binary(N)]
                      ,kz_json:from_list(StatusProps)
                      ,Acc
                      ).

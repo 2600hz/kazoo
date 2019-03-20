@@ -646,9 +646,13 @@ handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}=
             kz_util:spawn(fun handle_event/4, [Payload, CT, {BD, Basic}, State]),
             {'noreply', State}
     end;
-handle_info({#'basic.return'{}=BR, #amqp_msg{props=#'P_basic'{content_type=CT}
-                                            ,payload=Payload
-                                            }}, State) ->
+handle_info({#'basic.return'{}=BR
+            ,#amqp_msg{props=#'P_basic'{content_type=CT}
+                      ,payload=Payload
+                      }
+            }
+           ,State
+           ) ->
     handle_return(Payload, CT, BR, State);
 handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue='undefined'}=State) ->
     lager:debug("received consume ok (~s) for abandoned queue", [CTag]),
@@ -679,7 +683,8 @@ handle_info('$is_gen_listener_consuming'
            ,#state{is_consuming='false'
                   ,bindings=ExistingBindings
                   ,params=Params
-                  }=State) ->
+                  }=State
+           ) ->
     _Release = (catch kz_amqp_channel:release()),
     _Requisition = channel_requisition(Params),
     {'noreply', State#state{queue='undefined'
@@ -783,10 +788,12 @@ code_change(_OldVersion, State, _Extra) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_callback_info(any(), state()) -> handle_info_return().
-handle_callback_info(Message, #state{module=Module
-                                    ,module_state=ModuleState
-                                    ,module_timeout_ref=OldRef
-                                    }=State) ->
+handle_callback_info(Message
+                    ,#state{module=Module
+                           ,module_state=ModuleState
+                           ,module_timeout_ref=OldRef
+                           }=State
+                    ) ->
     _ = stop_timer(OldRef),
     try Module:handle_info(Message, ModuleState) of
         {'noreply', ModuleState1} ->
@@ -808,18 +815,21 @@ handle_callback_info(Message, #state{module=Module
     end.
 
 -spec format_status('normal' | 'terminate', [kz_term:proplist() | state()]) -> any().
-format_status(_Opt, [_PDict, #state{module=Module
-                                   ,module_state=ModuleState
-                                   }=State]) ->
+format_status(_Opt
+             ,[_PDict
+              ,#state{module=Module
+                     ,module_state=ModuleState
+                     }=State
+              ]) ->
     case erlang:function_exported(Module, 'format_status', 2) of
         'true' -> Module:format_status(_Opt, [_PDict, ModuleState]);
-        'false' -> [{'data', [{"Module State", ModuleState}
-                             ,{"Module", Module}
-                             ,{"Listener State", State}
-                             ]
-                    }]
+        'false' ->
+            [{'data', [{"Module State", ModuleState}
+                      ,{"Module", Module}
+                      ,{"Listener State", State}
+                      ]
+             }]
     end.
-
 
 -spec distribute_event(kz_json:object(), deliver(), state()) -> state().
 distribute_event(JObj, Deliver, State) ->
@@ -831,18 +841,23 @@ distribute_event(JObj, Deliver, State) ->
     end.
 
 -spec distribute_event(callback_data(), kz_json:object(), deliver(), state()) -> state().
-distribute_event(CallbackData, JObj, Deliver, #state{responders=Responders
-                                                    ,consumer_key=ConsumerKey
-                                                    }=State) ->
+distribute_event(CallbackData
+                ,JObj
+                ,Deliver
+                ,#state{responders=Responders
+                       ,consumer_key=ConsumerKey
+                       }=State
+                ) ->
     Key = kz_util:get_event_type(JObj),
     Channel = kz_amqp_channel:consumer_channel(),
-    _ = [kz_util:spawn(fun client_handle_event/6, [JObj
-                                                  ,Channel
-                                                  ,ConsumerKey
-                                                  ,Callback
-                                                  ,CallbackData
-                                                  ,Deliver
-                                                  ])
+    _ = [kz_util:spawn(fun client_handle_event/6
+                      ,[JObj
+                       ,Channel
+                       ,ConsumerKey
+                       ,Callback
+                       ,CallbackData
+                       ,Deliver
+                       ])
          || {Evt, Callback} <- Responders,
             maybe_event_matches_key(Key, Evt)
         ],
