@@ -1250,7 +1250,7 @@ updateable_ccvs(New, Existing) ->
     Exceptions = [<<"Privacy-Hide-Name">>
                  ,<<"Privacy-Hide-Number">>
                  ],
-    New -- props:delete_keys(Existing, Exceptions).
+    New -- props:delete_keys(Exceptions, Existing).
 
 -spec update_custom_channel_vars([fun((kz_json:object()) -> kz_json:object()),...], call()) -> call().
 -ifdef(TEST).
