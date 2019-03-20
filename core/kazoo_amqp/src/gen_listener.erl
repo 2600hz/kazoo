@@ -641,9 +641,10 @@ handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}=
             'false' -> 'ok'
         end,
     case props:is_true('spawn_handle_event', Params, 'false') of
-        'true'  -> kz_util:spawn(fun handle_event/4, [Payload, CT, {BD, Basic}, State]),
-                   {'noreply', State};
-        'false' -> {'noreply', handle_event(Payload, CT, {BD, Basic}, State)}
+        'false' -> {'noreply', handle_event(Payload, CT, {BD, Basic}, State)};
+        'true'  ->
+            kz_util:spawn(fun handle_event/4, [Payload, CT, {BD, Basic}, State]),
+            {'noreply', State}
     end;
 handle_info({#'basic.return'{}=BR, #amqp_msg{props=#'P_basic'{content_type=CT}
                                             ,payload=Payload
