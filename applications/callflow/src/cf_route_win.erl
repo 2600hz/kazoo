@@ -265,11 +265,13 @@ update_ccvs(Call) ->
               ,[CallerIdType, CIDName, CIDNumber]
               ),
 
+    CCVs = kapps_call:custom_channel_vars(Call),
     Props = props:filter_undefined(
               [{<<"Hold-Media">>, kz_attributes:moh_attributes(<<"media_id">>, Call)}
               ,{<<"Caller-ID-Name">>, CIDName}
               ,{<<"Caller-ID-Number">>, CIDNumber}
                | get_incoming_security(Call)
+               ++ kz_privacy:flags(CCVs)
               ]),
     kapps_call:set_custom_channel_vars(Props, Call).
 

@@ -81,6 +81,9 @@
         ,<<"Export-Variables">>
         ,<<"Export-Bridge-Variables">>
         ,<<"Bridge-Actions">>
+        ,<<"Privacy-Method">>
+        ,<<"Privacy-Hide-Name">>
+        ,<<"Privacy-Hide-Number">>
         ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                            ,{<<"Event-Name">>, <<"command">>}
@@ -137,6 +140,9 @@
         ,<<"Outbound-Callee-ID-Number">>
         ,<<"Outbound-Caller-ID-Name">>
         ,<<"Outbound-Caller-ID-Number">>
+        ,<<"Privacy-Method">>
+        ,<<"Privacy-Hide-Name">>
+        ,<<"Privacy-Hide-Number">>
         ,<<"Presence-ID">>
         ,<<"Proxy-IP">>
         ,<<"Proxy-Zone">>

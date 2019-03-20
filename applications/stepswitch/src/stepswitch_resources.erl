@@ -118,7 +118,9 @@
                  ,from_uri_realm :: kz_term:api_binary()
                  ,is_emergency = 'false' :: boolean()
                  ,force_port = 'false' :: boolean()
-                 ,privacy_mode = 'undefined' :: kz_term:api_binary()
+                 ,privacy_method = 'undefined' :: kz_term:api_binary()
+                 ,privacy_hide_name = 'false' :: boolean()
+                 ,privacy_hide_number = 'false' :: boolean()
                  ,invite_parameters = 'undefined' :: kz_term:api_object()
                  }).
 
@@ -146,7 +148,9 @@
                ,formatters :: kz_term:api_objects()
                ,proxies = [] :: kz_term:proplist()
                ,selector_marks = [] :: [tuple()]
-               ,privacy_mode = 'undefined' :: kz_term:api_binary()
+               ,privacy_method = 'undefined' :: kz_term:api_binary()
+               ,privacy_hide_name = 'false' :: boolean()
+               ,privacy_hide_number = 'false' :: boolean()
                ,classifier = 'undefined' :: kz_term:api_binary()
                ,classifier_enable = 'true' :: boolean()
                }).
@@ -213,7 +217,9 @@ resource_to_props(#resrc{}=Resource) ->
       ,{<<"Rules">>, Resource#resrc.raw_rules}
       ,{<<"Caller-ID-Rules">>, Resource#resrc.cid_raw_rules}
       ,{<<"Formatters">>, Resource#resrc.formatters}
-      ,{<<"Privacy-Mode">>, Resource#resrc.privacy_mode}
+      ,{<<"Privacy-Method">>,  Resource#resrc.privacy_method}
+      ,{<<"Privacy-Hide-Name">>, Resource#resrc.privacy_hide_name}
+      ,{<<"Privacy-Hide-Number">>, Resource#resrc.privacy_hide_number}
       ]).
 
 -spec sort_resources(resources()) -> resources().
@@ -673,12 +679,16 @@ gateway_to_endpoint(DestinationNumber
                             ,endpoint_type=EndpointType
                             ,endpoint_options=EndpointOptions
                             ,progress_timeout=ProgressTimeout
-                            ,privacy_mode=PrivacyMode
+                            ,privacy_method = PrivacyMethod
+                            ,privacy_hide_name = HideName
+                            ,privacy_hide_number = HideNumber
                             }=Gateway
                    ,OffnetJObj
                    ) ->
     IsEmergency = gateway_emergency_resource(Gateway),
-    {CIDName, CIDNumber} = gateway_cid(OffnetJObj, IsEmergency, PrivacyMode),
+    {CIDName, CIDNumber} = default_gateway_cid(OffnetJObj, IsEmergency),
+
+    RequestorCCVs = kz_json:get_ne_json_value(<<"Requestor-Custom-Channel-Vars">>, OffnetJObj, kz_json:new()),
 
     CCVs = [{<<"Emergency-Resource">>, IsEmergency}
            ,{<<"Matched-Number">>, DestinationNumber}
@@ -708,6 +718,17 @@ gateway_to_endpoint(DestinationNumber
         ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
         ,{<<"Outbound-Caller-ID-Name">>, CIDName}
         ,{<<"SIP-Invite-Parameters">>, sip_invite_parameters(Gateway, OffnetJObj)}
+        ,{<<"Privacy-Method">>, PrivacyMethod}
+        ,{<<"Privacy-Hide-Name">>
+         ,HideName
+          orelse kz_privacy:should_hide_name(OffnetJObj)
+          orelse kz_privacy:should_hide_name(RequestorCCVs)
+         }
+        ,{<<"Privacy-Hide-Number">>
+         ,HideNumber
+          orelse kz_privacy:should_hide_number(OffnetJObj)
+          orelse kz_privacy:should_hide_number(RequestorCCVs)
+         }
          | maybe_get_t38(Gateway, OffnetJObj)
         ])).
 
@@ -764,20 +785,6 @@ dynamic_sip_invite_value(<<"custom_sip_headers.", Key/binary>>, _, CSHs) ->
 dynamic_sip_invite_value(<<"custom_channel_vars.", Key/binary>>, CCVs, _) ->
     kz_json:get_ne_binary_value(Key, CCVs);
 dynamic_sip_invite_value(_, _, _) -> 'undefined'.
-
-
--spec gateway_cid(kapi_offnet_resource:req(), kz_term:api_binary(), kz_term:api_binary()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
-gateway_cid(OffnetJObj, IsEmergency, PrivacyMode) ->
-    CCVs = kz_json:get_ne_value(<<"Custom-Channel-Vars">>, OffnetJObj, kz_json:new()),
-    AccountId = kapi_offnet_resource:hunt_account_id(OffnetJObj, kapi_offnet_resource:account_id(OffnetJObj)),
-    DefaultCID = default_gateway_cid(OffnetJObj, IsEmergency),
-    kz_privacy:maybe_cid_privacy(kz_json:set_values([{<<"Account-ID">>, AccountId}
-                                                    ,{<<"Privacy-Mode">>, PrivacyMode}
-                                                    ]
-                                                   ,CCVs
-                                                   )
-                                , DefaultCID
-                                ).
 
 -spec default_gateway_cid(kapi_offnet_resource:req(), kz_term:api_binary()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 default_gateway_cid(OffnetJObj, 'undefined') ->
@@ -1079,7 +1086,9 @@ resource_from_jobj(JObj) ->
                      ,formatters=resource_formatters(JObj)
                      ,global=kz_json:is_true(<<"Is-Global">>, JObj, 'true')
                      ,proxies=kz_json:to_proplist(<<"Proxies">>, JObj)
-                     ,privacy_mode=kz_json:get_ne_value(<<"privacy_mode">>, JObj)
+                     ,privacy_method=kz_privacy:get_method(JObj)
+                     ,privacy_hide_name=kz_privacy:should_hide_name(JObj)
+                     ,privacy_hide_number=kz_privacy:should_hide_number(JObj)
                      ,classifier=kz_json:get_ne_value(<<"classifier">>, JObj)
                      ,classifier_enable=kz_json:is_true(<<"classifier_enable">>, JObj, 'true')
                      },
@@ -1183,7 +1192,9 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
                               ,fax_option=T38
                               ,codecs=Codecs
                               ,bypass_media=BypassMedia
-                              ,privacy_mode=PrivacyMode
+                              ,privacy_method=PrivacyMethod
+                              ,privacy_hide_name=HideName
+                              ,privacy_hide_number=HideNumber
                               }) ->
     EndpointType = kz_json:get_ne_value(<<"endpoint_type">>, JObj, <<"sip">>),
     #gateway{endpoint_type = EndpointType
@@ -1210,7 +1221,9 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
             ,caller_id_type = kz_json:get_ne_value(<<"caller_id_type">>, JObj, ?DEFAULT_CALLER_ID_TYPE)
             ,progress_timeout = kz_json:get_integer_value(<<"progress_timeout">>, JObj, ?DEFAULT_PROGRESS_TIMEOUT)
             ,endpoint_options = endpoint_options(JObj, EndpointType)
-            ,privacy_mode=kz_json:get_value(<<"privacy_mode">>, JObj, PrivacyMode)
+            ,privacy_method = kz_privacy:get_method(JObj, PrivacyMethod)
+            ,privacy_hide_name = kz_privacy:should_hide_name(JObj, HideName)
+            ,privacy_hide_number = kz_privacy:should_hide_name(JObj, HideNumber)
             ,invite_parameters=kz_json:get_ne_value(<<"invite_parameters">>, JObj)
             }.
 

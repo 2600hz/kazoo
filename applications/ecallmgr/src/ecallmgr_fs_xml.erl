@@ -540,7 +540,23 @@ channel_vars_handle_asserted_identity({Props, Results}=Acc) ->
     case create_asserted_identity_header(Name, Number, Realm) of
         'undefined' -> Acc;
         AssertedIdentity ->
-            {props:delete(<<"Caller-ID-Type">>, Props)
+            build_asserted_identity(AssertedIdentity, props:delete(<<"Caller-ID-Type">>, Props), Results)
+    end.
+
+
+-spec build_asserted_identity(kz_term:ne_binary(), kz_term:prolist(), iolist()) -> channel_var_fold().
+build_asserted_identity(AssertedIdentity, Props, Results) ->
+    case kz_privacy:has_flags(Props) of
+        'true' ->
+            {Props
+            ,[<<"sip_cid_type=none">>
+             ,<<"sip_h_Privacy=id">>
+             ,<<"sip_h_P-Asserted-Identity=", AssertedIdentity/binary>>
+                  | Results
+             ]
+            };
+        'false' ->
+            {Props
             ,[<<"sip_cid_type=none">>
              ,<<"sip_h_P-Asserted-Identity=", AssertedIdentity/binary>>
                   | Results
