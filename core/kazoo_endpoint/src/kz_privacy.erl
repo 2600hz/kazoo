@@ -60,9 +60,9 @@ get_method(JObj) ->
 
 -spec get_method(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 get_method(JObj, Default) ->
-    %%% NOTE: privacy_mode is deperecated, and could be set
-    %%%   to hide_name or hide_number.  If that is the case
-    %%%   just assume it should be hidden by Kazoo
+    %% NOTE: privacy_mode is deperecated, and could be set
+    %%   to hide_name or hide_number.  If that is the case
+    %%   just assume it should be hidden by Kazoo
     Keys = [[<<"caller_id_options">>, <<"privacy_method">>]
            ,[<<"privacy">>, <<"method">>]
            ,?KEY_PRIVACY_METHOD
@@ -263,7 +263,7 @@ get_mode(JObj) ->
                   orelse should_hide_number(CallCCVs)
                  ) andalso IsSIP,
     case {HideName, HideNumber} of
-        {'false', 'false'} -> 'undefined';        
+        {'false', 'false'} -> 'undefined';
         {'false', 'true'} -> <<"number">>;
         {'true', 'false'} -> <<"name">>;
         {'true', 'true'} -> <<"full">>
