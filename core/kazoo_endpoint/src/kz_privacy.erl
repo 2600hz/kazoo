@@ -9,7 +9,9 @@
         ,get_method/2
         ]).
 -export([should_hide_name/1
+        ,should_hide_name/2
         ,should_hide_number/1
+        ,should_hide_number/2
         ]).
 -export([enforce/1
         ,enforce/2
@@ -102,6 +104,11 @@ should_hide_name(JObj) ->
         Else -> kz_term:is_true(Else)
     end.
 
+-spec should_hide_name(kz_json:object(), boolean()) -> boolean().
+should_hide_name(JObj, Default) ->
+    should_hide_name(JObj)
+        orelse kz_term:is_true(Default).
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -123,6 +130,11 @@ should_hide_number(JObj) ->
         <<"kazoo">> -> 'true';
         Else -> kz_term:is_true(Else)
     end.
+
+-spec should_hide_number(kz_json:object(), boolean()) -> boolean().
+should_hide_number(JObj, Default) ->
+    should_hide_number(JObj)
+        orelse kz_term:is_true(Default).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -256,12 +268,14 @@ get_mode(JObj) ->
                 orelse lists:any(fun should_hide_name/1, Endpoints)
                 orelse should_hide_name(ChannelCCVs)
                 orelse should_hide_name(CallCCVs)
-               ) andalso IsSIP,
+               )
+        andalso IsSIP,
     HideNumber = (should_hide_number(JObj)
                   orelse lists:any(fun should_hide_number/1, Endpoints)
                   orelse should_hide_number(ChannelCCVs)
                   orelse should_hide_number(CallCCVs)
-                 ) andalso IsSIP,
+                 )
+        andalso IsSIP,
     case {HideName, HideNumber} of
         {'false', 'false'} -> 'undefined';
         {'false', 'true'} -> <<"number">>;

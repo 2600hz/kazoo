@@ -1220,8 +1220,8 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
             ,progress_timeout = kz_json:get_integer_value(<<"progress_timeout">>, JObj, ?DEFAULT_PROGRESS_TIMEOUT)
             ,endpoint_options = endpoint_options(JObj, EndpointType)
             ,privacy_method = kz_privacy:get_method(JObj, PrivacyMethod)
-            ,privacy_hide_name = kz_privacy:should_hide_name(JObj) orelse HideName
-            ,privacy_hide_number = kz_privacy:should_hide_name(JObj) orelse HideNumber
+            ,privacy_hide_name = kz_privacy:should_hide_name(JObj, HideName)
+            ,privacy_hide_number = kz_privacy:should_hide_name(JObj, HideNumber)
             ,invite_parameters=kz_json:get_ne_value(<<"invite_parameters">>, JObj)
             }.
 
