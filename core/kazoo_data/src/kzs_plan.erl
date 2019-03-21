@@ -115,6 +115,7 @@ get_dataplan(DBName, DocType, DocOwner) ->
         Else -> system_dataplan(DBName, Else)
     end.
 
+
 -spec system_dataplan() -> map().
 system_dataplan() ->
     #{<<"connections_map">> := Connections} = ?CACHED_SYSTEM_DATAPLAN,
@@ -128,6 +129,7 @@ system_dataplan(DBName, _Classification)
   when DBName == ?KZ_CONFIG_DB;
        DBName == ?KZ_DATA_DB;
        DBName == ?KZ_SERVICES_DB ->
+
     SysTag = 'local',
     #{tag => SysTag, server => kz_dataconnections:get_server(SysTag)};
 system_dataplan(_DBName, 'numbers') ->
@@ -184,6 +186,13 @@ dataplan_connections(Connections) ->
 
 -spec dataplan_match(kz_term:ne_binary(), map(), kz_term:api_binary()) -> map().
 dataplan_match(Classification, Plan, AccountId) ->
+    case fetch_cached_dataconnection(Classification, AccountId) of
+        #{server := {_App, _Conn}}=Connection -> Connection;
+        {'error', 'not_found'} -> dataplan_cache_connection(Classification, Plan, AccountId)
+    end.
+
+-spec dataplan_cache_connection(kz_term:ne_binary(), map(), kz_term:api_binary()) -> map().
+dataplan_cache_connection(Classification, Plan, AccountId) ->
     #{<<"plan">> := #{Classification := #{<<"connection">> := CCon
                                          ,<<"attachments">> := CAtt
                                          ,<<"types">> := Types
@@ -200,33 +209,35 @@ dataplan_match(Classification, Plan, AccountId) ->
     Others = [{kz_term:to_atom(T), #{server => maps:get(kz_term:to_atom(T), GConMap, #{})}}
               || {_, #{<<"connection">> := T}} <- lists:usort(maps:to_list(Types)), T =/= CCon],
 
-    case maps:get(<<"handler">>, CAtt, 'undefined') of
-        'undefined' ->
-            #{tag => Tag
-             ,server => Server
-             ,others => Others
-             ,classification => Classification
-             ,account_id => AccountId
-             };
-        AttConnection ->
-            #{AttConnection := #{<<"handler">> := AttHandlerBin
-                                ,<<"settings">> := AttSettings
-                                }
-             } = GAtt,
-            AttHandler = kz_term:to_atom(<<"kz_att_", AttHandlerBin/binary>>,'true'),
-            Params = maps:merge(AttSettings, maps:get(<<"params">>, CAtt, #{})),
+    ServerMap = case maps:get(<<"handler">>, CAtt, 'undefined') of
+                    'undefined' ->
+                        #{tag => Tag
+                         ,server => Server
+                         ,others => Others
+                         ,classification => Classification
+                         ,account_id => AccountId
+                         };
+                    AttConnection ->
+                        #{AttConnection := #{<<"handler">> := AttHandlerBin
+                                            ,<<"settings">> := AttSettings
+                                            }
+                         } = GAtt,
+                        AttHandler = kz_term:to_atom(<<"kz_att_", AttHandlerBin/binary>>,'true'),
+                        Params = maps:merge(AttSettings, maps:get(<<"params">>, CAtt, #{})),
 
-            #{tag => Tag
-             ,server => Server
-             ,others => Others
-             ,att_proxy => 'true'
-             ,att_post_handler => att_post_handler(CAtt)
-             ,att_handler => {AttHandler, kz_maps:keys_to_atoms(Params)}
-             ,att_handler_id => AttConnection
-             ,classification => Classification
-             ,account_id => AccountId
-             }
-    end.
+                        #{tag => Tag
+                         ,server => Server
+                         ,others => Others
+                         ,att_proxy => 'true'
+                         ,att_post_handler => att_post_handler(CAtt)
+                         ,att_handler => {AttHandler, kz_maps:keys_to_atoms(Params)}
+                         ,att_handler_id => AttConnection
+                         ,classification => Classification
+                         ,account_id => AccountId
+                         }
+                end,
+    cache_dataconnection(Classification, AccountId, ServerMap),
+    ServerMap.
 
 
 -spec dataplan_type_match(kz_term:ne_binary(), kz_term:ne_binary(), map()) -> map().
@@ -235,6 +246,13 @@ dataplan_type_match(Classification, DocType, Plan) ->
 
 -spec dataplan_type_match(kz_term:ne_binary(), kz_term:ne_binary(), map(), kz_term:api_binary()) -> map().
 dataplan_type_match(Classification, DocType, Plan, AccountId) ->
+    case fetch_cached_dataconnection(Classification, DocType, AccountId) of
+        #{server := {_App, _Server}}=Connection -> Connection;
+        {'error', 'not_found'} -> dataplan_type_cache_connection(Classification, DocType, Plan, AccountId)
+    end.
+
+-spec dataplan_type_cache_connection(kz_term:ne_binary(), kz_term:ne_binary(), map(), kz_term:api_binary()) -> map().
+dataplan_type_cache_connection(Classification, DocType, Plan, AccountId) ->
     #{<<"plan">> := #{Classification := #{<<"types">> := Types
                                          ,<<"connection">> := CCon
                                          ,<<"attachments">> := CAtt
@@ -251,31 +269,33 @@ dataplan_type_match(Classification, DocType, Plan, AccountId) ->
     Server = maps:get(Tag, GConMap, #{}),
 
     TypeAttMap = maps:merge(CAtt, maps:get(<<"attachments">>, TypeMap, #{})),
-    case maps:get(<<"handler">>, TypeAttMap, 'undefined') of
-        'undefined' ->
-            #{tag => Tag, server => Server
-             ,classification => Classification
-             ,doc_type => DocType
-             ,account_id => AccountId
-             };
-        AttConnection ->
-            #{AttConnection := #{<<"handler">> := AttHandlerBin
-                                ,<<"settings">> := AttSettings
-                                }
-             } = GAtt,
-            AttHandler = kz_term:to_atom(<<"kz_att_", AttHandlerBin/binary>>,'true'),
-            Params = maps:merge(AttSettings, maps:get(<<"params">>, TypeAttMap, #{})),
-            #{tag => Tag
-             ,server => Server
-             ,att_proxy => 'true'
-             ,att_post_handler => att_post_handler(TypeAttMap)
-             ,att_handler => {AttHandler, kz_maps:keys_to_atoms(Params)}
-             ,att_handler_id => AttConnection
-             ,classification => Classification
-             ,doc_type => DocType
-             ,account_id => AccountId
-             }
-    end.
+    ServerMap = case maps:get(<<"handler">>, TypeAttMap, 'undefined') of
+                    'undefined' ->
+                        #{tag => Tag, server => Server
+                         ,classification => Classification
+                         ,doc_type => DocType
+                         ,account_id => AccountId
+                         };
+                    AttConnection ->
+                        #{AttConnection := #{<<"handler">> := AttHandlerBin
+                                            ,<<"settings">> := AttSettings
+                                            }
+                         } = GAtt,
+                        AttHandler = kz_term:to_atom(<<"kz_att_", AttHandlerBin/binary>>,'true'),
+                        Params = maps:merge(AttSettings, maps:get(<<"params">>, TypeAttMap, #{})),
+                        #{tag => Tag
+                         ,server => Server
+                         ,att_proxy => 'true'
+                         ,att_post_handler => att_post_handler(TypeAttMap)
+                         ,att_handler => {AttHandler, kz_maps:keys_to_atoms(Params)}
+                         ,att_handler_id => AttConnection
+                         ,classification => Classification
+                         ,doc_type => DocType
+                         ,account_id => AccountId
+                         }
+                end,
+    cache_dataconnection(Classification, DocType, AccountId, ServerMap),
+    ServerMap.
 
 -spec att_post_handler(map()) -> atom().
 att_post_handler(#{<<"stub">> := 'true'}) -> 'stub';
@@ -299,6 +319,38 @@ fetch_cached_dataplan(Key, _Fun) ->
         {'ok', Plan} -> Plan;
         {'error', 'not_found'} -> ?CACHED_SYSTEM_DATAPLAN
     end.
+
+-spec fetch_cached_dataconnection(atom() | kz_term:ne_binary(), tuple() | kz_term:api_ne_binary()) -> server() | {'error', 'not_found'}.
+fetch_cached_dataconnection(_Classification, {'connection', _, _}=Key) ->
+    case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, Key) of
+        {'ok', Server} -> Server;
+        {'error', 'not_found'} -> {'error', 'not_found'}
+    end;
+fetch_cached_dataconnection(Classification, AccountId) ->
+    fetch_cached_dataconnection(Classification, {'connection', Classification, AccountId}).
+
+-spec fetch_cached_dataconnection(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
+                                         server() | {'error', 'not_found'}.
+fetch_cached_dataconnection(Classification, DocType, AccountId) ->
+    Key = {'connection', Classification, DocType, AccountId},
+    case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, Key) of
+        {'ok', Server} -> Server;
+        {'error', 'not_found'} -> {'error', 'not_found'}
+    end.
+
+-spec cache_dataconnection(atom() | kz_term:ne_binary(), tuple() | kz_term:ne_binary(), map()) -> 'error' | 'ok'.
+cache_dataconnection(Classification, AccountId, Connection) ->
+    CacheProps = [{'expires', 'infinity'}],
+    Key = {'connection', Classification, AccountId},
+    lager:debug("caching ~p connection for account ~p.", [Classification, AccountId]),
+    kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, Key, Connection, CacheProps).
+
+-spec cache_dataconnection(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary(), map()) -> 'error' | 'ok'.
+cache_dataconnection(Classification, DocType, AccountId, Connection) ->
+    CacheProps = [{'expires', 'infinity'}],
+    Key = {'connection', Classification, DocType, AccountId},
+    lager:debug("caching ~p => ~p type connection for account ~p.", [Classification, DocType, AccountId]),
+    kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, Key, Connection, CacheProps).
 
 -type storage_key() :: kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:ne_binary()}.
 

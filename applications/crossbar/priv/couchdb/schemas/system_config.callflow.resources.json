@@ -3,6 +3,11 @@
     "_id": "system_config.callflow.resources",
     "description": "Schema for callflow.resources system_config",
     "properties": {
+        "default_asserted_identity": {
+            "default": false,
+            "description": "callflow resources default_asserted_identity",
+            "type": "boolean"
+        },
         "default_emit_account_id": {
             "default": false,
             "description": "callflow.resources default emit account id",

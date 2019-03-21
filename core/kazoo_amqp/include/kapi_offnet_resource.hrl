@@ -53,7 +53,9 @@
 -define(KEY_TO_DID, <<"To-DID">>).
 -define(KEY_DENIED_CALL_RESTRICTIONS, <<"Denied-Call-Restrictions">>).
 -define(KEY_OUTBOUND_ACTIONS, <<"Outbound-Actions">>).
-
+-define(KEY_PRIVACY_METHOD, <<"Privacy-Method">>).
+-define(KEY_PRIVACY_HIDE_NAME, <<"Privacy-Hide-Name">>).
+-define(KEY_PRIVACY_HIDE_NUMBER, <<"Privacy-Hide-Number">>).
 -define(RESOURCE_TYPE_AUDIO, <<"audio">>).
 -define(RESOURCE_TYPE_ORIGINATE, <<"originate">>).
 -define(RESOURCE_TYPE_SMS, <<"sms">>).
