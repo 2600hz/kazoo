@@ -506,32 +506,35 @@ maybe_add_feature_key(Key, FeatureKey, JObj) ->
 settings_time(Device) ->
     kz_json:from_list([{<<"timezone">>, kzd_devices:timezone(Device)}]).
 
--spec settings_codecs(kzd_devices:doc()) -> kz_json:object().
-settings_codecs(Device) ->
-    case props:filter_empty([{<<"audio">>, settings_audio(Device)}]) of
+-spec settings_codecs(kz_json:object()) -> kz_json:object().
+settings_codecs(JObj) ->
+    case props:filter_empty(
+           [{<<"audio">>, format_codecs(JObj, <<"audio">>)}
+           ,{<<"video">>, format_codecs(JObj, <<"video">>)}
+           ])
+    of
         [] -> kz_json:new();
         Props ->
             kz_json:from_list([{<<"0">>, kz_json:from_list(Props)}])
     end.
 
--spec settings_audio(kzd_devices:doc()) -> kz_json:object().
-settings_audio(Device) ->
-    Media = kzd_devices:media(Device, kz_json:new()),
-    Codecs = kz_json:get_list_value([<<"audio">>, <<"codecs">>], Media, []),
+-spec format_codecs(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
+format_codecs(JObj, Type) ->
+    Codecs = kz_json:get_value([<<"media">>, Type, <<"codecs">>], JObj, []),
     Keys = [<<"primary_codec">>
            ,<<"secondary_codec">>
            ,<<"tertiary_codec">>
            ,<<"quaternary_codec">>
            ],
-    settings_audio(Codecs, Keys, kz_json:new()).
+    format_codecs(Codecs, Keys, kz_json:new()).
 
--spec settings_audio(kz_term:ne_binaries(), kz_term:ne_binaries(), kz_json:object()) -> kz_json:object().
-settings_audio(_Codecs, [], JObj) -> JObj;
-settings_audio([], [Key|Keys], JObj) ->
+-spec format_codecs(kz_term:ne_binaries(), kz_term:ne_binaries(), kz_json:object()) -> kz_json:object().
+format_codecs(_Codecs, [], JObj) -> JObj;
+format_codecs([], [Key|Keys], JObj) ->
     %% kz_json:set_value does not let you set null values so this does that...
-    settings_audio([], Keys, kz_json:from_list([{Key, 'null'} | kz_json:to_proplist(JObj)]));
-settings_audio([Codec|Codecs], [Key|Keys], JObj) ->
-    settings_audio(Codecs, Keys, kz_json:set_value(Key, Codec, JObj)).
+    format_codecs([], Keys, kz_json:from_list([{Key, 'null'} | kz_json:to_proplist(JObj)]));
+format_codecs([Codec|Codecs], [Key|Keys], JObj) ->
+    format_codecs(Codecs, Keys, kz_json:set_value(Key, Codec, JObj)).
 
 %%------------------------------------------------------------------------------
 %% @doc Send provisioning request
