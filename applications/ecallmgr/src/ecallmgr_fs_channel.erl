@@ -217,6 +217,10 @@ to_props(Channel) ->
       ,{<<"authorizing_id">>, Channel#channel.authorizing_id}
       ,{<<"authorizing_type">>, Channel#channel.authorizing_type}
       ,{<<"bridge_id">>, Channel#channel.bridge_id}
+      ,{<<"callee_id_name">>, Channel#channel.callee_name}
+      ,{<<"callee_id_number">>, Channel#channel.callee_number}
+      ,{<<"caller_id_name">>, Channel#channel.caller_name}
+      ,{<<"caller_id_number">>, Channel#channel.caller_number}
       ,{<<"callflow_id">>, Channel#channel.callflow_id}
       ,{<<"channel_authorized">>, Channel#channel.is_authorized}
       ,{<<"context">>, Channel#channel.context}
@@ -266,6 +270,10 @@ to_api_props(#channel{}=Channel) ->
       ,{<<"Bridge-ID">>, Channel#channel.bridge_id}
       ,{<<"Call-Direction">>, Channel#channel.direction}
       ,{<<"Call-ID">>, Channel#channel.uuid}
+      ,{<<"Callee-ID-Name">>, Channel#channel.callee_name}
+      ,{<<"Callee-ID-Number">>, Channel#channel.callee_number}
+      ,{<<"Caller-ID-Name">>, Channel#channel.caller_name}
+      ,{<<"Caller-ID-Number">>, Channel#channel.caller_number}
       ,{<<"CallFlow-ID">>, Channel#channel.callflow_id}
       ,{<<"Channel-Authorized">>, Channel#channel.is_authorized}
       ,{<<"Context">>, Channel#channel.context}
@@ -624,7 +632,7 @@ process_specific_event(<<"CHANNEL_BRIDGE">>, UUID, Props, _) ->
     OtherLeg = get_other_leg(UUID, Props),
     ecallmgr_fs_channels:updates(UUID, props:filter_undefined(
                                          [{#channel.other_leg, OtherLeg}
-                                          | update_callee(UUID, Props)
+                                          | update_callee_and_caller(UUID, Props)
                                          ]
                                         )
                                 ),
@@ -703,6 +711,10 @@ props_to_record(Props, Node) ->
             ,to_tag=props:get_value(<<"variable_sip_to_tag">>, Props)
             ,from_tag=props:get_value(<<"variable_sip_from_tag">>, Props)
             ,interaction_id=props:get_value(<<?CALL_INTERACTION_ID>>, CCVs)
+            ,callee_number=props:get_value(<<"Callee-ID-Number">>, Props)
+            ,callee_name=props:get_value(<<"Callee-ID-Name">>, Props)
+            ,caller_number=props:get_value(<<"Caller-ID-Number">>, Props)
+            ,caller_name=props:get_value(<<"Caller-ID-Name">>, Props)
             ,is_loopback=kzd_freeswitch:is_loopback(Props)
             ,loopback_leg_name=kzd_freeswitch:loopback_leg_name(Props)
             ,loopback_other_leg=kzd_freeswitch:loopback_other_leg(Props)
@@ -805,26 +817,32 @@ props_to_update(Props) ->
       ,{#channel.resource_id, props:get_value(<<"Resource-ID">>, CCVs)}
       ,{#channel.to_tag, props:get_value(<<"variable_sip_to_tag">>, Props)}
       ,{#channel.username, props:get_value(<<"Username">>, CCVs, get_username(Props))}
-       | update_callee(UUID, Props)
+       | update_callee_and_caller(UUID, Props)
       ]).
 
--spec update_callee(binary(), channel_updates()) -> channel_updates().
-update_callee(UUID, Props) ->
+-spec update_callee_and_caller(binary(), channel_updates()) -> channel_updates().
+update_callee_and_caller(UUID, Props) ->
     case fetch(UUID, 'record') of
-        {'ok', #channel{callee_number = Num2
-                       ,callee_name = Name2
+        {'ok', #channel{callee_number = CalleeNum2
+                       ,callee_name = CalleeName2
+                       ,caller_number = CallerNum2
+                       ,caller_name = CallerName2
                        }} ->
-            Num1 = kzd_freeswitch:callee_id_number(Props),
-            Name1 = kzd_freeswitch:callee_id_name(Props),
-            [{#channel.callee_number, maybe_update_callee_field(Num1, Num2)}
-            ,{#channel.callee_name, maybe_update_callee_field(Name1, Name2)}
+            CalleeNum1 = kzd_freeswitch:callee_id_number(Props),
+            CalleeName1 = kzd_freeswitch:callee_id_name(Props),
+            CallerNum1 = kzd_freeswitch:caller_id_number(Props),
+            CallerName1 = kzd_freeswitch:caller_id_name(Props),
+            [{#channel.callee_number, update_if_not_existing(CalleeNum1, CalleeNum2)}
+            ,{#channel.callee_name, update_if_not_existing(CalleeName1, CalleeName2)}
+            ,{#channel.caller_number, update_if_not_existing(CallerNum1, CallerNum2)}
+            ,{#channel.caller_name, update_if_not_existing(CallerName1, CallerName2)}
             ];
         _ -> []
     end.
 
--spec maybe_update_callee_field(kz_term:api_binary(), kz_term:api_binary()) -> kz_term:api_binary().
-maybe_update_callee_field(Value, 'undefined') -> Value;
-maybe_update_callee_field(_Value, Existing) -> Existing.
+-spec update_if_not_existing(kz_term:api_binary(), kz_term:api_binary()) -> kz_term:api_binary().
+update_if_not_existing(Value, 'undefined') -> Value;
+update_if_not_existing(_Value, Existing) -> Existing.
 
 -spec get_other_leg(kz_term:api_binary(), kz_term:proplist()) -> kz_term:api_binary().
 get_other_leg('undefined', _Props) -> 'undefined';
