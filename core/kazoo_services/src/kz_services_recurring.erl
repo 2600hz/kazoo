@@ -147,9 +147,13 @@ is_last_month_collected(Account) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_last_month_collected(kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> boolean().
+-spec is_last_month_collected(kz_term:ne_binary(), kz_term:ne_binary() | kz_time:year(), kz_term:ne_binary() | kz_time:month()) ->
+                                     boolean().
 is_last_month_collected(Account, Year, Month) ->
-    Timestamp = calendar:datetime_to_gregorian_seconds({{Year, Month, 1}, {0, 0, 0}}),
+    Timestamp =
+        calendar:datetime_to_gregorian_seconds({{kz_term:to_integer(Year), kz_term:to_integer(Month), 1}
+                                               ,{0, 0, 0}
+                                               }),
     {PrevYear, PrevMonth, _} = get_previous_month(Timestamp),
     is_collected(Account, PrevYear, PrevMonth).
 
@@ -157,10 +161,15 @@ is_last_month_collected(Account, Year, Month) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_collected(kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> boolean().
+-spec is_collected(kz_term:ne_binary(), kz_term:ne_binary() | kz_time:year(), kz_term:ne_binary() | kz_time:month()) ->
+                          boolean().
 is_collected(Account, Year, Month) ->
     AccountId = kz_util:format_account_id(Account),
-    is_proccessed(AccountId, ?COLLECT_RECURRING_MARKER_ID, Year, Month).
+    is_proccessed(AccountId
+                 ,?COLLECT_RECURRING_MARKER_ID
+                 ,kz_term:to_integer(Year)
+                 ,kz_term:to_integer(Month)
+                 ).
 
 %%%=============================================================================
 %%% Collect Internal functions
@@ -319,7 +328,7 @@ maybe_add_payment_token(Services, Invoice) ->
 -spec get_previous_month(kz_time:gregorian_seconds()) -> kz_time:date().
 get_previous_month(DueTimestamp) ->
     {{DueYear, DueMonth, _}, _} = calendar:gregorian_seconds_to_datetime(DueTimestamp),
-    calendar:datetime_to_gregorian_seconds({kz_date:normalize({DueYear, DueMonth - 1,1}), {0, 0, 1}}).
+    kz_date:normalize({DueYear, DueMonth - 1,1}).
 
 %%------------------------------------------------------------------------------
 %% @doc
