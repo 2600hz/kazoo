@@ -109,7 +109,18 @@ do_db_view_cleanup(#{server := {App, Conn}}, DbName) ->
     App:db_view_cleanup(Conn, DbName).
 
 -spec db_info(map()) -> {'ok', kz_term:ne_binaries()} |data_error().
-db_info(#{server := {App, Conn}}) -> App:db_info(Conn).
+db_info(#{server := {App, Conn}}=Map) ->
+    db_info_all(App:db_info(Conn), maps:get('others', Map, [])).
+
+-spec db_info_all({atom(), kz_term:ne_binaries()}, [{atom(), map()}]) -> {'ok', kz_term:ne_binaries()} |data_error().
+db_info_all(DBs, []) -> DBs;
+db_info_all({'ok', DBs}, Others) ->
+    lists:foldl(fun db_info_all_fold/2, DBs, Others).
+
+-spec db_info_all_fold({atom(), map()}, kz_term:ne_binaries()) -> {'ok', kz_term:ne_binaries()} |data_error().
+db_info_all_fold({_Tag, Server}, DBs) ->
+    {_, DBList} = db_info(Server),
+    {'ok', lists:usort(DBs ++ DBList)}.
 
 -spec db_info(map(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | data_error().
 db_info(#{server := {App, Conn}}, DbName) -> App:db_info(Conn, DbName).
@@ -170,7 +181,7 @@ db_list_all({'ok', DBs}, Options, Others) ->
 
 db_list_all_fold({_Tag, Server}, {Options, DBs}) ->
     {'ok', DBList} = db_list(Server, Options),
-    {Options, lists:usort(DBs ++ DBList)}.
+    {Options, {'ok', lists:usort(DBs ++ DBList)}}.
 
 -spec db_view_update(map(), kz_term:ne_binary(), views_listing(), boolean()) -> boolean().
 db_view_update(#{}=Map, DbName, Views, Remove) ->

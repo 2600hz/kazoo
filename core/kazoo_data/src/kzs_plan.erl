@@ -115,8 +115,14 @@ get_dataplan(DBName, DocType, DocOwner) ->
         Else -> system_dataplan(DBName, Else)
     end.
 
+-spec system_dataplan() -> map().
 system_dataplan() ->
-    system_dataplan(?KZ_CONFIG_DB, 'system').
+    #{<<"connections_map">> := Connections} = ?CACHED_SYSTEM_DATAPLAN,
+    SysTag = 'local',
+    #{tag => SysTag
+     ,server => maps:get(SysTag, Connections, #{})
+     ,others => [{T, #{server => S}} || {T, S} <- maps:to_list(Connections), T =/= SysTag]
+     }.
 
 system_dataplan(DBName, _Classification)
   when DBName == ?KZ_CONFIG_DB;
@@ -169,11 +175,13 @@ account_modb_dataplan(AccountMODB, DocType, StorageId) ->
     Plan = ?CACHED_STORAGE_DATAPLAN(AccountId, StorageId),
     dataplan_type_match(<<"modb">>, DocType, Plan, AccountId).
 
--spec dataplan_connections(map(),map()) -> [{atom(), server()}].
-dataplan_connections(Map, Index) ->
-    [maybe_start_connection(C, maps:get(C, Index, #{}))
-     || {_, #{<<"connection">> := C}} <- maps:to_list(Map)
-    ].
+
+-spec dataplan_connections(map()) -> [{atom(), server()}].
+dataplan_connections(#{<<"plan">> := _, <<"connections">> := Connections}) ->
+    dataplan_connections(Connections);
+dataplan_connections(Connections) ->
+    [maybe_start_connection(Tag, maps:get(Tag, Connections, #{}))
+     || {Tag, _} <- maps:to_list(Connections)].
 
 -spec dataplan_match(kz_term:ne_binary(), map(), kz_term:api_binary()) -> map().
 dataplan_match(Classification, Plan, AccountId) ->
@@ -182,16 +190,16 @@ dataplan_match(Classification, Plan, AccountId) ->
                                          ,<<"types">> := Types
                                          }
                      }
-     ,<<"connections">> := GCon
+     ,<<"connections">> := _GCon
+     ,<<"connections_map">> := GConMap
      ,<<"attachments">> := GAtt
      } = Plan,
 
-    {Tag, Server} = maybe_start_connection(CCon, maps:get(CCon, GCon, #{})),
-    Others = [T || T <- lists:usort(fun({T1,_}, {T2, _}) -> T1 =< T2 end
-                                   ,dataplan_connections(Types, GCon)
-                                   ),
-                   T =/= Tag
-             ],
+    Tag = kz_term:to_atom(CCon),
+    Server = maps:get(Tag, GConMap, #{}),
+
+    Others = [{kz_term:to_atom(T), #{server => maps:get(kz_term:to_atom(T), GConMap, #{})}}
+              || {_, #{<<"connection">> := T}} <- lists:usort(maps:to_list(Types)), T =/= CCon],
 
     case maps:get(<<"handler">>, CAtt, 'undefined') of
         'undefined' ->
@@ -233,14 +241,15 @@ dataplan_type_match(Classification, DocType, Plan, AccountId) ->
                                          ,<<"attachments">> := CAtt
                                          }
                      }
-     ,<<"connections">> := GCon
+     ,<<"connections">> := _GCon
+     ,<<"connections_map">> := GConMap
      ,<<"attachments">> := GAtt
      } = Plan,
 
     TypeMap = maps:get(DocType, Types, #{}),
 
-    Connection = maps:get(<<"connection">>, TypeMap, CCon),
-    {Tag, Server} = maybe_start_connection(Connection, maps:get(Connection, GCon, #{})),
+    Tag = kz_term:to_atom(maps:get(<<"connection">>, TypeMap, CCon)),
+    Server = maps:get(Tag, GConMap, #{}),
 
     TypeAttMap = maps:merge(CAtt, maps:get(<<"attachments">>, TypeMap, #{})),
     case maps:get(<<"handler">>, TypeAttMap, 'undefined') of
@@ -307,24 +316,30 @@ load_dataplan(Key, Fun) ->
 -spec cache_dataplan(term(), kz_json:object()) -> map().
 cache_dataplan(?SYSTEM_DATAPLAN=Key, PlanJObj) ->
     Plan = kz_json:to_map(PlanJObj),
+    Connections = dataplan_connections(Plan),
+    Plan2 = maps:merge(Plan, #{<<"connections_map">> => maps:from_list(Connections)}),
     CacheProps = [{'expires','infinity'}],
-    kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}, Plan, CacheProps),
+    kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}, Plan2, CacheProps),
     Plan;
 cache_dataplan({_AccountId, StorageId} = Key, PlanJObj) ->
     Plan = kz_json:to_map(PlanJObj),
+    Connections = dataplan_connections(Plan),
+    Plan2 = maps:merge(Plan, #{<<"connections_map">> => maps:from_list(Connections)}),
     CacheProps = [{'origin', [{'db', ?KZ_DATA_DB, StorageId}]}
                  ,{'expires','infinity'}
                  ,{'callback', fun cache_callback/3}
                  ],
-    kz_cache:store_local_async(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}, Plan, CacheProps),
+    kz_cache:store_local_async(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}, Plan2, CacheProps),
     Plan;
 cache_dataplan(Key, PlanJObj) ->
     Plan = kz_json:to_map(PlanJObj),
+    Connections = dataplan_connections(Plan),
+    Plan2 = maps:merge(Plan, #{<<"connections_map">> => maps:from_list(Connections)}),
     CacheProps = [{'origin', [{'db', ?KZ_DATA_DB, Key}]}
                  ,{'expires','infinity'}
                  ,{'callback', fun cache_callback/3}
                  ],
-    kz_cache:store_local_async(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}, Plan, CacheProps),
+    kz_cache:store_local_async(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}, Plan2, CacheProps),
     Plan.
 
 -spec cache_callback({'plan', kz_term:ne_binary()} | 'system', map(), atom()) -> 'ok'.

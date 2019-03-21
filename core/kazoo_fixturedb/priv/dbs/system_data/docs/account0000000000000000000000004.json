@@ -1,0 +1,24 @@
+{
+    "attachments": {},
+    "connections": {
+        "account_4_fax": {
+            "driver": "kazoo_fixturedb",
+            "url": "../../core/kazoo_fixturedb/priv/dbs"
+        },
+        "account_4_modb": {
+            "driver": "kazoo_fixturedb",
+            "url": "../../core/kazoo_fixturedb/priv/dbs"
+        }
+    },
+    "plan": {
+        "modb": {
+            "connection": "account_4_modb",
+            "types": {
+                "fax": {
+                    "connection": "account_4_fax"
+                }
+            }
+        }
+    },
+    "pvt_type": "storage"
+}
