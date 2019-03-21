@@ -27,7 +27,7 @@ handle_req(JObj, _Props) ->
                 ),
     RespQ = kz_json:get_ne_binary_value(<<"Server-ID">>, JObj),
 
-    PublishFun = fun(P) -> kapi_bookkeepers:publish_standing_resp(RespQ, P) end,
+    PublishFun = fun(P) -> kapi_bookkeepers:publish_collect_recurring_resp(RespQ, P) end,
 
     case kz_json:get_ne_binary_value(<<"Bookkeeper-Type">>, JObj) =:= ?APP_NAME of
         'false' ->
