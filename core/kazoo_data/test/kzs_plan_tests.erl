@@ -3,7 +3,7 @@
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
--module (kzs_plan_tests).
+-module(kzs_plan_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kazoo_fixturedb/include/kz_fixturedb.hrl").
@@ -101,7 +101,7 @@ modb_plan_split() ->
 match_modb_plan_type_split() ->
     ?assertMatch(#{classification := ?MODB, tag := 'account_4_modb', doc_type := ?VM_TYPE
                   ,server := {'kazoo_fixturedb', _Conn}}
-               ,kzs_plan:get_dataplan(?ACCOUNT_MODB_SPLIT, ?VM_TYPE)
+                ,kzs_plan:get_dataplan(?ACCOUNT_MODB_SPLIT, ?VM_TYPE)
                 ),
     ?assertMatch(#{classification := ?MODB, tag := 'account_4_modb', doc_type := ?REC_TYPE
                   ,server := {'kazoo_fixturedb', _Conn}}
@@ -110,4 +110,3 @@ match_modb_plan_type_split() ->
     ?assertMatch(#{classification := ?MODB, tag := 'account_4_fax', doc_type := ?FAX_TYPE
                   ,server := {'kazoo_fixturedb', _Conn}}
                 ,kzs_plan:get_dataplan(?ACCOUNT_MODB_SPLIT, ?FAX_TYPE)).
-
