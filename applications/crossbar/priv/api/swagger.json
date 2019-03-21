@@ -30131,6 +30131,10 @@
                     "default": false,
                     "description": "Whether or not normalize voicemail audio file",
                     "type": "boolean"
+                },
+                "transcribe_format": {
+                    "description": "crossbar voicemail transcribe_format",
+                    "type": "string"
                 }
             },
             "type": "object"
