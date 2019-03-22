@@ -420,11 +420,11 @@ fetch_storage_dataplan_merged(AccountId, StoragePlan) ->
                   end,
     kz_json:merge_recursive(AccountPlan, StoragePlan).
 
--spec fetch_dataplan(storage_key()) -> kz_json:api_object().
+-spec fetch_dataplan(storage_key()) -> kz_json:object().
 fetch_dataplan(Id) ->
     case kz_datamgr:open_cache_doc(?KZ_DATA_DB, Id) of
         {'ok', JObj} -> JObj;
-        {'error', _ERR} -> 'undefined'
+        {'error', _ERR} -> kz_json:new()
     end.
 
 -spec fetch_dataplan_from_file(kz_term:ne_binary()) -> kz_json:object().
