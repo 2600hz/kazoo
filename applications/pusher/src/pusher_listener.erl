@@ -125,7 +125,7 @@ maybe_clear_push_token(AccountId, AuthorizingId, Doc) ->
 -spec maybe_update_push_token(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_json:object(), kz_term:proplist(), kz_json:api_object()) -> 'ok'.
 maybe_update_push_token(_, _, _, _, _, 'undefined') -> 'ok';
 maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params, Doc) ->
-    Push = kz_json:get_value(<<"push">>, Doc),
+    Push = kzd_devices:push(Doc),
     case build_push(UA, JObj, Params, kz_json:new()) of
         Push -> lager:debug("push exists: ~p", [Push]);
         NewPush ->

@@ -5183,6 +5183,28 @@
                     },
                     "type": "object"
                 },
+                "push": {
+                    "description": "current push notification properties",
+                    "properties": {
+                        "Token-App": {
+                            "description": "push application identifier, to match one in global pusher configuration",
+                            "type": "string"
+                        },
+                        "Token-ID": {
+                            "description": "push token used by push service to deliver the notification",
+                            "type": "string"
+                        },
+                        "Token-Proxy": {
+                            "description": "SIP proxy path of the device when push registered",
+                            "type": "string"
+                        },
+                        "Token-Type": {
+                            "description": "push service that should handle pushes to this device",
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
                 "register_overwrite_notify": {
                     "default": false,
                     "description": "When true enables overwrite notifications",

@@ -51,6 +51,11 @@
 -export([provision_feature_keys/1, provision_feature_keys/2, set_provision_feature_keys/2]).
 -export([provision_feature_key/2, provision_feature_key/3, set_provision_feature_key/3]).
 -export([provision_id/1, provision_id/2, set_provision_id/2]).
+-export([push/1, push/2, set_push/2, delete_push/1]).
+-export([push_token_app/1, push_token_app/2, set_push_token_app/2]).
+-export([push_token_id/1, push_token_id/2, set_push_token_id/2]).
+-export([push_token_proxy/1, push_token_proxy/2, set_push_token_proxy/2]).
+-export([push_token_type/1, push_token_type/2, set_push_token_type/2]).
 -export([register_overwrite_notify/1, register_overwrite_notify/2, set_register_overwrite_notify/2]).
 -export([ringtones/1, ringtones/2, set_ringtones/2]).
 -export([ringtones_external/1, ringtones_external/2, set_ringtones_external/2]).
@@ -622,6 +627,70 @@ provision_id(Doc, Default) ->
 -spec set_provision_id(doc(), binary()) -> doc().
 set_provision_id(Doc, ProvisionId) ->
     kz_json:set_value([<<"provision">>, <<"id">>], ProvisionId, Doc).
+
+-spec push(doc()) -> kz_term:api_object().
+push(Doc) ->
+    push(Doc, 'undefined').
+
+-spec push(doc(), Default) -> kz_json:object() | Default.
+push(Doc, Default) ->
+    kz_json:get_json_value([<<"push">>], Doc, Default).
+
+-spec set_push(doc(), kz_json:object()) -> doc().
+set_push(Doc, Push) ->
+    kz_json:set_value([<<"push">>], Push, Doc).
+
+-spec delete_push(doc()) -> doc().
+delete_push(Doc) ->
+    kz_json:delete_key(<<"push">>, Doc).
+
+-spec push_token_app(doc()) -> kz_term:api_binary().
+push_token_app(Doc) ->
+    push_token_app(Doc, 'undefined').
+
+-spec push_token_app(doc(), Default) -> binary() | Default.
+push_token_app(Doc, Default) ->
+    kz_json:get_binary_value([<<"push">>, <<"Token-App">>], Doc, Default).
+
+-spec set_push_token_app(doc(), binary()) -> doc().
+set_push_token_app(Doc, PushTokenApp) ->
+    kz_json:set_value([<<"push">>, <<"Token-App">>], PushTokenApp, Doc).
+
+-spec push_token_id(doc()) -> kz_term:api_binary().
+push_token_id(Doc) ->
+    push_token_id(Doc, 'undefined').
+
+-spec push_token_id(doc(), Default) -> binary() | Default.
+push_token_id(Doc, Default) ->
+    kz_json:get_binary_value([<<"push">>, <<"Token-ID">>], Doc, Default).
+
+-spec set_push_token_id(doc(), binary()) -> doc().
+set_push_token_id(Doc, PushTokenId) ->
+    kz_json:set_value([<<"push">>, <<"Token-ID">>], PushTokenId, Doc).
+
+-spec push_token_proxy(doc()) -> kz_term:api_binary().
+push_token_proxy(Doc) ->
+    push_token_proxy(Doc, 'undefined').
+
+-spec push_token_proxy(doc(), Default) -> binary() | Default.
+push_token_proxy(Doc, Default) ->
+    kz_json:get_binary_value([<<"push">>, <<"Token-Proxy">>], Doc, Default).
+
+-spec set_push_token_proxy(doc(), binary()) -> doc().
+set_push_token_proxy(Doc, PushTokenProxy) ->
+    kz_json:set_value([<<"push">>, <<"Token-Proxy">>], PushTokenProxy, Doc).
+
+-spec push_token_type(doc()) -> kz_term:api_binary().
+push_token_type(Doc) ->
+    push_token_type(Doc, 'undefined').
+
+-spec push_token_type(doc(), Default) -> binary() | Default.
+push_token_type(Doc, Default) ->
+    kz_json:get_binary_value([<<"push">>, <<"Token-Type">>], Doc, Default).
+
+-spec set_push_token_type(doc(), binary()) -> doc().
+set_push_token_type(Doc, PushTokenType) ->
+    kz_json:set_value([<<"push">>, <<"Token-Type">>], PushTokenType, Doc).
 
 -spec register_overwrite_notify(doc()) -> boolean().
 register_overwrite_notify(Doc) ->

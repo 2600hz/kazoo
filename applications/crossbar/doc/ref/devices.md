@@ -55,6 +55,11 @@ Key | Description | Type | Default | Required | Support Level
 `provision.feature_keys` |   | `object()` |   | `false` |  
 `provision.id` | Provisioner Template ID | `string()` |   | `false` |  
 `provision` | Provision data | `object()` |   | `false` |  
+`push.Token-App` | push application identifier, to match one in global pusher configuration | `string()` |   | `false` |  
+`push.Token-ID` | push token used by push service to deliver the notification | `string()` |   | `false` |  
+`push.Token-Proxy` | SIP proxy path of the device when push registered | `string()` |   | `false` |  
+`push.Token-Type` | push service that should handle pushes to this device | `string()` |   | `false` |  
+`push` | current push notification properties | `object()` |   | `false` |  
 `register_overwrite_notify` | When true enables overwrite notifications | `boolean()` | `false` | `false` |  
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false` |  
 `ringtones.internal` | The alert info SIP header added when the call is from external sources | `string(0..256)` |   | `false` |  
