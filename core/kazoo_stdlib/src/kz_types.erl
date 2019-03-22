@@ -31,6 +31,9 @@
 -type sup_startchild_ret() :: {'ok', sup_child_id()} |
                               {'ok', sup_child_id(), any()} |
                               {'error', sup_startchild_err()}.
+-type sup_deletechild_err() :: 'running' | 'restarting' | 'not_found' |
+                               'simple_one_for_one'.
+-type sup_deletechild_ret() :: 'ok' | {'error', sup_deletechild_err()}.
 
 %% Recreate the non-exported types defined in the Erlang gen_server source
 -type startlink_err() :: {'already_started', pid()} |
@@ -135,6 +138,8 @@
              ,sup_child_id/0
              ,sup_startchild_err/0
              ,sup_startchild_ret/0
+             ,sup_deletechild_err/0
+             ,sup_deletechild_ret/0
              ,startlink_err/0
              ,startlink_ret/0
              ,startapp_ret/0

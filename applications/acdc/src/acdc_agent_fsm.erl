@@ -12,7 +12,7 @@
 -behaviour(gen_statem).
 
 %% API
--export([start_link/2, start_link/3, start_link/4, start_link/5
+-export([start_link/3, start_link/4, start_link/5
         ,call_event/4
         ,member_connect_req/2
         ,member_connect_win/2
@@ -331,16 +331,6 @@ status(ServerRef) -> gen_statem:call(ServerRef, 'status').
 %% function does not return until Module:init/1 has returned.
 %% @end
 %%------------------------------------------------------------------------------
-
--spec start_link(pid(), kz_json:object()) -> kz_types:startlink_ret().
-start_link(Supervisor, AgentJObj) when is_pid(Supervisor) ->
-    pvt_start_link(kz_doc:account_id(AgentJObj)
-                  ,kz_doc:id(AgentJObj)
-                  ,Supervisor
-                  ,[]
-                  ,'false'
-                  ).
-
 -spec start_link(pid(), kapps_call:call(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(Supervisor, ThiefCall, _QueueId) ->
     pvt_start_link(kapps_call:account_id(ThiefCall)
@@ -350,22 +340,14 @@ start_link(Supervisor, ThiefCall, _QueueId) ->
                   ,'true'
                   ).
 
--spec start_link(kz_term:ne_binary(), kz_term:ne_binary(), pid(), kz_term:proplist()) -> kz_types:startlink_ret().
-start_link(AccountId, AgentId, Supervisor, Props) ->
-    pvt_start_link(AccountId, AgentId, Supervisor, Props, 'false').
+-spec start_link(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_types:startlink_ret().
+start_link(Supervisor, AccountId, AgentId, AgentJObj) ->
+    start_link(Supervisor, AccountId, AgentId, AgentJObj, []).
 
--spec start_link(pid(), any(), kz_term:ne_binary(), kz_term:ne_binary(), any()) -> kz_types:startlink_ret().
-start_link(Supervisor, _AgentJObj, AccountId, AgentId, _Queues) ->
+-spec start_link(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries()) -> kz_types:startlink_ret().
+start_link(Supervisor, AccountId, AgentId, _AgentJObj, _Queues) ->
     pvt_start_link(AccountId, AgentId, Supervisor, [], 'false').
 
-pvt_start_link('undefined', _AgentId, Supervisor, _, _) ->
-    lager:debug("agent ~s trying to start with no account id", [_AgentId]),
-    _ = kz_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
-    'ignore';
-pvt_start_link(_AccountId, 'undefined', Supervisor, _, _) ->
-    lager:debug("undefined agent id trying to start in account ~s", [_AccountId]),
-    _ = kz_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
-    'ignore';
 pvt_start_link(AccountId, AgentId, Supervisor, Props, IsThief) ->
     gen_statem:start_link(?SERVER, [AccountId, AgentId, Supervisor, Props, IsThief], []).
 
@@ -1527,9 +1509,18 @@ handle_info(_Info, StateName, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec terminate(any(), atom(), state()) -> 'ok'.
-terminate(_Reason, _StateName, #state{agent_listener=AgentListener}) ->
-    lager:debug("acdc agent statem terminating while in ~s: ~p", [_StateName, _Reason]),
-    acdc_agent_listener:stop(AgentListener),
+terminate(Reason, _StateName, #state{account_id=AccountId
+                                    ,agent_id=AgentId
+                                    ,agent_listener=AgentListener
+                                    }) ->
+    lager:debug("acdc agent statem terminating while in ~s: ~p", [_StateName, Reason]),
+
+    case Reason of
+        OKReason when OKReason == 'normal'; OKReason == 'shutdown' ->
+            kz_util:spawn(fun acdc_agents_sup:stop_agent/2, [AccountId, AgentId]);
+        _ -> 'ok'
+    end,
+
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_RED_SOLID).
 
 %%------------------------------------------------------------------------------
