@@ -425,11 +425,11 @@ find_existing_domain(Context) ->
 
 -spec system_domains() -> kz_json:object().
 system_domains() ->
-    case kapps_config:get_json(<<"whitelabel">>, <<"domains">>) of
+    case kapps_config:get_json(?WHITELABEL_ID, <<"domains">>) of
         'undefined' ->
             lager:info("initializing system domains to default"),
             Default = kzd_domains:default(),
-            kapps_config:set_default(<<"whitelabel">>, <<"domains">>, Default),
+            kapps_config:set_default(?WHITELABEL_ID, <<"domains">>, Default),
             Default;
         Domains -> Domains
     end.
@@ -437,9 +437,7 @@ system_domains() ->
 -spec edit_domains(cb_context:context()) -> cb_context:context().
 edit_domains(Context) ->
     Domains = cb_context:req_data(Context),
-    PvtFields = crossbar_doc:update_pvt_parameters(kz_json:new()
-                                                  ,Context
-                                                  ),
+    PvtFields = crossbar_doc:update_pvt_parameters(kz_json:new(), Context),
 
     lager:debug("saving domains ~p", [Domains]),
     lager:debug("with pvt fields: ~p", [PvtFields]),
@@ -465,8 +463,7 @@ missing_schema_error(Context) ->
                                    ,Context
                                    ).
 
--spec test_account_domains(cb_context:context()) ->
-                                  cb_context:context().
+-spec test_account_domains(cb_context:context()) -> cb_context:context().
 test_account_domains(Context) ->
     Context1 = load_domains(Context),
     case cb_context:resp_status(Context1) of
@@ -598,22 +595,26 @@ find_whitelabel(Context, Domain) ->
                                      ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
                                      ),
     case cb_context:resp_status(Context1) of
-        'success' ->
-            case cb_context:doc(Context1) of
-                [JObj] ->
-                    Db = kz_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
-                    Id = kz_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
-                    cb_context:setters(Context1
-                                      ,[{fun cb_context:set_account_db/2, Db}
-                                       ,{fun cb_context:set_account_id/2, Id}
-                                       ]);
-                _Doc ->
-                    cb_context:add_system_error('bad_identifier'
-                                               ,kz_json:from_list([{<<"cause">>, Domain}])
-                                               ,Context1
-                                               )
-            end;
+        'success' -> found_whitelabel(Context1, Domain);
         _Status -> Context1
+    end.
+
+-spec found_whitelabel(cb_context:context(), kz_term:ne_binary()) ->
+                              cb_context:context().
+found_whitelabel(Context, Domain) ->
+    case cb_context:doc(Context) of
+        [JObj] ->
+            Db = kz_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
+            Id = kz_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
+            cb_context:setters(Context
+                              ,[{fun cb_context:set_account_db/2, Db}
+                               ,{fun cb_context:set_account_id/2, Id}
+                               ]);
+        _Doc ->
+            cb_context:add_system_error('bad_identifier'
+                                       ,kz_json:from_list([{<<"cause">>, Domain}])
+                                       ,Context
+                                       )
     end.
 
 %%------------------------------------------------------------------------------
@@ -671,14 +672,14 @@ whitelabel_binary_meta(Context, AttachType) ->
     case kz_doc:id(cb_context:doc(Context)) =:= ?WHITELABEL_ID
         orelse cb_context:resp_status(Context) =:= 'success'
     of
+        'false' -> 'undefined';
         'true' ->
             JObj = kz_doc:attachments(cb_context:doc(Context), kz_json:new()),
             case whitelabel_attachment_id(JObj, AttachType) of
                 'undefined' -> 'undefined';
                 AttachmentId ->
                     {AttachmentId, kz_json:get_value(AttachmentId, JObj)}
-            end;
-        'false' -> 'undefined'
+            end
     end.
 
 -spec whitelabel_attachment_id(kz_json:object(), kz_term:ne_binary()) ->
@@ -707,7 +708,6 @@ filter_attachment_type([AttachmentId|AttachmentIds], AttachType) ->
 update_response_with_attachment(Context, AttachmentId, JObj) ->
     LoadedContext = crossbar_doc:load_attachment(cb_context:doc(Context), AttachmentId, ?TYPE_CHECK_OPTION(kzd_whitelabel:type()), Context),
     WithHeaders = cb_context:add_resp_headers(LoadedContext
-
                                              ,#{<<"content-disposition">> => <<"attachment; filename=", AttachmentId/binary>>
                                                ,<<"content-type">> => kz_json:get_value([AttachmentId, <<"content_type">>], JObj)
                                                }
@@ -743,7 +743,7 @@ validate_unique_domain(Context, WhitelabelId) ->
 -spec check_whitelabel_schema(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 check_whitelabel_schema(Context, WhitelabelId) ->
     OnSuccess = fun(C) -> on_successful_validation(C, WhitelabelId) end,
-    cb_context:validate_request_data(<<"whitelabel">>, Context, OnSuccess).
+    cb_context:validate_request_data(kzd_whitelabel:schema(), Context, OnSuccess).
 
 -spec on_successful_validation(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 on_successful_validation(Context, 'undefined') ->

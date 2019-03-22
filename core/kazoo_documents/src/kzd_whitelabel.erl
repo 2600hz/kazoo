@@ -31,6 +31,7 @@
 -export([fetch/1
         ,type/0
         ,id/0
+        ,schema/0
         ]).
 
 -include("kz_documents.hrl").
@@ -55,6 +56,9 @@ type() -> ?PVT_TYPE.
 
 -spec id() -> kz_term:ne_binary().
 id() -> ?ID.
+
+-spec schema() -> kz_term:ne_binary().
+schema() -> ?SCHEMA.
 
 -spec company_name(doc()) -> kz_term:api_binary().
 company_name(Doc) ->
