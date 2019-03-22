@@ -1,0 +1,66 @@
+* Kazoo AMQP
+
+This library manages KAZOO's interaction with AMQP brokers ([[https://www.rabbitmq.com/][RabbitMQ]] is the broker of choice).
+
+** Erlang library architecture
+
+The first thing when setting up AMQP interactions is to start at least one connection. This is just a simple TCP connection, pulled from the =config.ini= file.
+
+#+begin_src plantuml :file process_tree.png :exports results
+skinparam monochrome true
+object kz_amqp_connections {
+  type = "gen_server"
+}
+object kz_amqp_connection_sup {
+  type = "supervisor"
+}
+object kz_amqp_assignments {
+  type = "gen_server"
+}
+object kz_amqp_bootstrap {
+  type = "gen_server"
+}
+
+#+end_src
+
+#+RESULTS:
+[[file:process_tree.png]]
+
+*** =kz_amqp_connections= worker
+
+This worker starts a =gen_server= to manage an ETS table of the AMQP connections started. New connections will be registered with this worker who will track the connection processes (start via the [[https://www.rabbitmq.com/erlang-client-user-guide.html][=amqp_client=]] library's =amqp_connection= module).
+
+Since the AMQP connections may or may not be ready, there are facilities for calling processes to wait until the connection is ready.
+
+*** =kz_amqp_connection_sup= supervisor
+
+Adds and removes =kz_amqp_connection= processes.
+
+*** =kz_amqp_assignments= worker
+
+This worker starts a =gen_server= to manage an ETS table of the AMQP channels assigned to KAZOO process PIDs.
+
+There are two types of =channels= KAZOO manages: =float= and =sticky=.
+
+**** Float
+
+FLoating channels are assigned to the current primary broker. When the broker goes down, the channel is moved to the secondary (tertiary, which ever is next in line) broker. When the primary broker recovers, the channel will be moved back to the primary broker.
+
+**** Sticky
+
+These channels are assigned to a specific broker and stay there.
+
+*** =kz_amqp_bootstrap= worker
+
+This worker starts a =gen_server= that loads the AMQP config (per-zone if configured) and instructs =kz_amqp_connections= to add the broker(s). This process will then block until the AMQP broker connections are established in =init/1= (effectively blocking the startup of the VM).
+
+*** = kz_amqp_connection= worker
+
+This worker starts a =gen_server= to manage an =amqp_connection= process from the =amqp_client= library.
+
+The first activity after the connection is established is to start =prechannels= which are channels created ahead of time. Since creating the channel is relatively expensive, KAZOO maintains a buffer of prechannels to aid in speeding up calling code's ability to interact with the broker. As prechannels are assigned to consumers, new prechannels are created to replace the now-assigned channels.
+
+The worker then starts a channel and assigns it as the default consumer for the connection.
+
+** Testing
+Test gen_listener + listener_federator timeout during shutdown
