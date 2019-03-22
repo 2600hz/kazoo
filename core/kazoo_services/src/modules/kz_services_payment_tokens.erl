@@ -51,14 +51,18 @@ defaults(Thing) ->
 
 -spec default(kz_services:services() | kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:api_object().
 default(Thing, Bookkeeper) ->
+    Now = kz_time:now_s(),
     Pays = kz_json:filter(fun({_TokenId, Token}) ->
                                   kz_json:is_true(<<"default">>, Token)
+                                      andalso kz_json:get_integer_value(<<"expiration">>, Token, Now) > Now
                           end
                          ,fetch(Thing, Bookkeeper)
                          ),
     case kz_json:is_empty(Pays) of
         'true' -> 'undefined';
-        'false' -> Pays
+        'false' ->
+            [TokenId|_] = kz_json:get_keys(Pays),
+            kz_json:get_ne_json_value(TokenId, Pays)
     end.
 
 %%------------------------------------------------------------------------------
