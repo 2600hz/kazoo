@@ -11,6 +11,10 @@
         "export": {
             "description": "When true the provided custom_application_vars are set on the channel and any channel bridged to it later",
             "type": "boolean"
+        },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
         }
     },
     "required": [

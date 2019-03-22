@@ -23,6 +23,7 @@ Key | Description | Type | Default | Required | Support Level
 `ringtones.external` | Ring tone for calls from external sources | `string()` |   | `false` |  
 `ringtones.internal` | Ring tone for calls from external sources | `string()` |   | `false` |  
 `ringtones` |   | `object()` |   | `false` |  
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 `strategy` | How to ring the members of the group | `string('simultaneous' | 'single' | 'weighted_random')` | `simultaneous` | `false` |  
 `timeout` | How long to ring the ring group before continuing, in seconds | `integer()` | `20` | `false` |  
 

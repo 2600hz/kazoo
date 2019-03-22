@@ -715,18 +715,12 @@ launch_cf_module(#state{call=Call
                        }=State) ->
     case cf_util:token_check(Call, Flow) of
         'true' ->
-            do_launch_cf_module(State);
-
+            do_launch_cf_module(State, find_cf_module(Flow));
         'false' ->
             lager:debug("call does not have enough tokens to proceed, stopping execution"),
             stop(self()),
             State
     end.
-
--spec do_launch_cf_module(state()) -> state().
-do_launch_cf_module(#state{flow=Flow}=State) ->
-    Module = <<"cf_", (kz_json:get_ne_binary_value(<<"module">>, Flow))/binary>>,
-    do_launch_cf_module(State, find_cf_module(Module)).
 
 -spec do_launch_cf_module(state(), atom()) -> state().
 do_launch_cf_module(#state{call=Call
@@ -760,13 +754,20 @@ do_launch_cf_module(#state{call=Call
                ,call=Call1
                }.
 
--spec find_cf_module(kz_term:ne_binary()) -> kz_term:api_atom().
-find_cf_module(ModuleBin) ->
+-spec find_cf_module(kz_json:object()) -> kz_term:api_atom().
+find_cf_module(Flow) ->
+    ModuleBin = <<"cf_", (kz_json:get_ne_binary_value(<<"module">>, Flow))/binary>>,
+    Data = kz_json:get_json_value(<<"data">>, Flow, kz_json:new()),
     CFModule = kz_term:to_atom(ModuleBin, 'true'),
-    case kz_module:is_exported(CFModule, 'handle', 2) of
+    IsExported = kz_module:is_exported(CFModule, 'handle', 2),
+    SkipModule = kz_json:is_true(<<"skip_module">>, Data, 'false'),
+    case IsExported
+        andalso (not SkipModule)
+    of
         'true' -> CFModule;
         'false' ->
-            lager:debug("failed to find callflow module ~s", [CFModule]),
+            lager:debug("skipping callflow module ~s (handle exported: ~s skip_module: ~s)"
+                       ,[CFModule, IsExported, SkipModule]),
             'undefined'
     end.
 

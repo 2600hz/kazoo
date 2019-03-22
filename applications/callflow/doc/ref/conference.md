@@ -15,6 +15,7 @@ Key | Description | Type | Default | Required | Support Level
 `moderator` | Is the caller entering the conference as a moderator | `boolean()` |   | `false` |  
 `play_entry_tone` | Should the Entry Tone be played | `boolean() | string()` |   | `false` |  
 `play_exit_tone` | Should the Exit Tone be played | `boolean() | string()` |   | `false` |  
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 `welcome_prompt.media_id` | Media to play, either Kazoo media ID or URL | `string()` |   | `false` |  
 `welcome_prompt.play` | Should the Welcome Prompt be played | `boolean()` | `true` | `false` |  
 `welcome_prompt` | Describes how the caller is greeted on entering a conference | `object()` |   | `false` |  

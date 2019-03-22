@@ -3,6 +3,10 @@
     "_id": "callflows.group_pickup_feature",
     "description": "Validator for the group_pickup_feature callflow data object",
     "properties": {
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
+        },
         "type": {
             "description": "The type of collection to pickup",
             "enum": [

@@ -14,6 +14,7 @@ Key | Description | Type | Default | Required | Support Level
 `delay` | How long to delay ringing the device, in seconds | `integer()` | `0` | `false` |  
 `dial_strategy` | Dial strategy for the device | `string('simultaneous' | 'single')` | `simultaneous` | `false` |  
 `id` | Device ID | `string()` |   | `false` |  
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 `static_invite` | Override the SIP Username | `string()` |   | `false` |  
 `suppress_clid` | Suppress sending caller ID | `boolean()` |   | `false` |  
 `timeout` | Time, in seconds, to wait for device to bridge | `integer()` | `0` | `false` |  

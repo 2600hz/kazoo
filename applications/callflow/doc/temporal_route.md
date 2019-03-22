@@ -17,6 +17,7 @@ Key | Description | Type | Default | Required | Support Level
 `rule_set` | ID of the rule set | `string()` |   | `false` |  
 `rules.[]` |   | `string()` |   | `false` |  
 `rules` | List of rule IDs to use | `array(string())` | `[]` | `false` |  
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 `timezone` | Timezone to use when processing temporal rules | `string()` |   | `false` |  
 
 
