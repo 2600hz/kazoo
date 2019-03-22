@@ -28,6 +28,7 @@ Key | Description | Type | Default | Required | Support Level
 `port.support_email` | The support email address to display to the user | `string()` |   | `false` | `supported`
 `port.terms` | The URL to use when the terms and conditions link is clicked | `string()` |   | `false` | `supported`
 `port` | Parameters related to white-labeling port requests | `object()` |   | `false` |  
+`sso_providers` |   | `["array(", "[#/definitions/sso_provider](#sso_provider)", ")"]` |   | `false` |  
 `twoway_trunks_price` | The price to show for twoway trunks, this is currently only for display purposes | `string()` |   | `false` | `beta`
 
 

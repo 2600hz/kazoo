@@ -24,6 +24,7 @@
 -export([port_resporg/1, port_resporg/2, set_port_resporg/2]).
 -export([port_support_email/1, port_support_email/2, set_port_support_email/2]).
 -export([port_terms/1, port_terms/2, set_port_terms/2]).
+-export([sso_providers/1, sso_providers/2, set_sso_providers/2]).
 -export([twoway_trunks_price/1, twoway_trunks_price/2, set_twoway_trunks_price/2]).
 
 
@@ -253,6 +254,18 @@ port_terms(Doc, Default) ->
 -spec set_port_terms(doc(), binary()) -> doc().
 set_port_terms(Doc, PortTerms) ->
     kz_json:set_value([<<"port">>, <<"terms">>], PortTerms, Doc).
+
+-spec sso_providers(doc()) -> kz_term:api_objects().
+sso_providers(Doc) ->
+    sso_providers(Doc, 'undefined').
+
+-spec sso_providers(doc(), Default) -> kz_json:objects() | Default.
+sso_providers(Doc, Default) ->
+    kz_json:get_list_value([<<"sso_providers">>], Doc, Default).
+
+-spec set_sso_providers(doc(), kz_json:objects()) -> doc().
+set_sso_providers(Doc, SsoProviders) ->
+    kz_json:set_value([<<"sso_providers">>], SsoProviders, Doc).
 
 -spec twoway_trunks_price(doc()) -> kz_term:api_binary().
 twoway_trunks_price(Doc) ->

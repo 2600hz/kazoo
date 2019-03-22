@@ -272,6 +272,7 @@ config_key_to_schema(Source, F, Document, Key, Default, #{app_schemas := Schemas
     Acc#{app_schemas => kz_json:set_value(Path, Properties, Schemas)}.
 
 category_to_document(?VAR(_)) -> 'undefined';
+category_to_document(?MOD_FUN_ARGS(M, F, [])) -> M:F();
 category_to_document(Cat) ->
     kz_ast_util:binary_match_to_binary(Cat).
 
