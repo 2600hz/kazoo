@@ -91,6 +91,7 @@ should_hide_name(JObj) ->
     Keys = [[<<"caller_id_options">>, <<"outbound_privacy">>]
            ,[<<"privacy">>, <<"hide_name">>]
            ,?KEY_PRIVACY_HIDE_NAME
+           ,?CCV(?KEY_PRIVACY_HIDE_NAME)
            ,?CALLER_PRIVACY_NAME
            ,?CCV(?CALLER_PRIVACY_NAME)
            ,<<"privacy_mode">>
@@ -118,6 +119,7 @@ should_hide_number(JObj) ->
     Keys = [[<<"caller_id_options">>, <<"outbound_privacy">>]
            ,[<<"privacy">>, <<"hide_number">>]
            ,?KEY_PRIVACY_HIDE_NUMBER
+           ,?CCV(?KEY_PRIVACY_HIDE_NAME)
            ,?CALLER_PRIVACY_NUMBER
            ,?CCV(?CALLER_PRIVACY_NUMBER)
            ,<<"privacy_mode">>
@@ -413,7 +415,6 @@ is_anonymous_rule_member(Value, [Match|Matches]) ->
         'true' -> 'true';
         'false' -> is_anonymous_rule_member(Value, Matches)
     end.
-
 
 %%------------------------------------------------------------------------------
 %% @doc Default anonymous Caller IDs from System wide config, or Account
