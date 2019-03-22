@@ -9,7 +9,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/2, start_link/3, start_link/5
+-export([start_link/3, start_link/4, start_link/5
         ,member_connect_resp/2
         ,member_connect_retry/2
         ,member_connect_accepted/1, member_connect_accepted/2
@@ -32,7 +32,6 @@
         ,add_acdc_queue/3
         ,rm_acdc_queue/2
         ,call_status_req/1, call_status_req/2
-        ,stop/1
         ,fsm_started/2
         ,add_endpoint_bindings/3, remove_endpoint_bindings/3
         ,outbound_call_id/2
@@ -169,16 +168,8 @@
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
-
--spec start_link(pid(), kz_json:object()) -> kz_types:startlink_ret().
-start_link(Supervisor, AgentJObj) ->
-    AgentId = kz_doc:id(AgentJObj),
-    AcctId = account_id(AgentJObj),
-    Queues = kz_json:get_value(<<"queues">>, AgentJObj, []),
-    start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues).
-
--spec start_link(pid(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_types:startlink_ret().
-start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues) ->
+-spec start_link(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries()) -> kz_types:startlink_ret().
+start_link(Supervisor, AcctId, AgentId, AgentJObj, Queues) ->
     lager:debug("start bindings for ~s(~s) in ready", [AcctId, AgentId]),
     gen_listener:start_link(?SERVER
                            ,[{'bindings', ?BINDINGS(AcctId, AgentId)}
@@ -200,8 +191,10 @@ start_link(Supervisor, ThiefCall, QueueId) ->
                            ,[Supervisor, ThiefCall, [QueueId]]
                            ).
 
--spec stop(pid()) -> 'ok'.
-stop(Srv) -> gen_listener:cast(Srv, {'stop_agent', self()}).
+-spec start_link(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_types:startlink_ret().
+start_link(Supervisor, AcctId, AgentId, AgentJObj) ->
+    Queues = kz_json:get_value(<<"queues">>, AgentJObj, []),
+    start_link(Supervisor, AcctId, AgentId, AgentJObj, Queues).
 
 -spec member_connect_resp(pid(), kz_json:object()) -> 'ok'.
 member_connect_resp(Srv, ReqJObj) ->
@@ -426,10 +419,6 @@ handle_cast({'refresh_config', Qs, StateName}, #state{agent_queues=Queues}=State
     _ = [gen_listener:cast(Self, {'add_acdc_queue', A, StateName}) || A <- Add],
     _ = [gen_listener:cast(Self, {'rm_acdc_queue', R}) || R <- Rm],
     {'noreply', State};
-handle_cast({'stop_agent', Req}, #state{supervisor=Supervisor}=State) ->
-    lager:debug("stop agent requested by ~p", [Req]),
-    _ = kz_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
-    {'noreply', State};
 
 handle_cast({'fsm_started', FSMPid}, State) ->
     lager:debug("fsm started: ~p", [FSMPid]),
@@ -517,8 +506,7 @@ handle_cast({'channel_hungup', CallId}, #state{call=Call
                     ,'hibernate'};
                 'true' ->
                     lager:debug("thief is done, going down"),
-                    stop(self()),
-                    {'noreply', State}
+                    {'stop', 'normal', State}
             end;
         _ ->
             case props:get_value(CallId, ACallIds) of
@@ -918,6 +906,7 @@ terminate(Reason, #state{agent_queues=Queues
                         }
          ) when Reason == 'normal'; Reason == 'shutdown' ->
     _ = [rm_queue_binding(AcctId, AgentId, QueueId) || QueueId <- Queues],
+    _ = kz_util:spawn(fun acdc_agents_sup:stop_agent/2, [AcctId, AgentId]),
     lager:debug("agent process going down: ~p", [Reason]);
 terminate(_Reason, _State) ->
     lager:debug("agent process going down: ~p", [_Reason]).
