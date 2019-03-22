@@ -25,6 +25,7 @@
 
 -record(state, {table_id :: ets:tid() | 'undefined'
                ,etssrv :: kz_term:api_pid()
+               ,last_etssrv :: kz_term:api_pid()
                ,give_away_ref :: kz_term:api_reference()
                }).
 -type state() :: #state{}.
@@ -92,18 +93,19 @@ handle_cast(_Msg, State) ->
 handle_info({'EXIT', Etssrv, 'killed'}, #state{etssrv=Etssrv}=State) ->
     lager:debug("ets mgr ~p killed", [Etssrv]),
     {'noreply', State#state{etssrv='undefined'}};
-handle_info({'EXIT', EtsMgr, 'shutdown'}, #state{etssrv=EtsMgr}=State) ->
-    lager:debug("ets mgr ~p shutdown", [EtsMgr]),
-    {'noreply', State#state{etssrv='undefined'}};
 handle_info({'EXIT', EtsMgr, _Reason}, #state{etssrv=EtsMgr}=State) ->
     lager:debug("ets mgr ~p exited: ~p", [EtsMgr, _Reason]),
     {'noreply', State#state{etssrv='undefined'}};
+handle_info({'EXIT', Etssrv, 'shutdown'}, #state{last_etssrv=Etssrv}=State) ->
+    lager:debug("ets mgr ~p gracefully shutdown, will not give away table anymore", [Etssrv]),
+    {'noreply', State#state{give_away_ref='undefined'}};
 handle_info({'ETS-TRANSFER', Tbl, Etssrv, Data}, #state{table_id=Tbl
                                                        ,etssrv=Etssrv
                                                        ,give_away_ref='undefined'
                                                        }=State) ->
     lager:debug("ets table ~p transferred back to ourselves", [Tbl]),
     {'noreply', State#state{etssrv='undefined'
+                           ,last_etssrv=Etssrv
                            ,give_away_ref=send_give_away_retry(Tbl, Data, 0)
                            }};
 handle_info({'give_away', Tbl, Data}, #state{table_id=Tbl
@@ -123,6 +125,9 @@ handle_info({'give_away', Tbl, Data}, #state{table_id=Tbl
                                    ,give_away_ref=Ref
                                    }}
     end;
+%% Ignore give_away between ets mgr graceful shutdown and this proc's shutdown
+handle_info({'give_away', _, _}, State) ->
+    {'noreply', State};
 handle_info({'EXIT', _Pid, _Reason}, State) ->
     {'noreply', State};
 handle_info(_Info, State) ->
