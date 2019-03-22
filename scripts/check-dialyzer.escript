@@ -45,9 +45,11 @@ handle(KazooPLT, Options, Args) ->
 
     Env = string:tokens(os:getenv("TO_DIALYZE", ""), " "),
 
+    Files = lists:usort(Env ++ Args),
+
     handle_paths(KazooPLT
                 ,Options
-                ,filter_for_erlang_files(lists:usort(Env ++ Args))
+                ,filter_for_erlang_files(Files)
                 ).
 
 handle_paths(_KazooPLT, _Options, []) ->
