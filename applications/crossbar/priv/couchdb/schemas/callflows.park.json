@@ -40,6 +40,10 @@
             "description": "use this presence_id",
             "type": "string"
         },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
+        },
         "slot": {
             "description": "Static slot number to use",
             "type": "string"

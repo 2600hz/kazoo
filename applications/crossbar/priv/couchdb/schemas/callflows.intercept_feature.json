@@ -15,6 +15,10 @@
             "description": "Requires the calling device to be part of the User",
             "type": "string"
         },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
+        },
         "type": {
             "description": "The scope of devices to intercept",
             "enum": [

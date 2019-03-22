@@ -14,6 +14,10 @@
         "callflow_id": {
             "description": "The callflow containing the ring group to log in and out of",
             "type": "string"
+        },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
         }
     },
     "required": [

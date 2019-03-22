@@ -7,6 +7,10 @@
             "description": "The language to default to for the rest of the call",
             "pattern": "^[A-Za-z]{2}(-[A-Za-z]{2})?$",
             "type": "string"
+        },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
         }
     },
     "required": [

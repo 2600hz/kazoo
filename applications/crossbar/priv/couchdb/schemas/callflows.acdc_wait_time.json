@@ -7,6 +7,10 @@
             "description": "Queue ID",
             "type": "string"
         },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
+        },
         "window": {
             "description": "Window over which average wait time is calculated (in seconds)",
             "type": "integer"

@@ -77,6 +77,10 @@
             "description": "Tone or file to play while waiting for the leg to be answered",
             "type": "string"
         },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
+        },
         "timeout": {
             "description": "How long, in seconds, to wait for the call to be answered",
             "type": "integer"

@@ -19,6 +19,10 @@
             "description": "How many times to retry the request if the host isn't available",
             "type": "integer"
         },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
+        },
         "uri": {
             "description": "The HTTP URI to send the request",
             "type": "string"

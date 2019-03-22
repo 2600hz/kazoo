@@ -20,6 +20,10 @@
             ],
             "type": "string"
         },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
+        },
         "time_limit": {
             "default": 3600,
             "description": "Time limit, in seconds, for the recording",
