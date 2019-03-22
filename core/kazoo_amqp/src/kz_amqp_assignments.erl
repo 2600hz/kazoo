@@ -427,7 +427,8 @@ add_consumer_to_channel(#kz_amqp_assignment{channel=Channel
                                                   ,watchers=sets:new()
                                                   }),
     lager:debug("assigned existing channel ~p on ~s to new consumer ~p"
-               ,[Channel, _Broker, Consumer]),
+               ,[Channel, _Broker, Consumer]
+               ),
 
     register_channel_handlers(Channel, Consumer),
 
