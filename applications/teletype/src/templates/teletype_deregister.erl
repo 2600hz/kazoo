@@ -91,11 +91,26 @@ handle_req(JObj, 'true') ->
 
     case teletype_util:is_notice_enabled(AccountId, JObj, id()) of
         'false' -> teletype_util:notification_disabled(DataJObj, id());
-        'true' -> process_req(DataJObj)
+        'true' -> maybe_process_req(DataJObj)
     end.
 
--spec process_req(kz_json:object()) -> template_response().
-process_req(DataJObj) ->
+-spec maybe_process_req(kz_json:object()) -> template_response().
+maybe_process_req(DataJObj) ->
+    AccountId = kz_json:get_ne_binary_value(<<"account_id">>, DataJObj),
+    AuthorizingId = kz_json:get_ne_binary_value(<<"authorizing_id">>, DataJObj),
+    case kzd_devices:fetch(AccountId, AuthorizingId) of
+        {'ok', Device} ->
+            maybe_process_req(DataJObj, kzd_devices:suppress_unregister_notifications(Device));
+        {'error', Reason} -> teletype_util:notification_failed(id(), Reason)
+    end.
+
+-spec maybe_process_req(kz_json:object(), boolean()) -> template_response().
+maybe_process_req(DataJObj, 'true') ->
+    AccountId = kz_json:get_ne_binary_value(<<"account_id">>, DataJObj),
+    AuthorizingId = kz_json:get_ne_binary_value(<<"authorizing_id">>, DataJObj),
+    lager:debug("notification ~s is disabled for device ~s in account ~s", [id(), AccountId, AuthorizingId]),
+    teletype_util:notification_ignored(id());
+maybe_process_req(DataJObj, 'false') ->
     Macros = macros(DataJObj),
 
     %% Load templates

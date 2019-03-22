@@ -18,7 +18,6 @@
                    ,authorizing_id :: kz_term:api_binary()
                    ,method :: kz_term:api_binary()
                    ,owner_id :: kz_term:api_binary()
-                   ,suppress_unregister_notifications = 'false' :: boolean()
                    ,register_overwrite_notify = 'false' :: boolean()
                    ,account_realm :: kz_term:api_binary()
                    ,account_normalized_realm :: kz_term:api_binary()

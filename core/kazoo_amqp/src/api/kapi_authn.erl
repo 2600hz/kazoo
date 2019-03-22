@@ -55,7 +55,6 @@
 -define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
                                      ,<<"Auth-Username">>, <<"Auth-Nonce">>
                                      ,<<"Access-Group">>, <<"Tenant-ID">>, <<"Expires">>
-                                     ,<<"Suppress-Unregister-Notifications">>
                                      ,<<"Register-Overwrite-Notify">>
                                      ]).
 -define(AUTHN_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}

@@ -8629,9 +8629,6 @@
                 "Register-Overwrite-Notify": {
                     "type": "string"
                 },
-                "Suppress-Unregister-Notifications": {
-                    "type": "string"
-                },
                 "Tenant-ID": {
                     "type": "string"
                 }

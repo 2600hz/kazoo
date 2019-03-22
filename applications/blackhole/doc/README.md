@@ -176,7 +176,6 @@ Here are a few complete `call.*.*` JSON events:
             "Owner-ID": "699ed7e3d583e2577ac017c575f87262",
             "Realm": "wefwefwefwef.2600hz.com",
             "Register-Overwrite-Notify": "false",
-            "Suppress-Unregister-Notifications": "false",
             "Username": "user_wpxnx7am9w"
         },
         "Custom-SIP-Headers": {
@@ -230,7 +229,6 @@ Here are a few complete `call.*.*` JSON events:
             "Owner-ID": "699ed7e3d583e2577ac017c575f87262",
             "Realm": "wefwefwefwef.2600hz.com",
             "Register-Overwrite-Notify": "false",
-            "Suppress-Unregister-Notifications": "false",
             "Username": "user_wpxnx7am9w"
         },
         "Custom-SIP-Headers": {
@@ -285,7 +283,6 @@ Here are a few complete `call.*.*` JSON events:
             "Owner-ID": "699ed7e3d583e2577ac017c575f87262",
             "Realm": "wefwefwefwef.2600hz.com",
             "Register-Overwrite-Notify": "false",
-            "Suppress-Unregister-Notifications": "false",
             "Username": "user_wpxnx7am9w"
         },
         "Custom-SIP-Headers": {

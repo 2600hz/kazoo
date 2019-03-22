@@ -51,7 +51,6 @@ send_auth_resp(#auth_user{password=Password
                          ,username=Username
                          ,method=Method
                          ,realm=Realm
-                         ,suppress_unregister_notifications=SupressUnregister
                          ,register_overwrite_notify=RegisterOverwrite
                          ,nonce=Nonce
                          }=AuthUser
@@ -64,7 +63,6 @@ send_auth_resp(#auth_user{password=Password
              ,{<<"Auth-Method">>, get_auth_method(Method)}
              ,{<<"Auth-Nonce">>, Nonce}
              ,{<<"Expires">>, kz_json:get_value(<<"Expires">>,JObj)}
-             ,{<<"Suppress-Unregister-Notifications">>, SupressUnregister}
              ,{<<"Register-Overwrite-Notify">>, RegisterOverwrite}
              ,{<<"Custom-Channel-Vars">>, create_ccvs(AuthUser)}
              ,{<<"Custom-SIP-Headers">>, create_custom_sip_headers(Method, AuthUser)}
@@ -99,7 +97,6 @@ create_ccvs(#auth_user{doc=JObj}=AuthUser) ->
       ,{<<"Account-Realm">>, AuthUser#auth_user.account_normalized_realm}
       ,{<<"Account-Name">>, AuthUser#auth_user.account_name}
       ,{<<"Presence-ID">>, maybe_get_presence_id(AuthUser)}
-      ,{<<"Suppress-Unregister-Notifications">>, AuthUser#auth_user.suppress_unregister_notifications}
       ,{<<"Register-Overwrite-Notify">>, AuthUser#auth_user.register_overwrite_notify}
       ,{<<"Pusher-Application">>, kz_json:get_value([<<"push">>, <<"Token-App">>], JObj)}
        | (create_specific_ccvs(AuthUser, AuthUser#auth_user.method)
@@ -298,7 +295,6 @@ jobj_to_auth_user(JObj, Username, Realm, Req) ->
                          ,authorizing_id = kz_doc:id(JObj)
                          ,method = kz_term:to_lower_binary(Method)
                          ,owner_id = kz_json:get_value(<<"owner_id">>, AuthDoc)
-                         ,suppress_unregister_notifications = kz_json:is_true(<<"suppress_unregister_notifications">>, AuthDoc)
                          ,register_overwrite_notify = kz_json:is_true(<<"register_overwrite_notify">>, AuthDoc)
                          ,doc=AuthDoc
                          ,request=Req

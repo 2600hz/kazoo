@@ -36,7 +36,7 @@ init() ->
 %% @doc process the AMQP requests
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
+-spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = kapi_notifications:deregister_v(JObj),
     _ = kz_util:put_callid(JObj),
@@ -47,6 +47,26 @@ handle_req(JObj, _Props) ->
     MsgId = kz_api:msg_id(JObj),
     notify_util:send_update(RespQ, MsgId, <<"pending">>),
 
+    maybe_handle_req(RespQ, MsgId, JObj).
+
+-spec maybe_handle_req(kz_term:api_binary(), kz_term:api_ne_binary(), kz_json:object()) -> 'ok'.
+maybe_handle_req(RespQ, MsgId, DataJObj) ->
+    AccountId = kz_json:get_ne_binary_value(<<"Account-ID">>, DataJObj),
+    AuthorizingId = kz_json:get_ne_binary_value(<<"Authorizing-ID">>, DataJObj),
+    case kzd_devices:fetch(AccountId, AuthorizingId) of
+        {'ok', Device} ->
+            maybe_handle_req(RespQ, MsgId, DataJObj, kzd_devices:suppress_unregister_notifications(Device));
+        {'error', Reason} ->
+            notify_util:send_update(RespQ, MsgId, <<"failed">>, kz_term:to_api_binary(Reason))
+    end.
+
+-spec maybe_handle_req(kz_term:api_binary(), kz_term:api_ne_binary(), kz_json:object(), boolean()) -> 'ok'.
+maybe_handle_req(RespQ, MsgId, DataJObj, 'true') ->
+    AccountId = kz_json:get_ne_binary_value(<<"Account-ID">>, DataJObj),
+    AuthorizingId = kz_json:get_ne_binary_value(<<"Authorizing-ID">>, DataJObj),
+    lager:debug("notification deregister is disabled for device ~s in account ~s", [AccountId, AuthorizingId]),
+    notify_util:send_update(RespQ, MsgId, <<"ignored">>);
+maybe_handle_req(RespQ, MsgId, JObj, 'false') ->
     {ok, Account} = notify_util:get_account_doc(JObj),
 
     lager:debug("creating deregisted notice"),

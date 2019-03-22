@@ -92,7 +92,7 @@
                       ,initial_registration = kz_time:now_s() :: kz_time:gregorian_seconds() | '_'
                       ,registrar_node :: kz_term:api_ne_binary() | '_'
                       ,registrar_hostname :: kz_term:api_ne_binary() | '_'
-                      ,suppress_unregister = 'true' :: boolean() | '_'
+                      ,suppress_unregister = 'false' :: boolean() | '_'
                       ,register_overwrite_notify = 'false' :: boolean() | '_'
                       ,account_db :: kz_term:api_binary() | '_'
                       ,account_id :: kz_term:api_binary() | '_'
@@ -853,14 +853,10 @@ augment_registration(Reg, JObj) ->
                             ),
     SuppressUnregister =
         kz_term:is_true(
-          case kz_json:find(<<"Suppress-Unregister-Notifications">>, [JObj, CCVs]) of
-              'undefined' ->
-                  kz_json:find(<<"Suppress-Unregister-Notify">>
-                              ,[JObj, CCVs]
-                              ,Reg#registration.suppress_unregister
-                              );
-              Else -> Else
-          end
+          kz_json:find(<<"Suppress-Unregister-Notify">>
+                      ,[JObj, CCVs]
+                      ,Reg#registration.suppress_unregister
+                      )
          ),
     OverwriteNotify =
         kz_term:is_true(
