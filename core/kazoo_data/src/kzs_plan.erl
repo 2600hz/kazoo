@@ -401,9 +401,14 @@ fetch_account_dataplan_merged(AccountJObj) ->
         'undefined' ->
             kz_json:merge_recursive(SystemJObj, AccountJObj);
         PlanId ->
-            PlanJObj = kz_json:merge_recursive(SystemJObj, fetch_dataplan(PlanId)),
-            kz_json:merge_recursive(PlanJObj, AccountJObj)
+            account_dataplan_merged(SystemJObj, fetch_dataplan(PlanId), AccountJObj)
     end.
+
+-spec account_dataplan_merged(kz_json:object(), kz_term:api_object(), kz_json:object()) -> kz_json:object().
+account_dataplan_merged(SystemJObj, 'undefined', AccountJObj) ->
+    kz_json:merge_recursive(SystemJObj, AccountJObj);
+account_dataplan_merged(SystemJObj, Dataplan, AccountJObj) ->
+    kz_json:merge_recursive([SystemJObj, Dataplan, AccountJObj]).
 
 -spec fetch_storage_dataplan(storage_key()) -> fetch_dataplan_ret().
 fetch_storage_dataplan({AccountId, StorageId}) ->
@@ -420,11 +425,11 @@ fetch_storage_dataplan_merged(AccountId, StoragePlan) ->
                   end,
     kz_json:merge_recursive(AccountPlan, StoragePlan).
 
--spec fetch_dataplan(storage_key()) -> kz_json:object().
+-spec fetch_dataplan(storage_key()) -> kz_term:api_object().
 fetch_dataplan(Id) ->
     case kz_datamgr:open_cache_doc(?KZ_DATA_DB, Id) of
         {'ok', JObj} -> JObj;
-        {'error', _ERR} -> kz_json:new()
+        {'error', _ERR} -> 'undefined'
     end.
 
 -spec fetch_dataplan_from_file(kz_term:ne_binary()) -> kz_json:object().
