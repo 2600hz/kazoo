@@ -23,6 +23,7 @@ Key | Description | Type | Default | Required | Support Level
 `record_on_bridge` | Whether to delay the recording until the channel is bridged | `boolean()` | `false` | `false` |  
 `record_sample_rate` | What sampling rate to use on the recording | `integer()` |   | `false` |  
 `should_follow_transfer` | If true, the recording will continue after a transfer on the active leg | `boolean()` | `true` | `false` |  
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 `time_limit` | Time limit, in seconds, for the recording | `integer()` | `3600` | `false` |  
 `url` | The URL to use when sending the recording for storage | `string()` |   | `false` |  
 

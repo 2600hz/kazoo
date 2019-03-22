@@ -1405,6 +1405,10 @@
                     ],
                     "type": "string"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "timeout": {
                     "description": "Time, in seconds, for 'paused' state",
                     "type": "integer"
@@ -1422,6 +1426,10 @@
                 "priority": {
                     "description": "assign a priority to the caller",
                     "type": "integer"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -1440,6 +1448,10 @@
                 "id": {
                     "description": "Queue ID",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -1450,6 +1462,10 @@
                 "id": {
                     "description": "Queue ID",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 },
                 "window": {
                     "description": "Window over which average wait time is calculated (in seconds)",
@@ -1505,6 +1521,10 @@
                             "type": "string"
                         }
                     ]
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -1603,6 +1623,10 @@
                     },
                     "minItems": 1,
                     "type": "array"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 },
                 "terminators": {
                     "default": [
@@ -1776,7 +1800,12 @@
         },
         "callflows.branch_bnumber": {
             "description": "Validator for the branch_bnumber callflow data object",
-            "properties": {},
+            "properties": {
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                }
+            },
             "type": "object"
         },
         "callflows.branch_variable": {
@@ -1793,6 +1822,10 @@
                         "user"
                     ],
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 },
                 "variable": {
                     "default": "",
@@ -1818,6 +1851,10 @@
                         "menu"
                     ],
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -1843,6 +1880,10 @@
                         "user"
                     ],
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -1853,13 +1894,22 @@
                 "id": {
                     "description": "The Callflow ID to branch to",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
         },
         "callflows.camping_feature": {
             "description": "Validator for the camping_feature callflow data object",
-            "properties": {},
+            "properties": {
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                }
+            },
             "type": "object"
         },
         "callflows.check_cid": {
@@ -1888,6 +1938,10 @@
                     "description": "Determine match/nomatch when use_absolute_mode is false",
                     "type": "string"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "use_absolute_mode": {
                     "default": false,
                     "description": "If true, direct call down a branch that matches the caller ID",
@@ -1906,6 +1960,10 @@
                 "id": {
                     "description": "CallerID List ID",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -1927,6 +1985,10 @@
                     "description": "How many DTMFs to collect from the caller",
                     "minimum": 1,
                     "type": "integer"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 },
                 "terminator": {
                     "default": "#",
@@ -2018,6 +2080,10 @@
                         }
                     ]
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "welcome_prompt": {
                     "description": "Describes how the caller is greeted on entering a conference",
                     "properties": {
@@ -2038,7 +2104,12 @@
         },
         "callflows.dead_air": {
             "description": "Validator for the dead_air callflow data object",
-            "properties": {},
+            "properties": {
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                }
+            },
             "type": "object"
         },
         "callflows.device": {
@@ -2073,6 +2144,10 @@
                     "description": "Device ID",
                     "type": "string"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "static_invite": {
                     "description": "Override the SIP Username",
                     "type": "string"
@@ -2095,13 +2170,22 @@
                 "id": {
                     "description": "Directory ID",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
         },
         "callflows.disa": {
             "description": "Validator for the DISA callflow data object",
-            "properties": {},
+            "properties": {
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                }
+            },
             "type": "object"
         },
         "callflows.do_not_disturb": {
@@ -2119,6 +2203,10 @@
                 "id": {
                     "description": "Document ID on which to update DND settings",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -2179,6 +2267,10 @@
                     "description": "Minimum number of digits that must match the regex to collected DTMF",
                     "type": "integer"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "whitelist_regex": {
                     "description": "Regex to match collected Caller ID Number",
                     "type": "string"
@@ -2205,6 +2297,10 @@
                     "description": "Device ID to eavesdrop",
                     "type": "string"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "user_id": {
                     "description": "User ID to eavesdrop",
                     "type": "string"
@@ -2230,13 +2326,22 @@
                 "group_id": {
                     "description": "ID of the group/user/device to eavesdrop",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
         },
         "callflows.edr": {
             "description": "Validator for the edr callflow data object",
-            "properties": {},
+            "properties": {
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                }
+            },
             "type": "object"
         },
         "callflows.fax_detect": {
@@ -2245,6 +2350,10 @@
                 "duration": {
                     "description": "How long, in seconds, to try detecting fax tones",
                     "type": "integer"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -2280,6 +2389,10 @@
                         }
                     },
                     "type": "object"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -2291,6 +2404,10 @@
                     "default": "default",
                     "description": "Flush collected DTMF in a named key",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -2342,6 +2459,10 @@
                     },
                     "type": "object"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "strategy": {
                     "default": "simultaneous",
                     "description": "How to ring the endpoints",
@@ -2382,6 +2503,10 @@
                     "description": "Group in which to find a call to pickup",
                     "type": "string"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "user_id": {
                     "description": "User in which to find a call to pickup",
                     "type": "string"
@@ -2392,6 +2517,10 @@
         "callflows.group_pickup_feature": {
             "description": "Validator for the group_pickup_feature callflow data object",
             "properties": {
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "type": {
                     "description": "The type of collection to pickup",
                     "enum": [
@@ -2407,7 +2536,12 @@
         },
         "callflows.hangup": {
             "description": "Validator for the hangup callflow data object",
-            "properties": {},
+            "properties": {
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                }
+            },
             "type": "object"
         },
         "callflows.hotdesk": {
@@ -2430,6 +2564,10 @@
                 "interdigit_timeout": {
                     "description": "How long, in seconds, to wait between keypresses",
                     "type": "integer"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -2457,6 +2595,10 @@
                     "description": "Group in which to find a call to intercept",
                     "type": "string"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "user_id": {
                     "description": "User in which to find a call to intercept",
                     "type": "string"
@@ -2479,6 +2621,10 @@
                     "description": "Requires the calling device to be part of the User",
                     "type": "string"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "type": {
                     "description": "The scope of devices to intercept",
                     "enum": [
@@ -2497,6 +2643,10 @@
                 "barge_calls": {
                     "description": "Whether to barge in on the callee",
                     "type": "boolean"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -2508,6 +2658,10 @@
                     "description": "The language to default to for the rest of the call",
                     "pattern": "^[A-Za-z]{2}(-[A-Za-z]{2})?$",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -2525,6 +2679,10 @@
                         "type": "string"
                     },
                     "type": "array"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -2538,6 +2696,10 @@
                 "presence_id": {
                     "description": "The Presence ID to send a presence notification about",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 },
                 "status": {
                     "default": "idle",
@@ -2565,6 +2727,10 @@
                 "interdigit_timeout": {
                     "description": "Amount of time, in milliseconds, to wait between keypresses",
                     "type": "integer"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -2608,6 +2774,10 @@
                         "type": "object"
                     },
                     "type": "array"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -2617,7 +2787,12 @@
         },
         "callflows.move": {
             "description": "Validator for the move callflow data object",
-            "properties": {},
+            "properties": {
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                }
+            },
             "type": "object"
         },
         "callflows.nomorobo": {
@@ -2628,6 +2803,10 @@
                     "maxLength": 1000,
                     "minLength": 1,
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 },
                 "username": {
                     "description": "Username to the NoMoRobo service",
@@ -2784,6 +2963,10 @@
                     "description": "Tone or file to play while waiting for the leg to be answered",
                     "type": "string"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "timeout": {
                     "description": "How long, in seconds, to wait for the call to be answered",
                     "type": "integer"
@@ -2862,6 +3045,10 @@
                     "minItems": 1,
                     "type": "array"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "timeout": {
                     "default": 5,
                     "description": "How long to ring the ring group before continuing, in seconds",
@@ -2913,6 +3100,10 @@
                 "presence_id": {
                     "description": "use this presence_id",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 },
                 "slot": {
                     "description": "Static slot number to use",
@@ -2968,6 +3159,10 @@
                     ],
                     "type": "string"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "voice_url": {
                     "description": "What URL to request the initial Pivot callflow",
                     "pattern": "^https?://",
@@ -2999,6 +3194,10 @@
                     "description": "How many times to loop the media",
                     "minimum": 1,
                     "type": "integer"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 },
                 "terminators": {
                     "default": [
@@ -3054,6 +3253,10 @@
                     "default": "",
                     "description": "Prefix caller ID number",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -3080,6 +3283,10 @@
                         "yes"
                     ],
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -3111,6 +3318,10 @@
                 "owner_id": {
                     "description": "User ID to send fax to",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -3179,6 +3390,10 @@
                     "description": "If true, the recording will continue after a transfer on the active leg",
                     "type": "boolean"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "time_limit": {
                     "default": 3600,
                     "description": "Time limit, in seconds, for the recording",
@@ -3216,6 +3431,10 @@
                         "post"
                     ],
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 },
                 "time_limit": {
                     "default": 3600,
@@ -3309,6 +3528,10 @@
                     "description": "Tone or file to play while waiting for the leg to be answered",
                     "type": "string"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "timeout": {
                     "description": "How long, in seconds, to wait for the call to be answered",
                     "type": "integer"
@@ -3341,6 +3564,10 @@
                 "message": {
                     "description": "The SIP Hangup cause to respond with",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -3429,6 +3656,10 @@
                     },
                     "type": "object"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "strategy": {
                     "default": "simultaneous",
                     "description": "How to ring the members of the group",
@@ -3464,6 +3695,10 @@
                 "callflow_id": {
                     "description": "The callflow containing the ring group to log in and out of",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -3507,6 +3742,10 @@
                     },
                     "type": "array"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "static_invite": {
                     "description": "Override the SIP Username",
                     "type": "string"
@@ -3541,6 +3780,10 @@
                             "type": "string"
                         }
                     ]
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -3550,7 +3793,12 @@
         },
         "callflows.set": {
             "description": "Validator for the set callflow data object",
-            "properties": {},
+            "properties": {
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                }
+            },
             "type": "object"
         },
         "callflows.set_alert_info": {
@@ -3559,6 +3807,10 @@
                 "alert_info": {
                     "description": "Set `Alert-Info` header inside b-leg channel. Used for distinctive ring.",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -3578,6 +3830,10 @@
                     "default": "",
                     "description": "Set caller ID number",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -3593,6 +3849,10 @@
                         "both"
                     ],
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 },
                 "value": {
                     "description": "The value to set 'variable'",
@@ -3616,6 +3876,10 @@
                 "export": {
                     "description": "When true the provided custom_application_vars are set on the channel and any channel bridged to it later",
                     "type": "boolean"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -3625,7 +3889,12 @@
         },
         "callflows.skel": {
             "description": "Validator for the skel callflow data object",
-            "properties": {},
+            "properties": {
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                }
+            },
             "type": "object"
         },
         "callflows.sleep": {
@@ -3637,6 +3906,10 @@
                     "maximum": 86400000,
                     "minimum": 0,
                     "type": "integer"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 },
                 "unit": {
                     "default": "s",
@@ -3682,6 +3955,10 @@
                     },
                     "type": "array"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "timezone": {
                     "description": "Timezone to use when processing temporal rules",
                     "type": "string"
@@ -3709,6 +3986,10 @@
                         "bleg"
                     ],
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 },
                 "target": {
                     "description": "The target destination (extension or DID)",
@@ -3746,6 +4027,10 @@
                 "language": {
                     "description": "The language of the speaker",
                     "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 },
                 "terminators": {
                     "default": [
@@ -3813,6 +4098,10 @@
                     "description": "User ID",
                     "type": "string"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                },
                 "static_invite": {
                     "description": "Override the SIP Username",
                     "type": "string"
@@ -3875,6 +4164,10 @@
                     "default": false,
                     "description": "Allow login if caller has a single mailbox",
                     "type": "boolean"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 }
             },
             "type": "object"
@@ -3897,6 +4190,10 @@
                 "retries": {
                     "description": "How many times to retry the request if the host isn't available",
                     "type": "integer"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
                 },
                 "uri": {
                     "description": "The HTTP URI to send the request",

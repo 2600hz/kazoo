@@ -22,6 +22,7 @@ Key | Description | Type | Default | Required | Support Level
 `language` | The language of the speaker | `string()` |   | `false` |  
 `macros.[].macro` | the macro type to process | `string('play' | 'prompt' | 'say' | 'tts' | 'tone')` |   | `true` |  
 `macros` | The audio macro data | `array(object())` | `[]` | `false` |  
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 `terminators.[]` |   | `string()` |   | `false` |  
 `terminators` | What DTMF can terminate playback of the audio | `array(string())` | `["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"]` | `false` |  
 
@@ -76,6 +77,7 @@ Key | Description | Type | Default | Required | Support Level
 `endless_playback` | Loop the media continuously | `boolean()` | `false` | `false` |  
 `id` | Media ID or URL of the media to play | `string()` |   | `false` |  
 `loop_count` | How many times to loop the media | `integer()` |   | `false` |  
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 `terminators.[]` |   | `string()` |   | `false` |  
 `terminators` | What DTMF can terminate playback of the audio | `array(string())` | `["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"]` | `false` |  
 
@@ -89,6 +91,7 @@ Key | Description | Type | Default | Required | Support Level
 `endless_playback` | Loop the media until canceled | `boolean()` |   | `false` |  
 `engine` | What TTS engine to use | `string('flite' | 'google' | 'ispeech' | 'voicefabric')` |   | `false` |  
 `language` | The language of the speaker | `string()` |   | `false` |  
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 `terminators.[]` |   | `string()` |   | `false` |  
 `terminators` | What DTMF can terminate playback of the audio | `array(string())` | `["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"]` | `false` |  
 `text` | The text to speak | `string(1..1000)` |   | `true` |  
