@@ -19,6 +19,10 @@
             "description": "Device ID to eavesdrop",
             "type": "string"
         },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
+        },
         "user_id": {
             "description": "User ID to eavesdrop",
             "type": "string"

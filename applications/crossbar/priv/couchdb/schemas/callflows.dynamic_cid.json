@@ -56,6 +56,10 @@
             "description": "Minimum number of digits that must match the regex to collected DTMF",
             "type": "integer"
         },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
+        },
         "whitelist_regex": {
             "description": "Regex to match collected Caller ID Number",
             "type": "string"
