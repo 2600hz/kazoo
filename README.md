@@ -65,18 +65,10 @@ Welcome to Kazoo, an ambitious project to bring cloud-based VoIP and telecommuni
 
 ### What is Kazoo?
 
-Kazoo is an API-based platform that lets you use your existing phones,
-programming languages and IT skills to build voice, video and SMS services. We
-focus on building a simple, powerful communications platform and let you focus
-on marketing, servicing and integrating communications with your clients
-systems.
+Kazoo is an API-based platform that allows you to use your existing phones, programming languages and IT skills to build voice, video and SMS services. We focus on building a simple, powerful communication platform which assists you on marketing, servicing and integrating communications with your client’s systems.
 
-Dubbed a "scalable, distributed, cloud-based" telephony platform, Kazoo
-provides simple to use, consistent API so that people who know little about
-building telecom systems can still dive in and utilize the power of the phone
-network. In practical terms that means you can create your own phone service
-in the cloud. Or on a server in your mother's basement. Or in a distributed
-cluster of servers around the globe. It's up to you.
+Dubbed a "scalable, distributed, cloud-based" telephony platform, Kazoo provides simple and consistent API for beginner to dive in and utilize the power of the phone network. Practically, you can create your own phone service in the cloud, or on a server in your mother's basement, or in a distributed cluster of servers around the globe which is decided by you.
+
 
 ### Who is 2600Hz?
 
