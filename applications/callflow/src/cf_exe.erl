@@ -744,16 +744,16 @@ do_launch_cf_module(#state{call=Call
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = kz_term:to_atom(ModuleBin, 'true'),
     IsExported = kz_module:is_exported(CFModule, 'handle', 2),
-    DontSkipModule = kz_json:is_false(<<"skip_module">>, Data, 'false'),
+    SkipModule = kz_json:is_true(<<"skip_module">>, Data, 'false'),
     case IsExported
-        andalso DontSkipModule
+        andalso (not SkipModule)
     of
         'true' ->
             lager:info("moving to action '~s'", [CFModule]),
             spawn_cf_module(CFModule, Data, Call);
         'false' ->
             lager:debug("skipping callflow module ~s (handle exported: ~s skip_module: ~s)"
-                       ,[CFModule, IsExported, DontSkipModule]),
+                       ,[CFModule, IsExported, SkipModule]),
             cf_module_not_found(Call)
     end.
 
