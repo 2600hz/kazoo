@@ -803,10 +803,13 @@ handle_info({'heartbeat', Ref}
     Heartbeat = ?HEARTBEAT,
     Reference = erlang:make_ref(),
     _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
+
     try create_node(Heartbeat, State) of
         Node ->
             _ = ets:insert(Tab, Node),
-            _ = kz_amqp_worker:cast(advertise_payload(Node), fun kapi_nodes:publish_advertise/1),
+            AdvertisedPayload = advertise_payload(Node),
+            _ = kz_amqp_worker:cast(AdvertisedPayload, fun kapi_nodes:publish_advertise/1),
+            lager:debug("status: ~s", [kz_json:encode(kz_json:from_list(AdvertisedPayload))]),
             {'noreply', State#state{heartbeat_ref=Reference, me=Node}}
     catch
         'exit' : {'timeout' , _} when Me =/= 'undefined' ->
