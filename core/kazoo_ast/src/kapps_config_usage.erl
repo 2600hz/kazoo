@@ -383,12 +383,7 @@ guess_type_by_default(?MOD_FUN_ARGS(_Mod, 'type', [])) -> <<"string">>.
 guess_properties(Document, SourceModule, Key=?NE_BINARY, Type, Default) ->
     DescriptionKey = description_key(Document, Key),
 
-    Description =
-        case fetch_description(DescriptionKey) of
-            'undefined' ->
-                kz_binary:join(binary:split(DescriptionKey, <<".">>, ['global']), <<" ">>);
-            D -> D
-        end,
+    Description = description_from_key(DescriptionKey),
     kz_json:from_list(
       [{?SOURCE, SourceModule}
       ,{<<"description">>, Description}
@@ -402,6 +397,13 @@ guess_properties(Document, Source, [Key], Type, Default)
 guess_properties(Document, Source, [_Key, ?FIELD_PROPERTIES|_]=Keys, Type, Default) ->
     JustKeys = [K || K <- Keys, ?FIELD_PROPERTIES =/= K],
     guess_properties(Document, Source, kz_binary:join(JustKeys, $.), Type, Default).
+
+description_from_key(DescriptionKey) ->
+    case fetch_description(DescriptionKey) of
+        'undefined' ->
+            kz_binary:join(binary:split(DescriptionKey, <<".">>, ['global']), <<" ">>);
+        D -> D
+    end.
 
 type(['undefined']) ->
     [{?FIELD_TYPE, <<"array">>}];

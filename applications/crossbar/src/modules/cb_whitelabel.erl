@@ -429,7 +429,7 @@ system_domains() ->
         'undefined' ->
             lager:info("initializing system domains to default"),
             Default = kzd_domains:default(),
-            kapps_config:set_default(?WHITELABEL_ID, <<"domains">>, Default),
+            _ = kapps_config:set_default(?WHITELABEL_ID, <<"domains">>, Default),
             Default;
         Domains -> Domains
     end.

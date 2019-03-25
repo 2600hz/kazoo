@@ -60,7 +60,7 @@
 get_method(JObj) ->
     get_method(JObj, get_default_privacy_mode()).
 
--spec get_method(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
+-spec get_method(kz_json:object(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_method(JObj, Default) ->
     %% NOTE: privacy_mode is deperecated, and could be set
     %%   to hide_name or hide_number.  If that is the case
