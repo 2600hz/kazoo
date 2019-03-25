@@ -133,6 +133,7 @@
         ,?KEY_PRIVACY_METHOD
         ,?KEY_PRIVACY_HIDE_NAME
         ,?KEY_PRIVACY_HIDE_NUMBER
+        ,?KEY_ORIGINAL_RESOURCE_TYPE
         ,?KEY_ASSERTED_IDENTITY_NAME
         ,?KEY_ASSERTED_IDENTITY_NUMBER
         ,?KEY_ASSERTED_IDENTITY_REALM
@@ -149,7 +150,7 @@
 -define(OFFNET_RESOURCE_REQ_VALUES
        ,[{?KEY_EVENT_CATEGORY, ?CATEGORY_REQ}
         ,{?KEY_EVENT_NAME, ?EVENT_REQ}
-        ,{?KEY_RESOURCE_TYPE, [?RESOURCE_TYPE_AUDIO, ?RESOURCE_TYPE_VIDEO, ?RESOURCE_TYPE_ORIGINATE, ?RESOURCE_TYPE_SMS]}
+        ,{?KEY_RESOURCE_TYPE, [?RESOURCE_TYPE_AUDIO, ?RESOURCE_TYPE_VIDEO, ?RESOURCE_TYPE_ORIGINATE, ?RESOURCE_TYPE_SMS, ?RESOURCE_TYPE_CID]}
         ,{?KEY_APPLICATION_NAME, [?APPLICATION_BRIDGE
                                  ,?APPLICATION_EAVESDROP
                                  ,?APPLICATION_FAX
@@ -237,12 +238,23 @@ resp_v(Prop) when is_list(Prop) ->
 resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
 
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
-bind_q(Queue, _Props) ->
-    kz_amqp_util:bind_q_to_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
+bind_q(Queue, Props) ->
+    _ = [kz_amqp_util:bind_q_to_resource(Queue, Key)
+         || Key <- binding_keys(Props)
+        ],
+    'ok'.
+
+binding_keys(Props) ->
+    [kz_binary:join([?KEY_OFFNET_RESOURCE_REQ, Type], <<".">>)
+     || Type <- props:get_value('types', Props, [<<"*">>])
+    ].
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
-unbind_q(Queue, _Props) ->
-    kz_amqp_util:unbind_q_from_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
+unbind_q(Queue, Props) ->
+    _ = [kz_amqp_util:unbind_q_to_resource(Queue, Key)
+         || Key <- binding_keys(Props)
+        ],
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Declare the exchanges used by this API.
