@@ -2481,7 +2481,6 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, FlushOnDigit
                                          ,terminators=Terminators
                                          ,call=Call
                                          ,flush_on_digit=FlushOnDigit
-                                         ,after_timeout=kz_term:to_integer(Timeout)
                                          }).
 
 -spec do_collect_digits(wcc_collect_digits()) -> collect_digits_return().
