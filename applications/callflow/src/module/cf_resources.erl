@@ -138,7 +138,6 @@ build_offnet_request(Data, Call) ->
       ,{?KEY_ASSERTED_IDENTITY_NAME, AssertedName}
       ,{?KEY_ASSERTED_IDENTITY_NUMBER, AssertedNumber}
       ,{?KEY_ASSERTED_IDENTITY_REALM, AssertedRealm}
-      ,{?KEY_RESOURCE_TYPE, ?RESOURCE_TYPE_AUDIO}
       ,{?KEY_RINGBACK, kz_json:get_ne_binary_value(<<"ringback">>, Data)}
       ,{?KEY_T38_ENABLED, get_t38_enabled(Call)}
       ,{?KEY_TIMEOUT, kz_json:get_integer_value(<<"timeout">>, Data)}
@@ -149,7 +148,19 @@ build_offnet_request(Data, Call) ->
       ,{?KEY_PRIVACY_HIDE_NAME, props:get_value(?KEY_PRIVACY_HIDE_NAME, PrivacyFlags)}
       ,{?KEY_PRIVACY_HIDE_NUMBER, props:get_value(?KEY_PRIVACY_HIDE_NUMBER, PrivacyFlags)}
        | kz_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
+       ++ add_resource_type(Data)
       ]).
+
+-spec add_resource_type(kz_json:object()) -> kz_term:proplist().
+add_resource_type(Data) ->
+    case kz_json:get_ne_binary_value(<<"resource_type">>, Data) of
+        'undefined' -> [{?KEY_RESOURCE_TYPE, ?RESOURCE_TYPE_AUDIO}];
+        ?RESOURCE_TYPE_AUDIO -> [{?KEY_RESOURCE_TYPE, ?RESOURCE_TYPE_AUDIO}];
+        Type ->
+            [{?KEY_RESOURCE_TYPE, Type}
+            ,{?KEY_ORIGINAL_RESOURCE_TYPE, ?RESOURCE_TYPE_AUDIO}
+            ]
+    end.
 
 -spec get_channel_vars(kapps_call:call()) -> kz_json:object().
 get_channel_vars(Call) ->
