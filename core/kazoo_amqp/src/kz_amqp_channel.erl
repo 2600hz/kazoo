@@ -214,8 +214,12 @@ basic_publish(#kz_amqp_assignment{channel=Channel
     assert_valid_amqp_method(BasicPub),
     _ = basic_publish(Assignment, BasicPub, AmqpMsg, channel_publish_method()),
     MsgId = extract_msg_id(AmqpMsg#'amqp_msg'.payload),
-    lager:debug("published(~s) to ~s(~s) exchange (routing key ~s) via ~p"
-               ,[MsgId, _Exchange, _Broker, _RK, Channel]
+    lager:debug("published(~s ~s) to ~s(~s) exchange (routing key ~s) via ~p"
+               ,[MsgId, kz_util:pretty_print_bytes(iolist_size(AmqpMsg#'amqp_msg'.payload), 'truncated')
+                ,_Exchange, _Broker
+                ,_RK
+                ,Channel
+                ]
                );
 basic_publish({'error', 'no_channel'}
              ,#'basic.publish'{exchange=_Exchange
@@ -234,8 +238,10 @@ basic_publish(Channel
              ) when is_pid(Channel) ->
     assert_valid_amqp_method(BasicPub),
     _ = basic_publish(Channel, BasicPub, AmqpMsg, channel_publish_method()),
-    lager:debug("published to ~s(direct) exchange (routing key ~s) via ~p"
-               ,[_Exchange, _RK, Channel]
+    lager:debug("published to ~s(direct ~s) exchange (routing key ~s) via ~p"
+               ,[_Exchange, kz_util:pretty_print_bytes(iolist_size(AmqpMsg#'amqp_msg'.payload), 'truncated')
+                ,_RK, Channel
+                ]
                );
 basic_publish(_, #'basic.publish'{exchange=_Exchange
                                  ,routing_key=_RK
