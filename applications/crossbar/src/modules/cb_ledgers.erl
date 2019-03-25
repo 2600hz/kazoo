@@ -21,6 +21,7 @@
 -define(TOTAL, <<"total">>).
 -define(CREDIT, <<"credit">>).
 -define(DEBIT, <<"debit">>).
+-define(SUB_SUMMARY, <<"summary_by_accounts">>).
 
 -define(VIEW_BY_TIMESTAMP, <<"ledgers/list_by_timestamp">>).
 -define(VIEW_BY_SOURCE, <<"ledgers/list_by_source">>).
@@ -62,6 +63,8 @@ allowed_methods(?CREDIT) ->
     [?HTTP_PUT];
 allowed_methods(?DEBIT) ->
     [?HTTP_PUT];
+allowed_methods(?SUB_SUMMARY) ->
+    [?HTTP_GET];
 allowed_methods(_SourceService) ->
     [?HTTP_GET].
 
@@ -178,6 +181,20 @@ validate(Context, ?TOTAL) ->
 validate(Context, ?AVAILABLE) ->
     Available = kz_ledgers:available_ledgers(cb_context:account_id(Context)),
     crossbar_doc:handle_json_success(Available, Context);
+validate(Context, ?SUB_SUMMARY) ->
+    Options = [{'mapper', fun normalize_summary_view_results/2}
+              ,{'reduce', 'false'}
+              ,{'unchunkable', 'true'}
+              ,{'should_paginate', 'false'}
+              ,'include_docs'
+              ],
+    Context1 = crossbar_view:load_modb(Context, ?VIEW_BY_TIMESTAMP, Options),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            cb_context:set_resp_data(Context1, group_summary_by_account(cb_context:doc(Context1)));
+        _ ->
+            Context1
+    end;
 validate(Context, SourceService) ->
     ViewOptions = [{'is_chunked', 'true'}
                   ,{'range_keymap', SourceService}
@@ -384,3 +401,41 @@ normalize_view_results(_Context, JObj, Acc) ->
 -spec normalize_view_result(kzd_ledgers:doc()) -> kz_json:object().
 normalize_view_result(LedgerJObj) ->
     kz_ledger:public_json(kz_ledger:from_json(LedgerJObj)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec normalize_summary_view_results(kzd_ledgers:doc(), kz_json:objects()) ->
+                                            kz_json:objects().
+normalize_summary_view_results(JObj, Acc) ->
+    Ledger = normalize_view_result(kz_json:get_value(<<"doc">>, JObj)),
+    NewJObj =
+        kz_json:from_list(
+          [{<<"account_id">>, kzd_ledgers:account_id(Ledger)}
+          ,{<<"account_name">>, kzd_ledgers:account_name(Ledger)}
+          ,{<<"amount">>, kzd_ledgers:unit_amount(Ledger)}
+          ]
+         ),
+    [NewJObj | Acc].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec group_summary_by_account(kz_json:objects()) -> kz_json:object().
+group_summary_by_account(JObjs) ->
+    group_summary_by_account(JObjs, #{}).
+
+-spec group_summary_by_account(kz_json:objects(), map()) -> kz_json:object().
+group_summary_by_account([], Acc) ->
+    kz_json:from_map(Acc);
+group_summary_by_account([JObj | JObjs], Acc) ->
+    AccountId = kz_json:get_value(<<"account_id">>, JObj),
+    Amount = kzd_ledgers:unit_amount(JObj, 0),
+    AccAmount = kzd_ledgers:unit_amount(maps:get(AccountId, Acc, kz_json:new()), 0),
+    group_summary_by_account(JObjs
+                            ,Acc#{AccountId =>
+                                  kzd_ledgers:set_unit_amount(JObj, AccAmount + Amount)
+                                 }
+                            ).
