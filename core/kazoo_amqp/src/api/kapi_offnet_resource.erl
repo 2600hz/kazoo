@@ -248,7 +248,7 @@ binding_keys(Props) ->
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
-    _ = [kz_amqp_util:unbind_q_to_resource(Queue, Key)
+    _ = [kz_amqp_util:unbind_q_from_resource(Queue, Key)
          || Key <- binding_keys(Props)
         ],
     'ok'.
