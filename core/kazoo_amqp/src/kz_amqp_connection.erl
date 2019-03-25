@@ -222,11 +222,8 @@ connected(#kz_amqp_connection{channel='undefined'}=Connection) ->
         #kz_amqp_connection{}=Error -> Error
     end;
 connected(#kz_amqp_connection{exchanges_initialized='false'}=Connection) ->
-    case declare_exchanges(Connection) of
-        #kz_amqp_connection{exchanges_initialized='false'}=Error -> Error;
-        #kz_amqp_connection{exchanges_initialized='true'}=Success ->
-            connected(Success)
-    end;
+    Success = declare_exchanges(Connection),
+    connected(Success);
 connected(#kz_amqp_connection{available='false'}=Connection) ->
     _ = kz_amqp_connections:available(self()),
     connected(Connection#kz_amqp_connection{available='true'});
