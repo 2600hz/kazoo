@@ -139,6 +139,9 @@ close(Channel, []) when is_pid(Channel) ->
     _ = (catch gen_server:call(Channel, {'close', 200, <<"Goodbye">>}, 5 * ?MILLISECONDS_IN_SECOND)),
     lager:debug("closed amqp channel ~p", [Channel]);
 close(_, []) -> 'ok';
+
+%% cancel the consumer(s) first, then queue.delete
+%% log payload size when publishing
 close(Channel, [#'basic.consume'{consumer_tag=CTag}|Commands]) when is_pid(Channel) ->
     lager:debug("ensuring ~s is removed", [CTag]),
     Command = #'basic.cancel'{consumer_tag=CTag, nowait='true'},
