@@ -295,15 +295,18 @@ summary_to_dollars([]) -> kz_json:new();
 summary_to_dollars([Summary]) ->
     kz_json:expand(
       kz_json:from_list(
-        [{Path, maybe_convert_units(lists:last(Path), Value)}
-         || {Path, Value} <- kz_json:to_proplist(kz_json:flatten(Summary))
+        [{Paths, maybe_convert_units(lists:last(Paths), Paths, Value)}
+         || {Paths, Value} <- kz_json:to_proplist(kz_json:flatten(Summary))
         ])).
 
--spec maybe_convert_units(kz_term:ne_binary(), kz_currency:units() | T) ->
+-spec maybe_convert_units(kz_json:key(), kz_json:keys(), kz_currency:units() | T) ->
                                  kz_currency:dollars() | T when T::any().
-maybe_convert_units(<<"amount">>, Units) when is_integer(Units) ->
+maybe_convert_units(<<"amount">>, _, Units) when is_integer(Units) ->
     kz_currency:units_to_dollars(Units);
-maybe_convert_units(_, Value) -> Value.
+maybe_convert_units(_, [_AccountId, <<"total">>], Units) ->
+    kz_currency:units_to_dollars(Units);
+maybe_convert_units(_, _, Value) ->
+    Value.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -399,7 +402,7 @@ build_success_response(AccountId, Ledger) ->
 -spec normalize_list_by_timestamp(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_list_by_timestamp(JObj, Acc) ->
     [kz_json:sum_jobjs(
-       [kz_json:delete_key(<<"account">>, J)
+       [kz_json:get_ne_json_value(<<"ledgers">>, J, kz_json:new())
         || J <- kz_json:values(kz_json:get_value(<<"value">>, JObj, kz_json:new()))
        ] ++ Acc
       )
