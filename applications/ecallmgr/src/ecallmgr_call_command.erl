@@ -1354,7 +1354,7 @@ tts(Node, UUID, JObj) ->
 %% @doc Playback command helpers
 %% @end
 %%------------------------------------------------------------------------------
--spec playseek(atom(), kz_term:ne_binary(), kz_json:object()) -> fs_apps().
+-spec playseek(atom(), kz_term:ne_binary(), kz_json:object()) -> fs_app().
 playseek(_Node, _UUID, JObj) ->
     Duration = kz_json:get_ne_binary_value(<<"Duration">>, JObj),
     Args = case kz_json:get_ne_binary_value(<<"Direction">>, JObj) of
