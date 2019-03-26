@@ -362,7 +362,7 @@ handle_conference_action(Context, ConferenceId, Action) ->
 
 -spec record_conference(cb_context:context(), kz_term:ne_binary(), kz_json:api_object()) ->
                                cb_context:context().
-record_conference(Context, ConferenceId, 'undefined') ->
+record_conference(Context, _ConferenceId, 'undefined') ->
     data_required(Context, <<"record">>);
 record_conference(Context, ConferenceId, RecordingData) ->
     toggle_recording(Context, ConferenceId, kz_json:get_ne_binary_value(<<"action">>, RecordingData)).
@@ -377,13 +377,13 @@ toggle_recording(Context, ConferenceId, <<"stop">>) ->
     lager:info("stopping the recording of conference ~s", [ConferenceId]),
     kapps_conference_command:recordstop(conference(ConferenceId)),
     crossbar_util:response_202(<<"stopping recording">>, Context);
-toggle_recording(Context, ConferenceId, 'undefined') ->
+toggle_recording(Context, _ConferenceId, 'undefined') ->
     cb_context:add_validation_error([<<"data">>, <<"action">>]
                                    ,<<"required">>
                                    ,kz_json:from_list([{<<"message">>, <<"recording requires an action">>}])
                                    ,Context
                                    );
-toggle_recording(Context, ConferenceId, Action) ->
+toggle_recording(Context, _ConferenceId, Action) ->
     lager:debug("invalid action: ~p", [Action]),
     cb_context:add_validation_error([<<"data">>, <<"action">>]
                                    ,<<"enum">>
