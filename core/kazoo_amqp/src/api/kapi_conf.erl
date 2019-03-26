@@ -3,6 +3,7 @@
 %%% @doc Configuration updates (like DB doc changes) can be communicated across
 %%% the AMQP bus so WhApps can flush cache entries, update settings, etc.
 %%%
+%%%
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -266,7 +267,10 @@ get_routing_key(Props) ->
     Id = props:get_binary_value('doc_id', Props
                                ,props:get_value('id', Props, <<"*">>)
                                ),
-    kz_amqp_util:document_routing_key(Action, Db, Type, Id).
+    case kz_amqp_util:document_routing_key(Action, Db, Type, Id) of
+        <<"*.*.*.*">> -> <<"#">>;
+        RK -> RK
+    end.
 
 -spec publish_doc_update(action(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_doc_update(Action, Db, Type, Id, JObj) ->
