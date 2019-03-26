@@ -121,7 +121,6 @@ curl -v -X GET \
 **Sample response:**
 
 ```json
-```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -187,8 +186,6 @@ curl -v -X GET \
     "version": "{VERSION}"
 }
 ```
-```
-
 
 ## Get Ledger values
 
