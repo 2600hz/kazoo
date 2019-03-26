@@ -3,6 +3,7 @@
 %%% @doc Configuration updates (like DB doc changes) can be communicated across
 %%% the AMQP bus so WhApps can flush cache entries, update settings, etc.
 %%%
+%%%
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
