@@ -46,6 +46,9 @@
         ,'created_to', 'created_from', 'max_range'
         ,'range_end_keymap', 'range_key_name', 'range_keymap', 'range_start_keymap'
         ,'should_paginate'
+
+         %% start/end key length fixer
+        ,'key_min_length'
         ]).
 
 -type direction() :: 'ascending' | 'descending'.
@@ -104,7 +107,10 @@
                     {'range_keymap', range_keymap()} |
                     {'range_key_name', kz_term:ne_binary()} |
                     {'range_start_keymap', range_keymap()} |
-                    {'should_paginate', boolean()}
+                    {'should_paginate', boolean()} |
+
+                    %% start/end key length fixer
+                    {'key_min_length', pos_integer()}
                    ].
 
 -type load_params() :: #{chunk_size => pos_integer()
@@ -198,7 +204,9 @@ build_load_params(Context, View, Options) ->
 
             UserMapper = props:get_value('mapper', Options),
 
-            {StartKey, EndKey} = start_end_keys(Context, Options, Direction),
+            StartEnd = start_end_keys(Context, Options, Direction),
+            KeyMinLength = props:get_value('key_min_length', Options),
+            {StartKey, EndKey} = expand_min_max_keys(StartEnd, Direction, KeyMinLength),
 
             Params = LoadMap#{has_qs_filter => HasQSFilter
                              ,mapper => crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter)
@@ -237,7 +245,9 @@ build_load_range_params(Context, View, Options) ->
 
             case time_range(Context, Options, TimeFilterKey) of
                 {StartTime, EndTime} ->
-                    {StartKey, EndKey} = ranged_start_end_keys(Context, Options, Direction, StartTime, EndTime),
+                    StartEnd = ranged_start_end_keys(Context, Options, Direction, StartTime, EndTime),
+                    KeyMinLength = props:get_value('key_min_length', Options),
+                    {StartKey, EndKey} = expand_min_max_keys(StartEnd, Direction, KeyMinLength),
                     Params = LoadMap#{end_time => EndTime
                                      ,has_qs_filter => HasQSFilter
                                      ,mapper => crossbar_filter:build_with_mapper(Context, UserMapper, HasQSFilter)
@@ -426,6 +436,43 @@ suffix_key_fun(K) when is_binary(K) -> fun(Ts) -> [Ts, K] end;
 suffix_key_fun(K) when is_integer(K) -> fun(Ts) -> [Ts, K] end;
 suffix_key_fun(K) when is_list(K) -> fun(Ts) -> [Ts | K] end;
 suffix_key_fun(K) when is_function(K, 1) -> K.
+
+%%------------------------------------------------------------------------------
+%% @doc Depending on sort direction of the result set, ensure that the length of
+%% the startkey/endkey supplied in the query is the same length as that returned
+%% by the result set (grouped or not). This ensures that the result at the start
+%% or end is not filtered out if it matches on all present keys.
+%% @end
+%%------------------------------------------------------------------------------
+-spec expand_min_max_keys(range_keys(), direction(), kz_term:api_non_neg_integer()) -> range_keys().
+expand_min_max_keys({StartKey, EndKey}, Direction, KeyMinLength) ->
+    OtherDirection = case Direction of
+                         'ascending' -> 'descending';
+                         'descending' -> 'ascending'
+                     end,
+    {expand_min_max_keys2(StartKey, Direction, KeyMinLength)
+    ,expand_min_max_keys2(EndKey, OtherDirection, KeyMinLength)
+    }.
+
+-spec expand_min_max_keys2(api_range_key(), direction(), kz_term:api_non_neg_integer()) -> api_range_key().
+expand_min_max_keys2(RangeKey, Direction, KeyMinLength) when is_list(RangeKey) ->
+    RangeKeyPadded = maybe_min_max_pad(KeyMinLength, RangeKey),
+    lists:map(fun(Elem) -> expand_min_max_key(Elem, Direction) end, RangeKeyPadded);
+expand_min_max_keys2(RangeKey, Direction, _) -> expand_min_max_key(RangeKey, Direction).
+
+-spec expand_min_max_key(api_range_key(), direction()) -> api_range_key().
+expand_min_max_key('min_max', 'ascending') -> false;
+expand_min_max_key('min_max', 'descending') -> <<16#fff0/utf8>>;
+expand_min_max_key(RangeKey, _) -> RangeKey.
+
+-spec maybe_min_max_pad(kz_term:api_non_neg_integer(), api_range_key()) -> api_range_key() | ['min_max'].
+maybe_min_max_pad('undefined', RangeKey) -> RangeKey;
+maybe_min_max_pad(KeyMinLength, RangeKey) ->
+    lists:reverse(min_max_pad(KeyMinLength - length(RangeKey), lists:reverse(RangeKey))).
+
+-spec min_max_pad(kz_term:non_neg_integer(), api_range_key()) -> api_range_key() | ['min_max'].
+min_max_pad(0, RangeKey) -> RangeKey;
+min_max_pad(N, RangeKey) -> min_max_pad(N-1, ['min_max' | RangeKey]).
 
 %% @equiv direction(Context, [])
 -spec direction(cb_context:context()) -> direction().
