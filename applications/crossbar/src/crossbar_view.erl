@@ -461,8 +461,12 @@ expand_min_max_keys2(RangeKey, Direction, KeyMinLength) when is_list(RangeKey) -
 expand_min_max_keys2(RangeKey, Direction, _) -> expand_min_max_key(RangeKey, Direction).
 
 -spec expand_min_max_key(api_range_key(), direction()) -> api_range_key().
-expand_min_max_key('min_max', 'ascending') -> false;
-expand_min_max_key('min_max', 'descending') -> <<16#fff0/utf8>>;
+expand_min_max_key('min_max', 'ascending') ->
+    lager:debug("padding ascending composite key"),
+    'false';
+expand_min_max_key('min_max', 'descending') ->
+    lager:debug("padding descending composite key"),
+    <<16#fff0/utf8>>;
 expand_min_max_key(RangeKey, _) -> RangeKey.
 
 -spec maybe_min_max_pad(kz_term:api_non_neg_integer(), api_range_key()) -> api_range_key() | ['min_max'].
