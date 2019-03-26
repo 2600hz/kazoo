@@ -125,58 +125,64 @@ curl -v -X GET \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "{ACCOUNT_ID_1}": {
-            "per-minute-voip": {
-                "amount": -0.4524,
-                "usage": {
-                "type": "voice",
-                "quantity": 120,
-                "unit": "sec"
+            "account": {
+                "name": "{ACCOUNT_NAME_1}",
+                "id": "{ACCOUNT_ID_1}"
+            },
+            "ledgers": {
+                "per-minute-voip": {
+                    "amount": -5.655,
+                    "usage": {
+                        "type": "voice",
+                        "quantity": 1500,
+                        "unit": "sec"
+                    }
+                },
+                "adjustments": {
+                    "amount": -11200,
+                    "usage": {
+                        "type": "credit",
+                        "quantity": 0,
+                        "unit": "USD"
+                    }
+                },
+                "payments": {
+                    "amount": 30078.56,
+                    "usage": {
+                        "quantity": 0
+                    }
+                },
+                "prorations": {
+                    "amount": -29.9402,
+                    "usage": {
+                        "quantity": 0
+                    }
+                },
+                "recurring": {
+                    "amount": -10883.44,
+                    "usage": {
+                        "quantity": 0
+                    }
                 }
             },
-            "account": {
-                "name": "ACCOUNT_NAME_1",
-                "id": "{ACCOUNT_ID_1}"
-            }
+            "total": 7959.5248
         },
         "{ACCOUNT_ID_2}": {
-            "per-minute-voip": {
-                "amount": -5.655,
-                "usage": {
-                "type": "voice",
-                "quantity": 1500,
-                "unit": "sec"
-                }
-            },
-            "adjustments": {
-                "amount": -11200,
-                "usage": {
-                "type": "debit",
-                "quantity": 0,
-                "unit": "USD"
-                }
-            },
-            "payments": {
-                "amount": 30078.56,
-                "usage": {
-                "quantity": 0
-                }
-            },
-            "prorations": {
-                "amount": -29.9402,
-                "usage": {
-                "quantity": 0
-                }
-            },
-            "recurring": {
-                "amount": -10883.44,
-                "usage": {
-                "quantity": 0
-                }
-            },
             "account": {
-                "name": "{ACCOUNT_ID_2}",
+                "name": "{ACCOUNT_NAME_2}",
                 "id": "{ACCOUNT_ID_2}"
-            }
+            },
+            "ledgers": {
+                "per-minute-voip": {
+                    "amount": -0.2262,
+                    "usage": {
+                        "type": "voice",
+                        "quantity": 60,
+                        "unit": "sec"
+                    }
+                }
+            },
+            "total": -0.2262
         }
     },
     "node": "{NODE}",
