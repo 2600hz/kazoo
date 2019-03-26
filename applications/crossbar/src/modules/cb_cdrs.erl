@@ -366,7 +366,8 @@ get_view_options([{<<"cdrs">>, [?PATH_INTERACTION]}, {<<"users">>, [OwnerId]}|_]
     {?CB_INTERACTION_LIST_BY_USER
     ,props:filter_undefined(
        [{'range_start_keymap', [OwnerId]}
-       ,{'range_end_keymap', fun(Ts) -> [OwnerId, Ts, kz_json:new()] end}
+       ,{'range_end_keymap', [OwnerId]}
+       ,{'key_min_length', 4}
        ,{'group', 'true'}
        ,{'group_level', 3}
        ,{'reduce', 'true'}
