@@ -399,10 +399,10 @@ build_success_response(AccountId, Ledger) ->
 -spec normalize_list_by_timestamp(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_list_by_timestamp(JObj, Acc) ->
     [kz_json:sum_jobjs(
-      [kz_json:delete_key(<<"account">>, J)
-       || J <- kz_json:values(kz_json:get_value(<<"value">>, JObj, kz_json:new()))
-      ] ++ Acc
-     )
+       [kz_json:delete_key(<<"account">>, J)
+        || J <- kz_json:values(kz_json:get_value(<<"value">>, JObj, kz_json:new()))
+       ] ++ Acc
+      )
     ].
 
 -spec normalize_view_results(cb_context:context(), kzd_ledgers:doc(), kz_json:objects()) ->
