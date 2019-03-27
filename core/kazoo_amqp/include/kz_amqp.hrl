@@ -63,8 +63,8 @@
 %% Resource Exchange
 %% - Request for resources are published and consumed from this queue.  Topics are used to
 %%   distinguish the types of resource
--define(EXCHANGE_RESOURCE, <<"resource">>).
--define(TYPE_RESOURCE, <<"fanout">>).
+-define(EXCHANGE_RESOURCE, <<"resources">>).
+-define(TYPE_RESOURCE, <<"topic">>).
 
 %% Call Manager Exchange
 %% - ecallmgr will publish requests to this exchange using routing keys.

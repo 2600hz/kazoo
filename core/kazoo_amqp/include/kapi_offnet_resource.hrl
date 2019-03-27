@@ -61,7 +61,7 @@
 -define(RESOURCE_TYPE_ORIGINATE, <<"originate">>).
 -define(RESOURCE_TYPE_SMS, <<"sms">>).
 -define(RESOURCE_TYPE_VIDEO, <<"video">>).
--define(RESOURCE_TYPE_CID, <<"caller_id">>).
+-define(RESOURCE_TYPE_CID, <<"cid">>).
 
 -define(APPLICATION_BRIDGE, <<"bridge">>).
 -define(APPLICATION_EAVESDROP, <<"eavesdrop">>).
