@@ -46,6 +46,9 @@
 %%%   <dt>`ignore_early_media'</dt>
 %%%   <dd>`boolean()'</dd>
 %%%
+%%%   <dt>`resource_type'</dt>
+%%%   <dd>`string()'</dt>
+%%%
 %%%   <dt>`outbound_flags'</dt>
 %%%   <dd>`["flag_1","flag_2"]', used to match flags on carrier docs</dd>
 %%% </dl>
@@ -147,9 +150,12 @@ build_offnet_request(Data, Call) ->
       ,{?KEY_PRIVACY_METHOD, props:get_value(?KEY_PRIVACY_METHOD, PrivacyFlags)}
       ,{?KEY_PRIVACY_HIDE_NAME, props:get_value(?KEY_PRIVACY_HIDE_NAME, PrivacyFlags)}
       ,{?KEY_PRIVACY_HIDE_NUMBER, props:get_value(?KEY_PRIVACY_HIDE_NUMBER, PrivacyFlags)}
-       | kz_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
-       ++ add_resource_type(Data)
+       | add_headers(Data, Call)
       ]).
+
+-spec add_headers(kz_json:object(), kapps_call:call()) -> kz_term:proplist().
+add_headers(Data, Call) ->
+    add_resource_type(Data) ++ kz_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION).
 
 -spec add_resource_type(kz_json:object()) -> kz_term:proplist().
 add_resource_type(Data) ->

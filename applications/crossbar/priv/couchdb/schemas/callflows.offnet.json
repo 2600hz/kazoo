@@ -73,6 +73,10 @@
             },
             "type": "array"
         },
+        "resource_type": {
+            "description": "sets a custom resource type for the published amqp message",
+            "type": "string"
+        },
         "ringback": {
             "description": "Tone or file to play while waiting for the leg to be answered",
             "type": "string"
