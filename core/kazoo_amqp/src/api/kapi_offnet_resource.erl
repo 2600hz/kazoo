@@ -242,7 +242,7 @@ bind_q(Queue, Props) ->
     'ok'.
 
 binding_keys(Props) ->
-    [kz_binary:join([?KEY_OFFNET_RESOURCE_REQ, Type], <<".">>)
+    [kz_binary:join([?KEY_OFFNET_RESOURCE_REQ, kz_amqp_util:encode(Type)], <<".">>)
      || Type <- props:get_value('types', Props, [<<"*">>])
     ].
 
@@ -261,6 +261,14 @@ unbind_q(Queue, Props) ->
 declare_exchanges() ->
     kz_amqp_util:resource_exchange().
 
+-spec routing_key(kz_term:api_terms()) -> kz_term:ne_binary().
+routing_key(Req) when is_list(Req) ->
+    Type = props:get_value(?KEY_RESOURCE_TYPE, Req),
+    kz_binary:join([?KEY_OFFNET_RESOURCE_REQ, Type], <<".">>);
+routing_key(Req) ->
+    Type = kz_json:get_ne_binary_value(?KEY_RESOURCE_TYPE, Req),
+    kz_binary:join([?KEY_OFFNET_RESOURCE_REQ, Type, <<"test">>], <<".">>).
+
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
 publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
@@ -268,7 +276,7 @@ publish_req(JObj) ->
 -spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?OFFNET_RESOURCE_REQ_VALUES, fun req/1),
-    kz_amqp_util:offnet_resource_publish(Payload, ContentType).
+    kz_amqp_util:offnet_resource_publish(Payload, ContentType, routing_key(Req)).
 
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
 publish_resp(TargetQ, JObj) ->
