@@ -270,7 +270,7 @@ routing_key(Req) when is_list(Req) ->
     kz_binary:join([?KEY_OFFNET_RESOURCE_REQ, Type], <<".">>);
 routing_key(Req) ->
     Type = kz_json:get_ne_binary_value(?KEY_RESOURCE_TYPE, Req),
-    kz_binary:join([?KEY_OFFNET_RESOURCE_REQ, Type, <<"test">>], <<".">>).
+    kz_binary:join([?KEY_OFFNET_RESOURCE_REQ, Type], <<".">>).
 
 -spec publish_req(kz_term:api_terms()) -> 'ok'.
 publish_req(JObj) ->
