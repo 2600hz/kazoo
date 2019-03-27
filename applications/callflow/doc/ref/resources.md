@@ -26,6 +26,7 @@ Key | Description | Type | Default | Required | Support Level
 `ignore_early_media` | Toggle whether to ignore early media | `boolean()` | `false` | `false` |  
 `outbound_flags.[]` |   | `string()` |   | `false` |  
 `outbound_flags` | List of flags to use when matching resources to route the call | `array(string())` | `[]` | `false` |  
+`resource_type` |   | `string()` |   | `false` |  
 `ringback` | Tone or file to play while waiting for the leg to be answered | `string()` |   | `false` |  
 `skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 `timeout` | How long, in seconds, to wait for the call to be answered | `integer()` |   | `false` |  
