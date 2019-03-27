@@ -395,7 +395,6 @@ offnet_resource_publish(Payload, ContentType) ->
 
 -spec offnet_resource_publish(amqp_payload(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 offnet_resource_publish(Payload, ContentType, RoutingKey) ->
-    ?DEV_LOG("publishing to routing key ~s", [RoutingKey]),
     basic_publish(?EXCHANGE_RESOURCE, RoutingKey, Payload, ContentType).
 
 %% monitor
