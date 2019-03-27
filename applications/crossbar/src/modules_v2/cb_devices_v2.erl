@@ -646,7 +646,7 @@ unique_mac_address('undefined', _Context) -> 'true';
 unique_mac_address(MacAddress, Context) ->
     DbName = cb_context:account_db(Context),
     not lists:member(MacAddress, get_mac_addresses(DbName))
-        andalso not provisioner_util:is_mac_address_in_use(MacAddress, cb_context:auth_token(Context)).
+        andalso not provisioner_util:is_mac_address_in_use(Context, MacAddress).
 
 -spec get_mac_addresses(kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_mac_addresses(DbName) ->
