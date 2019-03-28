@@ -140,8 +140,8 @@ close(Channel, []) when is_pid(Channel) ->
     lager:debug("closed amqp channel ~p", [Channel]);
 close(_, []) -> 'ok';
 
-%% cancel the consumer(s) first, then queue.delete
-%% log payload size when publishing
+%% TODO: cancel the consumer(s) first, then queue.delete
+%% TODO: what does 20,000 gen_listeners look like? Does one supervisor of kz_amqp_channel
 close(Channel, [#'basic.consume'{consumer_tag=CTag}|Commands]) when is_pid(Channel) ->
     lager:debug("ensuring ~s is removed", [CTag]),
     Command = #'basic.cancel'{consumer_tag=CTag, nowait='true'},
