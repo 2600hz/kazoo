@@ -108,6 +108,90 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{SOURCE_SERVICE}
 ```
 
+## Get ledgers summary grouped by sub-accounts
+
+> GET /v2/accounts/{ACCOUNT_ID}/ledgers/summary_by_accounts
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/summary_by_accounts
+```
+
+**Sample response:**
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "{ACCOUNT_ID_1}": {
+            "account": {
+                "name": "{ACCOUNT_NAME_1}",
+                "id": "{ACCOUNT_ID_1}"
+            },
+            "ledgers": {
+                "per-minute-voip": {
+                    "amount": -5.655,
+                    "usage": {
+                        "type": "voice",
+                        "quantity": 1500,
+                        "unit": "sec"
+                    }
+                },
+                "adjustments": {
+                    "amount": -11200,
+                    "usage": {
+                        "type": "credit",
+                        "quantity": 0,
+                        "unit": "USD"
+                    }
+                },
+                "payments": {
+                    "amount": 30078.56,
+                    "usage": {
+                        "quantity": 0
+                    }
+                },
+                "prorations": {
+                    "amount": -29.9402,
+                    "usage": {
+                        "quantity": 0
+                    }
+                },
+                "recurring": {
+                    "amount": -10883.44,
+                    "usage": {
+                        "quantity": 0
+                    }
+                }
+            },
+            "total": 7959.5248
+        },
+        "{ACCOUNT_ID_2}": {
+            "account": {
+                "name": "{ACCOUNT_NAME_2}",
+                "id": "{ACCOUNT_ID_2}"
+            },
+            "ledgers": {
+                "per-minute-voip": {
+                    "amount": -0.2262,
+                    "usage": {
+                        "type": "voice",
+                        "quantity": 60,
+                        "unit": "sec"
+                    }
+                }
+            },
+            "total": -0.2262
+        }
+    },
+    "node": "{NODE}",
+    "request_id": "{REQUEST_ID}",
+    "status": "success",
+    "timestamp": "{TIMESTAMP}",
+    "version": "{VERSION}"
+}
+```
 
 ## Get Ledger values
 
