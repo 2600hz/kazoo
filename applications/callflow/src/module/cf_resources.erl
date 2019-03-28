@@ -47,7 +47,7 @@
 %%%   <dd>`boolean()'</dd>
 %%%
 %%%   <dt>`resource_type'</dt>
-%%%   <dd>`string()'</dt>
+%%%   <dd>`string()'</dd>
 %%%
 %%%   <dt>`outbound_flags'</dt>
 %%%   <dd>`["flag_1","flag_2"]', used to match flags on carrier docs</dd>
