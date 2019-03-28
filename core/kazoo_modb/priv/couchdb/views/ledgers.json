@@ -51,7 +51,7 @@
                 "      if (!obj.hasOwnProperty(account)) continue;",
                 "      var rootObj = obj[account];",
                 "      var accountId = rootObj.account.id;",
-                "      var ledgersObj = rootObj.ledgers",
+                "      var ledgersObj = rootObj.ledgers;",
                 "      var reduceAccount = reduceObj[accountId] || {};",
                 "      var reduceLedgers = reduceAccount.ledgers || {};",
                 "      var reduceTotal = reduceAccount.total || 0;",
