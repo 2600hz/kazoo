@@ -201,9 +201,13 @@ seed_cdrs(AccountId, Year, Month) ->
 
 seed_cdr(AccountId, Year, Month) ->
     CallId = kz_binary:rand_hex(6),
-    CDRId = kzd_cdrs:create_doc_id(CallId, Year, Month),
 
-    InteractionTime = interaction_time(Year, Month),
+    {{_, _, Day}, _} = calendar:universal_time(),
+    {Y, M, D} = kz_date:normalize({Year, Month, Day}),
+
+    CDRId = kzd_cdrs:create_doc_id(CallId, Y, M),
+
+    InteractionTime = interaction_time(Y, M, D),
     InteractionKey = kz_binary:rand_hex(4),
     InteractionId = list_to_binary([integer_to_binary(InteractionTime), "-", InteractionKey]),
 
@@ -241,6 +245,6 @@ seed_cdr(AccountId, Year, Month) ->
 
     kazoo_modb:save_doc(AccountMODb, CDR).
 
-interaction_time(Year, Month) ->
-    {{_, _, D}, HMS} = calendar:universal_time(),
-    calendar:datetime_to_gregorian_seconds({{Year, Month, D}, HMS}).
+interaction_time(Year, Month, Day) ->
+    {{_, _, _}, HMS} = calendar:universal_time(),
+    calendar:datetime_to_gregorian_seconds({kz_date:normalize({Year, Month, Day}), HMS}).
