@@ -593,7 +593,22 @@ maybe_phonebook_comments(Context, Data, Comments) ->
 -spec load_port_request(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_port_request(Context, Id) ->
     Context1 = cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB),
-    crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(?TYPE_PORT_REQUEST)).
+    Context2 = crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(?TYPE_PORT_REQUEST)),
+    case cb_context:resp_status(Context2) =:= 'success' of
+        'false' -> Context2;
+        'true' ->
+            Doc = cb_context:doc(Context2),
+            IsPrivateKeys = [<<"is_private">>, <<"superduper_comment">>],
+            Comments =
+                [kzd_comment:set_is_private(kz_json:delete_key(<<"superduper_comment">>, Comment)
+                                           ,kz_term:is_true(
+                                              kz_json:get_first_defined(IsPrivateKeys, Comment, 'false')
+                                             )
+                                           )
+                 || Comment <- kzd_port_requests:comments(Doc, [])
+                ],
+            cb_context:set_doc(Context2, kzd_port_requests:set_comments(Doc, Comments))
+    end.
 
 -spec patch_then_validate_then_maybe_transition(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                                        cb_context:context().
@@ -700,7 +715,8 @@ add_commentors_info(Context, NewComments) ->
 
 -spec update_comment(cb_context:context(), kz_json:object()) -> kz_json:object().
 update_comment(Context, Comment) ->
-    Setters = [{fun kzd_comment:set_is_private/2, kz_json:is_true(<<"superduper_comment">>, Comment)}
+    IsPrivate = kz_json:get_first_defined([<<"is_private">>, <<"superduper_comment">>], Comment, 'false'),
+    Setters = [{fun kzd_comment:set_is_private/2, kz_term:is_true(IsPrivate)}
                | get_commentor_info(Context, cb_context:auth_doc(Context))
               ],
     kz_doc:setters(kz_json:delete_key(<<"superduper_comment">>, Comment), Setters).
@@ -1025,17 +1041,23 @@ prepare_timeline(Context, Doc) ->
 
 -spec filter_private_comments(cb_context:context(), kz_json:object()) -> kz_json:object().
 filter_private_comments(Context, JObj) ->
-    Filters = [{[<<"superduper_comment">>], fun kz_term:is_false/1} %% old key
-              ,{[<<"is_private">>], fun kz_term:is_false/1}
+    Filters = [{[<<"is_private">>], fun kz_term:is_false/1}
               ],
+    IsPrivateKeys = [<<"is_private">>, <<"superduper_comment">>],
+    Comments =
+        [kzd_comment:set_is_private(kz_json:delete_key(<<"superduper_comment">>, Comment)
+                                   ,kz_term:is_true(kz_json:get_first_defined(IsPrivateKeys, Comment, 'false'))
+                                   )
+         || Comment <- kzd_port_requests:comments(JObj, [])
+        ],
     case kzd_port_requests:pvt_port_authority(JObj) =:= cb_context:auth_account_id(Context)
         orelse cb_context:fetch(Context, 'is_port_authority')
         orelse cb_context:is_superduper_admin(Context)
     of
         'false' ->
-            Comments = kzd_port_requests:comments(JObj, []),
             kzd_port_requests:set_comments(JObj, run_comment_filter(Comments, Filters));
-        'true'  -> JObj
+        'true'  ->
+            kzd_port_requests:set_comments(JObj, Comments)
     end.
 
 -spec run_comment_filter(kz_json:object(), [{kz_json:path(), fun((any()) -> boolean())}]) ->
