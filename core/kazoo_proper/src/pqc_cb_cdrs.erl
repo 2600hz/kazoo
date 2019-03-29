@@ -238,4 +238,4 @@ seed_cdr(AccountId, Year, Month) ->
 
 interaction_time(Year, Month) ->
     {{_, _, D}, HMS} = calendar:universal_time(),
-    calendar:datetime_to_gregorian_seconds({{Year, Month, D}, HMS}).
+    calendar:datetime_to_gregorian_seconds({kz_date:normalize({Year, Month, D}), HMS}).
