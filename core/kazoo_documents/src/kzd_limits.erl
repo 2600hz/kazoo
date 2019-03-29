@@ -396,7 +396,7 @@ set_pvt_allow_postpay(Doc, AllowPostpay) ->
 %%------------------------------------------------------------------------------
 -spec soft_limit_inbound(doc()) -> boolean().
 soft_limit_inbound(Doc) ->
-    soft_limit_inbound(Doc, 'true').
+    soft_limit_inbound(Doc, 'false').
 
 -spec soft_limit_inbound(doc(), Default) -> boolean() | Default.
 soft_limit_inbound(Doc, Default) ->
@@ -412,7 +412,7 @@ set_pvt_soft_limit_inbound(Doc, SoftLimit) ->
 %%------------------------------------------------------------------------------
 -spec soft_limit_outbound(doc()) -> boolean().
 soft_limit_outbound(Doc) ->
-    soft_limit_outbound(Doc, 'true').
+    soft_limit_outbound(Doc, 'false').
 
 -spec soft_limit_outbound(doc(), Default) -> boolean() | Default.
 soft_limit_outbound(Doc, Default) ->
