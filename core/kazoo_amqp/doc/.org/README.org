@@ -64,3 +64,21 @@ The worker then starts a channel and assigns it as the default consumer for the 
 
 ** Testing
 Test gen_listener + listener_federator timeout during shutdown
+
+* Investigations
+** TODO Default prefetch limits > 1
+https://www.rabbitmq.com/confirms.html
+"Finding a suitable prefetch value is a matter of trial and error and will vary from workload to workload. Values in the 100 through 300 range usually offer optimal throughput and do not run significant risk of overwhelming consumers."
+
+** TODO Per-kazoo app channel pool
+Currently each gen_listener uses a channel and, once finished, closes the channel. We papered over this a bit with maintaining prechannels (since creating a channel is a network op). Generally speaking, one kazoo process doing AMQP consuming gets a dedicated channel. This is not required.
+
+https://www.rabbitmq.com/channels.html
+
+We could, instead, maintain pools of workers per-app that are checked in/out and tuned as traffic increases. This would eliminate the majority of channel churn (painful on the broker too) and potentially improve performance. The downside is the resting state of the system is a higher baseline of memory consumption. An auto-scaling pool could be of interest for high volume apps like callflows while a more static pool could be useful for apps with minimal channel usage like teletype.
+** TODO Detect / handle flow control
+https://www.rabbitmq.com/flow-control.html
+
+Flow control can be applied on connections, channels, or queues, and affects publishing of messages
+** TODO Dedicated connection for publishing-only
+Contention between fast publishers and slow consumers on the same connection can invoke flow control (artificially slowing down the connection speed). Related to QOS / prefetch settings.
