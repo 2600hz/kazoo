@@ -184,13 +184,13 @@ broker_connections(Broker) ->
                 ],
     ets:select_count(?TAB, MatchSpec).
 
--spec connections() -> [kz_amqp_connection()].
+-spec connections() -> [kz_amqp_connections()].
 connections() ->
     MatchSpec = [{#kz_amqp_connections{connection='$1'
                                       ,_='_'
                                       },
                   [],
-                  ['$$']}
+                  ['$_']}
                 ],
     ets:select(?TAB, MatchSpec).
 

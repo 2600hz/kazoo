@@ -215,20 +215,15 @@ connection_summary({[#kz_amqp_connections{connection=Connection
                                          ,broker=Broker
                                          ,available=Available
                                          ,zone=Zone
-                                         }
+                                         }=Conn
                     ], Continuation
                    }
                   ,PrimaryBroker) ->
-    MatchSpec = [{#kz_amqp_assignment{connection=Connection
-                                     ,_='_'
-                                     },
-                  [],
-                  ['true']}
-                ],
+
     io:format("| ~-48s | ~-16w | ~-8B | ~-9s | ~-10s | ~-7s |~n"
              ,[Broker
               ,Connection
-              ,ets:select_count(?ASSIGNMENTS, MatchSpec)
+              ,kz_amqp_assignments:channel_count(Conn)
               ,Available
               ,Zone
               ,Broker =:= PrimaryBroker

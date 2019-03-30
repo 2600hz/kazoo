@@ -21,6 +21,8 @@
         ,code_change/3
         ]).
 
+-export([broker/1]).
+
 -include("kz_amqp_util.hrl").
 -type state() :: kz_amqp_connection().
 
@@ -57,6 +59,10 @@ create_prechannel(Srv) ->
 -spec disconnect(pid()) -> 'ok'.
 disconnect(Srv) ->
     gen_server:cast(Srv, 'disconnect').
+
+-spec broker(kz_amqp_connections()) -> kz_term:ne_binary().
+broker(#kz_amqp_connections{broker=Broker}) ->
+    Broker.
 
 %%%=============================================================================
 %%% gen_server callbacks

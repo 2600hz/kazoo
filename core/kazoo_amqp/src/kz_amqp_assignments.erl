@@ -25,6 +25,8 @@
         ,code_change/3
         ]).
 
+-export([channel_count/1]).
+
 -include("kz_amqp_util.hrl").
 
 -define(SERVER, ?MODULE).
@@ -104,6 +106,17 @@ add_channel(Broker, Connection, Channel)
 -spec release(pid()) -> 'ok'.
 release(Consumer) ->
     gen_server:call(?SERVER, {'release_handlers', Consumer}, 'infinity').
+
+-spec channel_count(kz_amqp_connection() | pid()) -> non_neg_integer().
+channel_count(#kz_amqp_connections{connection=AMQPConn}) ->
+    channel_count(AMQPConn);
+channel_count(AMQPConn) when is_pid(AMQPConn) ->
+    MatchSpec = [{#kz_amqp_assignment{connection=AMQPConn,_='_'}
+                 ,[]
+                 ,['true']
+                 }
+                ],
+    ets:select_count(?TAB, MatchSpec).
 
 %%%=============================================================================
 %%% gen_server callbacks

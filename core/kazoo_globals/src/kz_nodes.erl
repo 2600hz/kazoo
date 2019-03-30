@@ -620,7 +620,9 @@ print_each_node_info(KV) ->
 print_node_info({K, ?NE_BINARY = V}) ->
     print_simple_row_str([K, V]);
 print_node_info({K, V}) when is_integer(V) ->
-    print_simple_row([K, V]).
+    print_simple_row([K, V]);
+print_node_info({K, JObj}) ->
+    io:format("~s: ~s~n", [K, kz_json:encode(JObj)]).
 
 -spec status_list(kz_types:kapps_info(), 0..4) -> 'ok'.
 status_list([], _) -> io:format("~n", []);
@@ -1213,7 +1215,18 @@ maybe_add_zone(#kz_node{zone=Zone, broker=B}, #state{zones=Zones}=State) ->
 
 -spec node_info() -> kz_json:object().
 node_info() ->
-    kz_json:from_list(pool_states()).
+    kz_json:from_list(pool_states()
+                      ++ amqp_status()
+                     ).
+
+amqp_status() ->
+    Connections = kz_amqp_connections:connections(),
+    [amqp_status_connection(Connection) || Connection <- Connections].
+
+amqp_status_connection(Connection) ->
+    Count = kz_amqp_assignments:channel_count(Connection),
+    Broker = kz_amqp_connection:broker(Connection),
+    {Broker, kz_json:from_list([{<<"channel_count">>, Count}])}.
 
 -spec pool_state_binding() -> kz_term:ne_binary().
 pool_state_binding() -> <<?MODULE_STRING, ".amqp.pools">>.
