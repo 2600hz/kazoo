@@ -30,6 +30,7 @@
                             ,<<"E164-Number">>
                             ,<<"Prefix">>
                             ,<<"Rate">>
+                            ,<<"Rate-ID">>
                             ,<<"Rate-Description">>
                             ,<<"Rate-Increment">>
                             ,<<"Rate-Minimum">>
