@@ -967,15 +967,27 @@ start_amqp(Props, AutoAck) ->
     case kz_amqp_util:new_queue(QueueName, QueueProps) of
         {'error', _}=E -> E;
         Q ->
-            set_qos(props:get_value('basic_qos', Props)),
+            set_qos(QueueName, props:get_value('basic_qos', Props)),
             'ok' = start_consumer(Q, maybe_configure_auto_ack(ConsumeOptions, AutoAck)),
             lager:debug("queue started: ~s", [Q]),
             {'ok', Q}
     end.
 
--spec set_qos('undefined' | non_neg_integer()) -> 'ok'.
-set_qos('undefined') -> 'ok';
-set_qos(N) when is_integer(N), N >= 0 -> kz_amqp_util:basic_qos(N).
+-spec set_qos(binary(), 'undefined' | non_neg_integer()) -> 'ok'.
+set_qos(<<>>, 'undefined') ->
+    case kz_config:get_integer('amqp', 'prefetch') of
+        [N] when is_integer(N) ->
+            lager:debug("random queue getting config.ini QoS settings(~p) applied", [N]),
+            kz_amqp_util:basic_qos(N);
+        _ ->
+            lager:debug("random queue getting default QoS settings(1) applied"),
+            kz_amqp_util:basic_qos(1)
+    end;
+set_qos(_QueueName, 'undefined') ->
+    lager:debug("named queue has no QoS settings");
+set_qos(_QueueName, N) when is_integer(N), N >= 0 ->
+    lager:debug("applying QoS prefetch of ~p", [N]),
+    kz_amqp_util:basic_qos(N).
 
 -spec start_consumer(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 start_consumer(Q, 'undefined') -> kz_amqp_util:basic_consume(Q, []);
