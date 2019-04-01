@@ -279,7 +279,7 @@ attempt_transition(PortReq, Metadata, ToState) ->
     end.
 
 -spec is_user_allowed_to_move_state(kz_json:object(), transition_metadata(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
-                                           transition_response().
+                                           boolean().
 is_user_allowed_to_move_state(PortReq, #{}, _, 'undefined') ->
     lager:debug("port authority id is missing, disallowing state change for port ~s", [kz_doc:id(PortReq)]),
     'false';
@@ -343,7 +343,7 @@ transition(_JObj, _Metadata, [], _ToState, _CurrentState) ->
     {'error', 'invalid_state_transition'};
 transition(JObj, Metadata, [CurrentState | _], ToState, CurrentState) ->
     lager:debug("going from ~s to ~s", [CurrentState, ToState]),
-    {ok, successful_transition(JObj, CurrentState, ToState, Metadata)};
+    {'ok', successful_transition(JObj, CurrentState, ToState, Metadata)};
 transition(JObj, Metadata, [_FromState | FromStates], ToState, CurrentState) ->
     lager:debug("skipping from ~s to ~s c ~p", [_FromState, ToState, CurrentState]),
     transition(JObj, Metadata, FromStates, ToState, CurrentState).
