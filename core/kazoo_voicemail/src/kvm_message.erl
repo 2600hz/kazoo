@@ -102,14 +102,14 @@ maybe_convert_attachment(Call, MediaId, Length, Options) ->
     case  convert_attachment(Db, MediaDoc, kzd_box_message:transcribe_filename(MediaDoc)) of
         {'error', <<"Conversion file is not defined">>} -> notify_and_update_meta(Call, MediaId, Length, Options);
         {'error', ConvertErr} = Error1 ->
-            lager:error("Cannot convert mediafile. Error: ~p", [ConvertErr]),
+            lager:error("cannot convert mediafile. Error: ~p", [ConvertErr]),
             Error1;
         {'ok', Content, Metadata} ->
-            lager:error("Metadata: ~p", [Metadata]),
+            lager:error("metadata: ~p", [Metadata]),
             case upload_attachment(Db, MediaDoc, Content, Metadata) of
                 'ok' -> notify_and_update_meta(Call, MediaId, Length, Options);
                 {'error', UploadErr} = Error2 ->
-                    lager:error("Cannot upload mediafile. Error: ~p", [UploadErr]),
+                    lager:error("cannot upload mediafile. Error: ~p", [UploadErr]),
                     Error2
             end
     end.
