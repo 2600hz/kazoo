@@ -981,7 +981,7 @@ set_qos(<<>>, 'undefined') ->
             kz_amqp_util:basic_qos(N);
         _ ->
             lager:debug("random queue getting default QoS settings(1) applied"),
-            kz_amqp_util:basic_qos(1)
+            kz_amqp_util:basic_qos(?DEFAULT_PREFETCH)
     end;
 set_qos(_QueueName, 'undefined') ->
     lager:debug("named queue has no QoS settings");
