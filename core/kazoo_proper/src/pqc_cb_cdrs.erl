@@ -212,7 +212,10 @@ straight_seq() ->
 
     SummaryResp = summary(API, AccountId),
     ?INFO("summary resp: ~s", [SummaryResp]),
-    'true' = cdrs_exist(CDRs, kz_json:get_list_value(<<"data">>, kz_json:decode(SummaryResp))),
+    RespCDRs = kz_json:get_list_value(<<"data">>, kz_json:decode(SummaryResp)),
+    ?INFO("Resp CDRs: ~p~n", [lists:usort([kz_doc:id(RespCDR) || RespCDR <- RespCDRs])]),
+    ?INFO("Base CDRs: ~p~n", [lists:usort([kz_doc:id(CDR) || CDR <- CDRs])]),
+    'true' = cdrs_exist(CDRs, RespCDRs),
     ?INFO("all cdrs found in response"),
 
     CSVResp = summary(API, AccountId, <<"text/csv">>),
@@ -286,13 +289,14 @@ cdr_exists(CDR, RespCDRs) ->
 cdrs_exist([], []) -> 'true';
 cdrs_exist([], APIs) ->
     IDs = [kz_doc:id(CDR) || CDR <- APIs],
-    ?INFO("  failed to find API(s) ~s", [kz_binary:join(IDs, <<", ">>)]),
+    ?INFO("  failed to find API results in CDRs: ~s", [kz_binary:join(IDs, <<", ">>)]),
     'false';
 cdrs_exist(CDRs, []) ->
     IDs = [kz_doc:id(CDR) || CDR <- CDRs],
-    ?INFO("  failed to find CDR(s) ~s", [kz_binary:join(IDs, <<", ">>)]),
+    ?INFO("  failed to find CDR(s) in API response: ~s", [kz_binary:join(IDs, <<", ">>)]),
     'false';
 cdrs_exist([_|_]=CDRs, [API|APIs]) ->
+    lager:debug("filtering out ~s", [kz_doc:id(API)]),
     cdrs_exist([CDR || CDR <- CDRs, kz_doc:id(CDR) =/= kz_doc:id(API)]
               ,APIs
               ).
@@ -399,4 +403,10 @@ seed_cdr(AccountId, OwnerId, Year, Month, InteractionId) ->
     kazoo_modb:save_doc(AccountMODb, CDR).
 
 interaction_time(Year, Month, Day) ->
-    calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {1, 2, 3}}).
+    {Today, _} = calendar:universal_time(),
+    interaction_time(Year, Month, Day, Today).
+
+interaction_time(Year, Month, Day, {Year, Month, Day}) ->
+    calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {0, 0, 0}});
+interaction_time(Year, Month, Day, _Today) ->
+    calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {23, 59, 59}}).
