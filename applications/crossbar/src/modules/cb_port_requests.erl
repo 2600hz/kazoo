@@ -1060,8 +1060,8 @@ filter_private_comments(Context, JObj) ->
             kzd_port_requests:set_comments(JObj, Comments)
     end.
 
--spec run_comment_filter(kz_json:object(), [{kz_json:path(), fun((any()) -> boolean())}]) ->
-                                kz_json:object().
+-spec run_comment_filter(kz_json:objects(), [{kz_json:path(), fun((any()) -> boolean())}]) ->
+                                kz_json:objects().
 run_comment_filter(Comments, Filters) ->
     [Comment
      || Comment <- Comments,
@@ -1314,7 +1314,6 @@ maybe_move_state(Context, PortState, 'success') ->
                                                    ,cb_context:req_value(Context, ?REQ_TRANSITION)
                                                    ),
     try knm_port_request:attempt_transition(cb_context:doc(Context), Metadata, PortState) of
-        'false' -> Context;
         {'ok', PortRequest} ->
             lager:debug("loaded new port request state ~s", [PortState]),
             cb_context:set_doc(Context, PortRequest);
@@ -1555,7 +1554,8 @@ authority_type(Context, Nouns) ->
     Accounts = props:get_value(<<"accounts">>, Nouns),
     authority_type(Context, Nouns, Accounts).
 
--spec authority_type(cb_context:context(), req_nouns(), path_tokens() | 'undefined') -> {authority_type(), cb_context:context()}.
+-spec authority_type(cb_context:context(), req_nouns(), path_tokens() | 'undefined') ->
+                            {authority_type(), kz_term:ne_binary()}.
 authority_type(Context, _Nouns, 'undefined') ->
     {'agent', cb_context:auth_account_id(Context)};
 authority_type(Context, _Nouns, [_AccountId, ?DESCENDANTS]) ->

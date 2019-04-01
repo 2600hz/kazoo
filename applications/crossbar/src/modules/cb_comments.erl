@@ -418,7 +418,7 @@ id_to_number(Id) -> kz_term:to_integer(Id) + 1.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec sort(kz_json:objects()) -> boolean().
+-spec sort(kz_json:objects()) -> kz_json:objects().
 sort(Comments) ->
     lists:sort(fun sort_fun/2, Comments).
 
