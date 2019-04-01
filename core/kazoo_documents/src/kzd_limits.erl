@@ -381,7 +381,7 @@ set_pvt_allow_prepay(Doc, AllowPrepay) ->
 %%------------------------------------------------------------------------------
 -spec allow_postpay(doc()) -> boolean().
 allow_postpay(Doc) ->
-    allow_postpay(Doc, 'true').
+    allow_postpay(Doc, 'false').
 
 -spec allow_postpay(doc(), Default) -> boolean() | Default.
 allow_postpay(Doc, Default) ->
