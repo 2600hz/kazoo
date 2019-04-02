@@ -70,7 +70,12 @@ Test gen_listener + listener_federator timeout during shutdown
 https://www.rabbitmq.com/confirms.html
 "Finding a suitable prefetch value is a matter of trial and error and will vary from workload to workload. Values in the 100 through 300 range usually offer optimal throughput and do not run significant risk of overwhelming consumers."
 
+4.3 backport on unique channels
+
 ** TODO Per-kazoo app channel pool
+
+4.3 backport
+
 Currently each gen_listener uses a channel and, once finished, closes the channel. We papered over this a bit with maintaining prechannels (since creating a channel is a network op). Generally speaking, one kazoo process doing AMQP consuming gets a dedicated channel. This is not required.
 
 https://www.rabbitmq.com/channels.html
