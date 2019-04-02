@@ -163,12 +163,14 @@ handle_event(JObj, #state{name=Name}) ->
                     )
         of
             'true' -> handle_document_change(JObj, Name);
-            'false' when V -> exec_bindings(Name, JObj);
+            'false' when V -> exec_bindings(kz_term:to_binary(Name), JObj);
             'false' -> lager:error("payload invalid for kapi_conf: ~p", [JObj])
         end,
     'ignore'.
 
 -spec terminate(any(), state()) -> 'ok'.
+terminate('shutdown', _State) ->
+    lager:debug("shutting down listener");
 terminate(_Reason, _State) ->
     lager:info("terminating: ~p", [_Reason]).
 

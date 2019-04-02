@@ -22,6 +22,8 @@
 handle_req(RouteReq, Props) ->
     CallId = kapi_route:call_id(RouteReq),
     kz_util:put_callid(CallId),
+    kz_amqp_worker:worker_pool(callflow_sup:pool_name()),
+
     'true' = kapi_route:req_v(RouteReq),
 
     gproc:reg({'p', 'l', {'route_req', CallId}}),

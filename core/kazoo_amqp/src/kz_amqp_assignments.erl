@@ -844,9 +844,20 @@ release_handlers(Consumer)
     Pattern = #kz_amqp_assignment{consumer=Consumer, _='_'},
     release_handlers(ets:match_object(?TAB, Pattern, 1));
 release_handlers('$end_of_table') -> 'ok';
-release_handlers({[#kz_amqp_assignment{channel=Channel}], Continuation})
-  when is_pid(Channel) ->
-    _ = unregister_channel_handlers(Channel),
+release_handlers({[#kz_amqp_assignment{consumer=Consumer
+                                      ,channel=Channel
+                                      }
+                  ]
+                 ,Continuation
+                 }
+                )
+  when is_pid(Channel),
+       is_pid(Consumer)
+       ->
+    case is_process_alive(Consumer) of
+        'true' -> unregister_channel_handlers(Channel);
+        'false' -> 'ok'
+    end,
     release_handlers(ets:match(Continuation));
 release_handlers({[#kz_amqp_assignment{}], Continuation}) ->
     release_handlers(ets:match(Continuation)).
