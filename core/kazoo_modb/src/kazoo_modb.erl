@@ -33,6 +33,14 @@
 -type view_options() :: [view_option()].
 
 -define(MAX_RETRIES, 2).
+-define(DEFAULT_CHANGE_NOTICE_EXCLUDES
+       ,[<<"cdr">>
+        ,<<"ledger">>
+        ,<<"pivot_debug">>
+        ,<<"call_recording">>
+        ,<<"notify_smtp_log">>
+        ]
+       ).
 
 -export_type([view_options/0]).
 
@@ -179,7 +187,7 @@ save_doc(Account, Doc) ->
 save_doc(Account, Doc, Options) when is_list(Options) ->
     AccountMODb = get_modb(Account),
     MaxRetries = props:get_integer_value('max_retries', Options, ?MAX_RETRIES),
-    couch_save(AccountMODb, Doc, Options, 'first_try', MaxRetries);
+    maybe_supress_notice_and_save(AccountMODb, Doc, Options, 'first_try', MaxRetries);
 save_doc(Account, Doc, Timestamp) ->
     save_doc(Account, Doc, Timestamp, []).
 
@@ -189,14 +197,37 @@ save_doc(Account, Doc, Timestamp) ->
 save_doc(Account, Doc, Timestamp, Options) when is_list(Options) ->
     AccountMODb = get_modb(Account, Timestamp),
     MaxRetries = props:get_integer_value('max_retries', Options, ?MAX_RETRIES),
-    couch_save(AccountMODb, Doc, Options, 'first_try', MaxRetries);
+    maybe_supress_notice_and_save(AccountMODb, Doc, Options, 'first_try', MaxRetries);
 save_doc(Account, Doc, Year, Month) ->
     save_doc(Account, Doc, Year, Month, []).
 
 save_doc(Account, Doc, Year, Month, Options) ->
     AccountMODb = get_modb(Account, Year, Month),
     MaxRetries = props:get_integer_value('max_retries', Options, ?MAX_RETRIES),
-    couch_save(AccountMODb, Doc, Options, 'first_try', MaxRetries).
+    maybe_supress_notice_and_save(AccountMODb, Doc, Options, 'first_try', MaxRetries).
+
+-spec maybe_supress_notice_and_save(kz_term:ne_binary(), kz_json:object(), kz_term:proplist(), atom(), integer()) ->
+                                           {'ok', kz_json:object()} |
+                                           {'error', atom()}.
+maybe_supress_notice_and_save(AccountMODb, Doc, Options, Reason, Retry) ->
+    ExcludeList = kapps_config:get_ne_binaries(?CONFIG_CAT
+                                              ,<<"change_notice_exclude_types">>
+                                              ,?DEFAULT_CHANGE_NOTICE_EXCLUDES
+                                              ),
+    Type = kz_doc:type(Doc),
+    case props:get_is_true('supress_change_notice', Options, 'false')
+        orelse (lists:member(Type, ExcludeList)
+                andalso props:get_is_true('supress_change_notice', Options, 'true')
+               )
+    of
+        'false' -> couch_save(AccountMODb, Doc, Options, Reason, Retry);
+        'true' ->
+            lager:debug("suppressing change notice for document type ~s", [Type]),
+            kz_datamgr:suppress_change_notice(),
+            Result = couch_save(AccountMODb, Doc, Options, Reason, Retry),
+            kz_datamgr:enable_change_notice(),
+            Result
+    end.
 
 -spec couch_save(kz_term:ne_binary(), kz_json:object(), kz_term:proplist(), atom(), integer()) ->
                         {'ok', kz_json:object()} |
