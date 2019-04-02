@@ -707,7 +707,7 @@ specific_call_event_props(<<"CHANNEL_DESTROY">>, _, Props) ->
     ,{<<"From-Uri">>, props:get_value(<<"variable_sip_from_uri">>, Props)}
     ,{<<"Remote-SDP">>, props:get_value(<<"variable_switch_r_sdp">>, Props)}
     ,{<<"Local-SDP">>, props:get_value(<<"variable_rtp_local_sdp_str">>, Props)}
-    ,{<<"Duration-Seconds">>, props:get_value(<<"variable_duration">>, Props)}
+    ,{<<"Duration-Seconds">>, props:get_integer_value(<<"variable_duration">>, Props)}
     ,{<<"Billing-Seconds">>, get_billing_seconds(Props)}
     ,{<<"Ringing-Seconds">>, get_ringing_seconds(Props)}
     ,{<<"User-Agent">>, props:get_value(<<"variable_sip_user_agent">>, Props)}
