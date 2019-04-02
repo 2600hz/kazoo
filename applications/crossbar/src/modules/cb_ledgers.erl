@@ -145,11 +145,12 @@ authorize_create(Context) ->
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     Options = [{'group', 'true'}
-              ,{'group_level', 2}
-              ,{'key_min_length', 2}
+              ,{'group_level', 0}
               ,{'mapper', fun normalize_list_by_timestamp/2}
-              ,{'range_keymap', []}
+              ,{'range_start_keymap', [null]}
+              ,{'range_end_keymap', [<<16#fff0/utf8>>]}
               ,{'reduce', 'true'}
+              ,{'should_paginate', 'false'}
               ,{'unchunkable', 'true'}
               ],
     Context1 = crossbar_view:load_modb(Context, ?VIEW_BY_TIMESTAMP, Options),
@@ -157,7 +158,9 @@ validate(Context) ->
         'success' ->
             Summary = kz_json:sum_jobjs(cb_context:doc(Context1)),
             Setters = [{fun cb_context:set_resp_envelope/2
-                       ,kz_json:delete_key(<<"page_size">>, cb_context:resp_envelope(Context1))
+                       ,kz_json:delete_keys([<<"page_size">>, <<"start_key">>, <<"next_start_key">>]
+                                           ,cb_context:resp_envelope(Context1)
+                                           )
                        }
                       ,{fun cb_context:set_resp_data/2, summary_to_dollars(Summary)}
                       ],
@@ -190,10 +193,10 @@ validate(Context, ?AVAILABLE) ->
     crossbar_doc:handle_json_success(Available, Context);
 validate(Context, ?SUB_SUMMARY) ->
     Options = [{'group', 'true'}
-              ,{'group_level', 3}
-              ,{'key_min_length', 3}
+              ,{'group_level', 1}
               ,{'mapper', fun normalize_list_by_accounts/2}
-              ,{'range_keymap', []}
+              ,{'range_start_keymap', [null]}
+              ,{'range_end_keymap', [<<16#fff0/utf8>>]}
               ,{'reduce', 'true'}
               ,{'should_paginate', 'false'}
               ,{'unchunkable', 'true'}
@@ -203,7 +206,9 @@ validate(Context, ?SUB_SUMMARY) ->
         'success' ->
             Summary = kz_json:sum_jobjs(cb_context:doc(Context1)),
             Setters = [{fun cb_context:set_resp_envelope/2
-                       ,kz_json:delete_key(<<"page_size">>, cb_context:resp_envelope(Context1))
+                       ,kz_json:delete_keys([<<"page_size">>, <<"start_key">>, <<"next_start_key">>]
+                                           ,cb_context:resp_envelope(Context1)
+                                           )
                        }
                       ,{fun cb_context:set_resp_data/2, summary_to_dollars(Summary)}
                       ],
@@ -414,11 +419,10 @@ build_success_response(AccountId, Ledger) ->
 %%------------------------------------------------------------------------------
 -spec normalize_list_by_timestamp(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_list_by_timestamp(JObj, Acc) ->
-    [_Timestamp, ServiceName] = kz_json:get_value(<<"key">>, JObj),
-    Ledgers = [kz_json:from_list([{ServiceName, kz_json:delete_key(<<"account_name">>, Val)}])
-               || Val <- kz_json:get_value(<<"value">>, JObj)
-              ],
-    [kz_json:sum_jobjs(Ledgers ++ Acc)].
+    Ledgers = kz_json:map(fun(ServiceName, ValJ) -> {ServiceName, kz_json:delete_key(<<"account_name">>, ValJ)} end
+                         ,kz_json:get_value(<<"value">>, JObj)
+                         ),
+    [kz_json:sum_jobjs([Ledgers | Acc])].
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -427,26 +431,37 @@ normalize_list_by_timestamp(JObj, Acc) ->
 -spec normalize_list_by_accounts(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_list_by_accounts(JObj, Acc) ->
     ViewKey = kz_json:get_value(<<"key">>, JObj),
-    NewJObj = [normalize_ledger_jobj(ViewKey, J) || J <- kz_json:get_value(<<"value">>, JObj)],
-    [kz_json:sum_jobjs(NewJObj ++ Acc)].
+    NewJObj = normalize_ledger_jobj(ViewKey, kz_json:get_value(<<"value">>, JObj)),
+    [kz_json:sum_jobjs([NewJObj | Acc])].
 
 -spec normalize_ledger_jobj(kazoo_data:range_key(), kz_json:object()) -> kz_json:object().
-normalize_ledger_jobj([_Timestamp, ServiceName, AccountId], JObj) ->
+normalize_ledger_jobj([AccountId], JObj) ->
     AccountJObj = kz_json:from_list([{<<"id">>, AccountId}
-                                    ,{<<"name">>, kz_json:get_value(<<"account_name">>, JObj)}
+                                    ,{<<"name">>
+                                     ,kz_json:get_value(<<"account_name">>, hd(kz_json:values(JObj)))
+                                     }
                                     ]
                                    ),
-    ServiceJObj = kz_json:from_list([{ServiceName, kz_json:delete_key(<<"account_name">>, JObj)}]),
+    {Ledgers, Total} =
+        kz_json:foldl(fun(SerivceName, ValJ, {LedgersAcc, TotalSum}) ->
+                              {kz_json:set_value(SerivceName
+                                                ,kz_json:delete_key(<<"account_name">>, ValJ)
+                                                ,LedgersAcc
+                                                )
+                              ,kz_json:get_integer_value(<<"amount">>, ValJ, 0) + TotalSum
+                              }
+                      end
+                     ,{kz_json:new(), 0}
+                     ,JObj
+                     ),
     kz_json:from_list([{AccountId
                        ,kz_json:from_list(
                           [{<<"account">>, AccountJObj}
-                          ,{<<"ledgers">>, ServiceJObj}
-                          ,{<<"total">>, kz_json:get_integer_value(<<"amount">>, JObj)}
-                          ]
-                         )
+                          ,{<<"ledgers">>, Ledgers}
+                          ,{<<"total">>, Total}
+                          ])
                        }
-                      ]
-                     ).
+                      ]).
 
 %%------------------------------------------------------------------------------
 %% @doc
