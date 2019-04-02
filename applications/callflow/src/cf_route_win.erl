@@ -332,7 +332,7 @@ maybe_start_account_recording(From, To, Call) ->
         NewCall -> kapps_call:set_is_recording('true', NewCall)
     end.
 
--spec maybe_start_endpoint_recording(kz_term:ne_binary(), ne_binary, kapps_call:call()) -> kapps_call:call().
+-spec maybe_start_endpoint_recording(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kapps_call:call().
 maybe_start_endpoint_recording(<<"onnet">>, To, Call) ->
     DefaultEndpointId = kapps_call:authorizing_id(Call),
     EndpointId = kapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, DefaultEndpointId, Call),

@@ -276,7 +276,7 @@ status_to_json() ->
                              )
     end.
 
--spec node_status_to_json(kz_types:kz_node(), atom()) -> kz_json:object().
+-spec node_status_to_json(kz_types:kz_node(), kz_json:object()) -> kz_json:object().
 node_status_to_json(#kz_node{zone=NodeZone
                             ,node=N
                             ,md5=MD5
@@ -317,7 +317,8 @@ node_status_to_json(#kz_node{zone=NodeZone
     [NodeType,_] = binary:split(kz_term:to_binary(N), <<"@">>),
     kz_json:set_value([kz_term:to_binary(NodeZone),NodeType,kz_term:to_binary(N)]
                      ,kz_json:from_list(StatusProps)
-                     ,Acc).
+                     ,Acc
+                     ).
 
 -spec status() -> 'no_return'.
 status() ->
