@@ -1092,6 +1092,18 @@ fetch_category(Category, 'false') ->
         ,{{<<"jonny5">>, <<"default_resource_consuming_calls">>}
          ,{<<"limits">>, <<"resource_consuming_calls">>}
          }
+        ,{{<<"jonny5">>, <<"default_burst_trunks">>}
+         ,{<<"limits">>, <<"burst_trunks">>}
+         }
+        ,{{<<"jonny5">>, <<"default_inbound_trunks">>}
+         ,{<<"limits">>, <<"inbound_trunks">>}
+         }
+        ,{{<<"jonny5">>, <<"default_outbound_trunks">>}
+         ,{<<"limits">>, <<"outbound_trunks">>}
+         }
+        ,{{<<"jonny5">>, <<"default_twoway_trunks">>}
+         ,{<<"limits">>, <<"twoway_trunks">>}
+         }
         ,{{<<"jonny5">>, <<"default_max_postpay_amount">>}
          ,{<<"limits">>, <<"max_postpay_amount">>}
          }

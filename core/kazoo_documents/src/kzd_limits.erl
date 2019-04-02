@@ -168,7 +168,7 @@ inbound_trunks(Doc) ->
 
 -spec inbound_trunks(doc(), Default) -> tristate_integer() | Default.
 inbound_trunks(Doc, Default) ->
-    kz_json:get_integer_value(<<"inbound_trunks">>, Doc, Default).
+    get_limit_integer(<<"inbound_trunks">>, Doc, Default).
 
 -spec set_inbound_trunks(doc(), tristate_integer()) -> doc().
 set_inbound_trunks(Doc, InboundTrunks) ->
@@ -188,7 +188,7 @@ outbound_trunks(Doc) ->
 
 -spec outbound_trunks(doc(), Default) -> tristate_integer() | Default.
 outbound_trunks(Doc, Default) ->
-    kz_json:get_integer_value(<<"outbound_trunks">>, Doc, Default).
+    get_limit_integer(<<"outbound_trunks">>, Doc, Default).
 
 -spec set_outbound_trunks(doc(), tristate_integer()) -> doc().
 set_outbound_trunks(Doc, OutboundTrunks) ->
@@ -208,7 +208,7 @@ twoway_trunks(Doc) ->
 
 -spec twoway_trunks(doc(), Default) -> tristate_integer() | Default.
 twoway_trunks(Doc, Default) ->
-    kz_json:get_integer_value(<<"twoway_trunks">>, Doc, Default).
+    get_limit_integer(<<"twoway_trunks">>, Doc, Default).
 
 -spec set_twoway_trunks(doc(), tristate_integer()) -> doc().
 set_twoway_trunks(Doc, TwowayTrunks) ->
@@ -279,7 +279,7 @@ burst_trunks(Doc) ->
 
 -spec burst_trunks(doc(), Default) -> tristate_integer() | Default.
 burst_trunks(Doc, Default) ->
-    kz_json:get_integer_value(<<"burst_trunks">>, Doc, Default).
+    get_limit_integer(<<"burst_trunks">>, Doc, Default).
 
 -spec set_burst_trunks(doc(), tristate_integer()) -> doc().
 set_burst_trunks(Doc, BurstTrunks) ->
@@ -491,6 +491,41 @@ get_private_limit(Key, Doc) ->
 -spec get_default_limit(kz_term:ne_binary(), tristate_integer()) -> tristate_integer().
 get_default_limit(Key, Default) ->
     kapps_config:get_integer(?LIMITS_CAT, Key, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_limit_integer(kz_term:ne_binary(), kz_json:object(), integer()) -> integer().
+get_limit_integer(Key, Doc, Default) ->
+    case kz_json:get_value(<<"pvt_", Key/binary>>, Doc) of
+        'undefined' -> get_public_limit_integer(Key, Doc, Default);
+        0 -> 0;
+        Value when Value < 0 ->
+            get_public_limit_integer(Key, Doc, Default);
+        Value ->
+            enforce_integer_limit(Value
+                                 ,get_public_limit_integer(Key, Doc, Default)
+                                 )
+    end.
+
+-spec get_public_limit_integer(kz_term:ne_binary(), kz_json:object(), integer()) -> integer().
+get_public_limit_integer(Key, Doc, Default) ->
+    case kz_json:get_value(Key, Doc) of
+        'undefined' -> get_default_limit_integer(Key, Default);
+        Value -> Value
+    end.
+
+-spec get_default_limit_integer(kz_term:ne_binary(), integer()) -> integer().
+get_default_limit_integer(Key, Default) ->
+    kapps_config:get_integer(?LIMITS_CAT, Key, Default).
+
+-spec enforce_integer_limit(integer(), integer()) -> integer.
+enforce_integer_limit(Private, Public) ->
+    case Private > Public of
+        'true' -> Public;
+        'false' -> Private
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc

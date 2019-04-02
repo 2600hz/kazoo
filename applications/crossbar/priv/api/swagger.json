@@ -31951,6 +31951,12 @@
                     },
                     "type": "array"
                 },
+                "burst_trunks": {
+                    "default": 0,
+                    "description": "A hard limit for number of burst trunks permitted per account by default",
+                    "minimum": -1,
+                    "type": "integer"
+                },
                 "calls": {
                     "description": "A hard limit for the total number calls per account by default",
                     "minimum": 0,
@@ -31961,10 +31967,22 @@
                     "description": "Determines if the limits should be enforced on accounts by default",
                     "type": "boolean"
                 },
+                "inbound_trunks": {
+                    "default": 0,
+                    "description": "A hard limit for the number of inbound trunks per account by default",
+                    "minimum": -1,
+                    "type": "integer"
+                },
                 "max_postpay_ammount": {
                     "default": 0,
                     "description": "A hard limit for the postpay before limiting calls per account by default",
                     "minimum": 0,
+                    "type": "integer"
+                },
+                "outbound_trunks": {
+                    "default": 0,
+                    "description": "A hard limit for the number of outbound trunks per account by default",
+                    "minimum": -1,
                     "type": "integer"
                 },
                 "reserve_ammount": {
@@ -31987,6 +32005,12 @@
                     "default": false,
                     "description": "Permit calls on outbound calls for accounts which have exceeded the limit per account by default",
                     "type": "boolean"
+                },
+                "twoway_trunks": {
+                    "default": 0,
+                    "description": "A hard limit for the number of twoway trunks per account by default",
+                    "minimum": -1,
+                    "type": "integer"
                 }
             },
             "type": "object"
