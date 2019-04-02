@@ -66,14 +66,18 @@ The worker then starts a channel and assigns it as the default consumer for the 
 Test gen_listener + listener_federator timeout during shutdown
 
 * Investigations
-** DONE Default prefetch limits > 1
-CLOSED: [2019-04-02 Tue 18:03]
-https://www.rabbitmq.com/confirms.html
-"Finding a suitable prefetch value is a matter of trial and error and will vary from workload to workload. Values in the 100 through 300 range usually offer optimal throughput and do not run significant risk of overwhelming consumers."
+** TODO Detect / handle flow control
+https://www.rabbitmq.com/flow-control.html
 
-50 was picked as a conservative default but config.ini can override this default as necessary.
+Flow control can be applied on connections, channels, or queues, and affects publishing of messages
+** TODO Dedicated connection for publishing-only
+Contention between fast publishers and slow consumers on the same connection can invoke flow control (artificially slowing down the connection speed). Related to QOS / prefetch settings.
 
-** TODO Per-kazoo app channel pool
+** TODO 1. Fix the services cache bindings
+** TODO 2. Create a means to disable all MODb updates without impacting applications / services
+** TODO 3. Deploy a regex against all bindings keys to replace only and trailing wildcards with '#'
+** TODO 4. Move to application pools to avoid queue churn
+1. Added benefit that it also limits resources consumption on rabbitmq
 
 4.3 backport
 
@@ -82,9 +86,15 @@ Currently each gen_listener uses a channel and, once finished, closes the channe
 https://www.rabbitmq.com/channels.html
 
 We could, instead, maintain pools of workers per-app that are checked in/out and tuned as traffic increases. This would eliminate the majority of channel churn (painful on the broker too) and potentially improve performance. The downside is the resting state of the system is a higher baseline of memory consumption. An auto-scaling pool could be of interest for high volume apps like callflows while a more static pool could be useful for apps with minimal channel usage like teletype.
-** TODO Detect / handle flow control
-https://www.rabbitmq.com/flow-control.html
 
-Flow control can be applied on connections, channels, or queues, and affects publishing of messages
-** TODO Dedicated connection for publishing-only
-Contention between fast publishers and slow consumers on the same connection can invoke flow control (artificially slowing down the connection speed). Related to QOS / prefetch settings.
+** DONE 5. For non-named queues remove or significantly increase the flow control limit
+CLOSED: [2019-04-02 Tue 20:56]
+https://www.rabbitmq.com/confirms.html
+"Finding a suitable prefetch value is a matter of trial and error and will vary from workload to workload. Values in the 100 through 300 range usually offer optimal throughput and do not run significant risk of overwhelming consumers."
+
+50 was picked as a conservative default but config.ini can override this default as necessary.
+
+** TODO 6. Audit all gen_listeners for use of 'self' bindings when not necessary
+** TODO 7. Move direct message bindings to built in (and implicit) AMQP direct exchange
+** TODO 8. Determine and reduce the need for 171 bindings on zswitch for database creation / removal
+** TODO 9. Create an 'AMQP router' in kazoo core that will bind for all configuration events and distribute locally in the Erlang VM
