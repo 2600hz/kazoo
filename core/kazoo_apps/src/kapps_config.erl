@@ -1084,34 +1084,34 @@ fetch_category(Category, 'false') ->
          }
 
         ,{{<<"jonny5">>, <<"default_enabled">>}
-         ,{<<"limits">>, <<"default_enabled">>}
+         ,{<<"limits">>, <<"enabled">>}
          }
         ,{{<<"jonny5">>, <<"default_calls">>}
-         ,{<<"limits">>, <<"default_calls">>}
+         ,{<<"limits">>, <<"calls">>}
          }
         ,{{<<"jonny5">>, <<"default_resource_consuming_calls">>}
-         ,{<<"limits">>, <<"default_resource_consuming_calls">>}
+         ,{<<"limits">>, <<"resource_consuming_calls">>}
          }
         ,{{<<"jonny5">>, <<"default_max_postpay_amount">>}
-         ,{<<"limits">>, <<"default_max_postpay_amount">>}
+         ,{<<"limits">>, <<"max_postpay_amount">>}
          }
         ,{{<<"jonny5">>, <<"default_reserve_amount">>}
-         ,{<<"limits">>, <<"default_reserve_amount">>}
+         ,{<<"limits">>, <<"reserve_amount">>}
          }
         ,{{<<"jonny5">>, <<"default_allow_prepay">>}
-         ,{<<"limits">>, <<"default_allow_prepay">>}
+         ,{<<"limits">>, <<"allow_prepay">>}
          }
         ,{{<<"jonny5">>, <<"default_allow_postpay">>}
-         ,{<<"limits">>, <<"default_allow_postpay">>}
+         ,{<<"limits">>, <<"allow_postpay">>}
          }
         ,{{<<"jonny5">>, <<"default_soft_limit_outbound">>}
-         ,{<<"limits">>, <<"default_soft_limit_outbound">>}
+         ,{<<"limits">>, <<"soft_limit_outbound">>}
          }
         ,{{<<"jonny5">>, <<"default_soft_limit_inbound">>}
-         ,{<<"limits">>, <<"default_soft_limit_inbound">>}
+         ,{<<"limits">>, <<"soft_limit_inbound">>}
          }
         ,{{<<"jonny5">>, <<"default_authz_resource_types">>}
-         ,{<<"limits">>, <<"default_authz_resource_types">>}
+         ,{<<"limits">>, <<"authz_resource_types">>}
          }
 
         ,{{<<"services">>, <<"master_account_bookkeeper">>}
