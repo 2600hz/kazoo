@@ -1337,11 +1337,19 @@ is_host_available() -> kz_amqp_connections:is_available().
 
 %%------------------------------------------------------------------------------
 %% @doc Specify quality of service.
+%%
+%%
+%% global: https://www.rabbitmq.com/amqp-0-9-1-reference.html#basic.qos.global
+%% global=false applies QoS settings to new consumers on the channel (existing are unaffected).
+%% global=true applies per-channel
 %% @end
 %%------------------------------------------------------------------------------
 -spec basic_qos(non_neg_integer()) -> 'ok'.
 basic_qos(PreFetch) when is_integer(PreFetch) ->
-    kz_amqp_channel:command(#'basic.qos'{prefetch_count = PreFetch}).
+    kz_amqp_channel:command(#'basic.qos'{prefetch_count = PreFetch
+                                        ,prefetch_size = 0
+                                        ,global = 'false'
+                                        }).
 
 %%------------------------------------------------------------------------------
 %% @doc Encode a key so characters like dot won't interfere with routing separator.
