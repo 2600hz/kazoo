@@ -440,8 +440,8 @@ normalize_ledger_jobj([_Timestamp, ServiceName, AccountId], JObj) ->
     kz_json:from_list([{AccountId
                        ,kz_json:from_list(
                           [{<<"account">>, AccountJObj}
-                           ,{<<"ledgers">>, ServiceJObj}
-                           ,{<<"total">>, kz_json:get_integer_value(<<"amount">>, JObj)}
+                          ,{<<"ledgers">>, ServiceJObj}
+                          ,{<<"total">>, kz_json:get_integer_value(<<"amount">>, JObj)}
                           ]
                          )
                        }
