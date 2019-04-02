@@ -3,59 +3,15 @@
     "_id": "limits",
     "description": "Global limits ability to place concurrent calls using flat rate trunks",
     "properties": {
-        "enabled": {
-            "default": true,
-            "description": "Determines if the limits should be enforced on accounts by default",
-            "support_level": "supported",
-            "type": "boolean"
-        },
-        "calls": {
-            "description": "A hard limit for the total number calls per account by default",
-            "minimum": 0,
-            "support_level": "beta",
-            "type": "integer"
-        },
-        "resource_consuming_calls": {
-            "description": "A hard limit for the number of resource consuming calls per account by default",
-            "minimum": 0,
-            "support_level": "beta",
-            "type": "integer"
-        },
-        "max_postpay_ammount": {
-            "description": "A hard limit for the postpay before limiting calls per account by default",
-            "minimum": 0,
-            "default": 0,
-            "support_level": "supported",
-            "type": "integer"
-        },
-        "reserve_ammount": {
-            "description": "The amount to hold in reserve per account by default",
-            "minimum": 0,
-            "default": 0,
-            "support_level": "supported",
-            "type": "integer"
-        },
-        "allow_prepay": {
-            "default": true,
-            "description": "Permit prepay settings on accounts by default",
-            "support_level": "supported",
-            "type": "boolean"
-        },
         "allow_postpay": {
             "default": false,
             "description": "Permit postpay settings on accounts by default",
             "support_level": "supported",
             "type": "boolean"
         },
-        "soft_limit_outbound": {
-            "default": false,
-            "description": "Permit calls on outbound calls for accounts which have exceeded the limit per account by default",
-            "support_level": "supported",
-            "type": "boolean"
-        },
-        "soft_limit_inbound": {
-            "default": false,
-            "description": "Permit calls on inbound calls accounts which have exceeded the limit per account by default",
+        "allow_prepay": {
+            "default": true,
+            "description": "Permit prepay settings on accounts by default",
             "support_level": "supported",
             "type": "boolean"
         },
@@ -67,6 +23,50 @@
             },
             "support_level": "beta",
             "type": "array"
+        },
+        "calls": {
+            "description": "A hard limit for the total number calls per account by default",
+            "minimum": 0,
+            "support_level": "beta",
+            "type": "integer"
+        },
+        "enabled": {
+            "default": true,
+            "description": "Determines if the limits should be enforced on accounts by default",
+            "support_level": "supported",
+            "type": "boolean"
+        },
+        "max_postpay_ammount": {
+            "default": 0,
+            "description": "A hard limit for the postpay before limiting calls per account by default",
+            "minimum": 0,
+            "support_level": "supported",
+            "type": "integer"
+        },
+        "reserve_ammount": {
+            "default": 0,
+            "description": "The amount to hold in reserve per account by default",
+            "minimum": 0,
+            "support_level": "supported",
+            "type": "integer"
+        },
+        "resource_consuming_calls": {
+            "description": "A hard limit for the number of resource consuming calls per account by default",
+            "minimum": 0,
+            "support_level": "beta",
+            "type": "integer"
+        },
+        "soft_limit_inbound": {
+            "default": false,
+            "description": "Permit calls on inbound calls accounts which have exceeded the limit per account by default",
+            "support_level": "supported",
+            "type": "boolean"
+        },
+        "soft_limit_outbound": {
+            "default": false,
+            "description": "Permit calls on outbound calls for accounts which have exceeded the limit per account by default",
+            "support_level": "supported",
+            "type": "boolean"
         }
     },
     "type": "object"
