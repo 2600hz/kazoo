@@ -1,81 +1,208 @@
 version: 2
+
+workflows:
+  version: 2
+  build-analyze-run:
+    jobs:
+      - setup
+      - build_deps:
+          requires:
+            - setup
+      - build:
+          requires:
+            - build_deps
+      - eunit_tests:
+          requires:
+            - build_deps
+      - checks:
+          requires:
+            - build
+      - docs:
+          requires:
+            - build
+      - analyze:
+          requires:
+            - build
+      - release:
+          requires:
+            - build
+
+defaults: &defaults
+  docker:
+    - image: offical2600hz/circleci:19.3.6.13
+  shell: /bin/bash --login
+  working_directory: ~/2600hz/the_app
+  environment:
+    CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+    CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+    BASH_ENV: "/home/circleci/2600hz/.bashrc"
+
 jobs:
-  build:
-    shell: /bin/bash --login
-    environment:
-      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
-      TZ: "/usr/share/zoneinfo/UTC"
-    docker:
-    - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
-      command: /sbin/init
-    - image: couchdb:2.1.1
-    - image: rabbitmq:3.7
-    - image: circleci/python:3.6.1
+
+  # setup build environment sequence
+  setup:
+    <<: *defaults
     steps:
-    - run: |
-        APP_DASH=${CIRCLE_PROJECT_REPONAME#kazoo-}
-        APP=${APP_DASH/-/_}
-        echo -e "export KAZOO_APP=${APP}\n" >> $BASH_ENV
-    - run: echo -e "export KAZOO_ROOT=${HOME}/${CIRCLE_PROJECT_USERNAME}/kazoo\nexport APP_PATH=applications/${KAZOO_APP}\n\n" >> $BASH_ENV
-    - restore_cache:
-        keys:
-        - v1-dep-{{ .Branch }}-
-        - v1-dep-master-
-        - v1-dep-
-    - checkout
-    - run: |
-        if [ ! -d ${KAZOO_ROOT} ]; then
-          git clone https://github.com/2600hz/kazoo $KAZOO_ROOT
-        fi
-    - run: mkdir -p $CIRCLE_ARTIFACTS
-    - run: ${KAZOO_ROOT}/scripts/circleci.bash
-    - run:
-        command: echo -e "export OTP_VERSION=$(<~/2600hz/kazoo/make/erlang_version)\nexport PATH=${HOME}/.kerl/\$OTP_VERSION/bin:${PATH}\n" >> $BASH_ENV
-    - run:
-        command: bash ${KAZOO_ROOT}/scripts/circleci-build-erlang.sh
-        no_output_timeout: 1800s
-    - run: which ag >/dev/null 2>&1 || sudo apt-get update; sudo apt-get install silversearcher-ag
-    - run: sudo pip install --upgrade pip
-    - run: sudo pip install PyYAML mkdocs pyembed-markdown jsonschema
-    - save_cache:
-        key: v1-dep-{{ .Branch }}-{{ epoch }}
-        paths:
-        - ~/.kerl
-        - ~/.local/
-    - run: echo -e "\n. ~/.kerl/${OTP_VERSION:-19.3}/activate\n" >> $BASH_ENV
-    - run: echo -e "\nexport CHANGED=\"$(find ${KAZOO_ROOT}/applications/${KAZOO_APP} -name "*.[e|h]rl" | xargs echo)\"" >> $BASH_ENV
-    - run: echo $CHANGED
-    - run: ${KAZOO_ROOT}/scripts/state-of-docs.sh || true
-    - run: ${KAZOO_ROOT}/scripts/code_checks.bash $CHANGED
-    - run: TO_FMT="${CHANGED}" make -C ${KAZOO_ROOT} fmt
-    - run: JOBS="2" make -C ${KAZOO_ROOT}
-    - run: make -C ${KAZOO_ROOT} code_checks
-    - run: make -C ${KAZOO_ROOT} app_applications
-    - run: ${KAZOO_ROOT}/scripts/validate-js.sh $(find -C ${KAZOO_ROOT}/{core,applications}/*/priv/**/* -name *.json)
-    - run: make -C ${KAZOO_ROOT} apis
-    - run: make -C ${KAZOO_ROOT} docs || true
-    - run: make -C ${KAZOO_ROOT} validate-schemas
-    - run: ${KAZOO_ROOT}/scripts/state-of-edoc.escript
-    - run: make -C ${KAZOO_ROOT} xref
-    - run: make -C ${KAZOO_ROOT} sup_completion
-    - restore_cache:
-        keys:
-          - plt-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
-    - run: TO_DIALYZE="$(echo $CHANGED)" make -C ${KAZOO_ROOT} build-plt dialyze
-    - save_cache:
-        key: plt-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
-        paths:
-          - ${KAZOO_ROOT}/.kazoo.plt
-    - run: make -C ${KAZOO_ROOT} elvis
-    - run: make -C ${KAZOO_ROOT} build-ci-release
-    - run: ${KAZOO_ROOT}/scripts/check-unstaged.bash
-    - run: KAZOO_CONFIG=${KAZOO_ROOT}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make -C ${KAZOO_ROOT} release
-    - run: cp ${KAZOO_ROOT}/rel/ci.relx.config $CIRCLE_ARTIFACTS/
-    - run: find ${KAZOO_ROOT}/_rel/kazoo/releases -name kazoo.rel -exec cp {} $CIRCLE_ARTIFACTS/ \;
-    - store_artifacts:
-        path: /tmp/circleci-artifacts
-    - run: |
-        if [[ $(grep -c -v -F 'exit with reason shutdown' ${CIRCLE_ARTIFACTS}/log/error.log) -gt 0 ]]; then
-          cat ${CIRCLE_ARTIFACTS}/log/error.log
-          exit 1
-        fi
+      - checkout
+      # setup enviroment variable
+      - run: |
+          BAZE="$(cat "${HOME}/2600hz/the_app/.base_branch")"
+          if [ -n "$BAZE" ]; then
+            echo -e "\n\nexport BASE_BRANCH=$BAZE" >> $BASH_ENV
+          else
+            echo "add base branch name of main Kazoo repo (like origin/master) to '.base_branch' in your application root directory"
+            exit 1
+          fi
+      - run: |
+          APP_DASH=${CIRCLE_PROJECT_REPONAME#kazoo-}
+          APP=${APP_DASH/-/_}
+          echo -e "export KAZOO_APP=${APP}\n" >> $BASH_ENV
+          echo -e "export KAZOO_ROOT=${HOME}/2600hz/kazoo" >> $BASH_ENV
+          echo -e "export APP_PATH=applications/${APP}\n\n" >> $BASH_ENV
+      - run: |
+          echo ":: behold, running ci tests for application: $KAZOO_APP"
+          echo "KAZOO_ROOT: $KAZOO_ROOT"
+          echo "APP_PATH: $APP_PATH"
+          echo "BASE_BRANCH: $BASE_BRANCH"
+      - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
+
+      # setup kazoo source code
+      - run: |
+          if [ ! -d ${KAZOO_ROOT} ]; then
+            git clone https://github.com/2600hz/kazoo $KAZOO_ROOT
+          fi
+      - run: ${KAZOO_ROOT}/scripts/circleci.bash
+      - run: echo -e 'export CHANGED="$(for file in `find ${KAZOO_ROOT}/applications/${KAZOO_APP} -name "*.[e|h]rl"`; do readlink -e $file; done | xargs echo)"' >> $BASH_ENV
+      - run: echo $CHANGED
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - 2600hz
+
+  # build deps sequence
+  build_deps:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: ~/
+      - restore_cache:
+          keys:
+            - deps-v3.1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+      - run: |
+          deps_hash=$(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1)
+          if [ x"$(cat $KAZOO_ROOT/.git/.kz_deps_hash)" = x"$deps_hash" ]; then
+            touch "$KAZOO_ROOT/make/.deps.mk.$deps_hash"
+          fi
+      - run: echo -n $(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1) > "$KAZOO_ROOT/.git/.kz_deps_hash"
+      - run: |
+          md5sum $KAZOO_ROOT/make/deps.mk || true
+          ls -al $KAZOO_ROOT/make || true
+      - run: make -C ${KAZOO_ROOT} deps
+      - save_cache:
+          key: deps-v3.1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+          paths:
+            - ~/2600hz/kazoo/deps/
+            - ~/2600hz/kazoo/.git/.kz_deps_hash
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - 2600hz
+
+  # build sequence
+  build:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: ~/
+      - restore_cache:
+          keys:
+            - deps-v3.1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+      - run: |
+          md5sum $KAZOO_ROOT/make/deps.mk || true
+          ls -al $KAZOO_ROOT/make || true
+      - run: make -C ${KAZOO_ROOT} fmt
+      - run: JOBS="2" make -C ${KAZOO_ROOT}
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - 2600hz
+
+  # eunit_tests sequence
+  eunit_tests:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: ~/
+      - restore_cache:
+          keys:
+            - deps-v3.1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+      - run: |
+          md5sum $KAZOO_ROOT/make/deps.mk || true
+          ls -al $KAZOO_ROOT/make || true
+      - run: ERLC_OPTS='-DPROPER' make -C ${KAZOO_ROOT}/core compile-test
+      - run: make -C "$KAZOO_ROOT/$APP_PATH" eunit
+
+  # code checks sequence
+  checks:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: ~/
+      - run: make -C ${KAZOO_ROOT} code_checks
+      - run: ${KAZOO_ROOT}/scripts/code_checks.bash $CHANGED
+      - run: make -C ${KAZOO_ROOT} app_applications
+      - run: make -C ${KAZOO_ROOT} sup_completion
+      - run: make -C ${KAZOO_ROOT} xref
+      - run: make -C ${KAZOO_ROOT} elvis
+
+  # docs sequence
+  docs:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: ~/
+      - run: make -C ${KAZOO_ROOT} apis
+      - run: make -C ${KAZOO_ROOT} validate-js
+      - run: make -C ${KAZOO_ROOT} validate-schemas
+      - run: make -C ${KAZOO_ROOT} docs || true
+      - run: ${KAZOO_ROOT}/scripts/state-of-docs.sh || true
+      - run: ${KAZOO_ROOT}/scripts/state-of-edoc.escript
+
+  # analyze sequence
+  analyze:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: ~/
+      - restore_cache:
+          keys:
+            - plt-v3-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+      - run: TO_DIALYZE="$(echo $CHANGED)" make -C ${KAZOO_ROOT} build-plt dialyze
+      - save_cache:
+          key: plt-v3-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+          paths:
+            - ~/2600hz/kazoo/.kazoo.plt
+
+  # release sequence
+  release:
+    <<: *defaults
+    docker:
+      - image: offical2600hz/circleci:19.3.6.13
+      - image: couchdb:2.1.1
+      - image: rabbitmq:3.7
+    steps:
+      - attach_workspace:
+          at: ~/
+      - run: make -C ${KAZOO_ROOT} build-ci-release
+      - run: ${KAZOO_ROOT}/scripts/check-unstaged.bash
+      - run: KAZOO_CONFIG=${KAZOO_ROOT}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make -C ${KAZOO_ROOT} release
+      - run: cp ${KAZOO_ROOT}/rel/ci.relx.config $CIRCLE_ARTIFACTS/
+
+      - run: find ${KAZOO_ROOT}/_rel/kazoo/releases -name kazoo.rel -exec cp {} $CIRCLE_ARTIFACTS/ \;
+      - store_artifacts:
+          path: /tmp/circleci-artifacts
+      - run: |
+          if [[ $(grep -c -v -F 'exit with reason shutdown' ${CIRCLE_ARTIFACTS}/log/error.log) -gt 0 ]]; then
+            cat ${CIRCLE_ARTIFACTS}/log/error.log
+            exit 1
+          fi

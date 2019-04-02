@@ -1,0 +1,306 @@
+#+TITLE:  KAZOO and PropEr - Practical property-based testing
+#+DATE: \today
+#+EMAIL: james@2600hz.com
+#+AUTHOR: James Aimonetti
+#+OPTIONS: toc:nil
+#+BEAMER_HEADER: \institute{2600Hz}
+#+PROPERTY: comments yes
+#+PROPERTY: header-args :exports both :eval never-export
+#+OPTIONS: H:2
+#+BEAMER_THEME: Hannover
+#+BEAMER_COLOR_THEME: wolverine
+#+BEAMER_HEADER: \AtBeginSection{\frame{\sectionpage}}
+#+BEAMER_INNER_THEME: default
+#+LATEX_CLASS_OPTIONS: [bigger]
+#+LaTeX_CLASS_OPTIONS: [aspectratio=169]
+#+BEAMER_HEADER: \definecolor{links}{HTML}{0000A0}
+#+BEAMER_HEADER: \hypersetup{colorlinks=,linkcolor=,urlcolor=links}
+#+BEAMER_HEADER: \setbeamertemplate{itemize items}[default]
+#+BEAMER_HEADER: \setbeamertemplate{enumerate items}[default]
+#+BEAMER_HEADER: \setbeamertemplate{items}[default]
+#+BEAMER_HEADER: \setbeamercolor*{local structure}{fg=orange}
+#+BEAMER_HEADER: \setbeamercolor{section in toc}{fg=orange}
+#+BEAMER_HEADER: \setlength{\parskip}{\smallskipamount}
+
+* Property-based testing with KAZOO
+* Introduction
+** Me
+- James Aimonetti
+- [[https://2600hz.com][2600Hz]]
+- [[https://github.com/2600hz/kazoo][KAZOO]]
+** KAZOO
+- https://github.com/2600hz/kazoo
+- Started in 2010
+- Telecom platform
+  - Clustering layer over FreeSWITCH / Kamailio
+- API-driven
+- Scales from Hobbyists to Enterprise
+- Built on:
+  - RabbitMQ
+  - CouchDB
+- 275K lines of Erlang in the core project in 1315 modules
+- 106 contributors (~25 that are 2600Hz)
+* Stateless testing - JSON
+** JSON
+- [[https://github.com/2600hz/kazoo/blob/master/core/kazoo_stdlib/src/kz_json.erl][kz_json.erl]]
+  - Provides lists-esque functionality - maps/folds/filters/etc
+  - getters/setters, merging, diffing, and more
+  - Hides data structure used - enforced throughout the code
+- [[https://github.com/2600hz/kazoo/blob/master/core/kazoo_stdlib/test/kz_json_tests.erl][kz_json_tests.erl]] and [[https://github.com/2600hz/kazoo/blob/master/core/kazoo_stdlib/test/kz_json_generators.erl][kz_json_generators.erl]]
+  - Need to generate "deep" objects but not too deep
+  - Naive approach: =test_object()=
+    - Generate list of Key/Value pairs
+  - Better approach: =deep_object()=
+    - Symbolic calls to build up the object
+** =test_object()= generated
+#+BEGIN_SRC erlang
+1> proper_gen:pick(kz_json_generators:test_object()).
+{ok,{[{<<14,141,161>>,-19},
+      {<<37,53,158>>,<<>>},
+      {<<"&">>,<<>>},
+      {<<81,197,72,47,41,80,75,41,19>>,<<>>},
+      {<<155,65,38,243,136,74,115>>,<<>>},
+      {<<176,5,171,200>>,<<>>},
+      {<<"ãO">>,<<>>}]}}
+#+END_SRC
+** =test_object()= spread
+#+BEGIN_SRC erlang
+2> proper:quickcheck(kz_json_tests:prop_test_object_gen(), 1000).
+58% {0,2}
+38% {2,4}
+2% {4,6}
+true
+#+END_SRC
+** =deep_object()= generated
+#+BEGIN_SRC erlang
+1> {ok, Calls} = proper_gen:pick(kz_json_generators:deep_object()).
+{ok, {'$call',kz_json,set_value,
+ [<<"ðg">>,
+  [-4,<<>>,<<>>,<<>>,
+   [<<>>,<<>>,{[{<<19,184,115,217,157,45,202,135,28>>,<<>>}]}],
+   <<>>,<<>>,<<>>],
+  {'$call',kz_json,set_value,
+   [<<"~áä±õOv·@">>,[],
+    {'$call',kz_json,set_value,
+     [<<133,141>>,
+      [],
+      {'$call',kz_json,set_value,
+...
+#+END_SRC
+** =deep_object()= eval'd
+#+BEGIN_SRC erlang
+2> proper_symb:eval([], Calls).
+{[{<<4,133,215,252,0>>,[]},
+  {<<"lËÉx&'">>,[]},
+  {<<182,179,144,154>>,[]},
+  {<<132,250,21,171,119,26,197,90,175,188>>,
+   [{[{<<98,36,70,211,105,95,174,109,130>>,<<>>},
+      {<<4,35,100,156,67,58,75,203,168,89,107>>,<<>>},
+      {<<190,144,146,45,53,85,153,231,166,84,233>>,<<>>},
+      {<<35,223,73,21,92,176,167,254,8>>,<<>>},
+      {<<214,210,66,21,57,117>>,<<>>},
+      {<<226,152,179,17>>,<<>>},
+      {<<107,119,61,244,188,157,110,28>>,
+       {[{<<133,246,158,227,95,35,251,39,...>>,<<>>},
+       ...
+#+END_SRC
+** =deep_object()= spread
+#+BEGIN_SRC
+3> proper:quickcheck(kz_json_tests:prop_deep_object_gen(), 1000).
+56% {2,4}
+37% {0,2}
+5% {4,6}
+0% {6,8}
+true
+#+END_SRC
+** JSON
+- More control over terms generated
+- More control over depth
+- Create EUnit tests from failing PropEr tests
+  - Shrinking is huge!
+- Actually had good EUnit test coverage prior
+* Stateless testing - Bindings server
+** Bindings
+- AMQP-style bindings
+  - Routing key: "a.b.c"
+  - Binding key: "*.b.#"
+    - "*" - match one segment
+    - "#" - match 0 or more segments
+- Credit to Fred Hebert @mononcqc
+** Bindings - Generator: expanded_path()
+Generates a binding key, a routing key, and whether there should be a match.
+
+#+BEGIN_SRC erlang
+1> proper_gen:pick(kazoo_bindings_tests:expanded_paths()).
+{ok,[{<<"*.1Oj.#.t863f4e3Xu">>,<<"1Oj.t863f4e3Xu">>,false}
+    ,{<<"*.1Oj.#.t863f4e3Xu">>,<<"lLTW1.1Oj.t863f4e3Xu">>,true}
+]}
+#+END_SRC
+** Bindings - Binding Key
+- Binding key: "*", "1Oj", "#", "t863f4e3Xu"
+  1. Match any first segment
+  2. Match "1Oj" as second segment
+  3. Match 0 or more segments
+  4. Match "t863f4e3Xu" as last segment
+** Bindings - Matching routing key
+- Matching Routing key: "lLTW1" "1Oj" "t863f4e3Xu"
+  1. "lLTW1" matches "*"
+  2. "1Oj" matches "1Oj"
+  3. 0 matches for "#"
+  4. "t863f4e3Xu" matches "t863f4e3Xu"
+** Bindings - Failing routing key
+- Failing Routing Key: "1Oj" "t863f4e3Xu"
+  1. "1Oj" matches "*"
+  2. "t863f4e3Xu" does not match "1Oj"
+** Bindings - Found bugs
+- Had "reasonable" EUnit tests
+- 2011-06-12: Introduced PropEr testing, first 5 bugs found were generic
+- 2011-06-13: First "weird" match
+  - ={<<"#.6.*.1.4.*">>, <<"6.a.a.6.a.1.4.a">>}=
+- 2016-12-19: Found two more failing
+  - ={<<"*.u.*.7.7.#">>,<<"i.u.e.7.7.7.a">>}=
+  - ={<<"#.c.#.c.#">>, <<"c.c">>}=
+- 2017-01-27: Found one more
+  - ={<<"#.Z.*.9.0.#">>,<<"1.Z.7.9.0.9.a.0">>}=
+- 2017-02-27: Found one more
+  - ={<<"W0.*.m.m.#">>, <<"W0.m.m.m.5">>}=
+
+* Stateful testing - LRU Cache
+** Cache
+- LRU cache in ETS
+- Maintains "origin pointers" - links to the datastore
+  - AMQP events can evict cache entries
+- Maintains "monitors"
+  - Wait for a key to be cached or timeout
+- Callbacks on events
+  - 'timeout', 'expire', 'flush', 'erase', 'store'
+- Cache stampede mitigation
+  - Provides a way to block calling processes while a key's value is being computed
+** Cache - API commands
+- store
+- peek
+- fetch
+- erase
+- wait_for_key
+- mitigate_stampede
+- wait_for_stampede
+- timer:sleep/1
+** Cache - Model
+- Track cache as a proplist
+- Track "time" as # of milliseconds
+  - Increment "time" on each timer:sleep/1
+  - Expire entries
+** Cache - Sample commands
+#+BEGIN_SRC erlang
+1> proper_gen:pick(kz_cache_pqc:command({state, [], 0})).
+{ok,{call,kz_cache,store_local,
+          [kz_cache_pqc,113,8,[{expires,1}]]}}
+2> proper_gen:pick(kz_cache_pqc:command({state, [], 0})).
+{ok,{call,kz_cache,erase_local,[kz_cache_pqc,99]}}
+#+END_SRC
+** Cache - Running the tests
+#+BEGIN_SRC erlang
+1> proper:quickcheck(kz_cache_pqc:correct()).
+...
+13% {kz_cache,peek_local,2}
+13% {kz_cache,mitigate_stampede_local,3}
+13% {kz_cache,wait_for_stampede_local,3}
+13% {timer,sleep,1}
+12% {kz_cache,fetch_local,2}
+12% {kz_cache,erase_local,2}
+11% {kz_cache,store_local,4}
+10% {kz_cache,wait_for_key_local,3}
+true
+#+END_SRC
+** Cache - Challenges with time
+- Model-only pass is "accurate" on expiration
+- SUT pass is subject to the VM and timers may not fire at the precise timeout
+- Mostly works for LRU testing though - rare that the tests fail due to time
+* Stateful testing - API Server
+** Crossbar
+- REST-ish HTTP server
+  - Initially webmachine
+  - Cowboy + =cowboy_rest=
+- Basic CRUD operations
+- Call initiation and control
+- Hacks, hacks everywhere
+  - HTTP clients that only GET/POST
+  - HTTP clients that can't set =Accept=
+  - HTTP clients that can't set =Content-Type=
+- No tests, siloed testing, regression central
+** Crossbar - Model
+- Map representing high-level concepts
+  - Accounts: =#{AccountName => #{}=AccountInfo}=
+  - Phone Numbers: =#{PhoneNumber => #{}=NumberProperties}=
+  - Dedicated IPs: =#{IPAddress => #{}=IPInfo}=
+  - Ratedecks: =#{RatedeckName => #{}=Rates}=
+- Provides API auth credentials to endpoint modules
+** Crossbar - Endpoints
+- Per-endpoint test modules
+  - API actions become PropEr commands
+  - next_state/3 updates the model (if necessary)
+  - postcondition/3 checks the API response against the model
+- Per-endpoint API modules
+  - Erlang SDK in hiding
+** Crossbar - HTTP endpoint
+- Some Crossbar endpoints query a provided HTTP server
+  - Storage
+  - Webhooks
+- Generic cowboy server to accept those requests
+- Endpoint modules can test that requests are received and responded to as necessary
+** Crossbar - Testing
+- Default pqc_runner mixes all endpoint commands
+- Helpers to run counterexamples
+- Helpers to print counterexamples
+- Helpers to create counterexamples
+** Crossbar - Counterexample
+:PROPERTIES:
+:BEAMER_opt: shrink=10
+:END:
+#+BEGIN_EXAMPLE
+pqc_util:simple_counterexample().
+[{pqc_cb_ips,remove_ips,['{API}',<<"pqc_cb_ips">>]},
+ {pqc_cb_accounts,create_account,['{API}',<<"pqc_cb_ips">>]},
+ {pqc_cb_accounts,create_account,['{API}',<<"pqc_cb_ips">>]},
+ {pqc_cb_ips,assign_ips,
+             ['{API}',<<"pqc_cb_ips">>,
+              [{dedicated,<<"1.2.3.4">>,<<"a.host.com">>,<<"zone-1">>}]]},
+ {pqc_cb_ips,create_ip,
+             ['{API}',
+              {dedicated,<<"1.2.3.4">>,<<"a.host.com">>,<<"zone-1">>}]},
+ {pqc_cb_accounts,create_account,['{API}',<<"pqc_cb_ips">>]},
+ {pqc_cb_ips,delete_ip,
+             ['{API}',
+              {dedicated,<<"1.2.3.4">>,<<"a.host.com">>,<<"zone-1">>}]},
+ {pqc_cb_ips,create_ip,
+             ['{API}',
+              {dedicated,<<"1.2.3.4">>,<<"a.host.com">>,<<"zone-1">>}]}]
+#+END_EXAMPLE
+** Crossbar - Bugs found (so far!)
+- Account create/delete/create race condition (sounds like John Hughes' DETS find!)
+- IP create/assign/delete semantic changes
+- Custom ratedeck phone number evaluation
+  - Service plan rewrite regression
+** Crossbar - Future
+- Generate more sample data using JSON schemas
+- More coverage of APIs
+- Calculate whether changeset is covered by test suite
+** Crossbar - Advice
+- =next_state/3= API result can be dynamic or concrete
+  - Use "concrete" values as indexes; find dynamic values in SUT shims
+- Cleanup properly after testing
+- Write the properties from the docs (you have those, right?)
+* Wrapping Up
+** Advice
+- KISS for reals!
+- Property testing is a mindset and skillset
+  - There will be a learning curve
+- Read 'Property-Based Testing with PropEr, Erlang, and Elixir' by Fred Hebert
+- Read the PropEr code
+  - Especially as you get more practice
+- Practice!
+** Questions?
+Thanks!
+
+- https://github.com/2600hz/kazoo
+- https://2600hz.com

@@ -572,7 +572,8 @@ error_mdn_changed(Context) ->
     _OldMDN = kz_json:get_ne_value(?KEY_MDN, cb_context:fetch(Context, 'db_doc')),
     NewMDN = cb_context:req_value(Context, ?KEY_MDN),
     lager:debug("mobile device number attempted to be changed from ~p to ~p"
-               ,[_OldMDN, NewMDN]),
+               ,[_OldMDN, NewMDN]
+               ),
     Msg = kz_json:from_list(
             [{<<"message">>, <<"Mobile Device Number cannot be changed">>}
             ,{<<"cause">>, NewMDN}
@@ -903,7 +904,9 @@ update_provision(Context) ->
     sync_sip_data(Context, 'false').
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc There are only 2 possible scenarios for adding/updating a MDN:
+%% 1. When the request is to create a new device (add).
+%% 2. When the MDN has changed and the requester is a superduper admin (update).
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_add_mdn(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
@@ -911,10 +914,25 @@ maybe_add_mdn(_DeviceId, Context) ->
     MDN = get_mdn(cb_context:doc(Context)),
     case get_device_type(Context) =:= <<"mobile">>
         andalso kz_term:is_not_empty(MDN)
+        andalso (is_new_device(Context)
+                 orelse was_mdn_changed_and_user_is_super_admin(Context, MDN)
+                )
     of
         'true' -> add_mdn(MDN, Context);
         'false' -> Context
     end.
+
+-spec is_new_device(cb_context:context()) -> boolean().
+is_new_device(Context) ->
+    %% If `db_doc' is empty it means the request is to create a device.
+    kz_term:is_empty(cb_context:fetch(Context, 'db_doc')).
+
+-spec was_mdn_changed_and_user_is_super_admin(cb_context:context(), kz_term:ne_binary()) -> boolean().
+was_mdn_changed_and_user_is_super_admin(Context, NewMDN) ->
+    %% Check if MDN has been changed.
+    kz_json:get_ne_value(?KEY_MDN, cb_context:fetch(Context, 'db_doc')) =/= NewMDN
+    %% only superduper admins can change the MDN once created.
+        andalso cb_context:is_superduper_admin(Context).
 
 -spec add_mdn(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 add_mdn(MDN, Context) ->

@@ -146,7 +146,6 @@ pages:
     - 'Administration': 'applications/webhooks/doc/maintenance.md'
     - 'API': 'applications/crossbar/doc/webhooks.md'
 
-  - 'Webhooks': 'applications/callflow/doc/webhooks.md'
   - 'Custom Webhook': 'applications/callflow/doc/webhook.md' ##
 
 - 'Billing, Reporting and Notifications':

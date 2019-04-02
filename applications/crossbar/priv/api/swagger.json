@@ -4281,6 +4281,59 @@
             ],
             "type": "object"
         },
+        "comment": {
+            "description": "Schema for a single comment",
+            "properties": {
+                "account_id": {
+                    "description": "Account ID of the commenter.",
+                    "type": "string"
+                },
+                "action_required": {
+                    "default": false,
+                    "description": "Specficied if an action is required by the user.",
+                    "type": "boolean"
+                },
+                "author": {
+                    "description": "Full name of the author",
+                    "type": "string"
+                },
+                "content": {
+                    "description": "Content of the comment",
+                    "type": "string"
+                },
+                "is_private": {
+                    "default": false,
+                    "description": "Specified if this comment is private",
+                    "type": "boolean"
+                },
+                "timestamp": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "description": "User ID of the commenter",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "author",
+                "content",
+                "timestamp"
+            ],
+            "type": "object"
+        },
+        "comments": {
+            "description": "Schema for comments",
+            "properties": {
+                "comments": {
+                    "description": "The history of comments made on a object",
+                    "items": {
+                        "$ref": "#/definitions/comment"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        },
         "conferences": {
             "description": "Schema for conferences",
             "properties": {
@@ -8886,6 +8939,99 @@
             ],
             "type": "object"
         },
+        "kapi.bookkeepers.collect_recurring_req_definition": {
+            "description": "AMQP API for bookkeepers.collect_recurring_req_definition",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Audit-Log": {
+                    "type": "string"
+                },
+                "Bookkeeper-ID": {
+                    "type": "string"
+                },
+                "Bookkeeper-Type": {
+                    "type": "string"
+                },
+                "Due-Timestamp": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "collect_recurring_req"
+                    ],
+                    "type": "string"
+                },
+                "Vendor-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Bookkeeper-ID",
+                "Bookkeeper-Type",
+                "Vendor-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.bookkeepers.collect_recurring_resp_definition": {
+            "description": "AMQP API for bookkeepers.collect_recurring_resp_definition",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Bookkeeper-ID": {
+                    "type": "string"
+                },
+                "Bookkeeper-Type": {
+                    "type": "string"
+                },
+                "Details": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "collect_recurring_resp"
+                    ],
+                    "type": "string"
+                },
+                "Message": {
+                    "type": "string"
+                },
+                "Reason": {
+                    "type": "string"
+                },
+                "Status": {
+                    "type": "string"
+                },
+                "Transaction-DB": {
+                    "type": "string"
+                },
+                "Transaction-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Bookkeeper-ID",
+                "Bookkeeper-Type",
+                "Status"
+            ],
+            "type": "object"
+        },
         "kapi.bookkeepers.refund_req_definition": {
             "description": "AMQP API for bookkeepers.refund_req_definition",
             "properties": {
@@ -9053,6 +9199,83 @@
                 "Status",
                 "Transaction-DB",
                 "Transaction-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.bookkeepers.standing_req_definition": {
+            "description": "AMQP API for bookkeepers.standing_req_definition",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Bookkeeper-ID": {
+                    "type": "string"
+                },
+                "Bookkeeper-Type": {
+                    "type": "string"
+                },
+                "Estimated-Withdrawal": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "standing_req"
+                    ],
+                    "type": "string"
+                },
+                "Items": {
+                    "type": "string"
+                },
+                "Vendor-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Bookkeeper-ID",
+                "Bookkeeper-Type",
+                "Estimated-Withdrawal",
+                "Items",
+                "Vendor-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.bookkeepers.standing_resp_definition": {
+            "description": "AMQP API for bookkeepers.standing_resp_definition",
+            "properties": {
+                "Details": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "standing_resp"
+                    ],
+                    "type": "string"
+                },
+                "Message": {
+                    "type": "string"
+                },
+                "Reason": {
+                    "type": "string"
+                },
+                "Status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Status"
             ],
             "type": "object"
         },
@@ -18079,6 +18302,9 @@
                 },
                 "To": {
                     "type": "string"
+                },
+                "Version": {
+                    "type": "string"
                 }
             },
             "required": [
@@ -18159,6 +18385,9 @@
                     "type": "string"
                 },
                 "To": {
+                    "type": "string"
+                },
+                "Version": {
                     "type": "string"
                 }
             },
@@ -18318,6 +18547,9 @@
                     "type": "string"
                 },
                 "To": {
+                    "type": "string"
+                },
+                "Version": {
                     "type": "string"
                 }
             },
@@ -18642,6 +18874,9 @@
                     "type": "string"
                 },
                 "To": {
+                    "type": "string"
+                },
+                "Version": {
                     "type": "string"
                 }
             },
@@ -25837,12 +26072,16 @@
                 "bill": {
                     "description": "Billing information of the losing carrier",
                     "properties": {
-                        "carrier": {
-                            "description": "The name of the losing carrier",
+                        "account_number": {
+                            "description": "Account Number to identify account",
                             "type": "string"
                         },
-                        "extended_address": {
-                            "description": "The suite/floor/apt of the billing address the losing carrier has on record",
+                        "btn": {
+                            "description": "Billing Telephone Number (BTN) to identify account",
+                            "type": "string"
+                        },
+                        "carrier": {
+                            "description": "The name of the losing carrier",
                             "type": "string"
                         },
                         "locality": {
@@ -25851,6 +26090,10 @@
                         },
                         "name": {
                             "description": "The losing carrier billing/account name",
+                            "type": "string"
+                        },
+                        "pin": {
+                            "description": "Personal Identification Number (PIN) to identify account",
                             "type": "string"
                         },
                         "postal_code": {
@@ -25869,6 +26112,34 @@
                             "description": "The street number of the billing address the losing carrier has on record",
                             "type": "string"
                         },
+                        "street_post_dir": {
+                            "description": "Street Post-Direction",
+                            "enum": [
+                                "E",
+                                "N",
+                                "NE",
+                                "NW",
+                                "S",
+                                "SE",
+                                "SW",
+                                "W"
+                            ],
+                            "type": "string"
+                        },
+                        "street_pre_dir": {
+                            "description": "Street Pre-Direction",
+                            "enum": [
+                                "E",
+                                "N",
+                                "NE",
+                                "NW",
+                                "S",
+                                "SE",
+                                "SW",
+                                "W"
+                            ],
+                            "type": "string"
+                        },
                         "street_type": {
                             "description": "The street type of the billing address the losing carrier has on record",
                             "type": "string"
@@ -25879,7 +26150,7 @@
                 "comments": {
                     "description": "The history of comments made on a port request",
                     "items": {
-                        "type": "object"
+                        "$ref": "#/definitions/comment"
                     },
                     "type": "array"
                 },
@@ -25922,18 +26193,8 @@
                     "minProperties": 1,
                     "type": "object"
                 },
-                "port_state": {
-                    "default": "unconfirmed",
-                    "description": "What state the port request is currently in",
-                    "enum": [
-                        "unconfirmed",
-                        "pending",
-                        "submitted",
-                        "scheduled",
-                        "completed",
-                        "rejected",
-                        "canceled"
-                    ],
+                "reference_number": {
+                    "description": "Winning carrier reference number or order ID",
                     "type": "string"
                 },
                 "signee_name": {
@@ -25947,6 +26208,10 @@
                 "transfer_date": {
                     "description": "Requested transfer date in Gregorian timestamp",
                     "type": "integer"
+                },
+                "winning_carrier": {
+                    "description": "The name of winning carrier",
+                    "type": "string"
                 }
             },
             "required": [
@@ -29926,6 +30191,27 @@
             },
             "type": "object"
         },
+        "system_config.crossbar.users": {
+            "description": "Schema for crossbar.users system_config",
+            "properties": {
+                "generate_password_if_empty": {
+                    "default": false,
+                    "description": "crossbar users generate_password_if_empty",
+                    "type": "boolean"
+                },
+                "generate_username_if_empty": {
+                    "default": true,
+                    "description": "crossbar users generate_username_if_empty",
+                    "type": "boolean"
+                },
+                "reset_identity_secret_on_rehash": {
+                    "default": true,
+                    "description": "crossbar users reset_identity_secret_on_rehash",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
         "system_config.crossbar.voicemail": {
             "description": "Schema for crossbar.voicemail system_config",
             "properties": {
@@ -29938,6 +30224,10 @@
                     "default": false,
                     "description": "Whether or not normalize voicemail audio file",
                     "type": "boolean"
+                },
+                "transcribe_format": {
+                    "description": "crossbar voicemail transcribe_format",
+                    "type": "string"
                 }
             },
             "type": "object"
@@ -30086,6 +30376,11 @@
                     "default": {},
                     "description": "ecallmgr acls",
                     "type": "object"
+                },
+                "allow_endless_recording": {
+                    "default": false,
+                    "description": "ecallmgr allow_endless_recording",
+                    "type": "boolean"
                 },
                 "authz_default_action": {
                     "default": "deny",
@@ -30666,6 +30961,17 @@
             },
             "type": "object"
         },
+        "system_config.epmd": {
+            "description": "Schema for epmd system_config",
+            "properties": {
+                "check_every_s": {
+                    "default": 60,
+                    "description": "epmd check_every_s",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
         "system_config.fax": {
             "description": "Schema for fax system_config",
             "properties": {
@@ -31089,6 +31395,11 @@
         "system_config.jonny5": {
             "description": "Schema for jonny5 system_config",
             "properties": {
+                "check_service_standing": {
+                    "default": true,
+                    "description": "jonny5 check_service_standing",
+                    "type": "boolean"
+                },
                 "default_allow_postpay": {
                     "description": "jonny5 default_allow_postpay",
                     "type": "boolean"
@@ -31119,6 +31430,16 @@
                     "default": false,
                     "description": "lookup flat rate regexps per resource",
                     "type": "boolean"
+                },
+                "service_standing_cache_acceptable": {
+                    "default": true,
+                    "description": "jonny5 service_standing_cache_acceptable",
+                    "type": "boolean"
+                },
+                "service_standing_cache_expiration_s": {
+                    "default": 1800,
+                    "description": "jonny5 service_standing_cache_expiration_s",
+                    "type": "integer"
                 }
             },
             "type": "object"
@@ -33420,6 +33741,11 @@
                     "description": "services get_items_from_quantities",
                     "type": "boolean"
                 },
+                "hydrate_cascade_commits": {
+                    "default": true,
+                    "description": "When an account makes a change it triggers a propagation up the account hiearchy updating the cascade quantities, if this is set to false the cascade quantities are summed with the account update deltas.  If this is set to true then the views will be invoked to fully reconcile the quantities (hydrate) during the cascade commits, a more expensive DB operation but provides self-corrective quantities.",
+                    "type": "boolean"
+                },
                 "master_account_bookkeeper": {
                     "default": "kz_bookkeeper_local",
                     "description": "services master account bookkeeper",
@@ -35592,7 +35918,7 @@
                     "description": "Parameters related to white-labeling port requests",
                     "properties": {
                         "authority": {
-                            "description": "The email(s) to be used for admin port requests",
+                            "description": "The account ID(s) to be used for administrating port requests",
                             "oneOf": [
                                 {
                                     "type": "string"
@@ -37956,6 +38282,14 @@
             "put": {
                 "parameters": [
                     {
+                        "in": "body",
+                        "name": "comments",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/comments"
+                        }
+                    },
+                    {
                         "$ref": "#/parameters/auth_token_header"
                     },
                     {
@@ -38008,6 +38342,14 @@
             },
             "post": {
                 "parameters": [
+                    {
+                        "in": "body",
+                        "name": "comments",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/comments"
+                        }
+                    },
                     {
                         "$ref": "#/parameters/auth_token_header"
                     },
@@ -39932,6 +40274,23 @@
                             "$ref": "#/definitions/ledgers"
                         }
                     },
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/ledgers/summary_by_accounts": {
+            "get": {
+                "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"
                     },
@@ -41991,126 +42350,7 @@
                 }
             }
         },
-        "/accounts/{ACCOUNT_ID}/port_requests/canceled": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/port_requests/completed": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
         "/accounts/{ACCOUNT_ID}/port_requests/last_submitted": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/port_requests/pending": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/port_requests/rejected": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/port_requests/scheduled": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/port_requests/submitted": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/port_requests/unconfirmed": {
             "get": {
                 "parameters": [
                     {
@@ -46863,6 +47103,15 @@
                         "$ref": "#/parameters/NODE"
                     }
                 ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/system_status": {
+            "get": {
                 "responses": {
                     "200": {
                         "description": "request succeeded"

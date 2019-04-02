@@ -16,6 +16,7 @@
         ,reset_system_secret/0
         ,reset_secret/1
         ,reset_doc_secret/1
+        ,has_doc_secret/1
         ]).
 
 -include("kazoo_auth.hrl").
@@ -366,6 +367,15 @@ reset_secret(Claims) ->
 -spec reset_doc_secret(kz_json:object()) -> kz_json:object().
 reset_doc_secret(JObj) ->
     kz_json:set_value(?PVT_SIGNING_SECRET, generate_new_kazoo_signing_secret(), JObj).
+
+
+%%------------------------------------------------------------------------------
+%% @doc Check if `?PVT_SIGNING_SECRET' is a non-empty value
+%% @end
+%%------------------------------------------------------------------------------
+-spec has_doc_secret(kz_json:object()) -> kz_json:object().
+has_doc_secret(JObj) ->
+    kz_json:get_ne_binary_value(?PVT_SIGNING_SECRET, JObj) =/= 'undefined'.
 
 %%==============================================================================
 %% Internal functions

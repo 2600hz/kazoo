@@ -20,6 +20,8 @@
 -module(kazoo_bindings_tests).
 
 -ifdef(PROPER).
+-export([expanded_paths/0]).
+
 - include_lib("proper/include/proper.hrl").
 -endif.
 -include_lib("eunit/include/eunit.hrl").
@@ -145,7 +147,7 @@ right(Path) ->
     ?LET(P, Path, {right1(P), 'true'}).
 
 %% Here's why some patterns will always succeed even if we try to make them
-%% wrong. In a given strign S, we could add segments, but some subpatterns
+%% wrong. In a given string S, we could add segments, but some subpatterns
 %% would have a chance to fix the problem we created. See a.*.#, which means
 %% 'at least two segments'  but still matches (albeit wrongly) a.b if we drop
 %% a section of the text, replace it by one, or add two of them. It can

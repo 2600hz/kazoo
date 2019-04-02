@@ -16,7 +16,7 @@
 -spec start() -> {'ok', kz_term:atoms()}.
 start() ->
     _ = io:setopts('user', [{'encoding', 'unicode'}]),
-    'true' = does_system_has_network_subsystem(),
+    'true' = does_system_have_network_subsystem(),
     {'ok', _Apps} = application:ensure_all_started(?APP).
 
 %% Application callbacks
@@ -39,8 +39,8 @@ stop(_State) ->
     kapps_maintenance:unbind({'migrate', <<"4.0">>}, 'kazoo_voicemail_maintenance', 'migrate'),
     'ok'.
 
--spec does_system_has_network_subsystem() -> boolean().
-does_system_has_network_subsystem() ->
+-spec does_system_have_network_subsystem() -> boolean().
+does_system_have_network_subsystem() ->
     try kz_network_utils:default_binding_ip() of
         _ -> 'true'
     catch

@@ -5,11 +5,17 @@ if [ ! -d $KAZOO_ROOT ]; then
     git clone https://github.com/2600hz/kazoo $KAZOO_ROOT
 fi
 
+if [ -f "$HOME/project/.base_branch" ]; then
+    BASE_BRANCH="$(cat $HOME/project/.base_branch)"
+else
+    BASE_BRANCH="origin/master"
+fi
+
 cd $KAZOO_ROOT
 
-echo resetting kazoo to origin/master
+echo resetting kazoo to $BASE_BRANCH
 git fetch --prune
-git rebase origin/master
+git rebase $BASE_BRANCH
 
 if [ ! -d $APP_PATH ]; then
     echo adding submodule to $KAZOO_ROOT

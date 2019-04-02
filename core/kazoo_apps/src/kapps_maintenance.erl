@@ -10,21 +10,32 @@
 -export([rebuild_token_auth/0
         ,rebuild_token_auth/1
         ]).
+-export([migrate_to_4_0/0]).
 -export([migrate/0
         ,migrate/1
-        ,migrate_to_4_0/0
         ]).
 -export([parallel_migrate/1
         ,parallel_migrate/2
+        ]).
+-export([migrate_modbs/0
+        ,migrate_modbs/1
+        ]).
+-export([parallel_migrate_modbs/1
+        ,parallel_migrate_modbs/2
+        ]).
+-export([migrate_modbs_ranged/1
+        ,migrate_modbs_ranged/2
+        ,migrate_modbs_ranged/3
+        ]).
+-export([parallel_migrate_modbs_ranged/2
+        ,parallel_migrate_modbs_ranged/3
+        ,parallel_migrate_modbs_ranged/4
         ]).
 -export([find_invalid_acccount_dbs/0]).
 -export([refresh/0, refresh/1
         ,refresh_account/1
         ,refresh_account_db/1
         ,maybe_delete_db/1
-        ]).
--export([blocking_refresh/0
-        ,blocking_refresh/1
         ]).
 -export([remove_deprecated_databases/0]).
 -export([ensure_aggregate_devices/0
@@ -79,6 +90,7 @@
 -include("kazoo_apps.hrl").
 
 -type bind() :: 'migrate' | 'refresh' | 'refresh_account' | 'register_views'.
+-type text_or_integer() :: kz_term:text() | integer().
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 -define(RESELLER_VIEW_FILE, <<"views/reseller.json">>).
@@ -87,6 +99,8 @@
 
 -define(VMBOX_VIEW, <<"vmboxes/crossbar_listing">>).
 -define(PMEDIA_VIEW, <<"media/listing_private_media">>).
+
+-define(DEFAULT_PAUSE, 1 * ?MILLISECONDS_IN_SECOND).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -123,7 +137,7 @@ unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 rebuild_token_auth() ->
     rebuild_token_auth(5 * ?MILLISECONDS_IN_SECOND).
 
--spec rebuild_token_auth(kz_term:text() | integer()) -> 'ok'.
+-spec rebuild_token_auth(text_or_integer()) -> 'ok'.
 rebuild_token_auth(Pause) ->
     _ = kz_datamgr:db_delete(?KZ_TOKEN_DB),
     timer:sleep(kz_term:to_integer(Pause)),
@@ -145,9 +159,11 @@ migrate_to_4_0() ->
 %%------------------------------------------------------------------------------
 -spec migrate() -> 'no_return'.
 migrate() ->
-    migrate(2 * ?MILLISECONDS_IN_SECOND).
+    migrate(?DEFAULT_PAUSE).
 
--spec migrate(kz_term:text() | integer()) -> 'no_return'.
+-spec migrate(text_or_integer()) -> 'no_return'.
+migrate(Pause) when not is_integer(Pause) ->
+    migrate(kz_term:to_integer(Pause));
 migrate(Pause) ->
     _ = migrate_system(),
     _ = kapps_config:migrate(),
@@ -159,16 +175,16 @@ migrate(Pause) ->
 
     'no_return'.
 
--spec migrate(kz_term:text() | integer(), kz_term:ne_binaries()) -> 'no_return'.
+-spec migrate(integer(), kz_term:ne_binaries()) -> 'no_return'.
 migrate(Pause, Databases) ->
     Accounts = [kz_util:format_account_id(Db, 'encoded')
                 || Db <- Databases,
                    kapps_util:is_account_db(Db)
                ],
-    io:format("updating dbs...~n"),
+    io:format("~p updating dbs...~n", [self()]),
     _ = refresh(Databases, Pause),
 
-    io:format("removing deprecated databases...~n"),
+    io:format("~p removing deprecated databases...~n", [self()]),
     _  = remove_deprecated_databases(Databases),
 
     migrate_kapps_account_config(Accounts),
@@ -181,51 +197,41 @@ migrate_kapps_account_config([]) ->
     'ok';
 migrate_kapps_account_config([AccountDb | AccountDbs]) ->
     kapps_account_config:migrate(AccountDb),
-    _ = timer:sleep(1 * ?MILLISECONDS_IN_SECOND),
+    _ = timer:sleep(?DEFAULT_PAUSE),
     migrate_kapps_account_config(AccountDbs).
 
--spec parallel_migrate(kz_term:text() | integer()) -> 'no_return'.
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec parallel_migrate(text_or_integer()) -> 'no_return'.
 parallel_migrate(Workers) ->
-    parallel_migrate(Workers, 2 * ?MILLISECONDS_IN_SECOND).
+    parallel_migrate(Workers, ?DEFAULT_PAUSE).
 
--spec parallel_migrate(kz_term:text() | integer(), kz_term:text() | integer()) -> 'no_return'.
-parallel_migrate(Workers, Pause) ->
+-spec parallel_migrate(text_or_integer(), text_or_integer()) -> 'no_return'.
+parallel_migrate(Workers, Pause) when not is_integer(Workers) ->
+    parallel_migrate(kz_term:to_integer(Workers), Pause);
+parallel_migrate(Workers, Pause) when not is_integer(Pause) ->
+    parallel_migrate(Workers, kz_term:to_integer(Pause));
+parallel_migrate(Workers, Pause) when is_integer(Workers) ->
     _ = migrate_system(),
     _ = kapps_config:migrate(),
-    {Accounts, Others} = lists:partition(fun kapps_util:is_account_db/1, get_databases()),
-    AccountDbs = [kz_util:format_account_db(Db) || Db <- Accounts],
-    OtherSplit = kz_term:to_integer(length(Others) / kz_term:to_integer(Workers)),
-    AccountSplit = kz_term:to_integer(length(AccountDbs) / kz_term:to_integer(Workers)),
-    SplitDbs = split(AccountSplit, AccountDbs, OtherSplit, Others, []),
-    parallel_migrate(Pause, SplitDbs, []).
+    Databases = split_parallel_migrate(Workers),
+    parallel_migrate(Pause, Databases, []).
 
--type split_results() :: [{kz_term:ne_binaries(), kz_term:ne_binaries()}].
--spec split(integer(), kz_term:ne_binaries(), integer(), kz_term:ne_binaries(), split_results()) -> split_results().
-split(_, [], _, [], Results) -> Results;
-split(AccountSplit, Accounts, OtherSplit, Others, Results) ->
-    {OtherDbs, RemainingOthers} = split(OtherSplit, Others),
-    {AccountDbs, RemainingAccounts} = split(AccountSplit, Accounts),
-    NewResults = [{AccountDbs, OtherDbs}|Results],
-    split(AccountSplit, RemainingAccounts, OtherSplit, RemainingOthers, NewResults).
-
--spec split(integer(), [any()]) -> {[any()],[any()]}.
-split(Count, List) ->
-    case length(List) >= Count of
-        'false' -> {List, []};
-        'true' -> lists:split(Count, List)
-    end.
-
--spec parallel_migrate(integer(), split_results(), kz_term:references()) -> 'no_return'.
+-spec parallel_migrate(integer(), kz_term:ne_binaries(), kz_term:references()) -> 'no_return'.
 parallel_migrate(_, [], Refs) -> wait_for_parallel_migrate(Refs);
-parallel_migrate(Pause, [{Accounts, Others}|Remaining], Refs) ->
+parallel_migrate(Pause, [Databases|Jobs], Refs) ->
     Self = self(),
-    Dbs = kzs_util:sort_by_priority(Accounts ++ Others),
     Ref = make_ref(),
-    _Pid = kz_util:spawn_link(fun parallel_migrate_worker/4, [Ref, Pause, Dbs, Self]),
-    parallel_migrate(Pause, Remaining, [Ref|Refs]).
+    _Pid = kz_util:spawn_link(fun parallel_migrate_worker/4, [Ref, Pause, Databases, Self]),
+    parallel_migrate(Pause, Jobs, [Ref|Refs]).
 
 -spec parallel_migrate_worker(reference(), integer(), kz_term:ne_binaries(), pid()) -> reference().
 parallel_migrate_worker(Ref, Pause, Databases, Parent) ->
+    io:format("~p parallel migrate worker ~p with ~p databases~n"
+             ,[self(), Ref, length(Databases)]
+             ),
     _ = (catch migrate(Pause, Databases)),
     Parent ! Ref.
 
@@ -238,17 +244,192 @@ wait_for_parallel_migrate([Ref|Refs]) ->
         Ref -> wait_for_parallel_migrate(Refs)
     end.
 
+-spec split_parallel_migrate(integer()) -> kz_term:ne_binaries().
+split_parallel_migrate(Workers) ->
+    Databases = get_databases(),
+    split_parallel_migrate(Workers, Databases).
+
+-spec split_parallel_migrate(integer(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
+split_parallel_migrate(Workers, Databases) ->
+    io:format("splitting ~p databases amoung ~p workers~n", [length(Databases), Workers]),
+    Jobs = lists:foldl(fun(Index, J) ->
+                               dict:store(Index, [], J)
+                       end
+                      ,dict:new()
+                      ,lists:seq(0, Workers - 1)
+                      ),
+    split_parallel_migrate(Workers, Databases, Jobs, 0).
+
+-spec split_parallel_migrate(integer(), kz_term:ne_binaries(), dict:dict(), integer()) -> kz_term:ne_binaries().
+split_parallel_migrate(_Workers, [], Jobs, _Index) ->
+    [Databases || {_, Databases} <- dict:to_list(Jobs)];
+split_parallel_migrate(Workers, Databases, Jobs, Workers) ->
+    split_parallel_migrate(Workers, Databases, Jobs, 0);
+split_parallel_migrate(Workers, [Database | Databases], Jobs, Index) ->
+    UpdatedJobs = dict:append(Index, Database, Jobs),
+    split_parallel_migrate(Workers, Databases, UpdatedJobs, Index + 1).
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec blocking_refresh() -> 'no_return'.
-blocking_refresh() -> refresh().
+-spec migrate_modbs() -> 'no_return'.
+migrate_modbs() ->
+    migrate_modbs(?DEFAULT_PAUSE).
 
--spec blocking_refresh(kz_term:text() | non_neg_integer()) -> 'no_return'.
-blocking_refresh(Pause) ->
-    Databases = get_databases(),
-    refresh(Databases, Pause).
+-spec migrate_modbs(text_or_integer()) -> 'no_return'.
+migrate_modbs(Pause) when not is_integer(Pause) ->
+    migrate_modbs(kz_term:to_integer(Pause));
+migrate_modbs(Pause) ->
+    Databases = [Database
+                 || Database <- get_databases()
+                        ,kapps_util:is_account_mod(Database)
+                ],
+    _ = refresh(Databases, Pause),
+    'no_return'.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec parallel_migrate_modbs(text_or_integer()) -> 'no_return'.
+parallel_migrate_modbs(Workers) ->
+    parallel_migrate_modbs(Workers, ?DEFAULT_PAUSE).
+
+-spec parallel_migrate_modbs(text_or_integer(), text_or_integer()) -> 'no_return'.
+parallel_migrate_modbs(Workers, Pause) when not is_integer(Workers) ->
+    parallel_migrate_modbs(kz_term:to_integer(Workers), Pause);
+parallel_migrate_modbs(Workers, Pause) when not is_integer(Pause) ->
+    parallel_migrate_modbs(Workers, kz_term:to_integer(Pause));
+parallel_migrate_modbs(Workers,Pause) ->
+    Databases = [Database
+                 || Database <- get_databases()
+                        ,kapps_util:is_account_mod(Database)
+                ],
+    SplitDatabases = split_parallel_migrate(Workers, Databases),
+    _ = parallel_migrate(Pause, SplitDatabases, []),
+    'no_return'.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec migrate_modbs_ranged(text_or_integer()) -> 'no_return'.
+migrate_modbs_ranged(Start) ->
+    migrate_modbs_ranged(?DEFAULT_PAUSE, Start).
+
+-spec migrate_modbs_ranged(text_or_integer(), text_or_integer()) -> 'no_return'.
+migrate_modbs_ranged(Pause, Start) when not is_integer(Pause) ->
+    migrate_modbs_ranged(kz_term:to_integer(Pause), Start);
+migrate_modbs_ranged(Pause, Start) when not is_integer(Start) ->
+    migrate_modbs_ranged(Pause, kz_term:to_integer(Start));
+migrate_modbs_ranged(Pause, Start) ->
+    Databases = [Database
+                 || Database <- get_databases()
+                        ,kapps_util:is_account_mod(Database)
+                        ,modb_in_range(Database, Start)
+                ],
+    _ = refresh(Databases, Pause),
+    'no_return'.
+
+-spec migrate_modbs_ranged(text_or_integer(), text_or_integer(), text_or_integer()) -> 'no_return'.
+migrate_modbs_ranged(Pause, Start, End) when not is_integer(Pause) ->
+    migrate_modbs_ranged(kz_term:to_integer(Pause), Start, End);
+migrate_modbs_ranged(Pause, Start, End) when not is_integer(Start) ->
+    migrate_modbs_ranged(Pause, kz_term:to_integer(Start), End);
+migrate_modbs_ranged(Pause, Start, End) when not is_integer(End) ->
+    migrate_modbs_ranged(Pause, Start, kz_term:to_integer(End));
+migrate_modbs_ranged(Pause, Start, End) ->
+    Databases = [Database
+                 || Database <- get_databases()
+                        ,kapps_util:is_account_mod(Database)
+                        ,modb_in_range(Database, Start, End)
+                ],
+    _ = refresh(Databases, Pause),
+    'no_return'.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec parallel_migrate_modbs_ranged(text_or_integer(), text_or_integer()) -> 'no_return'.
+parallel_migrate_modbs_ranged(Workers, Start) ->
+    parallel_migrate_modbs_ranged(Workers, ?DEFAULT_PAUSE, Start).
+
+-spec parallel_migrate_modbs_ranged(text_or_integer(), text_or_integer(), text_or_integer()) -> 'no_return'.
+parallel_migrate_modbs_ranged(Workers, Pause, Start) when not is_integer(Workers) ->
+    parallel_migrate_modbs_ranged(kz_term:to_integer(Workers), Pause, Start);
+parallel_migrate_modbs_ranged(Workers, Pause, Start) when not is_integer(Pause) ->
+    parallel_migrate_modbs_ranged(Workers, kz_term:to_integer(Pause), Start);
+parallel_migrate_modbs_ranged(Workers, Pause, Start) when not is_integer(Start) ->
+    parallel_migrate_modbs_ranged(Workers, Pause, kz_term:to_integer(Start));
+parallel_migrate_modbs_ranged(Workers, Pause, Start) ->
+    Databases = [Database
+                 || Database <- get_databases()
+                        ,kapps_util:is_account_mod(Database)
+                        ,modb_in_range(Database, Start)
+                ],
+    SplitDatabases = split_parallel_migrate(Workers, Databases),
+    _ = parallel_migrate(Pause, SplitDatabases, []),
+    'no_return'.
+
+-spec parallel_migrate_modbs_ranged(text_or_integer(), text_or_integer(), text_or_integer(), text_or_integer()) -> 'no_return'.
+parallel_migrate_modbs_ranged(Workers, Pause, Start, End) when not is_integer(Workers) ->
+    parallel_migrate_modbs_ranged(kz_term:to_integer(Workers), Pause, Start, End);
+parallel_migrate_modbs_ranged(Workers, Pause, Start, End) when not is_integer(Pause) ->
+    parallel_migrate_modbs_ranged(Workers, kz_term:to_integer(Pause), Start, End);
+parallel_migrate_modbs_ranged(Workers, Pause, Start, End) when not is_integer(Start) ->
+    parallel_migrate_modbs_ranged(Workers, Pause, kz_term:to_integer(Start), End);
+parallel_migrate_modbs_ranged(Workers, Pause, Start, End) when not is_integer(End) ->
+    parallel_migrate_modbs_ranged(Workers, Pause, Start, kz_term:to_integer(End));
+parallel_migrate_modbs_ranged(Workers, Pause, Start, End) ->
+    Databases = [Database
+                 || Database <- get_databases()
+                        ,kapps_util:is_account_mod(Database)
+                        ,modb_in_range(Database, Start, End)
+                ],
+    SplitDatabases = split_parallel_migrate(Workers, Databases),
+    _ = parallel_migrate(Pause, SplitDatabases, []),
+    'no_return'.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec modb_in_range(kz_term:ne_binary(), integer()) -> boolean().
+modb_in_range(Database, StartDate) ->
+    {_, MODbYear, MODbMonth} = kazoo_modb_util:split_account_mod(Database),
+    modb_before_start(StartDate, MODbYear, MODbMonth).
+
+-spec modb_in_range(kz_term:ne_binary(), integer(), integer()) -> boolean().
+modb_in_range(Database, StartDate, EndDate) ->
+    {_, MODbYear, MODbMonth} = kazoo_modb_util:split_account_mod(Database),
+    modb_before_start(StartDate, MODbYear, MODbMonth)
+        andalso modb_after_end(EndDate, MODbYear, MODbMonth).
+
+-spec modb_before_start(integer(), integer(), integer()) -> boolean().
+modb_before_start(StartDate, MODbYear, MODbMonth) ->
+    {StartYear, StartMonth} =
+        case kz_term:floor(math:log10(StartDate)) + 1 of
+            4 -> {StartDate, 1};
+            6 -> {kz_term:to_integer(StartDate/100)
+                 ,StartDate rem 100
+                 }
+        end,
+    MODbYear >= StartYear
+        andalso MODbMonth >= StartMonth.
+
+-spec modb_after_end(integer(), integer(), integer()) -> boolean().
+modb_after_end(EndDate, MODbYear, MODbMonth) ->
+    {EndYear, EndMonth} =
+        case kz_term:floor(math:log10(EndDate)) + 1 of
+            4 -> {EndDate, 12};
+            6 -> {kz_term:to_integer(EndDate/100)
+                 ,EndDate rem 100
+                 }
+        end,
+    MODbYear =< EndYear
+        andalso MODbMonth =< EndMonth.
 
 %%------------------------------------------------------------------------------
 %% @doc Register views from all applications that have binding to
@@ -291,7 +472,7 @@ bind_and_register_views(_AppName, Module, Function) ->
 -spec refresh() -> 'no_return'.
 refresh() ->
     Databases = get_databases(),
-    refresh(Databases, 2 * ?MILLISECONDS_IN_SECOND).
+    refresh(Databases, ?DEFAULT_PAUSE).
 
 -spec refresh(kz_term:ne_binaries(), kz_term:text() | non_neg_integer()) -> 'no_return'.
 refresh(Databases, Pause) ->

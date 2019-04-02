@@ -793,7 +793,6 @@ db_list() ->
 db_list(Options) ->
     kzs_db:db_list(kzs_plan:plan(), Options).
 
-
 -spec all_design_docs(kz_term:text()) -> {'ok', kz_json:objects()} |
                                          data_error().
 all_design_docs(DbName) ->
@@ -1675,7 +1674,7 @@ maybe_register_view({<<"_design/", Name/binary>>, View}, App, {ClassId, ViewMaps
     log_register_views(Name, DocId, App, ViewMaps),
 
     Update = [{<<"kazoo">>, kz_json:from_list([{<<"view_map">>, ViewMaps}])}
-             ,{<<"view_definition">>, kz_json:delete_key(<<"kazoo">>, View)}
+             ,{<<"view_definition">>, maybe_adapt_multilines(kz_json:delete_key(<<"kazoo">>, View))}
              ],
     ExtraUpdate = [{<<"version">>, Version}],
     Create = [{<<"application">>, AppName}

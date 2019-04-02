@@ -96,6 +96,8 @@
                  ,interaction_id :: kz_term:api_ne_binary() | '$5' | '_'
                  ,callee_number :: kz_term:api_ne_binary() | '$5' | '_'
                  ,callee_name :: kz_term:api_ne_binary() | '$5' | '_'
+                 ,caller_number :: kz_term:api_ne_binary() | '_'
+                 ,caller_name :: kz_term:api_ne_binary() | '_'
                  ,is_loopback :: boolean() | '_'
                  ,loopback_leg_name :: kz_term:api_ne_binary() | '_'
                  ,loopback_other_leg :: kz_term:api_ne_binary() | '_'

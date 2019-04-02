@@ -237,5 +237,7 @@
 
 -define(AMQP_HIDDEN_TAG, <<"hidden">>).
 
+-define(DEFAULT_PREFETCH, 50).
+
 -define(KZ_AMQP_HRL, 'true').
 -endif.

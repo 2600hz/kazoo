@@ -1,0 +1,42 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "comment",
+    "description": "Schema for a single comment",
+    "properties": {
+        "account_id": {
+            "description": "Account ID of the commenter.",
+            "type": "string"
+        },
+        "action_required": {
+            "default": false,
+            "description": "Specficied if an action is required by the user.",
+            "type": "boolean"
+        },
+        "author": {
+            "description": "Full name of the author",
+            "type": "string"
+        },
+        "content": {
+            "description": "Content of the comment",
+            "type": "string"
+        },
+        "is_private": {
+            "default": false,
+            "description": "Specified if this comment is private",
+            "type": "boolean"
+        },
+        "timestamp": {
+            "type": "integer"
+        },
+        "user_id": {
+            "description": "User ID of the commenter",
+            "type": "string"
+        }
+    },
+    "required": [
+        "author",
+        "content",
+        "timestamp"
+    ],
+    "type": "object"
+}

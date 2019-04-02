@@ -4,10 +4,14 @@ ELVIS = $(ROOT)/deps/elvis
 TAGS = $(ROOT)/TAGS
 ERLANG_MK_COMMIT = d30dda39b08e6ed9e12b44533889eaf90aba86de
 
-BASE_BRANCH := origin/master
+BASE_BRANCH := $(shell cat $(ROOT)/.base_branch)
 
 ## list files changed for more focused checks
-CHANGED := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts)
+ifeq ($(strip $(CHANGED)),)
+	CHANGED := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts)
+else
+	CHANGED := $(CHANGED)
+endif
 CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
 
 # You can override this when calling make, e.g. make JOBS=1
@@ -18,6 +22,7 @@ JOBS ?= 1
 	apis \
 	build-release build-ci-release tar-release release read-release-cookie \
 	bump-copyright \
+	changed changed_swagger \
 	circle \
 	clean clean-test clean-release clean-kazoo clean-core clean-apps \
 	code_checks \
@@ -31,11 +36,18 @@ JOBS ?= 1
 	fs-headers \
 	install \
 	sdks \
+	validate-js \
 	validate-schemas \
 	validate-swagger \
 	xref xref_release
 
 all: compile
+
+changed:
+	@echo "$(CHANGED)"
+
+changed_swagger:
+	@echo "$(CHANGED_SWAGGER)"
 
 compile: ACTION = all
 compile: deps kazoo
@@ -216,7 +228,11 @@ dialyze-it-hard: $(PLT)
 	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --hard $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
 
 dialyze-it-changed: $(PLT)
+ifeq ($(strip $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))),)
+	@echo "no erlang changes to dialyze"
+else
 	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --bulk $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
+endif
 
 xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
 xref:
@@ -251,6 +267,7 @@ app_applications:
 	ERL_LIBS=deps:core:applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find applications -name *.app.src)
 
 code_checks:
+	@$(ROOT)/scripts/code_checks.bash $(CHANGED)
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
 	@$(ROOT)/scripts/check-spelling.bash
 	@$(ROOT)/scripts/kz_diaspora.bash
@@ -301,6 +318,9 @@ fs-headers:
 
 validate-swagger:
 	@$(ROOT)/scripts/validate-swagger.sh
+
+validate-js:
+	@./scripts/validate-js.sh $(find {core,applications}/*/priv/**/* -name *.json)
 
 sdks:
 	@$(ROOT)/scripts/make-swag.sh

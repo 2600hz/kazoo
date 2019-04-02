@@ -14,7 +14,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(ORIGIN_BINDINGS, [[{'db', ?KZ_SERVICES_DB, kzd_services:type()}]
+-define(ORIGIN_BINDINGS, [[{'db', ?KZ_SERVICES_DB}, {'type', kzd_services:type()}]
                          ]).
 
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}

@@ -106,6 +106,7 @@ pages:
     - 'applications/crossbar/doc/securing_crossbar.md'
     - 'applications/crossbar/doc/sup.md'
     - 'applications/crossbar/doc/system_configs.md'
+    - 'applications/crossbar/doc/system_status.md'
     - 'applications/crossbar/doc/tasks.md'
     - 'applications/crossbar/doc/token_restrictions.md'
   - 'Deprecated':
@@ -206,7 +207,6 @@ pages:
       - 'Text-to-speech (TTS)': 'applications/callflow/doc/tts.md'
     - 'Conference': 'applications/callflow/doc/conference.md'
     - 'Temporal Routes (Time of Day)': 'applications/callflow/doc/temporal_route.md'
-    - 'Webhooks': 'applications/callflow/doc/webhooks.md'
     - 'EDR Event': 'applications/callflow/doc/edr.md'
     - 'Branch on object setting': 'applications/callflow/doc/cf_branch_variable.md'
     - 'Preflows': 'applications/callflow/doc/preflow.md'
@@ -477,6 +477,7 @@ pages:
   - 'Kazoo Scripts': 'scripts/README.md'
   - 'Loopback Channels': 'doc/engineering/loopback.md'
   - 'Makefile': 'doc/engineering/make.md'
+  - 'Property Testing Presentation': 'doc/engineering/property_testing_presentation.md'
   - 'Running Dev Shells': 'scripts/dev/README.md'
   - 'Testing': 'doc/engineering/testing.md'
   - 'Using Dialyzer': 'doc/engineering/dialyzer.md'

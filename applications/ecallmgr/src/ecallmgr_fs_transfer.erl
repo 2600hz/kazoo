@@ -34,8 +34,8 @@ attended(Node, UUID, JObj) ->
            ],
 
     Props = add_transfer_ccvs_to_vars(CCVs, Vars),
-    [Export | Exports] = ecallmgr_util:process_fs_kv(Node, UUID, Props, 'set'),
-    Arg = [Export, [[",", Exported] || Exported <- Exports] ],
+    Exports = ecallmgr_util:process_fs_kv(Node, UUID, Props, 'set'),
+    Arg = lists:join(",", lists:flatten(Exports)),
 
     TransferContext = transfer_context(JObj),
 

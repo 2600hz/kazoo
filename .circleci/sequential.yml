@@ -8,74 +8,67 @@ jobs:
       CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
       TZ: "/usr/share/zoneinfo/UTC"
     docker:
-    - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
-      command: /sbin/init
-    - image: couchdb:2.1.1
-    - image: rabbitmq:3.7
-    - image: circleci/python:3.6.1
+      - image: offical2600hz/circleci:19.3.6.13
+      - image: couchdb:2.1.1
+      - image: rabbitmq:3.7
     steps:
-    - checkout
-    - run: mkdir -p $CIRCLE_ARTIFACTS
-    - run:
-        working_directory: ~/2600hz/kazoo
-        command: echo -e "export OTP_VERSION=$(<~/2600hz/kazoo/make/erlang_version)\nexport PATH=${HOME}/.kerl/\$OTP_VERSION/bin:${PATH}\n" >> $BASH_ENV
-    - restore_cache:
-        keys:
-        - v1-dep-{{ .Branch }}-
-        - v1-dep-master-
-        - v1-dep-
-    - run: echo -e "\n. ~/.kerl/$OTP_VERSION/activate\n" >> $BASH_ENV
-    - run:
-        command: bash ./scripts/circleci-build-erlang.sh
-        no_output_timeout: 1800s
-    - run: which ag >/dev/null 2>&1 || sudo apt-get update; sudo apt-get install silversearcher-ag
-    - run: sudo pip install --upgrade pip
-    - run: sudo pip install PyYAML mkdocs pyembed-markdown jsonschema
-    - save_cache:
-        key: v1-dep-{{ .Branch }}-{{ epoch }}
-        paths:
-        - ~/.kerl
-        - ~/.local/
-    - run: echo -e "\nexport CHANGED=\$(git --no-pager diff --name-only HEAD origin/master -- applications core | xargs readlink -e)\nexport CHANGED_SWAGGER=`[[ ! -z $(git --no-pager diff --name-only HEAD origin/master -- applications/crossbar/priv/api/swagger.json) ]] && echo $(readlink -e applications/crossbar/priv/api/swagger.json)`\n" >> $BASH_ENV
-    - run: echo $CHANGED
-    - run: ./scripts/state-of-docs.sh || true
-    - run: ./scripts/code_checks.bash $CHANGED
-    - restore_cache:
-        keys:
-          - deps-v1-{{ checksum "make/deps.mk" }}
-    - run: make fmt
-    - run: JOBS="2" make
-    - save_cache:
-        key: deps-v1-{{ checksum "make/deps.mk" }}
-        paths:
-          - deps/
-    - run: make code_checks
-    - run: make app_applications
-    - run: ./scripts/validate-js.sh $(find {core,applications}/*/priv/**/* -name *.json)
-    - run: make apis
-    - run: make docs
-    - run: make validate-schemas
-    - run: ./scripts/state-of-edoc.escript
-    - run: make xref
-    - run: make sup_completion
-    - restore_cache:
-        keys:
-          - plt-v1-{{ checksum "make/deps.mk" }}
-    - run: TO_DIALYZE="$(echo $CHANGED)" make build-plt dialyze
-    - save_cache:
-        key: plt-v1-{{ checksum "make/deps.mk" }}
-        paths:
-          - .kazoo.plt
-    - run: make elvis
-    - run: make build-ci-release
-    - run: ${PWD}/scripts/check-unstaged.bash
-    - run: KAZOO_CONFIG=${PWD}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make release
-    - run: cp ${PWD}/rel/ci.relx.config $CIRCLE_ARTIFACTS/
-    - run: find ${PWD}/_rel/kazoo/releases -name kazoo.rel -exec cp {} $CIRCLE_ARTIFACTS/ \;
-    - store_artifacts:
-        path: /tmp/circleci-artifacts
-    - run: |
-        if [[ $(grep -c -v -F 'exit with reason shutdown' ${CIRCLE_ARTIFACTS}/log/error.log) -gt 0 ]]; then
-          cat ${CIRCLE_ARTIFACTS}/log/error.log
-          exit 1
-        fi
+      - checkout
+      - run: make changed
+      - run: mkdir -p $CIRCLE_ARTIFACTS
+
+      # build sequence
+      - restore_cache:
+          keys:
+            - deps-v3-{{ checksum "make/deps.mk" }}
+      - run: make fmt
+      - run: |
+          deps_hash=$(md5sum make/deps.mk | cut -d" " -f1)
+          if [ x"$(cat .git/.kz_deps_hash)" = x"$deps_hash" ]; then
+            touch "make/.deps.mk.$deps_hash"
+          fi
+      - run: JOBS="2" make
+      - run: echo -n $(md5sum make/deps.mk | cut -d" " -f1) > .git/.kz_deps_hash
+      - save_cache:
+          key: deps-v3-{{ checksum "make/deps.mk" }}
+          paths:
+            - deps/
+            - .git/.kz_deps_hash
+
+      # code check sequence
+      - run: make code_checks
+      - run: make app_applications
+      - run: make sup_completion
+      - run: make xref
+      - run: make elvis
+
+      # docs sequence
+      - run: make apis
+      - run: make validate-js
+      - run: make validate-schemas
+      - run: make docs
+      - run: ./scripts/state-of-docs.sh || true
+      - run: ./scripts/state-of-edoc.escript
+
+      # analyze sequence
+      - restore_cache:
+          keys:
+            - plt-v2-{{ checksum "make/deps.mk" }}
+      - run: make build-plt dialyze-changed
+      - save_cache:
+          key: plt-v2-{{ checksum "make/deps.mk" }}
+          paths:
+            - .kazoo.plt
+
+      # release sequence
+      - run: make build-ci-release
+      - run: ${PWD}/scripts/check-unstaged.bash
+      - run: KAZOO_CONFIG=${PWD}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make release
+      - run: cp ${PWD}/rel/ci.relx.config $CIRCLE_ARTIFACTS/
+      - run: find ${PWD}/_rel/kazoo/releases -name kazoo.rel -exec cp {} $CIRCLE_ARTIFACTS/ \;
+      - store_artifacts:
+          path: /tmp/circleci-artifacts
+      - run: |
+          if [[ $(grep -c -v -F 'exit with reason shutdown' ${CIRCLE_ARTIFACTS}/log/error.log) -gt 0 ]]; then
+            cat ${CIRCLE_ARTIFACTS}/log/error.log
+            exit 1
+          fi

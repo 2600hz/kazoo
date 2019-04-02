@@ -228,9 +228,9 @@ init_mod(ModuleName) ->
     maybe_init_mod(ModuleName).
 
 maybe_init_mod(ModuleName) ->
+    maybe_init_mod(ModuleName, kz_module:is_exported(ModuleName, 'init', 0)).
+
+maybe_init_mod(_M, 'false') -> 'ok';
+maybe_init_mod(ModuleName, 'true') ->
     lager:debug("trying to init module: ~p", [ModuleName]),
-    try (kz_term:to_atom(ModuleName, 'true')):init()
-    catch
-        _E:_R ->
-            lager:warning("failed to initialize ~s: ~p, ~p.", [ModuleName, _E, _R])
-    end.
+    (kz_term:to_atom(ModuleName, 'true')):init().

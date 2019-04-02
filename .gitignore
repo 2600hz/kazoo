@@ -86,3 +86,5 @@ core/kazoo_proper/priv/mp3.mp3
 *.md.bak
 *.md.new
 .kerl
+/doc/engineering/.org/proper.pdf
+/doc/engineering/.org/proper.tex

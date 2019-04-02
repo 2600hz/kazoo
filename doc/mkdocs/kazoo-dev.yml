@@ -50,7 +50,6 @@ pages:
       - 'Check CID': 'applications/callflow/doc/check_cid.md'
     - 'Conference': 'applications/callflow/doc/conference.md'
     - 'Temporal Routes (Time of Day)': 'applications/callflow/doc/temporal_route.md'
-    - 'Webhooks': 'applications/callflow/doc/webhooks.md'
     - 'Branch on object setting': 'applications/callflow/doc/cf_branch_variable.md'
     - 'Preflows': 'applications/callflow/doc/preflow.md'
     - 'Resources': 'applications/callflow/doc/resources.md'

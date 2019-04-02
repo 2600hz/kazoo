@@ -212,4 +212,4 @@ curl -v -X GET \
     curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/{LIST_ENTRY_ID} -d "{"data": {"132", "321"}}"
 
 ##### Delete entry from list
-    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/{LIST_ENTRY_ID}
+    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries/{LIST_ENTRY_ID}
