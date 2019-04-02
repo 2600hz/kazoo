@@ -71,6 +71,7 @@
                                     ,<<"Prefix">>
                                     ,<<"Pvt-Cost">>
                                     ,<<"Rate">>
+                                    ,<<"Rate-ID">>
                                     ,<<"Rate-Description">>
                                     ,<<"Rate-Increment">>
                                     ,<<"Rate-Minimum">>

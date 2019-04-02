@@ -21182,6 +21182,9 @@
                 "Rate-Description": {
                     "type": "string"
                 },
+                "Rate-ID": {
+                    "type": "string"
+                },
                 "Rate-Increment": {
                     "type": "integer"
                 },
