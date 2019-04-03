@@ -401,7 +401,7 @@ maybe_check_storage_settings(Context, ReqVerb) when ReqVerb =:= ?HTTP_PUT
     case cb_context:resp_status(Context) of
         'success' when ValidateSettings ->
             lager:debug("validating storage settings"),
-            Attachments = kz_json:get_json_value(<<"attachments">>, cb_context:doc(Context)),
+            Attachments = kz_json:get_json_value(<<"attachments">>, cb_context:doc(Context), kz_json:new()),
             validate_attachments_settings(Attachments, Context);
         'success' when SystemAllowsSkippingValidation ->
             lager:notice("client has explicitly disabled validating attachment settings"),
