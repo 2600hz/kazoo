@@ -153,7 +153,7 @@ validate(Context) ->
     Context1 = crossbar_view:load_modb(Context, ?VIEW_BY_TIMESTAMP, Options),
     case cb_context:resp_status(Context1) of
         'success' ->
-            Summary = kz_json:sum_jobjs(cb_context:doc(Context1)),
+            Summary = cb_context:doc(Context1),
             cb_context:set_resp_data(Context1, summary_to_dollars(Summary));
         _ ->
             Context1
@@ -192,7 +192,7 @@ validate(Context, ?SUB_SUMMARY) ->
     Context1 = crossbar_view:load_modb(Context, ?VIEW_BY_TIMESTAMP, Options),
     case cb_context:resp_status(Context1) of
         'success' ->
-            Summary = kz_json:sum_jobjs(cb_context:doc(Context1)),
+            Summary = cb_context:doc(Context1),
             cb_context:set_resp_data(Context1, summary_to_dollars(Summary));
         _ ->
             Context1
@@ -290,8 +290,9 @@ put(Context, Action) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec summary_to_dollars(kz_json:object()) -> kz_json:object().
-summary_to_dollars(Summary) ->
+-spec summary_to_dollars(kz_json:objects()) -> kz_json:object().
+summary_to_dollars([]) -> kz_json:new();
+summary_to_dollars([Summary]) ->
     kz_json:expand(
       kz_json:from_list(
         [{Paths, maybe_convert_units(lists:last(Paths), Paths, Value)}
