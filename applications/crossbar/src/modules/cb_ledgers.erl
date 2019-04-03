@@ -21,7 +21,6 @@
 -define(TOTAL, <<"total">>).
 -define(CREDIT, <<"credit">>).
 -define(DEBIT, <<"debit">>).
--define(SUB_SUMMARY, <<"summary_by_accounts">>).
 
 -define(VIEW_BY_TIMESTAMP, <<"ledgers/list_by_timestamp">>).
 -define(VIEW_BY_SOURCE, <<"ledgers/list_by_source">>).
@@ -63,8 +62,6 @@ allowed_methods(?CREDIT) ->
     [?HTTP_PUT];
 allowed_methods(?DEBIT) ->
     [?HTTP_PUT];
-allowed_methods(?SUB_SUMMARY) ->
-    [?HTTP_GET];
 allowed_methods(_SourceService) ->
     [?HTTP_GET].
 
@@ -146,14 +143,14 @@ authorize_create(Context) ->
 validate(Context) ->
     Options = [{'group', 'true'}
               ,{'group_level', 0}
-              ,{'mapper', fun normalize_list_by_timestamp/2}
+              ,{'mapper', crossbar_view:map_value_fun()}
               ,{'reduce', 'true'}
               ,{'unchunkable', 'true'}
               ],
     Context1 = crossbar_view:load_modb(Context, ?VIEW_BY_TIMESTAMP, Options),
     case cb_context:resp_status(Context1) of
         'success' ->
-            Summary = cb_context:doc(Context1),
+            Summary = kz_json:sum_jobjs(cb_context:doc(Context1)),
             cb_context:set_resp_data(Context1, summary_to_dollars(Summary));
         _ ->
             Context1
@@ -181,22 +178,6 @@ validate(Context, ?TOTAL) ->
 validate(Context, ?AVAILABLE) ->
     Available = kz_ledgers:available_ledgers(cb_context:account_id(Context)),
     crossbar_doc:handle_json_success(Available, Context);
-validate(Context, ?SUB_SUMMARY) ->
-    Options = [{'group', 'true'}
-              ,{'group_level', 0}
-              ,{'reduce', 'true'}
-              ,{'mapper', crossbar_view:map_value_fun()}
-              ,{'unchunkable', 'true'}
-              ,{'should_paginate', 'false'}
-              ],
-    Context1 = crossbar_view:load_modb(Context, ?VIEW_BY_TIMESTAMP, Options),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            Summary = cb_context:doc(Context1),
-            cb_context:set_resp_data(Context1, summary_to_dollars(Summary));
-        _ ->
-            Context1
-    end;
 validate(Context, SourceService) ->
     ViewOptions = [{'is_chunked', 'true'}
                   ,{'range_keymap', SourceService}
@@ -290,23 +271,19 @@ put(Context, Action) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec summary_to_dollars(kz_json:objects()) -> kz_json:object().
-summary_to_dollars([]) -> kz_json:new();
-summary_to_dollars([Summary]) ->
+-spec summary_to_dollars(kz_json:object()) -> kz_json:object().
+summary_to_dollars(Summary) ->
     kz_json:expand(
       kz_json:from_list(
-        [{Paths, maybe_convert_units(lists:last(Paths), Paths, Value)}
-         || {Paths, Value} <- kz_json:to_proplist(kz_json:flatten(Summary))
+        [{Path, maybe_convert_units(lists:last(Path), Value)}
+         || {Path, Value} <- kz_json:to_proplist(kz_json:flatten(Summary))
         ])).
 
--spec maybe_convert_units(kz_json:key(), kz_json:keys(), kz_currency:units() | T) ->
+-spec maybe_convert_units(kz_term:ne_binary(), kz_currency:units() | T) ->
                                  kz_currency:dollars() | T when T::any().
-maybe_convert_units(<<"amount">>, _, Units) when is_integer(Units) ->
+maybe_convert_units(<<"amount">>, Units) when is_integer(Units) ->
     kz_currency:units_to_dollars(Units);
-maybe_convert_units(_, [_AccountId, <<"total">>], Units) ->
-    kz_currency:units_to_dollars(Units);
-maybe_convert_units(_, _, Value) ->
-    Value.
+maybe_convert_units(_, Value) -> Value.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -399,15 +376,6 @@ build_success_response(AccountId, Ledger) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec normalize_list_by_timestamp(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_list_by_timestamp(JObj, Acc) ->
-    [kz_json:sum_jobjs(
-       [kz_json:get_ne_json_value(<<"ledgers">>, J, kz_json:new())
-        || J <- kz_json:values(kz_json:get_value(<<"value">>, JObj, kz_json:new()))
-       ] ++ Acc
-      )
-    ].
-
 -spec normalize_view_results(cb_context:context(), kzd_ledgers:doc(), kz_json:objects()) ->
                                     kz_json:objects().
 normalize_view_results(_Context, JObj, Acc) ->
