@@ -32298,6 +32298,91 @@
             },
             "type": "object"
         },
+        "system_config.limits": {
+            "description": "Global limits ability to place concurrent calls using flat rate trunks",
+            "properties": {
+                "allow_postpay": {
+                    "default": false,
+                    "description": "Permit postpay settings on accounts by default",
+                    "type": "boolean"
+                },
+                "allow_prepay": {
+                    "default": true,
+                    "description": "Permit prepay settings on accounts by default",
+                    "type": "boolean"
+                },
+                "authz_resource_types": {
+                    "default": [],
+                    "description": "List of Resource-Types that will authorize the call; bypassing limit checks and billing per account by default",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "burst_trunks": {
+                    "default": 0,
+                    "description": "A hard limit for number of burst trunks permitted per account by default",
+                    "minimum": -1,
+                    "type": "integer"
+                },
+                "calls": {
+                    "description": "A hard limit for the total number calls per account by default",
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "enabled": {
+                    "default": true,
+                    "description": "Determines if the limits should be enforced on accounts by default",
+                    "type": "boolean"
+                },
+                "inbound_trunks": {
+                    "default": 0,
+                    "description": "A hard limit for the number of inbound trunks per account by default",
+                    "minimum": -1,
+                    "type": "integer"
+                },
+                "max_postpay_ammount": {
+                    "default": 0,
+                    "description": "A hard limit for the postpay before limiting calls per account by default",
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "outbound_trunks": {
+                    "default": 0,
+                    "description": "A hard limit for the number of outbound trunks per account by default",
+                    "minimum": -1,
+                    "type": "integer"
+                },
+                "reserve_ammount": {
+                    "default": 0,
+                    "description": "The amount to hold in reserve per account by default",
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "resource_consuming_calls": {
+                    "description": "A hard limit for the number of resource consuming calls per account by default",
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "soft_limit_inbound": {
+                    "default": false,
+                    "description": "Permit calls on inbound calls accounts which have exceeded the limit per account by default",
+                    "type": "boolean"
+                },
+                "soft_limit_outbound": {
+                    "default": false,
+                    "description": "Permit calls on outbound calls for accounts which have exceeded the limit per account by default",
+                    "type": "boolean"
+                },
+                "twoway_trunks": {
+                    "default": 0,
+                    "description": "A hard limit for the number of twoway trunks per account by default",
+                    "minimum": -1,
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
         "system_config.media": {
             "description": "Schema for media system_config",
             "properties": {
