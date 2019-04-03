@@ -239,4 +239,5 @@ create_limits(AccountId, AccountDb, JObj) ->
            ,allotments = kzd_limits:allotments(JObj)
            ,soft_limit_inbound = kzd_limits:soft_limit_inbound(JObj)
            ,soft_limit_outbound = kzd_limits:soft_limit_outbound(JObj)
+           ,authz_resource_types = kzd_limits:authz_resource_types(JObj)
            }.
