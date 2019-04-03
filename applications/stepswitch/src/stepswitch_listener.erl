@@ -28,7 +28,7 @@
                              ,{'restrict_to', ['no_account']}
                              ]
                    }
-                  ,{'offnet_resource', []}
+                  ,{'offnet_resource', [{'types', ?RESOURCE_TYPES_HANDLED}]}
                   ,{'authn', []}
                   ]).
 -define(RESPONDERS, [{'stepswitch_inbound'

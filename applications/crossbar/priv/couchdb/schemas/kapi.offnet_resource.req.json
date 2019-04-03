@@ -183,6 +183,9 @@
             ],
             "type": "string"
         },
+        "Original-Resource-Type": {
+            "type": "string"
+        },
         "Origination-Call-ID": {
             "type": "string"
         },

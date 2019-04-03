@@ -47,6 +47,7 @@
 -define(KEY_ORIGINATION_CALL_ID, <<"Origination-Call-ID">>).
 -define(KEY_PRESENCE_ID, <<"Presence-ID">>).
 -define(KEY_RESOURCE_TYPE, <<"Resource-Type">>).
+-define(KEY_ORIGINAL_RESOURCE_TYPE, <<"Original-Resource-Type">>).
 -define(KEY_RINGBACK, <<"Ringback">>).
 -define(KEY_T38_ENABLED, <<"Fax-T38-Enabled">>).
 -define(KEY_TIMEOUT, <<"Timeout">>).
@@ -60,6 +61,7 @@
 -define(RESOURCE_TYPE_ORIGINATE, <<"originate">>).
 -define(RESOURCE_TYPE_SMS, <<"sms">>).
 -define(RESOURCE_TYPE_VIDEO, <<"video">>).
+-define(RESOURCE_TYPE_CID, <<"cid">>).
 
 -define(APPLICATION_BRIDGE, <<"bridge">>).
 -define(APPLICATION_EAVESDROP, <<"eavesdrop">>).
