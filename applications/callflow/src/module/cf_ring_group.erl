@@ -164,7 +164,16 @@ is_member_active(Member) ->
 
 -spec resolve_endpoint_ids(kz_json:object(), kapps_call:call()) -> endpoints().
 resolve_endpoint_ids(Data, Call) ->
-    Members = kz_json:get_list_value(<<"endpoints">>, Data, []),
+    resolve_endpoint_ids(Data, Call, kz_json:get_list_value(<<"endpoints">>, Data)).
+
+-spec resolve_endpoint_ids(kz_json:object(), kapps_call:call(), kz_json:api_objects()) -> endpoints().
+resolve_endpoint_ids(_Data, _Call, 'undefined') ->
+    lager:warning("undefined endpoints in the ring group data: ~p", [_Data]),
+    [];
+resolve_endpoint_ids(_Data, _Call, []) ->
+    lager:warning("no configured endpoints in the ring group data: ~p", [_Data]),
+    [];
+resolve_endpoint_ids(Data, Call, Members) ->
     FilteredMembers = lists:filter(fun is_member_active/1, Members),
     lager:debug("filtered for active members of ring group: ~p", [FilteredMembers]),
     ResolvedEndpoints = resolve_endpoint_ids(FilteredMembers, [], Data, Call),
