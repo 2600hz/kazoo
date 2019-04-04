@@ -922,7 +922,9 @@ try_create_endpoint(Routine, Endpoints, Endpoint, Properties, Call) when is_func
         {'error', _R} ->
             lager:warning("failed to create endpoint: ~p", [_R]),
             Endpoints;
-        JObj -> [JObj|Endpoints]
+        JObj ->
+            lager:debug("created endpoint ~s", [kz_doc:id(JObj)]),
+            [JObj|Endpoints]
     catch
         _E:_R ->
             lager:warning("unable to build endpoint(~s): ~p", [_E, _R]),
@@ -980,6 +982,7 @@ maybe_create_endpoint(<<"skype">>, Endpoint, Properties, Call) ->
     lager:info("building a Skype endpoint"),
     create_skype_endpoint(Endpoint, Properties, Call);
 maybe_create_endpoint(UnknownType, _, _, _) ->
+    lager:debug("unknown endpoint type ~s", [UnknownType]),
     {'error', <<"unknown endpoint type ", (kz_term:to_binary(UnknownType))/binary>>}.
 
 -spec maybe_create_mobile_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
