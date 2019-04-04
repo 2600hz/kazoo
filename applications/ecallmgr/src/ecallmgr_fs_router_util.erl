@@ -38,8 +38,6 @@ search_for_route(Section, Node, FetchId, CallId, Props, 'true') ->
 -spec do_search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data(), kz_term:api_pid_ref()) ->
                                  search_ret().
 do_search_for_route(Section, Node, FetchId, CallId, Props, AuthzWorker) ->
-    lager:debug("MARKER -> Getting props from log: ~p", [Props]),
-    props:to_log(Props),
     Request = route_req(CallId, FetchId, Props, Node),
     ReqResp = kz_amqp_worker:call(Request
                                  ,fun kapi_route:publish_req/1
