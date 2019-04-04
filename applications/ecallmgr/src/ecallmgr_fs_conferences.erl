@@ -487,7 +487,7 @@ participant_from_props(Props, Node) ->
                 ,join_time = kzd_freeswitch:join_time(Props)
                 ,caller_id_number = kzd_freeswitch:caller_id_number(Props)
                 ,caller_id_name = kzd_freeswitch:caller_id_name(Props)
-                ,custom_channel_vars = ecallmgr_util:custom_channel_vars(Props)
+                ,custom_channel_vars = kzd_freeswitch:ccvs(Props)
                 ,custom_application_vars = ecallmgr_util:custom_application_vars(Props)
                 ,conference_channel_vars = ecallmgr_util:conference_channel_vars(Props)
                 }.

@@ -540,7 +540,7 @@ create_event(EventName, ApplicationName, Props) ->
                                               kz_term:proplist().
 specific_call_channel_vars_props(<<"CHANNEL_DESTROY">>, Props) ->
     UUID = get_call_id(Props),
-    ChanVars = kz_json:from_list(ecallmgr_util:custom_channel_vars(Props)),
+    ChanVars = kz_json:from_list(kzd_freeswitch:ccvs(Props)),
     AppVars = kz_json:from_list(ecallmgr_util:custom_application_vars(Props)),
 
     lager:debug("checking interaction cache for ~s", [UUID]),
@@ -563,7 +563,7 @@ specific_call_channel_vars_props(<<"CHANNEL_DESTROY">>, Props) ->
             ]
     end;
 specific_call_channel_vars_props(_EventName, Props) ->
-    [{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
+    [{<<"Custom-Channel-Vars">>, kz_json:from_list(kzd_freeswitch:ccvs(Props))}
     ,{<<"Custom-Application-Vars">>, kz_json:from_list(ecallmgr_util:custom_application_vars(Props))}
     ].
 

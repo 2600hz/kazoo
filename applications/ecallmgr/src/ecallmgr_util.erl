@@ -24,8 +24,7 @@
 -export([get_interface_list/1, get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, get_orig_port/1]).
 
--export([custom_channel_vars/1
-        ,custom_application_vars/1
+-export([custom_application_vars/1
         ,conference_channel_vars/1
         ]).
 
@@ -368,38 +367,6 @@ conference_channel_var_map({Key, Value}=KV) ->
         Fun -> {Key, Fun(Value)}
     end.
 
--spec channel_var_map({kz_term:ne_binary(), kz_term:ne_binary()}) -> {kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()}.
-channel_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
-    {Key, binary:split(Serialized, <<"|:">>, ['global'])};
-channel_var_map({Key, Other}) -> {Key, Other}.
-
-%% Extract custom channel variables to include in the event
-
--spec custom_channel_vars(kzd_freeswitch:data()) -> kz_term:proplist().
-custom_channel_vars(Props) ->
-    lists:map(fun channel_var_map/1, custom_channel_vars(Props, [])).
-
--spec custom_channel_vars(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
-custom_channel_vars(Props, Initial) ->
-    CCVs = lists:foldl(fun custom_channel_vars_fold/2, Initial, Props),
-    maybe_update_referred_ccv(Props, channel_vars_sort(CCVs)).
-
--spec channel_vars_sort(kz_term:proplist()) -> kz_term:proplist().
-channel_vars_sort(ChannelVars) ->
-    lists:usort(fun channel_var_sort/2, ChannelVars).
-
--spec channel_var_sort(tuple(), tuple()) -> boolean().
-channel_var_sort({A, _}, {B, _}) -> A =< B.
-
--spec custom_channel_vars_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) -> kz_term:proplist().
-custom_channel_vars_fold({?GET_CCV(Key), V}, Acc) ->
-    props:set_value(Key, V, Acc);
-custom_channel_vars_fold({?CCV(Key), V}, Acc) ->
-    props:set_value(Key, V, Acc);
-custom_channel_vars_fold({?GET_CCV_HEADER(Key), V}, Acc) ->
-    props:insert_value(Key, V, Acc);
-custom_channel_vars_fold(_KV, Acc) -> Acc.
-
 -spec custom_application_vars(kzd_freeswitch:data()) -> kz_term:proplist().
 custom_application_vars(Props) ->
     lists:map(fun application_var_map/1, custom_application_vars(Props, [])).
@@ -429,29 +396,6 @@ custom_application_vars_fold(_KV, Acc) -> Acc.
 application_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
     {Key, binary:split(Serialized, <<"|:">>, ['global'])};
 application_var_map({Key, Other}) -> {Key, Other}.
-
--spec maybe_update_referred_ccv(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
-maybe_update_referred_ccv(Props, CCVs) ->
-    ReferTo = props:get_value(<<"variable_sip_refer_to">>, Props),
-    update_referred_by_ccv(props:get_value(<<"variable_sip_h_Referred-By">>, Props)
-                          ,update_referred_to_ccv(ReferTo, CCVs)
-                          ).
-
--spec update_referred_by_ccv(kz_term:api_binary(), kz_term:proplist()) -> kz_term:proplist().
-update_referred_by_ccv('undefined', CCVs) -> props:delete(<<"Referred-By">>, CCVs);
-update_referred_by_ccv(ReferredBy, CCVs) ->
-    props:set_value(<<"Referred-By">>
-                   ,kz_http_util:urldecode(ReferredBy)
-                   ,CCVs
-                   ).
-
--spec update_referred_to_ccv(kz_term:api_binary(), kz_term:proplist()) -> kz_term:proplist().
-update_referred_to_ccv('undefined', CCVs) -> props:delete(<<"Referred-To">>, CCVs);
-update_referred_to_ccv(ReferredTo, CCVs) ->
-    props:set_value(<<"Referred-To">>
-                   ,kz_http_util:urldecode(ReferredTo)
-                   ,CCVs
-                   ).
 
 %% convert a raw FS string of headers to a proplist
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
