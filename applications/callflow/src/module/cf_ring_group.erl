@@ -112,9 +112,9 @@ get_endpoints(Data, Call) ->
 
 -spec receive_endpoints(kz_term:pid_refs()) -> kz_json:objects().
 receive_endpoints(Builders) ->
-    %% Builders is in reverse order of the configured endpoints list
-    %% So we fold over them and prepend to return to the ordered list
-    lists:foldl(fun receive_endpoint_fold/2, [], Builders).
+    %% Builders are in member order; since receive_endpoint_fold/2 prepends
+    %% we foldr to build the list to maintain member order
+    lists:foldr(fun receive_endpoint_fold/2, [], Builders).
 
 -spec receive_endpoint_fold({pid(), reference()}, kz_json:objects()) -> kz_json:objects().
 receive_endpoint_fold({Pid, Ref}, Acc) ->
@@ -137,6 +137,7 @@ receive_endpoint_fold({Pid, Ref}, Acc) ->
 
 -spec start_builders(kz_json:object(), kapps_call:call()) -> kz_term:pid_refs().
 start_builders(Data, Call) ->
+    %% resolve_endpoint_ids/2 returns endpoints in member order
     [start_builder(EndpointId, Member, Call)
      || {EndpointId, Member} <- resolve_endpoint_ids(Data, Call)
     ].
