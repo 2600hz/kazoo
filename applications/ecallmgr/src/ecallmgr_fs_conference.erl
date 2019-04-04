@@ -210,7 +210,7 @@ process_event(Action, Props, _Node) ->
 
 update_participant(Props) ->
     ConferenceVars = ecallmgr_util:conference_channel_vars(Props),
-    ChanVars = ecallmgr_util:custom_channel_vars(Props),
+    ChanVars = kzd_freeswitch:ccvs(Props),
     AppVars = ecallmgr_util:custom_application_vars(Props),
 
     UUID = kzd_freeswitch:call_id(Props),
@@ -249,7 +249,7 @@ publish_event(Event) ->
     kz_amqp_worker:cast(Event, fun kapi_conference:publish_event/1).
 
 conference_event(Action, Conference, Props) ->
-    CCVs = ecallmgr_util:custom_channel_vars(Props),
+    CCVs = kzd_freeswitch:ccvs(Props),
     CAVs = ecallmgr_util:custom_application_vars(Props),
     ConfVars = ecallmgr_util:conference_channel_vars(Props),
 

@@ -1142,7 +1142,7 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
 
 -spec maybe_add_ccvs(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 maybe_add_ccvs(BaseProps, ChannelProps) ->
-    case ecallmgr_util:custom_channel_vars(ChannelProps) of
+    case kzd_freeswitch:ccvs(ChannelProps) of
         [] -> BaseProps;
         CustomProp ->
             props:set_value(<<"Custom-Channel-Vars">>

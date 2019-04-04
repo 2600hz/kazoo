@@ -403,7 +403,7 @@ authz_req(Props) ->
        }
       ,{<<"From-Network-Addr">>, kzd_freeswitch:from_network_ip(Props)}
       ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Props)}
-      ,{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
+      ,{<<"Custom-Channel-Vars">>, kz_json:from_list(kzd_freeswitch:ccvs(Props))}
       ,{<<"Custom-Application-Vars">>, kz_json:from_list(ecallmgr_util:custom_application_vars(Props))}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).

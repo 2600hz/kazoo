@@ -177,7 +177,7 @@ route_req(CallId, FetchId, Props, Node) ->
 -spec route_req_ccvs(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 route_req_ccvs(FetchId, Props) ->
     {RedirectedBy, RedirectedReason} = get_redirected(Props),
-    CCVs = ecallmgr_util:custom_channel_vars(Props),
+    CCVs = kzd_freeswitch:ccvs(Props),
     props:filter_undefined(
       [{<<?CALL_INTERACTION_ID>>, props:get_value(<<?CALL_INTERACTION_ID>>, CCVs, ?CALL_INTERACTION_DEFAULT)}
       ,{<<"Fetch-ID">>, FetchId}
