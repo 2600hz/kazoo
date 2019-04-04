@@ -38,6 +38,8 @@ search_for_route(Section, Node, FetchId, CallId, Props, 'true') ->
 -spec do_search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data(), kz_term:api_pid_ref()) ->
                                  search_ret().
 do_search_for_route(Section, Node, FetchId, CallId, Props, AuthzWorker) ->
+    lager:debug("MARKER -> Getting props from log: ~p", [Props]),
+    props:to_log(Props),
     Request = route_req(CallId, FetchId, Props, Node),
     ReqResp = kz_amqp_worker:call(Request
                                  ,fun kapi_route:publish_req/1
@@ -177,7 +179,7 @@ route_req(CallId, FetchId, Props, Node) ->
 -spec route_req_ccvs(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 route_req_ccvs(FetchId, Props) ->
     {RedirectedBy, RedirectedReason} = get_redirected(Props),
-    CCVs = ecallmgr_util:custom_channel_vars(Props),
+    CCVs = kzd_freeswitch:ccvs(Props),
     props:filter_undefined(
       [{<<?CALL_INTERACTION_ID>>, props:get_value(<<?CALL_INTERACTION_ID>>, CCVs, ?CALL_INTERACTION_DEFAULT)}
       ,{<<"Fetch-ID">>, FetchId}

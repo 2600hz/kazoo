@@ -674,7 +674,7 @@ maybe_publish_restricted(Props) ->
 -spec props_to_record(kz_term:proplist(), atom()) -> channel().
 props_to_record(Props, Node) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
-    CCVs = ecallmgr_util:custom_channel_vars(Props),
+    CCVs = kzd_freeswitch:ccvs(Props),
     CAVs = ecallmgr_util:custom_application_vars(Props),
     OtherLeg = get_other_leg(props:get_value(<<"Unique-ID">>, Props), Props),
 
@@ -782,7 +782,7 @@ get_realm_from_props(Props) ->
 -spec props_to_update(kz_term:proplist()) -> channel_updates().
 props_to_update(Props) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
-    CCVs = ecallmgr_util:custom_channel_vars(Props),
+    CCVs = kzd_freeswitch:ccvs(Props),
     CAVs = ecallmgr_util:custom_application_vars(Props),
 
     props:filter_undefined(
