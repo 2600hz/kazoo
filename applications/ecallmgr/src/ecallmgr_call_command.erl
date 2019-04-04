@@ -39,6 +39,8 @@ exec_cmd(Node, UUID, JObj, ControlPid, UUID) ->
             ecallmgr_util:send_cmd(Node, UUID, AppName, AppData);
         {AppName, AppData, NewNode} ->
             ecallmgr_util:send_cmd(NewNode, UUID, AppName, AppData);
+        {AppName, AppData, NewNode, ExtraHeaders} ->
+            ecallmgr_util:send_cmd(NewNode, UUID, AppName, AppData, ExtraHeaders);
         [_|_]=Apps ->
             [ecallmgr_util:send_cmd(Node, UUID, AppName, AppData) || {AppName, AppData} <- Apps]
     end;

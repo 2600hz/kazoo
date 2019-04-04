@@ -10,7 +10,7 @@
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_util).
 
--export([send_cmd/4]).
+-export([send_cmd/4, send_cmd/5]).
 -export([get_fs_kv/2, get_fs_kv/3, get_fs_key_and_value/3]).
 -export([get_fs_key/1]).
 -export([process_fs_kv/4, format_fs_kv/4]).
@@ -149,10 +149,15 @@ send_cmd(Node, _UUID, "kz_uuid_" ++ _ = API, Args) ->
     lager:debug("using api for ~s command ~s: ~s", [API, Node, Args]),
     freeswitch:api(Node, kz_term:to_atom(API, 'true'), kz_term:to_list(Args));
 send_cmd(Node, UUID, App, Args) ->
+    send_cmd(Node, UUID, App, Args, []).
+
+-spec send_cmd(atom(), kz_term:ne_binary(), kz_term:text(), kz_term:text(), kz_term:proplist()) -> send_cmd_ret().
+send_cmd(Node, UUID, App, Args, ExtraHeaders) ->
     AppName = dialplan_application(App),
     case freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
                                         ,{"execute-app-name", AppName}
                                         ,{"execute-app-arg", kz_term:to_list(Args)}
+                                         | ExtraHeaders
                                         ])
     of
         {'error', 'baduuid'} ->
