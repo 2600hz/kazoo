@@ -425,15 +425,30 @@ custom_channel_vars_fold(_, Acc) -> Acc.
 
 -spec maybe_update_referred_ccv(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 maybe_update_referred_ccv(Props, CCVs) ->
-    ReferredBy = props:get_value(<<"variable_sip_h_Referred-By">>, Props),
-    ReferTo = props:get_value(<<"variable_sip_refer_to">>, Props),
+    ReferredBy = props:get_ne_binary_value(<<"variable_sip_h_Referred-By">>, Props),
+    ReferTo = props:get_ne_binary_value(<<"variable_sip_refer_to">>, Props),
     update_referred_by_ccv(ReferredBy
+                          ,ReferTo
                           ,update_referred_to_ccv(ReferTo, CCVs)
+                          ,Props
                           ).
 
--spec update_referred_by_ccv(kz_term:api_binary(), kz_term:proplist()) -> kz_term:proplist().
-update_referred_by_ccv('undefined', CCVs) -> props:delete(<<"Referred-By">>, CCVs);
-update_referred_by_ccv(ReferredBy, CCVs) ->
+-spec update_referred_by_ccv(kz_term:api_binary(), kz_term:api_binary(), kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
+update_referred_by_ccv(_By, 'undefined', CCVs, _Props) ->
+    props:delete(<<"Referred-By">>, CCVs);
+update_referred_by_ccv('undefined', _To, CCVs, Props) ->
+    case {props:get_ne_binary_value(<<"variable_ecallmgr_Realm">>, Props)
+         ,props:get_ne_binary_value(<<"Caller-Username">>, Props)}  of
+        {'undefined', _} ->
+            props:delete(<<"Referred-By">>, CCVs);
+        {_, 'undefined'} ->
+            props:delete(<<"Referred-By">>, CCVs);
+        {Realm, Username} ->
+            ReferredBy = kz_binary:join([<<"<">>, <<"sip:">>, Username, <<"@">>, Realm, <<">">>], <<>>),
+            lager:debug("referred-by is missing, using value from other vars ~p", [ReferredBy]),
+            props:set_value(<<"Referred-By">>, ReferredBy, CCVs)
+    end;
+update_referred_by_ccv(ReferredBy, _To, CCVs, _Props) ->
     props:set_value(<<"Referred-By">>
                    ,kz_http_util:urldecode(ReferredBy)
                    ,CCVs
