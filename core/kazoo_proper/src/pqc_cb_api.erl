@@ -18,6 +18,8 @@
         ,cleanup/1
 
         ,set_log_level/1
+
+        ,init_api/2
         ]).
 
 -include("kazoo_proper.hrl").
@@ -228,10 +230,10 @@ create_envelope(Data, Envelope) ->
 
 -spec handle_response(expectations(), kz_http:ret()) -> response().
 handle_response([#{}|_]=Expectations, {'ok', ActualCode, RespHeaders, RespBody}) ->
-    case expectations_met(Expectations, ActualCode, RespHeaders) of
+    case expectations_met(Expectations, ActualCode, [{"resp_code", ActualCode} | RespHeaders]) of
         'true' -> RespBody;
         'false' ->
-            lager:info("expectations not met: ~p", [Expectations]),
+            lager:info("expectations not met: ~w", [Expectations]),
             lager:debug("~p: ~p", [ActualCode, RespHeaders]),
             {'error', RespBody}
     end;
@@ -313,8 +315,36 @@ trace_path() ->
 set_log_level(LogLevel) ->
     put('log_level', LogLevel).
 
+-spec get_log_level() -> atom().
 get_log_level() ->
     case get('log_level') of
         'undefined' -> 'debug';
         LogLevel -> LogLevel
     end.
+
+-spec init_api([atom()], [module()]) -> state().
+init_api(AppsToStart, ModulesToStart) when is_list(AppsToStart)
+                                           andalso is_list(ModulesToStart) ->
+    Model = initial_state(AppsToStart, ModulesToStart),
+    pqc_kazoo_model:api(Model).
+
+-spec initial_state([atom()], [module()]) -> pqc_kazoo_model:model().
+initial_state(AppsToStart, ModulesToStart) ->
+    _ = init_system(AppsToStart, ModulesToStart),
+    API = authenticate(),
+    pqc_kazoo_model:new(API).
+
+-spec init_system([atom()], [module()]) -> 'ok'.
+init_system(AppsToStart, ModulesToStart) ->
+    TestId = kz_binary:rand_hex(5),
+    kz_util:put_callid(TestId),
+
+    _ = kz_data_tracing:clear_all_traces(),
+    _ = [kapps_controller:start_app(App) ||
+            App <- AppsToStart
+        ],
+    _ = [crossbar_maintenance:start_module(Mod) ||
+            Mod <- ModulesToStart
+        ],
+
+    ?INFO("INIT FINISHED").

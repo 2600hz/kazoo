@@ -15,6 +15,9 @@
 
         ,next_state/3
         ,postcondition/3
+
+         %% kapps_maintenance:check_release callback
+        ,seq/0
         ]).
 
 -export([account_url/1]).
@@ -22,6 +25,8 @@
 -export_type([account_id/0]).
 
 -include("kazoo_proper.hrl").
+
+-define(ACCOUNT_NAMES, [<<"account_for_accounts">>]).
 
 -type account_id() :: {'call', 'pqc_kazoo_model', 'account_id_by_name', [pqc_cb_api:state() | proper_types:type()]} |
                       kz_term:ne_binary().
@@ -139,3 +144,54 @@ postcondition(Model
                  ),
             500 =:= pqc_cb_response:error_code(APIResult)
     end.
+
+-spec seq() -> 'ok'.
+seq() ->
+    enable_and_delete_topup().
+
+-spec enable_and_delete_topup() -> 'ok'.
+enable_and_delete_topup() ->
+    API = pqc_cb_api:init_api(['crossbar'], ['cb_accounts']),
+
+    %% Make sure everything is clean for the test.
+    cleanup(API),
+
+    AccountResp = create_account(API, hd(?ACCOUNT_NAMES)),
+    ?INFO("created account: ~s", [AccountResp]),
+
+    AccountJObj = kz_json:get_value(<<"data">>, kz_json:decode(AccountResp)),
+    AccountId = kz_json:get_binary_value(<<"id">>, AccountJObj),
+    TopupConfig = kz_json:from_list([{<<"threshold">>,10},{<<"amount">>,50}]),
+    RequestData = kz_json:set_value(<<"topup">>, TopupConfig, AccountJObj),
+    RequestEnvelope = pqc_cb_api:create_envelope(RequestData),
+
+    Resp = topup_request(API, AccountId, RequestEnvelope),
+    ?INFO("enable topup resp: ~s", [Resp]),
+
+    RespJObj = pqc_cb_response:data(Resp),
+    'true' = kz_json:are_equal(TopupConfig, kz_json:get_ne_value(<<"topup">>, RespJObj)),
+    RequestData1 = kz_json:delete_key(<<"topup">>, RespJObj),
+    RequestEnvelope1 = pqc_cb_api:create_envelope(RequestData1),
+
+    Resp1 = topup_request(API, AccountId, RequestEnvelope1),
+    ?INFO("disable topup resp: ~s", [Resp1]),
+
+    'undefined' = kz_json:get_ne_value(<<"topup">>, kz_json:decode(Resp1)),
+
+    cleanup(API),
+    ?INFO("FINISHED ENABLE AND DISABLE TOPUP CHECKS").
+
+-spec cleanup(pqc_cb_api:state()) -> any().
+cleanup(API) ->
+    ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
+    _ = cleanup_accounts(API, ?ACCOUNT_NAMES),
+    _ = pqc_cb_api:cleanup(API).
+
+-spec topup_request(pqc_cb_api:state(), kz_term:ne_binary(), kz_json:object()) -> pqc_cb_api:response().
+topup_request(API, AccountId, RequestEnvelope) ->
+    pqc_cb_api:make_request([200]
+                           ,fun kz_http:post/3
+                           ,account_url(AccountId)
+                           ,pqc_cb_api:request_headers(API)
+                           ,kz_json:encode(RequestEnvelope)
+                           ).

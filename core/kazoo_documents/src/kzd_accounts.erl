@@ -1254,14 +1254,12 @@ save_accounts_doc(AccountDoc) ->
             lager:info("failed to save account doc to accounts: ~p", [_R]),
             E;
         {'ok', AccountsDoc} ->
-            Update = [{kz_doc:path_revision(), kz_doc:revision(AccountsDoc)}
-                      | kz_json:to_proplist(AccountDoc)
-                     ],
-            UpdateOptions = [{'update', Update}
-                            ,{'ensure_saved', 'true'}
-                            ],
+            NewAccountDoc = kz_json:set_value(kz_doc:path_revision()
+                                             ,kz_doc:revision(AccountsDoc)
+                                             ,AccountDoc
+                                             ),
             handle_saved_accounts_doc(AccountDoc
-                                     ,kz_datamgr:update_doc(?KZ_ACCOUNTS_DB, kz_doc:id(AccountDoc), UpdateOptions)
+                                     ,kz_datamgr:save_doc(?KZ_ACCOUNTS_DB, NewAccountDoc)
                                      )
     end.
 
@@ -1537,11 +1535,8 @@ validate_schema(ParentId, AccountId, {Doc, Errors}) ->
 validate_passed(ParentId, 'undefined', {Doc, Errors}) ->
     lager:info("validation passed for new account: ~s", [kz_json:encode(Doc)]),
     {set_private_properties(ParentId, Doc), Errors};
-validate_passed(_ParentId, AccountId, {Doc, Errors}) ->
-    case update(AccountId, kz_json:to_proplist(kz_json:flatten(Doc))) of
-        {'ok', UpdatedAccount} -> {UpdatedAccount, Errors};
-        {'error', _E} -> {Doc, Errors}
-    end.
+validate_passed(_ParentId, _AccountId, {Doc, Errors}) ->
+    {Doc, Errors}.
 
 -spec validate_account_schema(kz_term:api_ne_binary(), kz_term:api_ne_binary(), doc(), validation_errors(), kz_json:object()) ->
                                      validate_acc().
