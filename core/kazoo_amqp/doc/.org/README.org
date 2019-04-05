@@ -73,7 +73,8 @@ Flow control can be applied on connections, channels, or queues, and affects pub
 ** TODO Dedicated connection for publishing-only
 Contention between fast publishers and slow consumers on the same connection can invoke flow control (artificially slowing down the connection speed). Related to QOS / prefetch settings.
 
-** TODO 1. Fix the services cache bindings
+** DONE 1. Fix the services cache bindings
+CLOSED: [2019-04-02 Tue 23:38]
 ** TODO 2. Create a means to disable all MODb updates without impacting applications / services
 ** TODO 3. Deploy a regex against all bindings keys to replace only and trailing wildcards with '#'
 ** TODO 4. Move to application pools to avoid queue churn
@@ -86,6 +87,96 @@ Currently each gen_listener uses a channel and, once finished, closes the channe
 https://www.rabbitmq.com/channels.html
 
 We could, instead, maintain pools of workers per-app that are checked in/out and tuned as traffic increases. This would eliminate the majority of channel churn (painful on the broker too) and potentially improve performance. The downside is the resting state of the system is a higher baseline of memory consumption. An auto-scaling pool could be of interest for high volume apps like callflows while a more static pool could be useful for apps with minimal channel usage like teletype.
+
+Generally speaking, =gen_listener= processes with "random" names are likely dynamic and short(er) lived than named queues.
+
+#+begin_src bash
+grep -rlF "-behaviour(gen_listener)." {applications,core} | xargs grep -Fl "QUEUE_NAME, <<>>)." | sort
+applications/acdc/src/acdc_stats.erl
+applications/blackhole/src/blackhole_listener.erl
+applications/blackhole/src/blackhole_tracking.erl
+applications/callflow/src/cf_exe.erl
+applications/callflow/src/cf_listener.erl
+applications/callflow/src/cf_singular_call_hooks_listener.erl
+applications/callflow/src/cf_task.erl
+applications/camper/src/camper_offnet_handler.erl
+applications/cccp/src/cccp_callback_listener.erl
+applications/cccp/src/cccp_listener.erl
+applications/cccp/src/cccp_platform_listener.erl
+applications/conference/src/conference_listener.erl
+applications/conference/src/conf_participant.erl
+applications/doodle/src/doodle_exe.erl
+applications/doodle/src/doodle_listener.erl
+applications/ecallmgr/src/ecallmgr_call_control.erl
+applications/ecallmgr/src/ecallmgr_fs_channels.erl
+applications/ecallmgr/src/ecallmgr_fs_conferences.erl
+applications/ecallmgr/src/ecallmgr_originate.erl
+applications/ecallmgr/src/ecallmgr_registrar.erl
+applications/ecallmgr/src/ecallmgr_usurp_monitor.erl
+applications/fax/src/fax_jobs.erl
+applications/fax/src/fax_worker.erl
+applications/hangups/src/hangups_query_listener.erl
+applications/jonny5/src/j5_channels.erl
+applications/konami/src/konami_event_listener.erl
+applications/milliwatt/src/milliwatt_listener.erl
+applications/omnipresence/src/omnipresence_listener.erl
+applications/skel/src/skel_listener.erl
+applications/stepswitch/src/stepswitch_bridge.erl
+applications/stepswitch/src/stepswitch_local_extension.erl
+applications/stepswitch/src/stepswitch_originate.erl
+applications/stepswitch/src/stepswitch_sms.erl
+applications/trunkstore/src/trunkstore_listener.erl
+core/kazoo_amqp/src/kz_amqp_worker.erl
+core/kazoo_caches/src/kz_cache_listener.erl
+core/kazoo_call/src/kzc_recording.erl
+core/kazoo_events/src/kz_hooks_listener.erl
+core/kazoo_globals/src/kz_globals.erl
+core/kazoo_globals/src/kz_nodes.erl
+core/kazoo_media/src/kz_media_map.erl
+core/kazoo_number_manager/src/knm_search.erl
+#+end_src
+
+*** Long-lived anon queue names
+applications/blackhole/src/blackhole_listener.erl
+applications/blackhole/src/blackhole_tracking.erl
+applications/callflow/src/cf_listener.erl
+applications/conference/src/conference_listener.erl
+applications/doodle/src/doodle_listener.erl
+applications/ecallmgr/src/ecallmgr_fs_channels.erl
+applications/ecallmgr/src/ecallmgr_fs_conferences.erl
+applications/ecallmgr/src/ecallmgr_registrar.erl
+applications/ecallmgr/src/ecallmgr_usurp_monitor.erl
+applications/fax/src/fax_jobs.erl
+applications/hangups/src/hangups_query_listener.erl
+applications/jonny5/src/j5_channels.erl
+applications/konami/src/konami_event_listener.erl
+applications/milliwatt/src/milliwatt_listener.erl
+applications/omnipresence/src/omnipresence_listener.erl
+applications/skel/src/skel_listener.erl
+applications/trunkstore/src/trunkstore_listener.erl
+core/kazoo_amqp/src/kz_amqp_worker.erl
+core/kazoo_caches/src/kz_cache_listener.erl
+core/kazoo_events/src/kz_hooks_listener.erl
+core/kazoo_globals/src/kz_globals.erl
+core/kazoo_globals/src/kz_nodes.erl
+core/kazoo_media/src/kz_media_map.erl
+core/kazoo_number_manager/src/knm_search.erl
+*** Ephemeral processes
+applications/callflow/src/cf_exe.erl
+applications/callflow/src/cf_singular_call_hooks_listener.erl
+applications/callflow/src/cf_task.erl
+applications/conference/src/conf_participant.erl
+applications/doodle/src/doodle_exe.erl
+applications/ecallmgr/src/ecallmgr_call_control.erl
+applications/ecallmgr/src/ecallmgr_originate.erl
+applications/fax/src/fax_worker.erl
+applications/stepswitch/src/stepswitch_bridge.erl
+applications/stepswitch/src/stepswitch_local_extension.erl
+applications/stepswitch/src/stepswitch_originate.erl
+applications/stepswitch/src/stepswitch_sms.erl
+core/kazoo_call/src/kzc_recording.erl
+
+Trunkstore already uses the general purpose pool for its call-handling
 
 ** DONE 5. For non-named queues remove or significantly increase the flow control limit
 CLOSED: [2019-04-02 Tue 20:56]
