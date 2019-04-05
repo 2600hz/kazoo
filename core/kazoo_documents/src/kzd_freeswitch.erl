@@ -437,15 +437,11 @@ maybe_update_referred_ccv(Props, CCVs) ->
 update_referred_by_ccv(_By, 'undefined', CCVs, _Props) ->
     props:delete(<<"Referred-By">>, CCVs);
 update_referred_by_ccv('undefined', _To, CCVs, Props) ->
-    case {props:get_ne_binary_value(<<"variable_ecallmgr_Realm">>, Props)
-         ,props:get_ne_binary_value(<<"Caller-Username">>, Props)}  of
-        {'undefined', _} ->
+    case referred_by_from_bridge_channel(props:get_ne_binary_value(<<"variable_bridge_channel">>, Props)) of
+        'undefined' ->
             props:delete(<<"Referred-By">>, CCVs);
-        {_, 'undefined'} ->
-            props:delete(<<"Referred-By">>, CCVs);
-        {Realm, Username} ->
-            ReferredBy = kz_binary:join([<<"<">>, <<"sip:">>, Username, <<"@">>, Realm, <<">">>], <<>>),
-            lager:debug("referred-by is missing, using value from other vars ~p", [ReferredBy]),
+        ReferredBy ->
+            lager:debug("referred-by is missing, using value from bridge_channel: ~s", [ReferredBy]),
             props:set_value(<<"Referred-By">>, ReferredBy, CCVs)
     end;
 update_referred_by_ccv(ReferredBy, _To, CCVs, _Props) ->
@@ -453,6 +449,18 @@ update_referred_by_ccv(ReferredBy, _To, CCVs, _Props) ->
                    ,kz_http_util:urldecode(ReferredBy)
                    ,CCVs
                    ).
+
+referred_by_from_bridge_channel('undefined') ->
+    'undefined';
+referred_by_from_bridge_channel(Value) ->
+    case binary:split(Value,  [<<"/">>, <<":">>], [global]) of
+        [_Sofia, _Interface, Uri] -> Uri;
+        [_Sofia, _Interface, Uri, _Port] -> Uri;
+        _Else ->
+            lager:debug("unknown bridge_channel '~p', could not find users uri here", [_Else]),
+            'undefined'
+    end.
+
 
 -spec update_referred_to_ccv(kz_term:api_binary(), kz_term:proplist()) -> kz_term:proplist().
 update_referred_to_ccv('undefined', CCVs) -> props:delete(<<"Referred-To">>, CCVs);
