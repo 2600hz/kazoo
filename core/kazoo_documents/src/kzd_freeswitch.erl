@@ -433,7 +433,8 @@ maybe_update_referred_ccv(Props, CCVs) ->
                           ,Props
                           ).
 
--spec update_referred_by_ccv(kz_term:api_binary(), kz_term:api_binary(), kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
+-spec update_referred_by_ccv(kz_term:api_binary(), kz_term:api_binary(), kz_term:proplist(), kz_term:proplist()) ->
+                                    kz_term:proplist().
 update_referred_by_ccv(_By, 'undefined', CCVs, _Props) ->
     props:delete(<<"Referred-By">>, CCVs);
 update_referred_by_ccv('undefined', _To, CCVs, Props) ->
@@ -455,12 +456,15 @@ referred_by_from_bridge_channel('undefined') ->
     'undefined';
 referred_by_from_bridge_channel(Value) ->
     case binary:split(Value,  [<<"/">>, <<":">>], [global]) of
-        [_Sofia, _Interface, Uri] -> Uri;
-        [_Sofia, _Interface, Uri, _Port] -> Uri;
+        [_Sofia, _Interface, Uri] -> to_uri(Uri);
+        [_Sofia, _Interface, Uri, _Port] -> to_uri(Uri);
         _Else ->
             lager:debug("unknown bridge_channel '~p', could not find users uri here", [_Else]),
             'undefined'
     end.
+
+-spec to_uri(kz_term:ne_binary()) -> kz_term:ne_binary().
+to_uri(Uri) -> kz_http_util:urldecode(<<"<sip:", Uri, ">">>).
 
 
 -spec update_referred_to_ccv(kz_term:api_binary(), kz_term:proplist()) -> kz_term:proplist().
