@@ -27,6 +27,7 @@
         ,<<"Caller-ID-Name">>
         ,<<"Caller-ID-Number">>
         ,<<"Caller-Unique-ID">>
+        ,<<"Caller-Username">>
         ,<<"Channel-Call-State">>
         ,<<"Channel-Call-UUID">>
         ,<<"Channel-Name">>
