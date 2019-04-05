@@ -27,7 +27,6 @@
         ,<<"Caller-ID-Name">>
         ,<<"Caller-ID-Number">>
         ,<<"Caller-Unique-ID">>
-        ,<<"Caller-Username">>
         ,<<"Channel-Call-State">>
         ,<<"Channel-Call-UUID">>
         ,<<"Channel-Name">>
@@ -110,6 +109,7 @@
         ,<<"variable_Switch-URL">>
         ,<<"variable_billmsec">>
         ,<<"variable_billsec">>
+        ,<<"variable_bridge_channel">>
         ,<<"variable_bridge_hangup_cause">>
         ,<<"variable_bridge_uuid">>
         ,<<"variable_channel_is_moving">>
