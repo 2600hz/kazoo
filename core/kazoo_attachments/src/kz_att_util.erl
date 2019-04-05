@@ -77,7 +77,7 @@ format_url(Params, JObj, Args, DefaultFields) ->
 
     case path_from_settings(Params) of
         'undefined' -> BaseUrl;
-        Path -> list_to_binary([Path, "/", BaseUrl])
+        Path -> list_to_binary([kz_binary:strip_right(Path, $/), "/", BaseUrl])
     end.
 
 -spec do_format_url(url_fields(), kz_json:object(), kz_term:proplist(), binary()) -> kz_term:ne_binary().
