@@ -450,6 +450,7 @@ update_referred_by_ccv(ReferredBy, _To, CCVs, _Props) ->
                    ,CCVs
                    ).
 
+-spec referred_by_from_bridge_channel(kz_term:api_binary()) -> kz_term:api_binary().
 referred_by_from_bridge_channel('undefined') ->
     'undefined';
 referred_by_from_bridge_channel(Value) ->
