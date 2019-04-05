@@ -49,16 +49,6 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{SOURCE_SERVICE}
 ```
 
-## Fetch
-
-> GET /v2/accounts/{ACCOUNT_ID}/ledgers/summary_by_accounts
-
-```shell
-curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/summary_by_accounts
-```
-
 ## Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/ledgers/debit
