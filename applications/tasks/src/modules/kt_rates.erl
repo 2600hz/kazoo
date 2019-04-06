@@ -328,9 +328,10 @@ generate_row(Args) ->
                [{fun kzd_rates:set_rate_name/2, maybe_generate_name(RateJObj)}
                ,{fun kzd_rates:set_weight/2, maybe_generate_weight(RateJObj)}
                ,{fun kzd_rates:set_caller_id_numbers/2, maybe_generate_caller_id_numbers(RateJObj)}
+               ,{fun kzd_rates:set_routes/2, maybe_generate_routes(RateJObj)}
                ]
               ),
-    kz_json:set_values(Update, kzd_rates:set_default_route(RateJObj)).
+    kz_json:set_values(Update, RateJObj).
 
 -spec save_rates(kz_term:ne_binary(), kzd_rates:docs()) -> 'ok'.
 save_rates(Db, Rates) ->
@@ -472,3 +473,20 @@ maybe_generate_caller_id_numbers(_RateJObj, CID_Numbers)  when is_binary(CID_Num
              );
 maybe_generate_caller_id_numbers(_RateJObj, _CID_Numbers) ->
     'undefined'.
+
+-spec maybe_generate_routes(kzd_rates:doc()) -> kz_term:ne_binaries()|'undefined'.
+maybe_generate_routes(RateJObj) ->
+    Routes = kz_json:get_value(<<"routes">>, RateJObj),
+    case is_binary(Routes) of
+        'true' -> maybe_generate_routes(RateJObj, kz_json:decode(Routes));
+        'false' -> maybe_generate_routes(RateJObj, Routes)
+    end.
+
+-spec maybe_generate_routes(kzd_rates:doc(), kz_term:ne_binary()) -> kz_term:api_ne_binaries().
+maybe_generate_routes(_RateJObj, Routes) when is_list(Routes) ->
+    Routes;
+maybe_generate_routes(_RateJObj, Routes) when is_binary(Routes) ->
+    [Routes];
+maybe_generate_routes(RateJObj, _Routes) ->
+    lager:debug("no valid routes, generating default route from prefix"),
+    kz_json:get_value(<<"routes">>, kzd_rates:set_default_route(RateJObj)).

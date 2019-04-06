@@ -32,6 +32,7 @@ Name | Description | Required
 `ratedeck_id`| ratedeck name, assigned to account via service plan|
 `weight`|when found several rates with same prefix, used rate with higher weight. If not set - calculated from `prefix` length and `rate_cost` (`pvt_rate_cost`)|
 `caller_id_numbers`|string of caller id prefixes separated by ":". For ex.: 441:442:443 It will be converted into ["^\\+?441.+$", "^\\+?442.+$", "^\\+?443.+$"]|
+`routes`|string of either a single route "^\+?44.+$" or a json array string '["^\\+?123$","^\\+?456$"]'|
 
 CSV files for all actions use the same list of fields. Names of fields match the names of keys in the CouchDB [rate document](../../crossbar/doc/rates.md#schema).
 
@@ -39,9 +40,9 @@ CSV files for all actions use the same list of fields. Names of fields match the
     For `import` and `delete` actions, value of `account_id` from CSV file will be ignored, value for this field is taken from task Account-ID .
 
 !!! note
-    `routes` and `options` fields can not be defined via CSV file (because their values are lists).
+    `options` field can not be defined via CSV file (because its values are lists).
 
-`routes` is automatically generated from `prefix`. Example: `prefix` 380 generates `routes` - `["^\\+?380.+$"]`.
+`routes` is automatically generated from `prefix` as the default or the json decode fails to parse the json array. Example: `prefix` 380 generates `routes` - `["^\\+?380.+$"]`.
 
 ## Actions
 
