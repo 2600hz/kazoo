@@ -62,6 +62,8 @@
         ,validate_message/4
         ]).
 
+-export([kapi_delivery_message/2]).
+
 -include_lib("kz_amqp_util.hrl").
 
 -ifdef(TEST).
@@ -630,3 +632,9 @@ exec_fold({F, K, V}, C) when is_function(F, 3) -> F(K, V, C);
 exec_fold({F, V}, C) when is_function(F, 2) -> F(V, C);
 exec_fold(F, C) when is_function(F, 1) -> F(C);
 exec_fold(_, C) -> C.
+
+-spec kapi_delivery_message(kz_json:object(), kz_term:proplist()) -> term().
+kapi_delivery_message(JObj, Props) ->
+    Basic = props:get_value('basic', Props),
+    Deliver = #'basic.deliver'{exchange=Exchange, routing_key=RK} = props:get_value('deliver', Props),
+    {{Exchange, RK, {Basic, Deliver}}, {kz_term:to_atom(kz_api:event_category(JObj), 'true'), kz_term:to_atom(kz_api:event_name(JObj), 'true')}, JObj}.
