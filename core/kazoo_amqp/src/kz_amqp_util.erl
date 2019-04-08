@@ -504,6 +504,15 @@ basic_publish(Exchange, RoutingKey, Payload, ContentType) ->
 basic_publish(Exchange, RoutingKey, Payload, ContentType, Prop)
   when is_list(Payload) ->
     basic_publish(Exchange, RoutingKey, iolist_to_binary(Payload), ContentType, Prop);
+basic_publish(Exchange, <<"pid://", _/binary>>=RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
+  when is_binary(Exchange),
+       is_binary(RoutingKey),
+       is_binary(ContentType),
+       is_list(Props) ->
+    Headers = props:get_value('headers', Props, []),
+    {'match', [Pid, RK]}= re:run(RoutingKey, <<"pid://(.*)/(.*)">>, [{'capture', [1,2], 'binary'}]),
+    NewProps = props:set_value('headers', [{?KEY_DELIVER_TO_PID, binary, Pid} | Headers], Props),
+    basic_publish(Exchange, RK, Payload, ContentType, NewProps);
 basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
   when is_binary(Exchange),
        is_binary(RoutingKey),
