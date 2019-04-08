@@ -112,7 +112,7 @@ handle_info(_Info, State) ->
 handle_event(JObj, Props, State) ->
     Msg = kz_api:kapi_delivery_message(JObj, Props),
     handle_msg(Msg, State).
-    
+
 handle_msg({_, {'callflow', 'resume'}, _} = Msg, _State) ->
     cf_listener_sup:forward(Msg),
     'ignore';

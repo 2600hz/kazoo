@@ -318,8 +318,8 @@ amqp_call(Call, API, PubFun, VerifyFun) when is_function(PubFun, 1) ->
 %%------------------------------------------------------------------------------
 -spec init_control(pid(), map()) -> 'ok'.
 init_control(Pid, #{request := JObj
-                    ,props := Props
-                    ,callback := Fun
+                   ,props := Props
+                   ,callback := Fun
                    }) ->
     proc_lib:init_ack(Pid, {'ok', self()}),
     kz_amqp_channel:consumer_channel(props:get_value(channel, Props)),
@@ -329,8 +329,8 @@ init_control(Pid, #{request := JObj
         {ok, Call} ->
             process_flag('trap_exit', 'true'),
             State = #state{call=Call
-                           ,branch_count = ?MAX_BRANCH_COUNT
-                           ,queue = kapps_call:controller_queue(Call)
+                          ,branch_count = ?MAX_BRANCH_COUNT
+                          ,queue = kapps_call:controller_queue(Call)
                           },
             gen_server:cast(self(), 'initialize'),
             gen_server:enter_loop(?MODULE, [], State);
