@@ -21,6 +21,6 @@ handle_req(JObj, Props) ->
     Updaters = [{fun kapps_call:kvs_store/3, 'cf_flow', Flow}
                ,{fun kapps_call:set_controller_queue/2, ControllerQ}
                ],
-    Call = kapps_call:exec(Updaters, Call0).
+    Call = kapps_call:exec(Updaters, Call0),
     cf_util:flush_control_queue(Call),
     cf_route_win:execute_callflow(JObj, Call).
