@@ -20,14 +20,22 @@
 
 -spec handle_req(kapi_route:req(), kz_term:proplist()) -> 'ok'.
 handle_req(RouteReq, Props) ->
-    CallId = kapi_route:call_id(RouteReq),
-    kz_util:put_callid(CallId),
+    kz_util:put_callid(kapi_route:call_id(RouteReq)),
     kz_amqp_worker:worker_pool(callflow_sup:pool_name()),
 
     'true' = kapi_route:req_v(RouteReq),
 
-    gproc:reg({'p', 'l', {'route_req', CallId}}),
-    Routines = [fun maybe_referred_call/1
+    handle_req(RouteReq, Props, kz_amqp_worker:checkout_worker()).
+
+-spec handle_req(kapi_route:req(), kz_term:proplist(), {'ok', pid()} | {'error', any()}) -> 'ok'.
+handle_req(_RouteReq, _Props, {'error', _E}) ->
+    lager:warning("ignoring req, failed to checkout AMQP worker: ~p", [_E]);
+handle_req(RouteReq, Props, {'ok', AMQPWorker}) ->
+    lager:debug("checked out AMQP worker ~p", [AMQPWorker]),
+
+    gproc:reg({'p', 'l', {'route_req', kapi_route:call_id(RouteReq)}}),
+    Routines = [{fun kapps_call:kvs_store/3, 'consumer_pid', AMQPWorker}
+               ,fun maybe_referred_call/1
                ,fun maybe_device_redirected/1
                ],
     Call = kapps_call:exec(Routines, kapps_call:from_route_req(RouteReq)),

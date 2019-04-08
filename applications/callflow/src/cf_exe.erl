@@ -81,6 +81,10 @@
 cf_exe_pid(Call) ->
     kapps_call:kvs_fetch('cf_exe_pid', Call).
 
+-spec consumer_pid(kapps_call:call()) -> pid().
+consumer_pid(Call) ->
+    kapps_call:kvs_fetch('consumer_pid', Call).
+
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -320,21 +324,12 @@ amqp_call(Call, API, PubFun, VerifyFun) when is_function(PubFun, 1) ->
 %%------------------------------------------------------------------------------
 -spec init([kapps_call:call()]) -> {'ok', state()}.
 init([Call]) ->
-    case kz_amqp_worker:checkout_worker() of
-        {'ok', AMQPWorker} ->
-            lager:debug("checked out worker ~p", [AMQPWorker]),
-            finish_init(Call, AMQPWorker);
-        {'error', _Fault}=Error ->
-            lager:critical("failing to get a worker to process callflow: ~p", [_Fault]),
-            Error
-    end.
-
-finish_init(Call, AMQPWorker) ->
     process_flag('trap_exit', 'true'),
 
     CallId = kapps_call:call_id(Call),
     kz_util:put_callid(CallId),
 
+    AMQPWorker = consumer_pid(Call),
     gen_listener:add_binding(AMQPWorker, 'call', [{'callid', CallId}]),
 
     gen_server:cast(self(), 'initialize'),
@@ -533,8 +528,7 @@ handle_cast('initialize', #state{call=Call
                                 }=State) ->
     log_call_information(Call),
     Flow = kapps_call:kvs_fetch('cf_flow', Call),
-    Updaters = [{fun kapps_call:kvs_store/3, 'consumer_pid', AMQPWorker}
-               ,{fun kapps_call:kvs_store/3, 'cf_exe_pid', self()}
+    Updaters = [{fun kapps_call:kvs_store/3, 'cf_exe_pid', self()}
                ,{fun kapps_call:call_id_helper/2, fun callid/2}
                ,{fun kapps_call:control_queue_helper/2, fun control_queue/2}
                ],
