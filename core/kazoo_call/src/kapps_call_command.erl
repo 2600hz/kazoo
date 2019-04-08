@@ -44,7 +44,6 @@
         ,hangup/1, hangup/2
         ,queued_hangup/1, queued_hangup/2
         ,break/1
-        ,queued_hangup/1
         ,set/3, set/4, set/5, set_terminators/2
         ,fetch/1, fetch/2
         ]).
@@ -1016,11 +1015,6 @@ hangup(Call) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
               ,{<<"Insert-At">>, <<"now">>}
               ],
-    send_command(Command, Call).
-
--spec queued_hangup(kapps_call:call()) -> 'ok'.
-queued_hangup(Call) ->
-    Command = [{<<"Application-Name">>, <<"hangup">>}],
     send_command(Command, Call).
 
 -spec hangup(boolean(), kapps_call:call()) -> 'ok'.
