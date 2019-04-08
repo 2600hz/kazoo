@@ -10,7 +10,7 @@
 
 -include("callflow.hrl").
 
--spec handle_req(kapi_callflow:resume(), kz_term:proplist()) -> kapps_call:call().
+-spec handle_req(kapi_callflow:resume(), kz_term:proplist()) -> 'ok'.
 handle_req(ResumeJObj, _Props) ->
     'true' = kapi_callflow:resume_v(ResumeJObj),
     kz_util:put_callid(ResumeJObj),
