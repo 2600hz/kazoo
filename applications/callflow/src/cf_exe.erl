@@ -13,7 +13,6 @@
 -export([amqp_send/3, amqp_call/4]).
 -export([get_call/1, set_call/1]).
 -export([callid/1, callid/2]).
--export([queue_name/1]).
 -export([control_queue/1, control_queue/2]).
 -export([continue/1, continue/2]).
 -export([continue_with_flow/2]).
@@ -245,13 +244,6 @@ callid(Call) ->
 -spec callid(kz_term:api_binary(), kapps_call:call() | pid()) -> kz_term:ne_binary().
 callid(_, Call) ->
     callid(Call).
-
--spec queue_name(kapps_call:call() | pid()) -> kz_term:ne_binary().
-queue_name(Srv) when is_pid(Srv) ->
-    gen_server:queue_name(Srv);
-queue_name(Call) ->
-    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
-    queue_name(Srv).
 
 -spec control_queue(kapps_call:call() | pid()) -> kz_types:api_control_q().
 control_queue(Srv) when is_pid(Srv) -> gen_server:call(Srv, 'control_queue_name');

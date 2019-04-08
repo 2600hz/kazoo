@@ -155,7 +155,7 @@ build_offnet_request(Data, Call) ->
 
 -spec add_headers(kz_json:object(), kapps_call:call()) -> kz_term:proplist().
 add_headers(Data, Call) ->
-    add_resource_type(Data) ++ kz_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION).
+    add_resource_type(Data) ++ kz_api:default_headers(kapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION).
 
 -spec add_resource_type(kz_json:object()) -> kz_term:proplist().
 add_resource_type(Data) ->
