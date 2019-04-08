@@ -192,6 +192,7 @@ send_route_response(Flow, RouteReq, Call) ->
                             ,Publisher
                             ,fun kapi_route:win_v/1
                             ,?ROUTE_WIN_TIMEOUT
+                            ,kapps_call:kvs_fetch('consumer_pid', Call)
                             )
     of
         {'ok', RouteWin} ->
