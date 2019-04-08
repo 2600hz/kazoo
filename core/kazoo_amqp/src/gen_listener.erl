@@ -208,28 +208,24 @@
 %%------------------------------------------------------------------------------
 -spec start_link(atom(), start_params(), list()) -> kz_types:startlink_ret().
 start_link(Module, Params, InitArgs) when is_atom(Module),
-                                          is_list(Params),
-                                          is_list(InitArgs)
+                                          is_list(Params)
                                           ->
     gen_server:start_link(?SERVER, [Module, Params, InitArgs], []).
 
 -spec start_link(kz_types:gen_server_name() | atom(), atom() | start_params(), start_params() | list(), kz_types:gen_server_options() | list()) -> kz_types:startlink_ret().
 start_link(Module, Params, InitArgs, Options) when is_atom(Module),
                                                    is_list(Params),
-                                                   is_list(InitArgs),
                                                    is_list(Options)
                                                    ->
     gen_server:start_link(?MODULE, [Module, Params, InitArgs], Options);
 start_link(Name, Module, Params, InitArgs) when is_atom(Module),
-                                                is_list(Params),
-                                                is_list(InitArgs)
+                                                is_list(Params)
                                                 ->
     gen_server:start_link(Name, ?MODULE, [Module, Params, InitArgs], []).
 
 -spec start_link(kz_types:gen_server_name(), atom(), start_params(), list(), kz_types:gen_server_options()) -> kz_types:startlink_ret().
 start_link(Name, Module, Params, InitArgs, Options) when is_atom(Module),
                                                          is_list(Params),
-                                                         is_list(InitArgs),
                                                          is_list(Options)
                                                          ->
     gen_server:start_link(Name, ?MODULE, [Module, Params, InitArgs], Options).
@@ -273,7 +269,7 @@ cast(Name, Request) -> gen_server:cast(Name, {'$client_cast', Request}).
 delayed_cast(Name, Request, Wait) when is_integer(Wait), Wait > 0 ->
     _P = kz_util:spawn(
            fun() ->
-                   kz_util:put_callid(?MODULE),
+                   _ = kz_util:put_callid(?MODULE),
                    timer:sleep(Wait),
                    gen_server:cast(Name, Request)
            end),
