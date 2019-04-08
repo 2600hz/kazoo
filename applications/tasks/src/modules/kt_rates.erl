@@ -478,8 +478,13 @@ maybe_generate_caller_id_numbers(_RateJObj, _CID_Numbers) ->
 maybe_generate_routes(RateJObj) ->
     Routes = kz_json:get_value(<<"routes">>, RateJObj),
     case is_binary(Routes) of
-        'true' -> maybe_generate_routes(RateJObj, kz_json:decode(Routes));
-        'false' -> maybe_generate_routes(RateJObj, Routes)
+        'true' -> 
+            NewRoutes = try kz_json:unsafe_decode(Routes)
+                        catch _:_ -> Routes
+                        end,
+            maybe_generate_routes(RateJObj, NewRoutes);
+        'false' -> 
+            maybe_generate_routes(RateJObj, Routes)
     end.
 
 -spec maybe_generate_routes(kzd_rates:doc(), kz_term:ne_binary()) -> kz_term:api_ne_binaries().
@@ -488,5 +493,5 @@ maybe_generate_routes(_RateJObj, Routes) when is_list(Routes) ->
 maybe_generate_routes(_RateJObj, Routes) when is_binary(Routes) ->
     [Routes];
 maybe_generate_routes(RateJObj, _Routes) ->
-    lager:debug("no valid routes, generating default route from prefix"),
+    lager:debug("no valid routes, generating default route using prefix"),
     kz_json:get_value(<<"routes">>, kzd_rates:set_default_route(RateJObj)).
