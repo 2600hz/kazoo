@@ -24,7 +24,6 @@ handle_req(RouteReq, Props) ->
     kz_util:put_callid(CallId),
     'true' = kapi_route:req_v(RouteReq),
 
-    gproc:reg({'p', 'l', {'route_req', CallId}}),
     Routines = [fun maybe_referred_call/1
                ,fun maybe_device_redirected/1
                ],
@@ -83,7 +82,7 @@ maybe_reply_to_req(RouteReq, Props, Call, Flow, NoMatch) ->
     case cf_util:token_check(Call, Flow) of
         'false' -> 'ok';
         'true' ->
-            ControllerQ = props:get_value('queue', Props),
+            ControllerQ = list_to_binary(["pid://", kz_term:to_binary(self()), "/", props:get_value('queue', Props)]),
             NewCall = update_call(Flow, NoMatch, ControllerQ, Call),
             send_route_response(Flow, RouteReq, NewCall)
     end.
@@ -162,9 +161,13 @@ callflow_should_respond(Call) ->
 send_route_response(Flow, RouteReq, Call) ->
     lager:info("callflows knows how to route the call! sending park response"),
     AccountId = kapps_call:account_id(Call),
+    CallId = kapps_call:call_id(Call),
+    ControllerQ = kapps_call:controller_queue(Call),
+    FetchId =  kz_api:msg_id(RouteReq),
     Resp = props:filter_undefined(
-             [{?KEY_MSG_ID, kz_api:msg_id(RouteReq)}
-             ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
+             [{?KEY_MSG_ID, FetchId}
+             ,{?KEY_API_ACCOUNT_ID, AccountId}
+             ,{?KEY_API_CALL_ID, CallId}
              ,{<<"Routes">>, []}
              ,{<<"Method">>, <<"park">>}
              ,{<<"Transfer-Media">>, get_transfer_media(Flow, RouteReq)}
@@ -174,42 +177,18 @@ send_route_response(Flow, RouteReq, Call) ->
              ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
              ,{<<"Custom-Application-Vars">>, kapps_call:custom_application_vars(Call)}
              ,{<<"Context">>, kapps_call:context(Call)}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
              ]),
     ServerId = kz_api:server_id(RouteReq),
-    Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,
-    case kz_amqp_worker:call(Resp
-                            ,Publisher
-                            ,fun kapi_route:win_v/1
-                            ,?ROUTE_WIN_TIMEOUT
-                            )
-    of
-        {'ok', RouteWin} ->
-            lager:info("callflow has received a route win, taking control of the call"),
-            NewCall = cf_route_win:execute_callflow(RouteWin, kapps_call:from_route_win(RouteWin, Call)),
-            wait_for_running(NewCall, 0);
-        {'error', _E} ->
-            lager:info("callflow didn't received a route win, exiting : ~p", [_E])
-    end.
-
--spec wait_for_running(kapps_call:call(), 0..5) -> 'ok'.
-wait_for_running(_Call, 5) ->
-    lager:info("callflow not ready after 5 tries, exiting");
-wait_for_running(Call, N) ->
-    FetchId = kapps_call:fetch_id(Call),
+    kapi_route:publish_resp(ServerId, Resp),
     receive
-        {'channel_destroy', 'undefined'} ->
-            cf_exe:hard_stop(Call),
-            lager:info("received channel destroy with undefined fetch-id while setting up callflow executor, exiting");
-        {'channel_destroy', FetchId} ->
-            cf_exe:hard_stop(Call),
-            lager:info("received channel destroy while setting up callflow executor, exiting")
-    after 250 ->
-            case cf_exe:status(Call) of
-                'not_running' -> lager:info("callflow not running");
-                'running' -> lager:info("callflow up & running");
-                _ -> wait_for_running(Call, N + 1)
-            end
+        {'kapi', {_, {'call_event', 'CHANNEL_DESTROY'}, _}} ->
+            lager:info("received channel destroy while waiting for route win, exiting");
+        {'kapi', {_, {'dialplan', 'route_win'}, RouteWin}} ->
+            lager:info("callflow has received a route win, taking control of the call"),
+            cf_route_win:execute_callflow(RouteWin, kapps_call:from_route_win(RouteWin, Call))
+    after ?ROUTE_WIN_TIMEOUT ->
+            lager:warning("callflow didn't received a route win, exiting")
     end.
 
 -spec get_transfer_media(kz_json:object(), kapi_route:req()) -> kz_term:api_binary().

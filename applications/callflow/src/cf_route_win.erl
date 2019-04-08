@@ -39,7 +39,7 @@ execute_callflow(JObj, Call) ->
             _ = kapps_call_command:answer(Call),
             _ = kapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
             _ = kapps_call_command:queued_hangup(Call),
-            Call;
+            'ok';
         'false' ->
             lager:info("setting initial information about the call"),
             bootstrap_callflow_executer(JObj, Call)
@@ -217,7 +217,7 @@ bootstrap_callflow_executer(_JObj, Call) ->
                ,fun execute_callflow/1
                ,fun maybe_start_metaflow/1
                ],
-    kapps_call:exec(Routines, Call).
+    {'ok', kapps_call:exec(Routines, Call)}.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -447,5 +447,4 @@ filter_action({_, Action}) ->
 -spec execute_callflow(kapps_call:call()) -> kapps_call:call().
 execute_callflow(Call) ->
     lager:info("call has been setup, beginning to process the call"),
-    {'ok', Pid} = cf_exe_sup:new(Call),
-    kapps_call:kvs_store('consumer_pid', Pid, Call).
+    kapps_call:kvs_store('consumer_pid', self(), Call).

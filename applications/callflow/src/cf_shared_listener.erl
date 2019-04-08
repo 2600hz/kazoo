@@ -12,7 +12,7 @@
         ,handle_call/3
         ,handle_cast/2
         ,handle_info/2
-        ,handle_event/2
+        ,handle_event/3
         ,terminate/2
         ,code_change/3
         ]).
@@ -44,7 +44,6 @@
                     ,{{'cf_util', 'notification_register'}
                      ,[{<<"notification">>, <<"register">>}]
                      }
-                    ,{'cf_route_resume', [{<<"callflow">>, <<"resume">>}]}
                     ]).
 -define(QUEUE_NAME, <<"callflow_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
@@ -109,8 +108,16 @@ handle_info(_Info, State) ->
 %% @doc Handling AMQP event objects
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
-handle_event(_JObj, _State) ->
+-spec handle_event(kz_json:object(), kz_term:proplist(), state()) -> gen_listener:handle_event_return().
+handle_event(JObj, Props, State) ->
+    Msg = kz_api:kapi_delivery_message(JObj, Props),
+    handle_msg(Msg, State).
+    
+handle_msg({_, {'callflow', 'resume'}, _} = Msg, _State) ->
+    cf_listener_sup:forward(Msg),
+    'ignore';
+
+handle_msg(_, _State) ->
     {'reply', []}.
 
 %%------------------------------------------------------------------------------

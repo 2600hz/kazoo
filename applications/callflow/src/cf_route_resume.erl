@@ -16,7 +16,11 @@ handle_req(JObj, _Props) ->
     Call0 = kapps_call:from_json(kz_json:get_json_value(<<"Call">>, JObj)),
     kapps_call:put_callid(Call0),
     lager:info("received call resume, taking control ~p", [Call0]),
+    ControllerQ = list_to_binary(["pid://", kz_term:to_binary(self()), "/", props:get_value('queue', Props)]),
     Flow = kz_json:get_value(<<"Flow">>, JObj),
-    Call = kapps_call:kvs_store('cf_flow', Flow, Call0),
+    Updaters = [{fun kapps_call:kvs_store/2, Flow}
+               ,{fun kapps_call:set_controller_queue/2, ControllerQ}
+               ],
+    Call = kapps_call:exec(Updaters, Call).
     cf_util:flush_control_queue(Call),
     cf_route_win:execute_callflow(JObj, Call).
