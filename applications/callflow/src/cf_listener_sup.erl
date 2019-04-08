@@ -61,7 +61,7 @@ init([]) ->
 
 -spec forward(term()) -> any().
 forward(Msg) ->
-    Idx = random:uniform(supervisor:count_children(?MODULE)),
+    Idx = rand:uniform(supervisor:count_children(?MODULE)),
     Children = supervisor:which_children(?MODULE),
     {_, Child, _, _} = lists:nth(Idx, Children),
     Child ! {forward, Msg}.
