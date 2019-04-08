@@ -101,7 +101,7 @@
         ,execute/2
         ]).
 
--export([federated_event/4]).
+-export([federated_event/3]).
 -export([delayed_cast/3
         ]).
 -export([distribute_event/3]).
@@ -188,19 +188,19 @@
 
 -type handle_event_return() :: 'ignore' |
                                {'ignore', module_state()} |
+                               {'ignore', module_state(), timeout() | 'hibernate'} |
                                {'reply', kz_term:proplist()} |
                                {'reply', kz_term:proplist(), module_state()}.
 
 -callback handle_event(kz_json:object(), module_state()) -> handle_event_return().
--callback handle_event(kz_json:object(), basic_deliver(), module_state()) -> handle_event_return().
--callback handle_event(kz_json:object(), basic_deliver(), amqp_basic(), module_state()) -> handle_event_return().
+-callback handle_event(kz_json:object(), kz_term:proplist(), module_state()) -> handle_event_return().
 
 -callback terminate('normal' | 'shutdown' | {'shutdown', any()} | any(), module_state()) ->
     any().
 -callback code_change(any() | {'down', any()}, module_state(), any()) ->
     {'ok', module_state()} | {'error', any()}.
 
--optional_callbacks([handle_event/2, handle_event/3, handle_event/4]).
+-optional_callbacks([handle_event/2, handle_event/3]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -376,9 +376,9 @@ rm_binding(Srv, {Binding, Props}) ->
 rm_binding(Srv, Binding, Props) ->
     gen_server:cast(Srv, {'rm_binding', kz_term:to_binary(Binding), Props}).
 
--spec federated_event(kz_types:server_ref(), kz_json:object(), basic_deliver(), amqp_basic()) -> 'ok'.
-federated_event(Srv, JObj, BasicDeliver, BasicData) ->
-    gen_server:cast(Srv, {'federated_event', JObj, BasicDeliver, BasicData}).
+-spec federated_event(kz_types:server_ref(), kz_json:object(), kz_term:proplist()) -> 'ok'.
+federated_event(Srv, JObj, Props) ->
+    gen_server:cast(Srv, {'federated_event', JObj, Props}).
 
 -spec execute(kz_types:server_ref(), module(), atom(), [any()]) -> 'ok'.
 execute(Srv, Module, Function, Args) ->
@@ -514,11 +514,13 @@ handle_cast({'kz_amqp_assignment', {'new_channel', 'true', Channel}}, State) ->
 handle_cast({'kz_amqp_assignment', {'new_channel', 'false', Channel}}, State) ->
     _ = kz_amqp_channel:consumer_channel(Channel),
     {'noreply', handle_amqp_channel_available(State)};
-handle_cast({'federated_event', JObj, BasicDeliver, BasicData}, #state{params=Params}=State) ->
+handle_cast({'federated_event', JObj, Props}, #state{params=Params}=State) ->
+    Deliver = props:get_value('deliver', Props),
+    Basic = props:get_value('basic', Props),
     case props:is_true('spawn_handle_event', Params, 'false') of
-        'true'  -> kz_util:spawn(fun distribute_event/3, [JObj, {BasicDeliver, BasicData}, State]),
+        'true'  -> kz_util:spawn(fun distribute_event/3, [JObj, {Deliver, Basic}, State]),
                    {'noreply', State};
-        'false' -> {'noreply', distribute_event(JObj, {BasicDeliver, BasicData}, State)}
+        'false' -> distribute_event(JObj, {Deliver, Basic}, State)
     end;
 handle_cast({'$execute', Module, Function, Args}
            ,#state{federators=[]}=State) ->
@@ -638,7 +640,7 @@ handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}=
     case props:is_true('spawn_handle_event', Params, 'false') of
         'true'  -> kz_util:spawn(fun handle_event/4, [Payload, CT, {BD, Basic}, State]),
                    {'noreply', State};
-        'false' -> {'noreply', handle_event(Payload, CT, {BD, Basic}, State)}
+        'false' -> handle_event(Payload, CT, {BD, Basic}, State)
     end;
 handle_info({#'basic.return'{}=BR, #amqp_msg{props=#'P_basic'{content_type=CT}
                                             ,payload=Payload
@@ -698,7 +700,7 @@ handle_info(Message, State) ->
 %% Allows listeners to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(kz_term:ne_binary(), kz_term:ne_binary(), deliver(), state()) ->  state().
+-spec handle_event(kz_term:ne_binary(), kz_term:ne_binary(), deliver(), state()) ->  {'noreply', state()} | {'noreply', state(), timeout() | 'hibernate'}.
 handle_event(Payload, <<"application/json">>, Deliver, State) ->
     JObj = kz_json:decode(Payload),
     _ = kz_util:put_callid(JObj),
@@ -815,17 +817,19 @@ format_status(_Opt, [_PDict, #state{module=Module
                     }]
     end.
 
-
--spec distribute_event(kz_json:object(), deliver(), state()) -> state().
+-spec distribute_event(kz_json:object(), deliver(), state()) -> {'noreply', state()} | {'noreply', state(), timeout() | 'hibernate'}.
 distribute_event(JObj, Deliver, State) ->
     case callback_handle_event(JObj, Deliver, State) of
-        'ignore' -> State;
-        {'ignore', ModuleState} -> State#state{module_state=ModuleState};
-        {CallbackData, ModuleState} -> distribute_event(CallbackData, JObj, Deliver, State#state{module_state=ModuleState});
-        CallbackData -> distribute_event(CallbackData, JObj, Deliver, State)
+        'ignore' -> {'noreply', State};
+        {'ignore', ModuleState} -> {'noreply', State#state{module_state=ModuleState}};
+        {'ignore', ModuleState, 'hibernate'} -> {'noreply', State#state{module_state=ModuleState}, 'hibernate'};
+        {'ignore', ModuleState, Timeout} -> {'noreply', State#state{module_state=ModuleState}, Timeout};
+        {CallbackData, ModuleState} -> distribute_event(CallbackData, JObj, BasicDeliver, State#state{module_state=ModuleState});
+        CallbackData -> distribute_event(CallbackData, JObj, BasicDeliver, State)
+    end;
     end.
 
--spec distribute_event(callback_data(), kz_json:object(), deliver(), state()) -> state().
+-spec distribute_event(callback_data(), kz_json:object(), deliver(), state()) -> {'noreply', state()}.
 distribute_event(CallbackData, JObj, Deliver, #state{responders=Responders
                                                     ,consumer_key=ConsumerKey
                                                     }=State) ->
@@ -841,7 +845,7 @@ distribute_event(CallbackData, JObj, Deliver, #state{responders=Responders
          || {Evt, Callback} <- Responders,
             maybe_event_matches_key(Key, Evt)
         ],
-    State.
+    {'noreply', State}.
 
 -spec client_handle_event(kz_json:object(), kz_amqp_channel:consumer_channel(), kz_amqp_channel:consumer_pid(), responder_mfa(), callback_data(), deliver()) -> any().
 client_handle_event(JObj, 'undefined', ConsumerKey, Callback, CallbackData, Deliver) ->
@@ -875,7 +879,7 @@ client_handle_event(JObj, {Module, Fun, 2}, CallbackData, _Deliver) ->
                                    callback_data() |
                                    {callback_data(), module_state()}.
 callback_handle_event(_JObj
-                     ,{BasicDeliver, Basic}
+                     ,{Deliver, Basic}
                      ,#state{module_state=ModuleState
                             ,queue=Queue
                             ,other_queues=OtherQueues
@@ -886,61 +890,66 @@ callback_handle_event(_JObj
     [{'server', Self}
     ,{'queue', Queue}
     ,{'basic', Basic}
-    ,{'deliver', BasicDeliver}
+    ,{'deliver', Deliver}
     ,{'other_queues', props:get_keys(OtherQueues)}
     ,{'state', ModuleState}
     ];
 
 callback_handle_event(JObj
-                     ,{BasicDeliver, Basic}=Deliver
+                     ,{Deliver, Basic}
                      ,#state{module_state=ModuleState
                             ,queue=Queue
                             ,other_queues=OtherQueues
                             ,self=Self
                             ,handle_event_mfa=MFA
-                            }
+                            }=_State
                      ) ->
-    case callback_handle_event(JObj, Deliver, MFA, ModuleState) of
+    Props = [{'queue', Queue}
+            ,{'basic', Basic}
+            ,{'deliver', Deliver}
+            ,{'other_queues', props:get_keys(OtherQueues)}
+            ],
+
+    case callback_handle_event(JObj, Props, MFA, ModuleState) of
         'ignore' -> 'ignore';
         {'ignore', _NewModuleState} = Reply -> Reply;
-        {'reply', Props} when is_list(Props) ->
+        {'ignore', _NewModuleState, 'hibernate'} = Reply -> Reply;
+        {'reply', NewProps} when is_list(NewProps) ->
             [{'server', Self}
             ,{'queue', Queue}
             ,{'basic', Basic}
-            ,{'deliver', BasicDeliver}
+            ,{'deliver', Deliver}
             ,{'other_queues', props:get_keys(OtherQueues)}
-             | Props
+             | NewProps
             ];
-        {'reply', Props, NewModuleState} when is_list(Props) ->
+        {'reply', NewProps, NewModuleState} when is_list(Props) ->
             {[{'server', Self}
              ,{'queue', Queue}
              ,{'basic', Basic}
-             ,{'deliver', BasicDeliver}
+             ,{'deliver', Deliver}
              ,{'other_queues', props:get_keys(OtherQueues)}
-              | Props
+              | NewProps
              ]
             ,NewModuleState
             };
         {'EXIT', Why} ->
-            lager:error("CRASH in handle_event ~p", [Why]),
+            lager:error("CRASH in handle_event ~p : ~p", [Why, _State]),
             [{'server', Self}
             ,{'queue', Queue}
             ,{'basic', Basic}
-            ,{'deliver', BasicDeliver}
+            ,{'deliver', Deliver}
             ,{'other_queues', props:get_keys(OtherQueues)}
             ,{'state', ModuleState}
             ]
     end.
 
--spec callback_handle_event(kz_json:object(), deliver(), mfa(), module_state()) ->
+-spec callback_handle_event(kz_json:object(), kz_term:proplist(), mfa(), module_state()) ->
                                    handle_event_return() |
                                    {'EXIT', any()}.
 callback_handle_event(JObj, _, {Module, Fun, 2}, ModuleState) ->
     catch Module:Fun(JObj, ModuleState);
-callback_handle_event(JObj, {BasicDeliver, _}, {Module, Fun, 3}, ModuleState) ->
-    catch Module:Fun(JObj, BasicDeliver, ModuleState);
-callback_handle_event(JObj, {BasicDeliver, Basic}, {Module, Fun, 4}, ModuleState) ->
-    catch Module:Fun(JObj, BasicDeliver, Basic, ModuleState);
+callback_handle_event(JObj, Props, {Module, Fun, 3}, ModuleState) ->
+    catch Module:Fun(JObj, Props, ModuleState);
 callback_handle_event(_, _, _, _) ->
     {'EXIT', 'not_exported'}.
 
