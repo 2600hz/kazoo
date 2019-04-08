@@ -14,8 +14,9 @@
 handle_req(ResumeJObj, _Props) ->
     'true' = kapi_callflow:resume_v(ResumeJObj),
     kz_util:put_callid(ResumeJObj),
+    kz_amqp_worker:worker_pool(callflow_sup:pool_name()),
 
-    try_handle_req(ResumeJObj, kz_amqp_worker:checkout_worker(callflow_sup:pool_name())).
+    try_handle_req(ResumeJObj, kz_amqp_worker:checkout_worker()).
 
 -spec try_handle_req(kapi_callflow:resume(), {'ok', pid()} | {'error', any()}) -> 'ok'.
 try_handle_req(JObj, {'error', _E}) ->
@@ -23,7 +24,7 @@ try_handle_req(JObj, {'error', _E}) ->
     _ = kz_amqp_worker:cast(JObj, fun kapi_callflow:publish_resume/1);
 try_handle_req(JObj, {'ok', AMQPWorker}) ->
     lager:info("received call resume, taking control using worker ~p", [AMQPWorker]),
-    kz_amqp_worker:worker_pool(callflow_sup:pool_name()),
+    _ = kz_amqp_channel:consumer_pid(AMQPWorker),
 
     Flow = kz_json:get_json_value(<<"Flow">>, JObj),
     Call = kapps_call:exec([{fun kapps_call:kvs_store/3, 'consumer_pid', AMQPWorker}

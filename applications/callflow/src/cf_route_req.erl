@@ -32,6 +32,7 @@ handle_req(_RouteReq, _Props, {'error', _E}) ->
     lager:warning("ignoring req, failed to checkout AMQP worker: ~p", [_E]);
 handle_req(RouteReq, Props, {'ok', AMQPWorker}) ->
     lager:debug("checked out AMQP worker ~p", [AMQPWorker]),
+    _ = kz_amqp_channel:consumer_pid(AMQPWorker),
 
     gproc:reg({'p', 'l', {'route_req', kapi_route:call_id(RouteReq)}}),
     Routines = [{fun kapps_call:kvs_store/3, 'consumer_pid', AMQPWorker}
