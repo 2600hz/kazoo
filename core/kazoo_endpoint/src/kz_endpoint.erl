@@ -1147,47 +1147,46 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
 create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
     SIPJObj = kz_json:get_json_value(<<"sip">>, Endpoint),
     SIPEndpoint = kz_json:from_list(
-                    props:filter_empty(
-                      [{<<"Invite-Format">>, get_invite_format(SIPJObj)}
-                      ,{<<"To-User">>, get_to_user(SIPJObj, Properties)}
-                      ,{<<"To-Username">>, get_to_username(SIPJObj)}
-                      ,{<<"To-Realm">>, get_sip_realm(Endpoint, kapps_call:account_id(Call))}
-                      ,{<<"To-DID">>, get_to_did(Endpoint, Call)}
-                      ,{<<"To-IP">>, kz_json:get_ne_binary_value(<<"ip">>, SIPJObj)}
-                      ,{<<"SIP-Transport">>, get_sip_transport(SIPJObj)}
-                      ,{<<"SIP-Interface">>, get_custom_sip_interface(SIPJObj)}
-                      ,{<<"Route">>, kz_json:get_ne_binary_value(<<"route">>, SIPJObj)}
-                      ,{<<"Proxy-IP">>, kz_json:get_ne_binary_value(<<"proxy">>, SIPJObj)}
-                      ,{<<"Forward-IP">>, kz_json:get_ne_binary_value(<<"forward">>, SIPJObj)}
-                      ,{<<"Caller-ID-Name">>, Clid#clid.caller_name}
-                      ,{<<"Caller-ID-Number">>, Clid#clid.caller_number}
-                      ,{<<"Outbound-Caller-ID-Number">>, Clid#clid.caller_number}
-                      ,{<<"Outbound-Caller-ID-Name">>, Clid#clid.caller_name}
-                      ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
-                      ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
-                      ,{<<"Outbound-Callee-ID-Name">>, Clid#clid.callee_name}
-                      ,{<<"Outbound-Callee-ID-Number">>, Clid#clid.callee_number}
-                      ,{<<"Privacy-Hide-Name">>, Clid#clid.hide_name}
-                      ,{<<"Privacy-Hide-Number">>, Clid#clid.hide_number}
-                      ,{<<"Privacy-Method">>, kz_privacy:get_method(Endpoint)}
-                      ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Endpoint)}
-                      ,{<<"Bypass-Media">>, get_bypass_media(Endpoint)}
-                      ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
-                      ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
-                      ,{<<"Endpoint-Delay">>, get_delay(Properties)}
-                      ,{<<"Endpoint-ID">>, kz_doc:id(Endpoint)}
-                      ,{<<"Codecs">>, get_codecs(Endpoint)}
-                      ,{<<"Hold-Media">>, kz_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
-                      ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
-                      ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, <<"sip">>, Call)}
-                      ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
-                      ,{<<"Flags">>, get_outbound_flags(Endpoint)}
-                      ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
-                      ,{<<"Failover">>, maybe_build_failover(Endpoint, Call)}
-                      ,{<<"Metaflows">>, kz_json:get_json_value(<<"metaflows">>, Endpoint)}
-                      ,{<<"Endpoint-Actions">>, endpoint_actions(Endpoint, Call)}
-                       | maybe_get_t38(Endpoint, Call)
-                      ])),
+                    [{<<"Invite-Format">>, get_invite_format(SIPJObj)}
+                    ,{<<"To-User">>, get_to_user(SIPJObj, Properties)}
+                    ,{<<"To-Username">>, get_to_username(SIPJObj)}
+                    ,{<<"To-Realm">>, get_sip_realm(Endpoint, kapps_call:account_id(Call))}
+                    ,{<<"To-DID">>, get_to_did(Endpoint, Call)}
+                    ,{<<"To-IP">>, kz_json:get_ne_binary_value(<<"ip">>, SIPJObj)}
+                    ,{<<"SIP-Transport">>, get_sip_transport(SIPJObj)}
+                    ,{<<"SIP-Interface">>, get_custom_sip_interface(SIPJObj)}
+                    ,{<<"Route">>, kz_json:get_ne_binary_value(<<"route">>, SIPJObj)}
+                    ,{<<"Proxy-IP">>, kz_json:get_ne_binary_value(<<"proxy">>, SIPJObj)}
+                    ,{<<"Forward-IP">>, kz_json:get_ne_binary_value(<<"forward">>, SIPJObj)}
+                    ,{<<"Caller-ID-Name">>, Clid#clid.caller_name}
+                    ,{<<"Caller-ID-Number">>, Clid#clid.caller_number}
+                    ,{<<"Outbound-Caller-ID-Number">>, Clid#clid.caller_number}
+                    ,{<<"Outbound-Caller-ID-Name">>, Clid#clid.caller_name}
+                    ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
+                    ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
+                    ,{<<"Outbound-Callee-ID-Name">>, Clid#clid.callee_name}
+                    ,{<<"Outbound-Callee-ID-Number">>, Clid#clid.callee_number}
+                    ,{<<"Privacy-Hide-Name">>, Clid#clid.hide_name}
+                    ,{<<"Privacy-Hide-Number">>, Clid#clid.hide_number}
+                    ,{<<"Privacy-Method">>, kz_privacy:get_method(Endpoint)}
+                    ,{<<"Ignore-Early-Media">>, get_ignore_early_media(Endpoint)}
+                    ,{<<"Bypass-Media">>, get_bypass_media(Endpoint)}
+                    ,{<<"Endpoint-Progress-Timeout">>, get_progress_timeout(Endpoint)}
+                    ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
+                    ,{<<"Endpoint-Delay">>, get_delay(Properties)}
+                    ,{<<"Endpoint-ID">>, kz_doc:id(Endpoint)}
+                    ,{<<"Codecs">>, get_codecs(Endpoint)}
+                    ,{<<"Hold-Media">>, kz_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
+                    ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
+                    ,{<<"Custom-SIP-Headers">>, generate_sip_headers(Endpoint, <<"sip">>, Call)}
+                    ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
+                    ,{<<"Flags">>, get_outbound_flags(Endpoint)}
+                    ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
+                    ,{<<"Failover">>, maybe_build_failover(Endpoint, Call)}
+                    ,{<<"Metaflows">>, kz_json:get_json_value(<<"metaflows">>, Endpoint)}
+                    ,{<<"Endpoint-Actions">>, endpoint_actions(Endpoint, Call)}
+                     | maybe_get_t38(Endpoint, Call)
+                    ]),
     maybe_format_endpoint(SIPEndpoint, kz_json:get_json_value(<<"formatters">>, Endpoint)).
 
 -spec maybe_get_t38(kz_json:object(), kapps_call:call()) -> kz_term:proplist().
@@ -1197,13 +1196,11 @@ maybe_get_t38(Endpoint, Call) ->
             {'ok', JObj} -> kz_json:is_true([<<"media">>, <<"fax_option">>], JObj);
             {'error', _} -> 'undefined'
         end,
-    DeviceType = kz_json:get_value(<<"device_type">>, Endpoint),
-    case DeviceType =:= <<"fax">> of
-        'false' -> [];
-        'true' ->
-            kapps_call_command:get_inbound_t38_settings(Opt
-                                                       ,kz_json:is_true([<<"media">>, <<"fax_option">>], Endpoint)
-                                                       )
+    case kz_json:get_value(<<"device_type">>, Endpoint) of
+        <<"fax">> ->
+            HasOption = kz_json:is_true([<<"media">>, <<"fax_option">>], Endpoint),
+            kapps_call_command:get_inbound_t38_settings(Opt, HasOption);
+        _Type -> []
     end.
 
 -spec maybe_build_failover(kz_json:object(), kapps_call:call()) -> kz_term:api_object().
