@@ -827,11 +827,14 @@ distribute_event(JObj, {_ , #'P_basic'{headers='undefined'}}=BasicDeliver, State
         {CallbackData, ModuleState} -> distribute_event(CallbackData, JObj, BasicDeliver, State#state{module_state=ModuleState});
         CallbackData -> distribute_event(CallbackData, JObj, BasicDeliver, State)
     end;
-distribute_event(JObj, {#'basic.deliver'{exchange=Exchange, routing_key=RK}=Deliver, #'P_basic'{headers=Headers}=Basic}=BasicDeliver, State) ->
+distribute_event(JObj, {Deliver, #'P_basic'{headers=Headers}=Basic}=BasicDeliver, State) ->
     case lists:keyfind(?KEY_DELIVER_TO_PID, 1, Headers) of
         {?KEY_DELIVER_TO_PID, _, Pid} ->
-            kz_term:to_pid(Pid) ! {'kapi', {{Exchange, RK, {Basic, Deliver}}, {kz_term:to_atom(kz_api:event_category(JObj)), kz_term:to_atom(kz_api:event_name(JObj))}, JObj}},
-            State;
+            Props = [{'basic', Basic}
+                    ,{'deliver', Deliver}
+                    ],
+            kz_term:to_pid(Pid) ! {'kapi', kz_api:kapi_delivery_message(JObj, Props)},
+            {'noreply', State};
         'false' ->
             case callback_handle_event(JObj, BasicDeliver, State) of
                 'ignore' -> {'noreply', State};
