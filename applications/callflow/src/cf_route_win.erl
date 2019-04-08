@@ -6,8 +6,7 @@
 %%%-----------------------------------------------------------------------------
 -module(cf_route_win).
 
--export([execute_callflow/2
-        ]).
+-export([execute_callflow/2]).
 
 -include("callflow.hrl").
 
@@ -447,5 +446,5 @@ filter_action({_, Action}) ->
 -spec execute_callflow(kapps_call:call()) -> kapps_call:call().
 execute_callflow(Call) ->
     lager:info("call has been setup, beginning to process the call"),
-    {'ok', Pid} = cf_exe_sup:new(Call),
-    kapps_call:kvs_store('consumer_pid', Pid, Call).
+    {'ok', _Pid} = cf_exe_sup:new(Call),
+    Call.
