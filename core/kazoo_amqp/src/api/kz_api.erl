@@ -637,4 +637,4 @@ exec_fold(_, C) -> C.
 kapi_delivery_message(JObj, Props) ->
     Basic = props:get_value('basic', Props),
     Deliver = #'basic.deliver'{exchange=Exchange, routing_key=RK} = props:get_value('deliver', Props),
-    {{Exchange, RK, {Basic, Deliver}}, {kz_term:to_atom(kz_api:event_category(JObj), 'true'), kz_term:to_atom(kz_api:event_name(JObj), 'true')}, JObj}.
+    {{Exchange, RK, {Basic, Deliver}}, {kz_term:to_atom(event_category(JObj), 'true'), kz_term:to_atom(event_name(JObj), 'true')}, JObj}.
