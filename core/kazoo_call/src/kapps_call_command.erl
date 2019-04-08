@@ -1008,8 +1008,6 @@ break(Call) ->
 %% This request will execute immediately.
 %% @end
 %%------------------------------------------------------------------------------
-
-
 -spec hangup(kapps_call:call()) -> 'ok'.
 hangup(Call) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
@@ -1040,6 +1038,10 @@ b_hangup('true', Call) ->
     hangup('true', Call),
     wait_for_unbridge().
 
+%%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to queued hangup.
+%% @end
+%%------------------------------------------------------------------------------
 -spec queued_hangup(kapps_call:call()) -> 'ok'.
 queued_hangup(Call) ->
     queued_hangup(Call, 'undefined').
