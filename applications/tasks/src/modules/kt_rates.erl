@@ -478,12 +478,12 @@ maybe_generate_caller_id_numbers(_RateJObj, _CID_Numbers) ->
 maybe_generate_routes(RateJObj) ->
     Routes = kz_json:get_value(<<"routes">>, RateJObj),
     case is_binary(Routes) of
-        'true' -> 
+        'true' ->
             NewRoutes = try kz_json:unsafe_decode(Routes)
                         catch _:_ -> Routes
                         end,
             maybe_generate_routes(RateJObj, NewRoutes);
-        'false' -> 
+        'false' ->
             maybe_generate_routes(RateJObj, Routes)
     end.
 
