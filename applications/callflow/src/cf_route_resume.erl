@@ -33,6 +33,13 @@ try_handle_req(JObj, {'ok', AMQPWorker}) ->
                           ,kapps_call:from_json(kz_json:get_json_value(<<"Call">>, JObj))
                           ),
 
+    handle_if_up(JObj, Call, kapps_call_command:b_channel_status(Call)).
+
+-spec handle_if_up(kapi_callflow:resume(), kapps_call:call(), {'ok', kz_json:object()} | {'error', 'not_found'}) -> 'ok'.
+handle_if_up(JObj, Call, {'ok', _ChannelStatus}) ->
+    lager:info("channel is still up"),
     cf_util:flush_control_queue(Call),
     _ = cf_route_win:execute_callflow(JObj, Call),
-    'ok'.
+    'ok';
+handle_if_up(_JObj, _Call, {'error', 'not_found'}) ->
+    lager:info("channel status failed, not resuming call").
