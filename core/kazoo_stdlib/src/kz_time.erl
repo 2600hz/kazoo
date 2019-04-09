@@ -85,7 +85,7 @@ current_tstamp() ->
 
 -spec current_unix_tstamp() -> unix_seconds().
 current_unix_tstamp() ->
-    erlang:system_time('seconds').
+    os:system_time('second').
 
 -spec gregorian_seconds_to_unix_seconds(integer() | string() | binary()) -> integer().
 gregorian_seconds_to_unix_seconds(GregorianSeconds) ->
@@ -580,13 +580,13 @@ now() -> os:timestamp().
 
 
 -spec now_s() -> gregorian_seconds().
-now_s() ->  erlang:system_time('seconds') + ?UNIX_EPOCH_IN_GREGORIAN.
+now_s() ->  os:system_time('second') + ?UNIX_EPOCH_IN_GREGORIAN.
 
 -spec now_ms() -> pos_integer().
-now_ms() -> erlang:system_time('milli_seconds') + (?UNIX_EPOCH_IN_GREGORIAN * ?MILLISECONDS_IN_SECOND).
+now_ms() -> os:system_time('millisecond') + (?UNIX_EPOCH_IN_GREGORIAN * ?MILLISECONDS_IN_SECOND).
 
 -spec now_us() -> pos_integer().
-now_us() -> erlang:system_time('micro_seconds') + (?UNIX_EPOCH_IN_GREGORIAN * ?MICROSECONDS_IN_SECOND).
+now_us() -> os:system_time('microsecond') + (?UNIX_EPOCH_IN_GREGORIAN * ?MICROSECONDS_IN_SECOND).
 
 -spec now_us(now()) -> pos_integer().
 now_us({MegaSecs, Secs, MicroSecs}) ->
