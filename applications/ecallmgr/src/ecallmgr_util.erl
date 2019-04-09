@@ -52,6 +52,8 @@
 
 -export([dialplan_application/1]).
 
+-export([failover_if_all_unregistered/1]).
+
 -include("ecallmgr.hrl").
 -include_lib("kazoo_amqp/src/api/kapi_dialplan.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
@@ -738,10 +740,12 @@ maybe_use_fwd_endpoint(Endpoint, Failovers) ->
     ForwardDestination = get_loopback_number(Endpoint),
     case ForwardDestination =/= 'undefined'
         andalso [Failover || Failover <- Failovers,
-                             binary:match(Failover, ForwardDestination) =:= 'nomatch'
+                             binary:match(Failover, ForwardDestination) =/= 'nomatch'
                 ] =:= []
     of
         'true' ->
+            [Endpoint | Failovers];
+        'false' when ForwardDestination =:= 'undefined' ->
             [Endpoint | Failovers];
         'false' ->
             Failovers
