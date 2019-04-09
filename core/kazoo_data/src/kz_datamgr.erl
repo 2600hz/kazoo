@@ -267,7 +267,7 @@ should_update(_, _, {'error', _}) ->
 %%------------------------------------------------------------------------------
 -spec maybe_adapt_multilines(kz_json:object()) -> kz_json:object().
 maybe_adapt_multilines(JObj) ->
-    case kz_json:get_value(<<"views">>, JObj) of
+    case kz_json:get_json_value(<<"views">>, JObj) of
         'undefined' -> JObj;
         Views ->
             NewViews =
