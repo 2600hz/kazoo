@@ -28,7 +28,6 @@ pages:
     - 'applications/crossbar/doc/limits.md'
     - 'applications/crossbar/doc/port_requests.md'
     - 'applications/crossbar/doc/search.md'
-    - 'applications/crossbar/doc/service_plans.md'
     - 'applications/crossbar/doc/services.md'
     - 'applications/crossbar/doc/transactions.md'
     - 'applications/crossbar/doc/whitelabeling.md'
