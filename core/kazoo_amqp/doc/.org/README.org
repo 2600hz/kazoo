@@ -177,6 +177,10 @@ applications/stepswitch/src/stepswitch_sms.erl
 core/kazoo_call/src/kzc_recording.erl
 
 Trunkstore already uses the general purpose pool for its call-handling
+*** TODO Trunkstore to own pool
+*** TODO kzc_recording
+*** TODO Stepswitch workers
+*** TODO conf_participant
 
 ** DONE 5. For non-named queues remove or significantly increase the flow control limit
 CLOSED: [2019-04-02 Tue 20:56]
@@ -189,3 +193,7 @@ https://www.rabbitmq.com/confirms.html
 ** TODO 7. Move direct message bindings to built in (and implicit) AMQP direct exchange
 ** TODO 8. Determine and reduce the need for 171 bindings on zswitch for database creation / removal
 ** TODO 9. Create an 'AMQP router' in kazoo core that will bind for all configuration events and distribute locally in the Erlang VM
+** TODO 10. Poolboy fork to support persistant overflow or lazy workers
+See PR #123 for lazy worker start. Then you could set high pool count but only start workers
+
+overflow timeout TTL #114
