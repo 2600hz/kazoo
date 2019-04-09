@@ -53,6 +53,8 @@
 
 -export([dialplan_application/1]).
 
+-export([failover_if_all_unregistered/1]).
+
 -include("ecallmgr.hrl").
 -include_lib("kazoo_amqp/src/api/kapi_dialplan.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
@@ -62,10 +64,6 @@
 -define(FS_MULTI_VAR_SEP_PREFIX, "^^").
 -define(SANITIZE_FS_VALUE_REGEX,
         kapps_config:get_ne_binary(?APP_NAME, <<"sanitize_fs_value_regex">>, <<"[^0-9\\w\\s-]">>)).
-
-%% HELP-34627 Preserve default failover behavior.
--define(FAIL_IF_ALL_UNREG, 'true').
-
 
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
 -export_type([send_cmd_ret/0]).
@@ -737,27 +735,31 @@ build_bridge_string(Endpoints) ->
 
 -spec build_bridge_string(kz_json:objects(), kz_term:ne_binary()) -> kz_term:ne_binary().
 build_bridge_string(Endpoints, Separator) ->
-    %% HELP-34627: Branch here to handle only failover when all endpoints are unregistered.
+    %% HELP-34627: Only handle failover when all endpoints are unregistered.
     build_bridge_string(Endpoints, Separator, kapps_config:get_boolean(?APP_NAME, <<"failover_when_all_unreg">>, 'false')).
 
--spec build_bridge_string(kz_json:objects(), kz_term:ne_binary(), kz_term:api_boolean()) -> kz_term:ne_binary().
-build_bridge_string(Endpoints, Separator, ?FAIL_IF_ALL_UNREG) ->
-    lager:info("system_config.ecallmgr.failover_when_all_unreg is enabled."),
-    %% De-dupe the bridge strings by matching those with the same
-    %%  Invite-Format, To-IP, To-User, To-realm, To-DID, and Route.
-    %% Additionally split bridge strings out and only return failover endpoints if no devices registered.
-    BridgeStrings = filter_bridge_strings(build_bridge_channels(Endpoints)),
-    %% NOTE: don't use binary_join here as it will crash on an empty list...
-    kz_binary:join(lists:reverse(BridgeStrings), Separator);
+%%------------------------------------------------------------------------------
+%% @doc De-dupe the bridge strings by matching those with the same
+%% Invite-Format, To-IP, To-User, To-realm, To-DID, and Route.
+%%
+%% NOTE: don't use binary_join here as it will crash on an empty list...
+%% @end
+%%------------------------------------------------------------------------------
+-spec build_bridge_string(kz_json:objects(), kz_term:ne_binary(), kz_term:api_boolean()) ->
+                                 kz_term:ne_binary().
+build_bridge_string(Endpoints, Separator, 'true') ->
+    %% HELP-34627: Only handle failover when all endpoints are unregistered.
+    %% Additionally split bridge strings out and only return failover endpoints
+    %% if no devices registered.
+    lager:info("ecallmgr 'failover_when_all_unreg' is enabled."),
+    BridgeChannels = failover_if_all_unregistered(build_bridge_channels(Endpoints)),
+    kz_binary:join(BridgeChannels, Separator);
 build_bridge_string(Endpoints, Separator, _DefaultFailover) ->
-    %% De-dupe the bridge strings by matching those with the same
-    %%  Invite-Format, To-IP, To-User, To-realm, To-DID, and Route
-    BridgeStrings = build_bridge_channels(Endpoints),
-    %% NOTE: don't use binary_join here as it will crash on an empty list...
-    kz_binary:join(lists:reverse(BridgeStrings), Separator).
+    BridgeChannels = build_bridge_channels(Endpoints),
+    kz_binary:join(lists:reverse(BridgeChannels), Separator).
 
--spec filter_bridge_strings(bridge_channels()) -> bridge_channels().
-filter_bridge_strings(Endpoints) ->
+-spec failover_if_all_unregistered(bridge_channels()) -> bridge_channels().
+failover_if_all_unregistered(Endpoints) ->
     case classify_endpoints(Endpoints) of
         {[], Failover} ->
             lager:info("No device endpoints available, using failover routes."),
@@ -772,30 +774,40 @@ classify_endpoints(Endpoints) ->
     classify_endpoints(Endpoints, [], []).
 
 -spec classify_endpoints(bridge_channels(), bridge_channels(), bridge_channels()) -> {bridge_channels(), bridge_channels()}.
-classify_endpoints([], Devices, Failover) ->
-    {Devices, Failover};
-classify_endpoints([Endpoint | Endpoints], Devices, Failover) ->
-    case string:str(unicode:characters_to_list(Endpoint), "ecallmgr_Call-Forward='true'") of
-        %% Not a forwarding endpoint move along.
-        0 -> classify_endpoints(Endpoints, [Endpoint | Devices], Failover);
-        %% Determine if we should add the call forwarding route.
+classify_endpoints([], Devices, Failovers) ->
+    {Devices, Failovers};
+classify_endpoints([Endpoint | Endpoints], Devices, Failovers) ->
+    case binary:match(Endpoint, <<"ecallmgr_Call-Forward='true'">>) of
+        'nomatch' ->
+            %% Not a forwarding endpoint move along.
+            classify_endpoints(Endpoints, [Endpoint | Devices], Failovers);
         _ ->
-            F2 = maybe_use_fwd_endpoint(Failover, Endpoint) ++ Failover,
-            classify_endpoints(Endpoints, Devices, F2)
+            %% Determine if we should add the call forwarding route.
+            classify_endpoints(Endpoints, Devices, maybe_use_fwd_endpoint(Endpoint, Failovers))
     end.
 
--spec maybe_use_fwd_endpoint(bridge_channels(), bridge_channel()) -> bridge_channel().
-maybe_use_fwd_endpoint([], Destination) ->
-    [Destination];
-maybe_use_fwd_endpoint([Endpoint | Endpoints], Destination) ->
-    SD = unicode:characters_to_list(Destination),
-    FwdDest = string:sub_string(SD
-                               ,string:str(unicode:characters_to_list(SD), "loopback/")
-                               ,string:len(unicode:characters_to_list(SD))
-                               ),
-    case string:str(unicode:characters_to_list(Endpoint), FwdDest) of
-        0 -> maybe_use_fwd_endpoint(Endpoints, Destination);
-        _ -> []
+-spec maybe_use_fwd_endpoint(bridge_channel(), bridge_channels()) -> bridge_channels().
+maybe_use_fwd_endpoint(Endpoint, Failovers) ->
+    ForwardDestination = get_loopback_number(Endpoint),
+    case ForwardDestination =/= 'undefined'
+        andalso [Failover || Failover <- Failovers,
+                             binary:match(Failover, ForwardDestination) =/= 'nomatch'
+                ] =:= []
+    of
+        'true' ->
+            [Endpoint | Failovers];
+        'false' when ForwardDestination =:= 'undefined' ->
+            [Endpoint | Failovers];
+        'false' ->
+            Failovers
+    end.
+
+-spec get_loopback_number(bridge_channel()) -> kz_term:ne_binary().
+get_loopback_number(Endpoint) ->
+    case binary:match(Endpoint, <<"loopback/">>) of
+        'nomatch' -> 'undefined';
+        {Pos, _Length} ->
+            binary:part(Endpoint, Pos, size(Endpoint) - Pos)
     end.
 
 -spec endpoint_jobjs_to_records(kz_json:objects()) -> bridge_endpoints().
