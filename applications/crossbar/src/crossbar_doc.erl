@@ -612,8 +612,9 @@ maybe_spawn_service_updates(Context, JObjs, 'false') ->
     _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, JObjs]),
     lager:debug("executing service subscriptions update in the background");
 maybe_spawn_service_updates(Context, JObjs, 'true') ->
+    lager:debug("executing service subscriptions update in the foreground, this will take a while"),
     _ = crossbar_services:update_subscriptions(Context, JObjs),
-    lager:debug("executing service subscriptions update in the foreground, this will take a while").
+    'ok'.
 
 -spec save_jobj(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
                        cb_context:context().
