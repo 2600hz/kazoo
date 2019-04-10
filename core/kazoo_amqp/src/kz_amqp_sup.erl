@@ -57,11 +57,14 @@ stop_bootstrap() ->
 -spec pools() -> [{atom(), pid()}].
 pools() -> pools(?MODULE).
 
--spec pools(kz_types:server_ref()) -> [{atom(), pid()}].
+-spec pools('undefined' | kz_types:server_ref()) -> [{atom(), pid()}].
+pools(Supervisor) when is_pid(Supervisor) ->
+    pools(Supervisor, is_process_alive(Supervisor));
+pools('undefined') -> [];
 pools(Supervisor) ->
-    pools(Supervisor, is_process_alive(Supervisor)).
+    pools(whereis(Supervisor)).
 
--spec pools(kz_types:server_ref(), boolean()) -> [{atom(), pid()}].
+-spec pools(pid(), boolean()) -> [{atom(), pid()}].
 pools(Supervisor, 'false') ->
     _ = unbind_for_pool_state(Supervisor),
     [];
