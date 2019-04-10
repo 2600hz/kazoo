@@ -62,9 +62,9 @@
 init() ->
     AdminNodes = kazoo_couch:get_admin_nodes(),
     %% Refresh `nodes | _nodes' db
-    kapps_maintenance:refresh(AdminNodes),
+    _ = kapps_maintenance:refresh(AdminNodes),
     %% Refresh `dbs | _dbs' db needed for the compactor/listing_by_node view.
-    kapps_maintenance:refresh(kazoo_couch:get_admin_dbs()),
+    _ = kapps_maintenance:refresh(kazoo_couch:get_admin_dbs()),
     set_node_defaults(AdminNodes),
 
     _ = case ?COMPACT_AUTOMATICALLY of

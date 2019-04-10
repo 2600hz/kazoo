@@ -53,7 +53,7 @@ init_master_account_db() ->
 
 -spec init_master_account_db(kz_term:ne_binary()) -> 'ok'.
 init_master_account_db(MasterAccountDb) ->
-    kapps_maintenance:refresh(MasterAccountDb),
+    _ = kapps_maintenance:refresh(MasterAccountDb),
     lager:debug("loaded view into master db ~s", [MasterAccountDb]).
 
 -spec remove_old_notifications_webhooks(kz_term:ne_binary()) -> 'ok'.

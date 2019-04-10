@@ -68,7 +68,8 @@ refresh() ->
 init_db('false') ->
     lager:error("error trying to create auth database");
 init_db('true') ->
-    kapps_maintenance:refresh(?KZ_AUTH_DB).
+    _ = kapps_maintenance:refresh(?KZ_AUTH_DB),
+    'ok'.
 
 -spec register_views() -> 'ok'.
 register_views() ->

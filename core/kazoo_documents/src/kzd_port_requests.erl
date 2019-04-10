@@ -40,6 +40,7 @@
 -export([pvt_port_state/1, pvt_port_state/2, set_pvt_port_state/2]).
 -export([pvt_ported_numbers/1, pvt_ported_numbers/2, set_pvt_ported_numbers/2]).
 -export([pvt_sent/1, pvt_sent/2, set_pvt_sent/2]).
+-export([pvt_tree/1, pvt_tree/2, set_pvt_tree/2]).
 -export([pvt_transitions/1, pvt_transitions/2, set_pvt_tranisitions/2]).
 
 %% Utilities
@@ -454,9 +455,25 @@ set_pvt_ported_numbers(Doc, Numbers) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec pvt_tree(doc()) -> kz_term:ne_binaries().
+pvt_tree(Doc) ->
+    pvt_tree(Doc, []).
+
+-spec pvt_tree(doc(), Default) -> kz_term:ne_binaries() | Default.
+pvt_tree(Doc, Default) ->
+    kz_json:get_list_value([<<"pvt_tree">>], Doc, Default).
+
+-spec set_pvt_tree(doc(), kz_term:api_ne_binaries()) -> doc().
+set_pvt_tree(Doc, Tree) ->
+    kz_json:set_value([<<"pvt_sent">>], Tree, Doc).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec pvt_sent(doc()) -> kz_term:api_boolean().
 pvt_sent(Doc) ->
-    pvt_port_state(Doc, 'undefined').
+    pvt_sent(Doc, 'undefined').
 
 -spec pvt_sent(doc(), Default) -> kz_term:api_boolean() | Default.
 pvt_sent(Doc, Default) ->
