@@ -7,8 +7,8 @@
 %%%-----------------------------------------------------------------------------
 -module(kapps_maintenance).
 
--export([rebuild_token_auth/0
-        ,rebuild_token_auth/1
+-export([rebuild_db/1
+        ,rebuild_db/2
         ]).
 -export([migrate_to_4_0/0]).
 -export([migrate/0
@@ -38,6 +38,12 @@
         ,maybe_delete_db/1
         ]).
 -export([remove_deprecated_databases/0]).
+-export([ensure_aggregates/0
+        ,ensure_aggregates/1
+        ]).
+-export([ensure_aggregate_accounts/0
+        ,ensure_aggregate_account/1
+        ]).
 -export([ensure_aggregate_devices/0
         ,ensure_aggregate_device/1
         ]).
@@ -133,15 +139,15 @@ unbind(Event, M, F) -> kazoo_bindings:unbind(binding(Event), M, F).
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec rebuild_token_auth() -> 'ok'.
-rebuild_token_auth() ->
-    rebuild_token_auth(5 * ?MILLISECONDS_IN_SECOND).
+-spec rebuild_db(kz_term:text()) -> 'ok'.
+rebuild_db(Database) ->
+    rebuild_db(Database, 5 * ?MILLISECONDS_IN_SECOND).
 
--spec rebuild_token_auth(text_or_integer()) -> 'ok'.
-rebuild_token_auth(Pause) ->
-    _ = kz_datamgr:db_delete(?KZ_TOKEN_DB),
+-spec rebuild_db(kz_term:text(), text_or_integer()) -> 'ok'.
+rebuild_db(Database, Pause) ->
+    _ = kz_datamgr:db_delete(Database),
     timer:sleep(kz_term:to_integer(Pause)),
-    refresh(?KZ_TOKEN_DB),
+    refresh(Database),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -507,6 +513,7 @@ refresh_by_classification(Database, 'account') ->
     AccountDb = kz_util:format_account_id(Database, 'encoded'),
     AccountId = kz_util:format_account_id(Database, 'raw'),
     _ = kazoo_bindings:map(binding({'refresh_account', AccountDb}), AccountId),
+    _ = ensure_aggregates(AccountId),
     'ok';
 refresh_by_classification(_, _) ->
     'ok'.
@@ -539,6 +546,116 @@ remove_deprecated_databases([Database|Databases]) ->
             _Else -> 'ok'
         end,
     remove_deprecated_databases(Databases).
+
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec ensure_aggregates() -> 'ok'.
+ensure_aggregates() ->
+    ensure_aggregates(kapps_util:get_all_accounts()).
+
+-spec ensure_aggregates(kz_term:ne_binaries() | kz_term:ne_binary()) -> 'ok'.
+ensure_aggregates([]) -> 'ok';
+ensure_aggregates([Account|Accounts]) ->
+    _ = ensure_aggregates(Account),
+    ensure_aggregates(Accounts);
+ensure_aggregates(Account) ->
+    io:format("Ensuring necessary documents from account ~s are in aggregate dbs~n"
+             ,[Account]
+             ),
+    _ = ensure_aggregate_device(Account),
+    _ = ensure_aggregate_account(Account),
+    _ = kazoo_services_maintenance:reconcile(Account),
+    'ok'.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec ensure_aggregate_accounts() -> 'ok'.
+ensure_aggregate_accounts() ->
+    ensure_aggregate_accounts(kapps_util:get_all_accounts()).
+
+-spec ensure_aggregate_accounts(kz_term:ne_binaries()) -> 'ok'.
+ensure_aggregate_accounts([]) -> 'ok';
+ensure_aggregate_accounts([Account|Accounts]) ->
+    _ = ensure_aggregate_account(Account),
+    ensure_aggregate_accounts(Accounts).
+
+-spec ensure_aggregate_account(kz_term:ne_binary()) -> 'ok'.
+ensure_aggregate_account(Account) ->
+    AccountDb = kz_util:format_account_db(Account),
+    AccountId = kz_util:format_account_id(Account),
+    case kz_datamgr:open_doc(AccountDb, AccountId) of
+        {'error', _} -> 'ok';
+        {'ok', JObj} ->
+            update_or_add_to_accounts_db(AccountId, JObj)
+    end.
+
+-spec update_or_add_to_accounts_db(kz_term:ne_bianry(), kz_json:object()) -> 'ok'.
+update_or_add_to_accounts_db(AccountId, JObj) ->
+    <<"account">> = kz_doc:type(JObj),
+    case kz_datamgr:lookup_doc_rev(?KZ_ACCOUNTS_DB, AccountId) of
+        {'ok', Rev} ->
+            _ = kz_datamgr:save_doc(?KZ_ACCOUNTS_DB, kz_doc:set_revision(JObj, Rev)),
+            'ok';
+        {'error', 'not_found'} ->
+            _ = kz_datamgr:save_doc(?KZ_ACCOUNTS_DB, kz_doc:delete_revision(JObj)),
+            'ok'
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec ensure_aggregate_devices() -> 'ok'.
+ensure_aggregate_devices() ->
+    ensure_aggregate_devices(kapps_util:get_all_accounts()).
+
+-spec ensure_aggregate_devices(kz_term:ne_binaries()) -> 'ok'.
+ensure_aggregate_devices([]) -> 'ok';
+ensure_aggregate_devices([Account|Accounts]) ->
+    _ = ensure_aggregate_device(Account),
+    ensure_aggregate_devices(Accounts).
+
+-spec ensure_aggregate_device(kz_term:ne_binary()) -> 'ok'.
+ensure_aggregate_device(Account) ->
+    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    case kz_datamgr:get_results(AccountDb, ?DEVICES_CB_LIST, ['include_docs']) of
+        {'ok', Devices} ->
+            AccountRealm = kzd_accounts:fetch_realm(Account),
+            _ = remove_aggregate_devices(AccountDb, AccountRealm, Devices),
+            refresh_account_devices(AccountDb, AccountRealm, Devices);
+        {'error', _} -> 'ok'
+    end.
+
+-spec refresh_account_devices(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
+refresh_account_devices(AccountDb, AccountRealm, Devices) ->
+    _ = [kapps_util:add_aggregate_device(AccountDb, kz_json:get_value(<<"doc">>, Device))
+         || Device <- Devices,
+            should_aggregate_device(AccountRealm, kz_json:get_value(<<"doc">>, Device))
+        ],
+    'ok'.
+
+-spec should_aggregate_device(kz_term:ne_binary(), kz_json:object()) -> boolean().
+should_aggregate_device(AccountRealm, Device) ->
+    kzd_devices:sip_realm(Device, AccountRealm) =/= AccountRealm
+        orelse kzd_devices:sip_ip(Device) =/= 'undefined'.
+
+-spec remove_aggregate_devices(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
+remove_aggregate_devices(AccountDb, AccountRealm, Devices) ->
+    _ = [kapps_util:rm_aggregate_device(AccountDb, kz_json:get_value(<<"doc">>, Device))
+         || Device <- Devices,
+            should_remove_aggregate(AccountRealm, kz_json:get_value(<<"doc">>, Device))
+        ],
+    'ok'.
+
+-spec should_remove_aggregate(kz_term:ne_binary(), kz_json:object()) -> boolean().
+should_remove_aggregate(AccountRealm, Device) ->
+    kzd_devices:sip_realm(Device, AccountRealm) =:= AccountRealm
+        andalso kzd_devices:sip_ip(Device) =:= 'undefined'.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -624,6 +741,21 @@ verify_aggregated_device(AccountDb, AccountId, JObj) ->
             _ = kz_datamgr:del_doc(?KZ_SIP_DB, JObj),
             'ok';
         _Else -> 'ok'
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec find_invalid_acccount_dbs() -> kz_term:ne_binaries().
+find_invalid_acccount_dbs() ->
+    lists:foldr(fun find_invalid_acccount_dbs_fold/2, [], kapps_util:get_all_accounts()).
+
+find_invalid_acccount_dbs_fold(AccountDb, Acc) ->
+    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    case kz_datamgr:open_doc(AccountDb, AccountId) of
+        {'error', 'not_found'} -> [AccountDb|Acc];
+        {'ok', _} -> Acc
     end.
 
 %%------------------------------------------------------------------------------
@@ -813,72 +945,6 @@ migrate_media(Account) ->
             'ok';
         {'error', _}=E2 ->
             io:format("unable to fetch private media files in db ~s: ~p~n", [AccountDb, E2])
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec ensure_aggregate_devices() -> 'ok'.
-ensure_aggregate_devices() ->
-    ensure_aggregate_devices(kapps_util:get_all_accounts()).
-
--spec ensure_aggregate_devices(kz_term:ne_binaries()) -> 'ok'.
-ensure_aggregate_devices([]) -> 'ok';
-ensure_aggregate_devices([Account|Accounts]) ->
-    _ = ensure_aggregate_device(Account),
-    ensure_aggregate_devices(Accounts).
-
--spec ensure_aggregate_device(kz_term:ne_binary()) -> 'ok'.
-ensure_aggregate_device(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    case kz_datamgr:get_results(AccountDb, ?DEVICES_CB_LIST, ['include_docs']) of
-        {'ok', Devices} ->
-            AccountRealm = kzd_accounts:fetch_realm(Account),
-            _ = remove_aggregate_devices(AccountDb, AccountRealm, Devices),
-            refresh_account_devices(AccountDb, AccountRealm, Devices);
-        {'error', _} -> 'ok'
-    end.
-
--spec refresh_account_devices(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
-refresh_account_devices(AccountDb, AccountRealm, Devices) ->
-    _ = [kapps_util:add_aggregate_device(AccountDb, kz_json:get_value(<<"doc">>, Device))
-         || Device <- Devices,
-            should_aggregate_device(AccountRealm, kz_json:get_value(<<"doc">>, Device))
-        ],
-    'ok'.
-
--spec should_aggregate_device(kz_term:ne_binary(), kz_json:object()) -> boolean().
-should_aggregate_device(AccountRealm, Device) ->
-    kzd_devices:sip_realm(Device, AccountRealm) =/= AccountRealm
-        orelse kzd_devices:sip_ip(Device) =/= 'undefined'.
-
--spec remove_aggregate_devices(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
-remove_aggregate_devices(AccountDb, AccountRealm, Devices) ->
-    _ = [kapps_util:rm_aggregate_device(AccountDb, kz_json:get_value(<<"doc">>, Device))
-         || Device <- Devices,
-            should_remove_aggregate(AccountRealm, kz_json:get_value(<<"doc">>, Device))
-        ],
-    'ok'.
-
--spec should_remove_aggregate(kz_term:ne_binary(), kz_json:object()) -> boolean().
-should_remove_aggregate(AccountRealm, Device) ->
-    kzd_devices:sip_realm(Device, AccountRealm) =:= AccountRealm
-        andalso kzd_devices:sip_ip(Device) =:= 'undefined'.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec find_invalid_acccount_dbs() -> kz_term:ne_binaries().
-find_invalid_acccount_dbs() ->
-    lists:foldr(fun find_invalid_acccount_dbs_fold/2, [], kapps_util:get_all_accounts()).
-
-find_invalid_acccount_dbs_fold(AccountDb, Acc) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
-    case kz_datamgr:open_doc(AccountDb, AccountId) of
-        {'error', 'not_found'} -> [AccountDb|Acc];
-        {'ok', _} -> Acc
     end.
 
 %%------------------------------------------------------------------------------
