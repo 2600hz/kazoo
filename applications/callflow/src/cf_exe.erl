@@ -69,6 +69,7 @@
                ,cf_module_old_pid :: kz_term:api_pid_ref()
                ,status = 'init' :: callfow_status()
                ,amqp_worker :: pid()
+               ,amqp_queue :: kz_term:ne_binary()
                ,self = self() :: pid()
                ,stop_on_destroy = 'true' :: boolean()
                ,destroyed = 'false' :: boolean()
@@ -253,8 +254,7 @@ callid(_, Call) ->
 
 -spec queue_name(kapps_call:call() | pid()) -> kz_term:ne_binary().
 queue_name(Srv) when is_pid(Srv) ->
-    AMQPWorker = gen_server:call(Srv, 'amqp_worker'),
-    gen_listener:queue_name(AMQPWorker);
+    gen_server:call(Srv, 'amqp_queue');
 queue_name(Call) ->
     Srv = cf_exe_pid(Call),
     queue_name(Srv).
@@ -339,6 +339,7 @@ init([Call]) ->
 
     {'ok', #state{call=kapps_call:set_controller_queue(QueueName, Call)
                  ,amqp_worker=AMQPWorker
+                 ,amqp_queue=gen_listener:queue_name(AMQPWorker)
                  ,branch_count = ?MAX_BRANCH_COUNT
                  }}.
 
@@ -349,6 +350,8 @@ init([Call]) ->
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call('amqp_worker', _From, #state{amqp_worker=AMQPWorker}=State) ->
     {'reply', AMQPWorker, State};
+handle_call('amqp_queue', _From, #state{amqp_queue=AMQPQueue}=State) ->
+    {'reply', AMQPQueue, State};
 handle_call('is_channel_destroyed', _From, State) ->
     {'reply', State#state.destroyed, State};
 handle_call({'update_call', Routines}, _From, #state{call=Call}=State) ->
