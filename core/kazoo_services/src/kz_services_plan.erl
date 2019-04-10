@@ -19,6 +19,7 @@
         ]).
 -export([ratedeck_id/1]).
 -export([ratedeck_name/1]).
+-export([activation_charges/1]).
 -export([applications/1]).
 -export([limits/1]).
 -export([jobj/1
@@ -160,6 +161,14 @@ ratedeck_id(Plan) ->
 -spec ratedeck_name(plan()) -> kz_term:api_ne_binary().
 ratedeck_name(Plan) ->
     kzd_service_plan:ratedeck_name(jobj(Plan)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec activation_charges(plan()) -> kz_json:object().
+activation_charges(Plan) ->
+    kzd_service_plan:activation_charges(jobj(Plan)).
 
 %%------------------------------------------------------------------------------
 %% @doc

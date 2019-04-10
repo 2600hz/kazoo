@@ -112,7 +112,8 @@ update_subscriptions(_Context, _CurrentJObj, _ProposedJObj, 'undefined') ->
 update_subscriptions(Context, CurrentJObj, ProposedJObj, AccountId) ->
     AuditLog = audit_log(Context),
     lager:info("committing updates to ~s", [AccountId]),
-    kz_services:commit_updates(AccountId, CurrentJObj, ProposedJObj, AuditLog).
+    _ = kz_services:commit_updates(AccountId, CurrentJObj, ProposedJObj, AuditLog),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc
