@@ -9,27 +9,28 @@
 %%%-----------------------------------------------------------------------------
 -module(ts_from_offnet).
 
--export([start_link/1, init/2]).
+-export([start_link/2, init/3]).
 
 -include("ts.hrl").
 
 -define(SERVER, ?MODULE).
 
--spec start_link(kapi_route:req()) -> kz_types:startlink_ret().
-start_link(RouteReqJObj) ->
-    proc_lib:start_link(?SERVER, 'init', [self(), RouteReqJObj]).
+-spec start_link(kapi_route:req(), pid()) -> kz_types:startlink_ret().
+start_link(RouteReqJObj, AMQPWorker) ->
+    proc_lib:start_link(?SERVER, 'init', [self(), RouteReqJObj, AMQPWorker]).
 
--spec init(pid(), kapi_route:req()) -> 'ok'.
-init(Parent, RouteReqJObj) ->
+-spec init(pid(), kapi_route:req(), pid()) -> 'ok'.
+init(Parent, RouteReqJObj, AMQPWorker) ->
     proc_lib:init_ack(Parent, {'ok', self()}),
-    start_amqp(ts_callflow:init(RouteReqJObj, ['undefined', <<"resource">>])).
+    start_amqp(ts_callflow:init(RouteReqJObj, ['undefined', <<"resource">>]), AMQPWorker).
 
--spec start_amqp(ts_callflow:state() |
-                 {'error', 'not_ts_account'}
-                ) -> 'ok'.
-start_amqp({'error', 'not_ts_account'}) -> 'ok';
-start_amqp(State) ->
-    endpoint_data(ts_callflow:start_amqp(State)).
+-spec start_amqp(ts_callflow:state() | {'error', 'not_ts_account'}, pid()) -> 'ok'.
+start_amqp({'error', 'not_ts_account'}, AMQPWorker) ->
+    lager:info("not a trunkstore account, checking in ~p", [AMQPWorker]),
+    kz_amqp_worker:checkin_worker(AMQPWorker, trunkstore_sup:pool_name()),
+    'ok';
+start_amqp(State, AMQPWorker) ->
+    endpoint_data(ts_callflow:start_amqp(State, AMQPWorker)).
 
 -spec endpoint_data(ts_callflow:state()) -> 'ok'.
 endpoint_data(State) ->

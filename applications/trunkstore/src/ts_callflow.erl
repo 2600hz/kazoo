@@ -7,7 +7,7 @@
 -module(ts_callflow).
 
 -export([init/2
-        ,start_amqp/1
+        ,start_amqp/2
         ,cleanup_amqp/1
         ,send_park/1
         ,wait_for_bridge/2
@@ -62,18 +62,21 @@ init(RouteReqJObj, Type) ->
                               }
     end.
 
--spec start_amqp(state()) -> state().
-start_amqp(#ts_callflow_state{}=State) ->
-    {'ok', Worker} = kz_amqp_worker:checkout_worker(),
-    lager:debug("using worker ~p", [Worker]),
-    State#ts_callflow_state{amqp_worker=Worker}.
+-spec start_amqp(state(), pid()) -> state().
+start_amqp(#ts_callflow_state{aleg_callid=CallId}=State, AMQPWorker) ->
+    gen_listener:add_binding(AMQPWorker, 'call', [{'callid', CallId}]),
+    kz_amqp_worker:relay_to(AMQPWorker, self()),
+
+    State#ts_callflow_state{amqp_worker=AMQPWorker
+                           ,amqp_queue=gen_listener:queue_name(AMQPWorker)
+                           }.
 
 -spec cleanup_amqp(state()) -> 'ok'.
-cleanup_amqp(#ts_callflow_state{amqp_worker=Worker
+cleanup_amqp(#ts_callflow_state{amqp_worker=AMQPWorker
                                ,aleg_callid=CallId
                                }) ->
-    gen_listener:rm_binding(Worker, 'call', [{'callid', CallId}]),
-    kz_amqp_worker:stop_relay(Worker, self()).
+    gen_listener:rm_binding(AMQPWorker, 'call', [{'callid', CallId}]),
+    kz_amqp_worker:stop_relay(AMQPWorker, self()).
 
 -spec send_park(state()) -> {'won' | 'lost', state()}.
 send_park(#ts_callflow_state{route_req_jobj=JObj
@@ -92,7 +95,6 @@ send_park(#ts_callflow_state{route_req_jobj=JObj
                                     )
            ],
     lager:info("trunkstore knows how to route this call, sending park route response"),
-    kz_amqp_worker:relay_to(Worker, self()),
     _ = kz_amqp_worker:cast(Resp
                            ,fun(API) -> kapi_route:publish_resp(kz_api:server_id(JObj), API) end
                            ,Worker
@@ -331,8 +333,8 @@ get_account_id(#ts_callflow_state{acctid=ID}) -> ID.
 get_control_queue(#ts_callflow_state{callctl_q=CtlQ}) -> CtlQ.
 
 -spec get_worker_queue(state()) -> kz_term:ne_binary().
-get_worker_queue(#ts_callflow_state{amqp_worker=Worker}) ->
-    gen_listener:queue_name(Worker).
+get_worker_queue(#ts_callflow_state{amqp_queue=AMQPQueue}) ->
+    AMQPQueue.
 
 -spec get_aleg_id(state()) -> kz_term:api_binary().
 get_aleg_id(#ts_callflow_state{aleg_callid=ALeg}) -> ALeg.
