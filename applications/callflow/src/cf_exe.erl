@@ -51,6 +51,7 @@
 
 -include("callflow.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
+-include_lib("kazoo_amqp/include/kz_api.hrl").
 
 -define(CALL_SANITY_CHECK, 30000).
 
@@ -398,8 +399,13 @@ handle_call({'next', Key}, _From, #state{flow=Flow}=State) ->
                               )
     ,State
     };
-handle_call({'amqp_call', API, PubFun, VerifyFun}, _From, #state{amqp_worker=AMQPWorker}=State) ->
-    Reply = amqp_call_message(API, PubFun, VerifyFun, AMQPWorker),
+handle_call({'amqp_call', API, PubFun, VerifyFun}
+           ,_From
+           ,#state{amqp_worker=AMQPWorker
+                  ,amqp_queue=AMQPQueue
+                  }=State
+           ) ->
+    Reply = amqp_call_message(API, PubFun, VerifyFun, AMQPWorker, AMQPQueue),
     {'reply', Reply, State};
 handle_call({'add_termination_handler', {_M, _F, _Args}=H}
            ,_From
@@ -543,8 +549,12 @@ handle_cast('initialize', #state{call=Call
                                  ,status='running'
                                  })
     };
-handle_cast({'amqp_send', API, PubFun}, #state{amqp_worker=AMQPWorker}=State) ->
-    amqp_send_message(API, PubFun, AMQPWorker),
+handle_cast({'amqp_send', API, PubFun}
+           ,#state{amqp_worker=AMQPWorker
+                  ,amqp_queue=AMQPQueue
+                  }=State
+           ) ->
+    amqp_send_message(API, PubFun, AMQPWorker, AMQPQueue),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -832,25 +842,25 @@ cf_module_task(CFModule, Data, Call, AMQPWorker) ->
 %% a hangup command without relying on the (now terminated) cf_exe.
 %% @end
 %%------------------------------------------------------------------------------
--spec amqp_send_message(kz_term:api_terms(), kz_amqp_worker:publish_fun(), pid()) -> 'ok'.
-amqp_send_message(API, PubFun, AMQPWorker) ->
-    Req = add_server_id(gen_listener:queue_name(AMQPWorker), API),
+-spec amqp_send_message(kz_term:api_terms(), kz_amqp_worker:publish_fun(), pid(), kz_term:ne_binary()) -> 'ok'.
+amqp_send_message(API, PubFun, AMQPWorker, AMQPQueue) ->
+    Req = add_server_id(AMQPQueue, API),
     kz_amqp_worker:cast(Req, PubFun, AMQPWorker).
 
--spec amqp_call_message(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), pid()) ->
+-spec amqp_call_message(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), pid(), kz_term:ne_binary()) ->
                                kz_amqp_worker:request_return().
-amqp_call_message(API, PubFun, VerifyFun, AMQPWorker) ->
-    Routines = [{fun add_server_id/2, gen_listener:queue_name(AMQPWorker)}
+amqp_call_message(API, PubFun, VerifyFun, AMQPWorker, AMQPQueue) ->
+    Routines = [{fun add_server_id/2, AMQPQueue}
                ,fun add_message_id/1
                ],
     Request = kz_api:exec(Routines, API),
     kz_amqp_worker:call(Request, PubFun, VerifyFun, AMQPWorker).
 
 -spec add_server_id(kz_term:ne_binary(), kz_term:api_terms()) -> kz_term:api_terms().
-add_server_id(Q, API) when is_list(API) ->
-    [{<<"Server-ID">>, Q} | props:delete(<<"Server-ID">>, API)];
-add_server_id(Q, API) ->
-    kz_json:set_value(<<"Server-ID">>, Q, API).
+add_server_id(AMQPQueue, API) when is_list(API) ->
+    [{?KEY_SERVER_ID, AMQPQueue} | props:delete(?KEY_SERVER_ID, API)];
+add_server_id(AMQPQueue, API) ->
+    kz_json:set_value(?KEY_SERVER_ID, AMQPQueue, API).
 
 -spec add_message_id(kz_term:api_terms()) -> kz_term:api_terms().
 add_message_id(API) when is_list(API) ->
