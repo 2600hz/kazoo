@@ -720,13 +720,14 @@ application_version(Application) ->
 %% Time: `O(nlog(n))'
 %% @end
 %%------------------------------------------------------------------------------
--spec uniq([kz_term:proplist()]) -> kz_term:proplist().
+-spec uniq(kz_term:proplist()) -> kz_term:proplist().
 uniq(KVs) when is_list(KVs) -> uniq(KVs, sets:new(), []).
+
 uniq([], _, L) -> lists:reverse(L);
 uniq([{K,_}=KV|Rest], S, L) ->
     case sets:is_element(K, S) of
-        true -> uniq(Rest, S, L);
-        false ->
+        'true' -> uniq(Rest, S, L);
+        'false' ->
             NewS = sets:add_element(K, S),
             uniq(Rest, NewS, [KV|L])
     end.
