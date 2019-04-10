@@ -14,6 +14,7 @@
         ,pool_pid/1
         ,pools/0, pools/1
         ,bind_for_pool_state/0
+        ,unbind_for_pool_state/0, unbind_for_pool_state/1
         ]).
 
 -export([init/1]).
@@ -58,8 +59,17 @@ pools() -> pools(?MODULE).
 
 -spec pools(kz_types:server_ref()) -> [{atom(), pid()}].
 pools(Supervisor) ->
+    pools(Supervisor, is_process_alive(Supervisor)).
+
+-spec pools(kz_types:server_ref(), boolean()) -> [{atom(), pid()}].
+pools(Supervisor, 'false') ->
+    _ = unbind_for_pool_state(Supervisor),
+    [];
+pools(Supervisor, 'true') ->
     [{Pool, Pid}
-     || {Pool, Pid, _Type, ['poolboy']} <- supervisor:which_children(Supervisor)
+     || {Pool, Pid, _Type, ['poolboy']} <- supervisor:which_children(Supervisor),
+        is_pid(Pid),
+        is_process_alive(Pid)
     ].
 
 -spec pool_name() -> atom().
@@ -173,3 +183,12 @@ init([]) ->
 -spec bind_for_pool_state() -> kazoo_bindings:bind_result().
 bind_for_pool_state() ->
     _ = kazoo_bindings:bind(kz_nodes:pool_state_binding(), ?MODULE, 'pools', self()).
+
+-spec unbind_for_pool_state() -> kazoo_bindings:unbind_result().
+unbind_for_pool_state() ->
+    unbind_for_pool_state(self()).
+
+-spec unbind_for_pool_state(kz_term:api_pid()) -> kazoo_bindings:unbind_result().
+unbind_for_pool_state('undefined') -> 'ok';
+unbind_for_pool_state(Pid) when is_pid(Pid) ->
+    kazoo_bindings:unbind(kz_nodes:pool_state_binding(), ?MODULE, 'pools', Pid).
