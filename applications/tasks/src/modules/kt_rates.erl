@@ -323,28 +323,30 @@ generate_row(Args) ->
     RateJObj = maybe_override_rate(Args),
     Prefix = kz_term:to_binary(kzd_rates:prefix(RateJObj)),
     lager:debug("create rate for prefix ~s(~s)", [Prefix, kz_doc:id(RateJObj)]),
-    validate_row(RateJObj).
+    validate_row(RateJObj, ?DOC_FIELDS).
 
--spec validate_row(kzd_rates:doc()) -> list().
-validate_row(RateJObj) -> validate_row(RateJObj, ?DOC_FIELDS, []).
+-spec validate_row(kzd_rates:doc(), kz_json:keys()) -> kzd_rates:doc().
+validate_row(RateJObj, [Key|Keys]) -> validate_row(validate_field(RateJObj, Key), Keys);
+validate_row(RateJObj, []) -> RateJObj.
 
--spec validate_row(kzd_rates:doc(), list(), kz_term:proplist()) -> kz_term:proplist().
-validate_row(RateJObj, [Field|Fields], Updates) ->
-    Getter = binary_to_atom(<<Field/binary>>, 'utf8'),
-    Setter = binary_to_atom(<<"set_", Field/binary>>, 'utf8'),
-    Value = case Field of
-                <<"rate_name">> -> maybe_generate_name(RateJObj);
-                <<"weight">> -> maybe_generate_weight(RateJObj);
-                <<"caller_id_numbers">> -> maybe_generate_caller_id_numbers(RateJObj);
-                <<"routes">> -> maybe_generate_routes(RateJObj);
-                _ -> kzd_rates:Getter(RateJObj)
-            end,
-    lager:debug("validated field: ~s ~p -> ~p", [Field ,kz_json:get_value(Field, RateJObj), Value]),
-    NewProp = {fun kzd_rates:Setter/2, Value},
-    validate_row(RateJObj, Fields, Updates ++ [NewProp]);
-validate_row(RateJObj, [], Updates) ->
-    Filtered = props:filter_undefined(Updates),
-    kz_json:set_values(Filtered, RateJObj).
+-spec validate_field(kzd_rates:doc(), kz_json:key()) -> kzd_rates:doc().
+validate_field(RateJObj, <<"rate_name">>) ->
+    Value = maybe_generate_name(RateJObj),
+    kzd_rates:set_rate_name(RateJObj, Value);
+validate_field(RateJObj, <<"weight">>) ->
+    Value = maybe_generate_weight(RateJObj),
+    kzd_rates:set_weight(RateJObj, Value);
+validate_field(RateJObj, <<"caller_id_numbers">>) ->
+    Value = maybe_generate_caller_id_numbers(RateJObj),
+    kzd_rates:set_caller_id_numbers(RateJObj, Value);
+validate_field(RateJObj, <<"routes">>) ->
+    Value = maybe_generate_routes(RateJObj),
+    kzd_rates:set_routes(RateJObj, Value);
+validate_field(RateJObj, Key) ->
+    Getter = binary_to_atom(<<Key/binary>>, 'utf8'),
+    Setter = binary_to_atom(<<"set_", Key/binary>>, 'utf8'),
+    Value = kzd_rates:Getter(RateJObj),
+    kzd_rates:Setter(RateJObj, Value).
 
 -spec save_rates(kz_term:ne_binary(), kzd_rates:docs()) -> 'ok'.
 save_rates(Db, Rates) ->
@@ -487,7 +489,7 @@ maybe_generate_caller_id_numbers(_RateJObj, CID_Numbers)  when is_binary(CID_Num
 maybe_generate_caller_id_numbers(_RateJObj, _CID_Numbers) ->
     'undefined'.
 
--spec maybe_generate_routes(kzd_rates:doc()) -> kz_term:ne_binaries()|'undefined'.
+-spec maybe_generate_routes(kzd_rates:doc()) -> kz_term:api_ne_binaries().
 maybe_generate_routes(RateJObj) ->
     Routes = kz_json:get_value(<<"routes">>, RateJObj),
     case is_binary(Routes) of
