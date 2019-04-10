@@ -258,7 +258,7 @@ merge_attributes(Device, <<"device">>, Keys) ->
     Owner = get_user(kz_doc:account_db(Device), Device),
     Endpoint = kz_json:set_value(<<"owner_id">>, kz_doc:id(Owner), Device),
     case kzd_accounts:fetch(kz_doc:account_id(Device)) of
-        {'ok', Account} -> merge_attributes(Keys, Account, Endpoint, Owner);
+        {'ok', Account} -> merge_attributes(Keys, merge_parent_call_restrictions(Account), Endpoint, Owner);
         {'error', _} -> merge_attributes(Keys, kz_json:new(), Endpoint, Owner)
     end;
 merge_attributes(Account, <<"account">>, Keys) ->
@@ -523,6 +523,17 @@ merge_call_restrictions([Classifier|Classifiers], Account, Endpoint, Owner) ->
             %% user inherit or no user, either way use the device restrictions
             merge_call_restrictions(Classifiers, Account, Endpoint, Owner)
     end.
+
+-spec merge_parent_call_restrictions(kz_json:object()) -> kz_json:object().
+merge_parent_call_restrictions(Account) ->
+    Fun = fun(Parent, Acc) ->
+                  case kzd_accounts:fetch(Parent) of
+                      {'ok', ParentAccount} ->
+                          merge_attributes([<<"call_restriction">>], ParentAccount, Acc, kz_json:new());
+                      {'error', _} -> Acc
+                  end
+          end,
+    lists:foldl(Fun, kz_json:new(), [kzd_accounts:id(Account) | kzd_accounts:tree(Account)]).
 
 -spec get_user(kz_term:ne_binary(), kz_term:api_binary() | kz_json:object()) -> kz_json:object().
 get_user(_AccountDb, 'undefined') -> kz_json:new();
