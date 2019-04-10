@@ -75,6 +75,23 @@
                                ,<<"port">>
                                ]
                               }
+                             ,{<<"port_request">>
+                              ,[<<"canceled">>
+                               ,<<"completed">>
+                               ,<<"first_canceled">>
+                               ,<<"first_completed">>
+                               ,<<"first_pending">>
+                               ,<<"first_rejected">>
+                               ,<<"first_scheduled">>
+                               ,<<"first_submitted">>
+                               ,<<"first_unconfirmed">>
+                               ,<<"pending">>
+                               ,<<"rejected">>
+                               ,<<"scheduled">>
+                               ,<<"submitted">>
+                               ,<<"unconfirmed">>
+                               ]
+                              }
                              ,{<<"qubicle">>
                               ,[<<"queues">>
                                ,<<"recipients">>

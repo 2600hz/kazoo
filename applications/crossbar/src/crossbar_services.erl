@@ -80,7 +80,12 @@ check_creditably(Context, Services, Quotes, 'true') ->
                     Item <- kz_services_invoice:items(Invoice),
                     kz_services_item:has_billable_additions(Item)
                 ],
-    check_creditably(Context, Services, Quotes, lists:sum(Additions));
+    Activations = [kz_services_activation_items:calculate_total(
+                     kz_services_invoice:activation_charges(Invoice)
+                    )
+                   || Invoice <- kz_services_invoices:billable_additions(Quotes)
+                  ],
+    check_creditably(Context, Services, Quotes, lists:sum(Additions ++ Activations));
 check_creditably(Context, _Services, _Quotes, Amount) when Amount =< 0 ->
     Context;
 check_creditably(Context, Services, Quotes, Amount) ->
@@ -112,7 +117,8 @@ update_subscriptions(_Context, _CurrentJObj, _ProposedJObj, 'undefined') ->
 update_subscriptions(Context, CurrentJObj, ProposedJObj, AccountId) ->
     AuditLog = audit_log(Context),
     lager:info("committing updates to ~s", [AccountId]),
-    kz_services:commit_updates(AccountId, CurrentJObj, ProposedJObj, AuditLog).
+    _ = kz_services:commit_updates(AccountId, CurrentJObj, ProposedJObj, AuditLog),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc

@@ -231,8 +231,8 @@ update_req_definition() ->
                     ,required_headers = [<<"Account-ID">>
                                         ,<<"Bookkeeper-ID">>
                                         ,<<"Bookkeeper-Type">>
+                                        ,<<"Invoice">>
                                         ,<<"Vendor-ID">>
-                                        ,<<"Items">>
                                         ]
                     ,optional_headers = [<<"Dry-Run">>
                                         ,<<"Audit-Log">>

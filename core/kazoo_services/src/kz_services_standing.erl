@@ -185,7 +185,7 @@ handle_bookkeeper_results([{_Invoice, _Error}|_]) ->
     lager:debug("unexpected bookkeeper result: ~p", [_Error]),
     {'false'
     ,#{reason => <<"bookkeeper_fault">>
-      ,message => <<"Temporary billing error, please try again lateri.">>
+      ,message => <<"Temporary billing error, please try again later.">>
       }
     }.
 
@@ -211,7 +211,7 @@ invoices_foldl_fun(Services, Options) ->
 
 -spec check_bookkeeper(kz_term:ne_binary(), kz_services_invoice:invoice(), kz_services:services(), acceptable_options()) ->
                               kz_amqp_worker:request_return().
-check_bookkeeper(Type, Invoice, Services, #{amount := Amount}) ->
+check_bookkeeper(_Type, Invoice, Services, #{amount := Amount}) ->
     Request = [{<<"Account-ID">>, kz_services:account_id(Services)}
               ,{<<"Bookkeeper-ID">>, kz_services_invoice:bookkeeper_id(Invoice)}
               ,{<<"Bookkeeper-Type">>, kz_services_invoice:bookkeeper_type(Invoice)}
