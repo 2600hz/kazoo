@@ -9,6 +9,22 @@
     },
     "language": "javascript",
     "views": {
+        "assigned_to": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'number' || !doc.pvt_assigned_to || doc.pvt_deleted) return;",
+                "  emit(doc.pvt_assigned_to, null);",
+                "}"
+            ]
+        },
+        "list_by_app": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'number' || doc.pvt_deleted) return;",
+                "  emit(doc.pvt_used_by, null);",
+                "}"
+            ]
+        },
         "list_by_number": {
             "map": "function(doc) {if (doc.pvt_type != 'number' || doc.pvt_deleted) return;emit(doc._id, null);}"
         },

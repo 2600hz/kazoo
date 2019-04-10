@@ -200,12 +200,14 @@ refresh_account(Account) ->
 
 refresh_account(MODB, 'true') ->
     lager:debug("created ~s", [MODB]),
-    kapps_maintenance:refresh(MODB);
+    _ = kapps_maintenance:refresh(MODB),
+    'ok';
 refresh_account(MODB, 'false') ->
     case kz_datamgr:db_exists(MODB) of
         'true' ->
             lager:debug("exists ~s", [MODB]),
-            kapps_maintenance:refresh(MODB);
+            _ = kapps_maintenance:refresh(MODB),
+            'ok';
         'false' ->
             lager:debug("modb ~s was not created", [MODB])
     end.
@@ -276,7 +278,7 @@ maybe_migrate(AccountId) ->
                                               ,[{'account_id', AccountId}
                                                ,{'type', <<"acdc_activation">>}
                                                ]),
-            kz_datamgr:ensure_saved(?KZ_ACDC_DB, Doc),
+            _ = kz_datamgr:ensure_saved(?KZ_ACDC_DB, Doc),
             io:format("saved account ~s to db~n", [AccountId]);
         {'error', _E} ->
             io:format("failed to query queue listing for account ~s: ~p~n", [AccountId, _E])

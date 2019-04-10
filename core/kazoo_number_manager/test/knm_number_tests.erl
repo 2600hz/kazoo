@@ -7,7 +7,7 @@
 -module(knm_number_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-include("../src/knm.hrl").
 
 available_as_owner_test_() ->
     available_as(?RESELLER_ACCOUNT_ID).
@@ -321,7 +321,6 @@ fix_number(N) ->
     Num = knm_phone_number:number(PN),
     AuthBy = knm_phone_number:assigned_to(PN),
     AccountDb = kz_util:format_account_db(AuthBy),
-    %% -- below is verbatim from maintenance module --
     UsedBy = kazoo_number_manager_maintenance:app_using(knm_converters:normalize(Num), AccountDb),
     Routines = [{fun knm_phone_number:set_used_by/2, UsedBy}
                ,fun knm_phone_number:remove_denied_features/1

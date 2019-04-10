@@ -331,15 +331,14 @@ classified_number(Context, Number, Classifier) ->
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, ?FIX, Num) ->
     AccountDb = cb_context:account_db(Context),
-    AuthBy = cb_context:auth_account_id(Context),
-    Result = kazoo_number_manager_maintenance:fix_number(Num, AuthBy, AccountDb),
+    _ = kazoo_number_manager_maintenance:copy_single_number_to_account_db(Num, AccountDb),
     CB = fun() -> ?MODULE:post(cb_context:set_accepting_charges(Context), ?FIX, Num) end,
-    set_response(Result, Context, CB).
+    set_response({'ok', kz_json:new()}, Context, CB).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?FIX) ->
     AccountDb = cb_context:account_db(Context),
-    'ok' = kazoo_number_manager_maintenance:migrate(AccountDb),
+    _ = kazoo_number_manager_maintenance:fix_account_db_numbers(AccountDb),
     summary(Context);
 post(Context, ?CHECK) ->
     Numbers = cb_context:req_value(Context, ?COLLECTION_NUMBERS),

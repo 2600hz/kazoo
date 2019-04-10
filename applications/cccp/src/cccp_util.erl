@@ -326,9 +326,10 @@ register_views() ->
 init_db() ->
     case kz_datamgr:db_exists(<<"cccps">>) of
         'true' ->
-            kapps_maintenance:refresh(?KZ_CCCPS_DB),
+            _ = kapps_maintenance:refresh(?KZ_CCCPS_DB),
             'ok';
         'false' ->
             kz_datamgr:db_create(<<"cccps">>),
-            kapps_maintenance:refresh(?KZ_CCCPS_DB)
+            _ = kapps_maintenance:refresh(?KZ_CCCPS_DB),
+            'ok'
     end.
