@@ -20,6 +20,7 @@
 
 -spec handle_req(kapi_route:req(), kz_term:proplist()) -> 'ok'.
 handle_req(RouteReq, Props) ->
+    'true' = kapi_route:req_v(RouteReq),
     kz_util:put_callid(kapi_route:call_id(RouteReq)),
     kz_amqp_worker:worker_pool(callflow_sup:pool_name()),
 
