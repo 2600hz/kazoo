@@ -26,9 +26,7 @@ init(Parent, RouteReqJObj, AMQPWorker) ->
 
 -spec start_amqp(ts_callflow:state() | {'error', 'not_ts_account'}, pid()) -> 'ok'.
 start_amqp({'error', 'not_ts_account'}, AMQPWorker) ->
-    lager:info("not a trunkstore account, checking in ~p", [AMQPWorker]),
-    kz_amqp_worker:checkin_worker(AMQPWorker, trunkstore_sup:pool_name()),
-    'ok';
+    kz_amqp_worker:checkin_worker(AMQPWorker, trunkstore_sup:pool_name());
 start_amqp(State, AMQPWorker) ->
     endpoint_data(ts_callflow:start_amqp(State, AMQPWorker)).
 
