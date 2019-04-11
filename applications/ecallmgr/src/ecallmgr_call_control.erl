@@ -388,11 +388,12 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec call_control_ready(state()) -> 'ok'.
-call_control_ready(#state{amqp_queue='undefined'}) -> 'ok';
+-spec call_control_ready(state()) -> state().
+call_control_ready(#state{amqp_queue='undefined'}=State) -> State;
 call_control_ready(State) ->
     publish_route_win(State),
-    publish_usurp(State).
+    publish_usurp(State),
+    State.
 
 -spec publish_usurp(state()) -> 'ok'.
 publish_usurp(#state{call_id=CallId
@@ -1351,3 +1352,7 @@ handle_other_event_info(CallId, Props, State) ->
             lager:debug("CALL CONTROL NOT HANDLED ~s", [_Else]),
             {'noreply', State}
     end.
+
+%% 19:06:12.796 [error] |0000000000|ecallmgr_call_control:365 (<0.4599.0>) gen_server <0.4599.0> terminated with reason: no function clause matching ecallmgr_call_control:terminate({function_clause,[{ecallmgr_call_control,handle_dialplan,[{[{<<"Export-All">>,false},{<<"Inser...">>,...},...]},...],...},...]}, ok) line 365
+
+%% 19:06:12.797 [error] |0000000000|ecallmgr_call_control:365 (<0.4599.0>) CRASH REPORT Process <0.4599.0> with 0 neighbours exited with reason: no function clause matching ecallmgr_call_control:terminate({function_clause,[{ecallmgr_call_control,handle_dialplan,[{[{<<"Export-All">>,false},{<<"Inser...">>,...},...]},...],...},...]}, ok) line 365 in gen_server:terminate/7 line 800
