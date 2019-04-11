@@ -103,9 +103,20 @@
             "type": "string"
         },
         "prorate": {
-            "default": false,
             "description": "Should this item be prorated",
-            "type": "boolean"
+            "properties": {
+                "additions": {
+                    "description": "Should this item be prorated during additions",
+                    "default": true,
+                    "type": "boolean"
+                },
+                "removals": {
+                    "description": "Should this item be prorated during removals",
+                    "default": false,
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
         },
         "rate": {
             "default": 0.0,
