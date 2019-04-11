@@ -50,7 +50,7 @@ start_event_process(Node, UUID) ->
 start_control_process(Node, CallId, FetchId) ->
     start_control_process(Node, CallId, FetchId, 'undefined', kz_json:new(), 'undefined').
 
--spec start_control_process(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:object(), pid()) ->
+-spec start_control_process(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:object(), kz_term:api_pid()) ->
                                    kz_types:sup_startchild_ret().
 start_control_process(Node, CallId, FetchId, ControllerQ, CCVs, AMQPWorker) ->
     ecallmgr_call_control_sup:start_proc([Node

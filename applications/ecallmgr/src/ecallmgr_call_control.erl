@@ -54,7 +54,7 @@
 -export([other_legs/1
         ,update_node/2
         ,control_procs/1
-        ,publish_usurp/4
+        ,publish_usurp/3
         ]).
 -export([fs_nodeup/2]).
 -export([fs_nodedown/2]).
@@ -182,6 +182,7 @@ init([Node, CallId, FetchId, ControllerQ, CCVs, AMQPWorker]) ->
     gen_listener:add_binding(AMQPWorker, 'dialplan', []),
     AMQPQueue = gen_listener:queue_name(AMQPWorker),
     kz_amqp_worker:relay_to(AMQPWorker, self()),
+    _ = kz_amqp_channel:consumer_pid(AMQPWorker),
 
     gen_server:cast(self(), 'init'),
 
@@ -399,12 +400,11 @@ call_control_ready(State) ->
 publish_usurp(#state{call_id=CallId
                     ,fetch_id=FetchId
                     ,node=Node
-                    ,amqp_worker=AMQPWorker
                     }) ->
-    publish_usurp(CallId, FetchId, Node, AMQPWorker).
+    publish_usurp(CallId, FetchId, Node).
 
--spec publish_usurp(kz_term:ne_binary(), kz_term:ne_binary(), atom(), pid()) -> 'ok'.
-publish_usurp(CallId, FetchId, Node, AMQPWorker) ->
+-spec publish_usurp(kz_term:ne_binary(), kz_term:ne_binary(), atom()) -> 'ok'.
+publish_usurp(CallId, FetchId, Node) ->
     Usurp = [{<<"Call-ID">>, CallId}
             ,{<<"Fetch-ID">>, FetchId}
             ,{<<"Reason">>, <<"Route-Win">>}
@@ -412,7 +412,7 @@ publish_usurp(CallId, FetchId, Node, AMQPWorker) ->
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     lager:debug("sending control usurp for fetch-id ~s(~s)", [FetchId, CallId]),
-    kz_amqp_worker:cast(Usurp, fun(U) -> kapi_call:publish_usurp_control(CallId, U) end, AMQPWorker),
+    kapi_call:publish_usurp_control(CallId, Usurp),
     ecallmgr_usurp_monitor:register('usurp_control', CallId, FetchId).
 
 -spec publish_route_win(state()) -> 'ok'.
@@ -420,7 +420,6 @@ publish_route_win(#state{controller_q='undefined'}) ->
     lager:debug("no controller queue, no publishing route_win");
 publish_route_win(#state{call_id=CallId
                         ,controller_q=ControllerQ
-                        ,amqp_worker=AMQPWorker
                         ,amqp_queue=AMQPQueue
                         ,initial_ccvs=CCVs
                         }) ->
@@ -431,7 +430,7 @@ publish_route_win(#state{call_id=CallId
            | kz_api:default_headers(AMQPQueue, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending route_win to ~s", [ControllerQ]),
-    kz_amqp_worker:cast(Win, fun(P) -> kapi_route:publish_win(ControllerQ, P) end, AMQPWorker).
+    kapi_route:publish_win(ControllerQ, Win).
 
 %%------------------------------------------------------------------------------
 %% @doc

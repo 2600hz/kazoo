@@ -295,6 +295,8 @@ handle_call_startup(ConferenceNode, _JObj, LoopbackCallId, Resp, {'error', _E}) 
     _ = ecallmgr_util:send_cmd(ConferenceNode, LoopbackCallId, <<"hangup">>, <<"FACILITY_REJECTED">>),
     props:insert_value(<<"Message">>, <<"Unable to secure resources to handle the call">>, Resp);
 handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp, {'ok', AMQPWorker}) ->
+    kz_amqp_channel:consumer_pid(AMQPWorker),
+
     case wait_for_bowout(#outbound_dial{loopback_a=LoopbackCallId}
                         ,kz_json:get_integer_value(<<"Timeout">>, JObj) * ?MILLISECONDS_IN_SECOND
                         )
@@ -309,7 +311,6 @@ handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp, {'ok', AMQPWorke
                            ,CallId
                            ,start_call_handlers(ConferenceNode, JObj, OutboundDial, AMQPWorker)
                            ,ChannelProps
-                           ,AMQPWorker
                            ),
             props:set_values([{<<"Message">>, DialResp}
                              ,{<<"Call-ID">>, CallId}
@@ -468,7 +469,7 @@ start_call_handlers(Node
     CCVs = kz_json:new(),
     FetchId = kz_api:msg_id(JObj),
 
-    ecallmgr_call_control:publish_usurp(LoopbackB, FetchId, node(), AMQPWorker),
+    ecallmgr_call_control:publish_usurp(LoopbackB, FetchId, node()),
     maybe_update_ecallmgr_node([LoopbackB, CallId]),
 
     _ = kz_util:spawn(fun ecallmgr_call_sup:start_event_process/2, [Node, CallId]),
@@ -516,10 +517,10 @@ get_control_queue(CtlPid) ->
             get_control_queue(CtlPid)
     end.
 
--spec add_participant(kapi_conference:doc(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:proplist(), pid()) -> 'ok'.
-add_participant(_JObj, _CallId, 'undefined', _ChannelProps, _AMQPWorker) ->
+-spec add_participant(kapi_conference:doc(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:proplist()) -> 'ok'.
+add_participant(_JObj, _CallId, 'undefined', _ChannelProps) ->
     lager:info("not adding participant, no control queue");
-add_participant(JObj, CallId, ControlQueue, ChannelProps, AMQPWorker) ->
+add_participant(JObj, CallId, ControlQueue, ChannelProps) ->
     ReqJObj = kz_json:set_values([{<<"Conference-ID">>, kz_json:get_ne_binary_value(<<"Conference-ID">>, JObj)}
                                  ,{<<"Call-ID">>, CallId}
                                  ,{<<"Control-Queue">>, ControlQueue}
@@ -535,12 +536,7 @@ add_participant(JObj, CallId, ControlQueue, ChannelProps, AMQPWorker) ->
     Req = kz_json:merge(ReqJObj, ecallmgr_fs_channel:to_api_json(CallId)),
 
     lager:debug("adding participant for ~s: ~p", [CallId, Req]),
-    kz_amqp_worker:cast(Req
-                       ,fun(P) ->
-                                kapi_conference:publish_add_participant(kz_config:zone('binary'), P)
-                        end
-                       ,AMQPWorker
-                       ).
+    kapi_conference:publish_add_participant(kz_config:zone('binary'), Req).
 
 -spec publish_resp(kapi_conference:doc(), kz_json:objects()) -> 'ok'.
 publish_resp(JObj, BaseResps) ->
