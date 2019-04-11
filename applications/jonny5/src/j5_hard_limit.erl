@@ -47,12 +47,12 @@ calls_at_limit(Limits) ->
 -spec resource_consumption_at_limit(j5_limits:limits(), j5_request:request()) -> boolean().
 resource_consumption_at_limit(Limits, Request) ->
     AccountBilling = j5_request:account_billing(Request),
-    Increment = case  AccountBilling =/= 'undefined' 
-           andalso AccountBilling =/= <<"limits_disabled">> 
-    of
-        'true' -> 1;
-        'false' -> 0
-    end,
+    Increment = case  AccountBilling =/= 'undefined'
+                    andalso AccountBilling =/= <<"limits_disabled">>
+                of
+                    'true' -> 1;
+                    'false' -> 0
+                end,
     Limit = j5_limits:resource_consuming_calls(Limits),
     Used  = j5_channels:resource_consuming(j5_limits:account_id(Limits)),
     should_deny(Limit, Used + Increment).
