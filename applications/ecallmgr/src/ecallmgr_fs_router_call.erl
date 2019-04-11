@@ -158,8 +158,10 @@ code_change(_OldVsn, State, _Extra) ->
 -spec process_route_req(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data()) -> 'ok'.
 process_route_req(Section, Node, FetchId, CallId, Props) ->
     kz_util:put_callid(CallId),
+
     case kz_term:is_true(props:get_value(<<"variable_recovered">>, Props)) of
-        'false' -> do_process_route_req(Section, Node, FetchId, CallId, Props);
+        'false' ->
+            maybe_process_route_req(Section, Node, FetchId, CallId, Props);
         'true' ->
             lager:debug("recovered channel already exists on ~s, park it", [Node]),
             JObj = kz_json:from_list([{<<"Routes">>, []}
@@ -168,38 +170,51 @@ process_route_req(Section, Node, FetchId, CallId, Props) ->
             ecallmgr_fs_router_util:reply_affirmative(Section, Node, FetchId, CallId, JObj, Props)
     end.
 
--spec do_process_route_req(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data()) -> 'ok'.
-do_process_route_req(Section, Node, FetchId, CallId, Props) ->
+maybe_process_route_req(Section, Node, FetchId, CallId, Props) ->
+    kz_amqp_worker:worker_pool(ecallmgr_call_sup:pool_name()),
+    maybe_process_route_req(Section, Node, FetchId, CallId, Props
+                           ,kz_amqp_worker:checkout_worker()
+                           ).
+
+maybe_process_route_req(Section, Node, FetchId, _CallId, _Props, {'error', _E}) ->
+    lager:warning("unable to process dialplan fetch ~s: no workers: ~p", [FetchId, _E]),
+    {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
+    _ = freeswitch:fetch_reply(Node, FetchId, Section, Resp);
+maybe_process_route_req(Section, Node, FetchId, CallId, Props, {'ok', AMQPWorker}) ->
+    do_process_route_req(Section, Node, FetchId, CallId, Props, AMQPWorker).
+
+-spec do_process_route_req(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data(), pid()) -> 'ok'.
+do_process_route_req(Section, Node, FetchId, CallId, Props, AMQPWorker) ->
     Filtered = ecallmgr_fs_loopback:filter(Node, CallId, Props),
-    case ecallmgr_fs_router_util:search_for_route(Section, Node, FetchId, CallId, Filtered) of
+    case ecallmgr_fs_router_util:search_for_route(Section, Node, FetchId, CallId, Filtered, AMQPWorker) of
         'ok' ->
             lager:debug("xml fetch dialplan ~s finished without success", [FetchId]);
         {'ok', JObj} ->
             lager:debug("route response recv, attempting to start call handling"),
             ecallmgr_fs_channels:update(CallId, #channel.handling_locally, 'true'),
-            maybe_start_call_handling(Node, FetchId, CallId, JObj)
+            maybe_start_call_handling(Node, FetchId, CallId, JObj, AMQPWorker)
     end.
 
--spec maybe_start_call_handling(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-maybe_start_call_handling(Node, FetchId, CallId, JObj) ->
+-spec maybe_start_call_handling(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), pid()) -> 'ok'.
+maybe_start_call_handling(Node, FetchId, CallId, JObj, AMQPWorker) ->
     case kz_json:get_value(<<"Method">>, JObj) of
         <<"error">> -> lager:debug("sent error response to ~s, not starting call handling", [Node]);
-        _Else -> start_call_handling(Node, FetchId, CallId, JObj)
+        _Else -> start_call_handling(Node, FetchId, CallId, JObj, AMQPWorker)
     end.
 
--spec start_call_handling(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-start_call_handling(Node, FetchId, CallId, JObj) ->
-    ServerQ = kz_json:get_value(<<"Server-ID">>, JObj),
+-spec start_call_handling(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), pid()) -> 'ok'.
+start_call_handling(Node, FetchId, CallId, JObj, AMQPWorker) ->
+    ServerQ = kz_api:server_id(JObj),
     CCVs =
-        kz_json:set_values([{<<"Application-Name">>, kz_json:get_value(<<"App-Name">>, JObj)}
-                           ,{<<"Application-Node">>, kz_json:get_value(<<"Node">>, JObj)}
+        kz_json:set_values([{<<"Application-Name">>, kz_api:app_name(JObj)}
+                           ,{<<"Application-Node">>, kz_api:node(JObj)}
                            ]
                           ,kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())
                           ),
     _Evt = ecallmgr_call_sup:start_event_process(Node, CallId),
-    _Ctl = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs),
+    _Ctl = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs, AMQPWorker),
 
-    lager:debug("started event ~p and control ~p processes", [_Evt, _Ctl]),
+    lager:debug("started event ~p and control ~p(~p) processes", [_Evt, _Ctl, AMQPWorker]),
 
     _ = ecallmgr_fs_command:set(Node, CallId, kz_json:to_proplist(CCVs)),
     lager:debug("xml fetch dialplan ~s finished with success", [FetchId]).

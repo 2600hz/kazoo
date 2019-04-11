@@ -180,19 +180,32 @@ expand_message_var({K,V}, Ac) ->
 
 -spec process_route_req(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 process_route_req(Section, Node, FetchId, MsgId, Props) ->
-    do_process_route_req(Section, Node, FetchId, MsgId, init_message_props(Props)).
+    maybe_process_route_req(Section, Node, FetchId, MsgId, Props).
 
--spec do_process_route_req(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
-do_process_route_req(Section, Node, FetchId, MsgId, Props) ->
-    case ecallmgr_fs_router_util:search_for_route(Section, Node, FetchId, MsgId, Props) of
+maybe_process_route_req(Section, Node, FetchId, CallId, Props) ->
+    kz_amqp_worker:worker_pool(ecallmgr_call_sup:pool_name()),
+    maybe_process_route_req(Section, Node, FetchId, CallId, Props
+                           ,kz_amqp_worker:checkout_worker()
+                           ).
+
+maybe_process_route_req(Section, Node, FetchId, _CallId, _Props, {'error', _E}) ->
+    lager:warning("unable to process dialplan fetch ~s: no workers: ~p", [FetchId, _E]),
+    {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
+    _ = freeswitch:fetch_reply(Node, FetchId, Section, Resp);
+maybe_process_route_req(Section, Node, FetchId, CallId, Props, {'ok', AMQPWorker}) ->
+    do_process_route_req(Section, Node, FetchId, CallId, init_message_props(Props), AMQPWorker).
+
+-spec do_process_route_req(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), pid()) -> 'ok'.
+do_process_route_req(Section, Node, FetchId, MsgId, Props, AMQPWorker) ->
+    case ecallmgr_fs_router_util:search_for_route(Section, Node, FetchId, MsgId, Props, AMQPWorker) of
         'ok' ->
             lager:debug("xml fetch chatplan ~s finished without success", [FetchId]);
         {'ok', JObj} ->
-            start_message_handling(Node, FetchId, MsgId, JObj)
+            start_message_handling(Node, FetchId, MsgId, JObj, AMQPWorker)
     end.
 
--spec start_message_handling(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-start_message_handling(_Node, FetchId, MsgId, JObj) ->
+-spec start_message_handling(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), pid()) -> 'ok'.
+start_message_handling(_Node, FetchId, MsgId, JObj, AMQPWorker) ->
     ServerQ = kz_api:server_id(JObj),
     CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     Win = [{<<"Msg-ID">>, FetchId}
@@ -202,4 +215,4 @@ start_message_handling(_Node, FetchId, MsgId, JObj) ->
            | kz_api:default_headers(<<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending route_win to ~s", [ServerQ]),
-    kz_amqp_worker:cast(Win, fun(Payload)-> kapi_route:publish_win(ServerQ, Payload) end).
+    kz_amqp_worker:cast(Win, fun(Payload)-> kapi_route:publish_win(ServerQ, Payload) end, AMQPWorker).

@@ -42,10 +42,10 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_call_control).
--behaviour(gen_listener).
+-behaviour(gen_server).
 
 %% API
--export([start_link/5, stop/1]).
+-export([start_link/6, stop/1]).
 -export([queue_name/1]).
 -export([callid/1]).
 -export([node/1]).
@@ -59,12 +59,11 @@
 -export([fs_nodeup/2]).
 -export([fs_nodedown/2]).
 
-%% gen_listener callbacks
+%% gen_server callbacks
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
         ,handle_info/2
-        ,handle_event/2
         ,terminate/2
         ,code_change/3
         ]).
@@ -91,17 +90,15 @@
                ,sanity_check_tref :: kz_term:api_reference()
                ,msg_id :: kz_term:api_ne_binary()
                ,fetch_id :: kz_term:api_ne_binary()
-               ,controller_q :: kz_term:api_ne_binary()
-               ,control_q :: kz_term:api_ne_binary()
+               ,controller_q :: kz_term:api_ne_binary() %% which app will recv the route_win
+
+               ,amqp_worker :: kz_term:api_pid()        %% the AMQP worker for the call
+               ,amqp_queue :: kz_term:api_ne_binary()   %% the AMQP queue for recv dialplan commands, etc
+
                ,initial_ccvs :: kz_json:object()
                ,node_down_tref :: kz_term:api_reference()
                }).
 -type state() :: #state{}.
-
--define(RESPONDERS, []).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
 
 %%%=============================================================================
 %%% API
@@ -111,38 +108,25 @@
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link(atom(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_json:object()) ->
+-spec start_link(atom(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_json:object(), pid()) ->
                         kz_types:startlink_ret().
-start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
-    %% We need to become completely decoupled from ecallmgr_call_events
-    %% because the call_events process might have been spun up with A->B
-    %% then transferred to A->D, but the route landed in a different
-    %% ecallmgr.  Since our call_events will get a bad session if we
-    %% try to handle call more than once on a UUID we had to leave the
-    %% call_events running on another ecallmgr... fun fun
-    Bindings = [{'dialplan', []}
-               ,{'self', []}
-               ],
-    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
-                                     ,{'bindings', Bindings}
-                                     ,{'queue_name', ?QUEUE_NAME}
-                                     ,{'queue_options', ?QUEUE_OPTIONS}
-                                     ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ]
-                           ,[Node, CallId, FetchId, ControllerQ, CCVs]
-                           ).
+start_link(Node, CallId, FetchId, ControllerQ, CCVs, AMQPWorker) ->
+    gen_server:start_link(?MODULE
+                         ,[Node, CallId, FetchId, ControllerQ, CCVs, AMQPWorker]
+                         ,[]
+                         ).
 
 -spec stop(pid()) -> 'ok'.
 stop(Srv) ->
-    gen_listener:cast(Srv, 'stop').
+    gen_server:cast(Srv, 'stop').
 
 -spec callid(pid()) -> kz_term:ne_binary().
 callid(Srv) ->
-    gen_listener:call(Srv, 'callid', ?MILLISECONDS_IN_SECOND).
+    gen_server:call(Srv, 'callid', ?MILLISECONDS_IN_SECOND).
 
 -spec node(pid()) -> kz_term:ne_binary().
 node(Srv) ->
-    gen_listener:call(Srv, 'node', ?MILLISECONDS_IN_SECOND).
+    gen_server:call(Srv, 'node', ?MILLISECONDS_IN_SECOND).
 
 -spec hostname(pid()) -> binary().
 hostname(Srv) ->
@@ -152,22 +136,22 @@ hostname(Srv) ->
 
 -spec queue_name(kz_term:api_pid()) -> kz_term:api_ne_binary().
 queue_name('undefined') -> 'undefined';
-queue_name(Srv) when is_pid(Srv) -> gen_listener:queue_name(Srv).
+queue_name(Srv) when is_pid(Srv) -> gen_server:call(Srv, 'amqp_queue').
 
 -spec other_legs(pid()) -> kz_term:ne_binaries().
 other_legs(Srv) ->
-    gen_listener:call(Srv, 'other_legs', ?MILLISECONDS_IN_SECOND).
+    gen_server:call(Srv, 'other_legs', ?MILLISECONDS_IN_SECOND).
 
 -spec event_execute_complete(kz_term:api_pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 event_execute_complete('undefined', _CallId, _App) -> 'ok';
 event_execute_complete(Srv, CallId, App) ->
-    gen_listener:cast(Srv, {'event_execute_complete', CallId, App, kz_json:new()}).
+    gen_server:cast(Srv, {'event_execute_complete', CallId, App, kz_json:new()}).
 
 -spec update_node(atom(), kz_term:ne_binary() | kz_term:pids()) -> 'ok'.
 update_node(Node, CallId) when is_binary(CallId) ->
     update_node(Node, gproc:lookup_pids({'p', 'l', {'call_control', CallId}}));
 update_node(Node, Pids) when is_list(Pids) ->
-    _ = [gen_listener:cast(Srv, {'update_node', Node}) || Srv <- Pids],
+    _ = [gen_server:cast(Srv, {'update_node', Node}) || Srv <- Pids],
     'ok'.
 
 -spec control_procs(kz_term:ne_binary()) -> kz_term:pids().
@@ -183,18 +167,23 @@ fs_nodedown(Srv, Node) ->
     gen_server:cast(Srv, {'fs_nodedown', Node}).
 
 %%%=============================================================================
-%%% gen_listener callbacks
+%%% gen_server callbacks
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
 %% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec init([atom() | kz_term:ne_binary() | kz_json:object()]) -> {'ok', state()}.
-init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
+-spec init([atom() | kz_term:ne_binary() | kz_json:object() | pid()]) -> {'ok', state()}.
+init([Node, CallId, FetchId, ControllerQ, CCVs, AMQPWorker]) ->
     kz_util:put_callid(CallId),
-    lager:debug("starting call control listener"),
-    gen_listener:cast(self(), 'init'),
+    lager:debug("starting call control listener(~p)", [AMQPWorker]),
+
+    gen_listener:add_binding(AMQPWorker, 'dialplan', []),
+    AMQPQueue = gen_listener:queue_name(AMQPWorker),
+    kz_amqp_worker:relay_to(AMQPWorker, self()),
+
+    gen_server:cast(self(), 'init'),
 
     _ = bind_to_events(Node, CallId),
 
@@ -207,6 +196,8 @@ init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
                  ,fetch_id=FetchId
                  ,controller_q=ControllerQ
                  ,initial_ccvs=CCVs
+                 ,amqp_worker=AMQPWorker
+                 ,amqp_queue=AMQPQueue
                  }}.
 
 %%------------------------------------------------------------------------------
@@ -214,6 +205,8 @@ init([Node, CallId, FetchId, ControllerQ, CCVs]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
+handle_call('amqp_queue', _From, #state{amqp_queue=AMQPQueue}=State) ->
+    {'reply', AMQPQueue, State};
 handle_call('node', _From, #state{node=Node}=State) ->
     {'reply', Node, State};
 handle_call('callid', _From, #state{call_id=CallId}=State) ->
@@ -230,7 +223,7 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('init', State) ->
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), 'sanity_check'),
-    {'noreply', State#state{sanity_check_tref=TRef}};
+    {'noreply', call_control_ready(State#state{sanity_check_tref=TRef})};
 handle_cast('stop', State) ->
     {'stop', 'normal', State};
 handle_cast({'update_node', Node}, #state{node=OldNode}=State) ->
@@ -243,11 +236,6 @@ handle_cast({'event_execute_complete', CallId, AppName, JObj}
            ) ->
     {'noreply', handle_execute_complete(AppName, JObj, State)};
 handle_cast({'event_execute_complete', _, _, _}, State) ->
-    {'noreply', State};
-handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
-    {'noreply', State#state{control_q=Q}};
-handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
-    call_control_ready(State),
     {'noreply', State};
 handle_cast({'fs_nodedown', Node}, #state{node=Node
                                          ,is_node_up='true'
@@ -279,6 +267,9 @@ handle_cast(_, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
+handle_info({'amqp_msg', JObj}, State) ->
+    handle_event(JObj, State),
+    {'noreply', State};
 handle_info({'event', [CallId | Props]}, #state{call_id=CallId}=State) ->
     handle_event_info(CallId, Props, State);
 handle_info({'event', [CallId | Props]}, State) ->
@@ -323,11 +314,15 @@ handle_info(?LOOPBACK_BOWOUT_MSG(Node, Props), #state{call_id=ResigningUUID
             lager:debug("ignoring bowout for ~s", [_UUID]),
             {'noreply', State}
     end;
-handle_info({'usurp_control', CallId, FetchId, _JObj}, #state{call_id = CallId
-                                                             ,fetch_id = FetchId
-                                                             } = State) ->
+handle_info({'usurp_control', CallId, FetchId, _JObj}
+           ,#state{call_id = CallId
+                  ,fetch_id = FetchId
+                  } = State
+           ) ->
     {'noreply', State};
-handle_info({'usurp_control', CallId, _FetchId, _JObj}, #state{call_id = CallId} = State) ->
+handle_info({'usurp_control', CallId, _FetchId, _JObj}
+           ,#state{call_id = CallId} = State
+           ) ->
     lager:debug("the call has been usurped by an external process"),
     {'stop', 'normal', State};
 handle_info({'usurp_control', _CallId, _FetchId, _JObj}, State) ->
@@ -340,28 +335,27 @@ handle_info(_Msg, State) ->
 %% @doc Allows listener to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
+-spec handle_event(kz_json:object(), state()) -> 'ok'.
 handle_event(JObj, _State) ->
-    _ = case kz_util:get_event_type(JObj) of
-            {<<"call">>, <<"command">>} -> handle_call_command(JObj);
-            {<<"conference">>, <<"command">>} -> handle_conference_command(JObj);
-            {<<"error">>, _EvtName} -> lager:debug("ignoring error event for ~s", [_EvtName]);
-            {_Cat, _Name} -> lager:debug("ignoring ~s: ~s", [_Cat, _Name])
-        end,
-    'ignore'.
+    handle_event_by_type(JObj, kz_util:get_event_type(JObj)).
+
+handle_event_by_type(JObj, {<<"call">>, <<"command">>}) -> handle_call_command(JObj);
+handle_event_by_type(JObj, {<<"conference">>, <<"command">>}) -> handle_conference_command(JObj);
+handle_event_by_type(_JObj, {<<"error">>, _EvtName}) -> lager:debug("ignoring error event for ~s", [_EvtName]);
+handle_event_by_type(_JObj, {_Cat, _Name}) -> lager:debug("ignoring ~s: ~s", [_Cat, _Name]).
 
 -spec handle_call_command(kz_json:object()) -> 'ok'.
 handle_call_command(JObj) ->
-    gen_listener:cast(self(), {'dialplan', JObj}).
+    gen_server:cast(self(), {'dialplan', JObj}).
 
 -spec handle_conference_command(kz_json:object()) -> 'ok'.
 handle_conference_command(JObj) ->
-    gen_listener:cast(self(), {'dialplan', JObj}).
+    gen_server:cast(self(), {'dialplan', JObj}).
 
 %%------------------------------------------------------------------------------
-%% @doc This function is called by a `gen_listener' when it is about to
+%% @doc This function is called by a `gen_server' when it is about to
 %% terminate. It should be the opposite of `Module:init/1' and do any
-%% necessary cleaning up. When it returns, the `gen_listener' terminates
+%% necessary cleaning up. When it returns, the `gen_server' terminates
 %% with Reason. The return value is ignored.
 %%
 %% @end
@@ -393,7 +387,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec call_control_ready(state()) -> 'ok'.
-call_control_ready(#state{controller_q='undefined'}) -> 'ok';
+call_control_ready(#state{amqp_queue='undefined'}) -> 'ok';
 call_control_ready(State) ->
     publish_route_win(State),
     publish_usurp(State).
@@ -420,17 +414,18 @@ publish_usurp(CallId, FetchId, Node) ->
 -spec publish_route_win(state()) -> 'ok'.
 publish_route_win(#state{call_id=CallId
                         ,controller_q=ControllerQ
-                        ,control_q=Q
+                        ,amqp_worker=AMQPWorker
+                        ,amqp_queue=AMQPQueue
                         ,initial_ccvs=CCVs
                         }) ->
     Win = [{<<"Msg-ID">>, CallId}
           ,{<<"Call-ID">>, CallId}
-          ,{<<"Control-Queue">>, Q}
+          ,{<<"Control-Queue">>, AMQPQueue}
           ,{<<"Custom-Channel-Vars">>, CCVs}
-           | kz_api:default_headers(Q, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(AMQPQueue, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sending route_win to ~s", [ControllerQ]),
-    kapi_route:publish_win(ControllerQ, Win).
+    kz_amqp_worker:cast(Win, fun(P) -> kapi_route:publish_win(ControllerQ, P) end, AMQPWorker).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -1322,7 +1317,7 @@ handle_event_info(CallId, Props, #state{call_id=CallId
             'ok' = handle_intercepted(Node, CallId, Props),
             {'noreply', State};
         <<"CHANNEL_EXECUTE">> when Application =:= <<"redirect">> ->
-            gen_listener:cast(self(), {'channel_redirected', JObj}),
+            gen_server:cast(self(), {'channel_redirected', JObj}),
             {'stop', 'normal', State};
         <<"sofia::transferor">> ->
             handle_transferor(Props, State);

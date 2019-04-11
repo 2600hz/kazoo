@@ -8,7 +8,7 @@
 -module(ecallmgr_originate).
 -behaviour(gen_listener).
 
--export([start_link/2]).
+-export([start_link/3]).
 -export([handle_originate_execute/2]).
 -export([handle_call_events/2]).
 -export([init/1
@@ -35,6 +35,7 @@
                ,dialstrings :: kz_term:api_binary()
                ,queue :: kz_term:api_binary()
                ,control_pid :: kz_term:api_pid()
+               ,amqp_worker :: kz_term:api_pid() %% this is the AMQP worker for the call control process, if necessary
                ,tref :: kz_term:api_reference()
                ,fetch_id = kz_binary:rand_hex(16)
                }).
@@ -64,8 +65,8 @@
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link(atom(), kz_json:object()) -> kz_types:startlink_ret().
-start_link(Node, JObj) ->
+-spec start_link(atom(), kz_json:object(), kz_term:api_pid()) -> kz_types:startlink_ret().
+start_link(Node, JObj, AMQPWorker) ->
     gen_listener:start_link(?SERVER
                            ,[{'bindings', ?BINDINGS}
                             ,{'responders', ?RESPONDERS}
@@ -73,20 +74,21 @@ start_link(Node, JObj) ->
                             ,{'queue_options', ?QUEUE_OPTIONS}
                             ,{'consume_options', ?CONSUME_OPTIONS}
                             ]
-                           ,[Node, JObj]).
+                           ,[Node, JObj, AMQPWorker]
+                           ).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_call_events(kz_json:object(), kz_term:proplist()) -> 'ok'.
+-spec handle_call_events(kz_call_event:doc(), kz_term:proplist()) -> 'ok'.
 handle_call_events(JObj, Props) ->
     Srv = props:get_value('server', Props),
-    case props:get_value('uuid', Props) =:=  kz_json:get_binary_value(<<"Call-ID">>, JObj)
-        andalso kz_json:get_value(<<"Event-Name">>, JObj)
+    case props:get_value('uuid', Props) =:= kz_api:call_id(JObj)
+        andalso kz_api:event_name(JObj)
     of
         <<"CHANNEL_EXECUTE_COMPLETE">> ->
-            case kz_json:get_value(<<"Application-Name">>, JObj) of
+            case kz_call_event:application_name(JObj) of
                 <<"bridge">> ->
                     gen_listener:cast(Srv, {'bridge_execute_complete', JObj});
                 _Else -> 'ok'
@@ -121,9 +123,9 @@ handle_originate_execute(JObj, Props) ->
 %% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec init([node() | kz_json:object()]) -> {'stop', 'normal'} |
-                                           {'ok', state()}.
-init([Node, JObj]) ->
+-spec init([node() | kz_json:object() | kz_term:api_pid()]) -> {'stop', 'normal'} |
+                                                               {'ok', state()}.
+init([Node, JObj, AMQPWorker]) ->
     _ = kz_util:put_callid(JObj),
     ServerId = kz_api:server_id(JObj),
     ControllerQ = kz_api:queue_id(JObj),
@@ -138,6 +140,7 @@ init([Node, JObj]) ->
                          ,originate_req=JObj
                          ,server_id=ServerId
                          ,controller_q = ControllerQ
+                         ,amqp_worker=AMQPWorker
                          }}
     end.
 
@@ -676,7 +679,7 @@ publish_error(Error, {_, UUID}, Request, ServerId) ->
     publish_error(Error, UUID, Request, ServerId);
 publish_error(Error, UUID, Request, ServerId) ->
     lager:debug("originate error: ~s", [Error]),
-    E = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Request)}
+    E = [{<<"Msg-ID">>, kz_api:msg_id(Request)}
         ,{<<"Call-ID">>, UUID}
         ,{<<"Request">>, Request}
         ,{<<"Error-Message">>, cleanup_error(Error)}
@@ -693,7 +696,7 @@ publish_originate_ready(CtrlQ, {_, UUID}, Request, Q, ServerId) ->
     publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId);
 publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
     lager:debug("originate command is ready, waiting for originate_execute"),
-    Props = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, Request, UUID)}
+    Props = [{<<"Msg-ID">>, kz_api:msg_id(Request, UUID)}
             ,{<<"Call-ID">>, UUID}
             ,{<<"Control-Queue">>, CtrlQ}
              | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
@@ -705,7 +708,9 @@ publish_originate_resp('undefined', _) -> 'ok';
 publish_originate_resp(ServerId, JObj) ->
     Resp = kz_json:set_values([{<<"Event-Category">>, <<"resource">>}
                               ,{<<"Event-Name">>, <<"originate_resp">>}
-                              ], JObj),
+                              ]
+                             ,JObj
+                             ),
     kapi_resource:publish_originate_resp(ServerId, Resp).
 
 -spec publish_originate_resp(kz_term:api_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
@@ -715,7 +720,9 @@ publish_originate_resp(ServerId, JObj, UUID) ->
                               ,{<<"Application-Response">>, <<"SUCCESS">>}
                               ,{<<"Event-Name">>, <<"originate_resp">>}
                               ,{<<"Call-ID">>, UUID}
-                              ], JObj),
+                              ]
+                             ,JObj
+                             ),
     kapi_resource:publish_originate_resp(ServerId, Resp).
 
 -spec publish_originate_started(kz_term:api_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
@@ -723,7 +730,7 @@ publish_originate_started('undefined', _, _, _) -> 'ok';
 publish_originate_started(ServerId, CallId, JObj, CtrlQ) ->
     Resp = kz_json:from_list(
              [{<<"Call-ID">>, CallId}
-             ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+             ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
              ,{<<"Control-Queue">>, CtrlQ}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
@@ -734,7 +741,7 @@ publish_originate_uuid('undefined', _, _, _) -> 'ok';
 publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue) ->
     Resp = props:filter_undefined(
              [{<<"Outbound-Call-ID">>, UUID}
-             ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+             ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
              ,{<<"Outbound-Call-Control-Queue">>, CtrlQueue}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
@@ -778,8 +785,9 @@ start_control_process(#state{originate_req=JObj
                             ,server_id=ServerId
                             ,fetch_id=FetchId
                             ,control_pid='undefined'
+                            ,amqp_worker=AMQPWorker
                             }=State) ->
-    case ecallmgr_call_sup:start_control_process(Node, Id, FetchId, ControllerQ, kz_json:new()) of
+    case ecallmgr_call_sup:start_control_process(Node, Id, FetchId, ControllerQ, kz_json:new(), AMQPWorker) of
         {'ok', CtrlPid} when is_pid(CtrlPid) ->
             _ = maybe_send_originate_uuid(UUID, CtrlPid, State),
             kz_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),
