@@ -71,10 +71,6 @@
         ,limits/2
         ,set_limits/2
         ]).
--export([activation_charges/1
-        ,activation_charges/2
-        ,set_activation_charges/2
-        ]).
 
 -include("kz_documents.hrl").
 
@@ -434,19 +430,3 @@ item(JObj, CategoryId, ItemId) ->
 -spec item(doc(), kz_term:ne_binary(), kz_term:ne_binary(), Default) -> kz_json:object() | Default.
 item(JObj, CategoryId, ItemId, Default) ->
     kz_json:get_json_value([?PLAN, CategoryId, ItemId], JObj, Default).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec activation_charges(doc()) -> kz_json:object().
-activation_charges(JObj) ->
-    activation_charges(JObj, kz_json:new()).
-
--spec activation_charges(doc(), Default) -> kz_term:object() | Default.
-activation_charges(JObj, Default) ->
-    kz_json:get_ne_json_value(<<"activation_charges">>, JObj, Default).
-
--spec set_activation_charges(doc(), kz_json:object()) -> doc().
-set_activation_charges(JObj, ActivationJObj) ->
-    kz_json:get_json_value(<<"activation_charges">>, ActivationJObj, JObj).

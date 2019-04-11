@@ -243,7 +243,15 @@ set_cumulative_discount_rate(#kz_service_item{}=Item, Rate) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec changes(item()) -> kz_term:api_ne_binaries().
-changes(#kz_service_item{changes=Changes}) -> Changes.
+changes(Item) -> changes(Item, 'undefined').
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec changes(item(), Default) -> kz_term:ne_binaries() | Default.
+changes(#kz_service_item{changes='undefined'}, Default) -> Default;
+changes(#kz_service_item{changes=Changes}, _Default) -> Changes.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -381,6 +389,7 @@ public_json(Item) ->
           ,{<<"maximum">>, undefine_empty(maximum(Item))}
           ,{<<"prorate">>, kzd_item_plan:prorate(item_plan(Item))}
           ,{<<"taxes">>, undefine_empty(taxes(Item))}
+          ,{<<"activation_charges">>, calculate_activation_charges(Item)}
           ,{<<"total">>, calculate_total(Item)}
           ,{<<"changes">>, undefine_empty(changes(Item))}
           ]
@@ -421,6 +430,22 @@ calculate_discount_total(Item) ->
 -spec calculate_total(item()) -> float().
 calculate_total(Item) ->
     (billable_quantity(Item) * billing_rate(Item)) - calculate_discount_total(Item).
+
+-spec calculate_activation_charges(item()) -> kz_term:api_float().
+calculate_activation_charges(Item) ->
+    Plan = item_plan(Item),
+    Key = [<<"difference">>, <<"billable">>],
+    Changes = kz_json:get_integer_value(Key, changes(Item, kz_json:new()), 0),
+    calculate_activation_charges(kz_json:get_float_value(<<"activation_charge">>, Plan, 0), Changes).
+
+-spec calculate_activation_charges(kz_term:api_float(), kz_term:integer()) -> kz_term:api_float().
+calculate_activation_charges(ActivationCharges, Changes)
+  when is_number(ActivationCharges)
+       andalso Changes > 0
+       andalso ActivationCharges > 0 ->
+    ActivationCharges * Changes;
+calculate_activation_charges(_, _) ->
+    'undefined'.
 
 %%------------------------------------------------------------------------------
 %% @doc

@@ -807,14 +807,11 @@ commit_updates(Account, Current, Proposed, AuditLog) ->
                    ],
     Services = fetch(AccountId, FetchOptions),
 
-    CommittedServices =
-        case should_commit_updates(Services) of
-            'true' -> Services;
-            'false' ->
-                commit_updates(Services, FetchOptions)
-        end,
-    _ = kz_services_activation_charges:commit(CommittedServices, Current, Proposed, AuditLog),
-    CommittedServices.
+    case should_commit_updates(Services) of
+        'true' -> Services;
+        'false' ->
+            commit_updates(Services, FetchOptions)
+    end.
 
 -spec should_commit_updates(services()) -> boolean().
 should_commit_updates(Services) ->
