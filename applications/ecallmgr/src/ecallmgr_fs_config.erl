@@ -165,13 +165,8 @@ process_config_req(Node, FetchId, <<"acl.conf">>, _Props) ->
     ConfigXML = generate_acl_xml(SysconfResp),
     lager:debug_unsafe("sending acl XML to ~s: ~s", [Node, ConfigXML]),
     freeswitch:fetch_reply(Node, FetchId, 'configuration', ConfigXML);
-process_config_req(Node, Id, <<"sofia.conf">>, _Props) ->
-    'true' = kapps_config:is_true(?APP_NAME, <<"sofia_conf">>),
-    Profiles = kapps_config:get_json(?APP_NAME, <<"fs_profiles">>, kz_json:new()),
-    DefaultProfiles = default_sip_profiles(Node),
-    {'ok', ConfigXml} = ecallmgr_fs_xml:sip_profiles_xml(kz_json:merge(DefaultProfiles, Profiles)),
-    lager:debug("sending sofia XML to ~s: ~s", [Node, ConfigXml]),
-    freeswitch:fetch_reply(Node, Id, 'configuration', erlang:iolist_to_binary(ConfigXml));
+process_config_req(Node, FetchId, <<"sofia.conf">>, _Props) ->
+    process_sofia_req(Node, FetchId, kapps_config:is_true(?APP_NAME, <<"sofia_conf">>));
 process_config_req(Node, Id, <<"conference.conf">>, Data) ->
     fetch_conference_config(Node, Id, kzd_freeswitch:event_name(Data), Data);
 process_config_req(Node, Id, <<"kazoo.conf">>, Data) ->
@@ -182,6 +177,17 @@ process_config_req(Node, Id, Conf, Data) ->
         [] -> config_req_not_handled(Node, Id, Conf);
         _  -> 'ok'
     end.
+
+-spec process_sofia_req(atom(), kz_term:ne_binary(), boolean()) -> fs_sendmsg_ret().
+process_sofia_req(Node, FetchId, 'false') ->
+    lager:debug("not configuring sofia"),
+    config_req_not_handled(Node, FetchId, <<"sofia.conf">>);
+process_sofia_req(Node, FetchId, 'true') ->
+    Profiles = kapps_config:get_json(?APP_NAME, <<"fs_profiles">>, kz_json:new()),
+    DefaultProfiles = default_sip_profiles(Node),
+    {'ok', ConfigXml} = ecallmgr_fs_xml:sip_profiles_xml(kz_json:merge(DefaultProfiles, Profiles)),
+    lager:debug("sending sofia XML to ~s: ~s", [Node, ConfigXml]),
+    freeswitch:fetch_reply(Node, FetchId, 'configuration', erlang:iolist_to_binary(ConfigXml)).
 
 -spec config_req_not_handled(atom(), kz_term:ne_binary(), kz_term:ne_binary()) -> fs_sendmsg_ret().
 config_req_not_handled(Node, FetchId, Conf) ->
