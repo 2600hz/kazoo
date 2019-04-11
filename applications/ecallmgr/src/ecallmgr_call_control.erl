@@ -416,6 +416,8 @@ publish_usurp(CallId, FetchId, Node, AMQPWorker) ->
     ecallmgr_usurp_monitor:register('usurp_control', CallId, FetchId).
 
 -spec publish_route_win(state()) -> 'ok'.
+publish_route_win(#state{controller_q='undefined'}) ->
+    lager:debug("no controller queue, no publishing route_win");
 publish_route_win(#state{call_id=CallId
                         ,controller_q=ControllerQ
                         ,amqp_worker=AMQPWorker
