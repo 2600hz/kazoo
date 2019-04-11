@@ -106,13 +106,13 @@
             "description": "Should this item be prorated",
             "properties": {
                 "additions": {
-                    "description": "Should this item be prorated during additions",
                     "default": true,
+                    "description": "Should this item be prorated during additions",
                     "type": "boolean"
                 },
                 "removals": {
-                    "description": "Should this item be prorated during removals",
                     "default": false,
+                    "description": "Should this item be prorated during removals",
                     "type": "boolean"
                 }
             },

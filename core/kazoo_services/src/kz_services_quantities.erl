@@ -80,11 +80,11 @@ fetch_port(AccountId, View) ->
             kz_json:set_values(Quantities, kz_json:new());
         {'error', _R} ->
             kz_json:new()
-     end.
+    end.
 
 -spec port_key(kz_term:ne_binaries()) -> kz_term:ne_binaries().
 port_key([_AccountId, State]) ->
-        [<<"port_request">>, State].
+    [<<"port_request">>, State].
 
 -spec fetch_account_cascade(kz_term:ne_binary()) -> kz_json:object().
 fetch_account_cascade(AccountId) ->
