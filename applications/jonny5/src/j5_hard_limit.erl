@@ -50,8 +50,8 @@ resource_consumption_at_limit(Limits, Request) ->
     Increment = case  AccountBilling =/= 'undefined' 
            andalso AccountBilling =/= <<"limits_disabled">> 
     of
-        'true' -> 0;
-       'false' -> 0
+        'true' -> 1;
+        'false' -> 0
     end,
     Limit = j5_limits:resource_consuming_calls(Limits),
     Used  = j5_channels:resource_consuming(j5_limits:account_id(Limits)),
