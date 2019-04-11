@@ -376,9 +376,10 @@ setters(Item, Routines) ->
 %%------------------------------------------------------------------------------
 -spec public_json(item()) -> kz_json:object().
 public_json(Item) ->
+    ActivationCharge = calculate_activation_charges(Item),
     Props =
         props:filter_undefined(
-          [{<<"activation_charges">>, calculate_activation_charges(Item)}
+          [{<<"activation_charges">>, ActivationCharge}
           ,{<<"category">>, category_name(Item)}
           ,{<<"item">>, masquerade_as(Item)}
           ,{<<"name">>, display_name(Item)}
@@ -390,7 +391,7 @@ public_json(Item) ->
           ,{<<"maximum">>, undefine_empty(maximum(Item))}
           ,{<<"prorate">>, kzd_item_plan:prorate(item_plan(Item))}
           ,{<<"taxes">>, undefine_empty(taxes(Item))}
-          ,{<<"total">>, calculate_total(Item)}
+          ,{<<"total">>, calculate_total(Item) + ActivationCharge}
           ,{<<"changes">>, undefine_empty(changes(Item))}
           ]
          ),
