@@ -54,7 +54,7 @@
 -export([other_legs/1
         ,update_node/2
         ,control_procs/1
-        ,publish_usurp/3
+        ,publish_usurp/4
         ]).
 -export([fs_nodeup/2]).
 -export([fs_nodedown/2]).
@@ -268,7 +268,7 @@ handle_cast(_, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'amqp_msg', JObj}, State) ->
-    handle_event(JObj, State),
+    _ = handle_event(JObj, State),
     {'noreply', State};
 handle_info({'event', [CallId | Props]}, #state{call_id=CallId}=State) ->
     handle_event_info(CallId, Props, State);
@@ -339,6 +339,7 @@ handle_info(_Msg, State) ->
 handle_event(JObj, _State) ->
     handle_event_by_type(JObj, kz_util:get_event_type(JObj)).
 
+-spec handle_event_by_type(kz_json:object(), {kz_term:ne_binary(), kz_term:ne_binary()}) -> 'ok'.
 handle_event_by_type(JObj, {<<"call">>, <<"command">>}) -> handle_call_command(JObj);
 handle_event_by_type(JObj, {<<"conference">>, <<"command">>}) -> handle_conference_command(JObj);
 handle_event_by_type(_JObj, {<<"error">>, _EvtName}) -> lager:debug("ignoring error event for ~s", [_EvtName]);
@@ -397,11 +398,12 @@ call_control_ready(State) ->
 publish_usurp(#state{call_id=CallId
                     ,fetch_id=FetchId
                     ,node=Node
+                    ,amqp_worker=AMQPWorker
                     }) ->
-    publish_usurp(CallId, FetchId, Node).
+    publish_usurp(CallId, FetchId, Node, AMQPWorker).
 
--spec publish_usurp(kz_term:ne_binary(), kz_term:ne_binary(), atom()) -> 'ok'.
-publish_usurp(CallId, FetchId, Node) ->
+-spec publish_usurp(kz_term:ne_binary(), kz_term:ne_binary(), atom(), pid()) -> 'ok'.
+publish_usurp(CallId, FetchId, Node, AMQPWorker) ->
     Usurp = [{<<"Call-ID">>, CallId}
             ,{<<"Fetch-ID">>, FetchId}
             ,{<<"Reason">>, <<"Route-Win">>}
@@ -409,7 +411,7 @@ publish_usurp(CallId, FetchId, Node) ->
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     lager:debug("sending control usurp for fetch-id ~s(~s)", [FetchId, CallId]),
-    kapi_call:publish_usurp_control(CallId, Usurp),
+    kz_amqp_worker:cast(Usurp, fun(U) -> kapi_call:publish_usurp_control(CallId, U) end, AMQPWorker),
     ecallmgr_usurp_monitor:register('usurp_control', CallId, FetchId).
 
 -spec publish_route_win(state()) -> 'ok'.
@@ -1328,6 +1330,10 @@ handle_event_info(CallId, Props, #state{call_id=CallId
 
 -spec handle_other_event_info(kz_term:api_binary(), kzd_freeswitch:data(), state()) -> {'noreply', state()}.
 handle_other_event_info(CallId, Props, State) ->
+    lager:debug("event ~s ~s", [kzd_freeswitch:application_name(Props)
+                               ,kzd_freeswitch:event_name(Props)
+                               ]
+               ),
     case props:get_first_defined([<<"Event-Subclass">>
                                  ,<<"Event-Name">>
                                  ]
