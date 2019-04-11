@@ -332,6 +332,7 @@ init([Call]) ->
 
     AMQPWorker = consumer_pid(Call),
     gen_listener:add_binding(AMQPWorker, 'call', [{'callid', CallId}]),
+    _ = kz_amqp_channel:consumer_pid(AMQPWorker),
 
     gen_server:cast(self(), 'initialize'),
 
@@ -550,11 +551,9 @@ handle_cast('initialize', #state{call=Call
                                  })
     };
 handle_cast({'amqp_send', API, PubFun}
-           ,#state{amqp_worker=AMQPWorker
-                  ,amqp_queue=AMQPQueue
-                  }=State
+           ,#state{amqp_queue=AMQPQueue}=State
            ) ->
-    amqp_send_message(API, PubFun, AMQPWorker, AMQPQueue),
+    amqp_send_message(API, PubFun, AMQPQueue),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -842,10 +841,10 @@ cf_module_task(CFModule, Data, Call, AMQPWorker) ->
 %% a hangup command without relying on the (now terminated) cf_exe.
 %% @end
 %%------------------------------------------------------------------------------
--spec amqp_send_message(kz_term:api_terms(), kz_amqp_worker:publish_fun(), pid(), kz_term:ne_binary()) -> 'ok'.
-amqp_send_message(API, PubFun, AMQPWorker, AMQPQueue) ->
+-spec amqp_send_message(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_term:ne_binary()) -> 'ok'.
+amqp_send_message(API, PubFun, AMQPQueue) ->
     Req = add_server_id(AMQPQueue, API),
-    kz_amqp_worker:cast(Req, PubFun, AMQPWorker).
+    PubFun(Req).
 
 -spec amqp_call_message(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), pid(), kz_term:ne_binary()) ->
                                kz_amqp_worker:request_return().
