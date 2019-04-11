@@ -79,7 +79,7 @@ fetch_port(AccountId, View) ->
                          ],
             kz_json:set_values(Quantities, kz_json:new());
         {'error', _R} ->
-            []
+            kz_json:new()
      end.
 
 -spec port_key(kz_term:ne_binaries()) -> kz_term:ne_binaries().
@@ -576,12 +576,22 @@ calculate_conference_updates(JObj, Updates) ->
 
 -spec calculate_port_request_updates(kz_json:object(), kz_term:proplist()) -> kz_term:proplist().
 calculate_port_request_updates(JObj, Updates) ->
-    case kz_doc:type(JObj) =:= <<"port_request">> of
+    case kz_doc:type(JObj) =:= <<"port_request">>
+         andalso is_first_transition_to_state(JObj)
+    of
         'false' -> Updates;
         'true' ->
             Key = [<<"port_request">>, kzd_port_requests:pvt_port_state(JObj, <<"unconfirmed">>)],
             [{Key, 1} | Updates]
     end.
+
+-spec is_first_transition_to_state(kz_json:object()) -> boolean().
+is_first_transition_to_state(JObj) ->
+    StateTransitions =
+        kzd_port_requests:get_transition(JObj
+                                        ,kzd_port_requests:pvt_port_state(JObj)
+                                        ),
+    length(StateTransitions) =:= 1.
 
 %%------------------------------------------------------------------------------
 %% @doc
