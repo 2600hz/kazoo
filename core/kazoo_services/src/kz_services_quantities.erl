@@ -56,11 +56,11 @@ fetch_cascade(Services) ->
 
 -spec fetch_account_port(kz_term:ne_binary()) -> kz_json:object().
 fetch_account_port(AccountId) ->
-    fetch_port(AccountId, <<"services/account_quantities">>).
+    fetch_port(AccountId, <<"port_services/account_quantities">>).
 
 -spec fetch_account_port_cascade(kz_term:ne_binary()) -> kz_json:object().
 fetch_account_port_cascade(AccountId) ->
-    fetch_port(AccountId, <<"services/cascade_quantities">>).
+    fetch_port(AccountId, <<"port_services/cascade_quantities">>).
 
 -spec fetch_port(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 fetch_port(AccountId, View) ->
@@ -576,13 +576,20 @@ calculate_conference_updates(JObj, Updates) ->
 
 -spec calculate_port_request_updates(kz_json:object(), kz_term:proplist()) -> kz_term:proplist().
 calculate_port_request_updates(JObj, Updates) ->
-    case kz_doc:type(JObj) =:= <<"port_request">>
-         andalso is_first_transition_to_state(JObj)
-    of
+    case kz_doc:type(JObj) =:= <<"port_request">> of
         'false' -> Updates;
         'true' ->
-            Key = [<<"port_request">>, kzd_port_requests:pvt_port_state(JObj, <<"unconfirmed">>)],
-            [{Key, 1} | Updates]
+            Key = get_port_request_key(JObj),
+            Numbers = kzd_port_requests:numbers(JObj, kz_json:new()),
+            [{Key, length(kz_json:get_keys(Numbers))} | Updates]
+    end.
+
+-spec get_port_request_key(kz_json:object()) -> kz_term:ne_binaries().
+get_port_request_key(JObj) ->
+    State = kzd_port_requests:pvt_port_state(JObj, <<"unconfirmed">>),
+    case is_first_transition_to_state(JObj) of
+        'true' -> [<<"port_request">>, <<"first_", State/binary>>];
+        'false' -> [<<"port_request">>, State]
     end.
 
 -spec is_first_transition_to_state(kz_json:object()) -> boolean().
