@@ -192,7 +192,7 @@ init([Node, CallId, FetchId, ControllerQ, CCVs, AMQPWorker]) ->
     {'ok', #state{node=Node
                  ,call_id=CallId
                  ,command_q=queue:new()
-                 ,start_time=os:timestamp()
+                 ,start_time=kz_time:now()
                  ,fetch_id=FetchId
                  ,controller_q=ControllerQ
                  ,initial_ccvs=CCVs
@@ -364,11 +364,12 @@ handle_conference_command(JObj) ->
 terminate(_Reason, #state{start_time=StartTime
                          ,sanity_check_tref=SCTRef
                          ,keep_alive_ref=KATRef
+                         ,amqp_worker=AMQPWorker
                          }) ->
     catch (erlang:cancel_timer(SCTRef)),
     catch (erlang:cancel_timer(KATRef)),
-    lager:debug("control queue was up for ~p microseconds", [timer:now_diff(os:timestamp(), StartTime)]),
-    'ok'.
+    kz_amqp_worker:checkin_worker(AMQPWorker),
+    lager:debug("control queue was up for ~p microseconds", [kz_time:elapsed_us(StartTime)]).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.
