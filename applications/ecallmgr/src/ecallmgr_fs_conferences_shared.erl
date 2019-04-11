@@ -468,7 +468,7 @@ start_call_handlers(Node
     CCVs = kz_json:new(),
     FetchId = kz_api:msg_id(JObj),
 
-    ecallmgr_call_control:publish_usurp(LoopbackB, FetchId, node()),
+    ecallmgr_call_control:publish_usurp(LoopbackB, FetchId, node(), AMQPWorker),
     maybe_update_ecallmgr_node([LoopbackB, CallId]),
 
     _ = kz_util:spawn(fun ecallmgr_call_sup:start_event_process/2, [Node, CallId]),

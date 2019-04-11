@@ -50,7 +50,7 @@ do_search_for_route(Section, Node, FetchId, CallId, Props, AMQPWorker, AuthzWork
             lager:info("did not receive route response for request ~s: ~p", [FetchId, _R]);
         {'ok', JObj} ->
             'true' = kapi_route:resp_v(JObj),
-            maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AMQPWorker, AuthzWorker)
+            maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AuthzWorker)
     end.
 
 -spec spawn_authorize_call_fun(atom(), kz_term:ne_binary(), kzd_freeswitch:data()) -> kz_term:pid_ref().
@@ -65,22 +65,22 @@ authorize_call_fun(Parent, Ref, Node, CallId, Props) ->
     kz_util:put_callid(CallId),
     Parent ! {'authorize_reply', Ref, ecallmgr_fs_authz:authorize(Props, CallId, Node)}.
 
--spec maybe_wait_for_authz(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist(), pid(), kz_term:api_pid_ref()) -> search_ret().
-maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AMQPWorker, 'undefined') ->
+-spec maybe_wait_for_authz(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist(), kz_term:api_pid_ref()) -> search_ret().
+maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, 'undefined') ->
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     J = kz_json:set_value(<<"Custom-Channel-Vars">>
                          ,kz_json:set_value(<<"Channel-Authorized">>, <<"true">>, CCVs)
                          ,JObj
                          ),
     reply_affirmative(Section, Node, FetchId, CallId, J, Props);
-maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AMQPWorker, AuthzWorker) ->
+maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AuthzWorker) ->
     case kz_json:get_value(<<"Method">>, JObj) =/= <<"error">> of
-        'true' -> wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AMQPWorker, AuthzWorker);
+        'true' -> wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AuthzWorker);
         'false' -> reply_affirmative(Section, Node, FetchId, CallId, JObj, Props)
     end.
 
--spec wait_for_authz(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist(), pid(), kz_term:pid_ref()) -> search_ret().
-wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AMQPWorker, {Pid, Ref}) ->
+-spec wait_for_authz(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist(), kz_term:pid_ref()) -> search_ret().
+wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, {Pid, Ref}) ->
     lager:info("waiting for authz reply from worker ~p", [Pid]),
     receive
         {'authorize_reply', Ref, 'false'} -> reply_forbidden(Section, Node, FetchId);
