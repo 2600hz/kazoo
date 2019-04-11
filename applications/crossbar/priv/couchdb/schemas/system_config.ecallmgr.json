@@ -63,6 +63,30 @@
             "description": "ecallmgr balance crawler interaccount delay in milliseconds",
             "type": "integer"
         },
+        "call_control": {
+            "properties": {
+                "pool_overflow": {
+                    "default": 100,
+                    "description": "ecallmgr call_control pool_overflow",
+                    "type": "integer"
+                },
+                "pool_server_confirms": {
+                    "default": false,
+                    "description": "ecallmgr call_control pool_server_confirms",
+                    "type": "boolean"
+                },
+                "pool_size": {
+                    "default": 150,
+                    "description": "ecallmgr call_control pool_size",
+                    "type": "integer"
+                },
+                "pool_threshold": {
+                    "default": 5,
+                    "description": "ecallmgr call_control pool_threshold",
+                    "type": "integer"
+                }
+            }
+        },
         "call_routing_bindings": {
             "default": [
                 "context_2"
