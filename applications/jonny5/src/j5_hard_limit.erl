@@ -48,7 +48,7 @@ calls_at_limit(Limits) ->
 resource_consumption_at_limit(Limits) ->
     Limit = j5_limits:resource_consuming_calls(Limits),
     Used  = j5_channels:resource_consuming(j5_limits:account_id(Limits)),
-    should_deny(Limit, Used).
+    should_deny(Limit, Used+1).
 
 %%------------------------------------------------------------------------------
 %% @doc
