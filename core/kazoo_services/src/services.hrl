@@ -75,6 +75,16 @@
                                ,<<"port">>
                                ]
                               }
+                             ,{<<"port_request">>
+                              ,[<<"canceled">>
+                               ,<<"completed">>
+                               ,<<"pending">>
+                               ,<<"rejected">>
+                               ,<<"scheduled">>
+                               ,<<"submitted">>
+                               ,<<"unconfirmed">>
+                               ]
+                              }
                              ,{<<"qubicle">>
                               ,[<<"queues">>
                                ,<<"recipients">>
