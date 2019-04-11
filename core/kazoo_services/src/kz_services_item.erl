@@ -436,7 +436,10 @@ calculate_activation_charges(Item) ->
     Plan = item_plan(Item),
     Key = [<<"difference">>, <<"billable">>],
     Changes = kz_json:get_integer_value(Key, changes(Item, kz_json:new()), 0),
-    kz_json:get_float_value(<<"activation_charge">>, Plan, 0) * Changes.
+    case Changes > 0 of
+        'true' -> kz_json:get_float_value(<<"activation_charge">>, Plan, 0) * Changes;
+        'false' -> 0.0
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
