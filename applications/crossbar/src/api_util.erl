@@ -371,10 +371,10 @@ extract_file(Context, ContentType, Req0) ->
                                   {cb_context:context(), cowboy_req:req()} |
                                   stop_return().
 handle_file_contents(Context, ContentType, Req, FileContents) ->
-
     MultiPartHeaders = cb_context:fetch(Context, <<"multipart_headers">>, #{}),
     %% http://tools.ietf.org/html/rfc2045#page-17
     TransferKey = <<"content-transfer-encoding">>,
+
     case maps:get(TransferKey, MultiPartHeaders, cowboy_req:header(TransferKey, Req)) of
         <<"base64">> ->
             lager:debug("base64 encoded request coming in"),

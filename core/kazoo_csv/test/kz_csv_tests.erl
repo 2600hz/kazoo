@@ -270,6 +270,7 @@ files_test_() ->
 
 gen_file_tests(File, Tests) ->
     {'ok', CSV} = file:read_file(File),
+    ?debugFmt("~s CSV: ~p~n", [File, CSV]),
     [{File, ?_assert(0 < kz_csv:count_rows(CSV))} | Tests].
 
 variable_json_test() ->

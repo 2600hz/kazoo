@@ -59,7 +59,7 @@
 -spec count_rows(csv()) -> non_neg_integer().
 count_rows(<<>>) -> 0;
 count_rows(CSV) when is_binary(CSV) ->
-    try fold(CSV, fun throw_bad/2, {-1,0}) of
+    try fold(CSV, fun throw_bad/2, {-1, 0}) of
         {_, TotalRows} -> TotalRows
     catch
         'throw':{'error', 'bad_header_row'} -> 0;
@@ -67,7 +67,7 @@ count_rows(CSV) when is_binary(CSV) ->
     end.
 
 -spec throw_bad(row(), {integer(), non_neg_integer()}) -> {integer(), non_neg_integer()}.
-throw_bad(Header, {-1,0}) ->
+throw_bad(Header, {-1, 0}) ->
     case lists:all(fun kz_term:is_ne_binary/1, Header) of
         %% Strip header line from total rows count
         'true' ->
@@ -76,11 +76,11 @@ throw_bad(Header, {-1,0}) ->
             lager:error("bad header row: ~p", [Header]),
             throw({'error', 'bad_header_row'})
     end;
-throw_bad(Row, {MaxRow,RowsCounted}) ->
+throw_bad(Row, {MaxRow, RowsCounted}) ->
     case length(Row) of
         MaxRow -> {MaxRow, RowsCounted + 1};
-        _ ->
-            lager:error("bad row length ~p instead of ~p in ~p", [length(Row), MaxRow, Row]),
+        _Len ->
+            lager:error("bad row length ~p instead of ~p in ~p", [_Len, MaxRow, Row]),
             throw({'error', 'bad_csv_row'})
     end.
 
@@ -91,7 +91,8 @@ throw_bad(Row, {MaxRow,RowsCounted}) ->
 -type folder(T) :: fun((row(), T) -> T).
 -spec fold(csv(), folder(T), T) -> T.
 fold(CSV, Fun, Acc)
-  when is_binary(CSV), is_function(Fun, 2) ->
+  when is_binary(CSV),
+       is_function(Fun, 2) ->
     case take_row(CSV) of
         'eof' -> Acc;
         {Row, CSVRest} ->
@@ -161,20 +162,20 @@ associator(CSVHeader, TaskFields, Verifier) ->
                         end
                 end,
             case lists:foldl(F, #{}, lists:seq(1, Max)) of
-                MappedRow when is_map(MappedRow) -> {ok, MappedRow};
-                Field -> {error, Field}
+                MappedRow when is_map(MappedRow) -> {'ok', MappedRow};
+                Field -> {'error', Field}
             end
     end.
 
 verify(Verifier, Header, Row, I, Map) ->
-    Cell = case maps:get(I, Map, undefined) of
-               undefined -> ?ZILCH;
+    Cell = case maps:get(I, Map, 'undefined') of
+               'undefined' -> ?ZILCH;
                J -> lists:nth(J, Row)
            end,
     Field = lists:nth(I, Header),
     case Verifier(Field, Cell) of
-        false -> Field;
-        true -> {Field, Cell}
+        'false' -> Field;
+        'true' -> {Field, Cell}
     end.
 
 %%------------------------------------------------------------------------------
@@ -324,51 +325,72 @@ from_jobjs(JObjs, Options) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec take_line(csv()) -> [csv(),...] | eof.
+-spec take_line(csv()) -> [csv(),...] | 'eof'.
 take_line(CSV) ->
     case binary:split(CSV, [<<"\r\n">>, <<"\n\r">>, <<"\r\r">>, <<$\n>>, <<$\r>>]) of
-        [<<>>|_] -> eof;
+        [<<>>|_] -> 'eof';
         Split -> Split
     end.
 
+-define(ASCII_SINGLE_QUOTE, 39).
+-define(ASCII_DOUBLE_QUOTE, 34).
+-define(ASCII_COMMA, 44).
+
 -spec split_row(kz_term:ne_binary()) -> row().
 split_row(Line) ->
-    Splitted = binary:split(Line, <<$,>>, [global]),
-    {Acc,io,<<>>} = lists:foldl(fun consume/2, {[],io,<<>>}, Splitted),
-    lists:reverse(Acc).
+    case lists:foldl(fun consume_char/2
+                    ,{[], ?ASCII_COMMA, []}
+                    ,binary_to_list(Line)
+                    )
+    of
+        {Acc, ?ASCII_COMMA, []} -> lists:reverse([?ZILCH | Acc]);
+        {Acc, ?ASCII_COMMA, CellAcc} -> lists:reverse([from_cell_acc(CellAcc) | Acc]);
 
--type acc() :: {row(), io | 34 | 39, binary()}.  %% $" | $'
--spec consume(binary(), acc()) -> acc().
-consume(<<>>, {Acc,io,<<>>}) ->
-    {[?ZILCH|Acc], io, <<>>};
-consume(<<Sep:8,Bin/binary>>, {Acc,io,<<>>}) when Sep =:= $";
-                                                  Sep =:= $' ->
-    case binary:split(Bin, <<Sep:8>>) of
-        [BinRest, <<>>] ->
-            {[BinRest|Acc], io, <<>>};
-        [LHS, <<Sep:8,RHS0/binary>>] ->  %% For "escaped" quotes
-            AllButLast = byte_size(RHS0) - 1,
-            <<RHS1:AllButLast/binary, Sep:8>> = RHS0,
-            RHS = binary:replace(RHS1, <<Sep:8,Sep:8>>, <<Sep:8>>),
-            Cell = <<LHS/binary, Sep:8, RHS/binary>>,
-            {[Cell|Acc], io, <<>>};
-        _ ->
-            {Acc, Sep, Bin}
-    end;
-consume(Bin, {Acc,io,<<>>}) ->
-    {[Bin|Acc], io, <<>>};
-consume(Bin, {Acc,Sep,AccBin}) ->
-    case binary:split(Bin, <<Sep:8>>) of
-        [<<>>|_] ->
-            {[AccBin|Acc], io, <<>>};
-        [LastPart, <<>>] ->
-            Cell = <<AccBin/binary, $,, LastPart/binary>>,
-            {[Cell|Acc], io, <<>>};
-        [Part] ->
-            NewAccBin = <<AccBin/binary, $,, Part/binary>>,
-            {Acc, Sep, NewAccBin}
+        {Acc, ?ASCII_DOUBLE_QUOTE, [?ASCII_DOUBLE_QUOTE]} ->
+            lists:reverse([<<>> | Acc]);
+        {Acc, ?ASCII_SINGLE_QUOTE, [?ASCII_SINGLE_QUOTE]} ->
+            lists:reverse([<<>> | Acc]);
+        {Acc, ?ASCII_DOUBLE_QUOTE, [?ASCII_DOUBLE_QUOTE | CellAcc]} ->
+            lists:reverse([from_cell_acc(CellAcc) | Acc]);
+        {Acc, ?ASCII_SINGLE_QUOTE, [?ASCII_SINGLE_QUOTE | CellAcc]} ->
+            lists:reverse([from_cell_acc(CellAcc) | Acc]);
+        {Acc, ?ASCII_DOUBLE_QUOTE, CellAcc} ->
+            lists:reverse([from_cell_acc(CellAcc) | Acc]);
+        {Acc, ?ASCII_SINGLE_QUOTE, CellAcc} ->
+            lists:reverse([from_cell_acc(CellAcc) | Acc])
     end.
 
+from_cell_acc(CellAcc) ->
+    iolist_to_binary(lists:reverse(CellAcc)).
+
+consume_char(?ASCII_DOUBLE_QUOTE, {Acc, ?ASCII_COMMA, []}) ->
+    %% Cell is starting with a quote
+    {Acc, ?ASCII_DOUBLE_QUOTE, []};
+consume_char(?ASCII_COMMA, {Acc, ?ASCII_DOUBLE_QUOTE, [?ASCII_DOUBLE_QUOTE | CellAcc]}) ->
+    %% double-quoted cell is finished
+    {[from_cell_acc(CellAcc) | Acc], ?ASCII_COMMA, []};
+
+consume_char(?ASCII_SINGLE_QUOTE, {Acc, ?ASCII_COMMA, []}) ->
+    %% Cell is starting with a quote
+    {Acc, ?ASCII_SINGLE_QUOTE, []};
+consume_char(?ASCII_COMMA, {Acc, ?ASCII_SINGLE_QUOTE, [?ASCII_SINGLE_QUOTE | CellAcc]}) ->
+    %% single-quoted cell is finished
+    {[from_cell_acc(CellAcc) | Acc], ?ASCII_COMMA, []};
+
+consume_char(?ASCII_COMMA, {Acc, ?ASCII_COMMA, []}) ->
+    %% empty cell collected
+    {[?ZILCH | Acc], ?ASCII_COMMA, []};
+consume_char(?ASCII_COMMA, {Acc, ?ASCII_COMMA, CellAcc}) ->
+    %% new cell starting
+    {[from_cell_acc(CellAcc) | Acc], ?ASCII_COMMA, []};
+consume_char(Char, {Acc, ?ASCII_COMMA, CellAcc}) ->
+    {Acc, ?ASCII_COMMA, [Char | CellAcc]};
+
+consume_char(Quoted, {Acc, Quoted, [Quoted | _]=CellAcc}) ->
+    %% If we see ''foo'' - normalize to 'foo'
+    {Acc, Quoted, CellAcc};
+consume_char(Char, {Acc, Quoted, CellAcc}) ->
+    {Acc, Quoted, [Char | CellAcc]}.
 
 -spec find_position(kz_term:ne_binary(), kz_term:ne_binaries()) -> pos_integer().
 find_position(Item, Items) ->

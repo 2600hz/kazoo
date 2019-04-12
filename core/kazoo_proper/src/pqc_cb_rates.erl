@@ -12,6 +12,7 @@
         ]).
 
 -export([upload_rate/2, upload_csv/2
+        ,upload_rates/2
         ,rate_did/3
         ,delete_rate/2
         ,get_rate/2
@@ -44,27 +45,45 @@
 -spec rate_doc(kz_term:ne_binary() | proper_types:type(), number() | proper_types:type()) ->
                       kzd_rates:doc().
 rate_doc(RatedeckId, Cost) ->
-    kzd_rates:from_map(#{<<"prefix">> => <<"1222">>
+    kzd_rates:from_map(#{<<"prefix">> => 1222
                         ,<<"rate_cost">> => Cost
                         ,<<"ratedeck_id">> => RatedeckId
                         ,<<"direction">> => <<"inbound">>
                         }
                       ).
 
+rate_doc_with_route(RatedeckId, Cost) ->
+    kzd_rates:from_map(#{<<"prefix">> => 1333
+                        ,<<"rate_cost">> => Cost
+                        ,<<"ratedeck_id">> => RatedeckId
+                        ,<<"direction">> => <<"inbound">>
+                        ,<<"routes">> => <<"^\\+?1333.+\$">>
+                        }
+                      ).
+
+rate_doc_with_routes(RatedeckId, Cost) ->
+    kzd_rates:from_map(#{<<"prefix">> => 1444
+                        ,<<"rate_cost">> => Cost
+                        ,<<"ratedeck_id">> => RatedeckId
+                        ,<<"direction">> => <<"inbound">>
+                        ,<<"routes">> => kz_json:encode([<<"^\\+?1444.+\$">>]) % json encoded array for upload
+                        }
+                      ).
+
 -spec upload_rate(pqc_cb_api:state(), kzd_rates:doc()) -> {'ok', kz_term:api_ne_binary()}.
 upload_rate(API, RateDoc) ->
-    ?INFO("uploading rate ~p", [RateDoc]),
-    CSV = kz_csv:from_jobjs([RateDoc]),
-    upload_csv(API, CSV, kzd_rates:ratedeck_id(RateDoc)).
+    upload_rates(API, [RateDoc]).
+
+-spec upload_rates(pqc_cb_api:state(), [kzd_rates:doc()]) -> {'ok', kz_term:api_ne_binary()}.
+upload_rates(API, RateDocs) when is_list(RateDocs) ->
+    ?INFO("uploading rates ~p", [RateDocs]),
+    CSV = kz_csv:from_jobjs(RateDocs),
+
+    upload_csv(API, CSV).
 
 -spec upload_csv(pqc_cb_api:state(), iodata()) ->
                         {'ok', kz_term:api_ne_binary()}.
 upload_csv(API, CSV) ->
-    upload_csv(API, CSV, 'undefined').
-
--spec upload_csv(pqc_cb_api:state(), iodata(), kz_term:api_ne_binary()) ->
-                        {'ok', kz_term:api_ne_binary()}.
-upload_csv(API, CSV, _RatedeckId) ->
     CreateResp = pqc_cb_tasks:create(API, "category=rates&action=import", CSV),
     TaskId = kz_json:get_ne_binary_value([<<"data">>, <<"_read_only">>, <<"id">>]
                                         ,kz_json:decode(CreateResp)
@@ -334,14 +353,13 @@ seq() ->
                 ),
     ?INFO("rate cost from doc: ~p", [RateCost]),
 
-    {'ok', TaskId} = ?MODULE:upload_rate(API, RateDoc),
+    RateDocWithRoute = rate_doc_with_route(<<"custom">>, 2.0),
+    RateDocWithRoutes = rate_doc_with_routes(<<"custom">>, 3.0),
+
+    {'ok', TaskId} = ?MODULE:upload_rates(API, [RateDoc, RateDocWithRoute, RateDocWithRoutes]),
     ?INFO("uploaded task: ~s~n", [TaskId]),
 
-    GetResp = ?MODULE:get_rate(API, RateDoc),
-    GetJObj = kz_json:decode(GetResp),
-    RateJObj = kz_json:get_json_value(<<"data">>, GetJObj),
-    ?INFO("get rate: ~p~n", [RateJObj]),
-    'true' = kz_doc:id(RateDoc) =:= kz_doc:id(RateJObj),
+    'true' = lists:all(fun(D) -> validate_rate_upload(D, API) end, [RateDoc, RateDocWithRoute, RateDocWithRoutes]),
 
     RateCost = ?MODULE:rate_did(API, kzd_rates:ratedeck_id(RateDoc), hd(?PHONE_NUMBERS)),
     ?INFO("successfully rated ~p using global ratedeck", [hd(?PHONE_NUMBERS)]),
@@ -386,6 +404,29 @@ seq() ->
     ?INFO("COMPLETED SUCCESSFULLY!"),
     _ = cleanup(API),
     io:format("done: ~p~n", [API]).
+
+validate_rate_upload(RateDoc, API) ->
+    GetResp = ?MODULE:get_rate(API, RateDoc),
+    GetJObj = kz_json:decode(GetResp),
+    RateJObj = kz_json:get_json_value(<<"data">>, GetJObj),
+    kz_doc:id(RateDoc) =:= kz_doc:id(RateJObj)
+        andalso are_equal(RateDoc, RateJObj).
+
+are_equal(RateDoc, RateJObj) ->
+    lists:all(fun(<<"routes">>) ->
+                      case kz_json:get_value(<<"routes">>, RateDoc) of
+                          'undefined' ->
+                              kzd_rates:default_routes(RateDoc) =:= kzd_rates:routes(RateJObj);
+                          <<"[", _/binary>>=JSON ->
+                              kz_json:decode(JSON) =:= kzd_rates:routes(RateJObj);
+                          <<Route/binary>> ->
+                              [Route] =:= kzd_rates:routes(RateJObj)
+                      end;
+                 (Key) ->
+                      kz_json:get_value(Key, RateDoc) =:= kz_json:get_value(Key, RateJObj)
+              end
+             ,kz_json:get_keys(kz_doc:public_fields(RateDoc, 'false'))
+             ).
 
 -spec command(any()) -> proper_types:type().
 command(Model) ->
