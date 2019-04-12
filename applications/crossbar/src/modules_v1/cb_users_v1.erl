@@ -615,7 +615,9 @@ maybe_validate_username(UserId, Context) ->
         orelse username_doc_id(NewUsername, Context)
     of
         %% user name is unchanged
-        'true' -> maybe_rehash_creds(UserId, NewUsername, Context);
+        'true' ->
+            _ = cb_user_auth:maybe_remove_old_reset_ids(kazoo_modb:get_modb(cb_context:account_db(Context)), UserId),
+            maybe_rehash_creds(UserId, NewUsername, Context);
         %% updated user name that doesn't exist
         'undefined' ->
             manditory_rehash_creds(UserId, NewUsername, Context);

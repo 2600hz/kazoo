@@ -17,6 +17,8 @@
         ,post/2
         ]).
 
+-export([maybe_remove_old_reset_ids/2]).
+
 -include("crossbar.hrl").
 
 -define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
@@ -37,6 +39,7 @@
             Ok -> Ok
         end).
 -define(RESET_PVT_TYPE, <<"password_reset">>).
+-define(RESET_TIMEOUT, 3600).
 
 %%%=============================================================================
 %%% API
@@ -479,7 +482,7 @@ save_reset_id_then_send_email(Context) ->
     ResetId = reset_id(MoDb),
     UserDoc = cb_context:doc(Context),
     UserId = kz_doc:id(UserDoc),
-    %% Not much chance for doc to already exist
+    maybe_remove_old_reset_ids(MoDb, UserId),
     case kazoo_modb:save_doc(MoDb, create_resetid_doc(ResetId, UserId)) of
         {'ok', _} ->
             Email = kzd_users:email(UserDoc),
@@ -504,6 +507,17 @@ save_reset_id_then_send_email(Context) ->
             crossbar_doc:handle_datamgr_errors(Reason, 'undefined', Context)
     end.
 
+-spec maybe_remove_old_reset_ids(kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
+maybe_remove_old_reset_ids(MoDb, UserId) ->
+    Listing = <<"auth/password_reset_requests_by_userid">>,
+    ViewOpt = [{'key', UserId}],
+    case kz_datamgr:get_results(MoDb, Listing, ViewOpt) of
+        {'ok', Docs} ->
+            _ = kz_datamgr:del_docs(MoDb, Docs),
+            'ok';
+        _Else ->
+            'ok'
+    end.
 
 -spec maybe_load_user_doc_via_reset_id(cb_context:context()) -> cb_context:context().
 maybe_load_user_doc_via_reset_id(Context) ->
@@ -513,8 +527,18 @@ maybe_load_user_doc_via_reset_id(Context) ->
     lager:debug("looking up password reset doc: ~s", [ResetId]),
     case kazoo_modb:open_doc(MoDb, ResetId) of
         {'ok', ResetIdDoc} ->
-            lager:debug("found password reset doc"),
             AccountDb = ?MATCH_ACCOUNT_ENCODED(A, B, Rest),
+            lager:debug("found password reset doc"),
+            maybe_reset_id_expired(Context, ResetIdDoc, AccountDb);
+        _ -> error_password_reset_validation(Context, <<"The provided reset_id did not resolve to any user">>, <<"not_found">>, AuthType)
+    end.
+
+-spec maybe_reset_id_expired(cb_context:context(), kz_json:object(), kz_json:object()) -> cb_context:context().
+maybe_reset_id_expired(Context, ResetIdDoc, AccountDb) ->
+    AuthType = <<"user_auth_recovery_reset">>,
+    CreatedDate = kz_doc:created(ResetIdDoc),
+    case ((kz_time:now_s() - CreatedDate) < ?RESET_TIMEOUT) of
+        'true' ->
             Context1 = crossbar_doc:load(kz_json:get_value(<<"pvt_userid">>, ResetIdDoc)
                                         ,cb_context:set_account_db(Context, AccountDb)
                                         ,?TYPE_CHECK_OPTION(kzd_users:type())
@@ -525,14 +549,7 @@ maybe_load_user_doc_via_reset_id(Context) ->
                                          ,{fun cb_context:set_doc/2, NewUserDoc}
                                          ,{fun cb_context:store/3, 'auth_type', AuthType}
                                          ]);
-        _ ->
-            Reason = <<"The provided reset_id did not resolve to any user">>,
-            Msg = kz_json:from_list(
-                    [{<<"message">>, Reason}
-                    ,{<<"cause">>, ResetId}
-                    ]),
-            crossbar_auth:log_failed_auth(?MODULE, AuthType, Reason, Context),
-            cb_context:add_validation_error(<<"user">>, <<"not_found">>, Msg, Context)
+        'false' -> error_password_reset_validation(Context, <<"The provided reset_id has expired">>, <<"expired">>, AuthType)
     end.
 
 -spec reset_id(kz_term:ne_binary()) -> kz_term:ne_binary().
@@ -653,3 +670,13 @@ consume_tokens(Context) ->
         'true' -> cb_context:set_resp_status(Context, 'success');
         'false' -> cb_context:add_system_error('too_many_requests', Context)
     end.
+
+-spec error_password_reset_validation(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
+error_password_reset_validation(Context, Reason, Code, AuthType) ->
+    ResetId = kz_json:get_ne_binary_value(?RESET_ID, cb_context:req_data(Context)),
+    Msg = kz_json:from_list(
+            [{<<"message">>, Reason}
+            ,{<<"cause">>, ResetId}
+            ]),
+    crossbar_auth:log_failed_auth(?MODULE, AuthType, Reason, Context),
+    cb_context:add_validation_error(<<"user">>, Code, Msg, Context).
