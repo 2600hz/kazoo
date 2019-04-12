@@ -267,7 +267,7 @@ create_description(Activations) ->
 
 -spec create_activation_item_desc(kz_json:object()) -> kz_term:ne_binary().
 create_activation_item_desc(ActivationItem) ->
-    Billable = kz_tem:to_binary(kzd_activation_item:billable(ActivationItem, 1)),
+    Billable = kz_term:to_binary(kzd_activation_item:billable(ActivationItem, 1)),
     Category = kzd_activation_item:category(ActivationItem, <<>>),
     ItemName = kzd_activation_item:item(ActivationItem, <<>>),
     CatItem = kz_binary:join([Bin || Bin <- [Category, ItemName],

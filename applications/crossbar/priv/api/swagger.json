@@ -9628,7 +9628,7 @@
                 "Account-ID",
                 "Bookkeeper-ID",
                 "Bookkeeper-Type",
-                "Items",
+                "Invoice",
                 "Vendor-ID"
             ],
             "type": "object"
