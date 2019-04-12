@@ -232,7 +232,7 @@ update_req_definition() ->
                                         ,<<"Bookkeeper-ID">>
                                         ,<<"Bookkeeper-Type">>
                                         ,<<"Vendor-ID">>
-                                        ,<<"Items">>
+                                        ,<<"Invoice">>
                                         ]
                     ,optional_headers = [<<"Dry-Run">>
                                         ,<<"Audit-Log">>

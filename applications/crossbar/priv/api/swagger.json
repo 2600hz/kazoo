@@ -9617,7 +9617,7 @@
                     ],
                     "type": "string"
                 },
-                "Items": {
+                "Invoice": {
                     "type": "string"
                 },
                 "Vendor-ID": {
