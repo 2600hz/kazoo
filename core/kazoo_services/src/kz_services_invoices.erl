@@ -57,10 +57,14 @@ annotate(Services, [CurrentInvoice|CurrentInvoices], [], Invoices) ->
                     ),
     ProposedItems = kz_services_items:empty(),
     Items = kz_services_items:annotate(CurrentItems, ProposedItems),
+    ActivationItems = kz_services_activation_items:create(Items),
+    Setters = [{fun kz_services_invoice:set_items/2, Items}
+              ,{fun kz_services_invoice:set_activation_charges/2, ActivationItems}
+              ],
     annotate(Services
             ,CurrentInvoices
             ,[]
-            ,[kz_services_invoice:set_items(CurrentInvoice, Items)|Invoices]
+            ,[kz_services_invoice:setters(CurrentInvoice, Setters)|Invoices]
             );
 annotate(Services, CurrentInvoices, [ProposedInvoice|ProposedInvoices], Invoices) ->
     BookkeeperHash = kz_services_invoice:bookkeeper_hash(ProposedInvoice),
@@ -69,18 +73,26 @@ annotate(Services, CurrentInvoices, [ProposedInvoice|ProposedInvoices], Invoices
         {'undefined', RemainingCurrentInvoices} ->
             CurrentItems = kz_services_items:empty(),
             Items = kz_services_items:annotate(CurrentItems, ProposedItems),
+            ActivationItems = kz_services_activation_items:create(Items),
+            Setters = [{fun kz_services_invoice:set_items/2, Items}
+                      ,{fun kz_services_invoice:set_activation_charges/2, ActivationItems}
+                      ],
             annotate(Services
                     ,RemainingCurrentInvoices
                     ,ProposedInvoices
-                    ,[kz_services_invoice:set_items(ProposedInvoice, Items)|Invoices]
+                    ,[kz_services_invoice:setters(ProposedInvoice, Setters)|Invoices]
                     );
         {CurrentInvoice, RemainingCurrentInvoices} ->
             CurrentItems = kz_services_invoice:items(CurrentInvoice),
             Items = kz_services_items:annotate(CurrentItems, ProposedItems),
+            ActivationItems = kz_services_activation_items:create(Items),
+            Setters = [{fun kz_services_invoice:set_items/2, Items}
+                      ,{fun kz_services_invoice:set_activation_charges/2, ActivationItems}
+                      ],
             annotate(Services
                     ,RemainingCurrentInvoices
                     ,ProposedInvoices
-                    ,[kz_services_invoice:set_items(ProposedInvoice, Items)|Invoices]
+                    ,[kz_services_invoice:setters(ProposedInvoice, Setters)|Invoices]
                     )
     end.
 

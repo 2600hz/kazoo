@@ -33,6 +33,7 @@
         ,set_cumulative_discount_rate/2
         ]).
 -export([changes/1
+        ,changes/2
         ,set_changes/2
         ]).
 -export([taxes/1
@@ -40,6 +41,9 @@
         ]).
 -export([display_name/1]).
 -export([rate/1]).
+-export([activation_charge/1
+        ,activation_charge/2
+        ]).
 -export([minimum/1
         ,maximum/1
         ]).
@@ -311,6 +315,18 @@ rate(Item) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec activation_charge(item()) -> float().
+activation_charge(Item) ->
+    activation_charge(Item, 0.0).
+
+-spec activation_charge(item(), float() | Default) -> float() | Default.
+activation_charge(Item, Default) ->
+    kzd_item_plan:activation_charge(item_plan(Item), Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec minimum(item()) -> non_neg_integer().
 minimum(Item) ->
     kzd_item_plan:minimum(item_plan(Item), 0).
@@ -376,11 +392,9 @@ setters(Item, Routines) ->
 %%------------------------------------------------------------------------------
 -spec public_json(item()) -> kz_json:object().
 public_json(Item) ->
-    ActivationCharge = calculate_activation_charges(Item),
     Props =
         props:filter_undefined(
-          [{<<"activation_charges">>, ActivationCharge}
-          ,{<<"category">>, category_name(Item)}
+          [{<<"category">>, category_name(Item)}
           ,{<<"item">>, masquerade_as(Item)}
           ,{<<"name">>, display_name(Item)}
           ,{<<"quantity">>, quantity(Item)}
@@ -391,7 +405,7 @@ public_json(Item) ->
           ,{<<"maximum">>, undefine_empty(maximum(Item))}
           ,{<<"prorate">>, kzd_item_plan:prorate(item_plan(Item))}
           ,{<<"taxes">>, undefine_empty(taxes(Item))}
-          ,{<<"total">>, calculate_total(Item) + ActivationCharge}
+          ,{<<"total">>, calculate_total(Item)}
           ,{<<"changes">>, undefine_empty(changes(Item))}
           ]
          ),
@@ -431,16 +445,6 @@ calculate_discount_total(Item) ->
 -spec calculate_total(item()) -> float().
 calculate_total(Item) ->
     (billable_quantity(Item) * billing_rate(Item)) - calculate_discount_total(Item).
-
--spec calculate_activation_charges(item()) -> float().
-calculate_activation_charges(Item) ->
-    Plan = item_plan(Item),
-    Key = [<<"difference">>, <<"billable">>],
-    Changes = kz_json:get_integer_value(Key, changes(Item, kz_json:new()), 0),
-    case Changes > 0 of
-        'true' -> kz_json:get_float_value(<<"activation_charge">>, Plan, 0) * Changes;
-        'false' -> 0.0
-    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
