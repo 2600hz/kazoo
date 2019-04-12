@@ -79,6 +79,8 @@
 
 -define(SCHEMA, <<"limits">>).
 
+-define(CONFIG_CAT, <<"jonny5">>).
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -489,7 +491,7 @@ get_private_limit(Key, Doc) ->
 
 -spec get_default_limit(kz_term:ne_binary(), tristate_integer()) -> tristate_integer().
 get_default_limit(Key, Default) ->
-    kapps_config:get_integer(?APP_NAME, <<"default_", Key/binary>>, Default).
+    kapps_config:get_integer(?CONFIG_CAT, <<"default_", Key/binary>>, Default).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -505,7 +507,7 @@ get_limit_units(Key, Doc, Default) ->
 
 -spec get_default_limit_units(kz_term:ne_binary(), kz_currency:units()) -> kz_currency:units().
 get_default_limit_units(Key, Default) ->
-    case kapps_config:get(?APP_NAME, <<"default_", Key/binary>>, Default) of
+    case kapps_config:get(?CONFIG_CAT, <<"default_", Key/binary>>, Default) of
         Value when is_float(Value) -> kz_currency:dollars_to_units(abs(Value));
         Value when is_integer(Value) -> abs(Value);
         Default when is_float(Default) -> kz_currency:dollars_to_units(abs(Default));
@@ -527,7 +529,7 @@ get_limit_dollars(Key, Doc, Default) ->
 
 -spec get_default_limit_dollars(kz_term:ne_binary(), kz_currency:dollars()) -> kz_currency:dollars().
 get_default_limit_dollars(Key, Default) ->
-    case kapps_config:get(?APP_NAME, <<"default_", Key/binary>>, Default) of
+    case kapps_config:get(?CONFIG_CAT, <<"default_", Key/binary>>, Default) of
         Value when is_float(Value) -> abs(Value);
         Value when is_integer(Value) -> kz_currency:units_to_dollars(abs(Value));
         Default when is_float(Default) -> abs(Default);
@@ -559,7 +561,7 @@ get_public_limit_boolean(Key, _, Default) ->
 
 -spec get_default_limit_boolean(kz_term:ne_binary(), boolean()) -> boolean().
 get_default_limit_boolean(Key, Default) ->
-    kapps_config:get_is_true(?APP_NAME, <<"default_", Key/binary>>, Default).
+    kapps_config:get_is_true(?CONFIG_CAT, <<"default_", Key/binary>>, Default).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -582,7 +584,7 @@ get_public_limit_list(Key, JObj, Default) ->
 
 -spec get_default_limit_list(kz_term:ne_binary(), list()) -> list().
 get_default_limit_list(Key, Default) ->
-    kapps_config:get_ne_binaries(?APP_NAME, <<"default_", Key/binary>>, Default).
+    kapps_config:get_ne_binaries(?CONFIG_CAT, <<"default_", Key/binary>>, Default).
 
 %%------------------------------------------------------------------------------
 %% @doc
