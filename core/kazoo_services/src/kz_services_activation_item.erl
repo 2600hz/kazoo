@@ -212,12 +212,12 @@ create(Item, Changes, ActivationCharge) ->
 %%------------------------------------------------------------------------------
 -spec public_json(item()) -> kz_json:object().
 public_json(ActivationItem) ->
-    Props =
-        [{<<"category_name">>, category_name(ActivationItem)}
-        ,{<<"display_name">>, display_name(ActivationItem)}
-        ,{<<"billable_quantity">>, billable_quantity(ActivationItem)}
-        ,{<<"rate">>, billing_rate(ActivationItem)}
-        ,{<<"item_name">>, item_name(ActivationItem)}
-        ,{<<"total">>, total(ActivationItem)}
+    Setters =
+        [{fun kzd_activation_item:set_billable/2, billable_quantity(ActivationItem)}
+        ,{fun kzd_activation_item:set_category/2, category_name(ActivationItem)}
+        ,{fun kzd_activation_item:set_item/2, item_name(ActivationItem)}
+        ,{fun kzd_activation_item:set_name/2, display_name(ActivationItem)}
+        ,{fun kzd_activation_item:set_rate/2, billing_rate(ActivationItem)}
+        ,{fun kzd_activation_item:set_total/2, total(ActivationItem)}
         ],
-    kz_json:from_list(Props).
+    kz_doc:setters(kzd_activation_item:new(), Setters).

@@ -53,7 +53,6 @@ fetch_cascade(Services) ->
     PortQuantities = fetch_account_port_cascade(AccountId),
     kz_json:merge([AccountQuantities, PortQuantities]).
 
-
 -spec fetch_account_port(kz_term:ne_binary()) -> kz_json:object().
 fetch_account_port(AccountId) ->
     fetch_port(AccountId, <<"port_services/account_quantities">>).
