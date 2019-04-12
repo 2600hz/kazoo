@@ -198,23 +198,20 @@ process_activations(#request{activation_charges=[]}) ->
     'ok';
 process_activations(Request) ->
     Transaction = create_activation_transaction(Request),
-    case kz_transaction:sale(Transaction) of
-        {'error', 'invalid_bookkeeper' = _Reason} ->
-            lager:debug("activation charge failed: ~p", [_Reason]);
-        {'error', _Reason} ->
-            lager:debug("activation charge failed: ~p", [_Reason]);
-        {'ok', Transaction} ->
-            handle_transactionresponse(Transaction)
-    end.
+    handle_transaction_sale_response(kz_transaction:sale(Transaction)).
 
--spec handle_transactionresponse(kz_transaction:transaction()) -> 'ok'.
-handle_transactionresponse(Transaction) ->
+-spec handle_transaction_sale_response({'ok', kz_transaction:transaction()} | {'error', any()}) -> 'ok'.
+handle_transaction_sale_response({'ok', Transaction}) ->
     case kz_transaction:status_completed(Transaction) of
         'false' ->
             lager:debug("activation charge failed: transaction_incomplete");
         'true' ->
             lager:debug("activation charge succeeded")
-    end.
+    end;
+handle_transaction_sale_response({'error', 'invalid_bookkeeper' = _Reason}) ->
+    lager:debug("activation charge failed: ~p", [_Reason]);
+handle_transaction_sale_response({'error', _Reason}) ->
+    lager:debug("activation charge failed: ~p", [_Reason]).
 
 -spec create_activation_transaction(request()) -> kz_transaction:transaction().
 create_activation_transaction(#request{account_id=AccountId
@@ -223,7 +220,7 @@ create_activation_transaction(#request{account_id=AccountId
                                       ,vendor_id=VendorId
                                       }) ->
     AmountUnits = kz_currency:dollars_to_units(get_activation_amount(JObj, Activations)),
-    AuditLog = kz_json:get_json_value(<<"audit_log">>, JObj, kz_json:new()),
+    AuditLog = kz_json:get_json_value(<<"Audit-Log">>, JObj, kz_json:new()),
     Metadata = kz_json:from_list([{<<"automatic_description">>, 'true'}]),
     Setters =
         props:filter_empty(
@@ -243,7 +240,7 @@ create_activation_transaction(#request{account_id=AccountId
 
 -spec get_activation_amount(kz_json:object(), kz_json:objects()) -> float().
 get_activation_amount(JObj, Activations) ->
-    Today = kz_json:get_float_value([<<"summary">>, <<"today">>], JObj),
+    Today = kz_json:get_float_value([<<"Invoice">>, <<"summary">>, <<"today">>], JObj),
     get_activation_amount(JObj, Activations, Today).
 
 -spec get_activation_amount(kz_json:object(), kz_json:objects(), kz_term:api_float()) -> float().
