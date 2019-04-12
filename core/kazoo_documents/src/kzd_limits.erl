@@ -468,7 +468,7 @@ get_limit(Key, Doc, Default) ->
     PrivateValue = get_private_limit(Key, Doc),
     PublicValue =  kz_json:get_integer_value(Key, Doc),
     case PrivateValue =/= 'undefined'
-        andalso 
+        andalso
         (PublicValue =:= 'undefined'
          orelse PublicValue < 0
          orelse (
