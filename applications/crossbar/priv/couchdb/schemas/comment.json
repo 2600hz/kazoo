@@ -9,7 +9,7 @@
         },
         "action_required": {
             "default": false,
-            "description": "Specficied if an action is required by the user.",
+            "description": "Specified if an action is required by the user.",
             "type": "boolean"
         },
         "author": {

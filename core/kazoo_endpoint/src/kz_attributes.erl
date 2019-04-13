@@ -90,7 +90,6 @@ caller_id(Attribute, Call) ->
         'true' ->
             Number = kapps_call:caller_id_number(Call),
             Name = kapps_call:caller_id_name(Call),
-            lager:info("retaining original caller id <~s> ~s", [Name, Number]),
             maybe_normalize_cid(Number, Name, 'false', Attribute, Call);
         'false' ->
             maybe_get_dynamic_cid('true', Attribute, Call)

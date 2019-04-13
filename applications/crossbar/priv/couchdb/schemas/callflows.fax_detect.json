@@ -6,6 +6,10 @@
         "duration": {
             "description": "How long, in seconds, to try detecting fax tones",
             "type": "integer"
+        },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
         }
     },
     "type": "object"

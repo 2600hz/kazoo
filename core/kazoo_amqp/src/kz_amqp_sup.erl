@@ -12,27 +12,20 @@
         ,pool_name/0
         ,add_amqp_pool/4, add_amqp_pool/5, add_amqp_pool/6, add_amqp_pool/7
         ,pool_pid/1
-        ,pools/0
+        ,pools/0, pools/1
+        ,bind_for_pool_state/0
         ]).
 
 -export([init/1]).
 
 -include("kz_amqp_util.hrl").
+-include_lib("kazoo_amqp/include/kazoo_amqp_pool.hrl").
 
 -define(SERVER, ?MODULE).
 
 -define(CONFIG_SECTION, 'amqp').
 
 -define(POOL_NAME, 'kz_amqp_pool').
-
--define(DEFAULT_POOL_SIZE, 150).
--define(DEFAULT_POOL_OVERFLOW, 100).
--define(DEFAULT_POOL_THRESHOLD, 5).
--define(DEFAULT_POOL_SERVER_CONFIRMS, false).
-
-%%% Move the section to kazoo_apps or ecallmgr for per-vm control
-
--define(POOL_NAME_ARGS(Name, Args), ?WORKER_NAME_ARGS('poolboy', Name, Args)).
 
 -define(CHILDREN, [?WORKER('kz_amqp_connections')
                   ,?SUPER('kz_amqp_connection_sup')
@@ -43,20 +36,6 @@
 
 -define(POOL_THRESHOLD, kz_config:get_integer(?CONFIG_SECTION, 'pool_threshold', ?DEFAULT_POOL_THRESHOLD)).
 -define(POOL_SERVER_CONFIRMS, kz_config:get_boolean(?CONFIG_SECTION, 'pool_server_confirms', ?DEFAULT_POOL_SERVER_CONFIRMS)).
-
--define(ADD_POOL_ARGS(Pool, Broker, Size, Overflow, Bindings, Exchanges, ServerAck),
-        [[{'worker_module', 'kz_amqp_worker'}
-         ,{'name', {'local', Pool}}
-         ,{'size', Size}
-         ,{'max_overflow', Overflow}
-         ,{'strategy', 'fifo'}
-         ,{'neg_resp_threshold', ?POOL_THRESHOLD}
-         ,{'amqp_broker', Broker}
-         ,{'amqp_queuename_start', Pool}
-         ,{'amqp_bindings', Bindings}
-         ,{'amqp_exchanges', Exchanges}
-         ,{'amqp_server_confirms', ServerAck}
-         ]]).
 
 %%==============================================================================
 %% API functions
@@ -75,17 +54,21 @@ stop_bootstrap() ->
     _ = supervisor:terminate_child(?SERVER, 'kz_amqp_bootstrap').
 
 -spec pools() -> [{atom(), pid()}].
-pools() ->
+pools() -> pools(?MODULE).
+
+-spec pools(kz_types:server_ref()) -> [{atom(), pid()}].
+pools(Supervisor) ->
     [{Pool, Pid}
-     || {Pool, Pid, _Type, ['poolboy']} <- supervisor:which_children(?MODULE)
+     || {Pool, Pid, _Type, ['poolboy']} <- supervisor:which_children(Supervisor)
     ].
 
 -spec pool_name() -> atom().
 pool_name() ->
     case get('$amqp_pool') of
         'undefined' -> ?POOL_NAME;
-        Name -> lager:debug("using pool with name ~s", [Name]),
-                Name
+        Name ->
+            lager:debug("using pool with name ~s", [Name]),
+            Name
     end.
 
 -spec add_amqp_pool(atom() | binary(), binary(), integer(), integer()) -> kz_types:sup_startchild_ret().
@@ -135,7 +118,6 @@ pool_pid(Pool) ->
         [P | _] -> P
     end.
 
-
 %%==============================================================================
 %% Supervisor callbacks
 %%==============================================================================
@@ -149,6 +131,8 @@ pool_pid(Pool) ->
 %%------------------------------------------------------------------------------
 -spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
+    bind_for_pool_state(),
+
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
@@ -185,3 +169,7 @@ init([]) ->
     Children = ?CHILDREN ++ [?POOL_NAME_ARGS(?POOL_NAME, [PoolArgs])],
 
     {'ok', {SupFlags, Children}}.
+
+-spec bind_for_pool_state() -> kazoo_bindings:bind_result().
+bind_for_pool_state() ->
+    _ = kazoo_bindings:bind(kz_nodes:pool_state_binding(), ?MODULE, 'pools', self()).

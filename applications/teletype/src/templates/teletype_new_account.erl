@@ -149,7 +149,7 @@ find_admin([]) ->
     ?LOG_DEBUG("account has no admin users"),
     [];
 find_admin([User|Users]) ->
-    UserDoc = kz_json:get_value(<<"doc">>, User),
+    UserDoc = kz_json:get_json_value(<<"doc">>, User),
     case kzd_users:is_account_admin(UserDoc) of
         'true' -> teletype_util:user_params(UserDoc);
         'false' -> find_admin(Users)

@@ -22,6 +22,10 @@
                 "yes"
             ],
             "type": "string"
+        },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
         }
     },
     "type": "object"

@@ -30,7 +30,8 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 
 exec_cmd(Node, UUID, JObj, ControlPid, UUID) ->
     App = kapi_dialplan:application_name(JObj),
-    case get_fs_app(Node, UUID, JObj, App) of
+    AnonymizedJObj = enforce_privacy(Node, UUID, JObj),
+    case get_fs_app(Node, UUID, AnonymizedJObj, App) of
         {'error', Msg} -> throw({'msg', Msg});
         {'return', Result} -> Result;
         {AppName, 'noop'} ->
@@ -58,6 +59,17 @@ fetch_dialplan(Node, UUID, JObj, _ControlPid) ->
         {AppName, AppData} -> [{AppName, AppData}];
         [_|_]=Apps -> Apps
     end.
+
+-spec enforce_privacy(atom(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+enforce_privacy(Node, UUID, JObj) ->
+    AnonymizedJObj = kz_privacy:enforce(JObj),
+    _ = case kz_privacy:get_mode(JObj) of
+            'undefined' -> AnonymizedJObj;
+            Mode ->
+                ecallmgr_util:send_cmd(Node, UUID, <<"privacy">>, Mode)
+        end,
+    AnonymizedJObj.
+
 
 %%------------------------------------------------------------------------------
 %% @doc return the app name and data (as a binary string) to send to
@@ -1130,7 +1142,7 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
 
 -spec maybe_add_ccvs(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 maybe_add_ccvs(BaseProps, ChannelProps) ->
-    case ecallmgr_util:custom_channel_vars(ChannelProps) of
+    case kzd_freeswitch:ccvs(ChannelProps) of
         [] -> BaseProps;
         CustomProp ->
             props:set_value(<<"Custom-Channel-Vars">>

@@ -46,6 +46,9 @@
 %%%   <dt>`ignore_early_media'</dt>
 %%%   <dd>`boolean()'</dd>
 %%%
+%%%   <dt>`resource_type'</dt>
+%%%   <dd>`string()'</dd>
+%%%
 %%%   <dt>`outbound_flags'</dt>
 %%%   <dd>`["flag_1","flag_2"]', used to match flags on carrier docs</dd>
 %%% </dl>
@@ -108,6 +111,7 @@ build_offnet_request(Data, Call) ->
     {AssertedNumber, AssertedName, AssertedRealm} =
         get_asserted_identity(Data, Call),
     {CIDNumber, CIDName} = get_caller_id(Data, Call),
+    PrivacyFlags = get_privacy_flags(Call),
     props:filter_undefined(
       [{?KEY_ACCOUNT_ID, kapps_call:account_id(Call)}
       ,{?KEY_ACCOUNT_REALM, kapps_call:account_realm(Call)}
@@ -137,20 +141,36 @@ build_offnet_request(Data, Call) ->
       ,{?KEY_ASSERTED_IDENTITY_NAME, AssertedName}
       ,{?KEY_ASSERTED_IDENTITY_NUMBER, AssertedNumber}
       ,{?KEY_ASSERTED_IDENTITY_REALM, AssertedRealm}
-      ,{?KEY_RESOURCE_TYPE, ?RESOURCE_TYPE_AUDIO}
       ,{?KEY_RINGBACK, kz_json:get_ne_binary_value(<<"ringback">>, Data)}
       ,{?KEY_T38_ENABLED, get_t38_enabled(Call)}
       ,{?KEY_TIMEOUT, kz_json:get_integer_value(<<"timeout">>, Data)}
       ,{?KEY_TO_DID, get_to_did(Data, Call)}
       ,{?KEY_DENIED_CALL_RESTRICTIONS, kapps_call:kvs_fetch('denied_call_restrictions', Call)}
       ,{?KEY_OUTBOUND_ACTIONS, kapps_call:kvs_fetch('outbound_actions', Call)}
-       | kz_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
+      ,{?KEY_PRIVACY_METHOD, props:get_value(?KEY_PRIVACY_METHOD, PrivacyFlags)}
+      ,{?KEY_PRIVACY_HIDE_NAME, props:get_value(?KEY_PRIVACY_HIDE_NAME, PrivacyFlags)}
+      ,{?KEY_PRIVACY_HIDE_NUMBER, props:get_value(?KEY_PRIVACY_HIDE_NUMBER, PrivacyFlags)}
+       | add_headers(Data, Call)
       ]).
+
+-spec add_headers(kz_json:object(), kapps_call:call()) -> kz_term:proplist().
+add_headers(Data, Call) ->
+    add_resource_type(Data) ++ kz_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION).
+
+-spec add_resource_type(kz_json:object()) -> kz_term:proplist().
+add_resource_type(Data) ->
+    case kz_json:get_ne_binary_value(<<"resource_type">>, Data) of
+        'undefined' -> [{?KEY_RESOURCE_TYPE, ?RESOURCE_TYPE_AUDIO}];
+        ?RESOURCE_TYPE_AUDIO -> [{?KEY_RESOURCE_TYPE, ?RESOURCE_TYPE_AUDIO}];
+        Type ->
+            [{?KEY_RESOURCE_TYPE, Type}
+            ,{?KEY_ORIGINAL_RESOURCE_TYPE, ?RESOURCE_TYPE_AUDIO}
+            ]
+    end.
 
 -spec get_channel_vars(kapps_call:call()) -> kz_json:object().
 get_channel_vars(Call) ->
-    GetterFuns = [fun add_privacy_flags/2
-                 ,fun maybe_require_ignore_early_media/2
+    GetterFuns = [fun maybe_require_ignore_early_media/2
                  ,fun maybe_require_single_fail/2
                  ,fun maybe_set_bridge_generate_comfort_noise/2
                  ,fun maybe_call_forward/2
@@ -167,11 +187,6 @@ maybe_presence_id(Call) ->
         'true' -> kz_attributes:presence_id(Call);
         'false' -> 'undefined'
     end.
-
--spec add_privacy_flags(kapps_call:call(), kz_term:proplist()) -> kz_term:proplist().
-add_privacy_flags(Call, Acc) ->
-    CCVs = kapps_call:custom_channel_vars(Call),
-    props:set_values(get_privacy_prefs(Call), kz_privacy:flags(CCVs)) ++ Acc.
 
 -spec maybe_require_ignore_early_media(kapps_call:call(), kz_term:proplist()) -> kz_term:proplist().
 maybe_require_ignore_early_media(Call, Acc) ->
@@ -190,6 +205,35 @@ maybe_call_forward(Call, Acc) ->
                    | Acc
                   ];
         'false' -> Acc
+    end.
+
+-spec get_privacy_flags(kapps_call:call()) -> kz_term:proplist().
+get_privacy_flags(Call) ->
+    CCVs = kapps_call:custom_channel_vars(Call),
+    case kapps_call:kvs_fetch(<<"use_endpoint_privacy">>, 'true', Call)
+        andalso not kz_json:is_true(<<"Retain-CID">>, CCVs)
+    of
+        'false' -> kz_privacy:flags(CCVs);
+        'true' -> get_endpoint_privacy_flags(Call, CCVs)
+    end.
+
+-spec get_endpoint_privacy_flags(kapps_call:call(), kz_json:object()) -> kz_term:proplist().
+get_endpoint_privacy_flags(Call, CCVs) ->
+    case get_endpoint(Call) of
+        {'error', _R} -> kz_privacy:flags(CCVs);
+        {'ok', Endpoint} ->
+            [{?KEY_PRIVACY_METHOD
+             ,kz_privacy:get_method(CCVs)
+             }
+            ,{?KEY_PRIVACY_HIDE_NAME
+             ,kz_privacy:should_hide_name(Endpoint)
+              orelse kz_privacy:should_hide_name(CCVs)
+             }
+            ,{?KEY_PRIVACY_HIDE_NUMBER
+             ,kz_privacy:should_hide_number(Endpoint)
+              orelse kz_privacy:should_hide_number(CCVs)
+             }
+            ]
     end.
 
 -spec get_bypass_e164(kz_json:object()) -> boolean().
@@ -239,15 +283,28 @@ get_caller_id(Data, Call) ->
                                    {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
 get_asserted_identity(_Data, Call) ->
     case get_endpoint(Call) of
-        {'error', _E} -> {'undefined', 'undefined', 'undefined'};
+        {'error', _E} ->
+            {'undefined', 'undefined', 'undefined'};
         {'ok', Endpoint} ->
             CallerId = kzd_devices:caller_id(Endpoint),
-            DefaultRealm = kapps_call:account_realm(Call),
-            DefaultName = get_asserted_default_name(CallerId, Call),
-            DefaultNumber = kzd_caller_id:external_number(CallerId),
+            {DefaultNumber, DefaultName, DefaultRealm} =
+                maybe_default_asserted_identity(Endpoint, Call),
             {kzd_caller_id:asserted_number(CallerId, DefaultNumber)
             ,kzd_caller_id:asserted_name(CallerId, DefaultName)
             ,kzd_caller_id:asserted_realm(CallerId, DefaultRealm)
+            }
+    end.
+
+-spec maybe_default_asserted_identity(kz_endpoint:endpoint(), kapps_call:call()) ->
+                                             {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
+maybe_default_asserted_identity(Endpoint, Call) ->
+    CallerId = kzd_devices:caller_id(Endpoint),
+    case kapps_config:get_is_true(?RES_CONFIG_CAT, <<"default_asserted_identity">>, 'false') of
+        'false' -> {'undefined', 'undefined', 'undefined'};
+        'true' ->
+            {kzd_caller_id:external_number(CallerId)
+            ,get_asserted_default_name(CallerId, Call)
+            ,kapps_call:account_realm(Call)
             }
     end.
 
@@ -427,45 +484,3 @@ handle_channel_destroy(<<"loopback", _/binary>>, _JObj) ->
     {<<"TRANSFER">>, 'ok'};
 handle_channel_destroy(_, JObj) ->
     {kz_call_event:hangup_cause(JObj), kz_call_event:hangup_code(JObj)}.
-
--spec get_privacy_prefs(kapps_call:call()) -> kz_term:proplist().
-get_privacy_prefs(Call) ->
-    case use_endpoint_prefs(Call) of
-        'true' -> check_inception(Call);
-        'false'  -> []
-    end.
-
--spec use_endpoint_prefs(kapps_call:call()) -> boolean().
-use_endpoint_prefs(Call) ->
-    %% only overwrite the ccvs if privacy has not been set by cf_privacy
-    %% or if the call has been configured to overwrite cf_privacy settings
-    not kz_privacy:has_flags(kapps_call:custom_channel_vars(Call))
-        orelse kapps_call:kvs_fetch(<<"use_endpoint_privacy">>, 'false', Call).
-
--spec check_inception(kapps_call:call()) -> kz_term:proplist().
-check_inception(Call) ->
-    lager:debug("checking inception of call"),
-    case kapps_call:inception(Call) of
-        'undefined' -> get_privacy_prefs_from_endpoint(Call);
-        _Else -> []
-    end.
-
--spec get_privacy_prefs_from_endpoint(kapps_call:call()) -> kz_term:proplist().
-get_privacy_prefs_from_endpoint(Call) ->
-    get_privacy_prefs_from_endpoint(Call, get_endpoint(Call)).
-
--spec get_privacy_prefs_from_endpoint(kapps_call:call(), {'ok', kz_json:object()} | {'error', any()}) -> kz_term:proplist().
-get_privacy_prefs_from_endpoint(Call, {'ok', Endpoint}) ->
-    lager:debug("call is outbound, checking caller_id_outbound_privacy value"),
-    case kz_json:get_value([<<"caller_id_options">>, <<"outbound_privacy">>], Endpoint) of
-        'undefined' -> [];
-        %% can't call kapps_call_command:privacy/2 with Mode = <<"none">>
-        <<"none">>=NoneMode ->
-            cf_util:ccvs_by_privacy_mode(NoneMode);
-        Mode ->
-            kapps_call_command:privacy(Mode, Call),
-            cf_util:ccvs_by_privacy_mode(Mode)
-    end;
-get_privacy_prefs_from_endpoint(_Call, {'error', _E}) ->
-    lager:debug("authorizing endpoint has no privacy settings"),
-    [].
