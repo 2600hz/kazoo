@@ -197,28 +197,28 @@ maybe_handle_load_failure(Context, _RespCode) -> Context.
 %%------------------------------------------------------------------------------
 -spec cleanup_leaky_keys(cb_context:context()) -> cb_context:context().
 cleanup_leaky_keys(Context) ->
-	Doc = kz_json:delete_keys(?LEAKED_FIELDS, maybe_update_doc_pvt_keys(Context, ?LEAKED_FIELDS)),
+    Doc = kz_json:delete_keys(?LEAKED_FIELDS, maybe_update_doc_pvt_keys(Context, ?LEAKED_FIELDS)),
     cb_context:set_doc(Context, Doc).
 
 -spec maybe_update_doc_pvt_keys(cb_context:context(), kz_json:keys()) -> cb_context:context().
 maybe_update_doc_pvt_keys(Context, Keys) ->
-	Doc = cb_context:doc(Context),
-	AccountId = cb_context:account_id(Context),
-	AuthAccountId = cb_context:auth_account_id(Context),
-	AccountResellerId = kz_services_reseller:get_id(AccountId),
-	IsSystemAdmin = kzd_accounts:is_superduper_admin(AuthAccountId),
-	case AccountResellerId =:= AuthAccountId 
-		orelse IsSystemAdmin
-	of
-		'true' -> 
-			lager:debug("account is permitted to update pvt keys: ~p", [AuthAccountId]),
-			lists:foldl(fun update_pvt_key/2, Doc, Keys);
-		'false' -> Doc
-	end.
-	
+    Doc = cb_context:doc(Context),
+    AccountId = cb_context:account_id(Context),
+    AuthAccountId = cb_context:auth_account_id(Context),
+    AccountResellerId = kz_services_reseller:get_id(AccountId),
+    IsSystemAdmin = kzd_accounts:is_superduper_admin(AuthAccountId),
+    case AccountResellerId =:= AuthAccountId
+        orelse IsSystemAdmin
+    of
+        'true' ->
+            lager:debug("account is permitted to update pvt keys: ~p", [AuthAccountId]),
+            lists:foldl(fun update_pvt_key/2, Doc, Keys);
+        'false' -> Doc
+    end.
+
 -spec update_pvt_key(kz_json:key(), kz_json:object()) -> kz_json:object().
 update_pvt_key(Key, JObj) ->
-	PvtKey = <<"pvt_", Key/binary>>,
-	Value = kz_json:get_ne_value(Key, JObj),
-	lager:debug("updating pvt: ~s to ~p",[PvtKey, Value]),
-	kz_json:set_value(PvtKey, Value, JObj).
+    PvtKey = <<"pvt_", Key/binary>>,
+    Value = kz_json:get_ne_value(Key, JObj),
+    lager:debug("updating pvt: ~s to ~p",[PvtKey, Value]),
+    kz_json:set_value(PvtKey, Value, JObj).
