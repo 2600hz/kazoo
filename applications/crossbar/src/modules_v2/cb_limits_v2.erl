@@ -19,6 +19,10 @@
 -define(CB_LIST, <<"limits/crossbar_listing">>).
 -define(PVT_TYPE, <<"limits">>).
 
+-define(LEAKED_FIELDS, [<<"allow_postpay">>
+                       ,<<"max_postpay_amount">>
+                       ]).
+
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -78,14 +82,14 @@ validate_limits(Context, ?HTTP_POST) ->
                                        );
         'true' ->
             cb_context:validate_request_data(<<"limits">>
-                                            ,cleanup_leaky_keys(Context)
+                                            ,Context
                                             ,fun on_successful_validation/1
                                             )
     end.
 
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
-    crossbar_doc:save(Context).
+    crossbar_doc:save(cleanup_leaky_keys(Context)).
 
 -spec is_allowed(cb_context:context()) -> boolean().
 is_allowed(Context) ->
@@ -193,8 +197,28 @@ maybe_handle_load_failure(Context, _RespCode) -> Context.
 %%------------------------------------------------------------------------------
 -spec cleanup_leaky_keys(cb_context:context()) -> cb_context:context().
 cleanup_leaky_keys(Context) ->
-    RemoveKeys = [<<"allow_postpay">>
-                 ,<<"max_postpay_amount">>
-                 ],
-    ReqData = kz_json:delete_keys(RemoveKeys, cb_context:req_data(Context)),
-    cb_context:set_req_data(Context, ReqData).
+	Doc = kz_json:delete_keys(?LEAKED_FIELDS, maybe_update_doc_pvt_keys(Context, ?LEAKED_FIELDS)),
+    cb_context:set_doc(Context, Doc).
+
+-spec maybe_update_doc_pvt_keys(cb_context:context(), kz_json:keys()) -> cb_context:context().
+maybe_update_doc_pvt_keys(Context, Keys) ->
+	Doc = cb_context:doc(Context),
+	AccountId = cb_context:account_id(Context),
+	AuthAccountId = cb_context:auth_account_id(Context),
+	AccountResellerId = kz_services_reseller:get_id(AccountId),
+	IsSystemAdmin = kzd_accounts:is_superduper_admin(AuthAccountId),
+	case AccountResellerId =:= AuthAccountId 
+		orelse IsSystemAdmin
+	of
+		'true' -> 
+			lager:debug("account is permitted to update pvt keys: ~p", [AuthAccountId]),
+			lists:foldl(fun update_pvt_key/2, Doc, Keys);
+		'false' -> Doc
+	end.
+	
+-spec update_pvt_key(kz_json:key(), kz_json:object()) -> kz_json:object().
+update_pvt_key(Key, JObj) ->
+	PvtKey = <<"pvt_", Key/binary>>,
+	Value = kz_json:get_ne_value(Key, JObj),
+	lager:debug("updating pvt: ~s to ~p",[PvtKey, Value]),
+	kz_json:set_value(PvtKey, Value, JObj).
