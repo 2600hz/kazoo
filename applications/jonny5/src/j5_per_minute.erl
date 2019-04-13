@@ -156,4 +156,5 @@ metadata(Request) ->
       ,{<<"account_trunk_usage">>, j5_request:account_trunk_usage(Request)}
       ,{<<"reseller_trunk_usage">>, j5_request:reseller_trunk_usage(Request)}
       ,{<<"rate">>, RateObj}
+      ,{<<"billing_seconds">>, j5_request:billing_seconds(Request)}
       ]).
