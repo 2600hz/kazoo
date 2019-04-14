@@ -7,6 +7,10 @@
 -include("fs_event_filters.hrl").
 -include("fs_mod_kazoo_event_filters.hrl").
 
+-define(APP, 'ecallmgr').
+-define(APP_NAME, <<"ecallmgr">>).
+-define(APP_VERSION, <<"4.0.0">>).
+
 -define(ECALLMGR_UTIL_CACHE, 'ecallmgr_util_cache').
 -define(ECALLMGR_AUTH_CACHE, 'ecallmgr_auth_cache').
 -define(ECALLMGR_CALL_CACHE, 'ecallmgr_call_cache').
@@ -165,10 +169,6 @@
                               ]).
 
 -define(SANITY_CHECK_PERIOD, 300 * ?MILLISECONDS_IN_SECOND).
-
--define(APP, 'ecallmgr').
--define(APP_NAME, <<"ecallmgr">>).
--define(APP_VERSION, <<"4.0.0">>).
 
 -define(STARTUP_FILE, [code:priv_dir(?APP), "/startup.config"]).
 -define(SETTINGS_FILE, [code:priv_dir(?APP), "/settings.config"]).

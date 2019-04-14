@@ -7,7 +7,10 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_handler/2, stop_handler/1]).
+-export([start_link/0
+        ,start_handler/3
+        ,stop_handler/1
+        ]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -30,11 +33,11 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec start_handler(kz_term:ne_binary(), kapi_route:req()) -> kz_types:sup_startchild_ret().
-start_handler(CallID, RouteReqJObj) ->
+-spec start_handler(kz_term:ne_binary(), kapi_route:req(), pid()) -> kz_types:sup_startchild_ret().
+start_handler(CallID, RouteReqJObj, AMQPWorker) ->
     supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS_TYPE(<<"onnet-", CallID/binary>>
                                                           ,'ts_from_onnet'
-                                                          ,[RouteReqJObj]
+                                                          ,[RouteReqJObj, AMQPWorker]
                                                           ,'temporary'
                                                           )).
 

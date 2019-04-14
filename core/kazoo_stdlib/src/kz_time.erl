@@ -578,7 +578,6 @@ elapsed_us(Start, Now)
 -spec now() -> now().
 now() -> os:timestamp().
 
-
 -spec now_s() -> gregorian_seconds().
 now_s() ->  erlang:system_time('seconds') + ?UNIX_EPOCH_IN_GREGORIAN.
 

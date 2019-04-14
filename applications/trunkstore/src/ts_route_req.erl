@@ -15,15 +15,18 @@
 -spec init() -> 'ok'.
 init() -> 'ok'.
 
--spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
-handle_req(ApiJObj, _Options) ->
-    'true' = kapi_route:req_v(ApiJObj),
-    kz_util:put_callid(ApiJObj),
-    lager:info("received request ~s asking if trunkstore can route this call", [kapi_route:fetch_id(ApiJObj)]),
-    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, ApiJObj),
+-spec handle_req(kapi_route:req(), kz_term:proplist()) -> any().
+handle_req(RouteReq, _Options) ->
+    'true' = kapi_route:req_v(RouteReq),
+    kz_util:put_callid(kapi_route:call_id(RouteReq)),
+    kz_amqp_worker:worker_pool(trunkstore_sup:pool_name()),
+
+    lager:info("received request ~s asking if trunkstore can route this call", [kapi_route:fetch_id(RouteReq)]),
+    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, RouteReq),
     ApplicationName = kz_json:get_ne_binary_value(<<"Application-Name">>, CCVs),
     case kz_json:get_first_defined([<<"Referred-By">>, <<"Redirected-By">>], CCVs) =/= 'undefined' of
-        'true' when ApplicationName =:= ?APP_NAME -> handle_onnet_req(ApiJObj);
+        'true' when ApplicationName =:= ?APP_NAME ->
+            maybe_handle(RouteReq, fun handle_onnet_req/2, kz_amqp_worker:checkout_worker());
         'true' ->
             lager:info("request is the result of a transfer by another application, ~s, ignoring"
                       ,[ApplicationName]
@@ -32,21 +35,28 @@ handle_req(ApiJObj, _Options) ->
             case kz_json:get_ne_binary_value(<<"Authorizing-Type">>, CCVs) =:= <<"sys_info">>
                 andalso kz_json:get_ne_binary_value(<<"Authorizing-ID">>, CCVs) =/= 'undefined'
             of
-                'true' -> handle_onnet_req(ApiJObj);
-                'false' -> handle_offnet_req(ApiJObj)
+                'true' -> maybe_handle(RouteReq, fun handle_onnet_req/2, kz_amqp_worker:checkout_worker());
+                'false' -> maybe_handle(RouteReq, fun handle_offnet_req/2, kz_amqp_worker:checkout_worker())
             end
     end.
 
--spec handle_onnet_req(kz_json:object()) -> any().
-handle_onnet_req(ApiJObj) ->
-    %% Coming from PBX (on-net); authed by Registrar or ts_auth
-    CallId = kz_json:get_ne_binary_value(<<"Call-ID">>, ApiJObj),
-    lager:info("call with fetch-id ~s began on the network", [kapi_route:fetch_id(ApiJObj)]),
-    ts_onnet_sup:start_handler(<<"onnet-", CallId/binary>>, ApiJObj).
+-spec maybe_handle(kapi_route:req(), fun(), {'ok', pid()} | {'error', any()}) -> any().
+maybe_handle(_RouteReq, _HandlerFun, {'error', _E}) ->
+    lager:warning("ignoring req, failed to checkout AMQP worker: ~p", [_E]);
+maybe_handle(RouteReq, HandlerFun, {'ok', AMQPWorker}) ->
+    lager:info("checked out AMQP worker ~p", [AMQPWorker]),
+    HandlerFun(RouteReq, AMQPWorker).
 
--spec handle_offnet_req(kz_json:object()) -> any().
-handle_offnet_req(ApiJObj) ->
+-spec handle_onnet_req(kapi_route:req(), pid()) -> any().
+handle_onnet_req(RouteReq, AMQPWorker) ->
+    %% Coming from PBX (on-net); authed by Registrar or ts_auth
+    CallId = kapi_route:call_id(RouteReq),
+    lager:info("call with fetch-id ~s began on the network", [kapi_route:fetch_id(RouteReq)]),
+    ts_onnet_sup:start_handler(<<"onnet-", CallId/binary>>, RouteReq, AMQPWorker).
+
+-spec handle_offnet_req(kapi_route:req(), pid()) -> any().
+handle_offnet_req(RouteReq, AMQPWorker) ->
     %% Coming from carrier (off-net)
-    CallId = kz_json:get_ne_binary_value(<<"Call-ID">>, ApiJObj),
-    lager:info("call with fetch-id ~s began from outside the network", [kapi_route:fetch_id(ApiJObj)]),
-    ts_offnet_sup:start_handler(<<"offnet-", CallId/binary>>, ApiJObj).
+    CallId = kapi_route:call_id(RouteReq),
+    lager:info("call with fetch-id ~s began from outside the network", [kapi_route:fetch_id(RouteReq)]),
+    ts_offnet_sup:start_handler(<<"offnet-", CallId/binary>>, RouteReq, AMQPWorker).

@@ -7,7 +7,7 @@
 -module(ecallmgr_fs_router_util).
 
 -export([register_binding/3, register_bindings/3]).
--export([search_for_route/5, search_for_route/6]).
+-export([search_for_route/6, search_for_route/7]).
 -export([reply_affirmative/6]).
 -export([route_req/4]).
 
@@ -20,29 +20,30 @@
 
 -type search_ret() :: 'ok' | {'ok', kz_json:object()}.
 
--spec search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data()) ->
+-spec search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data(), pid()) ->
                               search_ret().
-search_for_route(Section, Node, FetchId, CallId, Props) ->
+search_for_route(Section, Node, FetchId, CallId, Props, AMQPWorker) ->
     Authz = kapps_config:is_true(?APP_NAME, <<"authz_enabled">>, 'false'),
-    search_for_route(Section, Node, FetchId, CallId, Props, Authz).
+    search_for_route(Section, Node, FetchId, CallId, Props, AMQPWorker, Authz).
 
--spec search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data(), boolean()) ->
+-spec search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data(), pid(), boolean()) ->
                               search_ret().
-search_for_route(Section, Node, FetchId, CallId, Props, 'false') ->
-    do_search_for_route(Section, Node, FetchId, CallId, Props, 'undefined');
-search_for_route(Section, Node, FetchId, CallId, Props, 'true') ->
+search_for_route(Section, Node, FetchId, CallId, Props, AMQPWorker, 'false') ->
+    do_search_for_route(Section, Node, FetchId, CallId, Props, AMQPWorker, 'undefined');
+search_for_route(Section, Node, FetchId, CallId, Props, AMQPWorker, 'true') ->
     AuthzWorker = spawn_authorize_call_fun(Node, CallId, Props),
     lager:debug("authz worker in ~p", [AuthzWorker]),
-    do_search_for_route(Section, Node, FetchId, CallId, Props, AuthzWorker).
+    do_search_for_route(Section, Node, FetchId, CallId, Props, AMQPWorker, AuthzWorker).
 
--spec do_search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data(), kz_term:api_pid_ref()) ->
+-spec do_search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data(), pid(), kz_term:api_pid_ref()) ->
                                  search_ret().
-do_search_for_route(Section, Node, FetchId, CallId, Props, AuthzWorker) ->
+do_search_for_route(Section, Node, FetchId, CallId, Props, AMQPWorker, AuthzWorker) ->
     Request = route_req(CallId, FetchId, Props, Node),
     ReqResp = kz_amqp_worker:call(Request
                                  ,fun kapi_route:publish_req/1
                                  ,fun kapi_route:is_actionable_resp/1
                                  ,ecallmgr_fs_node:fetch_timeout(Node)
+                                 ,AMQPWorker
                                  ),
     case ReqResp of
         {'error', _R} ->
@@ -64,7 +65,7 @@ authorize_call_fun(Parent, Ref, Node, CallId, Props) ->
     kz_util:put_callid(CallId),
     Parent ! {'authorize_reply', Ref, ecallmgr_fs_authz:authorize(Props, CallId, Node)}.
 
--spec maybe_wait_for_authz(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist(), 'undefined' | kz_term:pid_ref()) -> search_ret().
+-spec maybe_wait_for_authz(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist(), kz_term:api_pid_ref()) -> search_ret().
 maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, 'undefined') ->
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     J = kz_json:set_value(<<"Custom-Channel-Vars">>
@@ -110,13 +111,15 @@ reply_forbidden(Section, Node, FetchId) ->
         {'error', Reason} -> lager:debug("node ~s rejected our ~s route unauthz: ~p", [Node, Section, Reason])
     end.
 
--spec reply_affirmative(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) -> search_ret().
+-spec reply_affirmative(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) ->
+                               search_ret().
 reply_affirmative(Section, Node, FetchId, _CallId, JObj, Props) ->
     lager:info("received affirmative route response for request ~s", [FetchId]),
     {'ok', XML} = route_resp_xml(Section, JObj, Props),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FetchId, Section, iolist_to_binary(XML), 3 * ?MILLISECONDS_IN_SECOND) of
-        {'error', _Reason} -> lager:debug("node ~s rejected our ~s route response: ~p", [Node, Section, _Reason]);
+        {'error', _Reason} ->
+            lager:debug("node ~s rejected our ~s route response: ~p", [Node, Section, _Reason]);
         'ok' ->
             lager:info("node ~s accepted ~s route response for request ~s", [Node, Section, FetchId]),
             {'ok', JObj}

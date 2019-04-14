@@ -119,25 +119,25 @@ add(Node, Cookie) when is_atom(Cookie) ->
 
 -spec add(atom(), atom(), kz_term:proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
 add(Node, Cookie, Opts) when is_atom(Node) ->
-    gen_server:call(?SERVER
-                   ,{'add_fs_node'
-                    ,Node
-                    ,Cookie
-                    ,[{'cookie', Cookie}
-                      | props:delete('cookie', Opts)
-                     ]
-                    }
-                   ,60 * ?MILLISECONDS_IN_SECOND
-                   ).
+    gen_listener:call(?SERVER
+                     ,{'add_fs_node'
+                      ,Node
+                      ,Cookie
+                      ,[{'cookie', Cookie}
+                        | props:delete('cookie', Opts)
+                       ]
+                      }
+                     ,60 * ?MILLISECONDS_IN_SECOND
+                     ).
 
 -spec nodeup(atom()) -> 'ok'.
 nodeup(Node) when is_atom(Node) ->
-    gen_server:cast(?SERVER, {'fs_nodeup', Node}).
+    gen_listener:cast(?SERVER, {'fs_nodeup', Node}).
 
 %% returns 'ok' or {'error', some_error_atom_explaining_more}
 -spec remove(atom()) -> 'ok'.
 remove(Node) when is_atom(Node) ->
-    gen_server:cast(?SERVER, {'rm_fs_node', Node}).
+    gen_listener:cast(?SERVER, {'rm_fs_node', Node}).
 
 -spec connected() -> kz_term:atoms() | kz_term:proplist_kv(atom(), kz_time:gregorian_seconds()).
 connected() ->
@@ -146,7 +146,7 @@ connected() ->
 -spec connected('false') -> [atom()];
                ('true') -> [{atom(), kz_time:gregorian_seconds()}].
 connected(Verbose) ->
-    gen_server:call(?SERVER, {'connected_nodes', Verbose}).
+    gen_listener:call(?SERVER, {'connected_nodes', Verbose}).
 
 -spec flush() -> 'ok'.
 flush() -> do_flush(<<>>).
@@ -166,7 +166,7 @@ do_flush(Args) ->
 
 -spec is_node_up(atom()) -> boolean().
 is_node_up(Node) when is_atom(Node) ->
-    gen_server:call(?SERVER, {'is_node_up', Node}).
+    gen_listener:call(?SERVER, {'is_node_up', Node}).
 
 -spec sip_url(atom() | kz_term:text()) -> kz_term:api_binary().
 sip_url(Node) when not is_atom(Node) ->
@@ -200,18 +200,18 @@ all_nodes_connected() ->
 
 -spec summary() -> 'ok'.
 summary() ->
-    print_summary(gen_server:call(?SERVER, 'nodes')).
+    print_summary(gen_listener:call(?SERVER, 'nodes')).
 
 
 -spec details() -> 'ok'.
 details() ->
-    print_details(gen_server:call(?SERVER, 'nodes')).
+    print_details(gen_listener:call(?SERVER, 'nodes')).
 
 -spec details(kz_term:text() | atom()) -> 'ok'.
 details(NodeName) when not is_atom(NodeName) ->
     details(kz_term:to_atom(NodeName, 'true'));
 details(NodeName) when is_atom(NodeName) ->
-    case gen_server:call(?SERVER, {'node', NodeName}) of
+    case gen_listener:call(?SERVER, {'node', NodeName}) of
         {'error', 'not_found'} ->
             io:format("Node ~s not found!~n", [NodeName]);
         {'ok', Node} ->
@@ -307,13 +307,13 @@ format_capability(_, []) -> 'undefined'.
 
 -spec set_capability(atom(), kz_term:ne_binary(), boolean()) -> 'ok'.
 set_capability(Node, Capability, Toggle) when is_boolean(Toggle) ->
-    gen_server:call(?SERVER, {'set_capability', Node, Capability, Toggle}).
+    gen_listener:call(?SERVER, {'set_capability', Node, Capability, Toggle}).
 
 -spec add_capability(atom(), kz_json:object()) -> 'ok'.
 add_capability(Node, Capability) ->
     case has_capability(Node, Capability) of
         'true' -> 'ok';
-        'false' -> gen_server:call(?SERVER, {'add_capability', Node, Capability})
+        'false' -> gen_listener:call(?SERVER, {'add_capability', Node, Capability})
     end.
 
 capability_to_json(#capability{node=Node
@@ -335,7 +335,7 @@ handle_fs_xml_flush(JObj, _Props) ->
     flush(Username, Realm).
 
 %%%=============================================================================
-%%% gen_server callbacks
+%%% gen_listener callbacks
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
@@ -389,11 +389,11 @@ handle_call({'add_fs_node', NodeName, Cookie, Options}, From, State) ->
           fun() ->
                   try maybe_add_node(NodeName, Cookie, Options, State) of
                       Reply ->
-                          gen_server:reply(From, Reply)
+                          gen_listener:reply(From, Reply)
                   catch
                       _E:R ->
                           lager:debug("failed to add fs node ~s(~s): ~s: ~p", [NodeName, Cookie, _E, R]),
-                          gen_server:reply(From, R)
+                          gen_listener:reply(From, R)
                   end
           end),
     {'noreply', State};
@@ -446,6 +446,13 @@ handle_cast({'remove_capabilities', NodeName}, State) ->
 handle_cast({'rm_fs_node', NodeName}, State) ->
     _ = kz_util:spawn(fun maybe_rm_fs_node/2, [NodeName, State]),
     {'noreply', State};
+
+handle_cast({'gen_listener', {'created_queue', _QueueName}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
+    lager:debug("consuming from queue: ~s", [_IsConsuming]),
+    {'noreply', State};
+
 handle_cast(_Cast, State) ->
     lager:debug("unhandled cast: ~p", [_Cast]),
     {'noreply', State, 'hibernate'}.
@@ -484,9 +491,9 @@ handle_event(_JObj, _State) ->
     {'reply', []}.
 
 %%------------------------------------------------------------------------------
-%% @doc This function is called by a `gen_server' when it is about to
+%% @doc This function is called by a `gen_listener' when it is about to
 %% terminate. It should be the opposite of `Module:init/1' and do any
-%% necessary cleaning up. When it returns, the `gen_server' terminates
+%% necessary cleaning up. When it returns, the `gen_listener' terminates
 %% with Reason. The return value is ignored.
 %%
 %% @end
@@ -559,13 +566,13 @@ maybe_add_node(NodeName, Cookie, Options, #state{self=Srv, nodes=Nodes}) ->
             Node = create_node(NodeName, Cookie, Options),
             case maybe_connect_to_node(Node) of
                 {'error', _}=E ->
-                    _ = gen_server:cast(Srv, {'update_node', Node#node{connected='false'}}),
+                    _ = gen_listener:cast(Srv, {'update_node', Node#node{connected='false'}}),
                     _ = maybe_start_node_pinger(Node),
                     E;
                 'ok' ->
-                    gen_server:cast(Srv, {'update_node', Node#node{started=kz_time:now_s()
-                                                                  ,connected='true'
-                                                                  }})
+                    gen_listener:cast(Srv, {'update_node', Node#node{started=kz_time:now_s()
+                                                                    ,connected='true'
+                                                                    }})
             end
     end.
 
@@ -581,36 +588,36 @@ maybe_rm_fs_node(NodeName, #state{nodes=Nodes}=State) ->
 rm_fs_node(#node{node=NodeName}=Node, #state{self=Srv}) ->
     _ = maybe_disconnect_from_node(Node),
     _ = ecallmgr_fs_pinger_sup:remove_node(NodeName),
-    gen_server:cast(Srv, {'remove_node', Node}).
+    gen_listener:cast(Srv, {'remove_node', Node}).
 
 -spec handle_nodeup(fs_node(), state()) -> 'ok'.
 handle_nodeup(#node{}=Node, #state{self=Srv}) ->
     NewNode = get_fs_client_version(Node),
     case maybe_connect_to_node(NewNode) of
         {'error', _} ->
-            _ = gen_server:cast(Srv, {'update_node', Node#node{connected='false'}}),
+            _ = gen_listener:cast(Srv, {'update_node', Node#node{connected='false'}}),
             _ = maybe_start_node_pinger(Node),
             'ok';
         'ok' ->
-            gen_server:cast(Srv, {'update_node', NewNode#node{started=kz_time:now_s()
-                                                             ,connected='true'
-                                                             }})
+            gen_listener:cast(Srv, {'update_node', NewNode#node{started=kz_time:now_s()
+                                                               ,connected='true'
+                                                               }})
     end.
 
 -spec handle_nodedown(fs_node(), state()) -> 'ok'.
 handle_nodedown(#node{node=NodeName}=Node, #state{self=Srv}) ->
     lager:critical("received node down notice for ~s", [NodeName]),
     _ = maybe_disconnect_from_node(Node),
-    gen_server:cast(Srv, {'remove_capabilities', NodeName}),
+    gen_listener:cast(Srv, {'remove_capabilities', NodeName}),
     case maybe_connect_to_node(Node) of
         {'error', _} ->
-            _ = gen_server:cast(Srv, {'update_node', Node#node{connected='false'}}),
+            _ = gen_listener:cast(Srv, {'update_node', Node#node{connected='false'}}),
             _ = maybe_start_node_pinger(Node),
             'ok';
         'ok' ->
-            gen_server:cast(Srv, {'update_node', Node#node{started=kz_time:now_s()
-                                                          ,connected='true'
-                                                          }})
+            gen_listener:cast(Srv, {'update_node', Node#node{started=kz_time:now_s()
+                                                            ,connected='true'
+                                                            }})
     end.
 
 -spec maybe_connect_to_node(fs_node()) -> 'ok' | {'error', any()}.

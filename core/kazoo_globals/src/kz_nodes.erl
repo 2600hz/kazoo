@@ -616,9 +616,9 @@ print_each_node_info(KV) ->
 
 -spec print_node_info({kz_term:ne_binary(), kz_term:ne_binary() | integer()}) -> 'ok'.
 print_node_info({K, ?NE_BINARY = V}) ->
-    io:format("~s: ~s~n", [K, V]);
+    print_simple_row_str([K, V]);
 print_node_info({K, V}) when is_integer(V) ->
-    io:format("~s: ~B~n", [K, V]).
+    print_simple_row([K, V]).
 
 -spec status_list(kz_types:kapps_info(), 0..4) -> 'ok'.
 status_list([], _) -> io:format("~n", []);

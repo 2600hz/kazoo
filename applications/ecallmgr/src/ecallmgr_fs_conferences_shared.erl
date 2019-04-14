@@ -36,7 +36,6 @@
 
 -define(LB_ALEG_PREFIX, "lb-aleg-").
 
-
 -type state() :: 'ok'.
 
 %%%=============================================================================
@@ -279,6 +278,7 @@ handle_response(ConferenceNode, JObj, {LoopbackCallId, {'ok', Resp}}) ->
                        ,b_leg :: kz_term:api_ne_binary()
                        ,dial_resp :: kz_term:api_ne_binary()
                        ,channel_props = [] :: kz_term:proplist()
+                       ,amqp_worker :: kz_term:api_pid()
                        }
        ).
 -type outbound_dial() :: #outbound_dial{}.
@@ -286,6 +286,17 @@ handle_response(ConferenceNode, JObj, {LoopbackCallId, {'ok', Resp}}) ->
 -spec handle_call_startup(atom(), kapi_conference:doc(), kz_term:ne_binary(), kz_term:proplist()) ->
                                  kz_term:proplist().
 handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp) ->
+    handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp
+                       ,kz_amqp_worker:checkout_worker(ecallmgr_call_sup:pool_name())
+                       ).
+
+handle_call_startup(ConferenceNode, _JObj, LoopbackCallId, Resp, {'error', _E}) ->
+    lager:warning("failed to start AMQP worker for call ~s"),
+    _ = ecallmgr_util:send_cmd(ConferenceNode, LoopbackCallId, <<"hangup">>, <<"FACILITY_REJECTED">>),
+    props:insert_value(<<"Message">>, <<"Unable to secure resources to handle the call">>, Resp);
+handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp, {'ok', AMQPWorker}) ->
+    kz_amqp_channel:consumer_pid(AMQPWorker),
+
     case wait_for_bowout(#outbound_dial{loopback_a=LoopbackCallId}
                         ,kz_json:get_integer_value(<<"Timeout">>, JObj) * ?MILLISECONDS_IN_SECOND
                         )
@@ -298,7 +309,7 @@ handle_call_startup(ConferenceNode, JObj, LoopbackCallId, Resp) ->
             lager:debug("finished waiting for ~s, now ~s", [LoopbackCallId, CallId]),
             add_participant(JObj
                            ,CallId
-                           ,start_call_handlers(ConferenceNode, JObj, OutboundDial)
+                           ,start_call_handlers(ConferenceNode, JObj, OutboundDial, AMQPWorker)
                            ,ChannelProps
                            ),
             props:set_values([{<<"Message">>, DialResp}
@@ -447,8 +458,14 @@ register_for_events(ConferenceNode, EndpointCallId) ->
         ],
     'ok'.
 
--spec start_call_handlers(atom(), kapi_conference:doc(), outbound_dial()) -> kz_term:api_ne_binary().
-start_call_handlers(Node, JObj, #outbound_dial{loopback_b=LoopbackB, b_leg=CallId}) ->
+-spec start_call_handlers(atom(), kapi_conference:doc(), outbound_dial(), pid()) -> kz_term:api_ne_binary().
+start_call_handlers(Node
+                   ,JObj
+                   ,#outbound_dial{loopback_b=LoopbackB
+                                  ,b_leg=CallId
+                                  }
+                   ,AMQPWorker
+                   ) ->
     CCVs = kz_json:new(),
     FetchId = kz_api:msg_id(JObj),
 
@@ -456,7 +473,8 @@ start_call_handlers(Node, JObj, #outbound_dial{loopback_b=LoopbackB, b_leg=CallI
     maybe_update_ecallmgr_node([LoopbackB, CallId]),
 
     _ = kz_util:spawn(fun ecallmgr_call_sup:start_event_process/2, [Node, CallId]),
-    {'ok', CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, 'undefined', CCVs),
+    {'ok', CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, 'undefined', CCVs, AMQPWorker),
+    lager:info("started control worker ~p(~p) for ~s", [CtlPid, AMQPWorker, CallId]),
 
     get_control_queue(CtlPid).
 
@@ -518,11 +536,7 @@ add_participant(JObj, CallId, ControlQueue, ChannelProps) ->
     Req = kz_json:merge(ReqJObj, ecallmgr_fs_channel:to_api_json(CallId)),
 
     lager:debug("adding participant for ~s: ~p", [CallId, Req]),
-    kz_amqp_worker:cast(Req
-                       ,fun(P) ->
-                                kapi_conference:publish_add_participant(kz_config:zone('binary'), P)
-                        end
-                       ).
+    kapi_conference:publish_add_participant(kz_config:zone('binary'), Req).
 
 -spec publish_resp(kapi_conference:doc(), kz_json:objects()) -> 'ok'.
 publish_resp(JObj, BaseResps) ->
@@ -532,6 +546,7 @@ publish_resp(JObj, BaseResps) ->
            ],
     kz_amqp_worker:cast(Resp
                        ,fun(P) -> kapi_conference:publish_dial_resp(kz_api:server_id(JObj), P) end
+                       ,ecallmgr_call_sup:pool_name()
                        ).
 
 -spec maybe_start_conference(kapi_conference:doc(), kz_term:ne_binary()) -> 'ok'.
