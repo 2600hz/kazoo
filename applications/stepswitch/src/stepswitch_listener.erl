@@ -7,6 +7,7 @@
 -behaviour(gen_listener).
 
 -include("stepswitch.hrl").
+-include_lib("kazoo_amqp/include/kapi_offnet_resource.hrl").
 
 %% API
 -export([start_link/0]).
@@ -24,11 +25,18 @@
 -record(state, {}).
 -type state() :: #state{}.
 
--define(BINDINGS, [{'route', [{'types', ?RESOURCE_TYPES_HANDLED}
+-define(ROUTE_RESOURCE_TYPES_HANDLED
+       ,[?RESOURCE_TYPE_AUDIO, ?RESOURCE_TYPE_SMS, ?RESOURCE_TYPE_VIDEO]
+       ).
+-define(OFFNET_RESOURCE_TYPES_HANDLED
+       ,[?RESOURCE_TYPE_AUDIO, ?RESOURCE_TYPE_ORIGINATE, ?RESOURCE_TYPE_SMS, ?RESOURCE_TYPE_VIDEO]
+       ).
+
+-define(BINDINGS, [{'route', [{'types', ?ROUTE_RESOURCE_TYPES_HANDLED}
                              ,{'restrict_to', ['no_account']}
                              ]
                    }
-                  ,{'offnet_resource', [{'types', ?RESOURCE_TYPES_HANDLED}]}
+                  ,{'offnet_resource', [{'types', ?OFFNET_RESOURCE_TYPES_HANDLED}]}
                   ,{'authn', []}
                   ]).
 -define(RESPONDERS, [{'stepswitch_inbound'

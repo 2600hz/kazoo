@@ -34,8 +34,6 @@
        ,kapps_config:get_is_true(?SS_CONFIG_CAT, <<"cid_rules_honor_diversions">>, 'false')
        ).
 
--define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>, <<"sms">>]).
-
 -define(DEFAULT_EMERGENCY_CID_NUMBER,
         kapps_config:get_ne_binary(?SS_CONFIG_CAT, <<"default_emergency_cid_number">>)
        ).
