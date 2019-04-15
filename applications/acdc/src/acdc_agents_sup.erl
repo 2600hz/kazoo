@@ -31,6 +31,7 @@
 -export([init/1]).
 
 -define(CHILD_ID(AccountId, AgentId), <<AccountId/binary, "-", AgentId/binary>>).
+-define(THIEF_ID(AccountId, QueueId, CallId), <<"thief-", AccountId/binary, "-", QueueId/binary, "-", CallId/binary>>).
 -define(CHILD(Id, Args), ?SUPER_NAME_ARGS_TYPE(Id, 'acdc_agent_sup', Args, 'transient')).
 -define(INITIAL_CHILDREN, []).
 
@@ -69,7 +70,11 @@ new(AcctId, AgentId, AgentJObj, Queues) ->
     start_agent(AcctId, AgentId, AgentJObj, [Queues]).
 
 -spec new_thief(kapps_call:call(), kz_term:ne_binary()) -> kz_types:sup_startchild_ret().
-new_thief(Call, QueueId) -> supervisor:start_child(?SERVER, [Call, QueueId]).
+new_thief(Call, QueueId) ->
+    AccountId = kapps_call:account_id(Call),
+    CallId = kapps_call:call_id(Call),
+    Id = ?THIEF_ID(AccountId, QueueId, CallId),
+    supervisor:start_child(?MODULE, ?CHILD(Id, [Call, QueueId])).
 
 -spec stop_agent(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:sup_deletechild_ret().
 stop_agent(AcctId, AgentId) ->
