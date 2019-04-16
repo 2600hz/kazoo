@@ -52,8 +52,6 @@
 
 -export([dialplan_application/1]).
 
--export([failover_if_all_unregistered/1]).
-
 -include("ecallmgr.hrl").
 -include_lib("kazoo_amqp/src/api/kapi_dialplan.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
@@ -701,8 +699,26 @@ build_bridge_string(Endpoints, Separator, 'true') ->
     %% Additionally split bridge strings out and only return failover endpoints
     %% if no devices registered.
     lager:info("ecallmgr 'failover_when_all_unreg' is enabled."),
-    BridgeChannels = failover_if_all_unregistered(build_bridge_channels(Endpoints)),
-    kz_binary:join(BridgeChannels, Separator);
+
+    %% NOTE: because we want to de-dup failover endpoints with same destination
+    %% it is important to pass bridge strings in intial order to {@link failover_if_all_unregistered/1}
+    %% function so only the first duplicated endpoint will ne used.
+    %% e.g:
+    %%
+    %% ```
+    %% [^^!ecallmgr_Authorizing_ID='forward_1']loopback/forward_1/context_2
+    %% [^^!ecallmgr_Authorizing_ID='forward_2']loopback/forward_1/context_2
+    %% [^^!ecallmgr_Authorizing_ID='forward_3']loopback/another_forward_destination/context_2
+    %% '''
+    %%
+    %% would be translate to:
+    %%
+    %% ```
+    %% [^^!ecallmgr_Authorizing_ID='forward_1']loopback/forward_1/context_2
+    %% [^^!ecallmgr_Authorizing_ID='forward_3']loopback/another_forward_destination/context_2
+    %% '''
+    BridgeChannels = failover_if_all_unregistered(lists:reverse(build_bridge_channels(Endpoints))),
+    kz_binary:join(lists:reverse(BridgeChannels), Separator);
 build_bridge_string(Endpoints, Separator, _DefaultFailover) ->
     BridgeChannels = build_bridge_channels(Endpoints),
     kz_binary:join(lists:reverse(BridgeChannels), Separator).
