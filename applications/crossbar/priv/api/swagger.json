@@ -1023,18 +1023,6 @@
             ],
             "type": "object"
         },
-        "bookkeepers": {
-            "description": "The bookkeeper modules provided by Kazoo",
-            "properties": {
-                "braintree": {
-                    "type": "object"
-                },
-                "local": {
-                    "type": "object"
-                }
-            },
-            "type": "object"
-        },
         "call_recording": {
             "description": "endpoint recording settings",
             "properties": {
@@ -27996,25 +27984,6 @@
             ],
             "type": "object"
         },
-        "service_plan.category": {
-            "description": "Describes a service plan category",
-            "properties": {
-                "_all": {
-                    "$ref": "#/definitions/service_plan.item",
-                    "description": "Applies item rules to any item in this category",
-                    "properties": {
-                        "exceptions": {
-                            "description": "Items that are not included in this item plan",
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
-                        }
-                    },
-                    "type": "object"
-                }
-            }
-        },
         "service_plan.item": {
             "description": "Describes a service plan item",
             "properties": {
@@ -28140,78 +28109,6 @@
                     "type": "array"
                 }
             },
-            "type": "object"
-        },
-        "service_plans": {
-            "description": "Describes services offered to sub-accounts",
-            "properties": {
-                "bookkeepers": {
-                    "$ref": "#/definitions/bookkeepers",
-                    "type": "object"
-                },
-                "category": {
-                    "description": "Optional category used for grouping service plans",
-                    "type": "string"
-                },
-                "description": {
-                    "description": "Describes the service plan offering",
-                    "type": "string"
-                },
-                "manual_recurring": {
-                    "description": "Monthly recurring items",
-                    "items": {
-                        "properties": {
-                            "name": {
-                                "description": "A friendly name for the item",
-                                "type": "string"
-                            },
-                            "quantity": {
-                                "description": "How many of the item are allowed",
-                                "type": "integer"
-                            },
-                            "rates": {
-                                "description": "Item's rate",
-                                "type": "number"
-                            }
-                        },
-                        "type": "object"
-                    },
-                    "type": "array"
-                },
-                "merge": {
-                    "description": "Optionally defines a strategy and priority to merge multiple service plans together",
-                    "properties": {
-                        "priority": {
-                            "description": "The priority among the service plans with the merge strategy",
-                            "minimum": 0,
-                            "type": "integer"
-                        },
-                        "strategy": {
-                            "description": "The merge strategy, like strategies are merged together based on their priority",
-                            "enum": [
-                                "simple",
-                                "cumulative"
-                            ],
-                            "type": "string"
-                        }
-                    },
-                    "type": "object"
-                },
-                "name": {
-                    "description": "A friendly name for the service plan",
-                    "maxLength": 128,
-                    "minLength": 1,
-                    "type": "string"
-                },
-                "plan": {
-                    "description": "Outlines the service plan for various services",
-                    "type": "object"
-                }
-            },
-            "required": [
-                "name",
-                "plan"
-            ],
             "type": "object"
         },
         "shared_auth": {

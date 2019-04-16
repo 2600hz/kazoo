@@ -80,7 +80,6 @@ curl -v -X GET \
         "rates",
         "resource_jobs",
         "resources",
-        "service_plans",
         "shared_auth",
         "sms",
         "temporal_rules",
