@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2019, 2600Hz
+%%% @copyright (C) 2019-, 2600Hz
 %%% @doc Handles document change AMQP payloads and flushes caches appropriately
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -61,6 +61,11 @@ channel_reconnect_flush(Name) ->
 handle_change([Name], JObj) ->
     handle_change(Name, JObj);
 handle_change(Name, JObj) ->
+    handle_change(Name, JObj, kz_json:is_json_object(JObj)).
+
+handle_change(_Name, _Other, 'false') ->
+    lager:debug("not handling non-JSON for ~s: ~p", [_Name, _Other]);
+handle_change(Name, JObj, 'true') ->
     'true' = kapi_conf:doc_update_v(JObj),
     case kz_api:node(JObj) =/= kz_term:to_binary(node())
         orelse kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =/= ets:info(Name, 'name')
