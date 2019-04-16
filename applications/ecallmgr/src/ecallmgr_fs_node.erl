@@ -578,17 +578,8 @@ print_api_response({'timeout', {Cmd, Arg}}) ->
 
 -spec channels_as_json(atom()) -> kz_json:objects().
 channels_as_json(Node) ->
-    case freeswitch:api(Node, 'show', "channels as delim |||") of
-        {'ok', Lines} ->
-            case binary:split(Lines, <<"\n">>, ['global']) of
-                [<<>>|_] -> [];
-                [Header|Rest] ->
-                    Keys = binary:split(Header, <<"|||">>, ['global']),
-                    [kz_json:from_list(lists:zip(Keys, Values))
-                     || Line <- Rest,
-                        (Values = binary:split(Line, <<"|||">>, ['global'])) =/= [Line]
-                    ]
-            end;
+    case freeswitch:api(Node, 'show', "channels as json") of
+        {'ok', Bin} -> kz_json:get_list_value(<<"rows">>, kz_json:decode(Bin), []);
         {'error', _} -> []
     end.
 

@@ -442,16 +442,26 @@ handle_cast({'sync_channels', Node, Channels}, State) ->
     Remove = sets:subtract(CachedChannels, SyncChannels),
     Add = sets:subtract(SyncChannels, CachedChannels),
     _ = [begin
-             lager:debug("removed channel ~s from cache during sync with ~s", [UUID, Node]),
-             ets:delete(?CHANNELS_TBL, UUID)
+             case ets:lookup(?CHANNELS_TBL, UUID) of
+                 [#channel{handling_locally='true'}=Channel] ->
+                     lager:debug("emitting channel disconnect ~s during sync with ~s", [UUID, Node]),
+                     handle_channel_disconnected(Channel),
+                     ets:delete(?CHANNELS_TBL, UUID);
+                 [_Channel] ->
+                     lager:debug("removed channel ~s from cache during sync with ~s", [UUID, Node]),
+                     ets:delete(?CHANNELS_TBL, UUID);
+                 [] ->
+                     lager:debug("channel ~s not found during sync delete with ~s", [UUID, Node])
+             end
          end
          || UUID <- sets:to_list(Remove)
         ],
     _ = [begin
-             lager:debug("added channel ~s to cache during sync with ~s", [UUID, Node]),
+             lager:debug("trying to add channel ~s to cache during sync with ~s", [UUID, Node]),
              case ecallmgr_fs_channel:renew(Node, UUID) of
                  {'error', _R} -> lager:warning("failed to sync channel ~s: ~p", [UUID, _R]);
                  {'ok', C} ->
+                     lager:debug("added channel ~s to cache during sync with ~s", [UUID, Node]),
                      ets:insert(?CHANNELS_TBL, C),
                      PublishReconect = kapps_config:get_boolean(?APP_NAME, <<"publish_channel_reconnect">>, 'false'),
                      handle_channel_reconnected(C, PublishReconect)
@@ -789,7 +799,7 @@ publish_channel_connection_event(#channel{uuid=UUID
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION) ++ ChannelSpecific
             ],
     _ = kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1),
-    lager:debug("published channel connection event for ~s", [UUID]).
+    lager:debug("published channel connection event (~s) for ~s", [kz_api:event_name(Event), UUID]).
 
 -spec channel_call_state(boolean()) -> kz_term:api_binary().
 channel_call_state('true') ->
