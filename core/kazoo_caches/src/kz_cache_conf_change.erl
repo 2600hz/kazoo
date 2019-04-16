@@ -1,3 +1,8 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2019, 2600Hz
+%%% @doc Handles document change AMQP payloads and flushes caches appropriately
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kz_cache_conf_change).
 
 -export([start_link/2
