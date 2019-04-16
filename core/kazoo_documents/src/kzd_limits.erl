@@ -467,12 +467,19 @@ set_allotments(Doc, Allotments) ->
                        tristate_integer().
 get_limit(Key, Doc, Default) ->
     PrivateValue = get_private_limit(Key, Doc),
-    PublicValue = get_public_limit(Key, Doc, Default),
+    PublicValue =  kz_json:get_integer_value(Key, Doc),
     case PrivateValue =/= 'undefined'
-        andalso PrivateValue < PublicValue
+        andalso
+        (PublicValue =:= 'undefined'
+         orelse PublicValue < 0
+         orelse (
+           PrivateValue >= 0
+           andalso PrivateValue < PublicValue
+          )
+        )
     of
         'true' -> PrivateValue;
-        'false' -> PublicValue
+        'false' -> get_public_limit(Key, Doc, Default)
     end.
 
 -spec get_public_limit(kz_term:ne_binary(), kz_json:object(), tristate_integer()) ->
@@ -480,7 +487,7 @@ get_limit(Key, Doc, Default) ->
 get_public_limit(Key, Doc, Default) ->
     case kz_json:get_integer_value(Key, Doc) of
         'undefined' -> get_default_limit(Key, Default);
-        Value when Value < 0 -> 0;
+        Value when Value < 0 -> get_default_limit(Key, Default);
         Value -> Value
     end.
 
