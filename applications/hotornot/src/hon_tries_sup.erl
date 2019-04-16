@@ -23,7 +23,7 @@
 -define(SERVER, ?MODULE).
 
 -define(CHILDREN, [?WORKER_NAME_ARGS('hon_trie', Ratedeck, [Ratedeck])
-                   || Ratedeck <- hotornot_config:ratedecks()
+                   || Ratedeck <- kz_services_ratedecks:ratedecks()
                   ]).
 
 %%==============================================================================

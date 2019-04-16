@@ -25,6 +25,7 @@
 -define(PVT_TYPE, <<"rate">>).
 -define(NUMBER, <<"number">>).
 -define(CB_LIST, <<"rates/crossbar_listing">>).
+-define(RATEDECKS, <<"ratedecks">>).
 
 -define(NUMBER_RESP_FIELDS, [<<"Base-Cost">>
                             ,<<"E164-Number">>
@@ -70,6 +71,11 @@ init_db() ->
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).
 
+authorize(Context, ?RATEDECKS) ->
+    case cb_context:is_superduper_admin(Context) of
+        'true' -> 'true';
+        'false' -> {'stop', cb_context:add_system_error('forbidden', Context)}
+    end;
 authorize(_Context, [{<<"rates">>, [?NUMBER, _NumberToRate]}]) ->
     lager:debug("authorizing rate request for ~s", [_NumberToRate]),
     'true';
@@ -88,6 +94,8 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST].
 
 -spec allowed_methods(path_token()) -> http_methods().
+allowed_methods(?RATEDECKS) ->
+    [?HTTP_GET];
 allowed_methods(_RateId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
@@ -144,6 +152,8 @@ validate(Context) ->
     validate_rates(Context, cb_context:req_verb(Context)).
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+validate(Context, ?RATEDECKS) ->
+    ratedecks_list(Context);
 validate(Context, Id) ->
     validate_rate(Context, Id, cb_context:req_verb(Context)).
 
@@ -600,3 +610,12 @@ normalize_field(<<"Base-Cost">> = K, BaseCost) ->
     {K, kz_currency:units_to_dollars(BaseCost)};
 normalize_field(K, V) ->
     {K, V}.
+
+-spec ratedecks_list(cb_context:context()) -> kz_term:proplist().
+ratedecks_list(Context) ->
+    Props = [{<<"default_ratedeck">>, kapps_config:get_ne_binary(<<"hotornot">>, <<"default_ratedeck">>, ?KZ_RATES_DB)}
+            ,{<<"ratedecks">>, kz_services_ratedecks:ratedecks()}
+            ],
+    cb_context:setters(Context, [{fun cb_context:set_resp_data/2, kz_json:from_list(Props)}
+                                ,{fun cb_context:set_resp_status/2, 'success'}
+                                ]).

@@ -47311,6 +47311,15 @@
                 }
             }
         },
+        "/rates/ratedecks": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
         "/rates/{RATE_ID}": {
             "delete": {
                 "description": "Delete the rate doc",
