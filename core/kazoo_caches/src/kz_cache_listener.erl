@@ -49,6 +49,9 @@
 -type state() :: ?MODULE.
 
 -spec start_link() -> kz_types:startlink_ret().
+-ifdef(TEST).
+start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
+-else.
 start_link() ->
     %% Bindings = [{'conf', ['federate', {'type', <<"database">>}]}],
     gen_listener:start_link({'local', ?MODULE}
@@ -61,6 +64,7 @@ start_link() ->
                             ]
                            ,[]
                            ).
+-endif.
 
 -spec add_binding(atom(), kz_term:proplist()) -> 'ok'.
 add_binding(Name, Binding) ->
