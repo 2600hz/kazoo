@@ -64,14 +64,12 @@ start_link() ->
 
 -spec add_binding(atom(), kz_term:proplist()) -> 'ok'.
 add_binding(Name, Binding) ->
-    lager:debug("adding binding ~p", [Binding]),
     gen_listener:add_binding(?MODULE
                             ,'conf'
                             ,['federate' | Binding]
                             ),
     RK = kapi_conf:get_routing_key(Binding),
-    kazoo_bindings:bind(RK, 'kz_cache_conf_change', 'handle_change', Name),
-    lager:info("added routing key ~s for ~s", [RK, Name]).
+    _ = kazoo_bindings:bind(RK, 'kz_cache_conf_change', 'handle_change', Name).
 
 -spec add_origin_pointers(atom(), cache_obj(), 'undefined' | origin_tuple() | origin_tuples()) -> 'ok'.
 add_origin_pointers(_Name, _CacheObj, 'undefined') -> 'ok';
@@ -149,10 +147,12 @@ handle_event(_JObj, _State) ->
     {'reply', []}.
 
 -spec handle_change(kapi_conf:doc(), kz_term:proplist(), any()) -> 'ok'.
-handle_change(JObj, _Props, Deliver) ->
-    RK = gen_listener:routing_key_used(Deliver),
+handle_change(JObj, _Props, <<RK/binary>>) ->
     _ = kazoo_bindings:map(RK, [JObj]),
-    lager:debug("routed payload to ~s", [RK]).
+    lager:debug("routed payload to ~s", [RK]);
+handle_change(JObj, Props, Deliver) ->
+    RK = gen_listener:routing_key_used(Deliver),
+    handle_change(JObj, Props, RK).
 
 -spec terminate(any(), state()) -> 'ok'.
 terminate('shutdown', _State) ->
