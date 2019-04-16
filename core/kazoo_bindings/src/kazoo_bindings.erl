@@ -626,11 +626,13 @@ fold_bind_results([#kz_responder{module=M
                                 ,function=F
                                 ,payload='undefined'
                                 }=Responder
-                   | Responders]
+                   | Responders
+                  ]
                  ,[_|Tokens]=Payload
                  ,Route
                  ,RespondersLen
-                 ,ReRunResponders) ->
+                 ,ReRunResponders
+                 ) ->
     try erlang:apply(M, F, Payload) of
         'eoq' ->
             lager:debug("putting ~s to eoq", [M]),
@@ -736,7 +738,6 @@ map_processor_fold(#kz_binding{binding=Binding
                   ,_RoutingParts
                   ,_Options
                   ) ->
-    lager:debug("exact match for ~s", [Binding]),
     map_responders(Acc, Responders, Payload);
 map_processor_fold(#kz_binding{binding_parts=BParts
                               ,binding_responders=Responders
@@ -750,7 +751,6 @@ map_processor_fold(#kz_binding{binding_parts=BParts
     case kazoo_bindings_rt:matches(Options, BParts, RoutingParts) of
         'false' -> Acc;
         'true' ->
-            lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
             map_responders(Acc, Responders, Payload)
     end.
 
@@ -764,7 +764,6 @@ pmap_processor_fold(#kz_binding{binding=Binding
                    ,_RoutingParts
                    ,_Options
                    ) ->
-    lager:debug("exact match for ~s", [Binding]),
     pmap_responders(Acc, Responders, Payload);
 pmap_processor_fold(#kz_binding{binding_parts=BParts
                                ,binding_responders=Responders
@@ -778,7 +777,6 @@ pmap_processor_fold(#kz_binding{binding_parts=BParts
     case kazoo_bindings_rt:matches(Options, BParts, RoutingParts) of
         'false' -> Acc;
         'true' ->
-            lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
             pmap_responders(Acc, Responders, Payload)
     end.
 
@@ -801,7 +799,9 @@ pmap_responders(Acc, Responders, Payload) ->
 apply_map_responder(#kz_responder{module=M
                                  ,function=F
                                  ,payload=ResponderPayload
-                                 }, MapPayload) ->
+                                 }
+                   ,MapPayload
+                   ) ->
     Payload = maybe_merge_payload(ResponderPayload, MapPayload),
     try apply_map_responder(M, F, Payload)
     catch
@@ -827,8 +827,10 @@ apply_map_responder(#kz_responder{module=M
 
 -spec apply_map_responder(module() | 'undefined', responder_fun(), payload()) -> payload().
 apply_map_responder('undefined', Fun, Payload) ->
+    lager:debug("applying fun ~p/1", [Fun]),
     Fun(Payload);
 apply_map_responder(M, F, Payload) ->
+    lager:debug("applying ~s:~p/~p", [M, F, length(Payload)]),
     erlang:apply(M, F, Payload).
 
 -spec maybe_merge_payload(payload(), payload()) -> payload().
@@ -896,7 +898,9 @@ bindings(Routing, Opts) ->
     RoutingParts = routing_parts(Routing),
     ets:foldr(fun(#kz_binding{binding=Binding
                              ,binding_parts=BParts
-                             }=Bind, Acc) ->
+                             }=Bind
+                 ,Acc
+                 ) ->
                       case Binding =:= Routing
                           orelse kazoo_bindings_rt:matches(Options, BParts, RoutingParts)
                       of

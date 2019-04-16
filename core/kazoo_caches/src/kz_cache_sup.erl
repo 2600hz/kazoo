@@ -69,7 +69,7 @@ init([Name, ExpirePeriod, Props]) ->
                           ,[?WORKER_ARGS('kz_cache_lru', [Name, ExpirePeriod])
                            ,?WORKER_ARGS('kz_cache_ets', [Name])
                            ]
-                          ,['kz_cache_listener', 'kz_cache_nodes']
+                          ,['kz_cache_conf_change', 'kz_cache_nodes']
                           ),
 
     {'ok', {SupFlags, lists:reverse(Children)}}.
@@ -77,11 +77,11 @@ init([Name, ExpirePeriod, Props]) ->
 
 -spec maybe_add_child_spec(atom(), atom(), kz_cache:start_options(), kz_types:sup_child_specs()) ->
                                   kz_types:sup_child_specs().
-maybe_add_child_spec('kz_cache_listener', Name, Props, Children) ->
+maybe_add_child_spec('kz_cache_conf_change', Name, Props, Children) ->
     case props:get_value('origin_bindings', Props) of
         'undefined' -> Children;
         _BindingProps ->
-            [?WORKER_ARGS('kz_cache_listener', [Name, Props]) | Children]
+            [?WORKER_ARGS('kz_cache_conf_change', [Name, Props]) | Children]
     end;
 maybe_add_child_spec('kz_cache_nodes', Name, Props, Children) ->
     case props:is_true('new_node_flush', Props, 'false')
