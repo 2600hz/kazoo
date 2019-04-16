@@ -67,11 +67,20 @@ handle_change(_Name, _Other, 'false') ->
     lager:debug("not handling non-JSON for ~s: ~p", [_Name, _Other]);
 handle_change(Name, JObj, 'true') ->
     'true' = kapi_conf:doc_update_v(JObj),
-    case kz_api:node(JObj) =/= kz_term:to_binary(node())
-        orelse kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =/= ets:info(Name, 'name')
+
+    IsFromSameNode = kz_api:node(JObj) =:= kz_term:to_binary(node()),
+    IsFromSameCache = kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =:= ets:info(Name, 'name'),
+
+    lager:debug("~p =:= ~p", [kz_api:node(JObj), kz_term:to_binary(node())]),
+    lager:debug("~p =:= ~p", [kz_json:get_atom_value(<<"Origin-Cache">>, JObj), ets:info(Name, 'name')]),
+
+    _ = exec_bindings(Name, JObj),
+
+    case (not IsFromSameNode)
+        orelse (not IsFromSameCache)
     of
         'true' -> handle_document_change(Name, JObj);
-        'false' -> exec_bindings(Name, JObj)
+        'false' -> 'ok'
     end.
 
 -spec handle_document_change(atom(), kapi_conf:doc()) -> 'ok' | 'false'.
@@ -80,11 +89,8 @@ handle_document_change(Name, JObj) ->
     Type = kapi_conf:get_type(JObj),
     Id = kapi_conf:get_id(JObj),
 
-    _ = kz_util:spawn(fun exec_bindings/2, [kz_term:to_binary(Name), JObj]),
-
     _Keys = handle_document_change(Db, Type, Id, Name),
-    _Keys =/= []
-        andalso lager:debug("removed ~p keys for ~s/~s/~s", [length(_Keys), Db, Id, Type]).
+    lager:debug("removed ~p keys for ~s/~s/~s", [length(_Keys), Db, Id, Type]).
 
 -spec handle_document_change(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), atom()) ->
                                     list().
@@ -156,7 +162,6 @@ erase_changed(#cache_obj{key=Key}, Removed, Name) ->
             'ok' = kz_cache_ets:erase(Name, Key),
             [Key | Removed]
     end.
-
 
 -spec exec_bindings(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 exec_bindings(Name, JObj) ->

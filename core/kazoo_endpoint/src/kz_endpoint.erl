@@ -923,7 +923,8 @@ try_create_endpoint(Routine, Endpoints, Endpoint, Properties, Call) when is_func
             lager:warning("failed to create endpoint: ~p", [_R]),
             Endpoints;
         JObj ->
-            lager:debug("created endpoint ~s", [kz_doc:id(JObj)]),
+            lager:debug("created endpoint ~s: ~p", [kz_doc:id(JObj), JObj]),
+            lager:debug("from endpoint ~p", [Endpoint]),
             [JObj|Endpoints]
     catch
         _E:_R ->
