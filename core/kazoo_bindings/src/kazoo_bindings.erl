@@ -89,7 +89,7 @@
 -type kz_responder() :: #kz_responder{}.
 -type kz_responders() :: [kz_responder()].
 
--record(kz_binding, {binding :: kz_term:ne_binary() | '_'
+-record(kz_binding, {binding :: kz_term:ne_binary() | '$1' | '_'
                     ,binding_parts :: kz_term:ne_binaries() | '_'
                     ,binding_responders = queue:new() :: queue:queue() | '_'
                                                          %% queue -> [#kz_responder{}]
@@ -147,7 +147,7 @@ pmap(Routing, Payload) ->
 pmap(Routing, Payload, Options) ->
     pmap_processor(Routing, Payload, rt_options(Options)).
 
--spec get_binding_candidates(kz_term:ne_binary()) -> kz_bindings().
+-spec get_binding_candidates(kz_term:ne_binary()) -> [kz_bindings()].
 get_binding_candidates(Routing) ->
     case binary:split(Routing, <<".">>, ['global']) of
         [Vsn, Action | _] ->
@@ -555,7 +555,9 @@ filter_bindings(Predicate, Key, Updates, Deletes) ->
                                                   ,payload=P
                                                   }) ->
                                          Predicate(Binding, M, F, P)
-                                 end, Responders),
+                                 end
+                                ,Responders
+                                ),
     case queue:len(NewResponders) of
         0 ->
             filter_bindings(Predicate
@@ -619,7 +621,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec fold_bind_results(kz_responders(), payload(), kz_term:ne_binary()) -> payload().
 fold_bind_results(_, {'error', _}=E, _) -> [E];
 fold_bind_results([], Payload, _Route) -> Payload;
-fold_bind_results(Responders, Payload, Route) ->
+fold_bind_results(Responders, Payload, Route) when is_list(Responders) ->
     fold_bind_results(Responders, Payload, Route, length(Responders), []).
 
 -spec fold_bind_results(kz_responders(), payload(), kz_term:ne_binary(), non_neg_integer(), kz_responders()) -> payload().
@@ -666,6 +668,13 @@ fold_bind_results([#kz_responder{module=M
             kz_util:log_stacktrace(ST),
             fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders)
     end;
+fold_bind_results([#kz_responder{}=_R | Responders]
+                 ,Payload
+                 ,Route
+                 ,RespondersLen
+                 ,ReRunResponders
+                 ) ->
+    fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
 fold_bind_results([], Payload, _Route, _RespondersLen, []) ->
     Payload;
 fold_bind_results([], Payload, Route, RespondersLen, ReRunResponders) ->
@@ -710,12 +719,11 @@ map_processor(Routing, Payload, Options) when not is_list(Payload) ->
     map_processor(Routing, [Payload], Options);
 map_processor(Routing, Payload, Options) ->
     RoutingParts = routing_parts(Routing),
-    Candidates = kazoo_bindings_rt:candidates(Options, Routing),
     lists:foldl(fun(Binding, Acc) ->
                         map_processor_fold(Binding, Acc, Payload, Routing, RoutingParts, Options)
                 end
                ,[]
-               ,Candidates
+               ,kazoo_bindings_rt:candidates(Options, Routing)
                ).
 
 -spec pmap_processor(kz_term:ne_binary(), payload(), kz_rt_options()) -> map_results().
@@ -872,8 +880,6 @@ fold_processor(Routing, Payload, Options) when not is_list(Payload) ->
     fold_processor(Routing, [Payload], Options);
 fold_processor(Routing, Payload, Options) ->
     RoutingParts = routing_parts(Routing),
-    Candidates = kazoo_bindings_rt:candidates(Options, Routing),
-
     [Reply|_] =
         lists:foldl(fun(#kz_binding{binding=Binding
                                    ,binding_parts=BParts
@@ -890,11 +896,11 @@ fold_processor(Routing, Payload, Options) ->
                             end
                     end
                    ,Payload
-                   ,Candidates
+                   ,kazoo_bindings_rt:candidates(Options, Routing)
                    ),
     Reply.
 
--spec candidates(kz_term:ne_binary()) -> kz_bindings().
+-spec candidates(kz_term:ne_binary()) -> [kz_bindings()].
 candidates(Routing) ->
     get_binding_candidates(Routing).
 
