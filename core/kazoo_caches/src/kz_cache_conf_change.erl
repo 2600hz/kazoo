@@ -77,10 +77,6 @@ handle_if_valid(Name, JObj, 'true') ->
     IsFromSameNode = kz_api:node(JObj) =:= kz_term:to_binary(node()),
     IsFromSameCache = kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =:= Name,
 
-    lager:debug("change for ~s / ~s / ~s", [kapi_conf:get_database(JObj), kapi_conf:get_id(JObj), kapi_conf:get_type(JObj)]),
-    lager:debug("~p =:= ~p", [kz_api:node(JObj), kz_term:to_binary(node())]),
-    lager:debug("~p =:= ~p", [kz_json:get_atom_value(<<"Origin-Cache">>, JObj), Name]),
-
     _ = exec_bindings(Name, JObj),
 
     case (not IsFromSameNode)
@@ -96,8 +92,12 @@ handle_document_change(Name, JObj) ->
     Type = kapi_conf:get_type(JObj),
     Id = kapi_conf:get_id(JObj),
 
-    _Keys = handle_document_change(Db, Type, Id, Name),
-    lager:debug("removed ~p keys for ~s/~s/~s", [length(_Keys), Db, Id, Type]).
+    Keys = handle_document_change(Db, Type, Id, Name),
+    log_changed(Keys, Db, Id, Type).
+
+log_changed([], _, _, _) -> 'ok';
+log_changed(Keys, Db, Id, Type) ->
+    lager:debug("removed ~p keys for ~s/~s/~s", [length(Keys), Db, Id, Type]).
 
 -spec handle_document_change(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), atom()) ->
                                     list().
@@ -179,5 +179,4 @@ exec_bindings(Name, JObj) ->
 
     RK = kz_binary:join([<<"kapi.conf">>, Name, Db, Type, Event, Id], <<".">>),
 
-    _ = kazoo_bindings:pmap(RK, JObj),
-    lager:debug("exec bindings to ~s", [RK]).
+    _ = kazoo_bindings:pmap(RK, JObj).
