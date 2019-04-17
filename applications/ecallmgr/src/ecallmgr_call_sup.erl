@@ -74,7 +74,7 @@ start_control_process(Node, CallId, FetchId, ControllerQ, CCVs, AMQPWorker) ->
 %%------------------------------------------------------------------------------
 -spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
-    kz_amqp_sup:bind_for_pool_state(),
+    _ = kz_nodes:bind_for_pool_state('kz_amqp_sup', self()),
 
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,

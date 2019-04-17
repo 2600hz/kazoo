@@ -31,7 +31,7 @@ start(_StartType, _StartArgs) ->
 
 -spec prep_stop(any()) -> 'ok'.
 prep_stop(_State) ->
-    kz_amqp_sup:unbind_for_pool_state(whereis('trunkstore_sup')),
+    kz_nodes:unbind_for_pool_state('kz_amqp_sup', whereis('trunkstore_sup')),
     'ok'.
 
 -spec stop(any()) -> any().
