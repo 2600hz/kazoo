@@ -33,6 +33,7 @@
         ,set_cumulative_discount_rate/2
         ]).
 -export([changes/1
+        ,changes/2
         ,set_changes/2
         ]).
 -export([taxes/1
@@ -40,6 +41,9 @@
         ]).
 -export([display_name/1]).
 -export([rate/1]).
+-export([activation_charge/1
+        ,activation_charge/2
+        ]).
 -export([minimum/1
         ,maximum/1
         ]).
@@ -243,7 +247,15 @@ set_cumulative_discount_rate(#kz_service_item{}=Item, Rate) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec changes(item()) -> kz_term:api_ne_binaries().
-changes(#kz_service_item{changes=Changes}) -> Changes.
+changes(Item) -> changes(Item, 'undefined').
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec changes(item(), Default) -> kz_term:ne_binaries() | Default.
+changes(#kz_service_item{changes='undefined'}, Default) -> Default;
+changes(#kz_service_item{changes=Changes}, _Default) -> Changes.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -298,6 +310,18 @@ default_display_name(Item) ->
 -spec rate(item()) -> float().
 rate(Item) ->
     kzd_item_plan:rate(item_plan(Item)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec activation_charge(item()) -> float().
+activation_charge(Item) ->
+    activation_charge(Item, 0.0).
+
+-spec activation_charge(item(), float() | Default) -> float() | Default.
+activation_charge(Item, Default) ->
+    kzd_item_plan:activation_charge(item_plan(Item), Default).
 
 %%------------------------------------------------------------------------------
 %% @doc
