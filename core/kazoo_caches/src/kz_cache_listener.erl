@@ -72,7 +72,7 @@ add_binding(Name, Binding) ->
                             ,'conf'
                             ,['federate' | Binding]
                             ),
-    RK = kapi_conf:get_routing_key(Binding),
+    RK = kapi_conf:get_routing_key(Binding, 'false'), % get a local (unoptimized) binding key
     _ = kazoo_bindings:bind(RK, 'kz_cache_conf_change', 'handle_change', Name).
 
 -spec add_origin_pointers(atom(), cache_obj(), 'undefined' | origin_tuple() | origin_tuples()) -> 'ok'.

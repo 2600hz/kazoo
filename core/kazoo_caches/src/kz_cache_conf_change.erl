@@ -63,12 +63,17 @@ handle_change([Name], JObj) ->
 handle_change(Name, JObj) ->
     handle_change(Name, JObj, kz_json:is_json_object(JObj)).
 
+-spec handle_change(atom(), kapi_conf:doc(), boolean()) -> 'ok'.
 handle_change(_Name, _Other, 'false') ->
     lager:debug("not handling non-JSON for ~s: ~p", [_Name, _Other]);
 handle_change(Name, JObj, 'true') ->
-    kz_util:put_callid(Name),
-    'true' = kapi_conf:doc_update_v(JObj),
+    handle_if_valid(Name, JObj, kapi_conf:doc_update_v(JObj)).
 
+-spec handle_if_valid(atom(), kapi_conf:doc(), boolean()) -> 'ok'.
+handle_if_valid(_Name, _JObj, 'false') ->
+    lager:debug("not handling invalid JSON for ~s", [_Name]);
+handle_if_valid(Name, JObj, 'true') ->
+    kz_util:put_callid(Name),
     IsFromSameNode = kz_api:node(JObj) =:= kz_term:to_binary(node()),
     IsFromSameCache = kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =:= Name,
 

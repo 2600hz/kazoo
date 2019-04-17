@@ -44,14 +44,12 @@
         ]).
 
 %% Helper Function for calling map/3
--export([candidates/1
-        ]).
+-export([candidates/1]).
 
 -export([rt_options/0, rt_options/1]).
 
 %% Helper Functions for debugging
--export([bindings/0, bindings/1, bindings/2
-        ]).
+-export([bindings/0, bindings/1, bindings/2]).
 
 %% ETS Persistence
 -export([table_id/0
@@ -176,7 +174,12 @@ get_binding_candidates(Vsn, Action) ->
                               }
                              ]
                             ,['$_']
-                            }]).
+                            }
+                           ,{#kz_binding{binding='$1', _='_'}
+                            ,[{'=:=', '$1', {'const', <<"#">>}}]
+                            ,['$_']
+                            }
+                           ]).
 
 %%------------------------------------------------------------------------------
 %% @doc Fold over bound handlers.
@@ -427,10 +430,8 @@ maybe_add_binding(Binding, Mod, Fun, Payload) ->
         [] ->
             case binary:split(Binding, <<".">>, ['global']) of
                 [Vsn, Action | _] = Pieces ->
-                    lager:debug("adding new optimized ~s", [Binding]),
                     add_optimized_binding(Binding, Responder, Pieces, Vsn, Action);
                 Pieces ->
-                    lager:debug("adding new regular ~s", [Binding]),
                     add_binding(Binding, Responder, Pieces, 'undefined')
             end,
             'ok';
@@ -709,11 +710,12 @@ map_processor(Routing, Payload, Options) when not is_list(Payload) ->
     map_processor(Routing, [Payload], Options);
 map_processor(Routing, Payload, Options) ->
     RoutingParts = routing_parts(Routing),
+    Candidates = kazoo_bindings_rt:candidates(Options, Routing),
     lists:foldl(fun(Binding, Acc) ->
                         map_processor_fold(Binding, Acc, Payload, Routing, RoutingParts, Options)
                 end
                ,[]
-               ,kazoo_bindings_rt:candidates(Options, Routing)
+               ,Candidates
                ).
 
 -spec pmap_processor(kz_term:ne_binary(), payload(), kz_rt_options()) -> map_results().
@@ -925,6 +927,7 @@ bindings(Routing, Opts) ->
              ).
 
 -spec routing_parts(kz_term:ne_binary()) -> kz_term:ne_binaries().
+routing_parts(<<"#">>) -> <<"#">>;
 routing_parts(Routing) ->
     lists:reverse(binary:split(Routing, <<".">>, ['global'])).
 
