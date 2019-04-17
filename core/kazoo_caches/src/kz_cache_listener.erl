@@ -73,7 +73,11 @@ add_binding(Name, Binding) ->
                             ,['federate' | Binding]
                             ),
     RK = kapi_conf:get_routing_key(Binding, 'false'), % get a local (unoptimized) binding key
-    _ = kazoo_bindings:bind(RK, 'kz_cache_conf_change', 'handle_change', Name).
+    _ = kazoo_bindings:bind(local_key(RK), 'kz_cache_conf_change', 'handle_change', Name).
+
+-spec local_key(kz_term:ne_binary()) -> kz_term:ne_binary().
+local_key(RK) ->
+    <<?MODULE_STRING".", RK/binary>>.
 
 -spec add_origin_pointers(atom(), cache_obj(), 'undefined' | origin_tuple() | origin_tuples()) -> 'ok'.
 add_origin_pointers(_Name, _CacheObj, 'undefined') -> 'ok';
@@ -152,7 +156,7 @@ handle_event(_JObj, _State) ->
 
 -spec handle_change(kapi_conf:doc(), kz_term:proplist(), any()) -> 'ok'.
 handle_change(JObj, _Props, <<RK/binary>>) ->
-    _ = kazoo_bindings:map(RK, [JObj]),
+    _ = kazoo_bindings:map(local_key(RK), [JObj]),
     lager:debug("routed payload to ~s", [RK]);
 handle_change(JObj, Props, Deliver) ->
     RK = gen_listener:routing_key_used(Deliver),
