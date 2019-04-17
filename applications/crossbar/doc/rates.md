@@ -304,6 +304,16 @@ curl -v -X POST \
 }
 ```
 
+## List existing ratedecks (superduper_admin only)
+
+> GET /v2/rates/ratedecks
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/rates/ratedecks
+```
+
 ## Rate a phone number
 
 This API requires that the backend app `hotornot` is running.

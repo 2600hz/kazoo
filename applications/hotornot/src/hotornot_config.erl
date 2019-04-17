@@ -13,7 +13,6 @@
         ,default_internal_cost/0
 
         ,default_ratedeck/0
-        ,ratedecks/0
 
         ,mobile_rate/0
 
@@ -71,15 +70,6 @@ default_ratedeck() ->
 -spec mobile_rate() -> kz_term:api_object().
 mobile_rate() ->
     kapps_config:get_json(?APP_NAME, <<"mobile_rate">>).
-
--spec ratedecks() -> kz_term:ne_binaries().
-ratedecks() ->
-    {'ok', Dbs} = kz_datamgr:db_list([{'startkey', ?KZ_RATES_DB}
-                                     ,{'endkey',   ?UNENCODED_RATEDECK_DB(<<"\ufff0">>)}
-                                     ]),
-    [kzd_ratedeck:format_ratedeck_db(Db)
-     || Db <- Dbs
-    ].
 
 -spec should_sort_by_weight() -> boolean().
 should_sort_by_weight() ->
