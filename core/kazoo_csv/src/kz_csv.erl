@@ -105,10 +105,11 @@ fold(CSV, Fun, Acc)
 %% @end
 %%------------------------------------------------------------------------------
 -spec take_row(csv()) -> {row(), csv()} | 'eof'.
+take_row(<<>>) -> 'eof';
 take_row(CSV)
   when is_binary(CSV) ->
     case take_line(CSV) of
-        eof -> eof;
+        'eof' -> 'eof';
         [Line] ->
             {split_row(Line), <<>>};
         [Line, CSVRest] ->
@@ -123,7 +124,7 @@ take_row(CSV)
 take_mapped_row(Header, CSV)
   when is_binary(CSV) ->
     case take_row(CSV) of
-        eof -> eof;
+        'eof' -> 'eof';
         {Row, CSVRest} ->
             MappedRow = maps:from_list(lists:zip(Header, Row)),
             {MappedRow, CSVRest}
@@ -326,6 +327,7 @@ from_jobjs(JObjs, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec take_line(csv()) -> [csv(),...] | 'eof'.
+take_line(<<>>) -> 'eof';
 take_line(CSV) ->
     case binary:split(CSV, [<<"\r\n">>, <<"\n\r">>, <<"\r\r">>, <<$\n>>, <<$\r>>]) of
         [<<>>|_] -> 'eof';
