@@ -1221,7 +1221,7 @@ bind_for_pool_state(Module) ->
 
 -spec bind_for_pool_state(atom(), pid()) -> kazoo_bindings:bind_result().
 bind_for_pool_state(Module, Pid) ->
-    _ = kazoo_bindings:bind(kz_nodes:pool_state_binding(), Module, 'pools', Pid).
+    _ = kazoo_bindings:bind(pool_state_binding(), Module, 'pools', Pid).
 
 -spec unbind_for_pool_state(atom()) -> kazoo_bindings:unbind_result().
 unbind_for_pool_state(Module) ->
@@ -1230,7 +1230,7 @@ unbind_for_pool_state(Module) ->
 -spec unbind_for_pool_state(atom(), kz_term:api_pid()) -> kazoo_bindings:unbind_result().
 unbind_for_pool_state(_Module, 'undefined') -> 'ok';
 unbind_for_pool_state(Module, Pid) when is_pid(Pid) ->
-    kazoo_bindings:unbind(kz_nodes:pool_state_binding(), Module, 'pools', Pid).
+    kazoo_bindings:unbind(pool_state_binding(), Module, 'pools', Pid).
 
 -spec pool_states() -> kz_term:proplist().
 pool_states() ->
