@@ -29,7 +29,6 @@
 handle_req(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
     _ = kz_util:put_callid(JObj),
-    kz_datamgr:suppress_change_notice(),
     Routines = [fun maybe_ignore_app/1
                ,fun maybe_ignore_loopback/1
                ],

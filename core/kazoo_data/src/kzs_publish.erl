@@ -61,11 +61,16 @@ publish_db(DbName, Action) ->
 
 -spec should_publish_doc(kz_json:object()) -> boolean().
 should_publish_doc(Doc) ->
+    ExcludeList = kapps_config:get_ne_binaries(?CONFIG_CAT
+                                              ,<<"change_notice_exclude_types">>
+                                              ,?DEFAULT_PUBLISH_EXCLUDE_TYPES
+                                              ),
+    Type = kz_doc:type(Doc),
     case kz_doc:id(Doc) of
         <<"_design/", _/binary>> = _D -> 'false';
         <<"_design%2F", _/binary>> = _D -> 'false';
         <<"_design%2f", _/binary>> = _D -> 'false';
-        _Else -> 'true'
+        _Else -> not lists:member(Type, ExcludeList)
     end.
 
 -spec should_publish_db_changes(kz_term:ne_binary()) -> boolean().
