@@ -166,7 +166,7 @@ seq() ->
     _ = ledgers_exist(Data, [Ledger, Ledger2]),
 
     SourceFetchCSV = fetch_by_source(API, AccountId, <<?MODULE_STRING>>, <<"text/csv">>),
-    lager:info("source fetch CSV: ~s", [SourceFetchCSV]),
+    lager:info("source fetch CSV: '~s'", [SourceFetchCSV]),
     'true' = ledgers_exist_in_csv(SourceFetchCSV, [Ledger, Ledger2]),
 
     {'ok', _} = kapps_config:set_default(<<"crossbar">>, <<"load_view_chunk_size">>, PriorChunkSize),
