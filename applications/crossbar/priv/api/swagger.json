@@ -30291,6 +30291,21 @@
                     "description": "datamgr cache policy",
                     "type": "object"
                 },
+                "change_notice_exclude_types": {
+                    "default": [
+                        "cdr",
+                        "ledger",
+                        "audit_log",
+                        "login_attempt",
+                        "pivot_debug",
+                        "notify_smtp_log"
+                    ],
+                    "description": "datamgr change_notice_exclude_types",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "default_archive_folder": {
                     "default": "/tmp",
                     "description": "datamgr default archive folder",
