@@ -52,35 +52,48 @@ annotate(Services, CurrentInvoices, ProposedInvoices) ->
 -spec annotate(kz_services:services(), invoices(), invoices(), invoices()) -> invoices().
 annotate(_Services, [], [], Invoices) -> Invoices;
 annotate(Services, [CurrentInvoice|CurrentInvoices], [], Invoices) ->
+    %% A bookkeeper was removed from the plan?
     CurrentItems = kz_services_items:reset(
                      kz_services_invoice:items(CurrentInvoice)
                     ),
     ProposedItems = kz_services_items:empty(),
     Items = kz_services_items:annotate(CurrentItems, ProposedItems),
+    Setters = [{fun kz_services_invoice:set_items/2, Items}
+              ,{fun kz_services_invoice:set_activation_charges/2, kz_services_activation_items:empty()}
+              ],
     annotate(Services
             ,CurrentInvoices
             ,[]
-            ,[kz_services_invoice:set_items(CurrentInvoice, Items)|Invoices]
+            ,[kz_services_invoice:setters(CurrentInvoice, Setters)|Invoices]
             );
 annotate(Services, CurrentInvoices, [ProposedInvoice|ProposedInvoices], Invoices) ->
     BookkeeperHash = kz_services_invoice:bookkeeper_hash(ProposedInvoice),
     ProposedItems = kz_services_invoice:items(ProposedInvoice),
     case split_invoices(CurrentInvoices, BookkeeperHash) of
         {'undefined', RemainingCurrentInvoices} ->
+            %% this is the first time this bookkeeper is appeared in the plan
             CurrentItems = kz_services_items:empty(),
             Items = kz_services_items:annotate(CurrentItems, ProposedItems),
+            ActivationItems = kz_services_activation_items:create(Items),
+            Setters = [{fun kz_services_invoice:set_items/2, Items}
+                      ,{fun kz_services_invoice:set_activation_charges/2, ActivationItems}
+                      ],
             annotate(Services
                     ,RemainingCurrentInvoices
                     ,ProposedInvoices
-                    ,[kz_services_invoice:set_items(ProposedInvoice, Items)|Invoices]
+                    ,[kz_services_invoice:setters(ProposedInvoice, Setters)|Invoices]
                     );
         {CurrentInvoice, RemainingCurrentInvoices} ->
             CurrentItems = kz_services_invoice:items(CurrentInvoice),
             Items = kz_services_items:annotate(CurrentItems, ProposedItems),
+            ActivationItems = kz_services_activation_items:create(Items),
+            Setters = [{fun kz_services_invoice:set_items/2, Items}
+                      ,{fun kz_services_invoice:set_activation_charges/2, ActivationItems}
+                      ],
             annotate(Services
                     ,RemainingCurrentInvoices
                     ,ProposedInvoices
-                    ,[kz_services_invoice:set_items(ProposedInvoice, Items)|Invoices]
+                    ,[kz_services_invoice:setters(ProposedInvoice, Setters)|Invoices]
                     )
     end.
 

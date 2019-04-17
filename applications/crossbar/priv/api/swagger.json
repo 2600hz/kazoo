@@ -9605,7 +9605,7 @@
                     ],
                     "type": "string"
                 },
-                "Items": {
+                "Invoice": {
                     "type": "string"
                 },
                 "Vendor-ID": {
@@ -9616,7 +9616,7 @@
                 "Account-ID",
                 "Bookkeeper-ID",
                 "Bookkeeper-Type",
-                "Items",
+                "Invoice",
                 "Vendor-ID"
             ],
             "type": "object"
@@ -28069,9 +28069,20 @@
                     "type": "string"
                 },
                 "prorate": {
-                    "default": false,
                     "description": "Should this item be prorated",
-                    "type": "boolean"
+                    "properties": {
+                        "additions": {
+                            "default": true,
+                            "description": "Should this item be prorated during additions",
+                            "type": "boolean"
+                        },
+                        "removals": {
+                            "default": false,
+                            "description": "Should this item be prorated during removals",
+                            "type": "boolean"
+                        }
+                    },
+                    "type": "object"
                 },
                 "rate": {
                     "default": 0.0,
