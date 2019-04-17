@@ -103,7 +103,9 @@ get(EndpointId, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     get(EndpointId, kz_util:format_account_db(AccountId));
 get(EndpointId, AccountDb) when is_binary(AccountDb) ->
     case kz_cache:peek_local(?CACHE_NAME, {?MODULE, AccountDb, EndpointId}) of
-        {'ok', _Endpoint}=Ok -> Ok;
+        {'ok', _Endpoint}=Ok ->
+            lager:debug("loading cached endpoint ~s: ~p", [EndpointId, _Endpoint]),
+            Ok;
         {'error', 'not_found'} ->
             maybe_fetch_endpoint(EndpointId, AccountDb)
     end;
@@ -116,6 +118,7 @@ get(EndpointId, Call) ->
 maybe_fetch_endpoint(EndpointId, AccountDb) ->
     case kzd_devices:fetch(AccountDb, EndpointId) of
         {'ok', JObj} ->
+            lager:debug("fetched endpoint ~s", [JObj]),
             check_endpoint_type(JObj, EndpointId, AccountDb);
         {'error', _R}=E ->
             lager:info("unable to fetch endpoint ~s: ~p", [EndpointId, _R]),
@@ -176,6 +179,7 @@ cache_store_endpoint(JObj, EndpointId, AccountDb, EndpointType) ->
     Endpoint = kz_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
     CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
     catch kz_cache:store_local(?CACHE_NAME, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
+    lager:debug("cached endpoint ~s: ~p", [EndpointId, Endpoint]),
     {'ok', Endpoint}.
 
 -spec cache_origin(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> list().
@@ -1782,7 +1786,9 @@ maybe_set_call_waiting({Endpoint, Call, CallFwd, CCVs}) ->
 
 -spec get_invite_format(kz_json:object()) -> kz_term:ne_binary().
 get_invite_format(SIPJObj) ->
-    kz_json:get_ne_binary_value(<<"invite_format">>, SIPJObj, <<"username">>).
+    IF = kz_json:get_ne_binary_value(<<"invite_format">>, SIPJObj, <<"username">>),
+    lager:debug("invite format: ~s", [IF]),
+    IF.
 
 -spec get_to_did(kz_json:object(), kapps_call:call()) -> kz_term:api_binary().
 get_to_did(Endpoint, Call) ->
