@@ -66,13 +66,15 @@ handle_change(Name, JObj) ->
 handle_change(_Name, _Other, 'false') ->
     lager:debug("not handling non-JSON for ~s: ~p", [_Name, _Other]);
 handle_change(Name, JObj, 'true') ->
+    kz_util:put_callid(Name),
     'true' = kapi_conf:doc_update_v(JObj),
 
     IsFromSameNode = kz_api:node(JObj) =:= kz_term:to_binary(node()),
-    IsFromSameCache = kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =:= ets:info(Name, 'name'),
+    IsFromSameCache = kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =:= Name,
 
+    lager:debug("change for ~s / ~s / ~s", [kapi_conf:get_database(JObj), kapi_conf:get_id(JObj), kapi_conf:get_type(JObj)]),
     lager:debug("~p =:= ~p", [kz_api:node(JObj), kz_term:to_binary(node())]),
-    lager:debug("~p =:= ~p", [kz_json:get_atom_value(<<"Origin-Cache">>, JObj), ets:info(Name, 'name')]),
+    lager:debug("~p =:= ~p", [kz_json:get_atom_value(<<"Origin-Cache">>, JObj), Name]),
 
     _ = exec_bindings(Name, JObj),
 
