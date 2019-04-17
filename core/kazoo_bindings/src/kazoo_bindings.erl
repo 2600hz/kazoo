@@ -729,6 +729,16 @@ pmap_processor(Routing, Payload, Options) ->
                ).
 
 -spec map_processor_fold(kz_binding(), map_results(), payload(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_rt_options()) -> map_results().
+map_processor_fold(#kz_binding{binding = <<"#">>
+                              ,binding_responders=Responders
+                              }
+                  ,Acc
+                  ,Payload
+                  ,_Binding
+                  ,_RoutingParts
+                  ,_Options
+                  ) ->
+    map_responders(Acc, Responders, Payload);
 map_processor_fold(#kz_binding{binding=Binding
                               ,binding_responders=Responders
                               }
@@ -782,10 +792,12 @@ pmap_processor_fold(#kz_binding{binding_parts=BParts
 
 -spec map_responders(map_results(), queue:queue(), payload()) -> map_results().
 map_responders(Acc, Responders, Payload) ->
-    [apply_map_responder(Responder, Payload)
-     || Responder <- queue:to_list(Responders)
-    ]
-        ++ Acc.
+    lists:foldr(fun(Responder, Acc0) ->
+                        [apply_map_responder(Responder, Payload) | Acc0]
+                end
+               ,Acc
+               ,queue:to_list(Responders)
+               ).
 
 -spec pmap_responders(map_results(), queue:queue(), payload()) -> map_results().
 pmap_responders(Acc, Responders, Payload) ->
