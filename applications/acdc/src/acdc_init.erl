@@ -44,7 +44,8 @@ init_acdc() ->
 -spec init_db() -> any().
 init_db() ->
     _ = kz_datamgr:db_create(?KZ_ACDC_DB),
-    kapps_maintenance:refresh(?KZ_ACDC_DB).
+    _ = kapps_maintenance:refresh(?KZ_ACDC_DB),
+    'ok'.
 
 -spec init_acct(kz_term:ne_binary()) -> 'ok'.
 init_acct(Account) ->

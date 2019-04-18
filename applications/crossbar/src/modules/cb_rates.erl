@@ -63,7 +63,8 @@ init() ->
 
 init_db() ->
     _ = kz_datamgr:db_create(?KZ_RATES_DB),
-    kapps_maintenance:refresh(?KZ_RATES_DB).
+    _ = kapps_maintenance:refresh(?KZ_RATES_DB),
+    'ok'.
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
