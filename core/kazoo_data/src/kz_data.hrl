@@ -133,6 +133,16 @@
 
 -define(FIXTURES_FOLDER, "fixtures").
 
+-define(DEFAULT_PUBLISH_EXCLUDE_TYPES
+       ,[<<"cdr">>
+        ,<<"ledger">>
+        ,<<"audit_log">>
+        ,<<"login_attempt">>
+        ,<<"pivot_debug">>
+        ,<<"notify_smtp_log">>
+        ]
+       ).
+
 -define(PUBLISH_FIELDS, [<<"_deleted">>
                         ,<<"pvt_account_id">>
                         ,<<"pvt_created">>
