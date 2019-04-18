@@ -33,6 +33,9 @@
                         {kz_term:ne_binary(), kz_term:ne_binary()} | % {Type, SubType}
                         kz_term:ne_binary(). % <<"Type/SubType">>
 
+-type cowboy_content_type() :: {kz_term:ne_binary(), kz_term:ne_binary(), '*' | kz_term:proplist()} | % {Type, SubType, Options}
+                               kz_term:ne_binary(). % <<"Type/SubType">>
+
 
 -type media_value() :: {content_type(), non_neg_integer(), list()}.
 -type media_values() :: [media_value()].
