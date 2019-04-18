@@ -186,7 +186,7 @@ allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts
     case kz_datamgr:get_results(LedgerDb, <<"allotments/consumed">>, ViewOptions) of
         {'ok', JObjs} -> sum_allotment_consumed_so_far(JObjs, CycleStart);
         {'error', 'not_found'} ->
-            kazoo_modb:refresh_views(LedgerDb),
+            _ = kazoo_modb:refresh_views(LedgerDb),
             allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts + 1);
         {'error', _R}=Error ->
             lager:debug("unable to get consumed quantity for ~s allotment from ~s: ~p"

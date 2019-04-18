@@ -19,4 +19,5 @@ start_link() ->
 -spec init() -> any().
 init() ->
     kz_util:put_callid(?MODULE),
-    kapps_maintenance:refresh(?KZ_SIP_DB).
+    _ = kapps_maintenance:refresh(?KZ_SIP_DB),
+    'ok'.

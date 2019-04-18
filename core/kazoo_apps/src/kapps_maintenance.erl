@@ -147,7 +147,7 @@ rebuild_db(Database) ->
 rebuild_db(Database, Pause) ->
     _ = kz_datamgr:db_delete(Database),
     timer:sleep(kz_term:to_integer(Pause)),
-    refresh(Database),
+    _ = refresh(Database),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -491,7 +491,11 @@ refresh([Database|Databases], Pause, Total) ->
     io:format("~p (~p/~p) refreshing database '~s'~n"
              ,[self(), length(Databases) + 1, Total, Database]
              ),
-    _ = refresh(Database),
+    _ = case refresh(Database) of
+            {'error', _Reason} ->
+                io:format("    - refresh failed: ~p~n", [_Reason]);
+            Bol -> Bol
+        end,
     _ = case Pause < 1 of
             'false' -> timer:sleep(Pause);
             'true' -> 'ok'
@@ -503,11 +507,17 @@ get_databases() ->
     {'ok', Databases} = kz_datamgr:db_info(),
     kzs_util:sort_by_priority(Databases ++ ?KZ_SYSTEM_DBS).
 
--spec refresh(kz_term:ne_binary()) -> 'ok'.
+-spec refresh(kz_term:ne_binary()) -> 'ok' |
+                                      boolean() |
+                                      {'error', 'invalid_db_name' | 'db_not_found'}.
 refresh(Database) ->
-    _ = kz_datamgr:refresh_views(Database),
-    _ = kazoo_bindings:map(binding({'refresh', Database}), [Database]),
-    refresh_by_classification(Database, kz_datamgr:db_classification(Database)).
+    case kz_datamgr:refresh_views(Database) of
+        {'error', _} = Error ->
+            Error;
+        _Bol ->
+            _ = kazoo_bindings:map(binding({'refresh', Database}), [Database]),
+            refresh_by_classification(Database, kz_datamgr:db_classification(Database))
+    end.
 
 refresh_by_classification(Database, 'account') ->
     AccountDb = kz_util:format_account_id(Database, 'encoded'),
@@ -1600,7 +1610,7 @@ refresh_system_views() ->
 -spec refresh_system_views(kz_term:ne_binaries()) -> 'ok'.
 refresh_system_views([]) -> 'ok';
 refresh_system_views([Db | Dbs]) ->
-    refresh(Db),
+    _ = refresh(Db),
     refresh_system_views(Dbs).
 
 %%------------------------------------------------------------------------------

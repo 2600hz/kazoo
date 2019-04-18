@@ -183,7 +183,7 @@ init_dbs([Db | Dbs]) ->
             lager:debug("~s is created: ~p", [Db, Result]);
         'true' -> 'ok'
     end,
-    kapps_maintenance:refresh(Db),
+    _ = kapps_maintenance:refresh(Db),
     init_dbs(Dbs).
 
 -spec register_views() -> 'ok'.
@@ -208,7 +208,7 @@ refresh_numbers_dbs([NumberDb|NumberDbs], Total) ->
 
 -spec refresh_numbers_db(kz_term:ne_binary()) -> 'ok'.
 refresh_numbers_db(<<?KNM_DB_PREFIX_ENCODED, _/binary>> = NumberDb) ->
-    kapps_maintenance:refresh(NumberDb),
+    _ = kapps_maintenance:refresh(NumberDb),
     'ok';
 refresh_numbers_db(<<?KNM_DB_PREFIX, Suffix/binary>>) ->
     NumberDb = <<?KNM_DB_PREFIX_ENCODED, Suffix/binary>>,
@@ -245,8 +245,8 @@ update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
                                          ]
                                         ,View
                                         ),
-            'true' = kz_datamgr:db_view_update(AccountDb, [{ViewName, NewView}]),
-            ?SUP_LOG_DEBUG("View updated for ~s!", [AccountDb])
+            _Updated = kz_datamgr:db_view_update(AccountDb, [{ViewName, NewView}]),
+            ?SUP_LOG_DEBUG("view updated for '~s': ", [AccountDb, _Updated])
     end.
 
 
@@ -401,7 +401,7 @@ save_to_number_dbs(AccountDb, [{Db, JObjs} | Rest], Retries) ->
         {error, not_found} ->
             ?SUP_LOG_DEBUG(" [~s] creating new number db '~s'", [AccountId, Db]),
             'true' = kz_datamgr:db_create(Db),
-            kapps_maintenance:refresh(Db),
+            _ = kapps_maintenance:refresh(Db),
             save_to_number_dbs(AccountDb, [{Db, JObjs} | Rest], Retries - 1);
         {error, timeout} ->
             ?SUP_LOG_ERROR(" [~s] failed to save numbers to ~s: timeout, maybe trying again...", [AccountId, Db]),
