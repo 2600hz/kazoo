@@ -61,7 +61,7 @@ fetch_recording(API, AccountId, RecordingId) ->
     end.
 
 -spec fetch_recording_binary(pqc_cb_api:state(), pqc_cb_accounts:account_id(), kz_term:ne_binary()) ->
-                                    {'ok', kz_json:object()} |
+                                    {'ok', kz_term:ne_binary()} |
                                     {'error', 'not_found'}.
 fetch_recording_binary(API, AccountId, RecordingId) ->
     case pqc_cb_api:make_request(#{'response_codes' => [200]
@@ -81,7 +81,7 @@ fetch_recording_binary(API, AccountId, RecordingId) ->
     end.
 
 -spec fetch_recording_tunneled(pqc_cb_api:state(), pqc_cb_accounts:account_id(), kz_term:ne_binary()) ->
-                                      {'ok', kz_json:object()} |
+                                      {'ok', kz_term:ne_binary()} |
                                       {'error', 'not_found'}.
 fetch_recording_tunneled(API, AccountId, RecordingId) ->
     case pqc_cb_api:make_request(#{'response_codes' => [200]
