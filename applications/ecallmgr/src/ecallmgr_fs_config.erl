@@ -178,8 +178,11 @@ process_config_req(Node, Id, Conf, Data) ->
         _  -> 'ok'
     end.
 
--spec process_sofia_req(atom(), kz_term:ne_binary(), boolean()) -> fs_sendmsg_ret().
+-spec process_sofia_req(atom(), kz_term:ne_binary(), kz_term:api_boolean()) -> fs_sendmsg_ret().
 process_sofia_req(Node, FetchId, 'false') ->
+    lager:debug("not configuring sofia"),
+    config_req_not_handled(Node, FetchId, <<"sofia.conf">>);
+process_sofia_req(Node, FetchId, 'undefined') ->
     lager:debug("not configuring sofia"),
     config_req_not_handled(Node, FetchId, <<"sofia.conf">>);
 process_sofia_req(Node, FetchId, 'true') ->

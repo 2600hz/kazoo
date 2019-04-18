@@ -157,6 +157,8 @@ handle_info({'connect', Timeout}
     {'noreply', maybe_connect(Connection, Timeout), 'hibernate'};
 handle_info({'connect', _}, #kz_amqp_connection{available='true'}=Connection) ->
     {'noreply', Connection, 'hibernate'};
+handle_info(#'basic.cancel_ok'{}=_Cancel, Connection) ->
+    {'noreply', Connection};
 handle_info(_Info, Connection) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', Connection, 'hibernate'}.

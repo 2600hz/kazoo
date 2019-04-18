@@ -83,7 +83,7 @@ pool_name() -> ?POOL_NAME.
 init([]) ->
     _ = kz_util:set_startup(),
 
-    kz_amqp_sup:bind_for_pool_state(),
+    _ = kz_nodes:bind_for_pool_state('kz_amqp_sup', self()),
 
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,

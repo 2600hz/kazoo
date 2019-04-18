@@ -956,7 +956,7 @@ apply_updates_and_save(DbName, Id, Options, CurrentDoc, UpdateProps) ->
             lager:debug("updates to ~s result in the same doc", [Id]),
             {'ok', CurrentDoc};
         'false' ->
-            lager:debug("attempting to save ~s", [kz_json:encode(UpdatedDoc)]),
+            lager:debug("attempting to update doc ~s", [kz_json:encode(UpdatedDoc)]),
             save_update(DbName, Id, Options, UpdatedDoc)
     end.
 

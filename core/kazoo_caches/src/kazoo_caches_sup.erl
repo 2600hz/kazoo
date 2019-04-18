@@ -15,7 +15,7 @@
 -define(SERVER, ?MODULE).
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?SUPER('kz_caches_sup')]).
+-define(CHILDREN, [?WORKER('kz_cache_listener')]).
 
 %%==============================================================================
 %% API functions

@@ -31,7 +31,9 @@
 -export([globals_scope/0]).
 -export([node_encoded/0
         ,node_to_json/1
-        ,node_info/0, pool_state_binding/0
+        ,node_info/0
+        ,pool_state_binding/0, bind_for_pool_state/1, bind_for_pool_state/2
+        ,unbind_for_pool_state/1, unbind_for_pool_state/2
         ]).
 
 -export([with_role/1, with_role/2]).
@@ -1213,6 +1215,23 @@ node_info() ->
 -spec pool_state_binding() -> kz_term:ne_binary().
 pool_state_binding() -> <<?MODULE_STRING, ".amqp.pools">>.
 
+-spec bind_for_pool_state(atom()) -> kazoo_bindings:bind_result().
+bind_for_pool_state(Module) ->
+    bind_for_pool_state(Module, self()).
+
+-spec bind_for_pool_state(atom(), pid()) -> kazoo_bindings:bind_result().
+bind_for_pool_state(Module, Pid) ->
+    _ = kazoo_bindings:bind(pool_state_binding(), Module, 'pools', Pid).
+
+-spec unbind_for_pool_state(atom()) -> kazoo_bindings:unbind_result().
+unbind_for_pool_state(Module) ->
+    unbind_for_pool_state(Module, self()).
+
+-spec unbind_for_pool_state(atom(), kz_term:api_pid()) -> kazoo_bindings:unbind_result().
+unbind_for_pool_state(_Module, 'undefined') -> 'ok';
+unbind_for_pool_state(Module, Pid) when is_pid(Pid) ->
+    kazoo_bindings:unbind(pool_state_binding(), Module, 'pools', Pid).
+
 -spec pool_states() -> kz_term:proplist().
 pool_states() ->
     AppPools = kazoo_bindings:map(pool_state_binding(), []),
@@ -1238,7 +1257,7 @@ pool_state(Name, State, Workers, Overflow, Monitors) ->
 node_encoded() ->
     case application:get_env(?APP_NAME_ATOM, 'node_encoded') of
         'undefined' ->
-            Encoded = kz_base64url:encode(crypto:hash(md5, kz_term:to_binary(node()))),
+            Encoded = kz_base64url:encode(crypto:hash('md5', kz_term:to_binary(node()))),
             application:set_env(?APP_NAME_ATOM, 'node_encoded', Encoded),
             Encoded;
         {'ok', Encoded} -> Encoded
