@@ -1266,7 +1266,6 @@ check_csv_resp_content(Req, Context, Content) when is_list(Content) ->
 check_csv_resp_content(Req, Context, Content) ->
     check_csv_resp_content(Req, Context, [Content]).
 
-
 -spec final_csv_resp_type(cb_context:context(), boolean()) -> 'binary' | 'is_chunked' | 'to_csv'.
 final_csv_resp_type(_, 'true') ->
     'to_csv';
@@ -1282,6 +1281,8 @@ final_csv_resp_type(Context, 'false') ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec create_csv_resp_content_from_jobjs(cowboy_req:req(), cb_context:context(), kz_json:objects()) ->
+                                                {{'file', file:filename_all()} | 'stop', cowboy_req:req(), cb_context:context()}.
 create_csv_resp_content_from_jobjs(Req, Context, JObjs) ->
     Context1 = csv_body(Context, JObjs),
     create_csv_resp_content_from_csv_acc(Req, Context1, cb_context:fetch(Context1, 'csv_acc')).
@@ -1480,7 +1481,7 @@ init_chunk_stream(Req, Context, <<"to_csv">>) ->
                },
     cowboy_req:stream_reply(200, maps:merge(cowboy_req:resp_headers(Req), Headers), Req).
 
--spec csv_body(cb_context:context(), kz_json:object() | kz_json:objects()) ->
+-spec csv_body(cb_context:context(), kz_json:object() | kz_json:objects() | kz_term:ne_binaries()) ->
                       cb_context:context().
 csv_body(Context, []) ->
     lager:debug("no resp data to build CSV from"),

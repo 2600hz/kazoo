@@ -29,11 +29,16 @@
 -type req_noun() :: {kz_term:ne_binary(), kz_term:ne_binaries()}.
 -type req_nouns() :: [req_noun()].
 
--type content_type() :: {kz_term:ne_binary(), kz_term:ne_binary(), '*' | kz_term:proplist()} | kz_term:ne_binary().
-%% `{Type, SubType, Options}'
+-type content_type() :: {kz_term:ne_binary(), kz_term:ne_binary(), '*' | kz_term:proplist()} | % {Type, SubType, Options}
+                        {kz_term:ne_binary(), kz_term:ne_binary()} | % {Type, SubType}
+                        kz_term:ne_binary(). % <<"Type/SubType">>
+
 
 -type media_value() :: {content_type(), non_neg_integer(), list()}.
 -type media_values() :: [media_value()].
+
+-type content_conversion_fun() :: atom().
+-type content_type_callbacks() :: [{content_type(), content_conversion_fun()}].
 
 -define(MEDIA_VALUE(Type, SubType, Weight, Options, Extensions)
        ,{{Type, SubType, Options}, Weight, Extensions}
@@ -41,7 +46,7 @@
 -define(MEDIA_VALUE(Type, SubType, Weight), ?MEDIA_VALUE(Type, SubType, Weight, [], [])).
 -define(MEDIA_VALUE(Type, SubType), ?MEDIA_VALUE(Type, SubType, 1000, [], [])).
 
--type crossbar_content_handler() :: {atom(), kz_term:proplist()}.
+-type crossbar_content_handler() :: {content_conversion_fun(), [content_type()]}.
 %% `{handler_fun, {type, sub_type}} => {to_json, [{<<"application">>, <<"json">>}]}'
 -type crossbar_content_handlers() :: [crossbar_content_handler()].
 
