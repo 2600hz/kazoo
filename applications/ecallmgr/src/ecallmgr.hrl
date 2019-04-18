@@ -40,7 +40,8 @@
 -define(DEFAULT_STEREO_SAMPLE_RATE, kapps_config:get_integer(?APP_NAME, <<"record_stereo_sample_rate">>, 16000)).
 
 -type fs_app() :: {kz_term:ne_binary(), binary() | 'noop'} |
-                  {kz_term:ne_binary(), kz_term:ne_binary(), atom()}.
+                  {kz_term:ne_binary(), kz_term:ne_binary(), atom()} |
+                  {kz_term:ne_binary(), kz_term:ne_binary(), atom(), kz_term:proplist()}.
 -type fs_apps() :: [fs_app()].
 
 -type fs_api_ret()       :: {'ok', binary()} |
