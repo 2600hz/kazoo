@@ -23,7 +23,7 @@
 proper_test_() ->
     {"Runs kz_json PropEr tests"
     ,[{'timeout'
-      ,10000
+      ,10 * ?MILLISECONDS_IN_SECOND
       ,{atom_to_list(F)
        ,fun () ->
                 ?assert(proper:quickcheck(?MODULE:F(), [{'to_file', 'user'}
@@ -194,10 +194,11 @@ prop_set_value() ->
                                   ,[Key, Value, JObj]
                                   ),
                          begin
-                             JObj1 = kz_json:set_value(Key, Value, JObj),
+                             Normalized = kz_json:check_value_term(Value),
+                             JObj1 = kz_json:set_value(Key, Normalized, JObj),
 
                              'true' =:= kz_json:is_defined(Key, JObj1)
-                                 andalso (Value =:= kz_json:get_value(Key, JObj1))
+                                 andalso (Normalized =:= kz_json:get_value(Key, JObj1))
                          end)
               )
            ).
