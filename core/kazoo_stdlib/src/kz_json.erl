@@ -1551,7 +1551,8 @@ exec_fold(F, C) when is_function(F, 1) -> F(C).
 -spec utf8_binary(json_term()) -> json_term().
 utf8_binary(<<V/binary>>) -> kz_binary:to_utf8(V);
 utf8_binary(Else) -> Else.
-     
+
+-spec check_value_term(json_term()) -> json_term().     
 check_value_term(<<Term/binary>>) -> utf8_binary(Term);
 check_value_term(?JSON_WRAPPER(Prop)) -> ?JSON_WRAPPER([{K, check_value_term(V)} || {K, V} <- Prop]);
 check_value_term([_|_]=Terms) -> [check_value_term(Term) || Term <- Terms];
