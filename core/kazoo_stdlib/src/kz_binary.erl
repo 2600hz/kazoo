@@ -11,6 +11,7 @@
         ,hexencode/1
         ,from_hex/1
         ,from_hex_string/1
+        ,to_utf8/1
         ]).
 
 -export([ucfirst/1, lcfirst/1
@@ -231,3 +232,16 @@ reverse(Binary) ->
     Size = erlang:size(Binary)*8,
     <<X:Size/integer-little>> = Binary,
     <<X:Size/integer-big>>.
+
+-spec to_utf8(binary()) -> binary().
+to_utf8(<<Value/binary>>) ->
+    %% io_lib:printable_unicode_list/1 check added to avoid encoding file's content
+    %% like audio files.
+    case io_lib:printable_unicode_list(binary_to_list(Value)) of
+        'true' ->
+            %% it must be a string or bitstring
+            unicode:characters_to_binary(io_lib:format("~ts", [Value]));
+        'false' ->
+            %% it must be a file's content
+            Value
+    end.
