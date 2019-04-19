@@ -137,7 +137,7 @@ command(#model{}) ->
     Ms = ?EXPIRES_S * ?MILLISECONDS_IN_SECOND,
     oneof([{'call', 'hon_trie', 'match_did', [phone_number(), 'undefined', ?KZ_RATES_DB]}
           ,{'call', 'hon_trie_lru', 'cache_rates', [?KZ_RATES_DB, [rate_doc()]]}
-          ,{'call', 'timer', 'sleep', [range(Ms-100,Ms+100)]}
+          ,{'call', 'timer', 'sleep', [oneof([Ms-100,Ms+100])]}
           ]).
 
 next_state(#model{cache=Cache
