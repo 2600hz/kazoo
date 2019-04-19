@@ -207,8 +207,8 @@ prop_delete_key() ->
     ?FORALL({JObj, Key, Value}
            ,{resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object()), key(), non_object_json_term()}
            ,?TRAPEXIT(
-               ?WHENFAIL(?debugFmt("Failed kz_json:set_value(~w, ~w, ~w)~n"
-                                  ,[Key, Value, JObj]
+               ?WHENFAIL(?debugFmt("Failed kz_json:delete_key(~w, ~w) after setting ~w~n"
+                                  ,[Key, JObj, Value]
                                   ),
                          begin
                              JObj1 = kz_json:set_value(Key, Value, JObj),
