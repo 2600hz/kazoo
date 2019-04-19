@@ -218,6 +218,13 @@ is_simple_modb_converter("#Fun<kz_util.format_account_modb.1>"++_) -> 'true';
 is_simple_modb_converter("#Fun<"?MODULE_STRING".format_account_modb_raw.1>"++_) -> 'true';
 is_simple_modb_converter("#Fun<"?MODULE_STRING".format_account_modb_encoded.1>"++_) -> 'true';
 is_simple_modb_converter("#Fun<"?MODULE_STRING".format_account_modb_unencoded.1>"++_) -> 'true';
+
+%% OTP 21+ changed format
+is_simple_modb_converter("fun kz_util:format_account_modb/1"++_) -> 'true';
+is_simple_modb_converter("fun "?MODULE_STRING":format_account_modb_raw/1"++_) -> 'true';
+is_simple_modb_converter("fun "?MODULE_STRING":format_account_modb_encoded/1"++_) -> 'true';
+is_simple_modb_converter("fun "?MODULE_STRING":format_account_modb_unencoded/1"++_) -> 'true';
+
 is_simple_modb_converter(_Else) -> 'false'.
 
 format_account_id_raw(F) -> kz_util:format_account_id(F, 'raw').
