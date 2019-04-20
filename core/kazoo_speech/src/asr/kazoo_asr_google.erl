@@ -18,13 +18,30 @@
 -define(GOOGLE_ASR_KEY, kapps_config:get_binary(?GOOGLE_CONFIG_CAT, <<"asr_api_key">>, <<"">>)).
 -define(GOOGLE_ASR_PROFANITY_FILTER, kapps_config:get_is_true(?GOOGLE_CONFIG_CAT, <<"asr_profanity_filter">>)).
 -define(GOOGLE_ASR_ENABLE_WORD_TIME_OFFSETS, kapps_config:get_is_true(?GOOGLE_CONFIG_CAT, <<"asr_enable_word_time_offsets">>)).
+-define(GOOGLE_ASR_ENCODING, kapps_config:get_binary(?GOOGLE_CONFIG_CAT, <<"asr_encoding">>, <<"LINEAR16">>)).
+-define(GOOGLE_ASR_SAMPLE_RATE_HERTZ, kapps_config:get_binary(?GOOGLE_CONFIG_CAT, <<"asr_sample_rate_hertz">>, <<"16000">>)).
+-define(GOOGLE_ASR_MODEL, kapps_config:get_binary(?GOOGLE_CONFIG_CAT, <<"asr_model">>, <<"phone_call">>)).
+-define(GOOGLE_ASR_USE_ENHANCED, kapps_config:get_is_true(?GOOGLE_CONFIG_CAT, <<"asr_use_enhanced">>, 'true')).
+-define(GOOGLE_ASR_ENABLE_AUTOMATIC_PUNCTUATION, kapps_config:get_is_true(?GOOGLE_CONFIG_CAT, <<"asr_enable_automatic_punctuation">>, "true")).
+
+-define(DEFAULT_ASR_CONTENT_TYPE, <<"application/wav">>).
+-define(SUPPORTED_CONTENT_TYPES, [<<"application/wav">>]).
+
 
 -spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> provider_return().
 commands(_Bin, _Commands, _ContentType, _Locale, _Opts) ->
     {'error', 'asr_provider_failure', <<"Not implemented">>}.
 
+
 -spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
-freeform(Content, _ContentType, Locale, Options) ->
+freeform(Content, ContentType, Locale, Options) ->
+    case maybe_convert_content(Content, ContentType) of
+        {'error', _}=E -> E;
+        {Content1, ContentType1} -> exec_freeform(Content1, ContentType1, Locale, Options)
+    end.
+
+-spec exec_freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
+exec_freeform(Content, _ContentType, Locale, Options) ->
     BaseUrl = ?GOOGLE_ASR_URL,
     Headers = req_headers(),
     lager:debug("sending request to ~s", [BaseUrl]),
@@ -32,6 +49,11 @@ freeform(Content, _ContentType, Locale, Options) ->
     AudioConfig = [{<<"languageCode">>, Locale}
                   ,{<<"profanityFilter">>, ?GOOGLE_ASR_PROFANITY_FILTER}
                   ,{<<"enableWordTimeOffsets">>, ?GOOGLE_ASR_ENABLE_WORD_TIME_OFFSETS}
+		,{<<"encoding">>, ?GOOGLE_ASR_ENCODING}
+		,{<<"sampleRateHertz">>, ?GOOGLE_ASR_SAMPLE_RATE_HERTZ}
+		,{<<"model">>, ?GOOGLE_ASR_MODEL}
+		,{<<"useEnhanced">>, ?GOOGLE_ASR_USE_ENHANCED}
+		,{<<"enableAutomaticPunctuation">>, ?GOOGLE_ASR_ENABLE_AUTOMATIC_PUNCTUATION}
                   ],
     AudioContent = [{<<"content">>, base64:encode(Content)}],
     Req = kz_json:from_list([{<<"config">>,kz_json:from_list(AudioConfig)}
@@ -49,7 +71,7 @@ req_headers() ->
     ,{"User-Agent", kz_term:to_list(node())}
     ].
 
--spec make_request(kz_term:ne_binary(), kz_term:proplist(), iolist(), kz_term:proplist()) -> kz_http:ret().
+-spec make_request(kz_term:text(), kz_term:proplist(), iodata(), kz_term:proplist()) -> kz_http:ret().
 make_request(BaseUrl, Headers, Body, Opts) ->
     case props:get_value('receiver', Opts) of
         Pid when is_pid(Pid) ->
@@ -83,3 +105,36 @@ handle_response({'ok', _Code, _Hdrs, Content2}) ->
     lager:debug("asr of media failed with code ~p", [_Code]),
     lager:debug("resp: ~s", [Content2]),
     {'error', 'asr_provider_failure', kz_json:decode(Content2)}.
+
+%%------------------------------------------------------------------------------
+%% @doc Convert audio file/content-type if initial format not supported
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_convert_content(binary(), kz_term:ne_binary()) -> conversion_return().
+maybe_convert_content(Content, ContentType) ->
+    case lists:member(ContentType, ?SUPPORTED_CONTENT_TYPES) of
+        'true' -> {Content, ContentType};
+        'false' ->
+            ConvertTo = default_preferred_content_type(),
+            case kazoo_asr_util:convert_content(Content, ContentType, ConvertTo) of
+                'error' -> {'error', 'unsupported_content_type'};
+                Converted -> {Converted, ConvertTo}
+            end
+    end.
+
+-spec default_preferred_content_type() -> kz_term:ne_binary().
+default_preferred_content_type() ->
+    PreferredContentType = kapps_config:get_binary(?MOD_CONFIG_CAT
+                                                  ,<<"asr_preferred_content_type">>
+                                                  ,?DEFAULT_ASR_CONTENT_TYPE
+                                                  ),
+    validate_content_type(PreferredContentType).
+
+-spec validate_content_type(binary()) -> kz_term:ne_binary().
+validate_content_type(ContentType) ->
+    case lists:member(ContentType, ?SUPPORTED_CONTENT_TYPES) of
+        'true' -> ContentType;
+        'false' ->
+            lager:debug("content-type ~s is not supported by google", [ContentType]),
+            ?DEFAULT_ASR_CONTENT_TYPE
+    end.
