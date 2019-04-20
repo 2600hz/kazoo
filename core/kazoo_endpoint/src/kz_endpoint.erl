@@ -1267,13 +1267,11 @@ push_properties(Endpoint, Call) ->
     PushJObj = kz_json:get_json_value(<<"push">>, Endpoint, kz_json:new()),
     case kz_json:get_ne_binary_value(<<"Token-Type">>, PushJObj) of
         'undefined' -> PushJObj;
-        TokenType ->
-            TokenApp = kz_json:get_ne_binary_value(<<"Token-App">>, PushJObj),
-            Headers = [{<<"Endpoint-ID">>, kz_doc:id(Endpoint)}
-                      ,{<<"Account-ID">>, kapps_call:account_id(Call)}
-                      ],
-            ExtraHeaders = kapps_config:get_json(<<"pusher">>, [TokenType, <<"extra_headers">>], kz_json:new(), TokenApp),
-            kz_json:merge(PushJObj, kz_json:set_values(Headers, ExtraHeaders))
+        _ ->
+            Headers = kz_json:from_list([{<<"Endpoint-ID">>, kz_doc:id(Endpoint)}
+                                        ,{<<"Account-ID">>, kapps_call:account_id(Call)}
+                                        ]),
+            kz_json:merge(PushJObj, Headers)
     end.
 
 -spec push_headers(kz_json:object()) -> kz_json:object().

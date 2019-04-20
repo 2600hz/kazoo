@@ -602,7 +602,6 @@
     "pusher.User-Agents": "pusher User-Agents",
     "pusher.apple.apns_topic": "APNs topic for push notifications payload",
     "pusher.apple.certificate": "PEM-encoded certificate and private key for communicating with APNs",
-    "pusher.apple.extra_headers": "Additional headers for INVITEs sent to push devices in the UA",
     "pusher.apple.host": "APNs host to connect to",
     "pusher.google": "pusher google",
     "pusher.modules": "pusher modules",
