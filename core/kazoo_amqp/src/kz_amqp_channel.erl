@@ -279,7 +279,7 @@ maybe_split_routing_key(RoutingKey) ->
 -spec command(kz_amqp_command()) -> command_ret().
 command(#'exchange.declare'{exchange=_Ex, type=_Ty}=Exchange) ->
     [catch kz_amqp_connection:new_exchange(ConnectionPid, Exchange)
-     || #kz_amqp_connection{connection=ConnectionPid} <- kz_amqp_connections:connections()
+     || #kz_amqp_connections{connection=ConnectionPid} <- kz_amqp_connections:connections()
     ];
 command(Command) ->
     %% This will wait forever for a valid channel before publishing...
