@@ -1219,10 +1219,12 @@ node_info() ->
                       ++ amqp_status()
                      ).
 
+-spec amqp_status() -> [{kz_term:ne_binary(), kz_json:object()}].
 amqp_status() ->
     Connections = kz_amqp_connections:connections(),
     [amqp_status_connection(Connection) || Connection <- Connections].
 
+-spec amqp_status_connection(kz_amqp_connections:kz_amqp_connections()) -> {kz_term:ne_binary(), kz_json:object()}.
 amqp_status_connection(Connection) ->
     Count = kz_amqp_assignments:channel_count(Connection),
     Broker = kz_amqp_connection:broker(Connection),

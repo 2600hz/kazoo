@@ -48,9 +48,10 @@
 
 -define(TAB, ?MODULE).
 
--record(state, {watchers = sets:new() :: sets:set(pid())
-               }).
+-record(state, {watchers = sets:new() :: sets:set(pid())}).
 -type state() :: #state{}.
+
+-export_type([kz_amqp_connections/0]).
 
 %%%=============================================================================
 %%% API

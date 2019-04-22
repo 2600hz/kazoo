@@ -107,7 +107,7 @@ add_channel(Broker, Connection, Channel)
 release(Consumer) ->
     gen_server:call(?SERVER, {'release_handlers', Consumer}, 'infinity').
 
--spec channel_count(kz_amqp_connection() | pid()) -> non_neg_integer().
+-spec channel_count(kz_amqp_connections() | pid()) -> non_neg_integer().
 channel_count(#kz_amqp_connections{connection=AMQPConn}) ->
     channel_count(AMQPConn);
 channel_count(AMQPConn) when is_pid(AMQPConn) ->
