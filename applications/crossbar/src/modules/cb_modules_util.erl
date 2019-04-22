@@ -29,6 +29,8 @@
 
         ,get_request_action/1
         ,normalize_alphanum_name/1
+
+        ,maybe_convert_numbers_to_list/1
         ]).
 
 -include("crossbar.hrl").
@@ -380,3 +382,19 @@ normalize_alphanum_name(Context) ->
     Doc = cb_context:doc(Context),
     Name = kz_json:get_ne_binary_value(<<"name">>, Doc),
     cb_context:set_doc(Context, kz_json:set_value(<<"pvt_alphanum_name">>, normalize_alphanum_name(Name), Doc)).
+
+-spec maybe_convert_numbers_to_list(cb_context:context()) -> cb_context:context().
+maybe_convert_numbers_to_list(Context) ->
+    case cb_context:req_header(Context, <<"accept">>) of
+        <<"text/csv">> ->
+            Numbers = kz_json:get_json_value(<<"numbers">>, cb_context:resp_data(Context)),
+            NewRespData = kz_json:foldl(fun convert_numbers_to_list/3, [], Numbers),
+            cb_context:set_resp_data(Context, NewRespData);
+        _ -> Context
+    end.
+
+-spec convert_numbers_to_list(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
+convert_numbers_to_list(Key, Value, JObj) ->
+    [kz_json:from_list([{<<"number">>, Key} | kz_json:recursive_to_proplist(Value)])
+     | JObj
+    ].
