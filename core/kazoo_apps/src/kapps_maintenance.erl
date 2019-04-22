@@ -828,9 +828,10 @@ ensure_tree_is_tree_fold(#{real_tree := RealTree
                           ,fixed_trees := FixedTrees
                           ,multi_paths := MultiPaths
                           }=State
-                        ,AccountId, Depth, Tree) ->
-    case ensure_tree_is_tree_fold(State, AccountId, Depth, Tree, []) of
-        Tree ->
+                        ,AccountId, _Depth, Tree) ->
+    % ?DEV_LOG("~nA ~p~nT ~p~n~p~n~n", [AccountId, Tree, ensure_tree_is_tree_fold(State, AccountId, #{}, Tree, [])]),
+    case ensure_tree_is_tree_fold(State, AccountId, #{multi_branch => 'false'}, Tree, []) of
+        {_, Tree} ->
             %% tree is okay
 
             %% AccountId =:= <<"ff7e109ceb623e1622db61f0185f7c06">>
@@ -840,12 +841,12 @@ ensure_tree_is_tree_fold(#{real_tree := RealTree
             %% AccountId =:= <<"5cc4fa8f33cc824a431d71379415ef62">>
             %%     andalso ?DEV_LOG("~nTree matched~n~nAccountId ~p~nDepth ~p~nTree~p~nUpdatedTree ~p~n~n", [AccountId, Depth, Tree, UpdatedTree]),
             State#{real_tree => RealTree#{AccountId => Tree}};
-        {DisjointAt, AncestorCalculatedTree} ->
+        {#{multi_branch := 'false'}, UpdatedTree} ->
             %% tree is disjoint at a point
-            State#{real_tree => RealTree#{AccountId => AncestorCalculatedTree ++ [DisjointAt]}
-                  ,multi_paths => MultiPaths#{AccountId => #{DisjointAt => AncestorCalculatedTree}}
+            State#{real_tree => RealTree#{AccountId => UpdatedTree}
+                  ,fixed_trees => FixedTrees#{AccountId => UpdatedTree}
                   };
-        UpdatedTree ->
+        {#{multi_branch := 'true'}=Multi, UpdatedTree} ->
             %% tree had non-existing account id and was fixed
 
             %% AccountId =:= <<"ff7e109ceb623e1622db61f0185f7c06">>
@@ -855,31 +856,31 @@ ensure_tree_is_tree_fold(#{real_tree := RealTree
             %% AccountId =:= <<"5cc4fa8f33cc824a431d71379415ef62">>
             %%     andalso ?DEV_LOG("~nTree not matched~n~nAccountId ~p~nDepth ~p~nTree~p~nUpdatedTree ~p~n~n", [AccountId, Depth, Tree, UpdatedTree]),
             State#{real_tree => RealTree#{AccountId => UpdatedTree}
-                  ,fixed_trees => FixedTrees#{AccountId => UpdatedTree}
+                  ,multi_paths => MultiPaths#{AccountId => Multi}
                   }
     end.
 
 -spec ensure_tree_is_tree_fold(ensure_state(), kz_term:ne_binary(), non_neg_integer(), kz_term:ne_binaries(), kz_term:ne_binaries()) ->
                                       {kz_term:ne_binary(), kz_term:ne_binaries()} |
                                       kz_term:ne_binaries().
-ensure_tree_is_tree_fold(#{master := MasterAccountId}, MasterAccountId, _, _, _) ->
-    [];
+ensure_tree_is_tree_fold(#{master := MasterAccountId}, MasterAccountId, Multi, _, _) ->
+    {Multi, []};
 
-ensure_tree_is_tree_fold(#{master := MasterAccountId}, _, _, [], []) ->
-    [MasterAccountId];
+ensure_tree_is_tree_fold(#{master := MasterAccountId}, _, Multi, [], []) ->
+    {Multi, [MasterAccountId]};
 
-ensure_tree_is_tree_fold(_, _, _, [], UpdatedTree) ->
-    lists:reverse(UpdatedTree);
+ensure_tree_is_tree_fold(_, _, Multi, [], UpdatedTree) ->
+    {Multi, lists:reverse(UpdatedTree)};
 
-ensure_tree_is_tree_fold(#{master := MasterAccountId}=State, AccountId, Depth, [MasterAccountId|Tree], []) ->
-    ensure_tree_is_tree_fold(State, AccountId, Depth, Tree, [MasterAccountId]);
+ensure_tree_is_tree_fold(#{master := MasterAccountId}=State, AccountId, Multi, [MasterAccountId|Tree], []) ->
+    ensure_tree_is_tree_fold(State, AccountId, Multi, Tree, [MasterAccountId]);
 
-ensure_tree_is_tree_fold(#{master := MasterAccountId}=State, AccountId, Depth, [_BadMasterId|Tree], []) ->
-    ensure_tree_is_tree_fold(State, AccountId, Depth, Tree, [MasterAccountId]);
+ensure_tree_is_tree_fold(#{master := MasterAccountId}=State, AccountId, Multi, [_BadMasterId|Tree], []) ->
+    ensure_tree_is_tree_fold(State, AccountId, Multi, Tree, [MasterAccountId]);
 
 ensure_tree_is_tree_fold(#{real_ids := RealIds
                           ,real_tree := RealTree
-                          }=State, AccountId, Depth, [Id|Tree], UpdatedTree) ->
+                          }=State, AccountId, Multi, [Id|Tree], UpdatedTree) ->
     case maps:get(Id, RealTree, 'undefined') of
         'undefined' ->
             %% AccountId =:= <<"87afd9fa4e14b2a638633c949367004f">>
@@ -891,14 +892,14 @@ ensure_tree_is_tree_fold(#{real_ids := RealIds
             %%                     ,[AccountId, Depth, Tree, lists:reverse(UpdatedTree), Id]
             %%                     ),
             %% AccountId =:= <<"ff06a608387a02fcc65067fb8ab85b2a">>
-            %%     andalso ?DEV_LOG("~nNo Ancestor?~nAccountId ~p~nDepth ~p~nTree~p~nUpdatedTree ~p~nId ~p~n~n"
-            %%                     ,[AccountId, Depth, Tree, lists:reverse(UpdatedTree), Id]
+            %%     andalso ?DEV_LOG("~nNo Ancestor?~nAccountId ~p~nMulti ~p~nTree~p~nUpdatedTree ~p~nId ~p~n~n"
+            %%                     ,[AccountId, Multi, Tree, lists:reverse(UpdatedTree), Id]
             %%                     ),
             case gb_sets:is_member(Id, RealIds) of
                 'true' ->
-                    ensure_tree_is_tree_fold(State, AccountId, Depth, Tree, [Id|UpdatedTree]);
+                    ensure_tree_is_tree_fold(State, AccountId, Multi, Tree, [Id|UpdatedTree]);
                 'false' ->
-                    ensure_tree_is_tree_fold(State, AccountId, Depth, Tree, UpdatedTree)
+                    ensure_tree_is_tree_fold(State, AccountId, Multi, Tree, UpdatedTree)
             end;
         AncestorCalculatedTree ->
             %% AccountId =:= <<"87afd9fa4e14b2a638633c949367004f">>
@@ -910,14 +911,27 @@ ensure_tree_is_tree_fold(#{real_ids := RealIds
             %%                     ,[AccountId, Depth, Tree, lists:reverse(UpdatedTree), Id, AncestorCalculatedTree, AncestorCalculatedTree =:= lists:reverse(UpdatedTree)]
             %%                     ),
             %% AccountId =:= <<"ff06a608387a02fcc65067fb8ab85b2a">>
-            %%     andalso ?DEV_LOG("~nCal tree:~nAccountId ~p~nDepth ~p~nTree~p~nUpdatedTree ~p~nId ~p~nAncestorCalculatedTree ~p~nis eual ~p~n~n"
-            %%                     ,[AccountId, Depth, Tree, lists:reverse(UpdatedTree), Id, AncestorCalculatedTree, AncestorCalculatedTree =:= lists:reverse(UpdatedTree)]
+            %%     andalso ?DEV_LOG("~nCal tree:~nAccountId ~p~nMulti ~p~nTree~p~nUpdatedTree ~p~nId ~p~nAncestorCalculatedTree ~p~nis eual ~p~n~n"
+            %%                     ,[AccountId, Multi, Tree, lists:reverse(UpdatedTree), Id, AncestorCalculatedTree, AncestorCalculatedTree =:= lists:reverse(UpdatedTree)]
             %%                     ),
+            IsMultiBranched = maps:get(last_branch_off, Multi, 0) > 0,
             case AncestorCalculatedTree =:= lists:reverse(UpdatedTree) of
                 'true' ->
-                    ensure_tree_is_tree_fold(State, AccountId, Depth, Tree, [Id|UpdatedTree]);
+                    ensure_tree_is_tree_fold(State, AccountId, Multi, Tree, [Id|UpdatedTree]);
+                'false' when IsMultiBranched ->
+                    BranchOff = maps:get(last_branch_off, Multi, 0) + 1,
+                    ensure_tree_is_tree_fold(State, AccountId, Multi#{BranchOff => #{Id => AncestorCalculatedTree}
+                                                                     ,multi_branch => true
+                                                                     ,last_branch_off => BranchOff
+                                                                     }, Tree, UpdatedTree
+                                            );
                 'false' ->
-                    {Id, AncestorCalculatedTree}
+                    BranchOff = maps:get(last_branch_off, Multi, 0) + 1,
+                    ensure_tree_is_tree_fold(State, AccountId, Multi#{BranchOff => #{Id => AncestorCalculatedTree}
+                                                                     ,multi_branch => false
+                                                                     ,last_branch_off => BranchOff
+                                                                     }, Tree, [Id|UpdatedTree]
+                                            )
             end
     end.
 
