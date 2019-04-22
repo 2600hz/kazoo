@@ -222,7 +222,7 @@ validate_phone_numbers(Context, ?HTTP_GET, 'undefined') ->
     maybe_find_numbers(Context);
 validate_phone_numbers(Context, ?HTTP_GET, _AccountId) ->
     case kz_json:get_ne_value(?PREFIX, cb_context:query_string(Context)) of
-        'undefined' -> summary(Context);
+        'undefined' -> cb_modules_util:maybe_convert_numbers_to_list(summary(Context));
         _Prefix -> maybe_find_numbers(Context)
     end.
 
