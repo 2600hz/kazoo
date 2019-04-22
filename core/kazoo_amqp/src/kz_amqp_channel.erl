@@ -328,15 +328,6 @@ exec_command(#kz_amqp_assignment{channel=Channel
             ,#'basic.cancel'{nowait=_NoWait}
             ) ->
     lager:debug("a wild cancel appears from consumer ~p channel ~p", [Consumer, Channel]);
-%% lists:foreach(fun(#'basic.consume'{consumer_tag=CTag}) ->
-%%                       Command = #'basic.cancel'{consumer_tag=CTag, nowait=NoWait},
-%%                       lager:debug("sending cancel for consumer ~s to ~p", [CTag, Channel]),
-%%                       Result = amqp_channel:call(Channel, Command),
-%%                       handle_command_result(Result, Command, Assignment);
-%%                  (_) -> 'ok'
-%%               end
-%%              ,kz_amqp_history:list_consume(Consumer)
-%%              );
 exec_command(#kz_amqp_assignment{channel=Channel}=Assignment
             ,#'queue.unbind'{queue=QueueName
                             ,exchange=Exchange

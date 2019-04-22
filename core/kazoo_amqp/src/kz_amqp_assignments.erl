@@ -398,7 +398,8 @@ move_channel_to_consumer(#kz_amqp_assignment{timestamp=Timestamp
                                             ,broker=Broker
                                             ,connection=Connection
                                             }
-                        ,#kz_amqp_assignment{consumer=Consumer}=ConsumerAssignment) ->
+                        ,#kz_amqp_assignment{consumer=Consumer}=ConsumerAssignment
+                        ) ->
     Assignment =
         ConsumerAssignment#kz_amqp_assignment{channel=Channel
                                              ,channel_ref=ChannelRef
@@ -412,11 +413,11 @@ move_channel_to_consumer(#kz_amqp_assignment{timestamp=Timestamp
     %% Remove the channel assignment so it will not be given away twice
     ets:delete(?TAB, Timestamp),
     lager:debug("assigned existing consumer ~p an available channel ~p on ~s"
-               ,[Consumer, Channel, Broker]),
+               ,[Consumer, Channel, Broker]
+               ),
 
     register_channel_handlers(Channel, Consumer),
 
-    _ = maybe_reconnect(Assignment),
     send_notifications(Assignment).
 
 %%------------------------------------------------------------------------------
@@ -539,7 +540,10 @@ assign_channel(#kz_amqp_assignment{channel=CurrentChannel
 assign_channel(#kz_amqp_assignment{timestamp=Timestamp
                                   ,consumer=Consumer
                                   }=ConsumerAssignment
-              ,Broker, Connection, Channel) ->
+              ,Broker
+              ,Connection
+              ,Channel
+              ) ->
     Ref = erlang:monitor('process', Channel),
 
     Assigment
@@ -557,7 +561,6 @@ assign_channel(#kz_amqp_assignment{timestamp=Timestamp
                ,[Consumer, Channel, Broker, kz_time:elapsed_us(Timestamp)]
                ),
     register_channel_handlers(Channel, Consumer),
-    _ = maybe_reconnect(Assigment),
     _ = send_notifications(Assigment),
     'true'.
 
@@ -565,35 +568,13 @@ assign_channel(#kz_amqp_assignment{timestamp=Timestamp
 cache(Broker, Connection, Channel) ->
     Ref = erlang:monitor('process', Channel),
     lager:debug("added new channel ~p on ~s to available pool"
-               ,[Channel, Broker]),
+               ,[Channel, Broker]
+               ),
     ets:insert(?TAB, #kz_amqp_assignment{channel=Channel
                                         ,channel_ref=Ref
                                         ,broker=Broker
                                         ,connection=Connection
                                         }).
-
--spec maybe_reconnect(kz_amqp_assignment()) -> 'ok'.
-maybe_reconnect(#kz_amqp_assignment{reconnect='false'}) -> 'ok';
-maybe_reconnect(#kz_amqp_assignment{consumer=Consumer
-                                   ,channel=Channel
-                                   }=Assignment) ->
-    _ = kz_util:spawn(
-          fun() ->
-                  lager:debug("replaying previous AMQP commands from consumer ~p on channel ~p"
-                             ,[Consumer, Channel]),
-                  reconnect(Assignment, kz_amqp_history:get(Consumer))
-          end),
-    'ok'.
-
--spec reconnect(kz_amqp_assignment(), kz_amqp_commands()) -> 'ok'.
-reconnect(_, []) -> 'ok';
-reconnect(Assignment, [Command|Commands]) ->
-    try kz_amqp_channel:command(Assignment, Command) of
-        {'error', E} -> lager:info("replayed command failed: ~p", [E]);
-        _ -> reconnect(Assignment, Commands)
-    catch
-        _:_R -> lager:info("replayed command failed: ~p", [_R])
-    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
