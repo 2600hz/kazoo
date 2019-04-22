@@ -526,26 +526,31 @@ handle_cast({'federated_event', JObj, BasicDeliver, BasicData}, #state{params=Pa
         'false' -> {'noreply', distribute_event(JObj, {BasicDeliver, BasicData}, State)}
     end;
 handle_cast({'$execute', Module, Function, Args}
-           ,#state{federators=[]}=State) ->
+           ,#state{federators=[]}=State
+           ) ->
     erlang:apply(Module, Function, Args),
     {'noreply', State};
 handle_cast({'$execute', Function, Args}
-           ,#state{federators=[]}=State) ->
+           ,#state{federators=[]}=State
+           ) ->
     erlang:apply(Function, Args),
     {'noreply', State};
 handle_cast({'$execute', Function}
-           ,#state{federators=[]}=State) ->
+           ,#state{federators=[]}=State
+           ) ->
     Function(),
     {'noreply', State};
 handle_cast({'$execute', Module, Function, Args}=Msg
-           ,#state{federators=Federators}=State) ->
+           ,#state{federators=Federators}=State
+           ) ->
     erlang:apply(Module, Function, Args),
     _ = [?MODULE:cast(Federator, Msg)
          || {_Broker, Federator} <- Federators
         ],
     {'noreply', State};
 handle_cast({'$execute', Function, Args}=Msg
-           ,#state{federators=Federators}=State) ->
+           ,#state{federators=Federators}=State
+           ) ->
     erlang:apply(Function, Args),
     _ = [?MODULE:cast(Federator, Msg)
          || {_Broker, Federator} <- Federators
@@ -561,26 +566,25 @@ handle_cast({'$execute', Function}=Msg
     {'noreply', State};
 handle_cast({'$client_cast', Message}, State) ->
     handle_module_cast(Message, State);
-handle_cast({'start_listener', Params}, #state{queue='undefined'
-                                              ,is_consuming='false'
-                                              ,responders=[]
-                                              ,bindings=[]
-                                              ,params=[]
-                                              }=State) ->
-    #state{module=Module
-          ,module_state=ModuleState
-          ,module_timeout_ref=TimeoutRef
-          } = State,
-    {'ok', #state{}=N} = init(Module, Params, ModuleState, TimeoutRef),
-    {'noreply', N};
+handle_cast({'start_listener', Params}
+           ,#state{queue='undefined'
+                  ,is_consuming='false'
+                  ,responders=[]
+                  ,bindings=[]
+                  ,params=[]
+                  ,module=Module
+                  ,module_state=ModuleState
+                  ,module_timeout_ref=TimeoutRef
+                  }
+           ) ->
+    {'ok', #state{}=NewState} = init(Module, Params, ModuleState, TimeoutRef),
+    {'noreply', NewState};
 handle_cast({'start_listener', _Params}, State) ->
     lager:debug("gen listener asked to start listener but it is already initialized"),
     {'noreply', State};
-
 handle_cast({'pause_consumers'}, #state{is_consuming='true', consumer_tags=Tags}=State) ->
     lists:foreach(fun kz_amqp_util:basic_cancel/1, Tags),
     {'noreply', State};
-
 handle_cast({'resume_consumers'}, #state{queue='undefined'}=State) ->
     {'noreply', State};
 handle_cast({'resume_consumers'}, #state{is_consuming='false'
@@ -595,7 +599,6 @@ handle_cast({'resume_consumers'}, #state{is_consuming='false'
          || {Q1, {_, P}} <- OtherQueues
         ],
     {'noreply', State};
-
 handle_cast({'federator_is_consuming', Broker, 'true'}, State) ->
     lager:info("federator for ~p is consuming, waiting on: ~p", [Broker, State#state.waiting_federators]),
 
@@ -616,7 +619,6 @@ handle_cast({'federator_is_consuming', Broker, 'true'}, State) ->
             lager:info("still waiting for federators: ~p", [Remaining]),
             {'noreply', State#state{waiting_federators = Remaining}}
     end;
-
 handle_cast(Message, State) ->
     handle_module_cast(Message, State).
 
@@ -632,10 +634,13 @@ maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret().
-handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}=Basic
-                                             ,payload=Payload
-                                             }}
-           ,#state{params=Params, auto_ack=AutoAck}=State) ->
+handle_info({#'basic.deliver'{}=BD
+            ,#amqp_msg{props=#'P_basic'{content_type=CT}=Basic
+                      ,payload=Payload
+                      }
+            }
+           ,#state{params=Params, auto_ack=AutoAck}=State
+           ) ->
     _ = case AutoAck of
             'true' -> (catch kz_amqp_util:basic_ack(BD));
             'false' -> 'ok'
@@ -654,10 +659,14 @@ handle_info({#'basic.return'{}=BR
            ,State
            ) ->
     handle_return(Payload, CT, BR, State);
-handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue='undefined'}=State) ->
+handle_info(#'basic.consume_ok'{consumer_tag=CTag}
+           ,#state{queue='undefined'}=State
+           ) ->
     lager:debug("received consume ok (~s) for abandoned queue", [CTag]),
     {'noreply', State};
-handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=State) ->
+handle_info(#'basic.consume_ok'{consumer_tag=CTag}
+           ,#state{consumer_tags=CTags}=State
+           ) ->
     gen_server:cast(self(), {?MODULE, {'is_consuming', 'true'}}),
     {'noreply', State#state{is_consuming='true'
                            ,consumer_tags=[CTag | CTags]
