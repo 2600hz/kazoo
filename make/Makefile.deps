@@ -1,4 +1,5 @@
 ROOT = ..
+ERLANG_MK_FILENAME = $(ROOT)/erlang.mk
 
 DEPS_DIR = $(CURDIR)
 ERLC_OPTS += +debug_info -DWITH_JIFFY=1
