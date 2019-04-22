@@ -177,11 +177,13 @@ applications/stepswitch/src/stepswitch_sms.erl
 core/kazoo_call/src/kzc_recording.erl
 
 Trunkstore already uses the general purpose pool for its call-handling
-*** TODO Trunkstore to own pool
+*** DONE Trunkstore to own pool
+CLOSED: [2019-04-15 Mon 18:30]
+*** DONE ecallmgr_call_control
+CLOSED: [2019-04-15 Mon 18:30]
 *** TODO kzc_recording
 *** TODO Stepswitch workers
 *** TODO conf_participant
-
 ** DONE 5. For non-named queues remove or significantly increase the flow control limit
 CLOSED: [2019-04-02 Tue 20:56]
 https://www.rabbitmq.com/confirms.html
@@ -197,3 +199,17 @@ https://www.rabbitmq.com/confirms.html
 See PR #123 for lazy worker start. Then you could set high pool count but only start workers
 
 overflow timeout TTL #114
+** TODO 11. AMQP reconnect issues
+When the broker is restarted, test that channels, queues, bindings, et al reconnect properly. This is tied into AMQP history removal work.
+** TODO 12. Kazoo Cache bindings rework
+unique binding to kazoo data that distributes to each cache
+instead of unique caches binding to rmq
+** TODO 13. Leaky AMQP queues
+Looking at an output of =rabbitmqctl list_queues= over a period of time we see
+481 of kzc_recording out of 903
+64 cf_exe
+40 queue_worker
+42 recipient sup
+
+Not all are necessarily leaky but kzc_recording definitely stands out.
+** TODO 14. generate carrier list from behaviour instead of static list in knm_carriers:all_modules()
