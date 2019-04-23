@@ -34476,7 +34476,7 @@
                     "type": "string"
                 },
                 "asr_enable_automatic_punctuation": {
-                    "default": "true",
+                    "default": true,
                     "description": "speech google asr_enable_automatic_punctuation",
                     "type": "boolean"
                 },
