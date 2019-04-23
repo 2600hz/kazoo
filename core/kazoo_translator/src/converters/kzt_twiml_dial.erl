@@ -149,7 +149,6 @@ dial_me(Call, Attrs, DialMe) ->
 
     OffnetProps = [{<<"Timeout">>, kzt_util:get_call_timeout(Call1)}
                   ,{<<"Media">>, media_processing(Call1)}
-                  ,{<<"Force-Outbound">>, force_outbound(Props)}
                   ,{<<"Server-ID">>, kapps_call:controller_queue(Call1)}
                   ],
     'ok' = kzt_util:offnet_req(OffnetProps, Call1),
@@ -206,12 +205,6 @@ cleanup_dial_me(<<_/binary>> = Txt) ->
 is_numeric_or_plus(Num) when Num >= $0, Num =< $9 -> 'true';
 is_numeric_or_plus($+) -> 'true';
 is_numeric_or_plus(_) -> 'false'.
-
-%% To maintain compatibility with Twilo, we force the call offnet (otherwise
-%% the redirect onnet steals our callid, and callflow/trunkstore/other could
-%% potentially hangup our A-leg. If the B-leg is forced offnet, we can still
-%% capture the failed B-leg and continue processing the TwiML (if any).
-force_outbound(Props) -> props:get_is_true('continueOnFail', Props, 'true').
 
 -spec xml_elements_to_endpoints(kapps_call:call(), kz_types:xml_els()) ->
                                        kz_json:objects().
