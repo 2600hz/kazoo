@@ -1487,10 +1487,7 @@ load_smtp_log_doc(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
 -spec maybe_remove_private_data(kz_json:object(), kz_term:ne_binary(), boolean()) -> kz_json:object().
 maybe_remove_private_data(JObj, <<"port_comment">>, 'false') ->
     CommentPath = [<<"macros">>, <<"port_request">>, <<"comment">>],
-    SuperPaths = [CommentPath ++ [<<"superduper_comment">>]
-                 ,CommentPath ++ [<<"is_private">>]
-                 ],
-    case kz_term:is_true(kz_json:get_first_defined(SuperPaths, JObj, 'false')) of
+    case kzd_comment:is_private_legacy(kz_json:get_json_value(CommentPath, JObj, kz_json:new())) of
         'true' ->
             DeletePaths = [CommentPath
                           ,<<"rendered_templates">>
