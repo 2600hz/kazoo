@@ -246,7 +246,7 @@ update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
                                         ,View
                                         ),
             _Updated = kz_datamgr:db_view_update(AccountDb, [{ViewName, NewView}]),
-            ?SUP_LOG_DEBUG("view updated for '~s': ", [AccountDb, _Updated])
+            ?SUP_LOG_DEBUG("view updated for '~s': ~p", [AccountDb, _Updated])
     end.
 
 
