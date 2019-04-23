@@ -827,6 +827,7 @@ register_channel_handlers(Channel, Consumer) ->
     amqp_channel:register_return_handler(Channel, Consumer),
     amqp_channel:register_confirm_handler(Channel, Consumer),
     amqp_channel:register_flow_handler(Channel, Consumer),
+
     lager:debug("registered handlers for channel ~p to ~p", [Channel, Consumer]).
 
 -spec unregister_channel_handlers(pid()) -> 'ok'.

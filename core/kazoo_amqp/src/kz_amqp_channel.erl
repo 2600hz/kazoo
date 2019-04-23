@@ -309,7 +309,8 @@ exec_command(#kz_amqp_assignment{consumer=Consumer
             ) ->
     C = Command#'basic.consume'{consumer_tag = <<>>},
     case amqp_channel:subscribe(Channel, C, Consumer) of
-        #'basic.consume_ok'{consumer_tag=_NewTag} -> 'ok';
+        #'basic.consume_ok'{consumer_tag=_NewTag} ->
+            lager:debug("~p consuming on tag ~p", [Consumer, _NewTag]);
         _Else ->
             lager:warning("failed to re-establish consumer for ~p: ~p"
                          ,[Consumer, _Else]
@@ -321,13 +322,18 @@ exec_command(#kz_amqp_assignment{consumer=Consumer
             ,#'basic.consume'{queue=_Queue}=Command
             ) ->
     Result = amqp_channel:subscribe(Channel, Command, Consumer),
+    lager:debug("consuming for ~p on ~p returned ~p", [Consumer, Channel, Result]),
     handle_command_result(Result, Command, Assignment);
 exec_command(#kz_amqp_assignment{channel=Channel
                                 ,consumer=Consumer
                                 }=_Assignment
-            ,#'basic.cancel'{nowait=_NoWait}
-            ) ->
-    lager:debug("a wild cancel appears from consumer ~p channel ~p", [Consumer, Channel]);
+            ,#'basic.cancel'{nowait=NoWait}
+            ) when is_pid(Consumer) ->
+    case is_process_alive(Consumer)  of
+        'false' -> lager:debug("consumer ~p is down, ignoring basic.cancel");
+        'true' ->
+            cancel_consumer_tags(Consumer, Channel, NoWait)
+    end;
 exec_command(#kz_amqp_assignment{channel=Channel}=Assignment
             ,#'queue.unbind'{queue=QueueName
                             ,exchange=Exchange
@@ -351,10 +357,10 @@ handle_command_result({'error', _}=Error, _, _) -> Error;
 handle_command_result({'ok', Ok}, Command, Assignment) ->
     handle_command_result(Ok, Command, Assignment);
 handle_command_result(#'basic.qos_ok'{}
-                     ,#'basic.qos'{prefetch_count=Prefetch}=_Command
-                     ,#kz_amqp_assignment{channel=Channel}=_Assignment
+                     ,#'basic.qos'{prefetch_count=_Prefetch}=_Command
+                     ,#kz_amqp_assignment{channel=_Channel}=_Assignment
                      ) ->
-    lager:debug("applied QOS prefetch ~p to channel ~p", [Prefetch, Channel]);
+    lager:debug("applied QOS prefetch ~p to channel ~p", [_Prefetch, _Channel]);
 handle_command_result(#'queue.delete_ok'{}
                      ,#'queue.delete'{queue=Q}=_Command
                      ,#kz_amqp_assignment{channel=Channel}=_Assignment
@@ -405,15 +411,21 @@ handle_command_result(#'queue.bind_ok'{}
                ,[_Q, _Exchange, _RK, Channel]
                );
 handle_command_result(#'basic.consume_ok'{consumer_tag=CTag}
-                     ,#'basic.consume'{}=_Command
-                     ,#kz_amqp_assignment{channel=Channel}=_Assignment
+                     ,#'basic.consume'{}=Command
+                     ,#kz_amqp_assignment{channel=_Channel
+                                         ,consumer=Consumer
+                                         }=_Assignment
                      ) ->
-    lager:debug("created consumer ~s via channel ~p", [CTag, Channel]);
+    Consumer ! {?MODULE, {'add_consumer_tag', Command#'basic.consume'{consumer_tag=CTag}}},
+    lager:debug("created consumer ~s via channel ~p", [CTag, _Channel]);
 handle_command_result(#'basic.cancel_ok'{consumer_tag=CTag}
                      ,#'basic.cancel'{}=_Command
-                     ,#kz_amqp_assignment{channel=Channel}=_Assignment
+                     ,#kz_amqp_assignment{channel=_Channel
+                                         ,consumer=Consumer
+                                         }=_Assignment
                      ) ->
-    lager:debug("canceled consumer ~s via channel ~p", [CTag, Channel]);
+    Consumer ! {?MODULE, {'remove_consumer_tag', #'basic.consume'{consumer_tag=CTag}}},
+    lager:debug("canceled consumer ~s via channel ~p", [CTag, _Channel]);
 handle_command_result(#'confirm.select_ok'{}
                      ,_Command
                      ,#kz_amqp_assignment{channel=Channel
@@ -447,3 +459,31 @@ assert_valid_amqp_method(Command) ->
             E(R)
     end,
     'ok'.
+
+cancel_consumer_tags(Consumer, Channel, NoWait) ->
+    cancel_consumer_tags(Consumer, Channel, NoWait, is_process_alive(Consumer)).
+
+cancel_consumer_tags(_Consumer, _Channel, _NoWait, 'false') ->
+    lager:debug("consumer ~p is down already, not cancelling consumer tags ", [_Consumer]);
+cancel_consumer_tags(Consumer, Channel, NoWait, 'true') ->
+    Ref = make_ref(),
+    Consumer ! {?MODULE, {self(), Ref, 'consumer_tags'}},
+    receive
+        {_Module, Ref, Tags} ->
+            cancel_consumer_tags(Consumer, Channel, NoWait, Tags)
+    after
+        5 * ?MILLISECONDS_IN_SECOND ->
+            lager:warning("consumer ~p failed to supply consumer tags", [Consumer])
+    end;
+cancel_consumer_tags(_Consumer, Channel, NoWait, Tags) when is_list(Tags) ->
+    lists:foreach(fun(CTag) ->
+                          Command = #'basic.cancel'{consumer_tag=CTag, nowait=NoWait},
+                          lager:debug("sending cancel for consumer ~s to ~p", [CTag, Channel]),
+                          try amqp_channel:call(Channel, Command) of
+                              #'basic.cancel_ok'{} -> lager:debug("canceled consumer ~s via channel ~p", [CTag, Channel])
+                          catch
+                              _E:_R -> lager:debug("failed to cancel ~s: ~s: ~p", [CTag, _E, _R])
+                          end
+                  end
+                 ,Tags
+                 ).

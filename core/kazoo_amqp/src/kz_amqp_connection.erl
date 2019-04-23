@@ -73,9 +73,12 @@ broker(#kz_amqp_connections{broker=Broker}) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', kz_amqp_connection()}.
-init([#kz_amqp_connection{}=Connection]) ->
+init([#kz_amqp_connection{connection=Pid}=Connection]) ->
     _ = process_flag('trap_exit', 'true'),
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+
+    amqp_connection:register_blocked_handler(Pid, self()),
+
     {'ok', disconnected(Connection#kz_amqp_connection{manager=self()})}.
 
 %%------------------------------------------------------------------------------
@@ -178,6 +181,14 @@ handle_info({'connect', Timeout}
 handle_info({'connect', _}, #kz_amqp_connection{available='true'}=Connection) ->
     {'noreply', Connection, 'hibernate'};
 handle_info(#'basic.cancel_ok'{}=_Cancel, Connection) ->
+    {'noreply', Connection};
+handle_info(#'connection.blocked'{reason=_Reason}, #kz_amqp_connection{broker=_Broker}=Connection) ->
+    lager:warning("conneciton ~p is being blocked on the server, check broker health: ~s"
+                 ,[_Broker, _Reason]
+                 ),
+    {'noreply', Connection};
+handle_info(#'connection.unblocked'{}, #kz_amqp_connection{broker=_Broker}=Connection) ->
+    lager:notice("conneciton ~p is unblocked on the broker", [_Broker]),
     {'noreply', Connection};
 handle_info(_Info, Connection) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -283,6 +294,7 @@ disconnected(#kz_amqp_connection{}=Connection, Timeout) ->
     NextTimeout = next_timeout(Timeout, MaxTimeout),
 
     Ref = erlang:send_after(Timeout, self(), {'connect', NextTimeout}),
+    lager:debug("reconnecting after ~p in ~p", [Timeout, Ref]),
     Connection#kz_amqp_connection{reconnect_ref=Ref}.
 
 shutdown(#kz_amqp_connection{available=Available
@@ -303,19 +315,25 @@ shutdown_available('false') -> 'ok'.
 demonitor_refs([]) -> 'ok';
 demonitor_refs([Ref|Refs]) when is_reference(Ref) ->
     erlang:demonitor(Ref, ['flush']),
+    lager:debug("unmonitored channel ref ~p", [Ref]),
     demonitor_refs(Refs);
 demonitor_refs([_|Refs]) ->
     demonitor_refs(Refs).
 
 shutdown_channel(ChannelPid) when is_pid(ChannelPid) ->
-    _ = (catch kz_amqp_channel:close(ChannelPid)),
-    'ok';
-shutdown_channel(_ChannelPid) -> 'ok'.
+    try kz_amqp_channel:close(ChannelPid) of
+        _Closed -> lager:debug("closed channel ~p: ~p", [ChannelPid, _Closed])
+    catch _E:_R -> lager:debug("closing channel ~p failed: ~s: ~p", [ChannelPid, _E, _R])
+    end;
+shutdown_channel(_ChannelPid) -> lager:debug("shutdown channel is not a pid: ~p", [_ChannelPid]).
 
 shutdown_connection(ConnectionPid) when is_pid(ConnectionPid) ->
-    _ = (catch amqp_connection:close(ConnectionPid, 5000)),
-    'ok';
-shutdown_connection(_ConnectionPid) -> 'ok'.
+    lager:debug("shutting down connection PID ~p", [ConnectionPid]),
+    try amqp_connection:close(ConnectionPid, 5 * ?MILLISECONDS_IN_SECOND) of
+        _Closed -> lager:debug("closed connection ~p: ~p", [ConnectionPid, _Closed])
+    catch _E:_R -> lager:debug("closing connection ~p failed: ~s: ~p", [ConnectionPid, _E, _R])
+    end;
+shutdown_connection(_ConnectionPid) -> lager:debug("shutdown connection is not a pid: ~p", [_ConnectionPid]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -333,10 +351,8 @@ next_timeout(Timeout, _MaxTimeout) ->
 -spec zone_timeout(kz_amqp_connection()) -> pos_integer().
 zone_timeout(#kz_amqp_connection{broker=Broker}) ->
     case kz_amqp_connections:broker_zone(Broker) of
-        'local' ->
-            ?MAX_TIMEOUT;
-        _ ->
-            ?MAX_REMOTE_TIMEOUT
+        'local' -> ?MAX_TIMEOUT;
+        _Zone ->   ?MAX_REMOTE_TIMEOUT
     end.
 
 %%------------------------------------------------------------------------------
@@ -348,12 +364,16 @@ maybe_connect(#kz_amqp_connection{broker=_Broker
                                  ,available='false'
                                  ,params=Params
                                  }=Connection
-             ,Timeout) ->
+             ,Timeout
+             ) ->
     try amqp_connection:start(Params) of
         {'error', 'auth_failure'} ->
             lager:warning("amqp authentication failure with '~s', will retry"
                          ,[_Broker]
                          ),
+            disconnected(Connection, Timeout);
+        {'error', 'econnrefused'} ->
+            lager:warning("connection refused to ~s (check that the broker is running)", [_Broker]),
             disconnected(Connection, Timeout);
         {'error', _Reason} ->
             lager:warning("failed to connect to '~s' will retry: ~p"
@@ -371,9 +391,9 @@ maybe_connect(#kz_amqp_connection{broker=_Broker
                           ),
             disconnected(Connection, Timeout)
     catch
-        _Exc:_Err ->
-            lager:warning("exception connecting to '~s' will retry: ~p , ~p"
-                         ,[_Broker, _Exc, _Err]
+        _E:_R ->
+            lager:warning("exception connecting to '~s' will retry: ~s: ~p"
+                         ,[_Broker, _E, _R]
                          ),
             disconnected(Connection, Timeout)
     end.
@@ -387,9 +407,9 @@ create_control_channel(#kz_amqp_connection{channel_ref=Ref}=Connection)
   when is_reference(Ref) ->
     erlang:demonitor(Ref, ['flush']),
     create_control_channel(Connection#kz_amqp_connection{channel_ref='undefined'});
-create_control_channel(#kz_amqp_connection{channel=Pid}=Connection)
-  when is_pid(Pid) ->
-    _ = (catch kz_amqp_channel:close(Pid)),
+create_control_channel(#kz_amqp_connection{channel=ChannelPid}=Connection)
+  when is_pid(ChannelPid) ->
+    shutdown_channel(ChannelPid),
     create_control_channel(Connection#kz_amqp_connection{channel='undefined'});
 create_control_channel(#kz_amqp_connection{broker=Broker}=Connection) ->
     case open_channel(Connection) of

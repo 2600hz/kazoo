@@ -708,6 +708,9 @@ handle_info({'$server_confirms', ServerConfirms}, State) ->
 handle_info({'$channel_flow', Active}, State) ->
     gen_server:cast(self(), {?MODULE,{'channel_flow', Active}}),
     {'noreply', State};
+handle_info({'kz_amqp_channel', {Client, Ref, 'consumer_tags'}}, #state{consumer_tags=CTags}=State) ->
+    Client ! {?MODULE, Ref, CTags},
+    {'noreply', State};
 handle_info(?CALLBACK_TIMEOUT_MSG, State) ->
     handle_callback_info('timeout', State);
 handle_info(Message, State) ->
