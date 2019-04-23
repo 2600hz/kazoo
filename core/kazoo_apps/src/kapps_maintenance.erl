@@ -37,7 +37,14 @@
         ,refresh_account_db/1
         ,maybe_delete_db/1
         ]).
+-export([import_account/2]).
 -export([remove_deprecated_databases/0]).
+-export([ensure_reseller_id_accounts/0
+        ,ensure_reseller_id_accounts/1
+        ]).
+-export([ensure_reseller_id_account/1
+        ,ensure_reseller_id_services/2
+        ]).
 -export([ensure_aggregates/0
         ,ensure_aggregates/1
         ]).
@@ -993,6 +1000,126 @@ add_to_family(Depth, AccountId, AccountTree, Families) ->
 %%         #{}=PathMap ->
 %%             maps:put(Path, add_to_account_tree(Paths, Value, PathMap), Map)
 %%     end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec import_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+import_account(Account, Parent) ->
+    AccountId = kz_util:format_account_id(Account),
+    AccountDb = kz_util:format_account_db(Account),
+    ParentId = kz_util:format_account_id(Parent),
+    ParentDb = kz_util:format_account_db(Parent),
+    import_account(AccountId
+                  ,ParentId
+                  ,kz_datamgr:open_doc(AccountDb, AccountId)
+                  ,kz_datamgr:open_doc(ParentDb, ParentId)
+                  ).
+
+import_account(_AccountId, _ParentId, {'error', _Reason1}, {'error', _Reason2}) ->
+    io:format("can not open account '~s' (~p) and parent '~s' (~p)~n"
+             ,[_AccountId, _Reason1, _ParentId, _Reason2]
+             );
+import_account(_AccountId, _, {'error', _Reason}, _) ->
+    io:format("can not open account '~s' definition: ~p~n", [_AccountId, _Reason]);
+import_account(_, _ParentId, _, {'error', _Reason}) ->
+    io:format("can not open parent '~s' definition: ~p~n", [_ParentId, _Reason]);
+import_account(AccountId, ParentId, {'ok', AccountJObj}, {'ok', ParentJObj}) ->
+    io:format("importing account '~s' under parent '~s'~n", [AccountId, ParentId]),
+    ParentTree = kzd_accounts:tree(ParentJObj),
+    AccountTree = ParentTree ++ [ParentId],
+    ResellerId = kz_services_reseller:find_id(lists:reverse(AccountTree)),
+
+    Setters = [{fun kzd_accounts:set_tree/2, AccountTree}
+              ,{fun kzd_accounts:set_reseller_id/2, ResellerId}
+              ],
+    NewAccountJObj = kz_doc:setters(AccountJObj, Setters),
+    case kz_datamgr:save_doc(kz_util:format_account_db(AccountId), NewAccountJObj) of
+        {'ok', SavedJObj} ->
+            io:format("account saved, updating services and import account's numbers to number dbs~n"),
+            update_or_add_to_accounts_db(AccountId, SavedJObj),
+            remove_and_reconcile_services(AccountId),
+            kazoo_number_manager:copy_account_to_number_dbs(AccountId);
+        {'error', _Reason} ->
+            io:format("failed to update account '~s' definition in accountdb: ~p~n", [AccountId, _Reason])
+    end.
+
+-spec remove_and_reconcile_services(kz_term:ne_binary()) -> 'ok'.
+remove_and_reconcile_services(AccountId) ->
+    io:format("ensuring services doc for '~s'~n", [AccountId]),
+    _ = kz_datamgr:del_doc(?KZ_SERVICES_DB, AccountId),
+    kz_services:reconcile(AccountId).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec ensure_reseller_id_accounts() -> 'ok'.
+ensure_reseller_id_accounts() ->
+    Accounts = kapps_util:get_all_accounts(),
+    ensure_reseller_id_accounts(Accounts, length(Accounts)).
+
+-spec ensure_reseller_id_accounts(kz_term:ne_binaries()) -> 'ok'.
+ensure_reseller_id_accounts(Accounts) ->
+    ensure_reseller_id_accounts(Accounts, length(Accounts)).
+
+-spec ensure_reseller_id_accounts(kz_term:ne_binaries(), non_neg_integer()) -> 'ok'.
+ensure_reseller_id_accounts([], _) -> 'ok';
+ensure_reseller_id_accounts([Account|Accounts], Total) ->
+    io:format("(~p/~p) ensuring reseller id for account '~s'~n"
+             ,[length(Accounts) + 1, Total, kz_util:format_account_db(Account)]
+             ),
+    ensure_reseller_id_account(Account),
+    ensure_reseller_id_accounts(Accounts, Total).
+
+-spec ensure_reseller_id_account(kz_term:ne_binary()) -> 'ok'.
+ensure_reseller_id_account(Account) ->
+    AccountId = kz_util:format_account_id(Account),
+    AccountJObj = kzd_accounts:fetch(AccountId),
+    AccountsDoc = kzd_accounts:fetch(AccountId, 'accounts'),
+    ensure_reseller_id_account(AccountId, AccountJObj, AccountsDoc).
+
+-spec ensure_reseller_id_account(kz_term:ne_binary(), kazoo_data:open_doc_return(), kazoo_data:open_doc_return()) -> 'ok'.
+ensure_reseller_id_account(_AccountId, {'error', _Reason}, _) ->
+    io:format("failed to read account '~s' doc: ~p~n", [_AccountId, _Reason]);
+ensure_reseller_id_account(_AccountId, _, {'error', _Reason}) ->
+    io:format("failed to read account '~s' from accounts db: ~p~n", [_AccountId, _Reason]);
+ensure_reseller_id_account(AccountId, {'ok', AccountJObj}, {'ok', AccountsDoc}) ->
+    RealResellerId = kz_services_reseller:find_id(lists:reverse(kzd_accounts:tree(AccountJObj))),
+    IsAccountCorrect = kzd_accounts:reseller_id(AccountJObj) =:= RealResellerId,
+    IsAccountsCorrect = kzd_accounts:reseller_id(AccountsDoc) =:= RealResellerId,
+    ensure_reseller_id_account(AccountJObj, AccountsDoc, RealResellerId, IsAccountCorrect, IsAccountsCorrect),
+    ensure_reseller_id_services(AccountId, RealResellerId).
+
+-spec ensure_reseller_id_account(kz_json:object(), kz_json:object(), kz_term:ne_binary(), boolean(), boolean()) -> 'ok'.
+ensure_reseller_id_account(_, _, _, 'true', 'true') ->
+    'ok';
+ensure_reseller_id_account(_, AccountsDoc, ResellerId, 'true', 'false') ->
+    Setters =[{fun kzd_accounts:set_reseller_id/2, ResellerId}],
+    _ = kz_datamgr:save_doc(?KZ_ACCOUNTS_DB, kz_doc:setters(AccountsDoc, Setters)),
+    'ok';
+ensure_reseller_id_account(AccountJObj, _, ResellerId, 'false', 'true') ->
+    Setters =[{fun kzd_accounts:set_reseller_id/2, ResellerId}],
+    _ = kz_datamgr:save_doc(kz_doc:account_db(AccountJObj), kz_doc:setters(AccountJObj, Setters)),
+    'ok';
+ensure_reseller_id_account(AccountJObj, AccountsDoc, ResellerId, 'false', 'false') ->
+    Setters =[{fun kzd_accounts:set_reseller_id/2, ResellerId}],
+    _ = kz_datamgr:save_doc(?KZ_ACCOUNTS_DB, kz_doc:setters(AccountsDoc, Setters)),
+    _ = kz_datamgr:save_doc(kz_doc:account_db(AccountJObj), kz_doc:setters(AccountJObj, Setters)),
+    'ok'.
+
+-spec ensure_reseller_id_services(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+ensure_reseller_id_services(AccountId, ResellerId) ->
+    Services = kz_services:fetch(AccountId),
+    ServicesJObj = kz_services:services_jobj(Services),
+    case kzd_services:reseller_id(ServicesJObj) of
+        ResellerId -> 'ok';
+        _Invalid ->
+            NewJObj = kzd_services:set_reseller_id(ServicesJObj, ResellerId),
+            _ = kz_services:save_services_jobj(kz_services:set_services_jobj(Services, NewJObj)),
+            'ok'
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
