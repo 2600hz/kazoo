@@ -97,8 +97,8 @@ Key | Description | Type | Default | Required | Support Level
 `bill.region` | The region (state) of the billing address the losing carrier has on record | `string()` |   | `false` |
 `bill.street_address` | The street name of the billing address the losing carrier has on record | `string()` |   | `false` |
 `bill.street_number` | The street number of the billing address the losing carrier has on record | `string()` |   | `false` |
-`bill.street_post_dir` | Street Post-Direction | `string('E' | 'N' | 'NE' | 'NW' | 'S' | 'SE' | 'SW' | 'W')` |   | `false` |
-`bill.street_pre_dir` | Street Pre-Direction | `string('E' | 'N' | 'NE' | 'NW' | 'S' | 'SE' | 'SW' | 'W')` |   | `false` |
+`bill.street_post_dir` | Street Post-Direction | `string()` |   | `false` |
+`bill.street_pre_dir` | Street Pre-Direction | `string()` |   | `false` |
 `bill.street_type` | The street type of the billing address the losing carrier has on record | `string()` |   | `false` |
 `bill` | Billing information of the losing carrier | `object()` |   | `false` |
 `comments` | The history of comments made on a port request | `["array(", "[#/definitions/comment](#comment)", ")"]` |   | `false` |

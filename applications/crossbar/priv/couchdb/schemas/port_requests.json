@@ -48,30 +48,10 @@
                 },
                 "street_post_dir": {
                     "description": "Street Post-Direction",
-                    "enum": [
-                        "E",
-                        "N",
-                        "NE",
-                        "NW",
-                        "S",
-                        "SE",
-                        "SW",
-                        "W"
-                    ],
                     "type": "string"
                 },
                 "street_pre_dir": {
                     "description": "Street Pre-Direction",
-                    "enum": [
-                        "E",
-                        "N",
-                        "NE",
-                        "NW",
-                        "S",
-                        "SE",
-                        "SW",
-                        "W"
-                    ],
                     "type": "string"
                 },
                 "street_type": {
