@@ -124,6 +124,12 @@
 
 -type get_results_return() :: {'ok', kz_json:json_terms()} |
                               data_error().
+-type open_doc_return() :: {'ok', kz_json:object()} |
+                           data_error().
+
+-type open_docs_return() :: {'ok', kz_json:objects()} |
+                            data_error().
+
 
 -define(DEFAULT_DATA_SECTION, [{'local', 'bigcouch'}]).
 -define(MERGE_PROPS, [{'driver', 'kazoo_couch'}
