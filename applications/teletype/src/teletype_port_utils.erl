@@ -409,11 +409,8 @@ maybe_get_submitter(DataJObj, TemplateId, 'false') ->
 
 -spec is_comment_private(kz_json:object(), kz_term:ne_binary()) -> boolean().
 is_comment_private(DataJObj, TemplateId) ->
-    SuperPaths = [[<<"comment">>, <<"superduper_comment">>]
-                 ,[<<"comment">>, <<"is_private">>]
-                 ],
     teletype_port_comment:id() =:= TemplateId
-        andalso kz_term:is_true(kz_json:get_first_defined(SuperPaths, DataJObj, 'false')).
+        andalso kzd_comment:is_private_legacy(kz_json:get_json_value(<<"comment">>, DataJObj, kz_json:new())).
 
 -spec get_port_submitter_emails(kz_json:object()) -> kz_term:api_binaries().
 get_port_submitter_emails(DataJObj) ->

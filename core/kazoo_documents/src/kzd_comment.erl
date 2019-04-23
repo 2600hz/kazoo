@@ -14,6 +14,19 @@
 -export([timestamp/1, timestamp/2, set_timestamp/2]).
 -export([user_id/1, user_id/2, set_user_id/2]).
 
+-export([account_id_path/0]).
+-export([action_required_path/0]).
+-export([author_path/0]).
+-export([content_path/0]).
+-export([is_private_comment_paths/0]).
+-export([is_private_path/0]).
+-export([superduper_comment_path/0]).
+-export([timestamp_path/0]).
+-export([user_id_path/0]).
+
+-export([is_private_legacy/1]).
+-export([is_private_legacy/2]).
+-export([migrate_to_is_private/1]).
 
 -include("kz_documents.hrl").
 
@@ -40,7 +53,7 @@ set_account_id(Doc, AccountId) ->
 
 -spec action_required(doc()) -> boolean().
 action_required(Doc) ->
-    action_required(Doc, false).
+    action_required(Doc, 'false').
 
 -spec action_required(doc(), Default) -> boolean() | Default.
 action_required(Doc, Default) ->
@@ -76,15 +89,15 @@ set_content(Doc, Content) ->
 
 -spec is_private(doc()) -> boolean().
 is_private(Doc) ->
-    is_private(Doc, false).
+    is_private(Doc, 'false').
 
 -spec is_private(doc(), Default) -> boolean() | Default.
 is_private(Doc, Default) ->
-    kz_json:get_boolean_value([<<"is_private">>], Doc, Default).
+    is_private_legacy(Doc, Default).
 
 -spec set_is_private(doc(), boolean()) -> doc().
 set_is_private(Doc, IsPrivate) ->
-    kz_json:set_value([<<"is_private">>], IsPrivate, Doc).
+    kz_json:set_value(is_private_path(), IsPrivate, Doc).
 
 -spec timestamp(doc()) -> kz_term:api_integer().
 timestamp(Doc) ->
@@ -109,3 +122,55 @@ user_id(Doc, Default) ->
 -spec set_user_id(doc(), binary()) -> doc().
 set_user_id(Doc, UserId) ->
     kz_json:set_value([<<"user_id">>], UserId, Doc).
+
+-spec account_id_path() -> kz_json:path().
+account_id_path() ->
+    [<<"account_id">>].
+
+-spec action_required_path() -> kz_json:path().
+action_required_path() ->
+    [<<"action_required">>].
+
+-spec author_path() -> kz_json:path().
+author_path() ->
+    [<<"author">>].
+
+-spec content_path() -> kz_json:path().
+content_path() ->
+    [<<"content">>].
+
+-spec is_private_comment_paths() -> kz_json:paths().
+is_private_comment_paths() ->
+    [superduper_comment_path(), is_private_path()].
+
+-spec is_private_path() -> kz_json:path().
+is_private_path() ->
+    [<<"is_private">>].
+
+-spec superduper_comment_path() -> kz_json:path().
+superduper_comment_path() ->
+    [<<"superduper_comment">>].
+
+-spec timestamp_path() -> kz_json:path().
+timestamp_path() ->
+    [<<"timestamp">>].
+
+-spec user_id_path() -> kz_json:path().
+user_id_path() ->
+    [<<"user_id">>].
+
+-spec is_private_legacy(doc()) -> boolean().
+is_private_legacy(Doc) ->
+    is_private_legacy(Doc, 'false').
+
+-spec is_private_legacy(doc(), Default) -> boolean() | Default.
+is_private_legacy(Doc, Default) ->
+    kz_term:is_true(
+      kz_json:get_first_defined(is_private_comment_paths(), Doc, Default)
+     ).
+
+-spec migrate_to_is_private(doc()) -> doc().
+migrate_to_is_private(Doc) ->
+    set_is_private(kz_json:delete_key(superduper_comment_path(), Doc)
+                  ,is_private_legacy(Doc)
+                  ).
