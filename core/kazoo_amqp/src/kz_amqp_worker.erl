@@ -803,7 +803,8 @@ handle_info({'DOWN', ClientRef, 'process', _Pid, _Reason}
            ,#state{current_msg_id = _MsgId
                   ,client_ref = ClientRef
                   ,callid = CallId
-                  }=State) ->
+                  }=State
+           ) ->
     kz_util:put_callid(CallId),
     lager:debug("requestor processes ~p  died while waiting for msg id ~s", [_Pid, _MsgId]),
     {'noreply', reset(State), 'hibernate'};
@@ -814,7 +815,8 @@ handle_info('timeout'
                   ,client_from={_Pid, _}=From
                   ,responses='undefined'
                   ,defer_response=ReservedJObj
-                  }=State) ->
+                  }=State
+           ) ->
     case kz_term:is_empty(ReservedJObj) of
         'true' ->
             lager:debug("negative response threshold reached, returning last negative message to ~p", [_Pid]),
@@ -827,7 +829,8 @@ handle_info('timeout'
 handle_info('timeout'
            ,#state{responses=Resps
                   ,client_from=From
-                  }=State) when is_list(Resps) ->
+                  }=State
+           ) when is_list(Resps) ->
     lager:debug("timeout reached, returning responses"),
     gen_server:reply(From, {'error', Resps}),
     {'noreply', reset(State), 'hibernate'};
@@ -840,7 +843,8 @@ handle_info({'timeout', ReqRef, 'req_timeout'}
                   ,responses='undefined'
                   ,client_from={_Pid, _}=From
                   ,defer_response=ReservedJObj
-                  }=State) ->
+                  }=State
+           ) ->
     kz_util:put_callid(CallId),
     case kz_term:is_empty(ReservedJObj) of
         'true' ->
@@ -856,12 +860,15 @@ handle_info({'timeout', ReqRef, 'req_timeout'}
                   ,req_timeout_ref=ReqRef
                   ,client_from=From
                   ,callid=CallId
-                  }=State) ->
+                  }=State
+           ) ->
     kz_util:put_callid(CallId),
     lager:debug("req timeout for call_collect"),
     gen_server:reply(From, {'timeout', Resps}),
     {'noreply', reset(State), 'hibernate'};
-handle_info({'timeout', ReqRef, 'confirm_timeout'}, #state{confirm_timeout_ref=ReqRef}=State) ->
+handle_info({'timeout', ReqRef, 'confirm_timeout'}
+           ,#state{confirm_timeout_ref=ReqRef}=State
+           ) ->
     handle_publish_timeout(State);
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
