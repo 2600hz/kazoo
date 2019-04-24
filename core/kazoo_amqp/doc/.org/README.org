@@ -198,7 +198,9 @@ https://www.rabbitmq.com/confirms.html
 ** DONE 8. Determine and reduce the need for 171 bindings on zswitch for database creation / removal
 CLOSED: [2019-04-24 Wed 21:52]
 I think this is related to the kazoo cache bindings rework in #12
-** TODO 9. Create an 'AMQP router' in kazoo core that will bind for all configuration events and distribute locally in the Erlang VM
+** DONE 9. Create an 'AMQP router' in kazoo core that will bind for all configuration events and distribute locally in the Erlang VM
+CLOSED: [2019-04-24 Wed 22:43]
+Same as 12
 ** TODO 10. Poolboy fork to support persistant overflow or lazy workers
 See PR #123 for lazy worker start. Then you could set high pool count but only start workers
 
