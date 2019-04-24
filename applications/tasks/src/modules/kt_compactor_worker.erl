@@ -178,18 +178,13 @@ compact_design_docs(Compactor, Shard, DDs) ->
             wait_for_design_compaction(compactor_admin(Compactor), Shard, DDs)
     end.
 
--type db_info_resp() :: {'ok', kz_json:object()} |
-                        {'error', any()}.
--type design_info_resp() :: {'ok', kz_json:object()} |
-                            {'error', any()}.
-
 -spec wait_for_design_compaction(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
                                         'ok'.
 wait_for_design_compaction(_, _, []) -> 'ok';
 wait_for_design_compaction(AdminConn, Shard, [DD|DDs]) ->
     wait_for_design_compaction(AdminConn, Shard, DDs, DD, kz_couch_view:design_info(AdminConn, Shard, DD)).
 
--spec wait_for_design_compaction(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), design_info_resp()) ->
+-spec wait_for_design_compaction(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kazoo_data:jobj_return()) ->
                                         'ok'.
 wait_for_design_compaction(AdminConn, Shard, DDs, DD, {'error', {'conn_failed', {'error', 'timeout'}}}) ->
     lager:warning("timed out, waiting then retrying"),
@@ -215,7 +210,7 @@ wait_for_design_compaction(AdminConn, Shard, DDs, DD, {'ok', DesignInfo}) ->
 wait_for_compaction(AdminConn, Shard) ->
     wait_for_compaction(AdminConn, Shard, kz_couch_db:db_info(AdminConn, Shard)).
 
--spec wait_for_compaction(kz_data:connection(), kz_term:ne_binary(), db_info_resp()) -> 'ok'.
+-spec wait_for_compaction(kz_data:connection(), kz_term:ne_binary(), kazoo_data:jobj_return()) -> 'ok'.
 wait_for_compaction(_AdminConn, _Shard, {'error', 'db_not_found'}) ->
     lager:info("shard '~s' wasn't found on this connection: ~p", [_Shard, _AdminConn]);
 wait_for_compaction(AdminConn, Shard, {'error', 'timeout'}) ->

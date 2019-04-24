@@ -128,8 +128,7 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_doc_from_file(kz_term:ne_binary(), nonempty_string() | kz_term:ne_binary()) ->
-                                  {'ok', kz_json:object()} |
-                                  data_error().
+                                  jobj_return().
 update_doc_from_file(DbName, Path) when ?VALID_DBNAME(DbName) ->
     lager:debug("update db ~s from CouchDB file: ~s", [DbName, Path]),
     try
@@ -151,8 +150,7 @@ update_doc_from_file(DbName, File) ->
     end.
 
 -spec maybe_update_doc_from_file(kz_term:ne_binary(), kz_json:object(), any()) ->
-                                        {'ok', kz_json:object()} |
-                                        data_error().
+                                        jobj_return().
 maybe_update_doc_from_file(DbName, JObj, {'ok', Doc}=OK) ->
     case should_update(DbName, JObj, OK) of
         'false' ->
@@ -175,8 +173,7 @@ maybe_update_doc_from_file(_, _, {'error', _}=Error) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec revise_doc_from_file(kz_term:ne_binary(), atom(), kz_term:ne_binary() | nonempty_string()) ->
-                                  {'ok', kz_json:object()} |
-                                  data_error().
+                                  jobj_return().
 revise_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
     case update_doc_from_file(DbName, Path) of
@@ -233,8 +230,7 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
     end.
 
 -spec maybe_update_doc(kz_term:ne_binary(), kz_json:object()) ->
-                              {'ok', kz_json:object()} |
-                              data_error().
+                              jobj_return().
 maybe_update_doc(DbName, JObj) ->
     case should_update(DbName, JObj) of
         'false' ->
@@ -562,17 +558,14 @@ db_import(DbName, ArchiveFile) ->
 %% @doc fetch a cached doc or open it if not available.
 %% @end
 %%------------------------------------------------------------------------------
--spec open_cache_doc(kz_term:text(), docid()) ->
-                            {'ok', kz_json:object()} |
-                            data_error().
+-spec open_cache_doc(kz_term:text(), docid()) -> jobj_return().
 open_cache_doc(DbName, {DocType, DocId}) ->
     open_cache_doc(DbName, DocId, [{'doc_type', DocType}]);
 open_cache_doc(DbName, DocId) ->
     open_cache_doc(DbName, DocId, []).
 
 -spec open_cache_doc(kz_term:text(), docid(), kz_term:proplist()) ->
-                            {'ok', kz_json:object()} |
-                            data_error().
+                            jobj_return().
 open_cache_doc(DbName, {DocType, DocId}, Options) ->
     open_cache_doc(DbName, DocId, maybe_add_doc_type(DocType, Options));
 open_cache_doc(DbName, DocId, Options) when ?VALID_DBNAME(DbName) ->
@@ -595,8 +588,7 @@ add_to_doc_cache(DbName, DocId, Doc) ->
     end.
 
 -spec update_cache_doc(kz_term:text(), kz_term:ne_binary(), fun((kz_json:object()) -> kz_json:object() | 'skip')) ->
-                              {'ok', kz_json:object()} |
-                              data_error().
+                              jobj_return().
 update_cache_doc(DbName, DocId, Fun) when is_function(Fun, 1) ->
     case open_cache_doc(DbName, DocId) of
         {'ok', JObj} ->
@@ -659,19 +651,13 @@ flush_cache_docs(DbName) ->
 %% @doc open a document given a doc id returns an error tuple or the json.
 %% @end
 %%------------------------------------------------------------------------------
--spec open_doc(kz_term:text(), docid()) ->
-                      {'ok', kz_json:object()} |
-                      data_error() |
-                      {'error', 'not_found'}.
+-spec open_doc(kz_term:text(), docid()) -> jobj_return().
 open_doc(DbName, {DocType, DocId}) ->
     open_doc(DbName, DocId, [{'doc_type', DocType}]);
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
--spec open_doc(kz_term:text(), docid(), kz_term:proplist()) ->
-                      {'ok', kz_json:object()} |
-                      data_error() |
-                      {'error', 'not_found'}.
+-spec open_doc(kz_term:text(), docid(), kz_term:proplist()) -> jobj_return().
 open_doc(DbName, {DocType, DocId}, Options) ->
     open_doc(DbName, DocId, maybe_add_doc_type(DocType, Options));
 open_doc(DbName, DocId, Options) when ?VALID_DBNAME(DbName) ->
@@ -689,26 +675,28 @@ open_doc(DbName, DocId, Options) ->
 %% So: match both error tuple and each JSON of the list.
 %% @end
 %%------------------------------------------------------------------------------
--spec open_docs(kz_term:text(), docids()) ->
-                       {'ok', kz_json:objects()} |
-                       data_error() |
-                       {'error', 'not_found'}.
+-spec open_docs(kz_term:text(), docids()) -> jobjs_return().
 open_docs(DbName, DocIds) ->
     open_docs(DbName, DocIds, []).
 
--spec open_docs(kz_term:text(), docids(), kz_term:proplist()) ->
-                       {'ok', kz_json:objects()} |
-                       data_error() |
-                       {'error', 'not_found'}.
+-spec open_docs(kz_term:text(), docids(), kz_term:proplist()) -> jobjs_return().
 open_docs(DbName, DocIds, Options) ->
     read_chunked(fun do_open_docs/3, DbName, DocIds, Options).
 
+-spec do_open_docs(kz_term:text(), docids(), kz_term:proplist()) -> jobjs_return().
 do_open_docs(DbName, DocIds, Options) ->
     NewOptions = [{'keys', DocIds}, 'include_docs' | Options],
     all_docs(DbName, NewOptions).
 
+-type chunk_opener() :: fun((kz_term:text(), docids(), kz_term:proplist()) -> jobjs_return()).
+
+-spec read_chunked(chunk_opener(), kz_term:text(), docids(), kz_term:proplist()) ->
+                          jobjs_return().
 read_chunked(Opener, DbName, DocIds, Options) ->
     read_chunked(Opener, DbName, DocIds, Options, []).
+
+-spec read_chunked(chunk_opener(), kz_term:text(), docids(), kz_term:proplist(), kz_json:objects() | data_error()) ->
+                          jobjs_return().
 read_chunked(Opener, DbName, DocIds, Options, Acc) ->
     try lists:split(max_bulk_read(Options), DocIds) of
         {NewDocIds, DocIdsLeft} ->
@@ -721,10 +709,16 @@ read_chunked(Opener, DbName, DocIds, Options, Acc) ->
             end
     end.
 
+-spec read_chunked_results(chunk_opener(), kz_term:text(), docids(), kz_term:proplist(), kz_json:objects() | data_error()) ->
+                                  kz_json:objects() |
+                                  data_error().
 read_chunked_results(_, _, _, _, {'error',_}=Acc) -> Acc;
 read_chunked_results(Opener, DbName, DocIds, Options, Acc) ->
     read_chunked_results(DocIds, Opener(DbName, DocIds, Options), Acc).
 
+-spec read_chunked_results(docids(), jobjs_return(), kz_json:objects() | data_error()) ->
+                                  kz_json:objects() |
+                                  data_error().
 read_chunked_results(_DocIds, {'ok', JObjs}, Acc) ->
     [JObjs | Acc];
 read_chunked_results(_DocIds, {'error', _}=Reason, []) ->
@@ -747,17 +741,11 @@ read_chunked_results(DocIds, {'error', Reason}, Acc) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec open_cache_docs(kz_term:text(), docids()) ->
-                             {'ok', kz_json:objects()} |
-                             data_error() |
-                             {'error', 'not_found'}.
+-spec open_cache_docs(kz_term:text(), docids()) -> jobjs_return().
 open_cache_docs(DbName, DocIds) ->
     open_cache_docs(DbName, DocIds, []).
 
--spec open_cache_docs(kz_term:text(), docids(), kz_term:proplist()) ->
-                             {'ok', kz_json:objects()} |
-                             data_error() |
-                             {'error', 'not_found'}.
+-spec open_cache_docs(kz_term:text(), docids(), kz_term:proplist()) -> jobjs_return().
 open_cache_docs(DbName, DocIds, Options) when ?VALID_DBNAME(DbName) ->
     read_chunked(fun kzs_cache:open_cache_docs/3, DbName, DocIds, Options);
 open_cache_docs(DbName, DocIds, Options) ->
@@ -766,17 +754,11 @@ open_cache_docs(DbName, DocIds, Options) ->
         {'error', _}=E -> E
     end.
 
-
-
--spec all_docs(kz_term:text()) ->
-                      {'ok', kz_json:objects()} |
-                      data_error().
+-spec all_docs(kz_term:text()) -> jobjs_return().
 all_docs(DbName) ->
     all_docs(DbName, []).
 
--spec all_docs(kz_term:text(), kz_term:proplist()) ->
-                      {'ok', kz_json:objects()} |
-                      data_error().
+-spec all_docs(kz_term:text(), kz_term:proplist()) -> jobjs_return().
 all_docs(DbName, Options) when ?VALID_DBNAME(DbName) ->
     kzs_view:all_docs(kzs_plan:plan(DbName, Options), DbName, Options);
 all_docs(DbName, Options) ->
@@ -851,15 +833,12 @@ save_doc(DbName, Doc) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec ensure_saved(kz_term:text(), kz_json:object()) ->
-                          {'ok', kz_json:object()} |
-                          data_error().
+-spec ensure_saved(kz_term:text(), kz_json:object()) -> jobj_return().
 ensure_saved(DbName, Doc) ->
     ensure_saved(DbName, Doc, []).
 
 -spec ensure_saved(kz_term:text(), kz_json:object(), kz_term:proplist()) ->
-                          {'ok', kz_json:object()} |
-                          data_error().
+                          jobj_return().
 ensure_saved(DbName, Doc, Options) when ?VALID_DBNAME(DbName) ->
     kzs_doc:ensure_saved(kzs_plan:plan(DbName, Doc), DbName, Doc, Options);
 ensure_saved(DbName, Doc, Options) ->
@@ -869,8 +848,7 @@ ensure_saved(DbName, Doc, Options) ->
     end.
 
 -spec save_doc(kz_term:text(), kz_json:object(), kz_term:proplist()) ->
-                      {'ok', kz_json:object()} |
-                      data_error().
+                      jobj_return().
 save_doc(DbName, Doc, Options) when ?VALID_DBNAME(DbName) ->
     OldSetting = maybe_toggle_publish(Options),
     Result = kzs_doc:save_doc(kzs_plan:plan(DbName, Doc), DbName, Doc, Options),
@@ -898,16 +876,12 @@ maybe_revert_publish('true') ->
 maybe_revert_publish('false') ->
     suppress_change_notice().
 
-
--spec save_docs(kz_term:text(), kz_json:objects()) ->
-                       {'ok', kz_json:objects()} |
-                       data_error().
+-spec save_docs(kz_term:text(), kz_json:objects()) -> jobjs_return().
 save_docs(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []).
 
 -spec save_docs(kz_term:text(), kz_json:objects(), kz_term:proplist()) ->
-                       {'ok', kz_json:objects()} |
-                       data_error().
+                       jobjs_return().
 save_docs(DbName, [Doc|_]=Docs, Options)
   when is_list(Docs), ?VALID_DBNAME(DbName) ->
     OldSetting = maybe_toggle_publish(Options),
@@ -927,9 +901,7 @@ save_docs(DbName, Docs, Options) when is_list(Docs) ->
 %% @doc Fetch, update and save a doc (creating if not present).
 %% @end
 %%------------------------------------------------------------------------------
--spec update_doc(kz_term:ne_binary(), docid(), update_options()) ->
-                        {'ok', kz_json:object()} |
-                        data_error().
+-spec update_doc(kz_term:ne_binary(), docid(), update_options()) -> jobj_return().
 update_doc(DbName, Id, Options) ->
     case open_doc(DbName, Id) of
         {'error', 'not_found'} ->
@@ -940,8 +912,7 @@ update_doc(DbName, Id, Options) ->
     end.
 
 -spec apply_updates_and_save(kz_term:ne_binary(), docid(), update_options(), kz_json:object()) ->
-                                    {'ok', kz_json:object()} |
-                                    data_error().
+                                    jobj_return().
 apply_updates_and_save(DbName, Id, Options, CurrentDoc) ->
     apply_updates_and_save(DbName, Id, Options, CurrentDoc, props:get_value('update', Options)).
 
@@ -961,8 +932,7 @@ apply_updates_and_save(DbName, Id, Options, CurrentDoc, UpdateProps) ->
     end.
 
 -spec save_update(kz_term:ne_binary(), docid(), update_options(), kz_json:object()) ->
-                         {'ok', kz_json:object()} |
-                         data_error().
+                         jobj_return().
 save_update(DbName, Id, Options, UpdatedDoc) ->
     ExtraProps = props:get_value('extra_update', Options, []),
     ExtraUpdatedDoc = kz_json:set_values(ExtraProps, UpdatedDoc),
@@ -982,8 +952,7 @@ save_update(DbName, Id, Options, UpdatedDoc) ->
     end.
 
 -spec update_not_found(kz_term:ne_binary(), docid(), update_options()) ->
-                              {'ok', kz_json:object()} |
-                              data_error().
+                              jobj_return().
 update_not_found(DbName, Id, Options) ->
     CreateProps = props:get_value('create', Options, []),
 

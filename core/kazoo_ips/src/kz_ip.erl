@@ -27,8 +27,6 @@
 -type ip() :: kz_json:object().
 -export_type([ip/0]).
 
--type std_return() :: {'ok', ip()} | {'error', any()}.
-
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -48,7 +46,7 @@ from_json(JObj) -> JObj.
 %% @end
 %%------------------------------------------------------------------------------
 -spec create(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                    std_return().
+                    kazoo_data:jobj_return().
 create(IP, Zone, Host) ->
     Timestamp = kz_time:now_s(),
     JObj = kz_json:from_list(
@@ -81,7 +79,7 @@ create(IP, Zone, Host) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec fetch(kz_term:ne_binary()) -> std_return().
+-spec fetch(kz_term:ne_binary()) -> kazoo_data:jobj_return().
 fetch(IP) ->
     case kz_datamgr:open_cache_doc(?KZ_DEDICATED_IP_DB, IP) of
         {'ok', JObj} -> {'ok', from_json(JObj)};
@@ -96,7 +94,7 @@ fetch(IP) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec assign(kz_term:ne_binary(), kz_term:ne_binary() | ip()) -> std_return().
+-spec assign(kz_term:ne_binary(), kz_term:ne_binary() | ip()) -> kazoo_data:jobj_return().
 assign(Account, <<_/binary>> = RawIP) ->
     case fetch(RawIP) of
         {'ok', IPDoc} -> assign(Account, IPDoc);
@@ -118,7 +116,7 @@ assign(Account, IPDoc) ->
             maybe_save_in_account(AccountId, save(JObj))
     end.
 
--spec maybe_save_in_account(kz_term:ne_binary(), std_return()) -> std_return().
+-spec maybe_save_in_account(kz_term:ne_binary(), kazoo_data:jobj_return()) -> kazoo_data:jobj_return().
 maybe_save_in_account(AccountId, {'ok', JObj}=Ok) ->
     AccountDb = kz_util:format_account_db(AccountId),
     case kz_datamgr:open_doc(AccountDb, kz_doc:id(JObj)) of
@@ -144,7 +142,7 @@ maybe_save_in_account(_, Return) -> Return.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec release(kz_term:ne_binary() | ip()) -> std_return().
+-spec release(kz_term:ne_binary() | ip()) -> kazoo_data:jobj_return().
 release(<<_/binary>> = Ip) ->
     case fetch(Ip) of
         {'ok', IP} -> release(IP);
@@ -161,7 +159,7 @@ release(IP) ->
     JObj = kz_json:delete_keys(RemoveKeys, kz_json:set_values(Props, IPJObj)),
     maybe_remove_from_account(AccountId, save(JObj)).
 
--spec maybe_remove_from_account(kz_term:ne_binary(), std_return()) -> std_return().
+-spec maybe_remove_from_account(kz_term:ne_binary(), kazoo_data:jobj_return()) -> kazoo_data:jobj_return().
 maybe_remove_from_account(AccountId, {'ok', IP}=Ok) ->
     AccountDb = kz_util:format_account_db(AccountId),
     _ = case kz_datamgr:open_doc(AccountDb, ip(IP)) of
@@ -175,7 +173,7 @@ maybe_remove_from_account(_, Return) -> Return.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec delete(kz_term:ne_binary() | ip()) -> std_return().
+-spec delete(kz_term:ne_binary() | ip()) -> kazoo_data:jobj_return().
 delete(<<_/binary>> = IP) ->
     case kz_datamgr:open_doc(?KZ_DEDICATED_IP_DB, IP) of
         {'ok', JObj} -> delete(from_json(JObj));
@@ -252,7 +250,7 @@ is_available(IP) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec save(kz_json:object()) -> std_return().
+-spec save(kz_json:object()) -> kazoo_data:jobj_return().
 save(JObj) ->
     case kz_datamgr:save_doc(?KZ_DEDICATED_IP_DB, JObj) of
         {'ok', J} -> {'ok', from_json(J)};

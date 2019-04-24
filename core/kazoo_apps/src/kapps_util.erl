@@ -133,7 +133,9 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_master_account_id() -> {'ok', kz_term:ne_binary()} |
-                                 {'error', atom()}.
+                                 kazoo_data:data_error() |
+                                 {'error', 'no_accounts'} |
+                                 {'error', 'no_docs'}.
 get_master_account_id() ->
     case kapps_config:get_ne_binary(?KZ_ACCOUNTS_DB, <<"master_account_id">>) of
         'undefined' ->
@@ -142,6 +144,10 @@ get_master_account_id() ->
         Default -> {'ok', Default}
     end.
 
+-spec find_master_account_id(kazoo_data:jobj_return()) -> {'ok', kz_term:ne_binary()} |
+                                                          kazoo_data:data_error() |
+                                                          {'error', 'no_accounts'} |
+                                                          {'error', 'no_docs'}.
 find_master_account_id({'error', _}=E) -> E;
 find_master_account_id({'ok', []}) -> {'error', 'no_accounts'};
 find_master_account_id({'ok', Accounts}) ->

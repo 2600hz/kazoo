@@ -110,7 +110,7 @@ migration_loop(Ctx) ->
 
 %% @doc Get legacy messages from DB
 %% @end
--spec get_messages(ctx()) -> db_ret().
+-spec get_messages(ctx()) -> kazoo_data:jobjs_return().
 get_messages(#ctx{mode = <<"worker">>, account_db = AccountDb
                  ,startkey = StartKey, endkey = EndKey
                  }) ->
@@ -131,7 +131,7 @@ get_messages(#ctx{mode = <<"vmboxes">>, account_db = AccountDb, manual_vmboxes =
 
 %% @doc Do action on get_messages result. If we have something to process, reset context first.
 %% @end
--spec handle_result(ctx(), db_ret()) -> 'ok' | kz_term:proplist().
+-spec handle_result(ctx(), kazoo_data:jobjs_return()) -> 'ok' | kz_term:proplist().
 handle_result(#ctx{account_id = _AccountId}=Ctx, {'ok', []}) ->
     ?SUP_LOG_INFO("  [~s] no legacy voicemail messages left", [_AccountId]),
     account_is_done(Ctx);
@@ -341,7 +341,7 @@ update_vmbox_message(Message, MODbFailed, Failed, _, Id, Timestamp) ->
 %% fake message_doc result for manual migration
 %% @end
 %%------------------------------------------------------------------------------
--spec get_messages_from_vmboxes(kz_term:ne_binary(), kz_term:ne_binaries()) -> db_ret().
+-spec get_messages_from_vmboxes(kz_term:ne_binary(), kz_term:ne_binaries()) -> kazoo_data:jobjs_return().
 get_messages_from_vmboxes(AccountDb, ExpectedBoxIds) ->
     case kz_datamgr:open_cache_docs(AccountDb, ExpectedBoxIds) of
         {'ok', JObjs} -> {'ok', normalize_mailbox_results(JObjs)};

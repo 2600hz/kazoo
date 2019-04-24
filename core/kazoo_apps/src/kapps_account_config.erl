@@ -300,7 +300,7 @@ get(Account, Category) ->
         {'error', _} -> kz_doc:set_id(kz_json:new(), kapps_config_util:account_doc_id(Category))
     end.
 
--spec load_config_from_system(kz_term:api_binary(), kz_term:ne_binary()) -> kazoo_data:get_results_return().
+-spec load_config_from_system(kz_term:api_binary(), kz_term:ne_binary()) -> kazoo_data:jobj_return().
 load_config_from_system(_Account, Category) ->
     case kapps_config:get_category(Category) of
         {'ok', JObj} ->
@@ -309,7 +309,7 @@ load_config_from_system(_Account, Category) ->
         {'error', _}=Error -> Error
     end.
 
--spec load_config_from_reseller(api_account(), kz_term:ne_binary()) -> kazoo_data:get_results_return().
+-spec load_config_from_reseller(api_account(), kz_term:ne_binary()) -> kazoo_data:jobj_return().
 load_config_from_reseller(Account, Category) ->
     AccountId = account_id(Account),
     case AccountId =/= 'no_account_id'
@@ -320,7 +320,7 @@ load_config_from_reseller(Account, Category) ->
         [ResellerId] -> load_config_from_account(ResellerId, Category)
     end.
 
--spec load_config_from_account(account_or_not(), kz_term:ne_binary()) -> kazoo_data:get_results_return().
+-spec load_config_from_account(account_or_not(), kz_term:ne_binary()) -> kazoo_data:jobj_return().
 load_config_from_account('no_account_id', _Category) ->
     {'error', 'no_account_id'};
 load_config_from_account(AccountId, Category) ->
@@ -340,11 +340,11 @@ load_config_from_account(AccountId, Category) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec load_config_from_ancestors(kz_term:ne_binary(), kz_term:ne_binary()) -> kazoo_data:get_results_return().
+-spec load_config_from_ancestors(kz_term:ne_binary(), kz_term:ne_binary()) -> kazoo_data:jobjs_return().
 load_config_from_ancestors(AccountId, Category) ->
     load_config_from_ancestors(AccountId, Category, kz_services_reseller:is_reseller(AccountId)).
 
--spec load_config_from_ancestors(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) -> kazoo_data:get_results_return().
+-spec load_config_from_ancestors(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) -> kazoo_data:jobjs_return().
 load_config_from_ancestors(_, _, 'true') ->
     %% account is reseller, no need to read from its parents
     %% Note: load_config_from_account is already read the config from this AccountId
@@ -367,7 +367,7 @@ get_account_ancestors_or_reseller(AccountId) ->
 %%------------------------------------------------------------------------------
 
 -spec load_config_from_ancestors_fold(kz_term:ne_binaries(), kz_term:ne_binary(), kz_json:objects()) ->
-                                             kazoo_data:get_results_return().
+                                             kazoo_data:jobjs_return().
 load_config_from_ancestors_fold([], _Category, JObjs) ->
     {'ok', JObjs};
 load_config_from_ancestors_fold([ParentId|AncestorIds], Category, JObjs) ->
@@ -637,7 +637,7 @@ account_id_from_jobj(_Obj, 'false') ->
 maybe_format_account_id('undefined') -> 'no_account_id';
 maybe_format_account_id(Account) -> kz_util:format_account_id(Account).
 
--spec maybe_new_doc({'ok', kz_json:object()} | {'error', any()}, kz_term:ne_binary()) -> kz_json:object().
+-spec maybe_new_doc(kazoo_data:jobj_return(), kz_term:ne_binary()) -> kz_json:object().
 maybe_new_doc({'ok', JObj}, _) -> JObj;
 maybe_new_doc({'error', _}, Category) -> kz_doc:set_id(kz_json:new(), Category).
 

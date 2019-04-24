@@ -11,6 +11,8 @@
              ,data_error/0
              ,data_errors/0
              ,get_results_return/0
+             ,jobj_return/0
+             ,jobjs_return/0
              ,db_classification/0
              ,view_options/0, key_range/0
              ,docid/0, docids/0

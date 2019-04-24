@@ -135,7 +135,7 @@ direct_park(SlotNumber, Slot, ParkedCalls, Data, Call) ->
 retrieve(SlotNumber, Call) ->
     retrieve(SlotNumber, get_slot(SlotNumber, kapps_call:account_db(Call)), 1, Call).
 
--spec retrieve(kz_term:ne_binary(), {'ok', kz_json:object()} | {'error', any()}, integer(), kapps_call:call()) ->
+-spec retrieve(kz_term:ne_binary(), kazoo_data:jobj_return(), integer(), kapps_call:call()) ->
                       {'ok', 'channel_hungup'} |
                       {'error', 'slot_empty' | 'timeout' | 'failed'}.
 retrieve(SlotNumber, {'error', _}, _Try, _Call) ->
@@ -937,7 +937,7 @@ custom_channel_vars(Call) ->
     Realm = kapps_call:account_realm(Call),
     kz_json:set_value(<<"Realm">>, Realm, JObj).
 
--spec get_slot(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec get_slot(kz_term:ne_binary(), kz_term:ne_binary()) -> kazoo_data:jobj_return().
 get_slot(SlotNumber, AccountDb) ->
     DocId = ?SLOT_DOC_ID(SlotNumber),
     case kz_datamgr:open_doc(AccountDb, {?PARKED_CALL_DOC_TYPE, DocId}) of

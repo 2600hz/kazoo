@@ -50,9 +50,7 @@
 -define(CACHE_KEY(DbName, DocId), {?MODULE, DbName, DocId}).
 
 -spec open_cache_doc(kz_term:text(), kz_term:ne_binary(), kz_term:proplist()) ->
-                            {'ok', kz_json:object()} |
-                            data_error() |
-                            {'error', 'not_found'}.
+                            jobj_return().
 open_cache_doc(DbName, DocId, Options) ->
     MitigationKey = kz_cache:mitigation_key(),
     CacheStrategy = cache_strategy(),
@@ -83,26 +81,19 @@ mitigate_stampede(DbName, DocId, Options, CacheStrategy) ->
             kz_cache:wait_for_stampede_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId), ?STAMPEDE_WAIT_MS)
     end.
 
--spec fetch_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), cache_strategy()) ->
-                       {'ok', kz_json:object()} |
-                       data_error() |
-                       {'error', 'not_found'}.
+-spec fetch_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), cache_strategy()) -> jobj_return().
 fetch_doc(DbName, DocId, Options, CacheStrategy) ->
     R = kz_datamgr:open_doc(DbName, DocId, remove_cache_options(Options)),
     _ = maybe_cache(DbName, DocId, Options, R, CacheStrategy),
     R.
 
--spec maybe_cache(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), data_error() | {'ok', kz_json:object()}, cache_strategy()) ->
-                         'ok'.
+-spec maybe_cache(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), jobj_return(), cache_strategy()) -> 'ok'.
 maybe_cache(DbName, DocId, Options, {'error', _}=E, CacheStrategy) ->
     maybe_cache_failure(DbName, DocId, Options, E, CacheStrategy);
 maybe_cache(DbName, DocId, _, {'ok', JObj}, CacheStrategy) ->
     add_to_doc_cache(DbName, DocId, JObj, CacheStrategy).
 
--spec open_cache_doc(map(), kz_term:text(), kz_term:ne_binary(), kz_term:proplist()) ->
-                            {'ok', kz_json:object()} |
-                            data_error() |
-                            {'error', 'not_found'}.
+-spec open_cache_doc(map(), kz_term:text(), kz_term:ne_binary(), kz_term:proplist()) -> jobj_return().
 open_cache_doc(Server, DbName, DocId, Options) ->
     MitigationKey = kz_cache:mitigation_key(),
     CacheStrategy = cache_strategy(),
@@ -118,14 +109,13 @@ open_cache_doc(Server, DbName, DocId, Options) ->
             fetch_doc(Server, DbName, DocId, remove_cache_options(Options), CacheStrategy)
     end.
 
+-spec fetch_doc(map(), kz_term:text(), kz_term:ne_binary(), kz_term:proplist(), cache_strategy()) -> jobj_return().
 fetch_doc(Server, DbName, DocId, Options, CacheStrategy) ->
     R = kzs_doc:open_doc(Server, DbName, DocId, Options),
     _ = maybe_cache(DbName, DocId, Options, R, CacheStrategy),
     R.
 
--spec open_cache_docs(kz_term:text(), kz_term:ne_binaries(), kz_term:proplist()) ->
-                             {'ok', kz_json:objects()} |
-                             data_error().
+-spec open_cache_docs(kz_term:text(), kz_term:ne_binaries(), kz_term:proplist()) -> jobjs_return().
 open_cache_docs(DbName, DocIds, Options) ->
     {Cached, MissedDocIds} = fetch_locals(DbName, DocIds),
     case MissedDocIds =/= []
@@ -137,8 +127,7 @@ open_cache_docs(DbName, DocIds, Options) ->
     end.
 
 -spec prepare_jobjs(kz_term:text(), kz_term:ne_binaries(), kz_term:proplist(), docs_returned(), {ok, kz_json:objects()} | 'false') ->
-                           {'ok', kz_json:objects()} |
-                           data_error().
+                           {'ok', kz_json:objects()}.
 prepare_jobjs(DbName, DocIds, Options, Cached, false) ->
     prepare_jobjs(DbName, DocIds, Options, Cached, {ok, []});
 prepare_jobjs(DbName, DocIds, Options, Cached, {ok, Opened}) ->
@@ -217,11 +206,11 @@ maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCo
             kz_cache:erase_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId))
     end.
 
--spec add_to_doc_cache(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object() | data_error()) -> 'ok'.
+-spec add_to_doc_cache(kz_term:ne_binary(), kz_term:ne_binary(), jobj_return()) -> 'ok'.
 add_to_doc_cache(DbName, DocId, CacheValue) ->
     add_to_doc_cache(DbName, DocId, CacheValue, 'none').
 
--spec add_to_doc_cache(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object() | data_error(), cache_strategy()) -> 'ok'.
+-spec add_to_doc_cache(kz_term:ne_binary(), kz_term:ne_binary(), jobj_return(), cache_strategy()) -> 'ok'.
 add_to_doc_cache(DbName, DocId, CacheValue, CacheStrategy) ->
     CacheProps = [{'origin', {'db', DbName, DocId}}
                  ,{'expires', expires_policy_value(DbName, CacheValue)}
@@ -238,7 +227,7 @@ add_to_doc_cache(DbName, DocId, CacheValue, CacheStrategy) ->
             maybe_cache(DbName, DocId, CacheValue, CacheProps)
     end.
 
--spec maybe_cache(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object() | data_error(), kz_cache:store_options()) -> 'ok'.
+-spec maybe_cache(kz_term:ne_binary(), kz_term:ne_binary(), jobj_return(), kz_cache:store_options()) -> 'ok'.
 maybe_cache(DbName, DocId, CacheValue, CacheProps) ->
     case kz_cache:mitigate_stampede_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId)) of
         'ok' ->

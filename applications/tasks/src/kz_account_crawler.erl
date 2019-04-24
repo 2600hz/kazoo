@@ -184,7 +184,7 @@ crawl_account(AccountId) ->
     OpenResult = kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId),
     check_then_process_account(AccountId, OpenResult).
 
--spec check_then_process_account(kz_term:ne_binary(), {'ok', kzd_accounts:doc()} | {'error',any()}) -> 'ok'.
+-spec check_then_process_account(kz_term:ne_binary(), kazoo_data:jobj_return()) -> 'ok'.
 check_then_process_account(AccountId, {'ok', AccountJObj}) ->
     case kz_doc:is_soft_deleted(AccountJObj)
         orelse not kzd_accounts:is_enabled(AccountJObj) of

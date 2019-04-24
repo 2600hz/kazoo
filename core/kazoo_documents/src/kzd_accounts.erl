@@ -1265,8 +1265,7 @@ save_accounts_doc(AccountDoc) ->
                                      )
     end.
 
--spec handle_saved_accounts_doc(doc(), kz_datamgr:data_error() | {'ok', doc()}) ->
-                                       kz_datamgr:data_error() | {'ok', doc()}.
+-spec handle_saved_accounts_doc(doc(), kazoo_data:jobj_return()) -> kazoo_data:jobj_return().
 handle_saved_accounts_doc(AccountDoc, {'ok', _AccountsDoc}) ->
     lager:info("saved accounts doc ~s(~s)", [kz_doc:id(_AccountsDoc), kz_doc:revision(_AccountsDoc)]),
     {'ok', AccountDoc};

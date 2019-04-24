@@ -78,13 +78,10 @@ setup_extra_validator(Options) ->
           end,
     props:set_value({'external_validator', Fun}, Options).
 
--type load_return() :: {'ok', kz_json:object()} |
-                       {'error', 'not_found'} |
-                       kz_datamgr:data_error().
 -ifdef(TEST).
 load(Schema) -> fload(Schema).
 -else.
--spec load(kz_term:ne_binary() | string()) -> load_return().
+-spec load(kz_term:ne_binary() | string()) -> kazoo_data:jobj_return().
 load(<<"./", Schema/binary>>) -> load(Schema);
 load(<<"file://", Schema/binary>>) -> load(Schema);
 load(<<_/binary>> = Schema) ->
@@ -160,7 +157,7 @@ diff_schema(Filename, Verbosity) ->
     SchemaName = filename:basename(Filename, ".json"),
     diff_schema(Filename, Verbosity, SchemaName, load(SchemaName)).
 
--spec diff_schema(file:filename_all(), Verbosity, kz_term:ne_binary(), load_return()) ->
+-spec diff_schema(file:filename_all(), Verbosity, kz_term:ne_binary(), kazoo_data:jobj_return()) ->
                          Verbosity when Verbosity :: diff_verbosity().
 diff_schema(Filename, Verbosity, SchemaName, {'ok', Schema}) ->
     {'ok', File} = fload(Filename),
