@@ -512,13 +512,6 @@ handle_cast({'add_binding', Binding, Props}, State) ->
     {'noreply', handle_add_binding(Binding, Props, State)};
 handle_cast({'rm_binding', Binding, Props}, State) ->
     {'noreply', handle_rm_binding(Binding, Props, State)};
-handle_cast({'kz_amqp_assignment', {'new_channel', 'true', Channel}}, State) ->
-    lager:debug("channel reconnecting"),
-    _ = kz_amqp_channel:consumer_channel(Channel),
-    {'noreply', State};
-handle_cast({'kz_amqp_assignment', {'new_channel', 'false', Channel}}, State) ->
-    _ = kz_amqp_channel:consumer_channel(Channel),
-    {'noreply', handle_amqp_channel_available(State)};
 handle_cast({'federated_event', JObj, BasicDeliver, BasicData}, #state{params=Params}=State) ->
     case props:is_true('spawn_handle_event', Params, 'false') of
         'true'  -> kz_util:spawn(fun distribute_event/3, [JObj, {BasicDeliver, BasicData}, State]),
@@ -634,6 +627,18 @@ maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret().
+handle_info({'kz_amqp_assignment', {'new_channel', 'true', Channel}}, State) ->
+    lager:debug("channel reconnecting"),
+    _ = kz_amqp_channel:consumer_channel(Channel),
+    {'noreply', State};
+handle_info({'kz_amqp_assignment', {'new_channel', 'false', Channel}}, State) ->
+    _ = kz_amqp_channel:consumer_channel(Channel),
+    {'noreply', handle_amqp_channel_available(State)};
+handle_info({'kz_amqp_assignment', 'lost_channel'}, State) ->
+    lager:debug("lost channel assignment"),
+    {'noreply', State#state{is_consuming='false'
+                           ,consumer_tags=[]
+                           }};
 handle_info({#'basic.deliver'{}=BD
             ,#amqp_msg{props=#'P_basic'{content_type=CT}=Basic
                       ,payload=Payload
@@ -1296,7 +1301,7 @@ handle_amqp_channel_available(#state{params=Params}=State) ->
             handle_exchanges_ready(State);
         {'error', _E} ->
             lager:debug("error declaring exchanges : ~p", [_E]),
-            handle_exchanges_failed(State)
+            handle_amqp_errored(State)
     end.
 
 -spec handle_exchanges_ready(state()) -> state().
@@ -1325,18 +1330,15 @@ handle_amqp_started(#state{params=Params}=State, Q) ->
 -spec handle_amqp_errored(state()) -> state().
 handle_amqp_errored(#state{params=Params}=State) ->
     #kz_amqp_assignment{channel=Channel} = kz_amqp_assignments:get_channel(),
+    lager:debug("releasing the channel ~p", [Channel]),
     _ = (catch kz_amqp_channel:release()),
-    kz_amqp_channel:close(Channel),
-    timer:sleep(?SERVER_RETRY_PERIOD),
-    _ = channel_requisition(Params),
-    State#state{is_consuming='false'}.
 
--spec handle_exchanges_failed(state()) -> state().
-handle_exchanges_failed(#state{params=Params}=State) ->
-    #kz_amqp_assignment{channel=Channel} = kz_amqp_assignments:get_channel(),
-    _ = (catch kz_amqp_channel:release()),
+    lager:debug("closing the channel ~p", [Channel]),
     kz_amqp_channel:close(Channel),
+
     timer:sleep(?SERVER_RETRY_PERIOD),
+
+    lager:debug("requisitioning channel"),
     _ = channel_requisition(Params),
     State#state{is_consuming='false'}.
 
