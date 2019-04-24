@@ -1174,21 +1174,29 @@ handle_add_binding(Binding, Props, #state{queue=Q
 -spec handle_existing_binding(binding_module(), kz_term:proplist(), state(), kz_term:ne_binary(), kz_term:proplist(), bindings()) ->
                                      state().
 handle_existing_binding(Binding, Props, State, Q, ExistingProps, Bs) ->
-    case lists:all(fun({K,V}) ->
-                           props:get_value(K, ExistingProps) =:= V;
-                      (K) ->
-                           props:get_value(K, ExistingProps) =:= 'true'
-                   end
-                  ,Props
-                  )
-    of
-        'true' when length(Props) =:= length(ExistingProps)->
-            lager:debug("binding ~s with props exists", [Binding]),
+    case binding_props_match(Props, ExistingProps) of
+        'true' ->
+            lager:debug("binding ~s with the same properties exists", [Binding]),
             State;
-        _ ->
+        'false' ->
             lager:debug("creating existing binding '~s' with new props: ~p", [Binding, Props]),
             create_binding(Binding, Props, Q),
             maybe_update_federated_bindings(State#state{bindings=[{Binding, Props}|Bs]})
+    end.
+
+-spec binding_props_match(kz_term:proplist(), kz_term:proplist()) -> boolean().
+binding_props_match([], []) -> 'true';
+binding_props_match([_|_], []) -> 'false';
+binding_props_match([], [_|_]) -> 'false';
+binding_props_match([{K, V} | Props], ExistingProps) ->
+    case props:take_value(K, ExistingProps) of
+        {V, EProps} -> binding_props_match(Props, EProps);
+        _ -> 'false'
+    end;
+binding_props_match([K | Props], ExistingProps) ->
+    case props:take_value(K, ExistingProps) of
+        {'true', EProps} -> binding_props_match(Props, EProps);
+        _ -> 'false'
     end.
 
 -spec maybe_update_federated_bindings(state()) -> state().
