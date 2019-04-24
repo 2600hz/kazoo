@@ -189,9 +189,9 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info({'DOWN', Ref, 'process', _Pid, Reason}, State) ->
+handle_info({'DOWN', Ref, 'process', Pid, Reason}, State) ->
     erlang:demonitor(Ref, ['flush']),
-    handle_down_msg(find_reference(Ref), Reason),
+    handle_down_msg(find_reference(Ref), Pid, Reason),
     {'noreply', State, 'hibernate'};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -419,8 +419,8 @@ move_channel_to_consumer(#kz_amqp_assignment{timestamp=Timestamp
                                                   }),
     %% Remove the channel assignment so it will not be given away twice
     ets:delete(?TAB, Timestamp),
-    lager:debug("assigned existing consumer ~p an available channel ~p on ~s"
-               ,[Consumer, Channel, Broker]
+    lager:debug("assigned existing consumer ~p an available channel ~p on ~s(~p)"
+               ,[Consumer, Channel, Broker, Connection]
                ),
 
     register_channel_handlers(Channel, Consumer),
@@ -434,12 +434,15 @@ move_channel_to_consumer(#kz_amqp_assignment{timestamp=Timestamp
 -spec add_consumer_to_channel(kz_amqp_assignment(), pid(), kz_amqp_type()) -> kz_amqp_assignment().
 add_consumer_to_channel(#kz_amqp_assignment{channel=Channel
                                            ,broker=_Broker
+                                           ,connection=Connection
                                            }=ChannelAssignment
-                       ,Consumer, Type) ->
-    Ref = erlang:monitor('process', Consumer),
+                       ,Consumer
+                       ,Type
+                       ) ->
+    ConsumerRef = erlang:monitor('process', Consumer),
     Assignment =
         ChannelAssignment#kz_amqp_assignment{consumer=Consumer
-                                            ,consumer_ref=Ref
+                                            ,consumer_ref=ConsumerRef
                                             ,assigned=kz_time:now_s()
                                             ,type=Type
                                             },
@@ -447,8 +450,8 @@ add_consumer_to_channel(#kz_amqp_assignment{channel=Channel
     ets:insert(?TAB, Assignment#kz_amqp_assignment{reconnect='false'
                                                   ,watchers=sets:new()
                                                   }),
-    lager:debug("assigned existing channel ~p on ~s to new consumer ~p"
-               ,[Channel, _Broker, Consumer]
+    lager:debug("assigned existing channel ~p on ~s(~p) to new consumer ~p"
+               ,[Channel, _Broker, Consumer, Connection]
                ),
 
     register_channel_handlers(Channel, Consumer),
@@ -525,7 +528,10 @@ add_channel_alternate_broker(Broker, Connection, Channel) ->
 
 -spec assign_channel(kz_amqp_assignment(), kz_term:ne_binary(), pid(), pid()) -> 'true'.
 assign_channel(#kz_amqp_assignment{channel_ref=Ref}=Assignment
-              ,Broker, Connection, Channel)
+              ,Broker
+              ,Connection
+              ,Channel
+              )
   when is_reference(Ref) ->
     demonitor(Ref, ['flush']),
     assign_channel(Assignment#kz_amqp_assignment{channel_ref='undefined'}
@@ -537,7 +543,10 @@ assign_channel(#kz_amqp_assignment{channel=CurrentChannel
                                   ,broker=CurrentBroker
                                   ,consumer=Consumer
                                   }=Assignment
-              ,Broker, Connection, Channel)
+              ,Broker
+              ,Connection
+              ,Channel
+              )
   when is_pid(CurrentChannel) ->
     lager:debug("reassigning consumer ~p, closing current channel ~p on ~s"
                ,[Consumer, CurrentChannel, CurrentBroker]
@@ -558,11 +567,11 @@ assign_channel(#kz_amqp_assignment{timestamp=Timestamp
               ,Connection
               ,Channel
               ) ->
-    Ref = erlang:monitor('process', Channel),
+    ChannelRef = erlang:monitor('process', Channel),
 
     Assigment
         = ConsumerAssignment#kz_amqp_assignment{channel=Channel
-                                               ,channel_ref=Ref
+                                               ,channel_ref=ChannelRef
                                                ,broker=Broker
                                                ,connection=Connection
                                                ,assigned=kz_time:now_s()
@@ -571,8 +580,8 @@ assign_channel(#kz_amqp_assignment{timestamp=Timestamp
     ets:insert(?TAB, Assigment#kz_amqp_assignment{reconnect='false'
                                                  ,watchers=sets:new()
                                                  }),
-    lager:debug("assigned consumer ~p new channel ~p on ~s after ~pμs"
-               ,[Consumer, Channel, Broker, kz_time:elapsed_us(Timestamp)]
+    lager:debug("assigned consumer ~p new channel ~p on ~s(~p) after ~pμs"
+               ,[Consumer, Channel, Broker, Connection, kz_time:elapsed_us(Timestamp)]
                ),
     register_channel_handlers(Channel, Consumer),
     _ = send_notifications(Assigment),
@@ -580,12 +589,12 @@ assign_channel(#kz_amqp_assignment{timestamp=Timestamp
 
 -spec cache(kz_term:ne_binary(), pid(), pid()) -> 'true'.
 cache(Broker, Connection, Channel) ->
-    Ref = erlang:monitor('process', Channel),
-    lager:debug("added new channel ~p on ~s to available pool"
-               ,[Channel, Broker]
+    ChannelRef = erlang:monitor('process', Channel),
+    lager:debug("added new channel ~p on ~s(~p) to available pool"
+               ,[Channel, Broker, Connection]
                ),
     ets:insert(?TAB, #kz_amqp_assignment{channel=Channel
-                                        ,channel_ref=Ref
+                                        ,channel_ref=ChannelRef
                                         ,broker=Broker
                                         ,connection=Connection
                                         }).
@@ -611,7 +620,8 @@ notify_consumer(#kz_amqp_assignment{consumer=Consumer
                                    ,channel=Channel
                                    }) ->
     %% Trigger gen_server to continue with AMQP initialization
-    gen_server:cast(Consumer, {'kz_amqp_assignment', {'new_channel', Reconnect, Channel}}).
+    Consumer ! {'kz_amqp_assignment', {'new_channel', Reconnect, Channel}},
+    'ok'.
 
 -spec notify_watchers(kz_amqp_assignment()) -> kz_amqp_assignment().
 notify_watchers(#kz_amqp_assignment{watchers=Watchers}=Assignment) ->
@@ -623,6 +633,7 @@ notify_watchers(#kz_amqp_assignment{}=Assignment, []) ->
 notify_watchers(#kz_amqp_assignment{}=Assignment, [Watcher|Watchers]) ->
     %% Notify consumer processes waiting on a channel that they where just
     %% assigned one
+    lager:debug("notifying watcher ~p of assignment", [Watcher]),
     Watcher ! Assignment,
     notify_watchers(Assignment, Watchers).
 
@@ -679,11 +690,10 @@ reserve(Consumer, _, 'float') ->
 -type down_match() :: {'channel' | 'consumer', kz_amqp_assignment()}.
 -type down_matches() :: [down_match()].
 
--spec handle_down_msg(down_matches(), any()) -> 'ok'.
-handle_down_msg([], _) -> 'ok';
-handle_down_msg([Match|Matches], Reason) ->
-    _ = handle_down_match(Match, Reason),
-    handle_down_msg(Matches, Reason).
+-spec handle_down_msg(down_matches(), pid(), any()) -> 'ok'.
+handle_down_msg([], _Pid, _Reason) -> lager:info("no matches for downed pid ~p: ~p", [_Pid, _Reason]);
+handle_down_msg(Matches, _Pid, Reason) ->
+    lists:foreach(fun(M) -> handle_down_match(M, Reason) end, Matches).
 
 -spec handle_down_match(down_match(), any()) -> 'ok'.
 handle_down_match({'consumer', #kz_amqp_assignment{consumer=Consumer}=Assignment}
@@ -718,6 +728,7 @@ handle_down_match({'channel', #kz_amqp_assignment{channel=Channel
     lager:debug("floating channel ~p on ~s went down while still assigned to consumer ~p: ~p"
                ,[Channel, Broker, Consumer, Reason]
                ),
+    Consumer ! {'kz_amqp_assignment', 'lost_channel'},
     maybe_defer_reassign(Assignment, Reason);
 handle_down_match({'channel', #kz_amqp_assignment{channel=Channel
                                                  ,type='sticky'
