@@ -174,9 +174,7 @@ bind_q(Q, Prop) ->
     add_bindings(Q, props:get_value('restrict_to', Prop)).
 
 add_bindings(Q, 'undefined') ->
-    _ = kz_amqp_util:bind_q_to_sysconf(Q, routing_key_get()),
-    _ = kz_amqp_util:bind_q_to_sysconf(Q, routing_key_set()),
-    kz_amqp_util:bind_q_to_sysconf(Q, routing_key_flush());
+    add_bindings(Q, ['get', 'set', 'flush']);
 add_bindings(Q, ['get'|T]) ->
     _ = kz_amqp_util:bind_q_to_sysconf(Q, routing_key_get()),
     add_bindings(Q, T);
