@@ -26,6 +26,7 @@
 -define(NUMBER, <<"number">>).
 -define(CB_LIST, <<"rates/crossbar_listing">>).
 -define(RATEDECKS, <<"ratedecks">>).
+-define(RATE_LOOKUP, <<"rates/lookup">>).
 
 -define(NUMBER_RESP_FIELDS, [<<"Base-Cost">>
                             ,<<"E164-Number">>
@@ -163,7 +164,7 @@ validate(Context, ?NUMBER, Phonenumber) ->
 
 -spec validate_rates(cb_context:context(), http_method()) -> cb_context:context().
 validate_rates(Context, ?HTTP_GET) ->
-    summary(cb_context:set_account_db(Context, ratedeck_db(Context)));
+    summary(cb_context:set_account_db(Context, ratedeck_db(Context)), cb_context:req_value(Context, <<"prefix">>));
 validate_rates(Context, ?HTTP_PUT) ->
     create(cb_context:set_account_db(Context, ratedeck_db(Context)));
 validate_rates(Context, ?HTTP_POST) ->
@@ -291,9 +292,37 @@ ensure_routes_set(Rate, _Routes) ->
 %% resource.
 %% @end
 %%------------------------------------------------------------------------------
--spec summary(cb_context:context()) -> cb_context:context().
-summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+-spec summary(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
+summary(Context, 'undefined') ->
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
+summary(Context, Prefix) ->
+    crossbar_doc:load_view(<<"rates/lookup">>
+                          ,[{'keys', build_keys(Prefix)},'include_docs']
+                          ,Context
+                          ,fun normalize_rate_lookup/2
+                          ).
+
+-spec build_keys(kz_term:ne_binary()) -> [integer()].
+build_keys(Number) ->
+    case only_numeric(Number) of
+        <<>> -> [];
+        <<D:1/binary, Rest/binary>> ->
+            build_keys(Rest, D, [kz_term:to_integer(D)])
+    end.
+
+-spec only_numeric(binary()) -> binary().
+only_numeric(Number) ->
+    << <<N>> || <<N>> <= Number, is_numeric(N)>>.
+
+-spec is_numeric(integer()) -> boolean().
+is_numeric(N) ->
+    N >= $0
+        andalso N =< $9.
+
+-spec build_keys(binary(), kz_term:ne_binary(), [integer()]) -> [integer()].
+build_keys(<<D:1/binary, Rest/binary>>, Prefix, Acc) ->
+    build_keys(Rest, <<Prefix/binary, D/binary>>, [kz_term:to_integer(<<Prefix/binary, D/binary>>) | Acc]);
+build_keys(<<>>, _, Acc) -> Acc.
 
 %%------------------------------------------------------------------------------
 %% @doc Check the uploaded file for CSV
@@ -331,6 +360,14 @@ error_no_file(Context) ->
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
+
+%%------------------------------------------------------------------------------
+%% @doc Normalizes the results of a view.
+%% @end
+%%------------------------------------------------------------------------------
+-spec normalize_rate_lookup(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_rate_lookup(JObj, Acc) ->
+    [kz_json:get_value(<<"doc">>, JObj)|Acc].
 
 %%------------------------------------------------------------------------------
 %% @doc Convert the file, based on content-type, to rate documents

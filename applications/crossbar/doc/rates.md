@@ -82,6 +82,11 @@ curl -v -X GET \
 
 Switch the `Accept` header to `text/csv` to get the page as a CSV.
 
+If ratedeck is huge, rate candidates for particular prefix/number could be retrieved.
+For ex. prefix 1256 will show list of rates with next prefixes: [1256,125,12,1].
+
+> GET /v2/rates?prefix=1256
+
 ## Upload a Ratedeck CSV
 
 Uploading CSVs has moved to using the ['tasks'](./tasks.md) API, which provides a more generic interface. See the [rates task documentation](../../tasks/doc/rates.md) for more details on uploading rates.
