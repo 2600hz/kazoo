@@ -836,7 +836,7 @@ ensure_tree_is_tree_fold(#{real_tree := RealTree
                           ,multi_paths := MultiPaths
                           }=State
                         ,AccountId, _Depth, Tree) ->
-    % ?DEV_LOG("~nA ~p~nT ~p~n~p~n~n", [AccountId, Tree, ensure_tree_is_tree_fold(State, AccountId, #{}, Tree, [])]),
+    %% ?DEV_LOG("~nA ~p~nT ~p~n~p~n~n", [AccountId, Tree, ensure_tree_is_tree_fold(State, AccountId, #{}, Tree, [])]),
     case ensure_tree_is_tree_fold(State, AccountId, #{multi_branch => 'false'}, Tree, []) of
         {_, Tree} ->
             %% tree is okay
@@ -1017,6 +1017,11 @@ import_account(Account, Parent) ->
                   ,kz_datamgr:open_doc(ParentDb, ParentId)
                   ).
 
+-spec import_account(kz_term:ne_binary()
+                    ,kz_term:ne_binary()
+                    ,{'ok', kz_json:object()} | kazoo_data:data_error()
+                    ,{'ok', kz_json:object()} | kazoo_dat:data_error()
+                    ) -> 'ok'.
 import_account(_AccountId, _ParentId, {'error', _Reason1}, {'error', _Reason2}) ->
     io:format("can not open account '~s' (~p) and parent '~s' (~p)~n"
              ,[_AccountId, _Reason1, _ParentId, _Reason2]
@@ -1080,7 +1085,10 @@ ensure_reseller_id_account(Account) ->
     AccountsDoc = kzd_accounts:fetch(AccountId, 'accounts'),
     ensure_reseller_id_account(AccountId, AccountJObj, AccountsDoc).
 
--spec ensure_reseller_id_account(kz_term:ne_binary(), kazoo_data:open_doc_return(), kazoo_data:open_doc_return()) -> 'ok'.
+-spec ensure_reseller_id_account(kz_term:ne_binary()
+                                ,{'ok', kz_json:object()} | kazoo_data:data_error()
+                                ,{'ok', kz_json:object()} | kazoo_dat:data_error()
+                                ) -> 'ok'.
 ensure_reseller_id_account(_AccountId, {'error', _Reason}, _) ->
     io:format("failed to read account '~s' doc: ~p~n", [_AccountId, _Reason]);
 ensure_reseller_id_account(_AccountId, _, {'error', _Reason}) ->
