@@ -383,6 +383,6 @@ set_marker(AccountId, MarkerId, Year, Month) ->
     case kazoo_modb:save_doc(AccountMODB, JObj) of
         {'ok', _}=OK -> OK;
         {'error', _Reason}=Error ->
-            lager:error("failed to save bill early/reminder maker for ~s: ", [AccountId, _Reason]),
+            lager:error("failed to save bill early/reminder maker in ~s: ~p", [AccountMODB, _Reason]),
             Error
     end.
