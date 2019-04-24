@@ -474,12 +474,6 @@ print_consumer_details(Consumer) when is_pid(Consumer) ->
                 io:format("  ~-10s: ~p~n", ["Connection", Connection]),
                 io:format("  ~-10s: ~p~n", ["Type", Type])
         end,
-    _ = case kz_amqp_history:get(Consumer) of
-            [] -> 'ok';
-            History ->
-                io:format("  ~-10s:~n", ["History"]),
-                print_consumer_history(History)
-        end,
     _ = case is_process_alive(Consumer) of
             'false' -> 'ok';
             'true' ->
@@ -488,12 +482,6 @@ print_consumer_details(Consumer) when is_pid(Consumer) ->
                 io:format(binary:replace(Backtrace, <<"\n">>, <<"~n    ">>, ['global']), [])
         end,
     io:format("~n", []).
-
-print_consumer_history([]) -> 'ok';
-print_consumer_history([Command|Commands]) ->
-    {'$lager_record', Name, Props} = lager:pr(Command, ?MODULE),
-    io:format("    ~s~n      ~p~n", [Name, Props]),
-    print_consumer_history(Commands).
 
 -spec gc_pools() -> 'ok'.
 gc_pools() ->
