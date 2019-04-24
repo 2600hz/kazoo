@@ -411,12 +411,11 @@ handle_command_result(#'queue.bind_ok'{}
                ,[_Q, _Exchange, _RK, Channel]
                );
 handle_command_result(#'basic.consume_ok'{consumer_tag=CTag}
-                     ,#'basic.consume'{}=Command
+                     ,#'basic.consume'{}=_Command
                      ,#kz_amqp_assignment{channel=_Channel
-                                         ,consumer=Consumer
+                                         ,consumer=_Consumer
                                          }=_Assignment
                      ) ->
-    Consumer ! {?MODULE, {'add_consumer_tag', Command#'basic.consume'{consumer_tag=CTag}}},
     lager:debug("created consumer ~s via channel ~p", [CTag, _Channel]);
 handle_command_result(#'basic.cancel_ok'{consumer_tag=CTag}
                      ,#'basic.cancel'{}=_Command
