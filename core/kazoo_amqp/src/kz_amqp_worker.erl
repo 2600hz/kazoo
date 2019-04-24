@@ -247,6 +247,12 @@ next_worker() ->
 
 -spec next_worker(atom()) -> pid() | {'error', pool_error()}.
 next_worker(Pool) ->
+    next_worker(Pool, whereis(Pool)).
+
+next_worker(_Pool, 'undefined') ->
+    lager:warning("pool ~s not available yet", [_Pool]),
+    {'error', 'poolboy_fault'};
+next_worker(Pool, Pid) when is_pid(Pid) ->
     try poolboy:checkout(Pool, 'false', default_timeout()) of
         'full' -> {'error', 'pool_full'};
         Worker -> Worker
