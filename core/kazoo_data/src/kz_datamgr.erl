@@ -1336,11 +1336,41 @@ maybe_create_registered_view(Plan, DbName, DesignDoc, Options, ViewJObj) ->
     ViewDoc = kz_json:get_json_value(<<"view_definition">>, ViewJObj),
     case kzs_doc:save_doc(Plan, DbName, ViewDoc, []) of
         {'ok', _ViewDoc} -> kzs_view:get_results(Plan, DbName, DesignDoc, Options);
-        {'error', 'conflict'} -> kzs_view:get_results(Plan, DbName, DesignDoc, Options);
+        {'error', 'conflict'} ->
+            _ = maybe_update_view(Plan, DbName, DesignDoc, ViewDoc),
+            kzs_view:get_results(Plan, DbName, DesignDoc, Options);
         {'error', _Err} ->
             lager:error("error saving registered view ~s to database ~s : ~p", [DesignDoc, DbName, _Err]),
             {'error', 'not_found'}
     end.
+
+-spec maybe_update_view(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+maybe_update_view(Plan, DbName, DesignDoc, ViewDoc) ->
+    case binary:split(DesignDoc, <<$/>>) of
+        [_, View] ->
+            case kz_json:get_value([<<"views">>, View], ViewDoc) of
+                'undefined' -> 'ok';
+                _View ->
+                    CurrentDoc = kzs_doc:open_doc(Plan, DbName, kz_doc:id(ViewDoc), []),
+                    maybe_update_view(Plan, DbName, DesignDoc, ViewDoc, CurrentDoc)
+            end;
+        _Else -> 'ok'
+    end.
+
+-spec maybe_update_view(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), {'ok', kz_json:object()}|data_error()) -> 'ok'.
+maybe_update_view(Plan, DbName, DesignDoc, ViewDoc, {'ok', CurrentDoc}) ->
+    case kz_json:are_equal(kz_doc:delete_revision(CurrentDoc), ViewDoc) of
+        'false' ->
+            UpdateDoc = kz_doc:set_revision(ViewDoc, kz_doc:revision(CurrentDoc)),
+            case kzs_doc:save_doc(Plan, DbName, UpdateDoc, []) of
+                {'ok', _ViewDoc} ->
+                    lager:debug("updated design doc ~s on database ~s", [DesignDoc, DbName]);
+                {'error', _Err} ->
+                    lager:error("error updating design doc ~s to database ~s : ~p", [DesignDoc, DbName, _Err])
+            end;
+        'true' -> 'ok'
+    end;
+maybe_update_view(_, _, _, _, _Error) -> 'ok'.
 
 -spec get_result_keys(kz_term:ne_binary(), kz_term:ne_binary()) ->
                              {'ok', kz_term:ne_binaries() | [kz_term:ne_binaries()]} | data_error().
