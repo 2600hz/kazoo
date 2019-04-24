@@ -350,8 +350,7 @@ handle_cast(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'DOWN', Ref, 'process', Connection, _Reason}, State) ->
-    lager:warning("connection ~p went down: ~p"
-                 ,[Connection, _Reason]),
+    lager:warning("connection ~p went down: ~p", [Connection, _Reason]),
     erlang:demonitor(Ref, ['flush']),
     _ = ets:delete(?TAB, Connection),
     {'noreply', State, 'hibernate'};
@@ -393,13 +392,13 @@ add_watcher(Watcher, #state{watchers=Watchers}=State) ->
 -spec notify_watchers(state()) -> state().
 notify_watchers(#state{watchers = Watchers}=State) ->
     F = fun (Watcher, _) -> notify_watcher(Watcher) end,
-    sets:fold(F, ok, Watchers),
+    sets:fold(F, 'ok', Watchers),
     State#state{watchers = sets:new()}.
 
--spec notify_watcher(pid()) -> ok.
+-spec notify_watcher(pid()) -> 'ok'.
 notify_watcher(Watcher) ->
     Watcher ! {?MODULE, 'connection_available'},
-    ok.
+    'ok'.
 
 -spec wait_for_notification(timeout()) ->
                                    'ok' |
