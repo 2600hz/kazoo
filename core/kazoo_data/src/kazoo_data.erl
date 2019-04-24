@@ -12,8 +12,6 @@
              ,data_errors/0
              ,get_results_return/0
              ,db_classification/0
-             ,open_docs_return/0
-             ,open_doc_return/0
              ,view_options/0, key_range/0
              ,docid/0, docids/0
              ]).
