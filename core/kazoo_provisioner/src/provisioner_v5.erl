@@ -223,13 +223,13 @@ set_owner(Device) ->
 %%------------------------------------------------------------------------------
 -spec settings(kzd_devices:doc()) -> kz_json:object().
 settings(Device) ->
-    Props = [{<<"lines">>, settings_lines(Device)}
-            ,{<<"codecs">>, settings_codecs(Device)}
-            ,{<<"datetime">>, settings_datetime(Device)}
-            ,{<<"feature_keys">>, settings_feature_keys(Device)}
-            ,{<<"line_keys">>, settings_line_keys(Device)}
-            ,{<<"combo_keys">>, settings_combo_keys(Device)}
-            ],
+    Props = props:filter_empty([{<<"lines">>, settings_lines(Device)}
+                               ,{<<"codecs">>, settings_codecs(Device)}
+                               ,{<<"datetime">>, settings_datetime(Device)}
+                               ,{<<"feature_keys">>, settings_feature_keys(Device)}
+                               ,{<<"line_keys">>, settings_line_keys(Device)}
+                               ,{<<"combo_keys">>, settings_combo_keys(Device)}
+                               ]),
     kz_json:from_list(Props).
 
 -spec settings_line_keys(kzd_devices:doc()) -> kz_json:api_object().
