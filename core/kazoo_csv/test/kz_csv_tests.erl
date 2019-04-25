@@ -292,3 +292,22 @@ variable_json_test() ->
     ?assertEqual(Expected, CSV),
 
     kz_util:delete_file(File).
+
+comma_list_json_test() ->
+    JSONs = [<<"{\"a\":[\"x\",\"y\"]}">>
+            ,<<"{\"a\":[],\"b\":[\"x\",\"y\",\"z\"]}">>
+            ,<<"{\"a\":[{\"x\":1},{\"y\":2}]">>
+            ],
+    JObjs = [kz_json:decode(JSON) || JSON <- JSONs],
+    {File, CellOrdering} = kz_csv:jobjs_to_file(JObjs),
+    {File, CellOrdering} = kz_csv:write_header_to_file({File, CellOrdering}),
+
+    ?assert(filelib:is_regular(File)),
+    ?assertEqual([[<<"a">>], [<<"b">>]], CellOrdering),
+
+    {'ok', CSV} = file:read_file(File),
+    Expected = <<"\"a\",\"b\"\n\"x,y\"\n\"\",\"x,y,z\"\n\"\",\"\"\n">>,
+
+    ?assertEqual(Expected, CSV),
+
+    kz_util:delete_file(File).
