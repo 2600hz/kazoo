@@ -39,7 +39,7 @@
         ,is_empty/1, is_not_empty/1
         ,is_proplist/1, is_ne_list/1
         ,is_pos_integer/1
-        ,is_ascii_code/1
+        ,is_ascii_code/1, is_ascii_number/1
         ,is_lower_char/1, is_upper_char/1
         ,identity/1
         ,always_true/1, always_false/1
@@ -468,6 +468,11 @@ is_pos_integer(X) ->
 is_ascii_code(X) ->
     X >= 0
         andalso X =< 127.
+
+-spec is_ascii_number(integer()) -> boolean().
+is_ascii_number(X) ->
+    X >= $0
+        andalso X =< $9.
 
 -spec identity(X) -> X.
 identity(X) -> X.

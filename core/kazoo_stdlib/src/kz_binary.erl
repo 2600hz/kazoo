@@ -23,6 +23,7 @@
 
 -export([clean/1, clean/2
         ,remove_white_spaces/1, remove_white_spaces/2
+        ,remove_non_numeric/1
         ]).
 
 -export([md5/1]).
@@ -78,6 +79,10 @@ remove_white_spaces(Bin, Opts) ->
 -spec remove_white_spaces(binary()) -> binary().
 remove_white_spaces(Bin) ->
     << <<X>> || <<X>> <= Bin, X =/= $\s >>.
+
+-spec remove_non_numeric(binary()) -> binary().
+remove_non_numeric(Bin) ->
+    << <<N>> || <<N>> <= Bin, kz_term:is_ascii_number(N)>>.
 
 -spec clean(binary()) -> binary().
 clean(Bin) ->

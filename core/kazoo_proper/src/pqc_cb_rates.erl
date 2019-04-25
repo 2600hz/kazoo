@@ -17,6 +17,7 @@
         ,delete_rate/2
         ,get_rate/2
         ,get_rates/1, get_rates/2
+        ,get_rates_by_prefix/2, get_rates_by_prefix/3
 
         ,create_service_plan/2
         ,assign_service_plan/3
@@ -220,6 +221,21 @@ get_rates(API, RatedeckId) ->
                            ,pqc_cb_api:request_headers(API)
                            ).
 
+-spec get_rates_by_prefix(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
+get_rates_by_prefix(API, Prefix) ->
+    get_rates_by_prefix(API, Prefix, ?KZ_RATES_DB).
+
+-spec get_rates_by_prefix(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
+get_rates_by_prefix(API, Prefix, RatedeckId) ->
+    ?INFO("getting rates for ratedeck ~s by prefix ~s", [RatedeckId, Prefix]),
+    pqc_cb_api:make_request([200]
+                           ,fun kz_http:get/2
+                           ,rates_url()
+                            ++ "?ratedeck_id=" ++ kz_term:to_list(RatedeckId)
+                            ++ "&prefix=" ++ kz_term:to_list(Prefix)
+                           ,pqc_cb_api:request_headers(API)
+                           ).
+
 -spec rate_did(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_integer().
 rate_did(API, RatedeckId, DID) ->
     ?INFO("rating DID ~s using ~s", [DID, RatedeckId]),
@@ -343,7 +359,9 @@ seq() ->
     Model = initial_state(),
     API = pqc_kazoo_model:api(Model),
 
-    RateDoc = rate_doc(<<"custom">>, 1.0),
+    RatedeckId = <<"custom">>,
+
+    RateDoc = rate_doc(RatedeckId, 1.0),
 
     RateCost = kz_currency:units_to_dollars(
                  kapps_call_util:base_call_cost(kzd_rates:rate_cost(RateDoc)
@@ -353,13 +371,18 @@ seq() ->
                 ),
     ?INFO("rate cost from doc: ~p", [RateCost]),
 
-    RateDocWithRoute = rate_doc_with_route(<<"custom">>, 2.0),
-    RateDocWithRoutes = rate_doc_with_routes(<<"custom">>, 3.0),
+    RateDocWithRoute = rate_doc_with_route(RatedeckId, 2.0),
+    RateDocWithRoutes = rate_doc_with_routes(RatedeckId, 3.0),
 
     {'ok', TaskId} = ?MODULE:upload_rates(API, [RateDoc, RateDocWithRoute, RateDocWithRoutes]),
     ?INFO("uploaded task: ~s~n", [TaskId]),
 
     'true' = lists:all(fun(D) -> validate_rate_upload(D, API) end, [RateDoc, RateDocWithRoute, RateDocWithRoutes]),
+
+    ListByPrefixResp = get_rates_by_prefix(API, hd(?PHONE_NUMBERS), RatedeckId),
+    ?INFO("listed by prefix: ~s", [ListByPrefixResp]),
+    [Listed] = kz_json:get_value(<<"data">>, kz_json:decode(ListByPrefixResp)),
+    'true' = kz_doc:id(Listed) =:= kz_doc:id(RateDoc),
 
     RateCost = ?MODULE:rate_did(API, kzd_rates:ratedeck_id(RateDoc), hd(?PHONE_NUMBERS)),
     ?INFO("successfully rated ~p using global ratedeck", [hd(?PHONE_NUMBERS)]),

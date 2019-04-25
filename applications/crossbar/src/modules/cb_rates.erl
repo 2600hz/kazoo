@@ -297,32 +297,10 @@ summary(Context, 'undefined') ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
 summary(Context, Prefix) ->
     crossbar_doc:load_view(<<"rates/lookup">>
-                          ,[{'keys', build_keys(Prefix)},'include_docs']
+                          ,[{'keys', kzdb_ratedeck:prefix_keys(Prefix)},'include_docs']
                           ,Context
                           ,fun normalize_rate_lookup/2
                           ).
-
--spec build_keys(kz_term:ne_binary()) -> [integer()].
-build_keys(Number) ->
-    case only_numeric(Number) of
-        <<>> -> [];
-        <<D:1/binary, Rest/binary>> ->
-            build_keys(Rest, D, [kz_term:to_integer(D)])
-    end.
-
--spec only_numeric(binary()) -> binary().
-only_numeric(Number) ->
-    << <<N>> || <<N>> <= Number, is_numeric(N)>>.
-
--spec is_numeric(integer()) -> boolean().
-is_numeric(N) ->
-    N >= $0
-        andalso N =< $9.
-
--spec build_keys(binary(), kz_term:ne_binary(), [integer()]) -> [integer()].
-build_keys(<<D:1/binary, Rest/binary>>, Prefix, Acc) ->
-    build_keys(Rest, <<Prefix/binary, D/binary>>, [kz_term:to_integer(<<Prefix/binary, D/binary>>) | Acc]);
-build_keys(<<>>, _, Acc) -> Acc.
 
 %%------------------------------------------------------------------------------
 %% @doc Check the uploaded file for CSV

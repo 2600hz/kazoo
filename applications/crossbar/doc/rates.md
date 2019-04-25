@@ -82,10 +82,33 @@ curl -v -X GET \
 
 Switch the `Accept` header to `text/csv` to get the page as a CSV.
 
-If ratedeck is huge, rate candidates for particular prefix/number could be retrieved.
-For ex. prefix 1256 will show list of rates with next prefixes: [1256,125,12,1].
+### List rates matching a prefix
 
-> GET /v2/rates?prefix=1256
+If the ratedeck is huge, rate candidates for particular prefix/number could be retrieved.
+
+For example: a prefix of `1256` will list rates with the prefixes of `1256`, `125`, `12`, and `1`.
+
+> GET /v2/rates?prefix={PREFIX}
+
+```shell
+curl -v -X GET \
+    -H "Accept: application/json" \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/rates?prefix=12223334444
+```
+
+```json
+{"page_size":1
+ ,"data":[{"direction":["inbound"],"prefix":1222,"rate_cost":1.0,"ratedeck_id":"custom","routes":[""],"rate_name":"inbound_1222","rate_suffix":"","rate_surcharge":0.0,"weight":40,"id":"XX-1222"}]
+ ,"revision":"{REVISION}"
+ ,"timestamp":"{TIMESTAMP}"
+ ,"version":"{VERSION}"
+ ,"node":"{NODE}"
+ ,"request_id":"{REQUEST_ID}"
+ ,"status":"success"
+ ,"auth_token":"{AUTH_TOKEN}"
+}
+```
 
 ## Upload a Ratedeck CSV
 
