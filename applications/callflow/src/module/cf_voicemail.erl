@@ -172,6 +172,7 @@
                  ,account_db :: kz_term:api_ne_binary()
                  ,media_extension :: kz_term:api_ne_binary()
                  ,forward_type :: kz_term:api_ne_binary()
+                 ,oldest_message_first = 'false' :: boolean()
                  }).
 -type mailbox() :: #mailbox{}.
 
@@ -828,6 +829,9 @@ message_prompt(Messages, Message, Count, #mailbox{skip_envelope='true'}) ->
 %%------------------------------------------------------------------------------
 -spec play_messages(kz_json:objects(), non_neg_integer(), mailbox(), kapps_call:call()) ->
                            'ok' | 'complete'.
+play_messages(Messages, Count, #mailbox{oldest_message_first='true'}=Box, Call) ->
+    MsgList = lists:reverse(Messages),
+    play_messages(MsgList, [], Count, Box, Call);
 play_messages(Messages, Count, Box, Call) ->
     play_messages(Messages, [], Count, Box, Call).
 
@@ -1616,6 +1620,7 @@ get_mailbox_profile(Data, Call) ->
                     ,account_db = AccountDb
                     ,media_extension = kzd_voicemail_box:media_extension(MailboxJObj)
                     ,forward_type = ?DEFAULT_FORWARD_TYPE
+                    ,oldest_message_first = kzd_vmboxes:oldest_message_first(MailboxJObj)
                     };
         {'error', R} ->
             lager:info("failed to load voicemail box ~s, ~p", [Id, R]),
