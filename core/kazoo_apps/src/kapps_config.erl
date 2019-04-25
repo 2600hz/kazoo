@@ -1232,8 +1232,8 @@ migrate_config_setting_fun(Fun, [{FromId, Node, FromSetting, Value}=Remove|Remov
                                       )
     end.
 
--spec add_config_setting(kz_term:ne_binary(), config_key(), migrate_values()) ->
-                                'ok' |
+-spec add_config_setting(kz_term:ne_binary() | kz_json:object(), config_key(), migrate_values()) ->
+                                {'ok', kz_json:object()} |
                                 {'error', any()}.
 add_config_setting(Id, Setting, Values) when is_binary(Id) ->
     case kz_datamgr:open_doc(?KZ_CONFIG_DB, Id) of

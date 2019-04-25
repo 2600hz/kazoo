@@ -139,9 +139,7 @@ update_account(Account, AuthToken) ->
 
 -spec account_settings(kz_json:object()) -> kz_json:object().
 account_settings(JObj) ->
-    kz_json:from_list(
-      [{<<"settings">>, settings(JObj)}
-      ]).
+    kz_json:from_list([{<<"settings">>, settings(JObj)}]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -158,12 +156,13 @@ update_user(AccountId, JObj, AuthToken) ->
 save_user(AccountId, JObj, AuthToken) ->
     _ = update_account(AccountId, AuthToken),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    Devices = crossbar_util:get_devices_by_owner(AccountDb, kz_doc:id(JObj)),
+    Devices = kz_attributes:owned_by_docs(kz_doc:id(JObj), AccountDb),
     Settings = settings(JObj),
-    lists:foreach(
-      fun(Device) ->
-              maybe_save_device(Device, Settings, AccountId, AuthToken)
-      end, Devices).
+    lists:foreach(fun(Device) ->
+                          maybe_save_device(Device, Settings, AccountId, AuthToken)
+                  end
+                 ,Devices
+                 ).
 
 -spec maybe_save_device(kzd_devices:doc(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                'ok' | {'EXIT', _}.
@@ -199,7 +198,7 @@ check_MAC(MacAddress, AuthToken) ->
         {'ok', 200, _RespHeaders, JSONStr} ->
             lager:debug("provisioner says ~s", [JSONStr]),
             JObj = kz_json:decode(JSONStr),
-            kz_json:get_value([<<"data">>, <<"account_id">>], JObj);
+            kz_json:get_ne_binary_value([<<"data">>, <<"account_id">>], JObj);
         _AnythingElse ->
             lager:debug("device ~s not found: ~p", [MacAddress, _AnythingElse]),
             'false'
@@ -212,19 +211,11 @@ check_MAC(MacAddress, AuthToken) ->
 -spec set_owner(kzd_devices:doc()) -> kzd_devices:doc().
 set_owner(Device) ->
     OwnerId = kzd_devices:owner_id(Device),
-    case get_owner(OwnerId, kz_doc:account_id(Device)) of
+    case kzd_users:fetch(kz_doc:account_id(Device), OwnerId) of
         {'error', _R} -> Device;
         {'ok', Doc} ->
             kz_json:merge(Doc, Device, #{'keep_null' => 'true'})
     end.
-
--spec get_owner(kz_term:api_ne_binary(), kz_term:ne_binary()) ->
-                       {'ok', kz_json:object()} |
-                       {'error', any()}.
-get_owner('undefined', _) -> {'error', 'undefined'};
-get_owner(OwnerId, AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    kz_datamgr:open_cache_doc(AccountDb, OwnerId).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -232,14 +223,13 @@ get_owner(OwnerId, AccountId) ->
 %%------------------------------------------------------------------------------
 -spec settings(kzd_devices:doc()) -> kz_json:object().
 settings(Device) ->
-    Props = props:filter_empty(
-              [{<<"lines">>, settings_lines(Device)}
-              ,{<<"codecs">>, settings_codecs(Device)}
-              ,{<<"datetime">>, settings_datetime(Device)}
-              ,{<<"feature_keys">>, settings_feature_keys(Device)}
-              ,{<<"line_keys">>, settings_line_keys(Device)}
-              ,{<<"combo_keys">>, settings_combo_keys(Device)}
-              ]),
+    Props = props:filter_empty([{<<"lines">>, settings_lines(Device)}
+                               ,{<<"codecs">>, settings_codecs(Device)}
+                               ,{<<"datetime">>, settings_datetime(Device)}
+                               ,{<<"feature_keys">>, settings_feature_keys(Device)}
+                               ,{<<"line_keys">>, settings_line_keys(Device)}
+                               ,{<<"combo_keys">>, settings_combo_keys(Device)}
+                               ]),
     kz_json:from_list(Props).
 
 -spec settings_line_keys(kzd_devices:doc()) -> kz_json:api_object().
@@ -248,22 +238,21 @@ settings_line_keys(Device) ->
 
 -spec settings_line_keys(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:api_object().
 settings_line_keys(<<"yealink">>, _) ->
-    Props = props:filter_empty(
-              [{<<"account">>, <<"1">>}
-              ,{<<"type">>, <<"15">>}
-              ]),
-    Key = kz_json:from_list([{<<"key">>, kz_json:from_list(Props)}]),
+    LineKeys = [{<<"account">>, <<"1">>}
+               ,{<<"type">>, <<"15">>}
+               ],
+    Key = kz_json:from_list([{<<"key">>, kz_json:from_list(LineKeys)}]),
     kz_json:from_list([{<<"0">>, Key}]);
 settings_line_keys(_, _) -> 'undefined'.
 
 -spec settings_lines(kzd_devices:doc()) -> kz_json:object().
 settings_lines(Device) ->
-    case props:filter_empty(
-           [{<<"basic">>, settings_basic(Device)}
-           ,{<<"sip">>, settings_sip(Device)}
-           ,{<<"advanced">>, settings_advanced(Device)}
-           ])
-    of
+    SettingsLines = props:filter_empty(
+                      [{<<"basic">>, settings_basic(Device)}
+                      ,{<<"sip">>, settings_sip(Device)}
+                      ,{<<"advanced">>, settings_advanced(Device)}
+                      ]),
+    case SettingsLines of
         [] -> kz_json:new();
         Props -> kz_json:from_list([{<<"0">>, kz_json:from_list(Props)}])
     end.
@@ -343,14 +332,14 @@ settings_keys(Assoc, KeyKind, Device) ->
         LineKey -> kz_json:set_value(<<"account">>, LineKey, Keys)
     end.
 
--spec get_label(kzd_users:doc()) -> binary().
+-spec get_label(kzd_users:doc()) -> kz_term:api_binary().
 get_label(User) ->
     case {kzd_users:first_name(User)
          ,kzd_users:last_name(User)
          }
     of
         {'undefined', 'undefined'} ->
-            kz_json:get_value(<<"name">>, User);
+            kz_json:get_ne_binary_value(<<"name">>, User);
         {First, 'undefined'} ->
             First;
         {'undefined', Last} ->
@@ -433,8 +422,8 @@ get_feature_key_type(Assoc, Type, Brand, Family) ->
                       {kz_term:ne_binary(), kz_term:api_ne_binary()} |
                       'undefined'.
 get_user(AccountId, ?NE_BINARY = UserId, PrefixLabel) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    {'ok', UserJObj} = kz_datamgr:open_cache_doc(AccountDb, UserId),
+    {'ok', UserJObj} = kzd_users:fetch(AccountId, UserId),
+
     case kzd_users:presence_id(UserJObj) of
         'undefined' -> 'undefined';
         Presence ->
@@ -508,11 +497,11 @@ settings_time(Device) ->
 
 -spec settings_codecs(kz_json:object()) -> kz_json:object().
 settings_codecs(JObj) ->
-    case props:filter_empty(
-           [{<<"audio">>, format_codecs(JObj, <<"audio">>)}
-           ,{<<"video">>, format_codecs(JObj, <<"video">>)}
-           ])
-    of
+    Codecs = props:filter_empty(
+               [{<<"audio">>, format_codecs(JObj, <<"audio">>)}
+               ,{<<"video">>, format_codecs(JObj, <<"video">>)}
+               ]),
+    case Codecs of
         [] -> kz_json:new();
         Props ->
             kz_json:from_list([{<<"0">>, kz_json:from_list(Props)}])
@@ -643,8 +632,8 @@ create_alert(JObj, AccountId, AuthToken) ->
     Title = <<"Provisioning Error">>,
     Msg = <<"Error trying to provision device">>,
     {'ok', AlertJObj} = kapps_alert:create(Title, Msg, From, To, Props),
-    {ok, _} = kapps_alert:save(AlertJObj),
-    ok.
+    {'ok', _} = kapps_alert:save(AlertJObj),
+    lager:debug("created alert ~s: ~s", [Title, Msg]).
 
 -spec req_headers(kz_term:ne_binary()) -> kz_term:proplist().
 req_headers(Token) ->
