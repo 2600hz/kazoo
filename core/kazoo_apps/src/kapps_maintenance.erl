@@ -56,6 +56,10 @@
         ]).
 -export([ensure_tree_accounts/0
         ,ensure_tree_accounts/1
+        ,ensure_tree_accounts/2
+        ]).
+-export([ensure_tree_account/1
+        ,ensure_tree_account/2
         ]).
 -export([cleanup_aggregated_devices/0
         ,cleanup_aggregated_device/1
@@ -785,26 +789,73 @@ find_invalid_acccount_dbs_fold(AccountDb, Acc) ->
 
 -type ensure_state() :: #{master := kz_term:ne_binary()
                          ,real_ids := gb_sets:set()
-                         ,real_tree := map()
                          ,fixed_trees := map()
-                         ,multi_paths := map()
                          }.
 
+-spec get_accounts_tree() -> kz_json:object().
+get_accounts_tree() ->
+    %% {ok, Bin} = file:read_file("/opt/kazoo/123stongest_tree.json"),
+    %% JObjs = kz_json:decode(Bin),
+    ViewOptions = [{'reduce', 'false'}],
+    ViewName = <<"accounts_tree/list_by_tree_length">>,
+    kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ViewName, ViewOptions).
+
+-spec get_accounts_tree(kz_term:ne_binaries()) -> kz_json:object().
+get_accounts_tree(Accounts) ->
+    %% {ok, Bin} = file:read_file(hd(Accounts)),
+    %% JObjs = kz_json:decode(Bin),
+    ViewOptions = [{'keys', [kz_util:format_account_id(A) || A <- Accounts]}
+                  ,'include_docs'
+                  ],
+    ViewName = <<"accounts/listing_by_simple_id">>,
+    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ViewName, ViewOptions) of
+        {'ok', Results} ->
+            {'ok', [kz_json:from_list(
+                      [{<<"id">>, kz_doc:id(JObj)}
+                      ,{<<"key">>, length(kzd_accounts:tree(kz_json:get_value(<<"doc">>, JObj)))}
+                      ,{<<"value">>, kzd_accounts:tree(kz_json:get_value(<<"doc">>, JObj))}
+                      ]
+                     )
+                    || JObj <- Results
+                   ]
+            };
+        {'error', _}=Error -> Error
+    end.
+
+%% accounts
 -spec ensure_tree_accounts() -> 'ok'.
 ensure_tree_accounts() ->
-    ensure_tree_accounts("/opt/kazoo/123stongest_tree.json").
+    actually_ensure_tree_accounts(get_accounts_tree(), 'false').
 
--spec ensure_tree_accounts(any()) -> 'ok'.
-ensure_tree_accounts(Path) ->
-    {ok, Bin} = file:read_file(Path),
-    JObjs = kz_json:decode(Bin),
-    %% {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
-    MasterAccountId = <<"36a1a083dd0df9f3b3940b8a972c0e43">>,
+%% acounts
+-spec ensure_tree_accounts(kz_term:ne_binary()) -> 'ok'.
+ensure_tree_accounts(Accounts) ->
+    actually_ensure_tree_accounts(get_accounts_tree(Accounts), 'false').
+
+%% acounts
+-spec ensure_tree_accounts(kz_term:ne_binary(), boolean() | kz_term:ne_binary()) -> 'ok'.
+ensure_tree_accounts(Accounts, DryRun) ->
+    actually_ensure_tree_accounts(get_accounts_tree(Accounts), DryRun).
+
+%% acount
+-spec ensure_tree_account(kz_term:ne_binary()) -> 'ok'.
+ensure_tree_account(Account) ->
+    ensure_tree_account(Account, 'false').
+
+%% acount
+-spec ensure_tree_account(kz_term:ne_binary(), boolean() | kz_term:ne_binary()) -> 'ok'.
+ensure_tree_account(Account, DryRun) ->
+    actually_ensure_tree_accounts([Account], DryRun).
+
+%% actually ensuring
+-spec actually_ensure_tree_accounts(kazoo_data:get_results_return(), boolean() | kz_term:ne_binary()) -> 'ok'.
+actually_ensure_tree_accounts({'ok', JObjs}, DryRun) ->
+    io:format("::: ensuring pvt_tree is clean for ~b account(s)~n", [length(JObjs)]),
+    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+    %% MasterAccountId = <<"36a1a083dd0df9f3b3940b8a972c0e43">>,
     State = #{master => MasterAccountId
              ,real_ids => gb_sets:new()
-             ,real_tree => #{}
              ,fixed_trees => #{}
-             ,multi_paths => #{}
              },
     {NewState, Families} = create_families(JObjs, State, #{}),
     CalculateState =
@@ -814,134 +865,85 @@ ensure_tree_accounts(Path) ->
                  ,NewState
                  ,Families
                  ),
-    %% pretty_print_account_tree(<<"Bad Tree">>, maps:get(fixed_trees, CalculateState)).
-    io:format("~nTo Update:~n~p~n~n", [maps:get(fixed_trees, CalculateState)]),
-    io:format("~nMulti tree branch:~n~p~n~n", [maps:get(multi_paths, CalculateState)]).
+    do_fix_accounts_tree(CalculateState, kz_term:is_true(DryRun));
+actually_ensure_tree_accounts({'error', _Reason}, _) ->
+    io:format("failed to get accounts tree to compare: ~p", [_Reason]).
+
+-spec do_fix_accounts_tree(ensure_state(), boolean()) -> 'ok'.
+do_fix_accounts_tree(#{fixed_trees := Fixed}, _) when map_size(Fixed) =:= 0 ->
+    io:format("nothing to fix, all hail kazoo!~n");
+do_fix_accounts_tree(#{fixed_trees := Fixed}, 'true') ->
+    io:format(" === to fix:~n~p~n~n", [Fixed]);
+do_fix_accounts_tree(#{fixed_trees := Fixed}, 'false') ->
+    io:format(":: going to fix:~n~p~n~n", [Fixed]).
 
 -spec ensure_tree_is_tree(ensure_state(), kz_term:ne_binary(), non_neg_integer()) ->
                                  ensure_state().
 ensure_tree_is_tree(State, Family, Depth) ->
-    io:format(":: calculating tree for depth ~b~n", [Depth]),
+    io:format(" ==> calculating tree for depth ~b~n", [Depth]),
     maps:fold(fun(AccountId, Tree, StateAcc) ->
-                      ensure_tree_is_tree_fold(StateAcc, AccountId, Depth, Tree)
+                      ensure_tree_is_tree_fold(StateAcc, AccountId, Tree)
               end
              ,State
              ,Family
              ).
 
--spec ensure_tree_is_tree_fold(ensure_state(), kz_term:ne_binary(), non_neg_integer(), kz_term:ne_binaries()) ->
+-spec ensure_tree_is_tree_fold(ensure_state(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
                                       ensure_state().
-ensure_tree_is_tree_fold(#{real_tree := RealTree
-                          ,fixed_trees := FixedTrees
-                          ,multi_paths := MultiPaths
+ensure_tree_is_tree_fold(#{fixed_trees := FixedTrees
                           }=State
-                        ,AccountId, _Depth, Tree) ->
-    %% ?DEV_LOG("~nA ~p~nT ~p~n~p~n~n", [AccountId, Tree, ensure_tree_is_tree_fold(State, AccountId, #{}, Tree, [])]),
-    case ensure_tree_is_tree_fold(State, AccountId, #{multi_branch => 'false'}, Tree, []) of
-        {_, Tree} ->
+                        ,AccountId, Tree) ->
+    UpdatedTree = ensure_tree_is_tree_fold(State, AccountId, Tree, []),
+    case UpdatedTree =:= Tree of
+        'true' ->
             %% tree is okay
-
-            %% AccountId =:= <<"ff7e109ceb623e1622db61f0185f7c06">>
-            %%     andalso ?DEV_LOG("~nTree matched~n~nAccountId ~p~nDepth ~p~nTree~p~nUpdatedTree ~p~n~n", [AccountId, Depth, Tree, UpdatedTree]),
-            %% AccountId =:= <<"abbe7aa11fcfbb011290bc4d137c195a">>
-            %%     andalso ?DEV_LOG("~nTree matched~n~nAccountId ~p~nDepth ~p~nTree~p~nUpdatedTree ~p~n~n", [AccountId, Depth, Tree, UpdatedTree]),
-            %% AccountId =:= <<"5cc4fa8f33cc824a431d71379415ef62">>
-            %%     andalso ?DEV_LOG("~nTree matched~n~nAccountId ~p~nDepth ~p~nTree~p~nUpdatedTree ~p~n~n", [AccountId, Depth, Tree, UpdatedTree]),
-            State#{real_tree => RealTree#{AccountId => Tree}};
-        {#{multi_branch := 'false'}, UpdatedTree} ->
-            %% tree is disjoint at a point
-            State#{real_tree => RealTree#{AccountId => UpdatedTree}
-                  ,fixed_trees => FixedTrees#{AccountId => UpdatedTree}
-                  };
-        {#{multi_branch := 'true'}=Multi, UpdatedTree} ->
-            %% tree had non-existing account id and was fixed
-
-            %% AccountId =:= <<"ff7e109ceb623e1622db61f0185f7c06">>
-            %%     andalso ?DEV_LOG("~nTree not matched~n~nAccountId ~p~nDepth ~p~nTree~p~nUpdatedTree ~p~n~n", [AccountId, Depth, Tree, UpdatedTree]),
-            %% AccountId =:= <<"abbe7aa11fcfbb011290bc4d137c195a">>
-            %%     andalso ?DEV_LOG("~nTree matched~n~nAccountId ~p~nDepth ~p~nTree~p~nUpdatedTree ~p~n~n", [AccountId, Depth, Tree, UpdatedTree]),
-            %% AccountId =:= <<"5cc4fa8f33cc824a431d71379415ef62">>
-            %%     andalso ?DEV_LOG("~nTree not matched~n~nAccountId ~p~nDepth ~p~nTree~p~nUpdatedTree ~p~n~n", [AccountId, Depth, Tree, UpdatedTree]),
-            State#{real_tree => RealTree#{AccountId => UpdatedTree}
-                  ,multi_paths => MultiPaths#{AccountId => Multi}
+            State;
+        'false' ->
+            %% tree is fixed
+            State#{fixed_trees => FixedTrees#{AccountId => UpdatedTree}
                   }
     end.
 
--spec ensure_tree_is_tree_fold(ensure_state(), kz_term:ne_binary(), non_neg_integer(), kz_term:ne_binaries(), kz_term:ne_binaries()) ->
-                                      {kz_term:ne_binary(), kz_term:ne_binaries()} |
+-spec ensure_tree_is_tree_fold(ensure_state(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binaries()) ->
                                       kz_term:ne_binaries().
-ensure_tree_is_tree_fold(#{master := MasterAccountId}, MasterAccountId, Multi, _, _) ->
-    {Multi, []};
+ensure_tree_is_tree_fold(#{master := MasterAccountId}, MasterAccountId, _, _) ->
+    [];
 
-ensure_tree_is_tree_fold(#{master := MasterAccountId}, _, Multi, [], []) ->
-    {Multi, [MasterAccountId]};
+ensure_tree_is_tree_fold(#{master := MasterAccountId}, _, [], []) ->
+    [MasterAccountId];
 
-ensure_tree_is_tree_fold(_, _, Multi, [], UpdatedTree) ->
-    {Multi, lists:reverse(UpdatedTree)};
+ensure_tree_is_tree_fold(_, _, [], UpdatedTree) ->
+    lists:reverse(UpdatedTree);
 
-ensure_tree_is_tree_fold(#{master := MasterAccountId}=State, AccountId, Multi, [MasterAccountId|Tree], []) ->
-    ensure_tree_is_tree_fold(State, AccountId, Multi, Tree, [MasterAccountId]);
+ensure_tree_is_tree_fold(#{master := MasterAccountId}=State, AccountId, [MasterAccountId|Tree], []) ->
+    ensure_tree_is_tree_fold(State, AccountId, Tree, [MasterAccountId]);
 
-ensure_tree_is_tree_fold(#{master := MasterAccountId}=State, AccountId, Multi, [_BadMasterId|Tree], []) ->
-    ensure_tree_is_tree_fold(State, AccountId, Multi, Tree, [MasterAccountId]);
+ensure_tree_is_tree_fold(#{master := MasterAccountId}=State, AccountId, [_BadMasterId|Tree], []) ->
+    ensure_tree_is_tree_fold(State, AccountId, Tree, [MasterAccountId]);
 
 ensure_tree_is_tree_fold(#{real_ids := RealIds
-                          ,real_tree := RealTree
-                          }=State, AccountId, Multi, [Id|Tree], UpdatedTree) ->
-    case maps:get(Id, RealTree, 'undefined') of
-        'undefined' ->
-            %% AccountId =:= <<"87afd9fa4e14b2a638633c949367004f">>
-            %%     andalso ?DEV_LOG("~nNo Ancestor?~nAccountId ~p~nDepth ~p~nTree~p~nUpdatedTree ~p~nId ~p~n~n"
-            %%                     ,[AccountId, Depth, Tree, lists:reverse(UpdatedTree), Id]
-            %%                     ),
-            %% AccountId =:= <<"c56c4df485f02a3ffd4815f293c2d052">>
-            %%     andalso ?DEV_LOG("~nNo Ancestor?~nAccountId ~p~nDepth ~p~nTree~p~nUpdatedTree ~p~nId ~p~n~n"
-            %%                     ,[AccountId, Depth, Tree, lists:reverse(UpdatedTree), Id]
-            %%                     ),
-            %% AccountId =:= <<"ff06a608387a02fcc65067fb8ab85b2a">>
-            %%     andalso ?DEV_LOG("~nNo Ancestor?~nAccountId ~p~nMulti ~p~nTree~p~nUpdatedTree ~p~nId ~p~n~n"
-            %%                     ,[AccountId, Multi, Tree, lists:reverse(UpdatedTree), Id]
-            %%                     ),
-            case gb_sets:is_member(Id, RealIds) of
-                'true' ->
-                    ensure_tree_is_tree_fold(State, AccountId, Multi, Tree, [Id|UpdatedTree]);
-                'false' ->
-                    ensure_tree_is_tree_fold(State, AccountId, Multi, Tree, UpdatedTree)
-            end;
-        AncestorCalculatedTree ->
-            %% AccountId =:= <<"87afd9fa4e14b2a638633c949367004f">>
-            %%     andalso ?DEV_LOG("~nCal tree:~nAccountId ~p~nDepth ~p~nTree~p~nUpdatedTree ~p~nId ~p~nAncestorCalculatedTree ~p~nis eual ~p~n~n"
-            %%                     ,[AccountId, Depth, Tree, lists:reverse(UpdatedTree), Id, AncestorCalculatedTree, AncestorCalculatedTree =:= lists:reverse(UpdatedTree)]
-            %%                     ),
-            %% AccountId =:= <<"c56c4df485f02a3ffd4815f293c2d052">>
-            %%     andalso ?DEV_LOG("~nCal tree:~nAccountId ~p~nDepth ~p~nTree~p~nUpdatedTree ~p~nId ~p~nAncestorCalculatedTree ~p~nis eual ~p~n~n"
-            %%                     ,[AccountId, Depth, Tree, lists:reverse(UpdatedTree), Id, AncestorCalculatedTree, AncestorCalculatedTree =:= lists:reverse(UpdatedTree)]
-            %%                     ),
-            %% AccountId =:= <<"ff06a608387a02fcc65067fb8ab85b2a">>
-            %%     andalso ?DEV_LOG("~nCal tree:~nAccountId ~p~nMulti ~p~nTree~p~nUpdatedTree ~p~nId ~p~nAncestorCalculatedTree ~p~nis eual ~p~n~n"
-            %%                     ,[AccountId, Multi, Tree, lists:reverse(UpdatedTree), Id, AncestorCalculatedTree, AncestorCalculatedTree =:= lists:reverse(UpdatedTree)]
-            %%                     ),
-            IsMultiBranched = maps:get(last_branch_off, Multi, 0) > 0,
-            case AncestorCalculatedTree =:= lists:reverse(UpdatedTree) of
-                'true' ->
-                    ensure_tree_is_tree_fold(State, AccountId, Multi, Tree, [Id|UpdatedTree]);
-                'false' when IsMultiBranched ->
-                    BranchOff = maps:get(last_branch_off, Multi, 0) + 1,
-                    ensure_tree_is_tree_fold(State, AccountId, Multi#{BranchOff => #{Id => AncestorCalculatedTree}
-                                                                     ,multi_branch => true
-                                                                     ,last_branch_off => BranchOff
-                                                                     }, Tree, UpdatedTree
-                                            );
-                'false' ->
-                    BranchOff = maps:get(last_branch_off, Multi, 0) + 1,
-                    ensure_tree_is_tree_fold(State, AccountId, Multi#{BranchOff => #{Id => AncestorCalculatedTree}
-                                                                     ,multi_branch => false
-                                                                     ,last_branch_off => BranchOff
-                                                                     }, Tree, [Id|UpdatedTree]
-                                            )
-            end
+                          }=State, AccountId, [Id|Tree], UpdatedTree) ->
+    case gb_sets:is_member(Id, RealIds) of
+        'true' ->
+            ensure_tree_is_tree_fold(State, AccountId, Tree, [Id|UpdatedTree]);
+        'false' ->
+            ensure_tree_is_tree_fold(State, AccountId, Tree, UpdatedTree)
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc A function F is a relation, a subset of X × Y, such that the domain of F
+%% is equal to X and such that for every x in X there is a unique element y in Y
+%% with (x, y) in F.
+%%
+%% Sometimes, when the range of a function is more important than the function
+%% itself, the function is called a family.
+%%
+%%    -- from Sets of Sets: http://erlang.org/doc/man/sofs.html
+%%
+%% Family of an account is its own ID and the domain is the length of the
+%% pvt_tree.
+%% @end
+%%------------------------------------------------------------------------------
 -spec create_families(kz_json:objects(), ensure_state(), map()) -> ensure_state().
 create_families([], State, Families) ->
     {State, Families};
@@ -950,56 +952,19 @@ create_families([JObj|JObjs], #{real_ids := RealIds}=State, Families) ->
     AccountDepth = kz_json:get_value(<<"key">>, JObj),
     AccountTree = kz_json:get_value(<<"value">>, JObj),
 
-    NuclearFamilies = add_to_family(AccountDepth, AccountId, AccountTree, Families),
+    NuclearFamilies = add_to_family_domain(AccountDepth, AccountId, AccountTree, Families),
     create_families(JObjs
                    ,State#{real_ids => gb_sets:insert(AccountId, RealIds)}
                    ,NuclearFamilies
                    ).
 
-add_to_family(Depth, AccountId, AccountTree, Families) ->
+-spec add_to_family_domain(non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binaries(), map()) ->
+                           ensure_state().
+add_to_family_domain(Depth, AccountId, AccountTree, Families) ->
     UpdateWithFun = fun(DomainMap) ->
                             DomainMap#{AccountId => AccountTree}
                     end,
     maps:update_with(Depth, UpdateWithFun, #{AccountId => AccountTree}, Families).
-
-%% pretty_print_account_tree(HeadLine, Map) ->
-%%     io:format("~n:: ~s~n", [HeadLine]),
-%%     {_, Lines} = pretty_print_account_tree(Map, maps:size(Map), 0),
-%%     io:put_chars(lists:reverse(Lines)).
-
-%% pretty_print_account_tree(Map, Size, Level) ->
-%%     maps:fold(fun(K, V, {Count, Acc}) ->
-%%                       NestedSize = maps:size(V),
-%%                       IsEnd = Count =:= Size,
-%%                       ThisLine = [case Level > 0 of
-%%                                       'true' -> <<" ">>;
-%%                                       'false' -> <<>>
-%%                                   end
-%%                                  ,kz_binary:join([<<"   ">> || _I <- lists:seq(1, Level)], <<"│"/utf8>>)
-%%                                  ,case IsEnd of
-%%                                       'true' -> <<"└── "/utf8>>;
-%%                                       'false' -> <<"├── "/utf8>>
-%%                                   end
-%%                                  ,K
-%%                                  ,<<" (child counts: ", (kz_term:to_binary(NestedSize))/binary, ")">>
-%%                                  ,<<$\n>>
-%%                                  ],
-%%                       {_, Nested} = pretty_print_account_tree(V, NestedSize, Level+1),
-%%                       {Count+1, [ThisLine ++ lists:reverse(Nested) | Acc]}
-%%               end
-%%              ,{1, []}
-%%              ,Map
-%%              ).
-
-%% add_to_account_tree([], Value, Map) ->
-%%     Map#{Value => #{}};
-%% add_to_account_tree([Path|Paths], Value, Map) ->
-%%     case maps:get(Path, Map, 'undefined') of
-%%         'undefined' ->
-%%             maps:put(Path, add_to_account_tree(Paths, Value, #{}), Map);
-%%         #{}=PathMap ->
-%%             maps:put(Path, add_to_account_tree(Paths, Value, PathMap), Map)
-%%     end.
 
 %%------------------------------------------------------------------------------
 %% @doc
