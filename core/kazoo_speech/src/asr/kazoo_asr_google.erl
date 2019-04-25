@@ -22,13 +22,27 @@
 -define(GOOGLE_ASR_KEY, kapps_config:get_binary(?GOOGLE_CONFIG_CAT, <<"asr_api_key">>, <<"">>)).
 -define(GOOGLE_ASR_PROFANITY_FILTER, kapps_config:get_is_true(?GOOGLE_CONFIG_CAT, <<"asr_profanity_filter">>)).
 -define(GOOGLE_ASR_ENABLE_WORD_TIME_OFFSETS, kapps_config:get_is_true(?GOOGLE_CONFIG_CAT, <<"asr_enable_word_time_offsets">>)).
+-define(GOOGLE_ASR_ENABLE_AUTOMATIC_PUNCTUATION, kapps_config:get_is_true(?GOOGLE_CONFIG_CAT, <<"asr_enable_automatic_punctuation">>, 'true')).
+-define(GOOGLE_ASR_MODEL, kapps_config:get_binary(?GOOGLE_CONFIG_CAT, <<"asr_model">>, <<"phone_call">>)).
+-define(GOOGLE_ASR_USE_ENHANCED, kapps_config:get_is_true(?GOOGLE_CONFIG_CAT, <<"asr_use_enhanced">>, 'true')).
+
+-define(DEFAULT_ASR_CONTENT_TYPE, <<"application/wav">>).
+-define(SUPPORTED_CONTENT_TYPES, [<<"application/wav">>]).
 
 -spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> provider_return().
 commands(_Bin, _Commands, _ContentType, _Locale, _Opts) ->
     {'error', 'asr_provider_failure', <<"Not implemented">>}.
 
 -spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
-freeform(Content, _ContentType, Locale, Options) ->
+freeform(Content, ContentType, Locale, Options) ->
+    case kazoo_asr_util:maybe_convert_content(Content, ContentType, ?SUPPORTED_CONTENT_TYPES, ?DEFAULT_ASR_CONTENT_TYPE) of
+        {'error', _}=E -> E;
+        {Content1, ContentType1} -> exec_freeform(Content1, ContentType1, Locale, Options)
+    end.
+
+-spec exec_freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
+                           asr_resp().
+exec_freeform(Content, _ContentType, Locale, Options) ->
     BaseUrl = ?GOOGLE_ASR_URL,
     Headers = req_headers(),
     lager:debug("sending request to ~s", [BaseUrl]),
@@ -36,6 +50,9 @@ freeform(Content, _ContentType, Locale, Options) ->
     AudioConfig = [{<<"languageCode">>, Locale}
                   ,{<<"profanityFilter">>, ?GOOGLE_ASR_PROFANITY_FILTER}
                   ,{<<"enableWordTimeOffsets">>, ?GOOGLE_ASR_ENABLE_WORD_TIME_OFFSETS}
+                  ,{<<"enableAutomaticPunctuation">>, ?GOOGLE_ASR_ENABLE_AUTOMATIC_PUNCTUATION}
+                  ,{<<"model">>, ?GOOGLE_ASR_MODEL}
+                  ,{<<"useEnhanced">>, ?GOOGLE_ASR_USE_ENHANCED}
                   ],
     AudioContent = [{<<"content">>, base64:encode(Content)}],
     Req = kz_json:from_list([{<<"config">>,kz_json:from_list(AudioConfig)}
