@@ -278,12 +278,19 @@ jobjs_to_file(JObjs, CellOrdering) ->
     File = <<"/tmp/json_", (kz_binary:rand_hex(11))/binary, ".csv">>,
     jobjs_to_file(JObjs, {File, CellOrdering}).
 
+-spec maybe_convert_cell_to_binary(kz_json:get_key(), kz_json:object()) -> binary().
+maybe_convert_cell_to_binary(Path, JObj) ->
+    case kz_json:get_value(Path, JObj, ?ZILCH) of
+        List when is_list(List) -> list_to_binary(lists:join(",", List));
+        Value -> cell_to_binary(Value)
+    end.
+
 -spec jobj_to_file(kz_json:object(), file_return()) -> file_return().
 jobj_to_file(JObj, {File, CellOrdering}) ->
     FlatJObj = kz_json:flatten(JObj),
     NewOrdering = maybe_update_ordering(CellOrdering, FlatJObj),
 
-    Row = [cell_to_binary(kz_json:get_ne_binary_value(Path, JObj, ?ZILCH)) || Path <- NewOrdering],
+    Row = [maybe_convert_cell_to_binary(Path, JObj) || Path <- NewOrdering],
     _ = file:write_file(File, [csv_ize(Row)], ['append']),
     {File, NewOrdering}.
 
