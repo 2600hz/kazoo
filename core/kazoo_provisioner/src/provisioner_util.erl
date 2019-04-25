@@ -440,7 +440,8 @@ get_owner(OwnerId, AccountId) ->
 %% @doc Do awesome provisioning
 %% @end
 %%------------------------------------------------------------------------------
-send_provisioning_template(NewDeviceDoc, Template) ->
+-spec send_provisioning_template(kzd_devices:doc(), kz_json:object()) -> 'ok'.
+send_provisioning_template(NewDeviceDoc, _DeviceTemplate) ->
     %% TODO: theoretically this is the start of multiple line support....
     Line = <<"lineloop|line_1">>,
     MACAddress = kz_term:to_list(kzd_devices:mac_address(NewDeviceDoc, "")),
@@ -564,71 +565,62 @@ set_global_overrides(_) ->
                          {'ok', JObj} -> JObj;
                          {'error', _} -> kz_json:new()
                      end,
-    [fun(J) ->
-             case kz_json:get_value(<<"defaults">>, GlobalDefaults) of
-                 'undefined' -> J;
-                 Overrides -> kz_json:merge(J, Overrides)
-             end
-     end
-    ].
+
+    case kz_json:get_json_value(<<"defaults">>, GlobalDefaults) of
+        'undefined' -> [fun kz_term:identity/1];
+        Overrides -> [fun(J) -> kz_json:merge(J, Overrides) end]
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc merge in any overrides from the account doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_account_overrides(cb_context:context()) ->
+-spec set_account_overrides(kzd_dvices:doc()) ->
                                    [fun((kz_json:object()) -> kz_json:object()),...].
-set_account_overrides(Context) ->
-    Account = case kzd_accounts:fetch(cb_context:account_id(Context)) of
-                  {'ok', JObj} -> JObj;
-                  {'error', _} -> kz_json:new()
-              end,
-    [fun(J) ->
-             case kz_json:get_value([<<"provision">>, <<"overrides">>], Account) of
-                 'undefined' -> J;
-                 Overrides -> kz_json:merge(J, Overrides)
-             end
-     end
-    ].
+set_account_overrides(DeviceDoc) ->
+    AccountJObj = case kzd_accounts:fetch(kz_doc:account_id(DeviceDoc)) of
+                      {'ok', JObj} -> JObj;
+                      {'error', _} -> kz_json:new()
+                  end,
+
+    case kz_json:get_json_value([<<"provision">>, <<"overrides">>], AccountJObj) of
+        'undefined' -> [fun kz_term:identity/1];
+        Overrides -> [fun(J) -> kz_json:merge(J, Overrides) end]
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc merge in any overrides from the user doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_user_overrides(cb_context:context()) ->
+-spec set_user_overrides(kzd_devices:doc()) ->
                                 [fun((kz_json:object()) -> kz_json:object()),...].
-set_user_overrides(Context) ->
-    OwnerId = kz_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context)),
-    User = case is_binary(OwnerId)
-               andalso kz_datamgr:open_doc(cb_context:account_db(Context), OwnerId)
-           of
-               {'ok', JObj} -> JObj;
-               _Else -> kz_json:new()
-           end,
-    [fun(J) ->
-             case kz_json:get_value([<<"provision">>, <<"overrides">>], User) of
-                 'undefined' -> J;
-                 Overrides -> kz_json:merge(J, Overrides)
-             end
-     end
-    ].
+set_user_overrides(DeviceDoc) ->
+    set_user_overrides(DeviceDoc, kzd_devices:owner_id(DeviceDoc)).
+
+set_user_overrides(_DeviceDoc, 'undefined') ->
+    [fun kz_term:identity/1];
+set_user_overrides(DeviceDoc, OwnerId) ->
+    set_user_overrides(DeviceDoc, OwnerId, kzd_users:fetch(kz_doc:account_id(DeviceDoc), OwnerId)).
+
+set_user_overrides(_DeviceDoc, _OwnerId, {'error', _}) ->
+    [fun kz_term:identity/1];
+set_user_overrides(_DeviceDoc, _OwnerId, {'ok', Owner}) ->
+    case kz_json:get_json_value([<<"provision">>, <<"overrides">>], Owner) of
+        'undefined' -> [fun kz_term:identity/1];
+        Overrides -> [fun(J) -> kz_json:merge(J, Overrides) end]
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc merge in any overrides from the device doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_device_overrides(cb_context:context()) ->
+-spec set_device_overrides(kzd_devices:doc()) ->
                                   [fun((kz_json:object()) -> kz_json:object()),...].
-set_device_overrides(Context) ->
-    Device = cb_context:doc(Context),
-    [fun(J) ->
-             case kz_json:get_value([<<"provision">>, <<"overrides">>], Device) of
-                 'undefined' -> J;
-                 Overrides ->
-                     kz_json:merge(J, Overrides)
-             end
-     end
-    ].
+set_device_overrides(Device) ->
+    case kz_json:get_json_value([<<"provision">>, <<"overrides">>], Device) of
+        'undefined' -> [fun kz_term:identity/1];
+        Overrides -> [fun(J) -> kz_json:merge(J, Overrides) end]
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Send awesome provisioning request
