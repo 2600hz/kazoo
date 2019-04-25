@@ -575,7 +575,7 @@ set_global_overrides(_) ->
 %% @doc merge in any overrides from the account doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_account_overrides(kzd_dvices:doc()) ->
+-spec set_account_overrides(kzd_devices:doc()) ->
                                    [fun((kz_json:object()) -> kz_json:object()),...].
 set_account_overrides(DeviceDoc) ->
     AccountJObj = case kzd_accounts:fetch(kz_doc:account_id(DeviceDoc)) of
