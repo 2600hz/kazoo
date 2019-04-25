@@ -327,12 +327,14 @@ exec_command(#kz_amqp_assignment{consumer=Consumer
 exec_command(#kz_amqp_assignment{channel=Channel
                                 ,consumer=Consumer
                                 }=_Assignment
-            ,#'basic.cancel'{nowait=NoWait}
+            ,#'basic.cancel'{nowait=NoWait
+                            ,consumer_tag=CTag
+                            }
             ) when is_pid(Consumer) ->
     case is_process_alive(Consumer)  of
         'false' -> lager:debug("consumer ~p is down, ignoring basic.cancel");
         'true' ->
-            cancel_consumer_tags(Consumer, Channel, NoWait)
+            cancel_consumer_tag(Consumer, Channel, CTag, NoWait)
     end;
 exec_command(#kz_amqp_assignment{channel=Channel}=Assignment
             ,#'queue.unbind'{queue=QueueName
@@ -459,6 +461,12 @@ assert_valid_amqp_method(Command) ->
     end,
     'ok'.
 
+cancel_consumer_tag(Consumer, Channel, 'undefined', NoWait) ->
+    lager:debug("cancelling all tags for consumer ~p", [Consumer]),
+    cancel_consumer_tags(Consumer, Channel, NoWait);
+cancel_consumer_tag(Consumer, Channel, CTag, NoWait) ->
+    cancel_consumer_tags(Consumer, Channel, NoWait, [CTag]).
+
 cancel_consumer_tags(Consumer, Channel, NoWait) ->
     cancel_consumer_tags(Consumer, Channel, NoWait, is_process_alive(Consumer)).
 
@@ -471,7 +479,7 @@ cancel_consumer_tags(Consumer, Channel, NoWait, 'true') ->
         {_Module, Ref, Tags} ->
             cancel_consumer_tags(Consumer, Channel, NoWait, Tags)
     after
-        5 * ?MILLISECONDS_IN_SECOND ->
+        ?MILLISECONDS_IN_SECOND ->
             lager:warning("consumer ~p failed to supply consumer tags", [Consumer])
     end;
 cancel_consumer_tags(_Consumer, Channel, NoWait, Tags) when is_list(Tags) ->
