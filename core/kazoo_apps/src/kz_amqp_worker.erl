@@ -220,6 +220,8 @@ call(Req, PubFun, VFun, Timeout) ->
 
 -spec call(kz_term:api_terms(), publish_fun(), validate_fun(), timeout(), pid()  | atom()) ->
                   request_return().
+call(Req, PubFun, VFun, Timeout, 'undefined') ->
+    call(Req, PubFun, VFun, Timeout, worker_pool());
 call(Req, PubFun, VFun, Timeout, Pool) when is_atom(Pool) ->
     case next_worker(Pool) of
         {'error', _}=E -> E;
