@@ -34839,6 +34839,32 @@
             },
             "type": "object"
         },
+        "system_config.tasks.fax_cleanup": {
+            "description": "Schema for tasks.fax_cleanup system_config",
+            "properties": {
+                "enabled": {
+                    "default": true,
+                    "description": "Enables the cluster to run the fax cleanup task",
+                    "type": "boolean"
+                },
+                "page_size": {
+                    "default": 32,
+                    "description": "The number of documents to process in one fetch operation",
+                    "type": "integer"
+                },
+                "per_page_pause_ms": {
+                    "default": 1000,
+                    "description": "How many milliseconds to pause between chunk fetches",
+                    "type": "integer"
+                },
+                "stale_after_s": {
+                    "default": 604800,
+                    "description": "The number of seconds old a document is before it is considered to be stale",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
         "system_config.tasks.notify_resend": {
             "description": "Schema for tasks.notify_resend system_config",
             "properties": {
