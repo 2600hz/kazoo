@@ -29,7 +29,7 @@ handle_req(ApiJObj, _Props) ->
     lager:debug("received sysconf get for ~s:~p from ~s", [Category, Key, Node]),
 
     Value = get_value(Category, Key, Default, Node),
-    RespQ = kz_Api:server_id(ApiJObj),
+    RespQ = kz_api:server_id(ApiJObj),
 
     lager:debug("sending reply for ~s.~s(~s): ~p"
                ,[Category, format_key(Key), Node, Value]
