@@ -314,39 +314,46 @@ fix_account_numbers(Account = ?NE_BINARY) ->
 log_alien(_AccountDb, _DID) ->
     ?SUP_LOG_DEBUG("########## found alien [~s] doc: ~s ##########", [_AccountDb, _DID]).
 
-%% @doc This function will get a list of all account's DBs and will try to
-%% create each account's numbers in number DBs
+%%------------------------------------------------------------------------------
+%% @doc
 %% @end
+%%------------------------------------------------------------------------------
 -spec copy_accounts_to_number_dbs() -> 'ok'.
 copy_accounts_to_number_dbs() ->
     AccountDbs = kapps_util:get_all_accounts('encoded'),
-    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun copy_account_to_number_dbs/1, AccountDbs).
+    ?SUP_LOG_DEBUG("::: start copying numbers doc from ~b account dbs to number dbs", [length(AccountDbs)]),
+    copy_accounts_to_number_dbs(AccountDbs, length(AccountDbs), ?TIME_BETWEEN_ACCOUNTS_MS).
 
-%% @doc This function will try to create each account's numbers in number DBs
-%% @end
 -spec copy_accounts_to_number_dbs(kz_term:ne_binaries()) -> 'ok'.
 copy_accounts_to_number_dbs(Accounts) ->
-    AccountDbs = lists:usort([kz_util:format_account_db(Account) || Account <- Accounts]),
-    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun copy_account_to_number_dbs/1, AccountDbs).
+    ?SUP_LOG_DEBUG("::: start copying numbers doc from ~b account dbs to number dbs", [length(Accounts)]),
+    copy_accounts_to_number_dbs(Accounts, length(Accounts), ?TIME_BETWEEN_ACCOUNTS_MS).
 
-%% @doc This function will try to create the account's numbers in number DBs
+copy_accounts_to_number_dbs([], _, _) ->
+    'ok';
+copy_accounts_to_number_dbs([AccountDb|AccountDbs], Total, SleepTime) ->
+    ?SUP_LOG_DEBUG("(~p/~p) copying numbers from '~s' to number dbs~n"
+                  ,[length(AccountDbs) + 1, Total, AccountDb]
+                  ),
+    copy_account_to_number_dbs(AccountDb),
+    _ = timer:sleep(SleepTime),
+    copy_accounts_to_number_dbs(AccountDbs, Total, SleepTime).
+
+%%------------------------------------------------------------------------------
+%% @doc
 %% @end
+%%------------------------------------------------------------------------------
 -spec copy_account_to_number_dbs(kz_term:ne_binary()) -> 'ok'.
-copy_account_to_number_dbs(?MATCH_ACCOUNT_ENCODED(_, _, _)=AccountDb) ->
-    ?SUP_LOG_DEBUG(":: copying numbers from [~s] to number dbs", [AccountDb]),
-
+copy_account_to_number_dbs(Account) ->
+    AccountDb = kz_util:format_account_db(Account),
     ViewOptions = [{'limit', 200}
                   ,'include_docs'
                   ],
-    copy_account_to_number_dbs(AccountDb, ViewOptions, 2),
-
-    ?SUP_LOG_DEBUG("done.~n");
-copy_account_to_number_dbs(Account = ?NE_BINARY) ->
-    copy_account_to_number_dbs(kz_util:format_account_db(Account)).
+    copy_account_to_number_dbs(AccountDb, ViewOptions, 2).
 
 -spec copy_account_to_number_dbs(kz_term:ne_binary(), kz_term:proplist(), integer()) -> 'ok'.
 copy_account_to_number_dbs(_AccountDb, _, Retries) when Retries < 0 ->
-    ?SUP_LOG_DEBUG(" [~s] reached to maximum retries", [kz_util:format_account_id(_AccountDb)]);
+    ?SUP_LOG_DEBUG("  - reached to maximum retries to get numbers from account db");
 copy_account_to_number_dbs(AccountDb, ViewOptions, Retries) ->
     case kz_datamgr:get_results(AccountDb, <<"phone_numbers/crossbar_listing">>, ViewOptions) of
         {'ok', JObjs} ->
@@ -361,7 +368,7 @@ copy_account_to_number_dbs(AccountDb, ViewOptions, Retries) ->
                     split_and_save_to_number_dbs(AccountDb, JObjs)
             end;
         {'error', _Reason} ->
-            ?SUP_LOG_DEBUG(" [~s] failed to get numbers, maybe trying again...", [kz_util:format_account_id(AccountDb)]),
+            ?SUP_LOG_DEBUG("  - failed to get numbers from accountdb (~p), maybe trying again...", [_Reason]),
             copy_account_to_number_dbs(AccountDb, ViewOptions, Retries - 1)
     end.
 
@@ -378,87 +385,45 @@ split_and_save_to_number_dbs(AccountDb, Results) ->
 -spec save_to_number_dbs(kz_term:ne_binary(), kz_term:proplist(), integer()) -> 'ok'.
 save_to_number_dbs(_, [], _) -> 'ok';
 save_to_number_dbs(_AccountDb, _, Retries) when Retries < 0 ->
-    ?SUP_LOG_DEBUG(" [~s] reached to maximum retries", [kz_util:format_account_id(_AccountDb)]);
+    ?SUP_LOG_DEBUG("  - reached to maximum retries to save to number dbs in this batch");
 save_to_number_dbs(AccountDb, [{Db, JObjs} | Rest], Retries) ->
-    AccountId = kz_util:format_account_id(AccountDb),
     case kz_datamgr:save_docs(Db, JObjs) of
-        {ok, Saved} ->
-            {Failed, Conflicts} =
-                lists:foldl(fun(JObj, {Failed, Conflicts}=Acc) ->
-                                    Id = kz_json:get_value(<<"id">>, JObj),
-                                    case kz_json:get_value(<<"error">>, JObj) of
-                                        'undefined' -> Acc;
-                                        <<"conflict">> -> {Failed, gb_sets:add_element(Id, Conflicts)};
-                                        Reason -> {[{Id, Reason} | Failed], Conflicts}
-                                    end
-                            end
-                           ,{[], gb_sets:new()}
-                           ,Saved
-                           ),
-            ReallyConflicts = check_assigned_to(AccountDb, Db, Conflicts),
-            log_saved_failed(AccountDb, Db, lists:usort(Failed ++ ReallyConflicts)),
+        {'ok', Saved} ->
+            log_save_failures(<<"  - failed to save some numbers in ", Db/binary, ": ">>
+                             ,Saved
+                             ),
             save_to_number_dbs(AccountDb, Rest, Retries);
-        {error, not_found} ->
-            ?SUP_LOG_DEBUG(" [~s] creating new number db '~s'", [AccountId, Db]),
-            'true' = kz_datamgr:db_create(Db),
+        {'error', 'not_found'} ->
+            ?SUP_LOG_DEBUG("  - creating number db ~s", [Db]),
+            _ = kz_datamgr:db_create(Db),
             _ = kapps_maintenance:refresh(Db),
             save_to_number_dbs(AccountDb, [{Db, JObjs} | Rest], Retries - 1);
-        {error, timeout} ->
-            ?SUP_LOG_ERROR(" [~s] failed to save numbers to ~s: timeout, maybe trying again...", [AccountId, Db]),
+        {'error', 'timeout'} ->
+            ?SUP_LOG_ERROR("  - timeout to save to ~s, maybe trying again...", [Db]),
             save_to_number_dbs(AccountDb, [{Db, JObjs} | Rest], Retries - 1);
-        {error, _Reason} ->
-            ?SUP_LOG_ERROR(" [~s] failed to save numbers to ~s: ~p", [AccountId, Db, _Reason])
-    end.
-
--spec check_assigned_to(kz_term:ne_binary(), kz_term:ne_binary(), gb_sets:set()) -> kz_term:proplist().
-check_assigned_to(AccountDb, Db, Conflicts) ->
-    AccountId = kz_util:format_account_id(AccountDb),
-    Ids = gb_sets:to_list(Conflicts),
-    ToRead = [[AccountId, Id] || Id <- Ids],
-
-    %% CAUTION: should return Conflicts if there are no wrong assigned or we couldn't get the result from db
-    PNIds = case ToRead =/= []
-                andalso kz_datamgr:get_results(Db, <<"numbers/assigned_to">>, [{keys, ToRead}])
-            of
-                'false' -> Conflicts;
-                {'ok', []} -> Conflicts;
-                {'ok', PNs} ->
-                    gb_sets:from_list([kz_doc:id(JObj) || JObj <- PNs]);
-                {'error', _Error} ->
-                    ?SUP_LOG_ERROR(" [~s] failed to check assignments of conflicted numbers: ~p", [AccountId, _Error]),
-                    Conflicts
-            end,
-
-    WrongAssigned = gb_sets:to_list(gb_sets:difference(Conflicts, PNIds)),
-    ReallyConflicts = [{Id, <<"conflict">>} || Id <- gb_sets:to_list(gb_sets:intersection(Conflicts, PNIds))],
-    case WrongAssigned =/= []
-        andalso warn_delete(AccountId, WrongAssigned)
-        andalso kz_datamgr:del_docs(AccountDb, WrongAssigned)
-    of
-        'false' -> ReallyConflicts;
-        {'ok', _} -> ReallyConflicts;
         {'error', _Reason} ->
-            ?SUP_LOG_ERROR(" [~s] failed to delete wrong assigned numbers: ~p", [AccountId, _Reason]),
-            ReallyConflicts
+            ?SUP_LOG_ERROR("  - failed to save numbers to ~s: ~p", [Db, _Reason])
     end.
 
--spec warn_delete(kz_term:ne_binary(), kz_term:proplist()) -> 'true'.
-warn_delete(AccountId, WrongAssigned) ->
-    io:put_chars([" [", AccountId, "] deleting numbers which are not assigned to this account:", $\n
-                 ,[["\t", Id, ": removing due to wrong assignment", $\n] || Id <- WrongAssigned]
-                 ]
-                ),
-    'true'.
+-spec log_save_failures(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
+log_save_failures(_, []) -> 'ok';
+log_save_failures(Message, JObjs) ->
+    Failed = lists:foldl(fun split_by_failed_reason/2, #{}, JObjs),
+    case maps:size(Failed) > 0 of
+        'false' -> 'ok';
+        'true' ->
+            SumFun = fun(Reason, Count, Acc) ->
+                             [kz_term:to_binary(io_lib:format("~p: ~b", [Reason, Count]))|Acc]
+                     end,
+            Reasons = maps:fold(SumFun, [], Failed),
+            ?SUP_LOG_DEBUG("~s, ~s", [Message, kz_binary:join(Reasons, <<", ">>)])
+    end.
 
--spec log_saved_failed(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
-log_saved_failed(_, _, []) -> 'ok';
-log_saved_failed(AccountDb, Db, Props) ->
-    AccountId = kz_util:format_account_id(AccountDb),
-    io:put_chars([" [", AccountId, "] failed to save ", integer_to_binary(length(Props)), " number(s) into number db '", Db, "':\n"
-                 ,[["\t", Num, ": ", Error, $\n]
-                   || {Num, Error} <- Props
-                  ]
-                 ]).
+split_by_failed_reason(JObj, Acc) ->
+    case kz_json:get_value(<<"error">>, JObj) of
+        'undefined' -> Acc;
+        Reason -> Acc#{Reason => maps:get(Reason, Acc, 0) + 1}
+    end.
 
 -spec fix_number(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> knm_number_return().
 fix_number(Num, AuthBy, AccountDb) ->
