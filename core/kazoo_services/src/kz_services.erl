@@ -1021,7 +1021,7 @@ delete(?MATCH_ACCOUNT_RAW(AccountId)) ->
     delete(fetch(AccountId));
 delete(#kz_services{}=Services) ->
     %% TODO: cancel services with all bookkeepers...
-    {'ok', _} = kz_datamgr:del_doc(?KZ_SERVICES_DB, kz_doc:id(services_jobj(Services))),
+    _ = kz_datamgr:del_doc(?KZ_SERVICES_DB, kz_doc:id(services_jobj(Services))),
     Services.
 
 %%------------------------------------------------------------------------------
