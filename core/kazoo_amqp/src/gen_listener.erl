@@ -129,7 +129,7 @@
                ,module :: atom()
                ,module_state :: module_state()
                ,module_timeout_ref :: kz_term:api_reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
-               ,other_queues = [] :: [{kz_term:ne_binary(), {kz_term:proplist(), kz_term:proplist()}}] %% {QueueName, {kz_term:proplist(), kz_term:proplist()}}
+               ,other_queues = [] :: [{kz_term:ne_binary(), {bindings(), kz_term:proplist()}}] %% {QueueName, {Bindings, QueueProps}}
                ,federators = [] :: federator_listeners()
                ,waiting_federators = [] :: list()
                ,self = self() :: pid()
@@ -627,9 +627,9 @@ maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret().
-handle_info({'kz_amqp_assignment', {'new_channel', _Reconnected, Channel}}, State) ->
+handle_info({'kz_amqp_assignment', {'new_channel', Reconnected, Channel}}, State) ->
     _ = kz_amqp_channel:consumer_channel(Channel),
-    {'noreply', handle_amqp_channel_available(State)};
+    {'noreply', handle_amqp_channel_available(State, Reconnected)};
 handle_info({'kz_amqp_assignment', 'lost_channel'}, State) ->
     lager:debug("lost channel assignment"),
     {'noreply', State#state{is_consuming='false'
@@ -1297,9 +1297,10 @@ federated_queue_name(Params, Options) ->
             <<QueueName/binary, "-", Zone/binary>>
     end.
 
--spec handle_amqp_channel_available(state()) -> state().
-handle_amqp_channel_available(#state{params=Params}=State) ->
-    lager:debug("channel started, let's connect"),
+-spec handle_amqp_channel_available(state(), boolean()) -> state().
+handle_amqp_channel_available(#state{params=Params}=State, Reconnected) ->
+    log_channel_status(Reconnected),
+
     case maybe_declare_exchanges(props:get_value('declare_exchanges', Params, [])) of
         'ok' ->
             handle_exchanges_ready(State);
@@ -1308,15 +1309,39 @@ handle_amqp_channel_available(#state{params=Params}=State) ->
             handle_amqp_errored(State)
     end.
 
+log_channel_status('true') ->
+    lager:debug("channel restarted, let's re-connect");
+log_channel_status('false') ->
+    lager:debug("channel started, let's connect").
+
 -spec handle_exchanges_ready(state()) -> state().
-handle_exchanges_ready(#state{params=Params, auto_ack=AutoAck}=State) ->
+handle_exchanges_ready(#state{params=Params
+                             ,auto_ack=AutoAck
+                             }=State
+                      ) ->
     case start_amqp(Params, AutoAck) of
         {'ok', Q} ->
-            handle_amqp_started(State, Q);
+            State1 = handle_amqp_started(State, Q),
+            maybe_start_other_queues(State1);
         {'error', Reason} ->
             lager:error("start amqp error ~p", [Reason]),
             handle_amqp_errored(State)
     end.
+
+-spec maybe_start_other_queues(state()) -> state().
+maybe_start_other_queues(#state{other_queues=[]}=State) ->
+    lager:debug("no other queues to start"),
+    State;
+maybe_start_other_queues(#state{other_queues=Queues}=State) ->
+    lists:foldl(fun start_other_queue_fold/2
+               ,State#state{other_queues=[]}
+               ,Queues
+               ).
+
+start_other_queue_fold({QueueName, {Bindings, QueueParams}}, State) ->
+    {_Q, State1} = add_other_queue(QueueName, QueueParams, Bindings, State),
+    lager:debug("started other queue ~s as ~s", [QueueName, _Q]),
+    State1.
 
 -spec handle_amqp_started(state(), kz_term:ne_binary()) -> state().
 handle_amqp_started(#state{params=Params}=State, Q) ->
