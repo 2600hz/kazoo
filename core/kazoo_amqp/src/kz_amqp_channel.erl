@@ -447,8 +447,9 @@ handle_command_result('ok', Command, #kz_amqp_assignment{channel=Channel}=_Assig
     lager:debug("executed AMQP command ~s with no_wait option via channel ~p"
                ,[element(1, Command), Channel]
                );
-handle_command_result(_Else, _R, _) ->
-    lager:warning("unexpected AMQP command result: ~p", [lager:pr(_Else, ?MODULE)]),
+handle_command_result(_Result, _Command, _Assignment) ->
+    lager:warning("unexpected AMQP command result: ~p", [lager:pr(_Result, ?MODULE)]),
+    lager:info("command ~p returned ~p", [_Command, _Result]),
     {'error', 'unexpected_result'}.
 
 -spec assert_valid_amqp_method(kz_amqp_command()) -> 'ok'.

@@ -517,7 +517,6 @@ declare_default_exchanges() ->
     'ok'.
 
 declare_default_exchange(M) ->
-    lager:info("declaring default exchanges from ~s", [M]),
     spawn(M, 'declare_exchanges', []).
 
 -spec declare_exchanges(kz_amqp_connection(), kz_amqp_exchanges()) -> kz_amqp_connection().
