@@ -17,6 +17,7 @@
         ,agent_presence_update/2
         ,presence_update/3, presence_update/4
         ,send_cdr/2
+        ,hangup_cause/1
         ]).
 
 -include("acdc.hrl").
@@ -134,3 +135,10 @@ proc_id(Pid) -> proc_id(Pid, node()).
 
 -spec proc_id(pid(), atom() | kz_term:ne_binary()) -> kz_term:ne_binary().
 proc_id(Pid, Node) -> list_to_binary([kz_term:to_binary(Node), "-", pid_to_list(Pid)]).
+
+-spec hangup_cause(kz_json:object()) -> kz_term:ne_binary().
+hangup_cause(JObj) ->
+    case kz_json:get_value(<<"Hangup-Cause">>, JObj) of
+        'undefined' -> <<"unknown">>;
+        Cause -> Cause
+    end.
