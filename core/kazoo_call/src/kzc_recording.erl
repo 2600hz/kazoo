@@ -140,7 +140,7 @@ handle_call_event(JObj, AMQPWorker) ->
 
     case kz_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_TRANSFEROR">>} ->
-            gen_listener:add_binding(AMQPWorker, ?CALL_BINDING(kz_call_event:other_leg_call_id(JObj)));
+            gen_listener:add_binding(AMQPWorker, 'call', ?CALL_BINDING(kz_call_event:other_leg_call_id(JObj)));
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
             gen_server:cast(KZCWorker, 'maybe_start_recording_on_bridge');
         {<<"call_event">>, <<"CHANNEL_ANSWER">>} ->
