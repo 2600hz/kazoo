@@ -106,7 +106,9 @@
 -export([sum_jobjs/1, sum_jobjs/2]).
 -export_type([sumer/0]).
 
--export([order_by/3]).
+-export([sort/2
+        ,order_by/3
+        ]).
 
 -export([lift_common_properties/1, lift_common_properties/2]).
 
@@ -567,6 +569,17 @@ sum_jobjs([FirstJObj|JObjs], Sumer)
   when is_function(Sumer, 2) ->
     F = fun (JObj, Carry) -> sum(Carry, JObj, fun default_sumer/2) end,
     lists:foldl(F, FirstJObj, JObjs).
+
+%%------------------------------------------------------------------------------
+%% @doc Reorder JSON objects according to the given soft function.
+%% Returns a sorted list of JObjs, according to the ordering function Fun.
+%% Fun(A, B) is to return true if A compares less than or equal to B in the ordering, otherwise false.
+%% @end
+%%------------------------------------------------------------------------------
+-type sort_fun() :: fun((object(), object()) -> boolean()).
+-spec sort(sort_fun(), objects()) -> objects().
+sort(Fun, ListOfJObjs) ->
+    lists:sort(Fun, ListOfJObjs).
 
 %%------------------------------------------------------------------------------
 %% @doc Reorder JSON objects according to the given list of binaries.
