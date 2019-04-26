@@ -69,17 +69,13 @@ fetch_port(AccountId, View) ->
                   ,{'startkey', [AccountId]}
                   ,{'endkey', [AccountId, kz_json:new()]}
                   ],
-    case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, View, ViewOptions) of
-        {'ok', JObjs} ->
-            Quantities = [{port_key(kz_json:get_value(<<"key">>, JObj))
-                          ,kz_json:get_integer_value(<<"value">>, JObj, 0)
-                          }
-                          || JObj <- JObjs
-                         ],
-            kz_json:set_values(Quantities, kz_json:new());
-        {'error', _R} ->
-            kz_json:new()
-    end.
+    {'ok', JObjs} = kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, View, ViewOptions),
+    Quantities = [{port_key(kz_json:get_value(<<"key">>, JObj))
+                  ,kz_json:get_integer_value(<<"value">>, JObj, 0)
+                  }
+                  || JObj <- JObjs
+                 ],
+    kz_json:set_values(Quantities, kz_json:new()).
 
 -spec port_key(kz_term:ne_binaries()) -> kz_term:ne_binaries().
 port_key([_AccountId, State]) ->
@@ -96,20 +92,13 @@ fetch_account_cascade(AccountId) ->
 
 -spec fetch(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kz_json:object().
 fetch(Database, View, ViewOptions) ->
-    case kz_datamgr:get_results(Database, View, ViewOptions) of
-        {'error', _Reason} ->
-            lager:info("unable to fetch quantities from ~s:~s: ~p"
-                      ,[Database, View, _Reason]
-                      ),
-            kz_json:new();
-        {'ok', JObjs} ->
-            Quantities = [{kz_json:get_value(<<"key">>, JObj)
-                          ,kz_json:get_integer_value(<<"value">>, JObj, 0)
-                          }
-                          || JObj <- JObjs
-                         ],
-            fetch_to_json(Quantities)
-    end.
+    {'ok', JObjs} = kz_datamgr:get_results(Database, View, ViewOptions),
+    Quantities = [{kz_json:get_value(<<"key">>, JObj)
+                  ,kz_json:get_integer_value(<<"value">>, JObj, 0)
+                  }
+                  || JObj <- JObjs
+                 ],
+    fetch_to_json(Quantities).
 
 -spec fetch_to_json(quantities_prop()) -> kz_json:object().
 fetch_to_json(Quantities) ->
