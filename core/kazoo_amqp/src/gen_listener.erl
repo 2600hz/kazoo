@@ -627,12 +627,7 @@ maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret().
-handle_info({'kz_amqp_assignment', {'new_channel', 'true', Channel}}, State) ->
-    lager:debug("channel reconnecting"),
-    _ = kz_amqp_channel:consumer_channel(Channel),
-    cast(self(), {'resume_consumers'}),
-    {'noreply', State};
-handle_info({'kz_amqp_assignment', {'new_channel', 'false', Channel}}, State) ->
+handle_info({'kz_amqp_assignment', {'new_channel', _Reconnected, Channel}}, State) ->
     _ = kz_amqp_channel:consumer_channel(Channel),
     {'noreply', handle_amqp_channel_available(State)};
 handle_info({'kz_amqp_assignment', 'lost_channel'}, State) ->
