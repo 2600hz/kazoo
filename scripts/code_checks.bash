@@ -21,10 +21,13 @@ function check_MODULE {
         [[ 'erl' != ${base##*.} ]] && continue
         local err=0
         m=$(grep -Fe '-module(' "$f"  2>/dev/null | cut -d'(' -f2 | cut -d')' -f1)
-        grep -nHE '^[^%]*[^a-zA-Z0-9_]'$m[[:space:]]*: "$f"
+
+        grep -nHE '^[^%]*[^a-zA-Z0-9_]'$m[[:space:]]*:[\w+] "$f"
         [[ $? -ne 1 ]] && ((err++))
-        grep -nHE "^[^%]*'$m[[:space:]]*:'" "$f"
+
+        grep -nHE "^[^%]*'$m[[:space:]]*:[\w]'" "$f"
         [[ $? -ne 1 ]] && ((err++))
+
         [[ $err -ne 0 ]] && echo && ((errors++))
     done
     return $errors
