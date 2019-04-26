@@ -3278,7 +3278,13 @@ store_file(Filename, URLFun, Tries, Timeout, Call) ->
                            'ok' | {'error', any()}.
 do_store_file(Tries, Timeout, API, Msg, Call) ->
     Payload = API(),
-    case kz_amqp_worker:call(Payload, fun kapi_switch:publish_command/1, fun kapi_switch:fs_reply_v/1, Timeout) of
+    case kz_amqp_worker:call(Payload
+                            ,fun kapi_switch:publish_command/1
+                            ,fun kapi_switch:fs_reply_v/1
+                            ,Timeout
+                            ,kapps_call:kvs_fetch('consumer_pid', Call)
+                            )
+    of
         {'ok', JObj} ->
             case kz_json:get_ne_binary_value(<<"Result">>, JObj) of
                 <<"success">> -> 'ok';
