@@ -152,9 +152,6 @@
                     ,{{'acdc_agent_handler', 'handle_agent_message'}
                      ,[{<<"agent">>, <<"*">>}]
                      }
-                    ,{{'acdc_agent_handler', 'handle_destroy'}
-                     ,[{<<"channel">>, <<"destroy">>}]
-                     }
                     ,{{'acdc_agent_handler', 'handle_config_change'}
                      ,[{<<"configuration">>, <<"*">>}]
                      }
