@@ -197,8 +197,7 @@ summary(Context) ->
 -spec load_summary(cb_context:context()) -> cb_context:context().
 load_summary(Context) ->
     Routines = [fun check_port_requests/1
-               ,fun check_low_balance/1
-               ,fun check_payment_token/1
+               ,fun maybe_check_financials/1
                ,fun check_system_alerts/1
                ,fun set_success_resp_status/1
                ],
@@ -332,6 +331,25 @@ check_port_suspended_message(_) ->
     <<"The port request requires you attention to continue.">>.
 
 %%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_check_financials(cb_context:context()) -> cb_context:context().
+maybe_check_financials(Context) ->
+    Services = kz_services:fetch(cb_context:account_id(Context)),
+    case kz_services_plans:is_empty(kz_services:plans(Services)) of
+        'true' -> Context;
+        'false' ->
+            Routines = [fun check_low_balance/1
+                       ,fun check_payment_token/1
+                       ],
+            lists:foldl(fun(F, C) -> F(C) end
+                       ,cb_context:set_resp_data(Context, [])
+                       ,Routines
+                       )
+    end.
+
+%%------------------------------------------------------------------------------
 %% @doc Return a low_balance alert when any of the following scenarios is met:
 %% - If threshold is configured then create an alert if their balance is below that amount.
 %% - If not threshold configured and post pay is not enabled create an alert if their
@@ -410,13 +428,8 @@ low_balance_alert(Context, AvailableDollars, ThresholdDollars) ->
 -spec check_payment_token(cb_context:context()) -> cb_context:context().
 check_payment_token(Context) ->
     Services = kz_services:fetch(cb_context:account_id(Context)),
-    case kz_services_plans:is_empty(kz_services:plans(Services)) of
-        'true' ->
-            Context;
-        'false' ->
-            DefaultTokens = kz_json:values(kz_services_payment_tokens:defaults(Services)),
-            check_payment_token(Context, DefaultTokens)
-    end.
+    DefaultTokens = kz_json:values(kz_services_payment_tokens:defaults(Services)),
+    check_payment_token(Context, DefaultTokens).
 
 -spec check_payment_token(cb_context:context(), kz_json:objects()) -> cb_context:context().
 check_payment_token(Context, []) ->
