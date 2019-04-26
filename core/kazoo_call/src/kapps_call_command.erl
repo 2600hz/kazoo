@@ -3289,7 +3289,10 @@ do_store_file(Tries, Timeout, API, Msg, Call) ->
             case kz_json:get_ne_binary_value(<<"Result">>, JObj) of
                 <<"success">> -> 'ok';
                 <<"error">> ->
-                    Error = kz_json:get_first_defined([[<<"Event-Data">>, <<"API-Error">>], <<"Error">>], JObj, <<"error not available">>),
+                    Error = kz_json:get_first_defined([[<<"Event-Data">>, <<"API-Error">>], <<"Error">>]
+                                                     ,JObj
+                                                     ,<<"error not available">>
+                                                     ),
                     retry_store_file(Tries - 1, Timeout, API, Msg, Error, maybe_add_debug_data(JObj, Call));
                 _Other ->
                     Error = kz_term:to_binary(io_lib:format("unhandled return ('~s') from store file", [_Other])),
