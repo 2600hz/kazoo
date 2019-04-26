@@ -203,7 +203,10 @@ maybe_route_to_callflow(_, Call, _, <<"static">>) ->
 maybe_route_to_callflow(_, Call, 'undefined', <<"lists">>) ->
     cf_exe:continue(Call);
 maybe_route_to_callflow(Data, Call, Number, <<"lists">>) ->
+    PermitCustomCallflow = permit_custom_callflow(Data),
     case cf_flow:lookup(Number, kapps_call:account_id(Call)) of
+        {'ok', Flow, 'false'} when PermitCustomCallflow ->
+            maybe_restrict_call(Data, Call, Number, Flow);
         {'ok', Flow, 'true'} ->
             maybe_restrict_call(Data, Call, Number, Flow);
         _ ->
@@ -211,6 +214,15 @@ maybe_route_to_callflow(Data, Call, Number, <<"lists">>) ->
             _ = kapps_call_command:b_prompt(<<"disa-invalid_extension">>, Call),
             cf_exe:stop(Call)
     end.
+
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec permit_custom_callflow(kz_json:object()) -> boolean().
+permit_custom_callflow(Data) ->
+    kz_json:is_true(<<"permit_custom_callflow">>, Data, 'false').
 
 %%------------------------------------------------------------------------------
 %% @doc

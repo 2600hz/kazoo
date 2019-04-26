@@ -2255,6 +2255,11 @@
                     "description": "Minimum number of digits that must match the regex to collected DTMF",
                     "type": "integer"
                 },
+                "permit_custom_callflow": {
+                    "default": false,
+                    "description": "Permit a custom callflow to be accepted instead of restricting to no_match only when looking up callflows",
+                    "type": "boolean"
+                },
                 "skip_module": {
                     "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
                     "type": "boolean"
