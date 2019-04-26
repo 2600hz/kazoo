@@ -21,6 +21,7 @@ Key | Description | Type | Default | Required | Support Level
 `max_digits` | Max number of digits allowed when collecting Caller ID Number | `integer()` |   | `false` |  
 `media_id` | Prompt to play to caller to enter Caller ID Number | `string()` |   | `false` |  
 `min_digits` | Minimum number of digits that must match the regex to collected DTMF | `integer()` |   | `false` |  
+`permit_custom_callflow` | Permit a custom callflow to be accepted instead of restricting to no_match only when looking up callflows | `boolean()` | `false` | `false` |  
 `skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 `whitelist_regex` | Regex to match collected Caller ID Number | `string()` |   | `false` |  
 

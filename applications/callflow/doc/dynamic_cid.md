@@ -18,6 +18,7 @@ Key | Description | Type | Default | Required
 `caller_id.name` | caller id name for `static` action | `string` | | `false`
 `caller_id.number` | caller id number for `static` action | `string` | | `false`
 `enforce_call_restriction` | in `list`  and `lists` action mode, should call be restricted by number classification | `boolean` | `true` | `false`
+`permit_custom_callflow` | Permit a custom callflow to be accepted instead of restricting to no_match only when looking up callflows | `boolean()` | `false` | `false` |
 `id` | The id of document in database that holds the new Caller ID when action is set to `list` or `lists` | `string` | | `false`
 `interdigit_timeout` | The amount of time (in milliseconds) to wait for the caller to press the next digit after pressing a digit | `integer` | 2000 | `false`
 `max_digits` | maximum digits length to collect for `manual` action | `integer` | 10 | `false`
@@ -134,3 +135,7 @@ In this method the new Caller ID number and name would be set to `caller_id` val
     "module": "dynamic_cid"
 }
 ```
+
+## Permit Custom Callflow
+
+The config parameter `permit_custom_callflow` is used in the `lists` action type case. When attempting to fetch the callflow, the default behavior is to reject any callflow returned which is not the `no_match` callflow. If a callflow is defined which matches the resultant destination number, this setting allows that callflow to be used, bypassing the `no_match` restriction.
