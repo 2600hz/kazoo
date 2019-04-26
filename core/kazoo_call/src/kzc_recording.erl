@@ -395,7 +395,11 @@ handle_info(_Info, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{amqp_worker=AMQPWorker, call=Call}=_State) ->
+    gen_listener:rm_binding(AMQPWorker, 'call', ?BINDINGS(kapps_call:call_id_direct(Call))),
+    gen_listener:rm_binding(AMQPWorker, 'call', ?CALL_BINDING(kapps_call:call_id_direct(Call))),
+    kz_amqp_worker:checkin_worker(AMQPWorker),
+
     lager:debug("listener terminating: ~p", [_Reason]).
 
 %%------------------------------------------------------------------------------
