@@ -146,7 +146,7 @@ handle_call_event(JObj, AMQPWorker) ->
         {<<"call_event">>, <<"CHANNEL_ANSWER">>} ->
             gen_server:cast(KZCWorker, 'maybe_start_recording_on_answer');
         {<<"call_event">>, <<"CHANNEL_REPLACED">>} ->
-            gen_listner:add_binding(AMQPWorker, 'call', ?CALL_BINDING(kz_call_event:replaced_by(JObj)));
+            gen_listener:add_binding(AMQPWorker, 'call', ?CALL_BINDING(kz_call_event:replaced_by(JObj)));
         {<<"call_event">>, <<"RECORD_START">>} ->
             gen_server:cast(KZCWorker, {'record_start', get_response_media(JObj)});
         {<<"call_event">>, <<"RECORD_STOP">>} ->

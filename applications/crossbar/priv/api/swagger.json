@@ -32358,6 +32358,32 @@
             },
             "type": "object"
         },
+        "system_config.kazoo_recordings": {
+            "description": "Schema for kazoo_recordings system_config",
+            "properties": {
+                "pool_overflow": {
+                    "default": 100,
+                    "description": "kazoo_recordings pool_overflow",
+                    "type": "integer"
+                },
+                "pool_server_confirms": {
+                    "default": false,
+                    "description": "kazoo_recordings pool_server_confirms",
+                    "type": "boolean"
+                },
+                "pool_size": {
+                    "default": 150,
+                    "description": "kazoo_recordings pool_size",
+                    "type": "integer"
+                },
+                "pool_threshold": {
+                    "default": 5,
+                    "description": "kazoo_recordings pool_threshold",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
         "system_config.keys": {
             "description": "Schema for DTMF keys system_config",
             "properties": {
