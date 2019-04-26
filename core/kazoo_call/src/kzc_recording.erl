@@ -19,7 +19,7 @@
 %%%-----------------------------------------------------------------------------
 -module(kzc_recording).
 
--behaviour(gen_listener).
+-behaviour(gen_server).
 
 -export([start_link/2
         ,handle_call_event/2
@@ -35,7 +35,6 @@
         ,handle_call/3
         ,handle_cast/2
         ,handle_info/2
-        ,handle_event/2
         ,terminate/2
         ,code_change/3
         ]).
@@ -74,6 +73,7 @@
                ,account_id                :: kz_term:api_ne_binary()
                ,event = 'undefined'       :: kz_call_event:doc() | 'undefined'
                ,origin                    :: kz_term:api_ne_binary()
+               ,amqp_worker               :: pid()
                }).
 -type state() :: #state{}.
 
@@ -82,85 +82,92 @@
        ).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS(CallId), [{'call', [{'callid', CallId}
-                                    ,{'restrict_to', ['CHANNEL_ANSWER'
-                                                     ,'CHANNEL_BRIDGE'
-                                                     ,'RECORD_START'
-                                                     ,'RECORD_STOP'
-                                                     ,'CHANNEL_REPLACED'
-                                                     ,'CHANNEL_TRANSFEROR'
-                                                     ]}
-                                    ]}
-                          ,{'self', []}
+-define(BINDINGS(CallId), [{'callid', CallId}
+                          ,{'restrict_to', ['CHANNEL_ANSWER'
+                                           ,'CHANNEL_BRIDGE'
+                                           ,'RECORD_START'
+                                           ,'RECORD_STOP'
+                                           ,'CHANNEL_REPLACED'
+                                           ,'CHANNEL_TRANSFEROR'
+                                           ]}
                           ]
        ).
--define(CALL_BINDING(CallId), {'call', [{'callid', CallId}
-                                       ,{'restrict_to', ['RECORD_STOP'
-                                                        ,'CHANNEL_REPLACED'
-                                                        ,'CHANNEL_TRANSFEROR'
-                                                        ]
-                                        }
-                                       ]
-                              }
+-define(CALL_BINDING(CallId), [{'callid', CallId}
+                              ,{'restrict_to', ['RECORD_STOP'
+                                               ,'CHANNEL_REPLACED'
+                                               ,'CHANNEL_TRANSFEROR'
+                                               ]
+                               }
+                              ]
        ).
--define(RESPONDERS, [{{?MODULE, 'handle_call_event'}
-                     ,[{<<"*">>, <<"*">>}]
-                     }
-                    ]
-       ).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+
 -define(MAX_RECORDING_LIMIT, kz_media_util:max_recording_time_limit()).
 -define(CHECK_CHANNEL_STATUS_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 -define(RECORDING_ID_KEY, <<"media_name">>).
 
 -spec start_link(kapps_call:call(), kz_json:object()) -> kz_types:startlink_ret().
 start_link(Call, Data) ->
-    gen_listener:start_link(?SERVER
-                           ,[{'bindings', ?BINDINGS(kapps_call:call_id(Call))}
-                            ,{'responders', ?RESPONDERS}
-                            ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                            ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                            ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                            ]
-                           ,[Call, Data]
-                           ).
+    start_link(Call, Data, kz_amqp_worker:checkout_worker()).
+
+start_link(Call, Data, {'ok', AMQPWorker}) ->
+    gen_listener:add_binding(AMQPWorker, 'call', ?BINDINGS(kapps_call:call_id_direct(Call))),
+    QueueName = gen_listener:queue_name(AMQPWorker),
+
+    gen_server:start_link(?SERVER
+                         ,[kapps_call:exec([{fun kapps_call:kvs_store/3, 'consumer_pid', AMQPWorker}
+                                           ,{fun kapps_call:set_controller_queue/2, QueueName}
+                                           ]
+                                          ,Call
+                                          )
+                          ,Data
+                          ,AMQPWorker
+                          ]
+                         ,[]
+                         );
+start_link(_Call, _Data, {'error', _E}=Error) ->
+    lager:notice("failed to start kzc_recording: pool error ~p", [_E]),
+    Error.
 
 -spec get_response_media(kz_json:object()) -> media().
 get_response_media(JObj) ->
     Filename = kz_call_event:application_response(JObj),
     {filename:dirname(Filename), filename:basename(Filename)}.
 
--spec handle_call_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
-handle_call_event(JObj, Props) ->
+-spec handle_call_event(kz_json:object(), pid()) -> 'ok'.
+handle_call_event(JObj, AMQPWorker) ->
     kz_util:put_callid(JObj),
-    Pid = props:get_value('server', Props),
+    KZCWorker = self(),
+
     case kz_util:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_TRANSFEROR">>} ->
-            gen_listener:add_binding(Pid, ?CALL_BINDING(kz_call_event:other_leg_call_id(JObj)));
+            gen_listener:add_binding(AMQPWorker, ?CALL_BINDING(kz_call_event:other_leg_call_id(JObj)));
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
-            gen_listener:cast(Pid, 'maybe_start_recording_on_bridge');
+            gen_server:cast(KZCWorker, 'maybe_start_recording_on_bridge');
         {<<"call_event">>, <<"CHANNEL_ANSWER">>} ->
-            gen_listener:cast(Pid, 'maybe_start_recording_on_answer');
+            gen_server:cast(KZCWorker, 'maybe_start_recording_on_answer');
         {<<"call_event">>, <<"CHANNEL_REPLACED">>} ->
-            gen_listener:add_binding(Pid, ?CALL_BINDING(kz_call_event:replaced_by(JObj)));
+            gen_listner:add_binding(AMQPWorker, 'call', ?CALL_BINDING(kz_call_event:replaced_by(JObj)));
         {<<"call_event">>, <<"RECORD_START">>} ->
-            gen_listener:cast(Pid, {'record_start', get_response_media(JObj)});
+            gen_server:cast(KZCWorker, {'record_start', get_response_media(JObj)});
         {<<"call_event">>, <<"RECORD_STOP">>} ->
             Media = get_response_media(JObj),
             FreeSWITCHNode = kz_call_event:switch_nodename(JObj),
-            gen_listener:cast(Pid, {'record_stop', Media, FreeSWITCHNode, JObj});
+            gen_server:cast(KZCWorker, {'record_stop', Media, FreeSWITCHNode, JObj});
         {_Cat, _Evt} -> 'ok'
     end.
 
--spec init([kapps_call:call() | kz_json:object()]) -> {'ok', state()}.
-init([Call, Data]) ->
-    init(Call, Data).
+-spec init([kapps_call:call() | kz_json:object() | pid()]) -> {'ok', state()}.
+init([Call, Data, AMQPWorker]) ->
+    init(Call, Data, AMQPWorker).
 
--spec init(kapps_call:call(), kz_json:object()) -> {'ok', state()}.
-init(Call, Data) ->
+-spec init(kapps_call:call(), kz_json:object(), pid()) -> {'ok', state()}.
+init(Call, Data, AMQPWorker) ->
     kapps_call:put_callid(Call),
+
+    kz_amqp_worker:worker_pool(kazoo_call_sup:pool_name()),
+    _ = kz_amqp_channel:consumer_pid(AMQPWorker),
+    kz_amqp_worker:relay_to(AMQPWorker, self()),
+
     lager:info("starting event listener for record_call"),
 
     Format = get_format(kz_json:get_ne_binary_value(<<"format">>, Data)),
@@ -186,6 +193,8 @@ init(Call, Data) ->
     Request = kapps_call:request_user(Call),
     Origin = kz_json:get_ne_binary_value(<<"origin">>, Data, <<"untracked : ", Request/binary>>),
 
+    gen_server:cast(self(), 'maybe_start_recording_now'),
+
     {'ok', #state{url=Url
                  ,format=Format
                  ,media={'undefined',MediaName}
@@ -204,6 +213,7 @@ init(Call, Data) ->
                  ,verb = Verb
                  ,account_id = AccountId
                  ,origin = Origin
+                 ,amqp_worker = AMQPWorker
                  }}.
 
 %%------------------------------------------------------------------------------
@@ -219,9 +229,11 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
-handle_cast({'record_start', {_, Media}}, #state{media={_, Media}
-                                                ,is_recording='true'
-                                                }=State) ->
+handle_cast({'record_start', {_, Media}}
+           ,#state{media={_, Media}
+                  ,is_recording='true'
+                  }=State
+           ) ->
     lager:debug("record start received but we're already recording"),
     {'noreply', State};
 handle_cast({'record_start', {_, Media}}, #state{media={_, Media}}=State) ->
@@ -239,12 +251,13 @@ handle_cast('stop_recording', #state{media={_, MediaName}
 handle_cast('stop_recording', #state{is_recording='false'}=State) ->
     lager:debug("received stop recording and we're not recording, exiting"),
     {'stop', 'normal', State};
-handle_cast({'record_stop', {_, MediaName}=Media, FS, EventJObj},
-            #state{media={_, MediaName}
+handle_cast({'record_stop', {_, MediaName}=Media, FS, EventJObj}
+           ,#state{media={_, MediaName}
                   ,is_recording='true'
                   ,stop_received='false'
                   ,call=Call
-                  }=State) ->
+                  }=State
+           ) ->
     lager:debug("received record_stop, storing recording ~s", [MediaName]),
     Call1 = kapps_call:kvs_store(<<"FreeSwitch-Node">>, FS, Call),
     gen_server:cast(self(), 'store_recording'),
@@ -335,6 +348,28 @@ handle_cast({'gen_listener',{'created_queue', Queue}}, #state{call=Call}=State) 
 handle_cast({'gen_listener',{'is_consuming', 'true'}}, State) ->
     handle_ready_to_consume(State);
 
+handle_cast('maybe_start_recording_now'
+           ,#state{record_on_answer='false'
+                  ,record_on_bridge='false'
+                  ,is_recording='false'
+                  ,call=Call
+                  ,media={_, MediaName}
+                  ,time_limit=TimeLimit
+                  ,sample_rate = SampleRate
+                  ,record_min_sec = RecordMinSec
+                  ,doc_id=Id
+                  }=State
+           ) ->
+    case kapps_call_events:is_destroyed(Call) of
+        'true' ->
+            lager:info("channel is already down, not starting"),
+            {'stop', 'normal', State};
+        'false' ->
+            start_recording(Call, MediaName, TimeLimit, Id, SampleRate, RecordMinSec),
+            {'noreply', State}
+    end;
+handle_cast('maybe_start_recording_now', State) ->
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -344,17 +379,12 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
+handle_info({'amqp_msg', JObj}, #state{amqp_worker=AMQPWorker}=State) ->
+    _ = handle_call_event(JObj, AMQPWorker),
+    {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
-
-%%------------------------------------------------------------------------------
-%% @doc Allows listener to pass options to handlers.
-%% @end
-%%------------------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
-handle_event(_JObj, _State) ->
-    {'reply', []}.
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called by a `gen_server' when it is about to
@@ -617,7 +647,7 @@ save_recording(#state{call=Call
 
 -spec start_recording(kapps_call:call(), kz_term:ne_binary(), pos_integer(), kz_term:ne_binary(), kz_term:api_integer(), kz_term:api_integer()) -> 'ok'.
 start_recording(Call, MediaName, TimeLimit, MediaDocId, SampleRate, RecordMinSec) ->
-    lager:debug("starting recording of ~s", [MediaName]),
+    lager:info("starting recording of ~s", [MediaName]),
     FollowTransfer = kapps_call:kvs_fetch('recording_follow_transfer', 'true', Call),
     Props = [{<<"Media-Name">>, MediaName}
             ,{<<"Follow-Transfer">>, FollowTransfer}
@@ -644,7 +674,8 @@ store_recording(Pid, Filename, StoreUrl, Call) ->
         'ok' -> gen_server:cast(Pid, 'store_succeeded')
     end.
 
-
+-spec handle_ready_to_consume(state()) -> {'noreply', state()} |
+                                          {'stop', 'normal', state()}.
 handle_ready_to_consume(#state{call=Call}=State) ->
     case kapps_call_events:is_destroyed(Call) of
         'true' ->
