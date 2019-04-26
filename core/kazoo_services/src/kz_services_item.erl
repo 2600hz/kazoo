@@ -617,24 +617,13 @@ calculate_quantity_rate(_Services, Item) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec calculate_discounts(kz_services:services(), item()) -> item().
-calculate_discounts(Services, Item) ->
-    calculate_single_discount(Services, Item).
-
--spec calculate_single_discount(kz_services:services(), item()) -> item().
-calculate_single_discount(_Services, Item) ->
-    DiscountPlan = kzd_item_plan:single_discount(item_plan(Item)),
-    case should_set_discount(Item, DiscountPlan) of
-        'false' -> Item;
-        'true' ->
-            Rate = kz_json:get_float_value(<<"rate">>, DiscountPlan, rate(Item)),
-            set_single_discount_rate(Item, Rate)
-    end.
+calculate_discounts(_Services, Item) ->
+    maybe_set_discounts(Item, item_plan(Item)).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
-
 -type discount_routine() :: fun((kzd_item_plan:doc(), item()) ->
                                        item()).
 
@@ -690,7 +679,8 @@ set_cumulative_discount(Item, DiscountPlan) ->
 cumulative_rate(Item, DiscountPlan, BillableQuantity) ->
     Rates = kz_json:get_value(<<"rates">>, DiscountPlan, []),
     case find_tiered_rate(Rates, BillableQuantity) of
-        'undefined' -> rate(Item);
+        'undefined' ->
+            kz_json:get_float_value(<<"rate">>, DiscountPlan, rate(Item));
         Rate -> Rate
     end.
 
