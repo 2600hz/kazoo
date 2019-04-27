@@ -1170,7 +1170,7 @@ finish_request(_Req, Context) ->
     Verb = cb_context:req_verb(Context),
     Event = create_event_name(Context, [<<"finish_request">>, Verb, Mod]),
     _ = kz_util:spawn(fun crossbar_bindings:pmap/2, [Event, Context]),
-    maybe_cleanup_file(cb_context:fetch(Context, 'csv_acc')),
+    _ = kz_util:spawn(fun maybe_cleanup_file/1, [cb_context:fetch(Context, 'csv_acc')]),
     'ok'.
 
 -spec maybe_cleanup_file(kz_csv:file_return() | 'undefined') -> 'ok'.
