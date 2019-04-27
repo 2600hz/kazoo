@@ -8,6 +8,7 @@
 
 -include("knm.hrl").
 
+-export([app_using/2]).
 -export([generate_js_classifiers/1]).
 
 -export([carrier_module_usage/0
@@ -105,7 +106,7 @@ carrier_module_usage([], Totals) ->
     io:format("Totals:~n", []),
     F = fun (Module, Count) -> io:format("    ~s: ~p~n", [Module, Count]) end,
     _ = dict:map(F, Totals),
-    ok;
+    'ok';
 carrier_module_usage([Database|Databases], Totals0) ->
     Totals1 = get_carrier_module_usage(Database, Totals0),
     carrier_module_usage(Databases, Totals1).
@@ -233,7 +234,7 @@ refresh_numbers_db(<<"+", _/binary>> = Num) ->
 refresh_numbers_db(_Thing) ->
     ?SUP_LOG_DEBUG("skipping badly formed ~s", [_Thing]).
 
--spec update_number_services_view(kz_term:ne_binary()) -> no_return.
+-spec update_number_services_view(kz_term:ne_binary()) -> 'no_return'.
 update_number_services_view(?MATCH_ACCOUNT_RAW(AccountId)) ->
     update_number_services_view(kz_util:format_account_db(AccountId));
 update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
@@ -571,7 +572,7 @@ remove_wrong_assigned_from_accounts() ->
 -spec remove_wrong_assigned_from_accounts(kz_term:ne_binaries()) -> 'ok'.
 remove_wrong_assigned_from_accounts(Accounts) ->
     ?SUP_LOG_DEBUG("::: start removing wrong assigned numbers from ~b account dbs", [length(Accounts)]),
-    remove_wrong_assigned_from_accounts(accounts, length(Accounts), ?TIME_BETWEEN_ACCOUNTS_MS).
+    remove_wrong_assigned_from_accounts(Accounts, length(Accounts), ?TIME_BETWEEN_ACCOUNTS_MS).
 
 -spec remove_wrong_assigned_from_accounts(kz_term:ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'ok'.
 remove_wrong_assigned_from_accounts([], _, _) ->
@@ -702,7 +703,7 @@ migrate_unassigned_numbers() ->
     pforeach(fun migrate_unassigned_numbers/1, knm_util:get_all_number_dbs()),
     ?SUP_LOG_DEBUG("::: finished fixing unassigned numbers", []).
 
--spec migrate_unassigned_numbers(kz_term:ne_binary()) -> ok.
+-spec migrate_unassigned_numbers(kz_term:ne_binary()) -> 'ok'.
 migrate_unassigned_numbers(<<?KNM_DB_PREFIX_ENCODED, _/binary>> = NumberDb) ->
     ?SUP_LOG_DEBUG(" ==> start fixing ~s", [NumberDb]),
     migrate_unassigned_numbers(NumberDb, 0),
@@ -716,13 +717,13 @@ migrate_unassigned_numbers(Number) ->
 
 -spec migrate_unassigned_numbers(kz_term:ne_binary(), integer()) -> 'ok'.
 migrate_unassigned_numbers(NumberDb, Offset) ->
-    ViewOptions = [{limit, kz_datamgr:max_bulk_insert()}
-                  ,{skip, Offset}
+    ViewOptions = [{'limit', kz_datamgr:max_bulk_insert()}
+                  ,{'skip', Offset}
                   ],
     ?SUP_LOG_DEBUG("[~s] checking for unassigned numbers with offset ~b", [NumberDb, Offset]),
     case kz_datamgr:get_results(NumberDb, <<"numbers/unassigned">>, ViewOptions) of
-        {ok, []} -> 'ok';
-        {ok, JObjs} ->
+        {'ok', []} -> 'ok';
+        {'ok', JObjs} ->
             Length = length(JObjs),
             ?SUP_LOG_DEBUG("[~s] fixing ~b docs", [NumberDb, Length]),
             foreach_pause_in_between(?TIME_BETWEEN_NUMBERS_MS
@@ -731,9 +732,65 @@ migrate_unassigned_numbers(NumberDb, Offset) ->
                                     ),
             timer:sleep(?TIME_BETWEEN_ACCOUNTS_MS),
             migrate_unassigned_numbers(NumberDb, Offset + Length);
-        {error, _R} ->
+        {'error', _R} ->
             ?SUP_LOG_DEBUG("failed to get unassigned DIDs from ~s: ~p", [NumberDb, _R])
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_DIDs_callflow(kz_term:ne_binary(), kz_term:proplist()) -> dids().
+get_DIDs_callflow(AccountDb, ViewOptions) ->
+    get_DIDs(AccountDb, <<"callflows/listing_by_number">>, ViewOptions).
+
+-spec get_DIDs_trunkstore(kz_term:ne_binary(), kz_term:proplist()) -> dids().
+get_DIDs_trunkstore(AccountDb, ViewOptions) ->
+    get_DIDs(AccountDb, <<"trunkstore/lookup_did">>, ViewOptions).
+
+-type dids() :: gb_sets:set(kz_term:ne_binary()).
+
+-spec get_DIDs(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> dids().
+get_DIDs(AccountDb, View, ViewOptions) ->
+    ?SUP_LOG_DEBUG("[~s] getting numbers from ~s", [AccountDb, View]),
+    case kz_datamgr:get_result_keys(AccountDb, View, ViewOptions) of
+        {'ok', DIDs} -> gb_sets:from_list(DIDs);
+        {'error', _R} ->
+            ?SUP_LOG_DEBUG("failed to get ~s DIDs from ~s: ~p", [View, AccountDb, _R]),
+            gb_sets:new()
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec app_using(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
+-ifdef(TEST).
+app_using(?TEST_OLD7_NUM, ?CHILD_ACCOUNT_DB) -> <<"trunkstore">>;
+app_using(?NE_BINARY, ?MATCH_ACCOUNT_ENCODED(_)) -> 'undefined'.
+-else.
+app_using(Num, AccountDb) ->
+    app_using(Num, AccountDb, get('callflow_DIDs'), get('trunkstore_DIDs')).
+
+-type api_dids() :: 'undefined' | dids().
+
+-spec app_using(kz_term:ne_binary(), kz_term:ne_binary(), api_dids(), api_dids()) -> kz_term:api_ne_binary().
+app_using(Num, AccountDb, 'undefined', TrunkstoreNums) ->
+    CallflowNums = get_DIDs_callflow(AccountDb, [{'key', Num}]),
+    app_using(Num, AccountDb, CallflowNums, TrunkstoreNums);
+app_using(Num, AccountDb, CallflowNums, 'undefined') ->
+    TrunkstoreNums = get_DIDs_trunkstore(AccountDb, [{'key', Num}]),
+    app_using(Num, AccountDb, CallflowNums, TrunkstoreNums);
+app_using(Num, _, CallflowNums, TrunkstoreNums) ->
+    case gb_sets:is_element(Num, CallflowNums) of
+        'true' -> <<"callflow">>;
+        'false' ->
+            case gb_sets:is_element(Num, TrunkstoreNums) of
+                'true' -> <<"trunkstore">>;
+                'false' -> 'undefined'
+            end
+    end.
+-endif.
 
 %%%=============================================================================
 %%% Internal functions

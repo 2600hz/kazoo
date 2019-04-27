@@ -316,15 +316,12 @@ fix_number_wrong_used_by_and_dangling_pvt_features_test_() ->
     ,?_assertEqual(<<"trunkstore">>, knm_phone_number:used_by(PN2))
     ].
 
-app_using(?TEST_OLD7_NUM, ?CHILD_ACCOUNT_DB) -> <<"trunkstore">>;
-app_using(?NE_BINARY, ?MATCH_ACCOUNT_ENCODED(_)) -> undefined.
-
 fix_number(N) ->
     PN = knm_number:phone_number(N),
     Num = knm_phone_number:number(PN),
     AuthBy = knm_phone_number:assigned_to(PN),
     AccountDb = kz_util:format_account_db(AuthBy),
-    UsedBy = app_using(knm_converters:normalize(Num), AccountDb),
+    UsedBy = kazoo_number_manager_maintenance:app_using(knm_converters:normalize(Num), AccountDb),
     Routines = [{fun knm_phone_number:set_used_by/2, UsedBy}
                ,fun knm_phone_number:remove_denied_features/1
                ],
