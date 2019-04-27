@@ -10,7 +10,6 @@
 
 -export([generate_js_classifiers/1]).
 
--export([app_using/2]).
 -export([carrier_module_usage/0
         ,carrier_module_usage/1
         ]).
@@ -24,10 +23,7 @@
 -export([init_dbs/0
         ,register_views/0
         ]).
--export([fix_number/3
-        ,fix_account_numbers/1
-        ,fix_accounts_numbers/1
-        ]).
+
 -export([copy_number_dbs_to_accounts/0
         ,copy_number_dbs_to_accounts/1
         ]).
@@ -35,15 +31,22 @@
         ]).
 -export([copy_number_to_account_db/2
         ]).
+-export([copy_assigned_number_dbs_to_account/1
+        ]).
+-export([copy_assigned_number_db_to_account/2
+        ]).
 -export([copy_accounts_to_number_dbs/0, copy_accounts_to_number_dbs/1
         ,copy_account_to_number_dbs/1
         ]).
--export([remove_wrong_assigneds_from_accounts/0
-        ,remove_wrong_assigneds_from_accounts/1
+-export([remove_wrong_assigned_from_accounts/0
+        ,remove_wrong_assigned_from_accounts/1
         ]).
--export([remove_wrong_assigneds_from_account/1
+-export([remove_wrong_assigned_from_account/1
         ]).
--export([migrate/0, migrate/1
+
+-export([fix_account_db_numbers/1]).
+
+-export([migrate/0
         ,migrate_unassigned_numbers/0, migrate_unassigned_numbers/1
         ]).
 -export([generate_numbers/4]).
@@ -261,73 +264,8 @@ update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
             ?SUP_LOG_DEBUG("view updated for '~s': ~p", [AccountDb, _Updated])
     end.
 
-
--spec fix_accounts_numbers([kz_term:ne_binary()]) -> 'ok'.
-fix_accounts_numbers(Accounts) ->
-    AccountDbs = lists:usort([kz_util:format_account_db(Account) || Account <- Accounts]),
-    _ = purge_discovery(),
-    _ = purge_deleted(),
-    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun fix_account_numbers/1, AccountDbs).
-
--spec fix_account_numbers(kz_term:ne_binary()) -> 'ok'.
-fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
-    ?SUP_LOG_DEBUG("########## fixing [~s] ##########", [AccountDb]),
-    ?SUP_LOG_DEBUG("[~s] getting numbers from account db", [AccountDb]),
-    DisplayPNs = get_DIDs(AccountDb, <<"phone_numbers/crossbar_listing">>),
-    put(callflow_DIDs, get_DIDs_callflow(AccountDb)),
-    put(trunkstore_DIDs, get_DIDs_trunkstore(AccountDb)),
-    AccountId = ?MATCH_ACCOUNT_RAW(A, B, Rest),
-
-    Malt = [1
-           ,{processes, schedulers}
-           ],
-    Leftovers =
-        plists:fold(fun (NumberDb, Leftovers) ->
-                            Fixer = fun (DID) -> fix_docs(AccountDb, NumberDb, DID) end,
-                            ?SUP_LOG_DEBUG("[~s] getting numbers from ~s", [AccountDb, NumberDb]),
-                            AuthoritativePNs = get_DIDs_assigned_to(NumberDb, AccountId),
-                            ?SUP_LOG_DEBUG("[~s] start fixing ~s", [AccountDb, NumberDb]),
-                            foreach_pause_in_between(?TIME_BETWEEN_NUMBERS_MS
-                                                    ,Fixer
-                                                    ,gb_sets:to_list(AuthoritativePNs)
-                                                    ),
-                            ?SUP_LOG_DEBUG("[~s] done fixing ~s", [AccountDb, NumberDb]),
-                            %% timer:sleep(?TIME_BETWEEN_ACCOUNTS_MS),
-                            gb_sets:subtract(Leftovers, AuthoritativePNs)
-                    end
-                   ,fun gb_sets:intersection/2
-                   ,DisplayPNs
-                   ,knm_util:get_all_number_dbs()
-                   ,Malt
-                   ),
-
-    ToRm0 = case Leftovers =:= [] of
-                'true' ->
-                    %% Only if there is no number_dbs, plists would return empty list
-                    %% regardless of initAcc value. See `plists:fuse/2'.
-                    [];
-                'false' -> gb_sets:to_list(Leftovers)
-            end,
-    lists:foreach(fun (_DID) -> log_alien(AccountDb, _DID) end, ToRm0),
-    ToRm = [DID
-            || DID <- ToRm0,
-               'false' =:= is_assigned_to(AccountDb, DID, AccountId),
-               ok =:= ?SUP_LOG_DEBUG("########## will remove [~s] doc: ~s ##########", [AccountDb, DID])
-           ],
-    _ = kz_datamgr:del_docs(AccountDb, ToRm),
-    ?SUP_LOG_DEBUG("########## updating view [~s] ##########", [AccountDb]),
-    update_number_services_view(AccountDb),
-    erase(callflow_DIDs),
-    erase(trunkstore_DIDs),
-    ?SUP_LOG_DEBUG("########## done fixing [~s] ##########", [AccountDb]);
-fix_account_numbers(Account = ?NE_BINARY) ->
-    fix_account_numbers(kz_util:format_account_db(Account)).
-
-log_alien(_AccountDb, _DID) ->
-    ?SUP_LOG_DEBUG("########## found alien [~s] doc: ~s ##########", [_AccountDb, _DID]).
-
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Copy number docs from all accounts to their number dbs.
 %% @end
 %%------------------------------------------------------------------------------
 -spec copy_accounts_to_number_dbs() -> 'ok'.
@@ -336,11 +274,19 @@ copy_accounts_to_number_dbs() ->
     ?SUP_LOG_DEBUG("::: start copying numbers doc from ~b account dbs to number dbs", [length(AccountDbs)]),
     copy_accounts_to_number_dbs(AccountDbs, length(AccountDbs), ?TIME_BETWEEN_ACCOUNTS_MS).
 
+%%------------------------------------------------------------------------------
+%% @doc Copy number docs from accounts to their number dbs.
+%% @end
+%%------------------------------------------------------------------------------
 -spec copy_accounts_to_number_dbs(kz_term:ne_binaries()) -> 'ok'.
 copy_accounts_to_number_dbs(Accounts) ->
     ?SUP_LOG_DEBUG("::: start copying numbers doc from ~b account dbs to number dbs", [length(Accounts)]),
     copy_accounts_to_number_dbs(Accounts, length(Accounts), ?TIME_BETWEEN_ACCOUNTS_MS).
 
+%%------------------------------------------------------------------------------
+%% @private Loop function to copy from account dbs to number dbs.
+%% @end
+%%------------------------------------------------------------------------------
 -spec copy_accounts_to_number_dbs(kz_term:ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'ok'.
 copy_accounts_to_number_dbs([], _, _) ->
     'ok';
@@ -353,7 +299,7 @@ copy_accounts_to_number_dbs([AccountDb|AccountDbs], Total, SleepTime) ->
     copy_accounts_to_number_dbs(AccountDbs, Total, SleepTime).
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Copy number docs from single account db to their number dbs.
 %% @end
 %%------------------------------------------------------------------------------
 -spec copy_account_to_number_dbs(kz_term:ne_binary()) -> 'ok'.
@@ -365,6 +311,10 @@ copy_account_to_number_dbs(Account) ->
     View = <<"numbers/list_by_number">>,
     get_results_loop(AccountDb, View, ViewOptions, fun split_and_save_to_number_dbs/2).
 
+%%------------------------------------------------------------------------------
+%% @private Group the results by number db and save to number dbs.
+%% @end
+%%------------------------------------------------------------------------------
 -spec split_and_save_to_number_dbs(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 split_and_save_to_number_dbs(AccountDb, Results) ->
     F = fun (JObj, M) ->
@@ -399,7 +349,7 @@ save_to_number_dbs(AccountDb, [{Db, JObjs} | Rest], Retries) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Copy number docs from all number dbs to their assigned account db.
 %% @end
 %%------------------------------------------------------------------------------
 -spec copy_number_dbs_to_accounts() -> 'ok'.
@@ -408,11 +358,19 @@ copy_number_dbs_to_accounts() ->
     ?SUP_LOG_DEBUG("::: start copying numbers doc from ~b number dbs to account dbs", [length(NumberDbs)]),
     copy_number_dbs_to_accounts(NumberDbs, length(NumberDbs), ?TIME_BETWEEN_ACCOUNTS_MS).
 
+%%------------------------------------------------------------------------------
+%% @doc Copy number docs from number dbs to their assigned account db.
+%% @end
+%%------------------------------------------------------------------------------
 -spec copy_number_dbs_to_accounts(kz_term:ne_binaries()) -> 'ok'.
 copy_number_dbs_to_accounts(NumberDbs) ->
     ?SUP_LOG_DEBUG("::: start copying numbers doc from ~b number dbs to account dbs", [length(NumberDbs)]),
     copy_number_dbs_to_accounts(NumberDbs, length(NumberDbs), ?TIME_BETWEEN_ACCOUNTS_MS).
 
+%%------------------------------------------------------------------------------
+%% @private Loop function to copy numbers from number dbs to account dbs.
+%% @end
+%%------------------------------------------------------------------------------
 -spec copy_number_dbs_to_accounts(kz_term:ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'ok'.
 copy_number_dbs_to_accounts([], _, _) ->
     'ok';
@@ -425,7 +383,7 @@ copy_number_dbs_to_accounts([NumberDb|NumberDbs], Total, SleepTime) ->
     copy_number_dbs_to_accounts(NumberDbs, Total, SleepTime).
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Copy number docs from a single number db to their assigned account dbs.
 %% @end
 %%------------------------------------------------------------------------------
 -spec copy_number_db_to_accounts(kz_term:ne_binary()) -> 'ok'.
@@ -436,12 +394,60 @@ copy_number_db_to_accounts(NumberDb) ->
     View = <<"numbers/assigned_to">>,
     get_results_loop(NumberDb, View, ViewOptions, fun(_Db, R) -> split_and_save_to_account_dbs(R) end).
 
+%%------------------------------------------------------------------------------
+%% @doc Copy all assigned number docs to an account from across all number dbs
+%% to the account's db.
+%% @end
+%%------------------------------------------------------------------------------
+-spec copy_assigned_number_dbs_to_account(kz_term:ne_binary()) -> 'ok'.
+copy_assigned_number_dbs_to_account(Account) ->
+    NumberDbs = knm_util:get_all_number_dbs(),
+    ?SUP_LOG_DEBUG("::: start copying assigned numbers doc from ~b number dbs to account ~s", [length(NumberDbs), Account]),
+    copy_assigned_number_dbs_to_account(Account, NumberDbs, length(NumberDbs), ?TIME_BETWEEN_ACCOUNTS_MS).
+
+%%------------------------------------------------------------------------------
+%% @private Loop function to copy assigned number docs from number dbs to
+%% an account db.
+%% @end
+%%------------------------------------------------------------------------------
+-spec copy_assigned_number_dbs_to_account(kz_term:ne_binary(), kz_term:ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'ok'.
+copy_assigned_number_dbs_to_account(_, [], _, _) ->
+    'ok';
+copy_assigned_number_dbs_to_account(Account, [NumberDb|NumberDbs], Total, SleepTime) ->
+    ?SUP_LOG_DEBUG("(~p/~p) copying numbers from '~s' to account~n"
+                  ,[length(NumberDbs) + 1, Total, NumberDb]
+                  ),
+    copy_assigned_number_db_to_account(Account, NumberDb),
+    _ = timer:sleep(SleepTime),
+    copy_assigned_number_dbs_to_account(Account, NumberDbs, Total, SleepTime).
+
+%%------------------------------------------------------------------------------
+%% @doc Copy all assigned number docs to an account from a single number db
+%% to account's db.
+%% @end
+%%------------------------------------------------------------------------------
+-spec copy_assigned_number_db_to_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+copy_assigned_number_db_to_account(Account, NumberDb) ->
+    AccountId = kz_util:format_account_id(Account),
+    ViewOptions = [{'limit', 200}
+                  ,{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, kz_json:new()]}
+                  ,'include_docs'
+                  ],
+    View = <<"numbers/assigned_to">>,
+    CallBackFun = fun(_Db, Results) -> save_to_account_db([{AccountId, Results}], 2) end,
+    get_results_loop(NumberDb, View, ViewOptions, CallBackFun).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec split_and_save_to_account_dbs(kz_json:objects()) -> 'ok'.
 split_and_save_to_account_dbs(Results) ->
     F = fun (JObj, M) ->
                 Doc = kz_json:get_value(<<"doc">>, JObj),
                 AccountId = kz_json:get_value(<<"pvt_assigned_to">>, Doc),
-                M#{AccountId => [kz_doc:delete_revision(Doc) | maps:get(AccountId, M, [])]}
+                M#{AccountId => [Doc | maps:get(AccountId, M, [])]}
         end,
     Map = lists:foldl(F, #{}, Results),
     save_to_account_db(maps:to_list(Map), 1).
@@ -556,46 +562,57 @@ copy_number_to_account_db(Num, Account) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec remove_wrong_assigneds_from_accounts() -> 'ok'.
-remove_wrong_assigneds_from_accounts() ->
+-spec remove_wrong_assigned_from_accounts() -> 'ok'.
+remove_wrong_assigned_from_accounts() ->
     AccountDbs = kapps_util:get_all_accounts('encoded'),
     ?SUP_LOG_DEBUG("::: start removing wrong assigned numbers from ~b account dbs", [length(AccountDbs)]),
-    remove_wrong_assigneds_from_accounts(AccountDbs, length(AccountDbs), ?TIME_BETWEEN_ACCOUNTS_MS).
+    remove_wrong_assigned_from_accounts(AccountDbs, length(AccountDbs), ?TIME_BETWEEN_ACCOUNTS_MS).
 
--spec remove_wrong_assigneds_from_accounts(kz_term:ne_binaries()) -> 'ok'.
-remove_wrong_assigneds_from_accounts(Accounts) ->
+-spec remove_wrong_assigned_from_accounts(kz_term:ne_binaries()) -> 'ok'.
+remove_wrong_assigned_from_accounts(Accounts) ->
     ?SUP_LOG_DEBUG("::: start removing wrong assigned numbers from ~b account dbs", [length(Accounts)]),
-    remove_wrong_assigneds_from_accounts(accounts, length(Accounts), ?TIME_BETWEEN_ACCOUNTS_MS).
+    remove_wrong_assigned_from_accounts(accounts, length(Accounts), ?TIME_BETWEEN_ACCOUNTS_MS).
 
--spec remove_wrong_assigneds_from_accounts(kz_term:ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'ok'.
-remove_wrong_assigneds_from_accounts([], _, _) ->
+-spec remove_wrong_assigned_from_accounts(kz_term:ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'ok'.
+remove_wrong_assigned_from_accounts([], _, _) ->
     'ok';
-remove_wrong_assigneds_from_accounts([AccountDb|AccountDbs], Total, SleepTime) ->
+remove_wrong_assigned_from_accounts([AccountDb|AccountDbs], Total, SleepTime) ->
     ?SUP_LOG_DEBUG("(~p/~p) removing wrong assigned from account ~s~n"
                   ,[length(AccountDbs) + 1, Total, kz_util:format_account_db(AccountDb)]
                   ),
-    remove_wrong_assigneds_from_account(AccountDb),
+    remove_wrong_assigned_from_account(AccountDb),
     _ = timer:sleep(SleepTime),
-    remove_wrong_assigneds_from_accounts(AccountDbs, Total, SleepTime).
+    remove_wrong_assigned_from_accounts(AccountDbs, Total, SleepTime).
 
--spec remove_wrong_assigneds_from_account(kz_term:ne_binary()) -> 'ok'.
-remove_wrong_assigneds_from_account(Account) ->
+-spec remove_wrong_assigned_from_account(kz_term:ne_binary()) -> 'ok'.
+remove_wrong_assigned_from_account(Account) ->
     AccountDb = kz_util:format_account_db(Account),
     ViewOptions = [{'limit', 200}
                   ,'include_docs'
                   ],
     View = <<"numbers/list_by_number">>,
-    get_results_loop(AccountDb, View, ViewOptions, fun remove_wrong_assigneds_from_account/2).
+    get_results_loop(AccountDb, View, ViewOptions, fun remove_wrong_assigned_from_account/2).
 
--spec remove_wrong_assigneds_from_account(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
-remove_wrong_assigneds_from_account(_, []) -> 'ok';
-remove_wrong_assigneds_from_account(AccountDb, JObjs) ->
+-spec remove_wrong_assigned_from_account(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
+remove_wrong_assigned_from_account(_, []) -> 'ok';
+remove_wrong_assigned_from_account(AccountDb, JObjs) ->
     AccountId = kz_util:format_account_id(AccountDb),
     ToRemove = [kz_doc:id(JObj)
                 || JObj <- JObjs,
                    kz_json:get_value(<<"pvt_assigned_to">>, JObj) =/= AccountId
                ],
     _ = kz_datamgr:del_docs(AccountDb, ToRemove),
+    'ok'.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec fix_account_db_numbers(kz_term:ne_binary()) -> 'ok'.
+fix_account_db_numbers(Account) ->
+    copy_assigned_number_dbs_to_account(Account),
+    remove_wrong_assigned_from_account(Account),
+    _ = kz_services:reconcile(Account),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -670,49 +687,26 @@ split_by_failed_reasons([JObj|JObjs], Acc) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec fix_number(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> knm_number_return().
-fix_number(Num, AuthBy, AccountDb) ->
-    Options = [{auth_by, AuthBy}
-              ,{dry_run, 'false'}
-              ,{batch_run, 'false'}
-              ],
-    NumberDb = knm_converters:to_db(knm_converters:normalize(Num)),
-    case fix_docs(AccountDb, NumberDb, Num) of
-        'ok' -> knm_number:get(Num, Options);
-        Error -> Error
-    end.
-
 -spec migrate() -> 'ok'.
 migrate() ->
     lager:info("ensuring admin-only features"),
     ensure_adminonly_features_are_reachable(),
     lager:info("refreshing number dbs"),
     _ = refresh_numbers_dbs(),
-    lager:info("migrating all accounts"),
-    pforeach(fun migrate/1, kapps_util:get_all_accounts()),
     lager:info("migrating unassigned numbers"),
     migrate_unassigned_numbers().
 
--spec migrate(kz_term:ne_binary()) -> 'ok'.
-migrate(Account) ->
-    AccountDb = kz_util:format_account_db(Account),
-    lager:info("  ~s: fixing account numbers", [Account]),
-    fix_account_numbers(AccountDb),
-    lager:info("  ~s: deleting phone numbers doc", [Account]),
-    _ = kz_datamgr:del_doc(AccountDb, <<"phone_numbers">>),
-    lager:info("  ~s: finished", [Account]).
-
 -spec migrate_unassigned_numbers() -> 'ok'.
 migrate_unassigned_numbers() ->
-    ?SUP_LOG_DEBUG("********** fixing unassigned numbers **********", []),
+    ?SUP_LOG_DEBUG("::: fixing unassigned numbers", []),
     pforeach(fun migrate_unassigned_numbers/1, knm_util:get_all_number_dbs()),
-    ?SUP_LOG_DEBUG("********** finished fixing unassigned numbers **********", []).
+    ?SUP_LOG_DEBUG("::: finished fixing unassigned numbers", []).
 
 -spec migrate_unassigned_numbers(kz_term:ne_binary()) -> ok.
 migrate_unassigned_numbers(<<?KNM_DB_PREFIX_ENCODED, _/binary>> = NumberDb) ->
-    ?SUP_LOG_DEBUG("########## start fixing ~s ##########", [NumberDb]),
+    ?SUP_LOG_DEBUG(" ==> start fixing ~s", [NumberDb]),
     migrate_unassigned_numbers(NumberDb, 0),
-    ?SUP_LOG_DEBUG("########## done fixing ~s ##########", [NumberDb]);
+    ?SUP_LOG_DEBUG(" ==> done fixing ~s", [NumberDb]);
 migrate_unassigned_numbers(<<?KNM_DB_PREFIX_encoded, Suffix/binary>>) ->
     migrate_unassigned_numbers(<<?KNM_DB_PREFIX_ENCODED, Suffix/binary>>);
 migrate_unassigned_numbers(<<?KNM_DB_PREFIX, Suffix/binary>>) ->
@@ -849,149 +843,19 @@ pforeach(Fun, Arg1s)
     %%        ],
     lists:foreach(Fun, Arg1s).
 
--spec fix_docs(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> ok.
-fix_docs(AccountDb, NumberDb, DID) ->
-    Res = kz_datamgr:open_doc(AccountDb, DID),
-    fix_docs(Res, AccountDb, NumberDb, DID).
-
-fix_docs({error, timeout}, _AccountDb, _, _DID) ->
-    ?SUP_LOG_DEBUG("getting ~s from ~s timed out, skipping", [_DID, _AccountDb]);
-fix_docs({error, _R}, AccountDb, NumberDb, DID) ->
-    ?SUP_LOG_DEBUG("failed to get ~s from ~s (~p), creating it", [DID, AccountDb, _R]),
-    %% The document will be created in the next step
-    Res = kz_datamgr:open_doc(NumberDb, DID),
-    fix_docs(Res, kz_json:new(), AccountDb, NumberDb, DID);
-fix_docs({ok, Doc}, AccountDb, NumberDb, DID) ->
-    Res = kz_datamgr:open_doc(NumberDb, DID),
-    fix_docs(Res, Doc, AccountDb, NumberDb, DID).
-
-fix_docs({error, timeout}, _, _, _NumberDb, _DID) ->
-    ?SUP_LOG_DEBUG("getting ~s from ~s timed out, skipping", [_DID, _NumberDb]);
-fix_docs({error, _R}, Doc, AccountDb, _NumberDb, _DID) ->
-    ?SUP_LOG_DEBUG("~s disappeared from ~s (~p), deleting from AccountDb", [_DID, _NumberDb]),
-    case kz_datamgr:del_doc(AccountDb, Doc) of
-        {ok, _} -> ok;
-        {error, _R} -> ?SUP_LOG_DEBUG("sync of ~s failed: ~p", [_DID, _R])
-    end;
-fix_docs({ok, NumDoc}, Doc, _AccountDb, _NumberDb, DID) ->
-    AccountDb = account_db_from_number_doc(NumDoc),
-    ShouldEnsureDocIsInRightAccountDb = _AccountDb =/= AccountDb,
-    ShouldEnsureDocIsInRightAccountDb
-        andalso ?SUP_LOG_DEBUG("[~s] ~s should be in ~s instead", [_AccountDb, DID, AccountDb]),
-    NewNumDoc = case kz_doc:revision(Doc) of
-                    'undefined' -> kz_json:delete_keys([<<"_rev">>, <<"rev">>], NumDoc);
-                    Rev -> kz_doc:set_revision(NumDoc, Rev)
-                end,
-    case not ShouldEnsureDocIsInRightAccountDb
-        andalso NewNumDoc =:= Doc
-    of
-        'true' -> ?SUP_LOG_DEBUG("~s already synced", [DID]);
-        'false' ->
-            ?SUP_LOG_DEBUG("syncing ~s", [DID]),
-            %% Replace the document within AccountDb with the doc from NumberDb.
-            case kz_datamgr:save_doc(AccountDb, NewNumDoc) of
-                {ok, _} ->
-                    _ = kz_services:reconcile(AccountDb),
-                    ok;
-                {error, _R} ->
-                    ?SUP_LOG_DEBUG("sync of ~s failed: ~p", [DID, _R])
-            end
-    end.
-
-options() ->
-    [{auth_by, ?KNM_DEFAULT_AUTH_BY}
-     %% No caching + bulk doc writes
-    ,{batch_run, 'true'}
-    ].
-
-account_db_from_number_doc(NumDoc) ->
-    case kz_json:get_ne_binary_value(?PVT_ASSIGNED_TO, NumDoc) of
-        undefined -> undefined;
-        AccountId -> kz_util:format_account_db(AccountId)
-    end.
-
 -spec fix_unassign_doc(kz_term:ne_binary()) -> 'ok'.
 fix_unassign_doc(DID) ->
-    Setters = [{fun knm_phone_number:set_used_by/2, undefined}
+    Setters = [{fun knm_phone_number:set_used_by/2, 'undefined'}
               ,fun knm_phone_number:remove_denied_features/1
               ],
-    case knm_number:update(DID, Setters, options()) of
-        {ok, _} -> ok;
-        {error, _R} -> ?SUP_LOG_DEBUG("failed fixing unassigned ~s: ~p", [DID, _R])
+    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
+               %% No caching + bulk doc writes
+              ,{'batch_run', 'true'}
+              ],
+    case knm_number:update(DID, Setters, Options) of
+        {'ok', _} -> 'ok';
+        {'error', _R} -> ?SUP_LOG_DEBUG("failed fixing unassigned ~s: ~p", [DID, _R])
     end.
-
--type dids() :: gb_sets:set(kz_term:ne_binary()).
--spec get_DIDs(kz_term:ne_binary(), kz_term:ne_binary()) -> dids().
-get_DIDs(AccountDb, View) ->
-    get_DIDs(AccountDb, View, []).
--spec get_DIDs(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> dids().
-get_DIDs(AccountDb, View, ViewOptions) ->
-    ?SUP_LOG_DEBUG("[~s] getting numbers from ~s", [AccountDb, View]),
-    case kz_datamgr:get_result_keys(AccountDb, View, ViewOptions) of
-        {'ok', DIDs} -> gb_sets:from_list(DIDs);
-        {'error', _R} ->
-            ?SUP_LOG_DEBUG("failed to get ~s DIDs from ~s: ~p", [View, AccountDb, _R]),
-            gb_sets:new()
-    end.
-
-get_DIDs_callflow(AccountDb) ->
-    get_DIDs_callflow(AccountDb, []).
-get_DIDs_trunkstore(AccountDb) ->
-    get_DIDs_trunkstore(AccountDb, []).
-get_DIDs_callflow(AccountDb, ViewOptions) ->
-    get_DIDs(AccountDb, <<"callflows/listing_by_number">>, ViewOptions).
-get_DIDs_trunkstore(AccountDb, ViewOptions) ->
-    get_DIDs(AccountDb, <<"trunkstore/lookup_did">>, ViewOptions).
-
--spec get_DIDs_assigned_to(kz_term:ne_binary(), kz_term:ne_binary()) -> dids().
-get_DIDs_assigned_to(NumberDb, AssignedTo) ->
-    ViewOptions = [{startkey, [AssignedTo]}
-                  ,{endkey, [AssignedTo, kz_json:new()]}
-                  ],
-    case kz_datamgr:get_results(NumberDb, <<"numbers/assigned_to">>, ViewOptions) of
-        {ok, JObjs} -> gb_sets:from_list([kz_doc:id(JObj) || JObj <- JObjs]);
-        {error, _R} ->
-            lager:debug("failed to get ~s DIDs from ~s: ~p", [AssignedTo, NumberDb, _R]),
-            gb_sets:new()
-    end.
-
--spec app_using(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
--ifdef(TEST).
-app_using(?TEST_OLD7_NUM, ?CHILD_ACCOUNT_DB) -> <<"trunkstore">>;
-app_using(?NE_BINARY, ?MATCH_ACCOUNT_ENCODED(_)) -> undefined.
--else.
-app_using(Num, AccountDb) ->
-    app_using(Num, AccountDb, get(callflow_DIDs), get(trunkstore_DIDs)).
-
--type api_dids() :: undefined | dids().
--spec app_using(kz_term:ne_binary(), kz_term:ne_binary(), api_dids(), api_dids()) -> kz_term:api_ne_binary().
-app_using(Num, AccountDb, undefined, TrunkstoreNums) ->
-    CallflowNums = get_DIDs_callflow(AccountDb, [{key, Num}]),
-    app_using(Num, AccountDb, CallflowNums, TrunkstoreNums);
-app_using(Num, AccountDb, CallflowNums, undefined) ->
-    TrunkstoreNums = get_DIDs_trunkstore(AccountDb, [{key, Num}]),
-    app_using(Num, AccountDb, CallflowNums, TrunkstoreNums);
-app_using(Num, _, CallflowNums, TrunkstoreNums) ->
-    case gb_sets:is_element(Num, CallflowNums) of
-        'true' -> <<"callflow">>;
-        'false' ->
-            case gb_sets:is_element(Num, TrunkstoreNums) of
-                'true' -> <<"trunkstore">>;
-                'false' -> undefined
-            end
-    end.
--endif.
-
--spec is_assigned_to(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
-is_assigned_to(AccountDb, DID, AccountId) ->
-    case kz_datamgr:open_doc(AccountDb, DID) of
-        {error, _R} ->
-            lager:debug("~s's ~s temporarily unavailable, skipping", [AccountDb, DID]),
-            'true';
-        {ok, Doc} ->
-            AccountId =/= kz_json:get_ne_binary_value(?PVT_ASSIGNED_TO, Doc)
-    end.
-
 
 -spec generate_numbers(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer(), non_neg_integer()) -> 'ok'.
 generate_numbers(Type, AccountId, StartingNumber, Quantity) ->
