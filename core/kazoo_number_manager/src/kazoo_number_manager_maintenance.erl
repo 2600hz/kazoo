@@ -28,8 +28,20 @@
         ,fix_account_numbers/1
         ,fix_accounts_numbers/1
         ]).
+-export([copy_number_dbs_to_accounts/0
+        ,copy_number_dbs_to_accounts/1
+        ]).
+-export([copy_number_db_to_accounts/1
+        ]).
+-export([copy_number_to_account_db/2
+        ]).
 -export([copy_accounts_to_number_dbs/0, copy_accounts_to_number_dbs/1
         ,copy_account_to_number_dbs/1
+        ]).
+-export([remove_wrong_assigneds_from_accounts/0
+        ,remove_wrong_assigneds_from_accounts/1
+        ]).
+-export([remove_wrong_assigneds_from_account/1
         ]).
 -export([migrate/0, migrate/1
         ,migrate_unassigned_numbers/0, migrate_unassigned_numbers/1
@@ -329,11 +341,12 @@ copy_accounts_to_number_dbs(Accounts) ->
     ?SUP_LOG_DEBUG("::: start copying numbers doc from ~b account dbs to number dbs", [length(Accounts)]),
     copy_accounts_to_number_dbs(Accounts, length(Accounts), ?TIME_BETWEEN_ACCOUNTS_MS).
 
+-spec copy_accounts_to_number_dbs(kz_term:ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'ok'.
 copy_accounts_to_number_dbs([], _, _) ->
     'ok';
 copy_accounts_to_number_dbs([AccountDb|AccountDbs], Total, SleepTime) ->
     ?SUP_LOG_DEBUG("(~p/~p) copying numbers from '~s' to number dbs~n"
-                  ,[length(AccountDbs) + 1, Total, AccountDb]
+                  ,[length(AccountDbs) + 1, Total, kz_util:format_account_db(AccountDb)]
                   ),
     copy_account_to_number_dbs(AccountDb),
     _ = timer:sleep(SleepTime),
@@ -349,28 +362,8 @@ copy_account_to_number_dbs(Account) ->
     ViewOptions = [{'limit', 200}
                   ,'include_docs'
                   ],
-    copy_account_to_number_dbs(AccountDb, ViewOptions, 2).
-
--spec copy_account_to_number_dbs(kz_term:ne_binary(), kz_term:proplist(), integer()) -> 'ok'.
-copy_account_to_number_dbs(_AccountDb, _, Retries) when Retries < 0 ->
-    ?SUP_LOG_DEBUG("  - reached to maximum retries to get numbers from account db");
-copy_account_to_number_dbs(AccountDb, ViewOptions, Retries) ->
-    case kz_datamgr:get_results(AccountDb, <<"phone_numbers/crossbar_listing">>, ViewOptions) of
-        {'ok', JObjs} ->
-            try lists:split(props:get_integer_value('limit', ViewOptions), JObjs) of
-                {Results, []} ->
-                    split_and_save_to_number_dbs(AccountDb, Results);
-                {Results, [NextJObj]} ->
-                    split_and_save_to_number_dbs(AccountDb, Results),
-                    copy_account_to_number_dbs(AccountDb, props:set_value('startkey', kz_doc:id(NextJObj), ViewOptions), Retries)
-            catch
-                'error':'badarg' ->
-                    split_and_save_to_number_dbs(AccountDb, JObjs)
-            end;
-        {'error', _Reason} ->
-            ?SUP_LOG_DEBUG("  - failed to get numbers from accountdb (~p), maybe trying again...", [_Reason]),
-            copy_account_to_number_dbs(AccountDb, ViewOptions, Retries - 1)
-    end.
+    View = <<"numbers/list_by_number">>,
+    get_results_loop(AccountDb, View, ViewOptions, fun split_and_save_to_number_dbs/2).
 
 -spec split_and_save_to_number_dbs(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 split_and_save_to_number_dbs(AccountDb, Results) ->
@@ -405,26 +398,278 @@ save_to_number_dbs(AccountDb, [{Db, JObjs} | Rest], Retries) ->
             ?SUP_LOG_ERROR("  - failed to save numbers to ~s: ~p", [Db, _Reason])
     end.
 
--spec log_save_failures(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
-log_save_failures(_, []) -> 'ok';
-log_save_failures(Message, JObjs) ->
-    Failed = lists:foldl(fun split_by_failed_reason/2, #{}, JObjs),
-    case maps:size(Failed) > 0 of
-        'false' -> 'ok';
-        'true' ->
-            SumFun = fun(Reason, Count, Acc) ->
-                             [kz_term:to_binary(io_lib:format("~p: ~b", [Reason, Count]))|Acc]
-                     end,
-            Reasons = maps:fold(SumFun, [], Failed),
-            ?SUP_LOG_DEBUG("~s, ~s", [Message, kz_binary:join(Reasons, <<", ">>)])
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec copy_number_dbs_to_accounts() -> 'ok'.
+copy_number_dbs_to_accounts() ->
+    NumberDbs = knm_util:get_all_number_dbs(),
+    ?SUP_LOG_DEBUG("::: start copying numbers doc from ~b number dbs to account dbs", [length(NumberDbs)]),
+    copy_number_dbs_to_accounts(NumberDbs, length(NumberDbs), ?TIME_BETWEEN_ACCOUNTS_MS).
+
+-spec copy_number_dbs_to_accounts(kz_term:ne_binaries()) -> 'ok'.
+copy_number_dbs_to_accounts(NumberDbs) ->
+    ?SUP_LOG_DEBUG("::: start copying numbers doc from ~b number dbs to account dbs", [length(NumberDbs)]),
+    copy_number_dbs_to_accounts(NumberDbs, length(NumberDbs), ?TIME_BETWEEN_ACCOUNTS_MS).
+
+-spec copy_number_dbs_to_accounts(kz_term:ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'ok'.
+copy_number_dbs_to_accounts([], _, _) ->
+    'ok';
+copy_number_dbs_to_accounts([NumberDb|NumberDbs], Total, SleepTime) ->
+    ?SUP_LOG_DEBUG("(~p/~p) copying numbers from '~s' to account dbs~n"
+                  ,[length(NumberDbs) + 1, Total, NumberDb]
+                  ),
+    copy_number_db_to_accounts(NumberDb),
+    _ = timer:sleep(SleepTime),
+    copy_number_dbs_to_accounts(NumberDbs, Total, SleepTime).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec copy_number_db_to_accounts(kz_term:ne_binary()) -> 'ok'.
+copy_number_db_to_accounts(NumberDb) ->
+    ViewOptions = [{'limit', 200}
+                  ,'include_docs'
+                  ],
+    View = <<"numbers/assigned_to">>,
+    get_results_loop(NumberDb, View, ViewOptions, fun(_Db, R) -> split_and_save_to_account_dbs(R) end).
+
+-spec split_and_save_to_account_dbs(kz_json:objects()) -> 'ok'.
+split_and_save_to_account_dbs(Results) ->
+    F = fun (JObj, M) ->
+                Doc = kz_json:get_value(<<"doc">>, JObj),
+                AccountId = kz_json:get_value(<<"pvt_assigned_to">>, Doc),
+                M#{AccountId => [kz_doc:delete_revision(Doc) | maps:get(AccountId, M, [])]}
+        end,
+    Map = lists:foldl(F, #{}, Results),
+    save_to_account_db(maps:to_list(Map), 1).
+
+-spec save_to_account_db(kz_term:proplist(), integer()) -> 'ok'.
+save_to_account_db([], _) -> 'ok';
+save_to_account_db(_, Retries) when Retries < 0 ->
+    ?SUP_LOG_DEBUG("  - reached to maximum retries to save to number dbs in this batch");
+save_to_account_db([{AccountId, JObjs} | Rest], Retries) ->
+    case kz_datamgr:save_docs(kz_util:format_account_db(AccountId), JObjs) of
+        {'ok', Saved} ->
+            handle_save_to_account_db(AccountId, JObjs, split_by_failed_reasons(Saved, #{})),
+            save_to_account_db(Rest, Retries);
+        {'error', 'timeout'} ->
+            ?SUP_LOG_ERROR("  - timeout to save to ~s, maybe trying again...", [AccountId]),
+            save_to_account_db([{AccountId, JObjs} | Rest], Retries - 1);
+        {'error', _Reason} ->
+            ?SUP_LOG_ERROR("  - failed to save numbers to account ~s: ~p", [AccountId, _Reason])
     end.
 
-split_by_failed_reason(JObj, Acc) ->
+-spec handle_save_to_account_db(kz_term:ne_binary(), kz_json:objects(), map()) -> 'ok'.
+handle_save_to_account_db(AccountId, JObjs, #{<<"conflict">> := Conflicts}=Failed) ->
+    FailedAgain = save_conflict_to_account_db(AccountId, JObjs, Conflicts),
+    Message = <<"  - failed to save some numbers in account ", AccountId/binary, " db: ">>,
+    log_save_failures(Message, maps:merge(Failed, FailedAgain));
+handle_save_to_account_db(AccountId, _, Failed) ->
+    Message = <<"  - failed to save some numbers in account ", AccountId/binary, " db: ">>,
+    log_save_failures(Message, Failed).
+
+-spec save_conflict_to_account_db(kz_term:ne_binary(), kz_json:objects(), kz_term:ne_binaries()) -> map().
+save_conflict_to_account_db(AccountId, JObjs, ConflictIds) ->
+    AccountDb = kz_util:format_account_db(AccountId),
+    ConflictIdsSet = gb_sets:from_list(ConflictIds),
+    {Errored, OpenedIds, Revs} = get_conflicts_revs_from_account(AccountDb, ConflictIds),
+    ConflictJObjs = [kz_doc:set_revision(JObj, maps:get(kz_doc:id(JObj), Revs))
+                     || JObj <- JObjs,
+                        gb_sets:is_member(kz_doc:id(JObj), ConflictIdsSet),
+                        gb_sets:is_member(kz_doc:id(JObj), OpenedIds)
+                    ],
+    case kz_datamgr:save_docs(AccountDb, ConflictJObjs) of
+        {'ok', Saved} ->
+            split_by_failed_reasons(Saved, Errored);
+        {'error', Err} ->
+            Reason = kz_term:safe_cast(Err, <<"datastore_fault">>, fun kz_term:to_binary/1),
+            Errored#{Reason => maps:get(Reason, Errored, []) ++ [Id || Id <- ConflictIds]}
+    end.
+
+-spec get_conflicts_revs_from_account(kz_term:ne_binary(), kz_term:ne_binaries()) ->
+                                             {map(), gb_sets:set(), map()}.
+get_conflicts_revs_from_account(AccountDb, ConflictIds) ->
+    case kz_datamgr:open_docs(AccountDb, ConflictIds) of
+        {'ok', JObjs} ->
+            split_errors_opened_revs(JObjs, {#{}, gb_sets:new(), #{}});
+        {'error', Err} ->
+            Reason = kz_term:safe_cast(Err, <<"datastore_fault">>, fun kz_term:to_binary/1),
+            [{Id, Reason} || Id <- ConflictIds]
+    end.
+
+-spec split_errors_opened_revs(kz_json:objects(), {map(), gb_sets:set(), map()}) ->
+                                      {map(), gb_sets:set(), map()}.
+split_errors_opened_revs([], Acc) -> Acc;
+split_errors_opened_revs([JObj|JObjs], {Errors, Opened, Revs}) ->
     case kz_json:get_value(<<"error">>, JObj) of
-        'undefined' -> Acc;
-        Reason -> Acc#{Reason => maps:get(Reason, Acc, 0) + 1}
+        'undefined' ->
+            Id = kz_doc:id(JObj),
+            Acc = {Errors
+                  ,gb_sets:add_element(Id, Opened)
+                  ,Revs#{Id => kz_doc:revision(kz_json:get_value(<<"doc">>, JObj))}
+                  },
+            split_errors_opened_revs(JObjs, Acc);
+        Err ->
+            Reason = kz_term:safe_cast(Err, <<"datastore_fault">>, fun kz_term:to_binary/1),
+            Acc = {Errors#{Reason => [kz_doc:id(JObj)|maps:get(Reason, Errors, [])]}
+                  ,Opened
+                  ,Revs
+                  },
+            split_errors_opened_revs(JObjs, Acc)
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec copy_number_to_account_db(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok' | 'error', kz_term:ne_binary()}.
+copy_number_to_account_db(Num, Account) ->
+    AccountId = kz_util:format_account_id(Account),
+    AccountDb = kz_util:format_account_db(AccountId),
+    Number = knm_converters:normalize(Num),
+    NumberDb = knm_converters:to_db(Number),
+    case kz_datamgr:open_doc(NumberDb, Number) of
+        {'ok', JObj} ->
+            NewJObj = case kz_datamgr:lookup_doc_rev(AccountDb, kz_doc:id(JObj)) of
+                          {'ok', Rev} -> kz_doc:set_revision(JObj, Rev);
+                          {'error', _} -> kz_doc:delete_revision(JObj)
+                      end,
+            case kz_datamgr:save_doc(AccountDb, NewJObj) of
+                {'ok', _} -> {'ok', kz_doc:id(JObj)};
+                {'error', Reason} ->
+                    Error = kz_term:to_binary(
+                              io_lib:format("can save number '~s' to account db: ~p", [kz_doc:id(JObj), Reason])
+                             ),
+                    {'error', Error}
+            end;
+        {'error', Reason} ->
+            Error = kz_term:to_binary(
+                      io_lib:format("can read number '~s' from '~s': ~p", [Number, NumberDb, Reason])
+                     ),
+            {'error', Error}
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec remove_wrong_assigneds_from_accounts() -> 'ok'.
+remove_wrong_assigneds_from_accounts() ->
+    AccountDbs = kapps_util:get_all_accounts('encoded'),
+    ?SUP_LOG_DEBUG("::: start removing wrong assigned numbers from ~b account dbs", [length(AccountDbs)]),
+    remove_wrong_assigneds_from_accounts(AccountDbs, length(AccountDbs), ?TIME_BETWEEN_ACCOUNTS_MS).
+
+-spec remove_wrong_assigneds_from_accounts(kz_term:ne_binaries()) -> 'ok'.
+remove_wrong_assigneds_from_accounts(Accounts) ->
+    ?SUP_LOG_DEBUG("::: start removing wrong assigned numbers from ~b account dbs", [length(Accounts)]),
+    remove_wrong_assigneds_from_accounts(accounts, length(Accounts), ?TIME_BETWEEN_ACCOUNTS_MS).
+
+-spec remove_wrong_assigneds_from_accounts(kz_term:ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'ok'.
+remove_wrong_assigneds_from_accounts([], _, _) ->
+    'ok';
+remove_wrong_assigneds_from_accounts([AccountDb|AccountDbs], Total, SleepTime) ->
+    ?SUP_LOG_DEBUG("(~p/~p) removing wrong assigned from account ~s~n"
+                  ,[length(AccountDbs) + 1, Total, kz_util:format_account_db(AccountDb)]
+                  ),
+    remove_wrong_assigneds_from_account(AccountDb),
+    _ = timer:sleep(SleepTime),
+    remove_wrong_assigneds_from_accounts(AccountDbs, Total, SleepTime).
+
+-spec remove_wrong_assigneds_from_account(kz_term:ne_binary()) -> 'ok'.
+remove_wrong_assigneds_from_account(Account) ->
+    AccountDb = kz_util:format_account_db(Account),
+    ViewOptions = [{'limit', 200}
+                  ,'include_docs'
+                  ],
+    View = <<"numbers/list_by_number">>,
+    get_results_loop(AccountDb, View, ViewOptions, fun remove_wrong_assigneds_from_account/2).
+
+-spec remove_wrong_assigneds_from_account(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
+remove_wrong_assigneds_from_account(_, []) -> 'ok';
+remove_wrong_assigneds_from_account(AccountDb, JObjs) ->
+    AccountId = kz_util:format_account_id(AccountDb),
+    ToRemove = [kz_doc:id(JObj)
+                || JObj <- JObjs,
+                   kz_json:get_value(<<"pvt_assigned_to">>, JObj) =/= AccountId
+               ],
+    _ = kz_datamgr:del_docs(AccountDb, ToRemove),
+    'ok'.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_results_loop(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), function()) -> 'ok'.
+get_results_loop(Db, View, ViewOptions, CallBackFun) ->
+    get_results_loop(Db, View, ViewOptions, CallBackFun, 2).
+
+-spec get_results_loop(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), function(), integer()) -> 'ok'.
+get_results_loop(_, _View, _, _, Retries) when Retries =< 0 ->
+    ?SUP_LOG_DEBUG("  - maximum retries to get read docs from ~s", [_View]);
+get_results_loop(Db, View, ViewOptions, CallBackFun, Retries) ->
+    Results = kz_datamgr:get_results(Db, View, ViewOptions),
+    handle_get_results(Db, View, ViewOptions, CallBackFun, Retries, Results).
+
+-spec handle_get_results(kz_term:ne_binary()
+                        ,kz_term:ne_binary()
+                        ,kz_term:proplist()
+                        ,function()
+                        ,integer()
+                        ,kazoo_data:get_results_return()
+                        ) -> 'ok'.
+handle_get_results(Db, View, ViewOptions, CallBackFun, Retries, {'ok', JObjs}) ->
+    try lists:split(props:get_integer_value('limit', ViewOptions), JObjs) of
+        {Results, []} ->
+            CallBackFun(Db, Results);
+        {Results, [NextJObj]} ->
+            CallBackFun(Db, Results),
+            NewViewOptions = props:set_value('startkey', kz_doc:id(NextJObj), ViewOptions),
+            get_results_loop(Db, View, NewViewOptions, CallBackFun, Retries)
+    catch
+        'error':'badarg' ->
+            CallBackFun(Db, JObjs)
+    end;
+handle_get_results(Db, View, ViewOptions, CallBackFun, Retries, {'error', _Reason}) ->
+    ?SUP_LOG_DEBUG("  - failed to get numbers from db ~s(~p), maybe trying again...", [Db, _Reason]),
+    get_results_loop(Db, View, ViewOptions, CallBackFun, Retries - 1).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec log_save_failures(kz_term:ne_binary(), kz_json:objects() | map()) -> 'ok'.
+log_save_failures(_, []) -> 'ok';
+log_save_failures(_, Failed) when is_map(Failed)
+                                  andalso map_size(Failed) =:= 0 ->
+    'ok';
+log_save_failures(Message, Failed) when is_map(Failed) ->
+    Map = maps:fold(fun(Reason, Ids, Acc) ->
+                            [kz_term:to_binary(io_lib:format("[~s: ~b]", [Reason, length(Ids)])) | Acc]
+                    end
+                   ,[]
+                   ,Failed
+                   ),
+    ?SUP_LOG_DEBUG("~s, ~s", [Message, kz_binary:join(Map, <<", ">>)]);
+log_save_failures(Message, JObjs) ->
+    log_save_failures(Message, split_by_failed_reasons(JObjs, #{})).
+
+-spec split_by_failed_reasons(kz_json:objects(), map()) -> map().
+split_by_failed_reasons([], Acc) -> Acc;
+split_by_failed_reasons([JObj|JObjs], Acc) ->
+    case kz_json:get_value(<<"error">>, JObj) of
+        'undefined' -> split_by_failed_reasons(JObjs, Acc);
+        Error ->
+            Reason = kz_term:to_binary(Error),
+            split_by_failed_reasons(JObjs, Acc#{Reason => [kz_doc:id(JObj) | maps:get(Reason, Acc, [])]})
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec fix_number(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> knm_number_return().
 fix_number(Num, AuthBy, AccountDb) ->
     Options = [{auth_by, AuthBy}
