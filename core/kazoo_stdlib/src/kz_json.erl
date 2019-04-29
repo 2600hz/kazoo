@@ -571,7 +571,7 @@ sum_jobjs([FirstJObj|JObjs], Sumer)
     lists:foldl(F, FirstJObj, JObjs).
 
 %%------------------------------------------------------------------------------
-%% @doc Reorder JSON objects according to the given soft function.
+%% @doc Reorder JSON objects according to the given sort function.
 %% Returns a sorted list of JObjs, according to the ordering function Fun.
 %% Fun(A, B) is to return true if A compares less than or equal to B in the ordering, otherwise false.
 %% @end
