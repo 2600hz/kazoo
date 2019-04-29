@@ -118,7 +118,17 @@ warn(PLT, Options, Paths) ->
 
     AllModules = find_unknown_modules(PLT, BeamPaths, GoHard),
 
+    log_work_to_do(BeamPaths, AllModules, GoHard),
+
     do_warn(PLT, AllModules, Bulk).
+
+log_work_to_do([_], _AllModules, 'false') ->
+    io:format("analyzing 1 path...~n", []);
+log_work_to_do(BeamPaths, _AllModules, 'false') ->
+    io:format("analyzing ~p paths...~n", [length(BeamPaths)]);
+log_work_to_do(BeamPaths, AllModules, 'true') ->
+    Len = length(BeamPaths),
+    io:format("analyzing ~p paths + ~p called modules...~n", [Len, length(AllModules)-Len]).
 
 find_unknown_modules(_PLT, BeamPaths, 'false') -> BeamPaths;
 find_unknown_modules(PLT, BeamPaths, 'true') ->
