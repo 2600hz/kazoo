@@ -29392,11 +29392,6 @@
                             "description": "callflow save after notify",
                             "type": "boolean"
                         },
-                        "oldest_message_first": {
-                            "default": false,
-                            "description": "callflow play oldest voicemail messages before new ones",
-                            "type": "boolean"
-                        },
                         "vm_message_forward_type": {
                             "default": "only_forward",
                             "description": "Enable or disable the ability to prepend a message when forwarding a voicemail message",
@@ -36097,6 +36092,11 @@
                         "type": "string"
                     },
                     "type": "array"
+                },
+                "oldest_message_first": {
+                    "default": false,
+                    "description": "Play older voicemail messages before new ones",
+                    "type": "boolean"
                 },
                 "owner_id": {
                     "description": "The ID of the user object that 'owns' the voicemail box",
