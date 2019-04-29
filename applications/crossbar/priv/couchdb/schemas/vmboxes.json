@@ -130,6 +130,12 @@
             "support_level": "supported",
             "type": "boolean"
         },
+        "oldest_message_first": {
+            "default": false,
+            "description": "Play older voicemail messages before new ones",
+            "support_level": "supported",
+            "type": "boolean"
+        },
         "timezone": {
             "description": "The default timezone",
             "maxLength": 32,
