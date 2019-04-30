@@ -163,8 +163,8 @@ handle_change(JObj, Props, Deliver) ->
     handle_change(JObj, Props, RK).
 
 -spec terminate(any(), state()) -> 'ok'.
-terminate('shutdown', _State) ->
-    lager:debug("shutting down listener");
+terminate('shutdown', _State) -> 'ok';
+terminate('normal', _State) -> 'ok';
 terminate(_Reason, _State) ->
     lager:info("terminating: ~p", [_Reason]).
 
