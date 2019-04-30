@@ -23,25 +23,20 @@
 
 -export([find_prefix/2]).
 
-proper_test_() ->
-    {"Runs "?MODULE_STRING" PropEr tests"
+proper_seq_test_() ->
+    {"Runs "?MODULE_STRING" PropEr sequential tests"
     ,[{'timeout'
       ,120
-      ,{"Sequential tests"
-       ,?_assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}
-                                                      ,'noshrink'
-                                                      ,30
-                                                      ]))
-       }
+      ,?_assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}, 30]))
       }
-     ,{'timeout'
+     ]
+    }.
+
+proper_parallel_test_() ->
+    {"Runs "?MODULE_STRING" PropEr parallel tests"
+    ,[{'timeout'
       ,120
-      ,{"Parallel tests"
-       ,?_assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}
-                                                               ,'noshrink'
-                                                               ,10
-                                                               ]))
-       }
+      ,?_assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}, 30]))
       }
      ]
     }.
