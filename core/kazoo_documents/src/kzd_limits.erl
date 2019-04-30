@@ -527,7 +527,7 @@ get_public_limit_integer(Key, Doc, Default) ->
 get_default_limit_integer(Key, Default) ->
     kapps_config:get_integer(?LIMITS_CAT, Key, Default).
 
--spec enforce_integer_limit(integer(), integer()) -> integer.
+-spec enforce_integer_limit(integer(), integer()) -> integer().
 enforce_integer_limit(Private, Public) ->
     case Private > Public of
         'true' -> Public;
