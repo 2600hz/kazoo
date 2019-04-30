@@ -18,6 +18,7 @@
 -export([notify/1, notify/2, set_notify/2]).
 -export([notify_callback/1, notify_callback/2, set_notify_callback/2]).
 -export([notify_email_addresses/1, notify_email_addresses/2, set_notify_email_addresses/2]).
+-export([oldest_message_first/1, oldest_message_first/2, set_oldest_message_first/2]).
 -export([owner_id/1, owner_id/2, set_owner_id/2]).
 -export([pin/1, pin/2, set_pin/2]).
 -export([require_pin/1, require_pin/2, set_require_pin/2]).
@@ -182,6 +183,18 @@ notify_email_addresses(Doc, Default) ->
 -spec set_notify_email_addresses(doc(), kz_term:ne_binaries()) -> doc().
 set_notify_email_addresses(Doc, NotifyEmailAddresses) ->
     kz_json:set_value([<<"notify_email_addresses">>], NotifyEmailAddresses, Doc).
+
+-spec oldest_message_first(doc()) -> boolean().
+oldest_message_first(Doc) ->
+    oldest_message_first(Doc, false).
+
+-spec oldest_message_first(doc(), Default) -> boolean() | Default.
+oldest_message_first(Doc, Default) ->
+    kz_json:get_boolean_value([<<"oldest_message_first">>], Doc, Default).
+
+-spec set_oldest_message_first(doc(), boolean()) -> doc().
+set_oldest_message_first(Doc, OldestMessageFirst) ->
+    kz_json:set_value([<<"oldest_message_first">>], OldestMessageFirst, Doc).
 
 -spec owner_id(doc()) -> kz_term:api_ne_binary().
 owner_id(Doc) ->
