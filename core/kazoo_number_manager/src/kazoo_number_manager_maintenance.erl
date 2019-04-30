@@ -25,16 +25,17 @@
         ,register_views/0
         ]).
 
+
 -export([copy_number_dbs_to_accounts/0
         ,copy_number_dbs_to_accounts/1
         ]).
 -export([copy_number_db_to_accounts/1
         ]).
--export([copy_number_to_account_db/2
-        ]).
 -export([copy_assigned_number_dbs_to_account/1
         ]).
 -export([copy_assigned_number_db_to_account/2
+        ]).
+-export([copy_number_to_account_db/2
         ]).
 -export([copy_accounts_to_number_dbs/0, copy_accounts_to_number_dbs/1
         ,copy_account_to_number_dbs/1
@@ -44,8 +45,18 @@
         ]).
 -export([remove_wrong_assigned_from_account/1
         ]).
+-export([fix_used_by_field_for_account_dbs/0
+        ,fix_used_by_field_for_account_dbs/1
+        ]).
+-export([fix_used_by_field_for_single_account_db/1]).
+-export([fix_used_by_field_for_assigned_numdbs/1
+        ]).
+-export([fix_used_by_field_for_single_assign_db/2
+        ]).
+
 
 -export([fix_account_db_numbers/1]).
+
 
 -export([migrate/0
         ,migrate_unassigned_numbers/0, migrate_unassigned_numbers/1
@@ -310,41 +321,41 @@ copy_account_to_number_dbs(Account) ->
                   ,'include_docs'
                   ],
     View = <<"numbers/list_by_number">>,
-    get_results_loop(AccountDb, View, ViewOptions, fun split_and_save_to_number_dbs/2).
+    get_results_loop(AccountDb, View, ViewOptions, fun split_and_save_to_number_dbs/1).
 
 %%------------------------------------------------------------------------------
 %% @private Group the results by number db and save to number dbs.
 %% @end
 %%------------------------------------------------------------------------------
--spec split_and_save_to_number_dbs(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
-split_and_save_to_number_dbs(AccountDb, Results) ->
+-spec split_and_save_to_number_dbs(kz_json:objects()) -> 'ok'.
+split_and_save_to_number_dbs(Results) ->
     F = fun (JObj, M) ->
                 NewJObj = kz_json:get_value(<<"doc">>, JObj),
                 NumberDb = knm_converters:to_db(knm_converters:normalize(kz_doc:id(NewJObj))),
                 M#{NumberDb => [kz_doc:delete_revision(NewJObj) | maps:get(NumberDb, M, [])]}
         end,
     Map = lists:foldl(F, #{}, Results),
-    save_to_number_dbs(AccountDb, maps:to_list(Map), 1).
+    save_to_number_dbs(maps:to_list(Map), 1).
 
--spec save_to_number_dbs(kz_term:ne_binary(), kz_term:proplist(), integer()) -> 'ok'.
-save_to_number_dbs(_, [], _) -> 'ok';
-save_to_number_dbs(_AccountDb, _, Retries) when Retries < 0 ->
+-spec save_to_number_dbs(kz_term:proplist(), integer()) -> 'ok'.
+save_to_number_dbs([], _) -> 'ok';
+save_to_number_dbs(_, Retries) when Retries < 0 ->
     ?SUP_LOG_DEBUG("  - reached to maximum retries to save to number dbs in this batch");
-save_to_number_dbs(AccountDb, [{Db, JObjs} | Rest], Retries) ->
+save_to_number_dbs([{Db, JObjs} | Rest], Retries) ->
     case kz_datamgr:save_docs(Db, JObjs) of
         {'ok', Saved} ->
             log_save_failures(<<"  - failed to save some numbers in ", Db/binary, ": ">>
                              ,Saved
                              ),
-            save_to_number_dbs(AccountDb, Rest, Retries);
+            save_to_number_dbs(Rest, Retries);
         {'error', 'not_found'} ->
             ?SUP_LOG_DEBUG("  - creating number db ~s", [Db]),
             _ = kz_datamgr:db_create(Db),
             _ = kapps_maintenance:refresh(Db),
-            save_to_number_dbs(AccountDb, [{Db, JObjs} | Rest], Retries - 1);
+            save_to_number_dbs([{Db, JObjs} | Rest], Retries - 1);
         {'error', 'timeout'} ->
             ?SUP_LOG_ERROR("  - timeout to save to ~s, maybe trying again...", [Db]),
-            save_to_number_dbs(AccountDb, [{Db, JObjs} | Rest], Retries - 1);
+            save_to_number_dbs([{Db, JObjs} | Rest], Retries - 1);
         {'error', _Reason} ->
             ?SUP_LOG_ERROR("  - failed to save numbers to ~s: ~p", [Db, _Reason])
     end.
@@ -436,7 +447,7 @@ copy_assigned_number_db_to_account(Account, NumberDb) ->
                   ,'include_docs'
                   ],
     View = <<"numbers/assigned_to">>,
-    CallBackFun = fun(_Db, Results) -> save_to_account_db([{AccountId, Results}], 2) end,
+    CallBackFun = fun(_Db, Results) -> save_to_account_dbs([{AccountId, Results}], 2) end,
     get_results_loop(NumberDb, View, ViewOptions, CallBackFun).
 
 %%------------------------------------------------------------------------------
@@ -451,20 +462,20 @@ split_and_save_to_account_dbs(Results) ->
                 M#{AccountId => [Doc | maps:get(AccountId, M, [])]}
         end,
     Map = lists:foldl(F, #{}, Results),
-    save_to_account_db(maps:to_list(Map), 1).
+    save_to_account_dbs(maps:to_list(Map), 1).
 
--spec save_to_account_db(kz_term:proplist(), integer()) -> 'ok'.
-save_to_account_db([], _) -> 'ok';
-save_to_account_db(_, Retries) when Retries < 0 ->
+-spec save_to_account_dbs(kz_term:proplist(), integer()) -> 'ok'.
+save_to_account_dbs([], _) -> 'ok';
+save_to_account_dbs(_, Retries) when Retries < 0 ->
     ?SUP_LOG_DEBUG("  - reached to maximum retries to save to number dbs in this batch");
-save_to_account_db([{AccountId, JObjs} | Rest], Retries) ->
+save_to_account_dbs([{AccountId, JObjs} | Rest], Retries) ->
     case kz_datamgr:save_docs(kz_util:format_account_db(AccountId), JObjs) of
         {'ok', Saved} ->
             handle_save_to_account_db(AccountId, JObjs, split_by_failed_reasons(Saved, #{})),
-            save_to_account_db(Rest, Retries);
+            save_to_account_dbs(Rest, Retries);
         {'error', 'timeout'} ->
             ?SUP_LOG_ERROR("  - timeout to save to ~s, maybe trying again...", [AccountId]),
-            save_to_account_db([{AccountId, JObjs} | Rest], Retries - 1);
+            save_to_account_dbs([{AccountId, JObjs} | Rest], Retries - 1);
         {'error', _Reason} ->
             ?SUP_LOG_ERROR("  - failed to save numbers to account ~s: ~p", [AccountId, _Reason])
     end.
@@ -563,6 +574,287 @@ copy_number_to_account_db(Num, Account) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec fix_used_by_field_for_account_dbs() -> 'ok'.
+fix_used_by_field_for_account_dbs() ->
+    AccountDbs = kapps_util:get_all_accounts('encoded'),
+    ?SUP_LOG_DEBUG("::: start fixing numbers doc used_by field for ~b account dbs", [length(AccountDbs)]),
+    fix_used_by_field_for_account_dbs(AccountDbs, length(AccountDbs), ?TIME_BETWEEN_ACCOUNTS_MS).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec fix_used_by_field_for_account_dbs(kz_term:ne_binaries()) -> 'ok'.
+fix_used_by_field_for_account_dbs(AccountDbs) ->
+    ?SUP_LOG_DEBUG("::: start fixing numbers doc used_by field for ~b account dbs", [length(AccountDbs)]),
+    fix_used_by_field_for_account_dbs(AccountDbs, length(AccountDbs), ?TIME_BETWEEN_ACCOUNTS_MS).
+
+%%------------------------------------------------------------------------------
+%% @private
+%% @end
+%%------------------------------------------------------------------------------
+-spec fix_used_by_field_for_account_dbs(kz_term:ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'ok'.
+fix_used_by_field_for_account_dbs([], _, _) ->
+    'ok';
+fix_used_by_field_for_account_dbs([AccountDb|AccountDbs], Total, SleepTime) ->
+    ?SUP_LOG_DEBUG("(~p/~p) fixing numbers used_by field for '~s' db~n"
+                  ,[length(AccountDbs) + 1, Total, kz_util:format_account_db(AccountDb)]
+                  ),
+    fix_used_by_field_for_single_account_db(AccountDb),
+    _ = timer:sleep(SleepTime),
+    fix_used_by_field_for_account_dbs(AccountDbs, Total, SleepTime).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec fix_used_by_field_for_single_account_db(kz_term:ne_binary()) -> 'ok'.
+fix_used_by_field_for_single_account_db(Account) ->
+    fix_used_by_field_for_single_account_db(Account, get_account_dids_apps(Account)).
+
+-spec fix_used_by_field_for_single_account_db(kz_term:ne_binary(), {'ok', map()}|{'error', kazoo_data:data_errors()}) -> 'ok'.
+fix_used_by_field_for_single_account_db(Account, {'ok', AppsUsing}) ->
+    AccountDb = kz_util:format_account_db(Account),
+    get_results_loop(AccountDb
+                    ,<<"numbers/list_by_app">>
+                    ,[]
+                    ,fun(Db, Results) ->
+                             {AppsStillUsing, ToFix} =
+                                fix_used_by_so_i_can_open_and_save(AppsUsing, Results, #{}),
+                             fix_used_by_and_save_in_account(Db, ToFix),
+                             log_disappeared_numbers_still_in_use_by_apps(AppsStillUsing)
+                    end
+                   );
+fix_used_by_field_for_single_account_db(_, {'error', _}) ->
+    'ok'.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec fix_used_by_field_for_assigned_numdbs(kz_term:ne_binary()) -> 'ok'.
+fix_used_by_field_for_assigned_numdbs(AccountId) ->
+    fix_used_by_field_for_assigned_numdbs(AccountId, get_account_dids_apps(AccountId)).
+
+%% @private
+-spec fix_used_by_field_for_assigned_numdbs(kz_term:ne_binary(), {'ok', map()} | {'error', kazoo_data:data_errors()}) -> 'ok'.
+fix_used_by_field_for_assigned_numdbs(AccountId, {'ok', AppsUsing}) ->
+    NumberDbs = knm_util:get_all_number_dbs(),
+    ?SUP_LOG_DEBUG("::: start fixing used_by field for assigned to ~s numbers doc for ~b number dbs"
+                  ,[AccountId, length(NumberDbs)]
+                  ),
+    fix_used_by_field_for_assigned_numdbs(AccountId, AppsUsing, NumberDbs, length(NumberDbs), ?TIME_BETWEEN_ACCOUNTS_MS);
+fix_used_by_field_for_assigned_numdbs(_, {'error', _}) ->
+    'ok'.
+
+%%------------------------------------------------------------------------------
+%% @private
+%% @end
+%%------------------------------------------------------------------------------
+-spec fix_used_by_field_for_assigned_numdbs(kz_term:ne_binary(), map(), kz_term:ne_binaries(), non_neg_integer(), non_neg_integer()) -> 'ok'.
+fix_used_by_field_for_assigned_numdbs(_, _, [], _, _) ->
+    'ok';
+fix_used_by_field_for_assigned_numdbs(AccountId, AppsUsing, [NumDb|NumDbs], Total, SleepTime) ->
+    ?SUP_LOG_DEBUG("(~p/~p) fixing numbers used_by field for '~s' in db~n"
+                  ,[length(NumDbs) + 1, Total, AccountId, NumDb]
+                  ),
+    fix_used_by_field_for_single_assign_db(AccountId, {'ok', AppsUsing}, NumDb),
+    _ = timer:sleep(SleepTime),
+    fix_used_by_field_for_assigned_numdbs(AccountId, AppsUsing, NumDbs, Total, SleepTime).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec fix_used_by_field_for_single_assign_db(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+fix_used_by_field_for_single_assign_db(AccountId, NumberDb) ->
+    fix_used_by_field_for_single_assign_db(AccountId, get_account_dids_apps(AccountId), NumberDb).
+
+%%------------------------------------------------------------------------------
+%% @private
+%% @end
+%%------------------------------------------------------------------------------
+-spec fix_used_by_field_for_single_assign_db(kz_term:ne_binary(), {'ok', map()} | {'error', kazoo_data:data_errors()}, kz_term:ne_binary()) -> 'ok'.
+fix_used_by_field_for_single_assign_db(AccountId, {'ok', AppsUsing}, NumDb) ->
+    FormattedAccountId = kz_util:format_account_id(AccountId),
+    get_results_loop(NumDb
+                    ,<<"numbers/list_assigned_by_app">>
+                    ,[{'startkey', [FormattedAccountId]}
+                     ,{'endkey', [FormattedAccountId, kz_json:new()]}
+                     ]
+                    ,fun(Db, Results) ->
+                             {AppsStillUsing, ToFix} =
+                                fix_used_by_so_i_can_open_and_save(AppsUsing, Results, #{}),
+                             fix_used_by_and_save_in_numdb(Db, ToFix),
+                             log_disappeared_numbers_still_in_use_by_apps(AppsStillUsing)
+                     end
+                    );
+fix_used_by_field_for_single_assign_db(_, {'error', _}, _) ->
+    'ok'.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_account_dids_apps(kz_term:ne_binary()) -> map() |
+                                                    {'error', kazoo_data:data_errors()}.
+get_account_dids_apps(Account) ->
+    AccountDb = kz_util:format_account_db(Account),
+    case get_dids_for_app(AccountDb, <<"callflow">>, []) of
+        {'ok', CallflowDIDs} ->
+            case get_dids_for_app(AccountDb, <<"trunkstore">>, []) of
+                {'ok', TrunkstoreDIDs} ->
+                    handle_dids_app(CallflowDIDs, TrunkstoreDIDs);
+                {'error', _R}=Error ->
+                    ?SUP_LOG_DEBUG("  failed to get trunkstore numbers (~p), skipping this account...", [_R]),
+                    Error
+            end;
+        {'error', _R}= Error ->
+            ?SUP_LOG_DEBUG("  failed to get callflow numbers (~p), skipping this account...", [_R]),
+            Error
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec handle_dids_app(kz_term:ne_binaries(), kz_term:ne_binaries()) -> map().
+handle_dids_app(CallflowDIDs, TrunkstoreDIDs) ->
+    Callflow = gb_sets:from_list(CallflowDIDs),
+    Trunk = gb_sets:from_list(TrunkstoreDIDs),
+    Multi = gb_sets:intersection(Callflow, Trunk),
+    case gb_sets:is_empty(Multi) of
+        'true' ->
+            maps:merge(maps:from_list([{D, <<"callflow">>} || D <- CallflowDIDs])
+                      ,maps:from_list([{D, <<"trunkstore">>} || D <- TrunkstoreDIDs])
+                      );
+        'false' ->
+            Msg = kz_term:to_binary(io_lib:format("  ignoring numbers used by both trunkstore and callflow: ~s"
+                                                 ,[kz_binary:join(gb_sets:to_list(Multi))]
+                                                 )
+                                   ),
+            ?SUP_LOG_DEBUG("~s", [Msg]),
+            maps:merge(maps:from_list([{D, <<"callflow">>}
+                                       || D <- CallflowDIDs,
+                                          not gb_sets:is_element(D, Multi)
+                                      ])
+                      ,maps:from_list([{D, <<"trunkstore">>}
+                                       || D <- TrunkstoreDIDs,
+                                          not gb_sets:is_element(D, Multi)
+                                      ])
+                      )
+    end.
+
+%%------------------------------------------------------------------------------
+%% @private
+%% @end
+%%------------------------------------------------------------------------------
+-spec fix_used_by_so_i_can_open_and_save(map(), kz_json:objects(), map()) -> {map(), map()}.
+fix_used_by_so_i_can_open_and_save(AppsUsing, [JObj|JObjs], ToFix) ->
+    Number = kz_doc:id(JObj),
+    NumUsedBy = case kz_doc:get_value(<<"key">>, JObj, 'null') of
+                    [_AssignedTo, App] -> App; %% from number_db
+                    App -> App %% from account_db
+                end,
+    UsedByApp = maps:get(Number, AppsUsing, 'undefined'),
+    {NewAppsUsing, NewToFix} = maybe_fix_used_by(Number, NumUsedBy, UsedByApp, AppsUsing, ToFix),
+    fix_used_by_so_i_can_open_and_save(NewAppsUsing, JObjs, NewToFix);
+fix_used_by_so_i_can_open_and_save(AppsStillUsing, [], ToFix) ->
+    {AppsStillUsing, ToFix}.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec log_disappeared_numbers_still_in_use_by_apps(map()) -> 'ok'.
+log_disappeared_numbers_still_in_use_by_apps(AppsUsing) when map_size(AppsUsing) =:= 0 ->
+    'ok';
+log_disappeared_numbers_still_in_use_by_apps(AppsUsing) ->
+    io:put_chars(
+      kz_term:to_binary(
+        ["\n  The numbers are not exists in account db and are still in used by apps:\n"
+        ,[<<"  ", Num/binary, ": ", App/binary, $\n>>
+          || {Num, App} <- maps:to_list(AppsUsing)
+         ]
+        ]
+       )
+     ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec fix_used_by_and_save_in_account(kz_term:ne_binary(), map()) -> 'ok'.
+fix_used_by_and_save_in_account(_, ToFix) when map_size(ToFix) =:= 0 ->
+    'ok';
+fix_used_by_and_save_in_account(AccountDb, ToFix) ->
+    Ids = maps:keys(ToFix),
+    case kz_datamgr:open_docs(AccountDb, Ids) of
+        {'ok', JObjs} ->
+            NewJObjs = [(maps:get(kz_doc:id(Doc), ToFix, fun kz_term:identity/1))(Doc)
+                        || JObj <- JObjs,
+                           Doc <- [kz_json:get_value(<<"doc">>, JObj)]
+                       ],
+            save_to_account_dbs([{AccountDb, NewJObjs}], 1);
+        {'error', _Reason} ->
+            ?SUP_LOG_DEBUG("  failed to open number docs to fix used_by: ~p", [_Reason])
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec fix_used_by_and_save_in_numdb(kz_term:ne_binary(), map()) -> 'ok'.
+fix_used_by_and_save_in_numdb(_, ToFix) when map_size(ToFix) =:= 0 ->
+    'ok';
+fix_used_by_and_save_in_numdb(NumDb, ToFix) ->
+    Ids = maps:keys(ToFix),
+    case kz_datamgr:open_docs(NumDb, Ids) of
+        {'ok', JObjs} ->
+            NewJObjs = [(maps:get(kz_doc:id(Doc), ToFix, fun kz_term:identity/1))(Doc)
+                        || JObj <- JObjs,
+                           Doc <- [kz_json:get_value(<<"doc">>, JObj)]
+                       ],
+            save_to_account_dbs([{NumDb, NewJObjs}], 1);
+        {'error', _Reason} ->
+            ?SUP_LOG_DEBUG("  failed to open number docs to fix used_by: ~p", [_Reason])
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_fix_used_by(kz_term:ne_binary(), 'null' | kz_term:ne_binary(), kz_term:api_ne_binary(), map(), map()) ->
+                               {map(), map()}.
+maybe_fix_used_by(_, 'null', 'undefined', AppsUsing, ToFix) ->
+    {AppsUsing, ToFix};
+maybe_fix_used_by(Number, _YouAreWrongSir, 'undefined', AppsUsing, ToFix) ->
+    {AppsUsing
+    ,ToFix#{Number => delete_used_by_fun()}
+    };
+maybe_fix_used_by(_, UsedBy, UsedBy, AppsUsing, ToFix) ->
+    {AppsUsing, ToFix};
+maybe_fix_used_by(Number, _YouAreWrongSir, UsedByApp, AppsUsing, ToFix) ->
+    {maps:remove(Number, AppsUsing)
+    ,ToFix#{Number => add_used_by_fun(UsedByApp)}
+    }.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec add_used_by_fun(kz_term:ne_binary()) -> fun((kz_json:object()) -> kz_json:object()).
+add_used_by_fun(UsedBy) ->
+    fun(JObj) -> kz_json:set_value(<<"pvt_used_by">>, UsedBy, JObj) end.
+
+-spec delete_used_by_fun() -> fun((kz_json:object()) -> kz_json:object()).
+delete_used_by_fun() ->
+    fun(JObj) -> kz_json:delete_key(<<"pvt_used_by">>, JObj) end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec remove_wrong_assigned_from_accounts() -> 'ok'.
 remove_wrong_assigned_from_accounts() ->
     AccountDbs = kapps_util:get_all_accounts('encoded'),
@@ -613,6 +905,10 @@ remove_wrong_assigned_from_account(AccountDb, JObjs) ->
 fix_account_db_numbers(Account) ->
     copy_assigned_number_dbs_to_account(Account),
     remove_wrong_assigned_from_account(Account),
+
+    AppsUsingRes = get_account_dids_apps(Account),
+    fix_used_by_field_for_assigned_numdbs(Account, AppsUsingRes),
+    fix_used_by_field_for_single_account_db(Account, AppsUsingRes),
     _ = kz_services:reconcile(Account),
     'ok'.
 
@@ -700,7 +996,7 @@ migrate() ->
 -spec migrate_unassigned_numbers() -> 'ok'.
 migrate_unassigned_numbers() ->
     ?SUP_LOG_DEBUG("::: fixing unassigned numbers", []),
-    pforeach(fun migrate_unassigned_numbers/1, knm_util:get_all_number_dbs()),
+    _ = [migrate_unassigned_numbers(NumDb) || NumDb <- knm_util:get_all_number_dbs()],
     ?SUP_LOG_DEBUG("::: finished fixing unassigned numbers", []).
 
 -spec migrate_unassigned_numbers(kz_term:ne_binary()) -> 'ok'.
@@ -726,10 +1022,7 @@ migrate_unassigned_numbers(NumberDb, Offset) ->
         {'ok', JObjs} ->
             Length = length(JObjs),
             ?SUP_LOG_DEBUG("[~s] fixing ~b docs", [NumberDb, Length]),
-            foreach_pause_in_between(?TIME_BETWEEN_NUMBERS_MS
-                                    ,fun fix_unassign_doc/1
-                                    ,[kz_doc:id(JObj) || JObj <- JObjs]
-                                    ),
+            fix_unassign_doc([kz_doc:id(JObj) || JObj <- JObjs]),
             timer:sleep(?TIME_BETWEEN_ACCOUNTS_MS),
             migrate_unassigned_numbers(NumberDb, Offset + Length);
         {'error', _R} ->
@@ -740,25 +1033,35 @@ migrate_unassigned_numbers(NumberDb, Offset) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_DIDs_callflow(kz_term:ne_binary(), kz_term:proplist()) -> dids().
-get_DIDs_callflow(AccountDb, ViewOptions) ->
-    get_DIDs(AccountDb, <<"callflows/listing_by_number">>, ViewOptions).
-
--spec get_DIDs_trunkstore(kz_term:ne_binary(), kz_term:proplist()) -> dids().
-get_DIDs_trunkstore(AccountDb, ViewOptions) ->
-    get_DIDs(AccountDb, <<"trunkstore/lookup_did">>, ViewOptions).
-
 -type dids() :: gb_sets:set(kz_term:ne_binary()).
 
--spec get_DIDs(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> dids().
-get_DIDs(AccountDb, View, ViewOptions) ->
-    ?SUP_LOG_DEBUG("[~s] getting numbers from ~s", [AccountDb, View]),
-    case kz_datamgr:get_result_keys(AccountDb, View, ViewOptions) of
+-spec get_DIDs_callflow_set(kz_term:ne_binary(), kz_term:proplist()) -> dids().
+get_DIDs_callflow_set(AccountDb, ViewOptions) ->
+    case get_dids_for_app(AccountDb, <<"callflow">>, ViewOptions) of
         {'ok', DIDs} -> gb_sets:from_list(DIDs);
         {'error', _R} ->
-            ?SUP_LOG_DEBUG("failed to get ~s DIDs from ~s: ~p", [View, AccountDb, _R]),
+            ?SUP_LOG_DEBUG("failed to get callflow DIDs from ~s: ~p", [AccountDb, _R]),
             gb_sets:new()
     end.
+
+-spec get_DIDs_trunkstore_set(kz_term:ne_binary(), kz_term:proplist()) -> dids().
+get_DIDs_trunkstore_set(AccountDb, ViewOptions) ->
+    case get_dids_for_app(AccountDb, <<"trunkstore">>, ViewOptions) of
+        {'ok', DIDs} -> gb_sets:from_list(DIDs);
+        {'error', _R} ->
+            ?SUP_LOG_DEBUG("failed to get trunkstore DIDs from ~s: ~p", [AccountDb, _R]),
+            gb_sets:new()
+    end.
+
+-spec get_dids_for_app(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> dids().
+get_dids_for_app(AccountDb, <<"callflow">>, ViewOptions) ->
+    View = <<"callflows/listing_by_number">>,
+    ?SUP_LOG_DEBUG(" getting callflow numbers from ~s", [AccountDb]),
+    kz_datamgr:get_result_keys(AccountDb, View, ViewOptions);
+get_dids_for_app(AccountDb, <<"trunkstore">>, ViewOptions) ->
+    View = <<"trunkstore/lookup_did">>,
+    ?SUP_LOG_DEBUG(" getting trunkstore numbers from ~s", [AccountDb]),
+    kz_datamgr:get_result_keys(AccountDb, View, ViewOptions).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -770,17 +1073,11 @@ app_using(?TEST_OLD7_NUM, ?CHILD_ACCOUNT_DB) -> <<"trunkstore">>;
 app_using(?NE_BINARY, ?MATCH_ACCOUNT_ENCODED(_)) -> 'undefined'.
 -else.
 app_using(Num, AccountDb) ->
-    app_using(Num, AccountDb, get('callflow_DIDs'), get('trunkstore_DIDs')).
+    CallflowNums = get_DIDs_callflow_set(AccountDb, [{'key', Num}]),
+    TrunkstoreNums = get_DIDs_trunkstore_set(AccountDb, [{'key', Num}]),
+    app_using(Num, AccountDb, CallflowNums, TrunkstoreNums).
 
--type api_dids() :: 'undefined' | dids().
-
--spec app_using(kz_term:ne_binary(), kz_term:ne_binary(), api_dids(), api_dids()) -> kz_term:api_ne_binary().
-app_using(Num, AccountDb, 'undefined', TrunkstoreNums) ->
-    CallflowNums = get_DIDs_callflow(AccountDb, [{'key', Num}]),
-    app_using(Num, AccountDb, CallflowNums, TrunkstoreNums);
-app_using(Num, AccountDb, CallflowNums, 'undefined') ->
-    TrunkstoreNums = get_DIDs_trunkstore(AccountDb, [{'key', Num}]),
-    app_using(Num, AccountDb, CallflowNums, TrunkstoreNums);
+-spec app_using(kz_term:ne_binary(), kz_term:ne_binary(), dids(), dids()) -> kz_term:api_ne_binary().
 app_using(Num, _, CallflowNums, TrunkstoreNums) ->
     case gb_sets:is_element(Num, CallflowNums) of
         'true' -> <<"callflow">>;
@@ -878,30 +1175,8 @@ number_services_red() ->
        "}"
       ]).
 
--spec foreach_pause_in_between(non_neg_integer(), fun(), list()) -> 'ok'.
-foreach_pause_in_between(_, _, []) -> 'ok';
-foreach_pause_in_between(_, Fun, [Element]) ->
-    _ = Fun(Element),
-    'ok';
-foreach_pause_in_between(Time, Fun, [Element|Elements]) ->
-    _ = Fun(Element),
-    timer:sleep(Time),
-    foreach_pause_in_between(Time, Fun, Elements).
-
--spec pforeach(fun((A) -> any()), [A]) -> 'ok'.
-pforeach(Fun, Arg1s)
-  when is_function(Fun, 1),
-       is_list(Arg1s) ->
-    %% Malt = [%% Each worker process gets to do only 1 item before dying
-    %%         1
-    %%         %% A processes count of 1 is equivalent to lists:foreach-ordering
-    %%         %% with each Fun being applied on its own (different) process
-    %%        ,{'processes', ?PARALLEL_JOBS_COUNT}
-    %%        ],
-    lists:foreach(Fun, Arg1s).
-
--spec fix_unassign_doc(kz_term:ne_binary()) -> 'ok'.
-fix_unassign_doc(DID) ->
+-spec fix_unassign_doc(kz_term:ne_binaries()) -> 'ok'.
+fix_unassign_doc(DIDs) ->
     Setters = [{fun knm_phone_number:set_used_by/2, 'undefined'}
               ,fun knm_phone_number:remove_denied_features/1
               ],
@@ -909,9 +1184,10 @@ fix_unassign_doc(DID) ->
                %% No caching + bulk doc writes
               ,{'batch_run', 'true'}
               ],
-    case knm_number:update(DID, Setters, Options) of
-        {'ok', _} -> 'ok';
-        {'error', _R} -> ?SUP_LOG_DEBUG("failed fixing unassigned ~s: ~p", [DID, _R])
+    case knm_numbers:update(DIDs, Setters, Options) of
+        #{ko := []} -> 'ok';
+        #{ko := KOs} ->
+            ?SUP_LOG_DEBUG("failed fixing ~b unassigned numbers.", [maps:size(KOs)])
     end.
 
 -spec generate_numbers(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer(), non_neg_integer()) -> 'ok'.
@@ -931,8 +1207,7 @@ delete(Num) ->
 
 -spec purge_discovery() -> 'no_return'.
 purge_discovery() ->
-    Purge = fun (NumberDb) -> purge_number_db(NumberDb, ?NUMBER_STATE_DISCOVERY) end,
-    pforeach(Purge, knm_util:get_all_number_dbs()),
+    _ = [purge_number_db(NumDb, ?NUMBER_STATE_DISCOVERY) || NumDb <- knm_util:get_all_number_dbs()],
     'no_return'.
 
 -spec purge_deleted(kz_term:ne_binary()) -> 'no_return'.
@@ -942,8 +1217,7 @@ purge_deleted(Prefix) ->
 
 -spec purge_deleted() -> 'no_return'.
 purge_deleted() ->
-    Purge = fun (NumberDb) -> purge_number_db(NumberDb, ?NUMBER_STATE_DELETED) end,
-    pforeach(Purge, knm_util:get_all_number_dbs()),
+    _ = [purge_number_db(NumDb, ?NUMBER_STATE_DELETED) || NumDb <- knm_util:get_all_number_dbs()],
     'no_return'.
 
 -spec purge_discovery(kz_term:ne_binary()) -> 'no_return'.

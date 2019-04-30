@@ -12,6 +12,14 @@
         "assigned_to": {
             "map": "function(doc) { if (!doc.pvt_assigned_to) return; emit([doc.pvt_assigned_to, doc._id], null); }"
         },
+        "list_assigned_by_app": {
+            "map": [
+                "function(doc)",
+                "  if (doc.pvt_type != 'number' || doc.pvt_deleted) return;",
+                "  emit([doc.pvt_assigned_to, doc.pvt_used_by], null);",
+                "}"
+            ]
+        },
         "module_name": {
             "map": "function(doc) { emit(doc.pvt_module_name, 1); }",
             "reduce": "_sum"
