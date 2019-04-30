@@ -1620,7 +1620,7 @@ get_mailbox_profile(Data, Call) ->
                     ,account_db = AccountDb
                     ,media_extension = kzd_voicemail_box:media_extension(MailboxJObj)
                     ,forward_type = ?DEFAULT_FORWARD_TYPE
-                    ,oldest_message_first = kz_json:is_true(<<"oldest_message_first">>, MailboxJObj, 'false')
+                    ,oldest_message_first = kzd_vmboxes:oldest_message_first(MailboxJObj)
                     };
         {'error', R} ->
             lager:info("failed to load voicemail box ~s, ~p", [Id, R]),
