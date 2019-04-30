@@ -752,7 +752,7 @@ handle_dids_app(CallflowDIDs, TrunkstoreDIDs) ->
 -spec fix_used_by_so_i_can_open_and_save(map(), kz_json:objects(), map()) -> {map(), map()}.
 fix_used_by_so_i_can_open_and_save(AppsUsing, [JObj|JObjs], ToFix) ->
     Number = kz_doc:id(JObj),
-    NumUsedBy = case kz_doc:get_value(<<"key">>, JObj, 'null') of
+    NumUsedBy = case kz_json:get_value(<<"key">>, JObj, 'null') of
                     [_AssignedTo, App] -> App; %% from number_db
                     App -> App %% from account_db
                 end,
@@ -1035,6 +1035,28 @@ migrate_unassigned_numbers(NumberDb, Offset) ->
 %%------------------------------------------------------------------------------
 -type dids() :: gb_sets:set(kz_term:ne_binary()).
 
+-spec get_dids_for_app(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> dids().
+get_dids_for_app(AccountDb, <<"callflow">>, ViewOptions) ->
+    View = <<"callflows/listing_by_number">>,
+    ?SUP_LOG_DEBUG(" getting callflow numbers from ~s", [AccountDb]),
+    kz_datamgr:get_result_keys(AccountDb, View, ViewOptions);
+get_dids_for_app(AccountDb, <<"trunkstore">>, ViewOptions) ->
+    View = <<"trunkstore/lookup_did">>,
+    ?SUP_LOG_DEBUG(" getting trunkstore numbers from ~s", [AccountDb]),
+    kz_datamgr:get_result_keys(AccountDb, View, ViewOptions).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec app_using(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
+-ifdef(TEST).
+
+app_using(?TEST_OLD7_NUM, ?CHILD_ACCOUNT_DB) -> <<"trunkstore">>;
+app_using(?NE_BINARY, ?MATCH_ACCOUNT_ENCODED(_)) -> 'undefined'.
+
+-else.
+
 -spec get_DIDs_callflow_set(kz_term:ne_binary(), kz_term:proplist()) -> dids().
 get_DIDs_callflow_set(AccountDb, ViewOptions) ->
     case get_dids_for_app(AccountDb, <<"callflow">>, ViewOptions) of
@@ -1053,25 +1075,6 @@ get_DIDs_trunkstore_set(AccountDb, ViewOptions) ->
             gb_sets:new()
     end.
 
--spec get_dids_for_app(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> dids().
-get_dids_for_app(AccountDb, <<"callflow">>, ViewOptions) ->
-    View = <<"callflows/listing_by_number">>,
-    ?SUP_LOG_DEBUG(" getting callflow numbers from ~s", [AccountDb]),
-    kz_datamgr:get_result_keys(AccountDb, View, ViewOptions);
-get_dids_for_app(AccountDb, <<"trunkstore">>, ViewOptions) ->
-    View = <<"trunkstore/lookup_did">>,
-    ?SUP_LOG_DEBUG(" getting trunkstore numbers from ~s", [AccountDb]),
-    kz_datamgr:get_result_keys(AccountDb, View, ViewOptions).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec app_using(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
--ifdef(TEST).
-app_using(?TEST_OLD7_NUM, ?CHILD_ACCOUNT_DB) -> <<"trunkstore">>;
-app_using(?NE_BINARY, ?MATCH_ACCOUNT_ENCODED(_)) -> 'undefined'.
--else.
 app_using(Num, AccountDb) ->
     CallflowNums = get_DIDs_callflow_set(AccountDb, [{'key', Num}]),
     TrunkstoreNums = get_DIDs_trunkstore_set(AccountDb, [{'key', Num}]),
@@ -1087,6 +1090,7 @@ app_using(Num, _, CallflowNums, TrunkstoreNums) ->
                 'false' -> 'undefined'
             end
     end.
+
 -endif.
 
 %%%=============================================================================
