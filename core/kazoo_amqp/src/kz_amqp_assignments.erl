@@ -810,9 +810,9 @@ wait_for_assignment(Timeout) ->
         Timeout -> {'error', 'timeout'}
     end.
 
--spec request_and_wait(pid(), kz_term:api_binary(), 'infinity') -> kz_amqp_assignment();
-                      (pid(), kz_term:api_binary(), non_neg_integer()) -> kz_amqp_assignment() |
-                                                                          {'error', 'timeout'}.
+-spec request_and_wait(pid(), kz_term:api_ne_binary(), timeout()) ->
+                              kz_amqp_assignment() |
+                              {'error', 'timeout'}.
 request_and_wait(Consumer, Broker, Timeout) when is_pid(Consumer) ->
     case request_channel(Consumer, Broker) of
         #kz_amqp_assignment{channel=Channel}=Assignment
@@ -849,19 +849,19 @@ find_reference(Ref) ->
 -spec log_short_lived(kz_amqp_assignment()) -> 'ok'.
 log_short_lived(#kz_amqp_assignment{assigned='undefined'}) -> 'ok';
 log_short_lived(#kz_amqp_assignment{assigned=Timestamp}=Assignment) ->
-    Duration = kz_time:elapsed_s(Timestamp),
-    case Duration < 5 of
-        'false' -> 'ok';
-        'true' ->
-            #kz_amqp_assignment{consumer=Consumer
-                               ,type=Type
-                               ,channel=Channel
-                               ,broker=Broker
-                               } = Assignment,
-            lager:warning("short lived assignment (~ps) for ~p (channel ~p type ~p broker ~p)"
-                         ,[Duration, Consumer, Channel, Type, Broker]
-                         )
-    end.
+    log_short_lived(Assignment, kz_time:elapsed_s(Timestamp)).
+
+log_short_lived(#kz_amqp_assignment{consumer=Consumer
+                                   ,type=Type
+                                   ,channel=Channel
+                                   ,broker=Broker
+                                   }
+               ,DurationS
+               ) when DurationS < 5 ->
+    lager:warning("short lived assignment (~ps) for ~p (channel ~p type ~p broker ~p)"
+                 ,[DurationS, Consumer, Channel, Type, Broker]
+                 );
+log_short_lived(_Assignment, _Duration) -> 'ok'.
 
 -spec register_channel_handlers(pid(), pid()) -> 'ok'.
 register_channel_handlers(Channel, Consumer) ->

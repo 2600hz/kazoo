@@ -1033,14 +1033,19 @@ remove_binding(Binding, Props, Q) ->
     end.
 
 -spec create_binding(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> any().
-create_binding(Binding, Props, Q) when not is_binary(Binding) ->
-    create_binding(kz_term:to_binary(Binding), Props, Q);
-create_binding(Binding, Props, Q) ->
-    Wapi = list_to_binary([<<"kapi_">>, kz_term:to_binary(Binding)]),
-    try (kz_term:to_atom(Wapi, 'true')):bind_q(Q, Props)
-    catch
-        'error':'undef' ->
-            erlang:error({'api_module_undefined', Wapi})
+create_binding(Binding, Props, QueueName) when not is_binary(Binding) ->
+    create_binding(kz_term:to_binary(Binding), Props, QueueName);
+create_binding(Binding, Props, QueueName) ->
+    APIModule = kz_term:to_atom(list_to_binary([<<"kapi_">>, kz_term:to_binary(Binding)]), 'true'),
+    declare_binding_exchanges(APIModule),
+    'true' = kz_module:is_exported(APIModule, 'bind_q', 2),
+    APIModule:bind_q(QueueName, Props).
+
+-spec declare_binding_exchanges(module()) -> 'ok'.
+declare_binding_exchanges(APIModule) ->
+    case kz_module:is_exported(APIModule, 'declare_exchanges', 0) of
+        'true' -> APIModule:declare_exchanges();
+        'false' -> 'ok'
     end.
 
 -spec stop_timer(kz_term:api_reference()) -> non_neg_integer() | 'false'.
