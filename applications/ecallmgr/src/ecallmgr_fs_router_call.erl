@@ -185,6 +185,8 @@ maybe_process_route_req(Section, Node, FetchId, CallId, Props, {'ok', AMQPWorker
 
 -spec do_process_route_req(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data(), pid()) -> 'ok'.
 do_process_route_req(Section, Node, FetchId, CallId, Props, AMQPWorker) ->
+    Start = kz_time:now(),
+
     Filtered = ecallmgr_fs_loopback:filter(Node, CallId, Props),
     case ecallmgr_fs_router_util:search_for_route(Section, Node, FetchId, CallId, Filtered, AMQPWorker) of
         'ok' ->
@@ -192,18 +194,18 @@ do_process_route_req(Section, Node, FetchId, CallId, Props, AMQPWorker) ->
         {'ok', JObj} ->
             lager:debug("route response recv, attempting to start call handling"),
             ecallmgr_fs_channels:update(CallId, #channel.handling_locally, 'true'),
-            maybe_start_call_handling(Node, FetchId, CallId, JObj, AMQPWorker)
+            maybe_start_call_handling(Node, FetchId, CallId, JObj, AMQPWorker, Start)
     end.
 
--spec maybe_start_call_handling(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), pid()) -> 'ok'.
-maybe_start_call_handling(Node, FetchId, CallId, JObj, AMQPWorker) ->
+-spec maybe_start_call_handling(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), pid(), kz_time:now()) -> 'ok'.
+maybe_start_call_handling(Node, FetchId, CallId, JObj, AMQPWorker, Start) ->
     case kz_json:get_value(<<"Method">>, JObj) of
         <<"error">> -> lager:debug("sent error response to ~s, not starting call handling", [Node]);
-        _Else -> start_call_handling(Node, FetchId, CallId, JObj, AMQPWorker)
+        _Else -> start_call_handling(Node, FetchId, CallId, JObj, AMQPWorker, Start)
     end.
 
--spec start_call_handling(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), pid()) -> 'ok'.
-start_call_handling(Node, FetchId, CallId, JObj, AMQPWorker) ->
+-spec start_call_handling(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), pid(), kz_time:now()) -> 'ok'.
+start_call_handling(Node, FetchId, CallId, JObj, AMQPWorker, Start) ->
     ServerQ = kz_api:server_id(JObj),
     CCVs =
         kz_json:set_values([{<<"Application-Name">>, kz_api:app_name(JObj)}
@@ -217,4 +219,4 @@ start_call_handling(Node, FetchId, CallId, JObj, AMQPWorker) ->
     lager:debug("started event ~p and control ~p(~p) processes", [_Evt, _Ctl, AMQPWorker]),
 
     _ = ecallmgr_fs_command:set(Node, CallId, kz_json:to_proplist(CCVs)),
-    lager:debug("xml fetch dialplan ~s finished with success", [FetchId]).
+    lager:debug("xml fetch dialplan ~s finished with success after ~pms", [FetchId, kz_time:elapsed_ms(Start)]).

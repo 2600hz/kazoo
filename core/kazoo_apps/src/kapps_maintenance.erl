@@ -1275,7 +1275,7 @@ maybe_remove_invalid_notify_doc(_Type, _Id, _Doc) -> 'ok'.
 
 -spec delete_system_media_references() -> 'ok'.
 delete_system_media_references() ->
-    DocId = kz_call_response:config_doc_id(),
+    DocId = <<"call_response">>,
     case kz_datamgr:open_doc(?KZ_CONFIG_DB, DocId) of
         {'ok', CallResponsesDoc} ->
             delete_system_media_references(DocId, CallResponsesDoc);

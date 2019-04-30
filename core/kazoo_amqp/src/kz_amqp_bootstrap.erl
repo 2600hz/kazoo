@@ -51,7 +51,7 @@ start_link() ->
 init([]) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     add_zones(get_config()),
-    lager:info("waiting for first amqp connection...", []),
+    lager:info("waiting for first amqp connection..."),
     kz_amqp_connections:wait_for_available(),
     timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
     kz_amqp_util:targeted_exchange(),

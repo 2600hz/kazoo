@@ -53,7 +53,7 @@ ifeq ($(USER),travis)
     DEPS += proper
 endif
 
-dep_amqp_client = hex 3.7.3
+dep_amqp_client = hex 3.7.8
 dep_apns = git https://github.com/inaka/apns4erl.git 2.2.1
 dep_certifi = hex 0.3.0
 dep_chatterbox = hex 0.7.0

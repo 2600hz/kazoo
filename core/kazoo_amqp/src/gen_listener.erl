@@ -129,7 +129,7 @@
                ,module :: atom()
                ,module_state :: module_state()
                ,module_timeout_ref :: kz_term:api_reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
-               ,other_queues = [] :: [{kz_term:ne_binary(), {kz_term:proplist(), kz_term:proplist()}}] %% {QueueName, {kz_term:proplist(), kz_term:proplist()}}
+               ,other_queues = [] :: [{kz_term:ne_binary(), {bindings(), kz_term:proplist()}}] %% {QueueName, {Bindings, QueueProps}}
                ,federators = [] :: federator_listeners()
                ,waiting_federators = [] :: list()
                ,self = self() :: pid()
@@ -512,13 +512,6 @@ handle_cast({'add_binding', Binding, Props}, State) ->
     {'noreply', handle_add_binding(Binding, Props, State)};
 handle_cast({'rm_binding', Binding, Props}, State) ->
     {'noreply', handle_rm_binding(Binding, Props, State)};
-handle_cast({'kz_amqp_assignment', {'new_channel', 'true', Channel}}, State) ->
-    lager:debug("channel reconnecting"),
-    _ = kz_amqp_channel:consumer_channel(Channel),
-    {'noreply', State};
-handle_cast({'kz_amqp_assignment', {'new_channel', 'false', Channel}}, State) ->
-    _ = kz_amqp_channel:consumer_channel(Channel),
-    {'noreply', handle_amqp_channel_available(State)};
 handle_cast({'federated_event', JObj, BasicDeliver, BasicData}, #state{params=Params}=State) ->
     case props:is_true('spawn_handle_event', Params, 'false') of
         'true'  -> kz_util:spawn(fun distribute_event/3, [JObj, {BasicDeliver, BasicData}, State]),
@@ -526,26 +519,31 @@ handle_cast({'federated_event', JObj, BasicDeliver, BasicData}, #state{params=Pa
         'false' -> {'noreply', distribute_event(JObj, {BasicDeliver, BasicData}, State)}
     end;
 handle_cast({'$execute', Module, Function, Args}
-           ,#state{federators=[]}=State) ->
+           ,#state{federators=[]}=State
+           ) ->
     erlang:apply(Module, Function, Args),
     {'noreply', State};
 handle_cast({'$execute', Function, Args}
-           ,#state{federators=[]}=State) ->
+           ,#state{federators=[]}=State
+           ) ->
     erlang:apply(Function, Args),
     {'noreply', State};
 handle_cast({'$execute', Function}
-           ,#state{federators=[]}=State) ->
+           ,#state{federators=[]}=State
+           ) ->
     Function(),
     {'noreply', State};
 handle_cast({'$execute', Module, Function, Args}=Msg
-           ,#state{federators=Federators}=State) ->
+           ,#state{federators=Federators}=State
+           ) ->
     erlang:apply(Module, Function, Args),
     _ = [?MODULE:cast(Federator, Msg)
          || {_Broker, Federator} <- Federators
         ],
     {'noreply', State};
 handle_cast({'$execute', Function, Args}=Msg
-           ,#state{federators=Federators}=State) ->
+           ,#state{federators=Federators}=State
+           ) ->
     erlang:apply(Function, Args),
     _ = [?MODULE:cast(Federator, Msg)
          || {_Broker, Federator} <- Federators
@@ -561,26 +559,25 @@ handle_cast({'$execute', Function}=Msg
     {'noreply', State};
 handle_cast({'$client_cast', Message}, State) ->
     handle_module_cast(Message, State);
-handle_cast({'start_listener', Params}, #state{queue='undefined'
-                                              ,is_consuming='false'
-                                              ,responders=[]
-                                              ,bindings=[]
-                                              ,params=[]
-                                              }=State) ->
-    #state{module=Module
-          ,module_state=ModuleState
-          ,module_timeout_ref=TimeoutRef
-          } = State,
-    {'ok', #state{}=N} = init(Module, Params, ModuleState, TimeoutRef),
-    {'noreply', N};
+handle_cast({'start_listener', Params}
+           ,#state{queue='undefined'
+                  ,is_consuming='false'
+                  ,responders=[]
+                  ,bindings=[]
+                  ,params=[]
+                  ,module=Module
+                  ,module_state=ModuleState
+                  ,module_timeout_ref=TimeoutRef
+                  }
+           ) ->
+    {'ok', #state{}=NewState} = init(Module, Params, ModuleState, TimeoutRef),
+    {'noreply', NewState};
 handle_cast({'start_listener', _Params}, State) ->
     lager:debug("gen listener asked to start listener but it is already initialized"),
     {'noreply', State};
-
 handle_cast({'pause_consumers'}, #state{is_consuming='true', consumer_tags=Tags}=State) ->
     lists:foreach(fun kz_amqp_util:basic_cancel/1, Tags),
     {'noreply', State};
-
 handle_cast({'resume_consumers'}, #state{queue='undefined'}=State) ->
     {'noreply', State};
 handle_cast({'resume_consumers'}, #state{is_consuming='false'
@@ -595,7 +592,6 @@ handle_cast({'resume_consumers'}, #state{is_consuming='false'
          || {Q1, {_, P}} <- OtherQueues
         ],
     {'noreply', State};
-
 handle_cast({'federator_is_consuming', Broker, 'true'}, State) ->
     lager:info("federator for ~p is consuming, waiting on: ~p", [Broker, State#state.waiting_federators]),
 
@@ -616,7 +612,6 @@ handle_cast({'federator_is_consuming', Broker, 'true'}, State) ->
             lager:info("still waiting for federators: ~p", [Remaining]),
             {'noreply', State#state{waiting_federators = Remaining}}
     end;
-
 handle_cast(Message, State) ->
     handle_module_cast(Message, State).
 
@@ -632,27 +627,47 @@ maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret().
-handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}=Basic
-                                             ,payload=Payload
-                                             }}
-           ,#state{params=Params, auto_ack=AutoAck}=State) ->
+handle_info({'kz_amqp_assignment', {'new_channel', Reconnected, Channel}}, State) ->
+    _ = kz_amqp_channel:consumer_channel(Channel),
+    {'noreply', handle_amqp_channel_available(State, Reconnected)};
+handle_info({'kz_amqp_assignment', 'lost_channel'}, State) ->
+    lager:debug("lost channel assignment"),
+    {'noreply', State#state{is_consuming='false'
+                           ,consumer_tags=[]
+                           }};
+handle_info({#'basic.deliver'{}=BD
+            ,#amqp_msg{props=#'P_basic'{content_type=CT}=Basic
+                      ,payload=Payload
+                      }
+            }
+           ,#state{params=Params, auto_ack=AutoAck}=State
+           ) ->
     _ = case AutoAck of
             'true' -> (catch kz_amqp_util:basic_ack(BD));
             'false' -> 'ok'
         end,
     case props:is_true('spawn_handle_event', Params, 'false') of
-        'true'  -> kz_util:spawn(fun handle_event/4, [Payload, CT, {BD, Basic}, State]),
-                   {'noreply', State};
-        'false' -> {'noreply', handle_event(Payload, CT, {BD, Basic}, State)}
+        'false' -> {'noreply', handle_event(Payload, CT, {BD, Basic}, State)};
+        'true'  ->
+            kz_util:spawn(fun handle_event/4, [Payload, CT, {BD, Basic}, State]),
+            {'noreply', State}
     end;
-handle_info({#'basic.return'{}=BR, #amqp_msg{props=#'P_basic'{content_type=CT}
-                                            ,payload=Payload
-                                            }}, State) ->
+handle_info({#'basic.return'{}=BR
+            ,#amqp_msg{props=#'P_basic'{content_type=CT}
+                      ,payload=Payload
+                      }
+            }
+           ,State
+           ) ->
     handle_return(Payload, CT, BR, State);
-handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue='undefined'}=State) ->
+handle_info(#'basic.consume_ok'{consumer_tag=CTag}
+           ,#state{queue='undefined'}=State
+           ) ->
     lager:debug("received consume ok (~s) for abandoned queue", [CTag]),
     {'noreply', State};
-handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=State) ->
+handle_info(#'basic.consume_ok'{consumer_tag=CTag}
+           ,#state{consumer_tags=CTags}=State
+           ) ->
     gen_server:cast(self(), {?MODULE, {'is_consuming', 'true'}}),
     {'noreply', State#state{is_consuming='true'
                            ,consumer_tags=[CTag | CTags]
@@ -678,7 +693,8 @@ handle_info('$is_gen_listener_consuming'
            ,#state{is_consuming='false'
                   ,bindings=ExistingBindings
                   ,params=Params
-                  }=State) ->
+                  }=State
+           ) ->
     _Release = (catch kz_amqp_channel:release()),
     _Requisition = channel_requisition(Params),
     {'noreply', State#state{queue='undefined'
@@ -692,6 +708,9 @@ handle_info({'$server_confirms', ServerConfirms}, State) ->
     {'noreply', State};
 handle_info({'$channel_flow', Active}, State) ->
     gen_server:cast(self(), {?MODULE,{'channel_flow', Active}}),
+    {'noreply', State};
+handle_info({'kz_amqp_channel', {Client, Ref, 'consumer_tags'}}, #state{consumer_tags=CTags}=State) ->
+    Client ! {?MODULE, Ref, CTags},
     {'noreply', State};
 handle_info(?CALLBACK_TIMEOUT_MSG, State) ->
     handle_callback_info('timeout', State);
@@ -782,10 +801,12 @@ code_change(_OldVersion, State, _Extra) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_callback_info(any(), state()) -> handle_info_return().
-handle_callback_info(Message, #state{module=Module
-                                    ,module_state=ModuleState
-                                    ,module_timeout_ref=OldRef
-                                    }=State) ->
+handle_callback_info(Message
+                    ,#state{module=Module
+                           ,module_state=ModuleState
+                           ,module_timeout_ref=OldRef
+                           }=State
+                    ) ->
     _ = stop_timer(OldRef),
     try Module:handle_info(Message, ModuleState) of
         {'noreply', ModuleState1} ->
@@ -807,18 +828,21 @@ handle_callback_info(Message, #state{module=Module
     end.
 
 -spec format_status('normal' | 'terminate', [kz_term:proplist() | state()]) -> any().
-format_status(_Opt, [_PDict, #state{module=Module
-                                   ,module_state=ModuleState
-                                   }=State]) ->
+format_status(_Opt
+             ,[_PDict
+              ,#state{module=Module
+                     ,module_state=ModuleState
+                     }=State
+              ]) ->
     case erlang:function_exported(Module, 'format_status', 2) of
         'true' -> Module:format_status(_Opt, [_PDict, ModuleState]);
-        'false' -> [{'data', [{"Module State", ModuleState}
-                             ,{"Module", Module}
-                             ,{"Listener State", State}
-                             ]
-                    }]
+        'false' ->
+            [{'data', [{"Module State", ModuleState}
+                      ,{"Module", Module}
+                      ,{"Listener State", State}
+                      ]
+             }]
     end.
-
 
 -spec distribute_event(kz_json:object(), deliver(), state()) -> state().
 distribute_event(JObj, Deliver, State) ->
@@ -830,18 +854,23 @@ distribute_event(JObj, Deliver, State) ->
     end.
 
 -spec distribute_event(callback_data(), kz_json:object(), deliver(), state()) -> state().
-distribute_event(CallbackData, JObj, Deliver, #state{responders=Responders
-                                                    ,consumer_key=ConsumerKey
-                                                    }=State) ->
+distribute_event(CallbackData
+                ,JObj
+                ,Deliver
+                ,#state{responders=Responders
+                       ,consumer_key=ConsumerKey
+                       }=State
+                ) ->
     Key = kz_util:get_event_type(JObj),
     Channel = kz_amqp_channel:consumer_channel(),
-    _ = [kz_util:spawn(fun client_handle_event/6, [JObj
-                                                  ,Channel
-                                                  ,ConsumerKey
-                                                  ,Callback
-                                                  ,CallbackData
-                                                  ,Deliver
-                                                  ])
+    _ = [kz_util:spawn(fun client_handle_event/6
+                      ,[JObj
+                       ,Channel
+                       ,ConsumerKey
+                       ,Callback
+                       ,CallbackData
+                       ,Deliver
+                       ])
          || {Evt, Callback} <- Responders,
             maybe_event_matches_key(Key, Evt)
         ],
@@ -1141,21 +1170,29 @@ handle_add_binding(Binding, Props, #state{queue=Q
 -spec handle_existing_binding(binding_module(), kz_term:proplist(), state(), kz_term:ne_binary(), kz_term:proplist(), bindings()) ->
                                      state().
 handle_existing_binding(Binding, Props, State, Q, ExistingProps, Bs) ->
-    case lists:all(fun({K,V}) ->
-                           props:get_value(K, ExistingProps) =:= V;
-                      (K) ->
-                           props:get_value(K, ExistingProps) =:= 'true'
-                   end
-                  ,Props
-                  )
-    of
-        'true' when length(Props) =:= length(ExistingProps)->
-            lager:debug("binding ~s with props exists", [Binding]),
+    case binding_props_match(Props, ExistingProps) of
+        'true' ->
+            lager:debug("binding ~s with the same properties exists", [Binding]),
             State;
-        _ ->
+        'false' ->
             lager:debug("creating existing binding '~s' with new props: ~p", [Binding, Props]),
             create_binding(Binding, Props, Q),
             maybe_update_federated_bindings(State#state{bindings=[{Binding, Props}|Bs]})
+    end.
+
+-spec binding_props_match(kz_term:proplist(), kz_term:proplist()) -> boolean().
+binding_props_match([], []) -> 'true';
+binding_props_match([_|_], []) -> 'false';
+binding_props_match([], [_|_]) -> 'false';
+binding_props_match([{K, V} | Props], ExistingProps) ->
+    case props:take_value(K, ExistingProps) of
+        {V, EProps} -> binding_props_match(Props, EProps);
+        _ -> 'false'
+    end;
+binding_props_match([K | Props], ExistingProps) ->
+    case props:take_value(K, ExistingProps) of
+        {'true', EProps} -> binding_props_match(Props, EProps);
+        _ -> 'false'
     end.
 
 -spec maybe_update_federated_bindings(state()) -> state().
@@ -1260,26 +1297,51 @@ federated_queue_name(Params, Options) ->
             <<QueueName/binary, "-", Zone/binary>>
     end.
 
--spec handle_amqp_channel_available(state()) -> state().
-handle_amqp_channel_available(#state{params=Params}=State) ->
-    lager:debug("channel started, let's connect"),
+-spec handle_amqp_channel_available(state(), boolean()) -> state().
+handle_amqp_channel_available(#state{params=Params}=State, Reconnected) ->
+    log_channel_status(Reconnected),
+
     case maybe_declare_exchanges(props:get_value('declare_exchanges', Params, [])) of
         'ok' ->
             handle_exchanges_ready(State);
         {'error', _E} ->
             lager:debug("error declaring exchanges : ~p", [_E]),
-            handle_exchanges_failed(State)
+            handle_amqp_errored(State)
     end.
 
+log_channel_status('true') ->
+    lager:debug("channel restarted, let's re-connect");
+log_channel_status('false') ->
+    lager:debug("channel started, let's connect").
+
 -spec handle_exchanges_ready(state()) -> state().
-handle_exchanges_ready(#state{params=Params, auto_ack=AutoAck}=State) ->
+handle_exchanges_ready(#state{params=Params
+                             ,auto_ack=AutoAck
+                             }=State
+                      ) ->
     case start_amqp(Params, AutoAck) of
         {'ok', Q} ->
-            handle_amqp_started(State, Q);
+            State1 = handle_amqp_started(State, Q),
+            maybe_start_other_queues(State1);
         {'error', Reason} ->
             lager:error("start amqp error ~p", [Reason]),
             handle_amqp_errored(State)
     end.
+
+-spec maybe_start_other_queues(state()) -> state().
+maybe_start_other_queues(#state{other_queues=[]}=State) ->
+    lager:debug("no other queues to start"),
+    State;
+maybe_start_other_queues(#state{other_queues=Queues}=State) ->
+    lists:foldl(fun start_other_queue_fold/2
+               ,State#state{other_queues=[]}
+               ,Queues
+               ).
+
+start_other_queue_fold({QueueName, {Bindings, QueueParams}}, State) ->
+    {_Q, State1} = add_other_queue(QueueName, QueueParams, Bindings, State),
+    lager:debug("started other queue ~s as ~s", [QueueName, _Q]),
+    State1.
 
 -spec handle_amqp_started(state(), kz_term:ne_binary()) -> state().
 handle_amqp_started(#state{params=Params}=State, Q) ->
@@ -1297,18 +1359,15 @@ handle_amqp_started(#state{params=Params}=State, Q) ->
 -spec handle_amqp_errored(state()) -> state().
 handle_amqp_errored(#state{params=Params}=State) ->
     #kz_amqp_assignment{channel=Channel} = kz_amqp_assignments:get_channel(),
+    lager:debug("releasing the channel ~p", [Channel]),
     _ = (catch kz_amqp_channel:release()),
-    kz_amqp_channel:close(Channel),
-    timer:sleep(?SERVER_RETRY_PERIOD),
-    _ = channel_requisition(Params),
-    State#state{is_consuming='false'}.
 
--spec handle_exchanges_failed(state()) -> state().
-handle_exchanges_failed(#state{params=Params}=State) ->
-    #kz_amqp_assignment{channel=Channel} = kz_amqp_assignments:get_channel(),
-    _ = (catch kz_amqp_channel:release()),
+    lager:debug("closing the channel ~p", [Channel]),
     kz_amqp_channel:close(Channel),
+
     timer:sleep(?SERVER_RETRY_PERIOD),
+
+    lager:debug("requisitioning channel"),
     _ = channel_requisition(Params),
     State#state{is_consuming='false'}.
 

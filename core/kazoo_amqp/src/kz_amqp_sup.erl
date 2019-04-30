@@ -31,7 +31,6 @@
 
 -define(CHILDREN, [?WORKER('kz_amqp_connections')
                   ,?SUPER('kz_amqp_connection_sup')
-                  ,?WORKER('kz_amqp_history')
                   ,?WORKER('kz_amqp_assignments')
                   ,?WORKER('kz_amqp_bootstrap')
                   ]).

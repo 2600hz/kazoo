@@ -14,7 +14,9 @@
         ,add/3
         ]).
 -export([remove/1]).
--export([broker_connections/1]).
+-export([broker_connections/1
+        ,connections/0, connections/1
+        ]).
 -export([broker_available_connections/1]).
 -export([primary_broker/0]).
 -export([arbitrator_broker/0]).
@@ -46,9 +48,10 @@
 
 -define(TAB, ?MODULE).
 
--record(state, {watchers = sets:new() :: sets:set(pid())
-               }).
+-record(state, {watchers = sets:new() :: sets:set(pid())}).
 -type state() :: #state{}.
+
+-export_type([kz_amqp_connections/0]).
 
 %%%=============================================================================
 %%% API
@@ -77,7 +80,6 @@ new(<<_/binary>> = Broker, Zone) ->
     end;
 new(Broker, Zone) ->
     new(kz_term:to_binary(Broker), Zone).
-
 
 -spec add(kz_amqp_connection() | kz_term:text()) ->
                  kz_amqp_connection() |
@@ -182,6 +184,27 @@ broker_connections(Broker) ->
                   ['true']}
                 ],
     ets:select_count(?TAB, MatchSpec).
+
+-spec connections() -> [kz_amqp_connections()].
+connections() ->
+    MatchSpec = [{#kz_amqp_connections{connection='$1'
+                                      ,_='_'
+                                      },
+                  [],
+                  ['$_']}
+                ],
+    ets:select(?TAB, MatchSpec).
+
+-spec connections(kz_term:ne_binary()) -> [kz_amqp_connection()].
+connections(Broker) ->
+    MatchSpec = [{#kz_amqp_connections{broker=Broker
+                                      ,connection='$1'
+                                      ,_='_'
+                                      },
+                  [],
+                  ['$$']}
+                ],
+    ets:select(?TAB, MatchSpec).
 
 -spec broker_available_connections(kz_term:ne_binary()) -> non_neg_integer().
 broker_available_connections(Broker) ->
@@ -327,8 +350,7 @@ handle_cast(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'DOWN', Ref, 'process', Connection, _Reason}, State) ->
-    lager:warning("connection ~p went down: ~p"
-                 ,[Connection, _Reason]),
+    lager:warning("connection ~p went down: ~p", [Connection, _Reason]),
     erlang:demonitor(Ref, ['flush']),
     _ = ets:delete(?TAB, Connection),
     {'noreply', State, 'hibernate'};
@@ -370,13 +392,13 @@ add_watcher(Watcher, #state{watchers=Watchers}=State) ->
 -spec notify_watchers(state()) -> state().
 notify_watchers(#state{watchers = Watchers}=State) ->
     F = fun (Watcher, _) -> notify_watcher(Watcher) end,
-    sets:fold(F, ok, Watchers),
+    sets:fold(F, 'ok', Watchers),
     State#state{watchers = sets:new()}.
 
--spec notify_watcher(pid()) -> ok.
+-spec notify_watcher(pid()) -> 'ok'.
 notify_watcher(Watcher) ->
     Watcher ! {?MODULE, 'connection_available'},
-    ok.
+    'ok'.
 
 -spec wait_for_notification(timeout()) ->
                                    'ok' |
