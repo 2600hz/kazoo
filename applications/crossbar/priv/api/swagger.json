@@ -36778,6 +36778,15 @@
             "required": true,
             "type": "string"
         },
+        "MODB_SUFFIX": {
+            "in": "path",
+            "maxLength": 6,
+            "minLength": 6,
+            "name": "MODB_SUFFIX",
+            "pattern": "^[0-9]{6}",
+            "required": true,
+            "type": "string"
+        },
         "MODULE": {
             "in": "path",
             "name": "MODULE",
@@ -40725,6 +40734,26 @@
                     },
                     {
                         "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/ledgers/summary/{MODB_SUFFIX}": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/MODB_SUFFIX"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"
