@@ -195,10 +195,10 @@ dataplan_match(Classification, Plan, AccountId) ->
      ,<<"attachments">> := GAtt
      } = Plan,
 
-    Tag = kz_term:to_atom(CCon),
+    Tag = kz_term:to_atom(CCon, 'true'),
     Server = maps:get(Tag, GConMap, #{}),
 
-    Others = [{kz_term:to_atom(T), #{server => maps:get(kz_term:to_atom(T), GConMap, #{})}}
+    Others = [{kz_term:to_atom(T, 'true'), #{server => maps:get(kz_term:to_atom(T, 'true'), GConMap, #{})}}
               || {_, #{<<"connection">> := T}} <- lists:usort(maps:to_list(Types)), T =/= CCon],
 
     case maps:get(<<"handler">>, CAtt, 'undefined') of
@@ -248,7 +248,7 @@ dataplan_type_match(Classification, DocType, Plan, AccountId) ->
 
     TypeMap = maps:get(DocType, Types, #{}),
 
-    Tag = kz_term:to_atom(maps:get(<<"connection">>, TypeMap, CCon)),
+    Tag = kz_term:to_atom(maps:get(<<"connection">>, TypeMap, CCon), 'true'),
     Server = maps:get(Tag, GConMap, #{}),
 
     TypeAttMap = maps:merge(CAtt, maps:get(<<"attachments">>, TypeMap, #{})),
