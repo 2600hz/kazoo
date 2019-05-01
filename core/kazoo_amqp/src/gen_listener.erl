@@ -630,10 +630,16 @@ maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 handle_info({'kz_amqp_assignment', {'new_channel', Reconnected, Channel}}, State) ->
     _ = kz_amqp_channel:consumer_channel(Channel),
     {'noreply', handle_amqp_channel_available(State, Reconnected)};
-handle_info({'kz_amqp_assignment', 'lost_channel'}, State) ->
+handle_info({'kz_amqp_assignment', 'lost_channel'}
+           ,#state{bindings=ExistingBindings
+                  ,params=Params
+                  }=State
+           ) ->
     lager:debug("lost channel assignment"),
     {'noreply', State#state{is_consuming='false'
                            ,consumer_tags=[]
+                           ,bindings=[]
+                           ,params=props:set_value('bindings', ExistingBindings, Params)
                            }};
 handle_info({#'basic.deliver'{}=BD
             ,#amqp_msg{props=#'P_basic'{content_type=CT}=Basic
