@@ -15,7 +15,9 @@
         ,whapp_oldest_node/1
         ,whapp_oldest_node/2
         ]).
--export([status/0]).
+-export([status/0
+        ,status_to_json/0
+        ]).
 -export([flush/0]).
 -export([handle_advertise/2]).
 -export([notify_new/0

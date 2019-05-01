@@ -202,4 +202,4 @@ start_call_handling(Node, FetchId, CallId, JObj) ->
     lager:debug("started event ~p and control ~p processes", [_Evt, _Ctl]),
 
     _ = ecallmgr_fs_command:set(Node, CallId, kz_json:to_proplist(CCVs)),
-    lager:debug("xml fetch dialplan ~s finished with success after ~pms", [FetchId, kz_time:elapsed_ms(Start)]).
+    lager:debug("xml fetch dialplan ~s finished with success", [FetchId]).
