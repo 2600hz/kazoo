@@ -15,6 +15,7 @@
                 "  if (doc.pvt_type != 'number' || !doc.pvt_assigned_to || doc.pvt_deleted) return;",
                 "  emit(doc.pvt_assigned_to, null);",
                 "}"
+            ]
         },
         "list_by_app": {
             "map": [
