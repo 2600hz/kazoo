@@ -1,0 +1,223 @@
+* Kazoo AMQP
+
+This library manages KAZOO's interaction with AMQP brokers ([[https://www.rabbitmq.com/][RabbitMQ]] is the broker of choice).
+
+** Erlang library architecture
+
+The first thing when setting up AMQP interactions is to start at least one connection. This is just a simple TCP connection, pulled from the =config.ini= file.
+
+#+begin_src plantuml :file process_tree.png :exports results
+skinparam monochrome true
+object kz_amqp_connections {
+  type = "gen_server"
+}
+object kz_amqp_connection_sup {
+  type = "supervisor"
+}
+object kz_amqp_assignments {
+  type = "gen_server"
+}
+object kz_amqp_bootstrap {
+  type = "gen_server"
+}
+
+#+end_src
+
+#+RESULTS:
+[[file:process_tree.png]]
+
+*** =kz_amqp_connections= worker
+
+This worker starts a =gen_server= to manage an ETS table of the AMQP connections started. New connections will be registered with this worker who will track the connection processes (start via the [[https://www.rabbitmq.com/erlang-client-user-guide.html][=amqp_client=]] library's =amqp_connection= module).
+
+Since the AMQP connections may or may not be ready, there are facilities for calling processes to wait until the connection is ready.
+
+*** =kz_amqp_connection_sup= supervisor
+
+Adds and removes =kz_amqp_connection= processes.
+
+*** =kz_amqp_assignments= worker
+
+This worker starts a =gen_server= to manage an ETS table of the AMQP channels assigned to KAZOO process PIDs.
+
+There are two types of =channels= KAZOO manages: =float= and =sticky=.
+
+**** Float
+
+FLoating channels are assigned to the current primary broker. When the broker goes down, the channel is moved to the secondary (tertiary, which ever is next in line) broker. When the primary broker recovers, the channel will be moved back to the primary broker.
+
+**** Sticky
+
+These channels are assigned to a specific broker and stay there.
+
+*** =kz_amqp_bootstrap= worker
+
+This worker starts a =gen_server= that loads the AMQP config (per-zone if configured) and instructs =kz_amqp_connections= to add the broker(s). This process will then block until the AMQP broker connections are established in =init/1= (effectively blocking the startup of the VM).
+
+*** = kz_amqp_connection= worker
+
+This worker starts a =gen_server= to manage an =amqp_connection= process from the =amqp_client= library.
+
+The first activity after the connection is established is to start =prechannels= which are channels created ahead of time. Since creating the channel is relatively expensive, KAZOO maintains a buffer of prechannels to aid in speeding up calling code's ability to interact with the broker. As prechannels are assigned to consumers, new prechannels are created to replace the now-assigned channels.
+
+The worker then starts a channel and assigns it as the default consumer for the connection.
+
+** Testing
+Test gen_listener + listener_federator timeout during shutdown
+
+* Investigations
+** TODO Detect / handle flow control
+https://www.rabbitmq.com/flow-control.html
+
+Flow control can be applied on connections, channels, or queues, and affects publishing of messages
+** TODO Dedicated connection for publishing-only
+Contention between fast publishers and slow consumers on the same connection can invoke flow control (artificially slowing down the connection speed). Related to QOS / prefetch settings.
+
+** DONE 1. Fix the services cache bindings
+CLOSED: [2019-04-02 Tue 23:38]
+** DONE 2. Create a means to disable all MODb updates without impacting applications / services
+CLOSED: [2019-04-24 Wed 21:51]
+** DONE 3. Deploy a regex against all bindings keys to replace only and trailing wildcards with '#'
+CLOSED: [2019-04-24 Wed 21:51]
+** TODO 4. Move to application pools to avoid queue churn
+1. Added benefit that it also limits resources consumption on rabbitmq
+
+4.3 backport
+
+Currently each gen_listener uses a channel and, once finished, closes the channel. We papered over this a bit with maintaining prechannels (since creating a channel is a network op). Generally speaking, one kazoo process doing AMQP consuming gets a dedicated channel. This is not required.
+
+https://www.rabbitmq.com/channels.html
+
+We could, instead, maintain pools of workers per-app that are checked in/out and tuned as traffic increases. This would eliminate the majority of channel churn (painful on the broker too) and potentially improve performance. The downside is the resting state of the system is a higher baseline of memory consumption. An auto-scaling pool could be of interest for high volume apps like callflows while a more static pool could be useful for apps with minimal channel usage like teletype.
+
+Generally speaking, =gen_listener= processes with "random" names are likely dynamic and short(er) lived than named queues.
+
+#+begin_src bash
+grep -rlF "-behaviour(gen_listener)." {applications,core} | xargs grep -Fl "QUEUE_NAME, <<>>)." | sort
+applications/acdc/src/acdc_stats.erl
+applications/blackhole/src/blackhole_listener.erl
+applications/blackhole/src/blackhole_tracking.erl
+applications/callflow/src/cf_exe.erl
+applications/callflow/src/cf_listener.erl
+applications/callflow/src/cf_singular_call_hooks_listener.erl
+applications/callflow/src/cf_task.erl
+applications/camper/src/camper_offnet_handler.erl
+applications/cccp/src/cccp_callback_listener.erl
+applications/cccp/src/cccp_listener.erl
+applications/cccp/src/cccp_platform_listener.erl
+applications/conference/src/conference_listener.erl
+applications/conference/src/conf_participant.erl
+applications/doodle/src/doodle_exe.erl
+applications/doodle/src/doodle_listener.erl
+applications/ecallmgr/src/ecallmgr_call_control.erl
+applications/ecallmgr/src/ecallmgr_fs_channels.erl
+applications/ecallmgr/src/ecallmgr_fs_conferences.erl
+applications/ecallmgr/src/ecallmgr_originate.erl
+applications/ecallmgr/src/ecallmgr_registrar.erl
+applications/ecallmgr/src/ecallmgr_usurp_monitor.erl
+applications/fax/src/fax_jobs.erl
+applications/fax/src/fax_worker.erl
+applications/hangups/src/hangups_query_listener.erl
+applications/jonny5/src/j5_channels.erl
+applications/konami/src/konami_event_listener.erl
+applications/milliwatt/src/milliwatt_listener.erl
+applications/omnipresence/src/omnipresence_listener.erl
+applications/skel/src/skel_listener.erl
+applications/stepswitch/src/stepswitch_bridge.erl
+applications/stepswitch/src/stepswitch_local_extension.erl
+applications/stepswitch/src/stepswitch_originate.erl
+applications/stepswitch/src/stepswitch_sms.erl
+applications/trunkstore/src/trunkstore_listener.erl
+core/kazoo_amqp/src/kz_amqp_worker.erl
+core/kazoo_caches/src/kz_cache_listener.erl
+core/kazoo_call/src/kzc_recording.erl
+core/kazoo_events/src/kz_hooks_listener.erl
+core/kazoo_globals/src/kz_globals.erl
+core/kazoo_globals/src/kz_nodes.erl
+core/kazoo_media/src/kz_media_map.erl
+core/kazoo_number_manager/src/knm_search.erl
+#+end_src
+
+*** Long-lived anon queue names
+applications/blackhole/src/blackhole_listener.erl
+applications/blackhole/src/blackhole_tracking.erl
+applications/callflow/src/cf_listener.erl
+applications/conference/src/conference_listener.erl
+applications/doodle/src/doodle_listener.erl
+applications/ecallmgr/src/ecallmgr_fs_channels.erl
+applications/ecallmgr/src/ecallmgr_fs_conferences.erl
+applications/ecallmgr/src/ecallmgr_registrar.erl
+applications/ecallmgr/src/ecallmgr_usurp_monitor.erl
+applications/fax/src/fax_jobs.erl
+applications/hangups/src/hangups_query_listener.erl
+applications/jonny5/src/j5_channels.erl
+applications/konami/src/konami_event_listener.erl
+applications/milliwatt/src/milliwatt_listener.erl
+applications/omnipresence/src/omnipresence_listener.erl
+applications/skel/src/skel_listener.erl
+applications/trunkstore/src/trunkstore_listener.erl
+core/kazoo_amqp/src/kz_amqp_worker.erl
+core/kazoo_caches/src/kz_cache_listener.erl
+core/kazoo_events/src/kz_hooks_listener.erl
+core/kazoo_globals/src/kz_globals.erl
+core/kazoo_globals/src/kz_nodes.erl
+core/kazoo_media/src/kz_media_map.erl
+core/kazoo_number_manager/src/knm_search.erl
+*** Ephemeral processes
+applications/callflow/src/cf_exe.erl
+applications/callflow/src/cf_singular_call_hooks_listener.erl
+applications/callflow/src/cf_task.erl
+applications/conference/src/conf_participant.erl
+applications/doodle/src/doodle_exe.erl
+applications/ecallmgr/src/ecallmgr_call_control.erl
+applications/ecallmgr/src/ecallmgr_originate.erl
+applications/fax/src/fax_worker.erl
+applications/stepswitch/src/stepswitch_bridge.erl
+applications/stepswitch/src/stepswitch_local_extension.erl
+applications/stepswitch/src/stepswitch_originate.erl
+applications/stepswitch/src/stepswitch_sms.erl
+core/kazoo_call/src/kzc_recording.erl
+
+Trunkstore already uses the general purpose pool for its call-handling
+*** DONE Trunkstore to own pool
+CLOSED: [2019-04-15 Mon 18:30]
+*** DONE ecallmgr_call_control
+CLOSED: [2019-04-15 Mon 18:30]
+*** TODO kzc_recording
+*** TODO Stepswitch workers
+*** TODO conf_participant
+** DONE 5. For non-named queues remove or significantly increase the flow control limit
+CLOSED: [2019-04-02 Tue 20:56]
+https://www.rabbitmq.com/confirms.html
+"Finding a suitable prefetch value is a matter of trial and error and will vary from workload to workload. Values in the 100 through 300 range usually offer optimal throughput and do not run significant risk of overwhelming consumers."
+
+50 was picked as a conservative default but config.ini can override this default as necessary.
+
+** TODO 6. Audit all gen_listeners for use of 'self' bindings when not necessary
+** TODO 7. Move direct message bindings to built in (and implicit) AMQP direct exchange
+** DONE 8. Determine and reduce the need for 171 bindings on zswitch for database creation / removal
+CLOSED: [2019-04-24 Wed 21:52]
+I think this is related to the kazoo cache bindings rework in #12
+** DONE 9. Create an 'AMQP router' in kazoo core that will bind for all configuration events and distribute locally in the Erlang VM
+CLOSED: [2019-04-24 Wed 22:43]
+Same as 12
+** TODO 10. Poolboy fork to support persistant overflow or lazy workers
+See PR #123 for lazy worker start. Then you could set high pool count but only start workers
+
+overflow timeout TTL #114
+** DONE 11. AMQP reconnect issues
+CLOSED: [2019-04-24 Wed 21:53]
+When the broker is restarted, test that channels, queues, bindings, et al reconnect properly. This is tied into AMQP history removal work.
+** DONE 12. Kazoo Cache bindings rework
+CLOSED: [2019-04-24 Wed 21:52]
+unique binding to kazoo data that distributes to each cache
+instead of unique caches binding to rmq
+** TODO 13. Leaky AMQP queues
+Looking at an output of =rabbitmqctl list_queues= over a period of time we see
+481 of kzc_recording out of 903
+64 cf_exe
+40 queue_worker
+42 recipient sup
+
+Not all are necessarily leaky but kzc_recording definitely stands out.
+** TODO 14. generate carrier list from behaviour instead of static list in knm_carriers:all_modules()
