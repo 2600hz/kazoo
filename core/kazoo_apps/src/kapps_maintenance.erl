@@ -1100,7 +1100,8 @@ import_account(AccountId, ParentId, {'ok', AccountJObj}, {'ok', ParentJObj}) ->
             io:format("account saved, updating services and import account's numbers to number dbs~n"),
             update_or_add_to_accounts_db(AccountId, SavedJObj),
             remove_and_reconcile_services(AccountId),
-            kazoo_number_manager_maintenance:copy_single_account_to_number_dbs(AccountId);
+            _ = kazoo_number_manager_maintenance:copy_single_account_to_number_dbs(AccountId),
+            'ok';
         {'error', _Reason} ->
             io:format("failed to update account '~s' definition in accountdb: ~p~n", [AccountId, _Reason])
     end.
