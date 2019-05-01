@@ -61,6 +61,36 @@
                 "}"
             ]
         },
+        "summary_by_account": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || doc.pvt_type !== 'ledger') return;",
+                "  emit([doc.pvt_created, doc.source.service, doc.account.id], {",
+                "    'account_name': doc.account.name,",
+                "    'amount': (doc.amount || 0) * (doc.pvt_ledger_type === 'debit' ? -1 : 1),",
+                "    'usage': doc.usage || {}",
+                "  });",
+                "}"
+            ],
+            "reduce": [
+                "function (keys, values, rereduce) {",
+                "  if (rereduce) return values;",
+                "  return values.reduce(function(reduceObj, obj) {",
+                "    var objUsage = obj.usage || {};",
+                "    var reduceUsage = reduceObj.usage || {};",
+                "    return {",
+                "      'account_name': reduceObj.account_name || obj.account_name,",
+                "      'amount': (obj.amount || 0) + (reduceObj.amount || 0),",
+                "      'usage': {",
+                "        'type': reduceUsage.type || objUsage.type,",
+                "        'quantity': (reduceUsage.quantity || 0) + (objUsage.quantity || 0),",
+                "        'unit': reduceUsage.unit || objUsage.unit",
+                "      }",
+                "    }",
+                "  })",
+                "}"
+            ]
+        },
         "total_by_source": {
             "map": [
                 "function(doc) {",
