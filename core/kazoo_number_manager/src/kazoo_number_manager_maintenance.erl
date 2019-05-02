@@ -330,7 +330,8 @@ copy_account_to_numdbs(State, AccountDb) ->
                   ],
     NewState = State#{retry_conflict_assigned_to => kz_util:format_account_id(AccountDb)},
     View = <<"numbers/list_by_number">>,
-    Funs = [fun delete_revision/2
+    Funs = [fun get_docs_from_result/2
+           ,fun delete_revision/2
            ,fun split_docs_by_number_dbs/2
            ,fun save_to_dbs/2
            ],
@@ -382,7 +383,8 @@ copy_numdb_to_accounts(State, NumberDb) ->
 -spec copy_numdb_to_accounts(loop_state(), kz_term:ne_binary(), kz_term:proplist()) -> loop_state().
 copy_numdb_to_accounts(State, NumberDb, ViewOptions) ->
     View = <<"numbers/assigned_to">>,
-    Funs = [fun delete_revision/2
+    Funs = [fun get_docs_from_result/2
+           ,fun delete_revision/2
            ,fun split_docs_by_assigned_to/2
            ,fun save_to_dbs/2
            ],
@@ -533,7 +535,7 @@ fix_apps_for_number_db(State, NumberDb) ->
     ViewOptions = [{'limit', kz_datamgr:max_bulk_read()}
                   ],
     View = <<"numbers/list_assigned_and_app">>,
-    Funs = [fun split_docs_by_assigned_to/2
+    Funs = [fun split_by_list_assigned_and_app/2
            ,fun check_app_usage/2
            ,fun open_docs_from_dbs/2
            ,fun apply_apps_fixers/2
@@ -552,30 +554,36 @@ fix_apps_for_number_db(State, NumberDb) ->
 -spec fix_apps_in_number_dbs_for_accounts(kz_term:ne_binaries()) -> loop_state().
 fix_apps_in_number_dbs_for_accounts(Accounts) ->
     NumberDbs = knm_util:get_all_number_dbs(),
-    ?SUP_LOG_DEBUG("::: start fixing numbers doc used_by field in all ~b number dbs for ~b accounts"
+    ?SUP_LOG_DEBUG("::: start fixing numbers doc used_by field in ~b number dbs for ~b accounts"
                   ,[length(NumberDbs), length(Accounts)]
                   ),
     AccountIds = [kz_util:format_account_id(A) || A <- Accounts],
     State = apps_fix_state(NumberDbs),
-    loop_dbs(State, fun(StateAcc, NumberDb) -> fix_apps_in_number_dbs_for_account(StateAcc, NumberDb, AccountIds) end).
+    Fun = fun(StateAcc, NumberDb) ->
+                  fix_apps_in_number_dbs_for_account(StateAcc, NumberDb, length(AccountIds), AccountIds)
+          end,
+    loop_dbs(State, Fun).
 
 -spec fix_apps_in_number_dbs_for_single_account(kz_term:ne_binary()) -> loop_state().
 fix_apps_in_number_dbs_for_single_account(Account) ->
     fix_apps_in_number_dbs_for_accounts([Account]).
 
 %% @private
--spec fix_apps_in_number_dbs_for_account(loop_state(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
+-spec fix_apps_in_number_dbs_for_account(loop_state(), kz_term:ne_binary(), non_neg_integer(), kz_term:ne_binaries()) ->
                                                 loop_state().
-fix_apps_in_number_dbs_for_account(State, _, []) ->
+fix_apps_in_number_dbs_for_account(State, _, _, []) ->
     State;
-fix_apps_in_number_dbs_for_account(State, NumberDb, [AccountId|AccountIds]) ->
+fix_apps_in_number_dbs_for_account(State, NumberDb, Total, [AccountId|AccountIds]) ->
     ViewOptions = [{'limit', kz_datamgr:max_bulk_read()}
                   ,{'startkey', [AccountId]}
                   ,{'endkey', [AccountId, kz_json:new()]}
                   ],
-    ?SUP_LOG_DEBUG(" ==> fixing numbers app usage for account ~s", [AccountId]),
+    ?SUP_LOG_DEBUG("==> (~p/~p) fixing numbers app usage for account ~s"
+                  ,[length(AccountIds) + 1, Total, AccountId]
+                  ),
+
     View = <<"numbers/list_assigned_and_app">>,
-    Funs = [fun split_docs_by_assigned_to/2
+    Funs = [fun split_by_list_assigned_and_app/2
            ,fun check_app_usage/2
            ,fun open_docs_from_dbs/2
            ,fun apply_apps_fixers/2
@@ -585,6 +593,7 @@ fix_apps_in_number_dbs_for_account(State, NumberDb, [AccountId|AccountIds]) ->
     NewState = get_results_loop(State, NumberDb, View, ViewOptions, Funs),
     fix_apps_in_number_dbs_for_account(NewState#{apps_fixers => #{}, missing_nums_in_use => #{}}
                                       ,NumberDb
+                                      ,Total
                                       ,AccountIds
                                       ).
 
@@ -602,7 +611,7 @@ remove_wrong_assigned_from_accounts(AccountDbs) ->
                   ,[length(AccountDbs)]
                   ),
     State = remove_accountdb_wrong_assigned_state([kz_util:format_account_db(A) || A <- AccountDbs]),
-    loop_dbs(State, fun remove_bad_assignment_account/2).
+    loop_dbs(State, fun loop_remove_bad_assignment_account/2).
 
 -spec remove_wrong_assigned_from_single_accountdb(kz_term:ne_binary()) -> loop_state().
 remove_wrong_assigned_from_single_accountdb(Account) ->
@@ -616,10 +625,9 @@ remove_accountdb_wrong_assigned_state(Dbs) ->
               ).
 
 %% @private
--spec remove_bad_assignment_account(loop_state(), kz_term:ne_binary()) -> loop_state().
-remove_bad_assignment_account(State, AccountDb) ->
-    ViewOptions = [{'limit', 200}
-                  ,'include_docs'
+-spec loop_remove_bad_assignment_account(loop_state(), kz_term:ne_binary()) -> loop_state().
+loop_remove_bad_assignment_account(State, AccountDb) ->
+    ViewOptions = [{'limit', kz_datamgr:max_bulk_read()}
                   ],
     View = <<"numbers/assigned_to">>,
     Funs = [fun do_remove_wrong_assigned_from_account/2],
@@ -628,10 +636,10 @@ remove_bad_assignment_account(State, AccountDb) ->
 %% @private
 -spec do_remove_wrong_assigned_from_account(loop_state(), kz_term:ne_binary()) -> loop_state().
 do_remove_wrong_assigned_from_account(#{todo := []}=State, _) ->
-    ?SUP_LOG_DEBUG("  no wrong assignment to remove"),
+    ?SUP_LOG_DEBUG("     no wrong assignment to remove"),
     State;
 do_remove_wrong_assigned_from_account(#{todo := JObjs}=State, AccountDb) ->
-    ?SUP_LOG_DEBUG("  ~b wrong assignments to remove", [length(JObjs)]),
+    ?SUP_LOG_DEBUG("     ~b wrong assignments to remove", [length(JObjs)]),
     AccountId = kz_util:format_account_id(AccountDb),
     ToRemove = [kz_doc:id(JObj)
                 || JObj <- JObjs,
@@ -683,24 +691,28 @@ loop_dbs(#{dbs := [Db | Dbs]}=State, Total, SleepTime, Fun) ->
 -spec get_results_loop(loop_state(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), loop_db_funs()) ->
                               loop_state().
 get_results_loop(State, Db, View, ViewOpts, Funs) ->
-    get_results_loop(State, Db, View, ViewOpts, Funs, 2).
+    get_results_loop(State#{get_loop_count => 1}, Db, View, ViewOpts, Funs, 2).
 
 %% @private
 -spec get_results_loop(loop_state(), kz_term:ne_binary(), kz_term:ne_binary()
                       ,kz_term:proplist(), loop_db_funs(), non_neg_integer()
                       ) -> loop_state().
-get_results_loop(#{ko := KO}=State, Db, _View, _, _, Retries) when Retries =< 0 ->
+get_results_loop(#{ko := KO, get_loop_count := LoopCount}=State, Db, _View, _, _, Retries) when Retries =< 0 ->
     DbKO = maps:get(Db, KO, #{}),
-    ?SUP_LOG_DEBUG("  maximum retries to get results from ~s/~s: ~p"
-                  ,[Db, _View, maps:get('last_error', DbKO)]
+    ?SUP_LOG_DEBUG(" -- loop ~b: maximum retries to get results: ~100p"
+                  ,[LoopCount, maps:get('last_error', DbKO)]
                   ),
     State#{ko => KO#{Db => DbKO#{'max_retries' => 'true'
                                 }
                     }
           ,todo => []
+          ,get_loop_count => 0
           };
-get_results_loop(State, Db, View, ViewOpts, Funs, Retries) ->
-    ?SUP_LOG_DEBUG("  -- loop for getting results from ~s/~s (retries: ~b)", [Db, View, Retries]),
+get_results_loop(#{get_loop_count := LoopCount}=State, Db, View, ViewOpts, Funs, Retries) ->
+    %% to print which retries is this. max retries is set above to 2
+    ?SUP_LOG_DEBUG("  -- loop ~b: getting results from ~s ~s (try: ~b)"
+                  ,[LoopCount, Db, View, 3 - Retries]
+                  ),
     Results = kz_datamgr:get_results(Db, View, ViewOpts),
     handle_get_results(State, Db, View, ViewOpts, Funs, Retries, Results).
 
@@ -709,36 +721,36 @@ get_results_loop(State, Db, View, ViewOpts, Funs, Retries) ->
                         ,kz_term:proplist(), loop_db_funs(), non_neg_integer()
                         ,kazoo_data:get_results_return()
                         ) -> loop_state().
-handle_get_results(State, _Db, _View, _, _, _, {'ok', []}) ->
-    ?SUP_LOG_DEBUG("  -- no more results from ~s/~s", [_Db, _View]),
-    State#{todo => []};
-handle_get_results(State, Db, View, ViewOpts, Funs, Retries, {'ok', JObjs}) ->
-    try lists:split(props:get_integer_value('limit', ViewOpts), JObjs) of
-        {Results, []} ->
-            NewState = apply_funs_on_results(State, Db, Funs, Results),
-            ?SUP_LOG_DEBUG("  -- no more results from ~s/~s", [Db, View]),
-            NewState;
-        {Results, [NextJObj]} ->
-            NewState = apply_funs_on_results(State, Db, Funs, Results),
-            NewViewOptions = props:set_value('startkey', kz_doc:id(NextJObj), ViewOpts),
-            ?SUP_LOG_DEBUG("  -- getting more results from ~s/~s", [Db, View]),
-            get_results_loop(NewState, Db, View, NewViewOptions, Funs, Retries)
-    catch
-        'error':'badarg' ->
-            NewState = apply_funs_on_results(State, Db, Funs, JObjs),
-            ?SUP_LOG_DEBUG("  -- no more results from ~s/~s", [Db, View]),
-            NewState
-    end;
-handle_get_results(#{ko := KO}=State, Db, View, ViewOpts, Funs, Retries, {'error', Reason}) ->
-    ?SUP_LOG_DEBUG("  -- failed to get results from ~s (~p), maybe trying again..."
-                  ,[Db, Reason]
+handle_get_results(#{get_loop_count := LoopCount}=State, _Db, _View, _, _, _, {'ok', []}) ->
+    ?SUP_LOG_DEBUG("  -- loop ~b: no more results", [LoopCount]),
+    State#{todo => []
+          ,get_loop_count => 0
+          };
+handle_get_results(#{get_loop_count := LoopCount}=State, Db, View, ViewOpts, Funs, Retries, {'ok', JObjs}) ->
+    NewState = apply_funs_on_results(State, Db, Funs, JObjs),
+    NewViewOptions = props:set_value('skip', props:get_integer_value('skip', ViewOpts, 0) + length(JObjs), ViewOpts),
+    get_results_loop(NewState#{get_loop_count => LoopCount + 1}, Db, View, NewViewOptions, Funs, Retries);
+handle_get_results(#{ko := KO, get_loop_count := LoopCount}=State, Db, View, ViewOpts, Funs, Retries, {'error', 'timeout'}) ->
+    ?SUP_LOG_DEBUG("  -- timeout to get results, maybe trying again..."),
+
+    _ = timer:sleep(?MILLISECONDS_IN_SECOND),
+
+    DbKO = maps:get(Db, KO, #{}),
+    NewState = State#{ko => KO#{Db => DbKO#{'last_error' => {'get_results', View, <<"timeout">>}}}
+                     ,todo => []
+                     ,get_loop_count => LoopCount + 1
+                     },
+    get_results_loop(NewState, Db, View, ViewOpts, Funs, Retries - 1);
+handle_get_results(#{ko := KO}=State, Db, View, _, _, _, {'error', Reason}) ->
+    ?SUP_LOG_DEBUG("  -- failed to get results: ~100p"
+                  ,[Reason]
                   ),
     DbKO = maps:get(Db, KO, #{}),
     Error = to_binary_data_error(Reason),
-    NewState = State#{ko => KO#{Db => DbKO#{'last_error' => {'get_results', View, Error}}}
-                     ,todo => []
-                     },
-    get_results_loop(NewState, Db, View, ViewOpts, Funs, Retries - 1).
+    State#{ko => KO#{Db => DbKO#{'last_error' => {'get_results', View, Error}}}
+          ,todo => []
+          ,get_loop_count => 0
+          }.
 
 -spec apply_funs_on_results(loop_state(), kz_term:ne_binary(), loop_db_funs(), kz_json:objects()) -> loop_state().
 apply_funs_on_results(State, Db, Funs, Results) ->
@@ -746,43 +758,74 @@ apply_funs_on_results(State, Db, Funs, Results) ->
     (lists:foldl(ApplyFun, State#{todo => Results}, Funs))#{todo => []}.
 
 %%------------------------------------------------------------------------------
-%% @private We don't save fixed apps to another db, it should always save to
-%% whatever db it reads from. So DONT group todo by {db, objects}!
+%% @private These function are working on JObjs
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_docs_from_result(loop_state(), kz_term:ne_binary()) -> loop_state().
+get_docs_from_result(#{todo := JObjs}=State, _Db) ->
+    State#{todo => [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]}.
+
+%% @private see note above
+-spec delete_revision(loop_state(), kz_term:ne_binary()) -> loop_state().
+delete_revision(#{todo := Todos
+                 ,delete_revision := 'true'
+                 }=State, _Db) ->
+    ?SUP_LOG_DEBUG("     delete revision from ~b documents", [length(Todos)]),
+    State#{todo => [kz_doc:delete_revision(JObj) || JObj <- Todos]};
+delete_revision(State, _) ->
+    State.
+
+%%------------------------------------------------------------------------------
+%% @private These function are working on JObjs
 %% @end
 %%------------------------------------------------------------------------------
 -spec split_docs_by_number_dbs(loop_state(), kz_term:ne_binary()) -> loop_state().
 split_docs_by_number_dbs(#{todo := Todos}=State, _Db) ->
-    ?SUP_LOG_DEBUG("  grouping ~b docs by number db", [length(Todos)]),
+    ?SUP_LOG_DEBUG("     grouping ~b docs by number db", [length(Todos)]),
     F = fun (JObj, M) ->
-                Doc = kz_json:get_value(<<"doc">>, JObj),
-                NumberDb = knm_converters:to_db(knm_converters:normalize(kz_doc:id(Doc))),
-                M#{NumberDb => [Doc | maps:get(NumberDb, M, [])]}
+                NumberDb = knm_converters:to_db(knm_converters:normalize(kz_doc:id(JObj))),
+                M#{NumberDb => [JObj | maps:get(NumberDb, M, [])]}
         end,
     State#{todo => maps:to_list(lists:foldl(F, #{}, Todos))}.
 
 %% @private see note above
 -spec split_docs_by_assigned_to(loop_state(), kz_term:ne_binary()) -> loop_state().
 split_docs_by_assigned_to(#{todo := Todos}=State, _Db) ->
-    ?SUP_LOG_DEBUG("  grouping ~b docs by assigned_to", [length(Todos)]),
+    ?SUP_LOG_DEBUG("     grouping ~b docs by assigned_to", [length(Todos)]),
     F = fun (JObj, M) ->
-                Doc = kz_json:get_value(<<"doc">>, JObj),
                 AccountDb = kz_util:format_account_db(
-                              kz_json:get_value(<<"pvt_assigned_to">>, Doc)
+                              kz_json:get_value(<<"pvt_assigned_to">>, JObj)
                              ),
-                M#{AccountDb => [Doc | maps:get(AccountDb, M, [])]}
+                M#{AccountDb => [JObj | maps:get(AccountDb, M, [])]}
         end,
     State#{todo => maps:to_list(lists:foldl(F, #{}, Todos))}.
 
-%% @private see note above
+-spec split_by_list_assigned_and_app(loop_state(), kz_term:ne_binary()) -> loop_state().
+split_by_list_assigned_and_app(#{todo := Todos}=State, _Db) ->
+    ?SUP_LOG_DEBUG("     grouping ~b docs by assigned_to", [length(Todos)]),
+    F = fun (JObj, M) ->
+                [AssginedTo, _PvtUsedBy] = kz_json:get_value(<<"key">>, JObj),
+                AccountDb = kz_util:format_account_db(AssginedTo),
+                M#{AccountDb => [JObj | maps:get(AccountDb, M, [])]}
+        end,
+    State#{todo => maps:to_list(lists:foldl(F, #{}, Todos))}.
+
+%%------------------------------------------------------------------------------
+%% @private We don't save fixed apps to another db, it should always save to
+%% whatever db it reads from. So DONT group todo by {db, objects}!
+%%
+%% These function are working either JObjs or `[{Db, JObjs}]'
+%% @end
+%%------------------------------------------------------------------------------
 -spec check_app_usage(loop_state(), kz_term:ne_binary()) -> loop_state().
 check_app_usage(#{todo := []}=State, _Db) ->
-    ?SUP_LOG_DEBUG("  no numbers to check apps usage", []),
+    ?SUP_LOG_DEBUG("     no numbers to check apps usage", []),
     State;
 check_app_usage(#{todo := [{_AccountDb, _JObjs}|_]=Todos}=State, _NumberDb) ->
-    ?SUP_LOG_DEBUG("  check apps usage for ~b numbers", [length(Todos)]),
+    ?SUP_LOG_DEBUG("     check apps usage for ~b numbers", [length(Todos)]),
     check_app_usage_fold(State#{todo => []}, Todos);
 check_app_usage(#{todo := JObjs}=State, AccountDb) ->
-    ?SUP_LOG_DEBUG("  check apps usage for ~b numbers", [length(JObjs)]),
+    ?SUP_LOG_DEBUG("     check apps usage for ~b numbers", [length(JObjs)]),
     check_app_usage_fold(State#{todo => []}, [{AccountDb, JObjs}]).
 
 %% @private see note above
@@ -822,19 +865,9 @@ create_apps_fixer([JObj|JObjs], {Fixers, AppsUsing}) ->
 %% @private
 %% @end
 %%------------------------------------------------------------------------------
--spec delete_revision(loop_state(), kz_term:ne_binary()) -> loop_state().
-delete_revision(#{todo := Todos
-                 ,delete_revision := 'true'
-                 }=State, _Db) ->
-    ?SUP_LOG_DEBUG("  delete revision from ~b documents", [length(Todos)]),
-    State#{todo => [kz_doc:delete_revision(JObj) || JObj <- Todos]};
-delete_revision(State, _) ->
-    State.
-
-%% @private
 -spec apply_apps_fixers(loop_state(), kz_term:ne_binary()) -> loop_state().
 apply_apps_fixers(#{todo := []}=State, _Db) ->
-    ?SUP_LOG_DEBUG("  no numbers to fix apps usage", []),
+    ?SUP_LOG_DEBUG("     no numbers to fix apps usage", []),
     State;
 apply_apps_fixers(#{todo := Todos}=State, _Db) ->
     apply_apps_fixers_fold(State#{todo => []}, Todos, #{}).
@@ -844,7 +877,7 @@ apply_apps_fixers(#{todo := Todos}=State, _Db) ->
 apply_apps_fixers_fold(State, [], Acc) ->
     State#{todo => maps:to_list(Acc)};
 apply_apps_fixers_fold(#{apps_fixers := AppsFixers}=State, [{Db, JObjs}|Rest], Acc) ->
-    ?SUP_LOG_DEBUG("  applying app usage fixes on ~b numbers for account ~s"
+    ?SUP_LOG_DEBUG("     applying app usage fixes on ~b numbers for account ~s"
                   ,[length(JObjs), kz_util:format_account_id(Db)]
                   ),
     Todo = [(maps:get(kz_doc:id(JObj), AppsFixers, fun kz_term:identity/1))(JObj)
@@ -867,7 +900,7 @@ open_docs_from_dbs(#{todo := Todos}=State, _Db) ->
 open_docs_from_dbs_fold(State, [], Acc) ->
     State#{todo => maps:to_list(Acc)};
 open_docs_from_dbs_fold(#{ko := KO}=State, [{Db, Ids}|Rest], Acc) ->
-    ?SUP_LOG_DEBUG("  opening ~b documents from ~s", [length(Ids), Db]),
+    ?SUP_LOG_DEBUG("     opening ~b documents from ~s", [length(Ids), Db]),
     DbKO = maps:get(Db, KO, #{}),
     case kz_datamgr:open_docs(Db, Ids) of
         {'ok', JObjs} ->
@@ -877,7 +910,7 @@ open_docs_from_dbs_fold(#{ko := KO}=State, [{Db, Ids}|Rest], Acc) ->
                    ],
             open_docs_from_dbs_fold(State, Rest, Acc#{Db => Docs});
         {'error', Reason} ->
-            ?SUP_LOG_ERROR("    failed to open docs from ~s: ~p", [Db, Reason]),
+            ?SUP_LOG_ERROR("       failed to open docs, skipping db: ~100p", [Reason]),
             Error = to_binary_data_error(Reason),
             NewState = State#{ko => KO#{Db => DbKO#{last_error => {'open_docs', Error}}}},
             open_docs_from_dbs_fold(NewState, Rest, Acc)
@@ -889,73 +922,93 @@ open_docs_from_dbs_fold(#{ko := KO}=State, [{Db, Ids}|Rest], Acc) ->
 %%------------------------------------------------------------------------------
 -spec save_to_dbs(loop_state(), kz_term:ne_binary()) -> loop_state().
 save_to_dbs(#{todo := []}=State, _Db) ->
-    ?SUP_LOG_DEBUG("  nothing to save"),
+    ?SUP_LOG_DEBUG("     nothing to save"),
     State;
 save_to_dbs(#{todo := [{_Db, _JObjs}|_]=Todos}=State, _OtherDb) ->
-    save_to_dbs(State#{todo => []}, Todos, 1);
+    ?SUP_LOG_DEBUG("     start saving to ~b dbs", [length(Todos)]),
+    save_to_dbs(State#{todo => []}, length(Todos), Todos, 2);
 save_to_dbs(#{todo := JObjs}=State, Db) ->
-    save_to_dbs(State#{todo => []}, [{Db, JObjs}], 1).
+    ?SUP_LOG_DEBUG("     start saving to 1 db"),
+    save_to_dbs(State#{todo => []}, 1, [{Db, JObjs}], 2).
 
--spec save_to_dbs(loop_state(), kz_term:proplist(), non_neg_integer()) -> loop_state().
-save_to_dbs(State, [], _) ->
+-spec save_to_dbs(loop_state(), non_neg_integer(), kz_term:proplist(), non_neg_integer()) -> loop_state().
+save_to_dbs(State, _, [], _) ->
     State;
-save_to_dbs(#{ko := KO}=State, [{Db, _}|Rest], Retries) when Retries < 0 ->
+save_to_dbs(#{ko := KO}=State, Total, [{Db, _}|Rest], Retries) when Retries =< 0 ->
     DbKO = maps:get(Db, KO, #{}),
-    ?SUP_LOG_DEBUG("    reached to maximum retries to save db ~s: ~p"
+    ?SUP_LOG_DEBUG("       reached to maximum retries to save db: ~100p"
                   ,[Db, maps:get('last_error', DbKO)]
                   ),
     NewState = State#{ko => KO#{Db => DbKO#{'max_retries' => 'true'}}},
-    save_to_dbs(NewState, Rest, 1);
-save_to_dbs(#{ko := KO}=State, [{Db, JObjs} | Rest], Retries) ->
-    ?SUP_LOG_DEBUG("  saving ~b documents to ~s (retries: ~b)", [length(JObjs), Db, Retries]),
+    save_to_dbs(NewState, Total, Rest, 2);
+save_to_dbs(#{ko := KO}=State, Total, [{Db, JObjs} | Rest], Retries) ->
+    ?SUP_LOG_DEBUG("       (~b/~b) saving ~b documents to ~s (try: ~b)"
+                  ,[length(Rest) + 1, Total, length(JObjs), Db, 3 - Retries]
+                  ),
     DbKO = maps:get(Db, KO, #{}),
     IsNumberDb = 'numbers' =:= kz_datamgr:db_classification(Db),
     case kz_datamgr:save_docs(Db, JObjs) of
         {'ok', Saved} ->
-            NewState = handle_bulk_save_errors(State, Db, Saved),
-            save_to_dbs(NewState, Rest, Retries);
+            NewState = handle_bulk_save_errors(State, Db, Saved, JObjs, 'false'),
+            save_to_dbs(NewState, Total, Rest, 2);
         {'error', 'not_found'} when IsNumberDb ->
-            ?SUP_LOG_DEBUG("    creating number db ~s", [Db]),
+            ?SUP_LOG_DEBUG("         creating number db ~s", [Db]),
             _ = kz_datamgr:db_create(Db),
             _ = kapps_maintenance:refresh(Db),
             NewState = State#{ko => KO#{Db => DbKO#{last_error => {'save_docs', 'not_found'}}}},
-            save_to_dbs(NewState, [{Db, JObjs} | Rest], Retries - 1);
+
+            _ = timer:sleep(?MILLISECONDS_IN_SECOND),
+
+            save_to_dbs(NewState, Total, [{Db, JObjs} | Rest], Retries - 1);
         {'error', 'not_found'} ->
-            ?SUP_LOG_DEBUG("    db ~s not found", [Db]),
+            ?SUP_LOG_DEBUG("         db not found"),
             NewState = State#{ko => KO#{Db => DbKO#{last_error => {'save_docs', 'not_found'}}}},
-            save_to_dbs(NewState, Rest, Retries - 1);
+            save_to_dbs(NewState, Total, Rest, 2);
         {'error', 'timeout'} ->
-            ?SUP_LOG_ERROR("    timeout to save to ~s, maybe trying again...", [Db]),
+            ?SUP_LOG_DEBUG("         timeout to save to db, maybe trying again..."),
             NewState = State#{ko => KO#{Db => DbKO#{last_error => {'save_docs', 'timeout'}}}},
-            save_to_dbs(NewState, [{Db, JObjs} | Rest], Retries - 1);
+
+            _ = timer:sleep(?MILLISECONDS_IN_SECOND),
+
+            save_to_dbs(NewState, Total, [{Db, JObjs} | Rest], Retries - 1);
         {'error', Reason} ->
-            ?SUP_LOG_ERROR("    failed to save documents to ~s: ~p", [Db, Reason]),
+            ?SUP_LOG_DEBUG("         failed to save documents to db: ~100p", [Reason]),
             Error = to_binary_data_error(Reason),
             NewState = State#{ko => KO#{Db => DbKO#{last_error => {'save_docs', Error}}}},
-            save_to_dbs(NewState, Rest, Retries - 1)
+            save_to_dbs(NewState, Total, Rest, 2)
     end.
 
 %% @private
--spec handle_bulk_save_errors(loop_state(), kz_term:ne_binary(), kz_json:objects()) -> loop_state().
-handle_bulk_save_errors(#{ko := KO}=State, Db, JObjs) ->
+-spec handle_bulk_save_errors(loop_state(), kz_term:ne_binary(), kz_json:objects(), kz_json:objects(), boolean()) ->
+                                     loop_state().
+handle_bulk_save_errors(#{ko := KO}=State, Db, Saved, JObjs, IsConflictTry) ->
     DbKO = maps:get(Db, KO, #{}),
     DbFailed = maps:get(failed, DbKO, #{}),
-    {Conflict, Failed} = split_by_error(JObjs, [], DbFailed),
+    {ConflictSet, Failed} = split_by_error(Saved, gb_sets:new(), DbFailed, 0),
+
     RetryConflictIfAssigned = maps:get('retry_conflict_assigned_to', State, 'undefined'),
-    case (maps:get('retry_conflict', State, 'false')
-          orelse RetryConflictIfAssigned =/= 'undefined'
-         )
-        andalso maps:is_key(<<"conflict">>, Failed)
+    ConflictSize = gb_sets:size(ConflictSet),
+
+    case not IsConflictTry
+        andalso (maps:get('retry_conflict', State, 'false')
+                 orelse RetryConflictIfAssigned =/= 'undefined'
+                )
+        andalso ConflictSize > 0
     of
         'true' ->
+            ConflictJObjs = [JObj
+                             || JObj <- JObjs,
+                                gb_sets:is_element(kz_doc:id(JObj), ConflictSet)
+                            ],
             save_conflicts_to_db(State#{ko => KO#{Db => DbKO#{failed => Failed}}}
                                 ,Db
-                                ,Conflict
+                                ,ConflictJObjs
                                 ,RetryConflictIfAssigned
                                 );
+        'false' when ConflictSize =:= 0 ->
+            State#{ko => KO#{Db => DbKO#{failed => Failed}}};
         'false' ->
-            ConflictIds = [kz_doc:id(J) || J <- Conflict],
-            NewFailed = merge_error_num_ids(<<"conflict">>, ConflictIds, Failed),
+            NewFailed = merge_error_num_ids(<<"conflict">>, gb_sets:to_list(ConflictSet), Failed),
             State#{ko => KO#{Db => DbKO#{failed => NewFailed}}}
     end.
 
@@ -970,72 +1023,95 @@ merge_error_num_ids(ErrorType, Ids, Acc) ->
     maps:update_with(ErrorType, fun(Nums) -> lists:flatten([Nums, Ids]) end, Ids, Acc).
 
 %% @private
--spec split_by_error(kz_json:objects(), kz_json:objects(), map()) -> {kz_json:objects(), map()}.
-split_by_error([], Conflict, Failed) ->
-    {Conflict, Failed};
-split_by_error([JObj|JObjs], Conflict, Failed) ->
+-spec split_by_error(kz_json:objects(), gb_sets:set(), map(), non_neg_integer()) ->
+                            {gb_sets:set(), map()}.
+split_by_error([], ConflictSet, Failed, TotalFailed) ->
+    maybe_log_failed_saves(ConflictSet, TotalFailed),
+    {ConflictSet, Failed};
+split_by_error([JObj|JObjs], ConflictSet, Failed, TotalFailed) ->
     case kz_json:get_value(<<"error">>, JObj) of
-        'undefined' -> split_by_error(JObjs, Conflict, Failed);
+        'undefined' -> split_by_error(JObjs, ConflictSet, Failed, TotalFailed);
         <<"conflict">> ->
-            split_by_error(JObjs, [JObj|Conflict], Failed);
+            split_by_error(JObjs, gb_sets:add_element(kz_doc:id(JObj), ConflictSet), Failed, TotalFailed);
         Reason ->
             Error = to_binary_data_error(Reason),
             NewFailed = maps:update_with(Error, fun(Nums) -> [kz_doc:id(JObj)| Nums] end
                                         ,[kz_doc:id(JObj)]
                                         ,Failed
                                         ),
-            split_by_error(JObjs, Conflict, NewFailed)
+            split_by_error(JObjs, ConflictSet, NewFailed, TotalFailed + 1)
+    end.
+
+%% @private
+-spec maybe_log_failed_saves(gb_sets:set(), non_neg_integer()) -> 'ok'.
+maybe_log_failed_saves(ConflictSet, 0) ->
+    case gb_sets:size(ConflictSet) of
+        0 -> 'ok';
+        Size ->
+            ?SUP_LOG_DEBUG("         [conflict: ~b]", [Size])
+    end;
+maybe_log_failed_saves(ConflictSet, TotalFailed) ->
+    case gb_sets:size(ConflictSet) of
+        0 ->
+            ?SUP_LOG_DEBUG("         [failed: ~b]", [TotalFailed]);
+        Size ->
+            ?SUP_LOG_DEBUG("         [failed: ~b] [conflict: ~b]", [TotalFailed, Size])
     end.
 
 %% @private
 -spec save_conflicts_to_db(loop_state(), kz_term:ne_binary(), kz_json:objects(), kz_term:api_ne_binary()) ->
                                   loop_state().
-save_conflicts_to_db(#{ko := KO}=State, Db, Conflict, AssignedTo) ->
-    ?SUP_LOG_DEBUG("  retying to save ~b conflicted documents to ~s as final attempt", [length(Conflict), Db]),
+save_conflicts_to_db(#{ko := KO}=State, Db, ConflictJObjs, AssignedTo) ->
+    ?SUP_LOG_DEBUG("         ~b documents conflicted, trying to ensure save", [length(ConflictJObjs)]),
     DbKO = maps:get(Db, KO, #{}),
     DbFailed = maps:get(failed, DbKO, #{}),
 
-    ConflictIds = [kz_doc:id(JObj) || JObj <- Conflict],
+    ConflictIds = [kz_doc:id(JObj) || JObj <- ConflictJObjs],
     {Errored, OpenedIds, Revs} = get_conflicts_revs_from_account(Db, ConflictIds),
 
-    WrongAssignment = case AssignedTo =/= 'undefined' of
-                          'true' ->
-                              Ids = [{kz_doc:id(JObj), kz_json:get_value(<<"pvt_assigned_to">>, JObj)}
-                                     || JObj <- Conflict,
-                                        kz_json:get_ne_binary_value(<<"pvt_assigned_to">>, JObj) =/= AssignedTo
-                                    ],
-                              #{<<"conflict_and_wrong_assignment">> => Ids};
-                          'false' ->
-                              #{}
-                      end,
+    {ToFixRevs, WrongAssignment} = maybe_wrong_assignment(ConflictJObjs, [], [], AssignedTo),
     NewErrored = merge_error_num_ids(Errored, WrongAssignment),
-    ConflictJObjs = [kz_doc:set_revision(JObj, maps:get(kz_doc:id(JObj), Revs))
-                     || JObj <- Conflict,
-                        gb_sets:is_member(kz_doc:id(JObj), OpenedIds)
-                    ],
-    case kz_datamgr:save_docs(Db, ConflictJObjs) of
+    ToSave = [kz_doc:set_revision(JObj, maps:get(kz_doc:id(JObj), Revs))
+              || JObj <- ToFixRevs,
+                 gb_sets:is_member(kz_doc:id(JObj), OpenedIds)
+             ],
+    _ = timer:sleep(100),
+    case kz_datamgr:save_docs(Db, ToSave) of
         {'ok', Saved} ->
-            NewState =
-                State#{ko => KO#{Db => DbKO#{failed => merge_error_num_ids(DbFailed, NewErrored)}}
-                      ,retry_conflict => 'false'
-                      },
-            (handle_bulk_save_errors(NewState, Db, Saved))#{retry_conflict => 'true'};
+            NewState = State#{ko => KO#{Db => DbKO#{failed => merge_error_num_ids(DbFailed, NewErrored)}}},
+            handle_bulk_save_errors(NewState, Db, Saved, ToSave, 'true');
         {'error', Reason} ->
-            ?SUP_LOG_DEBUG("  nope, attempt failed: ~p", [Reason]),
+            ?SUP_LOG_DEBUG("           nope, attempt failed: ~100p", [Reason]),
             NewMeowErrored = merge_error_num_ids(<<"conflict">>, ConflictIds, NewErrored),
             State#{ko => KO#{Db => DbKO#{failed => merge_error_num_ids(DbFailed, NewMeowErrored)}}}
+    end.
+
+maybe_wrong_assignment(ConflictJObjs, _, _, 'undefined') ->
+    {ConflictJObjs, #{}};
+maybe_wrong_assignment([], ConflictJObjs, [], _) ->
+    {ConflictJObjs, #{}};
+maybe_wrong_assignment([], ConflictJObjs, WrongIds, _) ->
+    {ConflictJObjs, #{<<"wrong_assgined_to">> => maps:from_list(WrongIds)}};
+maybe_wrong_assignment([JObj|JObjs], ConflictJObjs, WrongIds, AssginedTo) ->
+    case kz_json:get_ne_binary_value(<<"pvt_assigned_to">>, JObj) of
+        'undefined' ->
+            maybe_wrong_assignment(JObjs, [JObj|ConflictJObjs], WrongIds, AssginedTo);
+        AssginedTo ->
+            maybe_wrong_assignment(JObjs, [JObj|ConflictJObjs], WrongIds, AssginedTo);
+        WrongAssginedTo ->
+            maybe_wrong_assignment(JObj, ConflictJObjs, [{kz_doc:id(JObj), WrongAssginedTo}|WrongIds], AssginedTo)
     end.
 
 %% @private
 -spec get_conflicts_revs_from_account(kz_term:ne_binary(), kz_term:ne_binaries()) ->
                                              {map(), gb_sets:new(), map()}.
 get_conflicts_revs_from_account(Db, ConflictIds) ->
-    ?SUP_LOG_DEBUG("  reading ~s revs from ~s to solve conflicts", [length(ConflictIds), Db]),
+    ?SUP_LOG_DEBUG("           fetching revs for ~b documents from ~s", [length(ConflictIds), Db]),
     case kz_datamgr:all_docs(Db, [{'keys', ConflictIds}]) of
         {'ok', JObjs} ->
             split_errors_opened_revs(JObjs, {#{}, gb_sets:new(), #{}});
         {'error', Reason} ->
-            ?SUP_LOG_DEBUG("    reading rev from db failed: ~p", [Reason]),
+            ?SUP_LOG_DEBUG("             fetching revs from db failed: ~100p", [Reason]),
             {#{<<"conflict">> => ConflictIds}, gb_sets:new(), #{}}
     end.
 
@@ -1049,7 +1125,7 @@ split_errors_opened_revs([JObj|JObjs], {Errors, Opened, Revs}) ->
             Id = kz_doc:id(JObj),
             Acc = {Errors
                   ,gb_sets:add_element(Id, Opened)
-                  ,Revs#{Id => kz_json:get_value(<<"value">>, JObj)}
+                  ,Revs#{Id => kz_json:get_value([<<"value">>, <<"rev">>], JObj)}
                   },
             split_errors_opened_revs(JObjs, Acc);
         <<"not_found">> ->
@@ -1058,7 +1134,8 @@ split_errors_opened_revs([JObj|JObjs], {Errors, Opened, Revs}) ->
                   ,Revs
                   },
             split_errors_opened_revs(JObjs, Acc);
-        _ ->
+        _R->
+            ?DEV_LOG("~n~nerror other ~p~n~n", [_R]),
             Acc = {Errors#{<<"conflict">> => [kz_doc:id(JObj)|maps:get(<<"conflict">>, Errors, [])]}
                   ,Opened
                   ,Revs
@@ -1084,7 +1161,7 @@ to_binary_data_error(SomethingElse) ->
 -spec get_account_dids_apps(kz_term:ne_binary(), kz_term:ne_binaries()) -> map().
 get_account_dids_apps(Account, Ids) ->
     ViewOpts= [{'keys', Ids}],
-    ?SUP_LOG_DEBUG("  getting app usage for ~b numbers in account ~s", [length(Ids), Account]),
+    ?SUP_LOG_DEBUG("      getting app usage for ~b numbers in account ~s", [length(Ids), Account]),
     AccountDb = kz_util:format_account_db(Account),
     case get_dids_for_app(AccountDb, <<"callflow">>, ViewOpts) of
         {'ok', CallflowDIDs} ->
@@ -1092,14 +1169,14 @@ get_account_dids_apps(Account, Ids) ->
                 {'ok', TrunkstoreDIDs} ->
                     handle_dids_app(CallflowDIDs, TrunkstoreDIDs);
                 {'error', _R} ->
-                    ?SUP_LOG_DEBUG("  failed to get trunkstore numbers (~p), skipping..."
-                                  ,[AccountDb, _R]
+                    ?SUP_LOG_DEBUG("         failed to get trunkstore numbers (~100p), skipping..."
+                                  ,[_R]
                                   ),
                     #{}
             end;
         {'error', _R} ->
-            ?SUP_LOG_DEBUG("  failed to get callflow numbers (~p), skipping..."
-                          ,[AccountDb, _R]
+            ?SUP_LOG_DEBUG("         failed to get callflow numbers (~100p), skipping..."
+                          ,[_R]
                           ),
             #{}
     end.
@@ -1239,11 +1316,11 @@ migrate_unassigned_numbers(NumberDb, Offset) ->
 -spec get_dids_for_app(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kazoo_data:get_results_return().
 get_dids_for_app(AccountDb, <<"callflow">>, ViewOptions) ->
     View = <<"callflows/listing_by_number">>,
-    ?SUP_LOG_DEBUG(" getting callflow numbers from ~s", [AccountDb]),
+    ?SUP_LOG_DEBUG("         getting callflow numbers from ~s", [AccountDb]),
     kz_datamgr:get_result_keys(AccountDb, View, ViewOptions);
 get_dids_for_app(AccountDb, <<"trunkstore">>, ViewOptions) ->
     View = <<"trunkstore/lookup_did">>,
-    ?SUP_LOG_DEBUG(" getting trunkstore numbers from ~s", [AccountDb]),
+    ?SUP_LOG_DEBUG("         getting trunkstore numbers from ~s", [AccountDb]),
     kz_datamgr:get_result_keys(AccountDb, View, ViewOptions).
 
 %%------------------------------------------------------------------------------
