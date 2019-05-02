@@ -338,7 +338,7 @@ additional_assignment_validations(Context, [], Assign, _Index) ->
               cb_context:store(Context, 'assign_ips', Assign)
              )
     end;
-additional_assignment_validations(Context, [{Address, {'ok', JObj}}=IP|IPs], Assign, Index) ->
+additional_assignment_validations(Context, [{Address, {'ok', JObj}} | IPs], Assign, Index) ->
     AccountId = cb_context:account_id(Context),
     case kz_ip:assigned_to(JObj) of
         'undefined' ->
@@ -347,7 +347,7 @@ additional_assignment_validations(Context, [{Address, {'ok', JObj}}=IP|IPs], Ass
             Context1 = validate_error_already_assigned(Context, Address, Index),
             additional_assignment_validations(Context1, IPs, Assign, Index + 1);
         _Else ->
-            Context1 = validate_error_assigned(Context, IP, Index),
+            Context1 = validate_error_assigned(Context, Address, Index),
             additional_assignment_validations(Context1, IPs, Assign, Index + 1)
     end;
 additional_assignment_validations(Context, [{Address, {'error', 'not_found'}}|IPs], Assign, Index) ->

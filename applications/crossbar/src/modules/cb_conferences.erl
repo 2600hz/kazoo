@@ -717,7 +717,7 @@ build_endpoint_from_doc(Endpoint, ?BUILD_ACC(Endpoints, Call, Context, Element),
     lager:info("ignoring endpoint type ~s for ~s", [_Type, kz_doc:id(Endpoint)]),
     ?BUILD_ACC(Endpoints, Call, add_not_found_error(Context, kz_doc:id(Endpoint), Element), Element+1).
 
--spec maybe_add_user_endpoints(kz_term:ne_binary(), kapps_call:call()) -> kz_json:objects().
+-spec maybe_add_user_endpoints(kz_json:object(), kapps_call:call()) -> kz_json:objects().
 maybe_add_user_endpoints(User, Call) ->
     Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
     lists:foldr(fun(EndpointId, Acc) ->

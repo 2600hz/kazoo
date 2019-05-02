@@ -199,8 +199,8 @@ authenticate_fold(Token, [Fun | Routines]) ->
 -spec link(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                   'ok' | kz_datamgr:data_error().
 link(AccountId, OwnerId, AuthId) ->
-    Updates = [{<<"pvt_account_id">>, AccountId}
-              ,{<<"pvt_owner_id">>, OwnerId}
+    Updates = [{[<<"pvt_account_id">>], AccountId}
+              ,{[<<"pvt_owner_id">>], OwnerId}
               ],
     UpdateOptions = [{'update', Updates}],
     case kz_datamgr:update_doc(?KZ_AUTH_DB, AuthId, UpdateOptions) of
@@ -211,8 +211,8 @@ link(AccountId, OwnerId, AuthId) ->
 -spec unlink(kz_term:ne_binary()) ->
                     'ok' | kz_datamgr:data_error().
 unlink(AuthId) ->
-    Updates = [{<<"pvt_account_id">>, 'null'}
-              ,{<<"pvt_owner_id">>, 'null'}
+    Updates = [{[<<"pvt_account_id">>], 'null'}
+              ,{[<<"pvt_owner_id">>], 'null'}
               ],
     UpdateOptions = [{'update', Updates}],
     case kz_datamgr:update_doc(?KZ_AUTH_DB, AuthId, UpdateOptions) of

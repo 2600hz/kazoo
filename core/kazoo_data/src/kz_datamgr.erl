@@ -1703,13 +1703,13 @@ maybe_register_view({<<"_design/", Name/binary>>, View}, App, {ClassId, ViewMaps
 
     log_register_views(Name, DocId, App, ViewMaps),
 
-    Update = [{<<"kazoo">>, kz_json:from_list([{<<"view_map">>, ViewMaps}])}
-             ,{<<"view_definition">>, maybe_adapt_multilines(kz_json:delete_key(<<"kazoo">>, View))}
+    Update = [{[<<"kazoo">>], kz_json:from_list([{<<"view_map">>, ViewMaps}])}
+             ,{[<<"view_definition">>], maybe_adapt_multilines(kz_json:delete_key(<<"kazoo">>, View))}
              ],
-    ExtraUpdate = [{<<"version">>, Version}],
-    Create = [{<<"application">>, AppName}
-             ,{<<"name">>, Name}
-             ,{<<"pvt_type">>, <<"view_definition">>}
+    ExtraUpdate = [{[<<"version">>], Version}],
+    Create = [{[<<"application">>], AppName}
+             ,{[<<"name">>], Name}
+             ,{[<<"pvt_type">>], <<"view_definition">>}
              ],
 
     UpdateOptions = [{'update', Update}

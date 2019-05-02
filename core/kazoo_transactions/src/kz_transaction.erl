@@ -338,7 +338,7 @@ bookkeeper_results(#transaction{bookkeeper_results=Results}) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_bookkeeper_results(transaction(), kz_term:ne_binary()) -> transaction().
+-spec set_bookkeeper_results(transaction(), kz_json:object()) -> transaction().
 set_bookkeeper_results(Transaction, Results) ->
     Transaction#transaction{bookkeeper_results=Results}.
 
