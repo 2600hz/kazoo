@@ -533,9 +533,7 @@ handle_cast({'add_event_listener', {Mod, Args}}, #state{call=Call}=State) ->
     _EvtL = cf_util:start_event_listener(Call, Mod, Args),
     lager:debug("started event listener: ~p", [_EvtL]),
     {'noreply', State};
-handle_cast('initialize', #state{call=Call
-                                ,amqp_worker=AMQPWorker
-                                }=State) ->
+handle_cast('initialize', #state{call=Call}=State) ->
     log_call_information(Call),
     Flow = kapps_call:kvs_fetch('cf_flow', Call),
     Updaters = [{fun kapps_call:kvs_store/3, 'cf_exe_pid', self()}
