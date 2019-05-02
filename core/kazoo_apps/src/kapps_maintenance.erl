@@ -1034,7 +1034,7 @@ ensure_tree_is_tree_fold(#{real_ids := RealIds
 %% pvt_tree.
 %% @end
 %%------------------------------------------------------------------------------
--spec create_families(kz_json:objects(), ensure_state(), map()) -> ensure_state().
+-spec create_families(kz_json:objects(), ensure_state(), map()) -> {ensure_state(), map()}.
 create_families([], State, Families) ->
     {State, Families};
 create_families([JObj|JObjs], #{real_ids := RealIds}=State, Families) ->
@@ -1048,8 +1048,7 @@ create_families([JObj|JObjs], #{real_ids := RealIds}=State, Families) ->
                    ,NuclearFamilies
                    ).
 
--spec add_to_family_domain(non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binaries(), map()) ->
-                           ensure_state().
+-spec add_to_family_domain(non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binaries(), map()) -> map().
 add_to_family_domain(Depth, AccountId, AccountTree, Families) ->
     UpdateWithFun = fun(DomainMap) ->
                             DomainMap#{AccountId => AccountTree}
