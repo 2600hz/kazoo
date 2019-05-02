@@ -4,6 +4,7 @@ DEPS = amqp_client \
 	couchbeam \
 	cowboy \
 	ecsv \
+	eflame \
 	erlang_localtime \
 	erlazure \
 	erlcloud \
