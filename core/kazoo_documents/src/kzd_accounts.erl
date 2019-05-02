@@ -1562,7 +1562,7 @@ validate_account_schema(ParentId, AccountId, Doc, ValidationErrors, SchemaJObj) 
         throw({'system_error', <<"validation failed to run on the server">>})
         end.
 
--spec maybe_fix_js_types(kz_term:api_ne_binary(), kz_term:api_ne_binary(), doc(), validation_errors(), [jesse_error:error_message()], kz_json:object()) ->
+-spec maybe_fix_js_types(kz_term:api_ne_binary(), kz_term:api_ne_binary(), doc(), validation_errors(), [jesse_error:error_reason()], kz_json:object()) ->
                                 validate_acc().
 maybe_fix_js_types(ParentId, AccountId, Doc, ValidationErrors, SchemaErrors, SchemaJObj) ->
     case kz_json_schema:fix_js_types(Doc, SchemaErrors) of

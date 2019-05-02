@@ -69,7 +69,7 @@
 -type srvtuple() :: {integer(), integer(), integer(), string()}.
 -type naptrtuple() :: {integer(), integer(), string(), string(), string(), string()}.
 -type mxtuple() :: {integer(), string()}.
--type options() :: [inet_res:req_option()].
+-type options() :: [inet_res:res_option()]. % not currently exported from inet_res
 
 -type cidr_block() :: {inet:ip_address(), inet:ip_address(), pos_integer()}.
 
