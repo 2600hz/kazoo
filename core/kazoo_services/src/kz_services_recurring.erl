@@ -339,7 +339,7 @@ should_process(AccountId, MarkerId, Year, Month) ->
     is_account_enabled(AccountId)
         andalso is_proccessed(AccountId, MarkerId, Year, Month).
 
--spec is_account_enabled(kz_term:ne_binary()) -> 'ok'.
+-spec is_account_enabled(kz_term:ne_binary()) -> boolean().
 is_account_enabled(AccountId) ->
     case kzd_accounts:is_enabled(AccountId) of
         'false' ->
@@ -370,7 +370,9 @@ is_proccessed(AccountId, MarkerId, Year, Month) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_marker(kz_term:ne_binary(), kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> 'ok'.
+-spec set_marker(kz_term:ne_binary(), kz_term:ne_binary(), kz_time:year(), kz_time:month()) ->
+                        {'ok', kz_json:object()} |
+                        {'error', kazoo_data:data_errors()}.
 set_marker(AccountId, MarkerId, Year, Month) ->
     AccountMODB = kz_util:format_account_mod_id(AccountId, Year, Month),
     PvtOptions = [{'account_id', AccountId}

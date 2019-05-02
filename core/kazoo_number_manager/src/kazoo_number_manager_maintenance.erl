@@ -356,7 +356,7 @@ copy_number_dbs_to_accounts(NumberDbs) ->
 %% @doc Copy number docs from a single number db to their assigned account dbs.
 %% @end
 %%------------------------------------------------------------------------------
--spec copy_single_number_db_to_accounts(kz_term:ne_binary()) -> 'ok'.
+-spec copy_single_number_db_to_accounts(kz_term:ne_binary()) -> loop_state().
 copy_single_number_db_to_accounts(NumberDb) ->
     copy_numdb_to_accounts(numdbs_to_accounts_state([NumberDb]), NumberDb).
 
@@ -654,8 +654,8 @@ loop_dbs_init() ->
 %% @private
 -spec loop_dbs(loop_state(), loop_db_fun()) -> loop_state().
 loop_dbs(Options, Fun) ->
-    Opts = lists:usort(maps:get('dbs', Options, [])),
-    loop_dbs(maps:merge(loop_dbs_init(), Opts)
+    Dbs = lists:usort(maps:get('dbs', Options, [])),
+    loop_dbs(maps:merge(loop_dbs_init(), Options#{dbs => Dbs})
             ,length(maps:get('dbs', Options))
             ,?TIME_BETWEEN_DBS_MS
             ,Fun
@@ -1102,7 +1102,7 @@ handle_dids_app(CallflowDIDs, TrunkstoreDIDs) ->
                           || D <- CallflowDIDs,
                              not gb_sets:is_element(D, Multi)
                          ] ++ [{D, <<"calltrunkflow">>}
-                               || D <- gb_sets:to_list(CallflowDIDs)
+                               || D <- gb_sets:to_list(Multi)
                               ]
                         )
                       ,maps:from_list([{D, <<"trunkstore">>}
@@ -1164,11 +1164,11 @@ delete_used_by_fun() ->
 %%------------------------------------------------------------------------------
 -spec fix_account_db_numbers(kz_term:ne_binary()) -> 'ok'.
 fix_account_db_numbers(Account) ->
-    copy_assigned_number_dbs_to_account(Account),
-    remove_wrong_assigned_from_single_accountdb(Account),
+    _ = copy_assigned_number_dbs_to_account(Account),
+    _ = remove_wrong_assigned_from_single_accountdb(Account),
 
-    fix_apps_for_single_account_db(Account),
-    fix_apps_in_number_dbs_for_single_account(Account),
+    _ = fix_apps_for_single_account_db(Account),
+    _ = fix_apps_in_number_dbs_for_single_account(Account),
     _ = kz_services:reconcile(Account),
     'ok'.
 
@@ -1227,7 +1227,7 @@ migrate_unassigned_numbers(NumberDb, Offset) ->
 %%------------------------------------------------------------------------------
 -type dids() :: gb_sets:set(kz_term:ne_binary()).
 
--spec get_dids_for_app(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> dids().
+-spec get_dids_for_app(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kazoo_data:get_results_return().
 get_dids_for_app(AccountDb, <<"callflow">>, ViewOptions) ->
     View = <<"callflows/listing_by_number">>,
     ?SUP_LOG_DEBUG(" getting callflow numbers from ~s", [AccountDb]),
