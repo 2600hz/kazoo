@@ -167,7 +167,7 @@ is_member_active(Member) ->
 resolve_endpoint_ids(Data, Call) ->
     resolve_endpoint_ids(Data, Call, kz_json:get_list_value(<<"endpoints">>, Data)).
 
--spec resolve_endpoint_ids(kz_json:object(), kapps_call:call(), kz_json:api_objects()) -> endpoints().
+-spec resolve_endpoint_ids(kz_json:object(), kapps_call:call(), kz_term:api_objects()) -> endpoints().
 resolve_endpoint_ids(_Data, _Call, 'undefined') ->
     lager:warning("undefined endpoints in the ring group data: ~p", [_Data]),
     [];

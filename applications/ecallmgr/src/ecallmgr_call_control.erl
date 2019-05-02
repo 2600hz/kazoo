@@ -972,7 +972,7 @@ queue_insert_fun('head') ->
 %% @end
 %%------------------------------------------------------------------------------
 %% See Noop documentation for Filter-Applications to get an idea of this function's purpose
--spec maybe_filter_queue(kz_json:api_objects(), queue:queue()) -> queue:queue().
+-spec maybe_filter_queue(kz_term:api_objects(), queue:queue()) -> queue:queue().
 maybe_filter_queue('undefined', CommandQ) -> CommandQ;
 maybe_filter_queue([], CommandQ) -> CommandQ;
 maybe_filter_queue([AppName|T]=Apps, CommandQ) when is_binary(AppName) ->
