@@ -1734,7 +1734,7 @@ find_endpoint_id(EP) ->
 find_endpoint_id(EP, 'undefined') -> kz_json:get_value(<<"Endpoint-ID">>, EP);
 find_endpoint_id(_EP, EPId) -> EPId.
 
--spec monitor_endpoint(kz_json:api_object(), kz_term:ne_binary(), kz_types:server_ref()) -> any().
+-spec monitor_endpoint(kz_term:api_object(), kz_term:ne_binary(), kz_types:server_ref()) -> any().
 monitor_endpoint('undefined', _, _) -> 'ok';
 monitor_endpoint(EP, AccountId, AgentListener) ->
     Username = find_username(EP),

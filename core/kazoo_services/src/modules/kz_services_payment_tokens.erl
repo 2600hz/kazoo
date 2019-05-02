@@ -49,7 +49,7 @@ defaults(Thing) ->
                   ,fetch(Thing)
                   ).
 
--spec default(kz_services:services() | kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:api_object().
+-spec default(kz_services:services() | kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
 default(Thing, Bookkeeper) ->
     Now = kz_time:now_s(),
     Pays = kz_json:filter(fun({_TokenId, Token}) ->

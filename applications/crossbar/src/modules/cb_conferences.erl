@@ -360,7 +360,7 @@ handle_conference_action(Context, ConferenceId, Action) ->
     lager:error("unhandled conference id ~p action: ~p", [ConferenceId, Action]),
     cb_context:add_system_error('faulty_request', Context).
 
--spec record_conference(cb_context:context(), kz_term:ne_binary(), kz_json:api_object()) ->
+-spec record_conference(cb_context:context(), kz_term:ne_binary(), kz_term:api_object()) ->
                                cb_context:context().
 record_conference(Context, _ConferenceId, 'undefined') ->
     data_required(Context, <<"record">>);

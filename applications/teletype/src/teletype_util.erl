@@ -721,7 +721,7 @@ get_address_value(Key, Path, [JObj|JObjs]) ->
         Emails -> Emails
     end.
 
--spec check_address_value(binary() | kz_term:binaries() | kz_json:api_object()) ->
+-spec check_address_value(binary() | kz_term:binaries() | kz_term:api_object()) ->
                                  kz_term:api_ne_binaries().
 check_address_value('undefined') -> 'undefined';
 check_address_value(<<>>) -> 'undefined';

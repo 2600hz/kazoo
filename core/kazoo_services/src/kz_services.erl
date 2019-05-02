@@ -97,15 +97,15 @@
 -define(DONT_CASCADE_MASTER, kapps_config:get_is_false(?CONFIG_CAT, <<"cascade_commits_to_master_account">>, 'true')).
 
 -record(kz_services, {account_id :: kz_term:api_ne_binary()
-                     ,account_quantities = 'undefined' :: kz_json:api_object()
+                     ,account_quantities = 'undefined' :: kz_term:api_object()
                      ,account_updates = kz_json:new() :: kz_json:object()
                      ,audit_log = kz_json:new() :: kz_json:object()
-                     ,cascade_quantities = 'undefined' :: kz_json:api_object()
+                     ,cascade_quantities = 'undefined' :: kz_term:api_object()
                      ,cascade_updates = kz_json:new() :: kz_json:object()
                      ,current_services_jobj = kzd_services:new() :: kzd_services:doc()
                      ,dirty = 'false' :: boolean()
                      ,invoices = 'undefined' :: 'undefined' | kz_services_invoices:invoices()
-                     ,manual_quantities = 'undefined' :: kz_json:api_object()
+                     ,manual_quantities = 'undefined' :: kz_term:api_object()
                      ,manual_updates = kz_json:new() :: kz_json:object()
                      ,plans = 'undefined' ::  'undefined' | kz_services_plans:plans()
                      ,services_jobj = kzd_services:new() :: kzd_services:doc()
@@ -737,13 +737,13 @@ choose_open_doc_fun(Options, AccountId) ->
             fun kz_datamgr:open_doc/2
     end.
 
--spec create(kz_term:ne_binary()) -> kz_json:api_object().
+-spec create(kz_term:ne_binary()) -> kz_term:api_object().
 create(AccountId) ->
     lager:debug("trying to create new services doc for ~s", [AccountId]),
     create(AccountId, kzd_accounts:fetch(AccountId)).
 
 -spec create(kz_term:ne_binary(), {'error', 'not_found'} | {'ok', kzd_accounts:doc()}) ->
-                    kz_json:api_object().
+                    kz_term:api_object().
 create(_AccountId, {'error', 'not_found'}) ->
     lager:info("failed to find account database for ~s", [_AccountId]),
     'undefined';
