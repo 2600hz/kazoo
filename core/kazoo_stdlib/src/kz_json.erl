@@ -121,6 +121,7 @@
 -export_type([json_proplist/0
              ,object/0, objects/0
              ,flat_object/0, flat_objects/0
+             ,flat_proplist/0
              ,path/0, paths/0
              ,key/0, keys/0
              ,get_key/0

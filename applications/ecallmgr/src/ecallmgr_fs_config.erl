@@ -411,7 +411,7 @@ fix_flite_tts(Profile, FSNode) ->
 conference_sounds(Profile) ->
     kz_json:foldl(fun conference_sound/3, Profile, Profile).
 
--spec conference_sound(kz_json:key(), kz_json:ne_binary(), kz_json:object()) -> kz_json:object().
+-spec conference_sound(kz_json:key(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 conference_sound(Key, Value, Profile) ->
     maybe_convert_sound(kz_binary:reverse(Key), Key, Value, Profile).
 

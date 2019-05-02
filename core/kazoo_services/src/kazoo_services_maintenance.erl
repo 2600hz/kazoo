@@ -442,7 +442,7 @@ migrate_services_ratedeck(Services, JObj) ->
                ),
     kz_doc:setters(JObj, Setters).
 
--spec get_ratedeck_binary(kz_json:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
+-spec get_ratedeck_binary(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
 get_ratedeck_binary(Key, Quantities) ->
     case kz_json:get_keys(Key, Quantities) of
         [] -> 'undefined';
