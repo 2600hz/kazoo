@@ -1427,12 +1427,10 @@ create_csv_chunk_response(Req, Context, Content, 'false') when is_list(Content) 
 create_csv_chunk_response(Req, Context, Thing, IsStarted) ->
     create_csv_chunk_response(Req, Context, [Thing], IsStarted).
 
-
-
 -spec stream_or_create_csv_chunk(cowboy_req:req(), cb_context:context(), kz_json:objects() | kz_term:ne_binaries(), boolean()) ->
                                         {boolean(), cowboy_req:req(), cb_context:context()}.
 stream_or_create_csv_chunk(Req, Context, JObjs, 'true') ->
-    lager:debug("(chunked) continuing convertion of CSV chunks"),
+    lager:debug("(chunked) continuing conversion of CSV chunks"),
     {'true', Req, csv_body(Context, JObjs)};
 stream_or_create_csv_chunk(Req, Context, CSVs, 'false') ->
     lager:debug("(chunked) continuing stream of CSV chunks"),
@@ -1440,6 +1438,7 @@ stream_or_create_csv_chunk(Req, Context, CSVs, 'false') ->
     {'true', Req, Context}.
 
 -spec should_convert_csv(kz_json:objects() | kz_term:ne_binaries()) -> boolean().
+should_convert_csv([]) -> 'true';
 should_convert_csv([First|_]) ->
     kz_json:is_json_object(First).
 
