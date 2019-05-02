@@ -790,20 +790,20 @@ check_app_usage(#{todo := JObjs}=State, AccountDb) ->
 check_app_usage_fold(State, []) ->
     State;
 check_app_usage_fold(#{todo := Todo
-                         ,apps_fixers := Fixers
-                         ,missing_nums_in_use := Missing
-                         }=State, [{AccountDbForEver, JObjs}|Rest]) ->
+                      ,apps_fixers := Fixers
+                      ,missing_nums_in_use := Missing
+                      }=State, [{AccountDbForEver, JObjs}|Rest]) ->
     Ids = [kz_doc:id(JObj) || JObj <- JObjs],
     AppsUsing = get_account_dids_apps(AccountDbForEver, Ids),
 
     {NewAppsUsing, DbFixers} = create_apps_fixer(JObjs, {AppsUsing, #{}}),
 
     check_app_usage_fold(State#{todo => Todo ++ maps:keys(DbFixers)
-                                  ,apps_fixers => maps:merge(Fixers, DbFixers)
-                                  ,missing_nums_in_use => Missing#{AccountDbForEver => NewAppsUsing}
-                                  }
-                           ,Rest
-                           ).
+                               ,apps_fixers => maps:merge(Fixers, DbFixers)
+                               ,missing_nums_in_use => Missing#{AccountDbForEver => NewAppsUsing}
+                               }
+                        ,Rest
+                        ).
 
 %% @private
 -spec create_apps_fixer(kz_json:objects(), {map(), map()}) -> {map(), map()}.
