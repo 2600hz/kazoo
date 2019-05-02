@@ -1196,7 +1196,7 @@ finish_chunked_response(#{total_queried := TotalQueried
     api_util:close_chunk_json_envelope(Req, cb_context:set_resp_envelope(Context, Paging)),
     {'stop', Req, Context}.
 
--spec to_fun_event_name(kz_term:ne_binary(), cb_contextL:context()) -> kz_term:ne_binary().
+-spec to_fun_event_name(kz_term:ne_binary(), cb_context:context()) -> kz_term:ne_binary().
 to_fun_event_name(ToThing, Context) ->
     [{Mod, _Params}|_] = cb_context:req_nouns(Context),
     Verb = cb_context:req_verb(Context),
