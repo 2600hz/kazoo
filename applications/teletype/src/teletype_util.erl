@@ -160,7 +160,8 @@ email_parameters([{Key, V}|T], Params) ->
     email_parameters(T, [{Key, V} | Params]).
 
 -spec relay_email(kz_term:api_binaries(), kz_term:ne_binary(), mimemail:mimetuple()) ->
-                         'ok' | {'error', any()}.
+                         {'ok', kz_term:ne_binary()} |
+                         {'error', any()}.
 relay_email(To, From, {_Type
                       ,_SubType
                       ,Addresses

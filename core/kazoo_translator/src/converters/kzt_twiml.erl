@@ -437,4 +437,5 @@ media_local_store_url(Call, JObj) ->
     AccountDb = kapps_call:account_db(Call),
     MediaId = kz_doc:id(JObj),
     MediaName = kz_json:get_value(<<"name">>, JObj),
-    ?NE_BINARY = kz_datamgr:attachment_url(AccountDb, MediaId, MediaName).
+    {'ok', URL} = kz_datamgr:attachment_url(AccountDb, MediaId, MediaName),
+    URL.
