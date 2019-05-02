@@ -188,7 +188,7 @@ add_req_to_state(Req, State) ->
 
 -spec read_body({'ok', binary(), cowboy_req:req()} |
                 {'more', binary(), cowboy_req:req()}
-               ) -> {cowbow_req:req(), iodata()}.
+               ) -> {cowboy_req:req(), iodata()}.
 read_body({'ok', BodyPart, Req}) ->
     {Req, BodyPart};
 read_body({'more', BodyPart, Req}) ->

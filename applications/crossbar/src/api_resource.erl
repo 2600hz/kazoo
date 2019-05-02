@@ -113,7 +113,7 @@ get_request_id(Req) ->
     kz_util:put_callid(ReqId),
     ReqId.
 
--spec get_profile_id(cowbow_req:req()) -> kz_term:api_ne_binary().
+-spec get_profile_id(cowboy_req:req()) -> kz_term:api_ne_binary().
 get_profile_id(Req) ->
     case cowboy_req:header(<<"x-profile-id">>, Req) of
         'undefined' -> 'undefined';

@@ -37,22 +37,23 @@ simple_counterexample() ->
 
 -spec simple_counterexample('undefined' | list()) -> [{module(), function(), list()}].
 simple_counterexample('undefined') ->
-    {error, no_counterexample};
+    {'error', 'no_counterexample'};
 simple_counterexample([Seq]) ->
     [{M, F, ['{API}'|cleanup_args(Args)]}
-     || {set, _Var, {call, M, F, [_|Args]}} <- Seq
+     || {'set', _Var, {'call', M, F, [_|Args]}} <- Seq
     ].
 
 cleanup_args(Args) ->
     [cleanup_arg(Arg) || Arg <- Args].
-cleanup_arg({call, M, F, Args}) ->
+cleanup_arg({'call', M, F, Args}) ->
     {M,F, length(Args)};
 cleanup_arg(Arg) -> Arg.
 
-
+%% {M, F, Args/Arity, [{file, Filename}, {line, LineNo}]}
+-type stack_item() :: {module(), atom(), arity() | [term()], [{'file', string()} | {'line', integer()}]}.
 -spec run_counterexample(module()) ->
                                 {kz_term:ne_binary(), 'postcondition_failed'} |
-                                {kz_term:ne_binary(), atom(), any(), [erlang:stack_item()]} |
+                                {kz_term:ne_binary(), atom(), any(), [stack_item()]} |
                                 {'ok', kz_term:ne_binary()}.
 run_counterexample(PQC) ->
     PQC:cleanup(),
