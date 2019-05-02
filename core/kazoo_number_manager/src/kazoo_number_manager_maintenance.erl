@@ -1144,24 +1144,6 @@ delete_used_by_fun() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
-%% -spec log_disappeared_numbers_still_in_use_by_apps(map()) -> 'ok'.
-%% log_disappeared_numbers_still_in_use_by_apps(AppsUsing) when map_size(AppsUsing) =:= 0 ->
-%%     'ok';
-%% log_disappeared_numbers_still_in_use_by_apps(AppsUsing) ->
-%%     io:put_chars(
-%%       kz_term:to_binary(
-%%         ["\n  The numbers are not exists in account db and are still in used by apps:\n"
-%%         ,[<<"  ", Num/binary, ": ", App/binary, $\n>>
-%%           || {Num, App} <- maps:to_list(AppsUsing)
-%%          ]
-%%         ]
-%%        )
-%%      ).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
 -spec fix_account_db_numbers(kz_term:ne_binary()) -> 'ok'.
 fix_account_db_numbers(Account) ->
     _ = copy_assigned_number_dbs_to_account(Account),
@@ -1225,8 +1207,6 @@ migrate_unassigned_numbers(NumberDb, Offset) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--type dids() :: gb_sets:set(kz_term:ne_binary()).
-
 -spec get_dids_for_app(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kazoo_data:get_results_return().
 get_dids_for_app(AccountDb, <<"callflow">>, ViewOptions) ->
     View = <<"callflows/listing_by_number">>,
@@ -1242,6 +1222,8 @@ get_dids_for_app(AccountDb, <<"trunkstore">>, ViewOptions) ->
 %% @end
 %%------------------------------------------------------------------------------
 -ifndef(TEST).
+-type dids() :: gb_sets:set(kz_term:ne_binary()).
+
 -spec get_DIDs_callflow_set(kz_term:ne_binary(), kz_term:proplist()) -> dids().
 get_DIDs_callflow_set(AccountDb, ViewOptions) ->
     case get_dids_for_app(AccountDb, <<"callflow">>, ViewOptions) of
