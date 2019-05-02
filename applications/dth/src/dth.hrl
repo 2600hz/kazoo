@@ -1,6 +1,6 @@
 -ifndef(DTH_HRL).
 
--include_lib("detergent/include/detergent.hrl").
+%%-include_lib("detergent/include/detergent.hrl").
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 
@@ -17,6 +17,8 @@
 -define(DTH_CALL_TYPE_TIERED, "TieredOrigination").
 
 -define(CACHE_NAME, 'dth_cache').
+
+-record(wsdl, {}).
 
 -define(DTH_HRL, true).
 -endif.
