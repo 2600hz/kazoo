@@ -40,6 +40,7 @@ ERL_OPTS="{{ erl_opts }}"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-/tmp/log}"
 VM_NODE_FILES_DIR="${VM_NODE_FILES_DIR:-/tmp}"
 NAME_TYPE="${NODE_NAME_TYPE:--name}"
+NODE_STARTUP_FILE_PATH=${NODE_STARTUP_FILE_PATH:-/etc/kazoo/core}
 
 
 # start/stop/install/upgrade pre/post hooks
@@ -333,6 +334,18 @@ else
     fi
 fi
 
+if [ -f "${NODE_STARTUP_FILE_PATH}/${KAZOO_NODE}.vm.args" ]; then
+    VM_ARGS_FILE="${NODE_STARTUP_FILE_PATH}/${KAZOO_NODE}.vm.args"
+else
+    VM_ARGS_FILE="$VMARGS_PATH"
+fi
+
+if [ -f "${NODE_STARTUP_FILE_PATH}/${KAZOO_NODE}.sys.config" ]; then
+    SYS_CONFIG_FILE="${NODE_STARTUP_FILE_PATH}/${KAZOO_NODE}.sys.config"
+else
+    SYS_CONFIG_FILE="$RELX_CONFIG_PATH"
+fi
+
 cd "$ROOTDIR"
 
 # Check the first argument for instructions
@@ -535,11 +548,10 @@ case "$1" in
             +pc unicode \
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
-            -config "$RELX_CONFIG_PATH" \
+            -config "$SYS_CONFIG_FILE" \
             $NAME_ARG \
             -setcookie $COOKIE \
-            -args_file "$VMARGS_PATH" \
-            -pa ${__code_paths}
+            -args_file "$VM_ARGS_FILE" 
 
         # Dump environment info for logging purposes
         echo "Exec: $@" -- ${1+$ARGS}
