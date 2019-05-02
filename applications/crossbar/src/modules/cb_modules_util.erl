@@ -397,7 +397,7 @@ maybe_convert_numbers_to_list(Context) ->
 maybe_requesting_csv(Context) ->
     case cb_context:req_header(Context, <<"accept">>) of
         <<"text/csv">> -> 'true';
-        _ -> <<"csv">> == cb_context:req_param(Context, <<"accept">>)
+        _ -> <<"csv">> =:= cb_context:req_param(Context, <<"accept">>)
     end.
 
 -spec convert_numbers_to_list(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
