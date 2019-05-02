@@ -449,7 +449,7 @@ resolve_a_record_fold(IPTuple, I) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec iptuple_to_binary(inet:ip4_address() | inet:ipv6_address()) -> kz_term:ne_binary().
+-spec iptuple_to_binary(inet:ip4_address() | inet:ip6_address()) -> kz_term:ne_binary().
 iptuple_to_binary({A,B,C,D}) ->
     <<(kz_term:to_binary(A))/binary, "."
      ,(kz_term:to_binary(B))/binary, "."
