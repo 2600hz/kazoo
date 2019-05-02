@@ -397,13 +397,13 @@ start_end_keys(Context, Options, Direction) ->
 %% The keys will be swapped if direction is descending.
 %% @end
 %%------------------------------------------------------------------------------
--spec ranged_start_end_keys(cb_context:cb_context(), options()) -> range_keys().
+-spec ranged_start_end_keys(cb_context:context(), options()) -> range_keys().
 ranged_start_end_keys(Context, Options) ->
     {StartTime, EndTime} = time_range(Context, Options),
     Direction = direction(Context, Options),
     ranged_start_end_keys(Context, Options, Direction, StartTime, EndTime).
 
--spec ranged_start_end_keys(cb_context:cb_context(), options(), direction(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) -> range_keys().
+-spec ranged_start_end_keys(cb_context:context(), options(), direction(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) -> range_keys().
 ranged_start_end_keys(Context, Options, Direction, StartTime, EndTime) ->
     {StartKeyMap, EndKeyMap} = get_range_key_maps(Options),
     case {cb_context:req_value(Context, <<"start_key">>)
