@@ -461,7 +461,7 @@ additional_release_validations(Context) ->
                                             cb_context:context().
 additional_release_validations(Context, [], Release, _Index) ->
     cb_context:store(Context, 'release_ips', Release);
-additional_release_validations(Context, [{Address, {'ok', JObj}}=IP|IPs], Release, Index) ->
+additional_release_validations(Context, [{Address, {'ok', JObj}} | IPs], Release, Index) ->
     AccountId = cb_context:account_id(Context),
     case kz_ip:assigned_to(JObj) of
         'undefined' ->
@@ -470,7 +470,7 @@ additional_release_validations(Context, [{Address, {'ok', JObj}}=IP|IPs], Releas
         AccountId ->
             additional_release_validations(Context, IPs, [JObj|Release], Index + 1);
         _Else ->
-            Context1 = validate_error_assigned(Context, IP, Index),
+            Context1 = validate_error_assigned(Context, Address, Index),
             additional_assignment_validations(Context1, IPs, Release, Index + 1)
     end;
 additional_release_validations(Context, [{Address, {'error', 'not_found'}}|IPs], Release, Index) ->

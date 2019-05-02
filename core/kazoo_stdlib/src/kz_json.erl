@@ -1181,11 +1181,11 @@ set_value(Keys, Value, JObj, Options) when is_list(Keys) ->
 set_value(Key, Value, JObj, Options) ->
     set_value1([Key], check_value_term(Value), JObj, Options).
 
--spec set_value1(keys(), json_term() | 'null', object() | objects()) -> object() | objects().
+-spec set_value1(keys(), json_term() | 'null' | 'undefined', object() | objects()) -> object() | objects().
 set_value1(Keys, Value, JObj) ->
     set_value1(Keys, check_value_term(Value), JObj, set_value_options()).
 
--spec set_value1(keys(), json_term() | 'null', object() | objects(), set_value_options()) -> object() | objects().
+-spec set_value1(keys(), json_term() | 'null' | 'undefined', object() | objects(), set_value_options()) -> object() | objects().
 set_value1([Key|_]=Keys, Value, [], Options) when not is_integer(Key) ->
     set_value1(Keys, Value, new(), Options);
 set_value1([Key|T], Value, JObjs, Options) when is_list(JObjs) ->
