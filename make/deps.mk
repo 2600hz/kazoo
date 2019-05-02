@@ -68,8 +68,8 @@ dep_ecsv = git https://github.com/2600hz/ecsv 2600hz
 # merged lazedo/ecsv-1 and rcouch/master
 # looks like cb_rates is only user of this, kz_csv may be workable
 
-# dep_eflame = git https://github.com/slfritchie/eflame 7b0bb1a7e8c8482a59421a3a50ae69d49af59d52
-# uncomment if you want to do tracing of processes and create flame graphs
+dep_eflame = git https://github.com/slfritchie/eflame 7b0bb1a7e8c8482a59421a3a50ae69d49af59d52
+# used by kz_tracers
 
 # dep_eiconv = git https://github.com/zotonic/eiconv
 # used by gen_smtp
