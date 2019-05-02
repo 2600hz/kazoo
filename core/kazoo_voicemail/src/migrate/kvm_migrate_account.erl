@@ -310,7 +310,7 @@ update_message_array(BoxJObj, MODbFailed, Failed, NoTimestamp) ->
     NewMessages = lists:foldl(Fun, [], kz_json:get_value(<<"messages">>, BoxJObj, [])),
     kz_json:set_value(?VM_KEY_MESSAGES, NewMessages, BoxJObj).
 
--spec update_vmbox_message(kz_json:object(), sets:set(), map(), map(), kz_term:binary(), kz_time:api_seconds()) -> kz_term:api_object().
+-spec update_vmbox_message(kz_json:object(), sets:set(), map(), map(), kz_term:api_ne_binary(), kz_time:api_seconds()) -> kz_term:api_object().
 update_vmbox_message(Message, _, _, _, 'undefined', _) ->
     %% no media_id = no migration
     kz_json:set_value(<<"migration_error">>, <<"no_media_id">>, Message);

@@ -368,7 +368,7 @@ fix_conference_profile(FSNode, Resp) ->
     kz_json:set_value(<<"Profiles">>, FixedProfiles, Resp).
 
 -spec fix_conference_profile(kz_term:ne_binary(), kz_json:object(), atom()) ->
-                                    {kz_tern:ne_binary(), kz_json:object()}.
+                                    {kz_term:ne_binary(), kz_json:object()}.
 fix_conference_profile(Name, Profile, FSNode) ->
     lager:debug("fixing up conference profile ~s", [Name]),
     Routines = [fun(J) -> maybe_fix_profile_tts(J, FSNode) end
@@ -494,7 +494,7 @@ handle_conference_params_response(_Error) ->
     lager:debug("failed to lookup conference params, error:~p", [_Error]),
     ecallmgr_fs_xml:not_found().
 
--spec maybe_fetch_conference_profile(atom(), kz_term:ne_binary(), kzd_freeswitch:doc(), kz_term:api_binary()) -> fs_sendmsg_ret().
+-spec maybe_fetch_conference_profile(atom(), kz_term:ne_binary(), kzd_freeswitch:data(), kz_term:api_binary()) -> fs_sendmsg_ret().
 maybe_fetch_conference_profile(Node, FetchId, _Data, 'undefined') ->
     lager:debug("failed to lookup undefined conference profile"),
     {'ok', XmlResp} = ecallmgr_fs_xml:not_found(),
@@ -529,7 +529,7 @@ maybe_fetch_conference_profile(Node, FetchId, Data, Profile) ->
               end,
     send_conference_profile_xml(Node, FetchId, XmlResp).
 
--spec conference_id(kzd_freeswitch:doc(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
+-spec conference_id(kzd_freeswitch:data(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 conference_id(Data, Profile) ->
     case props:get_first_defined([<<"Conf-Name">>, <<"conference_name">>], Data) of
         'undefined' -> conference_id_from_profile(Profile);

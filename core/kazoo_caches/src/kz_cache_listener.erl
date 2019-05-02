@@ -110,7 +110,7 @@ init([]) ->
     kz_util:put_callid(?MODULE),
     {'ok', ?MODULE}.
 
--spec handle_call(any(), kz_types:pid_ref(), state()) -> {'noreply', state()}.
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> {'noreply', state()}.
 handle_call(_Req, _From, State) ->
     {'noreply', State}.
 

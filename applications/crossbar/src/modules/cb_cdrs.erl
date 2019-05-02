@@ -440,7 +440,7 @@ load_chunked_cdr_ids(Context, RespType, Db, Ids, 'success') ->
 load_chunked_cdr_ids(Context, _RespType, _Db, _Ids, _Status) ->
     Context.
 
--spec normalize_cdr(cb_context:context(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object() | kz_term:binary().
+-spec normalize_cdr(cb_context:context(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object() | kz_term:ne_binary().
 normalize_cdr(Context, <<"json">>, Result) ->
     JObj = kz_json:get_json_value(<<"doc">>, Result),
     Duration = kzd_cdrs:duration_seconds(JObj, 0),

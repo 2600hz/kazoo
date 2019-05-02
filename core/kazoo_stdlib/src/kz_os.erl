@@ -143,9 +143,9 @@ run_cmd(Command, Args, Options) ->
     Out = cmd_read({Port, MaxSize, Timeout, OwnerRef}, <<>>),
     OwnerPid ! {Out, self()}.
 
--spec cmd_read({port(), integer(), integer(), reference()}, kz_term:binary()) ->
+-spec cmd_read({port(), integer(), integer(), reference()}, kz_term:ne_binary()) ->
                       {'ok', kz_term:ne_binary()} |
-                      {'error', atom(), kz_term:ne_binary()}.
+                      {'error', atom(), binary()}.
 cmd_read({Port, _MaxSize, Timeout, OwnerRef}=LoopParams, Acc) ->
     receive
         {'DOWN', OwnerRef, _, _, _}  ->

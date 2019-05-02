@@ -24,6 +24,8 @@
 
 -include("kz_data.hrl").
 
+-export_type([db_create_options/0]).
+
 %%% DB-related functions ---------------------------------------------
 -spec db_compact(map(), kz_term:ne_binary()) -> boolean().
 db_compact(#{server := {App, Conn}}, DbName) ->

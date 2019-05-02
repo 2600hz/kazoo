@@ -44,7 +44,7 @@ init([Name, ExpirePeriod]) ->
                  ,expire_period_ref=start_expire_period_timer(ExpirePeriod)
                  }}.
 
--spec handle_call(any(), kz_types:pid_ref(), state()) -> {'noreply', state()}.
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> {'noreply', state()}.
 handle_call(_Req, _From, State) ->
     {'noreply', State}.
 

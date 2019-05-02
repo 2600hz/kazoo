@@ -928,7 +928,7 @@ trial_has_expired(JObj, Now) ->
     trial_expiration(JObj) =/= 'undefined'
         andalso trial_time_left(JObj, Now) =< 0.
 
--spec is_expired(doc() | kz_types:api_ne_binary()) -> 'false' | {'true', kz_time:gregorian_seconds()}.
+-spec is_expired(doc() | kz_term:api_ne_binary()) -> 'false' | {'true', kz_time:gregorian_seconds()}.
 is_expired('undefined') -> 'false';
 is_expired(?NE_BINARY = Id) ->
     case fetch(Id) of
@@ -1162,7 +1162,7 @@ low_balance_tstamp(Doc) ->
 set_low_balance_tstamp(Doc) ->
     set_low_balance_tstamp(Doc, kz_time:now_s()).
 
--spec set_low_balance_tstamp(doc(), kz_term:gregorian_seconds()) -> doc().
+-spec set_low_balance_tstamp(doc(), kz_time:gregorian_seconds()) -> doc().
 set_low_balance_tstamp(Doc, TStamp) ->
     set_notifications_low_balance_last_notification(Doc, TStamp).
 

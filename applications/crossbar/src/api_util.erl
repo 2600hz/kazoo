@@ -1231,7 +1231,7 @@ get_encode_options(Context) ->
 -type csv_resp_data() :: kz_term:api_binary() |
                          kz_term:binaries() |
                          kz_json:object() |
-                         kz_term:objects().
+                         kz_json:objects().
 
 -spec create_csv_resp_content(cowboy_req:req(), cb_context:context()) ->
                                      {{'file', file:filename_all()} | 'stop', cowboy_req:req(), cb_context:context()}.
@@ -1457,7 +1457,7 @@ maybe_init_csv_chunk_stream(Req, Context, 'false') ->
 %% then return the default defined value.
 %% @end
 %%------------------------------------------------------------------------------
--spec csv_file_name(cb_context:context(), kz_term:binary()) -> kz_term:binary().
+-spec csv_file_name(cb_context:context(), kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 csv_file_name(Context, Default) ->
     case cb_context:req_header(Context, <<"x-file-name">>) of
         'undefined' -> cb_context:req_value(Context, <<"file_name">>, Default);

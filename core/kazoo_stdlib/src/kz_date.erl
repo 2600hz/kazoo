@@ -210,7 +210,7 @@ dow_to_wday(5) -> <<"friday">>;
 dow_to_wday(6) -> <<"saturday">>;
 dow_to_wday(7) -> <<"sunday">>.
 
--spec days_in_month(kz_tyime:year(), 0..13) -> 28..31.
+-spec days_in_month(kz_time:year(), 0..13) -> 28..31.
 days_in_month(_Year,  1) -> 31;
 days_in_month(_Year,  3) -> 31;
 days_in_month(_Year,  5) -> 31;

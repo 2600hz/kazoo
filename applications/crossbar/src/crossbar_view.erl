@@ -472,7 +472,7 @@ maybe_min_max_pad('undefined', RangeKey) -> RangeKey;
 maybe_min_max_pad(KeyMinLength, RangeKey) ->
     lists:reverse(min_max_pad(KeyMinLength - length(RangeKey), lists:reverse(RangeKey))).
 
--spec min_max_pad(kz_term:non_neg_integer(), api_range_key()) -> api_range_key() | ['min_max'].
+-spec min_max_pad(non_neg_integer(), api_range_key()) -> api_range_key() | ['min_max'].
 min_max_pad(0, RangeKey) -> RangeKey;
 min_max_pad(N, RangeKey) -> min_max_pad(N-1, ['min_max' | RangeKey]).
 

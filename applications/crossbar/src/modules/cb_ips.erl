@@ -328,7 +328,7 @@ additional_assignment_validations(Context) ->
           ],
     additional_assignment_validations(Context, IPs, [], 0).
 
--spec additional_assignment_validations(cb_context:context(), kz_term:proplist(), kz_term:objects(), non_neg_integer()) ->
+-spec additional_assignment_validations(cb_context:context(), kz_term:proplist(), kz_json:objects(), non_neg_integer()) ->
                                                cb_context:context().
 additional_assignment_validations(Context, [], Assign, _Index) ->
     case cb_context:resp_status(Context) =:= 'success' of

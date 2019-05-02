@@ -222,7 +222,7 @@ error_to_props({Reason, Error}) ->
     ,{<<"Reason">>, Key}
     ].
 
--spec is_missing_payment_token(kz_term:objects()) -> boolean().
+-spec is_missing_payment_token(kz_json:objects()) -> boolean().
 is_missing_payment_token(BraintreeErrors) ->
     lists:any(fun(JObj) ->
                       Code = kz_json:get_integer_value(<<"code">>, JObj, 0),

@@ -114,6 +114,8 @@
 -type api_reference() :: reference() | 'undefined'.
 %% Denotes either data type is defined as `reference()' or it's `undefined'.
 
+-type api_port() :: port() | 'undefined'.
+
 -type api_pid() :: pid() | 'undefined'.
 %% Denotes either data type is defined as `pid()' or it's `undefined'.
 
@@ -180,6 +182,7 @@
              ,api_pid_refs/0
              ,api_pos_integer/0
              ,api_reference/0
+             ,api_port/0
              ,api_string/0
              ,api_terms/0
              ,atoms/0
