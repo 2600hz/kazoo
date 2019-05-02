@@ -354,7 +354,7 @@ update_job(JobID, State, JObj) ->
                                    ,kz_json:set_values([{<<"pvt_job_status">>, State}
                                                        ,{<<"pvt_modified">>, kz_time:now_s()}
                                                        ]
-                                                     ,JObj
+                                                      ,JObj
                                                       )
                                    ,Opts
                                    ),

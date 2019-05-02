@@ -499,7 +499,7 @@ fix_apps_for_account(State, AccountDb) ->
            ,fun open_docs_from_dbs/2
            ,fun apply_apps_fixers/2
            ,fun save_to_dbs/2
-           %% ,fun log_missing_nums_in_use/2
+            %% ,fun log_missing_nums_in_use/2
            ],
     NewState = get_results_loop(State, AccountDb, View, ViewOptions, Funs),
     NewState#{apps_fixers => #{}
@@ -538,7 +538,7 @@ fix_apps_for_number_db(State, NumberDb) ->
            ,fun open_docs_from_dbs/2
            ,fun apply_apps_fixers/2
            ,fun save_to_dbs/2
-           %% ,fun log_missing_nums_in_use/2
+            %% ,fun log_missing_nums_in_use/2
            ],
     NewState = get_results_loop(State, NumberDb, View, ViewOptions, Funs),
     NewState#{apps_fixers => #{}
@@ -579,7 +579,7 @@ fix_apps_in_number_dbs_for_account(State, NumberDb, [AccountId|AccountIds]) ->
            ,fun open_docs_from_dbs/2
            ,fun apply_apps_fixers/2
            ,fun save_to_dbs/2
-           %% ,fun log_missing_nums_in_use/2
+            %% ,fun log_missing_nums_in_use/2
            ],
     NewState = get_results_loop(State, NumberDb, View, ViewOptions, Funs),
     fix_apps_in_number_dbs_for_account(NewState#{apps_fixers => #{}, missing_nums_in_use => #{}}
@@ -923,7 +923,7 @@ handle_bulk_save_errors(#{ko := KO}=State, Db, JObjs) ->
     case (maps:get('retry_conflict', State, 'false')
           orelse RetryConflictIfAssigned =/= 'undefined'
          )
-         andalso maps:is_key(<<"conflict">>, Failed)
+        andalso maps:is_key(<<"conflict">>, Failed)
     of
         'true' ->
             save_conflicts_to_db(State#{ko => KO#{Db => DbKO#{failed => Failed}}}
