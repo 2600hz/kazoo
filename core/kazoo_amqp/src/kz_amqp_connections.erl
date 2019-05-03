@@ -117,7 +117,6 @@ add(Broker, Zone, Tags) ->
             lager:error("failed to parse AMQP URI '~s': ~p", [Broker, Info]),
             {'error', 'invalid_uri'};
         {'ok', #amqp_params_network{}=Params} ->
-            lager:info("broker ~s params ~p", [Broker, Params]),
             add(#kz_amqp_connection{broker=Broker
                                    ,params=Params#amqp_params_network{connection_timeout=500}
                                    ,tags=Tags

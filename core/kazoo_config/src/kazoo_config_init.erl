@@ -73,8 +73,6 @@ cleanup_configs(Props) ->
 
 cleanup_config({<<"zone">>, Zone}) ->
     {<<"zone">>, cleanup_section(cleanup_zone(Zone))};
-cleanup_config({<<"bigcouch">>, _}=Config) ->
-    Config;
 cleanup_config({<<"log">>, _}=Config) ->
     Config;
 cleanup_config({Section, Props}) ->
