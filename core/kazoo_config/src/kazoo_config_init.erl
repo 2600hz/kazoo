@@ -118,7 +118,7 @@ cleanup_zone_prop(Prop) -> Prop.
 read_cookie(NodeName) ->
     AppEnv = load_file(),
     erlang:put(?SETTINGS_KEY, AppEnv),
-    kz_config:get_atom(NodeName, 'cookie', []).
+    kz_config:get_atom(NodeName, <<"cookie">>, []).
 
 -spec strip_quotes(binary()) -> binary().
 strip_quotes(Bin) ->

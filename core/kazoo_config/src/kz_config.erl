@@ -21,7 +21,7 @@
 
 -include("kazoo_config.hrl").
 
--type section_key() :: kz_term:text().
+-type section_key() :: kz_term:ne_binary().
 
 %%------------------------------------------------------------------------------
 %% @doc Return a section of the config file
@@ -206,7 +206,7 @@ get_sections(Section, Prop) ->
 get_section(Section) ->
     Prop = load(),
     Sections = props:get_all_values(kz_term:to_binary(Section), Prop),
-    format_sections(Sections, '__no_zone_filter', []).
+    format_sections(Sections, <<"__no_zone_filter">>, []).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -225,7 +225,7 @@ format_sections([Section | T], ZoneFilter, Acc) ->
             format_sections(T, ZoneFilter, [{kz_term:to_binary(Host), Section} | Acc])
     end.
 
--spec format_zone_section(kz_term:proplist(), kz_term:proplist(), atom(), kz_term:proplist()) ->
+-spec format_zone_section(kz_term:proplist(), kz_term:proplist(), section_key(), kz_term:proplist()) ->
                                  kz_term:proplist().
 format_zone_section(Section, Sections, ZoneFilter, Acc) ->
     case props:get_value(ZoneFilter, Section, <<"generic">>) of

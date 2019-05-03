@@ -135,7 +135,9 @@ get_zones() ->
         Zones -> Zones
     end.
 
--spec get_from_zone(atom()) -> kz_term:proplist().
+-spec get_from_zone(atom() | kz_term:ne_binary()) -> kz_term:proplist().
+get_from_zone(ZoneAtom) when is_atom(ZoneAtom) ->
+    get_from_zone(kz_term:to_binary(ZoneAtom));
 get_from_zone(ZoneName) ->
     Zones = get_zones(),
     Props = dict:to_list(get_from_zone(ZoneName, Zones, dict:new())),
@@ -145,7 +147,7 @@ get_from_zone(ZoneName) ->
         _Else -> Props
     end.
 
--spec get_from_zone(atom(), kz_term:proplist(), dict:dict()) -> dict:dict().
+-spec get_from_zone(kz_term:ne_binary(), kz_term:proplist(), dict:dict()) -> dict:dict().
 get_from_zone(_, [], Dict) -> Dict;
 get_from_zone(ZoneName, [{_, Zone}|Zones], Dict) ->
     case props:get_first_defined([<<"name">>, <<"zone">>], Zone) of
