@@ -1200,13 +1200,11 @@ maybe_get_t38(Endpoint, Call) ->
             {'ok', JObj} -> kz_json:is_true([<<"media">>, <<"fax_option">>], JObj);
             {'error', _} -> 'undefined'
         end,
-    DeviceType = kz_json:get_value(<<"device_type">>, Endpoint),
-    case DeviceType =:= <<"fax">> of
-        'false' -> [];
-        'true' ->
-            kapps_call_command:get_inbound_t38_settings(Opt
-                                                       ,kz_json:is_true([<<"media">>, <<"fax_option">>], Endpoint)
-                                                       )
+    case kz_json:get_value(<<"device_type">>, Endpoint) of
+        <<"fax">> ->
+            HasOption = kz_json:is_true([<<"media">>, <<"fax_option">>], Endpoint),
+            kapps_call_command:get_inbound_t38_settings(Opt, HasOption);
+        _Type -> []
     end.
 
 -spec maybe_build_failover(kz_json:object(), kapps_call:call()) -> kz_term:api_object().
