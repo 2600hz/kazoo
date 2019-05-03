@@ -113,7 +113,7 @@ maybe_default_recv_timeout(Options) ->
     end.
 
 filter_options(Options) ->
-    [ KV || {K, _} = KV <- Options, not lists:member(K, ?NO_OPTIONS)].
+    [KV || {K, _} = KV <- Options, not lists:member(K, ?NO_OPTIONS)].
 
 convert_options(Options) ->
     [convert_option(O) || O <- Options].
@@ -168,7 +168,7 @@ connect(#kz_couch_connection{host=Host
                },
     Opts = [{'connection_map', ConnMap} | maybe_add_auth(User, Pass, check_options(Options))],
     Conn = couchbeam:server_connection(kz_term:to_list(Host), Port, <<>>, Opts),
-    lager:debug("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
+    lager:info("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
     connection_info(Conn).
 
 add_couch_version(<<"1.6", _/binary>>, 'undefined', #server{options=Options}=Conn) ->

@@ -43,7 +43,6 @@ start_link(#data_connection{}=Connection) ->
 %%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
 init([Connection]) ->
-    lager:info("start connection"),
     self() ! 'maintain_connection',
     {'ok', Connection}.
 
@@ -125,7 +124,6 @@ code_change(_OldVsn, Connection, _Extra) ->
 %%------------------------------------------------------------------------------
 -spec try_connection(data_connection()) ->  {'ok', data_connection()} | {'error', any()}.
 try_connection(#data_connection{app=App, props=Props}=Connection) ->
-    lager:info("trying to connect ~s", [App]),
     try App:new_connection(Props) of
         {'ok', Server} -> {'ok', Connection#data_connection{server=Server}};
         Error -> handle_error(Connection, Error)
