@@ -1,16 +1,7 @@
-{application, sup,
- [{description, "Accept RPC requests & push them into a running Kazoo VM"}
- ,{vsn, "4.0.0"}
- ,{modules, []}
- ,{registered, []}
- ,{applications, [kernel
-                 ,stdlib
-                 ,getopt
-                 ,kazoo
-                 ,kazoo_stdlib
-                 ,kazoo_config
-                 ,zucchini
-                 ,lager
-                 ]}
- ,{env, []}
- ]}.
+{application,sup,
+             [{applications,[getopt,kazoo,kazoo_stdlib,kernel,lager,stdlib]},
+              {description,"Accept RPC requests & push them into a running Kazoo VM"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[]},
+              {env,[]}]}.
