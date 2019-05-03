@@ -346,8 +346,8 @@ maybe_zone_from_env() ->
 
 -spec zone_from_ini() -> atom().
 zone_from_ini() ->
-    Section = kz_config:get_node_section_name(),
-    case kz_config:get(Section, <<"zone">>) of
+    Section = get_node_section_name(),
+    case get(Section, <<"zone">>) of
         [] -> 'undefined';
         [Zone] ->
             lager:info("setting zone from INI section ~s: ~s", [Section, Zone]),
