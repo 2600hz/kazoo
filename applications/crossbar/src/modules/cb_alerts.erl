@@ -16,6 +16,7 @@
 
 -ifdef(TEST).
 -export([check_port_requests/1
+        ,maybe_check_financials/1
         ,check_low_balance/1
         ,check_payment_token/1
         ]).
