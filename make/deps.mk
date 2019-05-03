@@ -24,6 +24,7 @@ DEPS = amqp_client \
 	lager \
 	lager_syslog \
 	meck \
+	meta \
 	nklib \
 	plists \
 	poolboy \
@@ -136,7 +137,7 @@ dep_lager_syslog = git https://github.com/erlang-lager/lager_syslog 3.0.3
 dep_meck = git https://github.com/eproxus/meck 0.8.13
 # used in tests for kazoo_voicemail, crossbar, teletype, and other deps
 
-# dep_meta = git https://github.com/efcasado/meta 0.1.3
+dep_meta = git https://github.com/efcasado/meta 0.1.3
 # appears unused
 
 dep_nklib = git https://github.com/NetComposer/nklib v0.4.1
