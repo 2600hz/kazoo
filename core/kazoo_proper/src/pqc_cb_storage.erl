@@ -275,7 +275,8 @@ handle_mp3_contents(MP3, Base64MP3, 'true') ->
 -spec cleanup() -> 'ok'.
 cleanup() ->
     _ = pqc_cb_accounts:cleanup_accounts(?ACCOUNT_NAMES),
-    cleanup_system().
+    cleanup_system(),
+    timer:sleep(500).
 
 cleanup(API) ->
     ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
