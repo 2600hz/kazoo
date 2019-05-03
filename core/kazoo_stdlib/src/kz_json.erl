@@ -1181,11 +1181,11 @@ set_value(Keys, Value, JObj, Options) when is_list(Keys) ->
 set_value(Key, Value, JObj, Options) ->
     set_value1([Key], check_value_term(Value), JObj, Options).
 
--spec set_value1(keys(), json_term() | 'null' | 'undefined', object() | objects()) -> object() | objects().
+-spec set_value1(keys(), json_term() | 'null', object() | objects()) -> object() | objects().
 set_value1(Keys, Value, JObj) ->
     set_value1(Keys, check_value_term(Value), JObj, set_value_options()).
 
--spec set_value1(keys(), json_term() | 'null' | 'undefined', object() | objects(), set_value_options()) -> object() | objects().
+-spec set_value1(keys(), json_term() | 'null', object() | objects(), set_value_options()) -> object() | objects().
 set_value1([Key|_]=Keys, Value, [], Options) when not is_integer(Key) ->
     set_value1(Keys, Value, new(), Options);
 set_value1([Key|T], Value, JObjs, Options) when is_list(JObjs) ->
@@ -1219,7 +1219,6 @@ set_value1([Key|T], Value, JObjs, Options) when is_list(JObjs) ->
 
 %% Figure out how to set the current key in an existing object
 set_value1([_|_]=Keys, 'null', JObj, #{'keep_null' := 'false'}) -> delete_key(Keys, JObj);
-set_value1([_|_]=Keys, 'undefined', JObj, _Options) -> delete_key(Keys, JObj);
 set_value1([Key1|T], Value, ?JSON_WRAPPER(Props), Options) ->
     case lists:keyfind(Key1, 1, Props) of
         {Key1, ?JSON_WRAPPER(_)=V1} ->

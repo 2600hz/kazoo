@@ -367,7 +367,7 @@ record_conference(Context, _ConferenceId, 'undefined') ->
 record_conference(Context, ConferenceId, RecordingData) ->
     toggle_recording(Context, ConferenceId, kz_json:get_ne_binary_value(<<"action">>, RecordingData)).
 
--spec toggle_recording(cb_context:context(), kz_term:ne_binary(), kz_json:api_ne_binary()) ->
+-spec toggle_recording(cb_context:context(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
                               cb_context:context().
 toggle_recording(Context, ConferenceId, <<"start">>) ->
     lager:info("starting the recording of conference ~s", [ConferenceId]),

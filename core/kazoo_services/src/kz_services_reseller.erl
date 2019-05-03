@@ -44,7 +44,7 @@ is_reseller(Services) ->
 %% an 'undefined' account id returns the master account (if present)
 %% @end
 %%------------------------------------------------------------------------------
--spec get_id(kz_term:api_ne_binary() | kz_services:services()) -> kz_json:api_ne_binary().
+-spec get_id(kz_term:api_ne_binary() | kz_services:services()) -> kz_term:api_ne_binary().
 get_id('undefined') ->
     case kapps_util:get_master_account_id() of
         {'error', _} -> 'undefined';

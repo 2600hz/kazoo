@@ -94,7 +94,7 @@ clean(Bin, Opts) ->
     Routines = [fun remove_white_spaces/2],
     lists:foldl(fun(F, B) -> F(B, Opts) end, Bin, Routines).
 
--type strip_option() :: 'both' | 'left' | 'right' | char() | nonempty_string().
+-type strip_option() :: 'both' | 'left' | 'right' | char() | nonempty_string() | <<_:8>>.
 -type strip_options() :: [strip_option()].
 
 -spec strip(binary()) -> binary().
@@ -106,7 +106,8 @@ strip(B, 'right') -> strip_right(B, $\s);
 strip(B, 'both') -> strip_right(strip_left(B, $\s), $\s);
 strip(B, C) when is_integer(C) -> strip_right(strip_left(B, C), C);
 strip(B, Cs) when is_list(Cs) ->
-    lists:foldl(fun(C, Acc) -> strip(Acc, C) end, B, Cs).
+    lists:foldl(fun(C, Acc) -> strip(Acc, C) end, B, Cs);
+strip(B, <<C>>) -> strip(B, C).
 
 -spec strip_left(binary(), char() | binary()) -> binary().
 strip_left(<<C, B/binary>>, C) -> strip_left(B, C);

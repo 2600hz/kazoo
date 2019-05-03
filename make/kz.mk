@@ -39,13 +39,7 @@ else
 endif
 ERLC_OPTS += -Iinclude -Isrc -I../ +'{parse_transform, lager_transform}'
 ## Use pedantic flags when compiling apps from applications/ & core/
-ERLC_OPTS += +warn_export_all +warn_unused_import +warn_unused_vars +warn_missing_spec +deterministic
-
-ifneq (,$(findstring 21._,$(OTP_VERSION)))
-    ERLC_OPTS += -Werror
-endif
-
-#ERLC_OPTS += +warn_untyped_record
+ERLC_OPTS += +warn_export_all +warn_unused_import +warn_unused_vars +warn_missing_spec -Werror
 
 ELIBS ?= $(if $(ERL_LIBS),$(ERL_LIBS):)$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications
 
@@ -80,7 +74,7 @@ endif
 ## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
 compile: $(COMPILE_MOAR) ebin/$(PROJECT).app json depend $(BEAMS)
 
-compile-lean: ERLC_OPTS := $(filter-out +debug_info,$(ERLC_OPTS))
+compile-lean: ERLC_OPTS := $(filter-out +debug_info,$(ERLC_OPTS)) +deterministic
 compile-lean: compile
 
 ebin/$(PROJECT).app:
