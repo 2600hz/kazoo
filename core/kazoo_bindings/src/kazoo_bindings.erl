@@ -840,12 +840,20 @@ apply_map_responder(#kz_responder{module=M
         {'EXIT', Exp}
         end.
 
+log_apply(Format, Args) ->
+    Silent = erlang:get('kazoo_bindinds_silent_apply'),
+    log_apply(Format, Args, Silent).
+
+log_apply(_Format, _Args, 'true') -> 'ok';
+log_apply(Format, Args, _Silent) ->
+    lager:debug(Format, Args).
+
 -spec apply_map_responder(module() | 'undefined', responder_fun(), payload()) -> payload().
 apply_map_responder('undefined', Fun, Payload) ->
-    lager:debug("applying fun ~p/1", [Fun]),
+    log_apply("applying fun ~p/1", [Fun]),
     Fun(Payload);
 apply_map_responder(M, F, Payload) ->
-    lager:debug("applying ~s:~p/~p", [M, F, length(Payload)]),
+    log_apply("applying ~s:~p/~p", [M, F, length(Payload)]),
     erlang:apply(M, F, Payload).
 
 -spec maybe_merge_payload(payload(), payload()) -> payload().

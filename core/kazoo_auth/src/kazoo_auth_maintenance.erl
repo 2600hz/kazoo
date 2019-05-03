@@ -17,7 +17,12 @@
 
 -export([refresh/0
         ,register_views/0
-        ,flush/0
+        ]).
+
+-export([flush/0
+        ,flush_private_keys/0
+        ,flush_profiles/0
+        ,flush_tokens/0
         ]).
 
 -export([ensure_secret/0]).
@@ -81,8 +86,20 @@ register_common_providers() ->
 
 -spec flush() -> 'ok'.
 flush() ->
-    kz_cache:flush_local(?PROFILE_CACHE),
-    kz_cache:flush_local(?PK_CACHE),
+    flush_private_keys(),
+    flush_profiles(),
+    flush_tokens().
+
+-spec flush_private_keys() -> 'ok'.
+flush_private_keys() ->
+    kz_cache:flush_local(?PK_CACHE).
+
+-spec flush_profiles() -> 'ok'.
+flush_profiles() ->
+    kz_cache:flush_local(?PROFILE_CACHE).
+
+-spec flush_tokens() -> 'ok'.
+flush_tokens() ->
     kz_cache:flush_local(?TOKENS_CACHE).
 
 -spec ensure_secret() -> 'ok'.

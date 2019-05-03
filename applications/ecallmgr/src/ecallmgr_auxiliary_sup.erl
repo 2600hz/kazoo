@@ -32,7 +32,6 @@
 -define(CHILDREN, [?CACHE_ARGS(?ECALLMGR_UTIL_CACHE, ?CACHE_UTIL_PROPS)
                   ,?CACHE_ARGS(?ECALLMGR_AUTH_CACHE, ?CACHE_AUTHN_PROPS)
                   ,?CACHE(?ECALLMGR_CALL_CACHE)
-                  ,?CACHE(?ECALLMGR_INTERACTION_CACHE)
                   ,?SUPER('ecallmgr_originate_sup')
                   ,?WORKER('ecallmgr_registrar')
                   ,?WORKER('ecallmgr_balance_crawler_statem')

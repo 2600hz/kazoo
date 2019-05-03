@@ -28,9 +28,9 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec start_originate_proc(atom(), kz_json:object(), kz_term:api_pid()) -> kz_types:sup_startchild_ret().
-start_originate_proc(Node, JObj, AMQPWorker) ->
-    supervisor:start_child(?SERVER, [Node, JObj, AMQPWorker]).
+-spec start_originate_proc(atom(), kz_json:object(), map()) -> kz_types:sup_startchild_ret().
+start_originate_proc(Node, JObj, Context) ->
+    supervisor:start_child(?SERVER, [Node, JObj, Context]).
 
 %%%=============================================================================
 %%% Supervisor callbacks

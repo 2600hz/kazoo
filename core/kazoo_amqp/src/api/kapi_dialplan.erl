@@ -65,6 +65,8 @@
         ,play_macro/1, play_macro_v/1
         ,sound_touch/1, sound_touch_v/1
         ,hold_control/1, hold_control_v/1
+        ,event_actions/1, event_actions_v/1
+        ,continue_on_fail_v/1
         ]).
 
 -export([queue/1, queue_v/1
@@ -109,6 +111,14 @@ b_leg_events_v(Events) ->
     lists:all(fun(ApiEvent) ->
                       lists:member(ApiEvent, ?CALL_EVENTS)
               end, Events).
+
+-spec continue_on_fail_v(kz_term:ne_binaries() | boolean()) -> boolean().
+continue_on_fail_v(Val)
+  when is_list(Val) ->
+    lists:all(fun(V) -> kz_term:is_ne_binary(V) end, Val);
+continue_on_fail_v(Val)
+  when is_boolean(Val) -> 'true';
+continue_on_fail_v(_Val) -> 'false'.
 
 %%------------------------------------------------------------------------------
 %% @doc Takes a generic API JObj, determines what type it is, and calls
@@ -1305,3 +1315,18 @@ application_name(Prop) when is_list(Prop) ->
     props:get_value(<<"Application-Name">>, Prop);
 application_name(JObj) ->
     kz_json:get_ne_binary_value(<<"Application-Name">>, JObj).
+
+-spec event_actions(kz_term:api_terms()) -> api_formatter_return().
+event_actions(Prop) when is_list(Prop) ->
+    case event_actions_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?EVENT_ACTIONS_HEADERS, ?OPTIONAL_EVENT_ACTIONS_HEADERS);
+        'false' -> {'error', "Proplist failed validation for hangup_req"}
+    end;
+event_actions(JObj) ->
+    event_actions(kz_json:to_proplist(JObj)).
+
+-spec event_actions_v(kz_term:api_terms()) -> boolean().
+event_actions_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?EVENT_ACTIONS_HEADERS, ?EVENT_ACTIONS_VALUES, ?EVENT_ACTIONS_TYPES);
+event_actions_v(JObj) ->
+    event_actions_v(kz_json:to_proplist(JObj)).

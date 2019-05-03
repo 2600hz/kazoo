@@ -84,8 +84,18 @@
                     "default": 5,
                     "description": "ecallmgr call_control pool_threshold",
                     "type": "integer"
+                },
+                "use_pool": {
+                    "default": false,
+                    "description": "ecallmgr call_control use_pool",
+                    "type": "boolean"
                 }
             }
+        },
+        "call_control_listeners": {
+            "default": 5,
+            "description": "ecallmgr call_control_listeners",
+            "type": "integer"
         },
         "call_routing_bindings": {
             "default": [
@@ -396,6 +406,11 @@
             "description": "ecallmgr redirect via proxy",
             "type": "boolean"
         },
+        "restrict_channel_event_publisher": {
+            "default": true,
+            "description": "ecallmgr restrict_channel_event_publisher",
+            "type": "boolean"
+        },
         "restrict_channel_state_publisher": {
             "default": false,
             "description": "ecallmgr restrict channel state publisher",
@@ -412,6 +427,7 @@
             "type": "boolean"
         },
         "sofia_conf": {
+            "default": false,
             "description": "ecallmgr sofia conf",
             "type": "boolean"
         },

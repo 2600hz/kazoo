@@ -124,7 +124,7 @@ sbc_acl_filter({_K, V}) ->
     kz_json:get_ne_binary_value(<<"network-list-name">>, V) =:= <<"authoritative">>.
 
 sbc_cidr(_, JObj, Acc) ->
-    [kz_json:get_value(<<"cidr">>, JObj) | Acc].
+    [{kz_json:get_value(<<"cidr">>, JObj), kz_json:get_value(<<"ports">>, JObj, [])} | Acc].
 
 sbc_cidrs(ACLs) ->
     SBCs = kz_json:filter(fun sbc_acl_filter/1, ACLs),
@@ -146,7 +146,11 @@ sbc_node(#kz_node{node=Name}=Node) ->
     {kz_term:to_binary(Name), sbc_addresses(Node)}.
 
 sbc_verify_ip({IP, _}, CIDRs) ->
-    lists:any(fun(CIDR) -> kz_network_utils:verify_cidr(IP, CIDR) end, CIDRs).
+    lists:any(fun({CIDR, _Ports}) when is_list(CIDR) ->
+                      lists:all(fun(CIDR_IP) -> kz_network_utils:verify_cidr(IP, CIDR_IP) end, CIDR);
+                 ({CIDR, _Ports}) ->
+                      kz_network_utils:verify_cidr(IP, CIDR)
+              end, CIDRs).
 
 sbc_discover({Node, IPs}, CIDRs, Acc) ->
     case lists:filter(fun(IP) -> not sbc_verify_ip(IP, CIDRs) end, IPs) of

@@ -222,6 +222,10 @@ maybe_format_endpoint(Endpoint, Formatters) ->
 merge_attributes(Endpoint, Type) ->
     merge_attributes(Endpoint, Type, attributes_keys()).
 
+account_keys() ->
+    [<<"realm">>
+    ].
+
 attributes_keys() ->
     [<<"call_forward">>
     ,<<"call_recording">>
@@ -269,9 +273,16 @@ merge_attributes(Keys, AccountDoc, EndpointDoc, OwnerDoc) ->
     lists:foldl(fun(Key, EP) ->
                         merge_attribute(Key, AccountDoc, EP, OwnerDoc)
                 end
-               ,EndpointDoc
+               ,merge_account_keys(AccountDoc, EndpointDoc)
                ,Keys
                ).
+
+-spec merge_account_keys(kz_json:object(), kz_json:object()) -> kz_json:object().
+merge_account_keys(AccountDoc, EndpointDoc) ->
+    Fun = fun(K, Acc) ->
+                  kz_json:set_value(K, kz_json:get_value(K, AccountDoc), Acc)
+          end,
+    lists:foldl(Fun, EndpointDoc, account_keys()).
 
 -spec merge_attribute(kz_term:ne_binary(), kz_term:api_object(), kz_term:api_object(), kz_term:api_object()) -> kz_json:object().
 merge_attribute(?ATTR_LOWER_KEY, _Account, Endpoint, Owner) ->
@@ -1101,15 +1112,7 @@ get_clid(Endpoint, Properties, Call, Type) ->
     case kz_json:is_true(<<"suppress_clid">>, Properties) of
         'true' -> maybe_move_privacy(Endpoint, Properties, Call, #clid{});
         'false' ->
-            {Number, Name} = kz_attributes:caller_id(Type, Call),
-            CallerNumber = case kapps_call:caller_id_number(Call) of
-                               Number -> 'undefined';
-                               _Number -> Number
-                           end,
-            CallerName = case kapps_call:caller_id_name(Call) of
-                             Name -> 'undefined';
-                             _Name -> Name
-                         end,
+            {CallerNumber, CallerName} = kz_attributes:caller_id(Type, Call),
             {CalleeNumber, CalleeName} = kz_attributes:callee_id(Endpoint, Call),
             maybe_move_privacy(Endpoint
                               ,Properties
@@ -1168,12 +1171,8 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
                     ,{<<"Route">>, kz_json:get_ne_binary_value(<<"route">>, SIPJObj)}
                     ,{<<"Proxy-IP">>, kz_json:get_ne_binary_value(<<"proxy">>, SIPJObj)}
                     ,{<<"Forward-IP">>, kz_json:get_ne_binary_value(<<"forward">>, SIPJObj)}
-                    ,{<<"Caller-ID-Name">>, Clid#clid.caller_name}
-                    ,{<<"Caller-ID-Number">>, Clid#clid.caller_number}
                     ,{<<"Outbound-Caller-ID-Number">>, Clid#clid.caller_number}
                     ,{<<"Outbound-Caller-ID-Name">>, Clid#clid.caller_name}
-                    ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
-                    ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
                     ,{<<"Outbound-Callee-ID-Name">>, Clid#clid.callee_name}
                     ,{<<"Outbound-Callee-ID-Number">>, Clid#clid.callee_number}
                     ,{<<"Privacy-Hide-Name">>, Clid#clid.hide_name}
@@ -1241,8 +1240,6 @@ create_push_endpoint(Endpoint, Properties, Call) ->
         ,{<<"To-DID">>, get_to_did(Endpoint, Call)}
         ,{<<"SIP-Transport">>, get_sip_transport(SIPJObj)}
         ,{<<"Route">>, <<"sip:", ToUser/binary, ";fs_path='", Proxy/binary, "'">> }
-        ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
-        ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
         ,{<<"Outbound-Callee-ID-Name">>, Clid#clid.callee_name}
         ,{<<"Outbound-Callee-ID-Number">>, Clid#clid.callee_number}
         ,{<<"Outbound-Caller-ID-Number">>, Clid#clid.caller_number}
@@ -1368,8 +1365,6 @@ create_call_fwd_endpoint(Endpoint, Properties, Call) ->
       ,{<<"Endpoint-Timeout">>, get_timeout(Properties)}
       ,{<<"Endpoint-Delay">>, get_delay(Properties)}
       ,{<<"Presence-ID">>, kz_attributes:presence_id(Endpoint, Call)}
-      ,{<<"Callee-ID-Name">>, Clid#clid.callee_name}
-      ,{<<"Callee-ID-Number">>, Clid#clid.callee_number}
       ,{<<"Outbound-Callee-ID-Name">>, Clid#clid.callee_name}
       ,{<<"Outbound-Callee-ID-Number">>, Clid#clid.callee_number}
       ,{<<"Outbound-Caller-ID-Number">>, Clid#clid.caller_number}

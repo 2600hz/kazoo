@@ -148,7 +148,7 @@ clean-tags:
 	$(if $(wildcard $(TAGS)), rm $(TAGS))
 
 $(RELX):
-	wget 'https://github.com/erlware/relx/releases/download/v3.23.0/relx' -O $@
+	wget 'https://erlang.mk/res/relx-v3.27.0' -O $@
 	chmod +x $@
 
 clean-release:

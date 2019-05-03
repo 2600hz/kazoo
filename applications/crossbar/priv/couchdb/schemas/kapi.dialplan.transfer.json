@@ -9,6 +9,9 @@
             ],
             "type": "string"
         },
+        "Attended-Transfer-Keys": {
+            "type": "string"
+        },
         "Call-ID": {
             "type": "string"
         },

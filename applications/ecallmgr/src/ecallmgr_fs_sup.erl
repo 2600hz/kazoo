@@ -20,8 +20,6 @@
 -define(CHILDREN, [?SUPER('ecallmgr_fs_pinger_sup')
                   ,?WORKER('ecallmgr_fs_nodes')
                   ,?WORKER('ecallmgr_fs_channels')
-                  ,?WORKER('ecallmgr_fs_conferences_shared')
-                  ,?WORKER('ecallmgr_fs_conferences')
                   ]).
 
 %%==============================================================================

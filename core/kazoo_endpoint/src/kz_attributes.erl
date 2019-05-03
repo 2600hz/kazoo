@@ -11,6 +11,7 @@
 -export([groups/1, groups/2]).
 -export([caller_id_type/1, caller_id/1, caller_id/2]).
 -export([callee_id/2]).
+-export([get_endpoint_cid/2, get_endpoint_cid/4]).
 -export([moh_attributes/2, moh_attributes/3]).
 -export([owner_id/1, owner_id/2]).
 -export([presence_id/1, presence_id/2]).
@@ -114,12 +115,21 @@ maybe_get_endpoint_cid(Validate, Attribute, Call) ->
             lager:info("unable to get endpoint: ~p", [_R]),
             maybe_normalize_cid('undefined', 'undefined', Validate, Attribute, Call);
         {'ok', JObj} ->
-            Number = get_cid_or_default(Attribute, <<"number">>, JObj),
-            Name = get_cid_or_default(Attribute, <<"name">>, JObj),
-            _ = log_configured_endpoint_cid(Attribute, Name, Number),
-            Call1 = maybe_add_originals_to_kvs(Number, Name, Call),
-            maybe_use_presence_number(Number, Name, JObj, Validate, Attribute, Call1)
+            get_endpoint_cid(Validate, Attribute, JObj, Call)
     end.
+
+-spec get_endpoint_cid(kz_term:ne_binary(), kz_json:object()) -> cid().
+get_endpoint_cid(Attribute, JObj) ->
+    Number = get_cid_or_default(Attribute, <<"number">>, JObj),
+    Name = get_cid_or_default(Attribute, <<"name">>, JObj),
+    {Number, Name}.
+
+-spec get_endpoint_cid(boolean(), kz_term:ne_binary(), kz_json:object(), kapps_call:call()) -> cid().
+get_endpoint_cid(Validate, Attribute, JObj, Call) ->
+    {Number, Name} =  get_endpoint_cid(Attribute, JObj),
+    _ = log_configured_endpoint_cid(Attribute, Name, Number),
+    Call1 = maybe_add_originals_to_kvs(Number, Name, Call),
+    maybe_use_presence_number(Number, Name, JObj, Validate, Attribute, Call1).
 
 -spec maybe_add_originals_to_kvs(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kapps_call:call()) -> kapps_call:call().
 maybe_add_originals_to_kvs('undefined', 'undefined', Call) -> Call;

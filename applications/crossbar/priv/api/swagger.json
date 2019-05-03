@@ -9774,6 +9774,12 @@
                 "Billing-Seconds": {
                     "type": "string"
                 },
+                "Bridge-Hangup-Cause": {
+                    "type": "string"
+                },
+                "Call-Debug": {
+                    "type": "string"
+                },
                 "Call-Direction": {
                     "type": "string"
                 },
@@ -9831,6 +9837,12 @@
                 "Conference-Name": {
                     "type": "string"
                 },
+                "Connecting-Leg-A-UUID": {
+                    "type": "string"
+                },
+                "Connecting-Leg-B-UUID": {
+                    "type": "string"
+                },
                 "Control-Queue": {
                     "type": "string"
                 },
@@ -9859,6 +9871,9 @@
                     "type": "string"
                 },
                 "Duration-Seconds": {
+                    "type": "string"
+                },
+                "Endpoint-Disposition": {
                     "type": "string"
                 },
                 "Event-Category": {
@@ -9897,6 +9912,9 @@
                 "Local-SDP": {
                     "type": "string"
                 },
+                "Media-Recordings": {
+                    "type": "string"
+                },
                 "Media-Server": {
                     "type": "string"
                 },
@@ -9930,6 +9948,9 @@
                 "Raw-Application-Name": {
                     "type": "string"
                 },
+                "Recording": {
+                    "type": "string"
+                },
                 "Remote-SDP": {
                     "type": "string"
                 },
@@ -9939,7 +9960,16 @@
                 "Request": {
                     "type": "string"
                 },
+                "Resigning-Peer-UUID": {
+                    "type": "string"
+                },
+                "Resigning-UUID": {
+                    "type": "string"
+                },
                 "Ringing-Seconds": {
+                    "type": "string"
+                },
+                "Root-Call-Interaction-ID": {
                     "type": "string"
                 },
                 "Silence-Terminated": {
@@ -9975,7 +10005,13 @@
                 "To-Uri": {
                     "type": "string"
                 },
+                "Transfer-Disposition": {
+                    "type": "string"
+                },
                 "Transfer-History": {
+                    "type": "string"
+                },
+                "Transfer-Source": {
                     "type": "string"
                 },
                 "Transfer-To": {
@@ -12256,6 +12292,9 @@
                 "Confirm-Key": {
                     "type": "string"
                 },
+                "Continue-After": {
+                    "type": "boolean"
+                },
                 "Continue-On-Fail": {
                     "type": "boolean"
                 },
@@ -13006,6 +13045,47 @@
             },
             "required": [
                 "Error-Message"
+            ],
+            "type": "object"
+        },
+        "kapi.dialplan.event_actions": {
+            "description": "AMQP API for dialplan.event_actions",
+            "properties": {
+                "Application-Name": {
+                    "enum": [
+                        "event_actions"
+                    ],
+                    "type": "string"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Event-Actions": {
+                    "type": "object"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "call"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "command"
+                    ],
+                    "type": "string"
+                },
+                "Insert-At": {
+                    "enum": [
+                        "now"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Application-Name",
+                "Call-ID",
+                "Event-Actions"
             ],
             "type": "object"
         },
@@ -15256,6 +15336,9 @@
                     "enum": [
                         "transfer"
                     ],
+                    "type": "string"
+                },
+                "Attended-Transfer-Keys": {
                     "type": "string"
                 },
                 "Call-ID": {
@@ -21848,6 +21931,9 @@
                 "Confirm-Key": {
                     "type": "string"
                 },
+                "Continue-After": {
+                    "type": "string"
+                },
                 "Continue-On-Fail": {
                     "type": "string"
                 },
@@ -22100,6 +22186,9 @@
                     "type": "string"
                 },
                 "Confirm-Key": {
+                    "type": "string"
+                },
+                "Continue-After": {
                     "type": "string"
                 },
                 "Continue-On-Fail": {
@@ -22497,6 +22586,12 @@
                 "Billing-Seconds": {
                     "type": "string"
                 },
+                "Bridge-Hangup-Cause": {
+                    "type": "string"
+                },
+                "Call-Debug": {
+                    "type": "string"
+                },
                 "Call-Direction": {
                     "type": "string"
                 },
@@ -22554,6 +22649,12 @@
                 "Conference-Name": {
                     "type": "string"
                 },
+                "Connecting-Leg-A-UUID": {
+                    "type": "string"
+                },
+                "Connecting-Leg-B-UUID": {
+                    "type": "string"
+                },
                 "Control-Queue": {
                     "type": "string"
                 },
@@ -22582,6 +22683,9 @@
                     "type": "string"
                 },
                 "Duration-Seconds": {
+                    "type": "string"
+                },
+                "Endpoint-Disposition": {
                     "type": "string"
                 },
                 "Event-Category": {
@@ -22626,6 +22730,9 @@
                 "Local-SDP": {
                     "type": "string"
                 },
+                "Media-Recordings": {
+                    "type": "string"
+                },
                 "Media-Server": {
                     "type": "string"
                 },
@@ -22659,6 +22766,9 @@
                 "Raw-Application-Name": {
                     "type": "string"
                 },
+                "Recording": {
+                    "type": "string"
+                },
                 "Remote-SDP": {
                     "type": "string"
                 },
@@ -22668,7 +22778,16 @@
                 "Request": {
                     "type": "string"
                 },
+                "Resigning-Peer-UUID": {
+                    "type": "string"
+                },
+                "Resigning-UUID": {
+                    "type": "string"
+                },
                 "Ringing-Seconds": {
+                    "type": "string"
+                },
+                "Root-Call-Interaction-ID": {
                     "type": "string"
                 },
                 "Silence-Terminated": {
@@ -22704,7 +22823,13 @@
                 "To-Uri": {
                     "type": "string"
                 },
+                "Transfer-Disposition": {
+                    "type": "string"
+                },
                 "Transfer-History": {
+                    "type": "string"
+                },
+                "Transfer-Source": {
                     "type": "string"
                 },
                 "Transfer-To": {
@@ -22738,6 +22863,12 @@
                     "type": "string"
                 },
                 "Billing-Seconds": {
+                    "type": "string"
+                },
+                "Bridge-Hangup-Cause": {
+                    "type": "string"
+                },
+                "Call-Debug": {
                     "type": "string"
                 },
                 "Call-Direction": {
@@ -22797,6 +22928,12 @@
                 "Conference-Name": {
                     "type": "string"
                 },
+                "Connecting-Leg-A-UUID": {
+                    "type": "string"
+                },
+                "Connecting-Leg-B-UUID": {
+                    "type": "string"
+                },
                 "Control-Queue": {
                     "type": "string"
                 },
@@ -22825,6 +22962,9 @@
                     "type": "string"
                 },
                 "Duration-Seconds": {
+                    "type": "string"
+                },
+                "Endpoint-Disposition": {
                     "type": "string"
                 },
                 "Event-Category": {
@@ -22869,6 +23009,9 @@
                 "Local-SDP": {
                     "type": "string"
                 },
+                "Media-Recordings": {
+                    "type": "string"
+                },
                 "Media-Server": {
                     "type": "string"
                 },
@@ -22902,6 +23045,9 @@
                 "Raw-Application-Name": {
                     "type": "string"
                 },
+                "Recording": {
+                    "type": "string"
+                },
                 "Remote-SDP": {
                     "type": "string"
                 },
@@ -22911,7 +23057,16 @@
                 "Request": {
                     "type": "string"
                 },
+                "Resigning-Peer-UUID": {
+                    "type": "string"
+                },
+                "Resigning-UUID": {
+                    "type": "string"
+                },
                 "Ringing-Seconds": {
+                    "type": "string"
+                },
+                "Root-Call-Interaction-ID": {
                     "type": "string"
                 },
                 "Silence-Terminated": {
@@ -22947,7 +23102,13 @@
                 "To-Uri": {
                     "type": "string"
                 },
+                "Transfer-Disposition": {
+                    "type": "string"
+                },
                 "Transfer-History": {
+                    "type": "string"
+                },
+                "Transfer-Source": {
                     "type": "string"
                 },
                 "Transfer-To": {
@@ -23661,6 +23822,9 @@
                     "type": "string"
                 },
                 "Confirm-Key": {
+                    "type": "string"
+                },
+                "Continue-After": {
                     "type": "string"
                 },
                 "Continue-On-Fail": {
@@ -30763,8 +30927,18 @@
                             "default": 5,
                             "description": "ecallmgr call_control pool_threshold",
                             "type": "integer"
+                        },
+                        "use_pool": {
+                            "default": false,
+                            "description": "ecallmgr call_control use_pool",
+                            "type": "boolean"
                         }
                     }
+                },
+                "call_control_listeners": {
+                    "default": 5,
+                    "description": "ecallmgr call_control_listeners",
+                    "type": "integer"
                 },
                 "call_routing_bindings": {
                     "default": [
@@ -31075,6 +31249,11 @@
                     "description": "ecallmgr redirect via proxy",
                     "type": "boolean"
                 },
+                "restrict_channel_event_publisher": {
+                    "default": true,
+                    "description": "ecallmgr restrict_channel_event_publisher",
+                    "type": "boolean"
+                },
                 "restrict_channel_state_publisher": {
                     "default": false,
                     "description": "ecallmgr restrict channel state publisher",
@@ -31091,6 +31270,7 @@
                     "type": "boolean"
                 },
                 "sofia_conf": {
+                    "default": false,
                     "description": "ecallmgr sofia conf",
                     "type": "boolean"
                 },
@@ -32046,6 +32226,17 @@
                 "use_bigcouch_direct": {
                     "default": true,
                     "description": "kazoo_couch use bigcouch direct",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.kazoo_directory": {
+            "description": "Schema for kazoo_directory system_config",
+            "properties": {
+                "restrict_to_known_types": {
+                    "default": false,
+                    "description": "kazoo_directory restrict_to_known_types",
                     "type": "boolean"
                 }
             },

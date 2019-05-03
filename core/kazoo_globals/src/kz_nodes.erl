@@ -7,6 +7,8 @@
 -module(kz_nodes).
 -behaviour(gen_listener).
 
+-compile({no_auto_import,[nodes/0]}).
+
 -export([start_link/0]).
 -export([is_up/1]).
 -export([whapp_count/1, whapp_count/2
@@ -38,6 +40,7 @@
 
 -export([with_role/1, with_role/2]).
 -export([print_role/1]).
+-export([nodes/0]).
 
 -export([init/1
         ,handle_call/3
@@ -698,6 +701,7 @@ handle_advertise(JObj, Props) ->
 -spec init([]) -> {'ok', nodes_state()}.
 init([]) ->
     lager:debug("starting nodes watcher"),
+    erlang:put('kazoo_bindinds_silent_apply', 'true'),
     kapi_nodes:declare_exchanges(),
     kapi_self:declare_exchanges(),
     Tab = ets:new(?MODULE, ['set'
@@ -734,6 +738,9 @@ handle_call({'print_status', Nodes}, _From, State) ->
     {'reply', 'ok', State};
 handle_call('zone', _From, #state{zone=Zone}=State) ->
     {'reply', Zone, State};
+handle_call('nodes', _From, State) ->
+    Nodes = lists:sort(fun compare_nodes/2, ets:tab2list(?MODULE)),
+    {'reply', Nodes, State};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -811,7 +818,6 @@ handle_info({'heartbeat', Ref}
             _ = ets:insert(Tab, Node),
             AdvertisedPayload = advertise_payload(Node),
             _ = kz_amqp_worker:cast(AdvertisedPayload, fun kapi_nodes:publish_advertise/1),
-            lager:debug("status: ~s", [kz_json:encode(kz_json:from_list(AdvertisedPayload))]),
             {'noreply', State#state{heartbeat_ref=Reference, me=Node}}
     catch
         'exit' : {'timeout' , _} when Me =/= 'undefined' ->
@@ -1401,3 +1407,7 @@ with_role_filter(Role, MatchSpec) ->
                ,[]
                ,ets:select(?MODULE, MatchSpec)
                ).
+
+-spec nodes() -> kz_types:kz_nodes().
+nodes() ->
+    gen_listener:call(?MODULE, 'nodes').

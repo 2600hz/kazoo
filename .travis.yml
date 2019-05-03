@@ -5,9 +5,8 @@ notifications:
     - operations@2600hz.com
 
 otp_release:
-  - 19.3
-  - 20.3.8
-  - 21.3
+  - 21.3.8
+
 # Lots of issues with erlang:get_stacktrace/0-related deprecations - going to take a while to unravel all this jazz
 
 sudo: required

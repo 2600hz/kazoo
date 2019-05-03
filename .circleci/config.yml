@@ -23,7 +23,7 @@ workflows:
 
 defaults: &defaults
   docker:
-    - image: offical2600hz/circleci:19.3.6.13
+    - image: icehess/circleci:21.3.8
   working_directory: ~/2600hz/kazoo
   shell: /bin/bash --login
   environment:
@@ -46,7 +46,7 @@ jobs:
           at: .
       - restore_cache:
           keys:
-            - deps-v3-{{ checksum "make/deps.mk" }}
+            - deps-v4-{{ checksum "make/deps.mk" }}
       - run: make fmt
       - run: |
           deps_hash=$(md5sum make/deps.mk | cut -d" " -f1)
@@ -56,7 +56,7 @@ jobs:
       - run: JOBS="2" make
       - run: echo -n $(md5sum make/deps.mk | cut -d" " -f1) > .git/.kz_deps_hash
       - save_cache:
-          key: deps-v3-{{ checksum "make/deps.mk" }}
+          key: deps-v4-{{ checksum "make/deps.mk" }}
           paths:
             - deps/
             - .git/.kz_deps_hash
@@ -96,17 +96,17 @@ jobs:
           at: .
       - restore_cache:
           keys:
-            - plt-v2-{{ checksum "make/deps.mk" }}
+            - plt-v3-{{ checksum "make/deps.mk" }}
       - run: make build-plt dialyze-changed
       - save_cache:
-          key: plt-v2-{{ checksum "make/deps.mk" }}
+          key: plt-v3-{{ checksum "make/deps.mk" }}
           paths:
             - .kazoo.plt
 
   release:
     <<: *defaults
     docker:
-      - image: offical2600hz/circleci:19.3.6.13
+      - image: icehess/circleci:21.3.8
       - image: couchdb:2.1.1
       - image: rabbitmq:3.7
     environment:

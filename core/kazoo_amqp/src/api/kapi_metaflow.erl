@@ -68,20 +68,21 @@
        ).
 
 %% Metaflow Bind
--define(METAFLOW_BIND_REQ_HEADERS, [<<"Account-ID">>, <<"Binding-Leg">>]).
+-define(METAFLOW_BIND_REQ_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_METAFLOW_BIND_REQ_HEADERS, [<<"Call-ID">>
                                             ,<<"Authorizing-ID">>
                                             ,<<"Authorizing-Type">>
                                             ,<<"Resource-ID">>
                                             ,<<"CallFlow-ID">>
+                                            ,<<"Binding-Leg">>
                                             ]).
 -define(METAFLOW_BIND_REQ_VALUES, [{<<"Event-Category">>, <<"metaflow">>}
                                   ,{<<"Event-Name">>, <<"bind_req">>}
                                   ]).
 -define(METAFLOW_BIND_REQ_TYPES, []).
 
--define(METAFLOW_BIND_REQ_ROUTING_KEY(AccountId, Leg)
-       ,<<"metaflow.bind_req.", (Leg)/binary, ".", (kz_amqp_util:encode(AccountId))/binary>>
+-define(METAFLOW_BIND_REQ_ROUTING_KEY(AccountId)
+       ,<<"metaflow.bind_req.", (kz_amqp_util:encode(AccountId))/binary>>
        ).
 
 
@@ -95,9 +96,11 @@
                               ,{<<"Binding-Digit">>, ?ANY_DIGIT}
                               ,{<<"Listen-On">>, [<<"both">>, <<"self">>, <<"peer">>, <<"aleg">>, <<"bleg">>]}
                               ]).
--define(METAFLOW_BIND_TYPES, [{<<"Numbers">>, fun kz_json:is_json_object/1}
-                             ,{<<"Patterns">>, fun kz_json:is_json_object/1}
-                             ,{<<"Digit-Timeout">>, fun binding_digit_timeout_v/1}
+%% -define(METAFLOW_BIND_TYPES, [{<<"Numbers">>, fun kz_json:is_json_object/1}
+%%                              ,{<<"Patterns">>, fun kz_json:is_json_object/1}
+%%                              ,{<<"Digit-Timeout">>, fun binding_digit_timeout_v/1}
+%%                              ]).
+-define(METAFLOW_BIND_TYPES, [{<<"Digit-Timeout">>, fun binding_digit_timeout_v/1}
                              ]).
 -define(METAFLOW_BIND_ROUTING_KEY(AccountId, CallId), <<"metaflow.bind.", (kz_amqp_util:encode(AccountId))/binary, ".", (kz_amqp_util:encode(CallId))/binary>>).
 
@@ -170,8 +173,7 @@ bind_q(Queue, Props) ->
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist(), list()) -> 'ok'.
 bind_q(Queue, Props, ['bind_req' | T]) ->
     AccountId = props:get_value('account_id', Props, <<"*">>),
-    Leg = props:get_value('leg', Props, <<"*">>),
-    kz_amqp_util:bind_q_to_exchange(Queue, ?METAFLOW_BIND_REQ_ROUTING_KEY(AccountId, Leg), ?METAFLOW_EXCHANGE),
+    kz_amqp_util:bind_q_to_exchange(Queue, ?METAFLOW_BIND_REQ_ROUTING_KEY(AccountId), ?METAFLOW_EXCHANGE),
     bind_q(Queue, Props, T);
 bind_q(Queue, Props, ['action' | T]) ->
     CallId = props:get_value('callid', Props, <<"*">>),
@@ -200,8 +202,7 @@ unbind_q(Queue, Props) ->
 -spec unbind_q(kz_term:ne_binary(), list(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, Props, ['bind_req' | T]) ->
     AccountId = props:get_value('account_id', Props, <<"*">>),
-    Leg = props:get_value('leg', Props, <<"*">>),
-    'ok' = kz_amqp_util:unbind_q_from_exchange(Queue, ?METAFLOW_BIND_REQ_ROUTING_KEY(AccountId, Leg), ?METAFLOW_EXCHANGE),
+    'ok' = kz_amqp_util:unbind_q_from_exchange(Queue, ?METAFLOW_BIND_REQ_ROUTING_KEY(AccountId), ?METAFLOW_EXCHANGE),
     unbind_q(Queue, Props, T);
 unbind_q(Queue, Props, ['action' | T]) ->
     CallId = props:get_value('callid', Props, <<"*">>),
@@ -262,7 +263,7 @@ publish_bind_req(JObj) ->
 -spec publish_bind_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_bind_req(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?METAFLOW_BIND_REQ_VALUES, fun bind_req/1),
-    RK = ?METAFLOW_BIND_REQ_ROUTING_KEY(rk_account_id(Req), rk_binding_leg(Req)),
+    RK = ?METAFLOW_BIND_REQ_ROUTING_KEY(rk_account_id(Req)),
     kz_amqp_util:basic_publish(?METAFLOW_EXCHANGE, RK, Payload, ContentType).
 
 rk_action([_|_]=API) ->
@@ -279,11 +280,6 @@ rk_account_id([_|_]=API) ->
     props:get_value(<<"Account-ID">>, API);
 rk_account_id(JObj) ->
     kz_json:get_value(<<"Account-ID">>, JObj).
-
-rk_binding_leg([_|_]=API) ->
-    props:get_value(<<"Binding-Leg">>, API);
-rk_binding_leg(JObj) ->
-    kz_json:get_value(<<"Binding-Leg">>, JObj).
 
 -spec publish_binding(kz_term:api_terms()) -> 'ok'.
 publish_binding(API) ->

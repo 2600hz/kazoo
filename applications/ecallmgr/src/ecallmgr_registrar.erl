@@ -16,6 +16,7 @@
 -export([lookup_contact/2
         ,lookup_original_contact/2
         ,lookup_registration/2
+        ,lookup_proxy_path/2
         ,get_registration/2
         ]).
 -export([summary/0, summary/1
@@ -180,6 +181,25 @@ handle_fs_reg(Node, Props) ->
                ,[props:get_value(<<"Username">>, Req), props:get_value(<<"Realm">>, Req)]
                ),
     kz_amqp_worker:cast(Req, fun kapi_registration:publish_success/1).
+
+-spec lookup_proxy_path(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                               {'ok', kz_term:api_ne_binary(), kz_term:proplist()} |
+                               {'error', 'not_found'}.
+lookup_proxy_path(<<>>, _Username) -> {'error', 'not_found'};
+lookup_proxy_path(_Realm, <<>>) -> {'error', 'not_found'};
+lookup_proxy_path(<<_/binary>> = Realm, <<_/binary>> = Username) ->
+    MatchSpec = #registration{account_id = Realm
+                             ,authorizing_id = Username
+                             ,_ = '_'
+                             },
+
+    case ets:match_object(?MODULE, MatchSpec) of
+        [] ->
+            {'ok', undefined, []};
+        [#registration{proxy=ProxyPath
+                      }=Reg] ->
+            {'ok', ProxyPath, contact_vars(to_props(Reg))}
+    end.
 
 -spec lookup_contact(kz_term:ne_binary(), kz_term:ne_binary()) ->
                             {'ok', kz_term:ne_binary(), kz_term:proplist()} |

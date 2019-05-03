@@ -35,7 +35,7 @@
                ,dialstrings :: kz_term:api_binary()
                ,queue :: kz_term:api_binary()
                ,control_pid :: kz_term:api_pid()
-               ,amqp_worker :: kz_term:api_pid() %% this is the AMQP worker for the call control process, if necessary
+               ,control_context :: map() %% this is the Context for the call control process, if necessary
                ,tref :: kz_term:api_reference()
                ,fetch_id = kz_binary:rand_hex(16)
                }).
@@ -65,8 +65,8 @@
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link(atom(), kz_json:object(), kz_term:api_pid()) -> kz_types:startlink_ret().
-start_link(Node, JObj, AMQPWorker) ->
+-spec start_link(atom(), kz_json:object(), map()) -> kz_types:startlink_ret().
+start_link(Node, JObj, Context) ->
     gen_listener:start_link(?SERVER
                            ,[{'bindings', ?BINDINGS}
                             ,{'responders', ?RESPONDERS}
@@ -74,7 +74,7 @@ start_link(Node, JObj, AMQPWorker) ->
                             ,{'queue_options', ?QUEUE_OPTIONS}
                             ,{'consume_options', ?CONSUME_OPTIONS}
                             ]
-                           ,[Node, JObj, AMQPWorker]
+                           ,[Node, JObj, Context]
                            ).
 
 %%------------------------------------------------------------------------------
@@ -123,9 +123,9 @@ handle_originate_execute(JObj, Props) ->
 %% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec init([node() | kz_json:object() | kz_term:api_pid()]) -> {'stop', 'normal'} |
-                                                               {'ok', state()}.
-init([Node, JObj, AMQPWorker]) ->
+-spec init([node() | kz_json:object() | map()]) -> {'stop', 'normal'} |
+                                                   {'ok', state()}.
+init([Node, JObj, Context]) ->
     _ = kz_util:put_callid(JObj),
     ServerId = kz_api:server_id(JObj),
     ControllerQ = kz_api:queue_id(JObj),
@@ -134,13 +134,14 @@ init([Node, JObj, AMQPWorker]) ->
         'false' ->
             Error = <<"originate failed to execute as JObj did not validate">>,
             publish_error(Error, 'undefined', JObj, ServerId),
+            ecallmgr_call_sup:release_context(Context),
             {'stop', 'normal'};
         'true' ->
             {'ok', #state{node=Node
                          ,originate_req=JObj
                          ,server_id=ServerId
                          ,controller_q = ControllerQ
-                         ,amqp_worker=AMQPWorker
+                         ,control_context=Context
                          }}
     end.
 
@@ -668,8 +669,8 @@ maybe_fix_fs_auto_answer_bug(Export) ->
 -spec maybe_fix_caller_id(kz_term:strings(), kz_json:object()) -> string().
 maybe_fix_caller_id(Export, JObj) ->
     Fix = [
-           {lists:member("origination_callee_id_name", Export), kz_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj), "effective_caller_id_name"}
-          ,{lists:member("origination_callee_id_number", Export), kz_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj), "effective_caller_id_number"}
+           {lists:member("origination_callee_id_name", Export), kz_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj), "origination_caller_id_name"}
+          ,{lists:member("origination_callee_id_number", Export), kz_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj), "origination_caller_id_number"}
           ],
     string:join([ "^set:" ++ Key ++ "=" ++ erlang:binary_to_list(Value) || {IsTrue, Value, Key} <- Fix, IsTrue ], ":").
 
@@ -785,9 +786,15 @@ start_control_process(#state{originate_req=JObj
                             ,server_id=ServerId
                             ,fetch_id=FetchId
                             ,control_pid='undefined'
-                            ,amqp_worker=AMQPWorker
+                            ,control_context=Context
                             }=State) ->
-    case ecallmgr_call_sup:start_control_process(Node, Id, FetchId, ControllerQ, kz_json:new(), AMQPWorker) of
+    Ctx = Context#{node => Node
+                  ,call_id => Id
+                  ,fetch_id => FetchId
+                  ,controller_q => ControllerQ
+                  ,initial_ccvs => kz_json:new()
+                  },
+    case ecallmgr_call_sup:start_control_process(Ctx) of
         {'ok', CtrlPid} when is_pid(CtrlPid) ->
             _ = maybe_send_originate_uuid(UUID, CtrlPid, State),
             kz_cache:store_local(?ECALLMGR_UTIL_CACHE, {Id, 'start_listener'}, 'true'),

@@ -57,7 +57,7 @@ init_acct(Account) ->
 
     acdc_stats:init_db(AccountId),
 
-    init_acct_queues(AccountDb, AccountId),
+    _ = init_acct_queues(AccountDb, AccountId),
     init_acct_agents(AccountDb, AccountId).
 
 -spec init_acct_queues(kz_term:ne_binary()) -> 'ok'.

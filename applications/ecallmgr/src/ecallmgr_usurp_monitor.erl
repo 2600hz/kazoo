@@ -100,7 +100,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
-handle_cast({register, CallId, Type, RefId, Pid}, State) ->
+handle_cast({register, Type, CallId, RefId, Pid}, State) ->
     kz_util:put_callid(CallId),
     {'noreply', handle_register(#cache{key={Type, CallId}, ref_id=RefId, pid=Pid}, State)};
 handle_cast(_, State) ->
@@ -134,6 +134,7 @@ handle_event(JObj, #{calls := Calls}) ->
 
 -spec handle_usurp(usurp_type(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), ets:tid()) -> 'ok'.
 handle_usurp(Type, CallId, RefId, JObj, Calls) ->
+    gproc:send({'p', 'l', {'call_control', CallId}}, {Type, CallId, RefId, JObj}),
     _ = [Pid ! {Type, CallId, RefId, JObj} || #cache{pid=Pid} <- ets:lookup(Calls, {Type, CallId})],
     'ok'.
 

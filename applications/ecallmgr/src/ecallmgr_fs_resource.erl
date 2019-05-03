@@ -72,20 +72,20 @@ handle_originate_req(JObj, Props) ->
         'true' ->
             handle_originate_req_if_possible(JObj
                                             ,Node
-                                            ,kz_amqp_worker:checkout_worker(ecallmgr_call_sup:pool_name())
+                                            ,ecallmgr_call_sup:control_context()
                                             );
         'false' ->
             lager:info("originate request does not require an call control process"),
-            ecallmgr_originate_sup:start_originate_proc(Node, JObj, 'undefined')
+            ecallmgr_originate_sup:start_originate_proc(Node, JObj, #{})
     end.
 
 handle_originate_req_if_possible(JObj, _Node, {'error', _E}) ->
     lager:warning("unable to handle originate request due to AMQP worker error ~p", [_E]),
     lager:info("republishing request for another ecallmgr"),
     kz_amqp_worker:cast(JObj, fun kapi_resource:publish_originate_req/1);
-handle_originate_req_if_possible(JObj, Node, {'ok', AMQPWorker}) ->
+handle_originate_req_if_possible(JObj, Node, {'ok', Context}) ->
     lager:debug("received originate request for node ~s, starting originate process", [Node]),
-    ecallmgr_originate_sup:start_originate_proc(Node, JObj, AMQPWorker).
+    ecallmgr_call_sup:wait_for_exit(ecallmgr_originate_sup:start_originate_proc(Node, JObj, Context), Context).
 
 %%%=============================================================================
 %%% gen_server callbacks

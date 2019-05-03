@@ -78,6 +78,9 @@
         "Confirm-Key": {
             "type": "string"
         },
+        "Continue-After": {
+            "type": "boolean"
+        },
         "Continue-On-Fail": {
             "type": "boolean"
         },

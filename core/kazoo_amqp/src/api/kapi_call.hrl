@@ -18,6 +18,7 @@
         ,<<"Application-Name">>
         ,<<"Application-Response">>
         ,<<"Billing-Seconds">>
+        ,<<"Bridge-Hangup-Cause">>
         ,<<"Call-Direction">>
         ,<<"Callee-ID-Name">>
         ,<<"Callee-ID-Number">>
@@ -56,6 +57,7 @@
         ,<<"Intercepted-By">>
         ,<<"Length">>
         ,<<"Local-SDP">>
+        ,<<"Media-Recordings">>
         ,<<"Media-Server">>
         ,<<"Origination-Call-ID">>
         ,<<"Other-Leg-Call-ID">> %% BRIDGE
@@ -67,6 +69,7 @@
         ,<<"Presence-ID">>
         ,<<"Raw-Application-Data">>
         ,<<"Raw-Application-Name">>
+        ,<<"Recording">>
         ,<<"Remote-SDP">>
         ,<<"Replaced-By">>
         ,<<"Request">>
@@ -85,7 +88,16 @@
         ,<<"Transfer-Type">>
         ,<<"Transfer-To">>
         ,<<"Transfer-History">>
+        ,<<"Transfer-Source">>
         ,<<"User-Agent">>
+        ,<<"Call-Debug">>
+        ,<<"Root-Call-Interaction-ID">>
+        ,<<"Resigning-UUID">>
+        ,<<"Resigning-Peer-UUID">>
+        ,<<"Connecting-Leg-A-UUID">>
+        ,<<"Connecting-Leg-B-UUID">>
+        ,<<"Endpoint-Disposition">>
+        ,<<"Transfer-Disposition">>
         ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}
