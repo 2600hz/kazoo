@@ -1039,7 +1039,7 @@ start_amqp(Props, AutoAck) ->
 
 -spec set_qos(binary(), 'undefined' | non_neg_integer()) -> 'ok'.
 set_qos(<<>>, 'undefined') ->
-    case kz_config:get_integer('amqp', 'prefetch') of
+    case kz_config:get_integer(<<"amqp">>, <<"prefetch">>) of
         [N] when is_integer(N) ->
             lager:debug("random queue getting config.ini QoS settings(~p) applied", [N]),
             kz_amqp_util:basic_qos(N);

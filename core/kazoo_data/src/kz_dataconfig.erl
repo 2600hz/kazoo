@@ -26,17 +26,17 @@ is_driver_app(App) ->
 
 -spec connection() -> data_connection().
 connection() ->
-    [Section] = kz_config:get('data', 'config', ['bigcouch']),
-    Props = props:get_value('generic', kz_config:get(Section), []),
+    [Section] = kz_config:get_binary(<<"data">>, <<"config">>, [<<"bigcouch">>]),
+    Props = props:get_value(<<"generic">>, kz_config:get(Section), []),
     connection(connection_options(Props)).
 
 -spec connection_options(kz_term:proplist()) -> kz_term:proplist().
 connection_options(Props) ->
-    case props:get_value('connect_options', Props) of
+    case props:get_value(<<"connect_options">>, Props) of
         'undefined' -> Props;
         Section ->
-            Options = props:get_value('generic', kz_config:get(Section), []),
-            [{'connect_options', Options} | props:delete('connect_options', Props)]
+            Options = props:get_value(<<"generic">>, kz_config:get(Section), []),
+            [{<<"connect_options">>, Options} | props:delete(<<"connect_options">>, Props)]
     end.
 
 -spec connection(kz_term:proplist() | map()) -> data_connection().
