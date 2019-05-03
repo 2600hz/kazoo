@@ -14,10 +14,11 @@
 %%--------------------------------------------------------------------
 -spec cb_alerts_test_() -> [{string(), boolean()}].
 cb_alerts_test_() ->
-    check_port_requests()
-        ++ check_no_plans_financials()
-        ++ check_low_balance()
-        ++ check_payment_token().
+    [{"Check port requests", check_port_requests()}
+    ,{"Check no plans financials", check_no_plans_financials()}
+    ,{"Check low balance", check_low_balance()}
+    ,{"Check payment token", check_payment_token()}
+    ].
 
 %%%=======================================================================================
 %%% Tests
@@ -64,7 +65,8 @@ check_port_requests() ->
     meck:expect(Mod, 'account_active_ports', fun(_) -> {'ok', [example_port_request()]} end),
     Context5 = cb_alerts:check_port_requests(Context),
 
-    _ = lists:foreach(fun(M) -> meck:unload(M) end, ToMeck),
+    MeckValidate = lists:all(fun(Mecked) -> meck:validate(Mecked) end, ToMeck),
+    lists:foreach(fun(M) -> meck:unload(M) end, ToMeck),
 
     [{"Only return ports with `last_comment`.action_required=true or state=(rejected|unconfirmed)"
      ,?_assertEqual({'true', <<"port_suspended">>},
@@ -93,6 +95,9 @@ check_port_requests() ->
     ,{"When not ports with action_required=true or state=(unconfirmed|rejected) found the context should not change"
      ,?_assertEqual(Context5, Context)
      }
+    ,{"Validate mecked modules"
+     ,?_assert(MeckValidate)
+     }
     ].
 
 %%--------------------------------------------------------------------
@@ -101,27 +106,29 @@ check_port_requests() ->
 %%--------------------------------------------------------------------
 -spec check_no_plans_financials() -> [{string(), boolean()}].
 check_no_plans_financials() ->
-    Context = cb_context:set_resp_data(cb_context:new(), []),
-    ToMeck = ['kz_services', 'kz_services_plans'],
-    lists:foreach(fun(M) -> meck:new(M, ['passthrough']) end, ToMeck),
+    ToMeck = ['kz_services', 'kz_services_plans', 'kapps_util'],
+    [{'setup'
+     ,fun() -> [meck:new(M, ['passthrough']) || M <- ToMeck] end
+     ,fun(_) -> [meck:unload(Mecked) || Mecked <- ToMeck] end
+     ,fun(_) ->
+              Context = cb_context:set_resp_data(cb_context:new(), []),
 
-    %% simulate account has no plans
-    meck:expect('kz_services', 'fetch', fun(_) -> kz_services:empty() end),
-    meck:expect('kz_services', 'plans', fun(_) -> kz_services_plans:empty() end),
+              %% simulate account has no plans
+              meck:expect('kapps_util', 'get_master_account_id', fun() -> kz_binary:rand_hex(16) end),
+              meck:expect('kz_services', 'fetch', fun(_) -> kz_services:empty() end),
+              meck:expect('kz_services', 'plans', fun(_) -> kz_services_plans:empty() end),
 
-    %% no service plans, no financial alerts
-    ContextNoPlans = cb_alerts:check_low_balance(Context),
+              ContextNoPlans = cb_alerts:maybe_check_financials(Context),
 
-    [{"No service plans, no financial alerts"
-     ,?_assertEqual(ContextNoPlans, Context)
-     }
-    ,{"Validate mecked modules"
-     ,?_assertEqual('true', lists:all(fun(Mecked) -> meck:validate(Mecked) end, ToMeck))
-     }
-    ,{"Unload mecked modules"
-     ,?_assertEqual('true', lists:all(fun(Mecked) -> 'ok' = meck:unload(Mecked) end, ToMeck))
-     }
-    ].
+              [{"No service plans, no financial alerts"
+               ,?_assertEqual(ContextNoPlans, Context)
+               }
+              ,{"Validate mecked modules"
+               ,?_assert(lists:all(fun(Mecked) -> meck:validate(Mecked) end, ToMeck))
+               }
+              ]
+      end
+     }].
 
 -spec check_low_balance() -> [{string(), boolean()}].
 check_low_balance() ->
@@ -131,10 +138,11 @@ check_low_balance() ->
     ThresholdNotConfigured = 0,
     PostPayAmountUnits = 20, %% expressed in units
     PostPayAmountUSD = kz_currency:units_to_dollars(PostPayAmountUnits),
+
     Mod = 'kz_currency',
     ToMeck = [Mod, 'kzd_accounts', 'kz_services_limits'],
-
     lists:foreach(fun(M) -> meck:new(M, ['passthrough']) end, ToMeck),
+
     meck:expect(Mod, 'available_dollars', fun(_) -> {'error', 'reason'} end),
     %% Limits with postpay disabled.
     meck:expect('kz_services_limits', 'fetch', fun(_) -> limits() end),
@@ -201,6 +209,9 @@ check_low_balance() ->
     meck:expect(Mod, 'available_dollars', fun(_) -> {'ok', ThresholdUSD + 1.0} end),
     Context11 = cb_alerts:check_low_balance(Context),
 
+    MeckValidate = lists:all(fun(Mecked) -> meck:validate(Mecked) end, ToMeck),
+    lists:foreach(fun(M) -> meck:unload(M) end, ToMeck),
+
     [{"If getting account's current balance fails the context should not change"
      ,?_assertEqual(Context1, Context)
      }
@@ -255,10 +266,7 @@ check_low_balance() ->
      ,?_assertEqual(Context11, Context)
      }
     ,{"Validate mecked modules"
-     ,?_assertEqual('true', lists:all(fun(Mecked) -> meck:validate(Mecked) end, ToMeck))
-     }
-    ,{"Unload mecked modules"
-     ,?_assertEqual('true', lists:all(fun(Mecked) -> 'ok' = meck:unload(Mecked) end, ToMeck))
+     ,?_assert(MeckValidate)
      }
     ].
 
@@ -270,8 +278,12 @@ check_low_balance() ->
 check_payment_token() ->
     Context = cb_context:set_resp_data(cb_context:new(), []),
     Mod = 'kz_services_payment_tokens',
-    ToMeck = [Mod],
+    ToMeck = [Mod, 'kz_services', 'kapps_util'],
     lists:foreach(fun(M) -> meck:new(M, ['passthrough']) end, ToMeck),
+
+    %% simulate account has no plans
+    meck:expect('kapps_util', 'get_master_account_id', fun() -> kz_binary:rand_hex(16) end),
+    meck:expect('kz_services', 'fetch', fun(_) -> kz_services:empty() end),
 
     %% Account has service plans assigned and doesn't have any default payment token.
     meck:expect(Mod, 'defaults', fun(_) -> default_payment_tokens([]) end),
@@ -305,6 +317,9 @@ check_payment_token() ->
     Context7 = cb_alerts:check_payment_token(Context),
     [Alert3, Alert4] = cb_context:resp_data(Context7),
 
+    MeckValidate = lists:all(fun(Mecked) -> meck:validate(Mecked) end, ToMeck),
+    lists:foreach(fun(M) -> meck:unload(M) end, ToMeck),
+
     [{"If account has service plans assigned and doesn't have any default payment tokens raise an alert"
      ,?_assertEqual(<<"no_payment_token">>, category_from_alert(Alert))
      }
@@ -326,10 +341,7 @@ check_payment_token() ->
                     {category_from_alert(Alert3), category_from_alert(Alert4)})
      }
     ,{"Validate mecked modules"
-     ,?_assertEqual('true', lists:all(fun(Mecked) -> meck:validate(Mecked) end, ToMeck))
-     }
-    ,{"Unload mecked modules"
-     ,?_assertEqual('true', lists:all(fun(Mecked) -> 'ok' = meck:unload(Mecked) end, ToMeck))
+     ,?_assert(MeckValidate)
      }
     ].
 
