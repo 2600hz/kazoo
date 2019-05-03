@@ -995,46 +995,55 @@ save_to_dbs(#{ko := KO}=State, Total, [{Db, JObjs} | Rest], Retries) ->
 %% @private
 -spec handle_bulk_save_errors(loop_state(), kz_term:ne_binary(), kz_json:objects(), kz_json:objects(), boolean()) ->
                                      loop_state().
-handle_bulk_save_errors(#{ko := KO}=State, Db, Saved, JObjs, IsConflictTry) ->
+handle_bulk_save_errors(#{ko := KO}=State, Db, Saved, _JObjs, _IsConflictTry) ->
     DbKO = maps:get(Db, KO, #{}),
     DbFailed = maps:get(failed, DbKO, #{}),
     {ConflictSet, Failed} = split_by_error(Saved, gb_sets:new(), DbFailed, 0),
 
-    RetryConflictIfAssigned = maps:get('retry_conflict_assigned_to', State, 'undefined'),
-    ConflictSize = gb_sets:size(ConflictSet),
+    %% comenting conflict save retry for now becuase `get_conflicts_revs_from_account'
+    %% is reading from destination number using `all_docs' to get revisions.
+    %% So when copying from account to number, jobj here is from account and of course its
+    %% pvt_assigned_to to same as account id, so we need to open doc from number db to compare
+    %% assigne_to, so all_docs hack here is not helping.
 
-    case not IsConflictTry
-        andalso (maps:get('retry_conflict', State, 'false')
-                 orelse RetryConflictIfAssigned =/= 'undefined'
-                )
-        andalso ConflictSize > 0
-    of
-        'true' ->
-            ConflictJObjs = [JObj
-                             || JObj <- JObjs,
-                                gb_sets:is_element(kz_doc:id(JObj), ConflictSet)
-                            ],
-            save_conflicts_to_db(State#{ko => KO#{Db => add_failed_to_db_ko(DbKO, Failed)}}
-                                ,Db
-                                ,ConflictJObjs
-                                ,RetryConflictIfAssigned
-                                );
-        'false' when ConflictSize =:= 0 ->
-            State#{ko => KO#{Db => add_failed_to_db_ko(DbKO, Failed)}};
-        'false' ->
-            NewFailed = merge_error_num_ids(<<"save_docs-conflict">>, gb_sets:to_list(ConflictSet), Failed),
-            State#{ko => KO#{Db => add_failed_to_db_ko(DbKO, NewFailed)}}
-    end.
+    %% RetryConflictIfAssigned = maps:get('retry_conflict_assigned_to', State, 'undefined'),
+    %% ConflictSize = gb_sets:size(ConflictSet),
+
+    %% case not IsConflictTry
+    %%     andalso (maps:get('retry_conflict', State, 'false')
+    %%              orelse RetryConflictIfAssigned =/= 'undefined'
+    %%             )
+    %%     andalso ConflictSize > 0
+    %% of
+    %%     'true' ->
+    %%         ConflictJObjs = [JObj
+    %%                          || JObj <- JObjs,
+    %%                             gb_sets:is_element(kz_doc:id(JObj), ConflictSet)
+    %%                         ],
+    %%         save_conflicts_to_db(State#{ko => KO#{Db => add_failed_to_db_ko(DbKO, Failed)}}
+    %%                             ,Db
+    %%                             ,ConflictJObjs
+    %%                             ,RetryConflictIfAssigned
+    %%                             );
+    %%     'false' when ConflictSize =:= 0 ->
+    %%         State#{ko => KO#{Db => add_failed_to_db_ko(DbKO, Failed)}};
+    %%     'false' ->
+    %%         NewFailed = merge_error_num_ids(<<"save_docs-conflict">>, gb_sets:to_list(ConflictSet), Failed),
+    %%         State#{ko => KO#{Db => add_failed_to_db_ko(DbKO, NewFailed)}}
+    %% end.
+
+    NewFailed = merge_error_num_ids(<<"save_docs-conflict">>, gb_sets:to_list(ConflictSet), Failed),
+    State#{ko => KO#{Db => add_failed_to_db_ko(DbKO, NewFailed)}}.
 
 add_failed_to_db_ko(DbKO, Failed) when map_size(Failed) =:= 0 ->
     DbKO;
 add_failed_to_db_ko(DbKO, Failed) ->
     DbKO#{failed => Failed}.
 
-%% @private
--spec merge_error_num_ids(map(), map()) -> map().
-merge_error_num_ids(Old, New) ->
-    maps:fold(fun merge_error_num_ids/3, Old, New).
+%% %% @private
+%% -spec merge_error_num_ids(map(), map()) -> map().
+%% merge_error_num_ids(Old, New) ->
+%%     maps:fold(fun merge_error_num_ids/3, Old, New).
 
 %% @private
 -spec merge_error_num_ids(kz_term:ne_binary(), kz_term:ne_binaries(), map()) -> map().
@@ -1077,93 +1086,103 @@ maybe_log_failed_saves(ConflictSet, TotalFailed) ->
             ?SUP_LOG_DEBUG("         [failed: ~b] [conflict: ~b]", [TotalFailed, Size])
     end.
 
-%% @private
--spec save_conflicts_to_db(loop_state(), kz_term:ne_binary(), kz_json:objects(), kz_term:api_ne_binary()) ->
-                                  loop_state().
-save_conflicts_to_db(#{ko := KO}=State, Db, ConflictJObjs, AssignedTo) ->
-    ?SUP_LOG_DEBUG("         ~b documents conflicted, trying to ensure save", [length(ConflictJObjs)]),
-    DbKO = maps:get(Db, KO, #{}),
-    DbFailed = maps:get(failed, DbKO, #{}),
+%% %% @private
+%% %% comenting conflict save retry for now becuase `get_conflicts_revs_from_account'
+%% %% is reading from destination number using `all_docs' to get revisions.
+%% %% So when copying from account to number, jobj here is from account and of course its
+%% %% pvt_assigned_to to same as account id, so we need to open doc from number db to compare
+%% %% assigne_to, so all_docs hack here is not helping.
+%% -spec save_conflicts_to_db(loop_state(), kz_term:ne_binary(), kz_json:objects(), kz_term:api_ne_binary()) ->
+%%                                   loop_state().
+%% save_conflicts_to_db(#{ko := KO}=State, Db, ConflictJObjs, AssignedTo) ->
+%%     ?SUP_LOG_DEBUG("         ~b documents conflicted, trying to ensure save", [length(ConflictJObjs)]),
+%%     DbKO = maps:get(Db, KO, #{}),
+%%     DbFailed = maps:get(failed, DbKO, #{}),
+%%
+%%     ConflictIds = [kz_doc:id(JObj) || JObj <- ConflictJObjs],
+%%     {Errored, OpenedIds, Revs} = get_conflicts_revs_from_account(Db, ConflictIds),
+%%
+%%     {ToFixRevs, WrongAssignment} = maybe_wrong_assignment(ConflictJObjs, [], [], AssignedTo),
+%%     NewErrored = merge_error_num_ids(Errored, WrongAssignment),
+%%     ToSave = [kz_doc:set_revision(JObj, maps:get(kz_doc:id(JObj), Revs))
+%%               || JObj <- ToFixRevs,
+%%                  gb_sets:is_member(kz_doc:id(JObj), OpenedIds)
+%%              ],
+%%     _ = timer:sleep(100),
+%%     case kz_datamgr:save_docs(Db, ToSave) of
+%%         {'ok', Saved} ->
+%%             NewFailed = merge_error_num_ids(DbFailed, NewErrored),
+%%             NewState = State#{ko => KO#{Db => add_failed_to_db_ko(DbKO, NewFailed)}},
+%%             handle_bulk_save_errors(NewState, Db, Saved, ToSave, 'true');
+%%         {'error', Reason} ->
+%%             ?SUP_LOG_DEBUG("           nope, attempt failed: ~100p", [Reason]),
+%%             NewMeowErrored = merge_error_num_ids(<<"save_docs-conflict">>, ConflictIds, NewErrored),
+%%             State#{ko => KO#{Db => DbKO#{failed => merge_error_num_ids(DbFailed, NewMeowErrored)}}}
+%%     end.
 
-    ConflictIds = [kz_doc:id(JObj) || JObj <- ConflictJObjs],
-    {Errored, OpenedIds, Revs} = get_conflicts_revs_from_account(Db, ConflictIds),
-
-    {ToFixRevs, WrongAssignment} = maybe_wrong_assignment(ConflictJObjs, [], [], AssignedTo),
-    NewErrored = merge_error_num_ids(Errored, WrongAssignment),
-    ToSave = [kz_doc:set_revision(JObj, maps:get(kz_doc:id(JObj), Revs))
-              || JObj <- ToFixRevs,
-                 gb_sets:is_member(kz_doc:id(JObj), OpenedIds)
-             ],
-    _ = timer:sleep(100),
-    case kz_datamgr:save_docs(Db, ToSave) of
-        {'ok', Saved} ->
-            NewFailed = merge_error_num_ids(DbFailed, NewErrored),
-            NewState = State#{ko => KO#{Db => add_failed_to_db_ko(DbKO, NewFailed)}},
-            handle_bulk_save_errors(NewState, Db, Saved, ToSave, 'true');
-        {'error', Reason} ->
-            ?SUP_LOG_DEBUG("           nope, attempt failed: ~100p", [Reason]),
-            NewMeowErrored = merge_error_num_ids(<<"save_docs-conflict">>, ConflictIds, NewErrored),
-            State#{ko => KO#{Db => DbKO#{failed => merge_error_num_ids(DbFailed, NewMeowErrored)}}}
-    end.
-
-maybe_wrong_assignment(ConflictJObjs, _, _, 'undefined') ->
-    {ConflictJObjs, #{}};
-maybe_wrong_assignment([], ConflictJObjs, [], _) ->
-    {ConflictJObjs, #{}};
-maybe_wrong_assignment([], ConflictJObjs, WrongIds, _) ->
-    {ConflictJObjs, #{<<"wrong_assgined_to">> => maps:from_list(WrongIds)}};
-maybe_wrong_assignment([JObj|JObjs], ConflictJObjs, WrongIds, AssginedTo) ->
-    kz_doc:id(JObj) =:= <<"+11681098930">>
-        andalso ?DEV_LOG("~n~n~n~nJ ~p~nAssignto ~p~n~n~n", [JObj, AssginedTo]),
-    case kz_json:get_ne_binary_value(<<"pvt_assigned_to">>, JObj) of
-        'undefined' ->
-            maybe_wrong_assignment(JObjs, [JObj|ConflictJObjs], WrongIds, AssginedTo);
-        AssginedTo ->
-            maybe_wrong_assignment(JObjs, [JObj|ConflictJObjs], WrongIds, AssginedTo);
-        WrongAssginedTo ->
-            maybe_wrong_assignment(JObj, ConflictJObjs, [{kz_doc:id(JObj), WrongAssginedTo}|WrongIds], AssginedTo)
-    end.
-
-%% @private
--spec get_conflicts_revs_from_account(kz_term:ne_binary(), kz_term:ne_binaries()) ->
-                                             {map(), gb_sets:new(), map()}.
-get_conflicts_revs_from_account(Db, ConflictIds) ->
-    ?SUP_LOG_DEBUG("           fetching revs for ~b documents from ~s", [length(ConflictIds), Db]),
-    case kz_datamgr:all_docs(Db, [{'keys', ConflictIds}]) of
-        {'ok', JObjs} ->
-            split_errors_opened_revs(JObjs, {#{}, gb_sets:new(), #{}});
-        {'error', Reason} ->
-            ?SUP_LOG_DEBUG("             fetching revs from db failed: ~100p", [Reason]),
-            {#{<<"conflict">> => ConflictIds}, gb_sets:new(), #{}}
-    end.
-
-%% @private
--spec split_errors_opened_revs(kz_json:objects(), {map(), gb_sets:set(), map()}) ->
-                                      {map(), gb_sets:set(), map()}.
-split_errors_opened_revs([], Acc) -> Acc;
-split_errors_opened_revs([JObj|JObjs], {Errors, Opened, Revs}) ->
-    case kz_json:get_value(<<"error">>, JObj) of
-        'undefined' ->
-            Id = kz_doc:id(JObj),
-            Acc = {Errors
-                  ,gb_sets:add_element(Id, Opened)
-                  ,Revs#{Id => kz_json:get_value([<<"value">>, <<"rev">>], JObj)}
-                  },
-            split_errors_opened_revs(JObjs, Acc);
-        <<"not_found">> ->
-            Acc = {Errors#{<<"not_found">> => [kz_doc:id(JObj)|maps:get(<<"not_found">>, Errors, [])]}
-                  ,Opened
-                  ,Revs
-                  },
-            split_errors_opened_revs(JObjs, Acc);
-        _R->
-            ?DEV_LOG("~n~nerror other ~p~n~n", [_R]),
-            Acc = {Errors#{<<"conflict">> => [kz_doc:id(JObj)|maps:get(<<"conflict">>, Errors, [])]}
-                  ,Opened
-                  ,Revs
-                  },
-            split_errors_opened_revs(JObjs, Acc)
-    end.
+%% maybe_wrong_assignment(ConflictJObjs, _, _, 'undefined') ->
+%%     {ConflictJObjs, #{}};
+%% maybe_wrong_assignment([], ConflictJObjs, [], _) ->
+%%     {ConflictJObjs, #{}};
+%% maybe_wrong_assignment([], ConflictJObjs, WrongIds, _) ->
+%%     {ConflictJObjs, #{<<"wrong_assgined_to">> => maps:from_list(WrongIds)}};
+%% maybe_wrong_assignment([JObj|JObjs], ConflictJObjs, WrongIds, AssginedTo) ->
+%%     kz_doc:id(JObj) =:= <<"+11681098930">>
+%%         andalso ?DEV_LOG("~n~n~n~nJ ~p~nAssignto ~p~n~n~n", [JObj, AssginedTo]),
+%%     case kz_json:get_ne_binary_value(<<"pvt_assigned_to">>, JObj) of
+%%         'undefined' ->
+%%             maybe_wrong_assignment(JObjs, [JObj|ConflictJObjs], WrongIds, AssginedTo);
+%%         AssginedTo ->
+%%             maybe_wrong_assignment(JObjs, [JObj|ConflictJObjs], WrongIds, AssginedTo);
+%%         WrongAssginedTo ->
+%%             maybe_wrong_assignment(JObj, ConflictJObjs, [{kz_doc:id(JObj), WrongAssginedTo}|WrongIds], AssginedTo)
+%%     end.
+%%
+%% %% @private
+%% %% comenting conflict save retry for now becuase `get_conflicts_revs_from_account'
+%% %% is reading from destination number using `all_docs' to get revisions.
+%% %% So when copying from account to number, jobj here is from account and of course its
+%% %% pvt_assigned_to to same as account id, so we need to open doc from number db to compare
+%% %% assigne_to, so all_docs hack here is not helping.
+%% -spec get_conflicts_revs_from_account(kz_term:ne_binary(), kz_term:ne_binaries()) ->
+%%                                              {map(), gb_sets:new(), map()}.
+%% get_conflicts_revs_from_account(Db, ConflictIds) ->
+%%     ?SUP_LOG_DEBUG("           fetching revs for ~b documents from ~s", [length(ConflictIds), Db]),
+%%     case kz_datamgr:all_docs(Db, [{'keys', ConflictIds}]) of
+%%         {'ok', JObjs} ->
+%%             split_errors_opened_revs(JObjs, {#{}, gb_sets:new(), #{}});
+%%         {'error', Reason} ->
+%%             ?SUP_LOG_DEBUG("             fetching revs from db failed: ~100p", [Reason]),
+%%             {#{<<"conflict">> => ConflictIds}, gb_sets:new(), #{}}
+%%     end.
+%%
+%% %% @private
+%% -spec split_errors_opened_revs(kz_json:objects(), {map(), gb_sets:set(), map()}) ->
+%%                                       {map(), gb_sets:set(), map()}.
+%% split_errors_opened_revs([], Acc) -> Acc;
+%% split_errors_opened_revs([JObj|JObjs], {Errors, Opened, Revs}) ->
+%%     case kz_json:get_value(<<"error">>, JObj) of
+%%         'undefined' ->
+%%             Id = kz_doc:id(JObj),
+%%             Acc = {Errors
+%%                   ,gb_sets:add_element(Id, Opened)
+%%                   ,Revs#{Id => kz_json:get_value([<<"value">>, <<"rev">>], JObj)}
+%%                   },
+%%             split_errors_opened_revs(JObjs, Acc);
+%%         <<"not_found">> ->
+%%             Acc = {Errors#{<<"not_found">> => [kz_doc:id(JObj)|maps:get(<<"not_found">>, Errors, [])]}
+%%                   ,Opened
+%%                   ,Revs
+%%                   },
+%%             split_errors_opened_revs(JObjs, Acc);
+%%         _R->
+%%             ?DEV_LOG("~n~nerror other ~p~n~n", [_R]),
+%%             Acc = {Errors#{<<"conflict">> => [kz_doc:id(JObj)|maps:get(<<"conflict">>, Errors, [])]}
+%%                   ,Opened
+%%                   ,Revs
+%%                   },
+%%             split_errors_opened_revs(JObjs, Acc)
+%%     end.
 
 -spec to_binary_data_error(any()) -> kz_term:ne_binary().
 to_binary_data_error(Bin) when is_binary(Bin) ->
