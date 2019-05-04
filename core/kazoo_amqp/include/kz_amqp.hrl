@@ -7,6 +7,7 @@
 -ifndef(KZ_AMQP_HRL).
 
 -include_lib("amqp_client/include/amqp_client.hrl").
+-include("kz_api.hrl").
 
 -define(KEY_ORGN_RESOURCE_REQ, <<"orginate.resource.req">>). %% corresponds to originate_resource_req/1 api call
 -define(RESOURCE_QUEUE_NAME, <<"resource.provider">>).

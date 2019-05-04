@@ -108,8 +108,7 @@ responder({Module, Fun}) when is_atom(Module), is_atom(Fun) ->
     responder_mfa(Module, Fun);
 responder(CallbackFun)
   when is_function(CallbackFun, 2);
-       is_function(CallbackFun, 3);
-       is_function(CallbackFun, 4) ->
+       is_function(CallbackFun, 3) ->
     {'arity', Arity} = erlang:fun_info(CallbackFun, 'arity'),
     {CallbackFun, Arity};
 responder(_) -> 'undefined'.
