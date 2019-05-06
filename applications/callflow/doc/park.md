@@ -10,7 +10,7 @@ Validator for the park callflow data object
 
 Key | Description | Type | Default | Required | Support
 --- | ----------- | ---- | ------- | -------- | --------
-`action` | Action to take for the caller | `string('park', 'retrieve', 'auto')` | `park` | `false` |
+`action` | Action to take for the caller | `string('direct_park', 'park', 'retrieve', 'auto')` | `park` | `false` |
 `custom_presence_id` | use configured presence_id and fallback to request | `boolean` | `false` | `false` | 
 `default_callback_timeout` | How long, in seconds, to wait before calling back the parker | `integer` |   | `false` | 
 `default_presence_type` | Type of presence to update | `string('early', 'terminated', 'confirmed')` |   | `false` | 
