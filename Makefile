@@ -196,7 +196,7 @@ dialyze-it-changed: $(PLT)
 		echo; \
 		echo "$(TO_DIALYZE)" ;\
 		echo; \
-		ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --bulk $(TO_DIALYZE) && echo "dialyzer is happy!"; \
+		ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(TO_DIALYZE) && echo "dialyzer is happy!"; \
 	else \
 		echo "no erlang changes to dialyze"; \
 	fi
