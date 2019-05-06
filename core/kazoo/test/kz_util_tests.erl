@@ -158,7 +158,6 @@ account_formats_test_() ->
 
     {Y, M, _} = erlang:date(),
     TS = kz_time:now_s(),
-    Now = os:timestamp(),
     Year = kz_term:to_binary(Y),
     Month = kz_date:pad_month(M),
 
