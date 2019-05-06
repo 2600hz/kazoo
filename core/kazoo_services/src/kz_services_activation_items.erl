@@ -15,7 +15,7 @@
 
 -include("services.hrl").
 
--opaque items() :: kz_services_activation_item:item().
+-opaque items() :: [kz_services_activation_item:item()].
 -type fold_fun() :: fun((kz_services_activation_item:item(), Acc) -> Acc).
 -export_type([items/0
              ,fold_fun/0

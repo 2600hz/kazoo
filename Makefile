@@ -215,7 +215,7 @@ dialyze-core: dialyze-it
 dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
 dialyze: dialyze-it
 
-dialyze-changed: TO_DIALYZE = $(CHANGED)
+dialyze-changed: TO_DIALYZE = $(strip $(filter %.beam %.erl %/ebin,$(CHANGED)))
 dialyze-changed: dialyze-it-changed
 
 dialyze-hard: TO_DIALYZE = $(CHANGED)
@@ -228,11 +228,15 @@ dialyze-it-hard: $(PLT)
 	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --hard $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
 
 dialyze-it-changed: $(PLT)
-ifeq ($(strip $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))),)
-	@echo "no erlang changes to dialyze"
-else
-	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --bulk $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
-endif
+	@if [ -n "$(TO_DIALYZE)" ]; then \
+		echo "dialyzing changes against $(BASE_BRANCH) ..." ; \
+		echo; \
+		echo "$(TO_DIALYZE)" ;\
+		echo; \
+		ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --bulk $(TO_DIALYZE) && echo "dialyzer is happy!"; \
+	else \
+		echo "no erlang changes to dialyze"; \
+	fi
 
 xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
 xref:
