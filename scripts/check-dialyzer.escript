@@ -205,10 +205,10 @@ do_warn_path({_, []}, Acc) -> Acc;
 do_warn_path({_, Beams}, {N, PLT, 'true'}) ->
     {N + scan_and_print(PLT, Beams), PLT, 'true'};
 do_warn_path({Type, Beams}, {N, PLT, 'false'}) ->
-    try lists:split(5, Beams) of
-        {Ten, Rest} ->
+    try lists:split(3, Beams) of
+        {Three, Rest} ->
             do_warn_path({Type, Rest}
-                        ,{N + scan_and_print(PLT, Ten), PLT, 'false'}
+                        ,{N + scan_and_print(PLT, Three), PLT, 'false'}
                         )
     catch
         'error':'badarg' ->
@@ -228,7 +228,11 @@ filter({'warn_contract_types', _, {'overlapping_contract',_}}) -> 'false';
 filter({'warn_umatched_return', _, {'unmatched_return', ["'ok' | {'error','lager_not_running' | {'sink_not_configured','lager_event'}}"]}}) -> 'false';
 filter({'warn_unmatched_return', _, {'unmatched_return', ["'false' | 'ok' | {'error','lager_not_running' | {'sink_not_configured','lager_event'}}"]}}) -> 'false';
 filter({'warn_umatched_return', _, {'unmatched_return',["'ok' | {'error','invalid_db_name'}"]}}) -> 'false';
-filter(_W) -> 'true'.
+filter({'warn_return_no_exit',_,{'no_return',['only_normal','kz_log_md_clear',0]}}) -> 'false';
+filter({'warn_failing_call',_,{'call',['lager','md',"([])",[1],'only_contract',"([any()])","'ok'",{'true',"([{atom(),any()},...]) -> 'ok'"}]}}) -> 'false';
+filter(_W) ->
+    io:format("keeping warning ~p~n", [_W]),
+    'true'.
 
 print(Beams, {Tag, {"src/" ++ _=File, Line}, _W}=Warning) ->
     Filename = filename:basename(File, ".erl"),
