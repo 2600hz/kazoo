@@ -34,6 +34,7 @@
 -define(PARK_DELAY_CHECK_TIME_KEY, <<"valet_reservation_cleanup_time_ms">>).
 -define(PARK_DELAY_CHECK_TIME, kapps_config:get_integer(?MOD_CONFIG_CAT, ?PARK_DELAY_CHECK_TIME_KEY, ?MILLISECONDS_IN_SECOND * 3)).
 -define(PARKING_APP_NAME, <<"park">>).
+-define(MAX_SLOT_NUMBER_KEY, <<"max_slot_number">>).
 
 %%------------------------------------------------------------------------------
 %% @doc Entry point for this module sends an arbitrary response back to the
@@ -118,8 +119,11 @@ handle_nomatch_with_empty_referred_to(Data, Call, PresenceType, ParkedCalls, Slo
 
 -spec direct_park(kz_term:ne_binary(), kz_json:object(), kz_json:object(), kz_json:object(), kapps_call:call()) -> 'ok'.
 direct_park(SlotNumber, Slot, ParkedCalls, Data, Call) ->
-    case save_slot(SlotNumber, Slot, ParkedCalls, Call) of
+    MaxSlotNumber = kz_json:get_integer_value(?MAX_SLOT_NUMBER_KEY, Data),
+    case save_slot(SlotNumber, MaxSlotNumber, Slot, ParkedCalls, Call) of
         {'ok', _} -> parked_call(SlotNumber, Slot, Data, Call);
+        {'error', 'max_slots_exceeded'} ->
+            cf_exe:continue(Call);
         {'error', _Reason} ->
             lager:info("unable to save direct park slot: ~p", [_Reason]),
             cf_exe:stop(Call)
@@ -224,7 +228,8 @@ pickup_event(Call, _Type, _Evt) ->
 -spec park_call(kz_term:ne_binary(), kz_json:object(), kz_json:object(), kz_term:api_binary(), kz_json:object(), kapps_call:call()) -> 'ok'.
 park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
     lager:info("attempting to park call in slot ~s", [SlotNumber]),
-    case {ReferredTo, save_slot(SlotNumber, Slot, ParkedCalls, Call)} of
+    MaxSlotNumber = kz_json:get_integer_value(?MAX_SLOT_NUMBER_KEY, Data),
+    case {ReferredTo, save_slot(SlotNumber, MaxSlotNumber, Slot, ParkedCalls, Call)} of
         %% attended transfer but the provided slot number is occupied, we are still connected to the 'parker'
         %% not the 'parkee'
         {'undefined', {'error', 'occupied'}} ->
@@ -361,6 +366,30 @@ find_slot_number([A|[B|_]=Slots]) ->
 %% and tries again, determining the new slot.
 %% @end
 %%------------------------------------------------------------------------------
+-spec save_slot(kz_term:ne_binary(), kz_term:api_integer(), kz_json:object(), kz_json:object(), kapps_call:call()) ->
+                       {'ok', kz_json:object()} |
+                       {'error', atom()}.
+save_slot(SlotNumber, MaxSlotNumber, Slot, ParkedCalls, Call) ->
+    try kz_term:to_integer(SlotNumber) of
+        SlotNumberInt ->
+            MaxExceeded = MaxSlotNumber =/= 'undefined'
+                andalso SlotNumberInt > MaxSlotNumber,
+            MaxExceeded
+                andalso lager:info("no more slots available - max_slot_number (~b) has been exceeded", [MaxSlotNumber]),
+            save_slot_check_max_slots_exceeded(SlotNumber, MaxExceeded, Slot, ParkedCalls, Call)
+    catch
+        'error':'badarg' ->
+            save_slot(SlotNumber, Slot, ParkedCalls, Call)
+    end.
+
+-spec save_slot_check_max_slots_exceeded(kz_term:ne_binary(), boolean(), kz_json:object(), kz_json:object(), kapps_call:call()) ->
+                                                {'ok', kz_json:object()} |
+                                                {'error', atom()}.
+save_slot_check_max_slots_exceeded(_, 'true', _, _, _) ->
+    {'error', 'max_slots_exceeded'};
+save_slot_check_max_slots_exceeded(SlotNumber, 'false', Slot, ParkedCalls, Call) ->
+    save_slot(SlotNumber, Slot, ParkedCalls, Call).
+
 -spec save_slot(kz_term:ne_binary(), kz_json:object(), kz_json:object(), kapps_call:call()) ->
                        {'ok', kz_json:object()} |
                        {'error', atom()}.
