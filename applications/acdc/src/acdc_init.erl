@@ -140,9 +140,10 @@ try_again(AccountId, F) ->
 spawn_previously_logged_in_agent(AccountId, AgentId) ->
     kz_util:spawn(
       fun() ->
-              case acdc_agent_util:most_recent_status(AccountId, AgentId) of
-                  {'ok', <<"logged_out">>} -> lager:debug("agent ~s in ~s is logged out, not starting", [AgentId, AccountId]);
-                  {'ok', _Status} -> acdc_agents_sup:new(AccountId, AgentId)
+              {'ok', Status} = acdc_agent_util:most_recent_status(AccountId, AgentId),
+              case acdc_agent_util:status_should_auto_start(Status) of
+                  'false' -> lager:debug("agent ~s in ~s is ~s, not starting", [AgentId, AccountId, Status]);
+                  'true' -> acdc_agents_sup:new(AccountId, AgentId)
               end
       end).
 

@@ -97,7 +97,7 @@ update_acdc_actor(Call, AgentId, <<"user">>) ->
     AcctId = kapps_call:account_id(Call),
 
     case acdc_agent_util:most_recent_status(AcctId, AgentId) of
-        {'ok', <<"logout">>} ->
+        {'ok', <<"logged_out">>} ->
             update_acdc_agent(Call, AcctId, AgentId, <<"login">>, fun kapi_acdc_agent:publish_login/1);
         {'ok', <<"pause">>} ->
             update_acdc_agent(Call, AcctId, AgentId, <<"resume">>, fun kapi_acdc_agent:publish_resume/1);
