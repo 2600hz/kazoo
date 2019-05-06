@@ -127,7 +127,7 @@
 
 -define(DEFAULT_DATA_SECTION, [{<<"local">>, <<"bigcouch">>}]).
 -define(MERGE_PROPS, [{'driver', 'kazoo_couch'}
-                     ,{'tag', 'local'}
+                     ,{'tag', <<"local">>}
                      ]).
 -define(MERGE_MAP, maps:from_list(?MERGE_PROPS)).
 

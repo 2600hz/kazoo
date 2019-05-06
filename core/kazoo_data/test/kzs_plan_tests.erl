@@ -14,7 +14,7 @@
 -define(ACCOUNT_MODB_SPLIT, <<"account%2Fac%2Fco%2Funt0000000000000000000000004-201710">>).
 
 %% server tag constant macros
--define(SYS_TAG, 'local').
+-define(SYS_TAG, <<"local">>).
 
 %% Classifiers
 -define(ACCOUNT, <<"account">>).
@@ -28,7 +28,7 @@
 
 -spec render_test_() -> any().
 render_test_() ->
-    {setup
+    {'setup'
     ,fun setup/0
     ,fun cleanup/1
     ,fun(_ReturnOfSetup) ->
@@ -59,54 +59,90 @@ cleanup(Pid) ->
 %%%-----------------------------------------------------------------------------
 
 system_plan() ->
-    ?assertMatch(#{tag := ?SYS_TAG, server := {'kazoo_fixturedb', _Conn}, others := []}
+    ?assertMatch(#{tag := ?SYS_TAG
+                  ,server := {'kazoo_fixturedb', _Conn}
+                  ,others := []
+                  }
                 ,kzs_plan:plan()
                 ).
 
 modb_plan() ->
-    ?assertMatch(#{classification := ?MODB, tag := ?SYS_TAG
-                  ,server := {'kazoo_fixturedb', _Conn}, others := []}
-                ,kzs_plan:plan(?ACCOUNT_MODB)
+    Plan = kzs_plan:plan(?ACCOUNT_MODB),
+    ?assertMatch(#{classification := ?MODB
+                  ,tag := ?SYS_TAG
+                  ,server := {'kazoo_fixturedb', _Conn}
+                  ,others := []
+                  }
+                ,Plan
                 ).
 
 account_plan() ->
-    ?assertMatch(#{classification := <<"account">>, tag := ?SYS_TAG
-                  ,server := {'kazoo_fixturedb', _Conn}, others := []}
+    ?assertMatch(#{classification := <<"account">>
+                  ,tag := ?SYS_TAG
+                  ,server := {'kazoo_fixturedb', _Conn}
+                  ,others := []
+                  }
                 ,kzs_plan:plan(?ACCOUNT_DB)
                 ).
 
 match_modb_dataplan_type() ->
-    ?assertMatch(#{classification := ?MODB, tag := ?SYS_TAG, doc_type := ?VM_TYPE
-                  ,server := {'kazoo_fixturedb', _Conn}}
-                ,kzs_plan:get_dataplan(?ACCOUNT_MODB, ?VM_TYPE)),
-    ?assertMatch(#{classification := ?MODB, tag := ?SYS_TAG, doc_type := ?FAX_TYPE
-                  ,server := {'kazoo_fixturedb', _Conn}}
+    ?assertMatch(#{classification := ?MODB
+                  ,tag := ?SYS_TAG
+                  ,doc_type := ?VM_TYPE
+                  ,server := {'kazoo_fixturedb', _Conn}
+                  }
+                ,kzs_plan:get_dataplan(?ACCOUNT_MODB, ?VM_TYPE)
+                ),
+    ?assertMatch(#{classification := ?MODB
+                  ,tag := ?SYS_TAG
+                  ,doc_type := ?FAX_TYPE
+                  ,server := {'kazoo_fixturedb', _Conn}
+                  }
                 ,kzs_plan:get_dataplan(?ACCOUNT_MODB, ?FAX_TYPE)
                 ),
-    ?assertMatch(#{classification := ?MODB, tag := ?SYS_TAG, doc_type := ?REC_TYPE
-                  ,server := {'kazoo_fixturedb', _Conn}}
+    ?assertMatch(#{classification := ?MODB
+                  ,tag := ?SYS_TAG
+                  ,doc_type := ?REC_TYPE
+                  ,server := {'kazoo_fixturedb', _Conn}
+                  }
                 ,kzs_plan:get_dataplan(?ACCOUNT_MODB, ?REC_TYPE)
                 ).
 
 account_plan_split() ->
-    ?assertMatch(#{classification := ?ACCOUNT, tag := ?SYS_TAG, others := []}
+    ?assertMatch(#{classification := ?ACCOUNT
+                  ,tag := ?SYS_TAG
+                  ,others := []
+                  }
                 ,kzs_plan:plan(?ACCOUNT_DB_SPLIT)
                 ).
 
 modb_plan_split() ->
-    ?assertMatch(#{classification := ?MODB, tag := 'account_4_modb', others := [_Others]}
+    ?assertMatch(#{classification := ?MODB
+                  ,tag := <<"account_4_modb">>
+                  ,others := [_Others]
+                  }
                 ,kzs_plan:plan(?ACCOUNT_MODB_SPLIT)
                 ).
 
 match_modb_plan_type_split() ->
-    ?assertMatch(#{classification := ?MODB, tag := 'account_4_modb', doc_type := ?VM_TYPE
-                  ,server := {'kazoo_fixturedb', _Conn}}
+    ?assertMatch(#{classification := ?MODB
+                  ,tag := <<"account_4_modb">>
+                  ,doc_type := ?VM_TYPE
+                  ,server := {'kazoo_fixturedb', _Conn}
+                  }
                 ,kzs_plan:get_dataplan(?ACCOUNT_MODB_SPLIT, ?VM_TYPE)
                 ),
-    ?assertMatch(#{classification := ?MODB, tag := 'account_4_modb', doc_type := ?REC_TYPE
-                  ,server := {'kazoo_fixturedb', _Conn}}
+    ?assertMatch(#{classification := ?MODB
+                  ,tag := <<"account_4_modb">>
+                  ,doc_type := ?REC_TYPE
+                  ,server := {'kazoo_fixturedb', _Conn}
+                  }
                 ,kzs_plan:get_dataplan(?ACCOUNT_MODB_SPLIT, ?REC_TYPE)
                 ),
-    ?assertMatch(#{classification := ?MODB, tag := 'account_4_fax', doc_type := ?FAX_TYPE
-                  ,server := {'kazoo_fixturedb', _Conn}}
-                ,kzs_plan:get_dataplan(?ACCOUNT_MODB_SPLIT, ?FAX_TYPE)).
+    ?assertMatch(#{classification := ?MODB
+                  ,tag := <<"account_4_fax">>
+                  ,doc_type := ?FAX_TYPE
+                  ,server := {'kazoo_fixturedb', _Conn}
+                  }
+                ,kzs_plan:get_dataplan(?ACCOUNT_MODB_SPLIT, ?FAX_TYPE)
+                ).

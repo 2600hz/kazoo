@@ -138,11 +138,16 @@ start_me() ->
 -spec start_me(boolean()) -> pid().
 start_me(SilentLager) ->
     ?LOG_DEBUG(":: Starting up Kazoo FixtureDB"),
-    {'ok', _} = application:ensure_all_started('kazoo_config'),
+
+    {'ok', _Started} = application:ensure_all_started('kazoo_config'),
+
+    ?LOG_DEBUG("started all apps ~p", [_Started]),
+
     Pid = case kazoo_data_link_sup:start_link() of
               {'ok', P} -> P;
               {'error', {'already_started', P}} -> P
           end,
+
     'ignore' = kazoo_data_bootstrap:start_link(),
 
     _ = case SilentLager of

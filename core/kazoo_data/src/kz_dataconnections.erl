@@ -49,14 +49,14 @@ update(#data_connection{}=Connection) ->
 
 -spec add(data_connection()) -> 'ok'.
 add(#data_connection{tag='undefined'}=Connection) ->
-    add(Connection#data_connection{tag='local'});
+    add(Connection#data_connection{tag = <<"local">>});
 add(#data_connection{}=Connection) ->
     gen_server:cast(?SERVER, {'add_connection', Connection}).
 
 
 -spec wait_for_connection() -> 'ok' | 'no_connection'.
 wait_for_connection() ->
-    wait_for_connection('local').
+    wait_for_connection(<<"local">>).
 
 -spec wait_for_connection(any()) -> 'ok' | 'no_connection'.
 wait_for_connection(Tag) ->
@@ -81,7 +81,7 @@ wait_for_connection(Tag, Timeout) ->
 
 -spec get_server() -> server().
 get_server() ->
-    get_server('local').
+    get_server(<<"local">>).
 
 -spec get_server(term()) -> server().
 get_server(Tag) ->
@@ -107,7 +107,7 @@ get_server(Tag) ->
 
 -spec test_conn() -> {'ok', kz_json:object()} |
                      {'error', any()}.
-test_conn() -> test_conn('local').
+test_conn() -> test_conn(<<"local">>).
 
 -spec test_conn(term()) -> {'ok', kz_json:object()} |
                            {'error', any()}.
