@@ -189,19 +189,19 @@
 
 -type handle_event_return() :: 'ignore' |
                                {'ignore', module_state()} |
+                               {'ignore', module_state(), timeout() | 'hibernate'} |
                                {'reply', kz_term:proplist()} |
                                {'reply', kz_term:proplist(), module_state()}.
 
 -callback handle_event(kz_json:object(), module_state()) -> handle_event_return().
--callback handle_event(kz_json:object(), basic_deliver(), module_state()) -> handle_event_return().
--callback handle_event(kz_json:object(), basic_deliver(), amqp_basic(), module_state()) -> handle_event_return().
+-callback handle_event(kz_json:object(), kz_term:proplist(), module_state()) -> handle_event_return().
 
 -callback terminate('normal' | 'shutdown' | {'shutdown', any()} | any(), module_state()) ->
     any().
 -callback code_change(any() | {'down', any()}, module_state(), any()) ->
     {'ok', module_state()} | {'error', any()}.
 
--optional_callbacks([handle_event/2, handle_event/3, handle_event/4]).
+-optional_callbacks([handle_event/2, handle_event/3]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -880,7 +880,7 @@ distribute_event(JObj, {Deliver, #'P_basic'{headers=Headers}=Basic}=BasicDeliver
             end
     end.
 
--spec distribute_event(callback_data(), kz_json:object(), deliver(), state()) -> state().
+-spec distribute_event(callback_data(), kz_json:object(), deliver(), state()) -> {'noreply', state()}.
 distribute_event(CallbackData, JObj, Deliver, #state{responders=Responders
                                                     ,consumer_key=ConsumerKey
                                                     }=State) ->
@@ -935,6 +935,7 @@ client_handle_event(JObj, {Module, Fun, 2}, CallbackData, _Deliver) ->
 -spec callback_handle_event(kz_json:object(), deliver(), state()) ->
                                    'ignore' |
                                    {'ignore', module_state()} |
+                                   {'ignore', module_state(), 'hibernate' | timeout()} |
                                    callback_data() |
                                    {callback_data(), module_state()}.
 callback_handle_event(_JObj
@@ -972,7 +973,7 @@ callback_handle_event(JObj
     case callback_handle_event(JObj, Props, MFA, ModuleState) of
         'ignore' -> 'ignore';
         {'ignore', _NewModuleState} = Reply -> Reply;
-        {'ignore', _NewModuleState, 'hibernate'} = Reply -> Reply;
+        {'ignore', _NewModuleState, _TimeoutOrHibernate} = Reply -> Reply;
         {'reply', NewProps} when is_list(NewProps) ->
             [{'server', Self}
             ,{'queue', Queue}
