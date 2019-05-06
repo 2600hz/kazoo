@@ -151,6 +151,11 @@ pages:
     - 'applications/webhooks/doc/README.md'
     - 'Administration': 'applications/webhooks/doc/maintenance.md'
     - 'API': 'applications/crossbar/doc/webhooks.md'
+    - 'Webhook Events':
+      - 'Channel Event Webhooks': 'applications/webhooks/doc/events/channels.md'
+      - 'Channel Parking Event Webhook': 'applications/webhooks/doc/events/parking.md'
+      - 'Notification Event Webhooks': 'applications/webhooks/doc/events/notifications.md'
+      - 'Object Change Event Webhook': 'applications/webhooks/doc/events/object.md'
 - 'Internationalization':
   - 'Phone Numbers':
     - 'Overview': 'doc/internationalization/numbers.md'

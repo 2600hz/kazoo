@@ -145,6 +145,11 @@ pages:
   - 'HTTP Event Notifications':
     - 'Administration': 'applications/webhooks/doc/maintenance.md'
     - 'API': 'applications/crossbar/doc/webhooks.md'
+    - 'Webhook Events':
+      - 'Channel Event Webhooks': 'applications/webhooks/doc/events/channels.md'
+      - 'Channel Parking Event Webhook': 'applications/webhooks/doc/events/parking.md'
+      - 'Notification Event Webhooks': 'applications/webhooks/doc/events/notifications.md'
+      - 'Object Change Event Webhook': 'applications/webhooks/doc/events/object.md'
 
   - 'Custom Webhook': 'applications/callflow/doc/webhook.md' ##
 

@@ -37124,6 +37124,12 @@
             "required": true,
             "type": "string"
         },
+        "SAMPLE_ID": {
+            "in": "path",
+            "name": "SAMPLE_ID",
+            "required": true,
+            "type": "string"
+        },
         "SCHEMA_NAME": {
             "in": "path",
             "name": "SCHEMA_NAME",
@@ -46618,6 +46624,43 @@
                 "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/webhooks/samples": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/webhooks/samples/{SAMPLE_ID}": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/SAMPLE_ID"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"

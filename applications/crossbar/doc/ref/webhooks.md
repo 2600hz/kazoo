@@ -94,6 +94,16 @@ curl -v -X DELETE \
 
 ## Fetch
 
+> GET /v2/accounts/{ACCOUNT_ID}/webhooks/samples
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/samples
+```
+
+## Fetch
+
 > GET /v2/accounts/{ACCOUNT_ID}/webhooks/attempts
 
 ```shell
@@ -110,5 +120,15 @@ curl -v -X GET \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
+```
+
+## Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/webhooks/samples/{SAMPLE_ID}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/samples/{SAMPLE_ID}
 ```
 

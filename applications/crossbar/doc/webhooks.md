@@ -98,6 +98,97 @@ curl -v -X GET \
 }
 ```
 
+## Get sample payloads of all webhook events
+
+> GET /v2/webhooks/samples
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/webhooks/samples
+```
+
+### Example
+
+**Request:**
+
+```shell
+curl -H "'ontent-Type: application/json' 'http://{SERVER}:8000/v2/webhooks/samples'
+```
+
+**Response:**
+
+```json
+{
+  "data": [
+    "webhooks_channel_answer",
+    "webhooks_channel_bridge",
+    "webhooks_channel_create",
+    "webhooks_channel_destroy",
+    "webhooks_notifications",
+    "webhooks_object",
+    "webhooks_parking"
+  ],
+  "revision": "{REVISION}",
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success"
+}
+```
+
+## Get sample payloads of a webhook event
+
+> GET /v2/webhooks/samples/{SAMPLE_ID}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/webhooks/samples/{SAMPLE_ID}
+```
+
+You can use regular [Crossbar query string filters](./filters.md) to narrow down the samples, for example:
+
+```shell
+curl -H 'Content-Type: application/json' 'http://{SERVER}:8000/v2/webhooks/samples/webhook_notifications?filter_event_name=missed_call'
+curl -H 'Content-Type: application/json' 'http://{SERVER}:8000/v2/webhooks/samples/webhook_object?filter_action=doc_created'
+```
+
+### Example
+
+**Request:**
+
+```shell
+curl -s -H 'Content-Type: application/json' 'http://{SERVER}:8000/v2/webhooks/samples/webhooks_parking'
+```
+
+**Response:**
+
+```json
+{
+  "page_size": 1,
+  "data": [
+    {
+      "account_id": "5a2d994fbae69b1d6b01eb9f0e7dfe62",
+      "call_id": "OWU4NzEwOTgyZWNiMjM0MzI0NjRkZDc4MWVmMjEyOWI",
+      "callee_id_name": "Test Name",
+      "callee_id_number": "5355543456",
+      "caller_id_Number": "+15555432345",
+      "caller_id_name": "Superman",
+      "event_name": "PARK_PARKED",
+      "parking_slot": 1
+    }
+  ],
+  "revision": "{REVISION}",
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success"
+}
+```
+
 ## List webhooks
 
 > GET /v2/accounts/{ACCOUNT_ID}/webhooks

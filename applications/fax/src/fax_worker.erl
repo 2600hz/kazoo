@@ -732,8 +732,8 @@ notify_fields(JObj, Resp) ->
        }
       ,{<<"Fax-Info">>, kz_json:from_list(FaxFields) }
       ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, Resp)}
-      ,{<<"fax_timestamp">>, kz_time:now_s()}
-      ,{<<"fax_timezone">>, kz_json:get_value(<<"fax_timezone">>, JObj)}
+      ,{<<"Fax-Timestamp">>, kz_time:now_s()}
+      ,{<<"Fax-Timezone">>, kz_json:get_value(<<"fax_timezone">>, JObj)}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
