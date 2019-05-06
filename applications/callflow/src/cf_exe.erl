@@ -60,6 +60,9 @@
 -type callfow_status() :: 'init' | 'running' | 'not_running'.
 -export_type([callfow_status/0]).
 
+-type termination_handler() :: {module(), atom(), list()}.
+-type termination_handlers() :: [termination_handler()].
+
 -record(state, {call = kapps_call:new() :: kapps_call:call()
                ,flow = kz_json:new() :: kz_json:object()
                ,flows = [] :: kz_json:objects()
@@ -72,7 +75,7 @@
                ,stop_on_destroy = 'true' :: boolean()
                ,destroyed = 'false' :: boolean()
                ,branch_count = ?MAX_BRANCH_COUNT :: non_neg_integer()
-               ,termination_handlers = [] :: list()
+               ,termination_handlers = [] :: termination_handlers()
                }).
 -type state() :: #state{}.
 
@@ -737,15 +740,26 @@ launch_cf_module(#state{call=Call
                        }=State) ->
     case cf_util:token_check(Call, Flow) of
         'true' ->
-            do_launch_cf_module(State);
-
+            do_launch_cf_module(State, find_cf_module(Flow));
         'false' ->
             lager:debug("call does not have enough tokens to proceed, stopping execution"),
             stop(self()),
             State
     end.
 
--spec do_launch_cf_module(state()) -> state().
+-spec do_launch_cf_module(state(), atom()) -> state().
+do_launch_cf_module(#state{call=Call
+                          ,cf_module_pid=OldPidRef
+                          }=State
+                   ,'undefined'
+                   ) ->
+    lager:error("unknown callflow action, reverting to last action"),
+    continue(self()),
+    OldAction = kapps_call:kvs_fetch('cf_last_action', Call),
+    State#state{cf_module_pid='undefined'
+               ,cf_module_old_pid=OldPidRef
+               ,call=update_actions(OldAction, Call)
+               };
 do_launch_cf_module(#state{call=Call
                           ,flow=Flow
                           ,cf_module_pid=OldPidRef
@@ -763,33 +777,34 @@ do_launch_cf_module(#state{call=Call
     link(get_pid(PidRef)),
     State#state{cf_module_pid=PidRef
                ,cf_module_old_pid=OldPidRef
-               ,call=kapps_call:exec(Routines, Call)
+               ,call=Call1
                }.
 
--spec maybe_start_cf_module(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
-                                   {{pid() | 'undefined', reference() | atom()} | 'undefined', atom()}.
-maybe_start_cf_module(ModuleBin, Data, Call) ->
+-spec find_cf_module(kz_json:object()) -> kz_term:api_atom().
+find_cf_module(Flow) ->
+    ModuleBin = <<"cf_", (kz_json:get_ne_binary_value(<<"module">>, Flow))/binary>>,
+    Data = kz_json:get_json_value(<<"data">>, Flow, kz_json:new()),
     CFModule = kz_term:to_atom(ModuleBin, 'true'),
     IsExported = kz_module:is_exported(CFModule, 'handle', 2),
     SkipModule = kz_json:is_true(<<"skip_module">>, Data, 'false'),
     case IsExported
         andalso (not SkipModule)
     of
-        'true' ->
-            lager:info("moving to action '~s'", [CFModule]),
-            spawn_cf_module(CFModule, Data, Call);
+        'true' -> CFModule;
         'false' ->
             lager:debug("skipping callflow module ~s (handle exported: ~s skip_module: ~s)"
-                       ,[CFModule, IsExported, SkipModule]),
-            cf_module_not_found(Call)
+                       ,[CFModule, IsExported, SkipModule]
+                       ),
+            'undefined'
     end.
 
--spec cf_module_not_found(kapps_call:call()) ->
-                                 {'undefined', atom()}.
-cf_module_not_found(Call) ->
-    lager:error("unknown callflow action, reverting to last action"),
-    continue(self()),
-    {'undefined', kapps_call:kvs_fetch('cf_last_action', Call)}.
+-spec update_actions(atom(), kapps_call:call()) -> kapps_call:call().
+update_actions(Action, Call) ->
+    OldAction = kapps_call:kvs_fetch('cf_last_action', Call),
+    Routines = [{fun kapps_call:kvs_store/3, 'cf_old_action', OldAction}
+               ,{fun kapps_call:kvs_store/3, 'cf_last_action', Action}
+               ],
+    kapps_call:exec(Routines, Call).
 
 %%------------------------------------------------------------------------------
 %% @doc Helper function to spawn a linked callflow module, from the entry
