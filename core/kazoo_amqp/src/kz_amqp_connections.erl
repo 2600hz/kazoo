@@ -217,7 +217,7 @@ broker_available_connections(Broker) ->
                 ],
     ets:select_count(?TAB, MatchSpec).
 
--spec primary_broker() -> kz_term:api_binary().
+-spec primary_broker() -> kz_term:api_ne_binary().
 primary_broker() ->
     Pattern = #kz_amqp_connections{available='true'
                                   ,zone='local'

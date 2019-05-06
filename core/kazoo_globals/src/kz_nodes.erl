@@ -32,10 +32,12 @@
 -export([globals_scope/0]).
 -export([node_encoded/0
         ,node_to_json/1
+        ,node_info/0, pool_state_binding/0
         ]).
 
 -export([with_role/1, with_role/2]).
 -export([print_role/1]).
+
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -598,13 +600,15 @@ print_media_server({Name, JObj}, Format) ->
                 )
               ]).
 
--spec maybe_print_node_info(kz_term:api_object()) -> 'ok'.
+-spec maybe_print_node_info(kz_term:api_object() | kz_json:json_proplist()) -> 'ok'.
 maybe_print_node_info('undefined') -> 'ok';
-maybe_print_node_info(NodeInfo) ->
+maybe_print_node_info([]) -> 'ok';
+maybe_print_node_info([First | Rest]) ->
     io:format(?HEADER_COL ++ ": ", [<<"Node Info">>]),
-    [First | Rest] = kz_json:to_proplist(NodeInfo),
     print_node_info(First),
-    lists:foreach(fun print_each_node_info/1, Rest).
+    lists:foreach(fun print_each_node_info/1, Rest);
+maybe_print_node_info(NodeInfo) ->
+    maybe_print_node_info(kz_json:to_proplist(NodeInfo)).
 
 -spec print_each_node_info({kz_term:ne_binary(), kz_term:ne_binary() | integer()}) -> 'ok'.
 print_each_node_info(KV) ->
@@ -903,7 +907,8 @@ create_node(Heartbeat, #state{zone=Zone
                            ,node_info=node_info()
                            }).
 
--spec normalize_amqp_uri(kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec normalize_amqp_uri(kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
+normalize_amqp_uri('undefined') -> 'undefined';
 normalize_amqp_uri(URI) ->
     kz_term:to_binary(amqp_uri:remove_credentials(kz_term:to_list(URI))).
 
@@ -1100,7 +1105,7 @@ get_zone(JObj, #state{zones=Zones, zone=LocalZone}) ->
 -spec local_zone() -> atom().
 local_zone() -> kz_config:zone().
 
--spec get_amqp_broker(kz_term:api_binary() | kz_json:object()) -> kz_term:api_binary().
+-spec get_amqp_broker(kz_term:api_ne_binary() | kz_json:object()) -> kz_term:api_ne_binary().
 get_amqp_broker('undefined') ->
     normalize_amqp_uri(kz_amqp_connections:primary_broker());
 get_amqp_broker(Broker) when is_binary(Broker) -> normalize_amqp_uri(Broker);
@@ -1224,9 +1229,16 @@ amqp_status_connection(Connection) ->
     Broker = kz_amqp_connection:broker(Connection),
     {Broker, kz_json:from_list([{<<"channel_count">>, Count}])}.
 
+-spec pool_state_binding() -> kz_term:ne_binary().
+pool_state_binding() -> <<?MODULE_STRING, ".amqp.pools">>.
+
 -spec pool_states() -> kz_term:proplist().
 pool_states() ->
-    lists:keysort(1, [pool_state(Pool) || {Pool, _Pid} <- kz_amqp_sup:pools()]).
+    AppPools = kazoo_bindings:map(pool_state_binding(), []),
+    lists:keysort(1, [pool_state(Pool)
+                      || Pools <- AppPools,
+                         {Pool, _Pid} <- Pools
+                     ]).
 
 -spec pool_state(atom()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 pool_state(Name) ->

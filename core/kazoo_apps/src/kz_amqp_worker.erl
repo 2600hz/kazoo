@@ -132,16 +132,29 @@
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link(kz_term:proplist()) -> kz_types:startlink_ret().
+
+-type worker_arg() :: {'amqp_broker', kz_term:ne_binary()} |
+                      {'amqp_queuename_start', kz_term:ne_binary()} |
+                      {'amqp_bindings', gen_listener:bindings()} |
+                      {'amqp_exchanges', gen_listener:declare_excahnged()} |
+                      {'amqp_server_confurms', boolean()} |
+                      {'neg_resp_threshold', pos_integer()} |
+                      {'name', atom() | kz_term:ne_binary()}. %% pool name
+-type worker_args() :: [worker_arg()].
+
+-spec start_link(worker_args()) -> kz_types:startlink_ret().
 start_link(Args) ->
-    gen_listener:start_link(?SERVER, [{'bindings', maybe_bindings(Args)}
-                                     ,{'queue_name', maybe_queuename(Args)}
-                                     ,{'queue_options', ?QUEUE_OPTIONS}
-                                     ,{'consume_options', ?CONSUME_OPTIONS}
-                                      | maybe_broker(Args)
-                                      ++ maybe_exchanges(Args)
-                                      ++ maybe_server_confirms(Args)
-                                     ], [Args]).
+    gen_listener:start_link(?SERVER
+                           ,[{'bindings', maybe_bindings(Args)}
+                            ,{'queue_name', maybe_queuename(Args)}
+                            ,{'queue_options', ?QUEUE_OPTIONS}
+                            ,{'consume_options', ?CONSUME_OPTIONS}
+                             | maybe_broker(Args)
+                             ++ maybe_exchanges(Args)
+                             ++ maybe_server_confirms(Args)
+                            ]
+                           ,[Args]
+                           ).
 
 -spec maybe_broker(kz_term:proplist()) -> kz_term:proplist().
 maybe_broker(Args) ->
@@ -195,8 +208,10 @@ call(Req, PubFun) ->
 call(Req, PubFun, VFun) ->
     call(Req, PubFun, VFun, default_timeout()).
 
--spec call(kz_term:api_terms(), publish_fun(), validate_fun(), timeout()) ->
+-spec call(kz_term:api_terms(), publish_fun(), validate_fun(), timeout() | pid()) ->
                   request_return().
+call(Req, PubFun, VFun, Worker) when is_pid(Worker) ->
+    call(Req, PubFun, VFun, default_timeout(), Worker);
 call(Req, PubFun, VFun, Timeout) ->
     case next_worker() of
         {'error', _}=E -> E;
@@ -217,9 +232,9 @@ call(Req, PubFun, VFun, Timeout, Worker) when is_pid(Worker) ->
                          ,fudge_timeout(Timeout)
                          )
     catch
-        'exit':{timeout, _} ->
+        'exit':{'timeout', _} ->
             lager:warning("request timeout"),
-            {error, timeout};
+            {'error', 'timeout'};
         _E:R ->
             lager:warning("request failed: ~s: ~p", [_E, R]),
             {'error', R}
@@ -537,7 +552,7 @@ request_proplist_filter(_) -> 'true'.
 %% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec init(list()) -> {'ok', state()}.
+-spec init([worker_args()]) -> {'ok', state()}.
 init([Args]) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     lager:debug("starting amqp worker"),
@@ -729,6 +744,7 @@ handle_call(_Request, _From, State) ->
 handle_cast('hibernate', State) ->
     {'noreply', State, 'hibernate'};
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{defer='undefined'}=State) ->
+    lager:debug("AMQP queue created ~s", [Q]),
     {'noreply', State#state{queue=Q}};
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{defer={Call,From}}=State) ->
     kz_util:put_callid(element(2, Call)),
@@ -895,6 +911,7 @@ handle_event(JObj, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
+terminate('shutdown', _State) -> 'ok';
 terminate(_Reason, _State) ->
     lager:debug("amqp worker terminating: ~p", [_Reason]).
 
@@ -1203,7 +1220,15 @@ handle_payload(MsgId, JObj
             {'noreply', State#state{responses=Responses}, 'hibernate'}
     end;
 handle_payload(_MsgId, JObj
-              ,#state{current_msg_id=_CurrMsgId}=State) ->
+              ,#state{current_msg_id='undefined'}=State
+              ) ->
+    lager:debug("received unexpected message with old/expired message id: ~s (~s)"
+               ,[_MsgId, kz_util:find_callid(JObj)]
+               ),
+    {'noreply', State};
+handle_payload(_MsgId, JObj
+              ,#state{current_msg_id=_CurrMsgId}=State
+              ) ->
     _ = kz_util:put_callid(JObj),
     lager:debug("received unexpected message with old/expired message id: ~s, waiting for ~s", [_MsgId, _CurrMsgId]),
     {'noreply', State}.

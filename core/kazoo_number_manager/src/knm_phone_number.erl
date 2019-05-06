@@ -146,8 +146,8 @@ new(T=#{todo := Nums, options := Options}) ->
              ,?NUMBER_STATE_PORT_IN =:= knm_number_options:state(Options)
              }
         of
-            {true,false} -> [{module_name, <<"knm_vitelity">>} | Options];
-            {_,true} -> [{module_name, ?CARRIER_LOCAL} | Options];
+            {'true','false'} -> [{'module_name', <<"knm_vitelity">>} | Options];
+            {_,'true'} -> [{'module_name', ?CARRIER_LOCAL} | Options];
             _ -> Options
         end).
 -else.
@@ -156,10 +156,11 @@ new(T=#{todo := Nums, options := Options}) ->
              ,?NUMBER_STATE_PORT_IN =:= knm_number_options:state(Options)
              }
         of
-            {'true', 'false'} -> [{'module_name', ?PORT_IN_MODULE_NAME} | Options];
-            {_, 'true'} ->       [{'module_name', ?CARRIER_LOCAL} | Options];
+            {'true', 'false'} -> props:set_value('module_name', ?PORT_IN_MODULE_NAME, Options);
+            {_, 'true'} ->       props:set_value('module_name', ?CARRIER_LOCAL, Options);
             _ -> Options
-        end).
+        end
+       ).
 -endif.
 
 -spec new_setters(knm_number_options:options()) -> set_functions().

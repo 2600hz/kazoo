@@ -154,7 +154,7 @@ auth_by(Options, Default) ->
 public_fields(Options) ->
     props:get_value('public_fields', Options, kz_json:new()).
 
--spec state(options()) -> kz_term:api_binary().
+-spec state(options()) -> kz_term:api_ne_binary().
 state(Options) ->
     state(Options, 'undefined').
 

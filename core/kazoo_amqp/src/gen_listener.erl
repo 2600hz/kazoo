@@ -153,6 +153,7 @@
              ,bindings/0
              ,basic_deliver/0
              ,callback_data/0
+             ,declare_exchanges/0
              ]).
 
 %%%=============================================================================
@@ -785,10 +786,9 @@ terminate(Reason, #state{module=Module
                         ,consumer_tags=Tags
                         }) ->
     _ = (catch(lists:foreach(fun kz_amqp_util:basic_cancel/1, Tags))),
-    _ = (catch Module:terminate(Reason, ModuleState)),
-    _ = (catch kz_amqp_channel:release()),
+    _Terminated = (catch Module:terminate(Reason, ModuleState)),
     _ = [listener_federator:stop(F) || {_Broker, F} <- Fs],
-    lager:debug("~s terminated cleanly, going down", [Module]).
+    lager:debug("~s terminated (~p): ~p", [Module, Reason, _Terminated]).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.

@@ -505,7 +505,7 @@ prepare_provisioner_fields(_DeviceId, Context) ->
               ],
     cb_context:setters(Context, Setters).
 
--spec prune_null_provisioner_fields(kz_json:paths(), kz_json:object()) -> kz_json:object().
+-spec prune_null_provisioner_fields(kz_json:keys(), kz_json:object()) -> kz_json:object().
 prune_null_provisioner_fields([], JObj) -> JObj;
 prune_null_provisioner_fields([Key|Keys], JObj) ->
     case kz_json:get_value(Key, JObj) of
@@ -861,7 +861,7 @@ maybe_aggregate_device(DeviceId, Context) ->
         'true' -> aggregate_device(Context)
     end.
 
--spec aggregate_device(kz_json:object()) -> cb_context:context().
+-spec aggregate_device(cb_context:context()) -> cb_context:context().
 aggregate_device(Context) ->
     Device = cb_context:doc(Context),
     lager:debug("adding device to the sip auth aggregate"),
@@ -1016,7 +1016,7 @@ remove_aggregate(DeviceId, Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_delete_provision(kz_term:api_binary(), cb_context:context()) -> 'ok'.
+-spec maybe_delete_provision(kz_term:api_ne_binary(), cb_context:context()) -> cb_context:context().
 maybe_delete_provision(_DeviceId, Context) ->
     MacAddress = provisioner_util:cleanse_mac_address(
                    kzd_devices:mac_address(cb_context:doc(Context))
