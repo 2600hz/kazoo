@@ -136,7 +136,10 @@ validate_customer(Context, ?HTTP_POST) ->
                               'undefined' -> J;
                               _Else ->
                                   Id = kz_datamgr:get_uuid(),
-                                  kz_json:set_value([<<"credit_card">>, <<"id">>], Id, J)
+                                  Props = [{[<<"credit_card">>, <<"id">>], Id}
+                                          ,{[<<"credit_card">>, <<"verify">>], 'true'}
+                                          ],
+                                  kz_json:set_values(Props, J)
                           end
                   end
                  ,fun(J) ->
@@ -161,7 +164,9 @@ validate_cards(Context, ?HTTP_GET) ->
     end;
 validate_cards(Context, ?HTTP_PUT) ->
     Card0 = braintree_card:json_to_record(cb_context:req_data(Context)),
-    Card = Card0#bt_card{customer_id = cb_context:account_id(Context)},
+    Card = Card0#bt_card{customer_id = cb_context:account_id(Context)
+                        ,verify = 'true'
+                        },
     crossbar_util:response(kz_json:new(), cb_context:store(Context, 'braintree', Card)).
 
 -spec validate_addresses(cb_context:context(), path_token()) -> cb_context:context().
