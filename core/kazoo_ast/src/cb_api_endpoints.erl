@@ -902,6 +902,7 @@ def_path_param(<<"{TEMPORAL_RULE_SET}">>=P) -> generic_id_path_param(P);
 def_path_param(<<"{USER_ID}">>=P) -> generic_id_path_param(P);
 def_path_param(<<"{VM_BOX_ID}">>=P) -> generic_id_path_param(P);
 def_path_param(<<"{WEBHOOK_ID}">>=P) -> generic_id_path_param(P);
+def_path_param(<<"{WEBHOOK_NAME}">>=P) -> generic_id_path_param(P);
 def_path_param(<<"{MIGRATION_ID}">>=P) -> generic_id_path_param(P);
 
 %% When param represents an MoDB id (i.e. 32+4+2 bytes of hexa & 1 dash):

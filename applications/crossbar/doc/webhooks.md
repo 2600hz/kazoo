@@ -98,6 +98,50 @@ curl -v -X GET \
 }
 ```
 
+## Get a sample of webhook event payloads
+
+> GET /v2/accounts/{ACCOUNT_ID}/webhooks/samples/{WEBHOOK_NAME}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/webhooks/samples/{WEBHOOK_NAME}
+```
+
+### Example
+
+**Request:**
+
+```shell
+curl -H "'ontent-Type: application/json' 'http://{SERVER}:8000/v2/webhooks/samples/parking'
+```
+
+**Response:**
+
+```json
+{
+  "page_size": 1,
+  "data": [
+    {
+      "account_id": "5a2d994fbae69b1d6b01eb9f0e7dfe62",
+      "call_id": "OWU4NzEwOTgyZWNiMjM0MzI0NjRkZDc4MWVmMjEyOWI",
+      "callee_id_name": "Test Name",
+      "callee_id_number": "5355543456",
+      "caller_id_Number": "+15555432345",
+      "caller_id_name": "Superman",
+      "event_name": "PARK_PARKED",
+      "parking_slot": 1
+    }
+  ],
+  "revision": "{REVISION}",
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success"
+}
+```
+
 ## List webhooks
 
 > GET /v2/accounts/{ACCOUNT_ID}/webhooks

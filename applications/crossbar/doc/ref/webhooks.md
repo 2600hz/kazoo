@@ -112,3 +112,13 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
 ```
 
+## Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/webhooks/samples/{WEBHOOK_NAME}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/samples/{WEBHOOK_NAME}
+```
+

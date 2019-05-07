@@ -36665,6 +36665,15 @@
             "required": true,
             "type": "string"
         },
+        "WEBHOOK_NAME": {
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
+            "name": "WEBHOOK_NAME",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
+            "type": "string"
+        },
         "WHITELABEL_DOMAIN": {
             "in": "path",
             "name": "WHITELABEL_DOMAIN",
@@ -45984,6 +45993,26 @@
                 "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/webhooks/samples/{WEBHOOK_NAME}": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/WEBHOOK_NAME"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"

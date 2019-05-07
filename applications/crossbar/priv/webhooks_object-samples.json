@@ -1,0 +1,20 @@
+[
+    {
+        "account_id": "0e10f9365fb2383d0fa65e907bfe4cb3",
+        "action": "doc_created",
+        "id": "c4c0ad092e57bc1d28e69bbd20dad932",
+        "type": "user"
+    },
+    {
+        "account_id": "0e10f9365fb2383d0fa65e907bfe4cb3",
+        "action": "doc_deleted",
+        "id": "c4c0ad092e57bc1d28e69bbd20dad932",
+        "type": "user"
+    },
+    {
+        "account_id": "0e10f9365fb2383d0fa65e907bfe4cb3",
+        "action": "doc_edited",
+        "id": "c4c0ad092e57bc1d28e69bbd20dad932",
+        "type": "user"
+    }
+]
