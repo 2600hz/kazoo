@@ -138,17 +138,17 @@ handle_error(#data_connection{app=App, props=Props}, Error) ->
 
 -spec connection_established(data_connection()) -> data_connection().
 connection_established(Connection) ->
-    Connection#data_connection{connected = true}.
+    Connection#data_connection{connected = 'true'}.
 
 -spec connection_ready(data_connection()) -> data_connection().
 connection_ready(Connection) ->
-    C = Connection#data_connection{ready = true},
+    C = Connection#data_connection{ready = 'true'},
     kz_dataconnections:update(C),
     C.
 
 -spec reset_connection(data_connection()) -> data_connection().
 reset_connection(Connection) ->
-    C = Connection#data_connection{connected = false, ready = false},
+    C = Connection#data_connection{connected = 'false', ready = 'false'},
     %% TODO: this is disabled for the moment to maintain backward
     %% compatibility with couch_mgr which always assumed the connection
     %% was available

@@ -97,6 +97,10 @@ cleanup_section_prop({<<"zone">>, Zone}) ->
     {<<"zone">>, kz_term:to_atom(strip_quotes(Zone), 'true')};
 cleanup_section_prop({<<"host">>, Host}) ->
     {<<"host">>, strip_quotes(Host)};
+cleanup_section_prop({<<"pool">>, Name}) ->
+    {<<"pool">>, kz_term:to_atom(Name, 'true')};
+cleanup_section_prop({<<"pool_name">>, Name}) ->
+    {<<"pool_name">>, kz_term:to_atom(Name, 'true')};
 cleanup_section_prop(Prop) -> Prop.
 
 cleanup_zone(Zone) ->
