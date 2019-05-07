@@ -129,6 +129,8 @@ handle_cast({'gen_listener',{'created_queue', Queue}}, State) ->
     {'noreply', State#{queue => Queue}, ?POLLING_INTERVAL};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
+handle_cast({'gen_listener',{'federators_consuming', _AreFederatorsConsuming}}, State) ->
+    {'noreply', State};
 handle_cast({'reset_search',QID}, #{cache := Cache} = State) ->
     lager:debug("resetting query id ~s", [QID]),
     ets:delete(Cache, QID),
