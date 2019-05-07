@@ -25,7 +25,7 @@
 %% API
 -export([start_link/0
         ,bind/2, bind/3, bind/4
-        ,unbind/3, unbind/4
+        ,unbind/2, unbind/3, unbind/4
         ,map/2, map/3, pmap/2, pmap/3
         ,fold/2, fold/3
         ,flush/0, flush/1, flush_mod/1
@@ -329,6 +329,11 @@ bind(Binding, Module, Fun, Payload) ->
 -type unbind_result() :: {'ok', 'deleted_binding' | 'updated_binding'} |
                          {'error', 'not_found'}.
 -type unbind_results() :: [unbind_result()].
+
+-spec unbind(kz_term:ne_binary() | kz_term:ne_binaries(), responder_fun()) ->
+                    unbind_result() | unbind_results().
+unbind(Bindings, Fun) ->
+    unbind(Bindings, 'undefined', Fun).
 
 -spec unbind(kz_term:ne_binary() | kz_term:ne_binaries(), module(), responder_fun()) ->
                     unbind_result() | unbind_results().
