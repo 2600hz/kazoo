@@ -94,7 +94,8 @@ init_queues(AccountId, {'error', 'gateway_timeout'}) ->
     wait_a_bit(),
     'ok';
 init_queues(AccountId, {'error', 'not_found'}) ->
-    lager:error("the queues view for ~s appears to be missing; you should probably fix that", [AccountId]);
+    lager:error("the queues view for ~s appears to be missing; you should probably fix that", [AccountId]),
+    'ok';
 init_queues(AccountId, {'error', _E}) ->
     lager:debug("error fetching queues: ~p", [_E]),
     try_queues_again(AccountId),
@@ -102,7 +103,8 @@ init_queues(AccountId, {'error', _E}) ->
     'ok';
 init_queues(AccountId, {'ok', Qs}) ->
     acdc_stats:init_db(AccountId),
-    [acdc_queues_sup:new(AccountId, kz_doc:id(Q)) || Q <- Qs].
+    _ = [acdc_queues_sup:new(AccountId, kz_doc:id(Q)) || Q <- Qs],
+    'ok'.
 
 -spec init_agents(kz_term:ne_binary(), kazoo_data:get_results_return()) -> any().
 init_agents(_, {'ok', []}) -> 'ok';

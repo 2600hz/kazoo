@@ -39,8 +39,7 @@ update_status(?NE_BINARY = AccountId, AgentId, Status, Options) ->
     kz_amqp_worker:cast(API, fun kapi_acdc_stats:publish_status_update/1).
 
 -spec most_recent_status(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                {'ok', kz_term:ne_binary()} |
-                                {'error', any()}.
+                                {'ok', kz_term:ne_binary()}.
 most_recent_status(AccountId, AgentId) ->
     case most_recent_ets_status(AccountId, AgentId) of
         {'ok', _}=OK -> OK;

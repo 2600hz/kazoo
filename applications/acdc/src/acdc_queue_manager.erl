@@ -526,11 +526,10 @@ handle_cast({'reject_member_call', Call, JObj}, #state{account_id=AccountId
     {'noreply', State};
 
 handle_cast({'sync_with_agent', A}, #state{account_id=AccountId}=State) ->
-    case acdc_agent_util:most_recent_status(AccountId, A) of
-        {'ok', Status} ->
-            not acdc_agent_util:status_should_auto_start(Status)
-                andalso gen_listener:cast(self(), {'agent_unavailable', A});
-        _ -> gen_listener:cast(self(), {'agent_available', A})
+    {'ok', Status} = acdc_agent_util:most_recent_status(AccountId, A),
+    case acdc_agent_util:status_should_auto_start(Status) of
+        'true' -> 'ok';
+        'false' -> gen_listener:cast(self(), {'agent_unavailable', A})
     end,
     {'noreply', State};
 
