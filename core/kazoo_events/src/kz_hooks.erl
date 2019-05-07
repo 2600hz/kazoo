@@ -11,12 +11,11 @@
         ,register_rr/0, register_rr/1, register_rr/2
         ,deregister_rr/0, deregister_rr/1, deregister_rr/2
 
-        ,bind/0, bind/1, bind/2
-        ,unbind/0, unbind/1, unbind/2
-        ,handle_event/2
+        ,bind/0, bind/1, bind/2, bind/3
+        ,unbind/0, unbind/1, unbind/2, unbind/3
         ]).
 
--include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include("kazoo_events.hrl").
 
 -spec register() -> 'true'.
 register() -> kz_hooks_util:register().
@@ -64,24 +63,24 @@ bind(AccountId) ->
 
 -spec bind(kz_term:ne_binary(), kz_term:ne_binary()) -> kazoo_bindings:bind_result().
 bind(AccountId, EventName) ->
-    BindingKey = kz_binary:join([<<?MODULE_STRING>>, AccountId, EventName], <<".">>),
-    lager:debug("binding for hook event ~s in account ~s", [EventName, AccountId]),
-    kazoo_bindings:bind(BindingKey, ?MODULE, 'handle_event', [self()]).
+    bind(AccountId, EventName, {'kapps_call_command', 'relay_event', [self()]}).
 
--spec handle_event(pid(), kz_call_event:doc()) -> 'ok'.
-handle_event(Pid, EventJObj) ->
-    Pid ! {'call_event', EventJObj}.
+-spec bind(kz_term:ne_binary(), kz_term:ne_binary(), bind_fun()) -> kazoo_bindings:bind_result().
+bind(AccountId, EventName, BindFun) ->
+    kz_hooks_util:bind(AccountId, EventName, BindFun).
 
--spec unbind() -> kazoo_bindings:bind_result().
+-spec unbind() -> kazoo_bindings:unbind_result().
 unbind() ->
     unbind(<<"*">>, <<"*">>).
 
--spec unbind(kz_term:ne_binary()) -> kazoo_bindings:bind_result().
+-spec unbind(kz_term:ne_binary()) -> kazoo_bindings:unbind_result().
 unbind(AccountId) ->
     unbind(AccountId, <<"*">>).
 
--spec unbind(kz_term:ne_binary(), kz_term:ne_binary()) -> kazoo_bindings:bind_result().
+-spec unbind(kz_term:ne_binary(), kz_term:ne_binary()) -> kazoo_bindings:unbind_result().
 unbind(AccountId, EventName) ->
-    BindingKey = kz_binary:join([<<?MODULE_STRING>>, AccountId, EventName], <<".">>),
-    lager:debug("unbinding for hook event ~s in account ~s", [EventName, AccountId]),
-    kazoo_bindings:unbind(BindingKey, ?MODULE, 'handle_event', [self()]).
+    unbind(AccountId, EventName, {'kapps_call_command', 'relay_event', [self()]}).
+
+-spec unbind(kz_term:ne_binary(), kz_term:ne_binary(), bind_fun()) -> kazoo_bindings:unbind_result().
+unbind(AccountId, EventName, BindFun) ->
+    kz_hooks_util:unbind(AccountId, EventName, BindFun).
