@@ -71,10 +71,10 @@ should_dry_run(Context) ->
 
 -spec check_creditably(cb_context:context(), kz_services:services(), kz_services_invoices:invoices(), boolean() | number()) ->
                               cb_context:context().
-check_creditably(Context, _Services, _Quotes, 'true') ->
+check_creditably(Context, _Services, _Quotes, 'false') ->
     lager:debug("request has no billable additions, skipping standing check"),
     Context;
-check_creditably(Context, Services, Quotes, 'false') ->
+check_creditably(Context, Services, Quotes, 'true') ->
     lager:debug("request has billable additions, verifying account standing"),
     Key = [<<"difference">>, <<"billable">>],
     Additions = [begin
