@@ -741,6 +741,7 @@ handle_down_match({'channel', #kz_amqp_assignment{channel=Channel
     lager:debug("sticky channel ~p on ~s went down while still assigned to consumer ~p: ~p"
                ,[Channel, Broker, Consumer, Reason]
                ),
+    Consumer ! {'kz_amqp_assignment', 'lost_channel'},
     maybe_defer_reassign(Assignment, Reason).
 
 -spec maybe_defer_reassign(#kz_amqp_assignment{}, any()) -> 'ok'.

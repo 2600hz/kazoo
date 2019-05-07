@@ -94,6 +94,7 @@ handle_cast({'gen_listener', {'is_consuming', 'true'}}, #state{parent=Parent, br
     gen_server:cast(Parent, {'federator_is_consuming', Broker, 'true'}),
     {'noreply', State};
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
@@ -102,6 +103,7 @@ handle_cast(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
+    lager:info("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
 -spec handle_event(kz_json:object(), kz_term:proplist(), state()) -> gen_listener:handle_event_return().
