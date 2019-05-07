@@ -37,6 +37,9 @@ maybe_dry_run(Context, ProposedJObj) ->
 -spec maybe_dry_run(cb_context:context(), billables(), billables()) -> cb_context:context().
 maybe_dry_run(Context, CurrentJObj, ProposedJObj) ->
     AccountId = cb_context:account_id(Context),
+    lager:debug("verifying billing services requirements for account ~s"
+               ,[AccountId]
+               ),
     AuthAccountId = cb_context:auth_account_id(Context),
     Services = kz_services:fetch(AuthAccountId),
     Updated = kz_services:set_updates(Services
@@ -54,8 +57,10 @@ maybe_dry_run(Context, CurrentJObj, ProposedJObj) ->
 -spec dry_run(cb_context:context(), kz_services_invoices:invoices(), boolean()) ->
                      cb_context:context().
 dry_run(Context, _Quotes, 'false') ->
+    lager:debug("request has no billable additions, allowing"),
     Context;
 dry_run(Context, Quotes, 'true') ->
+    lager:debug("request has not accepted notice of billable additions, rejecting"),
     JObj = kz_services_invoices:public_json(Quotes),
     crossbar_util:response_402(JObj, Context).
 
@@ -66,9 +71,11 @@ should_dry_run(Context) ->
 
 -spec check_creditably(cb_context:context(), kz_services:services(), kz_services_invoices:invoices(), boolean() | number()) ->
                               cb_context:context().
-check_creditably(Context, _Services, _Quotes, 'false') ->
+check_creditably(Context, _Services, _Quotes, 'true') ->
+    lager:debug("request has no billable additions, skipping standing check"),
     Context;
-check_creditably(Context, Services, Quotes, 'true') ->
+check_creditably(Context, Services, Quotes, 'false') ->
+    lager:debug("request has billable additions, verifying account standing"),
     Key = [<<"difference">>, <<"billable">>],
     Additions = [begin
                      Changes = kz_services_item:changes(Item),
@@ -96,6 +103,7 @@ check_creditably(Context, Services, Quotes, Amount) ->
         {'true', _} -> Context;
         {'false', Reason} ->
             ErrorJObj = kz_json:from_map(Reason),
+            lager:debug("request denied for billing reasons: ~p", [ErrorJObj]),
             cb_context:add_system_error(402, 'billing_issue', ErrorJObj, Context)
     end.
 

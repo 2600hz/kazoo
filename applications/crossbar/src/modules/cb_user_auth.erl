@@ -111,7 +111,7 @@ authorize_nouns(Context
             lager:debug("authorizing request"),
             'true';
         'false' ->
-            lager:error("non-admin user ~s in non super-duper admin account tries to impersonate user ~s in account ~s"
+            lager:error("non-admin user ~s in non super-duper admin account ~s tried to impersonate user ~s in account ~s"
                        ,[cb_context:auth_user_id(Context), cb_context:auth_account_id(Context), UserId, AccountId]
                        ),
             {'stop', cb_context:add_system_error('forbidden', Context)}
