@@ -35,6 +35,7 @@
 -define(PARK_DELAY_CHECK_TIME, kapps_config:get_integer(?MOD_CONFIG_CAT, ?PARK_DELAY_CHECK_TIME_KEY, ?MILLISECONDS_IN_SECOND * 3)).
 -define(PARKING_APP_NAME, <<"park">>).
 -define(MAX_SLOT_NUMBER_KEY, <<"max_slot_number">>).
+-define(MAX_SLOT_EXCEEDED, 'max_slot_exceeded').
 
 %%------------------------------------------------------------------------------
 %% @doc Entry point for this module sends an arbitrary response back to the
@@ -122,8 +123,8 @@ direct_park(SlotNumber, Slot, ParkedCalls, Data, Call) ->
     MaxSlotNumber = kz_json:get_integer_value(?MAX_SLOT_NUMBER_KEY, Data),
     case save_slot(SlotNumber, MaxSlotNumber, Slot, ParkedCalls, Call) of
         {'ok', _} -> parked_call(SlotNumber, Slot, Data, Call);
-        {'error', 'max_slots_exceeded'} ->
-            cf_exe:continue(Call);
+        {'error', ?MAX_SLOT_EXCEEDED} ->
+            cf_exe:continue(kz_term:to_binary(?MAX_SLOT_EXCEEDED), Call);
         {'error', _Reason} ->
             lager:info("unable to save direct park slot: ~p", [_Reason]),
             cf_exe:stop(Call)
@@ -376,18 +377,18 @@ save_slot(SlotNumber, MaxSlotNumber, Slot, ParkedCalls, Call) ->
                 andalso SlotNumberInt > MaxSlotNumber,
             MaxExceeded
                 andalso lager:info("no more slots available - max_slot_number (~b) has been exceeded", [MaxSlotNumber]),
-            save_slot_check_max_slots_exceeded(SlotNumber, MaxExceeded, Slot, ParkedCalls, Call)
+            save_slot_check_max_slot_exceeded(SlotNumber, MaxExceeded, Slot, ParkedCalls, Call)
     catch
         'error':'badarg' ->
             save_slot(SlotNumber, Slot, ParkedCalls, Call)
     end.
 
--spec save_slot_check_max_slots_exceeded(kz_term:ne_binary(), boolean(), kz_json:object(), kz_json:object(), kapps_call:call()) ->
-                                                {'ok', kz_json:object()} |
-                                                {'error', atom()}.
-save_slot_check_max_slots_exceeded(_, 'true', _, _, _) ->
-    {'error', 'max_slots_exceeded'};
-save_slot_check_max_slots_exceeded(SlotNumber, 'false', Slot, ParkedCalls, Call) ->
+-spec save_slot_check_max_slot_exceeded(kz_term:ne_binary(), boolean(), kz_json:object(), kz_json:object(), kapps_call:call()) ->
+                                               {'ok', kz_json:object()} |
+                                               {'error', atom()}.
+save_slot_check_max_slot_exceeded(_, 'true', _, _, _) ->
+    {'error', ?MAX_SLOT_EXCEEDED};
+save_slot_check_max_slot_exceeded(SlotNumber, 'false', Slot, ParkedCalls, Call) ->
     save_slot(SlotNumber, Slot, ParkedCalls, Call).
 
 -spec save_slot(kz_term:ne_binary(), kz_json:object(), kz_json:object(), kapps_call:call()) ->
