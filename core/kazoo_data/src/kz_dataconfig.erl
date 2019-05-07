@@ -28,7 +28,7 @@ connection_options(Props) ->
         Section ->
             lager:debug("adding connect_options from ~s", [Section]),
             Options = props:get_value(<<"generic">>, kz_config:get(Section), []),
-            [{<<"connect_options">>, Options} | props:delete(<<"connect_options">>, Props)]
+            [{<<"connect_options">>, normalize_connect_options(Options)} | props:delete(<<"connect_options">>, Props)]
     end.
 
 -spec connection(kz_term:proplist() | map()) -> data_connection().
@@ -78,3 +78,14 @@ ensure_driver_app(#{driver := App}) ->
 is_driver_app(App) ->
     Funs = kz_data:behaviour_info('callbacks'),
     lists:all(fun({Fun, Arity}) -> erlang:function_exported(App, Fun, Arity) end, Funs).
+
+%% hackney connect_options which follow gen_tcp connect options
+normalize_connect_options(Options) ->
+    [normalize_connect_option(Option) || Option <- Options].
+
+normalize_connect_option({<<"keepalive">>, Keep}) ->
+    {'keepalive', kz_term:is_true(Keep)};
+normalize_connect_option({Key, Value}) ->
+    {kz_term:to_atom(Key, 'true'), Value};
+normalize_connect_option(Key) ->
+    kz_term:to_atom(Key).
