@@ -205,6 +205,7 @@ do_warn_path({_, []}, Acc) -> Acc;
 do_warn_path({_, Beams}, {N, PLT, 'true'}) ->
     {N + scan_and_print(PLT, Beams), PLT, 'true'};
 do_warn_path({Type, Beams}, {N, PLT, 'false'}) ->
+    garbage_collect(self()),
     try lists:split(3, Beams) of
         {Three, Rest} ->
             do_warn_path({Type, Rest}
