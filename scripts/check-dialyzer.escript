@@ -44,9 +44,10 @@ handle(KazooPLT, Options, Args) ->
     ".plt" = filename:extension(KazooPLT),
 
     Env = string:tokens(os:getenv("TO_DIALYZE", ""), " "),
+    IsCI = kz_term:is_true(os:getenv("IS_CI", 'false')),
 
     handle_paths(KazooPLT
-                ,Options
+                ,[{'split_level', split_level(IsCI)} | Options]
                 ,filter_for_erlang_files(lists:usort(Env ++ Args))
                 ).
 
@@ -118,7 +119,7 @@ warn(PLT, Options, Paths) ->
 
     AllModules = find_unknown_modules(PLT, BeamPaths, GoHard),
 
-    do_warn(PLT, AllModules, Bulk).
+    do_warn(PLT, props:set_value('bulk', Bulk, Options), AllModules).
 
 find_unknown_modules(_PLT, BeamPaths, 'false') -> BeamPaths;
 find_unknown_modules(PLT, BeamPaths, 'true') ->
@@ -168,13 +169,13 @@ fix_path(Path, CWD) ->
         _ -> Path
     end.
 
-do_warn(PLT, Paths, InBulk) ->
-    {Apps, Beams} = maybe_separate_steps(Paths, InBulk),
+do_warn(PLT, Options, Paths) ->
+    {Apps, Beams} = maybe_separate_steps(Paths, props:is_true('bulk', Options)),
 
-    {N, _PLT, InBulk} = lists:foldl(fun do_warn_path/2
-                                   ,{0, PLT, InBulk}
-                                   ,[{'beams', Beams} | Apps]
-                                   ),
+    {N, _PLT, _Options} = lists:foldl(fun do_warn_path/2
+                                     ,{0, PLT, Options}
+                                     ,[{'beams', Beams} | Apps]
+                                     ),
     N.
 
 maybe_separate_steps(Paths, InBulk) ->
@@ -202,19 +203,26 @@ ensure_kz_types(Beams) ->
     end.
 
 do_warn_path({_, []}, Acc) -> Acc;
-do_warn_path({_, Beams}, {N, PLT, 'true'}) ->
-    {N + scan_and_print(PLT, Beams), PLT, 'true'};
-do_warn_path({Type, Beams}, {N, PLT, 'false'}) ->
-    garbage_collect(self()),
-    try lists:split(3, Beams) of
+do_warn_path({Type, Beams}, {N, PLT, Options}) ->
+    do_warn_path({Type, Beams}, {N, PLT, Options}, props:is_true('bulk', Options)).
+
+do_warn_path({_Type, Beams}, {N, PLT, Options}, 'true') ->
+    {N + scan_and_print(PLT, Beams), PLT, Options};
+do_warn_path({Type, Beams}, {N, PLT, Options}, 'false') ->
+    try lists:split(props:get_integer_value('split_level', Options), Beams) of
         {Three, Rest} ->
             do_warn_path({Type, Rest}
-                        ,{N + scan_and_print(PLT, Three), PLT, 'false'}
+                        ,{N + scan_and_print(PLT, Three), PLT, Options}
                         )
     catch
         'error':'badarg' ->
-            {N + scan_and_print(PLT, Beams), PLT, 'false'}
+            {N + scan_and_print(PLT, Beams), PLT, Options}
     end.
+
+split_level('true') -> 1;
+split_level('false') -> 5;
+split_level(Options) when is_list(Options) ->
+    split_level(props:is_true('is_ci', Options)).
 
 scan_and_print(PLT, Bs) ->
     Beams = ensure_kz_types(Bs),
