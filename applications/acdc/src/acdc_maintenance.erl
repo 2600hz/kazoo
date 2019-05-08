@@ -276,7 +276,7 @@ maybe_migrate(AccountId) ->
                                               ,[{'account_id', AccountId}
                                                ,{'type', <<"acdc_activation">>}
                                                ]),
-            kz_datamgr:ensure_saved(?KZ_ACDC_DB, Doc),
+            _ = kz_datamgr:ensure_saved(?KZ_ACDC_DB, Doc),
             io:format("saved account ~s to db~n", [AccountId]);
         {'error', _E} ->
             io:format("failed to query queue listing for account ~s: ~p~n", [AccountId, _E])
@@ -456,7 +456,7 @@ agent_login(AcctId, AgentId) ->
                ,{<<"Agent-ID">>, AgentId}
                 |  kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
-    kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_login/1),
+    _ = kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_login/1),
     lager:info("published login update for agent").
 
 -spec agent_logout(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
@@ -467,7 +467,7 @@ agent_logout(AcctId, AgentId) ->
                ,{<<"Agent-ID">>, AgentId}
                 |  kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
-    kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_logout/1),
+    _ = kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_logout/1),
     lager:info("published logout update for agent").
 
 -spec agent_pause(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
@@ -484,7 +484,7 @@ agent_pause(AcctId, AgentId, Timeout) ->
                ,{<<"Timeout">>, kz_term:to_integer(Timeout)}
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
-    kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_pause/1),
+    _ = kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_pause/1),
     lager:info("published pause for agent").
 
 -spec agent_resume(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
@@ -495,7 +495,7 @@ agent_resume(AcctId, AgentId) ->
                ,{<<"Agent-ID">>, AgentId}
                 |  kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
-    kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_resume/1),
+    _ = kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_resume/1),
     lager:info("published resume for agent").
 
 -spec agent_queue_login(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
@@ -507,7 +507,7 @@ agent_queue_login(AcctId, AgentId, QueueId) ->
                ,{<<"Queue-ID">>, QueueId}
                 |  kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
-    kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_login_queue/1),
+    _ = kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_login_queue/1),
     lager:info("published login update for agent").
 
 -spec agent_queue_logout(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
@@ -519,5 +519,5 @@ agent_queue_logout(AcctId, AgentId, QueueId) ->
                ,{<<"Queue-ID">>, QueueId}
                 |  kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
-    kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_logout_queue/1),
+    _ = kz_amqp_worker:cast(Update, fun kapi_acdc_agent:publish_logout_queue/1),
     lager:info("published logout update for agent").

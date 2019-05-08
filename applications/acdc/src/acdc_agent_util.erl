@@ -211,7 +211,7 @@ most_recent_ets_statuses(AccountId, AgentId, Options) ->
 most_recent_db_statuses(AccountId) ->
     most_recent_db_statuses(AccountId, 'undefined', []).
 
--spec most_recent_db_statuses(kz_term:ne_binary(), kz_term:api_binary()) ->
+-spec most_recent_db_statuses(kz_term:ne_binary(), kz_term:api_binary() | kz_term:proplist()) ->
                                      statuses_return() |
                                      {'error', any()}.
 most_recent_db_statuses(AccountId, ?NE_BINARY = AgentId) ->
