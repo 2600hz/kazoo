@@ -216,8 +216,10 @@ get_fs_app(_Node, _UUID, JObj, <<"privacy">>) ->
     case kapi_dialplan:privacy_v(JObj) of
         'false' -> {'error', <<"privacy failed to execute as JObj did not validate">>};
         'true' ->
-            Mode = kz_json:get_ne_binary_value(<<"Privacy-Mode">>, JObj),
-            {<<"privacy">>, Mode}
+            case kz_json:get_ne_binary_value(<<"Privacy-Mode">>, JObj) of
+                <<"none">> -> {<<"privacy">>, <<"no">>};
+                Mode -> {<<"privacy">>, Mode}
+            end
     end;
 
 get_fs_app(Node, UUID, JObj, <<"ring">>) ->
