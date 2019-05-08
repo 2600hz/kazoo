@@ -55,6 +55,9 @@
 -export([ensure_aggregate_devices/0
         ,ensure_aggregate_device/1
         ]).
+-export([ensure_aggregate_faxboxes/0
+        ,ensure_aggregate_faxboxes/1
+        ]).
 -export([ensure_tree_accounts/0
         ,ensure_tree_accounts_dry_run/0
         ,ensure_tree_accounts/1
@@ -121,6 +124,7 @@
 
 -define(VMBOX_VIEW, <<"vmboxes/crossbar_listing">>).
 -define(PMEDIA_VIEW, <<"media/listing_private_media">>).
+-define(FAXBOX_VIEW, <<"faxbox/crossbar_listing">>).
 
 -define(DEFAULT_PAUSE, 1 * ?MILLISECONDS_IN_SECOND).
 
@@ -591,10 +595,54 @@ ensure_aggregates(Account) ->
     io:format("ensuring necessary documents from account '~s' are in aggregate dbs~n"
              ,[Account]
              ),
+    _ = ensure_aggregate_faxbox(Account),
     _ = ensure_aggregate_device(Account),
     _ = ensure_aggregate_account(Account),
     _ = kazoo_services_maintenance:reconcile(Account),
     'ok'.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec ensure_aggregate_faxboxes() -> 'ok'.
+ensure_aggregate_faxboxes() ->
+    ensure_aggregate_faxboxes(kapps_util:get_all_accounts()).
+
+-spec ensure_aggregate_faxboxes(kz_term:ne_binaries()) -> 'ok'.
+ensure_aggregate_faxboxes([]) -> 'ok';
+ensure_aggregate_faxboxes([Account|Accounts]) ->
+    _ = ensure_aggregate_faxbox(Account),
+    ensure_aggregate_faxboxes(Accounts).
+
+-spec ensure_aggregate_faxbox(kz_term:ne_binary()) -> 'ok'.
+ensure_aggregate_faxbox(Account) ->
+    AccountDb = kz_util:format_account_db(Account),
+    case kz_datamgr:get_results(AccountDb, ?FAXBOX_VIEW, ['include_docs']) of
+        {'ok', Faxboxes} ->
+            ensure_aggregate_faxbox_docs(Faxboxes);
+        {'error', _} -> 'ok'
+    end.
+
+-spec ensure_aggregate_faxbox_docs(kz_json:objects()) -> 'ok'.
+ensure_aggregate_faxbox_docs([]) -> 'ok';
+ensure_aggregate_faxbox_docs([Faxbox|Faxboxes]) ->
+    ?SUP_LOG_DEBUG("trying to update faxbox ~s on account ~s", [kz_doc:id(Faxbox), kz_doc:account_id(Faxbox)]),
+    update_or_add_to_faxes_db(kz_json:get_value(<<"doc">>, Faxbox)),
+    ensure_aggregate_faxbox_docs(Faxboxes).
+
+-spec update_or_add_to_faxes_db(kz_json:object()) -> 'ok'.
+update_or_add_to_faxes_db(JObj) ->
+    <<"faxbox">> = kz_doc:type(JObj),
+    case kz_datamgr:lookup_doc_rev(?KZ_FAXES_DB, kz_doc:id(JObj)) of
+        {'ok', Rev} ->
+            _ = kz_datamgr:save_doc(?KZ_FAXES_DB, kz_doc:set_revision(JObj, Rev)),
+            'ok';
+        {'error', 'not_found'} ->
+            _ = kz_datamgr:save_doc(?KZ_FAXES_DB, kz_doc:delete_revision(JObj)),
+            'ok';
+        {'error', _Message} -> 'ok'
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
