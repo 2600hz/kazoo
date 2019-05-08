@@ -19,17 +19,17 @@ handle(Data, Call) ->
         andalso cf_flow:lookup(Number, AccountId)
     of
         'false' ->
-            update_call(Number, Data, cf_exe:get_call(Call)),
+            update_call(Number, Data, Call),
             cf_exe:continue(Call);
         {'ok', CallFlow, _} ->
-            update_call(Number, Data, cf_exe:get_call(Call)),
+            update_call(Number, Data, Call),
             cf_exe:branch(kz_json:get_value(<<"flow">>, CallFlow), Call);
         {'error', _} ->
             cf_exe:stop(Call)
     end.
 
 -spec update_call(kz_term:ne_binary(), kz_json:object(), {'ok', kapps_call:call()}) -> 'ok'.
-update_call(Number, Data, {'ok', Call}) ->
+update_call(Number, Data, Call) ->
     Mode = kz_json:get_ne_binary_value(<<"mode">>, Data, <<"full">>),
     Strategy = kz_json:get_ne_binary_value(<<"endpoint_strategy">>, Data, <<"overwrite">>),
 
@@ -42,7 +42,7 @@ update_call(Number, Data, {'ok', Call}) ->
          ,should_use_endpoint_privacy(Strategy)
          }
         ],
-    cf_exe:set_call(kapps_call:exec(Routines, Call)).
+    cf_exe:update_call(kapps_call:exec(Routines, Call)).
 
 -spec update_number_func(kz_term:ne_binary(), kapps_call:call(), kz_term:ne_binary(), boolean()) -> [any()].
 update_number_func('undefined', _Call, Mode, Strategy) ->
