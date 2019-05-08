@@ -627,7 +627,6 @@ ensure_aggregate_faxbox(Account) ->
 -spec ensure_aggregate_faxbox_docs(kz_json:objects()) -> 'ok'.
 ensure_aggregate_faxbox_docs([]) -> 'ok';
 ensure_aggregate_faxbox_docs([Faxbox|Faxboxes]) ->
-    ?SUP_LOG_DEBUG("trying to update faxbox ~s on account ~s", [kz_doc:id(Faxbox), kz_doc:account_id(Faxbox)]),
     update_or_add_to_faxes_db(kz_json:get_value(<<"doc">>, Faxbox)),
     ensure_aggregate_faxbox_docs(Faxboxes).
 
