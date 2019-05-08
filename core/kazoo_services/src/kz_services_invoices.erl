@@ -39,10 +39,9 @@ empty() -> [].
 %%------------------------------------------------------------------------------
 -spec create(kz_services:services()) -> invoices().
 create(Services) ->
-    lager:debug("creating current invoices", []),
-    CurrentInvoices = create_current_invoices(Services),
-    lager:debug("creating proposed invoices", []),
-    ProposedInvoices = create_proposed_invoices(Services),
+    HydratedServices = kz_services:hydrate_plans(Services),
+    CurrentInvoices = create_current_invoices(HydratedServices),
+    ProposedInvoices = create_proposed_invoices(HydratedServices),
     annotate(Services, CurrentInvoices, ProposedInvoices).
 
 -spec annotate(kz_services:services(), invoices(), invoices()) -> invoices().
@@ -99,15 +98,13 @@ annotate(Services, CurrentInvoices, [ProposedInvoice|ProposedInvoices], Invoices
 
 -spec create_current_invoices(kz_services:services()) -> invoices().
 create_current_invoices(Services) ->
-    ServicesJObj = kz_services:current_services_jobj(Services),
-    Plans = kz_services_plans:fetch(
-              kz_services:set_services_jobj(Services, ServicesJObj)
-             ),
-    create_invoices(reset(Services), Plans).
+    lager:debug("creating current invoices", []),
+    create_invoices(reset(Services), kz_services:current_plans(Services)).
 
 -spec create_proposed_invoices(kz_services:services()) -> invoices().
 create_proposed_invoices(Services) ->
-    create_invoices(Services, kz_services:plans(Services)).
+    lager:debug("creating proposed invoices", []),
+    create_invoices(Services, kz_services:proposed_plans(Services)).
 
 -spec create_invoices(kz_services:services(), kz_services_plans:plans()) -> invoices().
 create_invoices(Services, Plans) ->
