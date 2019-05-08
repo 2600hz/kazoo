@@ -66,6 +66,17 @@ allow_number_additions(AccountId) ->
                                           ,[{kzd_accounts:path_allow_number_additions(), 'true'}]
                                           ).
 
+-spec patch_account(pqc_cb_api:state(), kz_json:object(), kz_term:ne_binary()) -> pqc_cb_api:response().
+patch_account(API, ReqJObj, AccountId) ->
+    RequestEnvelope = pqc_cb_api:create_envelope(ReqJObj),
+
+    pqc_cb_api:make_request([200]
+                           ,fun kz_http:patch/3
+                           ,account_url(AccountId)
+                           ,pqc_cb_api:request_headers(API)
+                           ,kz_json:encode(RequestEnvelope)
+                           ).
+
 -spec delete_account(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
 delete_account(API, AccountId) ->
     URL = account_url(AccountId),
@@ -147,12 +158,13 @@ postcondition(Model
 
 -spec seq() -> 'ok'.
 seq() ->
-    enable_and_delete_topup().
-
--spec enable_and_delete_topup() -> 'ok'.
-enable_and_delete_topup() ->
     API = pqc_cb_api:init_api(['crossbar'], ['cb_accounts']),
+    'ok' = enable_and_delete_topup(API),
+    enable_and_disable_account_using_patch(API).
 
+-spec enable_and_delete_topup(pqc_cb_api:state()) -> 'ok'.
+enable_and_delete_topup(API) ->
+    ?INFO("STARTING ENABLE_AND_DISABLE_TOPUP TEST"),
     %% Make sure everything is clean for the test.
     cleanup(API),
 
@@ -179,7 +191,31 @@ enable_and_delete_topup() ->
     'undefined' = kz_json:get_ne_value(<<"topup">>, kz_json:decode(Resp1)),
 
     cleanup(API),
-    ?INFO("FINISHED ENABLE AND DISABLE TOPUP CHECKS").
+    ?INFO("FINISHED ENABLE_AND_DISABLE_TOPUP TEST").
+
+-spec enable_and_disable_account_using_patch(pqc_cb_api:state()) -> 'ok'.
+enable_and_disable_account_using_patch(API) ->
+    ?INFO("STARTING ENABLE_AND_DISABLE_ACCOUNT_USING_PATCH TEST"),
+    %% Make sure everything is clean for the test.
+    cleanup(API),
+
+    AccountResp = create_account(API, hd(?ACCOUNT_NAMES)),
+    ?INFO("created account: ~s", [AccountResp]),
+
+    AccountId = kz_json:get_binary_value(<<"id">>, pqc_cb_response:data(AccountResp)),
+
+    ?INFO("Disabling account"),
+    ReqJObj = kz_json:from_list([{<<"enabled">>,false}]),
+    Disabled = pqc_cb_response:data(patch_account(API, ReqJObj, AccountId)),
+    'false' = kz_json:get_atom_value(<<"enabled">>, Disabled),
+
+    ?INFO("Enabling account"),
+    ReqJObj1 = kz_json:from_list([{<<"enabled">>,true}]),
+    Enabled = pqc_cb_response:data(patch_account(API, ReqJObj1, AccountId)),
+    'true' = kz_json:get_atom_value(<<"enabled">>, Enabled),
+
+    cleanup(API),
+    ?INFO("FINISHED ENABLE_AND_DISABLE_ACCOUNT_USING_PATCH TEST").
 
 -spec cleanup(pqc_cb_api:state()) -> any().
 cleanup(API) ->
