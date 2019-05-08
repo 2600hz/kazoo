@@ -194,7 +194,7 @@ current_plans(Services) ->
     UpdatedObjectPlans = find_object_plans(CurrentBillables, ProposedBillables),
 
     Routines = [{kz_json:are_equal(CurrentPlans, ProposedPlans)
-                ,{services_jobj, kz_services:current_services_jobj(Services)}
+                ,{services_jobj, current_services_jobj(Services)}
                 }
                ,{kz_term:is_empty(UpdatedObjectPlans)
                 ,{modified_object_plans, UpdatedObjectPlans}
@@ -212,7 +212,7 @@ proposed_plans(Services) ->
     UpdatedObjectPlans = find_object_plans(ProposedBillables, CurrentBillables),
 
     Routines = [{kz_json:are_equal(CurrentPlans, ProposedPlans)
-                ,{services_jobj, kz_services:services_jobj(Services)}
+                ,{services_jobj, services_jobj(Services)}
                 }
                ,{kz_term:is_empty(UpdatedObjectPlans)
                 ,{modified_object_plans, UpdatedObjectPlans}
