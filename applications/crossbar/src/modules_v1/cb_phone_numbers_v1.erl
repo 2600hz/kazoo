@@ -519,7 +519,7 @@ collection_action(Context, ?HTTP_PUT, Number, ?ACTIVATE) ->
               ],
     case knm_number:move(Number, cb_context:account_id(Context), Options) of
         {'ok', KNum} ->
-            kz_json:delete_key(<<"numbers">>, knm_number:to_public_json(KNum));
+            {'ok', kz_json:delete_key(<<"numbers">>, knm_number:to_public_json(KNum))};
         _Else -> _Else
     end.
 
