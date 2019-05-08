@@ -124,7 +124,7 @@ direct_park(SlotNumber, Slot, ParkedCalls, Data, Call) ->
     case save_slot(SlotNumber, MaxSlotNumber, Slot, ParkedCalls, Call) of
         {'ok', _} -> parked_call(SlotNumber, Slot, Data, Call);
         {'error', ?MAX_SLOT_EXCEEDED} ->
-            cf_exe:continue(kz_term:to_binary(?MAX_SLOT_EXCEEDED), Call);
+            cf_exe:continue(kz_term:to_upper_binary(?MAX_SLOT_EXCEEDED), Call);
         {'error', _Reason} ->
             lager:info("unable to save direct park slot: ~p", [_Reason]),
             cf_exe:stop(Call)
