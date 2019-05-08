@@ -43,10 +43,6 @@
         ,encode_start_key/1, decode_start_key/1
         ]).
 
--ifdef(TEST).
--export([csv_body/2]).
--endif.
-
 -include_lib("kernel/include/file.hrl").
 -include("crossbar.hrl").
 
@@ -171,7 +167,7 @@ get_content_type(Req) ->
             <<Main/binary, "/", Sub/binary>>
     end.
 
--spec get_req_data(cb_context:context(), cowboy_req:req(), content_type(), kz_json:object()) ->
+-spec get_req_data(cb_context:context(), cowboy_req:req(), kz_term:api_ne_binary(), kz_json:object()) ->
                           {cb_context:context(), cowboy_req:req()} |
                           stop_return().
 get_req_data(Context, Req0, 'undefined', QS) ->
@@ -965,7 +961,7 @@ is_known_content_type(Req0, Context0, _ReqVerb) ->
 
     is_known_content_type(Req0, Context1, ensure_content_type(CT), cb_context:content_types_accepted(Context1)).
 
--spec is_known_content_type(cowboy_req:req(), cb_context:context(), content_type(), list()) ->
+-spec is_known_content_type(cowboy_req:req(), cb_context:context(), cowboy_content_type(), crossbar_content_handlers()) ->
                                    {boolean(), cowboy_req:req(), cb_context:context()}.
 is_known_content_type(Req, Context, CT, []) ->
     is_known_content_type(Req, Context, CT, ?CONTENT_ACCEPTED);
@@ -980,16 +976,16 @@ is_known_content_type(Req, Context, CT, CTAs) ->
     lager:debug("is ~p acceptable content type: ~s", [CT, IsAcceptable]),
     {IsAcceptable, Req, cb_context:set_content_types_accepted(Context, CTAs)}.
 
--spec fold_in_content_type({kz_term:ne_binary(), kz_term:ne_binary()}, list()) -> list().
+-spec fold_in_content_type({kz_term:ne_binary(), kz_term:ne_binary()}, cowboy_content_type()) -> cowboy_content_type().
 fold_in_content_type({Type, Sub}, Acc) ->
     [{Type, Sub, []} | Acc].
 
--spec is_acceptable_content_type(content_type(), [content_type()]) -> boolean().
+-spec is_acceptable_content_type(cowboy_content_type(), [cowboy_content_type()]) -> boolean().
 is_acceptable_content_type(CTA, CTAs) ->
     ['true' || ModCTA <- CTAs, content_type_matches(CTA, ModCTA)] =/= [].
 
 %% (ReqContentType, ModuleContentType)
--spec content_type_matches(content_type(), content_type()) -> boolean().
+-spec content_type_matches(cowboy_content_type(), cowboy_content_type()) -> boolean().
 content_type_matches({Type, _, _}, {Type, <<"*">>, '*'}) ->
     'true';
 content_type_matches({Type, SubType, _}, {Type, SubType, '*'}) ->
@@ -1005,7 +1001,7 @@ content_type_matches(CTA, CT) when is_binary(CTA), is_binary(CT) ->
 content_type_matches(_CTA, _CTAs) ->
     'false'.
 
--spec ensure_content_type(content_type() | 'undefined') -> content_type().
+-spec ensure_content_type(cowboy_content_type() | 'undefined') -> cowboy_content_type().
 ensure_content_type('undefined') -> ?CROSSBAR_DEFAULT_CONTENT_TYPE;
 ensure_content_type(CT) -> CT.
 

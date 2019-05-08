@@ -468,7 +468,7 @@ maybe_start_connection(Tag, Params) ->
         Server -> {Tag, Server}
     end.
 
--spec start_connection(atom(), map()) -> {atom(), server()}.
+-spec start_connection(kz_term:ne_binary(), map()) -> {atom(), server()}.
 start_connection(Tag, Params) ->
     Connection = kz_dataconfig:connection(kz_maps:keys_to_atoms(Params#{tag => Tag})),
     kz_dataconnections:add(Connection),

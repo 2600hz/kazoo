@@ -42,6 +42,7 @@
 
 -type content_conversion_fun() :: atom().
 -type content_type_callbacks() :: [{content_type(), content_conversion_fun()}].
+-type cowboy_content_type_callbacks() :: [{content_type(), content_conversion_fun()}].
 
 -define(MEDIA_VALUE(Type, SubType, Weight, Options, Extensions)
        ,{{Type, SubType, Options}, Weight, Extensions}

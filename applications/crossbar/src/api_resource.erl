@@ -585,12 +585,12 @@ set_content_type_header(#{headers := Headers}=Req, {Type, SubType, _}) ->
     Req#{headers => maps:put(<<"content-type">>, <<Type/binary, "/", SubType/binary>>, Headers)}.
 
 -spec content_types_accepted(content_type(), cowboy_req:req(), cb_context:context()) ->
-                                    {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
+                                    {cowboy_content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
 content_types_accepted(ClientCT, Req, Context) ->
     content_types_accepted(ClientCT, Req, Context, cb_context:content_types_accepted(Context)).
 
 -spec content_types_accepted(content_type(), cowboy_req:req(), cb_context:context(), crossbar_content_handlers()) ->
-                                    {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
+                                    {cowboy_content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
 content_types_accepted(ClientCT, Req, Context, []) ->
     lager:debug("endpoint(s) specify no accepted content-types, using defaults"),
     content_types_accepted(ClientCT, Req, cb_context:set_content_types_accepted(Context, ?CONTENT_ACCEPTED));

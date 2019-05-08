@@ -171,7 +171,7 @@ wait_for_task(API, TaskId) ->
 
 get_csvs(_API, _TaskId, []) -> 'ok';
 get_csvs(API, TaskId, [CSV|CSVs]) ->
-    get_csv(API, TaskId, CSV),
+    _ = get_csv(API, TaskId, CSV),
     get_csvs(API, TaskId, CSVs).
 
 get_csv(API, TaskId, CSV) ->

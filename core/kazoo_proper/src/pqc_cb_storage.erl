@@ -261,6 +261,9 @@ handle_multipart_contents(MediaId, MP3, [_Part | Parts]) ->
 handle_mp3_contents(MP3, MP3, 'false') ->
     ?INFO("got expected mp3 data"),
     'true';
+handle_mp3_contents(_MP3, NotExpectedMP3, 'false') ->
+    ?INFO("wrong mp3 data: ~w", [NotExpectedMP3]),
+    'false';
 handle_mp3_contents(MP3, Base64MP3, 'true') ->
     ?INFO("checking base64-encoded data"),
     case base64:decode(Base64MP3) of

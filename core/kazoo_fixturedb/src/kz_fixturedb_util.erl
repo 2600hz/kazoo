@@ -296,7 +296,7 @@ read_file(Path) ->
     end.
 
 -spec update_index_file(file:filename_all(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                              {'ok', binary()} | {'error', any()}.
+                               {'ok', binary()} | {'error', any()}.
 update_index_file(Path, Header, NewLine) ->
     write_index_file(Path, NewLine, read_index_file(Path, Header, NewLine)).
 
