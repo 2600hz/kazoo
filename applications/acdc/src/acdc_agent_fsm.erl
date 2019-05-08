@@ -1519,7 +1519,8 @@ terminate(Reason, _StateName, #state{account_id=AccountId
 
     case Reason of
         OKReason when OKReason == 'normal'; OKReason == 'shutdown' ->
-            kz_util:spawn(fun acdc_agents_sup:stop_agent/2, [AccountId, AgentId]);
+            _ = kz_util:spawn(fun acdc_agents_sup:stop_agent/2, [AccountId, AgentId]),
+            'ok';
         _ -> 'ok'
     end,
 
@@ -1791,7 +1792,7 @@ convert_to_endpoint(EPDoc) ->
               ],
 
     Call = kapps_call:exec(Setters, kapps_call:new()),
-    case kz_endpoint:build(kz_doc:id(EPDoc), [], Call) of
+    case kz_endpoint:build(kz_doc:id(EPDoc), kz_json:new(), Call) of
         {'ok', EP} -> EP;
         {'error', _} -> 'undefined'
     end.

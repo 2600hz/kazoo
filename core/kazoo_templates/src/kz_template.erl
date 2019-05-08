@@ -134,9 +134,6 @@ handle_compile_result(Template, Module, {'ok', Module, Warnings}) ->
               ,[Module, Warnings]),
     log_warnings(Warnings, Template),
     {'ok', Module};
-handle_compile_result(_Template, Module, 'ok') ->
-    lager:debug("build renderer for ~p from template file", [Module]),
-    {'ok', Module};
 handle_compile_result(_Template, _Module, 'error') ->
     ?LOG_DEBUG("failed to compile template for ~p", [_Module]),
     {'error', 'failed_to_compile'};

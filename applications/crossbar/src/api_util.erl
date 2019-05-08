@@ -1410,6 +1410,8 @@ create_csv_chunk_response(Req, Context) ->
                              ,cb_context:fetch(Context, 'chunking_started', 'false')
                              ).
 
+-spec create_csv_chunk_response(cowboy_req:req(), cb_context:context(), resp_data(), boolean()) ->
+                                       {boolean(), cowboy_req:req(), cb_context:context()}.
 create_csv_chunk_response(Req, Context, 'undefined', IsStarted) ->
     {IsStarted, Req, Context};
 create_csv_chunk_response(Req, Context, <<>>, IsStarted) ->
@@ -1480,7 +1482,7 @@ init_chunk_stream(Req, Context, <<"to_csv">>) ->
                },
     cowboy_req:stream_reply(200, maps:merge(cowboy_req:resp_headers(Req), Headers), Req).
 
--spec csv_body(cb_context:context(), kz_json:object() | kz_json:objects() | kz_term:ne_binaries()) ->
+-spec csv_body(cb_context:context(), kz_json:object() | kz_json:objects()) ->
                       cb_context:context().
 csv_body(Context, []) ->
     lager:debug("no resp data to build CSV from"),

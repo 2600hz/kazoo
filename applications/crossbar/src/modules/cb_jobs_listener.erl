@@ -123,7 +123,7 @@ maybe_start_job(Job, <<"running">>) ->
 
 -spec start_job(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
 start_job(Job, _AccountId, _AuthAccountId, _CarrierModule, []) ->
-    update_status(Job, <<"complete">>),
+    _ = update_status(Job, <<"complete">>),
     lager:debug("successfully finished job");
 start_job(Job, AccountId, AuthAccountId, CarrierModule, [Number|Numbers]) ->
     Job1 = maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number),

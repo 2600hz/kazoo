@@ -29,11 +29,11 @@
 -type req_noun() :: {kz_term:ne_binary(), kz_term:ne_binaries()}.
 -type req_nouns() :: [req_noun()].
 
--type content_type() :: {kz_term:ne_binary(), kz_term:ne_binary(), '*' | kz_term:proplist()} | % {Type, SubType, Options}
+-type content_type() :: {kz_term:ne_binary(), kz_term:ne_binary(), '*' | [{kz_term:ne_binary(), kz_term:ne_binary()}]} | % {Type, SubType, Options}
                         {kz_term:ne_binary(), kz_term:ne_binary()} | % {Type, SubType}
                         kz_term:ne_binary(). % <<"Type/SubType">>
 
--type cowboy_content_type() :: {kz_term:ne_binary(), kz_term:ne_binary(), '*' | kz_term:proplist()} | % {Type, SubType, Options}
+-type cowboy_content_type() :: {kz_term:ne_binary(), kz_term:ne_binary(), '*' | [{kz_term:ne_binary(), kz_term:ne_binary()}]} | % {Type, SubType, Options}
                                kz_term:ne_binary(). % <<"Type/SubType">>
 
 

@@ -762,21 +762,23 @@ classify_endpoints([Endpoint | Endpoints], Devices, Failovers) ->
 
 -spec maybe_use_fwd_endpoint(bridge_channel(), bridge_channels()) -> bridge_channels().
 maybe_use_fwd_endpoint(Endpoint, Failovers) ->
-    ForwardDestination = get_loopback_number(Endpoint),
-    case ForwardDestination =/= 'undefined'
-        andalso [Failover || Failover <- Failovers,
-                             binary:match(Failover, ForwardDestination) =/= 'nomatch'
-                ] =:= []
+    maybe_use_fwd_endpoint(Endpoint, Failovers, get_loopback_number(Endpoint)).
+
+-spec maybe_use_fwd_endpoint(bridge_channel(), bridge_channels(), kz_term:api_ne_binary()) -> bridge_channels().
+maybe_use_fwd_endpoint(Endpoint, Failovers, 'undefined') ->
+    [Endpoint | Failovers];
+maybe_use_fwd_endpoint(Endpoint, Failovers, ForwardDestination) ->
+    case [Failover || Failover <- Failovers,
+                      binary:match(Failover, ForwardDestination) =/= 'nomatch'
+         ] =:= []
     of
         'true' ->
-            [Endpoint | Failovers];
-        'false' when ForwardDestination =:= 'undefined' ->
             [Endpoint | Failovers];
         'false' ->
             Failovers
     end.
 
--spec get_loopback_number(bridge_channel()) -> kz_term:ne_binary().
+-spec get_loopback_number(bridge_channel()) -> kz_term:api_ne_binary().
 get_loopback_number(Endpoint) ->
     case binary:match(Endpoint, <<"loopback/">>) of
         'nomatch' -> 'undefined';

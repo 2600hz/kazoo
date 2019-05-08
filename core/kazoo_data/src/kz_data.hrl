@@ -19,7 +19,7 @@
                          ,server :: any() | '$2'
                          ,connected = 'false' :: boolean() | '_'
                          ,ready = 'false' :: boolean()
-                         ,tag :: atom()
+                         ,tag = 'undefined' :: kz_term:api_ne_binary()
                          }).
 
 -record(db, {app :: atom()
