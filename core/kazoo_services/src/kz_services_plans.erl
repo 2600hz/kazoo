@@ -6,7 +6,9 @@
 -module(kz_services_plans).
 
 -export([empty/0]).
--export([fetch/1]).
+-export([fetch/1
+        ,fetch/2
+        ]).
 -export([foldl/3]).
 
 -export([public_json/1]).
@@ -68,38 +70,47 @@ empty() -> dict:new().
 %%------------------------------------------------------------------------------
 -type fetched_plans() :: dict:dict(). %% a dictionary of the plan json from the db
 -type fetch_context() :: {fetched_plans(), plans()}.
+-type fetch_options() :: #{services_jobj => kz_json:object()
+                          ,modified_object_plans => kz_json:objects()
+                          }.
 -spec fetch(kz_services:services()) -> plans().
 fetch(Services) ->
+    fetch(Services, #{}).
+
+-spec fetch(kz_services:services(), fetch_options()) -> plans().
+fetch(Services, Options) ->
     lager:debug("fetching service plan documents"),
-    Routines = [fun get_services_plan/2
-               ,fun get_object_plans/2
+    Routines = [fun get_services_plan/3
+               ,fun get_object_plans/3
                ],
     {_, Plans} =
         lists:foldl(fun(F, FetchContext) ->
-                            F(Services, FetchContext)
+                            F(Services, FetchContext, Options)
                     end
                    ,{dict:new(), empty()}
                    ,Routines
                    ),
     Plans.
 
--spec get_services_plan(kz_services:services(), fetch_context()) -> fetch_context().
-get_services_plan(Services, FetchContext) ->
-    ServicesJObj = kz_services:services_jobj(Services),
+-spec get_services_plan(kz_services:services(), fetch_context(), fetch_options()) -> fetch_context().
+get_services_plan(Services, FetchContext, #{services_jobj := ServicesJObj}) ->
     lists:foldl(get_service_plans_fold(Services)
                ,FetchContext
                ,kzd_services:plan_ids(ServicesJObj)
-               ).
+               );
+get_services_plan(Services, FetchContext, Options) ->
+    ServicesJObj = kz_services:services_jobj(Services),
+    get_services_plan(Services, FetchContext, Options#{services_jobj => ServicesJObj}).
 
 -type service_plans_fold() :: fun((kz_term:ne_binary(), fetch_context()) -> fetch_context()).
 -spec get_service_plans_fold(kz_services:services()) -> service_plans_fold().
 get_service_plans_fold(Services) ->
     fun(PlanId, FetchContext) ->
-            get_services_plan(Services, PlanId, FetchContext)
+            get_service_plan(Services, PlanId, FetchContext)
     end.
 
--spec get_services_plan(kz_services:services(), kz_term:ne_binary(), fetch_context()) -> fetch_context().
-get_services_plan(Services, PlanId, FetchContext) ->
+-spec get_service_plan(kz_services:services(), kz_term:ne_binary(), fetch_context()) -> fetch_context().
+get_service_plan(Services, PlanId, FetchContext) ->
     Overrides = get_services_plan_overrides(Services, PlanId),
     VendorId = kzd_services:plan_vendor_id(kz_services:services_jobj(Services)
                                           ,PlanId
@@ -114,8 +125,8 @@ get_services_plan_overrides(Services, PlanId) ->
     PlanOverrides = kzd_services:plan_overrides(ServicesJObj, PlanId),
     kz_json:merge_recursive(PlansOverrides, PlanOverrides).
 
--spec get_object_plans(kzd_services:services(), fetch_context()) -> fetch_context().
-get_object_plans(Services, FetchContext) ->
+-spec get_object_plans(kzd_services:services(), fetch_context(), fetch_options()) -> fetch_context().
+get_object_plans(Services, FetchContext, Options) ->
     AccountId = kz_services:account_id(Services),
     AccountDb = kz_util:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"services/object_plans">>) of
@@ -124,8 +135,30 @@ get_object_plans(Services, FetchContext) ->
             FetchContext;
         {'ok', ObjectPlans} ->
             lager:debug("found ~p references to object plans", [length(ObjectPlans)]),
-            build_object_plan(Services, FetchContext, ObjectPlans)
+            build_object_plan(Services
+                             ,FetchContext
+                             ,handle_modified_object_plans(ObjectPlans, Options)
+                             )
     end.
+
+-spec handle_modified_object_plans(kz_json:objects(), fetch_options()) -> kz_json:objects().
+handle_modified_object_plans(ObjectPlans, #{modified_object_plans := ModifiedObjectPlans}) ->
+    ModifiedObjectPlanIds =
+        [kz_doc:id(ModifiedObjectPlan)
+         || ModifiedObjectPlan <- ModifiedObjectPlans
+        ],
+    FilteredObjectPlans =
+        [ObjectPlan
+         || ObjectPlan <- ObjectPlans
+                ,not lists:member(kz_doc:id(ObjectPlan), ModifiedObjectPlanIds)
+        ],
+    UpdatedObjectPlans = FilteredObjectPlans ++ ModifiedObjectPlans,
+    lager:debug("modified ~p object plans"
+               ,[length(ModifiedObjectPlans)]
+               ),
+    UpdatedObjectPlans;
+handle_modified_object_plans(ObjectPlans, _Options) ->
+    ObjectPlans.
 
 -spec build_object_plan(kz_services:services(), fetch_context(), kz_json:objects()) -> fetch_context().
 build_object_plan(Services, FetchContext, ObjectPlans) ->
