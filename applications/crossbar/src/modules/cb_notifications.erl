@@ -189,18 +189,18 @@ set_content_types(Context, Attachments) ->
                                                    ,{'to_binary', ContentTypes}
                                                    ]).
 
--spec content_types_from_attachments(kz_json:object()) -> kz_term:proplist().
+-spec content_types_from_attachments(kz_json:object()) -> [cowboy_content_type()].
 content_types_from_attachments(Attachments) ->
     kz_json:foldl(fun content_type_from_attachment/3, [], Attachments).
 
 -spec content_type_from_attachment(kz_json:path(), kz_json:object(), kz_term:proplist()) ->
-                                          kz_term:proplist().
+                                          [cowboy_content_type()].
 content_type_from_attachment(_Name, Attachment, Acc) ->
     case kz_json:get_value(<<"content_type">>, Attachment) of
         'undefined' -> Acc;
         ContentType ->
             [Lhs, Rhs] = binary:split(ContentType, <<"/">>),
-            [{Lhs,Rhs} | Acc]
+            [{Lhs,Rhs, '*'} | Acc]
     end.
 
 -spec content_types_accepted(cb_context:context(), path_token()) -> cb_context:context().

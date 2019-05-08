@@ -18,6 +18,7 @@
         ,get_http_verb/2
         ,get_auth_token/2
         ,get_pretty_print/2
+        ,get_content_type/1
         ,is_authentic/2, is_early_authentic/2
         ,is_permitted/2
         ,is_known_content_type/2
@@ -163,11 +164,10 @@ get_query_string_data(QS0, Req) ->
 get_content_type(Req) ->
     case cowboy_req:parse_header(<<"content-type">>, Req) of
         'undefined' -> 'undefined';
-        {Main, Sub, _Opts} ->
-            <<Main/binary, "/", Sub/binary>>
+        {Main, Sub, _Opts} -> <<Main/binary, "/", Sub/binary>>
     end.
 
--spec get_req_data(cb_context:context(), cowboy_req:req(), kz_term:api_ne_binary(), kz_json:object()) ->
+-spec get_req_data(cb_context:context(), cowboy_req:req(), cowboy_content_type(), kz_json:object()) ->
                           {cb_context:context(), cowboy_req:req()} |
                           stop_return().
 get_req_data(Context, Req0, 'undefined', QS) ->
@@ -955,7 +955,10 @@ is_known_content_type(Req0, Context0, _ReqVerb) ->
                             Event = create_event_name(Context0, <<"content_types_accepted.", Mod/binary>>),
                             Payload = [ContextAcc | Params],
                             crossbar_bindings:fold(Event, Payload)
-                    end, Context0, cb_context:req_nouns(Context0)),
+                    end
+                   ,Context0
+                   ,cb_context:req_nouns(Context0)
+                   ),
 
     CT = get_content_type(Req0),
 
@@ -966,25 +969,19 @@ is_known_content_type(Req0, Context0, _ReqVerb) ->
 is_known_content_type(Req, Context, CT, []) ->
     is_known_content_type(Req, Context, CT, ?CONTENT_ACCEPTED);
 is_known_content_type(Req, Context, CT, CTAs) ->
-    CTA = lists:foldr(fun({_Fun, L}, Acc) ->
-                              lists:foldl(fun fold_in_content_type/2, Acc, L);
-                         (L, Acc) ->
-                              lists:foldl(fun fold_in_content_type/2, Acc, L)
-                      end, [], CTAs),
-
-    IsAcceptable = is_acceptable_content_type(CT, CTA),
+    IsAcceptable = is_acceptable_content_type(CT, CTAs),
     lager:debug("is ~p acceptable content type: ~s", [CT, IsAcceptable]),
     {IsAcceptable, Req, cb_context:set_content_types_accepted(Context, CTAs)}.
 
--spec fold_in_content_type({kz_term:ne_binary(), kz_term:ne_binary()}, list()) -> list().
-fold_in_content_type({Type, Sub}, Acc) ->
-    [{Type, Sub, []} | Acc].
+-spec is_acceptable_content_type(cowboy_content_type(), crossbar_content_handlers()) -> boolean().
+is_acceptable_content_type(CTA, ContentHandlers) ->
+    lists:any(fun({_Fun, ModCTAs}) ->
+                      lists:any(fun(ModCTA) -> content_type_matches(CTA, ModCTA) end, ModCTAs)
+              end
+             ,ContentHandlers
+             ).
 
--spec is_acceptable_content_type(cowboy_content_type(), [cowboy_content_type()]) -> boolean().
-is_acceptable_content_type(CTA, CTAs) ->
-    ['true' || ModCTA <- CTAs, content_type_matches(CTA, ModCTA)] =/= [].
-
-%% (ReqContentType, ModuleContentType)
+%% (ClientContentType, ModuleContentType)
 -spec content_type_matches(cowboy_content_type(), cowboy_content_type()) -> boolean().
 content_type_matches({Type, _, _}, {Type, <<"*">>, '*'}) ->
     'true';
@@ -994,16 +991,15 @@ content_type_matches({Type, SubType, Opts}, {Type, SubType, ModOpts}) ->
     lists:all(fun({K, V}) -> props:get_value(K, Opts) =:= V end
              ,ModOpts
              );
-content_type_matches(CTA, {CT, SubCT, _}) when is_binary(CTA) ->
+content_type_matches(<<CTA/binary>>, {CT, SubCT, _}) ->
     CTA =:= <<CT/binary, "/", SubCT/binary>>;
-content_type_matches(CTA, CT) when is_binary(CTA), is_binary(CT) ->
-    CTA =:= CT;
-content_type_matches(_CTA, _CTAs) ->
-    'false'.
+content_type_matches(<<CT/binary>>, <<CT/binary>>) -> 'true';
+content_type_matches(_CTA, _CTAs) -> 'false'.
 
 -spec ensure_content_type(cowboy_content_type() | 'undefined') -> cowboy_content_type().
 ensure_content_type('undefined') -> ?CROSSBAR_DEFAULT_CONTENT_TYPE;
-ensure_content_type(CT) -> CT.
+ensure_content_type(<<CT/binary>>) -> CT;
+ensure_content_type({_Type, _SubType, _Options}=CT) -> CT.
 
 %%------------------------------------------------------------------------------
 %% @doc This function will use event bindings to determine if the target noun
@@ -1242,7 +1238,6 @@ check_csv_resp_content(Req, Context, []) ->
     maybe_create_empty_csv_resp(Req, Context);
 check_csv_resp_content(Req, Context, <<>>) ->
     maybe_create_empty_csv_resp(Req, Context);
-
 check_csv_resp_content(Req, Context, Content) when is_list(Content) ->
     case final_csv_resp_type(Context, should_convert_csv(Content)) of
         'binary' ->
@@ -1436,7 +1431,6 @@ stream_or_create_csv_chunk(Req, Context, CSVs, 'false') ->
     {'true', Req, Context}.
 
 -spec should_convert_csv(kz_json:objects() | kz_term:ne_binaries()) -> boolean().
-should_convert_csv([]) -> 'true';
 should_convert_csv([First|_]) ->
     kz_json:is_json_object(First).
 
@@ -1478,11 +1472,8 @@ init_chunk_stream(Req, Context, <<"to_csv">>) ->
                },
     cowboy_req:stream_reply(200, maps:merge(cowboy_req:resp_headers(Req), Headers), Req).
 
--spec csv_body(cb_context:context(), kz_json:object() | kz_json:objects()) ->
+-spec csv_body(cb_context:context(), kz_json:objects() | kz_term:ne_binaries()) ->
                       cb_context:context().
-csv_body(Context, []) ->
-    lager:debug("no resp data to build CSV from"),
-    Context;
 csv_body(Context, JObjs) when is_list(JObjs) ->
     Acc1 = case cb_context:fetch(Context, 'csv_acc') of
                'undefined' -> kz_csv:jobjs_to_file(JObjs);
@@ -1492,9 +1483,7 @@ csv_body(Context, JObjs) when is_list(JObjs) ->
     Setters = [{fun cb_context:store/3, 'csv_acc', Acc1}
               ,{fun cb_context:store/3, 'chunk_is_file', 'true'}
               ],
-    cb_context:setters(Context, Setters);
-csv_body(Context, JObj) ->
-    csv_body(Context, [JObj]).
+    cb_context:setters(Context, Setters).
 
 %%------------------------------------------------------------------------------
 %% @doc This function will create response expected for a request that

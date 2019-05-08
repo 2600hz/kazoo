@@ -83,7 +83,7 @@ wait_for_connection(Tag, Timeout) ->
 get_server() ->
     get_server(<<"local">>).
 
--spec get_server(kz_term:api_ne_binary()) -> server().
+-spec get_server(kz_term:ne_binary()) -> server().
 get_server(Tag) ->
     MatchSpec = [{#data_connection{ready = 'true'
                                   ,app = '$1'

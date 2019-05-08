@@ -542,7 +542,7 @@ content_types_accepted(Req0, Context0) ->
     Payload = [Context0 | Params],
     Context1 = crossbar_bindings:fold(Event, Payload),
 
-    case cowboy_req:parse_header(<<"content-type">>, Req0) of
+    case api_util:get_content_type(Req0) of
         'undefined' ->
             %% Cowboy no longer allows empty content-type headers and will auto-respond with
             %% a 415 if we return a content type.
@@ -584,13 +584,13 @@ set_content_type_header(#{headers := Headers}=Req, ?NE_BINARY=CT) ->
 set_content_type_header(#{headers := Headers}=Req, {Type, SubType, _}) ->
     Req#{headers => maps:put(<<"content-type">>, <<Type/binary, "/", SubType/binary>>, Headers)}.
 
--spec content_types_accepted(content_type(), cowboy_req:req(), cb_context:context()) ->
-                                    {cowboy_content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
+-spec content_types_accepted(kz_term:ne_binary(), cowboy_req:req(), cb_context:context()) ->
+                                    {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
 content_types_accepted(ClientCT, Req, Context) ->
     content_types_accepted(ClientCT, Req, Context, cb_context:content_types_accepted(Context)).
 
--spec content_types_accepted(content_type(), cowboy_req:req(), cb_context:context(), crossbar_content_handlers()) ->
-                                    {cowboy_content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
+-spec content_types_accepted(kz_term:ne_binary(), cowboy_req:req(), cb_context:context(), crossbar_content_handlers()) ->
+                                    {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
 content_types_accepted(ClientCT, Req, Context, []) ->
     lager:debug("endpoint(s) specify no accepted content-types, using defaults"),
     content_types_accepted(ClientCT, Req, cb_context:set_content_types_accepted(Context, ?CONTENT_ACCEPTED));
@@ -604,8 +604,8 @@ content_types_accepted(ClientCT, Req, Context, Accepted) ->
     lager:debug("endpoint(s) accepted content-types: ~p", [CTA]),
     {CTA, Req, Context}.
 
--spec content_types_accepted_fold(crossbar_content_handler(), content_type_callbacks(), content_type()) ->
-                                         cowboy_content_type_callbacks().
+-spec content_types_accepted_fold(crossbar_content_handler(), content_type_callbacks(), kz_term:ne_binary()) ->
+                                         content_type_callbacks().
 content_types_accepted_fold({Fun, ContentTypes}, Acc, ClientCT) ->
     lists:foldl(fun(ContentType, Acc1) ->
                         content_type_accepted_fold(ContentType, Acc1, Fun, ClientCT)
@@ -614,9 +614,11 @@ content_types_accepted_fold({Fun, ContentTypes}, Acc, ClientCT) ->
                ,ContentTypes
                ).
 
--spec content_type_accepted_fold(content_type(), content_type_callbacks(), content_conversion_fun(), content_type()) ->
-                                        cowboy_content_type_callbacks().
-content_type_accepted_fold({Type, SubType}, Acc, FromFun, ClientCT) ->
+-spec content_type_accepted_fold(cowboy_content_type(), content_type_callbacks(), content_conversion_fun(), kz_term:ne_binary()) ->
+                                        content_type_callbacks().
+content_type_accepted_fold(<<ContentType/binary>>, Acc, FromFun, ClientCT) ->
+    [Type, SubType | _] = binary:split(ContentType, <<"/">>, ['global']),
+
     case api_util:content_type_matches(ClientCT, {Type, SubType, []}) of
         'true' ->
             lager:debug("added accepted content-type: ~p(~p)", [{Type, SubType}, FromFun]),
@@ -625,7 +627,7 @@ content_type_accepted_fold({Type, SubType}, Acc, FromFun, ClientCT) ->
             lager:debug("skipping content-type: ~p", [{Type, SubType}]),
             Acc
     end;
-content_type_accepted_fold({_,_,_}=EncType, Acc, FromFun, _CT) ->
+content_type_accepted_fold({_,_,_}=EncType, Acc, FromFun, _ClientCT) ->
     lager:debug("adding accepted content-type: ~p(~p)", [EncType, FromFun]),
     [{EncType, FromFun} | Acc].
 

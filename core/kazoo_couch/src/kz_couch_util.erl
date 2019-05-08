@@ -202,13 +202,15 @@ get_db(Conn, DbName) ->
 
 -spec get_db(kz_data:connection(), kz_term:ne_binary(), couch_version()) -> db().
 get_db(Conn, DbName, Driver) ->
-    ConnToUse =
-        case is_admin_db(DbName, Driver) of
-            'true' -> maybe_use_admin_conn(Conn);
-            'false' -> Conn
-        end,
+    ConnToUse = select_conn(Conn, DbName, Driver),
     {'ok', Db} = couchbeam:open_db(ConnToUse, DbName),
     Db.
+
+select_conn(Conn, DbName, Driver) ->
+    case is_admin_db(DbName, Driver) of
+        'true' -> maybe_use_admin_conn(Conn);
+        'false' -> Conn
+    end.
 
 -spec is_admin_db(kz_term:ne_binary(), couch_version()) -> boolean().
 is_admin_db(<<"_dbs">>, 'couchdb_2') -> 'true';

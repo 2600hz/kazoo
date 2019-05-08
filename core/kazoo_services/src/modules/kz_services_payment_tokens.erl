@@ -114,7 +114,7 @@ updates(Services, Bookkeeper, ProposedTokens) ->
 %%------------------------------------------------------------------------------
 -spec delete(kz_services:service() | kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
                     kz_services:services().
-delete(?NE_BINARY = AccountId, Bookkeeper, Token) ->
+delete(<<AccountId/binary>>, Bookkeeper, Token) ->
     delete(kz_services:fetch(AccountId), Bookkeeper, Token);
 delete(Services, _Bookkeeper, Token) ->
     ServicesJObj = kz_services:services_jobj(Services),

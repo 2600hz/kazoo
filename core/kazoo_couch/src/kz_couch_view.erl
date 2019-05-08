@@ -71,7 +71,7 @@ all_docs(#server{}=Conn, DbName, Options) ->
     Db = kz_couch_util:get_db(Conn, DbName),
     do_fetch_results(Db, 'all_docs', Options).
 
--spec get_results(server(), kz_term:ne_binary(), ddoc(), view_options()) ->
+-spec get_results(server(), kz_term:ne_binary(), kz_term:ne_binary() | ddoc(), view_options()) ->
                          {'ok', kz_json:objects() | kz_json:path()} |
                          couchbeam_error().
 get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
@@ -93,12 +93,15 @@ get_results_count(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
 -spec do_fetch_results(couchbeam_db(), kz_term:ne_binary() | ddoc(), view_options()) ->
                               {'ok', kz_json:objects() | kz_term:ne_binaries()} |
                               couchbeam_error().
-do_fetch_results(Db, ?NE_BINARY = DesignDoc, Options) ->
+do_fetch_results(Db, <<DesignDoc/binary>>, Options) ->
     [DesignName, ViewName|_] = binary:split(DesignDoc, <<"/">>, ['global']),
     do_fetch_results(Db, {DesignName, ViewName}, map_options(Options));
-do_fetch_results(Db, DesignDoc, Options)
-  when DesignDoc =:= 'all_docs'
-       orelse is_tuple(DesignDoc) ->
+do_fetch_results(Db, 'all_docs'=DesignDoc, Options) ->
+    fetch_results(Db, DesignDoc, Options);
+do_fetch_results(Db, {_DesignName, _ViewName}=DesignDoc, Options) ->
+    fetch_results(Db, DesignDoc, Options).
+
+fetch_results(Db, DesignDoc, Options) ->
     ?RETRY_504(
        case couchbeam_view:fetch(Db, DesignDoc, Options) of
            {'ok', JObj} -> {'ok', kz_json:get_value(<<"rows">>, JObj, JObj)};
@@ -120,11 +123,10 @@ map_view_option({K, V})
     {kz_term:to_atom(K, 'true'), V};
 map_view_option(KV) -> KV.
 
--spec do_fetch_results_count(couchbeam_db(), ddoc(), view_options()) ->
+-spec do_fetch_results_count(couchbeam_db(), kz_term:ne_binary() | ddoc(), view_options()) ->
                                     {'ok', kz_term:api_integer()} |
                                     couchbeam_error().
-do_fetch_results_count(Db, DesignDoc, Options)
-  when is_binary(DesignDoc) ->
+do_fetch_results_count(Db, <<DesignDoc/binary>>, Options) ->
     [DesignName, ViewName | _] = binary:split(DesignDoc, <<"/">>, ['global']),
     do_fetch_results_count(Db, {DesignName, ViewName}, map_options(Options));
 do_fetch_results_count(Db, DesignDoc, Options) ->

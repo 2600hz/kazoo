@@ -131,7 +131,8 @@ handle_compile_result(_Template, Module, {'ok', Module, []}) ->
     {'ok', Module};
 handle_compile_result(Template, Module, {'ok', Module, Warnings}) ->
     ?LOG_DEBUG("compiling template renderer for ~p produced warnings: ~p"
-              ,[Module, Warnings]),
+              ,[Module, Warnings]
+              ),
     log_warnings(Warnings, Template),
     {'ok', Module};
 handle_compile_result(_Template, _Module, 'error') ->

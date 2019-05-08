@@ -176,12 +176,13 @@ account_modb_dataplan(AccountMODB, DocType, StorageId) ->
     dataplan_type_match(<<"modb">>, DocType, Plan, AccountId).
 
 
--spec dataplan_connections(map()) -> [{atom(), server()}].
+-spec dataplan_connections(map()) -> [{kz_term:ne_binary(), server()}].
 dataplan_connections(#{<<"plan">> := _, <<"connections">> := Connections}) ->
     dataplan_connections(Connections);
 dataplan_connections(Connections) ->
     [maybe_start_connection(Tag, maps:get(Tag, Connections, #{}))
-     || {Tag, _} <- maps:to_list(Connections)].
+     || {Tag, _} <- maps:to_list(Connections)
+    ].
 
 -spec dataplan_match(kz_term:ne_binary(), map(), kz_term:api_binary()) -> map().
 dataplan_match(Classification, Plan, AccountId) ->
@@ -461,14 +462,14 @@ default_dataplan(JObj) ->
     'ok' = kzs_cache:add_to_doc_cache(?KZ_DATA_DB, ?SYSTEM_DATAPLAN, SystemJObj),
     SystemJObj.
 
--spec maybe_start_connection(kz_term:ne_binary(), map()) -> {atom(), server()}.
+-spec maybe_start_connection(kz_term:ne_binary(), map()) -> {kz_term:ne_binary(), server()}.
 maybe_start_connection(Tag, Params) ->
     case kz_dataconnections:get_server(Tag) of
         'undefined' -> start_connection(Tag, Params);
         Server -> {Tag, Server}
     end.
 
--spec start_connection(kz_term:ne_binary(), map()) -> {atom(), server()}.
+-spec start_connection(kz_term:ne_binary(), map()) -> {kz_term:ne_binary(), server()}.
 start_connection(Tag, Params) ->
     Connection = kz_dataconfig:connection(kz_maps:keys_to_atoms(Params#{tag => Tag})),
     kz_dataconnections:add(Connection),

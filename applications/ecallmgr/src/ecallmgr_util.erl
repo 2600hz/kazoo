@@ -768,15 +768,15 @@ maybe_use_fwd_endpoint(Endpoint, Failovers) ->
 maybe_use_fwd_endpoint(Endpoint, Failovers, 'undefined') ->
     [Endpoint | Failovers];
 maybe_use_fwd_endpoint(Endpoint, Failovers, ForwardDestination) ->
-    case [Failover || Failover <- Failovers,
-                      binary:match(Failover, ForwardDestination) =/= 'nomatch'
-         ] =:= []
-    of
-        'true' ->
-            [Endpoint | Failovers];
-        'false' ->
-            Failovers
+    case match_forward_destination_to_failover(Failovers, ForwardDestination) of
+        [] -> [Endpoint | Failovers];
+        _Matched -> Failovers
     end.
+
+match_forward_destination_to_failover(Failovers, ForwardDestination) ->
+    [Failover || Failover <- Failovers,
+                 binary:match(Failover, ForwardDestination) =/= 'nomatch'
+    ].
 
 -spec get_loopback_number(bridge_channel()) -> kz_term:api_ne_binary().
 get_loopback_number(Endpoint) ->
