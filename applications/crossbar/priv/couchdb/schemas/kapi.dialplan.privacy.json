@@ -37,7 +37,8 @@
             "enum": [
                 "full",
                 "name",
-                "number"
+                "number",
+                "none"
             ],
             "type": "string"
         }

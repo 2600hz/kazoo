@@ -348,7 +348,7 @@
 -define(PRIVACY_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
                             ,{<<"Application-Name">>, <<"privacy">>}
-                            ,{<<"Privacy-Mode">>, [<<"full">>, <<"name">>, <<"number">>]}
+                            ,{<<"Privacy-Mode">>, [<<"full">>, <<"name">>, <<"number">>, <<"none">>]}
                             ,?INSERT_AT_TUPLE
                             ]).
 -define(PRIVACY_REQ_TYPES, []).
