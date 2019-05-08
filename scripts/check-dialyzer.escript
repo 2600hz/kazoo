@@ -286,7 +286,7 @@ do_scan(PLT, Paths) ->
                                 %% ,no_return         %% suppress warnings for functions that never return a value
                                 %% ,no_undefined_callbacks %% suppress warnings about behaviours with no -callback
                                 %% ,no_unused         %% suppress warnings for unused functions
-                               ,'race_conditions'   %% include warnings for possible race conditions
+                                %% ,'race_conditions'   %% include warnings for possible race conditions
                                ,'underspecs'        %% warn when the spec is too loose
                                 %% ,'unknown'           %% let warnings about unknown functions/types change exit status
                                ,'unmatched_returns' %% warn when function calls ignore structure return values
