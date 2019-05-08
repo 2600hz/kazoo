@@ -605,7 +605,7 @@ content_types_accepted(ClientCT, Req, Context, Accepted) ->
     {CTA, Req, Context}.
 
 -spec content_types_accepted_fold(crossbar_content_handler(), content_type_callbacks(), content_type()) ->
-                                         content_type_callbacks().
+                                         cowboy_content_type_callbacks().
 content_types_accepted_fold({Fun, ContentTypes}, Acc, ClientCT) ->
     lists:foldl(fun(ContentType, Acc1) ->
                         content_type_accepted_fold(ContentType, Acc1, Fun, ClientCT)
@@ -615,7 +615,7 @@ content_types_accepted_fold({Fun, ContentTypes}, Acc, ClientCT) ->
                ).
 
 -spec content_type_accepted_fold(content_type(), content_type_callbacks(), content_conversion_fun(), content_type()) ->
-                                        content_type_callbacks().
+                                        cowboy_content_type_callbacks().
 content_type_accepted_fold({Type, SubType}, Acc, FromFun, ClientCT) ->
     case api_util:content_type_matches(ClientCT, {Type, SubType, []}) of
         'true' ->

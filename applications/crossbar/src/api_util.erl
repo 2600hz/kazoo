@@ -976,7 +976,7 @@ is_known_content_type(Req, Context, CT, CTAs) ->
     lager:debug("is ~p acceptable content type: ~s", [CT, IsAcceptable]),
     {IsAcceptable, Req, cb_context:set_content_types_accepted(Context, CTAs)}.
 
--spec fold_in_content_type({kz_term:ne_binary(), kz_term:ne_binary()}, cowboy_content_type()) -> cowboy_content_type().
+-spec fold_in_content_type({kz_term:ne_binary(), kz_term:ne_binary()}, list()) -> list().
 fold_in_content_type({Type, Sub}, Acc) ->
     [{Type, Sub, []} | Acc].
 

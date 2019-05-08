@@ -409,7 +409,7 @@ is_kz_log_md_equal(K1, K2) -> K1 =< K2.
 kz_log_md_clear() ->
     %% `lager:md([])' causing dialyzer to complain:
     %% warn_failing_call
-  	%% `kz_util.erl:408: The call lager:md([]) breaks the contract ([{atom(),any()},...]) -> ok`'
+    %% `kz_util.erl:408: The call lager:md([]) breaks the contract ([{atom(),any()},...]) -> ok`'
     %% lager:md([]).
     _ = erlang:put(?LAGER_MD_KEY, []),
     'ok'.
