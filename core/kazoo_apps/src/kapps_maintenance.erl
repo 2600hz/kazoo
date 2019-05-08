@@ -47,7 +47,7 @@
         ,ensure_reseller_id_services/2
         ]).
 -export([ensure_aggregates/0
-        ,ensure_aggregates/1
+        ,ensure_aggregate/1
         ]).
 -export([ensure_aggregate_accounts/0
         ,ensure_aggregate_account/1
@@ -56,7 +56,7 @@
         ,ensure_aggregate_device/1
         ]).
 -export([ensure_aggregate_faxboxes/0
-        ,ensure_aggregate_faxboxes/1
+        ,ensure_aggregate_faxbox/1
         ]).
 -export([ensure_tree_accounts/0
         ,ensure_tree_accounts_dry_run/0
@@ -543,7 +543,7 @@ refresh_by_classification(Database, 'account') ->
     AccountDb = kz_util:format_account_id(Database, 'encoded'),
     AccountId = kz_util:format_account_id(Database, 'raw'),
     _ = kazoo_bindings:map(binding({'refresh_account', AccountDb}), AccountId),
-    _ = ensure_aggregates(AccountId),
+    _ = ensure_aggregate(AccountId),
     'ok';
 refresh_by_classification(_, _) ->
     'ok'.
@@ -584,14 +584,22 @@ remove_deprecated_databases([Database|Databases]) ->
 %%------------------------------------------------------------------------------
 -spec ensure_aggregates() -> 'ok'.
 ensure_aggregates() ->
-    ensure_aggregates(kapps_util:get_all_accounts()).
+    Databases = kapps_util:get_all_accounts(),
+    Total = length(Databases),
+    ensure_aggregates(Databases, Total).
 
--spec ensure_aggregates(kz_term:ne_binaries() | kz_term:ne_binary()) -> 'ok'.
-ensure_aggregates([]) -> 'ok';
-ensure_aggregates([Account|Accounts]) ->
-    _ = ensure_aggregates(Account),
-    ensure_aggregates(Accounts);
-ensure_aggregates(Account) ->
+-spec ensure_aggregates(kz_term:ne_binaries(), non_neg_integer()) -> 'ok'.
+ensure_aggregates([], _Total) -> 'ok';
+ensure_aggregates([Account|Accounts], Total) ->
+    io:format("~p (~p/~p) aggregating database '~s'~n"
+             ,[self(), length(Accounts) + 1, Total, Account]
+             ),
+    _ = ensure_aggregate(Account),
+    ensure_aggregates(Accounts, Total).
+
+
+-spec ensure_aggregate(kz_term:ne_binary()) -> 'ok'.
+ensure_aggregate(Account) ->
     io:format("ensuring necessary documents from account '~s' are in aggregate dbs~n"
              ,[Account]
              ),
@@ -607,13 +615,18 @@ ensure_aggregates(Account) ->
 %%------------------------------------------------------------------------------
 -spec ensure_aggregate_faxboxes() -> 'ok'.
 ensure_aggregate_faxboxes() ->
-    ensure_aggregate_faxboxes(kapps_util:get_all_accounts()).
+    Databases = kapps_util:get_all_accounts(),
+    Total = length(Databases),
+    ensure_aggregate_faxboxes(Databases, Total).
 
--spec ensure_aggregate_faxboxes(kz_term:ne_binaries()) -> 'ok'.
-ensure_aggregate_faxboxes([]) -> 'ok';
-ensure_aggregate_faxboxes([Account|Accounts]) ->
+-spec ensure_aggregate_faxboxes(kz_term:ne_binaries(), non_neg_integer()) -> 'ok'.
+ensure_aggregate_faxboxes([], _Total) -> 'ok';
+ensure_aggregate_faxboxes([Account|Accounts], Total) ->
+    io:format("~p (~p/~p) aggregating faxboxes account '~s'~n"
+             ,[self(), length(Accounts) + 1, Total, Account]
+             ),
     _ = ensure_aggregate_faxbox(Account),
-    ensure_aggregate_faxboxes(Accounts).
+    ensure_aggregate_faxboxes(Accounts, Total).
 
 -spec ensure_aggregate_faxbox(kz_term:ne_binary()) -> 'ok'.
 ensure_aggregate_faxbox(Account) ->
@@ -649,13 +662,18 @@ update_or_add_to_faxes_db(JObj) ->
 %%------------------------------------------------------------------------------
 -spec ensure_aggregate_accounts() -> 'ok'.
 ensure_aggregate_accounts() ->
-    ensure_aggregate_accounts(kapps_util:get_all_accounts()).
+    Databases = kapps_util:get_all_accounts(),
+    Total = length(Databases),
+    ensure_aggregate_accounts(Databases, Total).
 
--spec ensure_aggregate_accounts(kz_term:ne_binaries()) -> 'ok'.
-ensure_aggregate_accounts([]) -> 'ok';
-ensure_aggregate_accounts([Account|Accounts]) ->
+-spec ensure_aggregate_accounts(kz_term:ne_binaries(), non_neg_integer()) -> 'ok'.
+ensure_aggregate_accounts([], _Total) -> 'ok';
+ensure_aggregate_accounts([Account|Accounts], Total) ->
+    io:format("~p (~p/~p) aggregating accounts '~s'~n"
+             ,[self(), length(Accounts) + 1, Total, Account]
+             ),
     _ = ensure_aggregate_account(Account),
-    ensure_aggregate_accounts(Accounts).
+    ensure_aggregate_accounts(Accounts, Total).
 
 -spec ensure_aggregate_account(kz_term:ne_binary()) -> 'ok'.
 ensure_aggregate_account(Account) ->
@@ -685,13 +703,18 @@ update_or_add_to_accounts_db(AccountId, JObj) ->
 %%------------------------------------------------------------------------------
 -spec ensure_aggregate_devices() -> 'ok'.
 ensure_aggregate_devices() ->
-    ensure_aggregate_devices(kapps_util:get_all_accounts()).
+    Databases = kapps_util:get_all_accounts(),
+    Total = length(Databases),
+    ensure_aggregate_devices(Databases, Total).
 
--spec ensure_aggregate_devices(kz_term:ne_binaries()) -> 'ok'.
-ensure_aggregate_devices([]) -> 'ok';
-ensure_aggregate_devices([Account|Accounts]) ->
+-spec ensure_aggregate_devices(kz_term:ne_binaries(), non_neg_integer()) -> 'ok'.
+ensure_aggregate_devices([], _Total) -> 'ok';
+ensure_aggregate_devices([Account|Accounts], Total) ->
+    io:format("~p (~p/~p) aggregating devices account '~s'~n"
+             ,[self(), length(Accounts) + 1, Total, Account]
+             ),
     _ = ensure_aggregate_device(Account),
-    ensure_aggregate_devices(Accounts).
+    ensure_aggregate_devices(Accounts, Total).
 
 -spec ensure_aggregate_device(kz_term:ne_binary()) -> 'ok'.
 ensure_aggregate_device(Account) ->
