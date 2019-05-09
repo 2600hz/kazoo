@@ -633,7 +633,7 @@ ensure_aggregate_faxbox(Account) ->
     AccountDb = kz_util:format_account_db(Account),
     case kz_datamgr:get_results(AccountDb, ?FAXBOX_VIEW, ['include_docs']) of
         {'ok', Faxboxes} ->
-            update_or_add_to_faxes_db(Faxboxes);
+            update_or_add_to_faxes_db([kz_json:get_value(<<"doc">>, Faxbox) || Faxbox <- Faxboxes]);
         {'error', _} -> 'ok'
     end.
 
@@ -646,7 +646,8 @@ update_or_add_to_faxes_db(Faxboxes) ->
                                    }
                                    || D <- Docs
                                   ]),
-            kz_datamgr:save_doc(?KZ_FAXES_DB, prepare_faxboxes(Faxboxes, Revs, []));
+            _ = kz_datamgr:save_docs(?KZ_FAXES_DB, prepare_faxboxes(Faxboxes, Revs, [])),
+            'ok';
         {'error', _Message} ->
             'ok'
     end.
