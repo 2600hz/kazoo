@@ -626,7 +626,7 @@ normalize_field(<<"Base-Cost">> = K, BaseCost) ->
 normalize_field(K, V) ->
     {K, V}.
 
--spec ratedecks_list(cb_context:context()) -> kz_term:proplist().
+-spec ratedecks_list(cb_context:context()) -> cb_context:context().
 ratedecks_list(Context) ->
     Props = [{<<"default_ratedeck">>, kapps_config:get_ne_binary(<<"hotornot">>, <<"default_ratedeck">>, ?KZ_RATES_DB)}
             ,{<<"ratedecks">>, kz_services_ratedecks:ratedecks()}
