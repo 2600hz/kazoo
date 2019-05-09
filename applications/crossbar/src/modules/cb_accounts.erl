@@ -530,7 +530,7 @@ validate_request(AccountId, Context) ->
             cb_context:add_system_error(Error, Context)
     end.
 
--spec maybe_add_pvt_fields(kz_term:api_ne_binary(), kz_json:object()) -> kz_json:object().
+-spec maybe_add_pvt_fields(kz_term:api_ne_binary(), kzd_accounts:doc()) -> kz_json:object().
 maybe_add_pvt_fields('undefined', AccountJObj) -> %% New account (create)
     AccountJObj;
 maybe_add_pvt_fields(AccountId, AccountJObj) -> %% Existing account (update)
@@ -538,7 +538,7 @@ maybe_add_pvt_fields(AccountId, AccountJObj) -> %% Existing account (update)
     %% Merge private_fields into req obj in order to allow checks to read and use them when needed.
     kz_json:merge(kz_doc:private_fields(Existing), AccountJObj).
 
--spec update_validated_request(kz_term:ne_binary(), cb_context:context(), kz_json:object()) -> cb_context:context().
+-spec update_validated_request(kz_term:ne_binary(), cb_context:context(), kzd_accounts:doc()) -> cb_context:context().
 update_validated_request(AccountId, Context, AccountJObj) ->
     Updates = [{fun cb_context:set_req_data/2, AccountJObj}
               ,{fun cb_context:set_doc/2, AccountJObj}

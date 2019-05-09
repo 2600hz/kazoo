@@ -8,6 +8,9 @@
 
 -export([create_account/2, create_account/3
         ,delete_account/2
+        ,patch_account/3
+        ,fetch_account/2
+
         ,cleanup_accounts/1, cleanup_accounts/2
 
         ,command/2
@@ -66,8 +69,16 @@ allow_number_additions(AccountId) ->
                                           ,[{kzd_accounts:path_allow_number_additions(), 'true'}]
                                           ).
 
--spec patch_account(pqc_cb_api:state(), kz_json:object(), kz_term:ne_binary()) -> pqc_cb_api:response().
-patch_account(API, ReqJObj, AccountId) ->
+-spec fetch_account(pqc_cb_api:statE(), kz_term:ne_binary()) -> pqc_cb_api:response().
+fetch_account(API, AccountId) ->
+    pqc_cb_api:make_request([200]
+                           ,fun kz_http:get/2
+                           ,account_url(AccountId)
+                           ,pqc_cb_api:request_headers(API)
+                           ).
+
+-spec patch_account(pqc_cb_api:state(), kz_term:ne_binary(), kz_json:object()) -> pqc_cb_api:response().
+patch_account(API, AccountId, ReqJObj) ->
     RequestEnvelope = pqc_cb_api:create_envelope(ReqJObj),
 
     pqc_cb_api:make_request([200]
@@ -204,15 +215,18 @@ enable_and_disable_account_using_patch(API) ->
 
     AccountId = kz_json:get_binary_value(<<"id">>, pqc_cb_response:data(AccountResp)),
 
-    ?INFO("Disabling account"),
-    ReqJObj = kz_json:from_list([{<<"enabled">>,false}]),
-    Disabled = pqc_cb_response:data(patch_account(API, ReqJObj, AccountId)),
-    'false' = kz_json:get_atom_value(<<"enabled">>, Disabled),
+    Fetched = pqc_cb_response:data(fetch_account(API, AccountId)),
+    'true' = kz_json:is_true(<<"enabled">>, Fetched, 'true'),
 
-    ?INFO("Enabling account"),
-    ReqJObj1 = kz_json:from_list([{<<"enabled">>,true}]),
-    Enabled = pqc_cb_response:data(patch_account(API, ReqJObj1, AccountId)),
-    'true' = kz_json:get_atom_value(<<"enabled">>, Enabled),
+    ?INFO("disabling account"),
+    ReqJObj = kz_json:from_list([{<<"enabled">>, 'false'}]),
+    Disabled = pqc_cb_response:data(patch_account(API, AccountId, ReqJObj)),
+    'false' = kz_json:is_true(<<"enabled">>, Disabled, 'true'),
+
+    ?INFO("enabling account"),
+    ReqJObj1 = kz_json:from_list([{<<"enabled">>, 'true'}]),
+    Enabled = pqc_cb_response:data(patch_account(API, AccountId, ReqJObj1)),
+    'true' = kz_json:is_true(<<"enabled">>, Enabled, 'true'),
 
     cleanup(API),
     ?INFO("FINISHED ENABLE_AND_DISABLE_ACCOUNT_USING_PATCH TEST").
