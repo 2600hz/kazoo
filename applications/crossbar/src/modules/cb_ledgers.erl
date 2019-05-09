@@ -185,9 +185,9 @@ validate(Context, ?SUMMARY, ModbSuffix) ->
     case Status of
         {'success', 'success'} ->
             JObj = kz_json:from_list([{<<"summary">>, cb_context:resp_data(Summary)}
-                             ,{<<"breakdown">>, cb_context:resp_data(AccountSummary)}
-                             ]
-                            ),
+                                     ,{<<"breakdown">>, cb_context:resp_data(AccountSummary)}
+                                     ]
+                                    ),
             cb_context:set_resp_data(AccountSummary, JObj);
         {_, _} -> AccountSummary
     end;
