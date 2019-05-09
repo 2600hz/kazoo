@@ -31,10 +31,10 @@
 -define(WHITELABEL_MIME_TYPES, ?IMAGE_CONTENT_TYPES ++ ?BASE64_CONTENT_TYPES).
 
 %% Commonly found ico mime types
--define(WHITELABEL_ICON_MIME_TYPES, [{<<"image">>, <<"ico">>}
-                                    ,{<<"image">>, <<"vnd.microsoft.icon">>}
-                                    ,{<<"image">>, <<"x-icon">>}
-                                    ,{<<"image">>, <<"icon">>}
+-define(WHITELABEL_ICON_MIME_TYPES, [{<<"image">>, <<"ico">>, '*'}
+                                    ,{<<"image">>, <<"vnd.microsoft.icon">>, '*'}
+                                    ,{<<"image">>, <<"x-icon">>, '*'}
+                                    ,{<<"image">>, <<"icon">>, '*'}
                                      | ?WHITELABEL_MIME_TYPES
                                     ]).
 
@@ -50,7 +50,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     Bindings = [{<<"*.authenticate">>, 'authenticate'}
                ,{<<"*.authorize">>, 'authorize'}
@@ -64,7 +64,7 @@ init() ->
                ,{<<"*.execute.delete.whitelabel">>, 'delete'}
                ],
     _ = cb_modules_util:bind(?MODULE, Bindings),
-    ok.
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
@@ -227,7 +227,7 @@ content_types_provided_for_domain_attachments(Context, Domain, AttachType) ->
 set_content_type_provided(Context, JObj) ->
     CT = kz_json:get_value(<<"content_type">>, JObj),
     [Type, SubType] = binary:split(CT, <<"/">>),
-    cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}]).
+    cb_context:set_content_types_provided(Context, [{'to_binary', [{Type, SubType, []}]}]).
 
 -spec content_types_accepted(cb_context:context(), path_token()) -> cb_context:context().
 content_types_accepted(Context, AttachType) ->

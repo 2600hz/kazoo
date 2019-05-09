@@ -132,6 +132,7 @@
              ,setter_fun_1/0
              ,setter_fun_2/0
              ,setter_fun_3/0
+             ,setters/0
              ]).
 
 -type setter_kv() :: setter_fun_1() |
@@ -327,7 +328,7 @@ req_nouns(#cb_context{req_nouns=ReqNouns}) -> ReqNouns.
 -spec req_headers(context()) -> cowboy:http_headers().
 req_headers(#cb_context{req_headers=Hs}) -> Hs.
 
--spec req_header(context(), binary()) -> iodata() | 'undefined'.
+-spec req_header(context(), binary()) -> kz_term:api_ne_binary().
 req_header(#cb_context{req_headers=Hs}, K) -> maps:get(K, Hs, 'undefined').
 
 -spec query_string(context()) -> kz_json:object().

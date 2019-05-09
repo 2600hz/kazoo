@@ -460,16 +460,16 @@ maybe_authorize(Context) ->
 normalize_view(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
--spec account_id(cb_contxt:context()) -> kz_term:ne_binary().
+-spec account_id(cb_context:context()) -> kz_term:ne_binary().
 account_id(Context) ->
-    {ok, Master} = kapps_util:get_master_account_id(),
+    {'ok', Master} = kapps_util:get_master_account_id(),
     Source = [cb_context:req_param(Context, <<"account_id">>)
              ,cb_context:account_id(Context)
              ,cb_context:auth_account_id(Context)
              ,Master
              ],
-    AccountId = hd(lists:filter(fun(undefined) -> false;
-                                   (_Id) -> true
+    AccountId = hd(lists:filter(fun('undefined') -> 'false';
+                                   (_Id) -> 'true'
                                 end, Source)),
     case kz_services_reseller:is_reseller(AccountId)
         orelse AccountId =:= Master

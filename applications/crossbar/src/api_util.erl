@@ -976,13 +976,15 @@ is_known_content_type(Req, Context, CT, CTAs) ->
 -spec is_acceptable_content_type(cowboy_content_type(), crossbar_content_handlers()) -> boolean().
 is_acceptable_content_type(CTA, ContentHandlers) ->
     lists:any(fun({_Fun, ModCTAs}) ->
-                      lists:any(fun(ModCTA) -> content_type_matches(CTA, ModCTA) end, ModCTAs)
+                      content_type_matches(CTA, ModCTAs)
               end
              ,ContentHandlers
              ).
 
 %% (ClientContentType, ModuleContentType)
--spec content_type_matches(cowboy_content_type(), cowboy_content_type()) -> boolean().
+-spec content_type_matches(cowboy_content_type(), [cowboy_content_type()] | cowboy_content_type()) -> boolean().
+content_type_matches(CT, ModCTs) when is_list(ModCTs) ->
+    lists:any(fun(ModCT) -> content_type_matches(CT, ModCT) end, ModCTs);
 content_type_matches({Type, _, _}, {Type, <<"*">>, '*'}) ->
     'true';
 content_type_matches({Type, SubType, _}, {Type, SubType, '*'}) ->
