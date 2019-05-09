@@ -123,7 +123,11 @@ update(#bt_card{token=Token}=Card) ->
 %%------------------------------------------------------------------------------
 
 -spec delete(bt_card() | binary() | string()) -> bt_card().
-delete(#bt_card{token=Token}) -> delete(Token);
+delete(#bt_card{token='undefined'}) ->
+    braintree_util:error_not_found(<<>>);
+delete(#bt_card{token=Token}=Card) ->
+    _ = delete(Token),
+    Card;
 delete(Token) ->
     _ = braintree_request:delete(url(Token)),
     #bt_card{}.
