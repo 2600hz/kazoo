@@ -632,7 +632,7 @@ content_type_accepted_fold({_,_,_}=EncType, Acc, FromFun, _ClientCT) ->
     [{EncType, FromFun} | Acc].
 
 -spec languages_provided(cowboy_req:req(), cb_context:context()) ->
-                                {kz_term:ne_binaries(), cowboy_req:req(), cb_context:context()}.
+                                {[binary()], cowboy_req:req(), cb_context:context()}.
 languages_provided(Req0, Context0) ->
     lager:debug("run: languages_provided"),
 
@@ -1214,7 +1214,7 @@ multiple_choices(Req, Context) ->
     {'false', Req, Context}.
 
 -spec generate_etag(cowboy_req:req(), cb_context:context()) ->
-                           {kz_term:ne_binary(), cowboy_req:req(), cb_context:context()}.
+                           {binary(), cowboy_req:req(), cb_context:context()}.
 generate_etag(Req0, Context0) ->
     Event = api_util:create_event_name(Context0, <<"etag">>),
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
