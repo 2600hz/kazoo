@@ -7,7 +7,7 @@ ERLANG_MK_COMMIT = d30dda39b08e6ed9e12b44533889eaf90aba86de
 
 BASE_BRANCH := $(shell cat $(ROOT)/.base_branch)
 
-CHANGED := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts)
+CHANGED ?= $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts)
 CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
 
 # You can override this when calling make, e.g. make JOBS=1
@@ -249,6 +249,7 @@ app_applications:
 	ERL_LIBS=deps:core:applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find applications -name *.app.src)
 
 code_checks:
+	@if [ -n "$(CHANGED)" ]; then $(ROOT)/scripts/code_checks.bash $(CHANGED) ; else echo "no code changes for code checking" ; fi
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
 	@$(ROOT)/scripts/check-spelling.bash
 	@$(ROOT)/scripts/kz_diaspora.bash

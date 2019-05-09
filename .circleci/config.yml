@@ -31,7 +31,6 @@ jobs:
 
       # code check sequence
       - run: make code_checks
-      - run: ./scripts/code_checks.bash "$(make changed)"
       - run: make app_applications
       - run: make sup_completion
       - run: make xref

@@ -25,8 +25,8 @@ jobs:
           fi
       - run: mkdir -p $CIRCLE_ARTIFACTS
       - run: ${KAZOO_ROOT}/scripts/circleci.bash
-      - run: echo -e 'export CHANGED="$(for file in `find ${KAZOO_ROOT}/applications/${KAZOO_APP} -name "*.[e|h]rl"`; do readlink -e $file; done)"' >> $BASH_ENV
-      - run: echo $CHANGED
+      - run: echo -e 'export CHANGED="$(echo $(for file in `find ${KAZOO_ROOT}/applications/${KAZOO_APP} -name "*.[e|h]rl"`; do readlink -e $file; done))"' >> $BASH_ENV
+      - run: echo "$CHANGED"
 
       # build sequence
       - restore_cache:
@@ -34,7 +34,7 @@ jobs:
             - v2-dep-{{ .Branch }}-
             - v2-dep-master-
             - v2-dep-
-      - run: TO_FMT="${CHANGED}" make -C ${KAZOO_ROOT} fmt
+      - run: TO_FMT="$CHANGED" make -C ${KAZOO_ROOT} fmt
       - run: JOBS="2" make -C ${KAZOO_ROOT}
       - save_cache:
           key: v2-dep-{{ .Branch }}-{{ epoch }}
@@ -43,7 +43,6 @@ jobs:
 
       # code checks sequence
       - run: make -C ${KAZOO_ROOT} code_checks
-      - run: ${KAZOO_ROOT}/scripts/code_checks.bash $CHANGED
       - run: make -C ${KAZOO_ROOT} app_applications
       - run: make -C ${KAZOO_ROOT} sup_completion
       - run: make -C ${KAZOO_ROOT} xref
@@ -61,7 +60,7 @@ jobs:
       - restore_cache:
           keys:
             - plt-v2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
-      - run: TO_DIALYZE="$(echo $CHANGED)" make -C ${KAZOO_ROOT} build-plt dialyze
+      - run: TO_DIALYZE="$CHANGED" make -C ${KAZOO_ROOT} build-plt dialyze
       - save_cache:
           key: plt-v2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
           paths:
