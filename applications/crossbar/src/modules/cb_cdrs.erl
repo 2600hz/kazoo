@@ -525,7 +525,7 @@ col_reseller_call_type(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CC
 
 col_interaction_id(JObj, _Timestamp, _Context) -> kzd_cdrs:interaction_id(JObj, <<>>).
 
--spec pretty_print_datetime(kz_time:datetime() | kz_time:gregorian_second()) -> kz_term:ne_binary().
+-spec pretty_print_datetime(kz_time:datetime() | kz_time:gregorian_seconds()) -> kz_term:ne_binary().
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
     pretty_print_datetime(calendar:gregorian_seconds_to_datetime(Timestamp));
 pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->

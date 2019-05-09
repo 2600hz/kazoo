@@ -976,13 +976,15 @@ is_known_content_type(Req, Context, CT, CTAs) ->
 -spec is_acceptable_content_type(cowboy_content_type(), crossbar_content_handlers()) -> boolean().
 is_acceptable_content_type(CTA, ContentHandlers) ->
     lists:any(fun({_Fun, ModCTAs}) ->
-                      lists:any(fun(ModCTA) -> content_type_matches(CTA, ModCTA) end, ModCTAs)
+                      content_type_matches(CTA, ModCTAs)
               end
              ,ContentHandlers
              ).
 
 %% (ClientContentType, ModuleContentType)
--spec content_type_matches(cowboy_content_type(), cowboy_content_type()) -> boolean().
+-spec content_type_matches(cowboy_content_type(), [cowboy_content_type()] | cowboy_content_type()) -> boolean().
+content_type_matches(CT, ModCTs) when is_list(ModCTs) ->
+    lists:any(fun(ModCT) -> content_type_matches(CT, ModCT) end, ModCTs);
 content_type_matches({Type, _, _}, {Type, <<"*">>, '*'}) ->
     'true';
 content_type_matches({Type, SubType, _}, {Type, SubType, '*'}) ->
@@ -1173,10 +1175,26 @@ finish_request(_Req, Context) ->
 
 -spec maybe_cleanup_file(kz_csv:file_return() | 'undefined') -> 'ok'.
 maybe_cleanup_file({File, _}) ->
-    _Del = file:delete(File),
-    lager:debug("deleting ~s: ~p", [File, _Del]);
+    _P = spawn(fun() -> cleanup_file(File) end),
+    lager:debug("deleting ~s in ~p", [File, _P]);
 maybe_cleanup_file(_) -> 'ok'.
 
+-spec cleanup_file(file:filename_all()) -> 'ok'.
+cleanup_file(File) ->
+    case file:read_file_info(File) of
+        {'ok', #file_info{size=Bytes}} ->
+            Sleep = round(math:log(Bytes)) * ?MILLISECONDS_IN_SECOND,
+            cleanup_file(File, Sleep);
+        {'error', _Posix} ->
+            lager:debug("failed to read file: ~p", [_Posix]),
+            cleanup_file(File, 5 * ?MILLISECONDS_IN_SECOND)
+    end.
+
+-spec cleanup_file(file:filename_all(), pos_integer()) -> 'ok'.
+cleanup_file(File, Sleep) ->
+    timer:sleep(Sleep),
+    'ok' = file:delete(File),
+    lager:debug("deleted file ~s", [File]).
 
 %%------------------------------------------------------------------------------
 %% @doc This function will create the content for the response body.

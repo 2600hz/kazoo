@@ -32,14 +32,14 @@ proper_seq_test_() ->
      ]
     }.
 
-%% proper_parallel_test_() ->
-%%     {"Runs "?MODULE_STRING" PropEr parallel tests"
-%%     ,[{'timeout'
-%%       ,120
-%%       ,?_assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}, 30]))
-%%       }
-%%      ]
-%%     }.
+proper_parallel_test_() ->
+    {"Runs "?MODULE_STRING" PropEr parallel tests"
+    ,[{'timeout'
+      ,120
+      ,?_assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}, 30]))
+      }
+     ]
+    }.
 
 -type prefix() :: pos_integer().
 -type id() :: kz_term:ne_binary().
@@ -222,7 +222,7 @@ cache_rate(Rate, {Cache, NowMs}) ->
     Prefix = kzd_rates:prefix(Rate),
 
     Rates = props:get_value(Prefix, Cache, []),
-    NewRates = props:insert_value(Id, NowMs, Rates),
+    NewRates = props:set_value(Id, NowMs, Rates),
     {props:set_value(Prefix, NewRates, Cache)
     ,NowMs
     }.

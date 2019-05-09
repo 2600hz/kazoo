@@ -44,12 +44,12 @@
 -define(MEDIA_VALUE(Type, SubType, Weight), ?MEDIA_VALUE(Type, SubType, Weight, [], [])).
 -define(MEDIA_VALUE(Type, SubType), ?MEDIA_VALUE(Type, SubType, 1000, [], [])).
 
--type crossbar_content_handler() :: {content_conversion_fun(), [cowboy_content_type()]}.
+-type crossbar_content_handler() :: {content_conversion_fun(), [cowboy_content_type() | {binary(), binary()}]}.
 %% `{handler_fun, {type, sub_type}} => {to_json, [{<<"application">>, <<"json">>}]}'
 -type crossbar_content_handlers() :: [crossbar_content_handler()].
 
--type http_method() :: kz_term:ne_binary(). %% HTTP Verbs in UPPERCASE
--type http_methods() :: kz_term:ne_binaries().
+-type http_method() :: binary(). %% HTTP Verbs in UPPERCASE
+-type http_methods() :: [binary()].
 -type req_verb() :: http_method().
 
 -type validator() :: 'required' | 'not_empty' | 'is_type'

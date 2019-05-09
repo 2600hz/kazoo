@@ -470,7 +470,7 @@ override_plans(Context, Services) ->
         Overrides -> override_plans(Context, Services, Overrides)
     end.
 
--spec override_plans(cb_context:context(), kz_services:services(), kz_term:api_json()) -> kz_services:services().
+-spec override_plans(cb_context:context(), kz_services:services(), kz_term:api_object()) -> kz_services:services().
 override_plans(Context, Services, Overrides) ->
     kz_services_plans:override(Services, Overrides, maybe_merge_overrides(Context)).
 
@@ -487,7 +487,7 @@ maybe_merge_overrides(Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec manual_quantities(cb_context:context(), kz_services:services(), kz_term:api_json()) -> kz_services:services().
+-spec manual_quantities(cb_context:context(), kz_services:services(), kz_term:api_object()) -> kz_services:services().
 manual_quantities(Context, Services, Quantities) ->
     kz_services:set_manual_updates(Services, Quantities, maybe_merge_quantities(Context)).
 

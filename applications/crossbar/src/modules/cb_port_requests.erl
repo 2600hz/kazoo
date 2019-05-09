@@ -640,7 +640,7 @@ patch_then_validate_then_maybe_transition(Context, PortId, ToState) ->
 validate_port_comments(Context, OnSuccess) ->
     validate_port_comments(Context, OnSuccess, get_new_comments(Context)).
 
--spec validate_port_comments(cb_context:context(), fun((cb_context:context()) -> cb_context:context()), kz_json:ojbects()) -> cb_context:context().
+-spec validate_port_comments(cb_context:context(), fun((cb_context:context()) -> cb_context:context()), kz_json:objects()) -> cb_context:context().
 validate_port_comments(Context, OnSuccess, []) ->
     Doc = cb_context:doc(Context),
     Comments = kzd_port_requests:comments(Doc, []),

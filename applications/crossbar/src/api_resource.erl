@@ -632,7 +632,7 @@ content_type_accepted_fold({_,_,_}=EncType, Acc, FromFun, _ClientCT) ->
     [{EncType, FromFun} | Acc].
 
 -spec languages_provided(cowboy_req:req(), cb_context:context()) ->
-                                {kz_term:ne_binaries(), cowboy_req:req(), cb_context:context()}.
+                                {[binary()], cowboy_req:req(), cb_context:context()}.
 languages_provided(Req0, Context0) ->
     lager:debug("run: languages_provided"),
 
@@ -926,22 +926,12 @@ to_fun(Context, Accept, Default) ->
 -spec to_fun(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), atom()) -> atom().
 to_fun(Context, Major, Minor, Default) ->
     case [F || {F, CTPs} <- cb_context:content_types_provided(Context),
-               accept_matches_provided(Major, Minor, CTPs)
+               api_util:content_type_matches({Major, Minor, []}, CTPs)
          ]
     of
         [] -> Default;
         [F|_] -> F
     end.
-
--spec accept_matches_provided(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> boolean().
-accept_matches_provided(Major, Minor, CTPs) ->
-    lists:any(fun({Pri, Sec}) ->
-                      Pri =:= Major
-                          andalso ((Sec =:= Minor)
-                                   orelse (Minor =:= <<"*">>)
-                                  )
-              end, CTPs
-             ).
 
 -spec to_csv(cowboy_req:req(), cb_context:context()) ->
                     {iolist(), cowboy_req:req(), cb_context:context()}.
@@ -1214,7 +1204,7 @@ multiple_choices(Req, Context) ->
     {'false', Req, Context}.
 
 -spec generate_etag(cowboy_req:req(), cb_context:context()) ->
-                           {kz_term:ne_binary(), cowboy_req:req(), cb_context:context()}.
+                           {binary(), cowboy_req:req(), cb_context:context()}.
 generate_etag(Req0, Context0) ->
     Event = api_util:create_event_name(Context0, <<"etag">>),
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),

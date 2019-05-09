@@ -132,6 +132,7 @@
              ,setter_fun_1/0
              ,setter_fun_2/0
              ,setter_fun_3/0
+             ,setters/0
              ]).
 
 -type setter_kv() :: setter_fun_1() |
@@ -327,7 +328,7 @@ req_nouns(#cb_context{req_nouns=ReqNouns}) -> ReqNouns.
 -spec req_headers(context()) -> cowboy:http_headers().
 req_headers(#cb_context{req_headers=Hs}) -> Hs.
 
--spec req_header(context(), binary()) -> iodata() | 'undefined'.
+-spec req_header(context(), binary()) -> kz_term:api_ne_binary().
 req_header(#cb_context{req_headers=Hs}, K) -> maps:get(K, Hs, 'undefined').
 
 -spec query_string(context()) -> kz_json:object().
@@ -631,11 +632,29 @@ set_req_json(#cb_context{}=Context, RJ) ->
 
 -spec set_content_types_accepted(context(), crossbar_content_handlers()) -> context().
 set_content_types_accepted(#cb_context{}=Context, CTAs) ->
-    Context#cb_context{content_types_accepted=CTAs}.
+    Context#cb_context{content_types_accepted=maybe_fix_content_handlers(CTAs)}.
 
 -spec set_content_types_provided(context(), crossbar_content_handlers()) -> context().
 set_content_types_provided(#cb_context{}=Context, CTPs) ->
-    Context#cb_context{content_types_provided=CTPs}.
+    Context#cb_context{content_types_provided=maybe_fix_content_handlers(CTPs)}.
+
+maybe_fix_content_handlers(ContentHandlers) ->
+    lists:foldr(fun maybe_fix_content_handler/2, [], ContentHandlers).
+
+maybe_fix_content_handler({HandlerFun, ContentTypes}, ContentHandlers) ->
+    [{HandlerFun, maybe_fix_content_types(ContentTypes)} | ContentHandlers].
+
+maybe_fix_content_types(ContentTypes) ->
+    lists:foldr(fun maybe_fix_content_type/2, [], ContentTypes).
+
+maybe_fix_content_type({Type, SubType}, ContentTypes) ->
+    [{Type, SubType, []} | ContentTypes];
+maybe_fix_content_type(<<ContentType/binary>>, ContentTypes) ->
+    [ContentType | ContentTypes];
+maybe_fix_content_type({_Type, _SubType, _Props}=ContentType, ContentTypes) ->
+    [ContentType | ContentTypes].
+
+
 
 -spec set_languages_provided(context(), kz_term:ne_binaries()) -> context().
 set_languages_provided(#cb_context{}=Context, LP) ->

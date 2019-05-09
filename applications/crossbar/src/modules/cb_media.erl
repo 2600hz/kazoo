@@ -163,7 +163,7 @@ authorize_media(_Context, _Nouns, _AccountId) ->
 %% @doc Add content types accepted and provided by this module
 %% @end
 %%------------------------------------------------------------------------------
--spec acceptable_content_types() -> kz_term:proplist().
+-spec acceptable_content_types() -> [cowboy_content_type()].
 acceptable_content_types() ->
     ?MEDIA_MIME_TYPES.
 
