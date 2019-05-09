@@ -25,20 +25,18 @@
 
 proper_seq_test_() ->
     {"Runs "?MODULE_STRING" PropEr sequential tests"
-    ,[{'timeout'
-      ,120
-      ,?_assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}, 30]))
-      }
-     ]
+    ,{'timeout'
+     ,120
+     ,?_assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}, 30]))
+     }
     }.
 
 proper_parallel_test_() ->
     {"Runs "?MODULE_STRING" PropEr parallel tests"
-    ,[{'timeout'
-      ,120
-      ,?_assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}, 30]))
-      }
-     ]
+    ,{'timeout'
+     ,120
+     ,?_assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}, 15]))
+     }
     }.
 
 -type prefix() :: pos_integer().
