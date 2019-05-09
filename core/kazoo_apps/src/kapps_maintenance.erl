@@ -61,10 +61,10 @@
 -export([ensure_tree_accounts/0
         ,ensure_tree_accounts_dry_run/0
         ,ensure_tree_accounts/1
-        ,ensure_tree_accounts/2
+        ,ensure_tree_accounts_dry_run/1
         ]).
 -export([ensure_tree_account/1
-        ,ensure_tree_account/2
+        ,ensure_tree_account_dry_run/1
         ]).
 -export([cleanup_aggregated_devices/0
         ,cleanup_aggregated_device/1
@@ -881,16 +881,12 @@ maybe_log_doc_update({'error', _Reason}, _, Failed) ->
 
 -spec get_accounts_tree() -> kz_json:object().
 get_accounts_tree() ->
-    %% {ok, Bin} = file:read_file("/opt/kazoo/123stongest_tree.json"),
-    %% JObjs = kz_json:decode(Bin),
     ViewOptions = [{'reduce', 'false'}],
     ViewName = <<"accounts_tree/list_by_tree_length">>,
     kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ViewName, ViewOptions).
 
 -spec get_accounts_tree(kz_term:ne_binaries()) -> kz_json:object().
 get_accounts_tree(Accounts) ->
-    %% {ok, Bin} = file:read_file(hd(Accounts)),
-    %% JObjs = kz_json:decode(Bin),
     ViewOptions = [{'keys', [kz_util:format_account_id(A) || A <- Accounts]}
                   ,'include_docs'
                   ],
@@ -909,12 +905,15 @@ get_accounts_tree(Accounts) ->
         {'error', _}=Error -> Error
     end.
 
-%% accounts
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec ensure_tree_accounts() -> 'ok'.
 ensure_tree_accounts() ->
     actually_ensure_tree_accounts(get_accounts_tree(), 'false').
 
-%% accounts
+%% all accounts (dry run)
 -spec ensure_tree_accounts_dry_run() -> 'ok'.
 ensure_tree_accounts_dry_run() ->
     actually_ensure_tree_accounts(get_accounts_tree(), 'true').
@@ -924,17 +923,29 @@ ensure_tree_accounts_dry_run() ->
 ensure_tree_accounts(Accounts) ->
     actually_ensure_tree_accounts(get_accounts_tree(Accounts), 'false').
 
-%% acounts
--spec ensure_tree_accounts(kz_term:ne_binary(), boolean() | kz_term:ne_binary()) -> 'ok'.
-ensure_tree_accounts(Accounts, DryRun) ->
-    actually_ensure_tree_accounts(get_accounts_tree(Accounts), DryRun).
+%% acounts (dry run)
+-spec ensure_tree_accounts_dry_run(kz_term:ne_binary()) -> 'ok'.
+ensure_tree_accounts_dry_run(Accounts) ->
+    actually_ensure_tree_accounts(get_accounts_tree(Accounts), 'true').
 
-%% acount
+%% single acount
 -spec ensure_tree_account(kz_term:ne_binary()) -> 'ok'.
 ensure_tree_account(Account) ->
     ensure_tree_account(Account, 'false').
 
-%% acount
+%% single acount (dry run)
+-spec ensure_tree_account_dry_run(kz_term:ne_binary()) -> 'ok'.
+ensure_tree_account_dry_run(Account) ->
+    ensure_tree_account(Account, 'true').
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec ensure_tree_accounts(kz_term:ne_binary(), boolean() | kz_term:ne_binary()) -> 'ok'.
+ensure_tree_accounts(Accounts, DryRun) ->
+    actually_ensure_tree_accounts(get_accounts_tree(Accounts), DryRun).
+
 -spec ensure_tree_account(kz_term:ne_binary(), boolean() | kz_term:ne_binary()) -> 'ok'.
 ensure_tree_account(Account, DryRun) ->
     ensure_tree_accounts([Account], DryRun).
@@ -942,9 +953,8 @@ ensure_tree_account(Account, DryRun) ->
 %% actually ensuring
 -spec actually_ensure_tree_accounts(kazoo_data:get_results_return(), boolean() | kz_term:ne_binary()) -> 'ok'.
 actually_ensure_tree_accounts({'ok', JObjs}, DryRun) ->
-    io:format("::: ensuring pvt_tree is clean for ~b account(s)~n", [length(JObjs)]),
+    io:format("::: ensuring pvt_tree is clean for ~b account(s)~n~n", [length(JObjs)]),
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
-    %% MasterAccountId = <<"36a1a083dd0df9f3b3940b8a972c0e43">>,
     State = #{master => MasterAccountId
              ,real_ids => gb_sets:new()
              ,fixed_trees => #{}
@@ -963,25 +973,35 @@ actually_ensure_tree_accounts({'error', _Reason}, _) ->
 
 -spec maybe_fix_accounts_tree(ensure_state(), boolean()) -> 'ok'.
 maybe_fix_accounts_tree(#{fixed_trees := Fixed}, _) when map_size(Fixed) =:= 0 ->
-    io:format("~nnothing to fix, all hail kazoo!~n");
+    io:format("~n==> nothing to fix, all hail kazoo!~n");
 maybe_fix_accounts_tree(#{fixed_trees := Fixed}, 'true') ->
     io:put_chars(kz_term:to_binary(
-                   ["\n ==> fixed tree:\n"
+                   ["\n==> fixed tree:\n"
                    ,kz_json:encode(kz_json:from_map(Fixed), ['pretty'])
                    ,"\n\n"
                    ]
                   )
                 );
 maybe_fix_accounts_tree(#{fixed_trees := Fixed}=State, 'false') ->
-    io:format("~n ==> going to fix pvt_tree for ~b accounts~n~n", [maps:size(Fixed)]),
-    _ = fix_accounts_tree(State),
+    io:format("~n==> going to fix pvt_tree~n~n"),
+    TotalDepth = maps:size(State),
+    _ = maps:fold(fun(Depth, AccountsMap, Curr) ->
+                      io:format("--> (~b/~b) fixing pvt_tree for depth ~s~n"
+                               ,[Curr, TotalDepth, Depth]
+                               ),
+                      _ = fix_accounts_tree(AccountsMap),
+                      Curr - 1
+                  end
+                 ,TotalDepth
+                 ,Fixed
+                 ),
     'ok'.
 
--spec fix_accounts_tree(ensure_state()) -> integer().
-fix_accounts_tree(#{fixed_trees := Fixed}) ->
-    Total = maps:size(Fixed),
+-spec fix_accounts_tree(map()) -> integer().
+fix_accounts_tree(AccountsMap) ->
+    Total = maps:size(AccountsMap),
     maps:fold(fun(AccountId, Tree, Curr) ->
-                      io:format("(~b/~b) fixing pvt_tree for '~s'~n"
+                      io:format("         - (~b/~b) fixing pvt_tree for '~s'~n"
                                ,[Curr, Total, AccountId]
                                ),
                       fix_account_tree(AccountId, Tree),
@@ -989,7 +1009,7 @@ fix_accounts_tree(#{fixed_trees := Fixed}) ->
                       Curr - 1
               end
              ,Total
-             ,Fixed
+             ,AccountsMap
              ).
 
 -spec fix_account_tree(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
@@ -997,7 +1017,7 @@ fix_account_tree(AccountId, Tree) ->
     Updates =[{kzd_accounts:path_tree(), Tree}],
     maybe_log_doc_update(kzd_accounts:update(AccountId, Updates)
                         ,'undefined'
-                        ,<<"  --> failed to save account definitions">>
+                        ,<<"    !!! failed to save account definitions">>
                         ),
     fix_services_tree(AccountId, Tree),
     fix_port_requests_tree(AccountId, Tree).
@@ -1005,11 +1025,16 @@ fix_account_tree(AccountId, Tree) ->
 -spec fix_services_tree(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 fix_services_tree(AccountId, Tree) ->
     Services = kz_services:fetch(AccountId),
-    ServicesJObj = kz_services:services_jobj(Services),
+    fix_services_tree(Services, Tree, kz_services:services_jobj(Services)).
+
+-spec fix_services_tree(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object()) -> 'ok'.
+fix_services_tree(_, _, 'undefined') ->
+    io:format("    !!! can't fix pvt_tree in service doc, account_db does not exists~n");
+fix_services_tree(Services, Tree, ServicesJObj) ->
     case kzd_services:tree(ServicesJObj) =:= Tree of
         'true' -> 'ok';
         'false' ->
-            io:format("  --> fixing pvt_tree in service doc~n"),
+            io:format("           --> fixing pvt_tree in service doc~n"),
             NewJObj = kzd_services:set_tree(ServicesJObj, Tree),
             _ = kz_services:save_services_jobj(kz_services:set_services_jobj(Services, NewJObj)),
             'ok'
@@ -1023,6 +1048,7 @@ fix_port_requests_tree(AccountId, Tree) ->
                   ],
     ViewName = <<"port_requests/crossbar_listing">>,
     case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ViewName, ViewOptions) of
+        {'ok', []} -> 'ok';
         {'ok', JObjs} ->
             UpdatedJObjs = [kzd_port_requests:set_pvt_tree(JObj, Tree)
                             || J <- JObjs,
@@ -1030,17 +1056,19 @@ fix_port_requests_tree(AccountId, Tree) ->
                                Tree =/= kzd_port_requests:pvt_tree(JObj)
                            ],
             maybe_log_doc_update(kz_datamgr:save_docs(?KZ_PORT_REQUESTS_DB, UpdatedJObjs)
-                                ,<<"  --> fixed pvt_tree in", (length(UpdatedJObjs))/binary, "port request docs">>
-                                ,<<"  --> failed to update pvt_tree for port_requests">>
+                                ,<<"           --> fixed pvt_tree for"
+                                  ,(kz_term:to_binary(length(UpdatedJObjs)))/binary, "port request docs"
+                                 >>
+                                ,<<"    !!! failed to update pvt_tree for port_requests">>
                                 );
         {'error', _Reason} ->
-            io:format("  --> failed to get port requests: ~p~n", [_Reason])
+            io:format("    !!! failed to get port requests: ~p~n", [_Reason])
     end.
 
 -spec ensure_tree_is_tree(ensure_state(), kz_term:ne_binary(), non_neg_integer()) ->
                                  ensure_state().
 ensure_tree_is_tree(State, Family, Depth) ->
-    io:format(" --> calculating tree for depth ~b~n", [Depth]),
+    io:format("--> calculating tree for depth ~b~n", [Depth]),
     maps:fold(fun(AccountId, Tree, StateAcc) ->
                       ensure_tree_is_tree_fold(StateAcc, AccountId, Tree)
               end
@@ -1054,13 +1082,19 @@ ensure_tree_is_tree_fold(#{fixed_trees := FixedTrees
                           }=State
                         ,AccountId, Tree) ->
     UpdatedTree = ensure_tree_is_tree_fold(State, AccountId, Tree, []),
-    case UpdatedTree =:= Tree of
+    UniqTree = kz_term:uniq_list(UpdatedTree),
+    case UniqTree =:= Tree of
         'true' ->
             %% tree is okay
             State;
         'false' ->
             %% tree is fixed
-            State#{fixed_trees => FixedTrees#{AccountId => UpdatedTree}
+            NewDepth = kz_term:to_binary(length(UniqTree)),
+            State#{fixed_trees => maps:update_with(NewDepth
+                                                  ,fun(DepthMap) -> DepthMap#{AccountId => UniqTree} end
+                                                  ,#{AccountId => UniqTree}
+                                                  ,FixedTrees
+                                                  )
                   }
     end.
 
@@ -1081,9 +1115,12 @@ ensure_tree_is_tree_fold(#{master := MasterAccountId}=State, AccountId, [MasterA
 ensure_tree_is_tree_fold(#{master := MasterAccountId}=State, AccountId, [_BadMasterId|Tree], []) ->
     ensure_tree_is_tree_fold(State, AccountId, Tree, [MasterAccountId]);
 
-ensure_tree_is_tree_fold(#{real_ids := RealIds
+ensure_tree_is_tree_fold(#{master := MasterAccountId
+                          ,real_ids := RealIds
                           }=State, AccountId, [Id|Tree], UpdatedTree) ->
-    case gb_sets:is_member(Id, RealIds) of
+    case Id =/= MasterAccountId
+        andalso gb_sets:is_member(Id, RealIds)
+    of
         'true' ->
             ensure_tree_is_tree_fold(State, AccountId, Tree, [Id|UpdatedTree]);
         'false' ->
