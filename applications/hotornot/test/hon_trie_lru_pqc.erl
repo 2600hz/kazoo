@@ -222,7 +222,7 @@ cache_rate(Rate, {Cache, NowMs}) ->
     Prefix = kzd_rates:prefix(Rate),
 
     Rates = props:get_value(Prefix, Cache, []),
-    NewRates = props:insert_value(Id, NowMs, Rates),
+    NewRates = props:set_value(Id, NowMs, Rates),
     {props:set_value(Prefix, NewRates, Cache)
     ,NowMs
     }.
