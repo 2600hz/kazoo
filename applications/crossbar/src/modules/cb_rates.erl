@@ -459,7 +459,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
             {Count + 1, [kz_json:set_values(Setters, kz_json:new()) | JObjs]}
     end.
 
--spec get_row_prefix(rate_row()) -> kz_term:api_binary().
+-spec get_row_prefix(rate_row()) -> kz_term:api_integer().
 get_row_prefix([Prefix | _]=_R) ->
     try kz_term:to_integer(Prefix)
     catch
