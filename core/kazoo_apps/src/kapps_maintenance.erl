@@ -858,9 +858,8 @@ find_invalid_acccount_dbs_fold(AccountDb, Acc) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_log_doc_update({'ok', kz_json:object() | kz_json:objects()} |
-                           {'error', kazoo_data:data_error()}
-                          ,kz_term:ne_binary()
+-spec maybe_log_doc_update({'ok', kz_json:object() | kz_json:objects()} | kazoo_data:data_error()
+                          ,kz_term:api_ne_binary()
                           ,kz_term:ne_binary()
                           ) -> 'ok'.
 maybe_log_doc_update({'ok', _}, 'undefined', _) -> 'ok';
@@ -919,12 +918,12 @@ ensure_tree_accounts_dry_run() ->
     actually_ensure_tree_accounts(get_accounts_tree(), 'true').
 
 %% acounts
--spec ensure_tree_accounts(kz_term:ne_binary()) -> 'ok'.
+-spec ensure_tree_accounts(kz_term:ne_binaries()) -> 'ok'.
 ensure_tree_accounts(Accounts) ->
     actually_ensure_tree_accounts(get_accounts_tree(Accounts), 'false').
 
 %% acounts (dry run)
--spec ensure_tree_accounts_dry_run(kz_term:ne_binary()) -> 'ok'.
+-spec ensure_tree_accounts_dry_run(kz_term:ne_binaries()) -> 'ok'.
 ensure_tree_accounts_dry_run(Accounts) ->
     actually_ensure_tree_accounts(get_accounts_tree(Accounts), 'true').
 
@@ -942,7 +941,7 @@ ensure_tree_account_dry_run(Account) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec ensure_tree_accounts(kz_term:ne_binary(), boolean() | kz_term:ne_binary()) -> 'ok'.
+-spec ensure_tree_accounts(kz_term:ne_binaries(), boolean() | kz_term:ne_binary()) -> 'ok'.
 ensure_tree_accounts(Accounts, DryRun) ->
     actually_ensure_tree_accounts(get_accounts_tree(Accounts), DryRun).
 
@@ -1022,12 +1021,12 @@ fix_account_tree(AccountId, Tree) ->
     fix_services_tree(AccountId, Tree),
     fix_port_requests_tree(AccountId, Tree).
 
--spec fix_services_tree(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+-spec fix_services_tree(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
 fix_services_tree(AccountId, Tree) ->
     Services = kz_services:fetch(AccountId),
     fix_services_tree(Services, Tree, kz_services:services_jobj(Services)).
 
--spec fix_services_tree(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object()) -> 'ok'.
+-spec fix_services_tree(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:api_object()) -> 'ok'.
 fix_services_tree(_, _, 'undefined') ->
     io:format("    !!! can't fix pvt_tree in service doc, account_db does not exists~n");
 fix_services_tree(Services, Tree, ServicesJObj) ->
@@ -1040,7 +1039,7 @@ fix_services_tree(Services, Tree, ServicesJObj) ->
             'ok'
     end.
 
--spec fix_port_requests_tree(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+-spec fix_port_requests_tree(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
 fix_port_requests_tree(AccountId, Tree) ->
     ViewOptions = [{'startkey', [AccountId]}
                   ,{'endkey', [AccountId, kz_json:new()]}
@@ -1065,7 +1064,7 @@ fix_port_requests_tree(AccountId, Tree) ->
             io:format("    !!! failed to get port requests: ~p~n", [_Reason])
     end.
 
--spec ensure_tree_is_tree(ensure_state(), kz_term:ne_binary(), non_neg_integer()) ->
+-spec ensure_tree_is_tree(ensure_state(), map(), non_neg_integer()) ->
                                  ensure_state().
 ensure_tree_is_tree(State, Family, Depth) ->
     io:format("--> calculating tree for depth ~b~n", [Depth]),

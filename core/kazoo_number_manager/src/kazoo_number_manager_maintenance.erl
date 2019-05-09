@@ -377,7 +377,7 @@ copy_numdb_to_accounts(State, NumberDb) ->
     copy_numdb_to_accounts(State, NumberDb, ViewOptions).
 
 %% @private
--spec copy_numdb_to_accounts(loop_state(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
+-spec copy_numdb_to_accounts(loop_state(), kz_term:ne_binary(), kz_term:proplist()) -> loop_state().
 copy_numdb_to_accounts(State, NumberDb, ViewOptions) ->
     View = <<"numbers/assigned_to">>,
     Funs = [fun get_docs_from_result/2
@@ -1063,7 +1063,7 @@ split_by_error([JObj|JObjs], ConflictSet, Failed, TotalFailed) ->
             split_by_error(JObjs, gb_sets:add_element(kz_doc:id(JObj), ConflictSet), Failed, TotalFailed);
         Reason ->
             Error = to_binary_data_error(Reason),
-            NewFailed = maps:update_with(<<"save_docs-", Error>>, fun(Nums) -> [kz_doc:id(JObj)| Nums] end
+            NewFailed = maps:update_with(<<"save_docs-", Error/binary>>, fun(Nums) -> [kz_doc:id(JObj)| Nums] end
                                         ,[kz_doc:id(JObj)]
                                         ,Failed
                                         ),
@@ -1078,7 +1078,7 @@ maybe_log_failed_saves(ConflictSet, 0) ->
         Size ->
             ?SUP_LOG_DEBUG("         [conflict: ~b]", [Size])
     end;
-maybe_log_failed_saves(ConflictSet, TotalFailed) ->
+maybe_log_failed_saves(ConflictSet, TotalFailed) when TotalFailed > 0 ->
     case gb_sets:size(ConflictSet) of
         0 ->
             ?SUP_LOG_DEBUG("         [failed: ~b]", [TotalFailed]);
