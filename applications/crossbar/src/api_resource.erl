@@ -926,22 +926,12 @@ to_fun(Context, Accept, Default) ->
 -spec to_fun(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), atom()) -> atom().
 to_fun(Context, Major, Minor, Default) ->
     case [F || {F, CTPs} <- cb_context:content_types_provided(Context),
-               accept_matches_provided(Major, Minor, CTPs)
+               api_util:content_type_matches({Major, Minor, []}, CTPs)
          ]
     of
         [] -> Default;
         [F|_] -> F
     end.
-
--spec accept_matches_provided(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> boolean().
-accept_matches_provided(Major, Minor, CTPs) ->
-    lists:any(fun({Pri, Sec}) ->
-                      Pri =:= Major
-                          andalso ((Sec =:= Minor)
-                                   orelse (Minor =:= <<"*">>)
-                                  )
-              end, CTPs
-             ).
 
 -spec to_csv(cowboy_req:req(), cb_context:context()) ->
                     {iolist(), cowboy_req:req(), cb_context:context()}.
