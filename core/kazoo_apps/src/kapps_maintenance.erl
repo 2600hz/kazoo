@@ -986,11 +986,11 @@ maybe_fix_accounts_tree(#{fixed_trees := Fixed}=State, 'false') ->
     io:format("~n==> going to fix pvt_tree~n~n"),
     TotalDepth = maps:size(State),
     _ = maps:fold(fun(Depth, AccountsMap, Curr) ->
-                      io:format("--> (~b/~b) fixing pvt_tree for depth ~s~n"
-                               ,[Curr, TotalDepth, Depth]
-                               ),
-                      _ = fix_accounts_tree(AccountsMap),
-                      Curr - 1
+                          io:format("--> (~b/~b) fixing pvt_tree for depth ~s~n"
+                                   ,[Curr, TotalDepth, Depth]
+                                   ),
+                          _ = fix_accounts_tree(AccountsMap),
+                          Curr - 1
                   end
                  ,TotalDepth
                  ,Fixed
