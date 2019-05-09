@@ -633,27 +633,32 @@ ensure_aggregate_faxbox(Account) ->
     AccountDb = kz_util:format_account_db(Account),
     case kz_datamgr:get_results(AccountDb, ?FAXBOX_VIEW, ['include_docs']) of
         {'ok', Faxboxes} ->
-            ensure_aggregate_faxbox_docs(Faxboxes);
+            update_or_add_to_faxes_db(Faxboxes);
         {'error', _} -> 'ok'
     end.
 
--spec ensure_aggregate_faxbox_docs(kz_json:objects()) -> 'ok'.
-ensure_aggregate_faxbox_docs([]) -> 'ok';
-ensure_aggregate_faxbox_docs([Faxbox|Faxboxes]) ->
-    update_or_add_to_faxes_db(kz_json:get_value(<<"doc">>, Faxbox)),
-    ensure_aggregate_faxbox_docs(Faxboxes).
-
 -spec update_or_add_to_faxes_db(kz_json:object()) -> 'ok'.
-update_or_add_to_faxes_db(JObj) ->
-    <<"faxbox">> = kz_doc:type(JObj),
-    case kz_datamgr:lookup_doc_rev(?KZ_FAXES_DB, kz_doc:id(JObj)) of
-        {'ok', Rev} ->
-            _ = kz_datamgr:save_doc(?KZ_FAXES_DB, kz_doc:set_revision(JObj, Rev)),
-            'ok';
-        {'error', 'not_found'} ->
-            _ = kz_datamgr:save_doc(?KZ_FAXES_DB, kz_doc:delete_revision(JObj)),
-            'ok';
-        {'error', _Message} -> 'ok'
+update_or_add_to_faxes_db(Faxboxes) ->
+    case kz_datamgr:all_docs(?KZ_FAXES_DB, [{'keys', [ kz_doc:id(Doc) || Doc <- Faxboxes]}]) of
+        {'ok', Docs} ->
+            Revs = maps:from_list([{kz_json:get_value(<<"key">>, D)
+                                   ,kz_json:get_value([<<"value">>, <<"rev">>], D)
+                                   }
+                                   || D <- Docs
+                                  ]),
+            kz_datamgr:save_doc(?KZ_FAXES_DB, prepare_faxboxes(Faxboxes, Revs, []));
+        {'error', _Message} ->
+            'ok'
+    end.
+
+-spec prepare_faxboxes(kz_json:objects(), kz_json:objects(), kz_json:objects()) -> kz_json:objects().
+prepare_faxboxes([], _Revs, Acc) -> Acc;
+prepare_faxboxes([Doc|Faxboxes], Revs, Acc) ->
+    case maps:get(kz_doc:id(Doc), Revs, 'undefined') of
+        'undefined' ->
+            prepare_faxboxes(Faxboxes, Revs, [kz_doc:delete_revision(Doc)|Acc]);
+        Rev ->
+            prepare_faxboxes(Faxboxes, Revs, [kz_doc:set_revision(Doc, Rev)|Acc])
     end.
 
 %%------------------------------------------------------------------------------
