@@ -126,7 +126,7 @@ set_default_config(API, Config) ->
                                   ),
     pqc_cb_response:data(Resp).
 
--spec patch_default_config(pqc_cb_api:api(), kz_tern:ne_binary(), kz_json:object()) -> kzd_system_configs:doc().
+-spec patch_default_config(pqc_cb_api:api(), kz_term:ne_binary(), kz_json:object()) -> kzd_system_configs:doc().
 patch_default_config(API, Id, Config) ->
     ?INFO("patching default config for ~p", [Config]),
     URL = config_url(Id),

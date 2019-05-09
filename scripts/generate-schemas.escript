@@ -6,6 +6,8 @@
 
 -export([main/1]).
 
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+
 main(_) ->
     lists:foreach(fun run_generator/1
                  ,[fun cf_data_usage:to_schema_docs/0
@@ -19,12 +21,12 @@ main(_) ->
 run_generator(F) ->
     try F()
     catch
-        'throw':'no_type' ->
-            ST = [{M, _F, _A, Props}|_] = erlang:get_stacktrace(),
-            CompileOpts = M:module_info(compile),
-            SrcModule = props:get_value(source, CompileOpts),
-            Line = props:get_value('line', Props),
-            io:format("~s:~p: no type found when running ~p~n", [SrcModule, Line, F]),
-            [io:format("~p~n", [S]) || S <- ST],
-            exit(1)
-    end.
+        ?STACKTRACE('throw', 'no_type', ST)
+        [{M, _F, _A, Props}|_] = ST,
+        CompileOpts = M:module_info(compile),
+        SrcModule = props:get_value(source, CompileOpts),
+        Line = props:get_value('line', Props),
+        io:format("~s:~p: no type found when running ~p~n", [SrcModule, Line, F]),
+        [io:format("~p~n", [S]) || S <- ST],
+        exit(1)
+        end.

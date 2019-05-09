@@ -16,11 +16,10 @@
 
 -define(SERVER, ?MODULE).
 
--define(CONFIG_SECTION, 'amqp').
--define(POOL_THRESHOLD, kz_config:get_integer(?CONFIG_SECTION, 'pool_threshold', ?DEFAULT_POOL_THRESHOLD)).
+-define(CONFIG_SECTION, <<"amqp">>).
+-define(POOL_THRESHOLD, kz_config:get_integer(?CONFIG_SECTION, <<"pool_threshold">>, ?DEFAULT_POOL_THRESHOLD)).
 
--define(KAPPS_GETBY_ORIGIN_BINDINGS, [[{'type', <<"account">>}]
-                                     ]).
+-define(KAPPS_GETBY_ORIGIN_BINDINGS, [[{'type', <<"account">>}]]).
 
 -define(KAPPS_GETBY_PROPS, [{'origin_bindings', ?KAPPS_GETBY_ORIGIN_BINDINGS}]).
 
@@ -82,23 +81,23 @@ init([]) ->
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
     PoolSize =
-        case kz_config:get_integer(?CONFIG_SECTION, 'pool_size') of
-            [] -> kz_config:get_integer(?CONFIG_SECTION, 'pool_size', ?DEFAULT_POOL_SIZE);
+        case kz_config:get_integer(?CONFIG_SECTION, <<"pool_size">>) of
+            [] -> kz_config:get_integer(?CONFIG_SECTION, <<"pool_size">>, ?DEFAULT_POOL_SIZE);
             [Size|_] -> Size
         end,
 
     PoolOverflow =
-        case kz_config:get_integer(?CONFIG_SECTION, 'pool_overflow') of
-            [] -> kz_config:get_integer(?CONFIG_SECTION, 'pool_overflow', ?DEFAULT_POOL_OVERFLOW);
+        case kz_config:get_integer(?CONFIG_SECTION, <<"pool_overflow">>) of
+            [] -> kz_config:get_integer(?CONFIG_SECTION, <<"pool_overflow">>, ?DEFAULT_POOL_OVERFLOW);
             [Overflow|_] -> Overflow
         end,
 
     PoolThreshold =
-        case kz_config:get_integer(?CONFIG_SECTION, 'pool_threshold') of
+        case kz_config:get_integer(?CONFIG_SECTION, <<"pool_threshold">>) of
             [] -> ?POOL_THRESHOLD;
             [Threshold|_] -> Threshold
         end,
-    PoolServerConfirms = kz_config:get_boolean(?CONFIG_SECTION, 'pool_server_confirms', ?DEFAULT_POOL_SERVER_CONFIRMS),
+    PoolServerConfirms = kz_config:get_boolean(?CONFIG_SECTION, <<"pool_server_confirms">>, ?DEFAULT_POOL_SERVER_CONFIRMS),
 
     PoolArgs = [{'worker_module', 'kz_amqp_worker'}
                ,{'name', {'local', kz_amqp_sup:pool_name()}}

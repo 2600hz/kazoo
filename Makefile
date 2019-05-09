@@ -278,6 +278,10 @@ code_checks:
 	@$(ROOT)/scripts/edocify.escript
 	@$(ROOT)/scripts/kzd_module_check.bash
 	@$(ROOT)/scripts/check-loglines.bash
+	@$(ROOT)/scripts/check-stacktrace.py $(CHANGED)
+
+check_stacktrace:
+	@$(ROOT)/scripts/check-stacktrace.py $(shell grep -rl "get_stacktrace" scripts applications core --include "*.[e|h]rl" --exclude "kz_types.hrl")
 
 apis:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-schemas.escript

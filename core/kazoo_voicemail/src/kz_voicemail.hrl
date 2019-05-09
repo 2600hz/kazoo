@@ -29,7 +29,7 @@
 -type bulk_map() :: #{succeeded => kz_term:ne_binaries() | kz_json:objects()
                      ,failed => [{kz_term:ne_binary(), kz_term:ne_binary()}]
                      ,to_update_map => #{kz_term:ne_binary() => kz_json:objects()}
-                     ,enforce_set => set:sets()
+                     ,enforce_set => sets:set()
                      }.
 
 -type next_account() :: {kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()}.

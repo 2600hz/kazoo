@@ -49,20 +49,20 @@ update(#data_connection{}=Connection) ->
 
 -spec add(data_connection()) -> 'ok'.
 add(#data_connection{tag='undefined'}=Connection) ->
-    add(Connection#data_connection{tag='local'});
+    add(Connection#data_connection{tag = <<"local">>});
 add(#data_connection{}=Connection) ->
     gen_server:cast(?SERVER, {'add_connection', Connection}).
 
 
 -spec wait_for_connection() -> 'ok' | 'no_connection'.
 wait_for_connection() ->
-    wait_for_connection('local').
+    wait_for_connection(<<"local">>).
 
--spec wait_for_connection(any()) -> 'ok' | 'no_connection'.
+-spec wait_for_connection(kz_term:ne_binary()) -> 'ok' | 'no_connection'.
 wait_for_connection(Tag) ->
     wait_for_connection(Tag, 'infinity').
 
--spec wait_for_connection(any(), timeout()) -> 'ok' | 'no_connection'.
+-spec wait_for_connection(kz_term:ne_binary(), timeout()) -> 'ok' | 'no_connection'.
 wait_for_connection(_Tag, 0) -> 'no_connection';
 wait_for_connection(Tag, Timeout) ->
     Start = os:timestamp(),
@@ -81,9 +81,9 @@ wait_for_connection(Tag, Timeout) ->
 
 -spec get_server() -> server().
 get_server() ->
-    get_server('local').
+    get_server(<<"local">>).
 
--spec get_server(term()) -> server().
+-spec get_server(kz_term:ne_binary()) -> server().
 get_server(Tag) ->
     MatchSpec = [{#data_connection{ready = 'true'
                                   ,app = '$1'
@@ -107,10 +107,10 @@ get_server(Tag) ->
 
 -spec test_conn() -> {'ok', kz_json:object()} |
                      {'error', any()}.
-test_conn() -> test_conn('local').
+test_conn() -> test_conn(<<"local">>).
 
--spec test_conn(term()) -> {'ok', kz_json:object()} |
-                           {'error', any()}.
+-spec test_conn(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
+                                        {'error', any()}.
 test_conn(Tag) ->
     case get_server(Tag) of
         'undefined' -> {'error', 'server_not_available'};

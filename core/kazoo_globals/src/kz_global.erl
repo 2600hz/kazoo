@@ -33,8 +33,7 @@
         ,register_remote/2
         ]).
 
--export_type([global/0
-             ,globals/0
+-export_type([global/0, globals/0
              ,name/0, names/0
              ]).
 

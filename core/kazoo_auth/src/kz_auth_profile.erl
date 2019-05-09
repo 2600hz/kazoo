@@ -71,11 +71,11 @@ token_fold(Token, [Fun | Routines]) ->
     try Fun(Token) of
         NewToken -> token_fold(NewToken, Routines)
     catch
-        _E:_R ->
-            lager:debug("exception executing ~p : ~p , ~p", [Fun, _E, _R]),
-            kz_util:log_stacktrace(),
-            token_fold(Token, Routines)
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:debug("exception executing ~p : ~p , ~p", [Fun, _E, _R]),
+        kz_util:log_stacktrace(ST),
+        token_fold(Token, Routines)
+        end.
 
 -spec profile_access_verb(map()) -> 'get' | 'post'.
 profile_access_verb(Provider) ->

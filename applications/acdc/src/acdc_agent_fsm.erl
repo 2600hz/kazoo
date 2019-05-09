@@ -1517,13 +1517,20 @@ terminate(Reason, _StateName, #state{account_id=AccountId
                                     }) ->
     lager:debug("acdc agent statem terminating while in ~s: ~p", [_StateName, Reason]),
 
-    case Reason of
-        OKReason when OKReason == 'normal'; OKReason == 'shutdown' ->
-            kz_util:spawn(fun acdc_agents_sup:stop_agent/2, [AccountId, AgentId]);
-        _ -> 'ok'
-    end,
+    maybe_stop_agent(Reason, AccountId, AgentId),
 
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_RED_SOLID).
+
+maybe_stop_agent('normal', AccountId, AgentId) ->
+    stop_agent(AccountId, AgentId);
+maybe_stop_agent('shutdown', AccountId, AgentId) ->
+    stop_agent(AccountId, AgentId);
+maybe_stop_agent(_Reason, _AccountId, _AgentId) ->
+    'ok'.
+
+stop_agent(AccountId, AgentId) ->
+    kz_util:spawn(fun acdc_agents_sup:stop_agent/2, [AccountId, AgentId]),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.
@@ -1725,7 +1732,6 @@ find_username(EP) ->
 find_sip_username(EP, 'undefined') -> kz_json:get_value(<<"To-User">>, EP);
 find_sip_username(_EP, Username) -> Username.
 
-
 -spec find_endpoint_id(kz_json:object()) -> kz_term:api_binary().
 find_endpoint_id(EP) ->
     find_endpoint_id(EP, kz_doc:id(EP)).
@@ -1734,7 +1740,7 @@ find_endpoint_id(EP) ->
 find_endpoint_id(EP, 'undefined') -> kz_json:get_value(<<"Endpoint-ID">>, EP);
 find_endpoint_id(_EP, EPId) -> EPId.
 
--spec monitor_endpoint(kz_json:api_object(), kz_term:ne_binary(), kz_types:server_ref()) -> any().
+-spec monitor_endpoint(kz_term:api_object(), kz_term:ne_binary(), kz_types:server_ref()) -> any().
 monitor_endpoint('undefined', _, _) -> 'ok';
 monitor_endpoint(EP, AccountId, AgentListener) ->
     Username = find_username(EP),
@@ -1791,8 +1797,8 @@ convert_to_endpoint(EPDoc) ->
               ],
 
     Call = kapps_call:exec(Setters, kapps_call:new()),
-    case kz_endpoint:build(kz_doc:id(EPDoc), [], Call) of
-        {'ok', EP} -> EP;
+    case kz_endpoint:build(kz_doc:id(EPDoc), kz_json:new(), Call) of
+        {'ok', [EP|_]} -> EP;
         {'error', _} -> 'undefined'
     end.
 

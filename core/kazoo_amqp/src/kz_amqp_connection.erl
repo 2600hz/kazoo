@@ -235,7 +235,7 @@ connected(#kz_amqp_connection{reconnect_ref=Ref}=Connection)
 connected(#kz_amqp_connection{channel='undefined'}=Connection) ->
     case create_control_channel(Connection) of
         #kz_amqp_connection{channel=Pid}=Success
-          when is_pid(Pid)-> connected(Success);
+          when is_pid(Pid) -> connected(Success);
         #kz_amqp_connection{}=Error -> Error
     end;
 connected(#kz_amqp_connection{exchanges_initialized='false'}=Connection) ->

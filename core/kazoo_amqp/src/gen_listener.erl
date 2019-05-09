@@ -827,12 +827,11 @@ handle_callback_info(Message
         {'stop', Reason, ModuleState1} ->
             {'stop', Reason, State#state{module_state=ModuleState1}}
     catch
-        _E:R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("handle_info exception: ~s: ~p", [_E, R]),
-            kz_util:log_stacktrace(ST),
-            {'stop', R, State}
-    end.
+        ?STACKTRACE(_E, R, ST)
+        lager:debug("handle_info exception: ~s: ~p", [_E, R]),
+        kz_util:log_stacktrace(ST),
+        {'stop', R, State}
+        end.
 
 -spec format_status('normal' | 'terminate', [kz_term:proplist() | state()]) -> any().
 format_status(_Opt
@@ -1040,7 +1039,7 @@ start_amqp(Props, AutoAck) ->
 
 -spec set_qos(binary(), 'undefined' | non_neg_integer()) -> 'ok'.
 set_qos(<<>>, 'undefined') ->
-    case kz_config:get_integer('amqp', 'prefetch') of
+    case kz_config:get_integer(<<"amqp">>, <<"prefetch">>) of
         [N] when is_integer(N) ->
             lager:debug("random queue getting config.ini QoS settings(~p) applied", [N]),
             kz_amqp_util:basic_qos(N);
@@ -1149,12 +1148,11 @@ handle_module_call(Request, From, #state{module=Module
         {'stop', Reason, Reply, ModuleState1} ->
             {'stop', Reason, Reply, State#state{module_state=ModuleState1}}
     catch
-        _E:R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("handle_call exception: ~s: ~p", [_E, R]),
-            kz_util:log_stacktrace(ST),
-            {'stop', R, State}
-    end.
+        ?STACKTRACE(_E, R, ST)
+        lager:debug("handle_call exception: ~s: ~p", [_E, R]),
+        kz_util:log_stacktrace(ST),
+        {'stop', R, State}
+        end.
 
 -spec handle_module_cast(any(), state()) -> handle_cast_return().
 handle_module_cast(Msg, #state{module=Module
@@ -1174,12 +1172,11 @@ handle_module_cast(Msg, #state{module=Module
         {'stop', Reason, ModuleState1} ->
             {'stop', Reason, State#state{module_state=ModuleState1}}
     catch
-        _E:R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("handle_cast exception: ~s: ~p", [_E, R]),
-            kz_util:log_stacktrace(ST),
-            {'stop', R, State}
-    end.
+        ?STACKTRACE(_E, R, ST)
+        lager:debug("handle_cast exception: ~s: ~p", [_E, R]),
+        kz_util:log_stacktrace(ST),
+        {'stop', R, State}
+        end.
 
 -spec handle_rm_binding(binding(), kz_term:proplist(), state()) -> state().
 handle_rm_binding(Binding, Props, #state{queue=Q

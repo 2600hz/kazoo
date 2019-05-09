@@ -972,7 +972,7 @@ queue_insert_fun('head') ->
 %% @end
 %%------------------------------------------------------------------------------
 %% See Noop documentation for Filter-Applications to get an idea of this function's purpose
--spec maybe_filter_queue(kz_json:api_objects(), queue:queue()) -> queue:queue().
+-spec maybe_filter_queue(kz_term:api_objects(), queue:queue()) -> queue:queue().
 maybe_filter_queue('undefined', CommandQ) -> CommandQ;
 maybe_filter_queue([], CommandQ) -> CommandQ;
 maybe_filter_queue([AppName|T]=Apps, CommandQ) when is_binary(AppName) ->
@@ -1077,13 +1077,12 @@ execute_control_request(Cmd, #state{node=Node
             send_error_resp(CallId, Cmd, Msg),
             Srv ! {'force_queue_advance', CallId},
             'ok';
-        'error':{'badmatch', {'error', ErrMsg}} ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("invalid command ~s: ~p", [Application, ErrMsg]),
-            kz_util:log_stacktrace(ST),
-            maybe_send_error_resp(CallId, Cmd),
-            Srv ! {'force_queue_advance', CallId},
-            'ok';
+        ?STACKTRACE('error', {'badmatch', {'error', ErrMsg}}, ST)
+        lager:debug("invalid command ~s: ~p", [Application, ErrMsg]),
+        kz_util:log_stacktrace(ST),
+        maybe_send_error_resp(CallId, Cmd),
+        Srv ! {'force_queue_advance', CallId},
+        'ok';
         'throw':{'msg', ErrMsg} ->
             lager:debug("error while executing command ~s: ~s", [Application, ErrMsg]),
             send_error_resp(CallId, Cmd),
@@ -1096,14 +1095,13 @@ execute_control_request(Cmd, #state{node=Node
             send_error_resp(CallId, Cmd, Msg),
             Srv ! {'force_queue_advance', CallId},
             'ok';
-        _A:_B ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("exception (~s) while executing ~s: ~p", [_A, Application, _B]),
-            kz_util:log_stacktrace(ST),
-            send_error_resp(CallId, Cmd),
-            Srv ! {'force_queue_advance', CallId},
-            'ok'
-    end.
+        ?STACKTRACE(_A, _B, ST)
+        lager:debug("exception (~s) while executing ~s: ~p", [_A, Application, _B]),
+        kz_util:log_stacktrace(ST),
+        send_error_resp(CallId, Cmd),
+        Srv ! {'force_queue_advance', CallId},
+        'ok'
+        end.
 
 -spec which_call_leg(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_term:ne_binary().
 which_call_leg(CmdLeg, OtherLegs, CallId) ->

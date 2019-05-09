@@ -105,7 +105,7 @@ do_fetch_attachment(Authorization, Bucket, {'name', Name}, HandlerProps, DbName,
     ContentId = <<(?DRV_BASE_FETCH_URL(Bucket))/binary, "/", Name/binary>>,
     do_fetch_attachment(Authorization, Bucket, ContentId, HandlerProps, DbName, DocId, AName);
 do_fetch_attachment({'ok', #{'token' := #{'authorization' := Authorization}}}
-                   ,Bucket, ContentId, HandlerProps, DbName, DocId, AName) ->
+                   ,_Bucket, ContentId, HandlerProps, DbName, DocId, AName) ->
     Headers = [{<<"Authorization">>, Authorization}],
     case kz_http:get(ContentId, Headers) of
         {'ok', 200, _ResponseHeaders, ResponseBody} ->

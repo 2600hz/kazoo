@@ -69,7 +69,7 @@
 -type srvtuple() :: {integer(), integer(), integer(), string()}.
 -type naptrtuple() :: {integer(), integer(), string(), string(), string(), string()}.
 -type mxtuple() :: {integer(), string()}.
--type options() :: [inet_res:req_option()].
+-type options() :: [inet_res:res_option()]. % not currently exported from inet_res
 
 -type cidr_block() :: {inet:ip_address(), inet:ip_address(), pos_integer()}.
 
@@ -449,7 +449,7 @@ resolve_a_record_fold(IPTuple, I) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec iptuple_to_binary(inet:ip4_address() | inet:ipv6_address()) -> kz_term:ne_binary().
+-spec iptuple_to_binary(inet:ip4_address() | inet:ip6_address()) -> kz_term:ne_binary().
 iptuple_to_binary({A,B,C,D}) ->
     <<(kz_term:to_binary(A))/binary, "."
      ,(kz_term:to_binary(B))/binary, "."

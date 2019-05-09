@@ -108,6 +108,7 @@
 
 -export([sort/2
         ,order_by/3
+        ,check_value_term/1
         ]).
 
 -export([lift_common_properties/1, lift_common_properties/2]).
@@ -120,6 +121,7 @@
 -export_type([json_proplist/0
              ,object/0, objects/0
              ,flat_object/0, flat_objects/0
+             ,flat_proplist/0
              ,path/0, paths/0
              ,key/0, keys/0
              ,get_key/0
@@ -1172,16 +1174,16 @@ set_value(_Keys, 'undefined', JObj) -> JObj;
 set_value(Keys, Value, JObj) when is_list(Keys) -> set_value1(Keys, Value, JObj);
 set_value(Key, Value, JObj) -> set_value1([Key], Value, JObj).
 
--spec set_value(get_key(), api_json_term() | 'null', object() | objects(), set_value_options) -> object() | objects().
+-spec set_value(get_key(), api_json_term() | 'null', object() | objects(), set_value_options()) -> object() | objects().
 set_value(_Keys, 'undefined', JObj, _Options) -> JObj;
 set_value(Keys, Value, JObj, Options) when is_list(Keys) ->
-    set_value1(Keys, Value, JObj, Options);
+    set_value1(Keys, check_value_term(Value), JObj, Options);
 set_value(Key, Value, JObj, Options) ->
-    set_value1([Key], Value, JObj, Options).
+    set_value1([Key], check_value_term(Value), JObj, Options).
 
 -spec set_value1(keys(), json_term() | 'null', object() | objects()) -> object() | objects().
 set_value1(Keys, Value, JObj) ->
-    set_value1(Keys, Value, JObj, set_value_options()).
+    set_value1(Keys, check_value_term(Value), JObj, set_value_options()).
 
 -spec set_value1(keys(), json_term() | 'null', object() | objects(), set_value_options()) -> object() | objects().
 set_value1([Key|_]=Keys, Value, [], Options) when not is_integer(Key) ->
@@ -1217,7 +1219,6 @@ set_value1([Key|T], Value, JObjs, Options) when is_list(JObjs) ->
 
 %% Figure out how to set the current key in an existing object
 set_value1([_|_]=Keys, 'null', JObj, #{'keep_null' := 'false'}) -> delete_key(Keys, JObj);
-set_value1([_|_]=Keys, 'undefined', JObj, _Options) -> delete_key(Keys, JObj);
 set_value1([Key1|T], Value, ?JSON_WRAPPER(Props), Options) ->
     case lists:keyfind(Key1, 1, Props) of
         {Key1, ?JSON_WRAPPER(_)=V1} ->
@@ -1549,16 +1550,11 @@ exec_fold({F, V}, C) when is_function(F, 2) -> F(V, C);
 exec_fold(F, C) when is_function(F, 1) -> F(C).
 
 -spec utf8_binary(json_term()) -> json_term().
-utf8_binary(Value) when is_binary(Value) ->
-    %% io_lib:printable_unicode_list/1 check added to avoid encoding file's content
-    %% like audio files.
-    case io_lib:printable_unicode_list(binary_to_list(Value)) of
-        'true' ->
-            %% it must be a string or bitstring
-            unicode:characters_to_binary(io_lib:format("~ts", [Value]));
-        'false' ->
-            %% it must be a file's content
-            Value
-    end;
-utf8_binary(Value) ->
-    Value.
+utf8_binary(<<V/binary>>) -> kz_binary:to_utf8(V);
+utf8_binary(Else) -> Else.
+
+-spec check_value_term(json_term()) -> json_term().
+check_value_term(<<Term/binary>>) -> utf8_binary(Term);
+check_value_term(?JSON_WRAPPER(Prop)) -> ?JSON_WRAPPER([{K, check_value_term(V)} || {K, V} <- Prop]);
+check_value_term([_|_]=Terms) -> [check_value_term(Term) || Term <- Terms];
+check_value_term(Term) -> Term.

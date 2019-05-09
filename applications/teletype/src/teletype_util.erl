@@ -160,7 +160,8 @@ email_parameters([{Key, V}|T], Params) ->
     email_parameters(T, [{Key, V} | Params]).
 
 -spec relay_email(kz_term:api_binaries(), kz_term:ne_binary(), mimemail:mimetuple()) ->
-                         'ok' | {'error', any()}.
+                         {'ok', kz_term:ne_binary()} |
+                         {'error', any()}.
 relay_email(To, From, {_Type
                       ,_SubType
                       ,Addresses
@@ -177,12 +178,11 @@ relay_email(To, From, {_Type
         'error':'missing_from' ->
             lager:warning("no From address: ~s: ~p", [From, Addresses]),
             {'error', 'missing_from'};
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:warning("failed to encode email: ~s: ~p", [_E, _R]),
-            kz_util:log_stacktrace(ST),
-            {'error', 'email_encoding_failed'}
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:warning("failed to encode email: ~s: ~p", [_E, _R]),
+        kz_util:log_stacktrace(ST),
+        {'error', 'email_encoding_failed'}
+        end.
 
 -spec maybe_relay_to_bcc(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binaries()) -> 'ok'.
 maybe_relay_to_bcc(_From, _Encoded, 'undefined') -> 'ok';
@@ -721,7 +721,7 @@ get_address_value(Key, Path, [JObj|JObjs]) ->
         Emails -> Emails
     end.
 
--spec check_address_value(binary() | kz_term:binaries() | kz_json:api_object()) ->
+-spec check_address_value(binary() | kz_term:binaries() | kz_term:api_object()) ->
                                  kz_term:api_ne_binaries().
 check_address_value('undefined') -> 'undefined';
 check_address_value(<<>>) -> 'undefined';

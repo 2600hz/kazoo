@@ -603,7 +603,7 @@ should_store_recording(AccountId, Url) ->
 maybe_storage_plan(AccountId) ->
     AccountDb = kz_util:format_account_mod_id(AccountId),
     Plan = kzs_plan:get_dataplan(AccountDb, <<"call_recording">>),
-    case maps:get('tag', Plan, 'local') =/= 'local'
+    case maps:get('tag', Plan, <<"local">>) =/= <<"local">>
         orelse maps:is_key('att_handler', Plan) of
         'true' -> {'true', 'local'};
         'false' -> should_store_recording()

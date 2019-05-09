@@ -716,10 +716,18 @@ evaluate_rules_for_creation(Endpoint, Properties, Call) ->
 
 -spec should_create_endpoint_fold(ep_routine_v(), create_ep_acc()) -> create_ep_acc().
 should_create_endpoint_fold(Routine, {Endpoint, Properties, Call}=Acc) when is_function(Routine, 3) ->
-    case Routine(Endpoint, Properties, Call) of
+    try Routine(Endpoint, Properties, Call) of
         'ok' -> Acc;
         Error -> Error
-    end;
+    catch
+        ?STACKTRACE('throw', Error, ST)
+        kz_util:log_stacktrace(ST),
+        Error;
+        ?STACKTRACE(_E, _R, ST)
+        lager:debug("exception ~p:~p", [_E, _R]),
+        kz_util:log_stacktrace(ST),
+        {'error', 'exception'}
+        end;
 should_create_endpoint_fold(_Routine, Error) -> Error.
 
 -spec maybe_missing_resource_type(kz_json:object(), kz_json:object(),  kapps_call:call()) ->
@@ -729,12 +737,10 @@ maybe_missing_resource_type(_Endpoint, _Properties, Call) ->
     maybe_missing_resource_type(kapps_call:resource_type(Call)).
 
 -spec maybe_missing_resource_type(kz_term:api_binary()) ->
-                                         'ok' |
-                                         {'error', 'no_resource_type'}.
+                                         'ok'.
 maybe_missing_resource_type('undefined') ->
     lager:error("kapps_call resource type is undefined"),
-    kz_util:log_stacktrace(),
-    {'error', 'no_resource_type'};
+    throw({'error', 'no_resource_type'});
 maybe_missing_resource_type(_) -> 'ok'.
 
 -spec maybe_owner_called_self(kz_json:object(), kz_json:object(),  kapps_call:call()) ->
@@ -930,11 +936,11 @@ try_create_endpoint(Routine, Endpoints, Endpoint, Properties, Call) when is_func
             lager:debug("created endpoint from ~s", [kz_doc:id(Endpoint)]),
             [JObj|Endpoints]
     catch
-        _E:_R ->
-            lager:warning("unable to build endpoint(~s): ~p", [_E, _R]),
-            kz_util:log_stacktrace(),
-            Endpoints
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:warning("unable to build endpoint(~s): ~p", [_E, _R]),
+        kz_util:log_stacktrace(ST),
+        Endpoints
+        end.
 
 -spec maybe_create_fwd_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                        kz_json:object() |
@@ -1786,25 +1792,21 @@ get_invite_format(SIPJObj) ->
     lager:debug("invite format: ~s", [IF]),
     IF.
 
--spec get_to_did(kz_json:object(), kapps_call:call()) -> kz_term:api_binary().
+-spec get_to_did(kz_json:object(), kapps_call:call()) -> kz_term:api_ne_binary().
 get_to_did(Endpoint, Call) ->
-    kz_json:get_value([<<"sip">>, <<"number">>]
-                     ,Endpoint
-                     ,kapps_call:request_user(Call)
-                     ).
+    kz_json:get_ne_binary_value([<<"sip">>, <<"number">>]
+                               ,Endpoint
+                               ,kapps_call:request_user(Call)
+                               ).
 
--spec get_to_user(kz_json:object(), kz_json:object()) -> kz_term:api_binary().
+-spec get_to_user(kz_json:object(), kz_json:object()) -> kz_term:api_ne_binary().
 get_to_user(SIPJObj, Properties) ->
-    case kz_json:get_ne_binary_value(<<"static_invite">>, Properties) of
-        'undefined' ->
-            case kz_json:get_ne_binary_value(<<"static_invite">>, SIPJObj) of
-                'undefined' -> kz_json:get_ne_binary_value(<<"username">>, SIPJObj);
-                To -> To
-            end;
+    case kz_json:find(<<"static_invite">>, [Properties, SIPJObj]) of
+        'undefined' -> get_to_username(SIPJObj);
         To -> To
     end.
 
--spec get_to_username(kz_json:object()) -> kz_term:api_binary().
+-spec get_to_username(kz_json:object()) -> kz_term:api_ne_binary().
 get_to_username(SIPJObj) ->
     kz_json:get_ne_binary_value(<<"username">>, SIPJObj).
 
@@ -1873,7 +1875,7 @@ is_sms(Call) ->
 
 -spec create_mobile_sms_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                         kz_json:object() |
-                                        {'error', kz_term:ne_binary()}.
+                                        {'error', 'mdn_missing'}.
 create_mobile_sms_endpoint(Endpoint, Properties, Call) ->
     case maybe_build_mobile_sms_route(Endpoint) of
         {'error', _R}=Error ->
@@ -1911,8 +1913,8 @@ create_mobile_sms_endpoint_failover(Endpoint, [{Route, Options} | Failover]) ->
                    ).
 
 -spec maybe_build_mobile_sms_route(kz_json:object()) ->
-                                          kz_term:ne_binary() |
-                                          {'error', 'mdn_missing'}.
+                                          {kz_term:ne_binary(), sms_routes()} |
+                                          {'error', 'mdn_missing' | 'invalid_mdn'}.
 maybe_build_mobile_sms_route(Endpoint) ->
     case kz_json:get_ne_value([<<"mobile">>, <<"mdn">>], Endpoint) of
         'undefined' ->
@@ -1935,7 +1937,10 @@ build_mobile_sms_route(<<"sip">>, MDN) ->
     {<<"sip">>, [{build_mobile_route(MDN), 'undefined'}]};
 build_mobile_sms_route(<<"amqp">>, _MDN) ->
     Connections = kapps_config:get_json(?MOBILE_CONFIG_CAT, [<<"sms">>, <<"connections">>], ?DEFAULT_MOBILE_AMQP_CONNECTIONS),
-    {<<"amqp">>, kz_json:foldl(fun build_mobile_sms_amqp_route/3 , [], Connections)}.
+    {<<"amqp">>, kz_json:foldl(fun build_mobile_sms_amqp_route/3 , [], Connections)};
+build_mobile_sms_route(_Type, _MDN) ->
+    lager:info("invalid sms interface ~p", [_Type]),
+    {'error', 'invalid_mdn'}.
 
 -spec build_mobile_sms_amqp_route(kz_json:path(), kz_json:json_term(), kz_term:proplist()) -> sms_routes().
 build_mobile_sms_amqp_route(K, JObj, Acc) ->

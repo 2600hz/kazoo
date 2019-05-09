@@ -9,10 +9,10 @@
 
 -include("braintree.hrl").
 
--record(update, {item :: kz_json:api_object()
+-record(update, {item :: kz_term:api_object()
                 ,plan_id :: kz_term:api_ne_binary()
                 ,addon_id :: kz_term:api_ne_binary()
-                ,mapping :: kz_json:api_object()
+                ,mapping :: kz_term:api_object()
                 ,subscription :: braintree_subscription:subscription() | 'undefined'
                 }).
 

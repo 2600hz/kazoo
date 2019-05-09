@@ -115,11 +115,11 @@ from_token_fold(Token, [Fun | Routines]) ->
     try Fun(Token) of
         NewToken -> from_token_fold(NewToken, Routines)
     catch
-        _E:_R ->
-            lager:debug("error running public key routine ~p : ~p , ~p", [Fun, _E, _R]),
-            kz_util:log_stacktrace(),
-            from_token_fold(Token, Routines)
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:debug("error running public key routine ~p : ~p , ~p", [Fun, _E, _R]),
+        kz_util:log_stacktrace(ST),
+        from_token_fold(Token, Routines)
+        end.
 
 -spec maybe_get_key(map()) -> map().
 maybe_get_key(#{key_id := _KeyId}=Token) -> Token;

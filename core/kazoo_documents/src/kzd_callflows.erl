@@ -39,7 +39,7 @@ new() ->
                                  ]
                                 ).
 
--spec type() -> kz_json:ne_binary().
+-spec type() -> kz_term:ne_binary().
 type() -> ?PVT_TYPE.
 
 -spec featurecode(doc()) -> kz_term:api_object().

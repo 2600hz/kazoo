@@ -92,6 +92,7 @@ add(Broker) -> add(Broker, 'local').
 add(#kz_amqp_connection{broker=Broker, tags=Tags}=Connection, Zone) ->
     case kz_amqp_connection_sup:add(Connection) of
         {'ok', Pid} ->
+            lager:info("new connection proc ~p for ~s", [Pid, Broker]),
             gen_server:cast(?SERVER, {'new_connection', Pid, Broker, Zone, Tags}),
             Connection;
         {'error', Reason} = Error ->
@@ -111,10 +112,7 @@ add(Broker, Zone) ->
                  kz_amqp_connection() |
                  {'error', any()}.
 add(Broker, Zone, Tags) ->
-    case catch amqp_uri:parse(kz_term:to_list(Broker)) of
-        {'EXIT', _R} ->
-            lager:error("failed to parse AMQP URI '~s': ~p", [Broker, _R]),
-            {'error', 'invalid_uri'};
+    try amqp_uri:parse(kz_term:to_list(Broker)) of
         {'error', {Info, _}} ->
             lager:error("failed to parse AMQP URI '~s': ~p", [Broker, Info]),
             {'error', 'invalid_uri'};
@@ -127,6 +125,7 @@ add(Broker, Zone, Tags) ->
                ,Zone
                );
         {'ok', Params} ->
+            lager:info("broker ~s params ~p", [Broker, Params]),
             add(#kz_amqp_connection{broker=Broker
                                    ,params=Params
                                    ,tags=Tags
@@ -134,6 +133,10 @@ add(Broker, Zone, Tags) ->
                                    }
                ,Zone
                )
+    catch
+        _E:_R ->
+            lager:error("failed to parse AMQP URI '~s': ~s ~p", [Broker, _E, _R]),
+            {'error', 'invalid_uri'}
     end.
 
 -spec remove(kz_term:pids() | pid() | kz_term:text()) -> 'ok'.

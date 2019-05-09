@@ -111,15 +111,25 @@ check_creditably(Context, Services, Quotes, Amount) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_subscriptions(cb_context:context(), kz_services_invoices:jobjs()) -> 'ok'.
+-spec update_subscriptions(cb_context:context()
+                          ,kz_services_quantities:billables() | kz_services_quantities:billable()
+                          ) -> 'ok'.
 update_subscriptions(Context, ProposedJObj) ->
     CurrentJObj = cb_context:fetch(Context, 'db_doc'),
     update_subscriptions(Context, CurrentJObj, ProposedJObj).
 
--spec update_subscriptions(cb_context:context(), kz_services_invoices:jobjs(), kz_services_invoices:jobjs()) -> 'ok'.
+-spec update_subscriptions(cb_context:context()
+                          ,kz_services_quantities:billables() | kz_services_quantities:billable()
+                          ,kz_services_quantities:billables() | kz_services_quantities:billable()
+                          ) -> 'ok'.
 update_subscriptions(Context, CurrentJObj, ProposedJObj) ->
     update_subscriptions(Context, CurrentJObj, ProposedJObj, cb_context:account_id(Context)).
 
+-spec update_subscriptions(cb_context:context()
+                          ,kz_services_quantities:billables() | kz_services_quantities:billable()
+                          ,kz_services_quantities:billables() | kz_services_quantities:billable()
+                          ,kz_term:api_ne_binary()
+                          ) -> 'ok'.
 update_subscriptions(_Context, _CurrentJObj, _ProposedJObj, 'undefined') ->
     lager:debug("not updating subscriptions on non-account-related change");
 update_subscriptions(Context, CurrentJObj, ProposedJObj, AccountId) ->

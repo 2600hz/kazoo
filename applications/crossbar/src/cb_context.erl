@@ -731,18 +731,16 @@ update_doc(#cb_context{doc=Doc}=Context, Updater) ->
 
 %% % Helpers
 
--spec add_content_types_provided(context(), crossbar_content_handler() | crossbar_content_handlers()) ->
+-spec add_content_types_provided(context(), crossbar_content_handlers()) ->
                                         context().
-add_content_types_provided(#cb_context{content_types_provided=CTPs}=Context, [_|_]=NewCTPs) ->
-    Context#cb_context{content_types_provided = NewCTPs ++ CTPs};
-add_content_types_provided(#cb_context{}=Context, {_, _}=NewCTP) ->
-    add_content_types_provided(Context,[NewCTP]).
+add_content_types_provided(#cb_context{content_types_provided=CTPs}=Context, NewCTPs) when is_list(NewCTPs) ->
+    Context#cb_context{content_types_provided = NewCTPs ++ CTPs}.
 
 -spec add_content_types_accepted(context(), crossbar_content_handler() | crossbar_content_handlers()) ->
                                         context().
 add_content_types_accepted(#cb_context{content_types_accepted=CTAs}=Context, [_|_]=NewCTAs) ->
     Context#cb_context{content_types_accepted = NewCTAs ++ CTAs};
-add_content_types_accepted(#cb_context{}=Context, {_, _}=NewCTA) ->
+add_content_types_accepted(#cb_context{}=Context, NewCTA) ->
     add_content_types_provided(Context,[NewCTA]).
 
 -spec add_attachment_content_type(context(), kz_term:ne_binary(), kz_term:ne_binary()) -> context().
@@ -761,7 +759,7 @@ maybe_add_content_type_provided(Context, AttachmentId) ->
         ContentType ->
             lager:debug("found content type ~s", [ContentType]),
             [Type, SubType] = binary:split(ContentType, <<"/">>),
-            add_content_types_provided(Context, [{'to_binary', [{Type, SubType}]}])
+            add_content_types_provided(Context, [{'to_binary', [{Type, SubType, '*'}]}])
     end.
 
 %%------------------------------------------------------------------------------
@@ -898,16 +896,15 @@ validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, _SchemaRequired
             lager:debug("validation errors but not strictly validating, trying to fix request"),
             maybe_fix_js_types(SchemaJObj, Context, OnSuccess, OnFailure, Errors)
     catch
-        'error':'function_clause' ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("function clause failure"),
-            kz_util:log_stacktrace(ST),
-            Context#cb_context{resp_status = 'fatal'
-                              ,resp_error_code = 500
-                              ,resp_data = kz_json:new()
-                              ,resp_error_msg = <<"validation failed to run on the server">>
-                              }
-    end.
+        ?STACKTRACE('error', 'function_clause', ST)
+        lager:debug("function clause failure"),
+        kz_util:log_stacktrace(ST),
+        Context#cb_context{resp_status = 'fatal'
+                          ,resp_error_code = 500
+                          ,resp_data = kz_json:new()
+                          ,resp_error_msg = <<"validation failed to run on the server">>
+                          }
+        end.
 
 -spec validate_failed(kz_json:object(), context(), validation_errors(), after_fun()) -> context().
 validate_failed(SchemaJObj, Context, Errors, OnFailure) ->

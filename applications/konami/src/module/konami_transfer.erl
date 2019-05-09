@@ -136,11 +136,10 @@ handle(Data, Call) ->
         _ -> 'ok'
     catch
         'exit':'normal' -> 'ok';
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:info("statem terminated abnormally: ~s: ~p", [_E, _R]),
-            kz_util:log_stacktrace(ST)
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:info("statem terminated abnormally: ~s: ~p", [_E, _R]),
+        kz_util:log_stacktrace(ST)
+        end.
 
 -spec get_extension(kz_term:ne_binaries() | kz_term:ne_binary()) -> kz_term:ne_binary().
 get_extension([Ext|_]) -> Ext;

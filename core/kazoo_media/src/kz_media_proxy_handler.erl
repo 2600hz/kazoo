@@ -65,12 +65,12 @@ init_from_doc(Url, Req, StreamType) ->
                     {'ok', Req1, 'ok'}
             end
     catch
-        _E:_R ->
-            kz_util:log_stacktrace(),
-            lager:debug("exception thrown: ~s: ~p", [_E, _R]),
-            Req1 = cowboy_req:reply(404, Req),
-            {'ok', Req1, 'ok'}
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        kz_util:log_stacktrace(ST),
+        lager:debug("exception thrown: ~s: ~p", [_E, _R]),
+        Req1 = cowboy_req:reply(404, Req),
+        {'ok', Req1, 'ok'}
+        end.
 
 -spec handle(cowboy_req:req(), state()) -> {'ok', cowboy_req:req(), 'ok'}.
 handle(Req0, ?STATE(Meta, Bin)) ->

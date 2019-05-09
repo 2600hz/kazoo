@@ -40,12 +40,13 @@ maybe_cookie_from_env() ->
 
 -spec cookie_from_ini() -> atom().
 cookie_from_ini() ->
-    case kz_config:get_atom(?APP, 'cookie') of
+    case kz_config:get_atom(?APP_NAME, <<"cookie">>) of
         [] ->
             [Name, _Host] = binary:split(kz_term:to_binary(node()), <<"@">>),
-            case kz_config:get_atom(kz_term:to_atom(Name, 'true'), 'cookie') of
-                [] -> lager:warning("failed to get cookie for node ~s, generating one", [node()]),
-                      kz_term:to_atom(kz_binary:rand_hex(16), 'true');
+            case kz_config:get_atom(Name, <<"cookie">>) of
+                [] ->
+                    lager:warning("failed to get cookie for node ~s, generating one", [node()]),
+                    kz_term:to_atom(kz_binary:rand_hex(16), 'true');
                 [Cookie|_] -> Cookie
             end;
         [Cookie|_] -> Cookie
@@ -53,13 +54,12 @@ cookie_from_ini() ->
 
 -spec set_loglevel() -> 'ok'.
 set_loglevel() ->
-    [Console|_] = kz_config:get_atom('log', 'console', ['notice']),
+    [Console|_] = kz_config:get_atom(<<"log">>, <<"console">>, ['notice']),
     kz_log:change_console_log_level(Console),
-    [Syslog|_] = kz_config:get_atom('log', 'syslog', ['info']),
+    [Syslog|_] = kz_config:get_atom(<<"log">>, <<"syslog">>, ['info']),
     kz_log:change_syslog_log_level(Syslog),
-    [Error|_] = kz_config:get_atom('log', 'error', ['error']),
-    kz_log:change_error_log_level(Error),
-    'ok'.
+    [Error|_] = kz_config:get_atom(<<"log">>, <<"error">>, ['error']),
+    kz_log:change_error_log_level(Error).
 
 -spec sanity_checks() -> boolean().
 sanity_checks() ->

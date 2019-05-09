@@ -340,13 +340,12 @@ remote_calls_from_module(Module, Acc, {M, AST}) ->
     try remote_calls_from_functions(Fs, Acc) of
         Modules -> ?DEBUG("  ~p~n", [Module]), lists:delete(M, Modules)
     catch
-        _E:R ->
-            ST = erlang:get_stacktrace(),
-            io:format("process module '~s' failed: ~s: ~p~n", [Module, _E, R]),
-            [io:format("st: ~p~n", [S]) || S <- ST],
-            ?DEBUG("~s failed: ~s ~r~n~p~n", [Module, _E, R, ST]),
-            throw(R)
-    end.
+        ?STACKTRACE(_E, R, ST)
+        io:format("process module '~s' failed: ~s: ~p~n", [Module, _E, R]),
+        [io:format("st: ~p~n", [S]) || S <- ST],
+        ?DEBUG("~s failed: ~s ~r~n~p~n", [Module, _E, R, ST]),
+        throw(R)
+        end.
 
 remote_calls_from_functions(Fs, Acc) ->
     lists:foldl(fun remote_calls_from_function/2

@@ -75,13 +75,13 @@ retry504s(Fun, Cnt) ->
             kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
             {'error', format_error(Other)};
         OK -> OK
-    catch _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("exception running fun: ~p:~p", [_E, _R]),
-            kz_util:log_stacktrace(ST),
-            kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
-            retry504s(Fun, Cnt+1)
-    end.
+    catch
+        ?STACKTRACE(_E, _R, ST)
+        lager:debug("exception running fun: ~p:~p", [_E, _R]),
+        kz_util:log_stacktrace(ST),
+        kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
+        retry504s(Fun, Cnt+1)
+        end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -113,7 +113,7 @@ maybe_default_recv_timeout(Options) ->
     end.
 
 filter_options(Options) ->
-    [ KV || {K, _} = KV <- Options, not lists:member(K, ?NO_OPTIONS)].
+    [KV || {K, _} = KV <- Options, not lists:member(K, ?NO_OPTIONS)].
 
 convert_options(Options) ->
     [convert_option(O) || O <- Options].
@@ -168,7 +168,7 @@ connect(#kz_couch_connection{host=Host
                },
     Opts = [{'connection_map', ConnMap} | maybe_add_auth(User, Pass, check_options(Options))],
     Conn = couchbeam:server_connection(kz_term:to_list(Host), Port, <<>>, Opts),
-    lager:debug("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
+    lager:info("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
     connection_info(Conn).
 
 add_couch_version(<<"1.6", _/binary>>, 'undefined', #server{options=Options}=Conn) ->
@@ -202,13 +202,15 @@ get_db(Conn, DbName) ->
 
 -spec get_db(kz_data:connection(), kz_term:ne_binary(), couch_version()) -> db().
 get_db(Conn, DbName, Driver) ->
-    ConnToUse =
-        case is_admin_db(DbName, Driver) of
-            'true' -> maybe_use_admin_conn(Conn);
-            'false' -> Conn
-        end,
+    ConnToUse = select_conn(Conn, DbName, Driver),
     {'ok', Db} = couchbeam:open_db(ConnToUse, DbName),
     Db.
+
+select_conn(Conn, DbName, Driver) ->
+    case is_admin_db(DbName, Driver) of
+        'true' -> maybe_use_admin_conn(Conn);
+        'false' -> Conn
+    end.
 
 -spec is_admin_db(kz_term:ne_binary(), couch_version()) -> boolean().
 is_admin_db(<<"_dbs">>, 'couchdb_2') -> 'true';
