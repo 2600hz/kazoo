@@ -1183,7 +1183,7 @@ maybe_cleanup_file(_) -> 'ok'.
 cleanup_file(File) ->
     case file:read_file_info(File) of
         {'ok', #file_info{size=Bytes}} ->
-            Sleep = math:log(Bytes) * ?MILLISECONDS_IN_SECOND,
+            Sleep = round(math:log(Bytes)) * ?MILLISECONDS_IN_SECOND,
             cleanup_file(File, Sleep);
         {'error', _Posix} ->
             lager:debug("failed to read file: ~p", [_Posix]),
