@@ -516,10 +516,25 @@ get_transition(Doc, ToState) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_port_authority(doc() | kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
-find_port_authority(?NE_BINARY = AccountId) ->
+find_port_authority('undefined') ->
     case kapps_util:get_master_account_id() of
-        {'ok', MasterAccountId} ->
+        {'ok', ?NE_BINARY = MasterAccountId} ->
+            lager:debug("account id is undefined, checking master"),
+            find_port_authority(MasterAccountId, MasterAccountId, MasterAccountId);
+        {'ok', _} ->
+            lager:debug("master and account id is undefined"),
+            'undefined';
+        {'error', _} ->
+            lager:debug("master and account id is undefined"),
+            'undefined'
+    end;
+find_port_authority(AccountId) when is_binary(AccountId) ->
+    case kapps_util:get_master_account_id() of
+        {'ok', ?NE_BINARY = MasterAccountId} ->
             find_port_authority(MasterAccountId, AccountId, AccountId);
+        {'ok', _} ->
+            lager:debug("master and account id is undefined"),
+            'undefined';
         {'error', _} ->
             lager:debug("failed to find port authority, master account is undefined"),
             'undefined'
@@ -538,11 +553,8 @@ find_port_authority(Doc) ->
             'undefined'
     end.
 
--spec find_port_authority(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
+-spec find_port_authority(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
                                  kz_term:api_binary().
-find_port_authority('undefined', _, 'undefined') ->
-    lager:debug("master and account id is undefined"),
-    'undefined';
 find_port_authority(MasterAccountId, SubmittedAccountId, 'undefined') ->
     lager:debug("account id is undefined, checking master"),
     find_port_authority(MasterAccountId, SubmittedAccountId, MasterAccountId);
