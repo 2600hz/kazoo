@@ -666,7 +666,7 @@ find_whitelabel_binary_meta(Context, Domain, AttachType) ->
     end.
 
 -spec whitelabel_binary_meta(cb_context:context(), kz_term:ne_binary()) ->
-                                    'undefined' | {kz_term:ne_binary(), kz_json:object()}.
+                                    'undefined' | {kz_term:ne_binary(), kz_term:api_object()}.
 whitelabel_binary_meta(Context, AttachType) ->
     case kz_doc:id(cb_context:doc(Context)) =:= ?WHITELABEL_ID
         orelse cb_context:resp_status(Context) =:= 'success'
@@ -676,7 +676,7 @@ whitelabel_binary_meta(Context, AttachType) ->
             case whitelabel_attachment_id(JObj, AttachType) of
                 'undefined' -> 'undefined';
                 AttachmentId ->
-                    {AttachmentId, kz_json:get_value(AttachmentId, JObj)}
+                    {AttachmentId, kz_json:get_json_value(AttachmentId, JObj)}
             end;
         'false' -> 'undefined'
     end.
