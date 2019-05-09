@@ -72,7 +72,7 @@ init_db() ->
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).
 
-authorize(Context, ?RATEDECKS) ->
+authorize(Context, [{<<"rates">>, [?RATEDECKS]}]) ->
     case cb_context:is_superduper_admin(Context) of
         'true' -> 'true';
         'false' -> {'stop', cb_context:add_system_error('forbidden', Context)}
