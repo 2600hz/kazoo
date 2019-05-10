@@ -750,7 +750,7 @@ do_put_action(Context, ?OUTBOX, ?OUTBOX_ACTION_RESUBMIT, Id) ->
     lager:debug("copying ~s/~s to ~s/~s", [FromDB, Id, ?KZ_FAXES_DB, NewId]),
     case kz_datamgr:copy_doc(FromDB, {?FAX_TYPE, Id}, ?KZ_FAXES_DB, NewId, Options) of
         {'ok', _Doc} ->
-            Updates = [{<<"pvt_job_status">>, <<"pending">>}],
+            Updates = [{[<<"pvt_job_status">>], <<"pending">>}],
             UpdateOptions = [{'update', Updates}],
             {'ok', UpdatedDoc} = kz_datamgr:update_doc(?KZ_FAXES_DB, NewId, UpdateOptions),
             cb_context:set_resp_data(Context, kz_doc:public_fields(UpdatedDoc));
@@ -767,7 +767,7 @@ do_put_action(Context, ?INBOX, ?INBOX_ACTION_FORWARD, Id) ->
     lager:debug("copying ~s/~s to ~s/~s", [FromDB, Id, ?KZ_FAXES_DB, NewId]),
     case kz_datamgr:copy_doc(FromDB, {?FAX_TYPE, Id}, ?KZ_FAXES_DB, NewId, Options) of
         {'ok', _Doc} ->
-            Updates = [{<<"pvt_job_status">>, <<"pending">>}],
+            Updates = [{[<<"pvt_job_status">>], <<"pending">>}],
             UpdateOptions = [{'update', Updates}],
             {'ok', UpdatedDoc} = kz_datamgr:update_doc(?KZ_FAXES_DB, NewId, UpdateOptions),
             cb_context:set_resp_data(Context, kz_doc:public_fields(UpdatedDoc));

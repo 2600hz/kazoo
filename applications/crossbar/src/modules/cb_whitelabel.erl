@@ -429,7 +429,7 @@ system_domains() ->
         'undefined' ->
             lager:info("initializing system domains to default"),
             Default = kzd_domains:default(),
-            kapps_config:set_default(<<"whitelabel">>, <<"domains">>, Default),
+            _ = kapps_config:set_default(<<"whitelabel">>, <<"domains">>, Default),
             Default;
         Domains -> Domains
     end.
@@ -684,7 +684,8 @@ whitelabel_binary_meta(Context, AttachType) ->
 -spec whitelabel_attachment_id(kz_json:object(), kz_term:ne_binary()) ->
                                       'undefined' | {kz_term:ne_binary(), kz_json:object()}.
 whitelabel_attachment_id(JObj, AttachType) ->
-    filter_attachment_type(kz_json:get_keys(JObj), AttachType).
+    AttachmentIds = kz_json:get_keys(JObj),
+    filter_attachment_type(AttachmentIds, AttachType).
 
 -spec filter_attachment_type(kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_term:api_binary().
 filter_attachment_type([], _) -> 'undefined';
