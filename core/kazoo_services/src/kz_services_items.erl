@@ -210,9 +210,9 @@ annotate(CurrentItems, ProposedItems, Reason) ->
                ,ProposedItems
                )
          ),
-    do_annotate([Items || {_, Items} <- TentativeItems], Reason, []).
+    do_annotate([Items || {_ItemHash, Items} <- TentativeItems], Reason, []).
 
--type tentative_items() :: {kz_services_item:item(), kz_services_item:item()}.
+-type tentative_items() :: [{kz_services_item:item() | 'undefined', kz_services_item:item() | 'undefined'}].
 -spec do_annotate(tentative_items(), kz_term:api_bianry(), items()) -> items().
 do_annotate([], _Reason, Items) ->
     Items;

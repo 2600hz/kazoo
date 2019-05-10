@@ -70,9 +70,9 @@ annotate(Services, CurrentInvoices, ProposedInvoices) ->
                ,ProposedInvoices
                )
          ),
-    do_annotate(Services, [Invoices || {_, Invoices} <- TentativeInvoices], []).
+    do_annotate(Services, [Invoices || {_BookkeeperHash, Invoices} <- TentativeInvoices], []).
 
--type tentative_invoices() :: {kz_services_invoice:invoice(), kz_services_invoice:invoice()}.
+-type tentative_invoices() :: [{kz_services_invoice:invoice() | 'undefined', kz_services_invoice:invoice() | 'undefined'}].
 -spec do_annotate(kz_services:services(), tentative_invoices(), invoices()) -> invoices().
 do_annotate(_Services, [], Invoices) -> Invoices;
 do_annotate(Services, [{CurrentInvoice, 'undefined'}|TentativeInvoices], Invoices) ->
@@ -108,7 +108,6 @@ do_annotate(Services, [{CurrentInvoice, ProposedInvoice}|TentativeInvoices], Inv
     CurrentItems = kz_services_invoice:items(CurrentInvoice),
     ProposedItems = kz_services_invoice:items(ProposedInvoice),
     Items = kz_services_items:annotate(CurrentItems, ProposedItems),
-    ActivationItems = kz_services_activation_items:create(Items),
     Setters = [{fun kz_services_invoice:set_items/2, Items}
               ,{fun kz_services_invoice:set_activation_charges/2
                ,kz_services_activation_items:create(Items)
