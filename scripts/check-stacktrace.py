@@ -9,7 +9,7 @@ import sys
 
 if len(sys.argv) < 2:
     print('Usage: ' + sys.argv[0] + ' path/to/file.erl', file=sys.stderr)
-    sys.exit(1)
+    sys.exit(0)
 
 regex=r'(\s+)([\'\w_]+):([\'\w_]+)\s+\-\>\n\s+([A-Z_][\w_]+)([\s=]+erlang:get_stacktrace\(\),\n)'
 replace=r'\1?STACKTRACE(\2, \3, \4)\n'
