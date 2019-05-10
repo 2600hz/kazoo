@@ -82,7 +82,9 @@ send_cdr(Url, JObj, Retries) ->
 %% Returns the list of agents configured for the queue
 -spec agents_in_queue(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:path().
 agents_in_queue(AcctDb, QueueId) ->
-    case kz_datamgr:get_results(AcctDb, <<"queues/agents_listing">>, [{'key', QueueId}]) of
+    case kz_datamgr:get_results(AcctDb, <<"queues/agents_listing">>
+                               ,[{'key', QueueId}, {'reduce', 'false'}])
+    of
         {'ok', []} -> [];
         {'error', _E} -> lager:debug("failed to lookup agents for ~s: ~p", [QueueId, _E]), [];
         {'ok', As} -> [kz_json:get_value(<<"value">>, A) || A <- As]
