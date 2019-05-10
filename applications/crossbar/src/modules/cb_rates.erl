@@ -72,7 +72,7 @@ init_db() ->
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).
 
-authorize(Context, ?RATEDECKS) ->
+authorize(Context, [{<<"rates">>, [?RATEDECKS]}]) ->
     case cb_context:is_superduper_admin(Context) of
         'true' -> 'true';
         'false' -> {'stop', cb_context:add_system_error('forbidden', Context)}
@@ -459,7 +459,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
             {Count + 1, [kz_json:set_values(Setters, kz_json:new()) | JObjs]}
     end.
 
--spec get_row_prefix(rate_row()) -> kz_term:api_binary().
+-spec get_row_prefix(rate_row()) -> kz_term:api_integer().
 get_row_prefix([Prefix | _]=_R) ->
     try kz_term:to_integer(Prefix)
     catch
@@ -626,7 +626,7 @@ normalize_field(<<"Base-Cost">> = K, BaseCost) ->
 normalize_field(K, V) ->
     {K, V}.
 
--spec ratedecks_list(cb_context:context()) -> kz_term:proplist().
+-spec ratedecks_list(cb_context:context()) -> cb_context:context().
 ratedecks_list(Context) ->
     Props = [{<<"default_ratedeck">>, kapps_config:get_ne_binary(<<"hotornot">>, <<"default_ratedeck">>, ?KZ_RATES_DB)}
             ,{<<"ratedecks">>, kz_services_ratedecks:ratedecks()}

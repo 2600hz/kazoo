@@ -335,7 +335,7 @@ maybe_migrate_legacy_rollover(Account, Options) ->
             get_sources_total(Account, Options)
     end.
 
--spec migrate_legacy_rollover(kz_tern:ne_binary(), kazoo_modb:view_options(), kz_time:year(), kz_time:month()) ->
+-spec migrate_legacy_rollover(kz_term:ne_binary(), kazoo_modb:view_options(), kz_time:year(), kz_time:month()) ->
                                      kz_currency:available_units_return().
 migrate_legacy_rollover(Account, Options, Year, Month) ->
     case kz_transactions:legacy_total(Account, Year, Month) of

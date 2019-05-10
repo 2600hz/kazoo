@@ -163,7 +163,7 @@ validate(Context) ->
 validate_1(Context, ?HTTP_GET) ->
     case cb_context:account_id(Context) of
         'undefined' -> find_numbers(Context);
-        _ -> summary(Context)
+        _ -> cb_modules_util:maybe_convert_numbers_to_list(summary(Context))
     end.
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
@@ -519,7 +519,7 @@ collection_action(Context, ?HTTP_PUT, Number, ?ACTIVATE) ->
               ],
     case knm_number:move(Number, cb_context:account_id(Context), Options) of
         {'ok', KNum} ->
-            kz_json:delete_key(<<"numbers">>, knm_number:to_public_json(KNum));
+            {'ok', kz_json:delete_key(<<"numbers">>, knm_number:to_public_json(KNum))};
         _Else -> _Else
     end.
 

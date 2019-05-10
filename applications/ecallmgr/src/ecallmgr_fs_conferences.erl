@@ -459,7 +459,7 @@ conference_from_props(Props, Node, Conference) ->
                          ,control_node = CtrlNode
                          }.
 
--spec find_account_id(kzd_freeswitch:doc()) -> kz_term:api_ne_binary().
+-spec find_account_id(kzd_freeswitch:data()) -> kz_term:api_ne_binary().
 find_account_id(Props) ->
     case kzd_freeswitch:account_id(Props) of
         'undefined' -> find_account_id_from_call(kzd_freeswitch:call_id(Props));

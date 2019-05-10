@@ -43,7 +43,6 @@ start_link(#data_connection{}=Connection) ->
 %%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
 init([Connection]) ->
-    lager:info("start connection"),
     self() ! 'maintain_connection',
     {'ok', Connection}.
 
@@ -125,7 +124,6 @@ code_change(_OldVsn, Connection, _Extra) ->
 %%------------------------------------------------------------------------------
 -spec try_connection(data_connection()) ->  {'ok', data_connection()} | {'error', any()}.
 try_connection(#data_connection{app=App, props=Props}=Connection) ->
-    lager:info("trying to connect ~s", [App]),
     try App:new_connection(Props) of
         {'ok', Server} -> {'ok', Connection#data_connection{server=Server}};
         Error -> handle_error(Connection, Error)
@@ -140,17 +138,17 @@ handle_error(#data_connection{app=App, props=Props}, Error) ->
 
 -spec connection_established(data_connection()) -> data_connection().
 connection_established(Connection) ->
-    Connection#data_connection{connected = true}.
+    Connection#data_connection{connected = 'true'}.
 
 -spec connection_ready(data_connection()) -> data_connection().
 connection_ready(Connection) ->
-    C = Connection#data_connection{ready = true},
+    C = Connection#data_connection{ready = 'true'},
     kz_dataconnections:update(C),
     C.
 
 -spec reset_connection(data_connection()) -> data_connection().
 reset_connection(Connection) ->
-    C = Connection#data_connection{connected = false, ready = false},
+    C = Connection#data_connection{connected = 'false', ready = 'false'},
     %% TODO: this is disabled for the moment to maintain backward
     %% compatibility with couch_mgr which always assumed the connection
     %% was available

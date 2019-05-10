@@ -35,7 +35,7 @@
 -type cache_key() :: {usurp_type(), kz_term:ne_binary()}.
 
 -record(cache, {key :: cache_key()
-               ,ref_id :: kz_tern:ne_binary()
+               ,ref_id :: kz_term:ne_binary()
                ,pid :: pid()
                }).
 -type cache() :: #cache{}.

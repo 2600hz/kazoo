@@ -509,13 +509,12 @@ get_control_queue(CtlPid) ->
         'exit':{'timeout', {_M, _F, _A}} ->
             lager:info("control proc ~p timed out getting control queue"),
             'undefined';
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("failed to get queue ~s: ~p", [_E, _R]),
-            kz_util:log_stacktrace(ST),
-            timer:sleep(?MILLISECONDS_IN_SECOND),
-            get_control_queue(CtlPid)
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:debug("failed to get queue ~s: ~p", [_E, _R]),
+        kz_util:log_stacktrace(ST),
+        timer:sleep(?MILLISECONDS_IN_SECOND),
+        get_control_queue(CtlPid)
+        end.
 
 -spec add_participant(kapi_conference:doc(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:proplist()) -> 'ok'.
 add_participant(_JObj, _CallId, 'undefined', _ChannelProps) ->

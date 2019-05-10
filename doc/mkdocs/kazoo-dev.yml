@@ -111,8 +111,6 @@ pages:
   - 'Doodle':
     - 'applications/doodle/doc/README.md'
     - 'applications/doodle/doc/configuration.md'
-  - 'DTH':
-    - 'applications/dth/doc/README.md'
   - 'Ecallmgr':
     - 'applications/ecallmgr/doc/README.md'
     - 'applications/ecallmgr/doc/maintenance.md'

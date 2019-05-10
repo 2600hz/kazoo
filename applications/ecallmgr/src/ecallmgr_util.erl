@@ -634,6 +634,10 @@ get_fs_key_and_value(<<"ringback">>=Key, Value, _UUID) ->
     [{<<"ringback">>, maybe_sanitize_fs_value(Key, Value)}
     ,{<<"transfer_ringback">>, maybe_sanitize_fs_value(<<"transfer_ringback">>, Value)}
     ];
+get_fs_key_and_value(<<"Timeout">>, Value, _UUID) ->
+    [{<<"call_timeout">>, maybe_sanitize_fs_value(<<"call_timeout">>, Value)}
+    ,{<<"originate_timeout">>, maybe_sanitize_fs_value(<<"originate_timeout">>, Value)}
+    ];
 get_fs_key_and_value(?CCV(Key), Val, UUID) ->
     get_fs_key_and_value(Key, Val, UUID);
 get_fs_key_and_value(?JSON_CAV(_)=JSONCAV, Val, _UUID) ->
@@ -758,21 +762,23 @@ classify_endpoints([Endpoint | Endpoints], Devices, Failovers) ->
 
 -spec maybe_use_fwd_endpoint(bridge_channel(), bridge_channels()) -> bridge_channels().
 maybe_use_fwd_endpoint(Endpoint, Failovers) ->
-    ForwardDestination = get_loopback_number(Endpoint),
-    case ForwardDestination =/= 'undefined'
-        andalso [Failover || Failover <- Failovers,
-                             binary:match(Failover, ForwardDestination) =/= 'nomatch'
-                ] =:= []
-    of
-        'true' ->
-            [Endpoint | Failovers];
-        'false' when ForwardDestination =:= 'undefined' ->
-            [Endpoint | Failovers];
-        'false' ->
-            Failovers
+    maybe_use_fwd_endpoint(Endpoint, Failovers, get_loopback_number(Endpoint)).
+
+-spec maybe_use_fwd_endpoint(bridge_channel(), bridge_channels(), kz_term:api_ne_binary()) -> bridge_channels().
+maybe_use_fwd_endpoint(Endpoint, Failovers, 'undefined') ->
+    [Endpoint | Failovers];
+maybe_use_fwd_endpoint(Endpoint, Failovers, ForwardDestination) ->
+    case match_forward_destination_to_failover(Failovers, ForwardDestination) of
+        [] -> [Endpoint | Failovers];
+        _Matched -> Failovers
     end.
 
--spec get_loopback_number(bridge_channel()) -> kz_term:ne_binary().
+match_forward_destination_to_failover(Failovers, ForwardDestination) ->
+    [Failover || Failover <- Failovers,
+                 binary:match(Failover, ForwardDestination) =/= 'nomatch'
+    ].
+
+-spec get_loopback_number(bridge_channel()) -> kz_term:api_ne_binary().
 get_loopback_number(Endpoint) ->
     case binary:match(Endpoint, <<"loopback/">>) of
         'nomatch' -> 'undefined';
@@ -1021,12 +1027,11 @@ build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
         _E:{'badmatch', {'error', 'not_found'}} ->
             lager:warning("failed to build sip channel trying failover", []),
             maybe_failover(Failover);
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:warning("failed to build sip channel (~s): ~p", [_E, _R]),
-            kz_util:log_stacktrace(ST),
-            {'error', 'invalid'}
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:warning("failed to build sip channel (~s): ~p", [_E, _R]),
+        kz_util:log_stacktrace(ST),
+        {'error', 'invalid'}
+        end.
 
 -type build_channel_fun_1() :: fun((bridge_endpoint()) -> bridge_channel() | {bridge_channel(), bridge_endpoint()}).
 -type build_channel_fun_2() :: fun((bridge_channel(), bridge_endpoint()) -> bridge_channel() | {bridge_channel(), bridge_endpoint()}).

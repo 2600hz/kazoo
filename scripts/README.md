@@ -166,6 +166,9 @@ Takes the misspellings.txt and checks for common mistakes.
 
 Each line on the text file has the format `{correct}|{mispelt} [{misspelt} ...]`
 
+## check-stacktrace.py
+
+With OTP 21+, `erlang:get_stacktrace()` is deprecated. A macro is added to `kz_types.hrl` for getting the stacktrace in a catch clause. This script automates the conversion of the catch clause+get_stacktrace to the macro-ized version.
 
 ## check-unstaged.bash
 

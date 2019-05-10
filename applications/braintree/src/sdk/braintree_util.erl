@@ -108,6 +108,7 @@ update_services_cards(CustomerIdOrServices, Cards) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec delete_services_card(kz_term:ne_binary() | kz_services:services(), bt_card()) -> {'ok' | 'error', kz_services:services()}.
+
 delete_services_card(CustomerIdOrServices, #bt_card{}=Card) ->
     Token = braintree_card:record_to_payment_token(Card),
     save_services(kz_services_payment_tokens:delete(CustomerIdOrServices, <<"braintree">>, Token)).
@@ -222,7 +223,7 @@ error_to_props({Reason, Error}) ->
     ,{<<"Reason">>, Key}
     ].
 
--spec is_missing_payment_token(kz_term:objects()) -> boolean().
+-spec is_missing_payment_token(kz_json:objects()) -> boolean().
 is_missing_payment_token(BraintreeErrors) ->
     lists:any(fun(JObj) ->
                       Code = kz_json:get_integer_value(<<"code">>, JObj, 0),

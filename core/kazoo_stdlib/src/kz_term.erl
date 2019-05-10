@@ -65,6 +65,7 @@
 %% Denotes definition of each key-value in a proplist.
 
 -type proplist() :: [proplist_property()].
+-type api_proplist() :: proplist() | 'undefined'.
 %% A key-value form of data, `[{Key, Value}|atom]'.
 
 -type proplists() :: [proplist()].
@@ -113,6 +114,8 @@
 
 -type api_reference() :: reference() | 'undefined'.
 %% Denotes either data type is defined as `reference()' or it's `undefined'.
+
+-type api_port() :: port() | 'undefined'.
 
 -type api_pid() :: pid() | 'undefined'.
 %% Denotes either data type is defined as `pid()' or it's `undefined'.
@@ -179,7 +182,9 @@
              ,api_pid_ref/0
              ,api_pid_refs/0
              ,api_pos_integer/0
+             ,api_proplist/0
              ,api_reference/0
+             ,api_port/0
              ,api_string/0
              ,api_terms/0
              ,atoms/0

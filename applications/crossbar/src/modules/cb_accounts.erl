@@ -280,17 +280,16 @@ add_pvt_api_key(Context) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, AccountId) ->
     {'ok', Existing} = kzd_accounts:fetch(AccountId),
-    Context1 = crossbar_doc:save(Context),
-
-    case cb_context:resp_status(Context1) of
-        'success' ->
+    case kzd_accounts:save(cb_context:doc(Context)) of
+        {'ok', SavedAccount} ->
+            Context1 = crossbar_doc:handle_datamgr_success(SavedAccount, Context),
             _ = kz_util:spawn(fun notification_util:maybe_notify_account_change/2, [Existing, Context]),
             update_provisioner_account(Context1),
 
-            {'ok', SavedAccount} = kzd_accounts:save(cb_context:doc(Context1)),
-
-            leak_pvt_fields(AccountId, cb_context:set_doc(Context1, SavedAccount));
-        _Status -> Context1
+            leak_pvt_fields(AccountId, Context1);
+        {'error', Error} ->
+            lager:warning("failed to update account information with error: ~p", [Error]),
+            crossbar_doc:handle_datamgr_errors(Error, AccountId, Context)
     end.
 
 -spec update_provisioner_account(cb_context:context()) -> 'ok'.
@@ -348,12 +347,11 @@ put(Context, PathAccountId) ->
             unroll(ContextErr, NewAccountId);
         'throw':ContextErr ->
             unroll(ContextErr, NewAccountId);
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("unexpected failure when creating account: ~s: ~p", [_E, _R]),
-            kz_util:log_stacktrace(ST),
-            unroll(Context, NewAccountId)
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:debug("unexpected failure when creating account: ~s: ~p", [_E, _R]),
+        kz_util:log_stacktrace(ST),
+        unroll(Context, NewAccountId)
+        end.
 
 -spec unroll(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 unroll(Context, NewAccountId) ->
@@ -520,7 +518,9 @@ validate_request(AccountId, Context) ->
     case kzd_accounts:validate(ParentId, AccountId, ReqJObj) of
         {'true', AccountJObj} ->
             lager:debug("validated account object"),
-            update_validated_request(AccountId, Context, AccountJObj);
+            %% Some checks depend on private_fields like `pvt_tree'.
+            NewAccountJObj = maybe_add_pvt_fields(AccountId, AccountJObj),
+            update_validated_request(AccountId, Context, NewAccountJObj);
         {'validation_errors', ValidationErrors} ->
             lager:info("validation errors on account"),
             add_validation_errors(Context, ValidationErrors);
@@ -529,6 +529,15 @@ validate_request(AccountId, Context) ->
             cb_context:add_system_error(Error, Context)
     end.
 
+-spec maybe_add_pvt_fields(kz_term:api_ne_binary(), kzd_accounts:doc()) -> kz_json:object().
+maybe_add_pvt_fields('undefined', AccountJObj) -> %% New account (create)
+    AccountJObj;
+maybe_add_pvt_fields(AccountId, AccountJObj) -> %% Existing account (update)
+    {'ok', Existing} = kzd_accounts:fetch(AccountId),
+    %% Merge private_fields into req obj in order to allow checks to read and use them when needed.
+    kz_json:merge(kz_doc:private_fields(Existing), AccountJObj).
+
+-spec update_validated_request(kz_term:ne_binary(), cb_context:context(), kzd_accounts:doc()) -> cb_context:context().
 update_validated_request(AccountId, Context, AccountJObj) ->
     Updates = [{fun cb_context:set_req_data/2, AccountJObj}
               ,{fun cb_context:set_doc/2, AccountJObj}
@@ -557,6 +566,7 @@ add_validation_errors(Context, ValidationErrors) ->
 add_validation_error({Path, Reason, Msg}, Context) ->
     cb_context:add_validation_error(Path, Reason, Msg, Context).
 
+-spec extra_validation(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 extra_validation(AccountId, Context) ->
     Extra = [fun(_, C) -> maybe_import_enabled(C) end
             ,fun disallow_direct_clients/2

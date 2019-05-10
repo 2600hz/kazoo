@@ -103,7 +103,7 @@
                      ,executor_module :: kz_term:api_binary()
                      ,bookkeeper_type :: kz_term:api_binary()
                      ,bookkeeper_vendor_id :: kz_term:api_binary()
-                     ,bookkeeper_results :: kz_json:api_object()
+                     ,bookkeeper_results :: kz_term:api_object()
                      ,metadata = kz_json:new() :: kz_json:object()
                      ,audit = kz_json:new() :: kz_json:object()
                      ,order_id :: kz_term:api_ne_binary()
@@ -330,7 +330,7 @@ set_bookkeeper_vendor_id(Transaction, VendorId) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec bookkeeper_results(transaction()) -> kz_json:api_object().
+-spec bookkeeper_results(transaction()) -> kz_term:api_object().
 bookkeeper_results(#transaction{bookkeeper_results=Results}) ->
     Results.
 
@@ -338,7 +338,7 @@ bookkeeper_results(#transaction{bookkeeper_results=Results}) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_bookkeeper_results(transaction(), kz_term:ne_binary()) -> transaction().
+-spec set_bookkeeper_results(transaction(), kz_json:object()) -> transaction().
 set_bookkeeper_results(Transaction, Results) ->
     Transaction#transaction{bookkeeper_results=Results}.
 

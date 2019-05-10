@@ -161,11 +161,11 @@ format_name_part(Part) ->
 default_schema_priv_dir() ->
     kz_term:to_binary(code:priv_dir('crossbar')).
 
--spec schema_path(binary()) -> file:filename_all() | file:dirname_all().
+-spec schema_path(binary()) -> file:filename_all().
 schema_path(Base) ->
     schema_path(Base, default_schema_priv_dir()).
 
--spec schema_path(binary(), file:filename_all()) -> file:filename_all() | file:dirname_all().
+-spec schema_path(binary(), file:filename_all()) -> file:filename_all().
 schema_path(Base, PrivDir) ->
     case filename:join([PrivDir
                        ,<<"couchdb">>
@@ -250,12 +250,11 @@ schema_to_table(SchemaJObj) ->
             ,cb_api_endpoints:ref_tables_to_doc(RefTables), "\n\n"
             ]
     catch
-        'throw':'no_type' ->
-            ST = erlang:get_stacktrace(),
-            io:format("failed to build table from schema ~s~n", [kz_doc:id(SchemaJObj)]),
-            io:format("~p~n", [ST]),
-            throw('no_type')
-    end.
+        ?STACKTRACE('throw', 'no_type', ST)
+        io:format("failed to build table from schema ~s~n", [kz_doc:id(SchemaJObj)]),
+        io:format("~p~n", [ST]),
+        throw('no_type')
+        end.
 
 schema_to_table(SchemaJObj, BaseRefs) ->
     Description = kz_json:get_binary_value(<<"description">>, SchemaJObj, <<>>),

@@ -60,7 +60,7 @@
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -type config_category() :: kz_json:key() | nonempty_string().
--type config_key() :: kz_json:key_path().
+-type config_key() :: kz_json:get_key().
 -type config_node() :: atom() | kz_term:ne_binary().
 
 -type update_option() :: {'node_specific', boolean()} |
@@ -716,7 +716,7 @@ update_category(Category, JObj, Updates, PvtFields) ->
 maybe_save_category(Category, JObj, Updates, PvtFields) ->
     maybe_save_category(Category, JObj, Updates, PvtFields, 'false').
 
--spec maybe_save_category(config_category(), kz_json:object(), kz_datamger:update_options(), kz_term:api_object(), boolean()) ->
+-spec maybe_save_category(config_category(), kz_json:object(), kz_datamgr:update_options(), kz_term:api_object(), boolean()) ->
                                  {'ok', kz_json:object()} |
                                  kz_datamgr:data_error().
 maybe_save_category(Category, JObj, Updates, PvtFields, Looped) ->
@@ -754,7 +754,7 @@ maybe_save_category(Category, JObj, Updates, PvtFields, Looped, _NotLocked) ->
     end.
 
 -spec update_pvt_fields(config_category(), kz_json:object(), kz_term:api_object()) ->
-                               kz_json:proplist().
+                               kz_json:json_proplist().
 update_pvt_fields(Category, JObj, 'undefined') ->
     kz_doc:get_pvt_updates(kz_doc:set_id(JObj, Category)
                           ,?KZ_CONFIG_DB
@@ -779,9 +779,9 @@ lock_db() ->
 
 -spec lock_db(kz_term:text() | boolean()) -> 'ok'.
 lock_db('true') ->
-    kz_config:set('kazoo_apps', 'lock_system_config', 'true');
+    kz_config:set(<<"kazoo_apps">>, <<"lock_system_config">>, 'true');
 lock_db('false') ->
-    kz_config:unset('kazoo_apps', 'lock_system_config');
+    kz_config:unset(<<"kazoo_apps">>, <<"lock_system_config">>);
 lock_db(Value) when is_binary(Value) ->
     lock_db(kz_term:to_atom(Value));
 lock_db(Value) ->
@@ -793,7 +793,7 @@ lock_db(Value) ->
 %%------------------------------------------------------------------------------
 -spec is_locked() -> boolean().
 is_locked() ->
-    case kz_config:get_atom('kazoo_apps', 'lock_system_config') of
+    case kz_config:get_atom(<<"kazoo_apps">>, <<"lock_system_config">>) of
         [] -> 'false';
         [Value] -> Value
     end.

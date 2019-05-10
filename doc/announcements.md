@@ -4,6 +4,16 @@ This file will serve as a reference point for upcoming announcements, both of th
 
 ## Versions
 
+### 5.0
+
+The 5.0 release will start Kazoo's official support for OTP 21 ([21.3](http://www.erlang.org/news/127) currently being the preferred version).
+
+1. The big change for Erlang code is the deprecation of using `erlang:get_stacktrace()`. There is a target in the root Makefile `make check_stacktrace` that will update uses of `get_stacktrace()` from `try/catch` clauses. Please ensure any private code is adjusted accordingly.
+
+2. Community-supported and deprecated apps will be moved out of Kazoo and into a [kazoo-community](https://github.com/kazoo-community) organization. De-factor maintainers of the community apps have been added to remove 2600Hz from blocking PR and code management for those apps. Tooling will continue to be improved for those apps (and 3rd party apps in general). If you would like to take on a maintainer's role for any of the kazoo-community apps, let us know!
+
+3. Dependencies have been re-evaluated, updated, or removed as necessary. Please check that your use of them is still available. We're thinking on how comunity/private apps can include unique dependencies within themselves without impacting core Kazoo's dependency list.
+
 ### 4.3
 
 1. The Kazoo services have been significantly refactored.  This has resulted in changes to the APIs related to services (prior service_plans), ledgers and transactions as well as the documents in the services database and service plans.  See the documentation in `core/kazoo_services/doc` for more information.

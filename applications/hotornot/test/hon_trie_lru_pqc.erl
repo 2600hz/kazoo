@@ -21,29 +21,24 @@
         ,correct_parallel/0
         ]).
 
--export([find_prefix/2]).
+-export([find_prefix/2
+        ,recreate_parallel/1
+        ]).
 
-proper_test_() ->
-    {"Runs "?MODULE_STRING" PropEr tests"
-    ,[{'timeout'
-      ,120
-      ,{"Sequential tests"
-       ,?_assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}
-                                                      ,'noshrink'
-                                                      ,30
-                                                      ]))
-       }
-      }
-     ,{'timeout'
-      ,120
-      ,{"Parallel tests"
-       ,?_assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}
-                                                               ,'noshrink'
-                                                               ,10
-                                                               ]))
-       }
-      }
-     ]
+proper_seq_test_() ->
+    {"Runs "?MODULE_STRING" PropEr sequential tests"
+    ,{'timeout'
+     ,120
+     ,?_assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}, 30]))
+     }
+    }.
+
+proper_parallel_test_() ->
+    {"Runs "?MODULE_STRING" PropEr parallel tests"
+    ,{'timeout'
+     ,120
+     ,?_assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}, 10]))
+     }
     }.
 
 -type prefix() :: pos_integer().
@@ -70,7 +65,7 @@ correct() ->
 
                    ?WHENFAIL(begin
                                  {Zipped, Recreate} = print_zip(zip(Cmds, History)),
-                                 ?debugFmt("~nLRU: ~p~n Final State: ~p~nZip:~n~s~nRecreate:~n~s~n"
+                                 ?debugFmt("~nLRU: ~p~n Final State: ~p~nZip:~n~s~nRecreate:~n~s.~n"
                                           ,[_Pid, State
                                            ,lists:reverse(Zipped)
                                            ,string:join(lists:reverse(Recreate), ",")
@@ -120,7 +115,6 @@ correct_parallel() ->
                    {Sequential, Parallel, Result} = run_parallel_commands(?MODULE, Cmds),
                    hon_trie_lru:stop(?KZ_RATES_DB),
 
-
                    ?WHENFAIL(?debugFmt("S: ~p~nP: ~p~n"
                                       ,[Sequential, Parallel]
                                       )
@@ -137,7 +131,7 @@ command(#model{}) ->
     Ms = ?EXPIRES_S * ?MILLISECONDS_IN_SECOND,
     oneof([{'call', 'hon_trie', 'match_did', [phone_number(), 'undefined', ?KZ_RATES_DB]}
           ,{'call', 'hon_trie_lru', 'cache_rates', [?KZ_RATES_DB, [rate_doc()]]}
-          ,{'call', 'timer', 'sleep', [range(Ms-100,Ms+100)]}
+          ,{'call', 'timer', 'sleep', [oneof([Ms-100,Ms+100])]}
           ]).
 
 next_state(#model{cache=Cache
@@ -150,7 +144,7 @@ next_state(#model{cache=Cache
         'error' -> Model#model{now_ms=NowMs+1};
         {'ok', Prefix, RateIds} ->
             Model#model{cache=bump_matched(expire_rates(Cache, NowMs), NowMs, Prefix, RateIds)
-                       ,now_ms=NowMs+1
+                       ,now_ms=NowMs
                        }
     end;
 next_state(#model{cache=Cache
@@ -161,7 +155,7 @@ next_state(#model{cache=Cache
           ) ->
     {UpdatedCache, NowMs} = cache_rates(Cache, NowMs, RateDocs),
     Model#model{cache=UpdatedCache
-               ,now_ms=NowMs+1
+               ,now_ms=NowMs
                };
 next_state(#model{now_ms=ThenMs
                  ,cache=Cache
@@ -227,7 +221,7 @@ cache_rate(Rate, {Cache, NowMs}) ->
     Prefix = kzd_rates:prefix(Rate),
 
     Rates = props:get_value(Prefix, Cache, []),
-    NewRates = props:insert_value(Id, NowMs, Rates),
+    NewRates = props:set_value(Id, NowMs, Rates),
     {props:set_value(Prefix, NewRates, Cache)
     ,NowMs
     }.
@@ -275,3 +269,21 @@ longest_prefix({Prefix, Rates}
     end.
 
 -endif.
+
+-spec recreate_parallel(any()) -> any().
+recreate_parallel({Seq, Parallel}) ->
+    hon_trie_lru:stop(?KZ_RATES_DB),
+    hon_trie_lru:start_link(?KZ_RATES_DB, ?EXPIRES_S),
+
+    Vars = seq(Seq, []),
+    parallel(Parallel, Vars),
+    io:format('user', "vars: ~p", [Vars]),
+    hon_trie_lru:stop(?KZ_RATES_DB).
+
+seq([], Vars) -> Vars;
+seq([{set, Var, {call, M, F, Args}} | Seq], Vars) ->
+    Val = apply(M, F, Args),
+    seq(Seq, [{Var, Val} | Vars]).
+
+parallel(Parallel, Vars) ->
+    [spawn(fun() -> seq(Seq, Vars) end) || Seq <- Parallel].

@@ -209,13 +209,7 @@ delete_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Options) ->
     kzs_cache:flush_cache_doc(DbName, DocId),
     App:delete_attachment(Conn, DbName, DocId, AName, Options).
 
--spec attachment_url(map()
-                    ,DbName
-                    ,DocId
-                    ,AttachmentId
-                    ,Handler
-                    ,Options
-                    ) ->
+-spec attachment_url(map(), DbName, DocId, AttachmentId, Handler, Options) ->
                             kz_term:ne_binary() |
                             {'proxy', {DbName, DocId, AttachmentId, [{'handler', Handler}] | Options}}
                                 when DbName :: kz_term:ne_binary()

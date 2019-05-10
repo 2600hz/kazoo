@@ -222,7 +222,7 @@ validate_phone_numbers(Context, ?HTTP_GET, 'undefined') ->
     maybe_find_numbers(Context);
 validate_phone_numbers(Context, ?HTTP_GET, _AccountId) ->
     case kz_json:get_ne_value(?PREFIX, cb_context:query_string(Context)) of
-        'undefined' -> summary(Context);
+        'undefined' -> cb_modules_util:maybe_convert_numbers_to_list(summary(Context));
         _Prefix -> maybe_find_numbers(Context)
     end.
 
@@ -557,8 +557,8 @@ maybe_add_port_request_numbers(_Context, 'false') -> kz_json:new();
 maybe_add_port_request_numbers(Context, 'true') ->
     AccountId = cb_context:account_id(Context),
     HasQs = crossbar_filter:is_defined(Context),
-    ViewOptions = [{'startkey', [cb_context:account_id(Context)]}
-                  ,{'endkey', [cb_context:account_id(Context), kz_json:new()]}
+    ViewOptions = [{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, kz_json:new()]}
                   ],
     case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?PORT_NUM_LISTING, ViewOptions) of
         {'error', _} -> kz_json:new();

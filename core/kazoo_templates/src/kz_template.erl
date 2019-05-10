@@ -103,17 +103,15 @@ render_template(Module, TemplateData) ->
             ?LOG_DEBUG("failed to render template: ~p", [_E]),
             E
     catch
-        'error':'undef' ->
-            ST = erlang:get_stacktrace(),
-            ?LOG_DEBUG("something in the template ~s is undefined", [Module]),
-            kz_util:log_stacktrace(ST),
-            {'error', 'undefined'};
-        _E:R ->
-            ST = erlang:get_stacktrace(),
-            ?LOG_DEBUG("crashed rendering template ~s: ~s: ~p", [Module, _E, R]),
-            kz_util:log_stacktrace(ST),
-            {'error', R}
-    end.
+        ?STACKTRACE('error', 'undef', ST)
+        ?LOG_DEBUG("something in the template ~s is undefined", [Module]),
+        kz_util:log_stacktrace(ST),
+        {'error', 'undefined'};
+        ?STACKTRACE(_E, R, ST)
+        ?LOG_DEBUG("crashed rendering template ~s: ~s: ~p", [Module, _E, R]),
+        kz_util:log_stacktrace(ST),
+        {'error', R}
+        end.
 
 %%%=============================================================================
 %%% Log functions
@@ -133,11 +131,9 @@ handle_compile_result(_Template, Module, {'ok', Module, []}) ->
     {'ok', Module};
 handle_compile_result(Template, Module, {'ok', Module, Warnings}) ->
     ?LOG_DEBUG("compiling template renderer for ~p produced warnings: ~p"
-              ,[Module, Warnings]),
+              ,[Module, Warnings]
+              ),
     log_warnings(Warnings, Template),
-    {'ok', Module};
-handle_compile_result(_Template, Module, 'ok') ->
-    lager:debug("build renderer for ~p from template file", [Module]),
     {'ok', Module};
 handle_compile_result(_Template, _Module, 'error') ->
     ?LOG_DEBUG("failed to compile template for ~p", [_Module]),

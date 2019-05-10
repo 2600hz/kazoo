@@ -18,6 +18,10 @@
 
 -behaviour(proper_statem).
 
+-define(CACHE_TTL_MS, 10).
+-define(MIN_TIMEOUT_MS, ?CACHE_TTL_MS).
+-define(MAX_TIMEOUT_MS, ?MIN_TIMEOUT_MS * 3).
+
 -export([command/1
         ,initial_state/0
         ,next_state/3
@@ -38,8 +42,11 @@
 proper_test_() ->
     {"Runs kz_cache PropEr tests"
     ,[
-      {"sequential testing"
-      ,?assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}, 50]))
+      {'timeout'
+      ,10 * ?MILLISECONDS_IN_SECOND
+      ,{"sequential testing"
+       ,?_assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}, 100]))
+       }
       }
       %% ,{"parallel testing"
       %% ,?assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}, 50]))
@@ -59,7 +66,7 @@ run_counterexample(SeqSteps, State) ->
     kz_util:put_callid(?MODULE),
     is_pid(whereis(?SERVER))
         andalso kz_cache:stop_local(?SERVER),
-    kz_cache_sup:start_link(?SERVER, 50),
+    kz_cache_sup:start_link(?SERVER, ?CACHE_TTL_MS),
 
     try lists:foldl(fun transition_if/2
                    ,{1, State}
@@ -81,7 +88,7 @@ transition_if({'set', _Var, Call}, {Step, State}) ->
         'true' ->
             {Step+1, next_state(State, Resp, Call)};
         'false' ->
-            io:format("failed on step ~p~n", [Step]),
+            io:format('user', "failed on step ~p~n", [Step]),
             throw({'failed_postcondition', State, Call, Resp})
     end.
 
@@ -102,7 +109,7 @@ correct() ->
                begin
                    kz_util:put_callid(?MODULE),
                    stop(?SERVER),
-                   kz_cache_sup:start_link(?SERVER, 50),
+                   kz_cache_sup:start_link(?SERVER, ?CACHE_TTL_MS),
                    {History, State, Result} = run_commands(?MODULE, Cmds),
                    stop(?SERVER),
                    ?WHENFAIL(io:format("Final State: ~p\nFailing Cmds: ~p\n"
@@ -124,7 +131,7 @@ correct_parallel() ->
            ,?TRAPEXIT(
                begin
                    stop(?SERVER),
-                   kz_cache_sup:start_link(?SERVER, 50),
+                   kz_cache_sup:start_link(?SERVER, ?CACHE_TTL_MS),
 
                    {Sequential, Parallel, Result} = run_parallel_commands(?MODULE, Cmds),
                    stop(?SERVER),
@@ -144,14 +151,14 @@ initial_state() ->
           }.
 
 command(#state{}=_Model) ->
-    frequency([{1, {'call', 'kz_cache', 'store_local', [?SERVER, key(), value(), [{'expires', range(1,2)}]]}}
-              ,{1, {'call', 'kz_cache', 'peek_local', [?SERVER, key()]}}
-              ,{1, {'call', 'kz_cache', 'fetch_local', [?SERVER, key()]}}
-              ,{1, {'call', 'kz_cache', 'erase_local', [?SERVER, key()]}}
-              ,{1, {'call', 'kz_cache', 'wait_for_key_local', [?SERVER, key(), range(500,2500)]}}
-              ,{1, {'call', 'kz_cache', 'mitigate_stampede_local', [?SERVER, key(), [{'expires', range(1,2)}]]}}
-              ,{1, {'call', 'kz_cache', 'wait_for_stampede_local', [?SERVER, key(), range(500,2500)]}}
-              ,{1, {'call', 'timer', 'sleep', [range(500,2500)]}}
+    frequency([{10, {'call', 'kz_cache', 'store_local', [?SERVER, key(), value(), [{'expires', range(1,2)}]]}}
+              ,{10, {'call', 'kz_cache', 'peek_local', [?SERVER, key()]}}
+              ,{10, {'call', 'kz_cache', 'fetch_local', [?SERVER, key()]}}
+              ,{10, {'call', 'kz_cache', 'erase_local', [?SERVER, key()]}}
+              ,{10, {'call', 'kz_cache', 'wait_for_key_local', [?SERVER, key(), range(?MIN_TIMEOUT_MS, ?MAX_TIMEOUT_MS)]}}
+              ,{10, {'call', 'kz_cache', 'mitigate_stampede_local', [?SERVER, key(), [{'expires', range(1,2)}]]}}
+              ,{10, {'call', 'kz_cache', 'wait_for_stampede_local', [?SERVER, key(), range(?MIN_TIMEOUT_MS, ?MAX_TIMEOUT_MS)]}}
+              ,{5, {'call', 'timer', 'sleep', [range(?MIN_TIMEOUT_MS, ?MAX_TIMEOUT_MS)]}}
               ]).
 
 next_state(#state{cache=Cache, now_ms=NowMs}=Model, _V

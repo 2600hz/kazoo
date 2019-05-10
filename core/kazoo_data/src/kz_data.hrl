@@ -19,7 +19,7 @@
                          ,server :: any() | '$2'
                          ,connected = 'false' :: boolean() | '_'
                          ,ready = 'false' :: boolean()
-                         ,tag :: atom()
+                         ,tag = 'undefined' :: kz_term:api_ne_binary()
                          }).
 
 -record(db, {app :: atom()
@@ -125,9 +125,9 @@
 -type get_results_return() :: {'ok', kz_json:json_terms()} |
                               data_error().
 
--define(DEFAULT_DATA_SECTION, [{'local', 'bigcouch'}]).
+-define(DEFAULT_DATA_SECTION, [{<<"local">>, <<"bigcouch">>}]).
 -define(MERGE_PROPS, [{'driver', 'kazoo_couch'}
-                     ,{'tag', 'local'}
+                     ,{'tag', <<"local">>}
                      ]).
 -define(MERGE_MAP, maps:from_list(?MERGE_PROPS)).
 

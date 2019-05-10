@@ -43,9 +43,9 @@ db_create(#server{}=Conn, DbName) ->
 db_create(#server{}=Conn, DbName, Options) ->
     case do_db_create_db(Conn, DbName, Options, []) of
         {'ok', _} -> 'true';
-        {error, db_exists} ->
+        {'error', 'db_exists'} ->
             lager:warning("db ~s already exists", [DbName]),
-            true;
+            'true';
         {'error', _Error} ->
             lager:error("failed to create database ~s: ~p", [DbName, _Error]),
             'false'
@@ -54,13 +54,13 @@ db_create(#server{}=Conn, DbName, Options) ->
 do_db_create_db(#server{url=ServerUrl, options=Opts}=Server, DbName, Options, Params) ->
     Options1 = couchbeam_util:propmerge1(Options, Opts),
     Url = hackney_url:make_url(ServerUrl, DbName, Params),
-    Resp = couchbeam_httpc:db_request(put, Url, [], <<>>, Options1, [201, 202]),
+    Resp = couchbeam_httpc:db_request('put', Url, [], <<>>, Options1, [201, 202]),
     case Resp of
-        {ok, _Status, _Headers, Ref} ->
+        {'ok', _Status, _Headers, Ref} ->
             _ = hackney:skip_body(Ref),
-            {ok, #db{server=Server, name=DbName, options=Options1}};
-        {error, precondition_failed} ->
-            {error, db_exists};
+            {'ok', #db{server=Server, name=DbName, options=Options1}};
+        {'error', 'precondition_failed'} ->
+            {'error', 'db_exists'};
         {'error', {'bad_response', {500, _Headers, Body}}}=Error ->
             Reason = kz_json:get_value(<<"reason">>, kz_json:decode(Body)),
             case check_db_create_error(Server, DbName, Reason) of

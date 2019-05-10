@@ -528,7 +528,10 @@ disable_account(AccountId) ->
             E
     end.
 
--spec maybe_disable_account(kz_types:ne_binary()) -> any().
+-spec maybe_disable_account(kz_term:ne_binary()) ->
+                                   'ok' |
+                                   {'ok', kzd_accounts:doc()} |
+                                   kz_datamgr:data_error().
 maybe_disable_account(AccountId) ->
     {'ok', AccountJObj} = kzd_accounts:fetch(AccountId),
     case kzd_accounts:is_enabled(AccountJObj) of

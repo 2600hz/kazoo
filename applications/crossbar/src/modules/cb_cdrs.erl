@@ -440,7 +440,7 @@ load_chunked_cdr_ids(Context, RespType, Db, Ids, 'success') ->
 load_chunked_cdr_ids(Context, _RespType, _Db, _Ids, _Status) ->
     Context.
 
--spec normalize_cdr(cb_context:context(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object() | kz_term:binary().
+-spec normalize_cdr(cb_context:context(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object() | kz_term:ne_binary().
 normalize_cdr(Context, <<"json">>, Result) ->
     JObj = kz_json:get_json_value(<<"doc">>, Result),
     Duration = kzd_cdrs:duration_seconds(JObj, 0),
@@ -525,7 +525,7 @@ col_reseller_call_type(JObj, _Timestamp, _Context) -> kz_json:get_value([?KEY_CC
 
 col_interaction_id(JObj, _Timestamp, _Context) -> kzd_cdrs:interaction_id(JObj, <<>>).
 
--spec pretty_print_datetime(kz_time:datetime() | kz_time:gregorian_second()) -> kz_term:ne_binary().
+-spec pretty_print_datetime(kz_time:datetime() | kz_time:gregorian_seconds()) -> kz_term:ne_binary().
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
     pretty_print_datetime(calendar:gregorian_seconds_to_datetime(Timestamp));
 pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->

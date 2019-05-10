@@ -232,11 +232,11 @@ settings(Device) ->
                                ]),
     kz_json:from_list(Props).
 
--spec settings_line_keys(kzd_devices:doc()) -> kz_json:api_object().
+-spec settings_line_keys(kzd_devices:doc()) -> kz_term:api_object().
 settings_line_keys(Device) ->
     settings_line_keys(get_brand(Device), get_family(Device)).
 
--spec settings_line_keys(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:api_object().
+-spec settings_line_keys(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
 settings_line_keys(<<"yealink">>, _) ->
     LineKeys = [{<<"account">>, <<"1">>}
                ,{<<"type">>, <<"15">>}

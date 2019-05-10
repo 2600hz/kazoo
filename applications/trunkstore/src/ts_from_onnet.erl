@@ -160,11 +160,10 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
         lager:debug("we know how to route this call, sending park route response"),
         send_park(State, Command)
     catch
-        _A:_B ->
-            ST = erlang:get_stacktrace(),
-            lager:info("exception ~p:~p", [_A, _B]),
-            kz_util:log_stacktrace(ST),
-            ts_callflow:send_hangup(State)
+        ?STACKTRACE(_A, _B, ST)
+        lager:info("exception ~p:~p", [_A, _B]),
+        kz_util:log_stacktrace(ST),
+        ts_callflow:send_hangup(State)
     after
         ts_callflow:cleanup_amqp(State)
     end.
@@ -242,7 +241,7 @@ maybe_referred_call(RouteReq) ->
 maybe_redirected_call(RouteReq) ->
     maybe_fix_request(get_redirected_by(RouteReq), RouteReq).
 
--spec maybe_fix_request({binary(), binary()} | 'undefined', kapi_route:req()) -> kapi_route:req().
+-spec maybe_fix_request( 'undefined' | {kz_term:ne_binary(), kz_term:ne_binary()}, kapi_route:req()) -> kapi_route:req().
 maybe_fix_request('undefined', RouteReq) -> RouteReq;
 maybe_fix_request({Username, Realm}, RouteReq) ->
     AccountId = kapi_route:account_id(RouteReq),
@@ -258,17 +257,20 @@ fix_request_values(Username, Realm) ->
     ,{[<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], <<"sys_info">>}
     ].
 
--spec get_referred_by(kz_json:object()) -> kz_term:api_binary().
+-spec get_referred_by(kz_json:object()) ->
+                             'undefined' | {kz_term:ne_binary(), kz_term:ne_binary()}.
 get_referred_by(JObj) ->
     ReferredBy = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Referred-By">>], JObj),
     extract_sip_username(ReferredBy).
 
--spec get_redirected_by(kz_json:object()) -> kz_term:api_binary().
+-spec get_redirected_by(kz_json:object()) ->
+                               'undefined' | {kz_term:ne_binary(), kz_term:ne_binary()}.
 get_redirected_by(JObj) ->
     RedirectedBy = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Redirected-By">>], JObj),
     extract_sip_username(RedirectedBy).
 
--spec extract_sip_username(kz_term:api_binary()) -> kz_term:api_binary().
+-spec extract_sip_username(kz_term:api_ne_binary()) ->
+                                  'undefined' | {kz_term:ne_binary(), kz_term:ne_binary()}.
 extract_sip_username('undefined') -> 'undefined';
 extract_sip_username(Contact) ->
     ReOptions = [{'capture', 'all_but_first', 'binary'}],

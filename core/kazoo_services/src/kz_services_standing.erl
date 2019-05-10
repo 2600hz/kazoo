@@ -205,14 +205,14 @@ invoices_foldl_fun(Services, Options) ->
                     Result = kz_json:from_list([{<<"Status">>, kzd_services:status_good()}]),
                     [{Invoice, {'ok', Result}} | Results];
                 'false' ->
-                    Result = check_bookkeeper(Type, Invoice, Services, Options),
+                    Result = check_bookkeeper(Invoice, Services, Options),
                     [{Invoice, Result} | Results]
             end
     end.
 
--spec check_bookkeeper(kz_term:ne_binary(), kz_services_invoice:invoice(), kz_services:services(), acceptable_options()) ->
+-spec check_bookkeeper(kz_services_invoice:invoice(), kz_services:services(), acceptable_options()) ->
                               kz_amqp_worker:request_return().
-check_bookkeeper(_Type, Invoice, Services, #{amount := Amount}) ->
+check_bookkeeper(Invoice, Services, #{amount := Amount}) ->
     Request = [{<<"Account-ID">>, kz_services:account_id(Services)}
               ,{<<"Bookkeeper-ID">>, kz_services_invoice:bookkeeper_id(Invoice)}
               ,{<<"Bookkeeper-Type">>, kz_services_invoice:bookkeeper_type(Invoice)}

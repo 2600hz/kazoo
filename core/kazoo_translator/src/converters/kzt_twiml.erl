@@ -62,11 +62,11 @@ exec_elements(Call, [El|Els]) ->
         'throw':{'unknown_element', Name} ->
             lager:error("unknown element in response: ~s", [Name]),
             {'error', kzt_util:add_error(Call, <<"unknown_element">>, Name)};
-        _E:_R ->
-            lager:error("'~s' when execing el ~p: ~p", [_E, El, _R]),
-            kz_util:log_stacktrace(),
-            {'error', Call}
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:error("'~s' when execing el ~p: ~p", [_E, El, _R]),
+        kz_util:log_stacktrace(ST),
+        {'error', Call}
+        end.
 
 -spec exec_element(kapps_call:call(), kz_types:xml_el()) ->
                           {'ok', kapps_call:call()} |
@@ -437,4 +437,4 @@ media_local_store_url(Call, JObj) ->
     AccountDb = kapps_call:account_db(Call),
     MediaId = kz_doc:id(JObj),
     MediaName = kz_json:get_value(<<"name">>, JObj),
-    ?NE_BINARY = kz_datamgr:attachment_url(AccountDb, MediaId, MediaName).
+    <<_/binary>> = kz_datamgr:attachment_url(AccountDb, MediaId, MediaName).

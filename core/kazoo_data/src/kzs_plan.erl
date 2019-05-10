@@ -118,7 +118,7 @@ get_dataplan(DBName, DocType, DocOwner) ->
 -spec system_dataplan() -> map().
 system_dataplan() ->
     #{<<"connections_map">> := Connections} = ?CACHED_SYSTEM_DATAPLAN,
-    SysTag = 'local',
+    SysTag = <<"local">>,
     #{tag => SysTag
      ,server => maps:get(SysTag, Connections, #{})
      ,others => [{T, #{server => S}} || {T, S} <- maps:to_list(Connections), T =/= SysTag]
@@ -128,7 +128,7 @@ system_dataplan(DBName, _Classification)
   when DBName == ?KZ_CONFIG_DB;
        DBName == ?KZ_DATA_DB;
        DBName == ?KZ_SERVICES_DB ->
-    SysTag = 'local',
+    SysTag = <<"local">>,
     #{tag => SysTag, server => kz_dataconnections:get_server(SysTag)};
 system_dataplan(_DBName, 'numbers') ->
     Plan = ?CACHED_SYSTEM_DATAPLAN,
@@ -176,16 +176,17 @@ account_modb_dataplan(AccountMODB, DocType, StorageId) ->
     dataplan_type_match(<<"modb">>, DocType, Plan, AccountId).
 
 
--spec dataplan_connections(map()) -> [{atom(), server()}].
+-spec dataplan_connections(map()) -> [{kz_term:ne_binary(), server()}].
 dataplan_connections(#{<<"plan">> := _, <<"connections">> := Connections}) ->
     dataplan_connections(Connections);
 dataplan_connections(Connections) ->
     [maybe_start_connection(Tag, maps:get(Tag, Connections, #{}))
-     || {Tag, _} <- maps:to_list(Connections)].
+     || {Tag, _} <- maps:to_list(Connections)
+    ].
 
 -spec dataplan_match(kz_term:ne_binary(), map(), kz_term:api_binary()) -> map().
 dataplan_match(Classification, Plan, AccountId) ->
-    #{<<"plan">> := #{Classification := #{<<"connection">> := CCon
+    #{<<"plan">> := #{Classification := #{<<"connection">> := Tag
                                          ,<<"attachments">> := CAtt
                                          ,<<"types">> := Types
                                          }
@@ -195,39 +196,37 @@ dataplan_match(Classification, Plan, AccountId) ->
      ,<<"attachments">> := GAtt
      } = Plan,
 
-    Tag = kz_term:to_atom(CCon, 'true'),
     Server = maps:get(Tag, GConMap, #{}),
 
-    Others = [{kz_term:to_atom(T, 'true'), #{server => maps:get(kz_term:to_atom(T, 'true'), GConMap, #{})}}
-              || {_, #{<<"connection">> := T}} <- lists:usort(maps:to_list(Types)), T =/= CCon],
+    Others = [{T, #{server => maps:get(T, GConMap, #{})}}
+              || {_, #{<<"connection">> := T}} <- lists:usort(maps:to_list(Types)), T =/= Tag
+             ],
 
+
+    BasePlan = #{tag => Tag
+                ,server => Server
+                ,others => Others
+                ,classification => Classification
+                ,account_id => AccountId
+                },
     case maps:get(<<"handler">>, CAtt, 'undefined') of
-        'undefined' ->
-            #{tag => Tag
-             ,server => Server
-             ,others => Others
-             ,classification => Classification
-             ,account_id => AccountId
-             };
-        AttConnection ->
-            #{AttConnection := #{<<"handler">> := AttHandlerBin
-                                ,<<"settings">> := AttSettings
-                                }
-             } = GAtt,
-            AttHandler = kz_term:to_atom(<<"kz_att_", AttHandlerBin/binary>>,'true'),
-            Params = maps:merge(AttSettings, maps:get(<<"params">>, CAtt, #{})),
+        'undefined' -> BasePlan;
+        AttConnection -> add_attachment_proxy(BasePlan, GAtt, CAtt, AttConnection)
+    end.
 
-            #{tag => Tag
-             ,server => Server
-             ,others => Others
-             ,att_proxy => 'true'
+add_attachment_proxy(BasePlan, GAtt, CAtt, AttConnection) ->
+    #{AttConnection := #{<<"handler">> := AttHandlerBin
+                        ,<<"settings">> := AttSettings
+                        }
+     } = GAtt,
+    AttHandler = kz_term:to_atom(<<"kz_att_", AttHandlerBin/binary>>, 'true'),
+    Params = maps:merge(AttSettings, maps:get(<<"params">>, CAtt, #{})),
+
+    BasePlan#{att_proxy => 'true'
              ,att_post_handler => att_post_handler(CAtt)
              ,att_handler => {AttHandler, kz_maps:keys_to_atoms(Params)}
              ,att_handler_id => AttConnection
-             ,classification => Classification
-             ,account_id => AccountId
-             }
-    end.
+             }.
 
 
 -spec dataplan_type_match(kz_term:ne_binary(), kz_term:ne_binary(), map()) -> map().
@@ -248,7 +247,7 @@ dataplan_type_match(Classification, DocType, Plan, AccountId) ->
 
     TypeMap = maps:get(DocType, Types, #{}),
 
-    Tag = kz_term:to_atom(maps:get(<<"connection">>, TypeMap, CCon), 'true'),
+    Tag = maps:get(<<"connection">>, TypeMap, CCon),
     Server = maps:get(Tag, GConMap, #{}),
 
     TypeAttMap = maps:merge(CAtt, maps:get(<<"attachments">>, TypeMap, #{})),
@@ -381,8 +380,8 @@ fetch_simple_dataplan(Id) ->
 -spec cache_system_dataplan() -> kz_json:object().
 cache_system_dataplan() ->
     JObj = load_system_dataplan(),
-    CacheProps = [{'origin', [{'db', ?KZ_DATA_DB, ?SYSTEM_DATAPLAN }]}
-                 ,{'expires','infinity'}
+    CacheProps = [{'origin', [{'db', ?KZ_DATA_DB, ?SYSTEM_DATAPLAN}]}
+                 ,{'expires', 'infinity'}
                  ,{'callback', fun cache_callback/3}
                  ],
     kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, 'system', JObj, CacheProps),
@@ -449,6 +448,7 @@ fetch_dataplan(Id) ->
 
 -spec fetch_dataplan_from_file(kz_term:ne_binary()) -> kz_json:object().
 fetch_dataplan_from_file(Id) ->
+    lager:info("~p: loading from ~p/~p", [self(), ?DATAPLAN_FILE_LOCATION, [Id, ".json"]]),
     kz_json:load_fixture_from_file(?APP, ?DATAPLAN_FILE_LOCATION, [Id, ".json"]).
 
 -spec default_dataplan() -> kz_json:object().
@@ -462,17 +462,14 @@ default_dataplan(JObj) ->
     'ok' = kzs_cache:add_to_doc_cache(?KZ_DATA_DB, ?SYSTEM_DATAPLAN, SystemJObj),
     SystemJObj.
 
--spec maybe_start_connection(atom() | kz_term:ne_binary(), map()) -> {atom(), server()}.
-maybe_start_connection(Connection, Params)
-  when is_binary(Connection) ->
-    maybe_start_connection(kz_term:to_atom(Connection, 'true'), Params);
+-spec maybe_start_connection(kz_term:ne_binary(), map()) -> {kz_term:ne_binary(), server()}.
 maybe_start_connection(Tag, Params) ->
     case kz_dataconnections:get_server(Tag) of
         'undefined' -> start_connection(Tag, Params);
         Server -> {Tag, Server}
     end.
 
--spec start_connection(atom(), map()) -> {atom(), server()}.
+-spec start_connection(kz_term:ne_binary(), map()) -> {kz_term:ne_binary(), server()}.
 start_connection(Tag, Params) ->
     Connection = kz_dataconfig:connection(kz_maps:keys_to_atoms(Params#{tag => Tag})),
     kz_dataconnections:add(Connection),

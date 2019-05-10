@@ -309,7 +309,7 @@ init(Super, AccountId, QueueId, QueueJObj) ->
     process_flag('trap_exit', 'false'),
 
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    kz_datamgr:add_to_doc_cache(AccountDb, QueueId, QueueJObj),
+    _ = kz_datamgr:add_to_doc_cache(AccountDb, QueueId, QueueJObj),
 
     _ = start_secondary_queue(AccountId, QueueId),
 
@@ -526,9 +526,10 @@ handle_cast({'reject_member_call', Call, JObj}, #state{account_id=AccountId
     {'noreply', State};
 
 handle_cast({'sync_with_agent', A}, #state{account_id=AccountId}=State) ->
-    case acdc_agent_util:most_recent_status(AccountId, A) of
-        {'ok', <<"logged_out">>} -> gen_listener:cast(self(), {'agent_unavailable', A});
-        _ -> gen_listener:cast(self(), {'agent_available', A})
+    {'ok', Status} = acdc_agent_util:most_recent_status(AccountId, A),
+    case acdc_agent_util:status_should_auto_start(Status) of
+        'true' -> 'ok';
+        'false' -> gen_listener:cast(self(), {'agent_unavailable', A})
     end,
     {'noreply', State};
 
@@ -686,11 +687,11 @@ publish_queue_member_remove(AccountId, QueueId, CallId) ->
 start_agent_and_worker(WorkersSup, AccountId, QueueId, AgentJObj) ->
     acdc_queue_workers_sup:new_worker(WorkersSup, AccountId, QueueId),
     AgentId = kz_doc:id(AgentJObj),
-    case acdc_agent_util:most_recent_status(AccountId, AgentId) of
-        {'ok', <<"logout">>} -> 'ok';
-        {'ok', <<"logged_out">>} -> 'ok';
-        {'ok', _Status} ->
-            lager:debug("maybe starting agent ~s(~s) for queue ~s", [AgentId, _Status, QueueId]),
+    {'ok', Status} = acdc_agent_util:most_recent_status(AccountId, AgentId),
+    case acdc_agent_util:status_should_auto_start(Status) of
+        'false' -> 'ok';
+        'true' ->
+            lager:debug("maybe starting agent ~s(~s) for queue ~s", [AgentId, Status, QueueId]),
 
             case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
                 'undefined' -> acdc_agents_sup:new(AgentJObj);

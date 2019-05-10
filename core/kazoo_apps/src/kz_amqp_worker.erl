@@ -136,7 +136,7 @@
 -type worker_arg() :: {'amqp_broker', kz_term:ne_binary()} |
                       {'amqp_queuename_start', kz_term:ne_binary()} |
                       {'amqp_bindings', gen_listener:bindings()} |
-                      {'amqp_exchanges', gen_listener:declare_excahnged()} |
+                      {'amqp_exchanges', gen_listener:declare_exchanges()} |
                       {'amqp_server_confurms', boolean()} |
                       {'neg_resp_threshold', pos_integer()} |
                       {'name', atom() | kz_term:ne_binary()}. %% pool name
@@ -528,11 +528,11 @@ send_request(CallId, Self, PublishFun, ReqProps)
     try PublishFun(Props) of
         'ok' -> 'ok'
     catch
-        _R:E ->
-            lager:debug("failed to publish: ~s: ~p", [_R, E]),
-            kz_util:log_stacktrace(),
-            {'error', E}
-    end.
+        ?STACKTRACE(_R, E, ST)
+        lager:debug("failed to publish: ~s: ~p", [_R, E]),
+        kz_util:log_stacktrace(ST),
+        {'error', E}
+        end.
 
 -spec request_filter(kz_term:proplist()) -> kz_term:proplist().
 request_filter(Props) ->
@@ -1007,17 +1007,15 @@ publish_api(PublishFun, ReqProps) ->
             lager:error("publisher fun returned ~p instead of 'ok'", [Other]),
             {'error', Other}
     catch
-        'error':'badarg' ->
-            ST = erlang:get_stacktrace(),
-            lager:error("badarg error when publishing:"),
-            kz_util:log_stacktrace(ST),
-            {'error', 'badarg'};
-        'error':'function_clause' ->
-            ST = erlang:get_stacktrace(),
-            lager:error("function clause error when publishing:"),
-            kz_util:log_stacktrace(ST),
-            lager:error("pub fun: ~p", [PublishFun]),
-            {'error', 'function_clause'};
+        ?STACKTRACE('error', 'badarg', ST)
+        lager:error("badarg error when publishing:"),
+        kz_util:log_stacktrace(ST),
+        {'error', 'badarg'};
+        ?STACKTRACE('error', 'function_clause', ST)
+        lager:error("function clause error when publishing:"),
+        kz_util:log_stacktrace(ST),
+        lager:error("pub fun: ~p", [PublishFun]),
+        {'error', 'function_clause'};
         _E:R ->
             lager:error("error when publishing: ~s:~p", [_E, R]),
             {'error', R}

@@ -590,12 +590,11 @@ process_api_module(File, Module) ->
     {'ok', {Module, [{'abstract_code', AST}]}} = beam_lib:chunks(File, ['abstract_code']),
     try process_api_ast(Module, AST)
     catch
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            io:format("failed to process ~p(~p): ~s: ~p\n", [File, Module, _E, _R]),
-            io:format("~p\n", [ST]),
-            'undefined'
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        io:format("failed to process ~p(~p): ~s: ~p\n", [File, Module, _E, _R]),
+        io:format("~p\n", [ST]),
+        'undefined'
+        end.
 
 -spec process_api_ast(module(), kz_ast_util:abstract_code()) ->
                              {module(), [allowed_methods() | content_types_provided()]}.

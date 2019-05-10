@@ -837,7 +837,7 @@ create_registration(JObj) ->
                         ,JObj
                         ).
 
--spec get_realm(kz_json:key(), kz_json:object()) -> kz_json:ne_binary().
+-spec get_realm(kz_json:key(), kz_json:object()) -> kz_term:ne_binary().
 get_realm(Key, JObj) ->
     case kz_json:get_ne_binary_value(Key, JObj) of
         'undefined' -> ?DEFAULT_REALM;

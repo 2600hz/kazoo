@@ -576,8 +576,7 @@ req_content_type(Context) ->
 
 -spec is_content_type_csv(cb_context:context()) -> boolean().
 is_content_type_csv(Context) ->
-    [Lhs, Rhs] = binary:split(req_content_type(Context), <<$/>>),
-    lists:member({Lhs, Rhs}, ?CSV_CONTENT_TYPES).
+    api_util:content_type_matches(req_content_type(Context), ?CSV_CONTENT_TYPES).
 
 -spec attached_data(cb_context:context(), boolean()) -> kz_tasks:input().
 attached_data(Context, 'true') ->

@@ -204,7 +204,7 @@ get_all_branch_keys(Call) ->
                      {'attempt_resp', {'error', any()}}.
 attempt(Srv) -> attempt(<<"_">>, Srv).
 
--spec attempt(kz_json:path(), kapps_call:call() | pid()) ->
+-spec attempt(kz_json:key(), kapps_call:call() | pid()) ->
                      {'attempt_resp', 'ok'} |
                      {'attempt_resp', {'error', any()}}.
 attempt(Key, Srv) when is_pid(Srv) ->
@@ -632,12 +632,11 @@ cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
     try CFModule:handle(Data, Call) of
         _ -> 'ok'
     catch
-        _E:R ->
-            ST = erlang:get_stacktrace(),
-            lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, R]),
-            kz_util:log_stacktrace(ST),
-            throw(R)
-    end.
+        ?STACKTRACE(_E, R, ST)
+        lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, R]),
+        kz_util:log_stacktrace(ST),
+        throw(R)
+        end.
 
 %%------------------------------------------------------------------------------
 %% @doc unlike the kapps_call_command this send command does not call the

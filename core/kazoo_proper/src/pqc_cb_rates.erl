@@ -171,7 +171,7 @@ wait_for_task(API, TaskId) ->
 
 get_csvs(_API, _TaskId, []) -> 'ok';
 get_csvs(API, TaskId, [CSV|CSVs]) ->
-    get_csv(API, TaskId, CSV),
+    _ = get_csv(API, TaskId, CSV),
     get_csvs(API, TaskId, CSVs).
 
 get_csv(API, TaskId, CSV) ->
@@ -290,13 +290,12 @@ correct() ->
                                     ,aggregate(command_names(Cmds), Result =:= 'ok')
                                     )
                    catch
-                       _E:_R ->
-                           ST = erlang:get_stacktrace(),
-                           io:format("exception running commands: ~s:~p~n", [_E, _R]),
-                           [io:format("~p~n", [S]) || S <- ST],
-                           _ = cleanup(),
-                           'false'
-                   end
+                       ?STACKTRACE(_E, _R, ST)
+                       io:format("exception running commands: ~s:~p~n", [_E, _R]),
+                       [io:format("~p~n", [S]) || S <- ST],
+                       _ = cleanup(),
+                       'false'
+                       end
 
                end
               )

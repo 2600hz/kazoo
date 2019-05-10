@@ -190,17 +190,17 @@ authenticate_fold(Token, [Fun | Routines]) ->
     try Fun(Token) of
         NewToken -> authenticate_fold(NewToken, Routines)
     catch
-        _E:_R ->
-            lager:debug("exception executing ~p : ~p , ~p", [Fun, _E, _R]),
-            kz_util:log_stacktrace(),
-            authenticate_fold(Token, Routines)
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:debug("exception executing ~p : ~p , ~p", [Fun, _E, _R]),
+        kz_util:log_stacktrace(ST),
+        authenticate_fold(Token, Routines)
+        end.
 
 -spec link(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                   'ok' | kz_datamgr:data_error().
 link(AccountId, OwnerId, AuthId) ->
-    Updates = [{<<"pvt_account_id">>, AccountId}
-              ,{<<"pvt_owner_id">>, OwnerId}
+    Updates = [{[<<"pvt_account_id">>], AccountId}
+              ,{[<<"pvt_owner_id">>], OwnerId}
               ],
     UpdateOptions = [{'update', Updates}],
     case kz_datamgr:update_doc(?KZ_AUTH_DB, AuthId, UpdateOptions) of
@@ -211,8 +211,8 @@ link(AccountId, OwnerId, AuthId) ->
 -spec unlink(kz_term:ne_binary()) ->
                     'ok' | kz_datamgr:data_error().
 unlink(AuthId) ->
-    Updates = [{<<"pvt_account_id">>, 'null'}
-              ,{<<"pvt_owner_id">>, 'null'}
+    Updates = [{[<<"pvt_account_id">>], 'null'}
+              ,{[<<"pvt_owner_id">>], 'null'}
               ],
     UpdateOptions = [{'update', Updates}],
     case kz_datamgr:update_doc(?KZ_AUTH_DB, AuthId, UpdateOptions) of

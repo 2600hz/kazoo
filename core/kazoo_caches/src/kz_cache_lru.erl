@@ -37,14 +37,14 @@ update_expire_period(Name, ExpirePeriodS) ->
 -spec init(list()) -> {'ok', state()}.
 init([Name, ExpirePeriod]) ->
     kz_util:put_callid(lru_name(Name)),
-    lager:info("LRU expiration checks every ~pms", [ExpirePeriod]),
+    lager:debug("LRU expiration checks every ~pms", [ExpirePeriod]),
 
     {'ok', #state{name=Name
                  ,expire_period=ExpirePeriod
                  ,expire_period_ref=start_expire_period_timer(ExpirePeriod)
                  }}.
 
--spec handle_call(any(), kz_types:pid_ref(), state()) -> {'noreply', state()}.
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> {'noreply', state()}.
 handle_call(_Req, _From, State) ->
     {'noreply', State}.
 

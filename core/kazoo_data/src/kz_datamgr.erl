@@ -226,11 +226,10 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
             andalso timer:sleep(250),
         do_revise_docs_from_folder(DbName, Sleep, T)
     catch
-        _E:_R ->
-            lager:debug("failed: ~s: ~p", [_E, _R]),
-            kz_util:log_stacktrace(),
-            do_revise_docs_from_folder(DbName, Sleep, T)
-    end.
+        ?STACKTRACE(_, _, ST)
+        kz_util:log_stacktrace(ST),
+        do_revise_docs_from_folder(DbName, Sleep, T)
+        end.
 
 -spec maybe_update_doc(kz_term:ne_binary(), kz_json:object()) ->
                               {'ok', kz_json:object()} |
@@ -1155,7 +1154,7 @@ delete_attachment(DbName, DocId, AName, Options) ->
     end.
 
 -spec attachment_url(kz_term:text(), docid(), kz_term:ne_binary()) ->
-                            {'ok', kz_term:ne_binary()} |
+                            kz_term:ne_binary() |
                             {'proxy', tuple()} |
                             {'error', any()}.
 attachment_url(DbName, DocId, AttachmentId) ->
@@ -1704,13 +1703,13 @@ maybe_register_view({<<"_design/", Name/binary>>, View}, App, {ClassId, ViewMaps
 
     log_register_views(Name, DocId, App, ViewMaps),
 
-    Update = [{<<"kazoo">>, kz_json:from_list([{<<"view_map">>, ViewMaps}])}
-             ,{<<"view_definition">>, maybe_adapt_multilines(kz_json:delete_key(<<"kazoo">>, View))}
+    Update = [{[<<"kazoo">>], kz_json:from_list([{<<"view_map">>, ViewMaps}])}
+             ,{[<<"view_definition">>], maybe_adapt_multilines(kz_json:delete_key(<<"kazoo">>, View))}
              ],
-    ExtraUpdate = [{<<"version">>, Version}],
-    Create = [{<<"application">>, AppName}
-             ,{<<"name">>, Name}
-             ,{<<"pvt_type">>, <<"view_definition">>}
+    ExtraUpdate = [{[<<"version">>], Version}],
+    Create = [{[<<"application">>], AppName}
+             ,{[<<"name">>], Name}
+             ,{[<<"pvt_type">>], <<"view_definition">>}
              ],
 
     UpdateOptions = [{'update', Update}

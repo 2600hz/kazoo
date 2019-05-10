@@ -53,7 +53,7 @@
 -type date() :: calendar:date(). %%{year(), month(), day()}.
 -type time() :: calendar:time(). %%{hour(), minute(), second()}.
 -type datetime() :: calendar:datetime(). %%{date(), time()}.
--type iso_week() :: calendar:yearweeknum(). %%{year(), weeknum()}.
+-type iso_week() :: {year(), weeknum()}.
 -type gregorian_seconds() :: pos_integer().
 -type unix_seconds() :: pos_integer().
 -type api_seconds() :: 'undefined' | gregorian_seconds().

@@ -533,9 +533,7 @@ handle_cast({'add_event_listener', {Mod, Args}}, #state{call=Call}=State) ->
     _EvtL = cf_util:start_event_listener(Call, Mod, Args),
     lager:debug("started event listener: ~p", [_EvtL]),
     {'noreply', State};
-handle_cast('initialize', #state{call=Call
-                                ,amqp_worker=AMQPWorker
-                                }=State) ->
+handle_cast('initialize', #state{call=Call}=State) ->
     log_call_information(Call),
     Flow = kapps_call:kvs_fetch('cf_flow', Call),
     Updaters = [{fun kapps_call:kvs_store/3, 'cf_exe_pid', self()}
@@ -825,14 +823,14 @@ cf_module_task(CFModule, Data, Call, AMQPWorker) ->
     kz_util:put_callid(kapps_call:call_id_direct(Call)),
     try CFModule:handle(Data, Call)
     catch
+
         'exit':'normal' ->
             lager:info("action ~s finished", [CFModule]);
-        _E:R ->
-            ST = erlang:get_stacktrace(),
-            lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, R]),
-            kz_util:log_stacktrace(ST),
-            throw(R)
-    end.
+        ?STACKTRACE(_E, R, ST)
+        lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, R]),
+        kz_util:log_stacktrace(ST),
+        throw(R)
+        end.
 
 %%------------------------------------------------------------------------------
 %% @doc Unlike the kapps_call_command this send command does not call the

@@ -18,6 +18,7 @@
         ,get_http_verb/2
         ,get_auth_token/2
         ,get_pretty_print/2
+        ,get_content_type/1
         ,is_authentic/2, is_early_authentic/2
         ,is_permitted/2
         ,is_known_content_type/2
@@ -42,10 +43,6 @@
 
         ,encode_start_key/1, decode_start_key/1
         ]).
-
--ifdef(TEST).
--export([csv_body/2]).
--endif.
 
 -include_lib("kernel/include/file.hrl").
 -include("crossbar.hrl").
@@ -167,11 +164,10 @@ get_query_string_data(QS0, Req) ->
 get_content_type(Req) ->
     case cowboy_req:parse_header(<<"content-type">>, Req) of
         'undefined' -> 'undefined';
-        {Main, Sub, _Opts} ->
-            <<Main/binary, "/", Sub/binary>>
+        {Main, Sub, _Opts} -> <<Main/binary, "/", Sub/binary>>
     end.
 
--spec get_req_data(cb_context:context(), cowboy_req:req(), content_type(), kz_json:object()) ->
+-spec get_req_data(cb_context:context(), cowboy_req:req(), cowboy_content_type(), kz_json:object()) ->
                           {cb_context:context(), cowboy_req:req()} |
                           stop_return().
 get_req_data(Context, Req0, 'undefined', QS) ->
@@ -227,12 +223,11 @@ get_req_data(Context, Req1, ContentType, QS) ->
 maybe_extract_multipart(Context, Req0, QS) ->
     try extract_multipart(Context, Req0, QS)
     catch
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("failed to extract multipart ~s: ~p", [_E, _R]),
-            kz_util:log_stacktrace(ST),
-            handle_failed_multipart(Context, Req0, QS)
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:debug("failed to extract multipart ~s: ~p", [_E, _R]),
+        kz_util:log_stacktrace(ST),
+        handle_failed_multipart(Context, Req0, QS)
+        end.
 
 -spec handle_failed_multipart(cb_context:context(), cowboy_req:req(), kz_json:object()) ->
                                      {cb_context:context(), cowboy_req:req()} |
@@ -960,37 +955,36 @@ is_known_content_type(Req0, Context0, _ReqVerb) ->
                             Event = create_event_name(Context0, <<"content_types_accepted.", Mod/binary>>),
                             Payload = [ContextAcc | Params],
                             crossbar_bindings:fold(Event, Payload)
-                    end, Context0, cb_context:req_nouns(Context0)),
+                    end
+                   ,Context0
+                   ,cb_context:req_nouns(Context0)
+                   ),
 
     CT = get_content_type(Req0),
 
     is_known_content_type(Req0, Context1, ensure_content_type(CT), cb_context:content_types_accepted(Context1)).
 
--spec is_known_content_type(cowboy_req:req(), cb_context:context(), content_type(), list()) ->
+-spec is_known_content_type(cowboy_req:req(), cb_context:context(), cowboy_content_type(), crossbar_content_handlers()) ->
                                    {boolean(), cowboy_req:req(), cb_context:context()}.
 is_known_content_type(Req, Context, CT, []) ->
     is_known_content_type(Req, Context, CT, ?CONTENT_ACCEPTED);
 is_known_content_type(Req, Context, CT, CTAs) ->
-    CTA = lists:foldr(fun({_Fun, L}, Acc) ->
-                              lists:foldl(fun fold_in_content_type/2, Acc, L);
-                         (L, Acc) ->
-                              lists:foldl(fun fold_in_content_type/2, Acc, L)
-                      end, [], CTAs),
-
-    IsAcceptable = is_acceptable_content_type(CT, CTA),
+    IsAcceptable = is_acceptable_content_type(CT, CTAs),
     lager:debug("is ~p acceptable content type: ~s", [CT, IsAcceptable]),
     {IsAcceptable, Req, cb_context:set_content_types_accepted(Context, CTAs)}.
 
--spec fold_in_content_type({kz_term:ne_binary(), kz_term:ne_binary()}, list()) -> list().
-fold_in_content_type({Type, Sub}, Acc) ->
-    [{Type, Sub, []} | Acc].
+-spec is_acceptable_content_type(cowboy_content_type(), crossbar_content_handlers()) -> boolean().
+is_acceptable_content_type(CTA, ContentHandlers) ->
+    lists:any(fun({_Fun, ModCTAs}) ->
+                      content_type_matches(CTA, ModCTAs)
+              end
+             ,ContentHandlers
+             ).
 
--spec is_acceptable_content_type(content_type(), [content_type()]) -> boolean().
-is_acceptable_content_type(CTA, CTAs) ->
-    ['true' || ModCTA <- CTAs, content_type_matches(CTA, ModCTA)] =/= [].
-
-%% (ReqContentType, ModuleContentType)
--spec content_type_matches(content_type(), content_type()) -> boolean().
+%% (ClientContentType, ModuleContentType)
+-spec content_type_matches(cowboy_content_type(), [cowboy_content_type()] | cowboy_content_type()) -> boolean().
+content_type_matches(CT, ModCTs) when is_list(ModCTs) ->
+    lists:any(fun(ModCT) -> content_type_matches(CT, ModCT) end, ModCTs);
 content_type_matches({Type, _, _}, {Type, <<"*">>, '*'}) ->
     'true';
 content_type_matches({Type, SubType, _}, {Type, SubType, '*'}) ->
@@ -999,16 +993,15 @@ content_type_matches({Type, SubType, Opts}, {Type, SubType, ModOpts}) ->
     lists:all(fun({K, V}) -> props:get_value(K, Opts) =:= V end
              ,ModOpts
              );
-content_type_matches(CTA, {CT, SubCT, _}) when is_binary(CTA) ->
+content_type_matches(<<CTA/binary>>, {CT, SubCT, _}) ->
     CTA =:= <<CT/binary, "/", SubCT/binary>>;
-content_type_matches(CTA, CT) when is_binary(CTA), is_binary(CT) ->
-    CTA =:= CT;
-content_type_matches(_CTA, _CTAs) ->
-    'false'.
+content_type_matches(<<CT/binary>>, <<CT/binary>>) -> 'true';
+content_type_matches(_CTA, _CTAs) -> 'false'.
 
--spec ensure_content_type(content_type() | 'undefined') -> content_type().
+-spec ensure_content_type(cowboy_content_type() | 'undefined') -> cowboy_content_type().
 ensure_content_type('undefined') -> ?CROSSBAR_DEFAULT_CONTENT_TYPE;
-ensure_content_type(CT) -> CT.
+ensure_content_type(<<CT/binary>>) -> CT;
+ensure_content_type({_Type, _SubType, _Options}=CT) -> CT.
 
 %%------------------------------------------------------------------------------
 %% @doc This function will use event bindings to determine if the target noun
@@ -1182,10 +1175,26 @@ finish_request(_Req, Context) ->
 
 -spec maybe_cleanup_file(kz_csv:file_return() | 'undefined') -> 'ok'.
 maybe_cleanup_file({File, _}) ->
-    _Del = file:delete(File),
-    lager:debug("deleting ~s: ~p", [File, _Del]);
+    _P = spawn(fun() -> cleanup_file(File) end),
+    lager:debug("deleting ~s in ~p", [File, _P]);
 maybe_cleanup_file(_) -> 'ok'.
 
+-spec cleanup_file(file:filename_all()) -> 'ok'.
+cleanup_file(File) ->
+    case file:read_file_info(File) of
+        {'ok', #file_info{size=Bytes}} ->
+            Sleep = round(math:log(Bytes)) * ?MILLISECONDS_IN_SECOND,
+            cleanup_file(File, Sleep);
+        {'error', _Posix} ->
+            lager:debug("failed to read file: ~p", [_Posix]),
+            cleanup_file(File, 5 * ?MILLISECONDS_IN_SECOND)
+    end.
+
+-spec cleanup_file(file:filename_all(), pos_integer()) -> 'ok'.
+cleanup_file(File, Sleep) ->
+    timer:sleep(Sleep),
+    'ok' = file:delete(File),
+    lager:debug("deleted file ~s", [File]).
 
 %%------------------------------------------------------------------------------
 %% @doc This function will create the content for the response body.
@@ -1232,7 +1241,7 @@ get_encode_options(Context) ->
 -type csv_resp_data() :: kz_term:api_binary() |
                          kz_term:binaries() |
                          kz_json:object() |
-                         kz_term:objects().
+                         kz_json:objects().
 
 -spec create_csv_resp_content(cowboy_req:req(), cb_context:context()) ->
                                      {{'file', file:filename_all()} | 'stop', cowboy_req:req(), cb_context:context()}.
@@ -1247,7 +1256,6 @@ check_csv_resp_content(Req, Context, []) ->
     maybe_create_empty_csv_resp(Req, Context);
 check_csv_resp_content(Req, Context, <<>>) ->
     maybe_create_empty_csv_resp(Req, Context);
-
 check_csv_resp_content(Req, Context, Content) when is_list(Content) ->
     case final_csv_resp_type(Context, should_convert_csv(Content)) of
         'binary' ->
@@ -1267,7 +1275,6 @@ check_csv_resp_content(Req, Context, Content) when is_list(Content) ->
 check_csv_resp_content(Req, Context, Content) ->
     check_csv_resp_content(Req, Context, [Content]).
 
-
 -spec final_csv_resp_type(cb_context:context(), boolean()) -> 'binary' | 'is_chunked' | 'to_csv'.
 final_csv_resp_type(_, 'true') ->
     'to_csv';
@@ -1283,6 +1290,8 @@ final_csv_resp_type(Context, 'false') ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec create_csv_resp_content_from_jobjs(cowboy_req:req(), cb_context:context(), kz_json:objects()) ->
+                                                {{'file', file:filename_all()} | 'stop', cowboy_req:req(), cb_context:context()}.
 create_csv_resp_content_from_jobjs(Req, Context, JObjs) ->
     Context1 = csv_body(Context, JObjs),
     create_csv_resp_content_from_csv_acc(Req, Context1, cb_context:fetch(Context1, 'csv_acc')).
@@ -1367,7 +1376,7 @@ create_json_chunk_response(Req, Context) ->
     JObjs = cb_context:resp_data(Context),
     create_json_chunk_response(Req, Context, JObjs, cb_context:fetch(Context, 'chunking_started', 'false')).
 
--spec create_json_chunk_response(cowboy_req:req(), cb_context:context(), kz_json:api_objects(), boolean()) ->
+-spec create_json_chunk_response(cowboy_req:req(), cb_context:context(), kz_term:api_objects(), boolean()) ->
                                         {boolean(), cowboy_req:req(), cb_context:context()}.
 create_json_chunk_response(Req, Context, 'undefined', StartedChunk) ->
     {StartedChunk, Req, Context};
@@ -1410,6 +1419,8 @@ create_csv_chunk_response(Req, Context) ->
                              ,cb_context:fetch(Context, 'chunking_started', 'false')
                              ).
 
+-spec create_csv_chunk_response(cowboy_req:req(), cb_context:context(), resp_data(), boolean()) ->
+                                       {boolean(), cowboy_req:req(), cb_context:context()}.
 create_csv_chunk_response(Req, Context, 'undefined', IsStarted) ->
     {IsStarted, Req, Context};
 create_csv_chunk_response(Req, Context, <<>>, IsStarted) ->
@@ -1427,12 +1438,10 @@ create_csv_chunk_response(Req, Context, Content, 'false') when is_list(Content) 
 create_csv_chunk_response(Req, Context, Thing, IsStarted) ->
     create_csv_chunk_response(Req, Context, [Thing], IsStarted).
 
-
-
 -spec stream_or_create_csv_chunk(cowboy_req:req(), cb_context:context(), kz_json:objects() | kz_term:ne_binaries(), boolean()) ->
                                         {boolean(), cowboy_req:req(), cb_context:context()}.
 stream_or_create_csv_chunk(Req, Context, JObjs, 'true') ->
-    lager:debug("(chunked) continuing convertion of CSV chunks"),
+    lager:debug("(chunked) continuing conversion of CSV chunks"),
     {'true', Req, csv_body(Context, JObjs)};
 stream_or_create_csv_chunk(Req, Context, CSVs, 'false') ->
     lager:debug("(chunked) continuing stream of CSV chunks"),
@@ -1458,7 +1467,7 @@ maybe_init_csv_chunk_stream(Req, Context, 'false') ->
 %% then return the default defined value.
 %% @end
 %%------------------------------------------------------------------------------
--spec csv_file_name(cb_context:context(), kz_term:binary()) -> kz_term:binary().
+-spec csv_file_name(cb_context:context(), kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 csv_file_name(Context, Default) ->
     case cb_context:req_header(Context, <<"x-file-name">>) of
         'undefined' -> cb_context:req_value(Context, <<"file_name">>, Default);
@@ -1481,11 +1490,8 @@ init_chunk_stream(Req, Context, <<"to_csv">>) ->
                },
     cowboy_req:stream_reply(200, maps:merge(cowboy_req:resp_headers(Req), Headers), Req).
 
--spec csv_body(cb_context:context(), kz_json:object() | kz_json:objects()) ->
+-spec csv_body(cb_context:context(), kz_json:objects() | kz_term:ne_binaries()) ->
                       cb_context:context().
-csv_body(Context, []) ->
-    lager:debug("no resp data to build CSV from"),
-    Context;
 csv_body(Context, JObjs) when is_list(JObjs) ->
     Acc1 = case cb_context:fetch(Context, 'csv_acc') of
                'undefined' -> kz_csv:jobjs_to_file(JObjs);
@@ -1495,9 +1501,7 @@ csv_body(Context, JObjs) when is_list(JObjs) ->
     Setters = [{fun cb_context:store/3, 'csv_acc', Acc1}
               ,{fun cb_context:store/3, 'chunk_is_file', 'true'}
               ],
-    cb_context:setters(Context, Setters);
-csv_body(Context, JObj) ->
-    csv_body(Context, [JObj]).
+    cb_context:setters(Context, Setters).
 
 %%------------------------------------------------------------------------------
 %% @doc This function will create response expected for a request that

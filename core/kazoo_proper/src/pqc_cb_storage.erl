@@ -258,9 +258,6 @@ handle_multipart_contents(MediaId, MP3, [_Part | Parts]) ->
     ?DEBUG("skipping part ~s", [_Part]),
     handle_multipart_contents(MediaId, MP3, Parts).
 
-handle_mp3_contents(MP3, MP3, 'false') ->
-    ?INFO("got expected mp3 data"),
-    'true';
 handle_mp3_contents(MP3, Base64MP3, 'true') ->
     ?INFO("checking base64-encoded data"),
     case base64:decode(Base64MP3) of
@@ -275,7 +272,8 @@ handle_mp3_contents(MP3, Base64MP3, 'true') ->
 -spec cleanup() -> 'ok'.
 cleanup() ->
     _ = pqc_cb_accounts:cleanup_accounts(?ACCOUNT_NAMES),
-    cleanup_system().
+    cleanup_system(),
+    timer:sleep(500).
 
 cleanup(API) ->
     ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
