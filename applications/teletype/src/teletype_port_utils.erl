@@ -77,7 +77,7 @@ fix_numbers(_DataJObj, _TemplateId, PortReqJObj) ->
                            ),
     kzd_port_requests:set_numbers(PortReqJObj, Numbers).
 
--spec get_numbers(kz_json:object()) -> kz_term:ne_binaries().
+-spec get_numbers(kz_json:object()) -> kz_json:objects().
 get_numbers(PortReqJObj) ->
     case kzd_port_requests:pvt_port_state(PortReqJObj) of
         ?PORT_COMPLETED ->
@@ -325,11 +325,11 @@ is_attachable_template(TemplateId) ->
                  ]
                 ).
 
--spec maybe_add_attachments(kz_json:object(), kz_term:ne_binary()) -> attachments().
+-spec maybe_add_attachments(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 maybe_add_attachments(DataJObj, TemplateId) ->
     maybe_add_attachments(DataJObj, is_attachable_template(TemplateId), teletype_util:is_preview(DataJObj)).
 
--spec maybe_add_attachments(kz_json:object(), boolean(), boolean()) -> attachments().
+-spec maybe_add_attachments(kz_json:object(), boolean(), boolean()) -> kz_json:object().
 maybe_add_attachments(DataJObj, _, 'true') ->
     DataJObj;
 maybe_add_attachments(DataJObj, 'true', 'false') ->

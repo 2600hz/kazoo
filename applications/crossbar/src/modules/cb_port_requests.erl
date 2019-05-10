@@ -1051,8 +1051,8 @@ filter_private_comments(Context, JObj) ->
             kzd_port_requests:set_comments(JObj, Comments)
     end.
 
--spec run_comment_filter(kz_json:object(), [{kz_json:path(), fun((any()) -> boolean())}]) ->
-                                kz_json:object().
+-spec run_comment_filter([kzd_comment:doc()], [{kz_json:get_key(), fun((kz_json:json_term()) -> boolean())}]) ->
+                                [kzd_comment:doc()].
 run_comment_filter(Comments, Filters) ->
     [Comment
      || Comment <- Comments,
@@ -1070,7 +1070,7 @@ run_comment_filter(Comments, Filters) ->
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
                                     kz_json:objects().
 normalize_view_results(Res, Acc) ->
-    [leak_pvt_fields(Res, knm_port_request:public_fields(kz_json:get_value(<<"doc">>, Res)))
+    [leak_pvt_fields(Res, knm_port_request:public_fields(kz_json:get_json_value(<<"doc">>, Res)))
      | Acc
     ].
 
