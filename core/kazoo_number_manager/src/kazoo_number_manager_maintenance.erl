@@ -1088,9 +1088,10 @@ save_conflicts_to_db(#{ko := KO}=State, Db, ConflictJObjs) ->
 
     DefinitelyFailed = merge_error_num_ids(DbFailed, Errored),
 
-    ToSave = [update_docs_revs(JObj, Revs)
+    ToSave = [kz_doc:set_revision(JObj, Rev)
               || JObj <- ConflictJObjs,
-                 maps:is_key(kz_doc:id(JObj), Revs)
+                 Rev <- [maps:get(kz_doc:id(JObj), Revs, 'undefined')],
+                 Rev =/= 'undefined'
              ],
     _ = timer:sleep(100),
     ?SUP_LOG_DEBUG("           saving ~b conflicts", [length(ToSave)]),
@@ -1105,14 +1106,9 @@ save_conflicts_to_db(#{ko := KO}=State, Db, ConflictJObjs) ->
             State#{ko => KO#{Db => DbKO#{failed => add_failed_to_db_ko(DbKO, MeowFailed)}}}
     end.
 
--spec update_docs_revs(kz_json:object(), map()) -> kz_json:object().
-update_docs_revs(JObj, Revs) ->
-    {Rev, _PvtAssignedTo} = maps:get(kz_doc:id(JObj), Revs),
-    kz_doc:set_revision(JObj, Rev).
-
 %% @private
 -spec get_conflicts_revs(kz_term:ne_binary(), kz_term:ne_binaries()) ->
-                                             {map(), map()}.
+                                {map(), map()}.
 get_conflicts_revs(Db, ConflictIds) ->
     ?SUP_LOG_DEBUG("           fetching ~b revs from ~s", [length(ConflictIds), Db]),
     case kz_datamgr:all_docs(Db, [{'keys', ConflictIds}]) of
@@ -1133,7 +1129,7 @@ split_errors_opened_revs([JObj|JObjs], {Errors, Revs}) ->
     case kz_json:get_value(<<"error">>, JObj) of
         'undefined' ->
             Acc = {Errors
-                  ,Revs#{Id => get_rev_and_maybe_assigned_to_fields(JObj)}
+                  ,Revs#{Id => kz_json:get_ne_binary_value([<<"value">>, <<"rev">>], JObj)}
                   },
             split_errors_opened_revs(JObjs, Acc);
         Reason ->
@@ -1142,17 +1138,6 @@ split_errors_opened_revs([JObj|JObjs], {Errors, Revs}) ->
                   ,Revs
                   },
             split_errors_opened_revs(JObjs, Acc)
-    end.
-
--spec get_rev_and_maybe_assigned_to_fields(kz_json:object()) -> {kz_term:ne_binary(), kz_term:api_ne_binary()}.
-get_rev_and_maybe_assigned_to_fields(JObj) ->
-    case kz_json:get_json_value(<<"doc">>, JObj) of
-        'undefined' ->
-            %% this is the result of all_docs without include_docs
-            {kz_json:get_ne_binary_value([<<"value">>, <<"rev">>], JObj), 'undefined'};
-        Doc ->
-            %% this is the result of all_docs with include_docs
-            {kz_doc:revision(Doc), kz_json:get_ne_binary_value(<<"pvt_assigned_to">>, Doc)}
     end.
 
 -spec to_binary_data_error(any()) -> kz_term:ne_binary().
