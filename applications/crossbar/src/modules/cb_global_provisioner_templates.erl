@@ -40,8 +40,8 @@
 -define(CB_LIST, <<"provisioner_templates/crossbar_listing">>).
 -define(IMAGE_REQ, <<"image">>).
 -define(TEMPLATE_ATTCH, <<"template">>).
--define(MIME_TYPES, [{<<"image">>, <<"*">>}
-                    ,{<<"application">>, <<"octet-stream">>}
+-define(MIME_TYPES, [{<<"image">>, <<"*">>, '*'}
+                    ,{<<"application">>, <<"octet-stream">>, '*'}
                      | ?BASE64_CONTENT_TYPES
                     ]).
 
@@ -75,7 +75,7 @@ init_db() ->
 %% @doc Add content types provided by this module.
 %% @end
 %%------------------------------------------------------------------------------
--spec acceptable_content_types() -> kz_term:proplist().
+-spec acceptable_content_types() -> cowboy_content_types().
 acceptable_content_types() -> ?MIME_TYPES.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->

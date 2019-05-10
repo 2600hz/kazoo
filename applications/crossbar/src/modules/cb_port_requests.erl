@@ -39,8 +39,8 @@
 -define(TEMPLATE_DOC_ID, <<"notify.loa">>).
 -define(TEMPLATE_ATTACHMENT_ID, <<"template">>).
 
--define(ATTACHMENT_MIME_TYPES, [{<<"application">>, <<"octet-stream">>}
-                               ,{<<"text">>, <<"plain">>}
+-define(ATTACHMENT_MIME_TYPES, [{<<"application">>, <<"octet-stream">>, '*'}
+                               ,{<<"text">>, <<"plain">>, '*'}
                                 | ?PDF_CONTENT_TYPES
                                ]).
 
@@ -192,7 +192,7 @@ resource_exists(_PortRequestId, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
 %% Of the form `{atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}'
 %% @end
 %%------------------------------------------------------------------------------
--spec acceptable_content_types() -> kz_term:proplist().
+-spec acceptable_content_types() -> cowboy_content_types().
 acceptable_content_types() -> ?ATTACHMENT_MIME_TYPES.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->

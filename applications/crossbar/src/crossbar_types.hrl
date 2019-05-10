@@ -31,6 +31,7 @@
 
 -type cowboy_content_type() :: {binary(), binary(), '*' | [{binary(), binary()}]} | % {Type, SubType, Options}
                                binary(). % <<"Type/SubType">>
+-type cowboy_content_types() :: [cowboy_content_type()].
 
 -type media_value() :: {cowboy_content_type(), non_neg_integer(), list()}.
 -type media_values() :: [media_value()].
