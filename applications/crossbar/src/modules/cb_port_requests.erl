@@ -1546,7 +1546,7 @@ authority_type(Context, Nouns) ->
     Accounts = props:get_value(<<"accounts">>, Nouns),
     authority_type(Context, Nouns, Accounts).
 
--spec authority_type(cb_context:context(), req_nouns(), path_tokens() | 'undefined') -> {authority_type(), cb_context:context()}.
+-spec authority_type(cb_context:context(), req_nouns(), path_tokens() | 'undefined') -> {authority_type(), kz_term:ne_binary()}.
 authority_type(Context, _Nouns, 'undefined') ->
     {'agent', cb_context:auth_account_id(Context)};
 authority_type(Context, _Nouns, [_AccountId, ?DESCENDANTS]) ->
