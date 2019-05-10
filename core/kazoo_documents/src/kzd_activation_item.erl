@@ -39,8 +39,8 @@ billable(Doc, Default) ->
     kz_json:get_integer_value([<<"billable">>], Doc, Default).
 
 -spec set_billable(doc(), non_neg_integer()) -> doc().
-set_billable(Doc, Category) ->
-    kz_json:set_value([<<"billable">>], Doc, Category).
+set_billable(Doc, Billable) ->
+    kz_json:set_value([<<"billable">>], Billable, Doc).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -56,7 +56,7 @@ category(Doc, Default) ->
 
 -spec set_category(doc(), kz_term:api_ne_binary()) -> doc().
 set_category(Doc, Category) ->
-    kz_json:set_value([<<"category">>], Doc, Category).
+    kz_json:set_value([<<"category">>], Category, Doc).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -72,7 +72,7 @@ item(Doc, Default) ->
 
 -spec set_item(doc(), kz_term:api_ne_binary()) -> doc().
 set_item(Doc, Item) ->
-    kz_json:set_value([<<"item">>], Doc, Item).
+    kz_json:set_value([<<"item">>], Item, Doc).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -88,7 +88,7 @@ name(Doc, Default) ->
 
 -spec set_name(doc(), kz_term:api_ne_binary()) -> doc().
 set_name(Doc, Name) ->
-    kz_json:set_value([<<"name">>], Doc, Name).
+    kz_json:set_value([<<"name">>], Name, Doc).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -104,7 +104,7 @@ rate(Doc, Default) ->
 
 -spec set_rate(doc(), kz_term:api_float()) -> doc().
 set_rate(Doc, Rate) ->
-    kz_json:set_value([<<"rate">>], Doc, Rate).
+    kz_json:set_value([<<"rate">>], Rate, Doc).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -120,4 +120,4 @@ total(Doc, Default) ->
 
 -spec set_total(doc(), kz_term:api_float()) -> doc().
 set_total(Doc, Total) ->
-    kz_json:set_value([<<"total">>], Doc, Total).
+    kz_json:set_value([<<"total">>], Total, Doc).
