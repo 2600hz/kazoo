@@ -783,7 +783,7 @@ has_billable_additions(Item) ->
 hash(Item) ->
     kz_binary:md5(
       <<(category_name(Item))/binary
-        ,(item_name(Item))/binary
-        ,(kz_term:to_binary(is_masquerading(Item)))/binary
+       ,(item_name(Item))/binary
+       ,(kz_term:to_binary(is_masquerading(Item)))/binary
       >>
      ).
