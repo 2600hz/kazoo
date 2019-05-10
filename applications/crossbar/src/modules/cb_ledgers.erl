@@ -179,17 +179,12 @@ validate(Context, SourceService) ->
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ?SUMMARY, ModbSuffix) ->
-    Summary = summary(Context, ModbSuffix),
-    AccountSummary = account_summary(Summary, ModbSuffix),
-    Status = {cb_context:resp_status(Summary), cb_context:resp_status(AccountSummary)},
-    case Status of
-        {'success', 'success'} ->
-            JObj = kz_json:from_list([{<<"summary">>, cb_context:resp_data(Summary)}
-                                     ,{<<"breakdown">>, cb_context:resp_data(AccountSummary)}
-                                     ]
-                                    ),
-            cb_context:set_resp_data(AccountSummary, JObj);
-        {_, _} -> AccountSummary
+    case get_modb_suffix(ModbSuffix) of
+        {'undefined', 'undefined'} ->
+            crossbar_util:response_bad_identifier(ModbSuffix, Context);
+        {Year, Month} ->
+            MODB = kazoo_modb:get_modb(cb_context:account_id(Context), Year, Month),
+            build_summary(Context, MODB)
     end;
 validate(Context, SourceService, Id) ->
     AccountId = cb_context:account_id(Context),
@@ -275,67 +270,42 @@ put(Context, Action) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec summary(cb_context:context()) -> cb_context:context().
-summary(Context) ->
-    Options = [{'group', 'true'}
-              ,{'group_level', 0}
-              ,{'mapper', crossbar_view:map_value_fun()}
-              ,{'reduce', 'true'}
-              ,{'unchunkable', 'true'}
-              ],
-    Context1 = crossbar_view:load_modb(Context, ?VIEW_BY_TIMESTAMP, Options),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            Summary = kz_json:sum_jobjs(cb_context:doc(Context1)),
-            cb_context:set_resp_data(Context1, summary_to_dollars(Summary));
-        _ ->
-            Context1
-    end.
-
-summary(Context, ModbSuffix) ->
-    Modb = kazoo_modb:get_modb(cb_context:account_id(Context)
-                              ,kz_term:to_integer(binary:bin_to_list(ModbSuffix, {0,4}))
-                              ,kz_term:to_integer(binary:bin_to_list(ModbSuffix, {4,2}))
-                              ),
-    Options = [{'group', 'true'}
-              ,{'group_level', 0}
-              ,{'mapper', crossbar_view:map_value_fun()}
-              ,{'reduce', 'true'}
-              ,{'unchunkable', 'true'}
-              ,{'databases', [Modb]}
-              ],
-
-    Context1 = crossbar_view:load_modb(Context, ?VIEW_BY_TIMESTAMP, Options),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            Summary = kz_json:sum_jobjs(cb_context:doc(Context1)),
-            cb_context:set_resp_data(Context1, summary_to_dollars(Summary));
-        _ ->
-            Context1
+-spec build_summary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+build_summary(Context, MODB) ->
+    SummaryContext = summary(Context, [{'databases', [MODB]}
+                                      ,{'range_keymap', 'nil'}
+                                      ]
+                            ),
+    AccountContext = account_summary(Context, MODB),
+    case {cb_context:resp_status(SummaryContext), cb_context:resp_status(AccountContext)} of
+        {'success', 'success'} ->
+            AccountSummary = cb_context:resp_data(AccountContext),
+            JObj = kz_json:from_list([{<<"summary">>, cb_context:resp_data(SummaryContext)}
+                                     ,{<<"breakdown">>, kz_json:values(AccountSummary)}
+                                     ]
+                                    ),
+            cb_context:set_resp_data(AccountContext, JObj);
+        {_, _} -> AccountContext
     end.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec account_summary(cb_context:context(), kz_term:ne_binary()) ->cb_context:context().
-account_summary(Context, ModbSuffix) ->
-    Modb = kazoo_modb:get_modb(cb_context:account_id(Context)
-                              ,kz_term:to_integer(binary:bin_to_list(ModbSuffix, {0,4}))
-                              ,kz_term:to_integer(binary:bin_to_list(ModbSuffix, {4,2}))
-                              ),
-    Options = [{'group', 'true'}
-              ,{'group_level', 3}
-              ,{'reduce', 'true'}
-              ,{'unchunkable', 'true'}
-              ,{'nofilter', 'true'}
-              ,{'databases', [Modb]}
-              ],
-    Context1 = crossbar_view:load(Context, ?VIEW_BY_ACCOUNT, Options),
+-spec fetch_summary(cb_context:context(), kz_term:ne_binary(), kz_term:proplist()) -> cb_context:context().
+fetch_summary(Context, View, Options) ->
+    ViewOptions = [{'group', 'true'}
+                  ,{'reduce', 'true'}
+                  ,{'unchunkable', 'true'}
+                  ,{'nofilter', 'true'}
+                  ,{'should_paginate', 'false'}
+                   | Options
+                  ],
+    Context1 = crossbar_view:load_modb(Context, View, ViewOptions),
     case cb_context:resp_status(Context1) of
         'success' ->
-            Summary = normalize_summary_by_account(cb_context:doc(Context1), []),
-            cb_context:set_resp_data(Context, Summary);
+            Summary = kz_json:sum_jobjs(cb_context:doc(Context1)),
+            cb_context:set_resp_data(Context1, summary_to_dollars(Summary));
         _ -> Context1
     end.
 
@@ -343,19 +313,53 @@ account_summary(Context, ModbSuffix) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec summary_to_dollars(kz_json:object()) -> kz_json:object().
+-spec summary(cb_context:context()) -> cb_context:context().
+summary(Context) ->
+    summary(Context, []).
+
+-spec summary(cb_context:context(), kz_term:proplist()) -> cb_context:context().
+summary(Context, Options) ->
+    ViewOptions = [{'group_level', 0}
+                  ,{'mapper', crossbar_view:map_value_fun()}
+                   | Options
+                  ],
+
+    fetch_summary(Context, ?VIEW_BY_TIMESTAMP, ViewOptions).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec account_summary(cb_context:context(), kz_term:ne_binary()) ->cb_context:context().
+account_summary(Context, MODB) ->
+    Options = [{'databases', [MODB]}
+              ,{'group_level', 2}
+              ,{'mapper', fun normalize_summary_by_account/2}
+              ,{'range_keymap', 'nil'}
+              ],
+    fetch_summary(Context, ?VIEW_BY_ACCOUNT, Options).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec summary_to_dollars(kz_json:object() | kz_json:objects()) -> kz_json:object().
+summary_to_dollars(Summaries) when is_list(Summaries) ->
+    [summary_to_dollars(Summary) || Summary <- Summaries];
 summary_to_dollars(Summary) ->
     kz_json:expand(
       kz_json:from_list(
-        [{Path, maybe_convert_units(lists:last(Path), Value)}
-         || {Path, Value} <- kz_json:to_proplist(kz_json:flatten(Summary))
+        [{Paths, maybe_convert_units(lists:last(Paths), Paths, Value)}
+         || {Paths, Value} <- kz_json:to_proplist(kz_json:flatten(Summary))
         ])).
 
--spec maybe_convert_units(kz_term:ne_binary(), kz_currency:units() | T) ->
+-spec maybe_convert_units(kz_term:ne_binary(), kz_json:keys(), kz_currency:units() | T) ->
                                  kz_currency:dollars() | T when T::any().
-maybe_convert_units(<<"amount">>, Units) when is_integer(Units) ->
+maybe_convert_units(<<"amount">>, _, Units) when is_integer(Units) ->
     kz_currency:units_to_dollars(Units);
-maybe_convert_units(_, Value) -> Value.
+maybe_convert_units(_, [_AccountId, <<"total">>], Units) ->
+    kz_currency:units_to_dollars(Units);
+maybe_convert_units(_, _, Value) -> Value.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -444,6 +448,21 @@ build_success_response(AccountId, Ledger) ->
       ]
      ).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_modb_suffix(kz_term:ne_binary()) -> {kz_term:api_integer(), kz_term:api_integer()}.
+get_modb_suffix(<<YearBin:4/binary, MonthBin:2/binary>>) ->
+    {kz_term:safe_cast(YearBin, 'undefined', fun kz_term:to_integer/1)
+    ,kz_term:safe_cast(MonthBin, 'undefined', fun kz_term:to_integer/1)
+    };
+get_modb_suffix(<<YearBin:4/binary, MonthBin:1/binary>>) ->
+    {kz_term:safe_cast(YearBin, 'undefined', fun kz_term:to_integer/1)
+    ,kz_term:safe_cast(MonthBin, 'undefined', fun kz_term:to_integer/1)
+    };
+get_modb_suffix(_) ->
+    {'undefined', 'undefined'}.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -463,32 +482,28 @@ normalize_view_result(LedgerJObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_summary_by_account(kz_json:objects(), kz_json:objects()) -> kz_json:objects().
-normalize_summary_by_account([], Acc) ->
-    Objs = kz_json:get_value(1, Acc),
-    kz_json:values(Objs);
-normalize_summary_by_account([JObj | Rest], Acc) ->
-    ViewKey = kz_json:get_value(<<"key">>, JObj),
-    NewJObj = [normalize_ledger_jobj(ViewKey, J) || J <- kz_json:get_value(<<"value">>, JObj)],
-    normalize_summary_by_account(Rest, [kz_json:sum_jobjs(NewJObj ++ Acc)]).
+normalize_summary_by_account(JObj, Acc) ->
+    AccountId = kz_json:get_value(<<"key">>, JObj),
+    Ledger = normalize_ledger_jobj(AccountId, kz_json:get_value(<<"value">>, JObj)),
+    [kz_json:sum_jobjs([Ledger | Acc])].
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_ledger_jobj(kazoo_data:range_key(), kz_json:object()) -> kz_json:object().
-normalize_ledger_jobj([_Timestamp, ServiceName, AccountId], JObj) ->
+normalize_ledger_jobj(AccountId, JObj) ->
     AccountJObj = kz_json:from_list([{<<"id">>, AccountId}
                                     ,{<<"name">>, kz_json:get_value(<<"account_name">>, JObj)}
                                     ]
                                    ),
-    ServiceJObj = kz_json:from_list([{ServiceName, kz_json:delete_key(<<"account_name">>, JObj)}]),
-    kz_json:from_list([{AccountId
-                       ,kz_json:from_list(
-                          [{<<"account">>, AccountJObj}
-                          ,{<<"ledgers">>, summary_to_dollars(ServiceJObj)}
-                          ,{<<"total">>, kz_currency:units_to_dollars(kz_json:get_integer_value(<<"amount">>, JObj))}
-                          ]
-                         )
-                       }
-                      ]
-                     ).
+    kz_json:from_list(
+      [{AccountId
+       ,kz_json:from_list(
+          [{<<"account">>, AccountJObj}
+          ,{<<"ledgers">>, kz_json:get_value(<<"ledgers">>, JObj)}
+          ,{<<"total">>, kz_json:get_integer_value(<<"total">>, JObj)}
+          ]
+         )
+       }
+      ]).
