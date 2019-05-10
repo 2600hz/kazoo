@@ -128,10 +128,10 @@ get_binary(Category, Key, Default, Node) ->
                       kz_term:api_object().
 get_json(Category, Key) ->
     V = get(Category, Key),
-    as_json_value(V, undefined).
+    as_json_value(V, 'undefined').
 
 -spec as_json_value(any(), kz_term:api_object()) -> kz_term:api_object().
-as_json_value(undefined, Default) -> Default;
+as_json_value('undefined', Default) -> Default;
 as_json_value(V, Default) ->
     case kz_json:is_json_object(V) of
         'true' -> V;
