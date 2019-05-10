@@ -243,3 +243,131 @@ curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{SOURCE_SERVICE}/{LEDGER_ID}
 ```
+
+## Fetch Ledger and Account Summary Breakdown
+
+Fetches the account ledger summary as well as a breakdown of ledgers per account for a given YYYYMM.
+
+> GET /v2/accounts/{ACCOUNT_ID}/ledgers/summary/{MODB_SUFFIX}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/summary/{MODB_SUFFIX}
+```
+
+### Example
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/summary/201905
+```
+
+```json
+"data": {
+    "summary": {
+      "per-minute-voip": {
+        "amount": -880.0,
+        "usage": {
+          "type": "voice",
+          "quantity": 232320,
+          "unit": "sec"
+        }
+      },
+      "payments": {
+        "amount": 251970.82,
+        "usage": {
+          "type": "debit",
+          "quantity": 0,
+          "unit": "dollars"
+        }
+      },
+      "prorations": {
+        "amount": -1.9258,
+        "usage": {
+          "quantity": 0
+        }
+      },
+      "rollovers": {
+        "amount": 36.102,
+        "usage": {
+          "quantity": 0
+        }
+      }
+    },
+    "breakdown": [
+      {
+        "account": {
+          "id": "de6fd29a54407cfe46e6c9d3828ab0d8",
+          "name": "Account A"
+        },
+        "ledgers": {
+          "payments": {
+            "amount": -1250000.0,
+            "usage": {
+              "type": "debit",
+              "quantity": 0,
+              "unit": "dollars"
+            }
+          },
+          "per-minute-voip": {
+            "amount": -385.0,
+            "usage": {
+              "type": "voice",
+              "quantity": 101640,
+              "unit": "sec"
+            }
+          }
+        },
+        "total": -1250385.0
+      },
+      {
+        "account": {
+          "id": "cc580f94d7da53816a94b87b2a1d25f8",
+          "name": "Account 1"
+        },
+        "ledgers": {
+          "payments": {
+            "amount": 1501970.82,
+            "usage": {
+              "type": "credit",
+              "quantity": 0,
+              "unit": "dollars"
+            }
+          },
+          "prorations": {
+            "amount": -1.9258,
+            "usage": {
+              "quantity": 0
+            }
+          },
+          "rollovers": {
+            "amount": 36.102,
+            "usage": {
+              "quantity": 0
+            }
+          }
+        },
+        "total": 1500004.9962
+      },
+      {
+        "account": {
+          "id": "a71a670531d7dc92d2a4f9fc6774df36",
+          "name": "Account B"
+        },
+        "ledgers": {
+          "per-minute-voip": {
+            "amount": -495.0,
+            "usage": {
+              "type": "voice",
+              "quantity": 130680,
+              "unit": "sec"
+            }
+          }
+        },
+        "total": -495.0
+      }
+    ]
+  }
+```
