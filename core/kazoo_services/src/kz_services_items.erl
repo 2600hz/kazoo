@@ -88,12 +88,6 @@ get_plan_items(_Services, Plan) ->
      || CategoryName <- kzd_service_plan:categories(PlanJObj),
         ItemName <- kzd_service_plan:items(PlanJObj, CategoryName)
     ].
-%% TODO: figure out how to handle the billing object, used to be that it would
-%%   result in items regardless of what was on the service plan...
-%%    [{CategoryName, ItemName}
-%%     || CategoryName <- kz_services:list_categories(Services),
-%%        ItemName <- kz_services:list_items(Services, CategoryName)
-%%    ].
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -192,25 +186,50 @@ annotate(CurrentItems, ProposedItems) ->
 %%------------------------------------------------------------------------------
 -spec annotate(items(), items(), kz_term:api_binary()) -> items().
 annotate(CurrentItems, ProposedItems, Reason) ->
-    annotate(CurrentItems, ProposedItems, Reason, []).
+    Dict =
+        foldl(fun(Item, D) ->
+                      Key = kz_services_item:hash(Item),
+                      dict:store(Key, {Item, 'undefined'}, D)
+              end
+             ,dict:new()
+             ,CurrentItems
+             ),
+    TentativeItems =
+        dict:to_list(
+          foldl(fun(Item, D) ->
+                        Key = kz_services_item:hash(Item),
+                        dict:update(Key
+                                   ,fun({Current, _}) ->
+                                            {Current, Item}
+                                    end
+                                   ,{'undefined', Item}
+                                   ,D
+                                   )
+                end
+               ,Dict
+               ,ProposedItems
+               )
+         ),
+    do_annotate([Items || {_, Items} <- TentativeItems], Reason, []).
 
--spec annotate(items(), items(), kz_term:api_binary(), items()) -> items().
-annotate([], [], _Reason, Items) -> Items;
-annotate([CurrentItem|CurrentItems], [], Reason, Items) ->
-    ProposedItem = kz_services_item:empty(),
+-type tentative_items() :: {kz_services_item:item(), kz_services_item:item()}.
+-spec do_annotate(tentative_items(), kz_term:api_bianry(), items()) -> items().
+do_annotate([], _Reason, Items) ->
+    Items;
+do_annotate([{CurrentItem, 'undefined'}|TentativeItems], Reason, Items) ->
+    ProposedItem = kz_services_item:reset(CurrentItem),
     Difference = difference(CurrentItem, ProposedItem),
-    Item = maybe_annotate(<<"removed">>, Difference, Reason, CurrentItem),
-    annotate(CurrentItems, [], Reason, [Item|Items]);
-annotate(CurrentItems, [ProposedItem|ProposedItems], Reason, Items) ->
-    case split_items(CurrentItems, ProposedItem) of
-        {'undefined', RemainingCurrentItems} ->
-            Item = maybe_annotate(<<"created">>, 'undefined', Reason, ProposedItem),
-            annotate(RemainingCurrentItems, ProposedItems, Reason, [Item|Items]);
-        {CurrentItem, RemainingCurrentItems} ->
-            Difference = difference(CurrentItem, ProposedItem),
-            Item = maybe_annotate(<<"modified">>, Difference, Reason, ProposedItem),
-            annotate(RemainingCurrentItems, ProposedItems, Reason, [Item|Items])
-    end.
+    Item = maybe_annotate(<<"removed">>, Difference, Reason, ProposedItem),
+    do_annotate(TentativeItems, Reason, [Item|Items]);
+do_annotate([{'undefined', ProposedItem}|TentativeItems], Reason, Items) ->
+    CurrentItem = kz_services_item:reset(ProposedItem),
+    Difference = difference(CurrentItem, ProposedItem),
+    Item = maybe_annotate(<<"created">>, Difference, Reason, ProposedItem),
+    do_annotate(TentativeItems, Reason, [Item|Items]);
+do_annotate([{CurrentItem, ProposedItem}|TentativeItems], Reason, Items) ->
+    Difference = difference(CurrentItem, ProposedItem),
+    Item = maybe_annotate(<<"modified">>, Difference, Reason, ProposedItem),
+    do_annotate(TentativeItems, Reason, [Item|Items]).
 
 -spec maybe_annotate(kz_term:ne_binary(), kz_term:api_object(), kz_term:api_binary(), kz_services_item:item()) ->
                             kz_services_item:item().
@@ -231,26 +250,6 @@ maybe_annotate(Type, Difference, Reason, Item) ->
                         ]
                        ),
             kz_services_item:set_changes(Item, kz_json:from_list(Changes))
-    end.
-
--type api_item() :: kz_serivces_item:item() | 'undefined'.
--spec split_items(items(), kz_services_item:item()) -> {api_item(), items()}.
-split_items(Items, ProposedItem) ->
-    CategoryName = kz_services_item:category_name(ProposedItem),
-    ItemName = kz_services_item:item_name(ProposedItem),
-    Masqueraded = kz_services_item:is_masquerading(ProposedItem),
-    case lists:splitwith(fun(Item) ->
-                                 kz_services_item:category_name(Item) =:= CategoryName
-                                     andalso
-                                     kz_services_item:item_name(Item) =:= ItemName
-                                     andalso
-                                     kz_services_item:is_masquerading(Item) =:= Masqueraded
-                         end, Items)
-    of
-        {[], RemainingItems} ->
-            {'undefined', RemainingItems};
-        {[Item], RemainingItems} ->
-            {Item, RemainingItems}
     end.
 
 %%------------------------------------------------------------------------------
