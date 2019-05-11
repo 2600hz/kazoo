@@ -62,6 +62,7 @@
 -export([has_changes/1]).
 -export([has_additions/1]).
 -export([has_billable_additions/1]).
+-export([hash/1]).
 
 -include("services.hrl").
 
@@ -773,3 +774,16 @@ has_billable_additions(Item) ->
             Key = [<<"difference">>, <<"billable">>],
             kz_json:get_integer_value(Key, Changes, 0) > 0
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec hash(item()) -> kz_term:binary().
+hash(Item) ->
+    kz_binary:md5(
+      <<(category_name(Item))/binary
+       ,(item_name(Item))/binary
+       ,(kz_term:to_binary(is_masquerading(Item)))/binary
+      >>
+     ).
