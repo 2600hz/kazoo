@@ -698,35 +698,35 @@ find_methods_in_clause(?LAGER, Acc) ->
     Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_fax', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_faxes:acceptable_content_types()
+     || {Type, SubType, _} <- cb_faxes:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_media', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_media:acceptable_content_types()
+     || {Type, SubType, _} <- cb_media:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_notifications', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_notifications:acceptable_content_types()
+     || {Type, SubType, _} <- cb_notifications:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_attachments', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_whitelabel:acceptable_content_types()
+     || {Type, SubType, _} <- cb_whitelabel:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_domain_attachments', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_whitelabel:acceptable_content_types()
+     || {Type, SubType, _} <- cb_whitelabel:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_provisioner', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_global_provisioner_templates:acceptable_content_types()
+     || {Type, SubType, _} <- cb_global_provisioner_templates:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_vm_download', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_vmboxes:acceptable_content_types()
+     || {Type, SubType, _} <- cb_vmboxes:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_get', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_port_requests:acceptable_content_types()
+     || {Type, SubType, _} <- cb_port_requests:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('allowed_methods_on_account', _Args), Acc) ->
     AccountMethods = cb_accounts:allowed_methods_on_account(<<"account">>, {'ok', <<"master">>}),

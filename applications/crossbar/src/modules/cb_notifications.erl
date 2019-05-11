@@ -29,8 +29,8 @@
 
 -include("crossbar.hrl").
 
--define(NOTIFICATION_MIME_TYPES, [{<<"text">>, <<"html">>}
-                                 ,{<<"text">>, <<"plain">>}
+-define(NOTIFICATION_MIME_TYPES, [{<<"text">>, <<"html">>, '*'}
+                                 ,{<<"text">>, <<"plain">>, '*'}
                                  ]).
 -define(CB_LIST, <<"notifications/crossbar_listing">>).
 -define(PREVIEW, <<"preview">>).
@@ -144,7 +144,7 @@ resource_exists(?CUSTOMER_UPDATE, ?MESSAGE) -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 
--spec acceptable_content_types() -> kz_term:proplist().
+-spec acceptable_content_types() -> cowboy_content_types().
 acceptable_content_types() ->
     ?NOTIFICATION_MIME_TYPES.
 

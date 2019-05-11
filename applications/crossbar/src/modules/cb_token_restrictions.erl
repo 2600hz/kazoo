@@ -50,7 +50,7 @@ default_method_restrictions() ->
 
 -spec method_restrictions(atom()) -> kz_term:api_object().
 method_restrictions(AuthModule) ->
-    kapps_config:get_json(?MOD_CONFIG_CAT, AuthModule).
+    kapps_config:get_json(?MOD_CONFIG_CAT, kz_term:to_binary(AuthModule)).
 
 %%%=============================================================================
 %%% API
@@ -60,7 +60,7 @@ method_restrictions(AuthModule) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.token_restrictions">>, ?MODULE, 'allowed_methods'),
@@ -68,7 +68,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.token_restrictions">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.post.token_restrictions">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.token_restrictions">>, ?MODULE, 'delete'),
-    ok.
+    'ok'.
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->

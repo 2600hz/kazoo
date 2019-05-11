@@ -38,7 +38,7 @@
                                      | ?WHITELABEL_MIME_TYPES
                                     ]).
 
--define(WHITELABEL_WELCOME_MIME_TYPES, [{<<"text">>, <<"html">>}]).
+-define(WHITELABEL_WELCOME_MIME_TYPES, [{<<"text">>, <<"html">>, '*'}]).
 
 -define(AGG_VIEW_WHITELABEL_DOMAIN, <<"accounts/list_by_whitelabel_domain">>).
 
@@ -170,7 +170,7 @@ authenticate(_Nouns, _Verb) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec acceptable_content_types() -> kz_term:proplist().
+-spec acceptable_content_types() -> cowboy_content_types().
 acceptable_content_types() ->
     ?WHITELABEL_WELCOME_MIME_TYPES ++ ?WHITELABEL_ICON_MIME_TYPES.
 
@@ -429,7 +429,7 @@ system_domains() ->
         'undefined' ->
             lager:info("initializing system domains to default"),
             Default = kzd_domains:default(),
-            kapps_config:set_default(<<"whitelabel">>, <<"domains">>, Default),
+            _ = kapps_config:set_default(<<"whitelabel">>, <<"domains">>, Default),
             Default;
         Domains -> Domains
     end.
@@ -666,36 +666,39 @@ find_whitelabel_binary_meta(Context, Domain, AttachType) ->
     end.
 
 -spec whitelabel_binary_meta(cb_context:context(), kz_term:ne_binary()) ->
-                                    'undefined' | {kz_term:ne_binary(), kz_term:api_object()}.
+                                    'undefined' | {kz_term:ne_binary(), kz_json:object()}.
 whitelabel_binary_meta(Context, AttachType) ->
-    case kz_doc:id(cb_context:doc(Context)) =:= ?WHITELABEL_ID
+    whitelabel_binary_meta(Context, AttachType, cb_context:doc(Context)).
+
+whitelabel_binary_meta(Context, AttachType, JObj) ->
+    case kz_doc:id(JObj) =:= ?WHITELABEL_ID
         orelse cb_context:resp_status(Context) =:= 'success'
     of
         'true' ->
-            JObj = kz_doc:attachments(cb_context:doc(Context), kz_json:new()),
-            case whitelabel_attachment_id(JObj, AttachType) of
+            Attachments = kz_doc:attachments(JObj, kz_json:new()),
+            case whitelabel_attachment_id(Attachments, AttachType) of
                 'undefined' -> 'undefined';
                 AttachmentId ->
-                    {AttachmentId, kz_json:get_json_value(AttachmentId, JObj)}
+                    {AttachmentId, kz_json:get_json_value(AttachmentId, Attachments)}
             end;
         'false' -> 'undefined'
     end.
 
 -spec whitelabel_attachment_id(kz_json:object(), kz_term:ne_binary()) ->
-                                      'undefined' | {kz_term:ne_binary(), kz_json:object()}.
-whitelabel_attachment_id(JObj, AttachType) ->
-    filter_attachment_type(kz_json:get_keys(JObj), AttachType).
+                                      kz_term:api_ne_binary().
+whitelabel_attachment_id(Attachments, AttachType) ->
+    AttachmentIds = kz_json:get_keys(Attachments),
+    filter_attachment_type(AttachmentIds, AttachType).
 
--spec filter_attachment_type(kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_term:api_binary().
+-spec filter_attachment_type(kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 filter_attachment_type([], _) -> 'undefined';
-filter_attachment_type([AttachmentId], <<"logo">>) ->
-    %% if there is only one attachment and it is not an icon
-    %%  then it is the deprecated whitelabel when we assumed
-    %%  the only attachment was the logo...
-    case binary:match(AttachmentId, <<"icon">>) of
-        {0, _} -> 'undefined';
-        _Else -> AttachmentId
-    end;
+
+%% if there is only one attachment and it is not an icon
+%%  then it is the deprecated whitelabel when we assumed
+%%  the only attachment was the logo...
+filter_attachment_type([<<"icon", _/binary>>], <<"logo">>) -> 'undefined';
+filter_attachment_type([AttachmentId], <<"logo">>) -> AttachmentId;
+
 filter_attachment_type([AttachmentId|AttachmentIds], AttachType) ->
     case binary:match(AttachmentId, AttachType) of
         {0, _} -> AttachmentId;
