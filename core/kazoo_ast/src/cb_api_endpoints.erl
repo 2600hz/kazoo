@@ -938,6 +938,12 @@ def_path_param(<<"{ERROR_ID}">>=P) -> base_path_param(P);
 def_path_param(<<"{HANDLER_ID}">>=P) -> base_path_param(P);
 
 %% For all the edge cases out there:
+def_path_param(<<"{MODB_SUFFIX}">>=P) ->
+    [{<<"minLength">>, 6}
+    ,{<<"maxLength">>, 6}
+    ,{<<"pattern">>, <<"^[0-9]{6}">>}
+     | base_path_param(P)
+    ];
 def_path_param(<<"report-{REPORT_ID}">>) ->
     Prefix = <<"report-">>,
     PrefixSize = byte_size(Prefix),

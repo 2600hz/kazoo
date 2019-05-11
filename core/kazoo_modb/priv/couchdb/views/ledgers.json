@@ -61,6 +61,56 @@
                 "}"
             ]
         },
+        "summary_by_account": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || doc.pvt_type !== 'ledger') return;",
+                "  var amount = (doc.amount || 0) * (doc.pvt_ledger_type === 'debit' ? -1 : 1);",
+                "  var service = doc.source.service;",
+                "  var ledgersObj = {};",
+                "  ledgersObj[service] = {",
+                "    'amount': amount,",
+                "    'usage': doc.usage || {}",
+                "  };",
+                "  emit(doc.account.id, {",
+                "    'account_name': doc.account.name,",
+                "    'ledgers': ledgersObj,",
+                "    'total': amount",
+                "  });",
+                "}"
+            ],
+            "reduce": [
+                "function(keys, values, rereduce) {",
+                "  return values.reduce(function(reduceObj, obj) {",
+                "    accountName = reduceObj.account_name || obj.account_name;",
+                "    total = (reduceObj.total || 0) + (obj.total || 0);",
+                "    ledgersObj = obj.ledgers || {};",
+                "    reduceLedgers = reduceObj.ledgers || {};",
+                "    for (var service in ledgersObj) {",
+                "      if (!ledgersObj.hasOwnProperty(service)) continue;",
+                "      var serviceObj = ledgersObj[service];",
+                "      var objUsageObj = serviceObj.usage || {};",
+                "      var reduceService = reduceLedgers[service] || {};",
+                "      var reduceServiceUsage = reduceService.usage || {};",
+                "      var tmp = {",
+                "        'amount': (serviceObj.amount || 0) + (reduceService.amount || 0),",
+                "        'usage': {",
+                "          'type': reduceServiceUsage.type || objUsageObj.type,",
+                "          'quantity': (reduceServiceUsage.quantity || 0) + (objUsageObj.quantity || 0),",
+                "          'unit': reduceServiceUsage.unit || objUsageObj.unit",
+                "        }",
+                "      };",
+                "      reduceLedgers[service] = tmp;",
+                "    }",
+                "    return {",
+                "      'account_name': accountName,",
+                "      'ledgers': reduceLedgers,",
+                "      'total': total",
+                "    }",
+                "  }, {})",
+                "}"
+            ]
+        },
         "total_by_source": {
             "map": [
                 "function(doc) {",
