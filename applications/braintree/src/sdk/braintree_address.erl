@@ -84,8 +84,9 @@ update(#bt_address{id=AddressId
 -spec delete(bt_address()) -> bt_address().
 delete(#bt_address{customer_id=CustomerId
                   ,id=AddressId
-                  }) ->
-    delete(CustomerId, AddressId).
+                  }=Address) ->
+    _ = delete(CustomerId, AddressId),
+    Address.
 
 -spec delete(kz_term:ne_binary() | nonempty_string(), kz_term:ne_binary() | nonempty_string()) ->  bt_address().
 delete(CustomerId, AddressId) ->
