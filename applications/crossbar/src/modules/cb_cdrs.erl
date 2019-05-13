@@ -33,6 +33,7 @@
 -include("crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".cdrs">>).
+-define(MOD_MAX_RANGE, kapps_config:get_pos_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, ?MAX_RANGE)).
 -define(MAX_BULK, kapps_config:get_pos_integer(?MOD_CONFIG_CAT, <<"maximum_bulk">>, 50)).
 -define(STALE_CDR, kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"cdr_stale_view">>, 'false')).
 
@@ -264,6 +265,7 @@ load_chunk_view(Context, ViewName, Options0) ->
               ],
     Options = [{'is_chunked', 'true'}
               ,{'chunk_size', ?MAX_BULK}
+              ,{'max_range', ?MOD_MAX_RANGE}
                | Options0
               ],
     crossbar_view:load_modb(cb_context:setters(fix_qs_filter_keys(Context), Setters), ViewName, Options).
@@ -301,6 +303,7 @@ load_cdr_summary(Context) ->
               ,{'range_start_keymap', []}
               ,{'range_end_keymap', crossbar_view:suffix_key_fun([kz_json:new()])}
               ,{'list', ?CB_SUMMARY_LIST}
+              ,{'max_range', ?MOD_MAX_RANGE}
               ],
     C1 = crossbar_view:load_modb(Context, ?CB_SUMMARY_VIEW, Options),
     case cb_context:resp_status(C1) of
@@ -621,6 +624,7 @@ load_legs(<<BinTimestamp:11/binary, "-", _Key/binary>>=InteractionId, Context) -
               ,{'range_start_keymap',  fun(_) -> [InteractionId] end}
               ,{'range_end_keymap', fun(_) -> [InteractionId, kz_json:new()] end}
               ,{'databases', [MODB]}
+              ,{'max_range', ?MOD_MAX_RANGE}
               ,'include_docs'
               ],
     crossbar_view:load_modb(Context, ?CB_INTERACTION_LIST_BY_ID, Options);
