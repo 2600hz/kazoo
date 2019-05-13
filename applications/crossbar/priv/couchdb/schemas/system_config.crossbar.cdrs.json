@@ -16,7 +16,8 @@
         },
         "maximum_range": {
             "default": 2682000,
-            "description": "crossbar.cdrs maximum range",
+            "description": "maximum range (in seconds) prior to the current date allowed for CDR requests",
+            "minimum": 1,
             "type": "integer"
         }
     },
