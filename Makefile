@@ -12,7 +12,7 @@ ifeq ($(strip $(CHANGED)),)
 else
 	CHANGED := $(CHANGED)
 endif
-CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
+CHANGED_SWAGGER ?= $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
 
 # You can override this when calling make, e.g. make JOBS=1
 # to prevent parallel builds, or make JOBS="8".
