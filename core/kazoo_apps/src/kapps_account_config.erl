@@ -131,7 +131,7 @@ get_global(Account, Category, Key, Default) ->
 get_global(Account, Category) ->
     case load_config_from_account(account_id(Account), Category) of
         {'ok', JObj} -> JObj;
-        {'error', no_account_id} ->
+        {'error', 'no_account_id'} ->
             maybe_new_doc(load_config_from_system(Account, Category), Category);
         {'error', _} ->
             case load_config_from_reseller(Account, Category) of
@@ -419,13 +419,17 @@ set(Account, Category, Key, Value) ->
     maybe_set_account(account_id(Account), Category, Key, Value).
 
 -spec maybe_set_account(account_or_not(), kz_term:ne_binary(), config_key(), kz_json:json_term()) -> kz_json:object().
-maybe_set_account(no_account_id, _, Key, Value) ->
+maybe_set_account('no_account_id', _, Key, Value) ->
     kz_json:set_value(Key, Value, kz_json:new());
 maybe_set_account(AccountId, Category, Key, Value) ->
     JObj = kz_json:set_value(Key, Value, get(AccountId, Category)),
-    JObj1 = update_config_for_saving(AccountId, JObj),
+    Updates = [{Key, Value} | updates_for_saving(AccountId, JObj)],
     AccountDb = kz_util:format_account_db(AccountId),
-    {'ok', JObj2} = kz_datamgr:ensure_saved(AccountDb, JObj1),
+    {'ok', JObj2} = kz_datamgr:update_doc(AccountDb
+                                         ,kz_doc:id(JObj)
+                                         ,[{'update', Updates}
+                                          ,{'ensure_saved', 'true'}
+                                          ]),
     JObj2.
 
 %%------------------------------------------------------------------------------
@@ -441,31 +445,35 @@ set_global(Account, Category, Key, Value) ->
 
 -spec set_account_or_merge_global(account_or_not(), kz_term:ne_binary(), config_key(), kz_json:json_term()) ->
                                          kz_json:object().
-set_account_or_merge_global(no_account_id, _, Key, Value) ->
+set_account_or_merge_global('no_account_id', _, Key, Value) ->
     kz_json:set_value(Key, Value, kz_json:new());
 set_account_or_merge_global(AccountId, Category, Key, Value) ->
-    Doc = kz_doc:set_id(get_global(AccountId, Category), kapps_config_util:account_doc_id(Category)),
-    Doc1 = kz_json:set_value(Key, Value, update_config_for_saving(AccountId, Doc)),
+    GlobalConfig = get_global(AccountId, Category),
+
+    AccountConfig = kz_json:set_values([{kz_doc:path_id(), kapps_config_util:account_doc_id(Category)}
+                                       ,{Key, Value}
+                                        | updates_for_saving(AccountId, GlobalConfig)
+                                       ]
+                                      ,GlobalConfig
+                                      ),
 
     AccountDb = kz_util:format_account_db(AccountId),
-    {'ok', JObj1} = kz_datamgr:ensure_saved(AccountDb, Doc1),
-    JObj1.
+    {'ok', Saved} = kz_datamgr:save_doc(AccountDb, AccountConfig),
+    Saved.
 
--spec update_config_for_saving(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
-update_config_for_saving(AccountId, JObj) ->
+-spec updates_for_saving(kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
+updates_for_saving(AccountId, JObj) ->
     AccountDb = kz_util:format_account_db(AccountId),
-    kz_doc:update_pvt_parameters(JObj
-                                ,AccountDb
-                                ,[{type, <<"account_config">>}
-                                 ,{account_id, AccountId}
-                                 ]).
+    kz_doc:get_pvt_updates(JObj, AccountDb, [{'type', <<"account_config">>}
+                                            ,{'account_id', AccountId}
+                                            ]).
 
 %%------------------------------------------------------------------------------
 %% @doc Flush account's configuration cache for the given `Category'.
 %% @end
 %%------------------------------------------------------------------------------
 
--spec flush(kz_term:ne_binary(), kz_term:ne_binary()) -> ok.
+-spec flush(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 flush(Account, Category) ->
     AccountDb = kz_util:format_account_db(Account),
     kz_datamgr:flush_cache_doc(AccountDb, kapps_config_util:account_doc_id(Category)),
@@ -701,21 +709,20 @@ migrate_config_setting(AccountDb, UpdatedFrom, Removed, To) ->
     end.
 
 -spec add_config_setting(kz_term:ne_binary(), migrate_setting(), migrate_values()) ->
-                                'ok' | {'error', any()}.
+                                {'ok', kz_json:object()} |
+                                {'error', any()}.
 add_config_setting(AccountDb, {Id, Setting}, Values) ->
     add_config_setting(AccountDb, Id, Setting, Values).
 
--spec add_config_setting(kz_term:ne_binary(), kz_term:ne_binary(), config_key(), migrate_values()) ->
-                                'ok' | {'error', any()}.
-add_config_setting(AccountDb, Id, Setting, Values) when is_binary(Id) ->
+-spec add_config_setting(kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), config_key(), migrate_values()) ->
+                                {'ok', kz_json:object()} |
+                                {'error', any()}.
+add_config_setting(AccountDb, <<Id/binary>>, Setting, Values) ->
     case kz_datamgr:open_doc(AccountDb, Id) of
-        {'ok', JObj} -> add_config_setting(JObj, Setting, Values);
+        {'ok', JObj} -> add_config_setting(AccountDb, JObj, Setting, Values);
         {'error', 'not_found'} ->
-            add_config_setting(AccountDb
-                              ,update_config_for_saving(AccountDb, kz_doc:set_id(kz_json:new(), Id))
-                              ,Setting
-                              ,Values
-                              );
+            NewConfig = kz_json:set_values([{kz_doc:path_id(), Id} | updates_for_saving(AccountDb, kz_json:new())], kz_json:new()),
+            add_config_setting(AccountDb, NewConfig, Setting, Values);
         {'error', _}=Error -> Error
     end;
 add_config_setting(_AccountDb, JObj, _, []) -> {'ok', JObj};

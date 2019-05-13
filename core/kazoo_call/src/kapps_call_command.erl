@@ -2444,7 +2444,7 @@ do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
                     do_collect_digits(Collect);
                 {'decrement'} ->
                     do_collect_digits(Collect#wcc_collect_digits{after_timeout=kz_time:decr_timeout(After, Start)});
-                {'ok', Digit} ->
+                {'dtmf', Digit} ->
                     %% DTMF received, collect and start interdigit timeout
                     Digits =:= <<>>
                         andalso flush(Call),
@@ -2512,7 +2512,7 @@ handle_collect_digit_event(JObj, NoopId, {<<"call_event">>, <<"CHANNEL_EXECUTE_C
             {'noop_complete'}
     end;
 handle_collect_digit_event(JObj, _NoopId, {<<"call_event">>, <<"DTMF">>, _}) ->
-    {'ok', kz_json:get_value(<<"DTMF-Digit">>, JObj, <<>>)};
+    {'dtmf', kz_json:get_value(<<"DTMF-Digit">>, JObj, <<>>)};
 handle_collect_digit_event(_JObj, _NoopId, _EventType) ->
     {'decrement'}.
 
