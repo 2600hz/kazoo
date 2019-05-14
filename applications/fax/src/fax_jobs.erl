@@ -342,7 +342,8 @@ check_pending(JobId, #{number := ToNumber, start := Start}, #{pending := Pending
                 };
         'false' ->
             Map
-    end.
+    end;
+check_pending(_JobId, _Running, Map) -> Map.
 
 -spec check_running(kz_term:ne_binary(), map(), map()) -> map().
 check_running(JobId, #{number := ToNumber, start := Start}, #{running := Running, numbers := Numbers} = Map) ->
@@ -354,7 +355,8 @@ check_running(JobId, #{number := ToNumber, start := Start}, #{running := Running
                 };
         'false' ->
             Map
-    end.
+    end;
+check_running(_JobId, _Running, Map) -> Map.
 
 -spec get_account_jobs(kz_term:ne_binary()) -> kz_json:objects().
 get_account_jobs(AccountId) ->
