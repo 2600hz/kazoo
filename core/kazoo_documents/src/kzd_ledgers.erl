@@ -259,19 +259,19 @@ set_account_name(Doc, AccountName) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec unit_amount(doc()) -> kz_term:api_number().
+-spec unit_amount(doc()) -> kz_currency:units() | 'undefined'.
 unit_amount(Doc) ->
     unit_amount(Doc, 'undefined').
 
 -spec unit_amount(doc(), Default) -> kz_currency:units() | Default.
 unit_amount(Doc, Default) ->
-    kz_json:get_number_value(?AMOUNT, Doc, Default).
+    kz_json:get_integer_value(?AMOUNT, Doc, Default).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_unit_amount(doc(), number()) -> doc().
+-spec set_unit_amount(doc(), kz_currency:units()) -> doc().
 set_unit_amount(Doc, Amount) ->
     kz_json:set_value(?AMOUNT, Amount, Doc).
 
