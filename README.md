@@ -172,3 +172,4 @@ See the [installation](./doc/installation.md) page to build.
 * Find out about [JSON web tokens](https://jwt.io/)
 * We cover a lot of topics in our [blog](http://blog.2600hz.com/) as well
 * Watch our past [presentations](https://www.youtube.com/user/2600hzOfficial/videos)
+* test our CI
