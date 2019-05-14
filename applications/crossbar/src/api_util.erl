@@ -1582,6 +1582,8 @@ do_create_resp_envelope(Context) ->
     Resp = case cb_context:response(Context) of
                {'ok', RespData} ->
                    [{<<"auth_token">>, cb_context:auth_token(Context)}
+                   ,{<<"crossbar_tokens_remaining">>, cb_modules_util:tokens_remaining(Context)}
+                   ,{<<"crossbar_tokens_consumed">>, cb_modules_util:token_cost(Context)}
                    ,{<<"status">>, <<"success">>}
                    ,{<<"request_id">>, cb_context:req_id(Context)}
                    ,{<<"node">>, kz_nodes:node_encoded()}
@@ -1593,6 +1595,8 @@ do_create_resp_envelope(Context) ->
                {'error', {ErrorCode, ErrorMsg, RespData}} ->
                    lager:debug("generating error ~b ~s response", [ErrorCode, ErrorMsg]),
                    [{<<"auth_token">>, kz_term:to_binary(cb_context:auth_token(Context))}
+                   ,{<<"crossbar_tokens_remaining">>, cb_modules_util:tokens_remaining(Context)}
+                   ,{<<"crossbar_tokens_consumed">>, cb_modules_util:token_cost(Context)}
                    ,{<<"request_id">>, cb_context:req_id(Context)}
                    ,{<<"node">>, kz_nodes:node_encoded()}
                    ,{<<"version">>, kz_util:kazoo_version()}
