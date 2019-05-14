@@ -32,8 +32,8 @@ $(GEN_FILE):
 
 $(GEN_ERL): $(GEN_FILE) $(GEN_ERL_SRC)
 	@head -n `grep -n '%% GENERATED' $(GEN_ERL_SRC) | cut -d: -f1` $(GEN_ERL_SRC) > $(GEN_ERL)
-	@echo 'from_extension(Ext) when not is_binary(Ext) -> from_extension(kz_term:to_binary(Ext));' >> $(GEN_ERL)
-	@echo 'from_extension(<<$$., Ext/binary>>) -> from_extension(Ext);' >> $(GEN_ERL)
+	@echo 'from_extension(Ext) when not is_binary(Ext) -> from_extension(kz_term:to_lower_binary(Ext));' >> $(GEN_ERL)
+	@echo 'from_extension(<<$$., Ext/binary>>) -> from_extension(kz_term:to_lower_binary(Ext));' >> $(GEN_ERL)
 	@cat $(GEN_FILE) \
 		| grep -v ^# \
 		| awk '{for (i=2; i<=NF; i++) if ($$i != "") { \
@@ -41,9 +41,6 @@ $(GEN_ERL): $(GEN_FILE) $(GEN_ERL_SRC)
 		| sort -u -t' ' -k1,1 \
 		>> $(GEN_ERL)
 	@echo 'from_extension(<<"pem">>) -> <<"application/x-pem-file">>;' >> $(GEN_ERL)
-	@echo 'from_extension(<<"PDF">>) -> <<"application/pdf">>;' >> $(GEN_ERL)
-	@echo 'from_extension(<<"TIF">>) -> <<"image/tiff">>;' >> $(GEN_ERL)
-	@echo 'from_extension(<<"TIFF">>) -> <<"image/tiff">>;' >> $(GEN_ERL)
 	@echo 'from_extension(_) -> <<"application/octet-stream">>.' >> $(GEN_ERL)
 	@echo >> $(GEN_ERL)
 	@echo '-spec to_extensions(binary()) -> [binary()].' >> $(GEN_ERL)
