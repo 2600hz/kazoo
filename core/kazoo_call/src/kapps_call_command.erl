@@ -8,8 +8,6 @@
 %%%-----------------------------------------------------------------------------
 -module(kapps_call_command).
 
--include("kapps_call_command.hrl").
-
 -export([presence/2, presence/3, presence/4, presence/5]).
 -export([channel_status/1, channel_status/2
         ,channel_status_command/1, channel_status_command/2
@@ -217,6 +215,8 @@
         ,hold_control_command/1, hold_control_command/2
         ]).
 
+-include("kapps_call_command.hrl").
+
 -type audio_macro_prompt() ::
         %% {'play', MediaName [, Terminators [, Leg]]}
         {'play', binary()} |
@@ -413,7 +413,7 @@ channel_status(Call) ->
 -spec b_channel_status(kz_term:api_binary() | kapps_call:call()) ->
                               kapps_api_std_return().
 b_channel_status('undefined') -> {'error', 'no_channel_id'};
-b_channel_status(ChannelId) when is_binary(ChannelId) ->
+b_channel_status(<<ChannelId/binary>>) ->
     Command = [{<<"Call-ID">>, ChannelId}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],

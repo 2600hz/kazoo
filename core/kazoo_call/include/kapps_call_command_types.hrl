@@ -5,6 +5,8 @@
                             'channel_unbridge' |
                             'channel_disconnected' |
                             'timeout' |
+                            'no_channel_id' |
+                            'not_found' |
                             kz_json:object()
                            }.
 -type kapps_api_std_return() :: kapps_api_error() |

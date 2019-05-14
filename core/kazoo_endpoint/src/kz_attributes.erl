@@ -557,11 +557,11 @@ owned_by_docs([_|_]=OwnerIds, Type, Call) ->
 owned_by_docs(OwnerId, Type, Call) ->
     owned_by_query([{'key', [OwnerId, Type]}, 'include_docs'], Call, <<"doc">>).
 
--spec owned_by_query(list(), kapps_call:call()) -> kz_term:api_binaries().
+-spec owned_by_query(list(), kapps_call:call()) -> kz_term:api_binaries() | kz_json:objects().
 owned_by_query(ViewOptions, Call) ->
     owned_by_query(ViewOptions, Call, <<"value">>).
 
--spec owned_by_query(list(), kapps_call:call(), kz_term:ne_binary()) -> kz_term:api_binaries().
+-spec owned_by_query(list(), kapps_call:call(), kz_term:ne_binary()) -> kz_term:api_binaries() | kz_json:objects().
 owned_by_query(ViewOptions, Call, ViewKey) ->
     AccountDb = kapps_call:account_db(Call),
     case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
@@ -575,7 +575,7 @@ owned_by_query(ViewOptions, Call, ViewKey) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_flags(kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_binaries() | undefined.
+-spec get_flags(kz_term:ne_binary(), kapps_call:call()) -> kz_term:api_ne_binaries().
 get_flags(ApplicationName, Call) ->
     Routines = [fun maybe_get_endpoint_static_flags/3
                ,fun get_account_static_flags/3
