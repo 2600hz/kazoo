@@ -216,6 +216,11 @@ validate_fetch_ledger(Context, SourceService, Ledger) ->
 put(Context, Action) ->
     ReqData = cb_context:req_data(Context),
     AccountId = cb_context:account_id(Context),
+
+    Amount = kz_json:get_number_value(<<"amount">>, ReqData, 0),
+    Units = kz_currency:dollars_to_units(Amount),
+    Dollars = kz_currency:units_to_dollars(Units),
+
     Setters =
         props:filter_empty(
           [{fun kz_ledger:set_account/2, AccountId}
@@ -247,16 +252,19 @@ put(Context, Action) ->
            ,kz_json:get_ne_json_value(<<"metadata">>, ReqData, kz_json:new())
            }
           ,{fun kz_ledger:set_dollar_amount/2
-           ,abs(kz_json:get_integer_value(<<"amount">>, ReqData, 0))
+           ,Dollars
+           }
+          ,{fun kz_ledger:set_unit_amount/2
+           ,Units
            }
           ,{fun kz_ledger:set_audit/2
            ,crossbar_services:audit_log(Context)
            }
           ,{fun kz_ledger:set_executor_trigger/2
-           ,<<"crossbar">>
+           ,?APP_NAME
            }
           ,{fun kz_ledger:set_executor_module/2
-           ,kz_term:to_binary(?MODULE)
+           ,<<?MODULE_STRING>>
            }
           ]
          ),
