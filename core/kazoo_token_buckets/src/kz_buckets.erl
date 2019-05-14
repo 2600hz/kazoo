@@ -259,10 +259,10 @@ print_bucket_info(#bucket{key={App, _}}=Bucket, _OldApp) ->
 -spec tokens_remaining(kz_term:ne_binary(), kz_term:ne_binary()) -> non_neg_integer().
 tokens_remaining(App, Key) ->
     case ets:lookup(table_id(), {App, Key}) of
-            [] ->
-                ?MAX_TOKENS(App);
-            [#bucket{srv=P}] ->
-                kz_token_bucket:tokens(P)
+        [] ->
+            ?MAX_TOKENS(App);
+        [#bucket{srv=P}] ->
+            kz_token_bucket:tokens(P)
     end.
 
 %%%=============================================================================
