@@ -34,6 +34,10 @@
         ,dollar_amount/2
         ,set_dollar_amount/2
         ]).
+-export([amount/1
+        ,amount/2
+        ,set_amount/2
+        ]).
 -export([description/1
         ,description/2
         ,set_description/2
@@ -255,19 +259,19 @@ set_account_name(Doc, AccountName) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec unit_amount(doc()) -> kz_term:api_integer().
+-spec unit_amount(doc()) -> kz_term:api_number().
 unit_amount(Doc) ->
     unit_amount(Doc, 'undefined').
 
 -spec unit_amount(doc(), Default) -> kz_currency:units() | Default.
 unit_amount(Doc, Default) ->
-    kz_json:get_integer_value(?AMOUNT, Doc, Default).
+    kz_json:get_number_value(?AMOUNT, Doc, Default).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_unit_amount(doc(), integer()) -> doc().
+-spec set_unit_amount(doc(), number()) -> doc().
 set_unit_amount(Doc, Amount) ->
     kz_json:set_value(?AMOUNT, Amount, Doc).
 
@@ -292,6 +296,22 @@ dollar_amount(Doc, Default) ->
 set_dollar_amount(Doc, Amount) ->
     Units = kz_currency:dollars_to_units(Amount),
     kz_json:set_value(?AMOUNT, Units, Doc).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec amount(doc()) -> kz_term:api_number().
+amount(Doc) ->
+    amount(Doc, 'undefined').
+
+-spec amount(doc(), Default) -> number() | Default.
+amount(Doc, Default) ->
+    kz_json:get_float_value([<<"amount">>], Doc, Default).
+
+-spec set_amount(doc(), number()) -> doc().
+set_amount(Doc, Amount) ->
+    kz_json:set_value([<<"amount">>], Amount, Doc).
 
 %%------------------------------------------------------------------------------
 %% @doc
