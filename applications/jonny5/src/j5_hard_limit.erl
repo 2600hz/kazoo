@@ -59,9 +59,9 @@ resource_consumption_at_limit(Limits) ->
 inbound_channels_per_did_at_limit(Request, Limits) ->
     AccountId = j5_limits:account_id(Limits),
     ToDID = j5_request:number(Request),
-    PerDIDJObj = j5_limits:inbound_channels_per_did(Limits),
+    PerDIDJObj = j5_limits:inbound_channels_per_did_rules(Limits),
     Limit = match_did_limits(ToDID, PerDIDJObj, kz_json:get_keys(PerDIDJObj)),
-    Used  = j5_channels:total_inbound_channels_per_did(ToDID, AccountId),
+    Used  = j5_channels:total_inbound_channels_per_did_rules(ToDID, AccountId),
     lager:debug("inbound_channels_per_did_limit AccountId: ~p ToDid: ~p Used: ~p Limit: ~p"
                ,[AccountId ,ToDID ,Used ,Limit]
                ),

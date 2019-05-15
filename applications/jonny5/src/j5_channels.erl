@@ -11,7 +11,7 @@
 -export([sync/0]).
 -export([flush/0]).
 -export([total_calls/1]).
--export([total_inbound_channels_per_did/2]).
+-export([total_inbound_channels_per_did_rules/2]).
 -export([resource_consuming/1]).
 -export([inbound_flat_rate/1]).
 -export([outbound_flat_rate/1]).
@@ -155,8 +155,8 @@ total_calls(AccountId) ->
                 ],
     count_unique_calls(ets:select(?TAB, MatchSpec)).
 
--spec total_inbound_channels_per_did(kz_term:ne_binary() ,kz_term:ne_binary()) -> non_neg_integer().
-total_inbound_channels_per_did(Number, AccountId) ->
+-spec total_inbound_channels_per_did_rules(kz_term:ne_binary() ,kz_term:ne_binary()) -> non_neg_integer().
+total_inbound_channels_per_did_rules(Number, AccountId) ->
     ToDID = knm_converters:normalize(Number),
     MatchSpec = [{#channel{account_id = AccountId
                           ,direction = <<"inbound">>
