@@ -180,26 +180,28 @@ api(Node, Cmd, Args, Timeout) when is_atom(Node) ->
     end.
 
 
--spec json_api(atom(), kz_term:text()) -> freeswitch:fs_json_api_return().
-json_api(Node, {Cmd , Args}) ->
+-spec json_api(atom(), kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:api_object()}) ->
+                      freeswitch:fs_json_api_return().
+json_api(Node, {Cmd, Args}) ->
     json_api(Node, 'undefined', Cmd, Args, ?TIMEOUT);
 json_api(Node, Cmd) ->
     json_api(Node, 'undefined', Cmd, 'undefined', ?TIMEOUT).
 
--spec json_api(atom(), kz_term:text(), kz_term:api_object()) -> freeswitch:fs_json_api_return().
+-spec json_api(atom(), kz_term:api_ne_binary(), kz_term:text()) ->
+                      freeswitch:fs_json_api_return().
 json_api(Node, UUID, Cmd) ->
     json_api(Node, UUID, Cmd, 'undefined', ?TIMEOUT).
 
--spec json_api(atom(), kz_term:text(), kz_term:api_object(), timeout()) -> freeswitch:fs_json_api_return().
+-spec json_api(atom(), kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:api_object()) ->
+                      freeswitch:fs_json_api_return().
 json_api(Node, UUID, Cmd, Args) ->
     json_api(Node, UUID, Cmd, Args, ?TIMEOUT).
 
--spec json_api(atom(), kz_term:api_ne_binary(), kz_term:text(), kz_term:api_object(), timeout()) -> freeswitch:fs_json_api_return().
-json_api(Node, UUID, Cmd, Args, Timeout) when is_atom(Node) ->
-    Data = case Args of
-               'undefined' -> <<"">>;
-               Args -> Args
-           end,
+-spec json_api(atom(), kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:api_object() | binary(), timeout()) ->
+                      freeswitch:fs_json_api_return().
+json_api(Node, UUID, Cmd, 'undefined', Timeout) ->
+    json_api(Node, UUID, Cmd, <<>>, Timeout);
+json_api(Node, UUID, Cmd, Data, Timeout) when is_atom(Node) ->
     Params = [{<<"command">>, Cmd}
              ,{<<"uuid">>, UUID}
              ,{<<"data">>, Data}

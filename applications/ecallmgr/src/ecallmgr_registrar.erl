@@ -160,14 +160,14 @@ handle_reg_flush(JObj, _Props) ->
                ),
     flush(Username, Realm).
 
--spec handle_fs_reg(atom(), kz_term:proplist()) -> 'ok'.
-handle_fs_reg(Node, Props) ->
-    kz_util:put_callid(kzd_freeswitch:call_id(Props)),
+-spec handle_fs_reg(atom(), kzd_freeswitch:data()) -> 'ok'.
+handle_fs_reg(Node, FSJObj) ->
+    kz_util:put_callid(kzd_freeswitch:call_id(FSJObj)),
 
     Req = lists:foldl(fun(<<"Contact">>=K, Acc) ->
-                              [{K, get_fs_contact(Props)} | Acc];
+                              [{K, get_fs_contact(FSJObj)} | Acc];
                          (K, Acc) ->
-                              case props:get_first_defined([kz_term:to_lower_binary(K), K], Props) of
+                              case kz_json:get_first_defined([kz_term:to_lower_binary(K), K], FSJObj) of
                                   'undefined' -> Acc;
                                   V -> [{K, V} | Acc]
                               end
@@ -176,7 +176,8 @@ handle_fs_reg(Node, Props) ->
                       ,{<<"FreeSWITCH-Nodename">>, kz_term:to_binary(Node)}
                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ]
-                     ,kapi_registration:success_keys()),
+                     ,kapi_registration:success_keys()
+                     ),
     lager:debug("sending successful registration for ~s@~s"
                ,[props:get_value(<<"Username">>, Req), props:get_value(<<"Realm">>, Req)]
                ),
@@ -195,9 +196,8 @@ lookup_proxy_path(<<_/binary>> = Realm, <<_/binary>> = Username) ->
 
     case ets:match_object(?MODULE, MatchSpec) of
         [] ->
-            {'ok', undefined, []};
-        [#registration{proxy=ProxyPath
-                      }=Reg] ->
+            {'ok', 'undefined', []};
+        [#registration{proxy=ProxyPath}=Reg] ->
             {'ok', ProxyPath, contact_vars(to_props(Reg))}
     end.
 
@@ -1222,9 +1222,9 @@ oldest_registrar() ->
     kz_nodes:whapp_zone_count(?APP_NAME) =:= 1
         orelse kz_nodes:whapp_oldest_node(?APP_NAME, 'true') =:= node().
 
--spec get_fs_contact(kz_term:proplist()) -> kz_term:ne_binary().
-get_fs_contact(Props) ->
-    Contact = props:get_first_defined([<<"Contact">>, <<"contact">>], Props),
+-spec get_fs_contact(kzd_freeswitch:data()) -> kz_term:ne_binary().
+get_fs_contact(FSJObj) ->
+    Contact = kzd_freeswitch:contact(FSJObj),
     [User, AfterAt] = binary:split(Contact, <<"@">>), % only one @ allowed
     <<User/binary, "@", (kz_http_util:urldecode(AfterAt))/binary>>.
 

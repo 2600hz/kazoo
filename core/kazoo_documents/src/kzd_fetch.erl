@@ -8,35 +8,34 @@
 -module(kzd_fetch).
 
 -export([call_id/1
-        ,ccvs/1, ccv/2, ccv/3
-        ,fetch_user/1
-        ,fetch_auth_endpoint/1
-        ,fetch_action/1, fetch_action/2
-        ,fetch_node/1
-        ,core_uuid/1
-        ,fetch_uuid/1
-        ,fetch_key_name/1
-        ,fetch_key_value/1
-        ,fetch_tag/1
-        ,fetch_section/1
-        ,fetch_version/1
-        ,fetch_winning_pid/1
-        ,controller_queue/1, controller_pid/1
-        ,node/1
-        ,server_id/1
-
+        ,account_id/1
+        ,auth_expires/1
+        ,auth_from/1
         ,auth_nonce/1
         ,auth_response/1
-        ,auth_expires/1
+        ,auth_to/1
+        ,ccvs/1, ccv/2, ccv/3
+        ,controller_queue/1, controller_pid/1
+        ,core_uuid/1
+        ,cshs/1
+        ,fetch_action/1, fetch_action/2
+        ,fetch_auth_endpoint/1
+        ,fetch_key_name/1
+        ,fetch_key_value/1
+        ,fetch_node/1
+        ,fetch_section/1
+        ,fetch_tag/1
+        ,fetch_timeout/1, fetch_timeout/2
+        ,fetch_timestamp_micro/1, fetch_timestamp_micro/2
+        ,fetch_user/1
+        ,fetch_uuid/1
+        ,fetch_version/1
+        ,fetch_winning_pid/1
         ,from_network_ip/1
         ,from_network_port/1
-        ,auth_from/1
-        ,auth_to/1
+        ,node/1
+        ,server_id/1
         ,user_agent/1
-        ,cshs/1
-
-
-        ,account_id/1
         ]).
 
 -include("kz_documents.hrl").
@@ -61,7 +60,7 @@ ccv(JObj, Key) ->
 ccv(JObj, Key, Default) ->
     kz_json:get_value(Key, ccvs(JObj), Default).
 
--spec ccvs(data()) -> data().
+-spec ccvs(data()) -> kz_json:object().
 ccvs(JObj) ->
     kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()).
 
@@ -100,6 +99,22 @@ fetch_section(JObj) ->
 -spec fetch_tag(data()) -> kz_term:api_ne_binary().
 fetch_tag(JObj) ->
     kz_json:get_ne_binary_value(<<"Fetch-Tag">>, JObj).
+
+-spec fetch_timeout(data()) -> timeout() | 'undefined'.
+fetch_timeout(JObj) ->
+    fetch_timeout(JObj, 'undefined').
+
+-spec fetch_timeout(data(), Default) -> timeout() | Default.
+fetch_timeout(JObj, Default) ->
+    kz_json:get_integer_value(<<"Fetch-Timeout">>, JObj, Default).
+
+-spec fetch_timestamp_micro(data()) -> pos_integer().
+fetch_timestamp_micro(JObj) ->
+    fetch_timestamp_micro(JObj, erlang:system_time('micro_seconds')).
+
+-spec fetch_timestamp_micro(data(), Default) -> pos_integer() | Default.
+fetch_timestamp_micro(JObj, Default) ->
+    kz_json:get_integer_value(<<"Fetch-Timestamp-Micro">>, JObj, Default).
 
 -spec fetch_user(data()) -> kz_term:api_ne_binary().
 fetch_user(JObj) ->
@@ -153,7 +168,7 @@ auth_nonce(JObj) ->
 auth_response(JObj) ->
     kz_json:get_ne_binary_value(<<"Auth-Response">>, JObj).
 
--spec cshs(kz_json:object()) -> kz_term:api_binary().
+-spec cshs(kz_json:object()) -> kz_json:object().
 cshs(JObj) ->
     kz_json:get_json_value(<<"Custom-SIP-Headers">>, JObj, kz_json:new()).
 

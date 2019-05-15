@@ -621,61 +621,58 @@ status_outbound_v(JObj) ->
     status_outbound_v(kz_json:to_proplist(JObj)).
 
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
-bind_q(Q, Props) ->
-    QID = props:get_value('queue_id', Props, <<"*">>),
-    AID = props:get_value('agent_id', Props, <<"*">>),
-    AcctId = props:get_value('account_id', Props, <<"*">>),
-    bind_q(Q, AcctId, QID, AID, props:get_value('restrict_to', Props)).
+bind_q(AMQPQueue, Props) ->
+    QueueId = props:get_value('queue_id', Props, <<"*">>),
+    AgentId = props:get_value('agent_id', Props, <<"*">>),
+    AccountId = props:get_value('account_id', Props, <<"*">>),
+    bind_q(AMQPQueue, AccountId, QueueId, AgentId, props:get_value('restrict_to', Props)).
 
-bind_q(Q, AcctId, QID, AID, 'undefined') ->
-    kz_amqp_util:bind_q_to_kapps(Q, call_stat_routing_key(AcctId, QID)),
-    kz_amqp_util:bind_q_to_kapps(Q, status_stat_routing_key(AcctId, AID)),
-    kz_amqp_util:bind_q_to_kapps(Q, query_call_stat_routing_key(AcctId, QID)),
-    kz_amqp_util:bind_q_to_kapps(Q, query_status_stat_routing_key(AcctId, AID));
-bind_q(Q, AcctId, QID, AID, ['call_stat'|L]) ->
-    kz_amqp_util:bind_q_to_kapps(Q, call_stat_routing_key(AcctId, QID)),
-    bind_q(Q, AcctId, QID, AID, L);
-bind_q(Q, AcctId, QID, AID, ['status_stat'|L]) ->
-    kz_amqp_util:bind_q_to_kapps(Q, status_stat_routing_key(AcctId, AID)),
-    bind_q(Q, AcctId, QID, AID, L);
-bind_q(Q, AcctId, QID, AID, ['query_call_stat'|L]) ->
-    kz_amqp_util:bind_q_to_kapps(Q, query_call_stat_routing_key(AcctId, QID)),
-    bind_q(Q, AcctId, QID, AID, L);
-bind_q(Q, AcctId, QID, AID, ['query_status_stat'|L]) ->
-    kz_amqp_util:bind_q_to_kapps(Q, query_status_stat_routing_key(AcctId, AID)),
-    bind_q(Q, AcctId, QID, AID, L);
-bind_q(Q, AcctId, QID, AID, [_|L]) ->
-    bind_q(Q, AcctId, QID, AID, L);
-bind_q(_Q, _AcctId, _QID, _AID, []) -> 'ok'.
+bind_q(AMQPQueue, AccountId, QueueId, AgentId, 'undefined') ->
+    kz_amqp_util:bind_q_to_kapps(AMQPQueue, call_stat_routing_key(AccountId, QueueId)),
+    kz_amqp_util:bind_q_to_kapps(AMQPQueue, status_stat_routing_key(AccountId, AgentId)),
+    kz_amqp_util:bind_q_to_kapps(AMQPQueue, query_call_stat_routing_key(AccountId, QueueId)),
+    kz_amqp_util:bind_q_to_kapps(AMQPQueue, query_status_stat_routing_key(AccountId, AgentId));
+bind_q(AMQPQueue, AccountId, QueueId, AgentId, ['call_stat'|L]) ->
+    kz_amqp_util:bind_q_to_kapps(AMQPQueue, call_stat_routing_key(AccountId, QueueId)),
+    bind_q(AMQPQueue, AccountId, QueueId, AgentId, L);
+bind_q(AMQPQueue, AccountId, QueueId, AgentId, ['status_stat'|L]) ->
+    kz_amqp_util:bind_q_to_kapps(AMQPQueue, status_stat_routing_key(AccountId, AgentId)),
+    bind_q(AMQPQueue, AccountId, QueueId, AgentId, L);
+bind_q(AMQPQueue, AccountId, QueueId, AgentId, ['query_call_stat'|L]) ->
+    kz_amqp_util:bind_q_to_kapps(AMQPQueue, query_call_stat_routing_key(AccountId, QueueId)),
+    bind_q(AMQPQueue, AccountId, QueueId, AgentId, L);
+bind_q(AMQPQueue, AccountId, QueueId, AgentId, ['query_status_stat'|L]) ->
+    kz_amqp_util:bind_q_to_kapps(AMQPQueue, query_status_stat_routing_key(AccountId, AgentId)),
+    bind_q(AMQPQueue, AccountId, QueueId, AgentId, L);
+bind_q(AMQPQueue, AccountId, QueueId, AgentId, [_|L]) ->
+    bind_q(AMQPQueue, AccountId, QueueId, AgentId, L);
+bind_q(_AMQPQueue, _AccountId, _QueueId, _AgentId, []) -> 'ok'.
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
-unbind_q(Q, Props) ->
-    QID = props:get_value('queue_id', Props, <<"*">>),
-    AID = props:get_value('agent_id', Props, <<"*">>),
-    AcctId = props:get_value('account_id', Props, <<"*">>),
+unbind_q(AMQPQueue, Props) ->
+    QueueId = props:get_value('queue_id', Props, <<"*">>),
+    AgentId = props:get_value('agent_id', Props, <<"*">>),
+    AccountId = props:get_value('account_id', Props, <<"*">>),
 
-    unbind_q(Q, AcctId, QID, AID, props:get_value('restrict_to', Props)).
+    unbind_q(AMQPQueue, AccountId, QueueId, AgentId, props:get_value('restrict_to', Props)).
 
-unbind_q(Q, AcctId, QID, AID, 'undefined') ->
-    kz_amqp_util:unbind_q_from_kapps(Q, call_stat_routing_key(AcctId, QID)),
-    kz_amqp_util:unbind_q_from_kapps(Q, status_stat_routing_key(AcctId, AID)),
-    kz_amqp_util:unbind_q_from_kapps(Q, query_call_stat_routing_key(AcctId, QID)),
-    kz_amqp_util:unbind_q_from_kapps(Q, query_status_stat_routing_key(AcctId, AID));
-unbind_q(Q, AcctId, QID, AID, ['call_stat'|L]) ->
-    kz_amqp_util:unbind_q_from_kapps(Q, call_stat_routing_key(AcctId, QID)),
-    unbind_q(Q, AcctId, QID, AID, L);
-unbind_q(Q, AcctId, QID, AID, ['status_stat'|L]) ->
-    kz_amqp_util:unbind_q_from_kapps(Q, status_stat_routing_key(AcctId, AID)),
-    unbind_q(Q, AcctId, QID, AID, L);
-unbind_q(Q, AcctId, QID, AID, ['query_call_stat'|L]) ->
-    kz_amqp_util:unbind_q_from_kapps(Q, query_call_stat_routing_key(AcctId, QID)),
-    unbind_q(Q, AcctId, QID, AID, L);
-unbind_q(Q, AcctId, QID, AID, ['query_status_stat'|L]) ->
-    kz_amqp_util:unbind_q_from_kapps(Q, query_status_stat_routing_key(AcctId, AID)),
-    unbind_q(Q, AcctId, QID, AID, L);
-unbind_q(Q, AcctId, QID, AID, [_|L]) ->
-    unbind_q(Q, AcctId, QID, AID, L);
-unbind_q(_Q, _AcctId, _QID, _AID, []) -> 'ok'.
+unbind_q(AMQPQueue, AccountId, QueueId, AgentId, 'undefined') ->
+    unbind_q(AMQPQueue, AccountId, QueueId, AgentId, ['call_stat', 'status_stat', 'query_call_stat', 'query_status_stat']);
+unbind_q(AMQPQueue, AccountId, QueueId, AgentId, ['call_stat'|L]) ->
+    _ = kz_amqp_util:unbind_q_from_kapps(AMQPQueue, call_stat_routing_key(AccountId, QueueId)),
+    unbind_q(AMQPQueue, AccountId, QueueId, AgentId, L);
+unbind_q(AMQPQueue, AccountId, QueueId, AgentId, ['status_stat'|L]) ->
+    _ = kz_amqp_util:unbind_q_from_kapps(AMQPQueue, status_stat_routing_key(AccountId, AgentId)),
+    unbind_q(AMQPQueue, AccountId, QueueId, AgentId, L);
+unbind_q(AMQPQueue, AccountId, QueueId, AgentId, ['query_call_stat'|L]) ->
+    _ = kz_amqp_util:unbind_q_from_kapps(AMQPQueue, query_call_stat_routing_key(AccountId, QueueId)),
+    unbind_q(AMQPQueue, AccountId, QueueId, AgentId, L);
+unbind_q(AMQPQueue, AccountId, QueueId, AgentId, ['query_status_stat'|L]) ->
+    _ = kz_amqp_util:unbind_q_from_kapps(AMQPQueue, query_status_stat_routing_key(AccountId, AgentId)),
+    unbind_q(AMQPQueue, AccountId, QueueId, AgentId, L);
+unbind_q(AMQPQueue, AccountId, QueueId, AgentId, [_|L]) ->
+    unbind_q(AMQPQueue, AccountId, QueueId, AgentId, L);
+unbind_q(_AMQPQueue, _AccountId, _QueueId, _AgentId, []) -> 'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Declare the exchanges used by this API
@@ -841,22 +838,22 @@ publish_current_calls_req(API, ContentType) ->
     kz_amqp_util:kapps_publish(query_call_stat_routing_key(API), Payload, ContentType).
 
 -spec publish_current_calls_err(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_current_calls_err(RespQ, JObj) ->
-    publish_current_calls_err(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_current_calls_err(RespAMQPQueue, JObj) ->
+    publish_current_calls_err(RespAMQPQueue, JObj, ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_current_calls_err(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
-publish_current_calls_err(RespQ, API, ContentType) ->
+publish_current_calls_err(RespAMQPQueue, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?CURRENT_CALLS_ERR_VALUES, fun current_calls_err/1),
-    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespAMQPQueue, Payload, ContentType).
 
 -spec publish_current_calls_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_current_calls_resp(RespQ, JObj) ->
-    publish_current_calls_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_current_calls_resp(RespAMQPQueue, JObj) ->
+    publish_current_calls_resp(RespAMQPQueue, JObj, ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_current_calls_resp(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
-publish_current_calls_resp(RespQ, API, ContentType) ->
+publish_current_calls_resp(RespAMQPQueue, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?CURRENT_CALLS_RESP_VALUES, fun current_calls_resp/1),
-    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespAMQPQueue, Payload, ContentType).
 
 -spec publish_average_wait_time_req(kz_term:api_terms()) -> 'ok'.
 publish_average_wait_time_req(JObj) ->
@@ -868,22 +865,22 @@ publish_average_wait_time_req(API, ContentType) ->
     kz_amqp_util:kapps_publish(query_call_stat_routing_key(API), Payload, ContentType).
 
 -spec publish_average_wait_time_err(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_average_wait_time_err(RespQ, JObj) ->
-    publish_average_wait_time_err(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_average_wait_time_err(RespAMQPQueue, JObj) ->
+    publish_average_wait_time_err(RespAMQPQueue, JObj, ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_average_wait_time_err(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
-publish_average_wait_time_err(RespQ, API, ContentType) ->
+publish_average_wait_time_err(RespAMQPQueue, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?AVERAGE_WAIT_TIME_ERR_VALUES, fun average_wait_time_err/1),
-    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespAMQPQueue, Payload, ContentType).
 
 -spec publish_average_wait_time_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_average_wait_time_resp(RespQ, JObj) ->
-    publish_average_wait_time_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_average_wait_time_resp(RespAMQPQueue, JObj) ->
+    publish_average_wait_time_resp(RespAMQPQueue, JObj, ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_average_wait_time_resp(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
-publish_average_wait_time_resp(RespQ, API, ContentType) ->
+publish_average_wait_time_resp(RespAMQPQueue, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?AVERAGE_WAIT_TIME_RESP_VALUES, fun average_wait_time_resp/1),
-    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespAMQPQueue, Payload, ContentType).
 
 -spec publish_status_req(kz_term:api_terms()) -> 'ok'.
 publish_status_req(JObj) ->
@@ -895,22 +892,22 @@ publish_status_req(API, ContentType) ->
     kz_amqp_util:kapps_publish(query_status_stat_routing_key(API), Payload, ContentType).
 
 -spec publish_status_err(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_status_err(RespQ, JObj) ->
-    publish_status_err(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_status_err(RespAMQPQueue, JObj) ->
+    publish_status_err(RespAMQPQueue, JObj, ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_status_err(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
-publish_status_err(RespQ, API, ContentType) ->
+publish_status_err(RespAMQPQueue, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?STATUS_ERR_VALUES, fun status_err/1),
-    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespAMQPQueue, Payload, ContentType).
 
 -spec publish_status_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_status_resp(RespQ, JObj) ->
-    publish_status_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_status_resp(RespAMQPQueue, JObj) ->
+    publish_status_resp(RespAMQPQueue, JObj, ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_status_resp(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
-publish_status_resp(RespQ, API, ContentType) ->
+publish_status_resp(RespAMQPQueue, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?STATUS_RESP_VALUES, fun status_resp/1),
-    kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
+    kz_amqp_util:targeted_publish(RespAMQPQueue, Payload, ContentType).
 
 call_stat_routing_key(Prop) when is_list(Prop) ->
     call_stat_routing_key(props:get_value(<<"Account-ID">>, Prop)
@@ -920,8 +917,8 @@ call_stat_routing_key(JObj) ->
     call_stat_routing_key(kz_json:get_value(<<"Account-ID">>, JObj)
                          ,kz_json:get_value(<<"Queue-ID">>, JObj)
                          ).
-call_stat_routing_key(AcctId, QID) ->
-    <<"acdc_stats.call.", AcctId/binary, ".", QID/binary>>.
+call_stat_routing_key(AccountId, QueueId) ->
+    <<"acdc_stats.call.", AccountId/binary, ".", QueueId/binary>>.
 
 status_stat_routing_key(Prop) when is_list(Prop) ->
     status_stat_routing_key(props:get_value(<<"Account-ID">>, Prop)
@@ -931,8 +928,8 @@ status_stat_routing_key(JObj) ->
     status_stat_routing_key(kz_json:get_value(<<"Account-ID">>, JObj)
                            ,kz_json:get_value(<<"Agent-ID">>, JObj)
                            ).
-status_stat_routing_key(AcctId, AID) ->
-    <<"acdc_stats.status.", AcctId/binary, ".", AID/binary>>.
+status_stat_routing_key(AccountId, AgentId) ->
+    <<"acdc_stats.status.", AccountId/binary, ".", AgentId/binary>>.
 
 query_call_stat_routing_key(Prop) when is_list(Prop) ->
     query_call_stat_routing_key(props:get_value(<<"Account-ID">>, Prop)
@@ -943,10 +940,10 @@ query_call_stat_routing_key(JObj) ->
                                ,kz_json:get_value(<<"Queue-ID">>, JObj)
                                ).
 
-query_call_stat_routing_key(AcctId, 'undefined') ->
-    <<"acdc_stats.query_call.", AcctId/binary, ".all">>;
-query_call_stat_routing_key(AcctId, QID) ->
-    <<"acdc_stats.query_call.", AcctId/binary, ".", QID/binary>>.
+query_call_stat_routing_key(AccountId, 'undefined') ->
+    <<"acdc_stats.query_call.", AccountId/binary, ".all">>;
+query_call_stat_routing_key(AccountId, QueueId) ->
+    <<"acdc_stats.query_call.", AccountId/binary, ".", QueueId/binary>>.
 
 query_status_stat_routing_key(Prop) when is_list(Prop) ->
     query_status_stat_routing_key(props:get_value(<<"Account-ID">>, Prop)
@@ -957,10 +954,10 @@ query_status_stat_routing_key(JObj) ->
                                  ,kz_json:get_value(<<"AgentId-ID">>, JObj)
                                  ).
 
-query_status_stat_routing_key(AcctId, 'undefined') ->
-    <<"acdc_stats.query_status.", AcctId/binary, ".all">>;
-query_status_stat_routing_key(AcctId, QID) ->
-    <<"acdc_stats.query_status.", AcctId/binary, ".", QID/binary>>.
+query_status_stat_routing_key(AccountId, 'undefined') ->
+    <<"acdc_stats.query_status.", AccountId/binary, ".all">>;
+query_status_stat_routing_key(AccountId, QueueId) ->
+    <<"acdc_stats.query_status.", AccountId/binary, ".", QueueId/binary>>.
 
 
 status_value(API) when is_list(API) -> props:get_value(<<"Status">>, API);

@@ -1020,7 +1020,7 @@ update_call_stat(Id, Updates, Props) ->
 
 call_state_change(AccountId, Status, Prop) ->
     Body = kz_json:normalize(kz_json:from_list([{<<"Event">>, <<"call_status_change">>}
-                                               ,{<<"Status">>, Status}
+                                               ,{<<"Status">>, kz_term:to_binary(Status)}
                                                 | Prop
                                                ])),
     kz_edr:event(?APP_NAME, ?APP_VERSION, 'ok', 'info', Body, AccountId).

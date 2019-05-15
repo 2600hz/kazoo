@@ -139,7 +139,7 @@ release_context(_) -> 'ok'.
 wait_for_exit({'error', _}, Ctx) ->
     release_context(Ctx);
 wait_for_exit({'ok', Pid}, _Ctx) ->
-    MRef = erlang:monitor(process, Pid),
+    MRef = erlang:monitor('process', Pid),
     receive
         {'DOWN', MRef, _, _, _} -> 'ok'
     end.

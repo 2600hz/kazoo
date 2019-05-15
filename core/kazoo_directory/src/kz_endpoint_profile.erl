@@ -8,8 +8,7 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_endpoint_profile).
 
--export([profile/2, profile/3
-        ]).
+-export([profile/2, profile/3]).
 
 -include("kazoo_directory.hrl").
 
@@ -25,7 +24,7 @@ get_endpoint_type(Endpoint) ->
         Else -> Else
     end.
 
--spec convert_endpoint_type(kz_term:ne_binary()) -> kz_term:api_binary().
+-spec convert_endpoint_type(kz_term:ne_binary()) -> kz_term:api_ne_binary().
 convert_endpoint_type(<<"sip_", _/binary>>) -> <<"sip">>;
 convert_endpoint_type(<<"smartphone">>) -> <<"sip">>;
 convert_endpoint_type(<<"softphone">>) -> <<"sip">>;
@@ -83,12 +82,12 @@ endpoint_id(Endpoint, CCVs) ->
     end.
 
 
--spec maybe_fix_presence_id_realm(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> kz_term:api_ne_binary().
+-spec maybe_fix_presence_id_realm(kz_term:api_ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
 maybe_fix_presence_id_realm('undefined', _Endpoint, CCVs) -> CCVs;
 maybe_fix_presence_id_realm(PresenceId, Endpoint, CCVs) ->
     case binary:match(PresenceId, <<"@">>) of
         'nomatch' ->
-            Realm = kz_json:get_value(<<"realm">>, Endpoint),
+            Realm = kz_json:get_ne_binary_value(<<"realm">>, Endpoint),
             kz_json:set_value(<<"Presence-ID">>, <<PresenceId/binary, $@, Realm/binary>>, CCVs);
         _Else -> kz_json:set_value(<<"Presence-ID">>, PresenceId, CCVs)
     end.
@@ -104,7 +103,7 @@ presence_id(Endpoint, CCVs) ->
 
 -spec owner_id(kz_json:object(), kz_json:object()) -> kz_json:object().
 owner_id(Endpoint, CCVs) ->
-    case kz_json:get_value(<<"owner_id">>, Endpoint) of
+    case kz_json:get_ne_binary_value(<<"owner_id">>, Endpoint) of
         'undefined' -> CCVs;
         OwnerId -> kz_json:set_value(<<"Owner-ID">>, OwnerId, CCVs)
     end.
@@ -149,13 +148,12 @@ enforce_security(Endpoint, CCVs) ->
 encryption_flags(Endpoint, CCVs) ->
     kz_endpoint:encryption_method_map(CCVs, Endpoint).
 
-
 -spec add_alert_info(kz_json:object(), kz_json:object()) -> kz_json:object().
 add_alert_info(Endpoint, CCVs) ->
     AlertInfo = [{<<"Internal-Alert-Info">>, kz_json:get_value([<<"ringtones">>, <<"internal">>], Endpoint)}
                 ,{<<"External-Alert-Info">>, kz_json:get_value([<<"ringtones">>, <<"external">>], Endpoint)}
                 ],
-    kz_json:set_values(props:filter_undefined(AlertInfo), CCVs).
+    kz_json:set_values(AlertInfo, CCVs).
 
 -spec get_codecs(kz_json:object()) -> 'undefined' | kz_term:ne_binaries().
 get_codecs(JObj) ->
@@ -179,7 +177,7 @@ profile(EndpointId, AccountId, Options) ->
 
 -spec generate_ccvs(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 generate_ccvs(_EndpointId, AccountId, Endpoint) ->
-    Realm = kz_json:get_value(<<"realm">>, Endpoint),
+    Realm = kz_json:get_ne_binary_value(<<"realm">>, Endpoint),
     Props = [{<<"Account-ID">>, AccountId}
             ,{<<"Realm">>, Realm}
             ,{<<"Username">>, kzd_devices:sip_username(Endpoint)}
@@ -199,7 +197,6 @@ generate_ccvs(_EndpointId, AccountId, Endpoint) ->
               ],
     lists:foldl(fun(Fun, Acc) -> Fun(Endpoint, Acc) end, CCVs, CCVFuns).
 
-
 -spec generate_sip_headers(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 generate_sip_headers(_EndpointId, _AccountId, Endpoint) ->
     Headers = kz_json:new(),
@@ -207,7 +204,6 @@ generate_sip_headers(_EndpointId, _AccountId, Endpoint) ->
                  ,fun maybe_add_aor/2
                  ],
     lists:foldl(fun(Fun, Acc) -> Fun(Endpoint, Acc) end, Headers, HeaderFuns).
-
 
 -spec add_sip_headers(kz_json:object(), kz_json:object()) -> kz_json:object().
 add_sip_headers(Endpoint, Headers) ->
@@ -268,4 +264,4 @@ generate_profile(EndpointId, AccountId, Endpoint, Options) ->
               ,{<<"Codecs">>, get_codecs(Endpoint)}
               ,{<<"Expires">>, 360}
               ],
-    {ok, kz_json:from_list(Profile)}.
+    {'ok', kz_json:from_list(Profile)}.

@@ -580,7 +580,7 @@ modify_acls(Name, IP0, ACLS, ACLFun, ConfigFun) ->
                        ,kz_json:get_value(<<"cidr">>, ACL)
                        ,kz_json:get_value(<<"type">>, ACL)
                        ]),
-            run_config_fun(ConfigFun, <<"acls">>, kz_json:set_value(Name, ACL, filter_acls(ACLS))),
+            _ = run_config_fun(ConfigFun, <<"acls">>, kz_json:set_value(Name, ACL, filter_acls(ACLS))),
             maybe_reload_acls(Name, 'modify', 4)
     end.
 
@@ -711,7 +711,7 @@ limit_channel_uptime(MaxAge) ->
 
 -spec limit_channel_uptime(kz_term:ne_binary(), kz_term:ne_binary() | boolean()) -> 'ok'.
 limit_channel_uptime(MaxAge, AsDefault) ->
-    ecallmgr_fs_channels:set_max_channel_uptime(kz_term:to_integer(MaxAge), kz_term:is_true(AsDefault)),
+    _ = ecallmgr_fs_channels:set_max_channel_uptime(kz_term:to_integer(MaxAge), kz_term:is_true(AsDefault)),
     io:format("updating max channel uptime to ~p (use 0 to disable check)~n", [MaxAge]).
 
 -spec hangup_long_running_channels() -> 'ok'.

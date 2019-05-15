@@ -147,7 +147,7 @@ init([Node, JObj, Context]) ->
 
 -spec bind_to_events(atom()) -> 'ok'.
 bind_to_events(Node) ->
-    gproc:reg({'p', 'l', {'event', Node, <<"loopback::bowout">>}}).
+    gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"loopback::bowout">>)}).
 
 %%------------------------------------------------------------------------------
 %% @doc Handling call messages.
@@ -321,8 +321,8 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info({'event', [_|Props]}, #state{uuid=UUID}=State) ->
-    {'noreply', State#state{uuid=handle_fs_event(Props, UUID)}};
+handle_info({'event', _UUID, FSJObj}, #state{uuid=CreatedUUID}=State) ->
+    {'noreply', State#state{uuid=handle_fs_event(FSJObj, CreatedUUID)}};
 handle_info({'tcp', _, Data}, State) ->
     Event = binary_to_term(Data),
     handle_info(Event, State);
@@ -858,31 +858,31 @@ fix_hold_media(Endpoint) ->
     put('hold_media', kz_json:get_value(<<"Hold-Media">>, Endpoint)),
     kz_json:delete_key(<<"Hold-Media">>, Endpoint).
 
--spec should_update_uuid(kz_term:api_binary(), kz_term:proplist()) -> boolean().
-should_update_uuid(OldUUID, Props) ->
-    case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
+-spec should_update_uuid(kz_term:api_binary(), kzd_freeswitch:data()) -> boolean().
+should_update_uuid(OldUUID, FSJObj) ->
+    case kzd_freeswitch:event_subclass(FSJObj, kzd_freeswitch:event_name(FSJObj)) of
         <<"loopback::bowout">> ->
             lager:debug("bowout detected with ~s, old uuid is ~s"
-                       ,[props:get_value(?RESIGNING_UUID, Props), OldUUID]
+                       ,[kzd_freeswitch:resigning_id(FSJObj), OldUUID]
                        ),
-            props:get_value(?RESIGNING_UUID, Props) =:= OldUUID;
+            kzd_freeswitch:resigning_id(FSJObj) =:= OldUUID;
         _ -> 'false'
     end.
 
--spec handle_fs_event(kzd_freeswitch:data(), created_uuid()) -> created_uuid().
-handle_fs_event(Props, 'undefined') ->
-    case should_update_uuid('undefined', Props) of
+-spec handle_fs_event(kzd_freeswitch:data(), 'undefined' | created_uuid()) -> 'undefined' | created_uuid().
+handle_fs_event(FSJObj, 'undefined') ->
+    case should_update_uuid('undefined', FSJObj) of
         'false' -> 'undefined';
         'true' ->
-            NewUUID = props:get_value(<<"Acquired-UUID">>, Props),
+            NewUUID = kzd_freeswitch:acquired_id(FSJObj),
             _ = update_uuid('undefined', NewUUID),
             {'api', NewUUID}
     end;
-handle_fs_event(Props, {_, OldUUID}=UUID) ->
-    case should_update_uuid(OldUUID, Props) of
+handle_fs_event(FSJObj, {_, OldUUID}=UUID) ->
+    case should_update_uuid(OldUUID, FSJObj) of
         'false' -> UUID;
         'true' ->
-            NewUUID = props:get_value(<<"Acquired-UUID">>, Props),
+            NewUUID = kzd_freeswitch:acquired_id(FSJObj),
             _ = update_uuid(OldUUID, NewUUID),
             {'api', NewUUID}
     end.

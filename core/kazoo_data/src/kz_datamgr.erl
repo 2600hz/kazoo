@@ -108,6 +108,7 @@
              ,data_error/0, data_errors/0
              ,db_classification/0
              ,update_option/0, update_options/0
+             ,get_results_return/0
              ]).
 
 -deprecated({'ensure_saved', '_', 'eventually'}).

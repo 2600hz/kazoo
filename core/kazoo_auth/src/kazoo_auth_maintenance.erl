@@ -57,7 +57,7 @@ register_auth_app_key(AppId, PemFile) ->
     Pem = kz_auth_keys:get_private_key_from_file(PemFile),
     KeyId = kz_binary:rand_hex(16),
     {'ok', _Key} = kz_auth_keys:new_private_key(KeyId, Pem),
-    Updates = [{<<"pvt_server_key">>, KeyId}],
+    Updates = [{[<<"pvt_server_key">>], KeyId}],
     UpdateOptions = [{'update', Updates}],
     kz_datamgr:update_doc(?KZ_AUTH_DB, AppId, UpdateOptions).
 

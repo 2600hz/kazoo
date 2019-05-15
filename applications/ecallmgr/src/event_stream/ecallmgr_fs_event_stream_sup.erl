@@ -54,10 +54,10 @@ init([Node, _Props]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
     PacketSize = ?PACKET_SIZE,
-    freeswitch:event_stream_framing(Node, PacketSize),
+    _ = freeswitch:event_stream_framing(Node, PacketSize),
     {'ok', {SupFlags, ?CHILDREN(PacketSize)}}.
 
-
--spec event_child(atom(), atom(), integer()) -> kz_types:sup_child_spec().
+-spec event_child(atom(), ecallmgr_fs_event_stream:profile(), ecallmgr_fs_event_stream:event_packet_type()) ->
+                         kz_types:sup_child_spec().
 event_child(Node, Event, Packet) ->
     ?WORKER_NAME_ARGS_TYPE(Event, 'ecallmgr_fs_event_stream', [Node, Event, Packet], 'transient').

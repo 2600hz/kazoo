@@ -637,9 +637,9 @@ ensure_aggregate_faxbox(Account) ->
         {'error', _} -> 'ok'
     end.
 
--spec update_or_add_to_faxes_db(kz_json:object()) -> 'ok'.
+-spec update_or_add_to_faxes_db(kz_json:objects()) -> 'ok'.
 update_or_add_to_faxes_db(Faxboxes) ->
-    case kz_datamgr:all_docs(?KZ_FAXES_DB, [{'keys', [ kz_doc:id(Doc) || Doc <- Faxboxes]}]) of
+    case kz_datamgr:all_docs(?KZ_FAXES_DB, [{'keys', [kz_doc:id(Doc) || Doc <- Faxboxes]}]) of
         {'ok', Docs} ->
             Revs = maps:from_list([{kz_json:get_value(<<"key">>, D)
                                    ,kz_json:get_value([<<"value">>, <<"rev">>], D)
@@ -652,7 +652,7 @@ update_or_add_to_faxes_db(Faxboxes) ->
             'ok'
     end.
 
--spec prepare_faxboxes(kz_json:objects(), kz_json:objects(), kz_json:objects()) -> kz_json:objects().
+-spec prepare_faxboxes(kz_json:objects(), #{kz_term:ne_binary() => kz_term:ne_binary()}, kz_json:objects()) -> kz_json:objects().
 prepare_faxboxes([], _Revs, Acc) -> Acc;
 prepare_faxboxes([Doc|Faxboxes], Revs, Acc) ->
     case maps:get(kz_doc:id(Doc), Revs, 'undefined') of
@@ -884,13 +884,13 @@ maybe_log_doc_update({'error', _Reason}, _, Failed) ->
                          ,fixed_trees := map()
                          }.
 
--spec get_accounts_tree() -> kz_json:object().
+-spec get_accounts_tree() -> kz_datamgr:get_results_return().
 get_accounts_tree() ->
     ViewOptions = [{'reduce', 'false'}],
     ViewName = <<"accounts_tree/list_by_tree_length">>,
     kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ViewName, ViewOptions).
 
--spec get_accounts_tree(kz_term:ne_binaries()) -> kz_json:object().
+-spec get_accounts_tree(kz_term:ne_binaries()) -> kz_datamgr:get_results_return().
 get_accounts_tree(Accounts) ->
     ViewOptions = [{'keys', [kz_util:format_account_id(A) || A <- Accounts]}
                   ,'include_docs'
@@ -898,17 +898,18 @@ get_accounts_tree(Accounts) ->
     ViewName = <<"accounts/listing_by_simple_id">>,
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ViewName, ViewOptions) of
         {'ok', Results} ->
-            {'ok', [kz_json:from_list(
-                      [{<<"id">>, kz_doc:id(JObj)}
-                      ,{<<"key">>, length(kzd_accounts:tree(kz_json:get_value(<<"doc">>, JObj)))}
-                      ,{<<"value">>, kzd_accounts:tree(kz_json:get_value(<<"doc">>, JObj))}
-                      ]
-                     )
-                    || JObj <- Results
-                   ]
-            };
+            {'ok', [format_result(JObj) || JObj <- Results]};
         {'error', _}=Error -> Error
     end.
+
+-spec format_result(kz_json:object()) -> kz_json:object().
+format_result(JObj) ->
+    Tree = kzd_accounts:tree(kz_json:get_json_value(<<"doc">>, JObj)),
+    kz_json:from_list([{<<"id">>, kz_doc:id(JObj)}
+                      ,{<<"key">>, length(Tree)}
+                      ,{<<"value">>, Tree}
+                      ]
+                     ).
 
 %%------------------------------------------------------------------------------
 %% @doc

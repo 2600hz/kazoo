@@ -83,7 +83,7 @@
                  ,other_leg :: kz_term:api_binary() | '$2' | '_'
                  ,node :: atom() | '$1' | '$2' | '$3' | '_'
                  ,former_node :: atom() | '$2' | '_'
-                 ,timestamp :: kz_time:gregorian_seconds() | '$3' | '_'
+                 ,timestamp :: kz_time:gregorian_seconds() | 'undefined' | '$3' | '_'
                  ,profile :: kz_term:api_ne_binary() | '_'
                  ,context :: kz_term:api_ne_binary() | '_'
                  ,dialplan :: kz_term:api_ne_binary() | '_'
@@ -96,7 +96,7 @@
                  ,callee_name :: kz_term:api_ne_binary() | '$5' | '_'
                  ,caller_number :: kz_term:api_ne_binary() | '_'
                  ,caller_name :: kz_term:api_ne_binary() | '_'
-                 ,is_loopback :: boolean() | '_'
+                 ,is_loopback = 'false' :: boolean() | '_'
                  ,loopback_leg_name :: kz_term:api_ne_binary() | '_'
                  ,loopback_other_leg :: kz_term:api_ne_binary() | '_'
                  ,callflow_id :: kz_term:api_ne_binary() | '_'
@@ -427,19 +427,19 @@
                                   ]).
 -define(IS_SOFIA_TRANSFER(N), lists:member(kz_term:to_atom(N, 'true'), ?FS_SOFIA_TRANSFER_EVENTS)).
 
--define(FS_EVENTS, [{channel, ['CHANNEL_CREATE', 'CHANNEL_ANSWER', 'CHANNEL_DESTROY']}
-                   ,{bridge, ['CHANNEL_BRIDGE', 'CHANNEL_UNBRIDGE']}
-                   ,{media, ['DETECTED_TONE', 'DTMF','CHANNEL_PROGRESS','CHANNEL_PROGRESS_MEDIA']}
-                   ,{record, ['RECORD_START', 'RECORD_STOP']}
-                   ,{callflow, ['ROUTE_WINNER', 'CHANNEL_EXECUTE_COMPLETE', 'CHANNEL_METAFLOW']}
-                   ,{presence, ['PRESENCE_IN']}
-                   ,{channel_full_update, ['CHANNEL_DATA','CHANNEL_SYNC','CALL_UPDATE']}
-                   ,{channel_update, ['CHANNEL_HOLD','CHANNEL_UNHOLD']}
-                   ,{conference, ['conference::maintenance']}
-                   ,{fax, ?FAX_EVENTS}
-                   ,{kazoo, ['kazoo::noop', 'kazoo::masquerade']}
-                   ,{transfer, ?FS_SOFIA_TRANSFER_EVENTS}
-                   ,{loopback, ['loopback::bowout', 'loopback::direct']}
+-define(FS_EVENTS, [{'channel', ['CHANNEL_CREATE', 'CHANNEL_ANSWER', 'CHANNEL_DESTROY']}
+                   ,{'bridge', ['CHANNEL_BRIDGE', 'CHANNEL_UNBRIDGE']}
+                   ,{'media', ['DETECTED_TONE', 'DTMF','CHANNEL_PROGRESS','CHANNEL_PROGRESS_MEDIA']}
+                   ,{'record', ['RECORD_START', 'RECORD_STOP']}
+                   ,{'callflow', ['ROUTE_WINNER', 'CHANNEL_EXECUTE_COMPLETE', 'CHANNEL_METAFLOW']}
+                   ,{'presence', ['PRESENCE_IN']}
+                   ,{'channel_full_update', ['CHANNEL_DATA','CHANNEL_SYNC','CALL_UPDATE']}
+                   ,{'channel_update', ['CHANNEL_HOLD','CHANNEL_UNHOLD']}
+                   ,{'conference', ['conference::maintenance']}
+                   ,{'fax', ?FAX_EVENTS}
+                   ,{'kazoo', ['kazoo::noop', 'kazoo::masquerade']}
+                   ,{'transfer', ?FS_SOFIA_TRANSFER_EVENTS}
+                   ,{'loopback', ['loopback::bowout', 'loopback::direct']}
                    ]).
 
 -define(FS_FETCH_SECTIONS, ['configuration'
@@ -561,7 +561,6 @@
 -define(SEPARATOR_SIMULTANEOUS, <<",">>).
 -define(SEPARATOR_SINGLE, <<"|">>).
 
-
 -define(CHANNEL_VARS_EXT, "Execute-Extension-Original-").
 
 -define(CONFERENCE_VARS, [<<"variable_conference_moderator">>
@@ -642,6 +641,46 @@
                           ]).
 
 -define(HTTP_GET_PREFIX, "http_cache://").
+
+
+-type dialplan_callback() :: fun((dialplan_context()) -> 'ok' | {'ok', dialplan_context()}).
+-type dialplan_exit_fun() :: fun((dialplan_context()) -> 'ok').
+-type dialplan_init_fun() :: fun((dialplan_context()) -> 'ok').
+
+-type dialplan_timers() :: #{atom() => pos_integer()}. %% #{Name => TimestampUs
+-type dialplan_reply() ::  #{payload => kzd_fetch:data() | kz_json:object()
+                            ,props => list()
+                            }.
+-type dialplan_winner() :: #{payload => kzd_fetch:data()
+                            ,props => list()
+                            }.
+-type dialplan_xml_fun() :: fun((kz_term:ne_binary(), kz_json:objects(), kz_json:object(), dialplan_context()) -> {'ok', iolist()}).
+
+-type dialplan_context() :: #{amqp_worker => pid() %% AMQP Worker
+                             ,authz_timeout => timeout()
+                             ,authz_worker => kz_term:pid_ref()
+                             ,call_id => kz_term:ne_binary()
+                             ,callback => dialplan_callback()
+                             ,channel => pid() %% AMQP Channel
+                             ,controller_q => kz_term:ne_binary() %% AMQP Queue of controller
+                             ,control_p => pid() %% Ecallmgr control PID
+                             ,control_q => kz_term:ne_binary() %% AMQP Control Queue
+                             ,core_uuid => kz_term:ne_binary() %% FS UUID
+                             ,exit_fun => dialplan_exit_fun()
+                             ,fetch_id => kz_term:ne_binary()
+                             ,initial_ccvs => kz_json:object()
+                             ,init_fun => dialplan_init_fun()
+                             ,node => atom() %% FS Node
+                             ,options => kz_term:proplist()
+                             ,payload => kzd_fetch:data()
+                             ,start_result => {'ok', pid()} | {'error', any()}
+                             ,timer => dialplan_timers()
+                             ,timeout => non_neg_integer()
+                             ,reply => dialplan_reply()
+                             ,request => kapi_route:req()
+                             ,route_resp_xml_fun => dialplan_xml_fun()
+                             ,winner => dialplan_winner()
+                             }.
 
 -define(ECALLMGR_HRL, 'true').
 -endif.

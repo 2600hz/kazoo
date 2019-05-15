@@ -37,8 +37,6 @@ exec_cmd(Node, UUID, JObj, _ControlPid, UUID) ->
         {_AppName, 'noop'} -> 'ok';
         {AppName, AppData} ->
             ecallmgr_util:send_cmd(Node, UUID, App, AppName, AppData);
-        {AppName, AppData, NewNode} ->
-            ecallmgr_util:send_cmd(NewNode, UUID, App, AppName, AppData);
         {AppName, AppData, NewNode, ExtraHeaders} ->
             ecallmgr_util:send_cmd(NewNode, UUID, App, AppName, AppData, ExtraHeaders);
         [_|_]=Apps ->
@@ -56,7 +54,6 @@ fetch_dialplan(Node, UUID, JObj, _ControlPid) ->
     case get_fs_app(Node, UUID, JObj, App) of
         {'error', Msg} -> throw({'msg', Msg});
         {'return', _Result} -> [];
-        {_AppName, _AppData, _NewNode} -> [];
         {AppName, AppData} -> [{AppName, AppData}];
         [_|_]=Apps -> Apps
     end.
@@ -70,7 +67,6 @@ enforce_privacy(Node, UUID, JObj) ->
                 ecallmgr_util:send_cmd(Node, UUID, <<"privacy">>, Mode)
         end,
     AnonymizedJObj.
-
 
 %%------------------------------------------------------------------------------
 %% @doc return the app name and data (as a binary string) to send to
@@ -840,7 +836,6 @@ get_conf_id_and_profile(JObj) ->
     {ConfName, ProfileName}.
 
 -spec get_conference_app(atom(), kz_term:ne_binary(), kz_json:object(), boolean()) ->
-                                {kz_term:ne_binary(), kz_term:ne_binary(), atom()} |
                                 {kz_term:ne_binary(), 'noop' | kz_term:ne_binary()}.
 get_conference_app(ChanNode, UUID, JObj, 'true') ->
     lager:debug("getting conference app"),
@@ -863,11 +858,9 @@ get_conference_app(ChanNode, UUID, JObj, 'true') ->
 get_conference_app(ChanNode, UUID, JObj, 'false') ->
     {ConfName, ConferenceConfig} = get_conf_id_and_profile(JObj),
     _ = maybe_set_nospeak_flags(ChanNode, UUID, JObj),
-    %% ecallmgr_fs_command:export(ChanNode, UUID, [{<<"Hold-Media">>, <<"silence">>}]),
     {<<"conference">>, list_to_binary([ConfName, "@", ConferenceConfig, get_conference_flags(JObj)])}.
 
 -spec maybe_start_conference_on_our_node(atom(), kz_term:ne_binary(), kz_json:object()) ->
-                                                {kz_term:ne_binary(), kz_term:ne_binary(), atom()} |
                                                 {kz_term:ne_binary(), 'noop' | kz_term:ne_binary()}.
 maybe_start_conference_on_our_node(ChanNode, UUID, JObj) ->
     {ConfName, ConferenceConfig} = get_conf_id_and_profile(JObj),
@@ -1174,7 +1167,7 @@ record_call_limit(JObj) ->
         Limit -> Limit
     end.
 
--spec record_call_vars(atom(), kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
+-spec record_call_vars(atom(), kz_term:ne_binary(), kz_json:object()) -> binary().
 record_call_vars(Node, UUID, JObj) ->
     Routines = [fun maybe_waste_resources/1
                ,fun(Acc) -> maybe_get_terminators(Acc, JObj) end
@@ -1184,17 +1177,17 @@ record_call_vars(Node, UUID, JObj) ->
     SampleRate = get_sample_rate(JObj),
 
     Vars = lists:foldl(fun(F, V) -> F(V) end
-               ,[{<<"RECORD_APPEND">>, <<"true">>}
-                ,{<<"RECORD_STEREO">>, should_record_stereo(JObj)}
-                ,{<<"RECORD_SOFTWARE">>, ecallmgr_util:fs_arg_encode(?RECORD_SOFTWARE)}
-                ,{<<"recording_follow_transfer">>, FollowTransfer}
-                ,{<<"recording_follow_attxfer">>, FollowTransfer}
-                ,{<<"enable_file_write_buffering">>, <<"false">>}
-                ,{<<"Record-Min-Sec">>, RecordMinSec}
-                ,{<<"record_sample_rate">>, kz_term:to_binary(SampleRate)}
-                ]
-               ,Routines
-               ),
+                      ,[{<<"RECORD_APPEND">>, <<"true">>}
+                       ,{<<"RECORD_STEREO">>, should_record_stereo(JObj)}
+                       ,{<<"RECORD_SOFTWARE">>, ecallmgr_util:fs_arg_encode(?RECORD_SOFTWARE)}
+                       ,{<<"recording_follow_transfer">>, FollowTransfer}
+                       ,{<<"recording_follow_attxfer">>, FollowTransfer}
+                       ,{<<"enable_file_write_buffering">>, <<"false">>}
+                       ,{<<"Record-Min-Sec">>, RecordMinSec}
+                       ,{<<"record_sample_rate">>, kz_term:to_binary(SampleRate)}
+                       ]
+                      ,Routines
+                      ),
     case ecallmgr_util:process_fs_kv(Node, UUID, Vars, 'set') of
         [] -> <<>>;
         Args -> list_to_binary(["%^[", kz_binary:join(Args, <<"^">>), "]"])
@@ -1203,15 +1196,15 @@ record_call_vars(Node, UUID, JObj) ->
 %%     ecallmgr_util:fs_args_to_binary(Args).
 
 
--spec record_call_args(kz_json:object()) -> kz_term:proplist().
+-spec record_call_args(kz_json:object()) -> binary().
 record_call_args(JObj) ->
     Vars = [{<<"Name">>, kz_json:get_value(<<"Media-Name">>, JObj)}
-    ,{<<"Recorder">>, kz_json:get_value(<<"Media-Recorder">>, JObj)}
-    ,{<<"ID">>, kz_json:get_ne_binary_value(<<"Media-Recording-ID">>, JObj)}
-    ,{<<"Endpoint-ID">>, kz_json:get_ne_binary_value(<<"Media-Recording-Endpoint-ID">>, JObj)}
-    ,{<<"Origin">>, kz_json:get_ne_binary_value(<<"Media-Recording-Origin">>, JObj)}
-     | kz_json:to_proplist(<<"Recording-Variables">>, JObj)
-    ],
+           ,{<<"Recorder">>, kz_json:get_value(<<"Media-Recorder">>, JObj)}
+           ,{<<"ID">>, kz_json:get_ne_binary_value(<<"Media-Recording-ID">>, JObj)}
+           ,{<<"Endpoint-ID">>, kz_json:get_ne_binary_value(<<"Media-Recording-Endpoint-ID">>, JObj)}
+           ,{<<"Origin">>, kz_json:get_ne_binary_value(<<"Media-Recording-Origin">>, JObj)}
+            | kz_json:to_proplist(<<"Recording-Variables">>, JObj)
+           ],
     Args = [<<K/binary,"='", (kz_term:to_binary(V))/binary, "'">> || {K,V} <- props:filter_undefined(Vars)],
     ecallmgr_util:fs_args_to_binary(Args).
 
@@ -1299,12 +1292,16 @@ tone_duration_on(Tone) ->
 tone_duration_off(Tone) ->
     kz_json:get_binary_value(<<"Duration-OFF">>, Tone).
 
--spec transfer(atom(), kz_term:ne_binary(), kz_json:object()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
+-spec transfer(atom(), kz_term:ne_binary(), kz_json:object()) ->
+                      ecallmgr_fs_transfer:attended_resp() |
+                      ecallmgr_fs_transfer:blind_resp().
 transfer(Node, UUID, JObj) ->
     TransferType = kz_json:get_ne_binary_value(<<"Transfer-Type">>, JObj),
     transfer(Node, UUID, JObj, TransferType).
 
--spec transfer(atom(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
+-spec transfer(atom(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) ->
+                      ecallmgr_fs_transfer:attended_resp() |
+                      ecallmgr_fs_transfer:blind_resp().
 transfer(Node, UUID, JObj, <<"attended">>) ->
     ecallmgr_fs_transfer:attended(Node, UUID, JObj);
 transfer(Node, UUID, JObj, <<"blind">>) ->
@@ -1451,14 +1448,14 @@ event_actions(Node, UUID, JObj) ->
     end.
 
 -spec build_event_actions(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), ep_actions()) ->
-                                    kz_term:ne_binaries().
+                                 kz_term:ne_binaries().
 build_event_actions(Node, UUID, Group, K, V, Acc) ->
     Fun = fun(K1, V1, Acc1)-> build_event_action(Node, UUID, Group, K1, V1, Acc1) end,
     DP = kz_json:foldr(Fun, [], V),
     Acc ++ build_event_action_dp(K, DP).
 
 -spec build_event_action(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), fs_apps()) ->
-                                   fs_apps().
+                                fs_apps().
 build_event_action(Node, UUID, Group, K, V, Acc) ->
     lager:debug("building dialplan action for ~s", [K]),
     DP = fetch_dialplan(Node, UUID, V, self()),

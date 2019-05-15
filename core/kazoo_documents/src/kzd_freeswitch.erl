@@ -21,10 +21,11 @@
         ,cavs/1
         ,channel_authorized/1
         ,conference_name/1, conference_profile_name/1, conference_uuid/1
+        ,contact/1, contact/2
         ,context/1, context/2
         ,dialed_number/1
         ,disposition/1
-        ,event_name/1
+        ,event_name/1, event_subclass/1, event_subclass/2
         ,from_network_ip/1, from_network_port/1
         ,from_tag/1, to_tag/1
         ,hangup_code/1, hangup_cause/1
@@ -41,6 +42,7 @@
         ,outbound_flags/1
         ,presence_id/1, presence_direction/1
         ,reseller_id/1, reseller_billing/1, reseller_trunk_usage/1
+        ,resigning_id/1, acquired_id/1
         ,resource_id/1
         ,resource_type/1, resource_type/2
         ,to_did/1
@@ -71,7 +73,6 @@ caller_id_name(JObj) ->
 -spec caller_id_name(data(), Default) -> kz_term:ne_binary() | Default.
 caller_id_name(JObj, Default) ->
     kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, JObj, Default).
-
 
 -spec caller_id_number(data()) -> kz_term:api_binary().
 caller_id_number(JObj) ->
@@ -153,6 +154,14 @@ is_consuming_global_resource(JObj) ->
 is_consuming_global_resource(JObj, Default) ->
     kz_term:is_true(ccv(JObj, <<"Global-Resource">>, Default)).
 
+-spec resigning_id(data()) -> kz_term:api_ne_binary().
+resigning_id(JObj) ->
+    kz_json:get_ne_binary_value(?RESIGNING_UUID, JObj).
+
+-spec acquired_id(data()) -> kz_term:api_ne_binary().
+acquired_id(JObj) ->
+    kz_json:get_ne_binary_value(?ACQUIRED_UUID, JObj).
+
 -spec resource_id(data()) -> kz_term:api_binary().
 resource_id(JObj) ->
     ccv(JObj, <<"Resource-ID">>).
@@ -216,6 +225,14 @@ application_name(JObj) ->
 -spec event_name(data()) -> kz_term:api_binary().
 event_name(JObj) ->
     kz_json:get_ne_binary_value(<<"Event-Name">>, JObj).
+
+-spec event_subclass(data()) -> kz_term:api_ne_binary().
+event_subclass(JObj) ->
+    event_subclass(JObj, 'undefined').
+
+-spec event_subclass(data(), Default) -> kz_term:ne_binary() | Default.
+event_subclass(JObj, Default) ->
+    kz_json:get_ne_binary_value(<<"Event-Subclass">>, JObj, Default).
 
 -spec from_network_ip(data()) -> kz_term:api_binary().
 from_network_ip(JObj) ->
@@ -348,6 +365,14 @@ hostname(JObj, Default) ->
 -spec is_call_setup(data()) -> boolean().
 is_call_setup(JObj) ->
     kz_json:is_true(<<"Call-Setup">>, JObj, 'false').
+
+-spec contact(data()) -> kz_term:api_ne_binary().
+contact(JObj) ->
+    contact(JObj, 'undefined').
+
+-spec contact(data(), Default) -> kz_term:ne_binary() | Default.
+contact(JObj, Default) ->
+    kz_json:get_first_defined([<<"Contact">>, <<"contact">>], JObj, Default).
 
 -spec context(data()) -> kz_term:api_ne_binary().
 context(JObj) ->

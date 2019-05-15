@@ -19,13 +19,19 @@
 
 -define(SERVER, ?MODULE).
 
--type bindings() :: atom() | [atom(),...] | kz_term:ne_binary() | kz_term:ne_binaries().
--type profile() :: {atom() | kz_term:ne_binary(), bindings()}.
+-type profile_name() :: atom() | kz_term:ne_binary().
+-type binding() :: atom() | kz_term:ne_binary().
+-type bindings() :: [binding()].
+-type profile() :: {profile_name(), bindings()}.
 -type event_packet_type() :: 1 | 2 | 4.
 
+-export_type([profile/0
+             ,event_packet_type/0
+             ]).
+
 -record(state, {node :: atom()
-               ,bindings :: bindings()
-               ,profile_name :: atom() | kz_term:ne_binary()
+               ,bindings :: bindings() | 'undefined'
+               ,profile_name :: profile_name()
                ,ip :: inet:ip_address() | 'undefined'
                ,port :: inet:port_number() | 'undefined'
                ,socket :: inet:socket() | 'undefined'
@@ -44,9 +50,9 @@
 %% @doc Starts the server
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link(atom(), bindings(), event_packet_type()) -> kz_types:startlink_ret().
-start_link(Node, Bindings, Packet) ->
-    gen_server:start_link(?SERVER, [Node, Bindings, Packet], []).
+-spec start_link(atom(), profile(), event_packet_type()) -> kz_types:startlink_ret().
+start_link(Node, {_Name, _Bindings}=Profile, Packet) ->
+    gen_server:start_link(?SERVER, [Node, Profile, Packet], []).
 
 %%%=============================================================================
 %%% gen_server callbacks
@@ -57,11 +63,15 @@ start_link(Node, Bindings, Packet) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init([atom() | profile() | event_packet_type()]) -> {'ok', state()} | {'stop', any()}.
-init([Node, {Name, Bindings}, Packet]) ->
+init([Node, {ProfileName, Bindings}, Packet]) ->
+    init(Node, ProfileName, Bindings, Packet).
+
+-spec init(atom(), profile_name(), bindings(), event_packet_type()) -> {'ok', state()} | {'stop', any()}.
+init(Node, ProfileName, Bindings, Packet) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(list_to_binary([kz_term:to_binary(Node), <<"-eventstream-">>, kz_term:to_binary(Name)])),
+    kz_util:put_callid(list_to_binary([kz_term:to_binary(Node), <<"-eventstream-">>, kz_term:to_binary(ProfileName)])),
     request_event_stream(#state{node=Node
-                               ,profile_name=Name
+                               ,profile_name=ProfileName
                                ,bindings=Bindings
                                ,idle_alert=idle_alert_timeout()
                                ,packet=Packet
@@ -88,7 +98,8 @@ handle_cast('connect', #state{ip=IP, port=Port, packet=Packet, idle_alert=Timeou
         {'ok', Socket} ->
             _ = kz_amqp_channel:requisition(),
             lager:debug("opened event stream socket to ~p:~p for ~p"
-                       ,[IP, Port, get_event_bindings(State)]),
+                       ,[IP, Port, get_event_bindings(State)]
+                       ),
             {'noreply', State#state{socket=Socket}, Timeout};
         {'error', Reason} ->
             {'stop', Reason, State}
@@ -96,7 +107,9 @@ handle_cast('connect', #state{ip=IP, port=Port, packet=Packet, idle_alert=Timeou
 handle_cast({'kz_amqp_assignment', {'new_channel', _, Channel}}, State) ->
     lager:debug("channel acquired ~p", [Channel]),
     _ = kz_amqp_channel:consumer_channel(Channel),
-    {'noreply', State#state{channel_mon = erlang:monitor(process, Channel), amqp_channel=Channel}};
+    {'noreply', State#state{channel_mon = erlang:monitor('process', Channel)
+                           ,amqp_channel=Channel
+                           }};
 handle_cast(_Msg, #state{socket='undefined'}=State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State};
@@ -123,11 +136,13 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
             {'noreply', State, Timeout};
         {'error', 'decode_error'} ->
             lager:warning("failed to decode packet from ~s (~p b) for ~p: ~p"
-                         ,[Node, byte_size(Data), get_event_bindings(State), Data]),
+                         ,[Node, byte_size(Data), get_event_bindings(State), Data]
+                         ),
             {'stop', 'decode_error', State};
         {'error', _Error} ->
             lager:error("failed to decode packet from ~s (~p b) for ~p: ~p => ~p"
-                       ,[Node, byte_size(Data), get_event_bindings(State), _Error, Data]),
+                       ,[Node, byte_size(Data), get_event_bindings(State), _Error, Data]
+                       ),
             {'stop', 'decode_error', State};
         _Pid when is_pid(_Pid) ->
             {'noreply', State, Timeout}
@@ -149,9 +164,9 @@ handle_info('timeout', #state{node=Node, idle_alert=Timeout}=State) ->
                  ),
     {'noreply', State, Timeout};
 handle_info({'EXIT', _, 'noconnection'}, State) ->
-    {stop, {'shutdown', 'noconnection'}, State};
+    {'stop', {'shutdown', 'noconnection'}, State};
 handle_info({'EXIT', _, Reason}, State) ->
-    {stop, Reason, State};
+    {'stop', Reason, State};
 handle_info(_Msg, #state{socket='undefined'}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State};
@@ -159,7 +174,7 @@ handle_info(_Msg, #state{socket='undefined'}=State) ->
 handle_info({'kz_amqp_assignment', {'new_channel', _, Channel}}, State) ->
     lager:debug("channel acquired ~p", [Channel]),
     _ = kz_amqp_channel:consumer_channel(Channel),
-    {'noreply', State#state{channel_mon = erlang:monitor(process, Channel), amqp_channel=Channel}};
+    {'noreply', State#state{channel_mon = erlang:monitor('process', Channel), amqp_channel=Channel}};
 
 handle_info(_Msg, #state{idle_alert=Timeout}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
@@ -228,22 +243,15 @@ get_event_bindings(State) ->
 -spec get_event_bindings(state(), kz_term:atoms()) -> kz_term:atoms().
 get_event_bindings(#state{bindings='undefined'
                          ,idle_alert='infinity'
-                         }, Acc) ->
+                         }
+                  ,Acc
+                  ) ->
     Acc;
-get_event_bindings(#state{bindings='undefined'
-                         }, Acc) ->
+get_event_bindings(#state{bindings='undefined'}, Acc) ->
     ['HEARTBEAT' | Acc];
 get_event_bindings(#state{bindings=Bindings}=State, Acc) when is_list(Bindings) ->
     get_event_bindings(State#state{bindings='undefined'}
                       ,[kz_term:to_atom(Binding, 'true') || Binding <- Bindings] ++ Acc
-                      );
-get_event_bindings(#state{bindings=Binding}=State, Acc)
-  when is_atom(Binding),
-       Binding =/= 'undefined' ->
-    get_event_bindings(State#state{bindings='undefined'}, [Binding | Acc]);
-get_event_bindings(#state{bindings=Binding}=State, Acc) when is_binary(Binding) ->
-    get_event_bindings(State#state{bindings='undefined'}
-                      ,[kz_term:to_atom(Binding, 'true') | Acc]
                       ).
 
 -spec maybe_bind(atom(), kz_term:atoms()) ->

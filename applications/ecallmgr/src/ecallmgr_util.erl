@@ -257,23 +257,22 @@ get_sip_interface_from_db([FsPath]) ->
 
 -spec map_fs_path_to_sip_profile(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_binary().
 map_fs_path_to_sip_profile(FsPath, NetworkMap) ->
-    SIPInterfaceObj = kz_json:filter(fun({K, _}) ->
-                                             kz_network_utils:verify_cidr(FsPath, K)
-                                     end, NetworkMap),
+    FilterFun = fun({K, _}) -> kz_network_utils:verify_cidr(FsPath, K) end,
+    SIPInterfaceObj = kz_json:filter(FilterFun, NetworkMap),
     case kz_json:get_values(SIPInterfaceObj) of
         {[], _Keys} -> 'undefined';
         {[V|_], _Keys} -> kz_json:get_ne_value(<<"custom_sip_interface">>, V)
     end.
 
 -spec conference_channel_vars(kzd_freeswitch:data()) -> kz_term:proplist().
-conference_channel_vars(Props) ->
-    [conference_channel_var_map(KV) || KV <- conference_channel_vars(Props, [])].
+conference_channel_vars(FSJObj) ->
+    [conference_channel_var_map(KV) || KV <- conference_channel_vars(FSJObj, [])].
 
-conference_channel_vars(Props, Initial) ->
-    lists:foldl(fun conference_channel_vars_fold/2, Initial, Props).
+conference_channel_vars(FSJObj, Initial) ->
+    kz_json:foldl(fun conference_channel_vars_fold/3, Initial, FSJObj).
 
--spec conference_channel_vars_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) -> kz_term:proplist().
-conference_channel_vars_fold({Key, V}, Acc) ->
+-spec conference_channel_vars_fold(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
+conference_channel_vars_fold(Key, V, Acc) ->
     case lists:member(Key, ?CONFERENCE_VARS) of
         'true' -> [{Key, V} | Acc];
         'false' -> Acc
@@ -287,12 +286,12 @@ conference_channel_var_map({Key, Value}=KV) ->
     end.
 
 -spec custom_application_vars(kzd_freeswitch:data()) -> kz_term:proplist().
-custom_application_vars(Props) ->
-    lists:map(fun application_var_map/1, custom_application_vars(Props, [])).
+custom_application_vars(FSJObj) ->
+    lists:map(fun application_var_map/1, custom_application_vars(FSJObj, [])).
 
--spec custom_application_vars(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
-custom_application_vars(Props, Initial) ->
-    CCVs = lists:foldl(fun custom_application_vars_fold/2, Initial, Props),
+-spec custom_application_vars(kzd_freeswitch:data(), kz_term:proplist()) -> kz_term:proplist().
+custom_application_vars(FSJObj, Initial) ->
+    CCVs = kz_json:foldl(fun custom_application_vars_fold/3, Initial, FSJObj),
     application_vars_sort(CCVs).
 
 -spec application_vars_sort(kz_term:proplist()) -> kz_term:proplist().
@@ -302,18 +301,19 @@ application_vars_sort(ApplicationVars) ->
 -spec application_var_sort(tuple(), tuple()) -> boolean().
 application_var_sort({A, _}, {B, _}) -> A =< B.
 
--spec custom_application_vars_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) -> kz_term:proplist().
-custom_application_vars_fold({?GET_CAV(Key), V}, Acc) ->
+-spec custom_application_vars_fold(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
+custom_application_vars_fold(?GET_CAV(Key), V, Acc) ->
     props:set_value(Key, V, Acc);
-custom_application_vars_fold({?CAV(Key), V}, Acc) ->
+custom_application_vars_fold(?CAV(Key), V, Acc) ->
     props:set_value(Key, V, Acc);
-custom_application_vars_fold({?GET_CAV_HEADER(Key), V}, Acc) ->
+custom_application_vars_fold(?GET_CAV_HEADER(Key), V, Acc) ->
     props:insert_value(Key, V, Acc);
-custom_application_vars_fold({?GET_JSON_CAV(Key), V}, Acc) ->
+custom_application_vars_fold(?GET_JSON_CAV(Key), V, Acc) ->
     props:set_value(Key, kz_json:decode(V), Acc);
-custom_application_vars_fold(_KV, Acc) -> Acc.
+custom_application_vars_fold(_K, _V, Acc) -> Acc.
 
--spec application_var_map({kz_term:ne_binary(), kz_term:ne_binary()}) -> {kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()}.
+-spec application_var_map({kz_term:ne_binary(), kz_term:ne_binary()}) ->
+                                 {kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()}.
 application_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
     {Key, binary:split(Serialized, <<"|:">>, ['global'])};
 application_var_map({Key, Other}) -> {Key, Other}.

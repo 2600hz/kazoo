@@ -241,7 +241,7 @@ fs_node(Srv) ->
         Else -> Else
     end.
 
--spec find_srv(fs_node()) -> pid().
+-spec find_srv(fs_node()) -> kz_term:api_pid().
 find_srv(Pid) when is_pid(Pid) -> Pid;
 find_srv(Node) when is_binary(Node) -> find_srv(kz_term:to_atom(Node));
 find_srv(Node) when is_atom(Node) ->
@@ -266,6 +266,10 @@ fetch_timeout(_Node) ->
 %%------------------------------------------------------------------------------
 -spec init([atom() | kz_json:object() | kz_term:proplist()]) -> {'ok', state()}.
 init([Node, Info, Options]) ->
+    init(Node, Info, Options).
+
+-spec init(atom(), kz_json:object(), kz_term:proplist()) -> {'ok', state()}.
+init(Node, Info, Options) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(Node),
     process_flag('priority', 'high'), %% Living dangerously!
@@ -434,7 +438,7 @@ run_start_cmds(Node, Info, Options, Parent, Cmds) when is_atom(Node) ->
         [] -> sync(Parent);
         'false' ->
             lager:debug("failed to run start commands, retrying"),
-            run_start_cmds(Node, Options, Parent);
+            run_start_cmds(Node, Info, Options, Parent);
         Errs ->
             print_api_responses(Errs),
             sync(Parent)

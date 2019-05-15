@@ -76,7 +76,7 @@
 -type insert_at_options() :: 'now' | 'head' | 'tail' | 'flush'.
 
 -record(state, {node :: atom()
-               ,call_id :: kz_term:ne_binary()
+               ,call_id :: kz_term:api_ne_binary()
                ,command_q = queue:new() :: queue:queue()
                ,current_app :: kz_term:api_ne_binary()
                ,current_cmd :: kz_term:api_object()
@@ -92,10 +92,9 @@
                ,controller_q :: kz_term:api_ne_binary()
                ,controller_p :: kz_term:api_pid()
                ,control_q :: kz_term:api_ne_binary()
-               ,initial_ccvs :: kz_json:object()
+               ,initial_ccvs :: kz_json:api_object()
                ,node_down_tref :: kz_term:api_reference()
                ,current_cmd_uuid :: kz_term:api_binary()
-               ,options :: kz_term:proplist()
                ,event_uuids = [] :: kz_term:ne_binaries()
                ,control_ctx = #{} :: map()
                }).
@@ -212,7 +211,7 @@ init_control(Pid, #{node := Node
             call_control_ready(State),
             gen_server:enter_loop(?MODULE, [], State);
         _Other ->
-            catch(ExitFun(Payload)),
+    catch(ExitFun(Payload)),
             lager:debug("callback doesn't want to proceed")
     catch
         _Ex:_Err:_Stacktrace ->
@@ -716,7 +715,7 @@ set_control_info(UUID, #state{node=Node
                          ,";"
                          ,?SET_CCV(<<"Fetch-ID">>, FetchId)
                          ]),
-    freeswitch:api(Node, Cmd, Arg),
+    _ = freeswitch:api(Node, Cmd, Arg),
     %% freeswitch:sync_channel(Node, ReplacedBy),
     'ok'.
 
@@ -1178,11 +1177,11 @@ handle_direct(JObj, #state{fetch_id=FetchId
     end.
 
 -spec handle_sync(kz_json:object(), state()) ->
-                             {'noreply', state()}.
+                         {'noreply', state()}.
 handle_sync(JObj, #state{fetch_id=FetchId
-                            ,node=_Node
-                            ,call_id=_CallId
-                            }=State) ->
+                        ,node=_Node
+                        ,call_id=_CallId
+                        }=State) ->
     case kz_call_event:custom_channel_var(JObj, <<"Fetch-ID">>) of
         FetchId -> {'noreply', State};
         New -> {'noreply', State#state{fetch_id=New}}

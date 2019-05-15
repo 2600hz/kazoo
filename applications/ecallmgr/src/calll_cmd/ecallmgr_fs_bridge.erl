@@ -113,15 +113,9 @@ handle_ringback(DP, Node, UUID, _Channel, JObj) ->
 maybe_early_media(DP, _Node, _UUID, _Channel, JObj) ->
     Endpoints = kz_json:get_list_value(<<"Endpoints">>, JObj, []),
     case ecallmgr_util:get_dial_separator(JObj, Endpoints) of
-        ?SEPARATOR_SIMULTANEOUS ->
-            [{"application", <<"ring_ready">>}
-             |DP
-            ];
-        ?SEPARATOR_ENTERPRISE ->
-            [{"application", <<"ring_ready">>}
-             |DP
-            ];
-        _ -> DP
+        ?SEPARATOR_SINGLE -> DP;
+        _Separator ->
+            [{"application", <<"ring_ready">>} | DP]
     end.
 
 -spec handle_hold_media(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().

@@ -47,7 +47,7 @@ init() ->
 
 -spec channel_create(map()) -> any().
 channel_create(#{node := Node, call_id := UUID, payload := JObj}) ->
-    maybe_authorize_channel(Node, UUID, JObj),
+    _ = maybe_authorize_channel(Node, UUID, JObj),
     ecallmgr_fs_channel:new(Node, UUID, JObj).
 
 -spec channel_destroy(map()) -> any().

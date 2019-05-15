@@ -8,7 +8,7 @@ BASE_BRANCH := $(shell cat $(ROOT)/.base_branch)
 
 ## list files changed for more focused checks
 ifeq ($(strip $(CHANGED)),)
-	CHANGED := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts)
+	CHANGED := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts doc)
 else
 	CHANGED := $(CHANGED)
 endif

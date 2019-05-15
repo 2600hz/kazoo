@@ -13,8 +13,17 @@
 
 -include("ecallmgr.hrl").
 
+-type attended_resp() :: {kz_term:ne_binary(), kz_term:ne_binary(), atom(), kz_term:proplist()}.
+-type attended_resp(Node) :: {kz_term:ne_binary(), kz_term:ne_binary(), Node, kz_term:proplist()}.
+
+-type blind_resp() :: [{kz_term:ne_binary(), kz_term:ne_binary()}].
+
+-export_type([attended_resp/0
+             ,blind_resp/0
+             ]).
+
 -spec attended(Node, kz_term:ne_binary(), kz_json:object()) ->
-                      {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), Node, kz_term:proplist()}
+                      attended_resp(Node)
                           when Node :: atom().
 attended(Node, UUID, JObj) ->
     TransferTo = kz_json:get_ne_binary_value(<<"Transfer-To">>, JObj),
@@ -46,8 +55,7 @@ attended(Node, UUID, JObj) ->
     ,[{"hold-bleg", "true"}]
     }.
 
--spec blind(atom(), kz_term:ne_binary(), kz_json:object()) ->
-                   [{kz_term:ne_binary(), kz_term:ne_binary()}].
+-spec blind(atom(), kz_term:ne_binary(), kz_json:object()) -> blind_resp().
 blind(Node, UUID, JObj) ->
     TransferTo = kz_json:get_ne_binary_value(<<"Transfer-To">>, JObj),
 
