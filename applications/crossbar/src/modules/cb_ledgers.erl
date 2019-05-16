@@ -159,10 +159,7 @@ validate(Context, ?TOTAL) ->
             crossbar_doc:handle_datamgr_errors(Reason, ?TOTAL, Context);
         {'ok', Units} ->
             JObj = kz_json:from_list(
-                     [{<<"amount">>
-                      ,kz_currency:units_to_dollars(Units)
-                      }
-                     ]
+                     [{<<"amount">>, kz_currency:units_to_dollars(Units)}]
                     ),
             crossbar_doc:handle_json_success(JObj, Context)
     end;
@@ -219,7 +216,6 @@ put(Context, Action) ->
 
     Amount = kz_json:get_number_value(<<"amount">>, ReqData, 0),
     Units = kz_currency:dollars_to_units(Amount),
-    Dollars = kz_currency:units_to_dollars(Units),
 
     Setters =
         props:filter_empty(
@@ -250,9 +246,6 @@ put(Context, Action) ->
            }
           ,{fun kz_ledger:set_metadata/2
            ,kz_json:get_ne_json_value(<<"metadata">>, ReqData, kz_json:new())
-           }
-          ,{fun kz_ledger:set_dollar_amount/2
-           ,Dollars
            }
           ,{fun kz_ledger:set_unit_amount/2
            ,Units
