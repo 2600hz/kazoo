@@ -185,17 +185,26 @@ db_list_all_fold({_Tag, Server}, {Options, DBs}) ->
     {'ok', DBList} = db_list(Server, Options),
     {Options, {'ok', lists:usort(DBs ++ DBList)}}.
 
--spec db_view_update(map(), kz_term:ne_binary(), views_listing(), boolean()) -> boolean().
+-spec db_view_update(map(), kz_term:ne_binary(), views_listing(), boolean()) ->
+                            boolean() |
+                            {'error', 'db_not_found'}.
 db_view_update(#{}=Map, DbName, Views, Remove) ->
     Others = maps:get('others', Map, []),
-    do_db_view_update(Map, DbName, Views, Remove)
-        andalso lists:all(fun({_Tag, M1}) ->
-                                  do_db_view_update(#{server => M1}, DbName, Views, Remove)
-                          end
-                         ,Others
-                         ).
+    case do_db_view_update(Map, DbName, Views, Remove) of
+        'true' ->
+            lists:all(fun({_Tag, M1}) ->
+                              do_db_view_update(#{server => M1}, DbName, Views, Remove) =:= 'true'
+                      end
+                     ,Others
+                     );
+        FalseError ->
+            FalseError
+    end.
 
--spec do_db_view_update(map(), kz_term:ne_binary(), views_listing(), boolean()) -> boolean().
+
+-spec do_db_view_update(map(), kz_term:ne_binary(), views_listing(), boolean()) ->
+                               boolean() |
+                               {'error', 'db_not_found'}.
 do_db_view_update(#{server := {App, Conn}}=Server, Db, NewViews, Remove) ->
     case kzs_view:all_design_docs(Server, Db, ['include_docs']) of
         {'ok', JObjs} ->
@@ -208,12 +217,12 @@ do_db_view_update(#{server := {App, Conn}}=Server, Db, NewViews, Remove) ->
                 'true' ->
                     add_update_remove_views(Server, Db, [], NewViews, Remove);
                 'false' ->
-                    lager:error("error fetching current views for db ~s", [Db]),
-                    'true'
+                    lager:error("error fetching current views for db ~s: db_not_found", [Db]),
+                    {'error', 'db_not_found'}
             end
     end.
 
--spec add_update_remove_views(map(), kz_term:ne_binary(), views_listing(), views_listing(), boolean()) -> 'true'.
+-spec add_update_remove_views(map(), kz_term:ne_binary(), views_listing(), views_listing(), boolean()) -> boolean().
 add_update_remove_views(Server, Db, CurrentViews, NewViews, ShouldRemoveDangling) ->
     Current = sets:from_list([Id || {Id, _} <- CurrentViews]),
     New = sets:from_list([Id || {Id, _} <- NewViews]),

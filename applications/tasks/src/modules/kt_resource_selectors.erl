@@ -266,5 +266,5 @@ generate_selector_doc(AuthAccountId, Resource, Name, Selector, Value, Start, Sto
 -spec init_db(kz_term:ne_binary()) -> 'ok'.
 init_db(Db) when is_binary(Db) ->
     _ = kz_datamgr:db_create(Db),
-    kapps_maintenance:refresh(Db),
+    _ = kapps_maintenance:refresh(Db),
     'ok'.

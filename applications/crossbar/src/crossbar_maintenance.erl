@@ -521,7 +521,7 @@ db_exists(Database, ShouldRetry) ->
         'true' -> 'true';
         'false' when ShouldRetry ->
             io:format("db '~s' doesn't exist~n", [Database]),
-            kapps_maintenance:refresh(Database),
+            _ = kapps_maintenance:refresh(Database),
             db_exists(Database, 'false');
         'false' ->
             throw(kz_json:from_list([{<<"error">>, <<"database not ready">>}
