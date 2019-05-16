@@ -351,15 +351,12 @@ account_summary(Context, MODB) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec summary_to_dollars(kz_json:object() | kz_json:objects()) -> kz_json:object().
-summary_to_dollars(Summaries) when is_list(Summaries) ->
-    [summary_to_dollars(Summary) || Summary <- Summaries];
+-spec summary_to_dollars(kz_json:object()) -> kz_json:object().
 summary_to_dollars(Summary) ->
-    kz_json:expand(
-      kz_json:from_list(
-        [{Paths, maybe_convert_units(lists:last(Paths), Paths, Value)}
-         || {Paths, Value} <- kz_json:to_proplist(kz_json:flatten(Summary))
-        ])).
+    ConvertedUnits = [{Paths, maybe_convert_units(lists:last(Paths), Paths, Value)}
+                      || {Paths, Value} <- kz_json:to_proplist(kz_json:flatten(Summary))
+                     ],
+    kz_json:expand(kz_json:from_list(ConvertedUnits)).
 
 -spec maybe_convert_units(kz_term:ne_binary(), kz_json:keys(), kz_currency:units() | T) ->
                                  kz_currency:dollars() | T when T::any().
