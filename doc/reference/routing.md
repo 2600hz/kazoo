@@ -324,7 +324,7 @@ This call was authorized because it is an outbound tollfree call
 
 ## How to set up inbound calls per DID limit
 
-Ensure authz enabled including authz_local_resources.
+Ensure authz is enabled including the authz_local_resources.
 Add "inbound_channels_per_did_rules" flag to account's limits doc:
 
 ```
