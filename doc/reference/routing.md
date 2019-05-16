@@ -335,7 +335,7 @@ Add "inbound_channels_per_did_rules" flag to account's limits doc:
    }
 ```
 
-In case DID number will match one of provided regular expressions, simultaneous calls will be limited to configured amount.
+In the case where the DID number matches one of provided regular expressions in the rule keys, the number of simultaneous calls will be limited to the configured amount specified in matching rule's value.
 No match found will result unlimited simultaneous calls for this DID.
 
 -----
