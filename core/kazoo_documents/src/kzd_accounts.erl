@@ -63,7 +63,7 @@
         ,path_enabled/0
         ,is_expired/1
 
-        ,tree/1, tree/2, set_tree/2
+        ,tree/1, tree/2, set_tree/2, path_tree/0
         ,default_timezone/0
         ,notification_preference/1, set_notification_preference/2, path_notification_preference/0
         ,allow_number_additions/1, set_allow_number_additions/2, path_allow_number_additions/0
@@ -787,6 +787,10 @@ tree(JObj) ->
 -spec tree(doc(), Default) -> kz_term:ne_binaries() | Default.
 tree(JObj, Default) ->
     kz_json:get_list_value([<<"pvt_tree">>], JObj, Default).
+
+-spec path_tree() -> kz_json:path().
+path_tree() ->
+    [<<"pvt_tree">>].
 
 -spec set_tree(doc(), kz_term:ne_binaries()) -> doc().
 set_tree(JObj, Tree) ->

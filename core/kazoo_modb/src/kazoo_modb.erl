@@ -446,7 +446,7 @@ create(AccountMODb) ->
 do_create(AccountMODb, 'true') ->
     lager:info("modb ~p is exists, just refreshing views...", [AccountMODb]),
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    refresh_views(EncodedMODb),
+    _ = refresh_views(EncodedMODb),
     run_routines(AccountMODb),
     'true';
 do_create(AccountMODb, 'false') ->
@@ -454,7 +454,7 @@ do_create(AccountMODb, 'false') ->
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     case kz_datamgr:db_create(EncodedMODb) of
         'true' ->
-            refresh_views(EncodedMODb),
+            _ = refresh_views(EncodedMODb),
             run_routines(AccountMODb),
             'true';
         _ -> 'false'
@@ -467,12 +467,11 @@ is_account_deleted(AccountId) ->
         {'error', _} -> 'true'
     end.
 
--spec refresh_views(kz_term:ne_binary()) -> 'ok'.
+-spec refresh_views(kz_term:ne_binary()) -> boolean() | {'error', 'invalid_db_name' | 'db_not_found'}.
 refresh_views(AccountMODb) ->
     lager:debug("refresh views on modb ~p", [AccountMODb]),
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    _ = kz_datamgr:refresh_views(EncodedMODb),
-    'ok'.
+    kz_datamgr:refresh_views(EncodedMODb).
 
 %%------------------------------------------------------------------------------
 %% @doc

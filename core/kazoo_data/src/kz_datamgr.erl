@@ -423,12 +423,14 @@ db_view_cleanup(DbName) ->
 
 -spec db_view_update(kz_term:ne_binary(), views_listing()) ->
                             boolean() |
+                            {'error', 'db_not_found'} |
                             {'error', 'invalid_db_name'}.
 db_view_update(DbName, Views) ->
     db_view_update(DbName, Views, 'false').
 
 -spec db_view_update(kz_term:ne_binary(), views_listing(), boolean()) ->
                             boolean() |
+                            {'error', 'db_not_found'} |
                             {'error', 'invalid_db_name'}.
 db_view_update(DbName, Views0, Remove) when ?VALID_DBNAME(DbName) ->
     case lists:keymap(fun maybe_adapt_multilines/1, 2, Views0) of
@@ -1790,8 +1792,36 @@ register_views_from_folder(App, Folder) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec refresh_views(kz_term:ne_binary()) -> boolean() | {'error', 'invalid_db_name'}.
+-spec refresh_views(kz_term:ne_binary()) ->
+                           boolean() |
+                           {'error', 'db_not_found' | 'invalid_db_name'}.
 refresh_views(DbName) when ?VALID_DBNAME(DbName) ->
+    maybe_refresh_system_db(DbName, lists:member(DbName, ?KZ_SYSTEM_DBS));
+refresh_views(DbName) ->
+    case maybe_convert_dbname(DbName) of
+        {'ok', Db} -> refresh_views(Db);
+        {'error', _}=E -> E
+    end.
+
+-spec maybe_refresh_system_db(kz_term:ne_binary(), boolean()) ->
+                                     boolean() |
+                                     {'error', 'db_not_found' | 'invalid_db_name'}.
+maybe_refresh_system_db(DbName, 'false') ->
+    do_refresh_views(DbName);
+maybe_refresh_system_db(DbName, 'true') ->
+    case kzs_db:db_exists(kzs_plan:plan(DbName), DbName) of
+        'true' ->
+            do_refresh_views(DbName);
+        'false' ->
+            lager:info("creating system database ~s", [DbName]),
+            kzs_db:db_create(kzs_plan:plan(DbName), DbName, []),
+            do_refresh_views(DbName)
+    end.
+
+-spec do_refresh_views(kz_term:ne_binary()) ->
+                              boolean() |
+                              {'error', 'db_not_found' | 'invalid_db_name'}.
+do_refresh_views(DbName) ->
     suppress_change_notice(),
     Classification = kzs_util:db_classification(DbName),
     lager:debug("updating views for db ~s:~s", [Classification, DbName]),
@@ -1807,15 +1837,13 @@ refresh_views(DbName) when ?VALID_DBNAME(DbName) ->
                 lager:debug("~s:~s views updated", [Classification, DbName]),
                 kzs_publish:publish_db(DbName, 'edited');
             'false' ->
-                lager:debug("~s:~s no views updated", [Classification, DbName])
+                lager:debug("~s:~s no views updated", [Classification, DbName]);
+            {'error', 'db_not_found'}=Error ->
+                lager:debug("~s: db '~s' not found", [Classification, DbName]),
+                Error
         end,
     enable_change_notice(),
-    Updated;
-refresh_views(DbName) ->
-    case maybe_convert_dbname(DbName) of
-        {'ok', Db} -> refresh_views(Db);
-        {'error', _}=E -> E
-    end.
+    Updated.
 
 -spec view_definitions(kz_term:ne_binary(), atom() | kz_term:ne_binary()) -> views_listing().
 view_definitions(DbName, Classification) ->

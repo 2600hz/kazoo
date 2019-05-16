@@ -40,7 +40,6 @@
 -export([get_call_termination_reason/1]).
 -export([get_view_json/1, get_view_json/2]).
 -export([get_views_json/2]).
--export([update_views/2, update_views/3]).
 -export([add_aggregate_device/2]).
 -export([rm_aggregate_device/2]).
 -export([get_destination/3]).
@@ -520,19 +519,6 @@ get_view_json(Path) ->
     {'ok', Bin} = file:read_file(Path),
     JObj = kz_json:decode(Bin),
     {kz_doc:id(JObj), JObj}.
-
-%% @equiv update_views(Db, Views, 'false')
--spec update_views(kz_term:ne_binary(), kz_datamgr:views_listing()) -> boolean().
-update_views(Db, Views) ->
-    update_views(Db, Views, 'false').
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec update_views(kz_term:ne_binary(), kz_datamgr:views_listing(), boolean()) -> boolean().
-update_views(Db, Views, ShouldRemove) ->
-    kz_term:is_true(kz_datamgr:db_view_update(Db, Views, ShouldRemove)).
 
 %%------------------------------------------------------------------------------
 %% @doc
