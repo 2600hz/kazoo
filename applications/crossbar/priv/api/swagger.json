@@ -25280,7 +25280,7 @@
             "properties": {
                 "content_length": {
                     "description": "Length, in bytes, of the file",
-                    "maximum": 5242880,
+                    "maximum": 11534336,
                     "minimum": 1,
                     "type": "integer"
                 },
