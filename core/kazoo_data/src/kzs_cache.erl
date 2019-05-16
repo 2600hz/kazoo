@@ -296,16 +296,18 @@ expires_policy_value(DbName, Classification, Type) ->
         Timeout -> kz_term:to_integer(Timeout)
     end.
 
--spec flush_cache_doc(kz_term:ne_binary() | db(), kz_term:ne_binary() | kz_json:object()) -> 'ok'.
+-spec flush_cache_doc(kz_term:ne_binary() | db(), kz_term:api_ne_binary() | kz_json:object()) -> 'ok'.
 flush_cache_doc(#db{name=Name}, Doc) ->
     flush_cache_doc(#db{name=Name}, Doc, []);
 flush_cache_doc(Db, Doc) when is_binary(Db) ->
     flush_cache_doc(Db, Doc, []).
 
--spec flush_cache_doc(kz_term:ne_binary() | db(), kz_term:ne_binary() | kz_json:object(), kz_term:proplist()) -> 'ok'.
+-spec flush_cache_doc(kz_term:ne_binary() | db(), kz_term:api_ne_binary() | kz_json:object(), kz_term:proplist()) -> 'ok'.
+flush_cache_doc(_Db, 'undefined', _Options) ->
+    lager:debug("failed to supply a doc id for flushing, ignoring");
 flush_cache_doc(#db{name=Name}, Doc, Options) ->
     flush_cache_doc(kz_term:to_binary(Name), Doc, Options);
-flush_cache_doc(DbName, DocId, _Options) when is_binary(DocId) ->
+flush_cache_doc(DbName, <<DocId/binary>>, _Options) ->
     kz_cache:erase_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId));
 flush_cache_doc(DbName, Doc, Options) ->
     flush_cache_doc(DbName, kz_doc:id(Doc), Options).
