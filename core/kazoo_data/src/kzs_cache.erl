@@ -303,6 +303,8 @@ flush_cache_doc(Db, Doc) when is_binary(Db) ->
     flush_cache_doc(Db, Doc, []).
 
 -spec flush_cache_doc(kz_term:ne_binary() | db(), kz_term:ne_binary() | kz_json:object(), kz_term:proplist()) -> 'ok'.
+flush_cache_doc(_, 'undefined', _) ->
+    lager:error("Invalid doc"), 'ok';
 flush_cache_doc(#db{name=Name}, Doc, Options) ->
     flush_cache_doc(kz_term:to_binary(Name), Doc, Options);
 flush_cache_doc(DbName, DocId, _Options) when is_binary(DocId) ->
