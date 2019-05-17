@@ -53,7 +53,7 @@ handle(Data, Call) ->
         andalso maybe_correct_target(Target, kz_json:get_ne_binary_value(<<"group_id">>, Data), Call)
     of
         'true' ->
-            Flow = kz_json:from_list([{<<"data">>, build_data(Target, Call)}
+            Flow = kz_json:from_list([{<<"data">>, build_data(Target, Call, Data)}
                                      ,{<<"module">>, <<"eavesdrop">>}
                                      ,{<<"children">>, kz_json:new()}
                                      ]),
@@ -72,34 +72,40 @@ fields_to_check() ->
 
 -type target() :: {'ok', kz_term:ne_binary(), kz_term:ne_binary()} | 'error'.
 
--spec build_data(target(), kapps_call:call()) -> kz_json:object().
-build_data('error', _Call) -> kz_json:new();
-build_data({'ok', TargetId, <<"device">>}, Call) ->
-    build_flow_data(Call, [{<<"device_id">>, TargetId}]);
-build_data({'ok', TargetId, <<"user">>}, Call) ->
-    build_flow_data(Call, [{<<"user_id">>, TargetId}]);
-build_data({'ok', TargetId, _TargetType}, Call) ->
+-spec build_data(target(), kapps_call:call(), kz_json:object()) -> kz_json:object().
+build_data('error', _Call, _Data) -> kz_json:new();
+build_data({'ok', TargetId, <<"device">>}, Call, Data) ->
+    build_flow_data(Call, [{<<"device_id">>, TargetId}], Data);
+build_data({'ok', TargetId, <<"user">>}, Call, Data) ->
+    build_flow_data(Call, [{<<"user_id">>, TargetId}], Data);
+build_data({'ok', TargetId, _TargetType}, Call, Data) ->
     lager:debug("unknown target type ~s for ~s", [TargetId, _TargetType]),
-    build_flow_data(Call, []).
+    build_flow_data(Call, [], Data).
 
--spec build_flow_data(kapps_call:call(), kz_term:proplist()) -> kz_json:object().
-build_flow_data(Call, Data) ->
-    build_flow_data(Call, Data, kapps_call:authorizing_type(Call)).
+-spec build_flow_data(kapps_call:call(), kz_term:proplist(), kz_json:object()) -> kz_json:object().
+build_flow_data(Call, DataOut, Data) ->
+    build_flow_data(Call, DataOut, kapps_call:authorizing_type(Call), Data).
 
--spec build_flow_data(kapps_call:call(), kz_term:proplist(), kz_term:api_binary()) -> kz_json:object().
-build_flow_data(Call, Data, AuthorizingType)
+-spec build_flow_data(kapps_call:call(), kz_term:proplist(), kz_term:api_binary(), kz_json:object()) -> kz_json:object().
+build_flow_data(Call, DataOut, AuthorizingType, Data)
   when AuthorizingType =:= <<"device">>;
        AuthorizingType =:= <<"mobile">> ->
-    kz_json:from_list([{<<"approved_device_id">>, kapps_call:authorizing_id(Call)}
-                       | Data
-                      ]);
-build_flow_data(Call, Data, <<"user">>) ->
-    kz_json:from_list([{<<"approved_user_id">>, kapps_call:authorizing_id(Call)}
-                       | Data
-                      ]);
-build_flow_data(_Call, Data, _AuthorizingType) ->
+    build_init_whisper([{<<"approved_device_id">>, kapps_call:authorizing_id(Call)}
+                   | DataOut
+                  ], Data);
+build_flow_data(Call, DataOut, <<"user">>, Data) ->
+    build_init_whisper([{<<"approved_user_id">>, kapps_call:authorizing_id(Call)}
+                   | DataOut
+                  ], Data);
+build_flow_data(_Call, DataOut, _AuthorizingType, Data) ->
     lager:debug("unhandled authorizing type ~s", [_AuthorizingType]),
-    kz_json:from_list(Data).
+    build_init_whisper(DataOut, Data).
+
+-spec build_init_whisper(kz_term:proplist(), kz_json:object()) -> kz_json:object().
+build_init_whisper(DataOut, Data) ->
+    kz_json:from_list([{<<"init_whisper_mode">>, kz_json:get_ne_binary_value(<<"init_whisper_mode">>, Data)}
+                       | DataOut
+                      ]).
 
 -spec get_target_for_extension(kz_term:ne_binary(), kapps_call:call()) ->
                                       target().

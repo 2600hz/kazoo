@@ -44,7 +44,7 @@ handle(Data, Call) ->
             'true' ->
                 case find_sip_endpoints(Data, Call) of
                     [] -> no_users(Call);
-                    Usernames -> eavesdrop_channel(Usernames, Call)
+                    Usernames -> eavesdrop_channel(Usernames, Call, Data)
                 end;
             'false' -> no_permission_to_eavesdrop(Call)
         end,
@@ -62,15 +62,15 @@ fields_to_check() ->
 maybe_allowed_to_eavesdrop(Data, Call) ->
     cf_util:check_value_of_fields(fields_to_check(), 'false', Data, Call).
 
--spec eavesdrop_channel(kz_term:ne_binaries(), kapps_call:call()) -> 'ok'.
-eavesdrop_channel(Usernames, Call) ->
+-spec eavesdrop_channel(kz_term:ne_binaries(), kapps_call:call(), kz_json:object()) -> 'ok'.
+eavesdrop_channel(Usernames, Call, Data) ->
     case cf_util:find_channels(Usernames, Call) of
         [] -> no_channels(Call);
-        Channels -> eavesdrop_a_channel(Channels, Call)
+        Channels -> eavesdrop_a_channel(Channels, Call, Data)
     end.
 
--spec eavesdrop_a_channel(kz_json:objects(), kapps_call:call()) -> 'ok'.
-eavesdrop_a_channel(Channels, Call) ->
+-spec eavesdrop_a_channel(kz_json:objects(), kapps_call:call(), kz_json:object()) -> 'ok'.
+eavesdrop_a_channel(Channels, Call, Data) ->
     MyUUID = kapps_call:call_id(Call),
     MyMediaServer = kapps_call:switch_nodename(Call),
 
@@ -88,7 +88,7 @@ eavesdrop_a_channel(Channels, Call) ->
             kapps_call_command:redirect_to_node(Contact, kz_json:get_ne_binary_value(<<"node">>, RemoteChannel), Call);
         {[LocalChannel | _Cs], _} ->
             lager:info("found a call (~s) on my media server", [kz_json:get_ne_binary_value(<<"uuid">>, LocalChannel)]),
-            eavesdrop_call(LocalChannel, Call)
+            eavesdrop_call(LocalChannel, Call, Data)
     end.
 
 -type channels() :: {kz_json:objects(), kz_json:objects()}.
@@ -112,11 +112,11 @@ channels_sort(Channel, {MyUUID, MyMediaServer, {Local, Remote}} = Acc) ->
             {MyUUID, MyMediaServer, {Local, [Channel | Remote]}}
     end.
 
--spec eavesdrop_call(kz_json:object(), kapps_call:call()) -> 'ok'.
-eavesdrop_call(Channel, Call) ->
+-spec eavesdrop_call(kz_json:object(), kapps_call:call(), kz_json:object()) -> 'ok'.
+eavesdrop_call(Channel, Call, Data) ->
     UUID = kz_json:get_ne_binary_value(<<"uuid">>, Channel),
     _Answer = kapps_call_command:b_answer(Call),
-    kapps_call_command:send_command(eavesdrop_cmd(UUID), Call),
+    kapps_call_command:send_command(eavesdrop_cmd(UUID, Data), Call),
     lager:info("caller ~s is being eavesdropper", [kapps_call:caller_id_name(Call)]),
     _ = wait_for_eavesdrop_complete(Call),
     cf_exe:stop(Call).
@@ -143,12 +143,16 @@ verify_call_is_active(Call) ->
             lager:debug("failed to get status: ~p", [_E])
     end.
 
--spec eavesdrop_cmd(kz_term:ne_binary()) -> kz_term:proplist().
-eavesdrop_cmd(TargetCallId) ->
-    [{<<"Application-Name">>, <<"eavesdrop">>}
-    ,{<<"Target-Call-ID">>, TargetCallId}
-    ,{<<"Enable-DTMF">>, 'true'}
-    ].
+-spec eavesdrop_cmd(kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
+eavesdrop_cmd(TargetCallId, Data) ->
+    props:filter_undefined(
+        [{<<"Application-Name">>, <<"eavesdrop">>}
+        ,{<<"Target-Call-ID">>, TargetCallId}
+        ,{<<"Enable-DTMF">>, 'true'}
+        %init_whisper_mode: a/b/both
+        ,{<<"Init-Whisper-Mode">>, kz_json:get_ne_binary_value(<<"init_whisper_mode">>, Data)}
+        ]
+    ).
 
 -spec find_sip_endpoints(kz_json:object(), kapps_call:call()) ->
                                 kz_term:ne_binaries().

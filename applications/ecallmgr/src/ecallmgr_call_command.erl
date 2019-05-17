@@ -889,6 +889,7 @@ get_eavesdrop_app(Node, UUID, JObj, Target) ->
 
     _ = ecallmgr_fs_command:set(Node, UUID, build_set_args(SetApi, JObj)),
     _ = ecallmgr_fs_command:export(Node, UUID, Exports),
+    _ = maybe_set_init_whisper_mode(Node, UUID, JObj),
     {<<"eavesdrop">>, Target}.
 
 -type set_headers() :: kz_term:proplist() | [{kz_term:ne_binary(), kz_term:api_binary(), kz_term:ne_binary()},...].
@@ -1755,3 +1756,48 @@ add_page_conference_app(Dialplan, ConferenceName) ->
     [{"application", <<"conference ", ConferenceName/binary>>}
      | Dialplan
     ].
+
+maybe_set_init_whisper_mode(Node, UUID, JObj) ->
+    case kz_json:get_ne_binary_value(<<"Init-Whisper-Mode">>, JObj) of
+        'undefined' -> 'ok';
+        Mode -> set_init_whisper_mode(Node, UUID, Mode)
+    end.
+
+-spec set_init_whisper_mode(atom(), kz_term:ne_binary(), binary())  -> 'ok'.
+set_init_whisper_mode(Node, UUID, Mode) ->
+    case Mode of
+        <<"a">> ->
+            eavesdrop_bridge_both(Node, UUID),
+            eavesdrop_whisper_a(Node, UUID);
+        <<"b">> ->
+            eavesdrop_bridge_both(Node, UUID),
+            eavesdrop_whisper_b(Node, UUID);
+        <<"both">> ->
+            eavesdrop_bridge_both(Node, UUID),
+            eavesdrop_whisper_a(Node, UUID),
+            eavesdrop_whisper_b(Node, UUID);
+        Other ->
+            lager:debug("error bad value of Init-Whisper-Mode: ~p", [Other]),
+            'ok'
+    end.
+
+-spec eavesdrop_bridge_both(atom(), kz_term:ne_binary())  -> 'ok'.
+eavesdrop_bridge_both(Node, UUID) ->
+    _ = ecallmgr_util:send_cmd(Node, UUID, "unset", "eavesdrop_bridge_aleg"),
+    _ = ecallmgr_util:send_cmd(Node, UUID, "set", "eavesdrop_bridge_aleg=true"),
+    _ = ecallmgr_util:send_cmd(Node, UUID, "unset", "eavesdrop_bridge_bleg"),
+    _ = ecallmgr_util:send_cmd(Node, UUID, "set", "eavesdrop_bridge_bleg=true"),
+    'ok'.
+    
+-spec eavesdrop_whisper_a(atom(), kz_term:ne_binary())  -> 'ok'.
+eavesdrop_whisper_a(Node, UUID) ->
+    _ = ecallmgr_util:send_cmd(Node, UUID, "unset", "eavesdrop_whisper_aleg"),
+    _ = ecallmgr_util:send_cmd(Node, UUID, "set", "eavesdrop_whisper_aleg=true"),
+    'ok'.
+
+-spec eavesdrop_whisper_b(atom(), kz_term:ne_binary())  -> 'ok'.
+eavesdrop_whisper_b(Node, UUID) ->
+    _ = ecallmgr_util:send_cmd(Node, UUID, "unset", "eavesdrop_whisper_bleg"),
+    _ = ecallmgr_util:send_cmd(Node, UUID, "set", "eavesdrop_whisper_bleg=true"),
+    'ok'.
+

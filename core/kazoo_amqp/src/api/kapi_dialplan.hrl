@@ -539,6 +539,7 @@
                                         ,<<"Other-Leg">>
                                         ,<<"Continue-On-Fail">>, <<"Continue-On-Cancel">>
                                         ,<<"Move-Channel-If-Necessary">>
+                                        ,<<"Init-Whisper-Mode">>
                                         ]).
 -define(EAVESDROP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                               ,{<<"Event-Name">>, <<"command">>}
