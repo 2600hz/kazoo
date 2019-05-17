@@ -49,8 +49,9 @@ create(API, AccountId, ?NE_BINARY=UUID, ValidateSettings) ->
     create(API, AccountId, storage_doc(UUID), ValidateSettings);
 create(API, AccountId, StorageDoc, ValidateSettings) ->
     StorageURL = storage_url(AccountId, ValidateSettings),
-    RequestHeaders = pqc_cb_api:request_headers(API, [{<<"content-type">>, <<"application/json">>}]),
-    pqc_cb_api:make_request([201, 400]
+    RequestHeaders = pqc_cb_api:request_headers(API, [{"content-type", "application/json"}]),
+    Expectations = [#expectation{response_codes = [201, 400]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:put/3
                            ,StorageURL
                            ,RequestHeaders

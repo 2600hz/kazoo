@@ -479,28 +479,40 @@ load_user(UserId, Context) -> crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPT
 validate_patch(UserId, Context) ->
     crossbar_doc:patch_and_validate(UserId, Context, fun validate_request/2).
 
--spec validate_request(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+-spec validate_request(kz_term:api_ne_binary(), cb_context:context()) -> cb_context:context().
 validate_request(UserId, Context) ->
     Routines = [fun normalize_username/2
                ,fun normalize_emergency_caller_id/2
-               ,fun maybe_import_credintials/2
                 %% check_user_schema will load and merge the current doc as well
                ,fun check_user_schema/2
-                %% this check must have the current doc
-               ,fun maybe_set_identity_secret/2
+
                 %% this check must have the current doc
                ,fun check_username/2
                 %% this check must have the current doc
                ,fun check_hotdesk_id/2
-                %% this check must have the current doc
-               ,fun maybe_rehash_creds/2
+
+               ,fun updates_if_validation_passed/2
                ],
-    lists:foldl(fun(F, C) ->
-                        F(UserId, C)
-                end
+    run_routines(UserId, Context, Routines).
+
+run_routines(UserId, Context, Routines) ->
+    lists:foldl(fun(F, C) -> F(UserId, C) end
                ,Context
                ,Routines
                ).
+
+-spec updates_if_validation_passed(kz_term:api_ne_binary(), cb_context:context()) -> cb_context:context().
+updates_if_validation_passed(UserId, Context) ->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            Routines = [%% this check must have the current doc
+                        fun maybe_set_identity_secret/2
+                        %% this check must have the current doc
+                       ,fun maybe_rehash_creds/2
+                       ],
+            run_routines(UserId, Context, Routines);
+        _ -> Context
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -514,6 +526,7 @@ normalize_username(_UserId, Context) ->
         'undefined' -> Context;
         Username ->
             NormalizedUsername = kz_term:to_lower_binary(Username),
+            lager:debug("normalized '~s' to '~s'", [Username, NormalizedUsername]),
             cb_context:set_req_data(Context, kzd_users:set_username(JObj, NormalizedUsername))
     end.
 
@@ -530,9 +543,8 @@ normalize_emergency_caller_id(_UserId, Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
-
--spec maybe_import_credintials(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-maybe_import_credintials(_UserId, Context) ->
+-spec maybe_import_credentials(kz_term:api_ne_binary(), cb_context:context()) -> cb_context:context().
+maybe_import_credentials(_UserId, Context) ->
     JObj = cb_context:doc(Context),
     case kz_json:get_ne_value(<<"credentials">>, JObj) of
         'undefined' -> Context;
@@ -551,7 +563,7 @@ maybe_import_credintials(_UserId, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec maybe_set_identity_secret(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+-spec maybe_set_identity_secret(kz_term:api_ne_binary(), cb_context:context()) -> cb_context:context().
 maybe_set_identity_secret(_UserId, Context) ->
     case crossbar_auth:has_identity_secret(Context) of
         'true' -> Context;
@@ -565,7 +577,7 @@ maybe_set_identity_secret(_UserId, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec check_username(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+-spec check_username(kz_term:api_ne_binary(), cb_context:context()) -> cb_context:context().
 check_username(UserId, Context) ->
     JObj = cb_context:req_data(Context),
     Username = kzd_users:username(JObj),
@@ -637,7 +649,7 @@ check_hotdesk_id(UserId, Context) ->
             non_unique_hotdesk_id_error(Context, HotdeskId)
     end.
 
--spec is_hotdesk_id_unique(kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary()) -> boolean() | kz_datamgr:data_error().
+-spec is_hotdesk_id_unique(kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary()) -> boolean().
 is_hotdesk_id_unique(AccountDb, UserId, HotdeskId) ->
     ViewOptions = [{'key', HotdeskId}],
     case kz_datamgr:get_results(AccountDb, ?LIST_BY_HOTDESK_ID, ViewOptions) of
@@ -672,9 +684,11 @@ check_user_schema(UserId, Context) ->
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, kzd_users:type()}],
     JObj = kz_json:set_values(Props, cb_context:doc(Context)),
-    maybe_import_credintials('undefined', cb_context:set_doc(Context, JObj));
+    lager:debug("validated new user"),
+    maybe_import_credentials('undefined', cb_context:set_doc(Context, JObj));
 on_successful_validation(UserId, Context) ->
-    maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context, ?TYPE_CHECK_OPTION(kzd_users:type()))).
+    lager:debug("validated existing user ~s", [UserId]),
+    maybe_import_credentials(UserId, crossbar_doc:load_merge(UserId, Context, ?TYPE_CHECK_OPTION(kzd_users:type()))).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -696,7 +710,8 @@ maybe_rehash_creds(_UserId, Context) ->
     case
         {Username =:= CurrentUsername
         ,kz_term:is_empty(Username)
-        ,kz_term:is_empty(Password)}
+        ,kz_term:is_empty(Password)
+        }
     of
         {'false', 'false', 'false'} ->
             lager:debug("requested different username (new: ~s current: ~s) with a password"
@@ -737,8 +752,8 @@ maybe_rehash_creds(_UserId, Context) ->
 -spec maybe_generated_password_hash(boolean(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 maybe_generated_password_hash('false', _Username, Context) ->
     Msg = kz_json:from_list(
-            [{<<"message">>, <<"The password must be provided when updating the user name">>}
-            ]),
+            [{<<"message">>, <<"The password must be provided when updating the user name">>}]
+           ),
     cb_context:add_validation_error(<<"password">>, <<"required">>, Msg, Context);
 maybe_generated_password_hash('true', Username, Context) ->
     rehash_creds(Username, generate_password(), Context).
@@ -746,8 +761,8 @@ maybe_generated_password_hash('true', Username, Context) ->
 -spec maybe_generated_username_hash(boolean(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 maybe_generated_username_hash('false', _Password, Context) ->
     Msg = kz_json:from_list(
-            [{<<"message">>, <<"The username must be provided when updating the password">>}
-            ]),
+            [{<<"message">>, <<"The username must be provided when updating the password">>}]
+           ),
     cb_context:add_validation_error(<<"username">>, <<"required">>, Msg, Context);
 maybe_generated_username_hash('true', Password, Context) ->
     Username = generate_username(),
@@ -793,12 +808,13 @@ rehash_creds(Username, Password, Context) ->
                              ),
     case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"reset_identity_secret_on_rehash">>, 'true')
         andalso (CurrentMD5 =/= MD5
-                 orelse CurrentSHA1 =/= SHA1)
+                 orelse CurrentSHA1 =/= SHA1
+                )
     of
         'false' ->
             cb_context:set_doc(Context, kz_json:delete_key(<<"password">>, JObj));
         'true' ->
-            lager:debug("resetting identity secret", []),
+            lager:debug("resetting identity secret"),
             crossbar_auth:reset_identity_secret(
               cb_context:set_doc(Context, kz_json:delete_key(<<"password">>, JObj))
              )

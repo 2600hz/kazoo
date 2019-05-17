@@ -405,7 +405,6 @@ get_resp_header(RespHeader, RespHeaders, Default) ->
         'false' -> Default
     end.
 
-
 -type part() :: {binary(), kz_term:proplist()}.
 -type parts() :: [part()].
 

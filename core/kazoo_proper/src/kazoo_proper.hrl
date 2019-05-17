@@ -28,5 +28,20 @@
        ,_ = data:error(pqc_log:log_info(), Fmt, Args)
        ).
 
+-type expected_codes() :: [response_code()].
+-type expected_header() :: {string(), string() | {'match', string()}}.
+-type expected_headers() :: [expected_header()].
+
+-type response_code() :: 200..600.
+-type response_headers() :: [{string(), string()}].
+-type request_headers() :: [{string(), string()}].
+
+-record(expectation, {response_codes = [] :: expected_codes()
+                     ,response_headers = [] :: expected_headers()
+                     }
+       ).
+-type expectation() :: #expectation{}.
+-type expectations() :: [expectation()].
+
 -define(KAZOO_PROPER_HRL, 'true').
 -endif.

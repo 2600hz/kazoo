@@ -33,12 +33,13 @@ summary(API, AccountId) ->
 -spec summary(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 summary(API, AccountId, Accept) ->
     URL = cdrs_url(AccountId),
-    RequestHeaders = pqc_cb_api:request_headers(API, [{<<"accept">>, Accept}]),
+    Headers = [{"accept", kz_term:to_list(Accept)}],
+    RequestHeaders = pqc_cb_api:request_headers(API, Headers),
 
-    Expectations = [#{'response_codes' => [200]
-                     ,'response_headers' => [{"content-type", kz_term:to_list(Accept)}]
-                     }
-                   ,#{'response_codes' => [204]}
+    Expectations = [#expectation{response_codes = [200]
+                                ,response_headers = [{"content-type", kz_term:to_list(Accept)}]
+                                }
+                   ,#expectation{response_codes = [204]}
                    ],
 
     pqc_cb_api:make_request(Expectations
@@ -55,12 +56,12 @@ paginated_summary(API, AccountId) ->
                                kz_json:objects().
 paginated_summary(API, AccountId, OwnerId) ->
     URL = paginated_cdrs_url(AccountId, OwnerId, ?CDRS_PER_MONTH div 2),
-    RequestHeaders = pqc_cb_api:request_headers(API, []),
+    RequestHeaders = pqc_cb_api:request_headers(API),
 
-    Expectations = [#{'response_codes' => [200]
-                     ,'response_headers' => [{"content-type", "application/json"}]
-                     }
-                   ,#{'response_codes' => [204]}
+    Expectations = [#expectation{response_codes = [200]
+                                ,response_headers = [{"content-type", "application/json"}]
+                                }
+                   ,#expectation{response_codes = [204]}
                    ],
 
     collect_paginated_results(URL, URL, RequestHeaders, Expectations, []).
@@ -93,11 +94,11 @@ handle_paginated_results(BaseURL, RequestHeaders, Expectations, Collected, RespJ
     end.
 
 update_request_id(RequestHeaders) ->
-    NewRequestId = case re:split(props:get_value(<<"x-request-id">>, RequestHeaders), "-") of
+    NewRequestId = case re:split(kz_http_util:get_resp_header("x-request-id", RequestHeaders), "-") of
                        [Id, Now] -> iolist_to_binary([Id, "-", Now, "-", "1"]);
                        [Id, Now, Nth] -> iolist_to_binary([Id, "-", Now, "-", incr_nth(Nth)])
                    end,
-    props:set_value(<<"x-request-id">>, kz_term:to_list(NewRequestId), RequestHeaders).
+    [{"x-request-id", kz_term:to_list(NewRequestId)} | RequestHeaders].
 
 incr_nth(Nth) ->
     kz_term:to_integer(Nth) + 1 + $0.
@@ -106,7 +107,7 @@ incr_nth(Nth) ->
 fetch(API, AccountId, CDRId) ->
     URL = cdr_url(AccountId, CDRId),
     RequestHeaders = pqc_cb_api:request_headers(API),
-    pqc_cb_api:make_request([200]
+    pqc_cb_api:make_request([#expectation{response_codes=[200]}]
                            ,fun kz_http:get/2
                            ,URL
                            ,RequestHeaders
@@ -116,23 +117,25 @@ fetch(API, AccountId, CDRId) ->
 interactions(API, AccountId) ->
     URL = interactions_url(AccountId),
     RequestHeaders = pqc_cb_api:request_headers(API),
-    pqc_cb_api:make_request([200]
+    pqc_cb_api:make_request([#expectation{response_codes=[200]}]
                            ,fun kz_http:get/2
                            ,URL
                            ,RequestHeaders
                            ).
 
--spec paginated_interactions(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
+-spec paginated_interactions(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                    {'error', binary()} |
+                                    kz_json:objects().
 paginated_interactions(API, AccountId, OwnerId) ->
     URL = paginated_interactions_url(AccountId, OwnerId, 2),
     RequestHeaders = pqc_cb_api:request_headers(API),
-    collect_paginated_results(URL, URL, RequestHeaders, [200], []).
+    collect_paginated_results(URL, URL, RequestHeaders, [#expectation{response_codes=[200]}], []).
 
 -spec legs(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 legs(API, AccountId, InteractionId) ->
     URL = legs_url(AccountId, InteractionId),
     RequestHeaders = pqc_cb_api:request_headers(API),
-    pqc_cb_api:make_request([200]
+    pqc_cb_api:make_request([#expectation{response_codes=[200]}]
                            ,fun kz_http:get/2
                            ,URL
                            ,RequestHeaders
@@ -168,12 +171,11 @@ paginated_cdrs_url(AccountId, OwnerId, PageSize) ->
 
 page_size(N) -> "page_size=" ++ kz_term:to_list(N).
 
-start_key('undefined') -> "";
 start_key(StartKey) -> "start_key=" ++ kz_term:to_list(StartKey).
 
 -spec seq() -> 'ok'.
 seq() ->
-    straight_seq(),
+    _ = straight_seq(),
     paginated_seq().
 
 straight_seq() ->
@@ -188,18 +190,18 @@ straight_seq() ->
     ?INFO("empty CSV resp: ~s", [EmptyCSVResp]),
 
     CDRs = seed_cdrs(AccountId),
-    ?INFO("CDRs: ~p~n", [CDRs]),
+    ?INFO("cdrs: ~p~n", [CDRs]),
 
     SummaryResp = summary(API, AccountId),
     ?INFO("summary resp: ~s", [SummaryResp]),
     RespCDRs = kz_json:get_list_value(<<"data">>, kz_json:decode(SummaryResp)),
-    ?INFO("Resp CDRs: ~p~n", [lists:usort([kz_doc:id(RespCDR) || RespCDR <- RespCDRs])]),
-    ?INFO("Base CDRs: ~p~n", [lists:usort([kz_doc:id(CDR) || CDR <- CDRs])]),
+    ?INFO("resp CDRs: ~p~n", [lists:usort([kz_doc:id(RespCDR) || RespCDR <- RespCDRs])]),
+    ?INFO("base CDRs: ~p~n", [lists:usort([kz_doc:id(CDR) || CDR <- CDRs])]),
     'true' = cdrs_exist(CDRs, RespCDRs),
     ?INFO("all cdrs found in response"),
 
     CSVResp = summary(API, AccountId, <<"text/csv">>),
-    ?INFO("CSV resp: ~s", [CSVResp]),
+    ?INFO("csv resp: ~s", [CSVResp]),
 
     InteractionsResp = interactions(API, AccountId),
     ?INFO("interactions resp: ~s", [InteractionsResp]),
@@ -265,7 +267,7 @@ seq_cdr(API, AccountId, CDR) ->
 cdr_exists(CDR, RespCDRs) ->
     lists:any(fun(RespCDR) -> kz_doc:id(RespCDR) =:= kz_doc:id(CDR) end, RespCDRs).
 
--spec cdrs_exist(kz_json:objects(), kz_json:object()) -> boolean().
+-spec cdrs_exist(kz_json:objects(), kz_json:objects()) -> boolean().
 cdrs_exist([], []) -> 'true';
 cdrs_exist([], APIs) ->
     IDs = [kz_doc:id(CDR) || CDR <- APIs],

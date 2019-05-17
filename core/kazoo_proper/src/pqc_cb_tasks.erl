@@ -18,9 +18,10 @@
 -spec create(pqc_cb_api:state(), string(), iolist()) -> pqc_cb_api:response().
 create(API, QueryString, CSV) ->
     TaskURL = tasks_url(QueryString),
-    RequestHeaders = pqc_cb_api:request_headers(API, [{<<"content-type">>, <<"text/csv">>}]),
+    RequestHeaders = pqc_cb_api:request_headers(API, [{"content-type", "text/csv"}]),
+    Expectations = [#expectation{response_codes = [201, 404, 409]}],
 
-    pqc_cb_api:make_request([201, 404, 409]
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:put/3
                            ,TaskURL
                            ,RequestHeaders
@@ -29,7 +30,8 @@ create(API, QueryString, CSV) ->
 
 -spec execute(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
 execute(API, TaskId) ->
-    pqc_cb_api:make_request([200]
+    Expectations = [#expectation{response_codes = [200]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:patch/3
                            ,task_url(TaskId)
                            ,pqc_cb_api:request_headers(API)
@@ -38,7 +40,8 @@ execute(API, TaskId) ->
 
 -spec fetch(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
 fetch(API, TaskId) ->
-    pqc_cb_api:make_request([200]
+    Expectations = [#expectation{response_codes = [200]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:get/2
                            ,task_url(TaskId)
                            ,pqc_cb_api:request_headers(API)
@@ -46,20 +49,21 @@ fetch(API, TaskId) ->
 
 -spec fetch_csv(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 fetch_csv(API, TaskId, CSV) ->
-    Expectations = [#{'response_codes' => [200]
-                     ,'response_headers' => [{"content-type", "text/csv"}]
-                     }
-                   ,#{'response_codes' => [204]}
+    Expectations = [#expectation{response_codes = [200]
+                                ,response_headers = [{"content-type", "text/csv"}]
+                                }
+                   ,#expectation{response_codes = [204]}
                    ],
     pqc_cb_api:make_request(Expectations
                            ,fun kz_http:get/2
                            ,task_csv_url(TaskId, CSV)
-                           ,pqc_cb_api:request_headers(API, [{<<"accept">>, <<"text/csv">>}])
+                           ,pqc_cb_api:request_headers(API, [{"accept", "text/csv"}])
                            ).
 
 -spec delete(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
 delete(API, TaskId) ->
-    pqc_cb_api:make_request([200]
+    Expectations = [#expectation{response_codes = [200]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:delete/2
                            ,task_url(TaskId)
                            ,pqc_cb_api:request_headers(API)
@@ -71,8 +75,9 @@ query(API, Category, Action) ->
                         ,"&action=", kz_term:to_list(Action)
                         ]
                        ),
+    Expectations = [#expectation{response_codes = [200]}],
 
-    pqc_cb_api:make_request([200]
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:get/2
                            ,TaskURL
                            ,pqc_cb_api:request_headers(API)

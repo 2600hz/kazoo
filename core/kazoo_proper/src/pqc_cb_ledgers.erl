@@ -28,11 +28,12 @@ fetch(API, ?NE_BINARY=AccountId) ->
 -spec fetch(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 fetch(API, ?NE_BINARY=AccountId, ?NE_BINARY=AcceptType) ->
     LedgersURL = ledgers_url(AccountId),
-    RequestHeaders = pqc_cb_api:request_headers(API, [{<<"accept">>, AcceptType}]),
+    RequestHeaders = pqc_cb_api:request_headers(API, [{"accept", kz_term:to_list(AcceptType)}]),
 
-    Expectations = #{'response_codes' => [200]
-                    ,'response_headers' => [{<<"content-type">>, AcceptType}]
-                    },
+    Expectations = [#expectation{response_codes = [200]
+                                ,response_headers = [{"content-type", kz_term:to_list(AcceptType)}]
+                                }
+                   ],
 
     pqc_cb_api:make_request(Expectations
                            ,fun kz_http:get/2
@@ -49,12 +50,12 @@ fetch_by_source(API, ?NE_BINARY=AccountId, ?NE_BINARY=SourceType) ->
                              pqc_cb_api:response().
 fetch_by_source(API, ?NE_BINARY=AccountId, SourceType, ?NE_BINARY=AcceptType) ->
     LedgersURL = ledgers_source_url(AccountId, SourceType),
-    RequestHeaders = pqc_cb_api:request_headers(API, [{<<"accept">>, AcceptType}]),
+    RequestHeaders = pqc_cb_api:request_headers(API, [{"accept", kz_term:to_list(AcceptType)}]),
 
-    Expectations = [#{'response_codes' => [200]
-                     ,'response_headers' => [{<<"content-type">>, AcceptType}]
-                     }
-                   ,#{'response_codes' => [204]}
+    Expectations = [#expectation{response_codes = [200]
+                                ,response_headers = [{"content-type", kz_term:to_list(AcceptType)}]
+                                }
+                   ,#expectation{response_codes = [204]}
                    ],
 
     pqc_cb_api:make_request(Expectations
@@ -69,7 +70,7 @@ credit(API, ?NE_BINARY=AccountId, Ledger) ->
     LedgersURL = ledgers_credit_url(AccountId),
     RequestHeaders = pqc_cb_api:request_headers(API),
 
-    Expectations = #{'response_codes' => [201]},
+    Expectations = [#expectation{response_codes = [201]}],
 
     Envelope = pqc_cb_api:create_envelope(Ledger),
 
@@ -86,7 +87,7 @@ debit(API, ?NE_BINARY=AccountId, Ledger) ->
     LedgersURL = ledgers_debit_url(AccountId),
     RequestHeaders = pqc_cb_api:request_headers(API),
 
-    Expectations = #{'response_codes' => [201]},
+    Expectations = [#expectation{response_codes = [201]}],
 
     Envelope = pqc_cb_api:create_envelope(Ledger),
 

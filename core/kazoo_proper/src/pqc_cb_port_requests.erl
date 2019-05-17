@@ -112,13 +112,13 @@ initial_state() ->
         ?debugFmt("exception ~p:~p", [_R, _T]),
         kz_util:log_stacktrace(ST),
         cleanup(State),
-        throw(failed)
+        throw('failed')
         end.
 
 -spec initialize_account(pqc_cb_api:state(), kz_term:ne_binary(), state()) -> state().
 initialize_account(API, AccountName, StateAcc) ->
     Account = create_account(API, AccountName, StateAcc),
-    true = kz_term:is_ne_binary(Account),
+    'true' = kz_term:is_ne_binary(Account),
 
     AccountJObj = pqc_cb_response:data(Account),
     AccountId = kz_doc:id(AccountJObj),
@@ -127,7 +127,7 @@ initialize_account(API, AccountName, StateAcc) ->
     _ = timer:sleep(1000), %% too fast for kazoo
 
     UserResp = create_admin_user(API, AccountId, AccountName),
-    true = kz_term:is_ne_binary(UserResp),
+    'true' = kz_term:is_ne_binary(UserResp),
     User = pqc_cb_response:data(UserResp),
 
     AccountApi = pqc_cb_api:authenticate(kzd_accounts:name(AccountJObj)
@@ -137,9 +137,9 @@ initialize_account(API, AccountName, StateAcc) ->
 
     _ = timer:sleep(1000), %% too fast for kazoo
 
-    IsAuthority = maps:get(<<"is_port_authority">>, maps:get(AccountName, ?ACCOUNTS_SETTINGS), false),
+    IsAuthority = maps:get(<<"is_port_authority">>, maps:get(AccountName, ?ACCOUNTS_SETTINGS), 'false'),
     Whitelabel = create_whitelabel(AccountApi, AccountId, AccountName, IsAuthority),
-    true = kz_term:is_ne_binary(Whitelabel),
+    'true' = kz_term:is_ne_binary(Whitelabel),
 
     StateAcc#{AccountName => #{model => pqc_kazoo_model:new(AccountApi)
                               ,account_id => AccountId
@@ -173,7 +173,8 @@ create_admin_user(API, AccountId, AccountName) ->
          ),
 
     Url = string:join([pqc_cb_accounts:account_url(AccountId), "users"], "/"),
-    pqc_cb_api:make_request([201]
+    Expectations = [#expectation{response_codes = [201]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:put/3
                            ,Url
                            ,pqc_cb_api:request_headers(API)
@@ -239,7 +240,7 @@ create_ports_seq(State) ->
 
 -spec create_ports_seq(state(), kz_term:ne_binary()) -> term().
 create_ports_seq(State, AccountName) ->
-    Model = maps:get(model, maps:get(AccountName, State)),
+    Model = maps:get('model', maps:get(AccountName, State)),
     API = pqc_kazoo_model:api(Model),
 
     Created = create_port(API, AccountName),
@@ -252,8 +253,8 @@ create_ports_seq(State, AccountName) ->
 -spec create_ports_seq(state(), kz_term:ne_binary(), pqc_cb_api:response()) -> term().
 create_ports_seq(State, AccountName, Resp) ->
     WhoIsPortAuthority = maps:get(<<"port_authority">>, maps:get(AccountName, ?ACCOUNTS_SETTINGS)),
-    AuthorityId = maps:get(account_id, maps:get(WhoIsPortAuthority, State)),
-    AuthorityName = maps:get(account_name, maps:get(WhoIsPortAuthority, State)),
+    AuthorityId = maps:get('account_id', maps:get(WhoIsPortAuthority, State)),
+    AuthorityName = maps:get('account_name', maps:get(WhoIsPortAuthority, State)),
 
     JObj = pqc_cb_response:data(Resp),
     ReadOnly = kz_json:get_json_value(<<"_read_only">>, JObj, kz_json:new()),
@@ -278,8 +279,7 @@ create_ports_seq(State, AccountName, Resp) ->
 
 -spec port_agent_seq(state()) -> term().
 port_agent_seq(State) ->
-    [{"listing test", port_agent_list_seq(State)}
-    ].
+    [{"listing test", port_agent_list_seq(State)}].
 
 -spec port_agent_list_seq(state()) -> term().
 port_agent_list_seq(State) ->
@@ -289,7 +289,7 @@ port_agent_list_seq(State) ->
 self_list_seq(State, AccountName) ->
     [{'setup'
      ,fun() ->
-              #{model := Model} = maps:get(AccountName, State),
+              #{'model' := Model} = maps:get(AccountName, State),
               list_account_ports(pqc_kazoo_model:api(Model))
       end
      ,fun(Fetched) ->
@@ -306,8 +306,8 @@ self_list_seq(State, AccountName) ->
 -spec self_list_seq(state(), kz_term:ne_binary(), pqc_cb_api:response()) -> term().
 self_list_seq(State, AccountName, Resp) ->
     WhoIsPortAuthority = maps:get(<<"port_authority">>, maps:get(AccountName, ?ACCOUNTS_SETTINGS)),
-    AuthorityId = maps:get(account_id, maps:get(WhoIsPortAuthority, State)),
-    AuthorityName = maps:get(account_name, maps:get(WhoIsPortAuthority, State)),
+    AuthorityId = maps:get('account_id', maps:get(WhoIsPortAuthority, State)),
+    AuthorityName = maps:get('account_name', maps:get(WhoIsPortAuthority, State)),
 
     PortNumbers = maps:get(<<"numbers">>, maps:get(AccountName, ?ACCOUNTS_SETTINGS)),
 
@@ -345,7 +345,7 @@ self_list_seq(State, AccountName, Resp) ->
 port_account_seq(#{master := #{model := Model}}) ->
     API = pqc_kazoo_model:api(Model),
     [{"get master's account ports"
-     ,?_assertEqual(true, have_ports(list_account_ports(API)))
+     ,?_assertEqual('true', have_ports(list_account_ports(API)))
      }
     ].
 
@@ -353,14 +353,14 @@ port_account_seq(#{master := #{model := Model}}) ->
 port_descendants_seq(#{master := #{model := Model}}) ->
     API = pqc_kazoo_model:api(Model),
     [{"get all master account descendants's ports"
-     ,?_assertEqual(true, have_ports(list_descendants_ports(API)))
+     ,?_assertEqual('true', have_ports(list_descendants_ports(API)))
      }
     ].
 
 -spec have_ports(pqc_cb_api:response()) -> boolean().
-have_ports({error, Error}) ->
+have_ports({'error', Error}) ->
     ?debugFmt("we have some rror:~n~p~n", [Error]),
-    false;
+    'false';
 have_ports(Resp) ->
     JObj = kz_json:decode(Resp),
     kz_json:get_ne_binary_value(<<"status">>, JObj, <<"error">>) =/= <<"error">>
@@ -383,7 +383,8 @@ create_port(API, AccountName) ->
     AccountId = pqc_cb_api:auth_account_id(API),
     Envelope = pqc_cb_api:create_envelope(seed_ports(AccountName)),
 
-    pqc_cb_api:make_request([201]
+    Expectations = [#expectation{response_codes = [201]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:put/3
                            ,ports_account_url(AccountId)
                            ,pqc_cb_api:request_headers(API)
@@ -400,7 +401,8 @@ create_port(API, AccountName) ->
 
 -spec list_account_ports(pqc_cb_api:state()) -> pqc_cb_api:response().
 list_account_ports(API) ->
-    pqc_cb_api:make_request([#{'response_codes' => [200]}]
+    Expectations = [#expectation{response_codes = [200]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:get/2
                            ,ports_account_url(pqc_cb_api:auth_account_id(API))
                            ,pqc_cb_api:request_headers(API)
@@ -408,7 +410,8 @@ list_account_ports(API) ->
 
 -spec list_descendants_ports(pqc_cb_api:state()) -> pqc_cb_api:response().
 list_descendants_ports(API) ->
-    pqc_cb_api:make_request([#{'response_codes' => [200]}]
+    Expectations = [#expectation{response_codes = [200]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:get/2
                            ,ports_descendants_url(pqc_cb_api:auth_account_id(API))
                            ,pqc_cb_api:request_headers(API)

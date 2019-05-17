@@ -70,7 +70,7 @@ ip_url(AccountId, IP) ->
                       {'ok', kz_json:objects()} |
                       {'error', 'not_found'}.
 list_ips(API) ->
-    case pqc_cb_api:make_request([200]
+    case pqc_cb_api:make_request([#expectation{response_codes=[200]}]
                                 ,fun kz_http:get/2
                                 ,ips_url()
                                 ,pqc_cb_api:request_headers(API)
@@ -93,7 +93,7 @@ assign_ips(API, AccountId, Dedicateds) ->
     IPs = [IP || ?DEDICATED(IP, _, _) <- Dedicateds],
     Envelope = pqc_cb_api:create_envelope(IPs),
 
-    case pqc_cb_api:make_request([200]
+    case pqc_cb_api:make_request([#expectation{response_codes=[200]}]
                                 ,fun kz_http:post/3
                                 ,ips_url(AccountId)
                                 ,pqc_cb_api:request_headers(API)
@@ -114,7 +114,7 @@ assign_ips(API, AccountId, Dedicateds) ->
 remove_ip(_API, 'undefined', _Dedicated) ->
     {'error', 'not_found'};
 remove_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
-    case pqc_cb_api:make_request([200, 404]
+    case pqc_cb_api:make_request([#expectation{response_codes=[200, 404]}]
                                 ,fun kz_http:delete/2
                                 ,ip_url(AccountId, IP)
                                 ,pqc_cb_api:request_headers(API)
@@ -133,7 +133,7 @@ remove_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
 fetch_ip(_API, 'undefined', _Dedicated) ->
     {'error', 'not_found'};
 fetch_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
-    case pqc_cb_api:make_request([200]
+    case pqc_cb_api:make_request([#expectation{response_codes=[200]}]
                                 ,fun kz_http:get/2
                                 ,ip_url(AccountId, IP)
                                 ,pqc_cb_api:request_headers(API)
@@ -153,7 +153,7 @@ assign_ip(_API, 'undefined', _Dedicated) ->
     {'error', 'not_found'};
 assign_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
     Envelope = pqc_cb_api:create_envelope(kz_json:new()),
-    case pqc_cb_api:make_request([200]
+    case pqc_cb_api:make_request([#expectation{response_codes=[200]}]
                                 ,fun kz_http:post/3
                                 ,ip_url(AccountId, IP)
                                 ,pqc_cb_api:request_headers(API)
@@ -171,7 +171,7 @@ assign_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
                          {'ok', kz_term:ne_binaries()} |
                          {'error', 'not_found'}.
 fetch_hosts(API) ->
-    case pqc_cb_api:make_request([200]
+    case pqc_cb_api:make_request([#expectation{response_codes=[200]}]
                                 ,fun kz_http:get/2
                                 ,ip_url("hosts")
                                 ,pqc_cb_api:request_headers(API)
@@ -188,7 +188,7 @@ fetch_hosts(API) ->
                          {'ok', kz_term:ne_binaries()} |
                          {'error', 'not_found'}.
 fetch_zones(API) ->
-    case pqc_cb_api:make_request([200]
+    case pqc_cb_api:make_request([#expectation{response_codes=[200]}]
                                 ,fun kz_http:get/2
                                 ,ip_url("zones")
                                 ,pqc_cb_api:request_headers(API)
@@ -207,7 +207,7 @@ fetch_zones(API) ->
 fetch_assigned(_API, 'undefined') ->
     {'error', 'not_found'};
 fetch_assigned(API, AccountId) ->
-    case pqc_cb_api:make_request([200]
+    case pqc_cb_api:make_request([#expectation{response_codes=[200]}]
                                 ,fun kz_http:get/2
                                 ,ip_url(AccountId, "assigned")
                                 ,pqc_cb_api:request_headers(API)
@@ -229,7 +229,7 @@ create_ip(API, ?DEDICATED(IP, Host, Zone)) ->
                              ,{<<"zone">>, Zone}
                              ]),
     Envelope = pqc_cb_api:create_envelope(Data),
-    case pqc_cb_api:make_request([201, 409]
+    case pqc_cb_api:make_request([#expectation{response_codes=[201, 409]}]
                                 ,fun kz_http:put/3
                                 ,ips_url()
                                 ,pqc_cb_api:request_headers(API)
@@ -253,7 +253,7 @@ create_ip(API, ?DEDICATED(IP, Host, Zone)) ->
                        {'ok', kz_json:object()} |
                        {'error', 'not_found'}.
 delete_ip(API, ?DEDICATED(IP, _Host, _Zone)) ->
-    case pqc_cb_api:make_request([200, 404]
+    case pqc_cb_api:make_request([#expectation{response_codes=[200, 404]}]
                                 ,fun kz_http:delete/2
                                 ,ip_url(IP)
                                 ,pqc_cb_api:request_headers(API)
