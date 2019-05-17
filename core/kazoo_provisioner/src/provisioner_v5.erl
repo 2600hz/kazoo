@@ -392,7 +392,7 @@ get_feature_key(<<"personal_parking">>=Type, Value, Brand, Family, AccountId, As
               ])
     end;
 get_feature_key(<<"parking">>=Type, Value, Brand, Family, _AccountId, Assoc) ->
-    case get_label_value(Value, <<"Park ">>) of
+    case get_label_value(kz_term:to_binary(Value), <<"Park ">>) of
         'undefined' -> 'undefined';
         {RealValue, Label} ->
             kz_json:from_list(
