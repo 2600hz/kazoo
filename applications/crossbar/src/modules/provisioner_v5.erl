@@ -336,7 +336,7 @@ settings_keys(Assoc, KeyKind, JObj) ->
         LineKey -> kz_json:set_value(<<"account">>, LineKey, Keys)
     end.
 
--spec get_label(kz_json:object()) -> binary().
+-spec get_label(kz_json:object()) -> binary()|'undefined'.
 get_label(Doc) ->
     case {kz_json:get_ne_binary_value(<<"first_name">>, Doc)
          ,kz_json:get_ne_binary_value(<<"last_name">>, Doc)
