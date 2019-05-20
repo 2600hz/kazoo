@@ -50,6 +50,6 @@ update_presence(<<"busy">>, PresenceId, Call) ->
                         {'ok', kz_json:object()} |
                         kz_datamgr:data_error().
 update_doc(Call, PresenceId, State) ->
-    Update = [{PresenceId, State}],
+    Update = [{[PresenceId], State}],
     UpdateOptions = [{'update', Update}],
     kz_datamgr:update_doc(kapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, UpdateOptions).

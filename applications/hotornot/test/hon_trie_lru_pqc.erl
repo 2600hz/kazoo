@@ -29,7 +29,7 @@ proper_seq_test_() ->
     {"Runs "?MODULE_STRING" PropEr sequential tests"
     ,{'timeout'
      ,120
-     ,?_assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}, 30]))
+     ,?_assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}, 1]))
      }
     }.
 
@@ -37,7 +37,7 @@ proper_parallel_test_() ->
     {"Runs "?MODULE_STRING" PropEr parallel tests"
     ,{'timeout'
      ,120
-     ,?_assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}, 10]))
+     ,?_assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}, 1]))
      }
     }.
 
@@ -115,8 +115,8 @@ correct_parallel() ->
                    {Sequential, Parallel, Result} = run_parallel_commands(?MODULE, Cmds),
                    hon_trie_lru:stop(?KZ_RATES_DB),
 
-                   ?WHENFAIL(?debugFmt("S: ~p~nP: ~p~n"
-                                      ,[Sequential, Parallel]
+                   ?WHENFAIL(?debugFmt("S: ~p~nP: ~p~ncmnd: ~p~n"
+                                      ,[Sequential, Parallel, command_names(Cmds)]
                                       )
                             ,aggregate(command_names(Cmds), Result =:= 'ok')
                             )
@@ -131,7 +131,7 @@ command(#model{}) ->
     Ms = ?EXPIRES_S * ?MILLISECONDS_IN_SECOND,
     oneof([{'call', 'hon_trie', 'match_did', [phone_number(), 'undefined', ?KZ_RATES_DB]}
           ,{'call', 'hon_trie_lru', 'cache_rates', [?KZ_RATES_DB, [rate_doc()]]}
-          ,{'call', 'timer', 'sleep', [oneof([Ms-100,Ms+100])]}
+          ,{'call', 'timer', 'sleep', [oneof([Ms-200,Ms+200])]}
           ]).
 
 next_state(#model{cache=Cache

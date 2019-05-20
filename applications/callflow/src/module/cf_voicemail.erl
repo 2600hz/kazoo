@@ -1980,8 +1980,10 @@ set_recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum
                 ) ->
                         'ok' |
                         {'error', atom()}.
-update_doc(Key, Value, ?NE_BINARY = Id, ?NE_BINARY = Db) ->
-    Update = [{Key, Value}],
+update_doc(<<Key/binary>>, Value, Id, Db) ->
+    update_doc([Key], Value, Id, Db);
+update_doc(Path, Value, ?NE_BINARY = Id, ?NE_BINARY = Db) ->
+    Update = [{Path, Value}],
     Updates = [{'update', Update}
               ,{'ensure_saved', 'true'}
               ],

@@ -226,7 +226,7 @@ message(AccountId, MessageId, BoxId) ->
 %% <div class="notice">For use by {@link cf_voicemail} only.</div>
 %% @end
 %%------------------------------------------------------------------------------
--spec set_folder(Folder, Message, AccountId) -> db_ret() when Folder::kz_term:ne_binary(),
+-spec set_folder(Folder, Message, AccountId) -> db_ret() when Folder::vm_folder(),
                                                               Message::kz_json:object(),
                                                               AccountId::kz_term:ne_binary().
 set_folder(Folder, Message, AccountId) ->
@@ -238,7 +238,7 @@ set_folder(Folder, Message, AccountId) ->
         {'error', _} -> {'error', Message}
     end.
 
--spec maybe_set_folder(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> db_ret().
+-spec maybe_set_folder(kz_term:ne_binary(), vm_folder(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> db_ret().
 maybe_set_folder(_, ?VM_FOLDER_DELETED = ToFolder, MessageId, AccountId, _Msg) ->
     %% ensuring that message is really deleted
     change_folder(ToFolder, MessageId, AccountId, 'undefined');

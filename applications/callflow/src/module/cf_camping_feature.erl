@@ -122,7 +122,8 @@ check_self(State, Call) ->
         _ -> just(State)
     end.
 
--spec send_request(state(), kapps_call:call()) -> maybe_m('ok').
+-spec send_request(state(), kapps_call:call()) -> maybe_m('accepted') |
+                                                  maybe_m('connected').
 send_request(#state{channels = Channels} = S, Call) ->
     lager:debug("sending request"),
     case Channels of
