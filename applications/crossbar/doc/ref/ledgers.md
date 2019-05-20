@@ -13,7 +13,7 @@ Key | Description | Type | Default | Required | Support Level
 `account.id` | Account ID | `string()` |   | `false` |  
 `account.name` | Account name | `string()` |   | `false` |  
 `account` | Account info | `object()` |   | `false` |  
-`amount` | Ledger amount | `integer()` |   | `false` |  
+`amount` | Ledger amount, in currency amount | `number()` |   | `false` |  
 `description` | Useful description for ledger | `string()` |   | `false` |  
 `metadata` | Metadata for ledger document | `object()` |   | `false` |  
 `period.end` | Period end | `integer()` |   | `false` |  

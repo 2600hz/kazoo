@@ -159,10 +159,7 @@ validate(Context, ?TOTAL) ->
             crossbar_doc:handle_datamgr_errors(Reason, ?TOTAL, Context);
         {'ok', Units} ->
             JObj = kz_json:from_list(
-                     [{<<"amount">>
-                      ,kz_currency:units_to_dollars(Units)
-                      }
-                     ]
+                     [{<<"amount">>, kz_currency:units_to_dollars(Units)}]
                     ),
             crossbar_doc:handle_json_success(JObj, Context)
     end;
@@ -216,6 +213,10 @@ validate_fetch_ledger(Context, SourceService, Ledger) ->
 put(Context, Action) ->
     ReqData = cb_context:req_data(Context),
     AccountId = cb_context:account_id(Context),
+
+    Amount = kz_json:get_number_value(<<"amount">>, ReqData, 0),
+    Units = kz_currency:dollars_to_units(Amount),
+
     Setters =
         props:filter_empty(
           [{fun kz_ledger:set_account/2, AccountId}
@@ -246,17 +247,17 @@ put(Context, Action) ->
           ,{fun kz_ledger:set_metadata/2
            ,kz_json:get_ne_json_value(<<"metadata">>, ReqData, kz_json:new())
            }
-          ,{fun kz_ledger:set_dollar_amount/2
-           ,abs(kz_json:get_integer_value(<<"amount">>, ReqData, 0))
+          ,{fun kz_ledger:set_unit_amount/2
+           ,Units
            }
           ,{fun kz_ledger:set_audit/2
            ,crossbar_services:audit_log(Context)
            }
           ,{fun kz_ledger:set_executor_trigger/2
-           ,<<"crossbar">>
+           ,?APP_NAME
            }
           ,{fun kz_ledger:set_executor_module/2
-           ,kz_term:to_binary(?MODULE)
+           ,<<?MODULE_STRING>>
            }
           ]
          ),
@@ -343,15 +344,12 @@ account_summary(Context, MODB) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec summary_to_dollars(kz_json:object() | kz_json:objects()) -> kz_json:object().
-summary_to_dollars(Summaries) when is_list(Summaries) ->
-    [summary_to_dollars(Summary) || Summary <- Summaries];
+-spec summary_to_dollars(kz_json:object()) -> kz_json:object().
 summary_to_dollars(Summary) ->
-    kz_json:expand(
-      kz_json:from_list(
-        [{Paths, maybe_convert_units(lists:last(Paths), Paths, Value)}
-         || {Paths, Value} <- kz_json:to_proplist(kz_json:flatten(Summary))
-        ])).
+    ConvertedUnits = [{Paths, maybe_convert_units(lists:last(Paths), Paths, Value)}
+                      || {Paths, Value} <- kz_json:to_proplist(kz_json:flatten(Summary))
+                     ],
+    kz_json:expand(kz_json:from_list(ConvertedUnits)).
 
 -spec maybe_convert_units(kz_term:ne_binary(), kz_json:keys(), kz_currency:units() | T) ->
                                  kz_currency:dollars() | T when T::any().

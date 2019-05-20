@@ -193,7 +193,8 @@ ledgers_exist(Data, [Ledger | Ledgers]) ->
         andalso ledgers_exist(Data, Ledgers).
 
 ledger_matches(Datum, Ledger) ->
-    kzd_ledgers:source_id(Datum) =:= kzd_ledgers:source_id(Ledger).
+    kzd_ledgers:source_id(Datum) =:= kzd_ledgers:source_id(Ledger)
+        andalso kzd_ledgers:unit_amount(Datum) =:= kzd_ledgers:unit_amount(Ledger).
 
 ledgers_exist_in_csv(CSV, Ledgers) ->
     {Header, Rows} = kz_csv:take_row(CSV),
@@ -247,6 +248,7 @@ ledger_doc() ->
                 ,{fun kzd_ledgers:set_usage_quantity/2, 1}
                 ,{fun kzd_ledgers:set_usage_unit/2, <<"Hz">>}
                 ,{fun kzd_ledgers:set_usage_type/2, <<"cycle">>}
+                ,{fun(J, V) -> kz_json:set_value(<<"amount">>, V, J) end, 2.6}
                 ]
                ).
 

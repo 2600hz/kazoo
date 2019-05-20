@@ -551,7 +551,6 @@ sum(?JSON_WRAPPER(_)=JObj1, Value, Sumer, Keys)
 -spec sum_jobjs(objects()) -> object().
 sum_jobjs(JObjs) -> sum_jobjs(JObjs, fun default_sumer/2).
 
-
 %%------------------------------------------------------------------------------
 %% @doc Sum (deep) a list of JSON objects.
 %% This is like {@link sum/3} but fold over a list of JSON objects.
