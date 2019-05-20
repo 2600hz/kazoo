@@ -126,7 +126,7 @@ clean-test: $(CLEAN_MOAR)
 TEST_CONFIG=$(ROOT)/rel/config-test.ini
 
 ## Use this one when debugging
-test: test/$(PROJECT).app
+test: compile-test
 	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript $(TEST_MODULE_NAMES)
 test.%: check-compile-test
 	KAZOO_CONFIG=$(TEST_CONFIG) ERL_LIBS=$(ELIBS) $(ROOT)/scripts/eunit_run.escript $*
