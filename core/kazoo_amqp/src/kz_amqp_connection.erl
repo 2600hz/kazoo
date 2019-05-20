@@ -73,11 +73,9 @@ broker(#kz_amqp_connections{broker=Broker}) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', kz_amqp_connection()}.
-init([#kz_amqp_connection{connection=Pid}=Connection]) ->
+init([#kz_amqp_connection{}=Connection]) ->
     _ = process_flag('trap_exit', 'true'),
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
-
-    amqp_connection:register_blocked_handler(Pid, self()),
 
     {'ok', disconnected(Connection#kz_amqp_connection{manager=self()})}.
 
@@ -382,6 +380,7 @@ maybe_connect(#kz_amqp_connection{broker=_Broker
             disconnected(Connection, Timeout);
         {'ok', Pid} ->
             Ref = erlang:monitor('process', Pid),
+            _ = amqp_connection:register_blocked_handler(Pid, self()),
             connected(Connection#kz_amqp_connection{connection=Pid
                                                    ,connection_ref=Ref
                                                    });
