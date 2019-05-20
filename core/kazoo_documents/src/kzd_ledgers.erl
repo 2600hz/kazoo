@@ -255,7 +255,7 @@ set_account_name(Doc, AccountName) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec unit_amount(doc()) -> kz_term:api_integer().
+-spec unit_amount(doc()) -> kz_currency:units() | 'undefined'.
 unit_amount(Doc) ->
     unit_amount(Doc, 'undefined').
 
@@ -267,7 +267,7 @@ unit_amount(Doc, Default) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_unit_amount(doc(), integer()) -> doc().
+-spec set_unit_amount(doc(), kz_currency:units()) -> doc().
 set_unit_amount(Doc, Amount) ->
     kz_json:set_value(?AMOUNT, Amount, Doc).
 
@@ -292,6 +292,28 @@ dollar_amount(Doc, Default) ->
 set_dollar_amount(Doc, Amount) ->
     Units = kz_currency:dollars_to_units(Amount),
     kz_json:set_value(?AMOUNT, Units, Doc).
+
+%%------------------------------------------------------------------------------
+%% DO NOT USE ME!
+%%
+%% The API document is guided by the schema but the database document is guided
+%% by kz_ledger (which in this case uses `amount` as the key for units. So the API
+%% request's `amount` is in currency but the db doc's `amount` is in units.
+%%
+%% Commented out the code below to show that we know it breaks convention
+%%------------------------------------------------------------------------------
+%% -spec amount(doc()) -> kz_term:api_number().
+%% amount(Doc) ->
+%%     amount(Doc, 'undefined').
+
+%% -spec amount(doc(), Default) -> number() | Default.
+%% amount(Doc, Default) ->
+%%     kz_json:get_float_value([<<"amount">>], Doc, Default).
+
+%% -spec set_amount(doc(), number()) -> doc().
+%% set_amount(Doc, Amount) ->
+%%     kz_json:set_value([<<"amount">>], Amount, Doc).
+
 
 %%------------------------------------------------------------------------------
 %% @doc

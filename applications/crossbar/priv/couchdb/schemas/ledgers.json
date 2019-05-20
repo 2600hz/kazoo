@@ -18,9 +18,9 @@
             "type": "object"
         },
         "amount": {
-            "description": "Ledger amount",
+            "description": "Ledger amount, in currency amount",
             "minimum": 1,
-            "type": "integer"
+            "type": "number"
         },
         "description": {
             "description": "Useful description for ledger",
