@@ -531,9 +531,11 @@ get_user(AccountId, CustomLabel, UserId, PrefixLabel) ->
             {Presence, CustomLabel}
     end.
 
--spec get_label_value(kz_term:ne_binary() | kz_json:object(), binary()) ->
+-spec get_label_value(kz_term:ne_binary() | kz_json:object() | pos_integer(), binary()) ->
                              {kz_term:ne_binary(), kz_term:ne_binary()} |
                              'undefined'.
+get_label_value(Value, PrefixLabel) when is_integer(Value) ->
+    get_label_value(kz_term:to_binary(Value), PrefixLabel);
 get_label_value(?NE_BINARY = Value, PrefixLabel) ->
     {Value, <<PrefixLabel/binary, Value/binary>>};
 get_label_value(JObj, PrefixLabel) ->
