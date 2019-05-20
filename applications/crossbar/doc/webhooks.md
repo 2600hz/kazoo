@@ -98,14 +98,14 @@ curl -v -X GET \
 }
 ```
 
-## Get a sample of webhook event payloads
+## Get sample payloads of all webhook events
 
-> GET /v2/accounts/{ACCOUNT_ID}/webhooks/samples/{WEBHOOK_NAME}
+> GET /v2/webhooks/samples
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/webhooks/samples/{WEBHOOK_NAME}
+    http://{SERVER}:8000/v2/webhooks/samples
 ```
 
 ### Example
@@ -113,7 +113,54 @@ curl -v -X GET \
 **Request:**
 
 ```shell
-curl -H "'ontent-Type: application/json' 'http://{SERVER}:8000/v2/webhooks/samples/parking'
+curl -H "'ontent-Type: application/json' 'http://{SERVER}:8000/v2/webhooks/samples'
+```
+
+**Response:**
+
+```json
+{
+  "data": [
+    "webhooks_channel_answer",
+    "webhooks_channel_bridge",
+    "webhooks_channel_create",
+    "webhooks_channel_destroy",
+    "webhooks_notifications",
+    "webhooks_object",
+    "webhooks_parking"
+  ],
+  "revision": "{REVISION}",
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success"
+}
+```
+
+## Get sample payloads of a webhook event
+
+> GET /v2/webhooks/samples/{SAMPLE_ID}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/webhooks/samples/{SAMPLE_ID}
+```
+
+You can use regular [Crossbar query string filters](./filters.md) to narrow down the samples, for example:
+
+```shell
+curl -H 'Content-Type: application/json' 'http://{SERVER}:8000/v2/webhooks/samples/webhook_notifications?filter_event_name=missed_call'
+curl -H 'Content-Type: application/json' 'http://{SERVER}:8000/v2/webhooks/samples/webhook_object?filter_action=doc_created'
+```
+
+### Example
+
+**Request:**
+
+```shell
+curl -s -H 'Content-Type: application/json' 'http://{SERVER}:8000/v2/webhooks/samples/webhooks_parking'
 ```
 
 **Response:**
