@@ -26,6 +26,8 @@ start_link() ->
 handle_event(EventJObj) ->
     kz_cache:store_local(?KAPPS_CALL_CACHE, {?MODULE, kz_call_event:call_id(EventJObj)}, 'true', [{'expires', ?EXPIRES_S}]).
 
--spec is_destroyed(kz_term:ne_binary()) -> boolean().
+-spec is_destroyed(kz_term:ne_binary() | kapps_call:call()) -> boolean().
 is_destroyed(<<CallId/binary>>) ->
-    {'error', 'not_found'} =/= kz_cache:peek_local(?KAPPS_CALL_CACHE, {?MODULE, CallId}).
+    {'error', 'not_found'} =/= kz_cache:peek_local(?KAPPS_CALL_CACHE, {?MODULE, CallId});
+is_destroyed(Call) ->
+    is_destroyed(kapps_call:call_id(Call)).
