@@ -11,6 +11,7 @@
 -export([sync/0]).
 -export([flush/0]).
 -export([total_calls/1]).
+-export([total_inbound_channels_per_did_rules/2]).
 -export([resource_consuming/1]).
 -export([inbound_flat_rate/1]).
 -export([outbound_flat_rate/1]).
@@ -68,6 +69,7 @@
                  ,rate_description :: kz_term:api_binary() | '_'
                  ,rate_id :: kz_term:api_binary() | '_'
                  ,base_cost :: kz_term:api_binary() | '_'
+                 ,to_did :: kz_term:api_binary() | '_'
                  }).
 
 -type channel() :: #channel{}.
@@ -149,6 +151,30 @@ total_calls(AccountId) ->
                           }
                  ,[]
                  ,[{{'$1', '$2'}}]
+                 }
+                ],
+    count_unique_calls(ets:select(?TAB, MatchSpec)).
+
+-spec total_inbound_channels_per_did_rules(kz_term:ne_binary() ,kz_term:ne_binary()) -> non_neg_integer().
+total_inbound_channels_per_did_rules(Number, AccountId) ->
+    ToDID = knm_converters:normalize(Number),
+    MatchSpec = [{#channel{account_id = AccountId
+                          ,direction = <<"inbound">>
+                          ,to_did = ToDID
+                          ,call_id = '$1'
+                          ,_='_'
+                          }
+                 ,[]
+                 ,[{{ToDID, '$1'}}]
+                 }
+                ,{#channel{reseller_id = AccountId
+                          ,direction = <<"inbound">>
+                          ,to_did = ToDID
+                          ,call_id = '$1'
+                          ,_='_'
+                          }
+                 ,[]
+                 ,[{{ToDID, '$1'}}]
                  }
                 ],
     count_unique_calls(ets:select(?TAB, MatchSpec)).
@@ -659,6 +685,7 @@ from_jobj(JObj) ->
             ,reseller_billing = ResellerBilling
             ,reseller_allotment = is_allotment(ResellerBilling)
             ,soft_limit = kz_term:is_true(SoftLimit)
+            ,to_did = to_did_lookup(JObj)
             }.
 
 -spec is_allotment(kz_term:ne_binary()) -> boolean().
@@ -759,3 +786,20 @@ call_cost(#channel{answered_timestamp=Timestamp}=Channel, Seconds) ->
 -spec billing_jobj(non_neg_integer(), channel()) -> kz_json:object().
 billing_jobj(BillingSeconds, Channel) ->
     kz_json:from_list([{<<"Billing-Seconds">>, BillingSeconds} | to_props(Channel)]).
+
+-spec to_did_lookup(kz_json:object()) -> kz_term:ne_binary() | 'undefined'.
+to_did_lookup(JObj) ->
+    case kz_json:get_first_defined(
+           [<<"To">>
+           ,<<"To-Uri">>
+           ,<<"Request">>
+           ,[<<"Custom-Channel-Vars">>,<<"To">>]
+           ]
+          ,JObj
+          )
+    of
+        'undefined' -> 'undefined';
+        ToUri ->
+            [H|_] =  binary:split(ToUri, <<"@">>),
+            knm_converters:normalize(H)
+    end.

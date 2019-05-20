@@ -66,6 +66,7 @@
 -export([allotments/1, allotments/2
         ,set_allotments/2
         ]).
+-export([inbound_channels_per_did_rules/1, inbound_channels_per_did_rules/2]).
 
 -include("kz_documents.hrl").
 
@@ -458,6 +459,18 @@ allotments(Doc, Default) ->
 -spec set_allotments(doc(), kz_json:object()) -> doc().
 set_allotments(Doc, Allotments) ->
     kz_json:set_value(<<"allotments">>, Allotments, Doc).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec inbound_channels_per_did_rules(doc()) -> kz_json:object().
+inbound_channels_per_did_rules(Doc) ->
+    inbound_channels_per_did_rules(Doc, kz_json:new()).
+
+-spec inbound_channels_per_did_rules(doc(), Default) -> kz_json:object() | Default.
+inbound_channels_per_did_rules(Doc, Default) ->
+    kz_json:get_ne_json_value(<<"pvt_inbound_channels_per_did_rules">>, Doc, Default).
 
 %%------------------------------------------------------------------------------
 %% @doc

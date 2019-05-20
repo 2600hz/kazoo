@@ -342,6 +342,7 @@ send_response(Request) ->
              [{<<"Account-Trunk-Usage">>, trunk_usage(j5_request:account_id(Request))}
              ,{<<"Reseller-Trunk-Usage">>, trunk_usage(j5_request:reseller_id(Request))}
              ,{<<"Outbound-Flags">>, OutboundFlags}
+             ,{<<"To">>, j5_request:number(Request)}
              ]),
 
     Resp = props:filter_undefined(

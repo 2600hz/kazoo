@@ -25,6 +25,7 @@
 -export([reserve_amount/1]).
 -export([max_postpay/1]).
 -export([authz_resource_types/1]).
+-export([inbound_channels_per_did_rules/1]).
 
 -include("jonny5.hrl").
 
@@ -48,6 +49,7 @@
                 ,soft_limit_inbound = 'false' :: boolean()
                 ,soft_limit_outbound = 'false' :: boolean()
                 ,authz_resource_types = [] :: list()
+                ,inbound_channels_per_did_rules = kz_json:new() :: kz_json:object()
                 }).
 
 -type limits() :: #limits{}.
@@ -220,6 +222,13 @@ max_postpay(#limits{max_postpay_amount=MaxPostpay}) -> MaxPostpay.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec inbound_channels_per_did_rules(limits()) -> kz_json:object().
+inbound_channels_per_did_rules(#limits{inbound_channels_per_did_rules=JObj}) -> JObj.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec authz_resource_types(limits()) -> list().
 authz_resource_types(#limits{authz_resource_types=AuthzResourceTypes}) ->
     AuthzResourceTypes.
@@ -250,4 +259,5 @@ create_limits(AccountId, AccountDb, JObj) ->
            ,soft_limit_inbound = kzd_limits:soft_limit_inbound(JObj)
            ,soft_limit_outbound = kzd_limits:soft_limit_outbound(JObj)
            ,authz_resource_types = kzd_limits:authz_resource_types(JObj)
+           ,inbound_channels_per_did_rules = kzd_limits:inbound_channels_per_did_rules(JObj)
            }.
