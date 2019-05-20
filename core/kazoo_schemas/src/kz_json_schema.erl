@@ -9,7 +9,8 @@
 -export([add_defaults/2
         ,load/1, fload/1
         ,flush/0, flush/1
-        ,diff/0, diff/1, diff_schema/1, diff_schema/2
+        ,diff/0, diff/1
+        ,diff_schema/1, diff_schema/2
         ,delete/1
 
         ,validate/2, validate/3
@@ -18,7 +19,8 @@
         ,error_to_jobj/1, error_to_jobj/2
         ,validation_error/4
         ,build_error_message/2
-        ,default_object/1, filter/2
+        ,default_object/1
+        ,filter/2
         ]).
 
 -ifdef(TEST).
@@ -737,6 +739,24 @@ error_to_jobj({'data_invalid'
                     ,Options
                     );
 error_to_jobj({'data_invalid'
+              ,FailedSchemaJObj
+              ,'wrong_format'
+              ,FailedValue
+              ,FailedKeyPath
+              }
+             ,Options
+             ) ->
+    validation_error(FailedKeyPath
+                    ,<<"wrong_format">>
+                    ,kz_json:from_list(
+                       [{<<"message">>, <<"Field is not in the correct format">>}
+                       ,{<<"value">>, FailedValue}
+                       ,{<<"format">>, kz_json:get_value(<<"format">>, FailedSchemaJObj)}
+                       ]
+                      )
+                    ,Options
+                    );
+error_to_jobj({'data_invalid'
               ,_FailedSchemaJObj
               ,FailMsg
               ,FailedValue
@@ -759,7 +779,7 @@ error_to_jobj({'data_invalid'
                     );
 error_to_jobj({'schema_invalid'
               ,Schema
-              ,{schema_not_found, SchemaName}
+              ,{'schema_not_found', SchemaName}
               }
              ,Options
              ) ->
@@ -776,10 +796,7 @@ error_to_jobj({'schema_invalid'
                        ])
                     ,Options
                     );
-error_to_jobj({'schema_invalid'
-              ,Schema
-              ,Error
-              }
+error_to_jobj({'schema_invalid', Schema, Error}
              ,Options
              ) ->
     lager:error("schema has errors: ~p: ~p", [Error, Schema]),
@@ -863,6 +880,8 @@ validation_error(Property, <<"additionalProperties">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, <<"additionalItems">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
+validation_error(Property, <<"wrong_format">> = C, Message, Options) ->
+    depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, Code, Message, Options) ->
     lager:warning("UNKNOWN ERROR CODE: ~p", [Code]),
     depreciated_validation_error(Property, Code, Message, Options).
@@ -920,7 +939,7 @@ build_validate_error(Property, Code, Message, Options) ->
 
     {props:get_value('error_code', Options)
     ,props:get_value('error_message', Options)
-    ,kz_json:set_values([{[Key, Code], Error}], kz_json:new())
+    ,kz_json:set_value([Key, Code], Error, kz_json:new())
     }.
 
 -spec build_error_message(kz_term:ne_binary(), kz_json:object()) -> kz_json:object() | kz_term:ne_binary().

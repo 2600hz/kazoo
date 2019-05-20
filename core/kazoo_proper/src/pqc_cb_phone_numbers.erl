@@ -42,7 +42,12 @@ list_number(API, AccountId, Number) ->
     URL = number_url(AccountId, Number),
     RequestHeaders = pqc_cb_api:request_headers(API),
 
-    pqc_cb_api:make_request([200, 404], fun kz_http:get/2, URL, RequestHeaders).
+    Expectations = [#expectation{response_codes = [200, 404]}],
+    pqc_cb_api:make_request(Expectations
+                           ,fun kz_http:get/2
+                           ,URL
+                           ,RequestHeaders
+                           ).
 
 -spec add_number(pqc_cb_api:state(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 add_number(_API, 'undefined', _Number) -> ?FAILED_RESPONSE;
@@ -52,7 +57,8 @@ add_number(API, AccountId, Number) ->
     RequestEnvelope  = pqc_cb_api:create_envelope(kz_json:new()
                                                  ,kz_json:from_list([{<<"accept_charges">>, 'true'}])
                                                  ),
-    pqc_cb_api:make_request([201, 404, 409]
+    Expectations = [#expectation{response_codes = [201, 404, 409]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:put/3
                            ,URL
                            ,RequestHeaders
@@ -64,7 +70,8 @@ remove_number(_API, 'undefined', _Number) -> ?FAILED_RESPONSE;
 remove_number(API, AccountId, Number) ->
     URL = number_url(AccountId, Number),
     RequestHeaders = pqc_cb_api:request_headers(API),
-    pqc_cb_api:make_request([200, 404]
+    Expectations = [#expectation{response_codes = [200, 404]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:delete/2
                            ,URL
                            ,RequestHeaders
@@ -76,7 +83,9 @@ activate_number(API, AccountId, Number) ->
     URL = number_url(AccountId, Number, "activate"),
     RequestHeaders = pqc_cb_api:request_headers(API),
     RequestEnvelope  = pqc_cb_api:create_envelope(kz_json:new(), kz_json:from_list([{<<"accept_charges">>, 'true'}])),
-    pqc_cb_api:make_request([201, 404, 500]
+
+    Expectations = [#expectation{response_codes = [201, 404, 500]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:put/3
                            ,URL
                            ,RequestHeaders

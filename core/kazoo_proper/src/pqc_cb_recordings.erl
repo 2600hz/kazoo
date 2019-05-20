@@ -28,7 +28,8 @@
                              {'error', 'not_found'} |
                              {'ok', kz_json:objects()}.
 list_recordings(API, AccountId) ->
-    case pqc_cb_api:make_request(#{'response_codes' => [200]}
+    Expectations = [#expectation{response_codes = [200]}],
+    case pqc_cb_api:make_request(Expectations
                                 ,fun kz_http:get/2
                                 ,recordings_url(AccountId)
                                 ,pqc_cb_api:request_headers(API)
@@ -46,7 +47,8 @@ list_recordings(API, AccountId) ->
                              {'ok', kz_json:object()} |
                              {'error', 'not_found'}.
 fetch_recording(API, AccountId, RecordingId) ->
-    case pqc_cb_api:make_request(#{'response_codes' => [200]}
+    Expectations = [#expectation{response_codes = [200]}],
+    case pqc_cb_api:make_request(Expectations
                                 ,fun kz_http:get/2
                                 ,recordings_url(AccountId, RecordingId)
                                 ,pqc_cb_api:request_headers(API)
@@ -64,13 +66,13 @@ fetch_recording(API, AccountId, RecordingId) ->
                                     {'ok', kz_term:ne_binary()} |
                                     {'error', 'not_found'}.
 fetch_recording_binary(API, AccountId, RecordingId) ->
-    case pqc_cb_api:make_request(#{'response_codes' => [200]
-                                  ,'response_headers' =>
-                                       [{"content-type", "audio/mpeg"}]
-                                  }
+    Expectations = [#expectation{response_codes = [200]
+                                ,response_headers = [{"content-type", "audio/mpeg"}]
+                                }],
+    case pqc_cb_api:make_request(Expectations
                                 ,fun kz_http:get/2
                                 ,recordings_url(AccountId, RecordingId)
-                                ,pqc_cb_api:request_headers(API, [{<<"accept">>, "audio/mpeg"}])
+                                ,pqc_cb_api:request_headers(API, [{"accept", "audio/mpeg"}])
                                 )
     of
         {'error', _E} ->
@@ -84,10 +86,10 @@ fetch_recording_binary(API, AccountId, RecordingId) ->
                                       {'ok', kz_term:ne_binary()} |
                                       {'error', 'not_found'}.
 fetch_recording_tunneled(API, AccountId, RecordingId) ->
-    case pqc_cb_api:make_request(#{'response_codes' => [200]
-                                  ,'response_headers' =>
-                                       [{"content-type", "audio/mpeg"}]
-                                  }
+    Expectations = [#expectation{response_codes = [200]
+                                ,response_headers = [{"content-type", "audio/mpeg"}]
+                                }],
+    case pqc_cb_api:make_request(Expectations
                                 ,fun kz_http:get/2
                                 ,recordings_url(AccountId, RecordingId) ++ "?accept=audio/mpeg"
                                 ,pqc_cb_api:request_headers(API)
@@ -134,7 +136,8 @@ create_attachment(MODB, DocId) ->
                               {'ok', kz_json:object()} |
                               {'error', 'not_found'}.
 delete_recording(API, AccountId, RecordingId) ->
-    case pqc_cb_api:make_request(#{'response_codes' => [200, 404]}
+    Expectations = [#expectation{response_codes = [200, 404]}],
+    case pqc_cb_api:make_request(Expectations
                                 ,fun kz_http:delete/2
                                 ,recordings_url(AccountId, RecordingId)
                                 ,pqc_cb_api:request_headers(API)

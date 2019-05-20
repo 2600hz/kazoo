@@ -49,7 +49,7 @@
         ,find_value/3, find_value/4
         ,foreach/2
         ,all/2, any/2
-        ,exec/2
+        ,exec/2, exec_first/2
         ]).
 
 -export([get_ne_value/2, get_ne_value/3]).
@@ -1545,9 +1545,24 @@ exec(Funs, ?JSON_WRAPPER(_)=JObj) ->
     lists:foldl(fun exec_fold/2, JObj, Funs).
 
 -spec exec_fold(exec_fun(), object()) -> object().
-exec_fold({F, K, V}, C) when is_function(F, 3) -> F(K, V, C);
-exec_fold({F, V}, C) when is_function(F, 2) -> F(V, C);
-exec_fold(F, C) when is_function(F, 1) -> F(C).
+exec_fold({F, K, V}, JObj) when is_function(F, 3) -> F(K, V, JObj);
+exec_fold({F, V}, JObj) when is_function(F, 2) -> F(V, JObj);
+exec_fold(F, JObj) when is_function(F, 1) -> F(JObj).
+
+-type exec_first_fun_1() :: fun((object()) -> object()).
+-type exec_first_fun_2() :: {fun((_, object()) -> object()), _}.
+-type exec_first_fun_3() :: {fun((_, _, object()) -> object()), _, _}.
+-type exec_first_fun() :: exec_first_fun_1() | exec_first_fun_2() | exec_first_fun_3().
+-type exec_first_funs() :: [exec_first_fun(),...].
+
+-spec exec_first(exec_first_funs(), object()) -> object().
+exec_first(Funs, ?JSON_WRAPPER(_)=JObj) ->
+    lists:foldl(fun exec_first_fold/2, JObj, Funs).
+
+-spec exec_first_fold(exec_first_fun(), object()) -> object().
+exec_first_fold({F, K, V}, JObj) when is_function(F, 3) -> F(JObj, K, V);
+exec_first_fold({F, V}, JObj) when is_function(F, 2) -> F(JObj, V);
+exec_first_fold(F, JObj) when is_function(F, 1) -> F(JObj).
 
 -spec utf8_binary(json_term()) -> json_term().
 utf8_binary(<<V/binary>>) -> kz_binary:to_utf8(V);

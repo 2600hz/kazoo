@@ -974,9 +974,9 @@ failed_error(Error, Context) ->
 
 -spec passed(context()) -> context().
 passed(Context) ->
-    Context1 = case error =:= resp_status(Context) of
-                   true -> Context;
-                   false -> set_resp_status(Context, success)
+    Context1 = case 'error' =:= resp_status(Context) of
+                   'true' -> Context;
+                   'false' -> set_resp_status(Context, 'success')
                end,
     case kz_doc:id(req_data(Context1)) of
         'undefined' -> Context1;

@@ -920,12 +920,13 @@ format_emergency_caller_id_number(Context, Emergency) ->
     case kz_json:get_ne_binary_value(<<"number">>, Emergency) of
         'undefined' -> Context;
         Number ->
-            NEmergency = kz_json:set_value(<<"number">>, knm_converters:normalize(Number), Emergency),
-            CallerId = cb_context:req_value(Context, <<"caller_id">>),
-            NCallerId = kz_json:set_value(?KEY_EMERGENCY, NEmergency, CallerId),
+            NEmergencyJObj = kz_json:set_value(<<"number">>, knm_converters:normalize(Number), Emergency),
+            CallerIdJObj = cb_context:req_value(Context, <<"caller_id">>),
+            NCallerIdJObj = kz_json:set_value(?KEY_EMERGENCY, NEmergencyJObj, CallerIdJObj),
 
+            lager:debug("setting emergency caller id from ~s to ~s", [Number, knm_converters:normalize(Number)]),
             cb_context:set_req_data(Context
-                                   ,kz_json:set_value(<<"caller_id">>, NCallerId, cb_context:req_data(Context))
+                                   ,kz_json:set_value(<<"caller_id">>, NCallerIdJObj, cb_context:req_data(Context))
                                    )
     end.
 

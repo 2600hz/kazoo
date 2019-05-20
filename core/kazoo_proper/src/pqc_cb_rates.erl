@@ -109,7 +109,7 @@ create_service_plan(API, RatedeckId) ->
             'ok'
     end.
 
--spec assign_service_plan(pqc_cb_api:state(), kz_term:ne_binary() | proper_types:type(), kz_term:ne_binary()) ->
+-spec assign_service_plan(pqc_cb_api:state(), kz_term:api_ne_binary() | proper_types:type(), kz_term:ne_binary()) ->
                                  pqc_cb_api:response().
 assign_service_plan(_API, 'undefined', _RatedeckId) ->
     ?INFO("no account to assign ~s to", [_RatedeckId]),
@@ -119,8 +119,8 @@ assign_service_plan(API, AccountId, RatedeckId) ->
     ServicePlanId = service_plan_id(RatedeckId),
     pqc_cb_services:assign_service_plan(API, AccountId, ServicePlanId).
 
--spec rate_account_did(pqc_cb_api:state(), kz_term:ne_binary() | proper_types:type(), kz_term:ne_binary()) ->
-                              kz_term:api_integer().
+-spec rate_account_did(pqc_cb_api:state(), kz_term:api_ne_binary() | proper_types:type(), kz_term:ne_binary()) ->
+                              kz_term:api_number().
 rate_account_did(_API, 'undefined', _DID) ->
     ?INFO("account doesn't exist to rate DID ~p", [_DID]),
     ?FAILED_RESPONSE;
@@ -189,7 +189,8 @@ delete_rate(API, ID, <<_/binary>>=RatedeckId) ->
     ?INFO("deleting rate ~s from ~s", [ID, RatedeckId]),
 
     URL = rate_url(ID, RatedeckId),
-    pqc_cb_api:make_request([200, 404]
+    Expectations = [#expectation{response_codes = [200, 404]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:delete/2
                            ,URL ++ "&should_soft_delete=false"
                            ,pqc_cb_api:request_headers(API)
@@ -202,7 +203,8 @@ get_rate(API, RateDoc) ->
     ?INFO("getting rate info for ~s in ~s", [ID, kzd_rates:ratedeck_id(RateDoc)]),
 
     URL = rate_url(ID, kzd_rates:ratedeck_id(RateDoc)),
-    pqc_cb_api:make_request([200, 404]
+    Expectations = [#expectation{response_codes = [200, 404]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:get/2
                            ,URL
                            ,pqc_cb_api:request_headers(API)
@@ -215,7 +217,8 @@ get_rates(API) ->
 -spec get_rates(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
 get_rates(API, RatedeckId) ->
     ?INFO("getting rates for ratedeck ~s", [RatedeckId]),
-    pqc_cb_api:make_request([200]
+    Expectations = [#expectation{response_codes = [200]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:get/2
                            ,rates_url() ++ "?ratedeck_id=" ++ kz_term:to_list(RatedeckId)
                            ,pqc_cb_api:request_headers(API)
@@ -228,7 +231,8 @@ get_rates_by_prefix(API, Prefix) ->
 -spec get_rates_by_prefix(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 get_rates_by_prefix(API, Prefix, RatedeckId) ->
     ?INFO("getting rates for ratedeck ~s by prefix ~s", [RatedeckId, Prefix]),
-    pqc_cb_api:make_request([200]
+    Expectations = [#expectation{response_codes = [200]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:get/2
                            ,rates_url()
                             ++ "?ratedeck_id=" ++ kz_term:to_list(RatedeckId)
@@ -236,7 +240,7 @@ get_rates_by_prefix(API, Prefix, RatedeckId) ->
                            ,pqc_cb_api:request_headers(API)
                            ).
 
--spec rate_did(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_integer().
+-spec rate_did(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_number().
 rate_did(API, RatedeckId, DID) ->
     ?INFO("rating DID ~s using ~s", [DID, RatedeckId]),
     URL = rate_number_url(RatedeckId, DID),
@@ -247,7 +251,8 @@ rate_did(API, RatedeckId, DID) ->
 make_rating_request(API, URL) ->
     RequestHeaders = pqc_cb_api:request_headers(API),
 
-    Resp = pqc_cb_api:make_request([200, 500]
+    Expectations = [#expectation{response_codes = [200, 500]}],
+    Resp = pqc_cb_api:make_request(Expectations
                                   ,fun kz_http:get/2
                                   ,URL
                                   ,RequestHeaders
