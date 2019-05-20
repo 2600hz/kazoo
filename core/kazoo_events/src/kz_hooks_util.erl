@@ -238,7 +238,7 @@ handle_call_event(JObj, Props) ->
     kz_util:put_callid(CallId),
 
     RoutingKey = binding_key(AccountId, HookEvent),
-    kazoo_bindings:map(RoutingKey, [JObj]),
+    _ = kazoo_bindings:map(RoutingKey, [JObj]),
 
     handle_call_event(JObj, AccountId, HookEvent, CallId, props:get_is_true('rr', Props)).
 
