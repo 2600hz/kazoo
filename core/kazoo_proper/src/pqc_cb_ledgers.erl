@@ -249,7 +249,7 @@ ledger_doc() ->
                 ,{fun kzd_ledgers:set_usage_quantity/2, 1}
                 ,{fun kzd_ledgers:set_usage_unit/2, <<"Hz">>}
                 ,{fun kzd_ledgers:set_usage_type/2, <<"cycle">>}
-                ,{fun kzd_ledgers:set_amount/2, 2.6}
+                ,{fun(J, V) -> kz_json:set_value(<<"amount">>, V, J) end, 2.6}
                 ]
                ).
 
