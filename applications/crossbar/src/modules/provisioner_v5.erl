@@ -16,6 +16,12 @@
 -include("crossbar.hrl").
 -include("provisioner_v5.hrl").
 
+-ifdef(TEST).
+-export([is_device_enabled/3
+        ,device_display_name/3
+        ]).
+-endif.
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -104,19 +110,6 @@ get_model(JObj) ->
         Else -> Else
     end.
 
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec update_account(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
-update_account(AccountId, JObj, AuthToken) ->
-    send_req('accounts_update'
-            ,account_settings(JObj)
-            ,AuthToken
-            ,AccountId
-            ,'undefined'
-            ).
-
 -spec delete_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 delete_account(AccountId, AuthToken) ->
     send_req('accounts_delete'
@@ -125,6 +118,20 @@ delete_account(AccountId, AuthToken) ->
             ,AccountId
             ,'undefined'
             ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec update_account(kz_term:ne_binary(), kzd_accounts:doc(), kz_term:ne_binary()) -> 'ok'.
+update_account(AccountId, _JObj, AuthToken) ->
+    send_req('accounts_update'
+            ,kz_json:from_list([{<<"settings">>, kz_json:new()}])
+            ,AuthToken
+            ,AccountId
+            ,'undefined'
+            ).
+
 -spec update_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 update_account(Account, AuthToken) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
@@ -133,12 +140,6 @@ update_account(Account, AuthToken) ->
         {'error', _R} ->
             lager:debug("unable to fetch account ~s: ~p", [AccountId, _R])
     end.
-
--spec account_settings(kz_json:object()) -> kz_json:object().
-account_settings(JObj) ->
-    kz_json:from_list(
-      [{<<"settings">>, settings(JObj)}
-      ]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -155,12 +156,13 @@ update_user(AccountId, JObj, AuthToken) ->
 save_user(AccountId, JObj, AuthToken) ->
     _ = update_account(AccountId, AuthToken),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    Devices = crossbar_util:get_devices_by_owner(AccountDb, kz_doc:id(JObj)),
-    Settings = settings(JObj),
-    lists:foreach(
-      fun(Device) ->
-              maybe_save_device(Device, Settings, AccountId, AuthToken)
-      end, Devices).
+    Devices = kz_attributes:owned_by_docs(kz_doc:id(JObj), AccountDb),
+    lists:foreach(fun(Device) ->
+                          Settings = settings(Device),
+                          maybe_save_device(Device, Settings, AccountId, AuthToken)
+                  end
+                 ,Devices
+                 ).
 
 -spec maybe_save_device(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                'ok' | {'EXIT', _}.
@@ -224,19 +226,28 @@ get_owner(OwnerId, AccountId) ->
     kz_datamgr:open_cache_doc(AccountDb, OwnerId).
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Calculate the settings for the device based on the merge down
+%%
+%% When configuring a device, settings from the device, user, and account must be
+%% merged down into a unified view of what is sent to the provisioner.
+%%
+%% For instance, when a user is disabled, the device(s) will be disabled, but if
+%% the device is re-saved (and still owned by the disabled user) and enabled, it
+%% needs to continue to be disabled on provisioner.
+%%
+%% This function should create the merged version of the device's settings in a
+%% way similar to kz_endpoint when building bridge strings.
 %% @end
 %%------------------------------------------------------------------------------
--spec settings(kz_json:object()) -> kz_json:object().
-settings(JObj) ->
-    Props = props:filter_empty(
-              [{<<"lines">>, settings_lines(JObj)}
-              ,{<<"codecs">>, settings_codecs(JObj)}
-              ,{<<"datetime">>, settings_datetime(JObj)}
-              ,{<<"feature_keys">>, settings_feature_keys(JObj)}
-              ,{<<"line_keys">>, settings_line_keys(JObj)}
-              ,{<<"combo_keys">>, settings_combo_keys(JObj)}
-              ]),
+-spec settings(kzd_devices:doc()) -> kz_json:object().
+settings(Device) ->
+    Props = props:filter_empty([{<<"lines">>, settings_lines(Device)}
+                               ,{<<"codecs">>, settings_codecs(Device)}
+                               ,{<<"datetime">>, settings_datetime(Device)}
+                               ,{<<"feature_keys">>, settings_feature_keys(Device)}
+                               ,{<<"line_keys">>, settings_line_keys(Device)}
+                               ,{<<"combo_keys">>, settings_combo_keys(Device)}
+                               ]),
     kz_json:from_list(Props).
 
 -spec settings_line_keys(kz_json:object()) -> kz_json:object().
@@ -265,30 +276,90 @@ settings_lines(JObj) ->
         Props -> kz_json:from_list([{<<"0">>, kz_json:from_list(Props)}])
     end.
 
--spec settings_basic(kz_json:object()) -> kz_json:object().
-settings_basic(JObj) ->
-    Enabled = case kz_json:get_ne_value(<<"enabled">>, JObj) of
-                  'undefined' -> 'undefined';
-                  Else -> kz_term:is_true(Else)
-              end,
-    Props = props:filter_undefined(
-              [{<<"display_name">>, kz_json:get_ne_value(<<"name">>, JObj)}
-              ,{<<"enable">>, Enabled}
-              ]),
+-spec settings_basic(kzd_devices:doc()) -> kz_json:object().
+settings_basic(DeviceDoc) ->
+    {'ok', AccountDoc} = fetch_account_from_device(DeviceDoc),
+    {'ok', UserDoc} = fetch_user_from_device(DeviceDoc),
+
+    settings_basic(DeviceDoc, UserDoc, AccountDoc).
+
+-spec settings_basic(kzd_devices:doc(), kzd_users:doc(), kzd_accounts:doc()) ->
+                            kz_json:object().
+settings_basic(DeviceDoc, UserDoc, AccountDoc) ->
+    IsEnabled = is_device_enabled(DeviceDoc, UserDoc, AccountDoc),
+    DisplayName = device_display_name(DeviceDoc, UserDoc, AccountDoc),
+
+    Props = [{<<"display_name">>, DisplayName}
+            ,{<<"enable">>, IsEnabled}
+            ],
     kz_json:from_list(Props).
 
--spec settings_sip(kz_json:object()) -> kz_json:object().
-settings_sip(JObj) ->
-    RealmPaths = [[<<"sip">>, <<"realm">>]
-                 ,<<"realm">>
-                 ],
-    Realm = kz_json:get_first_defined(RealmPaths, JObj),
-    Props = props:filter_undefined(
-              [{<<"username">>, kzd_devices:sip_username(JObj)}
-              ,{<<"password">>, kzd_devices:sip_password(JObj)}
-              ,{<<"realm">>, Realm}
-              ]),
+-spec device_display_name(kzd_devices:doc(), kzd_users:doc(), kzd_accounts:doc()) ->
+                                 kz_term:api_ne_binary().
+device_display_name(DeviceDoc, UserDoc, AccountDoc) ->
+    case [DN || DN <- [kzd_users:name(UserDoc)
+                      ,kzd_devices:name(DeviceDoc)
+                      ,kzd_accounts:name(AccountDoc)
+                      ],
+                not is_empty_display_name(DN)
+         ]
+    of
+        [] -> 'undefined';
+        [DisplayName |_] -> DisplayName
+    end.
+
+-spec is_empty_display_name(kz_term:api_binary()) -> boolean().
+is_empty_display_name(<<>>) -> 'true';
+is_empty_display_name(<<" ">>) -> 'true'; %% kzd_users:name/1 possible result
+is_empty_display_name('undefined') -> 'true';
+is_empty_display_name(_DN) -> 'false'.
+
+-spec is_device_enabled(kzd_devices:doc(), kzd_users:doc(), kzd_accounts:doc()) ->
+                               boolean().
+is_device_enabled(DeviceDoc, UserDoc, AccountDoc) ->
+    lists:all(fun kz_term:is_true/1
+             ,[kzd_devices:enabled(DeviceDoc)
+              ,kzd_users:enabled(UserDoc)
+              ,kzd_accounts:is_enabled(AccountDoc)
+              ]).
+
+-spec fetch_account_from_device(kzd_devices:doc()) ->
+                                       {'ok', kzd_accounts:doc()} |
+                                       kz_datamgr:data_error().
+fetch_account_from_device(DeviceDoc) ->
+    kzd_accounts:fetch(kz_doc:account_id(DeviceDoc)).
+
+-spec fetch_user_from_device(kzd_devices:doc()) ->
+                                    {'ok', kzd_users:doc()} |
+                                    kz_datamgr:data_error().
+fetch_user_from_device(DeviceDoc) ->
+    fetch_user_from_device(DeviceDoc, kzd_devices:owner_id(DeviceDoc)).
+
+-spec fetch_user_from_device(kzd_devices:doc(), kz_term:api_ne_binary()) ->
+                                    {'ok', kzd_users:doc()} |
+                                    kz_datamgr:data_error().
+fetch_user_from_device(_DeviceDoc, 'undefined') ->
+    {'ok', kzd_users:new()};
+fetch_user_from_device(DeviceDoc, OwnerId) ->
+    kzd_users:fetch(kz_doc:account_id(DeviceDoc), OwnerId).
+
+-spec settings_sip(kzd_devices:doc()) -> kz_json:object().
+settings_sip(DeviceDoc) ->
+    Realm = find_realm(DeviceDoc),
+    Props = [{<<"username">>, kzd_devices:sip_username(DeviceDoc)}
+            ,{<<"password">>, kzd_devices:sip_password(DeviceDoc)}
+            ,{<<"realm">>, Realm}
+            ],
     kz_json:from_list(Props).
+
+-spec find_realm(kzd_devices:doc()) -> kz_term:api_ne_binary().
+find_realm(Device) ->
+    find_realm(Device, kzd_devices:sip_realm(Device)).
+
+-spec find_realm(kzd_devices:doc(), kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
+find_realm(Device, 'undefined') ->
+    kz_json:get_ne_binary_value(<<"realm">>, Device);
+find_realm(_Device, Realm) -> Realm.
 
 -spec settings_advanced(kz_json:object()) -> kz_json:object().
 settings_advanced(JObj) ->
