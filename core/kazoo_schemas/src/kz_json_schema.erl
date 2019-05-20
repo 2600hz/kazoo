@@ -737,6 +737,24 @@ error_to_jobj({'data_invalid'
                     ,Options
                     );
 error_to_jobj({'data_invalid'
+              ,FailedSchemaJObj
+              ,'wrong_format'
+              ,FailedValue
+              ,FailedKeyPath
+              }
+             ,Options
+             ) ->
+    validation_error(FailedKeyPath
+                    ,<<"wrong_format">>
+                    ,kz_json:from_list(
+                       [{<<"message">>, <<"Field is not in the correct format">>}
+                       ,{<<"value">>, FailedValue}
+                       ,{<<"format">>, kz_json:get_value(<<"format">>, FailedSchemaJObj)}
+                       ]
+                      )
+                    ,Options
+                    );
+error_to_jobj({'data_invalid'
               ,_FailedSchemaJObj
               ,FailMsg
               ,FailedValue
@@ -759,7 +777,7 @@ error_to_jobj({'data_invalid'
                     );
 error_to_jobj({'schema_invalid'
               ,Schema
-              ,{schema_not_found, SchemaName}
+              ,{'schema_not_found', SchemaName}
               }
              ,Options
              ) ->
@@ -776,10 +794,7 @@ error_to_jobj({'schema_invalid'
                        ])
                     ,Options
                     );
-error_to_jobj({'schema_invalid'
-              ,Schema
-              ,Error
-              }
+error_to_jobj({'schema_invalid', Schema, Error}
              ,Options
              ) ->
     lager:error("schema has errors: ~p: ~p", [Error, Schema]),
@@ -862,6 +877,8 @@ validation_error(Property, <<"schema">> = C, Message, Options) ->
 validation_error(Property, <<"additionalProperties">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, <<"additionalItems">> = C, Message, Options) ->
+    depreciated_validation_error(Property, C, Message, Options);
+validation_error(Property, <<"wrong_format">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, Code, Message, Options) ->
     lager:warning("UNKNOWN ERROR CODE: ~p", [Code]),

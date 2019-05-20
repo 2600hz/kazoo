@@ -35367,7 +35367,7 @@
                     "description": "The email of the user",
                     "format": "email",
                     "maxLength": 254,
-                    "minLength": 1,
+                    "minLength": 3,
                     "type": "string"
                 },
                 "enabled": {

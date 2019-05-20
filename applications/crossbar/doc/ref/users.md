@@ -31,7 +31,7 @@ Key | Description | Type | Default | Required | Support Level
 `directories` | Provides the mappings for what directory the user is a part of (the key), and what callflow (the value) to invoke if the user is selected by the caller. | `object()` |   | `false` |  
 `do_not_disturb.enabled` | Is do-not-disturb enabled for this user? | `boolean()` |   | `false` |  
 `do_not_disturb` | DND Parameters | `object()` |   | `false` |  
-`email` | The email of the user | `string(1..254)` |   | `false` | `supported`
+`email` | The email of the user | `string(3..254)` |   | `false` | `supported`
 `enabled` | Determines if the user is currently enabled | `boolean()` | `true` | `false` | `supported`
 `feature_level` | The user level for assigning feature sets | `string()` |   | `false` |  
 `first_name` | The first name of the user | `string(1..128)` |   | `true` | `supported`
