@@ -646,7 +646,7 @@ store_recording(Pid, Filename, StoreUrl, Call) ->
 
 
 handle_ready_to_consume(#state{call=Call}=State) ->
-    case kapps_call_event:is_destroyed(Call) of
+    case kapps_call_events:is_destroyed(Call) of
         'true' ->
             lager:info("our call has ended while we initialized, nothing to do"),
             {'stop', 'normal', State};

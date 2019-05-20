@@ -998,7 +998,7 @@ status(Call) ->
 -spec initialize(state()) -> {'stop', 'normal', state()} |
                              {'noreply', state()}.
 initialize(#state{call=Call}=State) ->
-    initialize(State, Call, kapps_call_event:is_destroyed(Call)).
+    initialize(State, Call, kapps_call_events:is_destroyed(Call)).
 
 initialize(State, _Call, 'true') ->
     lager:info("call has terminated before executor finished initializing"),
