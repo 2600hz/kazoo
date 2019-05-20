@@ -111,11 +111,23 @@ handle_cast({'kz_amqp_channel', _}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
-handle_cast({'gen_listener', {'is_consuming', 'true'}}, #state{control_queue=ControlQ}=State) ->
-    Payload = build_local_extension(State),
-    'ok' = kapi_dialplan:publish_command(ControlQ, Payload),
-    lager:debug("sent local extension command to ~s", [ControlQ]),
-    {'noreply', State};
+handle_cast({'gen_listener', {'is_consuming', 'true'}}
+           ,#state{call_id=CallId
+                  ,resource_req=OffnetReq
+                  ,request_handler=RequestHandler
+                  ,control_queue=ControlQ
+                  }=State
+           ) ->
+    case kapps_call_events:get_event(CallId) of
+        {'ok', CallEvt} ->
+            lager:info("channel died while we were initializing"),
+            handle_channel_destroy(CallEvt, OffnetReq, RequestHandler);
+        {'error', 'not_found'} ->
+            Payload = build_local_extension(State),
+            'ok' = kapi_dialplan:publish_command(ControlQ, Payload),
+            lager:debug("sent local extension command to ~s", [ControlQ]),
+            {'noreply', State}
+    end;
 handle_cast({'local_extension_result', _Props}, #state{response_queue='undefined'}=State) ->
     {'stop', 'normal', State};
 handle_cast({'local_extension_result', Props}, #state{response_queue=ResponseQ}=State) ->
