@@ -294,14 +294,13 @@ set_dollar_amount(Doc, Amount) ->
     kz_json:set_value(?AMOUNT, Units, Doc).
 
 %%------------------------------------------------------------------------------
-%% @doc DO NOT USE ME!
+%% DO NOT USE ME!
 %%
 %% The API document is guided by the schema but the database document is guided
 %% by kz_ledger (which in this case uses `amount` as the key for units. So the API
 %% request's `amount` is in currency but the db doc's `amount` is in units.
 %%
 %% Commented out the code below to show that we know it breaks convention
-%% @end
 %%------------------------------------------------------------------------------
 %% -spec amount(doc()) -> kz_term:api_number().
 %% amount(Doc) ->
@@ -314,6 +313,7 @@ set_dollar_amount(Doc, Amount) ->
 %% -spec set_amount(doc(), number()) -> doc().
 %% set_amount(Doc, Amount) ->
 %%     kz_json:set_value([<<"amount">>], Amount, Doc).
+
 
 %%------------------------------------------------------------------------------
 %% @doc
