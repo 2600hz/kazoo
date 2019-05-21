@@ -116,7 +116,6 @@
 -type xml_thing() :: xml_el() | xml_text().
 -type xml_things() :: xml_els() | xml_texts().
 
-
 %% KZ_NODES types
 
 -type whapp_info() :: #whapp_info{}.
