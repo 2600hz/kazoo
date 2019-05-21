@@ -1183,7 +1183,7 @@ record_call_vars(Node, UUID, JObj) ->
                        ,{<<"recording_follow_transfer">>, FollowTransfer}
                        ,{<<"recording_follow_attxfer">>, FollowTransfer}
                        ,{<<"enable_file_write_buffering">>, <<"false">>}
-                       ,{<<"Record-Min-Sec">>, RecordMinSec}
+                       ,{<<"record_min_sec">>, RecordMinSec}
                        ,{<<"record_sample_rate">>, kz_term:to_binary(SampleRate)}
                        ]
                       ,Routines
@@ -1192,9 +1192,6 @@ record_call_vars(Node, UUID, JObj) ->
         [] -> <<>>;
         Args -> list_to_binary(["%^[", kz_binary:join(Args, <<"^">>), "]"])
     end.
-%%     Args = ecallmgr_util:process_fs_kv(Node, UUID, Vars, 'set'),
-%%     ecallmgr_util:fs_args_to_binary(Args).
-
 
 -spec record_call_args(kz_json:object()) -> binary().
 record_call_args(JObj) ->
