@@ -194,7 +194,7 @@ rollover(Account, Year, Month, Units) ->
     kz_ledgers:rollover(Account, Year, Month, Units).
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Callback to handle rolling over ledgers to the new MODB
 %% @end
 %%------------------------------------------------------------------------------
 -spec modb(kz_term:ne_binary()) -> available_units_return().

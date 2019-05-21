@@ -369,7 +369,7 @@ rollover(Account, Year, Month) ->
     case should_rollover_monthly_balance() of
         'true' -> rollover_past_available_units(Account, Year, Month);
         'false' ->
-            lager:debug("monthly balance rollover is disabled, assuming previous balance was 0", []),
+            lager:debug("monthly balance rollover is disabled, assuming previous balance was 0"),
             rollover(Account, Year, Month, 0)
     end.
 

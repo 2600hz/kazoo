@@ -15,7 +15,7 @@
 -include_lib("kazoo_services/include/kazoo_services.hrl").
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Adds this module as a callback for when MODBs are created
 %% @end
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
