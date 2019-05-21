@@ -9,6 +9,8 @@
 -define(APP_VERSION, <<"4.0.0">>).
 -define(APP, 'kazoo_events').
 
+-type bind_fun() :: {module(), atom(), list()} |
+                    fun().
 
 -define(KAZOO_EVENTS_HRL, 'true').
 -endif.

@@ -359,7 +359,7 @@ handle_call('is_channel_destroyed', _From, State) ->
 handle_call({'update_call', Routines}, _From, #state{call=Call}=State) ->
     NewCall = kapps_call:exec(Routines, Call),
     {'reply', NewCall, State#state{call=NewCall}};
-handle_call({'set_call', Call},  _From, State) ->
+handle_call({'set_call', Call}, _From, State) ->
     {'reply', Call, State#state{call=Call}};
 handle_call('get_call', _From, #state{call=Call}=State) ->
     {'reply', {'ok', Call}, State};
@@ -533,21 +533,8 @@ handle_cast({'add_event_listener', {Mod, Args}}, #state{call=Call}=State) ->
     _EvtL = cf_util:start_event_listener(Call, Mod, Args),
     lager:debug("started event listener: ~p", [_EvtL]),
     {'noreply', State};
-handle_cast('initialize', #state{call=Call}=State) ->
-    log_call_information(Call),
-    Flow = kapps_call:kvs_fetch('cf_flow', Call),
-    Updaters = [{fun kapps_call:kvs_store/3, 'cf_exe_pid', self()}
-               ,{fun kapps_call:call_id_helper/2, fun callid/2}
-               ,{fun kapps_call:control_queue_helper/2, fun control_queue/2}
-               ],
-    CallWithHelpers = kapps_call:exec(Updaters, Call),
-    _ = kz_util:spawn(fun cf_singular_call_hooks:maybe_hook_call/1, [CallWithHelpers]),
-    {'noreply'
-    ,launch_cf_module(State#state{call=CallWithHelpers
-                                 ,flow=Flow
-                                 ,status='running'
-                                 })
-    };
+handle_cast('initialize', State) ->
+    initialize(State);
 handle_cast({'amqp_send', API, PubFun}
            ,#state{amqp_queue=AMQPQueue}=State
            ) ->
@@ -1007,3 +994,27 @@ status(Srv) when is_pid(Srv) ->
 status(Call) ->
     Srv = cf_exe_pid(Call),
     status(Srv).
+
+-spec initialize(state()) -> {'stop', 'normal', state()} |
+                             {'noreply', state()}.
+initialize(#state{call=Call}=State) ->
+    initialize(State, Call, kapps_call_events:is_destroyed(Call)).
+
+initialize(State, _Call, 'true') ->
+    lager:info("call has terminated before executor finished initializing"),
+    {'stop', 'normal', State};
+initialize(State, Call, 'false') ->
+    log_call_information(Call),
+    Flow = kapps_call:kvs_fetch('cf_flow', Call),
+    Updaters = [{fun kapps_call:kvs_store/3, 'cf_exe_pid', self()}
+               ,{fun kapps_call:call_id_helper/2, fun callid/2}
+               ,{fun kapps_call:control_queue_helper/2, fun control_queue/2}
+               ],
+    CallWithHelpers = kapps_call:exec(Updaters, Call),
+    _ = kz_util:spawn(fun cf_singular_call_hooks:maybe_hook_call/1, [CallWithHelpers]),
+    {'noreply'
+    ,launch_cf_module(State#state{call=CallWithHelpers
+                                 ,flow=Flow
+                                 ,status='running'
+                                 })
+    }.

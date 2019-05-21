@@ -129,8 +129,17 @@ handle_call_event(JObj, Props) ->
 %% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec init([kapps_call:call() | kz_json:object()]) -> {'ok', state(), 'hibernate'}.
+-spec init([kapps_call:call() | kz_json:object()]) -> {'ok', state(), 'hibernate'} |
+                                                      {'stop', 'normal'}.
 init([Call, JObj]) ->
+    init(Call, JObj, kapps_call_events:is_destroyed(Call)).
+
+-spec init(kapps_call:call(), kz_json:object(), boolean()) -> {'ok', state(), 'hibernate'} |
+                                                              {'stop', 'normal'}.
+init(_Call, _JObj, 'true') ->
+    lager:info("call has gone down while we started up"),
+    {'stop', 'normal'};
+init(Call, JObj, 'false') ->
     kz_util:put_callid(kapps_call:call_id(Call)),
 
     Method = kzt_util:http_method(kz_json:get_value(<<"HTTP-Method">>, JObj, 'get')),
@@ -215,7 +224,8 @@ handle_cast({'gen_listener', {'created_queue', Q}}
     {'noreply', State#state{call=kapps_call:set_controller_queue(Q, Call)}};
 
 handle_cast({'stop', Call}
-           ,#state{cdr_uri='undefined'}=State) ->
+           ,#state{cdr_uri='undefined'}=State
+           ) ->
     lager:debug("no cdr callback, terminating call"),
     kapps_call_command:hangup(Call),
     {'stop', 'normal', State};
@@ -223,7 +233,8 @@ handle_cast({'stop', Call}
 handle_cast({'cdr', _JObj}
            ,#state{cdr_uri='undefined'
                   ,call=Call
-                  }=State) ->
+                  }=State
+           ) ->
     lager:debug("recv cdr for call, no cdr uri though"),
     erlang:send_after(3000, self(), {'stop', Call}),
     {'noreply', State};
@@ -231,7 +242,8 @@ handle_cast({'cdr', JObj}
            ,#state{cdr_uri=Url
                   ,call=Call
                   ,debug=Debug
-                  }=State) ->
+                  }=State
+           ) ->
     JObj1 = kz_json:delete_key(<<"Custom-Channel-Vars">>, JObj),
     Body =  kz_http_util:json_to_querystring(kz_api:remove_defaults(JObj1)),
     Headers = [{"Content-Type", "application/x-www-form-urlencoded"}],
@@ -250,16 +262,24 @@ handle_cast({'cdr', JObj}
     {'noreply', State};
 
 handle_cast({'add_event_handler', {Pid, _Ref}}
-           ,#state{response_event_handlers=Pids}=State) ->
+           ,#state{response_event_handlers=Pids}=State
+           ) ->
     lager:debug("adding event handler ~p", [Pid]),
     {'noreply', State#state{response_event_handlers=[Pid | Pids]}};
 handle_cast({'add_event_handler', Pid}
-           ,#state{response_event_handlers=Pids}=State) when is_pid(Pid) ->
+           ,#state{response_event_handlers=Pids}=State
+           ) when is_pid(Pid) ->
     lager:debug("adding event handler ~p", [Pid]),
     {'noreply', State#state{response_event_handlers=[Pid | Pids]}};
 
-handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
-    {'noreply', State};
+handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, #state{call=Call}=State) ->
+    case kapps_call_events:is_destroyed(Call) of
+        'true' ->
+            lager:info("channel was destroyed while AMQP started"),
+            {'stop', 'normal', State};
+        'false' ->
+            {'noreply', State}
+    end;
 handle_cast(_Req, State) ->
     lager:debug("unhandled cast: ~p", [_Req]),
     {'noreply', State}.
@@ -273,7 +293,8 @@ handle_cast(_Req, State) ->
 handle_info({'stop', _Call}, State) ->
     {'stop', 'normal', State};
 handle_info({'http', {ReqId, 'stream_start', Hdrs}}
-           ,#state{request_id=ReqId}=State) ->
+           ,#state{request_id=ReqId}=State
+           ) ->
     RespHeaders = normalize_resp_headers(Hdrs),
     lager:debug("recv resp headers"),
     {'noreply', State#state{response_headers=RespHeaders}};
@@ -281,14 +302,16 @@ handle_info({'http', {ReqId, 'stream_start', Hdrs}}
 handle_info({'http', {ReqId, {'error', Error}}}
            ,#state{request_id=ReqId
                   ,response_body=_RespBody
-                  }=State) ->
+                  }=State
+           ) ->
     lager:info("recv error ~p : collected: ~s", [Error, lists:reverse(_RespBody)]),
     {'noreply', State};
 
 handle_info({'http', {ReqId, 'stream', Chunk}}
            ,#state{request_id=ReqId
                   ,response_body=RespBody
-                  }=State) ->
+                  }=State
+           ) ->
     lager:info("adding response chunk: '~ts'", [Chunk]),
 
     {'noreply', State#state{response_body = [Chunk | RespBody]}};
@@ -299,7 +322,8 @@ handle_info({'http', {ReqId, 'stream_end', FinalHeaders}}
                   ,call=Call
                   ,debug=Debug
                   ,requester_queue=RequesterQ
-                  }=State) ->
+                  }=State
+           ) ->
     RespHeaders = normalize_resp_headers(FinalHeaders),
     Body = unicode:characters_to_binary(lists:reverse(RevBody)),
     maybe_debug_resp(Debug, Call, <<"200">>, RespHeaders, Body),
@@ -329,7 +353,8 @@ handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, RespBody}}}
                   ,requester_queue=RequesterQ
                   ,call=Call
                   ,debug=ShouldDebug
-                  }=State)
+                  }=State
+           )
   when (StatusCode - 400) < 100 ->
     lager:info("recv client failure status code ~p", [StatusCode]),
     publish_failed(Call, RequesterQ),
@@ -340,7 +365,8 @@ handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, RespBody}}}
                   ,requester_queue=RequesterQ
                   ,call=Call
                   ,debug=ShouldDebug
-                  }=State)
+                  }=State
+           )
   when (StatusCode - 500) < 100 ->
     lager:info("recv server failure status code ~p", [StatusCode]),
     publish_failed(Call, RequesterQ),
@@ -350,7 +376,8 @@ handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, RespBody}}}
 handle_info({'DOWN', Ref, 'process', Pid, 'normal'}
            ,#state{response_pid=Pid
                   ,response_ref=Ref
-                  }=State) ->
+                  }=State
+           ) ->
     lager:debug("response processing finished for ~p(~p)", [Pid, Ref]),
     {'noreply', State#state{response_pid='undefined'}, 'hibernate'};
 handle_info({'DOWN', Ref, 'process', Pid, Reason}
@@ -358,7 +385,8 @@ handle_info({'DOWN', Ref, 'process', Pid, Reason}
                   ,response_ref=Ref
                   ,call=Call
                   ,requester_queue=RequesterQ
-                  }=State) ->
+                  }=State
+           ) ->
     lager:info("response pid ~p(~p) down: ~p", [Pid, Ref, Reason]),
     publish_failed(Call, RequesterQ),
     {'stop', 'normal', State};
@@ -373,7 +401,8 @@ handle_info(_Info, State) ->
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
 handle_event(_JObj, #state{response_pid=Pid
                           ,response_event_handlers=Pids
-                          }) ->
+                          }
+            ) ->
     {'reply', [{'pid', Pid}
               ,{'pids', Pids}
               ]}.

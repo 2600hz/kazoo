@@ -364,8 +364,12 @@ pages:
   - 'Kazoo Endpoints':
     - 'Formatters': 'core/kazoo_endpoint/doc/formatters.md'
     - 'CallerID Privacy': 'core/kazoo_endpoint/doc/privacy-cid.md'
+  - 'Kazoo Call':
+    - 'core/kazoo_call/doc/README.md'
   - 'Kazoo Standard Library':
     - 'JSON': 'core/kazoo_stdlib/doc/kz_json.md'
+  - 'Kazoo Events':
+    - 'Hooks': 'core/kazoo_events/doc/README.md'
   - 'Kazoo IPs':
     - 'core/kazoo_ips/doc/README.md'
     - 'core/kazoo_ips/doc/maintenance.md'

@@ -16,6 +16,7 @@
 -define(SERVER, ?MODULE).
 
 -define(CHILDREN, [?CACHE(?KAPPS_CALL_CACHE)
+                  ,?WORKER('kapps_call_events')
                   ,?SUPER('kzc_recordings_sup')
                   ]).
 

@@ -132,9 +132,20 @@ handle_cast({'kz_amqp_channel', _}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
-handle_cast({'gen_listener', {'is_consuming', 'true'}}, State) ->
-    _ = maybe_bridge(State),
-    {'noreply', State};
+handle_cast({'gen_listener', {'is_consuming', 'true'}}
+           ,#state{call_id=CallId
+                  ,resource_req=OffnetReq
+                  ,request_handler=RequestHandler
+                  }=State
+           ) ->
+    case kapps_call_events:get_event(CallId) of
+        {'ok', CallEvt} ->
+            lager:info("channel died while we were initializing"),
+            handle_channel_destroy(CallEvt, OffnetReq, RequestHandler);
+        {'error', 'not_found'} ->
+            _ = maybe_bridge(State),
+            {'noreply', State}
+    end;
 handle_cast({'bridge_result', _Props}, #state{response_queue='undefined'}=State) ->
     {'stop', 'normal', State};
 handle_cast({'bridge_result', Props}, #state{response_queue=ResponseQ}=State) ->

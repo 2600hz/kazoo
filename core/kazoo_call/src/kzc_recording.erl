@@ -332,25 +332,8 @@ handle_cast({'gen_listener',{'created_queue', Queue}}, #state{call=Call}=State) 
            ],
     {'noreply', State#state{call=kapps_call:exec(Funs, Call)}};
 
-handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{record_on_answer='true'}=State) ->
-    lager:debug("waiting for answer to start recording"),
-    {'noreply', State};
-handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{record_on_bridge='true'}=State) ->
-    lager:debug("waiting for bridge to start recording"),
-    {'noreply', State};
-handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{record_on_answer='false'
-                                                             ,record_on_bridge='false'
-                                                             ,is_recording='false'
-                                                             ,call=Call
-                                                             ,media={_, MediaName}
-                                                             ,time_limit=TimeLimit
-                                                             ,sample_rate = SampleRate
-                                                             ,record_min_sec = RecordMinSec
-                                                             ,doc_id=Id
-                                                             }=State) ->
-    start_recording(Call, MediaName, TimeLimit, Id, SampleRate, RecordMinSec),
-    lager:debug("started the recording"),
-    {'noreply', State};
+handle_cast({'gen_listener',{'is_consuming', 'true'}}, State) ->
+    handle_ready_to_consume(State);
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -660,3 +643,33 @@ store_recording(Pid, Filename, StoreUrl, Call) ->
             gen_server:cast(Pid, 'store_failed');
         'ok' -> gen_server:cast(Pid, 'store_succeeded')
     end.
+
+
+handle_ready_to_consume(#state{call=Call}=State) ->
+    case kapps_call_events:is_destroyed(Call) of
+        'true' ->
+            lager:info("our call has ended while we initialized, nothing to do"),
+            {'stop', 'normal', State};
+        'false' ->
+            maybe_start_recording(State)
+    end.
+
+maybe_start_recording(#state{record_on_answer='true'}=State) ->
+    lager:debug("waiting for answer to start recording"),
+    {'noreply', State};
+maybe_start_recording(#state{record_on_bridge='true'}=State) ->
+    lager:debug("waiting for bridge to start recording"),
+    {'noreply', State};
+maybe_start_recording(#state{record_on_answer='false'
+                            ,record_on_bridge='false'
+                            ,is_recording='false'
+                            ,call=Call
+                            ,media={_, MediaName}
+                            ,time_limit=TimeLimit
+                            ,sample_rate = SampleRate
+                            ,record_min_sec = RecordMinSec
+                            ,doc_id=Id
+                            }=State) ->
+    start_recording(Call, MediaName, TimeLimit, Id, SampleRate, RecordMinSec),
+    lager:debug("started the recording"),
+    {'noreply', State}.

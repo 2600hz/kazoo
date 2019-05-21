@@ -149,7 +149,8 @@ handle_cast('start_action', #state{call=_Call
                                   ,action='receive'
                                   ,owner_id=OwnerId
                                   ,faxbox_id=FaxBoxId
-                                  }=State) ->
+                                  }=State
+           ) ->
     lager:debug("receiving a fax for ~p/~p", [OwnerId,FaxBoxId]),
     {'noreply', State};
 handle_cast({'fax_status', <<"negociateresult">>, JObj}, State) ->
@@ -186,9 +187,14 @@ handle_cast({'fax_status', Event, _JObj}, State) ->
 handle_cast({'gen_listener', {'created_queue', QueueName}}, State) ->
     lager:debug("worker discovered queue name ~s", [QueueName]),
     {'noreply', State};
-handle_cast({'gen_listener',{'is_consuming',_}}, State) ->
-    start_receive_fax(State);
-
+handle_cast({'gen_listener',{'is_consuming',_}}, #state{call=Call}=State) ->
+    case kapps_call_events:is_destroyed(Call) of
+        'true' ->
+            lager:info("channel died while we were initializing"),
+            {'stop', 'normal', State};
+        'false' ->
+            start_receive_fax(State)
+    end;
 handle_cast('store_document', State) ->
     {'noreply', State#state{status = <<"storing document">>}, ?POLL_INTERVAL};
 handle_cast({'store_attachment', FaxDoc}, #state{monitor={_, Ref}}=State) ->
