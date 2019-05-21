@@ -283,17 +283,17 @@ validate_account_path(Context, AccountId, ?TREE, ?HTTP_GET) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, AccountId) ->
     {'ok', Existing} = kzd_accounts:fetch(AccountId),
-    Context1 = crossbar_doc:save(Context),
-
-    case cb_context:resp_status(Context1) of
-        'success' ->
+    New = kz_json:merge(kz_doc:private_fields(Existing), cb_context:doc(Context)),
+    case kzd_accounts:save(New) of
+        {'ok', SavedAccount} ->
+            Context1 = crossbar_doc:handle_datamgr_success(SavedAccount, Context),
             _ = kz_util:spawn(fun notification_util:maybe_notify_account_change/2, [Existing, Context]),
             _ = kz_util:spawn(fun provisioner_util:maybe_update_account/1, [Context1]),
 
-            {'ok', SavedAccount} = kzd_accounts:save(cb_context:doc(Context1)),
-
-            leak_pvt_fields(AccountId, cb_context:set_doc(Context1, SavedAccount));
-        _Status -> Context1
+            leak_pvt_fields(AccountId, Context1);
+        {'error', Error} ->
+            lager:warning("failed to update account information with error: ~p", [Error]),
+            crossbar_doc:handle_datamgr_errors(Error, AccountId, Context)
     end.
 
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().

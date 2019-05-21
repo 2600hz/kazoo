@@ -166,33 +166,13 @@ page_size(N) -> "page_size=" ++ kz_term:to_list(N).
 start_key('undefined') -> "";
 start_key(StartKey) -> "start_key=" ++ kz_term:to_list(StartKey).
 
--spec initial_state() -> pqc_kazoo_model:model().
-initial_state() ->
-    _ = init_system(),
-    API = pqc_cb_api:authenticate(),
-    pqc_kazoo_model:new(API).
-
-init_system() ->
-    TestId = kz_binary:rand_hex(5),
-    kz_util:put_callid(TestId),
-
-    _ = kz_data_tracing:clear_all_traces(),
-    _ = [kapps_controller:start_app(App) ||
-            App <- ['crossbar']
-        ],
-    _ = [crossbar_maintenance:start_module(Mod) ||
-            Mod <- ['cb_cdrs']
-        ],
-
-    ?INFO("INIT FINISHED").
-
 -spec seq() -> 'ok'.
 seq() ->
     straight_seq(),
     paginated_seq().
 
 straight_seq() ->
-    API = init_api(),
+    API = pqc_cb_api:init_api(['crossbar'], ['cb_cdrs']),
     AccountId = create_account(API),
 
     EmptySummaryResp = summary(API, AccountId),
@@ -225,7 +205,7 @@ straight_seq() ->
     ?INFO("FINISHED STRAIGHT SEQ").
 
 paginated_seq() ->
-    API = init_api(),
+    API = pqc_cb_api:init_api(['crossbar'], ['cb_cdrs']),
     AccountId = create_account(API),
     OwnerId = create_owner(AccountId),
 
@@ -310,10 +290,6 @@ create_owner(AccountId) ->
     {'ok', _Saved}= kz_datamgr:save_doc(AccountDb, Owner),
     ?INFO("saved owner to ~s: ~p", [AccountDb, _Saved]),
     OwnerId.
-
-init_api() ->
-    Model = initial_state(),
-    pqc_kazoo_model:api(Model).
 
 -spec cleanup() -> 'ok'.
 cleanup() ->
