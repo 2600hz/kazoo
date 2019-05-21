@@ -1,0 +1,37 @@
+<definition name="fax_data">
+	<field name="variable_fax_success" as="Fax-Success" serialize-as="boolean" />
+	<field name="variable_has_t38" as="Fax-T38-Used" serialize-as="boolean" />
+	<field name="variable_fax_t38_status" as="Fax-T38-Status" />
+	<field name="variable_fax_ecm_used" as="Fax-ECM-Used"
+		serialize-as="boolean" />
+	<field name="variable_fax_ecm_requested" as="Fax-ECM-Requested"
+		serialize-as="boolean" />
+	<field name="variable_fax_document_transferred_pages" as="Fax-Transferred-Pages"
+		serialize-as="number" />
+	<field name="variable_fax_document_total_pages" as="Fax-Total-Pages"
+		serialize-as="number" />
+	<field name="variable_fax_bad_rows" as="Fax-Bad-Rows"
+		serialize-as="number" />
+	<field name="variable_fax_transfer_rate" as="Fax-Transfer-Rate"
+		serialize-as="number" />
+	<field name="variable_fax_local_station_id" as="Fax-Local-Station-ID" />
+	<field name="variable_fax_remote_station_id" as="Fax-Remote-Station-ID" />
+	<field name="variable_fax_remote_country" as="Fax-Remote-Country" />
+	<field name="variable_fax_remote_vendor" as="Fax-Remote-Vendor" />
+	<field name="variable_fax_remote_model" as="Fax-Remote-Model" />
+	<field name="variable_fax_image_resolution" as="Fax-Image-Resolution" />
+	<field name="variable_fax_file_image_resolution" as="Fax-File-Image-Resolution" />
+	<field name="variable_fax_image_size" as="Fax-Image-Size"
+		serialize-as="number" />
+	<field name="variable_fax_image_pixel_size" as="Fax-Image-Pixel-Size" />
+	<field name="variable_fax_file_image_pixel_size" as="Fax-File-Image-Pixel-Size" />
+	<field name="variable_fax_longest_bad_row_run" as="Fax-Longest-Bad-Row-Run"
+		serialize-as="number" />
+	<field name="variable_fax_encoding" as="Fax-Encoding" />
+	<field name="variable_fax_encoding_name" as="Fax-Encoding-Name" />
+	<field name="variable_fax_timezone" as="Fax-Timezone" />
+	<field name="variable_fax_ident" as="Fax-Identity-Number" />
+	<field name="variable_fax_header" as="Fax-Identity-Name" />
+	<field name="variable_fax_doc_id" as="Fax-Doc-ID" />
+	<field name="variable_fax_doc_database" as="Fax-Doc-DB" />
+</definition>

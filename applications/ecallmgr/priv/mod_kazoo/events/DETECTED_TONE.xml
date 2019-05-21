@@ -1,0 +1,7 @@
+<event name="DETECTED_TONE">
+	<fields verbose="true">
+		<field name="call_event_headers" type="reference" />
+		<field name="Custom-Channel-Vars" type="reference" />
+		<field name="Custom-Application-Vars" type="reference" />
+	</fields>
+</event>

@@ -1,0 +1,9 @@
+<definition name="debug-call">
+	<filters>
+		<filter name="${first-of(variable_debug_call|Call-Debug|#$${Call-Debug})}"
+			type="include" value="true" />
+	</filters>
+	<field name="Call-Debug" type="static" serialize-as="object">
+		<fields verbose="true" />
+	</field>
+</definition>

@@ -1,0 +1,14 @@
+<event name="CHANNEL_UNBRIDGE">
+	<fields verbose="false">
+		<field name="call_event" type="reference" />
+		<field name="Bridge-A-Unique-ID" />
+		<field name="Bridge-B-Unique-ID" />
+		<field name="application-uuid" type="reference" />
+		<field name="Application-Response" type="first-of"
+			value="variable_originate_disposition|#FAIL" />
+		<field name="Disposition" type="first-of"
+			value="variable_originate_disposition|variable_endpoint_disposition" />
+
+		<field name="debug-call" type="reference" />
+	</fields>
+</event>

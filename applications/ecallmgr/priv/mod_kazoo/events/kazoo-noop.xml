@@ -1,0 +1,9 @@
+<event name="kazoo::noop">
+	<fields verbose="false">
+		<field name="call_event" type="reference" />
+		<field name="application-uuid" type="reference" />
+		<field name="Application-Name" type="static" value="noop" />
+		<field name="kazoo_application_response" as="Application-Response" />
+		<field name="debug-call" type="reference" />
+	</fields>
+</event>

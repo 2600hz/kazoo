@@ -1,0 +1,8 @@
+<event name="CALL_SECURE">
+	<fields verbose="false">
+		<field name="call_event" type="reference" />
+		<field name="Custom-Channel-Vars" type="reference" />
+		<field name="Custom-Application-Vars" type="reference" />
+		<field name="debug-call" type="reference" />
+	</fields>
+</event>

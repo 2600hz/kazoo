@@ -1,0 +1,3 @@
+<definition name="user-agent">
+	<field name="variable_sip_user_agent" as="User-Agent" />
+</definition>

@@ -1,0 +1,12 @@
+<definition name="hunt-context">
+	<field name="variable_sofia_profile_name" as="Hunt-Profile" />
+	<field name="Hunt-Context" />
+	<field name="Hunt-Dialplan" />
+	<field name="Hunt-Destination-Number" />
+	<field name="Request" type="expand"
+		value="${Hunt-Destination-Number}@${first-of(variable_sip_invite_domain|variable_sip_to_host|variable_sip_req_host|variable_ecallmgr_Realm)}" />
+	<field name="To" type="expand"
+		value="${Hunt-Destination-Number}@${first-of(variable_sip_invite_domain|variable_sip_to_host|variable_sip_req_host|variable_ecallmgr_Realm)}" />
+	<field name="From" type="expand"
+		value="${first-of(Hunt-Caller-ID-Number|origination_callee_id_number|variable_sip_from_user)}@${first-of(variable_sip_invite_domain|variable_sip_from_host|variable_sip_req_host|variable_ecallmgr_Realm)}" />
+</definition>

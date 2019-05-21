@@ -1,0 +1,10 @@
+<definition name="from-to">
+	<field name="Request" type="first-of"
+		value="variable_sip_req_uri|variable_sip_loopback_req_uri|variable_sip_to_uri" />
+	<field name="To" type="first-of"
+		value="variable_sip_to_uri|variable_sip_req_uri|variable_sip_loopback_req_uri" />
+	<field name="variable_sip_to_uri" as="To-URI" />
+	<field name="From" type="first-of"
+		value="variable_sip_from_uri|variable_presence_id|variable_sip_loopback_from_uri" />
+	<field name="variable_sip_from_uri" as="From-URI" />
+</definition>

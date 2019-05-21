@@ -1,0 +1,12 @@
+<event name="DTMF">
+	<filters>
+		<filter name="variable_conference_name" type="exclude" compare="exists" />
+	</filters>
+	<fields verbose="false">
+		<field name="call_event_headers" type="reference" />
+		<field name="Custom-Channel-Vars" type="reference" />
+		<field name="Custom-Application-Vars" type="reference" />
+		<field name="DTMF-Digit" />
+		<field name="DTMF-Duration" serialize-as="number" />
+	</fields>
+</event>

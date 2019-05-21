@@ -1,0 +1,25 @@
+<definition name="voice_dialplan">
+	<field name="fetch-info" type="reference" />
+	<field name="Timestamp" type="expand"
+		value="${expr(ceil((${Event-Date-Timestamp} / 1000000) + $${UNIX_EPOCH_IN_GREGORIAN}))}"
+		serialize-as="number" />
+	<field name="Unique-ID" as="Call-ID" />
+	<field name="variable_sip_invite_domain" as="Domain-Name" />
+	<field name="call-direction" type="reference" />
+	<field name="caller-id" type="reference" />
+	<field name="from-network" type="reference" />
+	<field name="user-agent" type="reference" />
+	<field name="from-to" type="reference" />
+	<field name="to-did" type="reference" />
+	<field name="loopback" type="reference" />
+	<field name="sip-tags" type="reference" />
+	<field name="freeswitch-url" type="reference" />
+	<field name="destination-number" type="reference" />
+	<field name="Resource-Type" type="static" value="audio" />
+	<field name="hunt-context" type="reference" />
+	<field name="Call-Setup" type="static" value="true" serialize-as="boolean" />
+
+	<field name="Event-Category" type="static" value="dialplan" />
+	<field name="Event-Name" type="static" value="route_req" />
+	<field name="Hunt-Context" as="Fetch-Key-Value" />
+</definition>

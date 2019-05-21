@@ -1,0 +1,5 @@
+<definition name="raw-application">
+	<field name="Raw-Application-Name" type="first-of"
+		value="kazoo_application_name|Application|Event-Subclass" />
+	<field name="Application-Data" as="Raw-Application-Data" />
+</definition>

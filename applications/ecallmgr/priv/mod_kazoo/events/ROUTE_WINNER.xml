@@ -1,0 +1,15 @@
+<event name="ROUTE_WINNER">
+	<fields verbose="false">
+		<field name="Event-Category" type="static" value="dialplan" />
+		<field name="Event-Subclass" as="Event-Name" />
+		<field name="Unique-ID" as="Call-ID" />
+		<field name="Fetch-UUID" />
+		<field name="Fetch-Winning-PID" />
+		<field name="Controller-Queue" />
+		<field name="Controller-PID" />
+		<field name="Request-From-PID" as="Reply-To-PID" />
+		<field name="App-Name" type="static" value="mod_kazoo" />
+		<field name="App-Version" type="static" value="1.0" />
+		<field name="Custom-Channel-Vars" type="reference" />
+	</fields>
+</event>

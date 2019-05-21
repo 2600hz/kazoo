@@ -1,0 +1,16 @@
+<definition name="hangup-cause">
+	<field name="Hangup-Cause" type="first-of"
+		value="variable_originate_failed_cause|variable_bridge_hangup_cause|variable_hangup_cause|Hangup-Cause">
+		<filters>
+			<filter name="variable_current_application" type="include"
+				compare="value" value="bridge" />
+		</filters>
+	</field>
+	<field name="Hangup-Cause" type="first-of"
+		value="variable_originate_failed_cause|variable_hangup_cause|variable_bridge_hangup_cause|Hangup-Cause">
+		<filters>
+			<filter name="variable_current_application" type="exclude"
+				compare="value" value="bridge" />
+		</filters>
+	</field>
+</definition>

@@ -1,0 +1,4 @@
+<definition name="application-all">
+	<field name="raw-application" type="reference" />
+	<field name="application" type="reference" />
+</definition>

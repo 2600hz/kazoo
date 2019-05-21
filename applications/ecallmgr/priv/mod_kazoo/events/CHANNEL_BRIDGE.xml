@@ -1,0 +1,8 @@
+<event name="CHANNEL_BRIDGE">
+	<fields verbose="false">
+		<field name="call_event" type="reference" />
+		<field name="Bridge-A-Unique-ID" />
+		<field name="Bridge-B-Unique-ID" />
+		<field name="debug-call" type="reference" />
+	</fields>
+</event>

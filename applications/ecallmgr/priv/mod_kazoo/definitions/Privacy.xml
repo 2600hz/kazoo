@@ -1,0 +1,11 @@
+<definition name="Privacy">
+	<field name="Privacy" type="static" serialize-as="object">
+		<fields verbose="false">
+			<field name="Caller-Privacy-Hide-Number" as="Hide-Number"
+				serialize-as="boolean" />
+			<field name="Caller-Privacy-Hide-Name" as="Hide-Name"
+				serialize-as="boolean" />
+			<field name="Caller-Screen-Bit" as="Screen-Bit" serialize-as="boolean" />
+		</fields>
+	</field>
+</definition>

@@ -1,0 +1,14 @@
+<event name="kazoo::masquerade">
+	<fields verbose="false">
+		<field name="call_event" type="reference" />
+		<field name="application-uuid" type="reference" />
+		<field name="Application-Response" type="first-of"
+			value="variable_bridge_hangup_cause|variable_originate_disposition|variable_endpoint_disposition|variable_originate_disposition|#FAIL" />
+		<field name="Disposition" type="first-of"
+			value="variable_bridge_hangup_cause|variable_originate_disposition|variable_endpoint_disposition" />
+		<field name="Bridge-Hangup-Cause" type="first-of"
+			value="variable_bridge_hangup_cause|variable_last_bridge_hangup_cause" />
+		<field name="variable_endpoint_disposition" as="Endpoint-Disposition" />
+		<field name="variable_transfer_disposition" as="Transfer-Disposition" />
+	</fields>
+</event>

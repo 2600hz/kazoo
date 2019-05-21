@@ -13,6 +13,14 @@
 
 -export([kazoo/1]).
 
+-export([kazoo_config/0]).
+
+-import(ecallmgr_fs_xml,
+        [section_el/2
+        ,config_el/3
+        ,xml_attrib/2
+        ]).
+
 -include("ecallmgr.hrl").
 
 
@@ -34,28 +42,33 @@ init() ->
 kazoo(#{node := Node, fetch_id := Id, payload := JObj} = Ctx) ->
     kz_util:put_callid(Id),
     lager:debug("received configuration request for kazoo configuration ~p , ~p", [Node, Id]),
-    fetch_mod_kazoo_config(kz_api:event_name(JObj), Ctx).
+    fs_mod_kazoo_config(kz_api:event_name(JObj), Ctx).
 
 
--spec fetch_mod_kazoo_config(kz_term:ne_binary(), map()) -> fs_sendmsg_ret().
-fetch_mod_kazoo_config(<<"COMMAND">>, #{payload := _JObj} = Ctx) ->
+-spec fs_mod_kazoo_config(kz_term:ne_binary(), map()) -> fs_sendmsg_ret().
+fs_mod_kazoo_config(<<"COMMAND">>, #{payload := _JObj} = Ctx) ->
     lager:debug_unsafe("kazoo conf request : ~s", [kz_json:encode(_JObj, ['pretty'])]),
     kazoo_req_not_handled(Ctx);
-fetch_mod_kazoo_config(<<"REQUEST_PARAMS">>, #{payload := JObj} = Ctx) ->
+fs_mod_kazoo_config(<<"REQUEST_PARAMS">>, #{payload := JObj} = Ctx) ->
     lager:debug_unsafe("kazoo conf request params: ~s", [kz_json:encode(JObj, ['pretty'])]),
     Action = kz_json:get_ne_binary_value(<<"Action">>, JObj),
-    fetch_mod_kazoo_config_action(Action, Ctx);
-fetch_mod_kazoo_config(Event, #{node := Node} = Ctx) ->
+    fs_mod_kazoo_config_action(Action, Ctx);
+fs_mod_kazoo_config(Event, #{node := Node} = Ctx) ->
     lager:debug("unhandled mod kazoo config event : ~p : ~p", [Node, Event]),
     kazoo_req_not_handled(Ctx).
 
--spec fetch_mod_kazoo_config_action(kz_term:api_ne_binary(), map()) -> fs_sendmsg_ret().
-fetch_mod_kazoo_config_action(<<"request-handlers">>, Ctx) ->
-    %% TODO get handlers/definitions/events
+-spec fs_mod_kazoo_config_action(kz_term:api_ne_binary(), map()) -> fs_sendmsg_ret().
+fs_mod_kazoo_config_action(<<"request-handlers">>, Ctx) ->
+    try kazoo_config() of
+        {'ok', Xml} -> freeswitch:fetch_reply(Ctx#{reply => iolist_to_binary(Xml)})
+    catch
+        _Ex:_Er:ST ->
+            kz_util:log_stacktrace(ST),
+            kazoo_req_not_handled(Ctx)
+    end;
+fs_mod_kazoo_config_action('undefined', Ctx) ->
     kazoo_req_not_handled(Ctx);
-fetch_mod_kazoo_config_action('undefined', Ctx) ->
-    kazoo_req_not_handled(Ctx);
-fetch_mod_kazoo_config_action(Action, #{node := Node} = Ctx) ->
+fs_mod_kazoo_config_action(Action, #{node := Node} = Ctx) ->
     lager:debug("unhandled mod kazoo config action : ~p : ~p", [Node, Action]),
     kazoo_req_not_handled(Ctx).
 
@@ -65,3 +78,75 @@ kazoo_req_not_handled(#{node := Node, fetch_id := Id} = Ctx) ->
     lager:debug("ignoring kazoo conf ~s: ~s", [Node, Id]),
     freeswitch:fetch_reply(Ctx#{reply => iolist_to_binary(NotHandled)}).
 
+-spec kazoo_config() -> any().
+kazoo_config() ->
+    EventFiles = filelib:wildcard(code:priv_dir(?APP) ++ "/mod_kazoo/events/*.xml"),
+    {DefFiles0, Events} = lists:foldr(fun fs_handler/2, {[], []}, EventFiles),
+
+    FetchFiles = filelib:wildcard(code:priv_dir(?APP) ++ "/mod_kazoo/fetch/*.xml"),
+    {DefFiles, FetchProfiles} = lists:foldr(fun fs_handler/2, {DefFiles0, []}, FetchFiles),
+
+    Defs0 = lists:foldl(fun one_def/2, [], DefFiles),
+    Defs = lists:map(fun fs_xml/1, Defs0),
+
+    ProfileEl = event_profile_el("default", events_el(Events)),
+
+    ConfigurationEl = config_el(<<"kazoo.conf">>, <<"Built by Kazoo">>
+                               ,[definitions_el(Defs)
+                                ,event_handlers_el([ProfileEl])
+                                ,fetch_handlers_el(FetchProfiles)
+                                ]
+                               ),
+    SectionEl = section_el(<<"configuration">>, ConfigurationEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
+
+fs_handler(EventFile, {DefFiles, EventXmls}) ->
+    EventXml = fs_xml(EventFile),
+    {fs_defs(EventXml, DefFiles), [EventXml | EventXmls]}.
+
+
+fs_defs(XmlEl, Acc) ->
+    RefFileList = lists:map(fun fs_def_filename/1, xmerl_xpath:string("//field[@type='reference']/@name", XmlEl)),
+    RefXmls = lists:map(fun fs_xml/1, RefFileList),
+    lists:foldl(fun fs_defs/2, [], RefXmls) ++ RefFileList ++ Acc.
+
+fs_xml(File) ->
+    {Xml, _} = xmerl_scan:file(re:replace(File, "::", "-", ['global'])),
+    Xml.
+
+fs_def_filename(#xmlAttribute{name='name', value=Name}) ->
+    fs_def_filename(Name);
+fs_def_filename(Name) ->
+    code:priv_dir(?APP) ++ "/mod_kazoo/definitions/" ++ Name ++ ".xml".
+
+one_def(File, Acc) ->
+    case lists:member(File, Acc) of
+        'true' -> Acc;
+        'false' -> Acc ++ [File]
+    end.
+
+definitions_el(Content) ->
+    #xmlElement{name='definitions'
+               ,content=Content
+               }.
+
+events_el(Content) ->
+    #xmlElement{name='events'
+               ,content=Content
+               }.
+
+event_profile_el(Name, Content) ->
+    #xmlElement{name='profile'
+               ,attributes=[xml_attrib('name', Name)]
+               ,content=[Content]
+               }.
+
+event_handlers_el(Content) ->
+    #xmlElement{name='event-handlers'
+               ,content=Content
+               }.
+
+fetch_handlers_el(Content) ->
+    #xmlElement{name='fetch-handlers'
+               ,content=Content
+               }.
