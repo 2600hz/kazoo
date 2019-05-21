@@ -107,15 +107,8 @@ handle_call(_Request, _From, State) ->
                          {'stop', 'normal', state()}.
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
-handle_cast({'gen_listener', {'is_consuming', 'true'}}, #state{call=Call}=State) ->
-    case kapps_call_events:is_destroyed(Call) of
-        'true' ->
-            lager:info("channel died while we were initializing"),
-            {'stop', 'normal', State};
-        'false' ->
-            lager:debug("ready to recv events, launching the task"),
-            {'noreply', launch_task(State)}
-    end;
+handle_cast({'gen_listener', {'is_consuming', 'true'}}, State) ->
+    {'noreply', launch_task(State)};
 handle_cast('stop', State) ->
     {'stop', 'normal', State};
 handle_cast(_Msg, State) ->
@@ -171,7 +164,8 @@ launch_task(#state{queue=Q
                   ,call=Call
                   ,callback=Callback
                   ,args=Args
-                  }=State) ->
+                  }=State
+           ) ->
     {Pid, Ref} = kz_util:spawn_monitor(fun task_launched/5, [Q, Call, Callback, Args, self()]),
     lager:debug("watching task execute in ~p (~p)", [Pid, Ref]),
     State#state{pid=Pid, ref=Ref}.
