@@ -9,7 +9,7 @@
 %% API
 
 main([]) ->
-    print_help();
+    print_help(1);
 main([_KazooPLT]) -> 'ok';
 main([KazooPLT | CommandLineArgs]) ->
     {'ok', Options, Args} = parse_args(CommandLineArgs),
@@ -20,9 +20,9 @@ parse_args(CommandLineArgs) ->
         {'ok', {Options, Args}} when is_list(Options) ->
             {'ok', Options, Args};
         {'ok', {_O, _A}} ->
-            print_help();
+            print_help(1);
         {'error', {_O, _A}} ->
-            print_help()
+            print_help(1)
     end.
 
 -spec option_spec_list() -> list().
@@ -32,14 +32,14 @@ option_spec_list() ->
     ,{'bulk', $b, "bulk", {'boolean', 'false'}, "Dialyze all files together (requires more memory/CPU)"}
     ].
 
--spec print_help() -> no_return().
-print_help() ->
+-spec print_help(integer()) -> no_return().
+print_help(Halt) ->
     Script = escript:script_name(),
     getopt:usage(option_spec_list(), "ERL_LIBS=deps/:core/:applications/ " ++ Script ++ " .kazoo.plt [args] [file.beam | path/ebin/ ...]"),
-    halt(1).
+    halt(Halt).
 
 handle(_KazooPLT, _Options, []) ->
-    print_help();
+    print_help(0);
 handle(KazooPLT, Options, Args) ->
     ".plt" = filename:extension(KazooPLT),
 
@@ -52,7 +52,7 @@ handle(KazooPLT, Options, Args) ->
 
 handle_paths(_KazooPLT, _Options, []) ->
     io:format("No Erlang files found to process\n"),
-    print_help();
+    print_help(0);
 handle_paths(KazooPLT, Options, Paths) ->
     case warn(KazooPLT, Options, Paths) of
         0 -> halt(0);
