@@ -31,7 +31,7 @@
 -export([put_callid/1, get_callid/0, find_callid/1
         ,spawn/1, spawn/2
         ,spawn_link/1, spawn_link/2
-        ,spawn_monitor/2
+        ,spawn_monitor/2, spawn_monitor/3
         ,set_startup/0, startup/0
         ]).
 -export([get_event_type/1]).
@@ -419,15 +419,15 @@ kz_log_md_clear() ->
 %% If time is elapsed, the sub-process is killed and returns `timeout'.
 %% @end
 %%------------------------------------------------------------------------------
--spec runs_in(number(), fun(), list()) -> {ok, any()} | timeout.
+-spec runs_in(number(), fun(), list()) -> {'ok', any()} | 'timeout'.
 runs_in(MaxTime, Fun, Arguments)
   when is_integer(MaxTime), MaxTime > 0 ->
     {Parent, Ref} = {self(), erlang:make_ref()},
     Child = ?MODULE:spawn(fun () -> Parent ! {Ref, erlang:apply(Fun, Arguments)} end),
-    receive {Ref, Result} -> {ok, Result}
+    receive {Ref, Result} -> {'ok', Result}
     after MaxTime ->
-            exit(Child, kill),
-            timeout
+            exit(Child, 'kill'),
+            'timeout'
     end;
 runs_in(MaxTime, Fun, Arguments)
   when is_number(MaxTime), MaxTime > 0 ->
@@ -471,6 +471,14 @@ spawn_monitor(Fun, Arguments) ->
     erlang:spawn_monitor(fun () ->
                                  _ = put_callid(CallId),
                                  erlang:apply(Fun, Arguments)
+                         end).
+
+-spec spawn_monitor(module(), atom(), list()) -> kz_term:pid_ref().
+spawn_monitor(Module, Fun, Args) ->
+    CallId = get_callid(),
+    erlang:spawn_monitor(fun () ->
+                                 _ = put_callid(CallId),
+                                 erlang:apply(Module, Fun, Args)
                          end).
 
 
