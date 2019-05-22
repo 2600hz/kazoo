@@ -28,18 +28,10 @@ start_link() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec modb(kz_term:ne_binary()) -> pid().
-modb(AccountMODb) ->
-    kz_util:spawn(fun run/1, [AccountMODb]).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec run(kz_term:ne_binary()) -> 'ok'.
-run(?MATCH_MODB_SUFFIX_ENCODED(_AccountId, _Year, _Month) = AccountMODb) ->
-    run(kz_util:format_account_modb(AccountMODb, 'raw'));
-run(?MATCH_MODB_SUFFIX_RAW(AccountId, _Year, _Month) = AccountMODb) ->
+-spec modb(kz_term:ne_binary()) -> 'ok'.
+modb(?MATCH_MODB_SUFFIX_ENCODED(_AccountId, _Year, _Month) = AccountMODb) ->
+    modb(kz_util:format_account_modb(AccountMODb, 'raw'));
+modb(?MATCH_MODB_SUFFIX_RAW(AccountId, _Year, _Month) = AccountMODb) ->
     lager:debug("creating snapshot for account ~s services in month ~s-~s"
                ,[AccountId
                 ,_Year
@@ -56,9 +48,9 @@ run(?MATCH_MODB_SUFFIX_RAW(AccountId, _Year, _Month) = AccountMODb) ->
                     ),
     save_services_to_modb(AccountMODb, ServicesJObj, ?SERVICES_BOM),
     maybe_save_to_previous_modb(AccountMODb, ServicesJObj);
-run(Account) ->
+modb(Account) ->
     AccountId = kz_util:format_account_id(Account),
-    run(kazoo_modb:get_modb(AccountId)).
+    modb(kazoo_modb:get_modb(AccountId)).
 
 %%------------------------------------------------------------------------------
 %% @doc
