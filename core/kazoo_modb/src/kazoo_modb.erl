@@ -486,7 +486,10 @@ run_routines(AccountMODb) ->
            ],
     wait_for_runs(Runs, kz_time:now()).
 
--spec wait_for_runs([{kz_term:ne_binary(), kz_term:pid_ref()}], kz_time:now()) -> 'ok'.
+-type run() :: {kz_term:ne_binary(), kz_term:pid_ref()}.
+-type runs() :: [run()].
+
+-spec wait_for_runs(runs(), kz_time:now()) -> 'ok'.
 wait_for_runs([], _Start) -> 'ok';
 wait_for_runs(Runs, Start) ->
     receive
@@ -497,6 +500,7 @@ wait_for_runs(Runs, Start) ->
             lager:info("runs haven't finished yet, moving on: ~p", [Runs])
     end.
 
+-spec handle_finished_run(runs(), kz_time:now(), kz_term:pid_ref(), any()) -> 'ok'.
 handle_finished_run(Runs, Start, PidRef, Reason) ->
     case lists:keytake(PidRef, 2, Runs) of
         'false' ->
