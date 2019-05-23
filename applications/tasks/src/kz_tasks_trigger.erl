@@ -229,7 +229,7 @@ spawn_jobs(Ref, Binding) ->
 
 -spec make_callid(reference(), kz_term:ne_binary()) -> kz_term:ne_binary().
 make_callid(Ref, Binding) ->
-    Key = lists:last(binary:split(Binding, <<$.>>, [global])),
+    Key = lists:last(binary:split(Binding, <<$.>>, ['global'])),
     Id = ref_to_id(Ref),
     <<"task_", Key/binary, "_", Id/binary>>.
 
@@ -263,7 +263,8 @@ browse_dbs_for_triggers(Ref) ->
     'ok' = kt_compaction_reporter:start_tracking_job(self(), node(), CallId, Sorted),
     F = fun({Db, _Sizes}, Ctr) ->
                 lager:debug("compacting ~p out of ~p dbs (~p remaining)",
-                            [Ctr, TotalSorted, (TotalSorted - Ctr)]),
+                            [Ctr, TotalSorted, (TotalSorted - Ctr)]
+                           ),
                 cleanup_pass(Db),
                 Ctr + 1
         end,
