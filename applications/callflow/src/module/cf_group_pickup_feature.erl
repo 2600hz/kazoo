@@ -97,7 +97,8 @@ build_pickup_params(Number, <<"extension">>, Call) ->
         {'ok', FlowDoc, 'false'} ->
             Data = kz_json:get_json_value([<<"flow">>, <<"data">>], FlowDoc),
             Module = kz_json:get_ne_binary_value([<<"flow">>, <<"module">>], FlowDoc),
-            params_from_data(Module, Data, Call);
+            ChildFlow = kz_json:get_json_value([<<"flow">>, <<"children">>, <<"_">>], FlowDoc),
+            params_from_data(Module, Data, ChildFlow);
         {'ok', _FlowDoc, 'true'} ->
             {'error', <<"no callflow with extension ", Number/binary>>};
         {'error', _} = E -> E
@@ -107,22 +108,28 @@ build_pickup_params(_ ,'undefined', _) ->
 build_pickup_params(_, Other, _) ->
     {'error', <<Other/binary," not implemented">>}.
 
--spec params_from_data(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
+-spec params_from_data(kz_term:api_ne_binary(), kz_json:object(), kz_term:api_object()) ->
                               {'ok', kz_term:proplist()} |
                               {'error', kz_term:ne_binary()}.
-params_from_data(<<"user">>, Data, _Call) ->
+params_from_data(_, _, 'undefined') ->
+    {'error',<<"callflow not defined">>};
+params_from_data(<<"user">>, Data, _Flow) ->
     EndpointId = kz_json:get_ne_binary_value(<<"id">>, Data),
     {'ok', [{<<"user_id">>, EndpointId}]};
-params_from_data(<<"device">>, Data, _Call) ->
+params_from_data(<<"device">>, Data, _Flow) ->
     EndpointId = kz_json:get_ne_binary_value(<<"id">>, Data),
     {'ok', [{<<"device_id">>, EndpointId}]};
-params_from_data(<<"ring_group">>, Data, _Call) ->
+params_from_data(<<"ring_group">>, Data, _Flow) ->
     [Endpoint |_Endpoints] = kz_json:get_list_value(<<"endpoints">>, Data, []),
     EndpointType = kz_json:get_ne_binary_value(<<"endpoint_type">>, Endpoint),
     {'ok', [{<<EndpointType/binary, "_id">>, kz_doc:id(Endpoint)}]};
-params_from_data(<<"page_group">>, Data, _Call) ->
-    params_from_data(<<"ring_group">>, Data, _Call);
+params_from_data(<<"page_group">>, Data, _Flow) ->
+    params_from_data(<<"ring_group">>, Data, _Flow);
 params_from_data('undefined', _, _) ->
     {'error',<<"module not defined in callflow">>};
-params_from_data(Other, _, _) ->
-    {'error',<<"module ", Other/binary, " not implemented">>}.
+params_from_data(_Other, _, Flow) ->
+    lager:debug("skipping module ~p, looking at children", [_Other]),
+    Child = kz_json:get_json_value([<<"children">>, <<"_">>], Flow),
+    Data = kz_json:get_json_value([<<"data">>], Child),
+    Module = kz_json:get_ne_binary_value([<<"module">>], Child),
+    params_from_data(Module, Data, Child).
