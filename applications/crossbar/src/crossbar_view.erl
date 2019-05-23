@@ -778,14 +778,14 @@ get_results(#{databases := [Db|RestDbs]=Dbs
              }=LoadMap) ->
     LimitWithLast = limit_with_last_key(IsChunked, PageSize, ChunkSize, TotalQueried),
 
-    lager:debug("querying view '~s' from '~s', starting at '~p' with page size ~p and limit ~p in direction ~s"
-               ,[View, Db, StartKey, PageSize, LimitWithLast, Direction]
-               ),
-
     NextStartKey = case LastKey of
-                       'undefined' -> props:get_value('startkey', ViewOpts);
+                       'undefined' -> props:get_value('startkey', ViewOpts, StartKey);
                        _ -> LastKey
                    end,
+
+    lager:debug("querying view '~s' from '~s', starting at '~p' with page size ~p and limit ~p in direction ~s"
+               ,[View, Db, NextStartKey, PageSize, LimitWithLast, Direction]
+               ),
     ViewOptions = props:filter_undefined(
                     [{'limit', LimitWithLast}
                     ,{'startkey', NextStartKey}
@@ -798,7 +798,7 @@ get_results(#{databases := [Db|RestDbs]=Dbs
             lager:debug("either the db ~s or view ~s was not found", [Db, View]),
             LoadMap#{context => crossbar_util:response_missing_view(Context)};
         {'error', 'not_found'} ->
-            lager:debug("either the db ~s or view ~s was not found, querying next db...", [Db, View]),
+            lager:debug("either the db ~s or view ~s was not found, next db please...", [Db, View]),
             get_results(LoadMap#{databases => RestDbs});
         {'error', Error} ->
             lager:debug("failed to query view ~s from db ~s: ~p", [View, Db, Error]),
@@ -842,6 +842,22 @@ handle_query_result(#{last_key := LastKey
 
 -spec handle_query_result(load_params(), kz_term:ne_binaries(), kz_json:objects(), non_neg_integer(), last_key()) -> load_params().
 handle_query_result(#{is_chunked := 'true'
+                     ,last_key := OldLastKey
+                     ,context := Context
+                     }=LoadMap, _Dbs, FilteredJObjs, FilteredLength, NewLastKey)
+  when OldLastKey =:= NewLastKey,
+       NewLastKey =/= 'undefined' ->
+    lager:debug("reached to data with repeated key, stopping here..."),
+
+    Setters = [{fun cb_context:set_resp_data/2, FilteredJObjs}
+              ],
+    Context1 = cb_context:setters(Context, Setters),
+    LoadMap#{last_key => NewLastKey
+            ,context => Context1
+            ,databases => []
+            ,previous_chunk_length => FilteredLength
+            };
+handle_query_result(#{is_chunked := 'true'
                      ,context := Context
                      }=LoadMap, [Db|_], FilteredJObjs, FilteredLength, NewLastKey) ->
     Setters = [{fun cb_context:set_resp_data/2, FilteredJObjs}
@@ -852,9 +868,10 @@ handle_query_result(#{is_chunked := 'true'
             ,context => Context1
             ,previous_chunk_length => FilteredLength
             };
-handle_query_result(LoadMap, [_|RestDbs], FilteredJObjs, FilteredLength, NewLastKey) ->
+handle_query_result(LoadMap, [_|RestDbs]=Dbs, FilteredJObjs, FilteredLength, NewLastKey) ->
     case check_page_size_and_length(LoadMap, FilteredLength, FilteredJObjs, NewLastKey) of
         {'exhausted', LoadMap2} -> LoadMap2;
+        {'same_db', LoadMap2} -> get_results(LoadMap2#{databases => Dbs});
         {'next_db', LoadMap2} -> get_results(LoadMap2#{databases => RestDbs})
     end.
 
@@ -863,7 +880,7 @@ handle_query_result(LoadMap, [_|RestDbs], FilteredJObjs, FilteredLength, NewLast
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_page_size_and_length(load_params(), non_neg_integer(), kz_json:objects(), last_key()) ->
-                                        {'exhausted' | 'next_db', load_params()}.
+                                        {'exhausted' | 'next_db' | 'same_db', load_params()}.
 %% page_size is exhausted when query is limited by page_size
 %% Condition: page_size = total_queried + current_db_results
 %%            and the last key has been found.
@@ -878,6 +895,34 @@ check_page_size_and_length(#{page_size := PageSize
     lager:debug("page size exhausted: ~b", [PageSize]),
     {'exhausted', LoadMap#{total_queried => TotalQueried + Length
                           ,queried_jobjs => QueriedJObjs ++ FilteredJObjs
+                          ,last_key => LastKey
+                          }
+    };
+%% page size is not fulfilled (caller module filtered some result) and db has more result to give
+%% Condition: the current last_key has been found and it's not equal to the previous lasy_key
+check_page_size_and_length(#{total_queried := TotalQueried
+                            ,last_key := OldLastKey
+                            ,queried_jobjs := QueriedJObjs
+                            }=LoadMap, Length, FilteredJObjs, LastKey)
+  when OldLastKey =/= LastKey,
+       LastKey =/= 'undefined' ->
+    lager:debug("db has more result to give, querying same db again..."),
+    {'same_db', LoadMap#{total_queried => TotalQueried + Length
+                        ,queried_jobjs => QueriedJObjs ++ FilteredJObjs
+                        ,last_key => LastKey
+                        }
+    };
+%% reached to the point that last_key is repeating, stopping here
+check_page_size_and_length(#{total_queried := TotalQueried
+                            ,last_key := OldLastKey
+                            ,queried_jobjs := QueriedJObjs
+                            }=LoadMap, Length, FilteredJObjs, LastKey)
+  when OldLastKey =:= LastKey,
+       LastKey =/= 'undefined' ->
+    lager:debug("reached to data with repeated key, stopping here..."),
+    {'exhausted', LoadMap#{total_queried => TotalQueried + Length
+                          ,queried_jobjs => QueriedJObjs ++ FilteredJObjs
+                          ,databases => []
                           ,last_key => LastKey
                           }
     };
@@ -997,7 +1042,7 @@ format_response(#{total_queried := TotalQueried
     Envelope = add_paging(StartKey, TotalQueried, NextStartKey, cb_context:resp_envelope(Context)),
     crossbar_doc:handle_datamgr_success(JObjs, cb_context:set_resp_envelope(Context, Envelope)).
 
--spec add_paging(api_range_key(), non_neg_integer(), api_range_key(), kz_json:object()) -> kz_json:object().
+-spec add_paging(api_range_key(), non_neg_integer(), last_key(), kz_json:object()) -> kz_json:object().
 add_paging(StartKey, PageSize, NextStartKey, JObj) ->
     DeleteKeys = [<<"start_key">>, <<"page_size">>, <<"next_start_key">>],
     kz_json:set_values([{<<"start_key">>, StartKey},
