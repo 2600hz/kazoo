@@ -161,6 +161,7 @@ Both the account making the call and the reseller of the account **must** authz 
 6. Check flat rate trunks
    * Check dialed number against white/black lists
    * Check inbound/outbound trunks available
+   * Check two-way trunks available
    * Check account burst trunks
 7. Check per-minute funds
    * Check pre-pay credit
