@@ -527,7 +527,7 @@ add_routine(Module) ->
 
 -spec add_migrate_routines(kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_term:ne_binaries().
 add_migrate_routines(Routines, Module) ->
-    lists:usort([Module | migrate_routines(Routines, [])] ++ [<<"kz_currency">>]).
+    lists:usort([Module | migrate_routines(Routines, [])] -- [<<"kz_currency">>]).
 
 -spec migrate_routines(kz_term:ne_binaries(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 migrate_routines([], Acc) -> Acc;
