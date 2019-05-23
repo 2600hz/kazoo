@@ -12,7 +12,7 @@ main(Files) ->
     process_files([File || File <- Files, filename:extension(File) =:= ".md"]).
 
 process_files([]) ->
-    print_help(1);
+    print_help();
 process_files(MDs) ->
     {Halt, Files} = lists:foldl(fun process_file/2, {0, []}, MDs),
     print_report(Halt, Files).
@@ -35,8 +35,8 @@ process_file(MD, {Changed, Files}, Contents, {'match', _Matches}) ->
     'ok' = file:write_file(MD, Updated),
     {Changed+1, [MD | Files]}.
 
--spec print_help(integer()) -> no_return().
-print_help(Halt) ->
+-spec print_help() -> no_return().
+print_help() ->
     Script = escript:script_name(),
     io:format("Usage: ERL_LIBS=deps:core:applications ~s file.md [file.md]+~n", [Script]),
-    halt(Halt).
+    halt().
