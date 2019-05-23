@@ -57,7 +57,7 @@ If both the PUT/POST and the GET are successful, the API request to create the s
 Now, when a voicemail (for instance) is saved to the account, your web server will receive a PUT/POST request to `PUT req /some_prefix/{ACCOUNT_ID}/{MESSAGE_ID}/uploaded_file_{TIMESTAMP}.mp3` with the binary data as the body. Your web server will then need to respond with a 201 to let KAZOO know storing the data was successful.
 
 !!! note
-Save processing of the file for a later process; return the 201 to KAZOO as soon as your server confirms storing the file was successful locally.
+    Save processing of the file for a later process; return the 201 to KAZOO as soon as your server confirms storing the file was successful locally.
 
 ### Multipart requests
 
