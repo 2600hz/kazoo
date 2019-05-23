@@ -12,6 +12,8 @@
 %% Triggerables
 -export([handle_req/0]).
 
+-export([rollover_accounts/2]).
+
 -include("tasks.hrl").
 
 -define(MOD_CAT, <<(?CONFIG_CAT)/binary, ".ledger_rollover">>).

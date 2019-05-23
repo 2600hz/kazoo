@@ -108,6 +108,9 @@ get_sources_total(Account, Options) ->
                   ],
     case kazoo_modb:get_results(Account, View, ViewOptions) of
         {'ok', []} ->
+            lager:info("missing ledgers from ~s: ~p/~p"
+                      ,[Account, props:get_value('year', ViewOptions), props:get_value('month', View)]
+                      ),
             {'error', 'missing_ledgers'};
         {'ok', JObjs} ->
             sum_sources(JObjs);
@@ -128,6 +131,7 @@ get_sources_total(Account, Options) ->
 sum_sources(JObjs) ->
     case lists:foldl(fun sum_sources_foldl/2, {'false', 0}, JObjs) of
         {'false', _Total} ->
+            lager:info("failed to sum sources"),
             {'error', 'missing_rollover'};
         {'true', Total} -> {'ok', Total}
     end.
@@ -379,12 +383,18 @@ rollover(Account, Year, Month) ->
 rollover_past_available_units(Account, Year, Month) ->
     {PreviousYear, PreviousMonth} =
         kazoo_modb_util:prev_year_month(Year, Month),
+
+    lager:info("past y/m ~p:~p", [PreviousYear, PreviousMonth]),
+
     case kz_currency:past_available_units(Account, PreviousYear, PreviousMonth) of
         {'error', 'db_not_found'} ->
+            lager:info("failed to find previous month's available units, no modb"),
             rollover(Account, Year, Month, 0);
         {'error', _R} = Error ->
+            lager:info("failed to find previous month's available units: ~p", [_R]),
             Error;
         {'ok', Total} ->
+            lager:info("previous month's total: ~p", [Total]),
             rollover(Account, Year, Month, Total)
     end.
 
