@@ -111,6 +111,9 @@ Python script to walk the supplied files and bumps the copyright year if appropr
 ./scripts/bump-copyright-year.sh [FILE]
 ```
 
+## check-admonitions.escript
+
+Walks changed markdown files and fixes admonitions
 
 ## check-app-registered.sh
 

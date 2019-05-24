@@ -440,7 +440,7 @@ curl -v -X PUT \
 ```
 
 !!! danger
-If the storage backend is unable to process the storage request, you could lose the data attempting to be stored.
+    If the storage backend is unable to process the storage request, you could lose the data attempting to be stored.
 
 ### Enabling This Feature
 
