@@ -404,15 +404,8 @@ handle_info({'usurp_publisher', CallId, RefId, _JObj}, #state{ref=RefId
                                                              ,call_id=CallId
                                                              } = State) ->
     {'noreply', State};
-handle_info({'usurp_publisher', CallId, _RefId, JObj}, #state{call_id=CallId
-                                                             ,node=Node
-                                                             } = State) ->
-    case kz_json:get_atom_value(<<"Media-Node">>, JObj) of
-        Node -> {'noreply', State};
-        OtherNode ->
-            lager:debug("publisher has been usurp'd by newer process on ~s, moving to passive mode", [OtherNode]),
-            {'noreply', State#state{passive='true'}}
-    end;
+handle_info({'usurp_publisher', CallId, _RefId, _JObj}, #state{call_id=CallId} = State) ->
+    {'noreply', State#state{passive='true'}};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.

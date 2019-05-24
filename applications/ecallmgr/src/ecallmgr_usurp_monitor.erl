@@ -100,7 +100,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
-handle_cast({register, CallId, Type, RefId, Pid}, State) ->
+handle_cast({'register', Type, CallId, RefId, Pid}, State) ->
     kz_util:put_callid(CallId),
     {'noreply', handle_register(#cache{key={Type, CallId}, ref_id=RefId, pid=Pid}, State)};
 handle_cast(_, State) ->
