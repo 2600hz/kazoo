@@ -18,6 +18,7 @@
         ,modb_id/3
         ]).
 -export([db_list/1]).
+-export([get_modb_suffix/1]).
 
 -spec prev_year_month(kz_term:ne_binary()) -> {kz_time:year(), kz_time:month()}.
 prev_year_month(AccountMod) ->
@@ -122,3 +123,21 @@ db_list(MODb, MODbs) ->
         'true' ->
             db_list(prev_year_month_mod(MODb), [MODb|MODbs])
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_modb_suffix(kz_term:ne_binary() | pos_integer()) -> {kz_term:api_integer(), kz_term:api_integer()}.
+get_modb_suffix(<<YearBin:4/binary, MonthBin:2/binary>>) ->
+    {kz_term:safe_cast(YearBin, 'undefined', fun kz_term:to_integer/1)
+    ,kz_term:safe_cast(MonthBin, 'undefined', fun kz_term:to_integer/1)
+    };
+get_modb_suffix(<<YearBin:4/binary, MonthBin:1/binary>>) ->
+    {kz_term:safe_cast(YearBin, 'undefined', fun kz_term:to_integer/1)
+    ,kz_term:safe_cast(MonthBin, 'undefined', fun kz_term:to_integer/1)
+    };
+get_modb_suffix(Suffix) when is_integer(Suffix) ->
+    get_modb_suffix(kz_term:to_binary(Suffix));
+get_modb_suffix(_) ->
+    {'undefined', 'undefined'}.
