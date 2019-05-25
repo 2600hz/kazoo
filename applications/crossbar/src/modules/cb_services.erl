@@ -9,11 +9,11 @@
 
 -export([init/0
         ,authorize/2
-        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-        ,resource_exists/0, resource_exists/1, resource_exists/2
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+        ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
         ,content_types_provided/1 ,content_types_provided/2
         ,to_csv/1
-        ,validate/1, validate/2, validate/3
+        ,validate/1, validate/2, validate/3, validate/4
         ,post/1 ,post/2
         ,patch/2
         ,delete/2
@@ -30,6 +30,7 @@
 -define(QUOTE, <<"quote">>).
 -define(SUMMARY, <<"summary">>).
 -define(AUDIT, <<"audit">>).
+-define(AUDIT_SUMMARY, <<"audit_summary">>).
 -define(OVERRIDES, <<"overrides">>).
 -define(TOPUP, <<"topup">>).
 -define(MANUAL, <<"manual">>).
@@ -112,6 +113,12 @@ allowed_methods(_PlanId) ->
 
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?AUDIT, _AuditId) ->
+    [?HTTP_GET];
+allowed_methods(?AUDIT_SUMMARY, _ModbSuffix) ->
+    [?HTTP_GET].
+
+-spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
+allowed_methods(?AUDIT_SUMMARY, _ModbSuffix, _SourceService) ->
     [?HTTP_GET].
 
 %%------------------------------------------------------------------------------
@@ -132,7 +139,11 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 -spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists(_, _) -> 'true'.
+resource_exists(?AUDIT, _) -> 'true';
+resource_exists(?AUDIT_SUMMARY, _) -> 'true'.
+
+-spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
+resource_exists(?AUDIT_SUMMARY, _ModbSuffix, _SourceService) -> 'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc Add content types accepted and provided by this module
@@ -242,7 +253,115 @@ validate(Context, ?AUDIT, ?MATCH_MODB_PREFIX(Year, Month, _)=AuditId) ->
     crossbar_doc:load(AuditId, Context1, ?TYPE_CHECK_OPTION(<<"audit_log">>));
 validate(Context, ?AUDIT, AuditId) ->
     ErrorCause = kz_json:from_list([{<<"cause">>, AuditId}]),
-    cb_context:add_system_error('bad_identifier', ErrorCause, Context).
+    cb_context:add_system_error('bad_identifier', ErrorCause, Context);
+validate(Context, ?AUDIT_SUMMARY, ModbSuffix) ->
+    case kazoo_modb_util:get_modb_suffix(ModbSuffix) of
+        {'undefined', 'undefined'} ->
+            crossbar_util:response_bad_identifier(ModbSuffix, Context);
+        {Year, Month} ->
+            MODB = kazoo_modb:get_modb(cb_context:account_id(Context), Year, Month),
+            ViewOptions = [{'databases', [MODB]}
+                          ,{'mapper', fun normalize_day_summary_by_date/2}
+                          ,{'range_keymap', 'nil'}
+                          ],
+            ViewName = <<"services/day_summary_by_date">>,
+            Context1 = audit_summary(Context, ViewName, ViewOptions),
+            case cb_context:resp_status(Context1) of
+                'success' -> merge_day_summary_by_date_result(Context1);
+                _ -> Context1
+            end
+    end.
+
+-spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+validate(Context, ?AUDIT_SUMMARY, ModbSuffix, SourceService) ->
+    case kazoo_modb_util:get_modb_suffix(ModbSuffix) of
+        {'undefined', 'undefined'} ->
+            crossbar_util:response_bad_identifier(ModbSuffix, Context);
+        {Year, Month} ->
+            MODB = kazoo_modb:get_modb(cb_context:account_id(Context), Year, Month),
+            ViewOptions = [{'databases', [MODB]}
+                          ,{'group_level', 2}
+                          ,{'mapper', fun normalize_day_summary_by_source/2}
+                          ,{'range_start_keymap', fun(_) -> [SourceService] end}
+                          ,{'rang_end_keymap', fun(_) -> [SourceService, kz_json:new()] end}
+                          ],
+            ViewName = <<"services/day_summary_by_source">>,
+            Context1 = audit_summary(Context, ViewName, ViewOptions),
+            case cb_context:resp_status(Context1) of
+                'success' -> merge_day_summary_by_source_result(Context1);
+                _ -> Context1
+            end
+    end.
+
+merge_day_summary_by_date_result(Context) ->
+    Result = cb_context:resp_data(Context),
+    merge_day_summary_by_date_result(Context, Result, #{}).
+
+merge_day_summary_by_date_result(Context, [], #{}=Acc) ->
+    cb_context:set_resp_data(Context
+                            ,[kz_json:from_list([KV])
+                              || KV <- lists:sort(maps:to_list(Acc))
+                             ]
+                            );
+merge_day_summary_by_date_result(Context, [JObj|JObjs], #{}=Acc) ->
+    [DateString] = kz_json:get_keys(JObj),
+    NewAcc = kz_json:foldl(fun(Service, Summary, AccAcc) -> merge_date_to_service(DateString, Service, Summary, AccAcc) end
+                          ,Acc
+                          ,kz_json:get_value(DateString, JObj)
+                          ),
+    merge_day_summary_by_date_result(Context
+                                    ,JObjs
+                                    ,NewAcc
+                                    ).
+
+merge_date_to_service(DateString, Service, Summary, AccAcc) ->
+    ServiceAcc = maps:get(Service, AccAcc, []),
+    AccAcc#{Service => [kz_json:from_list(
+                          [{DateString, Summary}]
+                         )
+                        | ServiceAcc
+                       ]
+           }.
+
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec audit_summary(cb_context:context(), kz_term:ne_binary(), crossbar_view:options()) -> cb_context:context().
+audit_summary(Context, ViewName, Options) ->
+    ViewOptions = [{'group', 'true'}
+                  ,{'reduce', 'true'}
+                  ,{'unchunkable', 'true'}
+                  ,{'no_filter', 'true'}
+                  ,{'should_paginate', 'false'}
+                   | Options
+                  ],
+    crossbar_view:load_modb(Context, ViewName, ViewOptions).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec normalize_day_summary_by_date(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_day_summary_by_date(JObj, Acc) ->
+    DateString = kz_json:get_value(<<"key">>, JObj),
+    [kz_json:from_list([{DateString, kz_json:get_value(<<"value">>, JObj)}])
+     | Acc
+    ].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec normalize_day_summary_by_source(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_day_summary_by_source(JObj, Acc) ->
+    [SourceService, DateString] = kz_json:get_value(<<"key">>, JObj),
+    [kz_json:from_list(
+       [{SourceService, kz_json:from_list([{DateString, kz_json:get_value(<<"value">>, JObj)}])}]
+      )
+     | Acc
+    ].
 
 -spec validate_service_plan(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_service_plan(Context, ?SYNCHRONIZATION, ?HTTP_POST) ->
