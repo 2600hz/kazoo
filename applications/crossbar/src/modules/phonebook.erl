@@ -17,6 +17,7 @@
 -include_lib("kazoo_number_manager/include/knm_port_request.hrl").
 
 -define(MOD_CONFIG_CAT, <<"crossbar.phonebook">>).
+-define(MOD_CONFIG_CLUSTER, <<"cluster">>).
 
 %%------------------------------------------------------------------------------
 %% @doc exported functions
