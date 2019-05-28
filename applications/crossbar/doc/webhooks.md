@@ -24,7 +24,9 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-## Fetch
+## Fetch available webhooks on the system
+
+Depending on the version of the KAZOO system running, the available webhooks may differ. Use this API to query the system for available webhooks.
 
 > GET /v2/webhooks
 
@@ -113,7 +115,7 @@ curl -v -X GET \
 **Request:**
 
 ```shell
-curl -H "'ontent-Type: application/json' 'http://{SERVER}:8000/v2/webhooks/samples'
+curl -H 'Content-Type: application/json' 'http://{SERVER}:8000/v2/webhooks/samples'
 ```
 
 **Response:**
@@ -148,7 +150,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/webhooks/samples/{SAMPLE_ID}
 ```
 
-You can use regular [Crossbar query string filters](./filters.md) to narrow down the samples, for example:
+You can use regular [Crossbar query string filters](filters.md) to narrow down the samples, for example:
 
 ```shell
 curl -H 'Content-Type: application/json' 'http://{SERVER}:8000/v2/webhooks/samples/webhook_notifications?filter_event_name=missed_call'
