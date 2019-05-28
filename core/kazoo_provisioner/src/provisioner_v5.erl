@@ -654,10 +654,10 @@ req_headers(Token) ->
 
 -spec get_cluster_id() -> nonempty_string().
 get_cluster_id() ->
-    case kapps_config:get_string(?MOD_CONFIG_CAT, <<"cluster_id">>) of
+    case kapps_config:get_string(?MOD_CONFIG_CLUSTER, <<"cluster_id">>) of
         'undefined' ->
             ClusterId = kz_binary:rand_hex(16),
-            {'ok', _JObj} = kapps_config:set_default(?MOD_CONFIG_CAT, <<"cluster_id">>, ClusterId),
+            {'ok', _JObj} = kapps_config:set_default(?MOD_CONFIG_CLUSTER, <<"cluster_id">>, ClusterId),
             kz_term:to_list(ClusterId);
         ClusterId -> ClusterId
     end.

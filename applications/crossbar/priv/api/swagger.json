@@ -29744,6 +29744,16 @@
             },
             "type": "object"
         },
+        "system_config.cluster": {
+            "description": "Schema for cluster system_config",
+            "properties": {
+                "cluster_id": {
+                    "description": "provisioner cluster id",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "system_config.conferences": {
             "description": "Schema for conferences system_config",
             "properties": {
@@ -30535,10 +30545,6 @@
         "system_config.crossbar.phonebook": {
             "description": "Schema for crossbar.phonebook system_config",
             "properties": {
-                "cluster_id": {
-                    "description": "the kazoo cluster_id",
-                    "type": "string"
-                },
                 "enabled": {
                     "default": false,
                     "description": "phonebook integration enabled",
@@ -33999,10 +34005,6 @@
         "system_config.provisioner": {
             "description": "Schema for provisioner system_config",
             "properties": {
-                "cluster_id": {
-                    "description": "provisioner cluster id",
-                    "type": "string"
-                },
                 "combo_keys": {
                     "default": {
                         "cisco": {

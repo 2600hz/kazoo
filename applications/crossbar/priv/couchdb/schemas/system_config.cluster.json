@@ -1,0 +1,1 @@
+{"type":"object","properties":{"cluster_id":{"type":"string","description":"provisioner cluster id"}},"description":"Schema for cluster system_config","_id":"system_config.cluster","$schema":"http://json-schema.org/draft-04/schema#"}
