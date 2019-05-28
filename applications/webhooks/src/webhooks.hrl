@@ -7,6 +7,7 @@
 -define(APP, webhooks).
 -define(APP_NAME, (atom_to_binary(?APP, utf8))).
 -define(APP_VERSION, <<"4.0.0">>).
+-define(MOD_CONFIG_CLUSTER, <<"cluster">>).
 
 -type http_verb() :: 'get' | 'post'.
 -type hook_retries() :: 1..5.
