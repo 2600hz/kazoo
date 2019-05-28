@@ -19,33 +19,33 @@ Faxes API allows you to update and access fax jobs for both sending and receivin
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`attempts` | The number of attempts made, this will be set by the system and reset automatically on put/post | `integer()` | `0` | `false` |  
-`document.content` | The content provided in the body when fetching for transmission as a post | `string(0..256)` |   | `false` |  
-`document.content_type` | The content type header to be used when fetching for transmission as a post | `string()` |   | `false` |  
-`document.host` | The host header to be used when fetching for transmission | `string()` |   | `false` |  
-`document.method` | The method that should be used to retrieve the document | `string('get' | 'post')` | `get` | `false` |  
-`document.referer` | The referer header to be used when fetching for transmission | `string()` |   | `false` |  
-`document.url` | The url of the fax document | `string()` |   | `true` |  
-`document` | Parameters related to the storage of a fax document | `object()` |   | `false` |  
-`from_name` | The sender name for the fax | `string()` |   | `false` |  
-`from_number` | The sender number for the fax | `string()` |   | `true` |  
-`notifications.email.send_to` | A list or string of email recipient(s) | `array(string()) | string()` |   | `false` |  
-`notifications.email` | Email notifications | `object()` |   | `false` |  
-`notifications.sms.send_to` | A list or string of sms recipient(s) | `array(string()) | string()` |   | `false` |  
-`notifications.sms` | SMS notifications | `object()` |   | `false` |  
-`notifications` | Status notifications | `object()` |   | `false` |  
-`retries` | The number of times to retry | `integer()` | `1` | `false` |  
-`to_name` | The recipient name for the fax | `string()` |   | `false` |  
-`to_number` | The recipient number for the fax | `string()` |   | `true` |  
-`tx_result.error_message` | A description of any error that occurred | `string()` | "" | `false` |  
-`tx_result.fax_bad_rows` | The number of bad rows | `integer()` | `0` | `false` |  
-`tx_result.fax_error_correction` | True if fax error correction was used | `boolean()` | `false` | `false` |  
-`tx_result.fax_receiver_id` | The receiver id reported by the remote fax device | `string()` | "" | `false` |  
-`tx_result.fax_speed` | The speed (Baud-Rate) achieved during transmission | `integer()` | `0` | `false` |  
-`tx_result.pages_sent` | The number of pages transmitted | `integer()` | `0` | `false` |  
-`tx_result.success` | True if the fax transmission was successful | `boolean()` | `false` | `false` |  
-`tx_result.time_elapsed` | The amount of time from submission to completion | `integer()` | `0` | `false` |  
-`tx_result` | The result of a transmission attempt | `object()` |   | `false` |  
+`attempts` | The number of attempts made, this will be set by the system and reset automatically on put/post | `integer()` | `0` | `false` |
+`document.content` | The content provided in the body when fetching for transmission as a post | `string(0..256)` |   | `false` |
+`document.content_type` | The content type header to be used when fetching for transmission as a post | `string()` |   | `false` |
+`document.host` | The host header to be used when fetching for transmission | `string()` |   | `false` |
+`document.method` | The method that should be used to retrieve the document | `string('get' | 'post')` | `get` | `false` |
+`document.referer` | The referer header to be used when fetching for transmission | `string()` |   | `false` |
+`document.url` | The url of the fax document | `string()` |   | `true` |
+`document` | Parameters related to the storage of a fax document | `object()` |   | `false` |
+`from_name` | The sender name for the fax | `string()` |   | `false` |
+`from_number` | The sender number for the fax | `string()` |   | `true` |
+`notifications.email.send_to` | A list or string of email recipient(s) | `array(string()) | string()` |   | `false` |
+`notifications.email` | Email notifications | `object()` |   | `false` |
+`notifications.sms.send_to` | A list or string of sms recipient(s) | `array(string()) | string()` |   | `false` |
+`notifications.sms` | SMS notifications | `object()` |   | `false` |
+`notifications` | Status notifications | `object()` |   | `false` |
+`retries` | The number of times to retry | `integer()` | `1` | `false` |
+`to_name` | The recipient name for the fax | `string()` |   | `false` |
+`to_number` | The recipient number for the fax | `string()` |   | `true` |
+`tx_result.error_message` | A description of any error that occurred | `string()` | "" | `false` |
+`tx_result.fax_bad_rows` | The number of bad rows | `integer()` | `0` | `false` |
+`tx_result.fax_error_correction` | True if fax error correction was used | `boolean()` | `false` | `false` |
+`tx_result.fax_receiver_id` | The receiver id reported by the remote fax device | `string()` | "" | `false` |
+`tx_result.fax_speed` | The speed (Baud-Rate) achieved during transmission | `integer()` | `0` | `false` |
+`tx_result.pages_sent` | The number of pages transmitted | `integer()` | `0` | `false` |
+`tx_result.success` | True if the fax transmission was successful | `boolean()` | `false` | `false` |
+`tx_result.time_elapsed` | The amount of time from submission to completion | `integer()` | `0` | `false` |
+`tx_result` | The result of a transmission attempt | `object()` |   | `false` |
 
 
 
@@ -95,7 +95,7 @@ curl -v -X PUT \
 }
 ```
 
-In the second method, you can use a single PUT request and send a [multi-part `content-type`](./multipart) to attach both the JSON metadata about the fax transmission and the document itself, in a single request. This avoids needing to have an external storage location for storing fax attachments prior to processing. This is a good solution for portals that upload documents.
+In the second method, you can use a single PUT request and send a [multi-part `content-type`](multipart.md) to attach both the JSON metadata about the fax transmission and the document itself, in a single request. This avoids needing to have an external storage location for storing fax attachments prior to processing. This is a good solution for portals that upload documents.
 
 ```shell
 curl -v -X PUT \

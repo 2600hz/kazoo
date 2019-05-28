@@ -314,7 +314,6 @@ docs-report:
 docs-setup:
 	@$(ROOT)/scripts/validate_mkdocs.py
 	@$(ROOT)/scripts/setup_docs.bash
-	@mkdir -p $(DOCS_ROOT)/theme
 
 docs-build:
 	@$(MAKE) -C $(DOCS_ROOT) DOCS_ROOT=$(DOCS_ROOT) docs-build

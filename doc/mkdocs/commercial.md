@@ -8,7 +8,7 @@ Crossbar APIs provide access to resources via URL paths. To use a REST API, your
 
 Almost most of the time requests and responses for Crossbar endpoint are in JSON format, unless other format are expected for specific endpoint which you can find in the documentation.
 
-Crossbar REST API is based on open standards like [JSON-Schema](htt://json-schema.org/) (for data validation), you can use any web developer language to work with the API. Although for quick access to API tools like cURL (to work with HTTP protocol from terminal) and Postman (A GUI application to work with HTTP APIs) are come in handy.
+Crossbar REST API is based on open standards like [JSON-Schema](http://json-schema.org/) (for data validation), you can use any web developer language to work with the API. Although for quick access to API tools like cURL (to work with HTTP protocol from terminal) and Postman (A GUI application to work with HTTP APIs) are come in handy.
 
 A non-exhaustive list of all the things you can do with REST API:
 

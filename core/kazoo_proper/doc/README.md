@@ -10,25 +10,25 @@ After each quickcheck, I like to clean soft-deleted account docs from the `accou
 
 Also, clearing the data traces is good to do: `kz_data_tracing:clear_all_traces().`
 
-### [Phone Numbers](src/pqc_cb_phone_numbers.erl)
+### [Phone Numbers](https://github.com/2600hz/kazoo/blob/master/core/kazoo_proper/src/pqc_cb_phone_numbers.erl)
 
-Tests the [`phone_numbers`](../../applications/crossbar/doc/phone_numbers.md) API
+Tests the [`phone_numbers`](/applications/crossbar/doc/phone_numbers.md) API
 
 Sequential tests: `proper:quickcheck(pqc_cb_phone_numbers:correct()).`
 Parallel tests: `proper:quickcheck(pqc_cb_phone_numbers:correct_parallel()).`
 
 Cleanup deleted account docs: `kt_cleanup:cleanup_soft_deletes(<<"accounts">>).`
 
-### [Ratedecks](src/pqc_cb_rates.erl)
+### [Ratedecks](https://github.com/2600hz/kazoo/blob/master/core/kazoo_proper/src/pqc_cb_rates.erl)
 
 Tests the ratedeck upload task and rating a DID against account-vs-system ratedecks.
 
 Run a quick sequential test: `pqc_cb_rates:seq()`
 
-### [IPs](src/pqc_cb_ips.erl)
+### [IPs](https://github.com/2600hz/kazoo/blob/master/core/kazoo_proper/src/pqc_cb_ips.erl)
 
 Tests the dedicated IPs endpoint.
 
-### [Recordings](../src/pqc_cb_recordings.erl)
+### [Recordings](https://github.com/2600hz/kazoo/blob/master/core/kazoo_proper/src/pqc_cb_recordings.erl)
 
 Tests fetching recordings

@@ -12,7 +12,7 @@ The 5.0 release will start Kazoo's official support for OTP 21 ([21.3](http://ww
 
 2. Community-supported and deprecated apps will be moved out of Kazoo and into a [kazoo-community](https://github.com/kazoo-community) organization. De-factor maintainers of the community apps have been added to remove 2600Hz from blocking PR and code management for those apps. Tooling will continue to be improved for those apps (and 3rd party apps in general). If you would like to take on a maintainer's role for any of the kazoo-community apps, let us know!
 
-3. Dependencies have been re-evaluated, updated, or removed as necessary. Please check that your use of them is still available. We're thinking on how comunity/private apps can include unique dependencies within themselves without impacting core Kazoo's dependency list.
+3. Dependencies have been re-evaluated, updated, or removed as necessary. Please check that your use of them is still available. We're thinking on how community/private apps can include unique dependencies within themselves without impacting core Kazoo's dependency list.
 
 ### 4.3
 
@@ -38,7 +38,7 @@ The old `save/2` took an updater function and tried to save the result. Because 
 
 2. Time
 
-    In accordance with the new [time correction](http://erlang.org/doc/apps/erts/time_correction.html) work in Erlang 19+, cleanup of [kz_time](core/kazoo_stdlib/src/kz_time.erl) has been done to ensure Kazoo uses the proper time functions.
+    In accordance with the new [time correction](http://erlang.org/doc/apps/erts/time_correction.html) work in Erlang 19+, cleanup of [kz_time](https://github.com/2600hz/kazoo/blob/master/core/kazoo_stdlib/src/kz_time.erl) has been done to ensure Kazoo uses the proper time functions.
 
     The big change (that should be mostly transparent) is that `kz_time:now_s/0` returns Gregorian seconds instead of Unix Epoch seconds. The majority of code either doesn't care or expected Gregorian seconds, so this change should have minimal impact on existing code. If you need a Unix timestamp, `kz_time:current_unix_tstamp/0` is what you want.
 
