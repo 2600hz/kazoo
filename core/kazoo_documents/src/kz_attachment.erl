@@ -27,12 +27,13 @@ decode_base64(Base64) ->
             {'undefined', corrected_base64_decode(strip_base64(Base64))}
     end.
 
--spec get_content_type(kz_term:ne_binary()) -> kz_term:api_binary().
+-spec get_content_type(kz_term:ne_binary()) -> kz_term:api_binary() | {'error', 'badarg'}.
 get_content_type(CT) ->
     %% stripping white-spaces for lazy developers
-    MediaType = binary:replace(CT, <<$\s>>, <<>>, [global]),
+    MediaType = binary:replace(CT, <<$\s>>, <<>>, ['global']),
     get_content_type(MediaType, kz_binary:truncate_left(MediaType, 6)).
 
+-spec get_content_type(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_term:api_binary() | {'error', 'badarg'}.
 get_content_type(MediaType, <<"base64">>) ->
     get_content_type(kz_binary:truncate_right(MediaType, byte_size(MediaType) - 7), 'undefined');
 get_content_type(MediaType, _) ->
