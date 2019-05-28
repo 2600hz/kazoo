@@ -55,7 +55,7 @@ db_create_others(#{}=Map, DbName, Options) ->
 do_db_create_others(Map, DbName, Options) ->
     Others = maps:get('others', Map, []),
     lists:all(fun({_Tag, M1}) ->
-                      do_db_create(#{server => M1}, DbName, Options) =/= 'false'
+                      do_db_create(M1, DbName, Options) =/= 'false'
               end, Others).
 
 -spec do_db_create(map(), kz_term:ne_binary(), db_create_options()) -> boolean() | 'exists'.
@@ -83,7 +83,7 @@ db_delete_others(#{}=Map, DbName, Options) ->
 do_db_delete_others(Map, DbName) ->
     Others = maps:get('others', Map, []),
     lists:all(fun({_Tag, M1}) ->
-                      do_db_delete(#{server => M1}, DbName)
+                      do_db_delete(M1, DbName)
               end, Others).
 
 -spec do_db_delete(map(), kz_term:ne_binary()) -> boolean().
@@ -101,7 +101,7 @@ db_view_cleanup(#{}=Map, DbName) ->
     Others = maps:get('others', Map, []),
     do_db_view_cleanup(Map, DbName)
         andalso lists:all(fun({_Tag, M1}) ->
-                                  do_db_view_cleanup(#{server => M1}, DbName)
+                                  do_db_view_cleanup(M1, DbName)
                           end, Others).
 
 -spec do_db_view_cleanup(map(), kz_term:ne_binary()) -> boolean().
@@ -167,7 +167,7 @@ db_exists_all(Map, DbName) ->
 -spec db_exists_others(kz_term:ne_binary(), list()) -> boolean().
 db_exists_others(_, []) -> 'true';
 db_exists_others(DbName, Others) ->
-    lists:all(fun({_Tag, M}) -> db_exists(#{server => M}, DbName) end, Others).
+    lists:all(fun({_Tag, M}) -> db_exists(M, DbName) end, Others).
 
 -spec db_archive(map(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | data_error().
 db_archive(#{server := {App, Conn}}=Server, DbName, Filename) ->
@@ -207,7 +207,7 @@ db_view_update(#{}=Map, DbName, Views, Remove) ->
     case do_db_view_update(Map, DbName, Views, Remove) of
         'true' ->
             lists:all(fun({_Tag, M1}) ->
-                              do_db_view_update(#{server => M1}, DbName, Views, Remove) =:= 'true'
+                              do_db_view_update(M1, DbName, Views, Remove) =:= 'true'
                       end
                      ,Others
                      );
