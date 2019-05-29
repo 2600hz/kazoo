@@ -1682,8 +1682,8 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 
 -spec verify_media_name(kz_json:object(), kz_term:ne_binary()) -> boolean().
 verify_media_name(JObj, MediaName) ->
-    case kz_recording:name(JObj) of
-        MediaName -> 'true';
+    case kz_recording:response_media(JObj) of
+        {_, MediaName} -> 'true';
         _ -> 'false'
     end.
 

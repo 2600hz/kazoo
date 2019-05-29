@@ -26,10 +26,6 @@
 
 -define(SERVER, ?MODULE).
 
--type media_directory() :: file:filename_all().
--type media_name() :: file:filename_all().
--type media() :: {media_directory() | 'undefined', media_name()}.
-
 -type store_url() :: 'false' |
                      {'true', 'local'} |
                      {'true', 'other', kz_term:ne_binary()}.
@@ -64,11 +60,6 @@ start_link() ->
                             ]
                            ,[]
                            ).
-
--spec get_response_media(kz_json:object()) -> media().
-get_response_media(JObj) ->
-    Filename = kz_recording:file_path(JObj),
-    {filename:dirname(Filename), filename:basename(Filename)}.
 
 -spec handle_record_stop(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_record_stop(JObj, Props) ->
@@ -385,7 +376,7 @@ maybe_save_recording(Pid, JObj) ->
 
 maybe_save_recording(?KZ_RECORDER, Pid, JObj) ->
     AccountId = kz_call_event:account_id(JObj),
-    Media = {_, MediaId} = get_response_media(JObj),
+    Media = {_, MediaId} = kz_recording:response_media(JObj),
     Ext = filename:extension(MediaId),
     lager:debug("saving recording media ~s in account ~s", [MediaId, AccountId]),
     Data = kz_recording:data(JObj, kz_json:new()),
