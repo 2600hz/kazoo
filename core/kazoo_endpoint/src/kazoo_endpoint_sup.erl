@@ -27,7 +27,6 @@
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
 -define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
-                  ,?WORKER('kz_endpoint_recording')
                   ]
        ).
 

@@ -1530,24 +1530,31 @@ start_recording(Call) ->
 start_recording('undefined', Call) -> Call;
 start_recording(Data0, Call) ->
     Data = update_recording_id(Data0),
-    case kzc_recordings_sup:start_recording(clear_helpers(Call), Data) of
-        {'ok', RecorderPid} ->
-            Routines = [{fun store_recording/3
-                        ,kz_json:get_ne_binary_value(?RECORDING_ID_KEY, Data)
-                        ,RecorderPid
-                        }
-                       ],
-            exec(Routines, Call);
-        _Err ->
-            lager:notice("error starting recording ~p", [_Err]),
-            Call
-    end.
+    Command = kapps_call_recording:record_call_command(Data, Call),
+    RecordOnAnswer = kz_json:is_true(<<"record_on_answer">>, Data, 'false'),
+    RecordOnBridge = kz_json:is_true(<<"record_on_bridge">>, Data, 'false'),
+    Cmd = case {RecordOnAnswer, RecordOnBridge} of
+              {'false', 'false'} ->
+                  Command;
+              {'true', _} ->
+                  Actions = kz_json:set_value([<<"Execute-On-Answer">>, <<"Record-Call">>], Command, kz_json:new()),
+                  kapps_call_command:event_actions_command(Actions, Call);
+              {_, 'true'} ->
+                  Actions = kz_json:set_value([<<"Execute-On-Bridge">>, <<"Record-Call">>], Command, kz_json:new()),
+                  kapps_call_command:event_actions_command(Actions, Call)
+          end,
+    kapps_call_command:send_command(Cmd, Call),
+    Routines = [{fun store_recording/2
+                ,kz_json:get_ne_binary_value(?RECORDING_ID_KEY, Data)
+                }
+               ],
+    exec(Routines, Call).
 
 -spec update_recording_id(kz_json:object()) -> kz_json:object().
 update_recording_id(Data) ->
     RecID = kz_binary:rand_hex(16),
-    Format = kzc_recording:get_format(kz_json:get_ne_binary_value(<<"format">>, Data)),
-    DefaultMediaName = kzc_recording:get_media_name(RecID, Format),
+    Format = kapps_call_recording:get_format(kz_json:get_ne_binary_value(<<"format">>, Data)),
+    DefaultMediaName = kapps_call_recording:get_media_name(RecID, Format),
     MediaName = kz_json:get_ne_binary_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
     kz_json:set_value(?RECORDING_ID_KEY, MediaName, Data).
 
@@ -1563,7 +1570,7 @@ stop_recording(LegId, OriginalCall) ->
             API = [{<<"Call-ID">>, LegId}],
             kapps_call_command:stop_record_call(API, OriginalCall),
             OriginalCall;
-        {'ok', {MediaName, _RecorderPid}, Call} ->
+        {'ok', MediaName, Call} ->
             kapps_call_command:stop_record_call([{<<"Media-Name">>, MediaName}], Call),
             Call;
         {'empty', Call} ->
@@ -1617,13 +1624,12 @@ unmask_recording(LegId, OriginalCall) ->
             Call
     end.
 
--spec store_recording(kz_term:ne_binary(), pid(), call()) -> call().
-store_recording(MediaName, Pid, Call) ->
-    Q = queue:in({MediaName, Pid}, get_recordings(Call)),
+-spec store_recording(kz_term:ne_binary(), call()) -> call().
+store_recording(MediaName, Call) ->
+    Q = queue:in(MediaName, get_recordings(Call)),
     kvs_store(?RECORDINGS_KEY, Q, Call).
 
-
--type recording_ref() :: {kz_term:ne_binary(), pid()}.
+-type recording_ref() :: kz_term:ne_binary().
 -type store_return() :: {'ok', recording_ref(), call()} | {'empty', call()}.
 
 -spec retrieve_recording(call()) -> store_return().

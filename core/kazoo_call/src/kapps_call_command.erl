@@ -215,6 +215,10 @@
         ,hold_control_command/1, hold_control_command/2
         ]).
 
+-export([event_actions_command/2
+        ,register_event_actions/2
+        ]).
+
 -include("kapps_call_command.hrl").
 
 -type audio_macro_prompt() ::
@@ -1678,7 +1682,7 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 
 -spec verify_media_name(kz_json:object(), kz_term:ne_binary()) -> boolean().
 verify_media_name(JObj, MediaName) ->
-    case kzc_recording:get_response_media(JObj) of
+    case kz_recording:response_media(JObj) of
         {_, MediaName} -> 'true';
         _ -> 'false'
     end.
@@ -3438,4 +3442,18 @@ start_sound_touch(Options, Call) ->
 -spec stop_sound_touch(kapps_call:call()) -> 'ok'.
 stop_sound_touch(Call) ->
     Command = sound_touch_command([{<<"Action">>, <<"stop">>}], Call),
+    send_command(Command, Call).
+
+-spec event_actions_command(kz_json:object(), kapps_call:call()) ->kz_term:api_terms().
+event_actions_command(Actions, Call) ->
+    kz_json:from_list(
+      [{<<"Application-Name">>, <<"event_actions">>}
+      ,{<<"Event-Actions">>, Actions}
+      ,{<<"Insert-At">>, <<"now">>}
+      ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+      ]).
+
+-spec register_event_actions(kz_json:object(), kapps_call:call()) -> 'ok'.
+register_event_actions(Actions, Call) ->
+    Command = event_actions_command(Actions, Call),
     send_command(Command, Call).

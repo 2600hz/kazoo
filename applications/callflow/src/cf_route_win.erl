@@ -365,7 +365,10 @@ maybe_start_onnet_endpoint_recording(EndpointId, _To, 'true', Call) ->
             of
                 'false' -> Call;
                 'true' ->
-                    App = kz_endpoint_recording:record_call_command(kz_doc:id(Endpoint), Inception, Data, Call),
+                    Values = [{<<"origin">>, <<"inbound from ", Inception/binary, " to endpoint">>}
+                             ,{<<"endpoint_id">>, kz_doc:id(Endpoint)}
+                             ],
+                    App = kapps_call_recording:record_call_command(kz_json:set_values(Values, Data), Call),
                     NewActions = kz_json:set_value([<<"Execute-On-Answer">>, <<"Record-Endpoint">>], App, kz_json:new()),
                     kapps_call:kvs_store('outbound_actions', NewActions, Call)
             end;
@@ -385,7 +388,10 @@ maybe_start_offnet_endpoint_recording(EndpointId, _To, 'true', Call) ->
             of
                 'false' -> Call;
                 'true' ->
-                    App = kz_endpoint_recording:record_call_command(kz_doc:id(Endpoint), Inception, Data, Call),
+                    Values = [{<<"origin">>, <<"inbound from ", Inception/binary, " to endpoint">>}
+                             ,{<<"endpoint_id">>, kz_doc:id(Endpoint)}
+                             ],
+                    App = kapps_call_recording:record_call_command(kz_json:set_values(Values, Data), Call),
                     NewActions = kz_json:set_value([<<"Execute-On-Answer">>, <<"Record-Endpoint">>], App, kz_json:new()),
                     kapps_call:kvs_store('outbound_actions', NewActions, Call)
             end;

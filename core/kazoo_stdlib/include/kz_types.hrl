@@ -75,6 +75,8 @@
         ,<<"dialplan">> %% errors are sent with this
         ]).
 
+-define(KZ_RECORDER, <<"kz_media_recording">>).
+
 -define(CHANNEL_LOOPBACK_HEADER_PREFIX, "Export-Loopback-").
 -define(CALL_INTERACTION_ID, "Call-Interaction-ID").
 -define(CALL_INTERACTION_DEFAULT

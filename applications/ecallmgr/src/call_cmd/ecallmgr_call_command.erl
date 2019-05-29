@@ -1140,10 +1140,11 @@ record_call(Node, UUID, <<"start">>, JObj) ->
     RecordingId = kz_json:get_ne_binary_value(<<"Media-Recording-ID">>, JObj),
 
     RecordArgs = [ScopeVariables
+                 ,"^^!"
                  ,RecordingName
-                 ," +"
+                 ,"!+"
                  ,kz_term:to_binary(TimeLimit)
-                 ," {"
+                 ,"!{"
                  ,record_call_args(JObj)
                  ,"}"
                  ],

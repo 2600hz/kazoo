@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.media_srv",
+    "description": "Schema for media_srv system_config",
+    "properties": {
+        "recording_workers": {
+            "default": 1,
+            "description": "media_srv recording_workers",
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}

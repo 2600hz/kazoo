@@ -388,7 +388,7 @@ finish_record_call(Call, Props, MediaName) ->
     RecordingUrl = props:get_value('recordingUrl', Props, NewUri),
     AccountId = kapps_call:account_id(Call),
     Setters1 =
-        case kzc_recording:should_store_recording(AccountId, RecordingUrl) of
+        case kapps_call_recording:should_store_recording(AccountId, RecordingUrl) of
             'false' ->
                 lager:info("not storing the recording"),
                 Setters;

@@ -14266,6 +14266,9 @@
                 "Record-Sample-Rate": {
                     "type": "integer"
                 },
+                "Recording-Variables": {
+                    "type": "string"
+                },
                 "Time-Limit": {
                     "type": "integer"
                 }
@@ -26161,6 +26164,10 @@
                     "description": "The target extension/DID",
                     "type": "string"
                 },
+                "timeout": {
+                    "description": "timeout to establish call",
+                    "type": "integer"
+                },
                 "transfer_type": {
                     "default": "blind",
                     "description": "The type of transfer to perform",
@@ -32692,6 +32699,17 @@
                     "default": false,
                     "description": "media use ssl proxy",
                     "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.media_srv": {
+            "description": "Schema for media_srv system_config",
+            "properties": {
+                "recording_workers": {
+                    "default": 1,
+                    "description": "media_srv recording_workers",
+                    "type": "integer"
                 }
             },
             "type": "object"
