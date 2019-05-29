@@ -24,6 +24,7 @@
         ,<<"Callee-ID-Number">>
         ,<<"Caller-ID-Name">>
         ,<<"Caller-ID-Number">>
+        ,<<"Channel-Answer-State">>
         ,<<"Channel-Call-State">>
         ,<<"Channel-Created-Time">>
         ,<<"Channel-Is-Loopback">>

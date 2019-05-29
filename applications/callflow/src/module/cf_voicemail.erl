@@ -546,7 +546,7 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength
     case kapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, kz_term:to_binary(MaxMessageLength), Call) of
         {'ok', Msg} ->
             Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
-            case kz_call_event:hangup_cause(Msg) =:= 'undefined'
+            case kz_call_event:channel_answer_state(Msg) =:= <<"answered">>
                 andalso review_recording(AttachmentName, 'true', Box, Call)
             of
                 'false' ->
@@ -979,7 +979,7 @@ record_forward(AttachmentName, Message, SrcBoxId, #mailbox{media_extension=Ext
     case kapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, kz_term:to_binary(MaxMessageLength), Call) of
         {'ok', Msg} ->
             Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
-            case kz_call_event:hangup_cause(Msg) =:= 'undefined'
+            case kz_call_event:channel_answer_state(Msg) =:= <<"answered">>
                 andalso review_recording(AttachmentName, 'false', DestBox, Call)
             of
                 'false' ->

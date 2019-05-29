@@ -9798,6 +9798,9 @@
                 "Caller-ID-Number": {
                     "type": "string"
                 },
+                "Channel-Answer-State": {
+                    "type": "string"
+                },
                 "Channel-Call-State": {
                     "type": "string"
                 },
@@ -22613,6 +22616,9 @@
                 "Caller-ID-Number": {
                     "type": "string"
                 },
+                "Channel-Answer-State": {
+                    "type": "string"
+                },
                 "Channel-Call-State": {
                     "type": "string"
                 },
@@ -22890,6 +22896,9 @@
                     "type": "string"
                 },
                 "Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Channel-Answer-State": {
                     "type": "string"
                 },
                 "Channel-Call-State": {
