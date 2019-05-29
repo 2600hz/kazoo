@@ -1,9 +1,9 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2019, 2600Hz
-%%% @doc Handle rolling over ledgers at the start of the month
+%%% @doc Handle rolling over services at the start of the month
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kt_ledger_rollover).
+-module(kt_services_rollover).
 
 %% behaviour: tasks_provider
 
@@ -16,7 +16,7 @@
 
 -include("tasks.hrl").
 
--define(MOD_CAT, <<(?CONFIG_CAT)/binary, ".ledger_rollover">>).
+-define(MOD_CAT, <<(?CONFIG_CAT)/binary, ".services_rollover">>).
 
 -spec init() -> 'ok'.
 init() ->
@@ -29,7 +29,7 @@ handle_req() ->
 -spec handle_req(kz_time:date()) -> 'ok'.
 handle_req({Year, Month, 1}) ->
     _P = kz_util:spawn(fun rollover_accounts/2, [Year, Month]),
-    lager:info("its a new month ~p-~p, rolling over ledgers in ~p", [Year, Month, _P]);
+    lager:info("its a new month ~p-~p, rolling over services in ~p", [Year, Month, _P]);
 handle_req({_Year, _Month, _Day}) -> 'ok'.
 
 -spec rollover_accounts(kz_time:year(), kz_time:month()) -> 'ok'.
@@ -38,10 +38,10 @@ rollover_accounts(Year, Month) ->
 
 -spec rollover_accounts(kz_time:year(), kz_time:month(), kz_datamgr:paginated_results()) -> 'ok'.
 rollover_accounts(Year, Month, {'ok', Accounts, 'undefined'}) ->
-    _ = [kz_ledgers:rollover(kz_doc:id(Account), Year, Month) || Account <- Accounts],
+    _ = [kz_services_modb:rollover(kz_doc:id(Account), Year, Month) || Account <- Accounts],
     lager:info("finished rolling over ~p accounts", [length(Accounts)]);
 rollover_accounts(Year, Month, {'ok', Accounts, NextPageKey}) ->
-    _ = [kz_ledgers:rollover(kz_doc:id(Account), Year, Month) || Account <- Accounts],
+    _ = [kz_services_modb:rollover(kz_doc:id(Account), Year, Month) || Account <- Accounts],
     rollover_accounts(Year, Month, get_page(NextPageKey));
 rollover_accounts(_Year, _Month, {'error', _E}) ->
     lager:error("failed to query account listing during rollover: ~p", [_E]).
