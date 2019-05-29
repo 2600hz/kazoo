@@ -202,7 +202,11 @@
 
 -define(CREDS_KEY(Realm, Username), {'authn', Username, Realm}).
 
--define(DP_EVENT_VARS, [{<<"Execute-On-Answer">>, <<"execute_on_answer">>}]).
+-define(DP_EVENT_VARS, [{<<"Execute-On-Answer">>, <<"execute_on_answer">>}
+                       ,{<<"Execute-On-Bridge">>, <<"execute_on_bridge">>}
+                       ,{<<"Execute-On-Tone-Detect">>, <<"execute_on_tone_detect">>}
+                       ,{<<"Execute-On-Record-Post-Process">>, <<"record_post_process_exec_app">>}
+                       ]).
 -define(BRIDGE_CHANNEL_VAR_SEPARATOR, "!").
 
 %% Call and Channel Vars that have a special prefix instead of the
@@ -222,6 +226,7 @@
                               ,{<<"Bridge-Execute-On-Answer">>, <<"execute_on_answer">>}
                               ,{<<"Bridge-Generate-Comfort-Noise">>,<<"bridge_generate_comfort_noise">>}
                               ,{<<"Bypass-Media">>, <<"bypass_media_after_bridge">>}
+
                               ,{<<"Callee-ID-Name">>, <<"callee_id_name">>}
                               ,{<<"Callee-ID-Number">>, <<"callee_id_number">>}
                               ,{<<"Caller-Callee-ID-Name">>, <<"caller_callee_id_name">>}
@@ -230,7 +235,14 @@
                               ,{<<"Caller-Caller-ID-Number">>, <<"caller_caller_id_number">>}
                               ,{<<"Caller-ID-Name">>, <<"caller_id_name">>}
                               ,{<<"Caller-ID-Number">>, <<"caller_id_number">>}
+                              ,{<<"Outbound-Call-ID">>, <<"origination_uuid">>}
+                              ,{<<"Outbound-Callee-ID-Name">>, <<"origination_callee_id_name">>}
+                              ,{<<"Outbound-Callee-ID-Number">>, <<"origination_callee_id_number">>}
+                              ,{<<"Outbound-Caller-ID-Name">>, <<"origination_caller_id_name">>}
+                              ,{<<"Outbound-Caller-ID-Number">>,<<"origination_caller_id_number">>}
+
                               ,{<<"Caller-ID-Type">>, <<"sip_cid_type">>}
+
                               ,{<<"Conference-Entry-Sound">>, <<"conference_enter_sound">>}
                               ,{<<"Conference-Exit-Sound">>, <<"conference_exit_sound">>}
                               ,{<<"Confirm-Cancel-Timeout">>, <<"group_confirm_cancel_timeout">>}
@@ -279,11 +291,6 @@
                               ,{<<"Application-Other-Leg-UUID">>, <<"Application-Other-Leg-UUID">>}
                               ,{<<"Origination-Call-ID">>, <<"sip_origination_call_uuid">>}
                               ,{<<"Origination-UUID">>, <<"origination_uuid">>}
-                              ,{<<"Outbound-Call-ID">>, <<"origination_uuid">>}
-                              ,{<<"Outbound-Callee-ID-Name">>, <<"origination_callee_id_name">>}
-                              ,{<<"Outbound-Callee-ID-Number">>, <<"origination_callee_id_number">>}
-                              ,{<<"Outbound-Caller-ID-Name">>, <<"origination_caller_id_name">>}
-                              ,{<<"Outbound-Caller-ID-Number">>,<<"origination_caller_id_number">>}
                               ,{<<"Outbound-Context">>,<<"origination_context">>}
                               ,{<<"Overwrite-Channel-Vars">>, <<"local_var_clobber">>}
                               ,{<<"Park-After-Pickup">>, <<"park_after_bridge">>}
@@ -638,6 +645,7 @@
                           ,'ecallmgr_call_event_publisher'
                           ,'ecallmgr_conference_event_publisher'
                           ,'ecallmgr_presence_event_publisher'
+                          ,'ecallmgr_fs_recordings'
                           ]).
 
 -define(HTTP_GET_PREFIX, "http_cache://").
