@@ -181,7 +181,7 @@ maybe_fire_foldl(Key, Value, {_ShouldFire, JObj}) ->
 fire_hook(JObj, #webhook{custom_data = 'undefined'
                         } = Hook) ->
     EventId = kz_binary:rand_hex(5),
-    NewJObj = kz_json:insert_value(<<"cluster_id">>, get_cluster_id(), JObj),
+    NewJObj = kz_json:insert_value(<<"cluster_id">>, list_to_binary(get_cluster_id()), JObj),
     do_fire(Hook, EventId, NewJObj);
 fire_hook(JObj, #webhook{custom_data = CustomData
                         } = Hook) ->
