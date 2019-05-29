@@ -45,9 +45,11 @@ save_services_to_modb(AccountMODb, ServicesJObj, Id) ->
             lager:debug("saved services snapshot as ~s in ~s"
                        ,[kz_doc:id(JObj), AccountMODb]
                        );
+        {'error', 'conflict'} ->
+            lager:info("conflict when saving services snapshot ~s in ~s", [Id, AccountMODb]);
         {'error', _R} ->
-            lager:warning("failed to store services snapshot in ~s: ~p"
-                         ,[AccountMODb, _R]
+            lager:warning("failed to store services snapshot ~s in ~s: ~p"
+                         ,[Id, AccountMODb, _R]
                          )
     end.
 
@@ -69,11 +71,11 @@ maybe_save_to_previous_modb(NewMODb, ServicesJObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_pvts(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
-update_pvts(?MATCH_MODB_SUFFIX_RAW(AccountId, _Year, _Month) = AccountMODb, ServicesJObj) ->
+update_pvts(AccountMODb, ServicesJObj) ->
     WithoutRev = kz_doc:delete_revision(ServicesJObj),
     kz_doc:update_pvt_parameters(WithoutRev
                                 ,AccountMODb
                                 ,[{'account_db', AccountMODb}
-                                 ,{'account_id', AccountId}
+                                 ,{'account_id', kz_util:format_account_id(AccountMODb)}
                                  ]
                                 ).
