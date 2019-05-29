@@ -5,9 +5,7 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_services_modb).
 
--export([start_link/0
-        ,modb/1
-        ]).
+-export([rollover/3]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
@@ -15,27 +13,16 @@
 -include_lib("kazoo_services/include/kazoo_services.hrl").
 
 %%------------------------------------------------------------------------------
-%% @doc Adds this module as a callback for when MODBs are created
+%% @doc Rolls an account over into the new MODb (indicated by Year/Month)
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link() -> kz_types:startlink_ret().
-start_link() ->
-    _Pid = kz_util:spawn(fun kazoo_modb:add_routine/1, [?MODULE]),
-    io:format("started services modb add_routine in ~p~n", [_Pid]),
-    'ignore'.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec modb(kz_term:ne_binary()) -> 'ok'.
-modb(?MATCH_MODB_SUFFIX_ENCODED(_AccountId, _Year, _Month) = AccountMODb) ->
-    modb(kz_util:format_account_modb(AccountMODb, 'raw'));
-modb(?MATCH_MODB_SUFFIX_RAW(AccountId, _Year, _Month) = AccountMODb) ->
+-spec rollover(kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> 'ok'.
+rollover(AccountId, Year, Month) ->
+    AccountMODb = kz_util:format_account_mod_id(AccountId, Year, Month),
     lager:debug("creating snapshot for account ~s services in month ~s-~s"
                ,[AccountId
-                ,_Year
-                ,_Month
+                ,Year
+                ,Month
                 ]
                ),
     FetchOptions = ['hydrate_account_quantities'
@@ -47,10 +34,7 @@ modb(?MATCH_MODB_SUFFIX_RAW(AccountId, _Year, _Month) = AccountMODb) ->
                      kz_services:services_jobj(Services)
                     ),
     save_services_to_modb(AccountMODb, ServicesJObj, ?SERVICES_BOM),
-    maybe_save_to_previous_modb(AccountMODb, ServicesJObj);
-modb(Account) ->
-    AccountId = kz_util:format_account_id(Account),
-    modb(kazoo_modb:get_modb(AccountId)).
+    maybe_save_to_previous_modb(AccountMODb, ServicesJObj).
 
 %%------------------------------------------------------------------------------
 %% @doc
