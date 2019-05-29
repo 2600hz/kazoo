@@ -398,6 +398,8 @@ print_node_status(#kz_node{zone=NodeZone
                           ,kapps=Whapps
                           ,globals=Globals
                           ,node_info=NodeInfo
+                          ,runtime=RuntimeInfo
+                          ,modules=Modules
                           ,roles=Roles
                           }=Node
                  ,Zone
@@ -419,8 +421,10 @@ print_node_status(#kz_node{zone=NodeZone
 
     _ = maybe_print_globals(Globals),
     _ = maybe_print_node_info(NodeInfo),
+    _ = maybe_print_runtime_info(RuntimeInfo),
 
     _ = maybe_print_kapps(Whapps),
+    _ = maybe_print_modules(Modules),
     _ = maybe_print_media_servers(Node),
     _ = maybe_print_roles(Roles),
 
@@ -459,6 +463,20 @@ maybe_print_globals(Globals) ->
 
 -spec print_global({kz_json:key(), integer()}) -> 'ok'.
 print_global({K,V}) -> io:format(" ~s (~B)",[K, V]).
+
+-spec maybe_print_runtime_info(kz_term:api_object()) -> 'ok'.
+maybe_print_runtime_info('undefined') -> 'ok';
+maybe_print_runtime_info(_RuntimeInfo) ->
+    io:format(?HEADER_COL ++ ": ", [<<"Runtime Info">>]),
+    io:format("~n").
+
+-spec maybe_print_modules(kz_term:api_object()) -> 'ok'.
+maybe_print_modules('undefined') -> 'ok';
+maybe_print_modules(Modules) ->
+    io:format(?HEADER_COL ++ ": ", [<<"Modules">>]),
+    L = kz_json:get_list_value(<<"loaded">>, Modules),
+    Mods = lists:sort([N || <<"mod_", N/binary>> <- L]),
+    simple_list(Mods, 0).
 
 -spec maybe_print_kapps(kz_term:proplist()) -> 'ok'.
 maybe_print_kapps(Whapps) ->
@@ -1048,6 +1066,8 @@ from_json(JObj, State) ->
             ,zone=get_zone(JObj, State)
             ,globals=kz_json:to_proplist(kz_json:get_value(<<"Globals">>, JObj, kz_json:new()))
             ,node_info=kz_json:get_json_value(<<"Node-Info">>, JObj)
+            ,runtime=kz_json:get_json_value(<<"Runtime-Info">>, JObj)
+            ,modules=kz_json:get_json_value(<<"Modules">>, JObj)
             ,roles=kz_json:to_proplist(kz_json:get_json_value(<<"Roles">>, JObj, kz_json:new()))
             }.
 
@@ -1072,6 +1092,8 @@ whapp_info_from_json(_Key, Info, {[], []}) -> Info;
 whapp_info_from_json(Key, Info, {[V | V1], [<<"Roles">> | K1]}) ->
     whapp_info_from_json(Key, Info#whapp_info{roles=V}, {V1, K1});
 whapp_info_from_json(<<"kamailio">> = Key, Info, {[V | V1], [<<"Startup">> | K1]}) ->
+    whapp_info_from_json(Key, Info#whapp_info{startup=kz_time:unix_seconds_to_gregorian_seconds(V)}, {V1, K1});
+whapp_info_from_json(<<"freeswitch">> = Key, Info, {[V | V1], [<<"Startup">> | K1]}) ->
     whapp_info_from_json(Key, Info#whapp_info{startup=kz_time:unix_seconds_to_gregorian_seconds(V)}, {V1, K1});
 whapp_info_from_json(Key, Info, {[V | V1], [<<"Startup">> | K1]}) ->
     whapp_info_from_json(Key, Info#whapp_info{startup=V}, {V1, K1});
