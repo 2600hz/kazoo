@@ -1553,7 +1553,7 @@ start_recording(Data0, Call) ->
 -spec update_recording_id(kz_json:object()) -> kz_json:object().
 update_recording_id(Data) ->
     RecID = kz_binary:rand_hex(16),
-    Format = kzc_recording:get_format(kz_json:get_ne_binary_value(<<"format">>, Data)),
+    Format = kapps_call_recording:get_format(kz_json:get_ne_binary_value(<<"format">>, Data)),
     DefaultMediaName = kapps_call_recording:get_media_name(RecID, Format),
     MediaName = kz_json:get_ne_binary_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
     kz_json:set_value(?RECORDING_ID_KEY, MediaName, Data).

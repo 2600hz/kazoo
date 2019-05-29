@@ -7,6 +7,9 @@
 
 -export([record_call_command/2
         ,get_media_name/2
+        ,get_format/1
+        ,get_timelimit/1
+        ,should_store_recording/0, should_store_recording/2
         ]).
 
 -include("kapps_call_command.hrl").
