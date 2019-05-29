@@ -32702,6 +32702,17 @@
             },
             "type": "object"
         },
+        "system_config.media_srv": {
+            "description": "Schema for media_srv system_config",
+            "properties": {
+                "recording_workers": {
+                    "default": 1,
+                    "description": "media_srv recording_workers",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
         "system_config.metaflows": {
             "description": "Schema for metaflows system_config",
             "properties": {
