@@ -199,7 +199,7 @@ cleanup_orphaned_services_doc(AccountId=?NE_BINARY) ->
         'true' -> 'ok';
         'false' ->
             lager:info("account ~s no longer exists but has a services doc", [AccountId]),
-            kz_datamgr:del_doc(?KZ_SERVICES_DB, AccountId),
+            _ = kz_datamgr:del_doc(?KZ_SERVICES_DB, AccountId),
             timer:sleep(5 * ?MILLISECONDS_IN_SECOND)
     end;
 cleanup_orphaned_services_doc(View) ->
