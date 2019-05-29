@@ -10,9 +10,11 @@
         ,origin/1, origin/2
         ,endpoint_id/1, endpoint_id/2
         ,recorder/1, recorder/2
+        ,data/1, data/2
         ]).
 -export([transfer_destination/1, transfer_destination/2
         ,transfer_method/1, transfer_method/2
+        ,file_path/1
         ]).
 
 
@@ -78,3 +80,18 @@ transfer_method(JObj) ->
 -spec transfer_method(event(), Default) -> kz_term:ne_binary() | Default.
 transfer_method(JObj, Default) ->
     kz_json:get_ne_binary_value([?RECORDING_ROOT, <<"Transfer-Method">>], JObj, Default).
+
+-spec file_path(event()) -> kz_term:api_ne_binary().
+file_path(JObj) ->
+    kz_json:get_ne_binary_value([?RECORDING_ROOT, <<"File-Path">>], JObj).
+
+-spec data(event()) -> term().
+data(JObj) ->
+    data(JObj, 'undefined').
+
+-spec data(event(), term()) -> term().
+data(JObj, Default) ->
+    case kz_json:get_ne_binary_value([?RECORDING_ROOT, <<"Data">>], JObj) of
+        'undefined' -> Default;
+        Data -> binary_to_term(base64:decode(Data))
+    end.
