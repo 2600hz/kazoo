@@ -35096,6 +35096,33 @@
             },
             "type": "object"
         },
+        "system_config.tasks.ledger_rollover": {
+            "description": "Schema for tasks.ledger_rollover system_config",
+            "properties": {
+                "rollover_in_parallel": {
+                    "default": 10,
+                    "description": "How many accounts to rollover per-pass (in parallel)",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.tasks.modb_creation": {
+            "description": "Schema for tasks.modb_creation system_config",
+            "properties": {
+                "create_in_parallel": {
+                    "default": 1,
+                    "description": "How many accounts to process per pass (in parallel).",
+                    "type": "integer"
+                },
+                "creation_day": {
+                    "default": 28,
+                    "description": "Which day of the month (of current month) to create next month's MODBs on",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
         "system_config.tasks.notify_resend": {
             "description": "Schema for tasks.notify_resend system_config",
             "properties": {
