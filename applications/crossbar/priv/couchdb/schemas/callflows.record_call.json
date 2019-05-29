@@ -12,10 +12,6 @@
             ],
             "type": "string"
         },
-        "endpoint_id": {
-            "description": "",
-            "type": "string"
-        },
         "follow_transfer": {
             "default": false,
             "description": ""

@@ -125,8 +125,6 @@ record_call_command(Data, Call) ->
     Vars = [{<<"Name">>, MediaName}
            ,{<<"Recorder">>, Recorder}
            ,{<<"ID">>, MediaDocId}
-           ,{<<"Endpoint-ID">>, kz_json:get_ne_binary_value(<<"endpoint_id">>, Data)}
-           ,{<<"Origin">>, kz_json:get_ne_binary_value(<<"origin">>, Data)}
            ,{<<"Data">>, base64:encode(term_to_binary(Data))}
            ],
     Media = [{<<"Application-Name">>, <<"record_call">>}

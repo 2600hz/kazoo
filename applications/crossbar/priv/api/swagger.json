@@ -3339,10 +3339,6 @@
                     ],
                     "type": "string"
                 },
-                "endpoint_id": {
-                    "description": "",
-                    "type": "string"
-                },
                 "follow_transfer": {
                     "default": false,
                     "description": ""
@@ -26173,7 +26169,7 @@
                     "type": "string"
                 },
                 "timeout": {
-                    "description": "",
+                    "description": "timeout to establish call",
                     "type": "integer"
                 },
                 "transfer_type": {

@@ -181,6 +181,7 @@ store_recording_meta(#{media := {_, MediaName}
                       ,call_id := CallId
                       ,event := JObj
                       ,account_id := AccountId
+                      ,endpoint_id := EndpointId
                       ,origin := Origin
                       }) ->
     Ext = filename:extension(MediaName),
@@ -207,6 +208,7 @@ store_recording_meta(#{media := {_, MediaName}
                      ,{<<"callee_id_number">>, kz_call_event:callee_id_number(JObj)}
                      ,{<<"callee_id_name">>, kz_call_event:callee_id_name(JObj)}
                      ,{<<"call_id">>, CallId}
+                     ,{<<"endpoint_id">>, EndpointId}
                      ,{<<"owner_id">>, kz_call_event:custom_channel_var(JObj, <<"Owner-ID">>)}
                      ,{<<"url">>, Url}
                      ,{<<"cdr_id">>, CdrId}
@@ -397,6 +399,7 @@ maybe_save_recording(?KZ_RECORDER, Pid, JObj) ->
     ShouldStore = should_store_recording(AccountId, Url),
     Verb = kz_json:get_ne_binary_value(<<"method">>, Data, <<"put">>),
     Origin = kz_json:get_ne_binary_value(<<"origin">>, Data, <<"no origin">>),
+    EndpointId = kz_json:get_ne_binary_value(<<"endpoint_id">>, Data),
 
     Store = #{url => Url
              ,media => Media
@@ -409,6 +412,7 @@ maybe_save_recording(?KZ_RECORDER, Pid, JObj) ->
              ,retries => ?STORAGE_RETRY_TIMES(AccountId)
              ,verb => Verb
              ,account_id => AccountId
+             ,endpoint_id => EndpointId
              ,call_id => CallId
              ,event => JObj
              ,origin => Origin

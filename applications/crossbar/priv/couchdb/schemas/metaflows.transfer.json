@@ -22,7 +22,7 @@
             "type": "string"
         },
         "timeout": {
-            "description": "",
+            "description": "timeout to establish call",
             "type": "integer"
         },
         "transfer_type": {
