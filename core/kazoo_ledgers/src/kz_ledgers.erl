@@ -384,7 +384,7 @@ rollover_past_available_units(Account, Year, Month) ->
     {PreviousYear, PreviousMonth} =
         kazoo_modb_util:prev_year_month(Year, Month),
 
-    lager:info("past y/m ~p:~p", [PreviousYear, PreviousMonth]),
+    lager:info("rolling over past y/m ~p:~p", [PreviousYear, PreviousMonth]),
 
     case kz_currency:past_available_units(Account, PreviousYear, PreviousMonth) of
         {'error', 'db_not_found'} ->
@@ -414,7 +414,7 @@ rollover(Account, Year, Month, Total) ->
           ,{fun kz_ledger:set_period_start/2, kz_time:now_s()}
           ,{fun kz_ledger:set_metadata/2, Metadata}
           ,{fun kz_ledger:set_unit_amount/2, Total}
-          ,{fun kz_ledger:set_id/2, ?ROLLOVER_ID(Year,Month)}
+          ,{fun kz_ledger:set_id/2, ?ROLLOVER_ID(Year, Month)}
           ,{fun kz_ledger:set_ledger_type/2, ledger_type(Total)}
           ,{fun kz_ledger:set_executor_trigger/2, <<"automatic">>}
           ,{fun kz_ledger:set_executor_module/2, ?MODULE}
