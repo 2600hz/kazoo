@@ -109,7 +109,7 @@ get_sources_total(Account, Options) ->
     case kazoo_modb:get_results(Account, View, ViewOptions) of
         {'ok', []} ->
             lager:info("missing ledgers from ~s: ~p/~p"
-                      ,[Account, props:get_value('year', ViewOptions), props:get_value('month', View)]
+                      ,[Account, props:get_value('year', ViewOptions), props:get_value('month', ViewOptions)]
                       ),
             {'error', 'missing_ledgers'};
         {'ok', JObjs} ->

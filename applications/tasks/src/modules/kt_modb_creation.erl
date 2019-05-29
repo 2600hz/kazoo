@@ -24,7 +24,7 @@ init() ->
 
 -spec handle_req() -> 'ok'.
 handle_req() ->
-    {'ok', CreateOnDay} = kapps_config:get_integer(?MOD_CAT, <<"creation_day">>, 28),
+    CreateOnDay = kapps_config:get_integer(?MOD_CAT, <<"creation_day">>, 28),
     handle_req(CreateOnDay, erlang:date()).
 
 -spec handle_req(kz_time:day(), kz_time:date()) -> 'ok'.
@@ -80,13 +80,17 @@ create_modb(Year, Month, AccountView) ->
     AccountMODB = kz_util:format_account_id(AccountId, Year, Month),
     kazoo_modb:maybe_create(AccountMODB).
 
--spec get_page(pos_integer(), kz_json:api_json_term()) ->
-                      {'ok', kz_json:objects(), kz_json:api_json_term()} |
-                      kz_datamgr:data_error().
+-spec get_page(pos_integer(), kz_json:api_json_term()) -> kz_datamgr:paginated_results().
+get_page(AccountsPerPass, 'undefined') ->
+    query([{'page_size', AccountsPerPass}]);
 get_page(AccountsPerPass, NextStartKey) ->
+    query([{'page_size', AccountsPerPass}
+          ,{'startkey', NextStartKey}
+          ]).
+
+-spec query(kz_datamgr:view_options()) -> kz_datamgr:paginated_results().
+query(ViewOptions) ->
     kz_datamgr:paginate_results(?KZ_ACCOUNTS_DB
                                ,<<"accounts/listing_by_id">>
-                               ,[{'page_size', AccountsPerPass}
-                                ,{'startkey', NextStartKey}
-                                ]
+                               ,ViewOptions
                                ).
