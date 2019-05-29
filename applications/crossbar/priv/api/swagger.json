@@ -32471,16 +32471,6 @@
             },
             "type": "object"
         },
-        "system_config.licenses": {
-            "description": "Schema for licenses system_config",
-            "properties": {
-                "konami_pro": {
-                    "description": "licenses konami_pro",
-                    "type": "object"
-                }
-            },
-            "type": "object"
-        },
         "system_config.limits": {
             "description": "Global limits ability to place concurrent calls using flat rate trunks",
             "properties": {
