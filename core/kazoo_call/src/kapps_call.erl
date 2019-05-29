@@ -1530,7 +1530,7 @@ start_recording(Call) ->
 start_recording('undefined', Call) -> Call;
 start_recording(Data0, Call) ->
     Data = update_recording_id(Data0),
-    Command = kapps_call_recording:record_call_command(Data, Call),    
+    Command = kapps_call_recording:record_call_command(Data, Call),
     RecordOnAnswer = kz_json:is_true(<<"record_on_answer">>, Data, 'false'),
     RecordOnBridge = kz_json:is_true(<<"record_on_bridge">>, Data, 'false'),
     Cmd = case {RecordOnAnswer, RecordOnBridge} of
