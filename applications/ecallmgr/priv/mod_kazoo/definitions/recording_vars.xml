@@ -7,13 +7,13 @@
 		<fields verbose="false">
 			<field name="Recording-Variable-" type="prefix" exclude-prefix="true" />
 			<field name="variable_record_file_size" as="File-Size"
-				serialize-as="integer" />
+				serialize-as="number" />
 			<field name="variable_record_samples" as="File-Samples"
-				serialize-as="integer" />
+				serialize-as="number" />
 			<field name="variable_record_seconds" as="File-Seconds"
-				serialize-as="integer" />
+				serialize-as="number" />
 			<field name="variable_record_ms" as="File-MilliSeconds"
-				serialize-as="integer" />
+				serialize-as="number" />
 			<field name="Record-File-Path" as="File-Path" />
 			<field name="variable_record_completion_cause" as="Completion-Cause" />
 		</fields>
