@@ -20,10 +20,7 @@
 rollover(AccountId, Year, Month) ->
     AccountMODb = kz_util:format_account_mod_id(AccountId, Year, Month),
     lager:debug("creating snapshot for account ~s services in month ~s-~s"
-               ,[AccountId
-                ,Year
-                ,Month
-                ]
+               ,[AccountId, Year, Month]
                ),
     FetchOptions = ['hydrate_account_quantities'
                    ,'hydrate_cascade_quantities'
@@ -42,20 +39,16 @@ rollover(AccountId, Year, Month) ->
 %%------------------------------------------------------------------------------
 -spec save_services_to_modb(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 save_services_to_modb(AccountMODb, ServicesJObj, Id) ->
-    MODbDoc = update_pvts(AccountMODb, ServicesJObj, Id),
+    MODbDoc = update_pvts(AccountMODb, kz_doc:set_id(ServicesJObj, Id)),
     case kazoo_modb:save_doc(AccountMODb, MODbDoc) of
         {'ok', JObj} ->
             lager:debug("saved services snapshot as ~s in ~s"
-                       ,[kz_doc:id(JObj)
-                        ,AccountMODb
-                        ]
+                       ,[kz_doc:id(JObj), AccountMODb]
                        );
         {'error', _R} ->
-            lager:debug("failed to store services snapshot in ~s: ~p"
-                       ,[AccountMODb
-                        ,_R
-                        ]
-                       )
+            lager:warning("failed to store services snapshot in ~s: ~p"
+                         ,[AccountMODb, _R]
+                         )
     end.
 
 %%------------------------------------------------------------------------------
@@ -75,9 +68,10 @@ maybe_save_to_previous_modb(NewMODb, ServicesJObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_pvts(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
-update_pvts(?MATCH_MODB_SUFFIX_RAW(AccountId, _Year, _Month) = AccountMODb, ServicesJObj, Id) ->
-    kz_doc:update_pvt_parameters(kz_json:delete_key(<<"_rev">>, kz_doc:set_id(ServicesJObj, Id))
+-spec update_pvts(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+update_pvts(?MATCH_MODB_SUFFIX_RAW(AccountId, _Year, _Month) = AccountMODb, ServicesJObj) ->
+    WithoutRev = kz_doc:delete_revision(ServicesJObj),
+    kz_doc:update_pvt_parameters(WithoutRev
                                 ,AccountMODb
                                 ,[{'account_db', AccountMODb}
                                  ,{'account_id', AccountId}
