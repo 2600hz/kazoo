@@ -3339,6 +3339,14 @@
                     ],
                     "type": "string"
                 },
+                "endpoint_id": {
+                    "description": "",
+                    "type": "string"
+                },
+                "follow_transfer": {
+                    "default": false,
+                    "description": ""
+                },
                 "format": {
                     "description": "What format to store the recording on disk",
                     "enum": [
@@ -14265,6 +14273,9 @@
                 },
                 "Record-Sample-Rate": {
                     "type": "integer"
+                },
+                "Recording-Variables": {
+                    "type": "string"
                 },
                 "Time-Limit": {
                     "type": "integer"
@@ -26161,6 +26172,10 @@
                     "description": "The target extension/DID",
                     "type": "string"
                 },
+                "timeout": {
+                    "description": "",
+                    "type": "integer"
+                },
                 "transfer_type": {
                     "default": "blind",
                     "description": "The type of transfer to perform",
@@ -32452,6 +32467,16 @@
                     "default": true,
                     "description": "ledgers rollover_monthly_balance",
                     "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.licenses": {
+            "description": "Schema for licenses system_config",
+            "properties": {
+                "konami_pro": {
+                    "description": "licenses konami_pro",
+                    "type": "object"
                 }
             },
             "type": "object"

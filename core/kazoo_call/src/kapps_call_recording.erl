@@ -109,9 +109,6 @@ media_recorder(Data, Call) ->
 
 -spec record_call_command(kz_json:object(), kapps_call:call()) -> kz_json:object().
 record_call_command(Data, Call) ->
-%    AccountId = kapps_call:account_id(Call),
-%    Url = kz_json:get_ne_binary_value(<<"url">>, Data),
-%    Verb = kz_json:get_ne_binary_value(<<"method">>, Data, <<"put">>),
     Format = get_format(kz_json:get_ne_binary_value(<<"format">>, Data)),
     TimeLimit = get_timelimit(kz_json:get_integer_value(<<"time_limit">>, Data)),
     SampleRate = kz_json:get_integer_value(<<"record_sample_rate">>, Data),
@@ -124,8 +121,9 @@ record_call_command(Data, Call) ->
     DefaultMediaName = get_media_name(kz_binary:rand_hex(16), Format),
     MediaName = kz_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
     FollowTransfer = kz_json:get_boolean_value(<<"follow_transfer">>, Data, 'false'),
+    Recorder = media_recorder(Data, Call),
     Vars = [{<<"Name">>, MediaName}
-           ,{<<"Recorder">>, media_recorder(Data, Call)}
+           ,{<<"Recorder">>, Recorder}
            ,{<<"ID">>, MediaDocId}
            ,{<<"Endpoint-ID">>, kz_json:get_ne_binary_value(<<"endpoint_id">>, Data)}
            ,{<<"Origin">>, kz_json:get_ne_binary_value(<<"origin">>, Data)}
@@ -139,7 +137,7 @@ record_call_command(Data, Call) ->
             ,{<<"Media-Recording-ID">>, MediaDocId}
             ,{<<"Record-Sample-Rate">>, SampleRate}
             ,{<<"Record-Min-Sec">>, kz_term:to_binary(RecordMinSec)}
-            ,{<<"Media-Recorder">>, media_recorder(Data, Call)}
+            ,{<<"Media-Recorder">>, Recorder}
             ,{<<"Recording-Variables">>, kz_json:from_list(Vars)}
             ,{<<"Call-ID">>, CallId}
             ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
