@@ -44,7 +44,7 @@ create_modbs(Year, Month, {'ok', NumAccounts}) ->
     SecondsLeft = NextMonthS - NowS,
 
     %% Conservatively create 1 MODB per time unit
-    {'ok', AccountsPerPass} = kapps_config:get_integer(?MOD_CAT, <<"create_in_parallel">>, 1),
+    AccountsPerPass = kapps_config:get_integer(?MOD_CAT, <<"create_in_parallel">>, 1),
 
     SecondsPerPass = (SecondsLeft div AccountsPerPass) div NumAccounts,
 
