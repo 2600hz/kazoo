@@ -11,7 +11,6 @@ Validator for the Record Call callflow action
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `action` | Whether to start or stop the recording | `string('start' | 'stop')` | `start` | `true` |  
-`follow_transfer` |   |   | `false` | `false` |  
 `format` | What format to store the recording on disk | `string('mp3' | 'wav')` |   | `false` |  
 `label` | Label to include in the origin of call recording | `string()` |   | `false` |  
 `media_name` | the name of media | `string()` |   | `false` |  

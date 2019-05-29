@@ -120,7 +120,7 @@ record_call_command(Data, Call) ->
     MediaDocId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_date:pad_month(Month), RecordingId),
     DefaultMediaName = get_media_name(kz_binary:rand_hex(16), Format),
     MediaName = kz_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
-    FollowTransfer = kz_json:get_boolean_value(<<"follow_transfer">>, Data, 'false'),
+    FollowTransfer = kapps_call:kvs_fetch('recording_follow_transfer', 'false', Call),
     Recorder = media_recorder(Data, Call),
     Vars = [{<<"Name">>, MediaName}
            ,{<<"Recorder">>, Recorder}
