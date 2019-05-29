@@ -54,7 +54,8 @@ get_page(NextStartKey) ->
 
 -spec query(kz_datamgr:view_options()) -> kz_datamgr:paginated_results().
 query(ViewOptions) ->
+    AccountsPerPass = kapps_config:get_integer(?MOD_CAT, <<"rollover_in_parallel">>, 10),
     kz_datamgr:paginate_results(?KZ_ACCOUNTS_DB
                                ,<<"accounts/listing_by_id">>
-                               ,ViewOptions
+                               ,[{'page_size', AccountsPerPass} | ViewOptions]
                                ).
