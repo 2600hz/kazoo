@@ -633,6 +633,7 @@
                                           ,<<"Media-Recording-ID">>
                                           ,<<"Media-Recording-Endpoint-ID">>
                                           ,<<"Media-Recording-Origin">>
+                                          ,<<"Recording-Variables">>
                                           ]).
 -define(RECORD_CALL_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                 ,{<<"Event-Name">>, <<"command">>}
