@@ -215,7 +215,9 @@
         ,hold_control_command/1, hold_control_command/2
         ]).
 
--export([register_event_actions/2]).
+-export([event_actions_command/2
+        ,register_event_actions/2
+        ]).
 
 -include("kapps_call_command.hrl").
 
