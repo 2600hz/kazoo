@@ -72,7 +72,6 @@ get_response_media(JObj) ->
 
 -spec handle_record_stop(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_record_stop(JObj, Props) ->
-    lager:debug_unsafe("RECORD STOP => ~s", [kz_json:encode(JObj, [pretty])]),
     kz_util:put_callid(JObj),
     Pid = props:get_value('server', Props),
     maybe_save_recording(Pid, JObj).
@@ -99,16 +98,16 @@ handle_cast({'store_succeeded', #{}}, State) ->
     lager:debug("store succeeded"),
     {'noreply', State};
 
-handle_cast({'store_failed', #{retries := 0}}, State) ->
-    lager:debug("store failed, no more retries."),
+handle_cast({'store_failed', #{retries := 0}, Error}, State) ->
+    lager:debug("store failed : ~p, no more retries.", [Error]),
     {'noreply', State};
 
-handle_cast({'store_failed', Store}, State) ->
+handle_cast({'store_failed', #{retries := Retries} = Store, Error}, State) ->
     Sleep = ?MILLISECONDS_IN_MINUTE * rand:uniform(10),
-    lager:debug("store failed, retrying ~p more times, next in ~p minute(s)"
-               ,[Retries, Sleep / ?MILLISECONDS_IN_MINUTE]
+    lager:debug("store failed : ~p, retrying ~p more times, next in ~p minute(s)"
+               ,[Error, Retries, Sleep / ?MILLISECONDS_IN_MINUTE]
                ),
-    timer:send_after(Sleep, self(), {'retry_storage', Store})
+    timer:send_after(Sleep, self(), {'retry_storage', Store}),
     {'noreply', State};
 handle_cast({'gen_listener',{'created_queue', Queue}}, State) ->
     {'noreply', State#{queue => Queue}};
@@ -374,7 +373,7 @@ store_recording({DirName, MediaName}, StoreUrl, #{event := JObj, pid := Pid} = M
     Node = kz_call_event:switch_nodename(JObj),
     Filename = filename:join(DirName, MediaName),
     case kz_storage:store_file(Node, Filename, StoreUrl, Map) of
-        {'error', Error} -> gen_server:cast(Pid, {'store_failed', Map});
+        {'error', Error} -> gen_server:cast(Pid, {'store_failed', Map, Error});
         'ok' -> gen_server:cast(Pid, {'store_succeeded', Map})
     end.
 
@@ -397,7 +396,7 @@ maybe_save_recording(?KZ_RECORDER, Pid, JObj) ->
     Url = kz_json:get_ne_binary_value(<<"url">>, Data),
     ShouldStore = should_store_recording(AccountId, Url),
     Verb = kz_json:get_ne_binary_value(<<"method">>, Data, <<"put">>),
-    Origin = kz_json:get_ne_binary_value(<<"origin">>, Data, <<"no origin">>)
+    Origin = kz_json:get_ne_binary_value(<<"origin">>, Data, <<"no origin">>),
 
     Store = #{url => Url
              ,media => Media
