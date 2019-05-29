@@ -688,14 +688,23 @@ process_fold(App, App, _, Others) ->
     process_fold(Others, App);
 process_fold(App, _, M, _) -> {App, M}.
 
+-spec calling_app_stacktrace() -> any().
+calling_app_stacktrace() ->
+    try throw('get_stacktrace')
+    catch
+        _E:_R:ST ->
+            [_Me | Others] = ST,
+            Others
+    end.
+
 %%------------------------------------------------------------------------------
 %% @doc For core applications that want to know which app is calling.
 %% @end
 %%------------------------------------------------------------------------------
 -spec calling_app() -> kz_term:ne_binary().
 calling_app() ->
-    Modules = erlang:process_info(self(),current_stacktrace),
-    {'current_stacktrace', [_Me, {Module, _, _, _} | Start]} = Modules,
+    Modules = calling_app_stacktrace(),
+    [_Me, {Module, _, _, _} | Start] = Modules,
     {'ok', App} = application:get_application(Module),
     case process_fold(Start, App) of
         App -> kz_term:to_binary(App);
@@ -704,20 +713,14 @@ calling_app() ->
 
 -spec calling_app_version() -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 calling_app_version() ->
-    Modules = erlang:process_info(self(),current_stacktrace),
-    {'current_stacktrace', [_Me, {Module, _, _, _} | Start]} = Modules,
-    {'ok', App} = application:get_application(Module),
-    NewApp = case process_fold(Start, App) of
-                 App -> App;
-                 {Parent, _MFA} -> Parent
-             end,
-    {NewApp, _, Version} = get_app(NewApp),
+    {'ok', App} = application:get_application(self()),
+    {NewApp, _, Version} = get_app(App),
     {kz_term:to_binary(NewApp), kz_term:to_binary(Version)}.
 
 -spec calling_process() -> map().
 calling_process() ->
-    Modules = erlang:process_info(self(),current_stacktrace),
-    {'current_stacktrace', [_Me, {Module, _, _, _}=M | Start]} = Modules,
+    Modules = calling_app_stacktrace(),
+    [_Me, {Module, _, _, _}=M | Start] = Modules,
     App = case application:get_application(Module) of
               {'ok', KApp} -> KApp;
               'undefined' -> Module
