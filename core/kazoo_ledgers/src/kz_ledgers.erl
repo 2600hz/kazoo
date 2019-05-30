@@ -94,7 +94,11 @@ total_sources_from_previous(Account) ->
     total_sources(Account, PreviousYear, PreviousMonth).
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Fetch total units for the MODB
+%%
+%% On an un-indexed MODB with 12,000 documents (381 of which are ledger docs)
+%% it took about 6s to index and return the view results. On the same database
+%% after indexing, 70ms.
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_sources_total(kz_term:ne_binary(), kazoo_modb:view_options()) ->
