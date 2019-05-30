@@ -323,6 +323,11 @@
                             "default": 5,
                             "description": "media storage retry times",
                             "type": "integer"
+                        },
+                        "workers": {
+                            "default": 1,
+                            "description": "media call_recording workers",
+                            "type": "integer"
                         }
                     }
                 }
@@ -32573,6 +32578,11 @@
                             "default": 5,
                             "description": "media storage retry times",
                             "type": "integer"
+                        },
+                        "workers": {
+                            "default": 1,
+                            "description": "media call_recording workers",
+                            "type": "integer"
                         }
                     }
                 },
@@ -32699,17 +32709,6 @@
                     "default": false,
                     "description": "media use ssl proxy",
                     "type": "boolean"
-                }
-            },
-            "type": "object"
-        },
-        "system_config.media_srv": {
-            "description": "Schema for media_srv system_config",
-            "properties": {
-                "recording_workers": {
-                    "default": 1,
-                    "description": "media_srv recording_workers",
-                    "type": "integer"
                 }
             },
             "type": "object"

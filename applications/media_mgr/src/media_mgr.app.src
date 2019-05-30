@@ -1,5 +1,5 @@
 {application,media_mgr,
-             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_data,
+             [{applications,[cowboy,kazoo,kazoo_amqp,kazoo_apps,kazoo_data,
                              kazoo_documents,kazoo_media,kazoo_modb,
                              kazoo_stdlib,kazoo_web,kernel,lager,stdlib]},
               {description,"Media Manager - Stream media via Shout from Couch"},
