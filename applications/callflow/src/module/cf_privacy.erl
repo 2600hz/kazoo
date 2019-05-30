@@ -19,16 +19,16 @@ handle(Data, Call) ->
         andalso cf_flow:lookup(Number, AccountId)
     of
         'false' ->
-            update_call(Number, Data, Call),
-            cf_exe:continue(Call);
+            UpdatedCall = update_call(Number, Data, Call),
+            cf_exe:continue(UpdatedCall);
         {'ok', CallFlow, _} ->
-            update_call(Number, Data, Call),
-            cf_exe:branch(kz_json:get_value(<<"flow">>, CallFlow), Call);
+            UpdatedCall = update_call(Number, Data, Call),
+            cf_exe:branch(kz_json:get_value(<<"flow">>, CallFlow), UpdatedCall);
         {'error', _} ->
             cf_exe:stop(Call)
     end.
 
--spec update_call(kz_term:ne_binary(), kz_json:object(), {'ok', kapps_call:call()}) -> 'ok'.
+-spec update_call(kz_term:ne_binary(), kz_json:object(), {'ok', kapps_call:call()}) -> kapps_call:call().
 update_call(Number, Data, Call) ->
     Mode = kz_json:get_ne_binary_value(<<"mode">>, Data, <<"full">>),
     Strategy = kz_json:get_ne_binary_value(<<"endpoint_strategy">>, Data, <<"overwrite">>),
@@ -44,7 +44,7 @@ update_call(Number, Data, Call) ->
         ],
     cf_exe:update_call(kapps_call:exec(Routines, Call)).
 
--spec update_number_func(kz_term:ne_binary(), kapps_call:call(), kz_term:ne_binary(), boolean()) -> [any()].
+-spec update_number_func(kz_term:ne_binary(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary()) -> [any()].
 update_number_func('undefined', _Call, Mode, Strategy) ->
     lager:debug("setting privacy mode to ~s. use endpoint privacy: ~s"
                ,[Mode, Strategy]
