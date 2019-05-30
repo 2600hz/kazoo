@@ -171,7 +171,7 @@ decode(JSON, <<"application/json">>) ->
     try unsafe_decode(JSON)
     catch
         _:{'invalid_json', {'error', {_Loc, _Msg}}, _JSON} ->
-            lager:error_unsafe("decode error ~s near char # ~b => ~s", [_Msg, _Loc, JSON]),
+            lager:error_unsafe("decode error ~s near char # ~b => ~s", [_Msg, _Loc, binary:part(JSON, _Loc-5, 25)]),
             new()
     end.
 
