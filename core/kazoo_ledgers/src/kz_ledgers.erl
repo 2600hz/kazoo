@@ -361,7 +361,7 @@ migrate_legacy_rollover(Account, Options, Year, Month) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc given the current Year/Month, rollover last month's ledgers
 %% @end
 %%------------------------------------------------------------------------------
 -spec rollover(kz_term:ne_binary()) -> {'ok', kz_ledger:ledger()} |
@@ -370,15 +370,22 @@ rollover(Account) ->
     {Year, Month, _} = erlang:date(),
     rollover(Account, Year, Month).
 
+%%------------------------------------------------------------------------------
+%% @doc rollover the previous MODBs ledgers into the given year/month
+%% @end
+%%------------------------------------------------------------------------------
 -spec rollover(kz_term:ne_binary(),  kz_time:year(), kz_time:month()) ->
                       {'ok', kz_ledger:ledger()} |
                       {'error', any()}.
 rollover(Account, Year, Month) ->
+    MODB = kz_util:format_account_id(Account, Year, Month),
+
     case should_rollover_monthly_balance() of
-        'true' -> rollover_past_available_units(Account, Year, Month);
+        'true' ->
+            rollover_past_available_units(MODB, Year, Month);
         'false' ->
             lager:debug("monthly balance rollover is disabled, assuming previous balance was 0"),
-            rollover(Account, Year, Month, 0)
+            rollover(MODB, Year, Month, 0)
     end.
 
 -spec rollover_past_available_units(kz_term:ne_binary(),  kz_time:year(), kz_time:month()) ->
