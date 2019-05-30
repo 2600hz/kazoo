@@ -18,6 +18,7 @@
         ,start_bucket/1, start_bucket/2, start_bucket/3, start_bucket/4, start_bucket/5
         ,exists/1, exists/2
         ,tokens/0
+        ,tokens_remaining/2
 
         ,get_bucket/2, get_bucket/3
         ]).
@@ -254,6 +255,15 @@ print_bucket_info(#bucket{key={App, _}}=Bucket, _OldApp) ->
              ,[App, "", "", "" ,""]
              ),
     print_bucket_info(Bucket, App).
+
+-spec tokens_remaining(kz_term:ne_binary(), kz_term:ne_binary()) -> non_neg_integer().
+tokens_remaining(App, Key) ->
+    case ets:lookup(table_id(), {App, Key}) of
+        [] ->
+            ?MAX_TOKENS(App);
+        [#bucket{srv=P}] ->
+            kz_token_bucket:tokens(P)
+    end.
 
 %%%=============================================================================
 %%% ETS

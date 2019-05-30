@@ -1569,6 +1569,11 @@ maybe_set_pull_response_stream({FileLength, TransportFun}, Req, Context)
 maybe_set_pull_response_stream(Other, Req, Context) ->
     {Other, Req, Context}.
 
+-spec get_token_obj(cb_context:context()) -> kz_json:object().
+get_token_obj(Context) ->
+    kz_json:from_list([{<<"consumed">>, cb_modules_util:token_cost(Context)}
+                      ,{<<"remaining">>, cb_modules_util:tokens_remaining(Context)}
+                      ]).
 %%------------------------------------------------------------------------------
 %% @doc This function extracts the response fields and puts them in a proplist.
 %% @end
@@ -1582,6 +1587,7 @@ do_create_resp_envelope(Context) ->
     Resp = case cb_context:response(Context) of
                {'ok', RespData} ->
                    [{<<"auth_token">>, cb_context:auth_token(Context)}
+                   ,{<<"tokens">>, get_token_obj(Context)}
                    ,{<<"status">>, <<"success">>}
                    ,{<<"request_id">>, cb_context:req_id(Context)}
                    ,{<<"node">>, kz_nodes:node_encoded()}
@@ -1593,6 +1599,7 @@ do_create_resp_envelope(Context) ->
                {'error', {ErrorCode, ErrorMsg, RespData}} ->
                    lager:debug("generating error ~b ~s response", [ErrorCode, ErrorMsg]),
                    [{<<"auth_token">>, kz_term:to_binary(cb_context:auth_token(Context))}
+                   ,{<<"tokens">>, get_token_obj(Context)}
                    ,{<<"request_id">>, cb_context:req_id(Context)}
                    ,{<<"node">>, kz_nodes:node_encoded()}
                    ,{<<"version">>, kz_util:kazoo_version()}
