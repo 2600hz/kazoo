@@ -353,10 +353,12 @@ pages:
     - 'applications/tasks/doc/fax_cleanup.md'
     - 'applications/tasks/doc/kazoo_bill_early_task.md'
     - 'applications/tasks/doc/kz_notify_resender.md'
+    - 'applications/tasks/doc/ledger_rollover.md'
     - 'applications/tasks/doc/maintenance.md'
     - 'applications/tasks/doc/modb_creation.md'
     - 'applications/tasks/doc/notify_resend_maintenance.md'
     - 'applications/tasks/doc/rates.md'
+    - 'applications/tasks/doc/services_rollover.md'
   - 'Teletype':
     - 'applications/teletype/doc/README.md'
     - 'applications/teletype/doc/maintenance.md'

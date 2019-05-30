@@ -12,7 +12,9 @@
 %% Triggerables
 -export([handle_req/0]).
 
--export([rollover_accounts/2]).
+-export([rollover_accounts/2
+        ,refresh_ledger_view/2
+        ]).
 
 -include("tasks.hrl").
 
@@ -38,6 +40,7 @@ handle_req({Year, Month, _Day}) ->
         'false' -> 'ok'
     end.
 
+-spec refresh_ledger_view(kz_time:year(), kz_time:month()) -> 'ok'.
 refresh_ledger_view(Year, Month) ->
     PerPage = kapps_config:get_integer(?MOD_CAT, <<"refresh_in_parallel">>, 50),
     refresh_ledger_view(Year, Month, PerPage, get_page('undefined', PerPage)).
