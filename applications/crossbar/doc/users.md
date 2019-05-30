@@ -632,4 +632,4 @@ curl -v -X POST \
 
 ## Quickcalls
 
-See [the quickcall](./quickcall.md) docs for how to perform this action.
+See [the quickcall](quickcall.md) docs for how to perform this action.

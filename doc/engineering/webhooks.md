@@ -21,7 +21,7 @@ The structure of each metadata package will include:
 
 These metadata packages can then be accessed via Crossbar to allow REST clients to present the latest available webhooks for selection.
 
-See the [webhooks_skel](applications/webhooks/src/modules/webhooks_skel.erl) for creating new webhook modules.
+See the [webhooks_skel](https://github.com/2600hz/kazoo/blob/master/applications/webhooks/src/modules/webhooks_skel.erl) for creating new webhook modules.
 
 #### Modifiers
 
