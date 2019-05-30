@@ -1474,7 +1474,7 @@ get_result_docs(DbName, DesignDoc, Keys) ->
 %%------------------------------------------------------------------------------
 -type paginate_options() :: [{'page_size', pos_integer()}] | view_options().
 -type paginated_results() :: {'ok', kz_json:objects(), kz_json:api_json_term()} |
-                             kz_datamgr:data_error().
+                             data_error().
 
 -spec paginate_results(kz_term:ne_binary(), kz_term:ne_binary(), paginate_options()) ->
                               {'ok', kz_json:objects(), kz_json:api_json_term()} |
