@@ -226,6 +226,9 @@ do_db_compact(#db{}=Db) ->
         'ok' ->
             lager:debug("compaction has started"),
             'true';
+        {'ok', _OK} ->
+            lager:debug("compaction has started: ~p", [_OK]),
+            'true';
         {'error', {'conn_failed', {'error', 'timeout'}}} ->
             lager:warning("connection timed out"),
             'false';
