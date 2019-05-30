@@ -12,7 +12,7 @@
 %% Triggerables
 -export([handle_req/0]).
 
--export([create_modbs/2]).
+-export([create_modbs/0, create_modbs/2]).
 
 -include("tasks.hrl").
 
@@ -32,6 +32,12 @@ handle_req(Day, {Year, Month, Day}) ->
     _P = kz_util:spawn(fun create_modbs/2, [Year, Month]),
     lager:info("it is modb creation day! creating in ~p", [_P]);
 handle_req(_CreateOnDay, {_Year, _Month, _Day}) -> 'ok'.
+
+-spec create_modbs() -> 'ok'.
+create_modbs() ->
+    {Year, Month, _D} = erlang:date(),
+    _P = kz_util:spawn(fun create_modbs/2, [Year, Month]),
+    io:format("creating modbs in ~p~n", [_P]).
 
 -spec create_modbs(kz_time:year(), kz_time:month()) -> 'ok'.
 create_modbs(Year, Month) ->
