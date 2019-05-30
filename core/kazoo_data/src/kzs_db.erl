@@ -182,7 +182,10 @@ db_archive(#{server := {App, Conn}}=Server, DbName, Filename) ->
 db_import(#{server := {App, Conn}}=Server, DbName, Filename) ->
     case db_exists(Server, DbName) of
         'true' -> App:db_import(Conn, DbName, Filename);
-        'false' -> 'ok'
+        'false' ->
+            io:format("db ~s doesn't exist, creating~n", [DbName]),
+            'true' = db_create(Server, DbName),
+            App:db_import(Conn, DbName, Filename)
     end.
 
 -spec db_list(map(), view_options()) -> {'ok', kz_term:ne_binaries()} | data_error().
