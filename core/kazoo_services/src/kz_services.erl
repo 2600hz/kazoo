@@ -105,8 +105,8 @@
 -record(kz_services, {account_id :: kz_term:api_ne_binary()
                      ,account_quantities = 'undefined' :: kz_term:api_object()
                      ,account_updates = kz_json:new() :: kz_json:object()
-                     ,account_current_billables = [] :: kz_json:objects()
-                     ,account_proposed_billables = [] :: kz_json:objects()
+                     ,account_current_billables = [] :: kz_services_quantities:billables()
+                     ,account_proposed_billables = [] :: kz_services_quantities:billables()
                      ,audit_log = kz_json:new() :: kz_json:object()
                      ,cascade_quantities = 'undefined' :: kz_term:api_object()
                      ,cascade_updates = kz_json:new() :: kz_json:object()
@@ -267,7 +267,7 @@ find_object_plans(JObjsA, JObjsB) ->
                  ),
     lists:filter(FilterFun, find_object_plans(JObjsA)).
 
--spec find_object_plans_filter(kz_json:objects()) -> fun((kz_json:object()) -> boolean()).
+-spec find_object_plans_filter(kz_services_quantities:billables()) -> fun((kz_services_quantities:billable()) -> boolean()).
 find_object_plans_filter(ObjectPlans) ->
     Plans = [{kz_doc:id(Plan), Plan}
              || Plan <- ObjectPlans
@@ -282,10 +282,7 @@ find_object_plans_filter(ObjectPlans) ->
 
 -spec find_object_plans(kz_services_quantities:billables()) -> kz_json:objects().
 find_object_plans(JObjs) when is_list(JObjs) ->
-    lists:foldl(fun find_object_plans_fold/2
-               ,[]
-               ,JObjs
-               ).
+    lists:foldl(fun find_object_plans_fold/2, [], JObjs).
 
 -spec find_object_plans_fold(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 find_object_plans_fold(JObj, Plans) ->
@@ -432,11 +429,11 @@ reset_updates(Services) ->
 account_updates(#kz_services{account_updates=Updates}) ->
     Updates.
 
--spec account_current_billables(services()) -> kz_json:objects().
+-spec account_current_billables(services()) -> kz_services_quantities:billables().
 account_current_billables(#kz_services{account_current_billables=Current}) ->
     Current.
 
--spec account_proposed_billables(services()) -> kz_json:objects().
+-spec account_proposed_billables(services()) -> kz_services_quantities:billables().
 account_proposed_billables(#kz_services{account_proposed_billables=Proposed}) ->
     Proposed.
 
