@@ -261,7 +261,7 @@ remove_plans(Services) ->
     reset_plans(set_services_jobj(Services, ServicesJObj)).
 
 -spec find_object_plans(kz_services_quantities:billables(), kz_services_quantities:billables()) -> kz_json:objects().
-find_object_plans(JObjsA, JObjsB) ->
+find_object_plans(JObjsA, JObjsB) when is_list(JObjsA), is_list(JObjsB) ->
     FilterFun = find_object_plans_filter(
                   find_object_plans(JObjsB)
                  ),
@@ -438,7 +438,7 @@ account_proposed_billables(#kz_services{account_proposed_billables=Proposed}) ->
     Proposed.
 
 -spec set_account_updates(services(), kz_services_quantities:billables(), kz_services_quantities:billables()) -> services().
-set_account_updates(#kz_services{}=Services, Current, Proposed) ->
+set_account_updates(#kz_services{}=Services, Current, Proposed) when is_list(Current), is_list(Proposed) ->
     Updates = kz_services_quantities:calculate_updates(Services, Current, Proposed),
     Services#kz_services{account_updates=Updates
                         ,account_current_billables=Current
