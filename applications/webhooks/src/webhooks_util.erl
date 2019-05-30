@@ -181,7 +181,7 @@ maybe_fire_foldl(Key, Value, {_ShouldFire, JObj}) ->
 fire_hook(JObj, #webhook{custom_data = 'undefined'
                         } = Hook) ->
     EventId = kz_binary:rand_hex(5),
-    NewJObj = kz_json:insert_value(<<"cluster_id">>, list_to_binary(get_cluster_id()), JObj),
+    NewJObj = kz_json:insert_value(<<"cluster_id">>, kzd_cluster:id(), JObj),
     do_fire(Hook, EventId, NewJObj);
 fire_hook(JObj, #webhook{custom_data = CustomData
                         } = Hook) ->
@@ -759,12 +759,3 @@ fetch_available_events() ->
             Events
     end.
 
--spec get_cluster_id() -> nonempty_string().
-get_cluster_id() ->
-    case kapps_config:get_string(?MOD_CONFIG_CLUSTER, <<"cluster_id">>) of
-        'undefined' ->
-            ClusterId = kz_binary:rand_hex(16),
-            {'ok', _JObj} = kapps_config:set_default(?MOD_CONFIG_CLUSTER, <<"cluster_id">>, ClusterId),
-            kz_term:to_list(ClusterId);
-        ClusterId -> ClusterId
-    end.
