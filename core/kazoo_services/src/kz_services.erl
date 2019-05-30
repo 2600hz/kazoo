@@ -194,10 +194,10 @@ current_plans(Services) ->
     UpdatedObjectPlans = find_object_plans(CurrentBillables, ProposedBillables),
 
     Routines = [{kz_json:are_equal(CurrentPlans, ProposedPlans)
-                ,{services_jobj, current_services_jobj(Services)}
+                ,{'services_jobj', current_services_jobj(Services)}
                 }
                ,{kz_term:is_empty(UpdatedObjectPlans)
-                ,{modified_object_plans, UpdatedObjectPlans}
+                ,{'modified_object_plans', UpdatedObjectPlans}
                 }
                ],
     maybe_fetch_plans(Services, Routines).
@@ -212,10 +212,10 @@ proposed_plans(Services) ->
     UpdatedObjectPlans = find_object_plans(ProposedBillables, CurrentBillables),
 
     Routines = [{kz_json:are_equal(CurrentPlans, ProposedPlans)
-                ,{services_jobj, services_jobj(Services)}
+                ,{'services_jobj', services_jobj(Services)}
                 }
                ,{kz_term:is_empty(UpdatedObjectPlans)
-                ,{modified_object_plans, UpdatedObjectPlans}
+                ,{'modified_object_plans', UpdatedObjectPlans}
                 }
                ],
     maybe_fetch_plans(Services, Routines).
@@ -281,15 +281,11 @@ find_object_plans_filter(ObjectPlans) ->
     end.
 
 -spec find_object_plans(kz_services_quantities:billables()) -> kz_json:objects().
-find_object_plans('undefined') ->
-    [];
 find_object_plans(JObjs) when is_list(JObjs) ->
     lists:foldl(fun find_object_plans_fold/2
                ,[]
                ,JObjs
-               );
-find_object_plans(JObj) ->
-    find_object_plans([JObj]).
+               ).
 
 -spec find_object_plans_fold(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 find_object_plans_fold(JObj, Plans) ->
