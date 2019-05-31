@@ -44,8 +44,8 @@ maybe_dry_run(Context, CurrentJObj, ProposedJObj) ->
     Services = kz_services:fetch(AuthAccountId),
     Updated = kz_services:set_updates(Services
                                      ,AccountId
-                                     ,CurrentJObj
-                                     ,ProposedJObj
+                                     ,[CurrentJObj]
+                                     ,[ProposedJObj]
                                      ),
     Quotes = kz_services_invoices:create(Updated),
     HasAdditions = kz_services_invoices:has_billable_additions(Quotes),
