@@ -637,7 +637,7 @@ ensure_aggregate_faxbox(Account) ->
         {'error', _} -> 'ok'
     end.
 
--spec update_or_add_to_faxes_db(kz_json:object()) -> 'ok'.
+-spec update_or_add_to_faxes_db(kz_json:objects()) -> 'ok'.
 update_or_add_to_faxes_db(Faxboxes) ->
     case kz_datamgr:all_docs(?KZ_FAXES_DB, [{'keys', [ kz_doc:id(Doc) || Doc <- Faxboxes]}]) of
         {'ok', Docs} ->
@@ -652,7 +652,7 @@ update_or_add_to_faxes_db(Faxboxes) ->
             'ok'
     end.
 
--spec prepare_faxboxes(kz_json:objects(), kz_json:objects(), kz_json:objects()) -> kz_json:objects().
+-spec prepare_faxboxes(kz_json:objects(), map(), kz_json:objects()) -> kz_json:objects().
 prepare_faxboxes([], _Revs, Acc) -> Acc;
 prepare_faxboxes([Doc|Faxboxes], Revs, Acc) ->
     case maps:get(kz_doc:id(Doc), Revs, 'undefined') of
@@ -884,13 +884,15 @@ maybe_log_doc_update({'error', _Reason}, _, Failed) ->
                          ,fixed_trees := map()
                          }.
 
--spec get_accounts_tree() -> kz_json:object().
+-spec get_accounts_tree() -> {'ok', kz_json:objects()} |
+                             kz_datamgr:data_error().
 get_accounts_tree() ->
     ViewOptions = [{'reduce', 'false'}],
     ViewName = <<"accounts_tree/list_by_tree_length">>,
     kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ViewName, ViewOptions).
 
--spec get_accounts_tree(kz_term:ne_binaries()) -> kz_json:object().
+-spec get_accounts_tree(kz_term:ne_binaries()) -> {'ok', kz_json:objects()} |
+                                                  kz_datamgr:data_error().
 get_accounts_tree(Accounts) ->
     ViewOptions = [{'keys', [kz_util:format_account_id(A) || A <- Accounts]}
                   ,'include_docs'
