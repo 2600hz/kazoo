@@ -945,7 +945,7 @@ commit_updates(Account, Current, Proposed) ->
                     ) -> services().
 commit_updates(Account, Current, Proposed, AuditLog) ->
     AccountId = kz_util:format_account_id(Account),
-    FetchOptions = [{'updates', AccountId, Current, Proposed}
+    FetchOptions = [{'updates', AccountId, to_billables(Current), to_billables(Proposed)}
                    ,{'audit_log', add_audit_log_changes_account(AccountId, AuditLog)}
                    ],
     Services = fetch(AccountId, FetchOptions),
@@ -957,6 +957,11 @@ commit_updates(Account, Current, Proposed, AuditLog) ->
         'false' ->
             commit_updates(Services, FetchOptions)
     end.
+
+-spec to_billables(kz_services_quantities:billables() | kz_services_quantities:billable()) -> kz_services_quantities:billables().
+to_billables('undefined') -> [];
+to_billables(Bs) when is_list(Bs) -> Bs;
+to_billables(B) -> [B].
 
 -spec should_skip_updates(services()) -> boolean().
 should_skip_updates(Services) ->
