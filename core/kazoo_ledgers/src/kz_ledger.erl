@@ -594,7 +594,7 @@ to_json(#ledger{private_fields=PrivateFields}=Ledger) ->
             ],
     kz_json:set_values(Props, LedgerJObj).
 
--spec get_created_timestamp(kzd_ledgers:doc()) -> kz_term:integer().
+-spec get_created_timestamp(kzd_ledgers:doc()) -> integer().
 get_created_timestamp(LedgerJObj) ->
     kz_doc:created(LedgerJObj, kz_time:now_s()).
 

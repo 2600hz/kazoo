@@ -637,7 +637,7 @@ ensure_aggregate_faxbox(Account) ->
         {'error', _} -> 'ok'
     end.
 
--spec update_or_add_to_faxes_db(kz_json:object()) -> 'ok'.
+-spec update_or_add_to_faxes_db(kz_json:objects()) -> 'ok'.
 update_or_add_to_faxes_db(Faxboxes) ->
     case kz_datamgr:all_docs(?KZ_FAXES_DB, [{'keys', [ kz_doc:id(Doc) || Doc <- Faxboxes]}]) of
         {'ok', Docs} ->
@@ -652,7 +652,7 @@ update_or_add_to_faxes_db(Faxboxes) ->
             'ok'
     end.
 
--spec prepare_faxboxes(kz_json:objects(), kz_json:objects(), kz_json:objects()) -> kz_json:objects().
+-spec prepare_faxboxes(kz_json:objects(), map(), kz_json:objects()) -> kz_json:objects().
 prepare_faxboxes([], _Revs, Acc) -> Acc;
 prepare_faxboxes([Doc|Faxboxes], Revs, Acc) ->
     case maps:get(kz_doc:id(Doc), Revs, 'undefined') of
@@ -691,7 +691,7 @@ ensure_aggregate_account(Account) ->
             update_or_add_to_accounts_db(AccountId, JObj)
     end.
 
--spec update_or_add_to_accounts_db(kz_term:ne_bianry(), kz_json:object()) -> 'ok'.
+-spec update_or_add_to_accounts_db(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 update_or_add_to_accounts_db(AccountId, JObj) ->
     <<"account">> = kz_doc:type(JObj),
     case kz_datamgr:lookup_doc_rev(?KZ_ACCOUNTS_DB, AccountId) of
@@ -884,13 +884,15 @@ maybe_log_doc_update({'error', _Reason}, _, Failed) ->
                          ,fixed_trees := map()
                          }.
 
--spec get_accounts_tree() -> kz_json:object().
+-spec get_accounts_tree() -> {'ok', kz_json:objects()} |
+                             kz_datamgr:data_error().
 get_accounts_tree() ->
     ViewOptions = [{'reduce', 'false'}],
     ViewName = <<"accounts_tree/list_by_tree_length">>,
     kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ViewName, ViewOptions).
 
--spec get_accounts_tree(kz_term:ne_binaries()) -> kz_json:object().
+-spec get_accounts_tree(kz_term:ne_binaries()) -> {'ok', kz_json:objects()} |
+                                                  kz_datamgr:data_error().
 get_accounts_tree(Accounts) ->
     ViewOptions = [{'keys', [kz_util:format_account_id(A) || A <- Accounts]}
                   ,'include_docs'
@@ -1032,9 +1034,7 @@ fix_services_tree(AccountId, Tree) ->
     Services = kz_services:fetch(AccountId),
     fix_services_tree(Services, Tree, kz_services:services_jobj(Services)).
 
--spec fix_services_tree(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:api_object()) -> 'ok'.
-fix_services_tree(_, _, 'undefined') ->
-    io:format("    !!! can't fix pvt_tree in service doc, account_db does not exists~n");
+-spec fix_services_tree(kz_term:ne_binary(), kz_term:ne_binaries(), kzd_services:doc()) -> 'ok'.
 fix_services_tree(Services, Tree, ServicesJObj) ->
     case kzd_services:tree(ServicesJObj) =:= Tree of
         'true' -> 'ok';
@@ -1186,7 +1186,7 @@ import_account(Account, Parent) ->
 -spec import_account(kz_term:ne_binary()
                     ,kz_term:ne_binary()
                     ,{'ok', kz_json:object()} | kazoo_data:data_error()
-                    ,{'ok', kz_json:object()} | kazoo_dat:data_error()
+                    ,{'ok', kz_json:object()} | kazoo_data:data_error()
                     ) -> 'ok'.
 import_account(_AccountId, _ParentId, {'error', _Reason1}, {'error', _Reason2}) ->
     io:format("can not open account '~s' (~p) and parent '~s' (~p)~n"
@@ -1210,14 +1210,14 @@ import_account(AccountId, ParentId, {'ok', AccountJObj}, {'ok', ParentJObj}) ->
         {'ok', SavedJObj} ->
             io:format("account saved, updating services and import account's numbers to number dbs~n"),
             update_or_add_to_accounts_db(AccountId, SavedJObj),
-            remove_and_reconcile_services(AccountId),
+            _ = remove_and_reconcile_services(AccountId),
             _ = kazoo_number_manager_maintenance:copy_single_account_to_number_dbs(AccountId),
             'ok';
         {'error', _Reason} ->
             io:format("failed to update account '~s' definition in accountdb: ~p~n", [AccountId, _Reason])
     end.
 
--spec remove_and_reconcile_services(kz_term:ne_binary()) -> 'ok'.
+-spec remove_and_reconcile_services(kz_term:ne_binary()) -> kz_services:services().
 remove_and_reconcile_services(AccountId) ->
     io:format("ensuring services doc for '~s'~n", [AccountId]),
     _ = kz_datamgr:del_doc(?KZ_SERVICES_DB, AccountId),

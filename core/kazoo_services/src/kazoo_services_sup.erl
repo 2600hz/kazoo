@@ -14,21 +14,15 @@
 
 -define(SERVER, ?MODULE).
 
--define(ORIGIN_BINDINGS, [[{'db', ?KZ_SERVICES_DB}, {'type', kzd_services:type()}]
-                         ]).
+-define(ORIGIN_BINDINGS, [[{'db', ?KZ_SERVICES_DB}, {'type', kzd_services:type()}]]).
 
--define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
-                     ]).
+-define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}]).
 
 %% Helper macro for declaring children of supervisor
 -ifdef(TEST).
--define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, [])
-                  ,?WORKER('kz_services_modb')
-                  ]).
+-define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, [])]).
 -else.
--define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
-                  ,?WORKER('kz_services_modb')
-                  ]).
+-define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)]).
 -endif.
 
 %%==============================================================================

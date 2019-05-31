@@ -93,7 +93,7 @@
                ,fetch_id :: kz_term:api_ne_binary()
                ,controller_q :: kz_term:api_ne_binary()
                ,control_q :: kz_term:api_ne_binary()
-               ,initial_ccvs :: kz_json:object()
+               ,initial_ccvs :: kz_term:api_object()
                ,node_down_tref :: kz_term:api_reference()
                }).
 -type state() :: #state{}.
@@ -972,7 +972,7 @@ queue_insert_fun('head') ->
 %% @end
 %%------------------------------------------------------------------------------
 %% See Noop documentation for Filter-Applications to get an idea of this function's purpose
--spec maybe_filter_queue(kz_json:api_objects(), queue:queue()) -> queue:queue().
+-spec maybe_filter_queue(kz_term:api_objects(), queue:queue()) -> queue:queue().
 maybe_filter_queue('undefined', CommandQ) -> CommandQ;
 maybe_filter_queue([], CommandQ) -> CommandQ;
 maybe_filter_queue([AppName|T]=Apps, CommandQ) when is_binary(AppName) ->

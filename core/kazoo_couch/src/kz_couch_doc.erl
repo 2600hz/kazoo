@@ -161,7 +161,9 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
         {Save, Cont} ->
             case perform_save_docs(Db, Save, Options) of
                 {'error', _}=E -> E;
-                {'ok', JObjs} -> do_save_docs(Db, Cont, Options, JObjs ++ Acc)
+                {'ok', JObjs} ->
+                    timer:sleep(?COUCH_MAX_BULK_INSERT), %% let slow dbs catch up
+                    do_save_docs(Db, Cont, Options, JObjs ++ Acc)
             end
     catch
         'error':'badarg' ->

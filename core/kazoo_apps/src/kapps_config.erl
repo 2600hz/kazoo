@@ -1125,7 +1125,9 @@ fetch_category(Category, 'false') ->
         ,{{<<"jonny5">>, <<"default_authz_resource_types">>}
          ,{<<"limits">>, <<"authz_resource_types">>}
          }
-
+        ,{{<<"provisioner">>, <<"cluster_id">>}
+         ,{<<"cluster">>, <<"cluster_id">>}
+         }
         ,{{<<"services">>, <<"master_account_bookkeeper">>}
          ,fun(_FromId, _Node, _FromSetting, <<"kz_bookkeeper_braintree">>) ->
                   {<<"services">>

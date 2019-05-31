@@ -586,7 +586,7 @@ to_json(#transaction{private_fields=PrivateFields}=Transaction) ->
             ],
     kz_json:set_values(Props, TransactionJObj).
 
--spec get_created_timestamp(kzd_transactions:doc()) -> kz_term:integer().
+-spec get_created_timestamp(kzd_transactions:doc()) -> integer().
 get_created_timestamp(TransactionJObj) ->
     kz_json:get_integer_value(<<"pvt_created">>, TransactionJObj, kz_time:now_s()).
 
@@ -855,7 +855,7 @@ send_notification(Transaction) ->
         ],
     kz_amqp_worker:cast(Notification, fun kapi_notifications:publish_transaction/1).
 
--spec card_last_four(transaction(), kz_json:object()) -> kz_term:api_ne_bianry().
+-spec card_last_four(transaction(), kz_json:object()) -> kz_term:api_ne_binary().
 card_last_four(Transaction, BookkeeperDetails) ->
     case kz_json:get_ne_binary_value([<<"card">>, <<"last_four">>], BookkeeperDetails) of
         'undefined' -> default_card_last_four(Transaction);
