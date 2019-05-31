@@ -779,7 +779,7 @@ has_billable_additions(Item) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec hash(item()) -> kz_term:binary().
+-spec hash(item()) -> binary().
 hash(Item) ->
     kz_binary:md5(
       <<(category_name(Item))/binary

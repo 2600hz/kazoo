@@ -291,7 +291,7 @@ find_object_plans_fold(JObj, Plans) ->
         Plan -> [Plan|Plans]
     end.
 
--spec create_services_object_plans(kz_json:object()) -> kz_json:api_object().
+-spec create_services_object_plans(kz_json:object()) -> kz_term:api_object().
 create_services_object_plans(JObj) ->
     case kz_json:get_ne_json_value([<<"service">>, <<"plans">>], JObj) of
         'undefined' -> 'undefined';
