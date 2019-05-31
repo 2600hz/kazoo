@@ -836,12 +836,14 @@ check_app_usage(#{todo := JObjs}=State, AccountDb) ->
     check_app_usage_fold(State#{todo => []}, [{AccountDb, JObjs}]).
 
 %% @private see note above
--spec check_app_usage_fold(loop_state(), kz_json:objects()) -> loop_state().
+-spec check_app_usage_fold(loop_state(), [{kz_term:ne_binary(), kz_json:objects()}]) -> loop_state().
 check_app_usage_fold(State, []) ->
     State;
 check_app_usage_fold(#{todo := Todo
                       ,apps_fixers := Fixers
-                      }=State, [{AccountDbForEver, JObjs}|Rest]) ->
+                      }=State
+                    ,[{AccountDbForEver, JObjs}|Rest]
+                    ) ->
     Ids = [kz_doc:id(JObj) || JObj <- JObjs],
     AppsUsing = get_account_dids_apps(AccountDbForEver, Ids),
 
@@ -1461,7 +1463,7 @@ fix_unassign_doc(DIDs) ->
               ,{'batch_run', 'true'}
               ],
     case knm_numbers:update(DIDs, Setters, Options) of
-        #{ko := []} -> 'ok';
+        #{ko := Map} when map_size(Map) =:= 0 -> 'ok';
         #{ko := KOs} ->
             ?SUP_LOG_DEBUG("failed fixing ~b unassigned numbers.", [maps:size(KOs)])
     end.

@@ -598,7 +598,6 @@ update_pvt_parameters(JObj0, DBName) ->
                                    doc().
 update_pvt_parameters(JObj, DbName, Options) ->
     Opts = props:insert_value('now', kz_time:now_s(), Options),
-
     Updates = get_pvt_updates(JObj, DbName, Opts),
     kz_json:set_values(Updates, JObj).
 

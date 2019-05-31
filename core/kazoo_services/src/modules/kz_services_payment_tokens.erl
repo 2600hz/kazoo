@@ -69,7 +69,7 @@ default(Thing, Bookkeeper) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update(kz_services:service() | kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+-spec update(kz_services:services() | kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
                     kz_services:services().
 update(?NE_BINARY = AccountId, Bookkeeper, Token) ->
     update(kz_services:fetch(AccountId), Bookkeeper, Token);
@@ -86,7 +86,7 @@ update(Services, Bookkeeper, Token) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec updates(kz_servics:services() | kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) ->
+-spec updates(kz_services:services() | kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) ->
                      kz_services:services().
 updates(?NE_BINARY = AccountId, Bookkeeper, ProposedTokens) ->
     updates(kz_services:fetch(AccountId), Bookkeeper, ProposedTokens);
@@ -112,7 +112,7 @@ updates(Services, Bookkeeper, ProposedTokens) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec delete(kz_services:service() | kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object() | kz_term:ne_binary()) ->
+-spec delete(kz_services:services() | kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object() | kz_term:ne_binary()) ->
                     kz_services:services().
 delete(<<AccountId/binary>>, Bookkeeper, Token) ->
     delete(kz_services:fetch(AccountId), Bookkeeper, Token);

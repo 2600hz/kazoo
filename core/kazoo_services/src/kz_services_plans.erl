@@ -125,7 +125,7 @@ get_services_plan_overrides(Services, PlanId) ->
     PlanOverrides = kzd_services:plan_overrides(ServicesJObj, PlanId),
     kz_json:merge_recursive(PlansOverrides, PlanOverrides).
 
--spec get_object_plans(kzd_services:services(), fetch_context(), fetch_options()) -> fetch_context().
+-spec get_object_plans(kz_services:services(), fetch_context(), fetch_options()) -> fetch_context().
 get_object_plans(Services, FetchContext, Options) ->
     AccountId = kz_services:account_id(Services),
     AccountDb = kz_util:format_account_db(AccountId),
@@ -293,7 +293,7 @@ overrides(Services) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec override(kz_services:services(), kz_json:object()) -> kz_serivces:services().
+-spec override(kz_services:services(), kz_json:object()) -> kz_services:services().
 override(Services, Overrides) ->
     override(Services, Overrides, []).
 
@@ -442,7 +442,7 @@ merge_plans_sort({A, _}, {B, _}) ->
 cumulative_merge_keys(Root, Key) ->
     lists:flatten([Root, Key]).
 
--spec simple_merge_plans(merge_strategy_plans()) -> kz_json:objcet().
+-spec simple_merge_plans(merge_strategy_plans()) -> kz_json:object().
 simple_merge_plans([]) ->
     kz_json:new();
 simple_merge_plans([{_, Head}|Tail]) ->
@@ -452,7 +452,7 @@ simple_merge_plans([{_, Head}|Tail]) ->
 simple_merge_plans({_, PlanJObj}, Merged) ->
     kz_json:merge(Merged, PlanJObj).
 
--spec recursive_merge_plans(merge_strategy_plans()) -> kz_json:objcet().
+-spec recursive_merge_plans(merge_strategy_plans()) -> kz_json:object().
 recursive_merge_plans([]) ->
     kz_json:new();
 recursive_merge_plans([{_, Head}|Tail]) ->

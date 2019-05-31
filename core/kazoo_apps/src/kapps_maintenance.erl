@@ -691,7 +691,7 @@ ensure_aggregate_account(Account) ->
             update_or_add_to_accounts_db(AccountId, JObj)
     end.
 
--spec update_or_add_to_accounts_db(kz_term:ne_bianry(), kz_json:object()) -> 'ok'.
+-spec update_or_add_to_accounts_db(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 update_or_add_to_accounts_db(AccountId, JObj) ->
     <<"account">> = kz_doc:type(JObj),
     case kz_datamgr:lookup_doc_rev(?KZ_ACCOUNTS_DB, AccountId) of
@@ -1033,9 +1033,7 @@ fix_services_tree(AccountId, Tree) ->
     Services = kz_services:fetch(AccountId),
     fix_services_tree(Services, Tree, kz_services:services_jobj(Services)).
 
--spec fix_services_tree(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:api_object()) -> 'ok'.
-fix_services_tree(_, _, 'undefined') ->
-    io:format("    !!! can't fix pvt_tree in service doc, account_db does not exists~n");
+-spec fix_services_tree(kz_term:ne_binary(), kz_term:ne_binaries(), kzd_services:doc()) -> 'ok'.
 fix_services_tree(Services, Tree, ServicesJObj) ->
     case kzd_services:tree(ServicesJObj) =:= Tree of
         'true' -> 'ok';
@@ -1187,7 +1185,7 @@ import_account(Account, Parent) ->
 -spec import_account(kz_term:ne_binary()
                     ,kz_term:ne_binary()
                     ,{'ok', kz_json:object()} | kazoo_data:data_error()
-                    ,{'ok', kz_json:object()} | kazoo_dat:data_error()
+                    ,{'ok', kz_json:object()} | kazoo_data:data_error()
                     ) -> 'ok'.
 import_account(_AccountId, _ParentId, {'error', _Reason1}, {'error', _Reason2}) ->
     io:format("can not open account '~s' (~p) and parent '~s' (~p)~n"
@@ -1211,14 +1209,14 @@ import_account(AccountId, ParentId, {'ok', AccountJObj}, {'ok', ParentJObj}) ->
         {'ok', SavedJObj} ->
             io:format("account saved, updating services and import account's numbers to number dbs~n"),
             update_or_add_to_accounts_db(AccountId, SavedJObj),
-            remove_and_reconcile_services(AccountId),
+            _ = remove_and_reconcile_services(AccountId),
             _ = kazoo_number_manager_maintenance:copy_single_account_to_number_dbs(AccountId),
             'ok';
         {'error', _Reason} ->
             io:format("failed to update account '~s' definition in accountdb: ~p~n", [AccountId, _Reason])
     end.
 
--spec remove_and_reconcile_services(kz_term:ne_binary()) -> 'ok'.
+-spec remove_and_reconcile_services(kz_term:ne_binary()) -> kz_services:services().
 remove_and_reconcile_services(AccountId) ->
     io:format("ensuring services doc for '~s'~n", [AccountId]),
     _ = kz_datamgr:del_doc(?KZ_SERVICES_DB, AccountId),

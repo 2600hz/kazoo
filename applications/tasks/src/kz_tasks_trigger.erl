@@ -20,6 +20,13 @@
         ,terminate/2
         ]).
 
+-ifdef(TEST).
+-export([seconds_until_next_day/1
+        ,seconds_until_next_hour/1
+        ,seconds_until_next_minute/1
+        ]).
+-endif.
+
 -include("tasks.hrl").
 
 -define(SERVER, {'via', 'kz_globals', ?MODULE}).
@@ -33,7 +40,8 @@
 -type state() :: #state{}.
 
 -define(CLEANUP_TIMER
-       ,kapps_config:get_pos_integer(?CONFIG_CAT, <<"browse_dbs_interval_s">>, ?SECONDS_IN_DAY)).
+       ,kapps_config:get_pos_integer(?CONFIG_CAT, <<"browse_dbs_interval_s">>, ?SECONDS_IN_DAY)
+       ).
 
 %%%=============================================================================
 %%% API
@@ -115,26 +123,26 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info({'EXIT', _Pid, normal}, State) ->
+handle_info({'EXIT', _Pid, 'normal'}, State) ->
     lager:debug("job ~p terminated normally", [_Pid]),
-    {noreply, State};
+    {'noreply', State};
 handle_info({'EXIT', _Pid, _Reason}, State) ->
     lager:error("job ~p crashed: ~p", [_Pid, _Reason]),
-    {noreply, State};
+    {'noreply', State};
 
-handle_info({timeout, Ref, _Msg}, #state{minute_ref = Ref}=State) ->
+handle_info({'timeout', Ref, _Msg}, #state{minute_ref = Ref}=State) ->
     spawn_jobs(Ref, ?TRIGGER_MINUTELY),
     {'noreply', State#state{minute_ref = minute_timer()}};
 
-handle_info({timeout, Ref, _Msg}, #state{hour_ref = Ref}=State) ->
+handle_info({'timeout', Ref, _Msg}, #state{hour_ref = Ref}=State) ->
     spawn_jobs(Ref, ?TRIGGER_HOURLY),
     {'noreply', State#state{hour_ref = hour_timer()}};
 
-handle_info({timeout, Ref, _Msg}, #state{day_ref = Ref}=State) ->
+handle_info({'timeout', Ref, _Msg}, #state{day_ref = Ref}=State) ->
     spawn_jobs(Ref, ?TRIGGER_DAILY),
     {'noreply', State#state{day_ref = day_timer()}};
 
-handle_info({timeout, Ref, _Msg}, #state{browse_dbs_ref = Ref}=State) ->
+handle_info({'timeout', Ref, _Msg}, #state{browse_dbs_ref = Ref}=State) ->
     _Pid = kz_util:spawn(fun browse_dbs_for_triggers/1, [Ref]),
     lager:debug("cleaning up in ~p(~p)", [_Pid, Ref]),
     {'noreply', State};
@@ -172,38 +180,60 @@ code_change(_OldVsn, State, _Extra) ->
 %%------------------------------------------------------------------------------
 -spec minute_timer() -> reference().
 minute_timer() ->
-    erlang:start_timer(?MILLISECONDS_IN_MINUTE, self(), ok).
+    erlang:start_timer(seconds_until_next_minute() * ?MILLISECONDS_IN_SECOND, self(), 'ok').
+
+-spec seconds_until_next_minute() -> 0..?SECONDS_IN_MINUTE.
+seconds_until_next_minute() ->
+    seconds_until_next_minute(calendar:universal_time()).
+
+-spec seconds_until_next_minute(kz_time:datetime()) -> 0..?SECONDS_IN_MINUTE.
+seconds_until_next_minute({_, {_H, _M, S}}) ->
+    ?SECONDS_IN_MINUTE - S.
 
 -spec hour_timer() -> reference().
 hour_timer() ->
-    erlang:start_timer(?MILLISECONDS_IN_HOUR, self(), ok).
+    erlang:start_timer(seconds_until_next_hour() * ?MILLISECONDS_IN_SECOND, self(), 'ok').
+
+-spec seconds_until_next_hour() -> 0..?SECONDS_IN_HOUR.
+seconds_until_next_hour() ->
+    seconds_until_next_hour(calendar:universal_time()).
+
+-spec seconds_until_next_hour(kz_time:datetime()) -> 0..?SECONDS_IN_HOUR.
+seconds_until_next_hour({_, {_H, M, S}}) ->
+    ((?MINUTES_IN_HOUR - M) * ?SECONDS_IN_MINUTE) - S.
 
 -spec day_timer() -> reference().
 day_timer() ->
-    erlang:start_timer(?MILLISECONDS_IN_DAY, self(), ok).
+    erlang:start_timer(seconds_until_next_day() * ?MILLISECONDS_IN_SECOND, self(), 'ok').
+
+-spec seconds_until_next_day() -> 0..?SECONDS_IN_DAY.
+seconds_until_next_day() ->
+    seconds_until_next_day(calendar:universal_time()).
+
+-spec seconds_until_next_day(kz_time:datetime()) -> 0..?SECONDS_IN_DAY.
+seconds_until_next_day({_, {H, M, S}}) ->
+    ((?HOURS_IN_DAY - H) * ?SECONDS_IN_HOUR) - (M * ?SECONDS_IN_MINUTE) - S.
 
 -spec browse_dbs_timer() -> reference().
 browse_dbs_timer() ->
     Expiry = ?CLEANUP_TIMER,
     lager:debug("starting cleanup timer for ~b s", [Expiry]),
-    erlang:start_timer(Expiry * ?MILLISECONDS_IN_SECOND, self(), ok).
+    erlang:start_timer(Expiry * ?MILLISECONDS_IN_SECOND, self(), 'ok').
 
-
--spec spawn_jobs(reference(), kz_term:ne_binary()) -> ok.
+-spec spawn_jobs(reference(), kz_term:ne_binary()) -> 'ok'.
 spawn_jobs(Ref, Binding) ->
-    CallId = make_callid(Ref, Binding),
-    _Pid = erlang:spawn_link(fun () ->
-                                     _ = kz_util:put_callid(CallId),
-                                     tasks_bindings:map(Binding, [])
-                             end),
+    kz_util:put_callid(make_callid(Ref, Binding)),
+    _Pid = kz_util:spawn_link(fun tasks_bindings:map/2, [Binding, []]),
+    kz_util:put_callid(?MODULE),
     lager:debug("binding ~s triggered ~p via ~p", [Binding, _Pid, Ref]).
 
 -spec make_callid(reference(), kz_term:ne_binary()) -> kz_term:ne_binary().
 make_callid(Ref, Binding) ->
-    Key = lists:last(binary:split(Binding, <<$.>>, [global])),
+    Key = lists:last(binary:split(Binding, <<$.>>, ['global'])),
     Id = ref_to_id(Ref),
     <<"task_", Key/binary, "_", Id/binary>>.
 
+-spec ref_to_id(reference()) -> kz_term:ne_binary().
 ref_to_id(Ref) ->
     Bin = list_to_binary(io_lib:format("~p", [Ref])),
     Start = <<"#Ref<">>,
@@ -233,7 +263,8 @@ browse_dbs_for_triggers(Ref) ->
     'ok' = kt_compaction_reporter:start_tracking_job(self(), node(), CallId, Sorted),
     F = fun({Db, _Sizes}, Ctr) ->
                 lager:debug("compacting ~p out of ~p dbs (~p remaining)",
-                            [Ctr, TotalSorted, (TotalSorted - Ctr)]),
+                            [Ctr, TotalSorted, (TotalSorted - Ctr)]
+                           ),
                 cleanup_pass(Db),
                 Ctr + 1
         end,

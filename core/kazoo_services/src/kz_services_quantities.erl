@@ -27,6 +27,7 @@
 -type quantities_prop() :: [quantity_kv()].
 -export_type([quantities_prop/0
              ,billables/0
+             ,billable/0
              ]).
 
 %%------------------------------------------------------------------------------

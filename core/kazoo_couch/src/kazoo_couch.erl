@@ -77,7 +77,7 @@ format_error(Error) ->
     kz_couch_util:format_error(Error).
 
 %% Connection operations
--spec get_db(kz_data:connection(), kz_term:ne_binary()) -> db().
+-spec get_db(server(), kz_term:ne_binary()) -> db().
 get_db(Server, DbName) ->
     kz_couch_util:get_db(Server, DbName).
 
@@ -292,7 +292,7 @@ all_docs(Server, DbName, Options) ->
 
 -spec server_version(server()) -> couch_version().
 server_version(#server{options=Options}) ->
-    props:get_value('driver_version', Options).
+    props:get_value('driver_version', Options, 'bigcouch').
 
 -spec db_local_filter(kz_term:ne_binaries(), kz_data:options()) -> kz_term:ne_binaries().
 db_local_filter(List, Options) ->

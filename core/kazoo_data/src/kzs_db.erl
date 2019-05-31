@@ -145,6 +145,19 @@ maybe_cache_db_exists('true', #{server := {App, Conn}}, DbName) ->
     kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {'database', {App, Conn}, DbName}, 'true', Props),
     'true'.
 
+%%------------------------------------------------------------------------------
+%% @doc Makes sure databases exist across all configured connections
+%%
+%% Since KAZOO can store different doc types using different connections, the database
+%% itself must exist on all connections; it is the doc being saved that will determine
+%% which connection will be used to save the doc.
+%%
+%% For example, you may wish KAZOO to store CDRs in Couch cluster A
+%% You may also wish to store call recordings in Couch cluster B
+%% The MODB for those docs must exist on both connections, which is what this function
+%% is ensuring.
+%% @end
+%%------------------------------------------------------------------------------
 -spec db_exists_all(map(), kz_term:ne_binary()) -> boolean().
 db_exists_all(Map, DbName) ->
     case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {'database', DbName}) of
@@ -169,7 +182,10 @@ db_archive(#{server := {App, Conn}}=Server, DbName, Filename) ->
 db_import(#{server := {App, Conn}}=Server, DbName, Filename) ->
     case db_exists(Server, DbName) of
         'true' -> App:db_import(Conn, DbName, Filename);
-        'false' -> 'ok'
+        'false' ->
+            io:format("db ~s doesn't exist, creating~n", [DbName]),
+            'true' = db_create(Server, DbName),
+            App:db_import(Conn, DbName, Filename)
     end.
 
 -spec db_list(map(), view_options()) -> {'ok', kz_term:ne_binaries()} | data_error().

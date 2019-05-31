@@ -52,7 +52,7 @@
 
 %% #{"prefix" => cost}
 -type rate_data() :: #{kz_term:ne_binary() => non_neg_integer()}.
--type service_plans() :: [{kz_term:ne_binary(), kzd_service_plan:plan()}].
+-type service_plans() :: [{kz_term:ne_binary(), kzd_service_plan:doc()}].
 
 -type account_data() :: #{'name' => kz_term:ne_binary()
                          ,'service_plans' => service_plans()

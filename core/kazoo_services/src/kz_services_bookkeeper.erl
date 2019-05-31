@@ -130,7 +130,7 @@ store_audit_log(Services, Invoice) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_audit_log(kz_services:services(), kz_term:api_object(), kz_amqp_worker:request_result()) ->
+-spec update_audit_log(kz_services:services(), kz_term:api_object(), kz_amqp_worker:request_return()) ->
                               kz_term:api_object().
 update_audit_log(_Services, 'undefined', _Result) -> 'undefined';
 update_audit_log(Services, AuditJObj, {'error', 'timeout'}) ->

@@ -1128,7 +1128,6 @@ fetch_category(Category, 'false') ->
         ,{{<<"provisioner">>, <<"cluster_id">>}
          ,{<<"cluster">>, <<"cluster_id">>}
          }
-
         ,{{<<"services">>, <<"master_account_bookkeeper">>}
          ,fun(_FromId, _Node, _FromSetting, <<"kz_bookkeeper_braintree">>) ->
                   {<<"services">>

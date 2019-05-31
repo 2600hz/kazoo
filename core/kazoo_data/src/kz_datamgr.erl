@@ -109,6 +109,7 @@
              ,db_classification/0
              ,update_option/0, update_options/0
              ,get_results_return/0
+             ,paginated_results/0
              ]).
 
 -deprecated({'ensure_saved', '_', 'eventually'}).
@@ -1472,6 +1473,9 @@ get_result_docs(DbName, DesignDoc, Keys) ->
 %% @end
 %%------------------------------------------------------------------------------
 -type paginate_options() :: [{'page_size', pos_integer()}] | view_options().
+-type paginated_results() :: {'ok', kz_json:objects(), kz_json:api_json_term()} |
+                             data_error().
+
 -spec paginate_results(kz_term:ne_binary(), kz_term:ne_binary(), paginate_options()) ->
                               {'ok', kz_json:objects(), kz_json:api_json_term()} |
                               data_error().
