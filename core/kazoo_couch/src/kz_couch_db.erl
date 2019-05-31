@@ -146,6 +146,7 @@ archive(#db{}=Db, DbName, File, MaxDocs, N, Pos) when N =< MaxDocs ->
     case kz_couch_view:all_docs(Db, ViewOptions) of
         {'ok', []} -> io:format("    no docs left after pos ~p~n", [Pos]);
         {'ok', Docs} ->
+            'ok' = maybe_add_comma(File, Pos),
             'ok' = archive_docs(File, Docs),
             io:format("    archived ~p docs~n", [N]);
         {'error', _E} ->
@@ -161,6 +162,7 @@ archive(Db, DbName, File, MaxDocs, N, Pos) ->
     case kz_couch_view:all_docs(Db, ViewOptions) of
         {'ok', []} -> io:format("    no docs left after pos ~p~n", [Pos]);
         {'ok', Docs} ->
+            'ok' = maybe_add_comma(File, Pos),
             'ok' = archive_docs(File, Docs),
             io:format("    archived ~p docs~n", [MaxDocs]),
             archive(Db, DbName, File, MaxDocs, N - MaxDocs, Pos + MaxDocs);
@@ -169,6 +171,18 @@ archive(Db, DbName, File, MaxDocs, N, Pos) ->
             timer:sleep(500),
             archive(Db, DbName, File, MaxDocs, N, Pos)
     end.
+
+%% when writing 2nd+ page of results, the previous page's last JObj will not have a comma after it
+%% so you would get files like
+%% [Pass1JObj,
+%%  Pass1JObj
+%%  Pass2JObj,
+%%  Pass2JObj
+%% Which is invalid JSON
+-spec maybe_add_comma(file:io_device(), non_neg_integer()) -> 'ok'.
+maybe_add_comma(_File, 0) -> 'ok';
+maybe_add_comma(File, _Pos) ->
+    'ok' = file:write(File, [$,]).
 
 -spec archive_docs(file:io_device(), kz_json:objects()) -> 'ok'.
 archive_docs(_, []) -> 'ok';
@@ -191,9 +205,15 @@ db_import(#server{}=Conn, DbName, Filename) ->
                           'ok' |
                           couchbeam_error().
 do_db_import(#server{}=Conn, DbName, Docs) ->
-    JObjs0 = [kz_json:delete_keys([<<"_rev">>, <<"_attachments">>], kz_json:get_value(<<"doc">>, Doc)) || Doc <- Docs],
-    JObjs = [JObj || JObj <- JObjs0, filter_views(kz_json:get_value(<<"_id">>, JObj))],
+    JObjs = [cleanup_for_import(Doc)
+             || Doc <- Docs,
+                filter_views(kz_doc:id(Doc))
+            ],
     kz_couch_doc:save_docs(Conn, DbName, JObjs, []).
+
+cleanup_for_import(Doc) ->
+    JObj = kz_json:get_json_value(<<"doc">>, Doc),
+    kz_json:delete_keys([<<"_rev">>, <<"_attachments">>], JObj).
 
 filter_views(<<"_design", _/binary>>) -> 'false';
 filter_views(_Id) -> 'true'.
@@ -205,6 +225,9 @@ do_db_compact(#db{}=Db) ->
     case ?RETRY_504(couchbeam:compact(Db)) of
         'ok' ->
             lager:debug("compaction has started"),
+            'true';
+        {'ok', _OK} ->
+            lager:debug("compaction has started: ~p", [_OK]),
             'true';
         {'error', {'conn_failed', {'error', 'timeout'}}} ->
             lager:warning("connection timed out"),

@@ -662,7 +662,7 @@ run_services(T=#{todo := Numbers}) ->
             ko(Numbers, Reason, T)
     end.
 
--spec run_services(kz_term:ne_binaries(), kz_json:object(), kz_services:services()) -> 'ok'.
+-spec run_services(kz_term:ne_binaries(), kz_json:object(), [kz_services:services()]) -> 'ok'.
 run_services([], _Updates, UpdatedServicesAcc) ->
     _ = [kz_services:commit(UpdatedServices) || UpdatedServices <- lists:reverse(UpdatedServicesAcc)],
     'ok';

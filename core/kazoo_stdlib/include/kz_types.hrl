@@ -15,6 +15,9 @@
 -define(SECONDS_IN_WEEK,   604800).
 -define(SECONDS_IN_YEAR, 31540000).
 
+-define(MINUTES_IN_HOUR, 60).
+-define(HOURS_IN_DAY, 24).
+
 -define(BYTES_K,          1024).
 -define(BYTES_M,       1048576).
 -define(BYTES_G,    1073741824).

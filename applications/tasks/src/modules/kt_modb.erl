@@ -10,17 +10,16 @@
 
 %% behaviour: tasks_provider
 
--export([init/0
-        ]).
+-export([init/0]).
 
 %% Triggerables
--export([clean_modb/1
-        ]).
+-export([clean_modb/1]).
 
 -include("tasks.hrl").
 
--define(SHOULD_ARCHIVE_MODBS,
-        kapps_config:get_is_true(?CONFIG_CAT, <<"should_archive_modbs">>, 'false')).
+-define(SHOULD_ARCHIVE_MODBS
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"should_archive_modbs">>, 'false')
+       ).
 
 %%%=============================================================================
 %%% API

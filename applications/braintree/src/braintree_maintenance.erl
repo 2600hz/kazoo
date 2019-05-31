@@ -45,7 +45,7 @@ sync_account_services_payments_info(AccountId, Services) ->
                 {'error', _} -> io:format("failed to update service doc~n", [])
             end;
         #bt_api_error{errors = Errors} ->
-            io:format("braintree failed with ~p~n", format_errors(Errors))
+            io:format("braintree failed with ~p~n", [format_errors(Errors)])
     catch
         'throw':{_, ErrJObj} -> io:format("braintree failed with ~s ~n", [kz_json:encode(ErrJObj)])
     end.
@@ -66,7 +66,7 @@ sync_payment_info(AccountId, CardId) ->
         #bt_card{} ->
             io:format("card not found~n");
         #bt_api_error{errors = Errors} ->
-            io:format("braintree failed with ~p~n", format_errors(Errors))
+            io:format("braintree failed with ~p~n", [format_errors(Errors)])
     catch
         'throw':{_, ErrJObj} -> io:format("braintree failed with ~s ~n", [kz_json:encode(ErrJObj)])
     end.

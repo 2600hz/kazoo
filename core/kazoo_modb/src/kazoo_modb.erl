@@ -444,13 +444,13 @@ create(AccountMODb) ->
 
 -spec do_create(kz_term:ne_binary(), boolean()) -> boolean().
 do_create(AccountMODb, 'true') ->
-    lager:info("modb ~p is exists, just refreshing views...", [AccountMODb]),
+    lager:info("modb '~s' exists, just refreshing views and running routines...", [AccountMODb]),
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     _ = refresh_views(EncodedMODb),
     run_routines(AccountMODb),
     'true';
 do_create(AccountMODb, 'false') ->
-    lager:debug("creating modb ~p", [AccountMODb]),
+    lager:debug("creating modb '~s'", [AccountMODb]),
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     case kz_datamgr:db_create(EncodedMODb) of
         'true' ->
@@ -480,17 +480,38 @@ refresh_views(AccountMODb) ->
 -spec run_routines(kz_term:ne_binary()) -> 'ok'.
 run_routines(AccountMODb) ->
     Routines = kapps_config:get_ne_binaries(?CONFIG_CAT, <<"routines">>, []),
-    _ = [run_routine(AccountMODb, Routine) || Routine <- Routines],
-    'ok'.
+    Runs = [{Routine, kz_util:spawn_monitor(kz_term:to_atom(Routine), 'modb', [AccountMODb])}
+            || Routine <- Routines,
+               kz_module:is_exported(Routine, 'modb', 1)
+           ],
+    wait_for_runs(Runs, kz_time:now()).
 
--spec run_routine(kz_term:ne_binary(), kz_term:ne_binary()) -> any().
-run_routine(AccountMODb, Routine) ->
-    case kz_module:is_exported(Routine, 'modb', 1) of
+-type run() :: {kz_term:ne_binary(), kz_term:pid_ref()}.
+-type runs() :: [run()].
+
+-spec wait_for_runs(runs(), kz_time:now()) -> 'ok'.
+wait_for_runs([], _Start) -> 'ok';
+wait_for_runs(Runs, Start) ->
+    receive
+        {'DOWN', Ref, 'process', Pid, Reason} ->
+            handle_finished_run(Runs, Start, {Pid, Ref}, Reason)
+    after
+        ?MILLISECONDS_IN_MINUTE ->
+            lager:info("runs haven't finished yet, moving on: ~p", [Runs])
+    end.
+
+-spec handle_finished_run(runs(), kz_time:now(), kz_term:pid_ref(), any()) -> 'ok'.
+handle_finished_run(Runs, Start, PidRef, Reason) ->
+    case lists:keytake(PidRef, 2, Runs) of
         'false' ->
-            lager:info("skipping routine ~s, doesn't export modb/1", [Routine]);
-        'true' ->
-            Module = kz_term:to_atom(Routine),
-            _ = Module:modb(AccountMODb)
+            lager:debug("ignoring unknown pid/ref ~p: ~p", [PidRef, Reason]),
+            wait_for_runs(Runs, Start);
+        {'value', {Routine, PidRef}, RestRuns} when Reason =:= 'normal' ->
+            lager:debug("routine ~s(~p) finished after ~pms", [Routine, element(1, PidRef), kz_time:elapsed_ms(Start)]),
+            wait_for_runs(RestRuns, Start);
+        {'value', {Routine, PidRef}, RestRuns} ->
+            lager:info("routine ~s(~p) crashed after ~pms: ~p", [Routine, element(1, PidRef), kz_time:elapsed_ms(Start), Reason]),
+            wait_for_runs(RestRuns, Start)
     end.
 
 -spec add_routine(kz_term:ne_binary() | atom()) -> 'ok'.
@@ -506,7 +527,7 @@ add_routine(Module) ->
 
 -spec add_migrate_routines(kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_term:ne_binaries().
 add_migrate_routines(Routines, Module) ->
-    lists:usort([Module | migrate_routines(Routines, [])] ++ [<<"kz_currency">>]).
+    lists:usort([Module | migrate_routines(Routines, [])] -- [<<"kz_currency">>]).
 
 -spec migrate_routines(kz_term:ne_binaries(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 migrate_routines([], Acc) -> Acc;
