@@ -33538,7 +33538,11 @@
                                     ],
                                     "type": "string"
                                 }
-                            },
+                            }
+                        },
+                        "headers": {
+                            "default": {},
+                            "description": "pusher apple headers",
                             "type": "object"
                         },
                         "host": {
@@ -33570,7 +33574,11 @@
                                     ],
                                     "type": "string"
                                 }
-                            },
+                            }
+                        },
+                        "headers": {
+                            "default": {},
+                            "description": "pusher firebase headers",
                             "type": "object"
                         }
                     },
@@ -33597,7 +33605,11 @@
                                     ],
                                     "type": "string"
                                 }
-                            },
+                            }
+                        },
+                        "headers": {
+                            "default": {},
+                            "description": "pusher google headers",
                             "type": "object"
                         }
                     },
