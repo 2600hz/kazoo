@@ -46,7 +46,7 @@ ifeq ($(USER),travis)
 endif
 
 dep_amqp_client = hex 3.7.14
-dep_apns = git https://github.com/inaka/apns4erl.git 2.3.0
+dep_apns = git https://github.com/2600hz/erlang-apns4erl.git aba1fa96a4abbbb2c1628ad5d604f482aad4d12f # latest commit SHA to 2600hz branch
 
 # dep_certifi = hex 0.3.0
 # Used by hackney, let it pull in certifi
