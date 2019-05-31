@@ -95,6 +95,7 @@
 -export([reconcile/1
         ,reconcile/2
         ]).
+-export([to_billables/1]).
 
 -export([is_services/1]).
 
