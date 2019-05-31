@@ -32,7 +32,7 @@ start(_Type, _Args) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
-    _ = kz_media_proxy:stop(),
+    _ = media_proxy:stop(),
     'ok'.
 
 

@@ -17,6 +17,7 @@
 
 -define(CHILDREN, [?WORKER('media_listener')
                   ,?SUPER('media_recording_sup')
+                  ,?WORKER('media_proxy')
                   ]).
 
 %%==============================================================================

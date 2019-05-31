@@ -24,6 +24,11 @@
                     "default": 5,
                     "description": "media storage retry times",
                     "type": "integer"
+                },
+                "workers": {
+                    "default": 1,
+                    "description": "media call_recording workers",
+                    "type": "integer"
                 }
             }
         },
