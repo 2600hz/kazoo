@@ -20,7 +20,6 @@ id() ->
 zones() ->
     kapps_config:get_json(?MOD_CONFIG_CLUSTER, <<"zones">>, kz_json:new(), <<"default">>).
 
--spec zones(kz_term:text() | kz_json:object()) ->
-                      {'ok', kz_json:object()}.
+-spec zones(kz_term:text() | kz_json:object()) -> {'ok', kz_json:object()}.
 zones(Value) ->
     kapps_config:set_json(?MOD_CONFIG_CLUSTER, <<"zones">>, Value).
