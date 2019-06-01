@@ -33,7 +33,7 @@
         ,flush/0, flush/1
         ,filter/1
         ,modules_loaded/0
-        ,init/0
+        ,init/0, init_mod/1
         ]).
 
 %% Helper Functions for Results of a map/2
@@ -223,6 +223,7 @@ init() ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     lists:foreach(fun init_mod/1, ?TASKS).
 
+-spec init_mod(module()) -> any().
 init_mod(ModuleName) ->
     lager:debug("initializing module: ~p", [ModuleName]),
     maybe_init_mod(ModuleName).
