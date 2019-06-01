@@ -181,11 +181,12 @@ maybe_fire_foldl(Key, Value, {_ShouldFire, JObj}) ->
 fire_hook(JObj, #webhook{custom_data = 'undefined'
                         } = Hook) ->
     EventId = kz_binary:rand_hex(5),
-    do_fire(Hook, EventId, JObj);
+    NewJObj = kz_json:set_value(<<"cluster_id">>, kzd_cluster:id(), JObj),
+    do_fire(Hook, EventId, NewJObj);
 fire_hook(JObj, #webhook{custom_data = CustomData
                         } = Hook) ->
-    EventId = kz_binary:rand_hex(5),
-    do_fire(Hook, EventId, kz_json:merge_jobjs(CustomData, JObj)).
+    NewJObj = kz_json:merge_jobjs(CustomData, JObj),
+    fire_hook(NewJObj, Hook#webhook{custom_data = 'undefined'}).
 
 -spec do_fire(webhook(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 do_fire(#webhook{uri = ?NE_BINARY = URI
@@ -757,3 +758,4 @@ fetch_available_events() ->
             kz_cache:store_local(?CACHE_NAME, ?AVAILABLE_EVENT_KEY, Events, CacheProps),
             Events
     end.
+
