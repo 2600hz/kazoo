@@ -97,7 +97,7 @@ build_pickup_params(Number, <<"extension">>, Call) ->
         {'ok', FlowDoc, 'false'} ->
             Data = kz_json:get_json_value([<<"flow">>, <<"data">>], FlowDoc),
             Module = kz_json:get_ne_binary_value([<<"flow">>, <<"module">>], FlowDoc),
-            ChildFlow = wh_json:get_value([<<"flow">>, <<"children">>, <<"_">>], FlowDoc),
+            ChildFlow = kz_json:get_value([<<"flow">>, <<"children">>, <<"_">>], FlowDoc),
             params_from_data(Module, Data, ChildFlow);
         {'ok', _FlowDoc, 'true'} ->
             {'error', <<"no callflow with extension ", Number/binary>>};
@@ -127,7 +127,7 @@ params_from_data('undefined', _, _) ->
     {'error',<<"module not defined in callflow">>};
 params_from_data(_Other, _, Flow) ->
     lager:debug("skipping module ~p, looking at children", [_Other]),
-    Child = wh_json:get_value([<<"children">>, <<"_">>], Flow),
-    Data = wh_json:get_value([<<"data">>], Child),
-    Module = wh_json:get_value([<<"module">>], Child),
+    Child = kz_json:get_value([<<"children">>, <<"_">>], Flow),
+    Data = kz_json:get_value([<<"data">>], Child),
+    Module = kz_json:get_value([<<"module">>], Child),
     params_from_data(Module, Data, Child).
