@@ -29765,6 +29765,11 @@
                 "cluster_id": {
                     "description": "provisioner cluster id",
                     "type": "string"
+                },
+                "zones": {
+                    "default": {},
+                    "description": "cluster zones",
+                    "type": "object"
                 }
             },
             "type": "object"
