@@ -33,7 +33,7 @@
 -type yaml_nodes() :: [yaml_node()].
 
 -type case_styles() :: 'camelcase' | 'lowercase' | 'uppercase'.
--type string_style() :: 'double_qoute' | 'fold' | 'literal' | 'plain' | 'single_quote'.
+-type string_style() :: 'best' | 'double_qoute' | 'fold' | 'literal' | 'plain' | 'single_quote'.
 
 -type options() :: #{compact => boolean()
                      %% Whether to compact writing mapping or sequence or not. Default is `true'.
@@ -311,7 +311,7 @@ empty_collection(<<"tag:yaml.org,2002:map">>) -> <<"{}">>;
 empty_collection(<<"tag:yaml.org,2002:seq">>) -> <<"[]">>.
 
 -spec new_line(state(), non_neg_integer()) -> binary().
-new_line(#{compact := 'false'}, _) -> <<$\n>>;
+%% new_line(#{compact := 'false'}, _) -> <<$\n>>;
 new_line(_, 0) -> <<>>;
 new_line(_, _) -> <<$\n>>.
 
@@ -491,20 +491,22 @@ drop_ending_new_line(Lines) ->
 -spec fold_string(binary(), non_neg_integer()) -> binary().
 fold_string(String, Width) ->
     [FirstLine | Matches] = re:split(String, <<"(\n+)([^\n]*)">>, []),
-    PrevMoreIndented = start_with_whitespace(FirstLine),
+    PrevMoreIndented = start_with_space_or_nl(FirstLine),
     FirstFold = fold_line(FirstLine, Width),
     fold_string_fold(Matches, Width, PrevMoreIndented, FirstFold).
 
--spec start_with_whitespace(binary()) -> boolean().
-start_with_whitespace(<<>>) -> 'false';
-start_with_whitespace(<<$\n, _/binary>>) -> 'true';
-start_with_whitespace(<<" ", _/binary>>) -> 'true';
-start_with_whitespace(_) -> 'false'.
+-spec start_with_space_or_nl(binary()) -> boolean().
+start_with_space_or_nl(<<$\n, _/binary>>) -> 'true';
+start_with_space_or_nl(<<" ", _/binary>>) -> 'true';
+start_with_space_or_nl(_) -> 'false'.
 
 -spec fold_string_fold(iolist(), non_neg_integer(), boolean(), binary()) -> binary().
 fold_string_fold([], _, _, Acc) -> Acc;
 fold_string_fold([StringLFs, Line, <<>> | Lines], Width, PrevMoreIndented, Acc) ->
-    MoreIndented = start_with_whitespace(Line),
+    MoreIndented = case Line of
+                       <<" ", _/binary>> -> 'true';
+                       _ -> 'false'
+                   end,
     YamlLF = case not PrevMoreIndented
                  andalso not MoreIndented
                  andalso Line =/= <<>>
@@ -809,7 +811,7 @@ start_state(#{}=Options) ->
              ,maps:get('compact', Options, 'true')
              }
         of
-            {I, _} when I > 2 ->
+            {I, _} when I >= 2 ->
                 {I, 'false'};
             {I, C} ->
                 {I, C}
