@@ -21,6 +21,11 @@
             "support_level": "supported",
             "type": "boolean"
         },
+        "is_voicemail_ff_rw_enabled": {
+            "default": false,
+            "description": "callflow allow fastforward and rewind during voicemail message playback",
+            "type": "boolean"
+        },
         "mailbox": {
             "description": "The voicemail box number",
             "maxLength": 30,
@@ -117,6 +122,12 @@
             "description": "Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify)",
             "support_level": "supported",
             "type": "boolean"
+        },
+        "seek_duration_ms": {
+            "default": 10000,
+            "description": "callflow fastforward and rewind seek duration",
+            "minimum": 0,
+            "type": "integer"
         },
         "skip_envelope": {
             "default": false,
