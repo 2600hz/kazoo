@@ -24,7 +24,7 @@ cleanup(_) ->
 
 test_string_types() ->
     {ok, Bin} = file:read_file(?STRING_TYPES_FILE),
-    Yaml = kz_yaml:encode(hd(kz_yaml:decode(Bin))),
+    Yaml = kz_yaml:encode(kz_yaml:decode(Bin)),
     [{"Encode various type of string scalars"
      ,[?_assertEqual(Bin, Yaml)]
      }

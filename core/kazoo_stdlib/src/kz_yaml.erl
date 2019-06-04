@@ -248,9 +248,9 @@ encode_block_mapping_fold(State, Key, Value, {Index, Acc}, Level) ->
     }.
 
 -spec mapping_key(state(), non_neg_integer(), non_neg_integer()) -> iolist().
-mapping_key(#{explicit := 'true', result := Result}=State, Index, Level) ->
-    Indent = indent(State, Index, Level),
-    [new_line(State, Index), Indent, <<"? ">>, Result, <<$\n>>, Indent];
+%% mapping_key(#{explicit := 'true', result := Result}=State, Index, Level) ->
+%%     Indent = indent(State, Index, Level),
+%%     [new_line(State, Index), Indent, <<"? ">>, Result, <<$\n>>, Indent];
 mapping_key(#{result := Result}=State, Index, Level) ->
     [new_line(State, Index), indent(State, Index, Level), Result].
 
@@ -261,10 +261,10 @@ mapping_value(#{result := Result, tag := Tag, indent := 1}, _Level)
   when Tag =:= <<"tag:yaml.org,2002:map">>
        orelse Tag =:= <<"tag:yaml.org,2002:seq">> ->
     [<<":">>, <<$\n>>, Result];
-mapping_value(#{result := Result, tag := Tag}=State, Level)
+mapping_value(#{result := Result, tag := Tag, indent := Indent}, Level)
   when Tag =:= <<"tag:yaml.org,2002:map">>
        orelse Tag =:= <<"tag:yaml.org,2002:seq">> ->
-    [<<":">>, <<$\n>>, indent(State, Level + 1), Result];
+    [<<":">>, <<$\n>>, indent(Indent, Level + 1), Result];
 mapping_value(#{result := Result}, _Level) ->
     [<<": ">>, Result].
 
@@ -322,15 +322,15 @@ align_indent(_) ->
     [<<"- ">>].
 
 -spec indent(state(), non_neg_integer(), non_neg_integer()) -> binary().
-indent(#{compact := 'true', indent := 1}=State, Index, Level) when Index =:= 0 ->
-    indent(State, Level);
+indent(#{compact := 'true', indent := 1}, Index, Level) when Index =:= 0 ->
+    indent(1, Level);
 indent(#{compact := 'true'}, Index, _Level) when Index =:= 0 ->
     <<>>;
-indent(State, _Index, Level) ->
-    indent(State, Level).
+indent(#{indent := Indent}, _Index, Level) ->
+    indent(Indent, Level).
 
--spec indent(state(), non_neg_integer()) -> binary().
-indent(#{indent := Indent}, Level) ->
+-spec indent(non_neg_integer(), non_neg_integer()) -> binary().
+indent(Indent, Level) ->
     binary:copy(<<" ">>, Indent * Level).
 
 -spec encode_block_scalar(state(), node_scalar(), non_neg_integer()) -> state().
@@ -366,7 +366,7 @@ encode_block_scalar(State, Int, _Level) when is_integer(Int) ->
           ,tag    => <<"tag:yaml.org,2002:int">>
           ,explicit => 'false'
           }.
--spec to_case_style(boolean(), 'canonical' | case_styles()) -> kz_term:ne_binary().
+-spec to_case_style('null' | boolean(), 'canonical' | case_styles()) -> kz_term:ne_binary().
 to_case_style('false', 'camelcase') ->
     <<"False">>;
 to_case_style('true', 'camelcase') ->
@@ -375,10 +375,10 @@ to_case_style('null', 'camelcase') ->
     <<"Null">>;
 to_case_style('null', 'canonical') ->
     <<"~">>;
-to_case_style(Scalar, 'lowercase') ->
-    kz_term:to_binary(Scalar);
-to_case_style(Scalar, 'uppercase') ->
-    kz_term:to_upper_binary(kz_term:to_binary(Scalar)).
+to_case_style(Bool, 'uppercase') ->
+    kz_term:to_upper_binary(kz_term:to_binary(Bool));
+to_case_style(Bool, _LowercaseOrCanonical) ->
+    kz_term:to_binary(Bool).
 
 %% Encoding string scalar.
 %%
@@ -458,7 +458,7 @@ block_header(String, Indent) ->
 %% @doc Indent every lines in the string, except empty lines.
 -spec indent_string(binary(), non_neg_integer()) -> iolist().
 indent_string(String, Indent) ->
-    Indented = indent(#{indent => Indent}, 1),
+    Indented = indent(Indent, 1),
     [begin
          case Line =/= <<>>
              andalso Line =/= <<$\n>>
@@ -482,30 +482,29 @@ trim_last_trailing_empty(Lines) ->
 drop_ending_new_line([]) -> <<>>;
 drop_ending_new_line(Lines) ->
     LastLine = lists:last(Lines),
-    Rest = lists:droplast(Lines),
-    case LastLine =/= <<>>
-        andalso lists:last(LastLine)
-    of
-        'false' -> kz_term:to_binary(Lines);
-        <<$\n>> -> kz_term:to_binary(Rest ++ lists:droplast(LastLine));
+    NotLast = lists:droplast(Lines),
+    case lists:last(LastLine) of
+        <<$\n>> -> kz_term:to_binary(NotLast ++ lists:droplast(LastLine));
         _ -> kz_term:to_binary(Lines)
     end.
 
 -spec fold_string(binary(), non_neg_integer()) -> binary().
 fold_string(String, Width) ->
     [FirstLine | Matches] = re:split(String, <<"(\n+)([^\n]*)">>, []),
-    PrevMoreIndented = FirstLine =/= <<>>
-        andalso (binary:first(FirstLine) =:= <<$\n>>
-                     orelse binary:first(FirstLine) =:= <<" ">>
-                ),
+    PrevMoreIndented = start_with_whitespace(FirstLine),
     FirstFold = fold_line(FirstLine, Width),
     fold_string_fold(Matches, Width, PrevMoreIndented, FirstFold).
+
+-spec start_with_whitespace(binary()) -> boolean().
+start_with_whitespace(<<>>) -> 'false';
+start_with_whitespace(<<$\n, _/binary>>) -> 'true';
+start_with_whitespace(<<" ", _/binary>>) -> 'true';
+start_with_whitespace(_) -> 'false'.
 
 -spec fold_string_fold(iolist(), non_neg_integer(), boolean(), binary()) -> binary().
 fold_string_fold([], _, _, Acc) -> Acc;
 fold_string_fold([StringLFs, Line, <<>> | Lines], Width, PrevMoreIndented, Acc) ->
-    MoreIndented = Line =/= <<>>
-        andalso binary:first(Line) =:= <<" ">>,
+    MoreIndented = start_with_whitespace(Line),
     YamlLF = case not PrevMoreIndented
                  andalso not MoreIndented
                  andalso Line =/= <<>>
@@ -540,7 +539,8 @@ fold_line(Line, Width) ->
             Result1
     end.
 
--spec fold_line_fold(binary(), non_neg_integer(), 'nomatch' | {'match', list()}, non_neg_integer(), non_neg_integer(), binary()) -> binary().
+-spec fold_line_fold(binary(), non_neg_integer(), 'nomatch' | list() | {'match', list()}, non_neg_integer(), non_neg_integer(), binary()) ->
+                            {non_neg_integer(), non_neg_integer(), binary()}.
 fold_line_fold(_, _, 'nomatch', Start, Curr, Acc) ->
     {Start, Curr, Acc};
 fold_line_fold(Line, Width, {'match', Matches}, Start, Curr, Acc) ->

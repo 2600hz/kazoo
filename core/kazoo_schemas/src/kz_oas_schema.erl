@@ -316,8 +316,6 @@ oas3_deep_flatten(JObj, ReverseP,  {Index, Acc, Warn, Err}) ->
     end.
 
 -spec join_oas3_path_reverse(kz_term:ne_binaries()) -> kz_term:ne_binary().
-join_oas3_path_reverse([]) ->
-    <<$.>>;
 join_oas3_path_reverse(Path) ->
     kz_binary:join([<<>> | lists:reverse(Path)], <<$.>>).
 
