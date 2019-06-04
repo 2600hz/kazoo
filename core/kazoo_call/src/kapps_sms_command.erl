@@ -135,7 +135,7 @@ send(<<"sip">>, API, Endpoint, Timeout) ->
     Payload = props:set_values( [{<<"Endpoints">>, [Endpoint]} | Options], API),
     CallId = props:get_value(<<"Call-ID">>, Payload),
     lager:debug("sending sms and waiting for response ~s", [CallId]),
-    kz_amqp_worker:cast(Payload, fun kapi_sms:publish_message/1),
+    _ = kz_amqp_worker:cast(Payload, fun kapi_sms:publish_message/1),
     wait_for_correlated_message(CallId, <<"delivery">>, <<"message">>, Timeout);
 send(<<"amqp">>, API, Endpoint, _Timeout) ->
     CallId = props:get_value(<<"Call-ID">>, API),
@@ -233,7 +233,7 @@ maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, Broke
 -spec maybe_add_broker(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary(), kz_term:api_pid()) -> 'ok'.
 maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName, 'undefined') ->
     Exchanges = [{Exchange, ExchangeType, ExchangeOptions}],
-    kz_amqp_sup:add_amqp_pool(?SMS_POOL(Exchange, RouteId, BrokerName), Broker, 5, 5, [], Exchanges, 'true'),
+    _ = kz_amqp_sup:add_amqp_pool(?SMS_POOL(Exchange, RouteId, BrokerName), Broker, 5, 5, [], Exchanges, 'true'),
     'ok';
 maybe_add_broker(_Broker, _Exchange, _RouteId, _ExchangeType, _ExchangeOptions, _BrokerName, _Pid) -> 'ok'.
 

@@ -86,37 +86,40 @@ send_route_win(FetchId, CallId, JObj) ->
            | kz_api:default_headers(<<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sms inbound handler sending route_win to ~s", [ServerQ]),
-    kz_amqp_worker:cast(Win, fun(Payload) -> kapi_route:publish_win(ServerQ, Payload) end),
+    _ = kz_amqp_worker:cast(Win, fun(Payload) -> kapi_route:publish_win(ServerQ, Payload) end),
     'ack'.
 
 custom_header_token(#{request := JObj} = Map) ->
     case kz_json:get_ne_binary_value([<<"Custom-SIP-Headers">>, <<"X-AUTH-Token">>], JObj) of
         'undefined' -> Map;
         Token ->
-            case binary:split(Token, <<"@">>, ['global']) of
-                [AuthorizingId, AccountId | _] ->
-                    AccountRealm = kzd_accounts:fetch_realm(AccountId),
-                    AccountDb = kz_util:format_account_db(AccountId),
-                    case kz_datamgr:open_cache_doc(AccountDb, AuthorizingId) of
-                        {'ok', Doc} ->
-                            Props = props:filter_undefined([{?CCV(<<"Authorizing-Type">>), kz_doc:type(Doc)}
-                                                           ,{?CCV(<<"Authorizing-ID">>), AuthorizingId}
-                                                           ,{?CCV(<<"Owner-ID">>), kzd_devices:owner_id(Doc)}
-                                                           ,{?CCV(<<"Account-ID">>), AccountId}
-                                                           ,{?CCV(<<"Account-Realm">>), AccountRealm}
-                                                           ]),
-                            Map#{authorizing_id => AuthorizingId
-                                ,account_id => AccountId
-                                ,request => kz_json:set_values(Props, JObj)
-                                };
-                        _Else ->
-                            lager:warning("unexpected result reading doc ~s/~s => ~p", [AuthorizingId, AccountId, _Else]),
-                            Map
-                    end;
+            custom_header_token(Map, JObj, Token)
+    end.
+
+custom_header_token(Map, JObj, Token) ->
+    case binary:split(Token, <<"@">>, ['global']) of
+        [AuthorizingId, AccountId | _] ->
+            AccountRealm = kzd_accounts:fetch_realm(AccountId),
+            AccountDb = kz_util:format_account_db(AccountId),
+            case kz_datamgr:open_cache_doc(AccountDb, AuthorizingId) of
+                {'ok', Doc} ->
+                    Props = props:filter_undefined([{?CCV(<<"Authorizing-Type">>), kz_doc:type(Doc)}
+                                                   ,{?CCV(<<"Authorizing-ID">>), AuthorizingId}
+                                                   ,{?CCV(<<"Owner-ID">>), kzd_devices:owner_id(Doc)}
+                                                   ,{?CCV(<<"Account-ID">>), AccountId}
+                                                   ,{?CCV(<<"Account-Realm">>), AccountRealm}
+                                                   ]),
+                    Map#{authorizing_id => AuthorizingId
+                        ,account_id => AccountId
+                        ,request => kz_json:set_values(Props, JObj)
+                        };
                 _Else ->
-                    lager:warning("unexpected result spliting Token => ~p", [_Else]),
+                    lager:warning("unexpected result reading doc ~s/~s => ~p", [AuthorizingId, AccountId, _Else]),
                     Map
-            end
+            end;
+        _Else ->
+            lager:warning("unexpected result spliting Token => ~p", [_Else]),
+            Map
     end.
 
 

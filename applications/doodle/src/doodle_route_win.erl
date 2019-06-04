@@ -29,7 +29,7 @@ execute_text_flow(JObj, Call) ->
         'true' ->
             lager:debug("endpoint is restricted from sending this text, terminate", []),
             _ = send_service_unavailable(JObj, Call),
-            doodle_util:save_sms(doodle_util:set_flow_error(<<"error">>, ?RESTRICTED_MSG, Call)),
+            _Call = doodle_util:save_sms(doodle_util:set_flow_error(<<"error">>, ?RESTRICTED_MSG, Call)),
             'ok';
         'false' ->
             maybe_scheduled_delivery(JObj, Call, ?SCHEDULED(Call) , kz_time:now_s())
