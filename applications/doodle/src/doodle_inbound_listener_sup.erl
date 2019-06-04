@@ -93,7 +93,7 @@ default_connection() ->
 connections() ->
     case kapps_config:get_json(?CONFIG_CAT, <<"connections">>) of
         'undefined' -> [default_connection()];
-        JObj -> kz_json:foldl(fun connections_fold/3, [], JObj)
+        JObj -> [default_connection()] ++ kz_json:foldl(fun connections_fold/3, [], JObj)
     end.
 
 -spec connections_fold(kz_json:path(), kz_json:json_term(), amqp_listener_connections()) ->

@@ -56,13 +56,17 @@ start_check_sms_by_account(AccountId, JObj) ->
         orelse kz_term:is_false(kz_json:get_value(<<"pvt_enabled">>, JObj, 'true'))
     of
         'true' -> 'ok';
-        'false' -> kz_util:spawn(fun check_pending_sms_for_delivery/1, [AccountId])
+        'false' -> check_sms_by_account(AccountId)
     end.
+
+-spec check_sms_by_account(kz_term:ne_binary()) -> pid().
+check_sms_by_account(AccountId) ->
+    kz_util:spawn(fun check_pending_sms_for_delivery/1, [AccountId]),
+    kz_util:spawn(fun check_queued_sms/1, [AccountId]).
 
 -spec check_pending_sms_for_outbound_delivery(kz_term:ne_binary()) -> pid().
 check_pending_sms_for_outbound_delivery(AccountId) ->
-    kz_util:spawn(fun check_pending_sms_for_offnet_delivery/1, [AccountId]),
-    kz_util:spawn(fun check_queued_sms/1, [AccountId]).
+    kz_util:spawn(fun check_pending_sms_for_offnet_delivery/1, [AccountId]).
 
 -spec check_pending_sms_for_delivery(kz_term:ne_binary()) -> 'ok'.
 check_pending_sms_for_delivery(AccountId) ->
@@ -88,7 +92,7 @@ check_queued_sms(AccountId) ->
 
 -spec replay_queue_sms(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 replay_queue_sms(AccountId, JObjs) ->
-    lager:debug("starting queued sms for account ~s", [AccountId]),
+    lager:debug("starting ~B queued sms for account ~s", [length(JObjs), AccountId]),
     _ = [spawn_handler(AccountId, JObj)
          || JObj <- JObjs
         ],
@@ -99,7 +103,11 @@ spawn_handler(AccountId, JObj) ->
     DocId = kz_doc:id(JObj),
     ?MATCH_MODB_PREFIX(Year,Month,_) = DocId,
     AccountDb = kazoo_modb:get_modb(AccountId, Year, Month),
-    _ = kz_util:spawn(fun doodle_api:handle_api_sms/2, [AccountDb, DocId]),
+    {'ok', Doc} = kz_datamgr:open_doc(AccountDb, DocId),
+    _ = case kz_json:get_value(<<"pvt_origin">>, Doc) of
+            <<"api">> -> kz_util:spawn(fun doodle_api:handle_api_sms/2, [AccountDb, DocId]);
+            _Else -> kz_util:spawn(fun doodle_util:replay_sms/2, [AccountId, DocId])
+        end,
     timer:sleep(200).
 
 -spec check_pending_sms_for_offnet_delivery(kz_term:ne_binary()) -> 'ok'.
@@ -116,7 +124,7 @@ check_pending_sms_for_offnet_delivery(AccountId) ->
 
 -spec replay_sms(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 replay_sms(AccountId, JObjs) ->
-    lager:debug("starting sms offnet delivery for account ~s", [AccountId]),
+    lager:debug("starting sms delivery for account ~s", [AccountId]),
     F = fun (JObj) ->
                 _ = doodle_util:replay_sms(AccountId, kz_doc:id(JObj)),
                 timer:sleep(200)

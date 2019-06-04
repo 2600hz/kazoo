@@ -50,7 +50,7 @@ maybe_scheduled_delivery(_JObj, Call, DeliveryAt, Now)
     doodle_util:save_sms(doodle_util:set_flow_status(<<"pending">>, Call1));
 maybe_scheduled_delivery(JObj, Call, _, _) ->
     lager:info("setting initial information about the text"),
-    bootstrap_callflow_executer(JObj, Call).
+    bootstrap_textflow_executer(JObj, Call).
 
 -spec should_restrict_call(kapps_call:call()) -> boolean().
 should_restrict_call(Call) ->
@@ -188,12 +188,12 @@ get_callee_extension_info(Call) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec bootstrap_callflow_executer(kz_json:object(), kapps_call:call()) -> {'ok', pid()}.
-bootstrap_callflow_executer(_JObj, Call) ->
+-spec bootstrap_textflow_executer(kz_json:object(), kapps_call:call()) -> {'ok', pid()}.
+bootstrap_textflow_executer(_JObj, Call) ->
     Routines = [fun store_owner_id/1
                ,fun update_ccvs/1
                 %% all funs above here return kapps_call:call()
-               ,fun execute_callflow/1
+               ,fun execute_textflow/1
                ],
     lists:foldl(fun(F, C) -> F(C) end, Call, Routines).
 
@@ -241,8 +241,8 @@ get_incoming_security(Call) ->
 %% doodle_exe_sup tree.
 %% @end
 %%------------------------------------------------------------------------------
--spec execute_callflow(kapps_call:call()) -> {'ok', pid()}.
-execute_callflow(Call) ->
+-spec execute_textflow(kapps_call:call()) -> {'ok', pid()}.
+execute_textflow(Call) ->
     lager:info("message has been setup, beginning to process the message"),
     doodle_exe_sup:new(Call).
 
@@ -268,12 +268,12 @@ set_service_unavailable_message(Call) ->
 send_reply_msg(Call) ->
     EndpointId = kapps_call:authorizing_id(Call),
     Options = kz_json:set_value(<<"can_call_self">>, 'true', kz_json:new()),
-    case kz_endpoint:build(EndpointId, Options, Call) of
-        {'error', Msg}=_E ->
-            lager:debug("error getting endpoint for reply unavailable service ~s : ~p", [EndpointId, Msg]);
-        {'ok', Endpoints} ->
-            kapps_sms_command:b_send_sms(Endpoints, Call)
-    end,
+    _ = case kz_endpoint:build(EndpointId, Options, Call) of
+            {'error', Msg}=_E ->
+                lager:debug("error getting endpoint for reply unavailable service ~s : ~p", [EndpointId, Msg]);
+            {'ok', Endpoints} ->
+                kapps_sms_command:b_send_sms(Endpoints, Call)
+        end,
     Call.
 
 -spec set_sms_sender(kapps_call:call()) -> kapps_call:call().

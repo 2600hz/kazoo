@@ -35997,6 +35997,15 @@
                     "description": "Is the webhook enabled and running",
                     "type": "boolean"
                 },
+                "format": {
+                    "default": "form-data",
+                    "description": "What Body format to use when sending the webhook. only valid for 'post' & 'put' verbs",
+                    "enum": [
+                        "form-data",
+                        "json"
+                    ],
+                    "type": "string"
+                },
                 "hook": {
                     "description": "The trigger event for a request being made to 'callback_uri'.",
                     "type": "string"
@@ -36006,7 +36015,8 @@
                     "description": "What HTTP method to use when contacting the server",
                     "enum": [
                         "get",
-                        "post"
+                        "post",
+                        "put"
                     ],
                     "type": "string"
                 },

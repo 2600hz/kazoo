@@ -15,7 +15,7 @@
         ]).
 -export([remove/1]).
 -export([broker_connections/1
-        ,connections/0, connections/1
+        ,connections/0, connections/1, managers/1
         ]).
 -export([broker_available_connections/1]).
 -export([primary_broker/0]).
@@ -203,6 +203,20 @@ connections(Broker) ->
                                       },
                   [],
                   ['$$']}
+                ],
+    ets:select(?TAB, MatchSpec).
+
+-spec managers(kz_term:api_ne_binary()) -> [pid()].
+managers('undefined') ->
+    managers(primary_broker());
+managers(Broker) ->
+    MatchSpec = [{#kz_amqp_connections{available='true'
+                                      ,broker=Broker
+                                      ,connection='$1'
+                                      ,_='_'
+                                      },
+                  [],
+                  ['$1']}
                 ],
     ets:select(?TAB, MatchSpec).
 

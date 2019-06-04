@@ -8,6 +8,7 @@
 -export([new/0]).
 -export([custom_data/1, custom_data/2, set_custom_data/2]).
 -export([enabled/1, enabled/2, set_enabled/2]).
+-export([format/1, format/2, set_format/2]).
 -export([hook/1, hook/2, set_hook/2]).
 -export([http_verb/1, http_verb/2, set_http_verb/2]).
 -export([include_internal_legs/1, include_internal_legs/2, set_include_internal_legs/2]).
@@ -51,6 +52,18 @@ enabled(Doc, Default) ->
 -spec set_enabled(doc(), boolean()) -> doc().
 set_enabled(Doc, Enabled) ->
     kz_json:set_value([<<"enabled">>], Enabled, Doc).
+
+-spec format(doc()) -> binary().
+format(Doc) ->
+    format(Doc, <<"form-data">>).
+
+-spec format(doc(), Default) -> binary() | Default.
+format(Doc, Default) ->
+    kz_json:get_binary_value([<<"format">>], Doc, Default).
+
+-spec set_format(doc(), binary()) -> doc().
+set_format(Doc, Format) ->
+    kz_json:set_value([<<"format">>], Format, Doc).
 
 -spec hook(doc()) -> kz_term:api_binary().
 hook(Doc) ->
