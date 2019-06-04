@@ -137,6 +137,11 @@
                     "description": "If true, ignore the setting on the vmbox and require all users to enter a pin",
                     "type": "boolean"
                 },
+                "is_voicemail_ff_rw_enabled": {
+                    "default": false,
+                    "description": "callflow allow fastforward and rewind during voicemail message playback",
+                    "type": "boolean"
+                },
                 "max_box_number_length": {
                     "default": 15,
                     "description": "callflow maximum box number length",
@@ -191,6 +196,12 @@
                     "default": false,
                     "description": "callflow save after notify",
                     "type": "boolean"
+                },
+                "seek_duration_ms": {
+                    "default": 10000,
+                    "description": "callflow fastforward and rewind seek duration",
+                    "minimum": 0,
+                    "type": "integer"
                 },
                 "vm_message_forward_type": {
                     "default": "only_forward",
