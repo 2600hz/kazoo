@@ -142,13 +142,14 @@ load_patterns(AccountId) ->
             {'error', 'not_found'}
     end.
 
+-spec compile_patterns(kz_term:ne_binary(), kz_json:objects()) -> {'ok', patterns()}.
 compile_patterns(AccountId, JObjs) ->
     compile_patterns(AccountId, JObjs, []).
 
 compile_patterns(AccountId, [], Acc) ->
     cache_patterns(AccountId, Acc);
 compile_patterns(AccountId, [JObj | JObjs], Acc) ->
-    Regex = kz_json:get_value(<<"key">>, JObj),
+    Regex = kz_json:get_ne_binary_value(<<"key">>, JObj),
     FlowId = kz_doc:id(JObj),
     case re:compile(Regex) of
         {'ok', {'re_pattern', Groups, _, _, _} = MP}
@@ -167,7 +168,7 @@ compile_patterns(AccountId, [JObj | JObjs], Acc) ->
 -spec cache_patterns(kz_term:ne_binary(), patterns()) -> {'ok', patterns()}.
 cache_patterns(AccountId, Patterns) ->
     AccountDb = kz_util:format_account_db(AccountId),
-    CacheOptions = [{'origin', [{'db', AccountDb, kz_doc:type(Patterns)}]}],
+    CacheOptions = [{'origin', [{'db', AccountDb, <<"textflow">>}]}],
     kz_cache:store_local(?CACHE_NAME, ?MSG_PATTERN_CACHE_KEY(AccountId), Patterns, CacheOptions),
     {'ok', Patterns}.
 

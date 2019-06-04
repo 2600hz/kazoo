@@ -96,7 +96,7 @@ connections() ->
         JObj -> [default_connection()] ++ kz_json:foldl(fun connections_fold/3, [], JObj)
     end.
 
--spec connections_fold(kz_json:path(), kz_json:json_term(), amqp_listener_connections()) ->
+-spec connections_fold(kz_json:key(), kz_json:object(), amqp_listener_connections()) ->
                               amqp_listener_connections().
 connections_fold(K, V, Acc) ->
     C = #amqp_listener_connection{name = K
