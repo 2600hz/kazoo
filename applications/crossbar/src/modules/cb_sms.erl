@@ -149,6 +149,7 @@ read(Id, Context) ->
 on_successful_validation(Context) ->
     ContextDoc = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
+    AuthAccountId = cb_context:auth_account_id(Context),
     MODB = cb_context:account_modb(Context),
     ResellerId = cb_context:reseller_id(Context),
     Realm = kzd_accounts:fetch_realm(AccountId),
@@ -159,8 +160,10 @@ on_successful_validation(Context) ->
                 {<<"account">>, AccountId, 'undefined'};
             {UserId, 'undefined'} ->
                 {<<"user">>, UserId, UserId};
-            {'undefined', UserAuth} ->
+            {'undefined', UserAuth} when AuthAccountId =:= AccountId ->
                 {<<"user">>, UserAuth, UserAuth};
+            {'undefined', _UserAuth} when AuthAccountId =/= AccountId ->
+                {<<"account">>, AccountId, 'undefined'};
             {UserId, _UserAuth} ->
                 {<<"user">>, UserId, UserId}
         end,

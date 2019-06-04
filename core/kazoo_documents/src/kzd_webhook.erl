@@ -21,12 +21,16 @@
         ,modifiers/1, modifiers/2, set_modifiers/2
         ,include_subaccounts/1, enable_subaccounts/1, disable_subaccounts/1
         ,include_internal_legs/1
+        ,format/1, format/2, set_format/2
         ]).
 
 -include("kz_documents.hrl").
 
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
+
+-type hook_format() :: 'form-data' | 'json'.
+-export_type([hook_format/0]).
 
 -define(IS_ENABLED, <<"enabled">>).
 -define(DISABLED_MESSAGE, <<"pvt_disabled_message">>).
@@ -40,6 +44,7 @@
 -define(MODIFIERS, <<"modifiers">>).
 -define(INCLUDE_SUBACCOUNTS, <<"include_subaccounts">>).
 -define(INCLUDE_INTERNAL, <<"include_internal_legs">>).
+-define(FORMAT, <<"format">>).
 
 -spec is_enabled(doc()) -> boolean().
 is_enabled(Hook) ->
@@ -124,7 +129,7 @@ event(Hook, Default) ->
 set_event(Hook, Event) ->
     kz_json:set_value(?EVENT, Event, Hook).
 
--type http_verb() :: 'get' | 'post'.
+-type http_verb() :: 'get' | 'post' | 'put'.
 
 -spec verb(doc()) -> http_verb().
 verb(Hook) ->
@@ -141,6 +146,7 @@ verb(Hook, Default) ->
                         http_verb() | Default.
 safe_verbs(<<"get">>, _Default) -> <<"get">>;
 safe_verbs(<<"post">>, _Default) -> <<"post">>;
+safe_verbs(<<"put">>, _Default) -> <<"put">>;
 safe_verbs(_Verb, Default) -> Default.
 
 -spec set_verb(doc(), kz_term:ne_binary() | http_verb()) -> doc().
@@ -148,6 +154,7 @@ set_verb(Hook, <<_/binary>> = Verb) ->
     kz_json:set_value(?VERB, safe_verbs(Verb, <<"get">>), Hook);
 set_verb(Hook, Verb) when Verb =:= 'get'
                           orelse Verb =:= 'post'
+                          orelse Verb =:= 'put'
                           ->
     kz_json:set_value(?VERB, kz_term:to_binary(Verb), Hook).
 
@@ -217,3 +224,27 @@ disable_subaccounts(Hook) ->
 -spec include_internal_legs(doc()) -> boolean().
 include_internal_legs(Hook) ->
     kz_json:is_true(?INCLUDE_INTERNAL, Hook, 'true').
+
+-spec format(doc()) -> hook_format().
+format(Hook) ->
+    format(Hook, 'form-data').
+
+-spec format(doc(), Default) -> hook_format() | Default.
+format(Hook, Default) ->
+    case kz_json:get_value(?FORMAT, Hook) of
+        'undefined' -> Default;
+        Format -> safe_formats(kz_term:to_lower_binary(Format), Default)
+    end.
+
+-spec safe_formats(kz_term:api_binary(), hook_format()) -> hook_format().
+safe_formats(<<"form-data">>, _Default) -> 'form-data';
+safe_formats(<<"json">>, _Default) -> 'json';
+safe_formats(_, Default) -> Default.
+
+-spec set_format(doc(), kz_term:ne_binary() | hook_format()) -> doc().
+set_format(Hook, <<_/binary>> = Format) ->
+    set_format(Hook, safe_formats(Format, 'form-data'));
+set_format(Hook, Format) when Format =:= 'form-data'
+                              orelse Format =:= 'json'
+                              ->
+    kz_json:set_value(?FORMAT, kz_term:to_binary(Format), Hook).

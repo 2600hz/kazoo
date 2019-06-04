@@ -22,6 +22,7 @@
                  ,include_loopback = 'true' :: boolean() | '_'
                  ,custom_data :: kz_term:api_object() | '_'
                  ,modifiers :: kz_term:api_object() | '_'
+                 ,format = 'form-data' :: 'form-data' | 'json' | '_'
                  }).
 -type webhook() :: #webhook{}.
 -type webhooks() :: [webhook()].

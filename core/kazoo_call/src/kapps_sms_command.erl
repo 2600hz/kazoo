@@ -288,6 +288,8 @@ create_sms_endpoint(Endpoint, <<"sip">>) ->
 
 -spec lookup_reg(kz_term:ne_binary(), kz_term:ne_binary()) -> {'error', any()} |
                                                               {'ok', kz_term:ne_binary()}.
+lookup_reg('undefined', _Realm) -> {'error', 'invalid_user'};
+lookup_reg(_Username, 'undefined') -> {'error', 'invalid_realm'};
 lookup_reg(Username, Realm) ->
     Req = [{<<"Realm">>, Realm}
           ,{<<"Username">>, Username}

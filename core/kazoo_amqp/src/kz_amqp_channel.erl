@@ -277,10 +277,11 @@ maybe_split_routing_key(RoutingKey) ->
     {'undefined', RoutingKey}.
 
 -spec command(kz_amqp_command()) -> command_ret().
-command(#'exchange.declare'{exchange=_Ex, type=_Ty}=Exchange) ->
-    [catch kz_amqp_connection:new_exchange(ConnectionPid, Exchange)
-     || #kz_amqp_connections{connection=ConnectionPid} <- kz_amqp_connections:connections()
-    ];
+command(#'exchange.declare'{} = Command) ->
+    case kz_amqp_connections:managers(consumer_broker()) of
+        [] -> {'error', 'not_available'};
+        [Pid | _] -> kz_amqp_connection:new_exchange(Pid, Command)
+    end;
 command(Command) ->
     %% This will wait forever for a valid channel before publishing...
     %% all commands need to block till completion...
@@ -292,6 +293,8 @@ command(Assignment, Command) ->
     exec_command(Assignment, Command).
 
 -spec exec_command(kz_amqp_assignment(), kz_amqp_command()) -> command_ret().
+exec_command(#kz_amqp_assignment{connection=Pid}, #'exchange.declare'{exchange=_Ex, type=_Ty}=Exchange) ->
+    kz_amqp_connection:new_exchange(Pid, Exchange);
 exec_command(#kz_amqp_assignment{channel=Pid}, #'channel.flow_ok'{}=FlowCtl) ->
     amqp_channel:cast(Pid, FlowCtl);
 exec_command(#kz_amqp_assignment{channel=Pid}, #'basic.ack'{}=BasicAck) ->

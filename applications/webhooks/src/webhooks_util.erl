@@ -211,11 +211,29 @@ do_fire(#webhook{uri = ?NE_BINARY = URI
                 ,retries = Retries
                 ,hook_event = _HookEvent
                 ,hook_id = _HookId
+                ,format = 'form-data'
                 } = Hook, EventId, JObj) ->
     lager:debug("sending hook ~s(~s) with interaction id ~s via 'post' (retries ~b): ~s", [_HookEvent, _HookId, EventId, Retries, URI]),
 
     Body = kz_http_util:json_to_querystring(JObj),
     Headers = [{"Content-Type", "application/x-www-form-urlencoded"}
+               | ?HTTP_REQ_HEADERS(Hook)
+              ],
+    Debug = debug_req(Hook, EventId, URI, Headers, Body),
+    Fired = kz_http:post(URI, Headers, Body, ?HTTP_OPTS),
+
+    handle_resp(Hook, EventId, JObj, Debug, Fired);
+do_fire(#webhook{uri = ?NE_BINARY = URI
+                ,http_verb = 'post'
+                ,retries = Retries
+                ,hook_event = _HookEvent
+                ,hook_id = _HookId
+                ,format = 'json'
+                } = Hook, EventId, JObj) ->
+    lager:debug("sending hook ~s(~s) with interaction id ~s via 'post' (retries ~b): ~s", [_HookEvent, _HookId, EventId, Retries, URI]),
+
+    Body = kz_json:encode(JObj, ['pretty']),
+    Headers = [{"Content-Type", "application/json"}
                | ?HTTP_REQ_HEADERS(Hook)
               ],
     Debug = debug_req(Hook, EventId, URI, Headers, Body),
@@ -577,6 +595,7 @@ jobj_to_rec(Hook) ->
             ,include_loopback = kzd_webhook:include_internal_legs(Hook)
             ,custom_data = kzd_webhook:custom_data(Hook)
             ,modifiers = kzd_webhook:modifiers(Hook)
+            ,format = kzd_webhook:format(Hook)
             }.
 
 -spec init_webhooks() -> 'ok'.

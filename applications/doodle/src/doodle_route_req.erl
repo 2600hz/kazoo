@@ -24,7 +24,7 @@ handle_req(JObj, Props) ->
         'true' ->
             lager:info("received a request asking if doodle can route this message"),
             AllowNoMatch = allow_no_match(Call),
-            case cf_flow:lookup(Call) of
+            case kz_flow:lookup(Call) of
                 %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
                 %% to use it for this call
                 {'ok', Flow, NoMatch} when (not NoMatch)
@@ -32,9 +32,9 @@ handle_req(JObj, Props) ->
                     NewFlow = maybe_prepend_preflow(Call, Flow),
                     maybe_reply_to_req(JObj, Props, Call, NewFlow, NoMatch);
                 {'ok', _, 'true'} ->
-                    lager:info("only available callflow is a nomatch for a unauthorized call", []);
+                    lager:info("only available flow is a nomatch for a unauthorized call", []);
                 {'error', R} ->
-                    lager:info("unable to find callflow ~p", [R])
+                    lager:info("unable to find flow ~p", [R])
             end
     end.
 
