@@ -22,6 +22,7 @@
         ,to_swagger_paths/2
         ,to_swagger_definitions/1
         ,to_swagger_parameters/1
+        ,to_swagger_parameters/2
         ]).
 
 -ifdef(TEST).
@@ -280,10 +281,10 @@ to_oas3_file() ->
 -spec generate_oas_json(callback_configs(), kz_term:ne_binary()) -> kz_term:proplist().
 generate_oas_json(Callbacks, OasVersion) ->
     Paths = format_as_path_centric(Callbacks),
-    Parameters = to_swagger_parameters(
-                   lists:flatten([kz_json:get_keys(kz_json:get_json_value(<<"paths">>, EndpointMeta))
-                                  || {_EndpointName, EndpointMeta} <- kz_json:to_proplist(Paths)
-                                 ])),
+    ToParameter = lists:flatten([kz_json:get_keys(kz_json:get_json_value(<<"paths">>, EndpointMeta))
+                                 || {_EndpointName, EndpointMeta} <- kz_json:to_proplist(Paths)
+                                ]),
+    Parameters = to_swagger_parameters(ToParameter, OasVersion),
     generate_oas_paths_json(Paths, OasVersion, Parameters).
 
 -spec generate_oas_paths_json(kz_json:object(), kz_term:ne_binary(), kz_json:object()) ->
@@ -298,7 +299,7 @@ generate_oas_paths_json(Paths, <<"swagger2">> = OasVersion, Parameters) ->
     [{<<"swagger2">>
      ,kz_json:set_values([{<<"paths">>, to_swagger_paths(Paths, BasePaths)}
                          ,{<<"definitions">>, to_swagger_definitions(OasVersion)}
-                         ,{<<"parameters">>, Parameters}
+                         ,{<<"parameters">>, kz_json:get_json_value(<<"swagger2">>, Parameters, Parameters)}
                          ,{<<"host">>, <<"localhost:8000">>}
                          ,{<<"basePath">>, <<"/", (?CURRENT_VERSION)/binary>>}
                          ,{<<"swagger">>, <<"2.0">>}
@@ -323,7 +324,7 @@ generate_oas_paths_json(Paths, <<"oas3">> = OasVersion, Parameters) ->
      [{<<"oas3">>
       ,[{<<"openapi">>, Oas3}
        ,{<<"paths">>, OasPaths}
-       ,{<<"parameters">>, Parameters}
+       ,{<<"parameters">>, kz_json:get_json_value(<<"oas3">>, Parameters, Parameters)}
        ,{<<"definitions">>, to_swagger_definitions(OasVersion)}
        ]
       }
@@ -1011,217 +1012,238 @@ grep_cb_module(?NE_BINARY=Module) ->
 
 -spec to_swagger_parameters(kz_term:ne_binaries()) -> kz_json:object().
 to_swagger_parameters(Paths) ->
+    to_swagger_parameters(Paths, <<"swagger2">>).
+
+-spec to_swagger_parameters(kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_json:object().
+to_swagger_parameters(Paths, <<"oas_two_and_three">>) ->
+    kz_json:from_list([{<<"oas3">>, to_swagger_parameters(Paths, <<"oas3">>)}
+                      ,{<<"swagger2">>, to_swagger_parameters(Paths, <<"swagger2">>)}
+                      ]
+                     );
+to_swagger_parameters(Paths, OasVersion) ->
     Params = [Param || Path <- Paths,
                        Param <- split_url(Path),
                        is_path_variable(Param)
              ],
     kz_json:from_list(
-      [{<<?X_AUTH_TOKEN>>, parameter_auth_token(true)}
-      ,{<<?X_AUTH_TOKEN_NOT_REQUIRED>>, parameter_auth_token(false)}
+      [{<<?X_AUTH_TOKEN>>, parameter_auth_token(true, OasVersion)}
+      ,{<<?X_AUTH_TOKEN_NOT_REQUIRED>>, parameter_auth_token(false, OasVersion)}
       ]
       ++ [{kz_json:get_ne_binary_value(<<"name">>, ParamProps), ParamProps}
           || Param <- lists:usort(lists:flatten(Params)),
-             ParamProps <- [kz_json:from_list(def_path_param(Param))]
+             ParamProps <- [kz_json:from_list(def_path_param(OasVersion, Param))]
          ]).
 
--spec parameter_auth_token(boolean()) -> kz_json:object().
-parameter_auth_token(IsRequired) ->
+-spec parameter_auth_token(boolean(), kz_term:ne_binary()) -> kz_json:object().
+parameter_auth_token(IsRequired, OasVersion) ->
     kz_json:from_list([{<<"name">>, <<"X-Auth-Token">>}
                       ,{<<"in">>, <<"header">>}
-                      ,{<<"type">>, <<"string">>}
-                      ,{<<"minLength">>, 32}
                       ,{<<"required">>, IsRequired}
                       ,{<<"description">>, <<"request authentication token">>}
+                       | parameter_schema(OasVersion
+                                        ,[{<<"type">>, <<"string">>}
+                                         ,{<<"minLength">>, 32}
+                                         ]
+                                        )
                       ]).
 
--spec generic_id_path_param(kz_term:ne_binary()) -> kz_json:json_proplist().
-generic_id_path_param(Name) ->
-    [{<<"minLength">>, 32}
-    ,{<<"maxLength">>, 32}
-    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
-     | base_path_param(Name)
-    ].
+-spec parameter_schema(kz_term:ne_binary(), kz_json:json_proplist()) -> kz_json:json_proplist().
+parameter_schema(<<"swagger2">>, SchemaProp) ->
+    SchemaProp;
+parameter_schema(<<"oas3">>, SchemaProp) ->
+    [{<<"schema">>, kz_json:from_list(SchemaProp)}].
 
--spec base_path_param(kz_term:ne_binary()) -> kz_json:json_proplist().
-base_path_param(Param) ->
-    [{<<"name">>, unbrace_param(Param)}
+-spec generic_id_path_param(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:json_proplist().
+generic_id_path_param(Name, OasVersion) ->
+    base_path_param(Name
+                   ,OasVersion
+                   ,[{<<"minLength">>, 32}
+                    ,{<<"maxLength">>, 32}
+                    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
+                    ]
+                   ).
+
+-spec base_path_param(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:json_proplist().
+base_path_param(ParamName, OasVersion) ->
+    base_path_param(ParamName
+                   ,OasVersion
+                   ,[]
+                   ).
+
+-spec base_path_param(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:json_proplist()) -> kz_json:json_proplist().
+base_path_param(ParamName, OasVersion, SchemaProp) ->
+    [{<<"name">>, unbrace_param(ParamName)}
     ,{<<"in">>, <<"path">>}
     ,{<<"required">>, true}
-    ,{<<"type">>, <<"string">>}
+     | parameter_schema(OasVersion, [{<<"type">>, <<"string">>} | SchemaProp])
     ].
 
--spec modb_id_path_param(kz_term:ne_binary()) -> kz_json:json_proplist().
-modb_id_path_param(Param) ->
+-spec modb_id_path_param(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:json_proplist().
+modb_id_path_param(Param, OasVersion) ->
     %% Matches an MoDB id:
-    [{<<"pattern">>, <<"^[0-9a-f-]+\$">>}
-    ,{<<"minLength">>, 39}
-    ,{<<"maxLength">>, 39}
-     | base_path_param(Param)
-    ].
+    base_path_param(Param
+                   ,OasVersion
+                   ,[{<<"pattern">>, <<"^[0-9a-f-]+\$">>}
+                    ,{<<"minLength">>, 39}
+                    ,{<<"maxLength">>, 39}
+                    ]
+                   ).
 
 %% When param represents an account id (i.e. 32 bytes of hexa):
--spec def_path_param(kz_term:ne_binary()) -> kz_json:json_proplist().
-def_path_param(<<"{ACCOUNT_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{ADDRESS_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{ALERT_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{APP_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{AUTH_TOKEN}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{BLACKLIST_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{C2C_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{CALLFLOW_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{CARD_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{CCCP_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{CONFERENCE_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{CONFIG_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{CONNECTIVITY_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{DEVICE_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{DIRECTORY_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{FAXBOX_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{FAX_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{GROUP_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{KEY_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{LEDGER_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{LINK_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{LIST_ENTRY_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{LIST_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{MEDIA_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{MENU_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{NOTIFICATION_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{PORT_REQUEST_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{QUEUE_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{RATE_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{RESOURCE_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{RESOURCE_TEMPLATE_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{SMS_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{STORAGE_PLAN_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{TEMPLATE_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{TEMPORAL_RULE_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{TEMPORAL_RULE_SET}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{USER_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{VM_BOX_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{WEBHOOK_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{MIGRATION_ID}">>=P) -> generic_id_path_param(P);
+-spec def_path_param(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:json_proplist().
+def_path_param(OasVersion, <<"{ACCOUNT_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{ADDRESS_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{ALERT_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{APP_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{AUTH_TOKEN}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{BLACKLIST_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{C2C_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{CALLFLOW_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{CARD_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{CCCP_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{CONFERENCE_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{CONFIG_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{CONNECTIVITY_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{DEVICE_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{DIRECTORY_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{FAXBOX_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{FAX_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{GROUP_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{KEY_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{LEDGER_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{LINK_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{LIST_ENTRY_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{LIST_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{MEDIA_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{MENU_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{NOTIFICATION_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{PORT_REQUEST_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{QUEUE_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{RATE_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{RESOURCE_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{RESOURCE_TEMPLATE_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{SMS_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{STORAGE_PLAN_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{TEMPLATE_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{TEMPORAL_RULE_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{TEMPORAL_RULE_SET}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{USER_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{VM_BOX_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{WEBHOOK_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{MIGRATION_ID}">>=P) -> generic_id_path_param(P, OasVersion);
 
 %% When param represents an MoDB id (i.e. 32+4+2 bytes of hexa & 1 dash):
-def_path_param(<<"{CDR_ID}">>=P) -> modb_id_path_param(P);
-def_path_param(<<"{RECORDING_ID}">>=P) -> modb_id_path_param(P);
+def_path_param(OasVersion, <<"{CDR_ID}">>=P) -> modb_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{RECORDING_ID}">>=P) -> modb_id_path_param(P, OasVersion);
 
 %% When you don't know (ideally you do know):
-def_path_param(<<"{ARGS}">>=P) -> base_path_param(P);
-def_path_param(<<"{ATTACHMENT_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{ATTEMPT_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{CALL_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{COMMENT_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{ERROR_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{EXTENSION}">>=P) -> base_path_param(P);
-def_path_param(<<"{FAX_JOB_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{HANDLER_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{INTERACTION_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{JOB_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{LANGUAGE}">>=P) -> base_path_param(P);
-def_path_param(<<"{LEDGER_ENTRY_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{PLAN_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{PROMPT_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{PROVIDER_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{SAMPLE_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{SELECTOR_NAME}">>=P) -> base_path_param(P);
-def_path_param(<<"{SMTP_LOG_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{SOCKET_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{SYSTEM_CONFIG_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{TEMPLATE_NAME}">>=P) -> base_path_param(P);
-def_path_param(<<"{THING}">>=P) -> base_path_param(P);
-def_path_param(<<"{TRANSACTION_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{USERNAME}">>=P) -> base_path_param(P);
-def_path_param(<<"{VM_MSG_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{WHITELABEL_DOMAIN}">>=P) -> base_path_param(P);
+def_path_param(OasVersion, <<"{ARGS}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{ATTACHMENT_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{ATTEMPT_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{CALL_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{COMMENT_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{ERROR_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{EXTENSION}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{FAX_JOB_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{HANDLER_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{INTERACTION_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{JOB_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{LANGUAGE}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{LEDGER_ENTRY_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{PLAN_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{PROMPT_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{PROVIDER_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{SAMPLE_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{SELECTOR_NAME}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{SMTP_LOG_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{SOCKET_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{SYSTEM_CONFIG_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{TEMPLATE_NAME}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{THING}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{TRANSACTION_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{USERNAME}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{VM_MSG_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{WHITELABEL_DOMAIN}">>=P) -> base_path_param(P, OasVersion);
 
 %% For all the edge cases out there:
-def_path_param(<<"{MODB_SUFFIX}">>=P) ->
-    [{<<"minLength">>, 6}
-    ,{<<"maxLength">>, 6}
-    ,{<<"pattern">>, <<"^[0-9]{6}">>}
-     | base_path_param(P)
-    ];
-def_path_param(<<"report-{REPORT_ID}">>) ->
+def_path_param(OasVersion, <<"{MODB_SUFFIX}">>=P) ->
+     base_path_param(P
+                    ,OasVersion
+                    ,[{<<"minLength">>, 6}
+                     ,{<<"maxLength">>, 6}
+                     ,{<<"pattern">>, <<"^[0-9]{6}">>}
+                     ]
+                    );
+def_path_param(OasVersion, <<"report-{REPORT_ID}">>) ->
     Prefix = <<"report-">>,
     PrefixSize = byte_size(Prefix),
-    [{<<"minLength">>, 32 + PrefixSize}
-    ,{<<"maxLength">>, 32 + PrefixSize}
-    ,{<<"pattern">>, <<"^report\\-[0-9a-f]+\$">>}
-     | base_path_param(<<"{REPORT_ID}">>)
-    ];
+    base_path_param(<<"{REPORT_ID}">>
+                   ,OasVersion
+                   ,[{<<"minLength">>, 32 + PrefixSize}
+                    ,{<<"maxLength">>, 32 + PrefixSize}
+                    ,{<<"pattern">>, <<"^report\\-[0-9a-f]+\$">>}
+                    ]
+                   );
 
-def_path_param(<<"{APP_SCREENSHOT_INDEX}">>=P) ->
-    [{<<"pattern">>, <<"^[0-9]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{APP_SCREENSHOT_INDEX}">>=P) ->
+    base_path_param(P, OasVersion, [{<<"pattern">>, <<"^[0-9]+\$">>}]);
 
-def_path_param(<<"{FUNCTION}">>=P) ->
-    [{<<"pattern">>, <<"^[a-zA-Z0-9]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{FUNCTION}">>=P) ->
+    base_path_param(P, OasVersion, [{<<"pattern">>, <<"^[a-zA-Z0-9]+\$">>}]);
 
-def_path_param(<<"{IP_ADDRESS}">>=P) ->
-    [{<<"minLength">>, 7}
-    ,{<<"maxLength">>, 15}
-    ,{<<"pattern">>, <<"^[0-9.]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{IP_ADDRESS}">>=P) ->
+    base_path_param(P
+                   ,OasVersion
+                   ,[{<<"minLength">>, 7}
+                    ,{<<"maxLength">>, 15}
+                    ,{<<"pattern">>, <<"^[0-9.]+\$">>}
+                    ]
+                   );
 
-def_path_param(<<"{MODULE}">>=P) ->
-    [{<<"pattern">>, <<"^[a-zA-Z0-9]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{MODULE}">>=P) ->
+    base_path_param(P, OasVersion, [{<<"pattern">>, <<"^[a-zA-Z0-9]+\$">>}]);
 
-def_path_param(<<"{NODE}">>=P) ->
-    [{<<"pattern">>, <<"^[a-zA-Z0-9]+@[a-zA-Z0-9]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{NODE}">>=P) ->
+    base_path_param(P, OasVersion, [{<<"pattern">>, <<"^[a-zA-Z0-9]+@[a-zA-Z0-9]+\$">>}]);
 
-def_path_param(<<"{PARTICIPANT_ID}">>=P) ->
-    [{<<"pattern">>, <<"^[0-9]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{PARTICIPANT_ID}">>=P) ->
+    base_path_param(P, OasVersion, [{<<"pattern">>, <<"^[0-9]+\$">>}]);
 
-def_path_param(<<"{PHONE_NUMBER}">>=P) ->
-    [{<<"minLength">>, 13}
-    ,{<<"pattern">>, <<"^%2[Bb][0-9]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{PHONE_NUMBER}">>=P) ->
+    base_path_param(P
+                   ,OasVersion
+                   ,[{<<"minLength">>, 13}
+                    ,{<<"pattern">>, <<"^%2[Bb][0-9]+\$">>}
+                    ]
+                   );
 
-def_path_param(<<"{SCHEMA_NAME}">>=P) ->
-    [{<<"pattern">>, <<"^[a-z0-9._-]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{SCHEMA_NAME}">>=P) ->
+    base_path_param(P, OasVersion, [{<<"pattern">>, <<"^[a-z0-9._-]+\$">>}]);
 
-def_path_param(<<"{TASK_ID}">>=P) ->
-    [{<<"minLength">>, 15}
-    ,{<<"maxLength">>, 15}
-    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{TASK_ID}">>=P) ->
+    base_path_param(P
+                   ,OasVersion
+                   ,[{<<"minLength">>, 15}
+                    ,{<<"maxLength">>, 15}
+                    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
+                    ]
+                   );
 
-def_path_param(<<"{ENDPOINT_ID}">>=P) ->
-    generic_id_path_param(P);
-def_path_param(<<"{ENDPOINT_TYPE}">>=P) ->
-    [{<<"enum">>, [<<"users">>, <<"devices">>]}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{ENDPOINT_ID}">>=P) ->
+    generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{ENDPOINT_TYPE}">>=P) ->
+    base_path_param(P, OasVersion, [{<<"enum">>, [<<"users">>, <<"devices">>]}]);
 
-def_path_param(<<"{UUID}">>=P) ->
-    [{<<"pattern">>, <<"^[a-f0-9-]+\$">>}
-     | base_path_param(P)
-    ];
-def_path_param(<<"{NUMBER}">> = P) ->
-    [{<<"pattern">>, <<"^\\+?[0-9]+">>}
-     | base_path_param(P)
-    ];
-def_path_param(<<"{AUDIT_ID}">> = P) ->
-    generic_id_path_param(P);
-def_path_param(<<"{SOURCE_SERVICE}">> = P) ->
-    base_path_param(P);
+def_path_param(OasVersion, <<"{UUID}">>=P) ->
+    base_path_param(P, OasVersion, [{<<"pattern">>, <<"^[a-f0-9-]+\$">>}]);
+def_path_param(OasVersion, <<"{NUMBER}">> = P) ->
+    base_path_param(P, OasVersion, [{<<"pattern">>, <<"^\\+?[0-9]+">>}]);
+def_path_param(OasVersion, <<"{AUDIT_ID}">> = P) ->
+    generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{SOURCE_SERVICE}">> = P) ->
+    base_path_param(P, OasVersion);
 
-def_path_param(_Param) ->
+def_path_param(_OasVersion, _Param) ->
     io:format('standard_error'
              ,"~s/" ?FILE ":~p: No Swagger definition of path parameter '~s'.\n"
              ,[code:lib_dir('kazoo_ast'), ?LINE, _Param]
