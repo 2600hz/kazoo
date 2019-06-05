@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2018, 2600Hz
+%%% @copyright (C) 2014-2019, 2600Hz
 %%% @doc Module for converting JSON Schema to OpenAPI Specification 2, 3.
 %%% @author Hesaam Farhang
 %%% @end
