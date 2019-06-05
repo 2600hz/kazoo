@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.users.82f012
+  'operationId': delete.users.a15b92
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/USER_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of users
 'get':
-  'operationId': get.users.d1807d
+  'operationId': get.users.07a020
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/USER_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets photo of users
 'patch':
-  'operationId': patch.users.7a9488
+  'operationId': patch.users.965e1b
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/USER_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of users
 'post':
-  'operationId': post.users.1f00b7
+  'operationId': post.users.04f99b
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/USER_ID'
@@ -47,7 +47,7 @@
       'summary': Successful operation
   'summary': Update an instance of users
 'put':
-  'operationId': put.users.63f657
+  'operationId': put.users.1bfd70
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

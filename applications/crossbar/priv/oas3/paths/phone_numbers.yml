@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.phone_numbers.3bb416
+  'operationId': delete.phone_numbers.25cec2
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -8,7 +8,7 @@
       'summary': Successful operation
   'summary': Delete an instance of phone_numbers
 'get':
-  'operationId': get.phone_numbers.7b109c
+  'operationId': get.phone_numbers.a322c3
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/PHONE_NUMBER'
@@ -18,7 +18,7 @@
       'summary': Successful operation
   'summary': Gets a phone_numbers by ID
 'patch':
-  'operationId': patch.phone_numbers.497fe7
+  'operationId': patch.phone_numbers.46c4cd
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -31,7 +31,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of phone_numbers
 'post':
-  'operationId': post.phone_numbers.813ed3
+  'operationId': post.phone_numbers.2c2a37
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/PHONE_NUMBER'
@@ -45,7 +45,7 @@
       'summary': Successful operation
   'summary': Update an instance of phone_numbers
 'put':
-  'operationId': put.phone_numbers.e95c36
+  'operationId': put.phone_numbers.c2eb67
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.apps_store.5bf1f4
+  'operationId': delete.apps_store.95f63e
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/APP_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of apps_store
 'get':
-  'operationId': get.apps_store.1c3e2c
+  'operationId': get.apps_store.7925c8
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/APP_SCREENSHOT_INDEX'
@@ -20,7 +20,7 @@
       'summary': Successful operation
   'summary': Gets a apps_store by ID
 'post':
-  'operationId': post.apps_store.1c0679
+  'operationId': post.apps_store.2396fa
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Update an instance of apps_store
 'put':
-  'operationId': put.apps_store.7b0353
+  'operationId': put.apps_store.f7db08
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/APP_ID'

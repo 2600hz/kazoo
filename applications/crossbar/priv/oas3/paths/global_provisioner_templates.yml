@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.global_provisioner_templates.b732cc
+  'operationId': delete.global_provisioner_templates.769f23
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/TEMPLATE_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of global_provisioner_templates
 'get':
-  'operationId': get.global_provisioner_templates.6fb6f5
+  'operationId': get.global_provisioner_templates.1fe025
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/TEMPLATE_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets image of global_provisioner_templates
 'post':
-  'operationId': post.global_provisioner_templates.fcf886
+  'operationId': post.global_provisioner_templates.185fd2
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/TEMPLATE_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Update an instance of global_provisioner_templates
 'put':
-  'operationId': put.global_provisioner_templates.e0649e
+  'operationId': put.global_provisioner_templates.a4efa8
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

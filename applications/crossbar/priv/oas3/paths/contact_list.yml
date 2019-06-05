@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.contact_list.f6bf4f
+  'operationId': get.contact_list.8c4b41
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

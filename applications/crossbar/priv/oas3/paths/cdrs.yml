@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.cdrs.3dfc54
+  'operationId': get.cdrs.5aadc5
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/INTERACTION_ID'

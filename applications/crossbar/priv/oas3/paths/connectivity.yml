@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.connectivity.a313b2
+  'operationId': delete.connectivity.1dd0e2
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CONNECTIVITY_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of connectivity
 'get':
-  'operationId': get.connectivity.f72eeb
+  'operationId': get.connectivity.00e100
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CONNECTIVITY_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a connectivity by ID
 'patch':
-  'operationId': patch.connectivity.0a5949
+  'operationId': patch.connectivity.c0ba57
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CONNECTIVITY_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of connectivity
 'post':
-  'operationId': post.connectivity.069e9a
+  'operationId': post.connectivity.4927c0
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CONNECTIVITY_ID'
@@ -47,7 +47,7 @@
       'summary': Successful operation
   'summary': Update an instance of connectivity
 'put':
-  'operationId': put.connectivity.a0bd56
+  'operationId': put.connectivity.896dc2
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

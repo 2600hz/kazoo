@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.lists.29fcc5
+  'operationId': delete.lists.d68d8a
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/LIST_ID'
@@ -10,7 +10,7 @@
       'summary': Successful operation
   'summary': Delete an instance of lists
 'get':
-  'operationId': get.lists.ce9967
+  'operationId': get.lists.d2e383
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/LIST_ID'
@@ -21,7 +21,7 @@
       'summary': Successful operation
   'summary': Gets vcard of lists
 'patch':
-  'operationId': patch.lists.54f60e
+  'operationId': patch.lists.78e69b
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/LIST_ID'
@@ -36,7 +36,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of lists
 'post':
-  'operationId': post.lists.f828b6
+  'operationId': post.lists.847ac3
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/LIST_ID'
@@ -51,7 +51,7 @@
       'summary': Successful operation
   'summary': Update an instance of lists
 'put':
-  'operationId': put.lists.f0ad88
+  'operationId': put.lists.ae5048
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/LIST_ID'

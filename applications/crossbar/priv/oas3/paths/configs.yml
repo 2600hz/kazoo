@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.configs.1635c3
+  'operationId': delete.configs.0cd22c
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CONFIG_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of configs
 'get':
-  'operationId': get.configs.f7df17
+  'operationId': get.configs.9a20a1
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CONFIG_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a configs by ID
 'patch':
-  'operationId': patch.configs.0d3d1e
+  'operationId': patch.configs.65769a
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CONFIG_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of configs
 'post':
-  'operationId': post.configs.92ac8e
+  'operationId': post.configs.022f90
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CONFIG_ID'
@@ -47,7 +47,7 @@
       'summary': Successful operation
   'summary': Update an instance of configs
 'put':
-  'operationId': put.configs.690951
+  'operationId': put.configs.0d3a6b
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CONFIG_ID'

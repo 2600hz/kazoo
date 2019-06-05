@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.menus.d97bf6
+  'operationId': delete.menus.0654f1
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/MENU_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of menus
 'get':
-  'operationId': get.menus.4f5ef2
+  'operationId': get.menus.d5a2fe
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/MENU_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a menus by ID
 'patch':
-  'operationId': patch.menus.0ecf2e
+  'operationId': patch.menus.4bc45f
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/MENU_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of menus
 'post':
-  'operationId': post.menus.15c4a2
+  'operationId': post.menus.6e288f
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/MENU_ID'
@@ -47,7 +47,7 @@
       'summary': Successful operation
   'summary': Update an instance of menus
 'put':
-  'operationId': put.menus.565b9c
+  'operationId': put.menus.ff8375
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

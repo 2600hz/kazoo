@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.resource_templates.2001f5
+  'operationId': delete.resource_templates.1113b3
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/RESOURCE_TEMPLATE_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of resource_templates
 'get':
-  'operationId': get.resource_templates.232edf
+  'operationId': get.resource_templates.1fabd6
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/RESOURCE_TEMPLATE_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a resource_templates by ID
 'patch':
-  'operationId': patch.resource_templates.1e6c45
+  'operationId': patch.resource_templates.f0fb93
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/RESOURCE_TEMPLATE_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of resource_templates
 'post':
-  'operationId': post.resource_templates.ef4c9e
+  'operationId': post.resource_templates.990f63
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/RESOURCE_TEMPLATE_ID'
@@ -47,7 +47,7 @@
       'summary': Successful operation
   'summary': Update an instance of resource_templates
 'put':
-  'operationId': put.resource_templates.63af8b
+  'operationId': put.resource_templates.c2a090
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

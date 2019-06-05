@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.vmboxes.2b28cb
+  'operationId': delete.vmboxes.c73638
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/VM_MSG_ID'
@@ -10,7 +10,7 @@
       'summary': Successful operation
   'summary': Delete an instance of vmboxes
 'get':
-  'operationId': get.vmboxes.0647c3
+  'operationId': get.vmboxes.476700
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/VM_MSG_ID'
@@ -21,7 +21,7 @@
       'summary': Successful operation
   'summary': Gets raw of vmboxes
 'patch':
-  'operationId': patch.vmboxes.672a7c
+  'operationId': patch.vmboxes.4b8d02
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/VM_BOX_ID'
@@ -35,7 +35,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of vmboxes
 'post':
-  'operationId': post.vmboxes.f97b35
+  'operationId': post.vmboxes.50e906
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/VM_BOX_ID'
@@ -49,7 +49,7 @@
       'summary': Successful operation
   'summary': Update an instance of vmboxes
 'put':
-  'operationId': put.vmboxes.bc0968
+  'operationId': put.vmboxes.362ab2
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/VM_MSG_ID'

@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.webhooks.6780f7
+  'operationId': delete.webhooks.7cec43
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/WEBHOOK_ID'
@@ -9,17 +9,17 @@
       'summary': Successful operation
   'summary': Delete an instance of webhooks
 'get':
-  'operationId': get.webhooks.f5f8ac
+  'operationId': get.webhooks.fc3fea
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/WEBHOOK_ID'
+    - '$ref': '../oas3-parameters.yml#/SAMPLE_ID'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
   'responses':
     '200':
       'summary': Successful operation
-  'summary': Gets attempts of webhooks
+  'summary': Gets a webhooks by ID
 'patch':
-  'operationId': patch.webhooks.adfc36
+  'operationId': patch.webhooks.e7eb68
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/WEBHOOK_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of webhooks
 'post':
-  'operationId': post.webhooks.345a99
+  'operationId': post.webhooks.38b7bd
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/WEBHOOK_ID'
@@ -47,7 +47,7 @@
       'summary': Successful operation
   'summary': Update an instance of webhooks
 'put':
-  'operationId': put.webhooks.eb078a
+  'operationId': put.webhooks.b554b6
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

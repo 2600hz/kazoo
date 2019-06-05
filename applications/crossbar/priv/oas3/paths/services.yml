@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.services.3360d0
+  'operationId': delete.services.bdc6b0
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/PLAN_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of services
 'get':
-  'operationId': get.services.959c36
+  'operationId': get.services.41ea33
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/AUDIT_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a services by ID
 'patch':
-  'operationId': patch.services.8284cc
+  'operationId': patch.services.2c3ae5
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -32,7 +32,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of services
 'post':
-  'operationId': post.services.533464
+  'operationId': post.services.65f2e0
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

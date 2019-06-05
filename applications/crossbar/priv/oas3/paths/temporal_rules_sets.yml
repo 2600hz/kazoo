@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.temporal_rules_sets.e7ef96
+  'operationId': delete.temporal_rules_sets.b604f5
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/TEMPORAL_RULE_SET'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of temporal_rules_sets
 'get':
-  'operationId': get.temporal_rules_sets.d06401
+  'operationId': get.temporal_rules_sets.934973
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/TEMPORAL_RULE_SET'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a temporal_rules_sets by ID
 'patch':
-  'operationId': patch.temporal_rules_sets.9b7a93
+  'operationId': patch.temporal_rules_sets.736737
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/TEMPORAL_RULE_SET'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of temporal_rules_sets
 'post':
-  'operationId': post.temporal_rules_sets.ea4ab0
+  'operationId': post.temporal_rules_sets.797bd8
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/TEMPORAL_RULE_SET'
@@ -47,7 +47,7 @@
       'summary': Successful operation
   'summary': Update an instance of temporal_rules_sets
 'put':
-  'operationId': put.temporal_rules_sets.d5a213
+  'operationId': put.temporal_rules_sets.b24132
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

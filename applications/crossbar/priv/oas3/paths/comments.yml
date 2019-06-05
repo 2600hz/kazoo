@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.comments.115791
+  'operationId': delete.comments.d84107
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/COMMENT_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of comments
 'get':
-  'operationId': get.comments.81fcd6
+  'operationId': get.comments.4a42ef
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/COMMENT_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a comments by ID
 'post':
-  'operationId': post.comments.6f0cd1
+  'operationId': post.comments.cd0621
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/COMMENT_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Update an instance of comments
 'put':
-  'operationId': put.comments.5d5bce
+  'operationId': put.comments.508a9b
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

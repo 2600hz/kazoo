@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.hotdesks.e14b32
+  'operationId': get.hotdesks.1bdec3
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

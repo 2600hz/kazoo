@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.call_inspector.cddc04
+  'operationId': get.call_inspector.e0dfed
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CALL_ID'

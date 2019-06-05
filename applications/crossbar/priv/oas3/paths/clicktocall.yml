@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.clicktocall.dc5b05
+  'operationId': delete.clicktocall.9ce34e
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/C2C_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of clicktocall
 'get':
-  'operationId': get.clicktocall.52cdbf
+  'operationId': get.clicktocall.c3de49
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header_or_none'
     - '$ref': '../oas3-parameters.yml#/C2C_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets connect of clicktocall
 'patch':
-  'operationId': patch.clicktocall.46ebb8
+  'operationId': patch.clicktocall.db5f48
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/C2C_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of clicktocall
 'post':
-  'operationId': post.clicktocall.be3f9f
+  'operationId': post.clicktocall.55c5e5
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header_or_none'
     - '$ref': '../oas3-parameters.yml#/C2C_ID'
@@ -47,7 +47,7 @@
       'summary': Successful operation
   'summary': Update an instance of clicktocall
 'put':
-  'operationId': put.clicktocall.817a4c
+  'operationId': put.clicktocall.61c3b6
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

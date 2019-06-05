@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.sup.aef7e4
+  'operationId': get.sup.b7c321
   'parameters':
     - '$ref': '../oas3-parameters.yml#/MODULE'
     - '$ref': '../oas3-parameters.yml#/FUNCTION'

@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.resources.5a2545
+  'operationId': delete.resources.c55cc3
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/RESOURCE_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of resources
 'get':
-  'operationId': get.resources.02f846
+  'operationId': get.resources.a47f8b
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/JOB_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a resources by ID
 'patch':
-  'operationId': patch.resources.8c1bb0
+  'operationId': patch.resources.239449
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/RESOURCE_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of resources
 'post':
-  'operationId': post.resources.31ff82
+  'operationId': post.resources.a8dc13
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -46,7 +46,7 @@
       'summary': Successful operation
   'summary': Update an instance of resources
 'put':
-  'operationId': put.resources.cee814
+  'operationId': put.resources.532f50
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

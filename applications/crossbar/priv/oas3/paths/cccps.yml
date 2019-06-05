@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.cccps.5c582a
+  'operationId': delete.cccps.2dc031
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CCCP_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of cccps
 'get':
-  'operationId': get.cccps.379c42
+  'operationId': get.cccps.de9a8a
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CCCP_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a cccps by ID
 'post':
-  'operationId': post.cccps.81ccc8
+  'operationId': post.cccps.0b17e9
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CCCP_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Update an instance of cccps
 'put':
-  'operationId': put.cccps.39959b
+  'operationId': put.cccps.2c58e5
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CCCP_ID'

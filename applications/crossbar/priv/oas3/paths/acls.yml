@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.acls.26ef94
+  'operationId': get.acls.53a8a7
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

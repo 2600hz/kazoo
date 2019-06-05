@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.agents.39c86b
+  'operationId': get.agents.c971cc
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/USER_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Gets a agents by ID
 'post':
-  'operationId': post.agents.7dfb2a
+  'operationId': post.agents.7e9e55
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/USER_ID'

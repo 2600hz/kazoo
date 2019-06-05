@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.groups.a7224d
+  'operationId': delete.groups.b4d448
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/GROUP_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of groups
 'get':
-  'operationId': get.groups.bf6db3
+  'operationId': get.groups.e1c845
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/GROUP_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a groups by ID
 'patch':
-  'operationId': patch.groups.f54158
+  'operationId': patch.groups.b1e99c
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/GROUP_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of groups
 'post':
-  'operationId': post.groups.782534
+  'operationId': post.groups.b3d488
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/GROUP_ID'
@@ -47,7 +47,7 @@
       'summary': Successful operation
   'summary': Update an instance of groups
 'put':
-  'operationId': put.groups.599108
+  'operationId': put.groups.f5361a
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

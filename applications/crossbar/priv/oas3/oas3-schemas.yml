@@ -237,6 +237,10 @@ account_config.media:
           default: 5
           description: media storage retry times
           type: integer
+        workers:
+          default: 1
+          description: media call_recording workers
+          type: integer
   type: object
 account_config.notify:
   description: Schema for notify account_config
@@ -846,14 +850,6 @@ blacklists:
   required:
     - name
   type: object
-bookkeepers:
-  description: The bookkeeper modules provided by Kazoo
-  properties:
-    braintree:
-      type: object
-    local:
-      type: object
-  type: object
 call_recording:
   additionalProperties: false
   description: endpoint recording settings
@@ -1029,6 +1025,22 @@ call_waiting:
 caller_id:
   description: Defines caller ID settings based on the type of call being made
   properties:
+    asserted:
+      description: |-
+        Used to convey the proven identity of the originator of a request within a trusted network.
+      properties:
+        name:
+          description: The asserted identity name for the object type
+          maxLength: 35
+          type: string
+        number:
+          description: The asserted identity number for the object type
+          maxLength: 35
+          type: string
+        realm:
+          description: The asserted identity realm for the object type
+          type: string
+      type: object
     emergency:
       description: The caller ID used when a resource is flagged as 'emergency'
       properties:
@@ -1037,7 +1049,7 @@ caller_id:
           maxLength: 35
           type: string
         number:
-          description: The caller id name for the object type
+          description: The caller id number for the object type
           maxLength: 35
           type: string
       type: object
@@ -1049,7 +1061,7 @@ caller_id:
           maxLength: 35
           type: string
         number:
-          description: The caller id name for the object type
+          description: The caller id number for the object type
           maxLength: 35
           type: string
       type: object
@@ -1061,7 +1073,7 @@ caller_id:
           maxLength: 35
           type: string
         number:
-          description: The caller id name for the object type
+          description: The caller id number for the object type
           maxLength: 35
           type: string
       type: object
@@ -1133,6 +1145,10 @@ callflows.acdc_agent:
         - red_solid
         - green
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     timeout:
       description: 'Time, in seconds, for ''paused'' state'
       type: integer
@@ -1146,6 +1162,10 @@ callflows.acdc_member:
     priority:
       description: assign a priority to the caller
       type: integer
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.acdc_queue:
   description: Validator for the acdc_queue callflow data object
@@ -1159,6 +1179,10 @@ callflows.acdc_queue:
     id:
       description: Queue ID
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.acdc_wait_time:
   description: Validator for the acdc_wait_time callflow data object
@@ -1166,6 +1190,10 @@ callflows.acdc_wait_time:
     id:
       description: Queue ID
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     window:
       description: Window over which average wait time is calculated (in seconds)
       type: integer
@@ -1210,6 +1238,10 @@ callflows.after_bridge:
       oneOf:
         - type: boolean
         - type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.audio_macro:
   description: Validator for the audio_macro callflow data object
@@ -1268,9 +1300,15 @@ callflows.audio_macro:
               - tts
               - tone
             type: string
+        required:
+          - macro
         type: object
       minItems: 1
       type: array
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     terminators:
       default:
         - 1
@@ -1410,7 +1448,11 @@ callflows.audio_macro.tone:
   type: object
 callflows.branch_bnumber:
   description: Validator for the branch_bnumber callflow data object
-  properties: {}
+  properties:
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.branch_variable:
   description: Validator for the branch_variable callflow data object
@@ -1425,6 +1467,10 @@ callflows.branch_variable:
         - merged
         - user
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     variable:
       default: ''
       description: specifies the name of variable/property that should be looked up
@@ -1444,6 +1490,10 @@ callflows.call_forward:
         - toggle
         - menu
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.call_waiting:
   description: Validator for the call_waiting callflow data object
@@ -1463,6 +1513,10 @@ callflows.call_waiting:
         - device
         - user
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.callflow:
   description: Validator for the callflow callflow data object
@@ -1470,10 +1524,18 @@ callflows.callflow:
     id:
       description: The Callflow ID to branch to
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.camping_feature:
   description: Validator for the camping_feature callflow data object
-  properties: {}
+  properties:
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.check_cid:
   description: Validator for the check_cid callflow data object
@@ -1494,6 +1556,10 @@ callflows.check_cid:
       default: .*
       description: Determine match/nomatch when use_absolute_mode is false
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     use_absolute_mode:
       default: false
       description: 'If true, direct call down a branch that matches the caller ID'
@@ -1508,6 +1574,10 @@ callflows.cidlistmatch:
     id:
       description: CallerID List ID
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.collect_dtmf:
   description: Validator for the Collect DTMF callflow element
@@ -1524,6 +1594,10 @@ callflows.collect_dtmf:
       description: How many DTMFs to collect from the caller
       minimum: 1
       type: integer
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     terminator:
       default: '#'
       description: What DTMF will terminate collection before the timeout occurs
@@ -1591,6 +1665,10 @@ callflows.conference:
       oneOf:
         - type: boolean
         - type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     welcome_prompt:
       description: Describes how the caller is greeted on entering a conference
       properties:
@@ -1605,7 +1683,11 @@ callflows.conference:
   type: object
 callflows.dead_air:
   description: Validator for the dead_air callflow data object
-  properties: {}
+  properties:
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.device:
   properties:
@@ -1617,6 +1699,10 @@ callflows.device:
       description: Toggle whether devices of the same owner can text each other
       type: boolean
       x-support_level: alpha
+    custom_sip_headers:
+      description: |-
+        KV Object where the name is the SIP header and the value is the SIP field
+      type: object
     delay:
       default: 0
       description: 'How long to delay ringing the device, in seconds'
@@ -1631,6 +1717,10 @@ callflows.device:
     id:
       description: Device ID
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     static_invite:
       description: Override the SIP Username
       type: string
@@ -1648,10 +1738,18 @@ callflows.directory:
     id:
       description: Directory ID
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.disa:
   description: Validator for the DISA callflow data object
-  properties: {}
+  properties:
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.do_not_disturb:
   description: Validator for the do_not_disturb callflow data object
@@ -1666,6 +1764,10 @@ callflows.do_not_disturb:
     id:
       description: Document ID on which to update DND settings
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.dynamic_cid:
   description: Validator for the dynamic_cid callflow data object
@@ -1710,6 +1812,15 @@ callflows.dynamic_cid:
     min_digits:
       description: Minimum number of digits that must match the regex to collected DTMF
       type: integer
+    permit_custom_callflow:
+      default: false
+      description: |-
+        Permit a custom callflow to be accepted instead of restricting to no_match only when looking up callflows
+      type: boolean
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     whitelist_regex:
       description: Regex to match collected Caller ID Number
       type: string
@@ -1729,6 +1840,10 @@ callflows.eavesdrop:
     device_id:
       description: Device ID to eavesdrop
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     user_id:
       description: User ID to eavesdrop
       type: string
@@ -1748,10 +1863,18 @@ callflows.eavesdrop_feature:
     group_id:
       description: ID of the group/user/device to eavesdrop
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.edr:
   description: Validator for the edr callflow data object
-  properties: {}
+  properties:
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.fax_detect:
   description: Validator for the fax_detect callflow data object
@@ -1759,6 +1882,10 @@ callflows.fax_detect:
     duration:
       description: 'How long, in seconds, to try detecting fax tones'
       type: integer
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.faxbox:
   description: Validator for the faxbox callflow data object
@@ -1781,6 +1908,10 @@ callflows.faxbox:
                 - false
               type: string
       type: object
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.flush_dtmf:
   description: Validator for the flush_dtmf callflow data object
@@ -1789,6 +1920,10 @@ callflows.flush_dtmf:
       default: default
       description: Flush collected DTMF in a named key
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.group:
   description: Validator for the group callflow data object
@@ -1826,6 +1961,10 @@ callflows.group:
           description: Ring tone for calls from external sources
           type: string
       type: object
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     strategy:
       default: simultaneous
       description: How to ring the endpoints
@@ -1856,6 +1995,10 @@ callflows.group_pickup:
     group_id:
       description: Group in which to find a call to pickup
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     user_id:
       description: User in which to find a call to pickup
       type: string
@@ -1863,6 +2006,10 @@ callflows.group_pickup:
 callflows.group_pickup_feature:
   description: Validator for the group_pickup_feature callflow data object
   properties:
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     type:
       description: The type of collection to pickup
       enum:
@@ -1874,7 +2021,11 @@ callflows.group_pickup_feature:
   type: object
 callflows.hangup:
   description: Validator for the hangup callflow data object
-  properties: {}
+  properties:
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.hotdesk:
   description: Validator for the hotdesk callflow data object
@@ -1893,6 +2044,10 @@ callflows.hotdesk:
     interdigit_timeout:
       description: 'How long, in seconds, to wait between keypresses'
       type: integer
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.intercept:
   description: Validator for the intercept callflow data object
@@ -1912,6 +2067,10 @@ callflows.intercept:
     group_id:
       description: Group in which to find a call to intercept
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     user_id:
       description: User in which to find a call to intercept
       type: string
@@ -1928,6 +2087,10 @@ callflows.intercept_feature:
     approved_user_id:
       description: Requires the calling device to be part of the User
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     type:
       description: The scope of devices to intercept
       enum:
@@ -1942,6 +2105,10 @@ callflows.intercom:
     barge_calls:
       description: Whether to barge in on the callee
       type: boolean
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.language:
   description: Validator for the Language callflow element
@@ -1950,6 +2117,10 @@ callflows.language:
       description: The language to default to for the rest of the call
       pattern: '^[A-Za-z]{2}(-[A-Za-z]{2})?$'
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   required:
     - language
   type: object
@@ -1962,6 +2133,10 @@ callflows.lookupcidname:
       items:
         type: string
       type: array
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   required:
     - lists
   type: object
@@ -1971,6 +2146,10 @@ callflows.manual_presence:
     presence_id:
       description: The Presence ID to send a presence notification about
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     status:
       default: idle
       description: The status to update to
@@ -1991,6 +2170,10 @@ callflows.menu:
     interdigit_timeout:
       description: 'Amount of time, in milliseconds, to wait between keypresses'
       type: integer
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.missed_call_alert:
   description: Validator for the missed_call_alert callflow data object
@@ -2022,12 +2205,20 @@ callflows.missed_call_alert:
           - type
         type: object
       type: array
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   required:
     - recipients
   type: object
 callflows.move:
   description: Validator for the move callflow data object
-  properties: {}
+  properties:
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.nomorobo:
   description: Validator for the NoMoRobo callflow action
@@ -2037,6 +2228,10 @@ callflows.nomorobo:
       maxLength: 1000
       minLength: 1
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     username:
       description: Username to the NoMoRobo service
       maxLength: 1000
@@ -2158,9 +2353,16 @@ callflows.offnet:
       items:
         type: string
       type: array
+    resource_type:
+      description: sets a custom resource type for the published amqp message
+      type: string
     ringback:
       description: Tone or file to play while waiting for the leg to be answered
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     timeout:
       description: 'How long, in seconds, to wait for the call to be answered'
       type: integer
@@ -2222,6 +2424,10 @@ callflows.page_group:
         type: object
       minItems: 1
       type: array
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     timeout:
       default: 5
       description: 'How long to ring the ring group before continuing, in seconds'
@@ -2259,9 +2465,17 @@ callflows.park:
     default_ringback_timeout:
       description: 'How long, in milliseconds, before ringing back'
       type: integer
+    max_slot_number:
+      description: |-
+        Continue past this module if the selected slot number exceeds this number. Used to restrict the max number of auto-generated slot numbers
+      type: integer
     presence_id:
       description: use this presence_id
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     slot:
       description: Static slot number to use
       type: string
@@ -2304,6 +2518,10 @@ callflows.pivot:
         - kazoo
         - twiml
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     voice_url:
       description: What URL to request the initial Pivot callflow
       pattern: '^https?://'
@@ -2328,6 +2546,10 @@ callflows.play:
       description: How many times to loop the media
       minimum: 1
       type: integer
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     terminators:
       default:
         - 1
@@ -2372,6 +2594,10 @@ callflows.prepend_cid:
       default: ''
       description: Prefix caller ID number
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.privacy:
   description: Validator for the privacy callflow data object
@@ -2394,6 +2620,10 @@ callflows.privacy:
         - number
         - yes
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.receive_fax:
   description: Validator for the receive_fax callflow data object
@@ -2413,6 +2643,10 @@ callflows.receive_fax:
     owner_id:
       description: User ID to send fax to
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.record_call:
   description: Validator for the Record Call callflow action
@@ -2437,6 +2671,7 @@ callflows.record_call:
       description: the name of media
       type: string
     method:
+      default: put
       description: HTTP verb to use when sending the recording to the supplied URL
       enum:
         - put
@@ -2463,6 +2698,10 @@ callflows.record_call:
     should_follow_transfer:
       default: true
       description: 'If true, the recording will continue after a transfer on the active leg'
+      type: boolean
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
       type: boolean
     time_limit:
       default: 3600
@@ -2493,6 +2732,10 @@ callflows.record_caller:
         - put
         - post
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     time_limit:
       default: 3600
       description: 'Time limit, in seconds, for the recording'
@@ -2561,9 +2804,16 @@ callflows.resources:
       items:
         type: string
       type: array
+    resource_type:
+      description: sets a custom resource type for the published amqp message
+      type: string
     ringback:
       description: Tone or file to play while waiting for the leg to be answered
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     timeout:
       description: 'How long, in seconds, to wait for the call to be answered'
       type: integer
@@ -2590,6 +2840,10 @@ callflows.response:
     message:
       description: The SIP Hangup cause to respond with
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   required:
     - code
   type: object
@@ -2656,6 +2910,10 @@ callflows.ring_group:
           description: Ring tone for calls from external sources
           type: string
       type: object
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     strategy:
       default: simultaneous
       description: How to ring the members of the group
@@ -2683,6 +2941,10 @@ callflows.ring_group_toggle:
     callflow_id:
       description: The callflow containing the ring group to log in and out of
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   required:
     - action
     - callflow_id
@@ -2714,6 +2976,10 @@ callflows.route_to_cid:
       items:
         type: string
       type: array
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     static_invite:
       description: Override the SIP Username
       type: string
@@ -2737,12 +3003,20 @@ callflows.send_dtmf:
       oneOf:
         - type: integer
         - type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   required:
     - digits
   type: object
 callflows.set:
   description: Validator for the set callflow data object
-  properties: {}
+  properties:
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.set_alert_info:
   description: Validator for the set_alert_info callflow data object
@@ -2750,6 +3024,10 @@ callflows.set_alert_info:
     alert_info:
       description: Set `Alert-Info` header inside b-leg channel. Used for distinctive ring.
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   required:
     - alert_info
   type: object
@@ -2764,6 +3042,10 @@ callflows.set_cid:
       default: ''
       description: Set caller ID number
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.set_variable:
   description: Validator for the set_variable callflow data object
@@ -2775,6 +3057,10 @@ callflows.set_variable:
         - a
         - both
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     value:
       description: The value to set 'variable'
       type: string
@@ -2789,19 +3075,24 @@ callflows.set_variables:
       default: {}
       description: Key-value pairs to set as custom_application_vars on the channel
       type: object
-      x-patternProperties:
-        [a-zA-Z0-9\-_]+:
-          type: string
     export:
       description: |-
         When true the provided custom_application_vars are set on the channel and any channel bridged to it later
+      type: boolean
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
       type: boolean
   required:
     - custom_application_vars
   type: object
 callflows.skel:
   description: Validator for the skel callflow data object
-  properties: {}
+  properties:
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.sleep:
   description: Validator for the sleep callflow data object
@@ -2812,6 +3103,10 @@ callflows.sleep:
       maximum: 86400000
       minimum: 0
       type: integer
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     unit:
       default: s
       description: What time unit is 'duration' in
@@ -2846,6 +3141,10 @@ callflows.temporal_route:
         description: ID of the temporal rule set to use
         type: string
       type: array
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     timezone:
       description: Timezone to use when processing temporal rules
       type: string
@@ -2866,6 +3165,10 @@ callflows.transfer:
         - self
         - bleg
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     target:
       description: The target destination (extension or DID)
       type: string
@@ -2894,6 +3197,10 @@ callflows.tts:
     language:
       description: The language of the speaker
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     terminators:
       default:
         - 1
@@ -2933,6 +3240,10 @@ callflows.user:
     can_text_self:
       description: Toggle whether devices of this use can text each other
       type: boolean
+    custom_sip_headers:
+      description: |-
+        KV Object where the name is the SIP header and the value is the SIP field
+      type: object
     delay:
       default: 0
       description: How long to delay the endpoint(s) before bridging
@@ -2943,6 +3254,10 @@ callflows.user:
     id:
       description: User ID
       type: string
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     static_invite:
       description: Override the SIP Username
       type: string
@@ -2993,6 +3308,10 @@ callflows.voicemail:
       default: false
       description: Allow login if caller has a single mailbox
       type: boolean
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
   type: object
 callflows.webhook:
   description: Validator for the webhook callflow data object
@@ -3009,6 +3328,10 @@ callflows.webhook:
     retries:
       description: How many times to retry the request if the host isn't available
       type: integer
+    skip_module:
+      description: |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      type: boolean
     uri:
       description: The HTTP URI to send the request
       type: string
@@ -3054,7 +3377,7 @@ cdrs:
     billing_seconds:
       description: |-
         The number of seconds the call leg can be billed for (typically from when the call leg is answered
-      type: string
+      type: integer
     call_direction:
       description: 'Direction of the call, relative to the media switch'
       enum:
@@ -3076,6 +3399,9 @@ cdrs:
     caller_id_number:
       description: The indicated number of the caller
       type: string
+    custom_application_vars:
+      description: Any custom-set values
+      type: object
     custom_channel_vars:
       additionalProperties:
         type: string
@@ -3103,7 +3429,7 @@ cdrs:
       type: string
     duration_seconds:
       description: 'The duration of the call leg, in seconds'
-      type: string
+      type: integer
     fax_bad_rows:
       type: string
     fax_ecm_used:
@@ -3123,6 +3449,9 @@ cdrs:
     from:
       description: 'Built by Kazoo, depending on direction, to represent the From user'
       type: string
+    from_tag:
+      description: SIP From TAG
+      type: string
     from_uri:
       description: The From SIP URI
       type: string
@@ -3131,6 +3460,9 @@ cdrs:
       type: string
     hangup_code:
       description: 'The SIP hangup code, if available'
+      type: string
+    interaction_id:
+      description: correlating ID among related call legs
       type: string
     local_sdp:
       description: The SDP negotiated by the local agent
@@ -3167,12 +3499,15 @@ cdrs:
       type: string
     ringing_seconds:
       description: How many seconds the leg was ringing (pre-answer)
-      type: string
+      type: integer
     timestamp:
       description: 'UTC timestamp, in Gregorian seconds, of when the CDR was generated'
-      type: string
+      type: integer
     to:
       description: 'Built by Kazoo, depending on direction, to represent the To user'
+      type: string
+    to_tag:
+      description: SIP TO Tag
       type: string
     to_uri:
       description: The To SIP URI
@@ -3282,6 +3617,45 @@ clicktocall:
   required:
     - extension
     - name
+  type: object
+comment:
+  description: Schema for a single comment
+  properties:
+    account_id:
+      description: Account ID of the commenter.
+      type: string
+    action_required:
+      default: false
+      description: Specified if an action is required by the user.
+      type: boolean
+    author:
+      description: Full name of the author
+      type: string
+    content:
+      description: Content of the comment
+      type: string
+    is_private:
+      default: false
+      description: Specified if this comment is private
+      type: boolean
+    timestamp:
+      type: integer
+    user_id:
+      description: User ID of the commenter
+      type: string
+  required:
+    - author
+    - content
+    - timestamp
+  type: object
+comments:
+  description: Schema for comments
+  properties:
+    comments:
+      description: The history of comments made on a object
+      items:
+        $ref: '#/components/schemas/comment'
+      type: array
   type: object
 conferences:
   description: Schema for conferences
@@ -4837,6 +5211,28 @@ groups:
     - endpoints
     - name
   type: object
+ip:
+  description: IP address assigned to the cluster
+  properties:
+    host:
+      description: The hostname the IP belongs to
+      minLength: 1
+      type: string
+    ip:
+      description: The IP addresses
+      oneOf:
+        - format: ipv4
+          type: string
+        - format: ipv6
+          type: string
+    zone:
+      description: The zone name the IP belongs to
+      minLength: 1
+      type: string
+  required:
+    - ip
+    - zone
+    - host
 ips:
   description: IP addresses assigned to the account
   properties:
@@ -4844,7 +5240,11 @@ ips:
       description: List of IP addresses
       items:
         description: IP address
-        type: string
+        oneOf:
+          - format: ipv4
+            type: string
+          - format: ipv6
+            type: string
       minItems: 1
       type: array
 ledgers:
@@ -4861,9 +5261,9 @@ ledgers:
           type: string
       type: object
     amount:
-      description: Ledger amount
+      description: 'Ledger amount, in currency amount'
       minimum: 1
-      type: integer
+      type: number
     description:
       description: Useful description for ledger
       type: string
@@ -4923,6 +5323,14 @@ limits:
         Determines if the account would like to allow per-minute calls if they have no available credit
       type: boolean
       x-support_level: supported
+    authz_resource_types:
+      default: []
+      description: |-
+        List of Resource-Types that will authorize the call; bypassing limit checks and billing
+      items:
+        type: string
+      type: array
+      x-support_level: beta
     burst_trunks:
       description: |-
         The number of two-way, flat-rate trunks used only if no other trunks are available
@@ -5058,7 +5466,7 @@ media:
   properties:
     content_length:
       description: 'Length, in bytes, of the file'
-      maximum: 5242880
+      maximum: 11534336
       minimum: 1
       type: integer
       x-support_level: supported
@@ -5806,6 +6214,9 @@ metaflows.transfer:
     target:
       description: The target extension/DID
       type: string
+    timeout:
+      description: timeout to establish call
+      type: integer
     transfer_type:
       default: blind
       description: The type of transfer to perform
@@ -6155,12 +6566,14 @@ port_requests:
     bill:
       description: Billing information of the losing carrier
       properties:
+        account_number:
+          description: Account Number to identify account
+          type: string
+        btn:
+          description: Billing Telephone Number (BTN) to identify account
+          type: string
         carrier:
           description: The name of the losing carrier
-          type: string
-        extended_address:
-          description: |-
-            The suite/floor/apt of the billing address the losing carrier has on record
           type: string
         locality:
           description: |-
@@ -6168,6 +6581,9 @@ port_requests:
           type: string
         name:
           description: The losing carrier billing/account name
+          type: string
+        pin:
+          description: Personal Identification Number (PIN) to identify account
           type: string
         postal_code:
           description: |-
@@ -6185,6 +6601,12 @@ port_requests:
           description: |-
             The street number of the billing address the losing carrier has on record
           type: string
+        street_post_dir:
+          description: Street Post-Direction
+          type: string
+        street_pre_dir:
+          description: Street Pre-Direction
+          type: string
         street_type:
           description: |-
             The street type of the billing address the losing carrier has on record
@@ -6193,7 +6615,7 @@ port_requests:
     comments:
       description: The history of comments made on a port request
       items:
-        type: object
+        $ref: '#/components/schemas/comment'
       type: array
     name:
       description: A friendly name for the port request
@@ -6224,17 +6646,8 @@ port_requests:
       x-patternProperties:
         \+?[0-9]+:
           type: object
-    port_state:
-      default: unconfirmed
-      description: What state the port request is currently in
-      enum:
-        - unconfirmed
-        - pending
-        - submitted
-        - scheduled
-        - completed
-        - rejected
-        - canceled
+    reference_number:
+      description: Winning carrier reference number or order ID
       type: string
     signee_name:
       description: |-
@@ -6247,6 +6660,9 @@ port_requests:
     transfer_date:
       description: Requested transfer date in Gregorian timestamp
       type: integer
+    winning_carrier:
+      description: The name of winning carrier
+      type: string
   required:
     - name
     - numbers
@@ -7471,34 +7887,18 @@ resources:
     - gateways
     - name
   type: object
-service_plan.category:
-  description: Describes a service plan category
-  properties:
-    _all:
-      $ref: '#/components/schemas/service_plan.item'
-      description: Applies item rules to any item in this category
-      properties:
-        exceptions:
-          description: Items that are not included in this item plan
-          items:
-            type: string
-          type: array
-      type: object
-  x-patternProperties:
-    .+:
-      $ref: '#/components/schemas/service_plan.item'
-      description: Item name
-      type: object
 service_plan.item:
   description: Describes a service plan item
   properties:
     activation_charge:
+      default: 0.0
       description: What to charge when activating an Item
       type: number
     as:
       description: Count Item as if it was another Item
       type: string
     cascade:
+      default: false
       description: Whether to count quantities among all sub-accounts or just the account
       type: boolean
     discounts:
@@ -7511,14 +7911,46 @@ service_plan.item:
             rate:
               description: 'The discount to apply, up to maximum Items (if applicable)'
               type: number
+            rates:
+              description: |-
+                Takes precedence over rate, sets the discount based on the billable quantity
+              type: object
+              x-patternProperties:
+                ^[0-9]+$:
+                  description: |-
+                    The amount to apply if the quantity is under the indicated in the key
+                  type: number
           type: object
         single:
           properties:
             rate:
-              description: A single discount amount to apply if there are more than 0 units
+              description: |-
+                A single discount amount to apply if there are more than 0 units and no match in rates
               type: number
+            rates:
+              description: |-
+                Takes precedence over rate, sets the discount based on the billable quantity
+              type: object
+              x-patternProperties:
+                ^[0-9]+$:
+                  description: |-
+                    The amount to apply if the quantity is under the indicated in the key
+                  type: number
           type: object
       type: object
+    flat_rate:
+      default: 0.0
+      description: 'Takes precedence over rates and rate, charges only the provided amount'
+      type: number
+    flat_rates:
+      default: {}
+      description: |-
+        Takes precedence over flat_rate, rates and rate, charges only the provided amount
+      type: object
+      x-patternProperties:
+        ^[0-9]+$:
+          description: The rate to charge when under the quantity indicated in the key
+          type: number
     markup_type:
       description: How rate for this usage is calculated
       enum:
@@ -7526,25 +7958,46 @@ service_plan.item:
         - percentage
         - rate
       type: string
+    maximum:
+      description: The maximum quantity of items to bill for
+      type: integer
     minimum:
-      description: 'The minimum quantity to charge for, if ''quantity'' is less than ''minimum'''
+      default: 0
+      description: The minimum quantity of items to bill for
       type: integer
     name:
       description: Friendly name for this Item
       type: string
-    quantity:
-      description: How many of the item are allowed
-      type: integer
+    prorate:
+      description: Should this item be prorated
+      properties:
+        additions:
+          default: true
+          description: Should this item be prorated during additions
+          type: boolean
+        removals:
+          default: false
+          description: Should this item be prorated during removals
+          type: boolean
+      type: object
     rate:
-      description: The rate to charge
+      default: 0.0
+      description: |-
+        Used if no flat_rates, flat_rate or rates apply, resulting charges is billable quantity multipled with rate
       type: number
     rates:
-      description: Tiers of rates based on quantities
+      default: {}
+      description: |-
+        Takes precedence over rate, resulting charges is billable quantity multipled with tiered rate
       type: object
       x-patternProperties:
         ^[0-9]+$:
           description: The rate to charge when under the quantity indicated in the key
           type: number
+    step:
+      default: 1
+      description: Step size for quantity
+      type: integer
     taxes:
       items:
         properties:
@@ -7559,66 +8012,6 @@ service_plan.item:
             type: string
         type: object
       type: array
-  type: object
-service_plans:
-  description: Describes services offered to sub-accounts
-  properties:
-    bookkeepers:
-      $ref: '#/components/schemas/bookkeepers'
-      type: object
-    category:
-      description: Optional category used for grouping service plans
-      type: string
-    description:
-      description: Describes the service plan offering
-      type: string
-    manual_recurring:
-      description: Monthly recurring items
-      items:
-        properties:
-          name:
-            description: A friendly name for the item
-            type: string
-          quantity:
-            description: How many of the item are allowed
-            type: integer
-          rates:
-            description: Item's rate
-            type: number
-        type: object
-      type: array
-    merge:
-      description: |-
-        Optionally defines a strategy and priority to merge multiple service plans together
-      properties:
-        priority:
-          description: The priority among the service plans with the merge strategy
-          minimum: 0
-          type: integer
-        strategy:
-          description: |-
-            The merge strategy, like strategies are merged together based on their priority
-          enum:
-            - simple
-            - cumulative
-          type: string
-      type: object
-    name:
-      description: A friendly name for the service plan
-      maxLength: 128
-      minLength: 1
-      type: string
-    plan:
-      description: Outlines the service plan for various services
-      type: object
-      x-patternProperties:
-        .+:
-          $ref: '#/components/schemas/service_plan.category'
-          description: Category name
-          type: object
-  required:
-    - name
-    - plan
   type: object
 shared_auth:
   additionalProperties: false
@@ -7661,18 +8054,13 @@ storage:
   properties:
     attachments:
       $ref: '#/components/schemas/storage.attachments'
-      description: Defines where and how to store attachments
     connections:
       $ref: '#/components/schemas/storage.connections'
-      description: |-
-        Describes alternative connections to use (such as alternative CouchDB instances
     id:
       description: ID of the storage document
       type: string
     plan:
       $ref: '#/components/schemas/storage.plan'
-      description: |-
-        Describes how to store documents depending on the database or document type
   type: object
   x-patternProperties:
     ^_:
@@ -7873,12 +8261,13 @@ storage.attachment.http:
       enum:
         - http
       type: string
-    name:
-      description: Friendly name for this attachment handler
-      type: string
     settings:
       description: HTTP server settings
       properties:
+        base64_encode_data:
+          default: false
+          description: Toggles whether to base64-encode the attachment data
+          type: boolean
         send_multipart:
           description: |-
             Toggle whether to send multipart payload when storing attachment - will include metadata JSON if true
@@ -7887,11 +8276,11 @@ storage.attachment.http:
           description: The base HTTP(s) URL to use when creating the request
           type: string
         verb:
-          default: POST
+          default: put
           description: The HTTP verb to use when sending the data
           enum:
-            - POST
-            - PUT
+            - post
+            - put
           type: string
       required:
         - url
@@ -7925,7 +8314,9 @@ storage.attachment.onedrive:
     - settings
   type: object
 storage.attachments:
-  description: Keys are 32-character identifiers to be used in storage plans
+  additionalProperties: false
+  description: |-
+    Defines where and how to store attachments. Keys are 32-character identifiers to be used in storage plans
   type: object
   x-patternProperties:
     ^[a-z0-9]{32}$:
@@ -7939,43 +8330,58 @@ storage.attachments:
         - $ref: '#/components/schemas/storage.attachment.dropbox'
         - $ref: '#/components/schemas/storage.attachment.http'
       properties:
-        field_list:
-          description: list of field to compose destination url
-          items:
-            - description: a static string
-              type: string
-            - properties:
-                arg:
-                  description: a argument passed to the handler
-                  type: string
-                field:
-                  description: a field from the metadata document
-                  type: string
-                group:
-                  description: group the inner fields definitions with an empty separator
-                  items:
-                    - description: a static string
-                      type: string
-                    - properties:
-                        arg:
-                          description: a argument passed to the handler
-                          type: string
-                        field:
-                          description: a field from the metadata document
-                          type: string
-                      type: object
-                  type: array
-              type: object
-          type: array
-        field_separator:
-          description: 'toplevel, field separator to compose destination url'
-          type: string
-        folder_base_path:
-          description: base folder path
-          type: string
         name:
           description: Friendly name for this configuration
           type: string
+        settings:
+          description: Settings all handlers implement
+          properties:
+            field_list:
+              description: list of fields to compose destination url
+              items:
+                $ref: '#/components/schemas/storage.attachments.field'
+              type: array
+            field_separator:
+              description: 'toplevel, field separator to compose destination url'
+              type: string
+            folder_base_path:
+              description: base folder path
+              type: string
+          type: object
+      type: object
+storage.attachments.field:
+  description: field used when composing destination url
+  oneOf:
+    - additionalProperties: false
+      properties:
+        arg:
+          description: an argument passed to the handler
+          enum:
+            - account_id
+            - db
+            - id
+            - attachment
+          type: string
+      type: object
+    - additionalProperties: false
+      properties:
+        const:
+          description: a constant value added to the string
+          type: string
+      type: object
+    - additionalProperties: false
+      properties:
+        field:
+          description: a field from the metadata document
+          type: string
+      type: object
+    - additionalProperties: false
+      properties:
+        group:
+          description: group the inner fields definitions with an empty separator
+          items:
+            $ref: '#/components/schemas/storage.attachments.field'
+          type: array
       type: object
 storage.connection.couchdb:
   description: schema for CouchDB connection entry
@@ -8031,6 +8437,8 @@ storage.connection.couchdb:
     - settings
   type: object
 storage.connections:
+  description: |-
+    Describes alternative connections to use (such as alternative CouchDB instances
   type: object
   x-patternProperties:
     ^([a-z,0-9]){32}$:
@@ -8040,7 +8448,7 @@ storage.connections:
       type: object
 storage.plan:
   additionalProperties: false
-  description: schema for storage plan
+  description: Describes how to store documents depending on the database or document type
   properties:
     account:
       $ref: '#/components/schemas/storage.plan.database'
@@ -8469,6 +8877,22 @@ system_config.callflow:
       default: 0
       description: callflow operator key
       type: string
+    pool_overflow:
+      default: 100
+      description: callflow pool_overflow
+      type: integer
+    pool_server_confirms:
+      default: false
+      description: callflow pool_server_confirms
+      type: boolean
+    pool_size:
+      default: 150
+      description: callflow pool_size
+      type: integer
+    pool_threshold:
+      default: 5
+      description: callflow pool_threshold
+      type: integer
     post_answer_delay:
       default: 100
       description: callflow post answer delay
@@ -8663,9 +9087,15 @@ system_config.callflow.park:
 system_config.callflow.resources:
   description: Schema for callflow.resources system_config
   properties:
+    default_asserted_identity:
+      default: false
+      description: |-
+        When set to true, the asserted identity will have defaults and force the use of P-Asserted-Identity (instead of RPID) on all outbound offnet calls.  When set to false, P-Asserted-Identity is only used if explicitly set in the account/user/device hierarchy.
+      type: boolean
     default_emit_account_id:
       default: false
-      description: callflow.resources default emit account id
+      description: |-
+        When set to true, all outbound offnet calls will include a SIP header X-Account-ID with a value of the Kazoo account UUID.
       type: boolean
   type: object
 system_config.camper:
@@ -8749,6 +9179,13 @@ system_config.cdr:
       description: cdr v3 migrate num months
       type: integer
   type: object
+system_config.cluster:
+  description: Schema for cluster system_config
+  properties:
+    cluster_id:
+      description: provisioner cluster id
+      type: string
+  type: object
 system_config.conferences:
   description: Schema for conferences system_config
   properties:
@@ -8784,6 +9221,7 @@ system_config.conferences:
                 type: string
             type: object
           type: array
+      type: object
     entry_tone:
       default: |-
         tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)
@@ -9215,7 +9653,9 @@ system_config.crossbar.cdrs:
       type: integer
     maximum_range:
       default: 2682000
-      description: crossbar.cdrs maximum range
+      description: |-
+        maximum range (in seconds) prior to the current date allowed for CDR requests
+      minimum: 1
       type: integer
   type: object
 system_config.crossbar.channels:
@@ -9367,9 +9807,6 @@ system_config.crossbar.phone_numbers:
 system_config.crossbar.phonebook:
   description: Schema for crossbar.phonebook system_config
   properties:
-    cluster_id:
-      description: the kazoo cluster_id
-      type: string
     enabled:
       default: false
       description: phonebook integration enabled
@@ -9458,6 +9895,22 @@ system_config.crossbar.ubiquiti:
       description: crossbar.ubiquiti tokens per request
       type: integer
   type: object
+system_config.crossbar.users:
+  description: Schema for crossbar.users system_config
+  properties:
+    generate_password_if_empty:
+      default: false
+      description: crossbar users generate_password_if_empty
+      type: boolean
+    generate_username_if_empty:
+      default: true
+      description: crossbar users generate_username_if_empty
+      type: boolean
+    reset_identity_secret_on_rehash:
+      default: true
+      description: crossbar users reset_identity_secret_on_rehash
+      type: boolean
+  type: object
 system_config.crossbar.voicemail:
   description: Schema for crossbar.voicemail system_config
   properties:
@@ -9469,6 +9922,9 @@ system_config.crossbar.voicemail:
       default: false
       description: Whether or not normalize voicemail audio file
       type: boolean
+    transcribe_format:
+      description: crossbar voicemail transcribe_format
+      type: string
   type: object
 system_config.datamgr:
   description: Schema for datamgr system_config
@@ -9485,6 +9941,18 @@ system_config.datamgr:
         system_data: infinity
       description: datamgr cache policy
       type: object
+    change_notice_exclude_types:
+      default:
+        - cdr
+        - ledger
+        - audit_log
+        - login_attempt
+        - pivot_debug
+        - notify_smtp_log
+      description: datamgr change_notice_exclude_types
+      items:
+        type: string
+      type: array
     default_archive_folder:
       default: /tmp
       description: datamgr default archive folder
@@ -9584,6 +10052,10 @@ system_config.ecallmgr:
       default: {}
       description: ecallmgr acls
       type: object
+    allow_endless_recording:
+      default: false
+      description: ecallmgr allow_endless_recording
+      type: boolean
     authz_default_action:
       default: deny
       description: ecallmgr authz default action
@@ -9615,6 +10087,32 @@ system_config.ecallmgr:
     balance_crawler_interaccount_delay_ms:
       default: 10
       description: ecallmgr balance crawler interaccount delay in milliseconds
+      type: integer
+    call_control:
+      properties:
+        pool_overflow:
+          default: 100
+          description: ecallmgr call_control pool_overflow
+          type: integer
+        pool_server_confirms:
+          default: false
+          description: ecallmgr call_control pool_server_confirms
+          type: boolean
+        pool_size:
+          default: 150
+          description: ecallmgr call_control pool_size
+          type: integer
+        pool_threshold:
+          default: 5
+          description: ecallmgr call_control pool_threshold
+          type: integer
+        use_pool:
+          default: false
+          description: ecallmgr call_control use_pool
+          type: boolean
+    call_control_listeners:
+      default: 5
+      description: ecallmgr call_control_listeners
       type: integer
     call_routing_bindings:
       default:
@@ -9843,15 +10341,24 @@ system_config.ecallmgr:
       default: true
       description: ecallmgr redirect via proxy
       type: boolean
+    restrict_channel_event_publisher:
+      default: true
+      description: ecallmgr restrict_channel_event_publisher
+      type: boolean
     restrict_channel_state_publisher:
       default: false
       description: ecallmgr restrict channel state publisher
       type: boolean
+    sanitize_fs_value_regex:
+      default: '[^0-9\w\s-]'
+      description: ecallmgr sanitize_fs_value_regex
+      type: string
     should_detect_inband_dtmf:
       default: false
       description: ecallmgr should detect inband dtmf
       type: boolean
     sofia_conf:
+      default: false
       description: ecallmgr sofia conf
       type: boolean
     tcp_packet_type:
@@ -10015,6 +10522,14 @@ system_config.edr:
         type: object
       type: array
   type: object
+system_config.epmd:
+  description: Schema for epmd system_config
+  properties:
+    check_every_s:
+      default: 60
+      description: epmd check_every_s
+      type: integer
+  type: object
 system_config.fax:
   description: Schema for fax system_config
   properties:
@@ -10027,14 +10542,21 @@ system_config.fax:
         - application/pdf
         - image/tiff
         - prefix: image
-        - prefix: application/vnd.openxmlformats-officedocument.
-        - prefix: application/vnd.oasis.opendocument.
+        - prefix: application/vnd.openxmlformats-officedocument
+        - prefix: application/vnd.oasis.opendocument
         - application/msword
         - application/vnd.ms-excel
         - application/vnd.ms-powerpoint
       description: fax allowed content types
       items:
-        type: string
+        oneOf:
+          - type: string
+          - properties:
+              prefix:
+                type: string
+            required:
+              - prefix
+            type: object
       type: array
     cloud_registration_pool_interval:
       default: 5000
@@ -10327,6 +10849,10 @@ system_config.ips:
 system_config.jonny5:
   description: Schema for jonny5 system_config
   properties:
+    check_service_standing:
+      default: true
+      description: jonny5 check_service_standing
+      type: boolean
     default_allow_postpay:
       description: jonny5 default_allow_postpay
       type: boolean
@@ -10352,6 +10878,14 @@ system_config.jonny5:
       default: false
       description: lookup flat rate regexps per resource
       type: boolean
+    service_standing_cache_acceptable:
+      default: true
+      description: jonny5 service_standing_cache_acceptable
+      type: boolean
+    service_standing_cache_expiration_s:
+      default: 1800
+      description: jonny5 service_standing_cache_expiration_s
+      type: integer
   type: object
 system_config.kapps_controller:
   description: Schema for kapps_controller system_config
@@ -10569,6 +11103,14 @@ system_config.kazoo_couch:
       description: kazoo_couch use bigcouch direct
       type: boolean
   type: object
+system_config.kazoo_directory:
+  description: Schema for kazoo_directory system_config
+  properties:
+    restrict_to_known_types:
+      default: false
+      description: kazoo_directory restrict_to_known_types
+      type: boolean
+  type: object
 system_config.kazoo_endpoint:
   description: Schema for kazoo_endpoint system_config
   properties:
@@ -10719,6 +11261,97 @@ system_config.ledgers:
       items:
         type: object
       type: array
+    rollover_monthly_balance:
+      default: true
+      description: ledgers rollover_monthly_balance
+      type: boolean
+  type: object
+system_config.limits:
+  description: Global limits ability to place concurrent calls using flat rate trunks
+  properties:
+    allow_postpay:
+      default: false
+      description: Permit postpay settings on accounts by default
+      type: boolean
+      x-support_level: supported
+    allow_prepay:
+      default: true
+      description: Permit prepay settings on accounts by default
+      type: boolean
+      x-support_level: supported
+    authz_resource_types:
+      default: []
+      description: |-
+        List of Resource-Types that will authorize the call; bypassing limit checks and billing per account by default
+      items:
+        type: string
+      type: array
+      x-support_level: beta
+    burst_trunks:
+      default: 0
+      description: A hard limit for number of burst trunks permitted per account by default
+      minimum: -1
+      type: integer
+      x-support_level: supported
+    calls:
+      description: A hard limit for the total number calls per account by default
+      minimum: 0
+      type: integer
+      x-support_level: beta
+    enabled:
+      default: true
+      description: Determines if the limits should be enforced on accounts by default
+      type: boolean
+      x-support_level: supported
+    inbound_trunks:
+      default: 0
+      description: A hard limit for the number of inbound trunks per account by default
+      minimum: -1
+      type: integer
+      x-support_level: supported
+    max_postpay_ammount:
+      default: 0
+      description: |-
+        A hard limit for the postpay before limiting calls per account by default
+      minimum: 0
+      type: integer
+      x-support_level: supported
+    outbound_trunks:
+      default: 0
+      description: A hard limit for the number of outbound trunks per account by default
+      minimum: -1
+      type: integer
+      x-support_level: supported
+    reserve_ammount:
+      default: 0
+      description: The amount to hold in reserve per account by default
+      minimum: 0
+      type: integer
+      x-support_level: supported
+    resource_consuming_calls:
+      description: |-
+        A hard limit for the number of resource consuming calls per account by default
+      minimum: 0
+      type: integer
+      x-support_level: beta
+    soft_limit_inbound:
+      default: false
+      description: |-
+        Permit calls on inbound calls accounts which have exceeded the limit per account by default
+      type: boolean
+      x-support_level: supported
+    soft_limit_outbound:
+      default: false
+      description: |-
+        Permit calls on outbound calls for accounts which have exceeded the limit per account by default
+      type: boolean
+      x-support_level: supported
+    twoway_trunks:
+      default: 0
+      description: A hard limit for the number of twoway trunks per account by default
+      minimum: -1
+      type: integer
+      x-support_level: supported
   type: object
 system_config.media:
   description: Schema for media system_config
@@ -10740,6 +11373,10 @@ system_config.media:
         storage_retry_times:
           default: 5
           description: media storage retry times
+          type: integer
+        workers:
+          default: 1
+          description: media call_recording workers
           type: integer
     default_language:
       description: media default language
@@ -11445,6 +12082,11 @@ system_config.number_manager:
       description: time to pause in between the processing of accounts in milliseconds
       minimum: 1
       type: integer
+    time_between_db_ms:
+      default: 50
+      description: number_manager time_between_db_ms
+      minimum: 1
+      type: integer
     time_between_numbers_ms:
       default: 1000
       description: time to pause in between the processing of numbers in milliseconds
@@ -11753,6 +12395,18 @@ system_config.privacy:
       default: false
       description: use the anonymous_cid_numbers values to check if a name is anonymous
       type: boolean
+    default_privacy_name:
+      default: Anonymous
+      description: privacy default_privacy_name
+      type: string
+    default_privacy_number:
+      default: anonymous
+      description: privacy default_privacy_number
+      type: string
+    method:
+      default: kazoo
+      description: privacy method
+      type: string
     privacy_mode:
       default: kazoo
       description: Default privacy mode for anonymous calls
@@ -11769,9 +12423,6 @@ system_config.privacy:
 system_config.provisioner:
   description: Schema for provisioner system_config
   properties:
-    cluster_id:
-      description: provisioner cluster id
-      type: string
     combo_keys:
       default:
         cisco:
@@ -11869,27 +12520,39 @@ system_config.pusher:
         certificate:
           description: PEM-encoded key and certificate
           type: string
-        extra_headers:
+        headers:
           default: {}
-          description: Additional headers for INVITEs sent to push devices in the UA
-          properties:
-            Invite-Format:
-              description: |-
-                When set to push_and_invite, sets the X-KAZOO-PUSHER-Invite-Format header to push_and_invite, resulting in both a push notification and a SIP INVITE being sent to the endpoint.
-              enum:
-                - invite
-                - push
-                - push_and_invite
-              type: string
+          description: pusher apple headers
           type: object
         host:
           default: api.push.apple.com
           description: APNs server host
           type: string
       type: object
+    firebase:
+      default: {}
+      description: pusher firebase
+      properties:
+        api_key:
+          description: API Key for firebase
+          type: string
+        headers:
+          default: {}
+          description: pusher firebase headers
+          type: object
+      type: object
     google:
+      default: {}
       description: pusher google
-      type: string
+      properties:
+        api_key:
+          description: API Key for gcm
+          type: string
+        headers:
+          default: {}
+          description: pusher google headers
+          type: object
+      type: object
     modules:
       default: []
       description: pusher modules
@@ -12014,8 +12677,17 @@ system_config.services:
       default: true
       description: services default allow updates
       type: boolean
+    enforce_good_standing:
+      default: false
+      description: services enforce_good_standing
+      type: boolean
     get_items_from_quantities:
       description: services get_items_from_quantities
+      type: boolean
+    hydrate_cascade_commits:
+      default: true
+      description: |-
+        When an account makes a change it triggers a propagation up the account hiearchy updating the cascade quantities, if this is set to false the cascade quantities are summed with the account update deltas.  If this is set to true then the views will be invoked to fully reconcile the quantities (hydrate) during the cascade commits, a more expensive DB operation but provides self-corrective quantities.
       type: boolean
     master_account_bookkeeper:
       default: kz_bookkeeper_local
@@ -12257,7 +12929,11 @@ system_config.stepswitch:
   properties:
     assume_inbound_e164:
       default: false
-      description: stepswitch assume inbound e164
+      description: stepswitch assume inbound destination DID is e164 format
+      type: boolean
+    assume_inbound_origination_e164:
+      default: false
+      description: stepswitch assume inbound origination DID is e164 format
       type: boolean
     cid_rules_honor_diversions:
       default: false
@@ -12349,6 +13025,14 @@ system_config.stepswitch:
       default: false
       description: stepswitch format from uri
       type: boolean
+    inbound_user_field:
+      default: Request
+      description: stepswitch inbound destination user field
+      type: string
+    inbound_user_origination_field:
+      default: From
+      description: stepswitch inbound origination user field
+      type: string
     max_shortdial_correction:
       default: 5
       description: stepswitch maximum shortdial correction
@@ -12559,6 +13243,56 @@ system_config.tasks.bill_early:
         Controls whether we should send bill reminder for the accounts a few days before due date
       type: boolean
   type: object
+system_config.tasks.fax_cleanup:
+  description: Schema for tasks.fax_cleanup system_config
+  properties:
+    enabled:
+      default: true
+      description: Enables the cluster to run the fax cleanup task
+      type: boolean
+    page_size:
+      default: 32
+      description: The number of documents to process in one fetch operation
+      type: integer
+    per_page_pause_ms:
+      default: 1000
+      description: How many milliseconds to pause between chunk fetches
+      type: integer
+    stale_after_s:
+      default: 604800
+      description: |-
+        The number of seconds old a document is before it is considered to be stale
+      type: integer
+  type: object
+system_config.tasks.ledger_rollover:
+  description: Schema for tasks.ledger_rollover system_config
+  properties:
+    refresh_in_parallel:
+      default: 50
+      description: tasks ledger_rollover refresh_in_parallel
+      type: integer
+    refresh_view_enabled:
+      default: false
+      description: tasks ledger_rollover refresh_view_enabled
+      type: boolean
+    rollover_in_parallel:
+      default: 10
+      description: How many accounts to rollover per-pass (in parallel)
+      type: integer
+  type: object
+system_config.tasks.modb_creation:
+  description: Schema for tasks.modb_creation system_config
+  properties:
+    create_in_parallel:
+      default: 1
+      description: How many accounts to process per pass (in parallel).
+      type: integer
+    creation_day:
+      default: 28
+      description: |-
+        Which day of the month (of current month) to create next month's MODBs on
+      type: integer
+  type: object
 system_config.tasks.notify_resend:
   description: Schema for tasks.notify_resend system_config
   properties:
@@ -12618,6 +13352,14 @@ system_config.tasks.numbers:
       default: knm_local
       description: carrier module to use if none provided during numbers import
       type: string
+  type: object
+system_config.tasks.services_rollover:
+  description: Schema for tasks.services_rollover system_config
+  properties:
+    rollover_in_parallel:
+      default: 10
+      description: How many accounts to rollover services for per pass (in parallel)
+      type: integer
   type: object
 system_config.teletype:
   description: Schema for teletype system_config
@@ -12684,6 +13426,22 @@ system_config.trunkstore:
       default: false
       description: trunkstore honor diversions by cid validation
       type: boolean
+    pool_overflow:
+      default: 100
+      description: trunkstore pool_overflow
+      type: integer
+    pool_server_confirms:
+      default: false
+      description: trunkstore pool_server_confirms
+      type: boolean
+    pool_size:
+      default: 150
+      description: trunkstore pool_size
+      type: integer
+    pool_threshold:
+      default: 5
+      description: trunkstore pool_threshold
+      type: integer
     ring_ready_offnet:
       default: true
       description: trunkstore ring ready offnet
@@ -12732,13 +13490,15 @@ system_configs:
       default: {}
       description: default settings that apply to all nodes/zones if not defined
       type: object
+  required:
+    - default
   type: object
   x-patternProperties:
-    $.+@.+^:
+    (?!id\b)(?!default\b)^.+@.+$:
       description: Node-specific settings - these take highest precedence
       name: node
       type: object
-    $[a-zA-Z0-9.]+^:
+    (?!id\b)(?!default\b)^[a-zA-Z0-9.]+$:
       description: |-
         Zone-specific settings - these are checked if a node-specific setting is not defined
       name: zone
@@ -13334,7 +14094,7 @@ users:
       description: The email of the user
       format: email
       maxLength: 254
-      minLength: 1
+      minLength: 3
       type: string
       x-support_level: supported
     enabled:
@@ -13589,6 +14349,11 @@ vmboxes:
         format: email
         type: string
       type: array
+      x-support_level: supported
+    oldest_message_first:
+      default: false
+      description: Play older voicemail messages before new ones
+      type: boolean
       x-support_level: supported
     owner_id:
       description: The ID of the user object that 'owns' the voicemail box
@@ -13880,7 +14645,7 @@ whitelabel:
       description: Parameters related to white-labeling port requests
       properties:
         authority:
-          description: The email(s) to be used for admin port requests
+          description: The account ID(s) to be used for administrating port requests
           oneOf:
             - type: string
             - items:

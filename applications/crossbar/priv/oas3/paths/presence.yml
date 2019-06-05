@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.presence.2f6d0e
+  'operationId': get.presence.f7e1d8
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/REPORT_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': 'Gets report-{REPORT_ID} of presence'
 'post':
-  'operationId': post.presence.6a584a
+  'operationId': post.presence.1c9f8c
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/EXTENSION'

@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.blacklists.d167fa
+  'operationId': delete.blacklists.fc1ab2
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/BLACKLIST_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of blacklists
 'get':
-  'operationId': get.blacklists.7cf5af
+  'operationId': get.blacklists.e9499e
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/BLACKLIST_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a blacklists by ID
 'patch':
-  'operationId': patch.blacklists.0b489b
+  'operationId': patch.blacklists.217c76
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/BLACKLIST_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of blacklists
 'post':
-  'operationId': post.blacklists.047dcc
+  'operationId': post.blacklists.0cd55d
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/BLACKLIST_ID'
@@ -47,7 +47,7 @@
       'summary': Successful operation
   'summary': Update an instance of blacklists
 'put':
-  'operationId': put.blacklists.bed92c
+  'operationId': put.blacklists.8bb023
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

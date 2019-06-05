@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.apps_link.c8cbf5
+  'operationId': get.apps_link.1f3dd3
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

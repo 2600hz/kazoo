@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.acdc_call_stats.5c204d
+  'operationId': get.acdc_call_stats.c0b161
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.sms.7f00c0
+  'operationId': delete.sms.03362e
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/SMS_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of sms
 'get':
-  'operationId': get.sms.65fd14
+  'operationId': get.sms.99c579
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/SMS_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a sms by ID
 'put':
-  'operationId': put.sms.7555f2
+  'operationId': put.sms.2726bc
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

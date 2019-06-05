@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.ips.03dda4
+  'operationId': delete.ips.b82614
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/IP_ADDRESS'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of ips
 'get':
-  'operationId': get.ips.a742c0
+  'operationId': get.ips.b7b64f
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -18,7 +18,7 @@
       'summary': Successful operation
   'summary': Gets assigned of ips
 'post':
-  'operationId': post.ips.95bda6
+  'operationId': post.ips.dd130c
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/IP_ADDRESS'
@@ -32,7 +32,7 @@
       'summary': Successful operation
   'summary': Update an instance of ips
 'put':
-  'operationId': put.ips.57b69d
+  'operationId': put.ips.ede609
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

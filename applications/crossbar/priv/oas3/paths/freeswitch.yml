@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.freeswitch.8da6db
+  'operationId': get.freeswitch.1fcc66
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

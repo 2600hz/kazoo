@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.resource_selectors.40e0f3
+  'operationId': delete.resource_selectors.686343
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/UUID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of resource_selectors
 'get':
-  'operationId': get.resource_selectors.107b50
+  'operationId': get.resource_selectors.734904
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/SELECTOR_NAME'
@@ -20,7 +20,7 @@
       'summary': Successful operation
   'summary': Gets a resource_selectors by ID
 'post':
-  'operationId': post.resource_selectors.708ac5
+  'operationId': post.resource_selectors.2fc5f9
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.transactions.4e51bc
+  'operationId': get.transactions.52321b
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/TRANSACTION_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Gets a transactions by ID
 'put':
-  'operationId': put.transactions.318199
+  'operationId': put.transactions.038d92
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

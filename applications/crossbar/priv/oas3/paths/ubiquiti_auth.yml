@@ -1,5 +1,5 @@
 'put':
-  'operationId': put.ubiquiti_auth.0f5bef
+  'operationId': put.ubiquiti_auth.789621
   'parameters': []
   'requestBody':
     'application/json':

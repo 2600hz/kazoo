@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.allotments.bdd48c
+  'operationId': get.allotments.7583c5
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -8,7 +8,7 @@
       'summary': Successful operation
   'summary': Gets consumed of allotments
 'post':
-  'operationId': post.allotments.e135d3
+  'operationId': post.allotments.e9993a
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

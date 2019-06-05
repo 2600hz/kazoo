@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.att_handlers_errors.5df832
+  'operationId': get.att_handlers_errors.71dbe4
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/HANDLER_ID'

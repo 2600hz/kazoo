@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.templates.f804e7
+  'operationId': delete.templates.776773
   'parameters':
     - '$ref': '../oas3-parameters.yml#/TEMPLATE_NAME'
   'responses':
@@ -7,14 +7,14 @@
       'summary': Successful operation
   'summary': Delete an instance of templates
 'get':
-  'operationId': get.templates.e31499
+  'operationId': get.templates.5f43b2
   'parameters': []
   'responses':
     '200':
       'summary': Successful operation
   'summary': Gets all templates
 'put':
-  'operationId': put.templates.5c97aa
+  'operationId': put.templates.8a1684
   'parameters':
     - '$ref': '../oas3-parameters.yml#/TEMPLATE_NAME'
   'requestBody':

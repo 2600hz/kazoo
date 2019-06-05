@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.storage.cb5ffe
+  'operationId': delete.storage.b6dbcd
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/STORAGE_PLAN_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of storage
 'get':
-  'operationId': get.storage.c17eb5
+  'operationId': get.storage.7f9b8f
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/STORAGE_PLAN_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a storage by ID
 'patch':
-  'operationId': patch.storage.1d07cb
+  'operationId': patch.storage.acc326
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/STORAGE_PLAN_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of storage
 'post':
-  'operationId': post.storage.6bdef7
+  'operationId': post.storage.78bfff
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/STORAGE_PLAN_ID'
@@ -47,7 +47,7 @@
       'summary': Successful operation
   'summary': Update an instance of storage
 'put':
-  'operationId': put.storage.598f11
+  'operationId': put.storage.c31f51
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.limits.53eca9
+  'operationId': get.limits.666d1f
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -8,7 +8,7 @@
       'summary': Successful operation
   'summary': Gets all limits
 'post':
-  'operationId': post.limits.c9bdc3
+  'operationId': post.limits.35115c
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

@@ -1,5 +1,5 @@
 'put':
-  'operationId': put.api_auth.9b3ec2
+  'operationId': put.api_auth.624b65
   'parameters': []
   'requestBody':
     'application/json':

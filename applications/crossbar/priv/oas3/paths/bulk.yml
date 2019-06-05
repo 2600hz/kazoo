@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.bulk.9507e1
+  'operationId': delete.bulk.8cc83f
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -8,7 +8,7 @@
       'summary': Successful operation
   'summary': Delete an instance of bulk
 'get':
-  'operationId': get.bulk.20c4e1
+  'operationId': get.bulk.ef8450
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -17,7 +17,7 @@
       'summary': Successful operation
   'summary': Gets all bulk
 'post':
-  'operationId': post.bulk.e9e0f5
+  'operationId': post.bulk.bc6bb5
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

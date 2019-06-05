@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.schemas.04633f
+  'operationId': get.schemas.0ac0af
   'parameters':
     - '$ref': '../oas3-parameters.yml#/SCHEMA_NAME'
   'responses':
@@ -7,7 +7,7 @@
       'summary': Successful operation
   'summary': Gets a schemas by ID
 'put':
-  'operationId': put.schemas.22f0e4
+  'operationId': put.schemas.b2d423
   'parameters':
     - '$ref': '../oas3-parameters.yml#/SCHEMA_NAME'
   'requestBody':

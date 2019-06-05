@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.access_lists.5485d1
+  'operationId': delete.access_lists.8d88c9
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -8,7 +8,7 @@
       'summary': Successful operation
   'summary': Delete an instance of access_lists
 'get':
-  'operationId': get.access_lists.1a1687
+  'operationId': get.access_lists.e9dc12
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -17,7 +17,7 @@
       'summary': Successful operation
   'summary': Gets all access_lists
 'post':
-  'operationId': post.access_lists.5ea236
+  'operationId': post.access_lists.d2762b
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

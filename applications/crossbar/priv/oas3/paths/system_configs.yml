@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.system_configs.154da3
+  'operationId': delete.system_configs.667da9
   'parameters':
     - '$ref': '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
     - '$ref': '../oas3-parameters.yml#/NODE'
@@ -8,7 +8,7 @@
       'summary': Successful operation
   'summary': Delete an instance of system_configs
 'get':
-  'operationId': get.system_configs.76a7ea
+  'operationId': get.system_configs.a28455
   'parameters':
     - '$ref': '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
     - '$ref': '../oas3-parameters.yml#/NODE'
@@ -17,7 +17,7 @@
       'summary': Successful operation
   'summary': Gets a system_configs by ID
 'patch':
-  'operationId': patch.system_configs.92058b
+  'operationId': patch.system_configs.8c240b
   'parameters':
     - '$ref': '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
     - '$ref': '../oas3-parameters.yml#/NODE'
@@ -30,7 +30,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of system_configs
 'post':
-  'operationId': post.system_configs.67b22e
+  'operationId': post.system_configs.effcc0
   'parameters':
     - '$ref': '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
     - '$ref': '../oas3-parameters.yml#/NODE'
@@ -43,7 +43,7 @@
       'summary': Successful operation
   'summary': Update an instance of system_configs
 'put':
-  'operationId': put.system_configs.866000
+  'operationId': put.system_configs.a568ea
   'parameters':
     - '$ref': '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
   'requestBody':

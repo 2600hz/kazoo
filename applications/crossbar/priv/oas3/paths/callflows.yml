@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.callflows.67994c
+  'operationId': delete.callflows.3ca0d6
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CALLFLOW_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of callflows
 'get':
-  'operationId': get.callflows.ff49f6
+  'operationId': get.callflows.76396a
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CALLFLOW_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a callflows by ID
 'patch':
-  'operationId': patch.callflows.77be0b
+  'operationId': patch.callflows.f081e2
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CALLFLOW_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of callflows
 'post':
-  'operationId': post.callflows.fccb38
+  'operationId': post.callflows.815f1e
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CALLFLOW_ID'
@@ -47,7 +47,7 @@
       'summary': Successful operation
   'summary': Update an instance of callflows
 'put':
-  'operationId': put.callflows.f7843d
+  'operationId': put.callflows.039a59
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

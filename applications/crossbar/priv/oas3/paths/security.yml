@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.security.d33d06
+  'operationId': delete.security.c5cd98
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -8,7 +8,7 @@
       'summary': Successful operation
   'summary': Delete an instance of security
 'get':
-  'operationId': get.security.d1f923
+  'operationId': get.security.21445f
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ATTEMPT_ID'
@@ -18,7 +18,7 @@
       'summary': Successful operation
   'summary': Gets a security by ID
 'patch':
-  'operationId': patch.security.a7501e
+  'operationId': patch.security.485425
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -31,7 +31,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of security
 'post':
-  'operationId': post.security.70ece4
+  'operationId': post.security.0ba609
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

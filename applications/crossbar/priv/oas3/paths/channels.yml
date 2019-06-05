@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.channels.8b8f9c
+  'operationId': get.channels.964911
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/UUID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Gets a channels by ID
 'post':
-  'operationId': post.channels.493eda
+  'operationId': post.channels.125006
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/UUID'
@@ -23,7 +23,7 @@
       'summary': Successful operation
   'summary': Update an instance of channels
 'put':
-  'operationId': put.channels.b40d41
+  'operationId': put.channels.1f5016
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/UUID'

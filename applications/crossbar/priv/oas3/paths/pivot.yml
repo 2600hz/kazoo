@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.pivot.b3d194
+  'operationId': get.pivot.b47fd2
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/UUID'

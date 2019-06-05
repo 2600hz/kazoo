@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.quickcall.154f4a
+  'operationId': get.quickcall.cc9593
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/NUMBER'
@@ -11,7 +11,7 @@
       'summary': Successful operation
   'summary': Gets a quickcall by ID
 'post':
-  'operationId': post.quickcall.0a3df3
+  'operationId': post.quickcall.85655a
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/NUMBER'

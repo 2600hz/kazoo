@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.migrations.4aaac6
+  'operationId': get.migrations.f4ba53
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/MIGRATION_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Gets a migrations by ID
 'post':
-  'operationId': post.migrations.7f85e6
+  'operationId': post.migrations.c1dc34
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/MIGRATION_ID'

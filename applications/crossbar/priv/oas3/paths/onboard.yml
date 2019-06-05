@@ -1,5 +1,5 @@
 'put':
-  'operationId': put.onboard.d9c40b
+  'operationId': put.onboard.b74b90
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

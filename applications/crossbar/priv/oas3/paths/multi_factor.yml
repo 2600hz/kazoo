@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.multi_factor.119790
+  'operationId': delete.multi_factor.32893a
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CONFIG_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of multi_factor
 'get':
-  'operationId': get.multi_factor.3765e3
+  'operationId': get.multi_factor.febf75
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ATTEMPT_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a multi_factor by ID
 'patch':
-  'operationId': patch.multi_factor.ff1109
+  'operationId': patch.multi_factor.d10370
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CONFIG_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of multi_factor
 'post':
-  'operationId': post.multi_factor.4b07d7
+  'operationId': post.multi_factor.329919
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CONFIG_ID'
@@ -47,7 +47,7 @@
       'summary': Successful operation
   'summary': Update an instance of multi_factor
 'put':
-  'operationId': put.multi_factor.1ce3d5
+  'operationId': put.multi_factor.5b5b68
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

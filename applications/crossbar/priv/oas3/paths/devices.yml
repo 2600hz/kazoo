@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.devices.10b928
+  'operationId': delete.devices.e6611b
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/DEVICE_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of devices
 'get':
-  'operationId': get.devices.0aa0b3
+  'operationId': get.devices.b8f69f
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -18,7 +18,7 @@
       'summary': Successful operation
   'summary': Gets status of devices
 'patch':
-  'operationId': patch.devices.90dd1e
+  'operationId': patch.devices.dea3a3
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/DEVICE_ID'
@@ -32,7 +32,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of devices
 'post':
-  'operationId': post.devices.f32d38
+  'operationId': post.devices.fea09f
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/DEVICE_ID'
@@ -46,7 +46,7 @@
       'summary': Successful operation
   'summary': Update an instance of devices
 'put':
-  'operationId': put.devices.3a061f
+  'operationId': put.devices.57cfbd
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/DEVICE_ID'

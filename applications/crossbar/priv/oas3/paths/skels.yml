@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.skels.9aa322
+  'operationId': delete.skels.fa35eb
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/THING'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of skels
 'get':
-  'operationId': get.skels.12e2da
+  'operationId': get.skels.0afc48
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/THING'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a skels by ID
 'patch':
-  'operationId': patch.skels.38ede2
+  'operationId': patch.skels.175282
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/THING'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of skels
 'post':
-  'operationId': post.skels.79cd63
+  'operationId': post.skels.796a26
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/THING'
@@ -47,7 +47,7 @@
       'summary': Successful operation
   'summary': Update an instance of skels
 'put':
-  'operationId': put.skels.07559c
+  'operationId': put.skels.b91c8b
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

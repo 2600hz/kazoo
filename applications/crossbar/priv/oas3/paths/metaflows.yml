@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.metaflows.28582e
+  'operationId': delete.metaflows.fad2e7
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -8,7 +8,7 @@
       'summary': Successful operation
   'summary': Delete an instance of metaflows
 'get':
-  'operationId': get.metaflows.377e45
+  'operationId': get.metaflows.064eb7
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -17,7 +17,7 @@
       'summary': Successful operation
   'summary': Gets all metaflows
 'post':
-  'operationId': post.metaflows.8da7c6
+  'operationId': post.metaflows.23d0ed
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

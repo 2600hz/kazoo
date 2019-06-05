@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.websockets.e11083
+  'operationId': get.websockets.528fd2
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/SOCKET_ID'

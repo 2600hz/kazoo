@@ -1,5 +1,5 @@
 'get':
-  'operationId': get.about.225200
+  'operationId': get.about.b71935
   'parameters': []
   'responses':
     '200':

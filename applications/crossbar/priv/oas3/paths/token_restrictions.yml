@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.token_restrictions.119c9e
+  'operationId': delete.token_restrictions.2d196e
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -8,7 +8,7 @@
       'summary': Successful operation
   'summary': Delete an instance of token_restrictions
 'get':
-  'operationId': get.token_restrictions.1846ab
+  'operationId': get.token_restrictions.ab1fde
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -17,7 +17,7 @@
       'summary': Successful operation
   'summary': Gets all token_restrictions
 'post':
-  'operationId': post.token_restrictions.848cd6
+  'operationId': post.token_restrictions.5ff450
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

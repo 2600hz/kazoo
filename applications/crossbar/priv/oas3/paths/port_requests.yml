@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.port_requests.92431f
+  'operationId': delete.port_requests.08a066
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/PORT_REQUEST_ID'
@@ -10,7 +10,7 @@
       'summary': Successful operation
   'summary': Delete an instance of port_requests
 'get':
-  'operationId': get.port_requests.833680
+  'operationId': get.port_requests.1734fc
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/PORT_REQUEST_ID'
@@ -21,7 +21,7 @@
       'summary': Successful operation
   'summary': Gets a port_requests by ID
 'patch':
-  'operationId': patch.port_requests.ac4b96
+  'operationId': patch.port_requests.816f40
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/PORT_REQUEST_ID'
@@ -35,7 +35,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of port_requests
 'post':
-  'operationId': post.port_requests.ff0158
+  'operationId': post.port_requests.90eedf
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/PORT_REQUEST_ID'
@@ -50,7 +50,7 @@
       'summary': Successful operation
   'summary': Update an instance of port_requests
 'put':
-  'operationId': put.port_requests.d7ffb2
+  'operationId': put.port_requests.7f03f0
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/PORT_REQUEST_ID'

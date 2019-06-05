@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.registrations.3928b0
+  'operationId': delete.registrations.64dba5
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/USERNAME'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of registrations
 'get':
-  'operationId': get.registrations.d03414
+  'operationId': get.registrations.ffdd17
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

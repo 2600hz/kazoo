@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.faxboxes.405514
+  'operationId': delete.faxboxes.84a68a
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/FAXBOX_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of faxboxes
 'get':
-  'operationId': get.faxboxes.347001
+  'operationId': get.faxboxes.f05028
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/FAXBOX_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a faxboxes by ID
 'patch':
-  'operationId': patch.faxboxes.8443f2
+  'operationId': patch.faxboxes.4cebbf
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/FAXBOX_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of faxboxes
 'post':
-  'operationId': post.faxboxes.9f2604
+  'operationId': post.faxboxes.374bd0
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/FAXBOX_ID'
@@ -47,7 +47,7 @@
       'summary': Successful operation
   'summary': Update an instance of faxboxes
 'put':
-  'operationId': put.faxboxes.f07765
+  'operationId': put.faxboxes.3b66b2
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

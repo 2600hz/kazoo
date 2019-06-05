@@ -57,6 +57,11 @@
        ,filename:join([code:priv_dir('crossbar'), "oas3", "openapi.yml"])
        ).
 
+-define(OAS3_PATHS_FILENAME, <<"oas3-paths.yml">>).
+-define(OAS3_PATHS_FILE
+       ,filename:join([code:priv_dir('crossbar'), "oas3", ?OAS3_PATHS_FILENAME])
+       ).
+
 -define(OAS3_SCHEMAS_FILENAME, <<"oas3-schemas.yml">>).
 -define(OAS3_SCHEMAS_FILE
        ,filename:join([code:priv_dir('crossbar'), "oas3", ?OAS3_SCHEMAS_FILENAME])
@@ -310,15 +315,15 @@ generate_oas_paths_json(Paths, <<"oas3">> = OasVersion, Parameters) ->
      BaseOas = kz_json:from_map(read_oas3_yaml(?OAS3_YML_FILE)),
      OasPaths = to_oas3_paths(Paths),
 
-     PathRefs = [{[<<"paths">>, Path, <<"$ref">>]
-                  ,<<"paths/", EndpointName/binary, ".yml#/paths/", (escape_json_pointer(Path))/binary>>
-                 }
-                 || {EndpointName, EndpointMeta} <- kz_json:to_proplist(Paths),
-                    {Path, _PathMeta} <- kz_json:to_proplist(kz_json:get_json_value(<<"paths">>, EndpointMeta))
-                ],
+     % PathRefs = [{[<<"paths">>, Path, <<"$ref">>]
+     %              ,<<"paths/", EndpointName/binary, ".yml#/", (escape_json_pointer(Path))/binary>>
+     %             }
+     %             || {EndpointName, EndpointMeta} <- kz_json:to_proplist(Paths),
+     %                {Path, _PathMeta} <- kz_json:to_proplist(kz_json:get_json_value(<<"paths">>, EndpointMeta))
+     %            ],
      ReplaceThem = [{[<<"components">>, <<"parameters">>, <<"$ref">>], kz_term:to_binary(?OAS3_PARAMETERS_FILENAME)}
                    ,{[<<"components">>, <<"schemas">>, <<"$ref">>], kz_term:to_binary(?OAS3_SCHEMAS_FILENAME)}
-                    | PathRefs
+                   ,{[<<"path">>, <<"$ref">>], kz_term:to_binary(?OAS3_PATHS_FILENAME)}
                    ],
      Oas3 = kz_json:set_values(ReplaceThem, BaseOas),
      [{<<"oas3">>
@@ -330,9 +335,9 @@ generate_oas_paths_json(Paths, <<"oas3">> = OasVersion, Parameters) ->
       }
      ].
 
--spec escape_json_pointer(kz_term:ne_binary()) -> kz_term:ne_binary().
-escape_json_pointer(Pointer) ->
-    binary:replace(Pointer, <<"/">>, <<"~1">>, [global]).
+% -spec escape_json_pointer(kz_term:ne_binary()) -> kz_term:ne_binary().
+% escape_json_pointer(Pointer) ->
+%     binary:replace(Pointer, <<"/">>, <<"~1">>, [global]).
 
 -spec write_swagger_file(kz_term:proplist(), kz_term:ne_binary()) -> 'ok'.
 write_swagger_file(Props, <<"oas_two_and_three">>) ->
@@ -402,7 +407,10 @@ to_oas3_paths(EndpointName, EndpointMeta, Map) ->
 
     Paths = kz_json:get_json_value(<<"paths">>, EndpointMeta),
     F = fun(Path, PathMeta, Acc1) -> to_oas3_path(EndpointName, EndpointMeta, Path, PathMeta, Acc1) end,
-    kz_json:foldl(F, Map, Paths).
+    C  = kz_json:foldl(F, Map, Paths),
+    EndpointName =:= <<"faxes">>
+        andalso ?DEV_LOG("~nPaths ~p~nC ~p~n~n", [Paths, C]),
+    C.
 
 -spec to_oas3_path(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_json:object(), map()) -> map().
 to_oas3_path(EndpointName, EndpointMeta, Path, PathMeta, Acc) ->

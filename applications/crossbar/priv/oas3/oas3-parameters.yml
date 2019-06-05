@@ -302,6 +302,14 @@ MIGRATION_ID:
   pattern: '^[0-9a-f]+$'
   required: true
   type: string
+MODB_SUFFIX:
+  in: path
+  maxLength: 6
+  minLength: 6
+  name: MODB_SUFFIX
+  pattern: '^[0-9]{6}'
+  required: true
+  type: string
 MODULE:
   in: path
   name: MODULE
@@ -410,6 +418,11 @@ RESOURCE_TEMPLATE_ID:
   minLength: 32
   name: RESOURCE_TEMPLATE_ID
   pattern: '^[0-9a-f]+$'
+  required: true
+  type: string
+SAMPLE_ID:
+  in: path
+  name: SAMPLE_ID
   required: true
   type: string
 SCHEMA_NAME:

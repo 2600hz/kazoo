@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.conferences.13bc0b
+  'operationId': delete.conferences.c8d459
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CONFERENCE_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of conferences
 'get':
-  'operationId': get.conferences.b219ab
+  'operationId': get.conferences.eebf41
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/PARTICIPANT_ID'
@@ -20,7 +20,7 @@
       'summary': Successful operation
   'summary': Gets a conferences by ID
 'patch':
-  'operationId': patch.conferences.bfa2e2
+  'operationId': patch.conferences.edf195
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CONFERENCE_ID'
@@ -34,7 +34,7 @@
       'summary': Successful operation
   'summary': Patch specific fields of conferences
 'post':
-  'operationId': post.conferences.6c9b0e
+  'operationId': post.conferences.33c962
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/CONFERENCE_ID'
@@ -48,7 +48,7 @@
       'summary': Successful operation
   'summary': Update an instance of conferences
 'put':
-  'operationId': put.conferences.4a3a9e
+  'operationId': put.conferences.dc6085
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/PARTICIPANT_ID'

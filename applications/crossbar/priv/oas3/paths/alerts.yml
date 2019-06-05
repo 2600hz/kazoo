@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.alerts.fe6d03
+  'operationId': delete.alerts.ece7ea
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ALERT_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of alerts
 'get':
-  'operationId': get.alerts.9c8e0c
+  'operationId': get.alerts.d75890
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ALERT_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a alerts by ID
 'put':
-  'operationId': put.alerts.862588
+  'operationId': put.alerts.5d4951
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

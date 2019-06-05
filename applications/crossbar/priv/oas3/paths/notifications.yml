@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.notifications.df57f1
+  'operationId': delete.notifications.7b5c43
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/NOTIFICATION_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of notifications
 'get':
-  'operationId': get.notifications.1705b7
+  'operationId': get.notifications.f913b5
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/SMTP_LOG_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets a notifications by ID
 'post':
-  'operationId': post.notifications.d9e74e
+  'operationId': post.notifications.64cb00
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/NOTIFICATION_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Update an instance of notifications
 'put':
-  'operationId': put.notifications.4dda4c
+  'operationId': put.notifications.3417ed
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'

@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.recordings.74015c
+  'operationId': delete.recordings.a7b79d
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/RECORDING_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of recordings
 'get':
-  'operationId': get.recordings.a63f07
+  'operationId': get.recordings.285b7c
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/RECORDING_ID'

@@ -1,5 +1,5 @@
 'delete':
-  'operationId': delete.local_provisioner_templates.b4f280
+  'operationId': delete.local_provisioner_templates.2c5d06
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/TEMPLATE_ID'
@@ -9,7 +9,7 @@
       'summary': Successful operation
   'summary': Delete an instance of local_provisioner_templates
 'get':
-  'operationId': get.local_provisioner_templates.3775b4
+  'operationId': get.local_provisioner_templates.7395ab
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/TEMPLATE_ID'
@@ -19,7 +19,7 @@
       'summary': Successful operation
   'summary': Gets image of local_provisioner_templates
 'post':
-  'operationId': post.local_provisioner_templates.336446
+  'operationId': post.local_provisioner_templates.8be0b2
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/TEMPLATE_ID'
@@ -33,7 +33,7 @@
       'summary': Successful operation
   'summary': Update an instance of local_provisioner_templates
 'put':
-  'operationId': put.local_provisioner_templates.e1f494
+  'operationId': put.local_provisioner_templates.ebb69d
   'parameters':
     - '$ref': '../oas3-parameters.yml#/auth_token_header'
     - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
