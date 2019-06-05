@@ -1,61 +1,126 @@
-'delete':
-  'operationId': delete.storage.b6dbcd
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/STORAGE_PLAN_ID'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Delete an instance of storage
-'get':
-  'operationId': get.storage.7f9b8f
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/STORAGE_PLAN_ID'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Gets a storage by ID
-'patch':
-  'operationId': patch.storage.acc326
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/STORAGE_PLAN_ID'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/storage'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Patch specific fields of storage
-'post':
-  'operationId': post.storage.78bfff
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/STORAGE_PLAN_ID'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/storage'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Update an instance of storage
-'put':
-  'operationId': put.storage.c31f51
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/storage'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Add an instance of storage
+paths:
+  /accounts/{ACCOUNT_ID}/storage:
+    delete:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of storage
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets all storage
+    patch:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/storage'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of storage
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/storage'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of storage
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/storage'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of storage
+  /accounts/{ACCOUNT_ID}/storage/plans:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets plans of storage
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/storage'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of storage
+  /accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}:
+    delete:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/STORAGE_PLAN_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of storage
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/STORAGE_PLAN_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a storage by ID
+    patch:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/STORAGE_PLAN_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/storage'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of storage
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/STORAGE_PLAN_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/storage'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of storage

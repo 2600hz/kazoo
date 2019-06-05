@@ -1,31 +1,31 @@
-'delete':
-  'operationId': delete.metaflows.fad2e7
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Delete an instance of metaflows
-'get':
-  'operationId': get.metaflows.064eb7
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Gets all metaflows
-'post':
-  'operationId': post.metaflows.23d0ed
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/metaflows'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Update an instance of metaflows
+paths:
+  /accounts/{ACCOUNT_ID}/metaflows:
+    delete:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of metaflows
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets all metaflows
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/metaflows'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of metaflows

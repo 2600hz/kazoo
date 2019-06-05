@@ -1,14 +1,14 @@
-'delete':
-  'operationId': delete.token_auth.205f4f
-  'parameters': []
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Delete an instance of token_auth
-'get':
-  'operationId': get.token_auth.82cea5
-  'parameters': []
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Gets all token_auth
+paths:
+  /token_auth:
+    delete:
+      parameters: []
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of token_auth
+    get:
+      parameters: []
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets all token_auth

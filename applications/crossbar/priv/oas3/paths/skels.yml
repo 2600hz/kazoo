@@ -1,61 +1,70 @@
-'delete':
-  'operationId': delete.skels.fa35eb
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/THING'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Delete an instance of skels
-'get':
-  'operationId': get.skels.0afc48
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/THING'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Gets a skels by ID
-'patch':
-  'operationId': patch.skels.175282
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/THING'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/skels'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Patch specific fields of skels
-'post':
-  'operationId': post.skels.796a26
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/THING'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/skels'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Update an instance of skels
-'put':
-  'operationId': put.skels.b91c8b
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/skels'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Add an instance of skels
+paths:
+  /accounts/{ACCOUNT_ID}/skels:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets all skels
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/skels'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of skels
+  /accounts/{ACCOUNT_ID}/skels/{THING}:
+    delete:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/THING'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of skels
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/THING'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a skels by ID
+    patch:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/THING'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/skels'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of skels
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/THING'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/skels'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of skels

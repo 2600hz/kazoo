@@ -1,24 +1,110 @@
-'get':
-  'operationId': get.agents.c971cc
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/USER_ID'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Gets a agents by ID
-'post':
-  'operationId': post.agents.7e9e55
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/USER_ID'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/agents'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Update an instance of agents
+paths:
+  /accounts/{ACCOUNT_ID}/agents:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets all agents
+  /accounts/{ACCOUNT_ID}/agents/stats:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets stats of agents
+  /accounts/{ACCOUNT_ID}/agents/status:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets status of agents
+  /accounts/{ACCOUNT_ID}/agents/status/{USER_ID}:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a agents by ID
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/agents'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of agents
+  /accounts/{ACCOUNT_ID}/agents/{USER_ID}:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a agents by ID
+  /accounts/{ACCOUNT_ID}/agents/{USER_ID}/queue_status:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets queue_status of agents
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/agents'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of agents
+  /accounts/{ACCOUNT_ID}/agents/{USER_ID}/status:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets status of agents
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/agents'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of agents

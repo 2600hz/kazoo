@@ -1,56 +1,167 @@
-'delete':
-  'operationId': delete.accounts.5d92ff
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Delete an instance of accounts
-'get':
-  'operationId': get.accounts.69c8f6
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Gets children of accounts
-'patch':
-  'operationId': patch.accounts.466d9e
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/accounts'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Patch specific fields of accounts
-'post':
-  'operationId': post.accounts.bbb7fa
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/accounts'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Update an instance of accounts
-'put':
-  'operationId': put.accounts.44346f
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/accounts'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Add an instance of accounts
+paths:
+  /accounts:
+    put:
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/accounts'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of accounts
+  /accounts/{ACCOUNT_ID}:
+    delete:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of accounts
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a accounts by ID
+    patch:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/accounts'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of accounts
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/accounts'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of accounts
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/accounts'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of accounts
+  /accounts/{ACCOUNT_ID}/api_key:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets api_key of accounts
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/accounts'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of accounts
+  /accounts/{ACCOUNT_ID}/children:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets children of accounts
+  /accounts/{ACCOUNT_ID}/descendants:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets descendants of accounts
+  /accounts/{ACCOUNT_ID}/move:
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/accounts'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of accounts
+  /accounts/{ACCOUNT_ID}/parents:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets parents of accounts
+  /accounts/{ACCOUNT_ID}/reseller:
+    delete:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of accounts
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/accounts'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of accounts
+  /accounts/{ACCOUNT_ID}/siblings:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets siblings of accounts
+  /accounts/{ACCOUNT_ID}/tree:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets tree of accounts

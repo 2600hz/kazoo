@@ -1,65 +1,249 @@
-'delete':
-  'operationId': delete.port_requests.08a066
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/PORT_REQUEST_ID'
-    - '$ref': '../oas3-parameters.yml#/ATTACHMENT_ID'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Delete an instance of port_requests
-'get':
-  'operationId': get.port_requests.1734fc
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/PORT_REQUEST_ID'
-    - '$ref': '../oas3-parameters.yml#/ATTACHMENT_ID'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Gets a port_requests by ID
-'patch':
-  'operationId': patch.port_requests.816f40
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/PORT_REQUEST_ID'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/port_requests'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Patch specific fields of port_requests
-'post':
-  'operationId': post.port_requests.90eedf
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/PORT_REQUEST_ID'
-    - '$ref': '../oas3-parameters.yml#/ATTACHMENT_ID'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/port_requests'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Update an instance of port_requests
-'put':
-  'operationId': put.port_requests.7f03f0
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/PORT_REQUEST_ID'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/port_requests'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Add an instance of port_requests
+paths:
+  /accounts/{ACCOUNT_ID}/port_requests:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets all port_requests
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/port_requests'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of port_requests
+  /accounts/{ACCOUNT_ID}/port_requests/last_submitted:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets last_submitted of port_requests
+  /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}:
+    delete:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of port_requests
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a port_requests by ID
+    patch:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/port_requests'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of port_requests
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/port_requests'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of port_requests
+  /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets attachments of port_requests
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/port_requests'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of port_requests
+  /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments/{ATTACHMENT_ID}:
+    delete:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
+        - $ref: '../oas3-parameters.yml#/ATTACHMENT_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of port_requests
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
+        - $ref: '../oas3-parameters.yml#/ATTACHMENT_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a port_requests by ID
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
+        - $ref: '../oas3-parameters.yml#/ATTACHMENT_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/port_requests'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of port_requests
+  /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/canceled:
+    patch:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/port_requests'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of port_requests
+  /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/completed:
+    patch:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/port_requests'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of port_requests
+  /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/loa:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets loa of port_requests
+  /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/pending:
+    patch:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/port_requests'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of port_requests
+  /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/rejected:
+    patch:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/port_requests'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of port_requests
+  /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/scheduled:
+    patch:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/port_requests'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of port_requests
+  /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/submitted:
+    patch:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/port_requests'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of port_requests
+  /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/timeline:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets timeline of port_requests

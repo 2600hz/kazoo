@@ -1,40 +1,184 @@
-'delete':
-  'operationId': delete.auth.3822f8
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/APP_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Delete an instance of auth
-'get':
-  'operationId': get.auth.b435b7
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/APP_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Gets a auth by ID
-'post':
-  'operationId': post.auth.94c015
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/APP_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/auth'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Update an instance of auth
-'put':
-  'operationId': put.auth.251bc6
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/KEY_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/auth'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Add an instance of auth
+paths:
+  /auth:
+    put:
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/auth'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of auth
+  /auth/apps:
+    get:
+      parameters: []
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets apps of auth
+  /auth/apps/{APP_ID}:
+    delete:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/APP_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of auth
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/APP_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a auth by ID
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/APP_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/auth'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of auth
+  /auth/authorize:
+    put:
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/auth'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of auth
+  /auth/callback:
+    put:
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/auth'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of auth
+  /auth/keys:
+    get:
+      parameters: []
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets keys of auth
+  /auth/keys/{KEY_ID}:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/KEY_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a auth by ID
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/KEY_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/auth'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of auth
+  /auth/links:
+    get:
+      parameters: []
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets links of auth
+  /auth/links/{LINK_ID}:
+    delete:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/LINK_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of auth
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/LINK_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a auth by ID
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/LINK_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/auth'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of auth
+  /auth/providers:
+    get:
+      parameters: []
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets providers of auth
+  /auth/providers/{PROVIDER_ID}:
+    delete:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/PROVIDER_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of auth
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/PROVIDER_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a auth by ID
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/PROVIDER_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/auth'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of auth
+  /auth/tokeninfo:
+    get:
+      parameters: []
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets tokeninfo of auth
+    post:
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/auth'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of auth

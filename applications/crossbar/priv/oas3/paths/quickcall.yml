@@ -1,28 +1,29 @@
-'get':
-  'operationId': get.quickcall.cc9593
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/NUMBER'
-    - '$ref': '../oas3-parameters.yml#/ENDPOINT_TYPE'
-    - '$ref': '../oas3-parameters.yml#/ENDPOINT_ID'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Gets a quickcall by ID
-'post':
-  'operationId': post.quickcall.85655a
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/NUMBER'
-    - '$ref': '../oas3-parameters.yml#/ENDPOINT_TYPE'
-    - '$ref': '../oas3-parameters.yml#/ENDPOINT_ID'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/quickcall'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Update an instance of quickcall
+paths:
+  /accounts/{ACCOUNT_ID}/{ENDPOINT_TYPE}/{ENDPOINT_ID}/quickcall/{NUMBER}:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/NUMBER'
+        - $ref: '../oas3-parameters.yml#/ENDPOINT_TYPE'
+        - $ref: '../oas3-parameters.yml#/ENDPOINT_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a quickcall by ID
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/NUMBER'
+        - $ref: '../oas3-parameters.yml#/ENDPOINT_TYPE'
+        - $ref: '../oas3-parameters.yml#/ENDPOINT_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/quickcall'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of quickcall

@@ -408,4 +408,4 @@ maybe_fix_ref(<<"#",_/binary>>=Ref, _) -> Ref;
 maybe_fix_ref(RelativePath=?NE_BINARY, <<"swagger2">>) ->
     <<"#/definitions/", RelativePath/binary>>;
 maybe_fix_ref(RelativePath=?NE_BINARY, <<"oas3">>) ->
-    <<"#/components/schemas/", RelativePath/binary>>.
+    <<"#/", RelativePath/binary>>.

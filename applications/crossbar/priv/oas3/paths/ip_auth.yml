@@ -1,11 +1,13 @@
-'put':
-  'operationId': put.ip_auth.4015ac
-  'parameters': []
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/ip_auth'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Add an instance of ip_auth
+paths:
+  /ip_auth:
+    put:
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/ip_auth'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of ip_auth

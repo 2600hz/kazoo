@@ -1,56 +1,102 @@
-'delete':
-  'operationId': delete.system_configs.667da9
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
-    - '$ref': '../oas3-parameters.yml#/NODE'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Delete an instance of system_configs
-'get':
-  'operationId': get.system_configs.a28455
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
-    - '$ref': '../oas3-parameters.yml#/NODE'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Gets a system_configs by ID
-'patch':
-  'operationId': patch.system_configs.8c240b
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
-    - '$ref': '../oas3-parameters.yml#/NODE'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/system_configs'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Patch specific fields of system_configs
-'post':
-  'operationId': post.system_configs.effcc0
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
-    - '$ref': '../oas3-parameters.yml#/NODE'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/system_configs'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Update an instance of system_configs
-'put':
-  'operationId': put.system_configs.a568ea
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/system_configs'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Add an instance of system_configs
+paths:
+  /system_configs:
+    get:
+      parameters: []
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets all system_configs
+  /system_configs/{SYSTEM_CONFIG_ID}:
+    delete:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of system_configs
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a system_configs by ID
+    patch:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/system_configs'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of system_configs
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/system_configs'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of system_configs
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/system_configs'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of system_configs
+  /system_configs/{SYSTEM_CONFIG_ID}/{NODE}:
+    delete:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
+        - $ref: '../oas3-parameters.yml#/NODE'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of system_configs
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
+        - $ref: '../oas3-parameters.yml#/NODE'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a system_configs by ID
+    patch:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
+        - $ref: '../oas3-parameters.yml#/NODE'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/system_configs'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of system_configs
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
+        - $ref: '../oas3-parameters.yml#/NODE'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/system_configs'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of system_configs

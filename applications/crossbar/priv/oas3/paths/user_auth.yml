@@ -1,30 +1,44 @@
-'get':
-  'operationId': get.user_auth.a8ddcf
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/AUTH_TOKEN'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Gets a user_auth by ID
-'post':
-  'operationId': post.user_auth.7a5387
-  'parameters': []
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/user_auth'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Update an instance of user_auth
-'put':
-  'operationId': put.user_auth.b75f79
-  'parameters': []
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/user_auth'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Add an instance of user_auth
+paths:
+  /user_auth:
+    put:
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/user_auth'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of user_auth
+  /user_auth/recovery:
+    post:
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/user_auth'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of user_auth
+    put:
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/user_auth'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of user_auth
+  /user_auth/{AUTH_TOKEN}:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/AUTH_TOKEN'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a user_auth by ID

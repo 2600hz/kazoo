@@ -1,23 +1,87 @@
-'get':
-  'operationId': get.ledgers.d0d3c1
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/MODB_SUFFIX'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Gets a ledgers by ID
-'put':
-  'operationId': put.ledgers.a68bb0
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/ledgers'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Add an instance of ledgers
+paths:
+  /accounts/{ACCOUNT_ID}/ledgers:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets all ledgers
+  /accounts/{ACCOUNT_ID}/ledgers/available:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets available of ledgers
+  /accounts/{ACCOUNT_ID}/ledgers/credit:
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/ledgers'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of ledgers
+  /accounts/{ACCOUNT_ID}/ledgers/debit:
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/ledgers'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of ledgers
+  /accounts/{ACCOUNT_ID}/ledgers/summary/{MODB_SUFFIX}:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/MODB_SUFFIX'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a ledgers by ID
+  /accounts/{ACCOUNT_ID}/ledgers/total:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets total of ledgers
+  /accounts/{ACCOUNT_ID}/ledgers/{SOURCE_SERVICE}:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/SOURCE_SERVICE'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a ledgers by ID
+  /accounts/{ACCOUNT_ID}/ledgers/{SOURCE_SERVICE}/{LEDGER_ID}:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/SOURCE_SERVICE'
+        - $ref: '../oas3-parameters.yml#/LEDGER_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a ledgers by ID

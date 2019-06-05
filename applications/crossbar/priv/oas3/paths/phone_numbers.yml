@@ -1,59 +1,282 @@
-'delete':
-  'operationId': delete.phone_numbers.25cec2
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Delete an instance of phone_numbers
-'get':
-  'operationId': get.phone_numbers.a322c3
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/PHONE_NUMBER'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Gets a phone_numbers by ID
-'patch':
-  'operationId': patch.phone_numbers.46c4cd
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/phone_numbers'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Patch specific fields of phone_numbers
-'post':
-  'operationId': post.phone_numbers.2c2a37
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/PHONE_NUMBER'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/phone_numbers'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Update an instance of phone_numbers
-'put':
-  'operationId': put.phone_numbers.c2eb67
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/phone_numbers'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Add an instance of phone_numbers
+paths:
+  /accounts/{ACCOUNT_ID}/phone_numbers:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets all phone_numbers
+  /accounts/{ACCOUNT_ID}/phone_numbers/carriers_info:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets carriers_info of phone_numbers
+  /accounts/{ACCOUNT_ID}/phone_numbers/check:
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/phone_numbers'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of phone_numbers
+  /accounts/{ACCOUNT_ID}/phone_numbers/classifiers:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets classifiers of phone_numbers
+  /accounts/{ACCOUNT_ID}/phone_numbers/classifiers/{PHONE_NUMBER}:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PHONE_NUMBER'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a phone_numbers by ID
+  /accounts/{ACCOUNT_ID}/phone_numbers/collection:
+    delete:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of phone_numbers
+    patch:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/phone_numbers'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of phone_numbers
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/phone_numbers'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of phone_numbers
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/phone_numbers'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of phone_numbers
+  /accounts/{ACCOUNT_ID}/phone_numbers/collection/activate:
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/phone_numbers'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of phone_numbers
+  /accounts/{ACCOUNT_ID}/phone_numbers/fix:
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/phone_numbers'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of phone_numbers
+  /accounts/{ACCOUNT_ID}/phone_numbers/fix/{PHONE_NUMBER}:
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PHONE_NUMBER'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/phone_numbers'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of phone_numbers
+  /accounts/{ACCOUNT_ID}/phone_numbers/locality:
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/phone_numbers'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of phone_numbers
+  /accounts/{ACCOUNT_ID}/phone_numbers/prefix:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets prefix of phone_numbers
+  /accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}:
+    delete:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PHONE_NUMBER'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of phone_numbers
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PHONE_NUMBER'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a phone_numbers by ID
+    patch:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PHONE_NUMBER'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/phone_numbers'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of phone_numbers
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PHONE_NUMBER'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/phone_numbers'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of phone_numbers
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PHONE_NUMBER'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/phone_numbers'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of phone_numbers
+  /accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/activate:
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PHONE_NUMBER'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/phone_numbers'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of phone_numbers
+  /accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/identify:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PHONE_NUMBER'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets identify of phone_numbers
+  /accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/port:
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PHONE_NUMBER'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/phone_numbers'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of phone_numbers
+  /accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/reserve:
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/PHONE_NUMBER'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/phone_numbers'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of phone_numbers

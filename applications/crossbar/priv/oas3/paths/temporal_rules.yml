@@ -1,61 +1,70 @@
-'delete':
-  'operationId': delete.temporal_rules.7f8e5d
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/TEMPORAL_RULE_ID'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Delete an instance of temporal_rules
-'get':
-  'operationId': get.temporal_rules.583877
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/TEMPORAL_RULE_ID'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Gets a temporal_rules by ID
-'patch':
-  'operationId': patch.temporal_rules.e0941f
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/TEMPORAL_RULE_ID'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/temporal_rules'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Patch specific fields of temporal_rules
-'post':
-  'operationId': post.temporal_rules.4c9b96
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/TEMPORAL_RULE_ID'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/temporal_rules'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Update an instance of temporal_rules
-'put':
-  'operationId': put.temporal_rules.6641b7
-  'parameters':
-    - '$ref': '../oas3-parameters.yml#/auth_token_header'
-    - '$ref': '../oas3-parameters.yml#/ACCOUNT_ID'
-  'requestBody':
-    'application/json':
-      'schema':
-        '$ref': '../oas3-schemas.yml#/temporal_rules'
-  'responses':
-    '200':
-      'summary': Successful operation
-  'summary': Add an instance of temporal_rules
+paths:
+  /accounts/{ACCOUNT_ID}/temporal_rules:
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets all temporal_rules
+    put:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/temporal_rules'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of temporal_rules
+  /accounts/{ACCOUNT_ID}/temporal_rules/{TEMPORAL_RULE_ID}:
+    delete:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/TEMPORAL_RULE_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of temporal_rules
+    get:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/TEMPORAL_RULE_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Gets a temporal_rules by ID
+    patch:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/TEMPORAL_RULE_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/temporal_rules'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of temporal_rules
+    post:
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/TEMPORAL_RULE_ID'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/temporal_rules'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of temporal_rules

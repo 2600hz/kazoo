@@ -313,17 +313,11 @@ generate_oas_paths_json(Paths, <<"swagger2">> = OasVersion, Parameters) ->
     ];
 generate_oas_paths_json(Paths, <<"oas3">> = OasVersion, Parameters) ->
      BaseOas = kz_json:from_map(read_oas3_yaml(?OAS3_YML_FILE)),
-     OasPaths = to_oas3_paths(Paths),
+     OasPaths = to_oas3_paths_object(Paths),
 
-     % PathRefs = [{[<<"paths">>, Path, <<"$ref">>]
-     %              ,<<"paths/", EndpointName/binary, ".yml#/", (escape_json_pointer(Path))/binary>>
-     %             }
-     %             || {EndpointName, EndpointMeta} <- kz_json:to_proplist(Paths),
-     %                {Path, _PathMeta} <- kz_json:to_proplist(kz_json:get_json_value(<<"paths">>, EndpointMeta))
-     %            ],
      ReplaceThem = [{[<<"components">>, <<"parameters">>, <<"$ref">>], kz_term:to_binary(?OAS3_PARAMETERS_FILENAME)}
                    ,{[<<"components">>, <<"schemas">>, <<"$ref">>], kz_term:to_binary(?OAS3_SCHEMAS_FILENAME)}
-                   ,{[<<"path">>, <<"$ref">>], kz_term:to_binary(?OAS3_PATHS_FILENAME)}
+                   ,{[<<"paths">>, <<"$ref">>], <<(kz_term:to_binary(?OAS3_PATHS_FILENAME))/binary, "#/paths">>}
                    ],
      Oas3 = kz_json:set_values(ReplaceThem, BaseOas),
      [{<<"oas3">>
@@ -335,10 +329,6 @@ generate_oas_paths_json(Paths, <<"oas3">> = OasVersion, Parameters) ->
       }
      ].
 
-% -spec escape_json_pointer(kz_term:ne_binary()) -> kz_term:ne_binary().
-% escape_json_pointer(Pointer) ->
-%     binary:replace(Pointer, <<"/">>, <<"~1">>, [global]).
-
 -spec write_swagger_file(kz_term:proplist(), kz_term:ne_binary()) -> 'ok'.
 write_swagger_file(Props, <<"oas_two_and_three">>) ->
     write_swagger_file(Props, <<"swagger2">>),
@@ -347,33 +337,70 @@ write_swagger_file(Props, <<"swagger2">>) ->
     io:format(user, "~nsaving swagger 2.0 to file ~s~n", [?SWAGGER_2_JSON_FILE]),
     file:write_file(?SWAGGER_2_JSON_FILE, kz_json:encode(props:get_value(<<"swagger2">>, Props)));
 write_swagger_file(Props, <<"oas3">>) ->
+    YmlEncodeOption = #{sort_keys => 'true'
+                       ,key_string_style => 'single_quote'
+                       },
     io:format(user, "~nsaving OpenAPI 3 Parameters to file ~s~n", [?OAS3_PARAMETERS_FILE]),
     Parameters = props:get_value([<<"oas3">>, <<"parameters">>], Props),
-    'ok' = file:write_file(?OAS3_PARAMETERS_FILE, kz_yaml:encode(Parameters, #{sort_keys => 'true'})),
+    'ok' = file:write_file(?OAS3_PARAMETERS_FILE, kz_yaml:encode(Parameters, YmlEncodeOption)),
 
     io:format(user, "saving OpenAPI 3 Schemas to file ~s~n", [?OAS3_SCHEMAS_FILE]),
     Schemas = props:get_value([<<"oas3">>, <<"definitions">>], Props),
-    'ok' = file:write_file(?OAS3_SCHEMAS_FILE, kz_yaml:encode(Schemas, #{sort_keys => 'true'})),
+    'ok' = file:write_file(?OAS3_SCHEMAS_FILE, kz_yaml:encode(Schemas, YmlEncodeOption)),
 
     io:format(user, "saving OpenAPI 3 Paths to their files~n", []),
     'ok' = maps:fold(fun write_oas3_path/3, 'ok', props:get_value([<<"oas3">>, <<"paths">>], Props)),
 
+    io:format("saving OpenAPI 3 path refs to ~s~n", [?OAS3_PATHS_FILE]),
+    'ok' = file:write_file(?OAS3_PATHS_FILE, create_oas3_path_refs(props:get_value([<<"oas3">>, <<"paths">>], Props))),
+
     io:format(user, "saving OpenAPI 3 to file ~s~n", [?OAS3_YML_FILE]),
     OpenAPI = props:get_value([<<"oas3">>, <<"openapi">>], Props),
-    'ok' = file:write_file(?OAS3_YML_FILE, kz_yaml:encode(OpenAPI, #{sort_keys => 'true'
-                                                                    ,key_string_style => 'single_quote'
-                                                                    }
-                                                         )
+    'ok' = file:write_file(?OAS3_YML_FILE
+                          ,kz_yaml:encode(OpenAPI, YmlEncodeOption#{string_style => 'single_quote'})
                           ).
 
 -spec write_oas3_path(kz_term:ne_binary(), map(), 'ok') -> 'ok'.
 write_oas3_path(Endpoint, Meta, _) ->
-    File = filename:join([code:priv_dir('crossbar'), "oas3/paths", <<Endpoint/binary, ".yml">>]),
-    'ok' = file:write_file(File, kz_yaml:encode(Meta, #{sort_keys => 'true'
-                                                       ,key_string_style => 'single_quote'
-                                                       }
-                                               )
+    'ok' = file:write_file(filename:join([code:priv_dir('crossbar'), "oas3/paths", <<Endpoint/binary, ".yml">>])
+                          ,kz_yaml:encode(Meta, #{sort_keys => 'true'})
                           ).
+
+-spec create_oas3_path_refs(map()) -> binary().
+create_oas3_path_refs(PathsMap) ->
+    kz_yaml:encode(kz_json:set_values(maps:fold(fun create_oas3_path_refs/3, [], PathsMap)
+                                     ,kz_json:new()
+                                     )
+                  ,#{sort_keys => 'true'}
+                  ).
+
+%% fix_json_reference(JObj) ->
+%%     kz_json:expand(
+%%       kz_json:map(fun fix_json_reference/2, kz_json:flatten(JObj))
+%%      ).
+%%
+%% fix_json_reference(KeyPath, Value) ->
+%%     case lists:last(KeyPath) =:= <<"$ref">> of
+%%         'true' ->
+%%             {KeyPath, fixing_json_reference(Value)};
+%%         'false' ->
+%%             {KeyPath, Value}
+%%     end.
+%%
+%% fixing_json_reference(<<"#/components/schemas/", Schema/binary>>) ->
+%%     Schema.
+
+-spec create_oas3_path_refs(kz_term:ne_binary(), map(), any()) -> kz_term:proplist().
+create_oas3_path_refs(EndpointName, #{<<"paths">> := PathItems}, Acc) ->
+     [{[<<"paths">>, Path, <<"$ref">>]
+      ,<<"paths/", EndpointName/binary, ".yml#/paths/", (escape_json_pointer(Path))/binary>>
+      }
+      || {Path, _OperationObject} <- maps:to_list(PathItems)
+     ] ++ Acc.
+
+-spec escape_json_pointer(kz_term:ne_binary()) -> kz_term:ne_binary().
+escape_json_pointer(Pointer) ->
+    binary:replace(Pointer, <<"/">>, <<"~1">>, [global]).
 
 -spec to_swagger_definitions(kz_term:ne_binary()) -> kz_json:object().
 to_swagger_definitions(OasVersion) ->
@@ -395,57 +422,52 @@ read_oas3_yaml(SwaggerFile) ->
         'throw':Throw -> throw(Throw)
     end.
 
--spec to_oas3_paths(kz_json:object()) -> map().
-to_oas3_paths(Paths) ->
-    kz_json:foldl(fun to_oas3_paths/3, #{}, Paths).
+-spec to_oas3_paths_object(kz_json:object()) -> map().
+to_oas3_paths_object(Paths) ->
+    kz_json:foldl(fun to_oas3_paths_object/3, #{}, Paths).
 
--spec to_oas3_paths(kz_term:ne_binary(), kz_json:object(), map()) -> map().
-to_oas3_paths(EndpointName, EndpointMeta, Map) ->
+-spec to_oas3_paths_object(kz_term:ne_binary(), kz_json:object(), map()) -> map().
+to_oas3_paths_object(EndpointName, EndpointMeta, PathsObject) ->
     %% App = kz_json:get_value(<<"app">>, EndpointMeta),
     %% BaseFile = filename:join([code:lib_dir(App), "doc/oas3_ref", <<EndpointName/binary, ".yml">>]),
     %% Base = kz_json:from_map(read_oas3_yaml(BaseFile)),
 
     Paths = kz_json:get_json_value(<<"paths">>, EndpointMeta),
-    F = fun(Path, PathMeta, Acc1) -> to_oas3_path(EndpointName, EndpointMeta, Path, PathMeta, Acc1) end,
-    C  = kz_json:foldl(F, Map, Paths),
-    EndpointName =:= <<"faxes">>
-        andalso ?DEV_LOG("~nPaths ~p~nC ~p~n~n", [Paths, C]),
-    C.
+    F = fun(Path, PathMeta, Acc1) -> to_oas3_path_item_object(EndpointName, EndpointMeta, Path, PathMeta, Acc1) end,
+    PathsObject#{EndpointName => #{<<"paths">> => kz_json:foldl(F, #{}, Paths)}}.
 
--spec to_oas3_path(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_json:object(), map()) -> map().
-to_oas3_path(EndpointName, EndpointMeta, Path, PathMeta, Acc) ->
+-spec to_oas3_path_item_object(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_json:object(), map()) -> map().
+to_oas3_path_item_object(EndpointName, EndpointMeta, Path, PathMeta, PathItemObjects) ->
     Methods = kz_json:get_list_value(<<"allowed_methods">>, PathMeta, []),
-    F = fun(Method, Acc1) -> add_oas3_path(EndpointName, EndpointMeta, Path, Method, Acc1) end,
-    lists:foldl(F, Acc, Methods).
+    F = fun(Method, Acc) -> add_operation_object(EndpointName, EndpointMeta, Path, Method, Acc) end,
+    PathItemObjects#{Path => lists:foldl(F, #{}, Methods)}.
 
--spec add_oas3_path(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), map()) -> map().
-add_oas3_path(EndpointName, _EndpointMeta, Path, Method, Acc) ->
-    Map = #{<<"summary">> => generate_method_summary(EndpointName, Method, lists:last(split_url(Path)))
-           ,<<"operationId">> => kz_binary:join([Method, EndpointName, kz_binary:rand_hex(3)], <<".">>)
-           ,<<"parameters">> => [kz_json:to_map(Param) || Param <- make_parameters(Path, Method, 'undefined', <<"oas3">>)]
-           ,<<"responses">> => #{<<"200">> => #{<<"summary">> => <<"Successful operation">>}}
-           },
+-spec add_operation_object(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), map()) -> map().
+add_operation_object(EndpointName, _EndpointMeta, Path, Method, PathItemObject) ->
+    Object = #{<<"summary">> => generate_method_summary(EndpointName, Method, lists:last(split_url(Path)))
+               %% ,<<"operationId">> => kz_binary:join([Method, EndpointName, kz_binary:rand_hex(3)], <<".">>)
+              ,<<"parameters">> => [kz_json:to_map(Param) || Param <- make_parameters(Path, Method, 'undefined', <<"oas3">>)]
+              ,<<"responses">> => #{<<"200">> => #{<<"description">> => <<"Successful operation">>}}
+              },
+    PathItemObject#{Method => maybe_add_request_body(EndpointName, Method, Object)}.
 
-    maybe_add_request_body(EndpointName, Method, Map, Acc).
-
--spec maybe_add_request_body(kz_term:ne_binary(), kz_term:ne_binary(), map(), map()) -> map().
-maybe_add_request_body(EndpointName, <<"get">>, Map, Acc) ->
-    maps:update_with(EndpointName, fun(E) -> E#{<<"get">> => Map} end, #{<<"get">> => Map}, Acc);
-maybe_add_request_body(EndpointName, Method, Map, Acc)
+-spec maybe_add_request_body(kz_term:ne_binary(), kz_term:ne_binary(), map()) -> map().
+maybe_add_request_body(EndpointName, Method, Map)
   when Method =:= <<"put">>;
        Method =:= <<"post">>;
        Method =:= <<"patch">> ->
-    RequestBody = #{<<"application/json">> =>
-                    #{<<"schema">> =>
-                      #{<<"$ref">> =>
-                        <<"../", (kz_term:to_binary(?OAS3_SCHEMAS_FILENAME))/binary, "#/", EndpointName/binary>>
+    RequestBody = #{<<"content">> =>
+                    #{<<"application/json">> =>
+                      #{<<"schema">> =>
+                        #{<<"$ref">> =>
+                          <<"../", (kz_term:to_binary(?OAS3_SCHEMAS_FILENAME))/binary, "#/", EndpointName/binary>>
+                         }
                        }
                      }
                    },
-    NewMap = Map#{<<"requestBody">> => RequestBody},
-    maps:update_with(EndpointName, fun(E) -> E#{Method => NewMap} end, #{Method => NewMap}, Acc);
-maybe_add_request_body(EndpointName, Method, Map, Acc) ->
-    maps:update_with(EndpointName, fun(E) -> E#{Method => Map} end, #{Method => Map}, Acc).
+    Map#{<<"requestBody">> => RequestBody};
+maybe_add_request_body(_EndpointName, _Method, Map) ->
+    Map.
 
 -spec generate_method_summary(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 generate_method_summary(EndpointName, <<"delete">>, _) ->
