@@ -2,11 +2,6 @@ paths:
   /auth:
     put:
       parameters: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '../oas3-schemas.yml#/auth'
       responses:
         200:
           description: Successful operation
@@ -36,11 +31,6 @@ paths:
     post:
       parameters:
         - $ref: '../oas3-parameters.yml#/APP_ID'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '../oas3-schemas.yml#/auth'
       responses:
         200:
           description: Successful operation
@@ -48,11 +38,6 @@ paths:
   /auth/authorize:
     put:
       parameters: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '../oas3-schemas.yml#/auth'
       responses:
         200:
           description: Successful operation
@@ -60,11 +45,6 @@ paths:
   /auth/callback:
     put:
       parameters: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '../oas3-schemas.yml#/auth'
       responses:
         200:
           description: Successful operation
@@ -87,11 +67,6 @@ paths:
     put:
       parameters:
         - $ref: '../oas3-parameters.yml#/KEY_ID'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '../oas3-schemas.yml#/auth'
       responses:
         200:
           description: Successful operation
@@ -121,11 +96,6 @@ paths:
     put:
       parameters:
         - $ref: '../oas3-parameters.yml#/LINK_ID'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '../oas3-schemas.yml#/auth'
       responses:
         200:
           description: Successful operation
@@ -155,11 +125,6 @@ paths:
     post:
       parameters:
         - $ref: '../oas3-parameters.yml#/PROVIDER_ID'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '../oas3-schemas.yml#/auth'
       responses:
         200:
           description: Successful operation
@@ -173,11 +138,6 @@ paths:
       summary: Gets tokeninfo of auth
     post:
       parameters: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '../oas3-schemas.yml#/auth'
       responses:
         200:
           description: Successful operation

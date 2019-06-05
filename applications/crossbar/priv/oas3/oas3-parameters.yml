@@ -1,580 +1,665 @@
 'ACCOUNT_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': ACCOUNT_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'ALERT_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': ALERT_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'APP_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': APP_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'APP_SCREENSHOT_INDEX':
   'in': path
   'name': APP_SCREENSHOT_INDEX
-  'pattern': '^[0-9]+$'
   'required': true
-  'type': string
+  'schema':
+    'pattern': '^[0-9]+$'
+    'type': string
 'ARGS':
   'in': path
   'name': ARGS
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'ATTACHMENT_ID':
   'in': path
   'name': ATTACHMENT_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'ATTEMPT_ID':
   'in': path
   'name': ATTEMPT_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'AUDIT_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': AUDIT_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'AUTH_TOKEN':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': AUTH_TOKEN
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'BLACKLIST_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': BLACKLIST_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'C2C_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': C2C_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'CALLFLOW_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': CALLFLOW_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'CALL_ID':
   'in': path
   'name': CALL_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'CCCP_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': CCCP_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'CDR_ID':
   'in': path
-  'maxLength': 39
-  'minLength': 39
   'name': CDR_ID
-  'pattern': '^[0-9a-f-]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 39
+    'minLength': 39
+    'pattern': '^[0-9a-f-]+$'
+    'type': string
 'COMMENT_ID':
   'in': path
   'name': COMMENT_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'CONFERENCE_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': CONFERENCE_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'CONFIG_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': CONFIG_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'CONNECTIVITY_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': CONNECTIVITY_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'DEVICE_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': DEVICE_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'DIRECTORY_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': DIRECTORY_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'ENDPOINT_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': ENDPOINT_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'ENDPOINT_TYPE':
-  'enum':
-    - users
-    - devices
   'in': path
   'name': ENDPOINT_TYPE
   'required': true
-  'type': string
+  'schema':
+    'enum':
+      - users
+      - devices
+    'type': string
 'ERROR_ID':
   'in': path
   'name': ERROR_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'EXTENSION':
   'in': path
   'name': EXTENSION
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'FAXBOX_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': FAXBOX_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'FAX_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': FAX_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'FAX_JOB_ID':
   'in': path
   'name': FAX_JOB_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'FUNCTION':
   'in': path
   'name': FUNCTION
-  'pattern': '^[a-zA-Z0-9]+$'
   'required': true
-  'type': string
+  'schema':
+    'pattern': '^[a-zA-Z0-9]+$'
+    'type': string
 'GROUP_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': GROUP_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'HANDLER_ID':
   'in': path
   'name': HANDLER_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'INTERACTION_ID':
   'in': path
   'name': INTERACTION_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'IP_ADDRESS':
   'in': path
-  'maxLength': 15
-  'minLength': 7
   'name': IP_ADDRESS
-  'pattern': '^[0-9.]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 15
+    'minLength': 7
+    'pattern': '^[0-9.]+$'
+    'type': string
 'JOB_ID':
   'in': path
   'name': JOB_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'KEY_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': KEY_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'LANGUAGE':
   'in': path
   'name': LANGUAGE
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'LEDGER_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': LEDGER_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'LINK_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': LINK_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'LIST_ENTRY_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': LIST_ENTRY_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'LIST_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': LIST_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'MEDIA_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': MEDIA_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'MENU_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': MENU_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'MIGRATION_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': MIGRATION_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'MODB_SUFFIX':
   'in': path
-  'maxLength': 6
-  'minLength': 6
   'name': MODB_SUFFIX
-  'pattern': '^[0-9]{6}'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 6
+    'minLength': 6
+    'pattern': '^[0-9]{6}'
+    'type': string
 'MODULE':
   'in': path
   'name': MODULE
-  'pattern': '^[a-zA-Z0-9]+$'
   'required': true
-  'type': string
+  'schema':
+    'pattern': '^[a-zA-Z0-9]+$'
+    'type': string
 'NODE':
   'in': path
   'name': NODE
-  'pattern': '^[a-zA-Z0-9]+@[a-zA-Z0-9]+$'
   'required': true
-  'type': string
+  'schema':
+    'pattern': '^[a-zA-Z0-9]+@[a-zA-Z0-9]+$'
+    'type': string
 'NOTIFICATION_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': NOTIFICATION_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'NUMBER':
   'in': path
   'name': NUMBER
-  'pattern': '^\+?[0-9]+'
   'required': true
-  'type': string
+  'schema':
+    'pattern': '^\+?[0-9]+'
+    'type': string
 'PARTICIPANT_ID':
   'in': path
   'name': PARTICIPANT_ID
-  'pattern': '^[0-9]+$'
   'required': true
-  'type': string
+  'schema':
+    'pattern': '^[0-9]+$'
+    'type': string
 'PHONE_NUMBER':
   'in': path
-  'minLength': 13
   'name': PHONE_NUMBER
-  'pattern': '^%2[Bb][0-9]+$'
   'required': true
-  'type': string
+  'schema':
+    'minLength': 13
+    'pattern': '^%2[Bb][0-9]+$'
+    'type': string
 'PLAN_ID':
   'in': path
   'name': PLAN_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'PORT_REQUEST_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': PORT_REQUEST_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'PROMPT_ID':
   'in': path
   'name': PROMPT_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'PROVIDER_ID':
   'in': path
   'name': PROVIDER_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'QUEUE_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': QUEUE_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'RATE_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': RATE_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'RECORDING_ID':
   'in': path
-  'maxLength': 39
-  'minLength': 39
   'name': RECORDING_ID
-  'pattern': '^[0-9a-f-]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 39
+    'minLength': 39
+    'pattern': '^[0-9a-f-]+$'
+    'type': string
 'REPORT_ID':
   'in': path
-  'maxLength': 39
-  'minLength': 39
   'name': REPORT_ID
-  'pattern': '^report\-[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 39
+    'minLength': 39
+    'pattern': '^report\-[0-9a-f]+$'
+    'type': string
 'RESOURCE_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': RESOURCE_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'RESOURCE_TEMPLATE_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': RESOURCE_TEMPLATE_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'SAMPLE_ID':
   'in': path
   'name': SAMPLE_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'SCHEMA_NAME':
   'in': path
   'name': SCHEMA_NAME
-  'pattern': '^[a-z0-9._-]+$'
   'required': true
-  'type': string
+  'schema':
+    'pattern': '^[a-z0-9._-]+$'
+    'type': string
 'SELECTOR_NAME':
   'in': path
   'name': SELECTOR_NAME
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'SMS_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': SMS_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'SMTP_LOG_ID':
   'in': path
   'name': SMTP_LOG_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'SOCKET_ID':
   'in': path
   'name': SOCKET_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'SOURCE_SERVICE':
   'in': path
   'name': SOURCE_SERVICE
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'STORAGE_PLAN_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': STORAGE_PLAN_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'SYSTEM_CONFIG_ID':
   'in': path
   'name': SYSTEM_CONFIG_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'TASK_ID':
   'in': path
-  'maxLength': 15
-  'minLength': 15
   'name': TASK_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 15
+    'minLength': 15
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'TEMPLATE_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': TEMPLATE_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'TEMPLATE_NAME':
   'in': path
   'name': TEMPLATE_NAME
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'TEMPORAL_RULE_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': TEMPORAL_RULE_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'TEMPORAL_RULE_SET':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': TEMPORAL_RULE_SET
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'THING':
   'in': path
   'name': THING
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'TRANSACTION_ID':
   'in': path
   'name': TRANSACTION_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'USERNAME':
   'in': path
   'name': USERNAME
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'USER_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': USER_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'UUID':
   'in': path
   'name': UUID
-  'pattern': '^[a-f0-9-]+$'
   'required': true
-  'type': string
+  'schema':
+    'pattern': '^[a-f0-9-]+$'
+    'type': string
 'VM_BOX_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': VM_BOX_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'VM_MSG_ID':
   'in': path
   'name': VM_MSG_ID
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'WEBHOOK_ID':
   'in': path
-  'maxLength': 32
-  'minLength': 32
   'name': WEBHOOK_ID
-  'pattern': '^[0-9a-f]+$'
   'required': true
-  'type': string
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'WHITELABEL_DOMAIN':
   'in': path
   'name': WHITELABEL_DOMAIN
   'required': true
-  'type': string
+  'schema':
+    'type': string
 'auth_token_header':
   'description': request authentication token
   'in': header
-  'minLength': 32
   'name': X-Auth-Token
   'required': true
-  'type': string
+  'schema':
+    'minLength': 32
+    'type': string
 'auth_token_header_or_none':
   'description': request authentication token
   'in': header
-  'minLength': 32
   'name': X-Auth-Token
   'required': false
-  'type': string
+  'schema':
+    'minLength': 32
+    'type': string

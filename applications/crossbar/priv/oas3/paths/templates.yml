@@ -17,11 +17,6 @@ paths:
     put:
       parameters:
         - $ref: '../oas3-parameters.yml#/TEMPLATE_NAME'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '../oas3-schemas.yml#/templates'
       responses:
         200:
           description: Successful operation

@@ -444,30 +444,37 @@ to_oas3_path_item_object(EndpointName, EndpointMeta, Path, PathMeta, PathItemObj
     PathItemObjects#{Path => lists:foldl(F, #{}, Methods)}.
 
 -spec add_operation_object(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), map()) -> map().
-add_operation_object(EndpointName, _EndpointMeta, Path, Method, PathItemObject) ->
+add_operation_object(EndpointName, EndpointMeta, Path, Method, PathItemObject) ->
     Object = #{<<"summary">> => generate_method_summary(EndpointName, Method, lists:last(split_url(Path)))
                %% ,<<"operationId">> => kz_binary:join([Method, EndpointName, kz_binary:rand_hex(3)], <<".">>)
               ,<<"parameters">> => [kz_json:to_map(Param) || Param <- make_parameters(Path, Method, 'undefined', <<"oas3">>)]
               ,<<"responses">> => #{<<"200">> => #{<<"description">> => <<"Successful operation">>}}
               },
-    PathItemObject#{Method => maybe_add_request_body(EndpointName, Method, Object)}.
+    PathItemObject#{Method => maybe_add_request_body(EndpointName, EndpointMeta, Method, Object)}.
 
--spec maybe_add_request_body(kz_term:ne_binary(), kz_term:ne_binary(), map()) -> map().
-maybe_add_request_body(EndpointName, Method, Map)
+-spec maybe_add_request_body(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), map()) -> map().
+maybe_add_request_body(EndpointName, EndpointMeta, Method, Map)
   when Method =:= <<"put">>;
        Method =:= <<"post">>;
        Method =:= <<"patch">> ->
-    RequestBody = #{<<"content">> =>
-                    #{<<"application/json">> =>
-                      #{<<"schema">> =>
-                        #{<<"$ref">> =>
-                          <<"../", (kz_term:to_binary(?OAS3_SCHEMAS_FILENAME))/binary, "#/", EndpointName/binary>>
-                         }
-                       }
-                     }
-                   },
-    Map#{<<"requestBody">> => RequestBody};
-maybe_add_request_body(_EndpointName, _Method, Map) ->
+    case kz_json:get_ne_binary_value(<<"schema">>, EndpointMeta) of
+        'undefined' -> Map;
+        %% These do not have schemas
+        <<"ip_auth">> -> undefined;
+        %% These have schemas
+        _ ->
+            RequestBody = #{<<"content">> =>
+                            #{<<"application/json">> =>
+                              #{<<"schema">> =>
+                                #{<<"$ref">> =>
+                                  <<"../", (kz_term:to_binary(?OAS3_SCHEMAS_FILENAME))/binary, "#/", EndpointName/binary>>
+                                 }
+                               }
+                             }
+                           },
+            Map#{<<"requestBody">> => RequestBody}
+    end;
+maybe_add_request_body(_EndpointName, _, _Method, Map) ->
     Map.
 
 -spec generate_method_summary(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().

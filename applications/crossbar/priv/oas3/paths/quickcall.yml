@@ -18,11 +18,6 @@ paths:
         - $ref: '../oas3-parameters.yml#/ENDPOINT_TYPE'
         - $ref: '../oas3-parameters.yml#/ENDPOINT_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '../oas3-schemas.yml#/quickcall'
       responses:
         200:
           description: Successful operation

@@ -2,11 +2,6 @@ paths:
   /ip_auth:
     put:
       parameters: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '../oas3-schemas.yml#/ip_auth'
       responses:
         200:
           description: Successful operation
