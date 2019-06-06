@@ -380,7 +380,7 @@ guess_type_by_default(?MOD_FUN_ARGS('kz_term', 'to_integer', _Args)) -> <<"integ
 guess_type_by_default(?MOD_FUN_ARGS('kz_binary', 'rand_hex', _Args)) -> <<"string">>;
 guess_type_by_default(?MOD_FUN_ARGS(_Mod, 'type', [])) -> <<"string">>.
 
--spec guess_properties(binary(), module(), kz_term:ne_binary(), kz_term:api_ne_binary(), any()) ->
+-spec guess_properties(binary(), module(), kz_json:get_key(), kz_term:api_ne_binary(), any()) ->
                               kz_json:object().
 guess_properties(Document, SourceModule, Key=?NE_BINARY, Type, Default) ->
     DescriptionKey = description_key(Document, Key),
