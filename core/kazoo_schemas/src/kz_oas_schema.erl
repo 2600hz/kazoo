@@ -169,110 +169,113 @@ to_oas3_schema([{Path, Val} | PVs], KVs, OrigKVs, Warn, Err) ->
 to_oas3_schema([], KVs, _, Warn, Err) ->
     return_error_on_error(lists:reverse(KVs), Warn, Err).
 
+is_in_oas_properties([_, Properties | _])
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    'true';
+is_in_oas_properties([<<"items">>, _, Properties | _])
+  when ?IS_OAS_PROPERTIES(Properties) ->
+    'true';
+is_in_oas_properties([]) ->
+    'true';
+is_in_oas_properties(_) ->
+    'false'.
+
 -spec to_oas3_schema(OriginalPath::kz_term:ne_binaries(), Path::kz_term:ne_binaries(), VisitedPath::kz_term:ne_binaries()
                     ,Value::kz_term:proplist_value(), KVAcc::kz_term:proplist(), OrigKVs::kz_term:proplist()
                     ,Warnings::kz_term:proplist(), Errors::kz_term:proplist()) -> oas3_schema_ret().
 %% remove unsupported keywords
-to_oas3_schema(_, [<<"_id">> = P], ReverseP, _, KVs, _, Warn, Err) ->
-    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
-to_oas3_schema(_, [<<"$id">>  = P| _], [] = ReverseP, _, KVs, _, Warn, Err) ->
-    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
-to_oas3_schema(_, [<<"$id">>  = P| _], [_, Properties | _] = ReverseP, _, KVs, _, Warn, Err)
-  when ?IS_OAS_PROPERTIES(Properties) ->
-    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
-to_oas3_schema(_, [<<"$schema">> = P], ReverseP, _, KVs, _, Warn, Err) ->
-    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
-to_oas3_schema(_, [<<"additionalItems">> = P | _], [] = ReverseP, _, KVs, _, Warn, Err) ->
-    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
-to_oas3_schema(_, [<<"additionalItems">> = P | _], [_, Properties | _] = ReverseP, _, KVs, _, Warn, Err)
-  when ?IS_OAS_PROPERTIES(Properties) ->
-    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
-to_oas3_schema(_, [<<"const">> = P | _], [] = ReverseP, _, KVs, _, Warn, Err) ->
-    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
-to_oas3_schema(_, [<<"const">> = P | _], [_, Properties | _] = ReverseP, _, KVs, _, Warn, Err)
-  when ?IS_OAS_PROPERTIES(Properties) ->
-    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
-to_oas3_schema(_, [<<"contains">> = P | _], [] = ReverseP, _, KVs, _, Warn, Err) ->
-    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
-to_oas3_schema(_, [<<"contains">> = P | _], [_, Properties | _] = ReverseP, _, KVs, _, Warn, Err)
-  when ?IS_OAS_PROPERTIES(Properties) ->
-    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
-to_oas3_schema(_, [<<"dependencies">> = P | _], [] = ReverseP, _, KVs, _, Warn, Err) ->
-    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
-to_oas3_schema(_, [<<"dependencies">> = P | _], [_, Properties | _] = ReverseP, _, KVs, _, Warn, Err)
-  when ?IS_OAS_PROPERTIES(Properties) ->
-    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
-to_oas3_schema(_, [<<"id">> = P | _], [] = ReverseP, _, KVs, _, Warn, Err) ->
-    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
-to_oas3_schema(_, [<<"id">> = P | _], [_, Properties | _] = ReverseP, _, KVs, _, Warn, Err)
-  when ?IS_OAS_PROPERTIES(Properties) ->
-    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
-to_oas3_schema(_, [<<"propertyNames">> = P | _], [] = ReverseP, _, KVs, _, Warn, Err) ->
-    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
-to_oas3_schema(_, [<<"propertyNames">> = P | _], [_, Properties | _] = ReverseP, _, KVs, _, Warn, Err)
-  when ?IS_OAS_PROPERTIES(Properties) ->
-    ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+to_oas3_schema(OrigP, [P | Ps], ReverseP, Val, KVs, OrigKVs, Warn, Err)
+  when (P =:= <<"_id">>
+        andalso Ps =:= []
+       )
+       orelse (P =:= <<"$schema">>
+               andalso Ps =:= []
+              )
+       orelse P =:= <<"$id">>
+       orelse P =:= <<"additionalItems">>
+       orelse P =:= <<"const">>
+       orelse P =:= <<"contains">>
+       orelse P =:= <<"dependencies">>
+       orelse P =:= <<"id">>
+       orelse P =:= <<"propertyNames">>
+       ->
+    case is_in_oas_properties(ReverseP) of
+        'true' ->
+            ret_unsupported_key(KVs, P, ReverseP, Warn, Err);
+        'false' ->
+            to_oas3_schema(OrigP, Ps, [P | ReverseP], Val, KVs, OrigKVs, Warn, Err)
+    end;
 
 %% let's rename this instead of removing
-to_oas3_schema(OrigP, [<<"patternProperties">> = P | Ps], [], Val, KVs, OrigKVs, Warn, Err) ->
-    to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>>], Val, KVs, OrigKVs, Warn, Err);
-to_oas3_schema(OrigP, [<<"patternProperties">> = P | Ps], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
-  when ?IS_OAS_PROPERTIES(Properties) ->
-    to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>> | ReverseP], Val, KVs, OrigKVs, Warn, Err);
+to_oas3_schema(OrigP, [<<"patternProperties">> = P | Ps], ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
+    case is_in_oas_properties(ReverseP) of
+        'true' ->
+            to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>> | ReverseP], Val, KVs, OrigKVs, Warn, Err);
+        'false' ->
+            to_oas3_schema(OrigP, Ps, [P | ReverseP], Val, KVs, OrigKVs, Warn, Err)
+    end;
 
 %% add prefix to kazoo specific fields
-to_oas3_schema(OrigP, [<<"kazoo-", _/binary>> = P | Ps], [], Val, KVs, OrigKVs, Warn, Err) ->
-    to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>>], Val, KVs, OrigKVs, Warn, Err);
-to_oas3_schema(OrigP, [<<"kazoo-", _/binary>> = P | Ps], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
-  when ?IS_OAS_PROPERTIES(Properties) ->
-    to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>> | ReverseP], Val, KVs, OrigKVs, Warn, Err);
-to_oas3_schema(OrigP, [<<"support_level">> = P | Ps], [], Val, KVs, OrigKVs, Warn, Err) ->
-    to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>>], Val, KVs, OrigKVs, Warn, Err);
-to_oas3_schema(OrigP, [<<"support_level">> = P | Ps], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
-  when ?IS_OAS_PROPERTIES(Properties) ->
-    to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>> | ReverseP], Val, KVs, OrigKVs, Warn, Err);
+to_oas3_schema(OrigP, [<<"kazoo-", _/binary>> = P | Ps], ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
+    case is_in_oas_properties(ReverseP) of
+        'true' ->
+            to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>> | ReverseP], Val, KVs, OrigKVs, Warn, Err);
+        'false' ->
+            to_oas3_schema(OrigP, Ps, [P | ReverseP], Val, KVs, OrigKVs, Warn, Err)
+    end;
+to_oas3_schema(OrigP, [<<"support_level">> = P | Ps], ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
+    case is_in_oas_properties(ReverseP) of
+        'true' ->
+            to_oas3_schema(OrigP, Ps, [<<"x-", P/binary>> | ReverseP], Val, KVs, OrigKVs, Warn, Err);
+        'false' ->
+            to_oas3_schema(OrigP, Ps, [P | ReverseP], Val, KVs, OrigKVs, Warn, Err)
+    end;
 
 %% since `kz_json:flatten/1' is not flattening a list if JObjs, we have to flatten them here.
-to_oas3_schema(OrigP, [P], [], Val, KVs, OrigKVs, Warn, Err)
+to_oas3_schema(OrigP, [P], ReverseP, Val, KVs, OrigKVs, Warn, Err)
   when P =:= <<"allOf">>
        orelse P =:= <<"anyOf">>
        orelse P =:= <<"oneOf">> ->
-    {NewVal, DeepWarn, DeepErr} = oas3_deep_flatten([P], Val, Warn, Err),
-    to_oas3_schema(OrigP, [], [P], NewVal, KVs, OrigKVs, DeepWarn, DeepErr);
-to_oas3_schema(_OrigP, [P | _], []=ReverseP, _Val, _KVs, _OrigKVs, Warn, Err)
+    case is_in_oas_properties(ReverseP) of
+        'true' ->
+            {NewVal, DeepWarn, DeepErr} = oas3_deep_flatten([P | ReverseP], Val, Warn, Err),
+            to_oas3_schema(OrigP, [], [P | ReverseP], NewVal, KVs, OrigKVs, DeepWarn, DeepErr);
+        'false' ->
+            to_oas3_schema(OrigP, [], [P | ReverseP], Val, KVs, OrigKVs, Warn, Err)
+    end;
+to_oas3_schema(OrigP, [P | Ps], ReverseP, Val, KVs, OrigKVs, Warn, Err)
   when P =:= <<"allOf">>
        orelse P =:= <<"anyOf">>
        orelse P =:= <<"oneOf">> ->
-    Msg = <<"the subschemas must be a valid list of OpenAPI schemas.">>,
-    {'error', Warn, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Err]};
-to_oas3_schema(OrigP, [P], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
-  when ?IS_OAS_PROPERTIES(Properties)
-       andalso (P =:= <<"allOf">>
-                orelse P =:= <<"anyOf">>
-                orelse P =:= <<"oneOf">>) ->
-    {NewVal, DeepWarn, DeepErr} = oas3_deep_flatten([P | ReverseP], Val, Warn, Err),
-    to_oas3_schema(OrigP, [], [P | ReverseP], NewVal, KVs, OrigKVs, DeepWarn, DeepErr);
-to_oas3_schema(_OrigP, [P | _], [_, Properties|_]=ReverseP, _Val, _KVs, _OrigKVs, Warn, Err)
-  when ?IS_OAS_PROPERTIES(Properties)
-       andalso (P =:= <<"allOf">>
-                orelse P =:= <<"anyOf">>
-                orelse P =:= <<"oneOf">>) ->
-    Msg = <<"the subschemas must be a valid list of OpenAPI schemas.">>,
-    {'error', Warn, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Err]};
+    case is_in_oas_properties(ReverseP) of
+        'true' ->
+            Msg = <<"the subschemas must be a valid list of OpenAPI schemas.">>,
+            {'error', Warn, [{join_oas3_path_reverse([P | ReverseP]), Msg} | Err]};
+        'false' ->
+            to_oas3_schema(OrigP, Ps, [P | ReverseP], Val, KVs, OrigKVs, Warn, Err)
+    end;
 
 %% other checks
 to_oas3_schema(OrigP, [<<"$ref">> = P], ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
     to_oas3_schema(OrigP, [], [P | ReverseP], maybe_fix_ref(Val, <<"oas3">>), KVs, OrigKVs, Warn, Err);
 to_oas3_schema(OrigP, [<<"additionalProperties">> = P], ReverseP, Val, KVs, OrigKVs, Warn, Err) when is_boolean(Val) ->
+    %% wth is this?
     to_oas3_schema(OrigP, [], [P | ReverseP], Val, KVs, OrigKVs, Warn, Err);
-to_oas3_schema(OrigP, [<<"additionalProperties">> = P | Ps], [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
-  when ?IS_OAS_PROPERTIES(Properties) ->
-    to_oas3_schema(OrigP, Ps, [P | ReverseP], Val, KVs, OrigKVs, Warn, Err);
-to_oas3_schema(OrigP, [<<"type">> | _] = Ps, [] = ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
-    to_oas3_type(OrigP, Ps, ReverseP, Val, KVs, OrigKVs, Warn, Err);
-to_oas3_schema(OrigP, [<<"type">> | _] = Ps, [_, Properties|_]=ReverseP, Val, KVs, OrigKVs, Warn, Err)
-  when ?IS_OAS_PROPERTIES(Properties) ->
-    to_oas3_type(OrigP, Ps, ReverseP, Val, KVs, OrigKVs, Warn, Err);
+to_oas3_schema(OrigP, [<<"additionalProperties">> = P | Ps], ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
+    %% wth is this?
+    case is_in_oas_properties(ReverseP) of
+        'true' ->
+            to_oas3_schema(OrigP, Ps, [P | ReverseP], Val, KVs, OrigKVs, Warn, Err);
+        'false' ->
+            to_oas3_schema(OrigP, Ps, [P | ReverseP], Val, KVs, OrigKVs, Warn, Err)
+    end;
+to_oas3_schema(OrigP, [<<"type">> = P | Ps] = PPs, ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
+    case is_in_oas_properties(ReverseP) of
+        'true' ->
+            to_oas3_type(OrigP, PPs, ReverseP, Val, KVs, OrigKVs, Warn, Err);
+        'false' ->
+            to_oas3_schema(OrigP, Ps, [P | ReverseP], Val, KVs, OrigKVs, Warn, Err)
+    end;
 
 %% accept everything else as-is, we don't care about them
 to_oas3_schema(OrigP, [P|Ps], ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
