@@ -15,6 +15,7 @@
         ]).
 
 -export([ucfirst/1, lcfirst/1
+        ,to_camel_case/1
         ,strip/1, strip/2
         ,strip_left/2, strip_right/2
         ,suffix/2
@@ -210,6 +211,13 @@ ucfirst(<<F:8, Bin/binary>>) -> <<(kz_term:to_upper_char(F)):8, Bin/binary>>.
 
 -spec lcfirst(kz_term:ne_binary()) -> kz_term:ne_binary().
 lcfirst(<<F:8, Bin/binary>>) -> <<(kz_term:to_lower_char(F)):8, Bin/binary>>.
+
+-spec to_camel_case(any()) -> binary().
+to_camel_case(Binary) when is_binary(Binary) ->
+    << <<(kz_binary:ucfirst(kz_term:to_lower_binary(Word)))/binary>>
+       || Word <- binary:split(Binary, [<<$_>>, <<$->>, <<$.>>], [global]),
+          Word =/= <<>>
+    >>.
 
 -spec pos(char(), binary()) -> non_neg_integer() | -1.
 pos(Char, Bin) ->

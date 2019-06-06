@@ -313,15 +313,16 @@ generate_oas_paths_json(Paths, <<"oas3">> = OasVersion, Parameters) ->
     Schemas = to_swagger_definitions(OasVersion),
 
     ReplaceThem = maps:fold(fun create_oas3_path_refs/3, [], OasPaths),
-        %% ++ kz_json:foldl(fun(K, V, Acc) -> create_oas3_component_refs(<<"parameters">>, ?OAS3_PARAMETERS_FILENAME, K, V, Acc) end
-        %%                 ,[]
-        %%                 ,kz_json:get_json_value(<<"oas3">>, Parameters, Parameters)
-        %%                 )
-        %% ++ kz_json:foldl(fun(K, V, Acc) -> create_oas3_component_refs(<<"schemas">>, ?OAS3_SCHEMAS_FILENAME, K, V, Acc) end
-        %%                 ,[]
-        %%                 ,Schemas
-        %%                 ),
-    Oas3 = kz_json:set_values(ReplaceThem, BaseOas),
+    %% no need to add these to master file?
+    %% ++ kz_json:foldl(fun(K, V, Acc) -> create_oas3_component_refs(<<"parameters">>, ?OAS3_PARAMETERS_FILENAME, K, V, Acc) end
+    %%                 ,[]
+    %%                 ,kz_json:get_json_value(<<"oas3">>, Parameters, Parameters)
+    %%                 )
+    %% ++ kz_json:foldl(fun(K, V, Acc) -> create_oas3_component_refs(<<"schemas">>, ?OAS3_SCHEMAS_FILENAME, K, V, Acc) end
+    %%                 ,[]
+    %%                 ,Schemas
+    %%                 ),
+    Oas3 = kz_json:set_values(ReplaceThem, kz_json:delete_key(<<"paths">>, BaseOas)),
     [{<<"oas3">>
      ,[{<<"openapi">>, Oas3}
       ,{<<"paths">>, OasPaths}
@@ -412,6 +413,7 @@ to_oas3_paths_object(Paths) ->
 
 -spec to_oas3_paths_object(kz_term:ne_binary(), kz_json:object(), map()) -> map().
 to_oas3_paths_object(EndpointName, EndpointMeta, PathsObject) ->
+    %% TODO: put every api spec to its own app's private folder
     %% App = kz_json:get_value(<<"app">>, EndpointMeta),
     %% BaseFile = filename:join([code:lib_dir(App), "doc/oas3_ref", <<EndpointName/binary, ".yml">>]),
     %% Base = kz_json:from_map(read_oas3_yaml(BaseFile)),
@@ -428,20 +430,41 @@ to_oas3_path_item_object(EndpointName, EndpointMeta, Path, PathMeta, PathItemObj
 
 -spec add_operation_object(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), map()) -> map().
 add_operation_object(EndpointName, EndpointMeta, Path, Method, PathItemObject) ->
-    Object = #{<<"summary">> => generate_method_summary(EndpointName, Method, lists:last(split_url(Path)))
-               %% ,<<"operationId">> => kz_binary:join([Method, EndpointName, kz_binary:rand_hex(3)], <<".">>)
-              ,<<"parameters">> => [kz_json:to_map(Param) || Param <- make_parameters(Path, Method, 'undefined', <<"oas3">>)]
-              ,<<"responses">> => #{<<"200">> => #{<<"description">> => <<"Successful operation">>}}
-              },
-    PathItemObject#{Method => maybe_add_request_body(EndpointName, EndpointMeta, Method, Object)}.
+    Funs = [fun add_operation_summary/5
+           ,fun add_operation_id/5
+           ,fun add_operation_parameters/5
+           ,fun add_operation_request_body/5
+           ,fun add_operation_responses/5
+           ,fun add_operation_tag/5
+           ],
+    PathItemObject#{Method =>
+                    lists:foldl(fun(Fun, Object) ->
+                                        Fun(Object, EndpointName, EndpointMeta, Path, Method)
+                                end
+                               ,#{}
+                               ,Funs
+                               )
+                   }.
 
--spec maybe_add_request_body(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), map()) -> map().
-maybe_add_request_body(EndpointName, EndpointMeta, Method, Map)
+-spec add_operation_summary(map(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> map().
+add_operation_summary(Operation, EndpointName, _, Path, Method) ->
+    Operation#{<<"summary">> => generate_method_summary(EndpointName, Method, lists:last(split_url(Path)))}.
+
+-spec add_operation_id(map(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> map().
+add_operation_id(Operation, _EndpointName, _, Path, Method) ->
+    Operation#{<<"operationId">> => make_camel_case_path(Path, kz_binary:to_camel_case(Method))}.
+
+-spec add_operation_parameters(map(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> map().
+add_operation_parameters(Operation, _, _, Path, Method) ->
+    Operation#{<<"parameters">> => [kz_json:to_map(Param) || Param <- make_parameters(Path, Method, 'undefined', <<"oas3">>)]}.
+
+-spec add_operation_request_body(map(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> map().
+add_operation_request_body(Operation, EndpointName, EndpointMeta, _, Method)
   when Method =:= <<"put">>;
        Method =:= <<"post">>;
        Method =:= <<"patch">> ->
     case kz_json:get_ne_binary_value(<<"schema">>, EndpointMeta) of
-        'undefined' -> Map;
+        'undefined' -> Operation;
         %% These do not have schemas
         <<"ip_auth">> -> undefined;
         %% These have schemas
@@ -455,20 +478,29 @@ maybe_add_request_body(EndpointName, EndpointMeta, Method, Map)
                                        }
                                  }
                            },
-            Map#{<<"requestBody">> => RequestBody}
+            Operation#{<<"requestBody">> => RequestBody}
     end;
-maybe_add_request_body(_EndpointName, _, _Method, Map) ->
-    Map.
+add_operation_request_body(Operation, _, _, _, _) ->
+    Operation.
 
+-spec add_operation_responses(map(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> map().
+add_operation_responses(Operation, _, _, _, _) ->
+    Operation#{<<"responses">> => #{<<"200">> => #{<<"description">> => <<"Successful operation">>}}}.
+
+-spec add_operation_tag(map(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> map().
+add_operation_tag(Operation, EndpointName, _, _, _) ->
+    Operation#{<<"tags">> => [EndpointName]}.
+
+%% TODO: create better generic summary (last item in path could be anything, /vmbox/box_id/messages/msg_id/raw)
 -spec generate_method_summary(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 generate_method_summary(EndpointName, <<"delete">>, _) ->
     <<"Delete an instance of ", EndpointName/binary>>;
 generate_method_summary(EndpointName, <<"get">>, <<${, _/binary>>) ->
-    <<"Gets a ", EndpointName/binary, " by ID">>;
+    <<"Get a ", EndpointName/binary, " by ID">>;
 generate_method_summary(EndpointName, <<"get">>, EndpointName) ->
-    <<"Gets all ", EndpointName/binary>>;
+    <<"Get all ", EndpointName/binary>>;
 generate_method_summary(EndpointName, <<"get">>, Something) ->
-    <<"Gets ", Something/binary, " of ", EndpointName/binary>>;
+    <<"Get ", Something/binary, " of ", EndpointName/binary>>;
 generate_method_summary(EndpointName, <<"patch">>, _) ->
     <<"Patch specific fields of ", EndpointName/binary>>;
 generate_method_summary(EndpointName, <<"post">>, _) ->
@@ -476,6 +508,16 @@ generate_method_summary(EndpointName, <<"post">>, _) ->
 generate_method_summary(EndpointName, <<"put">>, _) ->
     <<"Add an instance of ", EndpointName/binary>>.
 
+-spec make_camel_case_path(kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:ne_binary()) ->
+                             kz_term:ne_binary().
+make_camel_case_path(Path, Acc) when is_binary(Path) ->
+    make_camel_case_path(split_url(Path), Acc);
+make_camel_case_path([<<"{", _/binary>> = B | Rest], Acc) ->
+    make_camel_case_path(Rest, <<Acc/binary, (kz_binary:to_camel_case(unbrace_param(B)))/binary>>);
+make_camel_case_path([Word | Rest], Acc) ->
+    make_camel_case_path(Rest, <<Acc/binary, (kz_binary:to_camel_case(Word))/binary>>);
+make_camel_case_path([], Acc) ->
+    Acc.
 
 -spec to_swagger_paths(kz_json:object(), kz_json:object()) -> kz_json:object().
 to_swagger_paths(Paths, BasePaths) ->
@@ -571,6 +613,7 @@ auth_token_param(Path, _Method, OasVersion) ->
             ]
     end.
 
+-spec oas_params_path(kz_term:ne_binary()) -> kz_term:ne_binary().
 oas_params_path(<<"oas3">>) ->
     <<"../", (kz_term:to_binary(?OAS3_PARAMETERS_FILENAME))/binary, "#/">>;
 oas_params_path(<<"swagger2">>) ->
@@ -1067,9 +1110,11 @@ base_path_param(ParamName, OasVersion) ->
 
 -spec base_path_param(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:json_proplist()) -> kz_json:json_proplist().
 base_path_param(ParamName, OasVersion, SchemaProp) ->
-    [{<<"name">>, unbrace_param(ParamName)}
+    Name = unbrace_param(ParamName),
+    [{<<"name">>, Name}
     ,{<<"in">>, <<"path">>}
     ,{<<"required">>, true}
+    ,{<<"description">>, <<"request ", Name/binary, " parameter">>}
      | parameter_schema(OasVersion, [{<<"type">>, <<"string">>} | SchemaProp])
     ].
 
