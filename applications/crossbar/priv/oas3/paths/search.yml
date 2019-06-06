@@ -1,19 +1,25 @@
 paths:
   /accounts/{ACCOUNT_ID}/search:
     get:
+      operationId: GetAccountsAccountIdSearch
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all search
+      summary: Get all search
+      tags:
+        - search
   /accounts/{ACCOUNT_ID}/search/multi:
     get:
+      operationId: GetAccountsAccountIdSearchMulti
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets multi of search
+      summary: Get multi of search
+      tags:
+        - search

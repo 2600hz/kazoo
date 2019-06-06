@@ -1,14 +1,18 @@
 paths:
   /accounts/{ACCOUNT_ID}/connectivity:
     get:
+      operationId: GetAccountsAccountIdConnectivity
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all connectivity
+      summary: Get all connectivity
+      tags:
+        - connectivity
     put:
+      operationId: PutAccountsAccountIdConnectivity
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -21,30 +25,39 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of connectivity
+      tags:
+        - connectivity
   /accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}:
     delete:
+      operationId: DeleteAccountsAccountIdConnectivityConnectivityId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/CONNECTIVITY_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONNECTIVITY_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of connectivity
+      tags:
+        - connectivity
     get:
+      operationId: GetAccountsAccountIdConnectivityConnectivityId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/CONNECTIVITY_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONNECTIVITY_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a connectivity by ID
+      summary: Get a connectivity by ID
+      tags:
+        - connectivity
     patch:
+      operationId: PatchAccountsAccountIdConnectivityConnectivityId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/CONNECTIVITY_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONNECTIVITY_ID'
       requestBody:
         content:
           application/json:
@@ -54,11 +67,14 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of connectivity
+      tags:
+        - connectivity
     post:
+      operationId: PostAccountsAccountIdConnectivityConnectivityId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/CONNECTIVITY_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONNECTIVITY_ID'
       requestBody:
         content:
           application/json:
@@ -68,3 +84,5 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of connectivity
+      tags:
+        - connectivity

@@ -1,6 +1,7 @@
 paths:
   /ubiquiti_auth:
     put:
+      operationId: PutUbiquitiAuth
       parameters: []
       requestBody:
         content:
@@ -11,3 +12,5 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of ubiquiti_auth
+      tags:
+        - ubiquiti_auth

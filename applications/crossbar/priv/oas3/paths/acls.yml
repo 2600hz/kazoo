@@ -1,10 +1,13 @@
 paths:
   /accounts/{ACCOUNT_ID}/acls:
     get:
+      operationId: GetAccountsAccountIdAcls
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all acls
+      summary: Get all acls
+      tags:
+        - acls

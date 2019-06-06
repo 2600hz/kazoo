@@ -1,14 +1,18 @@
 paths:
   /accounts/{ACCOUNT_ID}/blacklists:
     get:
+      operationId: GetAccountsAccountIdBlacklists
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all blacklists
+      summary: Get all blacklists
+      tags:
+        - blacklists
     put:
+      operationId: PutAccountsAccountIdBlacklists
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -21,30 +25,39 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of blacklists
+      tags:
+        - blacklists
   /accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}:
     delete:
+      operationId: DeleteAccountsAccountIdBlacklistsBlacklistId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/BLACKLIST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/BLACKLIST_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of blacklists
+      tags:
+        - blacklists
     get:
+      operationId: GetAccountsAccountIdBlacklistsBlacklistId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/BLACKLIST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/BLACKLIST_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a blacklists by ID
+      summary: Get a blacklists by ID
+      tags:
+        - blacklists
     patch:
+      operationId: PatchAccountsAccountIdBlacklistsBlacklistId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/BLACKLIST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/BLACKLIST_ID'
       requestBody:
         content:
           application/json:
@@ -54,11 +67,14 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of blacklists
+      tags:
+        - blacklists
     post:
+      operationId: PostAccountsAccountIdBlacklistsBlacklistId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/BLACKLIST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/BLACKLIST_ID'
       requestBody:
         content:
           application/json:
@@ -68,3 +84,5 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of blacklists
+      tags:
+        - blacklists

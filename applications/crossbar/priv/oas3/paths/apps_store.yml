@@ -1,23 +1,30 @@
 paths:
   /accounts/{ACCOUNT_ID}/apps_store:
     get:
+      operationId: GetAccountsAccountIdAppsStore
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all apps_store
+      summary: Get all apps_store
+      tags:
+        - apps_store
   /accounts/{ACCOUNT_ID}/apps_store/blacklist:
     get:
+      operationId: GetAccountsAccountIdAppsStoreBlacklist
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets blacklist of apps_store
+      summary: Get blacklist of apps_store
+      tags:
+        - apps_store
     post:
+      operationId: PostAccountsAccountIdAppsStoreBlacklist
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -25,61 +32,81 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of apps_store
+      tags:
+        - apps_store
   /accounts/{ACCOUNT_ID}/apps_store/{APP_ID}:
     delete:
+      operationId: DeleteAccountsAccountIdAppsStoreAppId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/APP_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/APP_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of apps_store
+      tags:
+        - apps_store
     get:
+      operationId: GetAccountsAccountIdAppsStoreAppId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/APP_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/APP_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a apps_store by ID
+      summary: Get a apps_store by ID
+      tags:
+        - apps_store
     post:
+      operationId: PostAccountsAccountIdAppsStoreAppId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/APP_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/APP_ID'
       responses:
         200:
           description: Successful operation
       summary: Update an instance of apps_store
+      tags:
+        - apps_store
     put:
+      operationId: PutAccountsAccountIdAppsStoreAppId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/APP_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/APP_ID'
       responses:
         200:
           description: Successful operation
       summary: Add an instance of apps_store
+      tags:
+        - apps_store
   /accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/icon:
     get:
+      operationId: GetAccountsAccountIdAppsStoreAppIdIcon
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/APP_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/APP_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets icon of apps_store
+      summary: Get icon of apps_store
+      tags:
+        - apps_store
   /accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/screenshot/{APP_SCREENSHOT_INDEX}:
     get:
+      operationId: GetAccountsAccountIdAppsStoreAppIdScreenshotAppScreenshotIndex
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/APP_SCREENSHOT_INDEX'
-        - $ref: '../oas3-parameters.yml#/APP_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/APP_ID'
+        - $ref: '../oas3-parameters.yml#/APP_SCREENSHOT_INDEX'
       responses:
         200:
           description: Successful operation
-      summary: Gets a apps_store by ID
+      summary: Get a apps_store by ID
+      tags:
+        - apps_store

@@ -1,10 +1,13 @@
 paths:
   /accounts/{ACCOUNT_ID}/contact_list:
     get:
+      operationId: GetAccountsAccountIdContactList
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all contact_list
+      summary: Get all contact_list
+      tags:
+        - contact_list

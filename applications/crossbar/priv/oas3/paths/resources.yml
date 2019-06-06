@@ -1,14 +1,18 @@
 paths:
   /accounts/{ACCOUNT_ID}/resources:
     get:
+      operationId: GetAccountsAccountIdResources
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all resources
+      summary: Get all resources
+      tags:
+        - resources
     put:
+      operationId: PutAccountsAccountIdResources
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -21,8 +25,11 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of resources
+      tags:
+        - resources
   /accounts/{ACCOUNT_ID}/resources/collection:
     post:
+      operationId: PostAccountsAccountIdResourcesCollection
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -35,7 +42,10 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of resources
+      tags:
+        - resources
     put:
+      operationId: PutAccountsAccountIdResourcesCollection
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -48,16 +58,22 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of resources
+      tags:
+        - resources
   /accounts/{ACCOUNT_ID}/resources/jobs:
     get:
+      operationId: GetAccountsAccountIdResourcesJobs
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets jobs of resources
+      summary: Get jobs of resources
+      tags:
+        - resources
     put:
+      operationId: PutAccountsAccountIdResourcesJobs
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -70,40 +86,52 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of resources
+      tags:
+        - resources
   /accounts/{ACCOUNT_ID}/resources/jobs/{JOB_ID}:
     get:
+      operationId: GetAccountsAccountIdResourcesJobsJobId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/JOB_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/JOB_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a resources by ID
+      summary: Get a resources by ID
+      tags:
+        - resources
   /accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}:
     delete:
+      operationId: DeleteAccountsAccountIdResourcesResourceId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/RESOURCE_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/RESOURCE_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of resources
+      tags:
+        - resources
     get:
+      operationId: GetAccountsAccountIdResourcesResourceId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/RESOURCE_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/RESOURCE_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a resources by ID
+      summary: Get a resources by ID
+      tags:
+        - resources
     patch:
+      operationId: PatchAccountsAccountIdResourcesResourceId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/RESOURCE_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/RESOURCE_ID'
       requestBody:
         content:
           application/json:
@@ -113,11 +141,14 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of resources
+      tags:
+        - resources
     post:
+      operationId: PostAccountsAccountIdResourcesResourceId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/RESOURCE_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/RESOURCE_ID'
       requestBody:
         content:
           application/json:
@@ -127,3 +158,5 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of resources
+      tags:
+        - resources

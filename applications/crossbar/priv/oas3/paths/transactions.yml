@@ -1,15 +1,19 @@
 paths:
   /accounts/{ACCOUNT_ID}/transactions:
     get:
+      operationId: GetAccountsAccountIdTransactions
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all transactions
+      summary: Get all transactions
+      tags:
+        - transactions
   /accounts/{ACCOUNT_ID}/transactions/refund:
     put:
+      operationId: PutAccountsAccountIdTransactionsRefund
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -17,8 +21,11 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of transactions
+      tags:
+        - transactions
   /accounts/{ACCOUNT_ID}/transactions/sale:
     put:
+      operationId: PutAccountsAccountIdTransactionsSale
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -26,13 +33,18 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of transactions
+      tags:
+        - transactions
   /accounts/{ACCOUNT_ID}/transactions/{TRANSACTION_ID}:
     get:
+      operationId: GetAccountsAccountIdTransactionsTransactionId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/TRANSACTION_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/TRANSACTION_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a transactions by ID
+      summary: Get a transactions by ID
+      tags:
+        - transactions

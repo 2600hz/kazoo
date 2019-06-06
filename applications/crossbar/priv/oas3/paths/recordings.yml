@@ -1,29 +1,38 @@
 paths:
   /accounts/{ACCOUNT_ID}/recordings:
     get:
+      operationId: GetAccountsAccountIdRecordings
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all recordings
+      summary: Get all recordings
+      tags:
+        - recordings
   /accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}:
     delete:
+      operationId: DeleteAccountsAccountIdRecordingsRecordingId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/RECORDING_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/RECORDING_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of recordings
+      tags:
+        - recordings
     get:
+      operationId: GetAccountsAccountIdRecordingsRecordingId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/RECORDING_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/RECORDING_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a recordings by ID
+      summary: Get a recordings by ID
+      tags:
+        - recordings

@@ -1,6 +1,7 @@
 paths:
   /accounts/{ACCOUNT_ID}/storage:
     delete:
+      operationId: DeleteAccountsAccountIdStorage
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -8,15 +9,21 @@ paths:
         200:
           description: Successful operation
       summary: Delete an instance of storage
+      tags:
+        - storage
     get:
+      operationId: GetAccountsAccountIdStorage
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all storage
+      summary: Get all storage
+      tags:
+        - storage
     patch:
+      operationId: PatchAccountsAccountIdStorage
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -29,7 +36,10 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of storage
+      tags:
+        - storage
     post:
+      operationId: PostAccountsAccountIdStorage
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -42,7 +52,10 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of storage
+      tags:
+        - storage
     put:
+      operationId: PutAccountsAccountIdStorage
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -55,16 +68,22 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of storage
+      tags:
+        - storage
   /accounts/{ACCOUNT_ID}/storage/plans:
     get:
+      operationId: GetAccountsAccountIdStoragePlans
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets plans of storage
+      summary: Get plans of storage
+      tags:
+        - storage
     put:
+      operationId: PutAccountsAccountIdStoragePlans
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -77,30 +96,39 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of storage
+      tags:
+        - storage
   /accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}:
     delete:
+      operationId: DeleteAccountsAccountIdStoragePlansStoragePlanId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/STORAGE_PLAN_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/STORAGE_PLAN_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of storage
+      tags:
+        - storage
     get:
+      operationId: GetAccountsAccountIdStoragePlansStoragePlanId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/STORAGE_PLAN_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/STORAGE_PLAN_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a storage by ID
+      summary: Get a storage by ID
+      tags:
+        - storage
     patch:
+      operationId: PatchAccountsAccountIdStoragePlansStoragePlanId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/STORAGE_PLAN_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/STORAGE_PLAN_ID'
       requestBody:
         content:
           application/json:
@@ -110,11 +138,14 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of storage
+      tags:
+        - storage
     post:
+      operationId: PostAccountsAccountIdStoragePlansStoragePlanId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/STORAGE_PLAN_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/STORAGE_PLAN_ID'
       requestBody:
         content:
           application/json:
@@ -124,3 +155,5 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of storage
+      tags:
+        - storage

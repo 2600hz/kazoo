@@ -1,48 +1,63 @@
 paths:
   /accounts/{ACCOUNT_ID}/cdrs:
     get:
+      operationId: GetAccountsAccountIdCdrs
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all cdrs
+      summary: Get all cdrs
+      tags:
+        - cdrs
   /accounts/{ACCOUNT_ID}/cdrs/interaction:
     get:
+      operationId: GetAccountsAccountIdCdrsInteraction
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets interaction of cdrs
+      summary: Get interaction of cdrs
+      tags:
+        - cdrs
   /accounts/{ACCOUNT_ID}/cdrs/legs/{INTERACTION_ID}:
     get:
+      operationId: GetAccountsAccountIdCdrsLegsInteractionId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/INTERACTION_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/INTERACTION_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a cdrs by ID
+      summary: Get a cdrs by ID
+      tags:
+        - cdrs
   /accounts/{ACCOUNT_ID}/cdrs/summary:
     get:
+      operationId: GetAccountsAccountIdCdrsSummary
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets summary of cdrs
+      summary: Get summary of cdrs
+      tags:
+        - cdrs
   /accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}:
     get:
+      operationId: GetAccountsAccountIdCdrsCdrId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/CDR_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CDR_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a cdrs by ID
+      summary: Get a cdrs by ID
+      tags:
+        - cdrs

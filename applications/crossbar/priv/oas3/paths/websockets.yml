@@ -1,20 +1,26 @@
 paths:
   /accounts/{ACCOUNT_ID}/websockets:
     get:
+      operationId: GetAccountsAccountIdWebsockets
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all websockets
+      summary: Get all websockets
+      tags:
+        - websockets
   /accounts/{ACCOUNT_ID}/websockets/{SOCKET_ID}:
     get:
+      operationId: GetAccountsAccountIdWebsocketsSocketId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/SOCKET_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/SOCKET_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a websockets by ID
+      summary: Get a websockets by ID
+      tags:
+        - websockets

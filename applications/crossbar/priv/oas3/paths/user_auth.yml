@@ -1,6 +1,7 @@
 paths:
   /user_auth:
     put:
+      operationId: PutUserAuth
       parameters: []
       requestBody:
         content:
@@ -11,8 +12,11 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of user_auth
+      tags:
+        - user_auth
   /user_auth/recovery:
     post:
+      operationId: PostUserAuthRecovery
       parameters: []
       requestBody:
         content:
@@ -23,7 +27,10 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of user_auth
+      tags:
+        - user_auth
     put:
+      operationId: PutUserAuthRecovery
       parameters: []
       requestBody:
         content:
@@ -34,11 +41,16 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of user_auth
+      tags:
+        - user_auth
   /user_auth/{AUTH_TOKEN}:
     get:
+      operationId: GetUserAuthAuthToken
       parameters:
         - $ref: '../oas3-parameters.yml#/AUTH_TOKEN'
       responses:
         200:
           description: Successful operation
-      summary: Gets a user_auth by ID
+      summary: Get a user_auth by ID
+      tags:
+        - user_auth

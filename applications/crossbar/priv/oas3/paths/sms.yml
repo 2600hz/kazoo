@@ -1,14 +1,18 @@
 paths:
   /accounts/{ACCOUNT_ID}/sms:
     get:
+      operationId: GetAccountsAccountIdSms
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all sms
+      summary: Get all sms
+      tags:
+        - sms
     put:
+      operationId: PutAccountsAccountIdSms
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -21,22 +25,30 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of sms
+      tags:
+        - sms
   /accounts/{ACCOUNT_ID}/sms/{SMS_ID}:
     delete:
+      operationId: DeleteAccountsAccountIdSmsSmsId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/SMS_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/SMS_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of sms
+      tags:
+        - sms
     get:
+      operationId: GetAccountsAccountIdSmsSmsId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/SMS_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/SMS_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a sms by ID
+      summary: Get a sms by ID
+      tags:
+        - sms

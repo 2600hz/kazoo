@@ -1,144 +1,204 @@
 paths:
   /auth:
     put:
+      operationId: PutAuth
       parameters: []
       responses:
         200:
           description: Successful operation
       summary: Add an instance of auth
+      tags:
+        - auth
   /auth/apps:
     get:
+      operationId: GetAuthApps
       parameters: []
       responses:
         200:
           description: Successful operation
-      summary: Gets apps of auth
+      summary: Get apps of auth
+      tags:
+        - auth
   /auth/apps/{APP_ID}:
     delete:
+      operationId: DeleteAuthAppsAppId
       parameters:
         - $ref: '../oas3-parameters.yml#/APP_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of auth
+      tags:
+        - auth
     get:
+      operationId: GetAuthAppsAppId
       parameters:
         - $ref: '../oas3-parameters.yml#/APP_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a auth by ID
+      summary: Get a auth by ID
+      tags:
+        - auth
     post:
+      operationId: PostAuthAppsAppId
       parameters:
         - $ref: '../oas3-parameters.yml#/APP_ID'
       responses:
         200:
           description: Successful operation
       summary: Update an instance of auth
+      tags:
+        - auth
   /auth/authorize:
     put:
+      operationId: PutAuthAuthorize
       parameters: []
       responses:
         200:
           description: Successful operation
       summary: Add an instance of auth
+      tags:
+        - auth
   /auth/callback:
     put:
+      operationId: PutAuthCallback
       parameters: []
       responses:
         200:
           description: Successful operation
       summary: Add an instance of auth
+      tags:
+        - auth
   /auth/keys:
     get:
+      operationId: GetAuthKeys
       parameters: []
       responses:
         200:
           description: Successful operation
-      summary: Gets keys of auth
+      summary: Get keys of auth
+      tags:
+        - auth
   /auth/keys/{KEY_ID}:
     get:
+      operationId: GetAuthKeysKeyId
       parameters:
         - $ref: '../oas3-parameters.yml#/KEY_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a auth by ID
+      summary: Get a auth by ID
+      tags:
+        - auth
     put:
+      operationId: PutAuthKeysKeyId
       parameters:
         - $ref: '../oas3-parameters.yml#/KEY_ID'
       responses:
         200:
           description: Successful operation
       summary: Add an instance of auth
+      tags:
+        - auth
   /auth/links:
     get:
+      operationId: GetAuthLinks
       parameters: []
       responses:
         200:
           description: Successful operation
-      summary: Gets links of auth
+      summary: Get links of auth
+      tags:
+        - auth
   /auth/links/{LINK_ID}:
     delete:
+      operationId: DeleteAuthLinksLinkId
       parameters:
         - $ref: '../oas3-parameters.yml#/LINK_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of auth
+      tags:
+        - auth
     get:
+      operationId: GetAuthLinksLinkId
       parameters:
         - $ref: '../oas3-parameters.yml#/LINK_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a auth by ID
+      summary: Get a auth by ID
+      tags:
+        - auth
     put:
+      operationId: PutAuthLinksLinkId
       parameters:
         - $ref: '../oas3-parameters.yml#/LINK_ID'
       responses:
         200:
           description: Successful operation
       summary: Add an instance of auth
+      tags:
+        - auth
   /auth/providers:
     get:
+      operationId: GetAuthProviders
       parameters: []
       responses:
         200:
           description: Successful operation
-      summary: Gets providers of auth
+      summary: Get providers of auth
+      tags:
+        - auth
   /auth/providers/{PROVIDER_ID}:
     delete:
+      operationId: DeleteAuthProvidersProviderId
       parameters:
         - $ref: '../oas3-parameters.yml#/PROVIDER_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of auth
+      tags:
+        - auth
     get:
+      operationId: GetAuthProvidersProviderId
       parameters:
         - $ref: '../oas3-parameters.yml#/PROVIDER_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a auth by ID
+      summary: Get a auth by ID
+      tags:
+        - auth
     post:
+      operationId: PostAuthProvidersProviderId
       parameters:
         - $ref: '../oas3-parameters.yml#/PROVIDER_ID'
       responses:
         200:
           description: Successful operation
       summary: Update an instance of auth
+      tags:
+        - auth
   /auth/tokeninfo:
     get:
+      operationId: GetAuthTokeninfo
       parameters: []
       responses:
         200:
           description: Successful operation
-      summary: Gets tokeninfo of auth
+      summary: Get tokeninfo of auth
+      tags:
+        - auth
     post:
+      operationId: PostAuthTokeninfo
       parameters: []
       responses:
         200:
           description: Successful operation
       summary: Update an instance of auth
+      tags:
+        - auth

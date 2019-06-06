@@ -1,20 +1,26 @@
 paths:
   /accounts/{ACCOUNT_ID}/pivot/debug:
     get:
+      operationId: GetAccountsAccountIdPivotDebug
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets debug of pivot
+      summary: Get debug of pivot
+      tags:
+        - pivot
   /accounts/{ACCOUNT_ID}/pivot/debug/{UUID}:
     get:
+      operationId: GetAccountsAccountIdPivotDebugUuid
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/UUID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/UUID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a pivot by ID
+      summary: Get a pivot by ID
+      tags:
+        - pivot

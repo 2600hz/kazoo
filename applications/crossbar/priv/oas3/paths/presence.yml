@@ -1,14 +1,18 @@
 paths:
   /accounts/{ACCOUNT_ID}/presence:
     get:
+      operationId: GetAccountsAccountIdPresence
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all presence
+      summary: Get all presence
+      tags:
+        - presence
     post:
+      operationId: PostAccountsAccountIdPresence
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -16,32 +20,43 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of presence
+      tags:
+        - presence
   /accounts/{ACCOUNT_ID}/presence/report-{REPORT_ID}:
     get:
+      operationId: 'GetAccountsAccountIdPresenceReport{reportId}'
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/REPORT_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/REPORT_ID'
       responses:
         200:
           description: Successful operation
-      summary: 'Gets report-{REPORT_ID} of presence'
+      summary: 'Get report-{REPORT_ID} of presence'
+      tags:
+        - presence
   /accounts/{ACCOUNT_ID}/presence/{EXTENSION}:
     get:
+      operationId: GetAccountsAccountIdPresenceExtension
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/EXTENSION'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/EXTENSION'
       responses:
         200:
           description: Successful operation
-      summary: Gets a presence by ID
+      summary: Get a presence by ID
+      tags:
+        - presence
     post:
+      operationId: PostAccountsAccountIdPresenceExtension
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/EXTENSION'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/EXTENSION'
       responses:
         200:
           description: Successful operation
       summary: Update an instance of presence
+      tags:
+        - presence

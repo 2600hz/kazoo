@@ -1,14 +1,18 @@
 paths:
   /accounts/{ACCOUNT_ID}/clicktocall:
     get:
+      operationId: GetAccountsAccountIdClicktocall
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all clicktocall
+      summary: Get all clicktocall
+      tags:
+        - clicktocall
     put:
+      operationId: PutAccountsAccountIdClicktocall
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -21,30 +25,39 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of clicktocall
+      tags:
+        - clicktocall
   /accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}:
     delete:
+      operationId: DeleteAccountsAccountIdClicktocallC2cId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/C2C_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/C2C_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of clicktocall
+      tags:
+        - clicktocall
     get:
+      operationId: GetAccountsAccountIdClicktocallC2cId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/C2C_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/C2C_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a clicktocall by ID
+      summary: Get a clicktocall by ID
+      tags:
+        - clicktocall
     patch:
+      operationId: PatchAccountsAccountIdClicktocallC2cId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/C2C_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/C2C_ID'
       requestBody:
         content:
           application/json:
@@ -54,11 +67,14 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of clicktocall
+      tags:
+        - clicktocall
     post:
+      operationId: PostAccountsAccountIdClicktocallC2cId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/C2C_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/C2C_ID'
       requestBody:
         content:
           application/json:
@@ -68,21 +84,27 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of clicktocall
+      tags:
+        - clicktocall
   /accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/connect:
     get:
+      operationId: GetAccountsAccountIdClicktocallC2cIdConnect
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header_or_none'
-        - $ref: '../oas3-parameters.yml#/C2C_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/C2C_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets connect of clicktocall
+      summary: Get connect of clicktocall
+      tags:
+        - clicktocall
     post:
+      operationId: PostAccountsAccountIdClicktocallC2cIdConnect
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header_or_none'
-        - $ref: '../oas3-parameters.yml#/C2C_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/C2C_ID'
       requestBody:
         content:
           application/json:
@@ -92,13 +114,18 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of clicktocall
+      tags:
+        - clicktocall
   /accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/history:
     get:
+      operationId: GetAccountsAccountIdClicktocallC2cIdHistory
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/C2C_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/C2C_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets history of clicktocall
+      summary: Get history of clicktocall
+      tags:
+        - clicktocall

@@ -1,6 +1,7 @@
 paths:
   /accounts/{ACCOUNT_ID}/token_restrictions:
     delete:
+      operationId: DeleteAccountsAccountIdTokenRestrictions
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -8,15 +9,21 @@ paths:
         200:
           description: Successful operation
       summary: Delete an instance of token_restrictions
+      tags:
+        - token_restrictions
     get:
+      operationId: GetAccountsAccountIdTokenRestrictions
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all token_restrictions
+      summary: Get all token_restrictions
+      tags:
+        - token_restrictions
     post:
+      operationId: PostAccountsAccountIdTokenRestrictions
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -29,3 +36,5 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of token_restrictions
+      tags:
+        - token_restrictions

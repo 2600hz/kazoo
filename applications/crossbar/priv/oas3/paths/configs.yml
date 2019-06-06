@@ -1,47 +1,62 @@
 paths:
   /accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}:
     delete:
+      operationId: DeleteAccountsAccountIdConfigsConfigId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/CONFIG_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFIG_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of configs
+      tags:
+        - configs
     get:
+      operationId: GetAccountsAccountIdConfigsConfigId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/CONFIG_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFIG_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a configs by ID
+      summary: Get a configs by ID
+      tags:
+        - configs
     patch:
+      operationId: PatchAccountsAccountIdConfigsConfigId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/CONFIG_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFIG_ID'
       responses:
         200:
           description: Successful operation
       summary: Patch specific fields of configs
+      tags:
+        - configs
     post:
+      operationId: PostAccountsAccountIdConfigsConfigId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/CONFIG_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFIG_ID'
       responses:
         200:
           description: Successful operation
       summary: Update an instance of configs
+      tags:
+        - configs
     put:
+      operationId: PutAccountsAccountIdConfigsConfigId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/CONFIG_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFIG_ID'
       responses:
         200:
           description: Successful operation
       summary: Add an instance of configs
+      tags:
+        - configs

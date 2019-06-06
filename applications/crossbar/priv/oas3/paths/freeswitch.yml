@@ -1,10 +1,13 @@
 paths:
   /accounts/{ACCOUNT_ID}/freeswitch:
     get:
+      operationId: GetAccountsAccountIdFreeswitch
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all freeswitch
+      summary: Get all freeswitch
+      tags:
+        - freeswitch

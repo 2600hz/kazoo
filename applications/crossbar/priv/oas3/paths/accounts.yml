@@ -1,6 +1,7 @@
 paths:
   /accounts:
     put:
+      operationId: PutAccounts
       parameters: []
       requestBody:
         content:
@@ -11,22 +12,31 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of accounts
+      tags:
+        - accounts
   /accounts/{ACCOUNT_ID}:
     delete:
+      operationId: DeleteAccountsAccountId
       parameters:
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of accounts
+      tags:
+        - accounts
     get:
+      operationId: GetAccountsAccountId
       parameters:
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a accounts by ID
+      summary: Get a accounts by ID
+      tags:
+        - accounts
     patch:
+      operationId: PatchAccountsAccountId
       parameters:
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       requestBody:
@@ -38,7 +48,10 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of accounts
+      tags:
+        - accounts
     post:
+      operationId: PostAccountsAccountId
       parameters:
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       requestBody:
@@ -50,7 +63,10 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of accounts
+      tags:
+        - accounts
     put:
+      operationId: PutAccountsAccountId
       parameters:
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       requestBody:
@@ -62,16 +78,22 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of accounts
+      tags:
+        - accounts
   /accounts/{ACCOUNT_ID}/api_key:
     get:
+      operationId: GetAccountsAccountIdApiKey
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets api_key of accounts
+      summary: Get api_key of accounts
+      tags:
+        - accounts
     put:
+      operationId: PutAccountsAccountIdApiKey
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -84,26 +106,35 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of accounts
+      tags:
+        - accounts
   /accounts/{ACCOUNT_ID}/children:
     get:
+      operationId: GetAccountsAccountIdChildren
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets children of accounts
+      summary: Get children of accounts
+      tags:
+        - accounts
   /accounts/{ACCOUNT_ID}/descendants:
     get:
+      operationId: GetAccountsAccountIdDescendants
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets descendants of accounts
+      summary: Get descendants of accounts
+      tags:
+        - accounts
   /accounts/{ACCOUNT_ID}/move:
     post:
+      operationId: PostAccountsAccountIdMove
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -116,17 +147,23 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of accounts
+      tags:
+        - accounts
   /accounts/{ACCOUNT_ID}/parents:
     get:
+      operationId: GetAccountsAccountIdParents
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets parents of accounts
+      summary: Get parents of accounts
+      tags:
+        - accounts
   /accounts/{ACCOUNT_ID}/reseller:
     delete:
+      operationId: DeleteAccountsAccountIdReseller
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -134,7 +171,10 @@ paths:
         200:
           description: Successful operation
       summary: Delete an instance of accounts
+      tags:
+        - accounts
     put:
+      operationId: PutAccountsAccountIdReseller
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -147,21 +187,29 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of accounts
+      tags:
+        - accounts
   /accounts/{ACCOUNT_ID}/siblings:
     get:
+      operationId: GetAccountsAccountIdSiblings
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets siblings of accounts
+      summary: Get siblings of accounts
+      tags:
+        - accounts
   /accounts/{ACCOUNT_ID}/tree:
     get:
+      operationId: GetAccountsAccountIdTree
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets tree of accounts
+      summary: Get tree of accounts
+      tags:
+        - accounts

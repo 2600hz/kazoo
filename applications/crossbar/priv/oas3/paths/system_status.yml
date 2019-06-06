@@ -1,11 +1,11 @@
 paths:
-  /about:
+  /system_status:
     get:
-      operationId: GetAbout
+      operationId: GetSystemStatus
       parameters: []
       responses:
         200:
           description: Successful operation
-      summary: Get all about
+      summary: Get all system_status
       tags:
-        - about
+        - system_status

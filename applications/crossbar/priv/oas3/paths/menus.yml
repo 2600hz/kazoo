@@ -1,14 +1,18 @@
 paths:
   /accounts/{ACCOUNT_ID}/menus:
     get:
+      operationId: GetAccountsAccountIdMenus
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all menus
+      summary: Get all menus
+      tags:
+        - menus
     put:
+      operationId: PutAccountsAccountIdMenus
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -21,30 +25,39 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of menus
+      tags:
+        - menus
   /accounts/{ACCOUNT_ID}/menus/{MENU_ID}:
     delete:
+      operationId: DeleteAccountsAccountIdMenusMenuId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/MENU_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/MENU_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of menus
+      tags:
+        - menus
     get:
+      operationId: GetAccountsAccountIdMenusMenuId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/MENU_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/MENU_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a menus by ID
+      summary: Get a menus by ID
+      tags:
+        - menus
     patch:
+      operationId: PatchAccountsAccountIdMenusMenuId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/MENU_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/MENU_ID'
       requestBody:
         content:
           application/json:
@@ -54,11 +67,14 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of menus
+      tags:
+        - menus
     post:
+      operationId: PostAccountsAccountIdMenusMenuId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/MENU_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/MENU_ID'
       requestBody:
         content:
           application/json:
@@ -68,3 +84,5 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of menus
+      tags:
+        - menus

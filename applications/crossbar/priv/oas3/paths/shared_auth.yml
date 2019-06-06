@@ -1,12 +1,16 @@
 paths:
   /shared_auth:
     get:
+      operationId: GetSharedAuth
       parameters: []
       responses:
         200:
           description: Successful operation
-      summary: Gets all shared_auth
+      summary: Get all shared_auth
+      tags:
+        - shared_auth
     put:
+      operationId: PutSharedAuth
       parameters: []
       requestBody:
         content:
@@ -17,3 +21,5 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of shared_auth
+      tags:
+        - shared_auth

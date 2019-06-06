@@ -1,6 +1,7 @@
 paths:
   /api_auth:
     put:
+      operationId: PutApiAuth
       parameters: []
       requestBody:
         content:
@@ -11,3 +12,5 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of api_auth
+      tags:
+        - api_auth

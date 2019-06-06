@@ -1,14 +1,18 @@
 paths:
   /accounts/{ACCOUNT_ID}/port_requests:
     get:
+      operationId: GetAccountsAccountIdPortRequests
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all port_requests
+      summary: Get all port_requests
+      tags:
+        - port_requests
     put:
+      operationId: PutAccountsAccountIdPortRequests
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -21,39 +25,51 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of port_requests
+      tags:
+        - port_requests
   /accounts/{ACCOUNT_ID}/port_requests/last_submitted:
     get:
+      operationId: GetAccountsAccountIdPortRequestsLastSubmitted
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets last_submitted of port_requests
+      summary: Get last_submitted of port_requests
+      tags:
+        - port_requests
   /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}:
     delete:
+      operationId: DeleteAccountsAccountIdPortRequestsPortRequestId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of port_requests
+      tags:
+        - port_requests
     get:
+      operationId: GetAccountsAccountIdPortRequestsPortRequestId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a port_requests by ID
+      summary: Get a port_requests by ID
+      tags:
+        - port_requests
     patch:
+      operationId: PatchAccountsAccountIdPortRequestsPortRequestId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
       requestBody:
         content:
           application/json:
@@ -63,11 +79,14 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of port_requests
+      tags:
+        - port_requests
     post:
+      operationId: PostAccountsAccountIdPortRequestsPortRequestId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
       requestBody:
         content:
           application/json:
@@ -77,21 +96,27 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of port_requests
+      tags:
+        - port_requests
   /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments:
     get:
+      operationId: GetAccountsAccountIdPortRequestsPortRequestIdAttachments
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets attachments of port_requests
+      summary: Get attachments of port_requests
+      tags:
+        - port_requests
     put:
+      operationId: PutAccountsAccountIdPortRequestsPortRequestIdAttachments
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
       requestBody:
         content:
           application/json:
@@ -101,33 +126,42 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of port_requests
+      tags:
+        - port_requests
   /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments/{ATTACHMENT_ID}:
     delete:
+      operationId: DeleteAccountsAccountIdPortRequestsPortRequestIdAttachmentsAttachmentId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
         - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
         - $ref: '../oas3-parameters.yml#/ATTACHMENT_ID'
-        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of port_requests
+      tags:
+        - port_requests
     get:
+      operationId: GetAccountsAccountIdPortRequestsPortRequestIdAttachmentsAttachmentId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
         - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
         - $ref: '../oas3-parameters.yml#/ATTACHMENT_ID'
-        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a port_requests by ID
+      summary: Get a port_requests by ID
+      tags:
+        - port_requests
     post:
+      operationId: PostAccountsAccountIdPortRequestsPortRequestIdAttachmentsAttachmentId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
         - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
         - $ref: '../oas3-parameters.yml#/ATTACHMENT_ID'
-        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       requestBody:
         content:
           application/json:
@@ -137,12 +171,15 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of port_requests
+      tags:
+        - port_requests
   /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/canceled:
     patch:
+      operationId: PatchAccountsAccountIdPortRequestsPortRequestIdCanceled
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
       requestBody:
         content:
           application/json:
@@ -152,12 +189,15 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of port_requests
+      tags:
+        - port_requests
   /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/completed:
     patch:
+      operationId: PatchAccountsAccountIdPortRequestsPortRequestIdCompleted
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
       requestBody:
         content:
           application/json:
@@ -167,22 +207,28 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of port_requests
+      tags:
+        - port_requests
   /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/loa:
     get:
+      operationId: GetAccountsAccountIdPortRequestsPortRequestIdLoa
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets loa of port_requests
+      summary: Get loa of port_requests
+      tags:
+        - port_requests
   /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/pending:
     patch:
+      operationId: PatchAccountsAccountIdPortRequestsPortRequestIdPending
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
       requestBody:
         content:
           application/json:
@@ -192,12 +238,15 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of port_requests
+      tags:
+        - port_requests
   /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/rejected:
     patch:
+      operationId: PatchAccountsAccountIdPortRequestsPortRequestIdRejected
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
       requestBody:
         content:
           application/json:
@@ -207,12 +256,15 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of port_requests
+      tags:
+        - port_requests
   /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/scheduled:
     patch:
+      operationId: PatchAccountsAccountIdPortRequestsPortRequestIdScheduled
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
       requestBody:
         content:
           application/json:
@@ -222,12 +274,15 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of port_requests
+      tags:
+        - port_requests
   /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/submitted:
     patch:
+      operationId: PatchAccountsAccountIdPortRequestsPortRequestIdSubmitted
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
       requestBody:
         content:
           application/json:
@@ -237,13 +292,18 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of port_requests
+      tags:
+        - port_requests
   /accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/timeline:
     get:
+      operationId: GetAccountsAccountIdPortRequestsPortRequestIdTimeline
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PORT_REQUEST_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets timeline of port_requests
+      summary: Get timeline of port_requests
+      tags:
+        - port_requests

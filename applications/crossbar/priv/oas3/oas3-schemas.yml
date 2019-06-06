@@ -1255,35 +1255,35 @@
       'items':
         'description': The individual media to play
         'oneOf':
-          - '$ref': callflows.play
+          - '$ref': '#/callflows.play'
             'description': media file to play
             'properties':
               'macro':
                 'enum':
                   - play
                 'type': string
-          - '$ref': callflows.audio_macro.tone
+          - '$ref': '#/callflows.audio_macro.tone'
             'description': tone to play
             'properties':
               'macro':
                 'enum':
                   - tone
                 'type': string
-          - '$ref': callflows.audio_macro.prompt
+          - '$ref': '#/callflows.audio_macro.prompt'
             'description': prompt to play
             'properties':
               'macro':
                 'enum':
                   - prompt
                 'type': string
-          - '$ref': callflows.audio_macro.say
+          - '$ref': '#/callflows.audio_macro.say'
             'description': say macro to execute
             'properties':
               'macro':
                 'enum':
                   - say
                 'type': string
-          - '$ref': callflows.tts
+          - '$ref': '#/callflows.tts'
             'description': TTS text to say
             'properties':
               'macro':
@@ -3821,7 +3821,7 @@
         'oneOf':
           - 'description': 'Device or User IDs, DIDs or extensions, SIP URIs'
             'type': string
-          - '$ref': devices
+          - '$ref': '#/devices'
             'description': Device document
       'minItems': 1
       'type': array
@@ -4305,14 +4305,15 @@
       '$ref': '#/formatters'
     'hotdesk':
       'description': The hotdesk status of this device
+      'properties':
+        'users':
+          'description': The user(s) currently hotdesked into the device
+          'type': object
+          'x-patternProperties':
+            '^[a-zA-Z0-9]{32}$':
+              'description': user-specific hotdesk settings
+              'type': object
       'type': object
-      'users':
-        'description': The user(s) currently hotdesked into the device
-        'patternProperties':
-          '^[a-zA-Z0-9]{32}$':
-            'description': user-specific hotdesk settings
-            'type': object
-        'type': object
     'language':
       'description': The language for the device
       'type': string
@@ -4988,8 +4989,8 @@
       'default': []
       'description': smtp permission list. accepts regular expressions
       'items':
-        'kazoo-regexp': true
         'type': string
+        'x-kazoo-regexp': true
       'type': array
       'x-support_level': supported
   'required':

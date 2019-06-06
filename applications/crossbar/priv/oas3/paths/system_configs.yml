@@ -1,27 +1,37 @@
 paths:
   /system_configs:
     get:
+      operationId: GetSystemConfigs
       parameters: []
       responses:
         200:
           description: Successful operation
-      summary: Gets all system_configs
+      summary: Get all system_configs
+      tags:
+        - system_configs
   /system_configs/{SYSTEM_CONFIG_ID}:
     delete:
+      operationId: DeleteSystemConfigsSystemConfigId
       parameters:
         - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of system_configs
+      tags:
+        - system_configs
     get:
+      operationId: GetSystemConfigsSystemConfigId
       parameters:
         - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a system_configs by ID
+      summary: Get a system_configs by ID
+      tags:
+        - system_configs
     patch:
+      operationId: PatchSystemConfigsSystemConfigId
       parameters:
         - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
       requestBody:
@@ -33,7 +43,10 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of system_configs
+      tags:
+        - system_configs
     post:
+      operationId: PostSystemConfigsSystemConfigId
       parameters:
         - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
       requestBody:
@@ -45,7 +58,10 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of system_configs
+      tags:
+        - system_configs
     put:
+      operationId: PutSystemConfigsSystemConfigId
       parameters:
         - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
       requestBody:
@@ -57,8 +73,11 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of system_configs
+      tags:
+        - system_configs
   /system_configs/{SYSTEM_CONFIG_ID}/{NODE}:
     delete:
+      operationId: DeleteSystemConfigsSystemConfigIdNode
       parameters:
         - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
         - $ref: '../oas3-parameters.yml#/NODE'
@@ -66,15 +85,21 @@ paths:
         200:
           description: Successful operation
       summary: Delete an instance of system_configs
+      tags:
+        - system_configs
     get:
+      operationId: GetSystemConfigsSystemConfigIdNode
       parameters:
         - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
         - $ref: '../oas3-parameters.yml#/NODE'
       responses:
         200:
           description: Successful operation
-      summary: Gets a system_configs by ID
+      summary: Get a system_configs by ID
+      tags:
+        - system_configs
     patch:
+      operationId: PatchSystemConfigsSystemConfigIdNode
       parameters:
         - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
         - $ref: '../oas3-parameters.yml#/NODE'
@@ -87,7 +112,10 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of system_configs
+      tags:
+        - system_configs
     post:
+      operationId: PostSystemConfigsSystemConfigIdNode
       parameters:
         - $ref: '../oas3-parameters.yml#/SYSTEM_CONFIG_ID'
         - $ref: '../oas3-parameters.yml#/NODE'
@@ -100,3 +128,5 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of system_configs
+      tags:
+        - system_configs

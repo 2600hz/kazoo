@@ -1,14 +1,18 @@
 paths:
   /accounts/{ACCOUNT_ID}/callflows:
     get:
+      operationId: GetAccountsAccountIdCallflows
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all callflows
+      summary: Get all callflows
+      tags:
+        - callflows
     put:
+      operationId: PutAccountsAccountIdCallflows
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -21,30 +25,39 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of callflows
+      tags:
+        - callflows
   /accounts/{ACCOUNT_ID}/callflows/{CALLFLOW_ID}:
     delete:
+      operationId: DeleteAccountsAccountIdCallflowsCallflowId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/CALLFLOW_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CALLFLOW_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of callflows
+      tags:
+        - callflows
     get:
+      operationId: GetAccountsAccountIdCallflowsCallflowId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/CALLFLOW_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CALLFLOW_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a callflows by ID
+      summary: Get a callflows by ID
+      tags:
+        - callflows
     patch:
+      operationId: PatchAccountsAccountIdCallflowsCallflowId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/CALLFLOW_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CALLFLOW_ID'
       requestBody:
         content:
           application/json:
@@ -54,11 +67,14 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of callflows
+      tags:
+        - callflows
     post:
+      operationId: PostAccountsAccountIdCallflowsCallflowId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/CALLFLOW_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CALLFLOW_ID'
       requestBody:
         content:
           application/json:
@@ -68,3 +84,5 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of callflows
+      tags:
+        - callflows

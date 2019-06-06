@@ -1,6 +1,7 @@
 paths:
   /accounts/{ACCOUNT_ID}/rate_limits:
     delete:
+      operationId: DeleteAccountsAccountIdRateLimits
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -8,15 +9,21 @@ paths:
         200:
           description: Successful operation
       summary: Delete an instance of rate_limits
+      tags:
+        - rate_limits
     get:
+      operationId: GetAccountsAccountIdRateLimits
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all rate_limits
+      summary: Get all rate_limits
+      tags:
+        - rate_limits
     post:
+      operationId: PostAccountsAccountIdRateLimits
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -24,3 +31,5 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of rate_limits
+      tags:
+        - rate_limits

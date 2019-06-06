@@ -1,10 +1,13 @@
 paths:
   /accounts/{ACCOUNT_ID}/hotdesks:
     get:
+      operationId: GetAccountsAccountIdHotdesks
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all hotdesks
+      summary: Get all hotdesks
+      tags:
+        - hotdesks

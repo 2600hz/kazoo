@@ -1,14 +1,18 @@
 paths:
   /accounts/{ACCOUNT_ID}/queues:
     get:
+      operationId: GetAccountsAccountIdQueues
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all queues
+      summary: Get all queues
+      tags:
+        - queues
     put:
+      operationId: PutAccountsAccountIdQueues
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -21,8 +25,11 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of queues
+      tags:
+        - queues
   /accounts/{ACCOUNT_ID}/queues/eavesdrop:
     put:
+      operationId: PutAccountsAccountIdQueuesEavesdrop
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
@@ -35,39 +42,51 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of queues
+      tags:
+        - queues
   /accounts/{ACCOUNT_ID}/queues/stats:
     get:
+      operationId: GetAccountsAccountIdQueuesStats
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets stats of queues
+      summary: Get stats of queues
+      tags:
+        - queues
   /accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}:
     delete:
+      operationId: DeleteAccountsAccountIdQueuesQueueId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/QUEUE_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/QUEUE_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of queues
+      tags:
+        - queues
     get:
+      operationId: GetAccountsAccountIdQueuesQueueId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/QUEUE_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/QUEUE_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets a queues by ID
+      summary: Get a queues by ID
+      tags:
+        - queues
     patch:
+      operationId: PatchAccountsAccountIdQueuesQueueId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/QUEUE_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/QUEUE_ID'
       requestBody:
         content:
           application/json:
@@ -77,11 +96,14 @@ paths:
         200:
           description: Successful operation
       summary: Patch specific fields of queues
+      tags:
+        - queues
     post:
+      operationId: PostAccountsAccountIdQueuesQueueId
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/QUEUE_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/QUEUE_ID'
       requestBody:
         content:
           application/json:
@@ -91,12 +113,15 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of queues
+      tags:
+        - queues
   /accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}/eavesdrop:
     put:
+      operationId: PutAccountsAccountIdQueuesQueueIdEavesdrop
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/QUEUE_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/QUEUE_ID'
       requestBody:
         content:
           application/json:
@@ -106,30 +131,39 @@ paths:
         200:
           description: Successful operation
       summary: Add an instance of queues
+      tags:
+        - queues
   /accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}/roster:
     delete:
+      operationId: DeleteAccountsAccountIdQueuesQueueIdRoster
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/QUEUE_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/QUEUE_ID'
       responses:
         200:
           description: Successful operation
       summary: Delete an instance of queues
+      tags:
+        - queues
     get:
+      operationId: GetAccountsAccountIdQueuesQueueIdRoster
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/QUEUE_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/QUEUE_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets roster of queues
+      summary: Get roster of queues
+      tags:
+        - queues
     post:
+      operationId: PostAccountsAccountIdQueuesQueueIdRoster
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/QUEUE_ID'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/QUEUE_ID'
       requestBody:
         content:
           application/json:
@@ -139,3 +173,5 @@ paths:
         200:
           description: Successful operation
       summary: Update an instance of queues
+      tags:
+        - queues

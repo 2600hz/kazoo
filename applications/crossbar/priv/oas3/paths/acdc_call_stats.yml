@@ -1,10 +1,13 @@
 paths:
   /accounts/{ACCOUNT_ID}/acdc_call_stats:
     get:
+      operationId: GetAccountsAccountIdAcdcCallStats
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
       responses:
         200:
           description: Successful operation
-      summary: Gets all acdc_call_stats
+      summary: Get all acdc_call_stats
+      tags:
+        - acdc_call_stats
