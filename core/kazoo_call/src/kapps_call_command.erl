@@ -273,7 +273,7 @@
 
 -define(BRIDGE_EXPORT_VARS, kapps_config:get_ne_binaries(?CONFIG_CAT, <<"export_bridge_variables">>, ?BRIDGE_DEFAULT_EXPORT_VARS)).
 -define(BRIDGE_DEFAULT_EXPORT_VARS, [<<"hold_music">>]).
--define(DEFAULT_SEEK_DURATION, 10000).
+-define(DEFAULT_SEEK_DURATION, 10 * ?MILLISECONDS_IN_SECOND).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -1531,34 +1531,39 @@ b_play(Media, Terminators, Leg, Endless, Call) ->
 %% This request will execute immediately.
 %% @end
 %%------------------------------------------------------------------------------
--spec seek(kapps_call:call()) -> kapps_api_std_return().
+-spec seek(kapps_call:call()) -> kz_term:api_ne_binary().
 seek(Call) ->
-    seek(?DEFAULT_SEEK_DURATION, Call).
+    seek('fastforward', ?DEFAULT_SEEK_DURATION, Call).
 
--spec seek(kz_term:api_integer(), kapps_call:call()) -> kapps_api_std_return().
+-spec seek(integer(), kapps_call:call()) -> kz_term:api_ne_binary().
 seek(Duration, Call) when Duration > 0 ->
     seek('fastforward', Duration, Call);
 seek(Duration, Call) when Duration < 0 ->
     seek('rewind', -Duration, Call);
-seek(_Duration, _Call) ->
-    'ok'.
+seek(0, _Call) ->
+    'undefined'.
 
--spec seek(atom(), kz_term:api_pos_integer(), kapps_call:call()) -> kapps_api_std_return().
-seek(_Direction, 0, _Call) ->
-    'ok';
-seek(Direction, Duration, Call) ->
+-type seek_direction() :: 'fastforward' | 'rewind'.
+
+-spec seek(seek_direction(), integer(), kapps_call:call()) -> kz_term:api_ne_binary().
+seek(Direction, Duration, Call) when Duration > 0 ->
     NoopId = noop_id(),
     Command = seek_command(Direction, Duration),
     send_command(Command, Call),
-    NoopId.
+    NoopId;
+seek(_Direction, _NotPositive, _Call) -> 'undefined'.
 
--spec seek_command(atom(), kz_term:api_pos_integer()) -> kz_json:object().
+-spec seek_command(seek_direction(), pos_integer()) -> kz_json:object().
 seek_command(Direction, Duration) ->
     kz_json:from_list([{<<"Application-Name">>, <<"playseek">>}
-                      ,{<<"Direction">>, Direction}
+                      ,{<<"Direction">>, seek_direction(Direction, Duration)}
                       ,{<<"Duration">>, Duration}
                       ,{<<"Insert-At">>, <<"now">>}
                       ]).
+
+-spec seek_direction(seek_direction(), integer()) -> kz_term:ne_binary().
+seek_direction('fastforward', Duration) when Duration > 0 -> <<"fastforward">>;
+seek_direction('rewind', Duration) when Duration < 0 -> <<"rewind">>.
 
 %%------------------------------------------------------------------------------
 %% @doc requests the TTS engine to create an audio file to play the desired
