@@ -31,6 +31,7 @@
 -define(TIMEOUT_CANCEL_JOB, 120 * ?MILLISECONDS_IN_SECOND).
 -define(TIMEOUT_DEQUEUE, 'dequeue').
 -define(TIMEOUT_CANCEL, 'cancel_job').
+-define(SERVER_TIMEOUT, 10 * ?MILLISECONDS_IN_SECOND).
 
 -record(state, {queue = queue:new() :: queue:queue()
                ,timer_ref ::  reference()
@@ -60,7 +61,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec add(kz_term:ne_binary(), map()) -> {'ok', kz_term:ne_binary()}|{'error', kz_term:ne_binary()}.
 add(Source, Options) ->
-    gen_server:call(?MODULE, {'add', Source, Options}).
+    gen_server:call(?MODULE, {'add', Source, Options}, ?SERVER_TIMEOUT).
 
 %%%=============================================================================
 %%% gen_server callbacks

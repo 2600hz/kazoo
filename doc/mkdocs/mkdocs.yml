@@ -483,6 +483,7 @@ pages:
   - 'Erlang VM Tracing': 'doc/engineering/tracing.md'
   - 'Flame Graphs': 'doc/engineering/flame_graphs.md'
   - 'Install/Build Kazoo': 'doc/installation.md'
+  - 'Install/Build Kazoo on MacOS': 'doc/engineering/installing-on-mac.md'
   - 'Kazoo Globals Registry': 'doc/engineering/kz_globals.md'
   - 'Kazoo Scripts': 'scripts/README.md'
   - 'Loopback Channels': 'doc/engineering/loopback.md'

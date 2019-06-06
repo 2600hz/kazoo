@@ -9,8 +9,10 @@
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kazoo_convert/include/kz_convert.hrl").
 
+-define(OPENOFFICE_TIMEOUT_S, 15).
+
 fax_test_() ->
-    {setup
+    {'setup'
     ,fun setup/0
     ,fun cleanup/1
     ,fun(_) ->
@@ -164,49 +166,49 @@ test_openoffice_to_pdf_binary() ->
     JobId = kz_binary:rand_hex(16),
     From = read_test_file("valid.docx"),
     Expected = <<"/tmp/", JobId/binary, ".pdf" >>,
-    [?_assertMatch({'ok', Expected}, kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
-                                                   ,<<"application/pdf">>
-                                                   ,From
-                                                   ,[{<<"job_id">>, JobId}]
-                                                   )
-                  )
-    ].
+    {'timeout', ?OPENOFFICE_TIMEOUT_S, ?_assertMatch({'ok', Expected}, kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
+                                                                                     ,<<"application/pdf">>
+                                                                                     ,From
+                                                                                     ,[{<<"job_id">>, JobId}]
+                                                                                     )
+                                                    )
+    }.
 
 test_openoffice_to_pdf_tuple() ->
     JobId = kz_binary:rand_hex(16),
     Src = copy_fixture_to_tmp("valid.docx"),
     Expected = <<"/tmp/", JobId/binary, ".pdf" >>,
-    [?_assertMatch({'ok', Expected}, kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
-                                                   ,<<"application/pdf">>
-                                                   ,{'file', Src}
-                                                   ,[{<<"job_id">>, JobId}]
-                                                   )
-                  )
-    ].
+    {'timeout', ?OPENOFFICE_TIMEOUT_S, ?_assertMatch({'ok', Expected}, kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
+                                                                                     ,<<"application/pdf">>
+                                                                                     ,{'file', Src}
+                                                                                     ,[{<<"job_id">>, JobId}]
+                                                                                     )
+                                                    )
+    }.
 
 test_openoffice_to_tiff_binary() ->
     JobId = kz_binary:rand_hex(16),
     From = read_test_file("valid.docx"),
     Expected = <<"/tmp/", JobId/binary, ".tiff" >>,
-    [?_assertMatch({'ok', Expected}, kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
-                                                   ,<<"image/tiff">>
-                                                   ,From
-                                                   ,[{<<"job_id">>, JobId}]
-                                                   )
-                  )
-    ].
+    {'timeout', ?OPENOFFICE_TIMEOUT_S, ?_assertMatch({'ok', Expected}, kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
+                                                                                     ,<<"image/tiff">>
+                                                                                     ,From
+                                                                                     ,[{<<"job_id">>, JobId}]
+                                                                                     )
+                                                    )
+    }.
 
 test_openoffice_to_tiff_tuple() ->
     JobId = kz_binary:rand_hex(16),
     Src = copy_fixture_to_tmp("valid.docx"),
     Expected = <<"/tmp/", JobId/binary, ".tiff" >>,
-    [?_assertMatch({'ok', Expected}, kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
-                                                   ,<<"image/tiff">>
-                                                   ,{'file', Src}
-                                                   ,[{<<"job_id">>, JobId}]
-                                                   )
-                  )
-    ].
+    {'timeout', ?OPENOFFICE_TIMEOUT_S, ?_assertMatch({'ok', Expected}, kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
+                                                                                     ,<<"image/tiff">>
+                                                                                     ,{'file', Src}
+                                                                                     ,[{<<"job_id">>, JobId}]
+                                                                                     )
+                                                    )
+    }.
 
 test_tiff_to_pdf_binary_output_binary() ->
     JobId = kz_binary:rand_hex(16),
@@ -278,49 +280,49 @@ test_pdf_to_tiff_tuple_output_binary() ->
 test_openoffice_to_pdf_binary_output_binary() ->
     JobId = kz_binary:rand_hex(16),
     From = read_test_file("valid.docx"),
-    [?_assertMatch({'ok', _}, kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
-                                            ,<<"application/pdf">>
-                                            ,From
-                                            ,[{<<"job_id">>, JobId},{<<"output_type">>, 'binary'}]
-                                            )
-                  )
-    ].
+    {'timeout', ?OPENOFFICE_TIMEOUT_S, ?_assertMatch({'ok', _}, kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
+                                                                              ,<<"application/pdf">>
+                                                                              ,From
+                                                                              ,[{<<"job_id">>, JobId},{<<"output_type">>, 'binary'}]
+                                                                              )
+                                                    )
+    }.
 
 test_openoffice_to_pdf_tuple_output_binary() ->
     JobId = kz_binary:rand_hex(16),
     Src = copy_fixture_to_tmp("valid.docx"),
-    [?_assertMatch({'ok', _}, kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
-                                            ,<<"application/pdf">>
-                                            ,{'file', Src}
-                                            ,[{<<"job_id">>, JobId}
-                                             ,{<<"output_type">>, 'binary'}]
-                                            )
-                  )
-    ].
+    {'timeout', ?OPENOFFICE_TIMEOUT_S, ?_assertMatch({'ok', _}, kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
+                                                                              ,<<"application/pdf">>
+                                                                              ,{'file', Src}
+                                                                              ,[{<<"job_id">>, JobId}
+                                                                               ,{<<"output_type">>, 'binary'}]
+                                                                              )
+                                                    )
+    }.
 
 test_openoffice_to_tiff_binary_output_binary() ->
     JobId = kz_binary:rand_hex(16),
     From = read_test_file("valid.docx"),
-    [?_assertMatch({'ok', _}, kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
-                                            ,<<"image/tiff">>
-                                            ,From
-                                            ,[{<<"job_id">>, JobId}
-                                             ,{<<"output_type">>, 'binary'}]
-                                            )
-                  )
-    ].
+    {'timeout', ?OPENOFFICE_TIMEOUT_S, ?_assertMatch({'ok', _}, kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
+                                                                              ,<<"image/tiff">>
+                                                                              ,From
+                                                                              ,[{<<"job_id">>, JobId}
+                                                                               ,{<<"output_type">>, 'binary'}]
+                                                                              )
+                                                    )
+    }.
 
 test_openoffice_to_tiff_tuple_output_binary() ->
     JobId = kz_binary:rand_hex(16),
     Src = copy_fixture_to_tmp("valid.docx"),
-    [?_assertMatch({'ok', _}
-                  ,kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
-                                 ,<<"image/tiff">>
-                                 ,{'file', Src}
-                                 ,[{<<"job_id">>, JobId}]
-                                 )
-                  )
-    ].
+    {'timeout', ?OPENOFFICE_TIMEOUT_S, ?_assertMatch({'ok', _}
+                                                    ,kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
+                                                                   ,<<"image/tiff">>
+                                                                   ,{'file', Src}
+                                                                   ,[{<<"job_id">>, JobId}]
+                                                                   )
+                                                    )
+    }.
 
 test_tiff_to_pdf_binary_invalid() ->
     JobId = kz_binary:rand_hex(16),
@@ -496,16 +498,16 @@ test_openoffice_to_tiff_to_filename() ->
     JobId = kz_binary:rand_hex(16),
     From = read_test_file("valid.docx"),
     Expected = <<"/tmp/", (kz_binary:rand_hex(16))/binary, ".tiff" >>,
-    [?_assertMatch({'ok', Expected}
-                  ,kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
-                                 ,<<"image/tiff">>
-                                 ,From
-                                 ,[{<<"job_id">>, JobId}
-                                  ,{<<"to_filename">>, Expected}
-                                  ]
-                                 )
-                  )
-    ].
+    {'timeout', ?OPENOFFICE_TIMEOUT_S, ?_assertMatch({'ok', Expected}
+                                                    ,kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
+                                                                   ,<<"image/tiff">>
+                                                                   ,From
+                                                                   ,[{<<"job_id">>, JobId}
+                                                                    ,{<<"to_filename">>, Expected}
+                                                                    ]
+                                                                   )
+                                                    )
+    }.
 
 test_tiff_to_tiff_read_metadata() ->
     JobId = kz_binary:rand_hex(16),
@@ -522,7 +524,7 @@ test_tiff_to_tiff_read_metadata() ->
                                  ,<<"image/tiff">>
                                  ,From
                                  ,[{<<"job_id">>, JobId}
-                                  ,{<<"read_metadata">>, true}
+                                  ,{<<"read_metadata">>, 'true'}
                                   ]
                                  )
                   )
@@ -543,7 +545,7 @@ test_tiff_to_tiff_small_file_read_metadata() ->
                                  ,<<"image/tiff">>
                                  ,From
                                  ,[{<<"job_id">>, JobId}
-                                  ,{<<"read_metadata">>, true}
+                                  ,{<<"read_metadata">>, 'true'}
                                   ]
                                  )
                   )
@@ -564,7 +566,7 @@ test_pdf_to_tiff_read_metadata() ->
                                  ,<<"image/tiff">>
                                  ,From
                                  ,[{<<"job_id">>, JobId}
-                                  ,{<<"read_metadata">>, true}
+                                  ,{<<"read_metadata">>, 'true'}
                                   ]
                                  )
                   )
@@ -574,22 +576,23 @@ test_openoffice_to_tiff_read_metadata() ->
     JobId = kz_binary:rand_hex(16),
     From = read_test_file("valid.docx"),
     Expected = <<"/tmp/", JobId/binary, ".tiff">>,
-    [?_assertMatch({'ok', Expected
-                   ,[{<<"page_count">>, 1}
-                    ,{<<"size">>, _}
-                    ,{<<"mimetype">>, <<"image/tiff">>}
-                    ,{<<"filetype">>, <<"tiff">>}
-                    ]
-                   }
-                  ,kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
-                                 ,<<"image/tiff">>
-                                 ,From
-                                 ,[{<<"job_id">>, JobId}
-                                  ,{<<"read_metadata">>, true}
-                                  ]
-                                 )
-                  )
-    ].
+
+    {'timeout', ?OPENOFFICE_TIMEOUT_S, ?_assertMatch({'ok', Expected
+                                                     ,[{<<"page_count">>, 1}
+                                                      ,{<<"size">>, _}
+                                                      ,{<<"mimetype">>, <<"image/tiff">>}
+                                                      ,{<<"filetype">>, <<"tiff">>}
+                                                      ]
+                                                     }
+                                                    ,kz_convert:fax(<<"application/vnd.openxmlformats-officedocument.wordprocessingml.document">>
+                                                                   ,<<"image/tiff">>
+                                                                   ,From
+                                                                   ,[{<<"job_id">>, JobId}
+                                                                    ,{<<"read_metadata">>, 'true'}
+                                                                    ]
+                                                                   )
+                                                    )
+    }.
 
 test_read_metadata() ->
     Src = copy_fixture_to_tmp("valid.tiff"),

@@ -268,8 +268,6 @@ longest_prefix({Prefix, Rates}
             Acc
     end.
 
--endif.
-
 -spec recreate_parallel(any()) -> any().
 recreate_parallel({Seq, Parallel}) ->
     hon_trie_lru:stop(?KZ_RATES_DB),
@@ -287,3 +285,5 @@ seq([{set, Var, {call, M, F, Args}} | Seq], Vars) ->
 
 parallel(Parallel, Vars) ->
     [spawn(fun() -> seq(Seq, Vars) end) || Seq <- Parallel].
+
+-endif.
