@@ -461,7 +461,6 @@ account_listing(AccountDb=?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
 %%%=============================================================================
 
 -type reason_t() :: atom() |
-                    fun((num()) -> knm_errors:error()) |
                     knm_errors:error().
 
 -spec new(knm_number_options:options(), nums()) -> t().
@@ -474,10 +473,7 @@ new(Options, ToDos, KOs) -> new(Options, ToDos, KOs, 'not_reconcilable').
 new(Options, ToDos, KOs, Reason) ->
     #{'todo' => ToDos
      ,'ok' => []
-     ,'ko' => case is_function(Reason, 1) of %%FIXME: find something better than Reason/1.
-                  'false' -> maps:from_list([{KO, Reason} || KO <- KOs]);
-                  'true' -> maps:from_list([{KO, Reason(KO)} || KO <- KOs])
-              end
+     ,'ko' => maps:from_list([{KO, Reason} || KO <- KOs])
      ,'options' => Options
      ,'quotes' => 'undefined'
      }.
