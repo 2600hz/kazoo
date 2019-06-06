@@ -186,10 +186,10 @@ is_in_oas_properties(_) ->
 %% remove unsupported keywords
 to_oas3_schema(OrigP, [P | Ps], ReverseP, Val, KVs, OrigKVs, Warn, Err)
   when (P =:= <<"_id">>
-        andalso Ps =:= []
+            andalso Ps =:= []
        )
        orelse (P =:= <<"$schema">>
-               andalso Ps =:= []
+                   andalso Ps =:= []
               )
        orelse P =:= <<"$id">>
        orelse P =:= <<"additionalItems">>

@@ -438,12 +438,12 @@ add_operation_object(EndpointName, EndpointMeta, Path, Method, PathItemObject) -
            ,fun add_operation_tag/5
            ],
     PathItemObject#{Method =>
-                    lists:foldl(fun(Fun, Object) ->
-                                        Fun(Object, EndpointName, EndpointMeta, Path, Method)
-                                end
-                               ,#{}
-                               ,Funs
-                               )
+                        lists:foldl(fun(Fun, Object) ->
+                                            Fun(Object, EndpointName, EndpointMeta, Path, Method)
+                                    end
+                                   ,#{}
+                                   ,Funs
+                                   )
                    }.
 
 -spec add_operation_summary(map(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> map().
@@ -509,7 +509,7 @@ generate_method_summary(EndpointName, <<"put">>, _) ->
     <<"Add an instance of ", EndpointName/binary>>.
 
 -spec make_camel_case_path(kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:ne_binary()) ->
-                             kz_term:ne_binary().
+                                  kz_term:ne_binary().
 make_camel_case_path(Path, Acc) when is_binary(Path) ->
     make_camel_case_path(split_url(Path), Acc);
 make_camel_case_path([<<"{", _/binary>> = B | Rest], Acc) ->
