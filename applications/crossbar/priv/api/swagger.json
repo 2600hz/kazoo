@@ -23268,6 +23268,9 @@
                 "Custom-SIP-Headers": {
                     "type": "object"
                 },
+                "Destination-Number": {
+                    "type": "string"
+                },
                 "Event-Category": {
                     "enum": [
                         "dialplan"
