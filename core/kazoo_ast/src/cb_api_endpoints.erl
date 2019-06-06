@@ -340,6 +340,7 @@ write_swagger_file(Props, <<"swagger2">>) ->
 write_swagger_file(Props, <<"oas3">>) ->
     YmlEncodeOption = #{sort_keys => 'true'
                        ,key_string_style => 'single_quote'
+                        %% ,string_style => 'double_qoute'
                        },
     io:format(user, "~nsaving OpenAPI 3 Parameters to file ~s~n", [?OAS3_PARAMETERS_FILE]),
     Parameters = props:get_value([<<"oas3">>, <<"parameters">>], Props),
@@ -534,38 +535,33 @@ add_swagger_path(Method, Acc, Path, SchemaParameter) ->
 
 -spec make_parameters(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object(), kz_term:ne_binary()) -> kz_json:objects().
 make_parameters(Path, Method, SchemaParameter, OasVersion) ->
-    lists:usort(fun compare_parameters/2
-               ,lists:flatten(
-                  [Parameter
-                   || F <- [fun (P, M) -> maybe_add_schema(P, M, SchemaParameter, OasVersion) end
-                           ,fun (P, M) -> auth_token_param(P, M, OasVersion) end
-                           ,fun (P, M) -> path_params(P, M, OasVersion) end
-                           ],
-                      Parameter <- [F(Path, Method)],
-                      not kz_term:is_empty(Parameter)
-                  ])).
+    [Parameter
+     || F <- [fun (P, M) -> maybe_add_schema(P, M, SchemaParameter, OasVersion) end
+             ,fun (P, M) -> auth_token_param(P, M, OasVersion) end
+             ,fun (P, M) -> path_params(P, M, OasVersion) end
+             ],
+        Parameter <- [F(Path, Method)],
+        not kz_term:is_empty(Parameter)
+    ].
 
--spec compare_parameters(kz_json:object(), kz_json:object()) -> boolean().
-compare_parameters(Param1, Param2) ->
-    Keys = [<<"name">>, <<"$ref">>],
-    kz_json:get_first_defined(Keys, Param1) >= kz_json:get_first_defined(Keys, Param2).
-
--spec maybe_add_schema(any(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> kz_term:api_object().
+-spec maybe_add_schema(any(), kz_term:ne_binary(), kz_term:api_object(), kz_term:ne_binary()) -> kz_json:objects().
+maybe_add_schema(_Path, _Method, 'undefined', _) ->
+    [];
 maybe_add_schema(_Path, _Method, _Schema, <<"oas3">>) ->
-    'undefined';
+    [];
 maybe_add_schema(_Path, Method, Schema, _OasVersion)
   when Method =:= <<"put">>;
        Method =:= <<"post">> ->
-    Schema;
+    [Schema];
 maybe_add_schema(_Path, _Method, _Parameters, _) ->
-    'undefined'.
+    [].
 
 -spec swagger_body_param(kz_json:object()) -> kz_term:api_object().
 swagger_body_param(PathMeta) ->
     case kz_json:get_ne_binary_value(<<"schema">>, PathMeta) of
         'undefined' -> 'undefined';
         %% These do not have schemas
-        <<"ip_auth">> -> undefined;
+        <<"ip_auth">> -> 'undefined';
         %% These have schemas
         Schema ->
             kz_json:from_list([{<<"name">>, Schema}
@@ -575,13 +571,23 @@ swagger_body_param(PathMeta) ->
                               ])
     end.
 
--spec auth_token_param(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
+-spec auth_token_param(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
 auth_token_param(Path, _Method, OasVersion) ->
     ParamsPath = oas_params_path(OasVersion),
     case is_authtoken_required(Path) of
-        'undefined' -> 'undefined';
-        'true' -> kz_json:from_list([{<<"$ref">>, <<ParamsPath/binary, (kz_term:to_binary(?X_AUTH_TOKEN))/binary>>}]);
-        'false' -> kz_json:from_list([{<<"$ref">>, <<ParamsPath/binary, (kz_term:to_binary(?X_AUTH_TOKEN_NOT_REQUIRED))/binary>>}])
+        'undefined' -> [];
+        'true' -> [kz_json:from_list(
+                     [{kz_term:to_binary(?X_AUTH_TOKEN)
+                      ,kz_json:from_list([{<<"$ref">>, <<ParamsPath/binary, (kz_term:to_binary(?X_AUTH_TOKEN))/binary>>}])
+                      }
+                     ])
+                  ];
+        'false' -> [kz_json:from_list(
+                      [{kz_term:to_binary(?X_AUTH_TOKEN_NOT_REQUIRED)
+                       ,kz_json:from_list([{<<"$ref">>, <<ParamsPath/binary, (kz_term:to_binary(?X_AUTH_TOKEN_NOT_REQUIRED))/binary>>}])
+                       }
+                      ])
+                   ]
     end.
 
 oas_params_path(<<"oas3">>) ->
@@ -606,9 +612,14 @@ path_params(Path, _Method, OasVersion) ->
     ].
 
 -spec path_param(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
-path_param(PathToken, OasVersion) ->
+path_param(PathToken, <<"swagger2">> = OasVersion) ->
     Param = unbrace_param(PathToken),
-    kz_json:from_list([{<<"$ref">>, <<(oas_params_path(OasVersion))/binary, Param/binary>>}]).
+    kz_json:from_list([{<<"$ref">>, <<(oas_params_path(OasVersion))/binary, Param/binary>>}]);
+path_param(PathToken, <<"oas3">> = OasVersion) ->
+    Param = unbrace_param(PathToken),
+    kz_json:from_list(
+      [{Param, kz_json:from_list([{<<"$ref">>, <<(oas_params_path(OasVersion))/binary, Param/binary>>}])}]
+     ).
 
 -spec split_url(kz_term:ne_binary()) -> kz_term:ne_binaries().
 split_url(Path) ->
