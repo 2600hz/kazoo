@@ -117,6 +117,12 @@
             },
             "type": "object"
         },
+        "sso_providers": {
+            "items": {
+                "$ref": "sso_provider"
+            },
+            "type": "array"
+        },
         "twoway_trunks_price": {
             "description": "The price to show for twoway trunks, this is currently only for display purposes",
             "support_level": "beta",

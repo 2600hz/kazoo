@@ -1,0 +1,52 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "sso_provider",
+    "description": "SSO Provider settings",
+    "properties": {
+        "friendly_name": {
+            "description": "Friendly name for the provider",
+            "type": "string"
+        },
+        "name": {
+            "description": "Name for the provider",
+            "type": "string"
+        },
+        "params": {
+            "description": "SSO Provider parameters",
+            "properties": {
+                "client_id": {
+                    "description": "Client ID provided by SSO provider",
+                    "type": "string"
+                },
+                "include_granted_scopes": {
+                    "description": "Whether to include the granted scopes",
+                    "type": "boolean"
+                },
+                "response_type": {
+                    "description": "Response type from SSO provider",
+                    "enum": [
+                        "code"
+                    ],
+                    "type": "string"
+                },
+                "scopes": {
+                    "description": "Scope(s) requested",
+                    "items": {
+                        "description": "Scope name",
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        },
+        "url": {
+            "description": "URL of the provider's auth endpoint",
+            "type": "string"
+        }
+    },
+    "required": [
+        "url"
+    ],
+    "type": "object"
+}
