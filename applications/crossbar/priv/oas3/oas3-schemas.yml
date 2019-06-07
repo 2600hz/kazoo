@@ -8929,6 +8929,11 @@
           'description': |-
             If true, ignore the setting on the vmbox and require all users to enter a pin
           'type': boolean
+        'is_voicemail_ff_rw_enabled':
+          'default': false
+          'description': |-
+            callflow allow fastforward and rewind during voicemail message playback
+          'type': boolean
         'max_box_number_length':
           'default': 15
           'description': callflow maximum box number length
@@ -8973,6 +8978,11 @@
           'default': false
           'description': callflow save after notify
           'type': boolean
+        'seek_duration_ms':
+          'default': 10000
+          'description': callflow fastforward and rewind seek duration
+          'minimum': 0
+          'type': integer
         'vm_message_forward_type':
           'default': only_forward
           'description': |-
@@ -14297,6 +14307,10 @@
       'description': Determines if the user has completed the initial configuration
       'type': boolean
       'x-support_level': supported
+    'is_voicemail_ff_rw_enabled':
+      'default': false
+      'description': callflow allow fastforward and rewind during voicemail message playback
+      'type': boolean
     'mailbox':
       'description': The voicemail box number
       'maxLength': 30
@@ -14380,6 +14394,11 @@
         Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify)
       'type': boolean
       'x-support_level': supported
+    'seek_duration_ms':
+      'default': 10000
+      'description': callflow fastforward and rewind seek duration
+      'minimum': 0
+      'type': integer
     'skip_envelope':
       'default': false
       'description': Determines if the envelope should be skipped
@@ -14423,6 +14442,9 @@
     'exit':
       '$ref': '#/voicemail_keys.dtmf_key'
       'description': DTMF key which will exit the main menu when pressed
+    'fastforward':
+      '$ref': '#/voicemail_keys.dtmf_key'
+      'description': DTMF key which will seek the playback forward for seek_duration_ms ms
     'hear_new':
       '$ref': '#/voicemail_keys.dtmf_key'
       'description': |-
@@ -14473,6 +14495,9 @@
       '$ref': '#/voicemail_keys.dtmf_key'
       'description': |-
         DTMF key which will return to the main menu when pressed at the config menu
+    'rewind':
+      '$ref': '#/voicemail_keys.dtmf_key'
+      'description': DTMF key which will seek the playback backward for seek_duration_ms ms
     'save':
       '$ref': '#/voicemail_keys.dtmf_key'
       'description': DTMF key which will save when pressed at the recording review menu
