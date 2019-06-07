@@ -28,7 +28,14 @@
         ,finish_request/2
         ,create_push_response/2, create_push_response/3
         ,set_resp_headers/2
-        ,create_resp_content/2, create_resp_file/2, create_csv_resp_content/2
+
+         %% Content
+        ,create_resp_content/2
+        ,create_resp_file/2
+        ,create_csv_resp_content/2
+        ,create_binary_resp_content/2
+        ,create_xml_resp_content/2
+
         ,create_pull_response/2, create_pull_response/3
 
         ,init_chunk_stream/3
@@ -160,7 +167,7 @@ get_query_string_data([], Req) ->
     {kz_json:new(), Req};
 get_query_string_data(QS0, Req) ->
     QS = kz_json:from_list(QS0),
-    lager:debug("query string: ~p", [kz_json:encode(QS)]),
+    lager:debug("query string: ~s", [kz_json:encode(QS, ['pretty'])]),
     {QS, Req}.
 
 -spec get_content_type(cowboy_req:req()) -> kz_term:api_ne_binary().
@@ -492,9 +499,10 @@ get_request_body(#{max_size := MaxSize}, Body, {'more', Data, Req1})
     {'error', 'max_size', Req1};
 get_request_body(#{read_fun := ReadFun, read_options := Opts}=Params, Body, {'more', Data, Req1}) ->
     get_request_body(Params, iolist_to_binary([Body, Data]), ReadFun(Req1, Opts));
-get_request_body(_, Body, {'ok', Data, Req1}) ->
+get_request_body(_, Acc, {'ok', Data, Req1}) ->
+    Body = iolist_to_binary([Acc, Data]),
     lager:debug("received request body payload (size: ~b bytes)", [size(Body)]),
-    {'ok', iolist_to_binary([Body, Data]), Req1}.
+    {'ok', Body, Req1}.
 
 -type get_json_return() :: {kz_term:api_object(), cowboy_req:req()} |
                            {{'malformed', kz_term:ne_binary()}, cowboy_req:req()}.
@@ -1216,6 +1224,33 @@ create_resp_content(Req0, Context) ->
         _E:_R ->
             lager:debug("failed to encode response: ~s: ~p : ~p", [_E, _R, Resp]),
             {<<"failure in request, contact support">>, Req0}
+    end.
+
+-spec create_binary_resp_content(cowboy_req:req(), cb_context:context()) ->
+                                        {iodata(), cowboy_req:req()}.
+create_binary_resp_content(Req, Context) ->
+    case cb_context:response(Context) of
+        {'ok', RespData} -> {RespData, Req};
+        _Else -> {<<>>, Req}
+    end.
+
+-spec create_xml_resp_content(cowboy_req:req(), cb_context:context()) ->
+                                     {kz_term:ne_binary() | iolist(), cowboy_req:req()}.
+create_xml_resp_content(Req0, Context) ->
+    Req1 = cowboy_req:set_resp_header(<<"content-type">>, <<"text/xml">>, Req0),
+
+    case cb_context:response(Context) of
+        {'ok', RespData} ->
+            {RespData, Req1};
+        {'error', {_ErrorCode, ErrorMsg, _RespData}} ->
+            MsgEl = #xmlElement{name='message'
+                               ,content=[#xmlText{value=ErrorMsg}]
+                               },
+            ErrorEl = #xmlElement{name='error'
+                                 ,content=[MsgEl]
+                                 },
+            Xml = iolist_to_binary(xmerl:export([ErrorEl], 'xmerl_xml')),
+            {Xml, Req1}
     end.
 
 -spec get_encode_options(cb_context:context()) -> kz_json:encode_options().
