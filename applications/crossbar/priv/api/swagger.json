@@ -5420,11 +5420,13 @@
                 },
                 "hotdesk": {
                     "description": "The hotdesk status of this device",
-                    "type": "object",
-                    "users": {
-                        "description": "The user(s) currently hotdesked into the device",
-                        "type": "object"
-                    }
+                    "properties": {
+                        "users": {
+                            "description": "The user(s) currently hotdesked into the device",
+                            "type": "object"
+                        }
+                    },
+                    "type": "object"
                 },
                 "language": {
                     "description": "The language for the device",
