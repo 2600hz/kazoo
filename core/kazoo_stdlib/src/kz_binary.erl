@@ -214,7 +214,7 @@ lcfirst(<<F:8, Bin/binary>>) -> <<(kz_term:to_lower_char(F)):8, Bin/binary>>.
 
 -spec to_camel_case(any()) -> binary().
 to_camel_case(Binary) when is_binary(Binary) ->
-    << <<(kz_binary:ucfirst(kz_term:to_lower_binary(Word)))/binary>>
+    << <<(ucfirst(kz_term:to_lower_binary(Word)))/binary>>
        || Word <- binary:split(Binary, [<<$_>>, <<$->>, <<$.>>], [global]),
           Word =/= <<>>
     >>.
