@@ -31,7 +31,15 @@
         ,delete_resource/2
         ,delete_completed/2
         ,is_conflict/2
-        ,to_json/2, to_binary/2, to_csv/2, to_pdf/2, send_file/2
+
+         %% Content
+        ,to_json/2
+        ,to_binary/2
+        ,to_csv/2
+        ,to_pdf/2
+        ,to_xml/2
+        ,send_file/2
+
         ,from_json/2, from_binary/2, from_form/2
         ,multiple_choices/2
         ,generate_etag/2
@@ -80,6 +88,14 @@ rest_init(Req, Opts) ->
 
     Context0 = cb_context:setters(cb_context:new(), Setters),
 
+    lager:info("~s: ~s?~s from ~s"
+              ,[cb_context:method(Context0)
+               ,Path
+               ,cb_context:raw_qs(Context0)
+               ,cb_context:client_ip(Context0)
+               ]
+              ),
+
     case api_util:get_req_data(Context0, Req) of
         {'stop', Req1, Context1} ->
             lager:debug("getting request data failed, stopping"),
@@ -91,13 +107,6 @@ rest_init(Req, Opts) ->
             Event = api_util:create_event_name(Context3, <<"init">>),
             {Context4, _} = crossbar_bindings:fold(Event, {Context3, Opts}),
             Context5 = maybe_decode_start_key(Context4),
-            lager:info("~s: ~s?~s from ~s"
-                      ,[cb_context:method(Context5)
-                       ,Path
-                       ,cb_context:raw_qs(Context5)
-                       ,cb_context:client_ip(Context5)
-                       ]
-                      ),
             {'cowboy_rest'
             ,cowboy_req:set_resp_header(<<"x-request-id">>, cb_context:req_id(Context5), Req10)
             ,Context5
@@ -757,8 +766,6 @@ from_binary(Req0, Context0) ->
     lager:debug("run: from_binary"),
     case api_util:execute_request(Req0, Context0) of
         {'true', Req1, Context1} ->
-            Event = api_util:create_event_name(Context1, <<"from_binary">>),
-            _ = crossbar_bindings:map(Event, {Req1, Context1}),
             create_from_response(Req1, Context1);
         Else -> Else
     end.
@@ -769,8 +776,6 @@ from_json(Req0, Context0) ->
     lager:debug("run: from_json"),
     case api_util:execute_request(Req0, Context0) of
         {'true', Req1, Context1} ->
-            Event = api_util:create_event_name(Context1, <<"from_json">>),
-            _ = crossbar_bindings:map(Event, {Req1, Context1}),
             create_from_response(Req1, Context1);
         Else -> Else
     end.
@@ -781,8 +786,6 @@ from_form(Req0, Context0) ->
     lager:debug("run: from_form"),
     case api_util:execute_request(Req0, Context0) of
         {'true', Req1, Context1} ->
-            Event = api_util:create_event_name(Context1, <<"from_form">>),
-            _ = crossbar_bindings:map(Event, {Req1, Context1}),
             create_from_response(Req1, Context1);
         Else -> Else
     end.
@@ -798,12 +801,16 @@ create_from_response(Req, Context, 'undefined') ->
     create_from_response(Req, Context, <<"*/*">>);
 create_from_response(Req, Context, Accept) ->
     DefaultFun = content_type_provided_fun(Context),
+    lager:debug("content-type provided is ~p", [DefaultFun]),
 
     case to_fun(Context, Accept, DefaultFun) of
         'to_json' -> api_util:create_push_response(Req, Context);
         'send_file' -> api_util:create_push_response(Req, Context, fun api_util:create_resp_file/2);
-        _ ->
+        'to_binary' -> api_util:create_push_response(Req, Context, fun api_util:create_binary_resp_content/2);
+        'to_xml' -> api_util:create_push_response(Req, Context, fun api_util:create_xml_resp_content/2);
+        _Else ->
             %% sending json for now until we implement other types
+            lager:debug("calling default push response for ~p", [_Else]),
             api_util:create_push_response(Req, Context)
     end.
 
@@ -917,11 +924,21 @@ send_file(Req, Context) ->
     lager:debug("run: send_file"),
     api_util:create_pull_response(Req, Context, fun api_util:create_resp_file/2).
 
+-spec to_xml(cowboy_req:req(), cb_context:context()) -> api_util:pull_file_response_return().
+to_xml(Req, Context) ->
+    lager:debug("run: to_xml"),
+    api_util:create_pull_response(Req
+                                 ,cb_context:add_resp_header(Context, <<"content-type">>, <<"text/xml">>)
+                                 ,fun api_util:create_xml_resp_content/2
+                                 ).
+
 -spec to_fun(cb_context:context(), kz_term:ne_binary(), atom()) -> atom().
 to_fun(Context, Accept, Default) ->
     case binary:split(Accept, <<"/">>) of
         [Major, Minor] -> to_fun(Context, Major, Minor, Default);
-        _ -> Default
+        _A ->
+            lager:debug("not handling Accept: ~s, using default ~s", [Accept, Default]),
+            Default
     end.
 
 -spec to_fun(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), atom()) -> atom().
@@ -1231,7 +1248,8 @@ generate_etag(Req0, Context0) ->
     end.
 
 -spec expires(cowboy_req:req(), cb_context:context()) ->
-                     {kz_time:datetime(), cowboy_req:req(), cb_context:context()}.
+                     {calendar:datetime(), cowboy_req:req(), cb_context:context()}.
 expires(Req, Context) ->
     Event = api_util:create_event_name(Context, <<"expires">>),
-    crossbar_bindings:fold(Event, {cb_context:resp_expires(Context), Req, Context}).
+    Context1 = crossbar_bindings:fold(Event, Context),
+    {cb_context:resp_expires(Context1), Req, Context1}.
