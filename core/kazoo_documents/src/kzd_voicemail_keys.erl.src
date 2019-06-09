@@ -10,6 +10,7 @@
 -export([continue/1, continue/2, set_continue/2]).
 -export([delete/1, delete/2, set_delete/2]).
 -export([exit/1, exit/2, set_exit/2]).
+-export([fastforward/1, fastforward/2, set_fastforward/2]).
 -export([hear_new/1, hear_new/2, set_hear_new/2]).
 -export([hear_saved/1, hear_saved/2, set_hear_saved/2]).
 -export([keep/1, keep/2, set_keep/2]).
@@ -23,6 +24,7 @@
 -export([record/1, record/2, set_record/2]).
 -export([replay/1, replay/2, set_replay/2]).
 -export([return_main/1, return_main/2, set_return_main/2]).
+-export([rewind/1, rewind/2, set_rewind/2]).
 -export([save/1, save/2, set_save/2]).
 -export([set_pin/1, set_pin/2, set_set_pin/2]).
 
@@ -85,6 +87,18 @@ exit(Doc, Default) ->
 -spec set_exit(doc(), kz_term:ne_binary()) -> doc().
 set_exit(Doc, Exit) ->
     kz_json:set_value([<<"exit">>], Exit, Doc).
+
+-spec fastforward(doc()) -> kz_term:api_ne_binary().
+fastforward(Doc) ->
+    fastforward(Doc, 'undefined').
+
+-spec fastforward(doc(), Default) -> kz_term:ne_binary() | Default.
+fastforward(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"fastforward">>], Doc, Default).
+
+-spec set_fastforward(doc(), kz_term:ne_binary()) -> doc().
+set_fastforward(Doc, Fastforward) ->
+    kz_json:set_value([<<"fastforward">>], Fastforward, Doc).
 
 -spec hear_new(doc()) -> kz_term:api_ne_binary().
 hear_new(Doc) ->
@@ -241,6 +255,18 @@ return_main(Doc, Default) ->
 -spec set_return_main(doc(), kz_term:ne_binary()) -> doc().
 set_return_main(Doc, ReturnMain) ->
     kz_json:set_value([<<"return_main">>], ReturnMain, Doc).
+
+-spec rewind(doc()) -> kz_term:api_ne_binary().
+rewind(Doc) ->
+    rewind(Doc, 'undefined').
+
+-spec rewind(doc(), Default) -> kz_term:ne_binary() | Default.
+rewind(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"rewind">>], Doc, Default).
+
+-spec set_rewind(doc(), kz_term:ne_binary()) -> doc().
+set_rewind(Doc, Rewind) ->
+    kz_json:set_value([<<"rewind">>], Rewind, Doc).
 
 -spec save(doc()) -> kz_term:api_ne_binary().
 save(Doc) ->
