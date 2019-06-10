@@ -18,6 +18,8 @@
 %%% API
 %%%=============================================================================
 
+-define(AUTHZ_TIMEOUT_MS, 5000).
+
 -type search_ret() :: 'ok' | {'ok', kz_json:object()}.
 
 -spec search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data()) ->
@@ -75,7 +77,18 @@ maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, 'undefined') -
 maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AuthzWorker) ->
     case kz_json:get_value(<<"Method">>, JObj) =/= <<"error">> of
         'true' -> wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AuthzWorker);
-        'false' -> reply_affirmative(Section, Node, FetchId, CallId, JObj, Props)
+        'false' -> wait_and_ignore_authz(Section, Node, FetchId, CallId, JObj, Props, AuthzWorker)
+    end.
+
+-spec wait_and_ignore_authz(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist(), kz_term:pid_ref()) -> search_ret().
+wait_and_ignore_authz(Section, Node, FetchId, CallId, JObj, Props, {Pid, Ref}) ->
+    receive
+        {'authorize_reply', Ref, _Reply} ->
+            lager:debug("got authz reply, but sending error response so ignoring"),
+            reply_affirmative(Section, Node, FetchId, CallId, JObj, Props)
+    after ?AUTHZ_TIMEOUT_MS ->
+            lager:warning("timeout waiting for authz reply from worker ~p", [Pid]),
+            reply_affirmative(Section, Node, FetchId, CallId, JObj, Props)
     end.
 
 -spec wait_for_authz(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist(), kz_term:pid_ref()) -> search_ret().
