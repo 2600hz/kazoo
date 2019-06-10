@@ -54,7 +54,7 @@ handle_result_status(Call, <<"pending">>) ->
     doodle_util:maybe_reschedule_sms(Call);
 handle_result_status(Call, _Status) ->
     lager:info("completed successful message to the user"),
-    doodle_exe:continue(Call).
+    doodle_exe:stop(Call).
 
 -spec maybe_handle_bridge_failure(any(), kapps_call:call()) -> 'ok'.
 maybe_handle_bridge_failure({_ , R}=Reason, Call) ->

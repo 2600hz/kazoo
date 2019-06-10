@@ -581,7 +581,6 @@
     - api_key
   'type': object
 'app':
-  'additionalProperties': false
   'description': Appstore applications
   'properties':
     'allowed_users':

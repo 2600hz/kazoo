@@ -213,7 +213,7 @@ send(<<"sip">>, Endpoint, API) ->
                               ),
     CallId = props:get_value(<<"Call-ID">>, Payload),
     lager:debug("sending sms and waiting for response ~s", [CallId]),
-    kz_amqp_worker:cast(Payload, fun kapi_sms:publish_message/1),
+    _ = kz_amqp_worker:cast(Payload, fun kapi_sms:publish_message/1),
     erlang:send_after(60000, self(), 'sms_timeout');
 send(<<"amqp">>, Endpoint, API) ->
     CallId = props:get_value(<<"Call-ID">>, API),
@@ -231,7 +231,7 @@ send(<<"amqp">>, Endpoint, API) ->
     ExchangeOptions = amqp_exchange_options(kz_json:get_value([<<"Endpoint-Options">>, <<"Exchange-Options">>], Endpoint)),
     maybe_add_broker(Broker, Exchange, RouteId, ExchangeType, ExchangeOptions, BrokerName),
 
-    lager:debug("sending sms and not waiting for response ~s", [CallId]),
+    lager:debug("sending sms ~s/~s and not waiting for response ~s", [Exchange, RouteId, CallId]),
     case send_amqp_sms(Payload, ?SMS_POOL(Exchange, RouteId, BrokerName)) of
         'ok' ->
             send_success(API, CallId);
@@ -342,6 +342,7 @@ build_sms_base({CIDNum, CIDName}, OffnetReq, Q) ->
       ,{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
       ,{<<"Outbound-Callee-ID-Number">>, kapi_offnet_resource:outbound_callee_id_number(OffnetReq)}
       ,{<<"Outbound-Callee-ID-Name">>, kapi_offnet_resource:outbound_callee_id_name(OffnetReq)}
+      ,{<<"Callee-ID-Number">>, kapi_offnet_resource:to_did(OffnetReq)}
       ,{<<"Message-ID">>, kapi_offnet_resource:message_id(OffnetReq)}
       ,{<<"Body">>, kapi_offnet_resource:body(OffnetReq)}
        | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)

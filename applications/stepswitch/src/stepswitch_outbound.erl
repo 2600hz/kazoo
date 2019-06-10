@@ -120,6 +120,7 @@ maybe_force_outbound_sms(Props, OffnetReq) ->
     case knm_number_options:should_force_outbound(Props)
         orelse kapi_offnet_resource:force_outbound(OffnetReq, 'false')
         orelse kapi_offnet_resource:hunt_account_id(OffnetReq) /= 'undefined'
+        orelse knm_number_options:assign_to(Props) =:= 'undefined'
     of
         'false' -> local_sms(Props, OffnetReq);
         'true' -> maybe_sms(knm_number_options:number(Props), OffnetReq)
