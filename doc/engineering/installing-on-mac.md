@@ -1,7 +1,7 @@
 # Installing on Mac (for development)
 
 Some additional dependencies are required to get things up and running on Mac. The easiest way to
-install these dependencies is via `brew` so install [brew|https://brew.sh/] if you haven't already.
+install these dependencies is via `brew` so [install brew](https://brew.sh/) if you haven't already.
 
 Now install the dependencies listed in the installation.md file using `brew install <dependency name>`.
 Some have different names on mac, such as:
