@@ -568,19 +568,31 @@ handle_phonebook_error(Context, Code, Response) ->
 -spec handle_phonebook_response(cb_context:context(), kz_json:object()) -> cb_context:context().
 handle_phonebook_response(Context, Response) ->
     Data = kz_json:get_value(<<"data">>, Response, kz_json:new()),
-    Comments = kz_json:get_list_value(<<"comments">>, Data, []),
-    {NewContext, NewData} = maybe_phonebook_comments(Context, Data, Comments),
-    NewDoc = kz_json:merge([cb_context:doc(NewContext), NewData]),
-    cb_context:set_doc(NewContext, NewDoc).
+    PhonebookComments = kzd_port_requests:comments(Data, []),
 
--spec maybe_phonebook_comments(cb_context:context(), kz_json:object(), kz_json:objects()) -> {cb_context:context(), kz_json:object()}.
-maybe_phonebook_comments(Context, Data, []) ->
-    {Context, Data};
-maybe_phonebook_comments(Context, Data, Comments) ->
     Doc = cb_context:doc(Context),
-    CurrentComments = kz_json:get_value(<<"comments">>, Doc, []),
-    Doc1 = kz_json:set_value(<<"comments">>, CurrentComments ++ Comments, Doc),
-    {cb_context:set_doc(Context, Doc1), kz_json:delete_key(<<"comments">>, Data)}.
+
+    CurrentComments = [fix_phonebook_comments(Comment)
+                       || Comment <- kzd_port_requests:comments(Doc, [])
+                      ],
+
+    NewDoc = kzd_port_requests:set_comments(kz_json:merge([kz_json:delete_key(<<"comments">>, Doc)
+                                                          ,kz_json:delete_key(<<"comments">>, Data)
+                                                          ]
+                                                         )
+                                           ,cb_comments:sort(CurrentComments ++ PhonebookComments)
+                                           ),
+    cb_context:set_doc(Context, NewDoc).
+
+-spec fix_phonebook_comments(kz_json:object()) -> kz_json:object().
+fix_phonebook_comments(Comment) ->
+    Setters = [{fun kzd_comment:set_action_required/2, kzd_comment:action_required(Comment, 'false')}
+              ,{fun kzd_comment:set_author/2, kzd_comment:author(Comment, <<"phonebook">>)}
+              ,{fun kzd_comment:set_content/2, kzd_comment:content(Comment, <<"phonebook comment">>)}
+              ,{fun kzd_comment:set_is_private/2, kzd_comment:is_private(Comment, 'false')}
+              ,{fun kzd_comment:set_timestamp/2, kzd_comment:timestamp(Comment, kz_time:now_s())}
+              ],
+    kz_doc:setters(Comment, Setters).
 
 %%%=============================================================================
 %%% Internal functions
@@ -1475,10 +1487,13 @@ send_port_comment_notification(NewComment, {Context, Id, TotalNew, Index}) ->
           ],
     lager:debug("sending port comment notification ~b/~b", [Index, TotalNew]),
     try kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_comment/1) of
-        _ -> lager:debug("port comment notification sent ~b/~b", [Index, TotalNew])
+        _ ->
+            lager:debug("port comment notification sent ~b/~b", [Index, TotalNew]),
+            {Context, Id, TotalNew, Index+1}
     catch
         _E:_R ->
-            lager:error("failed to send the port comment notification ~b/~b: ~s:~p", [Index, TotalNew, _E, _R])
+            lager:error("failed to send the port comment notification ~b/~b: ~s:~p", [Index, TotalNew, _E, _R]),
+            {Context, Id, TotalNew, Index+1}
     end.
 
 %%------------------------------------------------------------------------------
