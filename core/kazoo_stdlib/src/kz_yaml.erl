@@ -405,9 +405,9 @@ encode_string(_State, String, _Indent, _LineWidth, 'single_quote') ->
 encode_string(_State, String, _Indent, _LineWidth, 'double_qoute') ->
     [<<$">>, escape_string(String, <<>>), <<$">>];
 encode_string(#{indent := StateIndent}, String, Indent, _LineWidth, 'literal') ->
-    [<<$|>>, block_header(String, StateIndent), drop_ending_new_line(indent_string(String, Indent))];
+    [<<$|>>, block_header(String, StateIndent), drop_ending_new_line(indent_string(String, Indent), 'literal')];
 encode_string(#{indent := StateIndent}, String, Indent, LineWidth, 'fold') ->
-    [<<$>>>, block_header(String, StateIndent), drop_ending_new_line(indent_string(fold_string(String, LineWidth), Indent))].
+    [<<$>>>, block_header(String, StateIndent), drop_ending_new_line(indent_string(fold_string(String, LineWidth), Indent), 'fold')].
 
 %% @doc Escape non-printable characters for double quote stryle.
 -spec escape_string(binary(), binary()) -> binary().
@@ -478,14 +478,17 @@ trim_last_trailing_empty(Lines) ->
         _ -> Lines
     end.
 
--spec drop_ending_new_line(iolist()) -> binary().
-drop_ending_new_line([]) -> <<>>;
-drop_ending_new_line(Lines) ->
-    LastLine = lists:last(Lines),
-    NotLast = lists:droplast(Lines),
-    case lists:last(LastLine) of
-        <<$\n>> -> kz_term:to_binary(NotLast ++ lists:droplast(LastLine));
-        _ -> kz_term:to_binary(Lines)
+-spec drop_ending_new_line(iolist(), 'fold' | 'literal') -> binary().
+drop_ending_new_line([], _) -> <<>>;
+drop_ending_new_line(Lines, Type) ->
+    Bin = kz_term:to_binary(Lines),
+    case kz_binary:reverse(Bin) of
+        <<$\n, $\n, _/binary>> when Type =:= 'fold' ->
+            %% [182] The final line break, and trailing empty lines if any,
+            %% are subject to chomping and are never folded.
+            Bin;
+        <<$\n, Rest/binary>> -> kz_binary:reverse(Rest);
+        _ -> Bin
     end.
 
 -spec fold_string(binary(), non_neg_integer()) -> binary().
