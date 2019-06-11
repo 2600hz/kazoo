@@ -7,7 +7,7 @@ install these dependencies is via `brew` so [install brew](https://brew.sh/) if 
 
 Run the brew install command below to install dependencies:
 
-```brew install libxslt openssl ncurses expat htmldoc```
+```brew install python@2 libxslt openssl ncurses expat imagemagick ghostscript htmldoc```
 
 And you can skip installing these (they are included via the Apple command line tools or the brew packages):
 
