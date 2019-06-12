@@ -32,6 +32,17 @@ You can install all of the above with:
 
 Next install libreoffice, which can be done via `brew cask install libreoffice`.
 
+## Tooling Dependencies
+
+Several build commands require the gnu version of utilities. For simplicity you can install
+the `coreutils` bundle from brew to get the gnu version of utility applications:
+```brew install coreutils```
+Again, make sure to follow the instructions to add them to your path with their default names.
+
+The version of emacs that comes with MacOS is very out of date, and you will need it for running
+the auto formatting command. Install a newer version via brew:
+```brew cask install emacs```
+
 ### Fix executable paths
 
 gnu-sed, md5 etc need their executables added to your path. When you install 
