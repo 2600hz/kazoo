@@ -1,9 +1,9 @@
 # Installing on Mac (for development)
 
-Make sure you've run `xcode-select --install` to install various build tools that are available(such as zlib.
+Make sure you have run `xcode-select --install` to install various build tools that are available(such as zlib.
 
 Some additional dependencies are required to get things up and running on Mac. The easiest way to
-install these dependencies is via `brew` so [install brew](https://brew.sh/) if you haven't already.
+install these dependencies is via `brew` so [install brew](https://brew.sh/) if you have not already.
 
 Run the brew install command below to install dependencies:
 
@@ -42,6 +42,12 @@ Again, make sure to follow the instructions to add them to your path with their 
 The version of emacs that comes with MacOS is very out of date, and you will need it for running
 the auto formatting command. Install a newer version via brew:
 ```brew cask install emacs```
+
+To build the docs you will need to upgrade bash to version 5. You can do this through:
+```brew install bash``` and then removing (Perhaps just rename it) your existing bash 
+from `/usr/local/bin/bash` and symlinking the brew bash into its place:
+```ln -s /usr/local/Cellar/bash/5.0.7/bin/bash /usr/local/bin/bash```
+You may also want to do this for `/bin/bash` for consistency but it is not required.
 
 ### Fix executable paths
 
