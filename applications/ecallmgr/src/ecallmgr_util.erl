@@ -116,6 +116,12 @@ send_cmd(_Node, _UUID, _App, "kz_multiset_encoded", "^^") -> 'ok';
 send_cmd(Node, UUID, App, "playstop", _Args) ->
     lager:debug("execute on node ~s: ~s uuid_break(~s all)", [Node, App, UUID]),
     freeswitch:api(Node, 'uuid_break', <<UUID/binary, " all">>);
+send_cmd(Node, UUID, App, "playseek", Cmd) ->
+    Args = iolist_to_binary([UUID, " ", Cmd]),
+    lager:debug("execute on node ~s: ~s uuid_fileman(~s)", [Node, App, Args]),
+    Resp = freeswitch:api(Node, 'uuid_fileman', kz_term:to_list(Args)),
+    lager:debug("uuid_fileman resulted in: ~p", [Resp]),
+    Resp;
 send_cmd(Node, UUID, App, "unbridge", _) ->
     lager:debug("execute on node ~s: ~s uuid_park(~s)", [Node, App, UUID]),
     freeswitch:api(Node, 'uuid_park', UUID);

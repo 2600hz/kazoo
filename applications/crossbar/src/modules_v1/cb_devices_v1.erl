@@ -152,15 +152,20 @@ validate_device(Context, DeviceId, ?HTTP_DELETE) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, DeviceId) ->
-    _ = kz_util:spawn(fun crossbar_util:flush_registration/1, [Context]),
     case changed_mac_address(Context) of
         'true' ->
-            _ = crossbar_util:maybe_refresh_fs_xml('device', Context),
             Context1 = cb_modules_util:take_sync_field(Context),
             Context2 = crossbar_doc:save(Context1),
-            _ = maybe_aggregate_device(DeviceId, Context2),
-            _ = kz_util:spawn(fun update_device_provisioning/1, [Context2]),
-            Context2;
+            case cb_context:resp_status(Context2) of
+                'success' ->
+                    _ = kz_util:spawn(fun crossbar_util:flush_registration/1, [Context2]),
+                    _ = crossbar_util:maybe_refresh_fs_xml('device', Context2),
+                    _ = maybe_aggregate_device(DeviceId, Context2),
+                    _ = kz_util:spawn(fun update_device_provisioning/1, [Context2]),
+                    Context2;
+                _ ->
+                    Context2
+            end;
         'false' ->
             error_used_mac_address(Context)
     end.
@@ -214,12 +219,17 @@ put(Context, DeviceId) ->
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, DeviceId) ->
-    _ = crossbar_util:refresh_fs_xml(Context),
     Context1 = crossbar_doc:delete(Context),
-    _ = crossbar_util:flush_registration(Context),
-    _ = kz_util:spawn(fun maybe_delete_provision/1, [Context]),
-    _ = maybe_remove_aggregate(DeviceId, Context),
-    Context1.
+    case cb_context:resp_status(Context) of
+        'success' ->
+            _ = crossbar_util:flush_registration(Context1),
+            _ = crossbar_util:refresh_fs_xml(Context1),
+            _ = kz_util:spawn(fun maybe_delete_provision/1, [Context1]),
+            _ = maybe_remove_aggregate(DeviceId, Context1),
+            Context1;
+        _ ->
+            Context1
+    end.
 
 -spec maybe_delete_provision(cb_context:context()) -> 'ok'.
 maybe_delete_provision(Context) ->

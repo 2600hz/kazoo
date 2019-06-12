@@ -30,6 +30,7 @@
         ,execute_extension/1, execute_extension_v/1
         ,break/1, break_v/1
         ,play/1, play_v/1, playstop/1, playstop_v/1
+        ,playseek/1, playseek_v/1
         ,tts/1, tts_v/1
         ,record/1, record_v/1
         ,record_call/1, record_call_v/1
@@ -475,6 +476,24 @@ playstop(JObj) -> playstop(kz_json:to_proplist(JObj)).
 playstop_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PLAY_STOP_REQ_HEADERS, ?PLAY_STOP_REQ_VALUES, ?PLAY_STOP_REQ_TYPES);
 playstop_v(JObj) -> playstop_v(kz_json:to_proplist(JObj)).
+
+%%------------------------------------------------------------------------------
+%% @doc Change position in playing media.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec playseek(kz_term:api_terms()) -> api_formatter_return().
+playseek(Prop) when is_list(Prop) ->
+    case playseek_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?PLAY_SEEK_REQ_HEADERS, ?OPTIONAL_PLAY_SEEK_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for playseek"}
+    end;
+playseek(JObj) -> playseek(kz_json:to_proplist(JObj)).
+
+-spec playseek_v(kz_term:api_terms()) -> boolean().
+playseek_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?PLAY_SEEK_REQ_HEADERS, ?PLAY_SEEK_REQ_VALUES, ?PLAY_SEEK_REQ_TYPES);
+playseek_v(JObj) -> playseek_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
 %% @doc TTS - Text-to-speech.

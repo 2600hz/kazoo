@@ -74,7 +74,7 @@ handle_info('maintain_connection', #data_connection{connected = 'false'}=Connect
             {'noreply', Connection};
         {'ok', C} ->
             self() ! 'maintain_connection',
-            {'noreply', connection_established(C#data_connection{connected='true'})}
+            {'noreply', connection_established(C)}
     end;
 handle_info('maintain_connection', #data_connection{ready=Ready
                                                    ,server=Server

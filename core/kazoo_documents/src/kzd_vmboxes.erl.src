@@ -9,6 +9,7 @@
 -export([check_if_owner/1, check_if_owner/2, set_check_if_owner/2]).
 -export([delete_after_notify/1, delete_after_notify/2, set_delete_after_notify/2]).
 -export([is_setup/1, is_setup/2, set_is_setup/2]).
+-export([is_voicemail_ff_rw_enabled/1, is_voicemail_ff_rw_enabled/2, set_is_voicemail_ff_rw_enabled/2]).
 -export([mailbox/1, mailbox/2, set_mailbox/2]).
 -export([media/1, media/2, set_media/2]).
 -export([media_unavailable/1, media_unavailable/2, set_media_unavailable/2]).
@@ -23,6 +24,7 @@
 -export([pin/1, pin/2, set_pin/2]).
 -export([require_pin/1, require_pin/2, set_require_pin/2]).
 -export([save_after_notify/1, save_after_notify/2, set_save_after_notify/2]).
+-export([seek_duration_ms/1, seek_duration_ms/2, set_seek_duration_ms/2]).
 -export([skip_envelope/1, skip_envelope/2, set_skip_envelope/2]).
 -export([skip_greeting/1, skip_greeting/2, set_skip_greeting/2]).
 -export([skip_instructions/1, skip_instructions/2, set_skip_instructions/2]).
@@ -75,6 +77,18 @@ is_setup(Doc, Default) ->
 -spec set_is_setup(doc(), boolean()) -> doc().
 set_is_setup(Doc, IsSetup) ->
     kz_json:set_value([<<"is_setup">>], IsSetup, Doc).
+
+-spec is_voicemail_ff_rw_enabled(doc()) -> boolean().
+is_voicemail_ff_rw_enabled(Doc) ->
+    is_voicemail_ff_rw_enabled(Doc, false).
+
+-spec is_voicemail_ff_rw_enabled(doc(), Default) -> boolean() | Default.
+is_voicemail_ff_rw_enabled(Doc, Default) ->
+    kz_json:get_boolean_value([<<"is_voicemail_ff_rw_enabled">>], Doc, Default).
+
+-spec set_is_voicemail_ff_rw_enabled(doc(), boolean()) -> doc().
+set_is_voicemail_ff_rw_enabled(Doc, IsVoicemailFfRwEnabled) ->
+    kz_json:set_value([<<"is_voicemail_ff_rw_enabled">>], IsVoicemailFfRwEnabled, Doc).
 
 -spec mailbox(doc()) -> kz_term:api_ne_binary().
 mailbox(Doc) ->
@@ -243,6 +257,18 @@ save_after_notify(Doc, Default) ->
 -spec set_save_after_notify(doc(), boolean()) -> doc().
 set_save_after_notify(Doc, SaveAfterNotify) ->
     kz_json:set_value([<<"save_after_notify">>], SaveAfterNotify, Doc).
+
+-spec seek_duration_ms(doc()) -> integer().
+seek_duration_ms(Doc) ->
+    seek_duration_ms(Doc, 10000).
+
+-spec seek_duration_ms(doc(), Default) -> integer() | Default.
+seek_duration_ms(Doc, Default) ->
+    kz_json:get_integer_value([<<"seek_duration_ms">>], Doc, Default).
+
+-spec set_seek_duration_ms(doc(), integer()) -> doc().
+set_seek_duration_ms(Doc, SeekDurationMs) ->
+    kz_json:set_value([<<"seek_duration_ms">>], SeekDurationMs, Doc).
 
 -spec skip_envelope(doc()) -> boolean().
 skip_envelope(Doc) ->

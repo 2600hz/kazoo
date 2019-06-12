@@ -76,6 +76,8 @@
         ]).
 -export([prompt/2, prompt/3]).
 
+-export([seek/1, seek/2, seek/3]).
+
 -export([tts/2, tts/3, tts/4, tts/5, tts/6
         ,b_tts/2, b_tts/3, b_tts/4, b_tts/5, b_tts/6
         ,tts_command/2, tts_command/3, tts_command/4, tts_command/5, tts_command/6
@@ -176,7 +178,7 @@
 -export([wait_for_application_or_dtmf/2]).
 -export([collect_digits/2, collect_digits/3
         ,collect_digits/4, collect_digits/5
-        ,collect_digits/6
+        ,collect_digits/6, collect_digits/7
         ]).
 -export([send_command/2]).
 
@@ -271,6 +273,7 @@
 
 -define(BRIDGE_EXPORT_VARS, kapps_config:get_ne_binaries(?CONFIG_CAT, <<"export_bridge_variables">>, ?BRIDGE_DEFAULT_EXPORT_VARS)).
 -define(BRIDGE_DEFAULT_EXPORT_VARS, [<<"hold_music">>]).
+-define(DEFAULT_SEEK_DURATION, 10 * ?MILLISECONDS_IN_SECOND).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -1524,6 +1527,45 @@ b_play(Media, Terminators, Leg, Endless, Call) ->
     wait_for_noop(Call, play(Media, Terminators, Leg, Endless, Call)).
 
 %%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to seek through the playing media.
+%% This request will execute immediately.
+%% @end
+%%------------------------------------------------------------------------------
+-spec seek(kapps_call:call()) -> kz_term:api_ne_binary().
+seek(Call) ->
+    seek('fastforward', ?DEFAULT_SEEK_DURATION, Call).
+
+-spec seek(integer(), kapps_call:call()) -> kz_term:api_ne_binary().
+seek(Duration, Call) when Duration > 0 ->
+    seek('fastforward', Duration, Call);
+seek(Duration, Call) when Duration < 0 ->
+    seek('rewind', -Duration, Call);
+seek(0, _Call) ->
+    'undefined'.
+
+-type seek_direction() :: 'fastforward' | 'rewind'.
+
+-spec seek(seek_direction(), integer(), kapps_call:call()) -> kz_term:api_ne_binary().
+seek(Direction, Duration, Call) when Duration > 0 ->
+    NoopId = noop_id(),
+    Command = seek_command(Direction, Duration),
+    send_command(Command, Call),
+    NoopId;
+seek(_Direction, _NotPositive, _Call) -> 'undefined'.
+
+-spec seek_command(seek_direction(), pos_integer()) -> kz_json:object().
+seek_command(Direction, Duration) ->
+    kz_json:from_list([{<<"Application-Name">>, <<"playseek">>}
+                      ,{<<"Direction">>, seek_direction(Direction, Duration)}
+                      ,{<<"Duration">>, Duration}
+                      ,{<<"Insert-At">>, <<"now">>}
+                      ]).
+
+-spec seek_direction(seek_direction(), integer()) -> kz_term:ne_binary().
+seek_direction('fastforward', Duration) when Duration > 0 -> <<"fastforward">>;
+seek_direction('rewind', Duration) when Duration < 0 -> <<"rewind">>.
+
+%%------------------------------------------------------------------------------
 %% @doc requests the TTS engine to create an audio file to play the desired
 %% text.
 %% @end
@@ -2373,6 +2415,7 @@ b_privacy(Mode, Call) ->
                             ,call :: kapps_call:call()
                             ,digits_collected = <<>> :: binary()
                             ,after_timeout = ?MILLISECONDS_IN_DAY :: pos_integer()
+                            ,flush_on_digit = 'true'
                             }).
 -type wcc_collect_digits() :: #wcc_collect_digits{}.
 
@@ -2423,15 +2466,28 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) ->
                                          ,after_timeout=kz_term:to_integer(Timeout)
                                          }).
 
+-spec collect_digits(integer(), integer(), integer(), kz_term:api_binary(), list(), boolean(), kapps_call:call()) ->
+                            collect_digits_return().
+collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, FlushOnDigit, Call) ->
+    do_collect_digits(#wcc_collect_digits{max_digits=kz_term:to_integer(MaxDigits)
+                                         ,timeout=kz_term:to_integer(Timeout)
+                                         ,interdigit=kz_term:to_integer(Interdigit)
+                                         ,noop_id=NoopId
+                                         ,terminators=Terminators
+                                         ,call=Call
+                                         ,flush_on_digit=FlushOnDigit
+                                         }).
+
 -spec do_collect_digits(wcc_collect_digits()) -> collect_digits_return().
 do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
                                      ,timeout=Timeout
                                      ,interdigit=Interdigit
                                      ,noop_id=NoopId
-                                     ,terminators=Terminators
                                      ,call=Call
+                                     ,terminators=Terminators
                                      ,digits_collected=Digits
                                      ,after_timeout=After
+                                     ,flush_on_digit=FlushOnDigit
                                      }=Collect) ->
     Start = os:timestamp(),
     case receive_event(After) of
@@ -2450,8 +2506,7 @@ do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
                     do_collect_digits(Collect#wcc_collect_digits{after_timeout=kz_time:decr_timeout(After, Start)});
                 {'dtmf', Digit} ->
                     %% DTMF received, collect and start interdigit timeout
-                    Digits =:= <<>>
-                        andalso flush(Call),
+                    _ = maybe_flash_on_digit(FlushOnDigit, Digits, Call),
 
                     case lists:member(Digit, Terminators) of
                         'true' ->
@@ -2520,6 +2575,10 @@ handle_collect_digit_event(JObj, _NoopId, {<<"call_event">>, <<"DTMF">>, _}) ->
 handle_collect_digit_event(_JObj, _NoopId, _EventType) ->
     {'decrement'}.
 
+-spec maybe_flash_on_digit(boolean(), binary(), kapps_call:call()) ->
+                                  kapps_api_std_return().
+maybe_flash_on_digit('true', <<>>, Call) -> flush(Call);
+maybe_flash_on_digit(_FlushOnDigit, _Digits, _Call) -> 'ok'.
 %%------------------------------------------------------------------------------
 %% @doc Low level function to consume call events, looping until a specific
 %% one occurs.  If the channel is hungup or no call events are received
