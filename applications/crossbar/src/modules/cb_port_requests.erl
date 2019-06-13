@@ -568,21 +568,18 @@ handle_phonebook_error(Context, Code, Response) ->
 -spec handle_phonebook_response(cb_context:context(), kz_json:object()) -> cb_context:context().
 handle_phonebook_response(Context, Response) ->
     Data = kz_json:get_value(<<"data">>, Response, kz_json:new()),
-    PhonebookComments = kzd_port_requests:comments(Data, []),
+    PhonebookComments = [fix_phonebook_comments(Comment)
+                         || Comment <- kzd_port_requests:comments(Data, [])
+                        ],
 
     Doc = cb_context:doc(Context),
+    UpdatedComments = cb_comments:sort(kzd_port_requests:comments(Doc, []) ++ PhonebookComments),
+    Merged = kz_json:merge([kz_json:delete_key(<<"comments">>, Doc)
+                           ,kz_json:delete_key(<<"comments">>, Data)
+                           ]
+                          ),
 
-    CurrentComments = [fix_phonebook_comments(Comment)
-                       || Comment <- kzd_port_requests:comments(Doc, [])
-                      ],
-
-    NewDoc = kzd_port_requests:set_comments(kz_json:merge([kz_json:delete_key(<<"comments">>, Doc)
-                                                          ,kz_json:delete_key(<<"comments">>, Data)
-                                                          ]
-                                                         )
-                                           ,cb_comments:sort(CurrentComments ++ PhonebookComments)
-                                           ),
-    cb_context:set_doc(Context, NewDoc).
+    cb_context:set_doc(Context, kzd_port_requests:set_comments(Merged, UpdatedComments)).
 
 -spec fix_phonebook_comments(kz_json:object()) -> kz_json:object().
 fix_phonebook_comments(Comment) ->
