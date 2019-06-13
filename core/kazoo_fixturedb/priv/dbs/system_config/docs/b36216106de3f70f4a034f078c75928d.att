@@ -15,7 +15,7 @@ Request "{{port_request.name}}" to port numbers into account '{{account.name}}' 
     Name: {{port_request.name}}
     Port ID: {{port_request.id}}
     State: {{port_request.state}}
-    Requested Port Date: {{port_request.requested_port_date.local|date:"l, F j, Y H:i"}}
+    Requested Port Date: {{port_request.requested_port_date.local|date:"l, F j, Y"}}
     Service Provider: {{port_request.service_provider}}
     Customer Contact: {{port_request.customer_contact}}
     Billing Name: {{port_request.billing_name}}
