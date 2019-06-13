@@ -568,21 +568,18 @@ handle_phonebook_error(Context, Code, Response) ->
 -spec handle_phonebook_response(cb_context:context(), kz_json:object()) -> cb_context:context().
 handle_phonebook_response(Context, Response) ->
     Data = kz_json:get_value(<<"data">>, Response, kz_json:new()),
-    PhonebookComments = kzd_port_requests:comments(Data, []),
+    PhonebookComments = [fix_phonebook_comments(Comment)
+                         || Comment <- kzd_port_requests:comments(Data, [])
+                        ],
 
     Doc = cb_context:doc(Context),
+    UpdatedComments = cb_comments:sort(kzd_port_requests:comments(Doc, []) ++ PhonebookComments),
+    Merged = kz_json:merge([kz_json:delete_key(<<"comments">>, Doc)
+                           ,kz_json:delete_key(<<"comments">>, Data)
+                           ]
+                          ),
 
-    CurrentComments = [fix_phonebook_comments(Comment)
-                       || Comment <- kzd_port_requests:comments(Doc, [])
-                      ],
-
-    NewDoc = kzd_port_requests:set_comments(kz_json:merge([kz_json:delete_key(<<"comments">>, Doc)
-                                                          ,kz_json:delete_key(<<"comments">>, Data)
-                                                          ]
-                                                         )
-                                           ,cb_comments:sort(CurrentComments ++ PhonebookComments)
-                                           ),
-    cb_context:set_doc(Context, NewDoc).
+    cb_context:set_doc(Context, kzd_port_requests:set_comments(Merged, UpdatedComments)).
 
 -spec fix_phonebook_comments(kz_json:object()) -> kz_json:object().
 fix_phonebook_comments(Comment) ->
@@ -647,7 +644,7 @@ patch_then_validate_then_maybe_transition(Context, PortId, ToState) ->
 validate_port_comments(Context, OnSuccess) ->
     validate_port_comments(Context, OnSuccess, get_new_comments(Context)).
 
--spec validate_port_comments(cb_context:context(), fun((cb_context:context()) -> cb_context:context()), kz_json:objects()) -> cb_context:context().
+-spec validate_port_comments(cb_context:context(), fun((cb_context:context()) -> cb_context:context()), kz_json:ojbects()) -> cb_context:context().
 validate_port_comments(Context, OnSuccess, []) ->
     Doc = cb_context:doc(Context),
     Comments = kzd_port_requests:comments(Doc, []),
@@ -1560,8 +1557,7 @@ authority_type(Context, Nouns) ->
     Accounts = props:get_value(<<"accounts">>, Nouns),
     authority_type(Context, Nouns, Accounts).
 
--spec authority_type(cb_context:context(), req_nouns(), path_tokens() | 'undefined') ->
-                            {authority_type(), kz_term:ne_binary()}.
+-spec authority_type(cb_context:context(), req_nouns(), path_tokens() | 'undefined') -> {authority_type(), kz_term:ne_binary()}.
 authority_type(Context, _Nouns, 'undefined') ->
     {'agent', cb_context:auth_account_id(Context)};
 authority_type(Context, _Nouns, [_AccountId, ?DESCENDANTS]) ->
