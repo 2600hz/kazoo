@@ -1471,7 +1471,8 @@ send_port_comment_notifications(Context, Id, NewComments) ->
     _ = lists:foldl(fun send_port_comment_notification/2, {Context, Id, length(NewComments), 1}, NewComments),
     'ok'.
 
--spec send_port_comment_notification(kz_json:object(), {cb_context:context(), kz_term:ne_binary(), non_neg_integer(), non_neg_integer()}) -> 'ok'.
+-spec send_port_comment_notification(kz_json:object(), {cb_context:context(), kz_term:ne_binary(), non_neg_integer(), non_neg_integer()}) ->
+                                            {cb_context:context(), kz_term:ne_binary(), non_neg_integer(), non_neg_integer()}.
 send_port_comment_notification(NewComment, {Context, Id, TotalNew, Index}) ->
     Setters = [{fun kzd_comment:set_user_id/2, kzd_comment:user_id(NewComment, cb_context:auth_user_id(Context))}
               ,{fun kzd_comment:set_account_id/2, kzd_comment:account_id(NewComment, cb_context:auth_account_id(Context))}
