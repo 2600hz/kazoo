@@ -687,7 +687,7 @@ recursive_to_proplist(Else) -> Else.
 
 -spec to_map(object() | objects()) -> map() | list(map()).
 to_map(JObjs) when is_list(JObjs) ->
-    jiffy:decode(kz_json:encode(JObjs), [return_maps]);
+    jiffy:decode(encode(JObjs), [return_maps]);
 to_map(JObj) ->
     recursive_to_map(JObj).
 
