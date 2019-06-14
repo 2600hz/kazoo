@@ -1,0 +1,11 @@
+paths:
+  /ip_auth:
+    put:
+      operationId: PutIpAuth
+      parameters: []
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of ip_auth
+      tags:
+        - ip_auth

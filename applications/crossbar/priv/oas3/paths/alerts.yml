@@ -1,0 +1,49 @@
+paths:
+  /accounts/{ACCOUNT_ID}/alerts:
+    get:
+      operationId: GetAccountsAccountIdAlerts
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all alerts
+      tags:
+        - alerts
+    put:
+      operationId: PutAccountsAccountIdAlerts
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of alerts
+      tags:
+        - alerts
+  /accounts/{ACCOUNT_ID}/alerts/{ALERT_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdAlertsAlertId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/ALERT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of alerts
+      tags:
+        - alerts
+    get:
+      operationId: GetAccountsAccountIdAlertsAlertId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/ALERT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a alerts by ID
+      tags:
+        - alerts

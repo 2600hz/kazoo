@@ -1,0 +1,73 @@
+paths:
+  /accounts/{ACCOUNT_ID}/skels:
+    get:
+      operationId: GetAccountsAccountIdSkels
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all skels
+      tags:
+        - skels
+    put:
+      operationId: PutAccountsAccountIdSkels
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of skels
+      tags:
+        - skels
+  /accounts/{ACCOUNT_ID}/skels/{THING}:
+    delete:
+      operationId: DeleteAccountsAccountIdSkelsThing
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/THING'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of skels
+      tags:
+        - skels
+    get:
+      operationId: GetAccountsAccountIdSkelsThing
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/THING'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a skels by ID
+      tags:
+        - skels
+    patch:
+      operationId: PatchAccountsAccountIdSkelsThing
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/THING'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of skels
+      tags:
+        - skels
+    post:
+      operationId: PostAccountsAccountIdSkelsThing
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/THING'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of skels
+      tags:
+        - skels

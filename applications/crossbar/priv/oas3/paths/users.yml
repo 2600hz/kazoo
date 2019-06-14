@@ -1,0 +1,143 @@
+paths:
+  /accounts/{ACCOUNT_ID}/users:
+    get:
+      operationId: GetAccountsAccountIdUsers
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all users
+      tags:
+        - users
+    put:
+      operationId: PutAccountsAccountIdUsers
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/users'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of users
+      tags:
+        - users
+  /accounts/{ACCOUNT_ID}/users/{USER_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdUsersUserId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of users
+      tags:
+        - users
+    get:
+      operationId: GetAccountsAccountIdUsersUserId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a users by ID
+      tags:
+        - users
+    patch:
+      operationId: PatchAccountsAccountIdUsersUserId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/users'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of users
+      tags:
+        - users
+    post:
+      operationId: PostAccountsAccountIdUsersUserId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/users'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of users
+      tags:
+        - users
+  /accounts/{ACCOUNT_ID}/users/{USER_ID}/photo:
+    delete:
+      operationId: DeleteAccountsAccountIdUsersUserIdPhoto
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of users
+      tags:
+        - users
+    get:
+      operationId: GetAccountsAccountIdUsersUserIdPhoto
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get photo of users
+      tags:
+        - users
+    post:
+      operationId: PostAccountsAccountIdUsersUserIdPhoto
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/users'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of users
+      tags:
+        - users
+  /accounts/{ACCOUNT_ID}/users/{USER_ID}/vcard:
+    get:
+      operationId: GetAccountsAccountIdUsersUserIdVcard
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/USER_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get vcard of users
+      tags:
+        - users
