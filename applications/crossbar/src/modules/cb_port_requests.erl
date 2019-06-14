@@ -568,19 +568,28 @@ handle_phonebook_error(Context, Code, Response) ->
 -spec handle_phonebook_response(cb_context:context(), kz_json:object()) -> cb_context:context().
 handle_phonebook_response(Context, Response) ->
     Data = kz_json:get_value(<<"data">>, Response, kz_json:new()),
-    Comments = kz_json:get_list_value(<<"comments">>, Data, []),
-    {NewContext, NewData} = maybe_phonebook_comments(Context, Data, Comments),
-    NewDoc = kz_json:merge([cb_context:doc(NewContext), NewData]),
-    cb_context:set_doc(NewContext, NewDoc).
+    PhonebookComments = [fix_phonebook_comments(Comment)
+                         || Comment <- kzd_port_requests:comments(Data, [])
+                        ],
 
--spec maybe_phonebook_comments(cb_context:context(), kz_json:object(), kz_json:objects()) -> {cb_context:context(), kz_json:object()}.
-maybe_phonebook_comments(Context, Data, []) ->
-    {Context, Data};
-maybe_phonebook_comments(Context, Data, Comments) ->
     Doc = cb_context:doc(Context),
-    CurrentComments = kz_json:get_value(<<"comments">>, Doc, []),
-    Doc1 = kz_json:set_value(<<"comments">>, CurrentComments ++ Comments, Doc),
-    {cb_context:set_doc(Context, Doc1), kz_json:delete_key(<<"comments">>, Data)}.
+    UpdatedComments = cb_comments:sort(kzd_port_requests:comments(Doc, []) ++ PhonebookComments),
+    Merged = kz_json:merge([kz_json:delete_key(<<"comments">>, Doc)
+                           ,kz_json:delete_key(<<"comments">>, Data)
+                           ]
+                          ),
+
+    cb_context:set_doc(Context, kzd_port_requests:set_comments(Merged, UpdatedComments)).
+
+-spec fix_phonebook_comments(kz_json:object()) -> kz_json:object().
+fix_phonebook_comments(Comment) ->
+    Setters = [{fun kzd_comment:set_action_required/2, kzd_comment:action_required(Comment, 'false')}
+              ,{fun kzd_comment:set_author/2, kzd_comment:author(Comment, <<"phonebook">>)}
+              ,{fun kzd_comment:set_content/2, kzd_comment:content(Comment, <<"phonebook comment">>)}
+              ,{fun kzd_comment:set_is_private/2, kzd_comment:is_private(Comment, 'false')}
+              ,{fun kzd_comment:set_timestamp/2, kzd_comment:timestamp(Comment, kz_time:now_s())}
+              ],
+    kz_doc:setters(Comment, Setters).
 
 %%%=============================================================================
 %%% Internal functions
@@ -635,7 +644,7 @@ patch_then_validate_then_maybe_transition(Context, PortId, ToState) ->
 validate_port_comments(Context, OnSuccess) ->
     validate_port_comments(Context, OnSuccess, get_new_comments(Context)).
 
--spec validate_port_comments(cb_context:context(), fun((cb_context:context()) -> cb_context:context()), kz_json:objects()) -> cb_context:context().
+-spec validate_port_comments(cb_context:context(), fun((cb_context:context()) -> cb_context:context()), kz_json:ojbects()) -> cb_context:context().
 validate_port_comments(Context, OnSuccess, []) ->
     Doc = cb_context:doc(Context),
     Comments = kzd_port_requests:comments(Doc, []),
@@ -1461,7 +1470,8 @@ send_port_comment_notifications(Context, Id, NewComments) ->
     _ = lists:foldl(fun send_port_comment_notification/2, {Context, Id, length(NewComments), 1}, NewComments),
     'ok'.
 
--spec send_port_comment_notification(kz_json:object(), {cb_context:context(), kz_term:ne_binary(), non_neg_integer(), non_neg_integer()}) -> 'ok'.
+-spec send_port_comment_notification(kz_json:object(), {cb_context:context(), kz_term:ne_binary(), non_neg_integer(), non_neg_integer()}) ->
+                                            {cb_context:context(), kz_term:ne_binary(), non_neg_integer(), non_neg_integer()}.
 send_port_comment_notification(NewComment, {Context, Id, TotalNew, Index}) ->
     Setters = [{fun kzd_comment:set_user_id/2, kzd_comment:user_id(NewComment, cb_context:auth_user_id(Context))}
               ,{fun kzd_comment:set_account_id/2, kzd_comment:account_id(NewComment, cb_context:auth_account_id(Context))}
@@ -1475,10 +1485,13 @@ send_port_comment_notification(NewComment, {Context, Id, TotalNew, Index}) ->
           ],
     lager:debug("sending port comment notification ~b/~b", [Index, TotalNew]),
     try kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_comment/1) of
-        _ -> lager:debug("port comment notification sent ~b/~b", [Index, TotalNew])
+        _ ->
+            lager:debug("port comment notification sent ~b/~b", [Index, TotalNew]),
+            {Context, Id, TotalNew, Index+1}
     catch
         _E:_R ->
-            lager:error("failed to send the port comment notification ~b/~b: ~s:~p", [Index, TotalNew, _E, _R])
+            lager:error("failed to send the port comment notification ~b/~b: ~s:~p", [Index, TotalNew, _E, _R]),
+            {Context, Id, TotalNew, Index+1}
     end.
 
 %%------------------------------------------------------------------------------
@@ -1545,8 +1558,7 @@ authority_type(Context, Nouns) ->
     Accounts = props:get_value(<<"accounts">>, Nouns),
     authority_type(Context, Nouns, Accounts).
 
--spec authority_type(cb_context:context(), req_nouns(), path_tokens() | 'undefined') ->
-                            {authority_type(), kz_term:ne_binary()}.
+-spec authority_type(cb_context:context(), req_nouns(), path_tokens() | 'undefined') -> {authority_type(), kz_term:ne_binary()}.
 authority_type(Context, _Nouns, 'undefined') ->
     {'agent', cb_context:auth_account_id(Context)};
 authority_type(Context, _Nouns, [_AccountId, ?DESCENDANTS]) ->
