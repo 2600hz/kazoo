@@ -49,7 +49,7 @@ from `/usr/local/bin/bash` and symlinking the brew bash into its place:
 ```ln -s /usr/local/Cellar/bash/5.0.7/bin/bash /usr/local/bin/bash```
 You may also want to do this for `/bin/bash` for consistency but it is not required.
 
-### Fix executable paths
+## Fix executable paths
 
 gnu-sed, md5 etc need their executables added to your path. When you install 
 them via brew they give you the instructions on what to add.
