@@ -59,7 +59,6 @@
                 "    'timezone': doc.timezone,",
                 "    'call_recording': doc.call_recording,",
                 "    'service': doc.service,",
-                "    'ctu': doc.ctu",
                 "  });",
                 "}"
             ]
