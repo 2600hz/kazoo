@@ -345,7 +345,7 @@ maybe_check_financials(Context) ->
                        ,fun check_payment_token/1
                        ],
             lists:foldl(fun(F, C) -> F(C) end
-                       ,cb_context:set_resp_data(Context, [])
+                       ,Context
                        ,Routines
                        )
     end.
