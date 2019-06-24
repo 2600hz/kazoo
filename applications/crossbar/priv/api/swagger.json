@@ -35687,6 +35687,38 @@
             },
             "type": "object"
         },
+        "tray_create": {
+            "description": "Tray.io Solution Instance Creation",
+            "properties": {
+                "id": {
+                    "description": "Solution ID",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Solution Instance Name",
+                    "minLength": 1,
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "name"
+            ],
+            "type": "object"
+        },
+        "tray_toggle": {
+            "description": "Tray.io Solution Instance State Toggle",
+            "properties": {
+                "enabled": {
+                    "description": "Solution Instance State",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "enabled"
+            ],
+            "type": "object"
+        },
         "trunkstore": {
             "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
             "properties": {
