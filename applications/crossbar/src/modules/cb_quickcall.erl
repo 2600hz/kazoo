@@ -367,10 +367,6 @@ get_media(Context) ->
         _Else -> <<"process">>
     end.
 
-%% TODO: this should eventually support a late lookup parameter so shortdials work with no cid-number specified.
-%% Since it has to decide here (for now), just try to use external CID if no matching callflow can be found.
-%% Long term this should permit setting a late discovery option which would
-%% determine the caller ID later in the call when/where it has enough information to make the determination.
 -spec default_cid_type(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 default_cid_type(Number, AccountId) ->
     default_cid_type(Number, AccountId, knm_converters:is_reconcilable(Number, AccountId)).
@@ -379,8 +375,8 @@ default_cid_type(Number, AccountId) ->
 default_cid_type(_Number, _AccountId, 'true') -> <<"external">>;
 default_cid_type(Number, AccountId, 'false') ->
     case is_no_match_destination(Number, AccountId) of
-       'true' -> <<"external">>;
-       'false' -> <<"internal">>
+        'true' -> <<"external">>;
+        'false' -> <<"internal">>
     end.
 
 -spec is_no_match_destination(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
