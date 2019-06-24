@@ -1171,6 +1171,7 @@ def_path_param(OasVersion, <<"{USER_ID}">>=P) -> generic_id_path_param(P, OasVer
 def_path_param(OasVersion, <<"{VM_BOX_ID}">>=P) -> generic_id_path_param(P, OasVersion);
 def_path_param(OasVersion, <<"{WEBHOOK_ID}">>=P) -> generic_id_path_param(P, OasVersion);
 def_path_param(OasVersion, <<"{MIGRATION_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+not
 
 %% When param represents an MoDB id (i.e. 32+4+2 bytes of hexa & 1 dash):
 def_path_param(OasVersion, <<"{CDR_ID}">>=P) -> modb_id_path_param(P, OasVersion);

@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "tray_create",
+    "description": "Tray.io Solution Instance Creation",
+    "properties": {
+        "id": {
+            "description": "Solution ID",
+            "type": "string"
+        },
+        "name": {
+            "description": "Solution Instance Name",
+            "minLength": 1,
+            "type": "string"
+        }
+    },
+    "required": [
+        "id",
+        "name"
+    ],
+    "type": "object"
+}

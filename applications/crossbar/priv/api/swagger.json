@@ -30740,6 +30740,30 @@
             },
             "type": "object"
         },
+        "system_config.crossbar.tray": {
+            "description": "Schema for crossbar.tray system_config",
+            "properties": {
+                "app_url": {
+                    "default": "https://app.tray.io",
+                    "description": "Tray.io app url",
+                    "type": "string"
+                },
+                "gql_endpoint": {
+                    "default": "https://tray.io/graphql",
+                    "description": "Tray.io GraphQL endpoint",
+                    "type": "string"
+                },
+                "master_token": {
+                    "description": "Tray.io master token",
+                    "type": "string"
+                },
+                "partner_name": {
+                    "description": "Tray.io partner name",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "system_config.crossbar.ubiquiti": {
             "description": "Schema for crossbar.ubiquiti system_config",
             "properties": {
@@ -37451,6 +37475,15 @@
             "description": "request SOCKET_ID parameter",
             "in": "path",
             "name": "SOCKET_ID",
+            "required": true,
+            "type": "string"
+        },
+        "SOLUTION_INSTANCE_ID": {
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
+            "name": "SOLUTION_INSTANCE_ID",
+            "pattern": "^[0-9a-f]+$",
             "required": true,
             "type": "string"
         },
@@ -46233,6 +46266,94 @@
                     },
                     {
                         "$ref": "#/parameters/TRANSACTION_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/tray": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/tray/{SOLUTION_INSTANCE_ID}": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/SOLUTION_INSTANCE_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/SOLUTION_INSTANCE_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "patch": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/SOLUTION_INSTANCE_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
                     }
                 ],
                 "responses": {

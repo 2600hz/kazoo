@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.crossbar.tray",
+    "description": "Schema for crossbar.tray system_config",
+    "properties": {
+        "app_url": {
+            "default": "https://app.tray.io",
+            "description": "Tray.io app url",
+            "type": "string"
+        },
+        "gql_endpoint": {
+            "default": "https://tray.io/graphql",
+            "description": "Tray.io GraphQL endpoint",
+            "type": "string"
+        },
+        "master_token": {
+            "description": "Tray.io master token",
+            "type": "string"
+        },
+        "partner_name": {
+            "description": "Tray.io partner name",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

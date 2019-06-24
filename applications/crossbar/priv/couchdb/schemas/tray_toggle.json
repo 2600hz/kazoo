@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "tray_toggle",
+    "description": "Tray.io Solution Instance State Toggle",
+    "properties": {
+        "enabled": {
+            "description": "Solution Instance State",
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "enabled"
+    ],
+    "type": "object"
+}

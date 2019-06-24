@@ -138,6 +138,8 @@ pages:
       - 'doc/kazoocon/pivot2016.md'
     - 'Known_Issues':
       - 'applications/pivot/doc/issues.md'
+  - 'Tray.io':
+    - 'API': 'applications/crossbar/doc/tray.md'
   - 'Websockets':
     - 'applications/blackhole/doc/README.md'
     - 'Ping': 'applications/blackhole/doc/ping.md'
