@@ -662,13 +662,7 @@
                     "type": "object"
                 },
                 "zones": {
-                    "description": "The zone(s) of an account",
-                    "properties": {
-                        "home": {
-                            "description": "Which zone is considered the account's home zone",
-                            "type": "string"
-                        }
-                    },
+                    "description": "A priority ordered mapping of zones for the account",
                     "type": "object"
                 }
             },
@@ -29858,6 +29852,11 @@
                 "cluster_id": {
                     "description": "provisioner cluster id",
                     "type": "string"
+                },
+                "zones": {
+                    "default": {},
+                    "description": "cluster zones",
+                    "type": "object"
                 }
             },
             "type": "object"
