@@ -289,7 +289,7 @@ pages:
     - 'FAQ' : 'doc/appexchange/build_faq.md'
   - 'List Your App':
     - 'Submit Your App': 'doc/appexchange/submit_app.md'
-    - 'Approval Process': 'doc/appexchange/approval_process.md'
+    - 'Approval Process': 'doc/appexchange/states_workflows.md'
     - 'FAQ' : 'doc/appexchange/list_faq.md'
   - 'Sell Your App':
     - 'How to Sell Your App': 'doc/appexchange/how_to_sell.md'
