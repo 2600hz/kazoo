@@ -43,19 +43,19 @@ handle(Data, Call) ->
         <<"menu">> ->
             lager:info("temporal rules main menu"),
             _ = temporal_route_menu(Temporal, rule_ids(Data), Call),
-            cf_exe:stop(Call);
+            cf_exe:continue(Call);
         <<"enable">> ->
             lager:info("force temporal rules to enable"),
             _ = enable_temporal_rules(Temporal, rule_ids(Data), Call),
-            cf_exe:stop(Call);
+            cf_exe:continue(Call);
         <<"disable">> ->
             lager:info("force temporal rules to disable"),
             _ = disable_temporal_rules(Temporal, rule_ids(Data), Call),
-            cf_exe:stop(Call);
+            cf_exe:continue(Call);
         <<"reset">> ->
             lager:info("resume normal temporal rule operation"),
             _ = reset_temporal_rules(Temporal, rule_ids(Data), Call),
-            cf_exe:stop(Call);
+            cf_exe:continue(Call);
         _Action ->
             Rules = get_temporal_rules(Temporal, Call),
             case process_rules(Temporal, Rules, Call) of
