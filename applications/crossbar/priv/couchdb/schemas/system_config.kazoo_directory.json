@@ -1,0 +1,1 @@
+{"type":"object","properties":{"restrict_to_known_types":{"type":"boolean","description":"kazoo_directory restrict_to_known_types","default":false}},"description":"Schema for kazoo_directory system_config","_id":"system_config.kazoo_directory","$schema":"http://json-schema.org/draft-04/schema#"}

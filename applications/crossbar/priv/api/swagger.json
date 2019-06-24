@@ -31807,6 +31807,17 @@
             },
             "type": "object"
         },
+        "system_config.kazoo_directory": {
+            "description": "Schema for kazoo_directory system_config",
+            "properties": {
+                "restrict_to_known_types": {
+                    "default": false,
+                    "description": "kazoo_directory restrict_to_known_types",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
         "system_config.kazoo_endpoint": {
             "description": "Schema for kazoo_endpoint system_config",
             "properties": {
