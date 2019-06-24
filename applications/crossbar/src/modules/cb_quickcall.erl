@@ -20,6 +20,7 @@
 -include("crossbar.hrl").
 
 -define(QCALL_NUMBER_FILTER, [<<" ">>, <<",">>, <<".">>, <<"-">>, <<"(">>, <<")">>]).
+-define(LIST_BY_NUMBER, <<"callflows/listing_by_number">>).
 
 -spec init() -> 'ok'.
 init() ->
@@ -231,10 +232,7 @@ originate_quickcall(Endpoints, Call, Context) ->
 
     Number = kapps_call:request_user(Call),
     AccountId = cb_context:account_id(Context),
-    CIDType = case knm_converters:is_reconcilable(Number, AccountId) of
-                  'true' -> <<"external">>;
-                  'false' -> <<"internal">>
-              end,
+    CIDType = default_cid_type(Number, AccountId),
     {DefaultCIDNumber, DefaultCIDName} = kz_attributes:caller_id(CIDType, Call),
     lager:debug("quickcall default cid ~s : ~s : ~s", [CIDType, DefaultCIDNumber, DefaultCIDName]),
 
@@ -367,6 +365,33 @@ get_media(Context) ->
     case cb_context:req_value(Context, <<"media">>) of
         <<"bypass">> -> <<"bypass">>;
         _Else -> <<"process">>
+    end.
+
+%% TODO: this should eventually support a late lookup parameter so shortdials work with no cid-number specified.
+%% Since it has to decide here (for now), just try to use external CID if no matching callflow can be found.
+%% Long term this should permit setting a late discovery option which would
+%% determine the caller ID later in the call when/where it has enough information to make the determination.
+-spec default_cid_type(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
+default_cid_type(Number, AccountId) ->
+    default_cid_type(Number, AccountId, knm_converters:is_reconcilable(Number, AccountId)).
+
+-spec default_cid_type(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) -> kz_term:ne_binary().
+default_cid_type(_Number, _AccountId, 'true') -> <<"external">>;
+default_cid_type(Number, AccountId, 'false') ->
+    case is_no_match_destination(Number, AccountId) of
+       'true' -> <<"external">>;
+       'false' -> <<"internal">>
+    end.
+
+-spec is_no_match_destination(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
+is_no_match_destination(Number, AccountId) ->
+    Db = kz_util:format_account_db(AccountId),
+    lager:info("searching for callflow in ~s to satisfy '~s'", [Db, Number]),
+    Options = [{'key', Number}],
+    case kz_datamgr:get_results(Db, ?LIST_BY_NUMBER, Options) of
+        {'error', _} -> 'false';
+        {'ok', []} -> 'true';
+        {'ok', [_JObj]} -> 'false'
     end.
 
 -spec get_cid_name(cb_context:context(), kz_term:api_binary()) -> kz_term:api_binary().
