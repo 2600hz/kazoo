@@ -59,9 +59,17 @@
 
 -behaviour(gen_cf_action).
 
--include_lib("callflow/src/callflow.hrl").
-
 -export([handle/2]).
+
+-ifdef(TEST).
+-export([get_directory_user/2
+        ,sort_users/2
+        ,filter_users/3
+        ]).
+-endif.
+
+-include_lib("callflow/src/module/cf_directory.hrl").
+-include_lib("callflow/src/callflow.hrl").
 
 -define(DIR_DOCS_VIEW, <<"directories/users_listing">>).
 
@@ -73,8 +81,8 @@
 -define(DTMF_RESULT_NEXT, <<"2">>).
 -define(DTMF_RESULT_START, <<"3">>).
 
--define(TIMEOUT_MIN_DTMF, 5000).
--define(TIMEOUT_DTMF, 2000).
+-define(TIMEOUT_MIN_DTMF, 5 * ?MILLISECONDS_IN_SECOND).
+-define(TIMEOUT_DTMF, 2 * ?MILLISECONDS_IN_SECOND).
 -define(TIMEOUT_ENDPOINT, ?DEFAULT_TIMEOUT_S).
 
 -define(PROMPT_ENTER_PERSON_LASTNAME, <<"dir-enter_person_lastname">>). %% Please enter the first few letters of the person's lastname
@@ -91,35 +99,6 @@
 -define(PROMPT_INVALID_KEY, <<"dir-invalid_key">>). %% invalid key pressed
 -define(PROMPT_RESULT_NUMBER, <<"dir-result_number">>). %% To call
 -define(PROMPT_RESULT_MENU, <<"dir-result_menu">>). %% press one. For the next result press two. To start over press three
-
-%%------------------------------------------------------------------------------
-%% Records
-%%------------------------------------------------------------------------------
--record(directory_user, {first_name :: kz_term:ne_binary()
-                        ,last_name :: kz_term:ne_binary()
-                        ,full_name :: kz_term:ne_binary()
-                        ,first_last_keys :: kz_term:ne_binary() % DTMF-version of first, last
-                        ,last_first_keys :: kz_term:ne_binary() % DTMF-version of last, first
-                        ,callflow_id :: kz_term:ne_binary() % what callflow to use on match
-                        ,name_audio_id :: kz_term:api_binary() % pre-recorded audio of user's name
-                        }).
--type directory_user() :: #directory_user{}.
--type directory_users() :: [directory_user()].
-
--type search_field() :: 'first' | 'last' | 'both'.
-
--record(directory, {sort_by = 'last' :: 'first' | 'last'
-                   ,search_fields = 'both' :: search_field()
-                   ,min_dtmf :: pos_integer()
-                   ,max_dtmf :: non_neg_integer()
-                   ,confirm_match = 'false' :: boolean()
-                   ,digits_collected = <<>> :: binary()
-                   ,users = [] :: directory_users()
-                   ,curr_users = [] :: directory_users()
-                   }).
--type directory() :: #directory{}.
-
--type dtmf_action() :: 'route' | 'next' | 'start_over' | 'invalid' | 'continue'.
 
 %%------------------------------------------------------------------------------
 %% @doc Entry point for this module, attempts to call an endpoint as defined
@@ -427,16 +406,16 @@ get_directory_listing(Db, DirId) ->
             %% play no users in this directory
             {'error', 'no_users_in_directory'};
         {'ok', Users} ->
-            {'ok', [get_directory_user(kz_json:get_value(<<"doc">>, U), kz_json:get_value(<<"value">>, U)) || U <- Users]};
+            {'ok', [get_directory_user(kz_json:get_json_value(<<"doc">>, U), kz_json:get_value(<<"value">>, U)) || U <- Users]};
         {'error', _E}=E ->
             lager:info("failed to lookup users for directory ~s: ~p", [DirId, _E]),
             E
     end.
 
--spec get_directory_user(kz_json:object(), kz_term:ne_binary()) -> directory_user().
-get_directory_user(U, CallflowId) ->
-    First = kz_json:get_value(<<"first_name">>, U),
-    Last = kz_json:get_value(<<"last_name">>, U),
+-spec get_directory_user(kzd_users:doc(), kz_term:ne_binary()) -> directory_user().
+get_directory_user(UserDoc, CallflowId) ->
+    First = kzd_users:first_name(UserDoc),
+    Last = kzd_users:last_name(UserDoc),
 
     #directory_user{first_name = First
                    ,last_name = Last
@@ -444,7 +423,7 @@ get_directory_user(U, CallflowId) ->
                    ,first_last_keys = cf_util:alpha_to_dialpad(<<First/binary, Last/binary>>)
                    ,last_first_keys = cf_util:alpha_to_dialpad(<<Last/binary, First/binary>>)
                    ,callflow_id = CallflowId
-                   ,name_audio_id = kz_json:get_value(?RECORDED_NAME_KEY, U)
+                   ,name_audio_id = kz_json:get_value(?RECORDED_NAME_KEY, UserDoc)
                    }.
 
 -spec sort_users(directory_users(), 'first' | 'last') -> directory_users().
