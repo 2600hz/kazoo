@@ -51,8 +51,7 @@ Key | Description | Type | Default | Required | Support Level
 `voicemail.notify.callback` | Schema for a callback options | [#/definitions/notify.callback](#notifycallback) |   | `false` |  
 `voicemail.notify` |   | `object()` |   | `false` |  
 `voicemail` |   | `object()` |   | `false` |  
-`zones.home` | Which zone is considered the account's home zone | `string()` |   | `false` |  
-`zones` | The zone(s) of an account | `object()` |   | `false` |  
+`zones` | A priority ordered mapping of zones for the account | `object()` |   | `false` |  
 
 ### call_recording
 

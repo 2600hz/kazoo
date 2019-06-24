@@ -8,7 +8,7 @@
 
 -define(MOD_CONFIG_CLUSTER, <<"cluster">>).
 
--export([id/0]).
+-export([id/0, zones/0, zones/1]).
 
 -include("kz_documents.hrl").
 
