@@ -123,7 +123,6 @@
                          ,'cb_token_auth'
                          ,'cb_token_restrictions'
                          ,'cb_transactions'
-                         ,'cb_tray'
                          ,'cb_user_auth'
                          ,'cb_users'
                          ,'cb_vmboxes'
