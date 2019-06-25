@@ -72,12 +72,12 @@ fetch_port(AccountId, View) ->
                   ],
     case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, View, ViewOptions) of
         {'ok', JObjs} ->
-                Quantities = [{port_key(kz_json:get_value(<<"key">>, JObj))
-                              ,kz_json:get_integer_value(<<"value">>, JObj, 0)
-                              }
-                              || JObj <- JObjs
-                             ],
-                kz_json:set_values(Quantities, kz_json:new());
+            Quantities = [{port_key(kz_json:get_value(<<"key">>, JObj))
+                          ,kz_json:get_integer_value(<<"value">>, JObj, 0)
+                          }
+                          || JObj <- JObjs
+                         ],
+            kz_json:set_values(Quantities, kz_json:new());
         {'error', _Message} ->
             ?SUP_LOG_ERROR("failed to query port quantities account: ~s with error: ~p", [AccountId, _Message]),
             kz_json:new()
