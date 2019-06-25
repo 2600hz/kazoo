@@ -41,8 +41,7 @@
                 "    'call_id': doc.metadata.call_id,",
                 "    'folder': doc.metadata.folder,",
                 "    'length': doc.metadata.length,",
-                "    'media_id': doc.metadata.media_id,",
-                "    'transcribed': doc.transcription && doc.transcription.result && doc.transcription.result === 'success'",
+                "    'media_id': doc.metadata.media_id",
                 "   });",
                 "}"
             ]
@@ -61,8 +60,7 @@
                 "    'call_id': doc.metadata.call_id,",
                 "    'folder': doc.metadata.folder,",
                 "    'length': doc.metadata.length,",
-                "    'media_id': doc.metadata.media_id,",
-                "    'transcribed': doc.transcription && doc.transcription.result && doc.transcription.result === 'success'",
+                "    'media_id': doc.metadata.media_id",
                 "   });",
                 "}"
             ]
