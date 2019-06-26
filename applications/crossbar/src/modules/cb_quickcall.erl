@@ -216,10 +216,10 @@ aleg_cid(Number, Call) ->
 originate_quickcall(Endpoints, Call, Context) ->
     AutoAnswer = kz_json:is_true(<<"auto_answer">>, cb_context:query_string(Context), 'true'),
     CCVs = [{<<"Account-ID">>, cb_context:account_id(Context)}
-           ,{<<"Retain-CID">>, <<"true">>}
            ,{<<"Inherit-Codec">>, <<"false">>}
            ,{<<"Authorizing-Type">>, kapps_call:authorizing_type(Call)}
            ,{<<"Authorizing-ID">>, kapps_call:authorizing_id(Call)}
+            | maybe_retain_cid(Context)
            ],
 
     CAVs = cb_modules_util:cavs_from_context(Context),
@@ -382,3 +382,11 @@ get_cid_number(Context, Default) ->
         'undefined' -> 'undefined';
         CIDNumber -> kz_util:uri_decode(CIDNumber)
     end.
+
+-spec maybe_retain_cid(cb_context:context()) -> kz_term:proplist().
+maybe_retain_cid(Context) ->
+    case cb_context:req_value(Context, <<"cid-number">>) of
+        'undefined' -> [{<<"Retain-CID">>, <<"false">>}];
+        _Found -> [{<<"Retain-CID">>, <<"true">>}]
+    end.
+
