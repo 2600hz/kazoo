@@ -2,6 +2,7 @@
 
 This is a guide to building Kazoo from source on a Debian 8 (Jessie) base installation. Other GNU/Linux distros should work similarly, though the dependencies may differ a bit. If you want to just install and use Kazoo (and not build it) try using the [installation instructions](https://docs.2600hz.com/sysadmin/doc/install/install_via_centos7/). The rest of this guide assumes you want to run a development environment for Kazoo.
 
+If your development is on macOS, here are [extra steps](https://github.com/2600hz/kazoo/blob/master/doc/engineering/installing-on-mac.md) for set up.
 
 ## Dependencies
 

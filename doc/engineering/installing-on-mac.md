@@ -1,13 +1,24 @@
 # Installing on Mac (for development)
 
-Make sure you have run `xcode-select --install` to install various build tools that are available(such as zlib.
+## Prerequisite
+These steps are required mostly to build Erlang using Kerl and later build Kazoo. Kerl is recommended although brew can manage multiple Erlang versions.
+
+If macOS version is older than 10.14, Mojave, please make sure you have run `xcode-select --install` to install various build tools that are available(such as zlib).
 
 Some additional dependencies are required to get things up and running on Mac. The easiest way to
 install these dependencies is via `brew` so [install brew](https://brew.sh/) if you have not already.
 
-Run the brew install command below to install dependencies:
+Make sure these modules are already installed by brew. 
+```python@2 fop libxslt openssl ncurses expat imagemagick ghostscript htmldoc icu4c```
 
-```brew install python@2 libxslt openssl ncurses expat imagemagick ghostscript htmldoc```
+```$ brew list```
+should provide a list of modules already installed.
+
+Brew install any missing modules. This is an example to install the complete list.
+
+```brew install python@2 fop libxslt openssl ncurses expat imagemagick ghostscript htmldoc icu4c```
+
+Since macOS 10.14 Mojave does not come with a JDK, or for any needs to upgrade the current Java version to JDK 11 or 12. Openjdk is recommended due to its GNU GPLv2 license. Instructions can be found at [here](https://stackoverflow.com/questions/52524112/how-do-i-install-java-on-mac-osx-allowing-version-switching)
 
 And you can skip installing these (they are included via the Apple command line tools or the brew packages):
 
@@ -58,3 +69,17 @@ You will also want to add a symlink for libreoffice somewhere in your path becau
 executable name is `soffice` but kazoo expects it to be `libreoffice`. Something like:
 
 ```ln -s /usr/local/bin/soffice /usr/local/bin/libreoffice```
+
+## Kerl
+We recommend Kerl to manage Erlang versions. Kerl is an Erlang version management tool as rvm for Ruby, nvm for node.js. Please familiarize [these steps](https://github.com/kerl/kerl)
+
+Please make sure `~/.kerlrc` contains this, because macOS has not been keeping up the latest openssl version. We would like to refer to the brew installed version.
+``` KERL_CONFIGURE_OPTIONS="--with-ssl=/usr/local/opt/openssl" ```
+
+## Brew installed Erlang
+Brew directly installs Erlang version. It's also tested but offers less version options as supposed to Kerl.
+
+You have to use Brew link and unlink to switch between version.
+
+## Build Kazoo
+The generic build [instruction](https://github.com/2600hz/kazoo/blob/master/doc/installation.md#longer-version) works on macOS.
