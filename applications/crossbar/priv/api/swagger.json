@@ -657,13 +657,7 @@
                     "type": "object"
                 },
                 "zones": {
-                    "description": "The zone(s) of an account",
-                    "properties": {
-                        "home": {
-                            "description": "Which zone is considered the account's home zone",
-                            "type": "string"
-                        }
-                    },
+                    "description": "A priority ordered mapping of zones for the account",
                     "type": "object"
                 }
             },
@@ -29365,6 +29359,11 @@
                 "cluster_id": {
                     "description": "provisioner cluster id",
                     "type": "string"
+                },
+                "zones": {
+                    "default": {},
+                    "description": "cluster zones",
+                    "type": "object"
                 }
             },
             "type": "object"
@@ -31802,6 +31801,17 @@
                 "use_bigcouch_direct": {
                     "default": true,
                     "description": "kazoo_couch use bigcouch direct",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.kazoo_directory": {
+            "description": "Schema for kazoo_directory system_config",
+            "properties": {
+                "restrict_to_known_types": {
+                    "default": false,
+                    "description": "kazoo_directory restrict_to_known_types",
                     "type": "boolean"
                 }
             },
