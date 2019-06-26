@@ -155,8 +155,7 @@ update_user(AccountId, JObj, AuthToken) ->
 -spec save_user(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 save_user(AccountId, JObj, AuthToken) ->
     _ = update_account(AccountId, AuthToken),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    Devices = kz_attributes:owned_by_docs(kz_doc:id(JObj), AccountDb),
+    Devices = kz_attributes:owned_by_docs(kz_doc:id(JObj), AccountId),
     lists:foreach(fun(Device) ->
                           Settings = settings(Device),
                           maybe_save_device(Device, Settings, AccountId, AuthToken)
