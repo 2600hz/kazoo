@@ -34,7 +34,7 @@ Note: `htmldoc` is required only if [you want to be able to download PDFs](./ann
 
 ### Erlang
 
-Kazoo 4 targets Erlang 19+. There are a couple ways to install Erlang:
+Kazoo 5.x targets Erlang 21+ (specifically 21.3 but consult [`make/erlang_version`](https://github.com/2600hz/kazoo/blob/master/make/erlang_version) to be sure). There are a couple ways to install Erlang:
 
 1.  From Source
 
@@ -45,10 +45,12 @@ Kazoo 4 targets Erlang 19+. There are a couple ways to install Erlang:
     chmod +x kerl
     mv kerl /usr/bin
     kerl list releases
-    kerl build 19.3 19.3 # this takes a while
-    kerl install 19.3 /usr/local/otp-19.3
+    kerl build 21.3 21.3 # this takes a while
+    kerl install 21.3 /usr/local/otp-21.3
     . /usr/local/otp-19.3/activate
 ```
+
+You will probably want to add the `activate` command to your `.bashrc` or similar to make sure the proper OTP version is running.
 
 2.  Erlang Solutions
 
