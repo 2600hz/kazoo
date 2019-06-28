@@ -1,0 +1,111 @@
+paths:
+  /rates:
+    get:
+      operationId: GetRates
+      parameters: []
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all rates
+      tags:
+        - rates
+    post:
+      operationId: PostRates
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/rates'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of rates
+      tags:
+        - rates
+    put:
+      operationId: PutRates
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/rates'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of rates
+      tags:
+        - rates
+  /rates/number/{PHONE_NUMBER}:
+    get:
+      operationId: GetRatesNumberPhoneNumber
+      parameters:
+        - $ref: '../oas3-parameters.yml#/PHONE_NUMBER'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a rates by ID
+      tags:
+        - rates
+  /rates/ratedecks:
+    get:
+      operationId: GetRatesRatedecks
+      parameters: []
+      responses:
+        200:
+          description: Successful operation
+      summary: Get ratedecks of rates
+      tags:
+        - rates
+  /rates/{RATE_ID}:
+    delete:
+      operationId: DeleteRatesRateId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/RATE_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of rates
+      tags:
+        - rates
+    get:
+      operationId: GetRatesRateId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/RATE_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a rates by ID
+      tags:
+        - rates
+    patch:
+      operationId: PatchRatesRateId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/RATE_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/rates'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of rates
+      tags:
+        - rates
+    post:
+      operationId: PostRatesRateId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/RATE_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/rates'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of rates
+      tags:
+        - rates

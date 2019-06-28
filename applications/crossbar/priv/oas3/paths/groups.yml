@@ -1,0 +1,88 @@
+paths:
+  /accounts/{ACCOUNT_ID}/groups:
+    get:
+      operationId: GetAccountsAccountIdGroups
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all groups
+      tags:
+        - groups
+    put:
+      operationId: PutAccountsAccountIdGroups
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/groups'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of groups
+      tags:
+        - groups
+  /accounts/{ACCOUNT_ID}/groups/{GROUP_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdGroupsGroupId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/GROUP_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of groups
+      tags:
+        - groups
+    get:
+      operationId: GetAccountsAccountIdGroupsGroupId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/GROUP_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a groups by ID
+      tags:
+        - groups
+    patch:
+      operationId: PatchAccountsAccountIdGroupsGroupId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/GROUP_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/groups'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of groups
+      tags:
+        - groups
+    post:
+      operationId: PostAccountsAccountIdGroupsGroupId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/GROUP_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/groups'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of groups
+      tags:
+        - groups

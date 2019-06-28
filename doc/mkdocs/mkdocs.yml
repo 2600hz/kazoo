@@ -507,6 +507,6 @@ pages:
   - 'doc/appexchange/guidelines.md'
   - 'doc/appexchange/financial_terms.md'
   - 'doc/appexchange/payments.md'
-  - 'doc/appexchange/approval_process.md'
   - 'doc/appexchange/whitelabeling.md'
   - 'doc/appexchange/list_faq.md'
+  - 'doc/appexchange/states_workflows.md'

@@ -32,6 +32,7 @@
 -export([urls/1, urls/2, set_urls/2]).
 -export([users/1, users/2, set_users/2]).
 -export([version/1, version/2, set_version/2]).
+-export([extends/1, extends/2]).
 
 -include("kz_documents.hrl").
 
@@ -271,6 +272,14 @@ version(Doc, Default) ->
 -spec set_version(doc(), binary()) -> doc().
 set_version(Doc, Version) ->
     kz_json:set_value([<<"version">>], Version, Doc).
+
+-spec extends(doc()) -> [binary()] | 'undefined'.
+extends(Doc) ->
+    extends(Doc, 'undefined').
+
+-spec extends(doc(), Default) -> [binary()] | Default.
+extends(Doc, Default) ->
+    kz_json:get_list_value(<<"extends">>, Doc, Default).
 
 %%------------------------------------------------------------------------------
 %% @doc

@@ -15,12 +15,6 @@
 
 -define(SERVER, ?MODULE).
 
--define(DEFAULT_EXCHANGE, <<"sms">>).
--define(DEFAULT_EXCHANGE_TYPE, <<"topic">>).
--define(DEFAULT_EXCHANGE_OPTIONS, [{<<"passive">>, 'true'}] ).
--define(DEFAULT_EXCHANGE_OPTIONS_JOBJ, kz_json:from_list(?DEFAULT_EXCHANGE_OPTIONS) ).
-
--define(DEFAULT_BROKER, kz_amqp_connections:primary_broker()).
 -define(QUEUE_NAME, <<"smsc_inbound_queue_", (?DOODLE_INBOUND_EXCHANGE)/binary>>).
 
 -define(DOODLE_INBOUND_QUEUE, kapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_queue_name">>, ?QUEUE_NAME)).

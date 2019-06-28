@@ -16,6 +16,10 @@
 -export([to_realm/1, to_realm/2]).
 -export([status/1, status/2]).
 -export([direction/1, direction/2]).
+-export([caller_id_number/1, caller_id_number/2]).
+-export([callee_id_number/1, callee_id_number/2]).
+-export([account_id/1, account_id/2]).
+-export([route_id/1, route_id/2, set_route_id/2]).
 
 
 -include("kz_documents.hrl").
@@ -124,3 +128,39 @@ direction(Doc) ->
 -spec direction(doc(), Default) -> binary() | Default.
 direction(Doc, Default) ->
     kz_json:get_binary_value([<<"pvt_call">>, <<"Call-Direction">>], Doc, Default).
+
+-spec caller_id_number(doc()) -> kz_term:api_binary().
+caller_id_number(Doc) ->
+    caller_id_number(Doc, 'undefined').
+
+-spec caller_id_number(doc(), Default) -> binary() | Default.
+caller_id_number(Doc, Default) ->
+    kz_json:get_binary_value(<<"Caller-ID-Number">>, Doc, Default).
+
+-spec callee_id_number(doc()) -> kz_term:api_binary().
+callee_id_number(Doc) ->
+    callee_id_number(Doc, 'undefined').
+
+-spec callee_id_number(doc(), Default) -> binary() | Default.
+callee_id_number(Doc, Default) ->
+    kz_json:get_binary_value(<<"Callee-ID-Number">>, Doc, Default).
+
+-spec account_id(doc()) -> kz_term:api_binary().
+account_id(Doc) ->
+    account_id(Doc, 'undefined').
+
+-spec account_id(doc(), Default) -> binary() | Default.
+account_id(Doc, Default) ->
+    kz_json:get_binary_value(<<"Account-ID">>, Doc, Default).
+
+-spec route_id(doc()) -> kz_term:api_binary().
+route_id(Doc) ->
+    route_id(Doc, 'undefined').
+
+-spec route_id(doc(), Default) -> binary() | Default.
+route_id(Doc, Default) ->
+    kz_json:get_binary_value(<<"Route-ID">>, Doc, Default).
+
+-spec set_route_id(doc(), kz_term:ne_binary()) -> doc().
+set_route_id(Doc, RouteId) ->
+    kz_json:set_value(<<"Route-ID">>, RouteId, Doc).

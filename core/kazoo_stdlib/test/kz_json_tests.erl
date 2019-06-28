@@ -1173,11 +1173,21 @@ get_ne_json_object_test_() ->
                    }).
 
 to_map_test_() ->
+    JObjs = [kz_json:from_list([{<<"A">>, 1}, {<<"B">>, 2}])
+            ,kz_json:from_list([{<<"A">>, 8}, {<<"B">>, 9}])
+            ],
+
     [?_assertEqual(?JSON_MAP, kz_json:to_map(?MAP_JSON))
     ,?_assert(kz_json:are_equal(?MAP_JSON, kz_json:from_map(?JSON_MAP)))
 
     ,?_assertEqual(?JSON_MAP, kz_json:to_map(kz_json:from_map(?JSON_MAP)))
     ,?_assert(kz_json:are_equal(?MAP_JSON, kz_json:from_map(kz_json:to_map(?MAP_JSON))))
+
+    ,?_assertEqual([#{<<"A">> => 1,<<"B">> => 2}
+                   ,#{<<"A">> => 8,<<"B">> => 9}
+                   ]
+                  ,kz_json:to_map(JObjs)
+                  )
     ].
 
 are_equal_test_() ->

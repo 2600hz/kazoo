@@ -1,0 +1,11 @@
+paths:
+  /about:
+    get:
+      operationId: GetAbout
+      parameters: []
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all about
+      tags:
+        - about

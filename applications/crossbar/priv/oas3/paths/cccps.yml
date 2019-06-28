@@ -1,0 +1,88 @@
+paths:
+  /accounts/{ACCOUNT_ID}/cccps:
+    get:
+      operationId: GetAccountsAccountIdCccps
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all cccps
+      tags:
+        - cccps
+    put:
+      operationId: PutAccountsAccountIdCccps
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/cccps'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of cccps
+      tags:
+        - cccps
+  /accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdCccpsCccpId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CCCP_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of cccps
+      tags:
+        - cccps
+    get:
+      operationId: GetAccountsAccountIdCccpsCccpId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CCCP_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a cccps by ID
+      tags:
+        - cccps
+    post:
+      operationId: PostAccountsAccountIdCccpsCccpId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CCCP_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/cccps'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of cccps
+      tags:
+        - cccps
+    put:
+      operationId: PutAccountsAccountIdCccpsCccpId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CCCP_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/cccps'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of cccps
+      tags:
+        - cccps

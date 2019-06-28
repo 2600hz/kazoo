@@ -25,7 +25,7 @@
 -record(state, {}).
 -type state() :: #state{}.
 
--define(BINDINGS, [{'sms', [{'restrict_to', ['delivery','resume']}]}
+-define(BINDINGS, [{'sms', [{'restrict_to', ['delivery','resume', 'outbound']}]}
                   ,{'registration', [{'restrict_to', ['reg_success']}]}
                   ,{'conf',[{'keys', [[{'action', 'created'}, {'doc_type', <<"sms">>}]
                                      ,[{'doc_type', <<"device">>}]
@@ -34,6 +34,7 @@
                   ,{'self', []}
                   ]).
 -define(RESPONDERS, [{'doodle_delivery_handler', [{<<"message">>, <<"delivery">>}]}
+                    ,{'doodle_outbound_handler', [{<<"message">>, <<"outbound">>}]}
                     ,{'doodle_notify_handler', [{<<"directory">>, <<"reg_success">>}]}
                     ,{'doodle_doc_handler', [{<<"configuration">>, ?DOC_CREATED}]}
                     ,{'doodle_doc_handler', [{<<"configuration">>, ?DOC_EDITED}]}
