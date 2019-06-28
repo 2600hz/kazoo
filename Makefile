@@ -52,6 +52,8 @@ changed_swagger:
 compile: ACTION = all
 compile: deps kazoo
 
+sparkly-clean: clean-apps clean-kazoo clean-release clean-deps
+
 clean: clean-kazoo
 	$(if $(wildcard *crash.dump), rm *crash.dump)
 	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
