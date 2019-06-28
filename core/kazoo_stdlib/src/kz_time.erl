@@ -114,7 +114,7 @@ to_gregorian_seconds({{_,_,_},{_,_,_}}=Datetime, ?NE_BINARY=FromTimezone) ->
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
     pretty_print_datetime(calendar:gregorian_seconds_to_datetime(Timestamp));
 pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
-    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w"
+    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w:~2..0w:~2..0w"
                                   ,[Y, Mo, D, H, Mi, S]
                                   )).
 

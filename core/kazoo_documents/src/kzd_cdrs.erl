@@ -57,13 +57,15 @@
         ,type/0
         ]).
 
--include("kz_documents.hrl").
+-export([to_public_json/1, to_public_json/2
+        ,to_public_csv/1, to_public_csv/2
+        ,csv_headers/1
+        ]).
+
+-include("kzd_cdrs.hrl").
 
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
-
--define(SCHEMA, <<"cdrs">>).
--define(PVT_TYPE, <<"cdr">>).
 
 -spec new() -> doc().
 new() ->
@@ -644,3 +646,124 @@ create_doc_id(?NE_BINARY=CallId, Year, Month)
 
 -spec type() -> binary().
 type() -> ?PVT_TYPE.
+
+-spec to_public_json(doc()) -> kz_json:object().
+to_public_json(Doc) -> to_public_json(Doc, 'false').
+
+-spec to_public_json(doc(), boolean()) -> kz_json:object().
+to_public_json(Doc, IsReseller) ->
+    Duration = duration_seconds(Doc, 0),
+    Timestamp = timestamp(Doc, 0) - Duration,
+
+    kz_json:from_list([{K, F(Doc, Timestamp)} || {K, F} <- csv_headers(IsReseller)]).
+
+-spec to_public_csv(doc()) -> iodata().
+to_public_csv(Doc) -> to_public_csv(Doc, 'false').
+
+-spec to_public_csv(doc(), boolean()) -> [binary()].
+to_public_csv(Doc, IsReseller) ->
+    Duration = duration_seconds(Doc, 0),
+    Timestamp = timestamp(Doc, 0) - Duration,
+
+    [F(Doc, Timestamp)
+     || {_, F} <- csv_headers(IsReseller)
+    ].
+
+-spec csv_headers(boolean()) -> [{kz_term:ne_binary(), fun()}].
+csv_headers('true'=_IsResller) ->
+    ?COLUMNS ++ ?COLUMNS_RESELLER;
+csv_headers('false'=_IsReseller) ->
+    ?COLUMNS.
+
+%% see csv_column_fun() for specs for each function here
+col_id(JObj, _Timestamp) -> kz_doc:id(JObj, <<>>).
+col_call_id(JObj, _Timestamp) -> call_id(JObj, <<>>).
+col_caller_id_number(JObj, _Timestamp) -> caller_id_number(JObj, <<>>).
+col_caller_id_name(JObj, _Timestamp) -> caller_id_name(JObj, <<>>).
+col_callee_id_number(JObj, _Timestamp) -> callee_id_number(JObj, <<>>).
+col_callee_id_name(JObj, _Timestamp) -> callee_id_name(JObj, <<>>).
+col_duration_seconds(JObj, _Timestamp) -> duration_seconds(JObj, <<>>).
+col_billing_seconds(JObj, _Timestamp) -> billing_seconds(JObj, <<>>).
+col_timestamp(_JObj, Timestamp) -> kz_term:to_binary(Timestamp).
+col_hangup_cause(JObj, _Timestamp) -> hangup_cause(JObj, <<>>).
+col_other_leg_call_id(JObj, _Timestamp) -> other_leg_call_id(JObj, <<>>).
+col_owner_id(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"owner_id">>], JObj, <<>>).
+col_to(JObj, _Timestamp) -> to(JObj, <<>>).
+col_from(JObj, _Timestamp) -> from(JObj, <<>>).
+col_call_direction(JObj, _Timestamp) -> call_direction(JObj, <<>>).
+col_request(JObj, _Timestamp) -> request(JObj, <<>>).
+col_authorizing_id(JObj, _Timestamp) ->
+    case {kz_json:get_value([?KEY_CCV, <<"account_id">>], JObj, <<>>)
+         ,kz_json:get_value([?KEY_CCV, <<"authorizing_id">>], JObj, <<>>)
+         }
+    of
+        {A, A} -> <<>>;
+        {_A, B} -> B
+    end.
+col_customer_cost(JObj, _Timestamp) -> kz_term:to_binary(customer_cost(JObj)).
+
+col_dialed_number(JObj, _Timestamp) -> dialed_number(JObj).
+col_calling_from(JObj, _Timestamp) -> calling_from(JObj).
+col_pretty_print(_JObj, Timestamp) -> kz_time:pretty_print_datetime(Timestamp).
+
+col_unix_timestamp(_JObj, Timestamp) -> kz_term:to_binary(kz_time:gregorian_seconds_to_unix_seconds(Timestamp)).
+col_rfc1036(_JObj, Timestamp) -> kz_time:rfc1036(Timestamp).
+col_iso8601(_JObj, Timestamp) -> kz_date:to_iso8601_extended(Timestamp).
+col_iso8601_combined(_JObj, Timestamp) -> kz_time:iso8601(Timestamp).
+col_account_call_type(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"account_billing">>], JObj, <<>>).
+col_rate(JObj, _Timestamp) -> kz_term:to_binary(kz_currency:units_to_dollars(kz_json:get_value([?KEY_CCV, <<"rate">>], JObj, 0))).
+col_rate_name(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"rate_name">>], JObj, <<>>).
+col_bridge_id(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"bridge_id">>], JObj, <<>>).
+col_recording_url(JObj, _Timestamp) -> kz_json:get_value([<<"recording_url">>], JObj, <<>>).
+col_media_recordings(JObj, _Timestamp) -> format_recordings(JObj).
+col_media_server(JObj, _Timestamp) -> media_server(JObj, <<>>).
+col_call_priority(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"call_priority">>], JObj, <<>>).
+
+col_reseller_cost(JObj, _Timestamp) -> kz_term:to_binary(reseller_cost(JObj)).
+col_reseller_call_type(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"reseller_billing">>], JObj, <<>>).
+
+col_interaction_id(JObj, _Timestamp) -> interaction_id(JObj, <<>>).
+
+-spec format_recordings(kz_json:object()) -> kz_term:binaries().
+format_recordings(JObj) ->
+    case kz_json:get_value([?KEY_CCV, <<"media_recordings">>], JObj, []) of
+        Recordings when is_list(Recordings) -> Recordings;
+        Recording -> [Recording]
+    end.
+
+-spec dialed_number(doc()) -> binary().
+dialed_number(JObj) ->
+    case call_direction(JObj) of
+        <<"inbound">> ->
+            [Num|_] = binary:split(request(JObj, <<>>), <<"@">>),
+            Num;
+        <<"outbound">> ->
+            [Num|_] = binary:split(to(JObj, <<>>), <<"@">>),
+            Num
+    end.
+
+-spec calling_from(kz_json:object()) -> binary().
+calling_from(JObj) ->
+    case call_direction(JObj) of
+        <<"inbound">> -> caller_id_number(JObj, <<>>);
+        <<"outbound">> ->
+            [Num|_] = binary:split(from_uri(JObj, <<>>), <<"@">>),
+            Num
+    end.
+
+-spec customer_cost(kz_json:object()) -> pos_integer().
+customer_cost(JObj) ->
+    CCVs = custom_channel_vars(JObj, kz_json:new()),
+    case kz_json:get_ne_binary_value(<<"account_billing">>, CCVs) of
+        <<"per_minute">> -> kapps_call_util:call_cost(JObj);
+        _ -> 0
+    end.
+
+-spec reseller_cost(kz_json:object()) -> pos_integer().
+reseller_cost(JObj) ->
+    CCVs = custom_channel_vars(JObj, kz_json:new()),
+
+    case kz_json:get_ne_binary_value([<<"reseller_billing">>], CCVs) of
+        <<"per_minute">> -> kapps_call_util:call_cost(JObj);
+        _ -> 0
+    end.

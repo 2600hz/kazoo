@@ -40,10 +40,10 @@ create_new_number_test_() ->
      ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN))
      }
     ,{"Verify getting created field returns a number"
-     ,?_assertEqual('true', is_integer(knm_phone_number:created(PN)))
+     ,?_assert(is_integer(knm_phone_number:created(PN)))
      }
     ,{"Verify the created field is stored as a number"
-     ,?_assertEqual('true', is_integer(kz_json:get_value([<<"_read_only">>, <<"created">>], JObj)))
+     ,?_assert(is_integer(kz_json:get_value([<<"_read_only">>, <<"created">>], JObj)))
      }
     ].
 
@@ -231,15 +231,15 @@ create_new_port_in_test_() ->
      ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN))
      }
     ,{"Verify local number is not billable"
-     ,?_assertEqual(false, knm_carriers:is_number_billable(PN))
+     ,?_assertEqual('false', knm_carriers:is_number_billable(PN))
      }
     ,{"Verify number is not marked as ported_in"
-     ,?_assertEqual(false, knm_phone_number:ported_in(PN))
+     ,?_assertEqual('false', knm_phone_number:ported_in(PN))
      }
     ].
 
 create_existing_in_service_test_() ->
-    Options = [{assign_to, ?RESELLER_ACCOUNT_ID} | knm_number_options:default()],
+    Options = [{'assign_to', ?RESELLER_ACCOUNT_ID} | knm_number_options:default()],
     Resp = knm_number:create(?TEST_IN_SERVICE_NUM, Options),
     [{"Verifying that IN SERVICE numbers can't be created"
      ,?_assertMatch({'error', _}, Resp)
@@ -277,7 +277,7 @@ move_non_existing_mobile_number_test_() ->
              }
             ],
     [{"Verify a non existing mdn cannot be moved to in_service"
-     ,?_assertEqual({error, not_found}, knm_number:move(?TEST_CREATE_NUM, ?RESELLER_ACCOUNT_ID, Props))
+     ,?_assertEqual({'error', 'not_found'}, knm_number:move(?TEST_CREATE_NUM, ?RESELLER_ACCOUNT_ID, Props))
      }
     ].
 
@@ -289,17 +289,17 @@ create_non_existing_mobile_number_test_() ->
           ,{<<"device-id">>, kz_binary:rand_hex(32)}
           ]),
     PublicFields = kz_json:from_list([{<<"mobile">>, MobileField}]),
-    Props = [{auth_by, ?MASTER_ACCOUNT_ID}
-            ,{assign_to, ?RESELLER_ACCOUNT_ID}
-            ,{dry_run, false}
-            ,{public_fields, PublicFields}
-            ,{module_name, ?CARRIER_MDN}
-            ,{mdn_run, true}
+    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
+            ,{'assign_to', ?RESELLER_ACCOUNT_ID}
+            ,{'dry_run', 'false'}
+            ,{'public_fields', PublicFields}
+            ,{'module_name', ?CARRIER_MDN}
+            ,{'mdn_run', 'true'}
             ,{<<"auth_by_account">>
-             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, true)
+             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
              }
             ],
-    {ok, N} = knm_number:create(?TEST_CREATE_NUM, Props),
+    {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
     PN = knm_number:phone_number(N),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify phone number is assigned to reseller account"
@@ -321,9 +321,9 @@ create_non_existing_mobile_number_test_() ->
      ,?_assertEqual(?CARRIER_MDN, knm_phone_number:module_name(PN))
      }
     ,{"Verify the mobile public fields is exists"
-     ,?_assertEqual(true, kz_json:are_equal(MobileField
-                                           ,kz_json:get_value(<<"mobile">>, knm_number:to_public_json(N))
-                                           ))
+     ,?_assert(kz_json:are_equal(MobileField
+                                ,kz_json:get_value(<<"mobile">>, knm_number:to_public_json(N))
+                                ))
      }
     ].
 
@@ -332,13 +332,13 @@ create_checks_test_() ->
         ++ load_existing_checks().
 
 load_existing_checks() ->
-    {ok, PN} = knm_phone_number:fetch(?TEST_AVAILABLE_NUM),
+    {'ok', PN} = knm_phone_number:fetch(?TEST_AVAILABLE_NUM),
     [existing_in_state(knm_phone_number:set_state(PN, State), IsAllowed)
      || {State, IsAllowed} <- [{?NUMBER_STATE_AVAILABLE, 'true'}
                               ,{?NUMBER_STATE_DELETED, 'false'}
                               ,{?NUMBER_STATE_DISCOVERY, 'false'}
                               ,{?NUMBER_STATE_IN_SERVICE, 'false'}
-                              ,{?NUMBER_STATE_PORT_IN, true}
+                              ,{?NUMBER_STATE_PORT_IN, 'true'}
                               ,{?NUMBER_STATE_PORT_OUT, 'false'}
                               ,{?NUMBER_STATE_RELEASED, 'false'}
                               ,{?NUMBER_STATE_RESERVED, 'false'}

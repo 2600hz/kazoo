@@ -71,17 +71,17 @@ handle_req(_, _, _, _ShouldBill, _ShouldRemind) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_days_early_yet(non_neg_integer()) -> kz_time:gregorian_seconds().
+-spec is_days_early_yet(non_neg_integer()) -> {kz_time:gregorian_seconds(), boolean()}.
 is_days_early_yet(EarlyDays) ->
     is_days_early_yet(erlang:date(), EarlyDays).
 
--spec is_days_early_yet(calendar:date(), non_neg_integer()) -> kz_time:gregorian_seconds().
+-spec is_days_early_yet(calendar:date(), non_neg_integer()) -> {kz_time:gregorian_seconds(), boolean()}.
 is_days_early_yet({Year, Month, Day}, EarlyDays) ->
     LastDay = calendar:last_day_of_the_month(Year, Month),
     DueTimestamp =
         calendar:datetime_to_gregorian_seconds({kz_date:normalize({Year, Month, LastDay + 1})
                                                ,{0, 0, 1}
                                                }),
-    {DueTimestamp, LastDay - EarlyDays < Day}.
+    {DueTimestamp, (LastDay - EarlyDays) < Day}.
 
 %%% End of Module.
