@@ -258,15 +258,17 @@ browse_dbs_for_triggers(Ref) ->
     CallId = <<"cleanup_pass_", (kz_binary:rand_hex(4))/binary>>,
     kz_util:put_callid(CallId),
     lager:debug("starting cleanup pass of databases"),
+    lager:debug("getting databases list and sorting them by disk size"),
     Sorted = kt_compactor:get_all_dbs_and_sort_by_disk(),
     TotalSorted = length(Sorted),
+    lager:debug("finished listing and sorting databases (~p found)", [TotalSorted]),
     'ok' = kt_compaction_reporter:start_tracking_job(self(), node(), CallId, Sorted),
-    F = fun({Db, _Sizes}, Ctr) ->
-                lager:debug("compacting ~p out of ~p dbs (~p remaining)",
-                            [Ctr, TotalSorted, (TotalSorted - Ctr)]
+    F = fun({Db, _Sizes}, Counter) ->
+                lager:debug("compacting ~p ~p/~p (~p remaining)",
+                            [Db, Counter, TotalSorted, (TotalSorted - Counter)]
                            ),
                 cleanup_pass(Db),
-                Ctr + 1
+                Counter + 1
         end,
     _Counter = lists:foldl(F, 1, Sorted),
     'ok' = kt_compaction_reporter:stop_tracking_job(CallId),
