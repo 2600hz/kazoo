@@ -552,7 +552,7 @@ merge_parent_call_restrictions(Account) ->
                       {'error', _} -> Acc
                   end
           end,
-    lists:foldl(Fun, kz_json:new(), [kzd_accounts:id(Account) | kzd_accounts:tree(Account)]).
+    lists:foldl(Fun, Account, [kzd_accounts:id(Account) | kzd_accounts:tree(Account)]).
 
 -spec get_user(kz_term:ne_binary(), kz_term:api_binary() | kz_json:object()) -> kz_json:object().
 get_user(_AccountDb, 'undefined') -> kz_json:new();
