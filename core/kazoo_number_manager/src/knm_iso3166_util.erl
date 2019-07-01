@@ -21,9 +21,12 @@
 iso3166a2(<<CountryCode:3/binary>>) ->
     lager:notice("~p", [CountryCode]),
     CountryCode2 = kz_term:to_upper_binary(CountryCode),
-    case proplists:get_value(CountryCode2, ?A2_DB) of
-        'undefined' -> {'error', 'invalid_country'};
-        A2 -> A2
+    case proplists:get_value(CountryCode2, ?A3_DB) of
+        {A2, _} ->
+            A2;
+        {A2, _, _} ->
+            A2;
+        'undefined' -> {'error', 'invalid_country'}
     end.
 
 %%------------------------------------------------------------------------------
