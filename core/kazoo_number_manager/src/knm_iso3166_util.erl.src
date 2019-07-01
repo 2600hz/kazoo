@@ -1,0 +1,42 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2010-2019, 2600Hz
+%%% @doc
+%%% @end
+%%%-----------------------------------------------------------------------------
+-module(knm_iso3166_util).
+
+-export([iso3166a2/1
+        ,iso3166a3/1
+        ,country/1
+        ]).
+
+%%% API
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec iso3166a2(kz_term:ne_binary()) -> kz_term:ne_binary() | {'error', 'invalid_country'}.
+iso3166a2(<<CountryCode:3/binary>>) ->
+    case country(CountryCode) of
+        {'error', 'invalid_country'} -> {'error', 'invalid_country'};
+        #{a2 := A2, a3 := _, itu := _} -> A2
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec iso3166a3(kz_term:ne_binary()) -> kz_term:ne_binary() | {'error', 'invalid_country'}.
+iso3166a3(<<CountryCode:2/binary>>) ->
+    case country(CountryCode) of
+        {'error', 'invalid_country'} -> {'error', 'invalid_country'};
+        #{a2 := _, a3 := A3, itu := _} -> A3
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec country(kz_term:ne_binary()) -> map() | {'error', 'invalid_country'}.
+%%% GENERATED

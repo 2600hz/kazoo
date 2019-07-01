@@ -68,6 +68,7 @@
 -export_type([ret/0
              ,req_id/0
              ,field/0, value/0, header/0, headers/0
+             ,method/0
              ]).
 
 -define(REQ_URL_INDEX, 1).

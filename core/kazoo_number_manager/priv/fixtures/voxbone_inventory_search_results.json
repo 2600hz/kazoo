@@ -1,0 +1,1178 @@
+{
+    "didGroups": [
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "ALABASTER",
+            "countryCodeA3": "USA",
+            "didGroupId": 1196,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "ALABASTER",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 17
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "BESSEMER",
+            "countryCodeA3": "USA",
+            "didGroupId": 10927,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "BESSEMER",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 28
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "BIRMINGHAM",
+            "countryCodeA3": "USA",
+            "didGroupId": 1404,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "BIRMINGHAM",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 527
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "CALERA",
+            "countryCodeA3": "USA",
+            "didGroupId": 10003,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "CALERA",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 20
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "CENTREVILLE",
+            "countryCodeA3": "USA",
+            "didGroupId": 12431,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "CENTREVL",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 33
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "CHELSEA",
+            "countryCodeA3": "USA",
+            "didGroupId": 2142,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "CHELSEA",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 23
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "CLANTON",
+            "countryCodeA3": "USA",
+            "didGroupId": 2177,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "CLANTON",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 25
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "COLUMBIANA",
+            "countryCodeA3": "USA",
+            "didGroupId": 12432,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "COLUMBIANA",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 18
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "CORDOVA",
+            "countryCodeA3": "USA",
+            "didGroupId": 21755,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "CORDOVA",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 21
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "DORA",
+            "countryCodeA3": "USA",
+            "didGroupId": 12433,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "DORA",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 20
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "EUTAW",
+            "countryCodeA3": "USA",
+            "didGroupId": 21577,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "EUTAW",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 21
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "GARDENDALE",
+            "countryCodeA3": "USA",
+            "didGroupId": 2616,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "GARDENDALE",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 20
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "GRAYSVILLE",
+            "countryCodeA3": "USA",
+            "didGroupId": 2677,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "GRAYSVILLE",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 22
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "JASPER",
+            "countryCodeA3": "USA",
+            "didGroupId": 10708,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "JASPER",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 16
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "LIVINGSTON (SUMTER)",
+            "countryCodeA3": "USA",
+            "didGroupId": 21041,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "LIVINGSTON",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 20
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "MONTEVALLO",
+            "countryCodeA3": "USA",
+            "didGroupId": 12434,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "MONTEVALLO",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 23
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "PARRISH",
+            "countryCodeA3": "USA",
+            "didGroupId": 21828,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "PARRISH",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 21
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "PINSON",
+            "countryCodeA3": "USA",
+            "didGroupId": 10816,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "PINSON",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 27
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "TUSCALOOSA",
+            "countryCodeA3": "USA",
+            "didGroupId": 1918,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "TUSCALOOSA",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 31
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "VINCENT",
+            "countryCodeA3": "USA",
+            "didGroupId": 1967,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "VINCENT",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 20
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "WARRIOR",
+            "countryCodeA3": "USA",
+            "didGroupId": 2018,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "WARRIOR",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 11
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "WEST BLOCTON",
+            "countryCodeA3": "USA",
+            "didGroupId": 1981,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "W BLOCTON",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 13
+        },
+        {
+            "areaCode": "205",
+            "available": true,
+            "cityName": "YORK",
+            "countryCodeA3": "USA",
+            "didGroupId": 1679,
+            "didType": "GEOGRAPHIC",
+            "features": [
+                {
+                    "description": "VoxFax",
+                    "featureId": 6,
+                    "name": "VoxFax"
+                },
+                {
+                    "description": "Voice",
+                    "featureId": 50,
+                    "name": "Voice"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 51,
+                    "name": "VoxOUT International"
+                },
+                {
+                    "description": "T.38",
+                    "featureId": 5,
+                    "name": "T.38"
+                },
+                {
+                    "description": "Feature that allows the VoxDID to access emergency services",
+                    "featureId": 29,
+                    "name": "VoxOUT Emergency"
+                },
+                {
+                    "description": "Used to build the coverage pages in the public website",
+                    "featureId": 52,
+                    "name": "VoxOUT National"
+                },
+                {
+                    "description": "VoxSMS",
+                    "featureId": 25,
+                    "name": "VoxSMS"
+                }
+            ],
+            "monthly100": 100,
+            "rateCenter": "YORK",
+            "regulationRequirement": null,
+            "setup100": 0,
+            "stateId": 1,
+            "stock": 10
+        }
+    ],
+    "resultCount": 23
+}
