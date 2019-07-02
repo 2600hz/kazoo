@@ -1,6 +1,10 @@
 ## Kazoo Makefile targets
 
-.PHONY: compile compile-lean json compile-test clean clean-test eunit dialyze xref proper fixture_shell app_src depend $(DEPS_RULES) splchk
+.PHONY: compile compile-lean compile-test compile-test-direct compile-test-kz-deps \
+	clean clean-test \
+	json \
+	eunit proper test \
+	dialyze xref fixture_shell app_src depend splchk
 
 ## Platform detection.
 ifeq ($(PLATFORM),)
@@ -50,6 +54,7 @@ PA      = -pa ebin/ $(foreach EBIN,$(EBINS),-pa $(EBIN))
 TEST_PA = -pa ebin/ $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))
 
 DEPS_RULES = .deps.mk
+TEST_DEPS = .test.deps
 
 comma := ,
 empty :=
@@ -89,7 +94,7 @@ ebin/%.beam: src/%.erl
 ebin/%.beam: src/*/%.erl
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
 
-depend: $(DEPS_RULES)
+depend: $(DEPS_RULES) $(TEST_DEPS)
 
 $(DEPS_RULES):
 	@rm -f $(DEPS_RULES)
@@ -98,12 +103,32 @@ $(DEPS_RULES):
 app_src:
 	@ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find $(ROOT) -name $(PROJECT).app.src)
 
-
 json: JSON = $(shell find . -name '*.json')
 json:
 	@$(ROOT)/scripts/format-json.sh $(JSON)
 
-compile-test: $(COMPILE_MOAR) test/$(PROJECT).app json
+compile-test: $(TEST_DEPS) compile-test-kz-deps compile-test-direct json
+
+compile-test-direct: $(COMPILE_MOAR) test/$(PROJECT).app
+
+$(TEST_DEPS):
+	 ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/calculate-dep-targets.escript $(PROJECT) > $(TEST_DEPS)
+
+ifeq (,$(wildcard $(TEST_DEPS)))
+KZ_DEPS_TARGETS =
+else
+KZ_DEPS = $(filter kazoo%,$(shell cat $(TEST_DEPS)))
+KZ_DEPS_TARGETS = $(strip $(subst kazoo,compile-test-core-kazoo,$(KZ_DEPS)))
+endif
+
+ifeq ($(KZ_DEPS_TARGETS),)
+compile-test-kz-deps: test/$(PROJECT).app
+else
+compile-test-kz-deps: $(KZ_DEPS_TARGETS)
+
+compile-test-core-%:
+	$(MAKE) compile-test-direct -C $(ROOT)/core/$*
+endif
 
 test/$(PROJECT).app: ERLC_OPTS += -DTEST
 test/$(PROJECT).app: $(TEST_SOURCES)
@@ -121,6 +146,7 @@ clean: clean-test
 	@$(if $(wildcard $(DEPS_RULES)), rm $(DEPS_RULES))
 
 clean-test: $(CLEAN_MOAR)
+	@$(if $(wildcard $(TEST_DEPS)), rm $(TEST_DEPS))
 	$(if $(wildcard test/$(PROJECT).app), rm test/$(PROJECT).app)
 
 TEST_CONFIG=$(ROOT)/rel/config-test.ini

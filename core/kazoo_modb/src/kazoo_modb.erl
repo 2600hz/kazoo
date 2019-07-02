@@ -585,8 +585,6 @@ delete_if_orphaned(AccountMODb, 'true') ->
     lager:debug("cleanse orphaned modb ~p... ~p", [AccountMODb,Succeeded]),
     Succeeded.
 
-
-
 -spec get_range(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
                        kz_term:ne_binaries().
 get_range(AccountId, From, To) ->

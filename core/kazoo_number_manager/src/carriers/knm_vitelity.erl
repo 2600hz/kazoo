@@ -258,7 +258,7 @@ process_xml_resp(Prefix, Quantity, XML_binary) ->
         {XmlEl, _} -> process_xml_content_tag(Prefix, Quantity, XmlEl)
     catch
         _E:_R ->
-            ?LOG_DEBUG("failed to decode xml: ~s: ~p", [_E, _R]),
+            lager:debug("failed to decode xml: ~s: ~p", [_E, _R]),
             {'error', 'xml_decode_failed'}
     end.
 
@@ -401,13 +401,13 @@ purchase_tollfree_options(DID) ->
                             knm_number:knm_number().
 query_vitelity(Number, QOptions) ->
     URI = knm_vitelity_util:build_uri(QOptions),
-    ?LOG_DEBUG("querying ~s", [URI]),
+    lager:debug("querying ~s", [URI]),
     case kz_http:post(kz_term:to_list(URI)) of
         {'ok', _RespCode, _RespHeaders, RespXML} ->
-            ?LOG_DEBUG("recv ~p: ~s", [_RespCode, RespXML]),
+            lager:debug("recv ~p: ~s", [_RespCode, RespXML]),
             process_xml_resp(Number, RespXML);
         {'error', Error} ->
-            ?LOG_DEBUG("error querying: ~p", [Error]),
+            lager:debug("error querying: ~p", [Error]),
             knm_errors:by_carrier(?MODULE, Error, Number)
     end.
 
@@ -423,7 +423,7 @@ process_xml_resp(Number, XML_binary) ->
         {XmlEl, _} -> process_xml_content_tag(Number, XmlEl)
     catch
         _E:_R ->
-            ?LOG_DEBUG("failed to decode xml: ~s: ~p", [_E, _R]),
+            lager:debug("failed to decode xml: ~s: ~p", [_E, _R]),
             knm_errors:by_carrier(?MODULE, 'failed_decode_resp', Number)
     end.
 
@@ -440,10 +440,10 @@ process_xml_content_tag(Number, #xmlElement{name='content'
     case knm_vitelity_util:xml_resp_status_msg(Els) of
         <<"fail">> ->
             Msg = knm_vitelity_util:xml_resp_error_msg(Els),
-            ?LOG_DEBUG("xml status is 'fail': ~s", [Msg]),
+            lager:debug("xml status is 'fail': ~s", [Msg]),
             knm_errors:by_carrier(?MODULE, Msg, Number);
         <<"ok">> ->
-            ?LOG_DEBUG("successful provisioning"),
+            lager:debug("successful provisioning"),
             Number
     end.
 

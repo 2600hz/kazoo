@@ -14,8 +14,12 @@ api_test_() ->
               ,{'carriers', [<<"knm_bandwidth">>]}
               ,{'query_id', <<"QID">>}
               ],
-    {setup
-    ,fun () -> {'ok', Pid} = knm_search:start_link(), Pid end
+    {'setup'
+    ,fun () -> case knm_search:start_link() of
+                   {'ok', Pid} -> Pid;
+                   {'error', {'already_started', Pid}} -> Pid
+               end
+     end
     ,fun gen_server:stop/1
     ,fun (_ReturnOfSetup) ->
              [npan_tests(Options)
@@ -28,8 +32,8 @@ npan_tests(Options) ->
     Limit = 1,
     Prefix = <<"+14158867900">>,
     Results = knm_search:find([{'quantity',Limit}
-                              ,{prefix, Prefix}
-                              ,{query_id, <<"QID-", Prefix/binary>>}
+                              ,{'prefix', Prefix}
+                              ,{'query_id', <<"QID-", Prefix/binary>>}
                                | Options
                               ]),
     [{"Verify area code result size"
@@ -41,8 +45,8 @@ area_code_tests(Options) ->
     Limit = 15,
     Prefix = <<"412">>,
     Results = knm_search:find([{'quantity',Limit}
-                              ,{prefix, Prefix}
-                              ,{query_id, <<"QID-", Prefix/binary>>}
+                              ,{'prefix', Prefix}
+                              ,{'query_id', <<"QID-", Prefix/binary>>}
                                | Options
                               ]),
     [{"Verify area code result size"

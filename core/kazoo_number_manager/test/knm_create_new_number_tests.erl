@@ -40,10 +40,10 @@ create_new_number_test_() ->
      ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN))
      }
     ,{"Verify getting created field returns a number"
-     ,?_assertEqual(true, is_integer(knm_phone_number:created(PN)))
+     ,?_assertEqual('true', is_integer(knm_phone_number:created(PN)))
      }
     ,{"Verify the created field is stored as a number"
-     ,?_assertEqual(true, is_integer(kz_json:get_value([<<"_read_only">>, <<"created">>], JObj)))
+     ,?_assertEqual('true', is_integer(kz_json:get_value([<<"_read_only">>, <<"created">>], JObj)))
      }
     ].
 

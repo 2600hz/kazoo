@@ -19,6 +19,6 @@ clean-headers:
 	@rm -f src/modules/kt_rates.hrl
 	@rm -f src/task_modules.hrl
 
-compile-test: headers
+compile-test-direct: headers
 
 include $(ROOT)/make/kz.mk
