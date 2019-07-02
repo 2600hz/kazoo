@@ -217,6 +217,8 @@ request(Request, Context) ->
     request(Request, ?MASTER_TOKEN, Context).
 
 -spec request(request(), kz_term:api_ne_binary(), cb_context:context()) -> response().
+request(_, 'undefined', _) ->
+    {'error', kz_json:from_list([{<<"Message">>, <<"Access token is undefined">>}])};
 request({Query, ResponsePath} = Request, Token, Context) ->
     case kz_http:post(?REQUEST_ENDPOINT, ?REQUEST_HEADERS(Token), ?REQUEST_BODY(Query)) of
         {'ok', 403, _, ResponseBody} -> handle_authorization_issue(Request, Token, ResponseBody, Context);
@@ -234,11 +236,12 @@ handle_response(ResponsePath, ResponseBody) ->
 -spec handle_response_error(response(), cb_context:context()) -> cb_context:context().
 handle_response_error({'error', [Error | _]=Errors}, Context) ->
     Message = kz_json:get_ne_value(<<"message">>, Error),
-    crossbar_util:response('error', Message, 500, Errors, Context).
+    crossbar_util:response('error', Message, 500, Errors, Context);
+handle_response_error({'error', Error}, Context) ->
+    Message = kz_json:get_ne_value(<<"Message">>, Error),
+    crossbar_util:response('error', Message, 500, Error, Context).
 
--spec handle_authorization_issue(request(), kz_term:api_ne_binary(), kz_term:text(), cb_context:context()) -> response().
-handle_authorization_issue(_, 'undefined', ResponseBody, _) ->
-    {'error', kz_json:decode(ResponseBody)};
+-spec handle_authorization_issue(request(), kz_term:ne_binary(), kz_term:text(), cb_context:context()) -> response().
 handle_authorization_issue(Request, Token, ResponseBody, Context) ->
     case Token =:= ?MASTER_TOKEN of
         'true' -> {'error', kz_json:decode(ResponseBody)};
