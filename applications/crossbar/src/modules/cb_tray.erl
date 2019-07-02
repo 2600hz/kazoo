@@ -216,7 +216,7 @@ delete(Context, SolutionInstanceId) ->
 request(Request, Context) ->
     request(Request, ?MASTER_TOKEN, Context).
 
--spec request(request(), kz_term:ne_binary(), cb_context:context()) -> response().
+-spec request(request(), kz_term:api_ne_binary(), cb_context:context()) -> response().
 request({Query, ResponsePath} = Request, Token, Context) ->
     case kz_http:post(?REQUEST_ENDPOINT, ?REQUEST_HEADERS(Token), ?REQUEST_BODY(Query)) of
         {'ok', 403, _, ResponseBody} -> handle_authorization_issue(Request, Token, ResponseBody, Context);
