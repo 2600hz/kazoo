@@ -105,11 +105,11 @@ should_lookup_cnam() -> 'true'.
 %%------------------------------------------------------------------------------
 -spec classify_query(map(), kz_term:ne_binary()) -> kz_term:ne_binary().
 classify_query(#{'dialcode' := <<"+1">>, 'prefix' := Prefix}, _A3)
-    when ?IS_US_TOLLFREE(Prefix)
-        orelse ?IS_US_TOLLFREE_WILDCARD(Prefix) ->
+  when ?IS_US_TOLLFREE(Prefix)
+       orelse ?IS_US_TOLLFREE_WILDCARD(Prefix) ->
     <<"TOLL_FREE">>;
 classify_query(#{'prefix' := Prefix}, _A3)
-        when ?IS_UIFN_TOLLFREE(Prefix) ->
+  when ?IS_UIFN_TOLLFREE(Prefix) ->
     <<"TOLL_FREE">>;
 classify_query(_Options, _A3) ->
     <<"GEOGRAPHIC">>.
@@ -137,7 +137,7 @@ search(Quantity, Options, SearchOptions) ->
     Balance = account_balance(),
     #{total := Total, order :=  Order, cost := Cost} = do_search(Quantity, SearchOptions),
     case {Total < Quantity, Balance}  of
-        % We can't fulfill the quantity so return
+        %% We can't fulfill the quantity so return
         {_, {'error', _}} -> knm_errors:unspecified("please contact the carrier administrator", -61);
         {_, Balance} when Balance < Cost -> knm_errors:unspecified("please contact the carrier administrator", -61);
         {'true', Balance} when Balance >= Cost -> knm_errors:unspecified("insufficient inventory to sastisfy request", 404);
@@ -190,10 +190,10 @@ resolve_order_quantities([DidGroup | Rest], Remaining, #{total :=Total, order :=
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_reserve_did_qty(kz_term:api_pos_integer(), kz_term:api_pos_integer()) -> {kz_term:api_pos_integer(), kz_term:api_pos_integer()}.
-maybe_reserve_did_qty(Available, Need) when Available < Need->
+maybe_reserve_did_qty(Available, Need) when Available < Need ->
     {Need - Available, Available};
 maybe_reserve_did_qty(_Available, Need) ->
-     {0, Need}.
+    {0, Need}.
 
 %%------------------------------------------------------------------------------
 %% @doc attempt to add quantities to cart and checkout
@@ -286,7 +286,7 @@ order_to_KNM(QueryId, [DID | Rest], Acc) ->
               ,{'module_name', <<"knm_voxbone">>}],
     DID2 = kz_json:get_value(<<"e164">>, DID),
     Number = {DID2, ?MODULE, ?NUMBER_STATE_AVAILABLE, DID},
-    % Add number to database to ensure inventory is updated before acquire_number stub
+    %% Add number to database to ensure inventory is updated before acquire_number stub
     {'ok', _} = knm_number:create(DID2, Options),
     order_to_KNM(QueryId, Rest, [{QueryId, Number} | Acc]).
 
