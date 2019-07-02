@@ -9,7 +9,6 @@
         },
         "name": {
             "description": "Solution Instance Name",
-            "minLength": 1,
             "type": "string"
         }
     },

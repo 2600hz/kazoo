@@ -26,20 +26,6 @@ Here is an example of how the configuration document may look:
 }
 ```
 
-## Schema
-
-Schema for creating/editing solution instance
-
-
-
-Key | Description | Type | Default | Required | Support Level
---- | ----------- | ---- | ------- | -------- | -------------
-`id` | ID of the solution  | `string()` |   | `true` |
-`name` | Name of the solution instance | `string()` |   | `true` |
-`enabled` | Enabled state of the solution instance | `boolean()` |   | `true` |
-
-
-
 ## List all available solutions
 
 > GET /v2/tray
@@ -115,6 +101,15 @@ curl -v -X GET \
 
 ## Create solution instance for account
 
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`id` | ID of the solution  | `string()` |   | `true` |
+`name` | Name of the solution instance | `string()` |   | `true` |
+
+
+
 > POST /v2/accounts/{ACCOUNT_ID}/tray
 
 ```shell
@@ -161,6 +156,14 @@ curl -v -X GET \
 ```
 
 ## Update enabled state of solution instance for account
+
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`enabled` | Enabled state of the solution instance | `boolean()` |   | `true` |
+
+
 
 > PATCH /v2/accounts/{ACCOUNT_ID}/tray/{SOLUTION_INSTANCE_ID}
 
