@@ -137,7 +137,7 @@ search(Quantity, Options, SearchOptions) ->
     Balance = account_balance(),
     #{total := Total, order :=  Order, cost := Cost} = do_search(Quantity, SearchOptions),
     case {Total < Quantity, Balance}  of
-        %% We can't fulfill the quantity so return
+        % We can't fulfill the quantity so return
         {_, {'error', _}} -> knm_errors:unspecified("please contact the carrier administrator", -61);
         {_, Balance} when Balance < Cost -> knm_errors:unspecified("please contact the carrier administrator", -61);
         {'true', Balance} when Balance >= Cost -> knm_errors:unspecified("insufficient inventory to sastisfy request", 404);
@@ -268,7 +268,7 @@ generate_number_summary(#{id := _CartId, query_id := QueryId}=Cart, [Order | Res
 %%------------------------------------------------------------------------------
 %% @doc convert voxbone dids into knm phone numbers
 %% @end
-%%--------------------------------------------------
+%%------------------------------------------------------------------------------
 -spec order_to_KNM(kz_term:ne_binary(), kz_json:objects()) -> [{knm_search:option(), {kz_term:ne_binary(), kz_term:atom(), kz_term:atom(), kz_json:object()}}].
 order_to_KNM(QueryId, DIDs) ->
     JObjs = kz_json:get_value(<<"dids">>, DIDs),
@@ -288,7 +288,6 @@ order_to_KNM(QueryId, [DID | Rest], Acc) ->
     Number = {DID2, ?MODULE, ?NUMBER_STATE_AVAILABLE, DID},
     % Add number to database to ensure inventory is updated before acquire_number stub
     {'ok', _} = knm_number:create(DID2, Options),
-    %order_to_KNM(QueryId, Rest, [Number | Acc]).
     order_to_KNM(QueryId, Rest, [{QueryId, Number} | Acc]).
 
 %%------------------------------------------------------------------------------
