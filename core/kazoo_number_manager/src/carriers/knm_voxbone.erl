@@ -3,9 +3,9 @@
 %%% @doc Handle client requests for phone_number documents using the voxbone api
 %%% @end
 %%%-----------------------------------------------------------------------------
--module (knm_voxbone).
+-module(knm_voxbone).
 
--behaviour (knm_gen_carrier).
+-behaviour(knm_gen_carrier).
 
 -export([info/0]).
 -export([is_local/0]).
@@ -316,7 +316,6 @@ fetch_did(Number) ->
 release(DID) ->
     NumberId = kz_json:get_value(<<"didId">>,  DID),
     Body = kz_json:from_list([{'didIds', [NumberId]}]),
-    lager:notice("Release the hounds! ~p~n~p", [NumberId, Body]),
     knm_voxbone_util:voxbone_request('delete', <<"ordering/cancel">>, knm_voxbone_util:required_params(), Body).
 
 %%------------------------------------------------------------------------------
