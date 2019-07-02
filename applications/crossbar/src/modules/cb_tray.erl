@@ -236,7 +236,7 @@ handle_response_error({'error', [Error | _]=Errors}, Context) ->
     Message = kz_json:get_ne_value(<<"message">>, Error),
     crossbar_util:response('error', Message, 500, Errors, Context).
 
--spec handle_authorization_issue(request(), kz_term:ne_binary(), kz_term:text(), cb_context:context()) -> response().
+-spec handle_authorization_issue(request(), kz_term:api_ne_binary(), kz_term:text(), cb_context:context()) -> response().
 handle_authorization_issue(_, 'undefined', ResponseBody, _) ->
     {'error', kz_json:decode(ResponseBody)};
 handle_authorization_issue(Request, Token, ResponseBody, Context) ->
