@@ -132,7 +132,7 @@ maybe_delete_cart([]) ->
 maybe_delete_cart([Cart | Rest]) ->
     CartId = kz_json:get_value(<<"cartIdentifier">>, Cart),
     lager:debug("cleaning up cart ~p", [CartId]),
-    voxbone_request('delete', <<"ordering/cart/",(kz_term:to_binary(CartId))/binary>>, [], []),
+    _ = voxbone_request('delete', <<"ordering/cart/",(kz_term:to_binary(CartId))/binary>>, [], []),
     maybe_delete_cart(Rest).
 
 %%------------------------------------------------------------------------------
@@ -174,7 +174,7 @@ handle_response({'error', _}=Error) ->
 %% @doc pretty print lager message with HTTP Code and Voxbone API error message
 %% @end
 %%------------------------------------------------------------------------------
--spec parse_error(kz_term:text()) -> none().
+-spec parse_error(kz_term:text()) -> 'ok' | {'error','lager_not_running' | {'sink_not_configured','lager_event'}}.
 parse_error(Response) ->
     Body = kz_json:decode(Response),
     ErrorBlock = kz_json:get_value(<<"errors">>, Body),

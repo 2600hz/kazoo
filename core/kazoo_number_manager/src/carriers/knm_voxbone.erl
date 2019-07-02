@@ -80,7 +80,7 @@ acquire_number(Number) -> Number.
 disconnect_number(Number) ->
     {'ok', Response} = fetch_did(Number),
     Numbers = kz_json:get_values(<<"dids">>, Response),
-    release(Numbers),
+    _ = release(Numbers),
     Number.
 
 %%------------------------------------------------------------------------------
@@ -224,7 +224,7 @@ maybe_add_to_cart([{DidGroupId, Quantity} | Rest], #{id := CartId, query_id := _
     case knm_voxbone_util:voxbone_request('post', <<"ordering/cart/",(kz_term:to_binary(CartId))/binary,"/product">>, [], Body) of
         {'ok', _} -> maybe_add_to_cart(Rest, Cart);
         {'error', Message} ->
-            maybe_destroy_cart(Cart),
+            _ = maybe_destroy_cart(Cart),
             knm_errors:unspecified(Message, 503)
     end.
 
@@ -236,7 +236,7 @@ maybe_add_to_cart([{DidGroupId, Quantity} | Rest], #{id := CartId, query_id := _
 checkout(#{id := CartId, query_id := _QueryId}=Cart) ->
     case knm_voxbone_util:voxbone_request('get', <<"ordering/cart/",(kz_term:to_binary(CartId))/binary,"/checkout">>, []) of
         {'error', Message} ->
-            maybe_destroy_cart(Cart),
+            _ = maybe_destroy_cart(Cart),
             knm_errors:unspecified(Message, 503);
         {'ok',  Response} ->
             generate_number_summary(Cart, kz_json:get_value(<<"productCheckoutList">>, Response))
@@ -269,12 +269,12 @@ generate_number_summary(#{id := _CartId, query_id := QueryId}=Cart, [Order | Res
 %% @doc convert voxbone dids into knm phone numbers
 %% @end
 %%--------------------------------------------------
--spec order_to_KNM(kz_term:ne_binary(), kz_json:objects()) -> {'ok', knm_number:numbers()}.
+-spec order_to_KNM(kz_term:ne_binary(), kz_json:objects()) -> [{knm_search:option(), {kz_term:ne_binary(), kz_term:atom(), kz_term:atom(), kz_json:object()}}].
 order_to_KNM(QueryId, DIDs) ->
     JObjs = kz_json:get_value(<<"dids">>, DIDs),
-   order_to_KNM(QueryId, JObjs, []).
+    order_to_KNM(QueryId, JObjs, []).
 
--spec order_to_KNM(kz_term:ne_binary(), kz_json:objects(), knm_number:phone_numbers()) -> {'ok', knm_number:numbers()}.
+-spec order_to_KNM(kz_term:ne_binary(), kz_json:objects(), knm_number:phone_numbers()) -> [{knm_search:option(), {kz_term:ne_binary(), kz_term:atom(), kz_term:atom(), kz_json:object()}}].
 order_to_KNM(_QueryId, [], Acc) ->
     Acc;
 order_to_KNM(QueryId, [DID | Rest], Acc) ->
@@ -288,15 +288,16 @@ order_to_KNM(QueryId, [DID | Rest], Acc) ->
     Number = {DID2, ?MODULE, ?NUMBER_STATE_AVAILABLE, DID},
     % Add number to database to ensure inventory is updated before acquire_number stub
     {'ok', _} = knm_number:create(DID2, Options),
+    %order_to_KNM(QueryId, Rest, [Number | Acc]).
     order_to_KNM(QueryId, Rest, [{QueryId, Number} | Acc]).
 
 %%------------------------------------------------------------------------------
 %% @doc cleanup voxbone cart artifact when order can't be satisfied.
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_destroy_cart(map()) -> none.
+-spec maybe_destroy_cart(map()) -> {'ok', kz_json:object()} | {'error', any()}.
 maybe_destroy_cart(#{id := CartId, query_id := _QueryId}=_Cart) ->
-    {'ok', _} = knm_voxbone_util:voxbone_request('delete', <<"ordering/cart/",(kz_term:to_binary(CartId))/binary>>, [], []).
+    knm_voxbone_util:voxbone_request('delete', <<"ordering/cart/",(kz_term:to_binary(CartId))/binary>>, [], []).
 
 %%------------------------------------------------------------------------------
 %% @doc fetches DID metadata from voxbone portal
@@ -312,7 +313,7 @@ fetch_did(Number) ->
 %% @doc release number back to voxbone
 %% @end
 %%------------------------------------------------------------------------------
--spec release(kz_json:object()) -> 'ok'.
+-spec release(kz_json:object()) -> {'ok', kz_json:object()} | {'error', any()}.
 release(DID) ->
     NumberId = kz_json:get_value(<<"didId">>,  DID),
     Body = kz_json:from_list([{'didIds', [NumberId]}]),
