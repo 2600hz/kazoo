@@ -111,6 +111,14 @@ Python script to walk the supplied files and bumps the copyright year if appropr
 ./scripts/bump-copyright-year.sh [FILE]
 ```
 
+## calculate-dep-targets.escript
+
+Given the KAZOO root directory and an app (in core or applications), calculate the core applications it relies on (and transitive dependencies). This listing is then stored to `{APP}/.test.deps` for use in compilation of dependant apps when running tests on an app (vs compiling the whole project for testing).
+
+```shell
+ERL_LIBS=deps:core:applications ./scripts/calculate-dep-targets {KAZOO_ROOT} {APP}
+```
+
 ## check-admonitions.escript
 
 Walks changed markdown files and fixes admonitions

@@ -2,7 +2,7 @@ ROOT = ..
 
 MAKEDIRS = $(sort $(wildcard */Makefile))
 
-.PHONY: all compile compile-test clean clean-test eunit test $(MAKEDIRS)
+.PHONY: all compile compile-test compile-test-direct clean clean-test eunit test $(MAKEDIRS)
 
 all: compile
 
@@ -11,6 +11,9 @@ compile: $(MAKEDIRS)
 
 compile-test: ACTION = compile-test
 compile-test: $(MAKEDIRS)
+
+compile-test-direct: ACTION = compile-test-direct
+compile-test-direct: $(MAKEDIRS)
 
 clean: ACTION = clean
 clean: $(MAKEDIRS)

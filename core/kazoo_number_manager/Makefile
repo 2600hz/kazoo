@@ -1,4 +1,5 @@
-ROOT = ../..
+CWD = $(shell pwd -P)
+ROOT = $(realpath $(CWD)/../..)
 PROJECT = kazoo_number_manager
 
 # ISO3166-alpha2 to dialcode (ITU) module generator.
@@ -30,12 +31,6 @@ CLEAN_MOAR = clean-generated
 all: compile
 
 compile:
-
-compile-test: compile-also
-
-compile-also:
-	$(MAKE) compile-test -C $(ROOT)/core/kazoo_config/
-	$(MAKE) compile-test -C $(ROOT)/core/kazoo_apps/
 
 include $(ROOT)/make/kz.mk
 

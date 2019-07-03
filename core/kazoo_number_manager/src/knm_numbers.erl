@@ -506,7 +506,7 @@ do(F, T=#{'todo' := [], 'ok' := OK}) ->
     %% For calls not from pipe/2
     do(F, T#{'todo' => OK, 'ok' => []});
 do(F, T) ->
-    ?LOG_DEBUG("applying ~p", [F]),
+    lager:debug("applying ~p", [F]),
     NewT = F(T),
     NewT#{'todo' => []}.
 

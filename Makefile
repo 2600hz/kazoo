@@ -72,9 +72,9 @@ clean-test-apps:
 compile-test: ERLC_OPTS += +nowarn_missing_spec
 compile-test: deps compile-test-core compile-test-apps
 compile-test-core:
-	@$(MAKE) -j$(JOBS) -C core/ compile-test
+	@$(MAKE) -j$(JOBS) -C core/ compile-test-direct
 compile-test-apps:
-	@$(MAKE) -j$(JOBS) -C applications/ compile-test
+	@$(MAKE) -j$(JOBS) -C applications/ compile-test-direct
 
 eunit: eunit-core eunit-apps
 
