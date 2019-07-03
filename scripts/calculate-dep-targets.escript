@@ -10,6 +10,18 @@
 
 main([AppL]) ->
     App = list_to_atom(AppL),
+
+    try calc(App)
+    catch
+        _E:_R:_ST ->
+            io:format('standard_error'
+                     ,"failed to calculate used apps for ~s~n~s:~p~n~p~n"
+                     ,[App, _E, _R, _ST]
+                     ),
+            halt(1)
+    end.
+
+calc(App) ->
     _ = application:load(App),
 
     DepApps = get_dep_apps(App),
