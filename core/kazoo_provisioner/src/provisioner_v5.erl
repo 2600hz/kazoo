@@ -126,9 +126,12 @@ delete_account(AccountId, AuthToken) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_account(kz_term:ne_binary(), kzd_accounts:doc(), kz_term:ne_binary()) -> 'ok'.
-update_account(AccountId, _JObj, AuthToken) ->
+update_account(AccountId, JObj, AuthToken) ->
+    Settings = [{<<"lines">>, [[{<<"sip">>, [{<<"realm">>, kzd_accounts:realm(JObj)}]}]]}
+               ,{<<"datetime">>, settings_datetime(JObj)}
+               ],
     send_req('accounts_update'
-            ,kz_json:from_list([{<<"settings">>, kz_json:new()}])
+            ,kz_json:from_list([{<<"settings">>, kz_json:from_list_recursive(Settings)}])
             ,AuthToken
             ,AccountId
             ,'undefined'
