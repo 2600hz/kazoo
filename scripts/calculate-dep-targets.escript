@@ -8,10 +8,10 @@
 
 %% API
 
-main([AppL]) ->
+main([KazooRoot, AppL]) ->
     App = list_to_atom(AppL),
 
-    try calc(App)
+    try calc(KazooRoot, App)
     catch
         _E:_R:_ST ->
             io:format('standard_error'
@@ -21,24 +21,28 @@ main([AppL]) ->
             halt(1)
     end.
 
-calc(App) ->
+calc(KazooRoot, App) ->
     _ = application:load(App),
 
-    DepApps = get_dep_apps(App),
+    DepApps = get_dep_apps(KazooRoot, App),
 
-    Apps = lists:foldl(fun add_deps/2, [A || A <- DepApps, is_kazoo_app(A)], DepApps),
+    {KazooRoot, Apps} = lists:foldl(fun add_deps/2
+                                   ,{KazooRoot, [A || A <- DepApps, is_kazoo_app(A)]}
+                                   ,DepApps
+                                   ),
+
     [io:format("~s ", [A]) || A <- Apps].
 
-add_deps(App, Apps) ->
+add_deps(App, {KazooRoot, Apps}) ->
     _ = application:load(App),
 
-    ToAdd = [DepApp || DepApp <- get_dep_apps(App),
+    ToAdd = [DepApp || DepApp <- get_dep_apps(KazooRoot, App),
                        not lists:member(DepApp, Apps),
                        is_kazoo_app(DepApp)
             ],
 
     lists:foldl(fun add_deps/2
-               ,Apps ++ ToAdd
+               ,{KazooRoot, Apps ++ ToAdd}
                ,ToAdd
                ).
 
@@ -47,17 +51,22 @@ is_kazoo_app(App) when is_atom(App) ->
 is_kazoo_app("kazoo" ++ _) -> 'true';
 is_kazoo_app(_) -> 'false'.
 
-get_dep_apps(App) ->
+get_dep_apps(KazooRoot, App) ->
     case application:get_key(App, 'applications') of
         'undefined' ->
-            consult_for_app_deps(App, code:lib_dir(App, 'src'));
+            consult_for_app_deps(KazooRoot, App);
         {'ok', DepApps} -> DepApps
     end.
 
-consult_for_app_deps(App, Ebin) ->
-    {'ok', CWD} = file:get_cwd(),
-
-    AppFile = filename:join([CWD, Ebin, atom_to_list(App) ++ ".app.src"]),
-
+consult_for_app_deps(KazooRoot, App) ->
+    AppL = atom_to_list(App),
+    CoreOrApp = core_or_app(KazooRoot, AppL),
+    AppFile = filename:join([KazooRoot, CoreOrApp, AppL, "src", AppL ++ ".app.src"]),
     {'ok', [{'application', _App, Config}]} = file:consult(AppFile),
     proplists:get_value('applications', Config, []).
+
+core_or_app(KazooRoot, AppL) ->
+    case filelib:is_dir(filename:join([KazooRoot, "core", AppL])) of
+        'true' -> "core";
+        'false' -> "applications"
+    end.
