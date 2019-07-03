@@ -34010,6 +34010,11 @@
                 "environment": {
                     "default": "sandbox",
                     "description": "number_manager voxbone environment",
+                    "enum": [
+                        "sandbox",
+                        "production",
+                        "beta"
+                    ],
                     "type": "string"
                 },
                 "max_page_size": {
