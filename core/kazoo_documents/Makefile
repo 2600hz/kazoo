@@ -1,4 +1,5 @@
-ROOT = ../..
+CWD = $(shell pwd -P)
+ROOT = $(realpath $(CWD)/../..)
 PROJECT = kazoo_documents
 
 TEST_EBINS = $(ROOT)/applications/crossbar/ebin
