@@ -105,49 +105,48 @@ handle_queue_change(_, AccountId, QueueId, ?DOC_DELETED) ->
             acdc_queue_sup:stop(P)
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc Handle presence probes for queues by filtering out those that cannot be
+%% queue probes (do not look like 32 character hex binaries) and those that do
+%% not correspond to an existing account ID/queue ID pair
+%%
+%% @end
+%%------------------------------------------------------------------------------
 -spec handle_presence_probe(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_presence_probe(JObj, _Props) ->
     'true' = kapi_presence:probe_v(JObj),
-    Realm = kz_json:get_value(<<"Realm">>, JObj),
-    case kapps_util:get_account_by_realm(Realm) of
-        {'ok', AcctDb} ->
-            AccountId = kz_util:format_account_id(AcctDb, 'raw'),
-            maybe_respond_to_presence_probe(JObj, AccountId);
-        _ -> 'ok'
+    Username = kz_json:get_ne_binary_value(<<"Username">>, JObj),
+    case potentially_queue_presence_probe(Username) of
+        'true' ->
+            Realm = kz_json:get_ne_binary_value(<<"Realm">>, JObj),
+            maybe_respond_to_presence_probe(
+              acdc_presence_realm_lookup:lookup(Realm)
+             ,Username
+             );
+        'false' -> 'ok'
     end.
 
-maybe_respond_to_presence_probe(JObj, AcctId) ->
-    case kz_json:get_value(<<"Username">>, JObj) of
+-spec potentially_queue_presence_probe(kz_term:api_binary()) -> boolean().
+potentially_queue_presence_probe(<<_:32/binary>>) -> 'true';
+potentially_queue_presence_probe(_) -> 'false'.
+
+-spec maybe_respond_to_presence_probe(kz_term:ne_binary() | 'not_found', kz_term:ne_binary()) -> 'ok'.
+maybe_respond_to_presence_probe('not_found', _) -> 'ok';
+maybe_respond_to_presence_probe(AcctId, QueueId) ->
+    case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
         'undefined' -> 'ok';
-        QueueId ->
-            update_probe(JObj
-                        ,acdc_queues_sup:find_queue_supervisor(AcctId, QueueId)
-                        ,AcctId, QueueId
-                        )
+        QueueSup ->
+            Manager = acdc_queue_sup:manager(QueueSup),
+            update_probe(Manager, AcctId, QueueId)
     end.
 
-update_probe(_JObj, 'undefined', _, _) -> 'ok';
-update_probe(JObj, _Sup, AcctId, QueueId) ->
-    case kapi_acdc_queue:queue_size(AcctId, QueueId) of
+-spec update_probe(kz_term:api_pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+update_probe(Manager, AcctId, QueueId) ->
+    case acdc_queue_manager:queue_size(Manager) of
         0 ->
             lager:debug("no calls in queue, ignore!"),
-            send_probe(JObj, ?PRESENCE_GREEN);
-        N when is_integer(N), N > 0 ->
+            acdc_util:presence_update(AcctId, QueueId, ?PRESENCE_GREEN);
+        N ->
             lager:debug("~b calls in queue, redify!", [N]),
-            send_probe(JObj, ?PRESENCE_RED_FLASH);
-        _E ->
-            lager:debug("unhandled size return: ~p", [_E])
+            acdc_util:presence_update(AcctId, QueueId, ?PRESENCE_RED_FLASH)
     end.
-
-send_probe(JObj, State) ->
-    To = <<(kz_json:get_value(<<"Username">>, JObj))/binary
-          ,"@"
-          ,(kz_json:get_value(<<"Realm">>, JObj))/binary
-         >>,
-    PresenceUpdate =
-        [{<<"State">>, State}
-        ,{<<"Presence-ID">>, To}
-        ,{<<"Call-ID">>, kz_term:to_hex_binary(crypto:hash('md5', To))}
-         | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-        ],
-    kapi_presence:publish_update(PresenceUpdate).

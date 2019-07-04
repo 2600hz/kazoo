@@ -19,6 +19,7 @@
 -define(SERVER, ?MODULE).
 
 -define(CHILDREN, [?CACHE(?CACHE_NAME)
+                  ,?WORKER('acdc_presence_realm_lookup')
                   ,?SUPER('acdc_recordings_sup')
                   ,?SUPER('acdc_agents_sup')
                   ,?SUPER('acdc_queues_sup')
