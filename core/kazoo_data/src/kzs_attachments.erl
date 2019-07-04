@@ -158,9 +158,8 @@ put_attachment(#{att_handler := {Handler, Params}}=Map
             end,
             handle_attachment_handler_error(AttHandlerError, Options)
     end;
-put_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Contents, Options) ->
-    kzs_cache:flush_cache_doc(DbName, DocId),
-    App:put_attachment(Conn, DbName, DocId, AName, Contents, Options).
+put_attachment(Map, DbName, DocId, AName, Contents, Options) ->
+    handle_put_attachment(Map, 'undefined', DbName, DocId, AName, Contents, Options, []).
 
 attachment_from_handler(AName, AttHandler, Size, CT) ->
     Props = [{<<"content_type">>, kz_term:to_binary(CT)}
@@ -174,22 +173,23 @@ attachment_handler_jobj(Handler, Props) ->
     JObj = kz_json:from_list(props:get_value('attachment', Props, [])),
     kz_json:set_value(kz_term:to_binary(Handler), JObj, kz_json:new()).
 
--spec handle_put_attachment(att_map(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()
+-spec handle_put_attachment(att_map(), kz_term:api_object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()
                            , kz_term:proplist(), kz_term:proplist()) ->
                                    {'ok', kz_json:object()} |
                                    {'ok', kz_json:object(), kz_term:proplist()} |
                                    data_error().
 
-handle_put_attachment(#{att_post_handler := 'stub'
-                       ,server := {App, Conn}
-                       }, _Att, DbName, DocId, AName, Contents, Options, _Props) ->
-    kzs_cache:flush_cache_doc(DbName, DocId),
-    App:put_attachment(Conn, DbName, DocId, AName, Contents, Options);
-
 handle_put_attachment(#{att_post_handler := 'external'}=Map, Att, DbName, DocId, _AName, _Contents, _Options, Props) ->
     case kzs_doc:open_doc(Map, DbName, DocId, []) of
         {'ok', JObj} -> external_attachment(Map, DbName, JObj, Att, Props);
         {'error', _}=E -> E
+    end;
+handle_put_attachment(#{server := {App, Conn}}=Map, _Att, DbName, DocId, AName, Contents, Options, _Props) ->
+    case App:put_attachment(Conn, DbName, DocId, AName, Contents, Options) of
+        {'ok', _}=Result ->
+            publish_doc(Map, DbName, DocId),
+            Result;
+        Result -> Result
     end.
 
 -spec external_attachment(att_map(), kz_term:ne_binary(), kz_json:object(), kz_json:object(), Props) ->
@@ -198,16 +198,30 @@ handle_put_attachment(#{att_post_handler := 'external'}=Map, Att, DbName, DocId,
 external_attachment(Map, DbName, JObj, Att, Props) ->
     Atts = kz_json:merge_jobjs(Att, kz_json:get_value(?KEY_STUB_ATTACHMENTS, JObj, kz_json:new())),
     case kzs_doc:save_doc(Map, DbName, kz_json:set_values([{?KEY_STUB_ATTACHMENTS, Atts}], JObj), []) of
-        {'ok', Doc} -> {'ok', Doc, Props};
+        {'ok', Doc} ->
+            kzs_publish:maybe_publish_doc(DbName, JObj, Doc),
+            {'ok', Doc, Props};
         Error -> Error
     end.
 
 -spec delete_attachment(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                                {'ok', kz_json:object()} |
                                data_error().
-delete_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Options) ->
-    kzs_cache:flush_cache_doc(DbName, DocId),
-    App:delete_attachment(Conn, DbName, DocId, AName, Options).
+delete_attachment(#{server := {App, Conn}}=Map, DbName, DocId, AName, Options) ->
+    case App:delete_attachment(Conn, DbName, DocId, AName, Options) of
+        {'ok', _}=Result ->
+            publish_doc(Map, DbName, DocId),
+            Result;
+        Result -> Result
+    end.
+
+-spec publish_doc(map(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+publish_doc(Plan, DbName, DocId) ->
+    case kzs_doc:open_doc(Plan, DbName, DocId, []) of
+        {'ok', JObj} -> kzs_publish:maybe_publish_doc(DbName, JObj, JObj);
+        {'error', Error} ->
+            lager:debug("failed to publish doc update after attachment store for ~s/~s (~p)", [DbName, DocId, Error])
+    end.
 
 -spec attachment_url(map(), DbName, DocId, AttachmentId, Handler, Options) ->
                             kz_term:ne_binary() |
