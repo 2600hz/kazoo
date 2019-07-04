@@ -23,6 +23,7 @@
         ,handle_queue_member_remove/2
         ,are_agents_available/1
         ,handle_config_change/2
+        ,queue_size/1
         ,should_ignore_member_call/3, should_ignore_member_call/4
         ,up_next/2
         ,config/1
@@ -241,6 +242,10 @@ handle_queue_member_remove(JObj, Prop) ->
 handle_config_change(Srv, JObj) ->
     gen_listener:cast(Srv, {'update_queue_config', JObj}).
 
+-spec queue_size(kz_types:server_ref()) -> kz_term:non_neg_integer().
+queue_size(Srv) ->
+    gen_listener:call(Srv, 'queue_size').
+
 -spec should_ignore_member_call(kz_types:server_ref(), kapps_call:call(), kz_json:object()) -> boolean().
 should_ignore_member_call(Srv, Call, CallJObj) ->
     should_ignore_member_call(Srv
@@ -332,6 +337,8 @@ init(Super, AccountId, QueueId, QueueJObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), mgr_state()) -> kz_types:handle_call_ret_state(mgr_state()).
+handle_call('queue_size', _, #state{current_member_calls=Calls}=State) ->
+    {'reply', length(Calls), State};
 handle_call({'should_ignore_member_call', {AccountId, QueueId, CallId}=K}, _, #state{ignored_member_calls=Dict
                                                                                     ,account_id=AccountId
                                                                                     ,queue_id=QueueId
