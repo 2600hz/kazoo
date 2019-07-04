@@ -113,10 +113,14 @@ content_types_provided(Context, _, ?VCARD) ->
                                                                   ]}
                                                    ]);
 content_types_provided(Context, _, ?PHOTO) ->
-    cb_context:set_content_types_provided(Context, [{'to_binary', [{<<"application">>, <<"octet-stream">>}
-                                                                  ,{<<"application">>, <<"base64">>}
-                                                                  ]}
-                                                   ]);
+    case cb_context:method(Context) of
+        ?HTTP_GET -> cb_context:set_content_types_provided(
+                       Context, [{'to_binary', [{<<"application">>, <<"octet-stream">>}
+                                               ,{<<"application">>, <<"base64">>}
+                                               ]}
+                                ]);
+        _ -> Context
+    end;
 content_types_provided(Context, _, _) ->
     Context.
 
