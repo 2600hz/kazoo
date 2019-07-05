@@ -618,6 +618,57 @@ curl -v -X POST \
 ```
 
 
+## Check Portability Of Phone Numbers
+
+> POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/check_portability
+
+This API checks if the numbers are available to be ported.
+Currently, you must have configured Telnyx as (one of) your provider(s) to use this endpoint.
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"numbers": [{PHONE_NUMBER1}, {PHONE_NUMBER2}]}}'
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/check_portability
+```
+
+**Response**
+
+This is an example of the response when using Telnyx to check portability.
+
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "phone_numbers": [
+            {
+                "carrier_name": "TELUS COMMUNICATIONS (B.C.) INC.",
+                "coverage_category": "nanp_generic",
+                "e164_number": "+16042943829",
+                "not_portable_reason": null,
+                "phone_number": "+16042943829",
+                "portability_status": "pending",
+                "portable": true
+            },
+            {
+                "carrier_name": "SHAW TELECOM INC. - BC",
+                "coverage_category": "nanp_generic",
+                "e164_number": "+17809989394",
+                "not_portable_reason": null,
+                "phone_number": "+17809989394",
+                "portability_status": "pending",
+                "portable": true
+            }
+        ]
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
+
 ## Get Locality Information For A Collection Of Numbers
 
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/locality

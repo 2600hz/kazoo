@@ -15,6 +15,7 @@
 -export([is_number_billable/1]).
 -export([should_lookup_cnam/0]).
 -export([check_numbers/1]).
+-export([check_portability/1]).
 
 -include("knm.hrl").
 
@@ -58,6 +59,12 @@ is_number_billable(_Number) -> 'true'.
                                               {'error', any()}.
 check_numbers(_Numbers) -> {'error', 'not_implemented'}.
 
+%%------------------------------------------------------------------------------
+%% @doc Check with carrier if these numbers are portable
+%% @end
+%%------------------------------------------------------------------------------
+-spec check_portability(kz_term:ne_binaries()) -> {'ok', kz_json:object()}.
+check_portability(Numbers) -> {'ok', portability(Numbers)}.
 
 %%------------------------------------------------------------------------------
 %% @doc Query the system for a quantity of available numbers in a rate center
@@ -188,5 +195,14 @@ search_prefix('npa', NPA, NXX) ->
     [{<<"nxx">>, NXX}
      |search_prefix('npa', NPA, 'undefined')
     ].
+
+-spec portability(kz_term:ne_binaries()) -> kz_json:object().
+portability(Numbers) ->
+    FormattedNumbers = lists:map(
+                         fun(Num) -> kz_json:set_value(<<"phone_number">>, Num, kz_json:new()) end
+                        ,Numbers
+                        ),
+    Req = kz_json:from_list([{<<"phone_numbers">>, FormattedNumbers}]),
+    knm_telnyx_util:req('post', ["porting/portability_checks"], Req).
 
 %%% End of Module

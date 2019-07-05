@@ -40,6 +40,23 @@ paths:
       summary: Update an instance of phone_numbers
       tags:
         - phone_numbers
+  /accounts/{ACCOUNT_ID}/phone_numbers/check_portability:
+    post:
+      operationId: PostAccountsAccountIdPhoneNumbersCheckPortability
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/phone_numbers'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of phone_numbers
+      tags:
+        - phone_numbers
   /accounts/{ACCOUNT_ID}/phone_numbers/classifiers:
     get:
       operationId: GetAccountsAccountIdPhoneNumbersClassifiers

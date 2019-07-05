@@ -49,6 +49,8 @@
 -define(COUNTRY, <<"country">>).
 -define(OFFSET, <<"offset">>).
 -define(QUANTITY, <<"quantity">>).
+-define(COLLECTION_NUMBERS, <<"numbers">>).
+-define(CHECK_PORTABILITY, <<"check_portability">>).
 
 %%%=============================================================================
 %%% API
@@ -88,6 +90,8 @@ allowed_methods(?CLASSIFIERS) ->
     [?HTTP_GET];
 allowed_methods(?COLLECTION) ->
     [?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE];
+allowed_methods(?CHECK_PORTABILITY) ->
+    [?HTTP_POST];
 allowed_methods(_) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
@@ -181,6 +185,8 @@ validate_2(Context, ?HTTP_GET, ?CLASSIFIERS) ->
     cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                             ,knm_converters:available_classifiers()
                             );
+validate_2(Context, ?HTTP_POST, ?CHECK_PORTABILITY) ->
+    validate_collection_request(Context);
 validate_2(Context, ?HTTP_GET, Number) ->
     read(Context, Number);
 validate_2(Context, ?HTTP_POST, _Number) ->
@@ -212,6 +218,9 @@ validate_3(Context, ?HTTP_GET, Number, ?IDENTIFY) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?COLLECTION) ->
     set_response(collection_process(Context), Context);
+post(Context, ?CHECK_PORTABILITY) ->
+    Numbers = cb_context:req_value(Context, ?COLLECTION_NUMBERS),
+    cb_context:set_resp_data(Context, knm_carriers:check_portability(Numbers));
 post(Context, Number) ->
     Options = default_knm_options(Context),
     JObj = cb_context:doc(Context),
@@ -394,6 +403,38 @@ validate_delete(Context) ->
     cb_context:set_doc(cb_context:set_resp_status(Context, 'success')
                       ,'undefined'
                       ).
+
+%%------------------------------------------------------------------------------
+%% @doc Validates a collection-type numbers field.
+%% @end
+%%------------------------------------------------------------------------------
+-spec validate_collection_request(cb_context:context()) -> cb_context:context().
+validate_collection_request(Context) ->
+    Numbers = kz_json:get_value(?COLLECTION_NUMBERS, cb_context:req_data(Context)),
+    validate_collection_request(Context, Numbers).
+
+-spec validate_collection_request(cb_context:context(), kz_json:json_term()) -> cb_context:context().
+validate_collection_request(Context, 'undefined') ->
+    Msg = kz_json:from_list([{<<"message">>, <<"list of numbers missing">>}
+                            ]),
+    cb_context:add_validation_error(?COLLECTION_NUMBERS, <<"required">>, Msg, Context);
+validate_collection_request(Context, []) ->
+    Msg = kz_json:from_list([{<<"message">>, <<"minimum 1 number required">>}
+                            ]),
+    cb_context:add_validation_error(?COLLECTION_NUMBERS, <<"minimum">>, Msg, Context);
+validate_collection_request(Context, Numbers)
+  when is_list(Numbers) ->
+    case lists:member(<<>>, Numbers) of
+        'true' ->
+            Msg = kz_json:from_list([{<<"message">>, <<"empty number strings are not allowed">>}
+                                    ]),
+            cb_context:add_validation_error(?COLLECTION_NUMBERS, <<"empty">>, Msg, Context);
+        'false' -> validate_request(Context)
+    end;
+validate_collection_request(Context, _E) ->
+    Msg = kz_json:from_list([{<<"message">>, <<"numbers must be a list">>}
+                            ]),
+    cb_context:add_validation_error(?COLLECTION_NUMBERS, <<"type">>, Msg, Context).
 
 %%------------------------------------------------------------------------------
 %% @doc

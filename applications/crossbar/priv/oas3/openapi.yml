@@ -337,6 +337,9 @@
   '/accounts/{ACCOUNT_ID}/phone_numbers/check':
     '$ref': >-
       paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1check
+  '/accounts/{ACCOUNT_ID}/phone_numbers/check_portability':
+    '$ref': >-
+      paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1check_portability
   '/accounts/{ACCOUNT_ID}/phone_numbers/classifiers':
     '$ref': >-
       paths/phone_numbers.yml#/paths/~1accounts~1{ACCOUNT_ID}~1phone_numbers~1classifiers

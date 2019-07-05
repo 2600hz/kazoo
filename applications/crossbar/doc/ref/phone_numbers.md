@@ -113,6 +113,16 @@ curl -v -X DELETE \
 
 ## Change
 
+> POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/check_portability
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/check_portability
+```
+
+## Change
+
 > POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/check
 
 ```shell

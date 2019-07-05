@@ -62,6 +62,7 @@
 -define(OFFSET, <<"offset">>).
 -define(LOCALITY, <<"locality">>).
 -define(CHECK, <<"check">>).
+-define(CHECK_PORTABILITY, <<"check_portability">>).
 -define(COUNTRY, <<"country">>).
 -define(KNM_CONFIG_CAT, <<"number_manager">>).
 
@@ -158,6 +159,8 @@ allowed_methods(?LOCALITY) ->
     [?HTTP_POST];
 allowed_methods(?CHECK) ->
     [?HTTP_POST];
+allowed_methods(?CHECK_PORTABILITY) ->
+    [?HTTP_POST];
 allowed_methods(_PhoneNumber) ->
     [?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE, ?HTTP_GET].
 
@@ -192,6 +195,7 @@ resource_exists(?FIX) -> 'true';
 resource_exists(?PREFIX) -> 'true';
 resource_exists(?LOCALITY) -> 'true';
 resource_exists(?CHECK) -> 'true';
+resource_exists(?CHECK_PORTABILITY) -> 'true';
 resource_exists(?CLASSIFIERS) -> 'true';
 resource_exists(_PhoneNumber) -> 'true'.
 
@@ -256,6 +260,8 @@ validate(Context, ?LOCALITY) ->
     Numbers = cb_context:req_value(Context, ?COLLECTION_NUMBERS),
     validate_collection_request(Context, Numbers);
 validate(Context, ?CHECK) ->
+    validate_collection_request(Context);
+validate(Context, ?CHECK_PORTABILITY) ->
     validate_collection_request(Context);
 validate(Context, Number) ->
     validate_number(Context, Number, cb_context:req_verb(Context)).
@@ -343,6 +349,9 @@ post(Context, ?FIX) ->
 post(Context, ?CHECK) ->
     Numbers = cb_context:req_value(Context, ?COLLECTION_NUMBERS),
     cb_context:set_resp_data(Context, knm_carriers:check(Numbers));
+post(Context, ?CHECK_PORTABILITY) ->
+    Numbers = cb_context:req_value(Context, ?COLLECTION_NUMBERS),
+    cb_context:set_resp_data(Context, knm_carriers:check_portability(Numbers));
 post(Context, ?COLLECTION) ->
     Results = collection_process(Context, ?HTTP_POST),
     CB = fun() -> ?MODULE:post(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
@@ -709,7 +718,7 @@ validate_collection_request(Context) ->
     Numbers = kz_json:get_value(?COLLECTION_NUMBERS, cb_context:req_data(Context)),
     validate_collection_request(Context, Numbers).
 
--spec validate_collection_request(cb_context:context(), any()) -> cb_context:context().
+-spec validate_collection_request(cb_context:context(), kz_json:json_term()) -> cb_context:context().
 validate_collection_request(Context, 'undefined') ->
     Msg = kz_json:from_list([{<<"message">>, <<"list of numbers missing">>}
                             ]),
@@ -720,11 +729,11 @@ validate_collection_request(Context, []) ->
     cb_context:add_validation_error(?COLLECTION_NUMBERS, <<"minimum">>, Msg, Context);
 validate_collection_request(Context, Numbers)
   when is_list(Numbers) ->
-    UniqNomalised = lists:usort([knm_converters:normalize(N) || N <- Numbers]),
-    case length(Numbers) =:= length(UniqNomalised) of
+    UniqNormalised = lists:usort([knm_converters:normalize(N) || N <- Numbers, N =/= <<>>]),
+    case length(Numbers) =:= length(UniqNormalised) of
         'true' -> cb_context:set_resp_status(Context, 'success');
         'false' ->
-            Msg = kz_json:from_list([{<<"message">>, <<"some numbers appear twice">>}
+            Msg = kz_json:from_list([{<<"message">>, <<"some numbers appear twice or are empty">>}
                                     ]),
             cb_context:add_validation_error(?COLLECTION_NUMBERS, <<"uniqueItems">>, Msg, Context)
     end;

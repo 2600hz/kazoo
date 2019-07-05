@@ -42811,6 +42811,31 @@
                 }
             }
         },
+        "/accounts/{ACCOUNT_ID}/phone_numbers/check_portability": {
+            "post": {
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "phone_numbers",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/phone_numbers"
+                        }
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
         "/accounts/{ACCOUNT_ID}/phone_numbers/classifiers": {
             "get": {
                 "parameters": [

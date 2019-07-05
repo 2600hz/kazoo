@@ -13,6 +13,7 @@
 -compile({no_auto_import,[apply/3]}).
 
 -export([check/1
+        ,check_portability/1
         ,available_carriers/1, all_modules/0, info/3
         ,default_carriers/0, default_carrier/0
         ,acquire/1
@@ -86,23 +87,60 @@
 check(Numbers) ->
     Nums = lists:usort([knm_converters:normalize(Num) || Num <- Numbers]),
     lager:info("attempting to check ~p ", [Nums]),
-    {_, OKs, KOs} =
-        lists:foldl(fun check_fold/2, {Nums, #{}, #{}}, available_carriers([])),
+    {_, OKs, KOs, _} =
+        lists:foldl(fun check_fold/2, {Nums, #{}, #{}, fun check_numbers/2}, available_carriers([])),
     kz_json:from_map(maps:merge(KOs, OKs)).
 
-check_fold(_, {[], _, _}=Acc) -> Acc;
-check_fold(Module, {Nums, OKs0, KOs0}) ->
-    {OKs, KOs} = check_numbers(Module, Nums),
+check_fold(_, {[], _, _, _}=Acc) -> Acc;
+check_fold(Module, {Nums, OKs0, KOs0, Method}) ->
+    {OKs, KOs} = apply(Method, [Module, Nums]),
     OKNums = maps:keys(OKs0),
     {Nums -- OKNums
     ,maps:merge(OKs, OKs0)
     ,maps:merge(maps:without(OKNums, KOs), KOs0)
+    ,Method
     }.
 
+%%------------------------------------------------------------------------------
+%% @doc Normalize then query the various providers for whether numbers are portable
+%% @end
+%%------------------------------------------------------------------------------
+-spec check_portability(kz_term:ne_binaries()) -> kz_json:object().
+check_portability(Numbers) ->
+    Nums = lists:usort([knm_converters:normalize(Num) || Num <- Numbers]),
+    lager:info("attempting to check portability for ~p", [Nums]),
+    {_, OKs, KOs, _} =
+        lists:foldl(fun check_fold/2, {Nums, #{}, #{}, fun check_number_portability/2}, available_carriers([])),
+    kz_json:from_map(maps:merge(KOs, OKs)).
+
+%%------------------------------------------------------------------------------
+%% @doc Verify the carrier (Module) can run the portability check
+%% @end
+%%------------------------------------------------------------------------------
+-spec check_number_portability(module(), kz_term:ne_binaries()) -> {map(), map()}.
+check_number_portability(Module, Nums) ->
+    try apply(Module, 'check_portability', [Nums]) of
+        {'ok', JObj} -> {kz_json:to_map(JObj), #{}};
+        {'error', _} -> {#{}, maps:from_list([{Num,<<"error">>} || Num <- Nums])}
+    catch
+        {'error', _, _, {_, ErrorMsg}} ->
+            ErrorLabel = <<"error_", (atom_to_binary(Module, 'utf8'))/binary>>,
+            {#{}, #{ErrorLabel => ErrorMsg}};
+        _:_ ->
+            ErrorLabel = <<"error_", (atom_to_binary(Module, 'utf8'))/binary>>,
+            ErrorMsg = <<"The check_portability API is not available for this carrier.">>,
+            {#{}, #{ErrorLabel => ErrorMsg}}
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Run the given Module's number-checking Method
+%% @end
+%%------------------------------------------------------------------------------
+-spec check_numbers(module(), kz_term:ne_binaries()) -> {map(), map()}.
 check_numbers(Module, Nums) ->
-    try apply(Module, check_numbers, [Nums]) of
-        {ok, JObj} -> {kz_json:to_map(JObj), #{}};
-        {error, _} -> {#{}, maps:from_list([{Num,<<"error">>} || Num <- Nums])}
+    try apply(Module, 'check_numbers', [Nums]) of
+        {'ok', JObj} -> {kz_json:to_map(JObj), #{}};
+        {'error', _} -> {#{}, maps:from_list([{Num,<<"error">>} || Num <- Nums])}
     catch
         ?STACKTRACE(_, _, ST)
         kz_util:log_stacktrace(ST),
