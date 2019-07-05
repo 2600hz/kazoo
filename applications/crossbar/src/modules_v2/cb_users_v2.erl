@@ -770,7 +770,7 @@ maybe_generated_username_hash('false', _Password, Context) ->
     cb_context:add_validation_error(<<"username">>, <<"required">>, Msg, Context);
 maybe_generated_username_hash('true', Password, Context) ->
     Username = generate_username(),
-    JObj = kzd_users:set_username(Username, cb_context:doc(Context)),
+    JObj = kzd_users:set_username(cb_context:doc(Context), Username),
     rehash_creds(Username, Password, cb_context:set_doc(Context, JObj)).
 
 -spec maybe_generated_creds_hash(boolean(), cb_context:context()) -> cb_context:context().
@@ -778,7 +778,7 @@ maybe_generated_creds_hash('false', Context) ->
     remove_creds(Context);
 maybe_generated_creds_hash('true', Context) ->
     Username = generate_username(),
-    JObj = kzd_users:set_username(Username, cb_context:doc(Context)),
+    JObj = kzd_users:set_username(cb_context:doc(Context), Username),
     rehash_creds(Username, generate_password(), cb_context:set_doc(Context, JObj)).
 
 -spec generate_username() -> kz_term:ne_binary().
