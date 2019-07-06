@@ -26,6 +26,7 @@
         ,output_path/1
         ,finish_task/2
         ,cleanup_task/2
+        ,attempt_upload/4, attempt_upload/6
         ]).
 
 %%% gen_server callbacks
@@ -231,6 +232,14 @@ tac(OutputPath) ->
     lager:debug("mv ~s ~s", [Tmp, OutputPath]),
     'ok' = file:rename(Tmp, OutputPath).
 
+-spec attempt_upload(kz_term:ne_binary(), kz_term:ne_binary(), iodata(), file:filename_all()) ->
+                            'ok' | {'error', 'conflict'}.
+attempt_upload(TaskId, AName, CSV, CSVPath) ->
+    Max = ?UPLOAD_ATTEMPTS,
+    attempt_upload(TaskId, AName, CSV, CSVPath, Max, Max).
+
+-spec attempt_upload(kz_term:ne_binary(), kz_term:ne_binary(), iodata(), file:filename_all(), non_neg_integer(), pos_integer()) ->
+                            'ok' | {'error', 'conflict'}.
 attempt_upload(_TaskId, _AName, _, _, 0, _) ->
     lager:error("failed saving ~s/~s: last failing attempt", [_TaskId, _AName]),
     {'error', 'conflict'};

@@ -189,8 +189,8 @@ verify_mapped_row(Pred, MappedRow) when is_function(Pred, 2),
                                         is_map(MappedRow) ->
     F = fun (K, V, Acc) ->
                 case Pred(K, V) of
-                    true -> Acc;
-                    false -> [K|Acc]
+                    'true' -> Acc;
+                    'false' -> [K|Acc]
                 end
         end,
     maps:fold(F, [], MappedRow).
@@ -200,9 +200,9 @@ verify_mapped_row(Pred, MappedRow) when is_function(Pred, 2),
 %% @end
 %%------------------------------------------------------------------------------
 -spec row_to_iolist(row()) -> iodata().
-row_to_iolist([Cell]) -> cell_to_binary(Cell);
+row_to_iolist([Cell]) -> [cell_to_binary(Cell), $\n];
 row_to_iolist(Row=[_|_]) ->
-    kz_util:iolist_join($,, [cell_to_binary(Cell) || Cell <- Row]).
+    [csv_ize(Row), $\n].
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -229,7 +229,7 @@ json_to_iolist(Records, Fields)
     'ok' = file:write_file(Tmp, [kz_util:iolist_join($,, Fields), $\n]),
     lists:foreach(fun (Record) ->
                           Row = [kz_json:get_ne_binary_value(Field, Record, ?ZILCH) || Field <- Fields],
-                          _ = file:write_file(Tmp, [row_to_iolist(Row),$\n], ['append'])
+                          _ = file:write_file(Tmp, [row_to_iolist(Row)], ['append'])
                   end
                  ,Records
                  ),
@@ -238,6 +238,7 @@ json_to_iolist(Records, Fields)
     IOData.
 
 -spec write_header_to_file(file_return()) -> file_return().
+write_header_to_file({'undefined', _}=CSVAcc) -> CSVAcc;
 write_header_to_file({File, CellOrdering}) ->
     write_header_to_file({File, CellOrdering}, []).
 
@@ -252,7 +253,7 @@ write_header_to_file({File, CellOrdering}, HeaderMap) ->
                 || Cells <- CellOrdering
                ],
 
-    Header = [csv_ize(Headings)],
+    Header = [csv_ize(Headings), $\n],
     'ok' = file:write_file(HeaderFile, Header),
 
     {'ok', _} = kz_os:cmd(<<"cat ", File/binary, " >> ", HeaderFile/binary>>),
@@ -262,8 +263,9 @@ write_header_to_file({File, CellOrdering}, HeaderMap) ->
 
     {File, CellOrdering}.
 
--type file_return() :: {file:filename_all(), kz_json:paths()}.
+-type file_return() :: {'undfined' | file:filename_all(), kz_json:paths()}.
 -spec jobjs_to_file(kz_json:objects()) -> file_return().
+jobjs_to_file([]) -> {'undefined', []};
 jobjs_to_file([JObj | _]=JObjs) ->
     CellOrdering = maybe_update_ordering([], kz_json:flatten(JObj)),
     jobjs_to_file(JObjs, CellOrdering).
@@ -275,8 +277,10 @@ jobjs_to_file(JObjs, {File, CellOrdering}) ->
                ,JObjs
                );
 jobjs_to_file(JObjs, CellOrdering) ->
-    File = <<"/tmp/json_", (kz_binary:rand_hex(11))/binary, ".csv">>,
-    jobjs_to_file(JObjs, {File, CellOrdering}).
+    jobjs_to_file(JObjs, {csv_filename(), CellOrdering}).
+
+csv_filename() ->
+    <<"/tmp/json_", (kz_binary:rand_hex(11))/binary, ".csv">>.
 
 -spec maybe_convert_cell_to_binary(kz_json:get_key(), kz_json:object()) -> binary().
 maybe_convert_cell_to_binary(Path, JObj) ->
@@ -291,7 +295,7 @@ jobj_to_file(JObj, {File, CellOrdering}) ->
     NewOrdering = maybe_update_ordering(CellOrdering, FlatJObj),
 
     Row = [maybe_convert_cell_to_binary(Path, JObj) || Path <- NewOrdering],
-    _ = file:write_file(File, [csv_ize(Row)], ['append']),
+    _ = file:write_file(File, [csv_ize(Row), $\n], ['append']),
     {File, NewOrdering}.
 
 maybe_update_ordering(CellOrdering, FlatJObj) ->
@@ -304,7 +308,7 @@ maybe_add_field(Field, Value, CellOrdering) ->
             lager:debug("adding field ~s", [Field]),
             CellOrdering ++ [Field];
         'false' ->
-            lager:debug("skipping JSON field ~p", [Field]),
+            lager:debug("skipping JSON field ~p: ~p", [Field, Value]),
             CellOrdering;
         'true' -> CellOrdering
     end.
@@ -483,7 +487,7 @@ create_csv_header(JObjs, Options) ->
                                ,get_headers(JObjs)
                                )
               end,
-    csv_ize(lists:reverse(Headers)).
+    [csv_ize(lists:reverse(Headers)), $\n].
 
 -spec header_map(kz_term:ne_binary(), kz_term:proplist()) -> kz_term:ne_binary().
 header_map(JObjHeader, HeaderMap) ->
@@ -496,18 +500,29 @@ header_map(JObjHeader, HeaderMap) ->
 json_objs_to_csv([], _) -> [];
 json_objs_to_csv(JObjs, Options) ->
     case props:is_true('build_headers', Options, 'true') of
-        'true' -> [create_csv_header(JObjs, Options), [json_to_csv(JObj) || JObj <- JObjs]];
-        'false' -> [json_to_csv(JObj) || JObj <- JObjs]
+        'true' -> [create_csv_header(JObjs, Options), [[json_to_csv(JObj), $\n] || JObj <- JObjs]];
+        'false' -> [[json_to_csv(JObj), $\n] || JObj <- JObjs]
     end.
 
+%% wrap cells in quotes
 -spec csv_ize(kz_json:path()) -> iolist().
 csv_ize([F|Rest]) ->
-    [<<"\"">>, kz_term:to_binary(F), <<"\"">>
-    ,[[<<",\"">>, try_to_binary(V), <<"\"">>] || V <- Rest]
-    ,<<"\n">>
+    [wrap_first_cell(try_to_binary(F))
+    ,[wrap_next_cell(try_to_binary(V)) || V <- Rest]
     ].
 
--spec try_to_binary(any()) -> binary().
+wrap_first_cell(?ZILCH) ->
+    [];
+wrap_first_cell(V) ->
+    [<<"\"">>, kz_term:to_binary(V), <<"\"">>].
+
+wrap_next_cell(?ZILCH) ->
+    [<<",">>];
+wrap_next_cell(V) ->
+    [<<",\"">>, V, <<"\"">>].
+
+-spec try_to_binary(any()) -> kz_term:api_binary().
+try_to_binary('undefined') -> 'undefined';
 try_to_binary(Value) ->
     try kz_term:to_binary(Value)
     catch
