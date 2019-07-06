@@ -20,7 +20,25 @@
 
 -spec init() -> 'ok'.
 init() ->
-    _ = tasks_bindings:bind(?TRIGGER_DAILY, ?MODULE, 'handle_req').
+    _ = tasks_bindings:bind(?TRIGGER_DAILY, ?MODULE, 'handle_req'),
+    maybe_start_now().
+
+maybe_start_now() ->
+    CreateOnDay = kapps_config:get_integer(?MOD_CAT, <<"creation_day">>, 28),
+    maybe_start_now(CreateOnDay, erlang:date()).
+
+maybe_start_now(CreateOn, {Year, Month, Day}) when Day >= CreateOn ->
+    P = kz_util:spawn(fun create_modbs/2, [Year, Month]),
+    log_starting_now(CreateOn, Day, P);
+maybe_start_now(_, _) -> 'ok'.
+
+-spec log_starting_now(kz_time:day(), kz_time:day(), pid()) -> 'ok'.
+log_starting_now(Day, Day, P) ->
+    log_started(P);
+log_starting_now(CreateOn, Day, P) ->
+    lager:info("modb creation date is ~p today is ~p so starting/resuming creation in ~p"
+              ,[CreateOn, Day, P]
+              ).
 
 -spec handle_req() -> 'ok'.
 handle_req() ->
@@ -29,9 +47,13 @@ handle_req() ->
 
 -spec handle_req(kz_time:day(), kz_time:date()) -> 'ok'.
 handle_req(Day, {Year, Month, Day}) ->
-    _P = kz_util:spawn(fun create_modbs/2, [Year, Month]),
-    lager:info("it is modb creation day! creating in ~p", [_P]);
+    P = kz_util:spawn(fun create_modbs/2, [Year, Month]),
+    log_started(P);
 handle_req(_CreateOnDay, {_Year, _Month, _Day}) -> 'ok'.
+
+-spec log_started(pid()) -> 'ok'.
+log_started(Pid) ->
+    lager:info("it is modb creation day! creating in ~p", [Pid]).
 
 -spec create_modbs() -> 'ok'.
 create_modbs() ->
