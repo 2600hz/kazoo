@@ -403,6 +403,7 @@ pages:
     - 'core/kazoo_number_manager/doc/maintenance.md'
     - 'core/kazoo_number_manager/doc/knm_rename_carrier.md'
     - 'core/kazoo_number_manager/doc/carrier_types.md'
+    - 'core/kazoo_number_manager/doc/knm_voxbone.md'
   - 'Kazoo AMQP':
     - 'core/kazoo_amqp/doc/README.md'
     - 'core/kazoo_amqp/doc/amqp_workers.md'

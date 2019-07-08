@@ -43,6 +43,10 @@
             orelse Prefix == <<"88*">>
        ).
 
+-define(IS_UIFN_TOLLFREE(Prefix)
+       ,Prefix == <<"800">>
+       ).
+
 -define(KEY_FEATURES_ALLOW, [<<"features">>, <<"allow">>]).
 -define(KEY_FEATURES_DENY, [<<"features">>, <<"deny">>]).
 
