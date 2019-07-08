@@ -9,11 +9,17 @@ If your development is on macOS, here are [extra steps](https://github.com/2600h
 
 ### Packages Required
 
+#### Debian 9
 ```shell
 sudo apt-get install build-essential libxslt-dev \
      zip unzip expat zlib1g-dev libssl-dev curl \
      libncurses5-dev git-core libexpat1-dev \
      htmldoc
+```
+
+#### CentOS 7
+```shell
+sudo yum install openssl-devel automake autoconf ncurses-devel gcc python-pip fop
 ```
 
 Note: `htmldoc` is required only if [you want to be able to download PDFs](./announcements.md#company-directory-pdf).
@@ -112,6 +118,20 @@ make
 
     -   [More on using releases with Kazoo](https://github.com/2600Hz/kazoo/blob/master/doc/engineering/releases.md)
 
+6.  Generate an Erlang development release
+
+    `make build-dev-release` will generate a development release.
+
+7.  Start an Erlang development release
+
+    CouchDB2 and RabbitMQ server have to be up and running prior to start Kazoo. The Development Environment Dependency section describes how these components should be built or installed.
+
+    `make release REL=<node name>` will start Kazoo dev release with an Erlang shell accessible.
+
+    The node name will become the longname in distributed Erlang, therefore, it is very important to set up local domain or DNS to resolve FQDN. To verify long name resolution, `erl -name test` should be able to start an Erlang shell with `node@fqdn` as the prompt. It's not uncommon for a dev machine without DNS set up that can result `erl -name test` to crash, which has been seen on Mac.
+
+    After the dev shell starts, we can verify Kazoo's epmd registration with the proper longname by this command under Kazoo Erlang shell expected to return a valid port instead of `noport`.
+    `erlang-shell> erl_epmd:port_please("<your node name>", "<fqdn of the server>").
 
 ## SUP
 
@@ -132,3 +152,20 @@ alias sup='KAZOO_ROOT=/opt/kazoo sup'
     `make sup_completion` creates `sup.bash`: a Bash completion file for the SUP command
 
     -   Copy or symlink this file to `/etc/bash_completion.d/sup.bash`
+
+## Development Environment Dependency
+Other dependencies include CouchDB and RabbitMQ. `yum` or `apt` install rabbitmq-server is sufficient. We recommend to clone the latest [CouchDB 2](https://github.com/apache/couchdb/) and follow [the build instructions](https://github.com/apache/couchdb/blob/master/INSTALL.Unix.md).
+
+To run a cluster of CouchDB nodes, please `yum` or `apt` install haproxy.
+
+To start out fresh, we recommend to run admin party with CouchDB that allows request to be made by anyone without user credential authentication. This is an example command to start 3 nodes cluster with haproxy automatically started and admin party enabled.
+
+```shell
+dev/run --with-admin-party-please -n 3 --with-haproxy
+```
+
+Once CouchDB, rabbitmq-server, and kazoo are all started. You should be able to verify their names registered with epmd with this command.
+
+```shell
+epmd -names
+```

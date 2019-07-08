@@ -35,9 +35,9 @@ start_link() ->
 
 -spec init(any()) -> {'ok', state()}.
 init(_) ->
-    lager:info("starting EPMD monitor"),
     {'match', [Name, Host]} = re:run(atom_to_list(node()), "([^@]+)@(.+)", [{'capture', 'all_but_first', 'list'}]),
 
+    lager:info("starting EPMD monitor with name ~s on host ~s", [Name, Host]),
     {'ok', check_epmd(#state{name=Name
                             ,host=Host
                             ,epmd_mod=net_kernel:epmd_module()
