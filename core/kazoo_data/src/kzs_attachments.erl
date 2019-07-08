@@ -198,9 +198,7 @@ handle_put_attachment(#{server := {App, Conn}}=Map, _Att, DbName, DocId, AName, 
 external_attachment(Map, DbName, JObj, Att, Props) ->
     Atts = kz_json:merge_jobjs(Att, kz_json:get_value(?KEY_STUB_ATTACHMENTS, JObj, kz_json:new())),
     case kzs_doc:save_doc(Map, DbName, kz_json:set_values([{?KEY_STUB_ATTACHMENTS, Atts}], JObj), []) of
-        {'ok', Doc} ->
-            kzs_publish:maybe_publish_doc(DbName, JObj, Doc),
-            {'ok', Doc, Props};
+        {'ok', Doc} -> {'ok', Doc, Props};
         Error -> Error
     end.
 
