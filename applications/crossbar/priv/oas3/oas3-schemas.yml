@@ -5464,7 +5464,7 @@
             - error
           'type': string
         'text':
-          'description': The transcribed text
+          'description': The text of the transcription
           'type': string
       'type': object
   'required':
