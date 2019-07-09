@@ -1094,7 +1094,9 @@ forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_numb
                     ]
                    ),
     case kvm_message:forward_message(Call, Message, SrcBoxId, NewMsgProps) of
-        {'ok', _NewCall} -> send_mwi_update(DestBox);
+        {'ok', _NewCall} ->
+            _ = kapps_call_command:b_prompt(<<"vm-forward_confirmed">>, Call),
+            send_mwi_update(DestBox);
         {'error', _, _Msg} ->
             lager:warning("failed to save forwarded voice mail message recorded media : ~p", [_Msg])
     end.
