@@ -173,7 +173,7 @@ is_authorized(AccountId, UserId, AppPermissions) ->
         {<<"specific">>, UserIds} ->
             lists:member(UserId, UserIds);
         {<<"admins">>, _} ->
-            kzd_user:is_account_admin(AccountId, UserId);
+            kzd_users:is_account_admin(AccountId, UserId);
         {_A, _U} ->
             lager:error("unknown data ~p : ~p", [_A, _U]),
             'false'
