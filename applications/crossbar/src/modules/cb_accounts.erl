@@ -287,8 +287,12 @@ post(Context, AccountId) ->
     case kzd_accounts:save(New) of
         {'ok', SavedAccount} ->
             Context1 = crossbar_doc:handle_datamgr_success(SavedAccount, Context),
-            _ = kz_util:spawn(fun notification_util:maybe_notify_account_change/2, [Existing, Context]),
-            _ = kz_util:spawn(fun provisioner_util:maybe_update_account/1, [Context1]),
+            _NotifyPid = kz_util:spawn(fun notification_util:maybe_notify_account_change/2, [Existing, Context]),
+            _ProvisionerPid = kz_util:spawn(fun provisioner_util:maybe_update_account/1, [Context1]),
+
+            lager:debug("saved account doc, spawned workers for notification in ~p and provisioner in ~p"
+                       ,[_NotifyPid, _ProvisionerPid]
+                       ),
 
             leak_pvt_fields(AccountId, Context1);
         {'error', Error} ->
@@ -410,8 +414,8 @@ delete(Context, AccountId, ?RESELLER) ->
 -spec maybe_update_descendants_count(kz_term:ne_binaries()) -> 'ok'.
 maybe_update_descendants_count([]) -> 'ok';
 maybe_update_descendants_count(Tree) ->
-    _ = kz_util:spawn(fun crossbar_util:descendants_count/1, [lists:last(Tree)]),
-    'ok'.
+    _CountPid = kz_util:spawn(fun crossbar_util:descendants_count/1, [lists:last(Tree)]),
+    lager:debug("descendants count calculation in ~p from last in ~p", [_CountPid, Tree]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -419,8 +423,8 @@ maybe_update_descendants_count(Tree) ->
 %%------------------------------------------------------------------------------
 -spec create_apps_store_doc(kz_term:ne_binary()) -> 'ok'.
 create_apps_store_doc(AccountId) ->
-    _ = kz_util:spawn(fun cb_apps_util:create_apps_store_doc/1, [AccountId]),
-    'ok'.
+    _AppsPid = kz_util:spawn(fun cb_apps_util:create_apps_store_doc/1, [AccountId]),
+    lager:debug("creating apps store doc in ~p", [_AppsPid]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -1255,8 +1259,7 @@ load_account_db(Context, AccountId) when is_binary(AccountId) ->
                                ,{fun cb_context:set_reseller_id/2, ResellerId}
                                ]);
         {'error', 'not_found'} ->
-            Msg = kz_json:from_list([{<<"cause">>, AccountId}
-                                    ]),
+            Msg = kz_json:from_list([{<<"cause">>, AccountId}]),
             cb_context:add_system_error('bad_identifier', Msg, Context);
         {'error', _R} ->
             crossbar_util:response_db_fatal(Context)
@@ -1347,11 +1350,9 @@ create_account_definition(Context) ->
     case kzd_accounts:save(JObj) of
         {'ok', AccountDef} ->
             lager:debug("account definition created: ~s", [kz_doc:revision(AccountDef)]),
-            cb_context:setters(Context
-                              ,[{fun cb_context:set_doc/2, AccountDef}
-                               ,{fun cb_context:set_resp_data/2, kz_doc:public_fields(AccountDef)}
-                               ,{fun cb_context:set_resp_status/2, 'success'}
-                               ]);
+
+            Context1 = crossbar_doc:handle_datamgr_success(AccountDef, Context),
+            leak_pvt_fields(kz_doc:id(AccountDef), Context1);
         {'error', _R} ->
             lager:debug("unable to create account definition: ~p", [_R]),
             throw(cb_context:add_system_error('datastore_fault', Context))

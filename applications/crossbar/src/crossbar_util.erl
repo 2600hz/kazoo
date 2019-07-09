@@ -413,8 +413,8 @@ move_account(?MATCH_ACCOUNT_RAW(AccountId), ToAccount=?NE_BINARY) ->
             move_account(AccountId, JObj, ToAccount, ToTree)
     end.
 
--spec move_account(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
-                          {'ok', kz_json:object()} |
+-spec move_account(kz_term:ne_binary(), kzd_accounts:doc(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
+                          {'ok', kzd_services:doc()} |
                           {'error', any()}.
 move_account(AccountId, JObj, ToAccount, ToTree) ->
     PreviousTree = kzd_accounts:tree(JObj),
@@ -427,6 +427,7 @@ move_account(AccountId, JObj, ToAccount, ToTree) ->
     case kzd_accounts:update(AccountId, Updates) of
         {'error', _E}=Error -> Error;
         {'ok', _AccountDoc} ->
+            lager:info("moved account ~s (~s)", [AccountId, kz_doc:revision(_AccountDoc)]),
             NewResellerId = kz_services_reseller:get_id(ToAccount),
             {'ok', _} = move_descendants(AccountId, ToTree, NewResellerId),
             Services = kazoo_services_maintenance:update_tree(AccountId, ToTree, NewResellerId),
@@ -438,8 +439,8 @@ move_account(AccountId, JObj, ToAccount, ToTree) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate_move(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                           {'error', any()} |
-                           {'ok', kz_json:object(), kz_term:ne_binaries()}.
+                           {'error', kz_datamgr:data_error() | 'forbidden'} |
+                           {'ok', kzd_accounts:doc(), kz_term:ne_binaries()}.
 validate_move(AccountId, ToAccount) ->
     case kzd_accounts:fetch(AccountId) of
         {'error', _E}=Error -> Error;
@@ -481,8 +482,8 @@ update_descendants_tree([Descendant|Descendants], Tree, NewResellerId, MovedAcco
             case kzd_accounts:update(Descendant, Updates) of
                 {'error', _E}=Error -> Error;
                 {'ok', _DescendantAccountJObj} ->
-
                     AccountId = kz_util:format_account_id(Descendant),
+                    lager:debug("updated descendant ~s (~s)", [AccountId, kz_doc:revision(_DescendantAccountJObj)]),
                     _ = kazoo_services_maintenance:update_tree(AccountId, ToTree, NewResellerId),
                     update_descendants_tree(Descendants, Tree, NewResellerId, MovedAccountId)
             end
@@ -528,14 +529,23 @@ disable_account(AccountId) ->
             E
     end.
 
--spec maybe_disable_account(kz_types:ne_binary()) -> any().
+-spec maybe_disable_account(kz_types:ne_binary()) ->
+                                   {'ok', kzd_accounts:doc()} |
+                                   {'error', kz_datamgr:data_error()}.
 maybe_disable_account(AccountId) ->
     {'ok', AccountJObj} = kzd_accounts:fetch(AccountId),
     case kzd_accounts:is_enabled(AccountJObj) of
-        'false' -> 'ok';
+        'false' -> {'ok', AccountJObj};
         'true' ->
             Update = [{kzd_accounts:path_enabled(), 'false'}],
-            kzd_accounts:update(AccountId, Update)
+            case kzd_accounts:update(AccountId, Update) of
+                {'ok', _UpdatedAccount}=OK ->
+                    lager:debug("disabled account ~s (~s)", [AccountId, kz_doc:revision(_UpdatedAccount)]),
+                    OK;
+                {'error', _E}=Error ->
+                    lager:info("failed to disable account ~s on save: ~p", [AccountId, _E]),
+                    Error
+            end
     end.
 
 %%------------------------------------------------------------------------------
@@ -638,7 +648,7 @@ change_pvt_enabled(IsEnabled, AccountId) ->
 
         Update = [{kzd_accounts:path_enabled(), IsEnabled}],
         {'ok', _UpdatedAccountDoc} = kzd_accounts:update(AccountId, Update),
-        lager:debug("account ~s update successful", [AccountId])
+        lager:debug("changed account ~s (~s) pvt_enabled", [AccountId, kz_doc:revision(_UpdatedAccountDoc)])
     catch
         _:R ->
             lager:debug("unable to set pvt_enabled to ~s on account ~s: ~p", [IsEnabled, AccountId, R]),
@@ -691,7 +701,7 @@ get_account_lang(AccountId) ->
     case kzd_accounts:fetch(AccountId) of
         {'ok', AccountJObj} ->
             case kzd_accounts:language(AccountJObj) of
-                undefined -> error;
+                'undefined' -> 'error';
                 Lang -> {'ok', Lang}
             end;
         {'error', _E} ->
@@ -807,7 +817,7 @@ get_token_restrictions(AuthModule, AccountId, OwnerId) ->
             get_priv_level_restrictions(Restrictions, PrivLevel)
     end.
 
--spec get_priv_level(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binary().
+-spec get_priv_level(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_term:api_binary().
 %% for api_auth tokens we force "admin" priv_level
 get_priv_level(_AccountId, 'undefined') ->
     cb_token_restrictions:default_priv_level();
@@ -1078,6 +1088,7 @@ get_account_devices(Account) ->
                                     {'ok', kz_term:proplist()} |
                                     {'error', any()}.
 load_descendants_count(ViewOptions) ->
+    lager:debug("counting descendants with ~p", [ViewOptions]),
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_descendants_count">>, ViewOptions) of
         {'error', _E}=Resp -> Resp;
         {'ok', []} -> {'error', 'no_descendants'};
@@ -1131,5 +1142,5 @@ update_descendants_count(AccountId, NewCount) ->
     Update = [{<<"descendants_count">>, NewCount}],
     case kzd_accounts:update(AccountId, Update) of
         {'error', _E} -> 'error';
-        {'ok', _AccountDoc} -> 'ok'
+        {'ok', _AccountDoc} -> lager:debug("updated descendants count to ~p for ~s", [NewCount, AccountId])
     end.

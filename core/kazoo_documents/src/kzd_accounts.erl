@@ -726,8 +726,8 @@ fetch(AccountId, 'accounts') ->
                             {'ok', doc()} |
                             kz_datamgr:data_error().
 open_cache_doc(Db, AccountId) ->
-    Options = [{'cache_failures','false'}
-              ,{'deleted','true'}
+    Options = [{'cache_failures', 'false'}
+              ,{'deleted', 'true'}
               ],
     kz_datamgr:open_cache_doc(Db, AccountId, Options).
 
@@ -1232,8 +1232,11 @@ save_accounts_doc(AccountDoc) ->
 -spec handle_saved_accounts_doc(doc(), kz_datamgr:data_error() | {'ok', doc()}) ->
                                        kz_datamgr:data_error() | {'ok', doc()}.
 handle_saved_accounts_doc(AccountDoc, {'ok', _}) ->
+    lager:debug("saved account ~s(~s)", [kz_doc:id(AccountDoc), kz_doc:revision(AccountDoc)]),
     {'ok', AccountDoc};
-handle_saved_accounts_doc(_, Error) -> Error.
+handle_saved_accounts_doc(_AccountDoc, Error) ->
+    lager:debug("failed to save 'accounts' doc ~s: ~p", [kz_doc:id(_AccountDoc), Error]),
+    Error.
 
 -spec update(kz_term:ne_binary(), kz_json:flat_proplist()) ->
                     {'ok', doc()} |
@@ -1248,8 +1251,10 @@ update(?NE_BINARY = Account, UpdateProps) ->
 
     case kz_datamgr:update_doc(AccountDb, AccountId, UpdateOptions) of
         {'error', _}=E -> E;
-        {'ok', _} ->
-            kz_datamgr:update_doc(?KZ_ACCOUNTS_DB, AccountId, UpdateOptions)
+        {'ok', AccountDoc} ->
+            handle_saved_accounts_doc(AccountDoc
+                                     ,kz_datamgr:update_doc(?KZ_ACCOUNTS_DB, AccountId, UpdateOptions)
+                                     )
     end.
 
 %% @equiv is_in_account_hierarchy(CheckFor, InAccount, false)
