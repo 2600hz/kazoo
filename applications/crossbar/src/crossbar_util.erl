@@ -604,7 +604,7 @@ load_apps(AccountId, UserId) ->
 
 -spec load_apps(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
 load_apps(AccountId, UserId, Language) ->
-    AppJObjs = cb_apps_util:authorized_apps(AccountId, UserId),
+    AppJObjs = cb_apps_util:allowed_apps(AccountId, UserId),
     [format_app(Language, AppJObj)
      || AppJObj <- AppJObjs
     ].
