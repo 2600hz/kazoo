@@ -126,24 +126,31 @@ allowed_apps_store_doc(AccountId, UserId, AppJObjs) ->
                        ),
             AppJObjs;
         {'ok', AppStoreJObj} ->
-            lists:map(fun(AppJObj) ->
-                              AppId = kz_doc:id(AppJObj),
-                              AppPermissions =
-                                  kz_json:get_ne_value(AppId, kzd_apps_store:apps(AppStoreJObj), kz_json:new()),
-                              case is_authorized(AccountId, UserId, AppId, AppStoreJObj)
-                                  andalso not is_blacklisted(AppJObj, AppStoreJObj)
-                              of
-                                  'true' ->
-                                      kz_json:merge([kzd_app:publish(AppJObj), AppPermissions]);
-                                  'false' ->
-                                      lager:debug("app store doc explicitly disables access to ~s"
-                                                 ,[kzd_app:name(AppJObj)]
-                                                 ),
-                                      kz_json:merge([kzd_app:unpublish(AppJObj), AppPermissions])
-                              end
-                      end
+            lists:map(allowed_apps_store_doc_map(AccountId, UserId, AppStoreJObj)
                      ,AppJObjs
                      )
+    end.
+
+-spec allowed_apps_store_doc_map(kz_term:ne_binary(), kz_term:api_binary(), kz_json:object()) ->
+                                        fun((kz_json:object()) -> kz_json:object()).
+allowed_apps_store_doc_map(AccountId, UserId, AppStoreJObj) ->
+    fun(AppJObj) ->
+            AppId = kz_doc:id(AppJObj),
+            case kz_json:get_ne_json_value(AppId, kzd_apps_store:apps(AppStoreJObj)) of
+                'undefined' -> AppJObj;
+                AppPermissions ->
+                    case not is_blacklisted(AppJObj, AppStoreJObj)
+                        andalso is_authorized(AccountId, UserId, AppPermissions)
+                    of
+                        'true' ->
+                            kz_json:merge([kzd_app:publish(AppJObj), AppPermissions]);
+                        'false' ->
+                            lager:debug("app store doc explicitly disables access to ~s"
+                                       ,[kzd_app:name(AppJObj)]
+                                       ),
+                            kz_json:merge([kzd_app:unpublish(AppJObj), AppPermissions])
+                    end
+            end
     end.
 
 -spec get_apps_store_doc(kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
@@ -154,13 +161,12 @@ get_apps_store_doc(AccountId) ->
         Result -> Result
     end.
 
--spec is_authorized(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:ne_binary(), kz_json:object()) -> boolean().
-is_authorized(_, 'undefined', _, _) ->
+-spec is_authorized(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:object()) -> boolean().
+is_authorized(_, 'undefined', _) ->
     'true';
-is_authorized(AccountId, UserId, AppId, AppStoreJObj) ->
-    AppJObj = kz_json:get_value(AppId, kzd_apps_store:apps(AppStoreJObj)),
-    AllowedType = kzd_app:allowed_users(AppJObj, <<"specific">>),
-    SpecificIds = get_specific_ids(kzd_app:users(AppJObj)),
+is_authorized(AccountId, UserId, AppPermissions) ->
+    AllowedType = kzd_app:allowed_users(AppPermissions, <<"specific">>),
+    SpecificIds = get_specific_ids(kzd_app:users(AppPermissions)),
     case {AllowedType, SpecificIds} of
         {<<"all">>, _} -> 'true';
         {<<"specific">>, []} -> 'false';
