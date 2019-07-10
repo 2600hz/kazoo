@@ -47,6 +47,7 @@
 -define(DEFAULT_EXCHANGE_OPTIONS, [{<<"passive">>, 'true'}] ).
 -define(DEFAULT_EXCHANGE_OPTIONS_JOBJ, kz_json:from_list(?DEFAULT_EXCHANGE_OPTIONS) ).
 -define(DEFAULT_BROKER, kz_amqp_connections:primary_broker()).
+-define(DEFAULT_QUEUE_NAME, <<"smsc_inbound_queue_sms">>).
 
 -define(OUTBOUND_POOL_ARG(K),[<<"default">>, <<"outbound">>, <<"pool">>, K]).
 -define(OUTBOUND_EXCHANGE_ARG(K),[<<"default">>, <<"outbound">>, <<"pool">>, <<"exchange">>, K]).
