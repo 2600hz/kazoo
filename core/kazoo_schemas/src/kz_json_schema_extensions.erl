@@ -5,8 +5,7 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_json_schema_extensions).
 
--export([extra_validator/3
-        ]).
+-export([extra_validator/3]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
@@ -32,7 +31,7 @@ extended_regexp(Value, State, _Options) ->
 -spec regexp_validation(jesse:json_term(), jesse_state:state()) -> jesse_state:state().
 regexp_validation(Value, State) ->
     case re:compile(Value) of
-        {error, _Reason} ->
+        {'error', _Reason} ->
             ErrMsg = <<"invalid regular expression: '", Value/binary,"'">>,
             jesse_error:handle_data_invalid({'external_error', ErrMsg}, Value, State);
         _ ->
@@ -134,16 +133,16 @@ validate_module_data(Schema, Value, State) ->
 validate_attachment_oauth_doc_id(Value, State) ->
     lager:debug("validating oauth_doc_id: ~s", [Value]),
     case kz_datamgr:open_doc(<<"system_auth">>, Value) of
-        {ok, _Obj} ->
+        {'ok', _Obj} ->
             State;
-        {error, empty_doc_id} ->
+        {'error', 'empty_doc_id'} ->
             ErrorMsg = <<"empty oauth_doc_id">>,
             jesse_error:handle_data_invalid({'external_error', ErrorMsg}, Value, State);
-        {error, not_found} ->
+        {'error', 'not_found'} ->
             ErrorMsg = <<"Invalid oauth_doc_id: ", Value/binary>>,
             lager:debug("~s", [ErrorMsg]),
             jesse_error:handle_data_invalid({'external_error', ErrorMsg}, Value, State);
-        {error, _Err} ->
+        {'error', _Err} ->
             ErrorMsg = <<"Error validating oauth_doc_id: ", Value/binary>>,
             lager:debug("~s : ~p", [ErrorMsg, _Err]),
             jesse_error:handle_data_invalid({'external_error', ErrorMsg}, Value, State)
@@ -164,22 +163,23 @@ maybe_check_param_stability_level(SystemSL, ParamSL, Value, State) ->
     SystemSLInt = stability_level_to_int(SystemSL),
     ParamSLInt = stability_level_to_int(ParamSL),
     case check_param_stability_level(SystemSLInt, ParamSLInt) of
-        valid ->
+        'valid' ->
             State;
-        invalid ->
+        'invalid' ->
             ErrorMsg = <<"Disallowed parameter, it has lower stability level (",
                          ParamSL/binary, ") than system's stability level (",
-                         SystemSL/binary, ")">>,
+                         SystemSL/binary, ")"
+                       >>,
             lager:debug("~s", [ErrorMsg]),
             jesse_error:handle_data_invalid({'external_error', ErrorMsg}, Value, State)
     end.
 
 check_param_stability_level(SystemSLInt, ParamSLInt) when ParamSLInt < SystemSLInt ->
-    invalid;
+    'invalid';
 check_param_stability_level(_SystemSLInt, _ParamSLInt) ->
-    valid.
+    'valid'.
 
 -spec stability_level_to_int(kz_term:ne_binary()) -> pos_integer().
-stability_level_to_int(<<"stable">>) -> 3;
-stability_level_to_int(<<"beta">>) -> 2;
-stability_level_to_int(<<"alpha">>) -> 1.
+stability_level_to_int(<<"stable">>) -> 30;
+stability_level_to_int(<<"beta">>) -> 20;
+stability_level_to_int(<<"alpha">>) -> 10.
