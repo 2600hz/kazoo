@@ -24,11 +24,10 @@
 -include("crossbar.hrl").
 -include_lib("kazoo_tasks/include/tasks.hrl").
 
--define(SCHEMA_TASKS, <<"tasks">>).
+-define(SCHEMA_TASKS, "tasks").
 
 -define(QS_CATEGORY, <<"category">>).
 -define(QS_ACTION, <<"action">>).
--define(RD_RECORDS, <<"records">>).
 -define(RV_FILENAME, <<"file_name">>).
 
 -define(PATH_STOP, <<"stop">>).
@@ -264,9 +263,11 @@ validate_tasks(Context, ?HTTP_PUT) ->
          ,kz_json:get_ne_binary_value(?QS_ACTION, QS)
          }
     of
-        {?NE_BINARY=_Cat, ?NE_BINARY=_Act} ->
-            lager:debug("validating doing '~s' on cat '~s'", [_Cat, _Act]),
-            validate_new_attachment(Context, is_content_type_csv(Context));
+        {<<Category/binary>>, <<Action/binary>>} ->
+            lager:debug("validating task '~s' / '~s'", [Category, Action]),
+            validate_new_attachment(cb_context:store(Context, 'task', {Category, Action})
+                                   ,is_content_type_csv(Context)
+                                   );
         {_, _} -> cb_context:add_system_error('invalid request', Context)
     end.
 
@@ -299,19 +300,38 @@ validate_new_attachment(Context, 'true') ->
             cb_context:add_validation_error(<<"csv">>, <<"format">>, Msg, Context)
     end;
 validate_new_attachment(Context, 'false') ->
-    Records = kz_json:get_value(?RD_RECORDS, cb_context:req_data(Context)),
-    case kz_term:is_empty(Records) of
-        'true' ->
+    case kzd_tasks:records(cb_context:req_data(Context), []) of
+        [] ->
             %% For tasks without input data.
             cb_context:set_resp_status(Context, 'success');
-        'false' ->
-            Ctx = cb_context:validate_request_data(?SCHEMA_TASKS, Context),
-            case cb_context:resp_status(Ctx) of
-                'success' ->
-                    lager:debug("records validated"),
-                    cb_context:store(Ctx, 'total_rows', length(Records));
-                _ -> Ctx
-            end
+        Records ->
+            validate_schemas(Context, Records, cb_context:fetch(Context, 'task'))
+    end.
+
+-spec validate_schemas(cb_context:context(), kz_json:objects(), {kz_term:ne_binary(), kz_term:ne_binary()}) ->
+                              cb_context:context().
+validate_schemas(Context, Records, {Category, Action}) ->
+    Schema = merge_task_schemas(Category, Action),
+    ValidatedContext = cb_context:validate_request_data(Schema, Context),
+
+    case cb_context:resp_status(ValidatedContext) of
+        'success' ->
+            cb_context:store(ValidatedContext, 'total_rows', length(Records));
+        _Status -> ValidatedContext
+    end.
+
+-spec merge_task_schemas(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
+merge_task_schemas(Category, Action) ->
+    TasksSchema = load(<<?SCHEMA_TASKS>>),
+    TaskSchema = load(<<?SCHEMA_TASKS, ".", Category/binary, ".", Action/binary>>),
+
+    kz_json:merge(TasksSchema, TaskSchema).
+
+-spec load(kz_term:ne_binary()) -> kz_json:object().
+load(SchemaId) ->
+    case kz_json_schema:load(SchemaId) of
+        {'ok', SchemaJObj} -> SchemaJObj;
+        {'error', _} -> kz_json:new()
     end.
 
 %%------------------------------------------------------------------------------
@@ -320,16 +340,17 @@ validate_new_attachment(Context, 'false') ->
 %%------------------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    QS = cb_context:query_string(Context),
-    Category = kz_json:get_value(?QS_CATEGORY, QS),
-    Action   = kz_json:get_value(?QS_ACTION, QS),
+    {Category, Action} = cb_context:fetch(Context, 'task'),
+
     IsCSV = is_content_type_csv(Context),
+
     CSVorJSON = attached_data(Context, IsCSV),
+
     case kz_tasks:new(cb_context:auth_account_id(Context)
                      ,task_account_id(Context)
                      ,Category
                      ,Action
-                     ,cb_context:fetch(Context, total_rows)
+                     ,cb_context:fetch(Context, 'total_rows')
                      ,CSVorJSON
                      ,cb_context:req_value(Context, ?RV_FILENAME)
                      )
@@ -383,18 +404,18 @@ patch(Context, TaskId, ?PATH_STOP) ->
     Req = [{<<"Task-ID">>, TaskId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    {ok, Resp} = kz_amqp_worker:call(Req
-                                    ,fun kapi_tasks:publish_stop_req/1
-                                    ,fun kapi_tasks:stop_resp_v/1
-                                    ),
+    {'ok', Resp} = kz_amqp_worker:call(Req
+                                      ,fun kapi_tasks:publish_stop_req/1
+                                      ,fun kapi_tasks:stop_resp_v/1
+                                      ),
     case kapi_tasks:reply(Resp) =:= <<"not_running">> of
-        false -> crossbar_util:response(kapi_tasks:reply(Resp), Context);
-        true ->
+        'false' -> crossbar_util:response(kapi_tasks:reply(Resp), Context);
+        'true' ->
             Msg = kz_json:from_list(
                     [{<<"reason">>, <<"task is not running">>}
                     ,{<<"cause">>, TaskId}
                     ]),
-            cb_context:add_system_error(bad_identifier, Msg, Context)
+            cb_context:add_system_error('bad_identifier', Msg, Context)
     end.
 
 %%------------------------------------------------------------------------------
@@ -583,7 +604,7 @@ attached_data(Context, 'true') ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
     kz_json:get_value(<<"contents">>, FileJObj);
 attached_data(Context, 'false') ->
-    kz_json:get_value(?RD_RECORDS, cb_context:req_data(Context)).
+    cb_context:req_data(Context).
 
 -spec save_attached_data(cb_context:context(), kz_term:ne_binary(), kz_tasks:input(), boolean()) ->
                                 cb_context:context().
@@ -595,13 +616,10 @@ save_attached_data(Context, TaskId, CSV, 'true') ->
 save_attached_data(Context, _TaskId, 'undefined', 'false') ->
     lager:debug("no attachment to save for task ~s", [_TaskId]),
     Context;
-save_attached_data(Context, TaskId, Records, 'false') ->
-    lager:debug("converting json to csv before saving"),
-    lager:debug("csv fields found: ~p", [kz_json:get_keys(hd(Records))]),
-    CSV = kz_csv:json_to_iolist(Records),
+save_attached_data(Context, TaskId, ReqData, 'false') ->
     lager:debug("saving ~s attachment in task ~s", [?KZ_TASKS_ANAME_IN, TaskId]),
-    Options = [{'content_type', <<"text/csv">>}],
-    crossbar_doc:save_attachment(TaskId, ?KZ_TASKS_ANAME_IN, CSV, Context, Options).
+    Options = [{'content_type', <<"application/json">>}],
+    crossbar_doc:save_attachment(TaskId, ?KZ_TASKS_ANAME_IN, kz_json:encode(ReqData), Context, Options).
 
 -spec help(cb_context:context()) -> cb_context:context().
 help(Context) ->

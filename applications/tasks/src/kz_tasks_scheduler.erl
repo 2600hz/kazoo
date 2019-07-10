@@ -549,7 +549,7 @@ log_elapsed_time(#{started := Start
 handle_call_start_task(#{finished := Finished
                         ,id := _Id
                         }, State)
-  when Finished /= 'undefined' ->
+  when Finished =/= 'undefined' ->
     lager:info("task ~s in a finished state: ~p", [_Id, Finished]),
     ?REPLY(State, {'error', 'already_started'});
 handle_call_start_task(Task=#{id := TaskId
@@ -567,6 +567,7 @@ handle_call_start_task(Task=#{id := TaskId
     lager:debug("worker type: ~s", [Worker]),
     ExtraArgs = #{account_id => AccountId
                  ,auth_account_id => AuthAccountId
+                 ,req_data => maps:get('req_data', Task, 'undefined')
                  },
     lager:debug("extra args: ~p", [ExtraArgs]),
     %% Task needs to run where App is started.

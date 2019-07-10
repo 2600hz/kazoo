@@ -38,8 +38,8 @@ create(API, QueryString) ->
 %% @doc Craete an input task with CSV request body
 %% @end
 %%------------------------------------------------------------------------------
--spec create(pqc_cb_api:state(), string(), iolist()) -> pqc_cb_api:response().
-create(API, QueryString, CSV) ->
+-spec create(pqc_cb_api:state(), string(), iodata() | kz_json:object()) -> pqc_cb_api:response().
+create(API, QueryString, CSV) when is_list(CSV) orelse is_binary(CSV) ->
     TaskURL = tasks_url(QueryString),
     RequestHeaders = pqc_cb_api:request_headers(API, [{"content-type", "text/csv"}]),
     Expectations = [#expectation{response_codes = [201, 404, 409]}],
@@ -49,7 +49,20 @@ create(API, QueryString, CSV) ->
                            ,TaskURL
                            ,RequestHeaders
                            ,CSV
+                           );
+create(API, QueryString, JObj) ->
+    TaskURL = tasks_url(QueryString),
+    RequestHeaders = pqc_cb_api:request_headers(API, [{"content-type", "application/json"}]),
+    RequestEnvelope = pqc_cb_api:create_envelope(JObj),
+    Expectations = [#expectation{response_codes = [201, 404, 409]}],
+
+    pqc_cb_api:make_request(Expectations
+                           ,fun kz_http:put/3
+                           ,TaskURL
+                           ,RequestHeaders
+                           ,kz_json:encode(RequestEnvelope)
                            ).
+
 
 %%------------------------------------------------------------------------------
 %% @doc Craete a noinput task for an account
@@ -72,8 +85,8 @@ create_account(API, AccountId, QueryString) ->
 %% @doc Craete an input task with CSV request body for an account
 %% @end
 %%------------------------------------------------------------------------------
--spec create_account(pqc_cb_api:state(), kz_term:ne_binary(), string(), iolist()) -> pqc_cb_api:response().
-create_account(API, AccountId, QueryString, CSV) ->
+-spec create_account(pqc_cb_api:state(), kz_term:ne_binary(), string(), iodata() | kz_json:object()) -> pqc_cb_api:response().
+create_account(API, AccountId, QueryString, CSV) when is_binary(CSV) orelse is_list(CSV) ->
     TaskURL = tasks_url(AccountId, QueryString),
     RequestHeaders = pqc_cb_api:request_headers(API, [{"content-type", "text/csv"}]),
     Expectations = [#expectation{response_codes = [201, 404, 409]}],
@@ -83,6 +96,18 @@ create_account(API, AccountId, QueryString, CSV) ->
                            ,TaskURL
                            ,RequestHeaders
                            ,CSV
+                           );
+create_account(API, AccountId, QueryString, JObj) ->
+    TaskURL = tasks_url(AccountId, QueryString),
+    RequestHeaders = pqc_cb_api:request_headers(API, [{"content-type", "application/json"}]),
+    RequestEnvelope = pqc_cb_api:create_envelope(JObj),
+    Expectations = [#expectation{response_codes = [201, 404, 409]}],
+
+    pqc_cb_api:make_request(Expectations
+                           ,fun kz_http:put/3
+                           ,TaskURL
+                           ,RequestHeaders
+                           ,kz_json:encode(RequestEnvelope)
                            ).
 
 -spec execute(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().

@@ -54,18 +54,17 @@ start(TaskId, API, ExtraArgs) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init(kz_tasks:id(), kz_json:object(), kz_tasks:extra_args()) -> {ok, state()} |
-                                                                      {error, any()}.
-init(TaskId, API, ExtraArgs) ->
-    case kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, ?KZ_TASKS_ANAME_IN) of
-        {'error', _R}=Error ->
-            lager:error("failed loading attachment ~s from ~s/~s: ~p"
-                       ,[?KZ_TASKS_ANAME_IN, ?KZ_TASKS_DB, TaskId, _R]
-                       ),
-            Error;
-        {'ok', CSV} ->
-            init_from_csv(TaskId, API, ExtraArgs, CSV)
-    end.
+-spec init(kz_tasks:id(), kz_json:object(), kz_tasks:extra_args()) -> {'ok', state()} |
+                                                                      {'error', any()}.
+init(TaskId, API, #{req_data := <<CSV/binary>>}=ExtraArgs) ->
+    init_from_csv(TaskId, API, ExtraArgs, CSV);
+init(_TaskId, _API, #{req_data := 'undefined'}) ->
+    lager:error("failed loading input data"),
+    {'error', 'not_found'};
+init(TaskId, API, #{req_data := JObj}=ExtraArgs) ->
+    Records = kzd_tasks:records(JObj, []),
+    CSV = kz_csv:json_to_iolist(Records),
+    init_from_csv(TaskId, API, ExtraArgs, CSV).
 
 -spec init_from_csv(kz_tasks:id(), kz_json:object(), kz_tasks:extra_args(), binary()) ->
                            {'ok', state()} |
@@ -173,7 +172,7 @@ new_state_after_writing(NewColumns, WrittenSucceeded, WrittenFailed
 
 -spec is_task_successful(kz_csv:mapped_row(), kz_tasks:iterator(), state()) ->
                                 {boolean(), kz_tasks:columns(), non_neg_integer(), kz_tasks:iterator()} |
-                                stop.
+                                'stop'.
 is_task_successful(MappedRow
                   ,IterValue
                   ,State=#state{api = API
@@ -196,7 +195,7 @@ is_task_successful(MappedRow
                     {'true', Columns, Written, NewIterValue};
                 [{#{?OUTPUT_CSV_HEADER_ERROR := ?NE_BINARY}=NewMappedRowOrMappedRows, NewIterValue}] ->
                     {Columns,Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
-                    {false, Columns, Written, NewIterValue};
+                    {'false', Columns, Written, NewIterValue};
                 [{#{}=NewMappedRowOrMappedRows, NewIterValue}] ->
                     {Columns,Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
                     {'true', Columns, Written, NewIterValue};
@@ -211,7 +210,7 @@ is_task_successful(MappedRow
                     {'true', Columns, Written, NewIterValue};
                 [#{?OUTPUT_CSV_HEADER_ERROR := ?NE_BINARY}=NewMappedRowOrMappedRows=NewIterValue] ->
                     {Columns,Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
-                    {false, Columns, Written, NewIterValue};
+                    {'false', Columns, Written, NewIterValue};
                 [#{}=NewMappedRowOrMappedRows=NewIterValue] ->
                     {Columns,Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
                     {'true', Columns, Written, NewIterValue};
@@ -239,12 +238,12 @@ store_return(State, MappedRow, Rows=[_List|_]) when is_list(_List) ->
         lists:unzip([store_return(State, MappedRow, Row) || Row <- Rows]),
     {sets:union(ListOfColumns), lists:sum(ListOfWritten)};
 store_return(#state{task_id = TaskId
-                   ,output_header = {replace, Header}
+                   ,output_header = {'replace', Header}
                    }, _InputMappedRow, OutputMappedRow)
   when is_map(OutputMappedRow) ->
     write_row(TaskId, Header, OutputMappedRow);
 store_return(#state{task_id = TaskId
-                   ,output_header = {replace, Header}
+                   ,output_header = {'replace', Header}
                    }, InputMappedRow, Reason) ->
     MappedRow = InputMappedRow#{?OUTPUT_CSV_HEADER_ERROR => Reason},
     write_row(TaskId, Header, MappedRow);
@@ -276,7 +275,7 @@ write_row(TaskId, IOList) ->
 -spec columns(kz_csv:mapped_row()) -> kz_tasks:columns().
 columns(MappedRow) ->
     Found = [K || {K,V} <- maps:to_list(MappedRow),
-                  V =/= undefined
+                  V =/= 'undefined'
             ],
     sets:from_list(Found).
 
@@ -287,8 +286,8 @@ reason(?NE_BINARY=Reason) ->
     kz_csv:row_to_iolist([Reason]);
 reason(_) -> <<>>.
 
--spec write_output_csv_header(kz_tasks:id(), kz_tasks:output_header()) -> ok | {error, any()}.
-write_output_csv_header(TaskId, {replace,Header}) ->
+-spec write_output_csv_header(kz_tasks:id(), kz_tasks:output_header()) -> 'ok' | {'error', any()}.
+write_output_csv_header(TaskId, {'replace', Header}) ->
     write_output_csv_header(TaskId, Header);
 write_output_csv_header(TaskId, Header) ->
     Data = [kz_csv:row_to_iolist(Header), $\n],
@@ -297,7 +296,7 @@ write_output_csv_header(TaskId, Header) ->
 -spec output_csv_header(kz_json:object(), kz_csv:row()) -> kz_tasks:output_header().
 output_csv_header(API, HeaderRow) ->
     case kz_tasks_scheduler:get_output_header(API) of
-        H={replace, _FullHeader} -> H;
+        H={'replace', _FullHeader} -> H;
         HeaderRHS -> HeaderRow ++ HeaderRHS
     end.
 
