@@ -9,6 +9,10 @@
             "minimum": 62167219200,
             "type": "integer"
         },
+        "is_reseller": {
+            "description": "Is the CDR CSV being generated for a reseller",
+            "type": "boolean"
+        },
         "store_csv": {
             "default": false,
             "descritpion": "Whether to store the generated CSV using the account's storage plan",
