@@ -300,25 +300,26 @@ validate_new_attachment(Context, 'true') ->
             cb_context:add_validation_error(<<"csv">>, <<"format">>, Msg, Context)
     end;
 validate_new_attachment(Context, 'false') ->
-    case kzd_tasks:records(cb_context:req_data(Context), []) of
-        [] ->
-            %% For tasks without input data.
-            cb_context:set_resp_status(Context, 'success');
-        Records ->
-            validate_schemas(Context, Records, cb_context:fetch(Context, 'task'))
-    end.
+    Records = kzd_tasks:records(cb_context:req_data(Context), []),
+    validate_schemas(Context, Records, cb_context:fetch(Context, 'task')).
 
 -spec validate_schemas(cb_context:context(), kz_json:objects(), {kz_term:ne_binary(), kz_term:ne_binary()}) ->
                               cb_context:context().
 validate_schemas(Context, Records, {Category, Action}) ->
     Schema = merge_task_schemas(Category, Action),
-    ValidatedContext = cb_context:validate_request_data(Schema, Context),
+    AmendedSchema = maybe_amend_schema(Context, Category, Action, Schema),
+    lager:info("validating against schema ~s", [kz_json:encode(AmendedSchema)]),
+    ValidatedContext = cb_context:validate_request_data(AmendedSchema, Context),
 
     case cb_context:resp_status(ValidatedContext) of
         'success' ->
-            cb_context:store(ValidatedContext, 'total_rows', length(Records));
+            cb_context:store(ValidatedContext, 'total_rows', total_rows(Records));
         _Status -> ValidatedContext
     end.
+
+-spec total_rows(kz_json:objects()) -> kz_term:api_pos_integer().
+total_rows([]) -> 'undefined';
+total_rows(Records) -> length(Records).
 
 -spec merge_task_schemas(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 merge_task_schemas(Category, Action) ->
@@ -333,6 +334,28 @@ load(SchemaId) ->
         {'ok', SchemaJObj} -> SchemaJObj;
         {'error', _} -> kz_json:new()
     end.
+
+-spec maybe_amend_schema(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json_schema:schema()) ->
+                                kz_json_schema:schema().
+maybe_amend_schema(Context, <<"billing">>, <<"dump">>, Schema) ->
+    IsReseller = kz_services_reseller:is_reseller(cb_context:auth_account_id(Context)),
+    lager:debug("defaulting is_reseller to ~s", [IsReseller]),
+    kz_json:insert_values([{[<<"properties">>, <<"is_reseller">>, <<"default">>], IsReseller}
+                          ,{[<<"properties">>, <<"from_s">>, <<"default">>], default_from_s()}
+                          ,{[<<"properties">>, <<"to_s">>, <<"default">>], default_to_s()}
+                          ]
+                         ,Schema
+                         );
+maybe_amend_schema(_Context, _Category, _Action, Schema) -> Schema.
+
+-spec default_from_s() -> kz_time:gregorian_seconds().
+default_from_s() ->
+    {Year, Month, _} = erlang:date(),
+    calendar:datetime_to_gregorian_seconds({{Year, Month, 1}, {0, 0, 0}}).
+
+-spec default_to_s() -> kz_time:gregorian_seconds().
+default_to_s() ->
+    kz_time:now_s().
 
 %%------------------------------------------------------------------------------
 %% @doc If the HTTP verb is PUT, execute the actual action, usually a db save.
