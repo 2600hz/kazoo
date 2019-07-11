@@ -30,6 +30,7 @@
 -export_type([validation_error/0
              ,validation_errors/0
              ,extra_validator_options/0
+             ,schema/0
              ]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
@@ -37,6 +38,7 @@
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
+-type schema() :: kz_json:object().
 
 -type extra_validator() :: fun((jesse:json_term(), jesse_state:state()) -> jesse_state:state()).
 -type validator_option() :: 'use_defaults' | 'apply_defaults_to_empty_objects'.
@@ -80,7 +82,7 @@ setup_extra_validator(Options) ->
           end,
     props:set_value({'external_validator', Fun}, Options).
 
--type load_return() :: {'ok', kz_json:object()} |
+-type load_return() :: {'ok', schema()} |
                        {'error', 'not_found'} |
                        kz_datamgr:data_error().
 -ifdef(TEST).
@@ -89,7 +91,7 @@ load(Schema) -> fload(Schema).
 -spec load(kz_term:ne_binary() | string()) -> load_return().
 load(<<"./", Schema/binary>>) -> load(Schema);
 load(<<"file://", Schema/binary>>) -> load(Schema);
-load(<<_/binary>> = Schema) ->
+load(<<Schema/binary>>) ->
     case kz_datamgr:open_cache_doc(?KZ_SCHEMA_DB, Schema, [{'cache_failures', ['not_found']}]) of
         {'error', _E}=E -> E;
         {'ok', JObj} -> {'ok', kz_json:insert_value(<<"id">>, Schema, JObj)}
@@ -97,41 +99,45 @@ load(<<_/binary>> = Schema) ->
 load(Schema) -> load(kz_term:to_binary(Schema)).
 -endif.
 
--spec fload(kz_term:ne_binary() | string()) -> {'ok', kz_json:object()} |
+-spec fload(kz_term:ne_binary() | string()) -> {'ok', schema()} |
                                                {'error', 'not_found'}.
 fload(<<"./", Schema/binary>>) -> fload(Schema);
 fload(<<"file://", Schema/binary>>) -> fload(Schema);
-fload(<<_/binary>> = Schema) ->
-    case filelib:is_regular(Schema) of
-        'true' -> fload_file(Schema);
-        'false' -> find_and_fload(Schema)
+fload(<<SchemaId/binary>>) ->
+    case filelib:is_regular(SchemaId) of
+        'true' -> fload_file(SchemaId);
+        'false' -> find_and_fload(SchemaId)
     end;
-fload(Schema) -> fload(kz_term:to_binary(Schema)).
+fload(SchemaId) -> fload(kz_term:to_binary(SchemaId)).
 
 -spec find_and_fload(kz_term:ne_binary()) ->
-                            {'ok', kz_json:object()} |
+                            {'ok', schema()} |
                             {'error', 'not_found'}.
-find_and_fload(Schema) ->
+find_and_fload(SchemaId) ->
     PrivDir = code:priv_dir('crossbar'),
-    SchemaPath = filename:join([PrivDir, "couchdb", "schemas", maybe_add_ext(Schema)]),
+    SchemaPath = filename:join([PrivDir, "couchdb", "schemas", maybe_add_ext(SchemaId)]),
     case filelib:is_regular(SchemaPath) of
         'true' -> fload_file(SchemaPath);
         'false'-> {'error', 'not_found'}
     end.
 
--spec fload_file(kz_term:ne_binary()) -> {'ok', kz_json:object()}.
+-spec fload_file(file:filename_all()) -> {'ok', schema()} |
+                                         {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 fload_file(SchemaPath) ->
     Schema = filename:basename(SchemaPath, ".json"),
     case file:read_file(SchemaPath) of
         {'ok', SchemaJSON} -> {'ok', kz_json:insert_value(<<"id">>, Schema, kz_json:decode(SchemaJSON))};
-        Error -> Error
+        {'error', 'not_found'}=NotFound -> NotFound;
+        {'error', _Error} ->
+            lager:error("failed to fload ~s: ~p", [SchemaPath, _Error]),
+            {'error', 'not_found'}
     end.
 
--spec maybe_add_ext(kz_term:ne_binary()) -> kz_term:ne_binary().
-maybe_add_ext(Schema) ->
-    case filename:extension(Schema) of
-        <<".json">> -> Schema;
-        _Ext -> <<Schema/binary, ".json">>
+-spec maybe_add_ext(file:filename_all()) -> kz_term:ne_binary().
+maybe_add_ext(SchemaPath) ->
+    case filename:extension(SchemaPath) of
+        <<".json">> -> SchemaPath;
+        _Ext -> <<SchemaPath/binary, ".json">>
     end.
 
 -type diff_verbosity() :: 'undefined' | 'diff' | 'schema'.
@@ -211,13 +217,13 @@ maybe_log_diff_error(_, _SchemaName, _E) ->
     io:format("failed to load ~s: ~p~n", [_SchemaName, _E]).
 
 -spec delete(kz_term:ne_binary()) -> 'ok'.
-delete(<<Schema/binary>>) ->
-    case load(Schema) of
+delete(<<SchemaId/binary>>) ->
+    case load(SchemaId) of
         {'ok', Doc} ->
             {'ok', _} = kz_datamgr:del_doc(?KZ_SCHEMA_DB, Doc),
-            io:format("deleted schema ~s~n", [Schema]);
+            io:format("deleted schema ~s~n", [SchemaId]);
         {'error', _E} ->
-            io:format("failed to find schema ~s: ~p~n", [Schema, _E])
+            io:format("failed to find schema ~s: ~p~n", [SchemaId, _E])
     end.
 
 -spec flush() -> 'ok'.
@@ -225,12 +231,12 @@ flush() ->
     kz_datamgr:flush_cache_docs(?KZ_SCHEMA_DB).
 
 -spec flush(kz_term:ne_binary()) -> 'ok'.
-flush(Schema) ->
-    kz_datamgr:flush_cache_doc(?KZ_SCHEMA_DB, Schema).
+flush(<<SchemaId/binary>>) ->
+    kz_datamgr:flush_cache_doc(?KZ_SCHEMA_DB, SchemaId).
 
--spec add_defaults(kz_term:api_object() | kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object()) -> kz_term:api_object().
-add_defaults(JObj, <<_/binary>> = Schema) ->
-    {'ok', SchemaJObj} = load(Schema),
+-spec add_defaults(kz_term:api_object() | kz_term:ne_binary(), kz_term:ne_binary() | schema()) -> kz_term:api_object().
+add_defaults(JObj, <<SchemaId/binary>>) ->
+    {'ok', SchemaJObj} = load(SchemaId),
     add_defaults(JObj, SchemaJObj);
 add_defaults(JObj, SchemaJObj) ->
     try validate(SchemaJObj, JObj) of
@@ -244,7 +250,7 @@ add_defaults(JObj, SchemaJObj) ->
             JObj
     end.
 
--spec validate(kz_term:ne_binary() | kz_json:object(), kz_json:object()) ->
+-spec validate(kz_term:ne_binary() | schema(), kz_json:object()) ->
                       {'ok', kz_json:object()} |
                       jesse_error:error().
 validate(SchemaJObj, DataJObj) ->
@@ -256,10 +262,10 @@ validate(SchemaJObj, DataJObj) ->
 -define(DEFAULT_LOADER, fun load/1).
 -endif.
 
--spec validate(kz_term:ne_binary() | kz_json:object(), kz_json:object(), jesse_options()) ->
+-spec validate(kz_term:ne_binary() | schema(), kz_json:object(), jesse_options()) ->
                       {'ok', kz_json:object()} |
                       jesse_error:error().
-validate(<<_/binary>> = Schema, DataJObj, Options) ->
+validate(<<Schema/binary>>, DataJObj, Options) ->
     Fun = props:get_value('schema_loader_fun', Options, ?DEFAULT_LOADER),
     {'ok', SchemaJObj} = Fun(Schema),
     validate(SchemaJObj, DataJObj, props:insert_values([{'schema_loader_fun', ?DEFAULT_LOADER}], Options));
@@ -951,19 +957,19 @@ build_error_message(_Version, JObj) ->
 -spec get_disallow(kz_json:object()) -> kz_term:ne_binary().
 get_disallow(JObj) ->
     case kz_json:get_value(<<"disallow">>, JObj) of
-        <<_/binary>> = Disallow -> Disallow;
+        <<Disallow/binary>> -> Disallow;
         Disallows when is_list(Disallows) -> kz_binary:join(Disallows)
     end.
 
 -spec get_types(kz_json:object()) -> kz_term:ne_binary().
 get_types(JObj) ->
     case kz_json:get_first_defined([<<"type">>, <<"types">>], JObj) of
-        <<_/binary>> = Type -> Type;
+        <<Type/binary>> -> Type;
         Types when is_list(Types) -> kz_binary:join(Types);
         _TypeSchema -> <<"type schema">>
     end.
 
--spec flatten(kz_json:object()) -> kz_json:flat_object().
+-spec flatten(schema()) -> kz_json:flat_object().
 flatten(?EMPTY_JSON_OBJECT=Empty) -> Empty;
 flatten(?JSON_WRAPPER(L) = Schema) when is_list(L) ->
     kz_json:from_list(
@@ -992,7 +998,7 @@ flatten_prop(Path, ?JSON_WRAPPER(L) = Value) when is_list(L) ->
         _ -> [{Path ++ [K], V} || {K,V} <- L]
     end.
 
--spec default_object(string() | kz_term:ne_binary() | kz_json:object()) -> kz_json:object().
+-spec default_object(string() | kz_term:ne_binary() | schema()) -> kz_json:object().
 default_object([_|_]=SchemaId) ->
     default_object(list_to_binary(SchemaId));
 default_object(?NE_BINARY=SchemaId) ->
@@ -1013,7 +1019,7 @@ default_object(Schema) ->
         kz_json:new()
         end.
 
--spec filtering_list(kz_json:object()) -> list(kz_json:keys() | []).
+-spec filtering_list(schema()) -> list(kz_json:keys() | []).
 filtering_list(Schema) ->
     Flattened = flatten(Schema),
     lists:usort([lists:droplast(Keys)
@@ -1021,7 +1027,7 @@ filtering_list(Schema) ->
                     [] =/= Keys
                 ]).
 
--spec filter(kz_json:object(), kz_json:object()) -> kz_json:object().
+-spec filter(kz_json:object(), schema()) -> kz_json:object().
 filter(JObj, Schema) ->
     Filter = filtering_list(Schema),
 
