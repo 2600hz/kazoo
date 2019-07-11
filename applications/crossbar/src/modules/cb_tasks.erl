@@ -313,8 +313,42 @@ validate_schemas(Context, Records, {Category, Action}) ->
 
     case cb_context:resp_status(ValidatedContext) of
         'success' ->
-            cb_context:store(ValidatedContext, 'total_rows', total_rows(Records));
+            additional_validation(cb_context:store(ValidatedContext, 'total_rows', total_rows(Records))
+                                 ,Category
+                                 ,Action
+                                 );
         _Status -> ValidatedContext
+    end.
+
+additional_validation(Context, <<"billing">>, <<"dump">>) ->
+    Doc = cb_context:doc(Context),
+    additional_billing_dump_validation(Context, Doc);
+additional_validation(Context, _Category, _Action) ->
+    Context.
+
+additional_billing_dump_validation(Context, Doc) ->
+    MaxRange = ?MAX_RANGE,
+    case {kz_json:get_integer_value(<<"from_s">>, Doc)
+         ,kz_json:get_integer_value(<<"to_s">>, Doc)
+         }
+    of
+        {FromS, ToS} when FromS >= ToS ->
+            lager:info("from ~p is after to ~p", [FromS, ToS]),
+            cb_context:add_validation_error(<<"from_s">>
+                                           ,400
+                                           ,kz_json:from_list([{<<"message">>, <<"Time range is invalid">>}])
+                                           ,Context
+                                           );
+        {FromS, ToS} when (ToS - FromS) > MaxRange ->
+            lager:info("range ~p is greater than max range ~p", [ToS - FromS, MaxRange]),
+            cb_context:add_validation_error(<<"from_s">>
+                                           ,400
+                                           ,kz_json:from_list([{<<"message">>, <<"Time range is too large">>
+                                                               ,{<<"max_range">>, MaxRange}
+                                                               }])
+                                           ,Context
+                                           );
+        {_FromS, _ToS} -> Context
     end.
 
 -spec total_rows(kz_json:objects()) -> kz_term:api_pos_integer().

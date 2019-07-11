@@ -1103,9 +1103,9 @@ build_system_error(Code, Error, JObj, Context) ->
 %%------------------------------------------------------------------------------
 -spec add_validation_error(kz_json:get_key(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), context()) ->
                                   context().
-add_validation_error(<<_/binary>> = Property, Code, Message, Context) ->
+add_validation_error(<<Property/binary>>, Code, Message, Context) ->
     add_validation_error([Property], Code, Message, Context);
-add_validation_error(Property, Code, <<_/binary>> = Message, Context) ->
+add_validation_error(Property, Code, <<Message/binary>>, Context) ->
     add_validation_error(Property, Code, kz_json:from_list([{<<"message">>, Message}]), Context);
 add_validation_error(Property, Code, Message, Context) ->
     {ErrorCode, ErrorMessage, ErrorJObj} =
