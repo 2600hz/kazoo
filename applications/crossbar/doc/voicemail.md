@@ -557,7 +557,11 @@ curl -v -X DELETE \
         "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
         "folder": "new",
         "length": 3140,
-        "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba"
+        "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba",
+        "transcription": {
+            "result": "success",
+            "text": "This is a test of the voicemail transcription."
+        }
     },
     "revision": "{REVISION}",
     "request_id": "{REQUEST_ID}",
@@ -592,7 +596,11 @@ curl -v -X GET \
         "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
         "folder": "new",
         "length": 3140,
-        "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba"
+        "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba",
+        "transcription": {
+            "result": "success",
+            "text": "This is a test of the voicemail transcription."
+        }
     },
     "revision": "{REVISION}",
     "request_id": "{REQUEST_ID}",
@@ -634,7 +642,11 @@ curl -v -X POST \
         "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
         "folder": "saved",
         "length": 3140,
-        "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba"
+        "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba",
+        "transcription": {
+            "result": "success",
+            "text": "This is a test of the voicemail transcription."
+        }
     },
     "revision": "{REVISION}",
     "request_id": "{REQUEST_ID}",

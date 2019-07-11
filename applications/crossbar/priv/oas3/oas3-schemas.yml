@@ -5454,6 +5454,19 @@
     'to':
       'description': The SIP to header
       'type': string
+    'transcription':
+      'description': The transcription data object
+      'properties':
+        'result':
+          'description': The status of the transcription
+          'enum':
+            - success
+            - error
+          'type': string
+        'text':
+          'description': The text of the transcription
+          'type': string
+      'type': object
   'required':
     - media_id
   'type': object
