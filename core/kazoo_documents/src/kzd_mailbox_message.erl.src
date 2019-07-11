@@ -15,6 +15,9 @@
 -export([media_id/1, media_id/2, set_media_id/2]).
 -export([timestamp/1, timestamp/2, set_timestamp/2]).
 -export([to/1, to/2, set_to/2]).
+-export([transcription/1, transcription/2, set_transcription/2]).
+-export([transcription_result/1, transcription_result/2, set_transcription_result/2]).
+-export([transcription_text/1, transcription_text/2, set_transcription_text/2]).
 
 
 -include("kz_documents.hrl").
@@ -135,3 +138,39 @@ to(Doc, Default) ->
 -spec set_to(doc(), binary()) -> doc().
 set_to(Doc, To) ->
     kz_json:set_value([<<"to">>], To, Doc).
+
+-spec transcription(doc()) -> kz_term:api_object().
+transcription(Doc) ->
+    transcription(Doc, 'undefined').
+
+-spec transcription(doc(), Default) -> kz_json:object() | Default.
+transcription(Doc, Default) ->
+    kz_json:get_json_value([<<"transcription">>], Doc, Default).
+
+-spec set_transcription(doc(), kz_json:object()) -> doc().
+set_transcription(Doc, Transcription) ->
+    kz_json:set_value([<<"transcription">>], Transcription, Doc).
+
+-spec transcription_result(doc()) -> kz_term:api_binary().
+transcription_result(Doc) ->
+    transcription_result(Doc, 'undefined').
+
+-spec transcription_result(doc(), Default) -> binary() | Default.
+transcription_result(Doc, Default) ->
+    kz_json:get_binary_value([<<"transcription">>, <<"result">>], Doc, Default).
+
+-spec set_transcription_result(doc(), binary()) -> doc().
+set_transcription_result(Doc, TranscriptionResult) ->
+    kz_json:set_value([<<"transcription">>, <<"result">>], TranscriptionResult, Doc).
+
+-spec transcription_text(doc()) -> kz_term:api_binary().
+transcription_text(Doc) ->
+    transcription_text(Doc, 'undefined').
+
+-spec transcription_text(doc(), Default) -> binary() | Default.
+transcription_text(Doc, Default) ->
+    kz_json:get_binary_value([<<"transcription">>, <<"text">>], Doc, Default).
+
+-spec set_transcription_text(doc(), binary()) -> doc().
+set_transcription_text(Doc, TranscriptionText) ->
+    kz_json:set_value([<<"transcription">>, <<"text">>], TranscriptionText, Doc).
