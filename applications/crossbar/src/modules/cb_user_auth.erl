@@ -39,7 +39,7 @@
             Ok -> Ok
         end).
 -define(RESET_PVT_TYPE, <<"password_reset">>).
--define(RESET_TIMEOUT, 3600).
+-define(RESET_TIMEOUT, kapps_config:get_pos_integer(<<"crossbar.auth">>, <<"password_reset_expiry_s">>, ?SECONDS_IN_HOUR)).
 
 %%%=============================================================================
 %%% API
