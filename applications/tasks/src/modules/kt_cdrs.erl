@@ -74,33 +74,53 @@ output_header(<<"dump">>) ->
     [K || {K, _} <- kzd_cdrs:csv_headers('false')].
 
 -spec dump(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-dump(#{'account_id' := AccountId}=_ExtraArgs, 'init') ->
-    AccountDb = kz_util:format_account_mod_id(AccountId),
-    lager:info("starting dump of ~s: ~p", [AccountDb, _ExtraArgs]),
+dump(#{'account_id' := AccountId
+      ,'req_data' := ReqData
+      }=_ExtraArgs
+    ,'init'
+    ) ->
+    FromS = kz_json:get_integer_value(<<"from_s">>, ReqData),
+    ToS = kz_json:get_integer_value(<<"to_s">>, ReqData),
 
-    process_rows(AccountDb, 'undefined');
-dump(#{}=_ExtraArgs, {_AccountDb, 'undefined'}) ->
+    MODBs = kazoo_modb:get_range(AccountId, FromS, ToS),
+
+    lager:info("starting dump of ~s: ~p", [AccountId,_ExtraArgs]),
+
+    process_rows(MODBs, [{'startkey', [ToS]}, {'endkey', [FromS]}], 'undefined');
+dump(#{}=_ExtraArgs, {[_MODB], _BaseOptions, 'undefined'}) ->
+    lager:info("finished dumping CDRs"),
     'stop';
-dump(#{}=_ExtraArgs, {AccountDb, NextStartKey}) ->
-    process_rows(AccountDb, NextStartKey).
+dump(#{}=_ExtraArgs, {[MODB | MODBs], BaseOptions, 'undefined'}) ->
+    lager:info("finished with ~s", [MODB]),
+    process_rows(MODBs, BaseOptions, 'undefined');
+dump(#{}=_ExtraArgs, {MODBs, BaseOptions, NextStartKey}) ->
+    process_rows(MODBs, BaseOptions, NextStartKey).
 
--spec process_rows(kz_term:ne_binary(), 'undefined' | {kz_term:ne_binary(), kz_json:api_json_term()}) ->
-                          {[iolist()] | kz_datamgr:data_error(), {kz_term:ne_binary(), kz_json:api_json_term()}}.
-process_rows(AccountDb, 'undefined') ->
-    case get_page(AccountDb, 'undefined') of
+-spec process_rows(kz_term:ne_binaries(), kz_datamgr:view_options(), kz_json:api_json_term()) ->
+                          {[iolist()] | kz_datamgr:data_error()
+                          ,{kz_term:ne_binary(), kz_datamgr:view_options(), kz_json:api_json_term()}
+                          }.
+process_rows([MODB | _]=MODBs, BaseOptions, 'undefined') ->
+    case get_page(MODB, BaseOptions, 'undefined') of
+        {'ok', [], NextStartKey} ->
+            lager:info("no rows found, continuing with next:~p", [NextStartKey]),
+            {'ok', {MODBs, BaseOptions, NextStartKey}};
         {'ok', Rows, NextStartKey} ->
-            lager:info("got ~p rows (next:~s)", [length(Rows), NextStartKey]),
+            lager:info("got ~p rows (next:~s) from ~s", [length(Rows), NextStartKey, MODB]),
             CDRRows = [kzd_cdrs:to_public_csv(CDR) || CDR <- rows_to_cdrs(Rows)],
-            {CDRRows, {AccountDb, NextStartKey}};
+            {CDRRows, {MODBs, BaseOptions, NextStartKey}};
         {'error', E} ->
             lager:error("error getting first page: ~p", [E]),
             {E, []}
     end;
-process_rows(AccountDb, {AccountDb, StartKey}) ->
-    case get_page(AccountDb, StartKey) of
+process_rows([MODB |_]=MODBs, BaseOptions, StartKey) ->
+    case get_page(MODB, BaseOptions, StartKey) of
+        {'ok', [], NextStartKey} ->
+            lager:info("no rows found, continuing with next:~p", [NextStartKey]),
+            {'ok', {MODBs, BaseOptions, NextStartKey}};
         {'ok', Rows, NextStartKey} ->
-            lager:info("got ~p rows from ~s (next:~s)", [length(Rows), StartKey, NextStartKey]),
-            {[kzd_cdrs:to_public_csv(CDR) || CDR <- rows_to_cdrs(Rows)], {AccountDb, NextStartKey}};
+            lager:info("got ~p rows using ~s (next:~p) from ~s", [length(Rows), StartKey, NextStartKey, MODB]),
+            {[kzd_cdrs:to_public_csv(CDR) || CDR <- rows_to_cdrs(Rows)], {MODBs, BaseOptions, NextStartKey}};
         {'error', E} ->
             lager:error("error getting page from ~p: ~p", [E, StartKey]),
             {E, []}
@@ -111,22 +131,22 @@ rows_to_cdrs(Rows) ->
      || Row <- Rows
     ].
 
--spec get_page(kz_term:ne_biary(), kz_json:api_json_term()) -> kz_datamgr:paginated_results().
-get_page(AccountDb, 'undefined') ->
-    query(AccountDb, []);
-get_page(AccountDb, NextStartKey) ->
-    query(AccountDb, [{'startkey', NextStartKey}]).
+-spec get_page(kz_term:ne_biary(), kz_datamgr:view_options(), kz_json:api_json_term()) -> kz_datamgr:paginated_results().
+get_page(MODB, BaseOptions, 'undefined') ->
+    query(MODB, BaseOptions);
+get_page(MODB, BaseOptions, NextStartKey) ->
+    query(MODB, props:set_value('startkey', NextStartKey, BaseOptions)).
 
 -spec query(kz_term:ne_binary(), kz_datamgr:view_options()) -> kz_datamgr:paginated_results().
-query(AccountDb, ViewOptions) ->
+query(MODB, ViewOptions) ->
     Options = ['include_docs'
               ,'descending'
                | ViewOptions
               ],
     lager:info("kz_datamgr:paginate_results(~p, ~p, ~p)."
-              ,[AccountDb, <<"cdrs/crossbar_listing">>, Options]
+              ,[MODB, <<"cdrs/crossbar_listing">>, Options]
               ),
-    kz_datamgr:paginate_results(AccountDb
+    kz_datamgr:paginate_results(MODB
                                ,<<"cdrs/crossbar_listing">>
                                ,Options
                                ).
