@@ -592,7 +592,10 @@ get_range(AccountId, From, To) ->
 
 -spec get_range(kz_term:ne_binary(), kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
                        kz_term:ne_binaries().
-get_range(Type, AccountId, From, To) ->
+get_range(<<Type/binary>>, <<AccountId/binary>>, From, To)
+  when is_integer(From) andalso From > ?UNIX_EPOCH_IN_GREGORIAN
+       andalso is_integer(To) andalso To > ?UNIX_EPOCH_IN_GREGORIAN andalso To > From
+       ->
     {{FromYear, FromMonth, _}, _} = calendar:gregorian_seconds_to_datetime(From),
     {{ToYear,   ToMonth,   _}, _} = calendar:gregorian_seconds_to_datetime(To),
     [MODb
