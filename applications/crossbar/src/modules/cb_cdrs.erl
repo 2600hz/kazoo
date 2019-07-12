@@ -268,19 +268,19 @@ load_cdr_summary(Context) ->
         _ -> C1
     end.
 
--spec merge_cdr_summary(kz_json:object(), kz_json:objects()) -> kz_json:object().
-merge_cdr_summary(JObj1, JObj2) ->
-    kz_json:foldl(fun(Key1, Value1, JObj) ->
+-spec merge_cdr_summary(kz_json:object(), kz_json:object()) -> kz_json:object().
+merge_cdr_summary(JObj1, JObjAcc) ->
+    kz_json:foldl(fun(Key1, Value1, Acc) ->
                           case kz_json:get_value(Key1, JObj1) of
-                              'undefined' -> kz_json:set_value(Key1, Value1, JObj);
+                              'undefined' -> kz_json:set_value(Key1, Value1, Acc);
                               Value1 when is_integer(Value1) ->
-                                  kz_json:set_value(Key1, Value1 + Value1, JObj);
+                                  kz_json:set_value(Key1, Value1 + Value1, Acc);
                               Value1 ->
                                   NewValue = merge_cdr_summary(Value1, Value1),
-                                  kz_json:set_value(Key1, NewValue, JObj)
+                                  kz_json:set_value(Key1, NewValue, Acc)
                           end
                   end
-                 ,JObj2
+                 ,JObjAcc
                  ,JObj1
                  ).
 
