@@ -171,7 +171,7 @@ worker_finished(TaskId, Columns) ->
     CSVPath = output_path(TaskId),
     _ = try_maybe_strip_columns(Columns, CSVPath),
     {'ok', CSV} = file:read_file(CSVPath),
-    lager:debug("csv size is ~s", [kz_util:pretty_print_bytes(byte_size(CSV))]),
+    lager:debug("csv file size is ~s", [kz_util:pretty_print_bytes(byte_size(CSV))]),
     Max = ?UPLOAD_ATTEMPTS,
     attempt_upload(TaskId, ?KZ_TASKS_ANAME_OUT, CSV, CSVPath, Max, Max).
 
@@ -196,7 +196,8 @@ maybe_strip_columns(Columns, CSVPath, ColumnsWritten) ->
     lager:debug("attempting to strip empty columns, keeping only ~p", [ColumnsWritten]),
     {'ok', Bin} = file:read_file(CSVPath),
     {FullHeader, CSV} = kz_csv:take_row(Bin),
-    lager:debug("csv size is ~s", [kz_util:pretty_print_bytes(byte_size(CSV))]),
+    lager:debug("csv data (minus header row) size is ~s", [kz_util:pretty_print_bytes(byte_size(CSV))]),
+
     case length(FullHeader) of
         ColumnsWritten -> 'ok';
         MightHaveEmpty when ColumnsWritten < MightHaveEmpty ->
@@ -442,7 +443,7 @@ handle_cast({'worker_error', TaskId}, State) ->
     State2 = remove_last_worker_update(TaskId, State1),
     {'noreply', State2};
 
-handle_cast({worker_update_processed, TaskId, TotalSucceeded, TotalFailed}, State) ->
+handle_cast({'worker_update_processed', TaskId, TotalSucceeded, TotalFailed}, State) ->
     #state{last_worker_update = #{TaskId := LastWorkerUpdate}} = State,
     ProcessedSoFar = (TotalSucceeded + TotalFailed),
     SendUpdate = ProcessedSoFar > (LastWorkerUpdate + ?PROGRESS_AFTER_PROCESSED),
@@ -451,8 +452,9 @@ handle_cast({worker_update_processed, TaskId, TotalSucceeded, TotalFailed}, Stat
             %% Happens when there was a stop_task right before
             {'noreply', State};
         {'true', Task} ->
-            lager:info("worker update ~s: ~p/~p",
-                       [TaskId, TotalSucceeded, TotalFailed]),
+            lager:info("worker update ~s: ~p/~p"
+                      ,[TaskId, TotalSucceeded, TotalFailed]
+                      ),
             Task1 = Task#{total_rows_failed => TotalFailed
                          ,total_rows_succeeded => TotalSucceeded
                          },
