@@ -265,11 +265,27 @@ task_seq() ->
     AccountId = create_account(API),
     CDRs = seed_cdrs(AccountId),
     CDRIds = lists:sort([kz_doc:id(I) || I <- CDRs]),
-    lager:info("CDRs: ~p~n", [CDRIds]),
+    lager:info("CDRs(~p): ~p~n", [length(CDRIds), CDRIds]),
+
+    {Year, Month, Day} = erlang:date(),
+    {PYear, PMonth, PDay} = kz_date:normalize({Year, Month-1, Day}),
+
+    FromS = interaction_time(PYear, PMonth, PDay) - 1,
+    ToS = interaction_time(Year, Month, Day) + 1,
+
+    lager:info("selecting from ~p to ~p (~ps)", [FromS, ToS, ToS - FromS]),
+    lager:info("~p -> ~p", [calendar:gregorian_seconds_to_datetime(FromS)
+                           ,calendar:gregorian_seconds_to_datetime(ToS)
+                           ]),
+
+    ReqData = kz_json:from_list([{<<"to_s">>, ToS}
+                                ,{<<"from_s">>, FromS}
+                                ]),
+    lager:info("requesting ~p", [ReqData]),
 
     CreateResp = pqc_cb_tasks:create_account(API, AccountId
                                             ,"category=billing&action=dump"
-                                            ,kz_json:from_list([{<<"to_s">>, kz_time:now_s()}])
+                                            ,ReqData
                                             ),
     lager:info("created task ~s", [CreateResp]),
     TaskId = kz_json:get_ne_binary_value([<<"data">>, <<"_read_only">>, <<"id">>]
@@ -375,13 +391,7 @@ seed_interaction(AccountId, OwnerId, Year, Month) ->
 
     InteractionId = interaction_id(Y, M, D),
 
-    lists:foldl(fun(_Seq, Acc) ->
-                        {'ok', CDR} = seed_cdr(AccountId, OwnerId, Y, M, InteractionId),
-                        [CDR | Acc]
-                end
-               ,[]
-               ,lists:seq(1, ?CDRS_PER_MONTH)
-               ).
+    [seed_cdr(AccountId, OwnerId, Y, M, InteractionId) || _ <- lists:seq(1, ?CDRS_PER_MONTH)].
 
 interaction_id(Year, Month, Day) ->
     InteractionTime = interaction_time(Year, Month, Day),
@@ -423,9 +433,10 @@ seed_cdr(AccountId, OwnerId, Year, Month, InteractionId) ->
             ,{'now', InteractionTime}
             ],
     CDR = kz_doc:update_pvt_parameters(JObj, AccountMODb, Props),
-    lager:info("creating ~s in ~s", [CDRId, AccountMODb]),
 
-    {'ok', _} = kazoo_modb:save_doc(AccountMODb, CDR).
+    {'ok', Saved} = kazoo_modb:save_doc(AccountMODb, CDR),
+    lager:info("saved ~s: ~p(~p) ~p", [CDRId, InteractionTime, calendar:gregorian_seconds_to_datetime(InteractionTime), kz_doc:created(Saved)]),
+    Saved.
 
 interaction_time(Year, Month, Day) ->
     {Today, _} = calendar:universal_time(),
@@ -444,7 +455,7 @@ wait_for_task(API, AccountId, TaskId, Start) ->
     wait_for_task(API, AccountId, TaskId, Start, kz_time:elapsed_s(Start)).
 
 wait_for_task(_API, _AccountId, _TaskId, _Start, ElapsedS) when ElapsedS > 30 ->
-    lager:warning("waiting for task ~s in account ~s timed out"),
+    lager:warning("waiting for task ~s in account ~s timed out", [_TaskId, _AccountId]),
     {'error', 'timeout'};
 wait_for_task(API, AccountId, TaskId, Start, _ElapsedS) ->
     GetResp = pqc_cb_tasks:fetch(API, AccountId, TaskId),
@@ -465,6 +476,10 @@ wait_for_task(API, AccountId, TaskId, Start, _ElapsedS) ->
         <<"internal_error">> ->
             lager:warning("task failed with internal error: ~s", [GetResp]),
             pqc_cb_tasks:delete(API, AccountId, TaskId);
+        <<"partial">> ->
+            lager:info("still working on task ~s", [TaskId]),
+            timer:sleep(1000),
+            wait_for_task(API, AccountId, TaskId, Start);
         _Status ->
             lager:info("wrong status(~s) for task in ~s", [_Status, GetResp]),
             timer:sleep(1000),
