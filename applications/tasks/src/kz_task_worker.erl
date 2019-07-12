@@ -175,10 +175,11 @@ new_state_after_writing(NewColumns, WrittenSucceeded, WrittenFailed
                                 'stop'.
 is_task_successful(MappedRow
                   ,IterValue
-                  ,State=#state{api = API
-                               ,verifier = Verifier
-                               ,extra_args = ExtraArgs
-                               }) ->
+                  ,#state{api = API
+                         ,verifier = Verifier
+                         ,extra_args = ExtraArgs
+                         }=State
+                  ) ->
     try kz_csv:verify_mapped_row(Verifier, MappedRow) of
         [] ->
             Args = [ExtraArgs, IterValue, MappedRow],
@@ -188,40 +189,45 @@ is_task_successful(MappedRow
                     lager:error("args: ~p", [Args]),
                     lager:error("error: ~p", [_Error]),
                     kz_util:log_stacktrace(_ST),
-                    {Columns,Written} = store_return(State, MappedRow, ?WORKER_TASK_FAILED),
+                    {Columns, Written} = store_return(State, MappedRow, ?WORKER_TASK_FAILED),
+                    lager:debug("failed rows on exception: ~p", [Written]),
                     {'false', Columns, Written, 'stop'};
                 [{[_|_]=NewRowOrRows, NewIterValue}] ->
-                    {Columns,Written} = store_return(State, MappedRow, NewRowOrRows),
+                    {Columns, Written} = store_return(State, MappedRow, NewRowOrRows),
                     {'true', Columns, Written, NewIterValue};
-                [{#{?OUTPUT_CSV_HEADER_ERROR := ?NE_BINARY}=NewMappedRowOrMappedRows, NewIterValue}] ->
-                    {Columns,Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
+                [{#{?OUTPUT_CSV_HEADER_ERROR := ?NE_BINARY=_Err}=NewMappedRowOrMappedRows, NewIterValue}] ->
+                    {Columns, Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
+                    lager:debug("failed rows on error ~p: ~p", [_Err, Written]),
                     {'false', Columns, Written, NewIterValue};
                 [{#{}=NewMappedRowOrMappedRows, NewIterValue}] ->
-                    {Columns,Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
+                    {Columns, Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
                     {'true', Columns, Written, NewIterValue};
                 [{'ok', NewIterValue}] ->
                     {'true', State#state.columns, 1, NewIterValue};
                 [{Error, NewIterValue}] ->
                     lager:error("~p", [Error]),
-                    {Columns,Written} = store_return(State, MappedRow, Error),
+                    {Columns, Written} = store_return(State, MappedRow, Error),
+                    lager:debug("failed rows on error ~p: ~p", [Error, Written]),
                     {'false', Columns, Written, NewIterValue};
                 [[_|_]=NewRowOrRows=NewIterValue] ->
-                    {Columns,Written} = store_return(State, MappedRow, NewRowOrRows),
+                    {Columns, Written} = store_return(State, MappedRow, NewRowOrRows),
                     {'true', Columns, Written, NewIterValue};
-                [#{?OUTPUT_CSV_HEADER_ERROR := ?NE_BINARY}=NewMappedRowOrMappedRows=NewIterValue] ->
-                    {Columns,Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
+                [#{?OUTPUT_CSV_HEADER_ERROR := ?NE_BINARY=_Err}=NewMappedRowOrMappedRows=NewIterValue] ->
+                    {Columns, Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
+                    lager:debug("failed rows on error ~p: ~p", [_Err, Written]),
                     {'false', Columns, Written, NewIterValue};
                 [#{}=NewMappedRowOrMappedRows=NewIterValue] ->
-                    {Columns,Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
+                    {Columns, Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
                     {'true', Columns, Written, NewIterValue};
                 NewRow=NewIterValue ->
-                    {Columns,Written} = store_return(State, MappedRow, NewRow),
+                    {Columns, Written} = store_return(State, MappedRow, NewRow),
+                    lager:debug("failed rows on new iterator ~p: ~p", [NewRow, Written]),
                     {'false', Columns, Written, NewIterValue}
             end;
         Fields ->
             PPFields = kz_binary:join(Fields, $\s),
             lager:error("verifier ~s failed on ~p", [PPFields, maps:with(Fields, MappedRow)]),
-            {Columns,Written} = store_return(State, MappedRow, <<"bad field(s) ", PPFields/binary>>),
+            {Columns, Written} = store_return(State, MappedRow, <<"bad field(s) ", PPFields/binary>>),
             %% Stop on crashes, but only skip typefailed rows.
             {'false', Columns, Written, IterValue}
     catch
@@ -239,23 +245,35 @@ store_return(State, MappedRow, Rows=[_List|_]) when is_list(_List) ->
     {sets:union(ListOfColumns), lists:sum(ListOfWritten)};
 store_return(#state{task_id = TaskId
                    ,output_header = {'replace', Header}
-                   }, _InputMappedRow, OutputMappedRow)
+                   }
+            ,_InputMappedRow
+            ,OutputMappedRow
+            )
   when is_map(OutputMappedRow) ->
     write_row(TaskId, Header, OutputMappedRow);
 store_return(#state{task_id = TaskId
                    ,output_header = {'replace', Header}
-                   }, InputMappedRow, Reason) ->
+                   }
+            ,InputMappedRow
+            ,Reason
+            ) ->
     MappedRow = InputMappedRow#{?OUTPUT_CSV_HEADER_ERROR => Reason},
     write_row(TaskId, Header, MappedRow);
 store_return(#state{task_id = TaskId
                    ,output_header = Header
-                   }, InputMappedRow, OutputMappedRow)
+                   }
+            ,InputMappedRow
+            ,OutputMappedRow
+            )
   when is_map(OutputMappedRow) ->
     MappedRow = maps:merge(InputMappedRow, OutputMappedRow),
     write_row(TaskId, Header, MappedRow);
 store_return(#state{task_id = TaskId
                    ,output_header = Header
-                   }, InputMappedRow, Reason) ->
+                   }
+            ,InputMappedRow
+            ,Reason
+            ) ->
     Data = kz_csv:mapped_row_to_iolist(Header, InputMappedRow),
     IOList = [Data, $,, reason(Reason)],
     Written = write_row(TaskId, IOList),
