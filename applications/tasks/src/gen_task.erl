@@ -36,6 +36,11 @@
       CurrentInputRow :: map(),
       NewIterator :: kz_tasks:iterator().
 
+-callback finish(Action, Iterator) -> any() when
+      Action :: kz_term:ne_binary(),
+      Iterator :: kz_tasks:iterator().
+
 -optional_callbacks([cell_verifier/2
                     ,execute/3, execute/4
+                    ,finish/2
                     ]).

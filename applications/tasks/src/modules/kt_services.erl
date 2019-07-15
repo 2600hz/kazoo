@@ -5,19 +5,13 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_services).
-
-%% behaviour: tasks_provider
+-behaviour(gen_task).
 
 -export([init/0
         ,help/1, help/2, help/3
-        ,output_header/1
+        ,output_header/2
+        ,execute/3
         ]).
-
-%% Verifiers
--export([]).
-
-%% Appliers
--export([descendant_quantities/2]).
 
 %% Triggerables
 -export([cleanup/1]).
@@ -48,8 +42,8 @@ init() ->
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".output_header">>, ?MODULE, 'output_header'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
--spec output_header(kz_term:ne_binary()) -> kz_tasks:output_header().
-output_header(<<"descendant_quantities">>) ->
+-spec output_header(kz_term:ne_binary(), kz_tasks:extra_args()) -> kz_tasks:output_header().
+output_header(<<"descendant_quantities">>, _ExtraArgs) ->
     [<<"account_id">>
     ,<<"year">>
     ,<<"month">>
@@ -93,6 +87,9 @@ action(<<"descendant_quantities">>) ->
 
 
 %%% Appliers
+-spec execute(kz_term:ne_binary(), kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
+execute(<<"descendant_quantities">>, ExtraArgs, Iterator) ->
+    descendant_quantities(ExtraArgs, Iterator).
 
 -spec descendant_quantities(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 descendant_quantities(#{account_id := AccountId}, 'init') ->

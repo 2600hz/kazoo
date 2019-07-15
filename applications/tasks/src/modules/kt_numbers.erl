@@ -5,39 +5,14 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_numbers).
-
-%% behaviour: tasks_provider
+-behaviour(gen_task).
 
 -export([init/0
         ,help/1, help/2, help/3
-        ,output_header/1
+        ,output_header/2
+        ,cell_verifier/2
+        ,execute/3, execute/4
         ,cleanup/2
-        ]).
-
-%% Verifiers
--export([e164/1
-        ,account_id/1
-        ,carrier_module/1
-        ,state/1
-        ,ported_in/1
-        ,'cnam.inbound'/1
-        ,'prepend.enabled'/1
-        ,force_outbound/1
-        ]).
-
-%% Appliers
--export([list/2
-        ,list_all/2
-        ,find/3
-        ,dump/2
-        ,dump_aging/2, dump_available/2, dump_deleted/2, dump_discovery/2
-        ,dump_in_service/2, dump_port_in/2, dump_port_out/2, dump_released/2, dump_reserved/2
-        ,import/3
-        ,assign_to/3
-        ,update_merge/3, update_overwrite/3
-        ,release/3
-        ,reserve/3
-        ,delete/3
         ]).
 
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
@@ -101,16 +76,16 @@ init() ->
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".ported_in">>, ?MODULE, 'ported_in'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
--spec output_header(kz_term:ne_binary()) -> kz_tasks:output_header().
-output_header(<<"list">>) ->
+-spec output_header(kz_term:ne_binary(), kz_tasks:extra_args()) -> kz_tasks:output_header().
+output_header(<<"list">>, _) ->
     list_output_header();
-output_header(<<"list_all">>) ->
+output_header(<<"list_all">>, _) ->
     list_output_header();
-output_header(<<"dump">>) ->
+output_header(<<"dump">>, _) ->
     list_output_header();
-output_header(<<"dump_", _/binary>>) ->
+output_header(<<"dump_", _/binary>>, _) ->
     list_output_header();
-output_header(?NE_BINARY) ->
+output_header(?NE_BINARY, _) ->
     result_output_header().
 
 -spec cleanup(kz_term:ne_binary(), any()) -> any().
@@ -336,6 +311,16 @@ action(<<"delete">>) ->
      }.
 
 %%% Verifiers
+-spec cell_verifier(kz_term:ne_binary(), kz_json:json_term()) -> boolean().
+cell_verifier(<<"e164">>, Number) -> e164(Number);
+cell_verifier(<<"account_id">>, AccountId) -> account_id(AccountId);
+cell_verifier(<<"carrier_module">>, Data) -> carrier_module(Data);
+cell_verifier(<<"state">>, Data) -> state(Data);
+cell_verifier(<<"ported_in">>, Cell) -> is_cell_boolean(Cell);
+cell_verifier(<<"cnam.inbound">>, Cell) -> is_cell_boolean(Cell);
+cell_verifier(<<"prepend.enabled">>, Cell) -> is_cell_boolean(Cell);
+cell_verifier(<<"force_outbound">>, Force) -> is_cell_boolean(Force);
+cell_verifier(_Header, _Cell) -> 'true'.
 
 -spec e164(kz_term:ne_binary()) -> boolean().
 e164(<<"+", _/binary>>) -> 'true';
@@ -353,19 +338,6 @@ carrier_module(Data) ->
 state(Data) ->
     knm_phone_number:is_state(Data).
 
--spec ported_in(kz_term:ne_binary()) -> boolean().
-ported_in(Cell) -> is_cell_boolean(Cell).
-
--spec 'cnam.inbound'(kz_term:ne_binary()) -> boolean().
-'cnam.inbound'(Cell) -> is_cell_boolean(Cell).
-
--spec 'prepend.enabled'(kz_term:ne_binary()) -> boolean().
-'prepend.enabled'(Cell) -> is_cell_boolean(Cell).
-
--spec force_outbound(kz_term:ne_binary()) -> boolean().
-force_outbound(Cell) -> is_cell_boolean(Cell).
-
-
 -spec is_cell_boolean(kz_term:ne_binary()) -> boolean().
 is_cell_boolean(<<"true">>) -> 'true';
 is_cell_boolean(<<"false">>) -> 'true';
@@ -377,6 +349,49 @@ is_cell_true(<<"true">>) -> 'true';
 is_cell_true(_) -> 'false'.
 
 %%% Appliers
+-spec execute(kz_term:ne_binary(), kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
+execute(<<"list">>, ExtraArgs, Iterator) ->
+    list(ExtraArgs, Iterator);
+execute(<<"list_all">>, ExtraArgs, Iterator) ->
+    list_all(ExtraArgs, Iterator);
+execute(<<"dump">>, ExtraArgs, Iterator) ->
+    dump(ExtraArgs, Iterator);
+execute(<<"dump_aging">>, ExtraArgs, Iterator) ->
+    dump_aging(ExtraArgs, Iterator);
+execute(<<"dump_available">>, ExtraArgs, Iterator) ->
+    dump_available(ExtraArgs, Iterator);
+execute(<<"dump_deleted">>, ExtraArgs, Iterator) ->
+    dump_deleted(ExtraArgs, Iterator);
+execute(<<"dump_discovery">>, ExtraArgs, Iterator) ->
+    dump_discovery(ExtraArgs, Iterator);
+execute(<<"dump_port_in">>, ExtraArgs, Iterator) ->
+    dump_port_in(ExtraArgs, Iterator);
+execute(<<"dump_in_service">>, ExtraArgs, Iterator) ->
+    dump_in_service(ExtraArgs, Iterator);
+execute(<<"dump_port_out">>, ExtraArgs, Iterator) ->
+    dump_port_out(ExtraArgs, Iterator);
+execute(<<"dump_released">>, ExtraArgs, Iterator) ->
+    dump_released(ExtraArgs, Iterator);
+execute(<<"dump_reserved">>, ExtraArgs, Iterator) ->
+    dump_reserved(ExtraArgs, Iterator).
+
+-spec execute(kz_term:ne_binary(), kz_tasks:extra_args(), kz_tasks:iterator(), map()) -> kz_tasks:iterator().
+execute(<<"find">>, ExtraArgs, Iterator, CurrentInputRow) ->
+    find(ExtraArgs, Iterator, CurrentInputRow);
+execute(<<"import">>, ExtraArgs, Iterator, CurrentInputRow) ->
+    import(ExtraArgs, Iterator, CurrentInputRow);
+execute(<<"assign_to">>, ExtraArgs, Iterator, CurrentInputRow) ->
+    assign_to(ExtraArgs, Iterator, CurrentInputRow);
+execute(<<"update_merge">>, ExtraArgs, Iterator, CurrentInputRow) ->
+    update_merge(ExtraArgs, Iterator, CurrentInputRow);
+execute(<<"update_overwrite">>, ExtraArgs, Iterator, CurrentInputRow) ->
+    update_overwrite(ExtraArgs, Iterator, CurrentInputRow);
+execute(<<"release">>, ExtraArgs, Iterator, CurrentInputRow) ->
+    release(ExtraArgs, Iterator, CurrentInputRow);
+execute(<<"reserve">>, ExtraArgs, Iterator, CurrentInputRow) ->
+    reserve(ExtraArgs, Iterator, CurrentInputRow);
+execute(<<"delete">>, ExtraArgs, Iterator, CurrentInputRow) ->
+    delete(ExtraArgs, Iterator, CurrentInputRow).
 
 -spec list(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 list(#{account_id := ForAccount}, 'init') ->

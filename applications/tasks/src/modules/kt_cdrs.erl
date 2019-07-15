@@ -7,8 +7,6 @@
 -module(kt_cdrs).
 -behavior(gen_task).
 
-%% behaviour: tasks_provider
-
 -export([init/0
         ,help/1, help/2, help/3
 

@@ -5,23 +5,14 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_rates).
-
-%% behaviour: tasks_provider
+-behaviour(gen_task).
 
 -export([init/0
         ,help/1, help/2, help/3
-        ,output_header/1
+        ,output_header/2
+        ,cell_verifier/2
+        ,execute/3, execute/4
         ,finish/2
-        ]).
-
-%% Verifiers
--export([direction/1
-        ]).
-
-%% Appliers
--export([export/2
-        ,import/3
-        ,delete/3
         ]).
 
 -include("tasks.hrl").
@@ -53,8 +44,8 @@ init() ->
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".finish">>, ?MODULE, 'finish'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
--spec output_header(kz_term:ne_binary()) -> kz_tasks:output_header().
-output_header(<<"export">>) -> ?DOC_FIELDS.
+-spec output_header(kz_term:ne_binary(), kz_tasks:extra_args()) -> kz_tasks:output_header().
+output_header(<<"export">>, _ExtraArgs) -> ?DOC_FIELDS.
 
 -spec help(kz_json:object()) -> kz_json:object().
 help(JObj) -> help(JObj, <<?CATEGORY>>).
@@ -97,6 +88,9 @@ action(<<"delete">>) ->
     ].
 
 %%% Verifiers
+-spec cell_verifier(kz_term:ne_binary(), kz_json:json_term()) -> boolean().
+cell_verifier(<<"direction">>, Direction) -> direction(Direction);
+cell_verifier(_Heading, _Value) -> 'true'.
 
 -spec direction(kz_term:ne_binary()) -> boolean().
 direction(<<"inbound">>) -> 'true';
@@ -104,6 +98,15 @@ direction(<<"outbound">>) -> 'true';
 direction(_) -> 'false'.
 
 %%% Appliers
+-spec execute(kz_term:ne_binary(), kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
+execute(<<"export">>, ExtraArgs, Iterator) ->
+    export(ExtraArgs, Iterator).
+
+-spec execute(kz_term:ne_binary(), kz_tasks:extra_args(), kz_tasks:iterator(), map()) -> kz_tasks:iterator().
+execute(<<"import">>, ExtraArgs, Iterator, CurrentInputCell) ->
+    import(ExtraArgs, Iterator, CurrentInputCell);
+execute(<<"delete">>, ExtraArgs, Iterator, CurrentInputCell) ->
+    delete(ExtraArgs, Iterator, CurrentInputCell).
 
 -spec export(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 export(ExtraArgs, 'init') ->
@@ -231,7 +234,7 @@ delete(_ExtraArgs, State, Args) ->
             }
     end.
 
--spec finish(kz_term:ne_binary(), any()) -> any().
+-spec finish(kz_term:ne_binary(), dict:dict() | kz_term:proplist()) -> any().
 finish(<<"import">>, Dict) ->
     _Size = dict:size(Dict),
     lager:info("importing ~p ratedeck~s", [_Size, maybe_plural(_Size)]),

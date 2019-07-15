@@ -94,6 +94,9 @@ The function must return a valid instance of the type `kz_tasks:return()`:
 * `{binary(), Data}`: writes the binary string to output & will pass `Data` on next call.
 * `{Error, Data}`: attempts to write `Error` as an error to output & will pass `Data` on next call.
 
+### `Module:finish(Action, Iterator)`
+
+Run after the task has finished. Cleanup of any temporary / intermediate files and whatnot.
 
 ### Examples
 

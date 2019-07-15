@@ -7,8 +7,6 @@
 -module(kt_user_auth).
 -behaviour(gen_bg_task).
 
-%% behaviour: tasks_provider
-
 -export([init/0]).
 
 %% Triggerables

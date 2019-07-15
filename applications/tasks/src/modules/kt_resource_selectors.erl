@@ -5,21 +5,14 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_resource_selectors).
-
-%% behaviour: tasks_provider
+-behavior(gen_task).
 
 -export([init/0
         ,help/1, help/2, help/3
+        ,cell_verifier/2
+        ,output_header/2
+        ,execute/4
         ,cleanup/2
-        ]).
-
-%% Verifiers
--export([account_id/1
-        ]).
-
-%% Appliers
--export([import/3
-        ,delete/3
         ]).
 
 -include("tasks.hrl").
@@ -45,7 +38,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = tasks_bindings:bind(<<"tasks.help">>, ?MODULE, 'help'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".account_id">>, ?MODULE, 'account_id'),
@@ -88,12 +81,24 @@ action(<<"delete">>) ->
     ,{<<"optional">>, []}
     ].
 
+-spec output_header(kz_term:ne_binary(), kz_tasks:extra_args()) -> [].
+output_header(_Action, _Extra) -> [].
+
 %%% Verifiers
+-spec cell_verifier(kz_term:ne_binary(), kz_json:json_term()) -> boolean().
+cell_verifier(<<"account_id">>, AccountId) -> account_id(AccountId);
+cell_verifier(_Heading, _Data) -> 'true'.
+
 -spec account_id(kz_term:ne_binary()) -> boolean().
 account_id(?MATCH_ACCOUNT_RAW(_)) -> 'true';
 account_id(_) -> 'false'.
 
 %%% Appliers
+-spec execute(kz_term:ne_binary(), kz_tasks:extra_args(), kz_tasks:iterator(), map()) -> kz_tasks:iterator().
+execute(<<"import">>, ExtraArgs, Iterator, CurrentInputRow) ->
+    import(ExtraArgs, Iterator, CurrentInputRow);
+execute(<<"delete">>, ExtraArgs, Iterator, CurrentInputRow) ->
+    delete(ExtraArgs, Iterator, CurrentInputRow).
 
 -spec import(kz_tasks:extra_args(), kz_tasks:iterator() | state(), kz_tasks:args()) ->
                     {kz_tasks:return(), state()} | 'stop'.
@@ -205,7 +210,7 @@ do_delete(Db, DelKeys) ->
                  ).
 
 do_delete_fold(Db, Keys, AccIDs) ->
-    Options = [{keys, Keys}, include_docs],
+    Options = [{'keys', Keys}, 'include_docs'],
     View = <<"resource_selectors/resource_name_selector_listing">>,
     case kz_datamgr:get_results(Db, View, Options) of
         {'ok', Result} ->

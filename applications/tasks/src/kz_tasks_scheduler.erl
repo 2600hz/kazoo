@@ -294,7 +294,7 @@ output_path(TaskId=?NE_BINARY) ->
 -spec finish_task(kz_json:object(), any()) -> 'ok'.
 finish_task(API, Data) ->
     lager:debug("finishing up after task"),
-    Action = kz_json:get_value(<<"action">>, API),
+    Action = kz_json:get_ne_binary_value(<<"action">>, API),
     case tasks_bindings:apply(API, <<"finish">>, [Action, Data]) of
         [] -> lager:debug("skipped finish");
         [{'EXIT', {_E, _Rs}}] ->

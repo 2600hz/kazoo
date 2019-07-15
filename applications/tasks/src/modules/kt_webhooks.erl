@@ -6,7 +6,6 @@
 %%%-----------------------------------------------------------------------------
 -module(kt_webhooks).
 -behaviour(gen_bg_task).
-%% behaviour: tasks_provider
 
 -export([init/0]).
 
