@@ -54,7 +54,7 @@ start(TaskId, API, ExtraArgs) ->
 -spec init(kz_tasks:id(), kz_json:object(), kz_tasks:extra_args()) -> {'ok', state()} |
                                                                       {'error', any()}.
 init(TaskId, API, ExtraArgs) ->
-    Header = kz_tasks_scheduler:get_output_header(API),
+    Header = kz_tasks_scheduler:get_output_header(API, ExtraArgs),
     case write_output_csv_header(TaskId, Header) of
         {'error', _R}=Error ->
             lager:error("failed to write CSV header in ~s", [?OUT(TaskId)]),
@@ -130,7 +130,7 @@ is_task_successful(IterValue
                                ,extra_args = ExtraArgs
                                }
                   ) ->
-    case tasks_bindings:apply(API, [ExtraArgs, IterValue]) of
+    case tasks_bindings:execute(API, [ExtraArgs, IterValue]) of
         ['stop'] -> 'stop';
         [{'EXIT', {_Error, _ST=[_|_]}}] ->
             lager:error("error: ~p", [_Error]),

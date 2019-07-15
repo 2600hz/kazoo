@@ -201,7 +201,7 @@ is_verified_task_successful(MappedRow
                                   }=State
                            ) ->
     Args = [ExtraArgs, IterValue, MappedRow],
-    case tasks_bindings:apply(API, Args) of
+    case tasks_bindings:execute(API, Args) of
         ['stop'] -> 'stop';
         [{'EXIT', {_Error, _ST}}] ->
             lager:error("args: ~p", [Args]),

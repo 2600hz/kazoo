@@ -28,6 +28,15 @@
 -define(CATEGORY, "billing").
 -define(ACTIONS, [<<"dump">>]).
 
+-record(dump_args, {base_options :: kz_datamgr:view_options()
+                   ,modbs = [] :: kz_term:ne_binaries()
+                   ,next_start_key = 'undefined' :: kz_json:api_json_term()
+
+                   ,is_reseller = 'false' :: boolean()
+                   ,store_csv = 'false' :: boolean()
+                   }).
+-type dump_args() :: #dump_args{}.
+
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -86,46 +95,49 @@ dump(#{'account_id' := AccountId
     ) ->
     FromS = kz_json:get_integer_value(<<"from_s">>, ReqData),
     ToS = kz_json:get_integer_value(<<"to_s">>, ReqData),
+    IsReseller = kz_json:is_true(<<"is_reseller">>, ReqData, 'false'),
+    ShouldStoreCSV = kz_json:is_true(<<"store_csv">>, ReqData, 'false'),
 
     MODBs = kazoo_modb:get_range(AccountId, FromS, ToS),
+    BaseOptions = [{'startkey', [ToS]}, {'endkey', [FromS]}],
 
-    lager:info("starting dump of ~s: ~p", [AccountId,_ExtraArgs]),
+    DumpArgs = #dump_args{base_options=BaseOptions
+                         ,modbs=MODBs
+                         ,next_start_key='undefined'
+                         ,is_reseller=IsReseller
+                         ,store_csv=ShouldStoreCSV
+                         },
 
-    process_rows(MODBs, [{'startkey', [ToS]}, {'endkey', [FromS]}], 'undefined');
-dump(#{}=_ExtraArgs, {[_MODB], _BaseOptions, 'undefined'}) ->
+    lager:info("starting dump of ~s: ~p", [AccountId, DumpArgs]),
+
+    process_rows(DumpArgs);
+dump(#{}=_ExtraArgs, #dump_args{modbs=[_MODB], next_start_key='undefined'}) ->
     lager:info("finished dumping CDRs"),
     'stop';
-dump(#{}=_ExtraArgs, {[MODB | MODBs], BaseOptions, 'undefined'}) ->
+dump(#{}=_ExtraArgs, #dump_args{modbs=[MODB | MODBs], next_start_key='undefined'}=DumpArgs) ->
     lager:info("finished with ~s", [MODB]),
-    process_rows(MODBs, BaseOptions, 'undefined');
-dump(#{}=_ExtraArgs, {MODBs, BaseOptions, NextStartKey}) ->
-    process_rows(MODBs, BaseOptions, NextStartKey).
+    process_rows(DumpArgs#dump_args{modbs=MODBs});
+dump(#{}=_ExtraArgs, #dump_args{}=DumpArgs) ->
+    process_rows(DumpArgs).
 
--spec process_rows(kz_term:ne_binaries(), kz_datamgr:view_options(), kz_json:api_json_term()) ->
+-spec process_rows(dump_args()) ->
                           {[iolist()] | kz_datamgr:data_error()
-                          ,{kz_term:ne_binary(), kz_datamgr:view_options(), kz_json:api_json_term()}
+                          ,dump_args()
                           }.
-process_rows([MODB | _]=MODBs, BaseOptions, 'undefined') ->
-    case get_page(MODB, BaseOptions, 'undefined') of
-        {'ok', [], NextStartKey} ->
-            lager:info("no rows found, continuing with next:~p", [NextStartKey]),
-            {'ok', {MODBs, BaseOptions, NextStartKey}};
-        {'ok', Rows, NextStartKey} ->
-            lager:info("got ~p rows (next:~s) from ~s", [length(Rows), NextStartKey, MODB]),
-            CDRRows = [kzd_cdrs:to_public_csv(CDR) || CDR <- rows_to_cdrs(Rows)],
-            {CDRRows, {MODBs, BaseOptions, NextStartKey}};
-        {'error', E} ->
-            lager:error("error getting first page: ~p", [E]),
-            {E, []}
-    end;
-process_rows([MODB |_]=MODBs, BaseOptions, StartKey) ->
+process_rows(#dump_args{modbs=[MODB | _]
+                       ,base_options=BaseOptions
+                       ,next_start_key=StartKey
+                       ,is_reseller=IsReseller
+                       }=DumpArgs
+            ) ->
     case get_page(MODB, BaseOptions, StartKey) of
         {'ok', [], NextStartKey} ->
             lager:info("no rows found, continuing with next:~p", [NextStartKey]),
-            {'ok', {MODBs, BaseOptions, NextStartKey}};
+            {'ok', DumpArgs#dump_args{next_start_key=NextStartKey}};
         {'ok', Rows, NextStartKey} ->
             lager:info("got ~p rows using ~s (next:~p) from ~s", [length(Rows), StartKey, NextStartKey, MODB]),
-            {[kzd_cdrs:to_public_csv(CDR) || CDR <- rows_to_cdrs(Rows)], {MODBs, BaseOptions, NextStartKey}};
+            CDRRows = [kzd_cdrs:to_public_csv(CDR, IsReseller) || CDR <- rows_to_cdrs(Rows)],
+            {CDRRows, DumpArgs#dump_args{next_start_key=NextStartKey}};
         {'error', E} ->
             lager:error("error getting page from ~p: ~p", [E, StartKey]),
             {E, []}

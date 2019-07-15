@@ -27,6 +27,7 @@
         ,bind_actions/3
         ,unbind/3, unbind/4
         ,apply/2, apply/3
+        ,execute/2
         ,map/2
         ,pmap/2, pmap/3
         ,fold/2
@@ -66,6 +67,14 @@ apply(API, <<Action/binary>>, Args) when is_list(Args) ->
     Route = <<"tasks.", Category/binary, ".", Action/binary>>,
     lager:debug("using route ~s", [Route]),
     map(Route, Args).
+
+-spec execute(kz_json:object(), list()) -> list().
+execute(API, Args) ->
+    Category = kz_json:get_ne_binary_value(<<"category">>, API),
+    Action = kz_json:get_ne_binary_value(<<"action">>, API),
+    Route = <<"tasks.", Category/binary, ".", Action/binary>>,
+    lager:debug("using route ~s", [Route]),
+    map(Route, [Action | Args]).
 
 %%------------------------------------------------------------------------------
 %% @doc Map over bound handlers.
