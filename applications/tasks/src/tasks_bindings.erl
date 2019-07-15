@@ -170,14 +170,10 @@ bind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
 
 -spec bind_actions(kz_term:ne_binary(), module(), kz_term:ne_binaries()) -> 'ok'.
 bind_actions(RoutePrefix, Module, Actions) ->
-    lists:foreach(fun (Action) ->
-                          bind(<<RoutePrefix/binary, ".", Action/binary>>
-                              ,Module
-                              ,kz_term:to_atom(Action)
-                              )
-                  end
-                 ,Actions
-                 ).
+    _ = [bind(<<RoutePrefix/binary, ".", Action/binary>>, Module, 'execute')
+         || Action <- Actions
+        ],
+    'ok'.
 
 -spec unbind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom()) -> 'ok'.
 unbind(Bindings, Module, Fun) ->
