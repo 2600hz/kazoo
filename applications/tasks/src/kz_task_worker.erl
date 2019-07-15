@@ -130,7 +130,7 @@ loop(IterValue, State=#state{api = API
 -spec pad_mapped_row(kz_json:object(), kz_csv:mapped_row()) -> kz_csv:mapped_row().
 pad_mapped_row(API, MappedRow) ->
     MissingFields = kz_tasks:possible_fields(API) -- maps:keys(MappedRow),
-    F = fun (Field, Row) -> Row#{Field => undefined} end,
+    F = fun (Field, Row) -> Row#{Field => 'undefined'} end,
     lists:foldl(F, MappedRow, MissingFields).
 
 -spec teardown(kz_json:object(), any(), state()) -> 'stop'.
