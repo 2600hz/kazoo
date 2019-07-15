@@ -5,10 +5,11 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_compactor).
+-behaviour(gen_task).
 
-%% behaviour: tasks_provider
-
--export([init/0, get_all_dbs_and_sort_by_disk/0]).
+-export([init/0
+        ,get_all_dbs_and_sort_by_disk/0
+        ]).
 
 -export([compact_all/2
         ,compact_node/3
@@ -23,7 +24,8 @@
 
 %% Triggerables
 -export([help/1, help/2, help/3
-        ,output_header/1
+        ,output_header/2
+        ,execute/3, execute/4
         ]).
 
 -ifdef(TEST).
@@ -147,10 +149,20 @@ action(<<"compact_db">>) ->
     ,{<<"optional">>, [<<"force">>]}
     ].
 
--spec output_header(kz_term:ne_binary()) -> kz_tasks:output_header().
-output_header(<<"compact_all">>) -> ?OUTPUT_HEADER;
-output_header(<<"compact_node">>) -> ?OUTPUT_HEADER;
-output_header(<<"compact_db">>) -> ?OUTPUT_HEADER.
+-spec output_header(kz_term:ne_binary(), kz_tasks:extra_args()) -> kz_tasks:output_header().
+output_header(<<"compact_all">>,  _Extra) -> ?OUTPUT_HEADER;
+output_header(<<"compact_node">>, _Extra) -> ?OUTPUT_HEADER;
+output_header(<<"compact_db">>,   _Extra) -> ?OUTPUT_HEADER.
+
+-spec execute(kz_term:ne_binary(), kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
+execute(<<"compact_all">>, ExtraArgs, Iterator) ->
+    compact_all(ExtraArgs, Iterator).
+
+-spec execute(kz_term:ne_binary(), kz_tasks:extra_args(), kz_tasks:iterator(), map()) -> kz_tasks:iterator().
+execute(<<"compact_node">>, ExtraArgs, Iterator, CurrentInputRow) ->
+    compact_node(ExtraArgs, Iterator, CurrentInputRow);
+execute(<<"compact_db">>, ExtraArgs, Iterator, CurrentInputRow) ->
+    compact_db(ExtraArgs, Iterator, CurrentInputRow).
 
 -spec compact_all(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 compact_all(Extra, 'init') ->

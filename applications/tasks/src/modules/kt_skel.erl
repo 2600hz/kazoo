@@ -5,26 +5,18 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_skel).
-
+-behaviour(gen_task).
 %% behaviour: tasks_provider
 
 -export([init/0
         ,help/1, help/2, help/3
-        ,output_header/1
-        ]).
-
-%% Verifiers
--export([col2/1
-        ]).
-
-%% Appliers
--export([id1/3
-        ,id2/3
+        ,output_header/2
+        ,cell_verifier/2
+        ,execute/4
         ]).
 
 %% Triggerables
--export([my_minute_job/0
-        ]).
+-export([my_minute_job/0]).
 
 -include("tasks.hrl").
 
@@ -49,8 +41,8 @@ init() ->
     _ = tasks_bindings:bind(?TRIGGER_MINUTELY, ?MODULE, 'my_minute_job'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
--spec output_header(kz_term:ne_binary()) -> kz_tasks:output_header().
-output_header(<<"id2">>) ->
+-spec output_header(kz_term:ne_binary(), kz_tasks:extra_args()) -> kz_tasks:output_header().
+output_header(<<"id2">>, _ExtraArgs) ->
     [<<"Col1">>, <<"Col2">>].
 
 -spec help(kz_json:object()) -> kz_json:object().
@@ -79,13 +71,19 @@ action(<<"id2">>) ->
     ].
 
 %%% Verifiers
--spec col2(kz_term:ne_binary()) -> boolean().
-col2(?NE_BINARY) -> 'true'.
+-spec cell_verifier(kz_term:ne_binary(), kz_json:json_term()) -> boolean().
+cell_verifier(<<"col2">>, ?NE_BINARY) -> 'true'.
 
 %%% Appliers
+-spec execute(kz_term:ne_binary(), kz_tasks:extra_args(), kz_tasks:iterator(), map()) -> kz_tasks:interator().
+execute(<<"id1">>, ExtraArgs, Iterator, CurrentInputRow) ->
+    id1(ExtraArgs, Iterator, CurrentInputRow);
+execute(<<"id2">>, ExtraArgs, Iterator, CurrentInputRow) ->
+    id2(ExtraArgs, Iterator, CurrentInputRow).
+
 
 -spec id1(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-id1(_ExtraArgs, _IterValue, #{<<"col1">> := undefined}) ->
+id1(_ExtraArgs, _IterValue, #{<<"col1">> := 'undefined'}) ->
     [<<"col1 was not defined">>];
 id1(_ExtraArgs, _IterValue, #{<<"col1">> := Col1}) ->
     [<<"col1 was set to", Col1/binary, "!">>].
@@ -98,7 +96,7 @@ id2(_ExtraArgs, _IterValue, #{<<"col1">> := Col1
 
 %%% Triggerables
 
--spec my_minute_job() -> ok.
+-spec my_minute_job() -> 'ok'.
 my_minute_job() ->
     {_, {_, _Data, _}} = calendar:local_time(),
     lager:debug("executed every minute! (~p)", [_Data]).

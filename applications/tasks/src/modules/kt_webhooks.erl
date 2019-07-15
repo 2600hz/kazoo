@@ -5,18 +5,15 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_webhooks).
-
+-behaviour(gen_bg_task).
 %% behaviour: tasks_provider
 
--export([init/0
-        ]).
+-export([init/0]).
 
 %% Triggerables
--export([cleanup/1
-        ]).
+-export([cleanup/1]).
 
 -include("tasks.hrl").
-
 
 %%%=============================================================================
 %%% API
@@ -28,7 +25,7 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = tasks_bindings:bind(?TRIGGER_SYSTEM, ?MODULE, cleanup).
+    _ = tasks_bindings:bind(?TRIGGER_SYSTEM, ?MODULE, 'cleanup').
 
 %%% Triggerables
 
@@ -71,9 +68,12 @@ cleanup_orphaned_hooks(Accounts) ->
                   not kz_datamgr:db_exists(kz_util:format_account_id(AccountId, 'encoded'))
               end
           ],
-    _Rm =/= []
-        andalso lager:debug("removed ~p accounts' webhooks", [length(_Rm)]),
+    maybe_log_removed(_Rm),
     'ok'.
+
+maybe_log_removed([]) -> 'ok';
+maybe_log_removed(_RM) ->
+    lager:debug("removed ~p accounts' webhooks", [length(_RM)]).
 
 -spec delete_account_webhooks(kz_term:ne_binary()) -> 'ok'.
 delete_account_webhooks(AccountId) ->
@@ -99,7 +99,7 @@ fetch_account_hooks(AccountId) ->
 -spec delete_account_hooks(kz_json:objects()) -> any().
 delete_account_hooks(ViewJObjs) ->
     kz_datamgr:del_docs(?KZ_WEBHOOKS_DB
-                       ,[kz_json:get_value(<<"doc">>, ViewJObj)
+                       ,[kz_json:get_json_value(<<"doc">>, ViewJObj)
                          || ViewJObj <- ViewJObjs
                         ]
                        ).

@@ -4,8 +4,7 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_modb_creation).
-
-%% behaviour: tasks_provider
+-behaviour(gen_bg_task).
 
 -export([init/0]).
 

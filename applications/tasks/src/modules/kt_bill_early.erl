@@ -5,11 +5,9 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_bill_early).
+-behaviour(gen_bg_task).
 
-%% behaviour: tasks_provider
-
--export([init/0
-        ]).
+-export([init/0]).
 
 %% Triggerables
 -export([handle_req/1]).

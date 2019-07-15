@@ -5,6 +5,7 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_initial_occurrence).
+-behaviour(gen_bg_task).
 
 -export([init/0]).
 

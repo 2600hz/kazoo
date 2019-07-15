@@ -5,8 +5,8 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_cleanup).
+-behaviour(gen_bg_task).
 
-%% behaviour: tasks_provider
 -export([init/0]).
 
 %% Triggerables
@@ -33,7 +33,7 @@ init() ->
 
 %%% Triggerables
 
--spec cleanup_soft_deletes(kz_term:ne_binary()) -> ok.
+-spec cleanup_soft_deletes(kz_term:ne_binary()) -> 'ok'.
 cleanup_soft_deletes(?KZ_ACCOUNTS_DB) ->
     do_cleanup(?KZ_ACCOUNTS_DB);
 cleanup_soft_deletes(Account) ->

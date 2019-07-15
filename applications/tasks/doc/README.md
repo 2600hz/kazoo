@@ -125,7 +125,7 @@ Be careful as a rate too low may corrupt a task's state.
 After a task's function (`TaskName`) has been called, the worker will wait a configurable number of milliseconds before proceeding with the next row.
 Set `tasks.wait_after_row_ms` to the pause you want the system to make in between writes to output (default: `500`).
 
-## Headless Tasks
+## Background Tasks
 
 You can create tasks that run periodically (like cronjobs) or that operation on a subset of databases.
 

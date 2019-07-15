@@ -1,5 +1,7 @@
 -module(gen_task).
 
+-callback init() -> 'ok'.
+
 -callback help(kz_json:object()) -> kz_json:object().
 -callback help(kz_json:object(), Category) -> kz_json:object() when
       Category :: kz_term:ne_binary().

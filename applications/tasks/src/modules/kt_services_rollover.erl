@@ -4,8 +4,7 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_services_rollover).
-
-%% behaviour: tasks_provider
+-behaviour(gen_bg_task).
 
 -export([init/0]).
 

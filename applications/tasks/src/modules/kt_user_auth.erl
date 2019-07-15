@@ -5,20 +5,18 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_user_auth).
+-behaviour(gen_bg_task).
 
 %% behaviour: tasks_provider
 
--export([init/0
-        ]).
+-export([init/0]).
 
 %% Triggerables
--export([cleanup_reset_ids/1
-        ]).
+-export([cleanup_reset_ids/1]).
 
 -include("tasks.hrl").
 
 -define(RESET_PVT_TYPE, <<"password_reset">>).
-
 
 %%%=============================================================================
 %%% API
