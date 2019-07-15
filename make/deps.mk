@@ -60,7 +60,9 @@ dep_apns = git https://github.com/2600hz/erlang-apns4erl.git aba1fa96a4abbbb2c16
 # dep_chatterbox = hex 0.7.0
 # used by apns4erl
 
-dep_couchbeam = git https://github.com/2600hz/erlang-couchbeam 28fce6c340de83f4792d45224c29ec729b8e264d # latest commit SHA to 2600hz branch
+dep_couchbeam = git https://github.com/2600hz/erlang-couchbeam 86d946646ad9dee1dee305b15d5c59e4c8e60cc2 # latest commit SHA to 2600hz-kazoo5 branch
+# adds _show querying
+
 ### https://github.com/benoitc/couchbeam/pull/158 - _list functions fix
 ### https://github.com/benoitc/couchbeam/pull/164 - allow 202 in put_attachment
 ### https://github.com/benoitc/couchbeam/pull/165 - fetch couchdb config

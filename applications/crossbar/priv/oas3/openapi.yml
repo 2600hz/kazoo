@@ -196,6 +196,13 @@
       paths/faxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1faxes~1smtplog~1{ATTEMPT_ID}
   '/accounts/{ACCOUNT_ID}/freeswitch':
     '$ref': 'paths/freeswitch.yml#/paths/~1accounts~1{ACCOUNT_ID}~1freeswitch'
+  '/accounts/{ACCOUNT_ID}/functions':
+    '$ref': 'paths/functions.yml#/paths/~1accounts~1{ACCOUNT_ID}~1functions'
+  '/accounts/{ACCOUNT_ID}/functions/samples':
+    '$ref': 'paths/functions.yml#/paths/~1accounts~1{ACCOUNT_ID}~1functions~1samples'
+  '/accounts/{ACCOUNT_ID}/functions/{FUNCTION_ID}':
+    '$ref': >-
+      paths/functions.yml#/paths/~1accounts~1{ACCOUNT_ID}~1functions~1{FUNCTION_ID}
   '/accounts/{ACCOUNT_ID}/global_provisioner_templates':
     '$ref': >-
       paths/global_provisioner_templates.yml#/paths/~1accounts~1{ACCOUNT_ID}~1global_provisioner_templates

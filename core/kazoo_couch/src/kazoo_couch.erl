@@ -63,6 +63,7 @@
         ,all_design_docs/3
         ,get_results/4
         ,get_results_count/4
+        ,show/5
         ,all_docs/3
         ]).
 
@@ -287,6 +288,12 @@ get_results(Server, DbName, DesignDoc, ViewOptions) ->
                                couchbeam_error().
 get_results_count(Server, DbName, DesignDoc, ViewOptions) ->
     kz_couch_view:get_results_count(Server, DbName, DesignDoc, ViewOptions).
+
+-spec show(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
+                  {'ok', kz_json:object()} |
+                  couchbeam_error().
+show(Server, DbName, DesignDoc, DocId, Options) ->
+    kz_couch_view:show(Server, DbName, DesignDoc, DocId, Options).
 
 -spec all_docs(kz_data:connection(), kz_term:ne_binary(), kz_data:options()) ->
                       {'ok', kz_json:objects()} |

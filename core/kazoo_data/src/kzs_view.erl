@@ -18,6 +18,7 @@
         ,get_results_count/4
         ,all_docs/3
         ,doc_type_from_view/2
+        ,show/5
         ]).
 
 -include("kz_data.hrl").
@@ -69,3 +70,9 @@ doc_type_from_view(<<"recordings">>, _ViewName) -> <<"call_recording">>;
 doc_type_from_view(<<"mailbox_messages">>, _ViewName) -> <<"mailbox_message">>;
 doc_type_from_view(<<"sms">>, _ViewName) -> <<"sms">>;
 doc_type_from_view(_ViewType, _ViewName) -> <<"any">>.
+
+-spec show(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | 'null', kz_term:proplist()) ->
+                  {'ok', kz_json:objects() | kz_json:path()} |
+                  data_error().
+show(#{server := {App, Conn}}, DbName, DesignDoc, DocId, Options) ->
+    App:show(Conn, DbName, DesignDoc, DocId, Options).

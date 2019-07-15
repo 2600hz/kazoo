@@ -169,6 +169,7 @@ Describes how to store documents depending on the database or document type
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `account` | schema for database storage plan | [#/definitions/storage.plan.database](#storageplan.database) |   | `false` |  
+`aggregate` | schema for database storage plan | [#/definitions/storage.plan.database](#storageplan.database) |   | `false` |  
 `modb` | schema for database storage plan | [#/definitions/storage.plan.database](#storageplan.database) |   | `false` |  
 `system` | schema for database storage plan | [#/definitions/storage.plan.database](#storageplan.database) |   | `false` |  
 
@@ -179,15 +180,18 @@ schema for database storage plan
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`attachments` | schema for attachment ref type storage plan | [#/definitions/storage.plan.database.attachment](#storageplan.database.attachment) |   | `false` |  
-`connection` |   | `string()` |   | `false` |  
+`attachments` | Describes what attachment types to store using this plan | [#/definitions/storage.plan.database.attachment](#storageplan.database.attachment) |   | `false` |  
+`connection` | Which connection UUID to use when storing to this database type | `string()` |   | `false` |  
 `database.create_options` |   | `object()` |   | `false` |  
+`database.names.[]` |   | `string()` |   | `false` |  
+`database.names` | List of database names to match (non-matching names won't use this plan) | `array(string())` |   | `false` |  
 `database` |   | `object()` |   | `false` |  
 `types.call_recording` | schema for document type storage plan | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false` |  
 `types.fax` | schema for document type storage plan | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false` |  
+`types.function` | schema for document type storage plan | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false` |  
 `types.mailbox_message` | schema for document type storage plan | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false` |  
 `types.media` | schema for document type storage plan | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false` |  
-`types` |   | `object()` |   | `false` |  
+`types` | The document types to store with this plan | `object()` |   | `false` |  
 
 ### storage.plan.database.attachment
 

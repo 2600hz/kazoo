@@ -19,6 +19,7 @@
 -define(KZ_ACCOUNT_CONFIGS, <<"configs_">>).
 
 -define(KZ_WEBHOOKS_DB, <<"webhooks">>).
+-define(KZ_FUNCTIONS_DB, <<"functions">>).
 
 -define(KZ_ACDC_DB, <<"acdc">>).
 
@@ -51,6 +52,7 @@
                        ,?KZ_DEDICATED_IP_DB
                        ,?KZ_ACDC_DB
                        ,?KZ_OAUTH_DB
+                       ,?KZ_FUNCTIONS_DB
                        ,?KZ_WEBHOOKS_DB
                        ,?KZ_TOKEN_DB
                        ,?KZ_ALERTS_DB

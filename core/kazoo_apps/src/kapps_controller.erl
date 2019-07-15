@@ -85,11 +85,16 @@ ready(Verbose) ->
     Configured = [kz_term:to_binary(App) || App <- start_which_kapps(Verbose)],
     Running = [kz_term:to_binary(App) || App <- running_apps(), is_atom(App)],
 
-    0 =:= sets:size(
-            sets:subtract(sets:from_list(Configured)
-                         ,sets:from_list(Running)
-                         )
-           ).
+    Diff = sets:subtract(sets:from_list(Configured)
+                        ,sets:from_list(Running)
+                        ),
+    case sets:size(Diff) of
+        0 -> 'true';
+        _Size when Verbose ->
+            lager:info("still waiting on ~p", [sets:to_list(Diff)]),
+            'false';
+        _Size -> 'false'
+    end.
 
 -spec start_default_apps() -> [{atom(), 'ok' | {'error', any()}}].
 start_default_apps() ->

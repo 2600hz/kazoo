@@ -29,13 +29,15 @@
 %% @throws {'error', 'failed_to_convert_oas'}
 %% @end
 %%------------------------------------------------------------------------------
--spec to_swagger_definitions(kz_term:ne_binary(), [string()]) -> kz_json:object().
+-spec to_swagger_definitions(kz_term:ne_binary(), file:filename_all()) -> kz_json:object().
 to_swagger_definitions(OasVersion, SchemasPath) ->
     {OasSchemas, Report, HasError} =
         filelib:fold_files(kz_term:to_list(SchemasPath)
                           ,"\\.json\$"
                           ,'false'
-                          ,fun(FileName, {Definitions, Report, HasError}) -> process_schema(FileName, Definitions, OasVersion, Report, HasError) end
+                          ,fun(FileName, {Definitions, Report, HasError}) ->
+                                   process_schema(FileName, Definitions, OasVersion, Report, HasError)
+                           end
                           ,{kz_json:new(), #{}, 'false'}
                           ),
     print_report(Report),
@@ -81,19 +83,22 @@ print_messages([Msg | Msgs]) ->
     io:format(user, "~s~n", [Msg]),
     print_messages(Msgs).
 
--spec process_schema(string(), kz_json:object(), kz_term:ne_binary(), map(), boolean()) ->
+-spec process_schema(file:filename_all(), kz_json:object(), kz_term:ne_binary(), map(), boolean()) ->
                             {kz_json:object(), map(), boolean()}.
 process_schema(Filename, Definitions, OasVersion, Warn, Err) ->
     process_schema(Filename, Definitions, OasVersion, filename:basename(Filename, ".json"), Warn, Err).
 
--spec process_schema(string(), kz_json:object(), kz_term:ne_binary(), string(), map(), boolean()) ->
+-spec process_schema(file:filename_all(), kz_json:object(), kz_term:ne_binary(), string(), map(), boolean()) ->
                             {kz_json:object(), map(), boolean()}.
 process_schema(_Filename, Definitions, <<"oas3">>, "kapi."++_ = Name, Report, HasError) ->
     {kz_json:delete_key(kz_term:to_binary(Name), Definitions), Report, HasError};
 process_schema(Filename, Definitions, OasVersion, Name, Report, HasError) ->
     case convert(Filename, OasVersion) of
         {'ok', OasSchema, Warn} ->
-            {kz_json:set_value(kz_term:to_binary(Name), OasSchema, Definitions), maps:put(Filename, #{warn => Warn}, Report), HasError};
+            {kz_json:set_value(kz_term:to_binary(Name), OasSchema, Definitions)
+            ,maps:put(Filename, #{warn => Warn}, Report)
+            ,HasError
+            };
         {'error', Warn, Err} ->
             {Definitions, maps:put(Filename, #{warn => Warn, err => Err}, Report), 'true'}
     end.
@@ -105,7 +110,7 @@ process_schema(Filename, Definitions, OasVersion, Name, Report, HasError) ->
 %% `OasVersion' can be `<<"swagger2">>' or `<<"oas3">>'.
 %% @end
 %%------------------------------------------------------------------------------
--spec convert(kz_term:text(), kz_term:ne_binary()) -> oas_schema_ret().
+-spec convert(file:filename_all(), kz_term:ne_binary()) -> oas_schema_ret().
 convert(File, OasVersion) ->
     {'ok', Bin} = file:read_file(File),
     KVs = kz_json:to_proplist(kz_json:flatten(kz_json:decode(Bin))),
@@ -116,7 +121,9 @@ convert(File, OasVersion) ->
             {'error', Warn, Err}
     end.
 
--spec to_oas_schema(kz_term:proplist(), kz_term:ne_binary()) -> oas_schema_ret().
+-spec to_oas_schema(kz_json:flat_proplist(), kz_term:ne_binary()) ->
+                           {'ok', kz_json:flat_proplist(), kz_term:ne_binaries()} |
+                           {'error', kz_term:ne_binaries(), kz_term:ne_binaries()}.
 to_oas_schema(KVs, <<"swagger2">>) ->
     {'ok'
     ,[case lists:last(Path) =:= <<"$ref">> of
@@ -164,7 +171,7 @@ is_kazoo_prefixed([_Field|Path]) -> is_kazoo_prefixed(Path).
 -type oas3_schema_ret() :: {'ok', kz_term:proplist(), kz_term:proplist()} |
                            {'error', kz_term:proplist(), kz_term:proplist()}.
 
--spec to_oas3_schema(kz_term:proplist(), kz_term:proplist(), kz_term:proplist(), kz_term:proplist(), kz_term:proplist()) -> oas3_schema_ret().
+-spec to_oas3_schema(kz_json:flat_proplist(), kz_term:proplist(), kz_term:proplist(), kz_term:proplist(), kz_term:proplist()) -> oas3_schema_ret().
 to_oas3_schema([{Path, Val} | PVs], KVs, OrigKVs, Warn, Err) ->
     case to_oas3_schema(Path, Path, [], Val, KVs, OrigKVs, Warn, Err) of
         {'ok', NewKVs, NewWarn} -> to_oas3_schema(PVs, NewKVs, OrigKVs, NewWarn, Err);
@@ -332,7 +339,7 @@ return_error_on_error(KVs, Warn, []) ->
 return_error_on_error(_, Warn, Err) ->
     {'error', Warn, Err}.
 
--spec ret_unsupported_key(kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binaries()) -> oas3_schema_ret().
+-spec ret_unsupported_key(kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binaries(), kz_term:ne_binaries()) -> oas3_schema_ret().
 ret_unsupported_key(KVs, Key, ReverseP, Warn, Err) ->
     Msg = <<"unsupported keyword.">>,
     return_error_on_error(KVs, [{join_oas3_path_reverse([Key | ReverseP]), Msg} | Warn], Err).

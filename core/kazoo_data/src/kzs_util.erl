@@ -70,6 +70,7 @@ db_classification(?KZ_ACDC_DB) -> 'aggregate';
 db_classification(?KZ_SERVICES_DB) -> 'aggregate';
 db_classification(?KZ_PORT_REQUESTS_DB) -> 'aggregate';
 db_classification(?KZ_WEBHOOKS_DB) -> 'aggregate';
+db_classification(?KZ_FUNCTIONS_DB) -> 'aggregate';
 db_classification(<<?KNM_DB_PREFIX, _/binary>>) -> 'numbers';
 db_classification(<<?KNM_DB_PREFIX_ENCODED, _/binary>>) -> 'numbers';
 db_classification(<<?KNM_DB_PREFIX_encoded, _/binary>>) -> 'numbers';

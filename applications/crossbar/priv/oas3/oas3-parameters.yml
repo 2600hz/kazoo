@@ -260,6 +260,16 @@
   'schema':
     'pattern': '^[a-zA-Z0-9]+$'
     'type': string
+'FUNCTION_ID':
+  'description': request FUNCTION_ID parameter
+  'in': path
+  'name': FUNCTION_ID
+  'required': true
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'GROUP_ID':
   'description': request GROUP_ID parameter
   'in': path

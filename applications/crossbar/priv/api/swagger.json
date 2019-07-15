@@ -2425,6 +2425,20 @@
             },
             "type": "object"
         },
+        "callflows.function": {
+            "description": "Validator for the function callflow data object",
+            "properties": {
+                "id": {
+                    "description": "The Function's doc ID",
+                    "type": "string"
+                },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
         "callflows.group": {
             "description": "Validator for the group callflow data object",
             "properties": {
@@ -6574,6 +6588,34 @@
                     "type": "string"
                 }
             },
+            "type": "object"
+        },
+        "functions": {
+            "description": "Functions that javascript function to process a callflow document.",
+            "properties": {
+                "enabled": {
+                    "default": true,
+                    "description": "Is the function enabled and running",
+                    "type": "boolean"
+                },
+                "function_js": {
+                    "description": "Serverless function in Javascript",
+                    "type": "string"
+                },
+                "language_pack": {
+                    "default": "javascript",
+                    "description": "The language and version are required for the function runtime.",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "A descriptive name for the function.",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "function_js"
+            ],
             "type": "object"
         },
         "groups": {
@@ -29008,6 +29050,9 @@
                 "account": {
                     "$ref": "#/definitions/storage.plan.database"
                 },
+                "aggregate": {
+                    "$ref": "#/definitions/storage.plan.database"
+                },
                 "modb": {
                     "$ref": "#/definitions/storage.plan.database"
                 },
@@ -29021,25 +29066,38 @@
             "description": "schema for database storage plan",
             "properties": {
                 "attachments": {
-                    "$ref": "#/definitions/storage.plan.database.attachment"
+                    "$ref": "#/definitions/storage.plan.database.attachment",
+                    "description": "Describes what attachment types to store using this plan"
                 },
                 "connection": {
+                    "description": "Which connection UUID to use when storing to this database type",
                     "type": "string"
                 },
                 "database": {
                     "properties": {
                         "create_options": {
                             "type": "object"
+                        },
+                        "names": {
+                            "description": "List of database names to match (non-matching names won't use this plan)",
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
                         }
                     },
                     "type": "object"
                 },
                 "types": {
+                    "description": "The document types to store with this plan",
                     "properties": {
                         "call_recording": {
                             "$ref": "#/definitions/storage.plan.database.document"
                         },
                         "fax": {
+                            "$ref": "#/definitions/storage.plan.database.document"
+                        },
+                        "function": {
                             "$ref": "#/definitions/storage.plan.database.document"
                         },
                         "mailbox_message": {
@@ -37268,6 +37326,16 @@
             "required": true,
             "type": "string"
         },
+        "FUNCTION_ID": {
+            "description": "request FUNCTION_ID parameter",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
+            "name": "FUNCTION_ID",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
+            "type": "string"
+        },
         "GROUP_ID": {
             "description": "request GROUP_ID parameter",
             "in": "path",
@@ -40841,6 +40909,145 @@
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/functions": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "put": {
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "functions",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/functions"
+                        }
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/functions/samples": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/functions/{FUNCTION_ID}": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/FUNCTION_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/FUNCTION_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "patch": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/FUNCTION_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "functions",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/functions"
+                        }
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/FUNCTION_ID"
                     }
                 ],
                 "responses": {

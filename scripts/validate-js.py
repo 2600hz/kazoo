@@ -14,6 +14,12 @@ if len(sys.argv) < 2:
     print 'Usage: ' + sys.argv[0] + ' file.json+'
     exit(0)
 
+def should_exclude_serverless_function(value):
+    if value.startswith('function_') or value.startswith('functions'):
+        return False
+    else:
+        return True
+
 def fmap(F, data):
     if isinstance(data, dict):
         for key, value in data.iteritems():
@@ -21,10 +27,11 @@ def fmap(F, data):
     elif isinstance(data, tuple):
         (key, value) = data
         if isinstance(value, basestring):
-            if value.startswith('function'):
+            if value.startswith('function') and should_exclude_serverless_function(value):
                 F(data)
         elif isinstance(value, list) and len(value) > 0 \
-             and isinstance(value[0], basestring) and value[0].startswith('function'):
+             and isinstance(value[0], basestring) and value[0].startswith('function') \
+             and should_exclude_serverless_function(value[0]):
             F(data)
         else:
             fmap(F, value)

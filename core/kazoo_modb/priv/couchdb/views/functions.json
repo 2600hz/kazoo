@@ -1,0 +1,16 @@
+{
+    "_id": "_design/functions",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "modb"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "crossbar_listing": {
+            "map": "function(doc) { if(doc.pvt_type != 'functions' || doc.pvt_deleted) return; emit(doc._id, null);}"
+        }
+    }
+}

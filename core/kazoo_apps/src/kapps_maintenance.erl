@@ -2192,14 +2192,16 @@ kapps_started() ->
 
 -spec kapps_started(integer()) -> 'true'.
 kapps_started(Timeout) when Timeout > 0 ->
-    kapps_controller:ready()
-        orelse begin
-                   timer:sleep(100),
-                   kapps_started(Timeout - 100)
-               end;
+    kapps_started(Timeout, kapps_controller:ready());
 kapps_started(_Timeout) ->
     lager:error("timed out waiting for kapps to start"),
     throw({'error', 'timeout'}).
+
+-spec kapps_started(integer(), boolean()) -> 'true'.
+kapps_started(_Timeout, 'true') -> 'true';
+kapps_started(Timeout, 'false') ->
+    timer:sleep(500),
+    kapps_started(Timeout - 500).
 
 -spec master_account_created() -> 'true'.
 master_account_created() ->

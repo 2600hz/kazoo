@@ -79,6 +79,7 @@
         ,get_result_ids/1, get_result_ids/2, get_result_ids/3
         ,get_single_result/3
         ,get_result_doc/3, get_result_docs/3
+        ,show/2, show/3, show/4
         ,paginate_results/3
         ,design_info/2
         ,design_compact/2
@@ -1300,6 +1301,30 @@ get_results(DbName, DesignDoc, Options) ->
         {'error', _}=E -> E
     end.
 
+-spec show(kz_term:ne_binary(), kz_term:ne_binary()) ->
+                  {'ok', kz_json:object()} |
+                  data_error().
+show(DbName, DesignDoc) ->
+    show(DbName, DesignDoc, 'null').
+
+-spec show(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | 'null') ->
+                  {'ok', kz_json:object()} |
+                  data_error().
+show(DbName, DesignDoc, DocId) ->
+    show(DbName, DesignDoc, DocId, []).
+
+-spec show(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | 'null', kz_term:proplist()) ->
+                  {'ok', kz_json:object()} |
+                  data_error().
+show(DbName, DesignDoc, DocId, Options) when ?VALID_DBNAME(DbName) ->
+    Plan = kzs_plan:plan(DbName),
+    kzs_view:show(Plan, DbName, DesignDoc, DocId, Options);
+show(DbName, DesignDoc, DocId, Options) ->
+    case maybe_convert_dbname(DbName) of
+        {'ok', Db} -> show(Db, DesignDoc, DocId, Options);
+        {'error', _}=E -> E
+    end.
+
 -spec get_results_count(kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
                                {'ok', integer()} |
                                data_error().
@@ -1784,7 +1809,7 @@ validate_view_map([], [_|_]=ViewMap) ->
     {<<"multi_db">>, ViewMap};
 validate_view_map([JObj | JObjs], ViewMaps) ->
     Db = kz_json:get_ne_binary_value(<<"database">>, JObj),
-    Class= kz_json:get_ne_binary_value(<<"classification">>, JObj),
+    Class = kz_json:get_ne_binary_value(<<"classification">>, JObj),
     case kz_json:is_json_object(JObj) of
         'true' ->
             validate_view_map(JObjs, only_one_of(Db, Class, [JObj | ViewMaps]));

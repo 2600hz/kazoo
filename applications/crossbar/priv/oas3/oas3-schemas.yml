@@ -1938,6 +1938,17 @@
         When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
       'type': boolean
   'type': object
+'callflows.function':
+  'description': Validator for the function callflow data object
+  'properties':
+    'id':
+      'description': The Function's doc ID
+      'type': string
+    'skip_module':
+      'description': |-
+        When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
+      'type': boolean
+  'type': object
 'callflows.group':
   'description': Validator for the group callflow data object
   'properties':
@@ -5220,6 +5231,31 @@
     'value':
       'description': Replaces the current value with the static value defined
       'type': string
+  'type': object
+'functions':
+  'description': Functions that javascript function to process a callflow document.
+  'properties':
+    'enabled':
+      'default': true
+      'description': Is the function enabled and running
+      'type': boolean
+      'x-support_level': supported
+    'function_js':
+      'description': Serverless function in Javascript
+      'type': string
+      'x-support_level': supported
+    'language_pack':
+      'default': javascript
+      'description': The language and version are required for the function runtime.
+      'type': string
+      'x-support_level': supported
+    'name':
+      'description': A descriptive name for the function.
+      'type': string
+      'x-support_level': supported
+  'required':
+    - name
+    - function_js
   'type': object
 'groups':
   'description': Validator for the group
@@ -8515,6 +8551,8 @@
   'properties':
     'account':
       '$ref': '#/storage.plan.database'
+    'aggregate':
+      '$ref': '#/storage.plan.database'
     'modb':
       '$ref': '#/storage.plan.database'
     'system':
@@ -8526,19 +8564,30 @@
   'properties':
     'attachments':
       '$ref': '#/storage.plan.database.attachment'
+      'description': Describes what attachment types to store using this plan
     'connection':
+      'description': Which connection UUID to use when storing to this database type
       'type': string
       'x-kazoo-validation': true
     'database':
       'properties':
         'create_options':
           'type': object
+        'names':
+          'description': |-
+            List of database names to match (non-matching names won't use this plan)
+          'items':
+            'type': string
+          'type': array
       'type': object
     'types':
+      'description': The document types to store with this plan
       'properties':
         'call_recording':
           '$ref': '#/storage.plan.database.document'
         'fax':
+          '$ref': '#/storage.plan.database.document'
+        'function':
           '$ref': '#/storage.plan.database.document'
         'mailbox_message':
           '$ref': '#/storage.plan.database.document'

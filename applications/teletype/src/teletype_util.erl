@@ -466,6 +466,7 @@ find_account_db(<<"faxbox">>, JObj) -> kapi_notifications:account_db(JObj, 'fals
 find_account_db(<<"fax">>, JObj) -> kapi_notifications:account_db(JObj, 'true');
 find_account_db(<<"port_request">>, _JObj) -> ?KZ_PORT_REQUESTS_DB;
 find_account_db(<<"webhook">>, _JObj) -> ?KZ_WEBHOOKS_DB;
+find_account_db(<<"function">>, _JObj) -> ?KZ_FUNCTIONS_DB;
 find_account_db(_, JObj) -> kapi_notifications:account_db(JObj, 'false').
 
 -spec send_update(kz_json:object(), kz_term:ne_binary()) -> 'ok'.

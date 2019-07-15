@@ -19,6 +19,8 @@ main(_) ->
     {Year, _, _} = erlang:date(),
 
     io:format("Edocify Kazoo...~n~n"),
+    FindCmd = regex_find("applications/ core/", "'.*/src/.*.(erl|erl.src)$'", os:type()),
+    io:format("find cmd is ~p ~n", [FindCmd]),
 
     Run = [
            %% regex for evil spec+specs
@@ -27,7 +29,7 @@ main(_) ->
            ,fun evil_specs/1
            }
 
-           %% ,{"find applications/ core/ -regextype egrep -regex '.*/src/.*.(erl|erl.src)$'"
+           %% ,{"FindCmd
            %%  ,"bump/fix copyright"
            %%  ,fun(R) -> bump_copyright(R, Year) end
            %%  }
@@ -97,6 +99,14 @@ main(_) ->
            }
           ],
     edocify(Run, 0).
+
+regex_find(Folder, Regex, {'unix', 'darwin'}) ->
+    "find -E " ++ Folder ++ " -regex " ++ Regex;
+regex_find(Folder, Regex, {'unix', 'linux'}) ->
+    "find " ++ Folder ++ " -regextype egrep -regex " ++ Regex;
+regex_find(Folder, Regex, _) ->
+    io:format("Unplanned OS type, expect Darwin or Linux."),
+    error.
 
 check_ag_available() ->
     case os:find_executable("ag") of

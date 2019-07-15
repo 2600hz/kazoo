@@ -35,7 +35,7 @@ start(_Type, _Args) ->
 
 -spec prep_stop(any()) -> 'ok'.
 prep_stop(_State) ->
-    kz_nodes:unbind_for_pool_state('kz_amqp_sup', whereis('callflow_sup')),
+    _ = kz_nodes:unbind_for_pool_state('kz_amqp_sup', whereis('callflow_sup')),
     'ok'.
 
 %%------------------------------------------------------------------------------

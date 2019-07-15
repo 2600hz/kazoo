@@ -18,12 +18,17 @@
         ,get_results/4
         ,get_results_count/4
         ,all_docs/1, all_docs/2, all_docs/3
+        ,show/5
         ]).
 
 -include("kz_couch.hrl").
 
 -type ddoc() :: 'all_docs' |
+                kz_term:ne_binary() |
                 {kz_term:ne_binary(), kz_term:ne_binary()}.
+
+-type show_doc() :: binary() |
+                    {binary(), binary()}.
 
 %%% View-related functions -----------------------------------------------------
 -spec design_compact(server(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
@@ -75,7 +80,7 @@ all_docs(#server{}=Conn, DbName, Options) ->
     Db = kz_couch_util:get_db(Conn, DbName),
     do_fetch_results(Db, 'all_docs', Options).
 
--spec get_results(server(), kz_term:ne_binary(), kz_term:ne_binary() | ddoc(), view_options()) ->
+-spec get_results(server(), kz_term:ne_binary(), ddoc(), view_options()) ->
                          {'ok', kz_json:objects() | kz_json:path()} |
                          couchbeam_error().
 get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
@@ -94,7 +99,7 @@ get_results_count(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
     do_fetch_results_count(Db, DesignDoc, ViewOptions).
 
 %% Design Doc/View internal functions
--spec do_fetch_results(couchbeam_db(), kz_term:ne_binary() | ddoc(), view_options()) ->
+-spec do_fetch_results(couchbeam_db(), ddoc(), view_options()) ->
                               {'ok', kz_json:objects() | kz_term:ne_binaries()} |
                               couchbeam_error().
 do_fetch_results(Db, <<DesignDoc/binary>>, Options) ->
@@ -127,7 +132,7 @@ map_view_option({K, V})
     {kz_term:to_atom(K, 'true'), V};
 map_view_option(KV) -> KV.
 
--spec do_fetch_results_count(couchbeam_db(), kz_term:ne_binary() | ddoc(), view_options()) ->
+-spec do_fetch_results_count(couchbeam_db(), ddoc(), view_options()) ->
                                     {'ok', kz_term:api_integer()} |
                                     couchbeam_error().
 do_fetch_results_count(Db, <<DesignDoc/binary>>, Options) ->
@@ -146,3 +151,13 @@ do_fetch_results_count(Db, DesignDoc, Options) ->
                                 couchbeam_error().
 do_get_design_info(#db{}=Db, Design) ->
     ?RETRY_504(couchbeam:design_info(Db, Design)).
+
+-spec show(server(), kz_term:ne_binary(), show_doc(), binary() | 'null', [{'query_string', binary()}]) ->
+                  {'ok', kz_json:object()} |
+                  couchbeam_error().
+show(#server{}=Conn, <<DbName/binary>>, <<DesignDoc/binary>>, DocId, Options) ->
+    [DesignName, ViewName|_] = binary:split(DesignDoc, <<"/">>, ['global']),
+    show(Conn, DbName, {DesignName, ViewName}, DocId, Options);
+show(#server{}=Conn, DbName, {_, _}=Design, DocId, Options) ->
+    Db = kz_couch_util:get_db(Conn, DbName),
+    couchbeam_view:show(Db, Design, DocId, Options).

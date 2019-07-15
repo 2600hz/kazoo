@@ -839,10 +839,7 @@ handle_query_result(#{last_key := LastKey
         FilteredJObjs when is_list(FilteredJObjs) ->
             FilteredLength = length(FilteredJObjs),
             lager:debug("db_returned: ~b passed_filter: ~p next_start_key: ~p", [ResultsLength, FilteredLength, NewLastKey]),
-            handle_query_result(LoadMap, Dbs, FilteredJObjs, FilteredLength, NewLastKey);
-        FilteredJObj ->
-            lager:debug("db_returned: ~b passed_filter: ~p next_start_key: ~p", [ResultsLength, 1, NewLastKey]),
-            handle_query_result(LoadMap, Dbs, FilteredJObj, 1, NewLastKey)
+            handle_query_result(LoadMap, Dbs, FilteredJObjs, FilteredLength, NewLastKey)
     end.
 
 -spec handle_query_result(load_params(), kz_term:ne_binaries(), kz_json:object() | kz_json:objects(), non_neg_integer(), last_key()) -> load_params().

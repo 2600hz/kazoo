@@ -18,7 +18,12 @@
         ]).
 
 %% API Shims
--export([create/3, create/4]).
+-export([create/3, create/4
+        ,fetch/2
+        ,update/3
+        ,patch/3
+        ,delete/2
+        ]).
 %%         ,fetch/1
 %%         ]).
 
@@ -61,6 +66,54 @@ create(API, AccountId, StorageDoc, ValidateSettings) ->
                            ,StorageURL
                            ,RequestHeaders
                            ,kz_json:encode(pqc_cb_api:create_envelope(StorageDoc))
+                           ).
+
+-spec fetch(pqc_cb_api:state(), kz_term:api_ne_binary()) -> pqc_cb_api:response().
+fetch(API, AccountId) ->
+    StorageURL = storage_url(AccountId),
+    RequestHeaders = pqc_cb_api:request_headers(API),
+    Expectations = [#expectation{response_codes = [200]}],
+    pqc_cb_api:make_request(Expectations
+                           ,fun kz_http:get/2
+                           ,StorageURL
+                           ,RequestHeaders
+                           ).
+
+-spec delete(pqc_cb_api:state(), kz_term:api_ne_binary()) -> pqc_cb_api:response().
+delete(API, AccountId) ->
+    StorageURL = storage_url(AccountId),
+    RequestHeaders = pqc_cb_api:request_headers(API),
+    Expectations = [#expectation{response_codes = [200]}],
+    pqc_cb_api:make_request(Expectations
+                           ,fun kz_http:delete/2
+                           ,StorageURL
+                           ,RequestHeaders
+                           ).
+
+-spec update(pqc_cb_api:state(), kz_term:api_ne_binary(), kzd_storage:doc()) -> pqc_cb_api:response().
+update(API, AccountId, StorageDoc) ->
+    StorageURL = storage_url(AccountId),
+    RequestHeaders = pqc_cb_api:request_headers(API, [{<<"content-type">>, "application/json"}]),
+    RequestEnvelope = pqc_cb_api:create_envelope(StorageDoc),
+    Expectations = [#expectation{response_codes = [200]}],
+    pqc_cb_api:make_request(Expectations
+                           ,fun kz_http:post/3
+                           ,StorageURL
+                           ,RequestHeaders
+                           ,kz_json:encode(RequestEnvelope)
+                           ).
+
+-spec patch(pqc_cb_api:state(), kz_term:api_ne_binary(), kz_json:object()) -> pqc_cb_api:response().
+patch(API, AccountId, PatchDoc) ->
+    StorageURL = storage_url(AccountId),
+    RequestHeaders = pqc_cb_api:request_headers(API, [{<<"content-type">>, "application/json"}]),
+    RequestEnvelope = pqc_cb_api:create_envelope(PatchDoc),
+    Expectations = [#expectation{response_codes = [200]}],
+    pqc_cb_api:make_request(Expectations
+                           ,fun kz_http:patch/3
+                           ,StorageURL
+                           ,RequestHeaders
+                           ,kz_json:encode(RequestEnvelope)
                            ).
 
 storage_url('undefined') ->

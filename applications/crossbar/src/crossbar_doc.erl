@@ -1057,6 +1057,7 @@ handle_thing_success(Thing, Context) ->
 handle_json_success(JObj, Context) ->
     handle_json_success(JObj, Context, cb_context:req_verb(Context)).
 
+-spec public_and_read_only(kz_json:object()) -> kz_json:object().
 public_and_read_only(JObj) ->
     Public = kz_doc:public_fields(JObj),
     case kz_json:get_json_value(<<"_read_only">>, JObj) of
@@ -1064,6 +1065,7 @@ public_and_read_only(JObj) ->
         ReadOnly -> kz_json:set_value(<<"_read_only">>, ReadOnly, Public)
     end.
 
+-spec add_location_header(kz_json:object(), map()) -> map().
 add_location_header(JObj, RHs) ->
     maps:put(<<"location">>, kz_doc:id(JObj), RHs).
 

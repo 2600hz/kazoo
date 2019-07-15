@@ -5,9 +5,11 @@
     "description": "schema for database storage plan",
     "properties": {
         "attachments": {
-            "$ref": "storage.plan.database.attachment"
+            "$ref": "storage.plan.database.attachment",
+            "description": "Describes what attachment types to store using this plan"
         },
         "connection": {
+            "description": "Which connection UUID to use when storing to this database type",
             "kazoo-validation": true,
             "type": "string"
         },
@@ -15,16 +17,27 @@
             "properties": {
                 "create_options": {
                     "type": "object"
+                },
+                "names": {
+                    "description": "List of database names to match (non-matching names won't use this plan)",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
                 }
             },
             "type": "object"
         },
         "types": {
+            "description": "The document types to store with this plan",
             "properties": {
                 "call_recording": {
                     "$ref": "storage.plan.database.document"
                 },
                 "fax": {
+                    "$ref": "storage.plan.database.document"
+                },
+                "function": {
                     "$ref": "storage.plan.database.document"
                 },
                 "mailbox_message": {
