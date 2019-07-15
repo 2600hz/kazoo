@@ -33,9 +33,9 @@ For `noinput` tasks it is also possible to create more than one row of output.
 
 Let's call `Module` the name of the module implementing an app's tasks and `TaskName` one of these tasks' name.
 
-### `Module:help([Category, [Action]])`
+### `Module:help(HelpJObj, [Category, [Action]])`
 
-Defines a callback to supply the metadata about a task (category/action pairs) or tasks provided by the module.
+Defines a callback to supply the metadata about a task (category/action pairs) or tasks provided by the module and add it to the supplied accumulator `HelpJObj`.
 
 ### `Module:output_header(TaskName, ExtraArgs)`
 
