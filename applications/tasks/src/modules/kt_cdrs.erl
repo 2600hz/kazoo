@@ -99,7 +99,9 @@ dump(#{'account_id' := AccountId
     ShouldStoreCSV = kz_json:is_true(<<"store_csv">>, ReqData, 'false'),
 
     MODBs = kazoo_modb:get_range(AccountId, FromS, ToS),
-    BaseOptions = [{'startkey', [ToS]}, {'endkey', [FromS]}],
+    BaseOptions = [{'startkey', [ToS]}, {'endkey', [FromS]}
+                  ,{'page_size', page_size()}
+                  ],
 
     DumpArgs = #dump_args{base_options=BaseOptions
                          ,modbs=MODBs
@@ -135,7 +137,7 @@ process_rows(#dump_args{modbs=[MODB | _]
             lager:info("no rows found, continuing with next:~p", [NextStartKey]),
             {'ok', DumpArgs#dump_args{next_start_key=NextStartKey}};
         {'ok', Rows, NextStartKey} ->
-            lager:info("got ~p rows using ~s (next:~p) from ~s", [length(Rows), StartKey, NextStartKey, MODB]),
+            lager:info("got ~p rows using ~p (next:~p) from ~s", [length(Rows), StartKey, NextStartKey, MODB]),
             CDRRows = [kzd_cdrs:to_public_csv(CDR, IsReseller) || CDR <- rows_to_cdrs(Rows)],
             {CDRRows, DumpArgs#dump_args{next_start_key=NextStartKey}};
         {'error', E} ->
@@ -167,3 +169,11 @@ query(MODB, ViewOptions) ->
                                ,<<"cdrs/crossbar_listing">>
                                ,Options
                                ).
+
+-spec page_size() -> pos_integer().
+page_size() ->
+    page_size(kapps_config:get_integer(?MOD_CAT, <<"dump_page_size">>)).
+
+-spec page_size(kz_term:api_pos_integer()) -> pos_integer().
+page_size('undefined') -> kz_datamgr:max_bulk_read();
+page_size(N) when is_integer(N), N > 0 -> N.
