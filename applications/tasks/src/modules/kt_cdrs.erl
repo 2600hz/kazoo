@@ -5,17 +5,18 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_cdrs).
+-behavior(gen_task).
 
 %% behaviour: tasks_provider
 
 -export([init/0
         ,help/1, help/2, help/3
-        ,output_header/1
+
+        ,output_header/2
+        ,execute/3
+
         ,cleanup/2
         ]).
-
-%% Appliers
--export([dump/2]).
 
 -include("tasks.hrl").
 
@@ -69,9 +70,13 @@ action(<<"dump">>) ->
 
 %%% Appliers
 
--spec output_header(kz_term:ne_binary()) -> kz_term:ne_binaries().
-output_header(<<"dump">>) ->
-    [K || {K, _} <- kzd_cdrs:csv_headers('false')].
+-spec output_header(kz_term:ne_binary(), kz_tasks:extra_args()) -> kz_term:ne_binaries().
+output_header(<<"dump">>, #{req_data := ReqData}) ->
+    [K || {K, _} <- kzd_cdrs:csv_headers(kz_json:is_true(<<"is_reseller">>, ReqData, 'false'))].
+
+-spec execute(kz_term:ne_binary(), kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
+execute(<<"dump">>, ExtraArgs, Iterator) ->
+    dump(ExtraArgs, Iterator).
 
 -spec dump(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 dump(#{'account_id' := AccountId

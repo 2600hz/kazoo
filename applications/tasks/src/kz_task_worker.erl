@@ -71,7 +71,7 @@ init(TaskId, API, #{req_data := JObj}=ExtraArgs) ->
                            {'error', any()}.
 init_from_csv(TaskId, API, ExtraArgs, CSV) ->
     {InputHeader, CSVRest} = kz_csv:take_row(CSV),
-    OutputHeader = output_csv_header(API, InputHeader),
+    OutputHeader = output_csv_header(API, ExtraArgs, InputHeader),
     case write_output_csv_header(TaskId, OutputHeader) of
         {'error', _R}=Error ->
             lager:error("failed to write CSV header in ~s", [?OUT(TaskId)]),
@@ -311,9 +311,9 @@ write_output_csv_header(TaskId, Header) ->
     Data = [kz_csv:row_to_iolist(Header), $\n],
     file:write_file(?OUT(TaskId), Data).
 
--spec output_csv_header(kz_json:object(), kz_csv:row()) -> kz_tasks:output_header().
-output_csv_header(API, HeaderRow) ->
-    case kz_tasks_scheduler:get_output_header(API) of
+-spec output_csv_header(kz_json:object(), kz_tasks:extra_args(), kz_csv:row()) -> kz_tasks:output_header().
+output_csv_header(API, ExtraArgs, HeaderRow) ->
+    case kz_tasks_scheduler:get_output_header(API, ExtraArgs) of
         H={'replace', _FullHeader} -> H;
         HeaderRHS -> HeaderRow ++ HeaderRHS
     end.

@@ -57,7 +57,7 @@
 %%------------------------------------------------------------------------------
 -spec apply(kz_json:object(), list()) -> list().
 apply(API, Args) ->
-    Action = kz_json:get_value(<<"action">>, API),
+    Action = kz_json:get_ne_binary_value(<<"action">>, API),
     ?MODULE:apply(API, Action, Args).
 
 -spec apply(kz_json:object(), kz_term:ne_binary(), list()) -> list().

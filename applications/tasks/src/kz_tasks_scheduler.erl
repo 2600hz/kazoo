@@ -22,7 +22,7 @@
         ,worker_error/1
         ,worker_pause/0
         ,worker_maybe_send_update/3
-        ,get_output_header/1
+        ,get_output_header/2
         ,output_path/1
         ,finish_task/2
         ,cleanup_task/2
@@ -263,10 +263,10 @@ attempt_upload(TaskId, AName, CSV, CSVPath, Retries, Max) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_output_header(kz_json:object()) -> kz_tasks:output_header().
-get_output_header(API) ->
-    Action = kz_json:get_value(<<"action">>, API),
-    case tasks_bindings:apply(API, <<"output_header">>, [Action]) of
+-spec get_output_header(kz_json:object(), kz_tasks:extra_args()) -> kz_tasks:output_header().
+get_output_header(API, ExtraArgs) ->
+    Action = kz_json:get_ne_binary_value(<<"action">>, API),
+    case tasks_bindings:apply(API, <<"output_header">>, [Action, ExtraArgs]) of
         [[_|_]=Header] -> Header;
         [{'replace', [_|_]}=Header] -> Header;
         [{'EXIT', {_E, _R}}] ->
