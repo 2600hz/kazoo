@@ -1,5 +1,12 @@
 -module(gen_task).
 
+-callback help(kz_json:object()) -> kz_json:object().
+-callback help(kz_json:object(), Category) -> kz_json:object() when
+      Category :: kz_term:ne_binary().
+-callback help(kz_json:object(), Category, Action) -> kz_json:object() when
+      Category :: kz_term:ne_binary(),
+      Action :: kz_term:ne_binary().
+
 %% @doc If the task creates an output CSV, this function returns the header cells
 -callback output_header(TaskName, ExtraArgs) -> CellHeaders when
       TaskName :: kz_term:ne_binary(),
@@ -27,4 +34,6 @@
       CurrentInputRow :: map(),
       NewIterator :: kz_tasks:iterator().
 
--optional_callbacks([cell_verifier/2, execute/3, execute/4]).
+-optional_callbacks([cell_verifier/2
+                    ,execute/3, execute/4
+                    ]).

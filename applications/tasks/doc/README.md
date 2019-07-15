@@ -33,40 +33,47 @@ For `noinput` tasks it is also possible to create more than one row of output.
 
 Let's call `Module` the name of the module implementing an app's tasks and `TaskName` one of these tasks' name.
 
-### `Module:output_header(TaskName)`
+### `Module:help([Category, [Action]])`
+
+Defines a callback to supply the metadata about a task (category/action pairs) or tasks provided by the module.
+
+### `Module:output_header(TaskName, ExtraArgs)`
 
 This function is called before attempting to run the task.
 It should return a CSV header as allowed by the type `kz_csv:row()`.
 If the call crashes, the header used is made of `mandatory`, `optional` & `"error"`.
+The `ExtraArgs` parameter include the account id, authenticating account id, and any JSON request data provided when creating the task.
 
-### `Module:Verifier/1`
+### `Module:cell_verifier(HeaderName, CellData)`
 
 Before applying the task, verifiers are applied to each cell of the row.
-`Verifier` is the CSV header name of the current cell.
-The function take the cell as input and should return
+The function take the cell header and the cell data as input and should return
+
 * `true`: if the cell is valid input
 * `false`: otherwise
+
 If the call crashes, `false` is assumed.
 
-### `Module:TaskName/2,3`
+### `Module:execute(TaskName, ExtraArgs, Iterator[, CurrentInputRow])`
 
-#### Called as `Module:TaskName(ExtraArgs, Iterator)`.
+#### Called as `Module:execute(TaskName, ExtraArgs, Iterator)`.
 
 This means the scheduler determined this to be a `noinput` task.
 
-The first argument `ExtraArgs` contains the following pairs:
+The second argument `ExtraArgs` contains the following pairs:
 * `account_id`: account id that created the task instance.
 * `auth_account_id`: account id of the X-Auth-Token used when creating the task instance.
+* `req_data`: if JSON request data was included on the creation of the task
 
-As second argument, the function takes one of:
+As third argument, the function takes one of:
 * `init`: so that the function can return `{ok, Data}`. Nothing is written to output and `Data` will be passed to the function on next call as the 2nd argument.
 * `Data`: the term that a previous call to the function returned. This way one can work with state in between iterations.
 
 If the call crashes, the current input row plus an `"error"` column is written to output.csv.
 
-#### Called as `Module:TaskName(ExtraArgs, Iterator, Args)`.
+#### Called as `Module:execute(TaskName, ExtraArgs, Iterator, CurrentInputRow)`.
 
-This call applies the task with the current row as a map in `Args`.
+This call applies the task with the current row as a map in `CurrentInputRow`.
 
 If an `optional` input value is not defined or empty, its value is `undefined`.
 
