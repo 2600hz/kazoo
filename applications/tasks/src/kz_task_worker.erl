@@ -175,58 +175,14 @@ new_state_after_writing(NewColumns, WrittenSucceeded, WrittenFailed
                                 'stop'.
 is_task_successful(MappedRow
                   ,IterValue
-                  ,#state{api = API
-                         ,verifier = Verifier
-                         ,extra_args = ExtraArgs
-                         }=State
+                  ,#state{verifier = Verifier}=State
                   ) ->
     try kz_csv:verify_mapped_row(Verifier, MappedRow) of
         [] ->
-            Args = [ExtraArgs, IterValue, MappedRow],
-            case tasks_bindings:apply(API, Args) of
-                ['stop'] -> 'stop';
-                [{'EXIT', {_Error, _ST}}] ->
-                    lager:error("args: ~p", [Args]),
-                    lager:error("error: ~p", [_Error]),
-                    kz_util:log_stacktrace(_ST),
-                    {Columns, Written} = store_return(State, MappedRow, ?WORKER_TASK_FAILED),
-                    lager:debug("failed rows on exception: ~p", [Written]),
-                    {'false', Columns, Written, 'stop'};
-                [{[_|_]=NewRowOrRows, NewIterValue}] ->
-                    {Columns, Written} = store_return(State, MappedRow, NewRowOrRows),
-                    {'true', Columns, Written, NewIterValue};
-                [{#{?OUTPUT_CSV_HEADER_ERROR := ?NE_BINARY=_Err}=NewMappedRowOrMappedRows, NewIterValue}] ->
-                    {Columns, Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
-                    lager:debug("failed rows on error ~p: ~p", [_Err, Written]),
-                    {'false', Columns, Written, NewIterValue};
-                [{#{}=NewMappedRowOrMappedRows, NewIterValue}] ->
-                    {Columns, Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
-                    {'true', Columns, Written, NewIterValue};
-                [{'ok', NewIterValue}] ->
-                    {'true', State#state.columns, 1, NewIterValue};
-                [{Error, NewIterValue}] ->
-                    lager:error("~p", [Error]),
-                    {Columns, Written} = store_return(State, MappedRow, Error),
-                    lager:debug("failed rows on error ~p: ~p", [Error, Written]),
-                    {'false', Columns, Written, NewIterValue};
-                [[_|_]=NewRowOrRows=NewIterValue] ->
-                    {Columns, Written} = store_return(State, MappedRow, NewRowOrRows),
-                    {'true', Columns, Written, NewIterValue};
-                [#{?OUTPUT_CSV_HEADER_ERROR := ?NE_BINARY=_Err}=NewMappedRowOrMappedRows=NewIterValue] ->
-                    {Columns, Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
-                    lager:debug("failed rows on error ~p: ~p", [_Err, Written]),
-                    {'false', Columns, Written, NewIterValue};
-                [#{}=NewMappedRowOrMappedRows=NewIterValue] ->
-                    {Columns, Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
-                    {'true', Columns, Written, NewIterValue};
-                NewRow=NewIterValue ->
-                    {Columns, Written} = store_return(State, MappedRow, NewRow),
-                    lager:debug("failed rows on new iterator ~p: ~p", [NewRow, Written]),
-                    {'false', Columns, Written, NewIterValue}
-            end;
-        Fields ->
-            PPFields = kz_binary:join(Fields, $\s),
-            lager:error("verifier ~s failed on ~p", [PPFields, maps:with(Fields, MappedRow)]),
+            is_verified_task_successful(MappedRow, IterValue, State);
+        InvalidFields ->
+            PPFields = kz_binary:join(InvalidFields, $\s),
+            lager:error("verifier ~s failed on ~p", [PPFields, maps:with(InvalidFields, MappedRow)]),
             {Columns, Written} = store_return(State, MappedRow, <<"bad field(s) ", PPFields/binary>>),
             %% Stop on crashes, but only skip typefailed rows.
             {'false', Columns, Written, IterValue}
@@ -237,6 +193,55 @@ is_task_successful(MappedRow
         {Columns,Written} = store_return(State, MappedRow, ?WORKER_TASK_MAYBE_OK),
         {'false', Columns, Written, 'stop'}
         end.
+
+is_verified_task_successful(MappedRow
+                           ,IterValue
+                           ,#state{api = API
+                                  ,extra_args = ExtraArgs
+                                  }=State
+                           ) ->
+    Args = [ExtraArgs, IterValue, MappedRow],
+    case tasks_bindings:apply(API, Args) of
+        ['stop'] -> 'stop';
+        [{'EXIT', {_Error, _ST}}] ->
+            lager:error("args: ~p", [Args]),
+            lager:error("error: ~p", [_Error]),
+            kz_util:log_stacktrace(_ST),
+            {Columns, Written} = store_return(State, MappedRow, ?WORKER_TASK_FAILED),
+            lager:debug("failed rows on exception: ~p", [Written]),
+            {'false', Columns, Written, 'stop'};
+        [{[_|_]=NewRowOrRows, NewIterValue}] ->
+            {Columns, Written} = store_return(State, MappedRow, NewRowOrRows),
+            {'true', Columns, Written, NewIterValue};
+        [{#{?OUTPUT_CSV_HEADER_ERROR := ?NE_BINARY=_Err}=NewMappedRowOrMappedRows, NewIterValue}] ->
+            {Columns, Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
+            lager:debug("failed rows on error ~p: ~p", [_Err, Written]),
+            {'false', Columns, Written, NewIterValue};
+        [{#{}=NewMappedRowOrMappedRows, NewIterValue}] ->
+            {Columns, Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
+            {'true', Columns, Written, NewIterValue};
+        [{'ok', NewIterValue}] ->
+            {'true', State#state.columns, 1, NewIterValue};
+        [{Error, NewIterValue}] ->
+            lager:error("~p", [Error]),
+            {Columns, Written} = store_return(State, MappedRow, Error),
+            lager:debug("failed rows on error ~p: ~p", [Error, Written]),
+            {'false', Columns, Written, NewIterValue};
+        [[_|_]=NewRowOrRows=NewIterValue] ->
+            {Columns, Written} = store_return(State, MappedRow, NewRowOrRows),
+            {'true', Columns, Written, NewIterValue};
+        [#{?OUTPUT_CSV_HEADER_ERROR := ?NE_BINARY=_Err}=NewMappedRowOrMappedRows=NewIterValue] ->
+            {Columns, Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
+            lager:debug("failed rows on error ~p: ~p", [_Err, Written]),
+            {'false', Columns, Written, NewIterValue};
+        [#{}=NewMappedRowOrMappedRows=NewIterValue] ->
+            {Columns, Written} = store_return(State, MappedRow, NewMappedRowOrMappedRows),
+            {'true', Columns, Written, NewIterValue};
+        NewRow=NewIterValue ->
+            {Columns, Written} = store_return(State, MappedRow, NewRow),
+            lager:debug("failed rows on new iterator ~p: ~p", [NewRow, Written]),
+            {'false', Columns, Written, NewIterValue}
+    end.
 
 -spec store_return(state(), kz_csv:mapped_row(), kz_tasks:return()) -> {kz_tasks:columns(), pos_integer()}.
 store_return(State, MappedRow, Rows=[_List|_]) when is_list(_List) ->
