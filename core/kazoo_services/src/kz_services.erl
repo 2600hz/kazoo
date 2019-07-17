@@ -910,22 +910,22 @@ create(AccountId, {'ok', AccountJObj}) ->
     kz_doc:setters(BaseJObj, Setters).
 
 -spec handle_fetch_options(services(), kz_term:proplist()) -> services().
-handle_fetch_options(Services, []) -> Services;
-handle_fetch_options(Services, ['hydrate_plans'| Options]) ->
+handle_fetch_options(#kz_services{}=Services, []) -> Services;
+handle_fetch_options(#kz_services{}=Services, ['hydrate_plans'| Options]) ->
     handle_fetch_options(hydrate_plans(Services), Options);
-handle_fetch_options(Services, ['hydrate_account_quantities'| Options]) ->
+handle_fetch_options(#kz_services{}=Services, ['hydrate_account_quantities'| Options]) ->
     handle_fetch_options(hydrate_account_quantities(Services), Options);
-handle_fetch_options(Services, ['hydrate_cascade_quantities'| Options]) ->
+handle_fetch_options(#kz_services{}=Services, ['hydrate_cascade_quantities'| Options]) ->
     handle_fetch_options(hydrate_cascade_quantities(Services), Options);
-handle_fetch_options(Services, ['hydrate_manual_quantities'| Options]) ->
+handle_fetch_options(#kz_services{}=Services, ['hydrate_manual_quantities'| Options]) ->
     handle_fetch_options(hydrate_manual_quantities(Services), Options);
-handle_fetch_options(Services, ['hydrate_invoices'|Options]) ->
+handle_fetch_options(#kz_services{}=Services, ['hydrate_invoices'|Options]) ->
     handle_fetch_options(hydrate_invoices(Services), Options);
-handle_fetch_options(Services, [{'updates', Account, Current, Proposed}|Options]) ->
+handle_fetch_options(#kz_services{}=Services, [{'updates', Account, Current, Proposed}|Options]) ->
     handle_fetch_options(set_updates(Services, Account, Current, Proposed), Options);
-handle_fetch_options(Services, [{'audit_log', AuditLog}|Options]) ->
+handle_fetch_options(#kz_services{}=Services, [{'audit_log', AuditLog}|Options]) ->
     handle_fetch_options(set_initial_audit_log(Services, AuditLog), Options);
-handle_fetch_options(Services, ['skip_cache'|Options]) ->
+handle_fetch_options(#kz_services{}=Services, ['skip_cache'|Options]) ->
     handle_fetch_options(Services, Options).
 
 %%------------------------------------------------------------------------------

@@ -26,6 +26,9 @@
 -export([handle_authz_resp/2]).
 -export([handle_rate_resp/2]).
 -export([handle_channel_destroy/2]).
+
+-export([is_destroyed/1]).
+
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -39,13 +42,15 @@
 -include_lib("kazoo_events/include/kz_hooks.hrl").
 
 -record(state, {sync_ref :: kz_term:api_reference()
-               ,sync_timer:: kz_term:api_reference()
+               ,sync_timer :: kz_term:api_reference()
+               ,cleanup_timer :: kz_term:api_reference()
                }).
 -type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
 -define(TAB, ?MODULE).
 -define(SYNC_PERIOD, 900000). %% 15 minutes
+-define(CLEANUP_PERIOD, ?MILLISECONDS_IN_MINUTE).
 
 -record(channel, {call_id :: kz_term:api_binary() | '$1' | '$2' | '_'
                  ,other_leg_call_id :: kz_term:api_binary() | '$2' | '$3' | '_'
@@ -57,7 +62,7 @@
                  ,reseller_billing :: kz_term:api_binary() | '$1' | '_'
                  ,reseller_allotment = 'false' :: boolean() | '_'
                  ,soft_limit = 'false' :: boolean() | '_'
-                 ,timestamp = kz_time:now_s() :: pos_integer() | '_'
+                 ,timestamp = kz_time:now_s() :: pos_integer() | '_' | '$2'
                  ,answered_timestamp :: kz_term:api_pos_integer() | '$1' | '_'
                  ,rate :: kz_term:api_binary() | '_'
                  ,rate_increment :: kz_term:api_binary() | '_'
@@ -70,6 +75,7 @@
                  ,rate_id :: kz_term:api_binary() | '_'
                  ,base_cost :: kz_term:api_binary() | '_'
                  ,to_did :: kz_term:api_binary() | '_'
+                 ,destroyed = 'false' :: boolean() | '_' | '$1'
                  }).
 
 -type channel() :: #channel{}.
@@ -92,6 +98,7 @@
 
                    }
                   ]).
+
 -define(RESPONDERS, [{{?MODULE, 'handle_authz_resp'}
                      ,[{<<"authz">>, <<"authz_resp">>}]
                      }
@@ -102,6 +109,7 @@
                      ,[{<<"call_event">>, <<"*">>}]
                      }
                     ]).
+
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -135,10 +143,11 @@ sync() ->
 flush() -> gen_server:cast(?SERVER, 'flush_channels').
 
 -spec total_calls(kz_term:ne_binary()) -> non_neg_integer().
-total_calls(AccountId) ->
+total_calls(<<AccountId/binary>>) ->
     MatchSpec = [{#channel{account_id = AccountId
                           ,call_id = '$1'
                           ,other_leg_call_id = '$2'
+                           %% ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -147,6 +156,7 @@ total_calls(AccountId) ->
                 ,{#channel{reseller_id = AccountId
                           ,call_id = '$1'
                           ,other_leg_call_id = '$2'
+                           %% ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -477,7 +487,24 @@ to_props(#channel{call_id=CallId
      ).
 
 -spec authorized(kz_json:object()) -> 'ok'.
-authorized(JObj) -> gen_server:cast(?SERVER, {'authorized', JObj}).
+authorized(JObj) ->
+    case ets:lookup(?TAB, kz_call_event:call_id(JObj)) of
+        [#channel{destroyed='true'
+                 ,timestamp=TS
+                 }
+        ] ->
+            lager:notice("channel already destroyed (at ~p), not storing authorized payload", [TS]);
+        _Lookup -> gen_server:cast(?SERVER, {'authorized', JObj})
+    end.
+
+-spec is_destroyed(kz_term:ne_binary()) -> boolean().
+is_destroyed(<<CallId/binary>>) ->
+    case ets:lookup(?TAB, CallId) of
+        [#channel{destroyed='true', timestamp=TS}|_] ->
+            lager:info("channel ~s is destroyed (at ~p)", [CallId, TS]),
+            'true';
+        _ -> 'false'
+    end.
 
 -spec handle_authz_resp(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_authz_resp(JObj, _Props) ->
@@ -517,7 +544,8 @@ init([]) ->
                       ,'named_table'
                       ,{'keypos', #channel.call_id}
                       ]),
-    {'ok', start_channel_sync_timer(#state{})}.
+    State = start_cleanup_timer(#state{}),
+    {'ok', start_channel_sync_timer(State)}.
 
 %%------------------------------------------------------------------------------
 %% @doc Handling call messages.
@@ -553,6 +581,7 @@ handle_cast('synchronize_channels', #state{sync_ref=SyncRef}=State) ->
     self() ! {'synchronize_channels', SyncRef},
     {'noreply', State};
 handle_cast('flush_channels', State) ->
+    lager:info("flushing all channels from cache"),
     _ = ets:delete_all_objects(?TAB),
     {'noreply', State};
 handle_cast({'kz_nodes', {'expire', #kz_node{node=NodeName, kapps=Whapps}}}
@@ -566,10 +595,25 @@ handle_cast({'kz_nodes', {'expire', #kz_node{node=NodeName, kapps=Whapps}}}
             {'noreply', State}
     end;
 handle_cast({'authorized', JObj}, State) ->
-    _ = ets:insert(?TAB, from_jobj(JObj)),
+    Channel = #channel{call_id=CallId}=from_jobj(JObj),
+    _ = case ets:lookup(?TAB, CallId) of
+            [#channel{destroyed='true', timestamp=TS}|_] ->
+                lager:notice("channel ~s already destroyed at ~p, not storing", [CallId, TS]);
+            _Channel ->
+                lager:debug("inserting authorized channel ~s", [CallId]),
+                ets:insert(?TAB, Channel)
+        end,
     {'noreply', State};
 handle_cast({'remove', CallId}, State) ->
-    _ = ets:delete(?TAB, CallId),
+    _ = case ets:lookup(?TAB, CallId) of
+            [] ->
+                lager:info("no channel ~s in ~p, inserting destroyed", [CallId, ?TAB]),
+                ets:insert(?TAB, #channel{call_id=CallId, destroyed='true'});
+            [#channel{destroyed='false'}] ->
+                lager:debug("removing ~s from ~p", [CallId, ?TAB]),
+                _ = ets:delete(?TAB, CallId);
+            _ -> 'ok'
+        end,
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
@@ -599,17 +643,31 @@ handle_info({'synchronize_channels', _}, State) ->
 handle_info(?HOOK_EVT(_, <<"CHANNEL_CREATE">>, JObj), State) ->
     %% insert_new keeps a CHANNEL_CREATE from overriding an entry from
     %% an auth_resp BUT an auth_resp CAN override a CHANNEL_CREATE
-    _ = ets:insert_new(?TAB, from_jobj(JObj)),
+    Channel = #channel{call_id=CallId}=from_jobj(JObj),
+    lager:debug("inserting new channel ~s", [CallId]),
+    _ = ets:insert_new(?TAB, Channel),
     {'noreply', State};
 handle_info(?HOOK_EVT(_, <<"CHANNEL_ANSWER">>, JObj), State) ->
-    CallId = kz_json:get_value(<<"Call-ID">>, JObj),
+    CallId = kz_call_event:call_id(JObj),
     Props = [{#channel.answered_timestamp, kz_time:now_s()}],
+    lager:info("updating ~s with answered timestamp", [CallId]),
     _ = ets:update_element(?TAB, CallId, Props),
     {'noreply', State};
 handle_info(?HOOK_EVT(_, <<"CHANNEL_DESTROY">>, JObj), State) ->
-    _ = ets:delete(?TAB, kz_json:get_value(<<"Call-ID">>, JObj)),
+    case ets:lookup(?TAB, kz_api:call_id(JObj)) of
+        [] -> 'ok';
+        [#channel{call_id=CallId}] ->
+            lager:debug("noting channel ~s is destroyed", [CallId]),
+            ets:update_element(?TAB, CallId, [{#channel.destroyed, 'true'}
+                                             ,{#channel.timestamp, kz_time:now_s()}
+                                             ])
+    end,
     {'noreply', State};
+handle_info('cleanup', State) ->
+    delete_destroyed_channels(),
+    {'noreply', start_cleanup_timer(State)};
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
@@ -675,9 +733,9 @@ from_jobj(JObj) ->
                   ,[<<"Custom-Channel-Vars">>, <<"Soft-Limit">>]
                   ], JObj
                  ),
-    #channel{call_id = kz_json:get_value(<<"Call-ID">>, JObj)
-            ,other_leg_call_id = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj)
-            ,direction = kz_json:get_value(<<"Call-Direction">>, JObj)
+    #channel{call_id = kz_call_event:call_id(JObj)
+            ,other_leg_call_id = kz_call_event:other_leg_call_id(JObj)
+            ,direction = kz_call_event:call_direction(JObj)
             ,account_id = AccountId
             ,account_billing = AccountBilling
             ,account_allotment = is_allotment(AccountBilling)
@@ -735,10 +793,29 @@ fix_channel_disparity(LocalChannelIds, EcallmgrChannelIds) ->
 -spec fix_channel_disparity(kz_term:ne_binaries()) -> 'ok'.
 fix_channel_disparity([]) -> 'ok';
 fix_channel_disparity([ChannelId|ChannelIds]) ->
-    lager:debug("channel disparity with ecallmgr, removing ~s"
-               ,[ChannelId]),
+    lager:debug("channel disparity with ecallmgr, removing ~s", [ChannelId]),
     _ = ets:delete(?TAB, ChannelId),
     fix_channel_disparity(ChannelIds).
+
+-spec delete_destroyed_channels() -> 'ok'.
+delete_destroyed_channels() ->
+    ThenS = kz_time:now_s() - 3, % anything prior to 3s ago
+
+    Deleted = ets:select_delete(?TAB, [{#channel{destroyed='true', timestamp='$2', _='_'}
+                                       ,[{'<', '$2', {'const', ThenS}}]
+                                       ,['true']
+                                       }
+                                      ]),
+    maybe_log_deleted(Deleted, ThenS).
+
+maybe_log_deleted(0, _ThenS) -> 'ok';
+maybe_log_deleted(Deleted, ThenS) ->
+    lager:debug("deleted ~p destroyed channels from before ~p", [Deleted, ThenS]).
+
+-spec start_cleanup_timer(state()) -> state().
+start_cleanup_timer(State) ->
+    TRef = erlang:send_after(?CLEANUP_PERIOD, self(), 'cleanup'),
+    State#state{cleanup_timer=TRef}.
 
 -spec start_channel_sync_timer(state()) -> state().
 start_channel_sync_timer(State) ->
@@ -800,6 +877,6 @@ to_did_lookup(JObj) ->
     of
         'undefined' -> 'undefined';
         ToUri ->
-            [H|_] =  binary:split(ToUri, <<"@">>),
+            [H|_] = binary:split(ToUri, <<"@">>),
             knm_converters:normalize(H)
     end.
