@@ -15,7 +15,7 @@
         },
         "store_csv": {
             "default": false,
-            "descritpion": "Whether to store the generated CSV using the account's storage plan",
+            "description": "Whether to store the generated CSV using the account's storage plan",
             "type": "boolean"
         },
         "to_s": {

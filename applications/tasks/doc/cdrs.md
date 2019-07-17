@@ -7,3 +7,16 @@ Accounts with large volumes of CDRs find the API insufficient for downloading a 
 ### Dump
 
 Dumps the current month's CDRs to a CSV file.
+
+#### Schema
+
+Configuration data specifically for the billing.dump task
+
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`from_s` | Timestamp, in Gregorian seconds, for when to start the dump | `integer()` |   | `false` |
+`is_reseller` | Is the CDR CSV being generated for a reseller | `boolean()` |   | `false` |
+`store_csv` | Whether to store the generated CSV using the account's storage plan | `boolean()` | `false` | `false` |
+`to_s` | Timestamp, in Gregorian seconds, for when to stop the dump | `integer()` |   | `false` |
