@@ -278,6 +278,27 @@ task_seq() ->
                            ,calendar:gregorian_seconds_to_datetime(ToS)
                            ]),
 
+    get_via_task(API, AccountId, FromS, ToS),
+    get_via_storage(API, AccountId, FromS, ToS).
+
+get_via_storage(API, AccountId, FromS, ToS) ->
+    ReqData = kz_json:from_list([{<<"to_s">>, ToS}
+                                ,{<<"from_s">>, FromS}
+                                ]),
+    lager:info("requesting ~p", [ReqData]),
+
+    CreateResp = pqc_cb_tasks:create_account(API, AccountId
+                                            ,"category=billing&action=dump"
+                                            ,ReqData
+                                            ),
+    lager:info("created task ~s", [CreateResp]),
+    TaskId = kz_json:get_ne_binary_value([<<"data">>, <<"_read_only">>, <<"id">>]
+                                        ,kz_json:decode(CreateResp)
+                                        ),
+    _ExecResp = pqc_cb_tasks:execute(API, AccountId, TaskId),
+    lager:info("exec task ~s: ~s", [TaskId, _ExecResp]).
+
+get_via_task(API, AccountId, FromS, ToS) ->
     ReqData = kz_json:from_list([{<<"to_s">>, ToS}
                                 ,{<<"from_s">>, FromS}
                                 ]),
