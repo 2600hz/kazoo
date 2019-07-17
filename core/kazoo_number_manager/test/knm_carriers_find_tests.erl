@@ -12,9 +12,22 @@
 -module(knm_carriers_find_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-include("../src/knm.hrl").
 
-info_test_() ->
+-export([db_dependant/0]).
+
+knm_carriers_find_test_() ->
+    knm_test_util:start_db(fun db_dependant/0).
+
+db_dependant() ->
+    [carrier_info()
+    ,is_number_billable()
+    ,check()
+    ,find_local()
+    ,find_other()
+    ].
+
+carrier_info() ->
     InfoJObj1 = knm_carriers:info(?MASTER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID),
     InfoJObj2 = knm_carriers:info(?MASTER_ACCOUNT_ID, ?CHILD_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID),
     InfoJObj3 = knm_carriers:info(?MASTER_ACCOUNT_ID, ?CHILD_ACCOUNT_ID, undefined),
@@ -39,7 +52,7 @@ info_test_() ->
     ,?_assertEqual([], kz_json:get_value(<<"usable_creation_states">>, InfoJObj6))
     ].
 
-is_number_billable_test_() ->
+is_number_billable() ->
     {ok, N} = knm_number:get(?TEST_OLD1_NUM),
     PN1 = knm_number:phone_number(N),
     PN2 = knm_phone_number:set_module_name(PN1, <<"knm_bandwidth2">>),
@@ -49,7 +62,7 @@ is_number_billable_test_() ->
     ,?_assertEqual(true, knm_carriers:is_number_billable(PN3))
     ].
 
-check_test_() ->
+check() ->
     Nums = [?TEST_AVAILABLE_NUM
            ,?TEST_IN_SERVICE_NUM
            ,?TEST_IN_SERVICE_WITH_HISTORY_NUM
@@ -67,13 +80,13 @@ check_test_() ->
      }
     ].
 
-find_local_test_() ->
+find_local() ->
     [{"Finding local numbers not supported"
      ,?_assertMatch({'error', 'not_available'}, knm_local:find_numbers(<<"415">>, 1, []))
      }
     ].
 
-find_other_test_() ->
+find_other() ->
     Options = [{carriers, [?CARRIER_OTHER]}
               ,{'query_id', <<"QID">>}
               ],

@@ -30,15 +30,6 @@
 
 -define(KNM_BW2_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".bandwidth2">>).
 
--ifdef(TEST).
--export([auth/0]).  %% Only to pass compilation
--endif.
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--define(DEBUG_WRITE(_Format, _Args), 'ok').
--define(DEBUG_APPEND(_Format, _Args), 'ok').
--else.
 -define(BW2_DEBUG, kapps_config:get_is_true(?KNM_BW2_CONFIG_CAT, <<"debug">>, 'false')).
 -define(BW2_DEBUG_FILE, "/tmp/bandwidth2.com.xml").
 -define(DEBUG_WRITE(Format, Args),
@@ -49,17 +40,12 @@
         _ = ?BW2_DEBUG
         andalso file:write_file(?BW2_DEBUG_FILE, io_lib:format(Format, Args), ['append'])
        ).
--endif.
 
 -define(BW2_BASE_URL, "https://api.inetwork.com/v1.0").
 
--ifdef(TEST).
--define(BW2_ACCOUNT_ID, "eunit_testing_account").
--else.
 -define(BW2_ACCOUNT_ID
        ,kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"account_id">>, "")
        ).
--endif.
 
 -define(IS_SANDBOX_PROVISIONING_TRUE
        ,kapps_config:get_is_true(?KNM_BW2_CONFIG_CAT, <<"sandbox_provisioning">>, 'true')
@@ -323,32 +309,20 @@ search(Num, Params) ->
         {'error', Reason} -> knm_errors:by_carrier(?MODULE, Reason, Num)
     end.
 
+-ifndef(TEST).
 -spec auth() -> {'basic_auth', {kz_term:ne_binary(), kz_term:ne_binary()}}.
 auth() ->
     {'basic_auth', {?BW2_API_USERNAME, ?BW2_API_PASSWORD}}.
 
 -spec api_get(nonempty_string()) -> api_res().
--ifndef(TEST).
 api_get(Url) ->
     HTTPOptions = [auth()
                   ],
     ?DEBUG_WRITE("Request:~n~s ~s~n~p~n", ['get', Url, HTTPOptions]),
     Response = kz_http:get(Url, [], HTTPOptions),
     handle_response(Response).
--else.
-api_get("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/availableNumbers?areaCode="++_) ->
-    Resp = knm_util:fixture("bandwidth2_find_by_npa_no_detail.xml"),
-    handle_response({'ok', 200, [], Resp});
-api_get("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/availableNumbers?tollFreeWildCardPattern="++_) ->
-    Resp = knm_util:fixture("bandwidth2_find_tollfree.xml"),
-    handle_response({'ok', 200, [], Resp});
-api_get("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/orders/" ++ _) ->
-    Resp = knm_util:fixture("bandwidth2_check_order.xml"),
-    handle_response({'ok', 200, [], Resp}).
--endif.
 
 -spec api_post(nonempty_string(), binary()) -> api_res().
--ifndef(TEST).
 api_post(Url, Body) ->
     UnicodeBody = unicode:characters_to_binary(Body),
     Headers = [{"Accept", "*/*"}
@@ -366,7 +340,19 @@ api_post(Url, Body) ->
     Response = kz_http:post(Url, Headers, UnicodeBody, HTTPOptions),
     handle_response(Response).
 -else.
-api_post("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/orders", Body) ->
+-spec api_get(nonempty_string()) -> api_res().
+api_get("https://api.inetwork.com/v1.0/accounts//availableNumbers?areaCode="++_) ->
+    Resp = knm_util:fixture("bandwidth2_find_by_npa_no_detail.xml"),
+    handle_response({'ok', 200, [], Resp});
+api_get("https://api.inetwork.com/v1.0/accounts//availableNumbers?tollFreeWildCardPattern="++_) ->
+    Resp = knm_util:fixture("bandwidth2_find_tollfree.xml"),
+    handle_response({'ok', 200, [], Resp});
+api_get("https://api.inetwork.com/v1.0/accounts//orders/" ++ _) ->
+    Resp = knm_util:fixture("bandwidth2_check_order.xml"),
+    handle_response({'ok', 200, [], Resp}).
+
+-spec api_post(nonempty_string(), binary()) -> api_res().
+api_post("https://api.inetwork.com/v1.0/accounts//orders", Body) ->
     _UnicodeBody = unicode:characters_to_binary(Body),
     Resp = knm_util:fixture("bandwidth2_buy_a_number.xml"),
     handle_response({'ok', 200, [], Resp}).
@@ -454,8 +440,8 @@ search_response_to_KNM(Xml, QID) ->
     Num = from_bandwidth2(kz_xml:get_value("//TelephoneNumber/text()", Xml)),
     JObj = kz_json:from_list(
              props:filter_empty(
-               [{<<"rate_center">>, rate_center_to_json(Xml)}
-               ])
+               [{<<"rate_center">>, rate_center_to_json(Xml)}]
+              )
             ),
     {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, JObj}}.
 
@@ -471,8 +457,6 @@ tollfree_search_response_to_KNM(Xml, QID) ->
 -spec rate_center_to_json(kz_types:xml_els() | kz_types:xml_el()) -> kz_json:object().
 rate_center_to_json([]) ->
     kz_json:new();
-rate_center_to_json([Xml]) ->
-    rate_center_to_json(Xml);
 rate_center_to_json(Xml) ->
     kz_json:from_list(
       props:filter_empty(

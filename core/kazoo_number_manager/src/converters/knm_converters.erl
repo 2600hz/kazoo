@@ -86,9 +86,15 @@
        ,kapps_config:get_ne_binary(?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)
        ).
 
+-ifdef(TEST).
+%% Orders of classifiers matters, but unfortunately schema file system_config.number_manager.json
+%% is being sorted on Kazoo compile so we need to access the macro directly here for testing proposes.
+-define(CLASSIFIERS, ?DEFAULT_CLASSIFIERS).
+-else.
 -define(CLASSIFIERS
        ,kapps_config:get_json(?KNM_CONFIG_CAT, <<"classifiers">>, ?DEFAULT_CLASSIFIERS)
        ).
+-endif.
 
 -define(RECONCILE_REGEX(AccountId)
        ,kapps_account_config:get_global(AccountId, ?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)

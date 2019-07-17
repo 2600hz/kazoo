@@ -1,0 +1,23 @@
+{
+    "_id": "+12014370857",
+    "_rev": "22-655c1bdd4196b001963eb78541a53165",
+    "pvt_assigned_to": "aac9151d9c1319c46f2677eeae2958f6",
+    "pvt_authorizing_account": "e4af2616e751955027c71fec039c6b11",
+    "pvt_created": 63637990840,
+    "pvt_db_name": "numbers%2F%2B1201",
+    "pvt_features": [],
+    "pvt_modified": 63637990853,
+    "pvt_module_name": "wnm_pacwest",
+    "pvt_reserve_history": [
+        "aac9151d9c1319c46f2677eeae2958f6"
+    ],
+    "pvt_resource_db": "account%2Faa%2Fc9%2F151d9c1319c46f2677eeae2958f6",
+    "pvt_state": "in_service",
+    "pvt_type": "number",
+    "ui_metadata": {
+        "origin": "common",
+        "ui": "monster-ui",
+        "version": "3.22-34"
+    },
+    "used_by": ""
+}

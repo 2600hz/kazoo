@@ -210,24 +210,11 @@ from_jobjs(JObjs) ->
           ],
     new(Options, PNs, []).
 
--ifdef(TEST).
--define(OPTIONS_FOR_LOAD(Nums, Options),
-        case knm_number_options:ported_in(Options) of
-            'false' -> Options;
-            'true' ->
-                case Nums of
-                    [?TEST_PORT_IN2_NUM] -> [{'module_name', <<"knm_telnyx">>}|Options];
-                    [?TEST_AVAILABLE_NUM] -> [{'module_name', <<"knm_bandwidth2">>}|Options];
-                    _ -> [{'module_name', ?PORT_IN_MODULE_NAME}|Options]
-                end
-        end).
--else.
 -define(OPTIONS_FOR_LOAD(_Nums, Options),
         case knm_number_options:ported_in(Options) of
             'false' -> Options;
             'true' -> [{'module_name', ?PORT_IN_MODULE_NAME}|Options]
         end).
--endif.
 
 %%------------------------------------------------------------------------------
 %% @doc Attempts to create new numbers in DB or modify existing ones.
@@ -303,7 +290,7 @@ update([?NE_BINARY|_]=Nums, Routines, Options) ->
     Reason = 'not_reconcilable',  %% FIXME: unify to atom OR knm_error.
     do_update(do_get_pn(Nums, Options, Reason), Routines);
 update(Ns, Updates, Options) ->
-    Routines = [{fun knm_phone_number:set_is_dirty/2, 'false'}
+    Routines = [{fun knm_phone_number:set_dirty/2, 'false'}
                 | knm_number_options:to_phone_number_setters(Options)
                 ++ Updates
                ],
@@ -544,16 +531,8 @@ merge_okkos([T0|Ts]) ->
 id(T=#{'todo' := Todo}) -> ok(Todo, T).
 
 -spec ret(t()) -> ret().
-ret(#{'ok' := OKs
-     ,'ko' := KOs
-     ,'options' := Options
-     ,'quotes' := Quotes
-     }) ->
-    #{'ok' => OKs
-     ,'ko' => KOs %%FIXME Convert to error format
-     ,'options' => Options
-     ,'quotes' => Quotes
-     }.
+ret(T) -> T.
+%% 'ko' => KOs %%FIXME Convert to error format
 
 -spec to_json(ret()) -> kz_json:object().
 to_json(#{'ok' := Ns, 'ko' := KOs}) ->

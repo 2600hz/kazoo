@@ -12,9 +12,19 @@
 -module(knm_reconcile_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-include("../src/knm.hrl").
 
-keeps_carrier_test_() ->
+-export([db_dependant/0]).
+
+knm_number_test_() ->
+    knm_test_util:start_db(fun db_dependant/0).
+
+db_dependant() ->
+    [keeps_carrier()
+    ,sets_carrier_for_mobile()
+    ].
+
+keeps_carrier() ->
     Num = ?BW_EXISTING_DID,
     {ok, N0} = knm_number:get(Num),
     PN0 = knm_number:phone_number(N0),
@@ -28,7 +38,7 @@ keeps_carrier_test_() ->
      }
     ].
 
-sets_carrier_for_mobile_test_() ->
+sets_carrier_for_mobile() ->
     Num = ?BW_EXISTING_DID,
     {ok, N0} = knm_number:get(Num),
     PN0 = knm_number:phone_number(N0),

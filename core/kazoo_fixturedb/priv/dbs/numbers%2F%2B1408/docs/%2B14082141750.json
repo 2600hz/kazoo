@@ -1,0 +1,58 @@
+{
+    "_id": "+14082141750",
+    "_rev": "5-d8c63d6bdc3e8376e9ffe157904ce114",
+    "e911": {
+        "extended_address": "",
+        "locality": "SAN FRANCISCO",
+        "postal_code": "94108-5630",
+        "region": "CA",
+        "street_address": "140 GEARY ST"
+    },
+    "features": [
+        "e911"
+    ],
+    "pvt_assigned_to": "eda33e3561baf133f9a088340643e35c",
+    "pvt_authorizing_account": "eda33e3561baf133f9a088340643e35c",
+    "pvt_carrier_data": {
+        "number": "+14082141750",
+        "order_id": "6c7e81e558cc48e1a55c783ff06244cc",
+        "order_name": "avaya-63646110391",
+        "rate_center": {
+            "lata": "722",
+            "name": "SAN MARTIN",
+            "state": "CA"
+        }
+    },
+    "pvt_created": 63646110391,
+    "pvt_db_name": "numbers%2F%2B1408",
+    "pvt_features": {
+        "e911": {
+            "extended_address": "",
+            "locality": "SAN FRANCISCO",
+            "postal_code": "94108-5630",
+            "region": "CA",
+            "street_address": "140 GEARY ST"
+        }
+    },
+    "pvt_features_available": [
+        "cnam",
+        "dash_e911",
+        "failover",
+        "port",
+        "prepend",
+        "vitelity_e911",
+        "e911"
+    ],
+    "pvt_modified": 63646110391,
+    "pvt_module_name": "wnm_bandwidth",
+    "pvt_state": "in_service",
+    "pvt_type": "number",
+    "pvt_used_by": "callflow",
+    "state": "in_service",
+    "ui_metadata": {
+        "origin": "common",
+        "ui": "monster-ui",
+        "version": "4.0-3"
+    },
+    "used_by": "callflow"
+}

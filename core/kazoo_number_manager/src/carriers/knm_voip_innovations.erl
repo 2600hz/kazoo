@@ -20,10 +20,6 @@
 -export([should_lookup_cnam/0]).
 -export([check_numbers/1]).
 
--ifdef(TEST).
--export([soap_request/2]).  %% Only to pass compilation
--endif.
-
 -include("knm.hrl").
 
 -define(KNM_VI_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".voip_innovations">>).
@@ -36,7 +32,6 @@
 -define(VI_URL_V3_SANDBOX, "http://dev.voipinnovations.com/VOIP/Services/APIService.asmx").
 
 -ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
 -define(DEBUG_WRITE(_Format, _Args), 'ok').
 -define(DEBUG_APPEND(_Format, _Args), 'ok').
 -else.
@@ -120,11 +115,11 @@ find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
 find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
     find_numbers(Rest, Quantity, Options);
 find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
-    Resp = soap("getDIDs", [{"npa", NPA}]),
+    Resp = soap_request("getDIDs", [{"npa", NPA}]),
     MaybeJson = to_json('find_numbers', Quantity, Resp),
     to_numbers(MaybeJson, knm_search:query_id(Options));
 find_numbers(<<NXX:6/binary,_/binary>>, Quantity, Options) ->
-    Resp = soap("getDIDs", [{"nxx", NXX}]),
+    Resp = soap_request("getDIDs", [{"nxx", NXX}]),
     MaybeJson = to_json('find_numbers', Quantity, Resp),
     to_numbers(MaybeJson, knm_search:query_id(Options)).
 
@@ -145,7 +140,7 @@ acquire_number(Number) ->
             N = 'remove +1'(
                   knm_phone_number:number(knm_number:phone_number(Number))
                  ),
-            Resp = soap("assignDID", [N]),
+            Resp = soap_request("assignDID", [N]),
             Ret = to_json('acquire_number', [N], Resp),
             maybe_return(Ret, Number)
     end.
@@ -168,7 +163,7 @@ disconnect_number(Number) ->
             N = 'remove +1'(
                   knm_phone_number:number(knm_number:phone_number(Number))
                  ),
-            Resp = soap("releaseDID", [N]),
+            Resp = soap_request("releaseDID", [N]),
             Ret = to_json('disconnect_number', [N], Resp),
             maybe_return(Ret, Number)
     end.
@@ -187,9 +182,10 @@ should_lookup_cnam() -> 'true'.
 'remove +1'(Else) ->
     Else.
 
--spec to_numbers(to_json_ret(), kz_term:ne_binary()) ->
-                        {'ok', [tuple()]} |
-                        {'error', any()}.
+-spec to_numbers(to_json_ret(), QID) ->
+                        {'ok', [{QID, tuple()}]} |
+                        {'error', any()}
+                            when QID :: kz_term:ne_binary().
 to_numbers({'error',_R}=Error, _) ->
     Error;
 to_numbers({'ok',JObjs}, QID) ->
@@ -266,29 +262,42 @@ to_json('disconnect_number', _Numbers, {'ok', Xml}) ->
 to_json(_Target, _, {'error',_R}=Error) ->
     Error.
 
--spec soap(nonempty_string(), any()) -> soap_response().
+-spec soap_request(nonempty_string(), any()) -> soap_response().
 -ifndef(TEST).
-soap(Action, Props) ->
+soap_request(Action, Props) ->
     Body = soap_envelope(Action, Props),
-    soap_request(Action, Body).
+    Url = ?URL_IN_USE,
+    Headers = [{"SOAPAction", ?VI_DEFAULT_NAMESPACE++Action}
+              ,{"Accept", "*/*"}
+              ,{"User-Agent", ?KNM_USER_AGENT}
+              ,{"Content-Type", "text/xml;charset=UTF-8"}
+              ],
+    HTTPOptions = [{'ssl', [{'verify', 'verify_none'}, {versions, ['tlsv1.2']}]}
+                  ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
+                  ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
+                  ,{'body_format', 'string'}
+                  ],
+    ?DEBUG_WRITE("Request:~n~s ~s~n~p~n~s~n", ['post', Url, Headers, Body]),
+    UnicodeBody = unicode:characters_to_binary(Body),
+    Resp = kz_http:post(Url, Headers, UnicodeBody, HTTPOptions),
+    handle_response(Resp).
 -else.
-soap(Action, Props) ->
+soap_request(Action, Props) ->
     _Body = soap_envelope(Action, Props),
-    Resp =
-        case Action of
-            "queryDID" ->
-                knm_util:fixture("voip_innovations_query_response.xml");
-            "getDIDs" ->
-                case props:get_value("npa", Props) of
-                    <<"877">> -> knm_util:fixture("voip_innovations_get_tollfree_response.xml");
-                    _ -> knm_util:fixture("voip_innovations_get_response.xml")
-                end;
-            "assignDID" ->
-                knm_util:fixture("voip_innovations_assign_response.xml");
-            "releaseDID" ->
-                knm_util:fixture("voip_innovations_release_response.xml")
-        end,
-    handle_response({'ok', 200, [], Resp}).
+    handle_response({'ok', 200, [], get_response_fixture(Action, Props)}).
+
+-spec get_response_fixture(nonempty_string(), any()) -> soap_response().
+get_response_fixture("queryDID", _) ->
+    knm_util:fixture("voip_innovations_query_response.xml");
+get_response_fixture("getDIDs", Props) ->
+    case props:get_value("npa", Props) of
+        <<"877">> -> knm_util:fixture("voip_innovations_get_tollfree_response.xml");
+        _ -> knm_util:fixture("voip_innovations_get_response.xml")
+    end;
+get_response_fixture("assignDID", _) ->
+    knm_util:fixture("voip_innovations_assign_response.xml");
+get_response_fixture("releaseDID", _) ->
+    knm_util:fixture("voip_innovations_release_response.xml").
 -endif.
 
 -spec soap_envelope(nonempty_string(), any()) -> iolist().
@@ -349,24 +358,6 @@ body("releaseDID", Numbers=[_|_]) ->
        || Number <- Numbers
      ],
      "</tns:didParams>"].
-
--spec soap_request(nonempty_string(), iolist()) -> soap_response().
-soap_request(Action, Body) ->
-    Url = ?URL_IN_USE,
-    Headers = [{"SOAPAction", ?VI_DEFAULT_NAMESPACE++Action}
-              ,{"Accept", "*/*"}
-              ,{"User-Agent", ?KNM_USER_AGENT}
-              ,{"Content-Type", "text/xml;charset=UTF-8"}
-              ],
-    HTTPOptions = [{'ssl', [{'verify', 'verify_none'}, {versions, ['tlsv1.2']}]}
-                  ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
-                  ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
-                  ,{'body_format', 'string'}
-                  ],
-    ?DEBUG_WRITE("Request:~n~s ~s~n~p~n~s~n", ['post', Url, Headers, Body]),
-    UnicodeBody = unicode:characters_to_binary(Body),
-    Resp = kz_http:post(Url, Headers, UnicodeBody, HTTPOptions),
-    handle_response(Resp).
 
 -spec handle_response(kz_http:ret()) -> soap_response().
 handle_response({'ok', _Code, _Headers, "<?xml"++_=Response}) ->

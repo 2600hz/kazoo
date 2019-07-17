@@ -42,6 +42,7 @@
 -define(PP(NeBinaries), kz_util:iolist_join($,, NeBinaries)).
 
 -ifdef(TEST).
+%% TODO: no test specific type
 -record(feature_parameters, {is_local = false :: boolean()
                             ,is_admin = false :: boolean()
                             ,assigned_to :: kz_term:api_ne_binary()
@@ -94,21 +95,12 @@ available_features(IsLocal, IsAdmin, AssignedTo, UsedBy, Allowed, Denied) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec service_name(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
--ifdef(TEST).
-service_name(?FEATURE_E911, _AccountId) ->
-    service_name(?E911_PROVIDER(_AccountId));
-service_name(?FEATURE_CNAM, _AccountId) ->
-    service_name(?CNAM_PROVIDER(_AccountId));
-service_name(Feature, _) ->
-    service_name(Feature).
--else.
 service_name(?FEATURE_E911, AccountId) ->
     service_name(?E911_PROVIDER(AccountId));
 service_name(?FEATURE_CNAM, AccountId) ->
     service_name(?CNAM_PROVIDER(AccountId));
 service_name(Feature, _) ->
     service_name(Feature).
--endif.
 
 %%------------------------------------------------------------------------------
 %% @doc Util function to get E911 caller name defaults.
@@ -389,13 +381,13 @@ provider_modules(Features, MaybeAccountId) ->
 
 -spec provider_module(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 provider_module(?FEATURE_CNAM, ?MATCH_ACCOUNT_RAW(AccountId)) ->
-    cnam_provider(AccountId);
+    ?CNAM_PROVIDER(AccountId);
 provider_module(?FEATURE_CNAM_INBOUND, AccountId) ->
     provider_module(?FEATURE_CNAM, AccountId);
 provider_module(?FEATURE_CNAM_OUTBOUND, AccountId) ->
     provider_module(?FEATURE_CNAM, AccountId);
 provider_module(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(AccountId)) ->
-    e911_provider(AccountId);
+    ?E911_PROVIDER(AccountId);
 provider_module(?FEATURE_PREPEND, _) ->
     <<"knm_prepend">>;
 provider_module(?FEATURE_PORT, _) ->
@@ -409,20 +401,6 @@ provider_module(?FEATURE_FORCE_OUTBOUND, _) ->
 provider_module(Other, _) ->
     lager:debug("unmatched feature provider ~p, allowing", [Other]),
     Other.
-
--ifdef(TEST).
-e911_provider(?RESELLER_ACCOUNT_ID) -> <<"knm_telnyx_e911">>;
-e911_provider(AccountId) -> ?E911_PROVIDER(AccountId).
--else.
-e911_provider(AccountId) -> ?E911_PROVIDER(AccountId).
--endif.
-
--ifdef(TEST).
-cnam_provider(?RESELLER_ACCOUNT_ID) -> <<"knm_telnyx_cnam">>;
-cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
--else.
-cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
--endif.
 
 %%------------------------------------------------------------------------------
 %% @doc

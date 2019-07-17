@@ -13,19 +13,6 @@
 -define(PORT_UNCONFIRMED, <<"unconfirmed">>).
 -define(PORT_WAITING, ?PORT_UNCONFIRMED).
 
--define(PORT_PVT_ACCOUNT_DB, <<"pvt_account_db">>).
--define(PORT_PVT_ACCOUNT_ID, <<"pvt_account_id">>).
--define(PORT_PVT_CREATED, <<"pvt_created">>).
--define(PORT_PVT_ID, <<"_id">>).
--define(PORT_PVT_MODIFIED, <<"pvt_modified">>).
--define(PORT_PVT_REV, <<"_rev">>).
--define(PORT_PVT_SENT, <<"pvt_sent">>).
--define(PORT_PVT_STATE, <<"pvt_port_state">>).
--define(PORT_PVT_TRANSITIONS, <<"pvt_transitions">>).
--define(PORT_PVT_TREE, <<"pvt_tree">>).
--define(PORT_PVT_TYPE, <<"pvt_type">>).
--define(PORT_PVT_VSN, <<"pvt_vsn">>).
-
 -define(PORT_TRANSITION, <<"transition">>).
 
 -define(TRANSITION_REASON, <<"reason">>).

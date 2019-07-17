@@ -120,12 +120,12 @@ correct() ->
            ,commands(?MODULE)
            ,?TRAPEXIT(
                begin
+                   timer:sleep(1000),
                    {History, Model, Result} = run_commands(?MODULE, Cmds),
-
                    pqc_cb_accounts:cleanup_accounts(pqc_kazoo_model:api(Model), ?ACCOUNT_NAMES),
 
                    ?WHENFAIL(io:format("Final Model : ~p~nFailing Cmds: ~p~n"
-                                      ,[Model, zip(Cmds, History)]
+                                      ,[pqc_kazoo_model:pp(Model), zip(Cmds, History)]
                                       )
                             ,aggregate(command_names(Cmds), Result =:= 'ok')
                             )

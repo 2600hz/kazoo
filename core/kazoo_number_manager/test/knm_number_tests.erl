@@ -14,13 +14,35 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("../src/knm.hrl").
 
-available_as_owner_test_() ->
+-export([db_dependant/0]).
+
+knm_number_test_() ->
+    knm_test_util:start_db(fun db_dependant/0).
+
+db_dependant() ->
+    [available_as_owner()
+    ,available_as_parent()
+    ,available_as_random()
+    ,get_unreconcilable_number()
+    ,get_not_found()
+    ,mdn_transitions()
+    ,is_mdn_for_mdn_run()
+    ,attempt_setting_e911_on_disallowed_local_number()
+    ,attempt_setting_e911_on_explicitly_disallowed_number()
+    ,assign_to_app()
+    ,update_used_by_from_defined()
+    ,update_used_by_from_undefined()
+    ,fix_number()
+    ,fix_number_wrong_used_by_and_dangling_pvt_features()
+    ].
+
+available_as_owner() ->
     available_as(?RESELLER_ACCOUNT_ID).
 
-available_as_parent_test_() ->
+available_as_parent() ->
     available_as(?MASTER_ACCOUNT_ID).
 
-available_as_rando_test_() ->
+available_as_random() ->
     available_as(kz_binary:rand_hex(16)).
 
 available_as(AuthAccountId) ->
@@ -52,17 +74,17 @@ available_tests(N) ->
      }
     ].
 
-get_unreconcilable_number_test_() ->
+get_unreconcilable_number() ->
     [{"Verify non-reconcilable numbers result in errors"
      ,?_assertMatch({'error', 'not_reconcilable'}, knm_number:get(<<"1000">>))
      }
     ].
 
-get_not_found_test_() ->
+get_not_found() ->
     [?_assertEqual({error, not_found}, knm_number:get(<<"4156301234">>))
     ].
 
-mdn_transitions_test_() ->
+mdn_transitions() ->
     Num = ?TEST_IN_SERVICE_MDN,
     DefaultOptions = [{assign_to, ?MASTER_ACCOUNT_ID} | knm_number_options:mdn_options()],
     {ok, N1} = knm_number:move(Num, ?MASTER_ACCOUNT_ID, DefaultOptions),
@@ -97,7 +119,7 @@ mdn_transitions_test_() ->
      }
     ].
 
-is_mdn_for_mdn_run_test_() ->
+is_mdn_for_mdn_run() ->
     Run = {mdn_run, true},
     Base = [{auth_by,?MASTER_ACCOUNT_ID}],
     Sudo = knm_number_options:default(),
@@ -129,7 +151,7 @@ is_mdn_for_mdn_run_test_() ->
     ].
 
 
-attempt_setting_e911_on_disallowed_local_number_test_() ->
+attempt_setting_e911_on_disallowed_local_number() ->
     JObj = kz_json:from_list(
              [{?FEATURE_E911
               ,kz_json:from_list(
@@ -157,7 +179,7 @@ attempt_setting_e911_on_disallowed_local_number_test_() ->
      }
     ].
 
-attempt_setting_e911_on_explicitly_disallowed_number_test_() ->
+attempt_setting_e911_on_explicitly_disallowed_number() ->
     JObj = kz_json:from_list(
              [{?FEATURE_E911
               ,kz_json:from_list(
@@ -186,8 +208,7 @@ attempt_setting_e911_on_explicitly_disallowed_number_test_() ->
      }
     ].
 
-
-assign_to_app_test_() ->
+assign_to_app() ->
     Num = ?TEST_IN_SERVICE_NUM,
     MyApp = <<"my_app">>,
     {ok, N0} = knm_number:get(Num),
@@ -206,7 +227,7 @@ assign_to_app_test_() ->
      }
     ].
 
-update_used_by_from_defined_test_() ->
+update_used_by_from_defined() ->
     Num = ?TEST_IN_SERVICE_NUM,
     MyApp = <<"my_app">>,
     {ok, N0} = knm_number:get(Num),
@@ -227,7 +248,7 @@ update_used_by_from_defined_test_() ->
     ,?_assert(knm_phone_number:is_dirty(PN2))
     ].
 
-update_used_by_from_undefined_test_() ->
+update_used_by_from_undefined() ->
     Num = ?TEST_IN_SERVICE_MDN,
     MyApp = <<"my_app">>,
     {ok, N0} = knm_number:get(Num),
@@ -248,7 +269,7 @@ update_used_by_from_undefined_test_() ->
     ,?_assert(knm_phone_number:is_dirty(PN2))
     ].
 
-fix_number_test_() ->
+fix_number() ->
     Num = ?TEST_OLD5_1_NUM,
     {ok, N1} = knm_number:get(Num),
     PN1 = knm_number:phone_number(N1),
@@ -294,7 +315,7 @@ fix_number_test_() ->
     ,?_assertEqual(undefined, knm_phone_number:used_by(PN2))
     ].
 
-fix_number_wrong_used_by_and_dangling_pvt_features_test_() ->
+fix_number_wrong_used_by_and_dangling_pvt_features() ->
     {ok, N1} = knm_number:get(?TEST_OLD7_NUM),
     PN1 = knm_number:phone_number(N1),
     #{ok := [N2]} = fix_number(N1),
@@ -321,6 +342,9 @@ fix_number_wrong_used_by_and_dangling_pvt_features_test_() ->
     ,?_assertEqual(<<"trunkstore">>, knm_phone_number:used_by(PN2))
     ].
 
+
+%%
+%% TODO: make this works with fixturedb (remove denied fatures)
 fix_number(N) ->
     PN = knm_number:phone_number(N),
     Num = knm_phone_number:number(PN),

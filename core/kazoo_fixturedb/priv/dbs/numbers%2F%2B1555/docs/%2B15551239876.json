@@ -1,0 +1,15 @@
+{
+    "_id": "+15551239876",
+    "_rev": "10-7dd6a1523e81a4e3c2689140ed3a8e69",
+    "my_key": "my string",
+    "pvt_created": 63565934344,
+    "pvt_db_name": "numbers%2F%2B1555",
+    "pvt_features": {
+        "local": {}
+    },
+    "pvt_modified": 63565934349,
+    "pvt_module_name": "knm_local",
+    "pvt_previously_assigned_to": "account0000000000000000000000002",
+    "pvt_reserve_history": [],
+    "pvt_state": "available"
+}

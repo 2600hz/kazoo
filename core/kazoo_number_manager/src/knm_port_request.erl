@@ -124,10 +124,6 @@ read_only_public_fields(Doc) ->
 %%------------------------------------------------------------------------------
 -spec get(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
                                   {'error', any()}.
--ifdef(TEST).
-get(?TEST_NEW_PORT_NUM) -> {'ok', ?TEST_NEW_PORT_REQ};
-get(?NE_BINARY) -> {'error', 'not_found'}.
--else.
 get(DID=?NE_BINARY) ->
     View = ?ACTIVE_PORT_IN_NUMBERS,
     ViewOptions = [{'key', DID}, 'include_docs'],
@@ -137,7 +133,6 @@ get(DID=?NE_BINARY) ->
             lager:debug("failed to query for port number '~s': ~p", [DID, _E]),
             Error
     end.
--endif.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -231,12 +226,12 @@ new(PortReq, Options) ->
     Metadata = transition_metadata(props:get_value('auth_by', Options)
                                   ,props:get_value('auth_user_id', Options)
                                   ),
-    Unconf = [{?PORT_PVT_TYPE, ?TYPE_PORT_REQUEST}
-             ,{?PORT_PVT_STATE, ?PORT_UNCONFIRMED}
-             ,{?PORT_PVT_TRANSITIONS, [transition_metadata_jobj('undefined', ?PORT_UNCONFIRMED, Metadata)]}
-             ,{<<"pvt_account_name">>, props:get_value('account_name', Options)} %% makes port listing sane in crossbar
-             ,{<<"pvt_port_authority">>, props:get_value('port_authority_id', Options)}
-             ,{<<"pvt_port_authority_name">>, props:get_value('port_authority_name', Options)}
+    Unconf = [{kz_doc:path_type(), ?TYPE_PORT_REQUEST}
+             ,{kzd_port_requests:pvt_port_state_path(), ?PORT_UNCONFIRMED}
+             ,{kzd_port_requests:pvt_transitions_path(), [transition_metadata_jobj('undefined', ?PORT_UNCONFIRMED, Metadata)]}
+             ,{kzd_port_requests:pvt_account_name_path(), props:get_value('account_name', Options)} %% makes port listing sane in crossbar
+             ,{kzd_port_requests:pvt_port_authority_path(), props:get_value('port_authority_id', Options)}
+             ,{kzd_port_requests:pvt_port_authority_name_path(), props:get_value('port_authority_name', Options)}
              ],
     kz_json:set_values(Unconf, Normalized).
 
@@ -637,19 +632,19 @@ send_request(JObj, Url) ->
               ,{"User-Agent", kz_term:to_list(node())}
               ],
     Uri = kz_term:to_list(<<Url/binary, "/", (kz_doc:id(JObj))/binary>>),
-    Remove = [?PORT_PVT_REV
-             ,<<"ui_metadata">>
-             ,<<"_attachments">>
+    Remove = [<<"_attachments">>
              ,<<"pvt_request_id">>
-             ,?PORT_PVT_TYPE
-             ,?PORT_PVT_VSN
-             ,?PORT_PVT_ACCOUNT_DB
+             ,<<"ui_metadata">>
+             ,kz_doc:path_account_db()
+             ,kz_doc:path_revision()
+             ,kz_doc:path_type()
+             ,kz_doc:path_vsn()
              ],
-    Replace = [{?PORT_PVT_ID, <<"id">>}
-              ,{?PORT_PVT_STATE, <<"port_state">>}
-              ,{?PORT_PVT_ACCOUNT_ID, <<"account_id">>}
-              ,{?PORT_PVT_CREATED, <<"created">>}
-              ,{?PORT_PVT_MODIFIED, <<"modified">>}
+    Replace = [{kz_doc:path_id(), <<"id">>}
+              ,{kzd_port_requests:pvt_port_state_path(), <<"port_state">>}
+              ,{kz_doc:path_account_id(), <<"account_id">>}
+              ,{kz_doc:path_created(), <<"created">>}
+              ,{kz_doc:path_modified(), <<"modified">>}
               ],
     Data = kz_json:encode(kz_json:normalize_jobj(JObj, Remove, Replace)),
     case kz_http:post(Uri, Headers, Data) of

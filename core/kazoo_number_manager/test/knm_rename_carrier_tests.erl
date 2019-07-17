@@ -12,13 +12,26 @@
 -module(knm_rename_carrier_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-include("../src/knm.hrl").
 
-create_new_number_rename_carrier_test_() ->
+-export([db_dependant/0]).
+
+knm_number_test_() ->
+    knm_test_util:start_db(fun db_dependant/0).
+
+db_dependant() ->
+    [create_new_number_rename_carrier()
+    ,rename_carrier()
+    ,rename_from_local()
+    ,rename_to_local_with_external_features()
+    ,rename_to_nonlocal_with_external_features()
+    ,available_features()
+    ].
+
+create_new_number_rename_carrier() ->
     Options = [{'auth_by', ?MASTER_ACCOUNT_ID}
               ,{'assign_to', ?RESELLER_ACCOUNT_ID}
               ,{'dry_run', 'false'}
-              ,{<<"auth_by_account">>, kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')}
               ,{'public_fields', kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"telnyx">>}])}
               ],
     {'ok', N1} = knm_number:create(?TEST_CREATE_NUM, Options),
@@ -40,10 +53,9 @@ create_new_number_rename_carrier_test_() ->
      }
     ].
 
-rename_carrier_test_() ->
+rename_carrier() ->
     Options = [{auth_by, ?MASTER_ACCOUNT_ID}
               ,{assign_to, ?RESELLER_ACCOUNT_ID}
-              ,{<<"auth_by_account">>, kz_json:new()}
               ],
     {ok, N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
     PN1 = knm_number:phone_number(N1),
@@ -105,7 +117,7 @@ rename_carrier_test_() ->
      }
     ].
 
-rename_from_local_test_() ->
+rename_from_local() ->
     Options = [{auth_by, ?MASTER_ACCOUNT_ID}
               ],
     {ok, N1} = knm_number:get(?TEST_IN_SERVICE_NUM, Options),
@@ -130,7 +142,7 @@ rename_from_local_test_() ->
      }
     ].
 
-rename_to_local_with_external_features_test_() ->
+rename_to_local_with_external_features() ->
     Options = [{auth_by, ?MASTER_ACCOUNT_ID}
               ],
     {ok, N1} = knm_number:get(?TEST_VITELITY_NUM, Options),
@@ -167,7 +179,7 @@ rename_to_local_with_external_features_test_() ->
     ,?_assert(lists:member(?FEATURE_PREPEND, knm_phone_number:features_list(PN2)))
     ].
 
-rename_to_nonlocal_with_external_features_test_() ->
+rename_to_nonlocal_with_external_features() ->
     Options = [{auth_by, ?MASTER_ACCOUNT_ID}
               ],
     {ok, N1} = knm_number:get(?TEST_VITELITY_NUM, Options),
@@ -203,7 +215,7 @@ rename_to_nonlocal_with_external_features_test_() ->
     ,?_assert(lists:member(?FEATURE_PREPEND, knm_phone_number:features_list(PN2)))
     ].
 
-available_features_test_() ->
+available_features() ->
     [?_assert(is_feature_available(?TEST_IN_SERVICE_NUM, []))
     ,?_assert(is_feature_available(?TEST_IN_SERVICE_NUM, [{auth_by, ?KNM_DEFAULT_AUTH_BY}]))
     ,?_assert(is_feature_available(?TEST_IN_SERVICE_NUM, [{auth_by, ?MASTER_ACCOUNT_ID}]))

@@ -69,11 +69,11 @@ relay_stream_attachment(Caller, Ref, AttResult) ->
 -spec prepare_att_doc(doc_resp(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> doc_resp().
 prepare_att_doc({ok, Doc}, AName, Contents, Options) ->
     JObj = kz_fixturedb_util:update_revision(Doc),
-    [RevPos|_] = kz_doc:revision(JObj),
+    Rev = kz_doc:revision(JObj),
     Att = kz_json:from_list_recursive(
             [{<<"_attachments">>
              ,[{AName, [{<<"content_type">>, props:get_value(content_type, Options, <<"application/octet-stream">>)}
-                       ,{<<"revpos">>, RevPos}
+                       ,{<<"revpos">>, Rev}
                        ,{<<"digest">>, <<"md5-", (base64:encode(crypto:hash(md5, Contents)))/binary>>}
                        ,{<<"length">>, erlang:size(Contents)}
                        ,{<<"stub">>, true}

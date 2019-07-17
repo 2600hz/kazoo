@@ -13,7 +13,16 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
-pretty_print_test_() ->
+-export([db_dependant/0]).
+
+knm_number_test_() ->
+    knm_test_util:start_db(fun db_dependant/0).
+
+db_dependant() ->
+    [pretty_print()
+    ].
+
+pretty_print() ->
     [?_assertEqual(Result, knm_util:pretty_print(Format, Number))
      || {Number, Format, Result}
             <- [{<<"+14158867900">>, <<"SS(###) ### - *">>, <<"(415) 886 - 7900">>}

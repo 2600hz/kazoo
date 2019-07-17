@@ -12,23 +12,39 @@
 -module(knm_vitelity_find_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-include("../src/knm.hrl").
 
-find_test_() ->
+-export([db_dependant/0
+        ,setup/1
+        ,cleanup/1
+        ]).
+
+knm_number_test_() ->
+    knm_test_util:start_db(fun db_dependant/0, fun setup/1, fun cleanup/1).
+
+db_dependant() ->
+    [find()
+    ].
+
+setup(TestState) ->
+    Pid = case knm_search:start_link() of
+              {'ok', P} -> P;
+              {'error', {'already_started', P}} -> P
+          end,
+    TestState#{search_pid => Pid}.
+
+cleanup(#{search_pid := Pid}) ->
+    gen_server:stop(Pid).
+
+find() ->
     Options = [{'account_id', ?RESELLER_ACCOUNT_ID}
               ,{'carriers', [<<"knm_vitelity">>]}
               ,{'query_id', <<"QID">>}
               ],
-    {setup
-    ,fun () -> {'ok', Pid} = knm_search:start_link(), Pid end
-    ,fun gen_server:stop/1
-    ,fun (_ReturnOfSetup) ->
-             [tollfree_tests(Options)
-             ,local_number_tests(Options)
-             ,local_prefix_tests(Options)
-             ]
-     end
-    }.
+    [tollfree_tests(Options)
+    ,local_number_tests(Options)
+    ,local_prefix_tests(Options)
+    ].
 
 tollfree_tests(Options0) ->
     <<"+1", Num/binary>> = ?TEST_CREATE_TOLL,

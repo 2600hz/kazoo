@@ -128,8 +128,8 @@ is_number_billable(_Number) -> 'false'.
 acquire_number(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     lager:debug("acquiring number ~s", [knm_phone_number:number(PhoneNumber)]),
-    update_doc(Number, [{?PVT_STATE, knm_phone_number:state(PhoneNumber)}
-                       ,{?PVT_ASSIGNED_TO, knm_phone_number:assigned_to(PhoneNumber)}
+    update_doc(Number, [{kzd_phone_numbers:pvt_state_path(), knm_phone_number:state(PhoneNumber)}
+                       ,{kzd_phone_numbers:pvt_assigned_to_path(), knm_phone_number:assigned_to(PhoneNumber)}
                        ]).
 
 %%------------------------------------------------------------------------------
@@ -140,10 +140,11 @@ acquire_number(Number) ->
                                knm_number:knm_number().
 disconnect_number(Number) ->
     lager:debug("disconnect number ~s in managed provider"
-               ,[knm_phone_number:number(knm_number:phone_number(Number))]),
-    update_doc(Number, [{?PVT_STATE, ?NUMBER_STATE_RELEASED}
-                       ,{?PVT_ASSIGNED_TO, 'undefined'}
-                       ,{?PVT_RESERVE_HISTORY, []}
+               ,[knm_phone_number:number(knm_number:phone_number(Number))]
+               ),
+    update_doc(Number, [{kzd_phone_numbers:pvt_state_path(), ?NUMBER_STATE_RELEASED}
+                       ,{kzd_phone_numbers:pvt_assigned_to_path(), 'null'}
+                       ,{kzd_phone_numbers:pvt_reserve_history_path(), []}
                        ]).
 
 -spec generate_numbers(kz_term:ne_binary(), pos_integer(), non_neg_integer()) -> 'ok'.
@@ -163,17 +164,14 @@ generate_numbers(?MATCH_ACCOUNT_RAW(AccountId), Number, Quantity)
 -spec save_doc(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
                                                             {'error', any()}.
 save_doc(AccountId, Number) ->
-    JObj = kz_json:from_list([{<<"_id">>, knm_converters:normalize(Number)}
-                             ,{<<"pvt_account_id">>, AccountId}
-                             ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
-                             ,{?PVT_TYPE, <<"number">>}
-                             ]),
-    save_doc(JObj).
-
--spec save_doc(kz_json:object()) -> {'ok', kz_json:object()} |
-                                    {'error', any()}.
-save_doc(JObj) ->
-    kz_datamgr:save_doc(?KZ_INUM_DB, JObj).
+    Setters = [{fun kzd_phone_numbers:set_pvt_module_name/2, kz_term:to_binary(?MODULE)}
+              ,{fun kzd_phone_numbers:set_pvt_state/2, ?NUMBER_STATE_AVAILABLE}
+              ],
+    PvtOptions = [{'account_id', AccountId}
+                 ,{'id', knm_converters:normalize(Number)}
+                 ,{'type', kzd_phone_numbers:type()}
+                 ],
+    kz_datamgr:save_doc(?KZ_INUM_DB, kz_doc:update_pvt_parameters(kz_doc:setters(Setters), 'undefined', PvtOptions)).
 
 -spec update_doc(knm_number:knm_number(), kz_term:proplist()) ->
                         knm_number:knm_number().
@@ -181,7 +179,7 @@ update_doc(Number, UpdateProps) ->
     PhoneNumber = knm_number:phone_number(Number),
     Num = knm_phone_number:number(PhoneNumber),
 
-    Updates = [{?PVT_MODULE_NAME, kz_term:to_binary(?MODULE)}
+    Updates = [{kzd_phone_numbers:pvt_module_name_path(), kz_term:to_binary(?MODULE)}
                | UpdateProps
               ],
     UpdateOptions = [{'update', Updates}],

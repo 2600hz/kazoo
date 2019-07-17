@@ -23,11 +23,15 @@
 
 -define(SERVER, ?MODULE).
 
+
+-ifdef(TEST).
+-define(CACHE_PROPS, []).
+-else.
 -define(ORIGIN_BINDINGS, [[{'type', <<"number">>}]
                          ]).
-
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
                      ]).
+-endif.
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)

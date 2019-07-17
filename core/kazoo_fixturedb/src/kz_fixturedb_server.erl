@@ -24,9 +24,6 @@
         ,maybe_use_app_connection/2
         ]).
 
-%% Lazy Tools
--export([get_dummy_plan/0]).
-
 -include("kz_fixturedb.hrl").
 
 %%%=============================================================================
@@ -110,13 +107,6 @@ maybe_use_app_connection(#{options := Options}=Server, DbName) ->
             ?LOG_DEBUG("requested db ~s is not test_db ~s, using kazoo_fixturedb database path...", [DbName, _OtherDb]),
             Server
     end.
-
-%% @doc For using kazoo_fixturedb directly without starting up kazoo_data, returns a dummy plan
-%% @end
--spec get_dummy_plan() -> map().
-get_dummy_plan() ->
-    {ok, Server} = new_connection(#{}),
-    #{server => {kazoo_fixturedb, Server}}.
 
 %%%=============================================================================
 %%% Internal functions

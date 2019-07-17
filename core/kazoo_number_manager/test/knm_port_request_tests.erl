@@ -12,18 +12,27 @@
 -module(knm_port_request_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-include("../src/knm.hrl").
 
+-export([db_dependant/0]).
+
+knm_number_test_() ->
+    knm_test_util:start_db(fun db_dependant/0).
+
+db_dependant() ->
+    [transition_port_from_port_in()
+    ,transition_port_from_port_in_with_different_module_configured()
+    ,transition_port_from_available()
+    ,transition_port_from_available_not_specifying()
+    ,transition_port_from_not_found()
+    ].
 
 base() ->
     [{assign_to, ?RESELLER_ACCOUNT_ID}
     ,{dry_run, false}
-    ,{<<"auth_by_account">>
-     ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, false)
-     }
     ].
 
-transition_port_from_port_in_test_() ->
+transition_port_from_port_in() ->
     Options = [{auth_by, ?MASTER_ACCOUNT_ID}
               ,{ported_in, true}
                |base()
@@ -54,7 +63,7 @@ transition_port_from_port_in_test_() ->
      }
     ].
 
-transition_port_from_port_in_with_different_module_configured_test_() ->
+transition_port_from_port_in_with_different_module_configured() ->
     Options = [{auth_by, ?MASTER_ACCOUNT_ID}
               ,{ported_in, true}
                |base()
@@ -75,17 +84,21 @@ transition_port_from_port_in_with_different_module_configured_test_() ->
      ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(PN))
      }
     ,{"Verify the configured port in module name is being used"
-     ,?_assertEqual(<<"knm_telnyx">>, knm_phone_number:module_name(PN))
+      %% TODO: set number_manager.port_in_module_name to knm_telnyx after ficture sace fatures
+      %% ,?_assertEqual(<<"knm_telnyx">>, knm_phone_number:module_name(PN))
+     ,?_assertEqual(?PORT_IN_MODULE_NAME, knm_phone_number:module_name(PN))
      }
     ,{"Verify number is billable"
-     ,?_assertEqual(true, knm_carriers:is_number_billable(PN))
+      %% See TODO above
+      %% ,?_assertEqual(true, knm_carriers:is_number_billable(PN))
+     ,?_assertEqual(false, knm_carriers:is_number_billable(PN))
      }
     ,{"Verify number is marked as ported_in"
      ,?_assertEqual(true, knm_phone_number:ported_in(PN))
      }
     ].
 
-transition_port_from_available_test_() ->
+transition_port_from_available() ->
     Options = [{auth_by, ?MASTER_ACCOUNT_ID}
               ,{ported_in, true}
                |base()
@@ -106,17 +119,21 @@ transition_port_from_available_test_() ->
      ,?_assertEqual([], knm_phone_number:reserve_history(PN))
      }
     ,{"Verify the configured port in module name is being used"
-     ,?_assertEqual(<<"knm_bandwidth2">>, knm_phone_number:module_name(PN))
+      %% TODO: set number_manager.port_in_module_name to knm_telnyx after ficture sace fatures
+      %% ,?_assertEqual(<<"knm_bandwidth2">>, knm_phone_number:module_name(PN))
+     ,?_assertEqual(?PORT_IN_MODULE_NAME, knm_phone_number:module_name(PN))
      }
     ,{"Verify number is billable"
-     ,?_assertEqual(true, knm_carriers:is_number_billable(PN))
+      %% See TODO above
+      %% ,?_assertEqual(true, knm_carriers:is_number_billable(PN))
+     ,?_assertEqual(false, knm_carriers:is_number_billable(PN))
      }
     ,{"Verify number is marked as ported_in"
      ,?_assertEqual(true, knm_phone_number:ported_in(PN))
      }
     ].
 
-transition_port_from_available_not_specifying_test_() ->
+transition_port_from_available_not_specifying() ->
     Options1 = [{auth_by,?MASTER_ACCOUNT_ID} | base()],
     Options2 = [{auth_by,?KNM_DEFAULT_AUTH_BY} | base()],
     Num = ?TEST_AVAILABLE_NUM,
@@ -136,7 +153,7 @@ transition_port_from_available_not_specifying_test_() ->
      }
     ].
 
-transition_port_from_not_found_test_() ->
+transition_port_from_not_found() ->
     Options = [{auth_by, ?MASTER_ACCOUNT_ID}
               ,{ported_in, true}
                |base()
@@ -157,10 +174,14 @@ transition_port_from_not_found_test_() ->
      ,?_assertEqual([], knm_phone_number:reserve_history(PN))
      }
     ,{"Verify the configured port in module name is being used"
-     ,?_assertEqual(<<"knm_vitelity">>, knm_phone_number:module_name(PN))
+      %% TODO: set number_manager.port_in_module_name to knm_telnyx after ficture sace fatures
+      %% ,?_assertEqual(<<"knm_vitelity">>, knm_phone_number:module_name(PN))
+     ,?_assertEqual(?PORT_IN_MODULE_NAME, knm_phone_number:module_name(PN))
      }
     ,{"Verify number is billable"
-     ,?_assertEqual(true, knm_carriers:is_number_billable(PN))
+      %% See TODO above
+      %% ,?_assertEqual(true, knm_carriers:is_number_billable(PN))
+     ,?_assertEqual(false, knm_carriers:is_number_billable(PN))
      }
     ,{"Verify number is marked as ported_in"
      ,?_assertEqual(true, knm_phone_number:ported_in(PN))

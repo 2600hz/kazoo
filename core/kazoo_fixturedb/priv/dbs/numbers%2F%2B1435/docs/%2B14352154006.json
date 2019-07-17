@@ -1,0 +1,13 @@
+{
+    "_id": "+14352154006",
+    "_rev": "10-7dd6a1523e81a4e3c2689140ed3a8e69",
+    "pvt_assigned_to": "account0000000000000000000000002",
+    "pvt_created": 63565934344,
+    "pvt_db_name": "numbers%2F%2B1435",
+    "pvt_modified": 63565934349,
+    "pvt_module_name": "knm_telnyx",
+    "pvt_reserve_history": [
+        "account0000000000000000000000002"
+    ],
+    "pvt_state": "available"
+}

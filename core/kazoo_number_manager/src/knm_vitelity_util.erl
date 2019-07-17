@@ -69,15 +69,11 @@ add_options_fold({_K, 'undefined'}, Options) -> Options;
 add_options_fold({K, V}, Options) ->
     props:insert_value(K, V, Options).
 
--ifdef(TEST).
--define(QUERY_VALUE(Key, Options), props:get_value(Key, Options)).
--else.
 -define(QUERY_VALUE(Key, Options),
         case props:get_value(Key, Options) of
             undefined -> kapps_config:get(?KNM_VITELITY_CONFIG_CAT, Key);
             Value -> Value
         end).
--endif.
 
 -spec get_query_value(kz_term:ne_binary(), knm_carriers:options()) -> any().
 get_query_value(<<"cnam">>=Key, Options) -> ?QUERY_VALUE(Key, Options);
@@ -267,12 +263,8 @@ get_short_state(FullState) ->
     props:get_value(State, States).
 
 -spec get_routesip() -> kz_term:ne_binary().
--ifdef(TEST).
-get_routesip() -> <<"1.2.3.4">>.
--else.
 get_routesip() ->
     case kapps_config:get(?KNM_VITELITY_CONFIG_CAT, <<"routesip">>) of
         [Route=?NE_BINARY|_] -> Route;
         Route=?NE_BINARY -> Route
     end.
--endif.

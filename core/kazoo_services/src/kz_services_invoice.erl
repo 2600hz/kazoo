@@ -40,8 +40,7 @@
                  ,items = kz_services_items:empty() :: kz_services_items:items()
                  ,activation_charges = kz_services_activation_items:empty() :: kz_services_activation_items:items()
                  ,plan = kz_services_plan:empty() :: kz_services_plan:plan()
-                 }
-       ).
+                 }).
 
 -opaque invoice() :: #invoice{}.
 -type setter_fun() :: {fun((invoice(), Value) -> invoice()), Value}.

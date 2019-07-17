@@ -12,10 +12,24 @@
 %%%-----------------------------------------------------------------------------
 -module(knm_move_number_tests).
 
--include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-export([db_dependant/0]).
 
-move_to_child_test_() ->
+-include_lib("eunit/include/eunit.hrl").
+-include("../src/knm.hrl").
+
+knm_create_new_number_test_() ->
+    knm_test_util:start_db(fun db_dependant/0).
+
+db_dependant() ->
+    [move_to_child()
+    ,acquire_parent_reserved()
+    ,acquire_parent_reserved_failure()
+    ,move_changing_public_fields()
+    ,move_available_local()
+    ,move_available_non_local()
+    ].
+
+move_to_child() ->
     {'ok', N} = knm_number:move(?TEST_AVAILABLE_NUM, ?CHILD_ACCOUNT_ID),
     PN = knm_number:phone_number(N),
     [?_assert(knm_phone_number:is_dirty(PN))
@@ -24,7 +38,7 @@ move_to_child_test_() ->
      }
     ].
 
-acquire_parent_reserved_test_() ->
+acquire_parent_reserved() ->
     Num = ?TEST_RESERVED_NUM,
     To = ?CHILD_ACCOUNT_ID,
     {'ok', N0} = knm_number:get(Num),
@@ -56,7 +70,7 @@ acquire_parent_reserved_test_() ->
      }
     ].
 
-acquire_parent_reserved_failure_test_() ->
+acquire_parent_reserved_failure() ->
     Num = ?TEST_RESERVED_NUM,
     To = ?UNRELATED_ACCOUNT_ID,
     {'ok', N0} = knm_number:get(Num),
@@ -83,7 +97,7 @@ acquire_parent_reserved_failure_test_() ->
      }
     ].
 
-move_changing_public_fields_test_() ->
+move_changing_public_fields() ->
     Key = <<"my_key">>,
     Fields = [{<<"a">>, <<"bla">>}
              ,{Key, 42}
@@ -112,7 +126,7 @@ public_value(Key, N) ->
     kz_json:get_value(Key, knm_number:to_public_json(N)).
 
 
-move_available_local_test_() ->
+move_available_local() ->
     {ok, N0} = knm_number:get(?TEST_AVAILABLE_NUM),
     PN0 = knm_number:phone_number(N0),
     [?_assert(not knm_phone_number:is_dirty(PN0))
@@ -140,7 +154,7 @@ move_available_local_test_() ->
         ++ everyone_is_allowed_to_buy_local_available(?MASTER_ACCOUNT_ID, ?MASTER_ACCOUNT_ID)
         ++ [].
 
-move_available_non_local_test_() ->
+move_available_non_local() ->
     {ok, N0} = knm_number:get(?TEST_AVAILABLE_NON_LOCAL_NUM),
     PN0 = knm_number:phone_number(N0),
     [?_assert(not knm_phone_number:is_dirty(PN0))

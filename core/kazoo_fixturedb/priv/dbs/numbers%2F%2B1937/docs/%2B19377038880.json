@@ -1,0 +1,62 @@
+{
+    "_id": "+19377038880",
+    "_rev": "31-a78eb06dc40b3203fb2800f19f6ef8c4",
+    "cnam": {
+        "display_name": "Bruce Wayne",
+        "inbound_lookup": true
+    },
+    "dash_e911": {
+        "caller_name": "Valued Customer",
+        "latitude": "40.05424",
+        "legacy_data": {
+            "house_number": "23",
+            "predirectional": "N",
+            "streetname": "MAIN ST"
+        },
+        "locality": "PLEASANT SIDE",
+        "location_id": "32379723",
+        "longitude": "-87.34416",
+        "plus_four": "8001",
+        "postal_code": "55359",
+        "region": "KZ",
+        "status": "PROVISIONED",
+        "street_address": "23 N MAIN ST"
+    },
+    "pvt_assigned_to": "112bce1b4b782f2b33b366e420d05673",
+    "pvt_authorizing_account": "system",
+    "pvt_db_name": "numbers%2F%2B1937",
+    "pvt_features": {
+        "dash_e911": {
+            "caller_name": "Valued Customer",
+            "latitude": "40.05424",
+            "legacy_data": {
+                "house_number": "23",
+                "predirectional": "N",
+                "streetname": "MAIN ST"
+            },
+            "locality": "PLEASANT SIDE",
+            "location_id": "32379723",
+            "longitude": "-87.34416",
+            "plus_four": "8001",
+            "postal_code": "55359",
+            "region": "KZ",
+            "status": "PROVISIONED",
+            "street_address": "23 N MAIN ST"
+        },
+        "inbound_cnam": {
+            "inbound_lookup": true
+        },
+        "outbound_cnam": {
+            "display_name": "Bruce Wayne"
+        }
+    },
+    "pvt_module_name": "knm_bandwidth2",
+    "pvt_state": "in_service",
+    "pvt_type": "number",
+    "state": "in_service",
+    "ui_metadata": {
+        "ui": "kazoo-ui",
+        "version": "3.14-1"
+    },
+    "used_by": "trunkstore"
+}

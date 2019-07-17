@@ -88,19 +88,19 @@ format_error(Error) ->
 %%------------------------------------------------------------------------------
 -spec get_db(server_map(), kz_term:ne_binary()) -> map().
 get_db(Server, DbName) ->
-    kz_fixturedb_server:get_db(Server, DbName).
+    kz_fixturedb_server:get_db(ensure_server(Server), DbName).
 
 -spec server_url(server_map()) -> kz_term:ne_binary().
 server_url(Server) ->
-    kz_fixturedb_server:server_url(Server).
+    kz_fixturedb_server:server_url(ensure_server(Server)).
 
 -spec db_url(server_map(), kz_term:ne_binary()) -> kz_term:ne_binary().
 db_url(Server, DbName) ->
-    kz_fixturedb_server:db_url(Server, DbName).
+    kz_fixturedb_server:db_url(ensure_server(Server), DbName).
 
 -spec server_info(server_map()) -> doc_resp().
 server_info(Server) ->
-    kz_fixturedb_server:server_info(Server).
+    kz_fixturedb_server:server_info(ensure_server(Server)).
 
 %%%=============================================================================
 %%% DB operations
@@ -112,27 +112,27 @@ server_info(Server) ->
 %%------------------------------------------------------------------------------
 -spec db_create(server_map(), kz_term:ne_binary(), kz_data:options()) -> boolean().
 db_create(Server, DbName, Options) ->
-    kz_fixturedb_db:db_create(Server, DbName, Options).
+    kz_fixturedb_db:db_create(ensure_server(Server), DbName, Options).
 
 -spec db_delete(server_map(), kz_term:ne_binary()) -> boolean().
 db_delete(Server, DbName) ->
-    kz_fixturedb_db:db_delete(Server, DbName).
+    kz_fixturedb_db:db_delete(ensure_server(Server), DbName).
 
 -spec db_view_cleanup(server_map(), kz_term:ne_binary()) -> boolean().
 db_view_cleanup(Server, DbName) ->
-    kz_fixturedb_db:db_view_cleanup(Server, DbName).
+    kz_fixturedb_db:db_view_cleanup(ensure_server(Server), DbName).
 
 -spec db_info(server_map()) -> {ok, kz_term:ne_binaries()}.
 db_info(Server) ->
-    kz_fixturedb_db:db_info(Server).
+    kz_fixturedb_db:db_info(ensure_server(Server)).
 
 -spec db_info(server_map(), kz_term:ne_binary()) -> docs_resp().
 db_info(Server, DbName) ->
-    kz_fixturedb_db:db_info(Server, DbName).
+    kz_fixturedb_db:db_info(ensure_server(Server), DbName).
 
 -spec db_exists(server_map(), kz_term:ne_binary()) -> boolean().
 db_exists(Server, DbName) ->
-    kz_fixturedb_db:db_exists(Server, DbName).
+    kz_fixturedb_db:db_exists(ensure_server(Server), DbName).
 
 -spec db_archive(server_map(), kz_term:ne_binary(), kz_term:ne_binary()) -> ok.
 db_archive(_, _, _) ->
@@ -140,7 +140,7 @@ db_archive(_, _, _) ->
 
 -spec db_list(server_map(), kz_data:options()) -> {'ok', kz_term:ne_binaries()}.
 db_list(Server, Options) ->
-    kz_fixturedb_db:db_list(Server, Options).
+    kz_fixturedb_db:db_list(ensure_server(Server), Options).
 
 %%%=============================================================================
 %%% Document operations
@@ -152,31 +152,31 @@ db_list(Server, Options) ->
 %%------------------------------------------------------------------------------
 -spec open_doc(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> doc_resp().
 open_doc(Server, DbName, DocId, Options) ->
-    kz_fixturedb_doc:open_doc(Server, DbName, DocId, Options).
+    kz_fixturedb_doc:open_doc(ensure_server(Server), DbName, DocId, Options).
 
 -spec lookup_doc_rev(server_map(), kz_term:ne_binary(), kz_term:ne_binary()) -> {ok, kz_term:ne_binary()} | fixture_error().
 lookup_doc_rev(Server, DbName, DocId) ->
-    kz_fixturedb_doc:lookup_doc_rev(Server, DbName, DocId).
+    kz_fixturedb_doc:lookup_doc_rev(ensure_server(Server), DbName, DocId).
 
 -spec save_doc(server_map(), kz_term:ne_binary(), kz_data:document(), kz_data:options()) -> doc_resp().
 save_doc(Server, DbName, Doc, Options) ->
-    kz_fixturedb_doc:save_doc(Server, DbName, Doc, Options).
+    kz_fixturedb_doc:save_doc(ensure_server(Server), DbName, Doc, Options).
 
 -spec save_docs(server_map(), kz_term:ne_binary(), kz_data:documents(), kz_data:options()) -> docs_resp().
 save_docs(Server, DbName, Docs, Options) ->
-    kz_fixturedb_doc:save_docs(Server, DbName, Docs, Options).
+    kz_fixturedb_doc:save_docs(ensure_server(Server), DbName, Docs, Options).
 
 -spec del_doc(server_map(), kz_term:ne_binary(), kz_data:document(), kz_data:options()) -> docs_resp().
 del_doc(Server, DbName, Doc, Options) ->
-    kz_fixturedb_doc:del_doc(Server, DbName, Doc, Options).
+    kz_fixturedb_doc:del_doc(ensure_server(Server), DbName, Doc, Options).
 
 -spec del_docs(server_map(), kz_term:ne_binary(), kz_data:documents(), kz_data:options()) -> docs_resp().
 del_docs(Server, DbName, Docs, Options) ->
-    kz_fixturedb_doc:del_docs(Server, DbName, Docs, Options).
+    kz_fixturedb_doc:del_docs(ensure_server(Server), DbName, Docs, Options).
 
 -spec ensure_saved(server_map(), kz_term:ne_binary(), kz_data:document(), kz_data:options()) -> doc_resp().
 ensure_saved(Server, DbName, Doc, Options) ->
-    kz_fixturedb_doc:ensure_saved(Server, DbName, Doc, Options).
+    kz_fixturedb_doc:ensure_saved(ensure_server(Server), DbName, Doc, Options).
 
 %%%=============================================================================
 %%% Attachment-related
@@ -188,23 +188,23 @@ ensure_saved(Server, DbName, Doc, Options) ->
 %%------------------------------------------------------------------------------
 -spec fetch_attachment(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> {ok, binary()} | fixture_error().
 fetch_attachment(Server, DbName, DocId, AName) ->
-    kz_fixturedb_attachments:fetch_attachment(Server, DbName, DocId, AName).
+    kz_fixturedb_attachments:fetch_attachment(ensure_server(Server), DbName, DocId, AName).
 
 -spec stream_attachment(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), pid()) -> {ok, reference()} | fixture_error().
 stream_attachment(Server, DbName, DocId, AName, Caller) ->
-    kz_fixturedb_attachments:stream_attachment(Server, DbName, DocId, AName, Caller).
+    kz_fixturedb_attachments:stream_attachment(ensure_server(Server), DbName, DocId, AName, Caller).
 
 -spec put_attachment(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> doc_resp().
 put_attachment(Server, DbName, DocId, AName, Contents, Options) ->
-    kz_fixturedb_attachments:put_attachment(Server, DbName, DocId, AName, Contents, Options).
+    kz_fixturedb_attachments:put_attachment(ensure_server(Server), DbName, DocId, AName, Contents, Options).
 
 -spec delete_attachment(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> docs_resp().
 delete_attachment(Server, DbName, DocId, AName, Options) ->
-    kz_fixturedb_attachments:delete_attachment(Server, DbName, DocId, AName, Options).
+    kz_fixturedb_attachments:delete_attachment(ensure_server(Server), DbName, DocId, AName, Options).
 
 -spec attachment_url(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> kz_term:ne_binary().
 attachment_url(Server, DbName, DocId, AName, Options) ->
-    kz_fixturedb_attachments:attachment_url(Server, DbName, DocId, AName, Options).
+    kz_fixturedb_attachments:attachment_url(ensure_server(Server), DbName, DocId, AName, Options).
 
 %%%=============================================================================
 %%% View-related
@@ -216,24 +216,32 @@ attachment_url(Server, DbName, DocId, AName, Options) ->
 %%------------------------------------------------------------------------------
 -spec design_info(server_map(), kz_term:ne_binary(), kz_term:ne_binary()) -> doc_resp().
 design_info(Server, DbName, Design) ->
-    kz_fixturedb_view:design_info(Server, DbName, Design).
+    kz_fixturedb_view:design_info(ensure_server(Server), DbName, Design).
 
 -spec all_design_docs(server_map(), kz_term:ne_binary(), kz_data:options()) -> docs_resp().
 all_design_docs(Server, DbName, Options) ->
-    kz_fixturedb_view:all_design_docs(Server, DbName, Options).
+    kz_fixturedb_view:all_design_docs(ensure_server(Server), DbName, Options).
 
 -spec get_results(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> docs_resp().
 get_results(Server, DbName, Design, Options) ->
-    kz_fixturedb_view:get_results(Server, DbName, Design, Options).
+    kz_fixturedb_view:get_results(ensure_server(Server), DbName, Design, Options).
 
 -spec get_results_count(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> {ok, non_neg_integer()} | fixture_error().
 get_results_count(Server, DbName, Design, Options) ->
-    kz_fixturedb_view:get_results_count(Server, DbName, Design, Options).
+    kz_fixturedb_view:get_results_count(ensure_server(Server), DbName, Design, Options).
 
 -spec all_docs(server_map(), kz_term:ne_binary(), kz_data:options()) -> docs_resp().
 all_docs(Server, DbName, Options) ->
-    kz_fixturedb_view:all_docs(Server, DbName, Options).
+    kz_fixturedb_view:all_docs(ensure_server(Server), DbName, Options).
 
+%%%=============================================================================
+%%% Utilities
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec start() -> pid().
 start() ->
     start('false').
@@ -241,3 +249,9 @@ start() ->
 -spec start(boolean()) -> pid().
 start(SilentLager) ->
     kz_fixturedb_util:start_me(SilentLager).
+
+-spec ensure_server(server_map()) -> server_map().
+ensure_server(#{options := _, url := _}=ServerConn) ->
+    ServerConn;
+ensure_server(_) ->
+    kz_fixturedb_maintenance:new_connection().

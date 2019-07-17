@@ -38,6 +38,7 @@
         ]).
 
 -ifdef(TEST).
+%% TODO: Remove me after fixturedb has save feature
 -export([ensure_can_create/2]).
 -export([is_force_outbound/1]).
 -endif.
@@ -238,8 +239,15 @@ ensure_can_create(Num, Options) ->
         andalso ensure_number_is_not_porting(Num, Options).
 
 -ifdef(TEST).
--define(LOAD_ACCOUNT(Options, _AccountId)
-       ,{'ok', props:get_value(<<"auth_by_account">>, Options)}
+%% TODO: this is required to simulate reseller account without number_allowd_addition
+%% Remove this after fixturedb supports save operation
+-define(LOAD_ACCOUNT(Options, AccountId)
+       ,(case props:get_value(<<"auth_by_account">>, Options) of
+             'undefined' -> kzd_accounts:fetch(AccountId);
+             AccountJObj ->
+                 {'ok', Fetched} = kzd_accounts:fetch(AccountId),
+                 {'ok', kz_json:merge(Fetched, AccountJObj)}
+         end)
        ).
 -else.
 -define(LOAD_ACCOUNT(_Options, AccountId)
@@ -269,6 +277,7 @@ ensure_account_can_create(_, _NotAnAccountId) ->
 
 -spec ensure_number_is_not_porting(kz_term:ne_binary(), knm_number_options:options()) -> 'true'.
 -ifdef(TEST).
+%% TODO: Remove me after fixturedb has save feature
 ensure_number_is_not_porting(?TEST_CREATE_NUM, _Options) -> 'true';
 ensure_number_is_not_porting(?TEST_AVAILABLE_NUM = Num, _Options) ->
     knm_errors:number_is_porting(Num).
@@ -362,14 +371,8 @@ assign_to_app(Num, App, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec lookup_account(kz_term:api_ne_binary()) -> lookup_account_return().
--ifdef(TEST).
-lookup_account('undefined') -> {'error', 'not_reconcilable'};
-lookup_account(Num) ->
-    %%FIXME: use knm_converters:is_reconcilable/1
-    NormalizedNum = knm_converters:normalize(Num),
-    fetch_account_from_number(NormalizedNum).
--else.
-lookup_account('undefined') -> {'error', 'not_reconcilable'};
+lookup_account('undefined') ->
+    {'error', 'not_reconcilable'};
 lookup_account(Num) ->
     NormalizedNum = knm_converters:normalize(Num),
     Key = {'account_lookup', NormalizedNum},
@@ -385,14 +388,15 @@ lookup_account(Num) ->
                 Else -> Else
             end
     end.
--endif.
 
+-spec fetch_account_from_number(kz_term:ne_binary()) -> lookup_account_return().
 fetch_account_from_number(Num) ->
     case knm_phone_number:fetch(Num) of
         {'ok', PN} -> check_number(PN);
         {'error', _}=Error -> maybe_fetch_account_from_ports(Num, Error)
     end.
 
+-spec check_number(knm_phone_number:knm_phone_number()) -> lookup_account_return().
 check_number(PN) ->
     AssignedTo = knm_phone_number:assigned_to(PN),
     case kz_term:is_empty(AssignedTo) of
@@ -409,15 +413,10 @@ check_number(PN) ->
             end
     end.
 
--ifdef(TEST).
-is_account_enabled(?MATCH_ACCOUNT_RAW(_)) -> 'true'.
--else.
-is_account_enabled(AccountId) -> kzd_accounts:is_enabled(AccountId).
--endif.
-
+-spec check_account(knm_phone_number:knm_phone_number()) -> lookup_account_return().
 check_account(PN) ->
     AssignedTo = knm_phone_number:assigned_to(PN),
-    case is_account_enabled(AssignedTo) of
+    case kzd_accounts:is_enabled(AssignedTo) of
         'false' -> {'error', {'account_disabled', AssignedTo}};
         'true' ->
             Props = [{'pending_port', knm_phone_number:state(PN) =:= ?NUMBER_STATE_PORT_IN}

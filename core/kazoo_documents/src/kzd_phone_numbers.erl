@@ -9,7 +9,27 @@
 %%%-----------------------------------------------------------------------------
 -module(kzd_phone_numbers).
 
--export([new/0]).
+-export([new/0
+        ,type/0
+        ]).
+
+%% Private field accessors
+-export([pvt_assigned_to/1, pvt_assigned_to/2, set_pvt_assigned_to/2, pvt_assigned_to_path/0]).
+-export([pvt_authorizing_account/1, pvt_authorizing_account/2, set_pvt_authorizing_account/2, pvt_authorizing_account_path/0]).
+-export([pvt_carrier_data/1, pvt_carrier_data/2, set_pvt_carrier_data/2, pvt_carrier_data_path/0]).
+-export([pvt_db_name/1, pvt_db_name/2, set_pvt_db_name/2, pvt_db_name_path/0]).
+-export([pvt_features/1, pvt_features/2, set_pvt_features/2, pvt_features_path/0]).
+-export([pvt_features_allowed/1, pvt_features_allowed/2, set_pvt_features_allowed/2, pvt_features_allowed_path/0]).
+-export([pvt_features_denied/1, pvt_features_denied/2, set_pvt_features_denied/2, pvt_features_denied_path/0]).
+-export([pvt_module_name/1, pvt_module_name/2, set_pvt_module_name/2, pvt_module_name_path/0]).
+-export([pvt_ported_in/1, pvt_ported_in/2, set_pvt_ported_in/2, pvt_ported_in_path/0]).
+-export([pvt_previously_assigned_to/1, pvt_previously_assigned_to/2, set_pvt_previously_assigned_to/2, pvt_previously_assigned_to_path/0]).
+-export([pvt_region/1, pvt_region/2, set_pvt_region/2, pvt_region_path/0]).
+-export([pvt_reserve_history/1, pvt_reserve_history/2, set_pvt_reserve_history/2, pvt_reserve_history_path/0]).
+-export([pvt_state/1, pvt_state/2, set_pvt_state/2, pvt_state_path/0]).
+-export([pvt_used_by/1, pvt_used_by/2, set_pvt_used_by/2, pvt_used_by_path/0]).
+
+%% Public field accessors
 -export([carrier_name/1, carrier_name/2, set_carrier_name/2]).
 -export([cnam/1, cnam/2, set_cnam/2]).
 -export([cnam_display_name/1, cnam_display_name/2, set_cnam_display_name/2]).
@@ -60,6 +80,289 @@
 new() ->
     kz_json_schema:default_object(?SCHEMA).
 
+-spec type() -> kz_term:ne_binary().
+type() -> <<"number">>.
+
+
+%%%=============================================================================
+%%% Private field accessor functions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec pvt_assigned_to(doc()) -> kz_term:api_ne_binary().
+pvt_assigned_to(Doc) ->
+    pvt_assigned_to(Doc, 'undefined').
+
+-spec pvt_assigned_to(doc(), Default) -> kz_term:ne_binary() | Default.
+pvt_assigned_to(Doc, Default) ->
+    kz_json:get_ne_binary_value(pvt_assigned_to_path(), Doc, Default).
+
+-spec set_pvt_assigned_to(doc(), kz_term:api_ne_binary()) -> doc().
+set_pvt_assigned_to(Doc, Value) ->
+    kz_json:set_value(pvt_assigned_to_path(), Value, Doc).
+
+-spec pvt_assigned_to_path() -> kz_json:path().
+pvt_assigned_to_path() -> [<<"pvt_assigned_to">>].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec pvt_authorizing_account(doc()) -> kz_term:api_ne_binary().
+pvt_authorizing_account(Doc) ->
+    pvt_authorizing_account(Doc, 'undefined').
+
+-spec pvt_authorizing_account(doc(), Default) -> kz_term:ne_binary() | Default.
+pvt_authorizing_account(Doc, Default) ->
+    kz_json:get_ne_binary_value(pvt_authorizing_account_path(), Doc, Default).
+
+-spec set_pvt_authorizing_account(doc(), kz_term:api_ne_binary()) -> doc().
+set_pvt_authorizing_account(Doc, Value) ->
+    kz_json:set_value(pvt_authorizing_account_path(), Value, Doc).
+
+-spec pvt_authorizing_account_path() -> kz_json:path().
+pvt_authorizing_account_path() -> [<<"pvt_authorizing_account">>].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec pvt_carrier_data(doc()) -> kz_term:api_object().
+pvt_carrier_data(Doc) ->
+    pvt_carrier_data(Doc, 'undefined').
+
+-spec pvt_carrier_data(doc(), Default) -> kz_json:object() | Default.
+pvt_carrier_data(Doc, Default) ->
+    kz_json:get_ne_json_value(pvt_carrier_data_path(), Doc, Default).
+
+-spec set_pvt_carrier_data(doc(), kz_term:api_object()) -> doc().
+set_pvt_carrier_data(Doc, Value) ->
+    kz_json:set_value(pvt_carrier_data_path(), Value, Doc).
+
+-spec pvt_carrier_data_path() -> kz_json:path().
+pvt_carrier_data_path() -> [<<"pvt_carrier_data">>].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec pvt_db_name(doc()) -> kz_term:api_ne_binary().
+pvt_db_name(Doc) ->
+    pvt_db_name(Doc, 'undefined').
+
+-spec pvt_db_name(doc(), Default) -> kz_term:ne_binary() | Default.
+pvt_db_name(Doc, Default) ->
+    kz_json:get_ne_binary_value(pvt_db_name_path(), Doc, Default).
+
+-spec set_pvt_db_name(doc(), kz_term:api_ne_binary()) -> doc().
+set_pvt_db_name(Doc, Value) ->
+    kz_json:set_value(pvt_db_name_path(), Value, Doc).
+
+-spec pvt_db_name_path() -> kz_json:path().
+pvt_db_name_path() -> [<<"pvt_db_name">>].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec pvt_features(doc()) -> kz_term:api_ne_binaries() | kz_json:object().
+pvt_features(Doc) ->
+    pvt_features(Doc, 'undefined').
+
+-spec pvt_features(doc(), Default) -> kz_term:ne_binaries() | kz_json:object() | Default.
+pvt_features(Doc, Default) ->
+    kz_json:get_ne_value(pvt_features_path(), Doc, Default).
+
+-spec set_pvt_features(doc(), kz_term:api_ne_binaries() | kz_json:object()) -> doc().
+set_pvt_features(Doc, Value) ->
+    kz_json:set_value(pvt_features_path(), Value, Doc).
+
+-spec pvt_features_path() -> kz_json:path().
+pvt_features_path() -> [<<"pvt_features">>].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec pvt_features_allowed(doc()) -> kz_term:api_ne_binaries().
+pvt_features_allowed(Doc) ->
+    pvt_features_allowed(Doc, 'undefined').
+
+-spec pvt_features_allowed(doc(), Default) -> kz_term:ne_binaries() | Default.
+pvt_features_allowed(Doc, Default) ->
+    kz_json:get_ne_value(pvt_features_allowed_path(), Doc, Default).
+
+-spec set_pvt_features_allowed(doc(), kz_term:api_ne_binaries()) -> doc().
+set_pvt_features_allowed(Doc, Value) ->
+    kz_json:set_value(pvt_features_allowed_path(), Value, Doc).
+
+-spec pvt_features_allowed_path() -> kz_json:path().
+pvt_features_allowed_path() -> [<<"pvt_features_allowed">>].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec pvt_features_denied(doc()) -> kz_term:api_ne_binaries().
+pvt_features_denied(Doc) ->
+    pvt_features_denied(Doc, 'undefined').
+
+-spec pvt_features_denied(doc(), Default) -> kz_term:ne_binaries() | Default.
+pvt_features_denied(Doc, Default) ->
+    kz_json:get_ne_value(pvt_features_denied_path(), Doc, Default).
+
+-spec set_pvt_features_denied(doc(), kz_term:api_ne_binaries()) -> doc().
+set_pvt_features_denied(Doc, Value) ->
+    kz_json:set_value(pvt_features_denied_path(), Value, Doc).
+
+-spec pvt_features_denied_path() -> kz_json:path().
+pvt_features_denied_path() -> [<<"pvt_features_denied">>].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec pvt_module_name(doc()) -> kz_term:api_ne_binary().
+pvt_module_name(Doc) ->
+    pvt_module_name(Doc, 'undefined').
+
+-spec pvt_module_name(doc(), Default) -> kz_term:ne_binary() | Default.
+pvt_module_name(Doc, Default) ->
+    kz_json:get_ne_binary_value(pvt_module_name_path(), Doc, Default).
+
+-spec set_pvt_module_name(doc(), kz_term:api_ne_binary()) -> doc().
+set_pvt_module_name(Doc, Value) ->
+    kz_json:set_value(pvt_module_name_path(), Value, Doc).
+
+-spec pvt_module_name_path() -> kz_json:path().
+pvt_module_name_path() -> [<<"pvt_module_name">>].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec pvt_ported_in(doc()) -> kz_term:api_boolean().
+pvt_ported_in(Doc) ->
+    pvt_ported_in(Doc, 'undefined').
+
+-spec pvt_ported_in(doc(), Default) -> boolean() | Default.
+pvt_ported_in(Doc, Default) ->
+    kz_json:is_true(pvt_ported_in_path(), Doc, Default).
+
+-spec set_pvt_ported_in(doc(), kz_term:api_boolean()) -> doc().
+set_pvt_ported_in(Doc, Value) ->
+    kz_json:set_value(pvt_ported_in_path(), Value, Doc).
+
+-spec pvt_ported_in_path() -> kz_json:path().
+pvt_ported_in_path() -> [<<"pvt_ported_in">>].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec pvt_previously_assigned_to(doc()) -> kz_term:api_ne_binary().
+pvt_previously_assigned_to(Doc) ->
+    pvt_previously_assigned_to(Doc, 'undefined').
+
+-spec pvt_previously_assigned_to(doc(), Default) -> kz_term:ne_binary() | Default.
+pvt_previously_assigned_to(Doc, Default) ->
+    kz_json:get_ne_binary_value(pvt_previously_assigned_to_path(), Doc, Default).
+
+-spec set_pvt_previously_assigned_to(doc(), kz_term:api_ne_binary()) -> doc().
+set_pvt_previously_assigned_to(Doc, Value) ->
+    kz_json:set_value(pvt_previously_assigned_to_path(), Value, Doc).
+
+-spec pvt_previously_assigned_to_path() -> kz_json:path().
+pvt_previously_assigned_to_path() -> [<<"pvt_previously_assigned_to">>].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec pvt_region(doc()) -> kz_term:api_ne_binary().
+pvt_region(Doc) ->
+    pvt_region(Doc, 'undefined').
+
+-spec pvt_region(doc(), Default) -> kz_term:ne_binary() | Default.
+pvt_region(Doc, Default) ->
+    kz_json:get_ne_binary_value(pvt_region_path(), Doc, Default).
+
+-spec set_pvt_region(doc(), kz_term:api_ne_binary()) -> doc().
+set_pvt_region(Doc, Value) ->
+    kz_json:set_value(pvt_region_path(), Value, Doc).
+
+-spec pvt_region_path() -> kz_json:path().
+pvt_region_path() -> [<<"pvt_region">>].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec pvt_reserve_history(doc()) -> kz_term:api_ne_binaries().
+pvt_reserve_history(Doc) ->
+    pvt_reserve_history(Doc, 'undefined').
+
+-spec pvt_reserve_history(doc(), Default) -> kz_term:ne_binaries() | Default.
+pvt_reserve_history(Doc, Default) ->
+    kz_json:get_ne_value(pvt_reserve_history_path(), Doc, Default).
+
+-spec set_pvt_reserve_history(doc(), kz_term:api_ne_binaries()) -> doc().
+set_pvt_reserve_history(Doc, Value) ->
+    kz_json:set_value(pvt_reserve_history_path(), Value, Doc).
+
+-spec pvt_reserve_history_path() -> kz_json:path().
+pvt_reserve_history_path() -> [<<"pvt_reserve_history">>].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec pvt_state(doc()) -> kz_term:api_ne_binary().
+pvt_state(Doc) ->
+    pvt_state(Doc, 'undefined').
+
+-spec pvt_state(doc(), Default) -> kz_term:ne_binary() | Default.
+pvt_state(Doc, Default) ->
+    kz_json:get_ne_binary_value(pvt_state_path(), Doc, Default).
+
+-spec set_pvt_state(doc(), kz_term:api_ne_binary()) -> doc().
+set_pvt_state(Doc, Value) ->
+    kz_json:set_value(pvt_state_path(), Value, Doc).
+
+-spec pvt_state_path() -> kz_json:path().
+pvt_state_path() -> [<<"pvt_state">>].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec pvt_used_by(doc()) -> kz_term:api_ne_binary().
+pvt_used_by(Doc) ->
+    pvt_used_by(Doc, 'undefined').
+
+-spec pvt_used_by(doc(), Default) -> kz_term:ne_binary() | Default.
+pvt_used_by(Doc, Default) ->
+    kz_json:get_ne_binary_value(pvt_used_by_path(), Doc, Default).
+
+-spec set_pvt_used_by(doc(), kz_term:api_ne_binary()) -> doc().
+set_pvt_used_by(Doc, Value) ->
+    kz_json:set_value(pvt_used_by_path(), Value, Doc).
+
+-spec pvt_used_by_path() -> kz_json:path().
+pvt_used_by_path() -> [<<"pvt_used_by">>].
+
+
+%%%=============================================================================
+%%% Public field accessor
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec carrier_name(doc()) -> kz_term:api_ne_binary().
 carrier_name(Doc) ->
     carrier_name(Doc, 'undefined').

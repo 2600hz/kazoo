@@ -12,15 +12,32 @@
 -module(knm_create_new_number_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-include("../src/knm.hrl").
 
-create_new_number_test_() ->
+-export([db_dependant/0]).
+
+knm_create_new_number_test_() ->
+    knm_test_util:start_db(fun db_dependant/0).
+
+db_dependant() ->
+    [create_new_test_number()
+    ,create_with_carrier()
+    ,reseller_new_number()
+    ,fail_new_number()
+    ,create_new_available_number()
+    ,create_existing_number()
+    ,create_new_port_in()
+    ,create_existing_in_service()
+    ,create_dry_run()
+    ,move_non_existing_mobile_number()
+    ,create_non_existing_mobile_number()
+    ,create_checks()
+    ].
+
+create_new_test_number() ->
     Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'false'}
-            ,{<<"auth_by_account">>
-             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
-             }
             ],
     {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
     JObj = knm_number:to_public_json(N),
@@ -52,15 +69,12 @@ create_new_number_test_() ->
      }
     ].
 
-create_with_carrier_test_() ->
+create_with_carrier() ->
     CarrierModule = <<"blipblop">>,
     Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'false'}
             ,{'module_name', CarrierModule}
-            ,{<<"auth_by_account">>
-             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
-             }
             ],
     {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
     JObj = knm_number:to_public_json(N),
@@ -95,13 +109,10 @@ create_with_carrier_test_() ->
      }
     ].
 
-reseller_new_number_test_() ->
+reseller_new_number() ->
     Props = [{'auth_by', ?RESELLER_ACCOUNT_ID}
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'false'}
-            ,{<<"auth_by_account">>
-             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
-             }
             ],
     {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
     PN = knm_number:phone_number(N),
@@ -126,7 +137,7 @@ reseller_new_number_test_() ->
      }
     ].
 
-fail_new_number_test_() ->
+fail_new_number() ->
     Props = [{'auth_by', ?RESELLER_ACCOUNT_ID}
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'false'}
@@ -143,14 +154,11 @@ fail_new_number_test_() ->
      }
     ].
 
-create_new_available_number_test_() ->
+create_new_available_number() ->
     Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
             ,{'assign_to', ?MASTER_ACCOUNT_ID}
             ,{'dry_run', 'false'}
             ,{state, ?NUMBER_STATE_AVAILABLE}
-            ,{<<"auth_by_account">>
-             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
-             }
             ],
     {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
     PN = knm_number:phone_number(N),
@@ -175,11 +183,10 @@ create_new_available_number_test_() ->
      }
     ].
 
-create_existing_number_test_() ->
+create_existing_number() ->
     Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'false'}
-            ,{<<"auth_by_account">>, kz_json:new()}
             ],
     {'ok', N} = knm_number:create(?TEST_AVAILABLE_NUM, Props),
     PN = knm_number:phone_number(N),
@@ -204,7 +211,7 @@ create_existing_number_test_() ->
      }
     ].
 
-create_new_port_in_test_() ->
+create_new_port_in() ->
     Props = [{'auth_by', ?RESELLER_ACCOUNT_ID}
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'false'}
@@ -243,7 +250,7 @@ create_new_port_in_test_() ->
      }
     ].
 
-create_existing_in_service_test_() ->
+create_existing_in_service() ->
     Options = [{'assign_to', ?RESELLER_ACCOUNT_ID} | knm_number_options:default()],
     Resp = knm_number:create(?TEST_IN_SERVICE_NUM, Options),
     [{"Verifying that IN SERVICE numbers can't be created"
@@ -252,20 +259,17 @@ create_existing_in_service_test_() ->
      | check_error_response(Resp, 409, <<"number_exists">>, ?TEST_IN_SERVICE_NUM)
     ].
 
-create_dry_run_test_() ->
+create_dry_run() ->
     Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'true'}
-            ,{<<"auth_by_account">>
-             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
-             }
             ],
     {'dry_run', Quotes} = knm_number:create(?TEST_CREATE_NUM, Props),
     ?debugFmt("quotes: ~p~n", [Quotes]),
     %%TODO: make a stub service plan to test this
     [?_assert('true')].
 
-move_non_existing_mobile_number_test_() ->
+move_non_existing_mobile_number() ->
     MobileField =
         kz_json:from_list(
           [{<<"provider">>, <<"tower-of-power">>}
@@ -277,16 +281,13 @@ move_non_existing_mobile_number_test_() ->
             ,{'dry_run', 'false'}
             ,{'public_fields', PublicFields}
             ,{'module_name', ?CARRIER_MDN}
-            ,{<<"auth_by_account">>
-             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
-             }
             ],
     [{"Verify a non existing mdn cannot be moved to in_service"
      ,?_assertEqual({'error', 'not_found'}, knm_number:move(?TEST_CREATE_NUM, ?RESELLER_ACCOUNT_ID, Props))
      }
     ].
 
-create_non_existing_mobile_number_test_() ->
+create_non_existing_mobile_number() ->
     MobileField =
         kz_json:from_list(
           [{<<"provider">>, <<"tower-of-power">>}
@@ -300,9 +301,6 @@ create_non_existing_mobile_number_test_() ->
             ,{'public_fields', PublicFields}
             ,{'module_name', ?CARRIER_MDN}
             ,{'mdn_run', 'true'}
-            ,{<<"auth_by_account">>
-             ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
-             }
             ],
     {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
     PN = knm_number:phone_number(N),
@@ -332,7 +330,7 @@ create_non_existing_mobile_number_test_() ->
      }
     ].
 
-create_checks_test_() ->
+create_checks() ->
     create_available_checks()
         ++ load_existing_checks().
 
@@ -443,9 +441,6 @@ create_new_number() ->
     {"Ensure success when auth_by account is allowed to create numbers"
     ,?_assert(knm_number:ensure_can_create(?TEST_CREATE_NUM
                                           ,[{'auth_by', ?RESELLER_ACCOUNT_ID}
-                                           ,{<<"auth_by_account">>
-                                            ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
-                                            }
                                            ]
                                           )
              )

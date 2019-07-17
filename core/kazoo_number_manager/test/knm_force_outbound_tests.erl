@@ -12,13 +12,33 @@
 -module(knm_force_outbound_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-include("../src/knm.hrl").
+
+-export([db_dependant/0
+        ,setup/1
+        ,cleanup/1
+        ]).
 
 -define(KEY, ?FEATURE_FORCE_OUTBOUND).
 -define(J(Value), kz_json:from_list([{?KEY, Value}])).
 
+knm_number_test_() ->
+    knm_test_util:start_db(fun db_dependant/0, fun setup/1, fun cleanup/1).
 
-is_force_outbound_test_() ->
+db_dependant() ->
+    [is_force_outbound()
+    ,force_outbound()
+    ,available_features()
+    ].
+
+setup(TestState) ->
+    {'ok', Sup} = kazoo_number_manager_sup:start_link(),
+    TestState#{number_cache_pid => Sup}.
+
+cleanup(#{number_cache_pid := Pid}) ->
+    erlang:exit(Pid, 'normal').
+
+is_force_outbound() ->
     {ok, ?RESELLER_ACCOUNT_ID, Props1} = knm_number:lookup_account(?TEST_PORT_IN_NUM),
     {error, {not_in_service, ?RESELLER_ACCOUNT_ID}} = knm_number:lookup_account(?TEST_TELNYX_NUM),
     {ok, ?RESELLER_ACCOUNT_ID, Props2} = knm_number:lookup_account(?TEST_VITELITY_NUM),
@@ -50,10 +70,9 @@ is_force_outbound_test_() ->
      }
     ].
 
-force_outbound_test_() ->
+force_outbound() ->
     Options = [{auth_by, ?RESELLER_ACCOUNT_ID}
               ,{assign_to, ?RESELLER_ACCOUNT_ID}
-              ,{<<"auth_by_account">>, kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, true)}
               ],
     {ok, N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
     #{ok := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, ?J(true)}]),
@@ -99,7 +118,7 @@ force_outbound_test_() ->
     ,{"Verify feature setting", ?_assert(is_feature_set(N7))}
     ].
 
-available_features_test_() ->
+available_features() ->
     [?_assert(is_feature_available(?TEST_IN_SERVICE_NUM, []))
     ,?_assert(is_feature_available(?TEST_IN_SERVICE_NUM, [{auth_by, ?KNM_DEFAULT_AUTH_BY}]))
     ,?_assert(is_feature_available(?TEST_IN_SERVICE_NUM, [{auth_by, ?MASTER_ACCOUNT_ID}]))
@@ -127,7 +146,7 @@ available_features_test_() ->
 
 undirty(N) ->
     PN = knm_number:phone_number(N),
-    NewPN = knm_phone_number:set_is_dirty(PN, false),
+    NewPN = knm_phone_number:set_dirty(PN, 'false'),
     knm_number:set_phone_number(N, NewPN).
 
 is_dirty(N) ->

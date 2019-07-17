@@ -1098,8 +1098,8 @@ transitions_to_submitted(Timeline) ->
 
 -spec prepare_timeline(cb_context:context(), kz_json:object()) -> kz_json:objects().
 prepare_timeline(Context, Doc) ->
-    Comments = kz_json:get_list_value(<<"comments">>, filter_private_comments(Context, Doc), []),
-    Transitions = kz_json:get_list_value(?PORT_PVT_TRANSITIONS, Doc, []),
+    Comments = kzd_port_requests:comments(filter_private_comments(Context, Doc), []),
+    Transitions = kzd_port_requests:pvt_transitions(Doc, []),
     Indexed = [{kz_json:get_integer_value(?TRANSITION_TIMESTAMP, JObj), JObj}
                || JObj <- Comments ++ Transitions
               ],
@@ -1202,7 +1202,7 @@ on_successful_validation(Context, Id, 'true') ->
         _ -> Context1
     end;
 on_successful_validation(Context, _Id, 'false') ->
-    PortState = kz_json:get_value(?PORT_PVT_STATE, cb_context:doc(Context)),
+    PortState = kzd_port_requests:pvt_port_state(cb_context:doc(Context)),
     lager:debug("port state ~s is not valid for updating a port request", [PortState]),
     Msg = kz_json:from_list(
             [{<<"message">>, <<"Updating port requests not allowed in current port state">>}

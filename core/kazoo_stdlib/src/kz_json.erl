@@ -1474,11 +1474,11 @@ normalize_key_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % fr
 normalize_key_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 normalize_key_char(C) -> C.
 
--type search_replace_format() :: {kz_term:ne_binary(), kz_term:ne_binary()} |
-                                 {kz_term:ne_binary(), kz_term:ne_binary(), fun((any()) -> any())}.
+-type search_replace_format() :: {get_key(), get_key()} |
+                                 {get_key(), get_key(), fun((any()) -> any())}.
 -type search_replace_formatters() :: [search_replace_format()].
 
--spec normalize_jobj(object(), kz_term:ne_binaries(), search_replace_formatters()) -> object().
+-spec normalize_jobj(object(), paths() | keys(), search_replace_formatters()) -> object().
 normalize_jobj(?JSON_WRAPPER(_)=JObj, RemoveKeys, SearchReplaceFormatters) ->
     normalize_jobj(
       lists:foldl(fun search_replace_format/2

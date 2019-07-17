@@ -39,10 +39,6 @@
         ,transfer_media_id/1
         ]).
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
-
 -include("knm.hrl").
 
 -type crossbar_option() :: {'services', kz_services:services()} |
@@ -231,33 +227,3 @@ should_force_outbound(Props) when is_list(Props) ->
 -spec transfer_media_id(extra_options()) -> kz_term:api_binary().
 transfer_media_id(Props) when is_list(Props) ->
     props:get_value('transfer_media', Props).
-%%------------------------------------------------------------------------------
-
-
--ifdef(TEST).
-
-to_phone_number_setters_test_() ->
-    A_1 = kz_json:from_list([{<<"a">>, 1}]),
-    M_1 = ?CARRIER_LOCAL,
-    [?_assertEqual([{fun knm_phone_number:reset_doc/2, A_1}]
-                  ,to_phone_number_setters([{'public_fields', A_1}])
-                  )
-    ,?_assertEqual([{fun knm_phone_number:set_auth_by/2, ?KNM_DEFAULT_AUTH_BY}
-                   ,{fun knm_phone_number:set_ported_in/2, 'false'}
-                   ,{fun knm_phone_number:set_dry_run/2, [[[]]]}
-                   ]
-                  ,to_phone_number_setters([{'auth_by', ?KNM_DEFAULT_AUTH_BY}
-                                           ,{'ported_in', 'false'}
-                                           ,{<<"batch_run">>, 'false'}
-                                           ,{'dry_run', [[[]]]}
-                                           ])
-                  )
-    ,?_assertEqual([{fun knm_phone_number:set_module_name/2, M_1}]
-                  ,to_phone_number_setters([{module_name, M_1}
-                                           ,{module_name, <<"blaaa">>}
-                                           ,{module_name, ?CARRIER_MDN}
-                                           ])
-                  )
-    ].
-
--endif.

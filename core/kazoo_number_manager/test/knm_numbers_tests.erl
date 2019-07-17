@@ -12,10 +12,28 @@
 -module(knm_numbers_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
-
+-include("../src/knm.hrl").
 
 -define(NOT_NUM, <<"NOT a number">>).
+
+-export([db_dependant/0]).
+
+knm_number_test_() ->
+    knm_test_util:start_db(fun db_dependant/0).
+
+db_dependant() ->
+    [get_numbers()
+    ,create_number()
+    ,create_new()
+    ,move()
+    ,update()
+    ,attempt_setting_e911_on_disallowed_number()
+    ,delete()
+    ,reconcile()
+    ,reserve()
+    ,assign_to_app()
+    ,release()
+    ].
 
 n_x(X, Ret) ->
     lists:nth(X, maps:get(ok, Ret)).
@@ -24,7 +42,7 @@ pn_x(X, Ret) ->
     knm_number:phone_number(n_x(X, Ret)).
 
 
-get_test_() ->
+get_numbers() ->
     Ret = knm_numbers:get([?TEST_AVAILABLE_NUM]),
     [?_assertEqual(#{}, maps:get(ko, Ret))
     ,?_assertMatch([_], maps:get(ok, Ret))
@@ -66,13 +84,12 @@ create_test_e911() ->
       ,{?E911_ZIP, <<"94123">>}
       ]).
 
-create_test_() ->
+create_number() ->
     Num = ?TEST_TELNYX_NUM,
     E911 = create_test_e911(),
     JObj = kz_json:from_list([{?FEATURE_E911, E911}]),
     Options = [{'auth_by', ?MASTER_ACCOUNT_ID}
               ,{'assign_to', ?RESELLER_ACCOUNT_ID}
-              ,{<<"auth_by_account">>, kz_json:new()}
               ],
     Ret = knm_numbers:create([Num], [{'public_fields', JObj}|Options]),
     [?_assertEqual(#{}, maps:get(ko, Ret))
@@ -90,12 +107,10 @@ create_test_() ->
      }
     ].
 
-
-create_new_test_() ->
+create_new() ->
     Num = ?TEST_TELNYX_NUM,
     Options = [{'auth_by', ?MASTER_ACCOUNT_ID}
               ,{'assign_to', ?RESELLER_ACCOUNT_ID}
-              ,{<<"auth_by_account">>, kz_json:new()}
               ],
     Ret = knm_numbers:create([Num, ?NOT_NUM, ?TEST_CREATE_NUM], Options),
     [?_assertEqual(#{?NOT_NUM => 'not_reconcilable'}, maps:get(ko, Ret))
@@ -113,7 +128,7 @@ create_new_test_() ->
     ].
 
 
-move_test_() ->
+move() ->
     Ret = knm_numbers:move([?NOT_NUM, ?TEST_AVAILABLE_NUM], ?CHILD_ACCOUNT_ID),
     [?_assertEqual(#{?NOT_NUM => 'not_reconcilable'}, maps:get(ko, Ret))
     ,?_assertMatch([_], maps:get(ok, Ret))
@@ -128,7 +143,7 @@ move_test_() ->
     ].
 
 
-update_test_() ->
+update() ->
     NotDefault = true,
     Setters = [{fun knm_phone_number:set_ported_in/2, NotDefault}],
     Ret0 = knm_numbers:update([?NOT_NUM, ?TEST_AVAILABLE_NUM], []),
@@ -145,8 +160,7 @@ update_test_() ->
      }
     ].
 
-
-attempt_setting_e911_on_disallowed_number_test_() ->
+attempt_setting_e911_on_disallowed_number() ->
     JObj = kz_json:from_list(
              [{?FEATURE_E911
               ,kz_json:from_list(
@@ -179,7 +193,7 @@ attempt_setting_e911_on_disallowed_number_test_() ->
     ].
 
 
-delete_test_() ->
+delete() ->
     Ret = knm_numbers:delete([?NOT_NUM, ?TEST_AVAILABLE_NUM], knm_number_options:default()),
     [?_assertEqual(#{?NOT_NUM => 'not_reconcilable'}, maps:get(ko, Ret))
     ,?_assertMatch([_], maps:get(ok, Ret))
@@ -190,7 +204,7 @@ delete_test_() ->
     ].
 
 
-reconcile_test_() ->
+reconcile() ->
     Ret0 = knm_numbers:reconcile([?NOT_NUM], []),
     Ret1 = knm_numbers:reconcile([?NOT_NUM, ?TEST_AVAILABLE_NUM], knm_number_options:default()),
     Ret2 = knm_numbers:reconcile([?NOT_NUM, ?TEST_AVAILABLE_NUM]
@@ -221,7 +235,7 @@ error_assign_to_undefined() ->
       ]).
 
 
-reserve_test_() ->
+reserve() ->
     AssignToChild = [{assign_to, ?CHILD_ACCOUNT_ID} | knm_number_options:default()],
     Ret1 = knm_numbers:reserve([?NOT_NUM, ?TEST_AVAILABLE_NUM]
                               ,[{assign_to,?RESELLER_ACCOUNT_ID}, {auth_by,?MASTER_ACCOUNT_ID}]),
@@ -260,7 +274,7 @@ reserve_test_() ->
     ].
 
 
-assign_to_app_test_() ->
+assign_to_app() ->
     MyApp = <<"my_app">>,
     Ret1 = knm_numbers:get([?NOT_NUM, ?TEST_AVAILABLE_NUM]),
     Ret2 = knm_numbers:assign_to_app([?NOT_NUM, ?TEST_AVAILABLE_NUM], MyApp),
@@ -279,7 +293,7 @@ assign_to_app_test_() ->
     ].
 
 
-release_test_() ->
+release() ->
     Ret1 = knm_numbers:release([?NOT_NUM, ?TEST_IN_SERVICE_WITH_HISTORY_NUM]),
     Ret2 = knm_numbers:release([?NOT_NUM, ?TEST_IN_SERVICE_MDN], knm_number_options:mdn_options()),
     Ret3 = knm_numbers:release([?NOT_NUM, ?TEST_IN_SERVICE_BAD_CARRIER_NUM]),

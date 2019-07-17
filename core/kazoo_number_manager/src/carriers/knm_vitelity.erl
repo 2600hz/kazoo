@@ -224,7 +224,7 @@ to_number(DID, CarrierData, QID) ->
 query_vitelity(Prefix, Quantity, QOptions) ->
     URI = knm_vitelity_util:build_uri(QOptions),
     {'ok'
-    ,{'https', [], _Host, _Port, _Path, [$? | QueryString]}
+    ,{'http', [], _Host, _Port, _Path, [$? | QueryString]}
     } = http_uri:parse(kz_term:to_list(URI)),
     Options = cow_qs:parse_qs(kz_term:to_binary(QueryString)),
     XML =

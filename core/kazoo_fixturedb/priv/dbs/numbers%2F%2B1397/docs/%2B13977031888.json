@@ -1,0 +1,24 @@
+{
+    "_id": "+13977031888",
+    "_rev": "37-62ac91830bae51385cb4c6d56aaaaaab",
+    "cnam": {
+        "display_name": "Bruce Wayne",
+        "inbound_lookup": true
+    },
+    "pvt_assigned_to": "112bce1b4b782f2b33b366e420d05673",
+    "pvt_created": 63606025000,
+    "pvt_db_name": "numbers%2F%2B1397",
+    "pvt_features": {
+        "inbound_cnam": {
+            "inbound_lookup": true
+        },
+        "outbound_cnam": {
+            "display_name": "Bruce Wayne"
+        }
+    },
+    "pvt_modified": 63606025001,
+    "pvt_module_name": "knm_vitelity",
+    "pvt_ported_in": false,
+    "pvt_state": "in_service",
+    "pvt_type": "number"
+}

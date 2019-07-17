@@ -1,0 +1,27 @@
+[
+    {
+        "id": "402e7e3bb752aa5163f695d088b5a32f",
+        "key": "+13977031887",
+        "value": {
+            "account": {
+                "auth_realm": "paustu8.sip.2600hz.local"
+            },
+            "auth": {
+                "auth_method": "IP",
+                "ip": "192,168.0.1"
+            },
+            "options": {
+                "caller_id": {},
+                "delay": 0,
+                "e911_info": {},
+                "enabled": true,
+                "failover": {},
+                "force_outbound": false,
+                "hunt_non_reconcilable": false,
+                "inbound_format": "e164",
+                "international": false,
+                "media_handling": "bypass"
+            }
+        }
+    }
+]

@@ -610,14 +610,14 @@ update_pvt_parameters(JObj0, DBName) ->
 -spec update_pvt_parameters(doc(), kz_term:api_ne_binary(), kz_term:proplist()) ->
                                    doc().
 update_pvt_parameters(JObj, DbName, Options) ->
-    Opts = props:insert_value('now', kz_time:now_s(), Options),
-    Updates = get_pvt_updates(JObj, DbName, Opts),
+    Updates = get_pvt_updates(JObj, DbName, Options),
     kz_json:set_values(Updates, JObj).
 
 -spec get_pvt_updates(kz_json:object(), kz_term:api_ne_binary(), kz_term:proplist()) ->
                              kz_term:proplist().
 get_pvt_updates(JObj, DbName, Options) ->
-    lists:foldl(fun(Fun, Acc) -> Fun(Acc, JObj, DbName, Options) end, [], ?PVT_FUNS).
+    Opts = props:insert_value('now', kz_time:now_s(), Options),
+    lists:foldl(fun(Fun, Acc) -> Fun(Acc, JObj, DbName, Opts) end, [], ?PVT_FUNS).
 
 -spec add_pvt_vsn(kz_term:proplist(), doc(), kz_term:api_ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 add_pvt_vsn(Acc, _JObj, _, Options) ->
@@ -672,10 +672,12 @@ add_pvt_node(Acc, _JObj, _, Options) ->
 
 -spec add_pvt_created(kz_term:proplist(), doc(), kz_term:api_ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 add_pvt_created(Acc, JObj, _, Opts) ->
-    case kz_json:get_ne_binary_value(?KEY_REV, JObj) of
-        'undefined' ->
-            [{?KEY_CREATED, props:get_value('now', Opts, kz_time:now_s())} | Acc];
-        _Rev -> Acc
+    case kz_term:is_empty(kz_json:get_ne_binary_value(?KEY_REV, JObj))
+        orelse kz_term:is_empty(created(JObj))
+    of
+        'true' ->
+            [{?KEY_CREATED, props:get_value('now', Opts)} | Acc];
+        'false' -> Acc
     end.
 
 -spec add_pvt_modified(kz_term:proplist(), doc(), kz_term:api_ne_binary(), kz_term:proplist()) -> kz_term:proplist().

@@ -20,7 +20,6 @@
 -define(CARRIER, 'knm_telnyx').
 
 -ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
 -define(DEBUG_WRITE(_Format, _Args), 'ok').
 -define(DEBUG_APPEND(_Format, _Args), 'ok').
 -else.

@@ -173,38 +173,34 @@ stop_me(Pid) ->
 
 -spec get_doc_path(kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
 get_doc_path(DbName, DocId) ->
-    Plan = kz_fixturedb_server:get_dummy_plan(),
-    get_doc_path(Plan, DbName, DocId).
+    get_doc_path(kz_fixturedb_maintenance:new_connection(), DbName, DocId).
 
--spec get_doc_path(map(), kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
-get_doc_path(#{server := {_, Conn}}=_Plan, DbName, DocId) ->
+-spec get_doc_path(server_map(), kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
+get_doc_path(Conn, DbName, DocId) ->
     doc_path(kz_fixturedb_server:get_db(Conn, DbName), DocId).
 
 -spec get_att_path(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
 get_att_path(DbName, DocId, AName) ->
-    Plan = kz_fixturedb_server:get_dummy_plan(),
-    get_att_path(Plan, DbName, DocId, AName).
+    get_att_path(kz_fixturedb_maintenance:new_connection(), DbName, DocId, AName).
 
--spec get_att_path(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
-get_att_path(#{server := {_, Conn}}=_Plan, DbName, DocId, AName) ->
+-spec get_att_path(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> file:filename_all().
+get_att_path(Conn, DbName, DocId, AName) ->
     att_path(kz_fixturedb_server:get_db(Conn, DbName), DocId, AName).
 
 -spec get_view_path(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> file:filename_all().
 get_view_path(DbName, Design, Options) ->
-    Plan = kz_fixturedb_server:get_dummy_plan(),
-    get_view_path(Plan, DbName, Design, Options).
+    get_view_path(kz_fixturedb_maintenance:new_connection(), DbName, Design, Options).
 
--spec get_view_path(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> file:filename_all().
-get_view_path(#{server := {_, Conn}}=_Plan, DbName, Design, Options) ->
+-spec get_view_path(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> file:filename_all().
+get_view_path(Conn, DbName, Design, Options) ->
     view_path(kz_fixturedb_server:get_db(Conn, DbName), Design, Options).
 
 -spec add_att_to_index(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | {'error', any()}.
 add_att_to_index(DbName, DocId, AName) ->
-    Plan = kz_fixturedb_server:get_dummy_plan(),
-    add_att_to_index(Plan, DbName, DocId, AName).
+    add_att_to_index(kz_fixturedb_maintenance:new_connection(), DbName, DocId, AName).
 
--spec add_att_to_index(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> binary_or_error().
-add_att_to_index(#{server := {_, Conn}}=_Plan, DbName, DocId, AName) ->
+-spec add_att_to_index(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> binary_or_error().
+add_att_to_index(Conn, DbName, DocId, AName) ->
     #{server := #{url := Url}} = Db = kz_fixturedb_server:get_db(Conn, DbName),
     AttPath = att_path(Db, DocId, AName),
     Row = kz_term:to_binary(io_lib:format("~s, ~s, ~s", [DocId, AName, filename:basename(AttPath)])),
@@ -239,11 +235,10 @@ maybe_symlink_att_file(AName, AttPath) ->
 
 -spec add_view_to_index(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> binary_or_error().
 add_view_to_index(DbName, Design, Options) ->
-    Plan = kz_fixturedb_server:get_dummy_plan(),
-    add_view_to_index(Plan, DbName, Design, Options).
+    add_view_to_index(kz_fixturedb_maintenance:new_connection(), DbName, Design, Options).
 
--spec add_view_to_index(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> binary_or_error().
-add_view_to_index(#{server := {_, Conn}}=_Plan, DbName, Design, Options) ->
+-spec add_view_to_index(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> binary_or_error().
+add_view_to_index(Conn, DbName, Design, Options) ->
     #{server := #{url := Url}} = Db = kz_fixturedb_server:get_db(Conn, DbName),
     ViewPath = view_path(Db, Design, Options),
     Row = kz_term:to_binary(io_lib:format("~s, ~1000p, ~s", [Design, Options, filename:basename(ViewPath)])),

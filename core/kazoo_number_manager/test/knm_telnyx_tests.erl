@@ -12,9 +12,21 @@
 -module(knm_telnyx_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-include("../src/knm.hrl").
 
-api_test_() ->
+-export([db_dependant/0]).
+
+knm_number_test_() ->
+    knm_test_util:start_db(fun db_dependant/0).
+
+db_dependant() ->
+    [api()
+    ,acquire_number()
+    ,e911()
+    ,cnam()
+    ].
+
+api() ->
     Options = [{'account_id', ?RESELLER_ACCOUNT_ID}
               ,{'carriers', [<<"knm_telnyx">>]}
               ,{'query_id', <<"QID">>}
@@ -76,7 +88,7 @@ matcher(Dialcode, Prefix) ->
             end
     end.
 
-acquire_number_test_() ->
+acquire_number() ->
     Num = ?TEST_TELNYX_NUM,
     PN = knm_phone_number:from_number(Num),
     N = knm_number:set_phone_number(knm_number:new(), PN),
@@ -87,7 +99,7 @@ acquire_number_test_() ->
      }
     ].
 
-e911_test_() ->
+e911() ->
     E911 = kz_json:from_list(
              [{?E911_STREET1, <<"301 Marina Blvd.">>}
              ,{?E911_CITY, <<"San Francisco">>}
@@ -97,7 +109,6 @@ e911_test_() ->
     JObj = kz_json:from_list([{?FEATURE_E911, E911}]),
     Options = [{'auth_by', ?MASTER_ACCOUNT_ID}
               ,{'assign_to', ?RESELLER_ACCOUNT_ID}
-              ,{<<"auth_by_account">>, kz_json:new()}
               ,{'public_fields', JObj}
               ],
     {ok, N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
@@ -124,7 +135,7 @@ e911_test_() ->
      }
     ].
 
-cnam_test_() ->
+cnam() ->
     CNAM = kz_json:from_list(
              [{?CNAM_INBOUND_LOOKUP, true}
              ,{?CNAM_DISPLAY_NAME, <<"my CNAM">>}
@@ -132,7 +143,6 @@ cnam_test_() ->
     JObj = kz_json:from_list([{?FEATURE_CNAM, CNAM}]),
     Options = [{'auth_by', ?MASTER_ACCOUNT_ID}
               ,{'assign_to', ?RESELLER_ACCOUNT_ID}
-              ,{<<"auth_by_account">>, kz_json:new()}
               ,{'public_fields', JObj}
               ],
     {ok, N1} = knm_number:create(?TEST_TELNYX_NUM, Options),

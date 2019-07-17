@@ -91,5 +91,5 @@ upgrade() ->
 %%------------------------------------------------------------------------------
 -spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
-    kz_util:set_startup(),
+    _ = kz_util:set_startup(),
     {'ok', {{'one_for_one', 10, 10}, ?CHILDREN}}.

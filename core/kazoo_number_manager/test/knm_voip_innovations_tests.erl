@@ -12,27 +12,37 @@
 -module(knm_voip_innovations_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include("knm.hrl").
+-include("../src/knm.hrl").
 
-api_test_() ->
-    Options = [{'account_id', ?RESELLER_ACCOUNT_ID}
-              ,{'carriers', [<<"knm_voip_innovations">>]}
-              ,{'query_id', <<"QID">>}
-              ],
-    {setup
-    ,fun () -> case knm_search:start_link() of
-                   {'ok', Pid} -> Pid;
-                   {'error', {'already_started', Pid}} -> Pid
-               end
-     end
-    ,fun gen_server:stop/1
-    ,fun (_ReturnOfSetup) ->
-             [find_numbers(Options)
-             ]
-     end
-    }.
+-export([db_dependant/0
+        ,setup/1
+        ,cleanup/1
+        ]).
 
-find_numbers(Options0) ->
+knm_number_test_() ->
+    knm_test_util:start_db(fun db_dependant/0, fun setup/1, fun cleanup/1).
+
+db_dependant() ->
+    [api()
+    ,acquire_number()
+    ,disconnect_number()
+    ].
+
+setup(TestState) ->
+    Pid = case knm_search:start_link() of
+              {'ok', P} -> P;
+              {'error', {'already_started', P}} -> P
+          end,
+    TestState#{search_pid => Pid}.
+
+cleanup(#{search_pid := Pid}) ->
+    gen_server:stop(Pid).
+
+api() ->
+    Options0 = [{'account_id', ?RESELLER_ACCOUNT_ID}
+               ,{'carriers', [<<"knm_voip_innovations">>]}
+               ,{'query_id', <<"QID">>}
+               ],
     [[{"Verify found numbers"
       ,?_assertEqual(Limit, length(Results))
       }
@@ -59,7 +69,7 @@ matcher(Prefix) ->
             end
     end.
 
-acquire_number_test_() ->
+acquire_number() ->
     Num = <<"+14352154006">>,
     PN = knm_phone_number:from_number(Num),
     N = knm_number:set_phone_number(knm_number:new(), PN),
@@ -70,7 +80,7 @@ acquire_number_test_() ->
      }
     ].
 
-disconnect_number_test_() ->
+disconnect_number() ->
     N = <<"+14352154974">>,
     PhoneNumber = knm_phone_number:from_number(N),
     Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),

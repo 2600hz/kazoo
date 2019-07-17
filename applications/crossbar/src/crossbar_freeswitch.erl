@@ -303,8 +303,8 @@ maybe_export_numbers(Db, [Number|Numbers]) ->
     _ = case kz_datamgr:open_doc(Db, Number) of
             {'ok', JObj} ->
                 maybe_export_number(Number
-                                   ,kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)
-                                   ,kz_json:get_value(?PVT_ASSIGNED_TO, JObj)
+                                   ,kzd_phone_numbers:pvt_state(JObj)
+                                   ,kzd_phone_numbers:pvt_assigned_to(JObj)
                                    );
             {'error', _R} ->
                 lager:debug("error fetching number ~s from ~d: ~p", [Number, Db, _R])
@@ -506,7 +506,7 @@ compile_template(Module) ->
 -spec compile_template(atom(), kz_term:api_binary()) -> 'ok'.
 compile_template(Module, 'undefined') ->
     {'ok', Contents} = file:read_file(template_file(Module)),
-    kapps_config:set(?MOD_CONFIG_CAT, kz_term:to_binary(Module), Contents),
+    _ = kapps_config:set(?MOD_CONFIG_CAT, kz_term:to_binary(Module), Contents),
     compile_template(Module, Contents);
 compile_template(Module, Template) ->
     _ = kz_template:compile(Template, Module),
@@ -533,6 +533,6 @@ xml_file_from_config(Module, KeyName) ->
 -spec xml_file_from_config(atom(), kz_term:api_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 xml_file_from_config(Module, 'undefined', KeyName) ->
     {'ok', Contents} = file:read_file(xml_file(Module)),
-    kapps_config:set(?MOD_CONFIG_CAT, KeyName, Contents),
+    _ = kapps_config:set(?MOD_CONFIG_CAT, KeyName, Contents),
     Contents;
 xml_file_from_config(_, Contents, _) -> Contents.
