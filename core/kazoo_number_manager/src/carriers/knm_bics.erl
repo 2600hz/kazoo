@@ -8,8 +8,9 @@
 -behaviour(knm_gen_carrier).
 
 -include("knm.hrl").
+-include("knm_bics.hrl").
 
-% -export([info/0]).
+-export([info/0]).
 -export([is_local/0]).
 -export([find_numbers/3]).
 -export([acquire_number/1]).
@@ -18,7 +19,15 @@
 -export([should_lookup_cnam/0]).
 -export([check_numbers/1]).
 
--define(BICS_BASE_URL, "https://mynumbers.api.bics.com").
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec info() -> map().
+info() ->
+    #{?CARRIER_INFO_MAX_PREFIX => 3
+     }.
 
 %%------------------------------------------------------------------------------
 %% @doc Is this carrier handling numbers local to the system?
@@ -46,12 +55,13 @@ check_numbers(_Numbers) -> {error, not_implemented}.
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(_Search, _Quantity, Options) ->
-    case make_inventory_request("FRA") of
+    Country = knm_iso3166_util:country(proplists:get_value('country', Options)),
+    case make_inventory_request(maps:from_list(Options), Country) of
         {'ok', _Resp, _RespHeaders, Body} ->
             lager:debug("BICS response ~p: ~p", [_Resp, Body]),
             {'ok', process_numbers_search_resp(Body, Options)};
         {'error', _R} ->
-            lager:debug("BICS response: ~p", [_R]),
+            lager:debug("BICS responded with error: ~p", [_R]),
             {'error', 'not_available'}
     end.
 
@@ -78,7 +88,6 @@ is_number_billable(_Number) -> 'true'.
 %%%=============================================================================
 process_numbers_search_resp(Json, Options) ->
     JObjs = kz_json:decode(Json),
-    lager:error("received response from bics ~p", [JObjs]),
     process_response(JObjs, Options).
 
 %%------------------------------------------------------------------------------
@@ -89,33 +98,53 @@ process_numbers_search_resp(Json, Options) ->
                               {'ok', knm_number:knm_numbers()}.
 process_response(JObjs, Options) ->
     QID = knm_search:query_id(Options),
-    Resp = [N || JObj <- JObjs,
-                 N <- [response_jobj_to_number(JObj, QID)]
-           ],
-    lager:error("res ~p", [Resp]),
-    Resp.
+
+    [N || JObj <- JObjs,
+             N <- [response_jobj_to_number(JObj, QID)]
+    ].
 
 response_jobj_to_number(JObj, QID) ->
-    % Num = kz_json:get_binary_value(<<"number">>, JObj),
-    Num = list_to_binary([<<"1">>
-                         ,kz_json:get_binary_value(<<"number">>, JObj)
-                         ]),
+    Num = kz_json:get_binary_value(<<"number">>, JObj),
     {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, JObj}}.
 
+-spec classify_query(map(), kz_term:ne_binary()) -> kz_term:ne_binary().
+classify_query(#{'dialcode' := <<"+1">>, 'prefix' := Prefix}, _A3)
+  when ?IS_US_TOLLFREE(Prefix)
+       orelse ?IS_US_TOLLFREE_WILDCARD(Prefix) ->
+    <<"ITFS">>;
+classify_query(#{'prefix' := Prefix}, _A3)
+  when ?IS_UIFN_TOLLFREE(Prefix) ->
+    <<"ITFS">>;
+classify_query(_Options, _A3) ->
+    <<"IBN">>.
 
 %%------------------------------------------------------------------------------
 %% @doc Get the URL for requesting the number inventory
 %% @end
 %%------------------------------------------------------------------------------
--spec get_inventory_url(string(), string()) -> string().
+-spec get_inventory_url(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_inventory_url(Product, Country) ->
-    ?BICS_BASE_URL ++ "/availablenumbers?product=" ++ Product ++ "&country=" ++ Country.
+    list_to_binary([?BICS_BASE_URL, <<"/availablenumbers?product=">>, Product, <<"&country=">>, Country]).
 
-make_inventory_request(Country) ->
-    make_inventory_request("IBN", Country).
-make_inventory_request(Product, Country) ->
+-spec make_inventory_request(map(), knm_iso3166_util:country()) -> kz_http:ret().
+make_inventory_request(#{'test' := 'true'} = Options, #{a3 := _A3}= _Country) ->
+    Prefix = maps:find('prefix', Options),
+    case Prefix of
+        {'ok', <<"855">>} ->
+            {'ok', 200, [{}], "[{\"number\": \"+18551231234\",\"product\": \"IBN\",\"country\": \"USA\",\"location\": \"CA-PITTSBURG\"}]"};
+        _Else ->
+            {'ok', 200, [{}], "[{\"number\": \"+19731231234\",\"product\": \"IBN\",\"country\": \"USA\",\"location\": \"CA-PITTSBURG\"}, {\"number\": \"+19734564567\",\"product\": \"IBN\",\"country\": \"USA\",\"location\": \"CA-PITTSBURG\"}]"}
+    end;
+make_inventory_request(Options, #{a3 := A3}= _Country) ->
+    Product = classify_query(Options, A3),
     Headers = [{"Accept", "*/*"}
-              
+              ,{"Authorization", bearer_token()}
               ,{"Content-Type", "application/json"}
               ],
-    kz_http:get(get_inventory_url(Product, Country), Headers).
+    Url = get_inventory_url(Product, A3),
+    lager:debug("Sending bics request url: ~p", [Url]),
+    kz_http:get(Url, Headers).
+
+-spec bearer_token() -> kz_term:ne_binary().
+bearer_token() ->
+    list_to_binary([<<"Bearer">>, <<" ">>, ?BICS_BEARER_TOKEN]).
