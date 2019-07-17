@@ -1,10 +1,11 @@
-{application, kazoo_proper,
- [
-  {description, "Kazoo Proper - Proper Statem and FSM testing"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, []},
-  {applications, [ kernel
-                 , stdlib
-                 ]}
- ]}.
+{application,kazoo_proper,
+ [{applications,[cowboy,cowlib,crypto,eunit,goldrush,
+                 kazoo,kazoo_amqp,kazoo_apps,kazoo_call,
+                 kazoo_csv,kazoo_data,kazoo_documents,
+                 kazoo_ledgers,kazoo_modb,kazoo_number_manager,
+                 kazoo_services,kazoo_stdlib,kazoo_web,kernel,
+                 lager,proper,ranch,stdlib]},
+  {description,"Kazoo Proper - Proper Statem and FSM testing"},
+  {vsn,"4.0.0"},
+  {modules,[]},
+  {registered,[]}]}.
