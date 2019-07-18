@@ -488,22 +488,23 @@ to_props(#channel{call_id=CallId
 
 -spec authorized(kz_json:object()) -> 'ok'.
 authorized(JObj) ->
-    case ets:lookup(?TAB, kz_call_event:call_id(JObj)) of
-        [#channel{destroyed='true'
-                 ,timestamp=TS
-                 }
-        ] ->
-            lager:notice("channel already destroyed (at ~p), not storing authorized payload", [TS]);
-        _Lookup -> gen_server:cast(?SERVER, {'authorized', JObj})
+    case is_destroyed(kz_call_event:call_id(JObj)) of
+        'false' -> insert_authorized(JObj);
+        'true' ->
+            lager:notice("channel already destroyed not storing authorized payload")
     end.
+
+-spec insert_authorized(kz_json:object()) -> 'ok'.
+insert_authorized(JObj) ->
+    Channel = #channel{call_id=CallId}=from_jobj(JObj),
+    ets:insert(?TAB, Channel),
+    lager:debug("inserted authorized channel ~s", [CallId]).
 
 -spec is_destroyed(kz_term:ne_binary()) -> boolean().
 is_destroyed(<<CallId/binary>>) ->
     case ets:lookup(?TAB, CallId) of
-        [#channel{destroyed='true', timestamp=TS}|_] ->
-            lager:info("channel ~s is destroyed (at ~p)", [CallId, TS]),
-            'true';
-        _ -> 'false'
+        [#channel{destroyed=IsDestroyed}] -> IsDestroyed;
+        [] -> 'false'
     end.
 
 -spec handle_authz_resp(kz_json:object(), kz_term:proplist()) -> 'ok'.
@@ -521,11 +522,22 @@ handle_rate_resp(JObj, Props) ->
     gen_server:cast(Srv, {'rate_resp', JObj}).
 
 -spec handle_channel_destroy(kz_json:object(), kz_term:proplist()) -> 'ok'.
-handle_channel_destroy(JObj, Props) ->
+handle_channel_destroy(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
     CallId = kz_call_event:call_id(JObj),
-    Srv = props:get_value('server', Props),
-    gen_server:cast(Srv, {'remove', CallId}).
+
+    handle_channel_destroy(CallId).
+
+handle_channel_destroy(<<CallId/binary>>) ->
+    case ets:lookup(?TAB, CallId) of
+        [] ->
+            _ = ets:insert(?TAB, #channel{call_id=CallId, destroyed='true'}),
+            lager:info("no channel ~s in ~p, inserted destroyed marker", [CallId, ?TAB]);
+        [#channel{destroyed='false'}] ->
+            _ = ets:delete(?TAB, CallId),
+            lager:debug("removed channel ~s from ~p", [CallId, ?TAB]);
+        _ -> 'ok'
+    end.
 
 %%%=============================================================================
 %%% gen_server callbacks
@@ -540,7 +552,7 @@ init([]) ->
     kz_hooks:register(),
     kz_nodes:notify_expire(),
     _ = ets:new(?TAB, ['set'
-                      ,'protected'
+                      ,'public'
                       ,'named_table'
                       ,{'keypos', #channel.call_id}
                       ]),
@@ -594,27 +606,6 @@ handle_cast({'kz_nodes', {'expire', #kz_node{node=NodeName, kapps=Whapps}}}
             self() ! {'synchronize_channels', SyncRef},
             {'noreply', State}
     end;
-handle_cast({'authorized', JObj}, State) ->
-    Channel = #channel{call_id=CallId}=from_jobj(JObj),
-    _ = case ets:lookup(?TAB, CallId) of
-            [#channel{destroyed='true', timestamp=TS}|_] ->
-                lager:notice("channel ~s already destroyed at ~p, not storing", [CallId, TS]);
-            _Channel ->
-                lager:debug("inserting authorized channel ~s", [CallId]),
-                ets:insert(?TAB, Channel)
-        end,
-    {'noreply', State};
-handle_cast({'remove', CallId}, State) ->
-    _ = case ets:lookup(?TAB, CallId) of
-            [] ->
-                lager:info("no channel ~s in ~p, inserting destroyed", [CallId, ?TAB]),
-                ets:insert(?TAB, #channel{call_id=CallId, destroyed='true'});
-            [#channel{destroyed='false'}] ->
-                lager:debug("removing ~s from ~p", [CallId, ?TAB]),
-                _ = ets:delete(?TAB, CallId);
-            _ -> 'ok'
-        end,
-    {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -624,19 +615,7 @@ handle_cast(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'synchronize_channels', SyncRef}, #state{sync_ref=SyncRef}=State) ->
-    Req = kz_api:default_headers(?APP_NAME, ?APP_VERSION),
-    _ = case kz_amqp_worker:call_collect(Req
-                                        ,fun kapi_call:publish_query_channels_req/1
-                                        ,{'ecallmgr', 'true'}
-                                        )
-        of
-            {'error', _R} ->
-                lager:error("could not reach ecallmgr channels: ~p", [_R]);
-            {_, JObjs} ->
-                EcallmgrChannelIds = ecallmgr_channel_ids(JObjs),
-                LocalChannelIds = j5_channel_ids(),
-                fix_channel_disparity(LocalChannelIds, EcallmgrChannelIds)
-        end,
+    kz_util:spawn(fun synchronize/0),
     {'noreply', start_channel_sync_timer(State)};
 handle_info({'synchronize_channels', _}, State) ->
     {'noreply', State};
@@ -664,7 +643,7 @@ handle_info(?HOOK_EVT(_, <<"CHANNEL_DESTROY">>, JObj), State) ->
     end,
     {'noreply', State};
 handle_info('cleanup', State) ->
-    delete_destroyed_channels(),
+    _P = kz_util:spawn(fun delete_destroyed_channels/0),
     {'noreply', start_cleanup_timer(State)};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -880,3 +859,18 @@ to_did_lookup(JObj) ->
             [H|_] = binary:split(ToUri, <<"@">>),
             knm_converters:normalize(H)
     end.
+
+synchronize() ->
+    Req = kz_api:default_headers(?APP_NAME, ?APP_VERSION),
+    _ = case kz_amqp_worker:call_collect(Req
+                                        ,fun kapi_call:publish_query_channels_req/1
+                                        ,{'ecallmgr', 'true'}
+                                        )
+        of
+            {'error', _R} ->
+                lager:error("could not reach ecallmgr channels: ~p", [_R]);
+            {_, JObjs} ->
+                EcallmgrChannelIds = ecallmgr_channel_ids(JObjs),
+                LocalChannelIds = j5_channel_ids(),
+                fix_channel_disparity(LocalChannelIds, EcallmgrChannelIds)
+        end.
