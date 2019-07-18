@@ -141,27 +141,35 @@ authz_timestamp(AuthzReq) ->
         TS -> TS
     end.
 
+-spec authz_answered_time(kapi_authz:req()) -> non_neg_integer().
 authz_answered_time(AuthzReq) ->
     kz_json:get_integer_value(<<"Answered-Seconds">>, AuthzReq, 0).
 
+-spec authz_billing_seconds(kapi_authz:req()) -> non_neg_integer().
 authz_billing_seconds(AuthzReq) ->
     kz_json:get_integer_value(<<"Billing-Seconds">>, AuthzReq, 0).
 
+-spec authz_from(kapi_authz:req()) -> kz_term:api_ne_binary().
 authz_from(AuthzReq) ->
     kz_json:get_ne_binary_value(<<"From">>, AuthzReq).
 
+-spec authz_to(kapi_authz:req()) -> kz_term:api_ne_binary().
 authz_to(AuthzReq) ->
     kz_json:get_first_defined([<<"To-URI">>, <<"To">>], AuthzReq).
 
+-spec authz_call_direction(kapi_authz:req()) -> kz_term:api_ne_binary().
 authz_call_direction(AuthzReq) ->
     kz_json:get_ne_binary_value(<<"Call-Direction">>, AuthzReq).
 
+-spec authz_other_call_leg(kapi_authz:req()) -> kz_term:api_ne_binary().
 authz_other_call_leg(AuthzReq) ->
     kz_json:get_ne_binary_value(<<"Other-Leg-Call-ID">>, AuthzReq).
 
+-spec ccv_account_billing(kapi_authz:req()) -> kz_term:api_ne_binary().
 ccv_account_billing(CCVs) ->
     kz_json:get_ne_binary_value(<<"Account-Billing">>, CCVs, <<"limits_enforced">>).
 
+-spec ccv_reseller_billing(kapi_authz:req()) -> kz_term:api_ne_binary().
 ccv_reseller_billing(CCVs) ->
     kz_json:get_ne_binary_value(<<"Reseller-Billing">>, CCVs, <<"limits_enforced">>).
 
@@ -208,22 +216,19 @@ ccvs(#request{request_ccvs=CCVs}) -> CCVs.
 %%------------------------------------------------------------------------------
 -spec to_jobj(request()) -> kz_json:object().
 to_jobj(Request) ->
-    Props =
-        props:filter_undefined(
-          [{<<"account_id">>, account_id(Request)}
-          ,{<<"reseller_id">>, reseller_id(Request)}
-          ,{<<"call_direction">>, call_direction(Request)}
-          ,{<<"call_id">>, call_id(Request)}
-          ,{<<"other_leg_call_id">>, other_leg_call_id(Request)}
-          ,{<<"answered_time">>, answered_time(Request)}
-          ,{<<"billing_seconds">>, billing_seconds(Request)}
-          ,{<<"from">>, from(Request)}
-          ,{<<"to">>, to(Request)}
-          ,{<<"number">>, ?MODULE:number(Request)}
-          ,{<<"classification">>, classification(Request)}
-          ]
-         ),
-    kz_json:from_list(Props).
+    kz_json:from_list([{<<"account_id">>, account_id(Request)}
+                      ,{<<"reseller_id">>, reseller_id(Request)}
+                      ,{<<"call_direction">>, call_direction(Request)}
+                      ,{<<"call_id">>, call_id(Request)}
+                      ,{<<"other_leg_call_id">>, other_leg_call_id(Request)}
+                      ,{<<"answered_time">>, answered_time(Request)}
+                      ,{<<"billing_seconds">>, billing_seconds(Request)}
+                      ,{<<"from">>, from(Request)}
+                      ,{<<"to">>, to(Request)}
+                      ,{<<"number">>, ?MODULE:number(Request)}
+                      ,{<<"classification">>, classification(Request)}
+                      ]
+                     ).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -234,11 +239,13 @@ authorize(Reason
          ,#request{reseller_id=AccountId
                   ,account_id=AccountId
                   }=Request
-         ,_Limits) ->
+         ,_Limits
+         ) ->
     authorized_by_account(Reason, Request);
 authorize(Reason
          ,#request{reseller_id=ResellerId}=Request
-         ,Limits) ->
+         ,Limits
+         ) ->
     case j5_limits:account_id(Limits) of
         ResellerId ->
             authorized_by_reseller(Reason, Request);
@@ -248,18 +255,16 @@ authorize(Reason
 
 -spec authorized_by_reseller(kz_term:ne_binary(), request()) -> request().
 authorized_by_reseller(Reason, #request{reseller_id=_ResellerId}=Request) ->
-    lager:debug("reseller ~s authorized channel: ~s"
-               ,[_ResellerId, Reason]
-               ),
+    lager:debug("reseller ~s authorized channel: ~s", [_ResellerId, Reason]),
+
     Request#request{reseller_billing=Reason
                    ,reseller_authorized='true'
                    }.
 
 -spec authorized_by_account(kz_term:ne_binary(), request()) -> request().
 authorized_by_account(Reason, #request{account_id=_AccountId}=Request) ->
-    lager:debug("account ~s authorized channel: ~s"
-               ,[_AccountId, Reason]
-               ),
+    lager:debug("account ~s authorized channel: ~s", [_AccountId, Reason]),
+
     Request#request{account_billing=Reason
                    ,account_authorized='true'
                    }.
@@ -281,19 +286,16 @@ deny(Reason
     ,#request{reseller_id=ResellerId
              ,account_id=AccountId
              }=Request
-    ,Limits) ->
+    ,Limits
+    ) ->
     case j5_limits:account_id(Limits) =:= ResellerId of
         'true' ->
-            lager:debug("reseller ~s denied channel: ~s"
-                       ,[ResellerId, Reason]
-                       ),
+            lager:debug("reseller ~s denied channel: ~s", [ResellerId, Reason]),
             Request#request{reseller_billing=Reason
                            ,reseller_authorized='false'
                            };
         'false' ->
-            lager:debug("account ~s denied channel: ~s"
-                       ,[AccountId, Reason]
-                       ),
+            lager:debug("account ~s denied channel: ~s", [AccountId, Reason]),
             Request#request{account_billing=Reason
                            ,account_authorized='false'
                            }
@@ -301,18 +303,14 @@ deny(Reason
 
 -spec deny_account(kz_term:ne_binary(), request()) -> request().
 deny_account(Reason, #request{account_id=AccountId}=Request) ->
-    lager:debug("account ~s denied channel: ~s"
-               ,[AccountId, Reason]
-               ),
+    lager:debug("account ~s denied channel: ~s", [AccountId, Reason]),
     Request#request{account_billing=Reason
                    ,account_authorized='false'
                    }.
 
 -spec deny_reseller(kz_term:ne_binary(), request()) -> request().
 deny_reseller(Reason, #request{reseller_id=ResellerId}=Request) ->
-    lager:debug("reseller ~s denied channel: ~s"
-               ,[ResellerId, Reason]
-               ),
+    lager:debug("reseller ~s denied channel: ~s", [ResellerId, Reason]),
     Request#request{reseller_billing=Reason
                    ,reseller_authorized='false'
                    }.
@@ -325,7 +323,8 @@ deny_reseller(Reason, #request{reseller_id=ResellerId}=Request) ->
 is_authorized(#request{account_id=AccountId
                       ,account_authorized=Authorized
                       ,reseller_id=AccountId
-                      }) -> Authorized;
+                      }) ->
+    Authorized;
 is_authorized(#request{account_authorized=AccountAuthorized
                       ,reseller_authorized=ResellerAuthorized
                       }) ->
@@ -337,7 +336,8 @@ is_authorized(#request{account_authorized=AccountAuthorized
                       ,reseller_id=ResellerId
                       ,reseller_authorized=ResellerAuthorized
                       }
-             ,Limits) ->
+             ,Limits
+             ) ->
     case j5_limits:account_id(Limits) =:= ResellerId of
         'true' -> ResellerAuthorized;
         'false' -> AccountAuthorized
@@ -374,7 +374,8 @@ billing(#request{account_billing=AccountBilling
                 ,reseller_id=ResellerId
                 ,reseller_billing=ResellerBilling
                 }
-       ,Limits) ->
+       ,Limits
+       ) ->
     case j5_limits:account_id(Limits) =:= ResellerId of
         'true' -> ResellerBilling;
         'false' -> AccountBilling
