@@ -569,7 +569,7 @@ create_fax_doc(JObj, #state{owner_id = OwnerId
                                       ,FaxDb
                                       ,[{'type', <<"fax">>}]
                                       ),
-    kazoo_modb:save_doc(kapps_call:account_id(Call), Doc).
+    kazoo_modb:save_doc(FaxDb, Doc).
 
 -spec rx_result(kz_json:object()) -> kz_json:object().
 rx_result(JObj) ->
