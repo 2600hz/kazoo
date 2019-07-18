@@ -528,6 +528,7 @@ handle_channel_destroy(JObj, _Props) ->
 
     handle_channel_destroy(CallId).
 
+-spec handle_channel_destroy(kz_term:ne_binary()) -> 'ok'.
 handle_channel_destroy(<<CallId/binary>>) ->
     case ets:lookup(?TAB, CallId) of
         [] ->
@@ -633,14 +634,7 @@ handle_info(?HOOK_EVT(_, <<"CHANNEL_ANSWER">>, JObj), State) ->
     _ = ets:update_element(?TAB, CallId, Props),
     {'noreply', State};
 handle_info(?HOOK_EVT(_, <<"CHANNEL_DESTROY">>, JObj), State) ->
-    case ets:lookup(?TAB, kz_api:call_id(JObj)) of
-        [] -> 'ok';
-        [#channel{call_id=CallId}] ->
-            lager:debug("noting channel ~s is destroyed", [CallId]),
-            ets:update_element(?TAB, CallId, [{#channel.destroyed, 'true'}
-                                             ,{#channel.timestamp, kz_time:now_s()}
-                                             ])
-    end,
+    handle_channel_destroy(kz_api:call_id(JObj)),
     {'noreply', State};
 handle_info('cleanup', State) ->
     _P = kz_util:spawn(fun delete_destroyed_channels/0),
@@ -787,6 +781,7 @@ delete_destroyed_channels() ->
                                       ]),
     maybe_log_deleted(Deleted, ThenS).
 
+-spec maybe_log_deleted(non_neg_integer(), kz_time:gregorian_seconds()) -> 'ok'.
 maybe_log_deleted(0, _ThenS) -> 'ok';
 maybe_log_deleted(Deleted, ThenS) ->
     lager:debug("deleted ~p destroyed channels from before ~p", [Deleted, ThenS]).
@@ -860,6 +855,7 @@ to_did_lookup(JObj) ->
             knm_converters:normalize(H)
     end.
 
+-spec synchronize() -> 'ok'.
 synchronize() ->
     Req = kz_api:default_headers(?APP_NAME, ?APP_VERSION),
     _ = case kz_amqp_worker:call_collect(Req
