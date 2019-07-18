@@ -927,9 +927,12 @@ demote(JObj) ->
 path_reseller() ->
     [<<"pvt_reseller">>].
 
--spec reseller_id(doc()) -> doc().
-reseller_id(JObj) ->
-    kz_json:get_value([<<"pvt_reseller_id">>], JObj).
+-spec reseller_id(kz_term:ne_binary() | doc()) -> doc().
+reseller_id(<<AccountId/binary>>) ->
+    {'ok', AccountDoc} = fetch(AccountId),
+    reseller_id(AccountDoc);
+reseller_id(AccountDoc) ->
+    kz_json:get_value([<<"pvt_reseller_id">>], AccountDoc).
 
 -spec set_reseller_id(doc(), kz_term:ne_binary()) -> doc().
 set_reseller_id(JObj, ResellerId) ->

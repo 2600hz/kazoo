@@ -111,9 +111,10 @@ from_jobj(JObj) ->
     [Num|_] = binary:split(Request, <<"@">>),
     Number = request_number(Num, CCVs),
 
-    #request{account_id = kz_json:get_ne_value(<<"Account-ID">>, CCVs)
+    AccountId = kz_json:get_ne_value(<<"Account-ID">>, CCVs),
+    #request{account_id = AccountId
             ,account_billing = kz_json:get_ne_value(<<"Account-Billing">>, CCVs, <<"limits_enforced">>)
-            ,reseller_id = kz_json:get_ne_value(<<"Reseller-ID">>, CCVs)
+            ,reseller_id = ccv_reseller_id(AccountId, CCVs)
             ,reseller_billing = kz_json:get_ne_value(<<"Reseller-Billing">>, CCVs, <<"limits_enforced">>)
             ,call_id = kz_json:get_ne_value(<<"Call-ID">>, JObj)
             ,call_direction = kz_json:get_value(<<"Call-Direction">>, JObj)
@@ -132,6 +133,13 @@ from_jobj(JObj) ->
             ,request_jobj = JObj
             ,request_ccvs = CCVs
             }.
+
+-spec ccv_reseller_id(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_ne_binary().
+ccv_reseller_id(AccountId, CCVs) ->
+    case kz_json:get_ne_value(<<"Reseller-ID">>, CCVs) of
+        'undefined' -> kzd_accounts:reseller_id(AccountId);
+        ResellerId -> ResellerId
+    end.
 
 -spec from_ccvs(request(), kz_term:proplist()) -> request().
 from_ccvs(#request{request_ccvs=ReqCCVs

@@ -55,7 +55,7 @@ resource_consumption_at_limit(Limits) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec inbound_channels_per_did_at_limit(kz_term:ne_binary(), j5_limits:limits()) -> boolean().
+-spec inbound_channels_per_did_at_limit(j5_request:request(), j5_limits:limits()) -> boolean().
 inbound_channels_per_did_at_limit(Request, Limits) ->
     AccountId = j5_limits:account_id(Limits),
     ToDID = j5_request:number(Request),

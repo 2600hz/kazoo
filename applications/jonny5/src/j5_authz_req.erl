@@ -328,6 +328,16 @@ send_response(Request) ->
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
 
+    maybe_publish_authz_resp(Request, ServerId, Resp).
+
+-spec maybe_publish_authz_resp(j5_request:request(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
+maybe_publish_authz_resp(Request, ServerId, Resp) ->
+    maybe_publish_authz_resp(Request, ServerId, Resp, j5_channels:is_destroyed(j5_request:call_id(Request))).
+
+-spec maybe_publish_authz_resp(j5_request:request(), kz_term:ne_binary(), kz_term:proplist(), boolean()) -> 'ok'.
+maybe_publish_authz_resp(_Request, _ServerId, _Resp, 'true') ->
+    lager:notice("the channel has already been destroyed, not sending authz response");
+maybe_publish_authz_resp(Request, ServerId, Resp, 'false') ->
     kapi_authz:publish_authz_resp(ServerId, Resp),
     case j5_request:is_authorized(Request) of
         'false' -> j5_util:send_system_alert(Request);
