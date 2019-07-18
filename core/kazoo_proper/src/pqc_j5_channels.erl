@@ -65,6 +65,7 @@ send_channel_destroy(AccountId, CallId) ->
             ,{<<"From">>, <<?MODULE_STRING>>}
             ,{<<"Request">>, <<"12223334444@realm.com">>}
             ,{<<"To">>, <<"12223334444@realm.com">>}
+            ,{<<"Timestamp">>, kz_time:now_s()}
             ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}])}
              | kz_api:default_headers(<<"call_event">>, <<"CHANNEL_DESTROY">>, <<?MODULE_STRING>>, <<"5.0">>)
             ],
