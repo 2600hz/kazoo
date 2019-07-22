@@ -242,7 +242,7 @@ create_limits(AccountId, AccountDb, JObj) ->
            ,bundled_twoway_trunks = kzd_limits:bundled_twoway_trunks(JObj, AccountDb)
            ,burst_trunks = kzd_limits:burst_trunks(JObj)
            ,max_postpay_amount = kzd_limits:max_postpay_units(JObj) * -1
-           ,reserve_amount = kzd_limits:reserve_units(JObj, ?DEFAULT_RATE)
+           ,reserve_amount = kzd_limits:reserve_units(JObj, kz_currency:dollars_to_units(?DEFAULT_RATE))
            ,allow_prepay = kzd_limits:allow_prepay(JObj)
            ,allow_postpay = kzd_limits:allow_postpay(JObj)
            ,allotments = kzd_limits:allotments(JObj)
