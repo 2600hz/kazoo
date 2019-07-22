@@ -22,6 +22,11 @@
 
 -include_lib("kz_amqp_util.hrl").
 
+-export_type([req/0, resp/0]).
+
+-type req() :: kz_json:object().
+-type resp() :: kz_json:object().
+
 -define(EVENT_CATEGORY, <<"authz">>).
 -define(KEY_AUTHZ_REQ, <<"authz.authorize">>).
 -define(KEY_AUTHZ_BROADCAST, <<"authz.authorize.broadcast">>).
