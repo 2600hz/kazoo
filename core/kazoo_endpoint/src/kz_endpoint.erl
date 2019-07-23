@@ -1696,6 +1696,11 @@ maybe_set_account_id({Endpoint, Call, CallFwd, CCVs}) ->
 maybe_set_call_forward({_Endpoint, _Call, 'undefined', _CCVs}=Acc) ->
     Acc;
 maybe_set_call_forward({Endpoint, Call, CallFwd, CCVs}) ->
+    LoopBackUri = list_to_binary(["sip:"
+                                 ,kz_json:get_value(<<"number">>, CallFwd)
+                                 ,"@"
+                                 ,kapps_call:account_realm(Call)
+                                 ]),
     {Endpoint, Call, CallFwd
     ,kz_json:set_values([{<<"Call-Forward">>, <<"true">>}
                         ,{<<"Authorizing-Type">>, <<"device">>}
@@ -1703,6 +1708,7 @@ maybe_set_call_forward({Endpoint, Call, CallFwd, CCVs}) ->
                         ,{<<"Call-Forward-From">>, kapps_call:inception_type(Call)}
                         ,{<<"Call-Forward-For-UUID">>, kapps_call:other_leg_call_id(Call)}
                         ,{<<"Require-Ignore-Early-Media">>, <<"true">>}
+                        ,{<<"Loopback-Request-URI">>, LoopBackUri}
                         ,{<<"Ignore-Early-Media">>, <<"true">>}
                          | bowout_settings('undefined' =:= kapps_call:call_id_direct(Call))
                         ]

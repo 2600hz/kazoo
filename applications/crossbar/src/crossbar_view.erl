@@ -940,6 +940,7 @@ limit_with_last_key('true', PageSize, _ChunkSize, TotalQueried) ->
 %%------------------------------------------------------------------------------
 -spec apply_filter(mapper_fun(), kz_json:objects()) ->
                           kz_json:objects() |
+                          kz_json:object() |
                           {'error', any()}.
 apply_filter(_Mapper, []) ->
     [];

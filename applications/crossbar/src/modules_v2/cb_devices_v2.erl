@@ -56,8 +56,8 @@
 init() ->
     Bindings = [{<<"v2_resource.allowed_methods.devices">>, 'allowed_methods'}
                ,{<<"v2_resource.resource_exists.devices">>, 'resource_exists'}
-               ,{<<"v2_resource.authenticate">>, 'authenticate'}
-               ,{<<"v2_resource.authorize">>, 'authorize'}
+               ,{<<"v2_resource.authenticate.devices">>, 'authenticate'}
+               ,{<<"v2_resource.authorize.devices">>, 'authorize'}
                ,{<<"v2_resource.validate_resource.devices">>, 'validate_resource'}
                ,{<<"v2_resource.validate.devices">>, 'validate'}
                ,{<<"v2_resource.execute.put.devices">>, 'put'}

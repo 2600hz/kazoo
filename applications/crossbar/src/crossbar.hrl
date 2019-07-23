@@ -23,6 +23,8 @@
 
 -define(CB_APPS_STORE_LIST, <<"apps_store/crossbar_listing">>).
 
+-define(NO_ENVELOPE_CONTENT_TYPES, []).
+
 -define(INBOUND_HOOK, <<"hooks">>).
 
 -define(NO_ENVELOPE_VERSIONS, [?INBOUND_HOOK]).

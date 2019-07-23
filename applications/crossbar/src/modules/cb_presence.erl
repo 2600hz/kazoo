@@ -29,7 +29,7 @@
                                                         ,?PRESENCE_QUERY_DEFAULT_TIMEOUT
                                                         )
        ).
--define(REPORT_CONTENT_TYPE, [{'send_file', [{<<"application">>, <<"json">>}]}]).
+-define(REPORT_CONTENT_TYPE, [{'send_file', [{<<"application">>, <<"json">>, '*'}]}]).
 -define(REPORT_PREFIX, "report-").
 -define(MATCH_REPORT_PREFIX(ReportId), <<?REPORT_PREFIX, ReportId/binary>>).
 -define(MATCH_REPORT_PREFIX, <<?REPORT_PREFIX, _ReportId/binary>>).
@@ -404,7 +404,7 @@ load_report(Context, Report) ->
 -spec set_report(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 set_report(Context, File) ->
     Name = kz_term:to_binary(filename:basename(File)),
-    Headers = [{<<"Content-Disposition">>, <<"attachment; filename=", Name/binary>>}],
+    Headers = #{<<"Content-Disposition">> => <<"attachment; filename=", Name/binary>>},
     cb_context:setters(Context,
                        [{fun cb_context:set_resp_file/2, File}
                        ,{fun cb_context:set_resp_etag/2, 'undefined'}

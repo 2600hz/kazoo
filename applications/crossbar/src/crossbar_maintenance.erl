@@ -994,9 +994,16 @@ refresh_app(AppPath, AppUrl) ->
 find_apps(AppsPath) ->
     AccFun =
         fun(AppJSONPath, Acc) ->
-                App = filename:absname(AppJSONPath),
-                %% /.../App/metadata/app.json --> App
-                [filename:dirname(filename:dirname(App)) | Acc]
+                try
+                    lager:debug("find...~p", [AppJSONPath]),
+                    App = AppJSONPath, %%filename:absname(AppJSONPath),
+                    %% /.../App/metadata/app.json --> App
+                    [filename:dirname(filename:dirname(App)) | Acc]
+                catch
+                    _Ex:_Er:_ST ->
+                        kz_util:log_stacktrace(_ST),
+                        Acc
+                end
         end,
     filelib:fold_files(AppsPath, "app\\.json", 'true', AccFun, []).
 

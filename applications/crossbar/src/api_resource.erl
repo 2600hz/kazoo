@@ -10,6 +10,7 @@
 -behaviour(cowboy_rest).
 
 -export([init/2, rest_init/2
+        ,service_available/2
         ,terminate/3
         ,known_methods/2
         ,allowed_methods/2
@@ -38,6 +39,7 @@
         ,to_csv/2
         ,to_pdf/2
         ,to_xml/2
+        ,to_custom/2
         ,send_file/2
 
         ,from_json/2, from_binary/2, from_form/2
@@ -57,6 +59,15 @@
 %% @doc Initialize a REST request.
 %% @end
 %%------------------------------------------------------------------------------
+-spec service_available(cowboy_req:req(), kz_term:proplist() | cb_context:context()) ->
+                               {'true', cowboy_req:req(), cb_context:context()}.
+service_available(Req0, Opts)
+  when is_list(Opts) ->
+    {'cowboy_rest', Req, Context} = rest_init(Req0, Opts),
+    {'true', Req, Context};
+service_available(Req, Context) ->
+    {'true', Req, Context}.
+
 -spec init(cowboy_req:req(), kz_term:proplist()) ->
                   {'cowboy_rest', cowboy_req:req(), cb_context:context()}.
 init(Req, Opts) ->
@@ -71,7 +82,7 @@ rest_init(Req, Opts) ->
 
     Setters = [{fun cb_context:set_req_id/2, get_request_id(Req)}
               ,{fun cb_context:set_req_headers/2, cowboy_req:headers(Req)}
-              ,{fun cb_context:set_host_url/2, kz_term:to_binary(cowboy_req:uri(Req))}
+              ,{fun host_url/2, Req}
               ,{fun cb_context:set_port/2, kz_term:to_integer(cowboy_req:port(Req))}
               ,{fun cb_context:set_raw_path/2, kz_term:to_binary(Path)}
               ,{fun cb_context:set_raw_qs/2, kz_term:to_binary(cowboy_req:qs(Req))}
@@ -84,6 +95,7 @@ rest_init(Req, Opts) ->
               ,{fun cb_context:set_api_version/2, find_version(Path, Req)}
               ,{fun cb_context:set_magic_pathed/2, props:is_defined('magic_path', Opts)}
               ,{fun cb_context:store/3, 'metrics', metrics()}
+              ,fun req_nouns/1
               ],
 
     Context0 = cb_context:setters(cb_context:new(), Setters),
@@ -111,6 +123,21 @@ rest_init(Req, Opts) ->
             ,cowboy_req:set_resp_header(<<"x-request-id">>, cb_context:req_id(Context5), Req10)
             ,Context5
             }
+    end.
+
+-spec host_url(cb_context:context(), cowboy_req:req()) -> cb_context:context().
+host_url(Context, Req) ->
+    URI = kz_term:to_binary(cowboy_req:uri(Req)),
+    {Scheme, Location, _Path, _Query, _Frag} = kz_http_util:urlsplit(URI),
+    Value = list_to_binary([Scheme, "://", Location]),
+    cb_context:set_host_url(Context, Value).
+
+-spec req_nouns(cb_context:context()) -> cb_context:context().
+req_nouns(Context) ->
+    Tokens = api_util:path_tokens(Context),
+    case api_util:parse_path_tokens(Context, Tokens) of
+        [_|_] = Nouns -> cb_context:set_req_nouns(Context, Nouns);
+        _Else -> Context
     end.
 
 -spec get_request_id(cowboy_req:req()) -> kz_term:ne_binary().
@@ -442,8 +469,7 @@ validate_account_resource(Context, AccountArgs) ->
     apply('cb_accounts', 'validate_resource', [Context | AccountArgs]).
 
 -spec is_authorized(cowboy_req:req(), cb_context:context()) ->
-                           {'true' | {'false', <<>>}, cowboy_req:req(), cb_context:context()} |
-                           api_util:stop_return().
+                           {'true' | {'false', <<>>} | 'stop', cowboy_req:req(), cb_context:context()}.
 is_authorized(Req, Context) ->
     api_util:is_authentic(Req, Context).
 
@@ -806,6 +832,7 @@ create_from_response(Req, Context, Accept) ->
         'to_json' -> api_util:create_push_response(Req, Context);
         'send_file' -> api_util:create_push_response(Req, Context, fun api_util:create_resp_file/2);
         'to_binary' -> api_util:create_push_response(Req, Context, fun api_util:create_binary_resp_content/2);
+        'to_custom' -> to_custom(Req, Context);
         'to_xml' -> api_util:create_push_response(Req, Context, fun api_util:create_xml_resp_content/2);
         _Else ->
             %% sending json for now until we implement other types
@@ -846,6 +873,16 @@ to_json(Req, Context, Accept) ->
             lager:debug("calling ~s instead of to_json to render response", [Fun]),
             (?MODULE):Fun(Req, Context)
     end.
+
+-spec to_custom(cowboy_req:req(), cb_context:context()) -> {'stop', cowboy_req:req(), cb_context:context()}.
+to_custom(Req0, Context0) ->
+    lager:debug("run: to_custom"),
+    [{Mod, Params}|_] = cb_context:req_nouns(Context0),
+    Verb = cb_context:req_verb(Context0),
+    Event = api_util:create_event_name(Context0, [<<"to_custom">>, kz_term:to_lower_binary(Verb), Mod]),
+    Payload = [{Req0, Context0} | Params],
+    {Req, Context} = crossbar_bindings:fold(Event, Payload),
+    {'stop', Req, Context}.
 
 -spec to_binary(cowboy_req:req(), cb_context:context()) ->
                        {binary() | 'stop', cowboy_req:req(), cb_context:context()}.
