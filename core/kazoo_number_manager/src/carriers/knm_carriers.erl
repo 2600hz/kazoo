@@ -369,7 +369,7 @@ apply(Number, FName, Args) ->
 %%------------------------------------------------------------------------------
 -spec keep_only_reachable([kz_term:ne_binary()]) -> kz_term:atoms().
 keep_only_reachable(ModuleNames) ->
-    ?LOG_DEBUG("resolving carrier modules: ~p", [ModuleNames]),
+    lager:debug("resolving carrier modules: ~p", [ModuleNames]),
     [Module
      || M <- ModuleNames,
         (Module = kz_module:ensure_loaded(M)) =/= 'false'

@@ -242,7 +242,7 @@ handle_cast({'get_friends', WorkerSup}, State) ->
     {'noreply', State#state{fsm_pid=FSMPid
                            ,shared_pid=SharedPid
                            }};
-handle_cast({'gen_listener', {'created_queue', Q}}, #state{my_q='undefined'}=State) ->
+handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{my_q=Q}, 'hibernate'};
 
 handle_cast({'member_connect_req', MemberCallJObj, Delivery, _Url}

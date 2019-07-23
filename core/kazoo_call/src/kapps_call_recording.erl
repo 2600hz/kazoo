@@ -33,11 +33,13 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_timelimit(kz_term:api_integer()) -> pos_integer().
+-spec get_timelimit(kz_json:object() | kz_term:api_integer()) -> pos_integer().
 get_timelimit('undefined') ->
     kz_media_util:max_recording_time_limit();
 get_timelimit(TL) when is_integer(TL) ->
-    get_timelimit(TL, kz_media_util:max_recording_time_limit()).
+    get_timelimit(TL, kz_media_util:max_recording_time_limit());
+get_timelimit(JObj) ->
+    get_timelimit(kz_json:get_integer_value(<<"time_limit">>, JObj)).
 
 -spec get_timelimit(non_neg_integer(), integer()) -> pos_integer().
 get_timelimit(TL, Max) when Max > TL -> TL;

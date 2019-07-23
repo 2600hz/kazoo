@@ -61,8 +61,8 @@ apply(API, Args) ->
     ?MODULE:apply(API, Action, Args).
 
 -spec apply(kz_json:object(), kz_term:ne_binary(), list()) -> list().
-apply(API, Action, Args) ->
-    Category = kz_json:get_value(<<"category">>, API),
+apply(API, <<Action/binary>>, Args) when is_list(Args) ->
+    Category = kz_json:get_ne_binary_value(<<"category">>, API),
     Route = <<"tasks.", Category/binary, ".", Action/binary>>,
     lager:debug("using route ~s", [Route]),
     map(Route, Args).
@@ -74,7 +74,7 @@ apply(API, Action, Args) ->
 %% is the payload, possibly modified
 %% @end
 %%------------------------------------------------------------------------------
--type map_results() :: kz_term:proplist().
+-type map_results() :: list().
 -spec map(kz_term:ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
     kazoo_bindings:map(Routing, Payload).

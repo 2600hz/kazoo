@@ -82,6 +82,7 @@ The function must return a valid instance of the type `kz_tasks:return()`:
 * `kz_csv:row()`: the row to write (useful if `output_header(TaskName)` was implemented).
 * `[kz_csv:row()]`: this is only supported for `noinput` tasks. Writes more than 1 row to output.
 * `{ok, Data}`: nothing is written to output and `Data` will be passed to the function on next call.
+* `{file, Path}`: The file to upload has been produced "out of band" and should be uploaded to the task doc.
 * `{ToWrite, Data}`: where `ToWrite` is either a `kz_csv:row()` or `[kz_csv:row()]`. Writes them to output & will pass `Data` on next call.
 * `{binary(), Data}`: writes the binary string to output & will pass `Data` on next call.
 * `{Error, Data}`: attempts to write `Error` as an error to output & will pass `Data` on next call.
@@ -126,9 +127,9 @@ There are a number of triggers you can use in your module's `init/0`:
 ### Triggers
 
 - Cron-like
-    - Minutely
-    - Hourly
-    - Daily
+    - Minutely, on the minute
+    - Hourly, on the hour
+    - Daily, at 00:00
 - Database
     - Account DBs
     - Account MODBs

@@ -1,4 +1,5 @@
-ROOT = ../..
+CWD = $(shell pwd -P)
+ROOT = $(realpath $(CWD)/../..)
 PROJECT = kazoo
 
 # Mimetypes module generator.
@@ -14,13 +15,6 @@ all: compile
 compile: $(GEN_ERL)
 
 compile-test: $(GEN_ERL)
-
-eunit: kz-test
-
-test: kz-test
-
-kz-test:
-	$(MAKE) compile-test -C $(ROOT)/core/kazoo_stdlib
 
 include $(ROOT)/make/kz.mk
 

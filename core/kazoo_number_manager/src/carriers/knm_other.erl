@@ -233,7 +233,7 @@ get_numbers(Url, Prefix, Quantity, Options) ->
 -spec query_for_numbers(kz_term:ne_binary()) -> kz_http:http_ret().
 -ifdef(TEST).
 query_for_numbers(<<?NUMBER_PHONEBOOK_URL_L, _/binary>>=URI) ->
-    ?LOG_DEBUG("number pb url ~s resp: ~s", [URI, kz_json:encode(?NUMBERS_RESPONSE)]),
+    lager:debug("number pb url ~s resp: ~s", [URI, kz_json:encode(?NUMBERS_RESPONSE)]),
     {'ok', 200, [], kz_json:encode(?NUMBERS_RESPONSE)}.
 -else.
 query_for_numbers(Uri) ->

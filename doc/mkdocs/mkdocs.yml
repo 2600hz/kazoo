@@ -349,6 +349,7 @@ pages:
     - 'applications/sysconf/doc/README.md'
   - 'Tasks':
     - 'applications/tasks/doc/README.md'
+    - 'applications/tasks/doc/cdrs.md'
     - 'applications/tasks/doc/compaction.md'
     - 'applications/tasks/doc/fax_cleanup.md'
     - 'applications/tasks/doc/kazoo_bill_early_task.md'

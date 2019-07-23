@@ -52,6 +52,8 @@ changed_swagger:
 compile: ACTION = all
 compile: deps kazoo
 
+sparkly-clean: clean-apps clean-kazoo clean-release clean-deps
+
 clean: clean-kazoo
 	$(if $(wildcard *crash.dump), rm *crash.dump)
 	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
@@ -72,9 +74,9 @@ clean-test-apps:
 compile-test: ERLC_OPTS += +nowarn_missing_spec
 compile-test: deps compile-test-core compile-test-apps
 compile-test-core:
-	@$(MAKE) -j$(JOBS) -C core/ compile-test
+	@$(MAKE) -j$(JOBS) -C core/ compile-test-direct
 compile-test-apps:
-	@$(MAKE) -j$(JOBS) -C applications/ compile-test
+	@$(MAKE) -j$(JOBS) -C applications/ compile-test-direct
 
 eunit: eunit-core eunit-apps
 

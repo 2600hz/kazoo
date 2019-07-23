@@ -37,7 +37,7 @@
                                 {'ok', 'timeout', kapps_call:call()} |
                                 {'ok', 'dtmf_finish', kapps_call:call()} |
                                 {'stop', kapps_call:call()}.
--export_types([collect_dtmfs_return/0]).
+-export_type([collect_dtmfs_return/0]).
 
 -spec default_on_first_fun(any()) -> 'ok'.
 default_on_first_fun(_) -> 'ok'.

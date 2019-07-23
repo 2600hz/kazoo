@@ -32,8 +32,8 @@
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
--define(DEBUG_WRITE(Format, Args), ?debugFmt(Format, Args)).
--define(DEBUG_APPEND(Format, Args), ?debugFmt(Format, Args)).
+-define(DEBUG_WRITE(_Format, _Args), 'ok').
+-define(DEBUG_APPEND(_Format, _Args), 'ok').
 -else.
 -define(BW2_DEBUG, kapps_config:get_is_true(?KNM_BW2_CONFIG_CAT, <<"debug">>, 'false')).
 -define(BW2_DEBUG_FILE, "/tmp/bandwidth2.com.xml").
@@ -402,8 +402,8 @@ handle_response({'ok', 503, _, _Response}) ->
     lager:debug("bandwidth.com request error: 503"),
     {'error', 'server_error'};
 
-handle_response({'ok', Code, Headers, "<?xml"++_=Response}) ->
-    ?DEBUG_APPEND("Response:~nCode : ~p~nBody : ~s~nHeaders : ~p~n", [Code, Response, Headers]),
+handle_response({'ok', _Code, _Headers, "<?xml"++_=Response}) ->
+    ?DEBUG_APPEND("Response:~nCode : ~p~nBody : ~s~nHeaders : ~p~n", [_Code, Response, _Headers]),
     lager:debug("received response from bandwidth.com"),
     try
         {Xml, _} = xmerl_scan:string(Response),

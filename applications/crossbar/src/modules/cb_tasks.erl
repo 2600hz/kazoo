@@ -529,7 +529,7 @@ read_attachment(TaskId, Context, AccountId) ->
                                 ,requested_attachment_name(Context)
                                 );
         _Status ->
-            lager:debug("reading ~s failed: ~p", [_Status]),
+            lager:debug("reading ~s failed: ~p", [TaskId, _Status]),
             ReadContext
     end.
 

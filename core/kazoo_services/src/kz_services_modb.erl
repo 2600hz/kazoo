@@ -19,7 +19,7 @@
 -spec rollover(kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> 'ok'.
 rollover(AccountId, Year, Month) ->
     AccountMODb = kz_util:format_account_mod_id(AccountId, Year, Month),
-    lager:debug("creating snapshot for account ~s services in month ~s-~s"
+    lager:debug("creating snapshot for account ~s services in month ~p-~p"
                ,[AccountId, Year, Month]
                ),
     FetchOptions = ['hydrate_account_quantities'

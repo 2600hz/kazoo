@@ -232,7 +232,7 @@ activate_call_control(#{call_id := CallId, winner := #{payload := JObj}} = Map) 
     kz_util:put_callid(CallId),
     CCVs = kzd_fetch:ccvs(JObj),
     ControllerQ = kzd_fetch:controller_queue(JObj),
-    ecallmgr_fs_channels:deferred_update(CallId, #channel.handling_locally, 'true'),
+    ecallmgr_fs_channels:update(CallId, #channel.handling_locally, 'true'),
     Args = Map#{controller_q => ControllerQ
                ,initial_ccvs => CCVs
                },
