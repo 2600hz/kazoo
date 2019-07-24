@@ -299,8 +299,8 @@ settings_basic(DeviceDoc, UserDoc, AccountDoc) ->
 -spec device_display_name(kzd_devices:doc(), kzd_users:doc(), kzd_accounts:doc()) ->
                                  kz_term:api_ne_binary().
 device_display_name(DeviceDoc, UserDoc, AccountDoc) ->
-    case [DN || DN <- [kzd_users:name(UserDoc)
-                      ,kzd_devices:name(DeviceDoc)
+    case [DN || DN <- [kzd_devices:name(DeviceDoc)
+                      ,kzd_users:name(UserDoc)
                       ,kzd_accounts:name(AccountDoc)
                       ],
                 not is_empty_display_name(DN)
