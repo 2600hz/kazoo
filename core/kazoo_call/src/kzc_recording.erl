@@ -242,12 +242,10 @@ handle_cast({'record_start', {_, Media}}, #state{media={_, Media}
                                                 }=State) ->
     lager:debug("record start received but we're already recording"),
     {'noreply', State};
-handle_cast({'record_start', {_, Media}}, #state{media={_, Media}
-                                                ,time_limit=TimeLimit
-                                                }=State) ->
+handle_cast({'record_start', {_, Media}}, #state{media={_, Media}}=State) ->
     lager:debug("record start received for ~s", [Media]),
     {'noreply', State#state{is_recording='true'}};
-handle_cast({'record_start', _}, #state{time_limit=TimeLimit}=State) ->
+handle_cast({'record_start', _}, #state{}=State) ->
     {'noreply', State};
 
 handle_cast('stop_recording', #state{media={_, MediaName}
