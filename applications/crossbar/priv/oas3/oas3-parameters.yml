@@ -586,6 +586,16 @@
   'required': true
   'schema':
     'type': string
+'SOLUTION_INSTANCE_ID':
+  'description': request SOLUTION_INSTANCE_ID parameter
+  'in': path
+  'name': SOLUTION_INSTANCE_ID
+  'required': true
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'SOURCE_SERVICE':
   'description': request SOURCE_SERVICE parameter
   'in': path

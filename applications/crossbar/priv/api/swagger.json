@@ -37510,6 +37510,7 @@
             "type": "string"
         },
         "SOLUTION_INSTANCE_ID": {
+            "description": "request SOLUTION_INSTANCE_ID parameter",
             "in": "path",
             "maxLength": 32,
             "minLength": 32,
@@ -46345,10 +46346,10 @@
                         "$ref": "#/parameters/auth_token_header"
                     },
                     {
-                        "$ref": "#/parameters/SOLUTION_INSTANCE_ID"
+                        "$ref": "#/parameters/ACCOUNT_ID"
                     },
                     {
-                        "$ref": "#/parameters/ACCOUNT_ID"
+                        "$ref": "#/parameters/SOLUTION_INSTANCE_ID"
                     }
                 ],
                 "responses": {
@@ -46363,10 +46364,10 @@
                         "$ref": "#/parameters/auth_token_header"
                     },
                     {
-                        "$ref": "#/parameters/SOLUTION_INSTANCE_ID"
+                        "$ref": "#/parameters/ACCOUNT_ID"
                     },
                     {
-                        "$ref": "#/parameters/ACCOUNT_ID"
+                        "$ref": "#/parameters/SOLUTION_INSTANCE_ID"
                     }
                 ],
                 "responses": {
@@ -46381,10 +46382,10 @@
                         "$ref": "#/parameters/auth_token_header"
                     },
                     {
-                        "$ref": "#/parameters/SOLUTION_INSTANCE_ID"
+                        "$ref": "#/parameters/ACCOUNT_ID"
                     },
                     {
-                        "$ref": "#/parameters/ACCOUNT_ID"
+                        "$ref": "#/parameters/SOLUTION_INSTANCE_ID"
                     }
                 ],
                 "responses": {

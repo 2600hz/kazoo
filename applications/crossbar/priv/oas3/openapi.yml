@@ -592,6 +592,11 @@
   '/accounts/{ACCOUNT_ID}/transactions/{TRANSACTION_ID}':
     '$ref': >-
       paths/transactions.yml#/paths/~1accounts~1{ACCOUNT_ID}~1transactions~1{TRANSACTION_ID}
+  '/accounts/{ACCOUNT_ID}/tray':
+    '$ref': 'paths/tray.yml#/paths/~1accounts~1{ACCOUNT_ID}~1tray'
+  '/accounts/{ACCOUNT_ID}/tray/{SOLUTION_INSTANCE_ID}':
+    '$ref': >-
+      paths/tray.yml#/paths/~1accounts~1{ACCOUNT_ID}~1tray~1{SOLUTION_INSTANCE_ID}
   '/accounts/{ACCOUNT_ID}/tree':
     '$ref': 'paths/accounts.yml#/paths/~1accounts~1{ACCOUNT_ID}~1tree'
   '/accounts/{ACCOUNT_ID}/users':

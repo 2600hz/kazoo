@@ -9880,6 +9880,24 @@
       'description': crossbar.token_restrictions default priv level
       'type': string
   'type': object
+'system_config.crossbar.tray':
+  'description': Schema for crossbar.tray system_config
+  'properties':
+    'app_url':
+      'default': 'https://app.tray.io'
+      'description': Tray.io app url
+      'type': string
+    'gql_endpoint':
+      'default': 'https://tray.io/graphql'
+      'description': Tray.io GraphQL endpoint
+      'type': string
+    'master_token':
+      'description': Tray.io master token
+      'type': string
+    'partner_name':
+      'description': Tray.io partner name
+      'type': string
+  'type': object
 'system_config.crossbar.ubiquiti':
   'description': Schema for crossbar.ubiquiti system_config
   'properties':
@@ -13694,6 +13712,28 @@
                             'uniqueItems': true
                     'type': object
                   'type': array
+  'type': object
+'tray_create':
+  'description': Tray.io Solution Instance Creation
+  'properties':
+    'id':
+      'description': Solution ID
+      'type': string
+    'name':
+      'description': Solution Instance Name
+      'type': string
+  'required':
+    - id
+    - name
+  'type': object
+'tray_toggle':
+  'description': Tray.io Solution Instance State Toggle
+  'properties':
+    'enabled':
+      'description': Solution Instance State
+      'type': boolean
+  'required':
+    - enabled
   'type': object
 'trunkstore':
   'description': |-
