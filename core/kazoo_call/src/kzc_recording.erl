@@ -158,6 +158,8 @@ handle_call_event(JObj, Props) ->
             gen_listener:cast(Pid, {'record_stop', Media, FreeSWITCHNode, JObj});
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             gen_listener:cast(Pid, 'channel_destroyed');
+        {<<"call_event">>, <<"channel_status_resp">>} ->
+            handle_channel_status_resp(JObj, Pid);
         {_Cat, _Evt} -> 'ok'
     end.
 
@@ -244,11 +246,9 @@ handle_cast({'record_start', {_, Media}}, #state{media={_, Media}
                                                 ,time_limit=TimeLimit
                                                 }=State) ->
     lager:debug("record start received for ~s", [Media]),
-    {'noreply', State#state{is_recording='true'
-                           ,timer_ref=start_recording_timer(TimeLimit)
-                           }};
+    {'noreply', State#state{is_recording='true'}};
 handle_cast({'record_start', _}, #state{time_limit=TimeLimit}=State) ->
-    {'noreply', State#state{timer_ref=start_recording_timer(TimeLimit)}};
+    {'noreply', State};
 
 handle_cast('stop_recording', #state{media={_, MediaName}
                                     ,is_recording='true'
@@ -261,9 +261,14 @@ handle_cast('stop_recording', #state{is_recording='false'}=State) ->
     lager:debug("received stop recording and we're not recording, exiting"),
     {'stop', 'normal', State};
 
-handle_cast('channel_destroyed', State) ->
+handle_cast('channel_destroyed', #state{is_recording='true'
+                                       ,stop_received='false'
+                                       }=State) ->
     lager:info("channel was destroyed, waiting on RECORD_STOP or shutting down"),
     {'noreply', State#state{timer_ref=start_recording_stop_timer()}};
+handle_cast('channel_destroyed', State) ->
+    lager:debug("ignoring channel destroyed while storing"),
+    {'noreply', State};
 
 handle_cast({'record_stop', {_, MediaName}=Media, FS, EventJObj},
             #state{media={_, MediaName}
@@ -377,6 +382,11 @@ handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{record_on_answer='
                                                              }=State) ->
     start_recording(Call, MediaName, TimeLimit, Id, SampleRate, RecordMinSec),
     lager:debug("started the recording"),
+    {'noreply', State};
+
+handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{is_recording='true', call=Call}=State) ->
+    lager:notice("appears an AMQP reconnect occured, checking on the channel"),
+    _ = kapps_call_command:channel_status(Call),
     {'noreply', State};
 
 handle_cast(_Msg, State) ->
@@ -710,3 +720,12 @@ start_recording_stop_timer() ->
                       ,self()
                       ,?RECORDING_STOP_TIMER_EXPIRED
                       ).
+
+-spec handle_channel_status_resp(kz_json:object(), pid()) -> 'ok'.
+handle_channel_status_resp(JObj, Pid) ->
+    case kz_json:get_ne_binary_value(<<"Status">>, JObj) of
+        <<"active">> -> lager:info("channel is still active");
+        _Status ->
+            lager:info("channel is ~s, considering it down"),
+            gen_listener:cast(Pid, 'channel_destroyed')
+    end.
