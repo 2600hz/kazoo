@@ -251,8 +251,10 @@ handle_cast({'record_start', _}, #state{}=State) ->
 handle_cast('stop_recording', #state{media={_, MediaName}
                                     ,is_recording='true'
                                     ,call=Call
+                                    ,timer_ref=TRef
                                     }=State) ->
     _ = kapps_call_command:record_call([{<<"Media-Name">>, MediaName}], <<"stop">>, Call),
+    maybe_stop_timer(TRef),
     lager:info("sent command to stop recording, waiting for record stop"),
     {'noreply', State#state{timer_ref=start_recording_stop_timer()}};
 handle_cast('stop_recording', #state{is_recording='false'}=State) ->
@@ -261,8 +263,10 @@ handle_cast('stop_recording', #state{is_recording='false'}=State) ->
 
 handle_cast('channel_destroyed', #state{is_recording='true'
                                        ,stop_received='false'
+                                       ,timer_ref=TRef
                                        }=State) ->
     lager:info("channel was destroyed, waiting on RECORD_STOP or shutting down"),
+    maybe_stop_timer(TRef),
     {'noreply', State#state{timer_ref=start_recording_stop_timer()}};
 handle_cast('channel_destroyed', State) ->
     lager:debug("ignoring channel destroyed while storing"),
@@ -273,20 +277,25 @@ handle_cast({'record_stop', {_, MediaName}=Media, FS, EventJObj},
                   ,is_recording='true'
                   ,stop_received='false'
                   ,call=Call
+                  ,timer_ref=TRef
                   }=State) ->
     lager:debug("received record_stop, storing recording ~s", [MediaName]),
     Call1 = kapps_call:kvs_store(<<"FreeSwitch-Node">>, FS, Call),
     gen_server:cast(self(), 'store_recording'),
+    maybe_stop_timer(TRef),
     {'noreply', State#state{media=Media
                            ,call=Call1
                            ,stop_received='true'
                            ,event=EventJObj
+                           ,timer_ref='undefined'
                            }};
 handle_cast({'record_stop', {_, MediaName}, _FS, _JObj}, #state{media={_, MediaName}
                                                                ,is_recording='false'
                                                                ,stop_received='false'
+                                                               ,timer_ref=TRef
                                                                }=State) ->
     lager:debug("received record_stop but we're not recording, exiting"),
+    maybe_stop_timer(TRef),
     {'stop', 'normal', State};
 handle_cast({'record_stop', _Media, _FS, _JObj}, State) ->
     {'noreply', State};
@@ -727,3 +736,8 @@ handle_channel_status_resp(JObj, Pid) ->
             lager:info("channel is ~s, considering it down"),
             gen_listener:cast(Pid, 'channel_destroyed')
     end.
+
+-spec maybe_stop_timer(kz_term:api_reference()) -> 'ok'.
+maybe_stop_timer(Ref) when is_reference(Ref) ->
+    erlang:cancel_timer(Ref, [{'async', 'true'}]);
+maybe_stop_timer('undefined') -> 'ok'.
