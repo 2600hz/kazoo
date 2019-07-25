@@ -59,7 +59,7 @@ log_allowed_apps([AppJObj|AppJObjs]) ->
                            )
         end,
     log_allowed_apps(AppJObjs).
-                    
+
 %%------------------------------------------------------------------------------
 %% @doc Load the application list from the accounts service plan, or the
 %% reseller if that is empty. Set the published parameter on each app doc,
@@ -202,8 +202,10 @@ is_blacklisted(App, JObj) ->
 -spec allowed_whitelabel_doc(kz_term:ne_binary(), kz_term:api_binary(), kz_json:objects()) -> kz_json:objects().
 allowed_whitelabel_doc(AccountId, _UserId, AppJObjs) ->
     WhitelabelJObj = get_whitelabel_doc(AccountId),
+    IsReseller = kz_services_reseller:is_reseller(AccountId),
     lists:map(fun(AppJObj) ->
                       case kzd_app:name(AppJObj) =:= <<"port">>
+                          andalso (not IsReseller)
                           andalso kzd_whitelabel:hide_port(WhitelabelJObj)
                       of
                           'false' -> AppJObj;
