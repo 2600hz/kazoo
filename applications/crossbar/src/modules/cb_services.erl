@@ -30,6 +30,7 @@
 -define(QUOTE, <<"quote">>).
 -define(SUMMARY, <<"summary">>).
 -define(AUDIT, <<"audit">>).
+-define(AUDIT_SUMMARY, <<"audit_summary">>).
 -define(OVERRIDES, <<"overrides">>).
 -define(TOPUP, <<"topup">>).
 -define(MANUAL, <<"manual">>).
@@ -95,6 +96,8 @@ allowed_methods(?SUMMARY) ->
     [?HTTP_GET];
 allowed_methods(?AUDIT) ->
     [?HTTP_GET];
+allowed_methods(?AUDIT_SUMMARY) ->
+    [?HTTP_GET];
 allowed_methods(?TOPUP) ->
     [?HTTP_POST];
 allowed_methods(?SYNCHRONIZATION) ->
@@ -112,6 +115,8 @@ allowed_methods(_PlanId) ->
 
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?AUDIT, _AuditId) ->
+    [?HTTP_GET];
+allowed_methods(?AUDIT_SUMMARY, _SourceService) ->
     [?HTTP_GET].
 
 %%------------------------------------------------------------------------------
@@ -132,7 +137,8 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 -spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists(_, _) -> 'true'.
+resource_exists(?AUDIT, _) -> 'true';
+resource_exists(?AUDIT_SUMMARY, _) -> 'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc Add content types accepted and provided by this module
@@ -221,6 +227,18 @@ validate(Context, ?SUMMARY) ->
 validate(Context, ?AUDIT) ->
     %% NOTE: show the billing audit logs
     load_audit_logs(Context);
+validate(Context, ?AUDIT_SUMMARY) ->
+    ViewOptions = [{'group_level', 1}
+                  ,{'mapper', fun normalize_day_summary_by_date/2}
+                  ,{'range_start_keymap', fun audit_summary_range_key/1}
+                  ,{'range_end_keymap', fun audit_summary_range_key/1}
+                  ],
+    ViewName = <<"services/day_summary_by_date">>,
+    Context1 = audit_summary(Context, ViewName, ViewOptions),
+    case cb_context:resp_status(Context1) of
+        'success' -> merge_day_summary_by_date_result(Context1);
+        _ -> Context1
+    end;
 validate(Context, ?TOPUP) ->
     %% NOTE: top-up the accounts credit
     validate_topup_amount(Context);
@@ -242,7 +260,104 @@ validate(Context, ?AUDIT, ?MATCH_MODB_PREFIX(Year, Month, _)=AuditId) ->
     crossbar_doc:load(AuditId, Context1, ?TYPE_CHECK_OPTION(<<"audit_log">>));
 validate(Context, ?AUDIT, AuditId) ->
     ErrorCause = kz_json:from_list([{<<"cause">>, AuditId}]),
-    cb_context:add_system_error('bad_identifier', ErrorCause, Context).
+    cb_context:add_system_error('bad_identifier', ErrorCause, Context);
+validate(Context, ?AUDIT_SUMMARY, SourceService) ->
+    RangeKeyFun = fun(Timestamp) -> audit_summary_range_key(SourceService, Timestamp) end,
+    ViewOptions = [{'group_level', 2}
+                  ,{'mapper', fun normalize_day_summary_by_source/2}
+                  ,{'range_start_keymap', RangeKeyFun}
+                  ,{'range_end_keymap', RangeKeyFun}
+                  ],
+    ViewName = <<"services/day_summary_by_source">>,
+    audit_summary(Context, ViewName, ViewOptions).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec audit_summary(cb_context:context(), kz_term:ne_binary(), crossbar_view:options()) -> cb_context:context().
+audit_summary(Context, ViewName, Options) ->
+    ViewOptions = [{'group', 'true'}
+                  ,{'reduce', 'true'}
+                  ,{'unchunkable', 'true'}
+                  ,{'no_filter', 'true'}
+                  ,{'should_paginate', 'false'}
+                   | maybe_add_max_range(Context, Options)
+                  ],
+    crossbar_view:load_modb(Context, ViewName, ViewOptions).
+
+-spec maybe_add_max_range(cb_context:context(), crossbar_view:options()) -> crossbar_view:options().
+maybe_add_max_range(Context, Options) ->
+    case kz_term:safe_cast(cb_context:req_value(Context, <<"created_to">>), 'undefined', fun kz_term:to_integer/1) of
+        T when is_integer(T)
+               andalso T > 0 ->
+            [{'max_range', ?SECONDS_IN_YEAR} | Options];
+        _ -> Options
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec audit_summary_range_key(integer()) -> crossbar_view:range_keymap().
+audit_summary_range_key(Timestamp) when is_integer(Timestamp) ->
+    {{Year, Month, Day}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    kz_term:to_binary(
+      [kz_term:to_binary(Year), "-", kz_date:pad_month(Month), "-", kz_date:pad_day(Day)]
+     ).
+
+-spec audit_summary_range_key(kz_term:ne_binary(), integer()) -> crossbar_view:range_keymap().
+audit_summary_range_key(SourceService, Timestamp) ->
+    [SourceService, audit_summary_range_key(Timestamp)].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec merge_day_summary_by_date_result(cb_context:context()) -> cb_context:context().
+merge_day_summary_by_date_result(Context) ->
+    Result = cb_context:resp_data(Context),
+    merge_day_summary_by_date_result(Context, Result, #{}).
+
+-spec merge_day_summary_by_date_result(cb_context:context(), kz_json:objects(), map()) -> cb_context:context().
+merge_day_summary_by_date_result(Context, [], #{}=Acc) ->
+    cb_context:set_resp_data(Context
+                            ,kz_json:from_list(lists:sort(maps:to_list(Acc)))
+                            );
+merge_day_summary_by_date_result(Context, [JObj|JObjs], #{}=Acc) ->
+    [DateString] = kz_json:get_keys(JObj),
+    NewAcc = kz_json:foldl(fun(Service, Summary, AccAcc) ->
+                                   merge_date_to_service(DateString, Service, Summary, AccAcc)
+                           end
+                          ,Acc
+                          ,kz_json:get_value(DateString, JObj)
+                          ),
+    merge_day_summary_by_date_result(Context, JObjs, NewAcc).
+
+-spec merge_date_to_service(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> map().
+merge_date_to_service(DateString, Service, Summary, AccAcc) ->
+    ServiceAcc = maps:get(Service, AccAcc, []),
+    AccAcc#{Service => [kz_json:from_list([{DateString, Summary}]) | ServiceAcc]}.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec normalize_day_summary_by_date(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_day_summary_by_date(JObj, Acc) ->
+    DateString = kz_json:get_value(<<"key">>, JObj),
+    [kz_json:from_list([{DateString, kz_json:get_value(<<"value">>, JObj)}])
+     | Acc
+    ].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec normalize_day_summary_by_source(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_day_summary_by_source(JObj, Acc) ->
+    [_SourceService, DateString] = kz_json:get_value(<<"key">>, JObj),
+    [kz_json:from_list([{DateString, kz_json:get_value(<<"value">>, JObj)}]) | Acc].
 
 -spec validate_service_plan(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_service_plan(Context, ?SYNCHRONIZATION, ?HTTP_POST) ->
