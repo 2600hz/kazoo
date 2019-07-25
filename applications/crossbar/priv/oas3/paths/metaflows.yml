@@ -1,0 +1,40 @@
+paths:
+  /accounts/{ACCOUNT_ID}/metaflows:
+    delete:
+      operationId: DeleteAccountsAccountIdMetaflows
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of metaflows
+      tags:
+        - metaflows
+    get:
+      operationId: GetAccountsAccountIdMetaflows
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all metaflows
+      tags:
+        - metaflows
+    post:
+      operationId: PostAccountsAccountIdMetaflows
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/metaflows'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of metaflows
+      tags:
+        - metaflows

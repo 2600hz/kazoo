@@ -110,6 +110,11 @@
                            ,{<<"application">>, <<"x-pdf">>, '*'}
                            ]).
 
+%% https://www.ietf.org/rfc/rfc2376.txt
+-define(XML_CONTENT_TYPES, [{<<"text">>, <<"xml">>, '*'}
+                           ,{<<"application">>, <<"xml">>, '*'}
+                           ]).
+
 -define(JSONP_CONTENT_TYPE, <<"application/javascript">>).
 
 -define(CROSSBAR_TYPES_INCLUDED, 'true').

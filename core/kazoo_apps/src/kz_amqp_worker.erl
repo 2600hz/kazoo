@@ -137,7 +137,7 @@
                       {'amqp_queuename_start', kz_term:ne_binary()} |
                       {'amqp_bindings', gen_listener:bindings()} |
                       {'amqp_exchanges', gen_listener:declare_exchanges()} |
-                      {'amqp_server_confurms', boolean()} |
+                      {'amqp_server_confirms', boolean()} |
                       {'neg_resp_threshold', pos_integer()} |
                       {'name', atom() | kz_term:ne_binary()}. %% pool name
 -type worker_args() :: [worker_arg()].

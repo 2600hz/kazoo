@@ -161,6 +161,9 @@ seq() ->
     CreditResp = credit(API, AccountId, Ledger),
     lager:info("credit: ~s", [CreditResp]),
 
+    %% make sure view includes next second in startkey will be 1s later
+    timer:sleep(?MILLISECONDS_IN_SECOND),
+
     SourceFetch = fetch_by_source(API, AccountId, <<?MODULE_STRING>>),
     lager:info("source fetch: ~s", [SourceFetch]),
     Data = kz_json:get_value(<<"data">>, kz_json:decode(SourceFetch)),
@@ -222,7 +225,7 @@ ledgers_in_rows(Pos, Rows, Ledgers) ->
 
 ledgers_in_row({_MetaPos, _SourceIdPos}, 'eof', []) -> 'true';
 ledgers_in_row({_MetaPos, _SourceIdPos}, 'eof', _Ledgers) ->
-    lager:info("failed to find ledgers ~p", [_Ledgers]),
+    lager:info("failed to find ledgers in CSV: ~p", [_Ledgers]),
     'false';
 ledgers_in_row({MetaPos, SourceIdPos}, {Row, Rows}, Ledgers) ->
     %% remove ledger matching Row
@@ -234,6 +237,7 @@ ledgers_in_row({MetaPos, SourceIdPos}, {Row, Rows}, Ledgers) ->
              kzd_ledgers:source_id(Ledger) =/= RowSourceId,
              metadata_bonus(Ledger) =/= RowMetaValue
          ],
+
     ledgers_in_row({MetaPos, SourceIdPos}, kz_csv:take_row(Rows), Ls).
 
 metadata_bonus(Ledger) ->

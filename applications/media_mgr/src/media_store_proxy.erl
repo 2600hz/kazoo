@@ -3,14 +3,14 @@
 %%% @doc Handles storage proxy requests for media binaries
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kz_media_store_proxy).
+-module(media_store_proxy).
 -behaviour(cowboy_handler).
 
 -export([init/2
         ,terminate/3
         ]).
 
--include("kazoo_media.hrl").
+-include("media.hrl").
 
 -record(state, {media :: media_store_path()
                ,filename :: binary()

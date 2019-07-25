@@ -6,7 +6,7 @@
 -module(pqc_cb_cdrs).
 
 %% Manual testing
--export([seq/0
+-export([seq/0, straight_seq/0, paginated_seq/0, task_seq/0
         ,cleanup/0
         ]).
 
@@ -17,6 +17,7 @@
 
 -export([interactions/2
         ,legs/3
+        ,seed_cdrs/4
         ]).
 
 -include_lib("proper/include/proper.hrl").
@@ -176,10 +177,15 @@ start_key(StartKey) -> "start_key=" ++ kz_term:to_list(StartKey).
 -spec seq() -> 'ok'.
 seq() ->
     _ = straight_seq(),
-    paginated_seq().
+    _ = paginated_seq(),
+    task_seq().
 
+-spec straight_seq() -> 'ok'.
 straight_seq() ->
-    API = pqc_cb_api:init_api(['crossbar'], ['cb_cdrs']),
+    API = pqc_cb_api:init_api(['crossbar']
+                             ,['cb_cdrs']
+                             ),
+
     AccountId = create_account(API),
 
     EmptySummaryResp = summary(API, AccountId),
@@ -195,8 +201,8 @@ straight_seq() ->
     SummaryResp = summary(API, AccountId),
     ?INFO("summary resp: ~s", [SummaryResp]),
     RespCDRs = kz_json:get_list_value(<<"data">>, kz_json:decode(SummaryResp)),
-    ?INFO("resp CDRs: ~p~n", [lists:usort([kz_doc:id(RespCDR) || RespCDR <- RespCDRs])]),
-    ?INFO("base CDRs: ~p~n", [lists:usort([kz_doc:id(CDR) || CDR <- CDRs])]),
+    ?INFO("resp CDRs: ~p~n", [lists:usort([cdr_id(RespCDR) || RespCDR <- RespCDRs])]),
+    ?INFO("base CDRs: ~p~n", [lists:usort([cdr_id(CDR) || CDR <- CDRs])]),
     'true' = cdrs_exist(CDRs, RespCDRs),
     ?INFO("all cdrs found in response"),
 
@@ -211,8 +217,11 @@ straight_seq() ->
     cleanup(API),
     ?INFO("FINISHED STRAIGHT SEQ").
 
+-spec paginated_seq() -> 'ok'.
 paginated_seq() ->
-    API = pqc_cb_api:init_api(['crossbar'], ['cb_cdrs']),
+    API = pqc_cb_api:init_api(['crossbar']
+                             ,['cb_cdrs']
+                             ),
     AccountId = create_account(API),
     OwnerId = create_owner(AccountId),
 
@@ -246,6 +255,31 @@ paginated_seq() ->
 
     cleanup(API),
     ?INFO("FINISHED PAGINATED SEQ").
+
+-spec task_seq() -> 'ok'.
+task_seq() ->
+    API = pqc_cb_api:init_api(['crossbar', 'tasks']
+                             ,['cb_cdrs']
+                             ),
+
+    AccountId = create_account(API),
+    CDRs = seed_cdrs(AccountId),
+    CDRIds = lists:sort([kz_doc:id(I) || I <- CDRs]),
+    ?INFO("CDRs: ~p~n", [CDRIds]),
+
+    CreateResp = pqc_cb_tasks:create_account(API, AccountId, "category=billing&action=dump"),
+    ?INFO("created task ~s", [CreateResp]),
+    TaskId = kz_json:get_ne_binary_value([<<"data">>, <<"_read_only">>, <<"id">>]
+                                        ,kz_json:decode(CreateResp)
+                                        ),
+    _ExecResp = pqc_cb_tasks:execute(API, AccountId, TaskId),
+    ?INFO("exec task ~s: ~s", [TaskId, _ExecResp]),
+
+    _DelResp = wait_for_task(API, AccountId, TaskId),
+    ?INFO("finished task ~s: ~s", [TaskId, _DelResp]),
+
+    cleanup(API),
+    ?INFO("FINISHED TASK SEQ").
 
 seq_cdr(API, AccountId, CDR) ->
     CDRId = kz_doc:id(CDR),
@@ -316,8 +350,14 @@ seed_cdrs(AccountId) ->
 
 seed_cdrs(AccountId, OwnerId) ->
     {Year, Month, _} = erlang:date(),
+
+    kazoo_modb:create(kz_util:format_account_id(AccountId, Year, Month)),
+    {PrevY, PrevM} = kazoo_modb_util:prev_year_month(Year, Month),
+    kazoo_modb:create(kz_util:format_account_id(AccountId, PrevY, PrevM)),
+
     seed_cdrs(AccountId, OwnerId, Year, Month).
 
+-spec seed_cdrs(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_time:year(), kz_time:month()) -> kz_json:objects().
 seed_cdrs(AccountId, OwnerId, Year, Month) ->
     CDRs = seed_interaction(AccountId, OwnerId, Year, Month),
     MoreCDRs = seed_interaction(AccountId, OwnerId, Year, Month),
@@ -332,7 +372,13 @@ seed_interaction(AccountId, OwnerId, Year, Month) ->
 
     InteractionId = interaction_id(Y, M, D),
 
-    [element(2, seed_cdr(AccountId, OwnerId, Y, M, InteractionId)) || _ <- lists:seq(1, ?CDRS_PER_MONTH)].
+    lists:foldl(fun(_Seq, Acc) ->
+                        {'ok', CDR} = seed_cdr(AccountId, OwnerId, Y, M, InteractionId),
+                        [CDR | Acc]
+                end
+               ,[]
+               ,lists:seq(1, ?CDRS_PER_MONTH)
+               ).
 
 interaction_id(Year, Month, Day) ->
     InteractionTime = interaction_time(Year, Month, Day),
@@ -376,9 +422,7 @@ seed_cdr(AccountId, OwnerId, Year, Month, InteractionId) ->
     CDR = kz_doc:update_pvt_parameters(JObj, AccountMODb, Props),
     ?INFO("creating ~s in ~s", [CDRId, AccountMODb]),
 
-    _ = kazoo_modb:create(AccountMODb),
-
-    kazoo_modb:save_doc(AccountMODb, CDR).
+    {'ok', _} = kazoo_modb:save_doc(AccountMODb, CDR).
 
 interaction_time(Year, Month, Day) ->
     {Today, _} = calendar:universal_time(),
@@ -388,3 +432,55 @@ interaction_time(Year, Month, Day, {Year, Month, Day}) ->
     calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {0, 0, 0}});
 interaction_time(Year, Month, Day, _Today) ->
     calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {23, 59, 59}}).
+
+wait_for_task(API, AccountId, TaskId) ->
+    Start = kz_time:now_s(),
+    wait_for_task(API, AccountId, TaskId, Start).
+
+wait_for_task(API, AccountId, TaskId, Start) ->
+    wait_for_task(API, AccountId, TaskId, Start, kz_time:elapsed_s(Start)).
+
+wait_for_task(_API, _AccountId, _TaskId, _Start, ElapsedS) when ElapsedS > 30 ->
+    lager:warning("waiting for task ~s in account ~s timed out"),
+    {'error', 'timeout'};
+wait_for_task(API, AccountId, TaskId, Start, _ElapsedS) ->
+    GetResp = pqc_cb_tasks:fetch(API, AccountId, TaskId),
+    GetJObj = kz_json:decode(GetResp),
+
+    case kz_json:get_value([<<"data">>, <<"_read_only">>, <<"status">>]
+                          ,GetJObj
+                          )
+    of
+        <<"success">> ->
+            %% fetch csv
+            ?INFO("task fininshed: ~s", [GetResp]),
+            get_csvs(API, AccountId, TaskId, kz_json:get_list_value([<<"data">>, <<"_read_only">>, <<"csvs">>], GetJObj, [])),
+            pqc_cb_tasks:delete(API, AccountId, TaskId);
+        <<"failure">> ->
+            lager:warning("task failed: ~s", [GetResp]),
+            pqc_cb_tasks:delete(API, AccountId, TaskId);
+        <<"internal_error">> ->
+            lager:warning("task failed with internal error: ~s", [GetResp]),
+            pqc_cb_tasks:delete(API, AccountId, TaskId);
+        _Status ->
+            ?INFO("wrong status(~s) for task in ~s", [_Status, GetResp]),
+            timer:sleep(1000),
+            wait_for_task(API, AccountId, TaskId, Start)
+    end.
+
+get_csvs(_API, _AccountId, _TaskId, []) -> 'ok';
+get_csvs(API, AccountId, TaskId, [CSV|CSVs]) ->
+    _ = get_csv(API, AccountId, TaskId, CSV),
+    get_csvs(API, AccountId, TaskId, CSVs).
+
+get_csv(API, AccountId, TaskId, CSV) ->
+    FetchResp = pqc_cb_tasks:fetch_csv(API, AccountId, TaskId, CSV),
+    ?INFO("fetched ~s(~s): ~s", [TaskId, CSV, FetchResp]).
+
+cdr_id(JObj) ->
+    case kz_doc:id(JObj) of
+        'undefined' ->
+            lager:warning("no id on ~p", [JObj]),
+            'undefined';
+        Id -> Id
+    end.

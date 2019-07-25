@@ -48,7 +48,6 @@
 -export([voicemail_notify/1, voicemail_notify/2, set_voicemail_notify/2]).
 -export([voicemail_notify_callback/1, voicemail_notify_callback/2, set_voicemail_notify_callback/2]).
 -export([zones/1, zones/2, set_zones/2]).
--export([zones_home/1, zones_home/2, set_zones_home/2]).
 
 
 -include("kz_documents.hrl").
@@ -565,15 +564,3 @@ zones(Doc, Default) ->
 -spec set_zones(doc(), kz_json:object()) -> doc().
 set_zones(Doc, Zones) ->
     kz_json:set_value([<<"zones">>], Zones, Doc).
-
--spec zones_home(doc()) -> kz_term:api_binary().
-zones_home(Doc) ->
-    zones_home(Doc, 'undefined').
-
--spec zones_home(doc(), Default) -> binary() | Default.
-zones_home(Doc, Default) ->
-    kz_json:get_binary_value([<<"zones">>, <<"home">>], Doc, Default).
-
--spec set_zones_home(doc(), binary()) -> doc().
-set_zones_home(Doc, ZonesHome) ->
-    kz_json:set_value([<<"zones">>, <<"home">>], ZonesHome, Doc).

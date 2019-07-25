@@ -51,7 +51,7 @@ save(Account, AppsStoreDoc) ->
 
 -spec save_account(kz_term:ne_binary()) -> 'ok'.
 save_account(Account) ->
-    case kzd_accounts:update(Account, [{<<"apps">>, 'null'}]) of
+    case kzd_accounts:update(Account, [{[<<"apps">>], 'null'}]) of
         {'error', _R} ->
             lager:error("failed to save ~s : ~p", [Account, _R]);
         {'ok', _AccountDoc} -> 'ok'

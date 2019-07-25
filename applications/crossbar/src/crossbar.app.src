@@ -11,7 +11,7 @@
                              kazoo_speech,kazoo_stdlib,kazoo_tasks,
                              kazoo_templates,kazoo_token_buckets,
                              kazoo_transactions,kazoo_voicemail,kazoo_web,
-                             kernel,lager,nklib,ssl,stdlib,tools]},
+                             kernel,lager,nklib,ssl,stdlib,tools,xmerl]},
               {description,"Crossbar - REST Interface to the stars"},
               {env,[{is_kazoo_app,true}]},
               {mod,{crossbar_app,[]}},

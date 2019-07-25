@@ -39,10 +39,13 @@
 -define(KEY_PIN, <<"pin">>).
 -define(KEY_MAILBOX_NUMBER, <<"mailbox">>).
 -define(KEY_PIN_REQUIRED, <<"require_pin">>).
+-define(KEY_IS_FF_RW_ENABLED, <<"is_voicemail_ff_rw_enabled">>).
+-define(KEY_SEEK_DURATION, <<"seek_duration_ms">>).
 -define(KEY_CHECK_IF_OWNER, <<"check_if_owner">>).
 -define(KEY_IS_SETUP, <<"is_setup">>).
 
 -define(PVT_TYPE, <<"vmbox">>).
+-define(DEFAULT_SEEK_DURATION, 10000).
 
 -define(ACCOUNT_VM_EXTENSION(AccountId),
         kapps_account_config:get_global(AccountId

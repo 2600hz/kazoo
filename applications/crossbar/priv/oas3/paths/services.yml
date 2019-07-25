@@ -1,0 +1,226 @@
+paths:
+  /accounts/{ACCOUNT_ID}/services:
+    get:
+      operationId: GetAccountsAccountIdServices
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all services
+      tags:
+        - services
+    post:
+      operationId: PostAccountsAccountIdServices
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of services
+      tags:
+        - services
+  /accounts/{ACCOUNT_ID}/services/audit:
+    get:
+      operationId: GetAccountsAccountIdServicesAudit
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get audit of services
+      tags:
+        - services
+  /accounts/{ACCOUNT_ID}/services/audit/{AUDIT_ID}:
+    get:
+      operationId: GetAccountsAccountIdServicesAuditAuditId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/AUDIT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a services by ID
+      tags:
+        - services
+  /accounts/{ACCOUNT_ID}/services/available:
+    get:
+      operationId: GetAccountsAccountIdServicesAvailable
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get available of services
+      tags:
+        - services
+  /accounts/{ACCOUNT_ID}/services/editable:
+    get:
+      operationId: GetAccountsAccountIdServicesEditable
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get editable of services
+      tags:
+        - services
+  /accounts/{ACCOUNT_ID}/services/manual:
+    get:
+      operationId: GetAccountsAccountIdServicesManual
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get manual of services
+      tags:
+        - services
+    patch:
+      operationId: PatchAccountsAccountIdServicesManual
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of services
+      tags:
+        - services
+    post:
+      operationId: PostAccountsAccountIdServicesManual
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of services
+      tags:
+        - services
+  /accounts/{ACCOUNT_ID}/services/overrides:
+    get:
+      operationId: GetAccountsAccountIdServicesOverrides
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get overrides of services
+      tags:
+        - services
+    patch:
+      operationId: PatchAccountsAccountIdServicesOverrides
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of services
+      tags:
+        - services
+    post:
+      operationId: PostAccountsAccountIdServicesOverrides
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of services
+      tags:
+        - services
+  /accounts/{ACCOUNT_ID}/services/quote:
+    post:
+      operationId: PostAccountsAccountIdServicesQuote
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of services
+      tags:
+        - services
+  /accounts/{ACCOUNT_ID}/services/reconciliation:
+    post:
+      operationId: PostAccountsAccountIdServicesReconciliation
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of services
+      tags:
+        - services
+  /accounts/{ACCOUNT_ID}/services/summary:
+    get:
+      operationId: GetAccountsAccountIdServicesSummary
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get summary of services
+      tags:
+        - services
+  /accounts/{ACCOUNT_ID}/services/synchronization:
+    post:
+      operationId: PostAccountsAccountIdServicesSynchronization
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of services
+      tags:
+        - services
+  /accounts/{ACCOUNT_ID}/services/topup:
+    post:
+      operationId: PostAccountsAccountIdServicesTopup
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of services
+      tags:
+        - services
+  /accounts/{ACCOUNT_ID}/services/{PLAN_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdServicesPlanId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PLAN_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of services
+      tags:
+        - services
+    post:
+      operationId: PostAccountsAccountIdServicesPlanId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PLAN_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of services
+      tags:
+        - services

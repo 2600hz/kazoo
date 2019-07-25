@@ -1,0 +1,71 @@
+paths:
+  /accounts/{ACCOUNT_ID}/security:
+    delete:
+      operationId: DeleteAccountsAccountIdSecurity
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of security
+      tags:
+        - security
+    get:
+      operationId: GetAccountsAccountIdSecurity
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all security
+      tags:
+        - security
+    patch:
+      operationId: PatchAccountsAccountIdSecurity
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of security
+      tags:
+        - security
+    post:
+      operationId: PostAccountsAccountIdSecurity
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of security
+      tags:
+        - security
+  /accounts/{ACCOUNT_ID}/security/attempts:
+    get:
+      operationId: GetAccountsAccountIdSecurityAttempts
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get attempts of security
+      tags:
+        - security
+  /accounts/{ACCOUNT_ID}/security/attempts/{ATTEMPT_ID}:
+    get:
+      operationId: GetAccountsAccountIdSecurityAttemptsAttemptId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/ATTEMPT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a security by ID
+      tags:
+        - security

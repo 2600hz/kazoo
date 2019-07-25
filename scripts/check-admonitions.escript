@@ -25,8 +25,12 @@ print_report(Halt, Files) ->
     halt(Halt).
 
 process_file(MD, Acc) ->
-    {'ok', Contents} = file:read_file(MD),
-    process_file(MD, Acc, Contents, re:run(Contents, "!!! \\w+\n\\w+")).
+    process_file(MD, Acc, file:read_file(MD)).
+
+process_file(MD, Acc, {'ok', Contents}) ->
+    process_file(MD, Acc, Contents, re:run(Contents, "!!! \\w+\n\\w+"));
+process_file(_MD, Acc, {'error', 'enoent'}) ->
+    Acc.
 
 process_file(_MD, {Changed, Files}, _Contents, 'nomatch') ->
     {Changed, Files};

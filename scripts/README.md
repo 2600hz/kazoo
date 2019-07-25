@@ -111,6 +111,14 @@ Python script to walk the supplied files and bumps the copyright year if appropr
 ./scripts/bump-copyright-year.sh [FILE]
 ```
 
+## calculate-dep-targets.escript
+
+Given the KAZOO root directory and an app (in core or applications), calculate the core applications it relies on (and transitive dependencies). This listing is then stored to `{APP}/.test.deps` for use in compilation of dependant apps when running tests on an app (vs compiling the whole project for testing).
+
+```shell
+ERL_LIBS=deps:core:applications ./scripts/calculate-dep-targets {KAZOO_ROOT} {APP}
+```
+
 ## check-admonitions.escript
 
 Walks changed markdown files and fixes admonitions
@@ -138,7 +146,7 @@ Now you have a listing of registered processes to put in your .app.src
 
 ## check-dialyzer.escript
 
-An Erlang escript that dialyzes changed files. Run it using the makefile target 'dialyze' with the files to dialyze:
+An Erlang escript that dialyzes changed files. Run it using the Makefile target 'dialyze' with the files to dialyze:
 
 ```shell
 TO_DIALYZE=applications/callflow/ebin/callflow_sup.beam make dialyze
@@ -539,8 +547,7 @@ Init.d script for rabbitmq
 
 ## `reconcile_docs_to_index.bash`
 
-Finds all docs in the repo and checks which are included in the [mkdocs.yml](/doc/mkdocs/mkdocs.yml) index
-
+Finds all docs in the repo and checks which are included in the [mkdocs.yml](https://github.com/2600hz/kazoo/blob/master/doc/mkdocs/mkdocs.yml) index
 
 ## setup-dev.sh
 
@@ -837,7 +844,7 @@ Searches for undocumented source files:
 
 ## `sync_mkdocs_pages.sh`
 
-A script to missing pages (MakrDown files) from `mkdocs.yml` to other YAML files. Flag those files which are deleted or rename.
+A script to missing pages (Markdown files) from `mkdocs.yml` to other YAML files. Flag those files which are deleted or rename.
 
 ## `sync_to_remote.bash`
 

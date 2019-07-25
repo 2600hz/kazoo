@@ -15,6 +15,9 @@
 -define(SECONDS_IN_WEEK,   604800).
 -define(SECONDS_IN_YEAR, 31540000).
 
+-define(MINUTES_IN_HOUR, 60).
+-define(HOURS_IN_DAY, 24).
+
 -define(BYTES_K,          1024).
 -define(BYTES_M,       1048576).
 -define(BYTES_G,    1073741824).
@@ -74,6 +77,8 @@
         ,<<"RECORD_START">>,<<"RECORD_STOP">>
         ,<<"dialplan">> %% errors are sent with this
         ]).
+
+-define(KZ_RECORDER, <<"kz_media_recording">>).
 
 -define(CHANNEL_LOOPBACK_HEADER_PREFIX, "Export-Loopback-").
 -define(CALL_INTERACTION_ID, "Call-Interaction-ID").
@@ -195,18 +200,18 @@
         >>
        ).
 
--define(FAKE_CALLID(C), kz_term:to_hex_binary(crypto:hash(md5, C))).
+-define(FAKE_CALLID(C), kz_term:to_hex_binary(crypto:hash('md5', C))).
 
 -ifdef(TEST).
 
--define(LOG_ALERT(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(LOG_CRITICAL(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(LOG_DEBUG(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(LOG_EMERGENCY(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(LOG_ERROR(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(LOG_INFO(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(LOG_NOTICE(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
--define(LOG_WARNING(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(LOG_ALERT(F, A), io:format('user', "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(LOG_CRITICAL(F, A), io:format('user', "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(LOG_DEBUG(F, A), io:format('user', "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(LOG_EMERGENCY(F, A), io:format('user', "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(LOG_ERROR(F, A), io:format('user', "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(LOG_INFO(F, A), io:format('user', "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(LOG_NOTICE(F, A), io:format('user', "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(LOG_WARNING(F, A), io:format('user', "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
 
 -define(LOG_ALERT(F), ?LOG_ALERT(F, [])).
 -define(LOG_CRITICAL(F), ?LOG_CRITICAL(F, [])).
@@ -269,7 +274,7 @@
 -define(SUP_LOG_WARNING(F), ?SUP_LOG_WARNING(F, [])).
 -define(SUP_LOG_ERROR(F), ?SUP_LOG_ERROR(F, [])).
 
--define(DEV_LOG(F, A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
+-define(DEV_LOG(F, A), io:format('user', "~s:~p  " ++ F ++ "\n", [?MODULE, ?LINE | A])).
 -define(DEV_LOG(F), ?DEV_LOG(F, [])).
 
 %% From https://github.com/tomas-abrahamsson/gpb/issues/134#issuecomment-386892877

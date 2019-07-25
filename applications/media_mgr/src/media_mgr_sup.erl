@@ -15,7 +15,10 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(CHILDREN, [?WORKER('media_listener')]).
+-define(CHILDREN, [?WORKER('media_listener')
+                  ,?SUPER('media_recording_sup')
+                  ,?WORKER('media_proxy')
+                  ]).
 
 %%==============================================================================
 %% API functions

@@ -4,13 +4,13 @@
 %%% @author James Aimonetti
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kz_media_proxy).
+-module(media_proxy).
 
 -export([start_link/0
         ,stop/0
         ]).
 
--include("kazoo_media.hrl").
+-include("media.hrl").
 
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->

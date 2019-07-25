@@ -149,6 +149,7 @@ read(Id, Context) ->
 on_successful_validation(Context) ->
     ContextDoc = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
+    AuthAccountId = cb_context:auth_account_id(Context),
     MODB = cb_context:account_modb(Context),
     ResellerId = cb_context:reseller_id(Context),
     Realm = kzd_accounts:fetch_realm(AccountId),
@@ -159,8 +160,10 @@ on_successful_validation(Context) ->
                 {<<"account">>, AccountId, 'undefined'};
             {UserId, 'undefined'} ->
                 {<<"user">>, UserId, UserId};
-            {'undefined', UserAuth} ->
+            {'undefined', UserAuth} when AuthAccountId =:= AccountId ->
                 {<<"user">>, UserAuth, UserAuth};
+            {'undefined', _UserAuth} when AuthAccountId =/= AccountId ->
+                {<<"account">>, AccountId, 'undefined'};
             {UserId, _UserAuth} ->
                 {<<"user">>, UserId, UserId}
         end,
@@ -236,24 +239,24 @@ get_default_caller_id(Context, OwnerId) ->
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     {ViewName, Opts} =
-        build_view_name_rane_keys(cb_context:device_id(Context), cb_context:user_id(Context)),
+        build_view_name_range_keys(cb_context:device_id(Context), cb_context:user_id(Context)),
     Options = [{'mapper', fun normalize_view_results/2}
                | Opts
               ],
     crossbar_view:load_modb(Context, ViewName, Options).
 
--spec build_view_name_rane_keys(kz_term:api_binary(), kz_term:api_binary()) -> {kz_term:ne_binary(), crossbar_view:options()}.
-build_view_name_rane_keys('undefined', 'undefined') ->
+-spec build_view_name_range_keys(kz_term:api_binary(), kz_term:api_binary()) -> {kz_term:ne_binary(), crossbar_view:options()}.
+build_view_name_range_keys('undefined', 'undefined') ->
     {?CB_LIST_ALL
     ,[{'range_start_keymap', []}
      ,{'range_end_keymap', crossbar_view:suffix_key_fun([kz_json:new()])}
      ]
     };
-build_view_name_rane_keys('undefined', Id) ->
+build_view_name_range_keys('undefined', Id) ->
     {?CB_LIST_BY_OWNERID
     ,[{'range_keymap', [Id]}]
     };
-build_view_name_rane_keys(Id, _) ->
+build_view_name_range_keys(Id, _) ->
     {?CB_LIST_BY_DEVICE
     ,[{'range_keymap', [Id]}]
     }.

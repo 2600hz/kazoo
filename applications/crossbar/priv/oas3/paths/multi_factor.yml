@@ -1,0 +1,98 @@
+paths:
+  /accounts/{ACCOUNT_ID}/multi_factor:
+    get:
+      operationId: GetAccountsAccountIdMultiFactor
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all multi_factor
+      tags:
+        - multi_factor
+    put:
+      operationId: PutAccountsAccountIdMultiFactor
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of multi_factor
+      tags:
+        - multi_factor
+  /accounts/{ACCOUNT_ID}/multi_factor/attempts:
+    get:
+      operationId: GetAccountsAccountIdMultiFactorAttempts
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get attempts of multi_factor
+      tags:
+        - multi_factor
+  /accounts/{ACCOUNT_ID}/multi_factor/attempts/{ATTEMPT_ID}:
+    get:
+      operationId: GetAccountsAccountIdMultiFactorAttemptsAttemptId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/ATTEMPT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a multi_factor by ID
+      tags:
+        - multi_factor
+  /accounts/{ACCOUNT_ID}/multi_factor/{CONFIG_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdMultiFactorConfigId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFIG_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of multi_factor
+      tags:
+        - multi_factor
+    get:
+      operationId: GetAccountsAccountIdMultiFactorConfigId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFIG_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a multi_factor by ID
+      tags:
+        - multi_factor
+    patch:
+      operationId: PatchAccountsAccountIdMultiFactorConfigId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFIG_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of multi_factor
+      tags:
+        - multi_factor
+    post:
+      operationId: PostAccountsAccountIdMultiFactorConfigId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFIG_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of multi_factor
+      tags:
+        - multi_factor

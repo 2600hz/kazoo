@@ -337,8 +337,10 @@ validate_field(RateJObj, <<"weight">>) ->
     Value = maybe_generate_weight(RateJObj),
     kzd_rates:set_weight(RateJObj, Value);
 validate_field(RateJObj, <<"caller_id_numbers">>) ->
-    Value = maybe_generate_caller_id_numbers(RateJObj),
-    kzd_rates:set_caller_id_numbers(RateJObj, Value);
+    case maybe_generate_caller_id_numbers(RateJObj) of
+        'undefined' -> RateJObj;
+        Value -> kzd_rates:set_caller_id_numbers(RateJObj, kz_binary:join(Value, <<":">>))
+    end;
 validate_field(RateJObj, <<"routes">>) ->
     Value = maybe_generate_routes(RateJObj),
     kzd_rates:set_routes(RateJObj, Value);
@@ -477,16 +479,16 @@ generate_weight(?NE_BINARY = Prefix, UnitCost, UnitIntCost) ->
     Weight = (byte_size(Prefix) * 10) - trunc(CostToUse * 100),
     kzd_rates:constrain_weight(Weight).
 
--spec maybe_generate_caller_id_numbers(kzd_rates:doc()) -> kz_term:ne_binaries()|'undefined'.
+-spec maybe_generate_caller_id_numbers(kzd_rates:doc()) -> kz_term:api_ne_binaries().
 maybe_generate_caller_id_numbers(RateJObj) ->
-    maybe_generate_caller_id_numbers(RateJObj, kz_json:get_value(<<"caller_id_numbers">>, RateJObj)).
+    maybe_generate_caller_id_numbers(RateJObj, kz_json:get_ne_binary_value(<<"caller_id_numbers">>, RateJObj)).
 
 -spec maybe_generate_caller_id_numbers(kzd_rates:doc(), kz_term:ne_binary()) -> kz_term:api_ne_binaries().
-maybe_generate_caller_id_numbers(_RateJObj, CID_Numbers)  when is_binary(CID_Numbers) ->
+maybe_generate_caller_id_numbers(_RateJObj, CIDNumbers)  when is_binary(CIDNumbers) ->
     lists:map(fun(X) -> <<"^\\+?", X/binary, ".+", ?DOLLAR_SIGN>> end
-             ,binary:split(CID_Numbers, <<":">>, ['global'])
+             ,binary:split(CIDNumbers, <<":">>, ['global'])
              );
-maybe_generate_caller_id_numbers(_RateJObj, _CID_Numbers) ->
+maybe_generate_caller_id_numbers(_RateJObj, _CIDNumbers) ->
     'undefined'.
 
 -spec maybe_generate_routes(kzd_rates:doc()) -> kz_term:api_ne_binaries().

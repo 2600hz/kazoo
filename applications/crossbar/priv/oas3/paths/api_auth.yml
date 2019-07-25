@@ -1,0 +1,16 @@
+paths:
+  /api_auth:
+    put:
+      operationId: PutApiAuth
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/api_auth'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of api_auth
+      tags:
+        - api_auth

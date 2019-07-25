@@ -10,6 +10,7 @@
 -behaviour(cowboy_rest).
 
 -export([init/2, rest_init/2
+        ,service_available/2
         ,terminate/3
         ,known_methods/2
         ,allowed_methods/2
@@ -31,7 +32,16 @@
         ,delete_resource/2
         ,delete_completed/2
         ,is_conflict/2
-        ,to_json/2, to_binary/2, to_csv/2, to_pdf/2, send_file/2
+
+         %% Content
+        ,to_json/2
+        ,to_binary/2
+        ,to_csv/2
+        ,to_pdf/2
+        ,to_xml/2
+        ,to_custom/2
+        ,send_file/2
+
         ,from_json/2, from_binary/2, from_form/2
         ,multiple_choices/2
         ,generate_etag/2
@@ -49,6 +59,15 @@
 %% @doc Initialize a REST request.
 %% @end
 %%------------------------------------------------------------------------------
+-spec service_available(cowboy_req:req(), kz_term:proplist() | cb_context:context()) ->
+                               {'true', cowboy_req:req(), cb_context:context()}.
+service_available(Req0, Opts)
+  when is_list(Opts) ->
+    {'cowboy_rest', Req, Context} = rest_init(Req0, Opts),
+    {'true', Req, Context};
+service_available(Req, Context) ->
+    {'true', Req, Context}.
+
 -spec init(cowboy_req:req(), kz_term:proplist()) ->
                   {'cowboy_rest', cowboy_req:req(), cb_context:context()}.
 init(Req, Opts) ->
@@ -63,7 +82,7 @@ rest_init(Req, Opts) ->
 
     Setters = [{fun cb_context:set_req_id/2, get_request_id(Req)}
               ,{fun cb_context:set_req_headers/2, cowboy_req:headers(Req)}
-              ,{fun cb_context:set_host_url/2, kz_term:to_binary(cowboy_req:uri(Req))}
+              ,{fun host_url/2, Req}
               ,{fun cb_context:set_port/2, kz_term:to_integer(cowboy_req:port(Req))}
               ,{fun cb_context:set_raw_path/2, kz_term:to_binary(Path)}
               ,{fun cb_context:set_raw_qs/2, kz_term:to_binary(cowboy_req:qs(Req))}
@@ -76,9 +95,18 @@ rest_init(Req, Opts) ->
               ,{fun cb_context:set_api_version/2, find_version(Path, Req)}
               ,{fun cb_context:set_magic_pathed/2, props:is_defined('magic_path', Opts)}
               ,{fun cb_context:store/3, 'metrics', metrics()}
+              ,fun req_nouns/1
               ],
 
     Context0 = cb_context:setters(cb_context:new(), Setters),
+
+    lager:info("~s: ~s?~s from ~s"
+              ,[cb_context:method(Context0)
+               ,Path
+               ,cb_context:raw_qs(Context0)
+               ,cb_context:client_ip(Context0)
+               ]
+              ),
 
     case api_util:get_req_data(Context0, Req) of
         {'stop', Req1, Context1} ->
@@ -91,17 +119,25 @@ rest_init(Req, Opts) ->
             Event = api_util:create_event_name(Context3, <<"init">>),
             {Context4, _} = crossbar_bindings:fold(Event, {Context3, Opts}),
             Context5 = maybe_decode_start_key(Context4),
-            lager:info("~s: ~s?~s from ~s"
-                      ,[cb_context:method(Context5)
-                       ,Path
-                       ,cb_context:raw_qs(Context5)
-                       ,cb_context:client_ip(Context5)
-                       ]
-                      ),
             {'cowboy_rest'
             ,cowboy_req:set_resp_header(<<"x-request-id">>, cb_context:req_id(Context5), Req10)
             ,Context5
             }
+    end.
+
+-spec host_url(cb_context:context(), cowboy_req:req()) -> cb_context:context().
+host_url(Context, Req) ->
+    URI = kz_term:to_binary(cowboy_req:uri(Req)),
+    {Scheme, Location, _Path, _Query, _Frag} = kz_http_util:urlsplit(URI),
+    Value = list_to_binary([Scheme, "://", Location]),
+    cb_context:set_host_url(Context, Value).
+
+-spec req_nouns(cb_context:context()) -> cb_context:context().
+req_nouns(Context) ->
+    Tokens = api_util:path_tokens(Context),
+    case api_util:parse_path_tokens(Context, Tokens) of
+        [_|_] = Nouns -> cb_context:set_req_nouns(Context, Nouns);
+        _Else -> Context
     end.
 
 -spec get_request_id(cowboy_req:req()) -> kz_term:ne_binary().
@@ -433,8 +469,7 @@ validate_account_resource(Context, AccountArgs) ->
     apply('cb_accounts', 'validate_resource', [Context | AccountArgs]).
 
 -spec is_authorized(cowboy_req:req(), cb_context:context()) ->
-                           {'true' | {'false', <<>>}, cowboy_req:req(), cb_context:context()} |
-                           api_util:stop_return().
+                           {'true' | {'false', <<>>} | 'stop', cowboy_req:req(), cb_context:context()}.
 is_authorized(Req, Context) ->
     api_util:is_authentic(Req, Context).
 
@@ -756,8 +791,6 @@ from_binary(Req0, Context0) ->
     lager:debug("run: from_binary"),
     case api_util:execute_request(Req0, Context0) of
         {'true', Req1, Context1} ->
-            Event = api_util:create_event_name(Context1, <<"from_binary">>),
-            _ = crossbar_bindings:map(Event, {Req1, Context1}),
             create_from_response(Req1, Context1);
         Else -> Else
     end.
@@ -768,8 +801,6 @@ from_json(Req0, Context0) ->
     lager:debug("run: from_json"),
     case api_util:execute_request(Req0, Context0) of
         {'true', Req1, Context1} ->
-            Event = api_util:create_event_name(Context1, <<"from_json">>),
-            _ = crossbar_bindings:map(Event, {Req1, Context1}),
             create_from_response(Req1, Context1);
         Else -> Else
     end.
@@ -780,8 +811,6 @@ from_form(Req0, Context0) ->
     lager:debug("run: from_form"),
     case api_util:execute_request(Req0, Context0) of
         {'true', Req1, Context1} ->
-            Event = api_util:create_event_name(Context1, <<"from_form">>),
-            _ = crossbar_bindings:map(Event, {Req1, Context1}),
             create_from_response(Req1, Context1);
         Else -> Else
     end.
@@ -797,12 +826,17 @@ create_from_response(Req, Context, 'undefined') ->
     create_from_response(Req, Context, <<"*/*">>);
 create_from_response(Req, Context, Accept) ->
     DefaultFun = content_type_provided_fun(Context),
+    lager:debug("content-type provided is ~p", [DefaultFun]),
 
     case to_fun(Context, Accept, DefaultFun) of
         'to_json' -> api_util:create_push_response(Req, Context);
         'send_file' -> api_util:create_push_response(Req, Context, fun api_util:create_resp_file/2);
-        _ ->
+        'to_binary' -> api_util:create_push_response(Req, Context, fun api_util:create_binary_resp_content/2);
+        'to_custom' -> to_custom(Req, Context);
+        'to_xml' -> api_util:create_push_response(Req, Context, fun api_util:create_xml_resp_content/2);
+        _Else ->
             %% sending json for now until we implement other types
+            lager:debug("calling default push response for ~p", [_Else]),
             api_util:create_push_response(Req, Context)
     end.
 
@@ -839,6 +873,16 @@ to_json(Req, Context, Accept) ->
             lager:debug("calling ~s instead of to_json to render response", [Fun]),
             (?MODULE):Fun(Req, Context)
     end.
+
+-spec to_custom(cowboy_req:req(), cb_context:context()) -> {'stop', cowboy_req:req(), cb_context:context()}.
+to_custom(Req0, Context0) ->
+    lager:debug("run: to_custom"),
+    [{Mod, Params}|_] = cb_context:req_nouns(Context0),
+    Verb = cb_context:req_verb(Context0),
+    Event = api_util:create_event_name(Context0, [<<"to_custom">>, kz_term:to_lower_binary(Verb), Mod]),
+    Payload = [{Req0, Context0} | Params],
+    {Req, Context} = crossbar_bindings:fold(Event, Payload),
+    {'stop', Req, Context}.
 
 -spec to_binary(cowboy_req:req(), cb_context:context()) ->
                        {binary() | 'stop', cowboy_req:req(), cb_context:context()}.
@@ -916,11 +960,21 @@ send_file(Req, Context) ->
     lager:debug("run: send_file"),
     api_util:create_pull_response(Req, Context, fun api_util:create_resp_file/2).
 
+-spec to_xml(cowboy_req:req(), cb_context:context()) -> api_util:pull_file_response_return().
+to_xml(Req, Context) ->
+    lager:debug("run: to_xml"),
+    api_util:create_pull_response(Req
+                                 ,cb_context:add_resp_header(Context, <<"content-type">>, <<"text/xml">>)
+                                 ,fun api_util:create_xml_resp_content/2
+                                 ).
+
 -spec to_fun(cb_context:context(), kz_term:ne_binary(), atom()) -> atom().
 to_fun(Context, Accept, Default) ->
     case binary:split(Accept, <<"/">>) of
         [Major, Minor] -> to_fun(Context, Major, Minor, Default);
-        _ -> Default
+        _A ->
+            lager:debug("not handling Accept: ~s, using default ~s", [Accept, Default]),
+            Default
     end.
 
 -spec to_fun(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), atom()) -> atom().
@@ -1220,7 +1274,8 @@ generate_etag(Req0, Context0) ->
     end.
 
 -spec expires(cowboy_req:req(), cb_context:context()) ->
-                     {kz_time:datetime(), cowboy_req:req(), cb_context:context()}.
+                     {calendar:datetime(), cowboy_req:req(), cb_context:context()}.
 expires(Req, Context) ->
     Event = api_util:create_event_name(Context, <<"expires">>),
-    crossbar_bindings:fold(Event, {cb_context:resp_expires(Context), Req, Context}).
+    Context1 = crossbar_bindings:fold(Event, Context),
+    {cb_context:resp_expires(Context1), Req, Context1}.

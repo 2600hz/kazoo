@@ -21,9 +21,9 @@
 
 -define(LISTING_BY_STATE, <<"port_requests/listing_by_state">>).
 
--define(UNFINISHED_PORT_REQUEST_LIFETIME,
-        kapps_config:get_integer(?CONFIG_CAT, <<"unfinished_port_request_lifetime_s">>, ?SECONDS_IN_DAY * 30)).
-
+-define(UNFINISHED_PORT_REQUEST_LIFETIME
+       ,kapps_config:get_integer(?CONFIG_CAT, <<"unfinished_port_request_lifetime_s">>, ?SECONDS_IN_DAY * 30)
+       ).
 
 %%%=============================================================================
 %%% API
@@ -35,7 +35,7 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = tasks_bindings:bind(?TRIGGER_SYSTEM, ?MODULE, cleanup),
+    _ = tasks_bindings:bind(?TRIGGER_SYSTEM, ?MODULE, 'cleanup'),
     _ = tasks_bindings:bind(?TRIGGER_ACCOUNT, ?MODULE, 'unconfirmed_port_reminder').
 
 %%% Triggerables
@@ -81,18 +81,18 @@ unconfirmed_port_reminder(AccountDb) ->
 -spec cleanup(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 cleanup(Db, OldPortRequests) ->
     lager:debug("checking ~b old port requests", [length(OldPortRequests)]),
-    Deletable = [kz_json:get_value(<<"doc">>, OldPortRequest)
+    Deletable = [kz_json:get_json_value(<<"doc">>, OldPortRequest)
                  || OldPortRequest <- OldPortRequests,
                     should_delete_port_request(kz_json:get_value(<<"key">>, OldPortRequest))
                 ],
     lager:debug("found ~p deletable", [length(Deletable)]),
-    kz_datamgr:del_docs(Db, Deletable),
+    _ = kz_datamgr:del_docs(Db, Deletable),
     'ok'.
 
 -spec should_delete_port_request([pos_integer() | kz_term:ne_binary(),...]) -> boolean().
-should_delete_port_request([_Modified, ?PORT_SUBMITTED]) -> false;
-should_delete_port_request([_Modified, ?PORT_SCHEDULED]) -> false;
-should_delete_port_request(_) -> true.
+should_delete_port_request([_Modified, ?PORT_SUBMITTED]) -> 'false';
+should_delete_port_request([_Modified, ?PORT_SCHEDULED]) -> 'false';
+should_delete_port_request(_) -> 'true'.
 
 -spec unconfirmed_port_reminder(kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 unconfirmed_port_reminder(AccountId, UnfinishedPorts) ->

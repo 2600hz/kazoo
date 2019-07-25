@@ -92,7 +92,7 @@
                ,controller_q :: kz_term:api_ne_binary()
                ,controller_p :: kz_term:api_pid()
                ,control_q :: kz_term:api_ne_binary()
-               ,initial_ccvs :: kz_json:api_object()
+               ,initial_ccvs :: kz_term:api_object()
                ,node_down_tref :: kz_term:api_reference()
                ,current_cmd_uuid :: kz_term:api_binary()
                ,event_uuids = [] :: kz_term:ne_binaries()
@@ -915,7 +915,7 @@ queue_insert_fun(Position, QueueFun) when is_function(QueueFun, 2) ->
 %% @end
 %%------------------------------------------------------------------------------
 %% See Noop documentation for Filter-Applications to get an idea of this function's purpose
--spec maybe_filter_queue(kz_json:api_objects(), queue:queue()) -> queue:queue().
+-spec maybe_filter_queue(kz_term:api_objects(), queue:queue()) -> queue:queue().
 maybe_filter_queue('undefined', CommandQ) -> CommandQ;
 maybe_filter_queue([], CommandQ) -> CommandQ;
 maybe_filter_queue([AppName|T]=Apps, CommandQ) when is_binary(AppName) ->

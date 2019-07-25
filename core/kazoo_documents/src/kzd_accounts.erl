@@ -24,6 +24,7 @@
 -export([metaflows/1, metaflows/2, set_metaflows/2]).
 -export([music_on_hold/1, music_on_hold/2, set_music_on_hold/2]).
 -export([music_on_hold_media_id/1, music_on_hold_media_id/2, set_music_on_hold_media_id/2]).
+-export([id/1]).
 -export([name/1, name/2, set_name/2]).
 -export([notifications/1, notifications/2, set_notifications/2]).
 -export([notifications_first_occurrence/1, notifications_first_occurrence/2, set_notifications_first_occurrence/2]).
@@ -369,6 +370,10 @@ music_on_hold_media_id(Doc, Default) ->
 -spec set_music_on_hold_media_id(doc(), binary()) -> doc().
 set_music_on_hold_media_id(Doc, MusicOnHoldMediaId) ->
     kz_json:set_value([<<"music_on_hold">>, <<"media_id">>], MusicOnHoldMediaId, Doc).
+
+-spec id(doc()) -> kz_term:api_binary().
+id(Doc) ->
+    kz_doc:id(Doc).
 
 -spec name(doc()) -> kz_term:api_ne_binary().
 name(Doc) ->
@@ -966,9 +971,12 @@ demote(JObj) ->
 path_reseller() ->
     [<<"pvt_reseller">>].
 
--spec reseller_id(doc()) -> kz_term:api_ne_binary().
-reseller_id(JObj) ->
-    kz_json:get_ne_binary_value([<<"pvt_reseller_id">>], JObj).
+-spec reseller_id(kz_term:ne_binary() | doc()) -> kz_term:api_ne_binary().
+reseller_id(<<AccountId/binary>>) ->
+    {'ok', Doc} = fetch(AccountId),
+    reseller_id(Doc);
+reseller_id(Doc) ->
+    kz_json:get_ne_binary_value([<<"pvt_reseller_id">>], Doc).
 
 -spec set_reseller_id(doc(), kz_term:ne_binary()) -> doc().
 set_reseller_id(JObj, ResellerId) ->

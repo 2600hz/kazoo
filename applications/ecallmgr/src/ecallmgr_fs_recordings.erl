@@ -28,7 +28,7 @@ handle_record_stop(#{node := Node, call_id := UUID, payload := JObj}) ->
                                    ecallmgr_util:send_cmd_ret() |
                                    [ecallmgr_util:send_cmd_ret(),...].
 maybe_store_recording('false', _, _JObj, _CallId, _Node) -> 'ok';
-maybe_store_recording('true', <<"kz_media_recording">>, _Props, _CallId, _Node) -> 'ok';
+maybe_store_recording('true', ?KZ_RECORDER, _Props, _CallId, _Node) -> 'ok';
 maybe_store_recording('true', _, JObj, CallId, Node) ->
     case kz_recording:transfer_destination(JObj) of
         'undefined' -> 'ok';

@@ -9,7 +9,7 @@
 
 -include("jonny5.hrl").
 
--spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
+-spec handle_req(kapi_authz:req(), kz_term:proplist()) -> any().
 handle_req(JObj, _) ->
     'true' = kapi_authz:authz_req_v(JObj),
     kz_util:put_callid(JObj),
@@ -196,7 +196,6 @@ maybe_authorize(Request, Limits) ->
 
 -spec maybe_authorize_exception(j5_request:request(), j5_limits:limits()) -> j5_request:request().
 maybe_authorize_exception(Request, Limits) ->
-
     Routines = [fun maybe_authorize_mobile/2
                ,fun maybe_authorize_resource_type/2
                ,fun maybe_authorize_classification/2
@@ -360,6 +359,16 @@ send_response(Request) ->
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
 
+    maybe_publish_authz_resp(Request, ServerId, Resp).
+
+-spec maybe_publish_authz_resp(j5_request:request(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
+maybe_publish_authz_resp(Request, ServerId, Resp) ->
+    maybe_publish_authz_resp(Request, ServerId, Resp, j5_channels:is_destroyed(j5_request:call_id(Request))).
+
+-spec maybe_publish_authz_resp(j5_request:request(), kz_term:ne_binary(), kz_term:proplist(), boolean()) -> 'ok'.
+maybe_publish_authz_resp(_Request, _ServerId, _Resp, 'true') ->
+    lager:notice("the channel has already been destroyed, not sending authz response");
+maybe_publish_authz_resp(Request, ServerId, Resp, 'false') ->
     kapi_authz:publish_authz_resp(ServerId, Resp),
     case j5_request:is_authorized(Request) of
         'false' -> j5_util:send_system_alert(Request);
@@ -369,7 +378,7 @@ send_response(Request) ->
     end.
 
 -spec trunk_usage(kz_term:ne_binary()) -> kz_term:ne_binary().
-trunk_usage(Id) ->
+trunk_usage(<<Id/binary>>) ->
     Limits = j5_limits:get(Id),
     <<(kz_term:to_binary(j5_limits:inbound_trunks(Limits)))/binary, "/"
      ,(kz_term:to_binary(j5_limits:outbound_trunks(Limits)))/binary, "/"

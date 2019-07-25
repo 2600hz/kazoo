@@ -1,0 +1,11 @@
+paths:
+  /system_status:
+    get:
+      operationId: GetSystemStatus
+      parameters: []
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all system_status
+      tags:
+        - system_status

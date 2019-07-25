@@ -94,12 +94,12 @@ get_help(JObj) ->
         {Category, Action} -> lookup_result(Category, Action, help(Category, Action))
     end.
 
-lookup_result(_, {error, _}=E) -> E;
-lookup_result(Category, {ok, JObj}) ->
+lookup_result(_, {'error', _}=E) -> E;
+lookup_result(Category, {'ok', JObj}) ->
     kz_json:from_list([{Category, JObj}]).
 
-lookup_result(_, _, {error, _}=E) -> E;
-lookup_result(Category, Action, {ok, JObj}) ->
+lookup_result(_, _, {'error', _}=E) -> E;
+lookup_result(Category, Action, {'ok', JObj}) ->
     kz_json:set_value([Category, Action], JObj, kz_json:new()).
 
 -spec parse_apis(kz_json:object()) -> kz_json:object().

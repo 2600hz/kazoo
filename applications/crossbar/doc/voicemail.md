@@ -24,6 +24,7 @@ Key | Description | Type | Default | Required | Support Level
 `check_if_owner` | Determines if when the user calls their own voicemail they should be prompted to sign in | `boolean()` | `true` | `false` | `supported`
 `delete_after_notify` | Move the voicemail to delete folder after the notification has been sent | `boolean()` | `false` | `false` | `supported`
 `is_setup` | Determines if the user has completed the initial configuration | `boolean()` | `false` | `false` | `supported`
+`is_voicemail_ff_rw_enabled` | callflow allow fastforward and rewind during voicemail message playback | `boolean()` | `false` | `false` |  
 `mailbox` | The voicemail box number | `string(1..30)` |   | `true` | `supported`
 `media.unavailable` | The ID of a media object that should be used as the unavailable greeting | `string(32)` |   | `false` | `supported`
 `media` | The media (prompt) parameters | `object()` | `{}` | `false` | `supported`
@@ -39,6 +40,7 @@ Key | Description | Type | Default | Required | Support Level
 `pin` | The pin number for the voicemail box | `string(4..15)` |   | `false` | `supported`
 `require_pin` | Determines if a pin is required to check the voicemail from the users devices | `boolean()` | `false` | `false` | `supported`
 `save_after_notify` | Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify) | `boolean()` | `false` | `false` | `supported`
+`seek_duration_ms` | callflow fastforward and rewind seek duration | `integer()` | `10000` | `false` |  
 `skip_envelope` | Determines if the envelope should be skipped | `boolean()` | `false` | `false` | `beta`
 `skip_greeting` | Determines if the greeting should be skipped | `boolean()` | `false` | `false` | `supported`
 `skip_instructions` | Determines if the instructions after the greeting and prior to composing a message should be played | `boolean()` | `false` | `false` | `supported`
@@ -555,7 +557,11 @@ curl -v -X DELETE \
         "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
         "folder": "new",
         "length": 3140,
-        "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba"
+        "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba",
+        "transcription": {
+            "result": "success",
+            "text": "This is a test of the voicemail transcription."
+        }
     },
     "revision": "{REVISION}",
     "request_id": "{REQUEST_ID}",
@@ -590,7 +596,11 @@ curl -v -X GET \
         "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
         "folder": "new",
         "length": 3140,
-        "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba"
+        "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba",
+        "transcription": {
+            "result": "success",
+            "text": "This is a test of the voicemail transcription."
+        }
     },
     "revision": "{REVISION}",
     "request_id": "{REQUEST_ID}",
@@ -632,7 +642,11 @@ curl -v -X POST \
         "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
         "folder": "saved",
         "length": 3140,
-        "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba"
+        "media_id": "201605-6aadef09f6fcf5fd8bcdfca312e923ba",
+        "transcription": {
+            "result": "success",
+            "text": "This is a test of the voicemail transcription."
+        }
     },
     "revision": "{REVISION}",
     "request_id": "{REQUEST_ID}",

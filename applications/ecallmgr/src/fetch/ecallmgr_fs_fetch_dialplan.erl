@@ -154,10 +154,33 @@ authorize_call_fun(Parent, Ref, Node, CallId, JObj) ->
 maybe_wait_for_authz(#{authz_worker := _AuthzWorker, reply := #{payload := Reply}}=Map) ->
     case kz_json:get_value(<<"Method">>, Reply) =/= <<"error">> of
         'true' -> wait_for_authz(Map);
-        'false' -> send_reply(Map)
+        'false' -> wait_and_ignore_authz(Map)
     end;
 maybe_wait_for_authz(#{}=Map) ->
     send_reply(Map).
+
+-spec wait_and_ignore_authz(dialplan_context()) -> {'ok', dialplan_context()}.
+wait_and_ignore_authz(#{authz_worker := {Pid, Ref}
+                       ,authz_timeout := Timeout
+                       }=Map) ->
+    %% If we don't wait for an authz worker and just send an error reply
+    %% as soon as the route_resp comes in then FreeSWITCH will terminate
+    %% the call and Jonny5 will still be processing the authz_req.
+    %% If Jonny5 authorizes the now dead call then it will add it to
+    %% the j5_channels but FreeSWITCH will have already destroyed
+    %% it and the CHANNEL_DESTROY will have already been sent
+    %% to j5_channels so the authorization gets stuck.
+    lager:info("waiting for authz reply from worker ~p", [Pid]),
+    receive
+        {'authorize_reply', Ref, _} ->
+            lager:debug("got authz reply, but sending error response so ignoring"),
+            send_reply(Map)
+    after Timeout ->
+            lager:warning("timeout waiting for authz reply from worker ~p but sending error so ignoring"
+                         ,[Pid]
+                         ),
+            send_reply(Map)
+    end.
 
 -spec wait_for_authz(dialplan_context()) -> {'ok', dialplan_context()}.
 wait_for_authz(#{authz_worker := {Pid, Ref}
@@ -209,7 +232,7 @@ activate_call_control(#{call_id := CallId, winner := #{payload := JObj}} = Map) 
     kz_util:put_callid(CallId),
     CCVs = kzd_fetch:ccvs(JObj),
     ControllerQ = kzd_fetch:controller_queue(JObj),
-    ecallmgr_fs_channels:deferred_update(CallId, #channel.handling_locally, 'true'),
+    ecallmgr_fs_channels:update(CallId, #channel.handling_locally, 'true'),
     Args = Map#{controller_q => ControllerQ
                ,initial_ccvs => CCVs
                },

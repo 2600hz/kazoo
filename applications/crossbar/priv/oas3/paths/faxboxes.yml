@@ -1,0 +1,73 @@
+paths:
+  /accounts/{ACCOUNT_ID}/faxboxes:
+    get:
+      operationId: GetAccountsAccountIdFaxboxes
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all faxboxes
+      tags:
+        - faxboxes
+    put:
+      operationId: PutAccountsAccountIdFaxboxes
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of faxboxes
+      tags:
+        - faxboxes
+  /accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdFaxboxesFaxboxId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FAXBOX_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of faxboxes
+      tags:
+        - faxboxes
+    get:
+      operationId: GetAccountsAccountIdFaxboxesFaxboxId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FAXBOX_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a faxboxes by ID
+      tags:
+        - faxboxes
+    patch:
+      operationId: PatchAccountsAccountIdFaxboxesFaxboxId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FAXBOX_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of faxboxes
+      tags:
+        - faxboxes
+    post:
+      operationId: PostAccountsAccountIdFaxboxesFaxboxId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/FAXBOX_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of faxboxes
+      tags:
+        - faxboxes

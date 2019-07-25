@@ -15,6 +15,7 @@
 
         ,bucket_name/1
         ,token_cost/1, token_cost/2, token_cost/3
+        ,tokens_remaining/1
         ,bind/2
 
         ,take_sync_field/1
@@ -125,6 +126,10 @@ bucket_name('undefined', AccountId) ->
     <<"no_ip/", AccountId/binary>>;
 bucket_name(IP, AccountId) ->
     <<IP/binary, "/", AccountId/binary>>.
+
+-spec tokens_remaining(cb_context:context()) -> non_neg_integer().
+tokens_remaining(Context) ->
+    kz_buckets:tokens_remaining(<<"crossbar">>, bucket_name(Context)).
 
 -spec token_cost(cb_context:context()) -> non_neg_integer().
 token_cost(Context) ->

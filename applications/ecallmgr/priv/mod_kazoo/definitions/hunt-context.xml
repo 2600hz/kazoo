@@ -4,7 +4,7 @@
 	<field name="Hunt-Dialplan" />
 	<field name="Hunt-Destination-Number" />
 	<field name="Request" type="expand"
-		value="${Hunt-Destination-Number}@${first-of(variable_sip_invite_domain|variable_sip_to_host|variable_sip_req_host|variable_ecallmgr_Realm)}" />
+		value="${first-of(variable_sip_h_X-FS-Destination-Number|Hunt-Destination-Number|Caller-Destination-Number)}@${first-of(variable_sip_invite_domain|variable_sip_to_host|variable_sip_req_host|variable_ecallmgr_Realm)}" />
 	<field name="To" type="expand"
 		value="${Hunt-Destination-Number}@${first-of(variable_sip_invite_domain|variable_sip_to_host|variable_sip_req_host|variable_ecallmgr_Realm)}" />
 	<field name="From" type="expand"

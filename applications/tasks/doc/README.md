@@ -82,6 +82,7 @@ The function must return a valid instance of the type `kz_tasks:return()`:
 * `kz_csv:row()`: the row to write (useful if `output_header(TaskName)` was implemented).
 * `[kz_csv:row()]`: this is only supported for `noinput` tasks. Writes more than 1 row to output.
 * `{ok, Data}`: nothing is written to output and `Data` will be passed to the function on next call.
+* `{file, Path}`: The file to upload has been produced "out of band" and should be uploaded to the task doc.
 * `{ToWrite, Data}`: where `ToWrite` is either a `kz_csv:row()` or `[kz_csv:row()]`. Writes them to output & will pass `Data` on next call.
 * `{binary(), Data}`: writes the binary string to output & will pass `Data` on next call.
 * `{Error, Data}`: attempts to write `Error` as an error to output & will pass `Data` on next call.
@@ -91,8 +92,8 @@ The function must return a valid instance of the type `kz_tasks:return()`:
 
 Examples of both kinds of tasks can be found in
 
-* [kt_numbers](../src/modules/kt_numbers.erl)
-* [kt_services](../src/modules/kt_services.erl)
+* [kt_numbers](https://github.com/2600hz/kazoo/blob/master/applications/tasks/src/modules/kt_numbers.erl)
+* [kt_services](https://github.com/2600hz/kazoo/blob/master/applications/tasks/src/modules/kt_services.erl)
 
 ## Task statuses
 
@@ -126,9 +127,9 @@ There are a number of triggers you can use in your module's `init/0`:
 ### Triggers
 
 - Cron-like
-    - Minutely
-    - Hourly
-    - Daily
+    - Minutely, on the minute
+    - Hourly, on the hour
+    - Daily, at 00:00
 - Database
     - Account DBs
     - Account MODBs
@@ -146,7 +147,7 @@ init() ->
     _ = tasks_bindings:bind(?TRIGGER_ALL_DBS, ?MODULE, 'handle_database').
 ```
 
-Find the trigger macros in [the tasks header](../src/tasks.hrl). This particular example will bind the module's `handle_database/1` to be run each time a database is processed by the [`kz_tasks_trigger`](../src/kz_tasks_trigger.erl) process.
+Find the trigger macros in [the tasks header](https://github.com/2600hz/kazoo/blob/master/applications/tasks/src/tasks.hrl). This particular example will bind the module's `handle_database/1` to be run each time a database is processed by the [`kz_tasks_trigger`](https://github.com/2600hz/kazoo/blob/master/applications/tasks/src/kz_tasks_trigger.erl) process.
 
 Cron triggers will need an arity-0 function to callback to; database triggers call an arity-1 function.
 

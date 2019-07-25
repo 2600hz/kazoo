@@ -58,8 +58,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.users">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"v2_resource.content_types_provided.users">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.users">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v2_resource.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"v2_resource.authenticate.users">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"v2_resource.authorize.users">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"v2_resource.validate_resource.users">>, ?MODULE, 'validate_resource'),
     _ = crossbar_bindings:bind(<<"v2_resource.validate.users">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.put.users">>, ?MODULE, 'put'),
@@ -113,10 +113,14 @@ content_types_provided(Context, _, ?VCARD) ->
                                                                   ]}
                                                    ]);
 content_types_provided(Context, _, ?PHOTO) ->
-    cb_context:set_content_types_provided(Context, [{'to_binary', [{<<"application">>, <<"octet-stream">>}
-                                                                  ,{<<"application">>, <<"base64">>}
-                                                                  ]}
-                                                   ]);
+    case cb_context:method(Context) of
+        ?HTTP_GET -> cb_context:set_content_types_provided(
+                       Context, [{'to_binary', [{<<"application">>, <<"octet-stream">>}
+                                               ,{<<"application">>, <<"base64">>}
+                                               ]}
+                                ]);
+        _ -> Context
+    end;
 content_types_provided(Context, _, _) ->
     Context.
 
@@ -766,7 +770,7 @@ maybe_generated_username_hash('false', _Password, Context) ->
     cb_context:add_validation_error(<<"username">>, <<"required">>, Msg, Context);
 maybe_generated_username_hash('true', Password, Context) ->
     Username = generate_username(),
-    JObj = kzd_users:set_username(Username, cb_context:doc(Context)),
+    JObj = kzd_users:set_username(cb_context:doc(Context), Username),
     rehash_creds(Username, Password, cb_context:set_doc(Context, JObj)).
 
 -spec maybe_generated_creds_hash(boolean(), cb_context:context()) -> cb_context:context().
@@ -774,7 +778,7 @@ maybe_generated_creds_hash('false', Context) ->
     remove_creds(Context);
 maybe_generated_creds_hash('true', Context) ->
     Username = generate_username(),
-    JObj = kzd_users:set_username(Username, cb_context:doc(Context)),
+    JObj = kzd_users:set_username(cb_context:doc(Context), Username),
     rehash_creds(Username, generate_password(), cb_context:set_doc(Context, JObj)).
 
 -spec generate_username() -> kz_term:ne_binary().

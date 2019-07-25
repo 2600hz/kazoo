@@ -3,14 +3,14 @@
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kz_media_proxy_handler).
+-module(media_proxy_handler).
 -behaviour(cowboy_handler).
 
 -export([init/2
         ,terminate/3
         ]).
 
--include("kazoo_media.hrl").
+-include("media.hrl").
 
 -define(STATE(Metadata, MediaBinary)
        ,{Metadata, MediaBinary}

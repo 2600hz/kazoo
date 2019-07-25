@@ -1,0 +1,26 @@
+paths:
+  /accounts/{ACCOUNT_ID}/call_inspector:
+    get:
+      operationId: GetAccountsAccountIdCallInspector
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all call_inspector
+      tags:
+        - call_inspector
+  /accounts/{ACCOUNT_ID}/call_inspector/{CALL_ID}:
+    get:
+      operationId: GetAccountsAccountIdCallInspectorCallId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CALL_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a call_inspector by ID
+      tags:
+        - call_inspector

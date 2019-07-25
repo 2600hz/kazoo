@@ -20,6 +20,11 @@
                     "description": "PEM-encoded key and certificate",
                     "type": "string"
                 },
+                "headers": {
+                    "default": {},
+                    "description": "pusher apple headers",
+                    "type": "object"
+                },
                 "host": {
                     "default": "api.push.apple.com",
                     "description": "APNs server host",
@@ -35,6 +40,11 @@
                 "api_key": {
                     "description": "API Key for firebase",
                     "type": "string"
+                },
+                "headers": {
+                    "default": {},
+                    "description": "pusher firebase headers",
+                    "type": "object"
                 }
             },
             "type": "object"
@@ -46,6 +56,11 @@
                 "api_key": {
                     "description": "API Key for gcm",
                     "type": "string"
+                },
+                "headers": {
+                    "default": {},
+                    "description": "pusher google headers",
+                    "type": "object"
                 }
             },
             "type": "object"

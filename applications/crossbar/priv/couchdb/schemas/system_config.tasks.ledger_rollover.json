@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.tasks.ledger_rollover",
+    "description": "Schema for tasks.ledger_rollover system_config",
+    "properties": {
+        "refresh_in_parallel": {
+            "default": 50,
+            "description": "tasks ledger_rollover refresh_in_parallel",
+            "type": "integer"
+        },
+        "refresh_view_enabled": {
+            "default": false,
+            "description": "tasks ledger_rollover refresh_view_enabled",
+            "type": "boolean"
+        },
+        "rollover_in_parallel": {
+            "default": 10,
+            "description": "How many accounts to rollover per-pass (in parallel)",
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}

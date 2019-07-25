@@ -258,7 +258,7 @@ merge_attributes(Device, <<"device">>, Keys) ->
     Owner = get_user(kz_doc:account_db(Device), Device),
     Endpoint = kz_json:set_value(<<"owner_id">>, kz_doc:id(Owner), Device),
     case kzd_accounts:fetch(kz_doc:account_id(Device)) of
-        {'ok', Account} -> merge_attributes(Keys, Account, Endpoint, Owner);
+        {'ok', Account} -> merge_attributes(Keys, merge_parent_call_restrictions(Account), Endpoint, Owner);
         {'error', _} -> merge_attributes(Keys, kz_json:new(), Endpoint, Owner)
     end;
 merge_attributes(Account, <<"account">>, Keys) ->
@@ -503,26 +503,56 @@ caller_id_owner_attr(Owner) ->
                                      kz_json:object().
 merge_call_restrictions([], _, Endpoint, _) -> Endpoint;
 merge_call_restrictions([Classifier|Classifiers], Account, Endpoint, Owner) ->
-    L = [<<"call_restriction">>, Classifier, <<"action">>],
-    case <<"deny">> =:= kz_json:get_ne_binary_value(L, Account)
-        orelse kz_json:get_value(L, Owner)
-    of
+    case is_classifier_denied(Classifier, [Account, Owner]) of
         'true' ->
-            %% denied at the account level
-            Update = kz_json:set_value(L, <<"deny">>, Endpoint),
+            %% denied at the account or owner level
+            Update = add_denied_classifier(Classifier, Endpoint),
             merge_call_restrictions(Classifiers, Account, Update, Owner);
-        <<"deny">> ->
-            %% denied at the user level
-            Update = kz_json:set_value(L, <<"deny">>, Endpoint),
-            merge_call_restrictions(Classifiers, Account, Update, Owner);
-        <<"allow">> ->
-            %% allowed at the user level
-            Update = kz_json:set_value(L, <<"allow">>, Endpoint),
-            merge_call_restrictions(Classifiers, Account, Update, Owner);
-        _Else ->
-            %% user inherit or no user, either way use the device restrictions
-            merge_call_restrictions(Classifiers, Account, Endpoint, Owner)
+        'false' ->
+            case is_classifier_allowed(Classifier, [Owner]) of
+                'true' ->
+                    %% allowed at the owner level
+                    Update = add_allowed_classifier(Classifier, Endpoint),
+                    merge_call_restrictions(Classifiers, Account, Update, Owner);
+                'false' ->
+                    %% owner inherit or no owner, either way use the device restrictions
+                    merge_call_restrictions(Classifiers, Account, Endpoint, Owner)
+            end
     end.
+
+-spec is_classifier_denied(kz_term:ne_binary(), kz_json:objects()) -> boolean().
+is_classifier_denied(Classifier, JObjs) ->
+    is_classifier_action_set(Classifier, JObjs, <<"deny">>).
+
+-spec is_classifier_allowed(kz_term:ne_binary(), kz_json:objects()) -> boolean().
+is_classifier_allowed(Classifier, JObjs) ->
+    is_classifier_action_set(Classifier, JObjs, <<"allow">>).
+
+-spec is_classifier_action_set(kz_term:ne_binary(), kz_json:objects(), kz_term:ne_binary()) -> boolean().
+is_classifier_action_set(Classifier, JObjs, Action) ->
+    Path = [<<"call_restriction">>, Classifier, <<"action">>],
+    lists:any(fun(JObj) -> Action =:= kz_json:get_ne_binary_value(Path, JObj) end, JObjs).
+
+-spec add_denied_classifier(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+add_denied_classifier(Classifier, JObj) ->
+    Path = [<<"call_restriction">>, Classifier, <<"action">>],
+    kz_json:set_value(Path, <<"deny">>, JObj).
+
+-spec add_allowed_classifier(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+add_allowed_classifier(Classifier, JObj) ->
+    Path = [<<"call_restriction">>, Classifier, <<"action">>],
+    kz_json:set_value(Path, <<"allow">>, JObj).
+
+-spec merge_parent_call_restrictions(kz_json:object()) -> kz_json:object().
+merge_parent_call_restrictions(Account) ->
+    Fun = fun(Parent, Acc) ->
+                  case kzd_accounts:fetch(Parent) of
+                      {'ok', ParentAccount} ->
+                          merge_attributes([<<"call_restriction">>], ParentAccount, Acc, kz_json:new());
+                      {'error', _} -> Acc
+                  end
+          end,
+    lists:foldl(Fun, Account, kzd_accounts:tree(Account)).
 
 -spec get_user(kz_term:ne_binary(), kz_term:api_binary() | kz_json:object()) -> kz_json:object().
 get_user(_AccountDb, 'undefined') -> kz_json:new();
@@ -1666,6 +1696,11 @@ maybe_set_account_id({Endpoint, Call, CallFwd, CCVs}) ->
 maybe_set_call_forward({_Endpoint, _Call, 'undefined', _CCVs}=Acc) ->
     Acc;
 maybe_set_call_forward({Endpoint, Call, CallFwd, CCVs}) ->
+    LoopBackUri = list_to_binary(["sip:"
+                                 ,kz_json:get_value(<<"number">>, CallFwd)
+                                 ,"@"
+                                 ,kapps_call:account_realm(Call)
+                                 ]),
     {Endpoint, Call, CallFwd
     ,kz_json:set_values([{<<"Call-Forward">>, <<"true">>}
                         ,{<<"Authorizing-Type">>, <<"device">>}
@@ -1673,6 +1708,7 @@ maybe_set_call_forward({Endpoint, Call, CallFwd, CCVs}) ->
                         ,{<<"Call-Forward-From">>, kapps_call:inception_type(Call)}
                         ,{<<"Call-Forward-For-UUID">>, kapps_call:other_leg_call_id(Call)}
                         ,{<<"Require-Ignore-Early-Media">>, <<"true">>}
+                        ,{<<"Loopback-Request-URI">>, LoopBackUri}
                         ,{<<"Ignore-Early-Media">>, <<"true">>}
                          | bowout_settings('undefined' =:= kapps_call:call_id_direct(Call))
                         ]
@@ -2004,7 +2040,10 @@ maybe_record_endpoint({Endpoint, Call, CallFwd, Actions} = Acc) ->
             of
                 'false' -> Acc;
                 'true' ->
-                    App = kz_endpoint_recording:record_call_command(kz_doc:id(Endpoint), Inception, Data, Call),
+                    Values = [{<<"origin">>, <<"inbound from ", Inception/binary, " to endpoint">>}
+                             ,{<<"endpoint_id">>, kz_doc:id(Endpoint)}
+                             ],
+                    App = kapps_call_recording:record_call_command(kz_json:set_values(Values, Data), Call),
                     NewActions = kz_json:set_value([<<"Execute-On-Answer">>, <<"Record-Endpoint">>], App, Actions),
                     {Endpoint, Call, CallFwd, NewActions}
             end

@@ -1,0 +1,167 @@
+paths:
+  /accounts/{ACCOUNT_ID}/conferences:
+    get:
+      operationId: GetAccountsAccountIdConferences
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all conferences
+      tags:
+        - conferences
+    put:
+      operationId: PutAccountsAccountIdConferences
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/conferences'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of conferences
+      tags:
+        - conferences
+  /accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdConferencesConferenceId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFERENCE_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of conferences
+      tags:
+        - conferences
+    get:
+      operationId: GetAccountsAccountIdConferencesConferenceId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFERENCE_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a conferences by ID
+      tags:
+        - conferences
+    patch:
+      operationId: PatchAccountsAccountIdConferencesConferenceId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFERENCE_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/conferences'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of conferences
+      tags:
+        - conferences
+    post:
+      operationId: PostAccountsAccountIdConferencesConferenceId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFERENCE_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/conferences'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of conferences
+      tags:
+        - conferences
+    put:
+      operationId: PutAccountsAccountIdConferencesConferenceId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFERENCE_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/conferences'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of conferences
+      tags:
+        - conferences
+  /accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants:
+    get:
+      operationId: GetAccountsAccountIdConferencesConferenceIdParticipants
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFERENCE_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get participants of conferences
+      tags:
+        - conferences
+    put:
+      operationId: PutAccountsAccountIdConferencesConferenceIdParticipants
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFERENCE_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/conferences'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of conferences
+      tags:
+        - conferences
+  /accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}:
+    get:
+      operationId: GetAccountsAccountIdConferencesConferenceIdParticipantsParticipantId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFERENCE_ID'
+        - $ref: '../oas3-parameters.yml#/PARTICIPANT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a conferences by ID
+      tags:
+        - conferences
+    put:
+      operationId: PutAccountsAccountIdConferencesConferenceIdParticipantsParticipantId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/CONFERENCE_ID'
+        - $ref: '../oas3-parameters.yml#/PARTICIPANT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/conferences'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of conferences
+      tags:
+        - conferences

@@ -238,7 +238,7 @@ Note: Phone numbers will involve some internal legs being generated (loopback le
 }
 ```
 
-As when making [QuickCalls](./quickcall.md), you can include `custom_application_vars`:
+As when making [QuickCalls](quickcall.md), you can include `custom_application_vars`:
 
 ```json
 {

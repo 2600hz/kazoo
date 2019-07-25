@@ -44,8 +44,8 @@ maybe_dry_run(Context, CurrentJObj, ProposedJObj) ->
     Services = kz_services:fetch(AuthAccountId),
     Updated = kz_services:set_updates(Services
                                      ,AccountId
-                                     ,CurrentJObj
-                                     ,ProposedJObj
+                                     ,kz_services:to_billables(CurrentJObj)
+                                     ,kz_services:to_billables(ProposedJObj)
                                      ),
     Quotes = kz_services_invoices:create(Updated),
     HasAdditions = kz_services_invoices:has_billable_additions(Quotes),
@@ -135,7 +135,11 @@ update_subscriptions(_Context, _CurrentJObj, _ProposedJObj, 'undefined') ->
 update_subscriptions(Context, CurrentJObj, ProposedJObj, AccountId) ->
     AuditLog = audit_log(Context),
     lager:info("committing updates to ~s", [AccountId]),
-    _ = kz_services:commit_updates(AccountId, CurrentJObj, ProposedJObj, AuditLog),
+    _ = kz_services:commit_updates(AccountId
+                                  ,CurrentJObj
+                                  ,ProposedJObj
+                                  ,AuditLog
+                                  ),
     'ok'.
 
 %%------------------------------------------------------------------------------

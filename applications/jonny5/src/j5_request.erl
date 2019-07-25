@@ -93,7 +93,7 @@
                  ,billing_seconds = 0 :: non_neg_integer()
                  ,answered_time = 0 :: non_neg_integer()
                  ,timestamp = 0 :: kz_time:gregorian_seconds()
-                 ,request_jobj = kz_json:new() :: kz_json:object()
+                 ,request_jobj :: kapi_authz:req()
                  ,request_ccvs = kz_json:new() :: kz_json:object()
                  }).
 -opaque request() :: #request{}.
@@ -103,35 +103,84 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec from_jobj(kz_json:object()) -> request().
-from_jobj(JObj) ->
-    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
+-spec from_jobj(kapi_authz:req()) -> request().
+from_jobj(AuthzReq) ->
+    CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, AuthzReq, kz_json:new()),
 
-    Request = kz_json:get_value(<<"Request">>, JObj),
+    Request = kz_json:get_ne_binary_value(<<"Request">>, AuthzReq),
     [Num|_] = binary:split(Request, <<"@">>),
     Number = request_number(Num, CCVs),
 
-    #request{account_id = kz_json:get_ne_value(<<"Account-ID">>, CCVs)
-            ,account_billing = kz_json:get_ne_value(<<"Account-Billing">>, CCVs, <<"limits_enforced">>)
-            ,reseller_id = kz_json:get_ne_value(<<"Reseller-ID">>, CCVs)
-            ,reseller_billing = kz_json:get_ne_value(<<"Reseller-Billing">>, CCVs, <<"limits_enforced">>)
-            ,call_id = kz_json:get_ne_value(<<"Call-ID">>, JObj)
-            ,call_direction = kz_json:get_value(<<"Call-Direction">>, JObj)
-            ,other_leg_call_id = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj)
-            ,sip_to = kz_json:get_first_defined([<<"To-URI">>, <<"To">>],  JObj)
-            ,sip_from = kz_json:get_ne_value(<<"From">>, JObj)
+    AccountId = kz_json:get_ne_binary_value(<<"Account-ID">>, CCVs),
+
+    #request{account_id = AccountId
+            ,account_billing = ccv_account_billing(CCVs)
+            ,reseller_id = reseller_id(AccountId, CCVs)
+            ,reseller_billing = ccv_reseller_billing(CCVs)
+            ,call_id = kz_api:call_id(AuthzReq)
+            ,call_direction = authz_call_direction(AuthzReq)
+            ,other_leg_call_id = authz_other_call_leg(AuthzReq)
+            ,sip_to = authz_to(AuthzReq)
+            ,sip_from = authz_from(AuthzReq)
             ,sip_request = Request
-            ,message_id = kz_api:msg_id(JObj)
-            ,server_id = kz_api:server_id(JObj)
-            ,node = kz_api:node(JObj)
-            ,billing_seconds = kz_json:get_integer_value(<<"Billing-Seconds">>, JObj, 0)
-            ,answered_time = kz_json:get_integer_value(<<"Answered-Seconds">>, JObj, 0)
-            ,timestamp = kz_json:get_integer_value(<<"Timestamp">>, JObj, kz_time:now_s())
+            ,message_id = kz_api:msg_id(AuthzReq)
+            ,server_id = kz_api:server_id(AuthzReq)
+            ,node = kz_api:node(AuthzReq)
+            ,billing_seconds = authz_billing_seconds(AuthzReq)
+            ,answered_time = authz_answered_time(AuthzReq)
+            ,timestamp = authz_timestamp(AuthzReq)
             ,classification = knm_converters:classify(Number)
             ,number = Number
-            ,request_jobj = JObj
+            ,request_jobj = AuthzReq
             ,request_ccvs = CCVs
             }.
+
+authz_timestamp(AuthzReq) ->
+    case kz_json:get_integer_value(<<"Timestamp">>, AuthzReq) of
+        'undefined' -> kz_time:now_s();
+        TS -> TS
+    end.
+
+-spec authz_answered_time(kapi_authz:req()) -> non_neg_integer().
+authz_answered_time(AuthzReq) ->
+    kz_json:get_integer_value(<<"Answered-Seconds">>, AuthzReq, 0).
+
+-spec authz_billing_seconds(kapi_authz:req()) -> non_neg_integer().
+authz_billing_seconds(AuthzReq) ->
+    kz_json:get_integer_value(<<"Billing-Seconds">>, AuthzReq, 0).
+
+-spec authz_from(kapi_authz:req()) -> kz_term:api_ne_binary().
+authz_from(AuthzReq) ->
+    kz_json:get_ne_binary_value(<<"From">>, AuthzReq).
+
+-spec authz_to(kapi_authz:req()) -> kz_term:api_ne_binary().
+authz_to(AuthzReq) ->
+    kz_json:get_first_defined([<<"To-URI">>, <<"To">>], AuthzReq).
+
+-spec authz_call_direction(kapi_authz:req()) -> kz_term:api_ne_binary().
+authz_call_direction(AuthzReq) ->
+    kz_json:get_ne_binary_value(<<"Call-Direction">>, AuthzReq).
+
+-spec authz_other_call_leg(kapi_authz:req()) -> kz_term:api_ne_binary().
+authz_other_call_leg(AuthzReq) ->
+    kz_json:get_ne_binary_value(<<"Other-Leg-Call-ID">>, AuthzReq).
+
+-spec ccv_account_billing(kapi_authz:req()) -> kz_term:api_ne_binary().
+ccv_account_billing(CCVs) ->
+    kz_json:get_ne_binary_value(<<"Account-Billing">>, CCVs, <<"limits_enforced">>).
+
+-spec ccv_reseller_billing(kapi_authz:req()) -> kz_term:api_ne_binary().
+ccv_reseller_billing(CCVs) ->
+    kz_json:get_ne_binary_value(<<"Reseller-Billing">>, CCVs, <<"limits_enforced">>).
+
+-spec reseller_id(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_ne_binary().
+reseller_id(<<AccountId/binary>>, CCVs) ->
+    case kz_json:get_ne_binary_value(<<"Reseller-ID">>, CCVs) of
+        'undefined' ->
+            lager:debug("failed to find reseller on CCVs, checking account doc"),
+            kzd_accounts:reseller_id(AccountId);
+        ResellerId -> ResellerId
+    end.
 
 -spec from_ccvs(request(), kz_term:proplist()) -> request().
 from_ccvs(#request{request_ccvs=ReqCCVs
@@ -144,13 +193,14 @@ from_ccvs(#request{request_ccvs=ReqCCVs
                    ,request_jobj=kz_json:set_value(<<"Custom-Channel-Vars">>, NewCCVs, ReqJObj)
                    }.
 
-
 -spec request_number(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
 request_number(Number, CCVs) ->
     case kz_json:get_first_defined([<<"E164-Destination">>
                                    ,<<"Original-Number">>
-                                   ], CCVs
-                                  ) of
+                                   ]
+                                  ,CCVs
+                                  )
+    of
         'undefined' -> Number;
         Original ->
             lager:debug("using original number ~s instead of ~s", [Original, Number]),
@@ -166,22 +216,19 @@ ccvs(#request{request_ccvs=CCVs}) -> CCVs.
 %%------------------------------------------------------------------------------
 -spec to_jobj(request()) -> kz_json:object().
 to_jobj(Request) ->
-    Props =
-        props:filter_undefined(
-          [{<<"account_id">>, account_id(Request)}
-          ,{<<"reseller_id">>, reseller_id(Request)}
-          ,{<<"call_direction">>, call_direction(Request)}
-          ,{<<"call_id">>, call_id(Request)}
-          ,{<<"other_leg_call_id">>, other_leg_call_id(Request)}
-          ,{<<"answered_time">>, answered_time(Request)}
-          ,{<<"billing_seconds">>, billing_seconds(Request)}
-          ,{<<"from">>, from(Request)}
-          ,{<<"to">>, to(Request)}
-          ,{<<"number">>, ?MODULE:number(Request)}
-          ,{<<"classification">>, classification(Request)}
-          ]
-         ),
-    kz_json:from_list(Props).
+    kz_json:from_list([{<<"account_id">>, account_id(Request)}
+                      ,{<<"reseller_id">>, reseller_id(Request)}
+                      ,{<<"call_direction">>, call_direction(Request)}
+                      ,{<<"call_id">>, call_id(Request)}
+                      ,{<<"other_leg_call_id">>, other_leg_call_id(Request)}
+                      ,{<<"answered_time">>, answered_time(Request)}
+                      ,{<<"billing_seconds">>, billing_seconds(Request)}
+                      ,{<<"from">>, from(Request)}
+                      ,{<<"to">>, to(Request)}
+                      ,{<<"number">>, ?MODULE:number(Request)}
+                      ,{<<"classification">>, classification(Request)}
+                      ]
+                     ).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -192,11 +239,13 @@ authorize(Reason
          ,#request{reseller_id=AccountId
                   ,account_id=AccountId
                   }=Request
-         ,_Limits) ->
+         ,_Limits
+         ) ->
     authorized_by_account(Reason, Request);
 authorize(Reason
          ,#request{reseller_id=ResellerId}=Request
-         ,Limits) ->
+         ,Limits
+         ) ->
     case j5_limits:account_id(Limits) of
         ResellerId ->
             authorized_by_reseller(Reason, Request);
@@ -206,18 +255,16 @@ authorize(Reason
 
 -spec authorized_by_reseller(kz_term:ne_binary(), request()) -> request().
 authorized_by_reseller(Reason, #request{reseller_id=_ResellerId}=Request) ->
-    lager:debug("reseller ~s authorized channel: ~s"
-               ,[_ResellerId, Reason]
-               ),
+    lager:debug("reseller ~s authorized channel: ~s", [_ResellerId, Reason]),
+
     Request#request{reseller_billing=Reason
                    ,reseller_authorized='true'
                    }.
 
 -spec authorized_by_account(kz_term:ne_binary(), request()) -> request().
 authorized_by_account(Reason, #request{account_id=_AccountId}=Request) ->
-    lager:debug("account ~s authorized channel: ~s"
-               ,[_AccountId, Reason]
-               ),
+    lager:debug("account ~s authorized channel: ~s", [_AccountId, Reason]),
+
     Request#request{account_billing=Reason
                    ,account_authorized='true'
                    }.
@@ -239,19 +286,16 @@ deny(Reason
     ,#request{reseller_id=ResellerId
              ,account_id=AccountId
              }=Request
-    ,Limits) ->
+    ,Limits
+    ) ->
     case j5_limits:account_id(Limits) =:= ResellerId of
         'true' ->
-            lager:debug("reseller ~s denied channel: ~s"
-                       ,[ResellerId, Reason]
-                       ),
+            lager:debug("reseller ~s denied channel: ~s", [ResellerId, Reason]),
             Request#request{reseller_billing=Reason
                            ,reseller_authorized='false'
                            };
         'false' ->
-            lager:debug("account ~s denied channel: ~s"
-                       ,[AccountId, Reason]
-                       ),
+            lager:debug("account ~s denied channel: ~s", [AccountId, Reason]),
             Request#request{account_billing=Reason
                            ,account_authorized='false'
                            }
@@ -259,18 +303,14 @@ deny(Reason
 
 -spec deny_account(kz_term:ne_binary(), request()) -> request().
 deny_account(Reason, #request{account_id=AccountId}=Request) ->
-    lager:debug("account ~s denied channel: ~s"
-               ,[AccountId, Reason]
-               ),
+    lager:debug("account ~s denied channel: ~s", [AccountId, Reason]),
     Request#request{account_billing=Reason
                    ,account_authorized='false'
                    }.
 
 -spec deny_reseller(kz_term:ne_binary(), request()) -> request().
 deny_reseller(Reason, #request{reseller_id=ResellerId}=Request) ->
-    lager:debug("reseller ~s denied channel: ~s"
-               ,[ResellerId, Reason]
-               ),
+    lager:debug("reseller ~s denied channel: ~s", [ResellerId, Reason]),
     Request#request{reseller_billing=Reason
                    ,reseller_authorized='false'
                    }.
@@ -283,7 +323,8 @@ deny_reseller(Reason, #request{reseller_id=ResellerId}=Request) ->
 is_authorized(#request{account_id=AccountId
                       ,account_authorized=Authorized
                       ,reseller_id=AccountId
-                      }) -> Authorized;
+                      }) ->
+    Authorized;
 is_authorized(#request{account_authorized=AccountAuthorized
                       ,reseller_authorized=ResellerAuthorized
                       }) ->
@@ -295,7 +336,8 @@ is_authorized(#request{account_authorized=AccountAuthorized
                       ,reseller_id=ResellerId
                       ,reseller_authorized=ResellerAuthorized
                       }
-             ,Limits) ->
+             ,Limits
+             ) ->
     case j5_limits:account_id(Limits) =:= ResellerId of
         'true' -> ResellerAuthorized;
         'false' -> AccountAuthorized
@@ -332,7 +374,8 @@ billing(#request{account_billing=AccountBilling
                 ,reseller_id=ResellerId
                 ,reseller_billing=ResellerBilling
                 }
-       ,Limits) ->
+       ,Limits
+       ) ->
     case j5_limits:account_id(Limits) =:= ResellerId of
         'true' -> ResellerBilling;
         'false' -> AccountBilling
@@ -458,24 +501,24 @@ number(#request{number=Number}) -> Number.
 %% @end
 %%------------------------------------------------------------------------------
 -spec per_minute_cost(request()) -> non_neg_integer().
-per_minute_cost(#request{request_jobj=JObj}) ->
-    kapps_call_util:per_minute_cost(JObj).
+per_minute_cost(#request{request_jobj=AuthzReq}) ->
+    kapps_call_util:per_minute_cost(AuthzReq).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
 -spec call_cost(request()) -> non_neg_integer().
-call_cost(#request{request_jobj=JObj}) ->
-    kapps_call_util:call_cost(JObj).
+call_cost(#request{request_jobj=AuthzReq}) ->
+    kapps_call_util:call_cost(AuthzReq).
 
 -spec calculate_call(request()) -> {non_neg_integer(), non_neg_integer()}.
-calculate_call(#request{request_jobj=JObj}) ->
-    kapps_call_util:calculate_call(JObj).
+calculate_call(#request{request_jobj=AuthzReq}) ->
+    kapps_call_util:calculate_call(AuthzReq).
 
 -spec caller_network_address(request()) -> kz_term:api_binary().
-caller_network_address(#request{request_jobj=JObj}) ->
-    kz_json:get_value(<<"From-Network-Addr">>, JObj).
+caller_network_address(#request{request_jobj=AuthzReq}) ->
+    kz_json:get_value(<<"From-Network-Addr">>, AuthzReq).
 
 -spec rate(request()) -> integer().
 rate(#request{request_ccvs=CCVs}) ->
@@ -502,20 +545,20 @@ rate_nocharge_time(#request{request_ccvs=CCVs}) ->
     kz_json:get_integer_value(<<"Rate-NoCharge-Time">>, CCVs, 0).
 
 -spec caller_id_number(request()) -> kz_term:api_binary().
-caller_id_number(#request{request_jobj=JObj}) ->
-    kz_json:get_value(<<"Caller-ID-Number">>, JObj).
+caller_id_number(#request{request_jobj=AuthzReq}) ->
+    kz_json:get_value(<<"Caller-ID-Number">>, AuthzReq).
 
 -spec caller_id_name(request()) -> kz_term:api_binary().
-caller_id_name(#request{request_jobj=JObj}) ->
-    kz_json:get_value(<<"Caller-ID-Name">>, JObj).
+caller_id_name(#request{request_jobj=AuthzReq}) ->
+    kz_json:get_value(<<"Caller-ID-Name">>, AuthzReq).
 
 -spec callee_id_number(request()) -> kz_term:api_binary().
-callee_id_number(#request{request_jobj=JObj}) ->
-    kz_json:get_value(<<"Callee-ID-Number">>, JObj).
+callee_id_number(#request{request_jobj=AuthzReq}) ->
+    kz_json:get_value(<<"Callee-ID-Number">>, AuthzReq).
 
 -spec callee_id_name(request()) -> kz_term:api_binary().
-callee_id_name(#request{request_jobj=JObj}) ->
-    kz_json:get_value(<<"Callee-ID-Name">>, JObj).
+callee_id_name(#request{request_jobj=AuthzReq}) ->
+    kz_json:get_value(<<"Callee-ID-Name">>, AuthzReq).
 
 -spec resource_type(request()) -> kz_term:api_binary().
 resource_type(#request{request_ccvs=CCVs}) ->

@@ -109,6 +109,7 @@
              ,db_classification/0
              ,update_option/0, update_options/0
              ,get_results_return/0
+             ,paginated_results/0
              ]).
 
 -deprecated({'ensure_saved', '_', 'eventually'}).
@@ -1304,19 +1305,35 @@ get_results_count(DbName, DesignDoc, Options) ->
                                  'not_registered' | kz_json:object().
 get_registered_view(Plan, DbName, DesignDoc) ->
     Classification = kz_term:to_binary(kzs_util:db_classification(DbName)),
-    Keys = [[Classification, DesignDoc]
-           ,[DbName, DesignDoc]
-           ],
-    Opts = ['include_docs'
-           ,{'keys', Keys}
-           ],
-    case kzs_view:get_results(Plan, ?KZ_DATA_DB, <<"views/registered">>, Opts) of
+
+    Keys = registration_keys(DbName, DesignDoc, Classification),
+    Options = registration_options(Keys),
+
+    case query_registered_views(Plan, Options) of
         {'ok', []} -> 'not_registered';
         {'ok', [JObj | _]} -> kz_json:get_json_value(<<"doc">>, JObj);
         {'error', _Err} ->
             lager:error("error getting registered view : ~p", [_Err]),
             'not_registered'
     end.
+
+-spec query_registered_views(map(), view_options()) -> {'ok', kz_json:objects()} |
+                                                       data_error().
+query_registered_views(Plan, Options) ->
+    kzs_view:get_results(Plan, ?KZ_DATA_DB, <<"views/registered">>, Options).
+
+-spec registration_options([[kz_term:ne_binary()]]) -> view_options().
+registration_options(Keys) ->
+    ['include_docs'
+    ,{'keys', Keys}
+    ].
+
+-spec registration_keys(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                               [[kz_term:ne_binary()]].
+registration_keys(DbName, DesignDoc, Classification) ->
+    [[Classification, DesignDoc]
+    ,[DbName, DesignDoc]
+    ].
 
 -spec maybe_create_view(map(), kz_term:ne_binary(), kz_term:ne_binary(), view_options()) -> get_results_return().
 maybe_create_view(Plan, DbName, DesignDoc, Options) ->
@@ -1472,6 +1489,9 @@ get_result_docs(DbName, DesignDoc, Keys) ->
 %% @end
 %%------------------------------------------------------------------------------
 -type paginate_options() :: [{'page_size', pos_integer()}] | view_options().
+-type paginated_results() :: {'ok', kz_json:objects(), kz_json:api_json_term()} |
+                             data_error().
+
 -spec paginate_results(kz_term:ne_binary(), kz_term:ne_binary(), paginate_options()) ->
                               {'ok', kz_json:objects(), kz_json:api_json_term()} |
                               data_error().

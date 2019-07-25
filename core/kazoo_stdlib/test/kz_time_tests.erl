@@ -54,7 +54,7 @@ to_x_test_() ->
 
 pretty_print_datetime_test_() ->
     TS = 63652662294,
-    [?_assertEqual(<<"2017-01-26_15-04-54">>, kz_time:pretty_print_datetime(TS))
+    [?_assertEqual(<<"2017-01-26_15:04:54">>, kz_time:pretty_print_datetime(TS))
     ].
 
 weekday_test_() ->

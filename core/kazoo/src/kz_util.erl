@@ -31,7 +31,7 @@
 -export([put_callid/1, get_callid/0, find_callid/1
         ,spawn/1, spawn/2
         ,spawn_link/1, spawn_link/2
-        ,spawn_monitor/2
+        ,spawn_monitor/2, spawn_monitor/3
         ,set_startup/0, startup/0
         ]).
 -export([get_event_type/1]).
@@ -419,15 +419,15 @@ kz_log_md_clear() ->
 %% If time is elapsed, the sub-process is killed and returns `timeout'.
 %% @end
 %%------------------------------------------------------------------------------
--spec runs_in(number(), fun(), list()) -> {ok, any()} | timeout.
+-spec runs_in(number(), fun(), list()) -> {'ok', any()} | 'timeout'.
 runs_in(MaxTime, Fun, Arguments)
   when is_integer(MaxTime), MaxTime > 0 ->
     {Parent, Ref} = {self(), erlang:make_ref()},
     Child = ?MODULE:spawn(fun () -> Parent ! {Ref, erlang:apply(Fun, Arguments)} end),
-    receive {Ref, Result} -> {ok, Result}
+    receive {Ref, Result} -> {'ok', Result}
     after MaxTime ->
-            exit(Child, kill),
-            timeout
+            exit(Child, 'kill'),
+            'timeout'
     end;
 runs_in(MaxTime, Fun, Arguments)
   when is_number(MaxTime), MaxTime > 0 ->
@@ -471,6 +471,14 @@ spawn_monitor(Fun, Arguments) ->
     erlang:spawn_monitor(fun () ->
                                  _ = put_callid(CallId),
                                  erlang:apply(Fun, Arguments)
+                         end).
+
+-spec spawn_monitor(module(), atom(), list()) -> kz_term:pid_ref().
+spawn_monitor(Module, Fun, Args) ->
+    CallId = get_callid(),
+    erlang:spawn_monitor(fun () ->
+                                 _ = put_callid(CallId),
+                                 erlang:apply(Module, Fun, Args)
                          end).
 
 
@@ -688,14 +696,23 @@ process_fold(App, App, _, Others) ->
     process_fold(Others, App);
 process_fold(App, _, M, _) -> {App, M}.
 
+-spec calling_app_stacktrace() -> any().
+calling_app_stacktrace() ->
+    try throw('get_stacktrace')
+    catch
+        _E:_R:ST ->
+            [_Me | Others] = ST,
+            Others
+    end.
+
 %%------------------------------------------------------------------------------
 %% @doc For core applications that want to know which app is calling.
 %% @end
 %%------------------------------------------------------------------------------
 -spec calling_app() -> kz_term:ne_binary().
 calling_app() ->
-    Modules = erlang:process_info(self(),current_stacktrace),
-    {'current_stacktrace', [_Me, {Module, _, _, _} | Start]} = Modules,
+    Modules = calling_app_stacktrace(),
+    [_Me, {Module, _, _, _} | Start] = Modules,
     {'ok', App} = application:get_application(Module),
     case process_fold(Start, App) of
         App -> kz_term:to_binary(App);
@@ -704,20 +721,14 @@ calling_app() ->
 
 -spec calling_app_version() -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 calling_app_version() ->
-    Modules = erlang:process_info(self(),current_stacktrace),
-    {'current_stacktrace', [_Me, {Module, _, _, _} | Start]} = Modules,
-    {'ok', App} = application:get_application(Module),
-    NewApp = case process_fold(Start, App) of
-                 App -> App;
-                 {Parent, _MFA} -> Parent
-             end,
-    {NewApp, _, Version} = get_app(NewApp),
+    {'ok', App} = application:get_application(self()),
+    {NewApp, _, Version} = get_app(App),
     {kz_term:to_binary(NewApp), kz_term:to_binary(Version)}.
 
 -spec calling_process() -> map().
 calling_process() ->
-    Modules = erlang:process_info(self(),current_stacktrace),
-    {'current_stacktrace', [_Me, {Module, _, _, _}=M | Start]} = Modules,
+    Modules = calling_app_stacktrace(),
+    [_Me, {Module, _, _, _}=M | Start] = Modules,
     App = case application:get_application(Module) of
               {'ok', KApp} -> KApp;
               'undefined' -> Module

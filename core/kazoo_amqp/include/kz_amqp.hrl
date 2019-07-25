@@ -214,6 +214,7 @@
                             ,started = os:timestamp() :: kz_time:now() | '_'
                             ,tags = [] :: list() | '_'
                             ,hidden = 'false' :: boolean() | '_'
+                            ,exchanges = #{} :: map() | '_'
                             }).
 -type kz_amqp_connection() :: #kz_amqp_connection{}.
 

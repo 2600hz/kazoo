@@ -94,13 +94,17 @@ total_sources_from_previous(Account) ->
     total_sources(Account, PreviousYear, PreviousMonth).
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Fetch total units for the MODB
+%%
+%% On an un-indexed MODB with 12,000 documents (381 of which are ledger docs)
+%% it took about 6s to index and return the view results. On the same database
+%% after indexing, 70ms.
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_sources_total(kz_term:ne_binary(), kazoo_modb:view_options()) ->
                                kz_currency:available_units_return().
 get_sources_total(Account, Options) ->
-    View = <<"ledgers/total_by_source">>,
+    View = ?TOTAL_BY_SOURCE,
     ViewOptions = ['reduce'
                   ,{'group_level', 1}
                   ,'missing_as_error'
@@ -108,6 +112,9 @@ get_sources_total(Account, Options) ->
                   ],
     case kazoo_modb:get_results(Account, View, ViewOptions) of
         {'ok', []} ->
+            lager:info("missing ledgers from ~s: ~p/~p"
+                      ,[Account, props:get_value('year', ViewOptions), props:get_value('month', ViewOptions)]
+                      ),
             {'error', 'missing_ledgers'};
         {'ok', JObjs} ->
             sum_sources(JObjs);
@@ -128,6 +135,7 @@ get_sources_total(Account, Options) ->
 sum_sources(JObjs) ->
     case lists:foldl(fun sum_sources_foldl/2, {'false', 0}, JObjs) of
         {'false', _Total} ->
+            lager:info("failed to sum sources"),
             {'error', 'missing_rollover'};
         {'true', Total} -> {'ok', Total}
     end.
@@ -353,7 +361,7 @@ migrate_legacy_rollover(Account, Options, Year, Month) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc given the current Year/Month, rollover last month's ledgers
 %% @end
 %%------------------------------------------------------------------------------
 -spec rollover(kz_term:ne_binary()) -> {'ok', kz_ledger:ledger()} |
@@ -362,15 +370,22 @@ rollover(Account) ->
     {Year, Month, _} = erlang:date(),
     rollover(Account, Year, Month).
 
+%%------------------------------------------------------------------------------
+%% @doc rollover the previous MODBs ledgers into the given year/month
+%% @end
+%%------------------------------------------------------------------------------
 -spec rollover(kz_term:ne_binary(),  kz_time:year(), kz_time:month()) ->
                       {'ok', kz_ledger:ledger()} |
                       {'error', any()}.
 rollover(Account, Year, Month) ->
+    MODB = kz_util:format_account_id(Account, Year, Month),
+
     case should_rollover_monthly_balance() of
-        'true' -> rollover_past_available_units(Account, Year, Month);
+        'true' ->
+            rollover_past_available_units(MODB, Year, Month);
         'false' ->
-            lager:debug("monthly balance rollover is disabled, assuming previous balance was 0", []),
-            rollover(Account, Year, Month, 0)
+            lager:debug("monthly balance rollover is disabled, assuming previous balance was 0"),
+            rollover(MODB, Year, Month, 0)
     end.
 
 -spec rollover_past_available_units(kz_term:ne_binary(),  kz_time:year(), kz_time:month()) ->
@@ -379,12 +394,18 @@ rollover(Account, Year, Month) ->
 rollover_past_available_units(Account, Year, Month) ->
     {PreviousYear, PreviousMonth} =
         kazoo_modb_util:prev_year_month(Year, Month),
+
+    lager:info("rolling over previous month ~p:~p", [PreviousYear, PreviousMonth]),
+
     case kz_currency:past_available_units(Account, PreviousYear, PreviousMonth) of
         {'error', 'db_not_found'} ->
+            lager:info("failed to find previous month's available units, no modb"),
             rollover(Account, Year, Month, 0);
         {'error', _R} = Error ->
+            lager:info("failed to find previous month's available units: ~p", [_R]),
             Error;
         {'ok', Total} ->
+            lager:info("previous month's total: ~p", [Total]),
             rollover(Account, Year, Month, Total)
     end.
 
@@ -404,7 +425,7 @@ rollover(Account, Year, Month, Total) ->
           ,{fun kz_ledger:set_period_start/2, kz_time:now_s()}
           ,{fun kz_ledger:set_metadata/2, Metadata}
           ,{fun kz_ledger:set_unit_amount/2, Total}
-          ,{fun kz_ledger:set_id/2, ?ROLLOVER_ID(Year,Month)}
+          ,{fun kz_ledger:set_id/2, ?ROLLOVER_ID(Year, Month)}
           ,{fun kz_ledger:set_ledger_type/2, ledger_type(Total)}
           ,{fun kz_ledger:set_executor_trigger/2, <<"automatic">>}
           ,{fun kz_ledger:set_executor_module/2, ?MODULE}
@@ -422,8 +443,8 @@ rollover(Account, Year, Month, Total) ->
                           ],
             get_sources_total(Account, ViewOptions);
         {'error', 'conflict'} ->
-            lager:info("ledger rollover for ~s ~p-~p exists already"
-                      ,[Account, Year, Month]
+            lager:info("ledger rollover ~s for ~s ~p-~p exists already"
+                      ,[kz_doc:id(LedgerJObj), Account, Year, Month]
                       ),
             ViewOptions = [{'year', Year}
                           ,{'month', Month}

@@ -338,7 +338,7 @@ handle_cast('transfer', State) ->
 handle_cast('control_usurped', State) ->
     {'stop', {'shutdown', 'control_usurped'}, State};
 handle_cast({'branch', NewFlow}, State) ->
-    lager:info("callflow has been branched"),
+    lager:info("textflow has been branched"),
     {'noreply', launch_cf_module(State#state{flow=NewFlow})};
 handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
     kz_util:put_callid(NewCallId),
@@ -523,29 +523,13 @@ get_pid(_) -> 'undefined'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
-terminate({'shutdown', 'transfer'}, _) ->
-    lager:info("callflow execution has been transferred");
-terminate({'shutdown', 'control_usurped'}, _) ->
-    lager:info("the call has been usurped by an external process");
-terminate(_Reason, #state{call=Call
-                         ,cf_module_pid='undefined'
+terminate(_Reason, #state{cf_module_pid='undefined'
                          }) ->
-    hangup_call(Call),
-    lager:info("callflow execution has been stopped: ~p", [_Reason]);
-terminate(_Reason, #state{call=Call
-                         ,cf_module_pid={Pid, _}
+    lager:info("textflow execution has been stopped: ~p", [_Reason]);
+terminate(_Reason, #state{cf_module_pid={Pid, _}
                          }) ->
     exit(Pid, 'kill'),
-    hangup_call(Call),
-    lager:info("callflow execution has been stopped: ~p", [_Reason]).
-
--spec hangup_call(kapps_call:call()) -> 'ok'.
-hangup_call(Call) ->
-    Cmd = [{<<"Event-Name">>, <<"command">>}
-          ,{<<"Event-Category">>, <<"call">>}
-          ,{<<"Application-Name">>, <<"hangup">>}
-          ],
-    send_command(Cmd, kapps_call:control_queue_direct(Call), kapps_call:call_id_direct(Call)).
+    lager:info("textflow execution has been stopped: ~p", [_Reason]).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.
@@ -608,7 +592,7 @@ maybe_start_cf_module(ModuleBin, Data, Call) ->
 -spec cf_module_skip(CFModule, kapps_call:call()) ->
                             {'undefined', CFModule}.
 cf_module_skip(CFModule, _Call) ->
-    lager:error("unknown callflow action '~s', skipping to next action", [CFModule]),
+    lager:info("unknown textflow action '~s', skipping to next action", [CFModule]),
     continue(self()),
     {'undefined', CFModule}.
 
@@ -649,15 +633,6 @@ cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
 send_amqp_message(API, PubFun, Q) ->
     PubFun(add_server_id(API, Q)).
 
--spec send_command(kz_term:proplist(), kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
-send_command(_, 'undefined', _) -> 'ok';
-send_command(_, _, 'undefined') -> 'ok';
-send_command(Command, ControlQ, CallId) ->
-    Props = Command ++ [{<<"Call-ID">>, CallId}
-                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                       ],
-    kz_amqp_worker:cast(Props, fun(P) -> kapi_dialplan:publish_command(ControlQ, P) end).
-
 -spec add_server_id(kz_term:api_terms(), kz_term:ne_binary()) -> kz_term:api_terms().
 add_server_id(API, Q) when is_list(API) ->
     [{<<"Server-ID">>, Q} | props:delete(<<"Server-ID">>, API)];
@@ -666,7 +641,7 @@ add_server_id(API, Q) ->
 
 -spec log_call_information(kapps_call:call()) -> 'ok'.
 log_call_information(Call) ->
-    lager:info("executing callflow ~s", [kapps_call:kvs_fetch('cf_flow_id', Call)]),
+    lager:info("executing flow ~s", [kapps_call:kvs_fetch('cf_flow_id', Call)]),
     lager:info("account id ~s", [kapps_call:account_id(Call)]),
     lager:info("request ~s", [kapps_call:request(Call)]),
     lager:info("to ~s", [kapps_call:to(Call)]),

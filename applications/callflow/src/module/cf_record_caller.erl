@@ -32,7 +32,7 @@
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Url = kz_json:get_value(<<"url">>, Data),
-    case kzc_recording:should_store_recording(kapps_call:account_id(Call), Url) of
+    case kapps_call_recording:should_store_recording(kapps_call:account_id(Call), Url) of
         'false' ->
             lager:debug("cannot store the recording, bad or no URL"),
             cf_exe:continue(Call);
@@ -46,15 +46,15 @@ handle(Data, Call) ->
 record_caller(Data, Call, Url) ->
     kapps_call_command:answer_now(Call),
 
-    Format = kzc_recording:get_format(kz_json:get_value(<<"format">>, Data)),
-    MediaName = kzc_recording:get_media_name(kapps_call:call_id(Call), Format),
+    Format = kapps_call_recording:get_format(kz_json:get_value(<<"format">>, Data)),
+    MediaName = kapps_call_recording:get_media_name(kapps_call:call_id(Call), Format),
 
     _ = set_recording_url(Data, Call, Url, MediaName),
 
     lager:info("recording caller starting"),
     _ = kapps_call_command:b_record(MediaName
                                    ,?ANY_DIGIT
-                                   ,kzc_recording:get_timelimit(Data)
+                                   ,kapps_call_recording:get_timelimit(Data)
                                    ,Call
                                    ),
     lager:debug("recording caller ended").

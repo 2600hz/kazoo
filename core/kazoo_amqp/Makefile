@@ -1,4 +1,5 @@
-ROOT = ../..
+CWD = $(shell pwd -P)
+ROOT = $(realpath $(CWD)/../..)
 PROJECT = kazoo_amqp
 
 SOURCES = src/gen_listener.erl $(wildcard src/*.erl) $(wildcard src/*/*.erl)

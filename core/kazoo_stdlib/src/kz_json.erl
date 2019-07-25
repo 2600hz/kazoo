@@ -171,7 +171,7 @@ decode(JSON, <<"application/json">>) ->
     try unsafe_decode(JSON)
     catch
         _:{'invalid_json', {'error', {_Loc, _Msg}}, _JSON} ->
-            lager:error_unsafe("decode error ~s near char # ~b => ~s", [_Msg, _Loc, JSON]),
+            lager:error_unsafe("decode error ~s near char # ~b => ~s", [_Msg, _Loc, binary:part(JSON, _Loc-5, 25)]),
             new()
     end.
 
@@ -685,9 +685,9 @@ recursive_to_proplist(Else) -> Else.
 %% @end
 %%------------------------------------------------------------------------------
 
--spec to_map(object() | objects()) -> map().
+-spec to_map(object() | objects()) -> map() | list(map()).
 to_map(JObjs) when is_list(JObjs) ->
-    lists:foldl(fun to_map_fold/2, #{}, JObjs);
+    jiffy:decode(encode(JObjs), [return_maps]);
 to_map(JObj) ->
     recursive_to_map(JObj).
 
@@ -696,9 +696,6 @@ to_map(JObj) ->
 -spec to_map(get_key(), object() | objects()) -> map().
 to_map(Key, JObj) ->
     recursive_to_map(get_json_value(Key, JObj, new())).
-
-to_map_fold(JObj, #{}=Map) ->
-    maps:merge(Map, recursive_to_map(JObj)).
 
 -spec recursive_to_map(object() | objects() | kz_term:proplist()) -> map().
 recursive_to_map(?JSON_WRAPPER(Props)) ->

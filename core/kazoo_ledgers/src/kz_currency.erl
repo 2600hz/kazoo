@@ -28,7 +28,6 @@
         ,rollover/3
         ,rollover/4
         ]).
--export([modb/1]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
@@ -192,12 +191,3 @@ rollover(Account, Year, Month) ->
                       available_units_return().
 rollover(Account, Year, Month, Units) ->
     kz_ledgers:rollover(Account, Year, Month, Units).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec modb(kz_term:ne_binary()) -> available_units_return().
-modb(MODb) ->
-    {Account, Year, Month} = kazoo_modb_util:split_account_mod(MODb),
-    rollover(Account, Year, Month).

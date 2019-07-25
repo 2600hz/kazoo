@@ -181,11 +181,12 @@ maybe_fire_foldl(Key, Value, {_ShouldFire, JObj}) ->
 fire_hook(JObj, #webhook{custom_data = 'undefined'
                         } = Hook) ->
     EventId = kz_binary:rand_hex(5),
-    do_fire(Hook, EventId, JObj);
+    NewJObj = kz_json:set_value(<<"cluster_id">>, kzd_cluster:id(), JObj),
+    do_fire(Hook, EventId, NewJObj);
 fire_hook(JObj, #webhook{custom_data = CustomData
                         } = Hook) ->
-    EventId = kz_binary:rand_hex(5),
-    do_fire(Hook, EventId, kz_json:merge_jobjs(CustomData, JObj)).
+    NewJObj = kz_json:merge_jobjs(CustomData, JObj),
+    fire_hook(NewJObj, Hook#webhook{custom_data = 'undefined'}).
 
 -spec do_fire(webhook(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 do_fire(#webhook{uri = ?NE_BINARY = URI
@@ -210,11 +211,29 @@ do_fire(#webhook{uri = ?NE_BINARY = URI
                 ,retries = Retries
                 ,hook_event = _HookEvent
                 ,hook_id = _HookId
+                ,format = 'form-data'
                 } = Hook, EventId, JObj) ->
     lager:debug("sending hook ~s(~s) with interaction id ~s via 'post' (retries ~b): ~s", [_HookEvent, _HookId, EventId, Retries, URI]),
 
     Body = kz_http_util:json_to_querystring(JObj),
     Headers = [{"Content-Type", "application/x-www-form-urlencoded"}
+               | ?HTTP_REQ_HEADERS(Hook)
+              ],
+    Debug = debug_req(Hook, EventId, URI, Headers, Body),
+    Fired = kz_http:post(URI, Headers, Body, ?HTTP_OPTS),
+
+    handle_resp(Hook, EventId, JObj, Debug, Fired);
+do_fire(#webhook{uri = ?NE_BINARY = URI
+                ,http_verb = 'post'
+                ,retries = Retries
+                ,hook_event = _HookEvent
+                ,hook_id = _HookId
+                ,format = 'json'
+                } = Hook, EventId, JObj) ->
+    lager:debug("sending hook ~s(~s) with interaction id ~s via 'post' (retries ~b): ~s", [_HookEvent, _HookId, EventId, Retries, URI]),
+
+    Body = kz_json:encode(JObj, ['pretty']),
+    Headers = [{"Content-Type", "application/json"}
                | ?HTTP_REQ_HEADERS(Hook)
               ],
     Debug = debug_req(Hook, EventId, URI, Headers, Body),
@@ -576,6 +595,7 @@ jobj_to_rec(Hook) ->
             ,include_loopback = kzd_webhook:include_internal_legs(Hook)
             ,custom_data = kzd_webhook:custom_data(Hook)
             ,modifiers = kzd_webhook:modifiers(Hook)
+            ,format = kzd_webhook:format(Hook)
             }.
 
 -spec init_webhooks() -> 'ok'.
@@ -757,3 +777,4 @@ fetch_available_events() ->
             kz_cache:store_local(?CACHE_NAME, ?AVAILABLE_EVENT_KEY, Events, CacheProps),
             Events
     end.
+

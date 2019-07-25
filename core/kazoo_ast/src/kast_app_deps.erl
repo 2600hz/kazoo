@@ -467,7 +467,19 @@ remote_calls_from_expression(?MAP_UPDATE(_Var, Exprs), Acc) ->
 remote_calls_from_expression(?MAP_FIELD_ASSOC(K, V), Acc) ->
     remote_calls_from_expressions([K, V], Acc);
 remote_calls_from_expression(?MAP_FIELD_EXACT(K, V), Acc) ->
-    remote_calls_from_expressions([K, V], Acc).
+    remote_calls_from_expressions([K, V], Acc);
+remote_calls_from_expression(?GEN_FUN_ARGS(
+                                ?GEN_FUN_ARGS(
+                                   ?MOD_FUN(M0, _F0),
+                                   [?GEN_FUN_ARGS(?GEN_MOD_FUN(?ATOM(M1), ?ATOM(_F1)), _Args1)
+                                   ,_Arg0
+                                   ,?MFA(M2, _F2, _Arity2)
+                                   ]
+                                  )
+                               ,_Args0
+                               ), Acc) ->
+    lists:foldl(fun add_remote_module/2, Acc, [M0, M1, M2]).
+
 
 add_remote_module(?ATOM(M)=_A, Acc) ->
     add_remote_module(M, Acc);

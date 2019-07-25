@@ -48,7 +48,7 @@ start_link(#kz_amqp_connection{}=Connection) ->
 get_connection(Srv) ->
     gen_server:call(Srv, 'get_connection').
 
--spec new_exchange(pid(), kz_amqp_exchange()) -> 'ok'.
+-spec new_exchange(pid(), kz_amqp_exchange()) -> 'ok' | {'error', any()}.
 new_exchange(Srv, Exchange) ->
     gen_server:call(Srv, {'new_exchange', Exchange}).
 
@@ -88,17 +88,21 @@ handle_call('get_connection', _, Connection) ->
     {'reply', Connection, Connection};
 handle_call('stop', _, Connection) ->
     {'stop', 'normal', 'ok', disconnected(Connection)};
-handle_call({'new_exchange', _}
+handle_call({'new_exchange', _Exchange}
            ,_From
            ,#kz_amqp_connection{available='false'}=Connection
            ) ->
-    {'reply', 'ok', Connection};
+    {'reply', {'error', 'connection_not_available'}, Connection};
 handle_call({'new_exchange', Exchange}
            ,_From
            ,#kz_amqp_connection{available='true'}=Connection
            ) ->
-    _ = declare_exchanges(Connection, [Exchange]),
-    {'reply', 'ok', Connection};
+    case declare_exchanges(Connection, [Exchange]) of
+        #kz_amqp_connection{exchanges_initialized='true'}=C ->
+            {'reply', 'ok', C};
+        #kz_amqp_connection{exchanges_initialized='false'}=C ->
+            {'reply', {'error', 'failed'}, C}
+    end;
 handle_call(_Msg, _From, Connection) ->
     {'reply', {'error', 'not_implemented'}, Connection}.
 
@@ -181,12 +185,12 @@ handle_info({'connect', _}, #kz_amqp_connection{available='true'}=Connection) ->
 handle_info(#'basic.cancel_ok'{}=_Cancel, Connection) ->
     {'noreply', Connection};
 handle_info(#'connection.blocked'{reason=_Reason}, #kz_amqp_connection{broker=_Broker}=Connection) ->
-    lager:warning("conneciton ~p is being blocked on the server, check broker health: ~s"
+    lager:warning("connection ~p is being blocked on the server, check broker health: ~s"
                  ,[_Broker, _Reason]
                  ),
     {'noreply', Connection};
 handle_info(#'connection.unblocked'{}, #kz_amqp_connection{broker=_Broker}=Connection) ->
-    lager:notice("conneciton ~p is unblocked on the broker", [_Broker]),
+    lager:notice("connection ~p is unblocked on the broker", [_Broker]),
     {'noreply', Connection};
 handle_info(_Info, Connection) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -236,8 +240,8 @@ connected(#kz_amqp_connection{channel='undefined'}=Connection) ->
           when is_pid(Pid) -> connected(Success);
         #kz_amqp_connection{}=Error -> Error
     end;
-connected(#kz_amqp_connection{exchanges_initialized='false'}=Connection) ->
-    Success = declare_exchanges(Connection),
+connected(#kz_amqp_connection{exchanges_initialized='false', exchanges=Exchanges}=Connection) ->
+    Success = declare_exchanges(Connection#kz_amqp_connection{exchanges=#{}}, maps:values(Exchanges)),
     connected(Success);
 connected(#kz_amqp_connection{available='false'}=Connection) ->
     _ = kz_amqp_connections:available(self()),
@@ -496,46 +500,29 @@ open_channel(#kz_amqp_connection{connection=Pid}) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec declare_exchanges(kz_amqp_connection()) -> kz_amqp_connection().
-declare_exchanges(#kz_amqp_connection{tags=Tags}=Connection) ->
-    maybe_add_all_exchanges(Connection, lists:member(?AMQP_HIDDEN_TAG, Tags)).
-
-maybe_add_all_exchanges(Connection, 'false') ->
-    declare_default_exchanges(),
-    Connection#kz_amqp_connection{exchanges_initialized='true'};
-maybe_add_all_exchanges(Connection, 'true') ->
-    Connection#kz_amqp_connection{exchanges_initialized='true'}.
-
--spec declare_default_exchanges() -> 'ok'.
-declare_default_exchanges() ->
-    _ = [declare_default_exchange(M)
-         || {M, _} <- code:all_loaded(),
-            re:run(atom_to_list(M), "^kapi_") =/= 'nomatch',
-            kz_module:is_exported(M, 'declare_exchanges', 0)
-        ],
-    'ok'.
-
-declare_default_exchange(M) ->
-    spawn(M, 'declare_exchanges', []).
-
 -spec declare_exchanges(kz_amqp_connection(), kz_amqp_exchanges()) -> kz_amqp_connection().
 declare_exchanges(#kz_amqp_connection{}=Connection, []) ->
     Connection#kz_amqp_connection{exchanges_initialized='true'};
 declare_exchanges(#kz_amqp_connection{channel=Channel
                                      ,broker=_Broker
+                                     ,exchanges=ExchangeMap
                                      }=Connection
                  ,[Exchange|Exchanges]
                  )
   when is_pid(Channel) ->
-    try amqp_channel:call(Channel, Exchange) of
+    ExchangeName = Exchange#'exchange.declare'.exchange,
+    try not maps:is_key(ExchangeName, ExchangeMap)
+             andalso amqp_channel:call(Channel, Exchange)
+    of
+        'false' -> declare_exchanges(Connection, Exchanges);
         #'exchange.declare_ok'{} ->
             lager:debug("declared ~s exchange ~s on ~s via ~p"
                        ,[Exchange#'exchange.declare'.type
-                        ,Exchange#'exchange.declare'.exchange
+                        ,ExchangeName
                         ,_Broker
                         ,Channel
                         ]),
-            declare_exchanges(Connection, Exchanges);
+            declare_exchanges(Connection#kz_amqp_connection{exchanges=ExchangeMap#{ExchangeName => Exchange}}, Exchanges);
         _Else ->
             lager:critical("failed to declare ~s exchange ~s on ~s via ~p: ~p"
                           ,[Exchange#'exchange.declare'.type
