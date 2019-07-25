@@ -51,7 +51,7 @@ device_display_name_test_() ->
     NonEmptyNameAccountDoc = kzd_accounts:set_name(AccountDoc, AccountName),
 
     Tests = [%% User's name has preference
-             {UserFullName
+             {DeviceName
              ,[NonEmptyNameDeviceDoc, NonEmptyNameUserDoc, NonEmptyNameAccountDoc]
              }
             ,{UserFullName

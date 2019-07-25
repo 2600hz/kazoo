@@ -43,6 +43,8 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -define(SERVER, ?MODULE).
+-define(RECORDING_TIMER_EXPIRED, 'recording_timer_expired').
+-define(RECORDING_STOP_TIMER_EXPIRED, 'recording_stop_timer_expired').
 
 -type media_directory() :: file:filename_all().
 -type media_name() :: file:filename_all().
@@ -55,7 +57,7 @@
 -record(state, {url                       :: kz_term:api_ne_binary()
                ,format                    :: kz_term:api_ne_binary()
                ,sample_rate               :: kz_term:api_integer()
-               ,media                     :: media()
+               ,media                     :: media() | 'undefined'
                ,doc_db                    :: kz_term:api_ne_binary()
                ,doc_id                    :: kz_term:api_ne_binary()
                ,cdr_id                    :: kz_term:api_ne_binary()
@@ -63,8 +65,9 @@
                ,call                      :: kapps_call:call() | 'undefined'
                ,record_on_answer          :: kz_term:api_boolean()
                ,record_on_bridge          :: kz_term:api_boolean()
-               ,should_store              :: store_url()
+               ,should_store              :: store_url() | 'undefined'
                ,time_limit                :: kz_term:api_pos_integer()
+               ,timer_ref                 :: kz_term:api_reference()
                ,record_min_sec            :: kz_term:api_pos_integer()
                ,store_attempted = 'false' :: boolean()
                ,is_recording = 'false'    :: boolean()
@@ -89,6 +92,7 @@
                                                      ,'RECORD_STOP'
                                                      ,'CHANNEL_REPLACED'
                                                      ,'CHANNEL_TRANSFEROR'
+                                                     ,'CHANNEL_DESTROY'
                                                      ]}
                                     ]}
                           ,{'self', []}
@@ -98,6 +102,7 @@
                                        ,{'restrict_to', ['RECORD_STOP'
                                                         ,'CHANNEL_REPLACED'
                                                         ,'CHANNEL_TRANSFEROR'
+                                                        ,'CHANNEL_DESTROY'
                                                         ]
                                         }
                                        ]
@@ -151,6 +156,10 @@ handle_call_event(JObj, Props) ->
             Media = get_response_media(JObj),
             FreeSWITCHNode = kz_call_event:switch_nodename(JObj),
             gen_listener:cast(Pid, {'record_stop', Media, FreeSWITCHNode, JObj});
+        {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
+            gen_listener:cast(Pid, 'channel_destroyed');
+        {<<"call_event">>, <<"channel_status_resp">>} ->
+            handle_channel_status_resp(JObj, Pid);
         {_Cat, _Evt} -> 'ok'
     end.
 
@@ -163,6 +172,12 @@ init(Call, Data) ->
     kapps_call:put_callid(Call),
     lager:info("starting event listener for record_call"),
 
+    gen_listener:cast(self(), {'initialize', Call, Data}),
+
+    {'ok', #state{}}.
+
+-spec initialize_state(kapps_call:call(), kz_json:object()) -> state().
+initialize_state(Call, Data) ->
     Format = get_format(kz_json:get_ne_binary_value(<<"format">>, Data)),
     TimeLimit = get_timelimit(kz_json:get_integer_value(<<"time_limit">>, Data)),
     RecordOnAnswer = kz_json:is_true(<<"record_on_answer">>, Data, 'false'),
@@ -186,25 +201,25 @@ init(Call, Data) ->
     Request = kapps_call:request_user(Call),
     Origin = kz_json:get_ne_binary_value(<<"origin">>, Data, <<"untracked : ", Request/binary>>),
 
-    {'ok', #state{url=Url
-                 ,format=Format
-                 ,media={'undefined',MediaName}
-                 ,doc_id=DocId
-                 ,doc_db=AccountDb
-                 ,cdr_id=CdrId
-                 ,interaction_id=InteractionId
-                 ,call=Call
-                 ,time_limit=TimeLimit
-                 ,record_on_answer=RecordOnAnswer
-                 ,record_on_bridge=RecordOnBridge
-                 ,should_store=ShouldStore
-                 ,sample_rate = SampleRate
-                 ,record_min_sec = RecordMinSec
-                 ,retries = ?STORAGE_RETRY_TIMES(AccountId)
-                 ,verb = Verb
-                 ,account_id = AccountId
-                 ,origin = Origin
-                 }}.
+    #state{url=Url
+          ,format=Format
+          ,media={'undefined',MediaName}
+          ,doc_id=DocId
+          ,doc_db=AccountDb
+          ,cdr_id=CdrId
+          ,interaction_id=InteractionId
+          ,call=Call
+          ,time_limit=TimeLimit
+          ,record_on_answer=RecordOnAnswer
+          ,record_on_bridge=RecordOnBridge
+          ,should_store=ShouldStore
+          ,sample_rate = SampleRate
+          ,record_min_sec = RecordMinSec
+          ,retries = ?STORAGE_RETRY_TIMES(AccountId)
+          ,verb = Verb
+          ,account_id = AccountId
+          ,origin = Origin
+          }.
 
 %%------------------------------------------------------------------------------
 %% @doc Handling call messages.
@@ -219,6 +234,9 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
+handle_cast({'initialize', Call, Data}, _State) ->
+    {'noreply', initialize_state(Call, Data)};
+
 handle_cast({'record_start', {_, Media}}, #state{media={_, Media}
                                                 ,is_recording='true'
                                                 }=State) ->
@@ -227,40 +245,61 @@ handle_cast({'record_start', {_, Media}}, #state{media={_, Media}
 handle_cast({'record_start', {_, Media}}, #state{media={_, Media}}=State) ->
     lager:debug("record start received for ~s", [Media]),
     {'noreply', State#state{is_recording='true'}};
-handle_cast({'record_start', _}, State) ->
+handle_cast({'record_start', _}, #state{}=State) ->
     {'noreply', State};
+
 handle_cast('stop_recording', #state{media={_, MediaName}
                                     ,is_recording='true'
                                     ,call=Call
+                                    ,timer_ref=TRef
                                     }=State) ->
     _ = kapps_call_command:record_call([{<<"Media-Name">>, MediaName}], <<"stop">>, Call),
-    lager:debug("sent command to stop recording, waiting for record stop"),
-    {'noreply', State};
+    maybe_stop_timer(TRef),
+    lager:info("sent command to stop recording, waiting for record stop"),
+    {'noreply', State#state{timer_ref=start_recording_stop_timer()}};
 handle_cast('stop_recording', #state{is_recording='false'}=State) ->
     lager:debug("received stop recording and we're not recording, exiting"),
     {'stop', 'normal', State};
+
+handle_cast('channel_destroyed', #state{is_recording='true'
+                                       ,stop_received='false'
+                                       ,timer_ref=TRef
+                                       }=State) ->
+    lager:info("channel was destroyed, waiting on RECORD_STOP or shutting down"),
+    maybe_stop_timer(TRef),
+    {'noreply', State#state{timer_ref=start_recording_stop_timer()}};
+handle_cast('channel_destroyed', State) ->
+    lager:debug("ignoring channel destroyed while storing"),
+    {'noreply', State};
+
 handle_cast({'record_stop', {_, MediaName}=Media, FS, EventJObj},
             #state{media={_, MediaName}
                   ,is_recording='true'
                   ,stop_received='false'
                   ,call=Call
+                  ,timer_ref=TRef
                   }=State) ->
     lager:debug("received record_stop, storing recording ~s", [MediaName]),
     Call1 = kapps_call:kvs_store(<<"FreeSwitch-Node">>, FS, Call),
     gen_server:cast(self(), 'store_recording'),
+    maybe_stop_timer(TRef),
     {'noreply', State#state{media=Media
                            ,call=Call1
                            ,stop_received='true'
                            ,event=EventJObj
+                           ,timer_ref='undefined'
                            }};
 handle_cast({'record_stop', {_, MediaName}, _FS, _JObj}, #state{media={_, MediaName}
                                                                ,is_recording='false'
                                                                ,stop_received='false'
+                                                               ,timer_ref=TRef
                                                                }=State) ->
     lager:debug("received record_stop but we're not recording, exiting"),
+    maybe_stop_timer(TRef),
     {'stop', 'normal', State};
 handle_cast({'record_stop', _Media, _FS, _JObj}, State) ->
     {'noreply', State};
+
 handle_cast('maybe_start_recording_on_bridge', #state{is_recording='true'}=State) ->
     {'noreply', State};
 handle_cast('maybe_start_recording_on_bridge', #state{is_recording='false'
@@ -290,8 +329,8 @@ handle_cast('maybe_start_recording_on_answer', #state{is_recording='false'
 handle_cast('recording_started', #state{should_store='false'}=State) ->
     lager:debug("recording started and we are not storing, exiting"),
     {'stop', 'normal', State};
-handle_cast('recording_started', State) ->
-    {'noreply', State};
+handle_cast('recording_started', #state{time_limit=TimeLimit}=State) ->
+    {'noreply', State#state{timer_ref=start_recording_timer(TimeLimit)}};
 handle_cast('store_recording', #state{should_store=Store
                                      ,is_recording='true'
                                      ,store_attempted='false'
@@ -352,6 +391,11 @@ handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{record_on_answer='
     lager:debug("started the recording"),
     {'noreply', State};
 
+handle_cast({'gen_listener',{'is_consuming', 'true'}}, #state{is_recording='true', call=Call}=State) ->
+    lager:notice("appears an AMQP reconnect occured, checking on the channel"),
+    _ = kapps_call_command:channel_status(Call),
+    {'noreply', State};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -361,6 +405,13 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
+handle_info({'timeout', TRef, ?RECORDING_TIMER_EXPIRED}, #state{timer_ref=TRef}=State) ->
+    lager:notice("the recording's timer expired, stopping the recording"),
+    gen_listener:cast(self(), 'stop_recording'),
+    {'noreply', State#state{timer_ref='undefined'}};
+handle_info({'timeout', TRef, ?RECORDING_STOP_TIMER_EXPIRED}, #state{timer_ref=TRef}=State) ->
+    lager:notice("failed to get RECORD_STOP in time, assuming all is lost"),
+    {'stop', 'normal', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -660,3 +711,33 @@ store_recording(Pid, Filename, StoreUrl, Call) ->
             gen_server:cast(Pid, 'store_failed');
         'ok' -> gen_server:cast(Pid, 'store_succeeded')
     end.
+
+-spec start_recording_timer(pos_integer()) -> reference().
+start_recording_timer(TimeLimit) ->
+    lager:debug("starting timer for recording for ~ps", [TimeLimit]),
+    erlang:start_timer(TimeLimit * ?MILLISECONDS_IN_SECOND
+                      ,self()
+                      ,?RECORDING_TIMER_EXPIRED
+                      ).
+
+-spec start_recording_stop_timer() -> reference().
+start_recording_stop_timer() ->
+    lager:debug("starting timer while waiting for RECORD_STOP"),
+    erlang:start_timer(5 * ?MILLISECONDS_IN_SECOND
+                      ,self()
+                      ,?RECORDING_STOP_TIMER_EXPIRED
+                      ).
+
+-spec handle_channel_status_resp(kz_json:object(), pid()) -> 'ok'.
+handle_channel_status_resp(JObj, Pid) ->
+    case kz_json:get_ne_binary_value(<<"Status">>, JObj) of
+        <<"active">> -> lager:info("channel is still active");
+        _Status ->
+            lager:info("channel is ~s, considering it down"),
+            gen_listener:cast(Pid, 'channel_destroyed')
+    end.
+
+-spec maybe_stop_timer(kz_term:api_reference()) -> 'ok'.
+maybe_stop_timer(Ref) when is_reference(Ref) ->
+    erlang:cancel_timer(Ref, [{'async', 'true'}]);
+maybe_stop_timer('undefined') -> 'ok'.
