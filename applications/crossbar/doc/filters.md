@@ -13,10 +13,10 @@ Filter | Operates On | Description
 `has_key` | `{KEY}` | Doc included if `{KEY}` is present on the doc
 `key_missing` | `{KEY}` | Doc included if `{KEY}` is *not* present on the doc
 `has_value` | `{KEY}` | Doc included if `{KEY}` exists *and* the `{VALUE}` is non-empty
-`created_from` | `{VALUE}` | Doc included if the created time is greater than or equal to `{VALUE}`
-`created_to` | `{VALUE}` | Doc included if the created time is less than or equal to `{VALUE}`
-`modified_from` | `{VALUE}` | Doc included if the last-modified time is greater than or equal to `{VALUE}`
-`modified_to` | `{VALUE}` | Doc included if the last-modified time is less than or equal to `{VALUE}`
+`created_from` | `{VALUE}` | Doc included if the created time is greater than or equal to `{VALUE}` (in Gregorian seconds)
+`created_to` | `{VALUE}` | Doc included if the created time is less than or equal to `{VALUE}` (in Gregorian seconds)
+`modified_from` | `{VALUE}` | Doc included if the last-modified time is greater than or equal to `{VALUE}` (in Gregorian seconds)
+`modified_to` | `{VALUE}` | Doc included if the last-modified time is less than or equal to `{VALUE}` (in Gregorian seconds)
 
 ## Keys
 

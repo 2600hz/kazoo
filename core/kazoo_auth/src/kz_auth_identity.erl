@@ -66,6 +66,17 @@ sign(Claims) ->
 -spec identity_secret(map()) -> map() | {'error', any()}.
 identity_secret(#{auth_provider := #{name := <<"kazoo">>}
                  ,payload := #{<<"account_id">> := AccountId
+                              ,<<"device_id">> := DeviceId
+                              }
+                 }=Token) ->
+    AccountDb = kz_util:format_account_db(AccountId),
+    get_identity_secret(Token#{auth_db => AccountDb
+                              ,auth_id => DeviceId
+                              ,auth_db_id => DeviceId
+                              });
+
+identity_secret(#{auth_provider := #{name := <<"kazoo">>}
+                 ,payload := #{<<"account_id">> := AccountId
                               ,<<"owner_id">> := OwnerId
                               }
                  }=Token) ->
@@ -244,7 +255,7 @@ update_kazoo_secret(#{auth_db := Db
 update_kazoo_secret(#{auth_db := Db
                      ,auth_db_id := Key
                      }=Token, Secret) ->
-    Updates = [{?PVT_SIGNING_SECRET, Secret}],
+    Updates = [{[?PVT_SIGNING_SECRET], Secret}],
     UpdateOptions = [{'update', Updates}],
     case kz_datamgr:update_doc(Db, Key, UpdateOptions) of
         {'ok', _} -> Token#{identity_secret => Secret};
@@ -373,7 +384,7 @@ reset_doc_secret(JObj) ->
 %% @doc Check if `?PVT_SIGNING_SECRET' is a non-empty value
 %% @end
 %%------------------------------------------------------------------------------
--spec has_doc_secret(kz_json:object()) -> kz_json:object().
+-spec has_doc_secret(kz_json:object()) -> boolean().
 has_doc_secret(JObj) ->
     kz_json:get_ne_binary_value(?PVT_SIGNING_SECRET, JObj) =/= 'undefined'.
 

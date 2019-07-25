@@ -13,6 +13,8 @@
         ,set_current_services_jobj/2
         ]).
 -export([plans/1
+        ,current_plans/1
+        ,proposed_plans/1
         ,has_plans/1
         ,plans_foldl/3
         ,hydrate_plans/1
@@ -37,10 +39,14 @@
         ,reset_updates/1
         ]).
 -export([account_updates/1
+        ,account_current_billables/1
+        ,account_proposed_billables/1
         ,set_account_updates/3
         ,reset_account_updates/1
         ]).
 -export([cascade_updates/1
+        ,cascade_current_billables/1
+        ,cascade_proposed_billables/1
         ,set_cascade_updates/3
         ,reset_cascade_updates/1
         ]).
@@ -89,6 +95,7 @@
 -export([reconcile/1
         ,reconcile/2
         ]).
+-export([to_billables/1]).
 
 -export([is_services/1]).
 
@@ -97,15 +104,19 @@
 -define(DONT_CASCADE_MASTER, kapps_config:get_is_false(?CONFIG_CAT, <<"cascade_commits_to_master_account">>, 'true')).
 
 -record(kz_services, {account_id :: kz_term:api_ne_binary()
-                     ,account_quantities = 'undefined' :: kz_json:api_object()
+                     ,account_quantities = 'undefined' :: kz_term:api_object()
                      ,account_updates = kz_json:new() :: kz_json:object()
+                     ,account_current_billables = [] :: kz_services_quantities:billables()
+                     ,account_proposed_billables = [] :: kz_services_quantities:billables()
                      ,audit_log = kz_json:new() :: kz_json:object()
-                     ,cascade_quantities = 'undefined' :: kz_json:api_object()
+                     ,cascade_quantities = 'undefined' :: kz_term:api_object()
                      ,cascade_updates = kz_json:new() :: kz_json:object()
+                     ,cascade_current_billables = [] :: kz_json:objects()
+                     ,cascade_proposed_billables = [] :: kz_json:objects()
                      ,current_services_jobj = kzd_services:new() :: kzd_services:doc()
                      ,dirty = 'false' :: boolean()
                      ,invoices = 'undefined' :: 'undefined' | kz_services_invoices:invoices()
-                     ,manual_quantities = 'undefined' :: kz_json:api_object()
+                     ,manual_quantities = 'undefined' :: kz_term:api_object()
                      ,manual_updates = kz_json:new() :: kz_json:object()
                      ,plans = 'undefined' ::  'undefined' | kz_services_plans:plans()
                      ,services_jobj = kzd_services:new() :: kzd_services:doc()
@@ -173,6 +184,43 @@ set_current_services_jobj(#kz_services{}=Services, CurrentServicesJObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-type maybe_fetch_routines() :: [{boolean(), {atom(), any()}}].
+-spec current_plans(services()) -> kz_services_plans:plans().
+current_plans(Services) ->
+    CurrentPlans = kzd_services:plans(current_services_jobj(Services)),
+    ProposedPlans = kzd_services:plans(services_jobj(Services)),
+
+    ProposedBillables = account_proposed_billables(Services),
+    CurrentBillables = account_current_billables(Services),
+    UpdatedObjectPlans = find_object_plans(CurrentBillables, ProposedBillables),
+
+    Routines = [{kz_json:are_equal(CurrentPlans, ProposedPlans)
+                ,{'services_jobj', current_services_jobj(Services)}
+                }
+               ,{kz_term:is_empty(UpdatedObjectPlans)
+                ,{'modified_object_plans', UpdatedObjectPlans}
+                }
+               ],
+    maybe_fetch_plans(Services, Routines).
+
+-spec proposed_plans(services()) -> kz_services_plans:plans().
+proposed_plans(Services) ->
+    CurrentPlans = kzd_services:plans(current_services_jobj(Services)),
+    ProposedPlans = kzd_services:plans(services_jobj(Services)),
+
+    ProposedBillables = account_proposed_billables(Services),
+    CurrentBillables = account_current_billables(Services),
+    UpdatedObjectPlans = find_object_plans(ProposedBillables, CurrentBillables),
+
+    Routines = [{kz_json:are_equal(CurrentPlans, ProposedPlans)
+                ,{'services_jobj', services_jobj(Services)}
+                }
+               ,{kz_term:is_empty(UpdatedObjectPlans)
+                ,{'modified_object_plans', UpdatedObjectPlans}
+                }
+               ],
+    maybe_fetch_plans(Services, Routines).
+
 -spec plans(services()) -> kz_services_plans:plans().
 plans(#kz_services{plans='undefined'}=Services) ->
     kz_services_plans:fetch(Services);
@@ -184,6 +232,12 @@ has_plans(?NE_BINARY = AccountId) ->
     has_plans(fetch(AccountId));
 has_plans(#kz_services{}=Services) ->
     not kz_services_plans:is_empty(plans(Services)).
+
+-spec has_proposed_object_plans(services()) -> boolean().
+has_proposed_object_plans(Services) ->
+    ProposedBillables = account_proposed_billables(Services),
+    CurrentBillables = account_current_billables(Services),
+    kz_term:is_not_empty(find_object_plans(ProposedBillables, CurrentBillables)).
 
 -spec plans_foldl(plans_foldl(), Acc, services()) -> Acc.
 plans_foldl(FoldFun, Acc, Services) ->
@@ -206,6 +260,64 @@ remove_plans(Services) ->
     ServicesJObj =
         kzd_services:set_plans(services_jobj(Services), kz_json:new()),
     reset_plans(set_services_jobj(Services, ServicesJObj)).
+
+-spec find_object_plans(kz_services_quantities:billables(), kz_services_quantities:billables()) -> kz_json:objects().
+find_object_plans(JObjsA, JObjsB) when is_list(JObjsA), is_list(JObjsB) ->
+    FilterFun = find_object_plans_filter(
+                  find_object_plans(JObjsB)
+                 ),
+    lists:filter(FilterFun, find_object_plans(JObjsA)).
+
+-spec find_object_plans_filter(kz_services_quantities:billables()) -> fun((kz_services_quantities:billable()) -> boolean()).
+find_object_plans_filter(ObjectPlans) ->
+    Plans = [{kz_doc:id(Plan), Plan}
+             || Plan <- ObjectPlans
+            ],
+    fun(JObj) ->
+            case props:get_value(kz_doc:id(JObj), Plans) of
+                'undefined' -> 'true';
+                Plan ->
+                    not kz_json:are_equal(JObj, Plan)
+            end
+    end.
+
+-spec find_object_plans(kz_services_quantities:billables()) -> kz_json:objects().
+find_object_plans(JObjs) when is_list(JObjs) ->
+    lists:foldl(fun find_object_plans_fold/2, [], JObjs).
+
+-spec find_object_plans_fold(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+find_object_plans_fold(JObj, Plans) ->
+    case create_services_object_plans(JObj) of
+        'undefined' -> Plans;
+        Plan -> [Plan|Plans]
+    end.
+
+-spec create_services_object_plans(kz_json:object()) -> kz_term:api_object().
+create_services_object_plans(JObj) ->
+    case kz_json:get_ne_json_value([<<"service">>, <<"plans">>], JObj) of
+        'undefined' -> 'undefined';
+        Value ->
+            kz_json:from_list(
+              [{<<"id">>,  kz_doc:id(JObj, kz_binary:rand_hex(16))}
+              ,{<<"key">>, kz_doc:type(JObj)}
+              ,{<<"value">>, Value}
+              ]
+             )
+    end.
+
+-spec maybe_fetch_plans(services(), maybe_fetch_routines()) -> kz_services_plans:plans().
+maybe_fetch_plans(Services, Routines) ->
+    Options = lists:foldl(fun({'false', {Key, Value}}, Map) ->
+                                  maps:put(Key, Value, Map);
+                             (_, Map) -> Map
+                          end
+                         ,#{}
+                         ,Routines
+                         ),
+    case kz_term:is_empty(maps:keys(Options)) of
+        'true' -> plans(Services);
+        'false' -> kz_services_plans:fetch(Services, Options)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -301,10 +413,14 @@ set_updates(Services, Account, Current, Proposed) ->
 
 -spec reset_updates(services()) -> services().
 reset_updates(Services) ->
-    Services#kz_services{account_updates=kz_json:new()
-                        ,cascade_updates=kz_json:new()
-                        ,manual_updates=kz_json:new()
-                        }.
+    Routines = [fun reset_account_updates/1
+               ,fun reset_cascade_updates/1
+               ,fun reset_manual_updates/1
+               ],
+    lists:foldl(fun(F, S) -> F(S) end
+               ,Services
+               ,Routines
+               ).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -314,14 +430,28 @@ reset_updates(Services) ->
 account_updates(#kz_services{account_updates=Updates}) ->
     Updates.
 
+-spec account_current_billables(services()) -> kz_services_quantities:billables().
+account_current_billables(#kz_services{account_current_billables=Current}) ->
+    Current.
+
+-spec account_proposed_billables(services()) -> kz_services_quantities:billables().
+account_proposed_billables(#kz_services{account_proposed_billables=Proposed}) ->
+    Proposed.
+
 -spec set_account_updates(services(), kz_services_quantities:billables(), kz_services_quantities:billables()) -> services().
-set_account_updates(#kz_services{}=Services, Current, Proposed) ->
+set_account_updates(#kz_services{}=Services, Current, Proposed) when is_list(Current), is_list(Proposed) ->
     Updates = kz_services_quantities:calculate_updates(Services, Current, Proposed),
-    Services#kz_services{account_updates=Updates}.
+    Services#kz_services{account_updates=Updates
+                        ,account_current_billables=Current
+                        ,account_proposed_billables=Proposed
+                        }.
 
 -spec reset_account_updates(services()) -> services().
 reset_account_updates(Services) ->
-    Services#kz_services{account_updates=kz_json:new()}.
+    Services#kz_services{account_updates=kz_json:new()
+                        ,account_current_billables=[]
+                        ,account_proposed_billables=[]
+                        }.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -331,14 +461,28 @@ reset_account_updates(Services) ->
 cascade_updates(#kz_services{cascade_updates=Updates}) ->
     Updates.
 
+-spec cascade_current_billables(services()) -> kz_json:objects().
+cascade_current_billables(#kz_services{cascade_current_billables=Current}) ->
+    Current.
+
+-spec cascade_proposed_billables(services()) -> kz_json:objects().
+cascade_proposed_billables(#kz_services{cascade_proposed_billables=Proposed}) ->
+    Proposed.
+
 -spec set_cascade_updates(services(), kz_services_quantities:billables(), kz_services_quantities:billables()) -> services().
 set_cascade_updates(#kz_services{}=Services, Current, Proposed) ->
     Updates = kz_services_quantities:calculate_updates(Services, Current, Proposed),
-    Services#kz_services{cascade_updates=Updates}.
+    Services#kz_services{cascade_updates=Updates
+                        ,cascade_current_billables=Current
+                        ,cascade_proposed_billables=Proposed
+                        }.
 
 -spec reset_cascade_updates(services()) -> services().
 reset_cascade_updates(Services) ->
-    Services#kz_services{cascade_updates=kz_json:new()}.
+    Services#kz_services{cascade_updates=kz_json:new()
+                        ,cascade_current_billables=[]
+                        ,cascade_proposed_billables=[]
+                        }.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -737,13 +881,13 @@ choose_open_doc_fun(Options, AccountId) ->
             fun kz_datamgr:open_doc/2
     end.
 
--spec create(kz_term:ne_binary()) -> kz_json:api_object().
+-spec create(kz_term:ne_binary()) -> kz_term:api_object().
 create(AccountId) ->
     lager:debug("trying to create new services doc for ~s", [AccountId]),
     create(AccountId, kzd_accounts:fetch(AccountId)).
 
 -spec create(kz_term:ne_binary(), {'error', 'not_found'} | {'ok', kzd_accounts:doc()}) ->
-                    kz_json:api_object().
+                    kz_term:api_object().
 create(_AccountId, {'error', 'not_found'}) ->
     lager:info("failed to find account database for ~s", [_AccountId]),
     'undefined';
@@ -766,22 +910,22 @@ create(AccountId, {'ok', AccountJObj}) ->
     kz_doc:setters(BaseJObj, Setters).
 
 -spec handle_fetch_options(services(), kz_term:proplist()) -> services().
-handle_fetch_options(Services, []) -> Services;
-handle_fetch_options(Services, ['hydrate_plans'| Options]) ->
+handle_fetch_options(#kz_services{}=Services, []) -> Services;
+handle_fetch_options(#kz_services{}=Services, ['hydrate_plans'| Options]) ->
     handle_fetch_options(hydrate_plans(Services), Options);
-handle_fetch_options(Services, ['hydrate_account_quantities'| Options]) ->
+handle_fetch_options(#kz_services{}=Services, ['hydrate_account_quantities'| Options]) ->
     handle_fetch_options(hydrate_account_quantities(Services), Options);
-handle_fetch_options(Services, ['hydrate_cascade_quantities'| Options]) ->
+handle_fetch_options(#kz_services{}=Services, ['hydrate_cascade_quantities'| Options]) ->
     handle_fetch_options(hydrate_cascade_quantities(Services), Options);
-handle_fetch_options(Services, ['hydrate_manual_quantities'| Options]) ->
+handle_fetch_options(#kz_services{}=Services, ['hydrate_manual_quantities'| Options]) ->
     handle_fetch_options(hydrate_manual_quantities(Services), Options);
-handle_fetch_options(Services, ['hydrate_invoices'|Options]) ->
+handle_fetch_options(#kz_services{}=Services, ['hydrate_invoices'|Options]) ->
     handle_fetch_options(hydrate_invoices(Services), Options);
-handle_fetch_options(Services, [{'updates', Account, Current, Proposed}|Options]) ->
+handle_fetch_options(#kz_services{}=Services, [{'updates', Account, Current, Proposed}|Options]) ->
     handle_fetch_options(set_updates(Services, Account, Current, Proposed), Options);
-handle_fetch_options(Services, [{'audit_log', AuditLog}|Options]) ->
+handle_fetch_options(#kz_services{}=Services, [{'audit_log', AuditLog}|Options]) ->
     handle_fetch_options(set_initial_audit_log(Services, AuditLog), Options);
-handle_fetch_options(Services, ['skip_cache'|Options]) ->
+handle_fetch_options(#kz_services{}=Services, ['skip_cache'|Options]) ->
     handle_fetch_options(Services, Options).
 
 %%------------------------------------------------------------------------------
@@ -802,22 +946,30 @@ commit_updates(Account, Current, Proposed) ->
                     ) -> services().
 commit_updates(Account, Current, Proposed, AuditLog) ->
     AccountId = kz_util:format_account_id(Account),
-    FetchOptions = [{'updates', AccountId, Current, Proposed}
+    FetchOptions = [{'updates', AccountId, to_billables(Current), to_billables(Proposed)}
                    ,{'audit_log', add_audit_log_changes_account(AccountId, AuditLog)}
                    ],
     Services = fetch(AccountId, FetchOptions),
 
-    case should_commit_updates(Services) of
-        'true' -> Services;
+    case should_skip_updates(Services) of
+        'true' ->
+            lager:debug("no possible change, skipping update"),
+            Services;
         'false' ->
             commit_updates(Services, FetchOptions)
     end.
 
--spec should_commit_updates(services()) -> boolean().
-should_commit_updates(Services) ->
+-spec to_billables(kz_services_quantities:billables() | kz_services_quantities:billable()) -> kz_services_quantities:billables().
+to_billables('undefined') -> [];
+to_billables(Bs) when is_list(Bs) -> Bs;
+to_billables(B) -> [B].
+
+-spec should_skip_updates(services()) -> boolean().
+should_skip_updates(Services) ->
     kz_term:is_empty(account_updates(Services))
         andalso kz_term:is_empty(cascade_updates(Services))
-        andalso kz_term:is_empty(manual_updates(Services)).
+        andalso kz_term:is_empty(manual_updates(Services))
+        andalso (not has_proposed_object_plans(Services)).
 
 -spec commit_updates(services(), kz_term:proplist()) -> services().
 commit_updates(Services, FetchOptions) ->
@@ -1021,7 +1173,7 @@ delete(?MATCH_ACCOUNT_RAW(AccountId)) ->
     delete(fetch(AccountId));
 delete(#kz_services{}=Services) ->
     %% TODO: cancel services with all bookkeepers...
-    {'ok', _} = kz_datamgr:del_doc(?KZ_SERVICES_DB, kz_doc:id(services_jobj(Services))),
+    _ = kz_datamgr:del_doc(?KZ_SERVICES_DB, kz_doc:id(services_jobj(Services))),
     Services.
 
 %%------------------------------------------------------------------------------

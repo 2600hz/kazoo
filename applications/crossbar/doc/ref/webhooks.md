@@ -12,8 +12,9 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `custom_data` | These properties will be added to the event and will overwrite existing values. | `object()` |   | `false` |  
 `enabled` | Is the webhook enabled and running | `boolean()` | `true` | `false` |  
+`format` | What Body format to use when sending the webhook. only valid for 'post' & 'put' verbs | `string('form-data' | 'json')` | `form-data` | `false` | `supported`
 `hook` | The trigger event for a request being made to 'callback_uri'. | `string()` |   | `true` | `supported`
-`http_verb` | What HTTP method to use when contacting the server | `string('get' | 'post')` | `post` | `false` | `supported`
+`http_verb` | What HTTP method to use when contacting the server | `string('get' | 'post' | 'put')` | `post` | `false` | `supported`
 `include_internal_legs` | Whether to filter out call legs that are internal to the system (loopback) | `boolean()` | `true` | `false` |  
 `include_subaccounts` | Should the webhook be fired for subaccount events. | `boolean()` |   | `false` | `supported`
 `name` | A friendly name for the webhook | `string()` |   | `true` | `supported`
@@ -94,6 +95,16 @@ curl -v -X DELETE \
 
 ## Fetch
 
+> GET /v2/accounts/{ACCOUNT_ID}/webhooks/samples
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/samples
+```
+
+## Fetch
+
 > GET /v2/accounts/{ACCOUNT_ID}/webhooks/attempts
 
 ```shell
@@ -110,5 +121,15 @@ curl -v -X GET \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}/attempts
+```
+
+## Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/webhooks/samples/{SAMPLE_ID}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/samples/{SAMPLE_ID}
 ```
 

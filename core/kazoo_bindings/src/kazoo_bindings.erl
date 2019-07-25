@@ -25,7 +25,7 @@
 %% API
 -export([start_link/0
         ,bind/2, bind/3, bind/4
-        ,unbind/3, unbind/4
+        ,unbind/2, unbind/3, unbind/4
         ,map/2, map/3, pmap/2, pmap/3
         ,fold/2, fold/3
         ,flush/0, flush/1, flush_mod/1
@@ -44,14 +44,12 @@
         ]).
 
 %% Helper Function for calling map/3
--export([candidates/1
-        ]).
+-export([candidates/1]).
 
 -export([rt_options/0, rt_options/1]).
 
 %% Helper Functions for debugging
--export([bindings/0, bindings/1, bindings/2
-        ]).
+-export([bindings/0, bindings/1, bindings/2]).
 
 %% ETS Persistence
 -export([table_id/0
@@ -91,7 +89,7 @@
 -type kz_responder() :: #kz_responder{}.
 -type kz_responders() :: [kz_responder()].
 
--record(kz_binding, {binding :: kz_term:ne_binary() | '_'
+-record(kz_binding, {binding :: kz_term:ne_binary() | '$1' | '_'
                     ,binding_parts :: kz_term:ne_binaries() | '_'
                     ,binding_responders = queue:new() :: queue:queue() | '_'
                                                          %% queue -> [#kz_responder{}]
@@ -149,7 +147,7 @@ pmap(Routing, Payload) ->
 pmap(Routing, Payload, Options) ->
     pmap_processor(Routing, Payload, rt_options(Options)).
 
--spec get_binding_candidates(kz_term:ne_binary()) -> kz_bindings().
+-spec get_binding_candidates(kz_term:ne_binary()) -> [kz_bindings()].
 get_binding_candidates(Routing) ->
     case binary:split(Routing, <<".">>, ['global']) of
         [Vsn, Action | _] ->
@@ -176,7 +174,12 @@ get_binding_candidates(Vsn, Action) ->
                               }
                              ]
                             ,['$_']
-                            }]).
+                            }
+                           ,{#kz_binding{binding='$1', _='_'}
+                            ,[{'=:=', '$1', {'const', <<"#">>}}]
+                            ,['$_']
+                            }
+                           ]).
 
 %%------------------------------------------------------------------------------
 %% @doc Fold over bound handlers.
@@ -327,6 +330,11 @@ bind(Binding, Module, Fun, Payload) ->
                          {'error', 'not_found'}.
 -type unbind_results() :: [unbind_result()].
 
+-spec unbind(kz_term:ne_binary() | kz_term:ne_binaries(), responder_fun()) ->
+                    unbind_result() | unbind_results().
+unbind(Bindings, Fun) ->
+    unbind(Bindings, 'undefined', Fun).
+
 -spec unbind(kz_term:ne_binary() | kz_term:ne_binaries(), module(), responder_fun()) ->
                     unbind_result() | unbind_results().
 unbind([_|_]=Bindings, Module, Fun) ->
@@ -427,10 +435,8 @@ maybe_add_binding(Binding, Mod, Fun, Payload) ->
         [] ->
             case binary:split(Binding, <<".">>, ['global']) of
                 [Vsn, Action | _] = Pieces ->
-                    lager:debug("adding new optimized ~s", [Binding]),
                     add_optimized_binding(Binding, Responder, Pieces, Vsn, Action);
                 Pieces ->
-                    lager:debug("adding new regular ~s", [Binding]),
                     add_binding(Binding, Responder, Pieces, 'undefined')
             end,
             'ok';
@@ -554,7 +560,9 @@ filter_bindings(Predicate, Key, Updates, Deletes) ->
                                                   ,payload=P
                                                   }) ->
                                          Predicate(Binding, M, F, P)
-                                 end, Responders),
+                                 end
+                                ,Responders
+                                ),
     case queue:len(NewResponders) of
         0 ->
             filter_bindings(Predicate
@@ -618,7 +626,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec fold_bind_results(kz_responders(), payload(), kz_term:ne_binary()) -> payload().
 fold_bind_results(_, {'error', _}=E, _) -> [E];
 fold_bind_results([], Payload, _Route) -> Payload;
-fold_bind_results(Responders, Payload, Route) ->
+fold_bind_results(Responders, Payload, Route) when is_list(Responders) ->
     fold_bind_results(Responders, Payload, Route, length(Responders), []).
 
 -spec fold_bind_results(kz_responders(), payload(), kz_term:ne_binary(), non_neg_integer(), kz_responders()) -> payload().
@@ -626,11 +634,13 @@ fold_bind_results([#kz_responder{module=M
                                 ,function=F
                                 ,payload='undefined'
                                 }=Responder
-                   | Responders]
+                   | Responders
+                  ]
                  ,[_|Tokens]=Payload
                  ,Route
                  ,RespondersLen
-                 ,ReRunResponders) ->
+                 ,ReRunResponders
+                 ) ->
     try erlang:apply(M, F, Payload) of
         'eoq' ->
             lager:debug("putting ~s to eoq", [M]),
@@ -649,20 +659,24 @@ fold_bind_results([#kz_responder{module=M
         Pay1 ->
             fold_bind_results(Responders, [Pay1|Tokens], Route, RespondersLen, ReRunResponders)
     catch
-        'error':'function_clause' ->
-            ST = erlang:get_stacktrace(),
-            log_function_clause(M, F, length(Payload), ST),
-            fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
-        'error':'undef' ->
-            ST = erlang:get_stacktrace(),
-            log_undefined(M, F, length(Payload), ST),
-            fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
-        _T:_E ->
-            ST = erlang:get_stacktrace(),
-            lager:error("excepted: ~s: ~p", [_T, _E]),
-            kz_util:log_stacktrace(ST),
-            fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders)
-    end;
+        ?STACKTRACE('error', 'function_clause', ST)
+        log_function_clause(M, F, length(Payload), ST),
+        fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
+        ?STACKTRACE('error', 'undef', ST)
+        log_undefined(M, F, length(Payload), ST),
+        fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
+        ?STACKTRACE(_T, _E, ST)
+        lager:error("excepted: ~s: ~p", [_T, _E]),
+        kz_util:log_stacktrace(ST),
+        fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders)
+        end;
+fold_bind_results([#kz_responder{}=_R | Responders]
+                 ,Payload
+                 ,Route
+                 ,RespondersLen
+                 ,ReRunResponders
+                 ) ->
+    fold_bind_results(Responders, Payload, Route, RespondersLen, ReRunResponders);
 fold_bind_results([], Payload, _Route, _RespondersLen, []) ->
     Payload;
 fold_bind_results([], Payload, Route, RespondersLen, ReRunResponders) ->
@@ -727,6 +741,16 @@ pmap_processor(Routing, Payload, Options) ->
                ).
 
 -spec map_processor_fold(kz_binding(), map_results(), payload(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_rt_options()) -> map_results().
+map_processor_fold(#kz_binding{binding = <<"#">>
+                              ,binding_responders=Responders
+                              }
+                  ,Acc
+                  ,Payload
+                  ,_Binding
+                  ,_RoutingParts
+                  ,_Options
+                  ) ->
+    map_responders(Acc, Responders, Payload);
 map_processor_fold(#kz_binding{binding=Binding
                               ,binding_responders=Responders
                               }
@@ -736,7 +760,6 @@ map_processor_fold(#kz_binding{binding=Binding
                   ,_RoutingParts
                   ,_Options
                   ) ->
-    lager:debug("exact match for ~s", [Binding]),
     map_responders(Acc, Responders, Payload);
 map_processor_fold(#kz_binding{binding_parts=BParts
                               ,binding_responders=Responders
@@ -750,7 +773,6 @@ map_processor_fold(#kz_binding{binding_parts=BParts
     case kazoo_bindings_rt:matches(Options, BParts, RoutingParts) of
         'false' -> Acc;
         'true' ->
-            lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
             map_responders(Acc, Responders, Payload)
     end.
 
@@ -764,7 +786,6 @@ pmap_processor_fold(#kz_binding{binding=Binding
                    ,_RoutingParts
                    ,_Options
                    ) ->
-    lager:debug("exact match for ~s", [Binding]),
     pmap_responders(Acc, Responders, Payload);
 pmap_processor_fold(#kz_binding{binding_parts=BParts
                                ,binding_responders=Responders
@@ -778,16 +799,17 @@ pmap_processor_fold(#kz_binding{binding_parts=BParts
     case kazoo_bindings_rt:matches(Options, BParts, RoutingParts) of
         'false' -> Acc;
         'true' ->
-            lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
             pmap_responders(Acc, Responders, Payload)
     end.
 
 -spec map_responders(map_results(), queue:queue(), payload()) -> map_results().
 map_responders(Acc, Responders, Payload) ->
-    [apply_map_responder(Responder, Payload)
-     || Responder <- queue:to_list(Responders)
-    ]
-        ++ Acc.
+    lists:foldr(fun(Responder, Acc0) ->
+                        [apply_map_responder(Responder, Payload) | Acc0]
+                end
+               ,Acc
+               ,queue:to_list(Responders)
+               ).
 
 -spec pmap_responders(map_results(), queue:queue(), payload()) -> map_results().
 pmap_responders(Acc, Responders, Payload) ->
@@ -801,34 +823,42 @@ pmap_responders(Acc, Responders, Payload) ->
 apply_map_responder(#kz_responder{module=M
                                  ,function=F
                                  ,payload=ResponderPayload
-                                 }, MapPayload) ->
+                                 }
+                   ,MapPayload
+                   ) ->
     Payload = maybe_merge_payload(ResponderPayload, MapPayload),
     try apply_map_responder(M, F, Payload)
     catch
-        'error':'function_clause' ->
-            ST = erlang:get_stacktrace(),
-            maybe_log_function_clause(M, F, Payload, ST),
-            {'EXIT', {'function_clause', ST}};
-        'error':'undef' ->
-            ST = erlang:get_stacktrace(),
-            maybe_log_undefined(M, F, Payload, ST),
-            {'EXIT', {'undef', ST}};
-        'error':Exp ->
-            ST = erlang:get_stacktrace(),
-            lager:error("exception: error:~p", [Exp]),
-            kz_util:log_stacktrace(ST),
-            {'EXIT', {Exp, ST}};
-        _Type:Exp ->
-            ST = erlang:get_stacktrace(),
-            lager:error("exception: ~s:~p", [_Type, Exp]),
-            kz_util:log_stacktrace(ST),
-            {'EXIT', Exp}
-    end.
+        ?STACKTRACE('error', 'function_clause', ST)
+        maybe_log_function_clause(M, F, Payload, ST),
+        {'EXIT', {'function_clause', ST}};
+        ?STACKTRACE('error', 'undef', ST)
+        maybe_log_undefined(M, F, Payload, ST),
+        {'EXIT', {'undef', ST}};
+        ?STACKTRACE('error', Exp, ST)
+        lager:error("exception: error:~p", [Exp]),
+        kz_util:log_stacktrace(ST),
+        {'EXIT', {Exp, ST}};
+        ?STACKTRACE(_Type, Exp, ST)
+        lager:error("exception: ~s:~p", [_Type, Exp]),
+        kz_util:log_stacktrace(ST),
+        {'EXIT', Exp}
+        end.
+
+log_apply(Format, Args) ->
+    Silent = erlang:get('kazoo_bindinds_silent_apply'),
+    log_apply(Format, Args, Silent).
+
+log_apply(_Format, _Args, 'true') -> 'ok';
+log_apply(Format, Args, _Silent) ->
+    lager:debug(Format, Args).
 
 -spec apply_map_responder(module() | 'undefined', responder_fun(), payload()) -> payload().
 apply_map_responder('undefined', Fun, Payload) ->
+    log_apply("applying fun ~p/1", [Fun]),
     Fun(Payload);
 apply_map_responder(M, F, Payload) ->
+    log_apply("applying ~s:~p/~p", [M, F, length(Payload)]),
     erlang:apply(M, F, Payload).
 
 -spec maybe_merge_payload(payload(), payload()) -> payload().
@@ -856,8 +886,6 @@ fold_processor(Routing, Payload, Options) when not is_list(Payload) ->
     fold_processor(Routing, [Payload], Options);
 fold_processor(Routing, Payload, Options) ->
     RoutingParts = routing_parts(Routing),
-    Candidates = kazoo_bindings_rt:candidates(Options, Routing),
-
     [Reply|_] =
         lists:foldl(fun(#kz_binding{binding=Binding
                                    ,binding_parts=BParts
@@ -874,11 +902,11 @@ fold_processor(Routing, Payload, Options) ->
                             end
                     end
                    ,Payload
-                   ,Candidates
+                   ,kazoo_bindings_rt:candidates(Options, Routing)
                    ),
     Reply.
 
--spec candidates(kz_term:ne_binary()) -> kz_bindings().
+-spec candidates(kz_term:ne_binary()) -> [kz_bindings()].
 candidates(Routing) ->
     get_binding_candidates(Routing).
 
@@ -896,7 +924,9 @@ bindings(Routing, Opts) ->
     RoutingParts = routing_parts(Routing),
     ets:foldr(fun(#kz_binding{binding=Binding
                              ,binding_parts=BParts
-                             }=Bind, Acc) ->
+                             }=Bind
+                 ,Acc
+                 ) ->
                       case Binding =:= Routing
                           orelse kazoo_bindings_rt:matches(Options, BParts, RoutingParts)
                       of
@@ -909,6 +939,7 @@ bindings(Routing, Opts) ->
              ).
 
 -spec routing_parts(kz_term:ne_binary()) -> kz_term:ne_binaries().
+routing_parts(<<"#">>) -> <<"#">>;
 routing_parts(Routing) ->
     lists:reverse(binary:split(Routing, <<".">>, ['global'])).
 

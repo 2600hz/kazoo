@@ -7,7 +7,7 @@
 -module(cb_webhooks).
 
 -export([init/0
-        ,authorize/1
+        ,authorize/1, authorize/2, authorize/3
         ,authenticate/1
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
@@ -24,6 +24,7 @@
 -define(CB_LIST, <<"webhooks/crossbar_listing">>).
 
 -define(PATH_TOKEN_ATTEMPTS, <<"attempts">>).
+-define(PATH_TOKEN_SAMPLES, <<"samples">>).
 
 -define(ATTEMPTS_BY_ACCOUNT, <<"webhooks/attempts_by_time_listing">>).
 -define(ATTEMPTS_BY_HOOK, <<"webhooks/attempts_by_hook_listing">>).
@@ -63,62 +64,101 @@ init() ->
 
 -spec init_master_account_db() -> 'ok'.
 init_master_account_db() ->
-    case kapps_util:get_master_account_db() of
-        {'ok', MasterAccountDb} ->
-            maybe_revise_schema(MasterAccountDb);
-        {'error', _E} ->
-            lager:warning("master account not set yet, unable to load view and revise schema: ~p", [_E])
-    end.
+    maybe_revise_schema(get_available_hook_ids()).
 
--spec maybe_revise_schema(kz_term:ne_binary()) -> 'ok'.
-maybe_revise_schema(MasterAccountDb) ->
+maybe_revise_schema({'error', _}) ->
+    'ok';
+maybe_revise_schema({'ok', []}) ->
+    'ok';
+maybe_revise_schema({'ok', HookIds}) ->
     case kz_json_schema:load(<<"webhooks">>) of
-        {'ok', SchemaJObj} -> maybe_revise_schema(MasterAccountDb, SchemaJObj);
+        {'ok', SchemaJObj} -> maybe_revise_schema(HookIds, SchemaJObj);
         {'error', _E} ->
             lager:warning("failed to find webhooks schema: ~p", [_E])
     end.
 
--spec maybe_revise_schema(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-maybe_revise_schema(MasterDb, SchemaJObj) ->
+-spec maybe_revise_schema(kz_term:ne_binaries(), kz_json:object()) -> 'ok'.
+maybe_revise_schema(HookIds, SchemaJObj) ->
+    HookNames = lists:usort([<<"all">> | HookIds]),
+    Updated = kz_json:set_value([<<"properties">>, <<"hook">>, <<"enum">>], HookNames, SchemaJObj),
+
+    case kz_json:are_equal(kz_doc:public_fields(SchemaJObj), kz_doc:public_fields(Updated)) of
+        'true' -> 'ok';
+        'false' ->
+            case kz_datamgr:save_doc(?KZ_SCHEMA_DB, Updated) of
+                {'ok', _} -> lager:info("added hooks enum to schema: ~p", [HookNames]);
+                {'error', _E} -> lager:warning("failed to add hooks enum to schema: ~p", [_E])
+            end
+    end.
+
+-spec get_available_hook_ids() -> {'ok', kz_term:ne_binaries()} | kazoo_data:data_error().
+get_available_hook_ids() ->
+    case kapps_util:get_master_account_db() of
+        {'ok', MasterAccountDb} ->
+            get_available_hook_ids(MasterAccountDb);
+        {'error', _E}=Error ->
+            lager:warning("master account not set yet: ~p", [_E]),
+            Error
+    end.
+
+-spec get_available_hook_ids(kz_term:ne_binary()) -> {'ok', kz_term:ne_binaries()} | kazoo_data:data_error().
+get_available_hook_ids(MasterDb) ->
     case kz_datamgr:get_results(MasterDb, ?AVAILABLE_HOOKS) of
-        {'ok', []} ->
-            lager:warning("no hooks are registered; have you started the webhooks app?");
-        {'error', _E} ->
-            lager:warning("failed to find registered webhooks: ~p", [_E]);
+        {'ok', []}=OK ->
+            lager:warning("no hooks are registered; have you started the webhooks app?"),
+            OK;
+        {'error', _E}=Error ->
+            lager:warning("failed to find registered webhooks: ~p", [_E]),
+            Error;
         {'ok', Hooks} ->
             ToRemoveHooks = [<<"callflow">>
                             ,<<"inbound_fax">>
                             ,<<"outbound_fax">>
                             ,<<"skel">>
                             ],
-            revise_schema(SchemaJObj, [Id
-                                       || <<"webhooks_", Id/binary>> <- [kz_doc:id(Hook) || Hook <- Hooks],
-                                          not lists:member(Id, ToRemoveHooks)
-                                      ])
+            {'ok'
+            ,[Id
+              || <<"webhooks_", Id/binary>> <- [kz_doc:id(Hook) || Hook <- Hooks],
+                 not lists:member(Id, ToRemoveHooks)
+             ]
+            }
     end.
 
-%% FIXME: consider using kz_datamgr:update_doc or check if the document
-%% has a change to save.
--spec revise_schema(kz_json:object(), kz_term:ne_binaries()) -> 'ok'.
-revise_schema(SchemaJObj, HNs) ->
-    HookNames = [<<"all">> | HNs],
-    Updated = kz_json:set_value([<<"properties">>, <<"hook">>, <<"enum">>], HookNames, SchemaJObj),
-    case kz_datamgr:save_doc(?KZ_SCHEMA_DB, Updated) of
-        {'ok', _} -> lager:info("added hooks enum to schema: ~p", [HookNames]);
-        {'error', _E} -> lager:warning("failed to add hooks enum to schema: ~p", [_E])
-    end.
-
--spec authorize(cb_context:context()) -> boolean().
+-spec authorize(cb_context:context()) ->
+                       boolean() |
+                       {'stop', cb_context:context()}.
 authorize(Context) ->
-    authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+    is_authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
--spec authorize(http_method(), req_nouns()) -> boolean().
-authorize(?HTTP_GET, [{<<"webhooks">>, []}]) ->
+-spec authorize(cb_context:context(), path_token()) ->
+                       boolean() |
+                       {'stop', cb_context:context()}.
+authorize(Context, _) ->
+    is_authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authorize(cb_context:context(), path_token(), path_token()) ->
+                       boolean() |
+                       {'stop', cb_context:context()}.
+authorize(Context, _, _) ->
+    is_authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec is_authorize(cb_context:context(), http_method(), req_nouns()) ->
+                          boolean() |
+                          {'stop', cb_context:context()}.
+is_authorize(_, ?HTTP_GET, [{<<"webhooks">>, []}]) ->
     lager:debug("authorizing request"),
     'true';
-authorize(_Verb, _Nouns) -> 'false'.
+is_authorize(_, ?HTTP_GET, [{<<"webhooks">>, [?PATH_TOKEN_SAMPLES | _]}]) ->
+    lager:debug("authorizing fetching webhook samples"),
+    'true';
+is_authorize(Context, _, [{<<"webhooks">>, _}]) ->
+    {'stop', cb_context:add_system_error('forbidden', Context)};
+is_authorize(_, _Verb, _Nouns) ->
+    'false'.
 
--spec authenticate(cb_context:context()) -> boolean().
+-spec authenticate(cb_context:context()) ->
+                          {'true', cb_context:context()} |
+                          'false'.
 authenticate(Context) ->
     authenticate(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
@@ -127,6 +167,9 @@ authenticate(Context) ->
                           'false'.
 authenticate(Context, ?HTTP_GET, [{<<"webhooks">>, []}]) ->
     lager:debug("authenticating request"),
+    {'true', Context};
+authenticate(Context, ?HTTP_GET, [{<<"webhooks">>, [?PATH_TOKEN_SAMPLES | _]}]) ->
+    lager:debug("authenticating request for fetching webhook samples"),
     {'true', Context};
 authenticate(_Context, _Verb, _Nouns) -> 'false'.
 
@@ -145,10 +188,14 @@ allowed_methods() ->
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?PATH_TOKEN_ATTEMPTS) ->
     [?HTTP_GET];
+allowed_methods(?PATH_TOKEN_SAMPLES) ->
+    [?HTTP_GET];
 allowed_methods(_WebhookId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
+allowed_methods(?PATH_TOKEN_SAMPLES, _SampleId) ->
+    [?HTTP_GET];
 allowed_methods(_WebhookId, ?PATH_TOKEN_ATTEMPTS) ->
     [?HTTP_GET].
 
@@ -165,6 +212,7 @@ resource_exists() -> 'true'.
 resource_exists(_WebhookId) -> 'true'.
 
 -spec resource_exists(path_token(), path_token()) -> 'true'.
+resource_exists(?PATH_TOKEN_SAMPLES, _SampleId) -> 'true';
 resource_exists(_WebhookId, ?PATH_TOKEN_ATTEMPTS) -> 'true'.
 
 %%------------------------------------------------------------------------------
@@ -193,6 +241,15 @@ validate_webhooks(Context, ?HTTP_PATCH) ->
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?PATH_TOKEN_ATTEMPTS) ->
     summary_attempts(Context, 'undefined');
+validate(Context, ?PATH_TOKEN_SAMPLES) ->
+    case get_available_hook_samples() of
+        [] -> cb_context:add_system_error('datastore_fault', Context);
+        WebHooks ->
+            Setters = [{fun cb_context:set_resp_status/2, 'success'}
+                      ,{fun cb_context:set_resp_data/2, WebHooks}
+                      ],
+            cb_context:setters(Context, Setters)
+    end;
 validate(Context, Id) ->
     validate_webhook(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB), Id, cb_context:req_verb(Context)).
 
@@ -207,6 +264,8 @@ validate_webhook(Context, WebhookId, ?HTTP_DELETE) ->
     read(WebhookId, Context).
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+validate(Context, ?PATH_TOKEN_SAMPLES, SampleId) ->
+    fetch_webhook_samples(Context, SampleId);
 validate(Context, WebhookId=?NE_BINARY, ?PATH_TOKEN_ATTEMPTS) ->
     summary_attempts(Context, WebhookId).
 
@@ -355,6 +414,33 @@ summary_available(Context) ->
               ,'include_docs'
               ],
     crossbar_view:load(cb_context:set_account_db(C1, MasterAccountDb), ?AVAILABLE_HOOKS, Options).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec fetch_webhook_samples(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+fetch_webhook_samples(Context, WebhooksName) ->
+    Path = filename:join(code:priv_dir(?APP), <<WebhooksName/binary, "-samples.json">>),
+    case file:read_file(Path) of
+        {'ok', Bin} ->
+            HasFilter = crossbar_filter:is_defined(Context),
+            Resp = [JObj || JObj <- kz_json:decode(Bin),
+                            crossbar_filter:by_doc(JObj, Context, HasFilter)
+                   ],
+            crossbar_doc:handle_json_success(Resp, Context);
+        {'error', 'enoent'} ->
+            crossbar_util:response_bad_identifier(WebhooksName, Context);
+        {'error', _Reason} ->
+            lager:debug("failed to read file ~s: ~p", [Path, _Reason]),
+            cb_context:add_system_error('datastore_fault', Context)
+    end.
+
+-spec get_available_hook_samples() -> kz_term:ne_binaries().
+get_available_hook_samples() ->
+    [hd(binary:split(filename:basename(kz_term:to_binary(Path), ".json"), <<"-samples">>))
+     || Path <- filelib:wildcard(filename:join(code:priv_dir('crossbar'), "webhooks_*-samples.json"))
+    ].
 
 -spec normalize_available(cb_context:context(), kz_json:object(), kz_json:objects()) ->
                                  kz_json:objects().

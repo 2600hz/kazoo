@@ -30,6 +30,27 @@
 
 -define(RESOURCE_TYPES_HANDLED,[<<"sms">>]).
 
+-define(OUTBOUND_POOL, 'doodle_outbound_amqp_pool').
+-define(DOODLE_POOL_NAME_ARGS(Name, Args), ?WORKER_NAME_ARGS('poolboy', Name, Args)).
+
+-define(MSG_LIST_BY_NUMBER, <<"message/listing_by_number">>).
+-define(MSG_LIST_BY_PATTERN, <<"message/listing_by_pattern">>).
+-define(CF_LIST_BY_NUMBER, <<"callflows/listing_by_number">>).
+-define(CF_LIST_BY_PATTERN, <<"callflows/listing_by_pattern">>).
+-define(NO_MATCH_FLOW, <<"no_match">>).
+-define(MSG_FLOW_CACHE_KEY(Number, AccountId), {'msg_flow', Number, AccountId}).
+-define(MSG_PATTERN_CACHE_KEY(AccountId), {'msg_patterns', AccountId}).
+
+
+-define(DEFAULT_EXCHANGE, <<"sms">>).
+-define(DEFAULT_EXCHANGE_TYPE, <<"topic">>).
+-define(DEFAULT_EXCHANGE_OPTIONS, [{<<"passive">>, 'true'}] ).
+-define(DEFAULT_EXCHANGE_OPTIONS_JOBJ, kz_json:from_list(?DEFAULT_EXCHANGE_OPTIONS) ).
+-define(DEFAULT_BROKER, kz_amqp_connections:primary_broker()).
+-define(DEFAULT_QUEUE_NAME, <<"smsc_inbound_queue_sms">>).
+
+-define(OUTBOUND_POOL_ARG(K),[<<"default">>, <<"outbound">>, <<"pool">>, K]).
+-define(OUTBOUND_EXCHANGE_ARG(K),[<<"default">>, <<"outbound">>, <<"pool">>, <<"exchange">>, K]).
 
 -define(DOODLE_HRL, 'true').
 -endif.

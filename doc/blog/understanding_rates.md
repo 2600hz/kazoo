@@ -6,7 +6,7 @@ System administrators can create multiple ratedecks and assign them to accounts 
 ## High level overview
 
 1.  Admins can create ratedecks by uploading CSVs to the [Tasks API](/applications/crossbar/doc/tasks.md) and defining the \`ratedeck\_id\`. See the [Rate Task](/applications/tasks/doc/rates.md) docs for how to upload the CSV. This will be covered further down too.
-2.  Admins can then create [Service Plans](/applications/crossbar/doc/service_plans.md) that incorporate the ratedeck(s) available. You can optionally charge for access to these ratedecks as part of the service plan.
+2.  Admins can then create Service Plans that incorporate the ratedeck(s) available. You can optionally charge for access to these ratedecks as part of the service plan.
 3.  Now admins can assign these service plans to an account or reseller. When rating a call, the system will look at the account, then the reseller, and finally the default system ratedeck looking for what ratedeck(s) to use.
 
 The rest of this article will demonstrate the API commands necessary to configure the ratedecks, service plans, and accounts to have this all work appropriately. Hopefully someone will be inspired to create an appropriate [MonsterUI](https://docs.2600hz.com/ui) application to manage this from the browser!

@@ -360,14 +360,14 @@ handle_conference_action(Context, ConferenceId, Action) ->
     lager:error("unhandled conference id ~p action: ~p", [ConferenceId, Action]),
     cb_context:add_system_error('faulty_request', Context).
 
--spec record_conference(cb_context:context(), kz_term:ne_binary(), kz_json:api_object()) ->
+-spec record_conference(cb_context:context(), kz_term:ne_binary(), kz_term:api_object()) ->
                                cb_context:context().
 record_conference(Context, _ConferenceId, 'undefined') ->
     data_required(Context, <<"record">>);
 record_conference(Context, ConferenceId, RecordingData) ->
     toggle_recording(Context, ConferenceId, kz_json:get_ne_binary_value(<<"action">>, RecordingData)).
 
--spec toggle_recording(cb_context:context(), kz_term:ne_binary(), kz_json:api_ne_binary()) ->
+-spec toggle_recording(cb_context:context(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
                               cb_context:context().
 toggle_recording(Context, ConferenceId, <<"start">>) ->
     lager:info("starting the recording of conference ~s", [ConferenceId]),
@@ -717,7 +717,7 @@ build_endpoint_from_doc(Endpoint, ?BUILD_ACC(Endpoints, Call, Context, Element),
     lager:info("ignoring endpoint type ~s for ~s", [_Type, kz_doc:id(Endpoint)]),
     ?BUILD_ACC(Endpoints, Call, add_not_found_error(Context, kz_doc:id(Endpoint), Element), Element+1).
 
--spec maybe_add_user_endpoints(kz_json:ne_binary(), kapps_call:call()) -> kz_json:objects().
+-spec maybe_add_user_endpoints(kz_json:object(), kapps_call:call()) -> kz_json:objects().
 maybe_add_user_endpoints(User, Call) ->
     Properties = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
     lists:foldr(fun(EndpointId, Acc) ->

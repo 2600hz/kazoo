@@ -1,0 +1,38 @@
+paths:
+  /accounts/{ACCOUNT_ID}/migrations:
+    get:
+      operationId: GetAccountsAccountIdMigrations
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all migrations
+      tags:
+        - migrations
+  /accounts/{ACCOUNT_ID}/migrations/{MIGRATION_ID}:
+    get:
+      operationId: GetAccountsAccountIdMigrationsMigrationId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/MIGRATION_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a migrations by ID
+      tags:
+        - migrations
+    post:
+      operationId: PostAccountsAccountIdMigrationsMigrationId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/MIGRATION_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of migrations
+      tags:
+        - migrations

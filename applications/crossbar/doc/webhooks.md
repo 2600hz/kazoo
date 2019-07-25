@@ -14,8 +14,9 @@ Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
 `custom_data` | These properties will be added to the event and will overwrite existing values. | `object()` |   | `false` |  
 `enabled` | Is the webhook enabled and running | `boolean()` | `true` | `false` |  
+`format` | What Body format to use when sending the webhook. only valid for 'post' & 'put' verbs | `string('form-data' | 'json')` | `form-data` | `false` | `supported`
 `hook` | The trigger event for a request being made to 'callback_uri'. | `string()` |   | `true` | `supported`
-`http_verb` | What HTTP method to use when contacting the server | `string('get' | 'post')` | `post` | `false` | `supported`
+`http_verb` | What HTTP method to use when contacting the server | `string('get' | 'post' | 'put')` | `post` | `false` | `supported`
 `include_internal_legs` | Whether to filter out call legs that are internal to the system (loopback) | `boolean()` | `true` | `false` |  
 `include_subaccounts` | Should the webhook be fired for subaccount events. | `boolean()` |   | `false` | `supported`
 `name` | A friendly name for the webhook | `string()` |   | `true` | `supported`
@@ -24,7 +25,9 @@ Key | Description | Type | Default | Required | Support Level
 
 
 
-## Fetch
+## Fetch available webhooks on the system
+
+Depending on the version of the KAZOO system running, the available webhooks may differ. Use this API to query the system for available webhooks.
 
 > GET /v2/webhooks
 
@@ -95,6 +98,97 @@ curl -v -X GET \
    "request_id": "{REQUEST_ID}",
    "revision": "{REVISION}",
    "status": "success"
+}
+```
+
+## Get sample payloads of all webhook events
+
+> GET /v2/webhooks/samples
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/webhooks/samples
+```
+
+### Example
+
+**Request:**
+
+```shell
+curl -H 'Content-Type: application/json' 'http://{SERVER}:8000/v2/webhooks/samples'
+```
+
+**Response:**
+
+```json
+{
+  "data": [
+    "webhooks_channel_answer",
+    "webhooks_channel_bridge",
+    "webhooks_channel_create",
+    "webhooks_channel_destroy",
+    "webhooks_notifications",
+    "webhooks_object",
+    "webhooks_parking"
+  ],
+  "revision": "{REVISION}",
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success"
+}
+```
+
+## Get sample payloads of a webhook event
+
+> GET /v2/webhooks/samples/{SAMPLE_ID}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/webhooks/samples/{SAMPLE_ID}
+```
+
+You can use regular [Crossbar query string filters](filters.md) to narrow down the samples, for example:
+
+```shell
+curl -H 'Content-Type: application/json' 'http://{SERVER}:8000/v2/webhooks/samples/webhook_notifications?filter_event_name=missed_call'
+curl -H 'Content-Type: application/json' 'http://{SERVER}:8000/v2/webhooks/samples/webhook_object?filter_action=doc_created'
+```
+
+### Example
+
+**Request:**
+
+```shell
+curl -s -H 'Content-Type: application/json' 'http://{SERVER}:8000/v2/webhooks/samples/webhooks_parking'
+```
+
+**Response:**
+
+```json
+{
+  "page_size": 1,
+  "data": [
+    {
+      "account_id": "5a2d994fbae69b1d6b01eb9f0e7dfe62",
+      "call_id": "OWU4NzEwOTgyZWNiMjM0MzI0NjRkZDc4MWVmMjEyOWI",
+      "callee_id_name": "Test Name",
+      "callee_id_number": "5355543456",
+      "caller_id_Number": "+15555432345",
+      "caller_id_name": "Superman",
+      "event_name": "PARK_PARKED",
+      "parking_slot": 1
+    }
+  ],
+  "revision": "{REVISION}",
+  "timestamp": "{TIMESTAMP}",
+  "version": "{VERSION}",
+  "node": "{NODE}",
+  "request_id": "{REQUEST_ID}",
+  "status": "success"
 }
 ```
 

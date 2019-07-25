@@ -32,7 +32,7 @@
 -export([constrain_weight/1]).
 -export([private_cost/1, private_cost/2, set_private_cost/2]).
 -export([private_surcharge/1, private_surcharge/2, set_private_surcharge/2]).
--export([set_default_route/1]).
+-export([default_routes/1, set_default_route/1]).
 
 -include("kz_documents.hrl").
 -define(KEY_DIRECTION, <<"direction">>).
@@ -62,16 +62,16 @@ account_id(Doc, Default) ->
 set_account_id(Doc, AccountId) ->
     kz_json:set_value([<<"account_id">>], AccountId, Doc).
 
--spec caller_id_numbers(doc()) -> kz_term:api_binary().
+-spec caller_id_numbers(doc()) -> kz_term:api_ne_binary().
 caller_id_numbers(Doc) ->
     caller_id_numbers(Doc, 'undefined').
 
--spec caller_id_numbers(doc(), Default) -> binary() | Default.
+-spec caller_id_numbers(doc(), Default) -> kz_term:ne_binary() | Default.
 caller_id_numbers(Doc, Default) ->
     kz_json:get_binary_value([<<"caller_id_numbers">>], Doc, Default).
 
--spec set_caller_id_numbers(doc(), binary()) -> doc().
-set_caller_id_numbers(Doc, CallerIdNumbers) ->
+-spec set_caller_id_numbers(doc(), kz_term:ne_binary()) -> doc().
+set_caller_id_numbers(Doc, <<CallerIdNumbers/binary>>) ->
     kz_json:set_value([<<"caller_id_numbers">>], CallerIdNumbers, Doc).
 
 -spec carrier(doc()) -> kz_term:api_binary().
@@ -386,5 +386,12 @@ set_default_route(Rate) ->
 
 -spec set_default_route(doc(), integer()) -> doc().
 set_default_route(Rate, Prefix) ->
-    PrefixBin = kz_term:to_binary(Prefix),
-    set_routes(Rate, [<<"^\\+?", PrefixBin/binary, ".+$">>]).
+    set_routes(Rate, default_routes(Prefix)).
+
+-spec default_routes(doc() | integer() | kz_term:ne_binary()) -> kz_term:ne_binaries().
+default_routes(<<Prefix/binary>>) ->
+    [<<"^\\+?", Prefix/binary, ".+\$">>];
+default_routes(Prefix) when is_integer(Prefix) ->
+    default_routes(kz_term:to_binary(Prefix));
+default_routes(Rate) ->
+    default_routes(prefix(Rate)).

@@ -314,7 +314,7 @@ rotate_doc(RotatedName, Doc) ->
 init_db(Database) ->
     lager:debug("refreshing ~s", [Database]),
     Views = kapps_util:get_views_json('webseq', "views"),
-    _ = kapps_util:update_views(Database, Views, 'true'),
+    _ = kz_datamgr:db_view_update(Database, Views, 'true'),
     lager:debug("refreshed ~s", [Database]).
 
 create_filename(<<"/", _/binary>> = Filename) ->

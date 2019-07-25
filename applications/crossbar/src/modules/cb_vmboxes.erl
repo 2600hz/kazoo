@@ -37,13 +37,13 @@
 -define(MESSAGES_RESOURCE, ?VM_KEY_MESSAGES).
 -define(BIN_DATA, <<"raw">>).
 
--define(UPLOAD_MIME_TYPES, [{<<"application">>, <<"octet-stream">>}
+-define(UPLOAD_MIME_TYPES, [{<<"application">>, <<"octet-stream">>, '*'}
                             | ?AUDIO_CONTENT_TYPES
                             ++ ?MULTIPART_CONTENT_TYPES
                             ++ ?JSON_CONTENT_TYPES
                            ]).
 -define(DOWNLOAD_MIME_TYPES, ?UPLOAD_MIME_TYPES -- ?JSON_CONTENT_TYPES).
--define(BULK_DOWNLOAD_MIME_TYPE, [{<<"application">>, <<"zip">>}]).
+-define(BULK_DOWNLOAD_MIME_TYPE, [{<<"application">>, <<"zip">>, '*'}]).
 -define(ALL_MIME_TYPES, ?UPLOAD_MIME_TYPES ++ ?BULK_DOWNLOAD_MIME_TYPE).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".voicemail">>).
@@ -58,7 +58,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.vmboxes">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.vmboxes">>, ?MODULE, 'content_types_provided'),
@@ -69,7 +69,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.vmboxes">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.vmboxes">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, 'delete'),
-    ok.
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
@@ -128,7 +128,7 @@ resource_exists(_, ?MESSAGES_RESOURCE, _, ?BIN_DATA) -> 'true'.
 %% @doc Add content types accepted by this module
 %% @end
 %%------------------------------------------------------------------------------
--spec acceptable_content_types() -> kz_term:proplist().
+-spec acceptable_content_types() -> cowboy_content_types().
 acceptable_content_types() -> ?ALL_MIME_TYPES.
 
 -spec content_types_accepted(cb_context:context(), path_token(), path_token()) -> cb_context:context().

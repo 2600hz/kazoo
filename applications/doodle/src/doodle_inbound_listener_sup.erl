@@ -15,20 +15,6 @@
 
 -define(SERVER, ?MODULE).
 
--define(DEFAULT_EXCHANGE, <<"sms">>).
--define(DEFAULT_EXCHANGE_TYPE, <<"topic">>).
--define(DEFAULT_EXCHANGE_OPTIONS, [{<<"passive">>, 'true'}] ).
--define(DEFAULT_EXCHANGE_OPTIONS_JOBJ, kz_json:from_list(?DEFAULT_EXCHANGE_OPTIONS) ).
-
--define(DEFAULT_BROKER, kz_amqp_connections:primary_broker()).
--define(QUEUE_NAME, <<"smsc_inbound_queue_", (?DOODLE_INBOUND_EXCHANGE)/binary>>).
-
--define(DOODLE_INBOUND_QUEUE, kapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_queue_name">>, ?QUEUE_NAME)).
--define(DOODLE_INBOUND_BROKER, kapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_broker">>, ?DEFAULT_BROKER)).
--define(DOODLE_INBOUND_EXCHANGE, kapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange">>, ?DEFAULT_EXCHANGE)).
--define(DOODLE_INBOUND_EXCHANGE_TYPE, kapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange_type">>, ?DEFAULT_EXCHANGE_TYPE)).
--define(DOODLE_INBOUND_EXCHANGE_OPTIONS,  kapps_config:get_json(?CONFIG_CAT, <<"inbound_exchange_options">>, ?DEFAULT_EXCHANGE_OPTIONS_JOBJ)).
-
 -define(CHILDREN, [?WORKER_TYPE('doodle_inbound_listener', 'temporary')]).
 
 %%==============================================================================
@@ -82,21 +68,21 @@ init([]) ->
 -spec default_connection() -> amqp_listener_connection().
 default_connection() ->
     #amqp_listener_connection{name = <<"default">>
-                             ,broker = ?DOODLE_INBOUND_BROKER
-                             ,exchange = ?DOODLE_INBOUND_EXCHANGE
-                             ,type = ?DOODLE_INBOUND_EXCHANGE_TYPE
-                             ,queue = ?DOODLE_INBOUND_QUEUE
-                             ,options = kz_json:to_proplist(?DOODLE_INBOUND_EXCHANGE_OPTIONS)
+                             ,broker = ?DEFAULT_BROKER
+                             ,exchange = ?DEFAULT_EXCHANGE
+                             ,type = ?DEFAULT_EXCHANGE_TYPE
+                             ,queue = ?DEFAULT_QUEUE_NAME
+                             ,options = []
                              }.
 
 -spec connections() -> amqp_listener_connections().
 connections() ->
     case kapps_config:get_json(?CONFIG_CAT, <<"connections">>) of
         'undefined' -> [default_connection()];
-        JObj -> kz_json:foldl(fun connections_fold/3, [], JObj)
+        JObj -> [default_connection()] ++ kz_json:foldl(fun connections_fold/3, [], JObj)
     end.
 
--spec connections_fold(kz_json:path(), kz_json:json_term(), amqp_listener_connections()) ->
+-spec connections_fold(kz_json:key(), kz_json:object(), amqp_listener_connections()) ->
                               amqp_listener_connections().
 connections_fold(K, V, Acc) ->
     C = #amqp_listener_connection{name = K

@@ -1,0 +1,5 @@
+<event name="CHANNEL_SYNC">
+	<fields verbose="true">
+		<field name="call_event" type="reference" />
+	</fields>
+</event>

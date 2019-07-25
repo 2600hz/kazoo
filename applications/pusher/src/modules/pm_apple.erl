@@ -65,15 +65,15 @@ terminate(_Reason, #state{tab=ETS}) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
--spec maybe_send_push_notification(kz_term:api_pid(), kz_json:object()) -> any().
+-spec maybe_send_push_notification(push_app(), kz_json:object()) -> any().
 maybe_send_push_notification('undefined', _) -> 'ok';
-maybe_send_push_notification(Pid, JObj) ->
+maybe_send_push_notification({Pid, ExtraHeaders}, JObj) ->
     TokenID = kz_json:get_value(<<"Token-ID">>, JObj),
     Topic = apns_topic(JObj),
-    TopicArg = #{apns_topic => Topic},
+    Headers = kz_maps:merge(#{apns_topic => Topic}, ExtraHeaders),
     Msg = build_payload(JObj),
     lager:debug_unsafe("pushing topic ~s for token-id ~s : ~s", [Topic, TokenID, kz_json:encode(kz_json:from_map(Msg), ['pretty'])]),
-    {Result, _Props, _Ignore} = apns:push_notification(Pid, TokenID, Msg, TopicArg),
+    {Result, _Props, _Ignore} = apns:push_notification(Pid, TokenID, Msg, Headers),
     lager:debug("apns result for ~s : ~B", [Topic, Result]).
 
 -spec build_payload(kz_json:object()) -> map().
@@ -88,25 +88,32 @@ map_key(K, V, JObj) ->
         {_, K1} -> kz_json:set_value(K1, V, JObj)
     end.
 
--spec get_apns(kz_term:api_binary(), ets:tid()) -> kz_term:api_pid().
+-spec get_apns(kz_term:api_binary(), ets:tid()) -> push_app().
 get_apns('undefined', _) -> 'undefined';
 get_apns(App, ETS) ->
     case ets:lookup(ETS, App) of
         [] -> maybe_load_apns(App, ETS);
-        [{App, Pid}] -> Pid
+        [{App, Push}] -> Push
     end.
 
--spec maybe_load_apns(kz_term:api_binary(), ets:tid()) -> kz_term:api_pid().
+-spec maybe_load_apns(kz_term:api_binary(), ets:tid()) -> push_app().
 maybe_load_apns(App, ETS) ->
     CertBin = kapps_config:get_ne_binary(?CONFIG_CAT, [<<"apple">>, <<"certificate">>], 'undefined', App),
     Host = kapps_config:get_ne_binary(?CONFIG_CAT, [<<"apple">>, <<"host">>], ?DEFAULT_APNS_HOST, App),
-    maybe_load_apns(App, ETS, CertBin, Host).
+    ExtraHeaders = kapps_config:get_json(?CONFIG_CAT, [<<"apple">>, <<"headers">>], kz_json:new(), App),
+    Headers = kz_maps:keys_to_atoms(kz_json:to_map(ExtraHeaders)),
+    maybe_load_apns(App, ETS, CertBin, Host, Headers).
 
--spec maybe_load_apns(kz_term:api_binary(), ets:tid(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:api_pid().
-maybe_load_apns(App, _, 'undefined', _) ->
+-spec maybe_load_apns(kz_term:api_binary()
+                     ,ets:tid()
+                     ,kz_term:api_ne_binary()
+                     ,kz_term:ne_binary()
+                     ,map()
+                     ) -> push_app().
+maybe_load_apns(App, _, 'undefined', _, _) ->
     lager:debug("apple pusher certificate for app ~s not found", [App]),
     'undefined';
-maybe_load_apns(App, ETS, CertBin, Host) ->
+maybe_load_apns(App, ETS, CertBin, Host, Headers) ->
     {Key, Cert} = pusher_util:binary_to_keycert(CertBin),
     lager:debug("starting apple push connection for ~s : ~s", [App, Host]),
     Connection = #{name => kz_term:to_atom(App, 'true')
@@ -119,11 +126,11 @@ maybe_load_apns(App, ETS, CertBin, Host) ->
                   },
     case apns:connect(Connection) of
         {'ok', Pid} ->
-            ets:insert(ETS, {App, Pid}),
-            Pid;
+            ets:insert(ETS, {App, {Pid, Headers}}),
+            {Pid, Headers};
         {'error', {'already_started', Pid}} ->
             apns:close_connection(Pid),
-            maybe_load_apns(App, ETS, CertBin, Host);
+            maybe_load_apns(App, ETS, CertBin, Host, Headers);
         {'error', Reason} ->
             lager:error("error loading apns ~p", [Reason]),
             'undefined'

@@ -48,6 +48,9 @@
         "Confirm-Key": {
             "type": "string"
         },
+        "Continue-After": {
+            "type": "string"
+        },
         "Continue-On-Fail": {
             "type": "string"
         },
@@ -174,6 +177,15 @@
             "type": "string"
         },
         "Outbound-Caller-ID-Number": {
+            "type": "string"
+        },
+        "Privacy-Hide-Name": {
+            "type": "string"
+        },
+        "Privacy-Hide-Number": {
+            "type": "string"
+        },
+        "Privacy-Method": {
             "type": "string"
         },
         "Ringback": {

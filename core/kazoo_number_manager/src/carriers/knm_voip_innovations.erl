@@ -33,8 +33,8 @@
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
--define(DEBUG_WRITE(Format, Args), ?debugFmt(Format, Args)).
--define(DEBUG_APPEND(Format, Args), ?debugFmt(Format, Args)).
+-define(DEBUG_WRITE(_Format, _Args), 'ok').
+-define(DEBUG_APPEND(_Format, _Args), 'ok').
 -else.
 -define(VI_DEBUG, kapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"debug">>, 'false')).
 -define(VI_DEBUG_FILE, "/tmp/voipinnovations.xml").
@@ -47,7 +47,6 @@
         andalso file:write_file(?VI_DEBUG_FILE, io_lib:format(Format, Args), ['append'])
        ).
 -endif.
-
 
 -define(IS_SANDBOX_PROVISIONING_TRUE
        ,kapps_config:get_is_true(?KNM_VI_CONFIG_CAT, <<"sandbox_provisioning">>, 'false')
@@ -366,8 +365,8 @@ soap_request(Action, Body) ->
     handle_response(Resp).
 
 -spec handle_response(kz_http:ret()) -> soap_response().
-handle_response({'ok', Code, _Headers, "<?xml"++_=Response}) ->
-    ?DEBUG_APPEND("Response:~n~p~n~p~n~s~n", [Code, _Headers, Response]),
+handle_response({'ok', _Code, _Headers, "<?xml"++_=Response}) ->
+    ?DEBUG_APPEND("Response:~n~p~n~p~n~s~n", [_Code, _Headers, Response]),
     lager:debug("received response"),
     try
         {Xml, _} = xmerl_scan:string(Response),

@@ -19,7 +19,7 @@
                          ,server :: any() | '$2'
                          ,connected = 'false' :: boolean() | '_'
                          ,ready = 'false' :: boolean()
-                         ,tag :: atom()
+                         ,tag = 'undefined' :: kz_term:api_ne_binary()
                          }).
 
 -record(db, {app :: atom()
@@ -79,10 +79,8 @@
                        'group' |
                        'include_docs' |
                        'inclusive_end' |
-                       'reduce' |
                        'override_existing_document' |
-                       {'max_bulk_read', pos_integer()} |
-                       {'transform',transform_fun()} |
+                       'reduce' |
                        {'end_docid', binary()} |
                        {'endkey', key_range()} |
                        {'group_level', 'exact' | integer()} |
@@ -90,11 +88,13 @@
                        {'keys', [binary()]} |
                        {'limit', integer()} |
                        {'list', binary()} |
+                       {'max_bulk_read', pos_integer()} |
                        {'reduce', boolean()} |
                        {'skip', integer()} |
                        {'stale', stale()} |
                        {'start_docid', binary()} |
-                       {'startkey', key_range()}.
+                       {'startkey', key_range()} |
+                       {'transform',transform_fun()}.
 
 -type view_options() :: [view_option()].
 
@@ -125,13 +125,23 @@
 -type get_results_return() :: {'ok', kz_json:json_terms()} |
                               data_error().
 
--define(DEFAULT_DATA_SECTION, [{'local', 'bigcouch'}]).
+-define(DEFAULT_DATA_SECTION, [{<<"local">>, <<"bigcouch">>}]).
 -define(MERGE_PROPS, [{'driver', 'kazoo_couch'}
-                     ,{'tag', 'local'}
+                     ,{'tag', <<"local">>}
                      ]).
 -define(MERGE_MAP, maps:from_list(?MERGE_PROPS)).
 
 -define(FIXTURES_FOLDER, "fixtures").
+
+-define(DEFAULT_PUBLISH_EXCLUDE_TYPES
+       ,[<<"cdr">>
+        ,<<"ledger">>
+        ,<<"audit_log">>
+        ,<<"login_attempt">>
+        ,<<"pivot_debug">>
+        ,<<"notify_smtp_log">>
+        ]
+       ).
 
 -define(PUBLISH_FIELDS, [<<"_deleted">>
                         ,<<"pvt_account_id">>

@@ -148,6 +148,16 @@ curl -v -X POST \
 
 ## Fetch
 
+> GET /v2/accounts/{ACCOUNT_ID}/services/audit_summary
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/audit_summary
+```
+
+## Fetch
+
 > GET /v2/accounts/{ACCOUNT_ID}/services/audit
 
 ```shell
@@ -184,6 +194,16 @@ curl -v -X GET \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/editable
+```
+
+## Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/services/audit_summary/{SOURCE_SERVICE}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/services/audit_summary/{SOURCE_SERVICE}
 ```
 
 ## Fetch

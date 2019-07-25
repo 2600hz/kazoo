@@ -391,6 +391,7 @@ normalize_apps_result([App|Apps], Acc) ->
                   ,{<<"allowed_users">>, kzd_app:allowed_users(App)}
                   ,{<<"masqueradable">>, kzd_app:masqueradable(App)}
                   ,{<<"phase">>, kzd_app:phase(App)}
+                  ,{<<"extends">>, kzd_app:extends(App)}
                   ]),
             normalize_apps_result(Apps, [JObj|Acc])
     end.

@@ -37,6 +37,8 @@ Key | Description | Type | Default | Required | Support Level
 `enabled` | Determines if the device is currently enabled | `boolean()` | `true` | `false` | `supported`
 `exclude_from_queues` | Do not ring this device when calling user/agent in queue | `boolean()` | `false` | `false` |  
 `formatters` | Schema for request formatters | [#/definitions/formatters](#formatters) |   | `false` |  
+`hotdesk.users./^[a-zA-Z0-9]{32}$/` | user-specific hotdesk settings | `object()` |   | `false` |  
+`hotdesk.users` | The user(s) currently hotdesked into the device | `object()` |   | `false` |  
 `hotdesk` | The hotdesk status of this device | `object()` |   | `false` |  
 `language` | The language for the device | `string()` |   | `false` | `supported`
 `mac_address` | The MAC Address of the device (if applicable) | `string()` |   | `false` | `supported`
@@ -652,7 +654,7 @@ curl -v -X POST \
 
 ## Quickcalls
 
-See [the quickcall](./quickcall.md) docs for how to perform this action.
+See [the quickcall](quickcall.md) docs for how to perform this action.
 
 ## Adding Ringtones
 

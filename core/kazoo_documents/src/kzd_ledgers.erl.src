@@ -71,15 +71,15 @@ account_name(Doc, Default) ->
 set_account_name(Doc, AccountName) ->
     kz_json:set_value([<<"account">>, <<"name">>], AccountName, Doc).
 
--spec amount(doc()) -> kz_term:api_integer().
+-spec amount(doc()) -> kz_term:api_number().
 amount(Doc) ->
     amount(Doc, 'undefined').
 
--spec amount(doc(), Default) -> integer() | Default.
+-spec amount(doc(), Default) -> number() | Default.
 amount(Doc, Default) ->
-    kz_json:get_integer_value([<<"amount">>], Doc, Default).
+    kz_json:get_float_value([<<"amount">>], Doc, Default).
 
--spec set_amount(doc(), integer()) -> doc().
+-spec set_amount(doc(), number()) -> doc().
 set_amount(Doc, Amount) ->
     kz_json:set_value([<<"amount">>], Amount, Doc).
 

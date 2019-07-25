@@ -8,11 +8,11 @@ BASE_BRANCH := $(shell cat $(ROOT)/.base_branch)
 
 ## list files changed for more focused checks
 ifeq ($(strip $(CHANGED)),)
-	CHANGED := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts)
+	CHANGED := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications core scripts doc)
 else
 	CHANGED := $(CHANGED)
 endif
-CHANGED_SWAGGER := $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
+CHANGED_SWAGGER ?= $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
 
 # You can override this when calling make, e.g. make JOBS=1
 # to prevent parallel builds, or make JOBS="8".
@@ -52,6 +52,8 @@ changed_swagger:
 compile: ACTION = all
 compile: deps kazoo
 
+sparkly-clean: clean-apps clean-kazoo clean-release clean-deps
+
 clean: clean-kazoo
 	$(if $(wildcard *crash.dump), rm *crash.dump)
 	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
@@ -72,9 +74,9 @@ clean-test-apps:
 compile-test: ERLC_OPTS += +nowarn_missing_spec
 compile-test: deps compile-test-core compile-test-apps
 compile-test-core:
-	@$(MAKE) -j$(JOBS) -C core/ compile-test
+	@$(MAKE) -j$(JOBS) -C core/ compile-test-direct
 compile-test-apps:
-	@$(MAKE) -j$(JOBS) -C applications/ compile-test
+	@$(MAKE) -j$(JOBS) -C applications/ compile-test-direct
 
 eunit: eunit-core eunit-apps
 
@@ -148,7 +150,7 @@ clean-tags:
 	$(if $(wildcard $(TAGS)), rm $(TAGS))
 
 $(RELX):
-	wget 'https://github.com/erlware/relx/releases/download/v3.23.0/relx' -O $@
+	wget 'https://erlang.mk/res/relx-v3.27.0' -O $@
 	chmod +x $@
 
 clean-release:
@@ -215,7 +217,7 @@ dialyze-core: dialyze-it
 dialyze:       TO_DIALYZE ?= $(shell find $(ROOT)/applications -name ebin)
 dialyze: dialyze-it
 
-dialyze-changed: TO_DIALYZE = $(CHANGED)
+dialyze-changed: TO_DIALYZE = $(strip $(filter %.beam %.erl %/ebin,$(CHANGED)))
 dialyze-changed: dialyze-it-changed
 
 dialyze-hard: TO_DIALYZE = $(CHANGED)
@@ -228,11 +230,15 @@ dialyze-it-hard: $(PLT)
 	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --hard $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
 
 dialyze-it-changed: $(PLT)
-ifeq ($(strip $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))),)
-	@echo "no erlang changes to dialyze"
-else
-	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --bulk $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
-endif
+	@if [ -n "$(TO_DIALYZE)" ]; then \
+		echo "dialyzing changes against $(BASE_BRANCH) ..." ; \
+		echo; \
+		echo "$(TO_DIALYZE)" ;\
+		echo; \
+		ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --bulk $(TO_DIALYZE) && echo "dialyzer is happy!"; \
+	else \
+		echo "no erlang changes to dialyze"; \
+	fi
 
 xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
 xref:
@@ -274,6 +280,10 @@ code_checks:
 	@$(ROOT)/scripts/edocify.escript
 	@$(ROOT)/scripts/kzd_module_check.bash
 	@$(ROOT)/scripts/check-loglines.bash
+	@$(ROOT)/scripts/check-stacktrace.py $(CHANGED)
+
+check_stacktrace:
+	@$(ROOT)/scripts/check-stacktrace.py $(shell grep -rl "get_stacktrace" scripts applications core --include "*.[e|h]rl" --exclude "kz_types.hrl")
 
 apis:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-schemas.escript
@@ -291,10 +301,14 @@ schemas:
 DOCS_ROOT=$(ROOT)/doc/mkdocs
 docs: docs-validate docs-report docs-setup docs-build
 
+admonitions:
+	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-admonitions.escript $(shell grep -rlE '^!!! ' scripts applications core doc)
+
 docs-validate:
 	@$(ROOT)/scripts/check-scripts-readme.bash
 	@$(ROOT)/scripts/empty_schema_descriptions.bash
 	@$(ROOT)/scripts/check-ref-docs.bash
+	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-admonitions.escript $(CHANGED)
 
 docs-report:
 	@$(ROOT)/scripts/reconcile_docs_to_index.bash
@@ -302,7 +316,6 @@ docs-report:
 docs-setup:
 	@$(ROOT)/scripts/validate_mkdocs.py
 	@$(ROOT)/scripts/setup_docs.bash
-	@mkdir -p $(DOCS_ROOT)/theme
 
 docs-build:
 	@$(MAKE) -C $(DOCS_ROOT) DOCS_ROOT=$(DOCS_ROOT) docs-build

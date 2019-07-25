@@ -52,7 +52,7 @@
 
 %% #{"prefix" => cost}
 -type rate_data() :: #{kz_term:ne_binary() => non_neg_integer()}.
--type service_plans() :: [{kz_term:ne_binary(), kzd_service_plan:plan()}].
+-type service_plans() :: [{kz_term:ne_binary(), kzd_service_plan:doc()}].
 
 -type account_data() :: #{'name' => kz_term:ne_binary()
                          ,'service_plans' => service_plans()
@@ -173,7 +173,9 @@ has_rate_matching(#kazoo_model{}=Model, RatedeckId, DID) ->
     Ratedeck = ratedeck(Model, RatedeckId),
     has_rate_matching(Ratedeck, DID).
 
--spec has_service_plan_rate_matching(model(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
+-spec has_service_plan_rate_matching(model(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                            'false' |
+                                            {'true', number()}.
 has_service_plan_rate_matching(#kazoo_model{'accounts'=Accounts
                                            ,'service_plans'=SPs
                                            }=Model
@@ -196,7 +198,9 @@ has_service_plan_rate_matching(#kazoo_model{'accounts'=Accounts
             end
     end.
 
--spec has_rate_matching(rate_data(), kz_term:ne_binary()) -> boolean().
+-spec has_rate_matching(rate_data(), kz_term:ne_binary()) ->
+                               'false' |
+                               {'true', number()}.
 has_rate_matching(Ratedeck, <<"+", Number/binary>>) ->
     has_rate_matching(Ratedeck, Number);
 has_rate_matching(Ratedeck, Number) ->

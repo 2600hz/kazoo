@@ -50,6 +50,7 @@
 -define(KEY_VOICEMAIL, <<"voicemail">>).
 
 -define(KEY_METADATA, <<"metadata">>).
+-define(KEY_TRANSCRIPTION, <<"transcription">>).
 -define(KEY_META_CALL_ID, <<"call_id">>).
 -define(KEY_META_CID_NAME, <<"caller_id_name">>).
 -define(KEY_META_CID_NUMBER, <<"caller_id_number">>).
@@ -294,7 +295,15 @@ metadata(JObj) ->
 
 -spec metadata(doc(), Default) -> doc() | Default.
 metadata(JObj, Default) ->
-    kz_json:get_value(?KEY_METADATA, JObj, Default).
+    Metadata = kz_json:get_json_value(?KEY_METADATA, JObj, Default),
+    maybe_add_transcription(Metadata, JObj).
+
+-spec maybe_add_transcription(doc(), doc()) -> doc().
+maybe_add_transcription(Metadata, JObj) ->
+    case kz_json:get_json_value(?KEY_TRANSCRIPTION, JObj) of
+        'undefined' -> Metadata;
+        Transcription -> kz_json:insert_value(?KEY_TRANSCRIPTION, Transcription, Metadata)
+    end.
 
 -spec set_metadata(kz_json:object(), doc()) -> doc().
 set_metadata(Metadata, JObj) ->

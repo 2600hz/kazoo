@@ -42,6 +42,10 @@
             ],
             "type": "string"
         },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
+        },
         "voice_url": {
             "description": "What URL to request the initial Pivot callflow",
             "pattern": "^https?://",

@@ -1,4 +1,5 @@
-ROOT = ../..
+CWD = $(shell pwd -P)
+ROOT = $(realpath $(CWD)/../..)
 PROJECT = kazoo_documents
 
 TEST_EBINS = $(ROOT)/applications/crossbar/ebin
@@ -12,7 +13,7 @@ all: compile
 
 compile: compile-autogen $(ERL_FILES)
 
-compile-test: compile-autogen $(ERL_FILES)
+compile-test-direct: compile-autogen $(ERL_FILES)
 
 compile-autogen: $(addsuffix -compile,$(SRC_FILES))
 
@@ -30,16 +31,5 @@ clean-autogen: $(addsuffix -clean,$(SRC_FILES))
 
 diff:
 	@$(foreach ERL,$(ERL_FILES),cmp --silent $(ERL) $(ERL:.erl=.erl.src) || diff -c $(ERL) $(ERL).src;) true
-
-eunit: kz-test
-
-test: kz-test
-
-kz-test:
-	$(MAKE) compile-test -C $(ROOT)/core/kazoo_stdlib/
-	$(MAKE) compile-test -C $(ROOT)/core/kazoo_config/
-	$(MAKE) compile-test -C $(ROOT)/core/kazoo_fixturedb/
-	$(MAKE) compile-test -C $(ROOT)/core/kazoo_data/
-	$(MAKE) compile-test -C $(ROOT)/core/kazoo_schemas/
 
 include $(ROOT)/make/kz.mk

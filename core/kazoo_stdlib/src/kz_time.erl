@@ -53,7 +53,7 @@
 -type date() :: calendar:date(). %%{year(), month(), day()}.
 -type time() :: calendar:time(). %%{hour(), minute(), second()}.
 -type datetime() :: calendar:datetime(). %%{date(), time()}.
--type iso_week() :: calendar:yearweeknum(). %%{year(), weeknum()}.
+-type iso_week() :: {year(), weeknum()}.
 -type gregorian_seconds() :: pos_integer().
 -type unix_seconds() :: pos_integer().
 -type api_seconds() :: 'undefined' | gregorian_seconds().
@@ -114,7 +114,7 @@ to_gregorian_seconds({{_,_,_},{_,_,_}}=Datetime, ?NE_BINARY=FromTimezone) ->
 pretty_print_datetime(Timestamp) when is_integer(Timestamp) ->
     pretty_print_datetime(calendar:gregorian_seconds_to_datetime(Timestamp));
 pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
-    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w"
+    iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w:~2..0w:~2..0w"
                                   ,[Y, Mo, D, H, Mi, S]
                                   )).
 
@@ -577,7 +577,6 @@ elapsed_us(Start, Now)
 
 -spec now() -> now().
 now() -> os:timestamp().
-
 
 -spec now_s() -> gregorian_seconds().
 now_s() ->  erlang:system_time('seconds') + ?UNIX_EPOCH_IN_GREGORIAN.

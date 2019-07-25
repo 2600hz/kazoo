@@ -43,9 +43,9 @@ db_create(#server{}=Conn, DbName) ->
 db_create(#server{}=Conn, DbName, Options) ->
     case do_db_create_db(Conn, DbName, Options, []) of
         {'ok', _} -> 'true';
-        {error, db_exists} ->
+        {'error', 'db_exists'} ->
             lager:warning("db ~s already exists", [DbName]),
-            true;
+            'true';
         {'error', _Error} ->
             lager:error("failed to create database ~s: ~p", [DbName, _Error]),
             'false'
@@ -54,13 +54,13 @@ db_create(#server{}=Conn, DbName, Options) ->
 do_db_create_db(#server{url=ServerUrl, options=Opts}=Server, DbName, Options, Params) ->
     Options1 = couchbeam_util:propmerge1(Options, Opts),
     Url = hackney_url:make_url(ServerUrl, DbName, Params),
-    Resp = couchbeam_httpc:db_request(put, Url, [], <<>>, Options1, [201, 202]),
+    Resp = couchbeam_httpc:db_request('put', Url, [], <<>>, Options1, [201, 202]),
     case Resp of
-        {ok, _Status, _Headers, Ref} ->
+        {'ok', _Status, _Headers, Ref} ->
             _ = hackney:skip_body(Ref),
-            {ok, #db{server=Server, name=DbName, options=Options1}};
-        {error, precondition_failed} ->
-            {error, db_exists};
+            {'ok', #db{server=Server, name=DbName, options=Options1}};
+        {'error', 'precondition_failed'} ->
+            {'error', 'db_exists'};
         {'error', {'bad_response', {500, _Headers, Body}}}=Error ->
             Reason = kz_json:get_value(<<"reason">>, kz_json:decode(Body)),
             case check_db_create_error(Server, DbName, Reason) of
@@ -146,6 +146,7 @@ archive(#db{}=Db, DbName, File, MaxDocs, N, Pos) when N =< MaxDocs ->
     case kz_couch_view:all_docs(Db, ViewOptions) of
         {'ok', []} -> io:format("    no docs left after pos ~p~n", [Pos]);
         {'ok', Docs} ->
+            'ok' = maybe_add_comma(File, Pos),
             'ok' = archive_docs(File, Docs),
             io:format("    archived ~p docs~n", [N]);
         {'error', _E} ->
@@ -161,6 +162,7 @@ archive(Db, DbName, File, MaxDocs, N, Pos) ->
     case kz_couch_view:all_docs(Db, ViewOptions) of
         {'ok', []} -> io:format("    no docs left after pos ~p~n", [Pos]);
         {'ok', Docs} ->
+            'ok' = maybe_add_comma(File, Pos),
             'ok' = archive_docs(File, Docs),
             io:format("    archived ~p docs~n", [MaxDocs]),
             archive(Db, DbName, File, MaxDocs, N - MaxDocs, Pos + MaxDocs);
@@ -169,6 +171,18 @@ archive(Db, DbName, File, MaxDocs, N, Pos) ->
             timer:sleep(500),
             archive(Db, DbName, File, MaxDocs, N, Pos)
     end.
+
+%% when writing 2nd+ page of results, the previous page's last JObj will not have a comma after it
+%% so you would get files like
+%% [Pass1JObj,
+%%  Pass1JObj
+%%  Pass2JObj,
+%%  Pass2JObj
+%% Which is invalid JSON
+-spec maybe_add_comma(file:io_device(), non_neg_integer()) -> 'ok'.
+maybe_add_comma(_File, 0) -> 'ok';
+maybe_add_comma(File, _Pos) ->
+    'ok' = file:write(File, [$,]).
 
 -spec archive_docs(file:io_device(), kz_json:objects()) -> 'ok'.
 archive_docs(_, []) -> 'ok';
@@ -191,9 +205,15 @@ db_import(#server{}=Conn, DbName, Filename) ->
                           'ok' |
                           couchbeam_error().
 do_db_import(#server{}=Conn, DbName, Docs) ->
-    JObjs0 = [kz_json:delete_keys([<<"_rev">>, <<"_attachments">>], kz_json:get_value(<<"doc">>, Doc)) || Doc <- Docs],
-    JObjs = [JObj || JObj <- JObjs0, filter_views(kz_json:get_value(<<"_id">>, JObj))],
+    JObjs = [cleanup_for_import(Doc)
+             || Doc <- Docs,
+                filter_views(kz_doc:id(Doc))
+            ],
     kz_couch_doc:save_docs(Conn, DbName, JObjs, []).
+
+cleanup_for_import(Doc) ->
+    JObj = kz_json:get_json_value(<<"doc">>, Doc),
+    kz_json:delete_keys([<<"_rev">>, <<"_attachments">>], JObj).
 
 filter_views(<<"_design", _/binary>>) -> 'false';
 filter_views(_Id) -> 'true'.
@@ -205,6 +225,9 @@ do_db_compact(#db{}=Db) ->
     case ?RETRY_504(couchbeam:compact(Db)) of
         'ok' ->
             lager:debug("compaction has started"),
+            'true';
+        {'ok', _OK} ->
+            lager:debug("compaction has started: ~p", [_OK]),
             'true';
         {'error', {'conn_failed', {'error', 'timeout'}}} ->
             lager:warning("connection timed out"),

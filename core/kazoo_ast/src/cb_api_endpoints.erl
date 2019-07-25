@@ -9,9 +9,20 @@
 -compile({'no_auto_import', [get/0]}).
 
 -export([get/0
-        ,to_swagger_json/0
-        ,to_ref_doc/0, to_ref_doc/1
+        ,get_app/2
+        ,process_module/3
+        ,to_swagger_file/0
+        ,to_oas3_file/0
+        ,to_ref_doc/0, to_ref_doc/2
         ,schema_to_doc/2, ref_tables_to_doc/1
+
+        ,generate_oas_json/2
+        ,read_swagger_json/1
+        ,format_as_path_centric/1
+        ,to_swagger_paths/2
+        ,to_swagger_definitions/1
+        ,to_swagger_parameters/1
+        ,to_swagger_parameters/2
         ]).
 
 -ifdef(TEST).
@@ -25,6 +36,12 @@
 
 -include_lib("kazoo_ast/src/kz_ast.hrl").
 
+-define(DEBUG(F, A), ?DEV_LOG(F, A)).
+-define(DEBUG(F), ?DEV_LOG(F)).
+
+%% -define(DEBUG(F, A), ok).
+%% -define(DEBUG(F), ok).
+
 -define(REF_PATH
        ,code:lib_dir('crossbar'), "doc", "ref"
        ).
@@ -32,8 +49,23 @@
        ,filename:join([?REF_PATH, <<Module/binary,".md">>])
        ).
 
--define(SWAGGER_JSON
+-define(SWAGGER_2_JSON_FILE
        ,filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])
+       ).
+
+-define(OAS3_YML_FILENAME, <<"openapi.yml">>).
+-define(OAS3_YML_FILE
+       ,filename:join([code:priv_dir('crossbar'), "oas3", "openapi.yml"])
+       ).
+
+-define(OAS3_SCHEMAS_FILENAME, <<"oas3-schemas.yml">>).
+-define(OAS3_SCHEMAS_FILE
+       ,filename:join([code:priv_dir('crossbar'), "oas3", ?OAS3_SCHEMAS_FILENAME])
+       ).
+
+-define(OAS3_PARAMETERS_FILENAME, <<"oas3-parameters.yml">>).
+-define(OAS3_PARAMETERS_FILE
+       ,filename:join([code:priv_dir('crossbar'), "oas3", ?OAS3_PARAMETERS_FILENAME])
        ).
 
 -define(ACCOUNTS_PREFIX, "accounts/{ACCOUNT_ID}").
@@ -46,13 +78,13 @@
 to_ref_doc() ->
     lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
 
--spec to_ref_doc(atom()) -> 'ok'.
-to_ref_doc('crossbar_filter'=Module) ->
+-spec to_ref_doc(atom(), atom()) -> 'ok'.
+to_ref_doc(_, 'crossbar_filter'=Module) ->
     Filters = filters_from_module(Module),
     filters_to_ref_doc(Filters);
-to_ref_doc(CBModule) ->
+to_ref_doc(App, CBModule) ->
     Path = code:which(CBModule),
-    api_to_ref_doc(hd(process_module(Path, []))).
+    api_to_ref_doc(hd(process_module(App, Path, []))).
 
 -define(FILTER_ROW(Filter, OperatesOn, Description)
        ,[kz_binary:join([Filter, OperatesOn, Description], <<" | ">>), $\n]
@@ -85,13 +117,13 @@ api_to_ref_doc({Module, Paths}) ->
     api_to_ref_doc(Module, Paths, module_version(Module)).
 
 api_to_ref_doc(Module, Paths, ?CURRENT_VERSION) ->
-    BaseName = base_module_name(Module),
+    EndpointName = base_module_name(Module),
 
     PathToSection = fun(Path, Acc) -> api_path_to_section(Module, Path, Acc) end,
-    Sections = lists:foldl(PathToSection, ref_doc_header(BaseName), Paths),
+    Sections = lists:foldl(PathToSection, ref_doc_header(EndpointName), Paths),
 
     Doc = lists:reverse(Sections),
-    DocPath = ?REF_PATH(BaseName),
+    DocPath = ?REF_PATH(EndpointName),
     'ok' = file:write_file(DocPath, Doc);
 api_to_ref_doc(_Module, _Paths, _Version) ->
     'ok'.
@@ -115,7 +147,7 @@ api_path_to_section(_MOdule, _Paths, Acc) -> Acc.
 %% @end
 %%------------------------------------------------------------------------------
 methods_to_section('undefined', _Path, Acc) ->
-    io:format("skipping path ~p\n", [_Path]),
+    io:format("skipping path ~p~n", [_Path]),
     Acc;
 methods_to_section(ModuleName, {Path, Methods}, Acc) ->
     API = kz_util:iolist_join($/, [?CURRENT_VERSION, ModuleName | format_path_tokens(Path)]),
@@ -163,16 +195,16 @@ method_as_action(?HTTP_DELETE) -> <<"Remove">>;
 method_as_action(?HTTP_PATCH) -> <<"Patch">>.
 
 -spec ref_doc_header(kz_term:ne_binary()) -> iolist().
-ref_doc_header(BaseName) ->
-    CleanedUpName = kz_ast_util:smash_snake(BaseName),
-    [[maybe_add_schema(BaseName)]
+ref_doc_header(EndpointName) ->
+    CleanedUpName = kz_ast_util:smash_snake(EndpointName),
+    [[maybe_add_schema(EndpointName)]
     ,["## About ", CleanedUpName, "\n\n"]
     ,["# ", CleanedUpName, "\n\n"]
     ].
 
 -spec maybe_add_schema(kz_term:ne_binary()) -> iolist().
-maybe_add_schema(BaseName) ->
-    case kz_ast_util:load_ref_schema(BaseName) of
+maybe_add_schema(EndpointName) ->
+    case kz_ast_util:load_ref_schema(EndpointName) of
         'undefined' -> [?SCHEMA_SECTION, "\n\n"];
         SchemaJObj -> kz_ast_util:schema_to_table(SchemaJObj)
     end.
@@ -231,96 +263,284 @@ ref_table_to_doc(RefTable) ->
                           ])
        ).
 
--spec to_swagger_json() -> 'ok'.
-to_swagger_json() ->
-    BaseSwagger = read_swagger_json(),
+-spec to_swagger_file() -> 'ok'.
+to_swagger_file() ->
+    OASs = generate_oas_json(get(), <<"oas_two_and_three">>),
+    write_swagger_file(OASs, <<"oas_two_and_three">>).
+
+-spec to_oas3_file() -> 'ok'.
+to_oas3_file() ->
+    OAS3 = generate_oas_json(get(), <<"oas3">>),
+    write_swagger_file(OAS3, <<"oas3">>).
+
+-spec generate_oas_json(callback_configs(), kz_term:ne_binary()) -> kz_term:proplist().
+generate_oas_json(Callbacks, OasVersion) ->
+    Paths = format_as_path_centric(Callbacks),
+    ToParameter = lists:flatten([kz_json:get_keys(kz_json:get_json_value(<<"paths">>, EndpointMeta))
+                                 || {_EndpointName, EndpointMeta} <- kz_json:to_proplist(Paths)
+                                ]),
+    Parameters = to_swagger_parameters(ToParameter, OasVersion),
+    generate_oas_paths_json(Paths, OasVersion, Parameters).
+
+-spec generate_oas_paths_json(kz_json:object(), kz_term:ne_binary(), kz_json:object()) ->
+                                     kz_term:proplist().
+generate_oas_paths_json(Paths, <<"oas_two_and_three">>, Parameters) ->
+    generate_oas_paths_json(Paths, <<"oas3">>, Parameters)
+        ++ generate_oas_paths_json(Paths, <<"swagger2">>, Parameters);
+generate_oas_paths_json(Paths, <<"swagger2">> = OasVersion, Parameters) ->
+    BaseSwagger = read_swagger_json(?SWAGGER_2_JSON_FILE),
     BasePaths = kz_json:get_value(<<"paths">>, BaseSwagger),
 
-    Paths = format_as_path_centric(get()),
+    [{<<"swagger2">>
+     ,kz_json:set_values([{<<"paths">>, to_swagger_paths(Paths, BasePaths)}
+                         ,{<<"definitions">>, to_swagger_definitions(OasVersion)}
+                         ,{<<"parameters">>, kz_json:get_json_value(<<"swagger2">>, Parameters, Parameters)}
+                         ,{<<"host">>, <<"localhost:8000">>}
+                         ,{<<"basePath">>, <<"/", (?CURRENT_VERSION)/binary>>}
+                         ,{<<"swagger">>, <<"2.0">>}
+                         ,{<<"info">>, ?SWAGGER_INFO}
+                         ,{<<"consumes">>, [<<"application/json">>]}
+                         ,{<<"produces">>, [<<"application/json">>]}
+                         ,{<<"externalDocs">>, ?SWAGGER_EXTERNALDOCS}
+                         ]
+                        ,BaseSwagger
+                        )
+     }
+    ];
+generate_oas_paths_json(Paths, <<"oas3">> = OasVersion, Parameters) ->
+    BaseOas = kz_json:from_map(read_oas3_yaml(?OAS3_YML_FILE)),
+    OasPaths = to_oas3_paths_object(Paths),
+    Schemas = to_swagger_definitions(OasVersion),
 
-    Swagger = kz_json:set_values([{<<"paths">>, to_swagger_paths(Paths, BasePaths)}
-                                 ,{<<"definitions">>, to_swagger_definitions()}
-                                 ,{<<"parameters">>, to_swagger_parameters(kz_json:get_keys(Paths))}
-                                 ,{<<"host">>, <<"localhost:8000">>}
-                                 ,{<<"basePath">>, <<"/", (?CURRENT_VERSION)/binary>>}
-                                 ,{<<"swagger">>, <<"2.0">>}
-                                 ,{<<"info">>, ?SWAGGER_INFO}
-                                 ,{<<"consumes">>, [<<"application/json">>]}
-                                 ,{<<"produces">>, [<<"application/json">>]}
-                                 ,{<<"externalDocs">>, ?SWAGGER_EXTERNALDOCS}
-                                 ]
-                                ,BaseSwagger
-                                ),
-    write_swagger_json(Swagger).
+    ReplaceThem = maps:fold(fun create_oas3_path_refs/3, [], OasPaths),
+    %% no need to add these to master file?
+    %% ++ kz_json:foldl(fun(K, V, Acc) -> create_oas3_component_refs(<<"parameters">>, ?OAS3_PARAMETERS_FILENAME, K, V, Acc) end
+    %%                 ,[]
+    %%                 ,kz_json:get_json_value(<<"oas3">>, Parameters, Parameters)
+    %%                 )
+    %% ++ kz_json:foldl(fun(K, V, Acc) -> create_oas3_component_refs(<<"schemas">>, ?OAS3_SCHEMAS_FILENAME, K, V, Acc) end
+    %%                 ,[]
+    %%                 ,Schemas
+    %%                 ),
+    Oas3 = kz_json:set_values(ReplaceThem, kz_json:delete_key(<<"paths">>, BaseOas)),
+    [{<<"oas3">>
+     ,[{<<"openapi">>, Oas3}
+      ,{<<"paths">>, OasPaths}
+      ,{<<"parameters">>, kz_json:get_json_value(<<"oas3">>, Parameters, Parameters)}
+      ,{<<"definitions">>, Schemas}
+      ]
+     }
+    ].
 
--spec to_swagger_definitions() -> kz_json:object().
-to_swagger_definitions() ->
+%% -spec create_oas3_component_refs(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_json:json_proplist()) -> kz_json:json_proplist().
+%% create_oas3_component_refs(ComponentName, Filename, ParamName, _ParamJObj, Acc) ->
+%%     [{[<<"components">>, ComponentName, ParamName, <<"$ref">>]
+%%      ,<<Filename/binary, "#/", ParamName/binary>>
+%%      }
+%%      | Acc
+%%     ].
+
+-spec write_swagger_file(kz_term:proplist(), kz_term:ne_binary()) -> 'ok'.
+write_swagger_file(Props, <<"oas_two_and_three">>) ->
+    write_swagger_file(Props, <<"swagger2">>),
+    write_swagger_file(Props, <<"oas3">>);
+write_swagger_file(Props, <<"swagger2">>) ->
+    io:format(user, "~nsaving swagger 2.0 to file ~s~n", [?SWAGGER_2_JSON_FILE]),
+    file:write_file(?SWAGGER_2_JSON_FILE, kz_json:encode(props:get_value(<<"swagger2">>, Props)));
+write_swagger_file(Props, <<"oas3">>) ->
+    YmlEncodeOption = #{sort_keys => 'true'
+                       ,key_string_style => 'single_quote'
+                        %% ,string_style => 'double_qoute'
+                       },
+    io:format(user, "~nsaving OpenAPI 3 Parameters to file ~s~n", [?OAS3_PARAMETERS_FILE]),
+    Parameters = props:get_value([<<"oas3">>, <<"parameters">>], Props),
+    'ok' = file:write_file(?OAS3_PARAMETERS_FILE, kz_yaml:encode(Parameters, YmlEncodeOption)),
+
+    io:format(user, "saving OpenAPI 3 Schemas to file ~s~n", [?OAS3_SCHEMAS_FILE]),
+    Schemas = props:get_value([<<"oas3">>, <<"definitions">>], Props),
+    'ok' = file:write_file(?OAS3_SCHEMAS_FILE, kz_yaml:encode(Schemas, YmlEncodeOption)),
+
+    io:format(user, "saving OpenAPI 3 Paths to their files~n", []),
+    'ok' = maps:fold(fun write_oas3_path/3, 'ok', props:get_value([<<"oas3">>, <<"paths">>], Props)),
+
+    io:format(user, "saving OpenAPI 3 to file ~s~n", [?OAS3_YML_FILE]),
+    OpenAPI = props:get_value([<<"oas3">>, <<"openapi">>], Props),
+    'ok' = file:write_file(?OAS3_YML_FILE
+                          ,kz_yaml:encode(OpenAPI, YmlEncodeOption#{string_style => 'single_quote'})
+                          ).
+
+-spec write_oas3_path(kz_term:ne_binary(), map(), 'ok') -> 'ok'.
+write_oas3_path(Endpoint, Meta, _) ->
+    'ok' = file:write_file(filename:join([code:priv_dir('crossbar'), "oas3/paths", <<Endpoint/binary, ".yml">>])
+                          ,kz_yaml:encode(Meta, #{sort_keys => 'true'})
+                          ).
+
+-spec create_oas3_path_refs(kz_term:ne_binary(), map(), any()) -> kz_json:json_proplist().
+create_oas3_path_refs(EndpointName, #{<<"paths">> := PathItems}, Acc) ->
+    [{[<<"paths">>, Path, <<"$ref">>]
+     ,<<"paths/", EndpointName/binary, ".yml#/paths/", (escape_json_pointer(Path))/binary>>
+     }
+     || {Path, _OperationObject} <- maps:to_list(PathItems)
+    ] ++ Acc.
+
+-spec escape_json_pointer(kz_term:ne_binary()) -> kz_term:ne_binary().
+escape_json_pointer(Pointer) ->
+    binary:replace(Pointer, <<"/">>, <<"~1">>, [global]).
+
+-spec to_swagger_definitions(kz_term:ne_binary()) -> kz_json:object().
+to_swagger_definitions(OasVersion) ->
     SchemasPath = kz_ast_util:schema_path(<<>>),
-    filelib:fold_files(kz_term:to_list(SchemasPath)
-                      ,"\\.json\$"
-                      ,'false'
-                      ,fun process_schema/2
-                      ,kz_json:new()
-                      ).
+    kz_oas_schema:to_swagger_definitions(OasVersion, SchemasPath).
 
--spec process_schema(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
-process_schema(Filename, Definitions) ->
-    {'ok', Bin} = file:read_file(Filename),
-    KeysToDelete = [<<"_id">>
-                   ,<<"$schema">>
-                   ,<<"additionalProperties">>
-                   ],
-    JObj0 = kz_json:delete_keys(KeysToDelete, kz_json:decode(Bin)),
-    JObj = kz_json:expand(
-             kz_json:from_list(
-               [case lists:last(Path) =:= <<"$ref">> of
-                    'false' -> KV;
-                    'true' -> {Path, maybe_fix_ref(V)}
-                end
-                || {Path, V}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
-                   not lists:member(<<"patternProperties">>, Path)
-                       andalso not is_kazoo_prefixed(Path)
-               ])),
-    Name = kz_term:to_binary(filename:basename(Filename, ".json")),
-    kz_json:set_value(Name, JObj, Definitions).
-
--spec is_kazoo_prefixed(kz_term:ne_binaries()) -> boolean().
-is_kazoo_prefixed([]) -> 'false';
-is_kazoo_prefixed([<<"kazoo-", _/binary>>|_]) -> 'true';
-is_kazoo_prefixed([<<"support_level">>|_]) -> 'true';
-is_kazoo_prefixed([_Field|Path]) -> is_kazoo_prefixed(Path).
-
--spec maybe_fix_ref(kz_term:ne_binary()) -> kz_term:ne_binary().
-maybe_fix_ref(<<"#",_/binary>>=Ref) -> Ref;
-maybe_fix_ref(RelativePath=?NE_BINARY) ->
-    <<"#/definitions/", RelativePath/binary>>.
-
--spec read_swagger_json() -> kz_json:object().
-read_swagger_json() ->
-    case file:read_file(?SWAGGER_JSON) of
+-spec read_swagger_json(kz_term:ne_binary()) -> kz_json:object().
+read_swagger_json(SwaggerFile) ->
+    case file:read_file(SwaggerFile) of
         {'ok', Bin} -> kz_json:decode(Bin);
         {'error', 'enoent'} -> kz_json:new()
     end.
 
--spec write_swagger_json(kz_json:object()) -> 'ok'.
-write_swagger_json(Swagger) ->
-    'ok' = file:write_file(?SWAGGER_JSON, kz_json:encode(Swagger)).
+-spec read_oas3_yaml(kz_term:ne_binary()) -> kz_yaml:yaml_node().
+read_oas3_yaml(SwaggerFile) ->
+    try kz_yaml:decode_file(SwaggerFile)
+    catch
+        'throw':{'error', 'enoent'} -> #{};
+        'throw':Throw -> throw(Throw)
+    end.
+
+-spec to_oas3_paths_object(kz_json:object()) -> map().
+to_oas3_paths_object(Paths) ->
+    kz_json:foldl(fun to_oas3_paths_object/3, #{}, Paths).
+
+-spec to_oas3_paths_object(kz_term:ne_binary(), kz_json:object(), map()) -> map().
+to_oas3_paths_object(EndpointName, EndpointMeta, PathsObject) ->
+    %% TODO: put every api spec to its own app's private folder
+    %% App = kz_json:get_value(<<"app">>, EndpointMeta),
+    %% BaseFile = filename:join([code:lib_dir(App), "doc/oas3_ref", <<EndpointName/binary, ".yml">>]),
+    %% Base = kz_json:from_map(read_oas3_yaml(BaseFile)),
+
+    Paths = kz_json:get_json_value(<<"paths">>, EndpointMeta),
+    F = fun(Path, PathMeta, Acc1) -> to_oas3_path_item_object(EndpointName, EndpointMeta, Path, PathMeta, Acc1) end,
+    PathsObject#{EndpointName => #{<<"paths">> => kz_json:foldl(F, #{}, Paths)}}.
+
+-spec to_oas3_path_item_object(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_json:object(), map()) -> map().
+to_oas3_path_item_object(EndpointName, EndpointMeta, Path, PathMeta, PathItemObjects) ->
+    Methods = kz_json:get_list_value(<<"allowed_methods">>, PathMeta, []),
+    F = fun(Method, Acc) -> add_operation_object(EndpointName, EndpointMeta, Path, Method, Acc) end,
+    PathItemObjects#{Path => lists:foldl(F, #{}, Methods)}.
+
+-spec add_operation_object(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), map()) -> map().
+add_operation_object(EndpointName, EndpointMeta, Path, Method, PathItemObject) ->
+    Funs = [fun add_operation_summary/5
+           ,fun add_operation_id/5
+           ,fun add_operation_parameters/5
+           ,fun add_operation_request_body/5
+           ,fun add_operation_responses/5
+           ,fun add_operation_tag/5
+           ],
+    PathItemObject#{Method =>
+                        lists:foldl(fun(Fun, Object) ->
+                                            Fun(Object, EndpointName, EndpointMeta, Path, Method)
+                                    end
+                                   ,#{}
+                                   ,Funs
+                                   )
+                   }.
+
+-spec add_operation_summary(map(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> map().
+add_operation_summary(Operation, EndpointName, _, Path, Method) ->
+    Operation#{<<"summary">> => generate_method_summary(EndpointName, Method, lists:last(split_url(Path)))}.
+
+-spec add_operation_id(map(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> map().
+add_operation_id(Operation, _EndpointName, _, Path, Method) ->
+    Operation#{<<"operationId">> => make_camel_case_path(Path, kz_binary:to_camel_case(Method))}.
+
+-spec add_operation_parameters(map(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> map().
+add_operation_parameters(Operation, _, _, Path, Method) ->
+    Operation#{<<"parameters">> => [kz_json:to_map(Param) || Param <- make_parameters(Path, Method, 'undefined', <<"oas3">>)]}.
+
+-spec add_operation_request_body(map(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> map().
+add_operation_request_body(Operation, EndpointName, EndpointMeta, _, Method)
+  when Method =:= <<"put">>;
+       Method =:= <<"post">>;
+       Method =:= <<"patch">> ->
+    case kz_json:get_ne_binary_value(<<"schema">>, EndpointMeta) of
+        'undefined' -> Operation;
+        %% These do not have schemas
+        <<"ip_auth">> -> undefined;
+        %% These have schemas
+        _ ->
+            RequestBody = #{<<"content">> =>
+                                #{<<"application/json">> =>
+                                      #{<<"schema">> =>
+                                            #{<<"$ref">> =>
+                                                  <<"../", (kz_term:to_binary(?OAS3_SCHEMAS_FILENAME))/binary, "#/", EndpointName/binary>>
+                                             }
+                                       }
+                                 }
+                           },
+            Operation#{<<"requestBody">> => RequestBody}
+    end;
+add_operation_request_body(Operation, _, _, _, _) ->
+    Operation.
+
+-spec add_operation_responses(map(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> map().
+add_operation_responses(Operation, _, _, _, _) ->
+    Operation#{<<"responses">> => #{<<"200">> => #{<<"description">> => <<"Successful operation">>}}}.
+
+-spec add_operation_tag(map(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> map().
+add_operation_tag(Operation, EndpointName, _, _, _) ->
+    Operation#{<<"tags">> => [EndpointName]}.
+
+%% TODO: create better generic summary (last item in path could be anything, /vmbox/box_id/messages/msg_id/raw)
+-spec generate_method_summary(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
+generate_method_summary(EndpointName, <<"delete">>, _) ->
+    <<"Delete an instance of ", EndpointName/binary>>;
+generate_method_summary(EndpointName, <<"get">>, <<${, _/binary>>) ->
+    <<"Get a ", EndpointName/binary, " by ID">>;
+generate_method_summary(EndpointName, <<"get">>, EndpointName) ->
+    <<"Get all ", EndpointName/binary>>;
+generate_method_summary(EndpointName, <<"get">>, Something) ->
+    <<"Get ", Something/binary, " of ", EndpointName/binary>>;
+generate_method_summary(EndpointName, <<"patch">>, _) ->
+    <<"Patch specific fields of ", EndpointName/binary>>;
+generate_method_summary(EndpointName, <<"post">>, _) ->
+    <<"Update an instance of ", EndpointName/binary>>;
+generate_method_summary(EndpointName, <<"put">>, _) ->
+    <<"Add an instance of ", EndpointName/binary>>.
+
+-spec make_camel_case_path(kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:ne_binary()) ->
+                                  kz_term:ne_binary().
+make_camel_case_path(Path, Acc) when is_binary(Path) ->
+    make_camel_case_path(split_url(Path), Acc);
+make_camel_case_path([<<"{", _/binary>> = B | Rest], Acc) ->
+    make_camel_case_path(Rest, <<Acc/binary, (kz_binary:to_camel_case(unbrace_param(B)))/binary>>);
+make_camel_case_path([Word | Rest], Acc) ->
+    make_camel_case_path(Rest, <<Acc/binary, (kz_binary:to_camel_case(Word))/binary>>);
+make_camel_case_path([], Acc) ->
+    Acc.
 
 -spec to_swagger_paths(kz_json:object(), kz_json:object()) -> kz_json:object().
 to_swagger_paths(Paths, BasePaths) ->
     Endpoints =
         [{[Path, Method], kz_json:get_value([Path, Method], BasePaths, kz_json:new())}
-         || {Path, AllowedMethods} <- kz_json:to_proplist(Paths),
-            Method <- kz_json:get_list_value(<<"allowed_methods">>, AllowedMethods, [])
+         || {_EndpointName, EndpointMeta} <- kz_json:to_proplist(Paths),
+            {Path, PathMeta} <- kz_json:to_proplist(kz_json:get_json_value(<<"paths">>, EndpointMeta)),
+            Method <- kz_json:get_list_value(<<"allowed_methods">>, PathMeta, [])
         ],
     kz_json:merge(kz_json:set_values(Endpoints, kz_json:new())
                  ,kz_json:foldl(fun to_swagger_path/3, kz_json:new(), Paths)
                  ).
 
 -spec to_swagger_path(kz_json:key(), kz_json:object(), kz_json:object()) -> kz_json:object().
-to_swagger_path(Path, PathMeta, Acc) ->
+to_swagger_path(_EndpointName, EndpointMeta, Acc) ->
+    Paths = kz_json:get_json_value(<<"paths">>, EndpointMeta),
+    SchemaParameter = swagger_body_param(EndpointMeta),
+    F = fun(Path, PathMeta, Acc1) -> to_swagger_path(Path, PathMeta, Acc1, SchemaParameter) end,
+    kz_json:foldl(F, Acc, Paths).
+
+-spec to_swagger_path(kz_json:key(), kz_json:object(), kz_json:object(), kz_json:api_object()) -> kz_json:object().
+to_swagger_path(Path, PathMeta, Acc, SchemaParameter) ->
     Methods = kz_json:get_list_value(<<"allowed_methods">>, PathMeta, []),
-    SchemaParameter = swagger_params(PathMeta),
     F = fun(Method, Acc1) -> add_swagger_path(Method, Acc1, Path, SchemaParameter) end,
     lists:foldl(F, Acc, Methods).
 
@@ -328,7 +548,7 @@ to_swagger_path(Path, PathMeta, Acc) ->
                               kz_json:object().
 add_swagger_path(Method, Acc, Path, SchemaParameter) ->
     MethodJObj = kz_json:get_value([Path, Method], Acc, kz_json:new()),
-    Parameters = make_parameters(Path, Method, SchemaParameter),
+    Parameters = make_parameters(Path, Method, SchemaParameter, <<"swagger2">>),
     BaseResponse = kz_json:from_list_recursive([{<<"200">>, [{<<"description">>, <<"request succeeded">>}]}]),
 
     Vs = props:filter_empty([{[Path, Method], MethodJObj}
@@ -337,54 +557,67 @@ add_swagger_path(Method, Acc, Path, SchemaParameter) ->
                             ]),
     kz_json:insert_values(Vs, Acc).
 
--spec make_parameters(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object()) -> kz_term:ne_binaries().
-make_parameters(Path, Method, SchemaParameter) ->
-    lists:usort(fun compare_parameters/2
-               ,lists:flatten(
-                  [Parameter
-                   || F <- [fun (P, M) -> maybe_add_schema(P, M, SchemaParameter) end
-                           ,fun auth_token_param/2
-                           ,fun path_params/2
-                           ],
-                      Parameter <- [F(Path, Method)],
-                      not kz_term:is_empty(Parameter)
-                  ])).
+-spec make_parameters(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object(), kz_term:ne_binary()) -> kz_json:objects().
+make_parameters(Path, Method, SchemaParameter, OasVersion) ->
+    [Parameter
+     || F <- [fun (P, M) -> maybe_add_schema(P, M, SchemaParameter, OasVersion) end
+             ,fun (P, M) -> auth_token_param(P, M, OasVersion) end
+             ,fun (P, M) -> path_params(P, M, OasVersion) end
+             ],
+        Parameter <- F(Path, Method),
+        not kz_term:is_empty(Parameter)
+    ].
 
--spec compare_parameters(kz_json:object(), kz_json:object()) -> boolean().
-compare_parameters(Param1, Param2) ->
-    Keys = [<<"name">>, <<"$ref">>],
-    kz_json:get_first_defined(Keys, Param1) >= kz_json:get_first_defined(Keys, Param2).
-
--spec maybe_add_schema(any(), kz_term:ne_binary(), kz_json:object()) -> kz_term:api_object().
-maybe_add_schema(_Path, Method, Schema)
+-spec maybe_add_schema(any(), kz_term:ne_binary(), kz_term:api_object(), kz_term:ne_binary()) -> kz_json:objects().
+maybe_add_schema(_Path, _Method, 'undefined', _) ->
+    [];
+maybe_add_schema(_Path, _Method, _Schema, <<"oas3">>) ->
+    [];
+maybe_add_schema(_Path, Method, Schema, _OasVersion)
   when Method =:= <<"put">>;
        Method =:= <<"post">> ->
-    Schema;
-maybe_add_schema(_Path, _Method, _Parameters) ->
-    'undefined'.
+    [Schema];
+maybe_add_schema(_Path, _Method, _Parameters, _) ->
+    [].
 
--spec swagger_params(kz_json:object()) -> kz_term:api_object().
-swagger_params(PathMeta) ->
+-spec swagger_body_param(kz_json:object()) -> kz_term:api_object().
+swagger_body_param(PathMeta) ->
     case kz_json:get_ne_binary_value(<<"schema">>, PathMeta) of
         'undefined' -> 'undefined';
         %% These do not have schemas
-        <<"ip_auth">> -> undefined;
+        <<"ip_auth">> -> 'undefined';
         %% These have schemas
         Schema ->
-            kz_json:from_list([{<<"name">>, Schema}
-                              ,{<<"in">>, <<"body">>}
-                              ,{<<"required">>, 'true'}
-                              ,{<<"schema">>, kz_json:from_list([{<<"$ref">>, <<"#/definitions/", Schema/binary>>}])}
-                              ])
+            kz_json:from_list(
+              [{<<"name">>, Schema}
+              ,{<<"in">>, <<"body">>}
+              ,{<<"required">>, 'true'}
+              ,{<<"schema">>, kz_json:from_list([{<<"$ref">>, <<"#/definitions/", Schema/binary>>}])}
+              ])
     end.
 
--spec auth_token_param(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
-auth_token_param(Path, _Method) ->
+-spec auth_token_param(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
+auth_token_param(Path, _Method, OasVersion) ->
+    ParamsPath = oas_params_path(OasVersion),
     case is_authtoken_required(Path) of
-        'undefined' -> 'undefined';
-        'true' -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN>>}]);
-        'false' -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN_NOT_REQUIRED>>}])
+        'undefined' -> [];
+        'true' ->
+            [kz_json:from_list(
+               [{<<"$ref">>, <<ParamsPath/binary, (kz_term:to_binary(?X_AUTH_TOKEN))/binary>>}]
+              )
+            ];
+        'false' ->
+            [kz_json:from_list(
+               [{<<"$ref">>, <<ParamsPath/binary, (kz_term:to_binary(?X_AUTH_TOKEN_NOT_REQUIRED))/binary>>}]
+              )
+            ]
     end.
+
+-spec oas_params_path(kz_term:ne_binary()) -> kz_term:ne_binary().
+oas_params_path(<<"oas3">>) ->
+    <<"../", (kz_term:to_binary(?OAS3_PARAMETERS_FILENAME))/binary, "#/">>;
+oas_params_path(<<"swagger2">>) ->
+    <<"#/parameters/">>.
 
 -spec is_authtoken_required(kz_term:ne_binary()) -> kz_term:api_boolean().
 is_authtoken_required(<<"/"?ACCOUNTS_PREFIX"/", _/binary>>=Path) ->
@@ -396,16 +629,17 @@ is_api_c2c_connect(<<"/"?ACCOUNTS_PREFIX"/clicktocall/", _/binary>>=Path) ->
     kz_binary:suffix(<<"/connect">>, Path);
 is_api_c2c_connect(_) -> 'false'.
 
--spec path_params(kz_term:ne_binary(), any()) -> kz_json:objects().
-path_params(Path, _Method) ->
-    [path_param(Param) || Param <- split_url(Path),
-                          is_path_variable(Param)
+-spec path_params(kz_term:ne_binary(), any(), kz_term:ne_binary()) -> kz_json:objects().
+path_params(Path, _Method, OasVersion) ->
+    [path_param(Param, OasVersion)
+     || Param <- split_url(Path),
+        is_path_variable(Param)
     ].
 
--spec path_param(kz_term:ne_binary()) -> kz_json:object().
-path_param(PathToken) ->
+-spec path_param(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
+path_param(PathToken, OasVersion) ->
     Param = unbrace_param(PathToken),
-    kz_json:from_list([{<<"$ref">>, <<"#/parameters/", Param/binary>>}]).
+    kz_json:from_list([{<<"$ref">>, <<(oas_params_path(OasVersion))/binary, Param/binary>>}]).
 
 -spec split_url(kz_term:ne_binary()) -> kz_term:ne_binaries().
 split_url(Path) ->
@@ -422,37 +656,39 @@ format_as_path_centric(Configs) ->
 -spec format_pc_module(callback_config(), kz_json:object()) -> kz_json:object().
 format_pc_module({Module, CallbackConfig}, Acc) ->
     ModuleName = path_name(Module),
-    F = fun(ConfigData, Acc1) -> format_pc_config(ConfigData, Acc1, Module, ModuleName) end,
-    lists:foldl(F, Acc, CallbackConfig);
+    EndpointName = base_module_name(Module),
+    F = fun(ConfigData, Acc1) -> format_pc_config(ConfigData, Acc1, EndpointName, ModuleName) end,
+    maybe_include_schema(lists:foldl(F, Acc, CallbackConfig), EndpointName);
 format_pc_module(_MC, Acc) ->
     Acc.
 
--spec format_pc_config(path_with_methods(), kz_json:object(), module(), kz_term:api_ne_binary()) ->
+-spec format_pc_config(path_with_methods(), kz_json:object(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
                               kz_json:object().
-format_pc_config(_ConfigData, Acc, _Module, 'undefined') -> Acc;
-format_pc_config({Callback, Paths}, Acc, Module, ModuleName) ->
-    F = fun(Path, Acc1) -> format_pc_callback(Path, Acc1, Module, ModuleName, Callback) end,
+format_pc_config(_ConfigData, Acc, _Module, 'undefined') ->
+    Acc;
+format_pc_config({'app', AppName}, Acc, EndpointName, _ModuleName) ->
+    kz_json:set_value([EndpointName, <<"app">>], kz_term:to_binary(AppName), Acc);
+format_pc_config({Callback, Paths}, Acc, EndpointName, ModuleName) ->
+    F = fun(Path, Acc1) -> format_pc_callback(Path, Acc1, EndpointName, ModuleName, Callback) end,
     lists:foldl(F, Acc, Paths).
 
-format_pc_callback({[], []}, Acc, _Module, _ModuleName, _Callback) -> Acc;
-format_pc_callback({_Path, []}, Acc, _Module, _ModuleName, _Callback) ->
+format_pc_callback({[], []}, Acc, _EndpointName, _ModuleName, _Callback) -> Acc;
+format_pc_callback({_Path, []}, Acc, _EndpointName, _ModuleName, _Callback) ->
     io:format("module ~s supported path ~s~nm: ~p c: ~p~n"
-             ,[_ModuleName, _Path, _Module, _Callback]
+             ,[_ModuleName, _Path, _EndpointName, _Callback]
              ),
     Acc;
-format_pc_callback({Path, Vs}, Acc, Module, ModuleName, Callback) ->
+format_pc_callback({Path, Vs}, Acc, EndpointName, ModuleName, Callback) ->
     PathName = swagger_api_path(Path, ModuleName),
     Values = props:filter_undefined(
-               [{[PathName, kz_term:to_binary(Callback)], [kz_term:to_lower_binary(V) || V <- Vs]}
-               ,maybe_include_schema(PathName, Module)
+               [{[EndpointName, <<"paths">>, PathName, kz_term:to_binary(Callback)], [kz_term:to_lower_binary(V) || V <- Vs]}
                ]),
     kz_json:set_values(Values, Acc).
 
-maybe_include_schema(PathName, Module) ->
-    M = base_module_name(Module),
-    case filelib:is_file(kz_ast_util:schema_path(<<M/binary, ".json">>)) of
-        'false' -> {'undefined', 'undefined'};
-        'true' -> {[PathName, <<"schema">>], base_module_name(Module)}
+maybe_include_schema(Acc, EndpointName) ->
+    case filelib:is_file(kz_ast_util:schema_path(<<EndpointName/binary, ".json">>)) of
+        'false' -> Acc;
+        'true' -> kz_json:set_value([EndpointName, <<"schema">>], EndpointName, Acc)
     end.
 
 format_path_tokens(<<"/">>) -> [];
@@ -537,7 +773,7 @@ path_name(Module) ->
 
 %% API
 
--type callback_config() :: {callback(), [allowed_methods() | content_types_provided()]}.
+-type callback_config() :: {callback(), [allowed_methods() | content_types_provided() | {'app', atom()}]}.
 -type callback_configs() :: [callback_config()].
 -type callback() :: module().
 -spec get() -> callback_configs().
@@ -553,18 +789,19 @@ get_app(App, Acc) ->
 process_application(App, Acc) ->
     EBinDir = code:lib_dir(App, 'ebin'),
     io:format("processing ~s modules: ", [App]),
-    Processed = filelib:fold_files(EBinDir, "^cb_.*.beam\$", 'false', fun process_module/2, Acc),
+    Fun = fun(File, Acc1) -> process_module(App, File, Acc1) end,
+    Processed = filelib:fold_files(EBinDir, "^cb_.*.beam\$", 'false', Fun, Acc),
     io:format(" done~n"),
     Processed.
 
--spec process_module(file:filename_all(), callback_configs()) -> callback_configs().
-process_module(File, Acc) ->
+-spec process_module(atom(), file:filename_all(), callback_configs()) -> callback_configs().
+process_module(App, File, Acc) ->
     {'ok', {Module, [{'exports', Fs}]}} = beam_lib:chunks(File, ['exports']),
     io:format("."),
 
     case process_exports(File, Module, Fs) of
         'undefined' -> Acc;
-        Exports -> [Exports | Acc]
+        {Module, Exports} -> [{Module, props:set_value('app', App, Exports)} | Acc]
     end.
 
 -type fun_arity() :: {atom(), arity()}.
@@ -576,9 +813,9 @@ is_api_function({'allowed_methods', _Arity}) -> 'true';
 is_api_function(_) ->  'false'.
 
 -spec process_exports(file:filename_all(), module(), fun_arities()) ->
-                             callback_config() | 'undefined' | [].
-process_exports(_File, 'api_resource', _) -> [];
-process_exports(_File, 'cb_context', _) -> [];
+                             callback_config() | 'undefined'.
+process_exports(_File, 'api_resource', _) -> 'undefined';
+process_exports(_File, 'cb_context', _) -> 'undefined';
 process_exports(File, Module, Fs) ->
     case lists:any(fun is_api_function/1, Fs) of
         'false' -> 'undefined';
@@ -590,12 +827,11 @@ process_api_module(File, Module) ->
     {'ok', {Module, [{'abstract_code', AST}]}} = beam_lib:chunks(File, ['abstract_code']),
     try process_api_ast(Module, AST)
     catch
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            io:format("failed to process ~p(~p): ~s: ~p\n", [File, Module, _E, _R]),
-            io:format("~p\n", [ST]),
-            'undefined'
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        io:format("failed to process ~p(~p): ~s: ~p\n", [File, Module, _E, _R]),
+        io:format("~p\n", [ST]),
+        'undefined'
+        end.
 
 -spec process_api_ast(module(), kz_ast_util:abstract_code()) ->
                              {module(), [allowed_methods() | content_types_provided()]}.
@@ -607,7 +843,7 @@ process_api_ast(Module, {'raw_abstract_v1', Attributes}) ->
     process_api_ast_functions(Module, APIFunctions).
 
 -type http_methods() :: kz_term:ne_binaries().
--type path_with_methods() :: {iodata(), http_methods()}.
+-type path_with_methods() :: {iodata() | atom(), http_methods() | atom()}.
 -type paths_with_methods() :: [path_with_methods()].
 -type allowed_methods() :: {'allowed_methods', paths_with_methods()}.
 -type content_types_provided() :: {'content_types_provided', paths_with_methods()}.
@@ -699,35 +935,35 @@ find_methods_in_clause(?LAGER, Acc) ->
     Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_fax', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_faxes:acceptable_content_types()
+     || {Type, SubType, _} <- cb_faxes:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_media', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_media:acceptable_content_types()
+     || {Type, SubType, _} <- cb_media:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_notifications', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_notifications:acceptable_content_types()
+     || {Type, SubType, _} <- cb_notifications:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_attachments', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_whitelabel:acceptable_content_types()
+     || {Type, SubType, _} <- cb_whitelabel:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_domain_attachments', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_whitelabel:acceptable_content_types()
+     || {Type, SubType, _} <- cb_whitelabel:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_provisioner', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_global_provisioner_templates:acceptable_content_types()
+     || {Type, SubType, _} <- cb_global_provisioner_templates:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_vm_download', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_vmboxes:acceptable_content_types()
+     || {Type, SubType, _} <- cb_vmboxes:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_get', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
-     || {Type, SubType} <- cb_port_requests:acceptable_content_types()
+     || {Type, SubType, _} <- cb_port_requests:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('allowed_methods_on_account', _Args), Acc) ->
     AccountMethods = cb_accounts:allowed_methods_on_account(<<"account">>, {'ok', <<"master">>}),
@@ -814,210 +1050,240 @@ grep_cb_module(?NE_BINARY=Module) ->
 
 -spec to_swagger_parameters(kz_term:ne_binaries()) -> kz_json:object().
 to_swagger_parameters(Paths) ->
+    to_swagger_parameters(Paths, <<"swagger2">>).
+
+-spec to_swagger_parameters(kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_json:object().
+to_swagger_parameters(Paths, <<"oas_two_and_three">>) ->
+    kz_json:from_list([{<<"oas3">>, to_swagger_parameters(Paths, <<"oas3">>)}
+                      ,{<<"swagger2">>, to_swagger_parameters(Paths, <<"swagger2">>)}
+                      ]
+                     );
+to_swagger_parameters(Paths, OasVersion) ->
     Params = [Param || Path <- Paths,
                        Param <- split_url(Path),
                        is_path_variable(Param)
              ],
     kz_json:from_list(
-      [{<<?X_AUTH_TOKEN>>, parameter_auth_token(true)}
-      ,{<<?X_AUTH_TOKEN_NOT_REQUIRED>>, parameter_auth_token(false)}
+      [{<<?X_AUTH_TOKEN>>, parameter_auth_token(true, OasVersion)}
+      ,{<<?X_AUTH_TOKEN_NOT_REQUIRED>>, parameter_auth_token(false, OasVersion)}
       ]
       ++ [{kz_json:get_ne_binary_value(<<"name">>, ParamProps), ParamProps}
           || Param <- lists:usort(lists:flatten(Params)),
-             ParamProps <- [kz_json:from_list(def_path_param(Param))]
+             ParamProps <- [kz_json:from_list(def_path_param(OasVersion, Param))]
          ]).
 
--spec parameter_auth_token(boolean()) -> kz_json:object().
-parameter_auth_token(IsRequired) ->
+-spec parameter_auth_token(boolean(), kz_term:ne_binary()) -> kz_json:object().
+parameter_auth_token(IsRequired, OasVersion) ->
     kz_json:from_list([{<<"name">>, <<"X-Auth-Token">>}
                       ,{<<"in">>, <<"header">>}
-                      ,{<<"type">>, <<"string">>}
-                      ,{<<"minLength">>, 32}
                       ,{<<"required">>, IsRequired}
                       ,{<<"description">>, <<"request authentication token">>}
+                       | parameter_schema(OasVersion
+                                         ,[{<<"type">>, <<"string">>}
+                                          ,{<<"minLength">>, 32}
+                                          ]
+                                         )
                       ]).
 
--spec generic_id_path_param(kz_term:ne_binary()) -> kz_json:json_proplist().
-generic_id_path_param(Name) ->
-    [{<<"minLength">>, 32}
-    ,{<<"maxLength">>, 32}
-    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
-     | base_path_param(Name)
-    ].
+-spec parameter_schema(kz_term:ne_binary(), kz_json:json_proplist()) -> kz_json:json_proplist().
+parameter_schema(<<"swagger2">>, SchemaProp) ->
+    SchemaProp;
+parameter_schema(<<"oas3">>, SchemaProp) ->
+    [{<<"schema">>, kz_json:from_list(SchemaProp)}].
 
--spec base_path_param(kz_term:ne_binary()) -> kz_json:json_proplist().
-base_path_param(Param) ->
-    [{<<"name">>, unbrace_param(Param)}
+-spec generic_id_path_param(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:json_proplist().
+generic_id_path_param(Name, OasVersion) ->
+    base_path_param(Name
+                   ,OasVersion
+                   ,[{<<"minLength">>, 32}
+                    ,{<<"maxLength">>, 32}
+                    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
+                    ]
+                   ).
+
+-spec base_path_param(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:json_proplist().
+base_path_param(ParamName, OasVersion) ->
+    base_path_param(ParamName
+                   ,OasVersion
+                   ,[]
+                   ).
+
+-spec base_path_param(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:json_proplist()) -> kz_json:json_proplist().
+base_path_param(ParamName, OasVersion, SchemaProp) ->
+    Name = unbrace_param(ParamName),
+    [{<<"name">>, Name}
     ,{<<"in">>, <<"path">>}
     ,{<<"required">>, true}
-    ,{<<"type">>, <<"string">>}
+    ,{<<"description">>, <<"request ", Name/binary, " parameter">>}
+     | parameter_schema(OasVersion, [{<<"type">>, <<"string">>} | SchemaProp])
     ].
 
--spec modb_id_path_param(kz_term:ne_binary()) -> kz_json:json_proplist().
-modb_id_path_param(Param) ->
+-spec modb_id_path_param(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:json_proplist().
+modb_id_path_param(Param, OasVersion) ->
     %% Matches an MoDB id:
-    [{<<"pattern">>, <<"^[0-9a-f-]+\$">>}
-    ,{<<"minLength">>, 39}
-    ,{<<"maxLength">>, 39}
-     | base_path_param(Param)
-    ].
+    base_path_param(Param
+                   ,OasVersion
+                   ,[{<<"pattern">>, <<"^[0-9a-f-]+\$">>}
+                    ,{<<"minLength">>, 39}
+                    ,{<<"maxLength">>, 39}
+                    ]
+                   ).
 
 %% When param represents an account id (i.e. 32 bytes of hexa):
--spec def_path_param(kz_term:ne_binary()) -> kz_json:json_proplist().
-def_path_param(<<"{ACCOUNT_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{ADDRESS_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{ALERT_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{APP_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{AUTH_TOKEN}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{BLACKLIST_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{C2C_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{CALLFLOW_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{CARD_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{CCCP_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{CONFERENCE_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{CONFIG_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{CONNECTIVITY_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{DEVICE_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{DIRECTORY_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{FAXBOX_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{FAX_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{GROUP_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{KEY_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{LEDGER_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{LINK_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{LIST_ENTRY_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{LIST_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{MEDIA_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{MENU_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{NOTIFICATION_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{PORT_REQUEST_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{QUEUE_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{RATE_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{RESOURCE_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{RESOURCE_TEMPLATE_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{SMS_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{STORAGE_PLAN_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{TEMPLATE_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{TEMPORAL_RULE_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{TEMPORAL_RULE_SET}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{USER_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{VM_BOX_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{WEBHOOK_ID}">>=P) -> generic_id_path_param(P);
-def_path_param(<<"{MIGRATION_ID}">>=P) -> generic_id_path_param(P);
+-spec def_path_param(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:json_proplist().
+def_path_param(OasVersion, <<"{ACCOUNT_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{ADDRESS_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{ALERT_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{APP_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{AUTH_TOKEN}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{BLACKLIST_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{C2C_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{CALLFLOW_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{CARD_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{CCCP_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{CONFERENCE_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{CONFIG_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{CONNECTIVITY_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{DEVICE_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{DIRECTORY_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{FAXBOX_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{FAX_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{GROUP_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{KEY_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{LEDGER_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{LINK_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{LIST_ENTRY_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{LIST_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{MEDIA_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{MENU_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{NOTIFICATION_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{PORT_REQUEST_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{QUEUE_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{RATE_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{RESOURCE_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{RESOURCE_TEMPLATE_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{SMS_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{STORAGE_PLAN_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{TEMPLATE_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{TEMPORAL_RULE_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{TEMPORAL_RULE_SET}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{USER_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{VM_BOX_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{WEBHOOK_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{MIGRATION_ID}">>=P) -> generic_id_path_param(P, OasVersion);
 
 %% When param represents an MoDB id (i.e. 32+4+2 bytes of hexa & 1 dash):
-def_path_param(<<"{CDR_ID}">>=P) -> modb_id_path_param(P);
-def_path_param(<<"{RECORDING_ID}">>=P) -> modb_id_path_param(P);
+def_path_param(OasVersion, <<"{CDR_ID}">>=P) -> modb_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{RECORDING_ID}">>=P) -> modb_id_path_param(P, OasVersion);
 
 %% When you don't know (ideally you do know):
-def_path_param(<<"{ARGS}">>=P) -> base_path_param(P);
-def_path_param(<<"{ATTACHMENT_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{ATTEMPT_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{CALL_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{COMMENT_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{EXTENSION}">>=P) -> base_path_param(P);
-def_path_param(<<"{FAX_JOB_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{INTERACTION_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{JOB_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{LANGUAGE}">>=P) -> base_path_param(P);
-def_path_param(<<"{LEDGER_ENTRY_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{PLAN_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{PROMPT_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{PROVIDER_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{SELECTOR_NAME}">>=P) -> base_path_param(P);
-def_path_param(<<"{SMTP_LOG_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{SOCKET_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{SYSTEM_CONFIG_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{TEMPLATE_NAME}">>=P) -> base_path_param(P);
-def_path_param(<<"{THING}">>=P) -> base_path_param(P);
-def_path_param(<<"{TRANSACTION_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{USERNAME}">>=P) -> base_path_param(P);
-def_path_param(<<"{VM_MSG_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{WHITELABEL_DOMAIN}">>=P) -> base_path_param(P);
-def_path_param(<<"{ERROR_ID}">>=P) -> base_path_param(P);
-def_path_param(<<"{HANDLER_ID}">>=P) -> base_path_param(P);
+def_path_param(OasVersion, <<"{ARGS}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{ATTACHMENT_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{ATTEMPT_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{CALL_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{COMMENT_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{ERROR_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{EXTENSION}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{FAX_JOB_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{HANDLER_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{INTERACTION_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{JOB_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{LANGUAGE}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{LEDGER_ENTRY_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{PLAN_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{PROMPT_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{PROVIDER_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{SAMPLE_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{SELECTOR_NAME}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{SMTP_LOG_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{SOCKET_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{SYSTEM_CONFIG_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{TEMPLATE_NAME}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{THING}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{TRANSACTION_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{USERNAME}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{VM_MSG_ID}">>=P) -> base_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{WHITELABEL_DOMAIN}">>=P) -> base_path_param(P, OasVersion);
 
 %% For all the edge cases out there:
-def_path_param(<<"report-{REPORT_ID}">>) ->
+def_path_param(OasVersion, <<"{MODB_SUFFIX}">>=P) ->
+    base_path_param(P
+                   ,OasVersion
+                   ,[{<<"minLength">>, 6}
+                    ,{<<"maxLength">>, 6}
+                    ,{<<"pattern">>, <<"^[0-9]{6}">>}
+                    ]
+                   );
+def_path_param(OasVersion, <<"report-{REPORT_ID}">>) ->
     Prefix = <<"report-">>,
     PrefixSize = byte_size(Prefix),
-    [{<<"minLength">>, 32 + PrefixSize}
-    ,{<<"maxLength">>, 32 + PrefixSize}
-    ,{<<"pattern">>, <<"^report\\-[0-9a-f]+\$">>}
-     | base_path_param(<<"{REPORT_ID}">>)
-    ];
+    base_path_param(<<"{REPORT_ID}">>
+                   ,OasVersion
+                   ,[{<<"minLength">>, 32 + PrefixSize}
+                    ,{<<"maxLength">>, 32 + PrefixSize}
+                    ,{<<"pattern">>, <<"^report\\-[0-9a-f]+\$">>}
+                    ]
+                   );
 
-def_path_param(<<"{APP_SCREENSHOT_INDEX}">>=P) ->
-    [{<<"pattern">>, <<"^[0-9]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{APP_SCREENSHOT_INDEX}">>=P) ->
+    base_path_param(P, OasVersion, [{<<"pattern">>, <<"^[0-9]+\$">>}]);
 
-def_path_param(<<"{FUNCTION}">>=P) ->
-    [{<<"pattern">>, <<"^[a-zA-Z0-9]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{FUNCTION}">>=P) ->
+    base_path_param(P, OasVersion, [{<<"pattern">>, <<"^[a-zA-Z0-9]+\$">>}]);
 
-def_path_param(<<"{IP_ADDRESS}">>=P) ->
-    [{<<"minLength">>, 7}
-    ,{<<"maxLength">>, 15}
-    ,{<<"pattern">>, <<"^[0-9.]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{IP_ADDRESS}">>=P) ->
+    base_path_param(P
+                   ,OasVersion
+                   ,[{<<"minLength">>, 7}
+                    ,{<<"maxLength">>, 15}
+                    ,{<<"pattern">>, <<"^[0-9.]+\$">>}
+                    ]
+                   );
 
-def_path_param(<<"{MODULE}">>=P) ->
-    [{<<"pattern">>, <<"^[a-zA-Z0-9]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{MODULE}">>=P) ->
+    base_path_param(P, OasVersion, [{<<"pattern">>, <<"^[a-zA-Z0-9]+\$">>}]);
 
-def_path_param(<<"{NODE}">>=P) ->
-    [{<<"pattern">>, <<"^[a-zA-Z0-9]+@[a-zA-Z0-9]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{NODE}">>=P) ->
+    base_path_param(P, OasVersion, [{<<"pattern">>, <<"^[a-zA-Z0-9]+@[a-zA-Z0-9]+\$">>}]);
 
-def_path_param(<<"{PARTICIPANT_ID}">>=P) ->
-    [{<<"pattern">>, <<"^[0-9]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{PARTICIPANT_ID}">>=P) ->
+    base_path_param(P, OasVersion, [{<<"pattern">>, <<"^[0-9]+\$">>}]);
 
-def_path_param(<<"{PHONE_NUMBER}">>=P) ->
-    [{<<"minLength">>, 13}
-    ,{<<"pattern">>, <<"^%2[Bb][0-9]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{PHONE_NUMBER}">>=P) ->
+    base_path_param(P
+                   ,OasVersion
+                   ,[{<<"minLength">>, 13}
+                    ,{<<"pattern">>, <<"^%2[Bb][0-9]+\$">>}
+                    ]
+                   );
 
-def_path_param(<<"{SCHEMA_NAME}">>=P) ->
-    [{<<"pattern">>, <<"^[a-z0-9._-]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{SCHEMA_NAME}">>=P) ->
+    base_path_param(P, OasVersion, [{<<"pattern">>, <<"^[a-z0-9._-]+\$">>}]);
 
-def_path_param(<<"{TASK_ID}">>=P) ->
-    [{<<"minLength">>, 15}
-    ,{<<"maxLength">>, 15}
-    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{TASK_ID}">>=P) ->
+    base_path_param(P
+                   ,OasVersion
+                   ,[{<<"minLength">>, 15}
+                    ,{<<"maxLength">>, 15}
+                    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
+                    ]
+                   );
 
-def_path_param(<<"{ENDPOINT_ID}">>=P) ->
-    generic_id_path_param(P);
-def_path_param(<<"{ENDPOINT_TYPE}">>=P) ->
-    [{<<"enum">>, [<<"users">>, <<"devices">>]}
-     | base_path_param(P)
-    ];
+def_path_param(OasVersion, <<"{ENDPOINT_ID}">>=P) ->
+    generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{ENDPOINT_TYPE}">>=P) ->
+    base_path_param(P, OasVersion, [{<<"enum">>, [<<"users">>, <<"devices">>]}]);
 
-def_path_param(<<"{UUID}">>=P) ->
-    [{<<"pattern">>, <<"^[a-f0-9-]+\$">>}
-     | base_path_param(P)
-    ];
-def_path_param(<<"{NUMBER}">> = P) ->
-    [{<<"pattern">>, <<"^\\+?[0-9]+">>}
-     | base_path_param(P)
-    ];
-def_path_param(<<"{AUDIT_ID}">> = P) ->
-    generic_id_path_param(P);
-def_path_param(<<"{SOURCE_SERVICE}">> = P) ->
-    base_path_param(P);
+def_path_param(OasVersion, <<"{UUID}">>=P) ->
+    base_path_param(P, OasVersion, [{<<"pattern">>, <<"^[a-f0-9-]+\$">>}]);
+def_path_param(OasVersion, <<"{NUMBER}">> = P) ->
+    base_path_param(P, OasVersion, [{<<"pattern">>, <<"^\\+?[0-9]+">>}]);
+def_path_param(OasVersion, <<"{AUDIT_ID}">> = P) ->
+    generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{SOURCE_SERVICE}">> = P) ->
+    base_path_param(P, OasVersion);
 
-def_path_param(_Param) ->
+def_path_param(_OasVersion, _Param) ->
     io:format('standard_error'
              ,"~s/" ?FILE ":~p: No Swagger definition of path parameter '~s'.\n"
              ,[code:lib_dir('kazoo_ast'), ?LINE, _Param]

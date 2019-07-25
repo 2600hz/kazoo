@@ -132,9 +132,20 @@ handle_cast({'kz_amqp_channel', _}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
-handle_cast({'gen_listener', {'is_consuming', 'true'}}, State) ->
-    _ = maybe_bridge(State),
-    {'noreply', State};
+handle_cast({'gen_listener', {'is_consuming', 'true'}}
+           ,#state{call_id=CallId
+                  ,resource_req=OffnetReq
+                  ,request_handler=RequestHandler
+                  }=State
+           ) ->
+    case kapps_call_events:get_event(CallId) of
+        {'ok', CallEvt} ->
+            lager:info("channel died while we were initializing"),
+            handle_channel_destroy(CallEvt, OffnetReq, RequestHandler);
+        {'error', 'not_found'} ->
+            _ = maybe_bridge(State),
+            {'noreply', State}
+    end;
 handle_cast({'bridge_result', _Props}, #state{response_queue='undefined'}=State) ->
     {'stop', 'normal', State};
 handle_cast({'bridge_result', Props}, #state{response_queue=ResponseQ}=State) ->
@@ -448,16 +459,18 @@ build_bridge(#state{endpoints=Endpoints
 -type caller_id() :: {kz_term:api_ne_binary(), kz_term:api_ne_binary()}.
 
 -spec maybe_override_asserted_identity(kapi_offnet_resource:req(), emergency_override()) -> caller_id().
-maybe_override_asserted_identity(OffnetReq, {'false', _, _}) ->
+maybe_override_asserted_identity(OffnetReq, {'false', _Number, _Name}) ->
     {kapi_offnet_resource:asserted_identity_number(OffnetReq)
     ,kapi_offnet_resource:asserted_identity_name(OffnetReq)
     };
 maybe_override_asserted_identity(OffnetReq, {'true', Number, Name}) ->
     AssertedNumber = kapi_offnet_resource:asserted_identity_number(OffnetReq),
     AssertedName = kapi_offnet_resource:asserted_identity_name(OffnetReq),
-    case {AssertedNumber, AssertedName} of
-        {'undefined', 'undefined'}=Undef -> Undef;
-        {_, _} -> {Number, Name}
+    case kz_term:is_empty(AssertedNumber)
+        orelse kz_term:is_empty(AssertedName)
+    of
+        'true' -> {'undefined', 'undefined'};
+        'false' -> {Number, Name}
     end.
 
 -spec bridge_from_uri(kz_term:api_binary(), kapi_offnet_resource:req()) ->

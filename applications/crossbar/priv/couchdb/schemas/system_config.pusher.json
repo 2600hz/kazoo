@@ -20,20 +20,9 @@
                     "description": "PEM-encoded key and certificate",
                     "type": "string"
                 },
-                "extra_headers": {
+                "headers": {
                     "default": {},
-                    "description": "Additional headers for INVITEs sent to push devices in the UA",
-                    "properties": {
-                        "Invite-Format": {
-                            "description": "When set to push_and_invite, sets the X-KAZOO-PUSHER-Invite-Format header to push_and_invite, resulting in both a push notification and a SIP INVITE being sent to the endpoint.",
-                            "enum": [
-                                "invite",
-                                "push",
-                                "push_and_invite"
-                            ],
-                            "type": "string"
-                        }
-                    },
+                    "description": "pusher apple headers",
                     "type": "object"
                 },
                 "host": {
@@ -52,20 +41,9 @@
                     "description": "API Key for firebase",
                     "type": "string"
                 },
-                "extra_headers": {
+                "headers": {
                     "default": {},
-                    "description": "Additional headers for INVITEs sent to push devices in the UA",
-                    "properties": {
-                        "Invite-Format": {
-                            "description": "When set to push_and_invite, sets the X-KAZOO-PUSHER-Invite-Format header to push_and_invite, resulting in both a push notification and a SIP INVITE being sent to the endpoint.",
-                            "enum": [
-                                "invite",
-                                "push",
-                                "push_and_invite"
-                            ],
-                            "type": "string"
-                        }
-                    },
+                    "description": "pusher firebase headers",
                     "type": "object"
                 }
             },
@@ -79,20 +57,9 @@
                     "description": "API Key for gcm",
                     "type": "string"
                 },
-                "extra_headers": {
+                "headers": {
                     "default": {},
-                    "description": "Additional headers for INVITEs sent to push devices in the UA",
-                    "properties": {
-                        "Invite-Format": {
-                            "description": "When set to push_and_invite, sets the X-KAZOO-PUSHER-Invite-Format header to push_and_invite, resulting in both a push notification and a SIP INVITE being sent to the endpoint.",
-                            "enum": [
-                                "invite",
-                                "push",
-                                "push_and_invite"
-                            ],
-                            "type": "string"
-                        }
-                    },
+                    "description": "pusher google headers",
                     "type": "object"
                 }
             },

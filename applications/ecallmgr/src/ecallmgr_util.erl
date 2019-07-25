@@ -10,7 +10,7 @@
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_util).
 
--export([send_cmd/4]).
+-export([send_cmd/4, send_cmd/5, send_cmd/6, send_cmds/4]).
 -export([get_fs_kv/2, get_fs_kv/3, get_fs_key_and_value/3]).
 -export([get_fs_key/1]).
 -export([process_fs_kv/4, format_fs_kv/4]).
@@ -22,10 +22,8 @@
 
 -export([get_expires/1]).
 -export([get_interface_list/1, get_interface_properties/1, get_interface_properties/2]).
--export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, get_orig_port/1]).
 
--export([custom_channel_vars/1
-        ,custom_application_vars/1
+-export([custom_application_vars/1
         ,conference_channel_vars/1
         ]).
 
@@ -63,10 +61,6 @@
 -define(SANITIZE_FS_VALUE_REGEX,
         kapps_config:get_ne_binary(?APP_NAME, <<"sanitize_fs_value_regex">>, <<"[^0-9\\w\\s-]">>)).
 
-%% HELP-34627 Preserve default failover behavior.
--define(FAIL_IF_ALL_UNREG, 'true').
-
-
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
 -export_type([send_cmd_ret/0]).
 
@@ -97,9 +91,13 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec send_cmd(atom(), kz_term:ne_binary(), kz_term:text(), kz_term:text()) -> send_cmd_ret().
-send_cmd(Node, UUID, App, Args) when not is_list(App) ->
-    send_cmd(Node, UUID, kz_term:to_list(App), Args);
-send_cmd(Node, UUID, "xferext", Dialplan) ->
+send_cmd(Node, UUID, App, Args) ->
+    send_cmd(Node, UUID, kz_term:to_binary(App), App, Args).
+
+-spec send_cmd(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:text(), kz_term:text()) -> send_cmd_ret().
+send_cmd(Node, UUID, App, FSApp, Args) when not is_list(FSApp) ->
+    send_cmd(Node, UUID, App, kz_term:to_list(FSApp), Args);
+send_cmd(Node, UUID, App, "xferext", Dialplan) ->
     XferExt = [begin
                    lager:debug("building xferext on node ~s: ~s", [Node, V]),
                    {kz_term:to_list(K), kz_term:to_list(V)}
@@ -107,71 +105,106 @@ send_cmd(Node, UUID, "xferext", Dialplan) ->
                || {K, V} <- Dialplan,
                   not cmd_is_empty({kz_term:to_list(K), kz_term:to_list(V)})
               ],
-    'ok' = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"} | XferExt]);
-send_cmd(Node, UUID, App, Args) when not is_list(Args) ->
-    send_cmd(Node, UUID, App, kz_term:to_list(Args));
-send_cmd(_Node, _UUID, "kz_multiset", "^^") -> 'ok';
-send_cmd(Node, UUID, "playstop", _Args) ->
-    lager:debug("execute on node ~s: uuid_break(~s all)", [Node, UUID]),
-    freeswitch:api(Node, 'uuid_break', kz_term:to_list(<<UUID/binary, " all">>));
-send_cmd(Node, UUID, "unbridge", _) ->
-    lager:debug("execute on node ~s: uuid_park(~s)", [Node, UUID]),
-    freeswitch:api(Node, 'uuid_park', kz_term:to_list(UUID));
-send_cmd(Node, _UUID, "broadcast", Args) ->
-    lager:debug("execute on node ~s: uuid_broadcast(~s)", [Node, Args]),
-    Resp = freeswitch:api(Node, 'uuid_broadcast', kz_term:to_list(iolist_to_binary(Args))),
+    Result = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"} | XferExt]),
+    lager:debug("xfer execute result on node ~s(~s)  ~s : ~p"
+               ,[Node, UUID, App, Result]
+               ),
+    Result;
+send_cmd(Node, UUID, App, FSApp, Args) when not is_list(Args) ->
+    send_cmd(Node, UUID, App, FSApp, kz_term:to_list(Args));
+send_cmd(_Node, _UUID, _App, "kz_multiset_encoded", "^^") -> 'ok';
+send_cmd(Node, UUID, App, "playstop", _Args) ->
+    lager:debug("execute on node ~s: ~s uuid_break(~s all)", [Node, App, UUID]),
+    freeswitch:api(Node, 'uuid_break', <<UUID/binary, " all">>);
+send_cmd(Node, UUID, App, "playseek", Cmd) ->
+    Args = iolist_to_binary([UUID, " ", Cmd]),
+    lager:debug("execute on node ~s: ~s uuid_fileman(~s)", [Node, App, Args]),
+    Resp = freeswitch:api(Node, 'uuid_fileman', kz_term:to_list(Args)),
+    lager:debug("uuid_fileman resulted in: ~p", [Resp]),
+    Resp;
+send_cmd(Node, UUID, App, "unbridge", _) ->
+    lager:debug("execute on node ~s: ~s uuid_park(~s)", [Node, App, UUID]),
+    freeswitch:api(Node, 'uuid_park', UUID);
+send_cmd(Node, _UUID, App, "broadcast", Args) ->
+    lager:debug("execute on node ~s: ~s uuid_broadcast(~s)", [Node, App, Args]),
+    Resp = freeswitch:api(Node, 'uuid_broadcast', iolist_to_binary(Args)),
     lager:debug("broadcast resulted in: ~p", [Resp]),
     Resp;
-send_cmd(Node, UUID, "call_pickup", Target) ->
+send_cmd(Node, UUID, App, "call_pickup", Target) ->
     Args = iolist_to_binary([UUID, " ", Target]),
-    lager:debug("execute on node ~s: uuid_bridge(~s)", [Node, Args]),
-    freeswitch:api(Node, 'uuid_bridge', kz_term:to_list(Args));
-send_cmd(Node, UUID, "hangup", Args) ->
-    lager:debug("terminate call on node ~s", [Node]),
+    lager:debug("execute on node ~s: ~s uuid_bridge(~s)", [Node, App, Args]),
+    freeswitch:api(Node, 'uuid_bridge', Args);
+send_cmd(Node, UUID, App, "hangup", Args) ->
+    lager:debug("terminate call on node ~s ~s", [Node, App]),
     freeswitch:api(Node, 'uuid_kill', iolist_to_binary([UUID, " ", Args]));
-send_cmd(Node, UUID, "break", _) ->
-    lager:debug("break call on node ~s", [Node]),
-    freeswitch:api(Node, 'uuid_break', kz_term:to_list(UUID));
-send_cmd(Node, _UUID, "audio_level", Args) ->
-    lager:debug("execute on node ~s: uuid_audio ~p", [Node, Args]),
-    freeswitch:api(Node, 'uuid_audio', kz_term:to_list(iolist_to_binary(Args)));
-send_cmd(Node, UUID, "conference", Args) ->
-    Args1 = iolist_to_binary([UUID, " conference:", Args, " inline"]),
-    lager:debug("starting conference on ~s: ~s", [Node, Args1]),
-    freeswitch:api(Node, 'uuid_transfer', kz_term:to_list(Args1));
-send_cmd(Node, _UUID, "transfer", Args) ->
-    lager:debug("transferring on ~s: ~s", [Node, Args]),
-    freeswitch:api(Node, 'uuid_transfer', kz_term:to_list(Args));
-send_cmd(Node, _UUID, "uuid_" ++ _ = API, Args) ->
-    lager:debug("using api for ~s command ~s: ~s", [API, Node, Args]),
-    freeswitch:api(Node, kz_term:to_atom(API, 'true'), kz_term:to_list(Args));
-send_cmd(Node, _UUID, "kz_uuid_" ++ _ = API, Args) ->
-    lager:debug("using api for ~s command ~s: ~s", [API, Node, Args]),
-    freeswitch:api(Node, kz_term:to_atom(API, 'true'), kz_term:to_list(Args));
-send_cmd(Node, UUID, App, Args) ->
-    AppName = dialplan_application(App),
-    case freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-                                        ,{"execute-app-name", AppName}
-                                        ,{"execute-app-arg", kz_term:to_list(Args)}
-                                        ])
-    of
-        {'error', 'baduuid'} ->
-            lager:info("uuid ~s on node ~s is bad", [UUID, Node]),
-            throw({'error', 'baduuid'});
-        Result ->
-            lager:debug("execute on node ~s(~s) ~s(~s): ~p"
-                       ,[Node, UUID, AppName, Args, Result]
-                       ),
-            Result
-    end.
+send_cmd(Node, UUID, App, "break", _) ->
+    lager:debug("break call on node ~s ~s", [Node, App]),
+    freeswitch:api(Node, 'uuid_break', UUID);
+send_cmd(Node, _UUID, App, "audio_level", Args) ->
+    lager:debug("execute on node ~s: ~s uuid_audio ~p", [Node, App, Args]),
+    freeswitch:api(Node, 'uuid_audio', iolist_to_binary(Args));
+send_cmd(Node, _UUID, App, "transfer", Args) ->
+    lager:debug("transferring on ~s: ~s ~s", [Node, App, Args]),
+    freeswitch:api(Node, 'uuid_transfer', iolist_to_binary(Args));
+send_cmd(Node, _UUID, App, "uuid_" ++ _ = API, Args) ->
+    lager:debug("using api for ~s command ~s: ~s ~s", [API, Node, App, Args]),
+    freeswitch:api(Node, kz_term:to_atom(API, 'true'), iolist_to_binary(Args));
+send_cmd(Node, _UUID, App, "kz_uuid_" ++ _ = API, Args) ->
+    lager:debug("using api for ~s command ~s: ~s ~s", [API, Node, App, Args]),
+    freeswitch:api(Node, kz_term:to_atom(API, 'true'), iolist_to_binary(Args));
+send_cmd(Node, UUID, App, FSApp, Args) ->
+    send_cmd(Node, UUID, App, FSApp, Args, []).
+
+-spec send_cmd(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:text(), kz_term:text(), kz_term:proplist()) -> send_cmd_ret().
+send_cmd(Node, UUID, App, FSApp, Args, EventArgs) ->
+    AppName = dialplan_application(FSApp),
+    Result = freeswitch:cmd(Node, UUID, [{<<"call-command">>, <<"execute">>}
+                                        ,{<<"execute-app-name">>, kz_term:to_binary(AppName)}
+                                        ,{<<"execute-app-arg">>, kz_term:to_binary(Args)}
+                                        ,{<<"event-uuid-name">>, kz_term:to_binary(App)}
+                                         | EventArgs
+                                        ]),
+    lager:debug("execute result on node ~s(~s)  ~s(~s)  ~s(~s) ~p : ~p"
+               ,[Node, UUID, App, FSApp, AppName, Args, EventArgs, Result]
+               ),
+    Result.
+
+-spec send_cmds(atom(), kz_term:ne_binary(), kz_term:ne_binary(), [{kz_term:text(), kz_term:text()}]) -> send_cmd_ret().
+send_cmds(Node, UUID, App, Cmds) ->
+    Commands = [begin
+                    {FSApp, Args, EventArgs} = case Cmd of
+                                                   {A, B} -> {A, B, []};
+                                                   {_, _, _} = Three -> Three
+                                               end,
+                    AppName = dialplan_application(FSApp),
+                    [{<<"call-command">>, <<"execute">>}
+                    ,{<<"execute-app-name">>, dialplan_application(kz_term:to_binary(AppName))}
+                    ,{<<"execute-app-arg">>, kz_term:to_binary(Args)}
+                    ,{<<"event-uuid-name">>, kz_term:to_binary(App)}
+                     | EventArgs
+                    ]
+                end || Cmd <- Cmds, Cmd =/= 'undefined'],
+    Result = freeswitch:cmds(Node, UUID, Commands),
+    lager:debug("execute on node ~s(~s) : ~p"
+               ,[Node, UUID, Result]
+               ),
+    Result.
 
 -spec cmd_is_empty({list(), list()}) -> boolean().
+cmd_is_empty({"kz_multiset_encoded", "^^"}) -> 'true';
+cmd_is_empty({_, "kz_multiset_encoded ^^"}) -> 'true';
 cmd_is_empty({"kz_multiset", "^^"}) -> 'true';
 cmd_is_empty({_, "kz_multiset ^^"}) -> 'true';
 cmd_is_empty(_) -> 'false'.
 
--spec dialplan_application(string()) -> string().
-dialplan_application("blind_xfer") -> "transfer";
+-spec dialplan_application(kz_term:ne_binary() | string()) -> kz_term:ne_binary().
+dialplan_application(App)
+  when is_list(App) ->
+    dialplan_application(kz_term:to_binary(App));
+dialplan_application(<<"blind_xfer">>) -> <<"transfer">>;
+dialplan_application(<<"kz_multiset">>) -> <<"kz_multiset_encoded">>;
+dialplan_application(<<"kz_export">>) -> <<"kz_export_encoded">>;
+dialplan_application(<<"att_xfer">>) -> <<"kz_att_xfer">>;
 dialplan_application(App) -> App.
 
 -spec get_expires(kz_term:proplist()) -> integer().
@@ -215,115 +248,6 @@ get_interface_properties(Node, Interface) ->
         _Else -> []
     end.
 
-%% retrieves the sip address for the 'to' field
--spec get_sip_to(kzd_freeswitch:data()) -> kz_term:ne_binary().
-get_sip_to(Props) ->
-    get_sip_to(Props, kzd_freeswitch:original_call_direction(Props)).
-
-get_sip_to(Props, <<"outbound">>) ->
-    case props:get_value(<<"Channel-Presence-ID">>, Props) of
-        'undefined' ->
-            Number = props:get_first_defined([<<"Other-Leg-Callee-ID-Number">>
-                                             ,<<"variable_sip_to_user">>
-                                             ]
-                                            ,Props
-                                            ,<<"nouser">>
-                                            ),
-            Realm = get_sip_to_realm(Props),
-            <<Number/binary, "@", Realm/binary>>;
-        PresenceId -> PresenceId
-    end;
-get_sip_to(Props, _) ->
-    case props:get_first_defined([<<"variable_sip_to_uri">>
-                                 ,<<"variable_sip_req_uri">>
-                                 ]
-                                ,Props
-                                )
-    of
-        'undefined' -> get_sip_request(Props);
-        ToUri -> ToUri
-    end.
-
--spec get_sip_to_realm(kzd_freeswitch:data()) -> kz_term:ne_binary().
-get_sip_to_realm(Props) ->
-    case kzd_freeswitch:to_realm(Props) of
-        'undefined' -> ?DEFAULT_REALM;
-        Realm -> Realm
-    end.
-
-%% retrieves the sip address for the 'from' field
-
--spec get_sip_from(kz_term:proplist()) -> kz_term:ne_binary().
-get_sip_from(Props) ->
-    get_sip_from(Props, kzd_freeswitch:original_call_direction(Props)).
-
--spec get_sip_from(kz_term:proplist(), kz_term:api_binary()) -> kz_term:ne_binary().
-get_sip_from(Props, <<"outbound">>) ->
-    Num = props:get_first_defined([<<"Other-Leg-RDNIS">>
-                                  ,<<"Other-Leg-Caller-ID-Number">>
-                                  ,<<"variable_sip_from_user">>
-                                  ,<<"variable_sip_from_uri">>
-                                  ]
-                                 ,Props
-                                 ,<<"nouser">>
-                                 ),
-    [Number | _] = binary:split(Num, <<"@">>, ['global']),
-    Realm = get_sip_from_realm(Props),
-    <<Number/binary, "@", Realm/binary>>;
-get_sip_from(Props, _) ->
-    Default = list_to_binary([kzd_freeswitch:from_user(Props)
-                             ,"@"
-                             ,get_sip_from_realm(Props)
-                             ]),
-
-    props:get_first_defined([<<"Channel-Presence-ID">>
-                            ,<<"variable_sip_from_uri">>
-                            ]
-                           ,Props
-                           ,Default
-                           ).
-
-get_sip_from_realm(Props) ->
-    case kzd_freeswitch:from_realm(Props) of
-        'undefined' -> ?DEFAULT_REALM;
-        Realm -> Realm
-    end.
-
-%% retrieves the sip address for the 'request' field
--spec get_sip_request(kzd_freeswitch:data()) -> kz_term:ne_binary().
-get_sip_request(Props) ->
-    U = props:get_first_defined([<<"Hunt-Destination-Number">>
-                                ,<<"variable_sip_req_uri">>
-                                ,<<"variable_sip_loopback_req_uri">>
-                                ,<<"Caller-Destination-Number">>
-                                ,<<"variable_sip_to_user">>
-                                ]
-                               ,Props
-                               ,<<"nouser">>
-                               ),
-    [User | _] = binary:split(U, <<"@">>, ['global']),
-    Realm = get_sip_request_realm(Props),
-    <<User/binary, "@", Realm/binary>>.
-
--spec get_sip_request_realm(kzd_freeswitch:data()) -> kz_term:ne_binary().
-get_sip_request_realm(Props) ->
-    case kzd_freeswitch:request_realm(Props) of
-        'undefined' -> ?DEFAULT_REALM;
-        Realm -> Realm
-    end.
-
--spec get_orig_ip(kz_term:proplist()) -> kz_term:api_binary().
-get_orig_ip(Prop) ->
-    props:get_first_defined([<<"X-AUTH-IP">>, <<"ip">>], Prop).
-
--spec get_orig_port(kz_term:proplist()) -> kz_term:api_binary().
-get_orig_port(Prop) ->
-    case props:get_first_defined([<<"X-AUTH-PORT">>, <<"port">>], Prop) of
-        <<>> -> 'undefined';
-        <<"0">> -> 'undefined';
-        Port -> Port
-    end.
-
 -spec get_sip_interface_from_db(kz_term:ne_binaries()) -> kz_term:ne_binary().
 get_sip_interface_from_db([FsPath]) ->
     NetworkMap = kapps_config:get_json(?APP_NAME, <<"network_map">>, kz_json:new()),
@@ -339,23 +263,22 @@ get_sip_interface_from_db([FsPath]) ->
 
 -spec map_fs_path_to_sip_profile(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_binary().
 map_fs_path_to_sip_profile(FsPath, NetworkMap) ->
-    SIPInterfaceObj = kz_json:filter(fun({K, _}) ->
-                                             kz_network_utils:verify_cidr(FsPath, K)
-                                     end, NetworkMap),
+    FilterFun = fun({K, _}) -> kz_network_utils:verify_cidr(FsPath, K) end,
+    SIPInterfaceObj = kz_json:filter(FilterFun, NetworkMap),
     case kz_json:get_values(SIPInterfaceObj) of
         {[], _Keys} -> 'undefined';
         {[V|_], _Keys} -> kz_json:get_ne_value(<<"custom_sip_interface">>, V)
     end.
 
 -spec conference_channel_vars(kzd_freeswitch:data()) -> kz_term:proplist().
-conference_channel_vars(Props) ->
-    [conference_channel_var_map(KV) || KV <- conference_channel_vars(Props, [])].
+conference_channel_vars(FSJObj) ->
+    [conference_channel_var_map(KV) || KV <- conference_channel_vars(FSJObj, [])].
 
-conference_channel_vars(Props, Initial) ->
-    lists:foldl(fun conference_channel_vars_fold/2, Initial, Props).
+conference_channel_vars(FSJObj, Initial) ->
+    kz_json:foldl(fun conference_channel_vars_fold/3, Initial, FSJObj).
 
--spec conference_channel_vars_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) -> kz_term:proplist().
-conference_channel_vars_fold({Key, V}, Acc) ->
+-spec conference_channel_vars_fold(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
+conference_channel_vars_fold(Key, V, Acc) ->
     case lists:member(Key, ?CONFERENCE_VARS) of
         'true' -> [{Key, V} | Acc];
         'false' -> Acc
@@ -368,45 +291,13 @@ conference_channel_var_map({Key, Value}=KV) ->
         Fun -> {Key, Fun(Value)}
     end.
 
--spec channel_var_map({kz_term:ne_binary(), kz_term:ne_binary()}) -> {kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()}.
-channel_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
-    {Key, binary:split(Serialized, <<"|:">>, ['global'])};
-channel_var_map({Key, Other}) -> {Key, Other}.
-
-%% Extract custom channel variables to include in the event
-
--spec custom_channel_vars(kzd_freeswitch:data()) -> kz_term:proplist().
-custom_channel_vars(Props) ->
-    lists:map(fun channel_var_map/1, custom_channel_vars(Props, [])).
-
--spec custom_channel_vars(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
-custom_channel_vars(Props, Initial) ->
-    CCVs = lists:foldl(fun custom_channel_vars_fold/2, Initial, Props),
-    maybe_update_referred_ccv(Props, channel_vars_sort(CCVs)).
-
--spec channel_vars_sort(kz_term:proplist()) -> kz_term:proplist().
-channel_vars_sort(ChannelVars) ->
-    lists:usort(fun channel_var_sort/2, ChannelVars).
-
--spec channel_var_sort(tuple(), tuple()) -> boolean().
-channel_var_sort({A, _}, {B, _}) -> A =< B.
-
--spec custom_channel_vars_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) -> kz_term:proplist().
-custom_channel_vars_fold({?GET_CCV(Key), V}, Acc) ->
-    props:set_value(Key, V, Acc);
-custom_channel_vars_fold({?CCV(Key), V}, Acc) ->
-    props:set_value(Key, V, Acc);
-custom_channel_vars_fold({?GET_CCV_HEADER(Key), V}, Acc) ->
-    props:insert_value(Key, V, Acc);
-custom_channel_vars_fold(_KV, Acc) -> Acc.
-
 -spec custom_application_vars(kzd_freeswitch:data()) -> kz_term:proplist().
-custom_application_vars(Props) ->
-    lists:map(fun application_var_map/1, custom_application_vars(Props, [])).
+custom_application_vars(FSJObj) ->
+    lists:map(fun application_var_map/1, custom_application_vars(FSJObj, [])).
 
--spec custom_application_vars(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
-custom_application_vars(Props, Initial) ->
-    CCVs = lists:foldl(fun custom_application_vars_fold/2, Initial, Props),
+-spec custom_application_vars(kzd_freeswitch:data(), kz_term:proplist()) -> kz_term:proplist().
+custom_application_vars(FSJObj, Initial) ->
+    CCVs = kz_json:foldl(fun custom_application_vars_fold/3, Initial, FSJObj),
     application_vars_sort(CCVs).
 
 -spec application_vars_sort(kz_term:proplist()) -> kz_term:proplist().
@@ -416,44 +307,22 @@ application_vars_sort(ApplicationVars) ->
 -spec application_var_sort(tuple(), tuple()) -> boolean().
 application_var_sort({A, _}, {B, _}) -> A =< B.
 
--spec custom_application_vars_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) -> kz_term:proplist().
-custom_application_vars_fold({?GET_CAV(Key), V}, Acc) ->
+-spec custom_application_vars_fold(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
+custom_application_vars_fold(?GET_CAV(Key), V, Acc) ->
     props:set_value(Key, V, Acc);
-custom_application_vars_fold({?CAV(Key), V}, Acc) ->
+custom_application_vars_fold(?CAV(Key), V, Acc) ->
     props:set_value(Key, V, Acc);
-custom_application_vars_fold({?GET_CAV_HEADER(Key), V}, Acc) ->
+custom_application_vars_fold(?GET_CAV_HEADER(Key), V, Acc) ->
     props:insert_value(Key, V, Acc);
-custom_application_vars_fold({?GET_JSON_CAV(Key), V}, Acc) ->
+custom_application_vars_fold(?GET_JSON_CAV(Key), V, Acc) ->
     props:set_value(Key, kz_json:decode(V), Acc);
-custom_application_vars_fold(_KV, Acc) -> Acc.
+custom_application_vars_fold(_K, _V, Acc) -> Acc.
 
--spec application_var_map({kz_term:ne_binary(), kz_term:ne_binary()}) -> {kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()}.
+-spec application_var_map({kz_term:ne_binary(), kz_term:ne_binary()}) ->
+                                 {kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()}.
 application_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
     {Key, binary:split(Serialized, <<"|:">>, ['global'])};
 application_var_map({Key, Other}) -> {Key, Other}.
-
--spec maybe_update_referred_ccv(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
-maybe_update_referred_ccv(Props, CCVs) ->
-    ReferTo = props:get_value(<<"variable_sip_refer_to">>, Props),
-    update_referred_by_ccv(props:get_value(<<"variable_sip_h_Referred-By">>, Props)
-                          ,update_referred_to_ccv(ReferTo, CCVs)
-                          ).
-
--spec update_referred_by_ccv(kz_term:api_binary(), kz_term:proplist()) -> kz_term:proplist().
-update_referred_by_ccv('undefined', CCVs) -> props:delete(<<"Referred-By">>, CCVs);
-update_referred_by_ccv(ReferredBy, CCVs) ->
-    props:set_value(<<"Referred-By">>
-                   ,kz_http_util:urldecode(ReferredBy)
-                   ,CCVs
-                   ).
-
--spec update_referred_to_ccv(kz_term:api_binary(), kz_term:proplist()) -> kz_term:proplist().
-update_referred_to_ccv('undefined', CCVs) -> props:delete(<<"Referred-To">>, CCVs);
-update_referred_to_ccv(ReferredTo, CCVs) ->
-    props:set_value(<<"Referred-To">>
-                   ,kz_http_util:urldecode(ReferredTo)
-                   ,CCVs
-                   ).
 
 %% convert a raw FS string of headers to a proplist
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
@@ -689,6 +558,10 @@ get_fs_key_and_value(<<"ringback">>=Key, Value, _UUID) ->
     [{<<"ringback">>, maybe_sanitize_fs_value(Key, Value)}
     ,{<<"transfer_ringback">>, maybe_sanitize_fs_value(<<"transfer_ringback">>, Value)}
     ];
+get_fs_key_and_value(<<"Timeout">>, Value, _UUID) ->
+    [{<<"call_timeout">>, maybe_sanitize_fs_value(<<"call_timeout">>, Value)}
+    ,{<<"originate_timeout">>, maybe_sanitize_fs_value(<<"originate_timeout">>, Value)}
+    ];
 get_fs_key_and_value(?CCV(Key), Val, UUID) ->
     get_fs_key_and_value(Key, Val, UUID);
 get_fs_key_and_value(?JSON_CAV(_)=JSONCAV, Val, _UUID) ->
@@ -742,27 +615,49 @@ build_bridge_string(Endpoints) ->
 
 -spec build_bridge_string(kz_json:objects(), kz_term:ne_binary()) -> kz_term:ne_binary().
 build_bridge_string(Endpoints, Separator) ->
-    %% HELP-34627: Branch here to handle only failover when all endpoints are unregistered.
+    %% HELP-34627: Only handle failover when all endpoints are unregistered.
     build_bridge_string(Endpoints, Separator, kapps_config:get_boolean(?APP_NAME, <<"failover_when_all_unreg">>, 'false')).
 
--spec build_bridge_string(kz_json:objects(), kz_term:ne_binary(), kz_term:api_boolean()) -> kz_term:ne_binary().
-build_bridge_string(Endpoints, Separator, ?FAIL_IF_ALL_UNREG) ->
-    lager:info("system_config.ecallmgr.failover_when_all_unreg is enabled."),
-    %% De-dupe the bridge strings by matching those with the same
-    %%  Invite-Format, To-IP, To-User, To-realm, To-DID, and Route.
-    %% Additionally split bridge strings out and only return failover endpoints if no devices registered.
-    BridgeStrings = filter_bridge_strings(build_bridge_channels(Endpoints)),
-    %% NOTE: don't use binary_join here as it will crash on an empty list...
-    kz_binary:join(lists:reverse(BridgeStrings), Separator);
-build_bridge_string(Endpoints, Separator, _DefaultFailover) ->
-    %% De-dupe the bridge strings by matching those with the same
-    %%  Invite-Format, To-IP, To-User, To-realm, To-DID, and Route
-    BridgeStrings = build_bridge_channels(Endpoints),
-    %% NOTE: don't use binary_join here as it will crash on an empty list...
-    kz_binary:join(lists:reverse(BridgeStrings), Separator).
+%%------------------------------------------------------------------------------
+%% @doc De-dupe the bridge strings by matching those with the same
+%% Invite-Format, To-IP, To-User, To-realm, To-DID, and Route.
+%%
+%% NOTE: don't use binary_join here as it will crash on an empty list...
+%% @end
+%%------------------------------------------------------------------------------
+-spec build_bridge_string(kz_json:objects(), kz_term:ne_binary(), kz_term:api_boolean()) ->
+                                 kz_term:ne_binary().
+build_bridge_string(Endpoints, Separator, 'true') ->
+    %% HELP-34627: Only handle failover when all endpoints are unregistered.
+    %% Additionally split bridge strings out and only return failover endpoints
+    %% if no devices registered.
+    lager:info("ecallmgr 'failover_when_all_unreg' is enabled."),
 
--spec filter_bridge_strings(bridge_channels()) -> bridge_channels().
-filter_bridge_strings(Endpoints) ->
+    %% NOTE: because we want to de-dup failover endpoints with same destination
+    %% it is important to pass bridge strings in intial order to {@link failover_if_all_unregistered/1}
+    %% function so only the first duplicated endpoint will ne used.
+    %% e.g:
+    %%
+    %% ```
+    %% [^^!ecallmgr_Authorizing_ID='forward_1']loopback/forward_1/context_2
+    %% [^^!ecallmgr_Authorizing_ID='forward_2']loopback/forward_1/context_2
+    %% [^^!ecallmgr_Authorizing_ID='forward_3']loopback/another_forward_destination/context_2
+    %% '''
+    %%
+    %% would be translate to:
+    %%
+    %% ```
+    %% [^^!ecallmgr_Authorizing_ID='forward_1']loopback/forward_1/context_2
+    %% [^^!ecallmgr_Authorizing_ID='forward_3']loopback/another_forward_destination/context_2
+    %% '''
+    BridgeChannels = failover_if_all_unregistered(lists:reverse(build_bridge_channels(Endpoints))),
+    kz_binary:join(lists:reverse(BridgeChannels), Separator);
+build_bridge_string(Endpoints, Separator, _DefaultFailover) ->
+    BridgeChannels = build_bridge_channels(Endpoints),
+    kz_binary:join(lists:reverse(BridgeChannels), Separator).
+
+-spec failover_if_all_unregistered(bridge_channels()) -> bridge_channels().
+failover_if_all_unregistered(Endpoints) ->
     case classify_endpoints(Endpoints) of
         {[], Failover} ->
             lager:info("no device endpoints available, using failover routes."),
@@ -777,30 +672,42 @@ classify_endpoints(Endpoints) ->
     classify_endpoints(Endpoints, [], []).
 
 -spec classify_endpoints(bridge_channels(), bridge_channels(), bridge_channels()) -> {bridge_channels(), bridge_channels()}.
-classify_endpoints([], Devices, Failover) ->
-    {Devices, Failover};
-classify_endpoints([Endpoint | Endpoints], Devices, Failover) ->
-    case string:str(unicode:characters_to_list(Endpoint), "ecallmgr_Call-Forward='true'") of
-        %% Not a forwarding endpoint move along.
-        0 -> classify_endpoints(Endpoints, [Endpoint | Devices], Failover);
-        %% Determine if we should add the call forwarding route.
+classify_endpoints([], Devices, Failovers) ->
+    {Devices, Failovers};
+classify_endpoints([Endpoint | Endpoints], Devices, Failovers) ->
+    case binary:match(Endpoint, <<"ecallmgr_Call-Forward='true'">>) of
+        'nomatch' ->
+            %% Not a forwarding endpoint move along.
+            classify_endpoints(Endpoints, [Endpoint | Devices], Failovers);
         _ ->
-            F2 = maybe_use_fwd_endpoint(Failover, Endpoint) ++ Failover,
-            classify_endpoints(Endpoints, Devices, F2)
+            %% Determine if we should add the call forwarding route.
+            classify_endpoints(Endpoints, Devices, maybe_use_fwd_endpoint(Endpoint, Failovers))
     end.
 
--spec maybe_use_fwd_endpoint(bridge_channels(), bridge_channel()) -> bridge_channels().
-maybe_use_fwd_endpoint([], Destination) ->
-    [Destination];
-maybe_use_fwd_endpoint([Endpoint | Endpoints], Destination) ->
-    SD = unicode:characters_to_list(Destination),
-    FwdDest = string:sub_string(SD
-                               ,string:str(unicode:characters_to_list(SD), "loopback/")
-                               ,string:len(unicode:characters_to_list(SD))
-                               ),
-    case string:str(unicode:characters_to_list(Endpoint), FwdDest) of
-        0 -> maybe_use_fwd_endpoint(Endpoints, Destination);
-        _ -> []
+-spec maybe_use_fwd_endpoint(bridge_channel(), bridge_channels()) -> bridge_channels().
+maybe_use_fwd_endpoint(Endpoint, Failovers) ->
+    maybe_use_fwd_endpoint(Endpoint, Failovers, get_loopback_number(Endpoint)).
+
+-spec maybe_use_fwd_endpoint(bridge_channel(), bridge_channels(), kz_term:api_ne_binary()) -> bridge_channels().
+maybe_use_fwd_endpoint(Endpoint, Failovers, 'undefined') ->
+    [Endpoint | Failovers];
+maybe_use_fwd_endpoint(Endpoint, Failovers, ForwardDestination) ->
+    case match_forward_destination_to_failover(Failovers, ForwardDestination) of
+        [] -> [Endpoint | Failovers];
+        _Matched -> Failovers
+    end.
+
+match_forward_destination_to_failover(Failovers, ForwardDestination) ->
+    [Failover || Failover <- Failovers,
+                 binary:match(Failover, ForwardDestination) =/= 'nomatch'
+    ].
+
+-spec get_loopback_number(bridge_channel()) -> kz_term:api_ne_binary().
+get_loopback_number(Endpoint) ->
+    case binary:match(Endpoint, <<"loopback/">>) of
+        'nomatch' -> 'undefined';
+        {Pos, _Length} ->
+            binary:part(Endpoint, Pos, size(Endpoint) - Pos)
     end.
 
 -spec endpoint_jobjs_to_records(kz_json:objects()) -> bridge_endpoints().
@@ -1041,11 +948,10 @@ build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
     try lists:foldl(fun build_sip_channel_fold/2, Endpoint, Routines) of
         {Channel, _} -> {'ok', Channel}
     catch
-        _E:{'badmatch', {'error', 'not_found'}} ->
+        _E:{'badmatch', {'error', 'not_found'}}:_ ->
             lager:warning("failed to build sip channel trying failover", []),
             maybe_failover(Failover);
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
+        _E:_R:ST ->
             lager:warning("failed to build sip channel (~s): ~p", [_E, _R]),
             kz_util:log_stacktrace(ST),
             {'error', 'invalid'}

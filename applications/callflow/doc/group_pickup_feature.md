@@ -12,6 +12,7 @@ Validator for the group_pickup_feature callflow data object
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 `type` | The type of collection to pickup | `string('group' | 'user' | 'device' | 'extension')` |   | `false` |  
 
 
@@ -21,7 +22,7 @@ Key | Description | Type | Default | Required | Support Level
 
 ### Usage
 
-Currently the feature code for group pickup will lookup a device by SIP username or an extension that has a first child in the `flow` of `user`, `device`, `ring_group`, or `page_group`.
+The feature code for group pickup will lookup a device by SIP username or an extension. The callflow for that extension is searched in a depth-first order until a target-able module is found (one of `user`, `device`, `ring_group`, or `page_group`). Once a suitable module is found, if there is an unanswered call ringing a targeted device it will be picked up.
 
 #### Extension callflow
 

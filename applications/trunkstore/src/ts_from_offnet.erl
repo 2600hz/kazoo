@@ -9,27 +9,26 @@
 %%%-----------------------------------------------------------------------------
 -module(ts_from_offnet).
 
--export([start_link/1, init/2]).
+-export([start_link/2, init/3]).
 
 -include("ts.hrl").
 
 -define(SERVER, ?MODULE).
 
--spec start_link(kapi_route:req()) -> kz_types:startlink_ret().
-start_link(RouteReqJObj) ->
-    proc_lib:start_link(?SERVER, 'init', [self(), RouteReqJObj]).
+-spec start_link(kapi_route:req(), pid()) -> kz_types:startlink_ret().
+start_link(RouteReqJObj, AMQPWorker) ->
+    proc_lib:start_link(?SERVER, 'init', [self(), RouteReqJObj, AMQPWorker]).
 
--spec init(pid(), kapi_route:req()) -> 'ok'.
-init(Parent, RouteReqJObj) ->
+-spec init(pid(), kapi_route:req(), pid()) -> 'ok'.
+init(Parent, RouteReqJObj, AMQPWorker) ->
     proc_lib:init_ack(Parent, {'ok', self()}),
-    start_amqp(ts_callflow:init(RouteReqJObj, ['undefined', <<"resource">>])).
+    start_amqp(ts_callflow:init(RouteReqJObj, ['undefined', <<"resource">>]), AMQPWorker).
 
--spec start_amqp(ts_callflow:state() |
-                 {'error', 'not_ts_account'}
-                ) -> 'ok'.
-start_amqp({'error', 'not_ts_account'}) -> 'ok';
-start_amqp(State) ->
-    endpoint_data(ts_callflow:start_amqp(State)).
+-spec start_amqp(ts_callflow:state() | {'error', 'not_ts_account'}, pid()) -> 'ok'.
+start_amqp({'error', 'not_ts_account'}, AMQPWorker) ->
+    kz_amqp_worker:checkin_worker(AMQPWorker, trunkstore_sup:pool_name());
+start_amqp(State, AMQPWorker) ->
+    endpoint_data(ts_callflow:start_amqp(State, AMQPWorker)).
 
 -spec endpoint_data(ts_callflow:state()) -> 'ok'.
 endpoint_data(State) ->
@@ -451,10 +450,9 @@ callee_id([JObj | T]) ->
 
 -spec maybe_anonymize_caller_id(ts_callflow:state(), {kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:api_object()) ->
                                        kz_term:proplist().
-maybe_anonymize_caller_id(State, DefaultCID, CidFormat) ->
-    AccountId = ts_callflow:get_account_id(State),
+maybe_anonymize_caller_id(State, {Name, Number}, CidFormat) ->
     CCVs = ts_callflow:get_custom_channel_vars(State),
-    {Name, Number} = kz_privacy:maybe_cid_privacy(kz_json:set_value(<<"Account-ID">>, AccountId, CCVs), DefaultCID),
     [{<<"Outbound-Caller-ID-Number">>, kapps_call:maybe_format_caller_id_str(Number, CidFormat)}
     ,{<<"Outbound-Caller-ID-Name">>, Name}
+     | kz_privacy:flags(CCVs)
     ].

@@ -88,7 +88,9 @@ queue_id(JObj) ->
 event_category(JObj) ->
     kz_json:get_value(?KEY_EVENT_CATEGORY, JObj).
 
--spec event_name(kz_json:object()) -> kz_term:api_binary().
+-spec event_name(kz_json:object() | kz_json:json_proplist()) -> kz_term:api_binary().
+event_name(Props) when is_list(Props) ->
+    props:get_value(?KEY_EVENT_NAME, Props);
 event_name(JObj) ->
     kz_json:get_value(?KEY_EVENT_NAME, JObj).
 
@@ -135,7 +137,7 @@ call_id(Props, Default) when is_list(Props) ->
 call_id(JObj, Default) ->
     kz_json:get_ne_binary_value(?KEY_API_CALL_ID, JObj, Default).
 
--spec defer_response(kz_term:api_terms()) -> kz_term:api_binary().
+-spec defer_response(kz_term:api_terms()) -> boolean().
 defer_response(Props) when is_list(Props) ->
     props:get_is_true(?KEY_DEFER_RESPONSE, Props);
 defer_response(JObj) ->

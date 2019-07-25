@@ -49,7 +49,7 @@
         ,find_value/3, find_value/4
         ,foreach/2
         ,all/2, any/2
-        ,exec/2
+        ,exec/2, exec_first/2
         ]).
 
 -export([get_ne_value/2, get_ne_value/3]).
@@ -106,7 +106,10 @@
 -export([sum_jobjs/1, sum_jobjs/2]).
 -export_type([sumer/0]).
 
--export([order_by/3]).
+-export([sort/2
+        ,order_by/3
+        ,check_value_term/1
+        ]).
 
 -export([lift_common_properties/1, lift_common_properties/2]).
 
@@ -118,6 +121,7 @@
 -export_type([json_proplist/0
              ,object/0, objects/0
              ,flat_object/0, flat_objects/0
+             ,flat_proplist/0
              ,path/0, paths/0
              ,key/0, keys/0
              ,get_key/0
@@ -167,7 +171,7 @@ decode(JSON, <<"application/json">>) ->
     try unsafe_decode(JSON)
     catch
         _:{'invalid_json', {'error', {_Loc, _Msg}}, _JSON} ->
-            lager:error_unsafe("decode error ~s near char # ~b => ~s", [_Msg, _Loc, JSON]),
+            lager:error_unsafe("decode error ~s near char # ~b => ~s", [_Msg, _Loc, binary:part(JSON, _Loc-5, 25)]),
             new()
     end.
 
@@ -551,7 +555,6 @@ sum(?JSON_WRAPPER(_)=JObj1, Value, Sumer, Keys)
 -spec sum_jobjs(objects()) -> object().
 sum_jobjs(JObjs) -> sum_jobjs(JObjs, fun default_sumer/2).
 
-
 %%------------------------------------------------------------------------------
 %% @doc Sum (deep) a list of JSON objects.
 %% This is like {@link sum/3} but fold over a list of JSON objects.
@@ -567,6 +570,17 @@ sum_jobjs([FirstJObj|JObjs], Sumer)
   when is_function(Sumer, 2) ->
     F = fun (JObj, Carry) -> sum(Carry, JObj, fun default_sumer/2) end,
     lists:foldl(F, FirstJObj, JObjs).
+
+%%------------------------------------------------------------------------------
+%% @doc Reorder JSON objects according to the given sort function.
+%% Returns a sorted list of JObjs, according to the ordering function Fun.
+%% Fun(A, B) is to return true if A compares less than or equal to B in the ordering, otherwise false.
+%% @end
+%%------------------------------------------------------------------------------
+-type sort_fun() :: fun((object(), object()) -> boolean()).
+-spec sort(sort_fun(), objects()) -> objects().
+sort(Fun, ListOfJObjs) ->
+    lists:sort(Fun, ListOfJObjs).
 
 %%------------------------------------------------------------------------------
 %% @doc Reorder JSON objects according to the given list of binaries.
@@ -671,9 +685,9 @@ recursive_to_proplist(Else) -> Else.
 %% @end
 %%------------------------------------------------------------------------------
 
--spec to_map(object() | objects()) -> map().
+-spec to_map(object() | objects()) -> map() | list(map()).
 to_map(JObjs) when is_list(JObjs) ->
-    lists:foldl(fun to_map_fold/2, #{}, JObjs);
+    jiffy:decode(encode(JObjs), [return_maps]);
 to_map(JObj) ->
     recursive_to_map(JObj).
 
@@ -682,9 +696,6 @@ to_map(JObj) ->
 -spec to_map(get_key(), object() | objects()) -> map().
 to_map(Key, JObj) ->
     recursive_to_map(get_json_value(Key, JObj, new())).
-
-to_map_fold(JObj, #{}=Map) ->
-    maps:merge(Map, recursive_to_map(JObj)).
 
 -spec recursive_to_map(object() | objects() | kz_term:proplist()) -> map().
 recursive_to_map(?JSON_WRAPPER(Props)) ->
@@ -1159,16 +1170,16 @@ set_value(_Keys, 'undefined', JObj) -> JObj;
 set_value(Keys, Value, JObj) when is_list(Keys) -> set_value1(Keys, Value, JObj);
 set_value(Key, Value, JObj) -> set_value1([Key], Value, JObj).
 
--spec set_value(get_key(), api_json_term() | 'null', object() | objects(), set_value_options) -> object() | objects().
+-spec set_value(get_key(), api_json_term() | 'null', object() | objects(), set_value_options()) -> object() | objects().
 set_value(_Keys, 'undefined', JObj, _Options) -> JObj;
 set_value(Keys, Value, JObj, Options) when is_list(Keys) ->
-    set_value1(Keys, Value, JObj, Options);
+    set_value1(Keys, check_value_term(Value), JObj, Options);
 set_value(Key, Value, JObj, Options) ->
-    set_value1([Key], Value, JObj, Options).
+    set_value1([Key], check_value_term(Value), JObj, Options).
 
 -spec set_value1(keys(), json_term() | 'null', object() | objects()) -> object() | objects().
 set_value1(Keys, Value, JObj) ->
-    set_value1(Keys, Value, JObj, set_value_options()).
+    set_value1(Keys, check_value_term(Value), JObj, set_value_options()).
 
 -spec set_value1(keys(), json_term() | 'null', object() | objects(), set_value_options()) -> object() | objects().
 set_value1([Key|_]=Keys, Value, [], Options) when not is_integer(Key) ->
@@ -1204,7 +1215,6 @@ set_value1([Key|T], Value, JObjs, Options) when is_list(JObjs) ->
 
 %% Figure out how to set the current key in an existing object
 set_value1([_|_]=Keys, 'null', JObj, #{'keep_null' := 'false'}) -> delete_key(Keys, JObj);
-set_value1([_|_]=Keys, 'undefined', JObj, _Options) -> delete_key(Keys, JObj);
 set_value1([Key1|T], Value, ?JSON_WRAPPER(Props), Options) ->
     case lists:keyfind(Key1, 1, Props) of
         {Key1, ?JSON_WRAPPER(_)=V1} ->
@@ -1531,21 +1541,31 @@ exec(Funs, ?JSON_WRAPPER(_)=JObj) ->
     lists:foldl(fun exec_fold/2, JObj, Funs).
 
 -spec exec_fold(exec_fun(), object()) -> object().
-exec_fold({F, K, V}, C) when is_function(F, 3) -> F(K, V, C);
-exec_fold({F, V}, C) when is_function(F, 2) -> F(V, C);
-exec_fold(F, C) when is_function(F, 1) -> F(C).
+exec_fold({F, K, V}, JObj) when is_function(F, 3) -> F(K, V, JObj);
+exec_fold({F, V}, JObj) when is_function(F, 2) -> F(V, JObj);
+exec_fold(F, JObj) when is_function(F, 1) -> F(JObj).
+
+-type exec_first_fun_1() :: fun((object()) -> object()).
+-type exec_first_fun_2() :: {fun((_, object()) -> object()), _}.
+-type exec_first_fun_3() :: {fun((_, _, object()) -> object()), _, _}.
+-type exec_first_fun() :: exec_first_fun_1() | exec_first_fun_2() | exec_first_fun_3().
+-type exec_first_funs() :: [exec_first_fun(),...].
+
+-spec exec_first(exec_first_funs(), object()) -> object().
+exec_first(Funs, ?JSON_WRAPPER(_)=JObj) ->
+    lists:foldl(fun exec_first_fold/2, JObj, Funs).
+
+-spec exec_first_fold(exec_first_fun(), object()) -> object().
+exec_first_fold({F, K, V}, JObj) when is_function(F, 3) -> F(JObj, K, V);
+exec_first_fold({F, V}, JObj) when is_function(F, 2) -> F(JObj, V);
+exec_first_fold(F, JObj) when is_function(F, 1) -> F(JObj).
 
 -spec utf8_binary(json_term()) -> json_term().
-utf8_binary(Value) when is_binary(Value) ->
-    %% io_lib:printable_unicode_list/1 check added to avoid encoding file's content
-    %% like audio files.
-    case io_lib:printable_unicode_list(binary_to_list(Value)) of
-        'true' ->
-            %% it must be a string or bitstring
-            unicode:characters_to_binary(io_lib:format("~ts", [Value]));
-        'false' ->
-            %% it must be a file's content
-            Value
-    end;
-utf8_binary(Value) ->
-    Value.
+utf8_binary(<<V/binary>>) -> kz_binary:to_utf8(V);
+utf8_binary(Else) -> Else.
+
+-spec check_value_term(json_term()) -> json_term().
+check_value_term(<<Term/binary>>) -> utf8_binary(Term);
+check_value_term(?JSON_WRAPPER(Prop)) -> ?JSON_WRAPPER([{K, check_value_term(V)} || {K, V} <- Prop]);
+check_value_term([_|_]=Terms) -> [check_value_term(Term) || Term <- Terms];
+check_value_term(Term) -> Term.

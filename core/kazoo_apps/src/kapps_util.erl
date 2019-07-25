@@ -40,10 +40,10 @@
 -export([get_call_termination_reason/1]).
 -export([get_view_json/1, get_view_json/2]).
 -export([get_views_json/2]).
--export([update_views/2, update_views/3]).
 -export([add_aggregate_device/2]).
 -export([rm_aggregate_device/2]).
 -export([get_destination/3]).
+-export([get_origination/3]).
 
 -export([write_tts_file/2]).
 -export([to_magic_hash/1
@@ -521,19 +521,6 @@ get_view_json(Path) ->
     JObj = kz_json:decode(Bin),
     {kz_doc:id(JObj), JObj}.
 
-%% @equiv update_views(Db, Views, 'false')
--spec update_views(kz_term:ne_binary(), kz_datamgr:views_listing()) -> boolean().
-update_views(Db, Views) ->
-    update_views(Db, Views, 'false').
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec update_views(kz_term:ne_binary(), kz_datamgr:views_listing(), boolean()) -> boolean().
-update_views(Db, Views, ShouldRemove) ->
-    kz_term:is_true(kz_datamgr:db_view_update(Db, Views, ShouldRemove)).
-
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -595,6 +582,33 @@ get_destination(JObj, []) ->
     {kz_json:get_value(<<"To-DID">>, JObj)
     ,kz_json:get_value(<<"To-Realm">>, JObj)
     }.
+
+%%------------------------------------------------------------------------------
+%% @doc Extracts the User and Realm from either the field configured
+%% in the `system_config' DB or the "From" field. Defaults to "From"
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_origination(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                             {kz_term:ne_binary(), kz_term:ne_binary()}.
+get_origination(JObj, Cat, Key) ->
+    case kapps_config:get(Cat, Key, <<"From">>) of
+        <<"From">> ->
+            get_origination(JObj, [<<"From">>]);
+        Else ->
+            get_origination(JObj, [Else, <<"From">>])
+    end.
+
+-spec get_origination(kz_json:object(), kz_term:ne_binaries()) ->
+                             {kz_term:ne_binary(), kz_term:ne_binary()}.
+get_origination(JObj, [Key|Keys]) ->
+    case maybe_split(Key, JObj) of
+        [User,Realm] ->
+            {User,Realm};
+        'undefined' ->
+            get_origination(JObj, Keys)
+    end;
+get_origination(_JObj, []) ->
+    {'undefined', 'undefined'}.
 
 maybe_split(Key, JObj) ->
     case kz_json:get_ne_binary_value(Key, JObj) of

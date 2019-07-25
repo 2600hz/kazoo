@@ -6,10 +6,16 @@
 -module(kz_cache_listener).
 -behaviour(gen_listener).
 
--export([start_link/2
+-export([start_link/0
+        ,add_binding/2
+
+        ,new_channel_flush_binding/0
+        ,channel_reconnect_flush_binding/0
+
         ,add_origin_pointers/3
         ,get_origin_pointers/2
-        ,listener_name/1
+
+        ,handle_change/3
         ]).
 
 -export([init/1
@@ -21,10 +27,6 @@
         ,code_change/3
         ]).
 
--ifdef(TEST).
--export([handle_document_change/2]).
--endif.
-
 -include("kz_caches.hrl").
 
 -ifdef(TEST).
@@ -33,42 +35,49 @@
 -define(BINDINGS, [{'self', []}]).
 -endif.
 
--define(RESPONDERS, []).
+-define(RESPONDERS, [{{?MODULE, 'handle_change'}
+                     ,[{<<"configuration">>, <<"*">>}]
+                     }
+                    ]
+       ).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
 -define(DATABASE_BINDING, [{'type', <<"database">>}]).
 
--record(state, {name :: atom()
-               ,new_channel_flush :: boolean()
-               ,channel_reconnect_flush :: boolean()
-               }).
--type state() :: #state{}.
+-type state() :: ?MODULE.
 
--spec start_link(atom(), kz_cache:start_options()) -> kz_types:startlink_ret().
+-spec start_link() -> kz_types:startlink_ret().
 -ifdef(TEST).
-start_link(Name, _Props) ->
-    gen_server:start_link({'local', listener_name(Name)}, ?MODULE, [#state{name=Name}], []).
+start_link() -> gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 -else.
-start_link(Name, Props) ->
-    BindingProps = props:get_value('origin_bindings', Props),
-    Bindings = [{'conf', ['federate' | P]} || P <- maybe_add_db_binding(BindingProps)],
-    gen_listener:start_link({'local', listener_name(Name)}
+start_link() ->
+    %% Bindings = [{'conf', ['federate', {'type', <<"database">>}]}],
+    gen_listener:start_link({'local', ?MODULE}
                            ,?MODULE
-                           ,[{'bindings', Bindings}
+                           ,[{'bindings', []}
                             ,{'responders', ?RESPONDERS}
                             ,{'queue_name', ?QUEUE_NAME}
                             ,{'queue_options', ?QUEUE_OPTIONS}
                             ,{'consume_options', ?CONSUME_OPTIONS}
                             ]
-                           ,[#state{name=Name
-                                   ,new_channel_flush=props:is_true('new_channel_flush', Props)
-                                   ,channel_reconnect_flush=props:is_true('channel_reconnect_flush', Props)
-                                   }
-                            ]
+                           ,[]
                            ).
 -endif.
+
+-spec add_binding(atom(), kz_term:proplist()) -> 'ok'.
+add_binding(Name, Binding) ->
+    gen_listener:add_binding(?MODULE
+                            ,'conf'
+                            ,['federate' | Binding]
+                            ),
+    RK = kapi_conf:get_routing_key(Binding, 'false'), % get a local (unoptimized) binding key
+    _ = kazoo_bindings:bind(local_key(RK), 'kz_cache_conf_change', 'handle_change', Name).
+
+-spec local_key(kz_term:ne_binary()) -> kz_term:ne_binary().
+local_key(RK) ->
+    <<?MODULE_STRING".", RK/binary>>.
 
 -spec add_origin_pointers(atom(), cache_obj(), 'undefined' | origin_tuple() | origin_tuples()) -> 'ok'.
 add_origin_pointers(_Name, _CacheObj, 'undefined') -> 'ok';
@@ -96,47 +105,35 @@ add_origin_pointer(PointerTab, #cache_obj{key=Key}=CacheObj, Origin) ->
 get_origin_pointers(PointerTab, Key) ->
     ets:lookup(PointerTab, Key).
 
--spec listener_name(atom()) -> atom().
-listener_name(Name) ->
-    kz_term:to_atom(atom_to_list(Name) ++ "_listener", 'true').
+-spec init([]) -> {'ok', state()}.
+init([]) ->
+    kz_util:put_callid(?MODULE),
+    {'ok', ?MODULE}.
 
--ifndef(TEST).
--spec maybe_add_db_binding(kz_term:proplists()) -> kz_term:proplists().
-maybe_add_db_binding([]) -> [];
-maybe_add_db_binding([[]]) -> [[]];
-maybe_add_db_binding(BindingProps) ->
-    [?DATABASE_BINDING | BindingProps].
--endif.
-
--spec init([state()]) -> {'ok', state()}.
-init([#state{name=Name}=State]) ->
-    kz_util:put_callid(listener_name(Name)),
-    {'ok', State}.
-
--spec handle_call(any(), kz_types:pid_ref(), state()) -> {'noreply', state()}.
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> {'noreply', state()}.
 handle_call(_Req, _From, State) ->
     {'noreply', State}.
 
+-spec new_channel_flush_binding() -> kz_term:ne_binary().
+new_channel_flush_binding() ->
+    <<"kz_cache.channel.new">>.
+
+-spec channel_reconnect_flush_binding() -> kz_term:ne_binary().
+channel_reconnect_flush_binding() ->
+    <<"kz_cache.channel.reconnect">>.
+
 -spec handle_cast(any(), state()) -> {'noreply', state()}.
-handle_cast({'kz_amqp_channel', {'new_channel', 'false'}}
-           ,#state{name=Name
-                  ,new_channel_flush='true'
-                  }=State
-           ) ->
-    lager:debug("new channel, flush ~s", [Name]),
-    kz_cache_ets:flush(Name),
+handle_cast({'kz_amqp_channel', {'new_channel', 'false'}}, State) ->
+    _ = kazoo_bindings:map(new_channel_flush_binding(), []),
     {'noreply', State};
-handle_cast({'kz_amqp_channel', {'new_channel', 'true'}}
-           ,#state{name=Name
-                  ,channel_reconnect_flush='true'
-                  }=State
-           ) ->
-    lager:debug("reconnected channel, flush everything from ~s", [Name]),
-    kz_cache_ets:flush(Name),
+handle_cast({'kz_amqp_channel', {'new_channel', 'true'}}, State) ->
+    _ = kazoo_bindings:map(channel_reconnect_flush_binding(), []),
     {'noreply', State};
 handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener',{'is_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener',{'federators_consuming', _AreFederatorsConsuming}}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -155,118 +152,24 @@ handle_info(_Info, State) ->
 %% @doc Allows listener to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(kz_json:object(), state()) -> 'ignore'.
-handle_event(JObj, #state{name=Name}) ->
-    _ = case (V=kapi_conf:doc_update_v(JObj))
-            andalso (kz_api:node(JObj) =/= kz_term:to_binary(node())
-                     orelse kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =/= ets:info(Name, 'name')
-                    )
-        of
-            'true' -> handle_document_change(JObj, Name);
-            'false' when V -> exec_bindings(Name, JObj);
-            'false' -> lager:error("payload invalid for kapi_conf: ~p", [JObj])
-        end,
-    'ignore'.
+-spec handle_event(kz_json:object(), state()) -> {'reply', []}.
+handle_event(_JObj, _State) ->
+    {'reply', []}.
+
+-spec handle_change(kapi_conf:doc(), kz_term:proplist(), any()) -> 'ok'.
+handle_change(JObj, _Props, <<RK/binary>>) ->
+    _ = kazoo_bindings:map(local_key(RK), [JObj]),
+    lager:debug("routed payload to ~s", [RK]);
+handle_change(JObj, Props, Deliver) ->
+    RK = gen_listener:routing_key_used(Deliver),
+    handle_change(JObj, Props, RK).
 
 -spec terminate(any(), state()) -> 'ok'.
+terminate('shutdown', _State) -> 'ok';
+terminate('normal', _State) -> 'ok';
 terminate(_Reason, _State) ->
     lager:info("terminating: ~p", [_Reason]).
 
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
-
--spec exec_bindings(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-exec_bindings(Name, JObj) ->
-    Db = kz_json:get_ne_binary_value(<<"Database">>, JObj),
-    Type = kz_json:get_ne_binary_value(<<"Type">>, JObj),
-    Id = kz_json:get_ne_binary_value(<<"ID">>, JObj),
-    Event = kz_api:event_name(JObj),
-    RK = kz_binary:join([<<"kapi.conf">>, Name, Db, Type, Event, Id], <<".">>),
-    _ = kazoo_bindings:pmap(RK, JObj),
-    'ok'.
-
--spec handle_document_change(kz_json:object(), atom()) -> 'ok' | 'false'.
-handle_document_change(JObj, Name) ->
-    'true' = kapi_conf:doc_update_v(JObj),
-
-    Db = kz_json:get_ne_binary_value(<<"Database">>, JObj),
-    Type = kz_json:get_ne_binary_value(<<"Type">>, JObj),
-    Id = kz_json:get_ne_binary_value(<<"ID">>, JObj),
-
-    _ = kz_util:spawn(fun exec_bindings/2, [kz_term:to_binary(Name), JObj]),
-
-    _Keys = handle_document_change(Db, Type, Id, Name),
-    _Keys =/= []
-        andalso lager:debug("removed ~p keys for ~s/~s/~s", [length(_Keys), Db, Id, Type]).
-
--spec handle_document_change(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), atom()) ->
-                                    list().
-handle_document_change(Db, <<"database">>, _Id, Name) ->
-    MatchSpec = match_db_changed(Db),
-    lists:foldl(fun(Obj, Removed) ->
-                        erase_changed(Obj, Removed, Name)
-                end
-               ,[]
-               ,ets:select(kz_cache_ets:pointer_tab(Name), MatchSpec)
-               );
-handle_document_change(Db, Type, Id, Name) ->
-    MatchSpec = match_doc_changed(Db, Type, Id),
-    Objects = ets:select(kz_cache_ets:pointer_tab(Name), MatchSpec),
-
-    lists:foldl(fun(Obj, Removed) ->
-                        erase_changed(Obj, Removed, Name)
-                end
-               ,[]
-               ,Objects
-               ).
-
--spec match_db_changed(kz_term:ne_binary()) -> ets:match_spec().
-match_db_changed(Db) ->
-    [{#cache_obj{origin = {'db', Db}, _ = '_'}
-     ,[]
-     ,['$_']
-     }
-    ,{#cache_obj{origin = {'db', Db, '_'}, _ = '_'}
-     ,[]
-     ,['$_']
-     }
-    ,{#cache_obj{origin = {'type', <<"database">>, Db}, _ = '_'}
-     ,[]
-     ,['$_']
-     }
-    ].
-
--spec match_doc_changed(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> ets:match_spec().
-match_doc_changed(Db, Type, Id) ->
-    [{#cache_obj{origin = {'db', Db}, _ = '_'}
-     ,[]
-     ,['$_']
-     }
-    ,{#cache_obj{origin = {'db', Db, Type}, _ = '_'}
-     ,[]
-     ,['$_']
-     }
-    ,{#cache_obj{origin = {'db', Db, Id}, _ = '_'}
-     ,[]
-     ,['$_']
-     }
-    ,{#cache_obj{origin = {'type', Type, Id}, _ = '_'}
-     ,[]
-     ,['$_']
-     }
-    ,{#cache_obj{origin = {'type', Type}, _ = '_'}
-     ,[]
-     ,['$_']
-     }
-    ].
-
--spec erase_changed(cache_obj(), list(), atom()) -> list().
-erase_changed(#cache_obj{key=Key}, Removed, Name) ->
-    case lists:member(Key, Removed) of
-        'true' -> Removed;
-        'false' ->
-            lager:debug("removing updated cache object ~-300p", [Key]),
-            'ok' = kz_cache_ets:erase(Name, Key),
-            [Key | Removed]
-    end.

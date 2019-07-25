@@ -418,9 +418,9 @@ move_account(?MATCH_ACCOUNT_RAW(AccountId), ToAccount=?NE_BINARY) ->
                           {'error', any()}.
 move_account(AccountId, JObj, ToAccount, ToTree) ->
     PreviousTree = kzd_accounts:tree(JObj),
-    Updates = [{?SERVICES_PVT_TREE, ToTree}
-              ,{?SERVICES_PVT_TREE_PREVIOUSLY, PreviousTree}
-              ,{?SERVICES_PVT_MODIFIED, kz_time:now_s()}
+    Updates = [{[?SERVICES_PVT_TREE], ToTree}
+              ,{[?SERVICES_PVT_TREE_PREVIOUSLY], PreviousTree}
+              ,{[?SERVICES_PVT_MODIFIED], kz_time:now_s()}
               ],
 
     %%FIXME: do something about setting pvt_auth_*_id
@@ -473,9 +473,9 @@ update_descendants_tree([Descendant|Descendants], Tree, NewResellerId, MovedAcco
             %% Preserve tree below and including common ancestor
             {_, Tail} = lists:splitwith(fun(X) -> X =/= MovedAccountId end, PreviousTree),
             ToTree = Tree ++ Tail,
-            Updates = [{?SERVICES_PVT_TREE, ToTree}
-                      ,{?SERVICES_PVT_TREE_PREVIOUSLY, PreviousTree}
-                      ,{?SERVICES_PVT_MODIFIED, kz_time:now_s()}
+            Updates = [{[?SERVICES_PVT_TREE], ToTree}
+                      ,{[?SERVICES_PVT_TREE_PREVIOUSLY], PreviousTree}
+                      ,{[?SERVICES_PVT_MODIFIED], kz_time:now_s()}
                       ],
             %%FIXME: do something about setting pvt_auth_*_id
             case kzd_accounts:update(Descendant, Updates) of
@@ -528,8 +528,11 @@ disable_account(AccountId) ->
             E
     end.
 
--spec maybe_disable_account(kz_types:ne_binary()) -> any().
-maybe_disable_account(AccountId) ->
+-spec maybe_disable_account(kz_term:ne_binary()) ->
+                                   'ok' |
+                                   {'ok', kzd_accounts:doc()} |
+                                   kz_datamgr:data_error().
+maybe_disable_account(<<AccountId/binary>>) ->
     {'ok', AccountJObj} = kzd_accounts:fetch(AccountId),
     case kzd_accounts:is_enabled(AccountJObj) of
         'false' -> 'ok';
@@ -604,7 +607,7 @@ load_apps(AccountId, UserId) ->
 
 -spec load_apps(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:objects().
 load_apps(AccountId, UserId, Language) ->
-    AppJObjs = cb_apps_util:authorized_apps(AccountId, UserId),
+    AppJObjs = cb_apps_util:allowed_apps(AccountId, UserId),
     [format_app(Language, AppJObj)
      || AppJObj <- AppJObjs
     ].
@@ -632,17 +635,14 @@ format_app(Lang, AppJObj) ->
 -spec change_pvt_enabled(boolean(), kz_term:api_ne_binary()) ->
                                 'ok' | {'error', any()}.
 change_pvt_enabled(_, 'undefined') -> 'ok';
-change_pvt_enabled(IsEnabled, AccountId) ->
-    try
-        lager:debug("set pvt_enabled to ~s on account ~s", [IsEnabled, AccountId]),
-
-        Update = [{kzd_accounts:path_enabled(), IsEnabled}],
-        {'ok', _UpdatedAccountDoc} = kzd_accounts:update(AccountId, Update),
-        lager:debug("account ~s update successful", [AccountId])
-    catch
-        _:R ->
-            lager:debug("unable to set pvt_enabled to ~s on account ~s: ~p", [IsEnabled, AccountId, R]),
-            {'error', R}
+change_pvt_enabled(IsEnabled, <<AccountId/binary>>) ->
+    Update = [{kzd_accounts:path_enabled(), IsEnabled}],
+    case kzd_accounts:update(AccountId, Update) of
+        {'ok', _UpdatedAccountDoc} ->
+            lager:debug("set pvt_enabled to ~s on account ~s", [IsEnabled, AccountId]);
+        {'error', _R}=Error ->
+            lager:debug("unable to set pvt_enabled to ~s on account ~s: ~p", [IsEnabled, AccountId, _R]),
+            Error
     end.
 
 %%------------------------------------------------------------------------------
@@ -920,12 +920,13 @@ format_emergency_caller_id_number(Context, Emergency) ->
     case kz_json:get_ne_binary_value(<<"number">>, Emergency) of
         'undefined' -> Context;
         Number ->
-            NEmergency = kz_json:set_value(<<"number">>, knm_converters:normalize(Number), Emergency),
-            CallerId = cb_context:req_value(Context, <<"caller_id">>),
-            NCallerId = kz_json:set_value(?KEY_EMERGENCY, NEmergency, CallerId),
+            NEmergencyJObj = kz_json:set_value(<<"number">>, knm_converters:normalize(Number), Emergency),
+            CallerIdJObj = cb_context:req_value(Context, <<"caller_id">>),
+            NCallerIdJObj = kz_json:set_value(?KEY_EMERGENCY, NEmergencyJObj, CallerIdJObj),
 
+            lager:debug("setting emergency caller id from ~s to ~s", [Number, knm_converters:normalize(Number)]),
             cb_context:set_req_data(Context
-                                   ,kz_json:set_value(<<"caller_id">>, NCallerId, cb_context:req_data(Context))
+                                   ,kz_json:set_value(<<"caller_id">>, NCallerIdJObj, cb_context:req_data(Context))
                                    )
     end.
 
@@ -1128,7 +1129,7 @@ compare_descendants_count(AccountId, NewCount, _, Try) ->
 %%------------------------------------------------------------------------------
 -spec update_descendants_count(kz_term:ne_binary(), integer()) -> 'ok' | 'error'.
 update_descendants_count(AccountId, NewCount) ->
-    Update = [{<<"descendants_count">>, NewCount}],
+    Update = [{[<<"descendants_count">>], NewCount}],
     case kzd_accounts:update(AccountId, Update) of
         {'error', _E} -> 'error';
         {'ok', _AccountDoc} -> 'ok'

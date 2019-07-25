@@ -1,0 +1,11 @@
+<event name="sofia::transferee">
+	<fields verbose="false">
+		<field name="call_event" type="reference" />
+		<field name="Event-Name" type="static" value="CHANNEL_TRANSFEREE" />
+	</fields>
+
+	<routing-key>
+		<param name="format_fields" value="#call,#CHANNEL_TRANSFEREE,Unique-ID" />
+	</routing-key>
+
+</event>

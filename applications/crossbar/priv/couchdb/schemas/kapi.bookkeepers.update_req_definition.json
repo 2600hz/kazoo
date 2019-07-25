@@ -33,7 +33,7 @@
             ],
             "type": "string"
         },
-        "Items": {
+        "Invoice": {
             "type": "string"
         },
         "Vendor-ID": {
@@ -44,7 +44,7 @@
         "Account-ID",
         "Bookkeeper-ID",
         "Bookkeeper-Type",
-        "Items",
+        "Invoice",
         "Vendor-ID"
     ],
     "type": "object"

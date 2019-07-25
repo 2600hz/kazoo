@@ -20,8 +20,12 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?WORKER_NAME_ARGS('acdc_stats_etsmgr', 'acdc_stats_call', [acdc_stats:call_table_id(), acdc_stats:call_table_opts()])
-                  ,?WORKER_NAME_ARGS('acdc_stats_etsmgr', 'acdc_stats_status', [acdc_agent_stats:status_table_id(), acdc_agent_stats:status_table_opts()])
+-define(ETSMGR_OPTS(TableId, TableOpts), [{'table_id', TableId}
+                                         ,{'table_options', TableOpts}
+                                         ,{'find_me_function', fun etsmgr_find_me_fun/0}
+                                         ]).
+-define(CHILDREN, [?WORKER_NAME_ARGS('kazoo_etsmgr_srv', 'acdc_stats_call', [?ETSMGR_OPTS(acdc_stats:call_table_id(), acdc_stats:call_table_opts())])
+                  ,?WORKER_NAME_ARGS('kazoo_etsmgr_srv', 'acdc_stats_status', [?ETSMGR_OPTS(acdc_agent_stats:status_table_id(), acdc_agent_stats:status_table_opts())])
                   ,?WORKER('acdc_stats')
                   ]).
 
@@ -44,6 +48,13 @@ stats_srv() ->
     case [P || {'acdc_stats', P, _, _} <- supervisor:which_children(?SERVER)] of
         [P] when is_pid(P) -> {'ok', P};
         _ -> {'error', 'not_found'}
+    end.
+
+-spec etsmgr_find_me_fun() -> kz_term:api_pid().
+etsmgr_find_me_fun() ->
+    case stats_srv() of
+        {'ok', P} -> P;
+        {'error', 'not_found'} -> 'undefined'
     end.
 
 %%%=============================================================================

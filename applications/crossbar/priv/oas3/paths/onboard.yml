@@ -1,0 +1,13 @@
+paths:
+  /accounts/{ACCOUNT_ID}/onboard:
+    put:
+      operationId: PutAccountsAccountIdOnboard
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of onboard
+      tags:
+        - onboard

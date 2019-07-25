@@ -279,7 +279,7 @@ migrate_history(AccountId, AccountDb, C2C) ->
         History ->
             Id = kz_doc:id(C2C),
             _ = [save_history_item(AccountId, HistoryItem, Id) || HistoryItem <- History],
-            Update = [{<<"pvt_history">>, 'null'}],
+            Update = [{[<<"pvt_history">>], 'null'}],
             UpdateOptions = [{'update', Update}],
             _Resp = kz_datamgr:update_doc(AccountDb, Id, UpdateOptions),
             lager:debug("removed history from c2c ~s in ~s: ~p"

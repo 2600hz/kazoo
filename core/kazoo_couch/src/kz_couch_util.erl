@@ -75,13 +75,13 @@ retry504s(Fun, Cnt) ->
             kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
             {'error', format_error(Other)};
         OK -> OK
-    catch _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("exception running fun: ~p:~p", [_E, _R]),
-            kz_util:log_stacktrace(ST),
-            kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
-            retry504s(Fun, Cnt+1)
-    end.
+    catch
+        ?STACKTRACE(_E, _R, ST)
+        lager:debug("exception running fun: ~p:~p", [_E, _R]),
+        kz_util:log_stacktrace(ST),
+        kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
+        retry504s(Fun, Cnt+1)
+        end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -113,7 +113,7 @@ maybe_default_recv_timeout(Options) ->
     end.
 
 filter_options(Options) ->
-    [ KV || {K, _} = KV <- Options, not lists:member(K, ?NO_OPTIONS)].
+    [KV || {K, _} = KV <- Options, not lists:member(K, ?NO_OPTIONS)].
 
 convert_options(Options) ->
     [convert_option(O) || O <- Options].
@@ -168,9 +168,10 @@ connect(#kz_couch_connection{host=Host
                },
     Opts = [{'connection_map', ConnMap} | maybe_add_auth(User, Pass, check_options(Options))],
     Conn = couchbeam:server_connection(kz_term:to_list(Host), Port, <<>>, Opts),
-    lager:debug("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
+    lager:info("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
     connection_info(Conn).
 
+-spec add_couch_version(kz_term:ne_binary(), kz_term:api_ne_binary(), server()) -> server().
 add_couch_version(<<"1.6", _/binary>>, 'undefined', #server{options=Options}=Conn) ->
     Conn#server{options = props:set_value('driver_version', 'couchdb_1_6', Options)};
 add_couch_version(<<"1.1", _/binary>>, _Bigcouch, #server{options=Options}=Conn) ->
@@ -196,19 +197,22 @@ db_url(#server{}=Conn, DbName) ->
 %% @doc returns the #db{} record
 %% @end
 %%------------------------------------------------------------------------------
--spec get_db(kz_data:connection(), kz_term:ne_binary()) -> db().
-get_db(Conn, DbName) ->
+-spec get_db(server(), kz_term:ne_binary()) -> db().
+get_db(Conn, <<DbName/binary>>) ->
     get_db(Conn, DbName, kazoo_couch:server_version(Conn)).
 
--spec get_db(kz_data:connection(), kz_term:ne_binary(), couch_version()) -> db().
+-spec get_db(server(), kz_term:ne_binary(), couch_version()) -> db().
 get_db(Conn, DbName, Driver) ->
-    ConnToUse =
-        case is_admin_db(DbName, Driver) of
-            'true' -> maybe_use_admin_conn(Conn);
-            'false' -> Conn
-        end,
+    ConnToUse = select_conn(Conn, DbName, Driver),
     {'ok', Db} = couchbeam:open_db(ConnToUse, DbName),
     Db.
+
+-spec select_conn(server(), kz_term:ne_binary(), couch_version()) -> server().
+select_conn(Conn, DbName, Driver) ->
+    case is_admin_db(DbName, Driver) of
+        'true' -> maybe_use_admin_conn(Conn);
+        'false' -> Conn
+    end.
 
 -spec is_admin_db(kz_term:ne_binary(), couch_version()) -> boolean().
 is_admin_db(<<"_dbs">>, 'couchdb_2') -> 'true';
@@ -223,17 +227,18 @@ is_admin_db(<<"nodes">>, 'bigcouch') -> 'true';
 is_admin_db(_Db, _Driver) -> 'false'.
 
 %% loads the admin connection if possible
--spec admin_connection(kz_data:connection()) -> kz_data:connection().
+-spec admin_connection(server()) -> server().
 admin_connection(Conn) ->
     maybe_use_admin_conn(Conn).
 
--spec maybe_use_admin_conn(kz_data:connection()) -> kz_data:connection().
+-spec maybe_use_admin_conn(server()) -> server().
 maybe_use_admin_conn(#server{options=Options}=Conn) ->
     case props:get_value('admin_connection', Options) of
         'undefined' -> maybe_use_admin_port(Conn);
         AdminConn -> AdminConn
     end.
 
+-spec maybe_use_admin_port(server()) -> server().
 maybe_use_admin_port(#server{options=Options}=Conn) ->
     ConnectionMap = props:get_value('connection_map', Options, #{}),
     ConnMapOptions = maps:get('options', ConnectionMap),
@@ -247,9 +252,13 @@ maybe_use_admin_port(#server{options=Options}=Conn) ->
             change_connection_to_admin(Conn, APIPort, AdminPort)
     end.
 
+-spec change_connection_to_admin(server(), inet:port_number(), inet:port_number()) -> server().
 change_connection_to_admin(#server{url=Host
                                   ,options=Options
-                                  }=Conn, APIPort, AdminPort) ->
+                                  }=Conn
+                          ,APIPort
+                          ,AdminPort
+                          ) ->
     ConnectionMap = props:get_value('connection_map', Options, #{}),
     ConnMapOptions = maps:get('options', ConnectionMap),
 

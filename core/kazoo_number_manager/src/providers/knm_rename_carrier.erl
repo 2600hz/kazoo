@@ -59,7 +59,7 @@ is_valid(CarrierModule, PN) ->
             case kz_module:ensure_loaded(CarrierModule) of
                 'false' -> 'false';
                 _M ->
-                    ?LOG_DEBUG("allowing setting carrier to ~p", [CarrierModule]),
+                    lager:debug("allowing setting carrier to ~p", [CarrierModule]),
                     'true'
             end
     end.

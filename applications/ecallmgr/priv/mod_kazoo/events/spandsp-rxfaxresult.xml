@@ -1,0 +1,7 @@
+<event name="spandsp::rxfaxresult">
+	<fields verbose="true">
+		<field name="fax_event" type="reference" />
+		<field name="Application-Name" type="static" value="receive_fax" />
+		<field name="Application-Event" type="static" value="result" />
+	</fields>
+</event>

@@ -49,7 +49,7 @@ defaults(Thing) ->
                   ,fetch(Thing)
                   ).
 
--spec default(kz_services:services() | kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:api_object().
+-spec default(kz_services:services() | kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
 default(Thing, Bookkeeper) ->
     Now = kz_time:now_s(),
     Pays = kz_json:filter(fun({_TokenId, Token}) ->
@@ -69,7 +69,7 @@ default(Thing, Bookkeeper) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update(kz_services:service() | kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+-spec update(kz_services:services() | kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
                     kz_services:services().
 update(?NE_BINARY = AccountId, Bookkeeper, Token) ->
     update(kz_services:fetch(AccountId), Bookkeeper, Token);
@@ -86,7 +86,7 @@ update(Services, Bookkeeper, Token) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec updates(kz_servics:services() | kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) ->
+-spec updates(kz_services:services() | kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) ->
                      kz_services:services().
 updates(?NE_BINARY = AccountId, Bookkeeper, ProposedTokens) ->
     updates(kz_services:fetch(AccountId), Bookkeeper, ProposedTokens);
@@ -112,19 +112,25 @@ updates(Services, Bookkeeper, ProposedTokens) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec delete(kz_services:service() | kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+-spec delete(kz_services:services() | kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object() | kz_term:ne_binary()) ->
                     kz_services:services().
-delete(?NE_BINARY = AccountId, Bookkeeper, Token) ->
+delete(<<AccountId/binary>>, Bookkeeper, Token) ->
     delete(kz_services:fetch(AccountId), Bookkeeper, Token);
-delete(Services, _Bookkeeper, Token) ->
+delete(Services, _Bookkeeper, ?NE_BINARY = TokenId) ->
     ServicesJObj = kz_services:services_jobj(Services),
-    TokenId = kz_json:get_ne_binary_value(<<"id">>, Token),
     NewTokens = kz_json:delete_key(TokenId, kzd_services:payment_tokens(ServicesJObj, kz_json:new())),
     Setters = [{fun kz_services:set_services_jobj/2
                ,kzd_services:set_payment_tokens(ServicesJObj, NewTokens)
                }
               ],
-    kz_services:setters(Services, Setters).
+    kz_services:setters(Services, Setters);
+delete(Services, Bookkeeper, TokenJObj) ->
+    case kz_json:is_json_object(TokenJObj) of
+        'true' ->
+            delete(Services, Bookkeeper, kz_json:get_ne_binary_value(<<"id">>, TokenJObj));
+        'false' ->
+            Services
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc

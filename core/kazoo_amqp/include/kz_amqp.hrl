@@ -7,6 +7,7 @@
 -ifndef(KZ_AMQP_HRL).
 
 -include_lib("amqp_client/include/amqp_client.hrl").
+-include("kz_api.hrl").
 
 -define(KEY_ORGN_RESOURCE_REQ, <<"orginate.resource.req">>). %% corresponds to originate_resource_req/1 api call
 -define(RESOURCE_QUEUE_NAME, <<"resource.provider">>).
@@ -63,8 +64,8 @@
 %% Resource Exchange
 %% - Request for resources are published and consumed from this queue.  Topics are used to
 %%   distinguish the types of resource
--define(EXCHANGE_RESOURCE, <<"resource">>).
--define(TYPE_RESOURCE, <<"fanout">>).
+-define(EXCHANGE_RESOURCE, <<"resources">>).
+-define(TYPE_RESOURCE, <<"topic">>).
 
 %% Call Manager Exchange
 %% - ecallmgr will publish requests to this exchange using routing keys.
@@ -213,6 +214,7 @@
                             ,started = os:timestamp() :: kz_time:now() | '_'
                             ,tags = [] :: list() | '_'
                             ,hidden = 'false' :: boolean() | '_'
+                            ,exchanges = #{} :: map() | '_'
                             }).
 -type kz_amqp_connection() :: #kz_amqp_connection{}.
 

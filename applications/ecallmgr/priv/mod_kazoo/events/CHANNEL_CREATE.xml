@@ -1,0 +1,9 @@
+<event name="CHANNEL_CREATE">
+	<fields verbose="false">
+		<field name="call_event" type="reference" />
+		<field name="from-to" type="reference" />
+		<field name="to-did" type="reference" />
+		<field name="destination-number" type="reference" />
+		<field name="debug-call" type="reference" />
+	</fields>
+</event>

@@ -18,6 +18,7 @@
         ,get_http_verb/2
         ,get_auth_token/2
         ,get_pretty_print/2
+        ,get_content_type/1
         ,is_authentic/2, is_early_authentic/2
         ,is_permitted/2
         ,is_known_content_type/2
@@ -28,7 +29,14 @@
         ,finish_request/2
         ,create_push_response/2, create_push_response/3
         ,set_resp_headers/2
-        ,create_resp_content/2, create_resp_file/2, create_csv_resp_content/2
+
+         %% Content
+        ,create_resp_content/2
+        ,create_resp_file/2
+        ,create_csv_resp_content/2
+        ,create_binary_resp_content/2
+        ,create_xml_resp_content/2
+
         ,create_pull_response/2, create_pull_response/3
 
         ,init_chunk_stream/3
@@ -42,10 +50,6 @@
 
         ,encode_start_key/1, decode_start_key/1
         ]).
-
--ifdef(TEST).
--export([csv_body/2]).
--endif.
 
 -include_lib("kernel/include/file.hrl").
 -include("crossbar.hrl").
@@ -72,17 +76,9 @@
 -define(DEFAULT_CSV_FILE_NAME, <<"result.csv">>).
 
 -type stop_return() :: {'stop', cowboy_req:req(), cb_context:context()}.
--type resp_file() :: {integer(), send_file_fun()}.
+-type resp_file() :: {'sendfile',  non_neg_integer(),  non_neg_integer(), file:name_all()}.
 -type resp_content_return() :: {kz_term:ne_binary() | iolist() | resp_file(), cowboy_req:req()}.
 -type resp_content_fun() :: fun((cowboy_req:req(), cb_context:context()) ->  resp_content_return()).
--type send_file_fun() :: fun((any(), module()) -> 'ok').
--type pull_file_resp() :: {'stream', integer(), send_file_fun()}.
--type pull_file_response_return() :: {pull_file_resp(), cowboy_req:req(), cb_context:context()} |
-                                     stop_return().
-
--export_type([pull_file_response_return/0
-             ,stop_return/0
-             ]).
 
 %%------------------------------------------------------------------------------
 %% @doc Attempts to determine if this is a cross origin resource preflight request
@@ -160,18 +156,17 @@ get_query_string_data([], Req) ->
     {kz_json:new(), Req};
 get_query_string_data(QS0, Req) ->
     QS = kz_json:from_list(QS0),
-    lager:debug("query string: ~p", [kz_json:encode(QS)]),
+    lager:debug("query string: ~s", [kz_json:encode(QS, ['pretty'])]),
     {QS, Req}.
 
 -spec get_content_type(cowboy_req:req()) -> kz_term:api_ne_binary().
 get_content_type(Req) ->
     case cowboy_req:parse_header(<<"content-type">>, Req) of
         'undefined' -> 'undefined';
-        {Main, Sub, _Opts} ->
-            <<Main/binary, "/", Sub/binary>>
+        {Main, Sub, _Opts} -> <<Main/binary, "/", Sub/binary>>
     end.
 
--spec get_req_data(cb_context:context(), cowboy_req:req(), content_type(), kz_json:object()) ->
+-spec get_req_data(cb_context:context(), cowboy_req:req(), cowboy_content_type(), kz_json:object()) ->
                           {cb_context:context(), cowboy_req:req()} |
                           stop_return().
 get_req_data(Context, Req0, 'undefined', QS) ->
@@ -227,12 +222,11 @@ get_req_data(Context, Req1, ContentType, QS) ->
 maybe_extract_multipart(Context, Req0, QS) ->
     try extract_multipart(Context, Req0, QS)
     catch
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("failed to extract multipart ~s: ~p", [_E, _R]),
-            kz_util:log_stacktrace(ST),
-            handle_failed_multipart(Context, Req0, QS)
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:debug("failed to extract multipart ~s: ~p", [_E, _R]),
+        kz_util:log_stacktrace(ST),
+        handle_failed_multipart(Context, Req0, QS)
+        end.
 
 -spec handle_failed_multipart(cb_context:context(), cowboy_req:req(), kz_json:object()) ->
                                      {cb_context:context(), cowboy_req:req()} |
@@ -260,7 +254,6 @@ handle_url_encoded_body(Context, Req, QS, ReqBody, JObj) ->
             try_json(ReqBody, QS, Context, Req);
         _Vs ->
             lager:debug("was able to parse request body as url-encoded to json: ~p", [JObj]),
-
             set_request_data_in_context(Context, Req, JObj, QS)
     end.
 
@@ -371,10 +364,10 @@ extract_file(Context, ContentType, Req0) ->
                                   {cb_context:context(), cowboy_req:req()} |
                                   stop_return().
 handle_file_contents(Context, ContentType, Req, FileContents) ->
-
     MultiPartHeaders = cb_context:fetch(Context, <<"multipart_headers">>, #{}),
     %% http://tools.ietf.org/html/rfc2045#page-17
     TransferKey = <<"content-transfer-encoding">>,
+
     case maps:get(TransferKey, MultiPartHeaders, cowboy_req:header(TransferKey, Req)) of
         <<"base64">> ->
             lager:debug("base64 encoded request coming in"),
@@ -492,9 +485,10 @@ get_request_body(#{max_size := MaxSize}, Body, {'more', Data, Req1})
     {'error', 'max_size', Req1};
 get_request_body(#{read_fun := ReadFun, read_options := Opts}=Params, Body, {'more', Data, Req1}) ->
     get_request_body(Params, iolist_to_binary([Body, Data]), ReadFun(Req1, Opts));
-get_request_body(_, Body, {'ok', Data, Req1}) ->
+get_request_body(_, Acc, {'ok', Data, Req1}) ->
+    Body = iolist_to_binary([Acc, Data]),
     lager:debug("received request body payload (size: ~b bytes)", [size(Body)]),
-    {'ok', iolist_to_binary([Body, Data]), Req1}.
+    {'ok', Body, Req1}.
 
 -type get_json_return() :: {kz_term:api_object(), cowboy_req:req()} |
                            {{'malformed', kz_term:ne_binary()}, cowboy_req:req()}.
@@ -560,7 +554,33 @@ is_valid_request_envelope(Envelope, Context) ->
 
 -spec requires_envelope(cb_context:context()) -> boolean().
 requires_envelope(Context) ->
+    Routines = [fun api_version_requires_envelope/1
+               ,fun content_type_requires_envelope/1
+               ,fun req_noun_requires_envelope/1
+               ],
+    lists:all(fun(F) -> F(Context) end, Routines).
+
+-spec api_version_requires_envelope(cb_context:context()) -> boolean().
+api_version_requires_envelope(Context) ->
     not lists:member(cb_context:api_version(Context), ?NO_ENVELOPE_VERSIONS).
+
+-spec content_type_requires_envelope(cb_context:context()) -> boolean().
+content_type_requires_envelope(Context) ->
+    not lists:member(cb_context:req_header(Context, <<"content-type">>), ?NO_ENVELOPE_CONTENT_TYPES).
+
+-spec req_noun_requires_envelope(cb_context:context()) -> boolean().
+req_noun_requires_envelope(Context) ->
+    req_noun_requires_envelope(Context, cb_context:req_nouns(Context)).
+
+-spec req_noun_requires_envelope(cb_context:context(), req_nouns()) -> boolean().
+req_noun_requires_envelope(_Context, []) -> 'true';
+req_noun_requires_envelope(Context, [{Mod, Params} | _]) ->
+    Event = create_event_name(Context, <<"requires_envelope.", Mod/binary>>),
+    Payload = [Context | Params],
+    case crossbar_bindings:pmap(Event, Payload) of
+        [Value | _] -> not Value;
+        _Else -> 'true'
+    end.
 
 -spec validate_request_envelope(kz_json:object()) -> 'true' | validation_errors().
 validate_request_envelope(Envelope) ->
@@ -738,7 +758,11 @@ is_authentic(Req, Context, ?HTTP_OPTIONS) ->
     {'true', Req, Context};
 is_authentic(Req, Context0, _ReqVerb) ->
     Event = create_event_name(Context0, <<"authenticate">>),
-    case crossbar_bindings:succeeded(crossbar_bindings:pmap(Event, Context0)) of
+    case cb_context:auth_doc(Context0) =:= 'undefined'
+        andalso crossbar_bindings:succeeded(crossbar_bindings:pmap(Event, Context0))
+    of
+        'false' ->
+            {'true', Req, Context0};
         [] ->
             is_authentic(Req, Context0, _ReqVerb, cb_context:req_nouns(Context0));
         ['true'|T] ->
@@ -960,37 +984,36 @@ is_known_content_type(Req0, Context0, _ReqVerb) ->
                             Event = create_event_name(Context0, <<"content_types_accepted.", Mod/binary>>),
                             Payload = [ContextAcc | Params],
                             crossbar_bindings:fold(Event, Payload)
-                    end, Context0, cb_context:req_nouns(Context0)),
+                    end
+                   ,Context0
+                   ,cb_context:req_nouns(Context0)
+                   ),
 
     CT = get_content_type(Req0),
 
     is_known_content_type(Req0, Context1, ensure_content_type(CT), cb_context:content_types_accepted(Context1)).
 
--spec is_known_content_type(cowboy_req:req(), cb_context:context(), content_type(), list()) ->
+-spec is_known_content_type(cowboy_req:req(), cb_context:context(), cowboy_content_type(), crossbar_content_handlers()) ->
                                    {boolean(), cowboy_req:req(), cb_context:context()}.
 is_known_content_type(Req, Context, CT, []) ->
     is_known_content_type(Req, Context, CT, ?CONTENT_ACCEPTED);
 is_known_content_type(Req, Context, CT, CTAs) ->
-    CTA = lists:foldr(fun({_Fun, L}, Acc) ->
-                              lists:foldl(fun fold_in_content_type/2, Acc, L);
-                         (L, Acc) ->
-                              lists:foldl(fun fold_in_content_type/2, Acc, L)
-                      end, [], CTAs),
-
-    IsAcceptable = is_acceptable_content_type(CT, CTA),
+    IsAcceptable = is_acceptable_content_type(CT, CTAs),
     lager:debug("is ~p acceptable content type: ~s", [CT, IsAcceptable]),
     {IsAcceptable, Req, cb_context:set_content_types_accepted(Context, CTAs)}.
 
--spec fold_in_content_type({kz_term:ne_binary(), kz_term:ne_binary()}, list()) -> list().
-fold_in_content_type({Type, Sub}, Acc) ->
-    [{Type, Sub, []} | Acc].
+-spec is_acceptable_content_type(cowboy_content_type(), crossbar_content_handlers()) -> boolean().
+is_acceptable_content_type(CTA, ContentHandlers) ->
+    lists:any(fun({_Fun, ModCTAs}) ->
+                      content_type_matches(CTA, ModCTAs)
+              end
+             ,ContentHandlers
+             ).
 
--spec is_acceptable_content_type(content_type(), [content_type()]) -> boolean().
-is_acceptable_content_type(CTA, CTAs) ->
-    ['true' || ModCTA <- CTAs, content_type_matches(CTA, ModCTA)] =/= [].
-
-%% (ReqContentType, ModuleContentType)
--spec content_type_matches(content_type(), content_type()) -> boolean().
+%% (ClientContentType, ModuleContentType)
+-spec content_type_matches(cowboy_content_type(), [cowboy_content_type()] | cowboy_content_type()) -> boolean().
+content_type_matches(CT, ModCTs) when is_list(ModCTs) ->
+    lists:any(fun(ModCT) -> content_type_matches(CT, ModCT) end, ModCTs);
 content_type_matches({Type, _, _}, {Type, <<"*">>, '*'}) ->
     'true';
 content_type_matches({Type, SubType, _}, {Type, SubType, '*'}) ->
@@ -999,16 +1022,15 @@ content_type_matches({Type, SubType, Opts}, {Type, SubType, ModOpts}) ->
     lists:all(fun({K, V}) -> props:get_value(K, Opts) =:= V end
              ,ModOpts
              );
-content_type_matches(CTA, {CT, SubCT, _}) when is_binary(CTA) ->
+content_type_matches(<<CTA/binary>>, {CT, SubCT, _}) ->
     CTA =:= <<CT/binary, "/", SubCT/binary>>;
-content_type_matches(CTA, CT) when is_binary(CTA), is_binary(CT) ->
-    CTA =:= CT;
-content_type_matches(_CTA, _CTAs) ->
-    'false'.
+content_type_matches(<<CT/binary>>, <<CT/binary>>) -> 'true';
+content_type_matches(_CTA, _CTAs) -> 'false'.
 
--spec ensure_content_type(content_type() | 'undefined') -> content_type().
+-spec ensure_content_type(cowboy_content_type() | 'undefined') -> cowboy_content_type().
 ensure_content_type('undefined') -> ?CROSSBAR_DEFAULT_CONTENT_TYPE;
-ensure_content_type(CT) -> CT.
+ensure_content_type(<<CT/binary>>) -> CT;
+ensure_content_type({_Type, _SubType, _Options}=CT) -> CT.
 
 %%------------------------------------------------------------------------------
 %% @doc This function will use event bindings to determine if the target noun
@@ -1177,15 +1199,18 @@ finish_request(_Req, Context) ->
     Verb = cb_context:req_verb(Context),
     Event = create_event_name(Context, [<<"finish_request">>, Verb, Mod]),
     _ = kz_util:spawn(fun crossbar_bindings:pmap/2, [Event, Context]),
-    maybe_cleanup_file(cb_context:fetch(Context, 'csv_acc')),
-    'ok'.
+    maybe_cleanup_file(cb_context:resp_file(Context)).
 
--spec maybe_cleanup_file(kz_csv:file_return() | 'undefined') -> 'ok'.
-maybe_cleanup_file({File, _}) ->
-    _Del = file:delete(File),
-    lager:debug("deleting ~s: ~p", [File, _Del]);
-maybe_cleanup_file(_) -> 'ok'.
+-spec maybe_cleanup_file(binary()) -> 'ok'.
+maybe_cleanup_file(<<>>) -> 'ok';
+maybe_cleanup_file(File) ->
+    _P = spawn(fun() -> cleanup_file(File) end),
+    lager:debug("deleting ~s in ~p", [File, _P]).
 
+-spec cleanup_file(file:filename_all()) -> 'ok'.
+cleanup_file(File) ->
+    'ok' = file:delete(File),
+    lager:debug("deleted file ~s", [File]).
 
 %%------------------------------------------------------------------------------
 %% @doc This function will create the content for the response body.
@@ -1218,6 +1243,33 @@ create_resp_content(Req0, Context) ->
             {<<"failure in request, contact support">>, Req0}
     end.
 
+-spec create_binary_resp_content(cowboy_req:req(), cb_context:context()) ->
+                                        {iodata(), cowboy_req:req()}.
+create_binary_resp_content(Req, Context) ->
+    case cb_context:response(Context) of
+        {'ok', RespData} -> {RespData, Req};
+        _Else -> {<<>>, Req}
+    end.
+
+-spec create_xml_resp_content(cowboy_req:req(), cb_context:context()) ->
+                                     {kz_term:ne_binary() | iolist(), cowboy_req:req()}.
+create_xml_resp_content(Req0, Context) ->
+    Req1 = cowboy_req:set_resp_header(<<"content-type">>, <<"text/xml">>, Req0),
+
+    case cb_context:response(Context) of
+        {'ok', RespData} ->
+            {RespData, Req1};
+        {'error', {_ErrorCode, ErrorMsg, _RespData}} ->
+            MsgEl = #xmlElement{name='message'
+                               ,content=[#xmlText{value=ErrorMsg}]
+                               },
+            ErrorEl = #xmlElement{name='error'
+                                 ,content=[MsgEl]
+                                 },
+            Xml = iolist_to_binary(xmerl:export([ErrorEl], 'xmerl_xml')),
+            {Xml, Req1}
+    end.
+
 -spec get_encode_options(cb_context:context()) -> kz_json:encode_options().
 get_encode_options(Context) ->
     case cb_context:pretty_print(Context) of
@@ -1232,7 +1284,7 @@ get_encode_options(Context) ->
 -type csv_resp_data() :: kz_term:api_binary() |
                          kz_term:binaries() |
                          kz_json:object() |
-                         kz_term:objects().
+                         kz_json:objects().
 
 -spec create_csv_resp_content(cowboy_req:req(), cb_context:context()) ->
                                      {{'file', file:filename_all()} | 'stop', cowboy_req:req(), cb_context:context()}.
@@ -1247,7 +1299,6 @@ check_csv_resp_content(Req, Context, []) ->
     maybe_create_empty_csv_resp(Req, Context);
 check_csv_resp_content(Req, Context, <<>>) ->
     maybe_create_empty_csv_resp(Req, Context);
-
 check_csv_resp_content(Req, Context, Content) when is_list(Content) ->
     case final_csv_resp_type(Context, should_convert_csv(Content)) of
         'binary' ->
@@ -1267,7 +1318,6 @@ check_csv_resp_content(Req, Context, Content) when is_list(Content) ->
 check_csv_resp_content(Req, Context, Content) ->
     check_csv_resp_content(Req, Context, [Content]).
 
-
 -spec final_csv_resp_type(cb_context:context(), boolean()) -> 'binary' | 'is_chunked' | 'to_csv'.
 final_csv_resp_type(_, 'true') ->
     'to_csv';
@@ -1283,6 +1333,8 @@ final_csv_resp_type(Context, 'false') ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec create_csv_resp_content_from_jobjs(cowboy_req:req(), cb_context:context(), kz_json:objects()) ->
+                                                {{'file', file:filename_all()} | 'stop', cowboy_req:req(), cb_context:context()}.
 create_csv_resp_content_from_jobjs(Req, Context, JObjs) ->
     Context1 = csv_body(Context, JObjs),
     create_csv_resp_content_from_csv_acc(Req, Context1, cb_context:fetch(Context1, 'csv_acc')).
@@ -1303,7 +1355,7 @@ create_csv_resp_content_from_csv_acc(Req, Context, {_File, _}=CSVAcc) ->
                },
     {{'file', File}
     ,maps:fold(fun(H, V, R) -> cowboy_req:set_resp_header(H, V, R) end, Req, Headers)
-    ,Context
+    ,cb_context:set_resp_file(Context, File)
     }.
 
 %%------------------------------------------------------------------------------
@@ -1348,13 +1400,7 @@ create_empty_csv_resp(Req, Context) ->
 create_resp_file(Req, Context) ->
     File = cb_context:resp_file(Context),
     Len = filelib:file_size(File),
-    Fun = fun(Socket, Transport) ->
-                  lager:debug("sending file ~s", [File]),
-                  Res = Transport:sendfile(Socket, kz_term:to_list(File)),
-                  _ = file:delete(File),
-                  Res
-          end,
-    {{Len, Fun}, Req}.
+    {{'sendfile', 0, Len, File}, Req}.
 
 %%------------------------------------------------------------------------------
 %% @doc Encodes the `JObj' and send it as a chunk. Starts chunk response if is
@@ -1367,7 +1413,7 @@ create_json_chunk_response(Req, Context) ->
     JObjs = cb_context:resp_data(Context),
     create_json_chunk_response(Req, Context, JObjs, cb_context:fetch(Context, 'chunking_started', 'false')).
 
--spec create_json_chunk_response(cowboy_req:req(), cb_context:context(), kz_json:api_objects(), boolean()) ->
+-spec create_json_chunk_response(cowboy_req:req(), cb_context:context(), kz_term:api_objects(), boolean()) ->
                                         {boolean(), cowboy_req:req(), cb_context:context()}.
 create_json_chunk_response(Req, Context, 'undefined', StartedChunk) ->
     {StartedChunk, Req, Context};
@@ -1410,6 +1456,8 @@ create_csv_chunk_response(Req, Context) ->
                              ,cb_context:fetch(Context, 'chunking_started', 'false')
                              ).
 
+-spec create_csv_chunk_response(cowboy_req:req(), cb_context:context(), resp_data(), boolean()) ->
+                                       {boolean(), cowboy_req:req(), cb_context:context()}.
 create_csv_chunk_response(Req, Context, 'undefined', IsStarted) ->
     {IsStarted, Req, Context};
 create_csv_chunk_response(Req, Context, <<>>, IsStarted) ->
@@ -1427,12 +1475,10 @@ create_csv_chunk_response(Req, Context, Content, 'false') when is_list(Content) 
 create_csv_chunk_response(Req, Context, Thing, IsStarted) ->
     create_csv_chunk_response(Req, Context, [Thing], IsStarted).
 
-
-
 -spec stream_or_create_csv_chunk(cowboy_req:req(), cb_context:context(), kz_json:objects() | kz_term:ne_binaries(), boolean()) ->
                                         {boolean(), cowboy_req:req(), cb_context:context()}.
 stream_or_create_csv_chunk(Req, Context, JObjs, 'true') ->
-    lager:debug("(chunked) continuing convertion of CSV chunks"),
+    lager:debug("(chunked) continuing conversion of CSV chunks"),
     {'true', Req, csv_body(Context, JObjs)};
 stream_or_create_csv_chunk(Req, Context, CSVs, 'false') ->
     lager:debug("(chunked) continuing stream of CSV chunks"),
@@ -1458,7 +1504,7 @@ maybe_init_csv_chunk_stream(Req, Context, 'false') ->
 %% then return the default defined value.
 %% @end
 %%------------------------------------------------------------------------------
--spec csv_file_name(cb_context:context(), kz_term:binary()) -> kz_term:binary().
+-spec csv_file_name(cb_context:context(), kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
 csv_file_name(Context, Default) ->
     case cb_context:req_header(Context, <<"x-file-name">>) of
         'undefined' -> cb_context:req_value(Context, <<"file_name">>, Default);
@@ -1481,11 +1527,8 @@ init_chunk_stream(Req, Context, <<"to_csv">>) ->
                },
     cowboy_req:stream_reply(200, maps:merge(cowboy_req:resp_headers(Req), Headers), Req).
 
--spec csv_body(cb_context:context(), kz_json:object() | kz_json:objects()) ->
+-spec csv_body(cb_context:context(), kz_json:objects() | kz_term:ne_binaries()) ->
                       cb_context:context().
-csv_body(Context, []) ->
-    lager:debug("no resp data to build CSV from"),
-    Context;
 csv_body(Context, JObjs) when is_list(JObjs) ->
     Acc1 = case cb_context:fetch(Context, 'csv_acc') of
                'undefined' -> kz_csv:jobjs_to_file(JObjs);
@@ -1495,9 +1538,7 @@ csv_body(Context, JObjs) when is_list(JObjs) ->
     Setters = [{fun cb_context:store/3, 'csv_acc', Acc1}
               ,{fun cb_context:store/3, 'chunk_is_file', 'true'}
               ],
-    cb_context:setters(Context, Setters);
-csv_body(Context, JObj) ->
-    csv_body(Context, [JObj]).
+    cb_context:setters(Context, Setters).
 
 %%------------------------------------------------------------------------------
 %% @doc This function will create response expected for a request that
@@ -1548,7 +1589,7 @@ create_pull_response(Req0, Context0, Fun) ->
     end.
 
 -spec maybe_set_pull_response_stream(kz_term:text() | resp_file(), cowboy_req:req(), cb_context:context()) ->
-                                            {kz_term:text() | pull_file_resp()
+                                            {kz_term:text()
                                             ,cowboy_req:req()
                                             ,cb_context:context()
                                             }.
@@ -1557,14 +1598,14 @@ maybe_set_pull_response_stream({'file', File}, Req, Context) ->
     lager:debug("sending file ~s(~p)", [File, Size]),
     Req1 = cowboy_req:reply(200, #{}, {'sendfile', 0, Size, File}, Req),
     {'stop', Req1, cb_context:set_resp_status(Context, 'stop')};
-maybe_set_pull_response_stream({FileLength, TransportFun}, Req, Context)
-  when is_integer(FileLength)
-       andalso is_function(TransportFun, 2) ->
-    lager:debug("streaming file"),
-    {{'stream', FileLength, TransportFun}, Req, Context};
 maybe_set_pull_response_stream(Other, Req, Context) ->
     {Other, Req, Context}.
 
+-spec get_token_obj(cb_context:context()) -> kz_json:object().
+get_token_obj(Context) ->
+    kz_json:from_list([{<<"consumed">>, cb_modules_util:token_cost(Context)}
+                      ,{<<"remaining">>, cb_modules_util:tokens_remaining(Context)}
+                      ]).
 %%------------------------------------------------------------------------------
 %% @doc This function extracts the response fields and puts them in a proplist.
 %% @end
@@ -1578,6 +1619,7 @@ do_create_resp_envelope(Context) ->
     Resp = case cb_context:response(Context) of
                {'ok', RespData} ->
                    [{<<"auth_token">>, cb_context:auth_token(Context)}
+                   ,{<<"tokens">>, get_token_obj(Context)}
                    ,{<<"status">>, <<"success">>}
                    ,{<<"request_id">>, cb_context:req_id(Context)}
                    ,{<<"node">>, kz_nodes:node_encoded()}
@@ -1589,6 +1631,7 @@ do_create_resp_envelope(Context) ->
                {'error', {ErrorCode, ErrorMsg, RespData}} ->
                    lager:debug("generating error ~b ~s response", [ErrorCode, ErrorMsg]),
                    [{<<"auth_token">>, kz_term:to_binary(cb_context:auth_token(Context))}
+                   ,{<<"tokens">>, get_token_obj(Context)}
                    ,{<<"request_id">>, cb_context:req_id(Context)}
                    ,{<<"node">>, kz_nodes:node_encoded()}
                    ,{<<"version">>, kz_util:kazoo_version()}

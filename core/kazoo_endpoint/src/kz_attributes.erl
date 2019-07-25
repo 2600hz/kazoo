@@ -11,6 +11,7 @@
 -export([groups/1, groups/2]).
 -export([caller_id_type/1, caller_id/1, caller_id/2]).
 -export([callee_id/2]).
+-export([get_endpoint_cid/2, get_endpoint_cid/4]).
 -export([moh_attributes/2, moh_attributes/3]).
 -export([owner_id/1, owner_id/2]).
 -export([presence_id/1, presence_id/2]).
@@ -90,7 +91,6 @@ caller_id(Attribute, Call) ->
         'true' ->
             Number = kapps_call:caller_id_number(Call),
             Name = kapps_call:caller_id_name(Call),
-            lager:info("retaining original caller id <~s> ~s", [Name, Number]),
             maybe_normalize_cid(Number, Name, 'false', Attribute, Call);
         'false' ->
             maybe_get_dynamic_cid('true', Attribute, Call)
@@ -115,12 +115,21 @@ maybe_get_endpoint_cid(Validate, Attribute, Call) ->
             lager:info("unable to get endpoint: ~p", [_R]),
             maybe_normalize_cid('undefined', 'undefined', Validate, Attribute, Call);
         {'ok', JObj} ->
-            Number = get_cid_or_default(Attribute, <<"number">>, JObj),
-            Name = get_cid_or_default(Attribute, <<"name">>, JObj),
-            _ = log_configured_endpoint_cid(Attribute, Name, Number),
-            Call1 = maybe_add_originals_to_kvs(Number, Name, Call),
-            maybe_use_presence_number(Number, Name, JObj, Validate, Attribute, Call1)
+            get_endpoint_cid(Validate, Attribute, JObj, Call)
     end.
+
+-spec get_endpoint_cid(kz_term:ne_binary(), kz_json:object()) -> cid().
+get_endpoint_cid(Attribute, JObj) ->
+    Number = get_cid_or_default(Attribute, <<"number">>, JObj),
+    Name = get_cid_or_default(Attribute, <<"name">>, JObj),
+    {Number, Name}.
+
+-spec get_endpoint_cid(boolean(), kz_term:ne_binary(), kz_json:object(), kapps_call:call()) -> cid().
+get_endpoint_cid(Validate, Attribute, JObj, Call) ->
+    {Number, Name} =  get_endpoint_cid(Attribute, JObj),
+    _ = log_configured_endpoint_cid(Attribute, Name, Number),
+    Call1 = maybe_add_originals_to_kvs(Number, Name, Call),
+    maybe_use_presence_number(Number, Name, JObj, Validate, Attribute, Call1).
 
 -spec maybe_add_originals_to_kvs(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kapps_call:call()) -> kapps_call:call().
 maybe_add_originals_to_kvs('undefined', 'undefined', Call) -> Call;
@@ -532,7 +541,7 @@ owned_by_docs(OwnerId, ?NE_BINARY=Account) ->
                   ,'include_docs'
                   ],
     case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
-        {'ok', JObjs} -> [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];
+        {'ok', JObjs} -> [kz_json:get_json_value(<<"doc">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:warning("unable to find documents owned by ~s: ~p", [OwnerId, _R]),
             []
@@ -548,11 +557,11 @@ owned_by_docs([_|_]=OwnerIds, Type, Call) ->
 owned_by_docs(OwnerId, Type, Call) ->
     owned_by_query([{'key', [OwnerId, Type]}, 'include_docs'], Call, <<"doc">>).
 
--spec owned_by_query(list(), kapps_call:call()) -> kz_term:api_binaries().
+-spec owned_by_query(list(), kapps_call:call()) -> kz_term:api_binaries() | kz_json:objects().
 owned_by_query(ViewOptions, Call) ->
     owned_by_query(ViewOptions, Call, <<"value">>).
 
--spec owned_by_query(list(), kapps_call:call(), kz_term:ne_binary()) -> kz_term:api_binaries().
+-spec owned_by_query(list(), kapps_call:call(), kz_term:ne_binary()) -> kz_term:api_binaries() | kz_json:objects().
 owned_by_query(ViewOptions, Call, ViewKey) ->
     AccountDb = kapps_call:account_db(Call),
     case kz_datamgr:get_results(AccountDb, <<"attributes/owned">>, ViewOptions) of
@@ -566,7 +575,7 @@ owned_by_query(ViewOptions, Call, ViewKey) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_flags(kz_term:ne_binary(), kapps_call:call()) -> kz_term:ne_binaries() | undefined.
+-spec get_flags(kz_term:ne_binary(), kapps_call:call()) -> kz_term:api_ne_binaries().
 get_flags(ApplicationName, Call) ->
     Routines = [fun maybe_get_endpoint_static_flags/3
                ,fun get_account_static_flags/3

@@ -1,0 +1,18 @@
+<profile name="chatplan">
+
+	<fields verbose="true">
+		<field name="fetch-info" type="reference" />
+	</fields>
+
+	<params>
+		<param name="fetch-timeout" value="3500000" />
+		<param name="fetch-section" value="chatplan" />
+	</params>
+
+	<logging>
+		<log name="info" value="SWITCH_LOG_INFO" />
+		<log name="success" value="SWITCH_LOG_INFO" />
+		<log name="time" value="SWITCH_LOG_INFO" />
+	</logging>
+
+</profile>

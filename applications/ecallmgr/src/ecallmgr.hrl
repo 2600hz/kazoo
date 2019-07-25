@@ -3,9 +3,12 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
+-include_lib("kazoo_amqp/include/kz_amqp.hrl").
+-include_lib("kazoo/include/kz_api_literals.hrl").
 
--include("fs_event_filters.hrl").
--include("fs_mod_kazoo_event_filters.hrl").
+-define(APP, 'ecallmgr').
+-define(APP_NAME, <<"ecallmgr">>).
+-define(APP_VERSION, <<"5.0.0">>).
 
 -define(ECALLMGR_UTIL_CACHE, 'ecallmgr_util_cache').
 -define(ECALLMGR_AUTH_CACHE, 'ecallmgr_auth_cache').
@@ -35,8 +38,11 @@
 -define(DEFAULT_SAMPLE_RATE, kapps_config:get_integer(?APP_NAME, <<"record_sample_rate">>, 8000)).
 -define(DEFAULT_STEREO_SAMPLE_RATE, kapps_config:get_integer(?APP_NAME, <<"record_stereo_sample_rate">>, 16000)).
 
+-define(RESTRICTED_PUBLISHING, kapps_config:is_true(?APP_NAME, <<"restrict_channel_event_publisher">>, 'true')).
+
 -type fs_app() :: {kz_term:ne_binary(), binary() | 'noop'} |
-                  {kz_term:ne_binary(), kz_term:ne_binary(), atom()}.
+                  {kz_term:ne_binary(), kz_term:ne_binary(), atom()} |
+                  {kz_term:ne_binary(), kz_term:ne_binary(), atom(), kz_term:proplist()}.
 -type fs_apps() :: [fs_app()].
 
 -type fs_api_ret()       :: {'ok', binary()} |
@@ -54,14 +60,6 @@
 -type fs_handlecall_ret() :: 'ok' |
                              {'error', 'badarg' | 'session_attach_failed' | 'badsession' | 'baduuid'} |
                              'timeout'.
-
--record(sip_subscription, {key :: kz_term:api_binary() | '_'
-                          ,to :: kz_term:api_binary() | '$1' | '_'
-                          ,from :: kz_term:api_binary() | '$2' | '_'
-                          ,node :: atom() | '$1' | '_'
-                          ,expires = 300 :: pos_integer() | '$1' | '_'
-                          ,timestamp = kz_time:now_s() :: pos_integer() | '$2' | '_'
-                          }).
 
 -record(channel, {uuid :: kz_term:api_ne_binary() | '$1' | '$2' | '_'
                  ,destination :: kz_term:api_ne_binary() | '_'
@@ -85,7 +83,7 @@
                  ,other_leg :: kz_term:api_binary() | '$2' | '_'
                  ,node :: atom() | '$1' | '$2' | '$3' | '_'
                  ,former_node :: atom() | '$2' | '_'
-                 ,timestamp :: kz_time:gregorian_seconds() | '$3' | '_'
+                 ,timestamp :: kz_time:gregorian_seconds() | 'undefined' | '$3' | '_'
                  ,profile :: kz_term:api_ne_binary() | '_'
                  ,context :: kz_term:api_ne_binary() | '_'
                  ,dialplan :: kz_term:api_ne_binary() | '_'
@@ -98,12 +96,15 @@
                  ,callee_name :: kz_term:api_ne_binary() | '$5' | '_'
                  ,caller_number :: kz_term:api_ne_binary() | '_'
                  ,caller_name :: kz_term:api_ne_binary() | '_'
-                 ,is_loopback :: boolean() | '_'
+                 ,is_loopback = 'false' :: boolean() | '_'
                  ,loopback_leg_name :: kz_term:api_ne_binary() | '_'
                  ,loopback_other_leg :: kz_term:api_ne_binary() | '_'
                  ,callflow_id :: kz_term:api_ne_binary() | '_'
                  ,is_onhold = 'false' :: boolean() | '_'
-                 ,cavs :: kz_term:proplist() | '_' | 'undefined'
+                 ,cavs :: kz_term:api_object() | '_'
+                 ,ccvs :: kz_term:api_object() | '_'
+                 ,from :: kz_term:api_binary() | '_'
+                 ,to :: kz_term:api_binary() | '_'
                  }).
 
 -type channel() :: #channel{}.
@@ -144,9 +145,9 @@
                      ,join_time = kz_time:now_s() :: kz_time:gregorian_seconds() | '_'
                      ,caller_id_name :: kz_term:api_ne_binary() | '_'
                      ,caller_id_number :: kz_term:api_ne_binary() | '_'
-                     ,conference_channel_vars = [] :: kz_term:proplist() | '_'
-                     ,custom_channel_vars = [] :: kz_term:proplist() | '_'
-                     ,custom_application_vars = [] :: kz_term:proplist() | '_'
+                     ,conference_channel_vars :: kz_term:api_object() | '_'
+                     ,custom_channel_vars :: kz_term:api_object() | '_'
+                     ,custom_application_vars :: kz_term:api_object() | '_'
                      }).
 -type participant() :: #participant{}.
 -type participants() :: [participant()].
@@ -166,10 +167,6 @@
 
 -define(SANITY_CHECK_PERIOD, 300 * ?MILLISECONDS_IN_SECOND).
 
--define(APP, 'ecallmgr').
--define(APP_NAME, <<"ecallmgr">>).
--define(APP_VERSION, <<"4.0.0">>).
-
 -define(STARTUP_FILE, [code:priv_dir(?APP), "/startup.config"]).
 -define(SETTINGS_FILE, [code:priv_dir(?APP), "/settings.config"]).
 
@@ -185,6 +182,7 @@
 -define(CHANNEL_VAR_PREFIX, "ecallmgr_").
 -define(APPLICATION_VAR_PREFIX, "cav_").
 -define(JSON_APPLICATION_VAR_PREFIX, "json_cav_").
+-define(RECORD_VARS_PREFIX, "Recording-Variable-").
 
 -define(CCV(Key), <<?CHANNEL_VAR_PREFIX, Key/binary>>).
 -define(GET_CCV(Key), <<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>).
@@ -204,7 +202,11 @@
 
 -define(CREDS_KEY(Realm, Username), {'authn', Username, Realm}).
 
--define(DP_EVENT_VARS, [{<<"Execute-On-Answer">>, <<"execute_on_answer">>}]).
+-define(DP_EVENT_VARS, [{<<"Execute-On-Answer">>, <<"execute_on_answer">>}
+                       ,{<<"Execute-On-Bridge">>, <<"execute_on_bridge">>}
+                       ,{<<"Execute-On-Tone-Detect">>, <<"execute_on_tone_detect">>}
+                       ,{<<"Execute-On-Record-Post-Process">>, <<"record_post_process_exec_app">>}
+                       ]).
 -define(BRIDGE_CHANNEL_VAR_SEPARATOR, "!").
 
 %% Call and Channel Vars that have a special prefix instead of the
@@ -212,6 +214,10 @@
 %% FS-var-name of "foo_var" would become "foo_var=foo_val" in the
 %% channel/call string
 -define(SPECIAL_CHANNEL_VARS, [{<<"Alert-Info">>, <<"alert_info">>}
+                              ,{<<"Attended-Transfer-Cancel-Key">>, <<"attxfer_cancel_key">>}
+                              ,{<<"Attended-Transfer-Hangup-Key">>, <<"attxfer_hangup_key">>}
+                              ,{<<"Attended-Transfer-Conference-Key">>, <<"attxfer_conf_key">>}
+                              ,{<<"Attended-Transfer-Cancel-Dial-Key">>, <<"origination_cancel_key">>}
                               ,{<<"Auth-Password">>, <<"sip_auth_password">>}
                               ,{<<"Auth-Realm">>, <<"sip_auth_realm">>}
                               ,{<<"Auth-User">>, <<"sip_auth_username">>}
@@ -220,14 +226,23 @@
                               ,{<<"Bridge-Execute-On-Answer">>, <<"execute_on_answer">>}
                               ,{<<"Bridge-Generate-Comfort-Noise">>,<<"bridge_generate_comfort_noise">>}
                               ,{<<"Bypass-Media">>, <<"bypass_media_after_bridge">>}
-                              ,{<<"Callee-ID-Name">>, <<"effective_callee_id_name">>}
-                              ,{<<"Callee-ID-Number">>, <<"effective_callee_id_number">>}
+
+                              ,{<<"Callee-ID-Name">>, <<"callee_id_name">>}
+                              ,{<<"Callee-ID-Number">>, <<"callee_id_number">>}
                               ,{<<"Caller-Callee-ID-Name">>, <<"caller_callee_id_name">>}
                               ,{<<"Caller-Callee-ID-Number">>, <<"caller_callee_id_number">>}
                               ,{<<"Caller-Caller-ID-Name">>, <<"caller_caller_id_name">>}
                               ,{<<"Caller-Caller-ID-Number">>, <<"caller_caller_id_number">>}
-                              ,{<<"Caller-ID-Name">>, <<"effective_caller_id_name">>}
-                              ,{<<"Caller-ID-Number">>, <<"effective_caller_id_number">>}
+                              ,{<<"Caller-ID-Name">>, <<"caller_id_name">>}
+                              ,{<<"Caller-ID-Number">>, <<"caller_id_number">>}
+                              ,{<<"Outbound-Call-ID">>, <<"origination_uuid">>}
+                              ,{<<"Outbound-Callee-ID-Name">>, <<"origination_callee_id_name">>}
+                              ,{<<"Outbound-Callee-ID-Number">>, <<"origination_callee_id_number">>}
+                              ,{<<"Outbound-Caller-ID-Name">>, <<"origination_caller_id_name">>}
+                              ,{<<"Outbound-Caller-ID-Number">>,<<"origination_caller_id_number">>}
+
+                              ,{<<"Caller-ID-Type">>, <<"sip_cid_type">>}
+
                               ,{<<"Conference-Entry-Sound">>, <<"conference_enter_sound">>}
                               ,{<<"Conference-Exit-Sound">>, <<"conference_exit_sound">>}
                               ,{<<"Confirm-Cancel-Timeout">>, <<"group_confirm_cancel_timeout">>}
@@ -255,26 +270,28 @@
                               ,{<<"Fax-Identity-Number">>, <<"fax_ident">>}
                               ,{<<"Fax-Timezone">>, <<"fax_timezone">>}
                               ,{<<"From-URI">>, <<"sip_from_uri">>}
+                              ,{<<"From-User">>, <<"sip_from_user">>}
                               ,{<<"Hangup-After-Pickup">>, <<"hangup_after_bridge">>}
                               ,{<<"Hold-Media">>, <<"hold_music">>}
                               ,{<<"Ignore-Completed-Elsewhere">>, <<"ignore_completed_elsewhere">>}
                               ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
                               ,{<<"Ignore-Early-Media">>, <<"ignore_early_media">>}
+                              ,{<<"Ignore-Ring-Ready">>, <<"ignore_ring_ready">>}
                               ,{<<"Ignore-Forward">>, <<"outbound_redirect_fatal">>}
                               ,{<<"Inherit-Codec">>, <<"inherit_codec">>}
                               ,{<<"Loopback-Bowout">>, <<"loopback_bowout">>}
                               ,{<<"Loopback-Export">>, <<"loopback_export">>}
                               ,{<<"Loopback-Request-URI">>, <<"sip_loopback_req_uri">>}
+                              ,{<<"Loopback-From-URI">>, <<"sip_loopback_from_uri">>}
+                              ,{<<"Media-Encryption">>, <<"rtp_secure_media">>}
                               ,{<<"Media-Encryption-Enforce-Security">>,<<"sdp_secure_savp_only">>}
                               ,{<<"Media-Files-Separator">>, <<"playback_delimiter">>}
+                              ,{<<"Media-Group-ID">>, <<"media_group_id">>}
                               ,{<<"Media-Webrtc">>, <<"media_webrtc">>}
+                              ,{<<"Application-Other-Leg-UUID">>, <<"Application-Other-Leg-UUID">>}
                               ,{<<"Origination-Call-ID">>, <<"sip_origination_call_uuid">>}
                               ,{<<"Origination-UUID">>, <<"origination_uuid">>}
-                              ,{<<"Outbound-Call-ID">>, <<"origination_uuid">>}
-                              ,{<<"Outbound-Callee-ID-Name">>, <<"origination_callee_id_name">>}
-                              ,{<<"Outbound-Callee-ID-Number">>, <<"origination_callee_id_number">>}
-                              ,{<<"Outbound-Caller-ID-Name">>, <<"origination_caller_id_name">>}
-                              ,{<<"Outbound-Caller-ID-Number">>,<<"origination_caller_id_number">>}
+                              ,{<<"Outbound-Context">>,<<"origination_context">>}
                               ,{<<"Overwrite-Channel-Vars">>, <<"local_var_clobber">>}
                               ,{<<"Park-After-Pickup">>, <<"park_after_bridge">>}
                               ,{<<"Presence-ID">>, <<"presence_id">>}
@@ -290,13 +307,20 @@
                               ,{<<"Record-Min-Sec">>, <<"record_min_sec">>}
                               ,{<<"Record-Sample-Rate">>, <<"record_sample_rate">>}
                               ,{<<"Request-URI">>, <<"sip_req_uri">>}
+                              ,{<<"Signal-Bridge-To">>, <<"signal_bridge_to">>}
                               ,{<<"SIP-Invite-Domain">>, <<"sip_invite_domain">>}
+                              ,{<<"SIP-Invite-URI">>, <<"sip_invite_to_uri">>}
                               ,{<<"SIP-Refer-To">>, <<"sip_refer_to">>}
                               ,{<<"SIP-Referred-By">>, <<"sip_h_Referred-By">>}
                               ,{<<"Secure-RTP">>, <<"rtp_secure_media">>}
                               ,{<<"Secure-ZRTP">>, <<"zrtp_secure_media">>}
                               ,{<<"Simplify-Loopback">>, <<"loopback_bowout_on_execute">>}
                               ,{<<"To-URI">>, <<"sip_to_uri">>}
+                              ,{<<"To-User">>, <<"sip_to_user">>}
+                              ,{<<"To-Realm">>, <<"sip_to_realm">>}
+                              ,{<<"From-URI">>, <<"sip_from_uri">>}
+                              ,{<<"From-User">>, <<"sip_from_user">>}
+                              ,{<<"From-Realm">>, <<"sip_from_realm">>}
                               ,{<<"Transfer-After-Pickup">>, <<"transfer_after_bridge">>}
                               ,{<<"Unanswered-Only">>, <<"intercept_unanswered_only">>}
                               ,{<<"Unbridged-Only">>, <<"intercept_unbridged_only">>}
@@ -331,10 +355,27 @@
                               ,{<<"tts_voice">>, <<"tts_voice">>}
                               ]).
 
+-define(CALLER_PROFILE_VARS, [{<<"Caller-ID-Name">>, <<"caller_id_name">>}
+                             ,{<<"Caller-ID-Number">>, <<"caller_id_number">>}
+                             ,{<<"Callee-ID-Name">>, <<"callee_id_name">>}
+                             ,{<<"Callee-ID-Number">>, <<"callee_id_number">>}
+                             ,{<<"Outbound-Callee-ID-Name">>, <<"origination_callee_id_name">>}
+                             ,{<<"Outbound-Callee-ID-Number">>, <<"origination_callee_id_number">>}
+                             ,{<<"Outbound-Caller-ID-Name">>, <<"origination_caller_id_name">>}
+                             ,{<<"Outbound-Caller-ID-Number">>, <<"origination_caller_id_number">>}
+                             ,{<<"Caller-Callee-ID-Name">>, <<"callee_id_name">>}
+                             ,{<<"Caller-Callee-ID-Number">>, <<"callee_id_number">>}
+                             ,{<<"Caller-Caller-ID-Name">>, <<"caller_id_name">>}
+                             ,{<<"Caller-Caller-ID-Number">>, <<"caller_id_number">>}
+                             ,{<<"Context">>, <<"context">>}
+                             ,{<<"Device-ID">>, <<"device_id">>}
+                             ]).
+
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}] Dialplan-related
 %% applications convert from FS-named applications to Kazoo-named
 %% Dialplan applications
 -define(FS_APPLICATION_NAMES, [{<<"playback">>, <<"play">>}
+                              ,{<<"broadcast">>, <<"play">>}
                               ,{<<"playback">>, <<"tts">>}
                               ,{<<"play-file">>, <<"play">>}
                               ,{<<"play-file-done">>, <<"play">>}
@@ -366,23 +407,25 @@
                               ,{<<"noop">>, <<"noop">>}
                               ,{<<"execute_extension">>, <<"execute_extension">>}
                               ,{<<"endless_playback">>, <<"hold">>}
+                              ,{<<"kz_endless_playback">>, <<"hold">>}
                               ,{<<"soft_hold">>, <<"soft_hold">>}
                               ,{<<"uuid_record">>, <<"record_call">>}
+                              ,{<<"record_session">>, <<"record_call">>}
                               ,{<<"record">>, <<"record_call">>}
                               ,{<<"presence">>, <<"presence">>}
                               ,{<<"privacy">>, <<"privacy">>}
                               ,{<<"conference">>, <<"page">>}
                               ,{<<"playback">>, <<"play_macro">>}
+                              ,{<<"intercept">>, <<"call_pickup">>}
                               ]).
 
--define(FS_EVENTS, [['CHANNEL_CREATE', 'CHANNEL_ANSWER', 'CHANNEL_DESTROY']
-                   ,['DETECTED_TONE', 'DTMF','CHANNEL_PROGRESS_MEDIA']
-                   ,['RECORD_START', 'RECORD_STOP']
-                   ,['CHANNEL_BRIDGE', 'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE_COMPLETE']
-                   ,['CHANNEL_DATA','CALL_UPDATE', 'CALL_SECURE']
-                   ,['CHANNEL_HOLD', 'CHANNEL_UNHOLD']
-                   ,['PRESENCE_IN']
-                   ]).
+-define(FAX_EVENTS, ['spandsp::txfaxresult'
+                    ,'spandsp::rxfaxresult'
+                    ,'spandsp::txfaxpageresult'
+                    ,'spandsp::rxfaxpageresult'
+                    ,'spandsp::txfaxnegociateresult'
+                    ,'spandsp::rxfaxnegociateresult'
+                    ]).
 
 -define(FS_SOFIA_TRANSFER_EVENTS, ['sofia::transferor'
                                   ,'sofia::transferee'
@@ -391,28 +434,36 @@
                                   ]).
 -define(IS_SOFIA_TRANSFER(N), lists:member(kz_term:to_atom(N, 'true'), ?FS_SOFIA_TRANSFER_EVENTS)).
 
--define(FS_CUSTOM_EVENTS, [['kazoo::noop'
-                           ,'kazoo::masquerade'
-                           ]
-                          ,['sofia::transferor'
-                           ,'sofia::transferee'
-                           ,'sofia::replaced'
-                           ,'sofia::intercepted'
-                           ]
-                          ,'conference::maintenance'
-                          ,['spandsp::txfaxresult'
-                           ,'spandsp::rxfaxresult'
-                           ,'spandsp::txfaxpageresult'
-                           ,'spandsp::rxfaxpageresult'
-                           ,'spandsp::txfaxnegociateresult'
-                           ,'spandsp::rxfaxnegociateresult'
-                           ]
-                          ,['KZ::DELIVERY_REPORT'
-                           ,'SMS::DELIVERY_REPORT'
-                           ,'KZ::MESSAGE'
-                           ]
-                          ,'loopback::bowout'
-                          ]).
+-define(FS_EVENTS, [{'channel', ['CHANNEL_CREATE', 'CHANNEL_ANSWER', 'CHANNEL_DESTROY']}
+                   ,{'bridge', ['CHANNEL_BRIDGE', 'CHANNEL_UNBRIDGE']}
+                   ,{'media', ['DETECTED_TONE', 'DTMF','CHANNEL_PROGRESS','CHANNEL_PROGRESS_MEDIA']}
+                   ,{'record', ['RECORD_START', 'RECORD_STOP']}
+                   ,{'callflow', ['ROUTE_WINNER', 'CHANNEL_EXECUTE_COMPLETE', 'CHANNEL_METAFLOW']}
+                   ,{'presence', ['PRESENCE_IN']}
+                   ,{'channel_full_update', ['CHANNEL_DATA','CHANNEL_SYNC','CALL_UPDATE']}
+                   ,{'channel_update', ['CHANNEL_HOLD','CHANNEL_UNHOLD']}
+                   ,{'conference', ['conference::maintenance']}
+                   ,{'fax', ?FAX_EVENTS}
+                   ,{'kazoo', ['kazoo::noop', 'kazoo::masquerade']}
+                   ,{'transfer', ?FS_SOFIA_TRANSFER_EVENTS}
+                   ,{'loopback', ['loopback::bowout', 'loopback::direct']}
+                   ]).
+
+-define(FS_FETCH_SECTIONS, ['configuration'
+                           ,'directory'
+                           ,'dialplan'
+                           ,'channels'
+                           ,'languages'
+                           ]).
+
+-define(FETCH_HANDLERS_MODS, ['ecallmgr_fs_fetch_configuration_acl'
+                             ,'ecallmgr_fs_fetch_configuration_conference'
+                             ,'ecallmgr_fs_fetch_configuration_kazoo'
+                             ,'ecallmgr_fs_fetch_configuration_sofia'
+                             ,'ecallmgr_fs_fetch_dialplan'
+                             ,'ecallmgr_fs_fetch_channels'
+                             ,'ecallmgr_fs_fetch_directory'
+                             ]).
 
 -define(FS_DEFAULT_HDRS, [<<"Event-Name">>, <<"Core-UUID">>, <<"FreeSWITCH-Hostname">>, <<"FreeSWITCH-Switchname">>
                          ,<<"FreeSWITCH-IPv4">>, <<"FreeSWITCH-IPv6">>, <<"Event-Date-Local">>
@@ -478,16 +529,6 @@
                              ,{'end_conference', <<"End-Conference">>}
                              ]).
 
--define(CHANNEL_MOVE_REQUEST_EVENT, 'channel_move::move_request').
--define(CHANNEL_MOVE_RELEASED_EVENT, 'channel_move::move_released').
--define(CHANNEL_MOVE_COMPLETE_EVENT, 'channel_move::move_complete').
-
--define(CHANNEL_MOVE_RELEASED_EVENT_BIN, <<"channel_move::move_released">>).
--define(CHANNEL_MOVE_COMPLETE_EVENT_BIN, <<"channel_move::move_complete">>).
-
--define(CHANNEL_MOVE_REG(Node, UUID), {'channel_move', Node, UUID}).
--define(CHANNEL_MOVE_RELEASED_MSG(Node, UUID, Evt), {'channel_move_released', Node, UUID, Evt}).
--define(CHANNEL_MOVE_COMPLETE_MSG(Node, UUID, Evt), {'channel_move_complete', Node, UUID, Evt}).
 
 -define(REGISTER_SUCCESS_REG, 'register_success').
 -define(REGISTER_SUCCESS_MSG(Node, Props), {Node, Props}).
@@ -498,20 +539,34 @@
 -define(FS_EVENT_REG_MSG(Node, EvtName), {'event', Node, EvtName}).
 -define(FS_CALL_EVENT_REG_MSG(Node, EvtName), {'call_event', Node, EvtName}).
 -define(FS_CALL_EVENT_MSG(Node, EvtName, CallId), {'call_event', Node, EvtName, CallId}).
--define(FS_CALL_EVENTS_PROCESS_REG(Node, CallId)
-       ,{'n', 'l', {'call_events_process', Node, CallId}}
-       ).
+-define(FS_CALL_EVENTS_PROCESS_REG(Node, CallId), {'n', 'l', {'call_events_process', Node, CallId}}).
+
+-define(FS_CONFERENCE_ALL_REG_MSG(Node), {'conference', Node}).
+-define(FS_CONFERENCE_ALL_EVENT_REG_MSG(Node, EvtName), {'conference', Node, 'all', EvtName}).
+-define(FS_CONFERENCE_EVENT_ALL_REG_MSG(Node, ConferenceId), {'conference', Node, ConferenceId, 'all'}).
+-define(FS_CONFERENCE_EVENT_REG_MSG(Node, ConferenceId, EvtName), {'conference', Node, ConferenceId, EvtName}).
+-define(FS_CONFERENCE_EVENT_MSG(ConferenceId, EvtName, JObj), {'conference', ConferenceId, EvtName, JObj}).
 
 -define(FS_ROUTE_MSG(Node, Section, Context), {'route', Node, Section, Context}).
 
 -define(FS_OPTION_MSG(Node), {'option', Node}).
 
+-define(FS_NODE_GRACE_PERIOD_REG, 'fs_node_grace_period').
+-define(FS_NODE_GRACE_PERIOD_MSG(Node), {'fs_node_grace_period', Node}).
+-define(FS_NODEDOWN_REG, 'fs_node_down').
+-define(FS_NODEDOWN_MSG(Node, Options), {'fs_node_down', Node, Options}).
+-define(FS_NODEDOWN(Node), {'fs_node_down', Node}).
+-define(FS_NODEUP_REG, 'fs_node_up').
+-define(FS_NODEUP_MSG(Node, Options), {'fs_node_up', Node, Options}).
+
+-define(ROUTE_WINNER_EVENT, <<"ROUTE_WINNER">>).
+
 -define(FS_CARRIER_ACL_LIST, <<"trusted">>).
 -define(FS_SBC_ACL_LIST, <<"authoritative">>).
 
+-define(SEPARATOR_ENTERPRISE, <<":_:">>).
 -define(SEPARATOR_SIMULTANEOUS, <<",">>).
 -define(SEPARATOR_SINGLE, <<"|">>).
-
 
 -define(CHANNEL_VARS_EXT, "Execute-Extension-Original-").
 
@@ -543,33 +598,97 @@
                             ,{<<"Member-Ghost">>, fun kz_term:to_boolean/1}
                             ]).
 
+-define(EXTRA_VARS, [<<"Routing-Queue">>
+                    ,<<"Request-From-PID">>
+                    ,<<"Reply-To-PID">>
+                    ,<<"Controller-Queue">>
+                    ,<<"Controller-PID">>
+                    ,<<"Fetch-UUID">>
+                    ,<<"Fetch-Winning-PID">>
+                    ,<<"Event-Category">>
+                    ,<<"Call-Control-Queue">>
+                    ,<<"Call-Control-PID">>
+                    ,<<"Call-Control-Node">>
+                    ,<<"Application-UUID">>
+                    ,<<"app_uuid">>
+                    ,<<"variable_app_uuid">>
+                    ,<<"caller-unique-id">>
+                    ]).
+
 -define(FS_EVENT_FILTERS,
         lists:usort(
           ?FS_GENERATED_EVENT_FILTERS
           ++ ?CONFERENCE_VARS
           ++ ?FS_MOD_KAZOO_EVENT_FILTERS
+          ++ ?FS_PRESERVED_EVENT_FILTERS
+          ++ ?EXTRA_VARS
          )
        ).
 
-%% if we change this, we should also in .app file
-%%
+-define(NODE_MODULES_KEY(R), [<<"configuration">>
+                             ,R
+                             ,<<"modules">>
+                             ]).
+
 -define(NODE_MODULES,
-        [<<"config">>
-        ,<<"node">>
+        [<<"node">>
+        ,<<"monitor">>
         ,<<"event_stream_sup">>
-        ,<<"authn">>
-        ,<<"channel">>
-        ,<<"conference">>
-        ,<<"msg">>
+        ,<<"fetch_sup">>
         ,<<"notify">>
-        ,<<"recordings">>
         ,<<"resource">>
-        ,<<"route_sup">>
-        ,<<"channel_hold">>
-        ,<<"presence">>
         ]).
 
+-define(EVENTSTREAM_MODS, ['ecallmgr_fs_channel_stream'
+                          ,'ecallmgr_fs_conference_stream'
+                          ,'ecallmgr_fs_event_stream_registered'
+                          ,'ecallmgr_call_event_publisher'
+                          ,'ecallmgr_conference_event_publisher'
+                          ,'ecallmgr_presence_event_publisher'
+                          ,'ecallmgr_fs_recordings'
+                          ]).
+
 -define(HTTP_GET_PREFIX, "http_cache://").
+
+
+-type dialplan_callback() :: fun((dialplan_context()) -> 'ok' | {'ok', dialplan_context()}).
+-type dialplan_exit_fun() :: fun((dialplan_context()) -> 'ok').
+-type dialplan_init_fun() :: fun((dialplan_context()) -> 'ok').
+
+-type dialplan_timers() :: #{atom() => pos_integer()}. %% #{Name => TimestampUs
+-type dialplan_reply() ::  #{payload => kzd_fetch:data() | kz_json:object()
+                            ,props => list()
+                            }.
+-type dialplan_winner() :: #{payload => kzd_fetch:data()
+                            ,props => list()
+                            }.
+-type dialplan_xml_fun() :: fun((kz_term:ne_binary(), kz_json:objects(), kz_json:object(), dialplan_context()) -> {'ok', iolist()}).
+
+-type dialplan_context() :: #{amqp_worker => pid() %% AMQP Worker
+                             ,authz_timeout => timeout()
+                             ,authz_worker => kz_term:pid_ref()
+                             ,call_id => kz_term:ne_binary()
+                             ,callback => dialplan_callback()
+                             ,channel => pid() %% AMQP Channel
+                             ,controller_q => kz_term:ne_binary() %% AMQP Queue of controller
+                             ,control_p => pid() %% Ecallmgr control PID
+                             ,control_q => kz_term:ne_binary() %% AMQP Control Queue
+                             ,core_uuid => kz_term:ne_binary() %% FS UUID
+                             ,exit_fun => dialplan_exit_fun()
+                             ,fetch_id => kz_term:ne_binary()
+                             ,initial_ccvs => kz_json:object()
+                             ,init_fun => dialplan_init_fun()
+                             ,node => atom() %% FS Node
+                             ,options => kz_term:proplist()
+                             ,payload => kzd_fetch:data()
+                             ,start_result => {'ok', pid()} | {'error', any()}
+                             ,timer => dialplan_timers()
+                             ,timeout => non_neg_integer()
+                             ,reply => dialplan_reply()
+                             ,request => kapi_route:req()
+                             ,route_resp_xml_fun => dialplan_xml_fun()
+                             ,winner => dialplan_winner()
+                             }.
 
 -define(ECALLMGR_HRL, 'true').
 -endif.

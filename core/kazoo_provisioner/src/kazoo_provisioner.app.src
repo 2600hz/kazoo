@@ -1,7 +1,10 @@
 {application,kazoo_provisioner,
- [{applications,[]},
-  {description,"Kazoo Provisioner - Talks to provisioner backend"},
-  {env,[]},
-  {modules,[]},
-  {registered,[]},
-  {vsn,"4.0.0"}]}.
+             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_data,
+                             kazoo_documents,kazoo_endpoint,
+                             kazoo_number_manager,kazoo_services,kazoo_stdlib,
+                             kazoo_web,lager,stdlib]},
+              {description,"Kazoo Provisioner - Talks to provisioner backend"},
+              {env,[]},
+              {modules,[]},
+              {registered,[]},
+              {vsn,"4.0.0"}]}.

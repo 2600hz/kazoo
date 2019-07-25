@@ -22,9 +22,8 @@
 -export([flush_node/1]).
 -export([new/1]).
 -export([destroy/2]).
--export([update/3
-        ,updates/2
-        ,cleanup_old_channels/0, cleanup_old_channels/1
+-export([update/2, update/3, updates/2]).
+-export([cleanup_old_channels/0, cleanup_old_channels/1
         ,max_channel_uptime/0
         ,set_max_channel_uptime/1, set_max_channel_uptime/2
         ]).
@@ -79,6 +78,10 @@
 -define(CALL_PARK_FEATURE, "*3").
 -record(state, {max_channel_cleanup_ref :: reference()}).
 -type state() :: #state{}.
+
+
+-define(DESTROY_DEFER_MAX_TRIES, 5).
+-define(DESTROY_DEFER_TIME, 5 * ?MILLISECONDS_IN_SECOND).
 
 %%%=============================================================================
 %%% API
@@ -199,14 +202,18 @@ new(#channel{}=Channel) ->
 destroy(UUID, Node) ->
     gen_server:cast(?SERVER, {'destroy_channel', UUID, Node}).
 
+-spec update(kz_term:ne_binary(), channel()) -> 'ok'.
+update(UUID, Channel) ->
+    gen_server:call(?SERVER, {'update_channel', UUID, Channel}).
+
 -spec update(kz_term:ne_binary(), pos_integer(), any()) -> 'ok'.
 update(UUID, Key, Value) ->
     updates(UUID, [{Key, Value}]).
 
-
 -spec updates(kz_term:ne_binary(), channel_updates()) -> 'ok'.
 updates(UUID, Updates) ->
-    gen_server:call(?SERVER, {'channel_updates', UUID, Updates}).
+    lager:debug("updating channel properties: ~p", [Updates]),
+    gen_server:cast(?SERVER, {'channel_updates', UUID, Updates}).
 
 -spec count() -> non_neg_integer().
 count() -> ets:info(?CHANNELS_TBL, 'size').
@@ -225,13 +232,13 @@ match_presence(PresenceId) ->
 -spec handle_query_auth_id(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_query_auth_id(JObj, _Props) ->
     'true' = kapi_call:query_auth_id_req_v(JObj),
-    AuthId = kz_json:get_value(<<"Auth-ID">>, JObj),
+    AuthId = kz_json:get_ne_binary_value(<<"Auth-ID">>, JObj),
     Channels = case find_by_auth_id(AuthId) of
                    {'error', 'not_found'} -> [];
                    {'ok', C} -> C
                end,
     Resp = [{<<"Channels">>, Channels}
-           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+           ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
@@ -267,7 +274,7 @@ send_user_query_resp(JObj, []) ->
         'false' ->
             lager:debug("no channels, sending empty response"),
             Resp = [{<<"Channels">>, []}
-                   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+                   ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
@@ -276,7 +283,7 @@ send_user_query_resp(JObj, []) ->
     end;
 send_user_query_resp(JObj, Cs) ->
     Resp = [{<<"Channels">>, Cs}
-           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+           ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
@@ -294,7 +301,7 @@ handle_query_account_channels(JObj, _) ->
 -spec send_account_query_resp(kz_json:object(), kz_json:objects()) -> 'ok'.
 send_account_query_resp(JObj, Cs) ->
     Resp = [{<<"Channels">>, Cs}
-           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+           ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
@@ -314,7 +321,7 @@ handle_query_channels(JObj, _Props) ->
             lager:debug("not sending query_channels resp due to active-only=true");
         'false' ->
             Resp = [{<<"Channels">>, Channels}
-                   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+                   ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
                     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             kapi_call:publish_query_channels_resp(kz_json:get_value(<<"Server-ID">>, JObj), Resp)
@@ -331,7 +338,10 @@ handle_channel_status(JObj, _Props) ->
             maybe_send_empty_channel_resp(CallId, JObj);
         {'ok', Channel} ->
             Node = kz_json:get_binary_value(<<"node">>, Channel),
-            [_, Hostname] = binary:split(Node, <<"@">>),
+            Hostname = case binary:split(Node, <<"@">>) of
+                           [_, Host] -> Host;
+                           Other -> Other
+                       end,
             lager:debug("channel is on ~s", [Hostname]),
             Resp =
                 props:filter_undefined(
@@ -345,7 +355,7 @@ handle_channel_status(JObj, _Props) ->
                   ,{<<"Username">>, kz_json:get_value(<<"username">>, Channel)}
                   ,{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_fs_channel:channel_ccvs(Channel))}
                   ,{<<"Custom-Application-Vars">>, kz_json:from_list(ecallmgr_fs_channel:channel_cavs(Channel))}
-                  ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+                  ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                   ]
                  ),
@@ -364,7 +374,7 @@ send_empty_channel_resp(CallId, JObj) ->
     Resp = [{<<"Call-ID">>, CallId}
            ,{<<"Status">>, <<"terminated">>}
            ,{<<"Error-Msg">>, <<"no node found with channel">>}
-           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+           ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_call:publish_channel_status_resp(kz_api:server_id(JObj), Resp).
@@ -386,6 +396,7 @@ init([]) ->
                                ,'protected'
                                ,'named_table'
                                ,{'keypos', #channel.uuid}
+                               ,{read_concurrency, true}
                                ]),
     {'ok', #state{max_channel_cleanup_ref=start_cleanup_ref()}}.
 
@@ -402,8 +413,20 @@ start_cleanup_ref() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
-handle_call({'new_channel', Channel}, _, State) ->
+handle_call({'new_channel', #channel{uuid=UUID}=Channel}, _, State) ->
+    case ets:insert_new(?CHANNELS_TBL, Channel) of
+        'true'->
+            lager:debug("channel ~s added", [UUID]),
+            {'reply', 'ok', State};
+        'false' ->
+            lager:debug("channel ~s already exists", [UUID]),
+            {'reply', {'error', 'channel_exists'}, State}
+    end;
+handle_call({'update_channel', UUID, Channel}, _, State) ->
+    lager:debug("updating channel ~s", [UUID]),
     ets:insert(?CHANNELS_TBL, Channel),
+    {'reply', 'ok', State};
+handle_call({'channel_updates', _UUID, []}, _, State) ->
     {'reply', 'ok', State};
 handle_call({'channel_updates', UUID, Update}, _, State) ->
     ets:update_element(?CHANNELS_TBL, UUID, Update),
@@ -416,6 +439,9 @@ handle_call(_, _, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> {'noreply', state()}.
+handle_cast({'channel_updates', UUID, Update}, State) ->
+    ets:update_element(?CHANNELS_TBL, UUID, Update),
+    {'noreply', State};
 handle_cast({'destroy_channel', UUID, Node}, State) ->
     kz_util:put_callid(UUID),
     MatchSpec = [{#channel{uuid='$1', node='$2', _ = '_'}
@@ -739,7 +765,8 @@ print_details({[#channel{}=Channel]
              ,Count) ->
     io:format("~n"),
     _ = [io:format("~-19s: ~s~n", [K, kz_term:to_binary(V)])
-         || {K, V} <- ecallmgr_fs_channel:to_props(Channel)
+         || {K, V} <- ecallmgr_fs_channel:to_props(Channel),
+            not kz_json:is_json_object(V)
         ],
     print_details(ets:select(Continuation), Count + 1).
 
@@ -766,27 +793,28 @@ handle_channel_disconnected(Channel) ->
 publish_channel_connection_event(#channel{uuid=UUID
                                          ,direction=Direction
                                          ,node=Node
-                                         ,destination=Destination
-                                         ,username=Username
-                                         ,realm=Realm
                                          ,presence_id=PresenceId
                                          ,answered=IsAnswered
+                                         ,from=From
+                                         ,to=To
                                          }=Channel
                                 ,ChannelSpecific) ->
+    lager:debug("CHANNEL ~p", [Channel]),
+    lager:debug_unsafe("CHANNEL json ~s", [kz_json:encode(ecallmgr_fs_channel:to_api_json(Channel), ['pretty'])]),
     Event = [{<<"Timestamp">>, kz_time:now_s()}
             ,{<<"Call-ID">>, UUID}
             ,{<<"Call-Direction">>, Direction}
             ,{<<"Media-Server">>, Node}
             ,{<<"Custom-Channel-Vars">>, connection_ccvs(Channel)}
             ,{<<"Custom-Application-Vars">>, connection_cavs(Channel)}
-            ,{<<"To">>, <<Destination/binary, "@", Realm/binary>>}
-            ,{<<"From">>, <<Username/binary, "@", Realm/binary>>}
+            ,{<<"To">>, To}
+            ,{<<"From">>, From}
             ,{<<"Presence-ID">>, PresenceId}
             ,{<<"Channel-Call-State">>, channel_call_state(IsAnswered)}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION) ++ ChannelSpecific
             ],
     _ = kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1),
-    lager:debug("published channel connection event for ~s", [UUID]).
+    lager:debug("published channel connection event (~s) for ~s", [kz_api:event_name(Event), UUID]).
 
 -spec channel_call_state(boolean()) -> kz_term:api_binary().
 channel_call_state('true') ->
@@ -794,30 +822,11 @@ channel_call_state('true') ->
 channel_call_state('false') ->
     'undefined'.
 
--spec connection_ccvs(channel()) -> kz_json:object().
-connection_ccvs(#channel{account_id=AccountId
-                        ,authorizing_id=AuthorizingId
-                        ,authorizing_type=AuthorizingType
-                        ,resource_id=ResourceId
-                        ,fetch_id=FetchId
-                        ,bridge_id=BridgeId
-                        ,owner_id=OwnerId
-                        }) ->
-    kz_json:from_list(
-      [{<<"Account-ID">>, AccountId}
-      ,{<<"Authorizing-ID">>, AuthorizingId}
-      ,{<<"Authorizing-Type">>, AuthorizingType}
-      ,{<<"Resource-ID">>, ResourceId}
-      ,{<<"Fetch-ID">>, FetchId}
-      ,{<<"Bridge-ID">>, BridgeId}
-      ,{<<"Owner-ID">>, OwnerId}
-      ]).
+-spec connection_ccvs(channel()) -> kz_term:api_object().
+connection_ccvs(#channel{ccvs=CCVs}) -> CCVs.
 
 -spec connection_cavs(channel()) -> kz_term:api_object().
-connection_cavs(#channel{cavs=CAVs}) when is_list(CAVs) ->
-    kz_json:from_list(CAVs);
-connection_cavs(#channel{}) -> 'undefined'.
-
+connection_cavs(#channel{cavs=CAVs}) -> CAVs.
 
 -define(MAX_CHANNEL_UPTIME_KEY, <<"max_channel_uptime_s">>).
 

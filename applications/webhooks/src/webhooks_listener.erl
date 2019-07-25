@@ -183,7 +183,7 @@ handle_cast(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
-    lager:info("write access to table '~p' available", [_TblId]),
+    lager:debug("write access to table '~p' available", [_TblId]),
     Self = self(),
     _ = kz_util:spawn(
           fun() ->

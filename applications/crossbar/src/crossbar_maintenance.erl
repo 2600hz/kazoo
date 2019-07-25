@@ -407,9 +407,9 @@ create_account(AccountName, Realm, Username, Password)
     try create_account_and_user(Account, User) of
         {'ok', _Context} -> 'ok'
     catch
-        Type:Reason ->
-            log_error(Type, Reason, erlang:get_stacktrace(), AccountName)
-    end;
+        ?STACKTRACE(Type, Reason, ST)
+        log_error(Type, Reason, ST, AccountName)
+        end;
 create_account(AccountName, Realm, Username, Password) ->
     create_account(kz_term:to_binary(AccountName)
                   ,kz_term:to_binary(Realm)
@@ -521,7 +521,7 @@ db_exists(Database, ShouldRetry) ->
         'true' -> 'true';
         'false' when ShouldRetry ->
             io:format("db '~s' doesn't exist~n", [Database]),
-            kapps_maintenance:refresh(Database),
+            _ = kapps_maintenance:refresh(Database),
             db_exists(Database, 'false');
         'false' ->
             throw(kz_json:from_list([{<<"error">>, <<"database not ready">>}
@@ -994,9 +994,16 @@ refresh_app(AppPath, AppUrl) ->
 find_apps(AppsPath) ->
     AccFun =
         fun(AppJSONPath, Acc) ->
-                App = filename:absname(AppJSONPath),
-                %% /.../App/metadata/app.json --> App
-                [filename:dirname(filename:dirname(App)) | Acc]
+                try
+                    lager:debug("find...~p", [AppJSONPath]),
+                    App = AppJSONPath, %%filename:absname(AppJSONPath),
+                    %% /.../App/metadata/app.json --> App
+                    [filename:dirname(filename:dirname(App)) | Acc]
+                catch
+                    _Ex:_Er:_ST ->
+                        kz_util:log_stacktrace(_ST),
+                        Acc
+                end
         end,
     filelib:fold_files(AppsPath, "app\\.json", 'true', AccFun, []).
 
@@ -1178,9 +1185,10 @@ read_image(File) ->
                            {'ok', kz_json:object()} |
                            {'invalid_data', kz_term:proplist()}.
 find_metadata(AppPath) ->
-    {'ok', JSON} = file:read_file(filename:join([AppPath, <<"metadata">>, <<"app.json">>])),
-    case kz_json_schema:validate(<<"app">>, kz_doc:public_fields(kz_json:decode(JSON))) of
-        {'ok', _}=OK -> OK;
+    {'ok', Bin} = file:read_file(filename:join([AppPath, <<"metadata">>, <<"app.json">>])),
+    JSON = kz_json:decode(Bin),
+    case kz_json_schema:validate(<<"app">>, kz_doc:public_fields(JSON)) of
+        {'ok', _} -> {'ok', JSON};
         {'error', Errors} ->
             {'invalid_data', [Error || {'data_invalid', _, Error, _, _} <- Errors]}
     end.

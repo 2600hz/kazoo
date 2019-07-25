@@ -155,7 +155,7 @@ All listing APIs in `v2` will be paginated by default (`v1` will operate as befo
 
 Let's take a look at the CDRs API to see how to interpret pagination.
 
-#### CDR Pagination
+### CDR Pagination
 
 We start with the typical CDR request for a listing of CDRs:
 
@@ -191,13 +191,13 @@ The pagination response keys are `next_start_key`, `page_size`, and `start_key`.
 
 Assuming no changes are made to the underlying documents, `start_key` will get you this page of results, and `next_start_key` will give you a pointer to the next page (imagine a linked-list).
 
-##### Encoded Start Keys (Kazoo 4.2+ Only)
+#### Encoded Start Keys (Kazoo 4.2+ Only)
 
 As you can see from the response above, both the `start_key` and `next_start_key` are encoded as URL-safe Base64 strings of their Erlang term representation. A couple character substitutions (`_` for `/` and `_` for `+`) and one character removal (`=`) ensures a string that plays nice in URLs.
 
 In practice, the client should treat these keys as opaque and supply them as-is in future requests.
 
-##### Requesting next page
+### Requesting next page
 
 Using the `next_start_key` value, let's request the next page of CDRs:
 
@@ -232,20 +232,20 @@ Observe now that `start_key` is the requested `start_key` and `next_start_key` p
 
 You can also choose to receive pages in bigger or smaller increments by specifying `page_size` on the request. Do take care, as the `next_start_key` will probably vary if you use the same `start_key` but differing `page_size` values.
 
-##### Setting Page Size
+### Setting Page Size
 
 By default, API requests have a page size of 50 results. This value is customizable by system administrator in the `crossbar.maximum_range` system config setting.
 
 For individual API request, you can also include a `page_size` query string parameter. For example: `http://{SERVER}:8000/v2/{API_URL}?page_size=25`.
 
-##### Setting sorting order
+### Setting sorting order
 
 By default, Crossbar returns the results in descending order. To get results in ascending order either set `ascending=true` (Kazoo 4.2+ only) or `descending=false` in the request query string.
 
 !!! note
     The field used to sort the individual API results depends on the internal implementation of the API endpoint and is not controllable by the client.
 
-##### Disabling Pagination
+### Disabling Pagination
 
 If you want to disable pagination for a request, simply include `paginate=false` on the query string.
 
@@ -313,4 +313,18 @@ curl -v -X GET \
     -H "Accept: text/csv" \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?file_name={FILE_NAME}
+```
+
+## Timestamps
+
+KAZOO, unless explicitly stated, represents time in Gregorian seconds.
+
+Conversion with UNIX timestamps is straigtforward:
+
+```
+UnixEpochInGregorian = 62167219200
+
+gregorian_to_unix($greg) -> $greg - 62167219200
+
+unix_to_gregorian($unix) -> $unix + 62167219200
 ```

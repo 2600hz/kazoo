@@ -37,12 +37,15 @@ maybe_dry_run(Context, ProposedJObj) ->
 -spec maybe_dry_run(cb_context:context(), billables(), billables()) -> cb_context:context().
 maybe_dry_run(Context, CurrentJObj, ProposedJObj) ->
     AccountId = cb_context:account_id(Context),
+    lager:debug("verifying billing services requirements for account ~s"
+               ,[AccountId]
+               ),
     AuthAccountId = cb_context:auth_account_id(Context),
     Services = kz_services:fetch(AuthAccountId),
     Updated = kz_services:set_updates(Services
                                      ,AccountId
-                                     ,CurrentJObj
-                                     ,ProposedJObj
+                                     ,kz_services:to_billables(CurrentJObj)
+                                     ,kz_services:to_billables(ProposedJObj)
                                      ),
     Quotes = kz_services_invoices:create(Updated),
     HasAdditions = kz_services_invoices:has_billable_additions(Quotes),
@@ -54,8 +57,10 @@ maybe_dry_run(Context, CurrentJObj, ProposedJObj) ->
 -spec dry_run(cb_context:context(), kz_services_invoices:invoices(), boolean()) ->
                      cb_context:context().
 dry_run(Context, _Quotes, 'false') ->
+    lager:debug("request has no billable additions, allowing"),
     Context;
 dry_run(Context, Quotes, 'true') ->
+    lager:debug("request has not accepted notice of billable additions, rejecting"),
     JObj = kz_services_invoices:public_json(Quotes),
     crossbar_util:response_402(JObj, Context).
 
@@ -67,8 +72,10 @@ should_dry_run(Context) ->
 -spec check_creditably(cb_context:context(), kz_services:services(), kz_services_invoices:invoices(), boolean() | number()) ->
                               cb_context:context().
 check_creditably(Context, _Services, _Quotes, 'false') ->
+    lager:debug("request has no billable additions, skipping standing check"),
     Context;
 check_creditably(Context, Services, Quotes, 'true') ->
+    lager:debug("request has billable additions, verifying account standing"),
     Key = [<<"difference">>, <<"billable">>],
     Additions = [begin
                      Changes = kz_services_item:changes(Item),
@@ -80,7 +87,12 @@ check_creditably(Context, Services, Quotes, 'true') ->
                     Item <- kz_services_invoice:items(Invoice),
                     kz_services_item:has_billable_additions(Item)
                 ],
-    check_creditably(Context, Services, Quotes, lists:sum(Additions));
+    Activations = [kz_services_activation_items:calculate_total(
+                     kz_services_invoice:activation_charges(Invoice)
+                    )
+                   || Invoice <- kz_services_invoices:billable_additions(Quotes)
+                  ],
+    check_creditably(Context, Services, Quotes, lists:sum(Additions ++ Activations));
 check_creditably(Context, _Services, _Quotes, Amount) when Amount =< 0 ->
     Context;
 check_creditably(Context, Services, Quotes, Amount) ->
@@ -91,6 +103,7 @@ check_creditably(Context, Services, Quotes, Amount) ->
         {'true', _} -> Context;
         {'false', Reason} ->
             ErrorJObj = kz_json:from_map(Reason),
+            lager:debug("request denied for billing reasons: ~p", [ErrorJObj]),
             cb_context:add_system_error(402, 'billing_issue', ErrorJObj, Context)
     end.
 
@@ -98,21 +111,36 @@ check_creditably(Context, Services, Quotes, Amount) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_subscriptions(cb_context:context(), kz_services_invoices:jobjs()) -> 'ok'.
+-spec update_subscriptions(cb_context:context()
+                          ,kz_services_quantities:billables() | kz_services_quantities:billable()
+                          ) -> 'ok'.
 update_subscriptions(Context, ProposedJObj) ->
     CurrentJObj = cb_context:fetch(Context, 'db_doc'),
     update_subscriptions(Context, CurrentJObj, ProposedJObj).
 
--spec update_subscriptions(cb_context:context(), kz_services_invoices:jobjs(), kz_services_invoices:jobjs()) -> 'ok'.
+-spec update_subscriptions(cb_context:context()
+                          ,kz_services_quantities:billables() | kz_services_quantities:billable()
+                          ,kz_services_quantities:billables() | kz_services_quantities:billable()
+                          ) -> 'ok'.
 update_subscriptions(Context, CurrentJObj, ProposedJObj) ->
     update_subscriptions(Context, CurrentJObj, ProposedJObj, cb_context:account_id(Context)).
 
+-spec update_subscriptions(cb_context:context()
+                          ,kz_services_quantities:billables() | kz_services_quantities:billable()
+                          ,kz_services_quantities:billables() | kz_services_quantities:billable()
+                          ,kz_term:api_ne_binary()
+                          ) -> 'ok'.
 update_subscriptions(_Context, _CurrentJObj, _ProposedJObj, 'undefined') ->
     lager:debug("not updating subscriptions on non-account-related change");
 update_subscriptions(Context, CurrentJObj, ProposedJObj, AccountId) ->
     AuditLog = audit_log(Context),
     lager:info("committing updates to ~s", [AccountId]),
-    kz_services:commit_updates(AccountId, CurrentJObj, ProposedJObj, AuditLog).
+    _ = kz_services:commit_updates(AccountId
+                                  ,CurrentJObj
+                                  ,ProposedJObj
+                                  ,AuditLog
+                                  ),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc

@@ -104,10 +104,10 @@ check_numbers(Module, Nums) ->
         {ok, JObj} -> {kz_json:to_map(JObj), #{}};
         {error, _} -> {#{}, maps:from_list([{Num,<<"error">>} || Num <- Nums])}
     catch
-        _:_ ->
-            kz_util:log_stacktrace(),
-            {#{}, maps:from_list([{Num,<<"error">>} || Num <- Nums])}
-    end.
+        ?STACKTRACE(_, _, ST)
+        kz_util:log_stacktrace(ST),
+        {#{}, maps:from_list([{Num,<<"error">>} || Num <- Nums])}
+        end.
 
 %%------------------------------------------------------------------------------
 %% @doc Create a list of all carrier modules available to a subaccount.
@@ -194,10 +194,10 @@ info_fold(Module, Info=#{?CARRIER_INFO_MAX_PREFIX := MaxPrefix}) ->
                  };
         _ -> Info
     catch
-        _E:_R ->
-            kz_util:log_stacktrace(),
-            Info
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        kz_util:log_stacktrace(ST),
+        Info
+        end.
 
 -spec usable_carriers() -> kz_term:ne_binaries().
 usable_carriers() ->
@@ -342,10 +342,10 @@ is_number_billable(PhoneNumber) ->
 is_local(Carrier) ->
     try apply(Carrier, is_local, [])
     catch
-        _E:_R ->
-            kz_util:log_stacktrace(),
-            true
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        kz_util:log_stacktrace(ST),
+        true
+        end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -368,7 +368,7 @@ apply(Number, FName, Args) ->
 %%------------------------------------------------------------------------------
 -spec keep_only_reachable([kz_term:ne_binary()]) -> kz_term:atoms().
 keep_only_reachable(ModuleNames) ->
-    ?LOG_DEBUG("resolving carrier modules: ~p", [ModuleNames]),
+    lager:debug("resolving carrier modules: ~p", [ModuleNames]),
     [Module
      || M <- ModuleNames,
         (Module = kz_module:ensure_loaded(M)) =/= 'false'

@@ -117,6 +117,7 @@ You can limit based on:
 
 * Inbound
   * Limit the number of simultaneous inbound calls that can be received
+  * Limit the number of simultaneous inbound calls that can be received per DID number (regex based)
 * Outbound
   * Limit the number of simultaneous outbound calls that can be made
 * Two-way
@@ -160,6 +161,7 @@ Both the account making the call and the reseller of the account **must** authz 
 6. Check flat rate trunks
    * Check dialed number against white/black lists
    * Check inbound/outbound trunks available
+   * Check two-way trunks available
    * Check account burst trunks
 7. Check per-minute funds
    * Check pre-pay credit
@@ -318,5 +320,23 @@ This call is consuming a flat rate trunk
 ```
 
 This call was authorized because it is an outbound tollfree call
+
+-----
+
+## How to set up inbound calls per DID limit
+
+Ensure authz is enabled including the authz_local_resources.
+Add "inbound_channels_per_did_rules" flag to account's limits doc:
+
+```
+   "pvt_inbound_channels_per_did_rules": {
+       "456": 3,
+       "^876512.": 5,
+       "^\\+?78122404700$": 1
+   }
+```
+
+In the case where the DID number matches one of provided regular expressions in the rule keys, the number of simultaneous calls will be limited to the configured amount specified in matching rule's value.
+In the case that no rules match the DID, no limitation will be applied to the number of simultaneous calls for that DID.
 
 -----

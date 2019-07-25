@@ -6,28 +6,30 @@
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
 -include("kz_caches.hrl").
 
-amqp_test_() ->
+-define(CHANGE_TYPE, <<"some_doc_type">>).
+
+amqp_test() ->
     {'timeout'
     ,10
-    ,{'spawn'
-     ,{'setup'
-      ,fun init/0
-      ,fun cleanup/1
-      ,fun(_CachePid) ->
-               [{"erase changed doc", fun erase_changed_doc/0}
-               ,{"erase docs in db", fun erase_docs_in_db/0}
-               ]
-       end
-      }
+    ,{'setup'
+     ,fun init/0
+     ,fun cleanup/1
+     ,fun(_CachePid) ->
+              [{"erase changed doc", fun erase_changed_doc/0}
+              ,{"erase docs in db", fun erase_docs_in_db/0}
+              ]
+      end
      }
     }.
 
 init() ->
-    {'ok', CachePid} = kz_cache_sup:start_link(?MODULE, ?MILLISECONDS_IN_SECOND, [{'origin_bindings', []}]),
-    CachePid.
+    {'ok', BindingsPid} = kazoo_bindings_sup:start_link(),
+    {'ok', CachePid} = kz_cache_sup:start_link(?MODULE, ?MILLISECONDS_IN_SECOND, [{'origin_bindings', [[{'type', ?CHANGE_TYPE}]]}]),
+    {CachePid, BindingsPid}.
 
-cleanup(CachePid) ->
-    kz_cache:stop_local(CachePid).
+cleanup({CachePid, BindingsPid}) ->
+    exit(CachePid, 'shutdown'),
+    exit(BindingsPid, 'shutdown').
 
 erase_changed_doc() ->
     Value = kz_binary:rand_hex(5),
@@ -43,6 +45,7 @@ erase_changed_doc() ->
     ?assertEqual({'ok', Value}, kz_cache:peek_local(?MODULE, {Db, DocId2})),
 
     send_document_change(Db, DocId, ?DOC_EDITED),
+
     ?assertEqual({'error', 'not_found'}, kz_cache:peek_local(?MODULE, {Db, DocId})),
     ?assertEqual({'ok', Value}, kz_cache:peek_local(?MODULE, {Db, DocId2})),
 
@@ -91,7 +94,8 @@ erase_docs_in_db() ->
 
 send_db_change(Db, ChangeType) ->
     JObj = create_db_payload(Db, ChangeType),
-    kz_cache_listener:handle_document_change(JObj, ?MODULE).
+    RK = kz_amqp_util:document_routing_key(ChangeType, Db, ?CHANGE_TYPE, Db),
+    kz_cache_listener:handle_change(JObj, [], RK).
 
 create_db_payload(Db, ChangeType) ->
     kz_json:from_list([{<<"Type">>, <<"database">>}
@@ -103,12 +107,13 @@ create_db_payload(Db, ChangeType) ->
 
 send_document_change(Db, DocId, ChangeType) ->
     JObj = create_payload_json(Db, DocId, ChangeType),
-    kz_cache_listener:handle_document_change(JObj, ?MODULE).
+    RK = kz_amqp_util:document_routing_key(ChangeType, Db, ?CHANGE_TYPE, DocId),
+    kz_cache_listener:handle_change(JObj, [], RK).
 
 create_payload_json(Db, DocId, ChangeType) ->
     kz_json:from_list([{<<"ID">>, DocId}
                       ,{<<"Database">>, Db}
-                      ,{<<"Type">>, <<"some_doc_type">>}
+                      ,{<<"Type">>, ?CHANGE_TYPE}
                       ,{<<"Msg-ID">>, kz_binary:rand_hex(5)}
                        | kz_api:default_headers(?KAPI_CONF_CATEGORY, ChangeType, <<"test">>, <<"1">>)
                       ]).

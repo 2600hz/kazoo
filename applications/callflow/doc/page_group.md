@@ -20,6 +20,7 @@ Key | Description | Type | Default | Required | Support Level
 `endpoints.[].timeout` | How long to ring the endpoint, in seconds | `integer()` | `20` | `false` |  
 `endpoints.[].weight` | Weight of endpoint, different usage in various strategies | `integer()` |   | `false` |  
 `endpoints` | Endpoint IDs (devices, users, etc) included in the ring group | `array(object())` |   | `true` |  
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 `timeout` | How long to ring the ring group before continuing, in seconds | `integer()` | `5` | `false` |  
 
 

@@ -66,17 +66,18 @@ terminate(_Reason, #state{tab=ETS}) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
--spec maybe_send_push_notification(kz_term:api_pid(), kz_json:object()) -> any().
+-spec maybe_send_push_notification(push_app(), kz_json:object()) -> any().
 maybe_send_push_notification('undefined', _JObj) -> lager:debug("no pid to send push");
-maybe_send_push_notification(Pid, JObj) ->
+maybe_send_push_notification({Pid, Envelope}, JObj) ->
     TokenID = kz_json:get_value(<<"Token-ID">>, JObj),
-    Message = kz_json:from_list([{<<"data">>, build_payload(JObj)}]),
+    MessageJObj = kz_json:from_list([{<<"data">>, build_payload(JObj)}]),
+    Message = kz_maps:merge(kz_json:to_map(MessageJObj), Envelope),
 
     lager:debug("pushing to ~p: ~s: ~p", [Pid, TokenID, Message]),
 
     gcm:push(Pid, [TokenID], Message).
 
--spec build_payload(kz_json:object()) -> map().
+-spec build_payload(kz_json:object()) -> kz_json:object().
 build_payload(JObj) ->
     kz_json:foldl(fun map_key/3, kz_json:new(), JObj).
 
@@ -88,31 +89,34 @@ map_key(K, V, JObj) ->
         {_, K1} -> kz_json:set_value(K1, V, JObj)
     end.
 
--spec get_gcm(kz_term:api_binary(), ets:tid()) -> kz_term:api_pid().
+-spec get_gcm(kz_term:api_binary(), ets:tid()) -> push_app().
 get_gcm('undefined', _) -> 'undefined';
 get_gcm(App, ETS) ->
     case ets:lookup(ETS, App) of
         [] -> maybe_load_gcm(App, ETS);
-        [{App, Pid}] -> Pid
+        [{App, Push}] -> Push
     end.
 
--spec maybe_load_gcm(kz_term:api_binary(), ets:tid()) -> kz_term:api_pid().
+-spec maybe_load_gcm(kz_term:api_binary(), ets:tid()) -> push_app().
 maybe_load_gcm(App, ETS) ->
     lager:debug("loading gcm secret for ~s", [App]),
-    maybe_load_gcm(App, ETS, kapps_config:get_binary(?CONFIG_CAT, [<<"google">>, <<"api_key">>], 'undefined', App)).
+    GCMSecret = kapps_config:get_binary(?CONFIG_CAT, [<<"google">>, <<"api_key">>], 'undefined', App),
+    EnvelopeJObj = kapps_config:get_json(?CONFIG_CAT, [<<"google">>, <<"headers">>], kz_json:new(), App),
+    Envelope = kz_json:to_map(EnvelopeJObj),
+    maybe_load_gcm(App, ETS, GCMSecret, Envelope).
 
--spec maybe_load_gcm(kz_term:api_binary(), ets:tid(), kz_term:api_binary()) -> kz_term:api_pid().
-maybe_load_gcm(App, _, 'undefined') ->
+-spec maybe_load_gcm(kz_term:api_binary(), ets:tid(), kz_term:api_binary(), map()) -> push_app().
+maybe_load_gcm(App, _, 'undefined', _) ->
     lager:debug("google pusher secret for app ~s not found", [App]),
     'undefined';
-maybe_load_gcm(App, ETS, Secret) ->
+maybe_load_gcm(App, ETS, Secret, Envelope) ->
     case gcm:start(kz_term:to_atom(App, 'true'), Secret) of
         {'ok', Pid} ->
-            ets:insert(ETS, {App, Pid}),
-            Pid;
+            ets:insert(ETS, {App, {Pid, Envelope}}),
+            {Pid, Envelope};
         {'error', {'already_started', Pid}} ->
-            ets:insert(ETS, {App, Pid}),
-            Pid;
+            ets:insert(ETS, {App, {Pid, Envelope}}),
+            {Pid, Envelope};
         {'error', Reason} ->
             lager:error("error loading gcm ~p", [Reason]),
             'undefined'

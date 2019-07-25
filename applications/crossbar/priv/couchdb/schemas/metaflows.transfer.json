@@ -21,6 +21,10 @@
             "description": "The target extension/DID",
             "type": "string"
         },
+        "timeout": {
+            "description": "timeout to establish call",
+            "type": "integer"
+        },
         "transfer_type": {
             "default": "blind",
             "description": "The type of transfer to perform",

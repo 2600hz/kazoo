@@ -6,8 +6,7 @@
 %%%-----------------------------------------------------------------------------
 -module(cf_route_win).
 
--export([execute_callflow/2
-        ]).
+-export([execute_callflow/2]).
 
 -include("callflow.hrl").
 
@@ -265,11 +264,13 @@ update_ccvs(Call) ->
               ,[CallerIdType, CIDName, CIDNumber]
               ),
 
+    CCVs = kapps_call:custom_channel_vars(Call),
     Props = props:filter_undefined(
               [{<<"Hold-Media">>, kz_attributes:moh_attributes(<<"media_id">>, Call)}
               ,{<<"Caller-ID-Name">>, CIDName}
               ,{<<"Caller-ID-Number">>, CIDNumber}
                | get_incoming_security(Call)
+               ++ kz_privacy:flags(CCVs)
               ]),
     kapps_call:set_custom_channel_vars(Props, Call).
 
@@ -330,7 +331,7 @@ maybe_start_account_recording(From, To, Call) ->
         NewCall -> kapps_call:set_is_recording('true', NewCall)
     end.
 
--spec maybe_start_endpoint_recording(kz_term:ne_binary(), ne_binary, kapps_call:call()) -> kapps_call:call().
+-spec maybe_start_endpoint_recording(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kapps_call:call().
 maybe_start_endpoint_recording(<<"onnet">>, To, Call) ->
     DefaultEndpointId = kapps_call:authorizing_id(Call),
     EndpointId = kapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, DefaultEndpointId, Call),
@@ -364,7 +365,10 @@ maybe_start_onnet_endpoint_recording(EndpointId, _To, 'true', Call) ->
             of
                 'false' -> Call;
                 'true' ->
-                    App = kz_endpoint_recording:record_call_command(kz_doc:id(Endpoint), Inception, Data, Call),
+                    Values = [{<<"origin">>, <<"inbound from ", Inception/binary, " to endpoint">>}
+                             ,{<<"endpoint_id">>, kz_doc:id(Endpoint)}
+                             ],
+                    App = kapps_call_recording:record_call_command(kz_json:set_values(Values, Data), Call),
                     NewActions = kz_json:set_value([<<"Execute-On-Answer">>, <<"Record-Endpoint">>], App, kz_json:new()),
                     kapps_call:kvs_store('outbound_actions', NewActions, Call)
             end;
@@ -384,7 +388,10 @@ maybe_start_offnet_endpoint_recording(EndpointId, _To, 'true', Call) ->
             of
                 'false' -> Call;
                 'true' ->
-                    App = kz_endpoint_recording:record_call_command(kz_doc:id(Endpoint), Inception, Data, Call),
+                    Values = [{<<"origin">>, <<"inbound from ", Inception/binary, " to endpoint">>}
+                             ,{<<"endpoint_id">>, kz_doc:id(Endpoint)}
+                             ],
+                    App = kapps_call_recording:record_call_command(kz_json:set_values(Values, Data), Call),
                     NewActions = kz_json:set_value([<<"Execute-On-Answer">>, <<"Record-Endpoint">>], App, kz_json:new()),
                     kapps_call:kvs_store('outbound_actions', NewActions, Call)
             end;
@@ -446,4 +453,4 @@ filter_action({_, Action}) ->
 execute_callflow(Call) ->
     lager:info("call has been setup, beginning to process the call"),
     {'ok', Pid} = cf_exe_sup:new(Call),
-    kapps_call:kvs_store('consumer_pid', Pid, Call).
+    kapps_call:kvs_store('cf_exe_pid', Pid, Call).

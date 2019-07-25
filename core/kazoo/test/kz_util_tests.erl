@@ -68,8 +68,12 @@ proper_test_() ->
 
 %% Just to please coverage :)
 log_test_() ->
-    [?_assertEqual(ok, kz_util:log_stacktrace())
-    ,?_assertEqual(ok, kz_util:log_stacktrace(erlang:get_stacktrace()))
+    ST = try throw('just_for_fun')
+         catch
+             ?STACKTRACE(_E, _R, Stack)
+             Stack
+             end,
+    [?_assertEqual(ok, kz_util:log_stacktrace(ST))
     ].
 
 calling_app_test_() ->
@@ -154,7 +158,6 @@ account_formats_test_() ->
 
     {Y, M, _} = erlang:date(),
     TS = kz_time:now_s(),
-    Now = os:timestamp(),
     Year = kz_term:to_binary(Y),
     Month = kz_date:pad_month(M),
 
@@ -185,15 +188,15 @@ account_formats_test_() ->
      || {Fun, Expected} <- Funs,
         Format <- Formats
     ] ++
-        [?_assertEqual(undefined, kz_util:format_account_id(undefined, raw))
-        ,?_assertEqual(<<"accounts">>, kz_util:format_account_id(<<"accounts">>, raw))
+        [?_assertEqual('undefined', kz_util:format_account_id('undefined', 'raw'))
+        ,?_assertEqual(<<"accounts">>, kz_util:format_account_id(<<"accounts">>, 'raw'))
         ,?_assertEqual(MODbEn, kz_util:format_account_id(AccountDbEn, TS))
         ,?_assertEqual(MODbEn, kz_util:format_account_mod_id(AccountDbEn, TS))
-        ,?_assertEqual(undefined, kz_util:format_account_id(undefined, Year, Month))
+        ,?_assertEqual('undefined', kz_util:format_account_id('undefined', Year, Month))
         ,?_assertEqual(MODbEn, kz_util:format_account_id(AccountDbEn, Year, Month))
         ,?_assertEqual(MODbEn, kz_util:format_account_id(AccountDbEn, Year, M))
-        ,?_assertEqual(?KZ_TASKS_DB, kz_util:format_account_id(?KZ_TASKS_DB, raw))
-        ,?_assertEqual(<<"bla">>, kz_util:format_account_id(<<"bla">>, raw))
+        ,?_assertEqual(?KZ_TASKS_DB, kz_util:format_account_id(?KZ_TASKS_DB, 'raw'))
+        ,?_assertEqual(<<"bla">>, kz_util:format_account_id(<<"bla">>, 'raw'))
         ].
 
 format_assert(Fun, Format, Expected) ->
@@ -214,6 +217,13 @@ is_simple_modb_converter("#Fun<kz_util.format_account_modb.1>"++_) -> 'true';
 is_simple_modb_converter("#Fun<"?MODULE_STRING".format_account_modb_raw.1>"++_) -> 'true';
 is_simple_modb_converter("#Fun<"?MODULE_STRING".format_account_modb_encoded.1>"++_) -> 'true';
 is_simple_modb_converter("#Fun<"?MODULE_STRING".format_account_modb_unencoded.1>"++_) -> 'true';
+
+%% OTP 21+ changed format
+is_simple_modb_converter("fun kz_util:format_account_modb/1"++_) -> 'true';
+is_simple_modb_converter("fun "?MODULE_STRING":format_account_modb_raw/1"++_) -> 'true';
+is_simple_modb_converter("fun "?MODULE_STRING":format_account_modb_encoded/1"++_) -> 'true';
+is_simple_modb_converter("fun "?MODULE_STRING":format_account_modb_unencoded/1"++_) -> 'true';
+
 is_simple_modb_converter(_Else) -> 'false'.
 
 format_account_id_raw(F) -> kz_util:format_account_id(F, 'raw').

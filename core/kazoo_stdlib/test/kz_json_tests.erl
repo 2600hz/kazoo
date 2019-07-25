@@ -23,7 +23,7 @@
 proper_test_() ->
     {"Runs kz_json PropEr tests"
     ,[{'timeout'
-      ,10000
+      ,10 * ?MILLISECONDS_IN_SECOND
       ,{atom_to_list(F)
        ,fun () ->
                 ?assert(proper:quickcheck(?MODULE:F(), [{'to_file', 'user'}
@@ -194,10 +194,11 @@ prop_set_value() ->
                                   ,[Key, Value, JObj]
                                   ),
                          begin
-                             JObj1 = kz_json:set_value(Key, Value, JObj),
+                             Normalized = kz_json:check_value_term(Value),
+                             JObj1 = kz_json:set_value(Key, Normalized, JObj),
 
                              'true' =:= kz_json:is_defined(Key, JObj1)
-                                 andalso (Value =:= kz_json:get_value(Key, JObj1))
+                                 andalso (Normalized =:= kz_json:get_value(Key, JObj1))
                          end)
               )
            ).
@@ -206,8 +207,8 @@ prop_delete_key() ->
     ?FORALL({JObj, Key, Value}
            ,{resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object()), key(), non_object_json_term()}
            ,?TRAPEXIT(
-               ?WHENFAIL(?debugFmt("Failed kz_json:set_value(~w, ~w, ~w)~n"
-                                  ,[Key, Value, JObj]
+               ?WHENFAIL(?debugFmt("Failed kz_json:delete_key(~w, ~w) after setting ~w~n"
+                                  ,[Key, JObj, Value]
                                   ),
                          begin
                              JObj1 = kz_json:set_value(Key, Value, JObj),
@@ -1172,11 +1173,21 @@ get_ne_json_object_test_() ->
                    }).
 
 to_map_test_() ->
+    JObjs = [kz_json:from_list([{<<"A">>, 1}, {<<"B">>, 2}])
+            ,kz_json:from_list([{<<"A">>, 8}, {<<"B">>, 9}])
+            ],
+
     [?_assertEqual(?JSON_MAP, kz_json:to_map(?MAP_JSON))
     ,?_assert(kz_json:are_equal(?MAP_JSON, kz_json:from_map(?JSON_MAP)))
 
     ,?_assertEqual(?JSON_MAP, kz_json:to_map(kz_json:from_map(?JSON_MAP)))
     ,?_assert(kz_json:are_equal(?MAP_JSON, kz_json:from_map(kz_json:to_map(?MAP_JSON))))
+
+    ,?_assertEqual([#{<<"A">> => 1,<<"B">> => 2}
+                   ,#{<<"A">> => 8,<<"B">> => 9}
+                   ]
+                  ,kz_json:to_map(JObjs)
+                  )
     ].
 
 are_equal_test_() ->

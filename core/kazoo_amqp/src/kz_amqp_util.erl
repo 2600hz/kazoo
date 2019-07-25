@@ -116,7 +116,7 @@
 
 -export([originate_resource_publish/1, originate_resource_publish/2]).
 
--export([offnet_resource_publish/1, offnet_resource_publish/2]).
+-export([offnet_resource_publish/1, offnet_resource_publish/2, offnet_resource_publish/3]).
 
 -export([configuration_exchange/0
         ,configuration_publish/2, configuration_publish/3, configuration_publish/4
@@ -391,7 +391,11 @@ offnet_resource_publish(Payload) ->
 
 -spec offnet_resource_publish(amqp_payload(), kz_term:ne_binary()) -> 'ok'.
 offnet_resource_publish(Payload, ContentType) ->
-    basic_publish(?EXCHANGE_RESOURCE, ?KEY_OFFNET_RESOURCE_REQ, Payload, ContentType).
+    offnet_resource_publish(Payload, ContentType, ?KEY_OFFNET_RESOURCE_REQ).
+
+-spec offnet_resource_publish(amqp_payload(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+offnet_resource_publish(Payload, ContentType, RoutingKey) ->
+    basic_publish(?EXCHANGE_RESOURCE, RoutingKey, Payload, ContentType).
 
 %% monitor
 -spec monitor_publish(amqp_payload(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
@@ -500,6 +504,15 @@ basic_publish(Exchange, RoutingKey, Payload, ContentType) ->
 basic_publish(Exchange, RoutingKey, Payload, ContentType, Prop)
   when is_list(Payload) ->
     basic_publish(Exchange, RoutingKey, iolist_to_binary(Payload), ContentType, Prop);
+basic_publish(Exchange, <<"pid://", _/binary>>=RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
+  when is_binary(Exchange),
+       is_binary(RoutingKey),
+       is_binary(ContentType),
+       is_list(Props) ->
+    Headers = props:get_value('headers', Props, []),
+    {'match', [Pid, RK]}= re:run(RoutingKey, <<"pid://(.*)/(.*)">>, [{'capture', [1,2], 'binary'}]),
+    NewProps = props:set_value('headers', [{?KEY_DELIVER_TO_PID, binary, Pid} | Headers], Props),
+    basic_publish(Exchange, RK, Payload, ContentType, NewProps);
 basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
   when is_binary(Exchange),
        is_binary(RoutingKey),

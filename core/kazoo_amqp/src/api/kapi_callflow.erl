@@ -15,6 +15,8 @@
 -export([declare_exchanges/0]).
 -export([publish_resume/1]).
 
+-export_type([resume/0]).
+
 -define(RESUME_ROUTING_KEY, <<"callflow.resume">>).
 
 -define(RESUME_HEADERS, [<<"Call">>, <<"Flow">>]).
@@ -23,6 +25,8 @@
                        ,{<<"Event-Name">>, <<"resume">>}
                        ]).
 -define(RESUME_TYPES, []).
+
+-type resume() :: kz_json:object().
 
 %%------------------------------------------------------------------------------
 %% @doc Resume a Callflow's flow.

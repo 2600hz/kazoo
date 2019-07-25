@@ -201,7 +201,7 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
 %%------------------------------------------------------------------------------
 -spec refresh_views() -> 'ok'.
 refresh_views() ->
-    kapps_maintenance:refresh(?KZ_FAXES_DB),
+    _ = kapps_maintenance:refresh(?KZ_FAXES_DB),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -350,14 +350,14 @@ update_job(JobID, State, JObj) ->
             {'error', 'job_not_already_in_state'};
         _Other ->
             Opts = [{'rev', kz_doc:revision(JObj)}],
-            kz_datamgr:save_doc(?KZ_FAXES_DB
-                               ,kz_json:set_values([{<<"pvt_job_status">>, State}
-                                                   ,{<<"pvt_modified">>, kz_time:now_s()}
-                                                   ]
-                                                  ,JObj
-                                                  )
-                               ,Opts
-                               ),
+            _ = kz_datamgr:save_doc(?KZ_FAXES_DB
+                                   ,kz_json:set_values([{<<"pvt_job_status">>, State}
+                                                       ,{<<"pvt_modified">>, kz_time:now_s()}
+                                                       ]
+                                                      ,JObj
+                                                      )
+                                   ,Opts
+                                   ),
             'ok'
     end.
 

@@ -101,7 +101,7 @@
         ,execute/2
         ]).
 
--export([federated_event/4]).
+-export([federated_event/3]).
 -export([delayed_cast/3
         ]).
 -export([distribute_event/3]).
@@ -129,7 +129,7 @@
                ,module :: atom()
                ,module_state :: module_state()
                ,module_timeout_ref :: kz_term:api_reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
-               ,other_queues = [] :: [{kz_term:ne_binary(), {kz_term:proplist(), kz_term:proplist()}}] %% {QueueName, {kz_term:proplist(), kz_term:proplist()}}
+               ,other_queues = [] :: [{kz_term:ne_binary(), {bindings(), kz_term:proplist()}}] %% {QueueName, {Bindings, QueueProps}}
                ,federators = [] :: federator_listeners()
                ,waiting_federators = [] :: list()
                ,self = self() :: pid()
@@ -153,6 +153,7 @@
              ,bindings/0
              ,basic_deliver/0
              ,callback_data/0
+             ,declare_exchanges/0
              ]).
 
 %%%=============================================================================
@@ -188,19 +189,19 @@
 
 -type handle_event_return() :: 'ignore' |
                                {'ignore', module_state()} |
+                               {'ignore', module_state(), timeout() | 'hibernate'} |
                                {'reply', kz_term:proplist()} |
                                {'reply', kz_term:proplist(), module_state()}.
 
 -callback handle_event(kz_json:object(), module_state()) -> handle_event_return().
--callback handle_event(kz_json:object(), basic_deliver(), module_state()) -> handle_event_return().
--callback handle_event(kz_json:object(), basic_deliver(), amqp_basic(), module_state()) -> handle_event_return().
+-callback handle_event(kz_json:object(), kz_term:proplist(), module_state()) -> handle_event_return().
 
 -callback terminate('normal' | 'shutdown' | {'shutdown', any()} | any(), module_state()) ->
     any().
 -callback code_change(any() | {'down', any()}, module_state(), any()) ->
     {'ok', module_state()} | {'error', any()}.
 
--optional_callbacks([handle_event/2, handle_event/3, handle_event/4]).
+-optional_callbacks([handle_event/2, handle_event/3]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -380,9 +381,9 @@ rm_binding(Srv, {Binding, Props}) ->
 rm_binding(Srv, Binding, Props) ->
     gen_server:cast(Srv, {'rm_binding', kz_term:to_binary(Binding), Props}).
 
--spec federated_event(kz_types:server_ref(), kz_json:object(), basic_deliver(), amqp_basic()) -> 'ok'.
-federated_event(Srv, JObj, BasicDeliver, BasicData) ->
-    gen_server:cast(Srv, {'federated_event', JObj, BasicDeliver, BasicData}).
+-spec federated_event(kz_types:server_ref(), kz_json:object(), kz_term:proplist()) -> 'ok'.
+federated_event(Srv, JObj, Props) ->
+    gen_server:cast(Srv, {'federated_event', JObj, Props}).
 
 -spec execute(kz_types:server_ref(), module(), atom(), [any()]) -> 'ok'.
 execute(Srv, Module, Function, Args) ->
@@ -511,40 +512,40 @@ handle_cast({'add_binding', Binding, Props}, State) ->
     {'noreply', handle_add_binding(Binding, Props, State)};
 handle_cast({'rm_binding', Binding, Props}, State) ->
     {'noreply', handle_rm_binding(Binding, Props, State)};
-handle_cast({'kz_amqp_assignment', {'new_channel', 'true', Channel}}, State) ->
-    lager:debug("channel reconnecting"),
-    _ = kz_amqp_channel:consumer_channel(Channel),
-    {'noreply', State};
-handle_cast({'kz_amqp_assignment', {'new_channel', 'false', Channel}}, State) ->
-    _ = kz_amqp_channel:consumer_channel(Channel),
-    {'noreply', handle_amqp_channel_available(State)};
-handle_cast({'federated_event', JObj, BasicDeliver, BasicData}, #state{params=Params}=State) ->
+handle_cast({'federated_event', JObj, Props}, #state{params=Params}=State) ->
+    Deliver = props:get_value('deliver', Props),
+    Basic = props:get_value('basic', Props),
     case props:is_true('spawn_handle_event', Params, 'false') of
-        'true'  -> kz_util:spawn(fun distribute_event/3, [JObj, {BasicDeliver, BasicData}, State]),
+        'true'  -> kz_util:spawn(fun distribute_event/3, [JObj, {Deliver, Basic}, State]),
                    {'noreply', State};
-        'false' -> {'noreply', distribute_event(JObj, {BasicDeliver, BasicData}, State)}
+        'false' -> distribute_event(JObj, {Deliver, Basic}, State)
     end;
 handle_cast({'$execute', Module, Function, Args}
-           ,#state{federators=[]}=State) ->
+           ,#state{federators=[]}=State
+           ) ->
     erlang:apply(Module, Function, Args),
     {'noreply', State};
 handle_cast({'$execute', Function, Args}
-           ,#state{federators=[]}=State) ->
+           ,#state{federators=[]}=State
+           ) ->
     erlang:apply(Function, Args),
     {'noreply', State};
 handle_cast({'$execute', Function}
-           ,#state{federators=[]}=State) ->
+           ,#state{federators=[]}=State
+           ) ->
     Function(),
     {'noreply', State};
 handle_cast({'$execute', Module, Function, Args}=Msg
-           ,#state{federators=Federators}=State) ->
+           ,#state{federators=Federators}=State
+           ) ->
     erlang:apply(Module, Function, Args),
     _ = [?MODULE:cast(Federator, Msg)
          || {_Broker, Federator} <- Federators
         ],
     {'noreply', State};
 handle_cast({'$execute', Function, Args}=Msg
-           ,#state{federators=Federators}=State) ->
+           ,#state{federators=Federators}=State
+           ) ->
     erlang:apply(Function, Args),
     _ = [?MODULE:cast(Federator, Msg)
          || {_Broker, Federator} <- Federators
@@ -560,26 +561,25 @@ handle_cast({'$execute', Function}=Msg
     {'noreply', State};
 handle_cast({'$client_cast', Message}, State) ->
     handle_module_cast(Message, State);
-handle_cast({'start_listener', Params}, #state{queue='undefined'
-                                              ,is_consuming='false'
-                                              ,responders=[]
-                                              ,bindings=[]
-                                              ,params=[]
-                                              }=State) ->
-    #state{module=Module
-          ,module_state=ModuleState
-          ,module_timeout_ref=TimeoutRef
-          } = State,
-    {'ok', #state{}=N} = init(Module, Params, ModuleState, TimeoutRef),
-    {'noreply', N};
+handle_cast({'start_listener', Params}
+           ,#state{queue='undefined'
+                  ,is_consuming='false'
+                  ,responders=[]
+                  ,bindings=[]
+                  ,params=[]
+                  ,module=Module
+                  ,module_state=ModuleState
+                  ,module_timeout_ref=TimeoutRef
+                  }
+           ) ->
+    {'ok', #state{}=NewState} = init(Module, Params, ModuleState, TimeoutRef),
+    {'noreply', NewState};
 handle_cast({'start_listener', _Params}, State) ->
     lager:debug("gen listener asked to start listener but it is already initialized"),
     {'noreply', State};
-
 handle_cast({'pause_consumers'}, #state{is_consuming='true', consumer_tags=Tags}=State) ->
     lists:foreach(fun kz_amqp_util:basic_cancel/1, Tags),
     {'noreply', State};
-
 handle_cast({'resume_consumers'}, #state{queue='undefined'}=State) ->
     {'noreply', State};
 handle_cast({'resume_consumers'}, #state{is_consuming='false'
@@ -594,7 +594,6 @@ handle_cast({'resume_consumers'}, #state{is_consuming='false'
          || {Q1, {_, P}} <- OtherQueues
         ],
     {'noreply', State};
-
 handle_cast({'federator_is_consuming', Broker, 'true'}, State) ->
     lager:info("federator for ~p is consuming, waiting on: ~p", [Broker, State#state.waiting_federators]),
 
@@ -615,7 +614,6 @@ handle_cast({'federator_is_consuming', Broker, 'true'}, State) ->
             lager:info("still waiting for federators: ~p", [Remaining]),
             {'noreply', State#state{waiting_federators = Remaining}}
     end;
-
 handle_cast(Message, State) ->
     handle_module_cast(Message, State).
 
@@ -631,27 +629,52 @@ maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret().
-handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}=Basic
-                                             ,payload=Payload
-                                             }}
-           ,#state{params=Params, auto_ack=AutoAck}=State) ->
+handle_info({'kz_amqp_assignment', {'new_channel', Reconnected, Channel}}, State) ->
+    _ = kz_amqp_channel:consumer_channel(Channel),
+    {'noreply', handle_amqp_channel_available(State, Reconnected)};
+handle_info({'kz_amqp_assignment', 'lost_channel'}
+           ,#state{bindings=ExistingBindings
+                  ,params=Params
+                  }=State
+           ) ->
+    lager:debug("lost channel assignment"),
+    {'noreply', State#state{is_consuming='false'
+                           ,consumer_tags=[]
+                           ,bindings=[]
+                           ,params=props:set_value('bindings', ExistingBindings, Params)
+                           }};
+handle_info({#'basic.deliver'{}=BD
+            ,#amqp_msg{props=#'P_basic'{content_type=CT}=Basic
+                      ,payload=Payload
+                      }
+            }
+           ,#state{params=Params, auto_ack=AutoAck}=State
+           ) ->
     _ = case AutoAck of
             'true' -> (catch kz_amqp_util:basic_ack(BD));
             'false' -> 'ok'
         end,
     case props:is_true('spawn_handle_event', Params, 'false') of
+        'false' -> handle_event(Payload, CT, {BD, Basic}, State);
         'true'  -> kz_util:spawn(fun handle_event/4, [Payload, CT, {BD, Basic}, State]),
-                   {'noreply', State};
-        'false' -> {'noreply', handle_event(Payload, CT, {BD, Basic}, State)}
+                   {'noreply', State}
     end;
-handle_info({#'basic.return'{}=BR, #amqp_msg{props=#'P_basic'{content_type=CT}
-                                            ,payload=Payload
-                                            }}, State) ->
+handle_info({#'basic.return'{}=BR
+            ,#amqp_msg{props=#'P_basic'{content_type=CT}
+                      ,payload=Payload
+                      }
+            }
+           ,State
+           ) ->
     handle_return(Payload, CT, BR, State);
-handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue='undefined'}=State) ->
+handle_info(#'basic.consume_ok'{consumer_tag=CTag}
+           ,#state{queue='undefined'}=State
+           ) ->
     lager:debug("received consume ok (~s) for abandoned queue", [CTag]),
     {'noreply', State};
-handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=State) ->
+handle_info(#'basic.consume_ok'{consumer_tag=CTag}
+           ,#state{consumer_tags=CTags}=State
+           ) ->
     gen_server:cast(self(), {?MODULE, {'is_consuming', 'true'}}),
     {'noreply', State#state{is_consuming='true'
                            ,consumer_tags=[CTag | CTags]
@@ -677,7 +700,8 @@ handle_info('$is_gen_listener_consuming'
            ,#state{is_consuming='false'
                   ,bindings=ExistingBindings
                   ,params=Params
-                  }=State) ->
+                  }=State
+           ) ->
     _Release = (catch kz_amqp_channel:release()),
     _Requisition = channel_requisition(Params),
     {'noreply', State#state{queue='undefined'
@@ -692,6 +716,9 @@ handle_info({'$server_confirms', ServerConfirms}, State) ->
 handle_info({'$channel_flow', Active}, State) ->
     gen_server:cast(self(), {?MODULE,{'channel_flow', Active}}),
     {'noreply', State};
+handle_info({'kz_amqp_channel', {Client, Ref, 'consumer_tags'}}, #state{consumer_tags=CTags}=State) ->
+    Client ! {?MODULE, Ref, CTags},
+    {'noreply', State};
 handle_info(?CALLBACK_TIMEOUT_MSG, State) ->
     handle_callback_info('timeout', State);
 handle_info(Message, State) ->
@@ -702,7 +729,7 @@ handle_info(Message, State) ->
 %% Allows listeners to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(kz_term:ne_binary(), kz_term:ne_binary(), deliver(), state()) ->  state().
+-spec handle_event(kz_term:ne_binary(), kz_term:ne_binary(), deliver(), state()) ->  kz_types:handle_info_ret().
 handle_event(Payload, <<"application/json">>, Deliver, State) ->
     JObj = kz_json:decode(Payload),
     _ = kz_util:put_callid(JObj),
@@ -760,10 +787,9 @@ terminate(Reason, #state{module=Module
                         ,consumer_tags=Tags
                         }) ->
     _ = (catch(lists:foreach(fun kz_amqp_util:basic_cancel/1, Tags))),
-    _ = (catch Module:terminate(Reason, ModuleState)),
-    _ = (catch kz_amqp_channel:release()),
+    _Terminated = (catch Module:terminate(Reason, ModuleState)),
     _ = [listener_federator:stop(F) || {_Broker, F} <- Fs],
-    lager:debug("~s terminated cleanly, going down", [Module]).
+    lager:debug("~s terminated (~p): ~p", [Module, Reason, _Terminated]).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.
@@ -782,10 +808,12 @@ code_change(_OldVersion, State, _Extra) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_callback_info(any(), state()) -> handle_info_return().
-handle_callback_info(Message, #state{module=Module
-                                    ,module_state=ModuleState
-                                    ,module_timeout_ref=OldRef
-                                    }=State) ->
+handle_callback_info(Message
+                    ,#state{module=Module
+                           ,module_state=ModuleState
+                           ,module_timeout_ref=OldRef
+                           }=State
+                    ) ->
     _ = stop_timer(OldRef),
     try Module:handle_info(Message, ModuleState) of
         {'noreply', ModuleState1} ->
@@ -799,37 +827,59 @@ handle_callback_info(Message, #state{module=Module
         {'stop', Reason, ModuleState1} ->
             {'stop', Reason, State#state{module_state=ModuleState1}}
     catch
-        _E:R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("handle_info exception: ~s: ~p", [_E, R]),
-            kz_util:log_stacktrace(ST),
-            {'stop', R, State}
-    end.
+        ?STACKTRACE(_E, R, ST)
+        lager:debug("handle_info exception: ~s: ~p", [_E, R]),
+        kz_util:log_stacktrace(ST),
+        {'stop', R, State}
+        end.
 
 -spec format_status('normal' | 'terminate', [kz_term:proplist() | state()]) -> any().
-format_status(_Opt, [_PDict, #state{module=Module
-                                   ,module_state=ModuleState
-                                   }=State]) ->
+format_status(_Opt
+             ,[_PDict
+              ,#state{module=Module
+                     ,module_state=ModuleState
+                     }=State
+              ]) ->
     case erlang:function_exported(Module, 'format_status', 2) of
         'true' -> Module:format_status(_Opt, [_PDict, ModuleState]);
-        'false' -> [{'data', [{"Module State", ModuleState}
-                             ,{"Module", Module}
-                             ,{"Listener State", State}
-                             ]
-                    }]
+        'false' ->
+            [{'data', [{"Module State", ModuleState}
+                      ,{"Module", Module}
+                      ,{"Listener State", State}
+                      ]
+             }]
     end.
 
-
--spec distribute_event(kz_json:object(), deliver(), state()) -> state().
-distribute_event(JObj, Deliver, State) ->
-    case callback_handle_event(JObj, Deliver, State) of
-        'ignore' -> State;
-        {'ignore', ModuleState} -> State#state{module_state=ModuleState};
-        {CallbackData, ModuleState} -> distribute_event(CallbackData, JObj, Deliver, State#state{module_state=ModuleState});
-        CallbackData -> distribute_event(CallbackData, JObj, Deliver, State)
+-spec distribute_event(kz_json:object(), deliver(), state()) ->  kz_types:handle_info_ret().
+distribute_event(JObj, {_ , #'P_basic'{headers='undefined'}}=BasicDeliver, State) ->
+    case callback_handle_event(JObj, BasicDeliver, State) of
+        'ignore' -> {'noreply', State};
+        {'ignore', ModuleState} -> {'noreply', State#state{module_state=ModuleState}};
+        {'ignore', ModuleState, 'hibernate'} -> {'noreply', State#state{module_state=ModuleState}, 'hibernate'};
+        {'ignore', ModuleState, Timeout} -> {'noreply', State#state{module_state=ModuleState}, Timeout};
+        {CallbackData, ModuleState} -> distribute_event(CallbackData, JObj, BasicDeliver, State#state{module_state=ModuleState});
+        CallbackData -> distribute_event(CallbackData, JObj, BasicDeliver, State)
+    end;
+distribute_event(JObj, {Deliver, #'P_basic'{headers=Headers}=Basic}=BasicDeliver, State) ->
+    case lists:keyfind(?KEY_DELIVER_TO_PID, 1, Headers) of
+        {?KEY_DELIVER_TO_PID, _, Pid} ->
+            Props = [{'basic', Basic}
+                    ,{'deliver', Deliver}
+                    ],
+            kz_term:to_pid(Pid) ! {'kapi', kapi:delivery_message(JObj, Props)},
+            {'noreply', State};
+        'false' ->
+            case callback_handle_event(JObj, BasicDeliver, State) of
+                'ignore' -> {'noreply', State};
+                {'ignore', ModuleState} -> {'noreply', State#state{module_state=ModuleState}};
+                {'ignore', ModuleState, 'hibernate'} -> {'noreply', State#state{module_state=ModuleState}, 'hibernate'};
+                {'ignore', ModuleState, Timeout} -> {'noreply', State#state{module_state=ModuleState}, Timeout};
+                {CallbackData, ModuleState} -> distribute_event(CallbackData, JObj, BasicDeliver, State#state{module_state=ModuleState});
+                CallbackData -> distribute_event(CallbackData, JObj, BasicDeliver, State)
+            end
     end.
 
--spec distribute_event(callback_data(), kz_json:object(), deliver(), state()) -> state().
+-spec distribute_event(callback_data(), kz_json:object(), deliver(), state()) -> {'noreply', state()}.
 distribute_event(CallbackData, JObj, Deliver, #state{responders=Responders
                                                     ,consumer_key=ConsumerKey
                                                     }=State) ->
@@ -845,14 +895,22 @@ distribute_event(CallbackData, JObj, Deliver, #state{responders=Responders
          || {Evt, Callback} <- Responders,
             maybe_event_matches_key(Key, Evt)
         ],
-    State.
+    {'noreply', State}.
 
 -spec client_handle_event(kz_json:object(), kz_amqp_channel:consumer_channel(), kz_amqp_channel:consumer_pid(), responder_mfa(), callback_data(), deliver()) -> any().
 client_handle_event(JObj, 'undefined', ConsumerKey, Callback, CallbackData, Deliver) ->
     _ = kz_util:put_callid(JObj),
     _ = kz_amqp_channel:consumer_pid(ConsumerKey),
     client_handle_event(JObj, Callback, CallbackData, Deliver);
-client_handle_event(JObj, Channel, ConsumerKey, Callback, CallbackData, Deliver) ->
+client_handle_event(JObj, #kz_amqp_assignment{channel=Channel}, ConsumerKey, Callback, CallbackData, Deliver)
+  when is_pid(Channel)->
+    _ = kz_util:put_callid(JObj),
+    _ = kz_amqp_channel:consumer_pid(ConsumerKey),
+    _ = is_process_alive(Channel)
+        andalso kz_amqp_channel:consumer_channel(Channel),
+    client_handle_event(JObj, Callback, CallbackData, Deliver);
+client_handle_event(JObj, Channel, ConsumerKey, Callback, CallbackData, Deliver)
+  when is_pid(Channel) ->
     _ = kz_util:put_callid(JObj),
     _ = kz_amqp_channel:consumer_pid(ConsumerKey),
     _ = is_process_alive(Channel)
@@ -876,10 +934,11 @@ client_handle_event(JObj, {Module, Fun, 2}, CallbackData, _Deliver) ->
 -spec callback_handle_event(kz_json:object(), deliver(), state()) ->
                                    'ignore' |
                                    {'ignore', module_state()} |
+                                   {'ignore', module_state(), 'hibernate' | timeout()} |
                                    callback_data() |
                                    {callback_data(), module_state()}.
 callback_handle_event(_JObj
-                     ,{BasicDeliver, Basic}
+                     ,{Deliver, Basic}
                      ,#state{module_state=ModuleState
                             ,queue=Queue
                             ,other_queues=OtherQueues
@@ -890,61 +949,66 @@ callback_handle_event(_JObj
     [{'server', Self}
     ,{'queue', Queue}
     ,{'basic', Basic}
-    ,{'deliver', BasicDeliver}
+    ,{'deliver', Deliver}
     ,{'other_queues', props:get_keys(OtherQueues)}
     ,{'state', ModuleState}
     ];
 
 callback_handle_event(JObj
-                     ,{BasicDeliver, Basic}=Deliver
+                     ,{Deliver, Basic}
                      ,#state{module_state=ModuleState
                             ,queue=Queue
                             ,other_queues=OtherQueues
                             ,self=Self
                             ,handle_event_mfa=MFA
-                            }
+                            }=_State
                      ) ->
-    case callback_handle_event(JObj, Deliver, MFA, ModuleState) of
+    Props = [{'queue', Queue}
+            ,{'basic', Basic}
+            ,{'deliver', Deliver}
+            ,{'other_queues', props:get_keys(OtherQueues)}
+            ],
+
+    case callback_handle_event(JObj, Props, MFA, ModuleState) of
         'ignore' -> 'ignore';
         {'ignore', _NewModuleState} = Reply -> Reply;
-        {'reply', Props} when is_list(Props) ->
+        {'ignore', _NewModuleState, _TimeoutOrHibernate} = Reply -> Reply;
+        {'reply', NewProps} when is_list(NewProps) ->
             [{'server', Self}
             ,{'queue', Queue}
             ,{'basic', Basic}
-            ,{'deliver', BasicDeliver}
+            ,{'deliver', Deliver}
             ,{'other_queues', props:get_keys(OtherQueues)}
-             | Props
+             | NewProps
             ];
-        {'reply', Props, NewModuleState} when is_list(Props) ->
+        {'reply', NewProps, NewModuleState} when is_list(Props) ->
             {[{'server', Self}
              ,{'queue', Queue}
              ,{'basic', Basic}
-             ,{'deliver', BasicDeliver}
+             ,{'deliver', Deliver}
              ,{'other_queues', props:get_keys(OtherQueues)}
-              | Props
+              | NewProps
              ]
             ,NewModuleState
             };
         {'EXIT', Why} ->
-            lager:error("CRASH in handle_event ~p", [Why]),
+            lager:error("CRASH in handle_event ~p : ~p", [Why, _State]),
             [{'server', Self}
             ,{'queue', Queue}
             ,{'basic', Basic}
-            ,{'deliver', BasicDeliver}
+            ,{'deliver', Deliver}
             ,{'other_queues', props:get_keys(OtherQueues)}
             ,{'state', ModuleState}
             ]
     end.
 
--spec callback_handle_event(kz_json:object(), deliver(), mfa(), module_state()) ->
+-spec callback_handle_event(kz_json:object(), kz_term:proplist(), mfa(), module_state()) ->
                                    handle_event_return() |
                                    {'EXIT', any()}.
 callback_handle_event(JObj, _, {Module, Fun, 2}, ModuleState) ->
     catch Module:Fun(JObj, ModuleState);
-callback_handle_event(JObj, {BasicDeliver, _}, {Module, Fun, 3}, ModuleState) ->
-    catch Module:Fun(JObj, BasicDeliver, ModuleState);
-callback_handle_event(JObj, {BasicDeliver, Basic}, {Module, Fun, 4}, ModuleState) ->
-    catch Module:Fun(JObj, BasicDeliver, Basic, ModuleState);
+callback_handle_event(JObj, Props, {Module, Fun, 3}, ModuleState) ->
+    catch Module:Fun(JObj, Props, ModuleState);
 callback_handle_event(_, _, _, _) ->
     {'EXIT', 'not_exported'}.
 
@@ -975,7 +1039,7 @@ start_amqp(Props, AutoAck) ->
 
 -spec set_qos(binary(), 'undefined' | non_neg_integer()) -> 'ok'.
 set_qos(<<>>, 'undefined') ->
-    case kz_config:get_integer('amqp', 'prefetch') of
+    case kz_config:get_integer(<<"amqp">>, <<"prefetch">>) of
         [N] when is_integer(N) ->
             lager:debug("random queue getting config.ini QoS settings(~p) applied", [N]),
             kz_amqp_util:basic_qos(N);
@@ -1004,14 +1068,19 @@ remove_binding(Binding, Props, Q) ->
     end.
 
 -spec create_binding(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary()) -> any().
-create_binding(Binding, Props, Q) when not is_binary(Binding) ->
-    create_binding(kz_term:to_binary(Binding), Props, Q);
-create_binding(Binding, Props, Q) ->
-    Wapi = list_to_binary([<<"kapi_">>, kz_term:to_binary(Binding)]),
-    try (kz_term:to_atom(Wapi, 'true')):bind_q(Q, Props)
-    catch
-        'error':'undef' ->
-            erlang:error({'api_module_undefined', Wapi})
+create_binding(Binding, Props, QueueName) when not is_binary(Binding) ->
+    create_binding(kz_term:to_binary(Binding), Props, QueueName);
+create_binding(Binding, Props, QueueName) ->
+    APIModule = kz_term:to_atom(list_to_binary([<<"kapi_">>, kz_term:to_binary(Binding)]), 'true'),
+    declare_binding_exchanges(APIModule),
+    'true' = kz_module:is_exported(APIModule, 'bind_q', 2),
+    APIModule:bind_q(QueueName, Props).
+
+-spec declare_binding_exchanges(module()) -> 'ok'.
+declare_binding_exchanges(APIModule) ->
+    case kz_module:is_exported(APIModule, 'declare_exchanges', 0) of
+        'true' -> APIModule:declare_exchanges();
+        'false' -> 'ok'
     end.
 
 -spec stop_timer(kz_term:api_reference()) -> non_neg_integer() | 'false'.
@@ -1079,12 +1148,11 @@ handle_module_call(Request, From, #state{module=Module
         {'stop', Reason, Reply, ModuleState1} ->
             {'stop', Reason, Reply, State#state{module_state=ModuleState1}}
     catch
-        _E:R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("handle_call exception: ~s: ~p", [_E, R]),
-            kz_util:log_stacktrace(ST),
-            {'stop', R, State}
-    end.
+        ?STACKTRACE(_E, R, ST)
+        lager:debug("handle_call exception: ~s: ~p", [_E, R]),
+        kz_util:log_stacktrace(ST),
+        {'stop', R, State}
+        end.
 
 -spec handle_module_cast(any(), state()) -> handle_cast_return().
 handle_module_cast(Msg, #state{module=Module
@@ -1104,12 +1172,11 @@ handle_module_cast(Msg, #state{module=Module
         {'stop', Reason, ModuleState1} ->
             {'stop', Reason, State#state{module_state=ModuleState1}}
     catch
-        _E:R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("handle_cast exception: ~s: ~p", [_E, R]),
-            kz_util:log_stacktrace(ST),
-            {'stop', R, State}
-    end.
+        ?STACKTRACE(_E, R, ST)
+        lager:debug("handle_cast exception: ~s: ~p", [_E, R]),
+        kz_util:log_stacktrace(ST),
+        {'stop', R, State}
+        end.
 
 -spec handle_rm_binding(binding(), kz_term:proplist(), state()) -> state().
 handle_rm_binding(Binding, Props, #state{queue=Q
@@ -1141,21 +1208,29 @@ handle_add_binding(Binding, Props, #state{queue=Q
 -spec handle_existing_binding(binding_module(), kz_term:proplist(), state(), kz_term:ne_binary(), kz_term:proplist(), bindings()) ->
                                      state().
 handle_existing_binding(Binding, Props, State, Q, ExistingProps, Bs) ->
-    case lists:all(fun({K,V}) ->
-                           props:get_value(K, ExistingProps) =:= V;
-                      (K) ->
-                           props:get_value(K, ExistingProps) =:= 'true'
-                   end
-                  ,Props
-                  )
-    of
-        'true' when length(Props) =:= length(ExistingProps)->
-            lager:debug("binding ~s with props exists", [Binding]),
+    case binding_props_match(Props, ExistingProps) of
+        'true' ->
+            lager:debug("binding ~s with the same properties exists", [Binding]),
             State;
-        _ ->
+        'false' ->
             lager:debug("creating existing binding '~s' with new props: ~p", [Binding, Props]),
             create_binding(Binding, Props, Q),
             maybe_update_federated_bindings(State#state{bindings=[{Binding, Props}|Bs]})
+    end.
+
+-spec binding_props_match(kz_term:proplist(), kz_term:proplist()) -> boolean().
+binding_props_match([], []) -> 'true';
+binding_props_match([_|_], []) -> 'false';
+binding_props_match([], [_|_]) -> 'false';
+binding_props_match([{K, V} | Props], ExistingProps) ->
+    case props:take_value(K, ExistingProps) of
+        {V, EProps} -> binding_props_match(Props, EProps);
+        _ -> 'false'
+    end;
+binding_props_match([K | Props], ExistingProps) ->
+    case props:take_value(K, ExistingProps) of
+        {'true', EProps} -> binding_props_match(Props, EProps);
+        _ -> 'false'
     end.
 
 -spec maybe_update_federated_bindings(state()) -> state().
@@ -1260,26 +1335,51 @@ federated_queue_name(Params, Options) ->
             <<QueueName/binary, "-", Zone/binary>>
     end.
 
--spec handle_amqp_channel_available(state()) -> state().
-handle_amqp_channel_available(#state{params=Params}=State) ->
-    lager:debug("channel started, let's connect"),
+-spec handle_amqp_channel_available(state(), boolean()) -> state().
+handle_amqp_channel_available(#state{params=Params}=State, Reconnected) ->
+    log_channel_status(Reconnected),
+
     case maybe_declare_exchanges(props:get_value('declare_exchanges', Params, [])) of
         'ok' ->
             handle_exchanges_ready(State);
         {'error', _E} ->
             lager:debug("error declaring exchanges : ~p", [_E]),
-            handle_exchanges_failed(State)
+            handle_amqp_errored(State)
     end.
 
+log_channel_status('true') ->
+    lager:debug("channel restarted, let's re-connect");
+log_channel_status('false') ->
+    lager:debug("channel started, let's connect").
+
 -spec handle_exchanges_ready(state()) -> state().
-handle_exchanges_ready(#state{params=Params, auto_ack=AutoAck}=State) ->
+handle_exchanges_ready(#state{params=Params
+                             ,auto_ack=AutoAck
+                             }=State
+                      ) ->
     case start_amqp(Params, AutoAck) of
         {'ok', Q} ->
-            handle_amqp_started(State, Q);
+            State1 = handle_amqp_started(State, Q),
+            maybe_start_other_queues(State1);
         {'error', Reason} ->
             lager:error("start amqp error ~p", [Reason]),
             handle_amqp_errored(State)
     end.
+
+-spec maybe_start_other_queues(state()) -> state().
+maybe_start_other_queues(#state{other_queues=[]}=State) ->
+    lager:debug("no other queues to start"),
+    State;
+maybe_start_other_queues(#state{other_queues=Queues}=State) ->
+    lists:foldl(fun start_other_queue_fold/2
+               ,State#state{other_queues=[]}
+               ,Queues
+               ).
+
+start_other_queue_fold({QueueName, {Bindings, QueueParams}}, State) ->
+    {_Q, State1} = add_other_queue(QueueName, QueueParams, Bindings, State),
+    lager:debug("started other queue ~s as ~s", [QueueName, _Q]),
+    State1.
 
 -spec handle_amqp_started(state(), kz_term:ne_binary()) -> state().
 handle_amqp_started(#state{params=Params}=State, Q) ->
@@ -1297,18 +1397,15 @@ handle_amqp_started(#state{params=Params}=State, Q) ->
 -spec handle_amqp_errored(state()) -> state().
 handle_amqp_errored(#state{params=Params}=State) ->
     #kz_amqp_assignment{channel=Channel} = kz_amqp_assignments:get_channel(),
+    lager:debug("releasing the channel ~p", [Channel]),
     _ = (catch kz_amqp_channel:release()),
-    kz_amqp_channel:close(Channel),
-    timer:sleep(?SERVER_RETRY_PERIOD),
-    _ = channel_requisition(Params),
-    State#state{is_consuming='false'}.
 
--spec handle_exchanges_failed(state()) -> state().
-handle_exchanges_failed(#state{params=Params}=State) ->
-    #kz_amqp_assignment{channel=Channel} = kz_amqp_assignments:get_channel(),
-    _ = (catch kz_amqp_channel:release()),
+    lager:debug("closing the channel ~p", [Channel]),
     kz_amqp_channel:close(Channel),
+
     timer:sleep(?SERVER_RETRY_PERIOD),
+
+    lager:debug("requisitioning channel"),
     _ = channel_requisition(Params),
     State#state{is_consuming='false'}.
 

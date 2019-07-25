@@ -12,11 +12,14 @@
         ]).
 
 -include("kazoo_apps.hrl").
+-include_lib("kazoo_amqp/include/kazoo_amqp_pool.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(KAPPS_GETBY_ORIGIN_BINDINGS, [[{'type', <<"account">>}]
-                                     ]).
+-define(CONFIG_SECTION, <<"amqp">>).
+-define(POOL_THRESHOLD, kz_config:get_integer(?CONFIG_SECTION, <<"pool_threshold">>, ?DEFAULT_POOL_THRESHOLD)).
+
+-define(KAPPS_GETBY_ORIGIN_BINDINGS, [[{'type', <<"account">>}]]).
 
 -define(KAPPS_GETBY_PROPS, [{'origin_bindings', ?KAPPS_GETBY_ORIGIN_BINDINGS}]).
 
@@ -69,10 +72,40 @@ start_child(Spec) ->
 %%------------------------------------------------------------------------------
 -spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
+    _ = kz_nodes:bind_for_pool_state('kz_amqp_sup', self()),
+
     RestartStrategy = 'one_for_one',
     MaxRestarts = 25,
     MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, ?CHILDREN}}.
+    PoolSize =
+        case kz_config:get_integer(?CONFIG_SECTION, <<"pool_size">>) of
+            [] -> kz_config:get_integer(?CONFIG_SECTION, <<"pool_size">>, ?DEFAULT_POOL_SIZE);
+            [Size|_] -> Size
+        end,
+
+    PoolOverflow =
+        case kz_config:get_integer(?CONFIG_SECTION, <<"pool_overflow">>) of
+            [] -> kz_config:get_integer(?CONFIG_SECTION, <<"pool_overflow">>, ?DEFAULT_POOL_OVERFLOW);
+            [Overflow|_] -> Overflow
+        end,
+
+    PoolThreshold =
+        case kz_config:get_integer(?CONFIG_SECTION, <<"pool_threshold">>) of
+            [] -> ?POOL_THRESHOLD;
+            [Threshold|_] -> Threshold
+        end,
+    PoolServerConfirms = kz_config:get_boolean(?CONFIG_SECTION, <<"pool_server_confirms">>, ?DEFAULT_POOL_SERVER_CONFIRMS),
+
+    PoolArgs = [{'worker_module', 'kz_amqp_worker'}
+               ,{'name', {'local', kz_amqp_sup:pool_name()}}
+               ,{'size', PoolSize}
+               ,{'max_overflow', PoolOverflow}
+               ,{'strategy', 'fifo'}
+               ,{'neg_resp_threshold', PoolThreshold}
+               ,{'amqp_server_confirms', PoolServerConfirms}
+               ],
+
+    {'ok', {SupFlags, ?CHILDREN ++ [?POOL_NAME_ARGS(kz_amqp_sup:pool_name(), [PoolArgs])]}}.

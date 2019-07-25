@@ -1,0 +1,9 @@
+<event name="spandsp::txfaxpageresult">
+	<fields verbose="false">
+		<field name="fax_event" type="reference" />
+		<field name="Application-Name" type="static" value="send_fax" />
+		<field name="Application-Event" type="static" value="pageresult" />
+		<field name="Call-ID" type="first-of"
+			value="variable_sip_origination_call_uuid|Unique-ID" />
+	</fields>
+</event>

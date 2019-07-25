@@ -9,7 +9,10 @@
 -behaviour(application).
 
 %% Application callbacks
--export([start/2, stop/1]).
+-export([start/2
+        ,prep_stop/1
+        ,stop/1
+        ]).
 
 -include("ts.hrl").
 
@@ -26,10 +29,14 @@ start(_StartType, _StartArgs) ->
     _ = declare_exchanges(),
     trunkstore_sup:start_link().
 
+-spec prep_stop(any()) -> 'ok'.
+prep_stop(_State) ->
+    kz_nodes:unbind_for_pool_state('kz_amqp_sup', whereis('trunkstore_sup')),
+    'ok'.
+
 -spec stop(any()) -> any().
 stop(_State) ->
     'ok'.
-
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->

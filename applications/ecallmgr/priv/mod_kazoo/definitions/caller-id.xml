@@ -1,0 +1,10 @@
+<definition name="caller-id">
+	<field name="Caller-ID-Number" type="first-of"
+		value="variable_origination_caller_id_number|variable_effective_caller_id_number|Caller-Caller-ID-Number" />
+	<field name="Caller-ID-Name" type="first-of"
+		value="variable_origination_caller_id_name|variable_effective_caller_id_name|Caller-Caller-ID-Name" />
+	<field name="Callee-ID-Number" type="first-of"
+		value="variable_origination_callee_id_number|variable_effective_callee_id_number|Caller-Callee-ID-Number|Other-Leg-Caller-ID-Number" />
+	<field name="Callee-ID-Name" type="first-of"
+		value="variable_origination_callee_id_name|variable_effective_callee_id_name|Caller-Callee-ID-Name|Other-Leg-Caller-ID-Name" />
+</definition>

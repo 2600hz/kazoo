@@ -33,7 +33,7 @@
         ,flush/0, flush/1
         ,filter/1
         ,modules_loaded/0
-        ,init/0
+        ,init/0, init_mod/1
         ]).
 
 %% Helper Functions for Results of a map/2
@@ -61,8 +61,8 @@ apply(API, Args) ->
     ?MODULE:apply(API, Action, Args).
 
 -spec apply(kz_json:object(), kz_term:ne_binary(), list()) -> list().
-apply(API, Action, Args) ->
-    Category = kz_json:get_value(<<"category">>, API),
+apply(API, <<Action/binary>>, Args) when is_list(Args) ->
+    Category = kz_json:get_ne_binary_value(<<"category">>, API),
     Route = <<"tasks.", Category/binary, ".", Action/binary>>,
     lager:debug("using route ~s", [Route]),
     map(Route, Args).
@@ -74,7 +74,7 @@ apply(API, Action, Args) ->
 %% is the payload, possibly modified
 %% @end
 %%------------------------------------------------------------------------------
--type map_results() :: kz_term:proplist().
+-type map_results() :: list().
 -spec map(kz_term:ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
     kazoo_bindings:map(Routing, Payload).
@@ -223,6 +223,7 @@ init() ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     lists:foreach(fun init_mod/1, ?TASKS).
 
+-spec init_mod(module()) -> any().
 init_mod(ModuleName) ->
     lager:debug("initializing module: ~p", [ModuleName]),
     maybe_init_mod(ModuleName).

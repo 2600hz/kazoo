@@ -16,6 +16,9 @@
 
         ,compact_db/1
         ,compact_node/1
+
+         %% Used to handle auto_compaction triggers. Check init/0 for more info.
+        ,do_compact_db/1
         ]).
 
 %% Triggerables
@@ -62,16 +65,18 @@
 init() ->
     AdminNodes = kazoo_couch:get_admin_nodes(),
     %% Refresh `nodes | _nodes' db
-    kapps_maintenance:refresh(AdminNodes),
+    _ = kapps_maintenance:refresh(AdminNodes),
     %% Refresh `dbs | _dbs' db needed for the compactor/listing_by_node view.
-    kapps_maintenance:refresh(kazoo_couch:get_admin_dbs()),
+    _ = kapps_maintenance:refresh(kazoo_couch:get_admin_dbs()),
     set_node_defaults(AdminNodes),
 
     _ = case ?COMPACT_AUTOMATICALLY of
             'false' -> lager:info("node ~s not configured to compact automatically", [node()]);
             'true' ->
                 lager:info("node ~s configured to compact automatically", [node()]),
-                %% By default, `do_compact_db/1' sets `?HEUR_RATIO' as the Heuristic to use.
+                %% Need to use `do_compact_db/1' instead of `compact_db/1' because the
+                %% the former uses `?HEUR_RATIO' for heuristic and the latter ignores
+                %% heuristic and doesn't allow to improve auto compaction job exec time.
                 _ = tasks_bindings:bind(?TRIGGER_ALL_DBS, ?MODULE, 'do_compact_db')
         end,
 

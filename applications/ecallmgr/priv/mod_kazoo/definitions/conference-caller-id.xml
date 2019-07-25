@@ -1,0 +1,22 @@
+<definition name="conference-caller-id">
+	<field name="CONF-CALLER-ID-IN" type="group">
+		<filters>
+			<filter name="Call-Direction" type="include" compare="value"
+				value="inbound" />
+		</filters>
+		<fields verbose="false">
+			<field name="Caller-Caller-ID-Name" as="Caller-ID-Name" />
+			<field name="Caller-Caller-ID-Number" as="Caller-ID-Number" />
+		</fields>
+	</field>
+	<field name="CONF-CALLER-ID-OUT" type="group">
+		<filters>
+			<filter name="Call-Direction" type="include" compare="value"
+				value="outbound" />
+		</filters>
+		<fields verbose="false">
+			<field name="variable_origination_callee_id_name" as="Caller-ID-Name" />
+			<field name="variable_origination_callee_id_number" as="Caller-ID-Number" />
+		</fields>
+	</field>
+</definition>

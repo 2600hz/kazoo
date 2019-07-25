@@ -158,7 +158,7 @@ maybe_replace(JObj, Key, _Value, Formatter) ->
 -spec maybe_match_invite_format(kz_json:object(), kz_term:ne_binary(), kz_json:json_term(), kz_json:object()) ->
                                        ffun_return().
 maybe_match_invite_format(JObj, Key, Value, Formatter) ->
-    case maybe_match_invite_format(JObj, Formatter) of
+    case should_match_invite_format(JObj, Formatter) of
         'false' -> 'false';
         'true' ->
             lager:debug("matching ~s value (~p) to invite format", [Key, Value]),
@@ -197,7 +197,8 @@ maybe_match(JObj, <<"Diversions">> = Key, Value, Formatter) ->
             kz_json:set_value(Key, kzsip_diversion:set_user(Value, User), JObj);
         'nomatch' ->
             lager:debug("diversion ~s didn't match ~s"
-                       ,[kzsip_diversion:user(Value), kz_json:get_value(<<"regex">>, Formatter)]),
+                       ,[kzsip_diversion:user(Value), kz_json:get_value(<<"regex">>, Formatter)]
+                       ),
             'false'
     end;
 maybe_match(JObj, Key, Value, Formatter) ->
@@ -245,34 +246,29 @@ maybe_strip(JObj, Key, _User, _Realm, Formatter) ->
 maybe_replace(JObj, Key, _User, Realm, Formatter) ->
     case kz_json:get_value(<<"value">>, Formatter) of
         'undefined' -> 'false';
-        Replace -> kz_json:set_value(Key, <<Replace/binary, "@", Realm/binary>>, JObj)
+        Replace ->
+            lager:debug("replacing ~s in ~s with ~s", [_User, Key, Replace]),
+            kz_json:set_value(Key, <<Replace/binary, "@", Realm/binary>>, JObj)
     end.
 
 -spec maybe_match_invite_format(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
                                        ffun_return().
 maybe_match_invite_format(JObj, Key, User, Realm, Formatter) ->
-    case maybe_match_invite_format(JObj, Formatter) of
+    case should_match_invite_format(JObj, Formatter) of
         'false' -> 'false';
         'true' ->
             lager:debug("matching ~s value (~s) to invite format", [Key, User]),
             match_invite_format(JObj, Key, User, Realm)
     end.
 
--spec maybe_match_invite_format(kz_json:object(), kz_json:object()) ->
-                                       boolean().
-maybe_match_invite_format(JObj, Formatter) ->
-    case kz_json:is_true(<<"match_invite_format">>, Formatter, 'false')
-        andalso kz_json:get_ne_binary_value(<<"Invite-Format">>, JObj)
-    of
-        'false' -> 'false';
-        'undefined' -> 'false';
-        <<"loopback">> -> 'false';
-        <<"route">> -> 'false';
-        <<"username">> -> 'false';
-        <<"e164">> -> 'true';
-        <<"npan">> -> 'true';
-        <<"1npan">> -> 'true'
-    end.
+-spec should_match_invite_format(kz_json:object(), boolean() | kz_json:object()) ->
+                                        boolean().
+should_match_invite_format(_JObj, 'false') -> 'false';
+should_match_invite_format(JObj, 'true') ->
+    InviteFormat = kz_json:get_ne_binary_value(<<"Invite-Format">>, JObj),
+    lists:member(InviteFormat, [<<"e164">>, <<"npan">>, <<"1npan">>]);
+should_match_invite_format(JObj, Formatter) ->
+    should_match_invite_format(JObj, kz_json:is_true(<<"match_invite_format">>, Formatter, 'false')).
 
 -spec match_invite_format(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                  kz_json:object().

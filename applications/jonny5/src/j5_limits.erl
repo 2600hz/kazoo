@@ -25,6 +25,7 @@
 -export([reserve_amount/1]).
 -export([max_postpay/1]).
 -export([authz_resource_types/1]).
+-export([inbound_channels_per_did_rules/1]).
 
 -include("jonny5.hrl").
 
@@ -48,6 +49,7 @@
                 ,soft_limit_inbound = 'false' :: boolean()
                 ,soft_limit_outbound = 'false' :: boolean()
                 ,authz_resource_types = [] :: list()
+                ,inbound_channels_per_did_rules = kz_json:new() :: kz_json:object()
                 }).
 
 -type limits() :: #limits{}.
@@ -68,7 +70,7 @@ get(Account) ->
     end.
 
 -spec fetch(kz_term:ne_binary()) -> limits().
-fetch(Account) ->
+fetch(<<Account/binary>>) ->
     AccountId = kz_util:format_account_id(Account),
     AccountDb = kz_util:format_account_db(Account),
     JObj = kz_services_limits:fetch(AccountId),
@@ -220,6 +222,13 @@ max_postpay(#limits{max_postpay_amount=MaxPostpay}) -> MaxPostpay.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec inbound_channels_per_did_rules(limits()) -> kz_json:object().
+inbound_channels_per_did_rules(#limits{inbound_channels_per_did_rules=JObj}) -> JObj.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec authz_resource_types(limits()) -> list().
 authz_resource_types(#limits{authz_resource_types=AuthzResourceTypes}) ->
     AuthzResourceTypes.
@@ -243,10 +252,12 @@ create_limits(AccountId, AccountDb, JObj) ->
            ,bundled_twoway_trunks = kzd_limits:bundled_twoway_trunks(JObj, AccountDb)
            ,burst_trunks = kzd_limits:burst_trunks(JObj)
            ,max_postpay_amount = kzd_limits:max_postpay_units(JObj) * -1
-           ,reserve_amount = kzd_limits:reserve_units(JObj, ?DEFAULT_RATE)
+           ,reserve_amount = kzd_limits:reserve_units(JObj, kz_currency:dollars_to_units(?DEFAULT_RATE))
            ,allow_prepay = kzd_limits:allow_prepay(JObj)
            ,allow_postpay = kzd_limits:allow_postpay(JObj)
            ,allotments = kzd_limits:allotments(JObj)
            ,soft_limit_inbound = kzd_limits:soft_limit_inbound(JObj)
            ,soft_limit_outbound = kzd_limits:soft_limit_outbound(JObj)
+           ,authz_resource_types = kzd_limits:authz_resource_types(JObj)
+           ,inbound_channels_per_did_rules = kzd_limits:inbound_channels_per_did_rules(JObj)
            }.

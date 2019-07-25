@@ -1,0 +1,12 @@
+<definition name="Call-Control">
+	<field name="Call-Control" type="static" serialize-as="object">
+		<filters>
+			<filter name="ecallmgr" type="include" compare="prefix"
+				value="variable_Call-Control-" />
+		</filters>
+		<fields verbose="false">
+			<field name="variable_Call-Control-" type="prefix"
+				exclude-prefix="true" />
+		</fields>
+	</field>
+</definition>

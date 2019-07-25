@@ -31,30 +31,34 @@ handle_inbound_sms(JObj, Srv, Deliver) ->
 -spec maybe_relay_request(kz_json:object()) -> 'ack' | 'nack'.
 maybe_relay_request(JObj) ->
     {Number, Inception} = doodle_util:get_inbound_destination(JObj),
-    case knm_number:lookup_account(Number) of
-        {'error', _R} ->
-            lager:info("unable to determine account for ~s: ~p", [Number, _R]),
-            %% TODO send system notify ?
+    Map = #{number => Number
+           ,inception => Inception
+           ,request => JObj
+           },
+    Routines = [fun custom_header_token/1
+               ,fun lookup_number/1
+               ,fun account_from_number/1
+               ,fun set_inception/1
+               ,fun lookup_mdn/1
+               ,fun set_static/1
+               ,fun delete_headers/1
+               ,fun set_realm/1
+               ],
+    case kz_maps:exec(Routines, Map) of
+        #{account_id := _AccountId, used_by := <<"callflow">>} = M ->
+            lager:info("processing inbound sms request ~s in account ~s", [Number, _AccountId]),
+            process_sms_req(M);
+        #{account_id := _AccountId, used_by := _UsedBy} ->
+            lager:info("inbound sms request ~s in account ~s handled by ~s", [Number, _AccountId, _UsedBy]),
             'ack';
-        {'ok', _, NumberProps} ->
-            Routines = [fun set_account_id/3
-                       ,fun set_inception/3
-                       ,fun set_mdn/3
-                       ,fun set_static/3
-                       ,fun delete_headers/3
-                       ,fun set_realm/3
-                       ],
-            Fun = fun(F, J) -> F(Inception, NumberProps, J) end,
-            JObjReq = lists:foldl(Fun, JObj, Routines),
-
-            FetchId = kz_binary:rand_hex(16),
-            CallId =  kz_binary:rand_hex(16),
-
-            process_sms_req(FetchId, CallId, JObjReq)
+        M ->
+            lager:info("unable to determine account for ~s => ~p", [Number, M]),
+            %% TODO send system notify ?
+            'ack'
     end.
 
--spec process_sms_req(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ack' | 'nack'.
-process_sms_req(FetchId, CallId, JObj) ->
+-spec process_sms_req(map()) -> 'ack' | 'nack'.
+process_sms_req(#{fetch_id := FetchId, call_id := CallId, request := JObj}) ->
     Req = kz_json:set_values([{<<"Msg-ID">>, FetchId}
                              ,{<<"Call-ID">>, CallId}
                              ,{<<"Channel-Authorized">>, 'true'}
@@ -86,71 +90,118 @@ send_route_win(FetchId, CallId, JObj) ->
            | kz_api:default_headers(<<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("sms inbound handler sending route_win to ~s", [ServerQ]),
-    kz_amqp_worker:cast(Win, fun(Payload) -> kapi_route:publish_win(ServerQ, Payload) end),
+    _ = kz_amqp_worker:cast(Win, fun(Payload) -> kapi_route:publish_win(ServerQ, Payload) end),
     'ack'.
 
-%%------------------------------------------------------------------------------
-%% @doc determine the e164 format of the inbound number
-%% @end
-%%------------------------------------------------------------------------------
--spec set_account_id(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
-                            kz_json:object().
-set_account_id(_Inception, NumberProps, JObj) ->
-    AccountId = knm_number_options:account_id(NumberProps),
-    AccountRealm = kzd_accounts:fetch_realm(AccountId),
-    kz_json:set_values(props:filter_undefined([{?CCV(<<"Account-ID">>), AccountId}
-                                              ,{?CCV(<<"Account-Realm">>), AccountRealm}
-                                              ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
-                                              ])
-                      ,JObj
-                      ).
+custom_header_token(#{request := JObj} = Map) ->
+    case kz_json:get_ne_binary_value([<<"Custom-SIP-Headers">>, <<"X-AUTH-Token">>], JObj) of
+        'undefined' -> Map;
+        Token ->
+            custom_header_token(Map, JObj, Token)
+    end.
 
--spec set_inception(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
-                           kz_json:object().
-set_inception(<<"off-net">>, _, JObj) ->
+custom_header_token(Map, JObj, Token) ->
+    case binary:split(Token, <<"@">>, ['global']) of
+        [AuthorizingId, AccountId | _] ->
+            AccountRealm = kzd_accounts:fetch_realm(AccountId),
+            AccountDb = kz_util:format_account_db(AccountId),
+            case kz_datamgr:open_cache_doc(AccountDb, AuthorizingId) of
+                {'ok', Doc} ->
+                    Props = props:filter_undefined([{?CCV(<<"Authorizing-Type">>), kz_doc:type(Doc)}
+                                                   ,{?CCV(<<"Authorizing-ID">>), AuthorizingId}
+                                                   ,{?CCV(<<"Owner-ID">>), kzd_devices:owner_id(Doc)}
+                                                   ,{?CCV(<<"Account-ID">>), AccountId}
+                                                   ,{?CCV(<<"Account-Realm">>), AccountRealm}
+                                                   ]),
+                    Map#{authorizing_id => AuthorizingId
+                        ,account_id => AccountId
+                        ,request => kz_json:set_values(Props, JObj)
+                        };
+                _Else ->
+                    lager:warning("unexpected result reading doc ~s/~s => ~p", [AuthorizingId, AccountId, _Else]),
+                    Map
+            end;
+        _Else ->
+            lager:warning("unexpected result spliting Token => ~p", [_Else]),
+            Map
+    end.
+
+
+
+
+lookup_number(#{account_id := _AccountId} = Map) -> Map;
+lookup_number(#{number := Number} = Map) ->
+    case knm_phone_number:fetch(Number) of
+        {'error', _R} ->
+            lager:info("unable to determine account for ~s: ~p", [Number, _R]),
+            Map;
+        {'ok', KNumber} ->
+            Map#{phone_number => KNumber, used_by => knm_phone_number:used_by(KNumber)}
+    end;
+lookup_number(Map) ->
+    Map.
+
+account_from_number(#{account_id := _AccountId} = Map) -> Map;
+account_from_number(#{phone_number := KNumber, request := JObj} = Map) ->
+    case knm_phone_number:assigned_to(KNumber) of
+        'undefined' -> Map;
+        AccountId ->
+            AccountRealm = kzd_accounts:fetch_realm(AccountId),
+            Props = [{?CCV(<<"Account-ID">>), AccountId}
+                    ,{?CCV(<<"Account-Realm">>), AccountRealm}
+                    ,{?CCV(<<"Authorizing-Type">>), <<"resource">>}
+                    ],
+            Map#{account_id => AccountId
+                ,request => kz_json:set_values(Props, JObj)
+                }
+    end;
+account_from_number(Map) ->
+    Map.
+
+-spec set_inception(map()) -> map().
+set_inception(#{inception := <<"off-net">>, request := JObj} = Map) ->
     Request = kz_json:get_value(<<"From">>, JObj),
-    kz_json:set_value(?CCV(<<"Inception">>), Request, JObj);
-set_inception(_Inception, _, JObj) ->
-    kz_json:delete_keys([<<"Inception">>, ?CCV(<<"Inception">>)], JObj).
+    Map#{request => kz_json:set_value(?CCV(<<"Inception">>), Request, JObj)};
+set_inception(#{request := JObj} = Map) ->
+    Map#{request => kz_json:delete_keys([<<"Inception">>, ?CCV(<<"Inception">>)], JObj)}.
 
--spec set_mdn(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
-                     kz_json:object().
-set_mdn(<<"on-net">>, NumberProps, JObj) ->
-    Number = knm_number_options:number(NumberProps),
+-spec lookup_mdn(map()) -> map().
+lookup_mdn(#{authorizing_id := _AuthorizingId} = Map) -> Map;
+lookup_mdn(#{phone_number := KNumber, request := JObj} = Map) ->
+    Number = knm_phone_number:number(KNumber),
     case doodle_util:lookup_mdn(Number) of
         {'ok', Id, OwnerId} ->
-            kz_json:set_values(props:filter_undefined([{?CCV(<<"Authorizing-Type">>), <<"device">>}
-                                                      ,{?CCV(<<"Authorizing-ID">>), Id}
-                                                      ,{?CCV(<<"Owner-ID">>), OwnerId}
-                                                      ])
-                              ,kz_json:delete_keys([?CCV(<<"Authorizing-Type">>)
-                                                   ,?CCV(<<"Authorizing-ID">>)
-                                                   ]
-                                                  ,JObj
-                                                  )
-                              );
-        {'error', _} -> JObj
+            Props = props:filter_undefined([{?CCV(<<"Authorizing-Type">>), <<"device">>}
+                                           ,{?CCV(<<"Authorizing-ID">>), Id}
+                                           ,{?CCV(<<"Owner-ID">>), OwnerId}
+                                           ]),
+            JObj1 = kz_json:delete_keys([?CCV(<<"Authorizing-Type">>)
+                                        ,?CCV(<<"Authorizing-ID">>)
+                                        ], JObj),
+            Map#{request => kz_json:set_values(Props, JObj1)};
+        {'error', _} -> Map
     end;
-set_mdn(_Inception, _NumberProps, JObj) -> JObj.
+lookup_mdn(Map) -> Map.
 
--spec set_static(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
-                        kz_json:object().
-set_static(_Inception, _, JObj) ->
-    kz_json:set_values([{<<"Resource-Type">>, <<"sms">>}
-                       ,{<<"Call-Direction">>, <<"inbound">>}
-                       ,{?CCV(<<"Channel-Authorized">>), 'true'}
-                       ]
-                      ,JObj
-                      ).
+-spec set_static(map()) -> map().
+set_static(#{request := JObj} = Map) ->
+    FetchId = kz_api:msg_id(JObj, kz_binary:rand_hex(16)),
+    CallId =  kz_api:call_id(JObj, kz_binary:rand_hex(16)),
+    Props = [{<<"Resource-Type">>, <<"sms">>}
+            ,{<<"Call-Direction">>, <<"inbound">>}
+            ,{?CCV(<<"Channel-Authorized">>), 'true'}
+            ],
+    Map#{fetch_id => FetchId
+        ,call_id => CallId
+        ,request => kz_json:set_values(Props, JObj)
+        }.
 
--spec delete_headers(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
-                            kz_json:object().
-delete_headers(_, _, JObj) ->
-    kz_api:remove_defaults(JObj).
+-spec delete_headers(map()) -> map().
+delete_headers(#{request := JObj} = Map) ->
+    Map#{request => kz_api:remove_defaults(JObj)}.
 
--spec set_realm(kz_term:ne_binary(), knm_number_options:extra_options(), kz_json:object()) ->
-                       kz_json:object().
-set_realm(_, _, JObj) ->
+-spec set_realm(map()) -> map().
+set_realm(#{request:= JObj, account_id := _AccountId} = Map) ->
     Realm = kz_json:get_value(?CCV(<<"Account-Realm">>), JObj),
     Keys = [<<"To">>, <<"From">>, {<<"To">>, <<"Request">>}],
     KVs = lists:foldl(fun({K1, K2}, Acc) ->
@@ -160,7 +211,8 @@ set_realm(_, _, JObj) ->
                               V = kz_json:get_value(K, JObj),
                               [ set_realm_value(K, V, Realm) | Acc]
                       end, [], Keys),
-    kz_json:set_values(KVs, JObj).
+    Map#{request => kz_json:set_values(KVs, JObj)};
+set_realm(Map) -> Map.
 
 -spec set_realm_value(K, kz_term:ne_binary(), kz_term:ne_binary()) -> {K, kz_term:ne_binary()}.
 set_realm_value(K, Value, Realm) ->

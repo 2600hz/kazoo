@@ -34,7 +34,7 @@
 
 -record(invoice, {bookkeeper_hash :: kz_term:api_binary()
                  ,items = kz_services_items:empty() :: kz_services_items:items()
-                 ,activation_charges = []
+                 ,activation_charges = kz_services_activation_items:empty() :: kz_services_activation_items:items()
                  ,plan = kz_services_plan:empty() :: kz_services_plan:plan()
                  }
        ).
@@ -107,7 +107,7 @@ set_items(Invoice, Items) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec activation_charges(invoice()) -> any().
+-spec activation_charges(invoice()) -> kz_services_activation_items:items().
 activation_charges(#invoice{activation_charges=ActivationCharges}) ->
     ActivationCharges.
 
@@ -115,7 +115,7 @@ activation_charges(#invoice{activation_charges=ActivationCharges}) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_activation_charges(invoice(), any()) -> invoice().
+-spec set_activation_charges(invoice(), kz_services_activation_items:items()) -> invoice().
 set_activation_charges(Invoice, ActivationCharges) ->
     Invoice#invoice{activation_charges=ActivationCharges}.
 
@@ -170,34 +170,37 @@ setters(Invoice, Routines) ->
 %%------------------------------------------------------------------------------
 -spec public_json(invoice()) -> kz_json:object().
 public_json(Invoice) ->
-    %% TODO: calculate totals (taxes, activations)...
+    %% TODO: calculate totals (taxes)...
     ItemsJObjs = kz_services_items:public_json(items(Invoice)),
+    ActivationCharges = kz_services_activation_items:public_json(
+                          activation_charges(Invoice)
+                         ),
     PlanJObj = kz_services_plan:jobj(plan(Invoice)),
-    Props = [{<<"items">>, ItemsJObjs}
-            ,{<<"activation_charges">>, []}
+    Props = [{<<"activation_charges">>, ActivationCharges}
+            ,{<<"items">>, ItemsJObjs}
             ,{<<"taxes">>, []}
-            ,{<<"summary">>, summary(Invoice, ItemsJObjs)}
+            ,{<<"summary">>, summary(Invoice, ItemsJObjs, ActivationCharges)}
             ,{<<"plan">>, kzd_service_plan:plan(PlanJObj)}
             ,{<<"bookkeeper">>, kzd_service_plan:bookkeeper(PlanJObj)}
             ],
     kz_json:from_list(Props).
 
--spec summary(invoice(), kz_json:objects()) -> kz_json:object().
-summary(_Invoice, ItemsJObjs) ->
+-spec summary(invoice(), kz_json:objects(), kz_json:objects()) -> kz_json:object().
+summary(_Invoice, ItemsJObjs, ActivationItems) ->
     kz_json:from_list(
-      [{<<"today">>, 0.0}
+      [{<<"today">>, sum_item_totals(ActivationItems)}
       ,{<<"recurring">>, sum_item_totals(ItemsJObjs)}
       ]
      ).
 
--spec sum_item_totals(kz_json:objects()) -> non_neg_integer().
+-spec sum_item_totals(kz_json:objects()) -> float().
 sum_item_totals(ItemsJObjs) ->
-    sum_item_totals(ItemsJObjs, 0).
+    sum_item_totals(ItemsJObjs, 0.0).
 
--spec sum_item_totals(kz_json:objects(), non_neg_integer()) -> non_neg_integer().
+-spec sum_item_totals(kz_json:objects(), float()) -> float().
 sum_item_totals([], Total) -> Total;
 sum_item_totals([ItemJObj|ItemsJObjs], Total) ->
-    ItemTotal = kz_json:get_float_value(<<"total">>, ItemJObj, 0),
+    ItemTotal = kz_json:get_float_value(<<"total">>, ItemJObj, 0.0),
     sum_item_totals(ItemsJObjs, ItemTotal + Total).
 
 %%------------------------------------------------------------------------------

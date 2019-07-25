@@ -26,6 +26,7 @@
         ,output_path/1
         ,finish_task/2
         ,cleanup_task/2
+        ,attempt_upload/4, attempt_upload/6
         ]).
 
 %%% gen_server callbacks
@@ -180,11 +181,11 @@ try_to_salvage_output(TaskId=?NE_BINARY) ->
 
 try_maybe_strip_columns(Columns, CSVPath) ->
     try maybe_strip_columns(Columns, CSVPath)
-    catch _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:warning("stripping empty columns failed: ~p:~p", [_E, _R]),
-            kz_util:log_stacktrace(ST)
-    end.
+    catch
+        ?STACKTRACE(_E, _R, ST)
+        lager:warning("stripping empty columns failed: ~p:~p", [_E, _R]),
+        kz_util:log_stacktrace(ST)
+        end.
 
 maybe_strip_columns(Columns, CSVPath) ->
     maybe_strip_columns(Columns, CSVPath, sets:size(Columns)).
@@ -231,6 +232,14 @@ tac(OutputPath) ->
     lager:debug("mv ~s ~s", [Tmp, OutputPath]),
     'ok' = file:rename(Tmp, OutputPath).
 
+-spec attempt_upload(kz_term:ne_binary(), kz_term:ne_binary(), iodata(), file:filename_all()) ->
+                            'ok' | {'error', 'conflict'}.
+attempt_upload(TaskId, AName, CSV, CSVPath) ->
+    Max = ?UPLOAD_ATTEMPTS,
+    attempt_upload(TaskId, AName, CSV, CSVPath, Max, Max).
+
+-spec attempt_upload(kz_term:ne_binary(), kz_term:ne_binary(), iodata(), file:filename_all(), non_neg_integer(), pos_integer()) ->
+                            'ok' | {'error', 'conflict'}.
 attempt_upload(_TaskId, _AName, _, _, 0, _) ->
     lager:error("failed saving ~s/~s: last failing attempt", [_TaskId, _AName]),
     {'error', 'conflict'};

@@ -11,9 +11,11 @@
         ,hexencode/1
         ,from_hex/1
         ,from_hex_string/1
+        ,to_utf8/1
         ]).
 
 -export([ucfirst/1, lcfirst/1
+        ,to_camel_case/1
         ,strip/1, strip/2
         ,strip_left/2, strip_right/2
         ,suffix/2
@@ -23,6 +25,7 @@
 
 -export([clean/1, clean/2
         ,remove_white_spaces/1, remove_white_spaces/2
+        ,remove_non_numeric/1
         ]).
 
 -export([md5/1]).
@@ -79,6 +82,10 @@ remove_white_spaces(Bin, Opts) ->
 remove_white_spaces(Bin) ->
     << <<X>> || <<X>> <= Bin, X =/= $\s >>.
 
+-spec remove_non_numeric(binary()) -> binary().
+remove_non_numeric(Bin) ->
+    << <<N>> || <<N>> <= Bin, kz_term:is_ascii_number(N)>>.
+
 -spec clean(binary()) -> binary().
 clean(Bin) ->
     clean(Bin, []).
@@ -88,7 +95,7 @@ clean(Bin, Opts) ->
     Routines = [fun remove_white_spaces/2],
     lists:foldl(fun(F, B) -> F(B, Opts) end, Bin, Routines).
 
--type strip_option() :: 'both' | 'left' | 'right' | char() | nonempty_string().
+-type strip_option() :: 'both' | 'left' | 'right' | char() | nonempty_string() | <<_:8>>.
 -type strip_options() :: [strip_option()].
 
 -spec strip(binary()) -> binary().
@@ -100,7 +107,8 @@ strip(B, 'right') -> strip_right(B, $\s);
 strip(B, 'both') -> strip_right(strip_left(B, $\s), $\s);
 strip(B, C) when is_integer(C) -> strip_right(strip_left(B, C), C);
 strip(B, Cs) when is_list(Cs) ->
-    lists:foldl(fun(C, Acc) -> strip(Acc, C) end, B, Cs).
+    lists:foldl(fun(C, Acc) -> strip(Acc, C) end, B, Cs);
+strip(B, <<C>>) -> strip(B, C).
 
 -spec strip_left(binary(), char() | binary()) -> binary().
 strip_left(<<C, B/binary>>, C) -> strip_left(B, C);
@@ -204,6 +212,13 @@ ucfirst(<<F:8, Bin/binary>>) -> <<(kz_term:to_upper_char(F)):8, Bin/binary>>.
 -spec lcfirst(kz_term:ne_binary()) -> kz_term:ne_binary().
 lcfirst(<<F:8, Bin/binary>>) -> <<(kz_term:to_lower_char(F)):8, Bin/binary>>.
 
+-spec to_camel_case(any()) -> binary().
+to_camel_case(Binary) when is_binary(Binary) ->
+    << <<(ucfirst(kz_term:to_lower_binary(Word)))/binary>>
+       || Word <- binary:split(Binary, [<<$_>>, <<$->>, <<$.>>], [global]),
+          Word =/= <<>>
+    >>.
+
 -spec pos(char(), binary()) -> non_neg_integer() | -1.
 pos(Char, Bin) ->
     pos(Char, Bin, 0).
@@ -226,3 +241,16 @@ reverse(Binary) ->
     Size = erlang:size(Binary)*8,
     <<X:Size/integer-little>> = Binary,
     <<X:Size/integer-big>>.
+
+-spec to_utf8(binary()) -> binary().
+to_utf8(<<Value/binary>>) ->
+    %% io_lib:printable_unicode_list/1 check added to avoid encoding file's content
+    %% like audio files.
+    case io_lib:printable_unicode_list(binary_to_list(Value)) of
+        'true' ->
+            %% it must be a string or bitstring
+            unicode:characters_to_binary(io_lib:format("~ts", [Value]));
+        'false' ->
+            %% it must be a file's content
+            Value
+    end.

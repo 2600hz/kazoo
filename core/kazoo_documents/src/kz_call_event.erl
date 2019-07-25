@@ -11,12 +11,16 @@
         ,application_event/1
         ,application_name/1
         ,application_response/1
+        ,application_uuid/1
         ,authorizing_id/1
         ,authorizing_type/1
         ,billing_seconds/1
         ,call_direction/1, call_direction/2
         ,call_id/1
+        ,channel_answer_state/1
+        ,channel_call_state/1
         ,channel_name/1
+        ,channel_state/1
         ,custom_channel_var/2, custom_channel_var/3
         ,custom_channel_vars/1, custom_channel_vars/2
         ,custom_application_var/2, custom_application_var/3
@@ -87,6 +91,18 @@ request(JObj) ->
 -spec channel_name(doc()) -> kz_term:api_ne_binary().
 channel_name(JObj) ->
     kz_json:get_ne_binary_value(<<"Channel-Name">>, JObj).
+
+-spec channel_state(doc()) -> kz_term:api_ne_binary().
+channel_state(JObj) ->
+    kz_json:get_ne_binary_value(<<"Channel-State">>, JObj).
+
+-spec channel_call_state(doc()) -> kz_term:api_ne_binary().
+channel_call_state(JObj) ->
+    kz_json:get_ne_binary_value(<<"Channel-Call-State">>, JObj).
+
+-spec channel_answer_state(doc()) -> kz_term:api_ne_binary().
+channel_answer_state(JObj) ->
+    kz_json:get_ne_binary_value(<<"Channel-Answer-State">>, JObj).
 
 -spec custom_channel_vars(doc()) -> kz_term:api_object().
 custom_channel_vars(JObj) ->
@@ -177,6 +193,10 @@ application_event(JObj) ->
 -spec application_data(doc()) -> kz_json:object().
 application_data(JObj) ->
     kz_json:get_json_value(<<"Application-Data">>, JObj, kz_json:new()).
+
+-spec application_uuid(doc()) -> kz_term:api_binary().
+application_uuid(JObj) ->
+    kz_json:get_ne_binary_value(<<"Application-UUID">>, JObj).
 
 -spec application_response(doc()) -> kz_term:api_ne_binary().
 application_response(JObj) ->

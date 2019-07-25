@@ -39,9 +39,8 @@ main(_) ->
            }
 
            %% regex to find `@public' tag.
-           %% TODO: remove private tag from this regex in a distant future.
-          ,{"ag -G '(erl|erl.src|hrl|hrl.src|escript)$' '%%* *@(public|private)' core/ applications/"
-           ,"remove public/private tag"
+          ,{"ag -G '(erl|erl.src|hrl|hrl.src|escript)$' '%%* *@(public)' core/ applications/"
+           ,"remove public tag"
            ,fun remove_public_tag/1
            }
 

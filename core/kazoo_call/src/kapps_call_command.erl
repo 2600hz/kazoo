@@ -8,8 +8,6 @@
 %%%-----------------------------------------------------------------------------
 -module(kapps_call_command).
 
--include("kapps_call_command.hrl").
-
 -export([presence/2, presence/3, presence/4, presence/5]).
 -export([channel_status/1, channel_status/2
         ,channel_status_command/1, channel_status_command/2
@@ -77,6 +75,8 @@
         ,play_leg/1
         ]).
 -export([prompt/2, prompt/3]).
+
+-export([seek/1, seek/2, seek/3]).
 
 -export([tts/2, tts/3, tts/4, tts/5, tts/6
         ,b_tts/2, b_tts/3, b_tts/4, b_tts/5, b_tts/6
@@ -178,7 +178,7 @@
 -export([wait_for_application_or_dtmf/2]).
 -export([collect_digits/2, collect_digits/3
         ,collect_digits/4, collect_digits/5
-        ,collect_digits/6
+        ,collect_digits/6, collect_digits/7
         ]).
 -export([send_command/2]).
 
@@ -216,6 +216,12 @@
 -export([hold_control/1, hold_control/2
         ,hold_control_command/1, hold_control_command/2
         ]).
+
+-export([event_actions_command/2
+        ,register_event_actions/2
+        ]).
+
+-include("kapps_call_command.hrl").
 
 -type audio_macro_prompt() ::
         %% {'play', MediaName [, Terminators [, Leg]]}
@@ -267,6 +273,7 @@
 
 -define(BRIDGE_EXPORT_VARS, kapps_config:get_ne_binaries(?CONFIG_CAT, <<"export_bridge_variables">>, ?BRIDGE_DEFAULT_EXPORT_VARS)).
 -define(BRIDGE_DEFAULT_EXPORT_VARS, [<<"hold_music">>]).
+-define(DEFAULT_SEEK_DURATION, 10 * ?MILLISECONDS_IN_SECOND).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -413,7 +420,7 @@ channel_status(Call) ->
 -spec b_channel_status(kz_term:api_binary() | kapps_call:call()) ->
                               kapps_api_std_return().
 b_channel_status('undefined') -> {'error', 'no_channel_id'};
-b_channel_status(ChannelId) when is_binary(ChannelId) ->
+b_channel_status(<<ChannelId/binary>>) ->
     Command = [{<<"Call-ID">>, ChannelId}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
@@ -1520,6 +1527,45 @@ b_play(Media, Terminators, Leg, Endless, Call) ->
     wait_for_noop(Call, play(Media, Terminators, Leg, Endless, Call)).
 
 %%------------------------------------------------------------------------------
+%% @doc Produces the low level AMQP request to seek through the playing media.
+%% This request will execute immediately.
+%% @end
+%%------------------------------------------------------------------------------
+-spec seek(kapps_call:call()) -> kz_term:api_ne_binary().
+seek(Call) ->
+    seek('fastforward', ?DEFAULT_SEEK_DURATION, Call).
+
+-spec seek(integer(), kapps_call:call()) -> kz_term:api_ne_binary().
+seek(Duration, Call) when Duration > 0 ->
+    seek('fastforward', Duration, Call);
+seek(Duration, Call) when Duration < 0 ->
+    seek('rewind', -Duration, Call);
+seek(0, _Call) ->
+    'undefined'.
+
+-type seek_direction() :: 'fastforward' | 'rewind'.
+
+-spec seek(seek_direction(), integer(), kapps_call:call()) -> kz_term:api_ne_binary().
+seek(Direction, Duration, Call) when Duration > 0 ->
+    NoopId = noop_id(),
+    Command = seek_command(Direction, Duration),
+    send_command(Command, Call),
+    NoopId;
+seek(_Direction, _NotPositive, _Call) -> 'undefined'.
+
+-spec seek_command(seek_direction(), pos_integer()) -> kz_json:object().
+seek_command(Direction, Duration) ->
+    kz_json:from_list([{<<"Application-Name">>, <<"playseek">>}
+                      ,{<<"Direction">>, seek_direction(Direction, Duration)}
+                      ,{<<"Duration">>, Duration}
+                      ,{<<"Insert-At">>, <<"now">>}
+                      ]).
+
+-spec seek_direction(seek_direction(), integer()) -> kz_term:ne_binary().
+seek_direction('fastforward', Duration) when Duration > 0 -> <<"fastforward">>;
+seek_direction('rewind', Duration) when Duration < 0 -> <<"rewind">>.
+
+%%------------------------------------------------------------------------------
 %% @doc requests the TTS engine to create an audio file to play the desired
 %% text.
 %% @end
@@ -1678,7 +1724,7 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 
 -spec verify_media_name(kz_json:object(), kz_term:ne_binary()) -> boolean().
 verify_media_name(JObj, MediaName) ->
-    case kzc_recording:get_response_media(JObj) of
+    case kz_recording:response_media(JObj) of
         {_, MediaName} -> 'true';
         _ -> 'false'
     end.
@@ -2369,6 +2415,7 @@ b_privacy(Mode, Call) ->
                             ,call :: kapps_call:call()
                             ,digits_collected = <<>> :: binary()
                             ,after_timeout = ?MILLISECONDS_IN_DAY :: pos_integer()
+                            ,flush_on_digit = 'true'
                             }).
 -type wcc_collect_digits() :: #wcc_collect_digits{}.
 
@@ -2419,15 +2466,28 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) ->
                                          ,after_timeout=kz_term:to_integer(Timeout)
                                          }).
 
+-spec collect_digits(integer(), integer(), integer(), kz_term:api_binary(), list(), boolean(), kapps_call:call()) ->
+                            collect_digits_return().
+collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, FlushOnDigit, Call) ->
+    do_collect_digits(#wcc_collect_digits{max_digits=kz_term:to_integer(MaxDigits)
+                                         ,timeout=kz_term:to_integer(Timeout)
+                                         ,interdigit=kz_term:to_integer(Interdigit)
+                                         ,noop_id=NoopId
+                                         ,terminators=Terminators
+                                         ,call=Call
+                                         ,flush_on_digit=FlushOnDigit
+                                         }).
+
 -spec do_collect_digits(wcc_collect_digits()) -> collect_digits_return().
 do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
                                      ,timeout=Timeout
                                      ,interdigit=Interdigit
                                      ,noop_id=NoopId
-                                     ,terminators=Terminators
                                      ,call=Call
+                                     ,terminators=Terminators
                                      ,digits_collected=Digits
                                      ,after_timeout=After
+                                     ,flush_on_digit=FlushOnDigit
                                      }=Collect) ->
     Start = os:timestamp(),
     case receive_event(After) of
@@ -2444,10 +2504,9 @@ do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
                     do_collect_digits(Collect);
                 {'decrement'} ->
                     do_collect_digits(Collect#wcc_collect_digits{after_timeout=kz_time:decr_timeout(After, Start)});
-                {'ok', Digit} ->
+                {'dtmf', Digit} ->
                     %% DTMF received, collect and start interdigit timeout
-                    Digits =:= <<>>
-                        andalso flush(Call),
+                    _ = maybe_flash_on_digit(FlushOnDigit, Digits, Call),
 
                     case lists:member(Digit, Terminators) of
                         'true' ->
@@ -2512,10 +2571,14 @@ handle_collect_digit_event(JObj, NoopId, {<<"call_event">>, <<"CHANNEL_EXECUTE_C
             {'noop_complete'}
     end;
 handle_collect_digit_event(JObj, _NoopId, {<<"call_event">>, <<"DTMF">>, _}) ->
-    {'ok', kz_json:get_value(<<"DTMF-Digit">>, JObj, <<>>)};
+    {'dtmf', kz_json:get_value(<<"DTMF-Digit">>, JObj, <<>>)};
 handle_collect_digit_event(_JObj, _NoopId, _EventType) ->
     {'decrement'}.
 
+-spec maybe_flash_on_digit(boolean(), binary(), kapps_call:call()) ->
+                                  kapps_api_std_return().
+maybe_flash_on_digit('true', <<>>, Call) -> flush(Call);
+maybe_flash_on_digit(_FlushOnDigit, _Digits, _Call) -> 'ok'.
 %%------------------------------------------------------------------------------
 %% @doc Low level function to consume call events, looping until a specific
 %% one occurs.  If the channel is hungup or no call events are received
@@ -2746,19 +2809,29 @@ wait_for_bridge(Timeout, Fun, Call) ->
 
 wait_for_bridge(_Timeout, _Fun, _Call, _Start, {'error', 'timeout'}=E) -> E;
 wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
+    ThisCallId = kapps_call:call_id_direct(Call),
+    EvtCallId = kz_call_event:call_id(JObj),
     Disposition = kz_json:get_value(<<"Disposition">>, JObj),
     Cause = kz_json:get_first_defined([<<"Application-Response">>
                                       ,<<"Hangup-Cause">>
                                       ], JObj, <<"UNSPECIFIED">>),
+    Code = kz_json:get_value(<<"Hangup-Code">>, JObj),
     Result = case Disposition =:= <<"SUCCESS">>
                  orelse Cause =:= <<"SUCCESS">>
+                 orelse Code =:= <<"sip:200">>
              of
                  'true' -> 'ok';
                  'false' -> 'fail'
              end,
-    case get_event_type(JObj) of
+    case ThisCallId =:= EvtCallId
+        andalso get_event_type(JObj)
+    of
+        'false' ->
+            NewTimeout = kz_time:decr_timeout(Timeout, Start),
+            NewStart = os:timestamp(),
+            wait_for_bridge(NewTimeout, Fun, Call, NewStart, receive_event(NewTimeout));
         {<<"error">>, _, <<"bridge">>} ->
-            lager:debug("channel execution error while waiting for bridge: ~s", [kz_json:encode(JObj)]),
+            lager:debug("channel execution error while waiting for bridge"),
             {'error', JObj};
         {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
             CallId = kz_json:get_value(<<"Other-Leg-Call-ID">>, JObj),
@@ -2768,15 +2841,30 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
                 'true' -> Fun(JObj)
             end,
             wait_for_bridge('infinity', Fun, Call);
+        {<<"call_event">>, <<"CHANNEL_REPLACED">>, _} ->
+            CallId = kz_json:get_value(<<"Replaced-By">>, JObj),
+            _ = kz_util:put_callid(CallId),
+            NewTimeout = kz_time:decr_timeout(Timeout, Start),
+            NewStart = os:timestamp(),
+            lager:info("bridge channel replaced ~s for ~s", [EvtCallId, CallId]),
+            wait_for_bridge(NewTimeout, Fun, kapps_call:set_call_id(CallId, Call), NewStart, receive_event(NewTimeout));
+        {<<"call_event">>, <<"CHANNEL_DIRECT">>, _} ->
+            CallId = kz_json:get_value(<<"Connecting-Leg-A-UUID">>, JObj),
+            _ = kz_util:put_callid(CallId),
+            NewTimeout = kz_time:decr_timeout(Timeout, Start),
+            NewStart = os:timestamp(),
+            lager:info("bridge channel replaced ~s for ~s", [EvtCallId, CallId]),
+            wait_for_bridge(NewTimeout, Fun, kapps_call:set_call_id(CallId, Call), NewStart, receive_event(NewTimeout));
         {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
             %% TODO: reduce log level if no issue is found with
             %%    basing the Result on Disposition
-            lager:info("bridge channel destroy completed with result ~s(~s)", [Disposition, Result]),
+            lager:info("bridge channel destroy completed with result ~s/~s/~s => ~s", [Disposition, Cause, Code, Result]),
             {Result, JObj};
+        {<<"call_event">>, <<"CHANNEL_DISCONNECTED">>, _} ->
+            lager:info("channel disconnected while waiting for bridge"),
+            {'ok', JObj};
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
-            %% TODO: reduce log level if no issue is found with
-            %%    basing the Result on Disposition
-            lager:info("bridge channel execute completed with result ~s(~s)", [Disposition, Result]),
+            lager:info("bridge execute completed with result ~s/~s/~s => ~s", [Disposition, Cause, Code, Result]),
             {Result, JObj};
         _E ->
             NewTimeout = kz_time:decr_timeout(Timeout, Start),
@@ -3413,4 +3501,18 @@ start_sound_touch(Options, Call) ->
 -spec stop_sound_touch(kapps_call:call()) -> 'ok'.
 stop_sound_touch(Call) ->
     Command = sound_touch_command([{<<"Action">>, <<"stop">>}], Call),
+    send_command(Command, Call).
+
+-spec event_actions_command(kz_json:object(), kapps_call:call()) ->kz_term:api_terms().
+event_actions_command(Actions, Call) ->
+    kz_json:from_list(
+      [{<<"Application-Name">>, <<"event_actions">>}
+      ,{<<"Event-Actions">>, Actions}
+      ,{<<"Insert-At">>, <<"now">>}
+      ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+      ]).
+
+-spec register_event_actions(kz_json:object(), kapps_call:call()) -> 'ok'.
+register_event_actions(Actions, Call) ->
+    Command = event_actions_command(Actions, Call),
     send_command(Command, Call).

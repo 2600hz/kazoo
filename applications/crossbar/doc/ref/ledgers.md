@@ -13,7 +13,7 @@ Key | Description | Type | Default | Required | Support Level
 `account.id` | Account ID | `string()` |   | `false` |  
 `account.name` | Account name | `string()` |   | `false` |  
 `account` | Account info | `object()` |   | `false` |  
-`amount` | Ledger amount | `integer()` |   | `false` |  
+`amount` | Ledger amount, in currency amount | `number()` |   | `false` |  
 `description` | Useful description for ledger | `string()` |   | `false` |  
 `metadata` | Metadata for ledger document | `object()` |   | `false` |  
 `period.end` | Period end | `integer()` |   | `false` |  
@@ -47,16 +47,6 @@ curl -v -X GET \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{SOURCE_SERVICE}
-```
-
-## Fetch
-
-> GET /v2/accounts/{ACCOUNT_ID}/ledgers/summary_by_accounts
-
-```shell
-curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/summary_by_accounts
 ```
 
 ## Create
@@ -107,5 +97,15 @@ curl -v -X GET \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/{SOURCE_SERVICE}/{LEDGER_ID}
+```
+
+## Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/ledgers/summary/{MODB_SUFFIX}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ledgers/summary/{MODB_SUFFIX}
 ```
 

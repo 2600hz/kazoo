@@ -248,7 +248,7 @@ compare_names([?REG(_N, _, _)|_Reg], _Names) ->
     lager:debug("failed to find ~p in ~p (~p)", [_N, _Names, _Reg]),
     'false'.
 
-remote_register(Remote, Name, Pid) ->
+remote_register(Remote, Name, _Pid) ->
     Payload = [{<<"Name">>, Name}
               ,{<<"State">>, 'pending'}
               ,{<<"Node">>, remote_node_name(Remote)}

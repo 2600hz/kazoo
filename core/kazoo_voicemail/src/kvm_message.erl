@@ -226,7 +226,7 @@ message(AccountId, MessageId, BoxId) ->
 %% <div class="notice">For use by {@link cf_voicemail} only.</div>
 %% @end
 %%------------------------------------------------------------------------------
--spec set_folder(Folder, Message, AccountId) -> db_ret() when Folder::kz_term:ne_binary(),
+-spec set_folder(Folder, Message, AccountId) -> db_ret() when Folder::vm_folder(),
                                                               Message::kz_json:object(),
                                                               AccountId::kz_term:ne_binary().
 set_folder(Folder, Message, AccountId) ->
@@ -238,7 +238,7 @@ set_folder(Folder, Message, AccountId) ->
         {'error', _} -> {'error', Message}
     end.
 
--spec maybe_set_folder(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> db_ret().
+-spec maybe_set_folder(kz_term:ne_binary(), vm_folder(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> db_ret().
 maybe_set_folder(_, ?VM_FOLDER_DELETED = ToFolder, MessageId, AccountId, _Msg) ->
     %% ensuring that message is really deleted
     change_folder(ToFolder, MessageId, AccountId, 'undefined');
@@ -693,6 +693,7 @@ fake_vmbox_jobj(Call, Props) ->
                              {'error', kapps_call:call()}.
 store_recording(AttachmentName, Url, Call, MessageId) ->
     case kapps_call_command:store_file(<<"/tmp/", AttachmentName/binary>>, Url, Call) of
+        'ok' when is_function(Url, 0) -> 'ok';
         'ok' -> lager:debug("stored ~s to ~s", [AttachmentName, Url]);
         {'error', _R} ->
             lager:warning("error during storing voicemail recording ~s , checking attachment existence: ~p", [MessageId, _R]),
@@ -752,17 +753,16 @@ prepend_and_notify(Call, ForwardId, Metadata, SrcBoxId, Props) ->
             UpdateFuns = [fun(J) -> kz_json:set_value(<<"forward_join_error">>, ErrorMessage, J) end],
             forward_to_vmbox(Call, Metadata, SrcBoxId, Props, UpdateFuns)
     catch
-        _T:_E ->
-            remove_malform_vm(Call, ForwardId),
-            ST = erlang:get_stacktrace(),
-            ErrorMessage = kz_term:to_binary(io_lib:format("exception occurred during prepend and joining audio files: ~p:~p", [_T, _E])),
-            lager:error(ErrorMessage),
-            kz_util:log_stacktrace(ST),
+        ?STACKTRACE(_T, _E, ST)
+        remove_malform_vm(Call, ForwardId),
+        ErrorMessage = kz_term:to_binary(io_lib:format("exception occurred during prepend and joining audio files: ~p:~p", [_T, _E])),
+        lager:error(ErrorMessage),
+        kz_util:log_stacktrace(ST),
 
-            %% prepend failed, so at least try to forward without a prepend message
-            UpdateFuns = [fun(J) -> kz_json:set_value(<<"forward_join_error">>, ErrorMessage, J) end],
-            forward_to_vmbox(Call, Metadata, SrcBoxId, Props, UpdateFuns)
-    end.
+        %% prepend failed, so at least try to forward without a prepend message
+        UpdateFuns = [fun(J) -> kz_json:set_value(<<"forward_join_error">>, ErrorMessage, J) end],
+        forward_to_vmbox(Call, Metadata, SrcBoxId, Props, UpdateFuns)
+        end.
 
 -spec prepend_forward_message(kapps_call:call(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:proplist()) -> db_ret().
 prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->

@@ -67,7 +67,7 @@ start_link(RatedeckDb, ExpiresS) ->
     gen_server:start_link({'local', ProcName}, ?MODULE, [RatedeckDb, ExpiresS], []).
 
 -spec stop(kz_term:ne_binary()) -> 'ok'.
-stop(<<_/binary>>=RatedeckId) ->
+stop(<<RatedeckId/binary>>) ->
     ProcName = hon_trie:trie_proc_name(RatedeckId),
     case whereis(ProcName) of
         'undefined' -> 'ok';
@@ -82,7 +82,7 @@ cache_rates(RatedeckId, Rates) ->
 -spec init([kz_term:ne_binary() | pos_integer()]) -> {'ok', state()}.
 init([RatedeckDb, ExpiresS]) ->
     kz_util:put_callid(hon_trie:trie_proc_name(RatedeckDb)),
-    lager:info("starting LRU for ~s", [RatedeckDb]),
+    lager:debug("starting LRU for ~s", [RatedeckDb]),
     {'ok', #state{trie=trie:new()
                  ,ratedeck_db=RatedeckDb
                  ,check_ref=start_expires_check_timer(ExpiresS)
@@ -92,7 +92,7 @@ init([RatedeckDb, ExpiresS]) ->
 
 -spec start_expires_check_timer(pos_integer()) -> reference().
 start_expires_check_timer(ExpiresS) ->
-    Check = (ExpiresS * ?MILLISECONDS_IN_SECOND) div 2,
+    Check = (ExpiresS * ?MILLISECONDS_IN_SECOND) div 3,
     erlang:start_timer(Check, self(), ?CHECK_MSG(ExpiresS)).
 
 -spec handle_call(any(), kz_term:pid_ref(), state()) ->
@@ -113,7 +113,6 @@ handle_call(_Req, _From, State) ->
 
 -spec handle_cast(any(), state()) -> {'noreply', state()}.
 handle_cast('stop', State) ->
-    lager:info("requested to stop"),
     {'stop', 'normal', State};
 handle_cast(_Req, State) ->
     lager:debug("unhandled cast ~p", [_Req]),
@@ -166,6 +165,8 @@ has_expired_rates([{_RateId, LastUsed}|Rates], OldestTimestamp) ->
     end.
 
 -spec terminate(any(), state()) -> 'ok'.
+terminate('normal', _State) -> 'ok';
+terminate('shutdown', _State) -> 'ok';
 terminate(_Reason, _State) ->
     lager:info("terminating: ~p", [_Reason]).
 

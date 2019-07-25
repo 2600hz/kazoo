@@ -1,0 +1,115 @@
+paths:
+  /accounts/{ACCOUNT_ID}/tasks:
+    get:
+      operationId: GetAccountsAccountIdTasks
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all tasks
+      tags:
+        - tasks
+    put:
+      operationId: PutAccountsAccountIdTasks
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/tasks'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of tasks
+      tags:
+        - tasks
+  /accounts/{ACCOUNT_ID}/tasks/{TASK_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdTasksTaskId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/TASK_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of tasks
+      tags:
+        - tasks
+    get:
+      operationId: GetAccountsAccountIdTasksTaskId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/TASK_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a tasks by ID
+      tags:
+        - tasks
+    patch:
+      operationId: PatchAccountsAccountIdTasksTaskId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/TASK_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/tasks'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of tasks
+      tags:
+        - tasks
+  /accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input:
+    get:
+      operationId: GetAccountsAccountIdTasksTaskIdInput
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/TASK_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get input of tasks
+      tags:
+        - tasks
+  /accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output:
+    get:
+      operationId: GetAccountsAccountIdTasksTaskIdOutput
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/TASK_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get output of tasks
+      tags:
+        - tasks
+  /accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/stop:
+    patch:
+      operationId: PatchAccountsAccountIdTasksTaskIdStop
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/TASK_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/tasks'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of tasks
+      tags:
+        - tasks

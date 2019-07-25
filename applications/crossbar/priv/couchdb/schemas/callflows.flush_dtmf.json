@@ -7,6 +7,10 @@
             "default": "default",
             "description": "Flush collected DTMF in a named key",
             "type": "string"
+        },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
         }
     },
     "type": "object"

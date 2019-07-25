@@ -1,0 +1,18 @@
+<definition name="loopback">
+	<field name="variable_is_loopback" as="Channel-Is-Loopback"
+		serialize-as="boolean" />
+	<field name="Loopback" type="group">
+		<filters>
+			<filter name="variable_is_loopback" type="include" compare="value"
+				value="1" />
+		</filters>
+		<fields verbose="false">
+			<field name="variable_loopback_leg" as="Channel-Loopback-Leg" />
+			<field name="variable_other_loopback_leg_uuid" as="Channel-Loopback-Other-Leg-ID" />
+			<field name="variable_loopback_bowout" as="Channel-Loopback-Bowout"
+				serialize-as="boolean" />
+			<field name="variable_loopback_bowout_on_execute" as="Channel-Loopback-Bowout-Execute"
+				serialize-as="boolean" />
+		</fields>
+	</field>
+</definition>

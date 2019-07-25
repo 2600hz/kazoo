@@ -1,0 +1,20 @@
+<definition name="fetch-info">
+	<field name="Event-Category" type="static" value="fetch" />
+	<field name="App-Name" type="static" value="freeswitch" />
+	<field name="App-Version" type="static" value="1.0" />
+	<field name="Switch-Nodename" as="Node" />
+	<field name="Fetch-UUID" />
+	<field name="Fetch-UUID" as="Msg-ID" />
+	<field name="Call-ID" type="first-of" value="Unique-ID" />
+	<field name="Fetch-Section" />
+	<field name="Fetch-Timeout" />
+	<field name="Fetch-Timestamp-Micro" />
+	<field name="Kazoo-Bundle" as="Fetch-Version" />
+	<field name="Custom-SIP-Headers" type="reference" />
+	<field name="Custom-Channel-Vars" type="reference" />
+	<field name="Custom-Application-Vars" type="reference" />
+	<field name="freeswitch-url" type="reference" />
+	<field name="Control" type="reference" />
+	<field name="Privacy" type="reference" />
+	<field name="debug-call" type="reference" />
+</definition>

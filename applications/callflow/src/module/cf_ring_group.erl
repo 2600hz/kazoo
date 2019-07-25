@@ -53,7 +53,8 @@ repeat(Data, Call, N) ->
                [] ->
                    lager:notice("ring group has no endpoints, moving to next callflow element"),
                    'no_endpoints';
-               Endpoints -> attempt_endpoints(Endpoints, Data, Call)
+               Endpoints ->
+                   attempt_endpoints(Endpoints, Data, Call)
            end,
     repeat(Data, Call, N, Next).
 
@@ -81,7 +82,7 @@ attempt_endpoints(Endpoints, Data, Call) ->
     Ringback = kz_json:get_ne_binary_value(<<"ringback">>, Data),
     IgnoreForward = kz_json:get_binary_boolean(<<"ignore_forward">>, Data, <<"true">>),
 
-    lager:info("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
+    lager:info("attempting ring group of ~b endpoints with strategy ~s", [length(Endpoints), Strategy]),
     case kapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>
                                     ,kz_media_util:media_path(Ringback, kapps_call:account_id(Call))
                                     ,'undefined', IgnoreForward, FailOnSingleReject, Call
@@ -109,33 +110,47 @@ attempt_endpoints(Endpoints, Data, Call) ->
 get_endpoints(Data, Call) ->
     receive_endpoints(start_builders(Data, Call)).
 
--spec receive_endpoints(kz_term:pids()) -> kz_json:objects().
+-spec receive_endpoints(kz_term:pid_refs()) -> kz_json:objects().
 receive_endpoints(Builders) ->
-    lists:foldl(fun receive_endpoint_fold/2, [], Builders).
+    %% Builders are in member order; since receive_endpoint_fold/2 prepends
+    %% we foldr to build the list to maintain member order
+    lists:foldr(fun receive_endpoint_fold/2, [], Builders).
 
--spec receive_endpoint_fold(pid(), kz_json:objects()) -> kz_json:objects().
-receive_endpoint_fold(Pid, Acc) ->
+-spec receive_endpoint_fold({pid(), reference()}, kz_json:objects()) -> kz_json:objects().
+receive_endpoint_fold({Pid, Ref}, Acc) ->
     receive
-        {Pid, {'ok', EP}} when is_list(EP) -> EP ++ Acc;
-        {Pid, {'ok', EP}} -> [EP | Acc];
-        {Pid, _} -> Acc
+        {Pid, _EndpointId, {'ok', EP}} when is_list(EP) ->
+            lager:debug("recv endpoints for ~s", [_EndpointId]),
+            EP ++ Acc;
+        {Pid, _EndpointId, {'ok', EP}} ->
+            lager:debug("recv endpoint for ~s", [_EndpointId]),
+            [EP | Acc];
+        {Pid, _EndpointId, _Error} ->
+            lager:info("building endpoint ~s failed: ~p", [_EndpointId, _Error]),
+            Acc;
+        {'DOWN', Ref, 'process', Pid, 'normal'} ->
+            Acc;
+        {'DOWN', Ref, 'process', Pid, _Reason} ->
+            lager:info("builder ~p exited abnormally: ~p", [Pid, _Reason]),
+            Acc
     end.
 
--spec start_builders(kz_json:object(), kapps_call:call()) -> kz_term:pids().
+-spec start_builders(kz_json:object(), kapps_call:call()) -> kz_term:pid_refs().
 start_builders(Data, Call) ->
+    %% resolve_endpoint_ids/2 returns endpoints in member order
     [start_builder(EndpointId, Member, Call)
      || {EndpointId, Member} <- resolve_endpoint_ids(Data, Call)
     ].
 
--spec start_builder(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) -> pid().
+-spec start_builder(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) -> {pid(), reference()}.
 start_builder(EndpointId, Member, Call) ->
-    S = self(),
-    kz_util:spawn(
-      fun() ->
-              kz_util:put_callid(kapps_call:call_id(Call)),
-              S ! {self(), catch kz_endpoint:build(EndpointId, Member, Call)}
-      end
-     ).
+    kz_util:spawn_monitor(fun builder/4, [EndpointId, Member, Call, self()]).
+
+-spec builder(kz_term:ne_binary(), kz_json:object(), kapps_call:call(), pid()) -> any().
+builder(EndpointId, Member, Call, Parent) ->
+    kz_util:put_callid(kapps_call:call_id(Call)),
+    lager:debug("attempting to build endpoint ~s", [EndpointId]),
+    Parent ! {self(), EndpointId, kz_endpoint:build(EndpointId, Member, Call)}.
 
 -spec is_member_active(kz_json:object()) -> boolean().
 is_member_active(Member) ->
@@ -150,19 +165,27 @@ is_member_active(Member) ->
 
 -spec resolve_endpoint_ids(kz_json:object(), kapps_call:call()) -> endpoints().
 resolve_endpoint_ids(Data, Call) ->
-    Members = case kz_json:get_list_value(<<"endpoints">>, Data) of
-                  undefined -> [];
-                  JObjs -> JObjs
-              end,
+    resolve_endpoint_ids(Data, Call, kz_json:get_list_value(<<"endpoints">>, Data)).
+
+-spec resolve_endpoint_ids(kz_json:object(), kapps_call:call(), kz_term:api_objects()) -> endpoints().
+resolve_endpoint_ids(_Data, _Call, 'undefined') ->
+    lager:warning("undefined endpoints in the ring group data: ~p", [_Data]),
+    [];
+resolve_endpoint_ids(_Data, _Call, []) ->
+    lager:warning("no configured endpoints in the ring group data: ~p", [_Data]),
+    [];
+resolve_endpoint_ids(Data, Call, Members) ->
     FilteredMembers = lists:filter(fun is_member_active/1, Members),
-    lager:debug("filtered members of ring group ~p", [FilteredMembers]),
+    lager:debug("filtered for active members of ring group: ~p", [FilteredMembers]),
     ResolvedEndpoints = resolve_endpoint_ids(FilteredMembers, [], Data, Call),
+    lager:debug("resolved members into endpoints"),
 
     FilteredEndpoints = [{Weight, {Id, kz_json:set_value(<<"source">>, kz_term:to_binary(?MODULE), Member)}}
                          || {Type, Id, Weight, Member} <- ResolvedEndpoints,
                             Type =:= <<"device">>,
                             Id =/= kapps_call:authorizing_id(Call)
                         ],
+    lager:debug("filtered out non-devices: ~p", [FilteredMembers]),
     Strategy = strategy(Data),
     order_endpoints(Strategy, FilteredEndpoints).
 
@@ -180,7 +203,9 @@ order_endpoints(<<"weighted_random">>, Endpoints) ->
 -spec resolve_endpoint_ids(kz_json:objects(), endpoint_intermediates(), kz_json:object(), kapps_call:call()) ->
                                   endpoint_intermediates().
 resolve_endpoint_ids(Members, EndpointIds, Data, Call) ->
-    lists:foldl(fun(Member, Acc) ->
+    %% resolve the members in reverse order because `resolve_endpoint_id/1` prepends member
+    %% endpoints onto the accumulator
+    lists:foldr(fun(Member, Acc) ->
                         resolve_endpoint_id(Member, Acc, Data, Call)
                 end
                ,EndpointIds
@@ -207,6 +232,7 @@ resolve_endpoint_id(Member, EndpointIds, Data, Call) ->
             lager:info("member ~s is a user, get all the user's endpoints", [Id]),
             get_user_endpoint_ids(Member, EndpointIds, Id, Weight, Call);
         <<"device">> ->
+            lager:info("resolved device ~s", [Id]),
             [{Type, Id, Weight, Member}|EndpointIds]
     end.
 
@@ -217,6 +243,7 @@ get_user_endpoint_ids(Member, EndpointIds, Id, GroupWeight, Call) ->
                         case lists:keymember(EndpointId, 2, Acc) of
                             'true' -> Acc;
                             'false' ->
+                                lager:info("resolved user ~s device ~s", [Id, EndpointId]),
                                 [{<<"device">>, EndpointId, GroupWeight, Member} | Acc]
                         end
                 end

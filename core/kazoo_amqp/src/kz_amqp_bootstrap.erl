@@ -51,7 +51,7 @@ start_link() ->
 init([]) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     add_zones(get_config()),
-    lager:info("waiting for first amqp connection...", []),
+    lager:info("waiting for first amqp connection..."),
     kz_amqp_connections:wait_for_available(),
     timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
     kz_amqp_util:targeted_exchange(),
@@ -127,19 +127,11 @@ add_brokers([Broker|Brokers], ZoneName) ->
 -spec get_config() -> kz_term:proplist().
 get_config() ->
     get_from_zone(kz_config:zone()).
-%%     case kz_config:get(kz_config:get_node_section_name(), 'zone') of
-%%         [Zone] -> get_from_zone(Zone);
-%%         _Else -> get_from_amqp()
-%%     end.
-%%
-%% -spec get_from_amqp() -> kz_term:proplist().
-%% get_from_amqp() ->
-%%     [{'local', kz_config:get('amqp', 'uri', [?DEFAULT_AMQP_URI])}].
 
 -spec get_zones() -> kz_term:proplist().
 get_zones() ->
-    case kz_config:get_section('zone') of
-        [] -> kz_config:get_section('amqp');
+    case kz_config:get_section(<<"zone">>) of
+        [] -> kz_config:get_section(<<"amqp">>);
         Zones -> Zones
     end.
 
@@ -147,15 +139,16 @@ get_zones() ->
 get_from_zone(ZoneName) ->
     Zones = get_zones(),
     Props = dict:to_list(get_from_zone(ZoneName, Zones, dict:new())),
+
     case props:get_value('local', Props, []) of
-        [] -> [{'local', kz_config:get('amqp', 'uri', [?DEFAULT_AMQP_URI])}|Props];
+        [] -> [{'local', kz_config:get(<<"amqp">>, <<"uri">>, [?DEFAULT_AMQP_URI])} | Props];
         _Else -> Props
     end.
 
 -spec get_from_zone(atom(), kz_term:proplist(), dict:dict()) -> dict:dict().
 get_from_zone(_, [], Dict) -> Dict;
 get_from_zone(ZoneName, [{_, Zone}|Zones], Dict) ->
-    case props:get_first_defined(['name', 'zone'], Zone) of
+    case props:get_first_defined([<<"name">>, <<"zone">>], Zone) of
         'undefined' -> get_from_zone(ZoneName, Zones, Dict);
         ZoneName ->
             get_from_zone(ZoneName, Zones, import_zone('local', Zone, Dict));
@@ -165,14 +158,14 @@ get_from_zone(ZoneName, [{_, Zone}|Zones], Dict) ->
 
 -spec import_zone(atom(), kz_term:proplist(), dict:dict()) -> dict:dict().
 import_zone(_, [], Dict) -> Dict;
-import_zone(ZoneName, [{'amqp_uri', URI}|Props], Dict) ->
+import_zone(ZoneName, [{<<"amqp_uri">>, URI} | Props], Dict) ->
     case dict:find(ZoneName, Dict) of
         'error' ->
             import_zone(ZoneName, Props, dict:store(ZoneName, [URI], Dict));
-        _ ->
+        _Found ->
             import_zone(ZoneName, Props, dict:append(ZoneName, URI, Dict))
     end;
-import_zone(ZoneName, [{'uri', URI}|Props], Dict) ->
+import_zone(ZoneName, [{<<"uri">>, URI} | Props], Dict) ->
     case dict:find(ZoneName, Dict) of
         'error' ->
             import_zone(ZoneName, Props, dict:store(ZoneName, [URI], Dict));

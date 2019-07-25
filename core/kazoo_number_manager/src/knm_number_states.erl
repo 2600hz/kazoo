@@ -27,7 +27,7 @@
 -spec to_options_state(t()) -> t().
 to_options_state(T=#{options := Options}) ->
     TargetState = knm_number_options:state(Options),
-    ?LOG_DEBUG("attempting to change to state ~s", [TargetState]),
+    lager:debug("attempting to change to state ~s", [TargetState]),
     change_state(T, TargetState).
 
 -spec change_state(t(), kz_term:ne_binary()) -> t().
@@ -253,7 +253,7 @@ move_phone_number_to_state(PhoneNumber, ToState, AssignTo, AssignTo) ->
     Routines = [{fun knm_phone_number:set_state/2, ToState}
                ],
     knm_phone_number:setters(PhoneNumber, Routines);
-move_phone_number_to_state(PhoneNumber, ToState, AssignedTo, AssignTo) ->
+move_phone_number_to_state(PhoneNumber, ToState, _AssignedTo, AssignTo) ->
     Setters = [{fun knm_phone_number:set_assigned_to/2, AssignTo}
               ,{fun knm_phone_number:set_state/2, ToState}
               ],

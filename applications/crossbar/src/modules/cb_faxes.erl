@@ -37,10 +37,10 @@
 
 -define(FAX_FILE_TYPE, <<"tiff">>).
 
--define(ACCEPTED_MIME_TYPES, [{<<"application">>, <<"json">>}
-                             ,{<<"image">>, <<"tiff">>}
+-define(ACCEPTED_MIME_TYPES, [{<<"image">>, <<"tiff">>, '*'}
                               | ?MULTIPART_CONTENT_TYPES
                               ++ ?PDF_CONTENT_TYPES
+                              ++ ?JSON_CONTENT_TYPES
                              ]).
 -define(ACCEPTED_TYPES, [{'from_binary', ?ACCEPTED_MIME_TYPES}]).
 
@@ -152,7 +152,7 @@ resource_exists(?OUTGOING, _Id) -> 'true'.
 resource_exists(?INBOX, _Id, ?ATTACHMENT) -> 'true';
 resource_exists(?OUTBOX, _Id, ?ATTACHMENT) -> 'true'.
 
--spec acceptable_content_types() -> kz_term:proplist().
+-spec acceptable_content_types() -> cowboy_content_types().
 acceptable_content_types() ->
     ?ACCEPTED_MIME_TYPES.
 
@@ -750,7 +750,7 @@ do_put_action(Context, ?OUTBOX, ?OUTBOX_ACTION_RESUBMIT, Id) ->
     lager:debug("copying ~s/~s to ~s/~s", [FromDB, Id, ?KZ_FAXES_DB, NewId]),
     case kz_datamgr:copy_doc(FromDB, {?FAX_TYPE, Id}, ?KZ_FAXES_DB, NewId, Options) of
         {'ok', _Doc} ->
-            Updates = [{<<"pvt_job_status">>, <<"pending">>}],
+            Updates = [{[<<"pvt_job_status">>], <<"pending">>}],
             UpdateOptions = [{'update', Updates}],
             {'ok', UpdatedDoc} = kz_datamgr:update_doc(?KZ_FAXES_DB, NewId, UpdateOptions),
             cb_context:set_resp_data(Context, kz_doc:public_fields(UpdatedDoc));
@@ -767,7 +767,7 @@ do_put_action(Context, ?INBOX, ?INBOX_ACTION_FORWARD, Id) ->
     lager:debug("copying ~s/~s to ~s/~s", [FromDB, Id, ?KZ_FAXES_DB, NewId]),
     case kz_datamgr:copy_doc(FromDB, {?FAX_TYPE, Id}, ?KZ_FAXES_DB, NewId, Options) of
         {'ok', _Doc} ->
-            Updates = [{<<"pvt_job_status">>, <<"pending">>}],
+            Updates = [{[<<"pvt_job_status">>], <<"pending">>}],
             UpdateOptions = [{'update', Updates}],
             {'ok', UpdatedDoc} = kz_datamgr:update_doc(?KZ_FAXES_DB, NewId, UpdateOptions),
             cb_context:set_resp_data(Context, kz_doc:public_fields(UpdatedDoc));

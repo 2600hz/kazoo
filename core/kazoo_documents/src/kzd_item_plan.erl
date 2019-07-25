@@ -177,7 +177,7 @@ prorate(ItemPlan) ->
         'undefined' ->
             kz_json:from_list(
               [{<<"additions">>, 'true'}
-              ,{<<"removals">>, 'false'}
+              ,{<<"removals">>, 'true'}
               ]
              );
         Else -> Else
@@ -197,7 +197,7 @@ prorate_additions(ItemPlan, Default) ->
 
 -spec prorate_removals(doc()) -> boolean().
 prorate_removals(ItemPlan) ->
-    prorate_removals(ItemPlan, 'false').
+    prorate_removals(ItemPlan, 'true').
 
 -spec prorate_removals(doc(), Default) -> boolean() | Default.
 prorate_removals(ItemPlan, Default) ->

@@ -17,8 +17,8 @@
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
--define(DEBUG_WRITE(Format, Args), ?debugFmt(Format, Args)).
--define(DEBUG_APPEND(Format, Args), ?debugFmt(Format, Args)).
+-define(DEBUG_WRITE(_Format, _Args), 'ok').
+-define(DEBUG_APPEND(_Format, _Args), 'ok').
 -else.
 -define(DEBUG, kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"debug">>, 'false')).
 -define(DEBUG_FILE, "/tmp/telnyx.json").
@@ -139,8 +139,8 @@ http_options() ->
 %%% Internals
 
 -spec rep(kz_http:ret()) -> kz_json:object().
-rep({'ok', 200=Code, _Headers, <<"{",_/binary>>=Response}) ->
-    ?DEBUG_APPEND("Response:~n~p~n~p~n~s~n", [Code, _Headers, Response]),
+rep({'ok', 200=_Code, _Headers, <<"{",_/binary>>=Response}) ->
+    ?DEBUG_APPEND("Response:~n~p~n~p~n~s~n", [_Code, _Headers, Response]),
 
     Routines = [fun(JObj) -> maybe_remove_best_effort(?SHOULD_KEEP_BEST_EFFORT, JObj) end
                ,fun(JObj) -> maybe_filter_rates(?SHOULD_FILTER_RATES, JObj) end

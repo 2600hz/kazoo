@@ -8,6 +8,7 @@
 -module(kz_term).
 
 -export([shuffle_list/1]).
+-export([uniq_list/1]).
 
 -export([to_integer/1, to_integer/2
         ,to_float/1, to_float/2
@@ -39,7 +40,7 @@
         ,is_empty/1, is_not_empty/1
         ,is_proplist/1, is_ne_list/1
         ,is_pos_integer/1
-        ,is_ascii_code/1
+        ,is_ascii_code/1, is_ascii_number/1
         ,is_lower_char/1, is_upper_char/1
         ,identity/1
         ,always_true/1, always_false/1
@@ -65,6 +66,7 @@
 %% Denotes definition of each key-value in a proplist.
 
 -type proplist() :: [proplist_property()].
+-type api_proplist() :: proplist() | 'undefined'.
 %% A key-value form of data, `[{Key, Value}|atom]'.
 
 -type proplists() :: [proplist()].
@@ -113,6 +115,8 @@
 
 -type api_reference() :: reference() | 'undefined'.
 %% Denotes either data type is defined as `reference()' or it's `undefined'.
+
+-type api_port() :: port() | 'undefined'.
 
 -type api_pid() :: pid() | 'undefined'.
 %% Denotes either data type is defined as `pid()' or it's `undefined'.
@@ -179,7 +183,9 @@
              ,api_pid_ref/0
              ,api_pid_refs/0
              ,api_pos_integer/0
+             ,api_proplist/0
              ,api_reference/0
+             ,api_port/0
              ,api_string/0
              ,api_terms/0
              ,atoms/0
@@ -232,7 +238,18 @@ randomize_list(T, List) ->
                ,lists:seq(1, (T - 1))
                ).
 
-%% must be a term that can be changed to a list
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec uniq_list(list()) -> list().
+uniq_list([]) -> [];
+uniq_list([H|T]) -> [H | [X || X <- uniq_list(T), X =/= H]].
+
+%%------------------------------------------------------------------------------
+%% @doc must be a term that can be changed to a list
+%% @end
+%%------------------------------------------------------------------------------
 -spec to_hex(text()) -> string().
 to_hex(S) ->
     string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- to_list(S)])).
@@ -441,6 +458,9 @@ is_empty('undefined') -> 'true';
 
 is_empty(Float) when is_float(Float), Float =:= 0.0 -> 'true';
 
+is_empty(Map) when is_map(Map), map_size(Map) =:= 0 -> 'true';
+is_empty(Map) when is_map(Map) -> 'false';
+
 is_empty(MaybeJObj) ->
     case kz_json:is_json_object(MaybeJObj) of
         'false' -> 'false'; %% if not a json object, it's not empty
@@ -468,6 +488,11 @@ is_pos_integer(X) ->
 is_ascii_code(X) ->
     X >= 0
         andalso X =< 127.
+
+-spec is_ascii_number(integer()) -> boolean().
+is_ascii_number(X) ->
+    X >= $0
+        andalso X =< $9.
 
 -spec identity(X) -> X.
 identity(X) -> X.

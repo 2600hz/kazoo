@@ -312,9 +312,9 @@ handle_info({'EXIT', Consumer, _R}, #participant{call_event_consumers=Consumers}
     Cs = [C || C <- Consumers, C =/= Consumer],
     {'noreply', P#participant{call_event_consumers=Cs}, 'hibernate'};
 handle_info('sanity_check', #participant{call=Call}=State) ->
-    _ = case kapps_call_command:b_channel_status(Call) of
-            {'ok', _} -> start_sanity_check_timer();
-            {'error', 'not_found'} ->
+    _ = case kapps_call_events:is_destroyed(Call) of
+            'false' -> start_sanity_check_timer();
+            'true' ->
                 lager:info("channel not found, going down"),
                 gen_listener:cast(self(), 'hungup')
         end,

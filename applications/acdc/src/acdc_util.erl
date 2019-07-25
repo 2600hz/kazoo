@@ -17,6 +17,7 @@
         ,agent_presence_update/2
         ,presence_update/3, presence_update/4
         ,send_cdr/2
+        ,hangup_cause/1
         ]).
 
 -include("acdc.hrl").
@@ -81,7 +82,9 @@ send_cdr(Url, JObj, Retries) ->
 %% Returns the list of agents configured for the queue
 -spec agents_in_queue(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:path().
 agents_in_queue(AcctDb, QueueId) ->
-    case kz_datamgr:get_results(AcctDb, <<"queues/agents_listing">>, [{'key', QueueId}]) of
+    case kz_datamgr:get_results(AcctDb, <<"queues/agents_listing">>
+                               ,[{'key', QueueId}, {'reduce', 'false'}])
+    of
         {'ok', []} -> [];
         {'error', _E} -> lager:debug("failed to lookup agents for ~s: ~p", [QueueId, _E]), [];
         {'ok', As} -> [kz_json:get_value(<<"value">>, A) || A <- As]
@@ -134,3 +137,10 @@ proc_id(Pid) -> proc_id(Pid, node()).
 
 -spec proc_id(pid(), atom() | kz_term:ne_binary()) -> kz_term:ne_binary().
 proc_id(Pid, Node) -> list_to_binary([kz_term:to_binary(Node), "-", pid_to_list(Pid)]).
+
+-spec hangup_cause(kz_json:object()) -> kz_term:ne_binary().
+hangup_cause(JObj) ->
+    case kz_json:get_value(<<"Hangup-Cause">>, JObj) of
+        'undefined' -> <<"unknown">>;
+        Cause -> Cause
+    end.

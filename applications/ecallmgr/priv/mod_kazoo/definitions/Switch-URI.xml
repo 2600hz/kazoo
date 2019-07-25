@@ -1,0 +1,3 @@
+<definition name="Switch-URI">
+	<field name="variable_Switch-URI" as="Switch-URI" />
+</definition>

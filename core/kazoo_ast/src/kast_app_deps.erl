@@ -340,13 +340,12 @@ remote_calls_from_module(Module, Acc, {M, AST}) ->
     try remote_calls_from_functions(Fs, Acc) of
         Modules -> ?DEBUG("  ~p~n", [Module]), lists:delete(M, Modules)
     catch
-        _E:R ->
-            ST = erlang:get_stacktrace(),
-            io:format("process module '~s' failed: ~s: ~p~n", [Module, _E, R]),
-            [io:format("st: ~p~n", [S]) || S <- ST],
-            ?DEBUG("~s failed: ~s ~r~n~p~n", [Module, _E, R, ST]),
-            throw(R)
-    end.
+        ?STACKTRACE(_E, R, ST)
+        io:format("process module '~s' failed: ~s: ~p~n", [Module, _E, R]),
+        [io:format("st: ~p~n", [S]) || S <- ST],
+        ?DEBUG("~s failed: ~s ~r~n~p~n", [Module, _E, R, ST]),
+        throw(R)
+        end.
 
 remote_calls_from_functions(Fs, Acc) ->
     lists:foldl(fun remote_calls_from_function/2
@@ -468,7 +467,19 @@ remote_calls_from_expression(?MAP_UPDATE(_Var, Exprs), Acc) ->
 remote_calls_from_expression(?MAP_FIELD_ASSOC(K, V), Acc) ->
     remote_calls_from_expressions([K, V], Acc);
 remote_calls_from_expression(?MAP_FIELD_EXACT(K, V), Acc) ->
-    remote_calls_from_expressions([K, V], Acc).
+    remote_calls_from_expressions([K, V], Acc);
+remote_calls_from_expression(?GEN_FUN_ARGS(
+                                ?GEN_FUN_ARGS(
+                                   ?MOD_FUN(M0, _F0),
+                                   [?GEN_FUN_ARGS(?GEN_MOD_FUN(?ATOM(M1), ?ATOM(_F1)), _Args1)
+                                   ,_Arg0
+                                   ,?MFA(M2, _F2, _Arity2)
+                                   ]
+                                  )
+                               ,_Args0
+                               ), Acc) ->
+    lists:foldl(fun add_remote_module/2, Acc, [M0, M1, M2]).
+
 
 add_remote_module(?ATOM(M)=_A, Acc) ->
     add_remote_module(M, Acc);

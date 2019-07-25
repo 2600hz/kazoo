@@ -25,6 +25,8 @@
 -define(PVT_TYPE, <<"rate">>).
 -define(NUMBER, <<"number">>).
 -define(CB_LIST, <<"rates/crossbar_listing">>).
+-define(RATEDECKS, <<"ratedecks">>).
+-define(RATE_LOOKUP, <<"rates/lookup">>).
 
 -define(NUMBER_RESP_FIELDS, [<<"Base-Cost">>
                             ,<<"E164-Number">>
@@ -64,12 +66,18 @@ init() ->
 
 init_db() ->
     _ = kz_datamgr:db_create(?KZ_RATES_DB),
-    kapps_maintenance:refresh(?KZ_RATES_DB).
+    _ = kapps_maintenance:refresh(?KZ_RATES_DB),
+    'ok'.
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).
 
+authorize(Context, [{<<"rates">>, [?RATEDECKS]}]) ->
+    case cb_context:is_superduper_admin(Context) of
+        'true' -> 'true';
+        'false' -> {'stop', cb_context:add_system_error('forbidden', Context)}
+    end;
 authorize(_Context, [{<<"rates">>, [?NUMBER, _NumberToRate]}]) ->
     lager:debug("authorizing rate request for ~s", [_NumberToRate]),
     'true';
@@ -88,6 +96,8 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST].
 
 -spec allowed_methods(path_token()) -> http_methods().
+allowed_methods(?RATEDECKS) ->
+    [?HTTP_GET];
 allowed_methods(_RateId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
@@ -144,6 +154,8 @@ validate(Context) ->
     validate_rates(Context, cb_context:req_verb(Context)).
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+validate(Context, ?RATEDECKS) ->
+    ratedecks_list(Context);
 validate(Context, Id) ->
     validate_rate(Context, Id, cb_context:req_verb(Context)).
 
@@ -153,7 +165,7 @@ validate(Context, ?NUMBER, Phonenumber) ->
 
 -spec validate_rates(cb_context:context(), http_method()) -> cb_context:context().
 validate_rates(Context, ?HTTP_GET) ->
-    summary(cb_context:set_account_db(Context, ratedeck_db(Context)));
+    summary(cb_context:set_account_db(Context, ratedeck_db(Context)), cb_context:req_value(Context, <<"prefix">>));
 validate_rates(Context, ?HTTP_PUT) ->
     create(cb_context:set_account_db(Context, ratedeck_db(Context)));
 validate_rates(Context, ?HTTP_POST) ->
@@ -281,9 +293,15 @@ ensure_routes_set(Rate, _Routes) ->
 %% resource.
 %% @end
 %%------------------------------------------------------------------------------
--spec summary(cb_context:context()) -> cb_context:context().
-summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+-spec summary(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
+summary(Context, 'undefined') ->
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
+summary(Context, Prefix) ->
+    crossbar_doc:load_view(<<"rates/lookup">>
+                          ,[{'keys', kzdb_ratedeck:prefix_keys(Prefix)},'include_docs']
+                          ,Context
+                          ,fun normalize_rate_lookup/2
+                          ).
 
 %%------------------------------------------------------------------------------
 %% @doc Check the uploaded file for CSV
@@ -321,6 +339,14 @@ error_no_file(Context) ->
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
+
+%%------------------------------------------------------------------------------
+%% @doc Normalizes the results of a view.
+%% @end
+%%------------------------------------------------------------------------------
+-spec normalize_rate_lookup(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_rate_lookup(JObj, Acc) ->
+    [kz_json:get_value(<<"doc">>, JObj)|Acc].
 
 %%------------------------------------------------------------------------------
 %% @doc Convert the file, based on content-type, to rate documents
@@ -434,7 +460,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
             {Count + 1, [kz_json:set_values(Setters, kz_json:new()) | JObjs]}
     end.
 
--spec get_row_prefix(rate_row()) -> kz_term:api_binary().
+-spec get_row_prefix(rate_row()) -> kz_term:api_integer().
 get_row_prefix([Prefix | _]=_R) ->
     try kz_term:to_integer(Prefix)
     catch
@@ -600,3 +626,12 @@ normalize_field(<<"Base-Cost">> = K, BaseCost) ->
     {K, kz_currency:units_to_dollars(BaseCost)};
 normalize_field(K, V) ->
     {K, V}.
+
+-spec ratedecks_list(cb_context:context()) -> cb_context:context().
+ratedecks_list(Context) ->
+    Props = [{<<"default_ratedeck">>, kapps_config:get_ne_binary(<<"hotornot">>, <<"default_ratedeck">>, ?KZ_RATES_DB)}
+            ,{<<"ratedecks">>, kz_services_ratedecks:ratedecks()}
+            ],
+    cb_context:setters(Context, [{fun cb_context:set_resp_data/2, kz_json:from_list(Props)}
+                                ,{fun cb_context:set_resp_status/2, 'success'}
+                                ]).

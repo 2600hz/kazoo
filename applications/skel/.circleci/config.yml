@@ -29,7 +29,7 @@ workflows:
 
 defaults: &defaults
   docker:
-    - image: offical2600hz/circleci:19.3.6.13
+    - image: offical2600hz/circleci:21.3.8
   shell: /bin/bash --login
   working_directory: ~/2600hz/the_app
   environment:
@@ -72,8 +72,8 @@ jobs:
             git clone https://github.com/2600hz/kazoo $KAZOO_ROOT
           fi
       - run: ${KAZOO_ROOT}/scripts/circleci.bash
-      - run: echo -e 'export CHANGED="$(for file in `find ${KAZOO_ROOT}/applications/${KAZOO_APP} -name "*.[e|h]rl"`; do readlink -e $file; done | xargs echo)"' >> $BASH_ENV
-      - run: echo $CHANGED
+      - run: echo -e 'export CHANGED="$(echo $(for file in `find ${KAZOO_ROOT}/applications/${KAZOO_APP} -name "*.[e|h]rl"`; do readlink -e $file; done | xargs echo))"' >> $BASH_ENV
+      - run: echo "$CHANGED"
       - persist_to_workspace:
           root: ~/
           paths:
@@ -87,7 +87,7 @@ jobs:
           at: ~/
       - restore_cache:
           keys:
-            - deps-v3.1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+            - deps-erl21-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
       - run: |
           deps_hash=$(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1)
           if [ x"$(cat $KAZOO_ROOT/.git/.kz_deps_hash)" = x"$deps_hash" ]; then
@@ -99,7 +99,7 @@ jobs:
           ls -al $KAZOO_ROOT/make || true
       - run: make -C ${KAZOO_ROOT} deps
       - save_cache:
-          key: deps-v3.1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+          key: deps-erl21-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
           paths:
             - ~/2600hz/kazoo/deps/
             - ~/2600hz/kazoo/.git/.kz_deps_hash
@@ -116,11 +116,10 @@ jobs:
           at: ~/
       - restore_cache:
           keys:
-            - deps-v3.1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+            - deps-erl21-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
       - run: |
           md5sum $KAZOO_ROOT/make/deps.mk || true
           ls -al $KAZOO_ROOT/make || true
-      - run: make -C ${KAZOO_ROOT} fmt
       - run: JOBS="2" make -C ${KAZOO_ROOT}
       - persist_to_workspace:
           root: ~/
@@ -135,7 +134,7 @@ jobs:
           at: ~/
       - restore_cache:
           keys:
-            - deps-v3.1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+            - deps-erl21-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
       - run: |
           md5sum $KAZOO_ROOT/make/deps.mk || true
           ls -al $KAZOO_ROOT/make || true
@@ -148,8 +147,8 @@ jobs:
     steps:
       - attach_workspace:
           at: ~/
+      - run: TO_FMT="$CHANGED" make -C ${KAZOO_ROOT} fmt
       - run: make -C ${KAZOO_ROOT} code_checks
-      - run: ${KAZOO_ROOT}/scripts/code_checks.bash $CHANGED
       - run: make -C ${KAZOO_ROOT} app_applications
       - run: make -C ${KAZOO_ROOT} sup_completion
       - run: make -C ${KAZOO_ROOT} xref
@@ -176,10 +175,10 @@ jobs:
           at: ~/
       - restore_cache:
           keys:
-            - plt-v3-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
-      - run: TO_DIALYZE="$(echo $CHANGED)" make -C ${KAZOO_ROOT} build-plt dialyze
+            - plt-erl21-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+      - run: TO_DIALYZE="$CHANGED" make -C ${KAZOO_ROOT} build-plt dialyze
       - save_cache:
-          key: plt-v3-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+          key: plt-erl21-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
           paths:
             - ~/2600hz/kazoo/.kazoo.plt
 
@@ -187,7 +186,7 @@ jobs:
   release:
     <<: *defaults
     docker:
-      - image: offical2600hz/circleci:19.3.6.13
+      - image: offical2600hz/circleci:21.3.8
       - image: couchdb:2.1.1
       - image: rabbitmq:3.7
     steps:

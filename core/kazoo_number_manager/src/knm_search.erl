@@ -129,6 +129,8 @@ handle_cast({'gen_listener',{'created_queue', Queue}}, State) ->
     {'noreply', State#{queue => Queue}, ?POLLING_INTERVAL};
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
+handle_cast({'gen_listener',{'federators_consuming', _AreFederatorsConsuming}}, State) ->
+    {'noreply', State};
 handle_cast({'reset_search',QID}, #{cache := Cache} = State) ->
     lager:debug("resetting query id ~s", [QID]),
     ets:delete(Cache, QID),
@@ -222,14 +224,14 @@ do_find(Options, 'false') ->
     of
         {'ok', JObj} -> kapi_discovery:results(JObj);
         {'error', _Error} ->
-            ?LOG_DEBUG("error requesting search from amqp: ~p", [_Error]),
+            lager:debug("error requesting search from amqp: ~p", [_Error]),
             []
     end.
 
 -spec first(options()) -> kz_json:objects().
 first(Options) ->
     Carriers = knm_carriers:available_carriers(Options),
-    ?LOG_DEBUG("contacting, in order: ~p", [Carriers]),
+    lager:debug("contacting, in order: ~p", [Carriers]),
     QID = query_id(Options),
     gen_listener:cast(?MODULE, {'reset_search', QID}),
     Self = self(),

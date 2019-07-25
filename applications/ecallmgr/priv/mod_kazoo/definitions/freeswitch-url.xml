@@ -1,0 +1,7 @@
+<definition name="freeswitch-url">
+	<field name="FreeSWITCH-Hostname" as="Media-Server" />
+	<field name="FreeSWITCH-Hostname" as="Switch-Hostname" />
+	<field name="Switch-Nodename" />
+	<field name="variable_Switch-URL" as="Switch-URL" />
+	<field name="Switch-URI" type="reference" />
+</definition>

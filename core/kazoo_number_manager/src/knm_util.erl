@@ -118,7 +118,7 @@ get_classifier_regex(JObj) ->
 -spec fixture(file:filename()) -> string().
 fixture(Filename) ->
     Fixture = filename:join([code:priv_dir(?APP), "fixtures", Filename]),
-    ?LOG_DEBUG("loading fixture ~s", [Fixture]),
+    lager:debug("loading fixture ~s", [Fixture]),
     read_fixture(file:read_file(Fixture), Fixture).
 
 read_fixture({'ok', Contents}, _F) ->

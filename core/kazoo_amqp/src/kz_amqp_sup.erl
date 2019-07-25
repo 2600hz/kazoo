@@ -12,51 +12,28 @@
         ,pool_name/0
         ,add_amqp_pool/4, add_amqp_pool/5, add_amqp_pool/6, add_amqp_pool/7
         ,pool_pid/1
-        ,pools/0
+        ,pools/0, pools/1
         ]).
 
 -export([init/1]).
 
 -include("kz_amqp_util.hrl").
+-include_lib("kazoo_amqp/include/kazoo_amqp_pool.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(CONFIG_SECTION, 'amqp').
+-define(CONFIG_SECTION, <<"amqp">>).
 
 -define(POOL_NAME, 'kz_amqp_pool').
 
--define(DEFAULT_POOL_SIZE, 150).
--define(DEFAULT_POOL_OVERFLOW, 100).
--define(DEFAULT_POOL_THRESHOLD, 5).
--define(DEFAULT_POOL_SERVER_CONFIRMS, false).
-
-%%% Move the section to kazoo_apps or ecallmgr for per-vm control
-
--define(POOL_NAME_ARGS(Name, Args), ?WORKER_NAME_ARGS('poolboy', Name, Args)).
+-define(POOL_THRESHOLD, kz_config:get_integer(?CONFIG_SECTION, <<"pool_threshold">>, ?DEFAULT_POOL_THRESHOLD)).
+-define(POOL_SERVER_CONFIRMS, kz_config:get_boolean(?CONFIG_SECTION, <<"pool_server_confirms">>, ?DEFAULT_POOL_SERVER_CONFIRMS)).
 
 -define(CHILDREN, [?WORKER('kz_amqp_connections')
                   ,?SUPER('kz_amqp_connection_sup')
-                  ,?WORKER('kz_amqp_history')
                   ,?WORKER('kz_amqp_assignments')
                   ,?WORKER('kz_amqp_bootstrap')
                   ]).
-
--define(POOL_THRESHOLD, kz_config:get_integer(?CONFIG_SECTION, 'pool_threshold', ?DEFAULT_POOL_THRESHOLD)).
--define(POOL_SERVER_CONFIRMS, kz_config:get_boolean(?CONFIG_SECTION, 'pool_server_confirms', ?DEFAULT_POOL_SERVER_CONFIRMS)).
-
--define(ADD_POOL_ARGS(Pool, Broker, Size, Overflow, Bindings, Exchanges, ServerAck),
-        [[{'worker_module', 'kz_amqp_worker'}
-         ,{'name', {'local', Pool}}
-         ,{'size', Size}
-         ,{'max_overflow', Overflow}
-         ,{'strategy', 'fifo'}
-         ,{'neg_resp_threshold', ?POOL_THRESHOLD}
-         ,{'amqp_broker', Broker}
-         ,{'amqp_queuename_start', Pool}
-         ,{'amqp_bindings', Bindings}
-         ,{'amqp_exchanges', Exchanges}
-         ,{'amqp_server_confirms', ServerAck}
-         ]]).
 
 %%==============================================================================
 %% API functions
@@ -75,17 +52,31 @@ stop_bootstrap() ->
     _ = supervisor:terminate_child(?SERVER, 'kz_amqp_bootstrap').
 
 -spec pools() -> [{atom(), pid()}].
-pools() ->
+pools() -> pools(?MODULE).
+
+-spec pools('undefined' | kz_types:server_ref()) -> [{atom(), pid()}].
+pools(Supervisor) when is_pid(Supervisor) ->
+    pools(Supervisor, is_process_alive(Supervisor));
+pools('undefined') -> [];
+pools(Supervisor) ->
+    pools(whereis(Supervisor)).
+
+-spec pools(pid(), boolean()) -> [{atom(), pid()}].
+pools(_Supervisor, 'false') -> [];
+pools(Supervisor, 'true') ->
     [{Pool, Pid}
-     || {Pool, Pid, _Type, ['poolboy']} <- supervisor:which_children(?MODULE)
+     || {Pool, Pid, _Type, ['poolboy']} <- supervisor:which_children(Supervisor),
+        is_pid(Pid),
+        is_process_alive(Pid)
     ].
 
 -spec pool_name() -> atom().
 pool_name() ->
     case get('$amqp_pool') of
         'undefined' -> ?POOL_NAME;
-        Name -> lager:debug("using pool with name ~s", [Name]),
-                Name
+        Name ->
+            lager:debug("using pool with name ~s", [Name]),
+            Name
     end.
 
 -spec add_amqp_pool(atom() | binary(), binary(), integer(), integer()) -> kz_types:sup_startchild_ret().
@@ -135,7 +126,6 @@ pool_pid(Pool) ->
         [P | _] -> P
     end.
 
-
 %%==============================================================================
 %% Supervisor callbacks
 %%==============================================================================
@@ -154,34 +144,4 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    PoolSize =
-        case kz_config:get_integer(?CONFIG_SECTION, 'pool_size') of
-            [] -> kz_config:get_integer(?CONFIG_SECTION, 'pool_size', ?DEFAULT_POOL_SIZE);
-            [Size|_] -> Size
-        end,
-
-    PoolOverflow =
-        case kz_config:get_integer(?CONFIG_SECTION, 'pool_overflow') of
-            [] -> kz_config:get_integer(?CONFIG_SECTION, 'pool_overflow', ?DEFAULT_POOL_OVERFLOW);
-            [Overflow|_] -> Overflow
-        end,
-
-    PoolThreshold =
-        case kz_config:get_integer(?CONFIG_SECTION, 'pool_threshold') of
-            [] -> ?POOL_THRESHOLD;
-            [Threshold|_] -> Threshold
-        end,
-    PoolServerConfirms = kz_config:get_boolean(?CONFIG_SECTION, 'pool_server_confirms', ?DEFAULT_POOL_SERVER_CONFIRMS),
-
-    PoolArgs = [{'worker_module', 'kz_amqp_worker'}
-               ,{'name', {'local', ?POOL_NAME}}
-               ,{'size', PoolSize}
-               ,{'max_overflow', PoolOverflow}
-               ,{'strategy', 'fifo'}
-               ,{'neg_resp_threshold', PoolThreshold}
-               ,{'amqp_server_confirms', PoolServerConfirms}
-               ],
-
-    Children = ?CHILDREN ++ [?POOL_NAME_ARGS(?POOL_NAME, [PoolArgs])],
-
-    {'ok', {SupFlags, Children}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

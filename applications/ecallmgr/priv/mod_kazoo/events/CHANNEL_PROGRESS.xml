@@ -1,0 +1,7 @@
+<event name="CHANNEL_PROGRESS">
+	<fields verbose="false">
+		<field name="call_event" type="reference" />
+		<field name="from-to" type="reference" />
+		<field name="debug-call" type="reference" />
+	</fields>
+</event>

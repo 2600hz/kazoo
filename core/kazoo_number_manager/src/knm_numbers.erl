@@ -461,7 +461,6 @@ account_listing(AccountDb=?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
 %%%=============================================================================
 
 -type reason_t() :: atom() |
-                    fun((num()) -> knm_errors:error()) |
                     knm_errors:error().
 
 -spec new(knm_number_options:options(), nums()) -> t().
@@ -474,10 +473,7 @@ new(Options, ToDos, KOs) -> new(Options, ToDos, KOs, 'not_reconcilable').
 new(Options, ToDos, KOs, Reason) ->
     #{'todo' => ToDos
      ,'ok' => []
-     ,'ko' => case is_function(Reason, 1) of %%FIXME: find something better than Reason/1.
-                  'false' -> maps:from_list([{KO, Reason} || KO <- KOs]);
-                  'true' -> maps:from_list([{KO, Reason(KO)} || KO <- KOs])
-              end
+     ,'ko' => maps:from_list([{KO, Reason} || KO <- KOs])
      ,'options' => Options
      ,'quotes' => 'undefined'
      }.
@@ -510,7 +506,7 @@ do(F, T=#{'todo' := [], 'ok' := OK}) ->
     %% For calls not from pipe/2
     do(F, T#{'todo' => OK, 'ok' => []});
 do(F, T) ->
-    ?LOG_DEBUG("applying ~p", [F]),
+    lager:debug("applying ~p", [F]),
     NewT = F(T),
     NewT#{'todo' => []}.
 
@@ -662,7 +658,7 @@ run_services(T=#{todo := Numbers}) ->
             ko(Numbers, Reason, T)
     end.
 
--spec run_services(kz_term:ne_binaries(), kz_json:object(), kz_services:services()) -> 'ok'.
+-spec run_services(kz_term:ne_binaries(), kz_json:object(), [kz_services:services()]) -> 'ok'.
 run_services([], _Updates, UpdatedServicesAcc) ->
     _ = [kz_services:commit(UpdatedServices) || UpdatedServices <- lists:reverse(UpdatedServicesAcc)],
     'ok';

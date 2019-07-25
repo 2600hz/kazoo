@@ -23,6 +23,7 @@
         ,handle_queue_member_remove/2
         ,are_agents_available/1
         ,handle_config_change/2
+        ,queue_size/1
         ,should_ignore_member_call/3, should_ignore_member_call/4
         ,up_next/2
         ,config/1
@@ -241,6 +242,10 @@ handle_queue_member_remove(JObj, Prop) ->
 handle_config_change(Srv, JObj) ->
     gen_listener:cast(Srv, {'update_queue_config', JObj}).
 
+-spec queue_size(kz_types:server_ref()) -> kz_term:non_neg_integer().
+queue_size(Srv) ->
+    gen_listener:call(Srv, 'queue_size').
+
 -spec should_ignore_member_call(kz_types:server_ref(), kapps_call:call(), kz_json:object()) -> boolean().
 should_ignore_member_call(Srv, Call, CallJObj) ->
     should_ignore_member_call(Srv
@@ -309,7 +314,7 @@ init(Super, AccountId, QueueId, QueueJObj) ->
     process_flag('trap_exit', 'false'),
 
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    kz_datamgr:add_to_doc_cache(AccountDb, QueueId, QueueJObj),
+    _ = kz_datamgr:add_to_doc_cache(AccountDb, QueueId, QueueJObj),
 
     _ = start_secondary_queue(AccountId, QueueId),
 
@@ -332,6 +337,8 @@ init(Super, AccountId, QueueId, QueueJObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), mgr_state()) -> kz_types:handle_call_ret_state(mgr_state()).
+handle_call('queue_size', _, #state{current_member_calls=Calls}=State) ->
+    {'reply', length(Calls), State};
 handle_call({'should_ignore_member_call', {AccountId, QueueId, CallId}=K}, _, #state{ignored_member_calls=Dict
                                                                                     ,account_id=AccountId
                                                                                     ,queue_id=QueueId
@@ -423,13 +430,6 @@ handle_cast({'member_call_cancel', K, JObj}, #state{ignored_member_calls=Dict}=S
 
     'ok' = acdc_stats:call_abandoned(AccountId, QueueId, CallId, Reason),
     {'noreply', State#state{ignored_member_calls=dict:store(K, 'true', Dict)}};
-handle_cast({'monitor_call', Call}, State) ->
-    CallId = kapps_call:call_id(Call),
-    gen_listener:add_binding(self(), 'call', [{'callid', CallId}
-                                             ,{'restrict_to', [<<"CHANNEL_DESTROY">>]}
-                                             ]),
-    lager:debug("bound for call events for ~s", [CallId]),
-    {'noreply', State};
 handle_cast({'start_workers'}, #state{account_id=AccountId
                                      ,queue_id=QueueId
                                      ,supervisor=QueueSup
@@ -438,18 +438,16 @@ handle_cast({'start_workers'}, #state{account_id=AccountId
     case kz_datamgr:get_results(kz_util:format_account_id(AccountId, 'encoded')
                                ,<<"queues/agents_listing">>
                                ,[{'key', QueueId}
-                                ,'include_docs'
+                                ,{'group', 'true'}
+                                ,{'group_level', 1}
                                 ])
     of
         {'ok', []} ->
             lager:debug("no agents yet, but create a worker anyway"),
             acdc_queue_workers_sup:new_worker(WorkersSup, AccountId, QueueId);
-        {'ok', Agents} ->
-            _ = [start_agent_and_worker(WorkersSup, AccountId, QueueId
-                                       ,kz_json:get_value(<<"doc">>, A)
-                                       )
-                 || A <- Agents
-                ],
+        {'ok', [Result]} ->
+            QWC = kz_json:get_integer_value(<<"value">>, Result),
+            acdc_queue_workers_sup:new_workers(WorkersSup, AccountId, QueueId, QWC),
             'ok';
         {'error', _E} ->
             lager:debug("failed to find agent count: ~p", [_E]),
@@ -526,9 +524,10 @@ handle_cast({'reject_member_call', Call, JObj}, #state{account_id=AccountId
     {'noreply', State};
 
 handle_cast({'sync_with_agent', A}, #state{account_id=AccountId}=State) ->
-    case acdc_agent_util:most_recent_status(AccountId, A) of
-        {'ok', <<"logged_out">>} -> gen_listener:cast(self(), {'agent_unavailable', A});
-        _ -> gen_listener:cast(self(), {'agent_available', A})
+    {'ok', Status} = acdc_agent_util:most_recent_status(AccountId, A),
+    case acdc_agent_util:status_should_auto_start(Status) of
+        'true' -> 'ok';
+        'false' -> gen_listener:cast(self(), {'agent_unavailable', A})
     end,
     {'noreply', State};
 
@@ -565,8 +564,6 @@ handle_cast({'add_queue_member', JObj}, #state{account_id=AccountId
     %% Add call to shared queue
     kapi_acdc_queue:publish_shared_member_call(AccountId, QueueId, JObj),
     lager:debug("put call into shared messaging queue"),
-
-    gen_listener:cast(self(), {'monitor_call', Call}),
 
     acdc_util:presence_update(AccountId, QueueId, ?PRESENCE_RED_FLASH),
 
@@ -681,22 +678,6 @@ publish_queue_member_remove(AccountId, QueueId, CallId) ->
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_acdc_queue:publish_queue_member_remove(Prop).
-
--spec start_agent_and_worker(pid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-start_agent_and_worker(WorkersSup, AccountId, QueueId, AgentJObj) ->
-    acdc_queue_workers_sup:new_worker(WorkersSup, AccountId, QueueId),
-    AgentId = kz_doc:id(AgentJObj),
-    case acdc_agent_util:most_recent_status(AccountId, AgentId) of
-        {'ok', <<"logout">>} -> 'ok';
-        {'ok', <<"logged_out">>} -> 'ok';
-        {'ok', _Status} ->
-            lager:debug("maybe starting agent ~s(~s) for queue ~s", [AgentId, _Status, QueueId]),
-
-            case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
-                'undefined' -> acdc_agents_sup:new(AgentJObj);
-                P when is_pid(P) -> 'ok'
-            end
-    end.
 
 %% Really sophisticated selection algorithm
 -spec pick_winner(pid(), kz_json:objects(), queue_strategy(), kz_term:api_binary()) ->
@@ -896,7 +877,9 @@ create_strategy_state(Strategy, AcctDb, QueueId) ->
 create_strategy_state('rr', #strategy_state{agents='undefined'}=SS, AcctDb, QueueId) ->
     create_strategy_state('rr', SS#strategy_state{agents=queue:new()}, AcctDb, QueueId);
 create_strategy_state('rr', #strategy_state{agents=AgentQ}=SS, AcctDb, QueueId) ->
-    case kz_datamgr:get_results(AcctDb, <<"queues/agents_listing">>, [{'key', QueueId}]) of
+    case kz_datamgr:get_results(AcctDb, <<"queues/agents_listing">>
+                               ,[{'key', QueueId}, {'reduce', 'false'}])
+    of
         {'ok', []} -> lager:debug("no agents around"), SS;
         {'ok', JObjs} ->
             Q = queue:from_list([Id || JObj <- JObjs,
@@ -913,7 +896,9 @@ create_strategy_state('rr', #strategy_state{agents=AgentQ}=SS, AcctDb, QueueId) 
 create_strategy_state('mi', #strategy_state{agents='undefined'}=SS, AcctDb, QueueId) ->
     create_strategy_state('mi', SS#strategy_state{agents=[]}, AcctDb, QueueId);
 create_strategy_state('mi', #strategy_state{agents=AgentL}=SS, AcctDb, QueueId) ->
-    case kz_datamgr:get_results(AcctDb, <<"queues/agents_listing">>, [{key, QueueId}]) of
+    case kz_datamgr:get_results(AcctDb, <<"queues/agents_listing">>
+                               ,[{'key', QueueId}, {'reduce', 'false'}])
+    of
         {'ok', []} -> lager:debug("no agents around"), SS;
         {'ok', JObjs} ->
             AgentL1 = lists:foldl(fun(JObj, Acc) ->
@@ -934,7 +919,9 @@ create_strategy_state('mi', #strategy_state{agents=AgentL}=SS, AcctDb, QueueId) 
 create_strategy_state('all', #strategy_state{agents='undefined'}=SS, AcctDb, QueueId) ->
     create_strategy_state('all', SS#strategy_state{agents=queue:new()}, AcctDb, QueueId);
 create_strategy_state('all', #strategy_state{agents=AgentQ}=SS, AcctDb, QueueId) ->
-    case kz_datamgr:get_results(AcctDb, <<"queues/agents_listing">>, [{'key', QueueId}]) of
+    case kz_datamgr:get_results(AcctDb, <<"queues/agents_listing">>
+                               ,[{'key', QueueId}, {'reduce', 'false'}])
+    of
         {'ok', []} -> lager:debug("no agents around"), SS;
         {'ok', JObjs} ->
             Q = queue:from_list([Id || JObj <- JObjs,

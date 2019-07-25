@@ -18,6 +18,7 @@ Key | Description | Type | Default | Required | Support Level
 `interdigit_timeout` | The amount of time (in milliseconds) to wait for the caller to press the next digit after pressing a digit | `integer()` | `2000` | `false` |  
 `max_message_length` | Max length of the message that caller can leave in voicemail box | `integer()` | `500` | `false` |  
 `single_mailbox_login` | Allow login if caller has a single mailbox | `boolean()` | `false` | `false` |  
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
 
 
 
@@ -89,4 +90,4 @@ If you would like to tie a BLF key to monitor and check a voicemail box, create 
 For example, to monitor and check box 3456, the BLF key could be tied to `*983456`. This would then check box `3456` and if the device owner matches the box owner, auto-login would occur (pin rules apply here too).
 
 !!! note
-If you want to do MWI subscriptions, you must configure the account or system to do so. In the `callflow` system_config document (or the account's config doc), set `dialog_subscribed_mwi_prefix` to the prefix (in this above case, `*98` would be the value): `sup kapps_config set_default callflow dialog_subscribed_mwi_prefix '*98'`.
+    If you want to do MWI subscriptions, you must configure the account or system to do so. In the `callflow` system_config document (or the account's config doc), set `dialog_subscribed_mwi_prefix` to the prefix (in this above case, `*98` would be the value): `sup kapps_config set_default callflow dialog_subscribed_mwi_prefix '*98'`.

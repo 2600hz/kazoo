@@ -60,7 +60,7 @@
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -type config_category() :: kz_json:key() | nonempty_string().
--type config_key() :: kz_json:key_path().
+-type config_key() :: kz_json:get_key().
 -type config_node() :: atom() | kz_term:ne_binary().
 
 -type update_option() :: {'node_specific', boolean()} |
@@ -128,10 +128,10 @@ get_binary(Category, Key, Default, Node) ->
                       kz_term:api_object().
 get_json(Category, Key) ->
     V = get(Category, Key),
-    as_json_value(V, undefined).
+    as_json_value(V, 'undefined').
 
 -spec as_json_value(any(), kz_term:api_object()) -> kz_term:api_object().
-as_json_value(undefined, Default) -> Default;
+as_json_value('undefined', Default) -> Default;
 as_json_value(V, Default) ->
     case kz_json:is_json_object(V) of
         'true' -> V;
@@ -716,7 +716,7 @@ update_category(Category, JObj, Updates, PvtFields) ->
 maybe_save_category(Category, JObj, Updates, PvtFields) ->
     maybe_save_category(Category, JObj, Updates, PvtFields, 'false').
 
--spec maybe_save_category(config_category(), kz_json:object(), kz_datamger:update_options(), kz_term:api_object(), boolean()) ->
+-spec maybe_save_category(config_category(), kz_json:object(), kz_datamgr:update_options(), kz_term:api_object(), boolean()) ->
                                  {'ok', kz_json:object()} |
                                  kz_datamgr:data_error().
 maybe_save_category(Category, JObj, Updates, PvtFields, Looped) ->
@@ -754,7 +754,7 @@ maybe_save_category(Category, JObj, Updates, PvtFields, Looped, _NotLocked) ->
     end.
 
 -spec update_pvt_fields(config_category(), kz_json:object(), kz_term:api_object()) ->
-                               kz_json:proplist().
+                               kz_json:json_proplist().
 update_pvt_fields(Category, JObj, 'undefined') ->
     kz_doc:get_pvt_updates(kz_doc:set_id(JObj, Category)
                           ,?KZ_CONFIG_DB
@@ -779,9 +779,9 @@ lock_db() ->
 
 -spec lock_db(kz_term:text() | boolean()) -> 'ok'.
 lock_db('true') ->
-    kz_config:set('kazoo_apps', 'lock_system_config', 'true');
+    kz_config:set(<<"kazoo_apps">>, <<"lock_system_config">>, 'true');
 lock_db('false') ->
-    kz_config:unset('kazoo_apps', 'lock_system_config');
+    kz_config:unset(<<"kazoo_apps">>, <<"lock_system_config">>);
 lock_db(Value) when is_binary(Value) ->
     lock_db(kz_term:to_atom(Value));
 lock_db(Value) ->
@@ -793,7 +793,7 @@ lock_db(Value) ->
 %%------------------------------------------------------------------------------
 -spec is_locked() -> boolean().
 is_locked() ->
-    case kz_config:get_atom('kazoo_apps', 'lock_system_config') of
+    case kz_config:get_atom(<<"kazoo_apps">>, <<"lock_system_config">>) of
         [] -> 'false';
         [Value] -> Value
     end.
@@ -1083,6 +1083,51 @@ fetch_category(Category, 'false') ->
          ,{<<"ecallmgr">>, <<"acl_request_timeout_fudge_ms">>}
          }
 
+        ,{{<<"jonny5">>, <<"default_enabled">>}
+         ,{<<"limits">>, <<"enabled">>}
+         }
+        ,{{<<"jonny5">>, <<"default_calls">>}
+         ,{<<"limits">>, <<"calls">>}
+         }
+        ,{{<<"jonny5">>, <<"default_resource_consuming_calls">>}
+         ,{<<"limits">>, <<"resource_consuming_calls">>}
+         }
+        ,{{<<"jonny5">>, <<"default_burst_trunks">>}
+         ,{<<"limits">>, <<"burst_trunks">>}
+         }
+        ,{{<<"jonny5">>, <<"default_inbound_trunks">>}
+         ,{<<"limits">>, <<"inbound_trunks">>}
+         }
+        ,{{<<"jonny5">>, <<"default_outbound_trunks">>}
+         ,{<<"limits">>, <<"outbound_trunks">>}
+         }
+        ,{{<<"jonny5">>, <<"default_twoway_trunks">>}
+         ,{<<"limits">>, <<"twoway_trunks">>}
+         }
+        ,{{<<"jonny5">>, <<"default_max_postpay_amount">>}
+         ,{<<"limits">>, <<"max_postpay_amount">>}
+         }
+        ,{{<<"jonny5">>, <<"default_reserve_amount">>}
+         ,{<<"limits">>, <<"reserve_amount">>}
+         }
+        ,{{<<"jonny5">>, <<"default_allow_prepay">>}
+         ,{<<"limits">>, <<"allow_prepay">>}
+         }
+        ,{{<<"jonny5">>, <<"default_allow_postpay">>}
+         ,{<<"limits">>, <<"allow_postpay">>}
+         }
+        ,{{<<"jonny5">>, <<"default_soft_limit_outbound">>}
+         ,{<<"limits">>, <<"soft_limit_outbound">>}
+         }
+        ,{{<<"jonny5">>, <<"default_soft_limit_inbound">>}
+         ,{<<"limits">>, <<"soft_limit_inbound">>}
+         }
+        ,{{<<"jonny5">>, <<"default_authz_resource_types">>}
+         ,{<<"limits">>, <<"authz_resource_types">>}
+         }
+        ,{{<<"provisioner">>, <<"cluster_id">>}
+         ,{<<"cluster">>, <<"cluster_id">>}
+         }
         ,{{<<"services">>, <<"master_account_bookkeeper">>}
          ,fun(_FromId, _Node, _FromSetting, <<"kz_bookkeeper_braintree">>) ->
                   {<<"services">>
@@ -1189,8 +1234,8 @@ migrate_config_setting_fun(Fun, [{FromId, Node, FromSetting, Value}=Remove|Remov
                                       )
     end.
 
--spec add_config_setting(kz_term:ne_binary(), config_key(), migrate_values()) ->
-                                'ok' |
+-spec add_config_setting(kz_term:ne_binary() | kz_json:object(), config_key(), migrate_values()) ->
+                                {'ok', kz_json:object()} |
                                 {'error', any()}.
 add_config_setting(Id, Setting, Values) when is_binary(Id) ->
     case kz_datamgr:open_doc(?KZ_CONFIG_DB, Id) of

@@ -1,7 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "app",
-    "additionalProperties": false,
     "description": "Appstore applications",
     "properties": {
         "allowed_users": {

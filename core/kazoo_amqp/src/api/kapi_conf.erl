@@ -24,10 +24,14 @@
         ,get_account_id/1, get_account_db/1
         ,get_type/1, get_doc/1, get_id/1
         ,get_action/1, get_is_soft_deleted/1
+        ,get_routing_key/1, get_routing_key/2
         ]).
 
 -type action() :: 'created' | 'edited' | 'deleted'.
--export_type([action/0]).
+-type doc() :: kz_json:object().
+-export_type([action/0
+             ,doc/0
+             ]).
 
 -include_lib("kz_amqp_util.hrl").
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
@@ -259,6 +263,17 @@ declare_exchanges() ->
 
 -spec get_routing_key(kz_term:proplist()) -> binary().
 get_routing_key(Props) ->
+    get_routing_key(Props, 'true').
+
+%%------------------------------------------------------------------------------
+%% @doc Create routing keys
+%%
+%% Set second arg to 'false' to get the 4-segment routing key for the local
+%% bindings server
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_routing_key(kz_term:proplist(), boolean()) -> binary().
+get_routing_key(Props, IsAMQPBinding) ->
     Action = props:get_binary_value('action', Props, <<"*">>),
     Db = props:get_binary_value('db', Props, <<"*">>),
     Type = props:get_binary_value('doc_type', Props
@@ -268,7 +283,7 @@ get_routing_key(Props) ->
                                ,props:get_value('id', Props, <<"*">>)
                                ),
     case kz_amqp_util:document_routing_key(Action, Db, Type, Id) of
-        <<"*.*.*.*">> -> <<"#">>;
+        <<"*.*.*.*">> when IsAMQPBinding -> <<"#">>;
         RK -> RK
     end.
 

@@ -66,6 +66,7 @@
 -export([allotments/1, allotments/2
         ,set_allotments/2
         ]).
+-export([inbound_channels_per_did_rules/1, inbound_channels_per_did_rules/2]).
 
 -include("kz_documents.hrl").
 
@@ -78,6 +79,7 @@
              ]).
 
 -define(SCHEMA, <<"limits">>).
+-define(LIMITS_CAT, <<"limits">>).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -167,7 +169,7 @@ inbound_trunks(Doc) ->
 
 -spec inbound_trunks(doc(), Default) -> tristate_integer() | Default.
 inbound_trunks(Doc, Default) ->
-    kz_json:get_integer_value(<<"inbound_trunks">>, Doc, Default).
+    get_limit_integer(<<"inbound_trunks">>, Doc, Default).
 
 -spec set_inbound_trunks(doc(), tristate_integer()) -> doc().
 set_inbound_trunks(Doc, InboundTrunks) ->
@@ -187,7 +189,7 @@ outbound_trunks(Doc) ->
 
 -spec outbound_trunks(doc(), Default) -> tristate_integer() | Default.
 outbound_trunks(Doc, Default) ->
-    kz_json:get_integer_value(<<"outbound_trunks">>, Doc, Default).
+    get_limit_integer(<<"outbound_trunks">>, Doc, Default).
 
 -spec set_outbound_trunks(doc(), tristate_integer()) -> doc().
 set_outbound_trunks(Doc, OutboundTrunks) ->
@@ -207,7 +209,7 @@ twoway_trunks(Doc) ->
 
 -spec twoway_trunks(doc(), Default) -> tristate_integer() | Default.
 twoway_trunks(Doc, Default) ->
-    kz_json:get_integer_value(<<"twoway_trunks">>, Doc, Default).
+    get_limit_integer(<<"twoway_trunks">>, Doc, Default).
 
 -spec set_twoway_trunks(doc(), tristate_integer()) -> doc().
 set_twoway_trunks(Doc, TwowayTrunks) ->
@@ -278,7 +280,7 @@ burst_trunks(Doc) ->
 
 -spec burst_trunks(doc(), Default) -> tristate_integer() | Default.
 burst_trunks(Doc, Default) ->
-    kz_json:get_integer_value(<<"burst_trunks">>, Doc, Default).
+    get_limit_integer(<<"burst_trunks">>, Doc, Default).
 
 -spec set_burst_trunks(doc(), tristate_integer()) -> doc().
 set_burst_trunks(Doc, BurstTrunks) ->
@@ -380,7 +382,7 @@ set_pvt_allow_prepay(Doc, AllowPrepay) ->
 %%------------------------------------------------------------------------------
 -spec allow_postpay(doc()) -> boolean().
 allow_postpay(Doc) ->
-    allow_postpay(Doc, 'true').
+    allow_postpay(Doc, 'false').
 
 -spec allow_postpay(doc(), Default) -> boolean() | Default.
 allow_postpay(Doc, Default) ->
@@ -396,7 +398,7 @@ set_pvt_allow_postpay(Doc, AllowPostpay) ->
 %%------------------------------------------------------------------------------
 -spec soft_limit_inbound(doc()) -> boolean().
 soft_limit_inbound(Doc) ->
-    soft_limit_inbound(Doc, 'true').
+    soft_limit_inbound(Doc, 'false').
 
 -spec soft_limit_inbound(doc(), Default) -> boolean() | Default.
 soft_limit_inbound(Doc, Default) ->
@@ -412,7 +414,7 @@ set_pvt_soft_limit_inbound(Doc, SoftLimit) ->
 %%------------------------------------------------------------------------------
 -spec soft_limit_outbound(doc()) -> boolean().
 soft_limit_outbound(Doc) ->
-    soft_limit_outbound(Doc, 'true').
+    soft_limit_outbound(Doc, 'false').
 
 -spec soft_limit_outbound(doc(), Default) -> boolean() | Default.
 soft_limit_outbound(Doc, Default) ->
@@ -462,16 +464,35 @@ set_allotments(Doc, Allotments) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec inbound_channels_per_did_rules(doc()) -> kz_json:object().
+inbound_channels_per_did_rules(Doc) ->
+    inbound_channels_per_did_rules(Doc, kz_json:new()).
+
+-spec inbound_channels_per_did_rules(doc(), Default) -> kz_json:object() | Default.
+inbound_channels_per_did_rules(Doc, Default) ->
+    kz_json:get_ne_json_value(<<"pvt_inbound_channels_per_did_rules">>, Doc, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec get_limit(kz_term:ne_binary(), kz_json:object(), tristate_integer()) ->
                        tristate_integer().
 get_limit(Key, Doc, Default) ->
     PrivateValue = get_private_limit(Key, Doc),
-    PublicValue = get_public_limit(Key, Doc, Default),
+    PublicValue =  kz_json:get_integer_value(Key, Doc),
     case PrivateValue =/= 'undefined'
-        andalso PrivateValue < PublicValue
+        andalso
+        (PublicValue =:= 'undefined'
+         orelse PublicValue < 0
+         orelse (
+           PrivateValue >= 0
+           andalso PrivateValue < PublicValue
+          )
+        )
     of
         'true' -> PrivateValue;
-        'false' -> PublicValue
+        'false' -> get_public_limit(Key, Doc, Default)
     end.
 
 -spec get_public_limit(kz_term:ne_binary(), kz_json:object(), tristate_integer()) ->
@@ -479,7 +500,7 @@ get_limit(Key, Doc, Default) ->
 get_public_limit(Key, Doc, Default) ->
     case kz_json:get_integer_value(Key, Doc) of
         'undefined' -> get_default_limit(Key, Default);
-        Value when Value < 0 -> 0;
+        Value when Value < 0 -> get_default_limit(Key, Default);
         Value -> Value
     end.
 
@@ -489,7 +510,42 @@ get_private_limit(Key, Doc) ->
 
 -spec get_default_limit(kz_term:ne_binary(), tristate_integer()) -> tristate_integer().
 get_default_limit(Key, Default) ->
-    kapps_config:get_integer(?APP_NAME, <<"default_", Key/binary>>, Default).
+    kapps_config:get_integer(?LIMITS_CAT, Key, Default).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_limit_integer(kz_term:ne_binary(), kz_json:object(), integer()) -> integer().
+get_limit_integer(Key, Doc, Default) ->
+    case kz_json:get_value(<<"pvt_", Key/binary>>, Doc) of
+        'undefined' -> get_public_limit_integer(Key, Doc, Default);
+        0 -> 0;
+        Value when Value < 0 ->
+            get_public_limit_integer(Key, Doc, Default);
+        Value ->
+            enforce_integer_limit(Value
+                                 ,get_public_limit_integer(Key, Doc, Default)
+                                 )
+    end.
+
+-spec get_public_limit_integer(kz_term:ne_binary(), kz_json:object(), integer()) -> integer().
+get_public_limit_integer(Key, Doc, Default) ->
+    case kz_json:get_value(Key, Doc) of
+        'undefined' -> get_default_limit_integer(Key, Default);
+        Value -> Value
+    end.
+
+-spec get_default_limit_integer(kz_term:ne_binary(), integer()) -> integer().
+get_default_limit_integer(Key, Default) ->
+    kapps_config:get_integer(?LIMITS_CAT, Key, Default).
+
+-spec enforce_integer_limit(integer(), integer()) -> integer().
+enforce_integer_limit(Private, Public) ->
+    case Private > Public of
+        'true' -> Public;
+        'false' -> Private
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -505,7 +561,7 @@ get_limit_units(Key, Doc, Default) ->
 
 -spec get_default_limit_units(kz_term:ne_binary(), kz_currency:units()) -> kz_currency:units().
 get_default_limit_units(Key, Default) ->
-    case kapps_config:get(?APP_NAME, <<"default_", Key/binary>>, Default) of
+    case kapps_config:get(?LIMITS_CAT, Key, Default) of
         Value when is_float(Value) -> kz_currency:dollars_to_units(abs(Value));
         Value when is_integer(Value) -> abs(Value);
         Default when is_float(Default) -> kz_currency:dollars_to_units(abs(Default));
@@ -527,7 +583,7 @@ get_limit_dollars(Key, Doc, Default) ->
 
 -spec get_default_limit_dollars(kz_term:ne_binary(), kz_currency:dollars()) -> kz_currency:dollars().
 get_default_limit_dollars(Key, Default) ->
-    case kapps_config:get(?APP_NAME, <<"default_", Key/binary>>, Default) of
+    case kapps_config:get(?LIMITS_CAT, Key, Default) of
         Value when is_float(Value) -> abs(Value);
         Value when is_integer(Value) -> kz_currency:units_to_dollars(abs(Value));
         Default when is_float(Default) -> abs(Default);
@@ -559,7 +615,7 @@ get_public_limit_boolean(Key, _, Default) ->
 
 -spec get_default_limit_boolean(kz_term:ne_binary(), boolean()) -> boolean().
 get_default_limit_boolean(Key, Default) ->
-    kapps_config:get_is_true(?APP_NAME, <<"default_", Key/binary>>, Default).
+    kapps_config:get_is_true(?LIMITS_CAT, Key, Default).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -582,7 +638,7 @@ get_public_limit_list(Key, JObj, Default) ->
 
 -spec get_default_limit_list(kz_term:ne_binary(), list()) -> list().
 get_default_limit_list(Key, Default) ->
-    kapps_config:get_ne_binaries(?APP_NAME, <<"default_", Key/binary>>, Default).
+    kapps_config:get_ne_binaries(?LIMITS_CAT, Key, Default).
 
 %%------------------------------------------------------------------------------
 %% @doc

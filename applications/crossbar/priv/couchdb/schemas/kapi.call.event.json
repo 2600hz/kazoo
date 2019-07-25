@@ -18,6 +18,12 @@
         "Billing-Seconds": {
             "type": "string"
         },
+        "Bridge-Hangup-Cause": {
+            "type": "string"
+        },
+        "Call-Debug": {
+            "type": "string"
+        },
         "Call-Direction": {
             "type": "string"
         },
@@ -34,6 +40,9 @@
             "type": "string"
         },
         "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Channel-Answer-State": {
             "type": "string"
         },
         "Channel-Call-State": {
@@ -75,6 +84,12 @@
         "Conference-Name": {
             "type": "string"
         },
+        "Connecting-Leg-A-UUID": {
+            "type": "string"
+        },
+        "Connecting-Leg-B-UUID": {
+            "type": "string"
+        },
         "Control-Queue": {
             "type": "string"
         },
@@ -103,6 +118,9 @@
             "type": "string"
         },
         "Duration-Seconds": {
+            "type": "string"
+        },
+        "Endpoint-Disposition": {
             "type": "string"
         },
         "Event-Category": {
@@ -141,6 +159,9 @@
         "Local-SDP": {
             "type": "string"
         },
+        "Media-Recordings": {
+            "type": "string"
+        },
         "Media-Server": {
             "type": "string"
         },
@@ -174,6 +195,9 @@
         "Raw-Application-Name": {
             "type": "string"
         },
+        "Recording": {
+            "type": "string"
+        },
         "Remote-SDP": {
             "type": "string"
         },
@@ -183,7 +207,16 @@
         "Request": {
             "type": "string"
         },
+        "Resigning-Peer-UUID": {
+            "type": "string"
+        },
+        "Resigning-UUID": {
+            "type": "string"
+        },
         "Ringing-Seconds": {
+            "type": "string"
+        },
+        "Root-Call-Interaction-ID": {
             "type": "string"
         },
         "Silence-Terminated": {
@@ -219,7 +252,13 @@
         "To-Uri": {
             "type": "string"
         },
+        "Transfer-Disposition": {
+            "type": "string"
+        },
         "Transfer-History": {
+            "type": "string"
+        },
+        "Transfer-Source": {
             "type": "string"
         },
         "Transfer-To": {

@@ -1,0 +1,26 @@
+<definition name="conference-event">
+	<field name="Event-Category" type="static" value="conference" />
+	<field name="Event-Name" type="static" value="event" />
+	<field name="Switch-Nodename" as="Node" />
+	<field name="Core-UUID" />
+	<field name="freeswitch-url" type="reference" />
+	<field name="App-Name" type="static" value="freeswitch" />
+	<field name="App-Version" type="static" value="1.0" />
+	<field name="Action" as="Event" />
+	<field name="Conference-Name" as="Conference-ID" />
+	<field name="Conference-Unique-ID" as="Instance-ID" />
+	<field name="Conference-Node" />
+	<field name="Conference-Profile" as="Profile" />
+	<field name="Unique-ID" as="Call-ID" />
+	<field name="Account-ID" type="first-of"
+		value="Conference-Account-ID|variable_ecallmgr_Account-ID" />
+	<field name="conference-caller-id" type="reference" />
+
+	<field name="Channel-Presence-ID" />
+	<field name="Member-ID" as="Participant-ID" serialize-as="number" />
+	<field name="Custom-Channel-Vars" type="reference" />
+	<field name="Custom-Application-Vars" type="reference" />
+	<field name="conference-vars" type="reference" />
+	<field name="conference-channel-vars" type="reference" />
+	<field name="conference-bgdial" type="reference" />
+</definition>

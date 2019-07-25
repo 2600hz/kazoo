@@ -1,0 +1,20 @@
+paths:
+  /token_auth:
+    delete:
+      operationId: DeleteTokenAuth
+      parameters: []
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of token_auth
+      tags:
+        - token_auth
+    get:
+      operationId: GetTokenAuth
+      parameters: []
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all token_auth
+      tags:
+        - token_auth

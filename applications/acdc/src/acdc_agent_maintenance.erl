@@ -41,31 +41,15 @@ agent_status(AcctId, AgentId) ->
         S -> acdc_agent_sup:status(S)
     end.
 
--spec acct_restart(kz_term:text()) -> 'ok'.
+-spec acct_restart(kz_term:text()) -> [kz_types:sup_startchild_ret()].
 acct_restart(AcctId) when not is_binary(AcctId) ->
     acct_restart(kz_term:to_binary(AcctId));
 acct_restart(AcctId) ->
-    case acdc_agents_sup:find_acct_supervisors(AcctId) of
-        [] -> lager:info("no agents with account id ~s available", [AcctId]);
-        As ->
-            lager:debug("terminating existing agent processes in ~s", [AcctId]),
-            _ = [exit(Sup, 'kill') || Sup <- As],
-            lager:info("restarting agents in ~s", [AcctId]),
-            acdc_init:init_acct_agents(AcctId),
-            'ok'
-    end.
+    acdc_agents_sup:restart_acct(AcctId).
 
--spec agent_restart(kz_term:text(), kz_term:text()) -> 'ok'.
+-spec agent_restart(kz_term:text(), kz_term:text()) -> kz_types:sup_startchild_ret().
 agent_restart(AcctId, AgentId) when not is_binary(AcctId);
                                     not is_binary(AgentId) ->
     agent_restart(kz_term:to_binary(AcctId), kz_term:to_binary(AgentId));
 agent_restart(AcctId, AgentId) ->
-    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
-        'undefined' -> lager:info("no agent ~s in account ~s available", [AgentId, AcctId]);
-        S ->
-            lager:info("terminating existing agent process ~p", [S]),
-            exit(S, 'kill'),
-            lager:info("restarting agent ~s in ~s", [AgentId, AcctId]),
-            _ = acdc_agents_sup:new(AcctId, AgentId),
-            'ok'
-    end.
+    acdc_agents_sup:restart_agent(AcctId, AgentId).

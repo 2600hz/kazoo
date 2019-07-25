@@ -7,7 +7,7 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_util).
 
--export([log_stacktrace/0, log_stacktrace/1, log_stacktrace/2
+-export([log_stacktrace/0, log_stacktrace/1, log_stacktrace/2, log_stacktrace/3
         ,format_account_id/1, format_account_id/2, format_account_id/3
         ,format_account_mod_id/1, format_account_mod_id/2, format_account_mod_id/3
         ,format_account_db/1
@@ -31,7 +31,7 @@
 -export([put_callid/1, get_callid/0, find_callid/1
         ,spawn/1, spawn/2
         ,spawn_link/1, spawn_link/2
-        ,spawn_monitor/2
+        ,spawn_monitor/2, spawn_monitor/3
         ,set_startup/0, startup/0
         ]).
 -export([get_event_type/1]).
@@ -63,6 +63,9 @@
 -export([resolve_uri_path/2]).
 -endif.
 
+-deprecated({'log_stacktrace', 0, 'next_major_release'}).
+-deprecated({'log_stacktrace', 2, 'next_major_release'}).
+
 -include_lib("kernel/include/inet.hrl").
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
@@ -76,22 +79,47 @@
 
 %%------------------------------------------------------------------------------
 %% @doc Standardized way of logging the stack-trace.
+%% @deprecated `erlang:get_stacktrace/0' used by this function is deprecated
+%% in OTP 21, please use the new try/catch syntax and pass stacktrace to
+%% {@link kz_util:log_stacktrace/1} instead.
 %% @end
 %%------------------------------------------------------------------------------
 -spec log_stacktrace() -> 'ok'.
 log_stacktrace() ->
-    ST = erlang:get_stacktrace(),
-    log_stacktrace(ST).
+    try throw('get_stacktrace')
+    catch
+        ?STACKTRACE(_E, _R, ST)
+        log_stacktrace(ST, "log_stacktrace/0 is deprecated: ", [])
+        end.
 
--spec log_stacktrace(list()) -> ok.
+%%------------------------------------------------------------------------------
+%% @doc Standardized way of logging the stack-trace.
+%% @end
+%%------------------------------------------------------------------------------
+-spec log_stacktrace(list()) -> 'ok'.
 log_stacktrace(ST) ->
     log_stacktrace(ST, "", []).
 
--spec log_stacktrace(string(), list()) -> ok.
+%%------------------------------------------------------------------------------
+%% @doc Standardized way of logging the stack-trace.
+%% @deprecated `erlang:get_stacktrace/0' used by this function is deprecated
+%% in OTP 21, please use the new try/catch syntax and pass stacktrace to
+%% {@link kz_util:log_stacktrace/3} instead.
+%% @end
+%%------------------------------------------------------------------------------
+-spec log_stacktrace(string(), list()) -> 'ok'.
 log_stacktrace(Fmt, Args) ->
-    ST = erlang:get_stacktrace(),
-    log_stacktrace(ST, Fmt, Args).
+    try throw('get_stacktrace')
+    catch
+        ?STACKTRACE(_E, _R, ST)
+        log_stacktrace(ST, "log_stacktrace/2 is deprecated: " ++ Fmt, Args)
+        end.
 
+%%------------------------------------------------------------------------------
+%% @doc Standardized way of logging the stack-trace.
+%% @end
+%%------------------------------------------------------------------------------
+-spec log_stacktrace(list(), string(), list()) -> 'ok'.
 log_stacktrace(ST, Fmt, Args) ->
     ?LOG_ERROR("stacktrace: " ++ Fmt, Args),
     _ = [log_stacktrace_mfa(M, F, A, Info)
@@ -375,24 +403,31 @@ kz_log_md_put(K, V) ->
 is_kz_log_md_equal({K1, _}, {K2, _}) -> K1 =< K2;
 is_kz_log_md_equal(K1, K2) -> K1 =< K2.
 
--spec kz_log_md_clear() -> any().
+-define(LAGER_MD_KEY, '__lager_metadata').
+
+-spec kz_log_md_clear() -> 'ok'.
 kz_log_md_clear() ->
-    lager:md([]).
+    %% `lager:md([])' causing dialyzer to complain:
+    %% warn_failing_call
+    %% `kz_util.erl:408: The call lager:md([]) breaks the contract ([{atom(),any()},...]) -> ok`'
+    %% lager:md([]).
+    _ = erlang:put(?LAGER_MD_KEY, []),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Gives `MaxTime' milliseconds to `Fun' of `Arguments' to apply.
 %% If time is elapsed, the sub-process is killed and returns `timeout'.
 %% @end
 %%------------------------------------------------------------------------------
--spec runs_in(number(), fun(), list()) -> {ok, any()} | timeout.
+-spec runs_in(number(), fun(), list()) -> {'ok', any()} | 'timeout'.
 runs_in(MaxTime, Fun, Arguments)
   when is_integer(MaxTime), MaxTime > 0 ->
     {Parent, Ref} = {self(), erlang:make_ref()},
     Child = ?MODULE:spawn(fun () -> Parent ! {Ref, erlang:apply(Fun, Arguments)} end),
-    receive {Ref, Result} -> {ok, Result}
+    receive {Ref, Result} -> {'ok', Result}
     after MaxTime ->
-            exit(Child, kill),
-            timeout
+            exit(Child, 'kill'),
+            'timeout'
     end;
 runs_in(MaxTime, Fun, Arguments)
   when is_number(MaxTime), MaxTime > 0 ->
@@ -436,6 +471,14 @@ spawn_monitor(Fun, Arguments) ->
     erlang:spawn_monitor(fun () ->
                                  _ = put_callid(CallId),
                                  erlang:apply(Fun, Arguments)
+                         end).
+
+-spec spawn_monitor(module(), atom(), list()) -> kz_term:pid_ref().
+spawn_monitor(Module, Fun, Args) ->
+    CallId = get_callid(),
+    erlang:spawn_monitor(fun () ->
+                                 _ = put_callid(CallId),
+                                 erlang:apply(Module, Fun, Args)
                          end).
 
 
@@ -653,14 +696,23 @@ process_fold(App, App, _, Others) ->
     process_fold(Others, App);
 process_fold(App, _, M, _) -> {App, M}.
 
+-spec calling_app_stacktrace() -> any().
+calling_app_stacktrace() ->
+    try throw('get_stacktrace')
+    catch
+        _E:_R:ST ->
+            [_Me | Others] = ST,
+            Others
+    end.
+
 %%------------------------------------------------------------------------------
 %% @doc For core applications that want to know which app is calling.
 %% @end
 %%------------------------------------------------------------------------------
 -spec calling_app() -> kz_term:ne_binary().
 calling_app() ->
-    Modules = erlang:process_info(self(),current_stacktrace),
-    {'current_stacktrace', [_Me, {Module, _, _, _} | Start]} = Modules,
+    Modules = calling_app_stacktrace(),
+    [_Me, {Module, _, _, _} | Start] = Modules,
     {'ok', App} = application:get_application(Module),
     case process_fold(Start, App) of
         App -> kz_term:to_binary(App);
@@ -669,20 +721,14 @@ calling_app() ->
 
 -spec calling_app_version() -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 calling_app_version() ->
-    Modules = erlang:process_info(self(),current_stacktrace),
-    {'current_stacktrace', [_Me, {Module, _, _, _} | Start]} = Modules,
-    {'ok', App} = application:get_application(Module),
-    NewApp = case process_fold(Start, App) of
-                 App -> App;
-                 {Parent, _MFA} -> Parent
-             end,
-    {NewApp, _, Version} = get_app(NewApp),
+    {'ok', App} = application:get_application(self()),
+    {NewApp, _, Version} = get_app(App),
     {kz_term:to_binary(NewApp), kz_term:to_binary(Version)}.
 
 -spec calling_process() -> map().
 calling_process() ->
-    Modules = erlang:process_info(self(),current_stacktrace),
-    {'current_stacktrace', [_Me, {Module, _, _, _}=M | Start]} = Modules,
+    Modules = calling_app_stacktrace(),
+    [_Me, {Module, _, _, _}=M | Start] = Modules,
     App = case application:get_application(Module) of
               {'ok', KApp} -> KApp;
               'undefined' -> Module
@@ -720,13 +766,14 @@ application_version(Application) ->
 %% Time: `O(nlog(n))'
 %% @end
 %%------------------------------------------------------------------------------
--spec uniq([kz_term:proplist()]) -> kz_term:proplist().
+-spec uniq(kz_term:proplist()) -> kz_term:proplist().
 uniq(KVs) when is_list(KVs) -> uniq(KVs, sets:new(), []).
+
 uniq([], _, L) -> lists:reverse(L);
 uniq([{K,_}=KV|Rest], S, L) ->
     case sets:is_element(K, S) of
-        true -> uniq(Rest, S, L);
-        false ->
+        'true' -> uniq(Rest, S, L);
+        'false' ->
             NewS = sets:add_element(K, S),
             uniq(Rest, NewS, [KV|L])
     end.

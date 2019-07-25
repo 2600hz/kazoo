@@ -13,10 +13,10 @@
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_conf:doc_update_v(JObj),
-    Id = kz_json:get_value(<<"ID">>, JObj),
-    Db = kz_json:get_value(<<"Database">>, JObj),
-    Type = kz_json:get_value(<<"Type">>, JObj),
-    Action = kz_json:get_value(<<"Event-Name">>, JObj),
+    Id = kapi_conf:get_id(JObj),
+    Db = kapi_conf:get_database(JObj),
+    Type = kapi_conf:get_type(JObj),
+    Action = kz_api:event_name(JObj),
     handle_doc(Action, Type, Db, Id).
 
 -spec handle_doc(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.

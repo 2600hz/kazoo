@@ -1,0 +1,42 @@
+<definition name="Custom-Channel-Vars">
+	<field name="Custom-Channel-Vars" type="static" serialize-as="object">
+		<fields verbose="false">
+			<field name="X-ecallmgr_" type="prefix" exclude-prefix="true" />
+			<field name="variable_sip_h_X-ecallmgr_" type="prefix"
+				exclude-prefix="true" />
+			<field name="variable_ecallmgr_" type="prefix" exclude-prefix="true" />
+
+			<field name="Fetch-UUID" as="Fetch-ID" />
+
+			<field name="Referred-To" type="expand"
+				value="sip:${regex(${url_decode(${variable_sip_refer_to})}|&lt;sips?:(.*)>|%1)}">
+				<filters>
+					<filter name="variable_sip_refer_to" type="include" compare="exists" />
+				</filters>
+			</field>
+			<field name="variable_sip_h_Referred-By" as="Referred-By" />
+			<field name="interaction-id" type="reference" />
+
+			<field name="variable_presence_id" as="Presence-ID" />
+
+			<field name="redirect" type="group">
+				<filters>
+					<filter name="variable_sip_redirected_by" type="include"
+						compare="exists" />
+				</filters>
+				<fields verbose="false">
+					<field name="Redirected-By" type="expand"
+						value="sip:${regex(${variable_sip_redirected_by}|&lt;sips?:(.*)>|%1)}" />
+					<field name="Redirected-Reason" type="expand"
+						value="${regex(${variable_sip_redirected_by}|reason=(.*)|%1)}" />
+				</fields>
+			</field>
+
+			<field name="Caller-Privacy-Hide-Number" as="Privacy-Hide-Number"
+				serialize-as="boolean" />
+			<field name="Caller-Privacy-Hide-Name" as="Privacy-Hide-Name"
+				serialize-as="boolean" />
+
+		</fields>
+	</field>
+</definition>

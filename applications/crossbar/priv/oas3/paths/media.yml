@@ -1,0 +1,151 @@
+paths:
+  /accounts/{ACCOUNT_ID}/media:
+    get:
+      operationId: GetAccountsAccountIdMedia
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all media
+      tags:
+        - media
+    put:
+      operationId: PutAccountsAccountIdMedia
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/media'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of media
+      tags:
+        - media
+  /accounts/{ACCOUNT_ID}/media/languages:
+    get:
+      operationId: GetAccountsAccountIdMediaLanguages
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get languages of media
+      tags:
+        - media
+  /accounts/{ACCOUNT_ID}/media/languages/{LANGUAGE}:
+    get:
+      operationId: GetAccountsAccountIdMediaLanguagesLanguage
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/LANGUAGE'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a media by ID
+      tags:
+        - media
+  /accounts/{ACCOUNT_ID}/media/prompts:
+    get:
+      operationId: GetAccountsAccountIdMediaPrompts
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get prompts of media
+      tags:
+        - media
+  /accounts/{ACCOUNT_ID}/media/prompts/{PROMPT_ID}:
+    get:
+      operationId: GetAccountsAccountIdMediaPromptsPromptId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PROMPT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a media by ID
+      tags:
+        - media
+  /accounts/{ACCOUNT_ID}/media/{MEDIA_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdMediaMediaId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/MEDIA_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of media
+      tags:
+        - media
+    get:
+      operationId: GetAccountsAccountIdMediaMediaId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/MEDIA_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a media by ID
+      tags:
+        - media
+    post:
+      operationId: PostAccountsAccountIdMediaMediaId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/MEDIA_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/media'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of media
+      tags:
+        - media
+  /accounts/{ACCOUNT_ID}/media/{MEDIA_ID}/raw:
+    get:
+      operationId: GetAccountsAccountIdMediaMediaIdRaw
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/MEDIA_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get raw of media
+      tags:
+        - media
+    post:
+      operationId: PostAccountsAccountIdMediaMediaIdRaw
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/MEDIA_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/media'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of media
+      tags:
+        - media

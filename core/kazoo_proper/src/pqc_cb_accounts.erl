@@ -8,6 +8,9 @@
 
 -export([create_account/2, create_account/3
         ,delete_account/2
+        ,patch_account/3
+        ,fetch_account/2
+
         ,cleanup_accounts/1, cleanup_accounts/2
 
         ,command/2
@@ -15,6 +18,9 @@
 
         ,next_state/3
         ,postcondition/3
+
+         %% kapps_maintenance:check_release callback
+        ,seq/0
         ]).
 
 -export([account_url/1]).
@@ -22,6 +28,8 @@
 -export_type([account_id/0]).
 
 -include("kazoo_proper.hrl").
+
+-define(ACCOUNT_NAMES, [<<"account_for_accounts">>]).
 
 -type account_id() :: {'call', 'pqc_kazoo_model', 'account_id_by_name', [pqc_cb_api:state() | proper_types:type()]} |
                       kz_term:ne_binary().
@@ -45,7 +53,7 @@ create_account(API, NewAccountName, AccountId) ->
     RequestData = kz_json:from_list([{<<"name">>, NewAccountName}]),
     RequestEnvelope = pqc_cb_api:create_envelope(RequestData),
 
-    Resp = pqc_cb_api:make_request([201, 500]
+    Resp = pqc_cb_api:make_request([#expectation{response_codes=[201, 500]}]
                                   ,fun kz_http:put/3
                                   ,account_url(AccountId)
                                   ,pqc_cb_api:request_headers(API)
@@ -61,12 +69,34 @@ allow_number_additions(AccountId) ->
                                           ,[{kzd_accounts:path_allow_number_additions(), 'true'}]
                                           ).
 
+-spec fetch_account(pqc_cb_api:statE(), kz_term:ne_binary()) -> pqc_cb_api:response().
+fetch_account(API, AccountId) ->
+    pqc_cb_api:make_request([#expectation{response_codes=[200]}]
+                           ,fun kz_http:get/2
+                           ,account_url(AccountId)
+                           ,pqc_cb_api:request_headers(API)
+                           ).
+
+-spec patch_account(pqc_cb_api:state(), kz_term:ne_binary(), kz_json:object()) -> pqc_cb_api:response().
+patch_account(API, AccountId, ReqJObj) ->
+    RequestEnvelope = pqc_cb_api:create_envelope(ReqJObj),
+
+    pqc_cb_api:make_request([#expectation{response_codes=[200]}]
+                           ,fun kz_http:patch/3
+                           ,account_url(AccountId)
+                           ,pqc_cb_api:request_headers(API)
+                           ,kz_json:encode(RequestEnvelope)
+                           ).
+
 -spec delete_account(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
 delete_account(API, AccountId) ->
-    URL = account_url(AccountId),
     RequestHeaders = pqc_cb_api:request_headers(API),
 
-    pqc_cb_api:make_request([200], fun kz_http:delete/2, URL, RequestHeaders).
+    pqc_cb_api:make_request([#expectation{response_codes=[200]}]
+                           ,fun kz_http:delete/2
+                           ,account_url(AccountId)
+                           ,RequestHeaders
+                           ).
 
 -spec cleanup_accounts(kz_term:ne_binaries()) -> 'ok'.
 cleanup_accounts(AccountNames) ->
@@ -139,3 +169,82 @@ postcondition(Model
                  ),
             500 =:= pqc_cb_response:error_code(APIResult)
     end.
+
+-spec seq() -> 'ok'.
+seq() ->
+    API = pqc_cb_api:init_api(['crossbar'], ['cb_accounts']),
+    'ok' = enable_and_delete_topup(API),
+    enable_and_disable_account_using_patch(API).
+
+-spec enable_and_delete_topup(pqc_cb_api:state()) -> 'ok'.
+enable_and_delete_topup(API) ->
+    ?INFO("STARTING ENABLE_AND_DISABLE_TOPUP TEST"),
+    %% Make sure everything is clean for the test.
+    _ = cleanup(API),
+
+    AccountResp = create_account(API, hd(?ACCOUNT_NAMES)),
+    ?INFO("created account: ~s", [AccountResp]),
+
+    AccountJObj = kz_json:get_value(<<"data">>, kz_json:decode(AccountResp)),
+    AccountId = kz_json:get_binary_value(<<"id">>, AccountJObj),
+    TopupConfig = kz_json:from_list([{<<"threshold">>,10},{<<"amount">>,50}]),
+    RequestData = kz_json:set_value(<<"topup">>, TopupConfig, AccountJObj),
+    RequestEnvelope = pqc_cb_api:create_envelope(RequestData),
+
+    Resp = topup_request(API, AccountId, RequestEnvelope),
+    ?INFO("enable topup resp: ~s", [Resp]),
+
+    RespJObj = pqc_cb_response:data(Resp),
+    'true' = kz_json:are_equal(TopupConfig, kz_json:get_ne_value(<<"topup">>, RespJObj)),
+    RequestData1 = kz_json:delete_key(<<"topup">>, RespJObj),
+    RequestEnvelope1 = pqc_cb_api:create_envelope(RequestData1),
+
+    Resp1 = topup_request(API, AccountId, RequestEnvelope1),
+    ?INFO("disable topup resp: ~s", [Resp1]),
+
+    'undefined' = kz_json:get_ne_value(<<"topup">>, kz_json:decode(Resp1)),
+
+    _ = cleanup(API),
+    ?INFO("FINISHED ENABLE_AND_DISABLE_TOPUP TEST").
+
+-spec enable_and_disable_account_using_patch(pqc_cb_api:state()) -> 'ok'.
+enable_and_disable_account_using_patch(API) ->
+    ?INFO("STARTING ENABLE_AND_DISABLE_ACCOUNT_USING_PATCH TEST"),
+    %% Make sure everything is clean for the test.
+    _ = cleanup(API),
+
+    AccountResp = create_account(API, hd(?ACCOUNT_NAMES)),
+    ?INFO("created account: ~s", [AccountResp]),
+
+    AccountId = kz_json:get_binary_value(<<"id">>, pqc_cb_response:data(AccountResp)),
+
+    Fetched = pqc_cb_response:data(fetch_account(API, AccountId)),
+    'true' = kz_json:is_true(<<"enabled">>, Fetched, 'true'),
+
+    ?INFO("disabling account"),
+    ReqJObj = kz_json:from_list([{<<"enabled">>, 'false'}]),
+    Disabled = pqc_cb_response:data(patch_account(API, AccountId, ReqJObj)),
+    'false' = kz_json:is_true(<<"enabled">>, Disabled, 'true'),
+
+    ?INFO("enabling account"),
+    ReqJObj1 = kz_json:from_list([{<<"enabled">>, 'true'}]),
+    Enabled = pqc_cb_response:data(patch_account(API, AccountId, ReqJObj1)),
+    'true' = kz_json:is_true(<<"enabled">>, Enabled, 'true'),
+
+    _ = cleanup(API),
+    ?INFO("FINISHED ENABLE_AND_DISABLE_ACCOUNT_USING_PATCH TEST").
+
+-spec cleanup(pqc_cb_api:state()) -> any().
+cleanup(API) ->
+    ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
+    _ = cleanup_accounts(API, ?ACCOUNT_NAMES),
+    _ = pqc_cb_api:cleanup(API).
+
+-spec topup_request(pqc_cb_api:state(), kz_term:ne_binary(), kz_json:object()) -> pqc_cb_api:response().
+topup_request(API, AccountId, RequestEnvelope) ->
+    pqc_cb_api:make_request([#expectation{response_codes=[200]}]
+                           ,fun kz_http:post/3
+                           ,account_url(AccountId)
+                           ,pqc_cb_api:request_headers(API)
+                           ,kz_json:encode(RequestEnvelope)
+                           ).

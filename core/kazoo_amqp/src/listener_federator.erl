@@ -15,7 +15,7 @@
         ,handle_call/3
         ,handle_cast/2
         ,handle_info/2
-        ,handle_event/4
+        ,handle_event/3
         ,terminate/2
         ,code_change/3
         ]).
@@ -94,6 +94,7 @@ handle_cast({'gen_listener', {'is_consuming', 'true'}}, #state{parent=Parent, br
     gen_server:cast(Parent, {'federator_is_consuming', Broker, 'true'}),
     {'noreply', State};
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
@@ -102,14 +103,15 @@ handle_cast(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
+    lager:info("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
--spec handle_event(kz_json:object(), gen_listener:basic_deliver(), amqp_basic(), state()) -> gen_listener:handle_event_return().
-handle_event(JObj, BasicDeliver, BasicData, #state{parent=Parent
-                                                  ,broker=Broker
-                                                  ,self_binary=Self
-                                                  ,zone=Zone
-                                                  }) ->
+-spec handle_event(kz_json:object(), kz_term:proplist(), state()) -> gen_listener:handle_event_return().
+handle_event(JObj, Props, #state{parent=Parent
+                                ,broker=Broker
+                                ,self_binary=Self
+                                ,zone=Zone
+                                }) ->
     lager:debug("relaying federated ~s event (~p) ~s from ~s to ~p with consumer pid ~p",
                 [kz_api:event_category(JObj), kz_api:msg_id(JObj), kz_api:event_name(JObj), Zone, Parent, Self]
                ),
@@ -124,8 +126,7 @@ handle_event(JObj, BasicDeliver, BasicData, #state{parent=Parent
                                                     ]
                                                    ,JObj
                                                    )
-                                ,BasicDeliver
-                                ,BasicData
+                                ,Props
                                 ),
     'ignore'.
 

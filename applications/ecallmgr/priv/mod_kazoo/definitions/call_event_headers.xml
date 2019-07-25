@@ -1,0 +1,19 @@
+<definition name="call_event_headers">
+	<field name="Event-Category" type="static" value="call_event" />
+	<field name="Event-Name" type="first-of"
+		value="kazoo_event_name|Event-Subclass|Event-Name" />
+	<field name="Event-Date-Timestamp" as="Msg-ID" />
+	<field name="Timestamp" type="expand"
+		value="${expr(ceil((${Event-Date-Timestamp} / 1000000) + $${UNIX_EPOCH_IN_GREGORIAN}))}"
+		serialize-as="number" />
+	<field name="variable_sip_origination_call_uuid" as="Origination-Call-ID" />
+	<field name="Call-ID" type="first-of"
+		value="Unique-ID|Caller-Unique-ID|caller-unique-id" />
+	<field name="Caller-Channel-Created-Time" as="Channel-Created-Time" />
+
+	<field name="Switch-Nodename" as="Node" />
+
+	<field name="variable_sip_invite_domain" as="Domain-Name" />
+	<field name="App-Name" type="static" value="freeswitch" />
+	<field name="App-Version" type="static" value="1.0" />
+</definition>

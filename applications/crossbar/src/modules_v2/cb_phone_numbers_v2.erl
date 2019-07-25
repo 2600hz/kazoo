@@ -83,8 +83,8 @@
 %%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
-    _ = crossbar_bindings:bind(<<"v2_resource.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"v2_resource.authenticate.phone_numbers">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"v2_resource.authorize.phone_numbers">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.phone_numbers">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.phone_numbers">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"v2_resource.validate.phone_numbers">>, ?MODULE, 'validate'),
@@ -222,7 +222,7 @@ validate_phone_numbers(Context, ?HTTP_GET, 'undefined') ->
     maybe_find_numbers(Context);
 validate_phone_numbers(Context, ?HTTP_GET, _AccountId) ->
     case kz_json:get_ne_value(?PREFIX, cb_context:query_string(Context)) of
-        'undefined' -> summary(Context);
+        'undefined' -> cb_modules_util:maybe_convert_numbers_to_list(summary(Context));
         _Prefix -> maybe_find_numbers(Context)
     end.
 
@@ -331,15 +331,14 @@ classified_number(Context, Number, Classifier) ->
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, ?FIX, Num) ->
     AccountDb = cb_context:account_db(Context),
-    AuthBy = cb_context:auth_account_id(Context),
-    Result = kazoo_number_manager_maintenance:fix_number(Num, AuthBy, AccountDb),
+    _ = kazoo_number_manager_maintenance:copy_single_number_to_account_db(Num, AccountDb),
     CB = fun() -> ?MODULE:post(cb_context:set_accepting_charges(Context), ?FIX, Num) end,
-    set_response(Result, Context, CB).
+    set_response({'ok', kz_json:new()}, Context, CB).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?FIX) ->
     AccountDb = cb_context:account_db(Context),
-    'ok' = kazoo_number_manager_maintenance:migrate(AccountDb),
+    _ = kazoo_number_manager_maintenance:fix_account_db_numbers(AccountDb),
     summary(Context);
 post(Context, ?CHECK) ->
     Numbers = cb_context:req_value(Context, ?COLLECTION_NUMBERS),
@@ -557,8 +556,8 @@ maybe_add_port_request_numbers(_Context, 'false') -> kz_json:new();
 maybe_add_port_request_numbers(Context, 'true') ->
     AccountId = cb_context:account_id(Context),
     HasQs = crossbar_filter:is_defined(Context),
-    ViewOptions = [{'startkey', [cb_context:account_id(Context)]}
-                  ,{'endkey', [cb_context:account_id(Context), kz_json:new()]}
+    ViewOptions = [{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, kz_json:new()]}
                   ],
     case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?PORT_NUM_LISTING, ViewOptions) of
         {'error', _} -> kz_json:new();

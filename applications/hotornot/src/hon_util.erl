@@ -13,10 +13,6 @@
         ,account_ratedeck/1, account_ratedeck/2
         ]).
 
--ifdef(TEST).
--export([build_keys/1]).
--endif.
-
 -include("hotornot.hrl").
 
 -define(MIN_PREFIX_LEN, 1). % how many chars to strip off the e164 DID
@@ -56,7 +52,7 @@ find_candidate_rates(DID, _AccountId, _RatedeckId) ->
 -spec find_trie_rates(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
                              candidate_rates_return().
 find_trie_rates(E164, AccountId, RatedeckId) ->
-    case hon_trie:match_did(only_numeric(E164), AccountId, RatedeckId) of
+    case hon_trie:match_did(kz_binary:remove_non_numeric(E164), AccountId, RatedeckId) of
         {'ok', Result} -> {'ok', Result};
         {'error', _E} ->
             lager:warning("got error while searching did in trie, falling back to DB search"),
@@ -78,7 +74,7 @@ maybe_update_trie(_RatedeckId, _Candidates, _Module) ->
 -spec fetch_candidate_rates(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
                                    candidate_rates_return().
 fetch_candidate_rates(E164, AccountId, RatedeckId) ->
-    fetch_candidate_rates(E164, AccountId, RatedeckId, build_keys(E164)).
+    fetch_candidate_rates(E164, AccountId, RatedeckId, kzdb_ratedeck:prefix_keys(E164)).
 
 -spec fetch_candidate_rates(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binaries()) ->
                                    candidate_rates_return().
@@ -159,28 +155,6 @@ reseller_ratedeck(_AccountId, ResellerId) ->
             kzd_ratedeck:format_ratedeck_db(RatedeckId)
     end.
 -endif.
-
--spec build_keys(kz_term:ne_binary()) -> [integer()].
-build_keys(Number) ->
-    case only_numeric(Number) of
-        <<>> -> [];
-        <<D:1/binary, Rest/binary>> ->
-            build_keys(Rest, D, [kz_term:to_integer(D)])
-    end.
-
--spec only_numeric(binary()) -> binary().
-only_numeric(Number) ->
-    << <<N>> || <<N>> <= Number, is_numeric(N)>>.
-
--spec is_numeric(integer()) -> boolean().
-is_numeric(N) ->
-    N >= $0
-        andalso N =< $9.
-
--spec build_keys(binary(), kz_term:ne_binary(), [integer()]) -> [integer()].
-build_keys(<<D:1/binary, Rest/binary>>, Prefix, Acc) ->
-    build_keys(Rest, <<Prefix/binary, D/binary>>, [kz_term:to_integer(<<Prefix/binary, D/binary>>) | Acc]);
-build_keys(<<>>, _, Acc) -> Acc.
 
 -spec matching_rates(kzd_rates:docs(), kapi_rate:req()) ->
                             kzd_rates:docs().

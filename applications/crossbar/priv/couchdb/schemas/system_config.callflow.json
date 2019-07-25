@@ -75,6 +75,26 @@
             "description": "callflow operator key",
             "type": "string"
         },
+        "pool_overflow": {
+            "default": 100,
+            "description": "callflow pool_overflow",
+            "type": "integer"
+        },
+        "pool_server_confirms": {
+            "default": false,
+            "description": "callflow pool_server_confirms",
+            "type": "boolean"
+        },
+        "pool_size": {
+            "default": 150,
+            "description": "callflow pool_size",
+            "type": "integer"
+        },
+        "pool_threshold": {
+            "default": 5,
+            "description": "callflow pool_threshold",
+            "type": "integer"
+        },
         "post_answer_delay": {
             "default": 100,
             "description": "callflow post answer delay",
@@ -115,6 +135,11 @@
                 "force_require_pin": {
                     "default": false,
                     "description": "If true, ignore the setting on the vmbox and require all users to enter a pin",
+                    "type": "boolean"
+                },
+                "is_voicemail_ff_rw_enabled": {
+                    "default": false,
+                    "description": "callflow allow fastforward and rewind during voicemail message playback",
                     "type": "boolean"
                 },
                 "max_box_number_length": {
@@ -171,6 +196,12 @@
                     "default": false,
                     "description": "callflow save after notify",
                     "type": "boolean"
+                },
+                "seek_duration_ms": {
+                    "default": 10000,
+                    "description": "callflow fastforward and rewind seek duration",
+                    "minimum": 0,
+                    "type": "integer"
                 },
                 "vm_message_forward_type": {
                     "default": "only_forward",

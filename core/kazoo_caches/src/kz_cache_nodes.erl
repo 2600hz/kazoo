@@ -50,7 +50,7 @@ maybe_notify_expired(#state{expire_node_flush='true'}) ->
 maybe_notify_expired(#state{expire_node_flush='false'}) ->
     'ok'.
 
--spec handle_call(any(), kz_types:pid_ref(), state()) -> {'noreply', state()}.
+-spec handle_call(any(), kz_term:pid_ref(), state()) -> {'noreply', state()}.
 handle_call(_Req, _From, Name) ->
     {'noreply', Name}.
 

@@ -77,7 +77,7 @@ fix_numbers(_DataJObj, _TemplateId, PortReqJObj) ->
                            ),
     kzd_port_requests:set_numbers(PortReqJObj, Numbers).
 
--spec get_numbers(kz_json:object()) -> kz_term:ne_binaries().
+-spec get_numbers(kz_json:object()) -> kz_json:objects().
 get_numbers(PortReqJObj) ->
     case kzd_port_requests:pvt_port_state(PortReqJObj) of
         ?PORT_COMPLETED ->
@@ -325,11 +325,11 @@ is_attachable_template(TemplateId) ->
                  ]
                 ).
 
--spec maybe_add_attachments(kz_json:object(), kz_term:ne_binary()) -> attachments().
+-spec maybe_add_attachments(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 maybe_add_attachments(DataJObj, TemplateId) ->
     maybe_add_attachments(DataJObj, is_attachable_template(TemplateId), teletype_util:is_preview(DataJObj)).
 
--spec maybe_add_attachments(kz_json:object(), boolean(), boolean()) -> attachments().
+-spec maybe_add_attachments(kz_json:object(), boolean(), boolean()) -> kz_json:object().
 maybe_add_attachments(DataJObj, _, 'true') ->
     DataJObj;
 maybe_add_attachments(DataJObj, 'true', 'false') ->
@@ -359,7 +359,6 @@ get_attachment_fold(Name, Acc, PortReqId, Doc) ->
 -spec maybe_fix_emails(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 maybe_fix_emails(DataJObj, TemplateId) ->
     maybe_fix_emails(DataJObj, TemplateId, teletype_util:is_preview(DataJObj)).
-
 
 -define(AUTHORITY_TEMPLATES, [teletype_port_cancel:id()
                              ,teletype_port_comment:id()
@@ -409,11 +408,8 @@ maybe_get_submitter(DataJObj, TemplateId, 'false') ->
 
 -spec is_comment_private(kz_json:object(), kz_term:ne_binary()) -> boolean().
 is_comment_private(DataJObj, TemplateId) ->
-    SuperPaths = [[<<"comment">>, <<"superduper_comment">>]
-                 ,[<<"comment">>, <<"is_private">>]
-                 ],
     teletype_port_comment:id() =:= TemplateId
-        andalso kz_term:is_true(kz_json:get_first_defined(SuperPaths, DataJObj, 'false')).
+        andalso kzd_comment:is_private_legacy(kz_json:get_json_value(<<"comment">>, DataJObj, kz_json:new())).
 
 -spec get_port_submitter_emails(kz_json:object()) -> kz_term:api_binaries().
 get_port_submitter_emails(DataJObj) ->

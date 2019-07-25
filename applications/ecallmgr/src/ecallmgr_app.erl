@@ -23,6 +23,8 @@
 start(_StartType, _StartArgs) ->
     _ = declare_exchanges(),
     _ = node_bindings(),
+    _ = event_stream_bind(),
+    _ = fetch_handlers_bind(),
     _ = freeswitch_nodesup_bind(),
     ecallmgr_sup:start_link().
 
@@ -47,6 +49,8 @@ request(Acc) ->
 %% @doc Implement the application stop behaviour.
 -spec stop(any()) -> any().
 stop(_State) ->
+    _ = event_stream_unbind(),
+    _ = fetch_handlers_unbind(),
     _ = freeswitch_nodesup_unbind(),
     _ = kz_nodes_bindings:unbind('ecallmgr', ?MODULE),
     'ok'.
@@ -88,3 +92,23 @@ freeswitch_nodesup_unbind() ->
 -spec freeswitch_node_modules() -> kz_term:ne_binaries().
 freeswitch_node_modules() ->
     application:get_env(?APP, 'node_modules', ?NODE_MODULES).
+
+-spec event_stream_bind() -> 'ok'.
+event_stream_bind() ->
+    _ = [Mod:init() || Mod <- ?EVENTSTREAM_MODS],
+    'ok'.
+
+-spec event_stream_unbind() -> 'ok'.
+event_stream_unbind() ->
+    _ = [kazoo_bindings:flush_mod(Mod) || Mod <- ?EVENTSTREAM_MODS],
+    'ok'.
+
+-spec fetch_handlers_bind() -> 'ok'.
+fetch_handlers_bind() ->
+    _ = [Mod:init() || Mod <- ?FETCH_HANDLERS_MODS],
+    'ok'.
+
+-spec fetch_handlers_unbind() -> 'ok'.
+fetch_handlers_unbind() ->
+    _ = [kazoo_bindings:flush_mod(Mod) || Mod <- ?FETCH_HANDLERS_MODS],
+    'ok'.

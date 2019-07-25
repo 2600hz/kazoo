@@ -27,13 +27,19 @@ make kazoo
 JOBS=4 make kazoo
 ```
 
-## `make clean`
+## Cleanup
+
+### `make clean`
 
 Cleans the ebin/ directories of `core/` and `applications`, as well as any application-specific cleanup.
 
 ### `make clean-deps`
 
 Cleans the `deps/` directory. `make deps` is required to build it again.
+
+### `make sparkly-clean`
+
+Cleans up kazoo, releases, and deps in one target.
 
 ## `make compile-test`
 
@@ -85,7 +91,7 @@ Runs the equivalent Dialyzer run that CI runs. Just runs Dialyzer on source file
 This is a great option if you have a beefier computer available. It will take the source files changed, run a first pass to find all modules being called, and will make a second pass using all the changed and called modules together in one big run.
 
 !!! warning
-CPU/memory/time intensive.
+    CPU/memory/time intensive.
 
 ### `make dialyze-changed`
 
@@ -150,6 +156,7 @@ Runs various code-checking scripts to ensure project standards are met.
 - Dead-simple spell checker looking for low-hanging fruit.
 - Auto-migration of older modules/functions to newer ones (or more appropriately-named ones)
 - [Edoc](http://erlang.org/doc/apps/edoc/chapter.html) checks
+- Auto-conversion of `get_stacktrace/0` usage
 
 ## `make apis`
 

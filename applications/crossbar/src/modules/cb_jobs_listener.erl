@@ -123,7 +123,7 @@ maybe_start_job(Job, <<"running">>) ->
 
 -spec start_job(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
 start_job(Job, _AccountId, _AuthAccountId, _CarrierModule, []) ->
-    update_status(Job, <<"complete">>),
+    _ = update_status(Job, <<"complete">>),
     lager:debug("successfully finished job");
 start_job(Job, AccountId, AuthAccountId, CarrierModule, [Number|Numbers]) ->
     Job1 = maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number),
@@ -182,18 +182,17 @@ create_number(Job, AccountId, AuthAccountId, CarrierModule, DID) ->
         {Failure, JObj} ->
             update_with_failure(Job, AccountId, DID, Failure, JObj)
     catch
-        E:_R ->
-            ST = erlang:get_stacktrace(),
-            kz_util:log_stacktrace(ST),
-            lager:debug("exception creating number ~s for account ~s: ~s: ~p"
-                       ,[DID, AccountId, E, _R]),
-            update_status(kz_json:set_value([<<"errors">>, DID]
-                                           ,kz_json:from_list([{<<"reason">>, kz_term:to_binary(E)}])
-                                           ,Job
-                                           )
-                         ,<<"running">>
-                         )
-    end.
+        ?STACKTRACE(E, _R, ST)
+        kz_util:log_stacktrace(ST),
+        lager:debug("exception creating number ~s for account ~s: ~s: ~p"
+                   ,[DID, AccountId, E, _R]),
+        update_status(kz_json:set_value([<<"errors">>, DID]
+                                       ,kz_json:from_list([{<<"reason">>, kz_term:to_binary(E)}])
+                                       ,Job
+                                       )
+                     ,<<"running">>
+                     )
+        end.
 
 -spec update_with_failure(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), atom(), kz_json:object()) ->
                                  kz_json:object().

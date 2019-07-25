@@ -56,8 +56,8 @@
 init() ->
     Bindings = [{<<"v2_resource.allowed_methods.devices">>, 'allowed_methods'}
                ,{<<"v2_resource.resource_exists.devices">>, 'resource_exists'}
-               ,{<<"v2_resource.authenticate">>, 'authenticate'}
-               ,{<<"v2_resource.authorize">>, 'authorize'}
+               ,{<<"v2_resource.authenticate.devices">>, 'authenticate'}
+               ,{<<"v2_resource.authorize.devices">>, 'authorize'}
                ,{<<"v2_resource.validate_resource.devices">>, 'validate_resource'}
                ,{<<"v2_resource.validate.devices">>, 'validate'}
                ,{<<"v2_resource.execute.put.devices">>, 'put'}
@@ -504,7 +504,7 @@ prepare_provisioner_fields(_DeviceId, Context) ->
               ],
     cb_context:setters(Context, Setters).
 
--spec prune_null_provisioner_fields(kz_json:paths(), kz_json:object()) -> kz_json:object().
+-spec prune_null_provisioner_fields(kz_json:keys(), kz_json:object()) -> kz_json:object().
 prune_null_provisioner_fields([], JObj) -> JObj;
 prune_null_provisioner_fields([Key|Keys], JObj) ->
     case kz_json:get_value(Key, JObj) of
@@ -858,7 +858,7 @@ maybe_aggregate_device(DeviceId, Context) ->
         'true' -> aggregate_device(Context)
     end.
 
--spec aggregate_device(kz_json:object()) -> cb_context:context().
+-spec aggregate_device(cb_context:context()) -> cb_context:context().
 aggregate_device(Context) ->
     Device = cb_context:doc(Context),
     lager:debug("adding device to the sip auth aggregate"),
@@ -1024,7 +1024,7 @@ remove_aggregate(DeviceId, Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_delete_provision(kz_term:api_binary(), cb_context:context()) -> 'ok'.
+-spec maybe_delete_provision(kz_term:api_ne_binary(), cb_context:context()) -> cb_context:context().
 maybe_delete_provision(_DeviceId, Context) ->
     MacAddress = kzd_devices:mac_address(cb_context:doc(Context)),
     case kz_term:is_not_empty(MacAddress) of

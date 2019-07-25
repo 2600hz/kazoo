@@ -115,11 +115,11 @@ from_token_fold(Token, [Fun | Routines]) ->
     try Fun(Token) of
         NewToken -> from_token_fold(NewToken, Routines)
     catch
-        _E:_R ->
-            lager:debug("error running public key routine ~p : ~p , ~p", [Fun, _E, _R]),
-            kz_util:log_stacktrace(),
-            from_token_fold(Token, Routines)
-    end.
+        ?STACKTRACE(_E, _R, ST)
+        lager:debug("error running public key routine ~p : ~p , ~p", [Fun, _E, _R]),
+        kz_util:log_stacktrace(ST),
+        from_token_fold(Token, Routines)
+        end.
 
 -spec maybe_get_key(map()) -> map().
 maybe_get_key(#{key_id := _KeyId}=Token) -> Token;
@@ -159,8 +159,11 @@ maybe_cached(#{}=Token) -> Token#{cached => false}.
 maybe_discovery(#{key_id := _KeyId
                  ,auth_provider := #{discovery := DiscoveryUrl}
                  }=Token) ->
+    lager:debug("getting discovery document from ~s", [DiscoveryUrl]),
     case kz_auth_util:get_json_from_url(DiscoveryUrl) of
-        {'ok', JObj} -> Token#{discovery => JObj};
+        {'ok', JObj} ->
+            lager:debug_unsafe("obtained discovery document : ~s", [kz_json:encode(JObj,[pretty])]),
+            Token#{discovery => JObj};
         _ -> Token
     end;
 maybe_discovery(#{key_id := KeyId
@@ -173,14 +176,18 @@ maybe_discovery(#{}=Token) -> Token.
 maybe_discovery_url(#{discovery := JObj
                      ,auth_provider := #{public_key_discovery_field := Field}
                      }=Token) ->
+    lager:debug("verifying that ~s is in discovery document", [Field]),
     case kz_json:get_value(Field, JObj) of
         'undefined' -> Token;
-        KeysUrl -> Token#{discovery_url => KeysUrl}
+        KeysUrl ->
+            lager:debug("keys url ~s found in discovery document", [KeysUrl]),
+            Token#{discovery_url => KeysUrl}
     end;
 maybe_discovery_url(#{}=Token) -> Token.
 
 -spec fetch_from_url(map()) -> map().
 fetch_from_url(#{discovery_url := Url}=Token) ->
+    lager:debug("fetching keys from ~s", [Url]),
     case kz_auth_util:get_json_from_url(Url) of
         {'ok', JObj} -> Token#{key_doc => JObj};
         _ -> Token
@@ -310,23 +317,8 @@ save_private_key(JObj, Key) ->
 
 -spec gen_private_key() -> {'ok', public_key:rsa_private_key()}.
 gen_private_key() ->
-    {'ok', MPInts} = kz_auth_rsa:gen_rsa(?RSA_KEY_SIZE, ?RSA_KEY_SIZE + 1),
-    [E, N, D, P, Q, DMP1, DMQ1, IQMP] = erlint(MPInts),
-    Key = #'RSAPrivateKey'{version = 'two-prime',
-                           modulus = N,
-                           publicExponent = E,
-                           privateExponent = D,
-                           prime1 = P,
-                           prime2 = Q,
-                           exponent1 = DMP1,
-                           exponent2 = DMQ1,
-                           coefficient = IQMP},
+    Key = public_key:generate_key({rsa, ?RSA_KEY_SIZE, ?RSA_KEY_SIZE + 1}),
     {'ok', Key}.
-
--spec erlint(list() | integer()) -> integer() | list().
-erlint(MPInts) when is_list(MPInts) -> [erlint(X) || X <- MPInts ];
-erlint(<<Size:32, Int:Size/unit:8>>) -> Int.
-
 
 %% @equiv reset_private_key(kz_auth_apps:get_auth_app(<<"kazoo">>))
 -spec reset_kazoo_private_key() -> {'ok', kz_term:ne_binary()} | {'error', any()}.

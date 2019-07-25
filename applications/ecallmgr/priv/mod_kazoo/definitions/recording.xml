@@ -1,0 +1,6 @@
+<definition name="recording">
+	<field name="Application-Name" type="static" value="record" />
+	<field name="Application-Response" type="first-of"
+		value="Record-File-Path|kazoo_application_response" />
+	<field name="recording_vars" type="reference" />
+</definition>

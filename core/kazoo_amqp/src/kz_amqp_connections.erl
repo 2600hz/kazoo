@@ -14,7 +14,9 @@
         ,add/3
         ]).
 -export([remove/1]).
--export([broker_connections/1]).
+-export([broker_connections/1
+        ,connections/0, connections/1, managers/1
+        ]).
 -export([broker_available_connections/1]).
 -export([primary_broker/0]).
 -export([arbitrator_broker/0]).
@@ -46,9 +48,10 @@
 
 -define(TAB, ?MODULE).
 
--record(state, {watchers = sets:new() :: sets:set(pid())
-               }).
+-record(state, {watchers = sets:new() :: sets:set(pid())}).
 -type state() :: #state{}.
+
+-export_type([kz_amqp_connections/0]).
 
 %%%=============================================================================
 %%% API
@@ -78,7 +81,6 @@ new(<<_/binary>> = Broker, Zone) ->
 new(Broker, Zone) ->
     new(kz_term:to_binary(Broker), Zone).
 
-
 -spec add(kz_amqp_connection() | kz_term:text()) ->
                  kz_amqp_connection() |
                  {'error', any()}.
@@ -90,6 +92,7 @@ add(Broker) -> add(Broker, 'local').
 add(#kz_amqp_connection{broker=Broker, tags=Tags}=Connection, Zone) ->
     case kz_amqp_connection_sup:add(Connection) of
         {'ok', Pid} ->
+            lager:info("new connection proc ~p for ~s", [Pid, Broker]),
             gen_server:cast(?SERVER, {'new_connection', Pid, Broker, Zone, Tags}),
             Connection;
         {'error', Reason} = Error ->
@@ -109,10 +112,7 @@ add(Broker, Zone) ->
                  kz_amqp_connection() |
                  {'error', any()}.
 add(Broker, Zone, Tags) ->
-    case catch amqp_uri:parse(kz_term:to_list(Broker)) of
-        {'EXIT', _R} ->
-            lager:error("failed to parse AMQP URI '~s': ~p", [Broker, _R]),
-            {'error', 'invalid_uri'};
+    try amqp_uri:parse(kz_term:to_list(Broker)) of
         {'error', {Info, _}} ->
             lager:error("failed to parse AMQP URI '~s': ~p", [Broker, Info]),
             {'error', 'invalid_uri'};
@@ -125,6 +125,7 @@ add(Broker, Zone, Tags) ->
                ,Zone
                );
         {'ok', Params} ->
+            lager:info("broker ~s params ~p", [Broker, Params]),
             add(#kz_amqp_connection{broker=Broker
                                    ,params=Params
                                    ,tags=Tags
@@ -132,6 +133,10 @@ add(Broker, Zone, Tags) ->
                                    }
                ,Zone
                )
+    catch
+        _E:_R ->
+            lager:error("failed to parse AMQP URI '~s': ~s ~p", [Broker, _E, _R]),
+            {'error', 'invalid_uri'}
     end.
 
 -spec remove(kz_term:pids() | pid() | kz_term:text()) -> 'ok'.
@@ -183,6 +188,41 @@ broker_connections(Broker) ->
                 ],
     ets:select_count(?TAB, MatchSpec).
 
+-spec connections() -> [kz_amqp_connections()].
+connections() ->
+    MatchSpec = [{#kz_amqp_connections{connection='$1'
+                                      ,_='_'
+                                      },
+                  [],
+                  ['$_']}
+                ],
+    ets:select(?TAB, MatchSpec).
+
+-spec connections(kz_term:ne_binary()) -> [kz_amqp_connection()].
+connections(Broker) ->
+    MatchSpec = [{#kz_amqp_connections{broker=Broker
+                                      ,connection='$1'
+                                      ,_='_'
+                                      },
+                  [],
+                  ['$$']}
+                ],
+    ets:select(?TAB, MatchSpec).
+
+-spec managers(kz_term:api_ne_binary()) -> [pid()].
+managers('undefined') ->
+    managers(primary_broker());
+managers(Broker) ->
+    MatchSpec = [{#kz_amqp_connections{available='true'
+                                      ,broker=Broker
+                                      ,connection='$1'
+                                      ,_='_'
+                                      },
+                  [],
+                  ['$1']}
+                ],
+    ets:select(?TAB, MatchSpec).
+
 -spec broker_available_connections(kz_term:ne_binary()) -> non_neg_integer().
 broker_available_connections(Broker) ->
     MatchSpec = [{#kz_amqp_connections{broker=Broker
@@ -194,7 +234,7 @@ broker_available_connections(Broker) ->
                 ],
     ets:select_count(?TAB, MatchSpec).
 
--spec primary_broker() -> kz_term:api_binary().
+-spec primary_broker() -> kz_term:api_ne_binary().
 primary_broker() ->
     Pattern = #kz_amqp_connections{available='true'
                                   ,zone='local'
@@ -327,8 +367,7 @@ handle_cast(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'DOWN', Ref, 'process', Connection, _Reason}, State) ->
-    lager:warning("connection ~p went down: ~p"
-                 ,[Connection, _Reason]),
+    lager:warning("connection ~p went down: ~p", [Connection, _Reason]),
     erlang:demonitor(Ref, ['flush']),
     _ = ets:delete(?TAB, Connection),
     {'noreply', State, 'hibernate'};
@@ -370,13 +409,13 @@ add_watcher(Watcher, #state{watchers=Watchers}=State) ->
 -spec notify_watchers(state()) -> state().
 notify_watchers(#state{watchers = Watchers}=State) ->
     F = fun (Watcher, _) -> notify_watcher(Watcher) end,
-    sets:fold(F, ok, Watchers),
+    sets:fold(F, 'ok', Watchers),
     State#state{watchers = sets:new()}.
 
--spec notify_watcher(pid()) -> ok.
+-spec notify_watcher(pid()) -> 'ok'.
 notify_watcher(Watcher) ->
     Watcher ! {?MODULE, 'connection_available'},
-    ok.
+    'ok'.
 
 -spec wait_for_notification(timeout()) ->
                                    'ok' |

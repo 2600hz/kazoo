@@ -1,0 +1,4 @@
+<definition name="hangup-code">
+	<field name="Hangup-Code" type="first-of"
+		value="variable_proto_specific_hangup_cause|variable_last_bridge_proto_specific_hangup_cause" />
+</definition>

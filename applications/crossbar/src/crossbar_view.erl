@@ -216,12 +216,11 @@ build_load_params(Context, View, Options) ->
             maybe_set_start_end_keys(Params, StartKey, EndKey);
         Ctx -> Ctx
     catch
-        _E:_T ->
-            lager:debug("exception occurred during building view options for ~s", [View]),
-            ST = erlang:get_stacktrace(),
-            kz_util:log_stacktrace(ST),
-            cb_context:add_system_error('datastore_fault', Context)
-    end.
+        ?STACKTRACE(_E, _T, ST)
+        lager:debug("exception occurred during building view options for ~s", [View]),
+        kz_util:log_stacktrace(ST),
+        cb_context:add_system_error('datastore_fault', Context)
+        end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -260,12 +259,11 @@ build_load_range_params(Context, View, Options) ->
             end;
         Ctx -> Ctx
     catch
-        _E:_T ->
-            lager:debug("exception occurred during building range view options for ~s", [View]),
-            ST = erlang:get_stacktrace(),
-            kz_util:log_stacktrace(ST),
-            cb_context:add_system_error('datastore_fault', Context)
-    end.
+        ?STACKTRACE(_E, _T, ST)
+        lager:debug("exception occurred during building range view options for ~s", [View]),
+        kz_util:log_stacktrace(ST),
+        cb_context:add_system_error('datastore_fault', Context)
+        end.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -399,13 +397,13 @@ start_end_keys(Context, Options, Direction) ->
 %% The keys will be swapped if direction is descending.
 %% @end
 %%------------------------------------------------------------------------------
--spec ranged_start_end_keys(cb_context:cb_context(), options()) -> range_keys().
+-spec ranged_start_end_keys(cb_context:context(), options()) -> range_keys().
 ranged_start_end_keys(Context, Options) ->
     {StartTime, EndTime} = time_range(Context, Options),
     Direction = direction(Context, Options),
     ranged_start_end_keys(Context, Options, Direction, StartTime, EndTime).
 
--spec ranged_start_end_keys(cb_context:cb_context(), options(), direction(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) -> range_keys().
+-spec ranged_start_end_keys(cb_context:context(), options(), direction(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) -> range_keys().
 ranged_start_end_keys(Context, Options, Direction, StartTime, EndTime) ->
     {StartKeyMap, EndKeyMap} = get_range_key_maps(Options),
     case {cb_context:req_value(Context, <<"start_key">>)
@@ -474,7 +472,7 @@ maybe_min_max_pad('undefined', RangeKey) -> RangeKey;
 maybe_min_max_pad(KeyMinLength, RangeKey) ->
     lists:reverse(min_max_pad(KeyMinLength - length(RangeKey), lists:reverse(RangeKey))).
 
--spec min_max_pad(kz_term:non_neg_integer(), api_range_key()) -> api_range_key() | ['min_max'].
+-spec min_max_pad(non_neg_integer(), api_range_key()) -> api_range_key() | ['min_max'].
 min_max_pad(0, RangeKey) -> RangeKey;
 min_max_pad(N, RangeKey) -> min_max_pad(N-1, ['min_max' | RangeKey]).
 
@@ -808,12 +806,11 @@ get_results(#{databases := [Db|RestDbs]=Dbs
             %% so we can handle errors when request is chunked and chunk is already started
             try handle_query_result(LoadMap, Dbs, JObjs, LimitWithLast)
             catch
-                _E:_T ->
-                    lager:debug("exception occurred during querying db ~s for view ~s : ~p:~p", [Db, View, _E, _T]),
-                    ST = erlang:get_stacktrace(),
-                    kz_util:log_stacktrace(ST),
-                    LoadMap#{context => cb_context:add_system_error('datastore_fault', Context)}
-            end
+                ?STACKTRACE(_E, _T, ST)
+                lager:debug("exception occurred during querying db ~s for view ~s : ~p:~p", [Db, View, _E, _T]),
+                kz_util:log_stacktrace(ST),
+                LoadMap#{context => cb_context:add_system_error('datastore_fault', Context)}
+                end
     end.
 
 %%------------------------------------------------------------------------------
@@ -834,10 +831,13 @@ handle_query_result(#{last_key := LastKey
     case apply_filter(Mapper, JObjs) of
         {'error', Reason} ->
             LoadMap#{context => cb_context:add_system_error('datastore_fault', kz_term:to_binary(Reason), Context)};
-        FilteredJObjs ->
+        FilteredJObjs when is_list(FilteredJObjs) ->
             FilteredLength = length(FilteredJObjs),
             lager:debug("db_returned: ~b passed_filter: ~p next_start_key: ~p", [ResultsLength, FilteredLength, NewLastKey]),
-            handle_query_result(LoadMap, Dbs, FilteredJObjs, FilteredLength, NewLastKey)
+            handle_query_result(LoadMap, Dbs, FilteredJObjs, FilteredLength, NewLastKey);
+        FilteredJObj ->
+            lager:debug("db_returned: ~b passed_filter: ~p next_start_key: ~p", [ResultsLength, 1, NewLastKey]),
+            handle_query_result(LoadMap, Dbs, FilteredJObj, 1, NewLastKey)
     end.
 
 -spec handle_query_result(load_params(), kz_term:ne_binaries(), kz_json:objects(), non_neg_integer(), last_key()) -> load_params().
@@ -940,6 +940,7 @@ limit_with_last_key('true', PageSize, _ChunkSize, TotalQueried) ->
 %%------------------------------------------------------------------------------
 -spec apply_filter(mapper_fun(), kz_json:objects()) ->
                           kz_json:objects() |
+                          kz_json:object() |
                           {'error', any()}.
 apply_filter(_Mapper, []) ->
     [];

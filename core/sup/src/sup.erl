@@ -201,8 +201,6 @@ parse_args(CommandLineArgs) ->
     case getopt:parse(option_spec_list(), CommandLineArgs) of
         {'ok', {Options, Args}} when is_list(Options) ->
             {'ok', Options, Args};
-        {'ok', {_, _}} ->
-            print_help();
         {'error', {_, _}} ->
             print_help()
     end.

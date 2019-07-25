@@ -473,7 +473,6 @@ inbound_fax_error_definition() ->
                                         ,<<"Fax-Info">>
                                         ,<<"Fax-ID">>
                                         ,<<"Fax-Notifications">>
-                                        ,<<"Fax-Result-Code">>
                                         ,<<"Fax-Timestamp">>
                                         ,<<"FaxBox-ID">>
                                         ,<<"Owner-ID">>
@@ -509,7 +508,6 @@ outbound_fax_definition() ->
                                         ,<<"Fax-Notifications">>
                                         ,<<"Fax-Timestamp">>
                                         ,<<"FaxBox-ID">>
-                                        ,<<"Owner-ID">>
                                              | ?DEFAULT_OPTIONAL_HEADERS
                                         ]
                     ,values = ?NOTIFY_VALUES(<<"outbound_fax">>)
@@ -542,7 +540,6 @@ outbound_fax_error_definition() ->
                                         ,<<"Fax-Notifications">>
                                         ,<<"Fax-Timestamp">>
                                         ,<<"FaxBox-ID">>
-                                        ,<<"Owner-ID">>
                                              | ?DEFAULT_OPTIONAL_HEADERS
                                         ]
                     ,values = ?NOTIFY_VALUES(<<"outbound_fax_error">>)

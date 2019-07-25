@@ -28,11 +28,12 @@ fetch(API, ?NE_BINARY=AccountId) ->
 -spec fetch(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 fetch(API, ?NE_BINARY=AccountId, ?NE_BINARY=AcceptType) ->
     LedgersURL = ledgers_url(AccountId),
-    RequestHeaders = pqc_cb_api:request_headers(API, [{<<"accept">>, AcceptType}]),
+    RequestHeaders = pqc_cb_api:request_headers(API, [{"accept", kz_term:to_list(AcceptType)}]),
 
-    Expectations = #{'response_codes' => [200]
-                    ,'response_headers' => [{<<"content-type">>, AcceptType}]
-                    },
+    Expectations = [#expectation{response_codes = [200]
+                                ,response_headers = [{"content-type", kz_term:to_list(AcceptType)}]
+                                }
+                   ],
 
     pqc_cb_api:make_request(Expectations
                            ,fun kz_http:get/2
@@ -49,12 +50,12 @@ fetch_by_source(API, ?NE_BINARY=AccountId, ?NE_BINARY=SourceType) ->
                              pqc_cb_api:response().
 fetch_by_source(API, ?NE_BINARY=AccountId, SourceType, ?NE_BINARY=AcceptType) ->
     LedgersURL = ledgers_source_url(AccountId, SourceType),
-    RequestHeaders = pqc_cb_api:request_headers(API, [{<<"accept">>, AcceptType}]),
+    RequestHeaders = pqc_cb_api:request_headers(API, [{"accept", kz_term:to_list(AcceptType)}]),
 
-    Expectations = [#{'response_codes' => [200]
-                     ,'response_headers' => [{<<"content-type">>, AcceptType}]
-                     }
-                   ,#{'response_codes' => [204]}
+    Expectations = [#expectation{response_codes = [200]
+                                ,response_headers = [{"content-type", kz_term:to_list(AcceptType)}]
+                                }
+                   ,#expectation{response_codes = [204]}
                    ],
 
     pqc_cb_api:make_request(Expectations
@@ -69,7 +70,7 @@ credit(API, ?NE_BINARY=AccountId, Ledger) ->
     LedgersURL = ledgers_credit_url(AccountId),
     RequestHeaders = pqc_cb_api:request_headers(API),
 
-    Expectations = #{'response_codes' => [201]},
+    Expectations = [#expectation{response_codes = [201]}],
 
     Envelope = pqc_cb_api:create_envelope(Ledger),
 
@@ -86,7 +87,7 @@ debit(API, ?NE_BINARY=AccountId, Ledger) ->
     LedgersURL = ledgers_debit_url(AccountId),
     RequestHeaders = pqc_cb_api:request_headers(API),
 
-    Expectations = #{'response_codes' => [201]},
+    Expectations = [#expectation{response_codes = [201]}],
 
     Envelope = pqc_cb_api:create_envelope(Ledger),
 
@@ -160,13 +161,16 @@ seq() ->
     CreditResp = credit(API, AccountId, Ledger),
     lager:info("credit: ~s", [CreditResp]),
 
+    %% make sure view includes next second in startkey will be 1s later
+    timer:sleep(?MILLISECONDS_IN_SECOND),
+
     SourceFetch = fetch_by_source(API, AccountId, <<?MODULE_STRING>>),
     lager:info("source fetch: ~s", [SourceFetch]),
     Data = kz_json:get_value(<<"data">>, kz_json:decode(SourceFetch)),
     _ = ledgers_exist(Data, [Ledger, Ledger2]),
 
     SourceFetchCSV = fetch_by_source(API, AccountId, <<?MODULE_STRING>>, <<"text/csv">>),
-    lager:info("source fetch CSV: ~s", [SourceFetchCSV]),
+    lager:info("source fetch CSV: '~s'", [SourceFetchCSV]),
     'true' = ledgers_exist_in_csv(SourceFetchCSV, [Ledger, Ledger2]),
 
     {'ok', _} = kapps_config:set_default(<<"crossbar">>, <<"load_view_chunk_size">>, PriorChunkSize),
@@ -193,7 +197,8 @@ ledgers_exist(Data, [Ledger | Ledgers]) ->
         andalso ledgers_exist(Data, Ledgers).
 
 ledger_matches(Datum, Ledger) ->
-    kzd_ledgers:source_id(Datum) =:= kzd_ledgers:source_id(Ledger).
+    kzd_ledgers:source_id(Datum) =:= kzd_ledgers:source_id(Ledger)
+        andalso kzd_ledgers:unit_amount(Datum) =:= kzd_ledgers:unit_amount(Ledger).
 
 ledgers_exist_in_csv(CSV, Ledgers) ->
     {Header, Rows} = kz_csv:take_row(CSV),
@@ -220,7 +225,7 @@ ledgers_in_rows(Pos, Rows, Ledgers) ->
 
 ledgers_in_row({_MetaPos, _SourceIdPos}, 'eof', []) -> 'true';
 ledgers_in_row({_MetaPos, _SourceIdPos}, 'eof', _Ledgers) ->
-    lager:info("failed to find ledgers ~p", [_Ledgers]),
+    lager:info("failed to find ledgers in CSV: ~p", [_Ledgers]),
     'false';
 ledgers_in_row({MetaPos, SourceIdPos}, {Row, Rows}, Ledgers) ->
     %% remove ledger matching Row
@@ -232,6 +237,7 @@ ledgers_in_row({MetaPos, SourceIdPos}, {Row, Rows}, Ledgers) ->
              kzd_ledgers:source_id(Ledger) =/= RowSourceId,
              metadata_bonus(Ledger) =/= RowMetaValue
          ],
+
     ledgers_in_row({MetaPos, SourceIdPos}, kz_csv:take_row(Rows), Ls).
 
 metadata_bonus(Ledger) ->
@@ -247,6 +253,7 @@ ledger_doc() ->
                 ,{fun kzd_ledgers:set_usage_quantity/2, 1}
                 ,{fun kzd_ledgers:set_usage_unit/2, <<"Hz">>}
                 ,{fun kzd_ledgers:set_usage_type/2, <<"cycle">>}
+                ,{fun(J, V) -> kz_json:set_value(<<"amount">>, V, J) end, 2.6}
                 ]
                ).
 

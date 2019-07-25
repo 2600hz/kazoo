@@ -24,6 +24,7 @@
 -export([metaflows/1, metaflows/2, set_metaflows/2]).
 -export([music_on_hold/1, music_on_hold/2, set_music_on_hold/2]).
 -export([music_on_hold_media_id/1, music_on_hold_media_id/2, set_music_on_hold_media_id/2]).
+-export([id/1]).
 -export([name/1, name/2, set_name/2]).
 -export([notifications/1, notifications/2, set_notifications/2]).
 -export([notifications_first_occurrence/1, notifications_first_occurrence/2, set_notifications_first_occurrence/2]).
@@ -63,7 +64,7 @@
         ,path_enabled/0
         ,is_expired/1
 
-        ,tree/1, tree/2, set_tree/2
+        ,tree/1, tree/2, set_tree/2, path_tree/0
         ,default_timezone/0
         ,notification_preference/1, set_notification_preference/2, path_notification_preference/0
         ,allow_number_additions/1, set_allow_number_additions/2, path_allow_number_additions/0
@@ -369,6 +370,10 @@ music_on_hold_media_id(Doc, Default) ->
 -spec set_music_on_hold_media_id(doc(), binary()) -> doc().
 set_music_on_hold_media_id(Doc, MusicOnHoldMediaId) ->
     kz_json:set_value([<<"music_on_hold">>, <<"media_id">>], MusicOnHoldMediaId, Doc).
+
+-spec id(doc()) -> kz_term:api_binary().
+id(Doc) ->
+    kz_doc:id(Doc).
 
 -spec name(doc()) -> kz_term:api_ne_binary().
 name(Doc) ->
@@ -827,6 +832,10 @@ tree(?NE_BINARY=AccountId, Default) ->
 tree(JObj, Default) ->
     kz_json:get_list_value([<<"pvt_tree">>], JObj, Default).
 
+-spec path_tree() -> kz_json:path().
+path_tree() ->
+    [<<"pvt_tree">>].
+
 -spec set_tree(doc(), kz_term:ne_binaries()) -> doc().
 set_tree(JObj, Tree) ->
     kz_json:set_value([<<"pvt_tree">>], Tree, JObj).
@@ -928,7 +937,7 @@ trial_has_expired(JObj, Now) ->
     trial_expiration(JObj) =/= 'undefined'
         andalso trial_time_left(JObj, Now) =< 0.
 
--spec is_expired(doc() | kz_types:api_ne_binary()) -> 'false' | {'true', kz_time:gregorian_seconds()}.
+-spec is_expired(doc() | kz_term:api_ne_binary()) -> 'false' | {'true', kz_time:gregorian_seconds()}.
 is_expired('undefined') -> 'false';
 is_expired(?NE_BINARY = Id) ->
     case fetch(Id) of
@@ -962,9 +971,12 @@ demote(JObj) ->
 path_reseller() ->
     [<<"pvt_reseller">>].
 
--spec reseller_id(doc()) -> kz_term:api_ne_binary().
-reseller_id(JObj) ->
-    kz_json:get_ne_binary_value([<<"pvt_reseller_id">>], JObj).
+-spec reseller_id(kz_term:ne_binary() | doc()) -> kz_term:api_ne_binary().
+reseller_id(<<AccountId/binary>>) ->
+    {'ok', Doc} = fetch(AccountId),
+    reseller_id(Doc);
+reseller_id(Doc) ->
+    kz_json:get_ne_binary_value([<<"pvt_reseller_id">>], Doc).
 
 -spec set_reseller_id(doc(), kz_term:ne_binary()) -> doc().
 set_reseller_id(JObj, ResellerId) ->
@@ -1162,7 +1174,7 @@ low_balance_tstamp(Doc) ->
 set_low_balance_tstamp(Doc) ->
     set_low_balance_tstamp(Doc, kz_time:now_s()).
 
--spec set_low_balance_tstamp(doc(), kz_term:gregorian_seconds()) -> doc().
+-spec set_low_balance_tstamp(doc(), kz_time:gregorian_seconds()) -> doc().
 set_low_balance_tstamp(Doc, TStamp) ->
     set_notifications_low_balance_last_notification(Doc, TStamp).
 
@@ -1254,14 +1266,12 @@ save_accounts_doc(AccountDoc) ->
             lager:info("failed to save account doc to accounts: ~p", [_R]),
             E;
         {'ok', AccountsDoc} ->
-            Update = [{kz_doc:path_revision(), kz_doc:revision(AccountsDoc)}
-                      | kz_json:to_proplist(AccountDoc)
-                     ],
-            UpdateOptions = [{'update', Update}
-                            ,{'ensure_saved', 'true'}
-                            ],
+            NewAccountDoc = kz_json:set_value(kz_doc:path_revision()
+                                             ,kz_doc:revision(AccountsDoc)
+                                             ,AccountDoc
+                                             ),
             handle_saved_accounts_doc(AccountDoc
-                                     ,kz_datamgr:update_doc(?KZ_ACCOUNTS_DB, kz_doc:id(AccountDoc), UpdateOptions)
+                                     ,kz_datamgr:save_doc(?KZ_ACCOUNTS_DB, NewAccountDoc)
                                      )
     end.
 
@@ -1537,11 +1547,8 @@ validate_schema(ParentId, AccountId, {Doc, Errors}) ->
 validate_passed(ParentId, 'undefined', {Doc, Errors}) ->
     lager:info("validation passed for new account: ~s", [kz_json:encode(Doc)]),
     {set_private_properties(ParentId, Doc), Errors};
-validate_passed(_ParentId, AccountId, {Doc, Errors}) ->
-    case update(AccountId, kz_json:to_proplist(kz_json:flatten(Doc))) of
-        {'ok', UpdatedAccount} -> {UpdatedAccount, Errors};
-        {'error', _E} -> {Doc, Errors}
-    end.
+validate_passed(_ParentId, _AccountId, {Doc, Errors}) ->
+    {Doc, Errors}.
 
 -spec validate_account_schema(kz_term:api_ne_binary(), kz_term:api_ne_binary(), doc(), validation_errors(), kz_json:object()) ->
                                      validate_acc().
@@ -1561,14 +1568,13 @@ validate_account_schema(ParentId, AccountId, Doc, ValidationErrors, SchemaJObj) 
             lager:error("validation errors but not strictly validating, trying to fix request"),
             maybe_fix_js_types(ParentId, AccountId, Doc, ValidationErrors, SchemaErrors, SchemaJObj)
     catch
-        'error':'function_clause' ->
-            ST = erlang:get_stacktrace(),
-            lager:error("function clause failure"),
-            kz_util:log_stacktrace(ST),
-            throw({'system_error', <<"validation failed to run on the server">>})
-    end.
+        ?STACKTRACE('error', 'function_clause', ST)
+        lager:error("function clause failure"),
+        kz_util:log_stacktrace(ST),
+        throw({'system_error', <<"validation failed to run on the server">>})
+        end.
 
--spec maybe_fix_js_types(kz_term:api_ne_binary(), kz_term:api_ne_binary(), doc(), validation_errors(), [jesse_error:error_message()], kz_json:object()) ->
+-spec maybe_fix_js_types(kz_term:api_ne_binary(), kz_term:api_ne_binary(), doc(), validation_errors(), [jesse_error:error_reason()], kz_json:object()) ->
                                 validate_acc().
 maybe_fix_js_types(ParentId, AccountId, Doc, ValidationErrors, SchemaErrors, SchemaJObj) ->
     case kz_json_schema:fix_js_types(Doc, SchemaErrors) of

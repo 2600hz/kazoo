@@ -479,14 +479,14 @@ maybe_update_feature_code(Db, Pattern) ->
 maybe_update_feature_code(Db, Pattern, <<"^\\*5([0-9]*)", ?DOLLAR_SIGN>>=_Regex) ->
     DocId = kz_doc:id(Pattern),
     NewRegex = <<"^\\*5(|[0-9]{2,})", ?DOLLAR_SIGN>>,
-    Update = [{<<"patterns">>, [NewRegex]}],
+    Update = [{[<<"patterns">>], [NewRegex]}],
     UpdateOptions = [{'update', Update}],
 
     case kz_datamgr:update_doc(Db, DocId, UpdateOptions) of
         {'error', _Reason} ->
             io:format("failed to update doc ~s with new patterns\n", [DocId]);
         {'ok', _} ->
-            io:format("successfully updated patterns for doc ~s (~p -> ~p)\n"
+            io:format("successfully updated patterns for doc ~s (~p -> ~p)~n"
                      ,[DocId, _Regex, NewRegex]
                      )
     end;

@@ -30,6 +30,7 @@
         ,execute_extension/1, execute_extension_v/1
         ,break/1, break_v/1
         ,play/1, play_v/1, playstop/1, playstop_v/1
+        ,playseek/1, playseek_v/1
         ,tts/1, tts_v/1
         ,record/1, record_v/1
         ,record_call/1, record_call_v/1
@@ -65,6 +66,8 @@
         ,play_macro/1, play_macro_v/1
         ,sound_touch/1, sound_touch_v/1
         ,hold_control/1, hold_control_v/1
+        ,event_actions/1, event_actions_v/1
+        ,continue_on_fail_v/1
         ]).
 
 -export([queue/1, queue_v/1
@@ -109,6 +112,14 @@ b_leg_events_v(Events) ->
     lists:all(fun(ApiEvent) ->
                       lists:member(ApiEvent, ?CALL_EVENTS)
               end, Events).
+
+-spec continue_on_fail_v(kz_term:ne_binaries() | boolean()) -> boolean().
+continue_on_fail_v(Val)
+  when is_list(Val) ->
+    lists:all(fun(V) -> kz_term:is_ne_binary(V) end, Val);
+continue_on_fail_v(Val)
+  when is_boolean(Val) -> 'true';
+continue_on_fail_v(_Val) -> 'false'.
 
 %%------------------------------------------------------------------------------
 %% @doc Takes a generic API JObj, determines what type it is, and calls
@@ -465,6 +476,24 @@ playstop(JObj) -> playstop(kz_json:to_proplist(JObj)).
 playstop_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?PLAY_STOP_REQ_HEADERS, ?PLAY_STOP_REQ_VALUES, ?PLAY_STOP_REQ_TYPES);
 playstop_v(JObj) -> playstop_v(kz_json:to_proplist(JObj)).
+
+%%------------------------------------------------------------------------------
+%% @doc Change position in playing media.
+%% Takes {@link kz_term:api_term()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec playseek(kz_term:api_terms()) -> api_formatter_return().
+playseek(Prop) when is_list(Prop) ->
+    case playseek_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?PLAY_SEEK_REQ_HEADERS, ?OPTIONAL_PLAY_SEEK_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for playseek"}
+    end;
+playseek(JObj) -> playseek(kz_json:to_proplist(JObj)).
+
+-spec playseek_v(kz_term:api_terms()) -> boolean().
+playseek_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?PLAY_SEEK_REQ_HEADERS, ?PLAY_SEEK_REQ_VALUES, ?PLAY_SEEK_REQ_TYPES);
+playseek_v(JObj) -> playseek_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
 %% @doc TTS - Text-to-speech.
@@ -1124,9 +1153,10 @@ build_command(Prop, DPApp) when is_list(Prop) ->
                     ?MODULE:BuildMsgFun(kz_api:set_missing_values(Prop, ?DEFAULT_VALUES))
             end
     catch
-        _:R -> kz_util:log_stacktrace(),
-               throw({R, Prop})
-    end;
+        ?STACKTRACE(_, R, ST)
+        kz_util:log_stacktrace(ST),
+        throw({R, Prop})
+        end;
 build_command(JObj, DPApp) ->
     build_command(kz_json:to_proplist(JObj), DPApp).
 
@@ -1304,3 +1334,18 @@ application_name(Prop) when is_list(Prop) ->
     props:get_value(<<"Application-Name">>, Prop);
 application_name(JObj) ->
     kz_json:get_ne_binary_value(<<"Application-Name">>, JObj).
+
+-spec event_actions(kz_term:api_terms()) -> api_formatter_return().
+event_actions(Prop) when is_list(Prop) ->
+    case event_actions_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?EVENT_ACTIONS_HEADERS, ?OPTIONAL_EVENT_ACTIONS_HEADERS);
+        'false' -> {'error', "Proplist failed validation for hangup_req"}
+    end;
+event_actions(JObj) ->
+    event_actions(kz_json:to_proplist(JObj)).
+
+-spec event_actions_v(kz_term:api_terms()) -> boolean().
+event_actions_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?EVENT_ACTIONS_HEADERS, ?EVENT_ACTIONS_VALUES, ?EVENT_ACTIONS_TYPES);
+event_actions_v(JObj) ->
+    event_actions_v(kz_json:to_proplist(JObj)).

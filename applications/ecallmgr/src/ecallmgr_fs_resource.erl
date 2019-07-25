@@ -60,14 +60,32 @@ start_link(Node, Options) ->
                             ,{'queue_options', ?QUEUE_OPTIONS}
                             ,{'consume_options', ?CONSUME_OPTIONS}
                             ],
-                            [Node, Options]).
+                            [Node, Options]
+                           ).
 
 -spec handle_originate_req(kz_json:object(), kz_term:proplist()) -> kz_types:sup_startchild_ret().
 handle_originate_req(JObj, Props) ->
     _ = kz_util:put_callid(JObj),
+
     Node = props:get_value('node', Props),
+    case kz_json:is_true(<<"Start-Control-Process">>, JObj, 'true') of
+        'true' ->
+            handle_originate_req_if_possible(JObj
+                                            ,Node
+                                            ,ecallmgr_call_sup:control_context()
+                                            );
+        'false' ->
+            lager:info("originate request does not require an call control process"),
+            ecallmgr_originate_sup:start_originate_proc(Node, JObj, #{})
+    end.
+
+handle_originate_req_if_possible(JObj, _Node, {'error', _E}) ->
+    lager:warning("unable to handle originate request due to AMQP worker error ~p", [_E]),
+    lager:info("republishing request for another ecallmgr"),
+    kz_amqp_worker:cast(JObj, fun kapi_resource:publish_originate_req/1);
+handle_originate_req_if_possible(JObj, Node, {'ok', Context}) ->
     lager:debug("received originate request for node ~s, starting originate process", [Node]),
-    ecallmgr_originate_sup:start_originate_proc(Node, JObj).
+    ecallmgr_call_sup:wait_for_exit(ecallmgr_originate_sup:start_originate_proc(Node, JObj, Context), Context).
 
 %%%=============================================================================
 %%% gen_server callbacks
@@ -108,9 +126,9 @@ handle_cast(_Msg, State) ->
 handle_info({'update_options', NewOptions}, State) ->
     {'noreply', State#state{options=NewOptions}, 'hibernate'};
 handle_info({'EXIT', _, 'noconnection'}, State) ->
-    {stop, {'shutdown', 'noconnection'}, State};
+    {'stop', {'shutdown', 'noconnection'}, State};
 handle_info({'EXIT', _, Reason}, State) ->
-    {stop, Reason, State};
+    {'stop', Reason, State};
 handle_info(_Info, State) ->
     {'noreply', State}.
 

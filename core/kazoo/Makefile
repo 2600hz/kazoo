@@ -1,4 +1,5 @@
-ROOT = ../..
+CWD = $(shell pwd -P)
+ROOT = $(realpath $(CWD)/../..)
 PROJECT = kazoo
 
 # Mimetypes module generator.
@@ -15,13 +16,6 @@ compile: $(GEN_ERL)
 
 compile-test: $(GEN_ERL)
 
-eunit: kz-test
-
-test: kz-test
-
-kz-test:
-	$(MAKE) compile-test -C $(ROOT)/core/kazoo_stdlib
-
 include $(ROOT)/make/kz.mk
 
 clean-generated:
@@ -32,8 +26,8 @@ $(GEN_FILE):
 
 $(GEN_ERL): $(GEN_FILE) $(GEN_ERL_SRC)
 	@head -n `grep -n '%% GENERATED' $(GEN_ERL_SRC) | cut -d: -f1` $(GEN_ERL_SRC) > $(GEN_ERL)
-	@echo 'from_extension(Ext) when not is_binary(Ext) -> from_extension(kz_term:to_binary(Ext));' >> $(GEN_ERL)
-	@echo 'from_extension(<<$$., Ext/binary>>) -> from_extension(Ext);' >> $(GEN_ERL)
+	@echo 'from_extension(Ext) when not is_binary(Ext) -> from_extension(kz_term:to_lower_binary(Ext));' >> $(GEN_ERL)
+	@echo 'from_extension(<<$$., Ext/binary>>) -> from_extension(kz_term:to_lower_binary(Ext));' >> $(GEN_ERL)
 	@cat $(GEN_FILE) \
 		| grep -v ^# \
 		| awk '{for (i=2; i<=NF; i++) if ($$i != "") { \

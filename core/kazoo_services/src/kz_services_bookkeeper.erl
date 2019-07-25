@@ -130,7 +130,7 @@ store_audit_log(Services, Invoice) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_audit_log(kz_services:services(), kz_term:api_object(), kz_amqp_worker:request_result()) ->
+-spec update_audit_log(kz_services:services(), kz_term:api_object(), kz_amqp_worker:request_return() | kz_term:proplist()) ->
                               kz_term:api_object().
 update_audit_log(_Services, 'undefined', _Result) -> 'undefined';
 update_audit_log(Services, AuditJObj, {'error', 'timeout'}) ->
@@ -199,11 +199,7 @@ update_bookkeeper(_Type, Invoice, Services, AuditJObj) ->
               ,{<<"Bookkeeper-ID">>, kz_services_invoice:bookkeeper_id(Invoice)}
               ,{<<"Bookkeeper-Type">>, kz_services_invoice:bookkeeper_type(Invoice)}
               ,{<<"Vendor-ID">>, kz_services_invoice:bookkeeper_vendor_id(Invoice)}
-              ,{<<"Items">>
-               ,kz_services_items:public_json(
-                  kz_services_invoice:items(Invoice)
-                 )
-               }
+              ,{<<"Invoice">>, kz_json:delete_key(<<"plan">>, kz_services_invoice:public_json(Invoice))}
               ,{<<"Call-ID">>, kz_util:get_callid()}
               ,{<<"Audit-Log">>, kz_doc:public_fields(AuditJObj)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)

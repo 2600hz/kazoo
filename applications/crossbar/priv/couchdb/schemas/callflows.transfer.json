@@ -21,6 +21,10 @@
             ],
             "type": "string"
         },
+        "skip_module": {
+            "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+            "type": "boolean"
+        },
         "target": {
             "description": "The target destination (extension or DID)",
             "type": "string"

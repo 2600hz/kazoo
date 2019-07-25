@@ -35,7 +35,7 @@
 %%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.early_authenticate">>, ?MODULE, 'authenticate'),
     ok.
 
 %%------------------------------------------------------------------------------
@@ -155,7 +155,20 @@ is_expired(Context, JObj) ->
 -spec set_auth_doc(cb_context:context(), kz_json:object()) ->
                           cb_context:context().
 set_auth_doc(Context, JObj) ->
+    AuthAccountId = kz_doc:account_id(JObj),
+    OwnerId = kz_doc:id(JObj),
     Setters = [{fun cb_context:set_auth_doc/2, JObj}
-              ,{fun cb_context:set_auth_account_id/2 ,kz_doc:account_id(JObj)}
+              ,{fun cb_context:set_auth_account_id/2, AuthAccountId}
+               | maybe_add_is_admins(AuthAccountId, OwnerId)
               ],
     cb_context:setters(Context, Setters).
+
+-spec maybe_add_is_admins(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> cb_context:setters().
+maybe_add_is_admins(?NE_BINARY = AuthAccountId, ?NE_BINARY = OwnerId) ->
+    [{fun cb_context:set_is_superduper_admin/2, cb_context:is_superduper_admin(AuthAccountId)}
+    ,{fun cb_context:set_is_account_admin/2, cb_context:is_account_admin(AuthAccountId, OwnerId)}
+    ];
+maybe_add_is_admins(?NE_BINARY = AuthAccountId, 'undefined') ->
+    [{fun cb_context:set_is_superduper_admin/2, cb_context:is_superduper_admin(AuthAccountId)}];
+maybe_add_is_admins(_, _) ->
+    [].

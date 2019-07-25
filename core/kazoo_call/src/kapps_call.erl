@@ -735,8 +735,15 @@ set_caller_id(CIDNumber, CIDName, #kapps_call{}=Call)
 set_caller_id(CIDNumber, CIDName, #kapps_call{}=Call)
   when is_binary(CIDNumber)
        andalso is_binary(CIDName) ->
+    CCVs = custom_channel_vars(Call),
     JObj = kz_json:from_list([{<<"Caller-ID-Number">>, CIDNumber}
                              ,{<<"Caller-ID-Name">>, CIDName}
+                             ,{<<"Privacy-Hide-Name">>
+                              ,kz_privacy:should_hide_name(CCVs)
+                              }
+                             ,{<<"Privacy-Hide-Number">>
+                              ,kz_privacy:should_hide_number(CCVs)
+                              }
                              ]),
     kapps_call_command:set(JObj, 'undefined', Call),
     Call#kapps_call{caller_id_number=CIDNumber
@@ -754,7 +761,13 @@ set_caller_id_name(CIDName, Call) ->
     Call#kapps_call{caller_id_name=CIDName}.
 -else.
 set_caller_id_name(CIDName, #kapps_call{}=Call) when is_binary(CIDName) ->
-    kapps_call_command:set(kz_json:from_list([{<<"Caller-ID-Name">>, CIDName}]), 'undefined', Call),
+    CCVs = custom_channel_vars(Call),
+    Props = [{<<"Caller-ID-Name">>, CIDName}
+            ,{<<"Privacy-Hide-Name">>
+             ,kz_privacy:should_hide_name(CCVs)
+             }
+            ],
+    kapps_call_command:set(kz_json:from_list(Props), 'undefined', Call),
     Call#kapps_call{caller_id_name=CIDName}.
 -endif.
 
@@ -787,7 +800,13 @@ set_caller_id_number(CIDNumber, Call) ->
     Call#kapps_call{caller_id_number=CIDNumber}.
 -else.
 set_caller_id_number(CIDNumber, #kapps_call{}=Call) ->
-    kapps_call_command:set(kz_json:from_list([{<<"Caller-ID-Number">>, CIDNumber}]), 'undefined', Call),
+    CCVs = custom_channel_vars(Call),
+    Props = [{<<"Caller-ID-Number">>, CIDNumber}
+            ,{<<"Privacy-Hide-Number">>
+             ,kz_privacy:should_hide_number(CCVs)
+             }
+            ],
+    kapps_call_command:set(kz_json:from_list(Props), 'undefined', Call),
     Call#kapps_call{caller_id_number=CIDNumber}.
 -endif.
 
@@ -1231,7 +1250,10 @@ maybe_update_call_ccvs(Call, NewCCVs, ExistingCCVs) ->
 
 -spec updateable_ccvs(kz_term:proplist(), kz_term:proplist()) -> kz_term:proplist().
 updateable_ccvs(New, Existing) ->
-    New -- Existing.
+    Exceptions = [<<"Privacy-Hide-Name">>
+                 ,<<"Privacy-Hide-Number">>
+                 ],
+    New -- props:delete_keys(Exceptions, Existing).
 
 -spec update_custom_channel_vars([fun((kz_json:object()) -> kz_json:object()),...], call()) -> call().
 -ifdef(TEST).
@@ -1508,24 +1530,31 @@ start_recording(Call) ->
 start_recording('undefined', Call) -> Call;
 start_recording(Data0, Call) ->
     Data = update_recording_id(Data0),
-    case kzc_recordings_sup:start_recording(clear_helpers(Call), Data) of
-        {'ok', RecorderPid} ->
-            Routines = [{fun store_recording/3
-                        ,kz_json:get_ne_binary_value(?RECORDING_ID_KEY, Data)
-                        ,RecorderPid
-                        }
-                       ],
-            exec(Routines, Call);
-        _Err ->
-            lager:notice("error starting recording ~p", [_Err]),
-            Call
-    end.
+    Command = kapps_call_recording:record_call_command(Data, Call),
+    RecordOnAnswer = kz_json:is_true(<<"record_on_answer">>, Data, 'false'),
+    RecordOnBridge = kz_json:is_true(<<"record_on_bridge">>, Data, 'false'),
+    Cmd = case {RecordOnAnswer, RecordOnBridge} of
+              {'false', 'false'} ->
+                  Command;
+              {'true', _} ->
+                  Actions = kz_json:set_value([<<"Execute-On-Answer">>, <<"Record-Call">>], Command, kz_json:new()),
+                  kapps_call_command:event_actions_command(Actions, Call);
+              {_, 'true'} ->
+                  Actions = kz_json:set_value([<<"Execute-On-Bridge">>, <<"Record-Call">>], Command, kz_json:new()),
+                  kapps_call_command:event_actions_command(Actions, Call)
+          end,
+    kapps_call_command:send_command(Cmd, Call),
+    Routines = [{fun store_recording/2
+                ,kz_json:get_ne_binary_value(?RECORDING_ID_KEY, Data)
+                }
+               ],
+    exec(Routines, Call).
 
 -spec update_recording_id(kz_json:object()) -> kz_json:object().
 update_recording_id(Data) ->
     RecID = kz_binary:rand_hex(16),
-    Format = kzc_recording:get_format(kz_json:get_ne_binary_value(<<"format">>, Data)),
-    DefaultMediaName = kzc_recording:get_media_name(RecID, Format),
+    Format = kapps_call_recording:get_format(kz_json:get_ne_binary_value(<<"format">>, Data)),
+    DefaultMediaName = kapps_call_recording:get_media_name(RecID, Format),
     MediaName = kz_json:get_ne_binary_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
     kz_json:set_value(?RECORDING_ID_KEY, MediaName, Data).
 
@@ -1541,7 +1570,7 @@ stop_recording(LegId, OriginalCall) ->
             API = [{<<"Call-ID">>, LegId}],
             kapps_call_command:stop_record_call(API, OriginalCall),
             OriginalCall;
-        {'ok', {MediaName, _RecorderPid}, Call} ->
+        {'ok', MediaName, Call} ->
             kapps_call_command:stop_record_call([{<<"Media-Name">>, MediaName}], Call),
             Call;
         {'empty', Call} ->
@@ -1557,13 +1586,11 @@ mask_recording(OriginalCall) ->
 
 -spec mask_recording(kz_term:ne_binary(), call()) -> call().
 mask_recording(LegId, OriginalCall) ->
-    case LegId =:= call_id(OriginalCall)
-        andalso retrieve_recording(OriginalCall) of
-        'false' -> %% requested mask recording on b-leg
-            API = [{<<"Call-ID">>, LegId}],
-            kapps_call_command:mask_record_call(API, OriginalCall),
-            OriginalCall;
-        {'ok', {MediaName, _RecorderPid}, Call} ->
+    mask_recording(LegId, OriginalCall, call_id(OriginalCall)).
+
+mask_recording(LegId, OriginalCall, LegId) ->
+    case retrieve_recording(OriginalCall) of
+        {'ok', MediaName, Call} ->
             kapps_call_command:mask_record_call([{<<"Media-Name">>, MediaName}], Call),
             Call;
         {'empty', Call} ->
@@ -1571,7 +1598,11 @@ mask_recording(LegId, OriginalCall) ->
             API = props:filter_undefined([{<<"Media-Name">>, MediaName}]),
             kapps_call_command:mask_record_call(API, Call),
             Call
-    end.
+    end;
+mask_recording(LegId, OriginalCall, _OriginalCallId) ->
+    API = [{<<"Call-ID">>, LegId}],
+    kapps_call_command:mask_record_call(API, OriginalCall),
+    OriginalCall.
 
 -spec unmask_recording(call()) -> call().
 unmask_recording(OriginalCall) ->
@@ -1579,13 +1610,11 @@ unmask_recording(OriginalCall) ->
 
 -spec unmask_recording(kz_term:ne_binary(), call()) -> call().
 unmask_recording(LegId, OriginalCall) ->
-    case LegId =:= call_id(OriginalCall)
-        andalso retrieve_recording(OriginalCall) of
-        'false' -> %% requested unmask recording on b-leg
-            API = [{<<"Call-ID">>, LegId}],
-            kapps_call_command:unmask_record_call(API, OriginalCall),
-            OriginalCall;
-        {'ok', {MediaName, _RecorderPid}, Call} ->
+    unmask_recording(LegId, OriginalCall, call_id(OriginalCall)).
+
+unmask_recording(LegId, OriginalCall, LegId) ->
+    case retrieve_recording(OriginalCall) of
+        {'ok', MediaName, Call} ->
             kapps_call_command:unmask_record_call([{<<"Media-Name">>, MediaName}], Call),
             Call;
         {'empty', Call} ->
@@ -1593,15 +1622,18 @@ unmask_recording(LegId, OriginalCall) ->
             API = props:filter_undefined([{<<"Media-Name">>, MediaName}]),
             kapps_call_command:unmask_record_call(API, Call),
             Call
-    end.
+    end;
+unmask_recording(LegId, OriginalCall, _OriginalCallId) ->
+    API = [{<<"Call-ID">>, LegId}],
+    kapps_call_command:unmask_record_call(API, OriginalCall),
+    OriginalCall.
 
--spec store_recording(kz_term:ne_binary(), pid(), call()) -> call().
-store_recording(MediaName, Pid, Call) ->
-    Q = queue:in({MediaName, Pid}, get_recordings(Call)),
+-spec store_recording(kz_term:ne_binary(), call()) -> call().
+store_recording(MediaName, Call) ->
+    Q = queue:in(MediaName, get_recordings(Call)),
     kvs_store(?RECORDINGS_KEY, Q, Call).
 
-
--type recording_ref() :: {kz_term:ne_binary(), pid()}.
+-type recording_ref() :: kz_term:ne_binary().
 -type store_return() :: {'ok', recording_ref(), call()} | {'empty', call()}.
 
 -spec retrieve_recording(call()) -> store_return().

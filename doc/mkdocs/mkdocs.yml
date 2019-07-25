@@ -28,7 +28,6 @@ pages:
     - 'applications/crossbar/doc/limits.md'
     - 'applications/crossbar/doc/port_requests.md'
     - 'applications/crossbar/doc/search.md'
-    - 'applications/crossbar/doc/service_plans.md'
     - 'applications/crossbar/doc/services.md'
     - 'applications/crossbar/doc/transactions.md'
     - 'applications/crossbar/doc/whitelabeling.md'
@@ -152,6 +151,11 @@ pages:
     - 'applications/webhooks/doc/README.md'
     - 'Administration': 'applications/webhooks/doc/maintenance.md'
     - 'API': 'applications/crossbar/doc/webhooks.md'
+    - 'Webhook Events':
+      - 'Channel Event Webhooks': 'applications/webhooks/doc/events/channels.md'
+      - 'Channel Parking Event Webhook': 'applications/webhooks/doc/events/parking.md'
+      - 'Notification Event Webhooks': 'applications/webhooks/doc/events/notifications.md'
+      - 'Object Change Event Webhook': 'applications/webhooks/doc/events/object.md'
 - 'Internationalization':
   - 'Phone Numbers':
     - 'Overview': 'doc/internationalization/numbers.md'
@@ -279,8 +283,6 @@ pages:
   - 'Doodle':
     - 'applications/doodle/doc/README.md'
     - 'applications/doodle/doc/configuration.md'
-  - 'DTH':
-    - 'applications/dth/doc/README.md'
   - 'Ecallmgr':
     - 'applications/ecallmgr/doc/README.md'
     - 'applications/ecallmgr/doc/maintenance.md'
@@ -347,12 +349,17 @@ pages:
     - 'applications/sysconf/doc/README.md'
   - 'Tasks':
     - 'applications/tasks/doc/README.md'
+    - 'applications/tasks/doc/cdrs.md'
     - 'applications/tasks/doc/compaction.md'
+    - 'applications/tasks/doc/fax_cleanup.md'
     - 'applications/tasks/doc/kazoo_bill_early_task.md'
     - 'applications/tasks/doc/kz_notify_resender.md'
+    - 'applications/tasks/doc/ledger_rollover.md'
     - 'applications/tasks/doc/maintenance.md'
+    - 'applications/tasks/doc/modb_creation.md'
     - 'applications/tasks/doc/notify_resend_maintenance.md'
     - 'applications/tasks/doc/rates.md'
+    - 'applications/tasks/doc/services_rollover.md'
   - 'Teletype':
     - 'applications/teletype/doc/README.md'
     - 'applications/teletype/doc/maintenance.md'
@@ -366,8 +373,12 @@ pages:
   - 'Kazoo Endpoints':
     - 'Formatters': 'core/kazoo_endpoint/doc/formatters.md'
     - 'CallerID Privacy': 'core/kazoo_endpoint/doc/privacy-cid.md'
+  - 'Kazoo Call':
+    - 'core/kazoo_call/doc/README.md'
   - 'Kazoo Standard Library':
     - 'JSON': 'core/kazoo_stdlib/doc/kz_json.md'
+  - 'Kazoo Events':
+    - 'Hooks': 'core/kazoo_events/doc/README.md'
   - 'Kazoo IPs':
     - 'core/kazoo_ips/doc/README.md'
     - 'core/kazoo_ips/doc/maintenance.md'
@@ -473,6 +484,7 @@ pages:
   - 'Erlang VM Tracing': 'doc/engineering/tracing.md'
   - 'Flame Graphs': 'doc/engineering/flame_graphs.md'
   - 'Install/Build Kazoo': 'doc/installation.md'
+  - 'Install/Build Kazoo on MacOS': 'doc/engineering/installing-on-mac.md'
   - 'Kazoo Globals Registry': 'doc/engineering/kz_globals.md'
   - 'Kazoo Scripts': 'scripts/README.md'
   - 'Loopback Channels': 'doc/engineering/loopback.md'
@@ -496,6 +508,6 @@ pages:
   - 'doc/appexchange/guidelines.md'
   - 'doc/appexchange/financial_terms.md'
   - 'doc/appexchange/payments.md'
-  - 'doc/appexchange/approval_process.md'
   - 'doc/appexchange/whitelabeling.md'
   - 'doc/appexchange/list_faq.md'
+  - 'doc/appexchange/states_workflows.md'

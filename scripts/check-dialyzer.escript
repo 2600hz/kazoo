@@ -9,7 +9,7 @@
 %% API
 
 main([]) ->
-    print_help();
+    print_help(1);
 main([_KazooPLT]) -> 'ok';
 main([KazooPLT | CommandLineArgs]) ->
     {'ok', Options, Args} = parse_args(CommandLineArgs),
@@ -20,9 +20,9 @@ parse_args(CommandLineArgs) ->
         {'ok', {Options, Args}} when is_list(Options) ->
             {'ok', Options, Args};
         {'ok', {_O, _A}} ->
-            print_help();
+            print_help(1);
         {'error', {_O, _A}} ->
-            print_help()
+            print_help(1)
     end.
 
 -spec option_spec_list() -> list().
@@ -32,14 +32,14 @@ option_spec_list() ->
     ,{'bulk', $b, "bulk", {'boolean', 'false'}, "Dialyze all files together (requires more memory/CPU)"}
     ].
 
--spec print_help() -> no_return().
-print_help() ->
+-spec print_help(integer()) -> no_return().
+print_help(Halt) ->
     Script = escript:script_name(),
     getopt:usage(option_spec_list(), "ERL_LIBS=deps/:core/:applications/ " ++ Script ++ " .kazoo.plt [args] [file.beam | path/ebin/ ...]"),
-    halt(1).
+    halt(Halt).
 
 handle(_KazooPLT, _Options, []) ->
-    print_help();
+    print_help(0);
 handle(KazooPLT, Options, Args) ->
     ".plt" = filename:extension(KazooPLT),
 
@@ -52,7 +52,7 @@ handle(KazooPLT, Options, Args) ->
 
 handle_paths(_KazooPLT, _Options, []) ->
     io:format("No Erlang files found to process\n"),
-    print_help();
+    print_help(0);
 handle_paths(KazooPLT, Options, Paths) ->
     case warn(KazooPLT, Options, Paths) of
         0 -> halt(0);
@@ -118,7 +118,17 @@ warn(PLT, Options, Paths) ->
 
     AllModules = find_unknown_modules(PLT, BeamPaths, GoHard),
 
+    log_work_to_do(BeamPaths, AllModules, GoHard),
+
     do_warn(PLT, AllModules, Bulk).
+
+log_work_to_do([_], _AllModules, 'false') ->
+    io:format("analyzing 1 path...~n", []);
+log_work_to_do(BeamPaths, _AllModules, 'false') ->
+    io:format("analyzing ~p paths...~n", [length(BeamPaths)]);
+log_work_to_do(BeamPaths, AllModules, 'true') ->
+    Len = length(BeamPaths),
+    io:format("analyzing ~p paths + ~p called modules...~n", [Len, length(AllModules)-Len]).
 
 find_unknown_modules(_PLT, BeamPaths, 'false') -> BeamPaths;
 find_unknown_modules(PLT, BeamPaths, 'true') ->
@@ -222,12 +232,14 @@ scan_and_print(PLT, Bs) ->
                filter(W)
            ]).
 
-filter({'warn_contract_supertype', _, _}) -> 'false';
+filter({'warn_contract_supertype',  _, _}) -> 'false';
 filter({'warn_undefined_callbacks', _, _}) -> 'false';
-filter({'warn_contract_types', _, {'overlapping_contract',_}}) -> 'false';
-filter({'warn_umatched_return', _, {'unmatched_return', ["'ok' | {'error','lager_not_running' | {'sink_not_configured','lager_event'}}"]}}) -> 'false';
-filter({'warn_unmatched_return', _, {'unmatched_return', ["'false' | 'ok' | {'error','lager_not_running' | {'sink_not_configured','lager_event'}}"]}}) -> 'false';
-filter({'warn_umatched_return', _, {'unmatched_return',["'ok' | {'error','invalid_db_name'}"]}}) -> 'false';
+filter({'warn_contract_types',      _, {'overlapping_contract',_}}) -> 'false';
+filter({'warn_umatched_return',     _, {'unmatched_return', ["'ok' | {'error','lager_not_running' | {'sink_not_configured','lager_event'}}"]}}) -> 'false';
+filter({'warn_unmatched_return',    _, {'unmatched_return', ["'false' | 'ok' | {'error','lager_not_running' | {'sink_not_configured','lager_event'}}"]}}) -> 'false';
+filter({'warn_umatched_return',     _, {'unmatched_return',["'ok' | {'error','invalid_db_name'}"]}}) -> 'false';
+filter({'warn_return_no_exit',      _, {'no_return',['only_normal','kz_log_md_clear',0]}}) -> 'false';
+filter({'warn_failing_call',        _, {'call',['lager','md',"([])" | _]}}) -> 'false';
 filter(_W) -> 'true'.
 
 print(Beams, {Tag, {"src/" ++ _=File, Line}, _W}=Warning) ->
@@ -276,7 +288,7 @@ do_scan(PLT, Paths) ->
                                 %% ,no_return         %% suppress warnings for functions that never return a value
                                 %% ,no_undefined_callbacks %% suppress warnings about behaviours with no -callback
                                 %% ,no_unused         %% suppress warnings for unused functions
-                               ,'race_conditions'   %% include warnings for possible race conditions
+                                %% ,'race_conditions'   %% include warnings for possible race conditions
                                ,'underspecs'        %% warn when the spec is too loose
                                 %% ,'unknown'           %% let warnings about unknown functions/types change exit status
                                ,'unmatched_returns' %% warn when function calls ignore structure return values
