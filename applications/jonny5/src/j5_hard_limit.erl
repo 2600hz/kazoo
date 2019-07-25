@@ -45,7 +45,7 @@ calls_at_limit(Limits) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec resource_consumption_at_limit(j5_limits:limits(), j5_request:request()) -> boolean().
+-spec resource_consumption_at_limit(j5_request:request(), j5_limits:limits()) -> boolean().
 resource_consumption_at_limit(Request, Limits) ->
     AccountBilling = j5_request:account_billing(Request),
     Increment = case  AccountBilling =/= 'undefined'
