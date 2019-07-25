@@ -1,0 +1,61 @@
+paths:
+  /accounts/{ACCOUNT_ID}/tray:
+    get:
+      operationId: GetAccountsAccountIdTray
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all tray
+      tags:
+        - tray
+    post:
+      operationId: PostAccountsAccountIdTray
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Update an instance of tray
+      tags:
+        - tray
+  /accounts/{ACCOUNT_ID}/tray/{SOLUTION_INSTANCE_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdTraySolutionInstanceId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/SOLUTION_INSTANCE_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of tray
+      tags:
+        - tray
+    get:
+      operationId: GetAccountsAccountIdTraySolutionInstanceId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/SOLUTION_INSTANCE_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a tray by ID
+      tags:
+        - tray
+    patch:
+      operationId: PatchAccountsAccountIdTraySolutionInstanceId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/SOLUTION_INSTANCE_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Patch specific fields of tray
+      tags:
+        - tray
