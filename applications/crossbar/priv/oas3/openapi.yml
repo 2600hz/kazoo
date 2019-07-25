@@ -519,6 +519,12 @@
   '/accounts/{ACCOUNT_ID}/services/audit/{AUDIT_ID}':
     '$ref': >-
       paths/services.yml#/paths/~1accounts~1{ACCOUNT_ID}~1services~1audit~1{AUDIT_ID}
+  '/accounts/{ACCOUNT_ID}/services/audit_summary':
+    '$ref': >-
+      paths/services.yml#/paths/~1accounts~1{ACCOUNT_ID}~1services~1audit_summary
+  '/accounts/{ACCOUNT_ID}/services/audit_summary/{SOURCE_SERVICE}':
+    '$ref': >-
+      paths/services.yml#/paths/~1accounts~1{ACCOUNT_ID}~1services~1audit_summary~1{SOURCE_SERVICE}
   '/accounts/{ACCOUNT_ID}/services/available':
     '$ref': 'paths/services.yml#/paths/~1accounts~1{ACCOUNT_ID}~1services~1available'
   '/accounts/{ACCOUNT_ID}/services/editable':

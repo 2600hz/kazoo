@@ -45073,10 +45073,10 @@
                         "$ref": "#/parameters/auth_token_header"
                     },
                     {
-                        "$ref": "#/parameters/SOURCE_SERVICE"
+                        "$ref": "#/parameters/ACCOUNT_ID"
                     },
                     {
-                        "$ref": "#/parameters/ACCOUNT_ID"
+                        "$ref": "#/parameters/SOURCE_SERVICE"
                     }
                 ],
                 "responses": {
