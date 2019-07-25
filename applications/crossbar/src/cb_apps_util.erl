@@ -27,29 +27,60 @@ allowed_apps(AccountId) ->
 
 -spec allowed_apps(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_json:objects().
 allowed_apps(AccountId, UserId) ->
-    Routines = [fun ensure_allowed_service_apps/3
+    Routines = [fun allowed_service_plan/3
                ,fun allowed_apps_store_doc/3
                ,fun allowed_whitelabel_doc/3
-               ,fun allowed_service_plan/3
                ,fun allowed_master_account/3
                ],
-    lists:foldl(fun(F, AppJObjs) ->
-                        F(AccountId, UserId, AppJObjs)
-                end
-               ,load_default_apps()
-               ,Routines
-               ).
+    Apps = lists:foldl(fun(F, AppJObjs) ->
+                               F(AccountId, UserId, AppJObjs)
+                       end
+                      ,load_default_apps()
+                      ,Routines
+                      ),
+    _ = log_allowed_apps(Apps),
+    Apps.
+
+-spec log_allowed_apps(kz_json:objects()) -> 'ok'.
+log_allowed_apps([]) -> 'ok';
+log_allowed_apps([AppJObj|AppJObjs]) ->
+    _ = case kzd_app:is_published(AppJObj) of
+            'true' ->
+                lager:debug("allowing access to ~s due to ~s"
+                           ,[kzd_app:name(AppJObj)
+                            ,kz_json:get_value(<<"authority">>, AppJObj, <<"unknown">>)
+                            ]
+                           );
+            'false' ->
+                lager:debug("disallowing access to ~s due to ~s"
+                           ,[kzd_app:name(AppJObj)
+                            ,kz_json:get_value(<<"authority">>, AppJObj, <<"unknown">>)
+                            ]
+                           )
+        end,
+    log_allowed_apps(AppJObjs).
 
 %%------------------------------------------------------------------------------
 %% @doc Load the application list from the accounts service plan, or the
-%% reseller if that is empty. Ensure that any enabled applications
-%% from an account other than master are loaded into the list.
+%% reseller if that is empty. Set the published parameter on each app doc,
+%% loading the doc if missing and nnot from the master, if its set in the
+%% service plan.
 %% @end
 %%------------------------------------------------------------------------------
--spec ensure_allowed_service_apps(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:objects()) -> kz_json:objects().
-ensure_allowed_service_apps(AccountId, _UserId, AppJObjs) ->
+-spec allowed_service_plan(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:objects()) -> kz_json:objects().
+allowed_service_plan(AccountId, _UserId, AppJObjs) ->
     ServicesApps = get_services_apps(AccountId),
-    ensure_allowed_service_apps(ServicesApps, AppJObjs).
+    Props = [{<<"authority">>, <<"service_plan">>}],
+    lists:map(fun(AppJObj) ->
+                      AppId = kz_doc:id(AppJObj),
+                      case kz_json:is_true([AppId, <<"enabled">>], ServicesApps, 'undefined') of
+                          'undefined' -> AppJObj;
+                          'true' -> kzd_app:publish(kz_json:set_values(Props, AppJObj));
+                          'false' -> kzd_app:unpublish(kz_json:set_values(Props, AppJObj))
+                      end
+              end
+             ,ensure_allowed_service_apps(ServicesApps, AppJObjs)
+             ).
 
 -spec ensure_allowed_service_apps(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 ensure_allowed_service_apps(ServicesApps, AppJObjs) ->
@@ -74,44 +105,17 @@ ensure_allowed_service_apps_fold(MasterAccountId) ->
 maybe_append_app_doc(VendorId, AppId, AppJObjs) ->
     case kzd_app:fetch(VendorId, AppId) of
         {'ok', AppJObj} ->
-            lager:debug("including non-master app ~s due to service plan"
-                       ,[kzd_app:name(AppJObj)]
+            lager:debug("including app ~s from ~s"
+                       ,[kzd_app:name(AppJObj), VendorId]
                        ),
-            [AppJObj|AppJObjs];
+            Props = [{<<"authority">>, <<"vendor_account">>}],
+            [kz_json:set_values(Props, AppJObj)|AppJObjs];
         {'error', _R} ->
             lager:error("failed to get app doc ~s/~s: ~p"
                        ,[VendorId, AppId, _R]
                        ),
             AppJObjs
     end.
-
-%%------------------------------------------------------------------------------
-%% @doc Load the application list from the accounts service plan, or the
-%% reseller if that is empty. Set the published parameter on each app doc
-%% if its set in the service plan.
-%% @end
-%%------------------------------------------------------------------------------
--spec allowed_service_plan(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:objects()) -> kz_json:objects().
-allowed_service_plan(AccountId, _UserId, AppJObjs) ->
-    ServicesApps = get_services_apps(AccountId),
-    lists:map(fun(AppJObj) ->
-                      AppId = kz_doc:id(AppJObj),
-                      case kz_json:is_true([AppId, <<"enabled">>], ServicesApps, 'undefined') of
-                          'undefined' -> AppJObj;
-                          'true' ->
-                              lager:debug("service plan explicitly enables access to ~s"
-                                         ,[kzd_app:name(AppJObj)]
-                                         ),
-                              kzd_app:publish(AppJObj);
-                          'false' ->
-                              lager:debug("service plan explicitly disables access to ~s"
-                                         ,[kzd_app:name(AppJObj)]
-                                         ),
-                              kzd_app:unpublish(AppJObj)
-                      end
-              end
-             ,AppJObjs
-             ).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -136,19 +140,22 @@ allowed_apps_store_doc(AccountId, UserId, AppJObjs) ->
 allowed_apps_store_doc_map(AccountId, UserId, AppStoreJObj) ->
     fun(AppJObj) ->
             AppId = kz_doc:id(AppJObj),
-            case kz_json:get_ne_json_value(AppId, kzd_apps_store:apps(AppStoreJObj)) of
-                'undefined' -> AppJObj;
-                AppPermissions ->
-                    case not is_blacklisted(AppJObj, AppStoreJObj)
-                        andalso is_authorized(AccountId, UserId, AppPermissions)
-                    of
+            AppPermissions = kz_json:get_ne_json_value(AppId, kzd_apps_store:apps(AppStoreJObj)),
+            case is_blacklisted(AppJObj, AppStoreJObj) of
+                'true' ->
+                    Props = [{<<"authority">>, <<"app_store_blacklist">>}],
+                    kzd_app:unpublish(kz_json:set_values(Props, AppJObj));
+                'false' when AppPermissions =:= 'undefined' -> AppJObj;
+                'false' ->
+                    Authority = kz_json:from_list([{<<"authority">>, <<"app_store">>}]),
+                    IsPublished = kzd_app:is_published(AppJObj),
+                    case is_authorized(AccountId, UserId, AppPermissions) of
+                        'true' when IsPublished ->
+                            kz_json:merge([kzd_app:publish(AppJObj), AppPermissions, Authority]);
                         'true' ->
-                            kz_json:merge([kzd_app:publish(AppJObj), AppPermissions]);
+                            kz_json:merge([kzd_app:unpublish(AppJObj), AppPermissions, Authority]);
                         'false' ->
-                            lager:debug("app store doc explicitly disables access to ~s"
-                                       ,[kzd_app:name(AppJObj)]
-                                       ),
-                            kz_json:merge([kzd_app:unpublish(AppJObj), AppPermissions])
+                            kz_json:merge([kzd_app:unpublish(AppJObj), AppPermissions, Authority])
                     end
             end
     end.
@@ -195,16 +202,16 @@ is_blacklisted(App, JObj) ->
 -spec allowed_whitelabel_doc(kz_term:ne_binary(), kz_term:api_binary(), kz_json:objects()) -> kz_json:objects().
 allowed_whitelabel_doc(AccountId, _UserId, AppJObjs) ->
     WhitelabelJObj = get_whitelabel_doc(AccountId),
+    IsReseller = kz_services_reseller:is_reseller(AccountId),
     lists:map(fun(AppJObj) ->
                       case kzd_app:name(AppJObj) =:= <<"port">>
+                          andalso (not IsReseller)
                           andalso kzd_whitelabel:hide_port(WhitelabelJObj)
                       of
                           'false' -> AppJObj;
                           'true' ->
-                              lager:debug("whitelabel doc explicitly disables access to ~s"
-                                         ,[kzd_app:name(AppJObj)]
-                                         ),
-                              kzd_app:unpublish(AppJObj)
+                              Props = [{<<"authority">>, <<"whitelabel_hide_port">>}],
+                              kzd_app:unpublish(kz_json:set_values(Props, AppJObj))
                       end
               end
              ,AppJObjs
@@ -233,8 +240,8 @@ allowed_master_account(AccountId, _UserId, AppJObjs) ->
     case AccountId =:= MasterAccountId of
         'false' -> AppJObjs;
         'true' ->
-            lager:debug("granting master account access to all apps"),
-            [kzd_app:publish(AppJObj)
+            Props = [{<<"authority">>, <<"super_admin">>}],
+            [kzd_app:publish(kz_json:set_values(Props, AppJObj))
              || AppJObj <- AppJObjs
             ]
     end.
@@ -263,7 +270,10 @@ allowed_app(AccountId, AppId) ->
 load_default_apps() ->
     {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
     case kz_datamgr:get_results(MasterAccountDb, ?CB_APPS_STORE_LIST, ['include_docs']) of
-        {'ok', JObjs} -> [maybe_set_account(MasterAccountDb, JObj) || JObj <- JObjs];
+        {'ok', JObjs} ->
+            [maybe_set_account(MasterAccountDb, JObj)
+             || JObj <- JObjs
+            ];
         {'error', _E} ->
             lager:error("failed to lookup apps in ~s", [MasterAccountDb]),
             []
@@ -273,7 +283,8 @@ load_default_apps() ->
 maybe_set_account(Account, Doc) ->
     AccountId = kz_util:format_account_id(Account),
     AccountDb = kz_util:format_account_db(Account),
-    JObj = kz_json:get_value(<<"doc">>, Doc),
+    Props = [{<<"authority">>, <<"master_account">>}],
+    JObj = kz_json:set_values(Props, kz_json:get_value(<<"doc">>, Doc)),
     case kz_doc:account_db(JObj) =/= AccountDb
         orelse kz_doc:account_id(JObj) =/= AccountId
     of
@@ -313,16 +324,14 @@ create_apps_store_doc(Account) ->
 -spec get_services_apps(kz_term:ne_binary()) -> kz_json:object().
 get_services_apps(AccountId) ->
     ServicesApps = kz_services_applications:fetch(AccountId),
-    ResellerId = kz_services_reseller:get_id(AccountId),
-    case kz_term:is_empty(ServicesApps) of
-        'true' when ResellerId =:= AccountId ->
-            ServicesApps;
-        'true' ->
+    case kz_term:is_not_empty(ServicesApps)
+        orelse kz_services_reseller:is_reseller(AccountId)
+    of
+        'true' -> ServicesApps;
+        'false' ->
+            ResellerId = kz_services_reseller:get_id(AccountId),
             lager:debug("account ~s doesn't have apps in service plan, checking reseller ~s"
                        ,[AccountId, ResellerId]
                        ),
-            kz_services_applications:fetch(AccountId);
-        'false' ->
-            lager:debug("account ~s has apps in service plan", [AccountId]),
-            ServicesApps
+            kz_services_applications:fetch(ResellerId)
     end.
