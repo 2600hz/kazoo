@@ -186,7 +186,7 @@ default_request_headers(RequestId) ->
 -spec make_request(expectations(), fun_2(), string(), kz_http:headers()) ->
                           response().
 make_request(Expectations, HTTP, URL, RequestHeaders) ->
-    ?INFO("~p(~p, ~p)", [HTTP, URL, RequestHeaders]),
+    ?INFO("~p(~s, ~p)", [HTTP, URL, RequestHeaders]),
     handle_response(Expectations, HTTP(URL, RequestHeaders)).
 
 -spec make_request(expectations(), fun_3(), string(), kz_http:headers(), iodata()) ->
@@ -217,7 +217,7 @@ handle_response(Expectations, {'ok', ActualCode, RespHeaders, RespBody}) ->
             {'error', RespBody}
     end;
 handle_response(_Expectations, {'error','socket_closed_remotely'}=E) ->
-    lager:error("~nwe broke crossbar!"),
+    lager:error("we broke crossbar!"),
     throw(E);
 handle_response(_ExpectedCode, {'error', _}=E) ->
     lager:error("broken req: ~p", [E]),

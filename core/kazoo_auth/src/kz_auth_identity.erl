@@ -235,6 +235,7 @@ from_profile(Token) ->
 check_kazoo_secret(#{user_doc := JObj}=Token) ->
     case kz_json:get_value(?PVT_SIGNING_SECRET, JObj) of
         'undefined' ->
+            lager:debug("no signing secret on ~s, generating", [kz_doc:id(JObj)]),
             case update_kazoo_secret(Token) of
                 #{}=NewToken -> NewToken;
                 {'error', _} ->
@@ -252,17 +253,42 @@ update_kazoo_secret(#{auth_db := Db
 
 -spec update_kazoo_secret(map(), kz_term:ne_binary()) ->
                                  map() | kz_datamgr:data_error().
-update_kazoo_secret(#{auth_db := Db
-                     ,auth_db_id := Key
-                     }=Token, Secret) ->
+update_kazoo_secret(#{auth_db := Db}=Token, Secret) ->
+    update_kazoo_secret(Token, Secret, kzs_util:db_classification(Db)).
+
+-spec update_kazoo_secret(map(), kz_term:ne_binary(), kz_data:db_classification()) ->
+                                 map() | kz_datamgr:data_error().
+update_kazoo_secret(#{auth_db := AccountDb, auth_db_id := DocId}=Token, Secret, 'account') ->
+    case kz_util:format_account_id(AccountDb) of
+        DocId -> update_account_secret(Token, Secret);
+        _AccountId -> update_doc_secret(Token, Secret)
+    end;
+update_kazoo_secret(Token, Secret, _Type) -> update_doc_secret(Token, Secret).
+
+-spec update_account_secret(map(), kz_term:ne_binary()) ->
+                                   map() | kz_datamgr:data_error().
+update_account_secret(#{auth_db_id := AccountId}=Token, Secret) ->
+    Updates = [{[?PVT_SIGNING_SECRET], Secret}],
+    handle_updated_secret(Token, kzd_accounts:update(AccountId, Updates)).
+
+-spec update_doc_secret(map(), kz_term:ne_binary()) ->
+                               map() | kz_datamgr:data_error().
+update_doc_secret(#{auth_db := Db
+                   ,auth_db_id := Key
+                   }=Token
+                 ,Secret
+                 ) ->
     Updates = [{[?PVT_SIGNING_SECRET], Secret}],
     UpdateOptions = [{'update', Updates}],
-    case kz_datamgr:update_doc(Db, Key, UpdateOptions) of
-        {'ok', _} -> Token#{identity_secret => Secret};
-        {'error', _Reason}=Error ->
-            lager:info("unable to store the kazoo signing secret on ~s/~s: ~p", [Db, Key, _Reason]),
-            Error
-    end.
+    handle_updated_secret(Token, kz_datamgr:update_doc(Db, Key, UpdateOptions)).
+
+-spec handle_updated_secret(map(), {'ok', kz_json:object()} | kz_datamgr:data_error()) ->
+                                   map() | kz_datamgr:data_error().
+handle_updated_secret(Token, {'ok', Doc}) ->
+    Token#{identity_secret => kz_json:get_value(?PVT_SIGNING_SECRET, Doc)};
+handle_updated_secret(#{auth_db := _Db, auth_db_id := _Key}=_Token, {'error', _Reason}=Error) ->
+    lager:info("unable to store the kazoo signing secret on ~s/~s: ~p", [_Db, _Key, _Reason]),
+    Error.
 
 %%------------------------------------------------------------------------------
 %% @doc Verify the identity signature from a Token map.
@@ -282,10 +308,14 @@ token(#{auth_provider := #{name := <<"kazoo">>
     of
         'false' ->
             lager:info("unable to verify identity without a valid identity secret"),
-            Token#{identify_verified => 'false', identity_error => 'invalid_identity_signature'};
+            Token#{identify_verified => 'false'
+                  ,identity_error => 'invalid_identity_signature'
+                  };
         {'error', Error} ->
             lager:info("unable to verify identity claims: ~p", [Error]),
-            Token#{identify_verified => 'false', identity_error => Error};
+            Token#{identify_verified => 'false'
+                  ,identity_error => Error
+                  };
         Token1 -> verify_identity_signature(Token1, Secret, Hash, IdentitySig)
     end;
 token(#{payload := Payload
@@ -300,16 +330,26 @@ token(#{payload := Payload
     of
         'false' ->
             lager:debug("unable to get identity signature from field '~s'", [IdentitySigField]),
-            Token#{identify_verified => 'false', identity_error => 'invalid_identity_signature'};
+            Token#{identify_verified => 'false'
+                  ,identity_error => 'invalid_identity_signature'
+                  };
         {'error', Error} ->
             lager:info("unable to verify identity claims: ~p", [Error]),
-            Token#{identify_verified => 'false', identity_error => Error};
+            Token#{identify_verified => 'false'
+                  ,identity_error => Error
+                  };
         Token1 -> verify_identity_signature(Token1, Secret, Hash, IdentitySig)
     end;
 token(#{}=Token) -> Token#{identify_verified => 'true'}.
 
 -spec verify_identity_signature(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> map().
-verify_identity_signature(#{identity_secret := IdentitySecret, auth_id := Identity}=Token,  Secret, Hash, IdentitySig) ->
+verify_identity_signature(#{identity_secret := IdentitySecret
+                           ,auth_id := Identity
+                           }=Token
+                         ,Secret
+                         ,Hash
+                         ,IdentitySig
+                         ) ->
     lager:debug("verifying key for identity '~s'", [Identity]),
     IdentitySignature = kz_base64url:decode(IdentitySig),
     HashMethod = kz_term:to_atom(Hash, 'true'),
@@ -322,7 +362,9 @@ verify_identity_signature(Token, ExpectedSignature, ExpectedSignature) ->
     Token#{identify_verified => 'true'};
 verify_identity_signature(Token, _IdentitySignature, _ExpectedSignature) ->
     lager:info("provided identity signature (~s) did not match the expected signature", [_IdentitySignature]),
-    Token#{identify_verified => 'false', identity_error => 'invalid_identity_signature'}.
+    Token#{identify_verified => 'false'
+          ,identity_error => 'invalid_identity_signature'
+          }.
 
 %%------------------------------------------------------------------------------
 %% @doc Returns a boolean of the Token map's verification result.
@@ -355,8 +397,7 @@ reset_secret(#{<<"account_id">> := Account
                            ,auth_id => OwnerId
                            ,auth_db_id => OwnerId
                            });
-reset_secret(#{<<"account_id">> := Account
-              }) ->
+reset_secret(#{<<"account_id">> := Account}) ->
     AccountId = kz_util:format_account_id(Account),
     AccountDb = kz_util:format_account_db(AccountId),
     reset_identity_secret(#{auth_db => AccountDb
@@ -378,7 +419,6 @@ reset_secret(Claims) ->
 -spec reset_doc_secret(kz_json:object()) -> kz_json:object().
 reset_doc_secret(JObj) ->
     kz_json:set_value(?PVT_SIGNING_SECRET, generate_new_kazoo_signing_secret(), JObj).
-
 
 %%------------------------------------------------------------------------------
 %% @doc Check if `?PVT_SIGNING_SECRET' is a non-empty value

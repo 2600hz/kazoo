@@ -172,7 +172,8 @@ include_claims(Claims) ->
 -spec include_identity_sign(kz_term:proplist()) -> kz_term:proplist().
 include_identity_sign(Claims) ->
     case kz_auth_identity:sign(Claims) of
-        {'ok', Signature} -> [{<<"identity_sig">>, kz_base64url:encode(Signature)} | Claims];
+        {'ok', Signature} ->
+            [{<<"identity_sig">>, kz_base64url:encode(Signature)} | Claims];
         _Else ->
             lager:debug("identity signing json token failed : ~p", [_Else]),
             Claims

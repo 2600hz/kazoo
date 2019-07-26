@@ -54,12 +54,18 @@ handle_opened_doc(Doc, 'true', 'false') ->
 save_doc(#{server := {App, Conn}}, DbName, Doc, Options) ->
     {PreparedDoc, PublishDoc} = prepare_doc_for_save(DbName, Doc),
     try App:save_doc(Conn, DbName, PreparedDoc, Options) of
-        {'ok', JObj}=Ok -> kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
-                           Ok;
+        {'ok', JObj}=Ok ->
+            kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
+            kzs_cache:add_to_doc_cache(DbName, kz_doc:id(JObj), JObj),
+            Ok;
+        {'error', 'conflict'}=Error ->
+            kzs_cache:flush_cache_doc(DbName, kz_doc:id(PreparedDoc)),
+            Error;
         Else -> Else
     catch
-        Ex:Er -> ?LOG_DEBUG("exception ~p : ~p", [Ex, Er]),
-                 {'error', 'failed'}
+        Ex:Er ->
+            ?LOG_DEBUG("exception ~p : ~p", [Ex, Er]),
+            {'error', 'failed'}
     end.
 
 
@@ -71,6 +77,7 @@ save_docs(#{server := {App, Conn}}, DbName, Docs, Options) ->
     try App:save_docs(Conn, DbName, PreparedDocs, Options) of
         {'ok', JObjs}=Ok ->
             kzs_publish:maybe_publish_docs(DbName, Publish, JObjs),
+            _ = [kzs_cache:add_to_doc_cache(DbName, kz_doc:id(JObj), JObj) || JObj <- JObjs],
             Ok;
         Else -> Else
     catch
@@ -91,6 +98,7 @@ ensure_saved(#{server := {App, Conn}}=Map, DbName, Doc, Options) ->
     try App:ensure_saved(Conn, DbName, PreparedDoc, Options) of
         {'ok', JObj}=Ok ->
             kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
+            kzs_cache:add_to_doc_cache(DbName, kz_doc:id(JObj), JObj),
             _ = maybe_ensure_saved_others(kz_doc:id(Doc), Map, DbName, Doc, Options),
             Ok;
         Else -> Else
@@ -156,12 +164,12 @@ prepare_doc_for_del(Server, Db, ?NE_BINARY=DocId) ->
 prepare_doc_for_del(Server, DbName, Doc) ->
     Id = kz_doc:id(Doc),
     Rev0 = kz_doc:revision(Doc),
-    DocRev = case Rev0 =:= undefined
+    DocRev = case Rev0 =:= 'undefined'
                  andalso lookup_doc_rev(Server, DbName, Id)
              of
-                 false -> Rev0;
-                 {ok, Rev} -> Rev;
-                 {error, not_found} -> undefined
+                 'false' -> Rev0;
+                 {'ok', Rev} -> Rev;
+                 {'error', 'not_found'} -> 'undefined'
              end,
     kz_json:from_list(
       [{<<"_id">>, Id}

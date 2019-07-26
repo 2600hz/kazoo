@@ -17,6 +17,7 @@
              ,option/0, options/0
              ,document/0
              ,documents/0
+             ,db_classification/0
              ]).
 
 -callback new_connection(map()) -> connection().

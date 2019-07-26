@@ -115,15 +115,21 @@ validate_search(Context, 'undefined') ->
     Message = kz_json:from_list([{<<"message">>, <<"search needs a document type to search on">>}
                                 ,{<<"target">>, ?SEARCHABLE}
                                 ]),
+    lager:debug("'t' required"),
     cb_context:add_validation_error(<<"t">>, <<"required">>, Message, Context);
 validate_search(Context, <<"account">>=Type) ->
-    validate_search(cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB), Type, cb_context:req_value(Context, <<"q">>));
+    lager:debug("validating search on accounts"),
+    validate_search(cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
+                   ,Type
+                   ,cb_context:req_value(Context, <<"q">>)
+                   );
 validate_search(Context, Type) ->
     validate_search(Context, Type, cb_context:req_value(Context, <<"q">>)).
 
 -spec validate_search(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) ->
                              cb_context:context().
 validate_search(Context, _Type, 'undefined') ->
+    lager:debug("'q' required"),
     NeedViewMsg = kz_json:from_list([{<<"message">>, <<"search needs a view to search in">>}
                                     ,{<<"target">>, available_query_options(cb_context:account_db(Context))}
                                     ]),
@@ -161,7 +167,11 @@ validate_multi(Context, 'undefined') ->
                                 ]),
     cb_context:add_validation_error(<<"t">>, <<"required">>, Message, Context);
 validate_multi(Context, <<"account">>=Type) ->
-    validate_multi(cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB), Type, kz_json:to_proplist(cb_context:query_string(Context)));
+    lager:debug("validating search on accounts"),
+    validate_multi(cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
+                  ,Type
+                  ,kz_json:to_proplist(cb_context:query_string(Context))
+                  );
 validate_multi(Context, Type) ->
     validate_multi(Context, Type, kz_json:to_proplist(cb_context:query_string(Context))).
 
@@ -188,6 +198,7 @@ validate_query(Context, Available, []) ->
     case cb_context:resp_status(Context) of
         'success' -> Context;
         _ ->
+            lager:debug("multisearch has ~p available", [Available]),
             Message = kz_json:from_list([{<<"message">>, <<"multi search needs some values to search for">>}
                                         ,{<<"target">>, Available}
                                         ]),
@@ -196,8 +207,12 @@ validate_query(Context, Available, []) ->
 validate_query(Context, Available, [{<<"by_", Query/binary>>, _}|Props]) ->
     Context1 = validate_query(Context, Available, Query),
     case cb_context:resp_status(Context1) of
-        'success' -> validate_query(Context1, Available, Props);
-        _Status -> Context1
+        'success' ->
+            lager:debug("query ~s is valid", [Query]),
+            validate_query(Context1, Available, Props);
+        _Status ->
+            lager:debug("query ~s is not valid", [Query]),
+            Context1
     end;
 validate_query(Context, Available, [{Query, _}|Props]) ->
     lager:debug("ignoring query string ~s", [Query]),
@@ -206,6 +221,7 @@ validate_query(Context, Available, Query) when is_binary(Query) ->
     case lists:member(Query, Available) of
         'true' -> cb_context:set_resp_status(Context, 'success');
         'false' ->
+            lager:debug("query ~s not allowed", [Query]),
             Message = kz_json:from_list([{<<"message">>, <<"value not found in enumerated list of values">>}
                                         ,{<<"cause">>, Query}
                                         ]),
@@ -220,10 +236,13 @@ validate_query(Context, Available, Query) when is_binary(Query) ->
 available_query_options(AccountDb) ->
     case kz_datamgr:open_cache_doc(AccountDb, <<"_design/search">>) of
         {'ok', JObj} ->
+            lager:debug("got ~s views from ~s", [kz_json:get_keys(<<"views">>, JObj), AccountDb]),
             format_query_options(kz_json:get_keys(<<"views">>, JObj));
         {'error', _E} when AccountDb =:= ?KZ_ACCOUNTS_DB ->
+            lager:debug("using default query options"),
             ?ACCOUNTS_QUERY_OPTIONS;
         {'error', _E} ->
+            lager:debug("using default query options after error ~p", [_E]),
             ?ACCOUNT_QUERY_OPTIONS
     end.
 
@@ -233,6 +252,9 @@ available_query_options(AccountDb) ->
 %%------------------------------------------------------------------------------
 
 -spec format_query_options(kz_term:ne_binaries()) -> kz_term:ne_binaries().
+format_query_options([]) ->
+    lager:debug("no query options found on design doc, using default"),
+    ?ACCOUNTS_QUERY_OPTIONS;
 format_query_options(Views) ->
     [format_query_option(View) || View <- Views].
 

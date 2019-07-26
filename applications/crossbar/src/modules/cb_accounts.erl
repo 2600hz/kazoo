@@ -432,8 +432,8 @@ delete(Context, AccountId, ?RESELLER) ->
 -spec maybe_update_descendants_count(kz_term:ne_binaries()) -> 'ok'.
 maybe_update_descendants_count([]) -> 'ok';
 maybe_update_descendants_count(Tree) ->
-    _ = kz_util:spawn(fun crossbar_util:descendants_count/1, [lists:last(Tree)]),
-    'ok'.
+    _CountPid = kz_util:spawn(fun crossbar_util:descendants_count/1, [lists:last(Tree)]),
+    lager:debug("descendants count calculation in ~p from last in ~p", [_CountPid, Tree]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -441,8 +441,8 @@ maybe_update_descendants_count(Tree) ->
 %%------------------------------------------------------------------------------
 -spec create_apps_store_doc(kz_term:ne_binary()) -> 'ok'.
 create_apps_store_doc(AccountId) ->
-    _ = kz_util:spawn(fun cb_apps_util:create_apps_store_doc/1, [AccountId]),
-    'ok'.
+    _AppsPid = kz_util:spawn(fun cb_apps_util:create_apps_store_doc/1, [AccountId]),
+    lager:debug("creating apps store doc in ~p", [_AppsPid]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -1123,8 +1123,7 @@ load_account_db(Context, AccountId) when is_binary(AccountId) ->
                                ,{fun cb_context:set_reseller_id/2, ResellerId}
                                ]);
         {'error', 'not_found'} ->
-            Msg = kz_json:from_list([{<<"cause">>, AccountId}
-                                    ]),
+            Msg = kz_json:from_list([{<<"cause">>, AccountId}]),
             cb_context:add_system_error('bad_identifier', Msg, Context);
         {'error', _R} ->
             crossbar_util:response_db_fatal(Context)
