@@ -153,7 +153,7 @@ allowed_apps_store_doc_map(AccountId, UserId, AppStoreJObj) ->
                         'true' when IsPublished ->
                             kz_json:merge([kzd_app:publish(AppJObj), AppPermissions, Authority]);
                         'true' ->
-                            kz_json:merge([kzd_app:unpublish(AppJObj), AppPermissions, Authority]);
+                            kz_json:merge([AppJObj, AppPermissions]);
                         'false' ->
                             kz_json:merge([kzd_app:unpublish(AppJObj), AppPermissions, Authority])
                     end
