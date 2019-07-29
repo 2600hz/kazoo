@@ -56,14 +56,23 @@ save_doc(#{server := {App, Conn}}, DbName, Doc, Options) ->
     try App:save_doc(Conn, DbName, PreparedDoc, Options) of
         {'ok', JObj}=Ok ->
             kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
-            kzs_cache:add_to_doc_cache(DbName, kz_doc:id(Doc), JObj),
+            update_cache(DbName, kz_doc:id(JObj), JObj, kz_doc:is_deleted(JObj)),
             Ok;
         Else -> Else
     catch
-        Ex:Er -> ?LOG_DEBUG("exception ~p : ~p", [Ex, Er]),
-                 {'error', 'failed'}
+        Ex:Er ->
+            ?LOG_DEBUG("exception ~p : ~p", [Ex, Er]),
+            {'error', 'failed'}
     end.
 
+-spec update_cache(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), boolean()) -> 'ok'.
+update_cache(DbName, DocId, _JObj, 'true') ->
+    kzs_cache:flush_cache_doc(DbName, DocId);
+update_cache(DbName, DocId, JObj, 'false') ->
+    case kz_json:get_value(kz_doc:path_revision(), JObj) of
+        'undefined' -> kzs_cache:flush_cache_doc(DbName, DocId);
+        _Rev -> kzs_cache:add_to_doc_cache(DbName, DocId, JObj)
+    end.
 
 -spec save_docs(map(), kz_term:ne_binary(), kz_json:objects(), kz_term:proplist()) ->
                        {'ok', kz_json:objects()} |
@@ -73,6 +82,7 @@ save_docs(#{server := {App, Conn}}, DbName, Docs, Options) ->
     try App:save_docs(Conn, DbName, PreparedDocs, Options) of
         {'ok', JObjs}=Ok ->
             kzs_publish:maybe_publish_docs(DbName, Publish, JObjs),
+            _ = [update_cache(DbName, kz_doc:id(JObj), JObj, 'true') || JObj <- JObjs],
             Ok;
         Else -> Else
     catch
@@ -94,6 +104,7 @@ ensure_saved(#{server := {App, Conn}}=Map, DbName, Doc, Options) ->
         {'ok', JObj}=Ok ->
             kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
             _ = maybe_ensure_saved_others(kz_doc:id(Doc), Map, DbName, Doc, Options),
+            update_cache(DbName, kz_doc:id(JObj), JObj, kz_doc:is_deleted(JObj)),
             Ok;
         Else -> Else
     catch
@@ -128,12 +139,13 @@ del_doc(#{server := {App, Conn}}=Server, DbName, Doc, Options) ->
     try App:del_doc(Conn, DbName, PreparedDoc, Options) of
         {'ok', [JObj|_]} ->
             kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
+            update_cache(DbName, kz_doc:id(JObj), JObj, 'true'),
             {'ok', JObj};
         Else -> Else
     catch
         Ex:Er ->
             lager:error("exception ~p: ~p", [Ex, Er]),
-            failed
+            'failed'
     end.
 
 -spec del_docs(map(), kz_term:ne_binary(), kz_json:objects() | kz_term:ne_binaries(), kz_term:proplist()) ->
@@ -145,6 +157,7 @@ del_docs(#{server := {App, Conn}}=Server, DbName, Docs, Options) ->
     try App:del_docs(Conn, DbName, PreparedDocs, Options) of
         {'ok', JObjs}=Ok ->
             kzs_publish:maybe_publish_docs(DbName, Publish, JObjs),
+            _ = [update_cache(DbName, kz_doc:id(JObj), JObj, 'true') || JObj <- JObjs],
             Ok;
         Else -> Else
     catch
@@ -180,8 +193,7 @@ prepare_doc_for_save(Db, JObj) ->
 -spec prepare_doc_for_save(kz_term:ne_binary(), kz_json:object(), boolean()) -> {kz_json:object(), kz_json:object()}.
 prepare_doc_for_save(_Db, JObj, 'true') ->
     prepare_publish(maybe_set_docid(JObj));
-prepare_doc_for_save(Db, JObj, 'false') ->
-    kzs_cache:flush_cache_doc(Db, JObj),
+prepare_doc_for_save(_Db, JObj, 'false') ->
     prepare_publish(JObj).
 
 -spec prepare_publish(kz_json:object()) -> {kz_json:object(), kz_json:object()}.

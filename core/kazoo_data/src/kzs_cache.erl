@@ -275,22 +275,20 @@ check_if_newer_revision(CacheProps, DbName, DocId, CacheValue) ->
     case kz_cache:peek_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId)) of
         {'ok', Current} ->
             case kz_doc:revision(Current) > kz_doc:revision(CacheValue) of
-                'true' ->
-                    lager:debug("not caching ~s ~s over ~s", [DocId, kz_doc:revision(CacheValue), kz_doc:revision(Current)]);
-                'false' ->
-                    kz_cache:store_local(?CACHE_NAME
-                                        ,?CACHE_KEY(DbName, DocId)
-                                        ,CacheValue
-                                        ,CacheProps
-                                        )
+                'true' -> 'ok';
+                'false' -> cache_it(CacheProps, DbName, DocId, CacheValue)
             end;
         {_, _} ->
-            kz_cache:store_local(?CACHE_NAME
-                                ,?CACHE_KEY(DbName, DocId)
-                                ,CacheValue
-                                ,CacheProps
-                                )
+            cache_it(CacheProps, DbName, DocId, CacheValue)
     end.
+
+-spec cache_it(kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+cache_it(CacheProps, DbName, DocId, CacheValue) ->
+    kz_cache:store_local(?CACHE_NAME
+                        ,?CACHE_KEY(DbName, DocId)
+                        ,CacheValue
+                        ,CacheProps
+                        ).
 
 -spec expires_policy_value(kz_term:ne_binary(), kz_json:object() | data_error()) -> timeout().
 expires_policy_value(_DbName, {'error', _}) ->
