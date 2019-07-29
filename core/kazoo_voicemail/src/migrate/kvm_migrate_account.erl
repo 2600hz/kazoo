@@ -15,10 +15,12 @@
 -include("kz_voicemail.hrl").
 
 -define(DEFAULT_VM_EXTENSION
-       ,kapps_config:get_ne_binary(?VM_CONFIG_CAT, [?KEY_VOICEMAIL, <<"extension">>], <<"mp3">>)).
+       ,kapps_config:get_ne_binary(?VM_CONFIG_CAT, [?KEY_VOICEMAIL, <<"extension">>], <<"mp3">>)
+       ).
 
 -define(MAX_BULK_INSERT
-       ,kapps_config:get_integer(?VM_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_max_bulk_insert">>], kz_datamgr:max_bulk_insert())).
+       ,kapps_config:get_integer(?VM_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_max_bulk_insert">>], kz_datamgr:max_bulk_insert())
+       ).
 
 -define(LEGACY_MSG_LISTING, <<"vmboxes/legacy_msg_by_timestamp">>).
 
@@ -98,12 +100,16 @@ manual_vmbox_migrate(Account, BoxIds) ->
 %% @doc Main migration loop
 %% @end
 -spec migration_loop(ctx()) -> 'ok' | kz_term:proplist().
-migration_loop(#ctx{account_id = _AccountId, retries = Retries, last_error = LastError}=Ctx) when Retries > 3 ->
+migration_loop(#ctx{account_id = _AccountId
+                   ,retries = Retries
+                   ,last_error = LastError
+                   }=Ctx
+              ) when Retries > 3 ->
     Reason = case LastError of
                  'undefined' -> <<"maximum retries">>;
                  _ -> <<"maximum retries, last error was ", LastError/binary>>
              end,
-    ?SUP_LOG_WARNING("  [~s] reached to ~s", [_AccountId, Reason]),
+    ?SUP_LOG_WARNING("  [~s] retries exhausted: last error: ~s", [_AccountId, Reason]),
     account_is_failed(Ctx, Reason);
 migration_loop(Ctx) ->
     handle_result(Ctx, get_messages(Ctx)).
@@ -111,8 +117,10 @@ migration_loop(Ctx) ->
 %% @doc Get legacy messages from DB
 %% @end
 -spec get_messages(ctx()) -> db_ret().
-get_messages(#ctx{mode = <<"worker">>, account_db = AccountDb
-                 ,startkey = StartKey, endkey = EndKey
+get_messages(#ctx{mode = <<"worker">>
+                 ,account_db = AccountDb
+                 ,startkey = StartKey
+                 ,endkey = EndKey
                  }) ->
     ViewOpts = props:filter_empty(
                  [{'limit', ?MAX_BULK_INSERT}
