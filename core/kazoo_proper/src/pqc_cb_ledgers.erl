@@ -138,7 +138,7 @@ seq() ->
     API = pqc_kazoo_model:api(Model),
 
     PriorChunkSize = kapps_config:get_pos_integer(<<"crossbar">>, <<"load_view_chunk_size">>),
-    {'ok', _} = kapps_config:set_default(<<"crossbar">>, <<"load_view_chunk_size">>, 1),
+    _ = kapps_config:set_default(<<"crossbar">>, <<"load_view_chunk_size">>, 1),
 
     AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
     lager:info("created account: ~s", [AccountResp]),
@@ -169,7 +169,7 @@ seq() ->
     lager:info("source fetch CSV: ~s", [SourceFetchCSV]),
     'true' = ledgers_exist_in_csv(SourceFetchCSV, [Ledger, Ledger2]),
 
-    {'ok', _} = kapps_config:set_default(<<"crossbar">>, <<"load_view_chunk_size">>, PriorChunkSize),
+    _ = kapps_config:set_default(<<"crossbar">>, <<"load_view_chunk_size">>, PriorChunkSize),
 
     cleanup(API),
     lager:info("FINISHED SEQ").
