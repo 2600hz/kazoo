@@ -769,8 +769,6 @@ open_cache_docs(DbName, DocIds, Options) ->
         {'error', _}=E -> E
     end.
 
-
-
 -spec all_docs(kz_term:text()) ->
                       {'ok', kz_json:objects()} |
                       data_error().

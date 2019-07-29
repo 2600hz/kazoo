@@ -130,23 +130,26 @@ fetch_doc(Server, DbName, DocId, Options, CacheStrategy) ->
                              data_error().
 open_cache_docs(DbName, DocIds, Options) ->
     {Cached, MissedDocIds} = fetch_locals(DbName, DocIds),
-    case MissedDocIds =/= []
-        andalso kz_datamgr:open_docs(DbName, MissedDocIds, remove_cache_options(Options))
-    of
+    ?LOG_INFO("fetched cached ~p and missing ~p", [Cached, MissedDocIds]),
+    open_non_cached_docs(DbName, DocIds, Options, Cached, MissedDocIds).
+
+open_non_cached_docs(DbName, DocIds, Options, Cached, []) ->
+    prepare_jobjs(DbName, DocIds, Options, Cached, []);
+open_non_cached_docs(DbName, DocIds, Options, Cached, MissedDocIds) ->
+    case kz_datamgr:open_docs(DbName, MissedDocIds, remove_cache_options(Options)) of
         {'error', _}=E -> E;
-        Other ->
-            prepare_jobjs(DbName, DocIds, Options, Cached, Other)
+        {'ok', Found} ->
+            prepare_jobjs(DbName, DocIds, Options, Cached, Found)
     end.
 
--spec prepare_jobjs(kz_term:text(), kz_term:ne_binaries(), kz_term:proplist(), docs_returned(), {ok, kz_json:objects()} | 'false') ->
+-spec prepare_jobjs(kz_term:text(), kz_term:ne_binaries(), kz_term:proplist(), docs_returned(), kz_json:objects()) ->
                            {'ok', kz_json:objects()} |
                            data_error().
-prepare_jobjs(DbName, DocIds, Options, Cached, 'false') ->
-    prepare_jobjs(DbName, DocIds, Options, Cached, {'ok', []});
-prepare_jobjs(DbName, DocIds, Options, Cached, {'ok', Opened}) ->
+prepare_jobjs(DbName, DocIds, Options, Cached, Opened) ->
     FromBulk = disassemble_jobjs(DbName, Options, Opened),
     {'ok', assemble_jobjs(DocIds, Cached, FromBulk)}.
 
+-spec fetch_locals(kz_term:ne_binary(), kz_term:ne_binaries()) -> {docs_returned(), kz_term:ne_binaries()}.
 fetch_locals(DbName, DocIds) ->
     F = fun (DocId, {Cached, Missed}) ->
                 case kz_cache:fetch_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId)) of
