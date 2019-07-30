@@ -10,11 +10,10 @@
         ,authorize/1
         ,allowed_methods/0, allowed_methods/1 ,allowed_methods/2
         ,resource_exists/0, resource_exists/1 ,resource_exists/2
-        ,content_types_accepted/1
         ,content_types_provided/1
         ,validate/1, validate/2, validate/3
         ,put/1
-        ,post/1, post/2
+        ,post/2
         ,patch/2
         ,delete/2
         ]).
@@ -49,20 +48,19 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = init_db(),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.rates">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.rates">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.rates">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.content_types_accepted.rates">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.rates">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.execute.put.rates">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.rates">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.rates">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.rates">>, ?MODULE, 'delete'),
-    ok.
+    'ok'.
 
 init_db() ->
     _ = kz_datamgr:db_create(?KZ_RATES_DB),
@@ -93,7 +91,7 @@ authorize(_Context, _Nouns) ->
 %%------------------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST].
+    [?HTTP_GET, ?HTTP_PUT].
 
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?RATEDECKS) ->
@@ -118,15 +116,6 @@ resource_exists(_RateId) -> 'true'.
 
 -spec resource_exists(path_token(),path_token()) -> 'true'.
 resource_exists(?NUMBER, _PhoneNumber) -> 'true'.
-
--spec content_types_accepted(cb_context:context()) -> cb_context:context().
-content_types_accepted(Context) ->
-    content_types_accepted_by_verb(Context, cb_context:req_verb(Context)).
-
--spec content_types_accepted_by_verb(cb_context:context(), http_method()) -> cb_context:context().
-content_types_accepted_by_verb(Context, ?HTTP_POST) ->
-    cb_context:set_content_types_accepted(Context, [{'from_binary', ?CSV_CONTENT_TYPES}]);
-content_types_accepted_by_verb(Context, _) -> Context.
 
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
 content_types_provided(Context) ->
@@ -167,9 +156,7 @@ validate(Context, ?NUMBER, Phonenumber) ->
 validate_rates(Context, ?HTTP_GET) ->
     summary(cb_context:set_account_db(Context, ratedeck_db(Context)), cb_context:req_value(Context, <<"prefix">>));
 validate_rates(Context, ?HTTP_PUT) ->
-    create(cb_context:set_account_db(Context, ratedeck_db(Context)));
-validate_rates(Context, ?HTTP_POST) ->
-    check_uploaded_file(cb_context:set_account_db(Context, ratedeck_db(Context))).
+    create(cb_context:set_account_db(Context, ratedeck_db(Context))).
 
 -spec validate_rate(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_rate(Context, Id, ?HTTP_GET) ->
@@ -185,11 +172,6 @@ validate_rate(Context, Id, ?HTTP_DELETE) ->
 ratedeck_db(Context) ->
     RatedeckId = cb_context:req_value(Context, <<"ratedeck_id">>, ?KZ_RATES_DB),
     kzd_ratedeck:format_ratedeck_db(RatedeckId).
-
--spec post(cb_context:context()) -> cb_context:context().
-post(Context) ->
-    _ = kz_util:spawn(fun upload_csv/1, [Context]),
-    crossbar_util:response_202(<<"attempting to insert rates from the uploaded document">>, Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _RateId) ->
@@ -304,35 +286,6 @@ summary(Context, Prefix) ->
                           ).
 
 %%------------------------------------------------------------------------------
-%% @doc Check the uploaded file for CSV
-%% resource.
-%% @end
-%%------------------------------------------------------------------------------
--spec check_uploaded_file(cb_context:context()) -> cb_context:context().
-check_uploaded_file(Context) ->
-    check_uploaded_file(Context, cb_context:req_files(Context)).
-
-check_uploaded_file(Context, [{_Name, File}|_]) ->
-    lager:debug("checking file ~s", [_Name]),
-    case kz_json:get_value(<<"contents">>, File) of
-        'undefined' ->
-            error_no_file(Context);
-        Bin when is_binary(Bin) ->
-            lager:debug("file: ~s", [Bin]),
-            cb_context:set_resp_status(Context, 'success')
-    end;
-check_uploaded_file(Context, _ReqFiles) ->
-    error_no_file(Context).
-
--spec error_no_file(cb_context:context()) -> cb_context:context().
-error_no_file(Context) ->
-    cb_context:add_validation_error(<<"file">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list([{<<"message">>, <<"no file to process">>}])
-                                   ,Context
-                                   ).
-
-%%------------------------------------------------------------------------------
 %% @doc Normalizes the results of a view.
 %% @end
 %%------------------------------------------------------------------------------
@@ -347,221 +300,6 @@ normalize_view_results(JObj, Acc) ->
 -spec normalize_rate_lookup(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_rate_lookup(JObj, Acc) ->
     [kz_json:get_value(<<"doc">>, JObj)|Acc].
-
-%%------------------------------------------------------------------------------
-%% @doc Convert the file, based on content-type, to rate documents
-%% @end
-%%------------------------------------------------------------------------------
--spec upload_csv(cb_context:context()) -> 'ok'.
-upload_csv(Context) ->
-    _ = cb_context:put_reqid(Context),
-    Now = kz_time:now(),
-    {'ok', {Count, Rates}} = process_upload_file(Context),
-    lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, kz_time:elapsed_ms(Now)]),
-    _  = crossbar_doc:save(cb_context:set_doc(Context, Rates), [{'publish_doc', 'false'}]),
-    lager:debug("it took ~b ms to process and save ~b rates", [kz_time:elapsed_ms(Now), Count]).
-
--spec process_upload_file(cb_context:context()) ->
-                                 {'ok', {non_neg_integer(), kz_json:objects()}}.
-process_upload_file(Context) ->
-    process_upload_file(Context, cb_context:req_files(Context)).
-process_upload_file(Context, [{_Name, File}|_]) ->
-    lager:debug("converting file ~s", [_Name]),
-    convert_file(kz_json:get_binary_value([<<"headers">>, <<"content_type">>], File)
-                ,kz_json:get_value(<<"contents">>, File)
-                ,Context
-                );
-process_upload_file(Context, _ReqFiles) ->
-    error_no_file(Context).
-
--spec convert_file(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) ->
-                          {'ok', {non_neg_integer(), kz_json:objects()}}.
-convert_file(<<"text/csv">>, FileContents, Context) ->
-    csv_to_rates(FileContents, Context);
-convert_file(<<"text/comma-separated-values">>, FileContents, Context) ->
-    csv_to_rates(FileContents, Context);
-convert_file(<<"application/octet-stream">>, FileContents, Context) ->
-    lager:debug("content type is 'application/octet-stream', assuming it's csv"),
-    csv_to_rates(FileContents, Context);
-convert_file(ContentType, _, _) ->
-    lager:debug("unknown content type: ~s", [ContentType]),
-    throw({'unknown_content_type', ContentType}).
-
--spec csv_to_rates(kz_term:ne_binary(), cb_context:context()) ->
-                          {'ok', {integer(), kz_json:objects()}}.
-csv_to_rates(CSV, Context) ->
-    BulkInsert = kz_datamgr:max_bulk_insert(),
-    ecsv:process_csv_binary_with(CSV
-                                ,fun(Row, {Count, JObjs}) ->
-                                         process_row(Context, Row, Count, JObjs, BulkInsert)
-                                 end
-                                ,{0, []}
-                                ).
-
-
--type rate_row() :: [string(),...] | string().
-%% <div class="notice">Support row formats:
-%% ```
-%%    [Prefix, ISO, Desc, Rate]
-%%    [Prefix, ISO, Desc, InternalRate, Rate]
-%%    [Prefix, ISO, Desc, Surcharge, InternalRate, Rate]
-%%    [Prefix, ISO, Desc, InternalSurcharge, Surcharge, InternalRate, Rate]
-%% '''</div>
--type rate_row_acc() :: {integer(), kz_json:objects()}.
-
--spec process_row(cb_context:context(), rate_row(), integer(), kz_json:objects(), integer()) ->
-                         rate_row_acc().
-process_row(Context, Row, Count, JObjs, BulkInsert) ->
-    J = case Count > 1
-            andalso (Count rem BulkInsert) =:= 0 of
-            'false' -> JObjs;
-            'true' ->
-                _Pid = save_processed_rates(cb_context:set_doc(Context, JObjs), Count),
-                []
-        end,
-    process_row(Row, {Count, J}).
-
--spec process_row(rate_row(), rate_row_acc()) -> rate_row_acc().
-process_row(Row, {Count, JObjs}=Acc) ->
-    case get_row_prefix(Row) of
-        'undefined' -> Acc;
-        Prefix ->
-            ISO = get_row_iso(Row),
-            Description = get_row_description(Row),
-            InternalRate = get_row_internal_rate(Row),
-            %% The idea here is the more expensive rate will have a higher CostF
-            %% and decrement it from the weight so it has a lower weight #
-            %% meaning it should be more likely used
-            Weight = kzd_rates:constrain_weight(byte_size(kz_term:to_binary(Prefix)) * 10
-                                                - trunc(InternalRate * 100)
-                                               ),
-            Id = <<ISO/binary, "-", (kz_term:to_binary(Prefix))/binary>>,
-            Setters = props:filter_undefined(
-                        [{fun kz_doc:set_id/2, Id}
-                        ,{fun kzd_rates:set_prefix/2, kz_term:to_binary(Prefix)}
-                        ,{fun kzd_rates:set_weight/2, Weight}
-                        ,{fun kzd_rates:set_description/2, Description}
-                        ,{fun kzd_rates:set_rate_name/2, Id}
-                        ,{fun kzd_rates:set_iso_country_code/2, ISO}
-                        ,{fun kzd_rates:set_private_cost/2, InternalRate}
-                        ,{fun kzd_rates:set_carrier/2, <<"default">>}
-                        ,fun kzd_rates:set_type/1
-                        ,{fun kzd_rates:set_routes/2, get_row_routes(Row)}
-                        ,{fun kzd_rates:set_rate_increment/2, get_row_increment(Row)}
-                        ,{fun kzd_rates:set_rate_minimum/2, get_row_minimum(Row)}
-                        ,{fun kzd_rates:set_rate_surcharge/2, get_row_surcharge(Row)}
-                        ,{fun kzd_rates:set_rate_cost/2, get_row_rate(Row)}
-                        ,{fun kzd_rates:set_direction/2, get_row_direction(Row)}
-                        ,{fun kzd_rates:set_private_surcharge/2, get_row_internal_surcharge(Row)}
-                        ,{fun kzd_rates:set_routes/2, [<<"^\\+", (kz_term:to_binary(Prefix))/binary, "(\\d*)\$">>]}
-                        ,{fun kzd_rates:set_options/2, []}
-                        ]),
-
-            {Count + 1, [kz_json:set_values(Setters, kz_json:new()) | JObjs]}
-    end.
-
--spec get_row_prefix(rate_row()) -> kz_term:api_integer().
-get_row_prefix([Prefix | _]=_R) ->
-    try kz_term:to_integer(Prefix)
-    catch
-        _:_ ->
-            lager:info("non-integer prefix on row: ~p", [_R]),
-            'undefined'
-    end;
-get_row_prefix(_R) ->
-    lager:info("prefix not found on row: ~p", [_R]),
-    'undefined'.
-
--spec get_row_iso(rate_row()) -> kz_term:ne_binary().
-get_row_iso([_, ISO | _]) -> strip_quotes(kz_term:to_binary(ISO));
-get_row_iso(_R) ->
-    lager:info("iso not found on row: ~p", [_R]),
-    <<"XX">>.
-
--spec get_row_description(rate_row()) -> kz_term:api_binary().
-get_row_description([_, _, Description | _]) ->
-    strip_quotes(kz_term:to_binary(Description));
-get_row_description(_R) ->
-    lager:info("description not found on row: ~p", [_R]),
-    'undefined'.
-
--spec get_row_internal_surcharge(rate_row()) -> kz_term:api_float().
-get_row_internal_surcharge([_, _, _, InternalSurcharge, _, _ | _]) ->
-    kz_term:to_float(InternalSurcharge);
-get_row_internal_surcharge(_R) ->
-    lager:info("internal surcharge not found on row: ~p", [_R]),
-    'undefined'.
-
--spec get_row_surcharge(rate_row()) -> kz_term:api_float().
-get_row_surcharge([_, _, _, Surcharge, _, _]) ->
-    kz_term:to_float(Surcharge);
-get_row_surcharge([_, _, _, _, Surcharge, _ | _]) ->
-    kz_term:to_float(Surcharge);
-get_row_surcharge([_|_]=_R) ->
-    lager:info("surcharge not found on row: ~p", [_R]),
-    'undefined'.
-
--spec get_row_internal_rate(rate_row()) -> kz_term:api_float().
-get_row_internal_rate([_, _, _, Rate]) ->
-    kz_term:to_float(Rate);
-get_row_internal_rate([_, _, _, InternalRate, _]) ->
-    kz_term:to_float(InternalRate);
-get_row_internal_rate([_, _, _, _, InternalRate, _]) ->
-    kz_term:to_float(InternalRate);
-get_row_internal_rate([_, _, _, _, _, InternalRate | _]) ->
-    kz_term:to_float(InternalRate);
-get_row_internal_rate([_|_]=_R) ->
-    lager:info("internal rate not found on row: ~p", [_R]),
-    'undefined'.
-
--spec get_row_rate(rate_row()) -> kz_term:api_float().
-get_row_rate([_, _, _, Rate]) -> kz_term:to_float(Rate);
-get_row_rate([_, _, _, _, Rate]) -> kz_term:to_float(Rate);
-get_row_rate([_, _, _, _, _, Rate]) -> kz_term:to_float(Rate);
-get_row_rate([_, _, _, _, _, _, Rate | _]) -> kz_term:to_float(Rate);
-get_row_rate([_|_]=_R) ->
-    lager:info("rate not found on row: ~p", [_R]),
-    'undefined'.
-
-get_row_routes([_, _, _, _, _, _, _, Routes | _]) ->
-    [kz_term:to_binary(X) || X <- string:tokens(kz_term:to_list(Routes), ";")];
-get_row_routes([_|_]) ->
-    'undefined'.
-
-get_row_increment([_, _, _, _, _, _, _, _, Increment | _]) ->
-    case kz_term:to_float(Increment) of
-        Inc when Inc < 10 -> 10;
-        Inc -> Inc
-    end;
-get_row_increment([_|_]) ->
-    60.
-
-get_row_minimum([_, _, _, _, _, _, _, _, _, Minimum | _]) ->
-    case kz_term:to_float(Minimum) of
-        Min when Min < 10 -> 10;
-        Min -> Min
-    end;
-get_row_minimum([_|_]) ->
-    60.
-
-get_row_direction([_, _, _, _, _, _, _, _, _, _, Direction | _]) ->
-    [kz_term:to_binary(X) || X <- string:tokens(kz_term:to_list(Direction), ";")];
-get_row_direction([_|_]) ->
-    'undefined'.
-
--spec strip_quotes(kz_term:ne_binary()) -> kz_term:ne_binary().
-strip_quotes(Bin) ->
-    binary:replace(Bin, [<<"\"">>, <<"\'">>], <<>>, ['global']).
-
--spec save_processed_rates(cb_context:context(), integer()) -> pid().
-save_processed_rates(Context, Count) ->
-    kz_util:spawn(
-      fun() ->
-              Now = kz_time:now(),
-              _ = cb_context:put_reqid(Context),
-              _ = crossbar_doc:save(Context, [{'publish_doc', 'false'}]),
-              lager:debug("saved up to ~b docs (took ~b ms)", [Count, kz_time:elapsed_ms(Now)])
-      end).
 
 -spec rate_for_number(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 rate_for_number(Phonenumber, Context) ->

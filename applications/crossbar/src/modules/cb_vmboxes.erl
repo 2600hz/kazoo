@@ -1091,15 +1091,17 @@ del_all_files(Dir) ->
 -spec generate_media_name(kz_term:api_ne_binary(), kz_time:gregorian_seconds() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 generate_media_name('undefined', GregorianSeconds, Ext, Timezone) ->
     generate_media_name(<<"unknown">>, GregorianSeconds, Ext, Timezone);
+generate_media_name(CallerId, <<GregorianSeconds/binary>>, Ext, Timezone) ->
+    generate_media_name(CallerId, kz_term:to_integer(GregorianSeconds), Ext, Timezone);
 generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
-    UTCDateTime = calendar:gregorian_seconds_to_datetime(kz_term:to_integer(GregorianSeconds)),
-    LocalTime = case localtime:utc_to_local(UTCDateTime, kz_term:to_list(Timezone)) of
-                    {{_,_,_},{_,_,_}}=LT ->
+    LocalTime = try kz_time:adjust_utc_timestamp(GregorianSeconds, Timezone) of
+                    AdjustedGregorianSeconds when is_integer(AdjustedGregorianSeconds) ->
                         lager:debug("converted to TZ: ~s", [Timezone]),
-                        LT;
-                    _ ->
-                        lager:debug("bad TZ: ~p", [Timezone]),
-                        UTCDateTime
+                        calendar:gregorian_seconds_to_datetime(AdjustedGregorianSeconds)
+                catch
+                    'throw':{'error', 'unknown_tz'} ->
+                        lager:debug("unknown TZ: ~p", [Timezone]),
+                        calendar:gregorian_seconds_to_datetime(GregorianSeconds)
                 end,
     Date = kz_time:pretty_print_datetime(LocalTime),
     list_to_binary([CallerId, "_", Date, Ext]).

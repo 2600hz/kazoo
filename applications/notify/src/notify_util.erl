@@ -150,7 +150,7 @@ compile_default_subject_template(TemplateModule, Category) ->
 
 -spec compile_default_template(atom(), kz_term:ne_binary(), atom()) -> {'ok', atom()}.
 compile_default_template(TemplateModule, Category, Key) ->
-    Template = case kapps_config:get_ne_binary(Category, Key) of
+    Template = case kapps_config:get_ne_binary(Category, kz_term:to_binary(Key)) of
                    'undefined' -> get_default_template(Category, Key);
                    Else -> Else
                end,

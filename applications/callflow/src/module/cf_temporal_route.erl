@@ -164,32 +164,32 @@ get_temporal_rules(#temporal{local_sec=LSec
     get_temporal_rules(Routes, LSec, kapps_call:account_db(Call), TZ, []).
 
 -spec get_temporal_rules(kz_json:path(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary(), rules()) -> rules().
-get_temporal_rules(Routes, LSec, AccountDb, TZ, Rules) when is_binary(TZ) ->
-    Now = localtime:utc_to_local(calendar:universal_time(), kz_term:to_list(TZ)),
-    get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules).
+get_temporal_rules(Routes, LSec, AccountDb, <<TZ/binary>>, Rules) ->
+    NowDatetime = kz_time:adjust_utc_datetime(calendar:universal_time(), TZ),
+    get_temporal_rules(Routes, LSec, AccountDb, TZ, NowDatetime, Rules).
 
 -spec get_temporal_rules(routes(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary(), kz_time:datetime(), rules()) -> rules().
 get_temporal_rules([], _, _, _, _, Rules) -> lists:reverse(Rules);
-get_temporal_rules([{Route, Id}|Routes], LSec, AccountDb, TZ, Now, Rules) ->
+get_temporal_rules([{Route, Id}|Routes], LSec, AccountDb, TZ, NowDatetime, Rules) ->
     case kz_datamgr:open_cache_doc(AccountDb, Route) of
         {'error', _R} ->
             lager:info("unable to find temporal rule ~s in ~s", [Route, AccountDb]),
-            get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules);
+            get_temporal_rules(Routes, LSec, AccountDb, TZ, NowDatetime, Rules);
         {'ok', JObj} ->
-            maybe_build_rule(Routes, LSec, AccountDb, TZ, Now, Rules, Id, JObj)
+            maybe_build_rule(Routes, LSec, AccountDb, TZ, NowDatetime, Rules, Id, JObj)
     end.
 
 -spec maybe_build_rule(routes(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary(), kz_time:datetime(), rules(), kz_term:ne_binary(), kzd_temporal_rules:doc()) -> rules().
-maybe_build_rule(Routes, LSec, AccountDb, TZ, Now, Rules, Id, RulesDoc) ->
+maybe_build_rule(Routes, LSec, AccountDb, TZ, NowDatetime, Rules, Id, RulesDoc) ->
     StartDate = kz_date:from_gregorian_seconds(kzd_temporal_rules:start_date(RulesDoc, LSec), TZ),
     RuleName = kzd_temporal_rules:name(RulesDoc, ?RULE_DEFAULT_NAME),
 
-    case kz_date:relative_difference(Now, {StartDate, {0,0,0}}) of
+    case kz_date:relative_difference(NowDatetime, {StartDate, {0,0,0}}) of
         'future' ->
             lager:warning("rule ~p is in the future discarding", [RuleName]),
-            get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules);
+            get_temporal_rules(Routes, LSec, AccountDb, TZ, NowDatetime, Rules);
         _ ->
-            get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, [build_rule(Id, RulesDoc, StartDate, RuleName) | Rules])
+            get_temporal_rules(Routes, LSec, AccountDb, TZ, NowDatetime, [build_rule(Id, RulesDoc, StartDate, RuleName) | Rules])
     end.
 
 -spec build_rule(kz_term:ne_binary(), kzd_temporal_rules:doc(), kz_time:date(), kz_term:ne_binary()) -> rule().
@@ -435,9 +435,7 @@ enable_temporal_rules(Temporal, [RuleId|T]=Rules, Call) ->
 %%------------------------------------------------------------------------------
 -spec load_current_time(temporal()) -> temporal().
 load_current_time(#temporal{timezone=Timezone}=Temporal)->
-    {LocalDate, LocalTime} = localtime:utc_to_local(calendar:universal_time()
-                                                   ,kz_term:to_list(Timezone)
-                                                   ),
+    {LocalDate, LocalTime} = kz_time:adjust_utc_datetime(calendar:universal_time(), Timezone),
     lager:info("local time for ~s is {~w,~w}", [Timezone, LocalDate, LocalTime]),
     Temporal#temporal{local_sec=calendar:datetime_to_gregorian_seconds({LocalDate, LocalTime})
                      ,local_date=LocalDate

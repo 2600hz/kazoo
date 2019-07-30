@@ -1,5 +1,5 @@
 {application,crossbar,
-             [{applications,[cowboy,cowlib,crypto,ecsv,erlang_localtime,inets,
+             [{applications,[cowboy,cowlib,crypto,erlang_localtime,inets,
                              kazoo,kazoo_amqp,kazoo_apps,kazoo_attachments,
                              kazoo_auth,kazoo_bindings,kazoo_caches,
                              kazoo_call,kazoo_config,kazoo_csv,kazoo_data,
