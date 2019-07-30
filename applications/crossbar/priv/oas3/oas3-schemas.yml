@@ -8652,6 +8652,7 @@
         - bh_conference
         - bh_events
         - bh_authz_subscribe
+        - bh_presence
       'description': blackhole autoload modules
       'items':
         'type': string
