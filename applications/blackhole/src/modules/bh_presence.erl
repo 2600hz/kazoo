@@ -5,8 +5,6 @@
 %%%-----------------------------------------------------------------------------
 -module(bh_presence).
 
-%% "dialog.*.*", "update.*.*", "mwi_updates.*.*"
-
 -export([init/0
         ,validate/2
         ,bindings/2
@@ -21,7 +19,6 @@
 
 -spec init() -> any().
 init() ->
-    lager:notice("bh_presence init/0 loaded."),
     init_bindings(),
     _ = blackhole_bindings:bind(<<"blackhole.events.validate.presence">>, ?MODULE, 'validate'),
     blackhole_bindings:bind(<<"blackhole.events.bindings.presence">>, ?MODULE, 'bindings').
@@ -37,8 +34,6 @@ init_bindings() ->
     end.
 
 -spec validate(bh_context:context(), map()) -> bh_context:context().
-validate(Context, #{keys := [<<"*">>, _]}) ->
-    Context;
 validate(Context, #{keys := [Event | _]}) ->
     case lists:member(Event, ?LISTEN_TO) of
         'true' -> Context;
@@ -105,5 +100,3 @@ update_bind_options(AccountId, PresenceId, CallId) ->
     ,{'call', CallId}
     ,'federate'
     ].
-
-
