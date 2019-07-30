@@ -70,7 +70,6 @@ do_verify_fold(#{} = Token, []) -> Token;
 do_verify_fold(Token, [Fun | Funs]) ->
     do_verify_fold(Fun(Token), Funs).
 
-
 -spec verify_header(map()) -> map().
 verify_header(#{header := #{<<"typ">> := <<"JWT">>, <<"alg">> := Alg}}=Token) ->
     case lists:member(Alg, ?ALGORITHMS) of
@@ -153,7 +152,7 @@ epoch() -> erlang:system_time('seconds').
                     {'error', any()}.
 encode(Claims) when is_list(Claims) ->
     case props:get_value(<<"iss">>, Claims) of
-        undefined -> {'error', 'no_issuer'};
+        'undefined' -> {'error', 'no_issuer'};
         Issuer -> encode(#{claims => Claims
                           ,issuer => Issuer
                           })
@@ -171,23 +170,25 @@ encode(Map) when is_map(Map) ->
                ,fun sign/1
                ],
     case kz_auth_util:run(Map, Routines) of
-        {ok, #{jwt := #{token := Token}}} -> {ok, Token};
-        {ok, _M} ->
+        {'ok', #{jwt := #{token := Token}}} ->
+            lager:debug("JWT encoded"),
+            {'ok', Token};
+        {'ok', _M} ->
             lager:debug("JWT encode incomplete : ~p", [_M]),
-            {error, <<"no jwt token encoded">>};
-        {error, #{error := Error} = _M} ->
+            {'error', <<"no jwt token encoded">>};
+        {'error', #{error := Error} = _M} ->
             lager:debug("JWT encode error : ~p", [_M]),
-            {error, Error};
-        {error, _M} ->
+            {'error', Error};
+        {'error', _M} ->
             lager:debug("JWT encode unknown error : ~p", [_M]),
-            {error, <<"unknown error">>}
+            {'error', <<"unknown error">>}
     end.
 
 -spec add_app(map()) -> map().
 add_app(#{auth_app := _}=Map) -> Map;
 add_app(#{issuer := Issuer} = Map) ->
     case kz_auth_apps:get_auth_app(Issuer) of
-        {'error', Error} -> {error, Map#{error => Error}};
+        {'error', Error} -> {'error', Map#{error => Error}};
         #{}=App -> Map#{auth_app => App}
     end.
 
@@ -196,14 +197,14 @@ add_kid(#{kid := _}=Map) -> Map;
 add_kid(#{auth_app := #{pvt_server_key := Key}} = Map) ->
     Map#{kid => Key};
 add_kid(Map) ->
-    {error, Map#{error => <<"no key identifier">>}}.
+    {'error', Map#{error => <<"no key identifier">>}}.
 
 -spec add_key(map()) -> map().
 add_key(#{key := _}=Map) -> Map;
 add_key(#{kid := KeyId} = Map) ->
     case kz_auth_keys:private_key(KeyId) of
         {'ok', Key} -> Map#{key => Key};
-        {'error', Error} -> {error, Map#{error => Error}}
+        {'error', Error} -> {'error', Map#{error => Error}}
     end.
 
 -spec add_alg(map()) -> map().
@@ -266,7 +267,6 @@ sign(#{digest := Digest
 -spec set_provider(map()) -> map().
 set_provider(#{payload := #{<<"iss">> := Issuer}}=Token) ->
     Token#{auth_provider => kz_auth_providers:provider_by_issuer(Issuer)}.
-
 
 -spec parse(kz_term:ne_binary()) -> {'ok', jwt()} | {'error', 'invalid_jwt'}.
 parse(JWTToken) when is_binary(JWTToken) ->

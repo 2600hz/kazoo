@@ -66,6 +66,7 @@ create_modbs(Year, Month) ->
     create_modbs(Year, Month, kz_datamgr:get_results_count(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_id">>, [])).
 
 -spec create_modbs(kz_time:year(), kz_time:month(), {'ok', non_neg_integer()} | kz_datamgr:data_error()) -> 'ok'.
+create_modbs(_Year, _Month, {'ok', 0}) -> 'ok';
 create_modbs(Year, Month, {'ok', NumAccounts}) ->
     NextMonthS = calendar:datetime_to_gregorian_seconds({kz_date:normalize({Year, Month+1, 1}), {0,0,0}}),
     NowS = kz_time:now_s(),

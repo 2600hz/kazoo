@@ -77,6 +77,8 @@ handle_if_valid(Name, JObj, 'true') ->
     IsFromSameNode = kz_api:node(JObj) =:= kz_term:to_binary(node()),
     IsFromSameCache = kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =:= Name,
 
+    lager:debug("change is from same node(~s) or same cache(~s)", [IsFromSameNode, IsFromSameCache]),
+
     _ = exec_bindings(Name, JObj),
 
     case (not IsFromSameNode)

@@ -769,8 +769,6 @@ open_cache_docs(DbName, DocIds, Options) ->
         {'error', _}=E -> E
     end.
 
-
-
 -spec all_docs(kz_term:text()) ->
                       {'ok', kz_json:objects()} |
                       data_error().
@@ -959,7 +957,7 @@ apply_updates_and_save(DbName, Id, Options, CurrentDoc, UpdateProps) ->
             lager:debug("updates to ~s result in the same doc", [Id]),
             {'ok', CurrentDoc};
         'false' ->
-            lager:debug("attempting to update doc ~s", [kz_json:encode(UpdatedDoc)]),
+            lager:debug("attempting to update to ~s: ~s", [DbName, kz_json:encode(UpdatedDoc)]),
             save_update(DbName, Id, Options, UpdatedDoc)
     end.
 
@@ -978,7 +976,8 @@ save_update(DbName, Id, Options, UpdatedDoc) ->
             OK;
         {'error', 'conflict'} when EnsureSaved ->
             lager:debug("saving ~s to ~s resulted in a conflict, trying again", [Id, DbName]),
-            update_doc(DbName, Id, Options);
+            Updates = props:delete(kz_doc:path_revision(), props:get_value('update', Options)),
+            update_doc(DbName, Id, props:set_value('update', Updates, Options));
         {'error', _E}=Error ->
             lager:debug("failed to save ~s: ~p", [Id, _E]),
             Error

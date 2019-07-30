@@ -13,6 +13,7 @@ else
 	CHANGED := $(CHANGED)
 endif
 CHANGED_SWAGGER ?= $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
+CHANGED_ERL=$(filter %.erl,$(CHANGED))
 
 # You can override this when calling make, e.g. make JOBS=1
 # to prevent parallel builds, or make JOBS="8".
@@ -44,7 +45,8 @@ JOBS ?= 1
 all: compile
 
 changed:
-	@echo "$(CHANGED)"
+	@echo "changed: $(CHANGED)"
+	@echo "changed ERL: $(CHANGED_ERL)"
 
 changed_swagger:
 	@echo "$(CHANGED_SWAGGER)"
@@ -280,7 +282,7 @@ code_checks:
 	@$(ROOT)/scripts/edocify.escript
 	@$(ROOT)/scripts/kzd_module_check.bash
 	@$(ROOT)/scripts/check-loglines.bash
-	@$(ROOT)/scripts/check-stacktrace.py $(CHANGED)
+	@$(ROOT)/scripts/check-stacktrace.py $(CHANGED_ERL)
 
 check_stacktrace:
 	@$(ROOT)/scripts/check-stacktrace.py $(shell grep -rl "get_stacktrace" scripts applications core --include "*.[e|h]rl" --exclude "kz_types.hrl")

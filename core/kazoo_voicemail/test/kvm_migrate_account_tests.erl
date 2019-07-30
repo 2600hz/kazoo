@@ -8,7 +8,7 @@
 
 -spec kvm_migrate_account_test_() -> any().
 kvm_migrate_account_test_() ->
-    {setup
+    {'setup'
     ,fun setup_fixtures/0
     ,fun cleanup/1
     ,fun(_) -> [{"Testing manual account voicemail migration", test_manual_voicemail_account()}
@@ -23,11 +23,11 @@ setup_fixtures() ->
 
     Pid = kz_fixturedb_util:start_me(),
 
-    meck:new(kz_datamgr, [unstick, passthrough]),
-    meck:expect(kz_datamgr, get_results, check_kz_datamgr_history()),
+    meck:new('kz_datamgr', ['unstick', 'passthrough']),
+    meck:expect('kz_datamgr', 'get_results', check_kz_datamgr_history()),
 
-    meck:new(kz_fixturedb_db, [unstick, passthrough]),
-    meck:expect(kz_fixturedb_db, db_exists, this_month_db_exists()),
+    meck:new('kz_fixturedb_db', ['unstick', 'passthrough']),
+    meck:expect('kz_fixturedb_db', 'db_exists', this_month_db_exists()),
 
     Pid.
 
@@ -66,10 +66,10 @@ test_manual_voicemail_account() ->
 
 validate_mock() ->
     [{"Validating mocked kz_datamgr"
-     ,?_assertEqual(true, meck:validate(kz_datamgr))
+     ,?_assertEqual('true', meck:validate('kz_datamgr'))
      },
      {"Validating mocked kz_fixturedb_db"
-     ,?_assertEqual(true, meck:validate(kz_fixturedb_db))
+     ,?_assertEqual('true', meck:validate('kz_fixturedb_db'))
      }
     ].
 
@@ -82,33 +82,33 @@ this_month_db_exists() ->
             %% in meck:passthrough/1
             kz_datamgr:db_classification(Db) =:= 'modb'
                 andalso is_db_under_test(Db, kazoo_modb:get_modb(kz_util:format_account_id(Db)))
-                orelse erlang:apply('kz_fixturedb_db_meck_original', db_exists, [Server, Db])
+                orelse erlang:apply('kz_fixturedb_db_meck_original', 'db_exists', [Server, Db])
     end.
 
-is_db_under_test(ThisMonth, ThisMonth) -> true;
+is_db_under_test(ThisMonth, ThisMonth) -> 'true';
 is_db_under_test(ThisMonth, _) ->
     Expected = <<(?FIXTURE_MASTER_ACCOUNT_DB)/binary, "-201710">>,
     case ThisMonth of
-        Expected -> true;
-        _Else -> false
+        Expected -> 'true';
+        _Else -> 'false'
     end.
 
--define(GET_LAGACY_CALL, {kz_datamgr, get_results, [?FIXTURE_MASTER_ACCOUNT_DB, ?LEGACY_VIEW, [{limit, 2000}, descending]]}).
+-define(GET_LEGACY_CALL, {'kz_datamgr', 'get_results', [?FIXTURE_MASTER_ACCOUNT_DB, ?LEGACY_VIEW, [{'limit', 2000}, 'descending']]}).
 
 %% Checking history calls to kz_datamgr:get_results to see if any calls happens to
 %% get legacy messages, if yes return empty result to stop the process.
 check_kz_datamgr_history() ->
     fun(Db, ?LEGACY_VIEW=View, Options) ->
-            History = meck:history(kz_datamgr),
+            History = meck:history('kz_datamgr'),
 
             %% meck:history returns:
             %% * {CallerPid, MFA, Result}
             %% * {CallerPid, MFA, ExceptionClass, ExceptionReason, StackTrace}
-            case lists:keyfind(?GET_LAGACY_CALL, 2, History) of
-                {_Pid, _MFA, {ok, ViewResult}} when length(ViewResult) == 10 ->
+            case lists:keyfind(?GET_LEGACY_CALL, 2, History) of
+                {_Pid, _MFA, {'ok', ViewResult}} when length(ViewResult) == 10 ->
                     %% ViewResult length is 10. This should be same as what is inside vmboxes+legacy_msg_by_timestamp.json
                     %% in ?FIXTURE_MASTER_ACCOUNT_DB FixtureDb directory.
-                    {ok, []};
+                    {'ok', []};
                 _ ->
                     meck:passthrough([Db, View, Options])
             end;

@@ -181,13 +181,15 @@ attachment_handler_jobj(Handler, Props) ->
 
 handle_put_attachment(#{att_post_handler := 'external'}=Map, Att, DbName, DocId, _AName, _Contents, _Options, Props) ->
     case kzs_doc:open_doc(Map, DbName, DocId, []) of
-        {'ok', JObj} -> external_attachment(Map, DbName, JObj, Att, Props);
+        {'ok', JObj} ->
+            external_attachment(Map, DbName, JObj, Att, Props);
         {'error', _}=E -> E
     end;
 handle_put_attachment(#{server := {App, Conn}}=Map, _Att, DbName, DocId, AName, Contents, Options, _Props) ->
     case App:put_attachment(Conn, DbName, DocId, AName, Contents, Options) of
-        {'ok', _}=Result ->
+        {'ok', _JObj}=Result ->
             publish_doc(Map, DbName, DocId),
+            kzs_cache:flush_cache_doc(DbName, DocId),
             Result;
         Result -> Result
     end.
@@ -209,6 +211,7 @@ delete_attachment(#{server := {App, Conn}}=Map, DbName, DocId, AName, Options) -
     case App:delete_attachment(Conn, DbName, DocId, AName, Options) of
         {'ok', _}=Result ->
             publish_doc(Map, DbName, DocId),
+            kzs_cache:flush_cache_doc(DbName, DocId),
             Result;
         Result -> Result
     end.
