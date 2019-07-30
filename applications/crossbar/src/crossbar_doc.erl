@@ -151,8 +151,8 @@ load([_|_]=IDs, Context, Options, _RespStatus) ->
                                   kz_datamgr:data_error().
 maybe_open_cache_doc(DbName, DocId, Options) ->
     case props:get_is_true('use_cache', Options, 'true') of
-        true -> kz_datamgr:open_cache_doc(DbName, DocId, Options);
-        false -> kz_datamgr:open_doc(DbName, DocId, Options)
+        'true' -> kz_datamgr:open_cache_doc(DbName, DocId, Options);
+        'false' -> kz_datamgr:open_doc(DbName, DocId, Options)
     end.
 
 -spec maybe_open_cache_docs(kz_term:ne_binary(), kazoo_data:docids(), kz_term:proplist()) ->
@@ -160,8 +160,8 @@ maybe_open_cache_doc(DbName, DocId, Options) ->
                                    kz_datamgr:data_error().
 maybe_open_cache_docs(DbName, DocIds, Options) ->
     case props:get_is_true('use_cache', Options, 'true') of
-        true -> kz_datamgr:open_cache_docs(DbName, DocIds, Options);
-        false -> kz_datamgr:open_docs(DbName, DocIds, Options)
+        'true' -> kz_datamgr:open_cache_docs(DbName, DocIds, Options);
+        'false' -> kz_datamgr:open_docs(DbName, DocIds, Options)
     end.
 
 %%------------------------------------------------------------------------------

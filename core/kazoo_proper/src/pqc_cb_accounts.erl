@@ -7,8 +7,9 @@
 -module(pqc_cb_accounts).
 
 -export([create_account/2, create_account/3
+        ,update_account/3
         ,delete_account/2
-        ,cleanup_accounts/1, cleanup_accounts/2
+        ,cleanup/0, cleanup_accounts/1, cleanup_accounts/2
 
         ,command/2
         ,symbolic_account_id/2
@@ -17,7 +18,7 @@
         ,postcondition/3
 
          %% kapps_maintenance:check_release callback
-        ,seq/0
+        ,seq/0, seq_44832/0
         ]).
 
 -export([account_url/1]).
@@ -60,11 +61,23 @@ create_account(API, NewAccountName, AccountId) ->
         andalso allow_number_additions(pqc_cb_response:account_id(Resp)),
     Resp.
 
--spec allow_number_additions(kz_term:ne_binary()) -> {'ok', kzd_accounts:doc()}.
+-spec update_account(pqc_cb_api:state(), kz_term:ne_binary(), kz_json:object()) -> pqc_cb_api:response().
+update_account(API, AccountId, ReqData) ->
+    RequestEnvelope = pqc_cb_api:create_envelope(ReqData),
+
+    pqc_cb_api:make_request([200]
+                           ,fun kz_http:post/3
+                           ,account_url(AccountId)
+                           ,pqc_cb_api:request_headers(API)
+                           ,kz_json:encode(RequestEnvelope)
+                           ).
+
+-spec allow_number_additions(kz_term:ne_binary()) -> 'ok'.
 allow_number_additions(AccountId) ->
     {'ok', _Account} = kzd_accounts:update(AccountId
                                           ,[{kzd_accounts:path_allow_number_additions(), 'true'}]
-                                          ).
+                                          ),
+    ?INFO("updated ~s (~s) to allow number additions", [AccountId, kz_doc:revision(_Account)]).
 
 -spec delete_account(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
 delete_account(API, AccountId) ->
@@ -147,14 +160,37 @@ postcondition(Model
 
 -spec seq() -> 'ok'.
 seq() ->
-    enable_and_delete_topup().
+    enable_and_delete_topup(),
+    seq_44832().
+
+-spec seq_44832() -> 'ok'.
+seq_44832() ->
+    API = pqc_cb_api:init_api(['crossbar'], ['cb_accounts']),
+
+    AccountResp = create_account(API, hd(?ACCOUNT_NAMES)),
+    ?INFO("created account ~s", [AccountResp]),
+
+    AccountJObj = kz_json:get_value(<<"data">>, kz_json:decode(AccountResp)),
+    AccountId = kz_json:get_binary_value(<<"id">>, AccountJObj),
+
+    RequestData = kz_json:set_value(<<"enabled">>, 'false', AccountJObj),
+
+    lists:foreach(fun(N) ->
+                          %% This will crash if we get back the 409 error, which is not expected
+                          <<_Update/binary>> = update_account(API, AccountId, RequestData),
+                          ?INFO("update ~p results in revision ~s"
+                               ,[N, kz_json:get_value(<<"revision">>, kz_json:decode(_Update))]
+                               )
+                  end
+                 ,lists:seq(1, 4)
+                 ),
+
+    cleanup(API),
+    ?INFO("finished double-POST check").
 
 -spec enable_and_delete_topup() -> 'ok'.
 enable_and_delete_topup() ->
     API = pqc_cb_api:init_api(['crossbar'], ['cb_accounts']),
-
-    %% Make sure everything is clean for the test.
-    cleanup(API),
 
     AccountResp = create_account(API, hd(?ACCOUNT_NAMES)),
     ?INFO("created account: ~s", [AccountResp]),
@@ -195,3 +231,8 @@ topup_request(API, AccountId, RequestEnvelope) ->
                            ,pqc_cb_api:request_headers(API)
                            ,kz_json:encode(RequestEnvelope)
                            ).
+
+-spec cleanup() -> 'ok'.
+cleanup() ->
+    API = pqc_cb_api:init_api(['crossbar'], ['cb_accounts']),
+    cleanup(API).
