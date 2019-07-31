@@ -23,6 +23,7 @@
                 "    'device_type': doc.device_type || 'sip_device',",
                 "    'mobile': doc.mobile,",
                 "    'call_recording': doc.call_recording",
+                "    'flags': doc.flags || []",
                 "  });",
                 "}"
             ]

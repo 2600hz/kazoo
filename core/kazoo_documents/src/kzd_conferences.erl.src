@@ -12,6 +12,7 @@
 -export([conference_numbers/1, conference_numbers/2, set_conference_numbers/2]).
 -export([controls/1, controls/2, set_controls/2]).
 -export([domain/1, domain/2, set_domain/2]).
+-export([flags/1, flags/2, set_flags/2]).
 -export([focus/1, focus/2, set_focus/2]).
 -export([language/1, language/2, set_language/2]).
 -export([max_members_media/1, max_members_media/2, set_max_members_media/2]).
@@ -122,6 +123,18 @@ domain(Doc, Default) ->
 -spec set_domain(doc(), binary()) -> doc().
 set_domain(Doc, Domain) ->
     kz_json:set_value([<<"domain">>], Domain, Doc).
+
+-spec flags(doc()) -> kz_term:api_ne_binaries().
+flags(Doc) ->
+    flags(Doc, 'undefined').
+
+-spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+flags(Doc, Default) ->
+    kz_json:get_list_value([<<"flags">>], Doc, Default).
+
+-spec set_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_flags(Doc, Flags) ->
+    kz_json:set_value([<<"flags">>], Flags, Doc).
 
 -spec focus(doc()) -> kz_term:api_binary().
 focus(Doc) ->

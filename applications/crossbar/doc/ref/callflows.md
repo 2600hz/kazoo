@@ -13,6 +13,8 @@ Key | Description | Type | Default | Required | Support Level
 `featurecode.name` |   | `string(1..128)` |   | `false` |  
 `featurecode.number` |   | `string(1..30)` |   | `false` |  
 `featurecode` | When the callflow is used as a featurecode this object tracks the intended match of the pattern and name of the feature | `object()` |   | `false` |  
+`flags.[]` |   | `string()` |   | `false` | `supported`
+`flags` | Flags set by external applications | `array(string())` |   | `false` | `supported`
 `flow` | A callflow node defines a module to execute, data to provide to that module, and zero or more children to branch to | [#/definitions/callflows.action](#callflowsaction) |   | `false` |  
 `metaflow` | Actions applied to a call outside of the normal callflow, initiated by the caller(s) | [#/definitions/metaflows](#metaflows) |   | `false` |  
 `numbers.[]` |   | `string(1..36)` |   | `false` |  

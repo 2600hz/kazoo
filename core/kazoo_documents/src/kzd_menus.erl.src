@@ -7,6 +7,7 @@
 
 -export([new/0]).
 -export([allow_record_from_offnet/1, allow_record_from_offnet/2, set_allow_record_from_offnet/2]).
+-export([flags/1, flags/2, set_flags/2]).
 -export([hunt/1, hunt/2, set_hunt/2]).
 -export([hunt_allow/1, hunt_allow/2, set_hunt_allow/2]).
 -export([hunt_deny/1, hunt_deny/2, set_hunt_deny/2]).
@@ -46,6 +47,18 @@ allow_record_from_offnet(Doc, Default) ->
 -spec set_allow_record_from_offnet(doc(), boolean()) -> doc().
 set_allow_record_from_offnet(Doc, AllowRecordFromOffnet) ->
     kz_json:set_value([<<"allow_record_from_offnet">>], AllowRecordFromOffnet, Doc).
+
+-spec flags(doc()) -> kz_term:api_ne_binaries().
+flags(Doc) ->
+    flags(Doc, 'undefined').
+
+-spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+flags(Doc, Default) ->
+    kz_json:get_list_value([<<"flags">>], Doc, Default).
+
+-spec set_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_flags(Doc, Flags) ->
+    kz_json:set_value([<<"flags">>], Flags, Doc).
 
 -spec hunt(doc()) -> boolean().
 hunt(Doc) ->

@@ -8,6 +8,7 @@
 -export([new/0]).
 -export([check_if_owner/1, check_if_owner/2, set_check_if_owner/2]).
 -export([delete_after_notify/1, delete_after_notify/2, set_delete_after_notify/2]).
+-export([flags/1, flags/2, set_flags/2]).
 -export([is_setup/1, is_setup/2, set_is_setup/2]).
 -export([mailbox/1, mailbox/2, set_mailbox/2]).
 -export([media/1, media/2, set_media/2]).
@@ -63,6 +64,18 @@ delete_after_notify(Doc, Default) ->
 -spec set_delete_after_notify(doc(), boolean()) -> doc().
 set_delete_after_notify(Doc, DeleteAfterNotify) ->
     kz_json:set_value([<<"delete_after_notify">>], DeleteAfterNotify, Doc).
+
+-spec flags(doc()) -> kz_term:api_ne_binaries().
+flags(Doc) ->
+    flags(Doc, 'undefined').
+
+-spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+flags(Doc, Default) ->
+    kz_json:get_list_value([<<"flags">>], Doc, Default).
+
+-spec set_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_flags(Doc, Flags) ->
+    kz_json:set_value([<<"flags">>], Flags, Doc).
 
 -spec is_setup(doc()) -> boolean().
 is_setup(Doc) ->

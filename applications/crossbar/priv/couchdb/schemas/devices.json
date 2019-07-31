@@ -141,6 +141,14 @@
             "description": "Do not ring this device when calling user/agent in queue",
             "type": "boolean"
         },
+        "flags": {
+            "description": "Flags set by external applications",
+            "items": {
+                "type": "string"
+            },
+            "support_level": "supported",
+            "type": "array"
+        },
         "formatters": {
             "$ref": "formatters"
         },
