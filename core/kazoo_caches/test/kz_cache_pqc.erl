@@ -38,20 +38,20 @@
                ,now_ms = 0 :: pos_integer()
                }).
 
-proper_test_() ->
-    {"Runs kz_cache PropEr tests"
-    ,[
-      {'timeout'
-      ,20 * ?MILLISECONDS_IN_SECOND
-      ,{"sequential testing"
-       ,?_assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}, 10]))
-       }
-      }
-      %% ,{"parallel testing"
-      %% ,?assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}, 50]))
-      %% }
-     ]
-    }.
+%% proper_test_() ->
+%%     {"Runs kz_cache PropEr tests"
+%%     ,[
+%%       {'timeout'
+%%       ,20 * ?MILLISECONDS_IN_SECOND
+%%       ,{"sequential testing"
+%%        ,?_assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}, 10]))
+%%        }
+%%       }
+%% ,{"parallel testing"
+%% ,?assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}, 50]))
+%% }
+%%  ]
+%% }.
 
 run_counterexample() ->
     run_counterexample(proper:counterexample()).

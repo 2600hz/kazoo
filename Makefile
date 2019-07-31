@@ -73,6 +73,9 @@ clean-test-core:
 clean-test-apps:
 	@$(MAKE) -j$(JOBS) -C applications/ clean-test
 
+compile-proper: ERLC_OPTS += -DPROPER
+compile-proper: compile-test
+
 compile-test: ERLC_OPTS += +nowarn_missing_spec
 compile-test: deps compile-test-core compile-test-apps
 compile-test-core:
