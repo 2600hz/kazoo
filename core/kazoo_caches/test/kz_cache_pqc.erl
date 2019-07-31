@@ -8,6 +8,7 @@
 %%%-----------------------------------------------------------------------------
 
 -module(kz_cache_pqc).
+-behaviour(proper_statem).
 
 -ifdef(PROPER).
 
@@ -15,8 +16,6 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -include_lib("kazoo_caches/src/kz_caches.hrl").
-
--behaviour(proper_statem).
 
 -define(CACHE_TTL_MS, 10).
 -define(MIN_TIMEOUT_MS, ?CACHE_TTL_MS).
@@ -69,7 +68,7 @@ run_counterexample(SeqSteps, State) ->
     kz_cache_sup:start_link(?SERVER, ?CACHE_TTL_MS),
 
     try lists:foldl(fun transition_if/2
-                   ,{1, State}
+                   ,{1, State, #{}}
                    ,SeqSteps
                    )
     catch
@@ -78,18 +77,27 @@ run_counterexample(SeqSteps, State) ->
         stop(?SERVER)
     end.
 
-transition_if({'set', _Var, Call}, {Step, State}) ->
+transition_if({'set', Var, Call}, {Step, State, Env}) ->
     {'call', M, F, As} = Call,
-    Resp = erlang:apply(M, F, As),
+    Resp = erlang:apply(M, F, fix_args(As, Env)),
     io:format("~w: ~w -> ~w~n", [Step, Call, Resp]),
     print_state(State),
 
     case postcondition(State, Call, Resp) of
         'true' ->
-            {Step+1, next_state(State, Resp, Call)};
+            {Step+1, next_state(State, Resp, Call), Env#{Var => Resp}};
         'false' ->
             io:format('user', "failed on step ~p~n", [Step]),
             throw({'failed_postcondition', State, Call, Resp})
+    end.
+
+fix_args(As, Env) ->
+    [fix_arg(A, Env) || A <- As].
+
+fix_arg(A, Env) ->
+    case maps:get(A, Env, 'undefined') of
+        'undefined' -> A;
+        V -> V
     end.
 
 print_state(#state{cache=[], now_ms=NowMs}) ->
