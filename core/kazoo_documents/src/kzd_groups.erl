@@ -7,6 +7,7 @@
 
 -export([new/0]).
 -export([endpoints/1, endpoints/2, set_endpoints/2]).
+-export([flags/1, flags/2, set_flags/2]).
 -export([music_on_hold/1, music_on_hold/2, set_music_on_hold/2]).
 -export([music_on_hold_media_id/1, music_on_hold_media_id/2, set_music_on_hold_media_id/2]).
 -export([name/1, name/2, set_name/2]).
@@ -34,6 +35,18 @@ endpoints(Doc, Default) ->
 -spec set_endpoints(doc(), kz_json:object()) -> doc().
 set_endpoints(Doc, Endpoints) ->
     kz_json:set_value([<<"endpoints">>], Endpoints, Doc).
+
+-spec flags(doc()) -> kz_term:api_ne_binaries().
+flags(Doc) ->
+    flags(Doc, 'undefined').
+
+-spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+flags(Doc, Default) ->
+    kz_json:get_list_value([<<"flags">>], Doc, Default).
+
+-spec set_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_flags(Doc, Flags) ->
+    kz_json:set_value([<<"flags">>], Flags, Doc).
 
 -spec music_on_hold(doc()) -> kz_json:object().
 music_on_hold(Doc) ->

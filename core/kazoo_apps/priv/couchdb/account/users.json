@@ -35,7 +35,7 @@
             "map": [
                 "function(doc) {",
                 "  if (doc.pvt_type != 'user' || doc.pvt_deleted) return;",
-                "  var features = [];",
+                "  var features = doc.features || [];",
                 "  if (doc.smartpbx)",
                 "    for (var feature in doc.smartpbx)",
                 "      if(doc.smartpbx[feature].enabled) features.push(feature);",
@@ -46,6 +46,8 @@
                 "  if (doc.vm_to_email_enabled) features.push('vm_to_email');",
                 "  if (doc.music_on_hold && doc.music_on_hold.media_id) features.push('music_on_hold');",
                 "  if (doc.do_not_disturb && doc.do_not_disturb.enabled) features.push('do_not_disturb');",
+                "  if (doc.ctu && doc.ctu.enabled) features.push('ctu');",
+                "  if (doc.desktop && doc.desktop.enabled) features.push('desktop');",
                 "  emit(doc.last_name + ' ' + doc.first_name, {",
                 "    'id': doc._id,",
                 "    'features': features,",
@@ -59,6 +61,7 @@
                 "    'timezone': doc.timezone,",
                 "    'call_recording': doc.call_recording,",
                 "    'service': doc.service,",
+                "    'flags': doc.flags || []",
                 "  });",
                 "}"
             ]

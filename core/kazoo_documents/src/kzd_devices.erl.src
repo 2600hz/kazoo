@@ -29,6 +29,7 @@
 -export([do_not_disturb_enabled/1, do_not_disturb_enabled/2, set_do_not_disturb_enabled/2]).
 -export([enabled/1, enabled/2, set_enabled/2]).
 -export([exclude_from_queues/1, exclude_from_queues/2, set_exclude_from_queues/2]).
+-export([flags/1, flags/2, set_flags/2]).
 -export([formatters/1, formatters/2, set_formatters/2]).
 -export([hotdesk/1, hotdesk/2, set_hotdesk/2]).
 -export([hotdesk_users/1, hotdesk_users/2, set_hotdesk_users/2]).
@@ -360,6 +361,18 @@ exclude_from_queues(Doc, Default) ->
 -spec set_exclude_from_queues(doc(), boolean()) -> doc().
 set_exclude_from_queues(Doc, ExcludeFromQueues) ->
     kz_json:set_value([<<"exclude_from_queues">>], ExcludeFromQueues, Doc).
+
+-spec flags(doc()) -> kz_term:api_ne_binaries().
+flags(Doc) ->
+    flags(Doc, 'undefined').
+
+-spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+flags(Doc, Default) ->
+    kz_json:get_list_value([<<"flags">>], Doc, Default).
+
+-spec set_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_flags(Doc, Flags) ->
+    kz_json:set_value([<<"flags">>], Flags, Doc).
 
 -spec formatters(doc()) -> kz_term:api_object().
 formatters(Doc) ->

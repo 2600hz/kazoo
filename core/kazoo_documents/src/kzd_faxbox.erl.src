@@ -13,6 +13,7 @@
 -export([fax_header/1, fax_header/2, set_fax_header/2]).
 -export([fax_identity/1, fax_identity/2, set_fax_identity/2]).
 -export([fax_timezone/1, fax_timezone/2, set_fax_timezone/2]).
+-export([flags/1, flags/2, set_flags/2]).
 -export([media/1, media/2, set_media/2]).
 -export([media_fax_option/1, media_fax_option/2, set_media_fax_option/2]).
 -export([name/1, name/2, set_name/2]).
@@ -133,6 +134,18 @@ fax_timezone(Doc, Default) ->
 -spec set_fax_timezone(doc(), binary()) -> doc().
 set_fax_timezone(Doc, FaxTimezone) ->
     kz_json:set_value([<<"fax_timezone">>], FaxTimezone, Doc).
+
+-spec flags(doc()) -> kz_term:api_ne_binaries().
+flags(Doc) ->
+    flags(Doc, 'undefined').
+
+-spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+flags(Doc, Default) ->
+    kz_json:get_list_value([<<"flags">>], Doc, Default).
+
+-spec set_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_flags(Doc, Flags) ->
+    kz_json:set_value([<<"flags">>], Flags, Doc).
 
 -spec media(doc()) -> kz_json:object().
 media(Doc) ->

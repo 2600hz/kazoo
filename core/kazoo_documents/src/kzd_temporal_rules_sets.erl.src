@@ -6,6 +6,7 @@
 -module(kzd_temporal_rules_sets).
 
 -export([new/0]).
+-export([flags/1, flags/2, set_flags/2]).
 -export([name/1, name/2, set_name/2]).
 -export([temporal_rules/1, temporal_rules/2, set_temporal_rules/2]).
 
@@ -20,6 +21,18 @@
 -spec new() -> doc().
 new() ->
     kz_json_schema:default_object(?SCHEMA).
+
+-spec flags(doc()) -> kz_term:api_ne_binaries().
+flags(Doc) ->
+    flags(Doc, 'undefined').
+
+-spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+flags(Doc, Default) ->
+    kz_json:get_list_value([<<"flags">>], Doc, Default).
+
+-spec set_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_flags(Doc, Flags) ->
+    kz_json:set_value([<<"flags">>], Flags, Doc).
 
 -spec name(doc()) -> kz_term:api_ne_binary().
 name(Doc) ->

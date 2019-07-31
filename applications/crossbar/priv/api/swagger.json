@@ -520,6 +520,13 @@
                     "description": "Determines if the account is currently enabled",
                     "type": "boolean"
                 },
+                "flags": {
+                    "description": "Flags set by external applications",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "formatters": {
                     "$ref": "#/definitions/formatters"
                 },
@@ -1000,6 +1007,13 @@
         "blacklists": {
             "description": "Schema for a blacklists",
             "properties": {
+                "flags": {
+                    "description": "Flags set by external applications",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "name": {
                     "description": "A friendly name for the temporal rule set",
                     "maxLength": 128,
@@ -1331,6 +1345,13 @@
                         }
                     },
                     "type": "object"
+                },
+                "flags": {
+                    "description": "Flags set by external applications",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
                 },
                 "flow": {
                     "$ref": "#/definitions/callflows.action",
@@ -4677,6 +4698,13 @@
                     "description": "domain",
                     "type": "string"
                 },
+                "flags": {
+                    "description": "Flags set by external applications",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "focus": {
                     "description": "This is a read-only property indicating the media server hosting the conference",
                     "type": "string"
@@ -5418,6 +5446,13 @@
                     "description": "Do not ring this device when calling user/agent in queue",
                     "type": "boolean"
                 },
+                "flags": {
+                    "description": "Flags set by external applications",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "formatters": {
                     "$ref": "#/definitions/formatters"
                 },
@@ -5866,6 +5901,13 @@
                     "description": "When one match is found, require caller to confirm the match before connecting",
                     "type": "boolean"
                 },
+                "flags": {
+                    "description": "Flags set by external applications",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "max_dtmf": {
                     "default": 0,
                     "description": "Cap the number of DTMF characters collected from a caller, 0 for unlimited",
@@ -6091,6 +6133,13 @@
                 "fax_timezone": {
                     "description": "The timezone announced",
                     "type": "string"
+                },
+                "flags": {
+                    "description": "Flags set by external applications",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
                 },
                 "media": {
                     "default": {},
@@ -6534,6 +6583,13 @@
                     "default": {},
                     "description": "Endpoints included into group",
                     "type": "object"
+                },
+                "flags": {
+                    "description": "Flags set by external applications",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
                 },
                 "music_on_hold": {
                     "default": {},
@@ -25592,6 +25648,13 @@
                     "description": "Determines if the record pin can be used by external calls",
                     "type": "boolean"
                 },
+                "flags": {
+                    "description": "Flags set by external applications",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "hunt": {
                     "default": true,
                     "description": "Determines if the callers can dial internal extensions directly",
@@ -35560,6 +35623,13 @@
                     "description": "Whether the rule is enabled",
                     "type": "boolean"
                 },
+                "flags": {
+                    "description": "Flags set by external applications",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "interval": {
                     "default": 1,
                     "description": "The recurrence interval for this rule",
@@ -35635,6 +35705,13 @@
         "temporal_rules_sets": {
             "description": "Schema for a temporal rules sets",
             "properties": {
+                "flags": {
+                    "description": "Flags set by external applications",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "name": {
                     "description": "A friendly name for the temporal rule set",
                     "maxLength": 128,
@@ -36175,6 +36252,13 @@
                     "minLength": 1,
                     "type": "string"
                 },
+                "flags": {
+                    "description": "Flags set by external applications",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "formatters": {
                     "$ref": "#/definitions/formatters",
                     "type": "object"
@@ -36393,6 +36477,13 @@
                     "default": false,
                     "description": "Move the voicemail to delete folder after the notification has been sent",
                     "type": "boolean"
+                },
+                "flags": {
+                    "description": "Flags set by external applications",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
                 },
                 "is_setup": {
                     "default": false,

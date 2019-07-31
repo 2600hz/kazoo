@@ -10,6 +10,8 @@ Schema for a temporal rules sets
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
+`flags.[]` |   | `string()` |   | `false` | `supported`
+`flags` | Flags set by external applications | `array(string())` |   | `false` | `supported`
 `name` | A friendly name for the temporal rule set | `string(1..128)` |   | `true` | `supported`
 `temporal_rules.[]` |   | `string()` |   | `false` | `supported`
 `temporal_rules` | Temporal Rules | `array(string())` |   | `false` | `supported`

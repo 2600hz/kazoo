@@ -15,6 +15,14 @@
             "support_level": "supported",
             "type": "boolean"
         },
+        "flags": {
+            "description": "Flags set by external applications",
+            "items": {
+                "type": "string"
+            },
+            "support_level": "supported",
+            "type": "array"
+        },
         "is_setup": {
             "default": false,
             "description": "Determines if the user has completed the initial configuration",

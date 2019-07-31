@@ -9,6 +9,14 @@
             "support_level": "supported",
             "type": "object"
         },
+        "flags": {
+            "description": "Flags set by external applications",
+            "items": {
+                "type": "string"
+            },
+            "support_level": "supported",
+            "type": "array"
+        },
         "music_on_hold": {
             "default": {},
             "description": "The music on hold parameters",

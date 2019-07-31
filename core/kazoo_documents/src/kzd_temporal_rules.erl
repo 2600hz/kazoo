@@ -9,6 +9,7 @@
 -export([cycle/1, cycle/2, set_cycle/2]).
 -export([days/1, days/2, set_days/2]).
 -export([enabled/1, enabled/2, set_enabled/2]).
+-export([flags/1, flags/2, set_flags/2]).
 -export([interval/1, interval/2, set_interval/2]).
 -export([month/1, month/2, set_month/2]).
 -export([name/1, name/2, set_name/2]).
@@ -71,6 +72,18 @@ set_enabled(Doc, Enabled) ->
 -spec delete_enabled(doc()) -> doc().
 delete_enabled(Doc) ->
     kz_json:delete_key([<<"enabled">>], Doc).
+
+-spec flags(doc()) -> kz_term:api_ne_binaries().
+flags(Doc) ->
+    flags(Doc, 'undefined').
+
+-spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+flags(Doc, Default) ->
+    kz_json:get_list_value([<<"flags">>], Doc, Default).
+
+-spec set_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_flags(Doc, Flags) ->
+    kz_json:set_value([<<"flags">>], Flags, Doc).
 
 -spec interval(doc()) -> integer().
 interval(Doc) ->

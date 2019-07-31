@@ -384,6 +384,12 @@
       'description': Determines if the account is currently enabled
       'type': boolean
       'x-support_level': supported
+    'flags':
+      'description': Flags set by external applications
+      'items':
+        'type': string
+      'type': array
+      'x-support_level': supported
     'formatters':
       '$ref': '#/formatters'
     'language':
@@ -826,6 +832,12 @@
 'blacklists':
   'description': Schema for a blacklists
   'properties':
+    'flags':
+      'description': Flags set by external applications
+      'items':
+        'type': string
+      'type': array
+      'x-support_level': supported
     'name':
       'description': A friendly name for the temporal rule set
       'maxLength': 128
@@ -1090,6 +1102,12 @@
           'minLength': 1
           'type': string
       'type': object
+    'flags':
+      'description': Flags set by external applications
+      'items':
+        'type': string
+      'type': array
+      'x-support_level': supported
     'flow':
       '$ref': '#/callflows.action'
       'description': |-
@@ -3678,6 +3696,12 @@
     'domain':
       'description': domain
       'type': string
+    'flags':
+      'description': Flags set by external applications
+      'items':
+        'type': string
+      'type': array
+      'x-support_level': supported
     'focus':
       'description': |-
         This is a read-only property indicating the media server hosting the conference
@@ -4296,6 +4320,12 @@
       'default': false
       'description': Do not ring this device when calling user/agent in queue
       'type': boolean
+    'flags':
+      'description': Flags set by external applications
+      'items':
+        'type': string
+      'type': array
+      'x-support_level': supported
     'formatters':
       '$ref': '#/formatters'
     'hotdesk':
@@ -4641,6 +4671,12 @@
         When one match is found, require caller to confirm the match before connecting
       'type': boolean
       'x-support_level': supported
+    'flags':
+      'description': Flags set by external applications
+      'items':
+        'type': string
+      'type': array
+      'x-support_level': supported
     'max_dtmf':
       'default': 0
       'description': |-
@@ -4847,6 +4883,12 @@
     'fax_timezone':
       'description': The timezone announced
       'type': string
+      'x-support_level': supported
+    'flags':
+      'description': Flags set by external applications
+      'items':
+        'type': string
+      'type': array
       'x-support_level': supported
     'media':
       'default': {}
@@ -5186,6 +5228,12 @@
       'default': {}
       'description': Endpoints included into group
       'type': object
+      'x-support_level': supported
+    'flags':
+      'description': Flags set by external applications
+      'items':
+        'type': string
+      'type': array
       'x-support_level': supported
     'music_on_hold':
       'default': {}
@@ -5675,6 +5723,12 @@
       'default': false
       'description': Determines if the record pin can be used by external calls
       'type': boolean
+      'x-support_level': supported
+    'flags':
+      'description': Flags set by external applications
+      'items':
+        'type': string
+      'type': array
       'x-support_level': supported
     'hunt':
       'default': true
@@ -13565,6 +13619,12 @@
     'enabled':
       'description': Whether the rule is enabled
       'type': boolean
+    'flags':
+      'description': Flags set by external applications
+      'items':
+        'type': string
+      'type': array
+      'x-support_level': supported
     'interval':
       'default': 1
       'description': The recurrence interval for this rule
@@ -13634,6 +13694,12 @@
 'temporal_rules_sets':
   'description': Schema for a temporal rules sets
   'properties':
+    'flags':
+      'description': Flags set by external applications
+      'items':
+        'type': string
+      'type': array
+      'x-support_level': supported
     'name':
       'description': A friendly name for the temporal rule set
       'maxLength': 128
@@ -14135,6 +14201,12 @@
       'minLength': 1
       'type': string
       'x-support_level': supported
+    'flags':
+      'description': Flags set by external applications
+      'items':
+        'type': string
+      'type': array
+      'x-support_level': supported
     'formatters':
       '$ref': '#/formatters'
       'type': object
@@ -14314,6 +14386,12 @@
       'default': false
       'description': Move the voicemail to delete folder after the notification has been sent
       'type': boolean
+      'x-support_level': supported
+    'flags':
+      'description': Flags set by external applications
+      'items':
+        'type': string
+      'type': array
       'x-support_level': supported
     'is_setup':
       'default': false

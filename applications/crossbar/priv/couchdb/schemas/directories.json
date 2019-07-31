@@ -9,6 +9,14 @@
             "support_level": "supported",
             "type": "boolean"
         },
+        "flags": {
+            "description": "Flags set by external applications",
+            "items": {
+                "type": "string"
+            },
+            "support_level": "supported",
+            "type": "array"
+        },
         "max_dtmf": {
             "default": 0,
             "description": "Cap the number of DTMF characters collected from a caller, 0 for unlimited",

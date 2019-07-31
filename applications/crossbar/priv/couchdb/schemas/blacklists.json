@@ -3,6 +3,14 @@
     "_id": "blacklists",
     "description": "Schema for a blacklists",
     "properties": {
+        "flags": {
+            "description": "Flags set by external applications",
+            "items": {
+                "type": "string"
+            },
+            "support_level": "supported",
+            "type": "array"
+        },
         "name": {
             "description": "A friendly name for the temporal rule set",
             "maxLength": 128,
