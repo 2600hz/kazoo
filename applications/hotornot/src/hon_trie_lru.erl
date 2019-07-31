@@ -41,7 +41,7 @@
 -record(state, {trie = trie:new() :: trie:trie()
                ,ratedeck_db :: kz_term:api_ne_binary()
                ,check_ref :: reference()
-               ,start_time_ms = kz_time:now() :: kz_time:now()
+               ,start_time = kz_time:start_time() :: kz_time:start_time()
                ,expires_s :: pos_integer()
                }).
 -define(STATE_READY(Trie, RatedeckDb, CheckRef)
@@ -99,12 +99,12 @@ start_expires_check_timer(ExpiresS) ->
                          {'noreply', state()} |
                          {'reply', match_return(), state()}.
 handle_call({'match_did', DID}, _From, ?STATE_READY(Trie, RatedeckDb, CheckRef)=State) ->
-    io:format("~pms elapsed~n", [kz_time:elapsed_ms(State#state.start_time_ms)]),
+    io:format("~pms elapsed~n", [kz_time:elapsed_ms(State#state.start_time)]),
     {UpdatedTrie, Resp} = match_did_in_trie(DID, Trie, State#state.expires_s),
     io:format("  matched ~p: ~p~n  trie: ~p~n", [DID, Resp, trie:to_list(UpdatedTrie)]),
     {'reply', Resp, State?STATE_READY(UpdatedTrie, RatedeckDb, CheckRef)};
 handle_call({'cache_rates', Rates}, _From, ?STATE_READY(Trie, RatedeckDb, CheckRef)=State) ->
-    io:format("~pms elapsed~n", [kz_time:elapsed_ms(State#state.start_time_ms)]),
+    io:format("~pms elapsed~n", [kz_time:elapsed_ms(State#state.start_time)]),
     UpdatedTrie = handle_caching_of_rates(Trie, Rates),
     io:format("  after caching rates: ~p~n", [trie:to_list(UpdatedTrie)]),
     {'reply', 'ok', State?STATE_READY(UpdatedTrie, RatedeckDb, CheckRef)};
@@ -122,7 +122,7 @@ handle_cast(_Req, State) ->
 handle_info({'timeout', CheckRef, ?CHECK_MSG(ExpiresS)}
            ,?STATE_READY(Trie, RatedeckDb, CheckRef)=State
            ) ->
-    io:format("~pms elapsed~n", [kz_time:elapsed_ms(State#state.start_time_ms)]),
+    io:format("~pms elapsed~n", [kz_time:elapsed_ms(State#state.start_time)]),
     UpdatedTrie = check_expired_entries(Trie, ExpiresS),
     io:format("  updated trie: ~p~n", [trie:to_list(UpdatedTrie)]),
     {'noreply', State?STATE_READY(UpdatedTrie, RatedeckDb, start_expires_check_timer(ExpiresS))};
@@ -141,7 +141,7 @@ check_expired_entries(Trie, ExpiresS) ->
 
 -spec oldest_ms(pos_integer()) -> pos_integer().
 oldest_ms(ExpiresS) ->
-    kz_time:now_ms() - (ExpiresS * 1000).
+    kz_time:now_ms() - (ExpiresS * ?MILLISECONDS_IN_SECOND).
 
 -spec check_if_expired(prefix(), [{kz_term:ne_binary(), pos_integer()}], {pid(), pos_integer()}) ->
                               {pid(), pos_integer()}.

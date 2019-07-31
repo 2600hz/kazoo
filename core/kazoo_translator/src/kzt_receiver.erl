@@ -26,7 +26,7 @@
                   ,record_call :: kz_term:api_boolean()
                   ,call_timeout :: timeout() | 'undefined'
                   ,call_time_limit :: timeout() | 'undefined'
-                  ,start :: kz_time:now()
+                  ,start = kz_time:start_time():: kz_time:start_time()
                   ,call_b_leg :: kz_term:api_ne_binary()
                   }).
 -type dial_req() :: #dial_req{}.
@@ -87,7 +87,7 @@ collect_dtmfs(Call
              ,Collected
              ) ->
     lager:debug("collect_dtmfs: n: ~p collected: ~s", [N, Collected]),
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
 
     case kapps_call_command:receive_event(collect_timeout(Call, Timeout), 'false') of
         {'ok', JObj} ->
@@ -161,7 +161,7 @@ handle_dtmf(Call, FinishKey, Timeout, N, OnFirstFun, Collected, DTMF) ->
                  ,<<DTMF/binary, Collected/binary>>
                  ).
 
--spec collect_decr_timeout(kapps_call:call(), timeout(), kz_time:now()) ->
+-spec collect_decr_timeout(kapps_call:call(), timeout(), kz_time:start_time()) ->
                                   timeout().
 collect_decr_timeout(Call, Timeout, Start) ->
     case kzt_util:get_gather_pidref(Call) of
@@ -357,7 +357,7 @@ wait_for_offnet(Call, DialProps) ->
                                     ,record_call=RecordCall
                                     ,call_timeout=CallTimeout
                                     ,call_time_limit=CallTimeLimit
-                                    ,start=os:timestamp()
+                                    ,start=kz_time:start_time()
                                     }).
 
 -spec wait_for_hangup(kapps_call:call()) -> {'ok', kapps_call:call()}.
@@ -394,7 +394,7 @@ wait_for_conference(Call) ->
                                         ,record_call=RecordCall
                                         ,call_timeout=CallTimeout
                                         ,call_time_limit=CallTimeLimit
-                                        ,start=kz_time:now()
+                                        ,start=kz_time:start_time()
                                         }).
 
 -spec call_status(kz_term:ne_binary()) -> kz_term:ne_binary().
@@ -732,7 +732,7 @@ update_offnet_timers(#dial_req{call_timeout='undefined'
                               }=OffnetReq) ->
     Left = kz_time:decr_timeout(CallTimeLimit, Start),
     OffnetReq#dial_req{call_time_limit=Left
-                      ,start=os:timestamp()
+                      ,start=kz_time:start_time()
                       };
 update_offnet_timers(#dial_req{call_timeout='infinity'}=OffnetReq) ->
     OffnetReq;
@@ -741,5 +741,5 @@ update_offnet_timers(#dial_req{call_timeout=CallTimeout
                               }=OffnetReq) ->
     Left = kz_time:decr_timeout(CallTimeout, Start),
     OffnetReq#dial_req{call_timeout=Left
-                      ,start=os:timestamp()
+                      ,start=kz_time:start_time()
                       }.

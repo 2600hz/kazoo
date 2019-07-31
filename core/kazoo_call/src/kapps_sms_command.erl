@@ -343,7 +343,7 @@ get_correlated_msg_type(Key, JObj) ->
 -spec wait_for_correlated_message(kz_term:ne_binary() | kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), timeout()) ->
                                          kapps_api_std_return().
 wait_for_correlated_message(CallId, Event, Type, Timeout) when is_binary(CallId) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     case kapps_call_command:receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
         {'ok', JObj}=Ok ->

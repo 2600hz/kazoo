@@ -75,7 +75,7 @@ do_request(Method, Path, Body) ->
 
 -spec request(http_verb(), nonempty_string(), binary()) -> bt_xml().
 request(Method, Path, Body) ->
-    StartTime = os:timestamp(),
+    StartTime = kz_time:start_time(),
 
     lager:debug("making ~s request to braintree ~s", [Method, Path]),
     Url = build_url(Path),

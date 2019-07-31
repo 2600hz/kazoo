@@ -55,11 +55,11 @@ run(Workers, Strategy, DocIds) ->
     L = lists:seq(1, Workers),
 
     io:format("starting ~s...", [Strategy]),
-    Start = kz_time:now(),
+    Start = kz_time:start_time(),
 
     PidRefs = [spawn_monitor(fun() -> worker(DocIds) end) || _ <- L],
     {Normal, Not, ElapsedMs} = wait(PidRefs),
-    Stop = kz_time:now(),
+    Stop = kz_time:start_time(),
 
     TotalMs = lists:sum(ElapsedMs),
     MaxMs = lists:max(ElapsedMs),
@@ -104,7 +104,7 @@ stop_traces() ->
 worker(DocIds) ->
     [DocId | _] = kz_term:shuffle_list(DocIds),
 
-    Start = kz_time:now(),
+    Start = kz_time:start_time(),
     {'ok', _} = kz_datamgr:open_cache_doc(<<"system_schemas">>, DocId),
     exit({'elapsed_ms', kz_time:elapsed_ms(Start)}).
 

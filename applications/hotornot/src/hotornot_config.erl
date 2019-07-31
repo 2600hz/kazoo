@@ -82,7 +82,7 @@ should_use_trie() ->
 -spec use_trie() -> 'ok'.
 use_trie() ->
     {'ok', _} = kapps_config:set_default(?APP_NAME, <<"use_trie">>, 'true'),
-    {'ok', _} = kapps_config:set_default(?APP_NAME, <<"trie_module">>, 'hon_trie'),
+    {'ok', _} = kapps_config:set_default(?APP_NAME, <<"trie_module">>, <<"hon_trie">>),
     'ok'.
 
 -spec dont_use_trie() -> 'ok'.
@@ -93,7 +93,7 @@ dont_use_trie() ->
 -spec use_trie_lru() -> 'ok'.
 use_trie_lru() ->
     use_trie(),
-    {'ok', _} = kapps_config:set_default(?APP_NAME, <<"trie_module">>, 'hon_trie_lru'),
+    {'ok', _} = kapps_config:set_default(?APP_NAME, <<"trie_module">>, <<"hon_trie_lru">>),
     'ok'.
 
 -spec trie_module() -> atom().

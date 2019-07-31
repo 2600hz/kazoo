@@ -122,13 +122,21 @@ more_elapsed_test_() ->
     ,?_assertEqual(10 * ?MICROSECONDS_IN_SECOND, kz_time:elapsed_us(StartTS, kz_time:now_us(FutureTS)))
     ].
 
+elaspsed_start_time_test_() ->
+    Start = {'start_time',-576459648193378363},
+    End = {'start_time',-576459366410666959},
+    [?_assertEqual(281, kz_time:elapsed_s(Start, End))
+    ,?_assertEqual(281782, kz_time:elapsed_ms(Start, End))
+    ,?_assertEqual(281782711, kz_time:elapsed_us(Start, End))
+    ].
+
 unitfy_and_timeout_test_() ->
     {Mega, Sec, Micro} = Start = os:timestamp(),
     Future = {Mega, Sec + 10, Micro},
 
     [?_assertEqual("", kz_time:unitfy_seconds(0))
-    ,?_assertEqual(infinity, kz_time:decr_timeout(infinity, Start))
-    ,?_assertEqual(infinity, kz_time:decr_timeout(infinity, Start, Future))
+    ,?_assertEqual('infinity', kz_time:decr_timeout('infinity', Start))
+    ,?_assertEqual('infinity', kz_time:decr_timeout('infinity', Start, Future))
     ,?_assertEqual(0, kz_time:decr_timeout(10, Start, Future))
     ,?_assertEqual(0, kz_time:decr_timeout_elapsed(30, 42))
     ,?_assertEqual(12, kz_time:decr_timeout_elapsed(42, 30))

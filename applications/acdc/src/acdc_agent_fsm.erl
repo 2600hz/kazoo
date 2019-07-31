@@ -105,7 +105,7 @@
                ,member_call :: kapps_call:call() | 'undefined'
                ,member_call_id :: kz_term:api_binary()
                ,member_call_queue_id :: kz_term:api_binary()
-               ,member_call_start :: kz_time:now() | 'undefined'
+               ,member_call_start :: kz_time:start_time() | 'undefined'
                ,caller_exit_key = <<"#">> :: kz_term:ne_binary()
                ,queue_notifications :: kz_term:api_object()
 
@@ -596,7 +596,7 @@ ready('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener
                     {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
                                                          ,member_call=Call
                                                          ,member_call_id=CallId
-                                                         ,member_call_start=kz_time:now()
+                                                         ,member_call_start=kz_time:start_time()
                                                          ,member_call_queue_id=QueueId
                                                          ,caller_exit_key=CallerExitKey
                                                          ,endpoints=UpdatedEPs
@@ -610,7 +610,7 @@ ready('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener
 
             {'next_state', 'ringing', State#state{wrapup_timeout=WrapupTimer
                                                  ,member_call_id=CallId
-                                                 ,member_call_start=kz_time:now()
+                                                 ,member_call_start=kz_time:start_time()
                                                  ,member_call_queue_id=QueueId
                                                  ,caller_exit_key=CallerExitKey
                                                  ,agent_call_id='undefined'
@@ -1624,7 +1624,7 @@ clear_call(#state{statem_call_id=StateMCallId
                ,caller_exit_key = <<"#">>
                }.
 
--spec current_call(kapps_call:call() | 'undefined', atom(), kz_term:ne_binary(), 'undefined' | kz_time:now()) ->
+-spec current_call(kapps_call:call() | 'undefined', atom(), kz_term:ne_binary(), 'undefined' | kz_time:start_time()) ->
                           kz_term:api_object().
 current_call('undefined', _, _, _) -> 'undefined';
 current_call(Call, AgentState, QueueId, Start) ->
@@ -1638,7 +1638,7 @@ current_call(Call, AgentState, QueueId, Start) ->
                       ,{<<"queue_id">>, QueueId}
                       ]).
 
--spec elapsed('undefined' | kz_time:now()) -> kz_term:api_integer().
+-spec elapsed('undefined' | kz_time:start_time()) -> kz_term:api_integer().
 elapsed('undefined') -> 'undefined';
 elapsed(Start) -> kz_time:elapsed_s(Start).
 
@@ -1912,7 +1912,7 @@ notify(Url, 'get', Data) ->
           ,[], 'get', <<>>, []
           ).
 
--spec notify(iolist(), kz_term:proplist(), 'get' | 'post', binary(), kz_term:proplist()) -> 'ok'.
+-spec notify(kz_term:ne_binary(), kz_term:proplist(), 'get' | 'post', binary(), kz_term:proplist()) -> 'ok'.
 notify(Uri, Headers, Method, Body, Opts) ->
     Options = [{'connect_timeout', 200}
               ,{'timeout', 1000}
@@ -1940,7 +1940,7 @@ recording_url(JObj) ->
         Url -> Url
     end.
 
--spec uri(kz_term:ne_binary(), iolist()) -> iolist().
+-spec uri(kz_term:ne_binary(), binary()) -> kz_term:ne_binary().
 uri(URI, QueryString) ->
     case kz_http_util:urlsplit(URI) of
         {Scheme, Host, Path, <<>>, Fragment} ->

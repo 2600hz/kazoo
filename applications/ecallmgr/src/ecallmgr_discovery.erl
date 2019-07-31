@@ -20,7 +20,7 @@
 
 -define(SERVER, ?MODULE).
 
--type state() :: kz_time:gregorian_seconds().
+-type state() :: kz_time:start_time().
 
 %%%=============================================================================
 %%% API
@@ -46,7 +46,7 @@ start_link() ->
 -spec init(list()) -> {'ok', state(), pos_integer()}.
 init([]) ->
     lager:info("starting discovery"),
-    {'ok', kz_time:now_s(), ?MILLISECONDS_IN_SECOND}.
+    {'ok', kz_time:start_time(), ?MILLISECONDS_IN_SECOND}.
 
 %%------------------------------------------------------------------------------
 %% @doc Handling call messages
@@ -92,8 +92,8 @@ handle_info(_Msg, Startup) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
-terminate(Reason, _State) ->
-    lager:debug("ecallmgr discovery terminating: ~p",[Reason]).
+terminate(Reason, _Startup) ->
+    lager:debug("ecallmgr discovery terminating after ~ps: ~p", [kz_time:elapsed_s(_Startup), Reason]).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed
@@ -101,8 +101,8 @@ terminate(Reason, _State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
-code_change(_OldVsn, State, _Extra) ->
-    {'ok', State}.
+code_change(_OldVsn, Startup, _Extra) ->
+    {'ok', Startup}.
 
 %%%=============================================================================
 %%% Internal functions
@@ -112,6 +112,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec next_timeout(integer()) -> integer().
 next_timeout(Elapsed)
   when Elapsed < ?SECONDS_IN_MINUTE * 5 -> ?MILLISECONDS_IN_SECOND;
 next_timeout(Elapsed)

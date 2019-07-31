@@ -43,7 +43,7 @@
                   ,'account_id' => kz_term:ne_binary()
                   ,'request_id' => kz_term:ne_binary()
                   ,'trace_file' => kz_data_tracing:trace_ref()
-                  ,'start' => kz_time:now()
+                  ,'start' => kz_time:start_time()
                   }.
 
 -export_type([state/0
@@ -140,7 +140,7 @@ create_api_state(<<_/binary>> = RespJSON, Trace) ->
      ,'account_id' => kz_json:get_ne_binary_value([<<"data">>, <<"account_id">>], RespEnvelope)
      ,'request_id' => kz_util:get_callid()
      ,'trace_file' => Trace
-     ,'start' => get('now')
+     ,'start' => get('start_time')
      }.
 
 -spec v2_base_url() -> string().
@@ -281,7 +281,7 @@ start_trace() ->
                     RID -> RID
                 end,
     lager:md([{'request_id', RequestId}]),
-    put('now', kz_time:now()),
+    put('start_time', kz_time:start_time()),
 
     TracePath = trace_path(),
 

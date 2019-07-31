@@ -75,8 +75,8 @@
                ,acct_id :: kz_term:api_ne_binary()
                ,fsm_pid :: kz_term:api_pid()
                ,agent_queues = [] :: kz_term:ne_binaries()
-               ,last_connect :: kz_time:now() | 'undefined' % last connection
-               ,last_attempt :: kz_time:now() | 'undefined' % last attempt to connect
+               ,last_connect :: kz_time:start_time() | 'undefined' % last connection
+               ,last_attempt :: kz_time:start_time() | 'undefined' % last attempt to connect
                ,my_id :: kz_term:ne_binary()
                ,my_q :: kz_term:api_binary() % AMQP queue name
                ,timer_ref :: kz_term:api_reference()
@@ -929,10 +929,10 @@ is_valid_queue(Q, Qs) -> lists:member(Q, Qs).
 
 -spec send_member_connect_resp(kz_json:object(), kz_term:ne_binary()
                               ,kz_term:ne_binary(), kz_term:ne_binary()
-                              , kz_time:now() | 'undefined'
+                              , kz_time:start_time() | 'undefined'
                               ) -> 'ok'.
 send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
-    Queue = kz_json:get_value(<<"Server-ID">>, JObj),
+    Queue = kz_api:server_id(JObj),
     IdleTime = idle_time(LastConn),
     Resp = props:filter_undefined(
              [{<<"Agent-ID">>, AgentId}
@@ -946,7 +946,7 @@ send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
 
 -spec send_member_connect_retry(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_member_connect_retry(JObj, MyId, AgentId) ->
-    send_member_connect_retry(kz_json:get_value(<<"Server-ID">>, JObj)
+    send_member_connect_retry(kz_api:server_id(JObj)
                              ,call_id(JObj)
                              ,MyId
                              ,AgentId
@@ -976,11 +976,11 @@ send_member_connect_accepted(Queue, CallId, AcctId, AgentId, MyId) ->
 
 -spec send_originate_execute(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 send_originate_execute(JObj, Q) ->
-    Prop = [{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
-           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+    Prop = [{<<"Call-ID">>, kz_api:call_id(JObj)}
+           ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
             | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
-    kapi_dialplan:publish_originate_execute(kz_json:get_value(<<"Server-ID">>, JObj), Prop).
+    kapi_dialplan:publish_originate_execute(kz_api:server_id(JObj), Prop).
 
 -spec send_sync_request(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_sync_request(AcctId, AgentId, MyId, MyQ) ->
@@ -996,10 +996,10 @@ send_sync_response(ReqJObj, AcctId, AgentId, MyId, MyQ, Status, Options) ->
            ,{<<"Agent-ID">>, AgentId}
            ,{<<"Process-ID">>, MyId}
            ,{<<"Status">>, kz_term:to_binary(Status)}
-           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, ReqJObj)}
+           ,{<<"Msg-ID">>, kz_api:msg_id(ReqJObj)}
             | Options ++ kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
            ],
-    Q = kz_json:get_value(<<"Server-ID">>, ReqJObj),
+    Q = kz_api:server_id(ReqJObj),
     lager:debug("sending sync resp to ~s", [Q]),
     kapi_acdc_agent:publish_sync_resp(Q, Prop).
 
@@ -1012,7 +1012,7 @@ send_status_update(AcctId, AgentId, 'resume') ->
     kapi_acdc_agent:publish_resume(Update).
 
 
--spec idle_time('undefined' | kz_time:now()) -> kz_term:api_integer().
+-spec idle_time('undefined' | kz_time:start_time()) -> kz_term:api_integer().
 idle_time('undefined') -> 'undefined';
 idle_time(T) -> kz_time:elapsed_s(T).
 

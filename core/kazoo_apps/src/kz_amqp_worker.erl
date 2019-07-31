@@ -107,7 +107,7 @@
                ,neg_resp_count = 0 :: non_neg_integer()
                ,neg_resp_threshold = 1 :: pos_integer()
                ,req_timeout_ref :: kz_term:api_reference()
-               ,req_start_time :: kz_time:now() | 'undefined'
+               ,req_start_time = kz_time:start_time() :: kz_time:start_time() | 'undefined'
                ,callid :: kz_term:api_binary()
                ,pool_ref :: kz_types:server_ref()
                ,defer_response :: kz_term:api_object()
@@ -117,7 +117,7 @@
                ,acc = 'undefined' :: any()
                ,defer = 'undefined' :: 'undefined' | {any(), {pid(), reference()}}
                ,confirm_timeout_ref :: kz_term:api_reference()
-               ,confirm_start_time :: kz_time:now() | 'undefined'
+               ,confirm_start_time = kz_time:start_time() :: kz_time:start_time() | 'undefined'
                ,timeout :: non_neg_integer() | 'undefined'
                ,method :: atom()
                ,reply_to :: kz_term:api_pid_ref()
@@ -609,7 +609,7 @@ handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
                         ,current_msg_id = MsgId
 
                         ,confirm_timeout_ref = start_confirm_timeout(Timeout)
-                        ,confirm_start_time = os:timestamp()
+                        ,confirm_start_time = kz_time:start_time()
                         ,timeout = Timeout
                         ,method = 'request'
                         ,callid = CallId
@@ -626,7 +626,7 @@ handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
                         ,neg_resp_count = 0
                         ,current_msg_id = MsgId
                         ,req_timeout_ref = start_req_timeout(Timeout)
-                        ,req_start_time = os:timestamp()
+                        ,req_start_time = kz_time:start_time()
                         ,callid = CallId
                         }
             };
@@ -656,7 +656,7 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout, Acc}
                         ,current_msg_id = MsgId
 
                         ,confirm_timeout_ref = start_confirm_timeout(Timeout)
-                        ,confirm_start_time = os:timestamp()
+                        ,confirm_start_time = kz_time:start_time()
                         ,timeout = Timeout
                         ,method = 'call_collect'
 
@@ -675,7 +675,7 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout, Acc}
                         ,neg_resp_count = 0
                         ,current_msg_id = MsgId
                         ,req_timeout_ref = start_req_timeout(Timeout)
-                        ,req_start_time = os:timestamp()
+                        ,req_start_time = kz_time:start_time()
                         ,callid = CallId
                         }
             };
@@ -695,7 +695,7 @@ handle_call({'publish', ReqProp0, PublishFun}
     case publish_api(PublishFun, ReqProp) of
         'ok' when Confirm =:= 'true' ->
             {'noreply', State#state{confirm_timeout_ref = start_confirm_timeout(default_timeout())
-                                   ,confirm_start_time = os:timestamp()
+                                   ,confirm_start_time = kz_time:start_time()
                                    ,method = 'publish'
                                    ,reply_to=From
                                    }};
@@ -720,10 +720,10 @@ handle_call({'publish', ReqProp, PublishFun}
                         ,client_from = From
 
                         ,confirm_timeout_ref = start_confirm_timeout(default_timeout())
-                        ,confirm_start_time = os:timestamp()
+                        ,confirm_start_time = kz_time:start_time()
                         ,method = 'publish'
 
-                        ,req_start_time = os:timestamp()
+                        ,req_start_time = kz_time:start_time()
                         }
             };
         'ok' ->
@@ -1094,7 +1094,7 @@ handle_method_confirm('request', #'basic.ack'{}, #state{client_pid=ClientPid
                                                        }=State) ->
     lager:debug("request for msg id ~s for ~p was confirmed by broker", [MsgId, ClientPid]),
     NewState = State#state{req_timeout_ref = start_req_timeout(Timeout)
-                          ,req_start_time = os:timestamp()
+                          ,req_start_time = kz_time:start_time()
                           },
     {'noreply', NewState};
 
@@ -1112,7 +1112,7 @@ handle_method_confirm('call_collect', #'basic.ack'{}, #state{client_pid=ClientPi
                                                             }=State) ->
     lager:debug("call collect for msg id ~s for ~p was confirmed by broker", [MsgId, ClientPid]),
     NewState = State#state{req_timeout_ref = start_req_timeout(Timeout)
-                          ,req_start_time = os:timestamp()
+                          ,req_start_time = kz_time:start_time()
                           },
     {'noreply', NewState};
 
@@ -1134,14 +1134,15 @@ handle_payload(MsgId, JObj
                      ,req_start_time = StartTime
                      ,neg_resp_count = NegCount
                      ,neg_resp_threshold = NegThreshold
-                     }=State) when NegCount < NegThreshold ->
+                     }=State
+              ) when NegCount < NegThreshold ->
     _ = kz_util:put_callid(JObj),
 
     case VFun(JObj) of
         'true' ->
             case kz_json:is_true(<<"Defer-Response">>, JObj) of
                 'false' ->
-                    lager:debug("response for msg id ~s took ~b micro to return", [MsgId, timer:now_diff(os:timestamp(), StartTime)]),
+                    lager:debug("response for msg id ~s took ~b micro to return", [MsgId, kz_time:elapsed_us(StartTime)]),
                     gen_server:reply(From, {'ok', JObj}),
                     {'noreply', reset(State), 'hibernate'};
                 'true' ->
@@ -1197,7 +1198,8 @@ handle_payload(MsgId, JObj
                      ,client_cfun = UntilFun
                      ,responses = Resps
                      ,req_start_time = StartTime
-                     }=State) when is_list(Resps) ->
+                     }=State
+              ) when is_list(Resps) ->
     _ = kz_util:put_callid(JObj),
     lager:debug("recv message ~s", [MsgId]),
     Responses = [JObj | Resps],

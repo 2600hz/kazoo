@@ -13,7 +13,8 @@ else
 	CHANGED := $(CHANGED)
 endif
 CHANGED_SWAGGER ?= $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
-CHANGED_ERL=$(filter %.erl,$(CHANGED))
+CHANGED_ERL=$(filter %.hrl %.erl %.escript,$(CHANGED))
+CHANGED_JSON=$(filter %.json,$(CHANGED))
 
 # You can override this when calling make, e.g. make JOBS=1
 # to prevent parallel builds, or make JOBS="8".
@@ -47,6 +48,7 @@ all: compile
 changed:
 	@echo "changed: $(CHANGED)"
 	@echo "changed ERL: $(CHANGED_ERL)"
+	@echo "changed JSON: $(CHANGED_JSON)"
 
 changed_swagger:
 	@echo "$(CHANGED_SWAGGER)"
@@ -338,7 +340,7 @@ validate-swagger:
 	@$(ROOT)/scripts/validate-swagger.sh
 
 validate-js:
-	@./scripts/validate-js.sh $(find {core,applications}/*/priv/**/* -name *.json)
+	@$(ROOT)/scripts/validate-js.py $(CHANGED_JSON)
 
 sdks:
 	@$(ROOT)/scripts/make-swag.sh

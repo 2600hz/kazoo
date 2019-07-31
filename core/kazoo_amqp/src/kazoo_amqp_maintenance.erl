@@ -112,7 +112,7 @@ validate_assignments() ->
 
 -spec validate_assignments({[kz_amqp_assignment()], ets:continuation()} | '$end_of_table') -> 'ok'.
 validate_assignments('$end_of_table') -> 'ok';
-validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
+validate_assignments({[#kz_amqp_assignment{timestamp=_Timestamp
                                           ,consumer='undefined'
                                           ,consumer_ref='undefined'
                                           ,assigned='undefined'
@@ -131,7 +131,7 @@ validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
             'true' -> 'ok'
         end,
     validate_assignments(ets:match_object(Continuation));
-validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
+validate_assignments({[#kz_amqp_assignment{timestamp=_Timestamp
                                           ,consumer=Consumer
                                           ,consumer_ref=ConsumerRef
                                           ,assigned='undefined'
@@ -149,7 +149,7 @@ validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
             'true' -> 'ok'
         end,
     validate_assignments(ets:match_object(Continuation));
-validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
+validate_assignments({[#kz_amqp_assignment{timestamp=_Timestamp
                                           ,consumer=Consumer
                                           ,consumer_ref=ConsumerRef
                                           ,assigned='undefined'
@@ -167,19 +167,19 @@ validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
             'true' -> 'ok'
         end,
     validate_assignments(ets:match_object(Continuation));
-validate_assignments({[#kz_amqp_assignment{timestamp={_, _, _}
+validate_assignments({[#kz_amqp_assignment{timestamp=_Timestamp
                                           ,consumer=Consumer
                                           ,consumer_ref=ConsumerRef
                                           ,channel=Channel
                                           ,channel_ref=ChannelRef
                                           ,connection=Connection
-                                          ,assigned=Assigned
+                                          ,assigned=_Assigned
                                           ,broker=?NE_BINARY
                                           }=Assignment
                       ], Continuation})
   when is_pid(Consumer), is_reference(ConsumerRef)
        ,is_pid(Channel), is_reference(ChannelRef)
-       ,is_pid(Connection), is_integer(Assigned) ->
+       ,is_pid(Connection) ->
     %% validate assignment
     _ = case is_process_alive(Consumer)
             andalso is_process_alive(Channel)
@@ -218,7 +218,8 @@ connection_summary({[#kz_amqp_connections{connection=Connection
                                          }=Conn
                     ], Continuation
                    }
-                  ,PrimaryBroker) ->
+                  ,PrimaryBroker
+                  ) ->
 
     io:format("| ~-48s | ~-16w | ~-8B | ~-9s | ~-10s | ~-7s |~n"
              ,[Broker
@@ -397,6 +398,7 @@ channel_summary({[#kz_amqp_assignment{}=Assignment], Continuation}) ->
     io:format("+--------------------------------------------------+----------+----------+-----------------+-----------------+-----------------+----------+----------+~n"),
     channel_summary(ets:match_object(Continuation)).
 
+-spec channel_summary_age('undefined' | kz_time:start_time()) -> non_neg_integer().
 channel_summary_age('undefined') -> 0;
 channel_summary_age(Timestamp) -> kz_time:elapsed_s(Timestamp).
 
