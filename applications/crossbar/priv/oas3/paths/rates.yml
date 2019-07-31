@@ -9,20 +9,6 @@ paths:
       summary: Get all rates
       tags:
         - rates
-    post:
-      operationId: PostRates
-      parameters: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '../oas3-schemas.yml#/rates'
-      responses:
-        200:
-          description: Successful operation
-      summary: Update an instance of rates
-      tags:
-        - rates
     put:
       operationId: PutRates
       parameters: []

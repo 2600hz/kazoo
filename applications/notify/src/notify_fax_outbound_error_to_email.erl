@@ -112,7 +112,7 @@ create_template_props(Event, Docs, Account) ->
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
     Timezone = kz_term:to_list(kz_json:find(<<"timezone">>, Docs, <<"UTC">>)),
-    ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
+    ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, "UTC"),
 
     [{<<"account">>, notify_util:json_to_template_props(Account)}
     ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}

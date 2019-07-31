@@ -2156,7 +2156,7 @@ tmp_file(Ext) ->
                             kz_term:ne_binary().
 get_unix_epoch(Epoch, Timezone) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(Epoch),
-    LocalDateTime = localtime:utc_to_local(UtcDateTime, Timezone),
+    LocalDateTime = kz_time:adjust_utc_datetime(UtcDateTime, Timezone),
     kz_term:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - ?UNIX_EPOCH_IN_GREGORIAN).
 
 %%------------------------------------------------------------------------------

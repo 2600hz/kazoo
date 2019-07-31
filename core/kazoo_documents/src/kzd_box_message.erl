@@ -145,16 +145,15 @@ new(AccountId, Props) ->
 -spec create_message_name(kz_term:ne_binary(), kz_term:api_binary(), kz_time:gregorian_seconds()) -> kz_term:ne_binary().
 create_message_name(BoxNum, 'undefined', UtcSeconds) ->
     create_message_name(BoxNum, kzd_accounts:default_timezone(), UtcSeconds);
-create_message_name(BoxNum, Timezone, UtcSeconds) ->
+create_message_name(BoxNum, <<Timezone/binary>>, UtcSeconds) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(kz_term:to_integer(UtcSeconds)),
-    case localtime:utc_to_local(UtcDateTime, Timezone) of
-        {'error', 'unknown_tz'} ->
-            lager:info("unknown timezone: ~s", [Timezone]),
-            message_name(BoxNum, UtcDateTime, " UTC");
-        [LocalDateTime, _DstLocatDateTime] ->
-            message_name(BoxNum, LocalDateTime, "");
-        LocalDateTime ->
+    try kz_time:adjust_utc_datetime(UtcDateTime, Timezone) of
+        {{_,_,_}, {_,_,_}}=LocalDateTime ->
             message_name(BoxNum, LocalDateTime, "")
+    catch
+        'throw':{'error', 'unknown_tz'} ->
+            lager:info("unknown timezone: ~s", [Timezone]),
+            message_name(BoxNum, UtcDateTime, " UTC")
     end.
 
 -spec message_name(kz_term:ne_binary(), kz_time:datetime(), string()) -> kz_term:ne_binary().
@@ -298,7 +297,7 @@ metadata(JObj, Default) ->
     Metadata = kz_json:get_json_value(?KEY_METADATA, JObj, Default),
     maybe_add_transcription(Metadata, JObj).
 
--spec maybe_add_transcription(doc(), doc()) -> doc().
+-spec maybe_add_transcription(doc() | Default, doc()) -> doc() | Default.
 maybe_add_transcription(Metadata, JObj) ->
     case kz_json:get_json_value(?KEY_TRANSCRIPTION, JObj) of
         'undefined' -> Metadata;

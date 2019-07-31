@@ -157,8 +157,8 @@ rfc2822(Datetime = {Date={Y, Mo, D}, {H, Mi, S}}, TZ) ->
     >>.
 
 -spec tz_offset(calendar:datetime(), kz_term:ne_binary()) -> kz_term:ne_binary().
-tz_offset(Datetime, FromTz) ->
-    case localtime:tz_shift(Datetime, FromTz, <<"UTC">>) of
+tz_offset(Datetime, <<FromTz/binary>>) ->
+    case localtime:tz_shift(Datetime, kz_term:to_list(FromTz), "UTC") of
         0 -> <<"+0000">>;
         {'error', 'unknown_tz'} -> <<"+0000">>;
         {Sign, H, M} ->
@@ -407,8 +407,8 @@ adjust_utc_timestamp(_Timestamp, <<"+", _/binary>>) ->
     throw({'error', 'invalid_offset'});
 adjust_utc_timestamp(_Timestamp, <<"-", _/binary>>) ->
     throw({'error', 'invalid_offset'});
-adjust_utc_timestamp(Timestamp, Timezone) ->
-    try localtime:utc_to_local(calendar:gregorian_seconds_to_datetime(Timestamp), Timezone) of
+adjust_utc_timestamp(Timestamp, <<Timezone/binary>>) when is_integer(Timestamp) ->
+    try localtime:utc_to_local(calendar:gregorian_seconds_to_datetime(Timestamp), kz_term:to_list(Timezone)) of
         {{_, _, _}, {_, _, _}} = Datetime ->
             calendar:datetime_to_gregorian_seconds(Datetime);
         [LocalDatetime, _LocalDstDatetime] ->
@@ -419,7 +419,6 @@ adjust_utc_timestamp(Timestamp, Timezone) ->
         _:_ ->
             throw({'error', 'unknown_tz'})
     end.
-
 
 %%------------------------------------------------------------------------------
 %% @doc Apply the adjustment to the Datetime.

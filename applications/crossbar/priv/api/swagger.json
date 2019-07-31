@@ -47786,23 +47786,6 @@
                     }
                 }
             },
-            "post": {
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "rates",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/rates"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            },
             "put": {
                 "parameters": [
                     {

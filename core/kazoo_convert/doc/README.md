@@ -10,7 +10,7 @@ The converters used to execute file conversions are modular, modules can be enab
 
 The fax converter module by default use the module `fax_converter`. For a description of how the default fax converter `fax_converter` works, and information about the system commands used in fax file conversions, see [the fax converter documentation.](fax_converter.md)
 
-###Configuration
+### Configuration
 
 The `v2/system_configs/kazoo_convert` configuration parameters are used to enable features and define commands to use for conversion operations.
 
@@ -31,4 +31,3 @@ Key | Description | Type | Default | Required | Support Level
 `fax.validate_tiff_command` | Verifies a TIFF file is valid | `string()` | [see fax_converter doc](fax_converter.md) | `false` |
 `file_cache_path` | The working directory to use when converting files | `string()` | `/tmp/` | `false` |
 `attachment_format` | Format to use for receipt email messages and api responses | `string()` | `pdf` | `false` |
-

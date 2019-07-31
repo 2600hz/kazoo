@@ -8,6 +8,7 @@
 %%%-----------------------------------------------------------------------------
 
 -module(kz_cache_pqc).
+-behaviour(proper_statem).
 
 -ifdef(PROPER).
 
@@ -15,8 +16,6 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -include_lib("kazoo_caches/src/kz_caches.hrl").
-
--behaviour(proper_statem).
 
 -define(CACHE_TTL_MS, 10).
 -define(MIN_TIMEOUT_MS, ?CACHE_TTL_MS).
@@ -39,20 +38,20 @@
                ,now_ms = 0 :: pos_integer()
                }).
 
-proper_test_() ->
-    {"Runs kz_cache PropEr tests"
-    ,[
-      {'timeout'
-      ,10 * ?MILLISECONDS_IN_SECOND
-      ,{"sequential testing"
-       ,?_assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}, 100]))
-       }
-      }
-      %% ,{"parallel testing"
-      %% ,?assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}, 50]))
-      %% }
-     ]
-    }.
+%% proper_test_() ->
+%%     {"Runs kz_cache PropEr tests"
+%%     ,[
+%%       {'timeout'
+%%       ,20 * ?MILLISECONDS_IN_SECOND
+%%       ,{"sequential testing"
+%%        ,?_assert(proper:quickcheck(?MODULE:correct(), [{'to_file', 'user'}, 10]))
+%%        }
+%%       }
+%% ,{"parallel testing"
+%% ,?assert(proper:quickcheck(?MODULE:correct_parallel(), [{'to_file', 'user'}, 50]))
+%% }
+%%  ]
+%% }.
 
 run_counterexample() ->
     run_counterexample(proper:counterexample()).
@@ -69,7 +68,7 @@ run_counterexample(SeqSteps, State) ->
     kz_cache_sup:start_link(?SERVER, ?CACHE_TTL_MS),
 
     try lists:foldl(fun transition_if/2
-                   ,{1, State}
+                   ,{1, State, #{}}
                    ,SeqSteps
                    )
     catch
@@ -78,18 +77,27 @@ run_counterexample(SeqSteps, State) ->
         stop(?SERVER)
     end.
 
-transition_if({'set', _Var, Call}, {Step, State}) ->
+transition_if({'set', Var, Call}, {Step, State, Env}) ->
     {'call', M, F, As} = Call,
-    Resp = erlang:apply(M, F, As),
+    Resp = erlang:apply(M, F, fix_args(As, Env)),
     io:format("~w: ~w -> ~w~n", [Step, Call, Resp]),
     print_state(State),
 
     case postcondition(State, Call, Resp) of
         'true' ->
-            {Step+1, next_state(State, Resp, Call)};
+            {Step+1, next_state(State, Resp, Call), Env#{Var => Resp}};
         'false' ->
             io:format('user', "failed on step ~p~n", [Step]),
             throw({'failed_postcondition', State, Call, Resp})
+    end.
+
+fix_args(As, Env) ->
+    [fix_arg(A, Env) || A <- As].
+
+fix_arg(A, Env) ->
+    case maps:get(A, Env, 'undefined') of
+        'undefined' -> A;
+        V -> V
     end.
 
 print_state(#state{cache=[], now_ms=NowMs}) ->
@@ -105,20 +113,18 @@ print_cache_obj(#cache_obj{key=K, value=V, timestamp_ms=T, expires_s=E}) ->
 correct() ->
     ?FORALL(Cmds
            ,commands(?MODULE)
-           ,?TRAPEXIT(
-               begin
-                   kz_util:put_callid(?MODULE),
-                   stop(?SERVER),
-                   kz_cache_sup:start_link(?SERVER, ?CACHE_TTL_MS),
-                   {History, State, Result} = run_commands(?MODULE, Cmds),
-                   stop(?SERVER),
-                   ?WHENFAIL(io:format("Final State: ~p\nFailing Cmds: ~p\n"
-                                      ,[State, zip(Cmds, History)]
-                                      )
-                            ,aggregate(command_names(Cmds), Result =:= 'ok')
-                            )
-               end
-              )
+           ,begin
+                kz_util:put_callid(?MODULE),
+                stop(?SERVER),
+                kz_cache_sup:start_link(?SERVER, ?CACHE_TTL_MS),
+                {History, State, Result} = run_commands(?MODULE, Cmds),
+                stop(?SERVER),
+                ?WHENFAIL(io:format("Final State: ~p\nFailing Cmds: ~p\n"
+                                   ,[State, zip(Cmds, History)]
+                                   )
+                         ,aggregate(command_names(Cmds), Result =:= 'ok')
+                         )
+            end
            ).
 
 stop(Server) ->
@@ -128,21 +134,19 @@ stop(Server) ->
 correct_parallel() ->
     ?FORALL(Cmds
            ,parallel_commands(?MODULE)
-           ,?TRAPEXIT(
-               begin
-                   stop(?SERVER),
-                   kz_cache_sup:start_link(?SERVER, ?CACHE_TTL_MS),
+           ,begin
+                stop(?SERVER),
+                kz_cache_sup:start_link(?SERVER, ?CACHE_TTL_MS),
 
-                   {Sequential, Parallel, Result} = run_parallel_commands(?MODULE, Cmds),
-                   stop(?SERVER),
+                {Sequential, Parallel, Result} = run_parallel_commands(?MODULE, Cmds),
+                stop(?SERVER),
 
-                   ?WHENFAIL(io:format("Failing Cmds: ~p\nS: ~p\nP: ~p\n"
-                                      ,[Cmds, Sequential, Parallel]
-                                      )
-                            ,aggregate(command_names(Cmds), Result =:= 'ok')
-                            )
-               end
-              )
+                ?WHENFAIL(io:format("Failing Cmds: ~p\nS: ~p\nP: ~p\n"
+                                   ,[Cmds, Sequential, Parallel]
+                                   )
+                         ,aggregate(command_names(Cmds), Result =:= 'ok')
+                         )
+            end
            ).
 
 initial_state() ->

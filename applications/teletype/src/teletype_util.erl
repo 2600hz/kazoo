@@ -230,7 +230,7 @@ handle_send(To, From, {'ok', _Pid}) ->
 handle_send(_To, _From, {'error', _R}=Error) ->
     lager:info("error trying to send email: ~p", [_R]),
     Error;
-handle_send(To, From, _Pid) ->
+handle_send(To, From, _Pid) when is_pid(_Pid) ->
     lager:debug("smtp client is processing with pid ~p", [_Pid]),
     wait_for_response(To, From).
 
@@ -836,13 +836,13 @@ is_preview(DataJObj) ->
      ).
 
 -spec timestamp_params(kz_time:gregorian_seconds(), kz_term:ne_binary(), string()) -> kz_term:proplist().
-timestamp_params(Timestamp, ?NE_BINARY=Timezone, ClockTimezone) when is_integer(Timestamp) ->
+timestamp_params(Timestamp, <<Timezone/binary>>, ClockTimezone) when is_integer(Timestamp) ->
     DateTime = calendar:gregorian_seconds_to_datetime(Timestamp),
     lager:debug("using tz ~s (system ~s) for ~p", [Timezone, ClockTimezone, DateTime]),
 
     props:filter_undefined(
-      [{<<"utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
-      ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
+      [{<<"utc">>, localtime:local_to_utc(DateTime, kz_term:to_list(ClockTimezone))}
+      ,{<<"local">>, localtime:local_to_local(DateTime, kz_term:to_list(ClockTimezone), kz_term:to_list(Timezone))}
       ,{<<"timestamp">>, Timestamp}
       ,{<<"timezone">>, Timezone}
       ]).
@@ -856,10 +856,10 @@ fix_timestamp(Timestamp) ->
 -spec fix_timestamp(kz_time:gregorian_seconds() | kz_term:api_ne_binary(), kz_term:api_binary() | kz_json:object()) -> kz_term:proplist().
 fix_timestamp('undefined', Thing) ->
     fix_timestamp(kz_time:now_s(), Thing);
-fix_timestamp(?NE_BINARY=Timestamp, Thing) ->
+fix_timestamp(<<Timestamp/binary>>, Thing) ->
     fix_timestamp(kz_term:to_integer(Timestamp), Thing);
-fix_timestamp(Timestamp, ?NE_BINARY=TZ) when is_integer(Timestamp) ->
-    ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
+fix_timestamp(Timestamp, <<TZ/binary>>) when is_integer(Timestamp) ->
+    ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, "UTC"),
     timestamp_params(Timestamp, TZ, ClockTimezone);
 fix_timestamp(Timestamp, 'undefined') ->
     fix_timestamp(Timestamp, <<"UTC">>);

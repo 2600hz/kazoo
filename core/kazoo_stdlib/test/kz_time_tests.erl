@@ -158,7 +158,7 @@ rfc2822_assert({Date, Expected}) ->
 rfc2822_assert({Date, TZ, Expected}) ->
     ?_assertEqual(Expected, kz_time:rfc2822(Date, TZ));
 rfc2822_assert({Date, FromTZ, ToTZ, Expected}) ->
-    NewLocal = localtime:local_to_local(Date, FromTZ, ToTZ),
+    NewLocal = localtime:local_to_local(Date, kz_term:to_list(FromTZ), kz_term:to_list(ToTZ)),
     ?_assertEqual(Expected, kz_time:rfc2822(NewLocal, ToTZ)).
 
 iso8601_test_() ->
