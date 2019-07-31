@@ -44,7 +44,6 @@ gen_load(N) ->
 -spec gen_load(non_neg_integer(), non_neg_integer()) -> 'ok'.
 gen_load(N, D) ->
     Start = kz_time:start_time(),
-    _ = rand:seed('exsplus', os:timestamp()),
 
     {PointerTab, MonitorTab} = gen_listener:call(?CACHE_NAME, {'tables'}),
     Tables = [?CACHE_NAME, PointerTab, MonitorTab],
@@ -93,7 +92,6 @@ do_load_gen(Ds) ->
     Docs = [new_doc(AccountDb, Doc) || Doc <- lists:seq(1,Ds)],
 
     Start = kz_time:start_time(),
-    _ = rand:seed('exsplus', os:timestamp()),
 
     case rand:uniform(100) of
         42 ->

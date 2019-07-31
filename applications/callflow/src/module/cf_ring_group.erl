@@ -323,7 +323,6 @@ create_group_member(Key, Endpoint, GroupWeight, Member) ->
 
 -spec weighted_random_sort(weighted_endpoints()) -> endpoints().
 weighted_random_sort(Endpoints) ->
-    _ = rand:seed('exsplus'),
     WeightSortedEndpoints = lists:sort(Endpoints),
     weighted_random_sort(WeightSortedEndpoints, []).
 
