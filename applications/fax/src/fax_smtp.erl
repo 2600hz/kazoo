@@ -343,7 +343,7 @@ faxbox_log(#state{account_id=AccountId}=State) ->
               ]
              )
            ),
-    kazoo_modb:save_doc(AccountId, Doc),
+    _ = kazoo_modb:save_doc(AccountId, Doc),
     maybe_system_report(State).
 
 -spec error_doc() -> kz_term:ne_binary().

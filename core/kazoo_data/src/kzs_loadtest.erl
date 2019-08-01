@@ -9,12 +9,14 @@
 
 -include("kz_data.hrl").
 
+-dialyzer({'nowarn_function', spawn_worker/1}).
+
 -spec start() -> 'ok'.
 start() ->
     start(1000).
 
 -spec start(pos_integer()) -> 'ok'.
-start(Workers) ->
+start(Workers) when is_integer(Workers), Workers > 0 ->
     Strategies = ['none', 'async'
                  ,'stampede', 'stampede_async'
                  ],
@@ -28,11 +30,13 @@ run_tests(Workers, Strategies) ->
     _ = [run(Workers, S, DocIds) || S <- Strategies],
     'ok'.
 
+-spec doc_ids(pos_integer()) -> kz_term:ne_binaries().
 doc_ids(_Workers) ->
     %%    doc_ids_variable_len(_Workers).
     doc_ids_fixed_len().
 
 %% fixed number of doc IDs to fetch against
+-spec doc_ids_fixed_len() -> kz_term:ne_binaries().
 doc_ids_fixed_len() ->
     {'ok', Js} = kz_datamgr:all_docs(<<"system_schemas">>, [{'limit', 3}]),
     [kz_doc:id(J) || J <- Js].
@@ -52,12 +56,11 @@ run(Workers, Strategy, DocIds) ->
     kzs_cache:set_cache_strategy(Strategy),
     kz_datamgr:flush_cache_docs(<<"system_schemas">>),
 
-    L = lists:seq(1, Workers),
-
     io:format("starting ~s...", [Strategy]),
     Start = kz_time:start_time(),
 
-    PidRefs = [spawn_monitor(fun() -> worker(DocIds) end) || _ <- L],
+    PidRefs = [spawn_worker(DocIds) || _ <- lists:seq(1, Workers)],
+
     {Normal, Not, ElapsedMs} = wait(PidRefs),
     Stop = kz_time:start_time(),
 
@@ -99,6 +102,10 @@ stop_traces() ->
          || Pattern <- ?PATTERNS
         ],
     erlang:trace('all', 'false', ['call']).
+
+-spec spawn_worker(kz_term:ne_binaries()) -> kz_term:pid_ref().
+spawn_worker(DocIds) ->
+    spawn_monitor(fun() -> worker(DocIds) end).
 
 -spec worker(kz_term:ne_binaries()) -> no_return().
 worker(DocIds) ->

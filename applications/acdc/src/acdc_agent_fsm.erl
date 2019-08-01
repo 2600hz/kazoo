@@ -1940,13 +1940,13 @@ recording_url(JObj) ->
         Url -> Url
     end.
 
--spec uri(kz_term:ne_binary(), binary()) -> kz_term:ne_binary().
+-spec uri(kz_term:ne_binary(), iodata()) -> kz_term:ne_binary().
 uri(URI, QueryString) ->
     case kz_http_util:urlsplit(URI) of
         {Scheme, Host, Path, <<>>, Fragment} ->
-            kz_http_util:urlunsplit({Scheme, Host, Path, QueryString, Fragment});
+            kz_http_util:urlunsplit({Scheme, Host, Path, iolist_to_binary(QueryString), Fragment});
         {Scheme, Host, Path, QS, Fragment} ->
-            kz_http_util:urlunsplit({Scheme, Host, Path, <<QS/binary, "&", (kz_term:to_binary(QueryString))/binary>>, Fragment})
+            kz_http_util:urlunsplit({Scheme, Host, Path, <<QS/binary, "&", (iolist_to_binary(QueryString))/binary>>, Fragment})
     end.
 
 -spec apply_state_updates(state()) -> kz_types:handle_fsm_ret(state()).
