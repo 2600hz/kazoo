@@ -20,7 +20,7 @@ event(AppName, AppVersion, Severity, Verbosity, Body) ->
 
 -spec event(kz_term:ne_binary(), kz_term:ne_binary(), edr_severity(), edr_verbosity(), kz_json:object(), kz_term:api_ne_binary()) -> 'ok'.
 event(AppName, AppVersion, Severity, Verbosity, Body, AccountId) ->
-    GregorianTime = kz_time:now_s(kz_time:now()),
+    GregorianTime = kz_time:now_s(),
     Event = #edr_event{account_id=AccountId
                       ,app_name=AppName
                       ,app_version=AppVersion
@@ -31,7 +31,8 @@ event(AppName, AppVersion, Severity, Verbosity, Body, AccountId) ->
                       ,timestamp=kz_time:iso8601(GregorianTime)
                        %% Time needs to be computed ASAP
                       ,gregorian_time=GregorianTime
-                      ,verbosity=Verbosity},
+                      ,verbosity=Verbosity
+                      },
     %% We want to resume execution as soon as possible, and not to crash on event processing failure.
     %% So, we'll spawn a new process to do this
     spawn(?MODULE, 'send_event', [Event]),

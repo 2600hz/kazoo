@@ -116,24 +116,24 @@ maybe_expired(#{request := Request}=Map) ->
     wait_for_route_resp(add_time_marker('request_sent', Map)).
 
 -spec wait_for_route_resp(dialplan_context()) -> {'ok', dialplan_context()}.
-wait_for_route_resp(#{timeout := Timeout}=Map) ->
-    lager:debug("waiting ~B ms for route response", [Timeout]),
-    Now = kz_time:now_ms(),
+wait_for_route_resp(#{timeout := TimeoutMs}=Map) ->
+    lager:debug("waiting ~B ms for route response", [TimeoutMs]),
+    StartTime = kz_time:start_time(),
     receive
         {'kapi', {{_, _, {Basic, _Deliver}}, {'dialplan', 'route_resp'}, Resp}} ->
             Props = [{'basic', Basic}],
             case kz_api:defer_response(Resp) of
                 'true' ->
-                    NewTimeout = Timeout - kz_time:elapsed_ms(Now),
-                    lager:debug("received deferred reply - waiting for others for ~B ms", [NewTimeout]),
-                    wait_for_route_resp(Map#{timeout => NewTimeout, reply => #{payload => Resp, props => Props}});
+                    NewTimeoutMs = TimeoutMs - kz_time:elapsed_ms(StartTime),
+                    lager:debug("received deferred reply - waiting for others for ~B ms", [NewTimeoutMs]),
+                    wait_for_route_resp(Map#{timeout => NewTimeoutMs, reply => #{payload => Resp, props => Props}});
                 'false' ->
                     lager:info("received route reply"),
-                    NewTimeout = Timeout - kz_time:elapsed_ms(Now),
-                    maybe_wait_for_authz(Map#{reply => #{payload => Resp, props => Props}, authz_timeout => NewTimeout})
+                    NewTimeoutMs = TimeoutMs - kz_time:elapsed_ms(StartTime),
+                    maybe_wait_for_authz(Map#{reply => #{payload => Resp, props => Props}, authz_timeout => NewTimeoutMs})
             end
-    after Timeout ->
-            lager:warning("timeout after ~B receiving route response", [Timeout]),
+    after TimeoutMs ->
+            lager:warning("timeout after ~B receiving route response", [TimeoutMs]),
             send_reply(Map)
     end.
 

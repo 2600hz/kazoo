@@ -324,7 +324,7 @@ wait_for_creation(_, After) when After =< 0 ->
     kz_amqp_channel:release(),
     {'error', 'timeout'};
 wait_for_creation(Conference, After) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     case kapps_conference_command:search(Conference) of
         {'ok', _}=Ok ->
             kz_amqp_channel:release(),

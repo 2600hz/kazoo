@@ -91,9 +91,9 @@ create_modbs_metered(Year, Month, _AccountsPerPass, _SecondsPerPass, {'ok', Acco
     _ = [create_modb(Year, Month, Account) || Account <- Accounts],
     lager:info("finished creating account MODBs");
 create_modbs_metered(Year, Month, AccountsPerPass, SecondsPerPass, {'ok', Accounts, NextPageKey}) ->
-    NowS = kz_time:now_s(),
+    StartTime = kz_time:start_time(),
     _ = [create_modb(Year, Month, Account) || Account <- Accounts],
-    ElapsedS = kz_time:elapsed_s(NowS),
+    ElapsedS = kz_time:elapsed_s(StartTime),
     WaitS = SecondsPerPass - ElapsedS,
     lager:info("created ~p modb(s), waiting ~ps for next pass", [length(Accounts), WaitS]),
     timer:sleep(WaitS * ?MILLISECONDS_IN_SECOND),

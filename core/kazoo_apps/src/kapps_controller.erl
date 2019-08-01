@@ -94,10 +94,10 @@ start_default_apps() ->
                        {'ok', kz_term:atoms()} |
                        {'error', any()}.
 start_app(App) when is_atom(App) ->
-    NowMs = kz_time:now(),
+    StartTime = kz_time:start_time(),
     case application:ensure_all_started(App) of
         {'ok', Started}=OK ->
-            lager:info("started ~s in ~pms", [App, kz_time:elapsed_ms(NowMs)]),
+            lager:info("started ~s in ~pms", [App, kz_time:elapsed_ms(StartTime)]),
             _ = [kz_nodes_bindings:bind(A) || A <- [App | Started], is_kapp(A)],
             OK;
         {'error', {App, {"no such file or directory", DotApp}}} ->

@@ -160,11 +160,7 @@ handle_DATA(From, To, Data, #state{doc='undefined'}=State) ->
 handle_DATA(From, To, Data, #state{options=Options}=State) ->
     lager:debug("handle Data From ~p to ~p", [From,To]),
 
-    %% JMA: Can this be done with kz_binary:rand_hex() ?
-    Reference = lists:flatten(
-                  [io_lib:format("~2.16.0b", [X])
-                   || <<X>> <= erlang:md5(term_to_binary(kz_time:now()))
-                  ]),
+    Reference = kz_term:to_list(kz_binary:rand_hex(16)),
 
     try mimemail:decode(Data) of
         {Type, SubType, Headers, Parameters, Body} ->
@@ -347,7 +343,7 @@ faxbox_log(#state{account_id=AccountId}=State) ->
               ]
              )
            ),
-    kazoo_modb:save_doc(AccountId, Doc),
+    _ = kazoo_modb:save_doc(AccountId, Doc),
     maybe_system_report(State).
 
 -spec error_doc() -> kz_term:ne_binary().

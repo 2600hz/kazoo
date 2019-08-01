@@ -849,11 +849,11 @@ wait_for_ringback(Timeout, Call) ->
 
 -spec wait_for_parker(timeout(), kapps_call:call()) -> wait_for_parker_result().
 wait_for_parker(Timeout, Call) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     lager:debug("waiting for parker for ~p ms", [Timeout]),
     wait_for_parker(Timeout, Call, Start, kapps_call_command:receive_event(Timeout)).
 
--spec wait_for_parker(timeout(), kapps_call:call(), kz_time:now(), receive_event_result()) -> wait_for_parker_result().
+-spec wait_for_parker(timeout(), kapps_call:call(), kz_time:start_time(), receive_event_result()) -> wait_for_parker_result().
 wait_for_parker(_Timeout, _Call, _Start, {'error', 'timeout'}=E) -> E;
 wait_for_parker(Timeout, Call, Start, {'ok', JObj}) ->
     Disposition = kz_json:get_value(<<"Disposition">>, JObj),
@@ -884,7 +884,7 @@ wait_for_parker(Timeout, Call, Start, {'ok', JObj}) ->
             {Result, JObj};
         _E ->
             NewTimeout = kz_time:decr_timeout(Timeout, Start),
-            NewStart = os:timestamp(),
+            NewStart = kz_time:start_time(),
             wait_for_parker(NewTimeout, Call, NewStart, kapps_call_command:receive_event(NewTimeout))
     end.
 

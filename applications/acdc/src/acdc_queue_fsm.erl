@@ -69,7 +69,7 @@
                ,agent_ring_timer_ref :: kz_term:api_reference() % how long to ring an agent before moving to the next
 
                ,member_call :: kapps_call:call() | 'undefined'
-               ,member_call_start :: kz_term:api_non_neg_integer()
+               ,member_call_start :: kz_time:start_time() | 'undefined'
                ,member_call_winners :: [kz_term:api_object()] %% who won the call
 
                                        %% Config options
@@ -193,7 +193,7 @@ cdr_url(ServerRef) ->
 init([WorkerSup, MgrPid, AccountId, QueueId]) ->
     kz_util:put_callid(<<"statem_", QueueId/binary, "_", (kz_term:to_binary(self()))/binary>>),
 
-    webseq:start(?WSD_ID),
+    _ = webseq:start(?WSD_ID),
     webseq:reg_who(?WSD_ID, self(), iolist_to_binary([<<"qFSM">>, pid_to_list(self())])),
 
     AccountDb = kz_util:format_account_db(AccountId),
@@ -584,7 +584,7 @@ connecting({'call', From}, 'current_call', #state{member_call=Call
     ,{'reply', From, current_call(Call, ConnRef, Start)}
     };
 connecting({'call', From}, Event, State) ->
-    handle_sync_event(Event, From, connecting, State);
+    handle_sync_event(Event, From, 'connecting', State);
 
 connecting('info', {'timeout', AgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{agent_ring_timer_ref=AgentRef
                                                                              ,member_call_winners=[Winner|[]]
@@ -750,7 +750,8 @@ update_properties(QueueJObj, State) ->
                 %%,strategy = get_strategy(kz_json:get_value(<<"strategy">>, QueueJObj))
                }.
 
--spec current_call('undefined' | kapps_call:call(), kz_term:api_reference() | timeout(), timeout()) -> kz_term:api_object().
+-spec current_call('undefined' | kapps_call:call(), kz_term:api_reference() | timeout(), kz_time:start_time()) ->
+                          kz_term:api_object().
 current_call('undefined', _, _) -> 'undefined';
 current_call(Call, QueueTimeLeft, Start) ->
     kz_json:from_list([{<<"call_id">>, kapps_call:call_id(Call)}
@@ -762,7 +763,7 @@ current_call(Call, QueueTimeLeft, Start) ->
                       ,{<<"wait_time">>, elapsed(Start)}
                       ]).
 
--spec elapsed(kz_term:api_reference() | timeout() | integer()) -> kz_term:api_integer().
+-spec elapsed(kz_term:api_reference() | kz_time:start_time()) -> kz_term:api_integer().
 elapsed('undefined') -> 'undefined';
 elapsed(Ref) when is_reference(Ref) ->
     case erlang:read_timer(Ref) of
@@ -799,7 +800,7 @@ maybe_delay_connect_req(Call, CallJObj, Delivery, #state{listener_proc=ListenerS
 
             {'next_state', 'connect_req', State#state{collect_ref=start_collect_timer()
                                                      ,member_call=Call
-                                                     ,member_call_start=kz_time:now_s()
+                                                     ,member_call_start=kz_time:start_time()
                                                      ,connection_timer_ref=start_connection_timer(ConnTimeout)
                                                      }};
         'false' ->

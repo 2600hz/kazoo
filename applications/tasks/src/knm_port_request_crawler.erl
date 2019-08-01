@@ -28,8 +28,7 @@
        ,kapps_config:get_integer(?CONFIG_CAT, <<"crawler_delay_time_ms">>, ?MILLISECONDS_IN_MINUTE)
        ).
 
--record(state, {cleanup_ref :: reference()
-               }).
+-record(state, {cleanup_ref :: reference()}).
 -type state() :: #state{}.
 
 %%%=============================================================================
@@ -127,6 +126,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%------------------------------------------------------------------------------
 -spec crawl_port_requests() -> 'ok'.
 crawl_port_requests() ->
-    Start = kz_time:now(),
+    Start = kz_time:start_time(),
     knm_port_request:send_submitted_requests(),
     lager:info("port_request crawler completed a full crawl in ~pms", [kz_time:elapsed_ms(Start)]).

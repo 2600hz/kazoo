@@ -30,6 +30,8 @@
         ,weekday/1, month/1
         ,unitfy_seconds/1
         ,adjust_utc_timestamp/2, adjust_utc_datetime/2
+
+        ,start_time/0
         ]).
 
 -ifdef(TEST).
@@ -58,6 +60,9 @@
 -type unix_seconds() :: pos_integer().
 -type api_seconds() :: 'undefined' | gregorian_seconds().
 -type ordinal() :: kz_term:ne_binary(). % "every" | "first" | "second" | "third" | "fourth" | "fifth" | "last".
+
+%% {'start_time', erlang:monotonic_time()}
+-type start_time() :: {'start_time', integer()}.
 
 -export_type([api_seconds/0
              ,date/0
@@ -469,7 +474,7 @@ month(12) -> <<"Dec">>.
 
 -spec pretty_print_elapsed_s(non_neg_integer()) -> kz_term:ne_binary().
 pretty_print_elapsed_s(0) -> <<"0s">>;
-pretty_print_elapsed_s(Seconds) ->
+pretty_print_elapsed_s(Seconds) when is_integer(Seconds), Seconds > 0 ->
     iolist_to_binary(unitfy_seconds(Seconds)).
 
 -spec unitfy_seconds(non_neg_integer()) -> iolist().
@@ -486,16 +491,18 @@ unitfy_seconds(Seconds) ->
     D = Seconds div ?SECONDS_IN_DAY,
     [kz_term:to_binary(D), "d", unitfy_seconds(Seconds - (D * ?SECONDS_IN_DAY))].
 
--spec decr_timeout(timeout(), now() | gregorian_seconds()) -> timeout().
+-spec decr_timeout(timeout(), now() | gregorian_seconds() | start_time()) -> timeout().
 decr_timeout('infinity', _) -> 'infinity';
 decr_timeout(Timeout, {_Mega, _S, _Micro}=Start) when is_integer(Timeout) ->
     decr_timeout(Timeout, Start, now());
 decr_timeout(Timeout, StartS) when is_integer(Timeout),
                                    is_integer(StartS),
                                    ?UNIX_EPOCH_IN_GREGORIAN < StartS ->
-    decr_timeout(Timeout, StartS, now_s()).
+    decr_timeout(Timeout, StartS, now_s());
+decr_timeout(Timeout, {'start_time', _}=StartTime) ->
+    decr_timeout(Timeout, StartTime, start_time()).
 
--spec decr_timeout(timeout(), now() | gregorian_seconds(), now() | gregorian_seconds()) -> timeout().
+-spec decr_timeout(timeout(), now() | gregorian_seconds() | start_time(), now() | gregorian_seconds() | start_time()) -> timeout().
 decr_timeout('infinity', _Start, _Future) -> 'infinity';
 decr_timeout(Timeout, Start, {_Mega, _S, _Micro}=Now) ->
     decr_timeout_elapsed(Timeout, elapsed_s(Start, Now));
@@ -504,7 +511,9 @@ decr_timeout(Timeout, StartS, Now) when is_integer(Timeout),
                                         ?UNIX_EPOCH_IN_GREGORIAN < StartS,
                                         is_integer(Now),
                                         ?UNIX_EPOCH_IN_GREGORIAN < Now ->
-    decr_timeout_elapsed(Timeout, elapsed_s(StartS, Now)).
+    decr_timeout_elapsed(Timeout, elapsed_s(StartS, Now));
+decr_timeout(Timeout, {'start_time', _}=Start, {'start_time', _}=End) ->
+    decr_timeout_elapsed(Timeout, elapsed_s(Start, End)).
 
 -spec decr_timeout_elapsed(non_neg_integer(), non_neg_integer()) -> non_neg_integer().
 decr_timeout_elapsed(Timeout, Elapsed) ->
@@ -520,19 +529,24 @@ microseconds_to_seconds(Microseconds) -> kz_term:to_integer(Microseconds) div ?M
 -spec milliseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
 milliseconds_to_seconds(Milliseconds) -> kz_term:to_integer(Milliseconds) div ?MILLISECONDS_IN_SECOND.
 
--spec elapsed_s(now() | pos_integer()) -> pos_integer().
+-spec elapsed_s(now() | pos_integer() | start_time()) -> non_neg_integer().
 elapsed_s({_,_,_}=Start) -> elapsed_s(Start, now());
-elapsed_s(Start) when is_integer(Start) -> elapsed_s(Start, now_s()).
+elapsed_s(Start) when is_integer(Start) -> elapsed_s(Start, now_s());
+elapsed_s({'start_time', _}=Start) -> elapsed_s(Start, start_time()).
 
--spec elapsed_ms(now() | pos_integer()) -> pos_integer().
+-spec elapsed_ms(now() | pos_integer() | start_time()) -> non_neg_integer().
 elapsed_ms({_,_,_}=Start) -> elapsed_ms(Start, now());
-elapsed_ms(Start) when is_integer(Start) -> elapsed_ms(Start, now_ms()).
+elapsed_ms(Start) when is_integer(Start) -> elapsed_ms(Start, now_ms());
+elapsed_ms({'start_time', _}=Start) -> elapsed_ms(Start, start_time()).
 
--spec elapsed_us(now() | pos_integer()) -> pos_integer().
+-spec elapsed_us(now() | pos_integer() | start_time()) -> non_neg_integer().
 elapsed_us({_,_,_}=Start) -> elapsed_us(Start, now());
-elapsed_us(Start) when is_integer(Start) -> elapsed_us(Start, now_us()).
+elapsed_us(Start) when is_integer(Start) -> elapsed_us(Start, now_us());
+elapsed_us({'start_time', _}=Start) -> elapsed_us(Start, start_time()).
 
--spec elapsed_s(now() | pos_integer(), now() | pos_integer()) -> pos_integer().
+-spec elapsed_s(now() | pos_integer() | start_time(), now() | pos_integer() | start_time()) -> non_neg_integer().
+elapsed_s({'start_time', Start}, {'start_time', End}) ->
+    erlang:convert_time_unit(End-Start, 'native', 'second');
 elapsed_s({_,_,_}=Start, {_,_,_}=Now) ->
     timer:now_diff(Now, Start) div ?MICROSECONDS_IN_SECOND;
 elapsed_s({_,_,_}=Start, Now) -> elapsed_s(now_s(Start), Now);
@@ -542,7 +556,9 @@ elapsed_s(Start, Now)
        is_integer(Now) ->
     Now - Start.
 
--spec elapsed_ms(now() | pos_integer(), now() | pos_integer()) -> pos_integer().
+-spec elapsed_ms(now() | pos_integer() | start_time(), now() | pos_integer() | start_time()) -> non_neg_integer().
+elapsed_ms({'start_time', Start}, {'start_time', End}) ->
+    erlang:convert_time_unit(End-Start, 'native', 'millisecond');
 elapsed_ms({_,_,_}=Start, {_,_,_}=Now) ->
     timer:now_diff(Now, Start) div ?MILLISECONDS_IN_SECOND;
 elapsed_ms({_,_,_}=Start, Now) -> elapsed_ms(now_ms(Start), Now);
@@ -558,7 +574,9 @@ elapsed_ms(Start, Now)
        is_integer(Now) ->
     (Now - Start) * ?MILLISECONDS_IN_SECOND.
 
--spec elapsed_us(now() | pos_integer(), now() | pos_integer()) -> pos_integer().
+-spec elapsed_us(now() | pos_integer() | start_time(), now() | pos_integer() | start_time()) -> non_neg_integer().
+elapsed_us({'start_time', Start}, {'start_time', End}) ->
+    erlang:convert_time_unit(End-Start, 'native', 'microsecond');
 elapsed_us({_,_,_}=Start, {_,_,_}=Now) ->
     timer:now_diff(Now, Start);
 elapsed_us({_,_,_}=Start, Now) -> elapsed_us(now_us(Start), Now);
@@ -601,7 +619,6 @@ now_s({_,_,_}=Now) ->
 unix_us_to_gregorian_us(UnixUS) ->
     UnixUS + (?UNIX_EPOCH_IN_GREGORIAN * ?MICROSECONDS_IN_SECOND).
 
-
 -spec format_date() -> binary().
 format_date() ->
     format_date(now_s()).
@@ -627,3 +644,7 @@ format_datetime() ->
 -spec format_datetime(gregorian_seconds()) -> binary().
 format_datetime(Timestamp) when is_integer(Timestamp) ->
     list_to_binary([format_date(Timestamp), " ", format_time(Timestamp)]).
+
+-spec start_time() -> start_time().
+start_time() ->
+    {'start_time', erlang:monotonic_time()}.

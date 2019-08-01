@@ -434,9 +434,11 @@ interaction_time(Year, Month, Day, _Today) ->
     calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {23, 59, 59}}).
 
 wait_for_task(API, AccountId, TaskId) ->
-    Start = kz_time:now_s(),
+    Start = kz_time:start_time(),
     wait_for_task(API, AccountId, TaskId, Start).
 
+-spec wait_for_task(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary(), kz_time:start_time()) ->
+                           pqc_cb_api:response() | {'error', 'timeout'}.
 wait_for_task(API, AccountId, TaskId, Start) ->
     wait_for_task(API, AccountId, TaskId, Start, kz_time:elapsed_s(Start)).
 

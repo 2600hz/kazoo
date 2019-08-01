@@ -6,11 +6,10 @@
 %%%       monitors in the model and adjust how now_ms is forwarded
 %%% @end
 %%%-----------------------------------------------------------------------------
-
 -module(kz_cache_pqc).
--behaviour(proper_statem).
 
 -ifdef(PROPER).
+-behaviour(proper_statem).
 
 -include_lib("proper/include/proper.hrl").
 -include_lib("eunit/include/eunit.hrl").

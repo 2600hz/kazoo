@@ -65,7 +65,7 @@ wait_for_connection(Tag) ->
 -spec wait_for_connection(kz_term:ne_binary(), timeout()) -> 'ok' | 'no_connection'.
 wait_for_connection(_Tag, 0) -> 'no_connection';
 wait_for_connection(Tag, Timeout) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     try test_conn(Tag) of
         {'error', _E} ->
             timer:sleep(rand:uniform(?MILLISECONDS_IN_SECOND) + 100),

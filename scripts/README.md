@@ -874,7 +874,7 @@ Generates a [TAGS file](https://www.emacswiki.org/emacs/EmacsTags) based on all 
 Used to search the code looking for deprecated Erlang functions and types and replace them with the newer versions as appropriate
 
 
-## validate-js.sh
+## validate-js.py
 
 Processes JSON files:
 

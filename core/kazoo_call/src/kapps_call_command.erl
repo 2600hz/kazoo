@@ -461,18 +461,18 @@ relay_event(Pid, JObj) ->
 relay_event(Pid, JObj, RelayFun) ->
     RelayFun(Pid, {'amqp_msg', JObj}).
 
--spec receive_event(timeout()) ->
-                           {'ok', kz_json:object()} |
-                           {'error', 'timeout'}.
+-type received_event() :: {'ok', kz_json:object()} |
+                          {'error', 'timeout'}.
+
+-spec receive_event(timeout()) -> received_event().
 receive_event(Timeout) -> receive_event(Timeout, 'true').
 
 -spec receive_event(timeout(), boolean()) ->
-                           {'ok', kz_json:object()} |
-                           {'other', kz_json:object() | any()} |
-                           {'error', 'timeout'}.
+                           received_event() |
+                           {'other', kz_json:object() | any()}.
 receive_event(T, _) when T =< 0 -> {'error', 'timeout'};
 receive_event(Timeout, IgnoreOthers) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     receive
         {'amqp_msg', JObj} -> {'ok', JObj};
         _ when IgnoreOthers ->
@@ -2489,7 +2489,7 @@ do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
                                      ,after_timeout=After
                                      ,flush_on_digit=FlushOnDigit
                                      }=Collect) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     case receive_event(After) of
         {'ok', JObj} ->
             case handle_collect_digit_event(JObj, NoopId) of
@@ -2604,7 +2604,7 @@ wait_for_message(Call, Application, Event, Type) ->
 -spec wait_for_message(kapps_call:call(), binary(), kz_term:ne_binary(), kz_term:ne_binary(), timeout()) ->
                               kapps_api_std_return().
 wait_for_message(Call, Application, Event, Type, Timeout) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     case receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
         {'ok', JObj}=Ok ->
@@ -2648,7 +2648,7 @@ wait_for_application(Call, Application, Event, Type) ->
 -spec wait_for_application(kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), timeout()) ->
                                   wait_for_application_return().
 wait_for_application(Call, Application, Event, Type, Timeout) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     case receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
         {'ok', JObj}=Ok ->
@@ -2709,7 +2709,7 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
                                    ) ->
                                            wait_for_headless_application_return().
 wait_for_headless_application(Application, {StartEv, StopEv}=Event, Type, Fun, Timeout) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     case receive_event(Timeout) of
         {'ok', JObj}=Ok ->
             case get_event_type(JObj) of
@@ -2736,7 +2736,7 @@ wait_for_headless_application(Application, {StartEv, StopEv}=Event, Type, Fun, T
         {'error', _E}=E -> E
     end;
 wait_for_headless_application(Application, Event, Type, Fun, Timeout) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     case receive_event(Timeout) of
         {'ok', JObj}=Ok ->
             case get_event_type(JObj) of
@@ -2766,7 +2766,7 @@ wait_for_headless_application(Application, Event, Type, Fun, Timeout) ->
                            {'error', 'channel_hungup' | 'timeout' | kz_json:object()} |
                            {'ok', binary()}.
 wait_for_dtmf(Timeout) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     case receive_event(Timeout) of
         {'ok', JObj} ->
             case kz_util:get_event_type(JObj) of
@@ -2803,10 +2803,12 @@ wait_for_bridge(Timeout, Call) ->
 wait_for_bridge(Timeout, _, _) when Timeout < 0 ->
     {'error', 'timeout'};
 wait_for_bridge(Timeout, Fun, Call) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     lager:debug("waiting for bridge for ~p ms", [Timeout]),
     wait_for_bridge(Timeout, Fun, Call, Start, receive_event(Timeout)).
 
+-spec wait_for_bridge(timeout(), 'undefined' | fun((kz_json:object()) -> any()), kapps_call:call(), kz_time:start_time(), received_event()) ->
+                             kapps_api_bridge_return().
 wait_for_bridge(_Timeout, _Fun, _Call, _Start, {'error', 'timeout'}=E) -> E;
 wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
     ThisCallId = kapps_call:call_id_direct(Call),
@@ -2828,7 +2830,7 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
     of
         'false' ->
             NewTimeout = kz_time:decr_timeout(Timeout, Start),
-            NewStart = os:timestamp(),
+            NewStart = kz_time:start_time(),
             wait_for_bridge(NewTimeout, Fun, Call, NewStart, receive_event(NewTimeout));
         {<<"error">>, _, <<"bridge">>} ->
             lager:debug("channel execution error while waiting for bridge"),
@@ -2845,14 +2847,14 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
             CallId = kz_json:get_value(<<"Replaced-By">>, JObj),
             _ = kz_util:put_callid(CallId),
             NewTimeout = kz_time:decr_timeout(Timeout, Start),
-            NewStart = os:timestamp(),
+            NewStart = kz_time:start_time(),
             lager:info("bridge channel replaced ~s for ~s", [EvtCallId, CallId]),
             wait_for_bridge(NewTimeout, Fun, kapps_call:set_call_id(CallId, Call), NewStart, receive_event(NewTimeout));
         {<<"call_event">>, <<"CHANNEL_DIRECT">>, _} ->
             CallId = kz_json:get_value(<<"Connecting-Leg-A-UUID">>, JObj),
             _ = kz_util:put_callid(CallId),
             NewTimeout = kz_time:decr_timeout(Timeout, Start),
-            NewStart = os:timestamp(),
+            NewStart = kz_time:start_time(),
             lager:info("bridge channel replaced ~s for ~s", [EvtCallId, CallId]),
             wait_for_bridge(NewTimeout, Fun, kapps_call:set_call_id(CallId, Call), NewStart, receive_event(NewTimeout));
         {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
@@ -2868,7 +2870,7 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
             {Result, JObj};
         _E ->
             NewTimeout = kz_time:decr_timeout(Timeout, Start),
-            NewStart = os:timestamp(),
+            NewStart = kz_time:start_time(),
             wait_for_bridge(NewTimeout, Fun, Call, NewStart, receive_event(NewTimeout))
     end.
 
@@ -2894,14 +2896,16 @@ wait_for_noop(Call, NoopId) ->
 %%------------------------------------------------------------------------------
 -spec wait_for_channel_unbridge() -> {'ok', kz_json:object()}.
 wait_for_channel_unbridge() ->
-    receive
-        {'amqp_msg', JObj} ->
+    case receive_event(?MILLISECONDS_IN_MINUTE) of
+        {'ok', JObj} ->
             case kz_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_UNBRIDGE">>} -> {'ok', JObj};
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {'ok', JObj};
+                {<<"call_event">>, <<"CHANNEL_DISCONNECTED">>} -> {'ok', JObj};
                 _ -> wait_for_channel_unbridge()
             end;
-        _ -> wait_for_channel_unbridge()
+        {'error', 'timeout'} ->
+            wait_for_channel_unbridge()
     end.
 
 %%------------------------------------------------------------------------------
@@ -2934,9 +2938,9 @@ wait_for_hangup() ->
                              {'ok', 'channel_hungup'} |
                              {'error', 'timeout'}.
 wait_for_hangup(Timeout) ->
-    Start = os:timestamp(),
-    receive
-        {'amqp_msg', JObj} ->
+    Start = kz_time:start_time(),
+    case receive_event(Timeout) of
+        {'ok', JObj} ->
             case kz_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
                     {'ok', 'channel_hungup'};
@@ -2944,10 +2948,7 @@ wait_for_hangup(Timeout) ->
                     lager:debug("ignoring: ~p", [_Evt]),
                     wait_for_hangup(kz_time:decr_timeout(Timeout, Start))
             end;
-        _ -> wait_for_hangup(kz_time:decr_timeout(Timeout, Start))
-    after
-        Timeout ->
-            {'error', 'timeout'}
+        {'error', 'timeout'}=E -> E
     end.
 
 %%------------------------------------------------------------------------------
@@ -2964,7 +2965,7 @@ wait_for_unbridge() ->
                                {'ok', 'leg_hungup'} |
                                {'error', 'timeout'}.
 wait_for_unbridge(Timeout) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     case receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
         {'ok', JObj} ->
@@ -2982,7 +2983,7 @@ wait_for_unbridge(Timeout) ->
                                           kapps_api_std_return() |
                                           {'dtmf', binary()}.
 wait_for_application_or_dtmf(Application, Timeout) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     case receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
         {'ok', JObj}=Ok ->
@@ -3010,7 +3011,7 @@ wait_for_fax() -> wait_for_fax(?WAIT_FOR_FAX_TIMEOUT).
 
 -spec wait_for_fax(timeout()) -> wait_for_fax_ret().
 wait_for_fax(Timeout) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     case receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
         {'ok', JObj} ->
@@ -3245,7 +3246,7 @@ fax_detection(Direction, Duration, Call) ->
                                     {'error', 'timeout'} |
                                     {'ok', kz_json:object()}.
 wait_for_fax_detection(Timeout, Call) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     case receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
         {'ok', JObj} ->
@@ -3270,7 +3271,7 @@ wait_for_unparked_call(Call) ->
 -spec wait_for_unparked_call(kapps_call:call(), timeout()) ->
                                     kapps_api_std_return().
 wait_for_unparked_call(Call, Timeout) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     case receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
         {'ok', JObj}=Ok ->
