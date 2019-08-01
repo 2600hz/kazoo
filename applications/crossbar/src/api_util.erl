@@ -1186,7 +1186,7 @@ finish_request(_Req, Context) ->
     _ = kz_util:spawn(fun maybe_cleanup_file/1, [Context]),
     'ok'.
 
--spec maybe_cleanup_file(kz_csv:file_return() | 'undefined') -> 'ok'.
+-spec maybe_cleanup_file(cb_context:context()) -> 'ok'.
 maybe_cleanup_file(Context) ->
     File = cb_context:resp_file(Context),
     CleanupRespFile = cb_context:fetch(Context, 'cleanup_resp_file', 'true'),
