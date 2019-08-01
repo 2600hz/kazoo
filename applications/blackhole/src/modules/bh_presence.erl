@@ -13,8 +13,11 @@
 -include("blackhole.hrl").
 
 -define(LISTEN_TO, [<<"dialog">>, <<"mwi_updates">>, <<"update">>]).
--define(BINDING(Event, Arg1, Arg2)
-       ,<<Event/binary, ".", Arg1/binary, ".", Arg2/binary>>
+-define(BINDING(Event, Arg)
+       ,<<Event/binary, ".", Arg/binary>>
+       ).
+-define(REALM_BINDING(Event, Realm, Arg)
+       ,<<Event/binary, ".", (kz_amqp_util:encode(Realm))/binary, ".", Arg/binary>>
        ).
 
 -spec init() -> any().
@@ -25,9 +28,9 @@ init() ->
 
 -spec init_bindings() -> 'ok'.
 init_bindings() ->
-    Bindings = [?BINDING(<<"dialog">>, <<"{PRESENCE_ID}">>, <<"{CALL_ID}">>)
-               ,?BINDING(<<"update">>, <<"{PRESENCE_ID}">>, <<"{CALL_ID}">>)
-               ,?BINDING(<<"mwi_updates">>,  <<"{REALM}">>, <<"{USER}">>)],
+    Bindings = [?BINDING(<<"dialog">>, <<"{CALL_ID}">>)
+               ,?BINDING(<<"mwi_updates">>, <<"{USER}">>)
+               ,?BINDING(<<"update">>, <<"{CALL_ID}">>)],
     case kapps_config:set_default(?CONFIG_CAT, [<<"bindings">>, <<"presence">>], Bindings) of
         {'ok', _} -> lager:debug("initialized presence bindings");
         {'error', _E} -> lager:info("failed to initialize presence bindings: ~p", [_E])
@@ -44,58 +47,58 @@ validate(Context, #{'keys' := Keys}) ->
 
 -spec bindings(bh_context:context(), map()) -> map().
 bindings(_Context, #{'account_id' := AccountId
-                    ,'keys' := [<<"dialog">>=Event, PresenceId, CallId]
+                    ,'keys' := [<<"dialog">>=Event, CallId]
                     }=Map) ->
-    Requested = ?BINDING(Event,  PresenceId, CallId),
-    Subscribed = [?BINDING(Event, PresenceId, CallId)],
-    Listeners = [{'amqp', 'presence', dialog_bind_options(AccountId, PresenceId, CallId)}],
+    Realm = kzd_accounts:fetch_realm(AccountId),
+    Requested = ?BINDING(Event, CallId),
+    Subscribed = [?REALM_BINDING(Event, Realm, CallId)],
+    Listeners = [{'amqp', 'presence', dialog_bind_options(Realm, CallId)}],
     Map#{'requested' => Requested
         ,'subscribed' => Subscribed
         ,'listeners' => Listeners
         };
 bindings(_Context, #{'account_id' := AccountId
-                    ,'keys' := [<<"mwi_updates">>=Event, Realm, User]
+                    ,'keys' := [<<"mwi_updates">>=Event, User]
                     }=Map) ->
-    Requested = ?BINDING(Event,  Realm, User),
-    Subscribed = [?BINDING(Event, Realm, User)],
-    Listeners = [{'amqp', 'presence', mwi_bind_options(AccountId, Realm, User)}],
+    Realm = kzd_accounts:fetch_realm(AccountId),
+    Requested = ?BINDING(Event, User),
+    Subscribed = [?REALM_BINDING(Event, Realm, User)],
+    Listeners = [{'amqp', 'presence', mwi_bind_options(Realm, User)}],
     Map#{'requested' => Requested
         ,'subscribed' => Subscribed
         ,'listeners' => Listeners
         };
 bindings(_Context, #{'account_id' := AccountId
-                    ,'keys' := [<<"update">>=Event, PresenceId, CallId]
+                    ,'keys' := [<<"update">>=Event, CallId]
                     }=Map) ->
-    Requested = ?BINDING(Event, PresenceId, CallId),
-    Subscribed = [?BINDING(Event, PresenceId, CallId)],
-    Listeners = [{'amqp', 'presence', update_bind_options(AccountId, PresenceId, CallId)}],
+    Realm = kzd_accounts:fetch_realm(AccountId),
+    Requested = ?BINDING(Event, CallId),
+    Subscribed = [?REALM_BINDING(Event, Realm, CallId)],
+    Listeners = [{'amqp', 'presence', update_bind_options(Realm, CallId)}],
     Map#{'requested' => Requested
         ,'subscribed' => Subscribed
         ,'listeners' => Listeners
         }.
 
--spec dialog_bind_options(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
-dialog_bind_options(AccountId,  PresenceId, CallId) ->
+-spec dialog_bind_options(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
+dialog_bind_options(PresenceId, CallId) ->
     [{'restrict_to', ['dialog']}
-    ,{'account_id',  AccountId}
     ,{'presence-id', PresenceId}
     ,{'call', CallId}
     ,'federate'
     ].
 
--spec mwi_bind_options(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
-mwi_bind_options(AccountId, Realm, User) ->
+-spec mwi_bind_options(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
+mwi_bind_options(Realm, User) ->
     [{'restrict_to', ['mwi_update']}
-    ,{'account_id',  AccountId}
     ,{'realm', Realm}
     ,{'user', User}
     ,'federate'
     ].
 
--spec update_bind_options(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
-update_bind_options(AccountId, PresenceId, CallId) ->
+-spec update_bind_options(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
+update_bind_options(PresenceId, CallId) ->
     [{'restrict_to', ['update']}
-    ,{'account_id',  AccountId}
     ,{'presence-id', PresenceId}
     ,{'call', CallId}
     ,'federate'
