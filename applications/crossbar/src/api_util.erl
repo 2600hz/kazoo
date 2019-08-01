@@ -1337,10 +1337,14 @@ final_csv_resp_type(Context, 'false') ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec create_csv_resp_content_from_jobjs(cowboy_req:req(), cb_context:context(), kz_json:objects()) ->
+                                                {resp_file(), cowboy_req:req(), cb_context:context()}.
 create_csv_resp_content_from_jobjs(Req, Context, JObjs) ->
     Context1 = csv_body(Context, JObjs),
     create_csv_resp_content_from_csv_acc(Req, Context1, cb_context:fetch(Context1, 'csv_acc')).
 
+-spec create_csv_resp_content_from_csv_acc(cowboy_req:req(), cb_context:context(), 'undefined' | kz_csv:file_return()) ->
+                                                  {resp_file(), cowboy_req:req(), cb_context:context()}.
 create_csv_resp_content_from_csv_acc(Req, Context, 'undefined') ->
     create_empty_csv_resp(Req, Context);
 create_csv_resp_content_from_csv_acc(Req, Context, {_File, _}=CSVAcc) ->
@@ -1529,9 +1533,6 @@ init_chunk_stream(Req, Context, <<"to_csv">>) ->
 
 -spec csv_body(cb_context:context(), kz_json:object() | kz_json:objects()) ->
                       cb_context:context().
-csv_body(Context, []) ->
-    lager:debug("no resp data to build CSV from"),
-    Context;
 csv_body(Context, JObjs) when is_list(JObjs) ->
     Acc1 = case cb_context:fetch(Context, 'csv_acc') of
                'undefined' -> kz_csv:jobjs_to_file(JObjs);
