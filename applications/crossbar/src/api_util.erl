@@ -1183,7 +1183,7 @@ finish_request(_Req, Context) ->
     Verb = cb_context:req_verb(Context),
     Event = create_event_name(Context, [<<"finish_request">>, Verb, Mod]),
     _ = kz_util:spawn(fun crossbar_bindings:pmap/2, [Event, Context]),
-    _ = maybe_cleanup_file(Context),
+    _ = kz_util:spawn(fun maybe_cleanup_file/1, [Context]),
     'ok'.
 
 -spec maybe_cleanup_file(kz_csv:file_return() | 'undefined') -> 'ok'.
@@ -1194,10 +1194,25 @@ maybe_cleanup_file(Context) ->
         andalso kz_term:is_true(CleanupRespFile)
     of
         'false' -> 'ok';
-        'true' ->
-            _Del = file:delete(File),
-            lager:debug("deleting ~s: ~p", [File, _Del])
+        'true' -> cleanup_file(File)
     end.
+
+-spec cleanup_file(file:filename_all()) -> 'ok'.
+cleanup_file(File) ->
+    case file:read_file_info(File) of
+        {'ok', #file_info{size=Bytes}} ->
+            Sleep = round(math:log(Bytes)) * ?MILLISECONDS_IN_SECOND,
+            cleanup_file(File, Sleep);
+        {'error', _Posix} ->
+            lager:debug("failed to read file: ~p", [_Posix]),
+            cleanup_file(File, 5 * ?MILLISECONDS_IN_SECOND)
+    end.
+
+-spec cleanup_file(file:filename_all(), pos_integer()) -> 'ok'.
+cleanup_file(File, Sleep) ->
+    timer:sleep(Sleep),
+    'ok' = file:delete(File),
+    lager:debug("deleted file ~s", [File]).
 
 %%------------------------------------------------------------------------------
 %% @doc This function will create the content for the response body.
