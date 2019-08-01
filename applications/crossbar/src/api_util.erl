@@ -1595,10 +1595,10 @@ create_pull_response(Req0, Context0, Fun) ->
     end.
 
 -spec maybe_file_pull_response(kz_term:text() | resp_file(), cowboy_req:req(), cb_context:context()) ->
-                                            {kz_term:text() | 'stop'
-                                            ,cowboy_req:req()
-                                            ,cb_context:context()
-                                            }.
+                                      {kz_term:text() | 'stop'
+                                      ,cowboy_req:req()
+                                      ,cb_context:context()
+                                      }.
 maybe_file_pull_response({'file', File}, Req, Context) ->
     {'ok', #file_info{size=Size}} = file:read_file_info(File),
     lager:debug("sending file ~s(~p)", [File, Size]),
