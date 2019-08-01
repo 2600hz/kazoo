@@ -79,12 +79,10 @@
 -define(DEFAULT_CSV_FILE_NAME, <<"result.csv">>).
 
 -type stop_return() :: {'stop', cowboy_req:req(), cb_context:context()}.
--type resp_file() :: {integer(), send_file_fun()}.
+-type resp_file() :: {'file', kz_term:ne_binary()}.
 -type resp_content_return() :: {kz_term:ne_binary() | iolist() | resp_file(), cowboy_req:req()}.
 -type resp_content_fun() :: fun((cowboy_req:req(), cb_context:context()) ->  resp_content_return()).
--type send_file_fun() :: fun((any(), module()) -> 'ok').
--type pull_file_resp() :: {'stream', integer(), send_file_fun()}.
--type pull_file_response_return() :: {pull_file_resp(), cowboy_req:req(), cb_context:context()} |
+-type pull_file_response_return() :: {resp_file(), cowboy_req:req(), cb_context:context()} |
                                      stop_return().
 
 -export_type([pull_file_response_return/0
@@ -1185,15 +1183,36 @@ finish_request(_Req, Context) ->
     Verb = cb_context:req_verb(Context),
     Event = create_event_name(Context, [<<"finish_request">>, Verb, Mod]),
     _ = kz_util:spawn(fun crossbar_bindings:pmap/2, [Event, Context]),
-    maybe_cleanup_file(cb_context:fetch(Context, 'csv_acc')),
+    _ = kz_util:spawn(fun maybe_cleanup_file/1, [Context]),
     'ok'.
 
--spec maybe_cleanup_file(kz_csv:file_return() | 'undefined') -> 'ok'.
-maybe_cleanup_file({File, _}) ->
-    _Del = file:delete(File),
-    lager:debug("deleting ~s: ~p", [File, _Del]);
-maybe_cleanup_file(_) -> 'ok'.
+-spec maybe_cleanup_file(cb_context:context()) -> 'ok'.
+maybe_cleanup_file(Context) ->
+    File = cb_context:resp_file(Context),
+    CleanupRespFile = cb_context:fetch(Context, 'cleanup_resp_file', 'true'),
+    case kz_term:is_not_empty(File)
+        andalso kz_term:is_true(CleanupRespFile)
+    of
+        'false' -> 'ok';
+        'true' -> cleanup_file(File)
+    end.
 
+-spec cleanup_file(file:filename_all()) -> 'ok'.
+cleanup_file(File) ->
+    case file:read_file_info(File) of
+        {'ok', #file_info{size=Bytes}} ->
+            Sleep = round(math:log(Bytes)) * ?MILLISECONDS_IN_SECOND,
+            cleanup_file(File, Sleep);
+        {'error', _Posix} ->
+            lager:debug("failed to read file: ~p", [_Posix]),
+            cleanup_file(File, 5 * ?MILLISECONDS_IN_SECOND)
+    end.
+
+-spec cleanup_file(file:filename_all(), pos_integer()) -> 'ok'.
+cleanup_file(File, Sleep) ->
+    timer:sleep(Sleep),
+    'ok' = file:delete(File),
+    lager:debug("deleted file ~s", [File]).
 
 %%------------------------------------------------------------------------------
 %% @doc This function will create the content for the response body.
@@ -1318,10 +1337,14 @@ final_csv_resp_type(Context, 'false') ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec create_csv_resp_content_from_jobjs(cowboy_req:req(), cb_context:context(), kz_json:objects()) ->
+                                                {resp_file(), cowboy_req:req(), cb_context:context()}.
 create_csv_resp_content_from_jobjs(Req, Context, JObjs) ->
     Context1 = csv_body(Context, JObjs),
     create_csv_resp_content_from_csv_acc(Req, Context1, cb_context:fetch(Context1, 'csv_acc')).
 
+-spec create_csv_resp_content_from_csv_acc(cowboy_req:req(), cb_context:context(), 'undefined' | kz_csv:file_return()) ->
+                                                  {resp_file(), cowboy_req:req(), cb_context:context()}.
 create_csv_resp_content_from_csv_acc(Req, Context, 'undefined') ->
     create_empty_csv_resp(Req, Context);
 create_csv_resp_content_from_csv_acc(Req, Context, {_File, _}=CSVAcc) ->
@@ -1338,7 +1361,7 @@ create_csv_resp_content_from_csv_acc(Req, Context, {_File, _}=CSVAcc) ->
                },
     {{'file', File}
     ,maps:fold(fun(H, V, R) -> cowboy_req:set_resp_header(H, V, R) end, Req, Headers)
-    ,Context
+    ,cb_context:set_resp_file(Context, File)
     }.
 
 %%------------------------------------------------------------------------------
@@ -1381,15 +1404,7 @@ create_empty_csv_resp(Req, Context) ->
 -spec create_resp_file(cowboy_req:req(), cb_context:context()) ->
                               {resp_file(), cowboy_req:req()}.
 create_resp_file(Req, Context) ->
-    File = cb_context:resp_file(Context),
-    Len = filelib:file_size(File),
-    Fun = fun(Socket, Transport) ->
-                  lager:debug("sending file ~s", [File]),
-                  Res = Transport:sendfile(Socket, kz_term:to_list(File)),
-                  _ = file:delete(File),
-                  Res
-          end,
-    {{Len, Fun}, Req}.
+    {{'file', cb_context:resp_file(Context)}, Req}.
 
 %%------------------------------------------------------------------------------
 %% @doc Encodes the `JObj' and send it as a chunk. Starts chunk response if is
@@ -1518,9 +1533,6 @@ init_chunk_stream(Req, Context, <<"to_csv">>) ->
 
 -spec csv_body(cb_context:context(), kz_json:object() | kz_json:objects()) ->
                       cb_context:context().
-csv_body(Context, []) ->
-    lager:debug("no resp data to build CSV from"),
-    Context;
 csv_body(Context, JObjs) when is_list(JObjs) ->
     Acc1 = case cb_context:fetch(Context, 'csv_acc') of
                'undefined' -> kz_csv:jobjs_to_file(JObjs);
@@ -1579,25 +1591,20 @@ create_pull_response(Req0, Context0, Fun) ->
             lager:info("failed to process pull response in ~p", [Fun]),
             ?MODULE:stop(Req2, Context1);
         'true' ->
-            maybe_set_pull_response_stream(Content, Req2, Context1)
+            maybe_file_pull_response(Content, Req2, Context1)
     end.
 
--spec maybe_set_pull_response_stream(kz_term:text() | resp_file(), cowboy_req:req(), cb_context:context()) ->
-                                            {kz_term:text() | pull_file_resp()
-                                            ,cowboy_req:req()
-                                            ,cb_context:context()
-                                            }.
-maybe_set_pull_response_stream({'file', File}, Req, Context) ->
+-spec maybe_file_pull_response(kz_term:text() | resp_file(), cowboy_req:req(), cb_context:context()) ->
+                                      {kz_term:text() | 'stop'
+                                      ,cowboy_req:req()
+                                      ,cb_context:context()
+                                      }.
+maybe_file_pull_response({'file', File}, Req, Context) ->
     {'ok', #file_info{size=Size}} = file:read_file_info(File),
     lager:debug("sending file ~s(~p)", [File, Size]),
     Req1 = cowboy_req:reply(200, #{}, {'sendfile', 0, Size, File}, Req),
     {'stop', Req1, cb_context:set_resp_status(Context, 'stop')};
-maybe_set_pull_response_stream({FileLength, TransportFun}, Req, Context)
-  when is_integer(FileLength)
-       andalso is_function(TransportFun, 2) ->
-    lager:debug("streaming file"),
-    {{'stream', FileLength, TransportFun}, Req, Context};
-maybe_set_pull_response_stream(Other, Req, Context) ->
+maybe_file_pull_response(Other, Req, Context) ->
     {Other, Req, Context}.
 
 %%------------------------------------------------------------------------------

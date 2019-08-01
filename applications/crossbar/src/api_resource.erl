@@ -924,7 +924,8 @@ send_file(Req, Context) ->
     lager:debug("run: send_file"),
     api_util:create_pull_response(Req, Context, fun api_util:create_resp_file/2).
 
--spec to_xml(cowboy_req:req(), cb_context:context()) -> api_util:pull_file_response_return().
+-spec to_xml(cowboy_req:req(), cb_context:context()) ->
+                    {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 to_xml(Req, Context) ->
     lager:debug("run: to_xml"),
     api_util:create_pull_response(Req
