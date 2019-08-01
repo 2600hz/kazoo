@@ -512,7 +512,7 @@ decr_timeout(Timeout, StartS, Now) when is_integer(Timeout),
                                         is_integer(Now),
                                         ?UNIX_EPOCH_IN_GREGORIAN < Now ->
     decr_timeout_elapsed(Timeout, elapsed_s(StartS, Now));
-decr_timeout(Timeout, {'start_time', Start}, {'start_time', End}) ->
+decr_timeout(Timeout, {'start_time', _}=Start, {'start_time', _}=End) ->
     decr_timeout_elapsed(Timeout, elapsed_s(Start, End)).
 
 -spec decr_timeout_elapsed(non_neg_integer(), non_neg_integer()) -> non_neg_integer().
