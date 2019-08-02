@@ -112,7 +112,7 @@ skip_validation_test() ->
     AccountId = create_account(API),
 
     StorageDoc = storage_doc(kz_binary:rand_hex(16)),
-    ShouldFailToCreate = create(API, AccountId, StorageDoc, 'false'),
+    {'error', ShouldFailToCreate} = create(API, AccountId, StorageDoc, 'false'),
     ?INFO("should fail: ~s", [ShouldFailToCreate]),
 
     check_if_allowed(kz_json:decode(ShouldFailToCreate), 'false'),
@@ -130,7 +130,7 @@ skip_validation_test() ->
     kzs_plan:disallow_validation_overrides(),
     ?INFO("dis-allowing validation overrides"),
 
-    ShouldAgainFailToCreate = create(API, AccountId, StorageDoc, 'false'),
+    {'error', ShouldAgainFailToCreate} = create(API, AccountId, StorageDoc, 'false'),
     ?INFO("should fail again: ~s", [ShouldAgainFailToCreate]),
     check_if_allowed(kz_json:decode(ShouldAgainFailToCreate), 'false'),
 
