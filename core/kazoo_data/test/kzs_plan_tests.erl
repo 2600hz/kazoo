@@ -150,19 +150,8 @@ match_modb_plan_type_split() ->
                 ).
 
 handle_missing_connection() ->
-    dbg:start(),
-    dbg:tracer(),
-
-    dbg:tpl('kzs_plan', [{'_', [], [$_]}]),
-    dbg:p(all, c),
-
     AccountId = <<"account0000000000000000000000005">>,
     Plan = kzs_plan:plan(kz_util:format_account_mod_id(AccountId)),
-    ?LOG_DEBUG("generated plan: ~p~n", [Plan]),
-
-    dbg:stop_clear(),
-    dbg:stop(),
-
     ?assertMatch(#{classification := ?MODB
                   ,tag := <<"local">>
                   ,others := []
