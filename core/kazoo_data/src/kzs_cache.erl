@@ -279,7 +279,7 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue, CacheStrategy) ->
 check_if_newer_revision(CacheProps, DbName, DocId, CacheValue) ->
     case kz_cache:peek_local(?CACHE_NAME, ?CACHE_KEY(DbName, DocId)) of
         {'ok', Current} ->
-            case kz_doc:revision(Current) > kz_doc:revision(CacheValue) of
+            case kz_doc:revision_id(Current) > kz_doc:revision_id(CacheValue) of
                 'true' -> 'ok';
                 'false' -> cache_it(CacheProps, DbName, DocId, CacheValue)
             end;
