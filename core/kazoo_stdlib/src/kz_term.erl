@@ -419,15 +419,15 @@ is_ne_binary(V) ->
         andalso not is_empty(V).
 
 -spec is_api_ne_binary(any()) -> boolean().
-is_api_ne_binary(undefined) -> true;
+is_api_ne_binary('undefined') -> 'true';
 is_api_ne_binary(V) -> is_ne_binary(V).
 
 -spec is_ne_binaries(any()) -> boolean().
-is_ne_binaries([]) -> true;
+is_ne_binaries([]) -> 'true';
 is_ne_binaries(V)
   when is_list(V) ->
     lists:all(fun is_ne_binary/1, V);
-is_ne_binaries(_) -> false.
+is_ne_binaries(_) -> 'false'.
 
 -spec is_boolean(binary() | string() | atom()) -> boolean().
 is_boolean(<<"true">>) -> 'true';
