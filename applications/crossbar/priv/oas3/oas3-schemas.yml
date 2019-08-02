@@ -14391,7 +14391,7 @@
       'x-support_level': supported
     'pin':
       'description': The pin number for the voicemail box
-      'maxLength': 15
+      'maxLength': 6
       'minLength': 4
       'type': string
       'x-support_level': supported
