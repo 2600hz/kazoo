@@ -15,6 +15,7 @@
         ,path_id/0
         ]).
 -export([revision/1
+        ,revision_id/1
         ,set_revision/2
         ,delete_revision/1
         ,path_revision/0
@@ -196,6 +197,14 @@ path_id() ->
 -spec revision(doc()) -> kz_term:api_binary().
 revision(JObj) ->
     kz_json:get_first_defined([?KEY_REV, <<"rev">>], JObj).
+
+-spec revision_id(doc() | kz_term:api_ne_binary()) -> kz_term:api_integer().
+revision_id('undefined') -> 'undefined';
+revision_id(<<Rev/binary>>) ->
+    [Id, _] = binary:split(Rev, <<"-">>),
+    kz_term:to_integer(Id);
+revision_id(JObj) ->
+    revision_id(revision(JObj)).
 
 -spec path_revision() -> kz_json:path().
 path_revision() ->

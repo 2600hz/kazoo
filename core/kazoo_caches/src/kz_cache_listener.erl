@@ -158,27 +158,17 @@ handle_event(JObj, #state{name=Name}) ->
     FromOtherNode = kz_api:node(JObj) =/= kz_term:to_binary(node()),
     FromOtherCache = kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =/= ets:info(Name, 'name'),
 
-    Db = kz_json:get_value(<<"Database">>, JObj),
-    Id = kz_json:get_value(<<"ID">>, JObj),
-
-    FromOtherNode
-        andalso lager:debug("~s:~s recv from node ~s not ~s", [Db, Id, kz_api:node(JObj), node()]),
-
-    FromOtherCache
-        andalso lager:debug("~s:~s recv from cache ~s not ~s", [Db, Id, kz_json:get_value(<<"Origin-Cache">>, JObj), ets:info(Name, 'name')]),
-
     _ = case IsValid
             andalso (FromOtherNode
                      orelse FromOtherCache
                     )
         of
             'true' ->
-                lager:debug("handling doc change for ~s", [Name]),
                 handle_document_change(JObj, Name);
             'false' when IsValid ->
-                _P = kz_util:spawn(fun exec_bindings/2, [kz_term:to_binary(Name), JObj]),
-                lager:debug("exec bindings for ~s in ~p", [Name, _P]);
-            'false' -> lager:error("payload invalid for kapi_conf: ~p", [JObj])
+                _P = kz_util:spawn(fun exec_bindings/2, [kz_term:to_binary(Name), JObj]);
+            'false' ->
+                lager:error("payload invalid for kapi_conf: ~p", [JObj])
         end,
     'ignore'.
 
@@ -209,7 +199,6 @@ handle_document_change(JObj, Name) ->
     Id = kz_json:get_ne_binary_value(<<"ID">>, JObj),
 
     _P = kz_util:spawn(fun exec_bindings/2, [kz_term:to_binary(Name), JObj]),
-    lager:debug("exec bindings for ~s in ~p", [Name, _P]),
 
     _Keys = handle_document_change(Db, Type, Id, Name),
     _Keys =/= []
