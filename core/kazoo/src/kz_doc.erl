@@ -198,8 +198,8 @@ path_id() ->
 revision(JObj) ->
     kz_json:get_first_defined([?KEY_REV, <<"rev">>], JObj).
 
--spec revision_id(doc() | kz_term:api_ne_binary()) -> kz_term:api_integer().
-revision_id('undefined') -> 'undefined';
+-spec revision_id(doc() | kz_term:api_ne_binary()) -> non_neg_integer().
+revision_id('undefined') -> 0;
 revision_id(<<Rev/binary>>) ->
     [Id, _] = binary:split(Rev, <<"-">>),
     kz_term:to_integer(Id);
