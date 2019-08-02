@@ -175,9 +175,10 @@ account_modb_dataplan(AccountMODB, DocType, StorageId) ->
     Plan = ?CACHED_STORAGE_DATAPLAN(AccountId, StorageId),
     dataplan_type_match(<<"modb">>, DocType, Plan, AccountId).
 
-
 -spec dataplan_connections(map()) -> [{kz_term:ne_binary(), server()}].
-dataplan_connections(#{<<"plan">> := _, <<"connections">> := Connections}) ->
+dataplan_connections(#{<<"plan">> := _
+                      ,<<"connections">> := Connections
+                      }) ->
     dataplan_connections(Connections);
 dataplan_connections(Connections) ->
     [maybe_start_connection(Tag, maps:get(Tag, Connections, #{}))
@@ -186,48 +187,49 @@ dataplan_connections(Connections) ->
 
 -spec dataplan_match(kz_term:ne_binary(), map(), kz_term:api_binary()) -> map().
 dataplan_match(Classification, Plan, AccountId) ->
-    #{<<"plan">> := #{Classification := #{<<"connection">> := Tag
-                                         ,<<"attachments">> := CAtt
-                                         ,<<"types">> := Types
+    #{<<"plan">> := #{Classification := #{<<"connection">> := ClassificationTag
+                                         ,<<"attachments">> := ClassificationAttachments
+                                         ,<<"types">> := DocTypes
                                          }
                      }
-     ,<<"connections">> := _GCon
-     ,<<"connections_map">> := GConMap
-     ,<<"attachments">> := GAtt
+     ,<<"connections">> := Connections
+     ,<<"connections_map">> := ConnectionsMap
+     ,<<"attachments">> := Attachments
      } = Plan,
 
-    Server = maps:get(Tag, GConMap, #{}),
+    Server = maps:get(ClassificationTag, ConnectionsMap, #{}),
 
-    Others = [{T, #{server => maps:get(T, GConMap, #{})}}
-              || {_, #{<<"connection">> := T}} <- lists:usort(maps:to_list(Types)), T =/= Tag
+    Others = [{ConnectionId, #{server => maps:get(ConnectionId, ConnectionsMap, #{})}}
+              || {_DocType, #{<<"connection">> := ConnectionId}} <- lists:usort(maps:to_list(DocTypes)),
+                 ConnectionId =/= ClassificationTag,
+                 'undefined' =/= maps:get(ConnectionId, Connections, 'undefined')
              ],
 
-
-    BasePlan = #{tag => Tag
+    BasePlan = #{tag => ClassificationTag
                 ,server => Server
                 ,others => Others
                 ,classification => Classification
                 ,account_id => AccountId
                 },
-    case maps:get(<<"handler">>, CAtt, 'undefined') of
+    case maps:get(<<"handler">>, ClassificationAttachments, 'undefined') of
         'undefined' -> BasePlan;
-        AttConnection -> add_attachment_proxy(BasePlan, GAtt, CAtt, AttConnection)
+        AttachmentConnection ->
+            add_attachment_proxy(BasePlan, Attachments, ClassificationAttachments, AttachmentConnection)
     end.
 
-add_attachment_proxy(BasePlan, GAtt, CAtt, AttConnection) ->
-    #{AttConnection := #{<<"handler">> := AttHandlerBin
-                        ,<<"settings">> := AttSettings
-                        }
-     } = GAtt,
-    AttHandler = kz_term:to_atom(<<"kz_att_", AttHandlerBin/binary>>, 'true'),
-    Params = maps:merge(AttSettings, maps:get(<<"params">>, CAtt, #{})),
+add_attachment_proxy(BasePlan, RootAttachments, ClassificationAttachments, AttachmentConnection) ->
+    #{AttachmentConnection := #{<<"handler">> := AttachmentHandlerBin
+                               ,<<"settings">> := AttachmentSettings
+                               }
+     } = RootAttachments,
+    AttachmentHandler = kz_term:to_atom(<<"kz_att_", AttachmentHandlerBin/binary>>, 'true'),
+    Params = maps:merge(AttachmentSettings, maps:get(<<"params">>, ClassificationAttachments, #{})),
 
     BasePlan#{att_proxy => 'true'
-             ,att_post_handler => att_post_handler(CAtt)
-             ,att_handler => {AttHandler, kz_maps:keys_to_atoms(Params)}
-             ,att_handler_id => AttConnection
+             ,att_post_handler => att_post_handler(ClassificationAttachments)
+             ,att_handler => {AttachmentHandler, kz_maps:keys_to_atoms(Params)}
+             ,att_handler_id => AttachmentConnection
              }.
-
 
 -spec dataplan_type_match(kz_term:ne_binary(), kz_term:ne_binary(), map()) -> map().
 dataplan_type_match(Classification, DocType, Plan) ->
@@ -235,49 +237,50 @@ dataplan_type_match(Classification, DocType, Plan) ->
 
 -spec dataplan_type_match(kz_term:ne_binary(), kz_term:ne_binary(), map(), kz_term:api_binary()) -> map().
 dataplan_type_match(Classification, DocType, Plan, AccountId) ->
-    #{<<"plan">> := #{Classification := #{<<"types">> := Types
-                                         ,<<"connection">> := CCon
-                                         ,<<"attachments">> := CAtt
+    #{<<"plan">> := #{Classification := #{<<"types">> := DocTypes
+                                         ,<<"connection">> := ClassificationConnection
+                                         ,<<"attachments">> := ClassificationAttachments
                                          }
                      }
-     ,<<"connections">> := _GCon
-     ,<<"connections_map">> := GConMap
-     ,<<"attachments">> := GAtt
+     ,<<"connections">> := _Connections
+     ,<<"connections_map">> := ConnectionsMap
+     ,<<"attachments">> := Attachments
      } = Plan,
 
-    TypeMap = maps:get(DocType, Types, #{}),
+    TypeMap = maps:get(DocType, DocTypes, #{}),
 
-    Tag = maps:get(<<"connection">>, TypeMap, CCon),
-    Server = maps:get(Tag, GConMap, #{}),
+    ClassificationTag = maps:get(<<"connection">>, TypeMap, ClassificationConnection),
+    Server = maps:get(ClassificationTag, ConnectionsMap, #{}),
 
-    TypeAttMap = maps:merge(CAtt, maps:get(<<"attachments">>, TypeMap, #{})),
+    TypeAttMap = maps:merge(ClassificationAttachments, maps:get(<<"attachments">>, TypeMap, #{})),
     case maps:get(<<"handler">>, TypeAttMap, 'undefined') of
         'undefined' ->
-            #{tag => Tag, server => Server
+            #{tag => ClassificationTag
+             ,server => Server
              ,classification => Classification
              ,doc_type => DocType
              ,account_id => AccountId
              };
-        AttConnection ->
-            #{AttConnection := #{<<"handler">> := AttHandlerBin
-                                ,<<"settings">> := AttSettings
-                                }
-             } = GAtt,
-            AttHandler = kz_term:to_atom(<<"kz_att_", AttHandlerBin/binary>>,'true'),
-            Params = maps:merge(AttSettings, maps:get(<<"params">>, TypeAttMap, #{})),
-            #{tag => Tag
+        AttachmentConnection ->
+            #{AttachmentConnection := #{<<"handler">> := AttachmentHandlerBin
+                                       ,<<"settings">> := AttachmentSettings
+                                       }
+             } = Attachments,
+            AttachmentHandler = kz_term:to_atom(<<"kz_att_", AttachmentHandlerBin/binary>>,'true'),
+            Params = maps:merge(AttachmentSettings, maps:get(<<"params">>, TypeAttMap, #{})),
+            #{tag => ClassificationTag
              ,server => Server
              ,att_proxy => 'true'
              ,att_post_handler => att_post_handler(TypeAttMap)
-             ,att_handler => {AttHandler, kz_maps:keys_to_atoms(Params)}
-             ,att_handler_id => AttConnection
+             ,att_handler => {AttachmentHandler, kz_maps:keys_to_atoms(Params)}
+             ,att_handler_id => AttachmentConnection
              ,classification => Classification
              ,doc_type => DocType
              ,account_id => AccountId
              }
     end.
 
--spec att_post_handler(map()) -> atom().
+-spec att_post_handler(map()) -> 'stub' | 'external'.
 att_post_handler(#{<<"stub">> := 'true'}) -> 'stub';
 att_post_handler(#{}) -> 'external'.
 
@@ -319,7 +322,7 @@ cache_dataplan(?SYSTEM_DATAPLAN=Key, PlanJObj) ->
     Plan2 = maps:merge(Plan, #{<<"connections_map">> => maps:from_list(Connections)}),
     CacheProps = [{'expires','infinity'}],
     kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}, Plan2, CacheProps),
-    Plan;
+    Plan2;
 cache_dataplan({_AccountId, StorageId} = Key, PlanJObj) ->
     Plan = kz_json:to_map(PlanJObj),
     Connections = dataplan_connections(Plan),
@@ -329,7 +332,7 @@ cache_dataplan({_AccountId, StorageId} = Key, PlanJObj) ->
                  ,{'callback', fun cache_callback/3}
                  ],
     kz_cache:store_local_async(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}, Plan2, CacheProps),
-    Plan;
+    Plan2;
 cache_dataplan(Key, PlanJObj) ->
     Plan = kz_json:to_map(PlanJObj),
     Connections = dataplan_connections(Plan),
@@ -339,7 +342,7 @@ cache_dataplan(Key, PlanJObj) ->
                  ,{'callback', fun cache_callback/3}
                  ],
     kz_cache:store_local_async(?KAZOO_DATA_PLAN_CACHE, {'plan', Key}, Plan2, CacheProps),
-    Plan.
+    Plan2.
 
 -spec cache_callback({'plan', kz_term:ne_binary()} | 'system', map(), atom()) -> 'ok'.
 cache_callback('system', _V, 'erase') ->

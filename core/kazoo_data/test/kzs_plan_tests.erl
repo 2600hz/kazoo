@@ -7,6 +7,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kazoo_fixturedb/include/kz_fixturedb.hrl").
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -define(ACCOUNT_DB, <<"account%2Fac%2Fco%2Funt0000000000000000000000003">>).
 -define(ACCOUNT_MODB, <<"account%2Fac%2Fco%2Funt0000000000000000000000003-201710">>).
@@ -39,6 +40,7 @@ render_test_() ->
              ,{"Split account plan test.", ?_test(account_plan_split())}
              ,{"Split modb plan test.", ?_test(modb_plan_split())}
              ,{"Split modb type plan test.", ?_test(match_modb_plan_type_split())}
+             ,{"Handle missing connection.", ?_test(handle_missing_connection())}
              ]
      end
     }.
@@ -145,4 +147,27 @@ match_modb_plan_type_split() ->
                   ,server := {'kazoo_fixturedb', _Conn}
                   }
                 ,kzs_plan:get_dataplan(?ACCOUNT_MODB_SPLIT, ?FAX_TYPE)
+                ).
+
+handle_missing_connection() ->
+    dbg:start(),
+    dbg:tracer(),
+
+    dbg:tpl('kzs_plan', [{'_', [], [$_]}]),
+    dbg:p(all, c),
+
+    AccountId = <<"account0000000000000000000000005">>,
+    Plan = kzs_plan:plan(kz_util:format_account_mod_id(AccountId)),
+    ?LOG_DEBUG("generated plan: ~p~n", [Plan]),
+
+    dbg:stop_clear(),
+    dbg:stop(),
+
+    ?assertMatch(#{classification := ?MODB
+                  ,tag := <<"local">>
+                  ,others := []
+                  ,server := {'kazoo_fixturedb', _}
+                  ,account_id := AccountId
+                  }
+                ,Plan
                 ).
