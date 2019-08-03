@@ -50,7 +50,7 @@ create(API, AccountId, ?NE_BINARY=UUID, ValidateSettings) ->
 create(API, AccountId, StorageDoc, ValidateSettings) ->
     StorageURL = storage_url(AccountId, ValidateSettings),
     RequestHeaders = pqc_cb_api:request_headers(API, [{"content-type", "application/json"}]),
-    Expectations = [#expectation{response_codes = [201, 400]}],
+    Expectations = [#expectation{response_codes = [201]}],
     pqc_cb_api:make_request(Expectations
                            ,fun kz_http:put/3
                            ,StorageURL
@@ -93,11 +93,15 @@ init_system() ->
 
 -spec seq() -> 'ok'.
 seq() ->
-    _ = base_test(),
-    cleanup(),
-    _ = skip_validation_test(),
-    cleanup(),
-    _ = global_test(),
+    Tests = [fun base_test/0
+            ,fun skip_validation_test/0
+            ,fun global_test/0
+            ,fun missing_ref_test/0
+            ],
+    lists:foreach(fun run_test/1, Tests).
+
+run_test(TestFun) ->
+    TestFun(),
     cleanup().
 
 skip_validation_test() ->
@@ -108,7 +112,7 @@ skip_validation_test() ->
     AccountId = create_account(API),
 
     StorageDoc = storage_doc(kz_binary:rand_hex(16)),
-    ShouldFailToCreate = create(API, AccountId, StorageDoc, 'false'),
+    {'error', ShouldFailToCreate} = create(API, AccountId, StorageDoc, 'false'),
     ?INFO("should fail: ~s", [ShouldFailToCreate]),
 
     check_if_allowed(kz_json:decode(ShouldFailToCreate), 'false'),
@@ -126,7 +130,7 @@ skip_validation_test() ->
     kzs_plan:disallow_validation_overrides(),
     ?INFO("dis-allowing validation overrides"),
 
-    ShouldAgainFailToCreate = create(API, AccountId, StorageDoc, 'false'),
+    {'error', ShouldAgainFailToCreate} = create(API, AccountId, StorageDoc, 'false'),
     ?INFO("should fail again: ~s", [ShouldAgainFailToCreate]),
     check_if_allowed(kz_json:decode(ShouldAgainFailToCreate), 'false'),
 
@@ -323,14 +327,36 @@ http_handler_settings() ->
                       ]).
 
 storage_plan(UUID) ->
-    kz_json:from_list([{<<"modb">>, modb_plan(UUID)}]).
+    storage_plan(UUID, 'undefined').
 
-modb_plan(UUID) ->
-    kz_json:from_list([{<<"types">>, modb_types(UUID)}]).
+storage_plan(AttUUID, ConnUUID) ->
+    kz_json:from_list([{<<"modb">>, modb_plan(AttUUID, ConnUUID)}]).
 
-modb_types(UUID) ->
-    kz_json:from_list([{<<"mailbox_message">>, mailbox_handler(UUID)}]).
+modb_plan(AttUUID, ConnUUID) ->
+    kz_json:from_list([{<<"types">>, modb_types(AttUUID, ConnUUID)}]).
 
-mailbox_handler(UUID) ->
-    Handler = kz_json:from_list([{<<"handler">>, UUID}]),
-    kz_json:from_list([{<<"attachments">>, Handler}]).
+modb_types(AttUUID, ConnUUID) ->
+    kz_json:from_list([{<<"mailbox_message">>, mailbox_handler(AttUUID, ConnUUID)}]).
+
+mailbox_handler(AttUUID, ConnUUID) ->
+    Handler = kz_json:from_list([{<<"handler">>, AttUUID}]),
+    kz_json:from_list([{<<"attachments">>, Handler}
+                      ,{<<"connection">>, ConnUUID}
+                      ]).
+
+storage_doc_missing_conn(AttUUID, ConnUUID) ->
+    kz_json:from_list([{<<"attachments">>, storage_attachments(AttUUID)}
+                      ,{<<"plan">>, storage_plan(AttUUID, ConnUUID)}
+                      ]).
+
+-spec missing_ref_test() -> 'ok'.
+missing_ref_test() ->
+    ?INFO("GLOBAL TEST"),
+
+    API = init_api(),
+
+    AccountId = create_account(API),
+
+    MissingConnDoc = storage_doc_missing_conn(kz_binary:rand_hex(16), kz_binary:rand_hex(16)),
+    {'error', ErrMsg} = create(API, AccountId, MissingConnDoc),
+    ?INFO("failed to create storage: ~s", [ErrMsg]).
