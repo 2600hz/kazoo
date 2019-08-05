@@ -6,6 +6,7 @@
 -module(kzd_blacklists).
 
 -export([new/0]).
+-export([flags/1, flags/2, set_flags/2]).
 -export([name/1, name/2, set_name/2]).
 -export([numbers/1, numbers/2, set_numbers/2]).
 -export([should_block_anonymous/1, should_block_anonymous/2, set_should_block_anonymous/2]).
@@ -21,6 +22,18 @@
 -spec new() -> doc().
 new() ->
     kz_json_schema:default_object(?SCHEMA).
+
+-spec flags(doc()) -> kz_term:api_ne_binaries().
+flags(Doc) ->
+    flags(Doc, 'undefined').
+
+-spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+flags(Doc, Default) ->
+    kz_json:get_list_value([<<"flags">>], Doc, Default).
+
+-spec set_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_flags(Doc, Flags) ->
+    kz_json:set_value([<<"flags">>], Flags, Doc).
 
 -spec name(doc()) -> kz_term:api_ne_binary().
 name(Doc) ->

@@ -32,7 +32,7 @@
                 "    'id': doc._id,",
                 "    'name': doc.name,",
                 "    'features': features,",
-                "    'endpoints': endpoints",
+                "    'endpoints': endpoints,",
                 "    'flags': doc.flags || []",
                 "  });",
                 "}"
@@ -63,7 +63,7 @@
                 "        'id': doc._id,",
                 "        'name': doc.name,",
                 "        'features': features,",
-                "        'endpoints': endpoints",
+                "        'endpoints': endpoints,",
                 "        'flags': doc.flags || []",
                 "      });",
                 "}"

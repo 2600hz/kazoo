@@ -29,6 +29,7 @@
 -export([enabled/1, enabled/2, set_enabled/2]).
 -export([feature_level/1, feature_level/2, set_feature_level/2]).
 -export([first_name/1, first_name/2, set_first_name/2]).
+-export([flags/1, flags/2, set_flags/2]).
 -export([formatters/1, formatters/2, set_formatters/2]).
 -export([hotdesk/1, hotdesk/2, set_hotdesk/2]).
 -export([hotdesk_enabled/1, hotdesk_enabled/2, set_hotdesk_enabled/2]).
@@ -360,6 +361,18 @@ first_name(Doc, Default) ->
 -spec set_first_name(doc(), kz_term:ne_binary()) -> doc().
 set_first_name(Doc, FirstName) ->
     kz_json:set_value([<<"first_name">>], FirstName, Doc).
+
+-spec flags(doc()) -> kz_term:api_ne_binaries().
+flags(Doc) ->
+    flags(Doc, 'undefined').
+
+-spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+flags(Doc, Default) ->
+    kz_json:get_list_value([<<"flags">>], Doc, Default).
+
+-spec set_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_flags(Doc, Flags) ->
+    kz_json:set_value([<<"flags">>], Flags, Doc).
 
 -spec formatters(doc()) -> kz_term:api_object().
 formatters(Doc) ->
