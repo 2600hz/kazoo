@@ -87,7 +87,7 @@ Key | Description | Type | Default | Required | Support Level
 `language` | The language of the media file or text | `string()` | `en-us` | `false` | `supported`
 `media_source` | Defines the source of the media | `string('recording' | 'upload' | 'tts')` | `upload` | `true` | `supported`
 `name` | A friendly name for the media | `string(1..128)` |   | `true` | `supported`
-`prompt_id` | The prompt this media file represents | `string()` |   | `false` |
+`prompt_id` | The prompt this media file represents | `string()` |   | `false` |  
 `source_id` | If the media was generated from a callflow module, this is ID of the properties | `string(32)` |   | `false` | `beta`
 `source_type` | If the media was generated from a callflow module, this is the module name | `string()` |   | `false` | `beta`
 `streamable` | Determines if the media can be streamed | `boolean()` | `true` | `false` | `supported`
