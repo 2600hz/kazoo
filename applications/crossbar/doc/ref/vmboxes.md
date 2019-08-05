@@ -28,7 +28,7 @@ Key | Description | Type | Default | Required | Support Level
 `notify_email_addresses` | List of email addresses to send notifications to (in addition to owner's email, if any) | `array(string())` | `[]` | `false` | `supported`
 `oldest_message_first` | Play older voicemail messages before new ones | `boolean()` | `false` | `false` | `supported`
 `owner_id` | The ID of the user object that 'owns' the voicemail box | `string(32)` |   | `false` | `supported`
-`pin` | The pin number for the voicemail box | `string(4..15)` |   | `false` | `supported`
+`pin` | The pin number for the voicemail box | `string(4..6)` |   | `false` | `supported`
 `require_pin` | Determines if a pin is required to check the voicemail from the users devices | `boolean()` | `false` | `false` | `supported`
 `save_after_notify` | Move the voicemail to save folder after the notification has been sent (This setting will override delete_after_notify) | `boolean()` | `false` | `false` | `supported`
 `seek_duration_ms` | callflow fastforward and rewind seek duration | `integer()` | `10000` | `false` |  

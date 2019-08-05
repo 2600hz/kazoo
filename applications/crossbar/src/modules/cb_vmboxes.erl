@@ -69,7 +69,41 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.vmboxes">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.vmboxes">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, 'delete'),
-    'ok'.
+
+    sync_config_to_schema().
+
+-spec sync_config_to_schema() -> 'ok'.
+sync_config_to_schema() ->
+    %% [{ConfigPath, SchemaPath, CastFun}]
+    SyncFields = [{[<<"voicemail">>, <<"max_pin_length">>]
+                  ,[<<"properties">>, <<"pin">>, <<"maxLength">>]
+                  ,fun(ConfigV, SchemaV) -> kz_term:safe_cast(ConfigV, SchemaV, fun kz_term:to_integer/1) end
+                  }
+                 ],
+    lists:foreach(fun sync_field/1, SyncFields).
+
+-spec sync_field({kz_json:get_key(), kz_json:get_key(), fun((kz_json:json_term(), kz_json:json_term()) -> kz_json:json_term())}) -> 'ok'.
+sync_field({ConfigPath, SchemaPath, CastFun}) ->
+    {'ok', SchemaJObj} = kz_json_schema:load(<<"vmboxes">>),
+    SchemaV = kz_json:get_value(SchemaPath, SchemaJObj),
+
+    case kapps_config:get(<<"callflow">>, ConfigPath) of
+        'undefined' ->
+            lager:debug("config ~s undefined, no schema change necessary", [kz_binary:join(ConfigPath, <<".">>)]);
+        ConfigV ->
+            case CastFun(ConfigV, SchemaV) of
+                SchemaV -> lager:debug("config ~s unchanged from schema", [kz_binary:join(ConfigPath, <<".">>)]);
+                ConfigValue ->
+                    lager:info("config ~s(~p) differs from schema ~s(~p), updating schema"
+                              ,[kz_binary:join(ConfigPath, <<".">>), ConfigValue
+                               ,kz_binary:join(SchemaPath, <<".">>), SchemaV
+                               ]
+                              ),
+                    UpdatedSchema = kz_json:set_value(SchemaPath, ConfigValue, SchemaJObj),
+                    {'ok', _} = kz_datamgr:save_doc(?KZ_SCHEMA_DB, UpdatedSchema),
+                    lager:info("saved vmboxes schema")
+            end
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the

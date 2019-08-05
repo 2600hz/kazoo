@@ -114,7 +114,7 @@
         },
         "pin": {
             "description": "The pin number for the voicemail box",
-            "maxLength": 15,
+            "maxLength": 6,
             "minLength": 4,
             "support_level": "supported",
             "type": "string"
