@@ -21,7 +21,7 @@
 
 -include("kazoo_proper.hrl").
 
--define(ACCOUNT_NAMES, [<<"account_for_users">>]).
+-define(ACCOUNT_NAMES, [<<?MODULE_STRING>>]).
 
 -spec summary(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
 summary(API, AccountId) ->

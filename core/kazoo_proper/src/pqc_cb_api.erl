@@ -170,8 +170,8 @@ request_headers(#{'auth_token' := AuthToken
 %% Need binary keys to avoid props assuming "foo" is [102, 111, 111] as a nested key
 -spec default_request_headers() -> kz_http:headers().
 default_request_headers() ->
-    [{"content-type", "application/json"}
-    ,{"accept", "application/json"}
+    [{<<"content-type">>, "application/json"}
+    ,{<<"accept">>, "application/json"}
     ].
 
 -spec default_request_headers(kz_term:ne_binary()) -> kz_http:headers().
