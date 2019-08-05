@@ -415,7 +415,7 @@ post_media_doc(Context, MediaId, _AccountId) ->
 -spec post_media_doc_or_binary(cb_context:context(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> cb_context:context().
 post_media_doc_or_binary(Context, MediaId, ContentType) ->
     case api_util:content_type_matches(ContentType, acceptable_content_types()) of
-        'false' -> cb_context:save(Context);
+        'false' -> crossbar_doc:save(Context);
         'true' -> post(Context, MediaId, ?BIN_DATA)
     end.
 
