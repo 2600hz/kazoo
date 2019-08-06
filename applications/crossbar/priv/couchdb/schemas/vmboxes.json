@@ -172,6 +172,12 @@
             "minLength": 5,
             "support_level": "supported",
             "type": "string"
+        },
+        "transcribe": {
+            "default": false,
+            "description": "Transcribe voicemail using ASR engine",
+            "support_level": "supported",
+            "type": "boolean"
         }
     },
     "required": [

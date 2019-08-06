@@ -299,7 +299,7 @@ get_caller_id_number(Call) ->
           kz_amqp_worker:request_return().
 publish_saved_notify(MediaId, BoxId, Call, Length, Props) ->
     MaybeTranscribe = props:get_value(<<"Transcribe-Voicemail">>, Props, 'false'),
-    Transcription = maybe_transcribe(kapps_call:account_id(Call), MediaId, MaybeTranscribe),
+    Transcription = maybe_transcribe(Call, MediaId, MaybeTranscribe),
 
     NotifyProp = [{<<"From-User">>, kapps_call:from_user(Call)}
                  ,{<<"From-Realm">>, kapps_call:from_realm(Call)}
@@ -351,52 +351,17 @@ publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
 
 %%------------------------------------------------------------------------------
 %% @doc
+%% generate and asr request to transcribe voicemail recording
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_transcribe(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) -> kz_term:api_object().
-maybe_transcribe(AccountId, MediaId, 'true') ->
-    Db = get_db(AccountId, MediaId),
-    {'ok', MediaDoc} = kz_datamgr:open_doc(Db, MediaId),
-    case kz_doc:attachment_names(MediaDoc) of
-        [] ->
-            lager:warning("no audio attachments on media doc ~s: ~p", [MediaId, MediaDoc]),
-            'undefined';
-        [AttachmentId|_] ->
-            CT = kz_doc:attachment_content_type(MediaDoc, AttachmentId),
-            case kz_datamgr:fetch_attachment(Db, MediaId, AttachmentId) of
-                {'ok', Bin} ->
-                    lager:info("transcribing first attachment ~s", [AttachmentId]),
-                    maybe_transcribe(Db, MediaDoc, Bin, CT);
-                {'error', _E} ->
-                    lager:info("error fetching vm: ~p", [_E]),
-                    'undefined'
-            end
-    end;
-maybe_transcribe(_, _, 'false') -> 'undefined'.
-
--spec maybe_transcribe(kz_term:ne_binary(), kz_json:object(), binary(), kz_term:api_binary()) -> kz_term:api_object().
-maybe_transcribe(_, _, _, 'undefined') -> 'undefined';
-maybe_transcribe(_, _, <<>>, _) -> 'undefined';
-maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
-    case kazoo_asr:freeform(Bin, ContentType) of
-        {'ok', Resp} ->
-            lager:info("transcription resp: ~p", [Resp]),
-            MediaDoc1 = kz_json:set_value(<<"transcription">>, Resp, MediaDoc),
-            _ = kz_datamgr:ensure_saved(Db, MediaDoc1),
-            is_valid_transcription(kz_json:get_value(<<"result">>, Resp)
-                                  ,kz_json:get_value(<<"text">>, Resp)
-                                  ,Resp
-                                  );
-        {'error', ErrorCode} ->
-            lager:info("error transcribing: ~p", [ErrorCode]),
-            'undefined';
-        {'error', ErrorCode, Description} ->
-            lager:info("error transcribing: ~p, ~p", [ErrorCode, Description]),
+-spec maybe_transcribe(kapps_call:call(), kz_term:ne_binary(), boolean()) -> 'undefined' | kazoo_speech:asr_resp().
+maybe_transcribe(_, _,'false') -> 'undefined';
+maybe_transcribe(Call, MediaId, 'true') ->
+    Req = asr_request:from_voicemail(Call, MediaId),
+    Req0 = asr_request:transcribe(Req),
+    case asr_request:error(Req0) of
+        'undefined' -> asr_request:transcription(Req0);
+        Error ->
+            lager:notice("error transcribing ~p", [Error]),
             'undefined'
     end.
-
--spec is_valid_transcription(kz_term:api_binary(), binary(), kz_json:object()) -> kz_term:api_object().
-is_valid_transcription(<<"success">>, ?NE_BINARY, Resp) -> Resp;
-is_valid_transcription(_Res, _Txt, _) ->
-    lager:info("not valid transcription: ~s: '~s'", [_Res, _Txt]),
-    'undefined'.

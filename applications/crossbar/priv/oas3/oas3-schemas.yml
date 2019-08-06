@@ -212,6 +212,8 @@
           'name': mobile_data
         - 'friendly_name': Support
           'name': support
+        - 'friendly_name': ASR Transcriptions
+          'name': asr-transcriptions
       'description': ledgers registered_ledgers
       'items':
         'type': object
@@ -11407,6 +11409,8 @@
           'name': mobile_data
         - 'friendly_name': Support
           'name': support
+        - 'friendly_name': ASR Transcriptions
+          'name': asr-transcriptions
       'description': ledgers registered_ledgers
       'items':
         'type': object
@@ -14612,6 +14616,11 @@
       'maxLength': 32
       'minLength': 5
       'type': string
+      'x-support_level': supported
+    'transcribe':
+      'default': false
+      'description': Transcribe voicemail using ASR engine
+      'type': boolean
       'x-support_level': supported
   'required':
     - mailbox

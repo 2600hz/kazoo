@@ -25,6 +25,7 @@
 
         ,change_message_name/2, change_to_sip_field/3
 
+        ,length/1
         ,media_id/1, set_media_id/2, update_media_id/2
         ,metadata/1, metadata/2, set_metadata/2
         ,source_id/1, set_source_id/2
@@ -266,6 +267,10 @@ message_history(JObj) ->
 -spec add_message_history(kz_term:ne_binary(), doc()) -> doc().
 add_message_history(History, JObj) ->
     kz_json:set_value(?KEY_HISTORY, message_history(JObj) ++ [History], JObj).
+
+-spec length(doc()) -> integer().
+length(JObj) ->
+    kz_json:get_value(?KEY_META_LENGTH, JObj).
 
 -spec message_name(doc()) -> kz_term:api_binary().
 message_name(JObj) ->

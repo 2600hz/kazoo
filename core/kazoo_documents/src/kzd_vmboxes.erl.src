@@ -31,6 +31,7 @@
 -export([skip_greeting/1, skip_greeting/2, set_skip_greeting/2]).
 -export([skip_instructions/1, skip_instructions/2, set_skip_instructions/2]).
 -export([timezone/1, timezone/2, set_timezone/2]).
+-export([transcribe/1, transcribe/2, set_transcribe/2]).
 
 
 -include("kz_documents.hrl").
@@ -343,3 +344,15 @@ timezone(Doc, Default) ->
 -spec set_timezone(doc(), kz_term:ne_binary()) -> doc().
 set_timezone(Doc, Timezone) ->
     kz_json:set_value([<<"timezone">>], Timezone, Doc).
+
+-spec transcribe(doc()) -> boolean().
+transcribe(Doc) ->
+    transcribe(Doc, false).
+
+-spec transcribe(doc(), Default) -> boolean() | Default.
+transcribe(Doc, Default) ->
+    kz_json:get_boolean_value([<<"transcribe">>], Doc, Default).
+
+-spec set_transcribe(doc(), boolean()) -> doc().
+set_transcribe(Doc, Transcribe) ->
+    kz_json:set_value([<<"transcribe">>], Transcribe, Doc).

@@ -41,6 +41,9 @@
         ,ratedeck_name/2
         ,set_ratedeck_name/2
         ]).
+-export([asr/1
+        ,asr/2
+        ]).
 -export([applications/1
         ,applications/2
         ,set_applications/2
@@ -282,6 +285,19 @@ applications(JObj, Default) ->
 -spec set_applications(doc(), kz_json:object()) -> doc().
 set_applications(JObj, Applications) ->
     kz_json:set_value(?APPLICATIONS, Applications, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec asr(doc()) -> kz_json:object().
+asr(JObj) ->
+    asr(JObj, kz_json:new()).
+
+-spec asr(doc(), Default) -> Default | kz_json:object().
+asr(JObj, Default) ->
+    kz_json:get_ne_json_value(<<"asr">>, JObj, Default).
+
 
 %%------------------------------------------------------------------------------
 %% @doc

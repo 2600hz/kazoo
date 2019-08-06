@@ -31,10 +31,7 @@ maybe_convert_content(Content, ContentType, SupportedContentTypes, DefaultConten
 
 -spec default_preferred_content_type(kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_term:ne_binary().
 default_preferred_content_type(SupportedContentTypes, DefaultContentType) ->
-    PreferredContentType = kapps_config:get_binary(?MOD_CONFIG_CAT
-                                                  ,<<"asr_preferred_content_type">>
-                                                  ,DefaultContentType
-                                                  ),
+    PreferredContentType = kazoo_asr:preferred_content_type(),
     validate_content_type(PreferredContentType, SupportedContentTypes, DefaultContentType).
 
 -spec validate_content_type(binary(), kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_term:ne_binary().
