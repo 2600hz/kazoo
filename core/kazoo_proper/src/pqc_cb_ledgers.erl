@@ -28,7 +28,7 @@ fetch(API, ?NE_BINARY=AccountId) ->
 -spec fetch(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 fetch(API, ?NE_BINARY=AccountId, ?NE_BINARY=AcceptType) ->
     LedgersURL = ledgers_url(AccountId),
-    RequestHeaders = pqc_cb_api:request_headers(API, [{"accept", kz_term:to_list(AcceptType)}]),
+    RequestHeaders = pqc_cb_api:request_headers(API, [{<<"accept">>, kz_term:to_list(AcceptType)}]),
 
     Expectations = [#expectation{response_codes = [200]
                                 ,response_headers = [{"content-type", kz_term:to_list(AcceptType)}]
@@ -50,7 +50,7 @@ fetch_by_source(API, ?NE_BINARY=AccountId, ?NE_BINARY=SourceType) ->
                              pqc_cb_api:response().
 fetch_by_source(API, ?NE_BINARY=AccountId, SourceType, ?NE_BINARY=AcceptType) ->
     LedgersURL = ledgers_source_url(AccountId, SourceType),
-    RequestHeaders = pqc_cb_api:request_headers(API, [{"accept", kz_term:to_list(AcceptType)}]),
+    RequestHeaders = pqc_cb_api:request_headers(API, [{<<"accept">>, kz_term:to_list(AcceptType)}]),
 
     Expectations = [#expectation{response_codes = [200]
                                 ,response_headers = [{"content-type", kz_term:to_list(AcceptType)}]

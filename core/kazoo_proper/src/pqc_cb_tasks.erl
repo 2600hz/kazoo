@@ -41,7 +41,7 @@ create(API, QueryString) ->
 -spec create(pqc_cb_api:state(), string(), iolist()) -> pqc_cb_api:response().
 create(API, QueryString, CSV) ->
     TaskURL = tasks_url(QueryString),
-    RequestHeaders = pqc_cb_api:request_headers(API, [{"content-type", "text/csv"}]),
+    RequestHeaders = pqc_cb_api:request_headers(API, [{<<"content-type">>, "text/csv"}]),
     Expectations = [#expectation{response_codes = [201, 404, 409]}],
 
     pqc_cb_api:make_request(Expectations
@@ -75,7 +75,7 @@ create_account(API, AccountId, QueryString) ->
 -spec create_account(pqc_cb_api:state(), kz_term:ne_binary(), string(), iolist()) -> pqc_cb_api:response().
 create_account(API, AccountId, QueryString, CSV) ->
     TaskURL = tasks_url(AccountId, QueryString),
-    RequestHeaders = pqc_cb_api:request_headers(API, [{"content-type", "text/csv"}]),
+    RequestHeaders = pqc_cb_api:request_headers(API, [{<<"content-type">>, "text/csv"}]),
     Expectations = [#expectation{response_codes = [201, 404, 409]}],
 
     pqc_cb_api:make_request(Expectations
@@ -133,7 +133,7 @@ fetch_csv(API, TaskId, CSV) ->
     pqc_cb_api:make_request(Expectations
                            ,fun kz_http:get/2
                            ,task_csv_url(TaskId, CSV)
-                           ,pqc_cb_api:request_headers(API, [{"accept", "text/csv"}])
+                           ,pqc_cb_api:request_headers(API, [{<<"accept">>, "text/csv"}])
                            ).
 
 -spec fetch_csv(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
@@ -146,7 +146,7 @@ fetch_csv(API, AccountId, TaskId, CSV) ->
     pqc_cb_api:make_request(Expectations
                            ,fun kz_http:get/2
                            ,task_csv_url(AccountId, TaskId, CSV)
-                           ,pqc_cb_api:request_headers(API, [{"accept", "text/csv"}])
+                           ,pqc_cb_api:request_headers(API, [{<<"accept">>, "text/csv"}])
                            ).
 
 -spec delete(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().

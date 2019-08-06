@@ -161,9 +161,9 @@ authorize_media(_Context, _Nouns, _AccountId) ->
 %% @doc Add content types accepted and provided by this module
 %% @end
 %%------------------------------------------------------------------------------
--spec acceptable_content_types() -> kz_term:proplist().
+-spec acceptable_content_types() -> [content_type()].
 acceptable_content_types() ->
-    ?MEDIA_MIME_TYPES.
+    [{M, N, '*'} || {M, N} <- ?MEDIA_MIME_TYPES].
 
 -spec content_types_provided(cb_context:context(), path_token()) ->
                                     cb_context:context().

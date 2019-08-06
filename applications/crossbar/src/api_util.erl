@@ -1009,8 +1009,6 @@ content_type_matches({Type, SubType, Opts}, {Type, SubType, ModOpts}) ->
              );
 content_type_matches(CTA, {CT, SubCT, _}) when is_binary(CTA) ->
     CTA =:= <<CT/binary, "/", SubCT/binary>>;
-content_type_matches(CTA, {CT, SubCT}) when is_binary(CTA) ->
-    CTA =:= <<CT/binary, "/", SubCT/binary>>;
 content_type_matches(CTA, CT) when is_binary(CTA), is_binary(CT) ->
     CTA =:= CT;
 content_type_matches(_CTA, _CTAs) ->

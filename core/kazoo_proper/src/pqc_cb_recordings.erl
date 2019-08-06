@@ -72,7 +72,7 @@ fetch_recording_binary(API, AccountId, RecordingId) ->
     case pqc_cb_api:make_request(Expectations
                                 ,fun kz_http:get/2
                                 ,recordings_url(AccountId, RecordingId)
-                                ,pqc_cb_api:request_headers(API, [{"accept", "audio/mpeg"}])
+                                ,pqc_cb_api:request_headers(API, [{<<"accept">>, "audio/mpeg"}])
                                 )
     of
         {'error', _E} ->

@@ -34,7 +34,7 @@ summary(API, AccountId) ->
 -spec summary(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 summary(API, AccountId, Accept) ->
     URL = cdrs_url(AccountId),
-    Headers = [{"accept", kz_term:to_list(Accept)}],
+    Headers = [{<<"accept">>, kz_term:to_list(Accept)}],
     RequestHeaders = pqc_cb_api:request_headers(API, Headers),
 
     Expectations = [#expectation{response_codes = [200]
@@ -99,7 +99,7 @@ update_request_id(RequestHeaders) ->
                        [Id, Now] -> iolist_to_binary([Id, "-", Now, "-", "1"]);
                        [Id, Now, Nth] -> iolist_to_binary([Id, "-", Now, "-", incr_nth(Nth)])
                    end,
-    [{"x-request-id", kz_term:to_list(NewRequestId)} | RequestHeaders].
+    props:set_value(<<"x-request-id">>, kz_term:to_list(NewRequestId), RequestHeaders).
 
 incr_nth(Nth) ->
     kz_term:to_integer(Nth) + 1 + $0.
