@@ -153,6 +153,7 @@ default_carrier() ->
 all_modules() ->
     [<<"knm_bandwidth2">>
     ,<<"knm_bandwidth">>
+    ,<<"knm_bics">>
     ,<<"knm_inum">>
     ,<<"knm_local">>
     ,<<"knm_inventory">>

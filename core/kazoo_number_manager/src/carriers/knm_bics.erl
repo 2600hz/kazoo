@@ -8,7 +8,7 @@
 -behaviour(knm_gen_carrier).
 
 -include("knm.hrl").
--include("knm_bics.hrl").
+-include("../knm_bics.hrl").
 
 -export([info/0]).
 -export([is_local/0]).
@@ -18,7 +18,6 @@
 -export([is_number_billable/1]).
 -export([should_lookup_cnam/0]).
 -export([check_numbers/1]).
-
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -47,28 +46,31 @@ is_local() -> 'false'.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%------------------------------------------------------------------------------
-%% @doc Query the BICS system for a quantity of available numbers
-%% in a rate center
+%% @doc Query the Bics API for a quantity of available numbers
 %% @end
 %%------------------------------------------------------------------------------
--spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
+-spec find_numbers(binary(), pos_integer(), knm_carriers:options()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(_Search, _Quantity, Options) ->
     Country = knm_iso3166_util:country(proplists:get_value('country', Options)),
-    case make_inventory_request(maps:from_list(Options), Country) of
-        {'ok', _Resp, _RespHeaders, Body} ->
-            lager:debug("BICS response ~p: ~p", [_Resp, Body]),
-            {'ok', process_numbers_search_resp(Body, Options)};
-        {'error', _R} ->
-            lager:debug("BICS responded with error: ~p", [_R]),
-            {'error', 'not_available'}
-    end.
-
-%% @todo --- below here
+    Resp = make_inventory_request(maps:from_list(Options), Country),
+    handle_inventory_response(Resp, Options).
+handle_inventory_response({'ok', _Resp, _RespHeaders, Body}, Options) ->
+    lager:debug("BICS response ~p: ~p", [_Resp, Body]),
+    {'ok', process_numbers_search_resp(Body, Options)};
+handle_inventory_response({'error', _R}, _Options) ->
+    lager:debug("BICS responded with error: ~p", [_R]),
+    {'error', 'not_available'}.
+%%------------------------------------------------------------------------------
+%% @doc Attempt to acquire the number from Bics
+%% @end
+%%------------------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
     knm_number:knm_number().
-acquire_number(Number) -> Number.
+acquire_number(Number) ->
+    Resp = make_acquisition_request(Number),
+    handle_acquistion_response(Number, Resp).
 
 -spec disconnect_number(knm_number:knm_number()) ->
     knm_number:knm_number().
@@ -86,28 +88,39 @@ is_number_billable(_Number) -> 'true'.
 %%%=============================================================================
 %%% Internal functions
 %%%=============================================================================
-process_numbers_search_resp(Json, Options) ->
-    JObjs = kz_json:decode(Json),
-    process_response(JObjs, Options).
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Convert a knm_number type to the raw binary e164 string (minus +) for sending to Bics
 %% @end
 %%------------------------------------------------------------------------------
--spec process_response(kz_json:objects(), knm_carriers:options()) ->
-                              {'ok', knm_number:knm_numbers()}.
-process_response(JObjs, Options) ->
-    QID = knm_search:query_id(Options),
+-spec to_bics(knm_number:number()) -> binary().
+to_bics(KnmNumber) ->
+    <<"+", Number/binary>> = knm_phone_number:number(knm_number:phone_number(KnmNumber)),
+    Number.
 
+%%------------------------------------------------------------------------------
+%% @doc Take a binary number from the Bics API and make it e164
+%% @end
+%%------------------------------------------------------------------------------
+-spec from_bics(binary()) -> binary().
+from_bics(Number) -> <<"+", Number/binary>>.
+
+%%%=============================================================================
+%%% Search API Helpers
+%%%=============================================================================
+process_numbers_search_resp(Json, Options) ->
+    JObjs = kz_json:decode(Json),
+    QID = knm_search:query_id(Options),
     [N || JObj <- JObjs,
-             N <- [response_jobj_to_number(JObj, QID)]
+             N <- [search_response_to_knm_number(JObj, QID)]
     ].
 
-response_jobj_to_number(JObj, QID) ->
-    Num = kz_json:get_binary_value(<<"number">>, JObj),
-    {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, JObj}}.
+-spec search_response_to_knm_number(kz_json:object(), knm_search:options()) -> knm_number:knm_number_return().
+search_response_to_knm_number(JObj, QID) ->
+    Number = from_bics(kz_json:get_binary_value(<<"number">>, JObj)),
+    {QID, {Number, ?MODULE, ?NUMBER_STATE_DISCOVERY, JObj}}.
 
--spec classify_query(map(), kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec classify_query(map(), binary()) -> binary().
 classify_query(#{'dialcode' := <<"+1">>, 'prefix' := Prefix}, _A3)
   when ?IS_US_TOLLFREE(Prefix)
        orelse ?IS_US_TOLLFREE_WILDCARD(Prefix) ->
@@ -118,33 +131,107 @@ classify_query(#{'prefix' := Prefix}, _A3)
 classify_query(_Options, _A3) ->
     <<"IBN">>.
 
-%%------------------------------------------------------------------------------
-%% @doc Get the URL for requesting the number inventory
-%% @end
-%%------------------------------------------------------------------------------
--spec get_inventory_url(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
-get_inventory_url(Product, Country) ->
-    list_to_binary([?BICS_BASE_URL, <<"/availablenumbers?product=">>, Product, <<"&country=">>, Country]).
-
+-ifndef(TEST).
 -spec make_inventory_request(map(), knm_iso3166_util:country()) -> kz_http:ret().
-make_inventory_request(#{'test' := 'true'} = Options, #{a3 := _A3}= _Country) ->
-    Prefix = maps:find('prefix', Options),
+make_inventory_request(Options, #{a3 := A3}= _Country) ->
+    Product = classify_query(Options, A3),
+    Url = get_inventory_url(Product, A3),
+    ?LOG_DEBUG("Sending bics request url: ~p", [Url]),
+    kz_http:get(Url, headers()).
+-else.
+make_inventory_request(#{'prefix' := Prefix} = _Options, #{a3 := _A3} = _Country) ->
     case Prefix of
         {'ok', <<"855">>} ->
             {'ok', 200, [{}], "[{\"number\": \"+18551231234\",\"product\": \"IBN\",\"country\": \"USA\",\"location\": \"CA-PITTSBURG\"}]"};
         _Else ->
             {'ok', 200, [{}], "[{\"number\": \"+19731231234\",\"product\": \"IBN\",\"country\": \"USA\",\"location\": \"CA-PITTSBURG\"}, {\"number\": \"+19734564567\",\"product\": \"IBN\",\"country\": \"USA\",\"location\": \"CA-PITTSBURG\"}]"}
-    end;
-make_inventory_request(Options, #{a3 := A3}= _Country) ->
-    Product = classify_query(Options, A3),
-    Headers = [{"Accept", "*/*"}
-              ,{"Authorization", bearer_token()}
-              ,{"Content-Type", "application/json"}
-              ],
-    Url = get_inventory_url(Product, A3),
-    lager:debug("Sending bics request url: ~p", [Url]),
-    kz_http:get(Url, Headers).
+    end.
+-endif.
 
--spec bearer_token() -> kz_term:ne_binary().
+%%%=============================================================================
+%%% Number Purchase API Helpers
+%%%=============================================================================
+-spec acquisition_payload(binary()) -> binary().
+acquisition_payload(Number) -> 
+    <<"{\"orderRequestItems\": [{\"number\": \"", Number/binary, "\"}]}">>.
+
+-spec process_acquisition_error(binary()) -> binary().
+process_acquisition_error(Json) ->
+    JObjs = kz_json:decode(Json),
+    acquisition_jobj_to_error(JObjs).
+
+-spec acquisition_jobj_to_error(list()) -> binary().
+acquisition_jobj_to_error([First|_Rest]) ->
+    kz_json:get_binary_value(<<"description">>, First);
+acquisition_jobj_to_error(_Any) ->
+    generic_acquisition_error().
+
+generic_acquisition_error() -> <<"Unable to purchase number">>.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+handle_acquistion_response(Number, {'ok', _, _, Body}) ->
+    JResp = kz_json:decode(Body),
+    verify_acquired_number(Number, JResp);
+handle_acquistion_response(Number, {'error', Res}) ->
+    ?LOG_DEBUG("BICS failed to purchase number ~p", [Res]),
+    knm_errors:by_carrier(?MODULE, process_acquisition_error(Res), Number).
+
+verify_acquired_number(Number, [JResp | _]) -> verify_acquired_number(Number, JResp);
+verify_acquired_number(Number, JResp) -> 
+    OrderItems = kz_json:get_list_value(<<"orderItems">>, JResp),
+    RawNumber = to_bics(Number),
+    NumberInResponse = lists:any(fun(OrderItem) ->
+        OrderNumber = kz_json:get_json_value(<<"number">>, OrderItem),
+        ResponseNumber = kz_json:get_binary_value(<<"number">>, OrderNumber),
+        RawNumber == ResponseNumber
+    end, OrderItems),
+    verify_acquired_number_status(Number, kz_json:get_binary_value(<<"status">>, JResp), NumberInResponse).
+
+verify_acquired_number_status(Number, <<"Delivered">>, 'true') -> Number;
+verify_acquired_number_status(Number, _, _) -> knm_errors:by_carrier(?MODULE, generic_acquisition_error(), Number).
+
+-ifndef(TEST).
+-spec make_acquisition_request(knm_number:knm_number()) -> kz_http:ret().
+make_acquisition_request(Number) ->
+    Payload = acquisition_payload(to_bics(Number)),
+    kz_http:post(get_acquisition_url(), headers(), Payload).
+-else.
+make_acquisition_request(Number) -> 
+    _Payload = acquisition_payload(raw_number(Number)),
+    _Url = get_acquisition_url(),
+    ?LOG_DEBUG("In test make acquisition"),
+    {
+        'ok', 
+        200, 
+        [], 
+        <<"[{\"status\": \"Delivered\",\"product\": \"IBN\",\"country\": \"USA\",\"orderItems\": [{\"number\": \"", 
+            to_bics(Number), 
+            "\",\"location\": \"CA-PITTSBURG\",\"addressReference\": null,\"routing\": [{\"accessType\": \"fixMobPay\",\"accessNetwork\": null,\"crn\": \"14986\",\"pop\": \"\",\"crnType\": \"copy\",\"crnValue\": null}]}]}]">>
+    }.
+-endif.
+
+%%%=============================================================================
+%%% API Helper functions
+%%%=============================================================================
+-spec headers() -> list().
+headers() -> 
+    [{"Accept", "*/*"}
+        ,{"Authorization", bearer_token()}
+        ,{"Content-Type", "application/json"}
+    ].
+
+-spec bearer_token() -> binary().
 bearer_token() ->
-    list_to_binary([<<"Bearer">>, <<" ">>, ?BICS_BEARER_TOKEN]).
+    Token = ?BICS_BEARER_TOKEN,
+    <<"Bearer", " ", Token/binary>>.
+
+-spec get_inventory_url(binary(), binary()) -> binary().
+get_inventory_url(Product, Country) ->
+    <<(?BICS_BASE_URL), "/availablenumbers?product=", Product/binary, "&country=", Country/binary>>.
+
+-spec get_acquisition_url() -> binary().
+get_acquisition_url() ->
+    <<(?BICS_BASE_URL), "/order/bulk">>.
