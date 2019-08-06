@@ -10,8 +10,8 @@
 
 -spec log_info() -> [{atom(), iolist()}].
 log_info() ->
-    log_info(get('now')).
+    log_info(get('start_time')).
 log_info('undefined') ->
     [];
-log_info(Now) ->
-    [{'elapsed', kz_term:to_list(kz_time:elapsed_ms(Now))}].
+log_info(StartTime) ->
+    [{'elapsed', kz_term:to_list(kz_time:elapsed_ms(StartTime))}].

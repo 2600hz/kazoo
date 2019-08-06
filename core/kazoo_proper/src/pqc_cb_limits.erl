@@ -16,7 +16,7 @@ fetch(API, <<AccountId/binary>>) ->
     URL = limits_url(AccountId),
     RequestHeaders = pqc_cb_api:request_headers(API),
 
-    Expectations = [#{'response_codes' => [200]}],
+    Expectations = [#expectation{response_codes = [200]}],
     pqc_cb_api:make_request(Expectations
                            ,fun kz_http:get/2
                            ,URL
@@ -29,7 +29,7 @@ update(API, <<AccountId/binary>>, JObj) ->
     RequestHeaders = pqc_cb_api:request_headers(API),
     RequestEnvelope = pqc_cb_api:create_envelope(JObj),
 
-    Expectations = [#{'response_codes' => [200]}],
+    Expectations = [#expectation{response_codes = [200]}],
     pqc_cb_api:make_request(Expectations
                            ,fun kz_http:post/3
                            ,URL

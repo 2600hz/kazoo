@@ -1,3 +1,8 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2018-2019, 2600Hz
+%%% @doc
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(pqc_httpd).
 -behaviour(cowboy_handler).
 -behaviour(gen_server).
@@ -95,7 +100,7 @@ update_req(Path, <<_/binary>>=Content) ->
 log_meta(LogId) ->
     kz_util:put_callid(LogId),
     lager:md([{'request_id', LogId}]),
-    put('now', kz_time:now()),
+    put('start_time', kz_time:start_time()),
     'ok'.
 
 -spec init(list()) -> {'ok', state()}.
@@ -137,7 +142,7 @@ init(Req, HandlerOpts) ->
 
 -spec handle(cowboy_req:req(), State) -> {'ok', cowboy_req:req(), State}.
 handle(Req, State) ->
-    put('now', kz_time:now()),
+    put('start_time', kz_time:start_time()),
     handle(Req, State, cowboy_req:method(Req)).
 
 handle(Req, State, <<"POST">>) ->
@@ -183,7 +188,7 @@ add_req_to_state(Req, State) ->
 
 -spec read_body({'ok', binary(), cowboy_req:req()} |
                 {'more', binary(), cowboy_req:req()}
-               ) -> {cowbow_req:req(), iodata()}.
+               ) -> {cowboy_req:req(), iodata()}.
 read_body({'ok', BodyPart, Req}) ->
     {Req, BodyPart};
 read_body({'more', BodyPart, Req}) ->
@@ -230,7 +235,7 @@ handle_part_headers(Req, Headers) ->
 
 -spec terminate(any(), cowboy_req:req(), any()) -> 'ok'.
 terminate(_Reason, _Req, _State) ->
-    ?INFO("finished req ~p", [kz_time:elapsed_ms(get('now'))]).
+    ?INFO("finished req ~p", [kz_time:elapsed_ms(get('start_time'))]).
 
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->

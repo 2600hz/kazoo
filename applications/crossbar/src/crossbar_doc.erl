@@ -270,9 +270,9 @@ load_merge(DocId, DataJObj, Context, Options) ->
                         cb_context:context().
 load_merge(DocId, DataJObj, Context, Options, 'undefined') ->
     Context1 = load(DocId, Context, Options),
-    case success =:= cb_context:resp_status(Context1) of
-        false -> Context1;
-        true ->
+    case 'success' =:= cb_context:resp_status(Context1) of
+        'false' -> Context1;
+        'true' ->
             lager:debug("loaded doc ~s(~s), merging", [DocId, kz_doc:revision(cb_context:doc(Context1))]),
             Merged = kz_json:merge_jobjs(kz_doc:private_fields(cb_context:doc(Context1)), DataJObj),
             handle_datamgr_success(Merged, Context1)
@@ -533,9 +533,13 @@ load_attachment(<<_/binary>>=DocId, AName, Options, Context) ->
             Context1 = load(DocId, Context, Options),
             'success' = cb_context:resp_status(Context1),
 
+            CT = kz_doc:attachment_content_type(cb_context:doc(Context1), AName, <<"application/octet-stream">>),
+            lager:debug("adding content type ~s from attachment ~s", [CT, AName]),
+
             cb_context:setters(Context1
                               ,[{fun cb_context:set_resp_data/2, AttachBin}
                                ,{fun cb_context:set_resp_etag/2, rev_to_etag(cb_context:doc(Context1))}
+                               ,{fun cb_context:add_resp_headers/2, #{<<"content-type">> => CT}}
                                ])
     end;
 load_attachment(Doc, AName, Options, Context) ->
@@ -698,13 +702,7 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
     end.
 
 handle_saved_attachment(Context, DocId) ->
-    {'ok', Rev1} = kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
-    cb_context:setters(Context
-                      ,[{fun cb_context:set_doc/2, kz_json:new()}
-                       ,{fun cb_context:set_resp_status/2, 'success'}
-                       ,{fun cb_context:set_resp_data/2, kz_json:new()}
-                       ,{fun cb_context:set_resp_etag/2, rev_to_etag(Rev1)}
-                       ]).
+    load(DocId, Context).
 
 -spec maybe_delete_doc(cb_context:context(), kz_term:ne_binary()) ->
                               {'ok', _} |

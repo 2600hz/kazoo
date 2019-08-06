@@ -15,7 +15,8 @@
 -spec create_whitelabel(pqc_cb_api:state(), kz_doc:setter_funs()) -> pqc_cb_api:response().
 create_whitelabel(API, Setters) ->
     Envelope = pqc_cb_api:create_envelope(kz_doc:setters(kz_json:new(), Setters)),
-    pqc_cb_api:make_request([201]
+    Expectations = [#expectation{response_codes = [201]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:put/3
                            ,whitelabel_url(pqc_cb_api:auth_account_id(API))
                            ,pqc_cb_api:request_headers(API)

@@ -173,7 +173,9 @@ has_rate_matching(#kazoo_model{}=Model, RatedeckId, DID) ->
     Ratedeck = ratedeck(Model, RatedeckId),
     has_rate_matching(Ratedeck, DID).
 
--spec has_service_plan_rate_matching(model(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
+-spec has_service_plan_rate_matching(model(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+                                            'false' |
+                                            {'true', number()}.
 has_service_plan_rate_matching(#kazoo_model{'accounts'=Accounts
                                            ,'service_plans'=SPs
                                            }=Model
@@ -196,7 +198,9 @@ has_service_plan_rate_matching(#kazoo_model{'accounts'=Accounts
             end
     end.
 
--spec has_rate_matching(rate_data(), kz_term:ne_binary()) -> boolean().
+-spec has_rate_matching(rate_data(), kz_term:ne_binary()) ->
+                               'false' |
+                               {'true', number()}.
 has_rate_matching(Ratedeck, <<"+", Number/binary>>) ->
     has_rate_matching(Ratedeck, Number);
 has_rate_matching(Ratedeck, Number) ->

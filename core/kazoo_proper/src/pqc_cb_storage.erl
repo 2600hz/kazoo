@@ -49,8 +49,9 @@ create(API, AccountId, ?NE_BINARY=UUID, ValidateSettings) ->
     create(API, AccountId, storage_doc(UUID), ValidateSettings);
 create(API, AccountId, StorageDoc, ValidateSettings) ->
     StorageURL = storage_url(AccountId, ValidateSettings),
-    RequestHeaders = pqc_cb_api:request_headers(API, [{<<"content-type">>, <<"application/json">>}]),
-    pqc_cb_api:make_request([201]
+    RequestHeaders = pqc_cb_api:request_headers(API, [{"content-type", "application/json"}]),
+    Expectations = [#expectation{response_codes = [201]}],
+    pqc_cb_api:make_request(Expectations
                            ,fun kz_http:put/3
                            ,StorageURL
                            ,RequestHeaders
@@ -276,7 +277,8 @@ handle_mp3_contents(MP3, Base64MP3, 'true') ->
 -spec cleanup() -> 'ok'.
 cleanup() ->
     _ = pqc_cb_accounts:cleanup_accounts(?ACCOUNT_NAMES),
-    cleanup_system().
+    cleanup_system(),
+    timer:sleep(500).
 
 cleanup(API) ->
     ?INFO("CLEANUP TIME, EVERYBODY HELPS"),

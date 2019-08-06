@@ -172,7 +172,7 @@ doc(Rev) ->
 
 doc_updates(Rev) ->
     [{<<"_rev">>, Rev}
-     | [{kz_term:to_binary(Key), kz_binary:rand_hex(16)} || Key <- lists:seq(1,50)]
+     | [{[kz_term:to_binary(Key)], kz_binary:rand_hex(16)} || Key <- lists:seq(1,50)]
     ].
 
 -spec initial_state() -> 'undefined'.

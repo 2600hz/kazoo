@@ -1,3 +1,8 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2018-2019, 2600Hz
+%%% @doc
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(pqc_cb_system_configs).
 
 -export([seq/0
@@ -69,7 +74,8 @@ config_url(Id, NodeId) ->
 -spec list_configs(pqc_cb_api:api()) -> kz_term:ne_binaries().
 list_configs(API) ->
     URL = configs_url(),
-    Resp = pqc_cb_api:make_request([200]
+    Expectations = [#expectation{response_codes = [200]}],
+    Resp = pqc_cb_api:make_request(Expectations
                                   ,fun kz_http:get/2
                                   ,URL
                                   ,pqc_cb_api:request_headers(API)
@@ -79,7 +85,8 @@ list_configs(API) ->
 -spec get_config(pqc_cb_api:api(), kz_term:ne_binary()) -> kzd_system_configs:doc().
 get_config(API, Id) ->
     URL = config_url(Id),
-    Resp = pqc_cb_api:make_request([200, 404]
+    Expectations = [#expectation{response_codes = [200, 404]}],
+    Resp = pqc_cb_api:make_request(Expectations
                                   ,fun kz_http:get/2
                                   ,URL
                                   ,pqc_cb_api:request_headers(API)
@@ -89,7 +96,8 @@ get_config(API, Id) ->
 -spec get_default_config(pqc_cb_api:api(), kz_term:ne_binary()) -> kzd_system_configs:doc().
 get_default_config(API, Id) ->
     URL = config_url(Id) ++ "?with_defaults=true",
-    Resp = pqc_cb_api:make_request([200, 404]
+    Expectations = [#expectation{response_codes = [200, 404]}],
+    Resp = pqc_cb_api:make_request(Expectations
                                   ,fun kz_http:get/2
                                   ,URL
                                   ,pqc_cb_api:request_headers(API)
@@ -99,7 +107,8 @@ get_default_config(API, Id) ->
 -spec get_node_config(pqc_cb_api:api(), kz_term:ne_binary(), kz_term:ne_binary()) -> kzd_system_configs:doc().
 get_node_config(API, Id, NodeId) ->
     URL = config_url(Id, NodeId) ++ "?with_defaults=true",
-    Resp = pqc_cb_api:make_request([200, 404]
+    Expectations = [#expectation{response_codes = [200, 404]}],
+    Resp = pqc_cb_api:make_request(Expectations
                                   ,fun kz_http:get/2
                                   ,URL
                                   ,pqc_cb_api:request_headers(API)
@@ -112,8 +121,9 @@ set_default_config(API, Config) ->
     ?INFO("setting default config for ~p", [Config]),
     URL = config_url(kz_doc:id(Config)),
     Data = pqc_cb_api:create_envelope(Config),
+    Expectations = [#expectation{response_codes = [200]}],
 
-    Resp = pqc_cb_api:make_request([200]
+    Resp = pqc_cb_api:make_request(Expectations
                                   ,fun kz_http:post/3
                                   ,URL
                                   ,pqc_cb_api:request_headers(API)
@@ -121,13 +131,14 @@ set_default_config(API, Config) ->
                                   ),
     pqc_cb_response:data(Resp).
 
--spec patch_default_config(pqc_cb_api:api(), kz_tern:ne_binary(), kz_json:object()) -> kzd_system_configs:doc().
+-spec patch_default_config(pqc_cb_api:api(), kz_term:ne_binary(), kz_json:object()) -> kzd_system_configs:doc().
 patch_default_config(API, Id, Config) ->
     ?INFO("patching default config for ~p", [Config]),
     URL = config_url(Id),
     Data = pqc_cb_api:create_envelope(Config),
+    Expectations = [#expectation{response_codes = [200]}],
 
-    Resp = pqc_cb_api:make_request([200]
+    Resp = pqc_cb_api:make_request(Expectations
                                   ,fun kz_http:patch/3
                                   ,URL
                                   ,pqc_cb_api:request_headers(API)
@@ -138,7 +149,8 @@ patch_default_config(API, Id, Config) ->
 -spec delete_config(pqc_cb_api:api(), kz_term:ne_binary()) -> kz_json:object().
 delete_config(API, Id) ->
     URL = config_url(Id),
-    Resp = pqc_cb_api:make_request([200, 404]
+    Expectations = [#expectation{response_codes = [200, 404]}],
+    Resp = pqc_cb_api:make_request(Expectations
                                   ,fun kz_http:delete/2
                                   ,URL
                                   ,pqc_cb_api:request_headers(API)

@@ -996,7 +996,9 @@ is_acceptable_content_type(CTA, CTAs) ->
     ['true' || ModCTA <- CTAs, content_type_matches(CTA, ModCTA)] =/= [].
 
 %% (ReqContentType, ModuleContentType)
--spec content_type_matches(content_type(), content_type()) -> boolean().
+-spec content_type_matches(content_type(), content_type() | [content_type()]) -> boolean().
+content_type_matches(CT, ModCTs) when is_list(ModCTs) ->
+    lists:any(fun(ModCT) -> content_type_matches(CT, ModCT) end, ModCTs);
 content_type_matches({Type, _, _}, {Type, <<"*">>, '*'}) ->
     'true';
 content_type_matches({Type, SubType, _}, {Type, SubType, '*'}) ->
@@ -1006,6 +1008,8 @@ content_type_matches({Type, SubType, Opts}, {Type, SubType, ModOpts}) ->
              ,ModOpts
              );
 content_type_matches(CTA, {CT, SubCT, _}) when is_binary(CTA) ->
+    CTA =:= <<CT/binary, "/", SubCT/binary>>;
+content_type_matches(CTA, {CT, SubCT}) when is_binary(CTA) ->
     CTA =:= <<CT/binary, "/", SubCT/binary>>;
 content_type_matches(CTA, CT) when is_binary(CTA), is_binary(CT) ->
     CTA =:= CT;
