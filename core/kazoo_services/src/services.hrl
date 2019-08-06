@@ -98,7 +98,9 @@
                                ]
                               }
                              ,{<<"voicemails">>
-                              ,[<<"mailbox">>]
+                              ,[<<"mailbox">>
+                               ,<<"transcription">>
+                               ]
                               }
                              ,{<<"faxes">>
                               ,[<<"mailbox">>]

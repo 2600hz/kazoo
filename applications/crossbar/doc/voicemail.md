@@ -45,6 +45,7 @@ Key | Description | Type | Default | Required | Support Level
 `skip_greeting` | Determines if the greeting should be skipped | `boolean()` | `false` | `false` | `supported`
 `skip_instructions` | Determines if the instructions after the greeting and prior to composing a message should be played | `boolean()` | `false` | `false` | `supported`
 `timezone` | The default timezone | `string(5..32)` |   | `false` | `supported`
+`transcribe` | Transcribe voicemail using ASR engine | `boolean()` | `false` | `false` | `supported`
 
 ### notify.callback
 

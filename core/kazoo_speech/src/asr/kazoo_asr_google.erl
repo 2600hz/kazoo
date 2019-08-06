@@ -2,29 +2,75 @@
 %%% @copyright (C) 2018-2019, 2600Hz
 %%% @doc
 %%% @author Sergey Safarov <s.safarov@gmail.com>, Sponsored by Audian
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_asr_google).
 -behaviour(gen_asr_provider).
 
--export([freeform/4
+-export([preferred_content_type/0
+        ,accepted_content_types/0
+        ,freeform/4
         ,commands/5
         ]).
 
 -include("kazoo_speech.hrl").
 
 -define(GOOGLE_CONFIG_CAT, <<(?MOD_CONFIG_CAT)/binary, ".google">>).
--define(GOOGLE_ASR_URL, kapps_config:get_string(?GOOGLE_CONFIG_CAT, <<"asr_url">>, <<"https://speech.googleapis.com/v1/speech:recognize">>)).
--define(GOOGLE_ASR_KEY, kapps_config:get_binary(?GOOGLE_CONFIG_CAT, <<"asr_api_key">>, <<"">>)).
+-define(GOOGLE_ASR_URL, kapps_config:get_binary(?GOOGLE_CONFIG_CAT, <<"asr_url">>, <<"https://speech.googleapis.com/v1/speech:recognize">>)).
+-define(GOOGLE_ASR_KEY, kapps_config:get_binary(?GOOGLE_CONFIG_CAT, <<"asr_api_key">>, <<>>)).
 -define(GOOGLE_ASR_PROFANITY_FILTER, kapps_config:get_is_true(?GOOGLE_CONFIG_CAT, <<"asr_profanity_filter">>)).
 -define(GOOGLE_ASR_ENABLE_WORD_TIME_OFFSETS, kapps_config:get_is_true(?GOOGLE_CONFIG_CAT, <<"asr_enable_word_time_offsets">>)).
+-define(GOOGLE_ASR_ENABLE_AUTOMATIC_PUNCTUATION, kapps_config:get_is_true(?GOOGLE_CONFIG_CAT, <<"asr_enable_automatic_punctuation">>, 'true')).
+-define(GOOGLE_ASR_MODEL, kapps_config:get_binary(?GOOGLE_CONFIG_CAT, <<"asr_model">>, <<"phone_call">>)).
+-define(GOOGLE_ASR_USE_ENHANCED, kapps_config:get_is_true(?GOOGLE_CONFIG_CAT, <<"asr_use_enhanced">>, 'true')).
+-define(GOOGLE_ASR_PREFERRED_CONTENT_TYPE, <<"application/wav">>).
+-define(GOOGLE_ASR_ACCEPTED_CONTENT_TYPES, [<<"audio/wav">>, <<"application/wav">>]).
 
+%%%-----------------------------------------------------------------------------
+%%% @doc
+%%% Return or set the preferred asr content type for the ASR provider
+%%% @end
+%%%-----------------------------------------------------------------------------
+-spec preferred_content_type() -> kz_term:ne_binary().
+preferred_content_type() ->
+    ?GOOGLE_ASR_PREFERRED_CONTENT_TYPE.
+
+%%%-----------------------------------------------------------------------------
+%%% @doc
+%%% Return list of supported Content Types by ASR provider
+%%% @end
+%%%-----------------------------------------------------------------------------
+-spec accepted_content_types() -> kz_term:ne_binaries().
+accepted_content_types() ->
+    ?GOOGLE_ASR_ACCEPTED_CONTENT_TYPES.
+
+%%%-----------------------------------------------------------------------------
+%%% @doc
+%%% @end
+%%%-----------------------------------------------------------------------------
 -spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> provider_return().
 commands(_Bin, _Commands, _ContentType, _Locale, _Opts) ->
     {'error', 'asr_provider_failure', <<"Not implemented">>}.
 
+%%%-----------------------------------------------------------------------------
+%%% @doc
+%%% Callback for API request to ASR Provider and handle transcription response.
+%%% @end
+%%%-----------------------------------------------------------------------------
 -spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
-freeform(Content, _ContentType, Locale, Options) ->
+freeform(Content, ContentType, Locale, Options) ->
+    case kazoo_asr_util:maybe_convert_content(Content, ContentType, accepted_content_types(), preferred_content_type()) of
+        {'error', _}=E -> E;
+        {Content1, ContentType1} -> exec_freeform(Content1, ContentType1, Locale, Options)
+    end.
+
+-spec exec_freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
+          asr_resp().
+exec_freeform(Content, _ContentType, Locale, Options) ->
     BaseUrl = ?GOOGLE_ASR_URL,
     Headers = req_headers(),
     lager:debug("sending request to ~s", [BaseUrl]),
@@ -49,7 +95,12 @@ req_headers() ->
     ,{"User-Agent", kz_term:to_list(node())}
     ].
 
--spec make_request(kz_term:text(), kz_term:proplist(), iodata(), kz_term:proplist()) -> kz_http:ret().
+%%%-----------------------------------------------------------------------------
+%%% @doc
+%%% Execute API request to ASR Provider and handle transcription response.
+%%% @end
+%%%-----------------------------------------------------------------------------
+-spec make_request(kz_term:ne_binary(), kz_term:proplist(), iolist(), kz_term:proplist()) -> kz_http:ret().
 make_request(BaseUrl, Headers, Body, Opts) ->
     case props:get_value('receiver', Opts) of
         Pid when is_pid(Pid) ->
