@@ -176,7 +176,7 @@ maybe_open_cache_docs(DbName, DocIds, Options) ->
 %%------------------------------------------------------------------------------
 -spec check_document_type(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
                                  boolean().
-check_document_type(_Context, [], _Options) -> true;
+check_document_type(_Context, [], _Options) -> 'true';
 check_document_type(Context, [_|_]=JObjs, Options) ->
     F = fun(JObj) -> check_document_type(Context, JObj, Options) end,
     lists:all(F, JObjs);
@@ -192,6 +192,7 @@ document_type_match('undefined', _ExpectedType, _ReqType) ->
     lager:debug("document doesn't have type, requested type is ~p", [_ReqType]),
     'true';
 document_type_match(_JObjType, <<"any">>, _) -> 'true';
+document_type_match(_JObjType, 'undefined', _) -> 'true';
 document_type_match(ExpectedType, ExpectedTypes, _)
   when is_list(ExpectedTypes) ->
     lists:member(ExpectedType, ExpectedTypes);

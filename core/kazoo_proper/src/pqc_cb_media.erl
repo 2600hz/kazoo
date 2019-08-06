@@ -223,7 +223,9 @@ seq_media_file() ->
     lager:info("fetched binary again: ~p", [FetchedMediaAgain]),
     MP3 = FetchedMediaAgain,
 
-    MediaName = <<"/", AccountId/binary, "/", MediaId/binary>>,
+    MediaName = kz_media_util:media_path(<<"/", AccountId/binary, "/", MediaId/binary>>, kz_binary:rand_hex(16)),
+
+    lager:info("fetching URL for ~s", [MediaName]),
     {'ok', [AMQPResp|_]} = pqc_media_mgr:request_media_url(MediaName, <<"new">>),
     lager:info("fetched URL for ~s: ~p", [MediaName, AMQPResp]),
     StreamURL = kz_json:get_ne_binary_value(<<"Stream-URL">>, AMQPResp),
