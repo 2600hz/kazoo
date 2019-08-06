@@ -181,7 +181,7 @@ seq() ->
 
 run_funs([]) -> 'ok';
 run_funs([F|Fs]) ->
-    F(),
+    _ = F(),
     cleanup(),
     run_funs(Fs).
 
