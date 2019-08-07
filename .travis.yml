@@ -29,6 +29,12 @@ before_script:
   - kerl list installations
 
 script:
+  - echo "DEPS += kazoo_proper kazoo_ast" > make/more_apps.mk
+  - echo "dep_kazoo_proper = git https://github.com/2600hz/kazoo-proper" >> make/more_apps.mk
+  - echo "dep_kazoo_ast = git https://github.com/2600hz/kazoo-ast" >> make/more_apps.mk
+  - make fetch-apps
+  - make fetch-core
+  - rm -rf core/kazoo_{proper,ast} # remove core libs that are apps now
   - ERLC_OPTS='-DPROPER' make compile-test
   - make eunit
 # To run tests yourself: make compile-test && make test

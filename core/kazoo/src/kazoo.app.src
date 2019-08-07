@@ -1,6 +1,0 @@
-{application,kazoo,
-             [{applications,[inets,kazoo_stdlib,kernel,lager,recon,stdlib]},
-              {description,"Kazoo Helpers"},
-              {vsn,"4.0.0"},
-              {modules,[]},
-              {registered,[]}]}.

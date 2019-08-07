@@ -505,10 +505,6 @@ pages:
     - 'core/kazoo_services/doc/maintenance.md'
   - 'Kazoo Ledgers':
     - 'core/kazoo_ledgers/doc/maintenance.md'
-  - 'Kazoo PropEr':
-    - 'core/kazoo_proper/doc/README.md'
-    - 'core/kazoo_proper/doc/rates.md'
-    - 'core/kazoo_proper/doc/maintenance.md'
   - 'Kazoo EDR':
     - 'core/kazoo_edr/doc/README.md'
     - 'applications/edr/doc/README.md'
@@ -518,6 +514,11 @@ pages:
   - 'Kazoo Test FixtureDB':
     - 'core/kazoo_fixturedb/doc/README.md'
     - 'core/kazoo_fixturedb/doc/kz_fixturedb_maintenance.md'
+      - 'core/kazoo_fixturedb/doc/README.md'
+- 'Auxilary Apps':
+  - 'Kazoo PropEr':
+      - 'applications/kazoo_proper/doc/README.md'
+      - 'applications/kazoo_proper/doc/rates.md'
 - 'Articles':
   - 'Introduction to Storage Plans - S3': 'doc/blog/storage.md'
   - 'Bypass Media Mode': 'doc/blog/bypass_media.md'

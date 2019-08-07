@@ -1,9 +1,0 @@
-{application,kazoo_documents,
- [{applications,[cowlib,erlang_localtime,kazoo,
-                 kazoo_data,kazoo_modb,kazoo_schemas,
-                 kazoo_services,kazoo_stdlib,kazoo_transactions,
-                 kazoo_web,kernel,lager,stdlib]},
-  {description,"Kazoo Document helper modules"},
-  {vsn,"4.0.0"},
-  {modules,[]},
-  {registered,[]}]}.

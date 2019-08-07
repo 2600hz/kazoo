@@ -1,0 +1,12 @@
+# Executed from the applications/ directory so all paths are relative to that
+
+ROOT = ..
+ERLANG_MK_FILENAME = $(ROOT)/erlang.mk
+
+DEPS_DIR = $(CURDIR)
+
+.DEFAULT_GOAL := all
+
+include $(ROOT)/make/apps.mk
+-include $(ROOT)/make/more_apps.mk
+include $(ROOT)/erlang.mk

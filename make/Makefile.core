@@ -1,0 +1,14 @@
+# Executed from the root KAZOO directory so all paths are relative to that
+
+ROOT = $(CURDIR)
+ERLANG_MK_FILENAME = $(ROOT)/erlang.mk
+
+DEPS_DIR = $(ROOT)
+
+.DEFAULT_GOAL := all
+
+DEPS = core
+
+dep_core = git https://github.com/2600hz/kazoo-core.git master
+
+include $(ROOT)/erlang.mk

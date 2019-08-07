@@ -35,6 +35,10 @@ jobs:
     steps:
       - checkout
       - run: make changed
+      - run: |
+          echo "DEPS += kazoo_proper kazoo_ast" > make/more_apps.mk
+          echo "dep_kazoo_proper = git https://github.com/2600hz/kazoo-proper" >> make/more_apps.mk
+          echo "dep_kazoo_ast = git https://github.com/2600hz/kazoo-ast" >> make/more_apps.mk
       - persist_to_workspace:
           root: .
           paths:
@@ -53,6 +57,9 @@ jobs:
             touch "make/.deps.mk.$deps_hash"
           fi
       - run: JOBS="2" make
+      - run: |
+          echo "TEMPORARILY NEED TO REMOVE KAZOO_PROPER/AST"
+          rm -rf core/kazoo_{proper,ast}
       - run: echo -n $(md5sum make/deps.mk | cut -d" " -f1) > .git/.kz_deps_hash
       - save_cache:
           key: deps-erl21-v1-{{ checksum "make/deps.mk" }}

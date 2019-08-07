@@ -29,14 +29,9 @@ erlang.mk
 .erlang.mk
 
 deps/
+core/
+applications/*/
 
-core/kazoo/src/kz_mime.erl
-core/kazoo/mime.types
-
-applications/*/priv/archive_data/*
-applications/registrar/c_src/env.mk
-
-core/sup/sup
 .rebar/
 
 core/kazoo_number_manager/dialcodes.json
@@ -46,12 +41,8 @@ core/kazoo_number_manager/src/knm_iso3166_util.erl
 make/erlang-formatter/
 /TAGS
 
-core/kazoo_auth/c_src/env.mk
-
 compile_commands.json
 
-/applications/pivot/doc/kazoocon2016.pdf
-/applications/pivot/doc/kazoocon2016.tex
 /doc/kazoocon/*.pdf
 /doc/kazoocon/*.tex
 
@@ -64,19 +55,13 @@ compile_commands.json
 /doc/blog/.org/*.csv
 /doc/blog/.org/*.shell
 
-/applications/tasks/src/modules/kt_rates.hrl
-/applications/tasks/src/task_modules.hrl
-
-/applications/teletype/src/teletype_default_modules.hrl
-
 /make/core.mk
 /make/cover.mk
 /make/.deps.mk.*
+/make/.core.mk.*
+/make/.apps.mk.*
 /make/circleci
 /core/*/cover/*.html
-/applications/*/cover/*.html
-
-/applications/crossbar/priv/couchdb/schemas/port_requests.to_scheduled.json
 
 /out/
 /node_modules/
@@ -85,7 +70,6 @@ compile_commands.json
 
 .idea/
 
-core/kazoo_proper/priv/mp3.mp3
 *.md.bak
 *.md.new
 .kerl
@@ -93,3 +77,4 @@ core/kazoo_proper/priv/mp3.mp3
 /doc/engineering/.org/proper.tex
 /todo.org
 *.tar
+/make/more_apps.mk
