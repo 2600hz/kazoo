@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "limits",
+    "_id": "system_config.limits",
     "description": "Global limits ability to place concurrent calls using flat rate trunks",
     "properties": {
         "allow_postpay": {
