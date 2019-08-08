@@ -654,6 +654,7 @@ forward_queue(#state{call_id = CallId
                                ,msg_id=MsgId
                                };
                 'ok' ->
+                    self() ! {'forward_queue', CallId},
                     lager:debug("command ~s execute complete", [AppName]),
                     State#state{command_q = CmdQ1
                                ,current_app = AppName

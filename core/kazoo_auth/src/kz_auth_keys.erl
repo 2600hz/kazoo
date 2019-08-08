@@ -143,6 +143,8 @@ maybe_get_key(#{auth_provider := #{name := <<"kazoo">>}
                ,header := #{<<"kid">> := KeyId}
                } = Token) ->
     Token#{key_id => KeyId};
+maybe_get_key(#{header := #{<<"kid">> := KeyId}} = Token) ->
+    Token#{key_id => KeyId};
 maybe_get_key(#{}=Token) -> Token.
 
 -spec key_id(kz_term:ne_binary(), kz_term:ne_binary(), map()) -> kz_term:api_binary().
@@ -178,12 +180,31 @@ maybe_discovery(#{key_id := KeyId
                  ,auth_provider := #{name := <<"kazoo">>}
                  }=Token) ->
     Token#{key => public_key(KeyId)};
-maybe_discovery(#{}=Token) -> Token.
+maybe_discovery(#{payload := #{<<"iss">> := <<"http", _/binary>> = Issuer}}=Token) ->
+    DiscoveryUrl = <<Issuer/binary, "/.well-known/openid-configuration">>,
+    case kz_auth_util:get_json_from_url(DiscoveryUrl) of
+        {'ok', JObj} ->
+            lager:debug_unsafe("obtained discovery document : ~s", [kz_json:encode(JObj,[pretty])]),
+            Token#{discovery => JObj};
+        _ -> Token
+    end;
+maybe_discovery(#{}=Token) ->
+    Token.
 
 -spec maybe_discovery_url(map()) -> map().
 maybe_discovery_url(#{discovery := JObj
                      ,auth_provider := #{public_key_discovery_field := Field}
                      }=Token) ->
+    lager:debug("verifying that ~s is in discovery document", [Field]),
+    case kz_json:get_value(Field, JObj) of
+        'undefined' -> Token;
+        KeysUrl ->
+            lager:debug("keys url ~s found in discovery document", [KeysUrl]),
+            Token#{discovery_url => KeysUrl}
+    end;
+maybe_discovery_url(#{discovery := JObj
+                     }=Token) ->
+    Field = <<"jwks_uri">>,
     lager:debug("verifying that ~s is in discovery document", [Field]),
     case kz_json:get_value(Field, JObj) of
         'undefined' -> Token;
@@ -232,6 +253,17 @@ fetch_key(#{key_id := KeyId
                               ,public_key_method := <<"lookup">>
                               }
            }= Token) ->
+    lager:debug("looking up public key sets in '~s' field in downloaded json : ~p", [Field, KeyDoc]),
+    case kz_json:find_value(Field, KeyId, kz_json:get_value(<<"keys">>, KeyDoc)) of
+        'undefined' ->
+            lager:debug("public key not found from '~s' field in downloaded json : ~p", [Field, KeyDoc]),
+            Token;
+        JObj -> Token#{key_value => kz_json:to_map(JObj)}
+    end;
+fetch_key(#{key_id := KeyId
+           ,key_doc := KeyDoc
+           }= Token) ->
+    Field = <<"kid">>,
     lager:debug("looking up public key sets in '~s' field in downloaded json : ~p", [Field, KeyDoc]),
     case kz_json:find_value(Field, KeyId, kz_json:get_value(<<"keys">>, KeyDoc)) of
         'undefined' ->

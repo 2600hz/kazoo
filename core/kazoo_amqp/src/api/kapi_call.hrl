@@ -19,6 +19,7 @@
         ,<<"Application-Response">>
         ,<<"Billing-Seconds">>
         ,<<"Bridge-Hangup-Cause">>
+        ,<<"Caller-Destination-Number">>
         ,<<"Call-Direction">>
         ,<<"Callee-ID-Name">>
         ,<<"Callee-ID-Number">>

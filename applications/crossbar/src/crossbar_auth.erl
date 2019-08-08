@@ -149,6 +149,9 @@ maybe_create_token(Context, Claims, AuthConfig, Method, 'true') ->
             lager:debug("~s, creating local auth token", [Reason]),
             log_failed_auth(Method, <<"multi_factor">>, Reason, Context, AccountId, AuthConfig),
             kz_auth:create_token(Claims);
+        {'error', {'configuration', Reason}} ->
+            lager:error("mfa configuration error : ~s", [Reason]),
+            kz_auth:create_token(Claims);
         {'error', Reason}=Error ->
             log_failed_auth(Method, <<"multi_factor">>, kz_term:to_binary(Reason), Context, AccountId, AuthConfig),
             Error;

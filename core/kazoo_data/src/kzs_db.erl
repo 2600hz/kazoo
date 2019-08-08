@@ -20,11 +20,15 @@
         ,db_archive/3
         ,db_import/3
         ,db_list/2
+        ,system_dbs/0
         ]).
 
 -include("kz_data.hrl").
 
 -export_type([db_create_options/0]).
+
+-spec system_dbs() -> list().
+system_dbs() -> ?KZ_SYSTEM_DBS.
 
 %%% DB-related functions ---------------------------------------------
 -spec db_compact(map(), kz_term:ne_binary()) -> boolean().

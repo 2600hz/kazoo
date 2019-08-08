@@ -124,7 +124,7 @@ sign_request_test_() ->
      }
     ].
 
-is_validation_error({'error', <<"invalid duo configuration", _/binary>>}) -> 'true';
+is_validation_error({'error', {'configuration', <<"invalid duo configuration", _/binary>>}}) -> 'true';
 is_validation_error(_) -> 'false'.
 
 is_challenge_resp({error, 401, J}) -> kz_json:is_json_object(J);

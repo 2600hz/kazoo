@@ -60,6 +60,7 @@
 -export([voicemail/1, voicemail/2, set_voicemail/2]).
 -export([voicemail_notify/1, voicemail_notify/2, set_voicemail_notify/2]).
 -export([voicemail_notify_callback/1, voicemail_notify_callback/2, set_voicemail_notify_callback/2]).
+-export([md5_auth/1, sha1_auth/1, signature_secret/1]).
 
 
 -export([fetch/2]).
@@ -982,3 +983,15 @@ full_name(?NE_BINARY = First, _, _) ->
     <<First/binary>>;
 full_name(_, _, Default) ->
     Default.
+
+-spec md5_auth(doc()) -> kz_term:api_object().
+md5_auth(Doc) ->
+    kz_json:get_ne_binary_value(<<"pvt_md5_auth">>, Doc).
+
+-spec sha1_auth(doc()) -> kz_term:api_object().
+sha1_auth(Doc) ->
+    kz_json:get_ne_binary_value(<<"pvt_sha1_auth">>, Doc).
+
+-spec signature_secret(doc()) -> kz_term:api_object().
+signature_secret(Doc) ->
+    kz_json:get_ne_binary_value(<<"pvt_signature_secret">>, Doc).

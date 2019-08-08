@@ -223,8 +223,10 @@ merge_attributes(Endpoint, Type) ->
     merge_attributes(Endpoint, Type, attributes_keys()).
 
 account_keys() ->
-    [<<"realm">>
-    ].
+    [<<"realm">>].
+
+account_tree_keys() ->
+    [<<"call_restriction">>].
 
 attributes_keys() ->
     [<<"call_forward">>
@@ -258,7 +260,7 @@ merge_attributes(Device, <<"device">>, Keys) ->
     Owner = get_user(kz_doc:account_db(Device), Device),
     Endpoint = kz_json:set_value(<<"owner_id">>, kz_doc:id(Owner), Device),
     case kzd_accounts:fetch(kz_doc:account_id(Device)) of
-        {'ok', Account} -> merge_attributes(Keys, merge_parent_call_restrictions(Account), Endpoint, Owner);
+        {'ok', Account} -> merge_attributes(Keys, Account, Endpoint, Owner);
         {'error', _} -> merge_attributes(Keys, kz_json:new(), Endpoint, Owner)
     end;
 merge_attributes(Account, <<"account">>, Keys) ->
@@ -270,19 +272,40 @@ merge_attributes(Endpoint, Type, _Keys) ->
 -spec merge_attributes(kz_term:ne_binaries(), kz_term:api_object(), kz_term:api_object(), kz_term:api_object()) ->
                               kz_json:object().
 merge_attributes(Keys, AccountDoc, EndpointDoc, OwnerDoc) ->
+    Account = merge_account_tree(AccountDoc),
     lists:foldl(fun(Key, EP) ->
-                        merge_attribute(Key, AccountDoc, EP, OwnerDoc)
+                        merge_attribute(Key, Account, EP, OwnerDoc)
                 end
-               ,merge_account_keys(AccountDoc, EndpointDoc)
+               ,merge_account_keys(Account, EndpointDoc)
                ,Keys
                ).
 
 -spec merge_account_keys(kz_json:object(), kz_json:object()) -> kz_json:object().
-merge_account_keys(AccountDoc, EndpointDoc) ->
+merge_account_keys(Account, Endpoint) ->
     Fun = fun(K, Acc) ->
-                  kz_json:set_value(K, kz_json:get_value(K, AccountDoc), Acc)
+                  kz_json:set_value(K, kz_json:get_value(K, Account), Acc)
           end,
-    lists:foldl(Fun, EndpointDoc, account_keys()).
+    lists:foldl(Fun, Endpoint, account_keys()).
+
+-spec merge_account_tree(kz_json:object()) -> kz_json:object().
+merge_account_tree(Account) ->
+    lists:foldl(fun merge_account_tree_fold/2, Account, kzd_accounts:tree(Account)).
+
+-spec merge_account_tree_fold(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+merge_account_tree_fold(AccountId, Account) ->
+    case kzd_accounts:fetch(AccountId) of
+        {'ok', Parent} -> merge_account_tree_attributes(Parent, Account);
+        {'error', _} -> Account
+    end.
+
+-spec merge_account_tree_attributes(kz_json:object(), kz_json:object()) -> kz_json:object().
+merge_account_tree_attributes(Parent, Account) ->
+    lists:foldl(fun(Key, Acc) ->
+                        kz_json:merge(Acc, kz_json:get_value(Key, Parent, kz_json:new()))
+                end
+               ,Account
+               ,account_tree_keys()
+               ).
 
 -spec merge_attribute(kz_term:ne_binary(), kz_term:api_object(), kz_term:api_object(), kz_term:api_object()) -> kz_json:object().
 merge_attribute(?ATTR_LOWER_KEY, _Account, Endpoint, Owner) ->
@@ -542,17 +565,6 @@ add_denied_classifier(Classifier, JObj) ->
 add_allowed_classifier(Classifier, JObj) ->
     Path = [<<"call_restriction">>, Classifier, <<"action">>],
     kz_json:set_value(Path, <<"allow">>, JObj).
-
--spec merge_parent_call_restrictions(kz_json:object()) -> kz_json:object().
-merge_parent_call_restrictions(Account) ->
-    Fun = fun(Parent, Acc) ->
-                  case kzd_accounts:fetch(Parent) of
-                      {'ok', ParentAccount} ->
-                          merge_attributes([<<"call_restriction">>], ParentAccount, Acc, kz_json:new());
-                      {'error', _} -> Acc
-                  end
-          end,
-    lists:foldl(Fun, Account, kzd_accounts:tree(Account)).
 
 -spec get_user(kz_term:ne_binary(), kz_term:api_binary() | kz_json:object()) -> kz_json:object().
 get_user(_AccountDb, 'undefined') -> kz_json:new();
@@ -1640,7 +1652,10 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
 maybe_set_webrtc({Endpoint, Call, CallFwd, CCVs} = Acc) ->
     case kz_json:is_true([<<"media">>, <<"webrtc">>], Endpoint) of
         'true' ->
-            {Endpoint, Call, CallFwd, kz_json:set_value(<<"Media-Webrtc">>, <<"true">>, CCVs)};
+            Props = [{<<"RTCP-MUX">>, 'true'}
+                    ,{<<"Media-Webrtc">>, 'true'}
+                    ],
+            {Endpoint, Call, CallFwd, kz_json:set_values(Props, CCVs)};
         'false' ->
             Acc
     end.

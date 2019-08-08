@@ -52,9 +52,9 @@ check_node(#{payload := JObj}) ->
     case ?RESTRICTED_PUBLISHING
         andalso kz_call_event:custom_channel_var(JObj, <<"Ecallmgr-Node">>)
     of
-        'false' -> 'false';
-        'undefined' -> true;
-        Node -> true;
+        'false' -> 'true';
+        'undefined' -> 'true';
+        Node -> 'true';
         _Other -> 'false'
     end.
 
@@ -64,7 +64,10 @@ realm(JObj) ->
                               ,<<"variable_sip_invite_domain">>
                               ,<<"variable_sip_auth_realm">>
                               ,<<"variable_sip_to_host">>
-                              ], JObj, ?DEFAULT_REALM).
+                              ]
+                             ,JObj
+                             ,?DEFAULT_REALM
+                             ).
 
 -spec get_user_realm(kz_json:object()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 get_user_realm(JObj) ->
@@ -78,7 +81,9 @@ from(JObj) ->
     kz_json:get_first_defined([<<"from">>
                               ,<<"variable_presence_id">>
                               ,<<"Channel-Presence-ID">>
-                              ], JObj).
+                              ]
+                             ,JObj
+                             ).
 
 -spec to_user(kz_json:object()) -> kz_term:ne_binary().
 to_user(JObj) ->
@@ -87,11 +92,15 @@ to_user(JObj) ->
 to_user(<<"initiator">>, JObj) ->
     kz_json:get_first_defined([<<"Caller-Destination-Number">>
                               ,<<"variable_sip_to_user">>
-                              ], JObj);
+                              ]
+                             ,JObj
+                             );
 to_user(<<"recipient">>, JObj) ->
     kz_json:get_first_defined([<<"Caller-Caller-ID-Number">>
                               ,<<"variable_sip_from_user">>
-                              ], JObj).
+                              ]
+                             ,JObj
+                             ).
 
 -spec expires(kz_term:ne_binary()) -> integer().
 expires(<<"early">>) -> 0;

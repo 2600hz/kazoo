@@ -230,7 +230,11 @@ contact_vars(Props) ->
 -spec contact_vars_fold({kz_term:ne_binary(), term()}, kz_term:proplist()) -> kz_term:proplist().
 contact_vars_fold({<<"Proxy-Protocol">>, Proto}, Props) ->
     case kz_term:to_lower_binary(Proto) of
-        <<"ws", _/binary>> -> [{<<"Media-Webrtc">>, true} | Props];
+        <<"ws", _/binary>> ->
+            [{<<"Media-Webrtc">>, 'true'}
+            ,{<<"RTCP-MUX">>, 'true'}
+             | Props
+            ];
         _ -> Props
     end;
 contact_vars_fold({<<"Original-Contact">>, Contact}, Props) ->

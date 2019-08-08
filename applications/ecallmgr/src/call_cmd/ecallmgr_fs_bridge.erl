@@ -249,7 +249,7 @@ hangup_after_bridge(JObj) ->
     case kz_json:get_boolean_value(<<"Continue-After">>, JObj) of
         'true' -> <<"false">>;
         'false' -> <<"true">>;
-        'undefined' -> <<"true">>
+        'undefined' -> <<"false">>
     end.
 
 -spec pre_exec(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().

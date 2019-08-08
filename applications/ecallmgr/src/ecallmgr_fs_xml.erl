@@ -9,7 +9,7 @@
 -module(ecallmgr_fs_xml).
 
 -export([route_resp_xml/3 ,authn_resp_xml/1, reverse_authn_resp_xml/1
-        ,directory_resp_endpoint_xml/1, directory_resp_endpoint_xml/2
+        ,directory_resp_endpoint_xml/2
         ,directory_resp_group_xml/2
         ,acl_xml/1, empty_response/0
         ,not_found/0, not_found/1
@@ -832,13 +832,10 @@ get_channel_params(JObj) ->
 
 -spec get_channel_params_fold(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                      {kz_term:ne_binary(), kz_term:ne_binary()}.
+get_channel_params_fold(<<"Hold-Media">>=Key, Media) ->
+    {ecallmgr_util:get_fs_key(Key), ecallmgr_util:media_path(Media)};
 get_channel_params_fold(Key, Val) ->
-    case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
-        'false' ->
-            {list_to_binary([?CHANNEL_VAR_PREFIX, Key]), Val};
-        {_Key, Prefix} ->
-            {Prefix, ecallmgr_util:maybe_sanitize_fs_value(Key, Val)}
-    end.
+    {ecallmgr_util:get_fs_key(Key), ecallmgr_util:maybe_sanitize_fs_value(Key, Val)}.
 
 -spec get_custom_sip_headers(kz_json:object()) -> kz_json:json_proplist().
 get_custom_sip_headers(JObj) ->
@@ -1455,10 +1452,6 @@ directory_resp_group_id(Endpoint, JObj) ->
         GroupID -> GroupID
     end.
 
--spec directory_resp_endpoint_xml(kz_json:object()) -> {'ok', iolist()}.
-directory_resp_endpoint_xml(Endpoint) ->
-    directory_resp_endpoint_xml(Endpoint, Endpoint).
-
 dial_string(UserId, Domain, 'undefined', ChannelParams) ->
     list_to_binary(["{"
                    ,kz_binary:join([<<K/binary, "='", V/binary, "'">> || {K,V} <- ChannelParams], <<",">>)
@@ -1482,6 +1475,33 @@ dial_string(UserId, Domain, Proxy, ChannelParams) ->
 
 -spec directory_resp_endpoint_xml(kz_json:object(), kz_json:object()) -> {'ok', iolist()}.
 directory_resp_endpoint_xml(Endpoint, JObj) ->
+    Type = kz_json:get_ne_binary_value(<<"Endpoint-Type">>, Endpoint, <<"device">>),
+    directory_resp_endpoint_xml(Type, Endpoint, JObj).
+
+-spec directory_resp_endpoint_xml(binary(), kz_json:object(), kz_json:object()) -> {'ok', iolist()}.
+directory_resp_endpoint_xml(<<"resource">>, Endpoint, JObj) ->
+    directory_resp_resource_xml(Endpoint, JObj);
+directory_resp_endpoint_xml(<<"device">>, Endpoint, JObj) ->
+    directory_resp_device_xml(Endpoint, JObj).
+
+-spec directory_resp_resource_xml(kz_json:object(), kz_json:object()) -> {'ok', iolist()}.
+directory_resp_resource_xml(Endpoint, JObj) ->
+    DomainName = directory_resp_domain(Endpoint, JObj),
+    UserId = directory_resp_user_id(Endpoint, JObj),
+
+    ChannelParams = get_channel_params(Endpoint),
+    SIPHeaders = get_custom_sip_headers(Endpoint),
+    VariableEls = [variable_el(K, V) || {K, V} <- ChannelParams],
+    HeaderEls = [variable_el(K, V) || {K, V} <- SIPHeaders],
+    VariablesEl = variables_el(VariableEls ++ HeaderEls),
+    UserProps = user_el_default_props(UserId),
+    UserEl = user_el(UserProps, [VariablesEl]),
+    DomainEl = domain_el(DomainName, UserEl),
+    SectionEl = section_el(<<"directory">>, DomainEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
+
+-spec directory_resp_device_xml(kz_json:object(), kz_json:object()) -> {'ok', iolist()}.
+directory_resp_device_xml(Endpoint, JObj) ->
     DomainName = directory_resp_domain(Endpoint, JObj),
     UserId = directory_resp_user_id(Endpoint, JObj),
     Realm = kz_json:get_ne_binary_value(<<"Domain-Name">>, Endpoint),

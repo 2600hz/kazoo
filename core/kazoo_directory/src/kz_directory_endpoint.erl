@@ -6,7 +6,7 @@
 %%% @author Luis Azedo
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kz_endpoint_profile).
+-module(kz_directory_endpoint).
 
 -export([profile/2, profile/3]).
 

@@ -210,7 +210,6 @@ get_callee_extension_info(Call) ->
 bootstrap_callflow_executer(_JObj, Call) ->
     Routines = [fun store_owner_id/1
                ,fun set_language/1
-               ,fun update_ccvs/1
                ,fun include_denied_call_restrictions/1
                ,fun maybe_start_recording/1
                ,fun execute_callflow/1
@@ -243,36 +242,6 @@ set_language(Call) ->
             lager:debug("no source endpoint for this call, setting language to default ~s", [Default]),
             kapps_call:set_language(Default, Call)
     end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec update_ccvs(kapps_call:call()) -> kapps_call:call().
-update_ccvs(Call) ->
-    CallerIdType = case kapps_call:inception(Call) of
-                       'undefined' -> <<"internal">>;
-                       _Else -> <<"external">>
-                   end,
-
-    {CIDNumber, CIDName} =
-        kz_attributes:caller_id(CallerIdType
-                               ,kapps_call:kvs_erase('prepend_cid_name', Call)
-                               ),
-
-    lager:info("bootstrapping with caller id type ~s: \"~s\" ~s"
-              ,[CallerIdType, CIDName, CIDNumber]
-              ),
-
-    CCVs = kapps_call:custom_channel_vars(Call),
-    Props = props:filter_undefined(
-              [{<<"Hold-Media">>, kz_attributes:moh_attributes(<<"media_id">>, Call)}
-              ,{<<"Caller-ID-Name">>, CIDName}
-              ,{<<"Caller-ID-Number">>, CIDNumber}
-               | get_incoming_security(Call)
-               ++ kz_privacy:flags(CCVs)
-              ]),
-    kapps_call:set_custom_channel_vars(Props, Call).
 
 -spec maybe_start_metaflow(kapps_call:call()) -> kapps_call:call().
 maybe_start_metaflow(Call) ->
@@ -412,16 +381,6 @@ maybe_start_call_recording(Data, Label, Call) ->
             lager:info("starting call recording by configuration"),
             Call1 = kapps_call:kvs_store('recording_follow_transfer', 'false', Call),
             kapps_call:start_recording(kz_json:set_value(<<"origin">>, Label, Data), Call1)
-    end.
-
--spec get_incoming_security(kapps_call:call()) -> kz_term:proplist().
-get_incoming_security(Call) ->
-    case kz_endpoint:get(Call) of
-        {'error', _R} -> [];
-        {'ok', JObj} ->
-            kz_json:to_proplist(
-              kz_endpoint:encryption_method_map(kz_json:new(), JObj)
-             )
     end.
 
 -spec get_endpoint_id(kapps_call:call()) ->kz_term:api_ne_binary().

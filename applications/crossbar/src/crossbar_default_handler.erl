@@ -20,8 +20,9 @@
                        ,<<"/:version/accounts/:account_id/presence/:reportid">>
                        ]).
 
--spec init(cowboy_req:req(), kz_term:proplist()) ->
-                  {'ok', cowboy_req:req(), 'undefined'}.
+-spec init(cowboy_req:req(), map()) ->
+                  {'ok', cowboy_req:req(), map()} |
+                  {?MODULE, cowboy_req:req(), kz_term:proplist()}.
 init(Req, HandlerOpts) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     Path = cowboy_req:path(Req),
@@ -31,7 +32,7 @@ init(Req, HandlerOpts) ->
             case is_valid_magic_path(Magic) of
                 'true' ->
                     lager:debug("magic path found: ~s", [Magic]),
-                    {?MODULE, Req, [{'magic_path', Magic} | HandlerOpts]};
+                    {?MODULE, Req, [{'magic_path', Magic}]};
                 'false' ->
                     lager:debug("invalid magic path: ~s", [Magic]),
                     handle(Req, HandlerOpts)
@@ -74,9 +75,8 @@ get_magic_token_from_path([Path|Paths]) ->
     end.
 
 -spec handle(cowboy_req:req(), State) -> {'ok', cowboy_req:req(), State}.
-handle(Req, State) ->
+handle(Req, #{body := Bytes} = State) ->
     Headers = #{<<"content-type">> => <<"text/plain; charset=UTF-8">>},
-    {'ok', Bytes} = file:read_file(filename:join(code:priv_dir(?APP), "kazoo.txt")),
     Req1 = cowboy_req:reply(200, Headers, Bytes, Req),
     {'ok', Req1, State}.
 

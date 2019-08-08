@@ -654,7 +654,8 @@ handle_event(JObj, #state{cf_module_pid=PidRef
             handle_usurp(Self, Call, JObj);
         {{<<"error">>, _}, _} ->
             handle_error(CallId, Notify, JObj);
-        {_, CallId} ->
+        {_Evt, CallId} ->
+            lager:debug_unsafe("relaying ~p to ~p", [_Evt, Notify]),
             relay_message(Notify, JObj);
         {{_Cat, _Name}, _Else} when Others =:= [] ->
             lager:info("received ~s (~s) from call ~s while relaying for ~s"

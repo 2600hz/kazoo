@@ -266,7 +266,8 @@ sign(#{digest := Digest
 
 -spec set_provider(map()) -> map().
 set_provider(#{payload := #{<<"iss">> := Issuer}}=Token) ->
-    Token#{auth_provider => kz_auth_providers:provider_by_issuer(Issuer)}.
+    Token#{auth_provider => kz_auth_providers:provider_by_issuer(Issuer)};
+set_provider(Token) -> Token.
 
 -spec parse(kz_term:ne_binary()) -> {'ok', jwt()} | {'error', 'invalid_jwt'}.
 parse(JWTToken) when is_binary(JWTToken) ->

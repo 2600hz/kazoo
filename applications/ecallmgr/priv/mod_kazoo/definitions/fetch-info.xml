@@ -16,5 +16,6 @@
 	<field name="freeswitch-url" type="reference" />
 	<field name="Control" type="reference" />
 	<field name="Privacy" type="reference" />
+	<field name="Custom-AUTH-Headers" type="reference" />
 	<field name="debug-call" type="reference" />
 </definition>

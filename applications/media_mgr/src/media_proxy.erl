@@ -16,9 +16,9 @@
 start_link() ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
 
-    Dispatch = cowboy_router:compile([{'_', [{<<"/store/[...]">>, [], 'kz_media_store_proxy', []}
-                                            ,{<<"/single/[...]">>, [], 'kz_media_proxy_handler', ['single']}
-                                            ,{<<"/continuous/[...]">>, [], 'kz_media_proxy_handler', ['continuous']}
+    Dispatch = cowboy_router:compile([{'_', [{<<"/store/[...]">>, [], 'media_store_proxy', []}
+                                            ,{<<"/single/[...]">>, [], 'media_proxy_handler', ['single']}
+                                            ,{<<"/continuous/[...]">>, [], 'media_proxy_handler', ['continuous']}
                                             ]}
                                      ]),
 

@@ -475,9 +475,12 @@ receive_event(Timeout, IgnoreOthers) ->
     Start = kz_time:start_time(),
     receive
         {'amqp_msg', JObj} -> {'ok', JObj};
-        _ when IgnoreOthers ->
+        _Msg when IgnoreOthers ->
+            lager:debug_unsafe("ignoring received event : ~p", [_Msg]),
             receive_event(kz_time:decr_timeout(Timeout, Start), IgnoreOthers);
-        Other -> {'other', Other}
+        Other ->
+            lager:debug_unsafe("received other event : ~p", [Other]),
+            {'other', Other}
     after
         Timeout -> {'error', 'timeout'}
     end.
@@ -2747,9 +2750,14 @@ wait_for_headless_application(Application, Event, Type, Fun, Timeout) ->
                     lager:debug("destroy occurred, waiting 60000 ms for ~s event", [Application]),
                     wait_for_headless_application(Application, Event, Type, Fun, 60 * ?MILLISECONDS_IN_SECOND);
                 {Type, Event, Application} ->
+                    lager:debug("stop event ~s has been received for ~s", [Event, Application]),
                     case Fun(JObj) of
                         'true' -> Ok;
-                        'false' -> wait_for_headless_application(Application, Event, Type, Fun, kz_time:decr_timeout(Timeout, Start))
+                        'false' ->
+                            lager:debug_unsafe("failed to validate received stop event ~s for ~s : ~s"
+                                              ,[Event, Application, kz_json:encode(JObj, ['pretty'])]
+                                              ),
+                            wait_for_headless_application(Application, Event, Type, Fun, kz_time:decr_timeout(Timeout, Start))
                     end;
                 _T ->
                     lager:debug("ignore ~p", [_T]),

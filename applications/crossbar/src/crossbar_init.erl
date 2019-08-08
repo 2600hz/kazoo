@@ -23,7 +23,8 @@ paths_list() ->
     [api_path(), default_path()].
 
 default_path() ->
-    {'_', 'crossbar_default_handler', []}.
+    {'ok', Bytes} = file:read_file(filename:join(code:priv_dir(?APP), "kazoo.txt")),
+    {'_', 'crossbar_default_handler', #{body => Bytes}}.
 
 api_path() ->
     {<<"/:version/[...]">>, [api_version_constraint()], 'api_resource', []}.
