@@ -205,7 +205,8 @@ siblings_of(App) ->
     [dir_to_app_name(Dir)
      || Dir <- filelib:wildcard(filename:join([code:lib_dir(App), "..", "*"])),
         filelib:is_dir(Dir),
-        ".git" =/= filename:basename(Dir)
+        ".git" =/= filename:basename(Dir),
+        ".erlang.mk" =/= filename:basename(Dir)
     ].
 
 dir_to_app_name(Dir) ->

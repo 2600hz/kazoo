@@ -77,7 +77,7 @@ def check_name(file_name, JSON_name):
     fname = fname.split('-')[-1]
     jname = JSON_name.split('/')[-1]
     if fname != jname:
-        print 'File name {} does not match _id field!'.format(file_name)
+        print '{}:1: filename does not match _id field!'.format(file_name)
         print '\t', fname, u' ≠ ', jname
         exit(1)
 
