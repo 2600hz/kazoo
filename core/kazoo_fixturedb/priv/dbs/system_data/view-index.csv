@@ -1,0 +1,6 @@
+view_name, view_options, view_file_name
+storage/accounts, [{key,<<"account0000000000000000000000004">>}], storage+accounts-f48bf9a5fe9c25f7a839432980332447.json
+storage/accounts, [{key,<<"account0000000000000000000000005">>}], storage+accounts-7ceafebf45b1dacdfbd67e931df52396.json
+storage/storage_by_account, [{key,<<"account0000000000000000000000004">>}], storage+storage_by_account-f48bf9a5fe9c25f7a839432980332447.json
+storage/storage_by_account, [{key,<<"account0000000000000000000000005">>}], storage+storage_by_account-7ceafebf45b1dacdfbd67e931df52396.json
+storage/storage_by_account, [{key,<<"system">>}], storage+storage_by_account-ebc7d2616c67e9aca7ceb2edb6b63637.json
