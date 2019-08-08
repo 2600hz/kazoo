@@ -1,4 +1,6 @@
 {
+    "_id": "system",
+    "_rev": "1-4a96cc4a4fcce6416a09349ff14e39d5",
     "attachments": {},
     "connections": {
         "local": {}
