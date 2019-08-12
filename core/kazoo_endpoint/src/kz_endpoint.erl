@@ -1668,6 +1668,7 @@ maybe_set_call_forward({_Endpoint, _Call, 'undefined', _CCVs}=Acc) ->
 maybe_set_call_forward({Endpoint, Call, CallFwd, CCVs}) ->
     {Endpoint, Call, CallFwd
     ,kz_json:set_values([{<<"Call-Forward">>, <<"true">>}
+                        ,{<<"Is-Failover">>, is_failover(CallFwd)}
                         ,{<<"Authorizing-Type">>, <<"device">>}
                         ,{<<"Authorizing-ID">>, kz_doc:id(Endpoint)}
                         ,{<<"Call-Forward-From">>, kapps_call:inception_type(Call)}
@@ -1679,6 +1680,13 @@ maybe_set_call_forward({Endpoint, Call, CallFwd, CCVs}) ->
                        ,CCVs
                        )
     }.
+
+-spec is_failover(kz_json:object()) -> 'true' | 'undefined'.
+is_failover(CallFwd) ->
+    case kz_json:is_true(<<"failover">>, CallFwd) of
+        'true' -> 'true';
+        'false' -> 'undefined'
+    end.
 
 -spec maybe_rtcp_mux(ccv_acc()) -> ccv_acc().
 maybe_rtcp_mux({Endpoint, Call, CallFwd, CCVs} = Acc) ->
