@@ -6731,12 +6731,12 @@
     - numbers
   'type': object
 'port_requests.to_scheduled':
-  'description': Schema for a port request to be transitioned to the 'scheduled' state
-  'oneOf':
+  'anyOf':
     - 'required':
         - scheduled_date
     - 'required':
         - schedule_on
+  'description': Schema for a port request to be transitioned to the 'scheduled' state
   'properties':
     'schedule_on':
       'description': date-time at which to perform the porting
