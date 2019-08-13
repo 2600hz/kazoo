@@ -196,7 +196,8 @@ most_recent_ets_statuses(AccountId, AgentId, Options) ->
                                     )
     of
         {'error', _}=E -> E;
-        {'ok', Resps} ->
+        {Result, Resps} when Result =:= 'ok'
+                             orelse Result =:= 'timeout' ->
             OKResps = lists:filter(fun kapi_acdc_stats:status_resp_v/1, Resps),
             Statuses = lists:foldl(fun(Resp, AccJObj) ->
                                            AgentsStatuses = kz_json:get_json_value(<<"Agents">>, Resp),
