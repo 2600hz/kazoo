@@ -18,7 +18,8 @@ test_whapps_controller_migrate(_Setup) ->
     {'ok', KappsController} = kz_json:fixture(KappsPath),
 
     Migrated = kapps_config:migrate_from_doc(WhappsController, kz_json:from_list([{<<"_id">>, <<"kapps_controller">>}])),
+
     [{"migrated whapps_controller to kapps_controller"
-     ,?_assert(kz_json:are_equal(KappsController, Migrated))
+     ,?_assert(kz_json:are_equal(kz_doc:public_fields(KappsController), kz_doc:public_fields(Migrated)))
      }
     ].
