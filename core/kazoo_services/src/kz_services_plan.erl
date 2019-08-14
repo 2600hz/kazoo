@@ -358,7 +358,6 @@ assign(Services, JObj, Options) ->
                      [{<<"contract">>, Contract}
                      ,{<<"vendor_id">>, VendorId}
                      ,{<<"overrides">>, Overrides}
-                     ,{<<"contract">>, Contract}
                      ]
                     ),
             assign(Services, PlanId, Plan, Options)
