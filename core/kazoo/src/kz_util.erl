@@ -757,8 +757,10 @@ get_app(AppName) ->
 
 -spec application_version(atom()) -> kz_term:ne_binary().
 application_version(Application) ->
-    {'ok', Vsn} = application:get_key(Application, 'vsn'),
-    kz_term:to_binary(Vsn).
+    case application:get_key(Application, 'vsn') of
+        {'ok', Vsn} -> kz_term:to_binary(Vsn);
+        'undefined' -> <<"unknown">>
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Like `lists:usort/1' but preserves original ordering.

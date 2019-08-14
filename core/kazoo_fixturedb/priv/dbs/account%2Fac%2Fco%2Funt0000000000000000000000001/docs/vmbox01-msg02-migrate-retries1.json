@@ -17,6 +17,7 @@
     "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000001",
     "pvt_account_id": "account0000000000000000000000001",
     "pvt_created": 63675606808,
+    "pvt_document_hash": "03a53f6236e0b1baaa3cafd689108dc9",
     "pvt_modified": 63675606808,
     "pvt_node": "kazoo_apps@example.com",
     "pvt_type": "media",
