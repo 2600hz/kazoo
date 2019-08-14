@@ -18,6 +18,7 @@
             "jonny5"
         ]
     },
+    "pvt_document_hash": "18802324fbffc664d217476a41f42c96",
     "whistle_apps@bar.server.com": {
         "console_log_level": "debug",
         "cookie": "CERT_BIGCOUCH",

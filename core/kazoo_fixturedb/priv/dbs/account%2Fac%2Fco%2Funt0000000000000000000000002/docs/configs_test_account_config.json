@@ -5,6 +5,7 @@
     "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000002",
     "pvt_account_id": "account0000000000000000000000002",
     "pvt_created": 63668324118,
+    "pvt_document_hash": "d78f79e9242b4320a7244bbbcb0ded64",
     "pvt_modified": 63668324118,
     "pvt_node": "kazoo_apps@example.com",
     "pvt_type": "account_config",

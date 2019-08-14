@@ -88,7 +88,9 @@ queue_id(JObj) ->
 event_category(JObj) ->
     kz_json:get_value(?KEY_EVENT_CATEGORY, JObj).
 
--spec event_name(kz_json:object()) -> kz_term:api_binary().
+-spec event_name(kz_term:api_terms()) -> kz_term:api_binary().
+event_name(Props) when is_list(Props) ->
+    props:get_value(?KEY_EVENT_NAME, Props);
 event_name(JObj) ->
     kz_json:get_value(?KEY_EVENT_NAME, JObj).
 
