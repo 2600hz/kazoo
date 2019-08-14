@@ -1,0 +1,107 @@
+{
+    "_id": "account0000000000000000000044944",
+    "_rev": "3-4867d4561fb4bdde734e8e5539a89155",
+    "call_recording": {},
+    "call_restriction": {
+        "caribbean": {
+            "action": "deny"
+        },
+        "did_us": {
+            "action": "deny"
+        },
+        "emergency": {
+            "action": "deny"
+        },
+        "international": {
+            "action": "deny"
+        },
+        "toll_us": {
+            "action": "deny"
+        },
+        "tollfree_us": {
+            "action": "deny"
+        },
+        "unknown": {
+            "action": "deny"
+        }
+    },
+    "call_waiting": {
+        "enabled": false
+    },
+    "caller_id": {
+        "emergency": {
+            "name": "account44944-emergency-name",
+            "number": "account44944-emergency-number"
+        },
+        "external": {
+            "name": "account44944-external-name",
+            "number": "account44944-external-number"
+        },
+        "internal": {
+            "name": "account44944-internal-name",
+            "number": "account44944-internal-number"
+        }
+    },
+    "created": 63636183145,
+    "descendants_count": 11,
+    "dial_plan": {
+        "account-regex": {
+            "description": "account44944-description",
+            "prefix": "account44944-prefix",
+            "suffix": "account44944-suffix"
+        },
+        "system": [
+            "dialplan000000000000000000000001"
+        ]
+    },
+    "enabled": true,
+    "is_reseller": true,
+    "language": "en-US",
+    "name": "Sub-Sub-Sub Account",
+    "notification_preference": "teletype",
+    "notifications": {
+        "first_occurrence": {
+            "sent_initial_registration": true
+        },
+        "low_balance": {
+            "enabled": true,
+            "sent_low_balance": false
+        }
+    },
+    "outbound_flags": {
+        "dynamic": [
+            "zone"
+        ],
+        "static": [
+            "account_new_static_flag"
+        ]
+    },
+    "preflow": {
+        "always": "callflow000000000000000000000001"
+    },
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000044944",
+    "pvt_account_id": "account0000000000000000000044944",
+    "pvt_api_key": "apikey0000000000000000000000000000000000000000000000000000044944",
+    "pvt_auth_account_id": "account0000000000000000000000001",
+    "pvt_auth_user_id": "user0000000000000000000000000001",
+    "pvt_created": 63636183145,
+    "pvt_document_hash": "90fdcd9fca247297fb90e2245a0050b7",
+    "pvt_enabled": true,
+    "pvt_is_authenticated": true,
+    "pvt_modified": 63667898685,
+    "pvt_notification_preference": "teletype",
+    "pvt_request_id": "request0000000000000000000000001",
+    "pvt_reseller_id": "account0000000000000000000000001",
+    "pvt_tree": [
+        "account0000000000000000000000001"
+    ],
+    "pvt_type": "account",
+    "pvt_vsn": "1",
+    "pvt_whitelabel_domain": "44944.help",
+    "realm": "help44944.sip.2600hz.local",
+    "timezone": "America/Los_Angeles",
+    "topup": {
+        "amount": 10,
+        "threshold": 5
+    }
+}
