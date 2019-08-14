@@ -230,6 +230,7 @@ validate(Context, ?AUDIT) ->
 validate(Context, ?AUDIT_SUMMARY) ->
     ViewOptions = [{'group_level', 1}
                   ,{'mapper', fun normalize_day_summary_by_date/2}
+                  ,{'max_range', ?SECONDS_IN_YEAR}
                   ,{'range_start_keymap', fun audit_summary_range_key/1}
                   ,{'range_end_keymap', fun audit_summary_range_key/1}
                   ],
@@ -265,6 +266,7 @@ validate(Context, ?AUDIT_SUMMARY, SourceService) ->
     RangeKeyFun = fun(Timestamp) -> audit_summary_range_key(SourceService, Timestamp) end,
     ViewOptions = [{'group_level', 2}
                   ,{'mapper', fun normalize_day_summary_by_source/2}
+                  ,{'max_range', ?SECONDS_IN_YEAR}
                   ,{'range_start_keymap', RangeKeyFun}
                   ,{'range_end_keymap', RangeKeyFun}
                   ],
