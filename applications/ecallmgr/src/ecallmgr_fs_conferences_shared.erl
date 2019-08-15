@@ -379,7 +379,7 @@ handle_create(#outbound_dial{loopback_a = <<?LB_ALEG_PREFIX, _/binary>>
         {'undefined', LoopbackBLeg} ->
             lager:debug("loopback bleg ~s started", [LoopbackBLeg]),
             register_for_events(kzd_freeswitch:switch_nodename(Props), LoopbackBLeg),
-            maybe_update_ecallmgr_node([LoopbackBLeg]),
+            maybe_update_ecallmgr_node(LoopbackBLeg),
             wait_for_bowout(OutboundDial#outbound_dial{loopback_b=LoopbackBLeg
                                                       ,channel_props=props:insert_values(Props, ChannelProps)
                                                       }
@@ -452,25 +452,27 @@ start_call_handlers(Node, JObj, #outbound_dial{loopback_b=LoopbackB, b_leg=CallI
     CCVs = kz_json:new(),
     FetchId = kz_api:msg_id(JObj),
 
-    ecallmgr_call_control:publish_usurp(LoopbackB, FetchId, node()),
-    maybe_update_ecallmgr_node([LoopbackB, CallId]),
+    FirstValid = case LoopbackB of
+                     'undefined' -> CallId;
+                     _ -> LoopbackB
+                 end,
+    ecallmgr_call_control:publish_usurp(FirstValid, FetchId, node()),
+    maybe_update_ecallmgr_node(FirstValid),
 
     _ = kz_util:spawn(fun ecallmgr_call_sup:start_event_process/2, [Node, CallId]),
     {'ok', CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, 'undefined', CCVs),
 
     get_control_queue(CtlPid).
 
-maybe_update_ecallmgr_node([]) -> 'ok';
-maybe_update_ecallmgr_node(['undefined' | Legs]) -> maybe_update_ecallmgr_node(Legs);
-maybe_update_ecallmgr_node([Leg | Legs]) ->
+maybe_update_ecallmgr_node('undefined') -> 'ok';
+maybe_update_ecallmgr_node(Leg) ->
     case ecallmgr_fs_channel:fetch(Leg, 'record') of
         {'ok', #channel{node=Node}} ->
             ecallmgr_fs_command:export(Node, Leg, [{<<"Ecallmgr-Node">>, node()}]),
             lager:debug("exported ecallmgr node to ~s (~s)", [Node, Leg]);
         {'error', 'not_found'} ->
             lager:debug("leg ~s not found, skipping", [Leg])
-    end,
-    maybe_update_ecallmgr_node(Legs).
+    end.
 
 -spec get_control_queue(pid()) -> kz_term:api_ne_binary().
 get_control_queue(CtlPid) ->
