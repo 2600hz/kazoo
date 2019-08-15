@@ -257,7 +257,7 @@ handle_resp(#webhook{hook_event = _HookEvent
 handle_resp(#webhook{hook_event = _HookEvent
                     ,hook_id = _HookId
                     } = Hook, EventId, JObj, Debug, {'error', _E} = Resp) ->
-    lager:debug("failed to fire hook event ~s(~s) interaction id: ~p", [_HookEvent, _HookId, EventId, _E]),
+    lager:debug("failed to fire hook event ~s(~s) interaction id: ~p error: ~p", [_HookEvent, _HookId, EventId, _E]),
     _ = failed_hook(Hook, Debug, Resp),
     retry_hook(Hook, EventId, JObj).
 
