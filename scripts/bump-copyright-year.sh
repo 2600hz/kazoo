@@ -1,10 +1,21 @@
 #!/usr/bin/env python2
 
 # bumps copyright year to current year in source/hrl files
+# adds MPL2.0 license to each source file if missing
 
 import re
 import sys
 import datetime
+import os.path
+
+license = """%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
+"""
+
+module_end = """%%% @end
+%%%-----------------------------------------------------------------------------"""
 
 def get_copyright(filename):
     with open(filename, 'r') as fd:
@@ -20,21 +31,60 @@ def replace_line(filename, new_contents):
     with open(filename, 'w') as fd:
         fd.write(new_contents)
 
-replaced = 0
-for filename in sys.argv[1:]:
+def update_copyright(filename):
     found = get_copyright(filename)
     if found == None:
-        continue
+        return 0
     (line, contents) = found
     year = re.findall('20[0-9]{2}', line)[-1]
     new_line = line.replace(year, str(datetime.datetime.now().year))
-    if line != new_line:
-        if replaced == 0:
-            sys.stdout.write("updating copyright: ")
-        replaced += 1
-        sys.stdout.write(".")
-    new_contents = contents.replace(line, new_line)
-    replace_line(filename, new_contents)
 
-if replaced > 0:
-    print " done"
+    if line != new_line:
+        new_contents = contents.replace(line, new_line)
+        replace_line(filename, new_contents)
+        return 1
+    else:
+        return 0
+
+def update_license(filename):
+    with open(filename, 'r') as fd:
+        whole_doc = fd.read()
+        found = re.findall(license, whole_doc, re.MULTILINE | re.DOTALL)
+
+        if len(found) == 1:
+            return 0
+
+        found_end = re.findall(module_end, whole_doc, re.MULTILINE | re.DOTALL)
+        if len(found_end) == 0:
+            sys.stdout.write("\n{}:1: failed to find module header @end".format(filename))
+            raise ValueError('no @end in ', filename)
+
+        added = ''.join([license, module_end])
+
+        updated = whole_doc.replace(str(found_end[0]), added, 1)
+
+        with open(filename, 'w') as w:
+            w.write(updated)
+            return 1
+
+replaced = 0
+sys.stdout.write("checking copyright and license: ")
+for filename in sys.argv[1:]:
+    basename, ext = os.path.splitext(filename)
+    if (ext != ".erl"):
+        continue
+
+    updated_c = update_copyright(filename)
+    updated_l = update_license(filename)
+    if updated_c == 1 and updated_l == 1:
+        sys.stdout.write("d")
+    elif updated_c == 1:
+        sys.stdout.write("c")
+    elif updated_l == 1:
+        sys.stdout.write("l")
+    else:
+        sys.stdout.write(".")
+
+    replaced += (updated_c or updated_l)
+
+print " done"

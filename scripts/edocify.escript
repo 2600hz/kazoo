@@ -84,10 +84,10 @@ main(_) ->
            }
 
            %% regex for finding first comment line after `@doc'
-          ,{"ag '%%*\\s*@doc$(\\n%%*$)*\\n%%*\\s*[^@\\n]+$' core/ applications/"
-           ,"move first comment line to the same line as doc tag"
-           ,fun move_to_doc_line/1
-           }
+           %% ,{"ag '%%*\\s*@doc$(\\n%%*$)*\\n%%*\\s*[^@\\n]+$' core/ applications/"
+           %%  ,"move first comment line to the same line as doc tag"
+           %%  ,fun move_to_doc_line/1
+           %%  }
 
            %% regex for empty comment line after @doc to avoid empty paragraph or dot in summary
            %% must be last thing to run

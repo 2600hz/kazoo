@@ -1,11 +1,16 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2019-, Voxter Communications Inc
+%%% @author Daniel Finke
 %%% @doc Serialize requests to look up an account ID by realm in order to reduce
 %%% overhead when Kamailio nodes are restarted and presence probes are performed
 %%% for all new registrations
 %%%
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
-%%% @author Daniel Finke
 %%%-----------------------------------------------------------------------------
 -module(acdc_presence_realm_lookup).
 
