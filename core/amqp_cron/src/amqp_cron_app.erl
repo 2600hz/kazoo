@@ -21,12 +21,6 @@
 %%% {@link amqp_cron_sup} to your own supervision tree where you
 %%% can more reasonably control the node list.
 %%%
-%%% @see amqp_cron
-%%% @see amqp_cron_sup
-%%% This Source Code Form is subject to the terms of the Mozilla Public
-%%% License, v. 2.0. If a copy of the MPL was not distributed with this
-%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
-%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(amqp_cron_app).

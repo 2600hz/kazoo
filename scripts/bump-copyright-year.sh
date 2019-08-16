@@ -8,11 +8,13 @@ import sys
 import datetime
 import os.path
 
-license = """%%% This Source Code Form is subject to the terms of the Mozilla Public
+mpl_license = """%%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
 %%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
 %%%
 """
+
+apa_license = """%%% Licensed under the Apache License, Version 2.0 (the "License");"""
 
 module_end = """%%% @end
 %%%-----------------------------------------------------------------------------"""
@@ -49,7 +51,12 @@ def update_copyright(filename):
 def update_license(filename):
     with open(filename, 'r') as fd:
         whole_doc = fd.read()
-        found = re.findall(license, whole_doc, re.MULTILINE | re.DOTALL)
+
+        apa_found = re.findall(apa_license, whole_doc, re.MULTILINE | re.DOTALL)
+        if len(apa_found) == 1:
+            return 0 # skip Apache-licensed files
+
+        found = re.findall(mpl_license, whole_doc, re.MULTILINE | re.DOTALL)
 
         if len(found) == 1:
             return 0
@@ -59,7 +66,7 @@ def update_license(filename):
             sys.stdout.write("\n{}:1: failed to find module header @end".format(filename))
             raise ValueError('no @end in ', filename)
 
-        added = ''.join([license, module_end])
+        added = ''.join([mpl_license, module_end])
 
         updated = whole_doc.replace(str(found_end[0]), added, 1)
 

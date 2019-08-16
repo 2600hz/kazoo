@@ -31,11 +31,6 @@
 %%% <code>amqp_cron</code> with the new node list. Rolling updates
 %%% currently are not supported.
 %%%
-%%% @see amqp_cron_task
-%%% This Source Code Form is subject to the terms of the Mozilla Public
-%%% License, v. 2.0. If a copy of the MPL was not distributed with this
-%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
-%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(amqp_cron).

@@ -74,10 +74,6 @@
 %%% When a task takes longer than the time to the next valid period (or
 %%% periods) the overlapped periods are skipped.
 %%%
-%%% This Source Code Form is subject to the terms of the Mozilla Public
-%%% License, v. 2.0. If a copy of the MPL was not distributed with this
-%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
-%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(amqp_cron_task).
