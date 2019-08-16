@@ -263,7 +263,8 @@ create(Context, {<<"port_requests">>, _}) ->
         {'ok', _} ->
             crossbar_doc:save(Context);
         {'error', _} ->
-            cb_context:add_system_error('datastore_fault', <<"unable to submit comment to carrier">>, Context)
+            Context1 = cb_context:store(Context, 'req_comments', []),
+            cb_context:add_system_error('datastore_fault', <<"unable to submit comment to carrier">>, Context1)
     end;
 create(Context, _Resource) ->
     Doc = cb_context:doc(Context),

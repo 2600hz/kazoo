@@ -85,6 +85,11 @@ rest_init(Req, Opts) ->
 
     Path = find_path(Req, Opts),
 
+    MasterId = case kapps_util:get_master_account_id() of
+                   {'ok', Id} -> Id;
+                   {'error', _} -> 'undefined'
+               end,
+
     Setters = [{fun cb_context:set_req_id/2, get_request_id(Req)}
               ,{fun cb_context:set_req_headers/2, cowboy_req:headers(Req)}
               ,{fun host_url/2, Req}
@@ -100,6 +105,7 @@ rest_init(Req, Opts) ->
               ,{fun cb_context:set_api_version/2, find_version(Path, Req)}
               ,{fun cb_context:set_magic_pathed/2, props:is_defined('magic_path', Opts)}
               ,{fun cb_context:store/3, 'metrics', metrics()}
+              ,{fun cb_context:set_master_account_id/2, MasterId}
               ,fun req_nouns/1
               ],
 
