@@ -14,7 +14,7 @@ mpl_license = """%%% This Source Code Form is subject to the terms of the Mozill
 %%%
 """
 
-apa_license = """%%% Licensed under the Apache License, Version 2.0 (the "License");"""
+apa_license = "Licensed under the Apache License"
 
 module_end = """%%% @end
 %%%-----------------------------------------------------------------------------"""
@@ -52,7 +52,7 @@ def update_license(filename):
     with open(filename, 'r') as fd:
         whole_doc = fd.read()
 
-        apa_found = re.findall(apa_license, whole_doc, re.MULTILINE | re.DOTALL)
+        apa_found = re.findall(apa_license, whole_doc)
         if len(apa_found) == 1:
             return 0 # skip Apache-licensed files
 
