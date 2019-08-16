@@ -416,4 +416,4 @@ maybe_save_recording(?KZ_RECORDER, Pid, JObj) ->
              },
     save_recording(Store);
 maybe_save_recording(Recorder, _Pid, _JObj) ->
-     lager:info("recorder ~s not handled", [Recorder]).
+    lager:info("recorder ~s not handled", [Recorder]).
