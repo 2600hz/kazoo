@@ -15,6 +15,10 @@
 %%%   <li>Any files created in the process should be stored in the tmp_dir parameter, the configured `tmp_dir` or `/tmp' by default.</li>
 %%% </ul>
 %%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(gen_kz_converter).
