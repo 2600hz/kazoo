@@ -35,13 +35,14 @@
 
 %% Private fields
 -export([pvt_account_name/1, pvt_account_name/2, set_pvt_account_name/2]).
+-export([pvt_last_phonebook_error/1, pvt_last_phonebook_error/2, set_pvt_last_phonebook_error/2]).
 -export([pvt_port_authority/1, pvt_port_authority/2, set_pvt_port_authority/2]).
 -export([pvt_port_authority_name/1, pvt_port_authority_name/2, set_pvt_port_authority_name/2]).
 -export([pvt_port_state/1, pvt_port_state/2, set_pvt_port_state/2]).
 -export([pvt_ported_numbers/1, pvt_ported_numbers/2, set_pvt_ported_numbers/2]).
 -export([pvt_sent/1, pvt_sent/2, set_pvt_sent/2]).
--export([pvt_tree/1, pvt_tree/2, set_pvt_tree/2]).
 -export([pvt_transitions/1, pvt_transitions/2, set_pvt_tranisitions/2]).
+-export([pvt_tree/1, pvt_tree/2, set_pvt_tree/2]).
 
 %% Utilities
 -export([get_transition/2]).
@@ -386,6 +387,22 @@ pvt_account_name(Doc, Default) ->
 -spec set_pvt_account_name(doc(), kz_term:ne_binary()) -> doc().
 set_pvt_account_name(Doc, Name) ->
     kz_json:set_value([<<"pvt_account_name">>], Name, Doc).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec pvt_last_phonebook_error(doc()) -> kz_term:api_ne_binary().
+pvt_last_phonebook_error(Doc) ->
+    pvt_last_phonebook_error(Doc, 'undefined').
+
+-spec pvt_last_phonebook_error(doc(), Default) -> kz_term:ne_binary() | Default.
+pvt_last_phonebook_error(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"pvt_last_phonebook_error">>], Doc, Default).
+
+-spec set_pvt_last_phonebook_error(doc(), kz_term:ne_binary()) -> doc().
+set_pvt_last_phonebook_error(Doc, Name) ->
+    kz_json:set_value([<<"pvt_last_phonebook_error">>], Name, Doc).
 
 %%------------------------------------------------------------------------------
 %% @doc

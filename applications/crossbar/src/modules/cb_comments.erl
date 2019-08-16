@@ -258,7 +258,8 @@ create(Context, {<<"port_requests">>, _}) ->
         {'ok', _} ->
             crossbar_doc:save(Context);
         {'error', _} ->
-            cb_context:add_system_error('datastore_fault', <<"unable to submit comment to carrier">>, Context)
+            Context1 = cb_context:store(Context, 'req_comments', []),
+            cb_context:add_system_error('datastore_fault', <<"unable to submit comment to carrier">>, Context1)
     end;
 create(Context, _Resource) ->
     Doc = cb_context:doc(Context),
@@ -418,7 +419,7 @@ id_to_number(Id) -> kz_term:to_integer(Id) + 1.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec sort(kz_json:objects()) -> boolean().
+-spec sort(kz_json:objects()) -> kz_json:objects().
 sort(Comments) ->
     lists:sort(fun sort_fun/2, Comments).
 

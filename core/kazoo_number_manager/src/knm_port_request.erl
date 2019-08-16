@@ -24,7 +24,7 @@
         ,migrate/0
         ]).
 
--export([transition_metadata/2, transition_metadata/3]).
+-export([transition_metadata/2, transition_metadata/3, transition_metadata/4]).
 -export_type([transition_metadata/0]).
 
 -compile({'no_auto_import', [get/1]}).
@@ -39,6 +39,7 @@
                                 ,user_last_name => kz_term:api_ne_binary()
                                 ,user_full_name => kz_term:api_ne_binary()
                                 ,optional_reason => kz_term:api_ne_binary()
+                                ,timestamp => kz_time:gregorian_seconds()
                                 }.
 
 -define(VIEW_LISTING_SUBMITTED, <<"port_requests/listing_submitted">>).
@@ -101,7 +102,8 @@ public_fields(JObj) ->
 -spec read_only_public_fields(kz_json:object()) -> kz_term:api_object().
 read_only_public_fields(Doc) ->
     JObj = kz_json:from_list(
-             [{<<"account_name">>, kzd_port_requests:pvt_account_name(Doc)}
+             [{<<"account_id">>, kz_doc:account_id(Doc)}
+             ,{<<"account_name">>, kzd_port_requests:pvt_account_name(Doc)}
              ,{<<"port_authority">>, kzd_port_requests:pvt_port_authority(Doc)}
              ,{<<"port_authority_name">>, kzd_port_requests:pvt_port_authority_name(Doc)}
              ,{<<"ported_numbers">>, kzd_port_requests:pvt_ported_numbers(Doc)}
@@ -363,9 +365,10 @@ successful_transition(JObj, FromState, ToState, Metadata) ->
 transition_metadata_jobj(FromState, ToState, #{auth_account_id := AuthAccountId
                                               ,auth_account_name := AuthAccountName
                                               ,optional_reason := OptionalReason
+                                              ,timestamp := Timestamp
                                               }=Metadata) ->
     kz_json:from_list_recursive(
-      [{?TRANSITION_TIMESTAMP, kz_time:now_s()}
+      [{?TRANSITION_TIMESTAMP, Timestamp}
       ,{?TRANSITION_TYPE, ?PORT_TRANSITION}
       ,{?TRANSITION_REASON, OptionalReason}
       ,{<<"transition">>, [{<<"new">>, ToState}
@@ -395,10 +398,14 @@ maybe_user(#{auth_user_id := UserId
 
 -spec transition_metadata(kz_term:ne_binary(), kz_term:api_ne_binary()) -> transition_metadata().
 transition_metadata(AuthAccountId, AuthUserId) ->
-    transition_metadata(AuthAccountId, AuthUserId, 'undefined').
+    transition_metadata(AuthAccountId, AuthUserId, 'undefined', 'undefined').
 
 -spec transition_metadata(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> transition_metadata().
-transition_metadata(?MATCH_ACCOUNT_RAW(AuthAccountId), UserId, Reason) ->
+transition_metadata(AuthAccountId, AuthUserId, Reason) ->
+    transition_metadata(AuthAccountId, AuthUserId, Reason, 'undefined').
+
+-spec transition_metadata(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_term:api_seconds()) -> transition_metadata().
+transition_metadata(?MATCH_ACCOUNT_RAW(AuthAccountId), UserId, Reason, RequestedTimestamp) ->
     OptionalUserId = case UserId of
                          ?NE_BINARY -> UserId;
                          _ -> 'undefined'
@@ -408,6 +415,10 @@ transition_metadata(?MATCH_ACCOUNT_RAW(AuthAccountId), UserId, Reason) ->
                          ?NE_BINARY -> Reason;
                          _ -> 'undefined'
                      end,
+    Timestamp = case RequestedTimestamp of
+                    'undefined' -> kz_time:now_s();
+                    Time -> Time
+                end,
     #{auth_account_id => AuthAccountId
      ,auth_account_name => kzd_accounts:fetch_name(AuthAccountId)
      ,auth_user_id => OptionalUserId
@@ -415,6 +426,7 @@ transition_metadata(?MATCH_ACCOUNT_RAW(AuthAccountId), UserId, Reason) ->
      ,user_last_name => kzd_users:last_name(UserJObj)
      ,user_full_name => kzd_users:full_name(UserJObj, kzd_users:username(UserJObj, kzd_users:email(UserJObj)))
      ,optional_reason => OptionalReason
+     ,timestamp => Timestamp
      }.
 
 -spec get_user_name(kz_term:ne_binary(), kz_term:api_ne_binary()) -> kz_json:object().

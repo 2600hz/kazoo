@@ -214,13 +214,13 @@ account_realm(Context) ->
     kzd_accounts:realm(account_doc(Context)).
 
 -spec account_doc(context()) -> kz_term:api_object().
-account_doc(#cb_context{account_id = undefined}) -> undefined;
+account_doc(#cb_context{account_id = 'undefined'}) -> 'undefined';
 account_doc(#cb_context{account_id = AccountId}) ->
     case kzd_accounts:fetch(AccountId) of
-        {ok, AccountJObj} -> AccountJObj;
-        {error, _R} ->
+        {'ok', AccountJObj} -> AccountJObj;
+        {'error', _R} ->
             lager:warning("error fetching account doc for ~p: ~p", [AccountId,_R]),
-            undefined
+            'undefined'
     end.
 
 -spec is_authenticated(context()) -> boolean().
@@ -273,13 +273,13 @@ auth_doc(#cb_context{auth_doc=AuthDoc}) -> AuthDoc.
 auth_account_id(#cb_context{auth_account_id=AuthBy}) -> AuthBy.
 
 -spec auth_account_doc(context()) -> kz_term:api_object().
-auth_account_doc(#cb_context{auth_account_id = undefined}) -> undefined;
+auth_account_doc(#cb_context{auth_account_id = 'undefined'}) -> 'undefined';
 auth_account_doc(#cb_context{auth_account_id = AccountId}) ->
     case kzd_accounts:fetch(AccountId) of
-        {ok, AuthAccountJObj} -> AuthAccountJObj;
-        {error, _R} ->
+        {'ok', AuthAccountJObj} -> AuthAccountJObj;
+        {'error', _R} ->
             lager:warning("error fetching auth account doc for ~p: ~p", [AccountId,_R]),
-            undefined
+            'undefined'
     end.
 
 -spec auth_user_id(context()) -> kz_term:api_ne_binary().
@@ -785,8 +785,8 @@ import_errors(#cb_context{}=Context) ->
                               }
     end.
 
--spec response(context()) -> {ok, kz_json:object()} |
-                             {error, {pos_integer(), kz_term:ne_binary(), kz_json:object()}}.
+-spec response(context()) -> {'ok', kz_json:object()} |
+                             {'error', {pos_integer(), kz_term:ne_binary(), kz_json:object()}}.
 response(#cb_context{resp_status='success'
                     ,resp_data=JObj
                     }) ->
