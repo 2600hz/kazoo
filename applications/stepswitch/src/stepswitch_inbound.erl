@@ -50,6 +50,7 @@ maybe_relay_request(JObj) ->
                        ,fun set_resource_type/2
                        ,fun set_e164_destination/2
                        ,fun set_e164_origination/2
+                       ,fun set_did_classifier/2
                        ,fun maybe_find_resource/2
                        ,fun maybe_format_destination/2
                        ,fun maybe_set_ringback/2
@@ -114,6 +115,16 @@ set_e164_destination(_, JObj) ->
 set_e164_origination(_, JObj) ->
     Number = stepswitch_util:get_inbound_origination(JObj),
     kz_json:set_value(?CCV(<<"E164-Origination">>), Number, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc Set the destination number did classification
+%% @end
+%%------------------------------------------------------------------------------
+-spec set_did_classifier(knm_number_options:extra_options(), kz_json:object()) ->
+                                kz_json:object().
+set_did_classifier(_, JObj) ->
+    Number = stepswitch_util:get_inbound_destination(JObj),
+    kz_json:set_value(?CCV(<<"DID-Classifier">>), knm_converters:classify(Number), JObj).
 
 %%------------------------------------------------------------------------------
 %% @doc
