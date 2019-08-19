@@ -792,14 +792,21 @@ publish_channel_connection_event(#channel{uuid=UUID
             ,{<<"Media-Server">>, Node}
             ,{<<"Custom-Channel-Vars">>, connection_ccvs(Channel)}
             ,{<<"Custom-Application-Vars">>, connection_cavs(Channel)}
-            ,{<<"To">>, <<Destination/binary, "@", Realm/binary>>}
-            ,{<<"From">>, <<Username/binary, "@", Realm/binary>>}
+            ,{<<"To">>, safe_uri(Destination, Realm)}
+            ,{<<"From">>, safe_uri(Username, Realm)}
             ,{<<"Presence-ID">>, PresenceId}
             ,{<<"Channel-Call-State">>, channel_call_state(IsAnswered)}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION) ++ ChannelSpecific
             ],
     _ = kz_amqp_worker:cast(Event, fun kapi_call:publish_event/1),
     lager:debug("published channel connection event (~s) for ~s", [kz_api:event_name(Event), UUID]).
+
+-spec safe_uri(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
+safe_uri(User, Realm)
+  when is_binary(User)
+       andalso is_binary(Realm) ->
+    <<User/binary, "@", Realm/binary>>;
+safe_uri(_, _) -> 'undefined'.
 
 -spec channel_call_state(boolean()) -> kz_term:api_binary().
 channel_call_state('true') ->
