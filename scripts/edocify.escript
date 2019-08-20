@@ -27,10 +27,10 @@ main(_) ->
            ,fun evil_specs/1
            }
 
-          ,{"find applications/ core/ -regextype egrep -regex '.*/src/.*.(erl|erl.src)$'"
-           ,"bump/fix copyright"
-           ,fun(R) -> bump_copyright(R, Year) end
-           }
+           %% ,{"find applications/ core/ -regextype egrep -regex '.*/src/.*.(erl|erl.src)$'"
+           %%  ,"bump/fix copyright"
+           %%  ,fun(R) -> bump_copyright(R, Year) end
+           %%  }
 
            %% regex to find contributors tag.
           ,{"ag -G '(erl|erl.src|hrl|hrl.src|escript)$' -l '%%+ *@?([Cc]ontributors|[Cc]ontributions)' core/ applications/"
