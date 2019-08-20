@@ -88,9 +88,11 @@ get_channel(Consumer, Timeout) when is_pid(Consumer) ->
 -spec request_channel(pid(), kz_term:api_binary()) -> kz_amqp_assignment().
 request_channel(Consumer, 'undefined') when is_pid(Consumer) ->
     Broker = kz_amqp_connections:primary_broker(),
-    gen_server:call(?SERVER, {'request_float', Consumer, Broker});
+    Application = kapps_util:get_application(),
+    gen_server:call(?SERVER, {'request_float', Consumer, Broker, Application});
 request_channel(Consumer, Broker) when is_pid(Consumer) ->
-    gen_server:call(?SERVER, {'request_sticky', Consumer, Broker}).
+    Application = kapps_util:get_application(),
+    gen_server:call(?SERVER, {'request_sticky', Consumer, Broker, Application}).
 
 -spec add_channel(kz_term:ne_binary(), pid(), pid()) -> 'ok'.
 add_channel(Broker, Connection, Channel)
@@ -141,11 +143,11 @@ init([]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
-handle_call({'request_float', Consumer, Broker}, _, State) ->
+handle_call({'request_float', Consumer, Broker, Application}, _, State) ->
     _ = import_pending_channels(),
-    {'reply', assign_or_reserve(Consumer, Broker, 'float'), State};
-handle_call({'request_sticky', Consumer, Broker}, _, State) ->
-    {'reply', assign_or_reserve(Consumer, Broker, 'sticky'), State};
+    {'reply', assign_or_reserve(Consumer, Broker, Application, 'float'), State};
+handle_call({'request_sticky', Consumer, Broker, Application}, _, State) ->
+    {'reply', assign_or_reserve(Consumer, Broker, Application, 'sticky'), State};
 handle_call({'release_handlers', Consumer}, _, State) ->
     gen_server:cast(self(), {'release_assignments', Consumer}),
     {'reply', release_handlers(Consumer), State};
@@ -344,12 +346,12 @@ maybe_reassign(#kz_amqp_assignment{}=ConsumerAssignment, Broker) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec assign_or_reserve(pid(), kz_term:api_binary(), kz_amqp_type()) -> kz_amqp_assignment().
-assign_or_reserve(Consumer, 'undefined', Type) ->
+-spec assign_or_reserve(pid(), kz_term:api_binary(), atom(), kz_amqp_type()) -> kz_amqp_assignment().
+assign_or_reserve(Consumer, 'undefined', Application, Type) ->
     %% When there is no primary broker we will not be able to
     %% find a channel so just make a reservation
-    maybe_reserve(Consumer, 'undefined', Type);
-assign_or_reserve(Consumer, Broker, Type) ->
+    maybe_reserve(Consumer, 'undefined', Application, Type);
+assign_or_reserve(Consumer, Broker, Application, Type) ->
     %% This will attempt to find a prechannel
     Pattern = #kz_amqp_assignment{consumer='undefined'
                                  ,consumer_ref='undefined'
@@ -361,22 +363,22 @@ assign_or_reserve(Consumer, Broker, Type) ->
             %% No channel available, reserve assignment
             %% which will be assigned when an appropriate
             %% connection adds a prechannel
-            maybe_reserve(Consumer, Broker, Type);
+            maybe_reserve(Consumer, Broker, Application, Type);
         {[#kz_amqp_assignment{}=Assignment], _} ->
             %% Attempt to assign the consumer to the channel (or
             %% maybe vice-versa, see assign_consumer)
-            assign_consumer(Assignment, Consumer, Type)
+            assign_consumer(Assignment, Consumer, Application, Type)
     end.
 
--spec assign_consumer(kz_amqp_assignment(), pid(), kz_amqp_type()) -> kz_amqp_assignment().
-assign_consumer(#kz_amqp_assignment{}=ChannelAssignment, Consumer, Type) ->
+-spec assign_consumer(kz_amqp_assignment(), pid(), atom(), kz_amqp_type()) -> kz_amqp_assignment().
+assign_consumer(#kz_amqp_assignment{}=ChannelAssignment, Consumer, Application, Type) ->
     %% This will attempt to find an existing entry for the consumer...
     Pattern = #kz_amqp_assignment{consumer=Consumer, _='_'},
     case ets:match_object(?TAB, Pattern, 1) of
         '$end_of_table' ->
             %% When a new consumer requests a channel, and a prechannel
             %% is available, assign the channel to the consumer.
-            add_consumer_to_channel(ChannelAssignment, Consumer, Type);
+            add_consumer_to_channel(ChannelAssignment, Consumer, Application, Type);
         {[#kz_amqp_assignment{channel=Channel}=ConsumerAssignment], _}
           when is_pid(Channel) ->
             %% When the initial search (outside the gen_server process)
@@ -431,18 +433,20 @@ move_channel_to_consumer(#kz_amqp_assignment{timestamp=Timestamp
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec add_consumer_to_channel(kz_amqp_assignment(), pid(), kz_amqp_type()) -> kz_amqp_assignment().
+-spec add_consumer_to_channel(kz_amqp_assignment(), pid(), atom(), kz_amqp_type()) -> kz_amqp_assignment().
 add_consumer_to_channel(#kz_amqp_assignment{channel=Channel
                                            ,broker=_Broker
                                            ,connection=Connection
                                            }=ChannelAssignment
                        ,Consumer
+                       ,Application
                        ,Type
                        ) ->
     ConsumerRef = erlang:monitor('process', Consumer),
     Assignment =
         ChannelAssignment#kz_amqp_assignment{consumer=Consumer
                                             ,consumer_ref=ConsumerRef
+                                            ,application=Application
                                             ,assigned=kz_time:start_time()
                                             ,type=Type
                                             },
@@ -641,15 +645,15 @@ notify_watchers(#kz_amqp_assignment{}=Assignment, [Watcher|Watchers]) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_reserve(kz_term:api_pid(), kz_term:api_binary(), kz_amqp_type()) -> kz_amqp_assignment().
-maybe_reserve(Consumer, Broker, Type) ->
+-spec maybe_reserve(kz_term:api_pid(), kz_term:api_binary(), atom(), kz_amqp_type()) -> kz_amqp_assignment().
+maybe_reserve(Consumer, Broker, Application, Type) ->
     Pattern = #kz_amqp_assignment{consumer=Consumer, _='_'},
     case ets:match_object(?TAB, Pattern, 1) of
         '$end_of_table' ->
             %% This handles the condition when a consumer requested a channel but
             %% the broker was not available (or there where none for a float)...
             %% the first time.  Add a reservation for matching prechannels.
-            reserve(Consumer, Broker, Type);
+            reserve(Consumer, Broker, Application, Type);
         {[#kz_amqp_assignment{}=ExistingAssignment], _} ->
             %% This handles the condition when a consumer requested a channel,
             %% but the broker was not available (or there where none for a float);
@@ -660,11 +664,12 @@ maybe_reserve(Consumer, Broker, Type) ->
             ExistingAssignment
     end.
 
--spec reserve(kz_term:api_pid(), kz_term:api_binary(), kz_amqp_type()) -> kz_amqp_assignment().
-reserve(Consumer, Broker, 'sticky') when Broker =/= 'undefined' ->
+-spec reserve(kz_term:api_pid(), kz_term:api_binary(), atom(), kz_amqp_type()) -> kz_amqp_assignment().
+reserve(Consumer, Broker, Application, 'sticky') when Broker =/= 'undefined' ->
     Ref = erlang:monitor('process', Consumer),
     Assignment = #kz_amqp_assignment{consumer=Consumer
                                     ,consumer_ref=Ref
+                                    ,application=Application
                                     ,broker=Broker
                                     ,type='sticky'
                                     },
@@ -673,10 +678,11 @@ reserve(Consumer, Broker, 'sticky') when Broker =/= 'undefined' ->
                ,[Consumer, Broker]
                ),
     Assignment;
-reserve(Consumer, _, 'float') ->
+reserve(Consumer, _, Application, 'float') ->
     Ref = erlang:monitor('process', Consumer),
     Assignment = #kz_amqp_assignment{consumer=Consumer
                                     ,consumer_ref=Ref
+                                    ,application=Application
                                     ,type='float'
                                     },
     ets:insert(?TAB, Assignment),
