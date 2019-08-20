@@ -1523,8 +1523,6 @@ terminate(Reason, _StateName, #state{account_id=AccountId
 
 maybe_stop_agent('normal', AccountId, AgentId) ->
     stop_agent(AccountId, AgentId);
-maybe_stop_agent('shutdown', AccountId, AgentId) ->
-    stop_agent(AccountId, AgentId);
 maybe_stop_agent(_Reason, _AccountId, _AgentId) ->
     'ok'.
 
