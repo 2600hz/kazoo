@@ -274,12 +274,13 @@ diff: export TO_DIALYZE = $(shell git diff --name-only $(BASE_BRANCH)... -- $(RO
 diff: dialyze-it
 
 bump-copyright:
-	@$(ROOT)/scripts/bump-copyright-year.sh $(shell find applications core -iname '*.erl' -or -iname '*.hrl')
+	@$(ROOT)/scripts/bump-copyright-year.sh $(shell find applications core -name '*.erl')
 
 app_applications:
 	ERL_LIBS=deps:core:applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find applications -name *.app.src)
 
 code_checks:
+	@$(ROOT)/scripts/bump-copyright-year.sh $(CHANGED_ERL)
 	@$(ROOT)/scripts/code_checks.bash $(CHANGED)
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
 	@$(ROOT)/scripts/check-spelling.bash

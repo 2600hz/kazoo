@@ -1,4 +1,15 @@
-%% invoke with `proper:quickcheck(hon_trie_lru_pqc:correct())` or `correct_parallel`
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2019, 2600Hz
+%%% @author James Aimonetti
+%%% @doc
+%%% invoke with `proper:quickcheck(hon_trie_lru_pqc:correct())` or `correct_parallel`
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(hon_trie_lru_pqc).
 
 -ifdef(PROPER).

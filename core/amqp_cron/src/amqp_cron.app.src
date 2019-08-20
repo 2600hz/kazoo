@@ -1,16 +1,8 @@
-{application, amqp_cron,
- [
-  {description, "scheduled tasks execution"},
-  {vsn, "0.2.1"},
-  {modules, []},
-  {registered, [amqp_cron_sup]},
-  {applications, [ kernel
-                 , stdlib
-
-                 , amqp_leader
-
-                 , lager
-                 ]},
-  {mod, {amqp_cron_app, []}},
-  {env, []}
- ]}.
+{application,amqp_cron,
+             [{applications,[amqp_leader,kernel,stdlib]},
+              {description,"scheduled tasks execution"},
+              {vsn,"0.2.1"},
+              {modules,[]},
+              {registered,[amqp_cron_sup]},
+              {mod,{amqp_cron_app,[]}},
+              {env,[]}]}.

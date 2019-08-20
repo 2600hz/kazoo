@@ -3,6 +3,11 @@
 %%% @doc Handles stop recording.
 %%%
 %%% @author Luis Azedo
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(media_recording).
@@ -411,4 +416,4 @@ maybe_save_recording(?KZ_RECORDER, Pid, JObj) ->
              },
     save_recording(Store);
 maybe_save_recording(Recorder, _Pid, _JObj) ->
-     lager:info("recorder ~s not handled", [Recorder]).
+    lager:info("recorder ~s not handled", [Recorder]).
