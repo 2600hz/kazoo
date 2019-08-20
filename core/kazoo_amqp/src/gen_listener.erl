@@ -420,7 +420,11 @@ init_state([Module, Params, ModuleState]) ->
 init([Module, Params, InitArgs]) ->
     process_flag('trap_exit', 'true'),
     put('callid', Module),
-    lager:debug("starting new gen_listener proc : ~s", [Module]),
+    Application = kapps_util:get_application(),
+    kapps_util:put_application(Application),
+    lager:debug("starting new gen_listener proc : ~s ~s"
+               ,[Application, Module]
+               ),
     case erlang:function_exported(Module, 'init', 1)
         andalso Module:init(InitArgs)
     of
