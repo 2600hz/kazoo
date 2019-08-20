@@ -353,11 +353,12 @@ assign(Services, JObj, Options) ->
     case kz_doc:id(JObj) of
         'undefined' -> Services;
         PlanId ->
-            Props = [{<<"contract">>, Contract}
-                    ,{<<"vendor_id">>, VendorId}
-                    ,{<<"overrides">>, Overrides}
-                    ],
-            Plan = kz_json:from_list(Props),
+            Plan = kz_json:from_list(
+                     [{<<"contract">>, Contract}
+                     ,{<<"vendor_id">>, VendorId}
+                     ,{<<"overrides">>, Overrides}
+                     ]
+                    ),
             assign(Services, PlanId, Plan, Options)
     end.
 

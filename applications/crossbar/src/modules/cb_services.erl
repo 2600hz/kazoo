@@ -571,7 +571,10 @@ list_resellers_editable(Context, AccountId) ->
 %%------------------------------------------------------------------------------
 -spec load_audit_logs(cb_context:context()) -> cb_context:context().
 load_audit_logs(Context) ->
-    Options = [{'mapper', fun normalize_audit_view_results/2}],
+    Options = [{'mapper', fun normalize_audit_view_results/2}
+              ,{'range_start_keymap', []}
+              ,{'range_end_keymap', crossbar_view:suffix_key_fun([kz_json:new()])}
+              ],
     crossbar_view:load_modb(Context, ?AUDIT_LOG_LIST, Options).
 
 %%------------------------------------------------------------------------------
