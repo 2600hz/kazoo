@@ -348,18 +348,18 @@ assign(Services, PlanId, Options) when is_binary(PlanId) ->
 assign(Services, JObj, Options) ->
     ResellerId = kz_services_reseller:get_id(Services),
     VendorId = kz_json:get_ne_binary_value(<<"vendor_id">>, JObj, ResellerId),
-    Overrides = kz_json:get_json_value(<<"overrides">>, JObj, kz_json:new()),
-    Contract = kz_json:get_json_value(<<"contract">>, JObj, kz_json:new()),
+    Overrides = kz_json:get_json_value(<<"overrides">>, JObj),
+    Contract = kz_json:get_json_value(<<"contract">>, JObj),
 
     case kz_doc:id(JObj) of
         'undefined' -> Services;
         PlanId ->
-            Props = [{<<"contract">>, Contract}
-                    ,{<<"vendor_id">>, VendorId}
-                    ,{<<"overrides">>, Overrides}
-                    ,{<<"contract">>, Contract}
-                    ],
-            Plan = kz_json:from_list(Props),
+            Plan = kz_json:from_list(
+                     [{<<"contract">>, Contract}
+                     ,{<<"vendor_id">>, VendorId}
+                     ,{<<"overrides">>, Overrides}
+                     ]
+                    ),
             assign(Services, PlanId, Plan, Options)
     end.
 
