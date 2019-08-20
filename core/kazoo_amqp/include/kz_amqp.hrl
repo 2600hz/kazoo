@@ -184,6 +184,7 @@
 -record(kz_amqp_assignment, {timestamp = os:timestamp() :: kz_time:now() | '_'
                             ,consumer :: kz_term:api_pid() | '$2' | '_'
                             ,consumer_ref :: kz_term:api_reference() | '_'
+                            ,application :: atom() | '_'
                             ,type = 'float' :: kz_amqp_type() | 'undefined' | '_'
                             ,channel :: kz_term:api_pid() | '$1' | '_'
                             ,channel_ref :: kz_term:api_reference() | '_'

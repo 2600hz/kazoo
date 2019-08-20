@@ -401,48 +401,60 @@ runs_in(MaxTime, Fun, Arguments)
 -spec spawn(fun(), list()) -> pid().
 spawn(Fun, Arguments) ->
     CallId = get_callid(),
+    Application = kapps_util:get_application(),
     erlang:spawn(fun() ->
                          _ = put_callid(CallId),
+                         _ = kapps_util:put_application(Application),
                          erlang:apply(Fun, Arguments)
                  end).
 
 -spec spawn(fun(() -> any())) -> pid().
 spawn(Fun) ->
     CallId = get_callid(),
+    Application = kapps_util:get_application(),
     erlang:spawn(fun() ->
                          _ = put_callid(CallId),
+                         _ = kapps_util:put_application(Application),
                          Fun()
                  end).
 
 -spec spawn_link(fun(), list()) -> pid().
 spawn_link(Fun, Arguments) ->
     CallId = get_callid(),
+    Application = kapps_util:get_application(),
     erlang:spawn_link(fun () ->
                               _ = put_callid(CallId),
+                              _ = kapps_util:put_application(Application),
                               erlang:apply(Fun, Arguments)
                       end).
 
 -spec spawn_link(fun(() -> any())) -> pid().
 spawn_link(Fun) ->
     CallId = get_callid(),
+    Application = kapps_util:get_application(),
     erlang:spawn_link(fun() ->
                               _ = put_callid(CallId),
+                              _ = kapps_util:put_application(Application),
                               Fun()
                       end).
 
 -spec spawn_monitor(fun(), list()) -> kz_term:pid_ref().
 spawn_monitor(Fun, Arguments) ->
     CallId = get_callid(),
+    Application = kapps_util:get_application(),
     erlang:spawn_monitor(fun () ->
                                  _ = put_callid(CallId),
+                                 _ = kapps_util:put_application(Application),
                                  erlang:apply(Fun, Arguments)
                          end).
 
 -spec spawn_monitor(module(), atom(), list()) -> kz_term:pid_ref().
 spawn_monitor(Module, Fun, Args) ->
     CallId = get_callid(),
+    Application = kapps_util:get_application(),
     erlang:spawn_monitor(fun () ->
                                  _ = put_callid(CallId),
+                                 _ = kapps_util:put_application(Application),
                                  erlang:apply(Module, Fun, Args)
                          end).
 

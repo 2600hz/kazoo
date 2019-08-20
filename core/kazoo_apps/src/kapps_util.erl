@@ -48,6 +48,9 @@
 -export([to_magic_hash/1
         ,from_magic_hash/1
         ]).
+-export([get_application/0
+        ,put_application/1
+        ]).
 
 -include("kazoo_apps.hrl").
 
@@ -604,3 +607,22 @@ to_magic_hash(Bin) ->
 -spec from_magic_hash(kz_term:ne_binary()) -> kz_term:ne_binary().
 from_magic_hash(Bin) ->
     zlib:unzip(kz_binary:from_hex(Bin)).
+
+-spec get_application() -> atom().
+get_application() ->
+    case get('application') of
+        'undefined' -> find_application();
+        Application -> Application
+    end.
+
+-spec find_application() -> atom().
+find_application() ->
+    case application:get_application() of
+        {'ok', Application} ->
+            Application;
+        _Else -> 'undefined'
+    end.
+
+-spec put_application(atom()) -> atom().
+put_application(Application) ->
+    put('application', Application).

@@ -238,12 +238,24 @@ next_worker(Pool) ->
     next_worker(Pool, whereis(Pool)).
 
 next_worker(_Pool, 'undefined') ->
-    lager:warning("pool ~s not available yet", [_Pool]),
+    lager:warning("pool ~s not available yet for application ~s"
+                 ,[_Pool
+                  ,kapps_util:get_application()
+                  ]
+                 ),
     {'error', 'poolboy_fault'};
 next_worker(Pool, Pid) when is_pid(Pid) ->
     try poolboy:checkout(Pool, 'false', default_timeout()) of
-        'full' -> {'error', 'pool_full'};
-        Worker -> Worker
+        'full' ->
+            {'error', 'pool_full'};
+        Worker ->
+            lager:debug("application ~s checked out worker ~p from pool ~s"
+                       ,[kapps_util:get_application()
+                        ,Worker
+                        ,Pool
+                        ]
+                       ),
+            Worker
     catch
         _E:_R ->
             lager:warning("poolboy exception: ~s: ~p", [_E, _R]),
@@ -257,11 +269,21 @@ checkout_worker() ->
 -spec checkout_worker(atom()) -> {'ok', pid()} | {'error', pool_error()}.
 checkout_worker(Pool) ->
     try poolboy:checkout(Pool, 'false', default_timeout()) of
-        'full' -> {'error', 'pool_full'};
-        Worker -> {'ok', Worker}
+        'full' ->
+            {'error', 'pool_full'};
+        Worker ->
+            lager:debug("application ~s checked out worker ~p from pool ~s"
+                       ,[kapps_util:get_application()
+                        ,Worker
+                        ,Pool
+                        ]
+                       ),
+            {'ok', Worker}
     catch
         _E:_R ->
-            lager:warning("poolboy exception: ~s: ~p", [_E, _R]),
+            lager:warning("poolboy ~s exception ~s: ~p"
+                         ,[Pool, _E, _R]
+                         ),
             {'error', 'poolboy_fault'}
     end.
 
