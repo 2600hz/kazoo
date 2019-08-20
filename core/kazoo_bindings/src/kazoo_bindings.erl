@@ -850,7 +850,7 @@ apply_map_responder(#kz_responder{module=M
         end.
 
 log_apply(Format, Args) ->
-    Silent = erlang:get('kazoo_bindinds_silent_apply'),
+    Silent = erlang:get('kazoo_bindings_silent_apply'),
     log_apply(Format, Args, Silent).
 
 log_apply(_Format, _Args, 'true') -> 'ok';

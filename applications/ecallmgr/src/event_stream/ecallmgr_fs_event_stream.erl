@@ -40,7 +40,6 @@
                ,port :: inet:port_number() | 'undefined'
                ,socket :: inet:socket() | 'undefined'
                ,idle_alert = 'infinity' :: timeout()
-               ,channel_mon :: kz_term:api_reference()
                ,amqp_channel :: kz_term:api_pid()
                ,packet :: event_packet_type()
                }).
@@ -108,12 +107,6 @@ handle_cast('connect', #state{ip=IP, port=Port, packet=Packet, idle_alert=Timeou
         {'error', Reason} ->
             {'stop', Reason, State}
     end;
-handle_cast({'kz_amqp_assignment', {'new_channel', _, Channel}}, State) ->
-    lager:debug("channel acquired ~p", [Channel]),
-    _ = kz_amqp_channel:consumer_channel(Channel),
-    {'noreply', State#state{channel_mon = erlang:monitor('process', Channel)
-                           ,amqp_channel=Channel
-                           }};
 handle_cast(_Msg, #state{socket='undefined'}=State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State};
@@ -126,9 +119,6 @@ handle_cast(_Msg, #state{idle_alert=Timeout}=State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info({'DOWN', _MonitorRef, _Type, _Object, _Info}, State)->
-    kz_amqp_channel:requisition(),
-    {'noreply', State#state{amqp_channel='undefined'}};
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                          ,node=Node
                                          ,idle_alert=Timeout
@@ -178,7 +168,11 @@ handle_info(_Msg, #state{socket='undefined'}=State) ->
 handle_info({'kz_amqp_assignment', {'new_channel', _, Channel}}, State) ->
     lager:debug("channel acquired ~p", [Channel]),
     _ = kz_amqp_channel:consumer_channel(Channel),
-    {'noreply', State#state{channel_mon = erlang:monitor('process', Channel), amqp_channel=Channel}};
+    {'noreply', State#state{amqp_channel=Channel}};
+
+handle_info({'kz_amqp_assignment', 'lost_channel'}, #state{amqp_channel=Channel} = State) ->
+    lager:debug("channel lost ~p", [Channel]),
+    {'noreply', State#state{amqp_channel='undefined'}};
 
 handle_info(_Msg, #state{idle_alert=Timeout}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),

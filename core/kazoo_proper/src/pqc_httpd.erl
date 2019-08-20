@@ -128,7 +128,7 @@ default_path(LogId) ->
 
 start_plaintext(Dispatch) ->
     cowboy:start_clear(?LISTENER
-                      ,[{'num_acceptors', 5}]
+                      ,#{'num_acceptors' => 5}
                       ,#{'env' => #{'dispatch' => Dispatch}}
                       ).
 
