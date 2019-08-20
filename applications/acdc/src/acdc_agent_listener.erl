@@ -33,7 +33,6 @@
         ,rm_acdc_queue/2
         ,call_status_req/1, call_status_req/2
         ,fsm_started/2
-        ,add_endpoint_bindings/3, remove_endpoint_bindings/3
         ,outbound_call_id/2
         ,remove_cdr_urls/2
         ,logout_agent/1
@@ -302,22 +301,6 @@ call_status_req(Srv, CallId) ->
 -spec fsm_started(pid(), pid()) -> 'ok'.
 fsm_started(Srv, FSM) ->
     gen_listener:cast(Srv, {'fsm_started', FSM}).
-
--spec add_endpoint_bindings(pid(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
-add_endpoint_bindings(_Srv, _Realm, 'undefined') ->
-    lager:debug("ignoring adding endpoint bindings for undefined user @ ~s", [_Realm]);
-add_endpoint_bindings(Srv, Realm, User) ->
-    lager:debug("adding route bindings to ~p for endpoint ~s@~s", [Srv, User, Realm]),
-    gen_listener:add_binding(Srv, 'route', [{'realm', Realm}
-                                           ,{'user', User}
-                                           ]).
-
--spec remove_endpoint_bindings(pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
-remove_endpoint_bindings(Srv, Realm, User) ->
-    lager:debug("removing route bindings to ~p for endpoint ~s@~s", [Srv, User, Realm]),
-    gen_listener:rm_binding(Srv, 'route', [{'realm', Realm}
-                                          ,{'user', User}
-                                          ]).
 
 -spec remove_cdr_urls(pid(), kz_term:ne_binary()) -> 'ok'.
 remove_cdr_urls(Srv, CallId) -> gen_listener:cast(Srv, {'remove_cdr_urls', CallId}).
