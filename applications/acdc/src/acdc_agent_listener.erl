@@ -3,6 +3,11 @@
 %%% @doc
 %%% @author James Aimonetti
 %%% @author Daniel Finke
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_agent_listener).
@@ -33,7 +38,6 @@
         ,rm_acdc_queue/2
         ,call_status_req/1, call_status_req/2
         ,fsm_started/2
-        ,add_endpoint_bindings/3, remove_endpoint_bindings/3
         ,outbound_call_id/2
         ,remove_cdr_urls/2
         ,logout_agent/1
@@ -75,8 +79,8 @@
                ,acct_id :: kz_term:api_ne_binary()
                ,fsm_pid :: kz_term:api_pid()
                ,agent_queues = [] :: kz_term:ne_binaries()
-               ,last_connect :: kz_time:now() | 'undefined' % last connection
-               ,last_attempt :: kz_time:now() | 'undefined' % last attempt to connect
+               ,last_connect :: kz_time:start_time() | 'undefined' % last connection
+               ,last_attempt :: kz_time:start_time() | 'undefined' % last attempt to connect
                ,my_id :: kz_term:ne_binary()
                ,my_q :: kz_term:api_binary() % AMQP queue name
                ,timer_ref :: kz_term:api_reference()
@@ -302,22 +306,6 @@ call_status_req(Srv, CallId) ->
 -spec fsm_started(pid(), pid()) -> 'ok'.
 fsm_started(Srv, FSM) ->
     gen_listener:cast(Srv, {'fsm_started', FSM}).
-
--spec add_endpoint_bindings(pid(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
-add_endpoint_bindings(_Srv, _Realm, 'undefined') ->
-    lager:debug("ignoring adding endpoint bindings for undefined user @ ~s", [_Realm]);
-add_endpoint_bindings(Srv, Realm, User) ->
-    lager:debug("adding route bindings to ~p for endpoint ~s@~s", [Srv, User, Realm]),
-    gen_listener:add_binding(Srv, 'route', [{'realm', Realm}
-                                           ,{'user', User}
-                                           ]).
-
--spec remove_endpoint_bindings(pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
-remove_endpoint_bindings(Srv, Realm, User) ->
-    lager:debug("removing route bindings to ~p for endpoint ~s@~s", [Srv, User, Realm]),
-    gen_listener:rm_binding(Srv, 'route', [{'realm', Realm}
-                                          ,{'user', User}
-                                          ]).
 
 -spec remove_cdr_urls(pid(), kz_term:ne_binary()) -> 'ok'.
 remove_cdr_urls(Srv, CallId) -> gen_listener:cast(Srv, {'remove_cdr_urls', CallId}).
@@ -903,10 +891,20 @@ terminate(Reason, #state{agent_queues=Queues
                         }
          ) when Reason == 'normal'; Reason == 'shutdown' ->
     _ = [rm_queue_binding(AcctId, AgentId, QueueId) || QueueId <- Queues],
-    _ = kz_util:spawn(fun acdc_agents_sup:stop_agent/2, [AcctId, AgentId]),
+    maybe_stop_agent(Reason, AcctId, AgentId),
     lager:debug("agent process going down: ~p", [Reason]);
 terminate(_Reason, _State) ->
     lager:debug("agent process going down: ~p", [_Reason]).
+
+%% Prevent race condition of supervisor delete_child/restart_child
+maybe_stop_agent('normal', AccountId, AgentId) ->
+    stop_agent(AccountId, AgentId);
+maybe_stop_agent(_Reason, _AccountId, _AgentId) ->
+    'ok'.
+
+stop_agent(AccountId, AgentId) ->
+    kz_util:spawn(fun acdc_agents_sup:stop_agent/2, [AccountId, AgentId]),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.
@@ -929,10 +927,10 @@ is_valid_queue(Q, Qs) -> lists:member(Q, Qs).
 
 -spec send_member_connect_resp(kz_json:object(), kz_term:ne_binary()
                               ,kz_term:ne_binary(), kz_term:ne_binary()
-                              , kz_time:now() | 'undefined'
+                              , kz_time:start_time() | 'undefined'
                               ) -> 'ok'.
 send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
-    Queue = kz_json:get_value(<<"Server-ID">>, JObj),
+    Queue = kz_api:server_id(JObj),
     IdleTime = idle_time(LastConn),
     Resp = props:filter_undefined(
              [{<<"Agent-ID">>, AgentId}
@@ -946,7 +944,7 @@ send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
 
 -spec send_member_connect_retry(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_member_connect_retry(JObj, MyId, AgentId) ->
-    send_member_connect_retry(kz_json:get_value(<<"Server-ID">>, JObj)
+    send_member_connect_retry(kz_api:server_id(JObj)
                              ,call_id(JObj)
                              ,MyId
                              ,AgentId
@@ -976,11 +974,11 @@ send_member_connect_accepted(Queue, CallId, AcctId, AgentId, MyId) ->
 
 -spec send_originate_execute(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 send_originate_execute(JObj, Q) ->
-    Prop = [{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
-           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+    Prop = [{<<"Call-ID">>, kz_api:call_id(JObj)}
+           ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
             | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
-    kapi_dialplan:publish_originate_execute(kz_json:get_value(<<"Server-ID">>, JObj), Prop).
+    kapi_dialplan:publish_originate_execute(kz_api:server_id(JObj), Prop).
 
 -spec send_sync_request(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_sync_request(AcctId, AgentId, MyId, MyQ) ->
@@ -996,10 +994,10 @@ send_sync_response(ReqJObj, AcctId, AgentId, MyId, MyQ, Status, Options) ->
            ,{<<"Agent-ID">>, AgentId}
            ,{<<"Process-ID">>, MyId}
            ,{<<"Status">>, kz_term:to_binary(Status)}
-           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, ReqJObj)}
+           ,{<<"Msg-ID">>, kz_api:msg_id(ReqJObj)}
             | Options ++ kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
            ],
-    Q = kz_json:get_value(<<"Server-ID">>, ReqJObj),
+    Q = kz_api:server_id(ReqJObj),
     lager:debug("sending sync resp to ~s", [Q]),
     kapi_acdc_agent:publish_sync_resp(Q, Prop).
 
@@ -1012,7 +1010,7 @@ send_status_update(AcctId, AgentId, 'resume') ->
     kapi_acdc_agent:publish_resume(Update).
 
 
--spec idle_time('undefined' | kz_time:now()) -> kz_term:api_integer().
+-spec idle_time('undefined' | kz_time:start_time()) -> kz_term:api_integer().
 idle_time('undefined') -> 'undefined';
 idle_time(T) -> kz_time:elapsed_s(T).
 

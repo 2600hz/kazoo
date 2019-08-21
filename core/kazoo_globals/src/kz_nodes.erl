@@ -2,6 +2,10 @@
 %%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_nodes).
@@ -1099,7 +1103,6 @@ whapp_info_from_json(Key, Info, {[V | V1], [<<"Startup">> | K1]}) ->
     whapp_info_from_json(Key, Info#whapp_info{startup=V}, {V1, K1});
 whapp_info_from_json(Key, Info, {[_V | V1], [_K | K1]}) ->
     whapp_info_from_json(Key, Info, {V1, K1}).
-
 
 -spec kapps_to_json(kz_types:kapps_info()) -> kz_json:object().
 kapps_to_json(Whapps) ->

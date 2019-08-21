@@ -3,6 +3,10 @@
 %%% @doc FreeSWITCH proplists
 %%%
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_fetch).
@@ -14,6 +18,7 @@
         ,auth_nonce/1
         ,auth_response/1
         ,auth_to/1
+        ,cauth/1
         ,ccvs/1, ccv/2, ccv/3
         ,controller_queue/1, controller_pid/1
         ,core_uuid/1
@@ -171,6 +176,10 @@ auth_response(JObj) ->
 -spec cshs(kz_json:object()) -> kz_json:object().
 cshs(JObj) ->
     kz_json:get_json_value(<<"Custom-SIP-Headers">>, JObj, kz_json:new()).
+
+-spec cauth(kz_json:object()) -> kz_json:object().
+cauth(JObj) ->
+    kz_json:get_json_value(<<"Custom-AUTH-Headers">>, JObj, kz_json:new()).
 
 -spec auth_from(kz_json:object()) -> kz_term:api_binary().
 auth_from(JObj) ->

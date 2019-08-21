@@ -36,6 +36,8 @@ endif
 ## pipefail enforces that the command fails even when run through a pipe
 SHELL := /bin/bash -o pipefail
 
+BASE_BRANCH := $(shell cat $(ROOT)/.base_branch)
+
 ifndef ERLC_OPTS_SUPERSECRET
     ERLC_OPTS += +debug_info
 else

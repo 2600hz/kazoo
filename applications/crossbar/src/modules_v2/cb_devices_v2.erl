@@ -6,6 +6,11 @@
 %%%
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_devices_v2).
@@ -56,8 +61,8 @@
 init() ->
     Bindings = [{<<"v2_resource.allowed_methods.devices">>, 'allowed_methods'}
                ,{<<"v2_resource.resource_exists.devices">>, 'resource_exists'}
-               ,{<<"v2_resource.authenticate">>, 'authenticate'}
-               ,{<<"v2_resource.authorize">>, 'authorize'}
+               ,{<<"v2_resource.authenticate.devices">>, 'authenticate'}
+               ,{<<"v2_resource.authorize.devices">>, 'authorize'}
                ,{<<"v2_resource.validate_resource.devices">>, 'validate_resource'}
                ,{<<"v2_resource.validate.devices">>, 'validate'}
                ,{<<"v2_resource.execute.put.devices">>, 'put'}

@@ -2,6 +2,11 @@
 %%% @copyright (C) 2013-2019, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_agent_util).
@@ -196,7 +201,8 @@ most_recent_ets_statuses(AccountId, AgentId, Options) ->
                                     )
     of
         {'error', _}=E -> E;
-        {'ok', Resps} ->
+        {Result, Resps} when Result =:= 'ok'
+                             orelse Result =:= 'timeout' ->
             OKResps = lists:filter(fun kapi_acdc_stats:status_resp_v/1, Resps),
             Statuses = lists:foldl(fun(Resp, AccJObj) ->
                                            AgentsStatuses = kz_json:get_json_value(<<"Agents">>, Resp),

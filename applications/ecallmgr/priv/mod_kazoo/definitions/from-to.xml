@@ -7,4 +7,6 @@
 	<field name="From" type="first-of"
 		value="variable_sip_from_uri|variable_presence_id|variable_sip_loopback_from_uri" />
 	<field name="variable_sip_from_uri" as="From-URI" />
+	<field name="Caller-Destination-Number" />
+	
 </definition>

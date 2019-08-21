@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(j5_channels).
@@ -635,6 +639,8 @@ handle_info(?HOOK_EVT(_, <<"CHANNEL_ANSWER">>, JObj), State) ->
     {'noreply', State};
 handle_info(?HOOK_EVT(_, <<"CHANNEL_DESTROY">>, JObj), State) ->
     handle_channel_destroy(kz_api:call_id(JObj)),
+    {'noreply', State};
+handle_info(?HOOK_EVT(_, <<"CHANNEL_BRIDGE">>, _JObj), State) ->
     {'noreply', State};
 handle_info('cleanup', State) ->
     _P = kz_util:spawn(fun delete_destroyed_channels/0),

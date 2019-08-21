@@ -3,6 +3,11 @@
 %%% @doc
 %%% @author James Aimonetti
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kapps_controller).
@@ -94,10 +99,10 @@ start_default_apps() ->
                        {'ok', kz_term:atoms()} |
                        {'error', any()}.
 start_app(App) when is_atom(App) ->
-    NowMs = kz_time:now(),
+    StartTime = kz_time:start_time(),
     case application:ensure_all_started(App) of
         {'ok', Started}=OK ->
-            lager:info("started ~s in ~pms", [App, kz_time:elapsed_ms(NowMs)]),
+            lager:info("started ~s in ~pms", [App, kz_time:elapsed_ms(StartTime)]),
             _ = [kz_nodes_bindings:bind(A) || A <- [App | Started], is_kapp(A)],
             OK;
         {'error', {App, {"no such file or directory", DotApp}}} ->

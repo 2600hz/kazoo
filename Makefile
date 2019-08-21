@@ -13,6 +13,8 @@ else
 	CHANGED := $(CHANGED)
 endif
 CHANGED_SWAGGER ?= $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
+CHANGED_ERL=$(filter %.hrl %.erl %.escript,$(CHANGED))
+CHANGED_JSON=$(filter %.json,$(CHANGED))
 
 # You can override this when calling make, e.g. make JOBS=1
 # to prevent parallel builds, or make JOBS="8".
@@ -44,7 +46,9 @@ JOBS ?= 1
 all: compile
 
 changed:
-	@echo "$(CHANGED)"
+	@echo "changed: $(CHANGED)"
+	@echo "changed ERL: $(CHANGED_ERL)"
+	@echo "changed JSON: $(CHANGED_JSON)"
 
 changed_swagger:
 	@echo "$(CHANGED_SWAGGER)"
@@ -70,6 +74,9 @@ clean-test-core:
 	@$(MAKE) -j$(JOBS) -C core/ clean-test
 clean-test-apps:
 	@$(MAKE) -j$(JOBS) -C applications/ clean-test
+
+compile-proper: ERLC_OPTS += -DPROPER
+compile-proper: compile-test
 
 compile-test: ERLC_OPTS += +nowarn_missing_spec
 compile-test: deps compile-test-core compile-test-apps
@@ -267,12 +274,13 @@ diff: export TO_DIALYZE = $(shell git diff --name-only $(BASE_BRANCH)... -- $(RO
 diff: dialyze-it
 
 bump-copyright:
-	@$(ROOT)/scripts/bump-copyright-year.sh $(shell find applications core -iname '*.erl' -or -iname '*.hrl')
+	@$(ROOT)/scripts/bump-copyright-year.sh $(shell find applications core -name '*.erl')
 
 app_applications:
 	ERL_LIBS=deps:core:applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find applications -name *.app.src)
 
 code_checks:
+	@$(ROOT)/scripts/bump-copyright-year.sh $(CHANGED_ERL)
 	@$(ROOT)/scripts/code_checks.bash $(CHANGED)
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
 	@$(ROOT)/scripts/check-spelling.bash
@@ -280,7 +288,7 @@ code_checks:
 	@$(ROOT)/scripts/edocify.escript
 	@$(ROOT)/scripts/kzd_module_check.bash
 	@$(ROOT)/scripts/check-loglines.bash
-	@$(ROOT)/scripts/check-stacktrace.py $(CHANGED)
+	@$(ROOT)/scripts/check-stacktrace.py $(CHANGED_ERL)
 
 check_stacktrace:
 	@$(ROOT)/scripts/check-stacktrace.py $(shell grep -rl "get_stacktrace" scripts applications core --include "*.[e|h]rl" --exclude "kz_types.hrl")
@@ -333,7 +341,7 @@ validate-swagger:
 	@$(ROOT)/scripts/validate-swagger.sh
 
 validate-js:
-	@./scripts/validate-js.sh $(find {core,applications}/*/priv/**/* -name *.json)
+	@$(ROOT)/scripts/validate-js.py $(CHANGED_JSON)
 
 sdks:
 	@$(ROOT)/scripts/make-swag.sh

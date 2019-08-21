@@ -8,6 +8,7 @@
     "pvt_account_db": "system_config",
     "pvt_account_id": "system_config",
     "pvt_created": 63668322980,
+    "pvt_document_hash": "0db51298466139e8ccd00742564e84b9",
     "pvt_modified": 63668323017,
     "pvt_node": "kazoo_apps@example.com",
     "pvt_type": "config"

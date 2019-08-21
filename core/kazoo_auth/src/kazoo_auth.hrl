@@ -56,12 +56,13 @@
                          %%                         ,{id_token, <<"auth_app_id_token">>}
                         ]).
 
--type mfa_errors() :: 'no_provider' |
-                      'unauthorized' |
-                      kz_term:ne_binary().
+-type mfa_error() :: 'no_provider' |
+                     'unauthorized' |
+                     {'configuration', kz_term:ne_binary()} |
+                     kz_term:ne_binary().
 
 -type mfa_result() :: {'ok', 'authenticated'} |
-                      {'error', mfa_errors()} |
+                      {'error', mfa_error()} |
                       {'error', non_neg_integer(), kz_json:object()}.
 
 -define(TEST_DUO_SIGN_EXPIRE, 1234).

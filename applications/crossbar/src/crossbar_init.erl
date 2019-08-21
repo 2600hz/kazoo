@@ -4,6 +4,10 @@
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @author Jon Blanton
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(crossbar_init).
@@ -23,7 +27,8 @@ paths_list() ->
     [api_path(), default_path()].
 
 default_path() ->
-    {'_', 'crossbar_default_handler', []}.
+    {'ok', Bytes} = file:read_file(filename:join(code:priv_dir(?APP), "kazoo.txt")),
+    {'_', 'crossbar_default_handler', #{body => Bytes}}.
 
 api_path() ->
     {<<"/:version/[...]">>, [api_version_constraint()], 'api_resource', []}.

@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_auth).
@@ -172,7 +176,8 @@ include_claims(Claims) ->
 -spec include_identity_sign(kz_term:proplist()) -> kz_term:proplist().
 include_identity_sign(Claims) ->
     case kz_auth_identity:sign(Claims) of
-        {'ok', Signature} -> [{<<"identity_sig">>, kz_base64url:encode(Signature)} | Claims];
+        {'ok', Signature} ->
+            [{<<"identity_sig">>, kz_base64url:encode(Signature)} | Claims];
         _Else ->
             lager:debug("identity signing json token failed : ~p", [_Else]),
             Claims

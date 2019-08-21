@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_dataconnections).
@@ -65,7 +69,7 @@ wait_for_connection(Tag) ->
 -spec wait_for_connection(kz_term:ne_binary(), timeout()) -> 'ok' | 'no_connection'.
 wait_for_connection(_Tag, 0) -> 'no_connection';
 wait_for_connection(Tag, Timeout) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     try test_conn(Tag) of
         {'error', _E} ->
             timer:sleep(rand:uniform(?MILLISECONDS_IN_SECOND) + 100),

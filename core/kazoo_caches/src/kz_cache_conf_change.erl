@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2019-, 2600Hz
 %%% @doc Handles document change AMQP payloads and flushes caches appropriately
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_cache_conf_change).
@@ -76,6 +80,8 @@ handle_if_valid(Name, JObj, 'true') ->
     kz_util:put_callid(Name),
     IsFromSameNode = kz_api:node(JObj) =:= kz_term:to_binary(node()),
     IsFromSameCache = kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =:= Name,
+
+    lager:debug("change is from same node(~s) or same cache(~s)", [IsFromSameNode, IsFromSameCache]),
 
     _ = exec_bindings(Name, JObj),
 

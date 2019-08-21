@@ -1,0 +1,103 @@
+{
+    "_id": "user0000000000000000000000000005",
+    "_rev": "1-7280940a25dcb8eac5ab129dd8fbe5c6",
+    "call_forward": {
+        "direct_calls_only": false,
+        "enabled": true,
+        "failover": true,
+        "ignore_early_media": true,
+        "keep_caller_id": true,
+        "number": "+13334445555",
+        "require_keypress": false,
+        "substitute": false
+    },
+    "call_recording": {},
+    "call_restriction": {
+        "caribbean": {
+            "action": "inherit"
+        },
+        "did_us": {
+            "action": "inherit"
+        },
+        "emergency": {
+            "action": "inherit"
+        },
+        "international": {
+            "action": "inherit"
+        },
+        "toll_us": {
+            "action": "inherit"
+        },
+        "tollfree_us": {
+            "action": "inherit"
+        },
+        "unknown": {
+            "action": "inherit"
+        }
+    },
+    "call_waiting": {
+        "enabled": true
+    },
+    "caller_id": {
+        "emergency": {
+            "name": "user5-emergency-name",
+            "number": "user5-emergency-number"
+        },
+        "external": {
+            "name": "user5-external-name",
+            "number": "user5-external-number"
+        },
+        "internal": {
+            "name": "user5-internal-name",
+            "number": "user5-internal-number"
+        }
+    },
+    "contact_list": {
+        "exclude": true
+    },
+    "do_no_disturb": {
+        "enabled": false
+    },
+    "enabled": true,
+    "exclude_from_queues": false,
+    "media": {
+        "audio": {
+            "codecs": [
+                "PCMU"
+            ]
+        },
+        "bypass_media": false,
+        "encryption": {
+            "enforce_security": false,
+            "methods": []
+        },
+        "fax_option": false,
+        "ignore_early_media": false,
+        "progress_timeout": 6,
+        "rtcp_mux": true,
+        "video": {
+            "codecs": []
+        },
+        "webrtc": false
+    },
+    "mwi_unsolicited_updates": true,
+    "name": "User 5 44944",
+    "outbound_flags": [
+        "device_old_static_flag"
+    ],
+    "presence_id": "user-5@44944.sip.2600hz.local",
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000044944",
+    "pvt_account_id": "account0000000000000000000044944",
+    "pvt_auth_account_id": "account0000000000000000000000001",
+    "pvt_auth_user_id": "user0000000000000000000000000001",
+    "pvt_created": 63645260666,
+    "pvt_document_hash": "78fc87e691bf352f7122301fe8d577e1",
+    "pvt_is_authenticated": true,
+    "pvt_modified": 63645260666,
+    "pvt_request_id": "request0000000000000000000000001",
+    "pvt_type": "user",
+    "pvt_vsn": "1",
+    "register_overwrite_notify": false,
+    "suppress_unregister_notifications": false,
+    "timezone": "America/New_York"
+}

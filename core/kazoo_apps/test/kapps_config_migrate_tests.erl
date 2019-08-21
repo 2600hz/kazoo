@@ -1,3 +1,12 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2019, 2600Hz
+%%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(kapps_config_migrate_tests).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -19,6 +28,6 @@ test_whapps_controller_migrate(_Setup) ->
 
     Migrated = kapps_config:migrate_from_doc(WhappsController, kz_json:from_list([{<<"_id">>, <<"kapps_controller">>}])),
     [{"migrated whapps_controller to kapps_controller"
-     ,?_assert(kz_json:are_equal(KappsController, Migrated))
+     ,?_assert(kz_json:are_equal(kz_doc:public_fields(KappsController), kz_doc:public_fields(Migrated)))
      }
     ].

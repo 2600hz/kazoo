@@ -5,6 +5,11 @@
 %%%
 %%%
 %%% @author James Aimonetti <james@2600hz.org>
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(notify_fax_outbound_error_to_email).
@@ -112,7 +117,7 @@ create_template_props(Event, Docs, Account) ->
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
     Timezone = kz_term:to_list(kz_json:find(<<"timezone">>, Docs, <<"UTC">>)),
-    ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
+    ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, "UTC"),
 
     [{<<"account">>, notify_util:json_to_template_props(Account)}
     ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}

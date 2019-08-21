@@ -12,7 +12,7 @@ Flow is:
   a. Optionally assign a `ratedeck_name` to each row to add rates to different ratedeck databases
 2. Create a service plan for ratedecks
   a. Add the service plan to account(s)
-3. When `{ACCOUNT_ID}` has a rate-able call, Kazoo `hotornot` application  will lookup what ratedeck database to use
+3. When `{ACCOUNT_ID}` has a rate-able call, Kazoo `hotornot` application will lookup what ratedeck database to use
   a. If using the trie algorithm, `hotornot` will find the PID with that ratedeck's trie and query it
   b. Otherwise, use the view of the ratedeck database to query for rates
 
@@ -110,45 +110,9 @@ curl -v -X GET \
 }
 ```
 
-## Upload a Ratedeck CSV
+### Upload a Ratedeck CSV
 
 Uploading CSVs has moved to using the ['tasks'](tasks.md) API, which provides a more generic interface. See the [rates task documentation](/applications/tasks/doc/rates.md) for more details on uploading rates.
-
-### Deprecated version
-
-> POST /v2/rates
-
-For bulk uploading. CSV rows can be formatted in the following ways:
-
-* `Prefix, ISO, Desc, Rate`
-* `Prefix, ISO, Desc, InternalRate, Rate`
-* `Prefix, ISO, Desc, Surcharge, InternalRate, Rate`
-* `Prefix, ISO, Desc, InternalSurcharge, Surcharge, InternalRate, Rate`
-* `Prefix, ISO, Desc, InternalSurcharge, Surcharge, Internal_rate, Rate, Routes, RateIncrement, RateMinimum, Direction`
-
-A US-1 row might look like:
-
-`1, "US-1", "US default rate", 0.01`
-
-This API will return an HTTP 202 and process the CSV in a background process.
-
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: text/csv" \
-    --data-binary @/path/to/rates.csv \
-    http://{SERVER}:8000/v2/rates
-```
-
-```json
-{
-    "auth_token": "{AUTH_TOKEN}",
-    "data":"attempting to insert rates from the uploaded document",
-    "request_id": "{REQUEST_ID}",
-    "revision": "{REVISION}",
-    "status": "success"
-}
-```
 
 ### Create a new rate
 

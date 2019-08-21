@@ -36,6 +36,9 @@
         "Callee-ID-Number": {
             "type": "string"
         },
+        "Caller-Destination-Number": {
+            "type": "string"
+        },
         "Caller-ID-Name": {
             "type": "string"
         },

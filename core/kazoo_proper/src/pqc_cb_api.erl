@@ -2,6 +2,11 @@
 %%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(pqc_cb_api).
@@ -43,7 +48,7 @@
                   ,'account_id' => kz_term:ne_binary()
                   ,'request_id' => kz_term:ne_binary()
                   ,'trace_file' => kz_data_tracing:trace_ref()
-                  ,'start' => kz_time:now()
+                  ,'start' => kz_time:start_time()
                   }.
 
 -export_type([state/0
@@ -140,7 +145,7 @@ create_api_state(<<_/binary>> = RespJSON, Trace) ->
      ,'account_id' => kz_json:get_ne_binary_value([<<"data">>, <<"account_id">>], RespEnvelope)
      ,'request_id' => kz_util:get_callid()
      ,'trace_file' => Trace
-     ,'start' => get('now')
+     ,'start' => get('start_time')
      }.
 
 -spec v2_base_url() -> string().
@@ -153,14 +158,14 @@ auth_account_id(#{'account_id' := AccountId}) -> AccountId.
 request_headers(API) ->
     request_headers(API, []).
 
--spec request_headers(state(), kz_http:headers()) -> kz_http:headers().
+-spec request_headers(state(), request_headers()) -> kz_http:headers().
 request_headers(#{'auth_token' := AuthToken
                  ,'request_id' := RequestId
                  }
                ,RequestHeaders
                ) ->
     lager:md([{'request_id', RequestId}]),
-    Defaults = [{"x-auth-token", kz_term:to_list(AuthToken)}
+    Defaults = [{<<"x-auth-token">>, kz_term:to_list(AuthToken)}
                 | default_request_headers(RequestId)
                ],
     [{kz_term:to_list(K), V}
@@ -168,28 +173,28 @@ request_headers(#{'auth_token' := AuthToken
     ].
 
 %% Need binary keys to avoid props assuming "foo" is [102, 111, 111] as a nested key
--spec default_request_headers() -> kz_http:headers().
+-spec default_request_headers() -> request_headers().
 default_request_headers() ->
-    [{"content-type", "application/json"}
-    ,{"accept", "application/json"}
+    [{<<"content-type">>, "application/json"}
+    ,{<<"accept">>, "application/json"}
     ].
 
--spec default_request_headers(kz_term:ne_binary()) -> kz_http:headers().
+-spec default_request_headers(kz_term:ne_binary()) -> request_headers().
 default_request_headers(RequestId) ->
     NowMS = kz_time:now_ms(),
     APIRequestID = kz_term:to_list(RequestId) ++ "-" ++ integer_to_list(NowMS),
     lager:debug("request id ~s", [APIRequestID]),
-    [{"x-request-id", APIRequestID}
+    [{<<"x-request-id">>, APIRequestID}
      | default_request_headers()
     ].
 
--spec make_request(expectations(), fun_2(), string(), kz_http:headers()) ->
+-spec make_request(expectations(), fun_2(), string(), request_headers()) ->
                           response().
 make_request(Expectations, HTTP, URL, RequestHeaders) ->
-    ?INFO("~p(~p, ~p)", [HTTP, URL, RequestHeaders]),
+    ?INFO("~p(~s, ~p)", [HTTP, URL, RequestHeaders]),
     handle_response(Expectations, HTTP(URL, RequestHeaders)).
 
--spec make_request(expectations(), fun_3(), string(), kz_http:headers(), iodata()) ->
+-spec make_request(expectations(), fun_3(), string(), request_headers(), iodata()) ->
                           response().
 make_request(Expectations, HTTP, URL, RequestHeaders, RequestBody) ->
     ?INFO("~p: ~s", [HTTP, URL]),
@@ -217,7 +222,7 @@ handle_response(Expectations, {'ok', ActualCode, RespHeaders, RespBody}) ->
             {'error', RespBody}
     end;
 handle_response(_Expectations, {'error','socket_closed_remotely'}=E) ->
-    lager:error("~nwe broke crossbar!"),
+    lager:error("we broke crossbar!"),
     throw(E);
 handle_response(_ExpectedCode, {'error', _}=E) ->
     lager:error("broken req: ~p", [E]),
@@ -281,7 +286,7 @@ start_trace() ->
                     RID -> RID
                 end,
     lager:md([{'request_id', RequestId}]),
-    put('now', kz_time:now()),
+    put('start_time', kz_time:start_time()),
 
     TracePath = trace_path(),
 

@@ -3,6 +3,10 @@
 %%% @doc Represent a date, and perform various manipulations on it.
 %%% @author Mark Magnusson
 %%% @author Karl Anderson
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_date).
@@ -39,7 +43,7 @@
 %%------------------------------------------------------------------------------
 -spec from_gregorian_seconds(kz_time:gregorian_seconds(), kz_term:ne_binary()) ->
                                     kz_time:date().
-from_gregorian_seconds(Seconds, <<_/binary>>=TZ) when is_integer(Seconds) ->
+from_gregorian_seconds(Seconds, <<TZ/binary>>) when is_integer(Seconds) ->
     {{_,_,_}, {_,_,_}} = DateTime = calendar:gregorian_seconds_to_datetime(Seconds),
     TZList = kz_term:to_list(TZ),
     {{_,_,_}=Date, {_,_,_}} = localtime:utc_to_local(DateTime, TZList),

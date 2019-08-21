@@ -2,6 +2,11 @@
 %%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc Helpers for manipulating the `#cb_context{}' record.
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_context).
@@ -352,7 +357,7 @@ doc(#cb_context{doc=Doc}) -> Doc.
 -spec load_merge_bypass(context()) -> kz_term:api_object().
 load_merge_bypass(#cb_context{load_merge_bypass=ByPass}) -> ByPass.
 
--spec start(context()) -> kz_time:now().
+-spec start(context()) -> kz_time:start_time().
 start(#cb_context{start=Start}) -> Start.
 
 -spec resp_file(context()) -> binary().
@@ -582,7 +587,7 @@ set_doc(#cb_context{}=Context, Doc) ->
 set_load_merge_bypass(#cb_context{}=Context, JObj) ->
     Context#cb_context{load_merge_bypass=JObj}.
 
--spec set_start(context(), kz_time:now()) -> context().
+-spec set_start(context(), kz_time:start_time()) -> context().
 set_start(#cb_context{}=Context, Start) ->
     Context#cb_context{start=Start}.
 

@@ -1,3 +1,12 @@
+%%%-----------------------------------------------------------------------------
+%%% @copyright (C) 2011-2019, 2600Hz
+%%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(provisioner_v5_tests).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -50,23 +59,23 @@ device_display_name_test_() ->
     EmptyNameAccountDoc = kzd_accounts:set_name(AccountDoc, 'undefined'),
     NonEmptyNameAccountDoc = kzd_accounts:set_name(AccountDoc, AccountName),
 
-    Tests = [%% User's name has preference
-             {UserFullName
+    Tests = [%% Device's name has preference
+             {DeviceName
              ,[NonEmptyNameDeviceDoc, NonEmptyNameUserDoc, NonEmptyNameAccountDoc]
              }
+            ,{DeviceName
+             ,[NonEmptyNameDeviceDoc, EmptyNameUserDoc, NonEmptyNameAccountDoc]
+             }
+            ,{DeviceName
+             ,[NonEmptyNameDeviceDoc, NonEmptyNameUserDoc, EmptyNameAccountDoc]
+             }
+
+             %% If Device's name is not set then use User's name if set
             ,{UserFullName
              ,[EmptyNameDeviceDoc, NonEmptyNameUserDoc, NonEmptyNameAccountDoc]
              }
             ,{UserFullName
              ,[EmptyNameDeviceDoc, NonEmptyNameUserDoc, EmptyNameAccountDoc]
-             }
-
-             %% If User's name is not set then use Device's name if set
-            ,{DeviceName
-             ,[NonEmptyNameDeviceDoc, EmptyNameUserDoc, NonEmptyNameAccountDoc]
-             }
-            ,{DeviceName
-             ,[NonEmptyNameDeviceDoc, EmptyNameUserDoc, EmptyNameAccountDoc]
              }
 
              %% If not User's name nor Device's name set then use Account's name if set.

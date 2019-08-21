@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2019-, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(pqc_cb_cdrs).
@@ -434,9 +438,11 @@ interaction_time(Year, Month, Day, _Today) ->
     calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {23, 59, 59}}).
 
 wait_for_task(API, AccountId, TaskId) ->
-    Start = kz_time:now_s(),
+    Start = kz_time:start_time(),
     wait_for_task(API, AccountId, TaskId, Start).
 
+-spec wait_for_task(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary(), kz_time:start_time()) ->
+                           pqc_cb_api:response() | {'error', 'timeout'}.
 wait_for_task(API, AccountId, TaskId, Start) ->
     wait_for_task(API, AccountId, TaskId, Start, kz_time:elapsed_s(Start)).
 

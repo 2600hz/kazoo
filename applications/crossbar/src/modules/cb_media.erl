@@ -5,6 +5,11 @@
 %%%
 %%%
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_media).
@@ -14,10 +19,9 @@
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,authorize/1
         ,validate/1, validate/2, validate/3
-        ,content_types_provided/3
-        ,content_types_accepted/3
+        ,content_types_provided/2, content_types_provided/3
+        ,content_types_accepted/2, content_types_accepted/3
         ,languages_provided/1, languages_provided/2, languages_provided/3
-        ,get/3
         ,put/1
         ,post/2, post/3
         ,delete/2, delete/3
@@ -71,7 +75,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.resource_exists.media">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.languages_provided.media">>, ?MODULE, 'languages_provided'),
     _ = crossbar_bindings:bind(<<"*.validate.media">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.get.media">>, ?MODULE, 'get'),
     _ = crossbar_bindings:bind(<<"*.execute.put.media">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.media">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.media">>, ?MODULE, 'delete'),
@@ -167,6 +170,19 @@ authorize_media(_Context, _Nouns, _AccountId) ->
 acceptable_content_types() ->
     ?MEDIA_MIME_TYPES.
 
+-spec content_types_provided(cb_context:context(), path_token()) ->
+                                    cb_context:context().
+content_types_provided(Context, MediaId) ->
+    Verb = cb_context:req_verb(Context),
+    ContentType = cb_context:req_header(Context, <<"accept">>),
+    case ?HTTP_GET =:= Verb
+        andalso api_util:content_type_matches(ContentType, acceptable_content_types())
+    of
+        'false' -> Context;
+        'true' ->
+            content_types_provided_for_media(Context, MediaId, ?BIN_DATA, ?HTTP_GET)
+    end.
+
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_provided(Context, MediaId, ?BIN_DATA) ->
@@ -191,6 +207,19 @@ content_types_provided_for_media(Context, MediaId, ?BIN_DATA, ?HTTP_GET) ->
 content_types_provided_for_media(Context, _MediaId, ?BIN_DATA, _Verb) ->
     Context.
 
+-spec content_types_accepted(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+content_types_accepted(Context, _MediaId) ->
+    Verb = cb_context:req_verb(Context),
+    ContentType = cb_context:req_header(Context, <<"content-type">>),
+    case ?HTTP_POST =:= Verb
+        andalso api_util:content_type_matches(ContentType, acceptable_content_types())
+    of
+        'false' -> Context;
+        'true' ->
+            CTA = [{'from_binary', acceptable_content_types()}],
+            cb_context:set_content_types_accepted(Context, CTA)
+    end.
+
 -spec content_types_accepted(cb_context:context(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_accepted(Context, _MediaId, ?BIN_DATA) ->
@@ -199,7 +228,7 @@ content_types_accepted(Context, _MediaId, ?BIN_DATA) ->
 -spec content_types_accepted_for_upload(cb_context:context(), http_method()) ->
                                                cb_context:context().
 content_types_accepted_for_upload(Context, ?HTTP_POST) ->
-    CTA = [{'from_binary', ?MEDIA_MIME_TYPES}],
+    CTA = [{'from_binary', acceptable_content_types()}],
     cb_context:set_content_types_accepted(Context, CTA);
 content_types_accepted_for_upload(Context, _Verb) ->
     Context.
@@ -260,11 +289,25 @@ validate_media_docs(Context, ?HTTP_PUT) ->
 
 -spec validate_media_doc(cb_context:context(), kz_term:ne_binary(), http_method()) -> cb_context:context().
 validate_media_doc(Context, MediaId, ?HTTP_GET) ->
-    load_media_meta(Context, MediaId);
+    case api_util:content_type_matches(cb_context:req_header(Context, <<"accept">>)
+                                      ,acceptable_content_types()
+                                      )
+    of
+        'false' -> load_media_meta(Context, MediaId);
+        'true' -> validate_media_binary(Context, MediaId, ?HTTP_GET, [])
+    end;
 validate_media_doc(Context, MediaId, ?HTTP_POST) ->
-    validate_request(MediaId, Context);
+    validate_media_doc_update(Context, MediaId, cb_context:req_header(Context, <<"content-type">>));
 validate_media_doc(Context, MediaId, ?HTTP_DELETE) ->
     load_media_meta(Context, MediaId).
+
+-spec validate_media_doc_update(cb_context:context(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> cb_context:context().
+validate_media_doc_update(Context, MediaId, ContentType) ->
+    lager:debug("trying to update doc with content ~s", [ContentType]),
+    case api_util:content_type_matches(ContentType, acceptable_content_types()) of
+        'false' -> validate_request(MediaId, Context);
+        'true' -> validate_media_binary(Context, MediaId, ?HTTP_POST, cb_context:req_files(Context))
+    end.
 
 -spec validate_media_binary(cb_context:context(), kz_term:ne_binary(), http_method(), kz_term:proplist()) -> cb_context:context().
 validate_media_binary(Context, MediaId, ?HTTP_GET, _Files) ->
@@ -348,11 +391,6 @@ validate_upload(Context, MediaId, FileJObj) ->
                                             )
                     ).
 
--spec get(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-get(Context, _MediaId, ?BIN_DATA) ->
-    CT = kz_json:get_value(<<"content-type">>, cb_context:doc(Context), <<"application/octet-stream">>),
-    cb_context:add_resp_headers(Context, #{<<"content-type">> => CT}).
-
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     put_media(Context, cb_context:account_id(Context)).
@@ -373,10 +411,17 @@ post(Context, MediaId) ->
 -spec post_media_doc(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) -> cb_context:context().
 post_media_doc(Context, MediaId, 'undefined') ->
     post_media_doc(cb_context:set_account_db(Context, ?KZ_MEDIA_DB), MediaId, <<"ignore">>);
-post_media_doc(Context, _MediaId, _AccountId) ->
+post_media_doc(Context, MediaId, _AccountId) ->
     case is_tts(cb_context:doc(Context)) of
         'true' -> create_update_tts(Context, <<"update">>);
-        'false' -> crossbar_doc:save(remove_tts_keys(Context))
+        'false' -> post_media_doc_or_binary(remove_tts_keys(Context), MediaId, cb_context:req_header(Context, <<"content-type">>))
+    end.
+
+-spec post_media_doc_or_binary(cb_context:context(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> cb_context:context().
+post_media_doc_or_binary(Context, MediaId, ContentType) ->
+    case api_util:content_type_matches(ContentType, acceptable_content_types()) of
+        'false' -> crossbar_doc:save(Context);
+        'true' -> post(Context, MediaId, ?BIN_DATA)
     end.
 
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().

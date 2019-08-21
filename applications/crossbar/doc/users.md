@@ -37,6 +37,8 @@ Key | Description | Type | Default | Required | Support Level
 `enabled` | Determines if the user is currently enabled | `boolean()` | `true` | `false` | `supported`
 `feature_level` | The user level for assigning feature sets | `string()` |   | `false` |  
 `first_name` | The first name of the user | `string(1..128)` |   | `true` | `supported`
+`flags.[]` |   | `string()` |   | `false` | `supported`
+`flags` | Flags set by external applications | `array(string())` |   | `false` | `supported`
 `formatters` | Schema for request formatters | `object()` |   | `false` |  
 `hotdesk.enabled` | Determines if the user has hotdesking enabled | `boolean()` | `false` | `false` |  
 `hotdesk.id` | The users hotdesk id | `string(0..15)` |   | `false` |  

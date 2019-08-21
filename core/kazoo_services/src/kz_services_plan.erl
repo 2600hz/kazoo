@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_services_plan).
@@ -350,14 +354,16 @@ assign(Services, JObj, Options) ->
     VendorId = kz_json:get_ne_binary_value(<<"vendor_id">>, JObj, ResellerId),
     Overrides = kz_json:get_json_value(<<"overrides">>, JObj),
     Contract = kz_json:get_json_value(<<"contract">>, JObj),
+
     case kz_doc:id(JObj) of
         'undefined' -> Services;
         PlanId ->
-            Props = [{<<"vendor_id">>, VendorId}
-                    ,{<<"overrides">>, Overrides}
-                    ,{<<"contract">>, Contract}
-                    ],
-            Plan = kz_json:from_list(Props),
+            Plan = kz_json:from_list(
+                     [{<<"contract">>, Contract}
+                     ,{<<"vendor_id">>, VendorId}
+                     ,{<<"overrides">>, Overrides}
+                     ]
+                    ),
             assign(Services, PlanId, Plan, Options)
     end.
 

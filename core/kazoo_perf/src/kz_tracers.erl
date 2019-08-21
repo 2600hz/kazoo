@@ -2,6 +2,10 @@
 %%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_tracers).
@@ -43,8 +47,7 @@ gen_load(N) ->
 
 -spec gen_load(non_neg_integer(), non_neg_integer()) -> 'ok'.
 gen_load(N, D) ->
-    Start = os:timestamp(),
-    _ = rand:seed('exsplus', Start),
+    Start = kz_time:start_time(),
 
     {PointerTab, MonitorTab} = gen_listener:call(?CACHE_NAME, {'tables'}),
     Tables = [?CACHE_NAME, PointerTab, MonitorTab],
@@ -92,8 +95,7 @@ do_load_gen(Ds) ->
 
     Docs = [new_doc(AccountDb, Doc) || Doc <- lists:seq(1,Ds)],
 
-    Start = os:timestamp(),
-    _ = rand:seed('exsplus', Start),
+    Start = kz_time:start_time(),
 
     case rand:uniform(100) of
         42 ->

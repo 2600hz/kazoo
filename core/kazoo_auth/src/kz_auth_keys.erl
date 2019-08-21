@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_auth_keys).
@@ -11,7 +15,7 @@
 -export([get_public_key/2]).
 -export([get_private_key_from_file/1]).
 -export([from_pem/1, to_pem/1]).
--export([lookup/1, store/2]).
+-export([lookup/1, store/2, clear/0, clear/1]).
 -export([from_token/1]).
 
 -export([private_key/1, public_key/1]).
@@ -34,11 +38,11 @@
 %%------------------------------------------------------------------------------
 -spec get_public_key_from_cert(file:filename_all()) -> public_key:rsa_public_key().
 get_public_key_from_cert(PathToCert) ->
-    {ok, PemBin} = file:read_file(PathToCert),
+    {'ok', PemBin} = file:read_file(PathToCert),
     PemEntries = public_key:pem_decode(PemBin),
-    {value, CertEntry} = lists:keysearch('Certificate', 1, PemEntries),
+    {'value', CertEntry} = lists:keysearch('Certificate', 1, PemEntries),
     {_, DerCert, _} = CertEntry,
-    Decoded = public_key:pkix_decode_cert(DerCert, otp),
+    Decoded = public_key:pkix_decode_cert(DerCert, 'otp'),
     PublicKey = Decoded#'OTPCertificate'.tbsCertificate#'OTPTBSCertificate'.subjectPublicKeyInfo#'OTPSubjectPublicKeyInfo'.subjectPublicKey,
     PublicKey.
 
@@ -52,7 +56,7 @@ get_public_key(Mod, Exp) ->
 
 -spec get_private_key_from_file(file:filename_all()) -> public_key:rsa_private_key().
 get_private_key_from_file(Path) ->
-    {ok, PemBin} = file:read_file(Path),
+    {'ok', PemBin} = file:read_file(Path),
     [PemEntry | _] = public_key:pem_decode(PemBin),
     public_key:pem_entry_decode(PemEntry).
 
@@ -71,8 +75,16 @@ lookup(KeyId) ->
 
 -spec store(any(), any()) -> 'ok'.
 store(KeyId, Key) ->
-    lager:debug("storing public key ~p in cache", [KeyId]),
+    lager:info("storing key ~p PEM in cache", [KeyId]),
     kz_cache:store_local(?PK_CACHE, KeyId, Key, cache_options(KeyId)).
+
+-spec clear() -> 'ok'.
+clear() ->
+    kz_cache:flush_local(?PK_CACHE).
+
+-spec clear(any()) -> 'ok'.
+clear(KeyId) ->
+    kz_cache:erase_local(?PK_CACHE, KeyId).
 
 -spec cache_options(any()) -> list().
 cache_options({'private', KeyId}) ->
@@ -91,8 +103,8 @@ from_token(#{}=Token) ->
                ,fun extract_key/1
                ],
     case from_token_fold(Token, Routines) of
-        #{key := Key, cached := true} -> {'ok', Key};
-        #{key_id := KeyId, key := Key, cached := false} ->
+        #{key := Key, cached := 'true'} -> {'ok', Key};
+        #{key_id := KeyId, key := Key, cached := 'false'} ->
             store(KeyId, Key),
             {'ok', Key};
         _Other ->
@@ -135,6 +147,8 @@ maybe_get_key(#{auth_provider := #{name := <<"kazoo">>}
                ,header := #{<<"kid">> := KeyId}
                } = Token) ->
     Token#{key_id => KeyId};
+maybe_get_key(#{header := #{<<"kid">> := KeyId}} = Token) ->
+    Token#{key_id => KeyId};
 maybe_get_key(#{}=Token) -> Token.
 
 -spec key_id(kz_term:ne_binary(), kz_term:ne_binary(), map()) -> kz_term:api_binary().
@@ -170,12 +184,31 @@ maybe_discovery(#{key_id := KeyId
                  ,auth_provider := #{name := <<"kazoo">>}
                  }=Token) ->
     Token#{key => public_key(KeyId)};
-maybe_discovery(#{}=Token) -> Token.
+maybe_discovery(#{payload := #{<<"iss">> := <<"http", _/binary>> = Issuer}}=Token) ->
+    DiscoveryUrl = <<Issuer/binary, "/.well-known/openid-configuration">>,
+    case kz_auth_util:get_json_from_url(DiscoveryUrl) of
+        {'ok', JObj} ->
+            lager:debug_unsafe("obtained discovery document : ~s", [kz_json:encode(JObj,[pretty])]),
+            Token#{discovery => JObj};
+        _ -> Token
+    end;
+maybe_discovery(#{}=Token) ->
+    Token.
 
 -spec maybe_discovery_url(map()) -> map().
 maybe_discovery_url(#{discovery := JObj
                      ,auth_provider := #{public_key_discovery_field := Field}
                      }=Token) ->
+    lager:debug("verifying that ~s is in discovery document", [Field]),
+    case kz_json:get_value(Field, JObj) of
+        'undefined' -> Token;
+        KeysUrl ->
+            lager:debug("keys url ~s found in discovery document", [KeysUrl]),
+            Token#{discovery_url => KeysUrl}
+    end;
+maybe_discovery_url(#{discovery := JObj
+                     }=Token) ->
+    Field = <<"jwks_uri">>,
     lager:debug("verifying that ~s is in discovery document", [Field]),
     case kz_json:get_value(Field, JObj) of
         'undefined' -> Token;
@@ -231,6 +264,17 @@ fetch_key(#{key_id := KeyId
             Token;
         JObj -> Token#{key_value => kz_json:to_map(JObj)}
     end;
+fetch_key(#{key_id := KeyId
+           ,key_doc := KeyDoc
+           }= Token) ->
+    Field = <<"kid">>,
+    lager:debug("looking up public key sets in '~s' field in downloaded json : ~p", [Field, KeyDoc]),
+    case kz_json:find_value(Field, KeyId, kz_json:get_value(<<"keys">>, KeyDoc)) of
+        'undefined' ->
+            lager:debug("public key not found from '~s' field in downloaded json : ~p", [Field, KeyDoc]),
+            Token;
+        JObj -> Token#{key_value => kz_json:to_map(JObj)}
+    end;
 fetch_key(#{}=Token) -> Token.
 
 -spec extract_key(map()) -> map().
@@ -262,8 +306,12 @@ private_key(KeyId) ->
 -spec load_private_key(kz_term:ne_binary()) -> {'ok', public_key:rsa_private_key()} | {'error', any()}.
 load_private_key(KeyId) ->
     case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, KeyId) of
-        {'ok', JObj} -> load_private_key_attachment(JObj);
-        {'error', 'not_found'} -> new_private_key(KeyId)
+        {'ok', JObj} ->
+            lager:info("found key doc ~s(~s)", [KeyId, kz_doc:revision(JObj)]),
+            load_private_key_attachment(JObj);
+        {'error', 'not_found'} ->
+            lager:info("failed to find key ~s in db", [KeyId]),
+            new_private_key(KeyId)
     end.
 
 -spec load_private_key_attachment(kz_json:object()) -> {'ok', public_key:rsa_private_key()} | {'error', any()}.
@@ -275,6 +323,7 @@ load_private_key_attachment(JObj) ->
             store({'private', KeyId}, Key),
             {'ok', Key};
         {'error', 'not_found'} ->
+            lager:debug("failed to find PEM attachment on ~s(~s), generating it", [KeyId, kz_doc:revision(JObj)]),
             {'ok', Key} = gen_private_key(),
             save_private_key(JObj, Key)
     end.
@@ -290,11 +339,16 @@ new_private_key(KeyId, Key) ->
           ,{<<"_id">>, KeyId}
           ],
     JObj = kz_doc:update_pvt_parameters(kz_json:from_list(Doc), ?KZ_AUTH_DB),
+
     case kz_datamgr:save_doc(?KZ_AUTH_DB, JObj) of
-        {'ok', Saved} -> save_private_key(Saved, Key);
-        {'error', 'conflict'} -> private_key(KeyId);
+        {'ok', Saved} ->
+            lager:info("created new key ~s(~s)", [KeyId, kz_doc:revision(Saved)]),
+            save_private_key(Saved, Key);
+        {'error', 'conflict'} ->
+            lager:info("conflict adding key ~s(~s)", [KeyId, kz_doc:revision(JObj)]),
+            private_key(KeyId);
         {'error', _Err}=Err ->
-            lager:debug("error ~p saving new system key ~s", [_Err, KeyId]),
+            lager:info("error ~p saving new system key ~s", [_Err, KeyId]),
             Err
     end.
 
@@ -306,18 +360,20 @@ save_private_key(JObj, Key) ->
               ,{'content_type', ?SYSTEM_KEY_ATTACHMENT_CTYPE}
               ],
     case kz_datamgr:put_attachment(?KZ_AUTH_DB, KeyId, ?SYSTEM_KEY_ATTACHMENT_NAME, to_pem(Key), Options) of
-        {'ok', _} ->
+        {'ok', _JObj} ->
             store({'private', KeyId}, Key),
             {'ok', Key};
-        {'error', 'conflict'} -> private_key(KeyId);
+        {'error', 'conflict'} ->
+            lager:info("conflict saving ~s(~s)", [KeyId, kz_doc:revision(JObj)]),
+            private_key(KeyId);
         {'error', _Err}=Err ->
-            lager:debug("error ~p saving generated system key ~s", [_Err, KeyId]),
+            lager:info("error ~p saving generated system key ~s", [_Err, KeyId]),
             Err
     end.
 
 -spec gen_private_key() -> {'ok', public_key:rsa_private_key()}.
 gen_private_key() ->
-    Key = public_key:generate_key({rsa, ?RSA_KEY_SIZE, ?RSA_KEY_SIZE + 1}),
+    Key = public_key:generate_key({'rsa', ?RSA_KEY_SIZE, ?RSA_KEY_SIZE + 1}),
     {'ok', Key}.
 
 %% @equiv reset_private_key(kz_auth_apps:get_auth_app(<<"kazoo">>))

@@ -3,6 +3,11 @@
 %%% @doc
 %%% @author Peter Defebvre
 %%% @author Luis Azedo
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_ledgers).
@@ -176,7 +181,7 @@ validate(Context, SourceService) ->
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ?SUMMARY, ModbSuffix) ->
-    case get_modb_suffix(ModbSuffix) of
+    case kazoo_modb_util:get_modb_suffix(ModbSuffix) of
         {'undefined', 'undefined'} ->
             crossbar_util:response_bad_identifier(ModbSuffix, Context);
         {Year, Month} ->
@@ -298,7 +303,7 @@ fetch_summary(Context, View, Options) ->
     ViewOptions = [{'group', 'true'}
                   ,{'reduce', 'true'}
                   ,{'unchunkable', 'true'}
-                  ,{'nofilter', 'true'}
+                  ,{'no_filter', 'true'}
                   ,{'should_paginate', 'false'}
                    | Options
                   ],
@@ -445,22 +450,6 @@ build_success_response(AccountId, Ledger) ->
       ,{<<"is_reseller">>, kz_services_reseller:is_reseller(AccountId)}
       ]
      ).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec get_modb_suffix(kz_term:ne_binary()) -> {kz_term:api_integer(), kz_term:api_integer()}.
-get_modb_suffix(<<YearBin:4/binary, MonthBin:2/binary>>) ->
-    {kz_term:safe_cast(YearBin, 'undefined', fun kz_term:to_integer/1)
-    ,kz_term:safe_cast(MonthBin, 'undefined', fun kz_term:to_integer/1)
-    };
-get_modb_suffix(<<YearBin:4/binary, MonthBin:1/binary>>) ->
-    {kz_term:safe_cast(YearBin, 'undefined', fun kz_term:to_integer/1)
-    ,kz_term:safe_cast(MonthBin, 'undefined', fun kz_term:to_integer/1)
-    };
-get_modb_suffix(_) ->
-    {'undefined', 'undefined'}.
 
 %%------------------------------------------------------------------------------
 %% @doc

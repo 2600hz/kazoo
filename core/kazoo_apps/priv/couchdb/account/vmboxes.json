@@ -19,7 +19,8 @@
                 "    name: doc.name,",
                 "    mailbox: doc.mailbox,",
                 "    owner_id: doc.owner_id,",
-                "    messages: messges_count",
+                "    messages: messges_count,",
+                "    flags: doc.flags || []",
                 "  });",
                 "}"
             ]

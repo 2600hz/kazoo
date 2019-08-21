@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(hotornot_config).
@@ -82,7 +86,7 @@ should_use_trie() ->
 -spec use_trie() -> 'ok'.
 use_trie() ->
     {'ok', _} = kapps_config:set_default(?APP_NAME, <<"use_trie">>, 'true'),
-    {'ok', _} = kapps_config:set_default(?APP_NAME, <<"trie_module">>, 'hon_trie'),
+    {'ok', _} = kapps_config:set_default(?APP_NAME, <<"trie_module">>, <<"hon_trie">>),
     'ok'.
 
 -spec dont_use_trie() -> 'ok'.
@@ -93,7 +97,7 @@ dont_use_trie() ->
 -spec use_trie_lru() -> 'ok'.
 use_trie_lru() ->
     use_trie(),
-    {'ok', _} = kapps_config:set_default(?APP_NAME, <<"trie_module">>, 'hon_trie_lru'),
+    {'ok', _} = kapps_config:set_default(?APP_NAME, <<"trie_module">>, <<"hon_trie_lru">>),
     'ok'.
 
 -spec trie_module() -> atom().

@@ -29,6 +29,14 @@
             "description": "Whether the rule is enabled",
             "type": "boolean"
         },
+        "flags": {
+            "description": "Flags set by external applications",
+            "items": {
+                "type": "string"
+            },
+            "support_level": "supported",
+            "type": "array"
+        },
         "interval": {
             "default": 1,
             "description": "The recurrence interval for this rule",

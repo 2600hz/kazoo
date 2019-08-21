@@ -35,6 +35,7 @@
     "pvt_account_db": "system_config",
     "pvt_account_id": "system_config",
     "pvt_created": 63668324118,
+    "pvt_document_hash": "bcb4254db4df8be0eff4aa73cd77c241",
     "pvt_modified": 63668324118,
     "pvt_node": "kazoo_apps@example.com",
     "pvt_type": "config"

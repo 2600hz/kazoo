@@ -19,6 +19,11 @@
 %%%
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_voicemail).
@@ -919,7 +924,7 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{seek_duration=SeekDu
             case kz_json:get_value(<<"caller_id_number">>,H) of
                 'undefined' ->
                     lager:info("message not contains caller_id_number and we cannot callback"),
-                    kapps_call_command:audio_macro([{'prompt', <<"vm-not_available">>}], Call),
+                    _ = kapps_call_command:audio_macro([{'prompt', <<"vm-not_available">>}], Call),
                     play_messages(Messages, PrevMessages, Count, Box, Call);
                 Number ->
                     lager:info("caller chose to callback number ~s", [Number]),
@@ -950,7 +955,7 @@ maybe_branch_call(Call, Number, #mailbox{owner_id=OwnerId}) ->
         {'ok', JObj} -> maybe_restrict_call(Number, Call, JObj);
         _ ->
             lager:info("failed to find endpoint ~s", [EndpointId]),
-            kapps_call_command:audio_macro([{'prompt', <<"cf-unauthorized_call">>}], Call),
+            _ = kapps_call_command:audio_macro([{'prompt', <<"cf-unauthorized_call">>}], Call),
             'error'
     end.
 
@@ -958,7 +963,7 @@ maybe_branch_call(Call, Number, #mailbox{owner_id=OwnerId}) ->
 maybe_restrict_call(Number, Call, JObj) ->
     case should_restrict_call(Number, Call, JObj) of
         {'true', _} ->
-            kapps_call_command:audio_macro([{'prompt', <<"cf-unauthorized_call">>}], Call),
+            _ = kapps_call_command:audio_macro([{'prompt', <<"cf-unauthorized_call">>}], Call),
             'error';
         {'false', NewNumber} -> maybe_exist_callflow(NewNumber, Call)
     end.
@@ -973,11 +978,11 @@ maybe_exist_callflow(Number, Call) ->
                        }
                       ,{fun kapps_call:set_to/2, list_to_binary([Number, "@", kapps_call:to_realm(Call)])}
                       ],
-            cf_exe:update_call(kapps_call:exec(Updates, Call)),
-            cf_exe:branch(kz_json:get_json_value(<<"flow">>, Flow), Call);
+            Call1 = cf_exe:update_call(kapps_call:exec(Updates, Call)),
+            cf_exe:branch(kz_json:get_json_value(<<"flow">>, Flow), Call1);
         _ ->
             lager:info("failed to find a callflow to satisfy ~s", [Number]),
-            kapps_call_command:audio_macro([{'prompt', <<"fault-can_not_be_completed_as_dialed">>}], Call),
+            _ = kapps_call_command:audio_macro([{'prompt', <<"fault-can_not_be_completed_as_dialed">>}], Call),
             'error'
     end.
 
@@ -1132,7 +1137,9 @@ forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_numb
                     ]
                    ),
     case kvm_message:forward_message(Call, Message, SrcBoxId, NewMsgProps) of
-        {'ok', _NewCall} -> send_mwi_update(DestBox);
+        {'ok', NewCall} ->
+            _ = kapps_call_command:b_prompt(<<"vm-forward_confirmed">>, NewCall),
+            send_mwi_update(DestBox);
         {'error', _, _Msg} ->
             lager:warning("failed to save forwarded voice mail message recorded media : ~p", [_Msg])
     end.
@@ -2154,7 +2161,7 @@ tmp_file(Ext) ->
                             kz_term:ne_binary().
 get_unix_epoch(Epoch, Timezone) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(Epoch),
-    LocalDateTime = localtime:utc_to_local(UtcDateTime, Timezone),
+    LocalDateTime = kz_time:adjust_utc_datetime(UtcDateTime, Timezone),
     kz_term:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - ?UNIX_EPOCH_IN_GREGORIAN).
 
 %%------------------------------------------------------------------------------

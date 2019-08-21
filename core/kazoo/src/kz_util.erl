@@ -3,6 +3,10 @@
 %%% @doc Various utilities - a veritable cornucopia.
 %%% @author James Aimonetti
 %%% @author Karl Anderson
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_util).
@@ -436,48 +440,60 @@ runs_in(MaxTime, Fun, Arguments)
 -spec spawn(fun(), list()) -> pid().
 spawn(Fun, Arguments) ->
     CallId = get_callid(),
+    Application = kapps_util:get_application(),
     erlang:spawn(fun() ->
                          _ = put_callid(CallId),
+                         _ = kapps_util:put_application(Application),
                          erlang:apply(Fun, Arguments)
                  end).
 
 -spec spawn(fun(() -> any())) -> pid().
 spawn(Fun) ->
     CallId = get_callid(),
+    Application = kapps_util:get_application(),
     erlang:spawn(fun() ->
                          _ = put_callid(CallId),
+                         _ = kapps_util:put_application(Application),
                          Fun()
                  end).
 
 -spec spawn_link(fun(), list()) -> pid().
 spawn_link(Fun, Arguments) ->
     CallId = get_callid(),
+    Application = kapps_util:get_application(),
     erlang:spawn_link(fun () ->
                               _ = put_callid(CallId),
+                              _ = kapps_util:put_application(Application),
                               erlang:apply(Fun, Arguments)
                       end).
 
 -spec spawn_link(fun(() -> any())) -> pid().
 spawn_link(Fun) ->
     CallId = get_callid(),
+    Application = kapps_util:get_application(),
     erlang:spawn_link(fun() ->
                               _ = put_callid(CallId),
+                              _ = kapps_util:put_application(Application),
                               Fun()
                       end).
 
 -spec spawn_monitor(fun(), list()) -> kz_term:pid_ref().
 spawn_monitor(Fun, Arguments) ->
     CallId = get_callid(),
+    Application = kapps_util:get_application(),
     erlang:spawn_monitor(fun () ->
                                  _ = put_callid(CallId),
+                                 _ = kapps_util:put_application(Application),
                                  erlang:apply(Fun, Arguments)
                          end).
 
 -spec spawn_monitor(module(), atom(), list()) -> kz_term:pid_ref().
 spawn_monitor(Module, Fun, Args) ->
     CallId = get_callid(),
+    Application = kapps_util:get_application(),
     erlang:spawn_monitor(fun () ->
                                  _ = put_callid(CallId),
+                                 _ = kapps_util:put_application(Application),
                                  erlang:apply(Module, Fun, Args)
                          end).
 
@@ -757,8 +773,10 @@ get_app(AppName) ->
 
 -spec application_version(atom()) -> kz_term:ne_binary().
 application_version(Application) ->
-    {'ok', Vsn} = application:get_key(Application, 'vsn'),
-    kz_term:to_binary(Vsn).
+    case application:get_key(Application, 'vsn') of
+        {'ok', Vsn} -> kz_term:to_binary(Vsn);
+        'undefined' -> <<"unknown">>
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Like `lists:usort/1' but preserves original ordering.

@@ -2,6 +2,11 @@
 %%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc
 %%% @author Luis Azedo
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_sms).
@@ -239,24 +244,24 @@ get_default_caller_id(Context, OwnerId) ->
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     {ViewName, Opts} =
-        build_view_name_rane_keys(cb_context:device_id(Context), cb_context:user_id(Context)),
+        build_view_name_range_keys(cb_context:device_id(Context), cb_context:user_id(Context)),
     Options = [{'mapper', fun normalize_view_results/2}
                | Opts
               ],
     crossbar_view:load_modb(Context, ViewName, Options).
 
--spec build_view_name_rane_keys(kz_term:api_binary(), kz_term:api_binary()) -> {kz_term:ne_binary(), crossbar_view:options()}.
-build_view_name_rane_keys('undefined', 'undefined') ->
+-spec build_view_name_range_keys(kz_term:api_binary(), kz_term:api_binary()) -> {kz_term:ne_binary(), crossbar_view:options()}.
+build_view_name_range_keys('undefined', 'undefined') ->
     {?CB_LIST_ALL
     ,[{'range_start_keymap', []}
      ,{'range_end_keymap', crossbar_view:suffix_key_fun([kz_json:new()])}
      ]
     };
-build_view_name_rane_keys('undefined', Id) ->
+build_view_name_range_keys('undefined', Id) ->
     {?CB_LIST_BY_OWNERID
     ,[{'range_keymap', [Id]}]
     };
-build_view_name_rane_keys(Id, _) ->
+build_view_name_range_keys(Id, _) ->
     {?CB_LIST_BY_DEVICE
     ,[{'range_keymap', [Id]}]
     }.

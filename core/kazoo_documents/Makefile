@@ -17,7 +17,7 @@ compile-test-direct: compile-autogen $(ERL_FILES)
 
 compile-autogen: $(addsuffix -compile,$(SRC_FILES))
 
-clean: clean-autogen
+clean: clean-autogen clean-patch
 
 clean-autogen: $(addsuffix -clean,$(SRC_FILES))
 
@@ -33,3 +33,20 @@ diff:
 	@$(foreach ERL,$(ERL_FILES),cmp --silent $(ERL) $(ERL:.erl=.erl.src) || diff -c $(ERL) $(ERL).src;) true
 
 include $(ROOT)/make/kz.mk
+
+DIFF_FILES := $(shell git diff --name-only $(BASE_BRANCH) $(SRC_FILES))
+APPLY_FILES := $(strip $(subst kzd,patch-kzd,$(DIFF_FILES)))
+
+.PHONY=apply-diff
+apply-diff: $(APPLY_FILES)
+	$(MAKE) clean-patch
+
+.PHONY=clean-patch
+clean-patch:
+	$(if $(wildcard src/*.patch), rm src/*.patch)
+	$(if $(wildcard src/*.orig), rm src/*.orig)
+
+patch-%:
+	@echo "patching $(basename $*)"
+	@git diff $(BASE_BRANCH) -- $(ROOT)/$* > $(ROOT)/$*.patch
+	@patch -p1 $(ROOT)/$(basename $*) $(ROOT)/$*.patch

@@ -31,6 +31,8 @@ Key | Description | Type | Default | Required | Support Level
 `do_not_disturb.enabled` | The default value for do-not-disturb | `boolean()` |   | `false` |  
 `do_not_disturb` |   | `object()` |   | `false` |  
 `enabled` | Determines if the account is currently enabled | `boolean()` | `true` | `false` | `supported`
+`flags.[]` |   | `string()` |   | `false` | `supported`
+`flags` | Flags set by external applications | `array(string())` |   | `false` | `supported`
 `formatters` | Schema for request formatters | [#/definitions/formatters](#formatters) |   | `false` |  
 `language` | The language for this account | `string()` |   | `false` | `supported`
 `metaflows` | Actions applied to a call outside of the normal callflow, initiated by the caller(s) | [#/definitions/metaflows](#metaflows) |   | `false` |  

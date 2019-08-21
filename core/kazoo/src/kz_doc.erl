@@ -3,6 +3,10 @@
 %%% @doc Utilities for manipulating Kazoo documents.
 %%% @author Edouard Swiac
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_doc).
@@ -15,6 +19,7 @@
         ,path_id/0
         ]).
 -export([revision/1
+        ,revision_id/1
         ,set_revision/2
         ,delete_revision/1
         ,path_revision/0
@@ -196,6 +201,14 @@ path_id() ->
 -spec revision(doc()) -> kz_term:api_binary().
 revision(JObj) ->
     kz_json:get_first_defined([?KEY_REV, <<"rev">>], JObj).
+
+-spec revision_id(doc() | kz_term:api_ne_binary()) -> non_neg_integer().
+revision_id('undefined') -> 0;
+revision_id(<<Rev/binary>>) ->
+    [Id, _] = binary:split(Rev, <<"-">>),
+    kz_term:to_integer(Id);
+revision_id(JObj) ->
+    revision_id(revision(JObj)).
 
 -spec path_revision() -> kz_json:path().
 path_revision() ->

@@ -38,6 +38,10 @@
 %%%
 %%% @author James Aimonetti
 %%% @author Karl Anderson
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(gen_listener).
@@ -421,7 +425,11 @@ init_state([Module, Params, ModuleState]) ->
 init([Module, Params, InitArgs]) ->
     process_flag('trap_exit', 'true'),
     put('callid', Module),
-    lager:debug("starting new gen_listener proc : ~s", [Module]),
+    Application = kapps_util:get_application(),
+    kapps_util:put_application(Application),
+    lager:debug("starting new gen_listener proc : ~s ~s"
+               ,[Application, Module]
+               ),
     case erlang:function_exported(Module, 'init', 1)
         andalso Module:init(InitArgs)
     of

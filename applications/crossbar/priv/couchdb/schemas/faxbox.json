@@ -42,6 +42,14 @@
             "support_level": "supported",
             "type": "string"
         },
+        "flags": {
+            "description": "Flags set by external applications",
+            "items": {
+                "type": "string"
+            },
+            "support_level": "supported",
+            "type": "array"
+        },
         "media": {
             "default": {},
             "description": "The faxbox media parameters",

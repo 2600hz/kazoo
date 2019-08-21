@@ -67,6 +67,7 @@
                                ,<<"knm_telnyx">>
                                ,<<"knm_vitelity">>
                                ,<<"knm_voip_innovations">>
+                               ,<<"knm_voxbone">>
                                ]
                               }
                              ,{<<"number_services">>

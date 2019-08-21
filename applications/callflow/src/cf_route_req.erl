@@ -2,6 +2,11 @@
 %%% @copyright (C) 2011-2019, 2600Hz
 %%% @doc Handler for route requests, responds if Callflows match.
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cf_route_req).
@@ -163,6 +168,13 @@ callflow_should_respond(Call) ->
             'false'
     end.
 
+-spec ccvs(kz_json:object(), kapi_route:req(), kapps_call:call()) -> kz_term:api_object().
+ccvs(Flow, _RouteReq, _Call) ->
+    kz_json:from_list([{<<"CallFlow-ID">>, kz_doc:id(Flow)}]).
+
+-spec cavs(kz_json:object(), kapi_route:req(), kapps_call:call()) -> kz_term:api_object().
+cavs(_Flow, _RouteReq, _Call) -> 'undefined'.
+
 %%------------------------------------------------------------------------------
 %% @doc Send a route response for a route request that can be fulfilled by this
 %% process.
@@ -181,8 +193,8 @@ send_route_response(Flow, RouteReq, Call) ->
              ,{<<"Ringback-Media">>, get_ringback_media(Flow, RouteReq)}
              ,{<<"Pre-Park">>, pre_park_action(Call)}
              ,{<<"From-Realm">>, kzd_accounts:fetch_realm(AccountId)}
-             ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
-             ,{<<"Custom-Application-Vars">>, kapps_call:custom_application_vars(Call)}
+             ,{<<"Custom-Channel-Vars">>, ccvs(Flow, RouteReq, Call)}
+             ,{<<"Custom-Application-Vars">>, cavs(Flow, RouteReq, Call)}
              ,{<<"Context">>, kapps_call:context(Call)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
@@ -273,7 +285,6 @@ update_call(Flow, NoMatch, ControllerQ, Call) ->
                ,{fun kapps_call:set_controller_queue/2, ControllerQ}
                ,{fun kapps_call:set_application_name/2, ?APP_NAME}
                ,{fun kapps_call:set_application_version/2, ?APP_VERSION}
-               ,{fun kapps_call:insert_custom_channel_var/3, <<"CallFlow-ID">>, kz_doc:id(Flow)}
                ],
     kapps_call:exec(Updaters, Call).
 

@@ -6,6 +6,10 @@
 %%% init there.  So this module will bootstrap `kz_amqp_mgr'
 %%% and block until a connection becomes available, after that it
 %%% removes itself.
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_amqp_bootstrap).

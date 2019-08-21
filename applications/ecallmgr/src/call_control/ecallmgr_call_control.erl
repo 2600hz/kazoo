@@ -39,6 +39,11 @@
 %%%
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @author Karl Anderson <karl@2600hz.org>
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_call_control).
@@ -80,7 +85,7 @@
                ,command_q = queue:new() :: queue:queue()
                ,current_app :: kz_term:api_ne_binary()
                ,current_cmd :: kz_term:api_object()
-               ,start_time = os:timestamp() :: kz_time:now()
+               ,start_time = kz_time:start_time() :: kz_time:start_time()
                ,is_call_up = 'true' :: boolean()
                ,is_node_up = 'true' :: boolean()
                ,keep_alive_ref :: kz_term:api_reference()
@@ -198,7 +203,7 @@ init_control(Pid, #{node := Node
             State = #state{node=Node
                           ,call_id=CallId
                           ,command_q=queue:new()
-                          ,start_time=os:timestamp()
+                          ,start_time=kz_time:start_time()
                           ,sanity_check_tref=TRef
                           ,fetch_id=FetchId
                           ,controller_q=ControllerQ
@@ -234,7 +239,7 @@ init_control(Pid, #{node := Node
     State = #state{node=Node
                   ,call_id=CallId
                   ,command_q=queue:new()
-                  ,start_time=os:timestamp()
+                  ,start_time=kz_time:start_time()
                   ,sanity_check_tref=TRef
                   ,fetch_id=FetchId
                   ,controller_q=ControllerQ
@@ -389,10 +394,12 @@ handle_conference_command(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
-terminate(_Reason, #state{start_time=StartTime, control_ctx=Context}=State) ->
+terminate(_Reason, #state{start_time=StartTime
+                         ,control_ctx=Context
+                         }=State) ->
     cancel_timers(State),
     ecallmgr_call_sup:release_context(Context),
-    lager:debug("control queue was up for ~p microseconds", [timer:now_diff(os:timestamp(), StartTime)]).
+    lager:debug("control queue was up for ~p microseconds", [kz_time:elapsed_us(StartTime)]).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.
@@ -652,6 +659,7 @@ forward_queue(#state{call_id = CallId
                                ,msg_id=MsgId
                                };
                 'ok' ->
+                    self() ! {'forward_queue', CallId},
                     lager:debug("command ~s execute complete", [AppName]),
                     State#state{command_q = CmdQ1
                                ,current_app = AppName

@@ -1,7 +1,12 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc
 %%% @author Hesaam Farhang
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_duo_tests).
@@ -124,7 +129,7 @@ sign_request_test_() ->
      }
     ].
 
-is_validation_error({'error', <<"invalid duo configuration", _/binary>>}) -> 'true';
+is_validation_error({'error', {'configuration', <<"invalid duo configuration", _/binary>>}}) -> 'true';
 is_validation_error(_) -> 'false'.
 
 is_challenge_resp({error, 401, J}) -> kz_json:is_json_object(J);

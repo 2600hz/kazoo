@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(crossbar_auth).
@@ -148,6 +152,9 @@ maybe_create_token(Context, Claims, AuthConfig, Method, 'true') ->
             Reason = <<"no multi factor authentication provider is configured">>,
             lager:debug("~s, creating local auth token", [Reason]),
             log_failed_auth(Method, <<"multi_factor">>, Reason, Context, AccountId, AuthConfig),
+            kz_auth:create_token(Claims);
+        {'error', {'configuration', Reason}} ->
+            lager:error("mfa configuration error : ~s", [Reason]),
             kz_auth:create_token(Claims);
         {'error', Reason}=Error ->
             log_failed_auth(Method, <<"multi_factor">>, kz_term:to_binary(Reason), Context, AccountId, AuthConfig),

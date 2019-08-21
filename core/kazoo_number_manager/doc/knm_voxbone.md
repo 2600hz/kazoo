@@ -17,6 +17,10 @@ For example:
 ```json
        "carrier_modules": [
            "knm_local",
+           "knm_inventory",
+           "knm_managed",
+           "knm_reserved",
+           "knm_reserved_reseller",
            "knm_voxbone"
        ]
 ```

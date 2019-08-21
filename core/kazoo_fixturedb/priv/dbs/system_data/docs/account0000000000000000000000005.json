@@ -1,0 +1,61 @@
+{
+    "_id": "account0000000000000000000000005",
+    "_rev": "2-52a85bb635459a40a21a071718886bb4",
+    "attachments": {
+        "5fa1f134417927ae200fb12879acec71": {
+            "handler": "google_drive",
+            "name": "mydrive",
+            "settings": {
+                "oauth_doc_id": "{OAUTH_DOC_ID}"
+            }
+        },
+        "fb45659e12a9b8fca1bf6a0e4a95b220": {
+            "handler": "s3",
+            "name": "mys3",
+            "settings": {
+                "bucket": "kazoo",
+                "key": "{KEY}",
+                "secret": "{SECRET}+"
+            }
+        }
+    },
+    "plan": {
+        "modb": {
+            "types": {
+                "call_recording": {
+                    "attachments": {
+                        "handler": "fb45659e12a9b8fca1bf6a0e4a95b220",
+                        "params": {
+                            "acl": "myacl",
+                            "bucket": "sandbox",
+                            "path": "recordings"
+                        }
+                    }
+                },
+                "fax": {
+                    "attachments": {
+                        "handler": "fb45659e12a9b8fca1bf6a0e4a95b220",
+                        "params": {
+                            "acl": "myacl",
+                            "bucket": "sandbox",
+                            "path": "faxes"
+                        }
+                    },
+                    "connection": "09ee9fb9714bd6dfe5ce457da9adf897"
+                },
+                "mailbox_message": {
+                    "attachments": {
+                        "handler": "5fa1f134417927ae200fb12879acec71",
+                        "params": {
+                            "folder_id": "{FOLDER_ID}",
+                            "folder_name": "kazoo"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "pvt_account_id": "account0000000000000000000000005",
+    "pvt_document_hash": "144a96cc61783b9c4970cf4131f0dd4a",
+    "pvt_type": "storage"
+}

@@ -7,6 +7,7 @@
 
 -export([new/0]).
 -export([confirm_match/1, confirm_match/2, set_confirm_match/2]).
+-export([flags/1, flags/2, set_flags/2]).
 -export([max_dtmf/1, max_dtmf/2, set_max_dtmf/2]).
 -export([min_dtmf/1, min_dtmf/2, set_min_dtmf/2]).
 -export([name/1, name/2, set_name/2]).
@@ -36,6 +37,18 @@ confirm_match(Doc, Default) ->
 -spec set_confirm_match(doc(), boolean()) -> doc().
 set_confirm_match(Doc, ConfirmMatch) ->
     kz_json:set_value([<<"confirm_match">>], ConfirmMatch, Doc).
+
+-spec flags(doc()) -> kz_term:api_ne_binaries().
+flags(Doc) ->
+    flags(Doc, 'undefined').
+
+-spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+flags(Doc, Default) ->
+    kz_json:get_list_value([<<"flags">>], Doc, Default).
+
+-spec set_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_flags(Doc, Flags) ->
+    kz_json:set_value([<<"flags">>], Flags, Doc).
 
 -spec max_dtmf(doc()) -> integer().
 max_dtmf(Doc) ->

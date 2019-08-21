@@ -36,6 +36,8 @@ Key | Description | Type | Default | Required | Support Level
 `do_not_disturb` | DND Parameters | `object()` |   | `false` |  
 `enabled` | Determines if the device is currently enabled | `boolean()` | `true` | `false` | `supported`
 `exclude_from_queues` | Do not ring this device when calling user/agent in queue | `boolean()` | `false` | `false` |  
+`flags.[]` |   | `string()` |   | `false` | `supported`
+`flags` | Flags set by external applications | `array(string())` |   | `false` | `supported`
 `formatters` | Schema for request formatters | [#/definitions/formatters](#formatters) |   | `false` |  
 `hotdesk.users./^[a-zA-Z0-9]{32}$/` | user-specific hotdesk settings | `object()` |   | `false` |  
 `hotdesk.users` | The user(s) currently hotdesked into the device | `object()` |   | `false` |  

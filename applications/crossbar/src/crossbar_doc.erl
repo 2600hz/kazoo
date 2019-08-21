@@ -3,6 +3,11 @@
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(crossbar_doc).
@@ -151,8 +156,8 @@ load([_|_]=IDs, Context, Options, _RespStatus) ->
                                   kz_datamgr:data_error().
 maybe_open_cache_doc(DbName, DocId, Options) ->
     case props:get_is_true('use_cache', Options, 'true') of
-        true -> kz_datamgr:open_cache_doc(DbName, DocId, Options);
-        false -> kz_datamgr:open_doc(DbName, DocId, Options)
+        'true' -> kz_datamgr:open_cache_doc(DbName, DocId, Options);
+        'false' -> kz_datamgr:open_doc(DbName, DocId, Options)
     end.
 
 -spec maybe_open_cache_docs(kz_term:ne_binary(), kazoo_data:docids(), kz_term:proplist()) ->
@@ -160,8 +165,8 @@ maybe_open_cache_doc(DbName, DocId, Options) ->
                                    kz_datamgr:data_error().
 maybe_open_cache_docs(DbName, DocIds, Options) ->
     case props:get_is_true('use_cache', Options, 'true') of
-        true -> kz_datamgr:open_cache_docs(DbName, DocIds, Options);
-        false -> kz_datamgr:open_docs(DbName, DocIds, Options)
+        'true' -> kz_datamgr:open_cache_docs(DbName, DocIds, Options);
+        'false' -> kz_datamgr:open_docs(DbName, DocIds, Options)
     end.
 
 %%------------------------------------------------------------------------------
@@ -176,7 +181,7 @@ maybe_open_cache_docs(DbName, DocIds, Options) ->
 %%------------------------------------------------------------------------------
 -spec check_document_type(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
                                  boolean().
-check_document_type(_Context, [], _Options) -> true;
+check_document_type(_Context, [], _Options) -> 'true';
 check_document_type(Context, [_|_]=JObjs, Options) ->
     F = fun(JObj) -> check_document_type(Context, JObj, Options) end,
     lists:all(F, JObjs);
@@ -192,6 +197,7 @@ document_type_match('undefined', _ExpectedType, _ReqType) ->
     lager:debug("document doesn't have type, requested type is ~p", [_ReqType]),
     'true';
 document_type_match(_JObjType, <<"any">>, _) -> 'true';
+document_type_match(_JObjType, 'undefined', _) -> 'true';
 document_type_match(ExpectedType, ExpectedTypes, _)
   when is_list(ExpectedTypes) ->
     lists:member(ExpectedType, ExpectedTypes);
@@ -533,9 +539,13 @@ load_attachment(<<_/binary>>=DocId, AName, Options, Context) ->
             Context1 = load(DocId, Context, Options),
             'success' = cb_context:resp_status(Context1),
 
+            CT = kz_doc:attachment_content_type(cb_context:doc(Context1), AName, <<"application/octet-stream">>),
+            lager:debug("adding content type ~s from attachment ~s", [CT, AName]),
+
             cb_context:setters(Context1
                               ,[{fun cb_context:set_resp_data/2, AttachBin}
                                ,{fun cb_context:set_resp_etag/2, rev_to_etag(cb_context:doc(Context1))}
+                               ,{fun cb_context:add_resp_headers/2, #{<<"content-type">> => CT}}
                                ])
     end;
 load_attachment(Doc, AName, Options, Context) ->
@@ -713,13 +723,7 @@ save_attachment(DocId, Name, Contents, Context, Options) ->
     end.
 
 handle_saved_attachment(Context, DocId) ->
-    {'ok', Rev1} = kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), DocId),
-    cb_context:setters(Context
-                      ,[{fun cb_context:set_doc/2, kz_json:new()}
-                       ,{fun cb_context:set_resp_status/2, 'success'}
-                       ,{fun cb_context:set_resp_data/2, kz_json:new()}
-                       ,{fun cb_context:set_resp_etag/2, rev_to_etag(Rev1)}
-                       ]).
+    load(DocId, Context).
 
 -spec maybe_delete_doc(cb_context:context(), kz_term:ne_binary()) ->
                               {'ok', _} |

@@ -3,6 +3,11 @@
 %%% @doc Track the FreeSWITCH channel information, and provide accessors
 %%% @author James Aimonetti
 %%% @author Karl Anderson
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_channels).
@@ -464,17 +469,15 @@ handle_cast({'sync_channels', Node, Channels}, State) ->
     SyncChannels = sets:from_list(Channels),
     Remove = sets:subtract(CachedChannels, SyncChannels),
     Add = sets:subtract(SyncChannels, CachedChannels),
-    _ = [begin
-             lager:debug("removed channel ~s from cache during sync with ~s", [UUID, Node]),
-             ets:delete(?CHANNELS_TBL, UUID)
-         end
+    _ = [delete_and_maybe_disconnect(Node, UUID, ets:lookup(?CHANNELS_TBL, UUID))
          || UUID <- sets:to_list(Remove)
         ],
     _ = [begin
-             lager:debug("added channel ~s to cache during sync with ~s", [UUID, Node]),
+             lager:debug("trying to add channel ~s to cache during sync with ~s", [UUID, Node]),
              case ecallmgr_fs_channel:renew(Node, UUID) of
                  {'error', _R} -> lager:warning("failed to sync channel ~s: ~p", [UUID, _R]);
                  {'ok', C} ->
+                     lager:debug("added channel ~s to cache during sync with ~s", [UUID, Node]),
                      ets:insert(?CHANNELS_TBL, C),
                      PublishReconect = kapps_config:get_boolean(?APP_NAME, <<"publish_channel_reconnect">>, 'false'),
                      handle_channel_reconnected(C, PublishReconect)
@@ -895,3 +898,14 @@ hangup_old_channel([UUID, Node, Started]) ->
     lager:debug("killing channel ~s on ~s, started ~s"
                ,[UUID, Node, kz_time:pretty_print_datetime(Started)]),
     freeswitch:api(Node, 'uuid_kill', UUID).
+
+-spec delete_and_maybe_disconnect(atom(), kz_term:ne_binary(), [channel()]) -> 'ok' | 'true'.
+delete_and_maybe_disconnect(Node, UUID, [#channel{handling_locally='true'}=Channel]) ->
+    lager:debug("emitting channel disconnect ~s during sync with ~s", [UUID, Node]),
+    handle_channel_disconnected(Channel),
+    ets:delete(?CHANNELS_TBL, UUID);
+delete_and_maybe_disconnect(Node, UUID, [_Channel]) ->
+    lager:debug("removed channel ~s from cache during sync with ~s", [UUID, Node]),
+    ets:delete(?CHANNELS_TBL, UUID);
+delete_and_maybe_disconnect(Node, UUID, []) ->
+    lager:debug("channel ~s not found during sync delete with ~s", [UUID, Node]).

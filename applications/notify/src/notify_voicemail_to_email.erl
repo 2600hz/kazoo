@@ -6,6 +6,11 @@
 %%%
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @author Karl Anderson <karl@2600hz.org>
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(notify_voicemail_to_email).
@@ -121,7 +126,7 @@ create_template_props(Event, Timezone, Account) ->
     DateCalled = kz_json:get_integer_value(<<"Voicemail-Timestamp">>, Event),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
-    ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
+    ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, "UTC"),
 
     [{<<"account">>, notify_util:json_to_template_props(Account)}
     ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
@@ -130,7 +135,7 @@ create_template_props(Event, Timezone, Account) ->
                           %% sometimes the name is a number...
                          ,{<<"caller_id_name">>, knm_util:pretty_print(CIDName)}
                          ,{<<"date_called_utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
-                         ,{<<"date_called">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
+                         ,{<<"date_called">>, localtime:local_to_local(DateTime, ClockTimezone, kz_term:to_list(Timezone))}
                          ,{<<"from_user">>, knm_util:pretty_print(FromE164)}
                          ,{<<"from_realm">>, kz_json:get_value(<<"From-Realm">>, Event)}
                          ,{<<"to_user">>, knm_util:pretty_print(ToE164)}

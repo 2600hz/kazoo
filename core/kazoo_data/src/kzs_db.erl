@@ -1,6 +1,11 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2019, 2600Hz
 %%% @doc data adapter behaviour
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzs_db).
@@ -20,11 +25,15 @@
         ,db_archive/3
         ,db_import/3
         ,db_list/2
+        ,system_dbs/0
         ]).
 
 -include("kz_data.hrl").
 
 -export_type([db_create_options/0]).
+
+-spec system_dbs() -> list().
+system_dbs() -> ?KZ_SYSTEM_DBS.
 
 %%% DB-related functions ---------------------------------------------
 -spec db_compact(map(), kz_term:ne_binary()) -> boolean().

@@ -1,0 +1,112 @@
+{
+    "_id": "device00000000000000000000000005",
+    "_rev": "1-7280940a25dcb8eac5ab129dd8fbe5d6",
+    "call_forward": {
+        "direct_calls_only": false,
+        "enabled": true,
+        "failover": false,
+        "ignore_early_media": true,
+        "keep_caller_id": true,
+        "number": "+12223334455",
+        "require_keypress": false,
+        "substitute": false
+    },
+    "call_recording": {},
+    "call_restriction": {
+        "caribbean": {
+            "action": "inherit"
+        },
+        "did_us": {
+            "action": "inherit"
+        },
+        "emergency": {
+            "action": "inherit"
+        },
+        "international": {
+            "action": "inherit"
+        },
+        "toll_us": {
+            "action": "inherit"
+        },
+        "tollfree_us": {
+            "action": "inherit"
+        },
+        "unknown": {
+            "action": "inherit"
+        }
+    },
+    "call_waiting": {
+        "enabled": true
+    },
+    "caller_id": {
+        "emergency": {
+            "name": "device5-emergency-name",
+            "number": "device5-emergency-number"
+        },
+        "external": {
+            "name": "device5-external-name",
+            "number": "device5-external-number"
+        },
+        "internal": {
+            "name": "device5-internal-name",
+            "number": "device5-internal-number"
+        }
+    },
+    "contact_list": {
+        "exclude": true
+    },
+    "device_type": "cellphone",
+    "do_no_disturb": {
+        "enabled": false
+    },
+    "enabled": true,
+    "exclude_from_queues": false,
+    "language": "fr-fr",
+    "mac_address": "00:15:65:27:C9:8E",
+    "media": {
+        "audio": {
+            "codecs": [
+                "PCMU"
+            ]
+        },
+        "bypass_media": false,
+        "encryption": {
+            "enforce_security": false,
+            "methods": []
+        },
+        "fax_option": false,
+        "ignore_early_media": false,
+        "progress_timeout": 6,
+        "rtcp_mux": true,
+        "video": {
+            "codecs": []
+        },
+        "webrtc": false
+    },
+    "mwi_unsolicited_updates": true,
+    "name": "Test Device 5",
+    "outbound_flags": [
+        "device_old_static_flag"
+    ],
+    "owner_id": "user0000000000000000000000000004",
+    "presence_id": "device-5@4a6863.sip.2600hz.local",
+    "provision": {
+        "endpoint_brand": "yealink",
+        "endpoint_family": "t3x",
+        "endpoint_model": "t38g"
+    },
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000044944",
+    "pvt_account_id": "account0000000000000000000044944",
+    "pvt_auth_account_id": "account0000000000000000000000001",
+    "pvt_auth_user_id": "user0000000000000000000000000001",
+    "pvt_created": 63645260666,
+    "pvt_document_hash": "dde1168ca937cdc2eeabb42ceee4ed81",
+    "pvt_is_authenticated": true,
+    "pvt_modified": 63645260666,
+    "pvt_request_id": "request0000000000000000000000001",
+    "pvt_type": "device",
+    "pvt_vsn": "1",
+    "register_overwrite_notify": false,
+    "suppress_unregister_notifications": false,
+    "timezone": "America/New_York"
+}

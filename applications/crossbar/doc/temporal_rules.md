@@ -15,6 +15,8 @@ Key | Description | Type | Default | Required | Support Level
 `cycle` | The recurrence cycle for this rule | `string('date' | 'daily' | 'weekly' | 'monthly' | 'yearly')` |   | `true` | `supported`
 `days` | The recurrence days for this rule | `array(integer())` |   | `false` | `supported`
 `enabled` | Whether the rule is enabled | `boolean()` |   | `false` |  
+`flags.[]` |   | `string()` |   | `false` | `supported`
+`flags` | Flags set by external applications | `array(string())` |   | `false` | `supported`
 `interval` | The recurrence interval for this rule | `integer()` | `1` | `false` | `supported`
 `month` | The recurrence month for this rule | `integer()` |   | `false` | `supported`
 `name` | A friendly name for the temporal rule | `string(1..128)` |   | `true` | `supported`

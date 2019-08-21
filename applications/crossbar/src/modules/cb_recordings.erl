@@ -5,6 +5,11 @@
 %%% @author OnNet (Kirill Sysoev [github.com/onnet])
 %%% @author Dinkor (Andrew Korniliv [github.com/dinkor])
 %%% @author Lazedo (Luis Azedo [github.com/2600hz])
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_recordings).

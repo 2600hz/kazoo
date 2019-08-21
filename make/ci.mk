@@ -7,7 +7,6 @@ CI_CONFIG := $(CURDIR)/.circleci/config.yml
 
 ci: ci-config ci-steps
 
-
 ci-config: $(CI_VALIDATOR)
 	@$(CI_VALIDATOR) config validate -c $(CI_CONFIG) || (echo "$(CI_CONFIG):1:"; exit 1)
 

@@ -2,6 +2,10 @@
 %%% @copyright (C) 2017-2019, 2600Hz
 %%% @doc Kazoo Duo multi factor authenticator.
 %%% @author Hesaam Farhang
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_mfa_duo).
@@ -46,14 +50,17 @@
 %%------------------------------------------------------------------------------
 -spec authenticate(kz_term:proplist(), kz_json:object()) -> mfa_result().
 authenticate(Claims, JObj) ->
-    Identity = map_config(Claims, JObj),
-    case is_map(Identity)
-        andalso props:get_ne_binary_value(<<"mfa_resp">>, Claims)
-    of
-        'false' -> Identity;
-        'undefined' -> sign_request(Identity);
-        SigResponse -> verify_response(Identity, SigResponse)
-    end.
+    maybe_sign_or_verify(map_config(Claims, JObj)
+                        ,props:get_ne_binary_value(<<"mfa_resp">>, Claims)
+                        ).
+
+-spec maybe_sign_or_verify(map() | mfa_error(), kz_term:api_ne_binary()) -> mfa_result().
+maybe_sign_or_verify(#{}=Identity, 'undefined') ->
+    sign_request(Identity);
+maybe_sign_or_verify(#{}=Identity, SigResponse) ->
+    verify_response(Identity, SigResponse);
+maybe_sign_or_verify(MFAError, _SigResponse) ->
+    MFAError.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -237,9 +244,7 @@ is_user_name(Maps) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec map_config(kz_term:proplist(), kz_json:object()) ->
-                        map() |
-                        {'error', kz_term:ne_binary()}.
+-spec map_config(kz_term:proplist(), kz_json:object()) -> map() | mfa_error().
 map_config(Claims, JObj) ->
     Identity = maps:from_list(
                  [{<<"user_name">>, props:get_value(<<"owner_id">>, Claims)}
@@ -252,7 +257,7 @@ map_config(Claims, JObj) ->
                  ]),
     case validate_values(Identity) of
         'true' -> Identity;
-        KeyError -> {'error', <<"invalid duo configuration, ", KeyError/binary>>}
+        <<KeyError/binary>> -> {'error', {'configuration', <<"invalid duo configuration, ", KeyError/binary>>}}
     end.
 
 %%------------------------------------------------------------------------------
@@ -261,18 +266,22 @@ map_config(Claims, JObj) ->
 %%------------------------------------------------------------------------------
 -spec validate_values(map()) -> 'true' | kz_term:ne_binary().
 validate_values(Identity) ->
-    try lists:all(fun(ReqV) ->
-                          validate_value(ReqV, Identity)
-                              orelse throw({'error', ReqV})
-                  end
-                 ,?REQ_VALUES
-                 )
+    try is_valid_identity(Identity)
     catch
         'error':{'badkey', Key} ->
             kz_term:to_binary(io_lib:format("duo ~s config key is missing", [Key]));
-        {'error', Key} ->
+        'throw':{'error', Key} ->
             kz_term:to_binary(io_lib:format("duo ~s config key is invalid", [Key]))
     end.
+
+-spec is_valid_identity(map()) -> 'true'.
+is_valid_identity(Identity) ->
+    lists:all(fun(ReqV) ->
+                      validate_value(ReqV, Identity)
+                          orelse throw({'error', ReqV})
+              end
+             ,?REQ_VALUES
+             ).
 
 -spec validate_value(kz_term:ne_binary(), map()) -> boolean().
 validate_value(<<"user_name">> = K, Identity) ->

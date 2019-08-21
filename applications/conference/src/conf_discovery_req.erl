@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2019, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(conf_discovery_req).
@@ -324,7 +328,7 @@ wait_for_creation(_, After) when After =< 0 ->
     kz_amqp_channel:release(),
     {'error', 'timeout'};
 wait_for_creation(Conference, After) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     case kapps_conference_command:search(Conference) of
         {'ok', _}=Ok ->
             kz_amqp_channel:release(),

@@ -1,4 +1,6 @@
 {
+    "_id": "account0000000000000000000000004",
+    "_rev": "1-account0000000000000000000000004",
     "attachments": {},
     "connections": {
         "account_4_fax": {
@@ -20,5 +22,6 @@
             }
         }
     },
+    "pvt_document_hash": "1c5a3c9d67d085d6fe0e973c3a379730",
     "pvt_type": "storage"
 }

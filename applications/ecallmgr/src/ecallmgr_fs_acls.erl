@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_acls).
@@ -84,7 +88,8 @@ collect(ACLs, _PidRefs, Timeout) when Timeout < 0 ->
     lager:debug("timed out waiting for ACLs, returning what we got"),
     ACLs;
 collect(ACLs, PidRefs, Timeout) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
+
     receive
         ?ACL_RESULT(IP, ACL) ->
             lager:info("adding acl for '~s' to ~s", [IP, kz_json:get_value(<<"network-list-name">>, ACL)]),
@@ -143,7 +148,7 @@ wait_for_pid_refs(PidRefs) ->
 wait_for_pid_refs([], _Timeout) -> 'ok';
 wait_for_pid_refs(_PidRefs, Timeout) when Timeout < 0 -> 'ok';
 wait_for_pid_refs(PidRefs, Timeout) ->
-    Start = os:timestamp(),
+    Start = kz_time:start_time(),
     receive
         {'DOWN', Ref, 'process', Pid, _Reason} ->
             case lists:keytake(Pid, 1, PidRefs) of

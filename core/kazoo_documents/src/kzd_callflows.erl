@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_callflows).
@@ -9,6 +13,7 @@
 -export([featurecode/1, featurecode/2, set_featurecode/2]).
 -export([featurecode_name/1, featurecode_name/2, set_featurecode_name/2]).
 -export([featurecode_number/1, featurecode_number/2, set_featurecode_number/2]).
+-export([flags/1, flags/2, set_flags/2]).
 -export([flow/1, flow/2, set_flow/2]).
 -export([metaflow/1, metaflow/2, set_metaflow/2]).
 -export([numbers/1, numbers/2, set_numbers/2]).
@@ -77,6 +82,18 @@ featurecode_number(Doc, Default) ->
 -spec set_featurecode_number(doc(), kz_term:ne_binary()) -> doc().
 set_featurecode_number(Doc, FeaturecodeNumber) ->
     kz_json:set_value([<<"featurecode">>, <<"number">>], FeaturecodeNumber, Doc).
+
+-spec flags(doc()) -> kz_term:api_ne_binaries().
+flags(Doc) ->
+    flags(Doc, 'undefined').
+
+-spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+flags(Doc, Default) ->
+    kz_json:get_list_value([<<"flags">>], Doc, Default).
+
+-spec set_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_flags(Doc, Flags) ->
+    kz_json:set_value([<<"flags">>], Flags, Doc).
 
 -spec flow(doc()) -> kz_term:api_object().
 flow(Doc) ->

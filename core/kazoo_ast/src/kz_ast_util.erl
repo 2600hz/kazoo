@@ -2,6 +2,10 @@
 %%% @copyright (C) 2015-2019, 2600Hz
 %%% @doc Provide some utilities to work with AST.
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_ast_util).
@@ -205,7 +209,8 @@ siblings_of(App) ->
     [dir_to_app_name(Dir)
      || Dir <- filelib:wildcard(filename:join([code:lib_dir(App), "..", "*"])),
         filelib:is_dir(Dir),
-        ".git" =/= filename:basename(Dir)
+        ".git" =/= filename:basename(Dir),
+        ".erlang.mk" =/= filename:basename(Dir)
     ].
 
 dir_to_app_name(Dir) ->

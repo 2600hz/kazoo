@@ -17,7 +17,6 @@
 %%%
 %%% @doc The {@link amqp_cron} supervisor.
 %%%
-%%% @see amqp_cron
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(amqp_cron_sup).

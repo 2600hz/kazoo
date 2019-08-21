@@ -15,6 +15,14 @@
             "support_level": "supported",
             "type": "boolean"
         },
+        "flags": {
+            "description": "Flags set by external applications",
+            "items": {
+                "type": "string"
+            },
+            "support_level": "supported",
+            "type": "array"
+        },
         "is_setup": {
             "default": false,
             "description": "Determines if the user has completed the initial configuration",
@@ -106,7 +114,7 @@
         },
         "pin": {
             "description": "The pin number for the voicemail box",
-            "maxLength": 15,
+            "maxLength": 6,
             "minLength": 4,
             "support_level": "supported",
             "type": "string"

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2018, 2600Hz
+%%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc AMQP-specific things for Kazoo
 %%% @author James Aimonetti
 %%% @end
@@ -182,15 +182,16 @@
 
 -type kz_amqp_type() :: 'sticky' | 'float'.
 
--record(kz_amqp_assignment, {timestamp = os:timestamp() :: kz_time:now() | '_'
+-record(kz_amqp_assignment, {timestamp = kz_time:start_time() :: kz_time:start_time() | '_'
                             ,consumer :: kz_term:api_pid() | '$2' | '_'
                             ,consumer_ref :: kz_term:api_reference() | '_'
+                            ,application :: atom() | '_'
                             ,type = 'float' :: kz_amqp_type() | 'undefined' | '_'
                             ,channel :: kz_term:api_pid() | '$1' | '_'
                             ,channel_ref :: kz_term:api_reference() | '_'
                             ,connection :: kz_term:api_pid() | '$1' | '_'
                             ,broker :: kz_term:api_binary() | '$1' | '_'
-                            ,assigned :: timeout() | 'undefined' | '_'
+                            ,assigned :: kz_time:start_time() | 'undefined' | '_'
                             ,reconnect = 'false' :: boolean() | '_'
                             ,watchers = sets:new() :: sets:set() | kz_term:pids() | '_'
                             }).
@@ -211,7 +212,7 @@
                             ,available = 'false' :: boolean() | '_'
                             ,exchanges_initialized = 'false' :: boolean() | '_'
                             ,prechannels_initialized = 'false' :: boolean() | '_'
-                            ,started = os:timestamp() :: kz_time:now() | '_'
+                            ,started = kz_time:start_time() :: kz_time:start_time() | '_'
                             ,tags = [] :: list() | '_'
                             ,hidden = 'false' :: boolean() | '_'
                             ,exchanges = #{} :: map() | '_'
@@ -222,7 +223,7 @@
                              ,connection_ref :: kz_term:api_reference() | '_'
                              ,broker :: kz_term:ne_binary() | '$1' | '$2' | '_'
                              ,available='false' :: boolean() | '$1' | '$2' | '_'
-                             ,timestamp=os:timestamp() :: kz_time:now() | '_'
+                             ,timestamp = kz_time:start_time() :: kz_time:start_time() | '_'
                              ,zone='local' :: atom() | '$1' | '_'
                              ,manager=self() :: pid() | '_'
                              ,tags = [] :: list() | '_'

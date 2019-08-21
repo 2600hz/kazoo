@@ -2,6 +2,11 @@
 %%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc
 %%% @author Karl Anderson <karl@2600hz.org>
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(notify_util).
@@ -150,7 +155,7 @@ compile_default_subject_template(TemplateModule, Category) ->
 
 -spec compile_default_template(atom(), kz_term:ne_binary(), atom()) -> {'ok', atom()}.
 compile_default_template(TemplateModule, Category, Key) ->
-    Template = case kapps_config:get_ne_binary(Category, Key) of
+    Template = case kapps_config:get_ne_binary(Category, kz_term:to_binary(Key)) of
                    'undefined' -> get_default_template(Category, Key);
                    Else -> Else
                end,

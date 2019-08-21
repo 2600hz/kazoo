@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kzd_users).
@@ -29,6 +33,7 @@
 -export([enabled/1, enabled/2, set_enabled/2]).
 -export([feature_level/1, feature_level/2, set_feature_level/2]).
 -export([first_name/1, first_name/2, set_first_name/2]).
+-export([flags/1, flags/2, set_flags/2]).
 -export([formatters/1, formatters/2, set_formatters/2]).
 -export([hotdesk/1, hotdesk/2, set_hotdesk/2]).
 -export([hotdesk_enabled/1, hotdesk_enabled/2, set_hotdesk_enabled/2]).
@@ -59,6 +64,7 @@
 -export([voicemail/1, voicemail/2, set_voicemail/2]).
 -export([voicemail_notify/1, voicemail_notify/2, set_voicemail_notify/2]).
 -export([voicemail_notify_callback/1, voicemail_notify_callback/2, set_voicemail_notify_callback/2]).
+-export([md5_auth/1, sha1_auth/1, signature_secret/1]).
 
 
 -export([fetch/2]).
@@ -360,6 +366,18 @@ first_name(Doc, Default) ->
 -spec set_first_name(doc(), kz_term:ne_binary()) -> doc().
 set_first_name(Doc, FirstName) ->
     kz_json:set_value([<<"first_name">>], FirstName, Doc).
+
+-spec flags(doc()) -> kz_term:api_ne_binaries().
+flags(Doc) ->
+    flags(Doc, 'undefined').
+
+-spec flags(doc(), Default) -> kz_term:ne_binaries() | Default.
+flags(Doc, Default) ->
+    kz_json:get_list_value([<<"flags">>], Doc, Default).
+
+-spec set_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_flags(Doc, Flags) ->
+    kz_json:set_value([<<"flags">>], Flags, Doc).
 
 -spec formatters(doc()) -> kz_term:api_object().
 formatters(Doc) ->
@@ -969,3 +987,15 @@ full_name(?NE_BINARY = First, _, _) ->
     <<First/binary>>;
 full_name(_, _, Default) ->
     Default.
+
+-spec md5_auth(doc()) -> kz_term:api_object().
+md5_auth(Doc) ->
+    kz_json:get_ne_binary_value(<<"pvt_md5_auth">>, Doc).
+
+-spec sha1_auth(doc()) -> kz_term:api_object().
+sha1_auth(Doc) ->
+    kz_json:get_ne_binary_value(<<"pvt_sha1_auth">>, Doc).
+
+-spec signature_secret(doc()) -> kz_term:api_object().
+signature_secret(Doc) ->
+    kz_json:get_ne_binary_value(<<"pvt_signature_secret">>, Doc).

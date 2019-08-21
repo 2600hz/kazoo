@@ -38,6 +38,7 @@
                 "                   ,'owner_id': doc.owner_id",
                 "                   ,'group_id': doc.group_id",
                 "                   ,'modules': modules",
+                "                   ,'flags': doc.flags || []",
                 "                  });",
                 "}"
             ]

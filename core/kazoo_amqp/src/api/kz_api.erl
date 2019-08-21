@@ -13,6 +13,10 @@
 %%%
 %%% @author James Aimonetti
 %%% @author Karl Anderson
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_api).
@@ -88,7 +92,7 @@ queue_id(JObj) ->
 event_category(JObj) ->
     kz_json:get_value(?KEY_EVENT_CATEGORY, JObj).
 
--spec event_name(kz_json:object() | kz_json:json_proplist()) -> kz_term:api_binary().
+-spec event_name(kz_term:api_terms()) -> kz_term:api_binary().
 event_name(Props) when is_list(Props) ->
     props:get_value(?KEY_EVENT_NAME, Props);
 event_name(JObj) ->

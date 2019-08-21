@@ -10,5 +10,6 @@
 			value="variable_bridge_hangup_cause|variable_last_bridge_hangup_cause" />
 		<field name="variable_endpoint_disposition" as="Endpoint-Disposition" />
 		<field name="variable_transfer_disposition" as="Transfer-Disposition" />
+		<field name="hangup-fields" type="reference" />
 	</fields>
 </event>

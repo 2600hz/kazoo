@@ -2,6 +2,9 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 
+-define(APP_NAME, <<"kazoo_proper">>).
+-define(APP_VERSION, <<"5.0">>).
+
 -define(FAILED_RESPONSE, <<"{}">>).
 
 -define(DEBUG(Fmt)
@@ -33,8 +36,9 @@
 -type expected_headers() :: [expected_header()].
 
 -type response_code() :: 200..600.
--type response_headers() :: [{string(), string()}].
--type request_headers() :: [{string(), string()}].
+-type response_headers() :: kz_http:headers().
+
+-type request_headers() :: [{kz_term:ne_binary(), string()}].
 
 -record(expectation, {response_codes = [] :: expected_codes()
                      ,response_headers = [] :: expected_headers()

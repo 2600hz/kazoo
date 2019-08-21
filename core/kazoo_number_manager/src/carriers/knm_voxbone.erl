@@ -1,6 +1,10 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2019, 2600Hz
 %%% @doc Handle client requests for phone_number documents using the voxbone api
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(knm_voxbone).
@@ -18,6 +22,9 @@
 
 -include("knm.hrl").
 -include("knm_voxbone.hrl").
+
+-type search_result() :: {knm_search:option(), {kz_term:ne_binary(), kz_term:atom(), kz_term:atom(), kz_json:object()}}.
+-type search_results() :: [search_result()].
 
 %%% API
 
@@ -76,11 +83,11 @@ acquire_number(Number) -> Number.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec disconnect_number(knm_number:knm_number()) -> knm_number:knm_number().
+-spec disconnect_number(knm_phone_number:knm_phone_number()) -> knm_phone_number:knm_phone_number().
 disconnect_number(Number) ->
     {'ok', Response} = fetch_did(Number),
-    Numbers = kz_json:get_values(<<"dids">>, Response),
-    _ = release(Numbers),
+    Number1 = kz_json:get_value(<<"dids">>, Response),
+    _ = release(Number1),
     Number.
 
 %%------------------------------------------------------------------------------
@@ -115,7 +122,7 @@ classify_query(_Options, _A3) ->
     <<"GEOGRAPHIC">>.
 
 %%------------------------------------------------------------------------------
-%% @doc
+%% @doc Create voxbone cart object to start order.
 %% @end
 %%------------------------------------------------------------------------------
 -spec create_cart(kz_term:proplist()) -> map().
@@ -124,12 +131,15 @@ create_cart(Options) ->
     Body = kz_json:from_list([{<<"customerReference">>, knm_search:account_id(Options)}
                              ,{<<"description">>, knm_search:query_id(Options)}
                              ]),
-    {'ok', Response} = knm_voxbone_util:voxbone_request('put', <<"ordering/cart">>, [], Body),
-    Cart = kz_json:get_value(<<"cart">>, Response),
-    #{id => kz_json:get_value(<<"cartIdentifier">>, Cart), query_id => knm_search:query_id(Options)}.
+    case knm_voxbone_util:voxbone_request('put', <<"ordering/cart">>, [], Body) of
+        {'ok', Response} ->
+            Cart = kz_json:get_value(<<"cart">>, Response),
+            #{id => kz_json:get_value(<<"cartIdentifier">>, Cart), query_id => knm_search:query_id(Options)};
+        {'error', Msg} -> knm_errors:unspecified(Msg, 500)
+    end.
 
 %%------------------------------------------------------------------------------
-%% @doc verify order can be fulfilled and initialize cart
+%% @doc Verify order can be fulfilled and initialize cart
 %% @end
 %%------------------------------------------------------------------------------
 -spec search(kz_term:api_pos_integer(), kz_term:proplist(), kz_term:proplist()) -> {'error', any()} | {'ok', knm_number:numbers()}.
@@ -137,9 +147,9 @@ search(Quantity, Options, SearchOptions) ->
     Balance = account_balance(),
     #{total := Total, order :=  Order, cost := Cost} = do_search(Quantity, SearchOptions),
     case {Total < Quantity, Balance}  of
-        %% We can't fulfill the quantity so return
-        {_, {'error', _}} -> knm_errors:unspecified("please contact the carrier administrator", -61);
+        %% insufficent balance
         {_, Balance} when Balance < Cost -> knm_errors:unspecified("please contact the carrier administrator", -61);
+        %% We can't fulfill the quantity so return
         {'true', Balance} when Balance >= Cost -> knm_errors:unspecified("insufficient inventory to sastisfy request", 404);
         {'false', Balance} when Balance >= Cost ->
             Cart = create_cart(Options),
@@ -147,7 +157,7 @@ search(Quantity, Options, SearchOptions) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc get and process available DID quantities
+%% @doc Fetch and process available DID quantities
 %% @end
 %%------------------------------------------------------------------------------
 -spec do_search(kz_term:api_pos_integer(), kz_term:proplist()) -> {'error', any()} | map().
@@ -159,19 +169,19 @@ do_search(Quantity, SearchOptions) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc reserve quantities from DID groups and build order
+%% @doc Reserve quantities from DID groups and build order
 %% @end
 %%------------------------------------------------------------------------------
 -spec process_search_results(kz_term:api_pos_integer(), kz_json:object()) -> map().
 process_search_results(Quantity, Response) ->
-    DidGroups = kz_json:get_value(<<"didGroups">>, Response, kz_json:new()),
+    DidGroups = kz_json:get_value(<<"didGroups">>, Response),
     resolve_order_quantities(DidGroups, Quantity, #{total => 0, order => [], cost => 0}).
 
 %%------------------------------------------------------------------------------
-%% @doc reconcile a quantity of DIDs to purchase from a given DIDGroup
+%% @doc Reconcile a quantity of DIDs to purchase from a given DIDGroup
 %% @end
 %%------------------------------------------------------------------------------
--spec resolve_order_quantities(kz_json:objects(), kz_term:api_pos_integer(), kz_term:proplist()) ->  map().
+-spec resolve_order_quantities(kz_json:objects(), kz_term:api_non_neg_integer() | 'undefined', map()) ->  map().
 resolve_order_quantities([], _Remaining, Acc) ->
     Acc;
 resolve_order_quantities(_DidGroups, 0=Remaining, Acc) ->
@@ -186,32 +196,32 @@ resolve_order_quantities([DidGroup | Rest], Remaining, #{total :=Total, order :=
     resolve_order_quantities(Rest, Remaining2, #{total => Total+Reserve, order => Order ++ [{DidGroupId, Reserve}], cost => NewCost + Cost}).
 
 %%------------------------------------------------------------------------------
-%% @doc determine what amount from available inventory can be reserved
+%% @doc Determine what amount from available inventory can be reserved
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_reserve_did_qty(kz_term:api_pos_integer(), kz_term:api_pos_integer()) -> {kz_term:api_pos_integer(), kz_term:api_pos_integer()}.
+-spec maybe_reserve_did_qty(kz_term:api_non_neg_integer(), kz_term:api_non_neg_integer()) -> {kz_term:api_non_neg_integer(), kz_term:api_non_neg_integer()}.
 maybe_reserve_did_qty(Available, Need) when Available < Need ->
     {Need - Available, Available};
 maybe_reserve_did_qty(_Available, Need) ->
     {0, Need}.
 
 %%------------------------------------------------------------------------------
-%% @doc attempt to add quantities to cart and checkout
+%% @doc Attempt to add quantities to cart and checkout
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_start_order(map(), [{kz_term:api_pos_integer(), kz_term:api_pos_integer()}]) -> {'error', any()} | {'ok', knm_number:phone_numbers()}.
+-spec maybe_start_order(map(), [{kz_term:api_pos_integer(), kz_term:api_pos_integer()}]) ->
+                               {'ok', knm_number:phone_numbers()}.
 maybe_start_order(#{id := CartId, query_id := QueryId}=Cart, Order) ->
     lager:debug("initializing order for query ~p with cart ~p", [QueryId, CartId]),
     case maybe_add_to_cart(Order, Cart) of
-        {'error', Msg} -> {'error', Msg};
-        _ -> checkout(Cart)
+        'ok' -> checkout(Cart)
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc add did group quantities to cart and checkout.
+%% @doc Add did group quantities to cart and checkout.
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_add_to_cart([{kz_term:api_pos_integer(), kz_term:api_pos_integer()}], map()) -> 'ok' | {'error', any()}.
+-spec maybe_add_to_cart([{kz_term:api_pos_integer(), kz_term:api_pos_integer()}], map()) -> 'ok'.
 maybe_add_to_cart([], _Cart) ->
     'ok';
 maybe_add_to_cart([{DidGroupId, Quantity} | Rest], #{id := CartId, query_id := _QueryId}=Cart) ->
@@ -229,10 +239,10 @@ maybe_add_to_cart([{DidGroupId, Quantity} | Rest], #{id := CartId, query_id := _
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc checkout the order and generate the DID summary
+%% @doc Checkout the order and generate the DID summary
 %% @end
 %%------------------------------------------------------------------------------
--spec checkout(map()) -> {'error', any()} | {'ok', knm_number:phone_numbers()}.
+-spec checkout(map()) -> {'ok', knm_number:phone_numbers()}.
 checkout(#{id := CartId, query_id := _QueryId}=Cart) ->
     case knm_voxbone_util:voxbone_request('get', <<"ordering/cart/",(kz_term:to_binary(CartId))/binary,"/checkout">>, []) of
         {'error', Message} ->
@@ -243,14 +253,14 @@ checkout(#{id := CartId, query_id := _QueryId}=Cart) ->
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc extract actual DIDs from order and normalize to knm search results
+%% @doc Extract actual DIDs from order and normalize to knm search results
 %% @end
 %%------------------------------------------------------------------------------
--spec generate_number_summary(map(), kz_json:object()) -> {'error', any()} | {'ok', knm_number:numbers()}.
+-spec generate_number_summary(map(), kz_json:object()) -> {'ok', knm_number:numbers()}.
 generate_number_summary(#{id := _CartId, query_id := _QueryId}=Cart, OrderSummary) ->
     generate_number_summary(Cart, OrderSummary, []).
 
--spec generate_number_summary(map(), kz_json:object(), kz_term:objects()) -> {'error', any()} | {'ok', knm_number:numbers()}.
+-spec generate_number_summary(map(), kz_json:object(), knm_number:numbers()) -> {'ok', knm_number:numbers()}.
 generate_number_summary(#{id := _CartId, query_id := _QueryId}=_Cart, [], Acc) ->
     {'ok', Acc};
 generate_number_summary(#{id := _CartId, query_id := QueryId}=Cart, [Order | Rest], Acc) ->
@@ -266,15 +276,16 @@ generate_number_summary(#{id := _CartId, query_id := QueryId}=Cart, [Order | Res
     end.
 
 %%------------------------------------------------------------------------------
-%% @doc convert voxbone dids into knm phone numbers
+%% @doc Convert voxbone dids into knm phone numbers
 %% @end
 %%------------------------------------------------------------------------------
--spec order_to_KNM(kz_term:ne_binary(), kz_json:objects()) -> [{knm_search:option(), {kz_term:ne_binary(), kz_term:atom(), kz_term:atom(), kz_json:object()}}].
+-spec order_to_KNM(kz_term:ne_binary(), kz_json:objects()) -> search_results().
 order_to_KNM(QueryId, DIDs) ->
     JObjs = kz_json:get_value(<<"dids">>, DIDs),
     order_to_KNM(QueryId, JObjs, []).
 
--spec order_to_KNM(kz_term:ne_binary(), kz_json:objects(), knm_number:phone_numbers()) -> [{knm_search:option(), {kz_term:ne_binary(), kz_term:atom(), kz_term:atom(), kz_json:object()}}].
+-spec order_to_KNM(kz_term:ne_binary(), kz_json:objects(), search_results()) -> search_results().
+-ifndef(TEST).
 order_to_KNM(_QueryId, [], Acc) ->
     Acc;
 order_to_KNM(QueryId, [DID | Rest], Acc) ->
@@ -289,40 +300,58 @@ order_to_KNM(QueryId, [DID | Rest], Acc) ->
     %% Add number to database to ensure inventory is updated before acquire_number stub
     {'ok', _} = knm_number:create(DID2, Options),
     order_to_KNM(QueryId, Rest, [{QueryId, Number} | Acc]).
-
+-else.
+order_to_KNM(_QueryId, [], Acc) ->
+    Acc;
+order_to_KNM(QueryId, [DID | Rest], Acc) ->
+    DID2 = kz_json:get_value(<<"e164">>, DID),
+    Number = {DID2, ?MODULE, ?NUMBER_STATE_AVAILABLE, DID},
+    order_to_KNM(QueryId, Rest, [{QueryId, Number} | Acc]).
+-endif.
 %%------------------------------------------------------------------------------
-%% @doc cleanup voxbone cart artifact when order can't be satisfied.
+%% @doc Cleanup voxbone cart artifact when order can't be satisfied.
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_destroy_cart(map()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec maybe_destroy_cart(map()) -> {'ok', kz_json:object()}.
 maybe_destroy_cart(#{id := CartId, query_id := _QueryId}=_Cart) ->
-    knm_voxbone_util:voxbone_request('delete', <<"ordering/cart/",(kz_term:to_binary(CartId))/binary>>, [], []).
+    case knm_voxbone_util:voxbone_request('delete', <<"ordering/cart/",(kz_term:to_binary(CartId))/binary>>, []) of
+        {'error', _Msg} -> knm_errors:unspecified("there was an error destroying cart", 500);
+        Response -> Response
+    end.
 
 %%------------------------------------------------------------------------------
-%% @doc fetches DID metadata from voxbone portal
+%% @doc Fetches DID metadata from voxbone portal
 %% @end
 %%------------------------------------------------------------------------------
--spec fetch_did(knm_number:phone_number()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec fetch_did(knm_number:phone_number()) -> {'ok', kz_json:object()}.
 fetch_did(Number) ->
-    Options = kz_json:from_list([{<<"e164pattern">>, knm_voxbone_util:to_voxbone_pattern(Number)}
-                                ]) ++ knm_voxbone_util:required_params(),
-    knm_voxbone_util:voxbone_request('get', <<"inventory/did">>, Options).
+    QueryString = [{'e164Pattern', knm_phone_number:number(Number)} | knm_voxbone_util:required_params()],
+    case knm_voxbone_util:voxbone_request('get', <<"inventory/did">>, QueryString) of
+        {'error', _Msg} -> knm_errors:by_carrier(?MODULE, "there was an error fetching metadata for number ", Number);
+        Response -> Response
+    end.
 
 %%------------------------------------------------------------------------------
-%% @doc release number back to voxbone
+%% @doc Release number back to voxbone
 %% @end
 %%------------------------------------------------------------------------------
--spec release(kz_json:object()) -> {'ok', kz_json:object()} | {'error', any()}.
-release(DID) ->
+-spec release(kz_json:object()) -> {'ok', kz_json:object()}.
+release([]) ->
+    lager:debug("the specified number wasn't resident to account, skipping release."),
+    {'ok', kz_json:new()};
+release([DID]) ->
     NumberId = kz_json:get_value(<<"didId">>,  DID),
     Body = kz_json:from_list([{'didIds', [NumberId]}]),
-    knm_voxbone_util:voxbone_request('delete', <<"ordering/cancel">>, knm_voxbone_util:required_params(), Body).
+    case knm_voxbone_util:voxbone_request('post', <<"ordering/cancel">>, knm_voxbone_util:required_params(), Body) of
+        {'error', _Msg} -> knm_errors:by_carrier(?MODULE, "there was an error releasing number id ", NumberId);
+        Response -> Response
+    end.
 
 %%------------------------------------------------------------------------------
-%% @doc fetch account balance
+%% @doc Fetch account balance
 %% @end
 %%------------------------------------------------------------------------------
--spec account_balance() -> kz_term:api_float() | {'error', any()}.
+-spec account_balance() -> kz_term:api_float().
 account_balance() ->
     case knm_voxbone_util:voxbone_request('get', <<"ordering/accountbalance">>, []) of
         {'error', Msg} -> knm_errors:unspecified(Msg, 500);

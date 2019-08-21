@@ -23,6 +23,8 @@
 
 -define(CB_APPS_STORE_LIST, <<"apps_store/crossbar_listing">>).
 
+-define(NO_ENVELOPE_CONTENT_TYPES, []).
+
 -define(INBOUND_HOOK, <<"hooks">>).
 
 -define(NO_ENVELOPE_VERSIONS, [?INBOUND_HOOK]).
@@ -169,7 +171,7 @@
                     ,resp_data :: resp_data()
                     ,resp_headers = #{<<"content-type">> => <<"application/json">>} :: cowboy:http_headers() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
                     ,resp_envelope = kz_json:new() :: kz_json:object()
-                    ,start = os:timestamp() :: kz_time:now()
+                    ,start = kz_time:start_time() :: kz_time:start_time()
                     ,req_id = ?DEFAULT_LOG_SYSTEM_ID :: binary()
                     ,storage = [] :: kz_term:proplist()
                     ,raw_host = <<>> :: binary()

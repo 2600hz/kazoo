@@ -31,7 +31,6 @@
 %%% <code>amqp_cron</code> with the new node list. Rolling updates
 %%% currently are not supported.
 %%%
-%%% @see amqp_cron_task
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(amqp_cron).

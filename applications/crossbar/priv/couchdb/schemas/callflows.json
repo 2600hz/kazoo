@@ -19,6 +19,14 @@
             },
             "type": "object"
         },
+        "flags": {
+            "description": "Flags set by external applications",
+            "items": {
+                "type": "string"
+            },
+            "support_level": "supported",
+            "type": "array"
+        },
         "flow": {
             "$ref": "callflows.action",
             "description": "A callflow node defines a module to execute, data to provide to that module, and zero or more children to branch to"

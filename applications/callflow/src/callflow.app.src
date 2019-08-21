@@ -1,6 +1,6 @@
 {application,callflow,
-             [{applications,[crypto,erlang_localtime,gproc,kazoo,kazoo_amqp,
-                             kazoo_apps,kazoo_caches,kazoo_call,kazoo_data,
+             [{applications,[crypto,gproc,kazoo,kazoo_amqp,kazoo_apps,
+                             kazoo_caches,kazoo_call,kazoo_data,
                              kazoo_documents,kazoo_edr,kazoo_endpoint,
                              kazoo_globals,kazoo_media,kazoo_number_manager,
                              kazoo_schemas,kazoo_stdlib,kazoo_token_buckets,

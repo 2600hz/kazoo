@@ -2,6 +2,10 @@
 %%% @copyright (C) 2011-2019, 2600Hz
 %%% @doc Util functions used by kazoo_couch.
 %%% @author James Aimonetti
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kz_couch_util).
@@ -93,10 +97,10 @@ retry504s(Fun, Cnt) ->
 new_connection(#{}=Map) ->
     connect(maps:fold(fun connection_parse/3, #kz_couch_connection{}, Map)).
 
--spec maybe_add_auth(string(), string(), kz_term:proplist()) -> kz_term:proplist().
-maybe_add_auth("", _Pass, Options) -> Options;
-maybe_add_auth(User, Pass, Options) ->
-    [{'basic_auth', {User, Pass}} | Options].
+-spec maybe_add_auth(string(), string(), string()) -> string() | binary().
+maybe_add_auth("", _Pass, Host) -> Host;
+maybe_add_auth(User, Pass, Host) ->
+    list_to_binary([kz_term:to_binary(User), ":", kz_term:to_binary(Pass), "@", Host]).
 
 check_options(Options) ->
     Routines = [fun convert_options/1
@@ -166,8 +170,8 @@ connect(#kz_couch_connection{host=Host
                ,password => Pass
                ,options => Options
                },
-    Opts = [{'connection_map', ConnMap} | maybe_add_auth(User, Pass, check_options(Options))],
-    Conn = couchbeam:server_connection(kz_term:to_list(Host), Port, <<>>, Opts),
+    Opts = [{'connection_map', ConnMap} | check_options(Options)],
+    Conn = couchbeam:server_connection(kz_term:to_list(maybe_add_auth(User, Pass, Host)), Port, <<>>, Opts),
     lager:info("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
     connection_info(Conn).
 

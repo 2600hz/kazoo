@@ -7,6 +7,11 @@
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%% @author Hesaam Farhang
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(cb_vmboxes).
@@ -69,7 +74,41 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.vmboxes">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.vmboxes">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, 'delete'),
-    'ok'.
+
+    sync_config_to_schema().
+
+-spec sync_config_to_schema() -> 'ok'.
+sync_config_to_schema() ->
+    %% [{ConfigPath, SchemaPath, CastFun}]
+    SyncFields = [{[<<"voicemail">>, <<"max_pin_length">>]
+                  ,[<<"properties">>, <<"pin">>, <<"maxLength">>]
+                  ,fun(ConfigV, SchemaV) -> kz_term:safe_cast(ConfigV, SchemaV, fun kz_term:to_integer/1) end
+                  }
+                 ],
+    lists:foreach(fun sync_field/1, SyncFields).
+
+-spec sync_field({kz_json:get_key(), kz_json:get_key(), fun((kz_json:json_term(), kz_json:json_term()) -> kz_json:json_term())}) -> 'ok'.
+sync_field({ConfigPath, SchemaPath, CastFun}) ->
+    {'ok', SchemaJObj} = kz_json_schema:load(<<"vmboxes">>),
+    SchemaV = kz_json:get_value(SchemaPath, SchemaJObj),
+
+    case kapps_config:get(<<"callflow">>, ConfigPath) of
+        'undefined' ->
+            lager:debug("config ~s undefined, no schema change necessary", [kz_binary:join(ConfigPath, <<".">>)]);
+        ConfigV ->
+            case CastFun(ConfigV, SchemaV) of
+                SchemaV -> lager:debug("config ~s unchanged from schema", [kz_binary:join(ConfigPath, <<".">>)]);
+                ConfigValue ->
+                    lager:info("config ~s(~p) differs from schema ~s(~p), updating schema"
+                              ,[kz_binary:join(ConfigPath, <<".">>), ConfigValue
+                               ,kz_binary:join(SchemaPath, <<".">>), SchemaV
+                               ]
+                              ),
+                    UpdatedSchema = kz_json:set_value(SchemaPath, ConfigValue, SchemaJObj),
+                    {'ok', _} = kz_datamgr:save_doc(?KZ_SCHEMA_DB, UpdatedSchema),
+                    lager:info("saved vmboxes schema")
+            end
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
@@ -1091,15 +1130,17 @@ del_all_files(Dir) ->
 -spec generate_media_name(kz_term:api_ne_binary(), kz_time:gregorian_seconds() | kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 generate_media_name('undefined', GregorianSeconds, Ext, Timezone) ->
     generate_media_name(<<"unknown">>, GregorianSeconds, Ext, Timezone);
+generate_media_name(CallerId, <<GregorianSeconds/binary>>, Ext, Timezone) ->
+    generate_media_name(CallerId, kz_term:to_integer(GregorianSeconds), Ext, Timezone);
 generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
-    UTCDateTime = calendar:gregorian_seconds_to_datetime(kz_term:to_integer(GregorianSeconds)),
-    LocalTime = case localtime:utc_to_local(UTCDateTime, kz_term:to_list(Timezone)) of
-                    {{_,_,_},{_,_,_}}=LT ->
+    LocalTime = try kz_time:adjust_utc_timestamp(GregorianSeconds, Timezone) of
+                    AdjustedGregorianSeconds when is_integer(AdjustedGregorianSeconds) ->
                         lager:debug("converted to TZ: ~s", [Timezone]),
-                        LT;
-                    _ ->
-                        lager:debug("bad TZ: ~p", [Timezone]),
-                        UTCDateTime
+                        calendar:gregorian_seconds_to_datetime(AdjustedGregorianSeconds)
+                catch
+                    'throw':{'error', 'unknown_tz'} ->
+                        lager:debug("unknown TZ: ~p", [Timezone]),
+                        calendar:gregorian_seconds_to_datetime(GregorianSeconds)
                 end,
     Date = kz_time:pretty_print_datetime(LocalTime),
     list_to_binary([CallerId, "_", Date, Ext]).

@@ -1,6 +1,11 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2013-2019, 2600Hz
 %%% @doc Handle creating MODBs ahead of time
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kt_modb_creation).
@@ -66,6 +71,7 @@ create_modbs(Year, Month) ->
     create_modbs(Year, Month, kz_datamgr:get_results_count(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_id">>, [])).
 
 -spec create_modbs(kz_time:year(), kz_time:month(), {'ok', non_neg_integer()} | kz_datamgr:data_error()) -> 'ok'.
+create_modbs(_Year, _Month, {'ok', 0}) -> 'ok';
 create_modbs(Year, Month, {'ok', NumAccounts}) ->
     NextMonthS = calendar:datetime_to_gregorian_seconds({kz_date:normalize({Year, Month+1, 1}), {0,0,0}}),
     NowS = kz_time:now_s(),
@@ -90,9 +96,9 @@ create_modbs_metered(Year, Month, _AccountsPerPass, _SecondsPerPass, {'ok', Acco
     _ = [create_modb(Year, Month, Account) || Account <- Accounts],
     lager:info("finished creating account MODBs");
 create_modbs_metered(Year, Month, AccountsPerPass, SecondsPerPass, {'ok', Accounts, NextPageKey}) ->
-    NowS = kz_time:now_s(),
+    StartTime = kz_time:start_time(),
     _ = [create_modb(Year, Month, Account) || Account <- Accounts],
-    ElapsedS = kz_time:elapsed_s(NowS),
+    ElapsedS = kz_time:elapsed_s(StartTime),
     WaitS = SecondsPerPass - ElapsedS,
     lager:info("created ~p modb(s), waiting ~ps for next pass", [length(Accounts), WaitS]),
     timer:sleep(WaitS * ?MILLISECONDS_IN_SECOND),

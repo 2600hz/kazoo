@@ -2,6 +2,11 @@
 %%% @copyright (C) 2012-2019, 2600Hz
 %%% @doc Common functions for the provisioner modules
 %%% @author Peter Defebvre
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(provisioner_v5).
@@ -293,8 +298,8 @@ settings_basic(DeviceDoc, UserDoc, AccountDoc) ->
 -spec device_display_name(kzd_devices:doc(), kzd_users:doc(), kzd_accounts:doc()) ->
                                  kz_term:api_ne_binary().
 device_display_name(DeviceDoc, UserDoc, AccountDoc) ->
-    case [DN || DN <- [kzd_users:name(UserDoc)
-                      ,kzd_devices:name(DeviceDoc)
+    case [DN || DN <- [kzd_devices:name(DeviceDoc)
+                      ,kzd_users:name(UserDoc)
                       ,kzd_accounts:name(AccountDoc)
                       ],
                 not is_empty_display_name(DN)

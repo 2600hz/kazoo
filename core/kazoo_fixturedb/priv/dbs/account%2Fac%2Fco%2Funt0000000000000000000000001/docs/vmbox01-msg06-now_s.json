@@ -16,6 +16,7 @@
     "owner_id": "user0000000000000000000000000001",
     "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000001",
     "pvt_account_id": "account0000000000000000000000001",
+    "pvt_document_hash": "1a8c0b0fddc02196ee80b5cad3ad883c",
     "pvt_node": "kazoo_apps@example.com",
     "pvt_type": "media",
     "source_id": "vmbox01",

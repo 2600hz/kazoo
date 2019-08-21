@@ -3,6 +3,11 @@
 %%% @doc
 %%% @author Roman Galeev
 %%% @author Hesaam Farhang
+%%%
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(crossbar_view).
@@ -840,7 +845,7 @@ handle_query_result(#{last_key := LastKey
             handle_query_result(LoadMap, Dbs, FilteredJObj, 1, NewLastKey)
     end.
 
--spec handle_query_result(load_params(), kz_term:ne_binaries(), kz_json:objects(), non_neg_integer(), last_key()) -> load_params().
+-spec handle_query_result(load_params(), kz_term:ne_binaries(), kz_json:object() | kz_json:objects(), non_neg_integer(), last_key()) -> load_params().
 handle_query_result(#{is_chunked := 'true'
                      ,context := Context
                      }=LoadMap, [Db|_], FilteredJObjs, FilteredLength, NewLastKey) ->
@@ -940,6 +945,7 @@ limit_with_last_key('true', PageSize, _ChunkSize, TotalQueried) ->
 %%------------------------------------------------------------------------------
 -spec apply_filter(mapper_fun(), kz_json:objects()) ->
                           kz_json:objects() |
+                          kz_json:object() |
                           {'error', any()}.
 apply_filter(_Mapper, []) ->
     [];
