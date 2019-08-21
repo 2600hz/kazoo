@@ -7,7 +7,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_voxbone).
+-module (knm_voxbone).
 
 -behaviour(knm_gen_carrier).
 

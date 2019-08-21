@@ -7,7 +7,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_voxbone_tests).
+-module (knm_voxbone_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 -include("knm.hrl").
