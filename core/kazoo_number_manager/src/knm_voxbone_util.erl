@@ -7,7 +7,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module (knm_voxbone_util).
+-module(knm_voxbone_util).
 
 -export([api_uri/0
         ,build_uri/2
