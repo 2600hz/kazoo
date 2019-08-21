@@ -21,7 +21,7 @@
 -export([hard_stop/1]).
 -export([transfer/1]).
 -export([control_usurped/1]).
--export([channel_destroyed/1]).
+-export([channel_destroyed/1, channel_destroyed/2]).
 -export([is_channel_destroyed/1]).
 -export([stop_on_destroy/1
         ,continue_on_destroy/1
@@ -72,6 +72,7 @@
                ,flows = [] :: kz_json:objects()
                ,cf_module_pid :: kz_term:api_pid_ref()
                ,cf_module_old_pid :: kz_term:api_pid_ref()
+               ,hangup_info = [] :: kz_term:proplist()
                ,status = 'init' :: callfow_status()
                ,queue :: kz_term:api_ne_binary()
                ,self = self() :: pid()
@@ -213,11 +214,15 @@ control_usurped(Call) ->
     control_usurped(Srv).
 
 -spec channel_destroyed(kapps_call:call() | pid()) -> 'ok'.
-channel_destroyed(Srv) when is_pid(Srv) ->
-    gen_listener:cast(Srv, 'channel_destroyed');
-channel_destroyed(Call) ->
+channel_destroyed(Srv) ->
+    channel_destroyed(Srv, kz_json:new()).
+
+-spec channel_destroyed(kapps_call:call() | pid(), kz_json:object()) -> 'ok'.
+channel_destroyed(Srv, JObj) when is_pid(Srv) ->
+    gen_listener:cast(Srv, {'channel_destroyed', JObj});
+channel_destroyed(Call, JObj) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
-    channel_destroyed(Srv).
+    channel_destroyed(Srv, JObj).
 
 -spec stop_on_destroy(kapps_call:call() | pid()) -> 'ok'.
 stop_on_destroy(Srv) when is_pid(Srv) ->
@@ -419,16 +424,12 @@ handle_cast({'continue', _}, #state{stop_on_destroy='true'
     lager:info("channel no longer active, not continuing"),
     hard_stop(self()),
     {'noreply', State};
-handle_cast({'continue', Key}, #state{flow=Flow
-                                     ,call=Call
-                                     ,termination_handlers=Handlers
-                                     }=State) ->
+handle_cast({'continue', Key}, #state{flow=Flow}=State) ->
     lager:info("continuing to child '~s'", [Key]),
 
     case kz_json:get_value([<<"children">>, Key], Flow) of
         'undefined' when Key =:= ?DEFAULT_CHILD_KEY ->
             lager:info("wildcard child does not exist, we are lost...hanging up"),
-            maybe_run_destory_handlers(Call, kz_json:new(), Handlers),
             stop(self()),
             {'noreply', State};
         'undefined' ->
@@ -461,14 +462,14 @@ handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
 handle_cast('control_usurped', State) ->
     {'stop', {'shutdown', 'control_usurped'}, State};
-handle_cast('channel_destroyed', #state{stop_on_destroy='true'
-                                       ,cf_module_pid='undefined'
-                                       }=State) ->
+handle_cast({'channel_destroyed', JObj}, #state{stop_on_destroy='true'
+                                               ,cf_module_pid='undefined'
+                                               }=State) ->
     lager:info("recv channel destroyed, going down"),
-    {'stop', 'normal', State};
-handle_cast('channel_destroyed', State) ->
+    {'stop', 'normal', State#state{hangup_info=JObj}};
+handle_cast({'channel_destroyed', JObj}, State) ->
     lager:info("recv channel destroyed, noting but staying up"),
-    {'noreply', State#state{destroyed='true'}};
+    {'noreply', State#state{destroyed='true', hangup_info=JObj}};
 handle_cast('stop_on_destroy', State) ->
     {'noreply', State#state{stop_on_destroy='true'}};
 handle_cast('continue_on_destroy', State) ->
@@ -616,7 +617,6 @@ handle_info(_Msg, State) ->
 handle_event(JObj, #state{cf_module_pid=PidRef
                          ,call=Call
                          ,self=Self
-                         ,termination_handlers=DestoryHandlers
                          }) ->
     CallId = kapps_call:call_id_direct(Call),
     Others = kapps_call:kvs_fetch('cf_event_pids', [], Call),
@@ -627,9 +627,9 @@ handle_event(JObj, #state{cf_module_pid=PidRef
 
     case {kz_util:get_event_type(JObj), kz_call_event:call_id(JObj)} of
         {{<<"call_event">>, <<"CHANNEL_DESTROY">>}, CallId} ->
-            handle_channel_destroyed(Self, Notify, JObj, Call, DestoryHandlers);
+            handle_channel_destroyed(Self, Notify, JObj);
         {{<<"call_event">>, <<"CHANNEL_DISCONNECTED">>}, CallId} ->
-            handle_channel_destroyed(Self, Notify, JObj, Call, DestoryHandlers);
+            handle_channel_destroyed(Self, Notify, JObj);
         {{<<"call_event">>, <<"CHANNEL_TRANSFEREE">>}, _} ->
             handle_channel_transfer(Call, JObj);
         {{<<"call_event">>, <<"CHANNEL_REPLACED">>}, _} ->
@@ -641,7 +641,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef
         {{<<"call_event">>, <<"usurp_control">>}, CallId} ->
             handle_usurp(Self, Call, JObj);
         {{<<"error">>, _}, _} ->
-            handle_error(CallId, Notify, JObj);
+            handle_error(Self, CallId, Notify, JObj);
         {_, CallId} ->
             relay_message(Notify, JObj);
         {{_Cat, _Name}, _Else} when Others =:= [] ->
@@ -668,14 +668,20 @@ terminate({'shutdown', 'control_usurped'}, _) ->
     lager:info("the call has been usurped by an external process");
 terminate(_Reason, #state{call=Call
                          ,cf_module_pid='undefined'
+                         ,hangup_info=HangupInfo
+                         ,termination_handlers=DestoryHandlers
                          }) ->
     hangup_call(Call),
+    maybe_run_destory_handlers(Call, HangupInfo, DestoryHandlers),
     lager:info("callflow execution has been stopped: ~p", [_Reason]);
 terminate(_Reason, #state{call=Call
                          ,cf_module_pid={Pid, _}
+                         ,hangup_info=HangupInfo
+                         ,termination_handlers=DestoryHandlers
                          }) ->
     exit(Pid, 'kill'),
     hangup_call(Call),
+    maybe_run_destory_handlers(Call, HangupInfo, DestoryHandlers),
     lager:info("callflow execution has been stopped: ~p", [_Reason]).
 
 %%------------------------------------------------------------------------------
@@ -845,11 +851,19 @@ log_call_information(Call) ->
     end,
     lager:info("authorizing id ~s", [kapps_call:authorizing_id(Call)]).
 
--spec handle_channel_destroyed(pid(), kz_term:pids(), kz_json:object(), kapps_call:call(), list()) -> 'ok'.
-handle_channel_destroyed(Self, Notify, JObj, Call, DestoryHandlers) ->
-    channel_destroyed(Self),
-    relay_message(Notify, JObj),
-    maybe_run_destory_handlers(Call, JObj, DestoryHandlers).
+-spec handle_channel_destroyed(pid(), kz_term:pids(), kz_json:object()) -> 'ok'.
+handle_channel_destroyed(Self, Notify, JObj) ->
+    set_channel_destroyed(Self, JObj),
+    relay_message(Notify, JObj).
+
+-spec set_channel_destroyed(pid(), kz_json:object()) -> 'ok'.
+set_channel_destroyed(Self, JObj) ->
+    {Cause, Code} = kapps_util:get_call_termination_reason(JObj),
+    DestroyHeaders = [{<<"Disposition">>, kz_json:get_ne_binary_value(<<"Disposition">>, JObj)}
+                     ,{<<"Hangup-Cause">>, Cause}
+                     ,{<<"Hangup-Code">>, Code}
+                     ],
+    channel_destroyed(Self, kz_json:from_list(DestroyHeaders)).
 
 -spec handle_channel_transfer(kapps_call:call(), kz_json:object()) -> 'ok'.
 handle_channel_transfer(Call, JObj) ->
@@ -886,12 +900,23 @@ handle_usurp(Self, Call, JObj) ->
         'true'  -> 'ok'
     end.
 
--spec handle_error(kz_term:ne_binary(), kz_term:pids(), kz_json:object()) -> 'ok'.
-handle_error(CallId, Notify, JObj) ->
+-spec handle_error(pid(), kz_term:ne_binary(), kz_term:pids(), kz_json:object()) -> 'ok'.
+handle_error(Self, CallId, Notify, JObj) ->
     case kz_json:get_value([<<"Request">>, <<"Call-ID">>], JObj) of
-        CallId      -> relay_message(Notify, JObj);
+        CallId      -> check_for_channel_destroy(Self, Notify, JObj);
         'undefined' -> relay_message(Notify, JObj);
         _Else       -> 'ok'
+    end.
+
+-spec check_for_channel_destroy(pid(), kz_term:pids(), kz_json:object()) -> 'ok'.
+check_for_channel_destroy(Self, Notify, JObj) ->
+    case kz_json:get_first_defined([<<"Application-Response">>, <<"Hangup-Cause">>], JObj) of
+        'undefined' ->
+            relay_message(Notify, JObj);
+        Cause ->
+            _Disposition = kz_json:get_value(<<"Disposition">>, JObj),
+            lager:info("channel was destroyed ~s(~s), stopping here", [_Disposition, Cause]),
+            handle_channel_destroyed(Self, Notify, JObj)
     end.
 
 -spec relay_message(kz_term:pids(), kz_json:object()) -> 'ok'.

@@ -20,43 +20,23 @@
 %%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    ?DEV_LOG("start"),
     case bridge_to_endpoints(Data, Call) of
         {'ok', _} ->
-            ?DEV_LOG("completed successful bridge to the device"),
             lager:info("completed successful bridge to the device"),
             cf_exe:stop(Call);
         {'fail', _}=Reason -> maybe_handle_bridge_failure(Reason, Call);
         {'error', _R} when is_atom(_R) ->
-            ?DEV_LOG("failed to build endpoint from device: ~p", [_R]),
             lager:info("failed to build endpoint from device: ~p", [_R]),
             cf_exe:continue(Call);
         {'error', JObj} ->
-            ?DEV_LOG("error bridging to device: ~s"
-                    ,[kz_json:get_ne_binary_value(<<"Error-Message">>, JObj)]
-                    ),
             lager:info("error bridging to device: ~s"
                       ,[kz_json:get_ne_binary_value(<<"Error-Message">>, JObj)]
                       ),
-            maybe_handle_channel_destroy(JObj, Call)
-    end.
-
--spec maybe_handle_channel_destroy(kz_json:object(), kapps_call:call()) -> 'ok'.
-maybe_handle_channel_destroy(JObj, Call) ->
-    Disposition = kz_json:get_value(<<"Disposition">>, JObj),
-    Cause = kz_json:get_first_defined([<<"Application-Response">>, <<"Hangup-Cause">>], JObj),
-    ?DEV_LOG("handle_destroy: Dis ~p Cause ~p", [Disposition, Cause]),
-    case Cause of
-        'undefined' ->
-            cf_exe:continue(Call);
-        _Cause ->
-            lager:info("channel destroyed while waiting for bridge ~s(~s)", [Disposition, Cause]),
-            cf_exe:stop(Call)
+            cf_exe:continue(Call)
     end.
 
 -spec maybe_handle_bridge_failure(any(), kapps_call:call()) -> 'ok'.
 maybe_handle_bridge_failure(Reason, Call) ->
-    ?DEV_LOG("bridge_failure: ~p", [cf_util:handle_bridge_failure(Reason, Call)]),
     case cf_util:handle_bridge_failure(Reason, Call) of
         'not_found' -> cf_exe:continue(Call);
         'ok' -> 'ok'
