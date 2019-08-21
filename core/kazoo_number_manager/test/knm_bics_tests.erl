@@ -39,7 +39,7 @@ find_numbers(Options) ->
                     _Else -> 'false'
                 end
         end,
-        Results = knm_search:find([{'quantity',Limit}
+    Results = knm_search:find([{'quantity',Limit}
                               ,{'prefix', Prefix}
                               ,{'query_id', <<"QID-", Prefix/binary>>}
                                |Options
