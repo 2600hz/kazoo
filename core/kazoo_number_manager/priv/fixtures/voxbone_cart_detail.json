@@ -1,0 +1,20 @@
+{
+    "carts": [
+        {
+            "cartIdentifier": 3312757,
+            "customerReference": "{ACCOUNT-ID}",
+            "dateAdded": "2019-07-22 17:16:37",
+            "description": "DID Order",
+            "orderProducts": [
+                {
+                    "didgroupId": 1196,
+                    "orderProductId": 4410885,
+                    "productDescription": "[UNITED STATES] BIRMINGHAM (205)",
+                    "productType": "DID",
+                    "quantity": 15
+                }
+            ]
+        }
+    ],
+    "resultCount": 1
+}

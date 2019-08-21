@@ -18,9 +18,9 @@
 -include("knm_voxbone.hrl").
 
 -type http_method() :: 'delete'
-                  | 'get'
-                  | 'put'
-                  | 'post'.
+                     | 'get'
+                     | 'put'
+                     | 'post'.
 
 %%------------------------------------------------------------------------------
 %% @doc Generate the API url based on the currently configured environment.
@@ -35,9 +35,11 @@ api_uri() ->
 %% Generate HTTP Basic auth headers
 %% @end
 %%------------------------------------------------------------------------------
+-ifndef(TEST).
 -spec auth() -> {'basic_auth', {kz_term:ne_binary(), kz_term:ne_binary()}}.
 auth() ->
     {'basic_auth', {?VOXBONE_API_USERNAME, ?VOXBONE_API_PASSWORD}}.
+-endif.
 
 %%------------------------------------------------------------------------------
 %% @doc Generate the full URL and process querystring parameters.
@@ -52,17 +54,19 @@ build_uri(Resource, QueryString) ->
 %% @doc Generate default HTTP headers
 %% @end
 %%------------------------------------------------------------------------------
+-ifndef(TEST).
 -spec default_headers() -> kz_term:proplist().
 default_headers() ->
     [{"User-Agent", ?KNM_USER_AGENT}
     ,{"Accept", "application/json"}
     ,{"Content-Type", "application/json"}
     ].
-
+-endif.
 %%------------------------------------------------------------------------------
 %% @doc Generate default HTTP options for the underlying HTTP client
 %% @end
 %%------------------------------------------------------------------------------
+-ifndef(TEST).
 -spec default_http_options() -> kz_term:proplist().
 default_http_options() ->
     [auth()
@@ -71,7 +75,7 @@ default_http_options() ->
     ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
     ,{'body_format', 'string'}
     ].
-
+-endif.
 %%------------------------------------------------------------------------------
 %% @doc Resolve the correct api host based on the configured environment
 %% @end
@@ -105,15 +109,44 @@ required_params() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec voxbone_request(http_method(), kz_term:ne_binary(), kz_term:proplist()) -> {'ok', kz_json:object()} | {'error', kz_term:atom()}.
+-ifndef(TEST).
 voxbone_request(Method, Resource, QueryString) ->
     voxbone_request(Method, Resource, QueryString, []).
+-else.
+voxbone_request('get', <<"inventory/did">>, _QueryString) ->
+    Data = knm_util:fixture("voxbone_order_reference.json"),
+    handle_response({'ok', 200, [], Data});
+voxbone_request('get', <<"ordering/cart/3312757/checkout">>, _) ->
+    Data = knm_util:fixture("voxbone_checkout.json"),
+    handle_response({'ok', 200, [], Data});
+voxbone_request('get', <<"inventory/didgroup">>, _) ->
+    Data = knm_util:fixture("voxbone_inventory_search_results.json"),
+    handle_response({'ok', 200, [], Data});
+voxbone_request('get', <<"ordering/accountbalance">>, _) ->
+    Data = knm_util:fixture("voxbone_account_balance.json"),
+    handle_response({'ok', 200, [], Data});
+voxbone_request('delete', <<"ordering/cart/3312757">>, _) ->
+    Data = knm_util:fixture("voxbone_delete_cart.json"),
+    handle_response({'ok', 200, [], Data}).
+-endif.
 
 -spec voxbone_request(http_method(), kz_term:ne_binary(), kz_term:proplist(), kz_json:object()) -> {'ok', kz_json:object()} | {'error', kz_term:atom()}.
+-ifndef(TEST).
 voxbone_request(Method, Resource, QueryString, Body) ->
     URI = build_uri(Resource, QueryString),
     Response = kz_http:req(Method, URI, default_headers(), kz_json:encode(Body), default_http_options()),
     handle_response(Response).
-
+-else.
+voxbone_request('put', <<"ordering/cart">>, _QueryString, _Body) ->
+    Data = knm_util:fixture("voxbone_new_cart.json"),
+    handle_response({'ok', 200, [], Data});
+voxbone_request('post', <<"ordering/cart/3312757/product">>, _, _) ->
+    Data = knm_util:fixture("voxbone_add_to_cart.json"),
+    handle_response({'ok', 200, [], Data});
+voxbone_request('post', <<"ordering/cancel">>, _, _) ->
+    Data = knm_util:fixture("voxbone_disconnect.json"),
+    handle_response({'ok', 200, [], Data}).
+-endif.
 %%------------------------------------------------------------------------------
 %% @doc Utilties to clean up orphaned carts.
 %% @end

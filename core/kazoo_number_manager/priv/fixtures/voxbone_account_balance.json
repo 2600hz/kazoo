@@ -1,0 +1,8 @@
+{
+    "accountBalance": {
+        "active": true,
+        "balance": 500.0,
+        "currency": "USD",
+        "threshold": 100.0
+    }
+}

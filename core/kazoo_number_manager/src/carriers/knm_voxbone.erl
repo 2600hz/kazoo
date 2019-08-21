@@ -206,7 +206,7 @@ maybe_reserve_did_qty(_Available, Need) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_start_order(map(), [{kz_term:api_pos_integer(), kz_term:api_pos_integer()}]) ->
- {'ok', knm_number:phone_numbers()}.
+                               {'ok', knm_number:phone_numbers()}.
 maybe_start_order(#{id := CartId, query_id := QueryId}=Cart, Order) ->
     lager:debug("initializing order for query ~p with cart ~p", [QueryId, CartId]),
     case maybe_add_to_cart(Order, Cart) of
@@ -281,6 +281,7 @@ order_to_KNM(QueryId, DIDs) ->
     order_to_KNM(QueryId, JObjs, []).
 
 -spec order_to_KNM(kz_term:ne_binary(), kz_json:objects(), search_results()) -> search_results().
+-ifndef(TEST).
 order_to_KNM(_QueryId, [], Acc) ->
     Acc;
 order_to_KNM(QueryId, [DID | Rest], Acc) ->
@@ -295,7 +296,14 @@ order_to_KNM(QueryId, [DID | Rest], Acc) ->
     %% Add number to database to ensure inventory is updated before acquire_number stub
     {'ok', _} = knm_number:create(DID2, Options),
     order_to_KNM(QueryId, Rest, [{QueryId, Number} | Acc]).
-
+-else.
+order_to_KNM(_QueryId, [], Acc) ->
+    Acc;
+order_to_KNM(QueryId, [DID | Rest], Acc) ->
+    DID2 = kz_json:get_value(<<"e164">>, DID),
+    Number = {DID2, ?MODULE, ?NUMBER_STATE_AVAILABLE, DID},
+    order_to_KNM(QueryId, Rest, [{QueryId, Number} | Acc]).
+-endif.
 %%------------------------------------------------------------------------------
 %% @doc Cleanup voxbone cart artifact when order can't be satisfied.
 %% @end
