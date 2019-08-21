@@ -48,7 +48,7 @@ find_numbers(Options) ->
     [{"Verify found numbers"
      ,?_assertEqual(Limit, length(Results))
      }
-     ,{"Verify results match queried prefix"
+    ,{"Verify results match queried prefix"
      ,?_assertEqual('true', lists:all(MatchPrefix, Results))
      }
     ].
