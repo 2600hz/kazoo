@@ -331,8 +331,10 @@ docs-build:
 docs-clean:
 	@$(MAKE) -C $(DOCS_ROOT) DOCS_ROOT=$(DOCS_ROOT) clean
 
+YML ?= mkdocs.yml
+
 docs-serve: docs-setup docs-build
-	@$(MAKE) -C $(DOCS_ROOT) DOCS_ROOT=$(DOCS_ROOT) docs-serve
+	@$(MAKE) -C $(DOCS_ROOT) YML=$(YML) DOCS_ROOT=$(DOCS_ROOT) docs-serve
 
 fs-headers:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
