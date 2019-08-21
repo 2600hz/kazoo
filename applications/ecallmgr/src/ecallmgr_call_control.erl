@@ -269,7 +269,7 @@ handle_cast({'fs_nodeup', Node}, #state{node=Node
         {'ok', <<"true">>} ->
             {'noreply', force_queue_advance(State#state{is_node_up='true'}, kz_json:new())};
         _Else ->
-            {'noreply', handle_channel_destroyed(kz_json:new(), State)}
+            {'noreply', handle_channel_destroyed(empty_channel_destroyed_object(), State)}
     end;
 handle_cast(_, State) ->
     {'noreply', State}.
@@ -298,14 +298,14 @@ handle_info('sanity_check', #state{call_id=CallId}=State) ->
             {'noreply', State#state{sanity_check_tref=TRef}};
         'false' ->
             lager:debug("call uuid does not exist, executing post-hangup events and terminating"),
-            {'noreply', handle_channel_destroyed(kz_json:new(), State)}
+            {'noreply', handle_channel_destroyed(empty_channel_destroyed_object(), State)}
     end;
 handle_info(?CHANNEL_MOVE_COMPLETE_MSG(Node, UUID, _Evt), State) ->
     lager:debug("channel move complete recv for node ~s:~s", [Node, UUID]),
     {'noreply', State};
 handle_info('nodedown_restart_exceeded', #state{is_node_up='false'}=State) ->
     lager:debug("we have not received a node up in time, assuming down for good for this call", []),
-    {'noreply', handle_channel_destroyed(kz_json:new(), State)};
+    {'noreply', handle_channel_destroyed(empty_channel_destroyed_object(), State)};
 handle_info(?LOOPBACK_BOWOUT_MSG(Node, Props), #state{call_id=ResigningUUID
                                                      ,node=Node
                                                      }=State) ->
@@ -443,6 +443,13 @@ handle_channel_destroyed(JObj, State) ->
         'false' -> do_handle_channel_destroyed(JObj, State);
         'true' -> handle_loopback_destroyed(JObj, State)
     end.
+
+-spec empty_channel_destroyed_object() -> kz_json:object().
+empty_channel_destroyed_object() ->
+    kz_json:from_list(
+      [{<<"Hangup-Cause">>, <<"UNSPECIFIED">>}
+      ,{<<"Hangup-Code">>, <<"sip:600">>}
+      ]).
 
 -spec handle_loopback_destroyed(kz_json:object(), state()) -> state().
 handle_loopback_destroyed(JObj, State) ->
