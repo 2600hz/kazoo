@@ -67,21 +67,21 @@ handle_inventory_response({'error', _R}, _Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
-    knm_number:knm_number().
+                            knm_number:knm_number().
 acquire_number(Number) ->
     Resp = make_acquisition_request(Number),
     handle_acquistion_response(Number, Resp).
 
 -spec disconnect_number(knm_number:knm_number()) ->
-    knm_number:knm_number().
+                               knm_number:knm_number().
 disconnect_number(Number) -> Number.
 
 -spec should_lookup_cnam() ->
-    boolean().
+                                boolean().
 should_lookup_cnam() -> 'true'.
 
 -spec is_number_billable(knm_phone_number:knm_phone_number()) ->
-    boolean().
+                                boolean().
 is_number_billable(_Number) -> 'true'.
 
 
@@ -112,7 +112,7 @@ process_numbers_search_resp(Json, Options) ->
     JObjs = kz_json:decode(Json),
     QID = knm_search:query_id(Options),
     [N || JObj <- JObjs,
-             N <- [search_response_to_knm_number(JObj, QID)]
+          N <- [search_response_to_knm_number(JObj, QID)]
     ].
 
 -spec search_response_to_knm_number(kz_json:object(), knm_search:options()) -> knm_number:knm_number_return().
@@ -152,7 +152,7 @@ make_inventory_request(#{'prefix' := Prefix} = _Options, #{a3 := _A3} = _Country
 %%% Number Purchase API Helpers
 %%%=============================================================================
 -spec acquisition_payload(binary()) -> binary().
-acquisition_payload(Number) -> 
+acquisition_payload(Number) ->
     <<"{\"orderRequestItems\": [{\"number\": \"", Number/binary, "\"}]}">>.
 
 -spec process_acquisition_error(binary()) -> binary().
@@ -180,14 +180,14 @@ handle_acquistion_response(Number, {'error', Res}) ->
     knm_errors:by_carrier(?MODULE, process_acquisition_error(Res), Number).
 
 verify_acquired_number(Number, [JResp | _]) -> verify_acquired_number(Number, JResp);
-verify_acquired_number(Number, JResp) -> 
+verify_acquired_number(Number, JResp) ->
     OrderItems = kz_json:get_list_value(<<"orderItems">>, JResp),
     RawNumber = to_bics(Number),
     NumberInResponse = lists:any(fun(OrderItem) ->
-        OrderNumber = kz_json:get_json_value(<<"number">>, OrderItem),
-        ResponseNumber = kz_json:get_binary_value(<<"number">>, OrderNumber),
-        RawNumber == ResponseNumber
-    end, OrderItems),
+                                         OrderNumber = kz_json:get_json_value(<<"number">>, OrderItem),
+                                         ResponseNumber = kz_json:get_binary_value(<<"number">>, OrderNumber),
+                                         RawNumber == ResponseNumber
+                                 end, OrderItems),
     verify_acquired_number_status(Number, kz_json:get_binary_value(<<"status">>, JResp), NumberInResponse).
 
 verify_acquired_number_status(Number, <<"Delivered">>, 'true') -> Number;
@@ -199,17 +199,17 @@ make_acquisition_request(Number) ->
     Payload = acquisition_payload(to_bics(Number)),
     kz_http:post(get_acquisition_url(), headers(), Payload).
 -else.
-make_acquisition_request(Number) -> 
+make_acquisition_request(Number) ->
     _Payload = acquisition_payload(raw_number(Number)),
     _Url = get_acquisition_url(),
     ?LOG_DEBUG("In test make acquisition"),
     {
-        'ok', 
-        200, 
-        [], 
-        <<"[{\"status\": \"Delivered\",\"product\": \"IBN\",\"country\": \"USA\",\"orderItems\": [{\"number\": \"", 
-            to_bics(Number), 
-            "\",\"location\": \"CA-PITTSBURG\",\"addressReference\": null,\"routing\": [{\"accessType\": \"fixMobPay\",\"accessNetwork\": null,\"crn\": \"14986\",\"pop\": \"\",\"crnType\": \"copy\",\"crnValue\": null}]}]}]">>
+     'ok',
+     200,
+     [],
+     <<"[{\"status\": \"Delivered\",\"product\": \"IBN\",\"country\": \"USA\",\"orderItems\": [{\"number\": \"",
+       to_bics(Number),
+       "\",\"location\": \"CA-PITTSBURG\",\"addressReference\": null,\"routing\": [{\"accessType\": \"fixMobPay\",\"accessNetwork\": null,\"crn\": \"14986\",\"pop\": \"\",\"crnType\": \"copy\",\"crnValue\": null}]}]}]">>
     }.
 -endif.
 
@@ -217,10 +217,10 @@ make_acquisition_request(Number) ->
 %%% API Helper functions
 %%%=============================================================================
 -spec headers() -> list().
-headers() -> 
+headers() ->
     [{"Accept", "*/*"}
-        ,{"Authorization", bearer_token()}
-        ,{"Content-Type", "application/json"}
+    ,{"Authorization", bearer_token()}
+    ,{"Content-Type", "application/json"}
     ].
 
 -spec bearer_token() -> binary().
