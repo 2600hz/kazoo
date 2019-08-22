@@ -280,7 +280,7 @@ validate_patch(Context, WebhookId) ->
         'success' ->
             PatchJObj = kz_doc:public_fields(cb_context:req_data(Context)),
             JObj = kz_json:merge_jobjs(PatchJObj, cb_context:doc(Context)),
-            OnSuccess = fun(C) -> check_modifiers(crossbar_doc:load_merge(WebhookId, C, ?TYPE_CHECK_OPTION(kzd_webhook:type()))) end,
+            OnSuccess = fun(C) -> maybe_check_modifiers(crossbar_doc:load_merge(WebhookId, C, ?TYPE_CHECK_OPTION(kzd_webhooks:type()))) end,
             cb_context:validate_request_data(<<"webhooks">>, cb_context:set_req_data(Context, JObj), OnSuccess);
         _Status -> Context
     end.
@@ -374,7 +374,7 @@ reenable_validation_error(Context) ->
 %%------------------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_webhook:type())),
+    Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_webhooks:type())),
     case cb_context:resp_status(Context1) of
         'success' -> maybe_leak_pvt_fields(Context1);
         _Status -> Context1
@@ -383,7 +383,7 @@ read(Id, Context) ->
 -spec maybe_leak_pvt_fields(cb_context:context()) -> cb_context:context().
 maybe_leak_pvt_fields(Context) ->
     Doc = cb_context:doc(Context),
-    NewDoc = kz_json:set_value(<<"disable_reason">>, kzd_webhook:disabled_message(Doc), Doc),
+    NewDoc = kz_json:set_value(<<"disable_reason">>, kzd_webhooks:disabled_message(Doc), Doc),
     cb_context:set_doc(Context, NewDoc).
 
 %%------------------------------------------------------------------------------
@@ -502,42 +502,44 @@ normalize_attempt_results(JObj, Acc) ->
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
-    Props = [{<<"pvt_type">>, kzd_webhook:type()}
+    Props = [{<<"pvt_type">>, kzd_webhooks:type()}
             ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
             ],
-    check_modifiers(cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context))));
+    maybe_check_modifiers(cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context))));
 on_successful_validation(Id, Context) ->
-    check_modifiers(crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(kzd_webhook:type()))).
+    maybe_check_modifiers(crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(kzd_webhooks:type()))).
 
--spec check_modifiers(cb_context:context()) -> cb_context:context().
-check_modifiers(Context) ->
-    JObj = cb_context:doc(Context),
-    HookEvent = kz_json:get_value(<<"hook">>, JObj),
-    case HookEvent =/= <<"all">>
-        andalso get_hook_definition(HookEvent)
-    of
-        'false' ->
-            Context;
+-spec maybe_check_modifiers(cb_context:context()) -> cb_context:context().
+maybe_check_modifiers(Context) ->
+    WebhookDoc = cb_context:doc(Context),
+    maybe_check_modifiers(Context, WebhookDoc, kzd_webhooks:hook(WebhookDoc)).
+
+-spec maybe_check_modifiers(cb_context:context(), kzd_webhooks:doc(), kz_term:api_ne_binary()) -> cb_context:context().
+maybe_check_modifiers(Context, _WebhookdDoc, <<"all">>) -> Context;
+maybe_check_modifiers(Context, WebhookDoc, HookEvent) ->
+    case get_hook_definition(HookEvent) of
         'undefined' ->
             cb_context:add_system_error('datastore_fault', Context);
         HookDefinition ->
-            check_modifiers(Context, JObj, kz_json:get_value(<<"modifiers">>, HookDefinition))
+            check_modifiers(Context, WebhookDoc, kz_json:get_json_value(<<"modifiers">>, HookDefinition))
     end.
 
--spec check_modifiers(cb_context:context(), kz_json:object(), kz_term:api_object()) -> cb_context:context().
-check_modifiers(Context, _, 'undefined') ->
+-spec check_modifiers(cb_context:context(), kzd_webhooks:doc(), kz_term:api_object()) -> cb_context:context().
+check_modifiers(Context, _WebhookDoc_, 'undefined') ->
     Context;
-check_modifiers(Context, JObj, Modifiers) ->
-    kz_json:foldl(fun(K, V, Acc) -> check_modifiers(JObj, K, V, Acc) end, Context, Modifiers).
+check_modifiers(Context, WebhookDoc, Modifiers) ->
+    kz_json:foldl(fun(K, V, Acc) -> check_modifiers(WebhookDoc, K, V, Acc) end, Context, Modifiers).
 
--spec check_modifiers(kz_json:object(), kz_term:ne_binary(), kz_json:object(), cb_context:context()) -> cb_context:context().
-check_modifiers(Hook, ModifierKey, ModifierValue, Context) ->
-    case kz_json:get_value([<<"custom_data">>, ModifierKey], Hook) of
+-spec check_modifiers(kzd_webhooks:doc(), kz_term:ne_binary(), kz_json:object(), cb_context:context()) -> cb_context:context().
+check_modifiers(WebhookDoc, ModifierKey, ModifierValue, Context) ->
+    case kz_json:get_value([ModifierKey], kzd_webhooks:custom_data(WebhookDoc, kz_json:new())) of
         'undefined' ->
+            lager:debug("failed to find ~s in webhook's custom data", [ModifierKey]),
             Msg = kz_json:from_list([{<<"message">>, <<"missing required modifier">>}]),
-            cb_context:add_validation_error(ModifierKey, <<"required">>, Msg, Context);
+            cb_context:add_validation_error([<<"custom_data">>, ModifierKey], <<"required">>, Msg, Context);
         CustomValue ->
-            Type = kz_json:get_value(<<"type">>, ModifierValue),
+            lager:debug("found ~s in webhook's custom data: ~p", [ModifierKey, CustomValue]),
+            Type = kz_json:get_ne_binary_value(<<"type">>, ModifierValue),
             check_modifier_values(CustomValue, ModifierKey, ModifierValue, Type, Context)
     end.
 
@@ -550,7 +552,7 @@ check_modifier_values(CustomValue, ModifierKey, ModifierValue, <<"array">>, Cont
                                     ,{<<"cause">>, CustomValue}
                                     ,{<<"target">>, Items}
                                     ]),
-            cb_context:add_validation_error(ModifierKey, <<"enum">>, Msg, Context);
+            cb_context:add_validation_error([<<"custom_data">>, ModifierKey], <<"enum">>, Msg, Context);
         'true' ->
             Context
     end;
@@ -566,11 +568,17 @@ check_modifier_values(CustomValue, ModifierKey, ModifierValue, <<"object">>, Con
                                     ,{<<"cause">>, CustomValue}
                                     ,{<<"target">>, Target}
                                     ]),
-            cb_context:add_validation_error(ModifierKey, <<"enum">>, Msg, Context);
+            cb_context:add_validation_error([<<"custom_data">>, ModifierKey], <<"enum">>, Msg, Context);
         _ ->
             Context
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc Fetch the metadata, like modifiers available, for a hook type.
+%% For instance, object webhooks have the type of object changed (device, user,
+%% etc) and the type of change (created, updated, deleted) as modifiers.
+%% @end
+%%------------------------------------------------------------------------------
 -spec get_hook_definition(kz_term:ne_binary()) -> kz_term:api_object().
 get_hook_definition(HookEvent) ->
     case kapps_util:get_master_account_db() of
@@ -580,7 +588,7 @@ get_hook_definition(HookEvent) ->
 
 -spec get_hook_definition(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
 get_hook_definition(HookEvent, MasterDb) ->
-    case kz_datamgr:open_doc(MasterDb, <<"webhooks_", HookEvent/binary>>) of
+    case kz_datamgr:open_cache_doc(MasterDb, <<"webhooks_", HookEvent/binary>>) of
         {'ok', JObj} -> JObj;
         {'error', _Reason} ->
             lager:debug("failed to open webhook ~s definition: ~p", [HookEvent, _Reason]),
@@ -595,9 +603,9 @@ get_hook_definition(HookEvent, MasterDb) ->
 -spec maybe_update_hook(cb_context:context()) -> cb_context:context().
 maybe_update_hook(Context) ->
     Doc = cb_context:doc(Context),
-    case kzd_webhook:is_enabled(Doc) of
+    case kzd_webhooks:enabled(Doc) of
         'false' -> Context;
-        'true' -> cb_context:set_doc(Context, kzd_webhook:enable(Doc))
+        'true' -> cb_context:set_doc(Context, kzd_webhooks:enable(Doc))
     end.
 
 -spec reenable_hooks(cb_context:context()) ->
@@ -615,7 +623,7 @@ reenable_hooks(Context, [AccountId, ?DESCENDANTS]) ->
 -spec send_reenable_req(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                kz_amqp_worker:request_return().
 send_reenable_req(Context, AccountId, Action) ->
-    Req = [{<<"Type">>, kzd_webhook:type()}
+    Req = [{<<"Type">>, kzd_webhooks:type()}
           ,{<<"Action">>, Action}
           ,{<<"Account-ID">>, AccountId}
           ,{<<"Msg-ID">>, cb_context:req_id(Context)}

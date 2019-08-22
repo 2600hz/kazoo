@@ -77,6 +77,9 @@ def update_license(filename):
 replaced = 0
 sys.stdout.write("checking copyright and license: ")
 for filename in sys.argv[1:]:
+    if (not os.path.isfile(filename)):
+        continue
+
     basename, ext = os.path.splitext(filename)
     if (ext != ".erl"):
         continue

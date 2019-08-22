@@ -22,6 +22,7 @@
 
 -export([seq/0
         ,cleanup/0
+        ,new_user/0
         ]).
 
 -include("kazoo_proper.hrl").

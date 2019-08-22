@@ -114,12 +114,12 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:notification_failed(?TEMPLATE_ID, Reason)
     end.
 
--spec hook_data(kzd_webhook:doc()) -> kz_term:proplist().
+-spec hook_data(kzd_webhooks:doc()) -> kz_term:proplist().
 hook_data(HookJObj) ->
     props:filter_undefined(
       [{<<"id">>, kz_doc:id(HookJObj)}
-      ,{<<"name">>, kzd_webhook:name(HookJObj)}
-      ,{<<"uri">>, kzd_webhook:uri(HookJObj)}
-      ,{<<"event">>, kzd_webhook:event(HookJObj)}
-      ,{<<"disable_reason">>, kzd_webhook:disabled_message(HookJObj)}
+      ,{<<"name">>, kzd_webhooks:name(HookJObj)}
+      ,{<<"uri">>, kzd_webhooks:uri(HookJObj)}
+      ,{<<"event">>, kzd_webhooks:hook(HookJObj)}
+      ,{<<"disable_reason">>, kzd_webhooks:disabled_message(HookJObj)}
       ]).

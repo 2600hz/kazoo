@@ -150,6 +150,7 @@ pages:
   - 'Webhooks':
     - 'applications/webhooks/doc/README.md'
     - 'Administration': 'applications/webhooks/doc/maintenance.md'
+    - 'Disabler': 'applications/webhooks/doc/disabler.md'
     - 'API': 'applications/crossbar/doc/webhooks.md'
     - 'Webhook Events':
       - 'Channel Event Webhooks': 'applications/webhooks/doc/events/channels.md'

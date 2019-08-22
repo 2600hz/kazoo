@@ -61,11 +61,11 @@ bindings_and_responders() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec handle(kz_json:object(), kz_term:proplist()) -> 'ok'.
-handle(JObj, _Props) ->
-    'true' = kapi_call:event_v(JObj),
-    AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-    maybe_send_event(AccountId, format(JObj)).
+-spec handle(kapi_call:event(), kz_term:proplist()) -> 'ok'.
+handle(CallEvent, _Props) ->
+    'true' = kapi_call:event_v(CallEvent),
+    AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], CallEvent),
+    maybe_send_event(AccountId, format(CallEvent)).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -83,10 +83,10 @@ maybe_send_event(AccountId, JObj) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec format(kz_json:object()) -> kz_json:object().
-format(JObj) ->
-    AccountId = kz_json:get_ne_binary_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-    JObj1 = kz_json:set_value(<<"Account-ID">>, AccountId, JObj),
+-spec format(kapi_call:event()) -> kz_json:object().
+format(CallEvent) ->
+    AccountId = kz_json:get_ne_binary_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], CallEvent),
+    CallEvent1 = kz_json:set_value(<<"Account-ID">>, AccountId, CallEvent),
     RemoveKeys = [<<"Node">>
                  ,<<"Msg-ID">>
                  ,<<"App-Version">>
@@ -94,4 +94,4 @@ format(JObj) ->
                  ,<<"Event-Category">>
                  ,<<"Custom-Channel-Vars">>
                  ],
-    kz_json:normalize_jobj(JObj1, RemoveKeys, []).
+    kz_json:normalize_jobj(CallEvent1, RemoveKeys, []).

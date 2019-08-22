@@ -72,12 +72,7 @@ init([EventDefinition|Rest], Acc) ->
 %%------------------------------------------------------------------------------
 -spec bindings_and_responders() -> {gen_listener:bindings(), gen_listener:responders()}.
 bindings_and_responders() ->
-    Bindings = bindings(),
-    Responders = [{{?MODULE, 'handle_event'}
-                  ,[{<<"notification">>, <<"*">>}]
-                  }
-                 ],
-    {Bindings, Responders}.
+    {bindings(), responders()}.
 
 -spec bindings() -> gen_listener:bindings().
 bindings() ->
@@ -87,6 +82,13 @@ bindings() ->
                          ]
                         }
                        ]
+     }
+    ].
+
+-spec responders() -> gen_listener:responders().
+responders() ->
+    [{{?MODULE, 'handle_event'}
+     ,[{<<"notification">>, <<"*">>}]
      }
     ].
 
@@ -101,45 +103,54 @@ account_bindings(_AccountId) -> [].
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
-handle_event(JObj, _Props) ->
-    kz_util:put_callid(JObj),
+-spec handle_event(kapi_notifications:doc(), kz_term:proplist()) -> 'ok'.
+handle_event(Notification, _Props) ->
+    kz_util:put_callid(Notification),
 
-    EventName = kz_api:event_name(JObj),
+    EventName = kz_api:event_name(Notification),
+
+    assert_valid(Notification, EventName),
+
+    handle_account_notification(Notification, EventName).
+
+handle_account_notification(Notification, <<"webhook">>) ->
+    Hook = webhooks_util:from_json(kz_json:get_ne_json_value(<<"Hook">>, Notification, kz_json:new())),
+    Data = kz_json:normalize(kz_json:get_ne_json_value(<<"Data">>, Notification, kz_json:new())),
+    webhooks_util:fire_hooks(Data, [Hook]);
+handle_account_notification(Notification, EventName) ->
+    AccountId = kapi_notifications:account_id(Notification),
+    handle_account_notification(Notification, EventName, AccountId
+                               ,webhooks_util:find_webhooks(?HOOK_NAME, AccountId)
+                               ).
+
+handle_account_notification(_Notification, _EventName, _AccountId, []) ->
+    lager:debug("no hooks to handle ~s for ~s", [_EventName, _AccountId]);
+handle_account_notification(Notification, EventName, _AccountId, Hooks) ->
+    Event = kz_json:normalize(Notification),
+    Filtered = [Hook || Hook <- Hooks, match_action_type(Hook, EventName)],
+
+    lager:debug("found ~b hook(s) to handle ~s", [length(Filtered), EventName]),
+    webhooks_util:fire_hooks(Event, Filtered).
+
+-spec assert_valid(kapi_notifications:doc(), kz_term:ne_binary()) -> 'true'.
+assert_valid(Notification, EventName) ->
     EventDefinition = kapi_notifications:api_definition(EventName),
 
     Validate = kapi_definition:validate_fun(EventDefinition),
-    'true' = Validate(JObj),
-
-    AccountId = kapi_notifications:account_id(JObj),
-    case EventName =:= <<"webhook">>
-        orelse webhooks_util:find_webhooks(?HOOK_NAME, AccountId)
-    of
-        'true' ->
-            Hook = webhooks_util:from_json(kz_json:get_ne_json_value(<<"Hook">>, JObj, kz_json:new())),
-            Data = kz_json:normalize(kz_json:get_ne_json_value(<<"Data">>, JObj, kz_json:new())),
-            webhooks_util:fire_hooks(Data, [Hook]);
-        [] ->
-            lager:debug("no hooks to handle ~s for ~s", [EventName, AccountId]);
-        Hooks ->
-            Event = kz_json:normalize(JObj),
-            Filtered = [Hook || Hook <- Hooks, match_action_type(Hook, EventName)],
-
-            lager:debug("found ~b hook(s) to handle ~s", [length(Filtered), EventName]),
-            webhooks_util:fire_hooks(Event, Filtered)
-    end.
+    'true' = Validate(Notification).
 
 -spec match_action_type(webhook(), kz_term:api_binary()) -> boolean().
 match_action_type(#webhook{hook_event = ?HOOK_NAME
                           ,custom_data='undefined'
-                          }, _Type) ->
+                          }, _EventName) ->
     'true';
 match_action_type(#webhook{hook_event = ?HOOK_NAME
-                          ,custom_data=JObj
-                          }, Type) ->
-    kz_json:get_value(<<"type">>, JObj) =:= Type
-        orelse kz_json:get_value(<<"type">>, JObj) =:= <<"all">>;
-match_action_type(#webhook{}=_W, _Type) ->
+                          ,custom_data = CustomData
+                          }, EventName) ->
+    Type = kz_json:get_ne_binary_value(<<"type">>, CustomData),
+    Type =:= EventName
+        orelse Type =:= <<"all">>;
+match_action_type(#webhook{}=_W, _EventName) ->
     'true'.
 
 %%------------------------------------------------------------------------------

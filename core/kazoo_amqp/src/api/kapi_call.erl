@@ -59,8 +59,12 @@
 -export([get_status/1]).
 -export([event_routing_key/2]).
 
+-export_type([event/0]).
+
 -include_lib("kazoo_amqp/src/kz_amqp_util.hrl").
 -include("kapi_call.hrl").
+
+-type event() :: kz_json:object().
 
 -spec optional_call_event_headers() -> kz_term:ne_binaries().
 optional_call_event_headers() ->

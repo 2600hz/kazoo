@@ -399,7 +399,7 @@ load_config_from_ancestors_fold([ParentId|AncestorIds], Category, JObjs) ->
 find_reseller_account(AccountId) ->
     case kz_services_reseller:get_id(AccountId) of
         'undefined' ->
-            lager:debug("failed to find account ~s parents and reseller"),
+            lager:debug("failed to find account ~s parents and reseller", [AccountId]),
             [];
         AccountId -> []; %% should get from direct reseller only
         ResellerId -> [ResellerId]

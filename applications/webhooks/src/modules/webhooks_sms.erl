@@ -63,33 +63,37 @@ account_bindings(_AccountId) -> [].
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_sms(kz_json:object(), kz_term:proplist()) -> any().
-handle_sms(JObj, _Props) ->
-    kz_util:put_callid(JObj),
-    'true' = kapi_conf:doc_update_v(JObj),
-    Type = kapi_conf:get_type(JObj),
-    Action = kz_api:event_name(JObj),
-    handle_sms(Action, Type, JObj).
+-spec handle_sms(kapi_conf:doc(), kz_term:proplist()) -> 'ok'.
+handle_sms(ConfChange, _Props) ->
+    kz_util:put_callid(ConfChange),
+    'true' = kapi_conf:doc_update_v(ConfChange),
+    Type = kapi_conf:get_type(ConfChange),
+    Action = kz_api:event_name(ConfChange),
+    handle_sms(Action, Type, ConfChange).
 
--spec handle_sms(kz_term:api_ne_binary(), kz_term:api_ne_binary(), json:object()) -> any().
-handle_sms(?DOC_CREATED, <<"sms">>, JObj) ->
-    Db = kapi_conf:get_database(JObj),
-    Id = kapi_conf:get_id(JObj),
-    {'ok', Doc} = kz_datamgr:open_doc(Db, Id),
-    AccountId = kz_util:format_account_id(Db),
-    case AccountId =/= 'undefined'
-        andalso webhooks_util:find_webhooks(?HOOK_NAME, AccountId) of
-        'false' -> 'ok';
-        [] ->
-            lager:debug("no hooks to handle ~s for ~s"
-                       ,[kz_api:event_name(JObj), AccountId]
-                       );
-        Hooks ->
-            Event = format_event(Doc, AccountId),
-            webhooks_util:fire_hooks(Event, Hooks)
+-spec handle_sms(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kapi_conf:doc()) -> 'ok'.
+handle_sms(?DOC_CREATED, <<"sms">>, ConfChange) ->
+    Db = kapi_conf:get_database(ConfChange),
+
+    case kz_util:format_account_id(Db) of
+        'undefined' -> 'ok';
+        AccountId ->
+            handle_account_sms(ConfChange, Db, AccountId)
     end;
-handle_sms(_Action, _Type, _JObj) ->
-    'ok'.
+handle_sms(_Action, _Type, _ConfChange) -> 'ok'.
+
+-spec handle_account_sms(kapi_conf:doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+handle_account_sms(ConfChange, Db, AccountId) ->
+    Id = kapi_conf:get_id(ConfChange),
+    {'ok', SMSDoc} = kz_datamgr:open_cache_doc(Db, {kzd_sms:type(), Id}),
+
+    case webhooks_util:find_webhooks(?HOOK_NAME, AccountId) of
+        [] ->
+            lager:debug("no hooks to handle ~s for ~s", [kz_api:event_name(ConfChange), AccountId]);
+        Hooks ->
+            Event = format_event(SMSDoc, AccountId),
+            webhooks_util:fire_hooks(Event, Hooks)
+    end.
 
 %%%=============================================================================
 %%% Internal functions
@@ -110,14 +114,14 @@ bindings() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec format_event(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
-format_event(JObj, AccountId) ->
+-spec format_event(kzd_sms:doc(), kz_term:ne_binary()) -> kz_json:object().
+format_event(SMSDoc, AccountId) ->
     kz_json:from_list(
-      [{<<"id">>, kz_doc:id(JObj)}
+      [{<<"id">>, kz_doc:id(SMSDoc)}
       ,{<<"account_id">>, AccountId}
-      ,{<<"from">>, kzd_sms:from_user(JObj)}
-      ,{<<"to">>, kzd_sms:to_user(JObj)}
-      ,{<<"body">>, kzd_sms:body(JObj)}
-      ,{<<"direction">>, kzd_sms:direction(JObj)}
-      ,{<<"status">>, kzd_sms:status(JObj)}
+      ,{<<"from">>, kzd_sms:from_user(SMSDoc)}
+      ,{<<"to">>, kzd_sms:to_user(SMSDoc)}
+      ,{<<"body">>, kzd_sms:body(SMSDoc)}
+      ,{<<"direction">>, kzd_sms:direction(SMSDoc)}
+      ,{<<"status">>, kzd_sms:status(SMSDoc)}
       ]).

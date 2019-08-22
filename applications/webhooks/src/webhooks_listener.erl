@@ -81,10 +81,9 @@ handle_config(JObj, Srv, ?DOC_EDITED) ->
     case kapi_conf:get_id(JObj) of
         'undefined' -> find_and_update_hook(JObj, Srv);
         HookId ->
-            {'ok', Hook} = kz_datamgr:open_doc(?KZ_WEBHOOKS_DB, HookId),
+            {'ok', Hook} = kz_datamgr:open_cache_doc(?KZ_WEBHOOKS_DB, HookId),
             case (not kapi_conf:get_is_soft_deleted(JObj))
-                andalso kzd_webhook:is_enabled(Hook)
-
+                andalso kzd_webhooks:enabled(Hook)
             of
                 'true' ->
                     gen_listener:cast(Srv, {'update_hook', webhooks_util:jobj_to_rec(Hook)});
@@ -126,12 +125,10 @@ find_and_remove_hook(JObj, Srv) ->
     gen_listener:cast(Srv, {'remove_hook', webhooks_util:hook_id(JObj)}).
 
 -spec find_hook(kz_json:object()) ->
-                       {'ok', kz_json:object()} |
+                       {'ok', kzd_webhooks:doc()} |
                        {'error', any()}.
 find_hook(JObj) ->
-    kz_datamgr:open_cache_doc(?KZ_WEBHOOKS_DB
-                             ,kapi_conf:get_id(JObj)
-                             ).
+    kz_datamgr:open_cache_doc(?KZ_WEBHOOKS_DB, kapi_conf:get_id(JObj)).
 
 %%%=============================================================================
 %%% gen_server callbacks

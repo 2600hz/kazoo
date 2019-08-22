@@ -133,7 +133,7 @@ delete(Context, _Id) ->
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation(C) end,
-    cb_context:validate_request_data(<<"sms">>, Context, OnSuccess).
+    cb_context:validate_request_data(kzd_sms:type(), Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
 %% @doc Load an instance from the database
@@ -142,9 +142,9 @@ create(Context) ->
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(?MATCH_MODB_PREFIX(Year,Month,_) = Id, Context) ->
     Context1 = cb_context:set_account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)),
-    crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(<<"sms">>));
+    crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(kzd_sms:type()));
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"sms">>)).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_sms:type())).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -214,7 +214,7 @@ on_successful_validation(Context) ->
              ,{<<"pvt_address_options">>, kz_json:from_list(AddrOpts)}
              ]
             ),
-    Doc = kz_doc:update_pvt_parameters(kz_json:merge(ContextDoc, JObj), MODB, [{'type', <<"sms">>}]),
+    Doc = kz_doc:update_pvt_parameters(kz_json:merge(ContextDoc, JObj), MODB, [{'type', kzd_sms:type()}]),
     cb_context:set_doc(cb_context:set_account_db(Context, MODB), Doc).
 
 -define(CALLER_ID_INTERNAL, [<<"caller_id">>, <<"internal">>, <<"number">>]).
