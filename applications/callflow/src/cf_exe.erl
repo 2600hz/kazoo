@@ -966,12 +966,12 @@ get_pid({Pid, _}) when is_pid(Pid) -> Pid;
 get_pid(_) -> 'undefined'.
 
 -spec maybe_hangup_call(state()) -> 'ok'.
-maybe_hangup_call(#state{hangup_info='undefined'}) -> 'ok';
 maybe_hangup_call(#state{amqp_worker=AMQPWorker
                         ,call=Call
-                        ,hangup_info=HangupInfo
+                        ,hangup_info='undefined'
                         }) ->
-    hangup_call(Call, kz_call_event:hangup_cause(HangupInfo), AMQPWorker).
+    hangup_call(Call, 'undefined', AMQPWorker);
+maybe_hangup_call(#state{}) -> 'ok'.
 
 -spec hangup_call(kapps_call:call(), kz_term:api_ne_binary(), pid()) -> 'ok'.
 hangup_call(Call, Cause, AMQPWorker) ->
