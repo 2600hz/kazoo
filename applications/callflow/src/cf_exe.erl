@@ -72,7 +72,7 @@
                ,flows = [] :: kz_json:objects()
                ,cf_module_pid :: kz_term:api_pid_ref()
                ,cf_module_old_pid :: kz_term:api_pid_ref()
-               ,hangup_info = [] :: kz_term:proplist()
+               ,hangup_info = 'undefined' :: kz_term:api_object()
                ,status = 'init' :: callfow_status()
                ,queue :: kz_term:api_ne_binary()
                ,self = self() :: pid()
@@ -215,9 +215,9 @@ control_usurped(Call) ->
 
 -spec channel_destroyed(kapps_call:call() | pid()) -> 'ok'.
 channel_destroyed(Srv) ->
-    channel_destroyed(Srv, kz_json:new()).
+    channel_destroyed(Srv, 'undefined').
 
--spec channel_destroyed(kapps_call:call() | pid(), kz_json:object()) -> 'ok'.
+-spec channel_destroyed(kapps_call:call() | pid(), kz_term:api_object()) -> 'ok'.
 channel_destroyed(Srv, JObj) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'channel_destroyed', JObj});
 channel_destroyed(Call, JObj) ->
@@ -670,17 +670,17 @@ terminate(_Reason, #state{call=Call
                          ,cf_module_pid='undefined'
                          ,hangup_info=HangupInfo
                          ,termination_handlers=DestroyHandlers
-                         }) ->
-    hangup_call(Call),
+                         }=State) ->
+    maybe_hangup_call(State),
     maybe_run_destroy_handlers(Call, HangupInfo, DestroyHandlers),
     lager:info("callflow execution has been stopped: ~p", [_Reason]);
 terminate(_Reason, #state{call=Call
                          ,cf_module_pid={Pid, _}
                          ,hangup_info=HangupInfo
                          ,termination_handlers=DestroyHandlers
-                         }) ->
+                         }=State) ->
     exit(Pid, 'kill'),
-    hangup_call(Call),
+    maybe_hangup_call(State),
     maybe_run_destroy_handlers(Call, HangupInfo, DestroyHandlers),
     lager:info("callflow execution has been stopped: ~p", [_Reason]).
 
@@ -937,9 +937,12 @@ maybe_run_destroy_handlers(Call, JObj, Handlers) ->
 get_pid({Pid, _}) when is_pid(Pid) -> Pid;
 get_pid(_) -> 'undefined'.
 
--spec hangup_call(kapps_call:call()) -> 'ok'.
-hangup_call(Call) ->
-    hangup_call(Call, 'undefined').
+-spec maybe_hangup_call(state()) -> 'ok'.
+maybe_hangup_call(#state{hangup_info='undefined'}) -> 'ok';
+maybe_hangup_call(#state{call=Call
+                        ,hangup_info=HangupInfo
+                        }) ->
+    hangup_call(Call, kz_json:get_ne_binary_value(<<"Hangup-Cause">>, HangupInfo)).
 
 -spec hangup_call(kapps_call:call(), kz_term:api_ne_binary()) -> 'ok'.
 hangup_call(Call, Cause) ->
