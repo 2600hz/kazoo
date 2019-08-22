@@ -177,13 +177,7 @@ arbitrator_broker() ->
 
 -spec broker_connections(kz_term:ne_binary()) -> non_neg_integer().
 broker_connections(Broker) ->
-    MatchSpec = [{#kz_amqp_connections{broker=Broker
-                                      ,_='_'
-                                      },
-                  [],
-                  ['true']}
-                ],
-    ets:select_count(?TAB, MatchSpec).
+    gen_server:call(?SERVER, {'broker_connections', Broker}).
 
 -spec connections() -> [kz_amqp_connections()].
 connections() ->
@@ -222,14 +216,7 @@ managers(Broker) ->
 
 -spec broker_available_connections(kz_term:ne_binary()) -> non_neg_integer().
 broker_available_connections(Broker) ->
-    MatchSpec = [{#kz_amqp_connections{broker=Broker
-                                      ,available='true'
-                                      ,_='_'
-                                      },
-                  [],
-                  ['true']}
-                ],
-    ets:select_count(?TAB, MatchSpec).
+    gen_server:call(?SERVER, {'broker_available_connections', Broker}).
 
 -spec primary_broker() -> kz_term:api_binary().
 primary_broker() ->
@@ -320,7 +307,25 @@ init([]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
+handle_call({'broker_connections', Broker}, _From, State) ->
+    MatchSpec = [{#kz_amqp_connections{broker=Broker
+                                      ,_='_'
+                                      },
+                  [],
+                  ['true']}
+                ],
+    {'reply', ets:select_count(?TAB, MatchSpec), State};
+handle_call({'broker_available_connections', Broker}, _From, State) ->
+    MatchSpec = [{#kz_amqp_connections{broker=Broker
+                                      ,available='true'
+                                      ,_='_'
+                                      },
+                  [],
+                  ['true']}
+                ],
+    {'reply', ets:select_count(?TAB, MatchSpec), State};
 handle_call(_Msg, _From, State) ->
+    lager:error("unhandled call from ~p => ~p", [_From, _Msg]),
     {'reply', {'error', 'not_implemented'}, State}.
 
 %%------------------------------------------------------------------------------
@@ -363,6 +368,8 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
+handle_info({'DOWN', _Ref, 'process', _Connection, shutdown}, State) ->
+    {'noreply', State, 'hibernate'};
 handle_info({'DOWN', Ref, 'process', Connection, _Reason}, State) ->
     lager:warning("connection ~p went down: ~p", [Connection, _Reason]),
     erlang:demonitor(Ref, ['flush']),

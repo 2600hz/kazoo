@@ -10,7 +10,7 @@
 
 -export([start_link/1]).
 -export([get_connection/1]).
--export([new_exchange/2]).
+-export([new_exchange/2, new_exchange/3]).
 -export([create_prechannel/1]).
 -export([disconnect/1]).
 -export([init/1
@@ -32,6 +32,8 @@
 -define(MAX_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
 -define(MAX_REMOTE_TIMEOUT, ?MILLISECONDS_IN_MINUTE).
 
+-define(SERVER_REPLY_NOT_FOUND, {shutdown,{server_initiated_close,404,_}}).
+
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -51,6 +53,10 @@ get_connection(Srv) ->
 -spec new_exchange(pid(), kz_amqp_exchange()) -> 'ok' | {'error', any()}.
 new_exchange(Srv, Exchange) ->
     gen_server:call(Srv, {'new_exchange', Exchange}).
+
+-spec new_exchange(pid(), pid(), kz_amqp_exchange()) -> 'ok' | {'error', any()}.
+new_exchange(Srv, Channel, Exchange) ->
+    gen_server:call(Srv, {'new_exchange', Channel, Exchange}).
 
 -spec create_prechannel(pid()) -> 'ok'.
 create_prechannel(Srv) ->
@@ -99,11 +105,17 @@ handle_call({'new_exchange', Exchange}
            ,_From
            ,#kz_amqp_connection{available='true'}=Connection
            ) ->
-    case declare_exchanges(Connection, [Exchange]) of
-        #kz_amqp_connection{exchanges_initialized='true'}=C ->
-            {'reply', 'ok', C};
-        #kz_amqp_connection{exchanges_initialized='false'}=C ->
-            {'reply', {'error', 'failed'}, C}
+    case declare_exchange(Connection, Exchange) of
+        #kz_amqp_connection{}=C -> {'reply', 'ok', C};
+        Else -> {'reply', Else, Connection}
+    end;
+handle_call({'new_exchange', Channel, Exchange}
+           ,_From
+           ,Connection
+           ) ->
+    case declare_exchange(Connection, Channel, Exchange) of
+        #kz_amqp_connection{}=C -> {'reply', 'ok', C};
+        Else -> {'reply', Else, Connection}
     end;
 handle_call(_Msg, _From, Connection) ->
     {'reply', {'error', 'not_implemented'}, Connection}.
@@ -138,15 +150,8 @@ handle_cast('create_prechannel'
            ) ->
     _ = kz_util:spawn(fun establish_prechannel/1, [Connection]),
     {'noreply', Connection, 'hibernate'};
-handle_cast({'new_exchange', _}
-           ,#kz_amqp_connection{available='false'}=Connection
-           ) ->
-    {'noreply', Connection, 'hibernate'};
-handle_cast({'new_exchange', Exchange}
-           ,#kz_amqp_connection{available='true'}=Connection
-           ) ->
-    {'noreply', declare_exchanges(Connection, [Exchange]), 'hibernate'};
 handle_cast(_Msg, Connection) ->
+    lager:debug("unhandled cast : ~p : ~p", [_Msg, Connection]),
     {'noreply', Connection}.
 
 %%------------------------------------------------------------------------------
@@ -158,6 +163,14 @@ handle_info({'DOWN', _Ref, 'process', _Pid, _Reason}
            ,#kz_amqp_connection{available='false'}=Connection
            ) ->
     {'noreply', Connection, 'hibernate'};
+handle_info({'DOWN', Ref, 'process', _Pid, ?SERVER_REPLY_NOT_FOUND}
+           ,#kz_amqp_connection{available='true'
+                               ,channel_ref=Ref
+                               ,broker=_Broker
+                               }=Connection
+           ) ->
+    lager:debug("command channel to ~s died with server not_found",[_Broker]),
+    {'noreply', create_control_channel(Connection), 'hibernate'};
 handle_info({'DOWN', Ref, 'process', _Pid, _Reason}
            ,#kz_amqp_connection{available='true'
                                ,channel_ref=Ref
@@ -242,9 +255,6 @@ connected(#kz_amqp_connection{channel='undefined'}=Connection) ->
           when is_pid(Pid)-> connected(Success);
         #kz_amqp_connection{}=Error -> Error
     end;
-connected(#kz_amqp_connection{exchanges_initialized='false', exchanges=Exchanges}=Connection) ->
-    Success = declare_exchanges(Connection#kz_amqp_connection{exchanges=#{}}, maps:values(Exchanges)),
-    connected(Success);
 connected(#kz_amqp_connection{available='false'}=Connection) ->
     _ = kz_amqp_connections:available(self()),
     connected(Connection#kz_amqp_connection{available='true'});
@@ -291,45 +301,32 @@ disconnected(#kz_amqp_connection{connection=Pid}=Connection, Timeout)
     disconnected(Connection#kz_amqp_connection{connection='undefined'}, Timeout);
 disconnected(#kz_amqp_connection{prechannels_initialized='true'}=Connection, Timeout) ->
     disconnected(Connection#kz_amqp_connection{prechannels_initialized='false'}, Timeout);
-disconnected(#kz_amqp_connection{exchanges_initialized='true'}=Connection, Timeout) ->
-    disconnected(Connection#kz_amqp_connection{exchanges_initialized='false'}, Timeout);
 disconnected(#kz_amqp_connection{}=Connection, Timeout) ->
     MaxTimeout = zone_timeout(Connection),
     NextTimeout = next_timeout(Timeout, MaxTimeout),
 
     Ref = erlang:send_after(Timeout, self(), {'connect', NextTimeout}),
     lager:debug("reconnecting after ~p in ~p", [Timeout, Ref]),
-    Connection#kz_amqp_connection{reconnect_ref=Ref}.
+    Connection#kz_amqp_connection{reconnect_ref=Ref,exchanges=#{}}.
 
-shutdown(#kz_amqp_connection{available=Available
-                            ,channel_ref=ChannelRef
-                            ,channel=ChannelPid
-                            ,connection_ref=ConnectionRef
-                            ,connection=ConnectionPid
+shutdown(#kz_amqp_connection{connection=ConnectionPid
                             }
         ) ->
-    shutdown_available(Available),
-    demonitor_refs([ChannelRef, ConnectionRef]),
-    shutdown_channel(ChannelPid),
     shutdown_connection(ConnectionPid).
 
-shutdown_available('true') -> kz_amqp_connections:unavailable(self());
-shutdown_available('false') -> 'ok'.
+shutdown_available('true') -> kz_amqp_connections:unavailable(self()).
 
 demonitor_refs([]) -> 'ok';
 demonitor_refs([Ref|Refs]) when is_reference(Ref) ->
     erlang:demonitor(Ref, ['flush']),
     lager:debug("unmonitored channel ref ~p", [Ref]),
-    demonitor_refs(Refs);
-demonitor_refs([_|Refs]) ->
     demonitor_refs(Refs).
 
 shutdown_channel(ChannelPid) when is_pid(ChannelPid) ->
     try kz_amqp_channel:close(ChannelPid) of
         _Closed -> lager:debug("closed channel ~p: ~p", [ChannelPid, _Closed])
     catch _E:_R -> lager:debug("closing channel ~p failed: ~s: ~p", [ChannelPid, _E, _R])
-    end;
-shutdown_channel(_ChannelPid) -> lager:debug("shutdown channel is not a pid: ~p", [_ChannelPid]).
+    end.
 
 shutdown_connection(ConnectionPid) when is_pid(ConnectionPid) ->
     lager:debug("shutting down connection PID ~p", [ConnectionPid]),
@@ -337,7 +334,7 @@ shutdown_connection(ConnectionPid) when is_pid(ConnectionPid) ->
         _Closed -> lager:debug("closed connection ~p: ~p", [ConnectionPid, _Closed])
     catch _E:_R -> lager:debug("closing connection ~p failed: ~s: ~p", [ConnectionPid, _E, _R])
     end;
-shutdown_connection(_ConnectionPid) -> lager:debug("shutdown connection is not a pid: ~p", [_ConnectionPid]).
+shutdown_connection(_ConnectionPid) -> 'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -501,21 +498,25 @@ open_channel(#kz_amqp_connection{connection=Pid}) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec declare_exchanges(kz_amqp_connection(), kz_amqp_exchanges()) -> kz_amqp_connection().
-declare_exchanges(#kz_amqp_connection{}=Connection, []) ->
-    Connection#kz_amqp_connection{exchanges_initialized='true'};
-declare_exchanges(#kz_amqp_connection{channel=Channel
-                                     ,broker=_Broker
-                                     ,exchanges=ExchangeMap
-                                     }=Connection
-                 ,[Exchange|Exchanges]
-                 )
+-spec declare_exchange(kz_amqp_connection(), kz_amqp_exchange()) -> kz_amqp_connection() | 'ok' | {'error', any()}.
+declare_exchange(#kz_amqp_connection{channel=Channel}=Connection
+                ,Exchange
+                ) ->
+    declare_exchange(Connection, Channel, Exchange).
+
+-spec declare_exchange(kz_amqp_connection(), pid(), kz_amqp_exchange()) -> kz_amqp_connection() | 'ok' | {'error', any()}.
+declare_exchange(#kz_amqp_connection{broker=_Broker
+                                    ,exchanges=ExchangeMap
+                                    }=Connection
+                ,Channel
+                ,Exchange
+                )
   when is_pid(Channel) ->
     ExchangeName = Exchange#'exchange.declare'.exchange,
     try not maps:is_key(ExchangeName, ExchangeMap)
              andalso amqp_channel:call(Channel, Exchange)
     of
-        'false' -> declare_exchanges(Connection, Exchanges);
+        'false' -> 'ok';
         #'exchange.declare_ok'{} ->
             lager:debug("declared ~s exchange ~s on ~s via ~p"
                        ,[Exchange#'exchange.declare'.type
@@ -523,7 +524,16 @@ declare_exchanges(#kz_amqp_connection{channel=Channel
                         ,_Broker
                         ,Channel
                         ]),
-            declare_exchanges(Connection#kz_amqp_connection{exchanges=ExchangeMap#{ExchangeName => Exchange}}, Exchanges);
+            Connection#kz_amqp_connection{exchanges=ExchangeMap#{ExchangeName => Exchange}};
+        _Else when Exchange#'exchange.declare'.passive ->
+            lager:debug("failed to declare ~s passive exchange ~s on ~s via ~p: ~p"
+                       ,[Exchange#'exchange.declare'.type
+                        ,Exchange#'exchange.declare'.exchange
+                        ,_Broker
+                        ,Channel
+                        ,_Else
+                        ]),
+            {'error', 'not_found'};
         _Else ->
             lager:critical("failed to declare ~s exchange ~s on ~s via ~p: ~p"
                           ,[Exchange#'exchange.declare'.type
@@ -532,10 +542,11 @@ declare_exchanges(#kz_amqp_connection{channel=Channel
                            ,Channel
                            ,_Else
                            ]),
-            declare_exchanges(create_control_channel(Connection)
-                             ,[Exchange|Exchanges]
-                             )
+            {'error', _Else}
     catch
+        _E:{?SERVER_REPLY_NOT_FOUND, _}
+          when Exchange#'exchange.declare'.passive ->
+            {'error', 'not_found'};
         _E:_R ->
             lager:critical("exception while declaring ~s exchange ~s on ~s via ~p: ~p"
                           ,[Exchange#'exchange.declare'.type
@@ -544,9 +555,7 @@ declare_exchanges(#kz_amqp_connection{channel=Channel
                            ,Channel
                            ,_R
                            ]),
-            declare_exchanges(create_control_channel(Connection)
-                             ,[Exchange|Exchanges]
-                             )
+            {'error', _R}
     end;
-declare_exchanges(#kz_amqp_connection{}=Connection, _) ->
-    disconnected(Connection#kz_amqp_connection{exchanges_initialized='false'}).
+declare_exchange(#kz_amqp_connection{}, _, _) ->
+    {'error', 'no_channel_for_command'}.

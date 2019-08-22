@@ -16,6 +16,7 @@
 -export([consumer_channel/0
         ,consumer_channel/1
         ,remove_consumer_channel/0
+        ,is_consumer_channel_valid/0
         ]).
 -export([channel_publish_method/0
         ,channel_publish_method/1
@@ -61,10 +62,10 @@ consumer_pid(Pid) when is_pid(Pid) ->
 remove_consumer_pid() ->
     put('$kz_amqp_consumer_pid', 'undefined').
 
--spec consumer_channel() -> pid() | kz_amqp_assignment().
+-spec consumer_channel() -> pid() | kz_amqp_assignment() | {'error', 'timeout'}.
 consumer_channel() ->
     case get('$kz_amqp_consumer_channel') of
-        'undefined' -> kz_amqp_assignments:get_channel(?ASSIGNMENT_TIMEOUT);
+        'undefined' -> kz_amqp_assignments:get_channel();
         Channel -> Channel
     end.
 
@@ -75,6 +76,13 @@ consumer_channel(Channel) ->
 -spec remove_consumer_channel() -> 'undefined'.
 remove_consumer_channel() ->
     put('$kz_amqp_consumer_channel', 'undefined').
+
+-spec is_consumer_channel_valid() -> boolean().
+is_consumer_channel_valid() ->
+    case get('$kz_amqp_consumer_channel') of
+        'undefined' -> 'false';
+        Channel -> is_process_alive(Channel)
+    end.
 
 -spec consumer_broker() -> kz_term:api_binary().
 consumer_broker() ->
@@ -105,23 +113,19 @@ channel_publish_method(Method)
        Method =:= 'call' ->
     put('$kz_amqp_channel_publish_method', Method).
 
--spec requisition() -> boolean().
+-spec requisition() -> 'ok'.
 requisition() -> requisition(consumer_pid()).
 
--spec requisition(pid() | kz_term:api_binary()) -> boolean().
+-spec requisition(pid() | kz_term:api_binary()) -> 'ok'.
 requisition(Consumer) when is_pid(Consumer) ->
     requisition(Consumer, consumer_broker());
 requisition(Broker) ->
     put('$kz_amqp_consumer_broker', Broker),
     requisition(consumer_pid(), Broker).
 
--spec requisition(pid(), kz_term:api_binary()) -> boolean().
+-spec requisition(pid(), kz_term:api_binary()) -> 'ok'.
 requisition(Consumer, Broker) when is_pid(Consumer) ->
-    case kz_amqp_assignments:request_channel(Consumer, Broker) of
-        #kz_amqp_assignment{channel=Channel}
-          when is_pid(Channel) -> 'true';
-        _Else -> 'false'
-    end.
+    kz_amqp_assignments:request_channel(Consumer, Broker).
 
 -spec release() -> 'ok'.
 release() -> release(consumer_pid()).
@@ -280,12 +284,25 @@ maybe_split_routing_key(RoutingKey) ->
 command(#'exchange.declare'{} = Command) ->
     case kz_amqp_connections:managers(consumer_broker()) of
         [] -> {'error', 'not_available'};
-        [Pid | _] -> kz_amqp_connection:new_exchange(Pid, Command)
+        [Pid | _] ->
+            case is_consumer_channel_valid() of
+                'true' -> kz_amqp_connection:new_exchange(Pid, consumer_channel(), Command);
+                'false' -> kz_amqp_connection:new_exchange(Pid, Command)
+            end
     end;
 command(Command) ->
     %% This will wait forever for a valid channel before publishing...
     %% all commands need to block till completion...
-    command(kz_amqp_assignments:get_channel(), Command).
+    case consumer_channel() of
+        Channel when is_pid(Channel) ->
+            Assignment = #kz_amqp_assignment{channel=Channel
+                                            ,consumer=consumer_pid()
+                                            },
+            command(Assignment, Command);
+        #kz_amqp_assignment{} = Assignment ->
+            command(Assignment, Command);
+        {'error', _} = Error -> Error
+    end.
 
 -spec command(kz_amqp_assignment(), kz_amqp_command()) -> command_ret().
 command(Assignment, Command) ->
@@ -293,8 +310,6 @@ command(Assignment, Command) ->
     exec_command(Assignment, Command).
 
 -spec exec_command(kz_amqp_assignment(), kz_amqp_command()) -> command_ret().
-exec_command(#kz_amqp_assignment{connection=Pid}, #'exchange.declare'{exchange=_Ex, type=_Ty}=Exchange) ->
-    kz_amqp_connection:new_exchange(Pid, Exchange);
 exec_command(#kz_amqp_assignment{channel=Pid}, #'channel.flow_ok'{}=FlowCtl) ->
     amqp_channel:cast(Pid, FlowCtl);
 exec_command(#kz_amqp_assignment{channel=Pid}, #'basic.ack'{}=BasicAck) ->
