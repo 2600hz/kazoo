@@ -669,19 +669,19 @@ terminate({'shutdown', 'control_usurped'}, _) ->
 terminate(_Reason, #state{call=Call
                          ,cf_module_pid='undefined'
                          ,hangup_info=HangupInfo
-                         ,termination_handlers=DestoryHandlers
+                         ,termination_handlers=DestroyHandlers
                          }) ->
     hangup_call(Call),
-    maybe_run_destory_handlers(Call, HangupInfo, DestoryHandlers),
+    maybe_run_destroy_handlers(Call, HangupInfo, DestroyHandlers),
     lager:info("callflow execution has been stopped: ~p", [_Reason]);
 terminate(_Reason, #state{call=Call
                          ,cf_module_pid={Pid, _}
                          ,hangup_info=HangupInfo
-                         ,termination_handlers=DestoryHandlers
+                         ,termination_handlers=DestroyHandlers
                          }) ->
     exit(Pid, 'kill'),
     hangup_call(Call),
-    maybe_run_destory_handlers(Call, HangupInfo, DestoryHandlers),
+    maybe_run_destroy_handlers(Call, HangupInfo, DestroyHandlers),
     lager:info("callflow execution has been stopped: ~p", [_Reason]).
 
 %%------------------------------------------------------------------------------
@@ -910,6 +910,7 @@ handle_error(Self, CallId, Notify, JObj) ->
 
 -spec check_for_channel_destroy(pid(), kz_term:pids(), kz_json:object()) -> 'ok'.
 check_for_channel_destroy(Self, Notify, JObj) ->
+    ?DEV_LOG("~n~p~n", [kz_json:get_first_defined([<<"Application-Response">>, <<"Hangup-Cause">>], JObj)]),
     case kz_json:get_first_defined([<<"Application-Response">>, <<"Hangup-Cause">>], JObj) of
         'undefined' ->
             relay_message(Notify, JObj);
@@ -927,8 +928,8 @@ relay_message(Notify, Message) ->
         ],
     'ok'.
 
--spec maybe_run_destory_handlers(kapps_call:call(), kz_json:object(), list()) -> 'ok'.
-maybe_run_destory_handlers(Call, JObj, Handlers) ->
+-spec maybe_run_destroy_handlers(kapps_call:call(), kz_json:object(), list()) -> 'ok'.
+maybe_run_destroy_handlers(Call, JObj, Handlers) ->
     _ = [erlang:apply(M, F, [Call, JObj | Args]) || {M, F, Args} <- Handlers],
     'ok'.
 
