@@ -28,9 +28,9 @@ handle(Data, Call) ->
         {'error', _R} when is_atom(_R) ->
             lager:info("failed to build endpoint from device: ~p", [_R]),
             cf_exe:continue(Call);
-        {'error', JObj} ->
+        {'error', _R} ->
             lager:info("error bridging to device: ~s"
-                      ,[kz_json:get_ne_binary_value(<<"Error-Message">>, JObj)]
+                      ,[kz_json:get_ne_binary_value(<<"Error-Message">>, _R)]
                       ),
             cf_exe:continue(Call)
     end.
