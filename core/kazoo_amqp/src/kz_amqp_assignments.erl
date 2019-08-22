@@ -85,14 +85,18 @@ get_channel(Consumer, Timeout) when is_pid(Consumer) ->
             request_and_wait(Consumer, kz_amqp_channel:consumer_broker(), Timeout)
     end.
 
--spec request_channel(pid(), kz_term:api_binary()) -> kz_amqp_assignment().
-request_channel(Consumer, 'undefined') when is_pid(Consumer) ->
+-spec request_channel(pid(), kz_term:api_binary()) -> 'ok'.
+request_channel(Consumer, Broker) ->
+    request_channel(Consumer, Broker, 'undefined').
+
+-spec request_channel(pid(), kz_term:api_binary(), kz_term:api_pid()) -> 'ok'.
+request_channel(Consumer, 'undefined', Watcher) when is_pid(Consumer) ->
     Broker = kz_amqp_connections:primary_broker(),
     Application = kapps_util:get_application(),
-    gen_server:call(?SERVER, {'request_float', Consumer, Broker, Application});
-request_channel(Consumer, Broker) when is_pid(Consumer) ->
+    gen_server:cast(?SERVER, {'request_float', Consumer, Broker, Application, Watcher});
+request_channel(Consumer, Broker, Watcher) when is_pid(Consumer) ->
     Application = kapps_util:get_application(),
-    gen_server:call(?SERVER, {'request_sticky', Consumer, Broker, Application}).
+    gen_server:cast(?SERVER, {'request_sticky', Consumer, Broker, Application, Watcher}).
 
 -spec add_channel(kz_term:ne_binary(), pid(), pid()) -> 'ok'.
 add_channel(Broker, Connection, Channel)
@@ -143,11 +147,6 @@ init([]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
-handle_call({'request_float', Consumer, Broker, Application}, _, State) ->
-    _ = import_pending_channels(),
-    {'reply', assign_or_reserve(Consumer, Broker, Application, 'float'), State};
-handle_call({'request_sticky', Consumer, Broker, Application}, _, State) ->
-    {'reply', assign_or_reserve(Consumer, Broker, Application, 'sticky'), State};
 handle_call({'release_handlers', Consumer}, _, State) ->
     gen_server:cast(self(), {'release_assignments', Consumer}),
     {'reply', release_handlers(Consumer), State};
@@ -183,6 +182,16 @@ handle_cast({'maybe_defer_reassign', #kz_amqp_assignment{timestamp=Timestamp
     ets:update_element(?TAB, Timestamp, Props),
     _ = maybe_reassign(Consumer),
     {'noreply', State};
+
+handle_cast({'request_float', Consumer, Broker, Application, Watcher}, State) ->
+    _ = import_pending_channels(),
+    _ = add_watcher(assign_or_reserve(Consumer, Broker, Application, 'float'), Watcher),
+    {'noreply', State};
+
+handle_cast({'request_sticky', Consumer, Broker, Application, Watcher}, State) ->
+    _ = add_watcher(assign_or_reserve(Consumer, Broker, Application, 'sticky'), Watcher),
+    {'noreply', State};
+
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -702,6 +711,9 @@ handle_down_msg(Matches, _Pid, Reason) ->
     lists:foreach(fun(M) -> handle_down_match(M, Reason) end, Matches).
 
 -spec handle_down_match(down_match(), any()) -> 'ok'.
+handle_down_match({'consumer', _}
+                 ,'shutdown'
+                 ) -> 'ok';
 handle_down_match({'consumer', #kz_amqp_assignment{consumer=Consumer}=Assignment}
                  ,_Reason
                  ) ->
@@ -711,6 +723,13 @@ handle_down_match({'consumer', #kz_amqp_assignment{consumer=Consumer}=Assignment
     _ = log_short_lived(Assignment),
     Pattern = #kz_amqp_assignment{consumer=Consumer, _='_'},
     release_assignments(ets:match_object(?TAB, Pattern, 1));
+handle_down_match({'channel', #kz_amqp_assignment{timestamp=Timestamp
+                                                 ,consumer='undefined'
+                                                 }
+                  }
+                 ,{shutdown,{connection_closing,{server_initiated_close, _, _}}}
+                 ) ->
+    ets:delete(?TAB, Timestamp);
 handle_down_match({'channel', #kz_amqp_assignment{timestamp=Timestamp
                                                  ,channel=Channel
                                                  ,broker=Broker
@@ -760,6 +779,15 @@ maybe_defer_reassign(#kz_amqp_assignment{}=Assignment
               timer:sleep(?SERVER_RETRY_PERIOD),
               gen_server:cast(?SERVER, {'maybe_defer_reassign', Assignment})
       end);
+maybe_defer_reassign(#kz_amqp_assignment{}=Assignment
+                    ,{'shutdown',{'connection_closing', _}}
+                    ) ->
+    lager:debug("defer channel reassign for ~p ms", [?SERVER_RETRY_PERIOD]),
+    kz_util:spawn(
+      fun() ->
+              timer:sleep(?SERVER_RETRY_PERIOD),
+              gen_server:cast(?SERVER, {'maybe_defer_reassign', Assignment})
+      end);
 maybe_defer_reassign(#kz_amqp_assignment{timestamp=Timestamp
                                         ,consumer=Consumer
                                         ,type=Type
@@ -789,22 +817,25 @@ reassign_props('sticky') ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec add_watcher(pid(), pid()) -> 'ok'.
-add_watcher(Consumer, Watcher) ->
+-spec add_watcher(pid() | kz_amqp_assignment(), kz_term:api_pid()) -> 'ok'.
+add_watcher(_Consumer, 'undefined') -> 'ok';
+add_watcher(Consumer, Watcher)
+  when is_pid(Consumer) ->
     case find(Consumer) of
-        #kz_amqp_assignment{channel=Channel}=Assignment
-          when is_pid(Channel) ->
-            Watcher ! Assignment,
-            'ok';
-        #kz_amqp_assignment{watchers=Watchers
-                           ,timestamp=Timestamp
-                           } ->
-            W = sets:add_element(Watcher, Watchers),
-            Props = [{#kz_amqp_assignment.watchers, W}],
-            ets:update_element(?TAB, Timestamp, Props),
-            'ok';
+        #kz_amqp_assignment{}=Assignment -> add_watcher(Assignment, Watcher);
         {'error', 'no_channel'} -> 'ok'
-    end.
+    end;
+add_watcher(#kz_amqp_assignment{channel=Channel}=Assignment, Watcher)
+  when is_pid(Channel) ->
+    Watcher ! Assignment,
+    'ok';
+add_watcher(#kz_amqp_assignment{watchers=Watchers
+                               ,timestamp=Timestamp
+                               }, Watcher) ->
+    W = sets:add_element(Watcher, Watchers),
+    Props = [{#kz_amqp_assignment.watchers, W}],
+    ets:update_element(?TAB, Timestamp, Props),
+    'ok'.
 
 -spec wait_for_assignment('infinity') -> kz_amqp_assignment();
                          (non_neg_integer()) -> kz_amqp_assignment() |
@@ -821,13 +852,8 @@ wait_for_assignment(Timeout) ->
                       (pid(), kz_term:api_binary(), non_neg_integer()) -> kz_amqp_assignment() |
                                                                           {'error', 'timeout'}.
 request_and_wait(Consumer, Broker, Timeout) when is_pid(Consumer) ->
-    case request_channel(Consumer, Broker) of
-        #kz_amqp_assignment{channel=Channel}=Assignment
-          when is_pid(Channel) -> Assignment;
-        #kz_amqp_assignment{} ->
-            gen_server:cast(?SERVER, {'add_watcher', Consumer, self()}),
-            wait_for_assignment(Timeout)
-    end.
+    request_channel(Consumer, Broker, self()),
+    wait_for_assignment(Timeout).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -891,9 +917,15 @@ release_handlers(Consumer)
     Pattern = #kz_amqp_assignment{consumer=Consumer, _='_'},
     release_handlers(ets:match_object(?TAB, Pattern, 1));
 release_handlers('$end_of_table') -> 'ok';
-release_handlers({[#kz_amqp_assignment{channel=Channel}], Continuation})
+release_handlers({[#kz_amqp_assignment{channel=Channel}]
+                 ,Continuation
+                 }
+                )
   when is_pid(Channel) ->
-    _ = unregister_channel_handlers(Channel),
+    case is_process_alive(Channel) of
+        'true' -> unregister_channel_handlers(Channel);
+        'false' -> 'ok'
+    end,
     release_handlers(ets:match(Continuation));
 release_handlers({[#kz_amqp_assignment{}], Continuation}) ->
     release_handlers(ets:match(Continuation)).

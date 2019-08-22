@@ -288,6 +288,7 @@ handle_search_error(Conference, Call, Srv) ->
     Arbitrator = kz_amqp_connections:arbitrator_broker(),
     Queue = kapps_conference:id(Conference),
     kz_amqp_channel:remove_consumer_pid(),
+    kz_amqp_channel:remove_consumer_channel(),
     _ = kz_amqp_channel:consumer_broker(Arbitrator),
     _ = kz_amqp_util:new_queue(Queue),
     try kz_amqp_util:basic_consume(Queue, [{'exclusive', 'true'}]) of

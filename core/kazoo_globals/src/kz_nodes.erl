@@ -682,6 +682,22 @@ handle_advertise(JObj, Props) ->
         'true' -> 'ok'
     end.
 
+-spec build_advertised_node(kz_json:object(), nodes_state()) -> kz_types:kz_node() | 'ok'.
+build_advertised_node(JObj, State) ->
+    try
+        from_json(JObj, State)
+    catch
+        _E:_R ->
+            lager:warning("error building advertised node : ~p", [{_E, _R}])
+    end.
+
+-spec update_advertised_node(kz_types:kz_node(), nodes_state()) -> pid() | 'true'.
+update_advertised_node(Node, #state{tab=Tab}=State) ->
+    case ets:insert_new(Tab, Node) of
+        'true' -> kz_util:spawn(fun notify_new/2, [Node, State]);
+        'false' -> ets:insert(Tab, Node)
+    end.
+
 %%%=============================================================================
 %%% gen_server callbacks
 %%%=============================================================================
@@ -743,13 +759,13 @@ handle_cast({'notify_new', Pid}, #state{notify_new=Set}=State) ->
 handle_cast({'notify_expire', Pid}, #state{notify_expire=Set}=State) ->
     _ = erlang:monitor('process', Pid),
     {'noreply', State#state{notify_expire=sets:add_element(Pid, Set)}};
-handle_cast({'advertise', JObj}, #state{tab=Tab}=State) ->
-    #kz_node{}=Node = from_json(JObj, State),
-    _ = case ets:insert_new(Tab, Node) of
-            'true' -> kz_util:spawn(fun notify_new/2, [Node, State]);
-            'false' -> ets:insert(Tab, Node)
-        end,
-    {'noreply', maybe_add_zone(Node, State)};
+handle_cast({'advertise', JObj}, State) ->
+    case build_advertised_node(JObj, State) of
+        #kz_node{}=Node ->
+            _ = update_advertised_node(Node, State),
+            {'noreply', maybe_add_zone(Node, State)};
+        'ok' -> {'noreply', State}
+    end;
 handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
     lager:info("nodes acquired queue name ~s, starting remote heartbeats", [_Q]),
     {'noreply', State};
@@ -801,14 +817,14 @@ handle_info({'heartbeat', Ref}
     Reference = erlang:make_ref(),
     _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
 
-    try create_node(Heartbeat, State) of
-        Node ->
-            _ = ets:insert(Tab, Node),
-            AdvertisedPayload = advertise_payload(Node),
-            _ = kz_amqp_worker:cast(AdvertisedPayload, fun kapi_nodes:publish_advertise/1),
-            lager:debug("status: ~s", [kz_json:encode(kz_json:from_list(AdvertisedPayload))]),
-            {'noreply', State#state{heartbeat_ref=Reference, me=Node}}
+    try
+        Node = #kz_node{} = create_node(Heartbeat, State),
+        _ = ets:insert(Tab, Node),
+        kapi_nodes:publish_advertise(advertise_payload(Node)),
+        {'noreply', State#state{heartbeat_ref=Reference, me=Node}}
     catch
+        _:{noproc,_} ->
+            {'noreply', State#state{heartbeat_ref=Reference}, 'hibernate'};
         'exit' : {'timeout' , _} when Me =/= 'undefined' ->
             NewMe = Me#kz_node{expires=Heartbeat},
             _ = ets:insert(Tab, NewMe),

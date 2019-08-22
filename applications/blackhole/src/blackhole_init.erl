@@ -60,10 +60,11 @@ maybe_start_plaintext(Dispatch, IP) ->
             try
                 lager:info("trying to bind to address ~s port ~b", [inet:ntoa(IP), Port]),
                 cowboy:start_clear('blackhole_socket_handler'
-                                  ,[{'ip', IP}
-                                   ,{'port', Port}
-                                   ,{'num_acceptors', Workers}
-                                   ]
+                                  ,#{'socket_opts' => [{'ip', IP}
+                                                      ,{'port', Port}
+                                                      ]
+                                    ,'num_acceptors' => Workers
+                                    }
                                   ,#{'env' => #{'dispatch' => Dispatch
                                                ,'timeout' => ReqTimeout
                                                }
@@ -105,10 +106,9 @@ start_ssl(Dispatch, IP) ->
                            ]
                           ),
                 cowboy:start_tls('blackhole_socket_handler_ssl'
-                                ,[{'ip', IP}
-                                 ,{'num_acceptors', Workers}
-                                  | SSLOpts
-                                 ]
+                                ,#{'socket_opts' => [{'ip', IP} | SSLOpts]
+                                  ,'num_acceptors' => Workers
+                                  }
                                 ,#{'env' => #{'dispatch' => Dispatch
                                              ,'timeout' => ReqTimeout
                                              }

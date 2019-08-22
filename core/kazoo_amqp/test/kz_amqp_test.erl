@@ -55,7 +55,7 @@ start_publisher() ->
 
 run_publisher() ->
     kz_util:put_callid(<<?MODULE_STRING"-publisher">>),
-    'true' = kz_amqp_channel:requisition(),
+    'ok' = kz_amqp_channel:requisition(),
 
     Payload = [{<<"Category">>, <<"amqp">>}
               ,{<<"Key">>, <<"recv">>}
@@ -67,7 +67,7 @@ loop_publisher(Payload) ->
     loop_publisher(Payload, 2600).
 
 loop_publisher(Payload, Timeout) ->
-    Start = erlang:monotonic_time(),
+    Start = kz_time:start_time(),
     receive
         'stop' -> lager:info("publisher instructed to stop");
         {'kz_amqp_assignment',{'new_channel',_IsNew, _Channel}} ->
@@ -96,7 +96,7 @@ start_consumer() ->
 
 run_consumer() ->
     kz_util:put_callid(<<?MODULE_STRING"-consumer">>),
-    'true' = kz_amqp_channel:requisition(),
+    'ok' = kz_amqp_channel:requisition(),
 
     loop_consumer(<<?MODULE_STRING>>).
 
@@ -139,6 +139,6 @@ loop_consumer(Queue, Timeout) ->
 
 decr('infinity', _Start) -> 'infinity';
 decr(Timeout, Start) ->
-    Timeout - (erlang:convert_time_unit(erlang:monotonic_time()-Start, 'native', 'millisecond')).
+    kz_time:decr_timeout(Timeout, Start).
 
 %% WHY a watcher?

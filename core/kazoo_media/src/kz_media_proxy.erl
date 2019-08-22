@@ -47,10 +47,11 @@ maybe_start_plaintext(Dispatch, IP) ->
             Listeners = kapps_config:get_integer(?CONFIG_CAT, <<"proxy_listeners">>, 25),
 
             {'ok', _Pid} = cowboy:start_clear(?MODULE
-                                             ,[{'ip', IP}
-                                              ,{'port', Port}
-                                              ,{'num_acceptors', Listeners}
-                                              ]
+                                             ,#{'socket_opts' => [{'ip', IP}
+                                                                 ,{'port', Port}
+                                                                 ]
+                                               ,'num_acceptors' => Listeners
+                                               }
                                              ,#{'env' => #{'dispatch' => Dispatch}}
                                              ),
             lager:info("started media proxy(~p) on port ~p", [_Pid, Port])
@@ -81,13 +82,14 @@ maybe_start_ssl(Dispatch, IP) ->
 
             try
                 {'ok', _Pid} = cowboy:start_tls('media_mgr_ssl'
-                                               ,[{'ip', IP}
-                                                ,{'port', SSLPort}
-                                                ,{'num_acceptors', Listeners}
-                                                ,{'certfile', find_file(SSLCert, RootDir)}
-                                                ,{'keyfile', find_file(SSLKey, RootDir)}
-                                                ,{'password', SSLPassword}
-                                                ]
+                                               ,#{'socket_opts' => [{'ip', IP}
+                                                                   ,{'port', SSLPort}
+                                                                   ,{'certfile', find_file(SSLCert, RootDir)}
+                                                                   ,{'keyfile', find_file(SSLKey, RootDir)}
+                                                                   ,{'password', SSLPassword}
+                                                                   ]
+                                                 ,'num_acceptors' => Listeners
+                                                 }
                                                ,#{'env' => #{'dispatch' => Dispatch}
                                                  }
                                                ),
