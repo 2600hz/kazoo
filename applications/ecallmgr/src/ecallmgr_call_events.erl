@@ -1062,7 +1062,8 @@ usurp_other_publishers(#state{node=Node
             ,{<<"Reference">>, Ref}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    kapi_call:publish_usurp_publisher(CallId, Usurp),
+    PublisherFun = fun(P) -> kapi_call:publish_usurp_publisher(CallId, P) end,
+    kz_amqp_worker:cast(Usurp, PublisherFun),
     ecallmgr_usurp_monitor:register('usurp_publisher', CallId, Ref).
 
 -spec get_is_loopback(kz_term:api_binary()) -> atom().
