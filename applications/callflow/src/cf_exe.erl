@@ -938,11 +938,11 @@ get_pid({Pid, _}) when is_pid(Pid) -> Pid;
 get_pid(_) -> 'undefined'.
 
 -spec maybe_hangup_call(state()) -> 'ok'.
-maybe_hangup_call(#state{hangup_info='undefined'}) -> 'ok';
-maybe_hangup_call(#state{call=Call
-                        ,hangup_info=HangupInfo
+maybe_hangup_call(#state{hangup_info='undefined'
+                        ,call=Call
                         }) ->
-    hangup_call(Call, kz_json:get_ne_binary_value(<<"Hangup-Cause">>, HangupInfo)).
+    hangup_call(Call, 'undefined');
+maybe_hangup_call(#state{}) -> 'ok'.
 
 -spec hangup_call(kapps_call:call(), kz_term:api_ne_binary()) -> 'ok'.
 hangup_call(Call, Cause) ->
