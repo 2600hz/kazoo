@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.number_manager.bics",
+    "description": "Schema for number_manager.bics system_config",
+    "properties": {
+        "api_token": {
+            "default": "",
+            "description": "number_manager bics api auth bearer token",
+            "type": "string"
+        },
+        "api_url": {
+            "default": "https://mynumbers.api.bics.com/",
+            "description": "number_manager bics api_url",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}
