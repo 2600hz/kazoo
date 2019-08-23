@@ -12429,6 +12429,18 @@
       'description': number_manager voxbone max_page_size
       'type': integer
   'type': object
+'system_config.number_manager.bics':
+  'description': Schema for number_manager.bics system_config
+  'properties':
+    'api_token':
+      'default': ''
+      'description': number_manager bics auth bearer token
+      'type': string
+    'api_url':
+      'default': 'https://mynumbers.api.bics.com/'
+      'description': number_manager bics api url
+      'type': string
+  'type': object
 'system_config.omnipresence':
   'description': Schema for omnipresence system_config
   'properties':
