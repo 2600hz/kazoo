@@ -421,6 +421,7 @@ move_channel_to_consumer(#kz_amqp_assignment{timestamp=Timestamp
     Assignment =
         ConsumerAssignment#kz_amqp_assignment{channel=Channel
                                              ,channel_ref=ChannelRef
+                                             ,broker=Broker
                                              ,connection=Connection
                                              ,assigned=kz_time:now_s()
                                              },
@@ -464,7 +465,7 @@ add_consumer_to_channel(#kz_amqp_assignment{channel=Channel
                                                   ,watchers=sets:new()
                                                   }),
     lager:debug("assigned existing channel ~p on ~s(~p) to new consumer ~p"
-               ,[Channel, _Broker, Consumer, Connection]
+               ,[Channel, _Broker, Connection, Consumer]
                ),
 
     register_channel_handlers(Channel, Consumer),
@@ -566,6 +567,7 @@ assign_channel(#kz_amqp_assignment{channel=CurrentChannel
                ),
 
     _ = (catch kz_amqp_channel:close(CurrentChannel)),
+    Consumer ! {'kz_amqp_assignment', 'lost_channel'},
     assign_channel(Assignment#kz_amqp_assignment{channel='undefined'
                                                 ,reconnect='true'
                                                 }
