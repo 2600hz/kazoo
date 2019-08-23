@@ -9,7 +9,7 @@
             "type": "string"
         },
         "api_url": {
-            "default": "https://mynumbers.api.bics.com/",
+            "default": "https://mynumbers.api.bics.com",
             "description": "number_manager bics api_url",
             "type": "string"
         }

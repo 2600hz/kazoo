@@ -12621,7 +12621,7 @@
       'description': number_manager bics auth bearer token
       'type': string
     'api_url':
-      'default': 'https://mynumbers.api.bics.com/'
+      'default': 'https://mynumbers.api.bics.com'
       'description': number_manager bics api url
       'type': string
   'type': object

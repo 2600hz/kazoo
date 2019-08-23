@@ -8,7 +8,7 @@
 -behaviour(knm_gen_carrier).
 
 -include("knm.hrl").
--include("../knm_bics.hrl").
+-include("knm_bics.hrl").
 
 -export([info/0]).
 -export([is_local/0]).
@@ -230,8 +230,10 @@ bearer_token() ->
 
 -spec get_inventory_url(binary(), binary()) -> binary().
 get_inventory_url(Product, Country) ->
-    <<(?BICS_BASE_URL), "/availablenumbers?product=", Product/binary, "&country=", Country/binary>>.
+    Base = ?BICS_BASE_URL,
+    <<Base/binary, "/availablenumbers?product=", Product/binary, "&country=", Country/binary>>.
 
 -spec get_acquisition_url() -> binary().
 get_acquisition_url() ->
-    <<(?BICS_BASE_URL), "/order/bulk">>.
+    Base = ?BICS_BASE_URL,
+    <<Base/binary, "/order/bulk">>.

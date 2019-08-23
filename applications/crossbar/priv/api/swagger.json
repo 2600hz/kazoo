@@ -34122,6 +34122,22 @@
             },
             "type": "object"
         },
+        "system_config.number_manager.bics": {
+            "description": "Schema for number_manager.bics system_config",
+            "properties": {
+                "api_token": {
+                    "default": "",
+                    "description": "number_manager bics api bearer token",
+                    "type": "string"
+                },
+                "api_url": {
+                    "default": "https://mynumbers.api.bics.com",
+                    "description": "number_manager bics api url",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "system_config.number_manager.dash_e911": {
             "description": "Schema for number_manager.dash_e911 system_config",
             "properties": {
@@ -34355,22 +34371,6 @@
                     "default": 20,
                     "description": "number_manager voxbone max_page_size",
                     "type": "integer"
-                }
-            },
-            "type": "object"
-        },
-        "system_config.number_manager.bics": {
-            "description": "Schema for number_manager.bics system_config",
-            "properties": {
-                "api_token": {
-                    "default": "",
-                    "description": "number_manager bics api bearer token",
-                    "type": "string"
-                },
-                "api_url": {
-                    "default": "https://mynumbers.api.bics.com/",
-                    "description": "number_manager bics api url",
-                    "type": "string"
                 }
             },
             "type": "object"
