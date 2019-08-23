@@ -49,7 +49,10 @@
 
 -include_lib("kz_amqp_util.hrl").
 
--define(BINDING_STRING(Category, Name), <<"bookkeepers.", (Category)/binary, ".", (Name)/binary>>).
+-define(API_CATEGORY, <<"bookkeepers">>).
+-define(BINDING_STRING(Category, Name)
+       ,<<(?API_CATEGORY)/binary, ".", (Category)/binary, ".", (Name)/binary>>
+       ).
 
 %%%=============================================================================
 %%% Internal Bookkeeper Definitions
@@ -61,27 +64,31 @@
 %%------------------------------------------------------------------------------
 -spec collect_recurring_req_definition() -> kapi_definition:api().
 collect_recurring_req_definition() ->
-    #kapi_definition{name = <<"collect_recurring_req">>
-                    ,friendly_name = <<"Collect Recurring Charges Request">>
-                    ,description = <<"Will trigger the appropriate bookkeeper to collect recurring charges">>
-                    ,build_fun = fun collect_recurring_req/1
-                    ,validate_fun = fun collect_recurring_req_v/1
-                    ,publish_fun = fun collect_recurring_req/1
-                    ,binding = ?BINDING_STRING(<<"collect_recurring">>, <<"request">>)
-                    ,restrict_to = 'collect_recurring'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Bookkeeper-ID">>
-                                        ,<<"Bookkeeper-Type">>
-                                        ,<<"Due-Timestamp">>
-                                        ,<<"Vendor-ID">>
-                                        ]
-                    ,optional_headers = [<<"Audit-Log">>
-                                        ]
-                    ,values = [{<<"Event-Category">>, <<"bookkeepers">>}
-                              ,{<<"Event-Name">>, <<"collect_recurring_req">>}
-                              ]
-                    ,types = []
-                    }.
+    EventName = <<"collect_recurring_req">>,
+    Category = <<"collect_recurring">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Collect Recurring Charges Request">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"Will trigger the appropriate bookkeeper to collect recurring charges">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun collect_recurring_req/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun collect_recurring_req_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun collect_recurring_req/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"request">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'collect_recurring'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Bookkeeper-ID">>
+                                                            ,<<"Bookkeeper-Type">>
+                                                            ,<<"Due-Timestamp">>
+                                                            ,<<"Vendor-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Audit-Log">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -89,30 +96,34 @@ collect_recurring_req_definition() ->
 %%------------------------------------------------------------------------------
 -spec collect_recurring_resp_definition() -> kapi_definition:api().
 collect_recurring_resp_definition() ->
-    #kapi_definition{name = <<"collect_recurring_resp">>
-                    ,friendly_name = <<"Collect Recurring Charges Response">>
-                    ,description = <<"Result of request to collect recurring charges via the bookkeeper">>
-                    ,build_fun = fun collect_recurring_resp/1
-                    ,validate_fun = fun collect_recurring_resp_v/1
-                    ,publish_fun = fun publish_collect_recurring_resp/2
-                    ,binding = ?BINDING_STRING(<<"collect_recurring">>, <<"response">>)
-                    ,restrict_to = 'collect_recurring'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Bookkeeper-ID">>
-                                        ,<<"Bookkeeper-Type">>
-                                        ,<<"Status">>
-                                        ]
-                    ,optional_headers = [<<"Details">>
-                                        ,<<"Message">>
-                                        ,<<"Reason">>
-                                        ,<<"Transaction-ID">>
-                                        ,<<"Transaction-DB">>
-                                        ]
-                    ,values = [{<<"Event-Category">>, <<"bookkeepers">>}
-                              ,{<<"Event-Name">>, <<"collect_recurring_resp">>}
-                              ]
-                    ,types = []
-                    }.
+    EventName = <<"collect_recurring_resp">>,
+    Category = <<"collect_recurring">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Collect Recurring Charges Response">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"Result of request to collect recurring charges via the bookkeeper">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun collect_recurring_resp/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun collect_recurring_resp_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_collect_recurring_resp/2}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"response">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'collect_recurring'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Bookkeeper-ID">>
+                                                            ,<<"Bookkeeper-Type">>
+                                                            ,<<"Status">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Details">>
+                                                            ,<<"Message">>
+                                                            ,<<"Reason">>
+                                                            ,<<"Transaction-ID">>
+                                                            ,<<"Transaction-DB">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -120,51 +131,59 @@ collect_recurring_resp_definition() ->
 %%------------------------------------------------------------------------------
 -spec sale_req_definition() -> kapi_definition:api().
 sale_req_definition() ->
-    #kapi_definition{name = <<"sale_req">>
-                    ,friendly_name = <<"Sale Request">>
-                    ,description = <<"Will trigger the appropriate bookkeeper to issue a sale">>
-                    ,build_fun = fun sale_req/1
-                    ,validate_fun = fun sale_req_v/1
-                    ,publish_fun = fun publish_sale_req/1
-                    ,binding = ?BINDING_STRING(<<"sale">>, <<"request">>)
-                    ,restrict_to = 'sale'
-                    ,required_headers = [<<"Bookkeeper-Type">>
-                                        ,<<"Vendor-ID">>
-                                        ,<<"Account-ID">>
-                                        ,<<"Transaction-ID">>
-                                        ,<<"Transaction-DB">>
-                                        ,<<"Amount">>
-                                        ]
-                    ,optional_headers = []
-                    ,values = [{<<"Event-Category">>, <<"bookkeepers">>}
-                              ,{<<"Event-Name">>, <<"sale_req">>}
-                              ]
-                    ,types = []
-                    }.
+    EventName = <<"sale_req">>,
+    Category = <<"sale">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Sale Request">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"Will trigger the appropriate bookkeeper to issue a sale">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun sale_req/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun sale_req_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_sale_req/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"request">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'sale'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Bookkeeper-Type">>
+                                                            ,<<"Vendor-ID">>
+                                                            ,<<"Account-ID">>
+                                                            ,<<"Transaction-ID">>
+                                                            ,<<"Transaction-DB">>
+                                                            ,<<"Amount">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, []}
+              ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 -spec sale_resp_definition() -> kapi_definition:api().
 sale_resp_definition() ->
-    #kapi_definition{name = <<"sale_resp">>
-                    ,friendly_name = <<"Sale Response">>
-                    ,description = <<"Result of the attempt to issue a sale via the bookkeeper">>
-                    ,build_fun = fun sale_resp/1
-                    ,validate_fun = fun sale_resp_v/1
-                    ,publish_fun = fun publish_sale_resp/2
-                    ,binding = ?BINDING_STRING(<<"sale">>, <<"response">>)
-                    ,restrict_to = 'sale'
-                    ,required_headers = [<<"Status">>
-                                        ,<<"Transaction-ID">>
-                                        ,<<"Transaction-DB">>
-                                        ]
-                    ,optional_headers = [<<"Message">>
-                                        ,<<"Reason">>
-                                        ,<<"Details">>
-                                        ]
-                    ,values = [{<<"Event-Category">>, <<"bookkeepers">>}
-                              ,{<<"Event-Name">>, <<"sale_resp">>}
-                              ]
-                    ,types = []
-                    }.
+    EventName = <<"sale_resp">>,
+    Category = <<"sale">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Sale Response">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"Result of the attempt to issue a sale via the bookkeeper">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun sale_resp/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun sale_resp_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_sale_resp/2}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"response">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'sale'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Status">>
+                                                            ,<<"Transaction-ID">>
+                                                            ,<<"Transaction-DB">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Message">>
+                                                            ,<<"Reason">>
+                                                            ,<<"Details">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -172,51 +191,59 @@ sale_resp_definition() ->
 %%------------------------------------------------------------------------------
 -spec refund_req_definition() -> kapi_definition:api().
 refund_req_definition() ->
-    #kapi_definition{name = <<"refund_req">>
-                    ,friendly_name = <<"Refund Request">>
-                    ,description = <<"Will trigger the appropriate bookkeeper to issue a refund">>
-                    ,build_fun = fun refund_req/1
-                    ,validate_fun = fun refund_req_v/1
-                    ,publish_fun = fun publish_refund_req/1
-                    ,binding = ?BINDING_STRING(<<"refund">>, <<"request">>)
-                    ,restrict_to = 'refund'
-                    ,required_headers = [<<"Bookkeeper-Type">>
-                                        ,<<"Vendor-ID">>
-                                        ,<<"Account-ID">>
-                                        ,<<"Transaction-ID">>
-                                        ,<<"Transaction-DB">>
-                                        ,<<"Amount">>
-                                        ]
-                    ,optional_headers = []
-                    ,values = [{<<"Event-Category">>, <<"bookkeepers">>}
-                              ,{<<"Event-Name">>, <<"refund_req">>}
-                              ]
-                    ,types = []
-                    }.
+    EventName = <<"refund_req">>,
+    Category = <<"refund">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Refund Request">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"Will trigger the appropriate bookkeeper to issue a refund">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun refund_req/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun refund_req_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_refund_req/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"request">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'refund'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Bookkeeper-Type">>
+                                                            ,<<"Vendor-ID">>
+                                                            ,<<"Account-ID">>
+                                                            ,<<"Transaction-ID">>
+                                                            ,<<"Transaction-DB">>
+                                                            ,<<"Amount">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, []}
+              ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 -spec refund_resp_definition() -> kapi_definition:api().
 refund_resp_definition() ->
-    #kapi_definition{name = <<"refund_resp">>
-                    ,friendly_name = <<"Refund Response">>
-                    ,description = <<"Result of the attempt to refund via the bookkeeper">>
-                    ,build_fun = fun refund_resp/1
-                    ,validate_fun = fun refund_resp_v/1
-                    ,publish_fun = fun publish_refund_resp/2
-                    ,binding = ?BINDING_STRING(<<"refund">>, <<"response">>)
-                    ,restrict_to = 'refund'
-                    ,required_headers = [<<"Status">>
-                                        ,<<"Transaction-ID">>
-                                        ,<<"Transaction-DB">>
-                                        ]
-                    ,optional_headers = [<<"Message">>
-                                        ,<<"Reason">>
-                                        ,<<"Details">>
-                                        ]
-                    ,values = [{<<"Event-Category">>, <<"bookkeepers">>}
-                              ,{<<"Event-Name">>, <<"refund_resp">>}
-                              ]
-                    ,types = []
-                    }.
+    EventName = <<"refund_resp">>,
+    Category = <<"refund">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Refund Response">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"Result of the attempt to refund via the bookkeeper">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun refund_resp/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun refund_resp_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_refund_resp/2}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"response">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'refund'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Status">>
+                                                            ,<<"Transaction-ID">>
+                                                            ,<<"Transaction-DB">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Message">>
+                                                            ,<<"Reason">>
+                                                            ,<<"Details">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -224,49 +251,58 @@ refund_resp_definition() ->
 %%------------------------------------------------------------------------------
 -spec update_req_definition() -> kapi_definition:api().
 update_req_definition() ->
-    #kapi_definition{name = <<"update_req">>
-                    ,friendly_name = <<"Subscription Update Request">>
-                    ,description = <<"A request to a bookkeeper to update or create a subscription">>
-                    ,build_fun = fun update_req/1
-                    ,validate_fun = fun update_req_v/1
-                    ,publish_fun = fun publish_update_req/1
-                    ,binding = ?BINDING_STRING(<<"update">>, <<"request">>)
-                    ,restrict_to = 'update'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Bookkeeper-ID">>
-                                        ,<<"Bookkeeper-Type">>
-                                        ,<<"Invoice">>
-                                        ,<<"Vendor-ID">>
-                                        ]
-                    ,optional_headers = [<<"Dry-Run">>
-                                        ,<<"Audit-Log">>
-                                        ]
-                    ,values = [{<<"Event-Category">>, <<"bookkeepers">>}
-                              ,{<<"Event-Name">>, <<"update_req">>}
-                              ]
-                    ,types = []
-                    }.
+    EventName = <<"update_req">>,
+    Category = <<"update">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Subscription Update Request">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"A request to a bookkeeper to update or create a subscription">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun update_req/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun update_req_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_update_req/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"request">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'update'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Bookkeeper-ID">>
+                                                            ,<<"Bookkeeper-Type">>
+                                                            ,<<"Invoice">>
+                                                            ,<<"Vendor-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Dry-Run">>
+                                                            ,<<"Audit-Log">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 -spec update_resp_definition() -> kapi_definition:api().
 update_resp_definition() ->
-    #kapi_definition{name = <<"update_resp">>
-                    ,friendly_name = <<"Subscription Update Response">>
-                    ,description = <<"The result of a subscription update request">>
-                    ,build_fun = fun update_resp/1
-                    ,validate_fun = fun update_resp_v/1
-                    ,publish_fun = fun publish_update_resp/2
-                    ,binding = ?BINDING_STRING(<<"update">>, <<"response">>)
-                    ,restrict_to = 'update'
-                    ,required_headers = [<<"Status">>]
-                    ,optional_headers = [<<"Message">>
-                                        ,<<"Reason">>
-                                        ,<<"Details">>
-                                        ]
-                    ,values = [{<<"Event-Category">>, <<"bookkeepers">>}
-                              ,{<<"Event-Name">>, <<"update_resp">>}
-                              ]
-                    ,types = []
-                    }.
+    EventName = <<"update_resp">>,
+    Category = <<"update">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Subscription Update Response">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"The result of a subscription update request">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun update_resp/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun update_resp_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_update_resp/2}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"response">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'update'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Status">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Message">>
+                                                            ,<<"Reason">>
+                                                            ,<<"Details">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -274,48 +310,55 @@ update_resp_definition() ->
 %%------------------------------------------------------------------------------
 -spec standing_req_definition() -> kapi_definition:api().
 standing_req_definition() ->
-    #kapi_definition{name = <<"standing_req">>
-                    ,friendly_name = <<"Currnet Status (Standing) Request">>
-                    ,description = <<"A request to a bookkeeper to get the current standing of an account">>
-                    ,build_fun = fun standing_req/1
-                    ,validate_fun = fun standing_req_v/1
-                    ,publish_fun = fun publish_standing_req/1
-                    ,binding = ?BINDING_STRING(<<"standing">>, <<"request">>)
-                    ,restrict_to = 'standing'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Bookkeeper-ID">>
-                                        ,<<"Bookkeeper-Type">>
-                                        ,<<"Vendor-ID">>
-                                        ,<<"Items">>
-                                        ,<<"Estimated-Withdrawal">>
-                                        ]
-                    ,optional_headers = []
-                    ,values = [{<<"Event-Category">>, <<"bookkeepers">>}
-                              ,{<<"Event-Name">>, <<"standing_req">>}
-                              ]
-                    ,types = []
-                    }.
+    EventName = <<"standing_req">>,
+    Category = <<"standing">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Currnet Status (Standing) Request">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"A request to a bookkeeper to get the current standing of an account">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun standing_req/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun standing_req_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_standing_req/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"request">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'standing'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Bookkeeper-ID">>
+                                                            ,<<"Bookkeeper-Type">>
+                                                            ,<<"Vendor-ID">>
+                                                            ,<<"Items">>
+                                                            ,<<"Estimated-Withdrawal">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, []}
+              ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 -spec standing_resp_definition() -> kapi_definition:api().
 standing_resp_definition() ->
-    #kapi_definition{name = <<"standing_resp">>
-                    ,friendly_name = <<"Current Status (Standing) Response">>
-                    ,description = <<"The result of a standing request">>
-                    ,build_fun = fun standing_resp/1
-                    ,validate_fun = fun standing_resp_v/1
-                    ,publish_fun = fun publish_standing_resp/2
-                    ,binding = ?BINDING_STRING(<<"standing">>, <<"response">>)
-                    ,restrict_to = 'standing'
-                    ,required_headers = [<<"Status">>]
-                    ,optional_headers = [<<"Message">>
-                                        ,<<"Reason">>
-                                        ,<<"Details">>
-                                        ]
-                    ,values = [{<<"Event-Category">>, <<"bookkeepers">>}
-                              ,{<<"Event-Name">>, <<"standing_resp">>}
-                              ]
-                    ,types = []
-                    }.
+    EventName = <<"standing_resp">>,
+    Category = <<"standing">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Current Status (Standing) Response">>}
+              ,{fun kapi_definition:set_description/2, <<"The result of a standing request">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun standing_resp/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun standing_resp_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_standing_resp/2}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"response">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'standing'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Status">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Message">>
+                                                            ,<<"Reason">>
+                                                            ,<<"Details">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, kapi_definition:event_type_headers(?API_CATEGORY, EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%%=============================================================================
 %%% API
@@ -444,14 +487,14 @@ declare_exchanges() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec build_message(kz_term:api_terms(), kapi_definition:api()) -> api_formatter_return().
-build_message(Prop, #kapi_definition{required_headers = ReqH
-                                    ,optional_headers = OptH
-                                    ,validate_fun = Validate
-                                    ,name = _Name
-                                    }) when is_list(Prop) ->
+build_message(Prop, Definition) when is_list(Prop) ->
+    ReqH = kapi_definition:required_headers(Definition),
+    OptH = kapi_definition:optional_headers(Definition),
+    Validate = kapi_definition:validate_fun(Definition),
+    Binding = kapi_definition:binding(Definition),
     case Validate(Prop) of
         'true' -> kz_api:build_message(Prop, ReqH, OptH);
-        'false' -> {'error', "Proplist failed validation for " ++ binary_to_list(_Name)}
+        'false' -> {'error', "Proplist failed validation for " ++ binary_to_list(Binding)}
     end;
 build_message(JObj, Definition) ->
     build_message(kz_json:to_proplist(JObj), Definition).
@@ -460,10 +503,10 @@ build_message(JObj, Definition) ->
 %% @doc Generic function to validate API payload.
 %% @end
 %%------------------------------------------------------------------------------
-validate(Prop, #kapi_definition{required_headers = ReqH
-                               ,values = Values
-                               ,types = Types
-                               }) when is_list(Prop) ->
+validate(Prop, Definition) when is_list(Prop) ->
+    ReqH = kapi_definition:required_headers(Definition),
+    Values = kapi_definition:values(Definition),
+    Types = kapi_definition:types(Definition),
     kz_api:validate(Prop, ReqH, Values, Types);
 validate(JObj, Definition) ->
     validate(kz_json:to_proplist(JObj), Definition).
@@ -491,9 +534,9 @@ publish_collect_recurring_req(JObj) ->
 
 -spec publish_collect_recurring_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_collect_recurring_req(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = collect_recurring_req_definition(),
+    Definition = collect_recurring_req_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun collect_recurring_req/1),
     kz_amqp_util:bookkeepers_publish(Binding, Payload, ContentType).
 
@@ -511,7 +554,7 @@ publish_collect_recurring_resp(RespQ, JObj) ->
 
 -spec publish_collect_recurring_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_collect_recurring_resp(RespQ, API, ContentType) ->
-    #kapi_definition{values = Values} = collect_recurring_resp_definition(),
+    Values = kapi_definition:values(collect_recurring_resp_definition()),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun collect_recurring_resp/1),
     kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
@@ -534,9 +577,9 @@ publish_sale_req(JObj) ->
 
 -spec publish_sale_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_sale_req(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = sale_req_definition(),
+    Definition = sale_req_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun sale_req/1),
     kz_amqp_util:bookkeepers_publish(Binding, Payload, ContentType).
 
@@ -554,7 +597,7 @@ publish_sale_resp(RespQ, JObj) ->
 
 -spec publish_sale_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_sale_resp(RespQ, API, ContentType) ->
-    #kapi_definition{values = Values} = sale_resp_definition(),
+    Values = kapi_definition:values(sale_resp_definition()),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun sale_resp/1),
     kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
@@ -577,9 +620,9 @@ publish_refund_req(JObj) ->
 
 -spec publish_refund_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_refund_req(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = refund_req_definition(),
+    Definition = refund_req_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun refund_req/1),
     kz_amqp_util:bookkeepers_publish(Binding, Payload, ContentType).
 
@@ -597,7 +640,7 @@ publish_refund_resp(RespQ, JObj) ->
 
 -spec publish_refund_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_refund_resp(RespQ, API, ContentType) ->
-    #kapi_definition{values = Values} = refund_resp_definition(),
+    Values = kapi_definition:values(refund_resp_definition()),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun refund_resp/1),
     kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
@@ -620,9 +663,9 @@ publish_update_req(JObj) ->
 
 -spec publish_update_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_update_req(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = update_req_definition(),
+    Definition = update_req_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun update_req/1),
     kz_amqp_util:bookkeepers_publish(Binding, Payload, ContentType).
 
@@ -640,7 +683,7 @@ publish_update_resp(RespQ, JObj) ->
 
 -spec publish_update_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_update_resp(RespQ, API, ContentType) ->
-    #kapi_definition{values = Values} = update_resp_definition(),
+    Values = kapi_definition:values(update_resp_definition()),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun update_resp/1),
     kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
@@ -663,9 +706,9 @@ publish_standing_req(JObj) ->
 
 -spec publish_standing_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_standing_req(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = standing_req_definition(),
+    Definition = standing_req_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun standing_req/1),
     kz_amqp_util:bookkeepers_publish(Binding, Payload, ContentType).
 
@@ -683,6 +726,6 @@ publish_standing_resp(RespQ, JObj) ->
 
 -spec publish_standing_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_standing_resp(RespQ, API, ContentType) ->
-    #kapi_definition{values = Values} = standing_resp_definition(),
+    Values = kapi_definition:values(standing_resp_definition()),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun standing_resp/1),
     kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).

@@ -153,18 +153,23 @@
 
 -type doc() :: kz_json:object().
 
--define(DEFAULT_OPTIONAL_HEADERS, [<<"To">>, <<"Cc">>, <<"Bcc">>
-                                  ,<<"From">>, <<"Reply-To">>
-                                  ,<<"Subject">>, <<"HTML">>, <<"Text">>
-                                  ,<<"Account-ID">>, <<"Account-DB">>
-                                  ,<<"Preview">>, <<"Attachment-URL">>
+-define(DEFAULT_OPTIONAL_HEADERS, [<<"Account-DB">>
+                                  ,<<"Account-ID">>
+                                  ,<<"Attachment-URL">>
+                                  ,<<"Bcc">>
+                                  ,<<"Cc">>
+                                  ,<<"From">>
+                                  ,<<"HTML">>
+                                  ,<<"Preview">>
+                                  ,<<"Reply-To">>
+                                  ,<<"Subject">>
+                                  ,<<"Text">>
+                                  ,<<"To">>
                                   ]).
 
 -define(BINDING_STRING(Category, Name), <<"notifications.", (Category)/binary, ".", (Name)/binary>>).
 
--define(NOTIFY_VALUES(Name), [{<<"Event-Category">>, <<"notification">>}
-                             ,{<<"Event-Name">>, Name}
-                             ]).
+-define(NOTIFY_VALUES(Name), kapi_definition:event_type_headers(<<"notification">>, Name)).
 
 %%%=============================================================================
 %%% Internal Notifications Definitions
@@ -176,48 +181,61 @@
 %%------------------------------------------------------------------------------
 -spec notify_update_definition() -> kapi_definition:api().
 notify_update_definition() ->
-    #kapi_definition{name = <<"notify_update">>
-                    ,friendly_name = <<"Notify Status Update">>
-                    ,description = <<"This event is triggered by notification consumer, e.g. teletype application, to send status of notification being process to publisher">>
-                    ,build_fun = fun notify_update/1
-                    ,validate_fun = fun notify_update_v/1
-                    ,publish_fun = fun publish_notify_update/2
-                    ,required_headers = [<<"Status">>]
-                    ,optional_headers = [<<"Failure-Message">>
-                                        ,<<"Metadata">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = [{<<"Status">>, [<<"completed">>
-                                              ,<<"disabled">>
-                                              ,<<"failed">>
-                                              ,<<"ignored">>
-                                              ,<<"pending">>
-                                              ]}
-                               | ?NOTIFY_VALUES(<<"notify_update">>)
-                              ]
-                    ,types = []
-                    }.
+    EventName = <<"notify_update">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Notify Status Update">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered by notification consumer, e.g. teletype application, to send status of notification being process to publisher">>
+               }
+              ,{fun kapi_definition:set_build_fun/2, fun notify_update/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun notify_update_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_notify_update/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Status">>]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Failure-Message">>
+                                                            ,<<"Metadata">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, [{<<"Status">>, [<<"completed">>
+                                                                  ,<<"disabled">>
+                                                                  ,<<"failed">>
+                                                                  ,<<"ignored">>
+                                                                  ,<<"pending">>
+                                                                  ]
+                                                   }
+                                                   | ?NOTIFY_VALUES(EventName)
+                                                  ]}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get Skeleton API Notification definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec skel_definition() -> kapi_definition:api().
 skel_definition() ->
-    #kapi_definition{name = <<"skel">>
-                    ,friendly_name = <<"Example Notification">>
-                    ,description = <<"An example notification, this event should never be triggered">>
-                    ,build_fun = fun skel/1
-                    ,validate_fun = fun skel_v/1
-                    ,publish_fun = fun publish_skel/1
-                    ,binding = ?BINDING_STRING(<<"account">>, <<"skel">>)
-                    ,restrict_to = 'skel'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"User-ID">>
-                                        ]
-                    ,optional_headers = ?DEFAULT_OPTIONAL_HEADERS
-                    ,values = ?NOTIFY_VALUES(<<"skel">>)
-                    ,types = []
-                    }.
+    EventName = <<"skel">>,
+    Category = <<"account">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Example Notification">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"An example notification, this event should never be triggered">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun skel/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun skel_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_skel/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"skel">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'skel'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"User-ID">>
+                                                            ]
+               }
+              ,{fun kapi_definition:set_optional_headers/2, ?DEFAULT_OPTIONAL_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 
 %%%=============================================================================
@@ -230,21 +248,27 @@ skel_definition() ->
 %%------------------------------------------------------------------------------
 -spec account_zone_change_definition() -> kapi_definition:api().
 account_zone_change_definition() ->
-    #kapi_definition{name = <<"account_zone_change">>
-                    ,friendly_name = <<"Account Zone Change">>
-                    ,description = <<"This event is triggered when an end user requests the home zone of an account is changed">>
-                    ,build_fun = fun account_zone_change/1
-                    ,validate_fun = fun account_zone_change_v/1
-                    ,publish_fun = fun publish_account_zone_change/1
-                    ,binding = ?BINDING_STRING(<<"account">>, <<"zone_change">>)
-                    ,restrict_to = 'account_zone_change'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Zones">>
-                                        ]
-                    ,optional_headers = ?DEFAULT_OPTIONAL_HEADERS
-                    ,values = ?NOTIFY_VALUES(<<"account_zone_change">>)
-                    ,types = []
-                    }.
+    EventName = <<"account_zone_change">>,
+    Category = <<"account">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Account Zone Change">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when an end user requests the home zone of an account is changed">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun account_zone_change/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun account_zone_change_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_account_zone_change/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"zone_change">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'account_zone_change'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Zones">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, ?DEFAULT_OPTIONAL_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%------------------------------------------------------------------------------
 %% @doc Bill Reminder Notification (service invoices) API definition.
@@ -252,32 +276,36 @@ account_zone_change_definition() ->
 %%------------------------------------------------------------------------------
 -spec bill_reminder_definition() -> kapi_definition:api().
 bill_reminder_definition() ->
-    #kapi_definition{name = <<"bill_reminder">>
-                    ,friendly_name = <<"Bill Reminder">>
-                    ,description = <<"This event is triggered before a few days before the end of the month to"
-                                     "remind account's owners of estimated service plan charges"
-                                   >>
-                    ,build_fun = fun bill_reminder/1
-                    ,validate_fun = fun bill_reminder_v/1
-                    ,publish_fun = fun publish_bill_reminder/1
-                    ,binding = ?BINDING_STRING(<<"account">>, <<"reminder">>)
-                    ,restrict_to = 'bill_reminder'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Due-Date">>
-                                        ,<<"Items">>
-                                        ,<<"Timestamp">>
-                                        ]
-                    ,optional_headers = [<<"Payment-Token">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"bill_reminder">>)
-                    ,types = [{<<"Account-ID">>, fun kz_term:is_ne_binary/1}
-                             ,{<<"Due-Date">>, fun kz_term:is_pos_integer/1}
-                             ,{<<"Items">>, fun kz_json:are_json_objects/1}
-                             ,{<<"Payment-Token">>, fun kz_json:is_json_object/1}
-                             ,{<<"Timestamp">>, fun kz_term:is_pos_integer/1}
-                             ]
-                    }.
+    EventName = <<"bill_reminder">>,
+    Category = <<"account">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Bill Reminder">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered before a few days before the end of the month to remind account's owners of estimated service plan charges">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun bill_reminder/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun bill_reminder_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_bill_reminder/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"reminder">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'bill_reminder'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Due-Date">>
+                                                            ,<<"Items">>
+                                                            ,<<"Timestamp">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Payment-Token">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, [{<<"Account-ID">>, fun kz_term:is_ne_binary/1}
+                                                 ,{<<"Due-Date">>, fun kz_term:is_pos_integer/1}
+                                                 ,{<<"Items">>, fun kz_json:are_json_objects/1}
+                                                 ,{<<"Payment-Token">>, fun kz_json:is_json_object/1}
+                                                 ,{<<"Timestamp">>, fun kz_term:is_pos_integer/1}
+                                                 ]}
+              ],
+    kapi_definition:setters(Setters).
 
 %%------------------------------------------------------------------------------
 %% @doc Get Low Balance Notification API definition.
@@ -285,68 +313,88 @@ bill_reminder_definition() ->
 %%------------------------------------------------------------------------------
 -spec low_balance_definition() -> kapi_definition:api().
 low_balance_definition() ->
-    #kapi_definition{name = <<"low_balance">>
-                    ,friendly_name = <<"Account Low Balance">>
-                    ,description = <<"This event is triggered when an account is found with a balance below the notification threshold">>
-                    ,build_fun = fun low_balance/1
-                    ,validate_fun = fun low_balance_v/1
-                    ,publish_fun = fun publish_low_balance/1
-                    ,binding = ?BINDING_STRING(<<"account">>, <<"low_balance">>)
-                    ,restrict_to = 'low_balance'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Current-Balance">>
-                                        ]
-                    ,optional_headers = ?DEFAULT_OPTIONAL_HEADERS
-                    ,values = ?NOTIFY_VALUES(<<"low_balance">>)
-                    ,types = []
-                    }.
+    EventName = <<"low_balance">>,
+    Category = <<"account">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Account Low Balance">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when an account is found with a balance below the notification threshold">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun low_balance/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun low_balance_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_low_balance/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"low_balance">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'low_balance'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Current-Balance">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, ?DEFAULT_OPTIONAL_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get New Account Notification API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec new_account_definition() -> kapi_definition:api().
 new_account_definition() ->
-    #kapi_definition{name = <<"new_account">>
-                    ,friendly_name = <<"New Account">>
-                    ,description = <<"This event is triggered when an end user creates a new account">>
-                    ,build_fun = fun new_account/1
-                    ,validate_fun = fun new_account_v/1
-                    ,publish_fun = fun publish_new_account/1
-                    ,binding = ?BINDING_STRING(<<"account">>, <<"new">>)
-                    ,restrict_to = 'new_account'
-                    ,required_headers = [<<"Account-ID">>]
-                    ,optional_headers = [<<"Account-API-Key">>
-                                        ,<<"Account-DB">>
-                                        ,<<"Account-Name">>
-                                        ,<<"Account-Realm">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"new_account">>)
-                    ,types = []
-                    }.
+    EventName = <<"new_account">>,
+    Category = <<"account">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"New Account">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when an end user creates a new account">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun new_account/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun new_account_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_new_account/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"new">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'new_account'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Account-API-Key">>
+                                                            ,<<"Account-DB">>
+                                                            ,<<"Account-Name">>
+                                                            ,<<"Account-Realm">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get New Service Notification Addition (from service audit log) API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec service_added_definition() -> kapi_definition:api().
 service_added_definition() ->
-    #kapi_definition{name = <<"service_added">>
-                    ,friendly_name = <<"Service Added">>
-                    ,description = <<"This event is triggered when an account's billable quantities change">>
-                    ,build_fun = fun service_added/1
-                    ,validate_fun = fun service_added_v/1
-                    ,publish_fun = fun publish_service_added/1
-                    ,binding = ?BINDING_STRING(<<"account">>, <<"service_added">>)
-                    ,restrict_to = 'service_added'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Audit-Log">>
-                                        ,<<"Items">>
-                                        ,<<"Timestamp">>
-                                        ]
-                    ,optional_headers = ?DEFAULT_OPTIONAL_HEADERS
-                    ,values = ?NOTIFY_VALUES(<<"service_added">>)
-                    ,types = [{<<"Items">>, fun kz_json:are_json_objects/1}]
-                    }.
+    EventName = <<"service_added">>,
+    Category = <<"account">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Service Added">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when an account's billable quantities change">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun service_added/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun service_added_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_service_added/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"service_added">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'service_added'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Audit-Log">>
+                                                            ,<<"Items">>
+                                                            ,<<"Timestamp">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, ?DEFAULT_OPTIONAL_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, [{<<"Items">>, fun kz_json:are_json_objects/1}]}
+              ],
+    kapi_definition:setters(Setters).
 
 %%% Transaction and Top-up common optional headers
 -define(COMMON_TRANSACTION_HEADERS, [<<"Add-Ons">>
@@ -366,24 +414,30 @@ service_added_definition() ->
 %%------------------------------------------------------------------------------
 -spec topup_definition() -> kapi_definition:api().
 topup_definition() ->
-    #kapi_definition{name = <<"topup">>
-                    ,friendly_name = <<"Automatic Account Top-up">>
-                    ,description = <<"This event is triggered when an account automatic top-up is attempted">>
-                    ,build_fun = fun topup/1
-                    ,validate_fun = fun topup_v/1
-                    ,publish_fun = fun publish_topup/1
-                    ,binding = ?BINDING_STRING(<<"account">>, <<"topup">>)
-                    ,restrict_to = 'topup'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Amount">>
-                                        ,<<"Response">>
-                                        ,<<"Success">>
-                                        ,<<"Timestamp">>
-                                        ]
-                    ,optional_headers = ?COMMON_TRANSACTION_HEADERS
-                    ,values = ?NOTIFY_VALUES(<<"topup">>)
-                    ,types = []
-                    }.
+    EventName = <<"topup">>,
+    Category = <<"account">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Automatic Account Top-up">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when an account automatic top-up is attempted">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun topup/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun topup_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_topup/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"topup">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'topup'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Amount">>
+                                                            ,<<"Response">>
+                                                            ,<<"Success">>
+                                                            ,<<"Timestamp">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, ?COMMON_TRANSACTION_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%-----------------------------------------------------------------------------%% Transaction
 %% @doc Get same headers Notification for top-up and transaction API definition.
@@ -391,25 +445,32 @@ topup_definition() ->
 %%------------------------------------------------------------------------------
 -spec transaction_definition() -> kapi_definition:api().
 transaction_definition() ->
-    #kapi_definition{name = <<"transaction">>
-                    ,friendly_name = <<"Transaction Completed">>
-                    ,description = <<"This event is triggered when a transaction is attempted">>
-                    ,build_fun = fun transaction/1
-                    ,validate_fun = fun transaction_v/1
-                    ,publish_fun = fun publish_transaction/1
-                    ,binding = ?BINDING_STRING(<<"account">>, <<"transaction">>)
-                    ,restrict_to = 'transaction'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Amount">>
-                                        ,<<"Response">>
-                                        ,<<"Success">>
-                                        ,<<"Timestamp">>
-                                        ]
-                    ,optional_headers = [<<"Service-Plan">> | ?COMMON_TRANSACTION_HEADERS]
-                    ,values = ?NOTIFY_VALUES(<<"transaction">>)
-                    ,types = []
-                    }.
-
+    EventName = <<"transaction">>,
+    Category = <<"account">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Transaction Completed">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a transaction is attempted">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun transaction/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun transaction_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_transaction/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"transaction">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'transaction'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Amount">>
+                                                            ,<<"Response">>
+                                                            ,<<"Success">>
+                                                            ,<<"Timestamp">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2
+               ,[<<"Service-Plan">> | ?COMMON_TRANSACTION_HEADERS]
+               }
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%%=============================================================================
 %%% Fax Notifications Definitions
@@ -421,172 +482,205 @@ transaction_definition() ->
 %%------------------------------------------------------------------------------
 -spec inbound_fax_definition() -> kapi_definition:api().
 inbound_fax_definition() ->
-    #kapi_definition{name = <<"inbound_fax">>
-                    ,friendly_name = <<"Successful Fax Reception">>
-                    ,description = <<"This event is triggered when a fax is successfully received">>
-                    ,build_fun = fun fax_inbound/1
-                    ,validate_fun = fun fax_inbound_v/1
-                    ,publish_fun = fun publish_fax_inbound/1
-                    ,binding = ?BINDING_STRING(<<"fax">>, <<"inbound">>)
-                    ,restrict_to = 'inbound_fax'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Fax-ID">>
-                                        ,<<"From-Realm">>
-                                        ,<<"From-User">>
-                                        ,<<"To-Realm">>
-                                        ,<<"To-User">>
-                                        ]
-                    ,optional_headers = [<<"Call-ID">>
-                                        ,<<"Callee-ID-Name">>
-                                        ,<<"Callee-ID-Number">>
-                                        ,<<"Caller-ID-Name">>
-                                        ,<<"Caller-ID-Number">>
-                                        ,<<"Fax-Info">>
-                                        ,<<"Fax-Notifications">>
-                                        ,<<"Fax-Timestamp">>
-                                        ,<<"FaxBox-ID">>
-                                        ,<<"Owner-ID">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"inbound_fax">>)
-                    ,types = []
-                    }.
+    EventName = <<"inbound_fax">>,
+    Category = <<"fax">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Successful Fax Reception">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a fax is successfully received">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun fax_inbound/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun fax_inbound_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_fax_inbound/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"inbound">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'inbound_fax'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Fax-ID">>
+                                                            ,<<"From-Realm">>
+                                                            ,<<"From-User">>
+                                                            ,<<"To-Realm">>
+                                                            ,<<"To-User">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Call-ID">>
+                                                            ,<<"Callee-ID-Name">>
+                                                            ,<<"Callee-ID-Number">>
+                                                            ,<<"Caller-ID-Name">>
+                                                            ,<<"Caller-ID-Number">>
+                                                            ,<<"Fax-Info">>
+                                                            ,<<"Fax-Notifications">>
+                                                            ,<<"Fax-Timestamp">>
+                                                            ,<<"FaxBox-ID">>
+                                                            ,<<"Owner-ID">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get Fax Inbound Notification Error API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec inbound_fax_error_definition() -> kapi_definition:api().
 inbound_fax_error_definition() ->
-    #kapi_definition{name = <<"inbound_fax_error">>
-                    ,friendly_name = <<"Fax Reception Error">>
-                    ,description = <<"This event is triggered when receiving a fax fails">>
-                    ,build_fun = fun fax_inbound_error/1
-                    ,validate_fun = fun fax_inbound_error_v/1
-                    ,publish_fun = fun publish_fax_inbound_error/1
-                    ,binding = ?BINDING_STRING(<<"fax">>, <<"inbound_error">>)
-                    ,restrict_to = 'inbound_fax_error'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"From-Realm">>
-                                        ,<<"From-User">>
-                                        ,<<"To-Realm">>
-                                        ,<<"To-User">>
-                                        ]
-                    ,optional_headers = [<<"Call-ID">>
-                                        ,<<"Callee-ID-Name">>
-                                        ,<<"Callee-ID-Number">>
-                                        ,<<"Caller-ID-Name">>
-                                        ,<<"Caller-ID-Number">>
-                                        ,<<"Fax-Error">>
-                                        ,<<"Fax-Info">>
-                                        ,<<"Fax-ID">>
-                                        ,<<"Fax-Notifications">>
-                                        ,<<"Fax-Timestamp">>
-                                        ,<<"FaxBox-ID">>
-                                        ,<<"Owner-ID">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"inbound_fax_error">>)
-                    ,types = []
-                    }.
+    EventName = <<"inbound_fax_error">>,
+    Category = <<"fax">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Fax Reception Error">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when receiving a fax fails">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun fax_inbound_error/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun fax_inbound_error_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_fax_inbound_error/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"inbound_error">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'inbound_fax_error'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"From-Realm">>
+                                                            ,<<"From-User">>
+                                                            ,<<"To-Realm">>
+                                                            ,<<"To-User">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Call-ID">>
+                                                            ,<<"Callee-ID-Name">>
+                                                            ,<<"Callee-ID-Number">>
+                                                            ,<<"Caller-ID-Name">>
+                                                            ,<<"Caller-ID-Number">>
+                                                            ,<<"Fax-Error">>
+                                                            ,<<"Fax-Info">>
+                                                            ,<<"Fax-ID">>
+                                                            ,<<"Fax-Notifications">>
+                                                            ,<<"Fax-Timestamp">>
+                                                            ,<<"FaxBox-ID">>
+                                                            ,<<"Owner-ID">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get Fax Outbound Notification API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec outbound_fax_definition() -> kapi_definition:api().
 outbound_fax_definition() ->
-    #kapi_definition{name = <<"outbound_fax">>
-                    ,friendly_name = <<"Successful Fax Transmission">>
-                    ,description = <<"This event is triggered when a fax is successfully transmitted">>
-                    ,build_fun = fun fax_outbound/1
-                    ,validate_fun = fun fax_outbound_v/1
-                    ,publish_fun = fun publish_fax_outbound/1
-                    ,binding = ?BINDING_STRING(<<"fax">>, <<"outbound">>)
-                    ,restrict_to = 'outbound_fax'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Callee-ID-Number">>
-                                        ,<<"Caller-ID-Number">>
-                                        ,<<"Fax-ID">>
-                                        ,<<"Fax-JobId">>
-                                        ]
-                    ,optional_headers = [<<"Call-ID">>
-                                        ,<<"Callee-ID-Name">>
-                                        ,<<"Caller-ID-Name">>
-                                        ,<<"Fax-Info">>
-                                        ,<<"Fax-Notifications">>
-                                        ,<<"Fax-Timestamp">>
-                                        ,<<"FaxBox-ID">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"outbound_fax">>)
-                    ,types = []
-                    }.
+    EventName = <<"outbound_fax">>,
+    Category = <<"fax">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Successful Fax Transmission">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a fax is successfully transmitted">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun fax_outbound/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun fax_outbound_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_fax_outbound/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"outbound">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'outbound_fax'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Callee-ID-Number">>
+                                                            ,<<"Caller-ID-Number">>
+                                                            ,<<"Fax-ID">>
+                                                            ,<<"Fax-JobId">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Call-ID">>
+                                                            ,<<"Callee-ID-Name">>
+                                                            ,<<"Caller-ID-Name">>
+                                                            ,<<"Fax-Info">>
+                                                            ,<<"Fax-Notifications">>
+                                                            ,<<"Fax-Timestamp">>
+                                                            ,<<"FaxBox-ID">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get Fax Outbound Notification Error API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec outbound_fax_error_definition() -> kapi_definition:api().
 outbound_fax_error_definition() ->
-    #kapi_definition{name = <<"outbound_fax_error">>
-                    ,friendly_name = <<"Fax Transmission Error">>
-                    ,description = <<"This event is triggered when transmitting a fax fails">>
-                    ,build_fun = fun fax_outbound_error/1
-                    ,validate_fun = fun fax_outbound_error_v/1
-                    ,publish_fun = fun publish_fax_outbound_error/1
-                    ,binding = ?BINDING_STRING(<<"fax">>, <<"outbound_error">>)
-                    ,restrict_to = 'outbound_fax_error'
-                    ,required_headers = [<<"Fax-ID">>
-                                        ,<<"Fax-JobId">>
-                                        ]
-                    ,optional_headers = [<<"Call-ID">>
-                                        ,<<"Callee-ID-Name">>
-                                        ,<<"Callee-ID-Number">>
-                                        ,<<"Caller-ID-Name">>
-                                        ,<<"Caller-ID-Number">>
-                                        ,<<"Fax-Error">>
-                                        ,<<"Fax-Info">>
-                                        ,<<"Fax-Notifications">>
-                                        ,<<"Fax-Timestamp">>
-                                        ,<<"FaxBox-ID">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"outbound_fax_error">>)
-                    ,types = []
-                    }.
+    EventName = <<"outbound_fax_error">>,
+    Category = <<"fax">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Fax Transmission Error">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when transmitting a fax fails">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun fax_outbound_error/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun fax_outbound_error_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_fax_outbound_error/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"outbound_error">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'outbound_fax_error'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Fax-ID">>
+                                                            ,<<"Fax-JobId">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Call-ID">>
+                                                            ,<<"Callee-ID-Name">>
+                                                            ,<<"Callee-ID-Number">>
+                                                            ,<<"Caller-ID-Name">>
+                                                            ,<<"Caller-ID-Number">>
+                                                            ,<<"Fax-Error">>
+                                                            ,<<"Fax-Info">>
+                                                            ,<<"Fax-Notifications">>
+                                                            ,<<"Fax-Timestamp">>
+                                                            ,<<"FaxBox-ID">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get Fax Outbound Notification SMTP Error API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec outbound_smtp_fax_error_definition() -> kapi_definition:api().
 outbound_smtp_fax_error_definition() ->
-    #kapi_definition{name = <<"outbound_smtp_fax_error">>
-                    ,friendly_name = <<"Invalid Email-to-Fax Email">>
-                    ,description = <<"This event is triggered when the received email-to-fax email is invalid">>
-                    ,build_fun = fun fax_outbound_smtp_error/1
-                    ,validate_fun = fun fax_outbound_smtp_error_v/1
-                    ,publish_fun = fun publish_fax_outbound_smtp_error/1
-                    ,binding = ?BINDING_STRING(<<"fax">>, <<"outbound_smtp_error">>)
-                    ,restrict_to = 'outbound_smtp_fax_error'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Fax-From-Email">>
-                                        ,<<"Errors">>
-                                        ,<<"Timestamp">>
-                                        ]
-                    ,optional_headers = [<<"Fax-To-Email">>
-                                        ,<<"FaxBox-ID">>
-                                        ,<<"FaxBox-Name">>
-                                        ,<<"FaxBox-Timezone">>
-                                        ,<<"Number">>
-                                        ,<<"Owner-ID">>
-                                        ,<<"Original-Number">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"outbound_smtp_fax_error">>)
-                    ,types = [{<<"Errors">>, fun(L) when is_list(L) -> kz_term:is_not_empty(L);
-                                                (_) -> 'false'
-                                             end
-                              }
-                             ]
-                    }.
+    EventName = <<"outbound_smtp_fax_error">>,
+    Category = <<"fax">>,
+    ErrorsFun = fun(L) when is_list(L) -> kz_term:is_not_empty(L);
+                   (_) -> 'false'
+                end,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Invalid Email-to-Fax Email">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when the received email-to-fax email is invalid">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun fax_outbound_smtp_error/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun fax_outbound_smtp_error_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_fax_outbound_smtp_error/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"outbound_smtp_error">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'outbound_smtp_fax_error'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Fax-From-Email">>
+                                                            ,<<"Errors">>
+                                                            ,<<"Timestamp">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Fax-To-Email">>
+                                                            ,<<"FaxBox-ID">>
+                                                            ,<<"FaxBox-Name">>
+                                                            ,<<"FaxBox-Timezone">>
+                                                            ,<<"Number">>
+                                                            ,<<"Owner-ID">>
+                                                            ,<<"Original-Number">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, [{<<"Errors">>, ErrorsFun}]}
+              ],
+    kapi_definition:setters(Setters).
 
 %%%=============================================================================
 %%% Number and Port Notifications Definitions
@@ -598,27 +692,33 @@ outbound_smtp_fax_error_definition() ->
 %%------------------------------------------------------------------------------
 -spec cnam_request_definition() -> kapi_definition:api().
 cnam_request_definition() ->
-    #kapi_definition{name = <<"cnam_request">>
-                    ,friendly_name = <<"CNAM Update">>
-                    ,description = <<"This event is triggered when an end user would like the CNAM for a number changed">>
-                    ,build_fun = fun cnam_request/1
-                    ,validate_fun = fun cnam_request_v/1
-                    ,publish_fun = fun publish_cnam_request/1
-                    ,binding = ?BINDING_STRING(<<"number">>, <<"cnam_request">>)
-                    ,restrict_to = 'cnam_request'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Number">>
-                                        ,<<"Cnam">>
-                                        ]
-                    ,optional_headers = [<<"Acquired-For">>
-                                        ,<<"Local-Number">>
-                                        ,<<"Number-State">>
-                                        ,<<"Request">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"cnam_request">>)
-                    ,types = []
-                    }.
+    EventName = <<"cnam_request">>,
+    Category = <<"number">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"CNAM Update">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when an end user would like the CNAM for a number changed">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun cnam_request/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun cnam_request_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_cnam_request/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"cnam_request">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'cnam_request'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Number">>
+                                                            ,<<"Cnam">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Acquired-For">>
+                                                            ,<<"Local-Number">>
+                                                            ,<<"Number-State">>
+                                                            ,<<"Request">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 -define(PORT_OPTIONAL_HEADERS, [<<"Authorized-By">>
                                ,<<"Local-Number">>
@@ -635,170 +735,224 @@ cnam_request_definition() ->
 %%------------------------------------------------------------------------------
 -spec port_cancel_definition() -> kapi_definition:api().
 port_cancel_definition() ->
-    #kapi_definition{name = <<"port_cancel">>
-                    ,friendly_name = <<"Port Cancel">>
-                    ,description = <<"This event is triggered when a port request is canceled">>
-                    ,build_fun = fun port_cancel/1
-                    ,validate_fun = fun port_cancel_v/1
-                    ,publish_fun = fun publish_port_cancel/1
-                    ,binding = ?BINDING_STRING(<<"number">>, <<"port_cancel">>)
-                    ,restrict_to = 'port_cancel'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Port-Request-ID">>
-                                        ]
-                    ,optional_headers = ?PORT_OPTIONAL_HEADERS
-                    ,values = ?NOTIFY_VALUES(<<"port_cancel">>)
-                    ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
-                    }.
+    EventName = <<"port_cancel">>,
+    Category = <<"number">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Port Cancel">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a port request is canceled">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun port_cancel/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun port_cancel_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_port_cancel/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"port_cancel">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'port_cancel'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Port-Request-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, ?PORT_OPTIONAL_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, [{<<"Reason">>, fun kz_json:is_json_object/1}]}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get Port Comment Notification API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_comment_definition() -> kapi_definition:api().
 port_comment_definition() ->
-    #kapi_definition{name = <<"port_comment">>
-                    ,friendly_name = <<"Port Comment">>
-                    ,description = <<"This event is triggered when a comment is left on a port request">>
-                    ,build_fun = fun port_comment/1
-                    ,validate_fun = fun port_comment_v/1
-                    ,publish_fun = fun publish_port_comment/1
-                    ,binding = ?BINDING_STRING(<<"number">>, <<"port_comment">>)
-                    ,restrict_to = 'port_comment'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Port-Request-ID">>
-                                        ,<<"Comment">>
-                                        ]
-                    ,optional_headers = ?PORT_OPTIONAL_HEADERS -- [<<"Reason">>]
-                    ,values = ?NOTIFY_VALUES(<<"port_comment">>)
-                    ,types = []
-                    }.
+    EventName = <<"port_comment">>,
+    Category = <<"number">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Port Comment">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a comment is left on a port request">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun port_comment/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun port_comment_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_port_comment/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"port_comment">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'port_comment'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Port-Request-ID">>
+                                                            ,<<"Comment">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, ?PORT_OPTIONAL_HEADERS -- [<<"Reason">>]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get Port Pending Notification API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_pending_definition() -> kapi_definition:api().
 port_pending_definition() ->
-    #kapi_definition{name = <<"port_pending">>
-                    ,friendly_name = <<"Port Pending">>
-                    ,description = <<"This event is triggered when a port request is accepted and submitted to a carrier">>
-                    ,build_fun = fun port_pending/1
-                    ,validate_fun = fun port_pending_v/1
-                    ,publish_fun = fun publish_port_pending/1
-                    ,binding = ?BINDING_STRING(<<"number">>, <<"port_pending">>)
-                    ,restrict_to = 'port_pending'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Port-Request-ID">>
-                                        ]
-                    ,optional_headers = ?PORT_OPTIONAL_HEADERS
-                    ,values = ?NOTIFY_VALUES(<<"port_pending">>)
-                    ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
-                    }.
+    EventName = <<"port_pending">>,
+    Category = <<"number">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Port Pending">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a port request is accepted and submitted to a carrier">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun port_pending/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun port_pending_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_port_pending/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"port_pending">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'port_pending'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Port-Request-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, ?PORT_OPTIONAL_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, [{<<"Reason">>, fun kz_json:is_json_object/1}]}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get Port Rejected Notification API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_rejected_definition() -> kapi_definition:api().
 port_rejected_definition() ->
-    #kapi_definition{name = <<"port_rejected">>
-                    ,friendly_name = <<"Port Rejected">>
-                    ,description = <<"This event is triggered when a port request is rejected">>
-                    ,build_fun = fun port_rejected/1
-                    ,validate_fun = fun port_rejected_v/1
-                    ,publish_fun = fun publish_port_rejected/1
-                    ,binding = ?BINDING_STRING(<<"number">>, <<"port_rejected">>)
-                    ,restrict_to = 'port_rejected'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Port-Request-ID">>
-                                        ]
-                    ,optional_headers = ?PORT_OPTIONAL_HEADERS
-                    ,values = ?NOTIFY_VALUES(<<"port_rejected">>)
-                    ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
-                    }.
+    EventName = <<"port_rejected">>,
+    Category = <<"number">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Port Rejected">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a port request is rejected">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun port_rejected/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun port_rejected_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_port_rejected/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"port_rejected">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'port_rejected'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Port-Request-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, ?PORT_OPTIONAL_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, [{<<"Reason">>, fun kz_json:is_json_object/1}]}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get Port Request Notification API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_request_definition() -> kapi_definition:api().
 port_request_definition() ->
-    #kapi_definition{name = <<"port_request">>
-                    ,friendly_name = <<"Port Request">>
-                    ,description = <<"This event is triggered when a port is submitted for processing">>
-                    ,build_fun = fun port_request/1
-                    ,validate_fun = fun port_request_v/1
-                    ,publish_fun = fun publish_port_request/1
-                    ,binding = ?BINDING_STRING(<<"number">>, <<"port_request">>)
-                    ,restrict_to = 'port_request'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Port-Request-ID">>
-                                        ]
-                    ,optional_headers = ?PORT_OPTIONAL_HEADERS
-                    ,values = ?NOTIFY_VALUES(<<"port_request">>)
-                    ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
-                    }.
+    EventName = <<"port_request">>,
+    Category = <<"number">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Port Request">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a port is submitted for processing">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun port_request/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun port_request_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_port_request/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"port_request">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'port_request'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Port-Request-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, ?PORT_OPTIONAL_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, [{<<"Reason">>, fun kz_json:is_json_object/1}]}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get Port Scheduled Notification API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_scheduled_definition() -> kapi_definition:api().
 port_scheduled_definition() ->
-    #kapi_definition{name = <<"port_scheduled">>
-                    ,friendly_name = <<"Port Scheduled">>
-                    ,description = <<"This event is triggered when a port is accepted by a carrier and scheduled">>
-                    ,build_fun = fun port_scheduled/1
-                    ,validate_fun = fun port_scheduled_v/1
-                    ,publish_fun = fun publish_port_scheduled/1
-                    ,binding = ?BINDING_STRING(<<"number">>, <<"port_scheduled">>)
-                    ,restrict_to = 'port_scheduled'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Port-Request-ID">>
-                                        ]
-                    ,optional_headers = ?PORT_OPTIONAL_HEADERS
-                    ,values = ?NOTIFY_VALUES(<<"port_scheduled">>)
-                    ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
-                    }.
+    EventName = <<"port_scheduled">>,
+    Category = <<"number">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Port Scheduled">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a port is accepted by a carrier and scheduled">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun port_scheduled/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun port_scheduled_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_port_scheduled/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"port_scheduled">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'port_scheduled'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Port-Request-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, ?PORT_OPTIONAL_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, [{<<"Reason">>, fun kz_json:is_json_object/1}]}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get Port Unconfirmed Notification API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_unconfirmed_definition() -> kapi_definition:api().
 port_unconfirmed_definition() ->
-    #kapi_definition{name = <<"port_unconfirmed">>
-                    ,friendly_name = <<"Port Unconfirmed">>
-                    ,description = <<"This event is triggered when a port is created, prior to submitting">>
-                    ,build_fun = fun port_unconfirmed/1
-                    ,validate_fun = fun port_unconfirmed_v/1
-                    ,publish_fun = fun publish_port_unconfirmed/1
-                    ,binding = ?BINDING_STRING(<<"number">>, <<"port_unconfirmed">>)
-                    ,restrict_to = 'port_unconfirmed'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Port-Request-ID">>
-                                        ]
-                    ,optional_headers = ?PORT_OPTIONAL_HEADERS
-                    ,values = ?NOTIFY_VALUES(<<"port_unconfirmed">>)
-                    ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
-                    }.
+    EventName = <<"port_unconfirmed">>,
+    Category = <<"number">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Port Unconfirmed">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a port is created, prior to submitting">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun port_unconfirmed/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun port_unconfirmed_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_port_unconfirmed/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"port_unconfirmed">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'port_unconfirmed'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Port-Request-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, ?PORT_OPTIONAL_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, [{<<"Reason">>, fun kz_json:is_json_object/1}]}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get Ported API Notification definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec ported_definition() -> kapi_definition:api().
 ported_definition() ->
-    #kapi_definition{name = <<"ported">>
-                    ,friendly_name = <<"Ported">>
-                    ,description = <<"This event is triggered when a port request for number is completed">>
-                    ,build_fun = fun ported/1
-                    ,validate_fun = fun ported_v/1
-                    ,publish_fun = fun publish_ported/1
-                    ,binding = ?BINDING_STRING(<<"number">>, <<"ported">>)
-                    ,restrict_to = 'ported'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Port-Request-ID">>
-                                        ]
-                    ,optional_headers = ?PORT_OPTIONAL_HEADERS
-                    ,values = ?NOTIFY_VALUES(<<"ported">>)
-                    ,types = [{<<"Reason">>, fun kz_json:is_json_object/1}]
-                    }.
-
+    EventName = <<"ported">>,
+    Category = <<"number">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Ported">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a port request for number is completed">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun ported/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun ported_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_ported/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"ported">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'ported'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Port-Request-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, ?PORT_OPTIONAL_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, [{<<"Reason">>, fun kz_json:is_json_object/1}]}
+              ],
+    kapi_definition:setters(Setters).
 
 %%%=============================================================================
 %%% Register Notifications Definitions
@@ -810,27 +964,32 @@ ported_definition() ->
 %%------------------------------------------------------------------------------
 -spec denied_emergency_bridge_definition() -> kapi_definition:api().
 denied_emergency_bridge_definition() ->
-    #kapi_definition{name = <<"denied_emergency_bridge">>
-                    ,friendly_name = <<"Emergency Call Failed">>
-                    ,description = <<"This event is triggered when a call to an number classified as emergency fails">>
-                    ,build_fun = fun denied_emergency_bridge/1
-                    ,validate_fun = fun denied_emergency_bridge_v/1
-                    ,publish_fun = fun publish_denied_emergency_bridge/1
-                    ,binding = ?BINDING_STRING(<<"registration">>, <<"denied_emergency_bridge">>)
-                    ,restrict_to = 'denied_emergency_bridge'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Call-ID">>
-                                        ]
-                    ,optional_headers = [<<"Emergency-Caller-ID-Name">>
-                                        ,<<"Emergency-Caller-ID-Number">>
-                                        ,<<"Outbound-Caller-ID-Name">>
-                                        ,<<"Outbound-Caller-ID-Number">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"denied_emergency_bridge">>)
-                    ,types = []
-                    }.
-
+    EventName = <<"denied_emergency_bridge">>,
+    Category = <<"registration">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Emergency Call Failed">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a call to an number classified as emergency fails">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun denied_emergency_bridge/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun denied_emergency_bridge_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_denied_emergency_bridge/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"denied_emergency_bridge">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'denied_emergency_bridge'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Call-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Emergency-Caller-ID-Name">>
+                                                            ,<<"Emergency-Caller-ID-Number">>
+                                                            ,<<"Outbound-Caller-ID-Name">>
+                                                            ,<<"Outbound-Caller-ID-Number">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%%=============================================================================
 %%% SIP Notifications Definitions
@@ -842,136 +1001,162 @@ denied_emergency_bridge_definition() ->
 %%------------------------------------------------------------------------------
 -spec deregister_definition() -> kapi_definition:api().
 deregister_definition() ->
-    #kapi_definition{name = <<"deregister">>
-                    ,friendly_name = <<"De-Registration">>
-                    ,description = <<"This event is triggered when a device fails to re-register and the contact expires">>
-                    ,build_fun = fun deregister/1
-                    ,validate_fun = fun deregister_v/1
-                    ,publish_fun = fun publish_deregister/1
-                    ,binding = ?BINDING_STRING(<<"sip">>, <<"deregister">>)
-                    ,restrict_to = 'deregister'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Username">>
-                                        ,<<"Realm">>
-                                        ]
-                    ,optional_headers = [<<"Account-DB">>
-                                        ,<<"Authorizing-ID">>
-                                        ,<<"Call-ID">>
-                                        ,<<"Contact">>
-                                        ,<<"Event-Timestamp">>
-                                        ,<<"Expires">>
-                                        ,<<"FreeSWITCH-Hostname">>
-                                        ,<<"From-Host">>
-                                        ,<<"From-User">>
-                                        ,<<"Network-IP">>
-                                        ,<<"Network-Port">>
-                                        ,<<"Presence-Hosts">>
-                                        ,<<"Profile-Name">>
-                                        ,<<"RPid">>
-                                        ,<<"Status">>
-                                        ,<<"Suppress-Unregister-Notify">>
-                                        ,<<"To-Host">>
-                                        ,<<"To-User">>
-                                        ,<<"User-Agent">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"deregister">>)
-                    ,types = []
-                    }.
+    EventName = <<"deregister">>,
+    Category = <<"sip">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"De-Registration">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a device fails to re-register and the contact expires">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun deregister/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun deregister_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_deregister/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"deregister">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'deregister'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Username">>
+                                                            ,<<"Realm">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Account-DB">>
+                                                            ,<<"Authorizing-ID">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Contact">>
+                                                            ,<<"Event-Timestamp">>
+                                                            ,<<"Expires">>
+                                                            ,<<"FreeSWITCH-Hostname">>
+                                                            ,<<"From-Host">>
+                                                            ,<<"From-User">>
+                                                            ,<<"Network-IP">>
+                                                            ,<<"Network-Port">>
+                                                            ,<<"Presence-Hosts">>
+                                                            ,<<"Profile-Name">>
+                                                            ,<<"RPid">>
+                                                            ,<<"Status">>
+                                                            ,<<"Suppress-Unregister-Notify">>
+                                                            ,<<"To-Host">>
+                                                            ,<<"To-User">>
+                                                            ,<<"User-Agent">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get First Occurrence Notification API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec first_occurrence_definition() -> kapi_definition:api().
 first_occurrence_definition() ->
-    #kapi_definition{name = <<"first_occurrence">>
-                    ,friendly_name = <<"Account First Occurrence">>
-                    ,description = <<"This event is triggered when an end user registers the first device and/or places the first call on an account">>
-                    ,build_fun = fun first_occurrence/1
-                    ,validate_fun = fun first_occurrence_v/1
-                    ,publish_fun = fun publish_first_occurrence/1
-                    ,binding = ?BINDING_STRING(<<"sip">>, <<"first_occurrence">>)
-                    ,restrict_to = 'first_occurrence'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Occurrence">>
-                                        ]
-                    ,optional_headers = ?DEFAULT_OPTIONAL_HEADERS
-                    ,values = ?NOTIFY_VALUES(<<"first_occurrence">>)
-                    ,types = []
-                    }.
+    EventName = <<"first_occurrence">>,
+    Category = <<"sip">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Account First Occurrence">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when an end user registers the first device and/or places the first call on an account">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun first_occurrence/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun first_occurrence_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_first_occurrence/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"first_occurrence">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'first_occurrence'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Occurrence">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, ?DEFAULT_OPTIONAL_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get Missed Call Notification Alert API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec missed_call_definition() -> kapi_definition:api().
 missed_call_definition() ->
-    #kapi_definition{name = <<"missed_call">>
-                    ,friendly_name = <<"Missed Call">>
-                    ,description = <<"This event is triggered when an corresponding missed call action in a callflow is invoked">>
-                    ,build_fun = fun missed_call/1
-                    ,validate_fun = fun missed_call_v/1
-                    ,publish_fun = fun publish_missed_call/1
-                    ,binding = ?BINDING_STRING(<<"sip">>, <<"missed_call">>)
-                    ,restrict_to = 'missed_call'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Call-ID">>
-                                        ,<<"Call-Bridged">>
-                                        ,<<"Message-Left">>
-                                        ]
-                    ,optional_headers = [<<"Caller-ID-Name">>
-                                        ,<<"Caller-ID-Number">>
-                                        ,<<"From-Realm">>
-                                        ,<<"From-User">>
-                                        ,<<"Notify">>
-                                        ,<<"To">>
-                                        ,<<"To-Realm">>
-                                        ,<<"To-User">>
-                                        ,<<"Timestamp">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"missed_call">>)
-                    ,types = []
-                    }.
+    EventName = <<"missed_call">>,
+    Category = <<"sip">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Missed Call">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when an corresponding missed call action in a callflow is invoked">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun missed_call/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun missed_call_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_missed_call/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"missed_call">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'missed_call'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Call-Bridged">>
+                                                            ,<<"Message-Left">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Caller-ID-Name">>
+                                                            ,<<"Caller-ID-Number">>
+                                                            ,<<"From-Realm">>
+                                                            ,<<"From-User">>
+                                                            ,<<"Notify">>
+                                                            ,<<"To">>
+                                                            ,<<"To-Realm">>
+                                                            ,<<"To-User">>
+                                                            ,<<"Timestamp">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get Register API Notification definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec register_definition() -> kapi_definition:api().
 register_definition() ->
-    #kapi_definition{name = <<"register">>
-                    ,friendly_name = <<"Registration">>
-                    ,description = <<"This event is triggered when a device registers but is not currently registered">>
-                    ,build_fun = fun register/1
-                    ,validate_fun = fun register_v/1
-                    ,publish_fun = fun publish_register/1
-                    ,binding = ?BINDING_STRING(<<"sip">>, <<"register">>)
-                    ,restrict_to = 'register'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Username">>
-                                        ,<<"Realm">>
-                                        ]
-                    ,optional_headers = [<<"Account-DB">>
-                                        ,<<"Authorizing-ID">>
-                                        ,<<"Authorizing-Type">>
-                                        ,<<"Call-ID">>
-                                        ,<<"Contact">>
-                                        ,<<"Event-Timestamp">>
-                                        ,<<"Expires">>
-                                        ,<<"From-Host">>
-                                        ,<<"From-User">>
-                                        ,<<"Network-IP">>
-                                        ,<<"Network-Port">>
-                                        ,<<"Owner-ID">>
-                                        ,<<"To-Host">>
-                                        ,<<"To-User">>
-                                        ,<<"Suppress-Unregister-Notify">>
-                                        ,<<"User-Agent">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"register">>)
-                    ,types = []
-                    }.
-
+    EventName = <<"register">>,
+    Category = <<"sip">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Registration">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a device registers but is not currently registered">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun register/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun register_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_register/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"register">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'register'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Username">>
+                                                            ,<<"Realm">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Account-DB">>
+                                                            ,<<"Authorizing-ID">>
+                                                            ,<<"Authorizing-Type">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Contact">>
+                                                            ,<<"Event-Timestamp">>
+                                                            ,<<"Expires">>
+                                                            ,<<"From-Host">>
+                                                            ,<<"From-User">>
+                                                            ,<<"Network-IP">>
+                                                            ,<<"Network-Port">>
+                                                            ,<<"Owner-ID">>
+                                                            ,<<"To-Host">>
+                                                            ,<<"To-User">>
+                                                            ,<<"Suppress-Unregister-Notify">>
+                                                            ,<<"User-Agent">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%%=============================================================================
 %%% System Notifications Definitions
@@ -983,30 +1168,35 @@ register_definition() ->
 %%------------------------------------------------------------------------------
 -spec system_alert_definition() -> kapi_definition:api().
 system_alert_definition() ->
-    #kapi_definition{name = <<"system_alert">>
-                    ,friendly_name = <<"System Alert">>
-                    ,description = <<"This event is triggered to alert the system administrators">>
-                    ,build_fun = fun system_alert/1
-                    ,validate_fun = fun system_alert_v/1
-                    ,publish_fun = fun publish_system_alert/1
-                    ,binding = ?BINDING_STRING(<<"system">>, <<"alert">>)
-                    ,restrict_to = 'system_alert'
-                    ,required_headers = [<<"Message">>
-                                        ,<<"Subject">>
-                                        ]
-                    ,optional_headers = [<<"Details">>
-                                        ,<<"Line">>
-                                        ,<<"Module">>
-                                        ,<<"Node">>
-                                        ,<<"Pid">>
-                                        ,<<"Request-ID">>
-                                        ,<<"Section">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"system_alert">>)
-                    ,types = []
-                    }.
-
+    EventName = <<"system_alert">>,
+    Category = <<"system">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"System Alert">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered to alert the system administrators">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun system_alert/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun system_alert_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_system_alert/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"alert">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'system_alert'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Message">>
+                                                            ,<<"Subject">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Details">>
+                                                            ,<<"Line">>
+                                                            ,<<"kapi_definitionule">>
+                                                            ,<<"Node">>
+                                                            ,<<"Pid">>
+                                                            ,<<"Request-ID">>
+                                                            ,<<"Section">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%%=============================================================================
 %%% User Notifications Definitions
@@ -1018,76 +1208,96 @@ system_alert_definition() ->
 %%------------------------------------------------------------------------------
 -spec customer_update_definition() -> kapi_definition:api().
 customer_update_definition() ->
-    #kapi_definition{name = <<"customer_update">>
-                    ,friendly_name = <<"Customer Update">>
-                    ,description = <<"This event is triggered when the customer update API is used to deliver a message to the account">>
-                    ,build_fun = fun customer_update/1
-                    ,validate_fun = fun customer_update_v/1
-                    ,publish_fun = fun publish_customer_update/1
-                    ,binding = ?BINDING_STRING(<<"user">>, <<"customer_update">>)
-                    ,restrict_to = 'customer_update'
-                    ,required_headers = [<<"Account-ID">>
-                                        ]
-                    ,optional_headers = [<<"DataBag">>
-                                        ,<<"Recipient-ID">>
-                                        ,<<"Template-ID">>
-                                        ,<<"User-Type">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"customer_update">>)
-                    ,types = []
-                    }.
+    EventName = <<"customer_update">>,
+    Category = <<"user">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Customer Update">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when the customer update API is used to deliver a message to the account">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun customer_update/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun customer_update_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_customer_update/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"customer_update">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'customer_update'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"DataBag">>
+                                                            ,<<"Recipient-ID">>
+                                                            ,<<"Template-ID">>
+                                                            ,<<"User-Type">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get New User Notification API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec new_user_definition() -> kapi_definition:api().
 new_user_definition() ->
-    #kapi_definition{name = <<"new_user">>
-                    ,friendly_name = <<"New User">>
-                    ,description = <<"This event is triggered when an end user creates a new user">>
-                    ,build_fun = fun new_user/1
-                    ,validate_fun = fun new_user_v/1
-                    ,publish_fun = fun publish_new_user/1
-                    ,binding = ?BINDING_STRING(<<"user">>, <<"new">>)
-                    ,restrict_to = 'new_user'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"User-ID">>
-                                        ]
-                    ,optional_headers = [<<"Password">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"new_user">>)
-                    ,types = []
-                    }.
+    EventName = <<"new_user">>,
+    Category = <<"user">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"New User">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when an end user creates a new user">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun new_user/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun new_user_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_new_user/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"new">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'new_user'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"User-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Password">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get Password Recovery Notification API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec password_recovery_definition() -> kapi_definition:api().
 password_recovery_definition() ->
-    #kapi_definition{name = <<"password_recovery">>
-                    ,friendly_name = <<"Password Recovery">>
-                    ,description = <<"This event is triggered when an end user requests a password recovery link">>
-                    ,build_fun = fun password_recovery/1
-                    ,validate_fun = fun password_recovery_v/1
-                    ,publish_fun = fun publish_password_recovery/1
-                    ,binding = ?BINDING_STRING(<<"user">>, <<"password_recovery">>)
-                    ,restrict_to = 'password_recovery'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Email">>
-                                        ,<<"Password-Reset-Link">>
-                                        ]
-                    ,optional_headers = [<<"Account-DB">>
-                                        ,<<"First-Name">>
-                                        ,<<"Last-Name">>
-                                        ,<<"Timezone">>
-                                        ,<<"User-ID">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"password_recovery">>)
-                    ,types = []
-                    }.
+    EventName = <<"password_recovery">>,
+    Category = <<"user">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Password Recovery">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when an end user requests a password recovery link">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun password_recovery/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun password_recovery_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_password_recovery/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"password_recovery">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'password_recovery'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Email">>
+                                                            ,<<"Password-Reset-Link">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Account-DB">>
+                                                            ,<<"First-Name">>
+                                                            ,<<"Last-Name">>
+                                                            ,<<"Timezone">>
+                                                            ,<<"User-ID">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 
 %%%=============================================================================
@@ -1100,23 +1310,29 @@ password_recovery_definition() ->
 %%------------------------------------------------------------------------------
 -spec voicemail_full_definition() -> kapi_definition:api().
 voicemail_full_definition() ->
-    #kapi_definition{name = <<"voicemail_full">>
-                    ,friendly_name = <<"Voicemail Box Full">>
-                    ,description = <<"This event is triggered any time an attempt to leave a voicemail message is blocked because the voicemail box is full">>
-                    ,build_fun = fun voicemail_full/1
-                    ,validate_fun = fun voicemail_full_v/1
-                    ,publish_fun = fun publish_voicemail_full/1
-                    ,binding = ?BINDING_STRING(<<"voicemail">>, <<"full">>)
-                    ,restrict_to = 'voicemail_full'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Max-Message-Count">>
-                                        ,<<"Message-Count">>
-                                        ,<<"Voicemail-Box">>
-                                        ]
-                    ,optional_headers = ?DEFAULT_OPTIONAL_HEADERS
-                    ,values = ?NOTIFY_VALUES(<<"voicemail_full">>)
-                    ,types = []
-                    }.
+    EventName = <<"voicemail_full">>,
+    Category = <<"voicemail">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Voicemail Box Full">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered any time an attempt to leave a voicemail message is blocked because the voicemail box is full">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun voicemail_full/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun voicemail_full_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_voicemail_full/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"full">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'voicemail_full'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Max-Message-Count">>
+                                                            ,<<"Message-Count">>
+                                                            ,<<"Voicemail-Box">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, ?DEFAULT_OPTIONAL_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 -define(VOICEMAIL_NEW_HEADERS, [<<"Account-ID">>
                                ,<<"From-Realm">>
@@ -1140,39 +1356,51 @@ voicemail_full_definition() ->
 %%------------------------------------------------------------------------------
 -spec voicemail_new_definition() -> kapi_definition:api().
 voicemail_new_definition() ->
-    #kapi_definition{name = <<"voicemail_new">>
-                    ,friendly_name = <<"New Voicemail Message">>
-                    ,description = <<"This event is triggered any time a voicemail message is left">>
-                    ,build_fun = fun voicemail_new/1
-                    ,validate_fun = fun voicemail_new_v/1
-                    ,publish_fun = fun publish_voicemail_new/1
-                    ,binding = ?BINDING_STRING(<<"voicemail">>, <<"new">>)
-                    ,restrict_to = 'voicemail_new'
-                    ,required_headers = ?VOICEMAIL_NEW_HEADERS
-                    ,optional_headers = ?OPTIONAL_VOICEMAIL_NEW_HEADERS
-                    ,values = ?NOTIFY_VALUES(<<"voicemail_new">>)
-                    ,types = []
-                    }.
+    EventName = <<"voicemail_new">>,
+    Category = <<"voicemail">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"New Voicemail Message">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered any time a voicemail message is left">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun voicemail_new/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun voicemail_new_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_voicemail_new/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"new">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'voicemail_new'}
+              ,{fun kapi_definition:set_required_headers/2, ?VOICEMAIL_NEW_HEADERS}
+              ,{fun kapi_definition:set_optional_headers/2, ?OPTIONAL_VOICEMAIL_NEW_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Get Voicemail Saved Notification API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec voicemail_saved_definition() -> kapi_definition:api().
 voicemail_saved_definition() ->
-    #kapi_definition{name = <<"voicemail_saved">>
-                    ,friendly_name = <<"Voicemail Message Saved">>
-                    ,description = <<"This event is triggered any time a voicemail message is saved in the voicemail box 'new' folder">>
-                    ,build_fun = fun voicemail_saved/1
-                    ,validate_fun = fun voicemail_saved_v/1
-                    ,publish_fun = fun publish_voicemail_saved/1
-                    ,binding = ?BINDING_STRING(<<"voicemail">>, <<"saved">>)
-                    ,restrict_to = 'voicemail_saved'
-                    ,required_headers = ?VOICEMAIL_NEW_HEADERS
-                    ,optional_headers = ?OPTIONAL_VOICEMAIL_NEW_HEADERS
-                    ,values = ?NOTIFY_VALUES(<<"voicemail_saved">>)
-                    ,types = []
-                    }.
-
+    EventName = <<"voicemail_saved">>,
+    Category = <<"voicemail">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Voicemail Message Saved">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered any time a voicemail message is saved in the voicemail box 'new' folder">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun voicemail_saved/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun voicemail_saved_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_voicemail_saved/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"saved">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'voicemail_saved'}
+              ,{fun kapi_definition:set_required_headers/2, ?VOICEMAIL_NEW_HEADERS}
+              ,{fun kapi_definition:set_optional_headers/2, ?OPTIONAL_VOICEMAIL_NEW_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%%=============================================================================
 %%% Webhook Notifications Definitions
@@ -1184,44 +1412,57 @@ voicemail_saved_definition() ->
 %%------------------------------------------------------------------------------
 -spec webhook_definition() -> kapi_definition:api().
 webhook_definition() ->
-    #kapi_definition{name = <<"webhook">>
-                    ,friendly_name = <<"Callflow Webhook Triggered">>
-                    ,description = <<"This event is triggered when a corresponding webhook action in a callflow is reached">>
-                    ,build_fun = fun webhook/1
-                    ,validate_fun = fun webhook_v/1
-                    ,publish_fun = fun publish_webhook/1
-                    ,binding = ?BINDING_STRING(<<"webhook">>, <<"callflow">>)
-                    ,restrict_to = 'webhook'
-                    ,required_headers = [<<"Data">>
-                                        ,<<"Hook">>
-                                        ]
-                    ,optional_headers = [<<"Timestamp">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"webhook">>)
-                    ,types = []
-                    }.
+    EventName = <<"webhook">>,
+    Category = <<"webhook">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Callflow Webhook Triggered">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a corresponding webhook action in a callflow is reached">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun webhook/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun webhook_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_webhook/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"callflow">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'webhook'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Data">>
+                                                            ,<<"Hook">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Timestamp">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
 %%------------------------------------------------------------------------------
 %% @doc Notification Get Webhook Disabled API definition.
 %% @end
 %%------------------------------------------------------------------------------
 -spec webhook_disabled_definition() -> kapi_definition:api().
 webhook_disabled_definition() ->
-    #kapi_definition{name = <<"webhook_disabled">>
-                    ,friendly_name = <<"Webhook Disabled">>
-                    ,description = <<"This event is triggered when a webhook is disabled">>
-                    ,build_fun = fun webhook_disabled/1
-                    ,validate_fun = fun webhook_disabled_v/1
-                    ,publish_fun = fun publish_webhook_disabled/1
-                    ,binding = ?BINDING_STRING(<<"webhook">>, <<"disabled">>)
-                    ,restrict_to = 'webhook_disabled'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Hook-ID">>
-                                        ]
-                    ,optional_headers = ?DEFAULT_OPTIONAL_HEADERS
-                    ,values = ?NOTIFY_VALUES(<<"webhook_disabled">>)
-                    ,types = []
-                    }.
+    EventName = <<"webhook_disabled">>,
+    Category = <<"webhook">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Webhook Disabled">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a webhook is disabled">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun webhook_disabled/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun webhook_disabled_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_webhook_disabled/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"disabled">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'webhook_disabled'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Hook-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, ?DEFAULT_OPTIONAL_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%%=============================================================================
 %%% Customer Defined Notifications Definitions
@@ -1233,36 +1474,42 @@ webhook_disabled_definition() ->
 %%------------------------------------------------------------------------------
 -spec cf_notification_definition() -> kapi_definition:api().
 cf_notification_definition() ->
-    #kapi_definition{name = <<"cf_notification">>
-                    ,friendly_name = <<"Customer defined notification">>
-                    ,description = <<"This event is triggered when an customer want send own notification, as example from callflow">>
-                    ,build_fun = fun cf_notification/1
-                    ,validate_fun = fun cf_notification_v/1
-                    ,publish_fun = fun publish_cf_notification/1
-                    ,binding = ?BINDING_STRING(<<"account">>, <<"cf_notification">>)
-                    ,restrict_to = 'cf_notification'
-                    ,required_headers = [<<"Account-ID">>
-                                        ,<<"Template-ID">>
-                                        ]
-                    ,optional_headers = [<<"Caller-ID-Name">>
-                                        ,<<"Caller-ID-Number">>
-                                        ,<<"Call-ID">>
-                                        ,<<"Call-Bridged">>
-                                        ,<<"Message-Left">>
-                                        ,<<"From-Realm">>
-                                        ,<<"From-User">>
-                                        ,<<"Notify">>
-                                        ,<<"To">>
-                                        ,<<"To-Realm">>
-                                        ,<<"To-User">>
-                                        ,<<"Timestamp">>
-                                        ,<<"Comments">>
-                                        ,<<"Notification-Media">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
-                                        ]
-                    ,values = ?NOTIFY_VALUES(<<"cf_notification">>)
-                    ,types = []
-                    }.
+    EventName = <<"cf_notification">>,
+    Category = <<"account">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Customer defined notification">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when an customer want send own notification, as example from callflow">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun cf_notification/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun cf_notification_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_cf_notification/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"cf_notification">>)}
+              ,{fun kapi_definition:set_restrict_to/2, 'cf_notification'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Template-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Caller-ID-Name">>
+                                                            ,<<"Caller-ID-Number">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Call-Bridged">>
+                                                            ,<<"Message-Left">>
+                                                            ,<<"From-Realm">>
+                                                            ,<<"From-User">>
+                                                            ,<<"Notify">>
+                                                            ,<<"To">>
+                                                            ,<<"To-Realm">>
+                                                            ,<<"To-User">>
+                                                            ,<<"Timestamp">>
+                                                            ,<<"Comments">>
+                                                            ,<<"Notification-Media">>
+                                                                 | ?DEFAULT_OPTIONAL_HEADERS
+                                                            ]}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%%=============================================================================
 %%% API
@@ -1319,10 +1566,8 @@ api_definitions() ->
 %% @see api_definitions/0
 %% @end
 %%------------------------------------------------------------------------------
--spec api_definition(atom() | kz_term:text() | kz_term:ne_binary()) -> kapi_definition:api().
-api_definition(Name) when is_atom(Name) ->
-    api_definition(kz_term:to_binary(Name));
-api_definition(Name) when is_list(Name) ->
+-spec api_definition(kz_term:text()) -> kapi_definition:api().
+api_definition(Name) when not is_binary(Name) ->
     api_definition(kz_term:to_binary(Name));
 api_definition(<<"notify_update">>) ->
     notify_update_definition();
@@ -1436,7 +1681,7 @@ bind_to_q(Q, [RestrictTo|T]) ->
         _Else ->
             bind_to_q(Q, T)
     catch
-        error:undef ->
+        'error':'undef' ->
             bind_to_q(Q, T)
     end;
 bind_to_q(_Q, []) ->
@@ -1476,7 +1721,7 @@ unbind_q_from(Q, [RestrictTo|T]) ->
             unbind_q_from(Q, T);
         _Else -> unbind_q_from(Q, T)
     catch
-        error:undef ->
+        'error':'undef' ->
             unbind_q_from(Q, T)
     end;
 unbind_q_from(_Q, []) ->
@@ -1516,7 +1761,7 @@ find_account_id(Req, GetFun) ->
             ,[<<"Details">>, <<"Custom-Channel-Vars">>, <<"Account-ID">>]
             ],
     case GetFun(Paths, Req) of
-        ?NE_BINARY=Id -> Id;
+        <<Id/binary>> -> Id;
         _ -> 'undefined'
     end.
 
@@ -1574,7 +1819,7 @@ headers(Name) ->
         Definition ->
             kapi_definition:required_headers(Definition) ++ kapi_definition:optional_headers(Definition)
     catch
-        error:undef ->
+        'error':'undef' ->
             lager:warning("no notification headers for ~s", [Name]),
             []
     end.
@@ -1584,14 +1829,14 @@ headers(Name) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec build_message(kz_term:api_terms(), kapi_definition:api()) -> api_formatter_return().
-build_message(Prop, #kapi_definition{required_headers = ReqH
-                                    ,optional_headers = OptH
-                                    ,validate_fun = Validate
-                                    ,name = _Name
-                                    }) when is_list(Prop) ->
+build_message(Prop, Definition) when is_list(Prop) ->
+    ReqH = kapi_definition:required_headers(Definition),
+    OptH = kapi_definition:optional_headers(Definition),
+    Validate = kapi_definition:validate_fun(Definition),
+    Binding = kapi_definition:binding(Definition),
     case Validate(Prop) of
         'true' -> kz_api:build_message(Prop, ReqH, OptH);
-        'false' -> {'error', "Proplist failed validation for " ++ binary_to_list(_Name)}
+        'false' -> {'error', "Proplist failed validation for " ++ binary_to_list(Binding)}
     end;
 build_message(JObj, Definition) ->
     build_message(kz_json:to_proplist(JObj), Definition).
@@ -1600,10 +1845,10 @@ build_message(JObj, Definition) ->
 %% @doc Generic function to validate API payload.
 %% @end
 %%------------------------------------------------------------------------------
-validate(Prop, #kapi_definition{required_headers = ReqH
-                               ,values = Values
-                               ,types = Types
-                               }) when is_list(Prop) ->
+validate(Prop, Definition) when is_list(Prop) ->
+    ReqH = kapi_definition:required_headers(Definition),
+    Values = kapi_definition:values(Definition),
+    Types = kapi_definition:types(Definition),
     kz_api:validate(Prop, ReqH, Values, Types);
 validate(JObj, Definition) ->
     validate(kz_json:to_proplist(JObj), Definition).
@@ -1615,7 +1860,7 @@ validate(JObj, Definition) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Notify Status notification.
-%% Takes prop-list, creates JSON string and publish it on AMQP.
+%% Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec notify_update(kz_term:api_terms()) -> api_formatter_return().
@@ -1632,13 +1877,13 @@ publish_notify_update(RespQ, JObj) ->
 
 -spec publish_notify_update(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_notify_update(RespQ, API, ContentType) ->
-    #kapi_definition{values = Values} = notify_update_definition(),
+    Values = kapi_definition:values(notify_update_definition()),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun notify_update/1),
     kz_amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Skeleton notification
-%% Takes prop-list, creates JSON string and publish it on AMQP.
+%% Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec skel(kz_term:api_terms()) -> api_formatter_return().
@@ -1655,20 +1900,18 @@ publish_skel(JObj) ->
 
 -spec publish_skel(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_skel(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = skel_definition(),
+    Definition = skel_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun skel/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
-
 
 %%%=============================================================================
 %%% Account Notifications Functions
 %%%=============================================================================
 
-
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec account_zone_change(kz_term:api_terms()) -> api_formatter_return().
@@ -1685,14 +1928,14 @@ publish_account_zone_change(JObj) ->
 
 -spec publish_account_zone_change(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_account_zone_change(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = account_zone_change_definition(),
+    Definition = account_zone_change_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun account_zone_change/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec bill_reminder(kz_term:api_terms()) -> api_formatter_return().
@@ -1709,14 +1952,14 @@ publish_bill_reminder(JObj) ->
 
 -spec publish_bill_reminder(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_bill_reminder(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = bill_reminder_definition(),
+    Definition = bill_reminder_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun bill_reminder/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec low_balance(kz_term:api_terms()) -> api_formatter_return().
@@ -1733,14 +1976,14 @@ publish_low_balance(JObj) ->
 
 -spec publish_low_balance(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_low_balance(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = low_balance_definition(),
+    Definition = low_balance_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun low_balance/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec new_account(kz_term:api_terms()) -> api_formatter_return().
@@ -1757,14 +2000,14 @@ publish_new_account(JObj) ->
 
 -spec publish_new_account(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_new_account(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = new_account_definition(),
+    Definition = new_account_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun new_account/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec service_added(kz_term:api_terms()) -> api_formatter_return().
@@ -1781,14 +2024,14 @@ publish_service_added(JObj) ->
 
 -spec publish_service_added(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_service_added(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = service_added_definition(),
+    Definition = service_added_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun service_added/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec topup(kz_term:api_terms()) -> api_formatter_return().
@@ -1805,14 +2048,14 @@ publish_topup(JObj) ->
 
 -spec publish_topup(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_topup(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = topup_definition(),
+    Definition = topup_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun topup/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec transaction(kz_term:api_terms()) -> api_formatter_return().
@@ -1829,20 +2072,18 @@ publish_transaction(JObj) ->
 
 -spec publish_transaction(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_transaction(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = transaction_definition(),
+    Definition = transaction_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun transaction/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
-
 
 %%%=============================================================================
 %%% Fax Notifications Functions
 %%%=============================================================================
 
-
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec fax_inbound(kz_term:api_terms()) -> api_formatter_return().
@@ -1859,14 +2100,14 @@ publish_fax_inbound(JObj) ->
 
 -spec publish_fax_inbound(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_fax_inbound(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = inbound_fax_definition(),
+    Definition = inbound_fax_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun fax_inbound/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec fax_inbound_error(kz_term:api_terms()) -> api_formatter_return().
@@ -1883,14 +2124,14 @@ publish_fax_inbound_error(JObj) ->
 
 -spec publish_fax_inbound_error(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_fax_inbound_error(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = inbound_fax_error_definition(),
+    Definition = inbound_fax_error_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun fax_inbound_error/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec fax_outbound(kz_term:api_terms()) -> api_formatter_return().
@@ -1907,14 +2148,14 @@ publish_fax_outbound(JObj) ->
 
 -spec publish_fax_outbound(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_fax_outbound(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = outbound_fax_definition(),
+    Definition = outbound_fax_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun fax_outbound/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec fax_outbound_error(kz_term:api_terms()) -> api_formatter_return().
@@ -1931,14 +2172,14 @@ publish_fax_outbound_error(JObj) ->
 
 -spec publish_fax_outbound_error(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_fax_outbound_error(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = outbound_fax_error_definition(),
+    Definition = outbound_fax_error_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun fax_outbound_error/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec fax_outbound_smtp_error(kz_term:api_terms()) -> api_formatter_return().
@@ -1955,20 +2196,18 @@ publish_fax_outbound_smtp_error(JObj) ->
 
 -spec publish_fax_outbound_smtp_error(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_fax_outbound_smtp_error(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = outbound_smtp_fax_error_definition(),
+    Definition = outbound_smtp_fax_error_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun fax_outbound_smtp_error/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
-
 
 %%%=============================================================================
 %%% Number and Port Notifications Functions
 %%%=============================================================================
 
-
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec cnam_request(kz_term:api_terms()) -> api_formatter_return().
@@ -1985,14 +2224,14 @@ publish_cnam_request(JObj) ->
 
 -spec publish_cnam_request(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_cnam_request(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = cnam_request_definition(),
+    Definition = cnam_request_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun cnam_request/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_cancel(kz_term:api_terms()) -> api_formatter_return().
@@ -2009,14 +2248,14 @@ publish_port_cancel(JObj) ->
 
 -spec publish_port_cancel(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_cancel(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = port_cancel_definition(),
+    Definition = port_cancel_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_cancel/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_comment(kz_term:api_terms()) -> api_formatter_return().
@@ -2033,14 +2272,14 @@ publish_port_comment(JObj) ->
 
 -spec publish_port_comment(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_comment(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = port_comment_definition(),
+    Definition = port_comment_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_comment/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_pending(kz_term:api_terms()) -> api_formatter_return().
@@ -2057,14 +2296,14 @@ publish_port_pending(JObj) ->
 
 -spec publish_port_pending(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_pending(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = port_pending_definition(),
+    Definition = port_pending_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_pending/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_rejected(kz_term:api_terms()) -> api_formatter_return().
@@ -2081,14 +2320,14 @@ publish_port_rejected(JObj) ->
 
 -spec publish_port_rejected(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_rejected(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = port_rejected_definition(),
+    Definition = port_rejected_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_rejected/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_request(kz_term:api_terms()) -> api_formatter_return().
@@ -2105,14 +2344,14 @@ publish_port_request(JObj) ->
 
 -spec publish_port_request(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_request(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = port_request_definition(),
+    Definition = port_request_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_request/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_scheduled(kz_term:api_terms()) -> api_formatter_return().
@@ -2129,14 +2368,14 @@ publish_port_scheduled(JObj) ->
 
 -spec publish_port_scheduled(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_scheduled(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = port_scheduled_definition(),
+    Definition = port_scheduled_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_scheduled/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec port_unconfirmed(kz_term:api_terms()) -> api_formatter_return().
@@ -2153,14 +2392,14 @@ publish_port_unconfirmed(JObj) ->
 
 -spec publish_port_unconfirmed(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_port_unconfirmed(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = port_unconfirmed_definition(),
+    Definition = port_unconfirmed_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun port_unconfirmed/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec ported(kz_term:api_terms()) -> api_formatter_return().
@@ -2177,20 +2416,18 @@ publish_ported(JObj) ->
 
 -spec publish_ported(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_ported(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = ported_definition(),
+    Definition = ported_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun ported/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
-
 
 %%%=============================================================================
 %%% Register Notifications Functions
 %%%=============================================================================
 
-
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec denied_emergency_bridge(kz_term:api_terms()) -> api_formatter_return().
@@ -2207,20 +2444,18 @@ publish_denied_emergency_bridge(JObj) ->
 
 -spec publish_denied_emergency_bridge(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_denied_emergency_bridge(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = denied_emergency_bridge_definition(),
+    Definition = denied_emergency_bridge_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun denied_emergency_bridge/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
-
 
 %%%=============================================================================
 %%% Register Notifications Functions
 %%%=============================================================================
 
-
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec deregister(kz_term:api_terms()) -> api_formatter_return().
@@ -2237,14 +2472,14 @@ publish_deregister(JObj) ->
 
 -spec publish_deregister(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_deregister(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = deregister_definition(),
+    Definition = deregister_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun deregister/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec first_occurrence(kz_term:api_terms()) -> api_formatter_return().
@@ -2261,14 +2496,14 @@ publish_first_occurrence(JObj) ->
 
 -spec publish_first_occurrence(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_first_occurrence(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = first_occurrence_definition(),
+    Definition = first_occurrence_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun first_occurrence/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec missed_call(kz_term:api_terms()) -> api_formatter_return().
@@ -2285,14 +2520,14 @@ publish_missed_call(JObj) ->
 
 -spec publish_missed_call(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_missed_call(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = missed_call_definition(),
+    Definition = missed_call_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun missed_call/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec register(kz_term:api_terms()) -> api_formatter_return().
@@ -2309,20 +2544,18 @@ publish_register(JObj) ->
 
 -spec publish_register(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_register(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = register_definition(),
+    Definition = register_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun register/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
-
 
 %%%=============================================================================
 %%% System Notifications Functions
 %%%=============================================================================
 
-
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec system_alert(kz_term:api_terms()) -> api_formatter_return().
@@ -2339,20 +2572,18 @@ publish_system_alert(JObj) ->
 
 -spec publish_system_alert(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_system_alert(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = system_alert_definition(),
+    Definition = system_alert_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun system_alert/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
-
 
 %%%=============================================================================
 %%% User Notifications Functions
 %%%=============================================================================
 
-
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec customer_update(kz_term:api_terms()) -> api_formatter_return().
@@ -2369,14 +2600,14 @@ publish_customer_update(JObj) ->
 
 -spec publish_customer_update(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_customer_update(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = customer_update_definition(),
+    Definition = customer_update_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun customer_update/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec new_user(kz_term:api_terms()) -> api_formatter_return().
@@ -2393,14 +2624,14 @@ publish_new_user(JObj) ->
 
 -spec publish_new_user(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_new_user(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = new_user_definition(),
+    Definition = new_user_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun new_user/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec password_recovery(kz_term:api_terms()) -> api_formatter_return().
@@ -2417,20 +2648,18 @@ publish_password_recovery(JObj) ->
 
 -spec publish_password_recovery(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_password_recovery(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = password_recovery_definition(),
+    Definition = password_recovery_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun password_recovery/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
-
 
 %%%=============================================================================
 %%% Voicemail Notifications Functions
 %%%=============================================================================
 
-
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec voicemail_full(kz_term:api_terms()) -> api_formatter_return().
@@ -2447,14 +2676,14 @@ publish_voicemail_full(JObj) ->
 
 -spec publish_voicemail_full(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_voicemail_full(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = voicemail_full_definition(),
+    Definition = voicemail_full_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun voicemail_full/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec voicemail_new(kz_term:api_terms()) -> api_formatter_return().
@@ -2471,14 +2700,14 @@ publish_voicemail_new(JObj) ->
 
 -spec publish_voicemail_new(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_voicemail_new(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = voicemail_new_definition(),
+    Definition = voicemail_new_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun voicemail_new/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec voicemail_saved(kz_term:api_terms()) -> api_formatter_return().
@@ -2495,20 +2724,18 @@ publish_voicemail_saved(JObj) ->
 
 -spec publish_voicemail_saved(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_voicemail_saved(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = voicemail_saved_definition(),
+    Definition = voicemail_saved_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun voicemail_saved/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
-
 
 %%%=============================================================================
 %%% Webhook Notifications Functions
 %%%=============================================================================
 
-
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec webhook(kz_term:api_terms()) -> api_formatter_return().
@@ -2525,14 +2752,14 @@ publish_webhook(JObj) ->
 
 -spec publish_webhook(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_webhook(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = webhook_definition(),
+    Definition = webhook_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun webhook/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec webhook_disabled(kz_term:api_terms()) -> api_formatter_return().
@@ -2549,9 +2776,9 @@ publish_webhook_disabled(JObj) ->
 
 -spec publish_webhook_disabled(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_webhook_disabled(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = webhook_disabled_definition(),
+    Definition = webhook_disabled_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun webhook_disabled/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
@@ -2560,7 +2787,7 @@ publish_webhook_disabled(API, ContentType) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc Takes prop-list, creates JSON string and publish it on AMQP.
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
 %% @end
 %%------------------------------------------------------------------------------
 -spec cf_notification(kz_term:api_terms()) -> api_formatter_return().
@@ -2577,8 +2804,8 @@ publish_cf_notification(JObj) ->
 
 -spec publish_cf_notification(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_cf_notification(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = cf_notification_definition(),
+    Definition = cf_notification_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun cf_notification/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
