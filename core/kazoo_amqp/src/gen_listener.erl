@@ -445,10 +445,19 @@ init(Module, Params, ModuleState, TimeoutRef) ->
     {'ok', #state{module=Module
                  ,module_state=ModuleState
                  ,module_timeout_ref=TimeoutRef
-                 ,params=Params
+                 ,params=maybe_set_queue_name(Module, Params)
                  ,handle_event_mfa = listener_utils:responder_mfa(Module, 'handle_event')
                  ,auto_ack = props:is_true('auto_ack', Params, 'false')
                  }}.
+
+-spec maybe_set_queue_name(atom(), kz_term:proplist()) -> kz_term:proplist().
+maybe_set_queue_name(Module, Params) ->
+    case props:is_false('queue_name_always_generate', Params, 'true')
+        andalso props:get_value('queue_name', Params) =:= <<>>
+    of
+        'false' -> Params;
+        'true' -> props:set_value('queue_name', kz_amqp_util:new_queue_name(Module), Params)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Handling call messages.
