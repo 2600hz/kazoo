@@ -31,7 +31,7 @@
                   ,{'self', []}
                   ]).
 
--define(QUEUE_NAME, kz_amqp_util:new_queue_name()).
+-define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
