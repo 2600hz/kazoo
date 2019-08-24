@@ -107,7 +107,7 @@ handle_call({'new_exchange', Exchange}
            ,_From
            ,#kz_amqp_connection{available='true'}=Connection
            ) ->
-    case declare_exchange(Connection, Exchange) of
+    case declare_exchange(Exchange, Connection) of
         #kz_amqp_connection{}=C -> {'reply', 'ok', C};
         Else -> {'reply', Else, Connection}
     end;
@@ -258,8 +258,12 @@ connected(#kz_amqp_connection{channel='undefined'}=Connection) ->
         #kz_amqp_connection{}=Error -> Error
     end;
 connected(#kz_amqp_connection{available='false'}=Connection) ->
-    _ = kz_amqp_connections:available(self()),
-    connected(Connection#kz_amqp_connection{available='true'});
+    case declare_exchanges(Connection#kz_amqp_connection{available='true'}) of
+        {'error', _} -> disconnected(Connection);
+        #kz_amqp_connection{available='true'}= C ->
+            _ = kz_amqp_connections:available(self()),
+            connected(C)
+    end;
 connected(#kz_amqp_connection{prechannels_initialized='false'}=Connection) ->
     case initialize_prechannels(Connection) of
         #kz_amqp_connection{prechannels_initialized='false'}=Error -> Error;
@@ -309,7 +313,7 @@ disconnected(#kz_amqp_connection{}=Connection, Timeout) ->
 
     Ref = erlang:send_after(Timeout, self(), {'connect', NextTimeout}),
     lager:debug("reconnecting after ~p in ~p", [Timeout, Ref]),
-    Connection#kz_amqp_connection{reconnect_ref=Ref,exchanges=#{}}.
+    Connection#kz_amqp_connection{reconnect_ref=Ref}.
 
 shutdown(#kz_amqp_connection{connection=ConnectionPid
                             }
@@ -501,9 +505,25 @@ open_channel(#kz_amqp_connection{connection=Pid}) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec declare_exchange(kz_amqp_connection(), kz_amqp_exchange()) -> kz_amqp_connection() | 'ok' | {'error', any()}.
-declare_exchange(#kz_amqp_connection{channel=Channel}=Connection
-                ,Exchange
+-spec declare_exchanges(kz_amqp_connection()) -> kz_amqp_connection() | {'error', any()}.
+declare_exchanges(#kz_amqp_connection{exchanges=Exchanges}=Connection) ->
+    Filtered = maps:filter(fun(_K, Ex) -> not Ex#'exchange.declare'.passive end, Exchanges),
+    declare_exchanges_fold(maps:values(Filtered), Connection#kz_amqp_connection{exchanges=#{}}).
+
+-spec declare_exchanges_fold(kz_amqp_exchanges(), kz_amqp_connection()) -> kz_amqp_connection() | {'error', any()}.
+declare_exchanges_fold([], Connection) -> Connection;
+declare_exchanges_fold([Exchange | Exchanges]
+                      ,#kz_amqp_connection{channel=Channel}=Connection
+                      ) ->
+    case declare_exchange(Connection, Channel, Exchange) of
+        {'error', _} = Error -> Error;
+        'ok' -> declare_exchanges_fold(Exchanges, Connection);
+        #kz_amqp_connection{}=C -> declare_exchanges_fold(Exchanges, C)
+    end.
+
+-spec declare_exchange(kz_amqp_exchange(), kz_amqp_connection()) -> kz_amqp_connection() | 'ok' | {'error', any()}.
+declare_exchange(Exchange
+                ,#kz_amqp_connection{channel=Channel}=Connection
                 ) ->
     declare_exchange(Connection, Channel, Exchange).
 
