@@ -649,10 +649,16 @@ handle_info({'kz_amqp_assignment', 'lost_channel'}
            ) ->
     lager:debug("lost channel assignment"),
     kz_amqp_channel:remove_consumer_channel(),
+    gen_server:cast(self(), {?MODULE, {'is_consuming', 'false'}}),
+    %% if there's an error before the start consume
+    %% we can potentially have initial Params
+    %% set to empty array and therefore loose the bindings
+    ParamBindings = props:get_value('bindings', Params, []),
+    NewParams = lists:usort(ParamBindings ++ ExistingBindings),
     {'noreply', State#state{is_consuming='false'
                            ,consumer_tags=[]
                            ,bindings=[]
-                           ,params=props:set_value('bindings', ExistingBindings, Params)
+                           ,params=props:set_value('bindings', NewParams, Params)
                            }};
 handle_info({#'basic.deliver'{}=BD
             ,#amqp_msg{props=#'P_basic'{content_type=CT}=Basic
@@ -706,20 +712,6 @@ handle_info(#'channel.flow'{active=Active}, State) ->
     lager:debug("received channel flow (~s)", [Active]),
     kz_amqp_util:flow_control_reply(Active),
     gen_server:cast(self(), {?MODULE,{'channel_flow_control', Active}}),
-    {'noreply', State};
-handle_info('$is_gen_listener_consuming'
-           ,#state{is_consuming='false'
-                  ,bindings=ExistingBindings
-                  ,params=Params
-                  }=State
-           ) ->
-    _Release = (catch kz_amqp_channel:release()),
-    _Requisition = channel_requisition(Params),
-    {'noreply', State#state{queue='undefined'
-                           ,bindings=[]
-                           ,params=props:set_value('bindings', ExistingBindings, Params)
-                           }};
-handle_info('$is_gen_listener_consuming', State) ->
     {'noreply', State};
 handle_info({'$server_confirms', ServerConfirms}, State) ->
     gen_server:cast(self(), {?MODULE,{'server_confirms',ServerConfirms}}),
@@ -1231,7 +1223,7 @@ handle_existing_binding(Binding, Props, State, Q, ExistingProps, Bs) ->
     case binding_props_match(Props, ExistingProps) of
         'true' ->
             lager:debug("binding ~s with the same properties exists", [Binding]),
-            State;
+            State#state{bindings=[{Binding, Props}|Bs]};
         'false' ->
             lager:debug("creating existing binding '~s' with new props: ~p", [Binding, Props]),
             create_binding(Binding, Props, Q),
@@ -1417,13 +1409,11 @@ handle_amqp_started(#state{params=Params}=State, Q) ->
     maybe_server_confirms(props:get_value('server_confirms', Params, 'false')),
 
     maybe_channel_flow(props:get_value('channel_flow', Params, 'false')),
-    erlang:send_after(?TIMEOUT_RETRY_CONN, self(), '$is_gen_listener_consuming'),
 
     State1#state{is_consuming='false'}.
 
 -spec handle_amqp_errored(state()) -> state().
 handle_amqp_errored(State) ->
-    gen_server:cast(self(), {?MODULE, {'is_consuming', 'false'}}),
     State#state{is_consuming='false'}.
 
 -spec maybe_server_confirms(boolean()) -> 'ok'.
