@@ -852,9 +852,10 @@ handle_info({'heartbeat', Ref}
     _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
 
     try
-        Node = #kz_node{} = create_node(Heartbeat, State),
+        Node = #kz_node{broker=Broker} = create_node(Heartbeat, State),
         _ = ets:insert(Tab, Node),
-        kapi_nodes:publish_advertise(advertise_payload(Node)),
+        _ = Broker =/= <<"disconnected">>
+            andalso kapi_nodes:publish_advertise(advertise_payload(Node)),
         {'noreply', State#state{heartbeat_ref=Reference, me=Node}}
     catch
         _:{noproc,_}:_ST ->
