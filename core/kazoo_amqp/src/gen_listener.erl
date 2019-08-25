@@ -1365,15 +1365,14 @@ handle_amqp_channel_available(#state{params=Params}=State, Reconnected) ->
             handle_exchanges_ready(State);
         {'error', _E} ->
             lager:debug("error declaring exchanges : ~p", [_E]),
-            maybe_retry(kz_amqp_channel:is_consumer_channel_valid(), State)
+            handle_amqp_errored(State)
     end.
 
--spec maybe_retry(boolean(), state()) -> state().
-maybe_retry('true', State) ->
-    erlang:send_after(?SERVER_RETRY_PERIOD, self(), 'retry'),
-    State;
-maybe_retry('false', State) ->
-    State.
+-spec maybe_retry(boolean()) -> reference() | 'ok'.
+maybe_retry('true') ->
+    erlang:send_after(?SERVER_RETRY_PERIOD, self(), 'retry');
+maybe_retry('false') ->
+    'ok'.
 
 log_channel_status('true') ->
     lager:debug("channel restarted, let's re-connect");
@@ -1423,6 +1422,7 @@ handle_amqp_started(#state{params=Params}=State, Q) ->
 
 -spec handle_amqp_errored(state()) -> state().
 handle_amqp_errored(State) ->
+    _ = maybe_retry(kz_amqp_channel:is_consumer_channel_valid()),
     State#state{is_consuming='false'}.
 
 -spec maybe_server_confirms(boolean()) -> 'ok'.
