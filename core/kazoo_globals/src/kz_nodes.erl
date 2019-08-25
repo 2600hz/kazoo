@@ -818,9 +818,10 @@ handle_info({'heartbeat', Ref}
     _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
 
     try
-        Node = #kz_node{} = create_node(Heartbeat, State),
+        Node = #kz_node{broker=Broker} = create_node(Heartbeat, State),
         _ = ets:insert(Tab, Node),
-        kapi_nodes:publish_advertise(advertise_payload(Node)),
+        _ = Broker =/= <<"disconnected">>
+            andalso kapi_nodes:publish_advertise(advertise_payload(Node)),
         {'noreply', State#state{heartbeat_ref=Reference, me=Node}}
     catch
         _:{noproc,_} ->
@@ -919,7 +920,8 @@ create_node(Heartbeat, #state{zone=Zone
                            ,node_info=node_info()
                            }).
 
--spec normalize_amqp_uri(kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec normalize_amqp_uri(kz_term:api_ne_binary()) -> kz_term:ne_binary().
+normalize_amqp_uri('undefined') -> <<"disconnected">>;
 normalize_amqp_uri(URI) ->
     kz_term:to_binary(amqp_uri:remove_credentials(kz_term:to_list(URI))).
 

@@ -138,7 +138,7 @@
 -export([bind_q_to_exchange/3, bind_q_to_exchange/4]).
 -export([unbind_q_from_exchange/3]).
 -export([new_queue/0, new_queue/1, new_queue/2]).
--export([new_queue_name/0]).
+-export([new_queue_name/0, new_queue_name/1]).
 -export([basic_consume/1, basic_consume/2]).
 -export([basic_publish/3, basic_publish/4, basic_publish/5]).
 -export([basic_cancel/0, basic_cancel/1]).
@@ -841,6 +841,10 @@ new_queue(Queue, Options) when is_binary(Queue) ->
 -spec new_queue_name() -> kz_term:ne_binary().
 new_queue_name() ->
     list_to_binary(io_lib:format("~s-~p-~s", [node(), self(), kz_binary:rand_hex(4)])).
+
+-spec new_queue_name(kz_term:ne_binary() | atom()) -> kz_term:ne_binary().
+new_queue_name(Name) ->
+    list_to_binary(io_lib:format("~s-~s-~p-~s", [node(), Name, self(), kz_binary:rand_hex(4)])).
 
 -spec queue_arguments(kz_term:proplist()) -> amqp_properties().
 queue_arguments(Arguments) ->
