@@ -170,6 +170,7 @@ Here are some general guidelines for submitting new code.
   * Any failed Travis job will result in you needing to address the issues and updating the PR.
   * Avoid these delays in acceptance by running the CI suite yourself prior to submitting
 * All pull requests should be issued to resolve a Jira ticket. The branch name of the submission should be Jira ticket ID, such as KAZOO-42.
+  * See [commit guidelines](doc/engineering/commits.md) for more
 * Ensure that each pull request addresses only the work related to the ticket it is resolving.
 * Keep the changes in a pull request as concise as possible. If the pull request is a bug fix it should be the simplest possible approach with minimal code changes.
 * All work should be rebased to the originating branch prior to pull request submission.

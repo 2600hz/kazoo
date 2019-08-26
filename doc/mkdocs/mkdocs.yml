@@ -473,6 +473,7 @@ pages:
   - 'Attachments': 'core/kazoo_attachments/README.md'
   - 'Call Recording': 'doc/engineering/call_recording.md'
   - 'Caller ID Formatting': 'doc/reference/caller_id_formatting.md'
+  - 'Commits': 'doc/engineering/commits.md'
   - 'Continuous Integration (CI)': 'doc/engineering/ci.md'
   - 'CouchDB Views': 'doc/engineering/couch_views.md'
   - 'Crossbar CSVs': 'doc/engineering/crossbar-csvs.md'
