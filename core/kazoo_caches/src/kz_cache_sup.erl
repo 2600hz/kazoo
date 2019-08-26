@@ -44,7 +44,7 @@ start_link(Name, ExpirePeriod, Props) ->
 
 -spec stop(atom()) -> 'true'.
 stop(Name) ->
-    exit(whereis(sup_name(Name)), 'shutdown').
+    gen_server:stop(sup_name(Name)).
 
 -spec sup_name(atom()) -> atom().
 sup_name(Name) ->
