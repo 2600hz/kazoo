@@ -38,7 +38,7 @@
 -type response_code() :: 200..600.
 -type response_headers() :: kz_http:headers().
 
--type request_headers() :: [{kz_term:ne_binary(), string()}].
+-type request_headers() :: [{kz_term:ne_binary(), string() | non_neg_integer()}].
 
 -record(expectation, {response_codes = [] :: expected_codes()
                      ,response_headers = [] :: expected_headers()
