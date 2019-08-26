@@ -42,7 +42,7 @@ start_link(Name, ExpirePeriod) when is_integer(ExpirePeriod), ExpirePeriod > 0 -
 start_link(Name, ExpirePeriod, Props) ->
     supervisor:start_link({'local', sup_name(Name)}, ?MODULE, [Name, ExpirePeriod, Props]).
 
--spec stop(atom()) -> 'true'.
+-spec stop(atom()) -> 'ok'.
 stop(Name) ->
     gen_server:stop(sup_name(Name)).
 
