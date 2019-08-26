@@ -163,7 +163,7 @@ check_failure(AccountId, HookId, Count) ->
 
 -spec disable_hook(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 disable_hook(AccountId, HookId) ->
-    Update = kzd_webhooks:disable_updates(<<"too many failed attempts">>),
+    Update = kzd_webhook:disable_updates(<<"too many failed attempts">>),
     Updates = [{'update', Update}
               ,{'ensure_saved', 'true'}
               ,{'should_create', 'false'}
