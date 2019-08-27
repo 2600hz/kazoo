@@ -798,8 +798,8 @@ terminate(Reason, #state{module=Module
                         ,consumer_tags=Tags
                         }) ->
     _ = (catch(lists:foreach(fun kz_amqp_util:basic_cancel/1, Tags))),
-    _ = (catch kz_amqp_channel:release()),
     _Terminated = (catch Module:terminate(Reason, ModuleState)),
+    _ = (catch kz_amqp_channel:release()),
     _ = [listener_federator:stop(F) || {_Broker, F} <- Fs],
     lager:debug("~s terminated cleanly, going down", [Module]).
 
