@@ -1,9 +1,11 @@
 ## 3rd party dependencies
 DEPS = amqp_client \
+	amqp_dist \
 	apns \
 	couchbeam \
 	cowboy \
 	eflame \
+	eiconv \
 	erlang_localtime \
 	erlazure \
 	erlcloud \
@@ -47,6 +49,8 @@ endif
 
 dep_amqp_client = git https://github.com/2600hz/erlang-amqp_client.git v3.7.14
 
+dep_amqp_dist = git https://github.com/2600hz/erlang-amqp_dist.git aa10108f1200438fe33a6450dc0909d4cdb37f31
+
 dep_apns = git https://github.com/2600hz/erlang-apns4erl.git aba1fa96a4abbbb2c1628ad5d604f482aad4d12f # latest commit SHA to 2600hz branch
 
 # dep_certifi = hex 0.3.0
@@ -67,7 +71,7 @@ dep_cowboy = git https://github.com/2600hz/erlang-cowboy 2.6.3
 dep_eflame = git https://github.com/slfritchie/eflame 7b0bb1a7e8c8482a59421a3a50ae69d49af59d52
 # used by kz_tracers
 
-# dep_eiconv = git https://github.com/zotonic/eiconv
+dep_eiconv = git https://github.com/zotonic/eiconv 1.0.0
 # used by gen_smtp
 
 dep_erlang_localtime = git https://github.com/2600hz/erlang-localtime

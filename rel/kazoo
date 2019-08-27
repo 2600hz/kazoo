@@ -551,7 +551,9 @@ case "$1" in
             -config "$SYS_CONFIG_FILE" \
             $NAME_ARG \
             -setcookie $COOKIE \
-            -args_file "$VM_ARGS_FILE" 
+            -args_file "$VM_ARGS_FILE" \
+            -proto_dist inet_tcp amqp \
+            -start_epmd false
 
         # Dump environment info for logging purposes
         echo "Exec: $@" -- ${1+$ARGS}
