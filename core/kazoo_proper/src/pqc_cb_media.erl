@@ -24,6 +24,7 @@
 
 -export([seq/0
         ,cleanup/0
+        ,new_media_doc/0
         ]).
 
 -include("kazoo_proper.hrl").
@@ -277,6 +278,7 @@ expected_location_value(URL, Id) ->
     {'match', [_Host, Path]} = re:run(URL, "^(.+)(/v2/.+$)", [{'capture','all_but_first', 'list'}]),
     Path ++ [$/ | kz_term:to_list(Id)].
 
+-spec new_media_doc() -> kzd_media:doc().
 new_media_doc() ->
     Set = [{fun kzd_media:set_name/2, kz_binary:rand_hex(6)}],
     kz_doc:public_fields(kz_json:exec_first(Set, kzd_media:new())).
