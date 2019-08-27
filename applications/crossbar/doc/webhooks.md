@@ -43,58 +43,223 @@ curl -v -X GET \
     "auth_token": "{AUTH_TOKEN}",
     "data": [
         {
-            "description": "Events when calls end",
+            "description": "Receive notifications when sms is created",
+            "id": "sms",
+            "name": "SMS"
+        },
+        {
+            "description": "Receive notifications when objects (like JSON document objects) in Kazoo are changed",
+            "id": "object",
+            "modifiers": {
+                "action": {
+                    "description": "A list of object actions to handle",
+                    "items": [
+                        "all",
+                        "doc_created",
+                        "doc_edited",
+                        "doc_deleted"
+                    ],
+                    "type": "array"
+                },
+                "type": {
+                    "description": "A list of object types to handle",
+                    "items": [
+                        "account",
+                        "all",
+                        "callflow",
+                        "device",
+                        "faxbox",
+                        "media",
+                        "user",
+                        "vmbox",
+                        "fax",
+                        "mailbox_message",
+                        "call_recording"
+                    ],
+                    "type": "array"
+                }
+            },
+            "name": "Object"
+        },
+        {
+            "description": "Fire a webhook when a notification event is triggered in Kazoo",
+            "id": "notifications",
+            "modifiers": {
+                "type": {
+                    "items": {
+                        "account_zone_change": {
+                            "description": "This event is triggered when an end user requests the home zone of an account is changed",
+                            "friendly_name": "Account Zone Change"
+                        },
+                        "all": {
+                            "description": "This event is triggered for any notification events",
+                            "friendly_name": "All"
+                        },
+                        "bill_reminder": {
+                            "description": "This event is triggered before a few days before the end of the month toremind account's owners of estimated service plan charges",
+                            "friendly_name": "Bill Reminder"
+                        },
+                        "cf_notification": {
+                            "description": "This event is triggered when an customer want send own notification, as example from callflow",
+                            "friendly_name": "Customer defined notification"
+                        },
+                        "cnam_request": {
+                            "description": "This event is triggered when an end user would like the CNAM for a number changed",
+                            "friendly_name": "CNAM Update"
+                        },
+                        "customer_update": {
+                            "description": "This event is triggered when the customer update API is used to deliver a message to the account",
+                            "friendly_name": "Customer Update"
+                        },
+                        "denied_emergency_bridge": {
+                            "description": "This event is triggered when a call to an number classified as emergency fails",
+                            "friendly_name": "Emergency Call Failed"
+                        },
+                        "deregister": {
+                            "description": "This event is triggered when a device fails to re-register and the contact expires",
+                            "friendly_name": "De-Registration"
+                        },
+                        "first_occurrence": {
+                            "description": "This event is triggered when an end user registers the first device and/or places the first call on an account",
+                            "friendly_name": "Account First Occurrence"
+                        },
+                        "inbound_fax": {
+                            "description": "This event is triggered when a fax is successfully received",
+                            "friendly_name": "Successful Fax Reception"
+                        },
+                        "inbound_fax_error": {
+                            "description": "This event is triggered when receiving a fax fails",
+                            "friendly_name": "Fax Reception Error"
+                        },
+                        "low_balance": {
+                            "description": "This event is triggered when an account is found with a balance below the notification threshold",
+                            "friendly_name": "Account Low Balance"
+                        },
+                        "missed_call": {
+                            "description": "This event is triggered when an corresponding missed call action in a callflow is invoked",
+                            "friendly_name": "Missed Call"
+                        },
+                        "new_account": {
+                            "description": "This event is triggered when an end user creates a new account",
+                            "friendly_name": "New Account"
+                        },
+                        "new_user": {
+                            "description": "This event is triggered when an end user creates a new user",
+                            "friendly_name": "New User"
+                        },
+                        "outbound_fax": {
+                            "description": "This event is triggered when a fax is successfully transmitted",
+                            "friendly_name": "Successful Fax Transmission"
+                        },
+                        "outbound_fax_error": {
+                            "description": "This event is triggered when transmitting a fax fails",
+                            "friendly_name": "Fax Transmission Error"
+                        },
+                        "outbound_smtp_fax_error": {
+                            "description": "This event is triggered when the received email-to-fax email is invalid",
+                            "friendly_name": "Invalid Email-to-Fax Email"
+                        },
+                        "password_recovery": {
+                            "description": "This event is triggered when an end user requests a password recovery link",
+                            "friendly_name": "Password Recovery"
+                        },
+                        "port_cancel": {
+                            "description": "This event is triggered when a port request is canceled",
+                            "friendly_name": "Port Cancel"
+                        },
+                        "port_comment": {
+                            "description": "This event is triggered when a comment is left on a port request",
+                            "friendly_name": "Port Comment"
+                        },
+                        "port_pending": {
+                            "description": "This event is triggered when a port request is accepted and submitted to a carrier",
+                            "friendly_name": "Port Pending"
+                        },
+                        "port_rejected": {
+                            "description": "This event is triggered when a port request is rejected",
+                            "friendly_name": "Port Rejected"
+                        },
+                        "port_request": {
+                            "description": "This event is triggered when a port is submitted for processing",
+                            "friendly_name": "Port Request"
+                        },
+                        "port_scheduled": {
+                            "description": "This event is triggered when a port is accepted by a carrier and scheduled",
+                            "friendly_name": "Port Scheduled"
+                        },
+                        "port_unconfirmed": {
+                            "description": "This event is triggered when a port is created, prior to submitting",
+                            "friendly_name": "Port Unconfirmed"
+                        },
+                        "ported": {
+                            "description": "This event is triggered when a port request for number is completed",
+                            "friendly_name": "Ported"
+                        },
+                        "register": {
+                            "description": "This event is triggered when a device registers but is not currently registered",
+                            "friendly_name": "Registration"
+                        },
+                        "service_added": {
+                            "description": "This event is triggered when an account's billable quantities change",
+                            "friendly_name": "Service Added"
+                        },
+                        "topup": {
+                            "description": "This event is triggered when an account automatic top-up is attempted",
+                            "friendly_name": "Automatic Account Top-up"
+                        },
+                        "transaction": {
+                            "description": "This event is triggered when a transaction is attempted",
+                            "friendly_name": "Transaction Completed"
+                        },
+                        "voicemail_full": {
+                            "description": "This event is triggered any time an attempt to leave a voicemail message is blocked because the voicemail box is full",
+                            "friendly_name": "Voicemail Box Full"
+                        },
+                        "voicemail_new": {
+                            "description": "This event is triggered any time a voicemail message is left",
+                            "friendly_name": "New Voicemail Message"
+                        },
+                        "voicemail_saved": {
+                            "description": "This event is triggered any time a voicemail message is saved in the voicemail box 'new' folder",
+                            "friendly_name": "Voicemail Message Saved"
+                        },
+                        "webhook": {
+                            "description": "This event is triggered when a corresponding webhook action in a callflow is reached",
+                            "friendly_name": "Callflow Webhook Triggered"
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "name": "Notifications Webhook"
+        },
+        {
+            "description": "This webhook is triggered when a channel is destroyed, usually as a result of a hangup",
             "id": "channel_destroy",
-            "name": "channel_destroy"
+            "name": "Channel Destroy"
         },
         {
-            "description": "Events when new calls start",
+            "description": "This webhook is triggered when a new channel is created",
             "id": "channel_create",
-            "name": "channel_create"
+            "name": "Channel Create"
         },
         {
-            "description": "Events for when the channel is answered by the endpoint",
+            "description": "This webhook is triggered when two channels are bridged together, such as two users/devices connected together",
+            "id": "channel_bridge",
+            "name": "Channel Bridge"
+        },
+        {
+            "description": "This webhook is triggered when a channel establishes two-way audio, such as a voicemail box or the called party answering",
             "id": "channel_answer",
-            "name": "channel_answer"
+            "name": "Channel Answer"
         },
         {
-           "description": "Receive notifications when objects in Kazoo are changed",
-           "id": "object",
-           "modifiers": {
-               "action": {
-                   "description": "A list of object actions to handle",
-                   "items": [
-                       "doc_created",
-                       "doc_edited",
-                       "doc_deleted"
-                   ],
-                   "type": "array"
-               },
-               "type": {
-                   "description": "A list of object types to handle",
-                   "items": [
-                       "account",
-                       "callflow",
-                       "device",
-                       "faxbox",
-                       "media",
-                       "user",
-                       "vmbox"
-                   ],
-                   "type": "array"
-               },
-               "types": {
-                   "description": "A list of object types to handle",
-                   "items": {
-                       "type": "string"
-                   },
-                   "type": "array"
-               }
-           },
-           "name": "object"
-       }
-   ],
-   "page_size": 4,
+            "description": "Events when calls get parked/retrieved",
+            "id": "parking",
+            "name": "Call Parking"
+        }
+    ],
+   "page_size": 8,
    "request_id": "{REQUEST_ID}",
    "revision": "{REVISION}",
    "status": "success"
@@ -368,7 +533,7 @@ Here's what you can expect to receive when a webhook fires to your server:
 
 Most of these fields should be present on all payloads.
 
-### Hook Specific
+### Hook Specific fields
 
 * channel_create
     * hook_event: channel_create
@@ -378,18 +543,25 @@ Most of these fields should be present on all payloads.
     * hook_event: channel_destroy
     * hangup_cause: SIP Hangup Cause (NORMAL_CLEARING, ORIGINATOR_CANCEL, etc)
     * hangup_code: SIP Hangup Code (404, 503, etc)
-* doc
-    * hook_event: doc
+* object
+    * hook_event: object
     * action: doc_created, doc_updated, doc_deleted
     * type: user, vmbox, callflow, account, device, faxbox, media
+
 
 ## Hook Specific Custom Data
 
 To restrict the kind of document or the action or both. You can set the custom data to:
 
 ```json
-{
-   "type": "user",
-   "action": "doc_edited"
+{"name":"User edited webhook"
+ ,"hook":"object"
+ ,"custom_data":{
+    "type": "user",
+    "action": "doc_edited"
+ }
+ ,"uri":"https://..."
 }
 ```
+
+Both `type` and `action` will accept `"all"` to avoid needing to create a hook per action/type combinations.

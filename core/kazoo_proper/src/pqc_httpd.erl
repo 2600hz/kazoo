@@ -11,7 +11,7 @@
 -behaviour(cowboy_handler).
 -behaviour(gen_server).
 
--export([fetch_req/1
+-export([fetch_req/1, fetch_req/2
         ,get_req/1
         ,wait_for_req/1, wait_for_req/2
         ,update_req/2
@@ -41,8 +41,9 @@
 
 -define(LISTENER, 'kazoo_proper_httpd').
 
-%% {{Pid, MRef}, TRef, JSONPath}
--type wait() :: {kz_term:pid_ref(), reference(), kz_json:path()}.
+%% {{Pid, MRef}, TRef, JSONPath | {JSONPath, sender function}}
+-type wait_path() :: kz_json:path() | {kz_json:path(), fun()}.
+-type wait() :: {kz_term:pid_ref(), reference(), wait_path()}.
 -type waits() :: [wait()].
 -record(state, {requests = kz_json:new() :: kz_json:object()
                ,waits = [] :: waits()
@@ -72,27 +73,41 @@ stop() ->
 stop_listener() ->
     cowboy:stop_listener(?LISTENER).
 
+%% @doc fetches the value and removes it from the state if found
 -spec fetch_req(kz_json:path()) -> kz_json:api_json_term().
 fetch_req(Path) ->
-    gen_server:call(?MODULE, {'fetch_req', Path}).
+    fetch_req(Path, 'undefined').
 
+%% @doc fetches the value and removes it from the state if found
+-spec fetch_req(kz_json:path(), kz_term:api_pos_integer()) -> kz_json:api_json_term().
+fetch_req(Path, TimeoutMs) ->
+    gen_server:call(?MODULE, {'fetch_req', Path, TimeoutMs}, timeout_or_default(TimeoutMs)).
+
+-spec timeout_or_default(kz_term:api_pos_integer()) -> pos_integer().
+timeout_or_default('undefined') -> 5 * ?MILLISECONDS_IN_SECOND;
+timeout_or_default(TimeoutMs) when is_integer(TimeoutMs), TimeoutMs > 0 -> TimeoutMs + 100.
+
+%% @doc reads the value and leaves it in the state if found
 -spec get_req(kz_json:path()) -> kz_json:api_json_term().
 get_req(Path) ->
     gen_server:call(?MODULE, {'get_req', Path}).
 
--spec wait_for_req(kz_json:path()) -> {'ok', kz_json:api_json_term()} |
+%% @doc waits until the request can be fulfilled then returns the value, leaving in state
+-spec wait_for_req(kz_json:path()) -> kz_json:api_json_term() |
                                       {'error', 'timeout'}.
 wait_for_req(Path) ->
     wait_for_req(Path, 5 * ?MILLISECONDS_IN_SECOND).
 
+%% @doc waits until the request can be fulfilled then returns the value, leaving in state
 -spec wait_for_req(kz_json:path(), pos_integer()) ->
-                          {'ok', kz_json:api_json_term()} |
+                          kz_json:api_json_term() |
                           {'error', 'timeout'}.
-wait_for_req(Path, TimeoutMs) ->
+wait_for_req([_|_]=Path, TimeoutMs) when is_integer(TimeoutMs), TimeoutMs > 0 ->
     gen_server:call(?MODULE, {'wait_for_req', Path, TimeoutMs}, TimeoutMs + 100).
 
+%% @doc updates the state to store Content at the Path location
 -spec update_req(kz_json:path(), binary()) -> 'ok'.
-update_req(Path, <<_/binary>>=Content) ->
+update_req(Path, <<Content/binary>>) ->
     Store = try base64:decode(Content) of
                 Decoded -> Decoded
             catch
@@ -264,11 +279,12 @@ handle_call({'wait_for_req', Path, TimeoutMs}
         'undefined' ->
             {'noreply', State#state{waits=[new_wait(From, Path, TimeoutMs) | Waits]}};
         Value ->
-            {'reply', {'ok', Value}, State}
+            {'reply', Value, State}
     end;
 handle_call('status', _From, State) ->
     {'reply', State, State};
-handle_call({'fetch_req', Path}, _From, #state{requests=Requests}=State) ->
+
+handle_call({'fetch_req', Path, 'undefined'}, _From, #state{requests=Requests}=State) ->
     case kz_json:take_value(Path, Requests) of
         'false' ->
             ?INFO("failed to fetch ~p", [Path]),
@@ -277,44 +293,53 @@ handle_call({'fetch_req', Path}, _From, #state{requests=Requests}=State) ->
             ?INFO("fetched ~p: ~s", [Path, Value]),
             {'reply', Value, State#state{requests=NewRequests}}
     end;
+handle_call({'fetch_req', Path, TimeoutMs}
+           ,From
+           ,#state{requests=Requests
+                  ,waits=Waits
+                  }=State
+           ) when is_integer(TimeoutMs) ->
+    case kz_json:take_value(Path, Requests) of
+        'false' ->
+            {'noreply', State#state{waits=[new_wait(From, {Path, fun fetch_req/1}, TimeoutMs) | Waits]}};
+        {'value', Value, NewRequests} ->
+            ?INFO("fetched ~p: ~s", [Path, Value]),
+            {'reply', Value, State#state{requests=NewRequests}}
+    end;
+
 handle_call({'get_req', Path}, _From, #state{requests=Requests}=State) ->
     ?INFO("getting ~p", [Path]),
     {'reply', kz_json:get_value(Path, Requests), State};
-handle_call({'req', PathInfo, ReqBody}, _From, #state{requests=Requests
-                                                     ,waits=Waits
-                                                     }=State) ->
+
+handle_call({'req', PathInfo, ReqBody}, _From, State) ->
+    NewState = handle_req_update(PathInfo, ReqBody, State),
+    {'reply', 'ok', NewState};
+handle_call(_Req, _From, State) ->
+    {'noreply', State}.
+
+handle_req_update(PathInfo, ReqBody, #state{requests=Requests
+                                           ,waits=Waits
+                                           }=State) ->
     ?INFO("storing to ~p: ~s", [PathInfo, ReqBody]),
     UpdatedReqs = kz_json:set_value(PathInfo, ReqBody, Requests),
 
     {Relays, StillWaiting} =
-        lists:splitwith(fun({_F, _T, P}) -> lists:prefix(P, PathInfo) end
+        lists:splitwith(fun({_F, _T, {P, _Fun}}) -> lists:prefix(P, PathInfo);
+                           ({_F, _T, P}) -> lists:prefix(P, PathInfo)
+                        end
                        ,Waits
                        ),
 
     _ = relay(Relays, UpdatedReqs),
 
-    {'reply', 'ok', State#state{requests=UpdatedReqs
-                               ,waits=StillWaiting
-                               }};
-handle_call(_Req, _From, State) ->
-    {'noreply', State}.
+    State#state{requests=UpdatedReqs
+               ,waits=StillWaiting
+               }.
 
 -spec handle_cast(any(), state()) -> {'noreply', state()}.
-handle_cast({'req', PathInfo, ReqBody}, #state{requests=Requests
-                                              ,waits=Waits
-                                              }=State) ->
-    UpdatedReqs = kz_json:set_value(PathInfo, ReqBody, Requests),
-
-    {Relays, StillWaiting} =
-        lists:splitwith(fun({_F, _T, P}) -> lists:prefix(P, PathInfo) end
-                       ,Waits
-                       ),
-
-    _ = relay(Relays, UpdatedReqs),
-
-    {'noreply', State#state{requests=UpdatedReqs
-                           ,waits=StillWaiting
-                           }};
+handle_cast({'req', PathInfo, ReqBody}, State) ->
+    NewState = handle_req_update(PathInfo, ReqBody, State),
+    {'noreply', NewState};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -343,18 +368,24 @@ handle_info({'timeout', TRef, {From, Path}}
 handle_info(_Msg, State) ->
     {'noreply', State}.
 
--spec relay(waits(), kz_json:object() | {'error', 'timeout'}) -> ['ok'].
+-spec relay(waits(), kz_json:object() | {'error', 'timeout'}) -> ['ok' | pid()].
 relay(Relays, {'error', _}=Msg) ->
     [gen_server:reply(From, Msg) || {From, _, _} <- Relays];
 relay(Relays, Requests) ->
     [begin
          _ = erlang:cancel_timer(TRef),
-         gen_server:reply(From, {'ok', kz_json:get_value(Path, Requests)})
+         reply(From, Path, Requests)
      end
      || {From, TRef, Path} <- Relays
     ].
 
--spec new_wait(kz_term:pid_ref(), kz_json:path(), pos_integer()) -> wait().
+reply(From, {Path, Fun}, _Requests) ->
+    %% spawn a function that asks the server for the payload and replies to the waiting caller
+    _ = spawn(fun() -> gen_server:reply(From, Fun(Path)) end);
+reply(From, Path, Requests) ->
+    gen_server:reply(From, kz_json:get_value(Path, Requests)).
+
+-spec new_wait(kz_term:pid_ref(), kz_json:path() | {kz_json:path(), fun()}, pos_integer()) -> wait().
 new_wait(From, Path, TimeoutMs) ->
     TRef = erlang:start_timer(TimeoutMs, self(), {From, Path}),
     {From, TRef, Path}.

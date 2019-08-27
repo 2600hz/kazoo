@@ -23,19 +23,11 @@ new_message(API, AccountId, BoxId, MessageJObj, MessageBin) ->
     MessagesURL = messages_url(AccountId, BoxId),
 
     Boundary = kz_http_util:create_boundary(),
-    Body = kz_http_util:encode_multipart([{kz_json:encode(pqc_cb_api:create_envelope(MessageJObj))
-                                          ,[{<<"content-type">>, <<"application/json">>}]
-                                          }
-                                         ,{MessageBin
-                                          ,[{<<"content-type">>, <<"audio/mp3">>}]
-                                          }
-                                         ]
-                                        ,Boundary
-                                        ),
+    Body = create_body(MessageJObj, MessageBin, Boundary),
 
     RequestHeaders = pqc_cb_api:request_headers(API
-                                               ,[{"content-type", "multipart/mixed; boundary=" ++ kz_term:to_list(Boundary)}
-                                                ,{"content-length", iolist_size(Body)}
+                                               ,[{<<"content-type">>, "multipart/mixed; boundary=" ++ kz_term:to_list(Boundary)}
+                                                ,{<<"content-length">>, iolist_size(Body)}
                                                 ]
                                                ),
 
@@ -46,6 +38,18 @@ new_message(API, AccountId, BoxId, MessageJObj, MessageBin) ->
                            ,RequestHeaders
                            ,Body
                            ).
+
+-spec create_body(kz_json:object(), binary(), kz_term:ne_binary()) -> binary().
+create_body(MessageJObj, MessageBin, Boundary) ->
+    kz_http_util:encode_multipart([{kz_json:encode(pqc_cb_api:create_envelope(MessageJObj))
+                                   ,[{<<"content-type">>, <<"application/json">>}]
+                                   }
+                                  ,{MessageBin
+                                   ,[{<<"content-type">>, <<"audio/mp3">>}]
+                                   }
+                                  ]
+                                 ,Boundary
+                                 ).
 
 -spec fetch_message_metadata(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 fetch_message_metadata(API, AccountId, BoxId, MessageId) ->
@@ -64,7 +68,7 @@ fetch_message_metadata(API, AccountId, BoxId, MessageId) ->
 fetch_message_binary(API, AccountId, BoxId, MessageId) ->
     MessageURL = message_bin_url(AccountId, BoxId, MessageId),
 
-    RequestHeaders = pqc_cb_api:request_headers(API, [{"accept", "audio/mp3"}]),
+    RequestHeaders = pqc_cb_api:request_headers(API, [{<<"accept">>, "audio/mp3"}]),
 
     Expectations = [#expectation{response_codes = [200]}],
     pqc_cb_api:make_request(Expectations
@@ -76,7 +80,7 @@ fetch_message_binary(API, AccountId, BoxId, MessageId) ->
 -spec create_box(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 create_box(API, AccountId, BoxName) ->
     BoxesURL = boxes_url(AccountId),
-    RequestHeaders = pqc_cb_api:request_headers(API, [{"content-type", "application/json"}]),
+    RequestHeaders = pqc_cb_api:request_headers(API, [{<<"content-type">>, "application/json"}]),
 
     Data = kz_json:from_list([{<<"name">>, BoxName}
                              ,{<<"mailbox">>, BoxName}

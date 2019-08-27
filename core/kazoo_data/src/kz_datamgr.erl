@@ -104,6 +104,7 @@
 
 -type update_option() :: {'update', kz_json:flat_proplist()} |
                          {'create', kz_json:flat_proplist()} |
+                         {'should_create', boolean()} |
                          {'extra_update', kz_json:flat_proplist()} |
                          {'ensure_saved', boolean()}.
 -type update_options() :: [update_option()].
@@ -939,7 +940,7 @@ save_docs(DbName, Docs, Options) when is_list(Docs) ->
 update_doc(DbName, Id, Options) ->
     case open_doc(DbName, Id) of
         {'error', 'not_found'} ->
-            update_not_found(DbName, Id, Options);
+            update_not_found(DbName, Id, Options, props:is_true('should_create', Options, 'true'));
         {'error', _}=E -> E;
         {'ok', CurrentDoc} ->
             apply_updates_and_save(DbName, Id, Options, CurrentDoc)
@@ -988,10 +989,12 @@ save_update(DbName, Id, Options, UpdatedDoc) ->
             Error
     end.
 
--spec update_not_found(kz_term:ne_binary(), docid(), update_options()) ->
+-spec update_not_found(kz_term:ne_binary(), docid(), update_options(), boolean()) ->
                               {'ok', kz_json:object()} |
                               data_error().
-update_not_found(DbName, Id, Options) ->
+update_not_found(_DbName, _Id, _Options, 'false') ->
+    {'error', 'not_found'};
+update_not_found(DbName, Id, Options, 'true') ->
     CreateProps = props:get_value('create', Options, []),
 
     JObj = kz_json:set_values(CreateProps, kz_json:new()),

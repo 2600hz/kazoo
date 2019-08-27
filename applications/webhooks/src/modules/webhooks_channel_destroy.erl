@@ -32,12 +32,15 @@ init() ->
 
 -spec bindings_and_responders() -> {gen_listener:bindings(), gen_listener:responders()}.
 bindings_and_responders() ->
-    {[{'call', [{'restrict_to', ['CHANNEL_DESTROY']}
-               ]
-      }
-     ]
-    ,[{{'webhooks_channel_util', 'handle_event'}
-      ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
-      }
-     ]
-    }.
+    {bindings(), responders()}.
+
+-spec bindings() -> gen_listener:bindings().
+bindings() ->
+    [{'call', [{'restrict_to', ['CHANNEL_DESTROY']}]}].
+
+-spec responders() -> gen_listener:responders().
+responders() ->
+    [{{'webhooks_channel_util', 'handle_event'}
+     ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
+     }
+    ].

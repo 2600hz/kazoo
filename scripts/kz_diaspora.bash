@@ -268,6 +268,8 @@ kzd_accessors() {
     kz_account_to_kzd_accounts
     echo "  * kz_util->kzd_accounts"
     kz_util_to_kzd_accounts
+    echo "  * kzd_webhook->kzd_webhooks"
+    kzd_webhook_to_webhooks
 }
 
 kz_device_to_kzd_devices() {
@@ -297,6 +299,14 @@ kz_util_to_kzd_accounts() {
     replace $FROM_MOD "is_account_enabled" $TO_MOD "is_enabled"
     replace $FROM_MOD "account_update" $TO_MOD "save"
     replace $FROM_MOD "normalize_account_name" $TO_MOD "normalize_name"
+}
+
+kzd_webhook_to_webhooks() {
+    FROM='kzd_webhook:'
+    TO='kzd_webhooks:'
+    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
+        replace_call $FROM $TO '' '' "$FILE"
+    done
 }
 
 amqp_util_to_kz_amqp_util() {

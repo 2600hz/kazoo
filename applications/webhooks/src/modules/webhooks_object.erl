@@ -33,7 +33,7 @@
        ,kz_json:from_list(
           [{<<"type">>, <<"array">>}
           ,{<<"description">>, <<"A list of object types to handle">>}
-          ,{<<"items">>, ?OBJECT_TYPES}
+          ,{<<"items">>, [<<"all">> | ?OBJECT_TYPES]}
           ]
          )
        ).
@@ -42,7 +42,7 @@
        ,kz_json:from_list(
           [{<<"type">>, <<"array">>}
           ,{<<"description">>, <<"A list of object actions to handle">>}
-          ,{<<"items">>, ?DOC_ACTIONS}
+          ,{<<"items">>, [<<"all">> | ?DOC_ACTIONS]}
           ]
          )
        ).
@@ -79,9 +79,14 @@ init() ->
 %%------------------------------------------------------------------------------
 -spec bindings_and_responders() -> {gen_listener:bindings(), gen_listener:responders()}.
 bindings_and_responders() ->
-    Bindings = bindings(),
-    Responders = [{{?MODULE, 'handle_event'}, [{<<"configuration">>, <<"*">>}]}],
-    {Bindings, Responders}.
+    {bindings(), responders()}.
+
+-spec responders() -> gen_listener:responders().
+responders() ->
+    [{{?MODULE, 'handle_event'}
+     ,[{<<"configuration">>, <<"*">>}]
+     }
+    ].
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -94,25 +99,31 @@ account_bindings(_AccountId) -> [].
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_term:proplist()) -> any().
-handle_event(JObj, _Props) ->
-    kz_util:put_callid(JObj),
-    'true' = kapi_conf:doc_update_v(JObj),
+-spec handle_event(kapi_conf:doc(), kz_term:proplist()) -> 'ok'.
+handle_event(DocChange, _Props) ->
+    kz_util:put_callid(DocChange),
+    'true' = kapi_conf:doc_update_v(DocChange),
 
-    AccountId = find_account_id(JObj),
-    case AccountId =/= 'undefined'
-        andalso webhooks_util:find_webhooks(?HOOK_NAME, AccountId) of
-        'false' -> 'ok';
+    case find_account_id(DocChange) of
+        'undefined' -> 'ok';
+        AccountId ->
+            handle_account_change(DocChange, AccountId)
+    end.
+
+-spec handle_account_change(kapi_conf:doc(), kz_term:ne_binary()) -> 'ok'.
+handle_account_change(DocChange, AccountId) ->
+    case webhooks_util:find_webhooks(?HOOK_NAME, AccountId) of
         [] ->
-            lager:debug("no hooks to handle ~s for ~s"
-                       ,[kz_api:event_name(JObj), AccountId]
-                       );
+            lager:debug("no hooks to handle ~s(~s) for ~s", [?HOOK_NAME, kz_api:event_name(DocChange), AccountId]);
         Hooks ->
-            Event = format_event(JObj, AccountId),
-            Action = kz_api:event_name(JObj),
-            Type = kapi_conf:get_type(JObj),
+            EventJObj = format_event(DocChange, AccountId),
+            Action = kz_api:event_name(DocChange),
+            Type = kapi_conf:get_type(DocChange),
+
+            lager:debug("event for action ~s type ~s", [Action, Type]),
+
             Filtered = [Hook || Hook <- Hooks, match_action_type(Hook, Action, Type)],
-            webhooks_util:fire_hooks(Event, Filtered)
+            webhooks_util:fire_hooks(EventJObj, Filtered)
     end.
 
 -spec match_action_type(webhook(), kz_term:api_binary(), kz_term:api_binary()) -> boolean().
@@ -121,12 +132,31 @@ match_action_type(#webhook{hook_event = ?HOOK_NAME
                           }, _Action, _Type) ->
     'true';
 match_action_type(#webhook{hook_event = ?HOOK_NAME
-                          ,custom_data=JObj
+                          ,custom_data=CustomData
                           }, Action, Type) ->
-    kz_json:get_value(<<"action">>, JObj) =:= Action
-        andalso kz_json:get_value(<<"type">>, JObj) =:= Type;
+    DataAction = kz_json:get_ne_binary_value(<<"action">>, CustomData),
+    DataType = kz_json:get_ne_binary_value(<<"type">>, CustomData),
+
+    match_action_type(DataAction, Action, DataType, Type);
 match_action_type(#webhook{}, _Action, _Type) ->
     'true'.
+
+-spec match_action_type(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
+match_action_type(<<"all">>, _Action, <<"all">>, _Type) ->
+    lager:debug("hook matches all actions and all types"),
+    'true';
+match_action_type(<<"all">>, _Action, Type, Type) ->
+    lager:debug("hook matches all actions and type ~s", [Type]),
+    'true';
+match_action_type(Action, Action, <<"all">>, _Type) ->
+    lager:debug("hook matches action ~s and all types", [Action]),
+    'true';
+match_action_type(Action, Action, Type, Type) ->
+    lager:debug("hook matches action ~s and type ~s", [Action, Type]),
+    'true';
+match_action_type(_DataAction, _EventAction, _DataType, _EventType) ->
+    lager:debug("hook action ~s =/= ~s and type ~s =/= ~s", [_DataAction, _EventAction, _DataType, _EventType]),
+    'false'.
 
 %%%=============================================================================
 %%% Internal functions
@@ -145,28 +175,28 @@ bindings() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec format_event(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
-format_event(JObj, AccountId) ->
+-spec format_event(kapi_conf:doc(), kz_term:ne_binary()) -> kz_json:object().
+format_event(ConfChange, AccountId) ->
     kz_json:from_list(
-      [{<<"id">>, kapi_conf:get_id(JObj)}
+      [{<<"id">>, kapi_conf:get_id(ConfChange)}
       ,{<<"account_id">>, AccountId}
-      ,{<<"action">>, kz_api:event_name(JObj)}
-      ,{<<"type">>, kapi_conf:get_type(JObj)}
+      ,{<<"action">>, kz_api:event_name(ConfChange)}
+      ,{<<"type">>, kapi_conf:get_type(ConfChange)}
       ]).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec find_account_id(kz_json:object()) -> kz_term:ne_binary().
-find_account_id(JObj) ->
-    DB = kapi_conf:get_database(JObj),
-    find_account_id(kzs_util:db_classification(DB), DB, kapi_conf:get_id(JObj)).
+-spec find_account_id(kapi_conf:doc()) -> kz_term:api_ne_binary().
+find_account_id(ConfChange) ->
+    DB = kapi_conf:get_database(ConfChange),
+    find_account_id(kzs_util:db_classification(DB), DB, kapi_conf:get_id(ConfChange)).
 
--spec find_account_id(atom(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec find_account_id(atom(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_ne_binary().
 find_account_id(Classification, DB, _Id)
   when Classification =:= 'account';
        Classification =:= 'modb' ->
     kz_util:format_account_id(DB, 'raw');
-find_account_id('aggregate', <<"accounts">>, Id) -> Id;
+find_account_id('aggregate', ?KZ_ACCOUNTS_DB, Id) -> Id;
 find_account_id(_, _, _) -> 'undefined'.

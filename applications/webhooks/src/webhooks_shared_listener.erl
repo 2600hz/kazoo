@@ -40,7 +40,7 @@
 
 %% responsible for reloading auto-disabled webhooks
 -define(BINDINGS, [{'conf', [{'restrict_to', ['doc_type_updates']}
-                            ,{'type', kzd_webhook:type()}
+                            ,{'type', kzd_webhooks:type()}
                             ]
                    }
                   ]).

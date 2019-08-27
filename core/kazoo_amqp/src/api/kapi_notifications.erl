@@ -147,7 +147,11 @@
         ,publish_skel/1, publish_skel/2
         ]).
 
+-export_type([doc/0]).
+
 -include_lib("kz_amqp_util.hrl").
+
+-type doc() :: kz_json:object().
 
 -define(DEFAULT_OPTIONAL_HEADERS, [<<"To">>, <<"Cc">>, <<"Bcc">>
                                   ,<<"From">>, <<"Reply-To">>
@@ -161,7 +165,6 @@
 -define(NOTIFY_VALUES(Name), [{<<"Event-Category">>, <<"notification">>}
                              ,{<<"Event-Name">>, Name}
                              ]).
-
 
 %%%=============================================================================
 %%% Internal Notifications Definitions
