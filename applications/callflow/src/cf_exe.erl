@@ -910,7 +910,6 @@ handle_error(Self, CallId, Notify, JObj) ->
 
 -spec check_for_channel_destroy(pid(), kz_term:pids(), kz_json:object()) -> 'ok'.
 check_for_channel_destroy(Self, Notify, JObj) ->
-    ?DEV_LOG("~n~p~n", [kz_json:get_first_defined([<<"Application-Response">>, <<"Hangup-Cause">>], JObj)]),
     case kz_json:get_first_defined([<<"Application-Response">>, <<"Hangup-Cause">>], JObj) of
         'undefined' ->
             relay_message(Notify, JObj);
