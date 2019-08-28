@@ -884,11 +884,11 @@ log_call_information(Call) ->
 -spec handle_channel_destroyed(pid(), kz_term:pids(), kz_json:object()) -> 'ok'.
 handle_channel_destroyed(Self, Notify, JObj) ->
     {Cause, Code} = kapps_util:get_call_termination_reason(JObj),
-    Setters = [{fun kz_call_event:set_disposition/2, kz_call_event:disposition(JObj)}
-              ,{fun kz_call_event:set_hangup_cause/2, Cause}
-              ,{fun kz_call_event:set_hangup_code/2, Code}
-              ],
-    channel_destroyed(Self, kz_doc:setters(Setters)),
+    Prop = [{<<"Disposition">>, kz_call_event:disposition(JObj)}
+           ,{<<"Hangup-Cause">>, Cause}
+           ,{<<"Hangup-Code">>, Code}
+           ],
+    channel_destroyed(Self, kz_json:from_list(Prop)),
     relay_message(Notify, JObj).
 
 -spec handle_channel_transfer(kapps_call:call(), kz_json:object()) -> 'ok'.
