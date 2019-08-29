@@ -57,6 +57,9 @@
 -export([get_application/0
         ,put_application/1
         ]).
+-export([epmd_enabled/0
+        ,epmd_disabled/0
+        ]).
 
 -include("kazoo_apps.hrl").
 
@@ -659,3 +662,11 @@ find_application() ->
 -spec put_application(atom()) -> atom().
 put_application(Application) ->
     put('application', Application).
+
+-spec epmd_enabled() -> boolean().
+epmd_enabled() ->
+    init:get_argument('start_epmd') =/= {'ok', [["false"]]}.
+
+-spec epmd_disabled() -> boolean().
+epmd_disabled() ->
+    init:get_argument('start_epmd') =:= {'ok', [["false"]]}.

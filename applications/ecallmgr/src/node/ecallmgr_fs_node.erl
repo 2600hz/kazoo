@@ -304,6 +304,9 @@ handle_call({'sip_url', Profile}, _, #state{info=Info}=State) ->
 handle_call('interfaces', _, #state{info=Info}=State) ->
     Resp = kz_json:get_json_value([<<"Roles">>, <<"Media">>, <<"profiles">>], Info, kz_json:new()),
     {'reply', Resp, State};
+handle_call({'interface', Interface}, _, #state{info=Info}=State) ->
+    Resp = kz_json:get_json_value([<<"Roles">>, <<"Media">>, <<"profiles">>, Interface], Info, kz_json:new()),
+    {'reply', Resp, State};
 handle_call('instance_uuid', _, #state{info=Info}=State) ->
     {'reply', kz_json:get_ne_binary_value([<<"Runtime-Info">>, <<"Core-UUID">>], Info), State};
 handle_call('info', _, #state{info=Info}=State) ->

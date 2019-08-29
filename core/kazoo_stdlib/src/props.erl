@@ -22,7 +22,7 @@
         ,get_ne_binary_value/2, get_ne_binary_value/3
         ,get_is_true/2, get_is_true/3, is_true/2, is_true/3
         ,get_is_false/2, get_is_false/3, is_false/2, is_false/3
-        ,get_keys/1
+        ,get_keys/1, get_values/1
         ,get_first_defined/2, get_first_defined/3
         ,get_all_values/2
         ,get_values_and_keys/1
@@ -257,6 +257,9 @@ get_keys(Props) -> [as_key(KV) || KV <- Props].
 -spec as_key(kz_term:proplist_property()) -> atom() | kz_term:proplist_key().
 as_key(A) when is_atom(A) -> A;
 as_key({K, _}) -> K.
+
+-spec get_values(kz_term:proplist()) -> [kz_term:proplist_value()].
+get_values(Props) -> [V || {_K, V} <- Props].
 
 -spec get_all_values(kz_term:proplist_key(), kz_term:proplist()) -> [kz_term:proplist_value()].
 get_all_values(Key, Props) -> [V || {K, V} <- Props, K =:= Key].

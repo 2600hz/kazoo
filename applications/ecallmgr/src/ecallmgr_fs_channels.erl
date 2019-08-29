@@ -217,8 +217,13 @@ update(UUID, Key, Value) ->
 
 -spec updates(kz_term:ne_binary(), channel_updates()) -> 'ok'.
 updates(UUID, Updates) ->
-    lager:debug("updating channel properties: ~p", [Updates]),
     gen_server:cast(?SERVER, {'channel_updates', UUID, Updates}).
+
+-spec format_updates(kz_term:proplist()) -> kz_term:ne_binary().
+format_updates(Updates) ->
+    Fields = record_info('fields', 'channel'),
+    Out = [io_lib:format("~s=~p", [lists:nth(Field - 1, Fields), V]) || {Field, V} <- Updates],
+    kz_binary:join(Out, <<",">>).
 
 -spec count() -> non_neg_integer().
 count() -> ets:info(?CHANNELS_TBL, 'size').
@@ -228,7 +233,8 @@ match_presence(PresenceId) ->
     MatchSpec = [{#channel{uuid = '$1'
                           ,presence_id = '$2'
                           ,node = '$3'
-                          , _ = '_'}
+                          , _ = '_'
+                          }
                  ,[{'=:=', '$2', {'const', PresenceId}}]
                  ,[{{'$1', '$3'}}]}
                 ],
@@ -444,8 +450,10 @@ handle_call(_, _, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> {'noreply', state()}.
-handle_cast({'channel_updates', UUID, Update}, State) ->
-    ets:update_element(?CHANNELS_TBL, UUID, Update),
+handle_cast({'channel_updates', UUID, Updates}, State) ->
+    kz_util:put_callid(UUID),
+    lager:debug("updating channel properties: ~s", [format_updates(Updates)]),
+    ets:update_element(?CHANNELS_TBL, UUID, Updates),
     {'noreply', State};
 handle_cast({'destroy_channel', UUID, Node}, State) ->
     kz_util:put_callid(UUID),
@@ -802,8 +810,6 @@ publish_channel_connection_event(#channel{uuid=UUID
                                          ,to=To
                                          }=Channel
                                 ,ChannelSpecific) ->
-    lager:debug("CHANNEL ~p", [Channel]),
-    lager:debug_unsafe("CHANNEL json ~s", [kz_json:encode(ecallmgr_fs_channel:to_api_json(Channel), ['pretty'])]),
     Event = [{<<"Timestamp">>, kz_time:now_s()}
             ,{<<"Call-ID">>, UUID}
             ,{<<"Call-Direction">>, Direction}

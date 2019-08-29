@@ -53,6 +53,7 @@ get(Node) ->
     Routines = [fun offnet_resources/1
                ,fun local_resources/1
                ,fun sip_auth_ips/1
+               ,fun media_nodes_ips/1
                ],
     PidRefs = [kz_util:spawn_monitor(fun erlang:apply/2, [F, [self()]]) || F <- Routines],
     lager:debug("collecting ACLs in ~p", [PidRefs]),
@@ -255,13 +256,30 @@ resource_server_ips(Collector, JObj) ->
 -spec add_trusted_objects(pid(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
 add_trusted_objects(_Collector, _AccountId, _AuthorizingId, _AuthorizingType, []) -> 'ok';
 add_trusted_objects(Collector, AccountId, AuthorizingId, AuthorizingType, [IP|IPs]) ->
-    Props = kz_json:from_list(
-              [{<<"type">>, <<"allow">>}
-              ,{<<"network-list-name">>, <<"trusted">>}
-              ,{<<"cidr">>, <<IP/binary, "/32">>}
-              ,{<<"account_id">>, AccountId}
-              ,{<<"authorizing_id">>, AuthorizingId}
-              ,{<<"authorizing_type">>, AuthorizingType}
-              ]),
-    Collector ! ?ACL_RESULT(IP, Props),
+    JObj = kz_json:from_list(
+             [{<<"type">>, <<"allow">>}
+             ,{<<"network-list-name">>, <<"trusted">>}
+             ,{<<"cidr">>, <<IP/binary, "/32">>}
+             ,{<<"account_id">>, AccountId}
+             ,{<<"authorizing_id">>, AuthorizingId}
+             ,{<<"authorizing_type">>, AuthorizingType}
+             ]),
+    Collector ! ?ACL_RESULT(IP, JObj),
     add_trusted_objects(Collector, AccountId, AuthorizingId, AuthorizingType, IPs).
+
+-spec media_nodes_ips(pid()) -> 'ok'.
+media_nodes_ips(Collector) ->
+    URIS = [  {kz_network_utils:to_cidr(kzsip_uri:host(PURI)),kzsip_uri:port(PURI)}
+              || {Node, _} <- gen_server:call(ecallmgr_fs_nodes, 'nodes'),
+                 I <- [ecallmgr_fs_node:interfaces(Node)],
+                 K <- kz_json:get_keys(I),
+                 URI <- [kz_json:get_ne_binary_value([K, <<"info">>, <<"url">>], I)],
+                 PURI <- [kzsip_uri:parse(URI)]
+           ],
+    J = kz_json:from_list([{<<"type">>, <<"allow">>}
+                          ,{<<"network-list-name">>, <<"freeswitch">>}
+                          ,{<<"cidr">>, lists:usort(props:get_keys(URIS))}
+                          ,{<<"ports">>, lists:usort(props:get_values(URIS))}
+                          ]),
+    Collector ! ?ACL_RESULT(<<"freeswitch">>, J),
+    'ok'.
