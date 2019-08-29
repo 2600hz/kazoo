@@ -13,6 +13,10 @@
 
 -include("kazoo_speech.hrl").
 
+%%------------------------------------------------------------------------------
+%% @doc Convert audio file/content-type if initial format not supported
+%% @end
+%%------------------------------------------------------------------------------
 -spec maybe_convert_content(binary(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary()) -> conversion_return().
 maybe_convert_content(Content, ContentType, SupportedContentTypes, DefaultContentType) ->
     case lists:member(ContentType, SupportedContentTypes) of
