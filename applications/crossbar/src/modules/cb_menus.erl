@@ -37,7 +37,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.menus">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.menus">>, ?MODULE, 'resource_exists'),
@@ -46,7 +46,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.menus">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.menus">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.menus">>, ?MODULE, 'delete'),
-    ok.
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
@@ -142,7 +142,7 @@ load_menu_summary(Context) ->
 -spec create_menu(cb_context:context()) -> cb_context:context().
 create_menu(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
-    cb_context:validate_request_data(<<"menus">>, Context, OnSuccess).
+    cb_context:validate_request_data(kzd_menus:schema_name(), Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
 %% @doc Load a menu document from the database
@@ -150,7 +150,7 @@ create_menu(Context) ->
 %%------------------------------------------------------------------------------
 -spec load_menu(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_menu(DocId, Context) ->
-    crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(<<"menu">>)).
+    crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(kzd_menus:type())).
 
 %%------------------------------------------------------------------------------
 %% @doc Update an existing menu document with the data provided, if it is
@@ -160,7 +160,7 @@ load_menu(DocId, Context) ->
 -spec update_menu(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update_menu(DocId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
-    cb_context:validate_request_data(<<"menus">>, Context, OnSuccess).
+    cb_context:validate_request_data(kzd_menus:schema_name(), Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
 %% @doc Update-merge an existing menu document with the data provided, if it is
@@ -178,13 +178,11 @@ validate_patch(DocId, Context) ->
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) ->
                                       cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, kz_json:set_values([{<<"pvt_type">>, <<"menu">>}
-                                                   ,{<<"pvt_vsn">>, <<"2">>}
-                                                   ]
-                                                  ,cb_context:doc(Context)
-                                                  ));
+    MenuReq = cb_context:doc(Context),
+    MenuDoc = kz_doc:set_vsn(kz_doc:set_type(MenuReq, kzd_menus:type()), <<"2">>),
+    cb_context:set_doc(Context, MenuDoc);
 on_successful_validation(DocId, Context) ->
-    crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(<<"menu">>)).
+    crossbar_doc:load_merge(DocId, Context, ?TYPE_CHECK_OPTION(kzd_menus:type())).
 
 %%------------------------------------------------------------------------------
 %% @doc Normalizes the results of a view.

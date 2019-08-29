@@ -40,6 +40,7 @@
 -export([create_masquerade_event/2, create_masquerade_event/3]).
 -export([media_path/1, media_path/2, media_path/3, media_path/4
         ,lookup_media/4
+        ,request_media_url/4
         ]).
 -export([unserialize_fs_array/1, unserialize_fs_props/1]).
 -export([convert_fs_evt_name/1, convert_kazoo_app_name/1]).
@@ -1352,11 +1353,11 @@ maybe_cache_media_response(MediaName, MediaResp) ->
             {'error', 'not_found'};
         MediaUrl ->
             CacheProps = media_url_cache_props(MediaName),
-            _ = kz_cache:store_local(?ECALLMGR_UTIL_CACHE
-                                    ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
-                                    ,MediaUrl
-                                    ,CacheProps
-                                    ),
+            catch kz_cache:store_local(?ECALLMGR_UTIL_CACHE
+                                      ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
+                                      ,MediaUrl
+                                      ,CacheProps
+                                      ),
             lager:debug("media ~s stored to playback cache : ~s", [MediaName, MediaUrl]),
             {'ok', MediaUrl}
     end.
