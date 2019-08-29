@@ -485,6 +485,7 @@ get_line_key(<<"grandstream">>, _) -> <<"1">>;
 get_line_key(<<"obihai">>, _) -> <<"1">>;
 get_line_key(<<"vtech">>, _) -> <<"1">>;
 get_line_key(<<"yealink">>, _) -> <<"1">>;
+get_line_key(<<"htek">>, _) -> <<"1">>;
 get_line_key(_, _) -> 'undefined'.
 
 -spec get_feature_key_type(kz_json:object(), kz_term:ne_binary(), binary(), binary()) -> kz_term:api_object().
