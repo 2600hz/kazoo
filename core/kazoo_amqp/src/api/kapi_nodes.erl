@@ -9,56 +9,100 @@
 %%%-----------------------------------------------------------------------------
 -module(kapi_nodes).
 
--export([advertise/1, advertise_v/1]).
+-export([api_definitions/0, api_definition/1]).
+
+-export([advertise/1
+        ,advertise_v/1
+        ,publish_advertise/1
+        ,publish_advertise/2
+        ]).
 
 -export([bind_q/2, unbind_q/1]).
 -export([declare_exchanges/0]).
 
--export([publish_advertise/1, publish_advertise/2]).
-
 -include_lib("kz_amqp_util.hrl").
 
-%% Advertise message
--define(ADVERTISE_HEADERS, [<<"Expires">>]).
--define(OPTIONAL_ADVERTISE_HEADERS, [<<"Channels">>
-                                    ,<<"Conferences">>
-                                    ,<<"Globals">>
-                                    ,<<"Media-Servers">>
-                                    ,<<"Node-Info">>
-                                    ,<<"Ports">>
-                                    ,<<"Processes">>
-                                    ,<<"Registrations">>
-                                    ,<<"Used-Memory">>
-                                    ,<<"Version">>
-                                    ,<<"WhApps">>
-                                    ,<<"Zone">>
-                                    ,<<"md5">>
-                                    ]).
--define(ADVERTISE_VALUES, [{<<"Event-Category">>, <<"nodes">>}
-                          ,{<<"Event-Name">>, <<"advertise">>}
-                          ]).
--define(ADVERTISE_TYPES, []).
+%%------------------------------------------------------------------------------
+%% @doc Get all API definitions of this module.
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definitions() -> kapi_definition:apis().
+api_definitions() ->
+    [advertise_definition()].
+
+%%------------------------------------------------------------------------------
+%% @doc Get API definition of the given `Name'.
+%% @see api_definitions/0
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definition(kz_term:text()) -> kapi_definition:api().
+api_definition(Name) when not is_binary(Name) ->
+    api_definition(kz_term:to_binary(Name));
+api_definition(<<"advertise">>) ->
+    advertise_definition().
+
+-spec advertise_definition() -> kapi_definition:api().
+advertise_definition() ->
+    EventName = <<"advertise">>,
+    Category = <<"nodes">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Nodes advertise">>}
+              ,{fun kapi_definition:set_description/2, <<"Nodes advertise">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun advertise/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun advertise_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_advertise/1}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Expires">>]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Channels">>
+                                                            ,<<"Conferences">>
+                                                            ,<<"Globals">>
+                                                            ,<<"Media-Servers">>
+                                                            ,<<"Node-Info">>
+                                                            ,<<"Ports">>
+                                                            ,<<"Processes">>
+                                                            ,<<"Registrations">>
+                                                            ,<<"Used-Memory">>
+                                                            ,<<"Version">>
+                                                            ,<<"WhApps">>
+                                                            ,<<"Zone">>
+                                                            ,<<"md5">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%------------------------------------------------------------------------------
 %% @doc Nodes advertise.
 %% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec advertise(kz_term:api_terms()) -> {'ok', iolist()} |
-                                        {'error', string()}.
-advertise(Prop) when is_list(Prop) ->
-    case advertise_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?ADVERTISE_HEADERS, ?OPTIONAL_ADVERTISE_HEADERS);
-        'false' -> {'error', "Proplist failed validation for advertise"}
-    end;
-advertise(JObj) ->
-    advertise(kz_json:to_proplist(JObj)).
+-spec advertise(kz_term:api_terms()) -> kz_api:api_formatter_return().
+advertise(Req) ->
+    kapi_definition:build_message(Req, advertise_definition()).
 
 -spec advertise_v(kz_term:api_terms()) -> boolean().
-advertise_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?ADVERTISE_HEADERS, ?ADVERTISE_VALUES, ?ADVERTISE_TYPES);
-advertise_v(JObj) ->
-    advertise_v(kz_json:to_proplist(JObj)).
+advertise_v(Req) ->
+    kapi_definition:validate(Req, advertise_definition()).
+
+%%------------------------------------------------------------------------------
+%% @doc Prepare and publish a nodes advertise message.
+%% @end
+%%------------------------------------------------------------------------------
+-spec publish_advertise(kz_term:api_terms()) -> 'ok'.
+publish_advertise(JObj) ->
+    publish_advertise(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_advertise(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_advertise(Advertise, ContentType) ->
+    Definition = advertise_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Advertise
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:nodes_publish(Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Bind to a queue to this API exchange and events.
@@ -83,17 +127,3 @@ unbind_q(Queue) ->
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     kz_amqp_util:nodes_exchange().
-
-%%------------------------------------------------------------------------------
-%% @doc Prepare and publish a nodes advertise message.
-%% @end
-%%------------------------------------------------------------------------------
-
--spec publish_advertise(kz_term:api_terms()) -> 'ok'.
-publish_advertise(JObj) ->
-    publish_advertise(JObj, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_advertise(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
-publish_advertise(Advertise, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Advertise, ?ADVERTISE_VALUES, fun advertise/1),
-    kz_amqp_util:nodes_publish(Payload, ContentType).
