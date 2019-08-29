@@ -46,11 +46,6 @@ api_definition(Name) when not is_binary(Name) ->
 api_definition(<<"resume">>) ->
     resume_definition().
 
-%%------------------------------------------------------------------------------
-%% @doc Resume a Callflow's flow.
-%% Takes {@link kz_term:proplist()}, creates JSON string or error.
-%% @end
-%%------------------------------------------------------------------------------
 -spec resume_definition() -> kapi_definition:api().
 resume_definition() ->
     EventName = <<"resume">>,
@@ -74,6 +69,11 @@ resume_definition() ->
               ],
     kapi_definition:setters(Setters).
 
+%%------------------------------------------------------------------------------
+%% @doc Resume a Callflow's flow.
+%% Takes {@link kz_term:proplist()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
 -spec resume(kz_term:api_terms()) -> kz_api:api_formatter_return().
 resume(Req) ->
     kapi_definition:build_message(Req, resume_definition()).
