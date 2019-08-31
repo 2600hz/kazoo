@@ -16,6 +16,7 @@
 -include("kazoo_proper.hrl").
 
 -define(ACCOUNT_NAMES, [<<?MODULE_STRING>>]).
+-define(WAIT_AFTER_DELETE, 1500).
 
 -spec seq() -> 'ok'.
 seq() ->
@@ -50,9 +51,11 @@ seq() ->
     'false' = is_authorized(Resp3),
     3 = query_limits(AccountId),
     _ = send_channel_destroy(AccountId, ResellerId, CallId3),
+    _ = timer:sleep(?WAIT_AFTER_DELETE),
     2 = query_limits(AccountId),
     _ = send_channel_destroy(AccountId, ResellerId, CallId1),
     _ = send_channel_destroy(AccountId, ResellerId, CallId2),
+    _ = timer:sleep(?WAIT_AFTER_DELETE),
     0 = query_limits(AccountId),
 
     _ = update_limits(API, AccountId, 0),
@@ -62,6 +65,7 @@ seq() ->
     'false' = is_authorized(Resp4),
     1 = query_limits(AccountId),
     _ = send_channel_destroy(AccountId, ResellerId, CallId4),
+    _ = timer:sleep(?WAIT_AFTER_DELETE),
 
     0 = query_limits(AccountId),
 
