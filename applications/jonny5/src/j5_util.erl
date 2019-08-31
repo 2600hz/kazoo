@@ -10,12 +10,17 @@
 %%%-----------------------------------------------------------------------------
 -module(j5_util).
 
--export([send_system_alert/1]).
+-export([maybe_send_system_alert/1]).
 
 -include("jonny5.hrl").
 
--spec send_system_alert(j5_request:request()) -> any().
-send_system_alert(Request) ->
+-spec maybe_send_system_alert(j5_request:request()) -> 'ok'.
+maybe_send_system_alert(Request) ->
+    maybe_send_system_alert(j5_request:is_authorized(Request), Request).
+    
+-spec maybe_send_system_alert(boolean(), j5_request:request()) -> 'ok'.
+maybe_send_system_alert('false', _Request) -> 'ok';
+maybe_send_system_alert('true', Request) ->
     AccountId = j5_request:account_id(Request),
     ResellerId = j5_request:reseller_id(Request),
     Routines = [fun(P) ->
@@ -44,7 +49,8 @@ send_system_alert(Request) ->
                              ,get_account_name(ResellerId)
                              ]
                             ,lists:foldr(fun(F, P) -> F(P) end, [], Routines)
-                            ).
+                            ),
+    'ok'.
 
 -spec add_limit_details(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 add_limit_details('undefined', _, Props) -> Props;

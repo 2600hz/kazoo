@@ -32,8 +32,18 @@
                     ,{'j5_balance_check_req', [{<<"authz">>, <<"balance_check_req">>}]}
                     ,{'j5_channel_destroy', [{<<"call_event">>, <<"CHANNEL_DESTROY">>}]}
                     ]).
--define(BINDINGS, [{'call', [{'restrict_to', [<<"CHANNEL_DESTROY">>]}]}
-                  ,{'authz', []}
+-define(BINDINGS, [{'call', [{'restrict_to', [<<"CHANNEL_DESTROY">>
+                                             ,<<"CHANNEL_DISCONNECTED">>
+                                             ]
+                             }
+                            ]
+                   }
+                  ,{'authz', [{'restrict_to', ['authorize'
+                                              ,'balance_check'
+                                              ]
+                              }
+                             ]
+                   }
                   ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"jonny5_listener">>).
