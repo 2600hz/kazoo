@@ -52,7 +52,7 @@ publish_no_rate_found(RateReq) ->
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     lager:debug("publishing empty ~srate resp for ~s(~s)", [maybe_empty_mobile_log(RateReq), ServerId, MsgId]),
-    kz_amqp_worker:cast(Resp, fun(P) -> kapi_rate:publish_resp(ServerId, P) end).
+    kapi_rate:publish_resp(ServerId, Resp).
 
 -spec maybe_empty_mobile_log(kapi_rate:req()) -> string().
 maybe_empty_mobile_log(RateReq) ->
