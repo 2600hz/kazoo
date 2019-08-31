@@ -17,7 +17,7 @@
 -spec maybe_send_system_alert(j5_request:request()) -> 'ok'.
 maybe_send_system_alert(Request) ->
     maybe_send_system_alert(j5_request:is_authorized(Request), Request).
-    
+
 -spec maybe_send_system_alert(boolean(), j5_request:request()) -> 'ok'.
 maybe_send_system_alert('false', _Request) -> 'ok';
 maybe_send_system_alert('true', Request) ->
