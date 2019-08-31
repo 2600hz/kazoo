@@ -228,7 +228,7 @@ send_response(Request) ->
              ,{<<"Reseller-Billing">>, j5_request:reseller_billing(Request)}
              ,{<<"Call-Direction">>, j5_request:call_direction(Request)}
              ,{<<"Other-Leg-Call-ID">>, j5_request:other_leg_call_id(Request)}
-             ,{<<"Soft-Limit">>, kz_term:to_binary(j5_request:soft_limit(Request))}
+             ,{<<"Soft-Limit">>, j5_request:soft_limit(Request)}
              ,{<<"Msg-ID">>, j5_request:message_id(Request)}
              ,{<<"Call-ID">>, j5_request:call_id(Request)}
              ,{<<"Custom-Channel-Vars">>, CCVs}
