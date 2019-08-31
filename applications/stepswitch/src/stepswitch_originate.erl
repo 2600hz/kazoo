@@ -228,7 +228,7 @@ build_originate(#state{endpoints=Endpoints
     AccountId = kz_json:get_value(<<"Account-ID">>, OffnetReq),
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, OffnetReq, kz_json:new()),
     CCVUpdates = props:filter_undefined(
-                   [{<<"Global-Resource">>, <<"true">>}
+                   [{<<"Global-Resource">>, 'true'}
                    ,{<<"Account-ID">>, AccountId}
                    ,{<<"From-URI">>, originate_from_uri(CIDNum, OffnetReq)}
                    ,{<<"Realm">>, stepswitch_util:default_realm(OffnetReq)}
