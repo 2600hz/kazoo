@@ -752,8 +752,11 @@ diversion_header_fold(<<_/binary>> = V, Vars0) ->
 -spec kazoo_var_to_fs_var_fold(kz_json:path(), kz_json:json_term(), iolist()) -> iolist().
 kazoo_var_to_fs_var_fold(<<"Force-Fax">>, Direction, Acc) ->
     [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>|Acc];
-kazoo_var_to_fs_var_fold(<<?CHANNEL_LOOPBACK_HEADER_PREFIX, _/binary>>=K, V, Acc) ->
-    [list_to_binary([kz_term:to_list(K), "='",  kz_term:to_list(V), "'"]) |Acc];
+
+kazoo_var_to_fs_var_fold(<<?CHANNEL_LOOPBACK_HEADER_PREFIX, K/binary>>, V, Acc) ->
+    Key = <<?CHANNEL_LOOPBACK_HEADER_PREFIX, (ecallmgr_util:get_fs_key(K))/binary>>,
+    [list_to_binary([kz_term:to_list(Key), "='",  kz_term:to_list(V), "'"]) |Acc];
+
 kazoo_var_to_fs_var_fold(<<"Channel-Actions">>, Actions, Acc) ->
     [Actions |Acc];
 kazoo_var_to_fs_var_fold(K, V, Acc) ->

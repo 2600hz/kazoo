@@ -543,7 +543,10 @@ get_fs_key(?CCV(Key)) -> get_fs_key(Key);
 get_fs_key(?CAV(_)=CAV) -> CAV;
 get_fs_key(?JSON_CAV(_)=JSONCAV) -> JSONCAV;
 get_fs_key(<<"X-", _/binary>>=Key) -> <<"sip_h_", Key/binary>>;
-get_fs_key(<<?CHANNEL_LOOPBACK_HEADER_PREFIX, _/binary>>=Key) -> Key;
+
+get_fs_key(<<?CHANNEL_LOOPBACK_HEADER_PREFIX, K/binary>>) ->
+    <<?CHANNEL_LOOPBACK_HEADER_PREFIX, (get_fs_key(K))/binary>>;
+
 get_fs_key(Key) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' -> ?CCV(Key);
