@@ -77,7 +77,7 @@ set_name(API, Name) -> API#kapi_definition{name = Name}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec category(api()) -> kz_term:ne_binary().
-category(#kapi_definition{name = Category}) -> Category.
+category(#kapi_definition{category = Category}) -> Category.
 
 -spec set_category(api(), kz_term:ne_binary()) -> api().
 set_category(API, Category) -> API#kapi_definition{category = Category}.
