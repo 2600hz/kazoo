@@ -32,6 +32,8 @@
         ,values/1, set_values/2
         ]).
 
+-include_lib("kazoo/include/kz_api_literals.hrl").
+
 -record(kapi_definition, {name :: kz_term:api_ne_binary()
                          ,friendly_name :: kz_term:api_ne_binary()
                          ,description :: kz_term:api_ne_binary()
@@ -217,8 +219,8 @@ setters(Routines, Definition) ->
 %%------------------------------------------------------------------------------
 -spec event_type_headers(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 event_type_headers(Category, EventName) ->
-    [{<<"Event-Category">>, Category}
-    ,{<<"Event-Name">>, EventName}
+    [{?KEY_EVENT_CATEGORY, Category}
+    ,{?KEY_EVENT_NAME, EventName}
     ].
 
 %%------------------------------------------------------------------------------
