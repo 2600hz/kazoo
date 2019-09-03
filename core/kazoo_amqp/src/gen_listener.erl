@@ -474,6 +474,8 @@ handle_call({'add_queue', QueueName, QueueProps, Bindings}, _From, State) ->
     {'reply', {'ok', Q}, S};
 handle_call('other_queues', _From, #state{other_queues=OtherQueues}=State) ->
     {'reply', props:get_keys(OtherQueues), State};
+handle_call('queue_name', _From, #state{queue='undefined', params=Params}=State) ->
+    {'reply', props:get_value('queue_name', Params), State};
 handle_call('queue_name', _From, #state{queue=Q}=State) ->
     {'reply', Q, State};
 handle_call('responders', _From, #state{responders=Rs}=State) ->
