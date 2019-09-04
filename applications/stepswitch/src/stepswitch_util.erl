@@ -405,7 +405,7 @@ maybe_resource_to_endpoints(Resource
     %% DestinationNumber = maybe_update_number(Resource, Number),
     DestinationNumber = Number,
     lager:debug("building resource ~s endpoints", [Id]),
-    CCVUpdates = [{<<"Global-Resource">>, kz_term:to_binary(Global)}
+    CCVUpdates = [{<<"Global-Resource">>, Global}
                  ,{<<"Resource-ID">>, Id}
                  ,{<<"E164-Destination">>, DestinationNumber}
                  ,{<<"Original-Number">>, kapi_offnet_resource:to_did(OffnetJObj)}

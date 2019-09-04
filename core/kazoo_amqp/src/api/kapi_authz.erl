@@ -86,13 +86,15 @@
 -define(OPTIONAL_BALANCE_CHECK_RESP_HEADERS, []).
 -define(AUTHZ_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, <<"authz_resp">>}
-                           ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
-                           ,{<<"Global-Resource">>, [<<"true">>, <<"false">>]}
                            ]).
 -define(BALANCE_CHECK_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                                    ,{<<"Event-Name">>, <<"balance_check_resp">>}
                                    ]).
--define(AUTHZ_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}]).
+-define(AUTHZ_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                          ,{<<"Is-Authorized">>, fun is_boolean/1}
+                          ,{<<"Global-Resource">>, fun is_boolean/1}
+                          ,{<<"Soft-Limit">>, fun is_boolean/1}
+                          ]).
 -define(BALANCE_CHECK_RESP_TYPES, [{<<"Balances">>, fun kz_json:is_json_object/1}]).
 
 %%------------------------------------------------------------------------------

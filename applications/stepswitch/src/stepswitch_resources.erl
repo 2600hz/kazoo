@@ -551,7 +551,7 @@ maybe_resource_to_endpoints(#resrc{id=Id
                                    'false' -> <<"no_classifier">>
                                end,
             lager:debug("building resource ~s endpoints (classifier ~s)", [Id, _MaybeClassifier]),
-            CCVUpdates = [{<<"Global-Resource">>, kz_term:to_binary(Global)}
+            CCVUpdates = [{<<"Global-Resource">>, Global}
                          ,{<<"Resource-ID">>, Id}
                          ,{<<"E164-Destination">>, Number}
                          ,{<<"DID-Classifier">>, knm_converters:classify(Number)}

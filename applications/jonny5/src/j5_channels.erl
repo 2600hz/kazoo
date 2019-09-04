@@ -26,12 +26,8 @@
 -export([accounts/0]).
 -export([account/1]).
 -export([to_props/1]).
--export([authorized/1]).
 -export([handle_authz_resp/2]).
 -export([handle_rate_resp/2]).
--export([handle_channel_destroy/2]).
-
--export([is_destroyed/1]).
 
 -export([init/1
         ,handle_call/3
@@ -96,11 +92,6 @@
                             ,'federate'
                             ]
                    }
-                  ,{'call', [{'restrict_to', [<<"CHANNEL_DESTROY">>, <<"CHANNEL_DISCONNECTED">>]}
-                            ,'federate'
-                            ]
-
-                   }
                   ]).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_authz_resp'}
@@ -108,9 +99,6 @@
                      }
                     ,{{?MODULE, 'handle_rate_resp'}
                      ,[{<<"rate">>, <<"resp">>}]
-                     }
-                    ,{{?MODULE, 'handle_channel_destroy'}
-                     ,[{<<"call_event">>, <<"*">>}]
                      }
                     ]).
 
@@ -490,34 +478,44 @@ to_props(#channel{call_id=CallId
       ]
      ).
 
+-spec rated(kz_json:object()) -> 'ok'.
+rated(JObj) ->
+    CallId = kz_call_event:call_id(JObj),
+    Props = props:filter_undefined(
+              [{#channel.rate, kz_json:get_value(<<"Rate">>, JObj)}
+              ,{#channel.rate_increment, kz_json:get_value(<<"Rate-Increment">>, JObj)}
+              ,{#channel.rate_minimum, kz_json:get_value(<<"Rate-Minimum">>, JObj)}
+              ,{#channel.rate_nocharge_time, kz_json:get_value(<<"Rate-NoCharge-Time">>, JObj)}
+              ,{#channel.discount_percentage, kz_json:get_value(<<"Discount-Percentage">>, JObj)}
+              ,{#channel.surcharge, kz_json:get_value(<<"Surcharge">>, JObj)}
+              ,{#channel.rate_name, kz_json:get_value(<<"Rate-Name">>, JObj)}
+              ,{#channel.rate_description, kz_json:get_value(<<"Rate-Description">>, JObj)}
+              ,{#channel.rate_id, kz_json:get_value(<<"Rate-ID">>, JObj)}
+              ,{#channel.base_cost, kz_json:get_value(<<"Base-Cost">>, JObj)}
+              ]
+             ),
+    _ = ets:update_element(?TAB, CallId, Props),
+    lager:debug("channel rated").
+
 -spec authorized(kz_json:object()) -> 'ok'.
 authorized(JObj) ->
-    case is_destroyed(kz_call_event:call_id(JObj)) of
-        'false' -> insert_authorized(JObj);
-        'true' ->
-            lager:notice("channel already destroyed not storing authorized payload")
-    end.
-
--spec insert_authorized(kz_json:object()) -> 'ok'.
-insert_authorized(JObj) ->
     Channel = #channel{call_id=CallId}=from_jobj(JObj),
-    ets:insert(?TAB, Channel),
-    lager:debug("inserted authorized channel ~s", [CallId]).
-
--spec is_destroyed(kz_term:ne_binary()) -> boolean().
-is_destroyed(<<CallId/binary>>) ->
-    case ets:lookup(?TAB, CallId) of
-        [#channel{destroyed=IsDestroyed}] -> IsDestroyed;
-        [] -> 'false'
-    end.
+    Props = props:filter_undefined(
+              [{#channel.account_billing, Channel#channel.account_billing}
+              ,{#channel.account_allotment, Channel#channel.account_allotment}
+              ,{#channel.reseller_billing, Channel#channel.reseller_billing}
+              ,{#channel.reseller_allotment, Channel#channel.reseller_allotment}
+              ,{#channel.soft_limit, Channel#channel.soft_limit}
+              ]
+             ),
+    _ = ets:update_element(?TAB, CallId, Props),
+    lager:debug("channel authorized => ~p", [Props]).
 
 -spec handle_authz_resp(kz_json:object(), kz_term:proplist()) -> 'ok'.
-handle_authz_resp(JObj, _Props) ->
+handle_authz_resp(JObj, Props) ->
     'true' = kapi_authz:authz_resp_v(JObj),
-    case kz_json:is_true(<<"Is-Authorized">>, JObj) of
-        'true' -> authorized(JObj);
-        'false' -> 'ok'
-    end.
+    Srv = props:get_value('server', Props),
+    gen_server:cast(Srv, {'authz_resp', JObj}).
 
 -spec handle_rate_resp(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_rate_resp(JObj, Props) ->
@@ -525,24 +523,10 @@ handle_rate_resp(JObj, Props) ->
     Srv = props:get_value('server', Props),
     gen_server:cast(Srv, {'rate_resp', JObj}).
 
--spec handle_channel_destroy(kz_json:object(), kz_term:proplist()) -> 'ok'.
-handle_channel_destroy(JObj, _Props) ->
-    'true' = kapi_call:event_v(JObj),
-    CallId = kz_call_event:call_id(JObj),
-
-    handle_channel_destroy(CallId).
-
 -spec handle_channel_destroy(kz_term:ne_binary()) -> 'ok'.
 handle_channel_destroy(<<CallId/binary>>) ->
-    case ets:lookup(?TAB, CallId) of
-        [] ->
-            _ = ets:insert(?TAB, #channel{call_id=CallId, destroyed='true'}),
-            lager:info("no channel ~s in ~p, inserted destroyed marker", [CallId, ?TAB]);
-        [#channel{destroyed='false'}] ->
-            _ = ets:delete(?TAB, CallId),
-            lager:debug("removed channel ~s from ~p", [CallId, ?TAB]);
-        _ -> 'ok'
-    end.
+    _ = ets:delete(?TAB, CallId),
+    lager:debug("removed channel ~s from ~p", [CallId, ?TAB]).
 
 %%%=============================================================================
 %%% gen_server callbacks
@@ -578,21 +562,12 @@ handle_call(_Request, _From, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'rate_resp', JObj}, State) ->
-    Props = props:filter_undefined(
-              [{#channel.rate, kz_json:get_value(<<"Rate">>, JObj)}
-              ,{#channel.rate_increment, kz_json:get_value(<<"Rate-Increment">>, JObj)}
-              ,{#channel.rate_minimum, kz_json:get_value(<<"Rate-Minimum">>, JObj)}
-              ,{#channel.rate_nocharge_time, kz_json:get_value(<<"Rate-NoCharge-Time">>, JObj)}
-              ,{#channel.discount_percentage, kz_json:get_value(<<"Discount-Percentage">>, JObj)}
-              ,{#channel.surcharge, kz_json:get_value(<<"Surcharge">>, JObj)}
-              ,{#channel.rate_name, kz_json:get_value(<<"Rate-Name">>, JObj)}
-              ,{#channel.rate_description, kz_json:get_value(<<"Rate-Description">>, JObj)}
-              ,{#channel.rate_id, kz_json:get_value(<<"Rate-ID">>, JObj)}
-              ,{#channel.base_cost, kz_json:get_value(<<"Base-Cost">>, JObj)}
-              ]
-             ),
-    CallId = kz_json:get_value(<<"Call-ID">>, JObj),
-    _ = ets:update_element(?TAB, CallId, Props),
+    kz_util:put_callid(JObj),
+    rated(JObj),
+    {'noreply', State};
+handle_cast({'authz_resp', JObj}, State) ->
+    kz_util:put_callid(JObj),
+    authorized(JObj),
     {'noreply', State};
 handle_cast('synchronize_channels', #state{sync_ref=SyncRef}=State) ->
     self() ! {'synchronize_channels', SyncRef},
@@ -625,6 +600,7 @@ handle_info({'synchronize_channels', SyncRef}, #state{sync_ref=SyncRef}=State) -
 handle_info({'synchronize_channels', _}, State) ->
     {'noreply', State};
 handle_info(?HOOK_EVT(_, <<"CHANNEL_CREATE">>, JObj), State) ->
+    kz_util:put_callid(JObj),
     %% insert_new keeps a CHANNEL_CREATE from overriding an entry from
     %% an auth_resp BUT an auth_resp CAN override a CHANNEL_CREATE
     Channel = #channel{call_id=CallId}=from_jobj(JObj),
@@ -640,7 +616,22 @@ handle_info(?HOOK_EVT(_, <<"CHANNEL_ANSWER">>, JObj), State) ->
 handle_info(?HOOK_EVT(_, <<"CHANNEL_DESTROY">>, JObj), State) ->
     handle_channel_destroy(kz_api:call_id(JObj)),
     {'noreply', State};
-handle_info(?HOOK_EVT(_, <<"CHANNEL_BRIDGE">>, _JObj), State) ->
+handle_info(?HOOK_EVT(_, <<"CHANNEL_BRIDGE">>, JObj), State) ->
+    channel_bridge(JObj),
+    {'noreply', State};
+handle_info(?HOOK_EVT(_, <<"CHANNEL_UNBRIDGE">>, JObj), State) ->
+    channel_unbridge(JObj),
+    {'noreply', State};
+handle_info(?HOOK_EVT(_, <<"CHANNEL_DISCONNECTED">>, JObj), State) ->
+    %% TODO
+    %% create a timer that when fired
+    %% will call handle_channel_destroy
+    %% if the channel hasn't reconnected
+    %% same should happen in jonny5_listener
+    %% for this event
+    handle_channel_destroy(kz_api:call_id(JObj)),
+    {'noreply', State};
+handle_info(?HOOK_EVT(_, <<"CHANNEL_CONNECTED">>, _JObj), State) ->
     {'noreply', State};
 handle_info('cleanup', State) ->
     _P = kz_util:spawn(fun delete_destroyed_channels/0),
@@ -740,8 +731,11 @@ count_unique_calls(Channels) ->
 count_unique_calls([], Set) -> Set;
 count_unique_calls([{CallId, 'undefined'}|Channels], Set) ->
     count_unique_calls(Channels, sets:add_element(CallId, Set));
-count_unique_calls([{_, CallId}|Channels], Set) ->
-    count_unique_calls(Channels, sets:add_element(CallId, Set)).
+count_unique_calls([{CallId, OtherId}|Channels], Set) ->
+    case sets:is_element(OtherId, Set) of
+        true -> count_unique_calls(Channels, Set);
+        false -> count_unique_calls(Channels, sets:add_element(CallId, Set))
+    end.
 
 -spec j5_channel_ids() -> sets:set().
 j5_channel_ids() ->
@@ -876,3 +870,27 @@ synchronize() ->
                 LocalChannelIds = j5_channel_ids(),
                 fix_channel_disparity(LocalChannelIds, EcallmgrChannelIds)
         end.
+
+-spec channel_bridge(kz_json:object()) -> 'ok'.
+channel_bridge(JObj) ->
+    UUID = kz_call_event:call_id(JObj),
+    OtherLeg = kz_json:get_ne_binary_value(<<"Bridge-B-Unique-ID">>, JObj),
+    _ = ets:update_element(?TAB, UUID, [{#channel.other_leg_call_id, OtherLeg}
+                                       ,{#channel.timestamp, kz_time:now_s()}
+                                       ]),
+    _ = ets:update_element(?TAB, OtherLeg, [{#channel.other_leg_call_id, UUID}
+                                           ,{#channel.timestamp, kz_time:now_s()}
+                                           ]),
+    'ok'.
+
+-spec channel_unbridge(kz_json:object()) -> any().
+channel_unbridge(JObj) ->
+    UUID = kz_call_event:call_id(JObj),
+    OtherLeg = kz_json:get_ne_binary_value(<<"Bridge-B-Unique-ID">>, JObj),
+    _ = ets:update_element(?TAB, UUID, [{#channel.other_leg_call_id, 'undefined'}
+                                       ,{#channel.timestamp, kz_time:now_s()}
+                                       ]),
+    _ = ets:update_element(?TAB, OtherLeg, [{#channel.other_leg_call_id, 'undefined'}
+                                           ,{#channel.timestamp, kz_time:now_s()}
+                                           ]),
+    'ok'.
