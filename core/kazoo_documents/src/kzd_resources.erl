@@ -18,6 +18,7 @@
 -export([format_from_uri/1, format_from_uri/2, set_format_from_uri/2]).
 -export([formatters/1, formatters/2, set_formatters/2]).
 -export([from_uri_realm/1, from_uri_realm/2, set_from_uri_realm/2]).
+-export([gateway_strategy/1, gateway_strategy/2, set_gateway_strategy/2]).
 -export([gateways/1, gateways/2, set_gateways/2]).
 -export([grace_period/1, grace_period/2, set_grace_period/2]).
 -export([ignore_flags/1, ignore_flags/2, set_ignore_flags/2]).
@@ -135,6 +136,18 @@ from_uri_realm(Doc, Default) ->
 -spec set_from_uri_realm(doc(), binary()) -> doc().
 set_from_uri_realm(Doc, FromUriRealm) ->
     kz_json:set_value([<<"from_uri_realm">>], FromUriRealm, Doc).
+
+-spec gateway_strategy(doc()) -> kz_term:api_binary().
+gateway_strategy(Doc) ->
+    gateway_strategy(Doc, 'undefined').
+
+-spec gateway_strategy(doc(), Default) -> binary() | Default.
+gateway_strategy(Doc, Default) ->
+    kz_json:get_binary_value([<<"gateway_strategy">>], Doc, Default).
+
+-spec set_gateway_strategy(doc(), binary()) -> doc().
+set_gateway_strategy(Doc, GatewayStrategy) ->
+    kz_json:set_value([<<"gateway_strategy">>], GatewayStrategy, Doc).
 
 -spec gateways(doc()) -> kz_term:api_objects().
 gateways(Doc) ->
