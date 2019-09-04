@@ -37,10 +37,6 @@ api_definition(Name) when not is_binary(Name) ->
 api_definition(<<"req">>) ->
     req_definition().
 
-%%------------------------------------------------------------------------------
-%% @doc FreeSWITCH Request, Pass-through of FreeSWITCH dialplan commands.
-%% @end
-%%------------------------------------------------------------------------------
 -spec req_definition() -> kapi_definition:api().
 req_definition() ->
     EventName = <<"command">>,
@@ -69,6 +65,11 @@ req_definition() ->
               ],
     kapi_definition:setters(Setters).
 
+%%------------------------------------------------------------------------------
+%% @doc FreeSWITCH Request, Pass-through of FreeSWITCH dialplan commands.
+%% Takes {@link kz_term:proplist()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) -> kz_api:api_formatter_return().
 req(Req) ->
     kapi_definition:build_message(Req, req_definition()).
