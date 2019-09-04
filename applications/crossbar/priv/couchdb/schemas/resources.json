@@ -41,6 +41,14 @@
             "description": "When formatting SIP From on outbound requests this can be used to override the realm",
             "type": "string"
         },
+        "gateway_strategy": {
+            "description": "The strategy of choosing gateways from list: sequential or random",
+            "enum": [
+                "sequential",
+                "random"
+            ],
+            "type": "string"
+        },
         "gateways": {
             "description": "A list of gateways available for this resource",
             "items": {
