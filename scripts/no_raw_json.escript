@@ -96,7 +96,7 @@ find_source(Module, BeamFile) when is_list(BeamFile) ->
     case file:open(SrcFile, ['read', 'binary', 'raw', 'read_ahead']) of
         {'ok', IODevice} -> IODevice;
         {'error', 'enoent'} ->
-            io:format("failed to find source ~s for beam ~s~n", [SrcFile, BeamFile]),
+            io:format("failed to find module ~s source ~s for beam ~s~n", [Module, SrcFile, BeamFile]),
             throw({'error', 'enoent'})
     end.
 
@@ -115,7 +115,7 @@ find_source_sub_dir(Module, AppDir) ->
     end.
 
 output_raw_matches(Module, Line, 0, LineData, Matches) ->
-    File = props:get_value(source, Module:module_info(compile), Module),
+    File = props:get_value('source', Module:module_info('compile'), Module),
     Format = "~s:~p: ~s~n",
     output(File, Line, Matches, LineData, Format);
 output_raw_matches(Module, Line, _RawLines, LineData, Matches) ->
