@@ -153,8 +153,10 @@
                ,privacy_hide_number = 'false' :: boolean()
                ,classifier = 'undefined' :: kz_term:api_binary()
                ,classifier_enable = 'true' :: boolean()
+               ,gateway_strategy = 'sequential' :: gateway_strategy()
                }).
 
+-type gateway_strategy() :: 'sequential' | 'random'.
 -type resource() :: #resrc{}.
 -type resources() :: [#resrc{}].
 
@@ -1089,6 +1091,7 @@ resource_from_jobj(JObj) ->
                      ,privacy_hide_number=kz_privacy:should_hide_number(JObj)
                      ,classifier=kz_json:get_ne_value(<<"classifier">>, JObj)
                      ,classifier_enable=kz_json:is_true(<<"classifier_enable">>, JObj, 'true')
+                     ,gateway_strategy=kz_json:get_atom_value(<<"gateway_strategy">>, JObj, 'sequential')
                      },
     Gateways = gateways_from_jobjs(kz_json:get_value(<<"gateways">>, JObj, [])
                                   ,Resource
@@ -1305,7 +1308,8 @@ get_resrc_cid_rules(#resrc{cid_rules=CIDRules}) -> CIDRules.
 get_resrc_cid_raw_rules(#resrc{cid_raw_rules=CIDRawRules}) -> CIDRawRules.
 
 -spec get_resrc_gateways(resource()) -> list().
-get_resrc_gateways(#resrc{gateways=Gateways}) -> Gateways.
+get_resrc_gateways(#resrc{gateways=Gateways, gateway_strategy='sequential'}) -> Gateways;
+get_resrc_gateways(#resrc{gateways=Gateways, gateway_strategy='random'}) -> kz_term:shuffle_list(Gateways).
 
 -spec get_resrc_is_emergency(resource()) -> boolean().
 get_resrc_is_emergency(#resrc{is_emergency=IsEmergency}) -> IsEmergency.
