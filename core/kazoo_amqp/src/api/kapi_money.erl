@@ -18,130 +18,265 @@
 %%%-----------------------------------------------------------------------------
 -module(kapi_money).
 
--export([credit/1, credit_v/1
-        ,debit/1, debit_v/1
-        ,balance_req/1, balance_req_v/1
-        ,balance_resp/1, balance_resp_v/1
-        ,bind_q/2, unbind_q/2
+-export([api_definitions/0, api_definition/1]).
+
+-export([credit/1
+        ,credit_v/1
+        ,publish_credit/1
+        ,publish_credit/2
+        ]).
+-export([debit/1
+        ,debit_v/1
+        ,publish_debit/1
+        ,publish_debit/2
+        ]).
+-export([balance_req/1
+        ,balance_req_v/1
+        ,publish_balance_req/1
+        ,publish_balance_req/2
+        ]).
+-export([balance_resp/1
+        ,balance_resp_v/1
+        ,publish_balance_resp/2
+        ,publish_balance_resp/3
+        ]).
+-export([bind_q/2
+        ,unbind_q/2
         ,declare_exchanges/0
-        ,publish_credit/1, publish_credit/2
-        ,publish_debit/1, publish_debit/2
-        ,publish_balance_req/1, publish_balance_req/2
-        ,publish_balance_resp/2, publish_balance_resp/3
         ]).
 
 -include_lib("kz_amqp_util.hrl").
 
--define(CREDIT_HEADERS, [<<"Account-ID">>, <<"Amount">>, <<"Transaction-ID">>]).
--define(OPTIONAL_CREDIT_HEADERS, []).
--define(CREDIT_VALUES, [{<<"Event-Category">>, <<"transaction">>}
-                       ,{<<"Event-Name">>, <<"credit">>}
-                       ]).
--define(CREDIT_TYPES, []).
+%%------------------------------------------------------------------------------
+%% @doc Get all API definitions of this module.
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definitions() -> kapi_definition:apis().
+api_definitions() ->
+    [credit_definition()
+    ,debit_definition()
+    ,balance_req_definition()
+    ,balance_resp_definition()
+    ].
 
--define(DEBIT_HEADERS, [<<"Account-ID">>, <<"Amount">>, <<"Transaction-ID">>]).
--define(OPTIONAL_DEBIT_HEADERS, []).
--define(DEBIT_VALUES, [{<<"Event-Category">>, <<"transaction">>}
-                      ,{<<"Event-Name">>, <<"debit">>}
-                      ]).
--define(DEBIT_TYPES, []).
+%%------------------------------------------------------------------------------
+%% @doc Get API definition of the given `Name'.
+%% @see api_definitions/0
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definition(kz_term:text()) -> kapi_definition:api().
+api_definition(Name) when not is_binary(Name) ->
+    api_definition(kz_term:to_binary(Name));
+api_definition(<<"credit">>) ->
+    credit_definition();
+api_definition(<<"debit">>) ->
+    debit_definition();
+api_definition(<<"balance_req">>) ->
+    balance_req_definition();
+api_definition(<<"balance_resp">>) ->
+    balance_resp_definition().
 
--define(BALANCE_REQ_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_BALANCE_REQ_HEADERS, []).
--define(BALANCE_REQ_VALUES, [{<<"Event-Category">>, <<"transaction">>}
-                            ,{<<"Event-Name">>, <<"balance_req">>}
-                            ]).
--define(BALANCE_REQ_TYPES, []).
+-spec credit_definition() -> kapi_definition:api().
+credit_definition() ->
+    EventName = <<"credit">>,
+    Category = <<"transaction">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Credit Update">>}
+              ,{fun kapi_definition:set_description/2, <<"Credit Update">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun credit/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun credit_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_credit/1}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Amount">>
+                                                            ,<<"Transaction-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, []}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
--define(BALANCE_RESP_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_BALANCE_RESP_HEADERS, [<<"Two-Way">>, <<"Inbound">>, <<"Prepay">>
-                                       ,<<"Max-Two-Way">>, <<"Max-Inbound">>
-                                       ,<<"Trunks">>, <<"Node">>
-                                       ]).
--define(BALANCE_RESP_VALUES, [{<<"Event-Category">>, <<"transaction">>}
-                             ,{<<"Event-Name">>, <<"balance_resp">>}
-                             ]).
--define(BALANCE_RESP_TYPES, []).
+-spec debit_definition() -> kapi_definition:api().
+debit_definition() ->
+    EventName = <<"debit">>,
+    Category = <<"transaction">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Debit Update">>}
+              ,{fun kapi_definition:set_description/2, <<"Debit Update">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun debit/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun debit_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_debit/1}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Amount">>
+                                                            ,<<"Transaction-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, []}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec balance_req_definition() -> kapi_definition:api().
+balance_req_definition() ->
+    EventName = <<"balance_req">>,
+    Category = <<"transaction">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Balance Request">>}
+              ,{fun kapi_definition:set_description/2, <<"Balance Request">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun balance_req/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun balance_req_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_balance_req/1}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, []}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
+
+-spec balance_resp_definition() -> kapi_definition:api().
+balance_resp_definition() ->
+    EventName = <<"balance_resp">>,
+    Category = <<"transaction">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Balance Response">>}
+              ,{fun kapi_definition:set_description/2, <<"Balance Response">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun balance_resp/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun balance_resp_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_balance_resp/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Two-Way">>
+                                                            ,<<"Inbound">>
+                                                            ,<<"Prepay">>
+                                                            ,<<"Max-Two-Way">>
+                                                            ,<<"Max-Inbound">>
+                                                            ,<<"Trunks">>
+                                                            ,<<"Node">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2, []}
+              ],
+    kapi_definition:setters(Setters).
 
 %%------------------------------------------------------------------------------
 %% @doc Credit Update.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec credit(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
-credit(Prop) when is_list(Prop) ->
-    case credit_v(Prop) of
-        true -> kz_api:build_message(Prop, ?CREDIT_HEADERS, ?OPTIONAL_CREDIT_HEADERS);
-        false -> {error, "Proplist failed validation for credit"}
-    end;
-credit(JObj) ->
-    credit(kz_json:to_proplist(JObj)).
+-spec credit(kz_term:api_terms()) -> kz_api:api_formatter_return().
+credit(Req) ->
+    kapi_definition:build_message(Req, credit_definition()).
 
 -spec credit_v(kz_term:api_terms()) -> boolean().
-credit_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?CREDIT_HEADERS, ?CREDIT_VALUES, ?CREDIT_TYPES);
-credit_v(JObj) ->
-    credit_v(kz_json:to_proplist(JObj)).
+credit_v(Req) ->
+    kapi_definition:validate(Req, credit_definition()).
+
+-spec publish_credit(kz_term:api_terms()) -> 'ok'.
+publish_credit(Req) ->
+    publish_credit(Req, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_credit(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_credit(Req, ContentType) ->
+    Definition = credit_definition(),
+    RoutingKey = list_to_binary([<<"transaction.credit.">>, props:get_value(<<"Account-ID">>, Req)]),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Debit Update.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec debit(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
-debit(Prop) when is_list(Prop) ->
-    case debit_v(Prop) of
-        true -> kz_api:build_message(Prop, ?DEBIT_HEADERS, ?OPTIONAL_DEBIT_HEADERS);
-        false -> {error, "Proplist failed validation for debit"}
-    end;
-debit(JObj) ->
-    debit(kz_json:to_proplist(JObj)).
+-spec debit(kz_term:api_terms()) -> kz_api:api_formatter_return().
+debit(Req) ->
+    kapi_definition:build_message(Req, debit_definition()).
 
 -spec debit_v(kz_term:api_terms()) -> boolean().
-debit_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?DEBIT_HEADERS, ?DEBIT_VALUES, ?DEBIT_TYPES);
-debit_v(JObj) ->
-    debit_v(kz_json:to_proplist(JObj)).
+debit_v(Req) ->
+    kapi_definition:validate(Req, debit_definition()).
+
+-spec publish_debit(kz_term:api_terms()) -> 'ok'.
+publish_debit(Req) ->
+    publish_debit(Req, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_debit(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_debit(Req, ContentType) ->
+    Definition = debit_definition(),
+    RoutingKey = list_to_binary([<<"transaction.debit.">>, props:get_value(<<"Account-ID">>, Req)]),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Balance Request.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec balance_req(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
-balance_req(Prop) when is_list(Prop) ->
-    case balance_req_v(Prop) of
-        true -> kz_api:build_message(Prop, ?BALANCE_REQ_HEADERS, ?OPTIONAL_BALANCE_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for balance_req"}
-    end;
-balance_req(JObj) ->
-    balance_req(kz_json:to_proplist(JObj)).
+-spec balance_req(kz_term:api_terms()) -> kz_api:api_formatter_return().
+balance_req(Req) ->
+    kapi_definition:build_message(Req, balance_req_definition()).
 
 -spec balance_req_v(kz_term:api_terms()) -> boolean().
-balance_req_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?BALANCE_REQ_HEADERS, ?BALANCE_REQ_VALUES, ?BALANCE_REQ_TYPES);
-balance_req_v(JObj) ->
-    balance_req_v(kz_json:to_proplist(JObj)).
+balance_req_v(Req) ->
+    kapi_definition:validate(Req, balance_req_definition()).
+
+-spec publish_balance_req(kz_term:api_terms()) -> 'ok'.
+publish_balance_req(Req) ->
+    publish_balance_req(Req, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_balance_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_balance_req(Req, ContentType) ->
+    Definition = balance_req_definition(),
+    RoutingKey = list_to_binary([<<"transaction.balance.">>, props:get_value(<<"Account-ID">>, Req)]),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Balance Response.
 %% Takes {@link kz_term:api_term()}, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec balance_resp(kz_term:api_terms()) -> {'ok', iolist()} | {'error', string()}.
-balance_resp(Prop) when is_list(Prop) ->
-    case balance_resp_v(Prop) of
-        true -> kz_api:build_message(Prop, ?BALANCE_RESP_HEADERS, ?OPTIONAL_BALANCE_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for balance_resp"}
-    end;
-balance_resp(JObj) ->
-    balance_resp(kz_json:to_proplist(JObj)).
+-spec balance_resp(kz_term:api_terms()) -> kz_api:api_formatter_return().
+balance_resp(Req) ->
+    kapi_definition:build_message(Req, balance_resp_definition()).
 
 -spec balance_resp_v(kz_term:api_terms()) -> boolean().
-balance_resp_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?BALANCE_RESP_HEADERS, ?BALANCE_RESP_VALUES, ?BALANCE_RESP_TYPES);
-balance_resp_v(JObj) ->
-    balance_resp_v(kz_json:to_proplist(JObj)).
+balance_resp_v(Req) ->
+    kapi_definition:validate(Req, balance_resp_definition()).
+
+-spec publish_balance_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_balance_resp(Queue, Req) ->
+    publish_balance_resp(Queue, Req, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_balance_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_balance_resp(Queue, Req, ContentType) ->
+    Definition = balance_resp_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 -spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
@@ -167,42 +302,3 @@ routing_key(Props) ->
                    ,<<".">>
                    ,props:get_value('account_id', Props, <<"*">>)
                    ]).
-
--spec publish_credit(kz_term:api_terms()) -> 'ok'.
-publish_credit(Req) ->
-    publish_credit(Req, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_credit(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
-publish_credit(Req, ContentType) ->
-    RoutingKey = list_to_binary([<<"transaction.credit.">>, props:get_value(<<"Account-ID">>, Req)]),
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?CREDIT_VALUES, fun credit/1),
-    kz_amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
-
--spec publish_debit(kz_term:api_terms()) -> 'ok'.
-publish_debit(Req) ->
-    publish_debit(Req, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_debit(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
-publish_debit(Req, ContentType) ->
-    RoutingKey = list_to_binary([<<"transaction.debit.">>, props:get_value(<<"Account-ID">>, Req)]),
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DEBIT_VALUES, fun debit/1),
-    kz_amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
-
--spec publish_balance_req(kz_term:api_terms()) -> 'ok'.
-publish_balance_req(Req) ->
-    publish_balance_req(Req, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_balance_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
-publish_balance_req(Req, ContentType) ->
-    RoutingKey = list_to_binary([<<"transaction.balance.">>, props:get_value(<<"Account-ID">>, Req)]),
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?BALANCE_REQ_VALUES, fun balance_req/1),
-    kz_amqp_util:configuration_publish(RoutingKey, Payload, ContentType).
-
--spec publish_balance_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_balance_resp(Queue, Req) ->
-    publish_balance_resp(Queue, Req, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_balance_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
-publish_balance_resp(Queue, Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?BALANCE_RESP_VALUES, fun balance_resp/1),
-    kz_amqp_util:targeted_publish(Queue, Payload, ContentType).
