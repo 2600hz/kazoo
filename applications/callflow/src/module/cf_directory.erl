@@ -139,8 +139,9 @@ handle(Data, Call) ->
     end.
 
 -spec directory_start(kapps_call:call(), directory(), directory_users()) -> 'ok'.
-directory_start(Call, State, CurrUsers) ->
-    directory_start(Call, State, CurrUsers, 3).
+directory_start(Call, #directory{sort_by=SortBy}=State, CurrUsers) ->
+    Users = sort_users(CurrUsers, SortBy),
+    directory_start(Call, State, Users, 3).
 
 -spec directory_start(kapps_call:call(), directory(), directory_users(), non_neg_integer()) -> 'ok'.
 directory_start(Call, _State, _CurrUsers, 0) ->
