@@ -17,6 +17,7 @@ ToFilterOut = [rabbitmq_codegen
               ,skel
               ,parse_trans
               ,meck
+              ,elvis_mk
               ],
 Preparer = fun (List) -> [{E,load} || E <- List, not lists:member(E, ToFilterOut)] end,
 Base = [runtime_tools

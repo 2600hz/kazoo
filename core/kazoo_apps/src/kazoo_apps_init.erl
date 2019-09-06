@@ -28,6 +28,7 @@ start_link() ->
 init() ->
     kz_util:put_callid(?MODULE),
     set_cookie(),
+    start_distribution(),
     set_loglevel().
 
 -spec set_cookie() -> 'true'.
@@ -135,3 +136,7 @@ is_system_clock_on_utc() ->
             lager:critical("system is not running in UTC and Kazoo expects it"),
             'false'
     end.
+
+-spec start_distribution() -> 'ok'.
+start_distribution() ->
+    amqp_dist:add_brokers(kz_amqp_connections:uris()).
