@@ -17,6 +17,7 @@
         ,rfc1036/1, rfc1036/2
         ,rfc2822/1, rfc2822/2
         ,iso8601/1, iso8601/2
+        ,iso8601_ms/1
         ,iso8601_time/1
         ,from_iso8601/1
         ,pretty_print_elapsed_s/1
@@ -206,6 +207,25 @@ iso8601({_Y,_M,_D}=Date) ->
     kz_date:to_iso8601_extended(Date);
 iso8601(Timestamp) ->
     iso8601(Timestamp, <<"UTC">>).
+
+%%------------------------------------------------------------------------------
+%% @doc Format date or datetime or Gregorian timestamp (all in UTC)
+%% according to ISO 8601 and also includes fractional seconds.
+%%
+%% It assumes the input is in UTC.
+%% @throws {error, invalid_offset | unknown_tz}
+%% @end
+%%------------------------------------------------------------------------------
+-spec iso8601_ms(calendar:datetime() | date() | gregorian_seconds()) -> kz_term:ne_binary().
+iso8601_ms(DateOrDatetimeOrTimestamp) ->
+    {_, _, Micro} = erlang:timestamp(),
+    ISO8601 = iso8601(DateOrDatetimeOrTimestamp),
+    add_millisecs_to_iso8601(ISO8601, trunc(Micro / 1000)).
+
+-spec add_millisecs_to_iso8601(kz_term:ne_binary(), 1..999) -> kz_term:ne_binary().
+add_millisecs_to_iso8601(ISO8601, Millis) ->
+    MillisBin = <<".", (kz_term:to_binary(Millis))/binary, "Z">>,
+    binary:replace(ISO8601, <<"Z">>, MillisBin).
 
 %%------------------------------------------------------------------------------
 %% @doc Format Gregorian timestamp or datetime (all un UTC) to the local Timezone
