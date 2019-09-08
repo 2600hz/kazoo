@@ -129,7 +129,7 @@ handle_ringback(DP, Node, UUID, _Channel, JObj) ->
             Props = [{<<"ringback">>, Default}],
             Exports = ecallmgr_util:process_fs_kv(Node, UUID, Props, 'export'),
             Args = ecallmgr_util:fs_args_to_binary(Exports),
-            [{"application", <<"kz_export ", Args/binary>>}
+            [{"application", <<"kz_export_encoded ", Args/binary>>}
              |DP
             ];
         Media ->
@@ -138,7 +138,7 @@ handle_ringback(DP, Node, UUID, _Channel, JObj) ->
             Props = [{<<"ringback">>, Stream}],
             Exports = ecallmgr_util:process_fs_kv(Node, UUID, Props, 'export'),
             Args = ecallmgr_util:fs_args_to_binary(Exports),
-            [{"application", <<"kz_export ", Args/binary>>}
+            [{"application", <<"kz_export_encoded ", Args/binary>>}
              |DP
             ]
     end.
