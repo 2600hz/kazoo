@@ -225,8 +225,6 @@ dialplan_application(App)
   when is_list(App) ->
     dialplan_application(kz_term:to_binary(App));
 dialplan_application(<<"blind_xfer">>) -> <<"transfer">>;
-dialplan_application(<<"kz_multiset">>) -> <<"kz_multiset_encoded">>;
-dialplan_application(<<"kz_export">>) -> <<"kz_export_encoded">>;
 dialplan_application(<<"att_xfer">>) -> <<"kz_att_xfer">>;
 dialplan_application(App) -> App.
 
