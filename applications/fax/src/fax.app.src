@@ -4,7 +4,7 @@
                              kazoo_documents,kazoo_fax,kazoo_globals,
                              kazoo_media,kazoo_modb,kazoo_number_manager,
                              kazoo_oauth,kazoo_schemas,kazoo_services,
-                             kazoo_stdlib,kazoo_web,kernel,lager,stdlib]},
+                             kazoo_stdlib,kazoo_web,kernel,lager,ra,stdlib]},
               {description,"Fax - Why is everyone faxinated with fax?"},
               {env,[{is_kazoo_app,true}]},
               {mod,{fax_app,[]}},

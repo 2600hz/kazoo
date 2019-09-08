@@ -27,14 +27,22 @@ start_link() ->
 
     Workers = kapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 50),
     %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
-    {'ok', _Pid} = cowboy:start_clear('fax_file'
-                                     ,#{'socket_opts' => [{'port', ?PORT}]
-                                       ,'num_acceptors' => Workers
-                                       }
-                                     ,#{'env' => #{'dispatch' => Dispatch}}
-                                     ),
+    _ = start_listener(Workers, Dispatch, ?PORT),
+
     fax_maintenance:refresh_views(),
+    _ = fax_ra:start(),
     'ignore'.
+
+start_listener(Workers, Dispatch, Port) ->
+    case cowboy:start_clear('fax_file'
+                           ,#{'socket_opts' => [{'port', Port}]
+                             ,'num_acceptors' => Workers
+                             }
+                           ,#{'env' => #{'dispatch' => Dispatch}})
+    of
+        {error,eaddrinuse} -> start_listener(Workers, Dispatch, Port+1);
+        _Other -> _Other
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Ensures that all exchanges used are declared.

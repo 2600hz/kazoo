@@ -13,9 +13,7 @@
 -module(fax_worker).
 -behaviour(gen_listener).
 
--export([start_link/1]).
-
--export([handle_start_job/2]).
+-export([start_link/2]).
 
 -export([handle_tx_resp/2
         ,handle_fax_event/2
@@ -32,14 +30,12 @@
 
 -include("fax.hrl").
 
--define(SERVER(N), {'via', 'kz_globals', <<"fax_outbound_", N/binary>>}).
-
 -define(MOVE_RETRY_INTERVAL, 5000).
 -define(MAX_MOVE_RETRY, 5).
 -define(MAX_MOVE_NOTIFY_MSG, "failed to move fax outbound document ~s from faxes database to account ~s modb").
 
 -record(state, {queue_name :: kz_term:api_binary()
-               ,job_id :: kz_term:api_binary()
+               ,job_id :: kz_term:ne_binary()
                ,job :: kz_term:api_object()
                ,account_id :: kz_term:api_binary()
                ,status :: kz_term:api_ne_binary()
@@ -48,7 +44,6 @@
                ,page = 0 :: integer()
                ,file :: kz_term:api_ne_binary()
                ,callid :: kz_term:ne_binary()
-               ,controller :: kz_term:ne_binary()
                ,stage :: kz_term:api_binary()
                ,resp :: kz_term:api_object()
                ,move_retry = 0 :: integer()
@@ -62,14 +57,14 @@
 -define(NEGOTIATE_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 2).
 -define(PAGE_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 6).
 
--define(BINDINGS(CallId), [{'self', []}
-                          ,{'fax', [{'restrict_to', ['query_status']}]}
-                          ,{'call', [{'callid', CallId}
-                                    ,{'restrict_to', [<<"CHANNEL_FAX_STATUS">>]
-                                     }
-                                    ]
-                           }
-                          ]).
+-define(BINDINGS(JobId), [{'self', []}
+                         ,{'fax', [{'restrict_to', ['query_status']}]}
+                         ,{'call', [{'callid', JobId}
+                                   ,{'restrict_to', [<<"CHANNEL_FAX_STATUS">>]
+                                    }
+                                   ]
+                          }
+                         ]).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_tx_resp'}
                      ,[{<<"resource">>, <<"offnet_resp">>}]
@@ -114,30 +109,16 @@
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link(fax_job()) -> kz_types:startlink_ret().
-start_link(FaxJob) ->
-    CallId = kz_binary:rand_hex(16),
-    gen_listener:start_link(server_name(FaxJob)
-                           ,?MODULE
-                           ,[{'bindings', ?BINDINGS(CallId)}
+-spec start_link(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:startlink_ret().
+start_link(AccountId, JobId) ->
+    gen_listener:start_link(?MODULE
+                           ,[{'bindings', ?BINDINGS(JobId)}
                             ,{'responders', ?RESPONDERS}
                             ,{'queue_name', ?QUEUE_NAME}
                             ,{'queue_options', ?QUEUE_OPTIONS}
                             ,{'consume_options', ?CONSUME_OPTIONS}
                             ]
-                           ,[FaxJob, CallId]).
-
--spec server_name(kz_json:object()) -> {'via', 'kz_globals', kz_term:ne_binary()}.
-server_name(FaxJob) ->
-    case ?SERIALIZE_OUTBOUND_NUMBER of
-        'true' ->
-            AccountId = kapi_fax:account_id(FaxJob),
-            Number = knm_converters:normalize(kapi_fax:to_number(FaxJob), AccountId),
-            ?SERVER(Number);
-        'false' ->
-            JobId = kapi_fax:job_id(FaxJob),
-            ?SERVER(JobId)
-    end.
+                           ,[AccountId, JobId]).
 
 -spec handle_tx_resp(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_tx_resp(JObj, Props) ->
@@ -168,15 +149,12 @@ handle_job_status_query(JObj, Props) ->
 %% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec init([kz_json:object() | kz_term:ne_binary()]) -> {'ok', state()}.
-init([FaxJob, CallId]) ->
-    CtrlQ = kapi_fax:control_queue(FaxJob),
-    JobId = kapi_fax:job_id(FaxJob),
+-spec init([kz_term:ne_binary() | kz_term:ne_binary()]) -> {'ok', state()}.
+init([AccountId, JobId]) ->
     kz_util:put_callid(JobId),
-    {'ok', #state{callid = CallId
+    {'ok', #state{callid = JobId
                  ,job_id = JobId
-                 ,account_id = kapi_fax:account_id(FaxJob)
-                 ,controller = CtrlQ
+                 ,account_id = AccountId
                  ,stage = ?FAX_ACQUIRE
                  }
     }.
@@ -280,12 +258,8 @@ handle_cast({'query_status', JobId, Queue, MsgId, _JObj}, State) ->
     Status = list_to_binary(["Fax ", JobId, " not being processed by this Queue"]),
     send_reply_status(Queue, MsgId, JobId, Status, <<"*">>,'undefined'),
     {'noreply', State};
-handle_cast('attempt_transmission', #state{job_id = JobId
-                                          ,queue_name=Q
-                                          ,controller=CtrlQ
-                                          ,stage=Stage
-                                          }=State) ->
-    case attempt_to_acquire_job(JobId, Q) of
+handle_cast('attempt_transmission', #state{job_id = JobId}=State) ->
+    case kz_datamgr:open_doc(?KZ_FAXES_DB, JobId) of
         {'ok', JObj} ->
             lager:debug("acquired job ~s", [JobId]),
             Status = <<"preparing">>,
@@ -296,7 +270,6 @@ handle_cast('attempt_transmission', #state{job_id = JobId
                                   ,stage = ?FAX_PREPARE
                                   },
             send_status(NewState, <<"job acquired">>, ?FAX_START, 'undefined'),
-            send_control_status(CtrlQ, Q, JobId, ?FAX_START, Stage),
             gen_server:cast(self(), 'prepare_job'),
             {'noreply', NewState};
         {'error', Reason} ->
@@ -413,17 +386,14 @@ handle_event(_JObj, _State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
-terminate('normal' = _Reason, #state{error=Error, stage=Stage, job_id=JobId, controller=CtrlQ})
+terminate('normal' = _Reason, #state{error=Error, stage=Stage})
   when Error =/= 'undefined' ->
-    lager:debug("fax worker ~p terminating on stage ~s with reason : ~p", [self(), Stage, _Reason]),
-    send_control_error(JobId, CtrlQ, Stage, Error);
-terminate('normal' = _Reason, #state{stage=Stage, job_id=JobId, controller=CtrlQ, queue_name=Q}) ->
-    send_control_status(CtrlQ, Q, JobId, ?FAX_END, Stage),
+    lager:debug("fax worker ~p terminating on stage ~s with reason : ~p", [self(), Stage, _Reason]);
+terminate('normal' = _Reason, #state{stage=Stage}) ->
     lager:debug("fax worker ~p terminated on stage ~s with reason : ~p", [self(), Stage, _Reason]);
-terminate(_Reason, #state{job=JObj, stage=Stage, job_id=JobId, controller=CtrlQ, queue_name=Q}) ->
+terminate(_Reason, #state{job=JObj, stage=Stage}) ->
     JObj1 = kz_json:set_value(<<"retries">>, 0, JObj),
     _ = release_failed_job('uncontrolled_termination', 'undefined', JObj1),
-    send_control_status(CtrlQ, Q, JobId, ?FAX_END, Stage),
     lager:debug("fax worker ~p terminated on stage ~s with reason : ~p", [self(), Stage, _Reason]).
 
 %%------------------------------------------------------------------------------
@@ -442,34 +412,6 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec attempt_to_acquire_job(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                    {'ok', kz_json:object()} |
-                                    {'error', any()}.
-attempt_to_acquire_job(Id, Q) ->
-    case kz_datamgr:open_doc(?KZ_FAXES_DB, Id) of
-        {'error', _}=E -> E;
-        {'ok', JObj} ->
-            attempt_to_acquire_job(JObj, Q, kz_json:get_value(<<"pvt_job_status">>, JObj))
-    end.
-
--spec attempt_to_acquire_job(kz_json:object(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                                    {'ok', kz_json:object()} |
-                                    {'error', any()}.
-attempt_to_acquire_job(JObj, Q, <<"locked">>) ->
-    kz_datamgr:save_doc(?KZ_FAXES_DB
-                       ,kz_json:set_values([{<<"pvt_job_status">>, <<"processing">>}
-                                           ,{<<"pvt_job_node">>, kz_term:to_binary(node())}
-                                           ,{<<"pvt_modified">>, kz_time:now_s()}
-                                           ,{<<"pvt_queue">>, Q}
-                                           ]
-                                          ,JObj
-                                          )
-                       ,[{'rev', kz_doc:revision(JObj)}]
-                       );
-attempt_to_acquire_job(JObj, _Q, Status) ->
-    lager:debug("job not in an available status: ~s : ~p", [Status, JObj]),
-    {'error', 'job_not_available'}.
-
 -spec release_failed_job(atom(), any(), kz_json:object()) -> release_ret().
 release_failed_job('bad_file', Msg, JObj) ->
     Result = [{<<"success">>, 'false'}
@@ -917,47 +859,3 @@ send_reply_status(Q, MsgId, JobId, Status, AccountId, JObj) ->
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     kapi_fax:publish_targeted_status(Q, Payload).
-
--spec send_control_status(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
-send_control_status(CtrlQ, Q, JobId, FaxState, Stage) ->
-    Payload = [{<<"Job-ID">>, JobId}
-              ,{<<"Fax-State">>, FaxState}
-              ,{<<"Stage">>, Stage}
-               | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-              ],
-    Publisher = fun(P) -> kapi_fax:publish_targeted_status(CtrlQ, P) end,
-    kz_amqp_worker:cast(Payload, Publisher).
-
--spec handle_start_job(kz_json:object(), kz_term:proplist()) -> 'ok'.
-handle_start_job(JObj, _Props) ->
-    'true' = kapi_fax:start_job_v(JObj),
-    case fax_worker_sup:start_fax_job(JObj) of
-        {'ok', _Pid} -> send_start_reply(JObj, <<"start">>, 'undefined');
-        {'error', _Reason} -> send_start_reply(JObj, <<"error">>, <<"already running">>)
-    end.
-
--spec send_start_reply(kz_json:object(), kz_term:ne_binary(), kz_term:api_ne_binary()) -> 'ok'.
-send_start_reply(JObj, Status, Reason) ->
-    JobId = kapi_fax:job_id(JObj),
-    CtrlQ = kz_api:server_id(JObj),
-    MsgId = kz_api:msg_id(JObj),
-    Payload = [{<<"Job-ID">>, JobId}
-              ,{<<"Fax-State">>, Status}
-              ,{<<"Stage">>, <<"start">>}
-              ,{<<"Status">>, Reason}
-              ,{?KEY_MSG_ID, MsgId}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    Publisher = fun(P) -> kapi_fax:publish_targeted_status(CtrlQ, P) end,
-    kz_amqp_worker:cast(Payload, Publisher).
-
--spec send_control_error(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
-send_control_error(JobId, CtrlQ, Stage, Reason) ->
-    Payload = [{<<"Job-ID">>, JobId}
-              ,{<<"Fax-State">>, <<"error">>}
-              ,{<<"Stage">>, Stage}
-              ,{<<"Status">>, Reason}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    Publisher = fun(P) -> kapi_fax:publish_targeted_status(CtrlQ, P) end,
-    kz_amqp_worker:cast(Payload, Publisher).

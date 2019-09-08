@@ -179,7 +179,7 @@
         "schedule_accounts": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_type != 'fax' || doc.pvt_deleted || (doc.pvt_job_status != 'pending' && doc.pvt_job_status != 'locked'))",
+                "  if (doc.pvt_type != 'fax' || doc.pvt_deleted || (doc.pvt_job_status != 'pending'))",
                 "    return;",
                 "  emit(doc.pvt_account_id, 1);",
                 "}"

@@ -34,14 +34,14 @@
 %%------------------------------------------------------------------------------
 -spec handle_job_notify(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_job_notify(JObj, _Props) ->
-    case kz_json:get_value(<<"Event-Name">>, JObj) of
-        <<"outbound_fax_error">> ->
-            'true' = kapi_notifications:fax_outbound_error_v(JObj);
-        <<"outbound_fax">> ->
-            'true' = kapi_notifications:fax_outbound_v(JObj);
-        EventName ->
-            lager:debug("wrong message type ~s : crashing this.",[EventName])
-    end,
+    _ = case kz_json:get_value(<<"Event-Name">>, JObj) of
+            <<"outbound_fax_error">> ->
+                'true' = kapi_notifications:fax_outbound_error_v(JObj);
+            <<"outbound_fax">> ->
+                'true' = kapi_notifications:fax_outbound_v(JObj);
+            EventName ->
+                lager:debug("wrong message type ~s : crashing this.",[EventName])
+        end,
 
     JobId = kz_json:get_value(<<"Fax-JobId">>, JObj),
     AccountDb = kz_json:get_value(<<"Account-DB">>, JObj),

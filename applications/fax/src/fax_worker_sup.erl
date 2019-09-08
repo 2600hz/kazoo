@@ -17,16 +17,16 @@
 
 -define(SERVER, ?MODULE).
 
--export([start_fax_job/1]).
+-export([start_fax_job/2]).
 
 -export([start_link/0]).
 -export([init/1]).
 
 -define(CHILDREN, [?WORKER_TYPE('fax_worker', 'transient')]).
 
--spec start_fax_job(fax_job()) -> any().
-start_fax_job(FaxJob) ->
-    supervisor:start_child(?MODULE, [FaxJob]).
+-spec start_fax_job(kz_term:ne_binary(), kz_term:ne_binary()) -> any().
+start_fax_job(AccountId, JobId) ->
+    supervisor:start_child(?MODULE, [AccountId, JobId]).
 
 %%------------------------------------------------------------------------------
 %% @doc Starts the supervisor.
