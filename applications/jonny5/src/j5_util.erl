@@ -35,7 +35,7 @@ maybe_send_system_alert('true', Request) ->
                         ,{<<"Account-Billing">>, j5_request:account_billing(Request)}
                         ,{<<"Reseller-ID">>, ResellerId}
                         ,{<<"Reseller-Billing">>, j5_request:reseller_billing(Request)}
-                        ,{<<"Soft-Limit">>, kz_term:to_binary(j5_request:soft_limit(Request))}
+                        ,{<<"Soft-Limit">>, j5_request:soft_limit(Request)}
                          | P
                         ]
                 end
