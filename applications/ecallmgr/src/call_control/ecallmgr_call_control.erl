@@ -680,8 +680,10 @@ handle_dialplan(JObj, #state{call_id=CallId
                             ,command_q=CmdQ
                             ,current_app=CurrApp
                             }=State) ->
+    At = kz_term:to_atom(kz_json:get_value(<<"Insert-At">>, JObj, 'tail')),
+    lager:debug("received dialpan cmd ~s to execute at ~s", [kapi_dialplan:application_name(JObj), At]),
     NewCmdQ = try
-                  insert_command(State, kz_term:to_atom(kz_json:get_value(<<"Insert-At">>, JObj, 'tail')), JObj)
+                  insert_command(State, At, JObj)
               catch _T:_R ->
                       lager:debug("failed to insert command into control queue: ~p:~p", [_T, _R]),
                       CmdQ
@@ -796,7 +798,7 @@ queue_insert_fun(Position, QueueFun) when is_function(QueueFun, 2) ->
                 'undefined' -> Queue;
                 <<"noop">> = AppName ->
                     MsgId = kz_api:msg_id(JObj),
-                    lager:debug("inserting at the head of the control queue call command ~s(~s)", [AppName, MsgId]),
+                    lager:debug("inserting at the ~p of the control queue call command ~s(~s)", [Position, AppName, MsgId]),
                     QueueFun(JObj, Queue);
                 AppName ->
                     lager:debug("inserting at the ~p of the control queue call command ~s"
