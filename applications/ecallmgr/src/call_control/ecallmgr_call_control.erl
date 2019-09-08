@@ -189,11 +189,9 @@ init_control(Pid, #{node := Node
                    ,control_q := ControlQ
                    ,init_fun := InitFun
                    ,exit_fun := ExitFun
-                                                %                   ,channel := Channel
                    }=Payload) ->
     proc_lib:init_ack(Pid, {'ok', self()}),
     InitFun(Payload),
-                                                %    kz_amqp_channel:consumer_channel(Channel),
     try Fun(Payload) of
         {'ok', #{controller_q := ControllerQ
                 ,initial_ccvs := CCVs
@@ -606,7 +604,6 @@ handle_execute_complete(AppName, EventUUID, JObj, #state{current_app=CurrApp
 handle_execute_complete(_AppName, _EventUUID, _JObj, #state{current_app=_CurrApp
                                                            ,current_cmd_uuid=__EventUUID
                                                            }=State) ->
-                                                %    lager:debug_unsafe("call control unhandled exec complete : ~s , ~s => ~s", [_AppName, _EventUUID, kz_json:encode(_JObj, ['pretty'])]),
     State.
 
 -spec forward_queue(state()) -> state().
@@ -724,7 +721,6 @@ set_control_info(UUID, #state{node=Node
                          ,?SET_CCV(<<"Fetch-ID">>, FetchId)
                          ]),
     _ = freeswitch:api(Node, Cmd, Arg),
-    %% freeswitch:sync_channel(Node, ReplacedBy),
     'ok'.
 
 %%------------------------------------------------------------------------------
