@@ -1107,7 +1107,7 @@ originate_execute_v(JObj) ->
 -spec error(kz_term:api_terms()) -> api_formatter_return().
 error(Prop) when is_list(Prop) ->
     case error_v(Prop) of
-        'true' ->  kz_api:build_message(Prop, ?ERROR_RESP_HEADERS, ?OPTIONAL_ERROR_RESP_HEADERS);
+        'true' -> kz_api:build_message(Prop, ?DP_ERROR_RESP_HEADERS, ?OPTIONAL_DP_ERROR_RESP_HEADERS);
         'false' -> {'error', "Proplist failed validation for error_req"}
     end;
 error(JObj) -> error(kz_json:to_proplist(JObj)).
@@ -1115,7 +1115,7 @@ error(JObj) -> error(kz_json:to_proplist(JObj)).
 -spec error_v(kz_term:api_terms()) -> boolean().
 error_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop
-                   ,?ERROR_RESP_HEADERS
+                   ,?DP_ERROR_RESP_HEADERS
                    ,[{<<"Event-Name">>, <<"dialplan">>}
                      | ?ERROR_RESP_VALUES
                     ]
