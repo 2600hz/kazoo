@@ -73,6 +73,7 @@ call_command(Node, UUID, JObj) ->
                       end,
 
             BridgeJObj = add_endpoints_channel_actions(Node, UUID, JObj),
+            AppUUID = kz_binary:rand_hex(16),
 
             Routines = [fun handle_ringback/5
                        ,fun maybe_early_media/5
@@ -83,17 +84,20 @@ call_command(Node, UUID, JObj) ->
                        ,fun handle_cavs/5
                        ,fun pre_exec/5
                        ,fun handle_loopback/5
+                       ,{fun set_app_uuid/2, AppUUID}
                        ,fun create_command/5
                        ,fun post_exec/5
                        ],
             lager:debug("creating bridge dialplan"),
-            XferExt = lists:foldr(fun(F, DP) ->
+            XferExt = lists:foldr(fun({F, Arg}, DP) when is_function(F, 2) ->
+                                          F(DP, Arg);
+                                     (F, DP)  when is_function(F, 5) ->
                                           F(DP, Node, UUID, Channel, BridgeJObj)
                                   end
                                  ,[]
                                  ,Routines
                                  ),
-            {<<"xferext">>, XferExt}
+            {<<"xferext">>, XferExt, Node, [{<<"Application-UUID">>, AppUUID}]}
     end.
 
 -spec unbridge(kz_term:ne_binary(), kz_json:object()) ->
@@ -296,11 +300,13 @@ pre_exec(DP, _Node, _UUID, _Channel, JObj) ->
 
 -spec post_exec(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().
 post_exec(DP, _Node, _UUID, _Channel, _JObj) ->
-    Event = ecallmgr_util:create_masquerade_event(<<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>),
-    [{"application", Event}
-    ,{"application", "park"}
+    [{"application", "park"}
      |DP
     ].
+
+-spec set_app_uuid(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:proplist().
+set_app_uuid(DP, AppUUID) ->
+    [{"application", list_to_binary(["kz_multiset ^^^app_uuid=", AppUUID , "^app_uuid_name=bridge"])}|DP].
 
 -spec create_command(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().
 create_command(DP, Node, UUID, #channel{profile=ChannelProfile}, JObj) ->
