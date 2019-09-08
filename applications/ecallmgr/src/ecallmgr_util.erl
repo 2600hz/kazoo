@@ -1170,7 +1170,7 @@ create_masquerade_event(Application, EventName, Props) ->
                    ,"Event-Name=CUSTOM,Event-Subclass=kazoo::masquerade"
                    ,",kazoo_event_name=", EventName
                    ,",kazoo_application_name=", Application
-                     | Args
+                    | Args
                    ]).
 
 %%------------------------------------------------------------------------------
