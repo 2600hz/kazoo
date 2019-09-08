@@ -1161,17 +1161,16 @@ maybe_append_channel_vars(Contact, #bridge_endpoint{channel_vars=ChannelVars
 
 -spec create_masquerade_event(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 create_masquerade_event(Application, EventName) ->
-    create_masquerade_event(Application, EventName, 'true').
+    create_masquerade_event(Application, EventName, []).
 
--spec create_masquerade_event(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) -> kz_term:ne_binary().
-create_masquerade_event(Application, EventName, Boolean) ->
-    Prefix = case Boolean of
-                 'true' -> <<"event ">>;
-                 'false' -> <<>>
-             end,
-    list_to_binary([Prefix, "Event-Name=CUSTOM,Event-Subclass=kazoo::masquerade"
+-spec create_masquerade_event(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kz_term:ne_binary().
+create_masquerade_event(Application, EventName, Props) ->
+    Args = [list_to_binary([",", K, "=", V]) || {K,V} <- Props],
+    list_to_binary(["event "
+                   ,"Event-Name=CUSTOM,Event-Subclass=kazoo::masquerade"
                    ,",kazoo_event_name=", EventName
                    ,",kazoo_application_name=", Application
+                     | Args
                    ]).
 
 %%------------------------------------------------------------------------------
