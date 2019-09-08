@@ -688,6 +688,7 @@ handle_dialplan(JObj, #state{call_id=CallId
               end,
     case INU
         andalso (not queue:is_empty(NewCmdQ))
+        andalso queue:is_empty(CmdQ)
         andalso CurrApp =:= 'undefined'
     of
         'true' ->
