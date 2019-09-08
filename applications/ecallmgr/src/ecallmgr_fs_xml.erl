@@ -1429,6 +1429,7 @@ route_resp_park_xml(JObj, DialplanContext) ->
 -spec route_resp_set_control_info(dialplan_context()) -> kz_types:xml_el().
 route_resp_set_control_info(#{control_q := ControlQ
                              ,control_p := ControlP
+                             ,fetch_id := FetchId
                              }
                            ) ->
     App = <<"kz_multiset_encoded">>,
@@ -1441,6 +1442,8 @@ route_resp_set_control_info(#{control_q := ControlQ
                          ,NodeBin
                          ,";Call-Control-Node="
                          ,NodeBin
+                         ,";Fetch-UUID="
+                         ,FetchId
                          ]),
     action_el(App, Arg).
 

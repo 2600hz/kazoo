@@ -1063,6 +1063,20 @@ handle_transferee(JObj, #state{fetch_id=FetchId
             {'noreply', State}
     end.
 
+-spec handle_transferor(kz_json:object(), state()) ->
+                               {'noreply', state()}.
+handle_transferor(JObj, #state{fetch_id=FetchId
+                              ,call_id=CallId
+                              }=State) ->
+    case kz_call_event:custom_channel_var(JObj, <<"Fetch-ID">>) of
+        FetchId ->
+            lager:info("we (~s) transferred the call, terminate immediately", [CallId]),
+            {'stop', 'normal', State};
+        _Else ->
+            lager:info("we were a different instance of this transferror call ~s : ~s", [FetchId, _Else]),
+            {'noreply', State}
+    end.
+
 -spec handle_event_info(kz_term:ne_binary(), kz_evt_freeswitch:data(), state()) ->
                                {'noreply', state()} |
                                {'stop', any(), state()}.
@@ -1075,6 +1089,8 @@ handle_event_info(CallId, JObj, #state{call_id=CallId}=State) ->
             {'noreply', handle_channel_destroyed(State)};
         <<"CHANNEL_TRANSFEREE">> ->
             handle_transferee(JObj, State);
+        <<"CHANNEL_TRANSFEROR">> ->
+            handle_transferor(JObj, State);
         <<"CHANNEL_REPLACED">> ->
             handle_replaced(JObj, State);
         <<"CHANNEL_DIRECT">> ->
