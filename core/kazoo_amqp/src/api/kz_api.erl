@@ -190,13 +190,14 @@ default_headers(EvtCat, EvtName, AppName, AppVsn) ->
 
 -spec default_headers(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
-    [{?KEY_SERVER_ID, ServerID}
-    ,{?KEY_EVENT_CATEGORY, EvtCat}
-    ,{?KEY_EVENT_NAME, EvtName}
-    ,{?KEY_APP_NAME, AppName}
-    ,{?KEY_APP_VERSION, AppVsn}
-    ,{?KEY_NODE, kz_term:to_binary(node())}
-    ].
+    props:filter_empty(
+      [{?KEY_SERVER_ID, ServerID}
+      ,{?KEY_EVENT_CATEGORY, EvtCat}
+      ,{?KEY_EVENT_NAME, EvtName}
+      ,{?KEY_APP_NAME, AppName}
+      ,{?KEY_APP_VERSION, AppVsn}
+      ,{?KEY_NODE, kz_term:to_binary(node())}
+      ]).
 
 -spec default_headers_v(kz_term:api_terms()) -> boolean().
 
