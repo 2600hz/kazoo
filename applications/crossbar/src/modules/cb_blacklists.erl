@@ -181,9 +181,20 @@ validate_owner_id(DocId, Context) ->
         'false' ->
             Resp = [{<<"message">>, <<"Provided owner_id value is not valid">>}],
             cb_context:add_validation_error(<<"owner_id">>, <<"invalid">>, kz_json:from_list(Resp), Context);
-        'true' -> on_successful_validation(DocId, Context)
+        'true' -> maybe_delete_owner(DocId, Context, AccountId, OwnerId)
     end.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_delete_owner(kz_term:api_binary(), cb_context:context(), kz_term:api_binary(), kz_term:api_binary()) -> cb_context:context().
+maybe_delete_owner(DocId, Context, AccountId, AccountId) ->
+    Doc = cb_context:doc(Context),
+    ContextNew = cb_context:set_doc(Context, kzd_blacklists:set_owner_id(Doc, 'undefined')),
+    on_successful_validation(DocId, ContextNew);
+maybe_delete_owner(DocId, Context, _AccountId, _OwnerId) ->
+    on_successful_validation(DocId, Context).
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
