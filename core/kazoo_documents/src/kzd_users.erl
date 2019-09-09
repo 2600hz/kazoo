@@ -10,6 +10,7 @@
 -module(kzd_users).
 
 -export([new/0]).
+-export([blacklists_strategy/1, blacklists_strategy/2, set_blacklists_strategy/2]).
 -export([call_forward/1, call_forward/2, set_call_forward/2]).
 -export([call_forward_direct_calls_only/1, call_forward_direct_calls_only/2, set_call_forward_direct_calls_only/2]).
 -export([call_forward_enabled/1, call_forward_enabled/2, set_call_forward_enabled/2]).
@@ -90,6 +91,18 @@
 -spec new() -> doc().
 new() ->
     kz_doc:set_type(kz_json_schema:default_object(?SCHEMA), type()).
+
+-spec blacklists_strategy(doc()) -> binary().
+blacklists_strategy(Doc) ->
+    blacklists_strategy(Doc, <<"strict">>).
+
+-spec blacklists_strategy(doc(), Default) -> binary() | Default.
+blacklists_strategy(Doc, Default) ->
+    kz_json:get_binary_value([<<"blacklists_strategy">>], Doc, Default).
+
+-spec set_blacklists_strategy(doc(), binary()) -> doc().
+set_blacklists_strategy(Doc, BlacklistsStrategy) ->
+    kz_json:set_value([<<"blacklists_strategy">>], BlacklistsStrategy, Doc).
 
 -spec call_forward(doc()) -> kz_term:api_object().
 call_forward(Doc) ->

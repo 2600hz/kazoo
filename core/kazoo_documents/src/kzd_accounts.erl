@@ -10,6 +10,7 @@
 -module(kzd_accounts).
 
 -export([new/0]).
+-export([blacklists_strategy/1, blacklists_strategy/2, set_blacklists_strategy/2]).
 -export([call_recording/1, call_recording/2, set_call_recording/2]).
 -export([call_recording_account/1, call_recording_account/2, set_call_recording_account/2]).
 -export([call_recording_endpoint/1, call_recording_endpoint/2, set_call_recording_endpoint/2]).
@@ -159,6 +160,18 @@ new() ->
                                  ,{'now', kz_time:now_s()}
                                  ]
                                 ).
+
+-spec blacklists_strategy(doc()) -> binary().
+blacklists_strategy(Doc) ->
+    blacklists_strategy(Doc, <<"strict">>).
+
+-spec blacklists_strategy(doc(), Default) -> binary() | Default.
+blacklists_strategy(Doc, Default) ->
+    kz_json:get_binary_value([<<"blacklists_strategy">>], Doc, Default).
+
+-spec set_blacklists_strategy(doc(), binary()) -> doc().
+set_blacklists_strategy(Doc, BlacklistsStrategy) ->
+    kz_json:set_value([<<"blacklists_strategy">>], BlacklistsStrategy, Doc).
 
 -spec call_recording(doc()) -> kz_term:api_object().
 call_recording(Doc) ->
