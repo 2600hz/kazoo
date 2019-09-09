@@ -912,7 +912,7 @@ distribute_event(CallbackData, JObj, Deliver, #state{responders=Responders
         ],
     {'noreply', State}.
 
--spec client_handle_event(kz_json:object(), kz_amqp_channel:consumer_channel(), kz_amqp_channel:consumer_pid(), responder_mfa(), callback_data(), deliver()) -> any().
+-spec client_handle_event(kz_json:object(), pid() | kz_amqp_channel:consumer_channel(), kz_amqp_channel:consumer_pid(), responder_mfa(), callback_data(), deliver()) -> any().
 client_handle_event(JObj, 'undefined', ConsumerKey, Callback, CallbackData, Deliver) ->
     lager:warning("no consumer channel to provide to spawned process"),
     _ = kz_util:put_callid(JObj),
