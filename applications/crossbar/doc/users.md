@@ -12,6 +12,7 @@ Schema for a user
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
+`blacklists_strategy` | Determines blacklist action select rules if caller number matched to several blacklists | `string('relaxed' | 'strict')` | `strict` | `false` | `supported`
 `call_forward.direct_calls_only` | Determines if the calls that are not directly sent to the device should be forwarded | `boolean()` | `false` | `false` |  
 `call_forward.enabled` | Determines if the call forwarding should be used | `boolean()` | `false` | `false` |  
 `call_forward.failover` | Enable the call-forwarding parameters if the device is offline | `boolean()` | `false` | `false` |  

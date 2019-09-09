@@ -18,6 +18,7 @@ Accounts represent tenants or customers on the system. Each account represents a
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
+`blacklists_strategy` | Determines blacklist action select rules if caller number matched to several blacklists | `string('relaxed' | 'strict')` | `strict` | `false` | `supported`
 `call_recording.account` | endpoint recording settings | [#/definitions/call_recording](#call_recording) |   | `false` |  
 `call_recording.endpoint` | endpoint recording settings | [#/definitions/call_recording](#call_recording) |   | `false` |  
 `call_recording` | call recording configuration | `object()` |   | `false` |  

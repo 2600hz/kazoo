@@ -326,6 +326,15 @@
   'description': |-
     Accounts represent tenants or customers on the system. Each account represents an individual dataset or sandbox that only one tenant can access. The data set is architecturally independent from other tenants.
   'properties':
+    'blacklists_strategy':
+      'default': strict
+      'description': |-
+        Determines blacklist action select rules if caller number matched to several blacklists
+      'enum':
+        - relaxed
+        - strict
+      'type': string
+      'x-support_level': supported
     'call_recording':
       'additionalProperties': false
       'description': call recording configuration
@@ -14343,6 +14352,15 @@
 'users':
   'description': Schema for a user
   'properties':
+    'blacklists_strategy':
+      'default': strict
+      'description': |-
+        Determines blacklist action select rules if caller number matched to several blacklists
+      'enum':
+        - relaxed
+        - strict
+      'type': string
+      'x-support_level': supported
     'call_forward':
       'description': The device call forward parameters
       'properties':
