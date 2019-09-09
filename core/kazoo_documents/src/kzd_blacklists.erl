@@ -9,6 +9,7 @@
 %%%-----------------------------------------------------------------------------
 -module(kzd_blacklists).
 
+-export([type/0]).
 -export([new/0]).
 -export([compare_actions/3]).
 -export([fetch_number/3, fetch_number/4]).
@@ -43,6 +44,9 @@
 -export_type([doc/0]).
 
 -define(SCHEMA, <<"blacklists">>).
+
+-spec type() -> kz_term:ne_binary().
+type() -> <<"blacklists">>.
 
 -spec new() -> doc().
 new() ->

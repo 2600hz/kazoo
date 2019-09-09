@@ -131,7 +131,7 @@ delete(Context, _) ->
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
-    cb_context:validate_request_data(<<"blacklists">>, Context, OnSuccess).
+    cb_context:validate_request_data(kzd_blacklists:type(), Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
 %% @doc Load an instance from the database
@@ -139,7 +139,7 @@ create(Context) ->
 %%------------------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"blacklist">>)).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_blacklists:type())).
 
 %%------------------------------------------------------------------------------
 %% @doc Update an existing menu document with the data provided, if it is
@@ -149,7 +149,7 @@ read(Id, Context) ->
 -spec update(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
-    cb_context:validate_request_data(<<"blacklists">>, Context, OnSuccess).
+    cb_context:validate_request_data(kzd_blacklists:type(), Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
 %% @doc Update-merge an existing menu document partially with the data provided, if it is
