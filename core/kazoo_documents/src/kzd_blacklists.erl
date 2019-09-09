@@ -18,7 +18,7 @@
 -export([enabled/1, enabled/2, set_enabled/2]).
 -export([flags/1, flags/2, set_flags/2]).
 -export([name/1, name/2, set_name/2]).
--export([numbers/1, numbers/2, set_numbers/2]).
+-export([numbers/1, numbers/2, set_numbers/2, format_numbers/1]).
 -export([numbers_name/1, numbers_name/2, set_numbers_name/2]).
 -export([owner_id/1, owner_id/2, set_owner_id/2, set_owner_id/3]).
 -export([patterns/1, patterns/2, set_patterns/2]).
@@ -310,6 +310,22 @@ numbers(Doc, Default) ->
 -spec set_numbers(doc(), kz_json:object()) -> doc().
 set_numbers(Doc, Numbers) ->
     kz_json:set_value([<<"numbers">>], Numbers, Doc).
+
+-spec format_numbers(kz_term:api_object()) -> kz_term:api_object().
+format_numbers('undefined') ->
+    'undefined';
+format_numbers(Doc) ->
+    case is_blacklist(Doc) of
+        'true' ->
+            Numbers = kz_json:get_value(<<"numbers">>, Doc),
+            format_numbers(Numbers);
+        'false' -> kz_json:map(fun format_number_map/2, Doc)
+    end.
+
+-spec format_number_map(kz_term:ne_binary(), kz_json:object()) ->
+                               {kz_term:ne_binary(), kz_json:object()}.
+format_number_map(Number, Data) ->
+    {knm_converters:normalize(Number), Data}.
 
 -spec numbers_name(doc()) -> kz_term:api_binary().
 numbers_name(Doc) ->
