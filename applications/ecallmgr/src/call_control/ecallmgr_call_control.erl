@@ -487,7 +487,7 @@ forward_queue(#state{call_id = CallId
                 andalso execute_control_request(Cmd, State)
             of
                 'false' ->
-                    lager:debug("command '~s' is not valid after hangup, skipping", [AppName]),
+                    lager:debug("command '~s' is not valid after hangup, skipping ~s", [AppName, MsgId]),
                     send_error_resp(Node, CallId, Cmd, 'DOWN'),
                     self() ! {'forward_queue', CallId},
                     State#state{command_q=CmdQ1
@@ -497,7 +497,7 @@ forward_queue(#state{call_id = CallId
                                ,msg_id=MsgId
                                };
                 {'error', Error} ->
-                    lager:debug("command '~s' returned an error ~p", [AppName, Error]),
+                    lager:debug("command '~s' returned an error ~p : ~s", [AppName, Error, MsgId]),
                     send_error_resp(Node, CallId, Cmd, Error),
                     self() ! {'forward_queue', CallId},
                     State#state{command_q=CmdQ1
@@ -508,7 +508,7 @@ forward_queue(#state{call_id = CallId
                                };
                 'ok' ->
                     self() ! {'forward_queue', CallId},
-                    lager:debug("command ~s execute complete", [AppName]),
+                    lager:debug("command ~s execute complete : ~s", [AppName, MsgId]),
                     State#state{command_q=CmdQ1
                                ,current_app=AppName
                                ,current_cmd_uuid = 'undefined'
@@ -516,7 +516,7 @@ forward_queue(#state{call_id = CallId
                                ,msg_id=MsgId
                                };
                 {'ok', EventUUID} ->
-                    lager:debug("command ~s queued for completion : ~s", [AppName, EventUUID]),
+                    lager:debug("command ~s queued for completion : ~s => ~s", [AppName, MsgId, EventUUID]),
                     State#state{command_q=CmdQ1
                                ,current_app=AppName
                                ,current_cmd=Cmd
@@ -604,7 +604,7 @@ handle_execute_complete(_AppName, EventUUID, _JObj, #state{current_cmd_uuid='und
 handle_execute_complete(AppName, EventUUID, _, #state{current_app=AppName
                                                      ,current_cmd_uuid=EventUUID
                                                      }=State) ->
-    lager:debug("~s execute complete, advancing control queue", [AppName]),
+    lager:debug("~s execute complete, advancing control queue : ~s", [AppName, EventUUID]),
     forward_queue(State);
 handle_execute_complete(AppName, EventUUID, JObj, #state{current_app=CurrApp
                                                         ,current_cmd_uuid=EventUUID
@@ -690,6 +690,7 @@ handle_dialplan(JObj, #state{call_id=CallId
               end,
     case INU
         andalso (not queue:is_empty(NewCmdQ))
+        andalso queue:is_empty(CmdQ)
         andalso CurrCmdId =:= 'undefined'
     of
         'true' ->
@@ -795,13 +796,10 @@ queue_insert_fun(Position, QueueFun) when is_function(QueueFun, 2) ->
             'true' = kapi_dialplan:v(JObj),
             case kapi_dialplan:application_name(JObj) of
                 'undefined' -> Queue;
-                <<"noop">> = AppName ->
-                    MsgId = kz_api:msg_id(JObj),
-                    lager:debug("inserting at the ~p of the control queue call command ~s(~s)", [Position, AppName, MsgId]),
-                    QueueFun(JObj, Queue);
                 AppName ->
-                    lager:debug("inserting at the ~p of the control queue call command ~s"
-                               ,[Position, AppName]
+                    MsgId = kz_api:msg_id(JObj),
+                    lager:debug("inserting at the ~p of the control queue call command ~s(~s)"
+                               ,[Position, AppName, MsgId]
                                ),
                     QueueFun(JObj, Queue)
             end
