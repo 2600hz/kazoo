@@ -85,3 +85,43 @@ curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}
 ```
+
+## Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/blacklists/patterns
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/patterns
+```
+
+## Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/blacklists/numbers
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/numbers
+```
+
+## Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/blacklists/patterns/{PATTERN}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/patterns/{PATTERN}
+```
+
+## Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/blacklists/numbers/{PHONE_NUMBER}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/blacklists/numbers/{PHONE_NUMBER}
+```
