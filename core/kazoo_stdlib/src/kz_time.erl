@@ -17,7 +17,7 @@
         ,rfc1036/1, rfc1036/2
         ,rfc2822/1, rfc2822/2
         ,iso8601/1, iso8601/2
-        ,iso8601_ms/1
+        ,iso8601_ms/0, iso8601_ms/1
         ,iso8601_time/1
         ,from_iso8601/1
         ,pretty_print_elapsed_s/1
@@ -209,8 +209,16 @@ iso8601(Timestamp) ->
     iso8601(Timestamp, <<"UTC">>).
 
 %%------------------------------------------------------------------------------
+%% @doc Format current UTC TimeStamp according to ISO 8601 including fractional seconds.
+%% @end
+%%------------------------------------------------------------------------------
+-spec iso8601_ms() -> kz_term:ne_binary().
+iso8601_ms() ->
+    add_millisecs_to_iso8601(iso8601(current_tstamp())).
+
+%%------------------------------------------------------------------------------
 %% @doc Format date or datetime or Gregorian timestamp (all in UTC)
-%% according to ISO 8601 and also includes fractional seconds.
+%% according to ISO 8601 including fractional seconds.
 %%
 %% It assumes the input is in UTC.
 %% @throws {error, invalid_offset | unknown_tz}
@@ -218,14 +226,14 @@ iso8601(Timestamp) ->
 %%------------------------------------------------------------------------------
 -spec iso8601_ms(calendar:datetime() | date() | gregorian_seconds()) -> kz_term:ne_binary().
 iso8601_ms(DateOrDatetimeOrTimestamp) ->
-    {_, _, Micro} = erlang:timestamp(),
-    ISO8601 = iso8601(DateOrDatetimeOrTimestamp),
-    add_millisecs_to_iso8601(ISO8601, trunc(Micro / 1000)).
+    add_millisecs_to_iso8601(iso8601(DateOrDatetimeOrTimestamp)).
 
--spec add_millisecs_to_iso8601(kz_term:ne_binary(), 1..999) -> kz_term:ne_binary().
-add_millisecs_to_iso8601(ISO8601, Millis) ->
-    MillisBin = <<".", (kz_term:to_binary(Millis))/binary, "Z">>,
-    binary:replace(ISO8601, <<"Z">>, MillisBin).
+-spec add_millisecs_to_iso8601(kz_term:ne_binary()) -> kz_term:ne_binary().
+add_millisecs_to_iso8601(ISO8601) ->
+    {_, _, Micro} = erlang:timestamp(),
+    Millis = trunc(Micro / 1000),
+    MillisPadded = kz_binary:pad_left(kz_term:to_binary(Millis), 3, <<"0">>),
+    binary:replace(ISO8601, <<"Z">>, <<".", MillisPadded/binary, "Z">>).
 
 %%------------------------------------------------------------------------------
 %% @doc Format Gregorian timestamp or datetime (all un UTC) to the local Timezone
