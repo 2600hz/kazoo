@@ -53,6 +53,9 @@
 -export([set_from/2, from/1, from_user/1, from_realm/1]).
 -export([set_to/2, to/1, to_user/1, to_realm/1]).
 
+-export([set_user_blacklist_action/2, user_blacklist_action/1]).
+
+-export([set_account_blacklist_action/2, account_blacklist_action/1]).
 -export([set_account_db/2, account_db/1]).
 -export([set_account_id/2, account_id/1]).
 -export([account_realm/1]).
@@ -191,6 +194,8 @@
                     ,inception :: kz_term:api_binary()                   %% Origin of the call <<"onnet">> | <<"offnet">>
                     ,account_db :: kz_term:api_binary()                  %% The database name of the account that authorized this call
                     ,account_id :: kz_term:api_binary()                  %% The account id that authorized this call
+                    ,account_blacklist_action :: kz_term:api_binary()    %% The account blacklist actions that need to apply during call processing
+                    ,user_blacklist_action :: kz_term:api_binary()       %% The user blacklist actions that need to apply during call processing
                     ,authorizing_id :: kz_term:api_binary()              %% The ID of the record that authorized this call
                     ,authorizing_type :: kz_term:api_binary()            %% The pvt_type of the record that authorized this call
                     ,owner_id :: kz_term:api_binary()                    %% The ID of the owner of this calling device, if any
@@ -1052,6 +1057,22 @@ set_resource_type(ResourceType, #kapps_call{}=Call) ->
 -spec resource_type(call()) -> kz_term:api_ne_binary().
 resource_type(#kapps_call{resource_type=ResourceType}) ->
     ResourceType.
+
+-spec set_user_blacklist_action(kz_term:api_ne_binary(), call()) -> call().
+set_user_blacklist_action(BlAction, #kapps_call{}=Call) ->
+    Call#kapps_call{user_blacklist_action=BlAction}.
+
+-spec user_blacklist_action(call()) -> kz_term:api_ne_binary().
+user_blacklist_action(#kapps_call{user_blacklist_action=BlAction}) ->
+    BlAction.
+
+-spec set_account_blacklist_action(kz_term:api_ne_binary(), call()) -> call().
+set_account_blacklist_action(BlAction, #kapps_call{}=Call) ->
+    Call#kapps_call{account_blacklist_action=BlAction}.
+
+-spec account_blacklist_action(call()) -> kz_term:api_ne_binary().
+account_blacklist_action(#kapps_call{account_blacklist_action=BlAction}) ->
+    BlAction.
 
 -spec set_account_db(kz_term:ne_binary(), call()) -> call().
 set_account_db(<<_/binary>> = AccountDb, #kapps_call{}=Call) ->
