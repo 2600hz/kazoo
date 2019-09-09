@@ -1015,7 +1015,6 @@ handle_replaced(JObj, #state{fetch_id=FetchId
             end;
         _Else ->
             lager:info("sofia replaced on our channel but different fetch id ~s => ~s", [FetchId, _Else]),
-            lager:debug_unsafe("REPLACED ~s => ~s", [FetchId, kz_json:encode(JObj, [pretty])]),
             {'noreply', State}
     end.
 
@@ -1057,7 +1056,6 @@ handle_transferee(JObj, #state{fetch_id=FetchId
                               ,node=_Node
                               ,call_id=CallId
                               }=State) ->
-    lager:debug_unsafe("TRANSFEREE ~s => ~s", [FetchId, kz_json:encode(JObj, [pretty])]),
     case kz_call_event:custom_channel_var(JObj, <<"Fetch-ID">>) of
         FetchId ->
             lager:info("we (~s) have been transferred, terminate immediately", [CallId]),
@@ -1072,7 +1070,6 @@ handle_transferee(JObj, #state{fetch_id=FetchId
 handle_transferor(JObj, #state{fetch_id=FetchId
                               ,call_id=CallId
                               }=State) ->
-    lager:debug_unsafe("TRANSFEROR ~s => ~s", [FetchId, kz_json:encode(JObj, [pretty])]),
     case kz_call_event:custom_channel_var(JObj, <<"Fetch-ID">>) of
         FetchId ->
             lager:info("we (~s) transferred the call, terminate immediately", [CallId]),
