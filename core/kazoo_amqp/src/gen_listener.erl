@@ -644,6 +644,7 @@ maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 handle_info('retry', State) ->
     {'noreply', handle_amqp_channel_available(State, 'true')};
 handle_info({'kz_amqp_assignment', {'new_channel', Reconnected, Channel}}, State) ->
+    lager:debug("acquired channel"),
     _ = kz_amqp_channel:consumer_channel(Channel),
     {'noreply', handle_amqp_channel_available(State, Reconnected)};
 handle_info({'kz_amqp_assignment', 'lost_channel'}
@@ -697,6 +698,7 @@ handle_info(#'basic.consume_ok'{consumer_tag=CTag}
 handle_info(#'basic.consume_ok'{consumer_tag=CTag}
            ,#state{consumer_tags=CTags}=State
            ) ->
+    lager:debug("received consume ok (~s) for queue : ~p", [CTag, CTags]),
     gen_server:cast(self(), {?MODULE, {'is_consuming', 'true'}}),
     {'noreply', State#state{is_consuming='true'
                            ,consumer_tags=[CTag | CTags]
@@ -789,11 +791,6 @@ handle_confirm(Confirm, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
-terminate(shutdown = Reason, #state{module=Module
-                                   ,module_state=ModuleState
-                                   }) ->
-    _ = (catch Module:terminate(Reason, ModuleState)),
-    'ok';
 terminate(Reason, #state{module=Module
                         ,module_state=ModuleState
                         ,federators=Fs
@@ -897,16 +894,29 @@ distribute_event(CallbackData
         ],
     State.
 
--spec client_handle_event(kz_json:object(), kz_amqp_channel:consumer_channel(), kz_amqp_channel:consumer_pid(), responder_mfa(), callback_data(), deliver()) -> any().
+-spec client_handle_event(kz_json:object(), pid() | kz_amqp_channel:consumer_channel(), kz_amqp_channel:consumer_pid(), responder_mfa(), callback_data(), deliver()) -> any().
 client_handle_event(JObj, 'undefined', ConsumerKey, Callback, CallbackData, Deliver) ->
     _ = kz_util:put_callid(JObj),
     _ = kz_amqp_channel:consumer_pid(ConsumerKey),
     client_handle_event(JObj, Callback, CallbackData, Deliver);
-client_handle_event(JObj, Channel, ConsumerKey, Callback, CallbackData, Deliver) ->
+client_handle_event(JObj, #kz_amqp_assignment{channel=Channel}, ConsumerKey, Callback, CallbackData, Deliver)
+  when is_pid(Channel)->
     _ = kz_util:put_callid(JObj),
     _ = kz_amqp_channel:consumer_pid(ConsumerKey),
     _ = is_process_alive(Channel)
         andalso kz_amqp_channel:consumer_channel(Channel),
+    client_handle_event(JObj, Callback, CallbackData, Deliver);
+client_handle_event(JObj, Channel, ConsumerKey, Callback, CallbackData, Deliver)
+  when is_pid(Channel) ->
+    _ = kz_util:put_callid(JObj),
+    _ = kz_amqp_channel:consumer_pid(ConsumerKey),
+    _ = is_process_alive(Channel)
+        andalso kz_amqp_channel:consumer_channel(Channel),
+    client_handle_event(JObj, Callback, CallbackData, Deliver);
+client_handle_event(JObj, _, ConsumerKey, Callback, CallbackData, Deliver) ->
+    lager:warning("no usable consumer channel to provide to spawned process"),
+    _ = kz_util:put_callid(JObj),
+    _ = kz_amqp_channel:consumer_pid(ConsumerKey),
     client_handle_event(JObj, Callback, CallbackData, Deliver).
 
 -spec client_handle_event(kz_json:object(), responder_mfa(), callback_data(), deliver()) -> any().
