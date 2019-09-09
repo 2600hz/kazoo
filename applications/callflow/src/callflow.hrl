@@ -6,6 +6,13 @@
 -include_lib("kazoo_call/include/kapps_call_command_types.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
+-record(cf_blacklist_action, {action :: kz_term:api_binary()
+                             ,caller_name :: kz_term:api_binary()
+                             ,blacklist_strategy :: kz_term:api_binary()
+                             }).
+-type cf_blacklist_action() :: #cf_blacklist_action{}.
+-type blacklist_action() :: {'ok', cf_blacklist_action()} | {'error', any()}.
+
 -type cf_exe_response() :: {'stop'} |
                            {'continue'} |
                            {'continue', integer()} |
