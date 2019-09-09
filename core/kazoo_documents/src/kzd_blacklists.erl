@@ -10,6 +10,9 @@
 -module(kzd_blacklists).
 
 -export([new/0]).
+-export([compare_actions/3]).
+-export([fetch_number/3, fetch_number/4]).
+-export([fetch_patterns/2, fetch_patterns/3]).
 -export([action/1, action/2, set_action/2]).
 -export([enabled/1, enabled/2, set_enabled/2]).
 -export([flags/1, flags/2, set_flags/2]).
@@ -24,6 +27,17 @@
 
 -include("kz_documents.hrl").
 
+-define(LIST_BY_OWNER, <<"blacklists/listing_by_owner">>).
+-define(STRICT, <<"strict">>).
+-define(RELAXED, <<"relaxed">>).
+
+-define(IS_BLACKLIST_VALUE(CT)
+       ,(CT =:= <<"block">>
+             orelse CT =:= <<"skip_human">>
+             orelse CT =:= <<"ask_human">>
+             orelse CT =:= <<"pass">>
+        )).
+
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
@@ -32,6 +46,205 @@
 -spec new() -> doc().
 new() ->
     kz_json_schema:default_object(?SCHEMA).
+
+-spec compare_actions(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:api_ne_binary().
+compare_actions(_Strategy, 'undefined', 'undefined') ->
+    'undefined';
+compare_actions(?STRICT, <<"block">>, _) ->
+    <<"block">>;
+compare_actions(?STRICT, _, <<"block">>) ->
+    <<"block">>;
+compare_actions(?STRICT, <<"skip_human">>, _) ->
+    <<"skip_human">>;
+compare_actions(?STRICT, _, <<"skip_human">>) ->
+    <<"skip_human">>;
+compare_actions(?STRICT, <<"ask_human">>, _) ->
+    <<"ask_human">>;
+compare_actions(?STRICT, _, <<"ask_human">>) ->
+    <<"ask_human">>;
+compare_actions(?STRICT, <<"pass">>, _) ->
+    <<"pass">>;
+compare_actions(?STRICT, _, <<"pass">>) ->
+    <<"pass">>;
+compare_actions(?STRICT, Action1, Action2) ->
+    lager:info("trying compare bad action values `~s` and `~s`, ignoring", [Action1, Action2]),
+    'undefined';
+compare_actions(?RELAXED, <<"pass">>, _) ->
+    <<"pass">>;
+compare_actions(?RELAXED, _, <<"pass">>) ->
+    <<"pass">>;
+compare_actions(?RELAXED, <<"ask_human">>, _) ->
+    <<"ask_human">>;
+compare_actions(?RELAXED, _, <<"ask_human">>) ->
+    <<"ask_human">>;
+compare_actions(?RELAXED, <<"skip_human">>, _) ->
+    <<"skip_human">>;
+compare_actions(?RELAXED, _, <<"skip_human">>) ->
+    <<"skip_human">>;
+compare_actions(?RELAXED, <<"block">>, _) ->
+    <<"block">>;
+compare_actions(?RELAXED, _, <<"block">>) ->
+    <<"block">>;
+compare_actions(?RELAXED, Action1, Action2) ->
+    lager:info("trying compare bad action values `~s` and `~s`, ignoring", [Action1, Action2]),
+    'undefined'.
+
+-spec fetch_patterns(kz_term:ne_binary(), kz_term:api_ne_binary()) -> {'ok', kz_json:object()} | {'error', 'not_found'}.
+fetch_patterns(AccountId, OwnerId) ->
+    fetch_patterns(AccountId, OwnerId, #{}).
+
+-spec fetch_patterns(kz_term:ne_binary(), kz_term:api_ne_binary(), map()) -> {'ok', kz_json:object()} | {'error', 'not_found'}.
+fetch_patterns(AccountId, OwnerId, Options) ->
+    Db = kz_util:format_account_db(AccountId),
+    ViewOptions = get_view_options(?LIST_BY_OWNER, OwnerId, <<"pattern">>),
+    case kz_datamgr:get_results(Db, ?LIST_BY_OWNER, ViewOptions) of
+        {'ok', []} -> {'error', 'not_found'};
+        {'ok', JObjs} -> format_view_results(JObjs, Options);
+        {'error', _}=_E ->
+            lager:error("error getting blacklist patterns for account ~s and owner ~s : ~p", [AccountId, OwnerId, _E]),
+            {'error', 'not_found'}
+    end.
+
+-spec fetch_number(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:objects()} | {'error', 'not_found'}.
+fetch_number(AccountId, OwnerId, Number) ->
+    fetch_number(AccountId, OwnerId, Number, #{}).
+
+-spec fetch_number(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binary(), map()) -> {'ok', kz_json:objects()} | {'error', 'not_found'}.
+fetch_number(AccountId, OwnerId, Number, Options) ->
+    Db = kz_util:format_account_db(AccountId),
+    ViewOptions = get_view_options(?LIST_BY_OWNER, OwnerId, <<"number">>, Number),
+    case kz_datamgr:get_results(Db, ?LIST_BY_OWNER, ViewOptions) of
+        {'ok', []} -> {'error', 'not_found'};
+        {'ok', [JObj]} ->
+            JObjs = kz_json:get_list_value(<<"value">>, JObj),
+            case filter_results(JObjs, Options) of
+                [] -> {'error', 'not_found'};
+                Results -> {'ok', Results}
+            end;
+        {'error', _}=_E ->
+            lager:error("error getting blacklists by number ~s for account ~s and owner ~s : ~p", [Number, AccountId, OwnerId, _E]),
+            {'error', 'not_found'}
+    end.
+
+-spec filter_results(kz_json:objects(), map()) -> kz_json:objects().
+filter_results(JObjs, Options) ->
+    Routines = get_view_filters(Options),
+    lists:foldr(fun(F, Item) -> F(Item) end
+               ,JObjs
+               ,Routines
+               ).
+
+-spec get_view_options(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
+get_view_options(?LIST_BY_OWNER, 'undefined', <<"pattern">> = Type) ->
+    props:filter_undefined(
+      [{'group', 'true'}
+      ,{'group_level', 3}
+      ,{'startkey', ['null', Type]}
+      ,{'endkey', ['null', Type, kz_json:new()]}
+      ]);
+get_view_options(?LIST_BY_OWNER, OwnerId, <<"pattern">> = Type) ->
+    props:filter_undefined(
+      [{'group', 'true'}
+      ,{'group_level', 3}
+      ,{'startkey', [OwnerId, Type]}
+      ,{'endkey', [OwnerId, Type, kz_json:new()]}
+      ]).
+
+-spec get_view_options(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:proplist().
+get_view_options(?LIST_BY_OWNER, 'undefined', <<"number">> = Type, Number) ->
+    props:filter_undefined(
+      [{'group', 'true'}
+      ,{'group_level', 3}
+      ,{'key', ['null', Type, Number]}
+      ]);
+get_view_options(?LIST_BY_OWNER, OwnerId, <<"number">> = Type, Number) ->
+    props:filter_undefined(
+      [{'group', 'true'}
+      ,{'group_level', 3}
+      ,{'key', [OwnerId, Type, Number]}
+      ]).
+
+-spec format_view_results(kz_json:objects(), map()) -> {'ok', kz_json:object()} | {'error', 'not_found'}.
+format_view_results(JObjs, Options) ->
+    format_view_results(JObjs, kz_json:new(), Options).
+
+-spec format_view_results(kz_json:objects(), kz_json:object(), map()) -> {'ok', kz_json:object()} | {'error', 'not_found'}.
+format_view_results([], Acc, _Options) ->
+    case Acc == kz_json:new() of
+        'true' -> {'error', 'not_found'};
+        'false' -> {'ok', Acc}
+    end;
+format_view_results([JObj | JObjs], Acc, Options) ->
+    [_Owner, _Type, Key] = kz_json:get_value(<<"key">>, JObj),
+    Value = kz_json:get_list_value(<<"value">>, JObj),
+    case filter_results(Value, Options) of
+        [] -> format_view_results(JObjs, Acc, Options);
+        Results ->
+            Acc1 = kz_json:insert_value(Key, Results, Acc),
+            format_view_results(JObjs, Acc1, Options)
+    end.
+
+
+-spec get_view_filters(map()) -> [fun()].
+get_view_filters(Options) ->
+    get_view_filters(Options, []).
+
+-spec get_view_filters(map(), list()) -> [fun()].
+get_view_filters(#{<<"enabled">> := 'true'} = Options, Acc) ->
+    Fun = fun(List) -> lists:filter(fun(JObj) -> kz_json:is_true(<<"enabled">>, JObj, 'true') end, List) end,
+    get_view_filters(maps:remove(<<"enabled">>, Options), [Fun | Acc]);
+get_view_filters(#{<<"enabled">> := 'false'} = Options, Acc) ->
+    Fun = fun(List) -> lists:filter(fun(JObj) -> kz_json:is_false(<<"enabled">>, JObj, 'false') end, List) end,
+    get_view_filters(maps:remove(<<"enabled">>, Options), [Fun | Acc]);
+get_view_filters(#{<<"strategy">> := ?STRICT} = Options, Acc) ->
+    Fun = fun(List) -> filter_by_strategy(?STRICT, List) end,
+    get_view_filters(maps:remove(<<"strategy">>, Options), [Fun | Acc]);
+get_view_filters(#{<<"strategy">> := ?RELAXED} = Options, Acc) ->
+    Fun = fun(List) -> filter_by_strategy(?RELAXED, List) end,
+    get_view_filters(maps:remove(<<"strategy">>, Options), [Fun | Acc]);
+get_view_filters(#{<<"brief">> := 'true'} = Options, Acc) ->
+    %% Brief fucntions must be last
+    Fun = fun(List) ->
+                  lists:map(fun(JObj) ->
+                                    PropList = [{<<"action">>, kz_json:get_ne_binary_value(<<"action">>, JObj, <<"block">>)}
+                                               ,{<<"name">>, kz_json:get_ne_binary_value(<<"name">>, JObj)}
+                                               ],
+                                    kz_json:from_list(PropList)
+                            end, List)
+          end,
+    get_view_filters(maps:remove(<<"brief">>, Options), [Fun | Acc]);
+get_view_filters(#{}, Acc) ->
+    Acc.
+
+-spec filter_by_strategy(kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
+filter_by_strategy(Strategy, JObjs) ->
+    filter_by_strategy(Strategy, JObjs, 'undefined').
+
+-spec filter_by_strategy(kz_term:ne_binary(), kz_json:objects(), kz_term:api_object()) -> kz_json:objects().
+filter_by_strategy(_Strategy, [], Acc) ->
+    case kz_json:get_ne_binary_value(<<"action">>, Acc, <<"block">>) of
+        Action when ?IS_BLACKLIST_VALUE(Action) -> [Acc];
+        Value ->
+            lager:error("ignoring not expected blacklist action '~s', blacklist info ~p", [Value, Acc]),
+            kz_json:delete_key(<<"action">>, Acc)
+    end;
+filter_by_strategy(Strategy, [JObj|JObjs], 'undefined') ->
+    filter_by_strategy(Strategy, JObjs, JObj);
+filter_by_strategy(Strategy, [JObj|JObjs], Acc) ->
+    NewAcc = compare_blacklists(Strategy, JObj, Acc),
+    filter_by_strategy(Strategy, JObjs, NewAcc).
+
+-spec compare_blacklists(kz_term:ne_binary(), kz_json:object(), kz_term:api_objects()) -> kz_json:object().
+compare_blacklists(Strategy, JObj, Acc) ->
+    JObjAction = kz_json:get_ne_binary_value(<<"action">>, JObj, <<"block">>),
+    AccAction = kz_json:get_ne_binary_value(<<"action">>, Acc, <<"block">>),
+    case compare_actions(Strategy, JObjAction, AccAction) of
+        JObjAction -> JObj;
+        AccAction -> Acc;
+        _ ->
+            lager:error("skiping not expected blacklist action '~s', blacklist info ~p", [JObjAction, JObj]),
+            Acc
+    end.
 
 -spec action(doc()) -> binary().
 action(Doc) ->
