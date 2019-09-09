@@ -71,6 +71,16 @@
       paths/att_handlers_errors.yml#/paths/~1accounts~1{ACCOUNT_ID}~1att_handlers_errors~1{ERROR_ID}
   '/accounts/{ACCOUNT_ID}/blacklists':
     '$ref': 'paths/blacklists.yml#/paths/~1accounts~1{ACCOUNT_ID}~1blacklists'
+  '/accounts/{ACCOUNT_ID}/blacklists/numbers':
+    '$ref': 'paths/blacklists.yml#/paths/~1accounts~1{ACCOUNT_ID}~1blacklists~1numbers'
+  '/accounts/{ACCOUNT_ID}/blacklists/numbers/{PHONE_NUMBER}':
+    '$ref': >-
+      paths/blacklists.yml#/paths/~1accounts~1{ACCOUNT_ID}~1blacklists~1numbers~1{PHONE_NUMBER}
+  '/accounts/{ACCOUNT_ID}/blacklists/patterns':
+    '$ref': 'paths/blacklists.yml#/paths/~1accounts~1{ACCOUNT_ID}~1blacklists~1patterns'
+  '/accounts/{ACCOUNT_ID}/blacklists/patterns/{PATTERN}':
+    '$ref': >-
+      paths/blacklists.yml#/paths/~1accounts~1{ACCOUNT_ID}~1blacklists~1patterns~1{PATTERN}
   '/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}':
     '$ref': >-
       paths/blacklists.yml#/paths/~1accounts~1{ACCOUNT_ID}~1blacklists~1{BLACKLIST_ID}

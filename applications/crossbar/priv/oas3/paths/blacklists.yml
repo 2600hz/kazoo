@@ -27,6 +27,56 @@ paths:
       summary: Add an instance of blacklists
       tags:
         - blacklists
+  /accounts/{ACCOUNT_ID}/blacklists/numbers:
+    get:
+      operationId: GetAccountsAccountIdBlacklistsNumbers
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get numbers of blacklists
+      tags:
+        - blacklists
+  /accounts/{ACCOUNT_ID}/blacklists/numbers/{PHONE_NUMBER}:
+    get:
+      operationId: GetAccountsAccountIdBlacklistsNumbersPhoneNumber
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PHONE_NUMBER'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a blacklists by ID
+      tags:
+        - blacklists
+  /accounts/{ACCOUNT_ID}/blacklists/patterns:
+    get:
+      operationId: GetAccountsAccountIdBlacklistsPatterns
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get patterns of blacklists
+      tags:
+        - blacklists
+  /accounts/{ACCOUNT_ID}/blacklists/patterns/{PATTERN}:
+    get:
+      operationId: GetAccountsAccountIdBlacklistsPatternsPattern
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/PATTERN'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a blacklists by ID
+      tags:
+        - blacklists
   /accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}:
     delete:
       operationId: DeleteAccountsAccountIdBlacklistsBlacklistId

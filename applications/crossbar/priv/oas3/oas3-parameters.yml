@@ -450,6 +450,16 @@
   'schema':
     'pattern': '^[0-9]+$'
     'type': string
+'PATTERN':
+  'description': request PATTERN parameter
+  'in': path
+  'name': PATTERN
+  'required': true
+  'schema':
+    'maxLength': 32
+    'minLength': 32
+    'pattern': '^[0-9a-f]+$'
+    'type': string
 'PHONE_NUMBER':
   'description': request PHONE_NUMBER parameter
   'in': path
