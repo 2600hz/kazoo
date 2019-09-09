@@ -22,6 +22,7 @@
 -export([owner_id/1, owner_id/2, set_owner_id/2]).
 -export([patterns/1, patterns/2, set_patterns/2]).
 -export([patterns_name/1, patterns_name/2, set_patterns_name/2]).
+-export([is_blacklist/1]).
 -export([should_block_anonymous/1, should_block_anonymous/2, set_should_block_anonymous/2]).
 
 
@@ -353,6 +354,11 @@ patterns_name(Doc, Default) ->
 -spec set_patterns_name(doc(), binary()) -> doc().
 set_patterns_name(Doc, PatternsName) ->
     kz_json:set_value([<<"patterns">>, <<"name">>], PatternsName, Doc).
+
+-spec is_blacklist(kz_term:api_object()) -> boolean().
+is_blacklist('undefined') -> 'false';
+is_blacklist(Doc) ->
+    kz_doc:type(Doc) =:= type().
 
 -spec should_block_anonymous(doc()) -> kz_term:api_boolean().
 should_block_anonymous(Doc) ->
