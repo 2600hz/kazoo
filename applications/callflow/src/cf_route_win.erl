@@ -205,6 +205,7 @@ get_callee_extension_info(Call) ->
 -spec bootstrap_callflow_executer(kz_json:object(), kapps_call:call()) -> kapps_call:call().
 bootstrap_callflow_executer(_JObj, Call) ->
     Routines = [fun store_owner_id/1
+               ,fun apply_account_blacklists/1
                ,fun set_language/1
                ,fun include_denied_call_restrictions/1
                ,fun maybe_start_recording/1
@@ -221,6 +222,23 @@ bootstrap_callflow_executer(_JObj, Call) ->
 store_owner_id(Call) ->
     OwnerId = kz_attributes:owner_id(Call),
     kapps_call:kvs_store('owner_id', OwnerId, Call).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec apply_account_blacklists(kapps_call:call()) -> kapps_call:call().
+apply_account_blacklists(Call) ->
+    AccountId = kapps_call:account_id(Call),
+    CallerNumber = kapps_call:caller_id_number(Call),
+    Strategy = kzd_accounts:blacklists_strategy(AccountId),
+    case cf_blacklist:lookup(CallerNumber, AccountId, 'undefined', Strategy) of
+        {'error', _} -> Call;
+        {'ok', Action, 'undefined', _} -> kapps_call:set_account_blacklist_action(Action, Call);
+        {'ok', Action, CallerName, _} ->
+            UpdatedCall = kapps_call:set_caller_id_name(CallerName, Call),
+            kapps_call:set_account_blacklist_action(Action, UpdatedCall)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
