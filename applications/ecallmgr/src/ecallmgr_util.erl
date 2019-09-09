@@ -114,19 +114,6 @@ send_cmd(Node, UUID, App, Args) ->
 -spec send_cmd(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:text(), kz_term:text()) -> send_cmd_ret().
 send_cmd(Node, UUID, App, FSApp, Args) when not is_list(FSApp) ->
     send_cmd(Node, UUID, App, kz_term:to_list(FSApp), Args);
-send_cmd(Node, UUID, App, "xferext", Dialplan) ->
-    XferExt = [begin
-                   lager:debug("building xferext on node ~s: ~s", [Node, V]),
-                   {kz_term:to_list(K), kz_term:to_list(V)}
-               end
-               || {K, V} <- Dialplan,
-                  not cmd_is_empty({kz_term:to_list(K), kz_term:to_list(V)})
-              ],
-    Result = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"} | XferExt]),
-    lager:debug("xfer execute result on node ~s(~s)  ~s : ~p"
-               ,[Node, UUID, App, Result]
-               ),
-    Result;
 send_cmd(Node, UUID, App, FSApp, Args) when not is_list(Args) ->
     send_cmd(Node, UUID, App, FSApp, kz_term:to_list(Args));
 send_cmd(_Node, _UUID, _App, "kz_multiset_encoded", "^^") -> 'ok';
@@ -173,6 +160,25 @@ send_cmd(Node, UUID, App, FSApp, Args) ->
     send_cmd(Node, UUID, App, FSApp, Args, []).
 
 -spec send_cmd(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:text(), kz_term:text(), kz_term:proplist()) -> send_cmd_ret().
+send_cmd(Node, UUID, <<"bridge">> = App, <<"xferext">>, Dialplan, Args) ->
+    XferExt = [begin
+                   lager:debug("building xferext on node ~s: ~s", [Node, V]),
+                   {kz_term:to_list(K), kz_term:to_list(V)}
+               end
+               || {K, V} <- Dialplan,
+                  not cmd_is_empty({kz_term:to_list(K), kz_term:to_list(V)})
+              ],
+    AppUUID = props:get_binary_value(<<"Application-UUID">>, Args, kz_binary:rand_hex(16)),
+    Result = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"} | XferExt]),
+
+    lager:debug("xfer execute result on node ~s(~s)  ~s : ~p : ~p"
+               ,[Node, UUID, App, Result, AppUUID]
+               ),
+    case Result of
+        ok -> {ok, AppUUID};
+        _Else -> Result
+    end;
+
 send_cmd(Node, UUID, App, FSApp, Args, EventArgs) ->
     AppName = dialplan_application(FSApp),
     Result = freeswitch:cmd(Node, UUID, [{<<"call-command">>, <<"execute">>}
@@ -219,8 +225,6 @@ dialplan_application(App)
   when is_list(App) ->
     dialplan_application(kz_term:to_binary(App));
 dialplan_application(<<"blind_xfer">>) -> <<"transfer">>;
-dialplan_application(<<"kz_multiset">>) -> <<"kz_multiset_encoded">>;
-dialplan_application(<<"kz_export">>) -> <<"kz_export_encoded">>;
 dialplan_application(<<"att_xfer">>) -> <<"kz_att_xfer">>;
 dialplan_application(App) -> App.
 
@@ -1157,17 +1161,16 @@ maybe_append_channel_vars(Contact, #bridge_endpoint{channel_vars=ChannelVars
 
 -spec create_masquerade_event(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 create_masquerade_event(Application, EventName) ->
-    create_masquerade_event(Application, EventName, 'true').
+    create_masquerade_event(Application, EventName, []).
 
--spec create_masquerade_event(kz_term:ne_binary(), kz_term:ne_binary(), boolean()) -> kz_term:ne_binary().
-create_masquerade_event(Application, EventName, Boolean) ->
-    Prefix = case Boolean of
-                 'true' -> <<"event ">>;
-                 'false' -> <<>>
-             end,
-    list_to_binary([Prefix, "Event-Name=CUSTOM,Event-Subclass=kazoo::masquerade"
+-spec create_masquerade_event(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> kz_term:ne_binary().
+create_masquerade_event(Application, EventName, Props) ->
+    Args = [list_to_binary([",", K, "=", V]) || {K,V} <- Props],
+    list_to_binary(["event "
+                   ,"Event-Name=CUSTOM,Event-Subclass=kazoo::masquerade"
                    ,",kazoo_event_name=", EventName
                    ,",kazoo_application_name=", Application
+                    | Args
                    ]).
 
 %%------------------------------------------------------------------------------

@@ -16,7 +16,6 @@
 -export([set/3, unset/3
         ,bg_set/3, bg_unset/3
         ,export/3, bridge_export/3
-        ,record_call/3
         ]).
 
 -include("ecallmgr.hrl").
@@ -112,36 +111,6 @@ bridge_export(Node, UUID, Props) ->
                                         ,{"execute-app-arg", AppArg}
                                         ]) || AppArg <- Exports],
     'ok'.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec record_call(atom(), kz_term:ne_binary(), kz_term:proplist()) -> ecallmgr_util:send_cmd_ret().
-record_call(Node, UUID, Args) ->
-    lager:debug("execute on node ~p: uuid_record(~p)", [Node, Args]),
-    case freeswitch:api(Node, 'uuid_record', Args) of
-        {'ok', _Msg}=Ret ->
-            lager:debug("executing uuid_record returned: ~p", [_Msg]),
-            Ret;
-        {'error', <<"-ERR ", E/binary>>} ->
-            lager:debug("error executing uuid_record: ~p", [E]),
-            Evt = list_to_binary([ecallmgr_util:create_masquerade_event(<<"record_call">>, <<"RECORD_STOP">>)
-                                 ,",kazoo_application_response="
-                                 ,"'",binary:replace(E, <<"\n">>, <<>>),"'"
-                                 ]),
-            lager:debug("publishing event: ~p", [Evt]),
-            _ = ecallmgr_util:send_cmd(Node, UUID, "application", Evt),
-            {'error', E};
-        {'error', _Reason}=Error ->
-            lager:debug("error executing uuid_record: ~p", [_Reason]),
-            Evt = list_to_binary([ecallmgr_util:create_masquerade_event(<<"record_call">>, <<"RECORD_STOP">>)
-                                 ,",kazoo_application_response=timeout"
-                                 ]),
-            lager:debug("publishing event: ~p", [Evt]),
-            _ = ecallmgr_util:send_cmd(Node, UUID, "application", Evt),
-            Error
-    end.
 
 -spec maybe_export_vars(atom(), kz_term:ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 maybe_export_vars(Node, UUID, Props) ->

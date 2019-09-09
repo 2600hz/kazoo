@@ -353,7 +353,7 @@ handle_info({'bgerror', _Job, _Result}, State) ->
     lager:debug("job ~s finished with an error: ~p", [_Job, _Result]),
     {'noreply', State};
 handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{node=_Node, start_cmds_pid_ref={Pid, Ref}}=State) ->
-                                                %    freeswitch:event(Node, ['CHANNEL_SYNC']),
+    lager:debug("fs sync complete"),
     {'noreply', State#state{start_cmds_pid_ref='undefined'}};
 handle_info({'EXIT', _, 'noconnection'}, State) ->
     {stop, {'shutdown', 'noconnection'}, State};

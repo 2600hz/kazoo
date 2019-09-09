@@ -73,6 +73,7 @@ call_command(Node, UUID, JObj) ->
                       end,
 
             BridgeJObj = add_endpoints_channel_actions(Node, UUID, JObj),
+            AppUUID = kz_binary:rand_hex(16),
 
             Routines = [fun handle_ringback/5
                        ,fun maybe_early_media/5
@@ -84,16 +85,18 @@ call_command(Node, UUID, JObj) ->
                        ,fun pre_exec/5
                        ,fun handle_loopback/5
                        ,fun create_command/5
-                       ,fun post_exec/5
+                       ,{fun post_exec/2, AppUUID}
                        ],
             lager:debug("creating bridge dialplan"),
-            XferExt = lists:foldr(fun(F, DP) ->
+            XferExt = lists:foldr(fun({F, Arg}, DP) when is_function(F, 2) ->
+                                          F(DP, Arg);
+                                     (F, DP)  when is_function(F, 5) ->
                                           F(DP, Node, UUID, Channel, BridgeJObj)
                                   end
                                  ,[]
                                  ,Routines
                                  ),
-            {<<"xferext">>, XferExt}
+            {<<"xferext">>, XferExt, Node, [{<<"Application-UUID">>, AppUUID}]}
     end.
 
 -spec unbridge(kz_term:ne_binary(), kz_json:object()) ->
@@ -129,7 +132,7 @@ handle_ringback(DP, Node, UUID, _Channel, JObj) ->
             Props = [{<<"ringback">>, Default}],
             Exports = ecallmgr_util:process_fs_kv(Node, UUID, Props, 'export'),
             Args = ecallmgr_util:fs_args_to_binary(Exports),
-            [{"application", <<"kz_export_encoded ", Args/binary>>}
+            [{"application", <<"kz_export ", Args/binary>>}
              |DP
             ];
         Media ->
@@ -138,7 +141,7 @@ handle_ringback(DP, Node, UUID, _Channel, JObj) ->
             Props = [{<<"ringback">>, Stream}],
             Exports = ecallmgr_util:process_fs_kv(Node, UUID, Props, 'export'),
             Args = ecallmgr_util:fs_args_to_binary(Exports),
-            [{"application", <<"kz_export_encoded ", Args/binary>>}
+            [{"application", <<"kz_export ", Args/binary>>}
              |DP
             ]
     end.
@@ -294,9 +297,10 @@ pre_exec(DP, _Node, _UUID, _Channel, JObj) ->
      |DP
     ].
 
--spec post_exec(kz_term:proplist(), atom(), kz_term:ne_binary(), channel(), kz_json:object()) -> kz_term:proplist().
-post_exec(DP, _Node, _UUID, _Channel, _JObj) ->
-    Event = ecallmgr_util:create_masquerade_event(<<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>),
+-spec post_exec(kz_term:proplist(), kz_term:ne_binary()) -> kz_term:proplist().
+post_exec(DP, AppUUID) ->
+    Props = [{<<"Application-UUID">>, AppUUID}],
+    Event = ecallmgr_util:create_masquerade_event(<<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, Props),
     [{"application", Event}
     ,{"application", "park"}
      |DP

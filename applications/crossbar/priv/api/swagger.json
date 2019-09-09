@@ -9857,6 +9857,9 @@
                 "Billing-Seconds": {
                     "type": "string"
                 },
+                "Bridge-B-Unique-ID": {
+                    "type": "string"
+                },
                 "Bridge-Hangup-Cause": {
                     "type": "string"
                 },
@@ -13110,8 +13113,17 @@
                 "Call-ID": {
                     "type": "string"
                 },
+                "Channel-Call-State": {
+                    "type": "string"
+                },
+                "Channel-State": {
+                    "type": "string"
+                },
                 "Custom-Channel-Vars": {
                     "type": "object"
+                },
+                "Dialplan-Error": {
+                    "type": "string"
                 },
                 "Error-Message": {
                     "type": "string"
@@ -22723,6 +22735,9 @@
                 "Billing-Seconds": {
                     "type": "string"
                 },
+                "Bridge-B-Unique-ID": {
+                    "type": "string"
+                },
                 "Bridge-Hangup-Cause": {
                     "type": "string"
                 },
@@ -23006,6 +23021,9 @@
                     "type": "string"
                 },
                 "Billing-Seconds": {
+                    "type": "string"
+                },
+                "Bridge-B-Unique-ID": {
                     "type": "string"
                 },
                 "Bridge-Hangup-Cause": {

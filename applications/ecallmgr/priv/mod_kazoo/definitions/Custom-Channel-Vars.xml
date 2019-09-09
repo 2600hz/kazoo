@@ -7,6 +7,7 @@
 			<field name="variable_ecallmgr_" type="prefix" exclude-prefix="true" />
 			<field name="ecallmgr_" type="prefix" exclude-prefix="true" />
 
+			<field name="variable_Fetch-UUID" as="Fetch-ID" />
 			<field name="Fetch-UUID" as="Fetch-ID" />
 
 			<field name="Referred-To" type="expand"

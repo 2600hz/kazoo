@@ -210,7 +210,6 @@
                             ,channel_ref :: kz_term:api_reference() | '$1' | '_'
                             ,reconnect_ref :: kz_term:api_reference() | '_'
                             ,available = 'false' :: boolean() | '_'
-                            ,exchanges_initialized = 'false' :: boolean() | '_'
                             ,prechannels_initialized = 'false' :: boolean() | '_'
                             ,started = kz_time:start_time() :: kz_time:start_time() | '_'
                             ,tags = [] :: list() | '_'

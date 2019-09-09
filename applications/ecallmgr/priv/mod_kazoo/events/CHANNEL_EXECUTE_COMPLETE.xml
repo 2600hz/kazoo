@@ -1,7 +1,6 @@
 <event name="CHANNEL_EXECUTE_COMPLETE">
 	<filters>
-		<filter type="exclude" compare="value" name="Application-UUID"
-			value="null" />
+		<filter type="exclude" compare="value" name="Application-UUID" value="null" />
 		<filter type="include" compare="exists" name="variable_Call-Control-Queue" />
 		<filter type="include" compare="exists" name="Application-UUID-Name" />
 		<filter type="exclude" name="Application-UUID-Name" value="set" />
@@ -16,21 +15,35 @@
 		<filter name="Application" value="kz_export" />
 		<filter name="Application" value="ring_ready" />
 		<filter name="Application" value="log" />
-		<filter name="Application" value="execute_extension" />
+		<!--  <filter name="Application" value="execute_extension" /> -->
 		<filter name="Application" value="bridge" />
 	</filters>
 
 	<fields verbose="false">
 		<field name="call_event" type="reference" />
 		<field name="application-uuid" type="reference" />
+
 		<field name="Application-Response" type="first-of"
 			value="Application-Response|variable_originate_disposition|variable_endpoint_disposition|#NONE" />
+
+        <!--  bridge specific -->
+        <field name="Application-Response" type="first-of"
+            value="variable_originate_failed_cause|variable_last_bridge_hangup_cause|variable_bridge_hangup_cause|variable_hangup_cause|Hangup-Cause|variable_originate_disposition|variable_endpoint_disposition|#NONE">
+	        <filters>
+	            <filter name="Application" type="include" compare="value" value="bridge" />
+	        </filters>
+
+        </field>
+
+
 		<field name="Disposition" type="first-of"
 			value="variable_originate_disposition|variable_endpoint_disposition" />
 		<field name="Bridge-Hangup-Cause" type="first-of"
 			value="variable_bridge_hangup_cause|variable_last_bridge_hangup_cause" />
 		<field name="variable_endpoint_disposition" as="Endpoint-Disposition" />
 		<field name="variable_transfer_disposition" as="Transfer-Disposition" />
+		<field name="hangup-cause" type="reference" />
+        <field name="hangup-code" type="reference" />
 
 		<field name="debug-call" type="reference" />
 	</fields>

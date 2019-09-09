@@ -313,6 +313,7 @@ checkin_worker(Worker) ->
 
 -spec checkin_worker(pid(), atom()) -> 'ok'.
 checkin_worker(Worker, Pool) ->
+    gen_listener:cast(Worker, 'check_in'),
     poolboy:checkin(Pool, Worker).
 
 -spec call_custom(kz_term:api_terms(), publish_fun(), validate_fun(), gen_listener:binding()) ->
@@ -826,6 +827,19 @@ handle_cast({'gen_listener',{'channel_flow', 'false'}}, State) ->
 handle_cast({'gen_listener',{'channel_flow_control', Active}}, State) ->
     lager:debug("channel flow is ~p", [Active]),
     {'noreply', State#state{flow=Active}};
+
+handle_cast('check_in', #state{client_pid='undefined'
+                              ,client_ref='undefined'
+                              }=State) ->
+    {'noreply', State};
+handle_cast('check_in', #state{client_pid=RelayPid
+                              ,client_ref=Ref
+                              ,client_from='relay'
+                              }=State) ->
+    erlang:demonitor(Ref, ['flush']),
+    lager:debug("stopping relay to ~p", [RelayPid]),
+    {'noreply', reset(State)};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State, 'hibernate'}.

@@ -33,6 +33,9 @@
                     ,<<"CHANNEL_ANSWER">>
                     ,<<"CHANNEL_DESTROY">>
                     ,<<"CHANNEL_BRIDGE">>
+                    ,<<"CHANNEL_UNBRIDGE">>
+                    ,<<"CHANNEL_DISCONNECTED">>
+                    ,<<"CHANNEL_CONNECTED">>
                     ]).
 -define(CALL_BINDING(Events), {'call', [{'restrict_to', Events}
                                        ,'federate'

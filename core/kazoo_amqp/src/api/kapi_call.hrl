@@ -100,6 +100,7 @@
         ,<<"Connecting-Leg-B-UUID">>
         ,<<"Endpoint-Disposition">>
         ,<<"Transfer-Disposition">>
+        ,<<"Bridge-B-Unique-ID">>
         ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Application-Vars">>, fun kz_json:is_json_object/1}

@@ -18,6 +18,9 @@
         "Billing-Seconds": {
             "type": "string"
         },
+        "Bridge-B-Unique-ID": {
+            "type": "string"
+        },
         "Bridge-Hangup-Cause": {
             "type": "string"
         },

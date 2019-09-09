@@ -595,7 +595,16 @@ rm_fs_node(#node{node=NodeName}=Node, #state{self=Srv}) ->
 -spec handle_nodeup(fs_node(), state()) -> 'ok'.
 handle_nodeup(#node{}=Node, #state{self=Srv}) ->
     NewNode = get_fs_client_version(Node),
-    case maybe_connect_to_node(NewNode) of
+    case min_version(NewNode)
+        andalso maybe_connect_to_node(NewNode)
+    of
+        'false' ->
+            _ = gen_server:cast(Srv, {'update_node', Node#node{connected='false'}}),
+            _ = kz_util:spawn(fun() ->
+                                      timer:sleep(?MILLISECONDS_IN_HOUR),
+                                      _ = maybe_start_node_pinger(Node)
+                              end),
+            'ok';
         {'error', _} ->
             _ = gen_server:cast(Srv, {'update_node', Node#node{connected='false'}}),
             _ = maybe_start_node_pinger(Node),
@@ -912,3 +921,16 @@ print_version(Version) -> Version.
 nodedown(Node) ->
     ?SERVER ! {'nodedown', Node},
     'ok'.
+
+-spec min_version(fs_node()) -> boolean().
+min_version(#node{client_version=ClientVersion,node=NodeName}) ->
+    case freeswitch:release(ClientVersion) of
+        {_, Release, _}
+          when Release > ?MIN_FS_VERSION ->
+            lager:debug("node ~s has minimum release ~s (~s) supported", [NodeName, Release, ?MIN_FS_VERSION]),
+            'true';
+        _ ->
+            lager:warning("node ~s does not have minimum version ~s required to use this ecallmgr version.", [NodeName, ?MIN_FS_VERSION]),
+            lager:warning("please upgrade your media node (~s) to freeswitch 1.10 or later", [NodeName]),
+            'false'
+    end.
