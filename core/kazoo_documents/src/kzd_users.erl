@@ -76,6 +76,7 @@
 -export([fax_settings/1]).
 -export([name/1]).
 -export([is_account_admin/1, is_account_admin/2]).
+-export([is_user/1, is_user/2]).
 -export([classifier_restriction/2, classifier_restriction/3, set_classifier_restriction/3]).
 -export([full_name/1, full_name/2]).
 
@@ -972,6 +973,22 @@ is_account_admin(_, 'undefined') -> 'false';
 is_account_admin(Account, UserId) ->
     case fetch(Account, UserId) of
         {'ok', JObj} -> is_account_admin(JObj);
+        {'error', _R} ->
+            lager:debug("unable to open user ~s definition in account ~s: ~p", [UserId, Account, _R]),
+            'false'
+    end.
+
+-spec is_user(kz_term:api_object()) -> boolean().
+is_user('undefined') -> 'false';
+is_user(Doc) ->
+    kz_doc:type(Doc) =:= type().
+
+-spec is_user(kz_term:api_binary(), kz_term:api_binary()) -> boolean().
+is_user('undefined', _) -> 'false';
+is_user(_, 'undefined') -> 'false';
+is_user(Account, UserId) ->
+    case fetch(Account, UserId) of
+        {'ok', JObj} -> is_user(JObj);
         {'error', _R} ->
             lager:debug("unable to open user ~s definition in account ~s: ~p", [UserId, Account, _R]),
             'false'
