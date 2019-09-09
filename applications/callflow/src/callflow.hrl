@@ -37,6 +37,7 @@
 -define(LIST_BY_NUMBER, <<"callflows/listing_by_number">>).
 -define(LIST_BY_PATTERN, <<"callflows/listing_by_pattern">>).
 
+-define(NO_MATCH_BL, <<"no_match">>).
 -define(NO_MATCH_CF, <<"no_match">>).
 
 -define(DEFAULT_TIMEOUT_S, ?BRIDGE_DEFAULT_SYSTEM_TIMEOUT_S).
@@ -48,6 +49,8 @@
 -define(RESTRICTED_ENDPOINT_KEY, <<"Restricted-Endpoint-ID">>).
 
 -define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
+-define(BLACKLIST_PATTERNS_CACHE_KEY(AccountId, OwnerId), {'bl_patterns', AccountId, OwnerId}).
+-define(BLACKLIST_NUMBER_CACHE_KEY(AccountId, OwnerId, Number), {'bl_number', AccountId, OwnerId, Number}).
 -define(CF_FLOW_CACHE_KEY(Number, AccountId), {'cf_flow', Number, AccountId}).
 -define(CF_PATTERN_CACHE_KEY(AccountId), {'cf_patterns', AccountId}).
 
