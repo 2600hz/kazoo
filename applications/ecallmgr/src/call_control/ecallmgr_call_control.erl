@@ -1147,6 +1147,7 @@ query_state(Node, CallId) ->
 
 -spec send_error_resp(error()) -> 'ok'.
 send_error_resp(#{app_name := <<"hangup">>}) -> 'ok';
+send_error_resp(#{app_name := <<"bridge">>}) -> 'ok';
 send_error_resp(Error) -> publish_error_resp(Error).
 
 -spec send_error_resp(atom(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
