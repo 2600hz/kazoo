@@ -130,7 +130,7 @@ delete(Context, _) ->
 %%------------------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
-    OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
+    OnSuccess = fun(C) -> validate_owner_id('undefined', C) end,
     cb_context:validate_request_data(kzd_blacklists:type(), Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
@@ -148,7 +148,7 @@ read(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec update(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
+    OnSuccess = fun(C) -> validate_owner_id(Id, C) end,
     cb_context:validate_request_data(kzd_blacklists:type(), Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
@@ -168,6 +168,21 @@ validate_patch(Id, Context) ->
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec validate_owner_id(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
+validate_owner_id(DocId, Context) ->
+    AccountId = cb_context:account_id(Context),
+    OwnerId = cb_context:req_value(Context, <<"owner_id">>),
+    case kzd_blacklists:is_valid_owner_id(OwnerId, AccountId) of
+        'false' ->
+            Resp = [{<<"message">>, <<"Provided owner_id value is not valid">>}],
+            cb_context:add_validation_error(<<"owner_id">>, <<"invalid">>, kz_json:from_list(Resp), Context);
+        'true' -> on_successful_validation(DocId, Context)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
