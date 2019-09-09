@@ -1790,21 +1790,44 @@ maybe_auto_answer({Endpoint, Call, CallFwd, CCVs}=Acc) ->
 
 -spec maybe_set_confirm_properties(ccv_acc()) -> ccv_acc().
 maybe_set_confirm_properties({Endpoint, Call, CallFwd, CCVs}=Acc) ->
-    case kz_json:is_true(<<"require_keypress">>, CallFwd) of
+    BlacklistAction = kapps_call:user_blacklist_action(Call),
+    RequiredKeypress = kz_json:is_true(<<"require_keypress">>, CallFwd),
+    case RequiredKeypress
+        orelse BlacklistAction == <<"ask_human">> of
         'false' -> Acc;
         'true' ->
-            lager:info("call forwarding configured to require key press"),
-            Confirm = [{<<"Confirm-Key">>, <<"1">>}
-                      ,{<<"Confirm-Cancel-Timeout">>, 'true'}
-                      ,{<<"Confirm-Read-Timeout">>, kz_term:to_binary(7 * ?MILLISECONDS_IN_SECOND)}
-                      ,{<<"Confirm-File">>, ?CONFIRM_FILE(Call)}
-                      ,{<<"Require-Ignore-Early-Media">>, <<"true">>}
-                      ,{<<"Require-Fail-On-Single-Reject">>, <<"USER_BUSY,CALL_REJECTED,NO_ANSWER,NORMAL_CLEARING,PROGRESS_TIMEOUT">>}
-                      ],
+            lager:info("'ask_human' blacklist or call forwarding configured to require key press"),
+            Confirm = confirm_properties(BlacklistAction, RequiredKeypress, Call),
             {Endpoint, Call, CallFwd
             ,kz_json:merge_jobjs(kz_json:from_list(Confirm), CCVs)
             }
     end.
+
+-spec confirm_properties(kz_term:api_ne_binary(), boolean(), kapps_call:call()) -> kz_term:proplist().
+confirm_properties(<<"ask_human">>, 'false', Call) ->
+    [{<<"Confirm-Key">>, <<"1">>}
+    ,{<<"Confirm-Cancel-Timeout">>, 'true'}
+    ,{<<"Confirm-Read-Timeout">>, kz_term:to_binary(7 * ?MILLISECONDS_IN_SECOND)}
+    ,{<<"Confirm-File">>, ?CONFIRM_FILE(Call)}
+    ,{<<"Ignore-Early-Media">>, <<"true">>}
+    ,{<<"Fail-On-Single-Reject">>, <<"USER_BUSY,CALL_REJECTED,NO_ANSWER,NORMAL_CLEARING,PROGRESS_TIMEOUT">>}
+    ];
+confirm_properties(<<"ask_human">>, 'true', Call) ->
+    [{<<"Confirm-Key">>, <<"1">>}
+    ,{<<"Confirm-Cancel-Timeout">>, 'true'}
+    ,{<<"Confirm-Read-Timeout">>, kz_term:to_binary(7 * ?MILLISECONDS_IN_SECOND)}
+    ,{<<"Confirm-File">>, ?CONFIRM_FILE(Call)}
+    ,{<<"Require-Ignore-Early-Media">>, <<"true">>}
+    ,{<<"Require-Fail-On-Single-Reject">>, <<"USER_BUSY,CALL_REJECTED,NO_ANSWER,NORMAL_CLEARING,PROGRESS_TIMEOUT">>}
+    ];
+confirm_properties(_BlacklistAction, 'true', Call) ->
+    [{<<"Confirm-Key">>, <<"1">>}
+    ,{<<"Confirm-Cancel-Timeout">>, 'true'}
+    ,{<<"Confirm-Read-Timeout">>, kz_term:to_binary(7 * ?MILLISECONDS_IN_SECOND)}
+    ,{<<"Confirm-File">>, ?CONFIRM_FILE(Call)}
+    ,{<<"Require-Ignore-Early-Media">>, <<"true">>}
+    ,{<<"Require-Fail-On-Single-Reject">>, <<"USER_BUSY,CALL_REJECTED,NO_ANSWER,NORMAL_CLEARING,PROGRESS_TIMEOUT">>}
+    ].
 
 -spec maybe_enable_fax(ccv_acc()) -> ccv_acc().
 maybe_enable_fax({Endpoint, Call, CallFwd, CCVs}=Acc) ->
