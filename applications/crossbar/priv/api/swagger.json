@@ -1007,6 +1007,22 @@
         "blacklists": {
             "description": "Schema for a blacklists",
             "properties": {
+                "action": {
+                    "default": "block",
+                    "description": "Action required apply to call",
+                    "enum": [
+                        "block",
+                        "skip_human",
+                        "ask_human",
+                        "pass"
+                    ],
+                    "type": "string"
+                },
+                "enabled": {
+                    "default": true,
+                    "description": "Blacklist current status",
+                    "type": "boolean"
+                },
                 "flags": {
                     "description": "Flags set by external applications",
                     "items": {
@@ -1022,8 +1038,30 @@
                 },
                 "numbers": {
                     "default": {},
-                    "description": "Map of caller id number to block",
-                    "properties": {},
+                    "description": "Map of caller id number to block or pass",
+                    "properties": {
+                        "name": {
+                            "description": "Number text description",
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                "owner_id": {
+                    "description": "The account, user or device ID that 'owns' the blacklist. If owner_id document is missed, then assumed account_id value",
+                    "maxLength": 32,
+                    "minLength": 32,
+                    "type": "string"
+                },
+                "patterns": {
+                    "default": {},
+                    "description": "Map of regular expressions that blacklist should execute for caller id number to block or pass",
+                    "properties": {
+                        "name": {
+                            "description": "Regular expressions text description",
+                            "type": "string"
+                        }
+                    },
                     "type": "object"
                 },
                 "should_block_anonymous": {
