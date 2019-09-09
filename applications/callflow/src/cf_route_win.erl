@@ -285,12 +285,12 @@ maybe_start_account_recording(FromNetwork, ToNetwork, Call) ->
     {'ok', Endpoint} = kz_endpoint:get(kapps_call:account_id(Call), Call),
 
     case kz_account_recording:maybe_record_inbound(FromNetwork, Endpoint, Call) of
+        {'true', NewCall} -> NewCall;
         'false' ->
             case kz_account_recording:maybe_record_outbound(ToNetwork, Endpoint, Call) of
                 'false' -> Call;
                 {'true', NewCall} -> NewCall
-            end;
-        {'true', NewCall} -> NewCall
+            end
     end.
 
 -spec maybe_start_endpoint_recording(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) ->
