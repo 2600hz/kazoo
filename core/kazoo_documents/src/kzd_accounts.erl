@@ -69,6 +69,7 @@
         ,is_enabled/1, enable/1, disable/1
         ,path_enabled/0
         ,is_expired/1
+        ,is_account/1
 
         ,tree/1, tree/2, set_tree/2, path_tree/0
         ,default_timezone/0
@@ -986,6 +987,16 @@ is_expired(JObj) ->
         'false' -> 'false';
         'true' -> {'true', trial_expiration(JObj)}
     end.
+
+-spec is_account(doc() | kz_types:api_ne_binary()) -> boolean().
+is_account('undefined') -> 'false';
+is_account(?NE_BINARY = Id) ->
+    case fetch(Id) of
+        {'ok', JObj} -> is_account(JObj);
+        {'error', _} -> 'false'
+    end;
+is_account(JObj) ->
+    kz_doc:type(JObj) =:= type().
 
 -spec is_trial_account(doc()) -> boolean().
 is_trial_account(JObj) ->
