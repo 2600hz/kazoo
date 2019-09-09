@@ -604,7 +604,7 @@ handle_nodeup(#node{}=Node, #state{self=Srv}) ->
                                       timer:sleep(?MILLISECONDS_IN_HOUR),
                                       _ = maybe_start_node_pinger(Node)
                               end),
-           'ok';
+            'ok';
         {'error', _} ->
             _ = gen_server:cast(Srv, {'update_node', Node#node{connected='false'}}),
             _ = maybe_start_node_pinger(Node),

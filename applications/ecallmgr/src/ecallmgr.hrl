@@ -10,6 +10,8 @@
 -define(APP_NAME, <<"ecallmgr">>).
 -define(APP_VERSION, <<"5.0.0">>).
 
+-define(MIN_FS_VERSION, <<"v1.5">>).
+
 -define(ECALLMGR_UTIL_CACHE, 'ecallmgr_util_cache').
 -define(ECALLMGR_AUTH_CACHE, 'ecallmgr_auth_cache').
 -define(ECALLMGR_CALL_CACHE, 'ecallmgr_call_cache').
