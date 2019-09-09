@@ -1145,23 +1145,22 @@ send_error_resp(#{app_name := <<"hangup">>}) -> 'ok';
 send_error_resp(#{app_name := <<"bridge">>}) -> 'ok';
 send_error_resp(Error) -> publish_error_resp(Error).
 
--spec send_error_resp(atom(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+-spec send_error_resp(atom(), kz_term:ne_binary(), kz_json:object(), atom() | kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 send_error_resp(Node, CallId, Cmd, Error, Msg) ->
     send_error_resp(error(Node, CallId, Cmd, Error, Msg)).
 
--spec send_error_resp(atom(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
+-spec send_error_resp(atom(), kz_term:ne_binary(), kz_json:object(), atom() | kz_term:ne_binary()) -> 'ok'.
 send_error_resp(Node, CallId, Cmd, Error) ->
     send_error_resp(error(Node, CallId, Cmd, Error)).
 
 -spec publish_error_resp(error()) -> 'ok'.
-publish_error_resp(Error) ->
-    #{cmd := Cmd
-     ,msg := Msg
-     ,error := Err
-     ,call_state := CallState
-     ,channel_state := ChannelState
-     ,call_id := CallId
-     } = Error,
+publish_error_resp(#{cmd := Cmd
+                    ,msg := Msg
+                    ,error := Err
+                    ,call_state := CallState
+                    ,channel_state := ChannelState
+                    ,call_id := CallId
+                    }) ->
     Resp = [{<<"Msg-ID">>, kz_api:msg_id(Cmd)}
            ,{<<"Error-Message">>, Msg}
            ,{<<"Dialplan-Error">>, kz_term:to_binary(Err)}
@@ -1174,13 +1173,13 @@ publish_error_resp(Error) ->
     lager:debug("sending execution error: ~p", [Resp]),
     kapi_dialplan:publish_error(CallId, Resp).
 
--spec error(atom(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> error().
+-spec error(atom(), kz_term:ne_binary(), kz_json:object(), atom() | kz_term:ne_binary()) -> error().
 error(Node, CallId, Cmd, Error) ->
     AppName = kapi_dialplan:application_name(Cmd),
     Msg = <<"Could not execute dialplan action: ", AppName/binary>>,
     error(Node, CallId, Cmd, Error, Msg).
 
--spec error(atom(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) -> error().
+-spec error(atom(), kz_term:ne_binary(), kz_json:object(), atom() | kz_term:ne_binary(), kz_term:ne_binary()) -> error().
 error(Node, CallId, Cmd, Error, Msg) ->
     {CallState, ChannelState} = maybe_query_state(Node, CallId, Error),
     #{msg => Msg
