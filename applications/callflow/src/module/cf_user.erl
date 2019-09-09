@@ -17,6 +17,24 @@
 
 -include("callflow.hrl").
 
+-export([blacklist_action/2]).
+%%------------------------------------------------------------------------------
+%% @doc Evaluate user defined blacklists action, caller name and wanted blacklist strategy
+%% @end
+%%------------------------------------------------------------------------------
+-spec blacklist_action(kz_json:object(), kapps_call:call()) -> blacklist_action().
+blacklist_action(Data, Call) ->
+    CallerNumber = kapps_call:caller_id_number(Call),
+    AccountId = kapps_call:account_id(Call),
+    UserId = kz_json:get_ne_binary_value(<<"id">>, Data),
+    BlStrategy = kzd_users:bl_strategy(AccountId, UserId),
+    case cf_blacklist:lookup(CallerNumber, AccountId, UserId, BlStrategy) of
+        {'error', _} -> {'ok', #cf_blacklist_action{}};
+        {'ok', ActionValue, NewCallerName, _} -> {'ok', #cf_blacklist_action{action = ActionValue
+                                                                            ,caller_name = NewCallerName
+                                                                            ,blacklist_strategy = BlStrategy}}
+    end.
+
 %%------------------------------------------------------------------------------
 %% @doc Entry point for this module, attempts to call an endpoint as defined
 %% in the Data payload.  Returns continue if fails to connect or
@@ -25,6 +43,13 @@
 %%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
+    maybe_blacklisted(kapps_call:user_blacklist_action(Call), Data, Call).
+
+-spec maybe_blacklisted(kz_term:api_ne_binary(), kz_json:object(), kapps_call:call()) -> 'ok'.
+maybe_blacklisted(<<"skip_human">>, _Data, Call) ->
+    lager:info("requested to apply 'skip_human' blacklist, skipping 'cf_user' module"),
+    cf_exe:continue(Call);
+maybe_blacklisted(_, Data, Call) ->
     UserId = kz_json:get_ne_binary_value(<<"id">>, Data),
     Endpoints = get_endpoints(UserId, Data, Call),
 
