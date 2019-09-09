@@ -106,6 +106,9 @@
 -define(OPTIONAL_ERROR_RESP_HEADERS, [?KEY_REQUEST
                                      ,?KEY_API_CALL_ID
                                      ,<<"Custom-Channel-Vars">>
+                                     ,<<"Disposition">>
+                                     ,<<"Hangup-Cause">>
+                                     ,<<"Hangup-Code">>
                                      ]).
 -define(ERROR_RESP_VALUES, [{?KEY_EVENT_CATEGORY, <<"error">>}]).
 -define(ERROR_RESP_TYPES, []).

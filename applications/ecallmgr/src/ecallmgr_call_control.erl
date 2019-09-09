@@ -267,9 +267,9 @@ handle_cast({'fs_nodeup', Node}, #state{node=Node
     _ = timer:sleep(100 + rand:uniform(1400)),
     case freeswitch:api(Node, 'uuid_exists', CallId) of
         {'ok', <<"true">>} ->
-            {'noreply', force_queue_advance(State#state{is_node_up='true'})};
+            {'noreply', force_queue_advance(State#state{is_node_up='true'}, kz_json:new())};
         _Else ->
-            {'noreply', handle_channel_destroyed(kz_json:new(), State)}
+            {'noreply', handle_channel_destroyed(empty_channel_destroyed_object(), State)}
     end;
 handle_cast(_, State) ->
     {'noreply', State}.
@@ -283,9 +283,9 @@ handle_info({'event', [CallId | Props]}, #state{call_id=CallId}=State) ->
     handle_event_info(CallId, Props, State);
 handle_info({'event', [CallId | Props]}, State) ->
     handle_other_event_info(CallId, Props, State);
-handle_info({'force_queue_advance', CallId}, #state{call_id=CallId}=State) ->
-    {'noreply', force_queue_advance(State)};
-handle_info({'force_queue_advance', _}, State) ->
+handle_info({'force_queue_advance', CallId, JObj}, #state{call_id=CallId}=State) ->
+    {'noreply', force_queue_advance(State, JObj)};
+handle_info({'force_queue_advance', _, _}, State) ->
     {'noreply', State};
 handle_info('keep_alive_expired', State) ->
     lager:debug("no new commands received after channel destruction, our job here is done"),
@@ -298,14 +298,14 @@ handle_info('sanity_check', #state{call_id=CallId}=State) ->
             {'noreply', State#state{sanity_check_tref=TRef}};
         'false' ->
             lager:debug("call uuid does not exist, executing post-hangup events and terminating"),
-            {'noreply', handle_channel_destroyed(kz_json:new(), State)}
+            {'noreply', handle_channel_destroyed(empty_channel_destroyed_object(), State)}
     end;
 handle_info(?CHANNEL_MOVE_COMPLETE_MSG(Node, UUID, _Evt), State) ->
     lager:debug("channel move complete recv for node ~s:~s", [Node, UUID]),
     {'noreply', State};
 handle_info('nodedown_restart_exceeded', #state{is_node_up='false'}=State) ->
     lager:debug("we have not received a node up in time, assuming down for good for this call", []),
-    {'noreply', handle_channel_destroyed(kz_json:new(), State)};
+    {'noreply', handle_channel_destroyed(empty_channel_destroyed_object(), State)};
 handle_info(?LOOPBACK_BOWOUT_MSG(Node, Props), #state{call_id=ResigningUUID
                                                      ,node=Node
                                                      }=State) ->
@@ -440,9 +440,16 @@ publish_route_win(#state{call_id=CallId
 -spec handle_channel_destroyed(kz_json:object(), state()) -> state().
 handle_channel_destroyed(JObj, State) ->
     case kz_json:is_true(<<"Channel-Is-Loopback">>, JObj, 'false') of
-        'false' -> handle_channel_destroyed(State);
+        'false' -> do_handle_channel_destroyed(JObj, State);
         'true' -> handle_loopback_destroyed(JObj, State)
     end.
+
+-spec empty_channel_destroyed_object() -> kz_json:object().
+empty_channel_destroyed_object() ->
+    kz_json:from_list(
+      [{<<"Hangup-Cause">>, <<"UNSPECIFIED">>}
+      ,{<<"Hangup-Code">>, <<"sip:600">>}
+      ]).
 
 -spec handle_loopback_destroyed(kz_json:object(), state()) -> state().
 handle_loopback_destroyed(JObj, State) ->
@@ -457,16 +464,16 @@ handle_loopback_destroyed(JObj, State) ->
             lager:debug("our loopback has ended with ~s(bowout ~s); treating as done"
                        ,[_Cause, _Bowout]
                        ),
-            handle_channel_destroyed(State)
+            do_handle_channel_destroyed(JObj, State)
     end.
 
--spec handle_channel_destroyed(state()) -> state().
-handle_channel_destroyed(#state{sanity_check_tref=SCTRef
-                               ,current_app=CurrentApp
-                               ,current_cmd=CurrentCmd
-                               ,call_id=CallId
-                               }=State
-                        ) ->
+-spec do_handle_channel_destroyed(kz_json:object(), state()) -> state().
+do_handle_channel_destroyed(JObj, #state{sanity_check_tref=SCTRef
+                                        ,current_app=CurrentApp
+                                        ,current_cmd=CurrentCmd
+                                        ,call_id=CallId
+                                        }=State
+                           ) ->
     lager:debug("our channel has been destroyed, executing any post-hangup commands"),
     %% if our sanity check timer is running stop it, it will always return false
     %% now that the channel is gone
@@ -482,21 +489,22 @@ handle_channel_destroyed(#state{sanity_check_tref=SCTRef
         of
             'true' -> 'ok';
             'false' ->
-                maybe_send_error_resp(CallId, CurrentCmd),
-                self() ! {'force_queue_advance', CallId}
+                maybe_send_error_resp(JObj, CallId, CurrentCmd),
+                self() ! {'force_queue_advance', CallId, JObj}
         end,
     State#state{keep_alive_ref=get_keep_alive_ref(State#state{is_call_up='false'})
                ,is_call_up='false'
                ,is_node_up='true'
                }.
 
--spec force_queue_advance(state()) -> state().
+-spec force_queue_advance(state(), kz_json:object()) -> state().
 force_queue_advance(#state{call_id=CallId
                           ,current_app=CurrApp
                           ,command_q=CmdQ
                           ,is_node_up=INU
                           ,is_call_up=CallUp
-                          }=State) ->
+                          }=State
+                   ,JObj) ->
     lager:debug("received control queue unconditional advance, skipping wait for command completion of '~s'"
                ,[CurrApp]
                ),
@@ -519,8 +527,8 @@ force_queue_advance(#state{call_id=CallId
                         execute_control_request(Cmd, State);
                     'false' ->
                         lager:debug("command '~s' is not valid after hangup, skipping", [AppName]),
-                        maybe_send_error_resp(CallId, Cmd),
-                        self() ! {'force_queue_advance', CallId}
+                        maybe_send_error_resp(JObj, CallId, Cmd),
+                        self() ! {'force_queue_advance', CallId, JObj}
                 end,
             MsgId = kz_api:msg_id(Cmd),
             State#state{command_q=CmdQ1
@@ -541,7 +549,7 @@ handle_execute_complete(<<"noop">>, JObj, #state{msg_id=CurrMsgId}=State) ->
     case kz_json:get_ne_binary_value(<<"Application-Response">>, JObj) of
         CurrMsgId ->
             lager:debug("noop execution complete for ~s, advancing control queue", [CurrMsgId]),
-            forward_queue(State);
+            forward_queue(JObj, State);
         _NoopId ->
             lager:debug("received noop execute complete with incorrect id ~s (expecting ~s)"
                        ,[_NoopId, CurrMsgId]
@@ -554,9 +562,9 @@ handle_execute_complete(<<"play">> = AppName, JObj, #state{current_app=AppName}=
     handle_playback_complete(AppName, JObj, State);
 handle_execute_complete(<<"tts">> = AppName, JObj, #state{current_app=AppName}=State) ->
     handle_playback_complete(AppName, JObj, State);
-handle_execute_complete(AppName, _, #state{current_app=AppName}=State) ->
+handle_execute_complete(AppName, JObj, #state{current_app=AppName}=State) ->
     lager:debug("~s execute complete, advancing control queue", [AppName]),
-    forward_queue(State);
+    forward_queue(JObj, State);
 handle_execute_complete(AppName, JObj, #state{current_app=CurrApp}=State) ->
     RawAppName = kz_json:get_value(<<"Raw-Application-Name">>, JObj, AppName),
     MappedNames = ecallmgr_util:convert_kazoo_app_name(CurrApp),
@@ -570,17 +578,17 @@ handle_execute_complete(AppName, JObj, #state{current_app=CurrApp}=State) ->
 handle_playback_complete(AppName, JObj, #state{command_q=CmdQ}=State) ->
     lager:debug("~s finished, checking for group-id/DTMF termination", [AppName]),
     case kz_json:get_ne_binary_value(<<"DTMF-Digit">>, JObj) of
-        'undefined' -> handle_playback_looping(State);
+        'undefined' -> handle_playback_looping(JObj, State);
         _DTMF ->
             GroupId = kz_json:get_ne_binary_value(<<"Group-ID">>, JObj),
             lager:debug("DTMF ~s terminated playback, flushing all with group id ~s"
                        ,[_DTMF, GroupId]
                        ),
-            forward_queue(State#state{command_q=flush_group_id(CmdQ, GroupId, AppName)})
+            forward_queue(JObj, State#state{command_q=flush_group_id(CmdQ, GroupId, AppName)})
     end.
 
--spec handle_playback_looping(state()) -> state().
-handle_playback_looping(#state{current_cmd=AppCmd}=State) ->
+-spec handle_playback_looping(kz_json:object(), state()) -> state().
+handle_playback_looping(JObj, #state{current_cmd=AppCmd}=State) ->
     case kz_json:is_true(<<"Endless-Playback">>, AppCmd, 'false')
         orelse kz_json:get_integer_value(<<"Loop-Count">>, AppCmd, 0)
     of
@@ -595,7 +603,7 @@ handle_playback_looping(#state{current_cmd=AppCmd}=State) ->
             State#state{current_cmd=UpdatedCmd};
         _Count ->
             lager:debug("media finished playing, advancing control queue"),
-            forward_queue(State)
+            forward_queue(JObj, State)
     end.
 
 -spec flush_group_id(queue:queue(), kz_term:api_binary(), kz_term:ne_binary()) -> queue:queue().
@@ -608,8 +616,9 @@ flush_group_id(CmdQ, GroupId, AppName) ->
                                ]),
     maybe_filter_queue([Filter], CmdQ).
 
--spec forward_queue(state()) -> state().
-forward_queue(#state{call_id = CallId
+-spec forward_queue(kz_json:object(), state()) -> state().
+forward_queue(JObj
+             ,#state{call_id = CallId
                     ,is_node_up = INU
                     ,is_call_up = CallUp
                     ,command_q = CmdQ
@@ -632,8 +641,8 @@ forward_queue(#state{call_id = CallId
                     'true' -> execute_control_request(Cmd, State);
                     'false' ->
                         lager:debug("command '~s' is not valid after hangup, skipping", [AppName]),
-                        maybe_send_error_resp(CallId, Cmd),
-                        self() ! {'force_queue_advance', CallId}
+                        maybe_send_error_resp(JObj, CallId, Cmd),
+                        self() ! {'force_queue_advance', CallId, JObj}
                 end,
             MsgId = kz_api:msg_id(Cmd),
             State#state{command_q = CmdQ1
@@ -831,8 +840,8 @@ handle_dialplan(JObj, #state{call_id=CallId
                     'true' -> execute_control_request(Cmd, State);
                     'false' ->
                         lager:debug("command '~s' is not valid after hangup, ignoring", [AppName]),
-                        maybe_send_error_resp(CallId, Cmd),
-                        self() ! {'force_queue_advance', CallId}
+                        maybe_send_error_resp(JObj, CallId, Cmd),
+                        self() ! {'force_queue_advance', CallId, JObj}
                 end,
             MsgId = kz_api:msg_id(Cmd),
             State#state{command_q=NewCmdQ1
@@ -893,7 +902,7 @@ insert_command(#state{node=Node
 insert_command(#state{node=Node, call_id=CallId}, 'flush', JObj) ->
     lager:debug("received control queue flush command, clearing all waiting commands"),
     _ = freeswitch:api(Node, 'uuid_break', <<CallId/binary, " all">>),
-    self() ! {'force_queue_advance', CallId},
+    self() ! {'force_queue_advance', CallId, JObj},
     insert_command_into_queue(queue:new(), 'tail', JObj);
 insert_command(#state{command_q=CommandQ}, 'head', JObj) ->
     insert_command_into_queue(CommandQ, 'head', JObj);
@@ -1058,50 +1067,50 @@ execute_control_request(Cmd, #state{node=Node
             Msg = list_to_binary(["Session ", CallId
                                  ," not found for ", Application
                                  ]),
-            send_error_resp(CallId, Cmd, Msg),
-            Srv ! {'force_queue_advance', CallId},
+            send_error_resp(kz_json:new(), CallId, Cmd, Msg),
+            Srv ! {'force_queue_advance', CallId, kz_json:new()},
             'ok';
         _:{'error', 'nosession'} ->
             lager:debug("unable to execute command, no session"),
             Msg = list_to_binary(["Session ", CallId
                                  ," not found for ", Application
                                  ]),
-            send_error_resp(CallId, Cmd, Msg),
-            Srv ! {'force_queue_advance', CallId},
+            send_error_resp(kz_json:new(), CallId, Cmd, Msg),
+            Srv ! {'force_queue_advance', CallId, kz_json:new()},
             'ok';
         'error':{'badmatch', {'error', 'nosession'}} ->
             lager:debug("unable to execute command, no session"),
             Msg = list_to_binary(["Session ", CallId
                                  ," not found for ", Application
                                  ]),
-            send_error_resp(CallId, Cmd, Msg),
-            Srv ! {'force_queue_advance', CallId},
+            send_error_resp(kz_json:new(), CallId, Cmd, Msg),
+            Srv ! {'force_queue_advance', CallId, kz_json:new()},
             'ok';
         'error':{'badmatch', {'error', ErrMsg}} ->
             ST = erlang:get_stacktrace(),
             lager:debug("invalid command ~s: ~p", [Application, ErrMsg]),
             kz_util:log_stacktrace(ST),
-            maybe_send_error_resp(CallId, Cmd),
-            Srv ! {'force_queue_advance', CallId},
+            maybe_send_error_resp(kz_json:new(), CallId, Cmd),
+            Srv ! {'force_queue_advance', CallId, kz_json:new()},
             'ok';
         'throw':{'msg', ErrMsg} ->
             lager:debug("error while executing command ~s: ~s", [Application, ErrMsg]),
-            send_error_resp(CallId, Cmd),
-            Srv ! {'force_queue_advance', CallId},
+            send_error_resp(kz_json:new(), CallId, Cmd),
+            Srv ! {'force_queue_advance', CallId, kz_json:new()},
             'ok';
         'throw':Msg ->
             lager:debug("failed to execute ~s: ~s", [Application, Msg]),
             lager:debug("only handling call id(s): ~p", [[CallId | OtherLegs]]),
 
-            send_error_resp(CallId, Cmd, Msg),
-            Srv ! {'force_queue_advance', CallId},
+            send_error_resp(kz_json:new(), CallId, Cmd, Msg),
+            Srv ! {'force_queue_advance', CallId, kz_json:new()},
             'ok';
         _A:_B ->
             ST = erlang:get_stacktrace(),
             lager:debug("exception (~s) while executing ~s: ~p", [_A, Application, _B]),
             kz_util:log_stacktrace(ST),
-            send_error_resp(CallId, Cmd),
-            Srv ! {'force_queue_advance', CallId},
+            send_error_resp(kz_json:new(), CallId, Cmd),
+            Srv ! {'force_queue_advance', CallId, kz_json:new()},
             'ok'
     end.
 
@@ -1114,32 +1123,32 @@ which_call_leg(CmdLeg, OtherLegs, CallId) ->
         'false' -> CallId
     end.
 
--spec maybe_send_error_resp(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-maybe_send_error_resp(CallId, Cmd) ->
-    maybe_send_error_resp(CallId, Cmd, kapi_dialplan:application_name(Cmd)).
+-spec maybe_send_error_resp(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+maybe_send_error_resp(JObj, CallId, Cmd) ->
+    maybe_send_error_resp(JObj, CallId, Cmd, kapi_dialplan:application_name(Cmd)).
 
--spec maybe_send_error_resp(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
-maybe_send_error_resp(_CallId, _Cmd, <<"hangup">>) -> 'ok';
-maybe_send_error_resp(CallId, Cmd, AppName) ->
+-spec maybe_send_error_resp(kz_json:object(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
+maybe_send_error_resp(_JObj, _CallId, _Cmd, <<"hangup">>) -> 'ok';
+maybe_send_error_resp(JObj, CallId, Cmd, AppName) ->
     Msg = <<"Could not execute dialplan action: ", AppName/binary>>,
-    send_error_resp(CallId, Cmd, Msg).
+    send_error_resp(JObj, CallId, Cmd, Msg).
 
--spec send_error_resp(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
-send_error_resp(CallId, Cmd) ->
+-spec send_error_resp(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+send_error_resp(JObj, CallId, Cmd) ->
     Msg = <<"Could not execute dialplan action: "
            ,(kapi_dialplan:application_name(Cmd))/binary
           >>,
-    send_error_resp(CallId, Cmd, Msg).
+    send_error_resp(JObj, CallId, Cmd, Msg).
 
--spec send_error_resp(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
-send_error_resp(CallId, Cmd, Msg) ->
+-spec send_error_resp(kz_json:object(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
+send_error_resp(JObj, CallId, Cmd, Msg) ->
     case ecallmgr_fs_channel:fetch(CallId) of
-        {'ok', Channel} -> send_error_resp(CallId, Cmd, Msg, Channel);
-        {'error', 'not_found'} -> send_error_resp(CallId, Cmd, Msg, 'undefined')
+        {'ok', Channel} -> send_error_resp(JObj, CallId, Cmd, Msg, Channel);
+        {'error', 'not_found'} -> send_error_resp(JObj, CallId, Cmd, Msg, 'undefined')
     end.
 
--spec send_error_resp(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:api_object()) -> 'ok'.
-send_error_resp(CallId, Cmd, Msg, Channel) ->
+-spec send_error_resp(kz_json:object(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:api_object()) -> 'ok'.
+send_error_resp(JObj, CallId, Cmd, Msg, Channel) ->
     CCVs = error_ccvs(Channel),
 
     Resp = [{<<"Msg-ID">>, kz_api:msg_id(Cmd)}
@@ -1148,6 +1157,7 @@ send_error_resp(CallId, Cmd, Msg, Channel) ->
            ,{<<"Call-ID">>, CallId}
            ,{<<"Custom-Channel-Vars">>, CCVs}
             | kz_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
+            ++ maybe_add_channel_destroy_headers(JObj)
            ],
     lager:debug("sending execution error: ~p", [Resp]),
     kapi_dialplan:publish_error(CallId, Resp).
@@ -1156,6 +1166,15 @@ send_error_resp(CallId, Cmd, Msg, Channel) ->
 error_ccvs('undefined') -> 'undefined';
 error_ccvs(Channel) ->
     kz_json:from_list(ecallmgr_fs_channel:channel_ccvs(Channel)).
+
+-spec maybe_add_channel_destroy_headers(kz_json:object()) -> kz_term:proplist().
+maybe_add_channel_destroy_headers(JObj) ->
+    props:filter_undefined(
+      [{<<"Disposition">>, kz_json:get_value(<<"Disposition">>, JObj)}
+      ,{<<"Hangup-Cause">>, kz_json:get_value(<<"Hangup-Cause">>, JObj)}
+      ,{<<"Hangup-Code">>, kz_json:get_value(<<"Hangup-Code">>, JObj)}
+      ]
+     ).
 
 %%------------------------------------------------------------------------------
 %% @doc
