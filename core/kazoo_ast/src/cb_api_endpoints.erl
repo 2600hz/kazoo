@@ -1161,6 +1161,7 @@ def_path_param(OasVersion, <<"{LIST_ID}">>=P) -> generic_id_path_param(P, OasVer
 def_path_param(OasVersion, <<"{MEDIA_ID}">>=P) -> generic_id_path_param(P, OasVersion);
 def_path_param(OasVersion, <<"{MENU_ID}">>=P) -> generic_id_path_param(P, OasVersion);
 def_path_param(OasVersion, <<"{NOTIFICATION_ID}">>=P) -> generic_id_path_param(P, OasVersion);
+def_path_param(OasVersion, <<"{PATTERN}">>=P) -> generic_id_path_param(P, OasVersion);
 def_path_param(OasVersion, <<"{PORT_REQUEST_ID}">>=P) -> generic_id_path_param(P, OasVersion);
 def_path_param(OasVersion, <<"{QUEUE_ID}">>=P) -> generic_id_path_param(P, OasVersion);
 def_path_param(OasVersion, <<"{RATE_ID}">>=P) -> generic_id_path_param(P, OasVersion);

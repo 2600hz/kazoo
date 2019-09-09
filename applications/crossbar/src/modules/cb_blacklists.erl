@@ -12,9 +12,9 @@
 -module(cb_blacklists).
 
 -export([init/0
-        ,allowed_methods/0, allowed_methods/1
-        ,resource_exists/0, resource_exists/1
-        ,validate/1, validate/2
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,resource_exists/0, resource_exists/1, resource_exists/2
+        ,validate/1, validate/2, validate/3
         ,put/1
         ,post/2
         ,patch/2
@@ -24,6 +24,11 @@
 -include("crossbar.hrl").
 
 -define(CB_LIST, <<"blacklists/crossbar_listing">>).
+-define(CB_LIST_BY_NUMBER, <<"blacklists/listing_by_number">>).
+-define(CB_LIST_BY_PATTERN, <<"blacklists/listing_by_pattern">>).
+
+-define(PATH_NUMBERS, <<"numbers">>).
+-define(PATH_PATTERNS, <<"patterns">>).
 
 %%%=============================================================================
 %%% API
@@ -57,8 +62,18 @@ allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 
 -spec allowed_methods(path_token()) -> http_methods().
+allowed_methods(?PATH_NUMBERS) ->
+    [?HTTP_GET];
+allowed_methods(?PATH_PATTERNS) ->
+    [?HTTP_GET];
 allowed_methods(_BlacklistId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
+allowed_methods(?PATH_NUMBERS, _PhoneNumber) ->
+    [?HTTP_GET];
+allowed_methods(?PATH_PATTERNS, _Pattern) ->
+    [?HTTP_GET].
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines if the provided list of Nouns are valid.
@@ -71,6 +86,10 @@ resource_exists() -> 'true'.
 
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> boolean().
+resource_exists(?PATH_NUMBERS, _) -> 'true';
+resource_exists(?PATH_PATTERNS, _) -> 'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines if the parameters and content are correct
@@ -85,8 +104,18 @@ validate(Context) ->
     validate_set(Context, cb_context:req_verb(Context)).
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+validate(Context, ?PATH_NUMBERS) ->
+    read_by_view('undefined', ?CB_LIST_BY_NUMBER, Context);
+validate(Context, ?PATH_PATTERNS) ->
+    read_by_view('undefined', ?CB_LIST_BY_PATTERN, Context);
 validate(Context, DocId) ->
     validate_set(Context, cb_context:req_verb(Context), DocId).
+
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+validate(Context, ?PATH_NUMBERS, Number) ->
+    read_by_view(Number, ?CB_LIST_BY_NUMBER, Context);
+validate(Context, ?PATH_PATTERNS, Pattern) ->
+    read_by_view(Pattern, ?CB_LIST_BY_PATTERN, Context).
 
 -spec validate_set(cb_context:context(), path_token()) -> cb_context:context().
 validate_set(Context, ?HTTP_GET) ->
@@ -142,6 +171,52 @@ read(Id, Context) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_blacklists:type())).
 
 %%------------------------------------------------------------------------------
+%% @doc Load blacklists by number
+%% @end
+%%------------------------------------------------------------------------------
+-spec read_by_view(kz_term:api_ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+read_by_view(Key, ViewName, Context) ->
+    Options = get_view_options(ViewName, Key),
+    load_chunk_view(Context, ViewName, Options).
+
+-spec get_view_options(kz_term:ne_binary(), kz_term:api_ne_binary()) -> crossbar_view:options().
+get_view_options(?CB_LIST_BY_NUMBER, 'undefined') ->
+    props:filter_undefined(
+      [{'group', 'true'}
+      ,{'group_level', 1}
+      ]);
+get_view_options(?CB_LIST_BY_NUMBER, Number) ->
+    props:filter_undefined(
+      [{'startkey', [Number]}
+      ,{'endkey', [Number, kz_json:new()]}
+      ,{'group', 'true'}
+      ,{'group_level', 1}
+      ]);
+get_view_options(?CB_LIST_BY_PATTERN, 'undefined') ->
+    props:filter_undefined(
+      [{'group', 'true'}
+      ,{'group_level', 1}
+      ]);
+get_view_options(?CB_LIST_BY_PATTERN, Pattern) ->
+    props:filter_undefined(
+      [{'startkey', [Pattern]}
+      ,{'endkey', [Pattern, kz_json:new()]}
+      ,{'group', 'true'}
+      ,{'group_level', 1}
+      ]).
+
+-spec load_chunk_view(cb_context:context(), kz_term:ne_binary(), kz_term:proplist()) -> cb_context:context().
+load_chunk_view(Context2, ViewName, Options) ->
+    Context = crossbar_doc:load_view(ViewName, Options, Context2, fun normalize_view_results/2),
+    set_resp_data(Context, cb_context:doc(Context)).
+
+-spec set_resp_data(cb_context:context(), kz_json:objects()) -> cb_context:context().
+set_resp_data(Context, []) ->
+    cb_context:set_resp_data(Context, kz_json:new());
+set_resp_data(Context, [JObj]) ->
+    cb_context:set_resp_data(Context, JObj).
+
+%%------------------------------------------------------------------------------
 %% @doc Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
@@ -167,7 +242,7 @@ validate_patch(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_crossbar_list_view_results/2).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -211,7 +286,15 @@ on_successful_validation(Id, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
+normalize_view_results(JObj, []) ->
+    normalize_view_results(JObj, [kz_json:new()]);
+normalize_view_results(JObj, [Acc]) ->
+    [Key] = kz_json:get_list_value(<<"key">>, JObj),
+    Value = kz_json:get_value(<<"value">>, JObj),
+    [kz_json:insert_value(Key, Value, Acc)].
+
+-spec normalize_crossbar_list_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_crossbar_list_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj) | Acc].
 
 %%------------------------------------------------------------------------------
