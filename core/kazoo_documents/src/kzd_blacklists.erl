@@ -19,12 +19,12 @@
 -export([name/1, name/2, set_name/2]).
 -export([numbers/1, numbers/2, set_numbers/2]).
 -export([numbers_name/1, numbers_name/2, set_numbers_name/2]).
--export([owner_id/1, owner_id/2, set_owner_id/2]).
+-export([owner_id/1, owner_id/2, set_owner_id/2, set_owner_id/3]).
 -export([patterns/1, patterns/2, set_patterns/2]).
 -export([patterns_name/1, patterns_name/2, set_patterns_name/2]).
 -export([is_blacklist/1]).
+-export([is_valid_owner_id/2]).
 -export([should_block_anonymous/1, should_block_anonymous/2, set_should_block_anonymous/2]).
-
 
 -include("kz_documents.hrl").
 
@@ -327,9 +327,33 @@ owner_id(Doc) ->
 owner_id(Doc, Default) ->
     kz_json:get_ne_binary_value([<<"owner_id">>], Doc, Default).
 
--spec set_owner_id(doc(), kz_term:ne_binary()) -> doc().
+-spec set_owner_id(doc(), kz_term:api_ne_binary()) -> doc().
+set_owner_id(Doc, 'undefined') ->
+    kz_json:delete_key([<<"owner_id">>], Doc);
 set_owner_id(Doc, OwnerId) ->
     kz_json:set_value([<<"owner_id">>], OwnerId, Doc).
+
+-spec set_owner_id(doc(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> doc().
+set_owner_id(Doc, AccountId, AccountId) ->
+    set_owner_id(Doc, 'undefined', AccountId);
+set_owner_id(Doc, OwnerId, AccountId) ->
+    case is_valid_owner_id(OwnerId, AccountId) of
+        'true' -> set_owner_id(Doc, OwnerId);
+        'false' ->
+            lager:notice("provided document id -s of account ~s have type not account, user or device", [OwnerId, AccountId]),
+            set_owner_id(Doc, 'undefined')
+    end.
+
+-spec is_valid_owner_id(kz_term:api_ne_binary(), kz_term:ne_binary()) -> boolean().
+is_valid_owner_id('undefined', AccountId) ->
+    %% If owner not defined, then blacklist is owned by account
+    kzd_accounts:is_account(AccountId);
+is_valid_owner_id(AccountId, AccountId) ->
+    kzd_accounts:is_account(AccountId);
+is_valid_owner_id(OwnerId, AccountId) ->
+    kzd_accounts:is_account(AccountId)
+        andalso (kzd_users:is_user(AccountId, OwnerId)
+                 orelse kzd_devices:is_device(AccountId, OwnerId)).
 
 -spec patterns(doc()) -> kz_json:object().
 patterns(Doc) ->
