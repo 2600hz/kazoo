@@ -77,7 +77,7 @@
 
 -export([fetch/2
         ,type/0
-        ,is_device/1
+        ,is_device/1, is_device/2
 
         ,custom_sip_headers_inbound/1, custom_sip_headers_inbound/2, set_custom_sip_headers_inbound/2
         ,custom_sip_headers_outbound/1, custom_sip_headers_outbound/2, set_custom_sip_headers_outbound/2
@@ -906,9 +906,21 @@ fetch(_, _) ->
 -spec type() -> kz_term:ne_binary().
 type() -> <<"device">>.
 
--spec is_device(doc()) -> boolean().
+-spec is_device(kz_term:api_object()) -> boolean().
+is_device('undefined') -> 'false';
 is_device(Doc) ->
     kz_doc:type(Doc) =:= type().
+
+-spec is_device(kz_term:api_binary(), kz_term:api_binary()) -> boolean().
+is_device('undefined', _) -> 'false';
+is_device(_, 'undefined') -> 'false';
+is_device(Account, DeviceId) ->
+    case fetch(Account, DeviceId) of
+        {'ok', JObj} -> is_device(JObj);
+        {'error', _R} ->
+            lager:debug("unable to open device ~s definition in account ~s: ~p", [DeviceId, Account, _R]),
+            'false'
+    end.
 
 -spec custom_sip_headers_inbound(doc()) -> kz_term:api_object().
 custom_sip_headers_inbound(DeviceJObj) ->
