@@ -940,11 +940,17 @@ handle_usurp(Self, Call, JObj) ->
 
 -spec handle_error(pid(), kz_term:ne_binary(), kz_term:pids(), kz_json:object()) -> 'ok'.
 handle_error(Self, CallId, Notify, JObj) ->
-    case kz_json:get_value([<<"Request">>, <<"Call-ID">>], JObj) of
-        CallId ->
-            lager:debug("channel execution error, stopping here"),
+    case {kz_json:get_ne_binary_value([<<"Call-ID">>], JObj, kz_json:get_ne_binary_value([<<"Request">>, <<"Call-ID">>], JObj))
+         ,kz_json:get_ne_binary_value(<<"Channel-Call-State">>, JObj)
+         }
+    of
+        {CallId, <<"DOWN">>} ->
+            lager:debug("channel execution error due to call destroyed, stopping here"),
             handle_channel_destroyed(Self, Notify, JObj);
-        'undefined' -> relay_message(Notify, JObj);
+        {'undefined', <<"DOWN">>} ->
+            lager:debug("call is destroyed, stopping here"),
+            handle_channel_destroyed(Self, Notify, JObj);
+        {'undefined', _} -> relay_message(Notify, JObj);
         _Else -> 'ok'
     end.
 
