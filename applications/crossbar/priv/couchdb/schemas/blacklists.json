@@ -3,6 +3,24 @@
     "_id": "blacklists",
     "description": "Schema for a blacklists",
     "properties": {
+        "action": {
+            "default": "block",
+            "description": "Action required apply to call",
+            "enum": [
+                "block",
+                "skip_human",
+                "ask_human",
+                "pass"
+            ],
+            "support_level": "supported",
+            "type": "string"
+        },
+        "enabled": {
+            "default": true,
+            "description": "Blacklist current status",
+            "support_level": "supported",
+            "type": "boolean"
+        },
         "flags": {
             "description": "Flags set by external applications",
             "items": {
@@ -20,8 +38,34 @@
         },
         "numbers": {
             "default": {},
-            "description": "Map of caller id number to block",
-            "properties": {},
+            "description": "Map of caller id number to block or pass",
+            "properties": {
+                "name": {
+                    "description": "Number text description",
+                    "support_level": "supported",
+                    "type": "string"
+                }
+            },
+            "support_level": "supported",
+            "type": "object"
+        },
+        "owner_id": {
+            "description": "The account, user or device ID that 'owns' the blacklist. If owner_id document is missed, then assumed account_id value",
+            "maxLength": 32,
+            "minLength": 32,
+            "support_level": "supported",
+            "type": "string"
+        },
+        "patterns": {
+            "default": {},
+            "description": "Map of regular expressions that blacklist should execute for caller id number to block or pass",
+            "properties": {
+                "name": {
+                    "description": "Regular expressions text description",
+                    "support_level": "supported",
+                    "type": "string"
+                }
+            },
             "support_level": "supported",
             "type": "object"
         },
