@@ -678,7 +678,7 @@ set_control_info(UUID, #state{node=Node
 handle_dialplan(JObj, #state{call_id=CallId
                             ,is_node_up=INU
                             ,command_q=CmdQ
-                            ,current_app=CurrApp
+                            ,current_cmd_uuid=CurrCmdId
                             }=State) ->
     At = kz_term:to_atom(kz_json:get_value(<<"Insert-At">>, JObj, 'tail')),
     lager:debug("received dialpan cmd ~s to execute at ~s", [kapi_dialplan:application_name(JObj), At]),
@@ -690,8 +690,7 @@ handle_dialplan(JObj, #state{call_id=CallId
               end,
     case INU
         andalso (not queue:is_empty(NewCmdQ))
-        andalso queue:is_empty(CmdQ)
-        andalso CurrApp =:= 'undefined'
+        andalso CurrCmdId =:= 'undefined'
     of
         'true' ->
             self() ! {'forward_queue', CallId},
@@ -1015,7 +1014,8 @@ handle_replaced(JObj, #state{fetch_id=FetchId
                     {'noreply', State}
             end;
         _Else ->
-            lager:info("sofia replaced on our channel but different fetch id~n"),
+            lager:info("sofia replaced on our channel but different fetch id ~s => ~s", [FetchId, _Else]),
+            lager:debug_unsafe("REPLACED ~s => ~s", [FetchId, kz_json:encode(JObj, [pretty])]),
             {'noreply', State}
     end.
 
@@ -1057,6 +1057,7 @@ handle_transferee(JObj, #state{fetch_id=FetchId
                               ,node=_Node
                               ,call_id=CallId
                               }=State) ->
+    lager:debug_unsafe("TRANSFEREE ~s => ~s", [FetchId, kz_json:encode(JObj, [pretty])]),
     case kz_call_event:custom_channel_var(JObj, <<"Fetch-ID">>) of
         FetchId ->
             lager:info("we (~s) have been transferred, terminate immediately", [CallId]),
@@ -1071,6 +1072,7 @@ handle_transferee(JObj, #state{fetch_id=FetchId
 handle_transferor(JObj, #state{fetch_id=FetchId
                               ,call_id=CallId
                               }=State) ->
+    lager:debug_unsafe("TRANSFEROR ~s => ~s", [FetchId, kz_json:encode(JObj, [pretty])]),
     case kz_call_event:custom_channel_var(JObj, <<"Fetch-ID">>) of
         FetchId ->
             lager:info("we (~s) transferred the call, terminate immediately", [CallId]),
