@@ -10,6 +10,7 @@
 -module(kzd_users).
 
 -export([new/0]).
+-export([bl_strategy/2]).
 -export([blacklists_strategy/1, blacklists_strategy/2, set_blacklists_strategy/2]).
 -export([call_forward/1, call_forward/2, set_call_forward/2]).
 -export([call_forward_direct_calls_only/1, call_forward_direct_calls_only/2, set_call_forward_direct_calls_only/2]).
@@ -91,6 +92,15 @@
 -spec new() -> doc().
 new() ->
     kz_doc:set_type(kz_json_schema:default_object(?SCHEMA), type()).
+
+-spec bl_strategy(kz_term:ne_binary(), kz_term:ne_binary()) -> binary().
+bl_strategy(AccountId, UserId) ->
+    case fetch(AccountId, UserId) of
+        {'ok', JObj} -> blacklists_strategy(JObj);
+        {'error', _R} ->
+            lager:debug("failed to open user ~s definition of ~s account, returning default blacklists_strategy 'strict' value", [UserId, AccountId]),
+            <<"strict">>
+    end.
 
 -spec blacklists_strategy(doc()) -> binary().
 blacklists_strategy(Doc) ->
