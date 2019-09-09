@@ -10,7 +10,61 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'blacklist' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'flags': doc.flags || [] }); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'blacklist' || doc.pvt_deleted) return;",
+                "  emit(doc._id, {'id': doc._id, 'name': doc.name, 'flags': doc.flags || [] }); }"
+            ]
+        },
+        "listing_by_number": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'blacklist' || doc.pvt_deleted) return;",
+                "  for (var i in doc.numbers) emit([i, doc.owner], {'id' : doc._id, 'name' : doc.name, 'action' : doc.action, 'owner' : doc.owner, 'enabled' : doc.enabled});}"
+            ],
+            "reduce": [
+                "function(keys, values, rereduce) {",
+                "  if (rereduce) {",
+                "    return values.reduce(function(a, b) {return a.concat(b)}, []);",
+                "  } else {",
+                "    return values;",
+                "  }",
+                "}"
+            ]
+        },
+        "listing_by_owner": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'blacklist' || doc.pvt_deleted) return;",
+                "  for (var i in doc.numbers) emit([doc.owner, 'number', i], {'id' : doc._id, 'list_name' : doc.name, 'action' : doc.action, 'name' : doc.numbers[i].name, 'enabled' : doc.enabled});",
+                "  for (var i in doc.patterns) emit([doc.owner, 'pattern', i], {'id' : doc._id, 'list_name' : doc.name, 'action' : doc.action, 'name' : doc.patterns[i].name, 'enabled' : doc.enabled});",
+                "}"
+            ],
+            "reduce": [
+                "function(keys, values, rereduce) {",
+                "  if (rereduce) {",
+                "    return values.reduce(function(a, b) {return a.concat(b)}, []);",
+                "  } else {",
+                "    return values;",
+                "  }",
+                "}"
+            ]
+        },
+        "listing_by_pattern": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'blacklist' || doc.pvt_deleted) return;",
+                "  for (var i in doc.patterns) emit([i, doc.owner], {'id' : doc._id, 'name' : doc.name, 'action' : doc.action, 'owner' : doc.owner, 'enabled' : doc.enabled});}"
+            ],
+            "reduce": [
+                "function(keys, values, rereduce) {",
+                "  if (rereduce) {",
+                "    return values.reduce(function(a, b) {return a.concat(b)}, []);",
+                "  } else {",
+                "    return values;",
+                "  }",
+                "}"
+            ]
         }
     }
 }
