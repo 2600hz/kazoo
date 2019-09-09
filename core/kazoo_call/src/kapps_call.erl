@@ -1551,7 +1551,7 @@ start_recording(Data0, Call) ->
     Routines = [{fun store_recording/2
                 ,kz_json:get_ne_binary_value(?RECORDING_ID_KEY, Data)
                 }
-                ,{fun set_is_recording/2, 'true'}
+               ,{fun set_is_recording/2, 'true'}
                ],
     exec(Routines, Call).
 
