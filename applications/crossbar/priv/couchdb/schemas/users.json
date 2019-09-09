@@ -3,6 +3,16 @@
     "_id": "users",
     "description": "Schema for a user",
     "properties": {
+        "blacklists_strategy": {
+            "default": "strict",
+            "description": "Determines blacklist action select rules if caller number matched to several blacklists",
+            "enum": [
+                "relaxed",
+                "strict"
+            ],
+            "support_level": "supported",
+            "type": "string"
+        },
         "call_forward": {
             "description": "The device call forward parameters",
             "properties": {
