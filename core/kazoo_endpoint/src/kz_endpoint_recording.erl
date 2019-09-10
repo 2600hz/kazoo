@@ -535,10 +535,8 @@ maybe_record_inbound(FromNetwork, Endpoint, Call, Data) ->
     case kz_json:is_true(<<"enabled">>, Data) of
         'false' -> 'false';
         'true' ->
-            Values = [{<<"origin">>, <<"inbound from ", FromNetwork/binary, " to endpoint">>}
-                     ,{<<"endpoint_id">>, kz_doc:id(Endpoint)}
-                     ],
-            App = kapps_call_recording:record_call_command(kz_json:set_values(Values, Data), Call),
+            Values = [{<<"origin">>, <<"inbound from ", FromNetwork/binary, " to endpoint">>}],
+            App = record_call_command(kz_doc:id(Endpoint), FromNetwork, kz_json:set_values(Values, Data), Call),
             lager:info("setting endpoint ~s to record on answer", [kz_doc:id(Endpoint)]),
             {'true', {[<<"Execute-On-Answer">>, <<"Record-Endpoint">>], App}}
     end.
