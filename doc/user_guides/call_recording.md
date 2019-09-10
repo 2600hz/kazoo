@@ -23,6 +23,70 @@ Configuring recording at the user level starts recording for any calls to/from a
 
 Configuring recording at the device level starts recording for any calls to/from the device.
 
+#### Precedence of settings
+
+Precedence of settings is: Device > User
+
+If a user turns on call recording but a device has explicitly disabled it, the device will not be recorded when the user makes a call with it. If the device's settings are left undefined, the user's settings will be applied.
+
+The account's settings are considered independently of the endpoint's. So a user who has disabled recording, within an account that has enabled recording, will still have calls recorded according to the account's settings.
+
+#### Recording settings matrix
+
+##### Account Settings
+
+When an onnet device makes an internal call:
+
+| Setting                       | Source | Destination | Recording Started                          |
+| Account -> Inbound  -> Onnet  | onnet  | onnet       | yes                                        |
+| Account -> Inbound  -> Offnet | onnet  | onnet       | no                                         |
+| Account -> Outbound -> Onnet  | onnet  | onnet       | yes (if inbound -> onnet isn't configured) |
+| Account -> Outbound -> Offnet | onnet  | onnet       | no                                         |
+
+When an onnet device makes an external call:
+
+| Setting                       | Source | Destination | Recording Started                          |
+| Account -> Inbound  -> Onnet  | onnet  | offnet      | yes                                        |
+| Account -> Inbound  -> Offnet | onnet  | offnet      | no                                         |
+| Account -> Outbound -> Onnet  | onnet  | offnet      | no                                         |
+| Account -> Outbound -> Offnet | onnet  | offnet      | yes (if inbound -> onnet isn't configured) |
+
+When an offnet device makes an internal call:
+
+| Setting                       | Source | Destination | Recording Started                        |
+| Account -> Inbound  -> Onnet  | offnet | onnet       | no                                       |
+| Account -> Inbound  -> Offnet | offnet | onnet       | yes                                      |
+| Account -> Outbound -> Onnet  | offnet | onnet       | yes (if inbound-offnet isn't configured) |
+| Account -> Outbound -> Offnet | offnet | onnet       | no                                       |
+
+##### Endpoint Settings
+
+When an onnet device makes an internal call:
+
+| Setting                        | Source | Destination | Recording Started |
+| Endpoint -> Inbound  -> Onnet  | onnet  | onnet       | yes¹              |
+| Endpoint -> Inbound  -> Offnet | onnet  | onnet       | no                |
+| Endpoint -> Outbound -> Onnet  | onnet  | onnet       | yes               |
+| Endpoint -> Outbound -> Offnet | onnet  | onnet       | no                |
+
+When an onnet device makes an external call:
+
+| Setting                        | Source | Destination | Recording Started |
+| Endpoint -> Inbound  -> Onnet  | onnet  | offnet      | no                |
+| Endpoint -> Inbound  -> Offnet | onnet  | offnet      | no                |
+| Endpoint -> Outbound -> Onnet  | onnet  | offnet      | no                |
+| Endpoint -> Outbound -> Offnet | onnet  | offnet      | yes               |
+
+When an offnet endpoint makes a call to an onnet device:
+
+| Setting                        | Source | Destination | Recording Started |
+| Endpoint -> Inbound  -> Onnet  | offnet | onnet       | no                |
+| Endpoint -> Inbound  -> Offnet | offnet | onnet       | yes               |
+| Endpoint -> Outbound -> Onnet  | offnet | onnet       | no                |
+| Endpoint -> Outbound -> Offnet | offnet | onnet       | no                |
+
+#### Enabling recording
+
 To enable call recording, add `"call_recording":{...}` to the document of choice. For example, if you have a user with user ID of `{USER_ID}`, you can patch the user's document using Crossbar:
 
 ```shell
