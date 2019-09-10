@@ -37,53 +37,59 @@ The account's settings are considered independently of the endpoint's. So a user
 
 When an onnet device makes an internal call:
 
-Setting                       | Source | Destination | Recording Started
-Account -> Inbound  -> Onnet  | onnet  | onnet       | yes
-Account -> Inbound  -> Offnet | onnet  | onnet       | no
-Account -> Outbound -> Onnet  | onnet  | onnet       | yes (if inbound -> onnet isn't configured)
-Account -> Outbound -> Offnet | onnet  | onnet       | no
+| Setting                       | Source | Destination | Recording Started                          |
+| -------                       | ------ | ----------- | -----------------                          |
+| Account -> Inbound  -> Onnet  | onnet  | onnet       | yes                                        |
+| Account -> Inbound  -> Offnet | onnet  | onnet       | no                                         |
+| Account -> Outbound -> Onnet  | onnet  | onnet       | yes (if inbound -> onnet isn't configured) |
+| Account -> Outbound -> Offnet | onnet  | onnet       | no                                         |
 
 When an onnet device makes an external call:
 
-Setting                       | Source | Destination | Recording Started
-Account -> Inbound  -> Onnet  | onnet  | offnet      | yes
-Account -> Inbound  -> Offnet | onnet  | offnet      | no
-Account -> Outbound -> Onnet  | onnet  | offnet      | no
-Account -> Outbound -> Offnet | onnet  | offnet      | yes (if inbound -> onnet isn't configured)
+| Setting                       | Source | Destination | Recording Started                          |
+| -------                       | ------ | ----------- | -----------------                          |
+| Account -> Inbound  -> Onnet  | onnet  | offnet      | yes                                        |
+| Account -> Inbound  -> Offnet | onnet  | offnet      | no                                         |
+| Account -> Outbound -> Onnet  | onnet  | offnet      | no                                         |
+| Account -> Outbound -> Offnet | onnet  | offnet      | yes (if inbound -> onnet isn't configured) |
 
 When an offnet device makes an internal call:
 
-Setting                       | Source | Destination | Recording Started
-Account -> Inbound  -> Onnet  | offnet | onnet       | no
-Account -> Inbound  -> Offnet | offnet | onnet       | yes
-Account -> Outbound -> Onnet  | offnet | onnet       | yes (if inbound-offnet isn't configured)
-Account -> Outbound -> Offnet | offnet | onnet       | no
+| Setting                       | Source | Destination | Recording Started                        |
+| -------                       | ------ | ----------- | -----------------                        |
+| Account -> Inbound  -> Onnet  | offnet | onnet       | no                                       |
+| Account -> Inbound  -> Offnet | offnet | onnet       | yes                                      |
+| Account -> Outbound -> Onnet  | offnet | onnet       | yes (if inbound-offnet isn't configured) |
+| Account -> Outbound -> Offnet | offnet | onnet       | no                                       |
 
 ##### Endpoint Settings
 
 When an onnet device makes an internal call:
 
-Setting                        | Source | Destination | Recording Started
-Endpoint -> Inbound  -> Onnet  | onnet  | onnet       | yes¹
-Endpoint -> Inbound  -> Offnet | onnet  | onnet       | no
-Endpoint -> Outbound -> Onnet  | onnet  | onnet       | yes
-Endpoint -> Outbound -> Offnet | onnet  | onnet       | no
+| Setting                        | Source | Destination | Recording Started |
+| -------                        | ------ | ----------- | ----------------- |
+| Endpoint -> Inbound  -> Onnet  | onnet  | onnet       | yes¹              |
+| Endpoint -> Inbound  -> Offnet | onnet  | onnet       | no                |
+| Endpoint -> Outbound -> Onnet  | onnet  | onnet       | yes               |
+| Endpoint -> Outbound -> Offnet | onnet  | onnet       | no                |
 
 When an onnet device makes an external call:
 
-Setting                        | Source | Destination | Recording Started
-Endpoint -> Inbound  -> Onnet  | onnet  | offnet      | no
-Endpoint -> Inbound  -> Offnet | onnet  | offnet      | no
-Endpoint -> Outbound -> Onnet  | onnet  | offnet      | no
-Endpoint -> Outbound -> Offnet | onnet  | offnet      | yes
+| Setting                        | Source | Destination | Recording Started |
+| -------                        | ------ | ----------- | ----------------- |
+| Endpoint -> Inbound  -> Onnet  | onnet  | offnet      | no                |
+| Endpoint -> Inbound  -> Offnet | onnet  | offnet      | no                |
+| Endpoint -> Outbound -> Onnet  | onnet  | offnet      | no                |
+| Endpoint -> Outbound -> Offnet | onnet  | offnet      | yes               |
 
 When an offnet endpoint makes a call to an onnet device:
 
-Setting                        | Source | Destination | Recording Started
-Endpoint -> Inbound  -> Onnet  | offnet | onnet       | no
-Endpoint -> Inbound  -> Offnet | offnet | onnet       | yes
-Endpoint -> Outbound -> Onnet  | offnet | onnet       | no
-Endpoint -> Outbound -> Offnet | offnet | onnet       | no
+| Setting                        | Source | Destination | Recording Started |
+| -------                        | ------ | ----------- | ----------------- |
+| Endpoint -> Inbound  -> Onnet  | offnet | onnet       | no                |
+| Endpoint -> Inbound  -> Offnet | offnet | onnet       | yes               |
+| Endpoint -> Outbound -> Onnet  | offnet | onnet       | no                |
+| Endpoint -> Outbound -> Offnet | offnet | onnet       | no                |
 
 #### Enabling recording
 
@@ -107,9 +113,9 @@ Each of those properties can then define what to do when the call comes from the
 
 Effectively this gives you a matrix on the endpoint to control how call recording is initiated:
 
- | `offnet` | `onnet` |
-`inbound` | [1] | [2]
-`outbound` | [3] | [4]
+|            | `offnet` | `onnet` |
+| `inbound`  | [1]      | [2]     |
+| `outbound` | [3]      | [4]     |
 
 1. `inbound` + `offnet`: Calls originating from offnet (upstream carriers typically) to the endpoint
 2. `inbound` + `onnet`: Calls originating from onnet (typically another endpoint in the account) to the endpoint
