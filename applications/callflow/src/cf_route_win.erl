@@ -21,15 +21,6 @@
              )
        ).
 
--define(ACCOUNT_INBOUND_RECORDING(A), [<<"call_recording">>, <<"account">>, <<"inbound">>, A]).
--define(ACCOUNT_OUTBOUND_RECORDING(A), [<<"call_recording">>, <<"account">>, <<"outbound">>, A]).
--define(ENDPOINT_OUTBOUND_RECORDING(A), [<<"call_recording">>, <<"endpoint">>, <<"outbound">>, A]).
--define(ENDPOINT_INBOUND_RECORDING(A), [<<"call_recording">>, <<"endpoint">>, <<"inbound">>, A]).
-
--define(ACCOUNT_INBOUND_RECORDING_LABEL(A), <<"inbound from ", A/binary, " to account">>).
--define(ACCOUNT_OUTBOUND_RECORDING_LABEL(A), <<"outbound to ", A/binary, " from account">>).
--define(ENDPOINT_OUTBOUND_RECORDING_LABEL(A), <<"outbound to ", A/binary, " from endpoint">>).
-
 -spec execute_callflow(kz_json:object(), kapps_call:call()) ->
                               kapps_call:call().
 execute_callflow(JObj, Call) ->
@@ -300,113 +291,79 @@ maybe_start_endpoint_metaflow(Call, EndpointId) ->
 
 -spec maybe_start_recording(kapps_call:call()) -> kapps_call:call().
 maybe_start_recording(Call) ->
-    From = kapps_call:inception_type(Call),
-    To = case kapps_call:kvs_fetch('cf_no_match', Call) of
-             'true' -> <<"offnet">>;
-             _ -> <<"onnet">>
-         end,
-    Routines = [{fun maybe_start_account_recording/3, From, To}
-               ,{fun maybe_start_endpoint_recording/3, From, To}
+    FromNetwork = kapps_call:inception_type(Call), % onnet or offnet
+    ToNetwork = case kapps_call:kvs_fetch('cf_no_match', Call) of
+                    'true' -> <<"offnet">>;
+                    _ -> <<"onnet">>
+                end,
+    Routines = [{fun maybe_start_account_recording/3, FromNetwork, ToNetwork}
+               ,{fun maybe_start_endpoint_recording/3, FromNetwork, ToNetwork}
                ],
     kapps_call:exec(Routines, Call).
 
 -spec maybe_start_account_recording(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) -> kapps_call:call().
-maybe_start_account_recording(From, To, Call) ->
+maybe_start_account_recording(FromNetwork, ToNetwork, Call) ->
     {'ok', Endpoint} = kz_endpoint:get(kapps_call:account_id(Call), Call),
-    case maybe_start_call_recording(?ACCOUNT_INBOUND_RECORDING(From)
-                                   ,?ACCOUNT_INBOUND_RECORDING_LABEL(From)
-                                   ,Endpoint
-                                   ,Call
-                                   )
-    of
-        Call ->
-            case maybe_start_call_recording(?ACCOUNT_OUTBOUND_RECORDING(To)
-                                           ,?ACCOUNT_OUTBOUND_RECORDING_LABEL(To)
-                                           ,Endpoint
-                                           ,Call
-                                           )
-            of
-                Call -> Call;
-                NewCall -> kapps_call:set_is_recording('true', NewCall)
-            end;
-        NewCall -> kapps_call:set_is_recording('true', NewCall)
-    end.
 
--spec maybe_start_endpoint_recording(kz_term:ne_binary(), ne_binary, kapps_call:call()) -> kapps_call:call().
-maybe_start_endpoint_recording(<<"onnet">>, To, Call) ->
-    DefaultEndpointId = kapps_call:authorizing_id(Call),
-    EndpointId = kapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, DefaultEndpointId, Call),
-    IsCallForward = kapps_call:is_call_forward(Call),
-    maybe_start_onnet_endpoint_recording(EndpointId, To, IsCallForward, Call);
-maybe_start_endpoint_recording(<<"offnet">>, To, Call) ->
-    DefaultEndpointId = kapps_call:authorizing_id(Call),
-    EndpointId = kapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, DefaultEndpointId, Call),
-    IsCallForward = kapps_call:is_call_forward(Call),
-    maybe_start_offnet_endpoint_recording(EndpointId, To, IsCallForward, Call).
-
--spec maybe_start_onnet_endpoint_recording(kz_term:api_binary(), kz_term:ne_binary(), boolean(), kapps_call:call()) -> kapps_call:call().
-maybe_start_onnet_endpoint_recording('undefined', _To, _IsCallForward, Call) -> Call;
-maybe_start_onnet_endpoint_recording(EndpointId, To, 'false', Call) ->
-    case kz_endpoint:get(EndpointId, Call) of
-        {'ok', Endpoint} ->
-            maybe_start_call_recording(?ENDPOINT_OUTBOUND_RECORDING(To)
-                                      ,?ENDPOINT_OUTBOUND_RECORDING_LABEL(To)
-                                      ,Endpoint
-                                      ,Call
-                                      );
-        _ -> Call
-    end;
-maybe_start_onnet_endpoint_recording(EndpointId, _To, 'true', Call) ->
-    Inception = kapps_call:custom_channel_var(<<"Call-Forward-From">>, Call),
-    case kz_endpoint:get(EndpointId, Call) of
-        {'ok', Endpoint} ->
-            Data = kz_json:get_json_value(?ENDPOINT_INBOUND_RECORDING(Inception), Endpoint),
-            case Data /= 'undefined'
-                andalso kz_json:is_true(<<"enabled">>, Data)
-            of
-                'false' -> Call;
-                'true' ->
-                    App = kz_endpoint_recording:record_call_command(kz_doc:id(Endpoint), Inception, Data, Call),
-                    NewActions = kz_json:set_value([<<"Execute-On-Answer">>, <<"Record-Endpoint">>], App, kz_json:new()),
-                    kapps_call:kvs_store('outbound_actions', NewActions, Call)
-            end;
-        _ -> Call
-    end.
-
--spec maybe_start_offnet_endpoint_recording(kz_term:api_binary(), kz_term:ne_binary(), boolean(), kapps_call:call()) -> kapps_call:call().
-maybe_start_offnet_endpoint_recording('undefined', _To, _IsCallForward, Call) -> Call;
-maybe_start_offnet_endpoint_recording(_EndpointId, _To, 'false', Call) -> Call;
-maybe_start_offnet_endpoint_recording(EndpointId, _To, 'true', Call) ->
-    Inception = kapps_call:custom_channel_var(<<"Call-Forward-From">>, Call),
-    case kz_endpoint:get(EndpointId, Call) of
-        {'ok', Endpoint} ->
-            Data = kz_json:get_json_value(?ENDPOINT_INBOUND_RECORDING(Inception), Endpoint),
-            case Data /= 'undefined'
-                andalso kz_json:is_true(<<"enabled">>, Data)
-            of
-                'false' -> Call;
-                'true' ->
-                    App = kz_endpoint_recording:record_call_command(kz_doc:id(Endpoint), Inception, Data, Call),
-                    NewActions = kz_json:set_value([<<"Execute-On-Answer">>, <<"Record-Endpoint">>], App, kz_json:new()),
-                    kapps_call:kvs_store('outbound_actions', NewActions, Call)
-            end;
-        _ -> Call
-    end.
-
--spec maybe_start_call_recording(kz_term:ne_binaries(), kz_term:ne_binary(), kz_json:object(), kapps_call:call()) -> kapps_call:call().
-maybe_start_call_recording(Key, Label, Endpoint, Call) ->
-    maybe_start_call_recording(kz_json:get_json_value(Key, Endpoint), Label, Call).
-
--spec maybe_start_call_recording(kz_term:api_object(), kz_term:ne_binary(), kapps_call:call()) -> kapps_call:call().
-maybe_start_call_recording('undefined', _, Call) ->
-    Call;
-maybe_start_call_recording(Data, Label, Call) ->
-    case kz_json:is_false(<<"enabled">>, Data) of
-        'true' -> Call;
+    case kz_account_recording:maybe_record_inbound(FromNetwork, Endpoint, Call) of
+        {'true', NewCall} -> NewCall;
         'false' ->
-            lager:info("starting call recording by configuration"),
-            Call1 = kapps_call:kvs_store('recording_follow_transfer', 'false', Call),
-            kapps_call:start_recording(kz_json:set_value(<<"origin">>, Label, Data), Call1)
+            case kz_account_recording:maybe_record_outbound(ToNetwork, Endpoint, Call) of
+                'false' -> Call;
+                {'true', NewCall} -> NewCall
+            end
+    end.
+
+-spec maybe_start_endpoint_recording(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) ->
+                                            kapps_call:call().
+maybe_start_endpoint_recording(<<"onnet">>, ToNetwork, Call) ->
+    EndpointId = get_endpoint_id(Call),
+
+    IsCallForward = kapps_call:is_call_forward(Call),
+    case maybe_start_onnet_endpoint_recording(EndpointId, ToNetwork, IsCallForward, Call) of
+        'false' -> Call;
+        {'true', NewCall} -> NewCall
+    end;
+maybe_start_endpoint_recording(<<"offnet">>, ToNetwork, Call) ->
+    EndpointId = get_endpoint_id(Call),
+
+    IsCallForward = kapps_call:is_call_forward(Call),
+    case maybe_start_offnet_endpoint_recording(EndpointId, ToNetwork, IsCallForward, Call) of
+        'false' -> Call;
+        {'true', NewCall} -> NewCall
+    end.
+
+-spec maybe_start_onnet_endpoint_recording(kz_term:api_binary(), kz_term:ne_binary(), boolean(), kapps_call:call()) ->
+                                                  {'true', kapps_call:call()} | 'false'.
+maybe_start_onnet_endpoint_recording('undefined', _ToNetwork, _IsCallForward, _Call) -> 'false';
+maybe_start_onnet_endpoint_recording(EndpointId, ToNetwork, 'false', Call) ->
+    case kz_endpoint:get(EndpointId, Call) of
+        {'ok', Endpoint} ->
+            kz_endpoint_recording:maybe_record_outbound(ToNetwork, Endpoint, Call);
+        _ -> 'false'
+    end;
+maybe_start_onnet_endpoint_recording(EndpointId, _ToNetwork, 'true', Call) ->
+    maybe_start_call_forwarded_recording(EndpointId, Call, kz_endpoint:get(EndpointId, Call)).
+
+%% @doc if the call isn't call-fowarded, and the endpoint is known, kz_endpoint will setup recording
+%% on answer
+-spec maybe_start_offnet_endpoint_recording(kz_term:api_binary(), kz_term:ne_binary(), boolean(), kapps_call:call()) ->
+                                                   {'true', kapps_call:call()} | 'false'.
+maybe_start_offnet_endpoint_recording('undefined', _ToNetwork, _IsCallForward, _Call) -> 'false';
+maybe_start_offnet_endpoint_recording(_EndpointId, _ToNetwork, 'false', _Call) -> 'false';
+maybe_start_offnet_endpoint_recording(EndpointId, _ToNetwork, 'true', Call) ->
+    maybe_start_call_forwarded_recording(EndpointId, Call, kz_endpoint:get(EndpointId, Call)).
+
+-spec maybe_start_call_forwarded_recording(kz_term:ne_binary(), kapps_call:call(), {'ok', kz_json:object()} | {'error', any()}) ->
+                                                  {'true', kapps_call:call()} | 'false'.
+maybe_start_call_forwarded_recording(_EndpointId, _Call, {'error', _E}) -> 'false';
+maybe_start_call_forwarded_recording(_EndpointId, Call, {'ok', Endpoint}) ->
+    FromNetwork = kapps_call:custom_channel_var(<<"Call-Forward-From">>, Call),
+    case kz_endpoint_recording:maybe_record_inbound(FromNetwork, Endpoint, Call) of
+        'false' -> 'false';
+        {'true', {ActionKey, ActionApp}} ->
+            NewActions = kz_json:set_value(ActionKey, ActionApp, kz_json:new()),
+            {'true', kapps_call:kvs_store('outbound_actions', NewActions, Call)}
     end.
 
 -spec get_incoming_security(kapps_call:call()) -> kz_term:proplist().
