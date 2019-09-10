@@ -72,7 +72,7 @@ When an onnet device makes an internal call:
 When an onnet device makes an external call:
 
 | Setting                        | Source | Destination | Recording Started |
-| Endpoint -> Inbound  -> Onnet  | onnet  | offnet      | yes¹              |
+| Endpoint -> Inbound  -> Onnet  | onnet  | offnet      | no                |
 | Endpoint -> Inbound  -> Offnet | onnet  | offnet      | no                |
 | Endpoint -> Outbound -> Onnet  | onnet  | offnet      | no                |
 | Endpoint -> Outbound -> Offnet | onnet  | offnet      | yes               |
@@ -81,11 +81,9 @@ When an offnet endpoint makes a call to an onnet device:
 
 | Setting                        | Source | Destination | Recording Started |
 | Endpoint -> Inbound  -> Onnet  | offnet | onnet       | no                |
-| Endpoint -> Inbound  -> Offnet | offnet | onnet       | yes¹              |
+| Endpoint -> Inbound  -> Offnet | offnet | onnet       | yes               |
 | Endpoint -> Outbound -> Onnet  | offnet | onnet       | no                |
 | Endpoint -> Outbound -> Offnet | offnet | onnet       | no                |
-
-[1] Engineering: see `kz_endpoint:maybe_record_endpoint/1`. Most settings are decided by `cf_route_win`
 
 #### Enabling recording
 

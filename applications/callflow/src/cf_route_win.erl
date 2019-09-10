@@ -13,12 +13,6 @@
 
 -export([execute_callflow/2]).
 
--ifdef(TEST).
--export([maybe_start_account_recording/3
-        ,maybe_start_endpoint_recording/3
-        ]).
--endif.
-
 -include("callflow.hrl").
 
 -define(JSON(L), kz_json:from_list(L)).
@@ -314,7 +308,7 @@ maybe_start_endpoint_recording(<<"offnet">>, ToNetwork, Call) ->
 
 -spec maybe_start_onnet_endpoint_recording(kz_term:api_binary(), kz_term:ne_binary(), boolean(), kapps_call:call()) ->
                                                   {'true', kapps_call:call()} | 'false'.
-maybe_start_onnet_endpoint_recording('undefined', _ToNetwork, _IsCallForward, Call) -> 'false';
+maybe_start_onnet_endpoint_recording('undefined', _ToNetwork, _IsCallForward, _Call) -> 'false';
 maybe_start_onnet_endpoint_recording(EndpointId, ToNetwork, 'false', Call) ->
     case kz_endpoint:get(EndpointId, Call) of
         {'ok', Endpoint} ->
@@ -328,8 +322,8 @@ maybe_start_onnet_endpoint_recording(EndpointId, _ToNetwork, 'true', Call) ->
 %% on answer
 -spec maybe_start_offnet_endpoint_recording(kz_term:api_binary(), kz_term:ne_binary(), boolean(), kapps_call:call()) ->
                                                    {'true', kapps_call:call()} | 'false'.
-maybe_start_offnet_endpoint_recording('undefined', _ToNetwork, _IsCallForward, Call) -> 'false';
-maybe_start_offnet_endpoint_recording(_EndpointId, _ToNetwork, 'false', Call) -> 'false';
+maybe_start_offnet_endpoint_recording('undefined', _ToNetwork, _IsCallForward, _Call) -> 'false';
+maybe_start_offnet_endpoint_recording(_EndpointId, _ToNetwork, 'false', _Call) -> 'false';
 maybe_start_offnet_endpoint_recording(EndpointId, _ToNetwork, 'true', Call) ->
     maybe_start_call_forwarded_recording(EndpointId, Call, kz_endpoint:get(EndpointId, Call)).
 
