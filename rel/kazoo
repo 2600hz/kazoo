@@ -552,8 +552,7 @@ case "$1" in
             $NAME_ARG \
             -setcookie $COOKIE \
             -args_file "$VM_ARGS_FILE" \
-            -proto_dist inet_tcp amqp \
-            -start_epmd false
+            -proto_dist kz amqp
 
         # Dump environment info for logging purposes
         echo "Exec: $@" -- ${1+$ARGS}
