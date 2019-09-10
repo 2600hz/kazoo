@@ -658,7 +658,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef
         {{<<"call_event">>, <<"usurp_control">>}, CallId} ->
             handle_usurp(Self, Call, JObj);
         {{<<"error">>, _}, _} ->
-            handle_error(Self, CallId, Notify, JObj);
+            handle_error(CallId, Notify, JObj);
         {_Evt, CallId} ->
             lager:debug_unsafe("relaying ~p to ~p", [_Evt, Notify]),
             relay_message(Notify, JObj);
@@ -938,19 +938,11 @@ handle_usurp(Self, Call, JObj) ->
         'true'  -> 'ok'
     end.
 
--spec handle_error(pid(), kz_term:ne_binary(), kz_term:pids(), kz_json:object()) -> 'ok'.
-handle_error(Self, CallId, Notify, JObj) ->
-    case {kz_json:get_ne_binary_value([<<"Call-ID">>], JObj, kz_json:get_ne_binary_value([<<"Request">>, <<"Call-ID">>], JObj))
-         ,kz_json:get_ne_binary_value(<<"Channel-Call-State">>, JObj)
-         }
-    of
-        {CallId, <<"DOWN">>} ->
-            lager:debug("channel execution error due to call destroyed, stopping here"),
-            handle_channel_destroyed(Self, Notify, JObj);
-        {'undefined', <<"DOWN">>} ->
-            lager:debug("call is destroyed, stopping here"),
-            handle_channel_destroyed(Self, Notify, JObj);
-        {'undefined', _} -> relay_message(Notify, JObj);
+-spec handle_error(kz_term:ne_binary(), kz_term:pids(), kz_json:object()) -> 'ok'.
+handle_error(CallId, Notify, JObj) ->
+    case kz_json:get_ne_binary_value(<<"Call-ID">>, JObj, kz_json:get_ne_binary_value([<<"Request">>, <<"Call-ID">>], JObj)) of
+        CallId -> relay_message(Notify, JObj);
+        'undefined' -> relay_message(Notify, JObj);
         _Else -> 'ok'
     end.
 
