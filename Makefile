@@ -250,7 +250,7 @@ app_applications:
 
 code_checks:
 	@if [ -n "$(CHANGED)" ]; then $(ROOT)/scripts/code_checks.bash $(CHANGED) ; else echo "no code changes for code checking" ; fi
-	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
+	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/no_raw_json.escript $(CHANGED)
 	@$(ROOT)/scripts/check-spelling.bash
 	@$(ROOT)/scripts/kz_diaspora.bash
 	@$(ROOT)/scripts/edocify.escript

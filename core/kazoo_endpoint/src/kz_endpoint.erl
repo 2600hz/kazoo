@@ -905,9 +905,7 @@ maybe_start_metaflows(Call, Endpoints, _CallId) ->
 
 -spec maybe_start_metaflow(kapps_call:call(), kz_json:object()) -> 'ok'.
 maybe_start_metaflow(Call, Endpoint) ->
-    case not is_sms(Call)
-        andalso kz_json:get_first_defined([<<"metaflows">>, <<"Metaflows">>], Endpoint)
-    of
+    case kz_json:get_first_defined([<<"metaflows">>, <<"Metaflows">>], Endpoint) of
         'false' -> 'ok';
         'undefined' -> 'ok';
         ?EMPTY_JSON_OBJECT -> 'ok';
