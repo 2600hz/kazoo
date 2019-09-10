@@ -105,25 +105,6 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 ```
 
-### Call Recording Payload
-
-The `call_recording` payload defines properties to be applied on `inbound` to, `outbound` from, or `any` calls involving the endpoint.
-
-Each of those properties can then define what to do when the call comes from the `offnet`, `onnet`, or `any` network.
-
-Effectively this gives you a matrix on the endpoint to control how call recording is initiated:
-
-|            | `offnet` | `onnet` |
-| `inbound`  | [1]      | [2]     |
-| `outbound` | [3]      | [4]     |
-
-1. `inbound` + `offnet`: Calls originating from offnet (upstream carriers typically) to the endpoint
-2. `inbound` + `onnet`: Calls originating from onnet (typically another endpoint in the account) to the endpoint
-3. `outbound` + `offnet`: Calls originating from the endpoint destined for the upstream carriers
-4. `outbound` + `onnet`: Calls originating from the endpoint destined for another endpoint on the account
-
-Using `any` for either setting will invoke recording for both options of that setting.
-
 #### Concrete example
 
 Sales wants calls to and from customers to be recorded but not calls within the account. The sales users would have their `call_recording` settings set as:
