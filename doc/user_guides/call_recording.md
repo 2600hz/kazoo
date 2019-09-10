@@ -37,53 +37,53 @@ The account's settings are considered independently of the endpoint's. So a user
 
 When an onnet device makes an internal call:
 
-| Setting                   | Source | Destination | Recording Started                        |
-| Account->Inbound->Onnet   | onnet  | onnet       | yes                                      |
-| Account->Inbound->Offnet  | onnet  | onnet       | no                                       |
-| Account->Outbound->Onnet  | onnet  | onnet       | yes (if inbound->onnet isn't configured) |
-| Account->Outbound->Offnet | onnet  | onnet       | no                                       |
+| Setting                       | Source | Destination | Recording Started                          |
+| Account -> Inbound ->  Onnet  | onnet  | onnet       | yes                                        |
+| Account -> Inbound ->  Offnet | onnet  | onnet       | no                                         |
+| Account -> Outbound -> Onnet  | onnet  | onnet       | yes (if inbound -> onnet isn't configured) |
+| Account -> Outbound -> Offnet | onnet  | onnet       | no                                         |
 
 When an onnet device makes an external call:
 
-| Setting                   | Source | Destination | Recording Started                        |
-| Account->Inbound->Onnet   | onnet  | offnet      | yes                                      |
-| Account->Inbound->Offnet  | onnet  | offnet      | no                                       |
-| Account->Outbound->Onnet  | onnet  | offnet      | no                                       |
-| Account->Outbound->Offnet | onnet  | offnet      | yes (if inbound->onnet isn't configured) |
+| Setting                       | Source | Destination | Recording Started                          |
+| Account -> Inbound ->  Onnet  | onnet  | offnet      | yes                                        |
+| Account -> Inbound ->  Offnet | onnet  | offnet      | no                                         |
+| Account -> Outbound -> Onnet  | onnet  | offnet      | no                                         |
+| Account -> Outbound -> Offnet | onnet  | offnet      | yes (if inbound -> onnet isn't configured) |
 
 When an offnet device makes an internal call:
 
-| Setting                   | Source | Destination | Recording Started                        |
-| Account->Inbound->Onnet   | offnet | onnet       | no                                       |
-| Account->Inbound->Offnet  | offnet | onnet       | yes                                      |
-| Account->Outbound->Onnet  | offnet | onnet       | yes (if inbound-offnet isn't configured) |
-| Account->Outbound->Offnet | offnet | onnet       | no                                       |
+| Setting                       | Source | Destination | Recording Started                        |
+| Account -> Inbound ->  Onnet  | offnet | onnet       | no                                       |
+| Account -> Inbound ->  Offnet | offnet | onnet       | yes                                      |
+| Account -> Outbound -> Onnet  | offnet | onnet       | yes (if inbound-offnet isn't configured) |
+| Account -> Outbound -> Offnet | offnet | onnet       | no                                       |
 
 ##### Endpoint Settings
 
 When an onnet device makes an internal call:
 
-| Setting                    | Source | Destination | Recording Started |
-| Endpoint->Inbound->Onnet   | onnet  | onnet       | yes¹              |
-| Endpoint->Outbound->Onnet  | onnet  | onnet       | yes               |
-| Endpoint->Inbound->Offnet  | onnet  | onnet       | no                |
-| Endpoint->Outbound->Offnet | onnet  | onnet       | yes               |
+| Setting                        | Source | Destination | Recording Started |
+| Endpoint -> Inbound  -> Onnet  | onnet  | onnet       | yes¹              |
+| Endpoint -> Outbound -> Onnet  | onnet  | onnet       | yes               |
+| Endpoint -> Inbound  -> Offnet | onnet  | onnet       | no                |
+| Endpoint -> Outbound -> Offnet | onnet  | onnet       | no                |
 
 When an onnet device makes an external call:
 
-| Setting                    | Source | Destination | Recording Started |
-| Endpoint->Inbound->Onnet   | onnet  | offnet      | yes¹              |
-| Endpoint->Outbound->Onnet  | onnet  | offnet      | no                |
-| Endpoint->Inbound->Offnet  | onnet  | offnet      | no                |
-| Endpoint->Outbound->Offnet | onnet  | offnet      | yes               |
+| Setting                        | Source | Destination | Recording Started |
+| Endpoint -> Inbound  -> Onnet  | onnet  | offnet      | yes¹              |
+| Endpoint -> Outbound -> Onnet  | onnet  | offnet      | no                |
+| Endpoint -> Inbound  -> Offnet | onnet  | offnet      | no                |
+| Endpoint -> Outbound -> Offnet | onnet  | offnet      | yes               |
 
 When an offnet endpoint makes a call to an onnet device:
 
-| Setting                    | Source | Destination | Recording Started |
-| Endpoint->Inbound->Onnet   | offnet | onnet       | no                |
-| Endpoint->Outbound->Onnet  | offnet | onnet       | no                |
-| Endpoint->Inbound->Offnet  | offnet | onnet       | yes¹              |
-| Endpoint->Outbound->Offnet | offnet | onnet       | no                |
+| Setting                        | Source | Destination | Recording Started |
+| Endpoint -> Inbound  -> Onnet  | offnet | onnet       | no                |
+| Endpoint -> Outbound -> Onnet  | offnet | onnet       | no                |
+| Endpoint -> Inbound  -> Offnet | offnet | onnet       | yes¹              |
+| Endpoint -> Outbound -> Offnet | offnet | onnet       | no                |
 
 [1] Engineering: see `kz_endpoint:maybe_record_endpoint/1`. Most settings are decided by `cf_route_win`
 
