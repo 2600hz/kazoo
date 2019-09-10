@@ -225,7 +225,7 @@ process_event_for_bridge(State, JObj, {<<"error">>, _, <<"bridge">>}) ->
             {'error', State}
     end;
 process_event_for_bridge(_State, _JObj, {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"answer">>}) ->
-    %% support one legged bridges such as on-net conference
+    %% support one legged bridges such as onnet conference
     lager:info("channel was answered"),
     'ignore';
 process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg}=State

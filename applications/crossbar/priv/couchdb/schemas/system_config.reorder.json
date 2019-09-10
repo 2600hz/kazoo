@@ -40,7 +40,7 @@
                     "type": "string"
                 },
                 "transfer_target": {
-                    "description": "on-net phone number to transfer unconfigured numbers to",
+                    "description": "onnet phone number to transfer unconfigured numbers to",
                     "type": "string"
                 }
             },
@@ -78,7 +78,7 @@
                     "type": "string"
                 },
                 "transfer_target": {
-                    "description": "on-net phone number to transfer unknown numbers to",
+                    "description": "onnet phone number to transfer unknown numbers to",
                     "type": "string"
                 }
             },

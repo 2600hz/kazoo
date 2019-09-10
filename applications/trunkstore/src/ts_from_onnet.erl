@@ -51,7 +51,7 @@ maybe_onnet_data(State) ->
     ToDID = knm_converters:normalize(ToUser, AccountId),
     FromUser = kz_json:get_ne_binary_value(<<"Caller-ID-Name">>, RouteReq),
 
-    lager:info("on-net request from ~s(~s) to ~s", [FromUser, AccountId, ToDID]),
+    lager:info("onnet request from ~s(~s) to ~s", [FromUser, AccountId, ToDID]),
     Options =
         case ts_util:lookup_did(FromUser, AccountId) of
             {'ok', Opts} -> Opts;

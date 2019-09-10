@@ -411,7 +411,7 @@ account_ccvs_from_ip_auth(Doc) ->
               [{<<"Account-ID">>, AccountId}
               ,{<<"Owner-ID">>, OwnerId}
               ,{<<"Authorizing-ID">>, kz_doc:id(Doc)}
-              ,{<<"Inception">>, <<"on-net">>}
+              ,{<<"Inception">>, <<"onnet">>}
               ,{<<"Authorizing-Type">>, AuthType}
               ])
     end.
