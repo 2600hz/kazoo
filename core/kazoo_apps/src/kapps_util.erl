@@ -499,14 +499,9 @@ cache(Key, AccountDbs) ->
 %%------------------------------------------------------------------------------
 -spec get_call_termination_reason(kz_json:object()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.
 get_call_termination_reason(JObj) ->
-    Cause = case kz_json:get_ne_value(<<"Application-Response">>, JObj) of
-                'undefined' ->
-                    kz_json:get_ne_value(<<"Hangup-Cause">>, JObj, <<"UNSPECIFIED">>);
-                Response ->
-                    Response
-            end,
-    Code = kz_json:get_value(<<"Hangup-Code">>, JObj, <<"sip:600">>),
-    {Cause, Code}.
+    {kz_call_event:application_response(JObj, kz_call_event:hangup_cause(JObj, <<"UNSPECIFIED">>))
+    ,kz_call_event:hangup_code(JObj, <<"sip:600">>)
+    }.
 
 %%------------------------------------------------------------------------------
 %% @doc Reads all view files from given `Folder' in the given `App'.
