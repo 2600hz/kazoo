@@ -55,6 +55,8 @@
 -type hour() :: 0..23.
 -type minute() :: 0..59.
 -type second() :: 0..59.
+-type millisecond() :: 0..999.
+-type microsecond() :: 0..999999.
 -type daynum() :: 1..7.
 -type weeknum() :: 1..53.
 -type date() :: calendar:date(). %%{year(), month(), day()}.
@@ -108,6 +110,10 @@ unix_seconds_to_gregorian_seconds(UnixSeconds) ->
 -spec unix_timestamp_to_gregorian_seconds(integer() | string() | binary()) -> integer().
 unix_timestamp_to_gregorian_seconds(UnixTimestamp) ->
     ?UNIX_EPOCH_IN_GREGORIAN + (kz_term:to_integer(UnixTimestamp) div ?MILLISECONDS_IN_SECOND).
+
+-spec timestamp_to_gregorian_seconds(erlang:timestamp()) -> pos_integer().
+timestamp_to_gregorian_seconds({MegaSecs, Secs, _MicroSecs}) ->
+    unix_seconds_to_gregorian_seconds(MegaSecs * ?MICROSECONDS_IN_SECOND + Secs).
 
 -spec to_gregorian_seconds(datetime(), kz_term:ne_binary()) -> gregorian_seconds().
 -ifdef(TEST).
@@ -209,31 +215,33 @@ iso8601(Timestamp) ->
     iso8601(Timestamp, <<"UTC">>).
 
 %%------------------------------------------------------------------------------
-%% @doc Format current UTC TimeStamp according to ISO 8601 including fractional seconds.
+%% @doc Format current TimeStamp according to ISO 8601 including fractional (milli) seconds.
 %% @end
 %%------------------------------------------------------------------------------
 -spec iso8601_ms() -> kz_term:ne_binary().
 iso8601_ms() ->
-    add_millisecs_to_iso8601(iso8601(current_tstamp())).
+    iso8601_ms(erlang:timestamp()).
 
 %%------------------------------------------------------------------------------
-%% @doc Format date or datetime or Gregorian timestamp (all in UTC)
-%% according to ISO 8601 including fractional seconds.
+%% @doc Format given TimeStamp according to ISO 8601 including fractional (milli) seconds.
 %%
 %% It assumes the input is in UTC.
 %% @throws {error, invalid_offset | unknown_tz}
 %% @end
 %%------------------------------------------------------------------------------
--spec iso8601_ms(calendar:datetime() | date() | gregorian_seconds()) -> kz_term:ne_binary().
-iso8601_ms(DateOrDatetimeOrTimestamp) ->
-    add_millisecs_to_iso8601(iso8601(DateOrDatetimeOrTimestamp)).
+-spec iso8601_ms(erlang:timestamp()) -> kz_term:ne_binary().
+iso8601_ms({_MegaSecs, _Secs, MicroSecs} = TS) ->
+    add_millisecs_to_iso8601(iso8601(timestamp_to_gregorian_seconds(TS)), MicroSecs).
 
--spec add_millisecs_to_iso8601(kz_term:ne_binary()) -> kz_term:ne_binary().
-add_millisecs_to_iso8601(ISO8601) ->
-    {_, _, Micro} = erlang:timestamp(),
-    Millis = trunc(Micro / 1000),
-    MillisPadded = kz_binary:pad_left(kz_term:to_binary(Millis), 3, <<"0">>),
-    binary:replace(ISO8601, <<"Z">>, <<".", MillisPadded/binary, "Z">>).
+%%------------------------------------------------------------------------------
+%% @doc It assumes `ISO8601' parameter is in UTC.
+%% @end
+%%------------------------------------------------------------------------------
+-spec add_millisecs_to_iso8601(kz_term:ne_binary(), microsecond()) -> kz_term:ne_binary().
+add_millisecs_to_iso8601(ISO8601, MicroSecs) ->
+    MilliSecs = microseconds_to_milliseconds(MicroSecs),
+    MilliSecsPadded = kz_binary:pad_left(kz_term:to_binary(MilliSecs), 3, <<"0">>),
+    binary:replace(ISO8601, <<"Z">>, <<".", MilliSecsPadded/binary, "Z">>).
 
 %%------------------------------------------------------------------------------
 %% @doc Format Gregorian timestamp or datetime (all un UTC) to the local Timezone
@@ -554,6 +562,9 @@ decr_timeout_elapsed(Timeout, Elapsed) ->
         'true' -> 0;
         'false' -> Diff
     end.
+
+-spec microseconds_to_milliseconds(float() | integer() | string() | binary()) -> millisecond().
+microseconds_to_milliseconds(Microseconds) -> kz_term:to_integer(Microseconds) div ?MILLISECONDS_IN_SECOND.
 
 -spec microseconds_to_seconds(float() | integer() | string() | binary()) -> non_neg_integer().
 microseconds_to_seconds(Microseconds) -> kz_term:to_integer(Microseconds) div ?MICROSECONDS_IN_SECOND.

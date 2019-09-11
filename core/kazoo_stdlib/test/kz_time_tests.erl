@@ -185,6 +185,28 @@ iso8601_test_() ->
      || {Date, Expected} <- Tests
     ].
 
+iso8601_ms_test_() ->
+    TS = {_, _, US} = erlang:timestamp(),
+    USBin = kz_term:to_binary(US div 1000),
+    Now = kz_time:iso8601_ms(TS),
+
+    <<_:20/binary, USNow:3/binary, "Z">> = kz_time:iso8601_ms(),
+    USNowInt = kz_term:to_integer(USNow),
+
+    Tests = [{<<"Default test">>, {1568,236075,933212}, <<"2019-09-11T21:07:55.933Z">>}
+            ,{<<"Microseconds padding test">>, {1568,236075,033212}, <<"2019-09-11T21:07:55.033Z">>}
+            ,{<<"Microseconds padding test">>, {1568,236075,000212}, <<"2019-09-11T21:07:55.000Z">>}
+            ,{<<"Secs change test">>, {1568,136075,833212}, <<"2019-09-10T17:21:15.833Z">>}
+            ,{<<"MegaSecs change test">>, {1558,136075,833212}, <<"2019-05-17T23:34:35.833Z">>}
+            ,{<<"Current timestamp test">>, TS, <<Now:20/binary, USBin/binary, "Z">>}
+            ],
+    [{Label, ?_assertEqual(Expected, kz_time:iso8601_ms(TimeStamp))}
+     || {Label, TimeStamp, Expected} <- Tests
+    ] ++  [{<<"Current timestamp test 2">>
+           ,?_assert(0 =< USNowInt
+                     andalso 999 >= USNowInt)
+           }].
+
 iso8601_offset_test_() ->
     Tests = [{{{2015,4,7},{0,0,0}}, <<"2015-04-07T00:00:00Z">>, <<"UTC">>}
             ,{{{2015,4,7},{0,0,0}}, <<"2015-04-06T17:00:00-07:00">>, <<"America/Los_Angeles">>}
