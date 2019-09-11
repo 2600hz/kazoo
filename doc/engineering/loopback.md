@@ -2,7 +2,7 @@
 
 loopback creates a new channel and starts a route_req
 
-## Hairpinning to stay on-net
+## Hairpinning to stay onnet
 
 used in clicktocall, quickcall, call forward, cell phone device types
 

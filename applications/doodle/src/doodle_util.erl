@@ -19,7 +19,7 @@
 -define(SIP_ENDPOINT_KEY(Realm, User)
        ,{?MODULE, 'sip_endpoint', Realm, User}
        ).
--define(DEFAULT_INCEPTION, <<"off-net">>).
+-define(DEFAULT_INCEPTION, <<"offnet">>).
 -define(MDN_VIEW, <<"mobile/listing_by_mdn">>).
 -define(CONVERT_MDN, 'true').
 
@@ -387,8 +387,8 @@ set_callee_id(EndpointId, Call) ->
 -spec get_inbound_field(kz_term:ne_binary()) -> kz_term:ne_binaries().
 get_inbound_field(Inception) ->
     case Inception of
-        <<"on-net">> -> [<<"Caller-ID-Number">>, <<"From">>];
-        <<"off-net">> -> [<<"Callee-ID-Number">>, <<"To">>];
+        <<"onnet">> -> [<<"Caller-ID-Number">>, <<"From">>];
+        <<"offnet">> -> [<<"Callee-ID-Number">>, <<"To">>];
         _ -> get_inbound_field(?DEFAULT_INCEPTION)
     end.
 

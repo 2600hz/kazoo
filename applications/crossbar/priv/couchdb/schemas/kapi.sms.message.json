@@ -181,8 +181,8 @@
         },
         "Route-Type": {
             "enum": [
-                "on-net",
-                "off-net"
+                "onnet",
+                "offnet"
             ],
             "type": "string"
         },

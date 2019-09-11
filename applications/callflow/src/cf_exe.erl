@@ -876,7 +876,7 @@ log_call_information(Call) ->
     lager:info("from ~s", [kapps_call:from(Call)]),
     lager:info("CID ~s ~s", [kapps_call:caller_id_name(Call), kapps_call:caller_id_number(Call)]),
     case kapps_call:inception(Call) of
-        'undefined' -> lager:info("inception on-net: using attributes for an internal call", []);
+        'undefined' -> lager:info("inception onnet: using attributes for an internal call", []);
         _Else -> lager:info("inception ~s: using attributes for an external call", [_Else])
     end,
     lager:info("authorizing id ~s", [kapps_call:authorizing_id(Call)]).

@@ -12699,7 +12699,7 @@
           'description': reorder message for replies to unconfigured numbers
           'type': string
         'transfer_target':
-          'description': on-net phone number to transfer unconfigured numbers to
+          'description': onnet phone number to transfer unconfigured numbers to
           'type': string
       'type': object
     'unknown_number':
@@ -12728,7 +12728,7 @@
           'description': reorder message for replies to unknown numbers
           'type': string
         'transfer_target':
-          'description': on-net phone number to transfer unknown numbers to
+          'description': onnet phone number to transfer unknown numbers to
           'type': string
       'type': object
   'type': object

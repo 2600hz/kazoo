@@ -164,7 +164,7 @@ account_from_number(Map) ->
     Map.
 
 -spec set_inception(map()) -> map().
-set_inception(#{inception := <<"off-net">>, request := JObj} = Map) ->
+set_inception(#{inception := <<"offnet">>, request := JObj} = Map) ->
     Request = kz_json:get_value(<<"From">>, JObj),
     Map#{request => kz_json:set_value(?CCV(<<"Inception">>), Request, JObj)};
 set_inception(#{request := JObj} = Map) ->

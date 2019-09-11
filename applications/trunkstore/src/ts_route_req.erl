@@ -54,14 +54,14 @@ maybe_handle(RouteReq, HandlerFun, {'ok', AMQPWorker}) ->
 
 -spec handle_onnet_req(kapi_route:req(), pid()) -> any().
 handle_onnet_req(RouteReq, AMQPWorker) ->
-    %% Coming from PBX (on-net); authed by Registrar or ts_auth
+    %% Coming from PBX (onnet); authed by Registrar or ts_auth
     CallId = kapi_route:call_id(RouteReq),
     lager:info("call with fetch-id ~s began on the network", [kapi_route:fetch_id(RouteReq)]),
     ts_onnet_sup:start_handler(<<"onnet-", CallId/binary>>, RouteReq, AMQPWorker).
 
 -spec handle_offnet_req(kapi_route:req(), pid()) -> any().
 handle_offnet_req(RouteReq, AMQPWorker) ->
-    %% Coming from carrier (off-net)
+    %% Coming from carrier (offnet)
     CallId = kapi_route:call_id(RouteReq),
     lager:info("call with fetch-id ~s began from outside the network", [kapi_route:fetch_id(RouteReq)]),
     ts_offnet_sup:start_handler(<<"offnet-", CallId/binary>>, RouteReq, AMQPWorker).
