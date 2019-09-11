@@ -6,12 +6,23 @@
 
 -export([main/1]).
 
-main(_) ->
-    case raw_json_usage:process_project() of
-        [] -> 'ok';
-        ModulesWithRawJSON ->
-            handle_potential_usage(ModulesWithRawJSON)
-    end.
+main([]) ->
+    ModulesWithRawJSON = raw_json_usage:process_project(),
+    handle_potential_usage(ModulesWithRawJSON);
+main(Files) ->
+    io:format("processing raw_json: "),
+    ModulesWithRawJSON = lists:foldl(fun process_file/2, [], Files),
+    io:format("~n"),
+    handle_potential_usage(ModulesWithRawJSON).
+
+process_file(File, Acc) ->
+    process_file(File, Acc, filename:extension(kz_term:to_binary(File))).
+
+process_file(File, Acc, <<".erl">>) ->
+    Basename = filename:basename(File, ".erl"),
+    Module = kz_term:to_atom(Basename, 'true'),
+    raw_json_usage:process_module(Module) ++ Acc;
+process_file(_File, Acc, _Ext) -> Acc.
 
 handle_potential_usage(ModulesWithRawJSON) ->
     ExitCode = lists:foldl(fun handle_potential_usage/2
