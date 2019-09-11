@@ -9,24 +9,24 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(stepswitch_cnam_pool_sup).
+-module(cnam_pool_sup).
 
 -behaviour(supervisor).
 
 -export([start_link/0]).
 -export([init/1]).
 
--include("stepswitch.hrl").
+-include("cnam.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?WORKER_NAME_ARGS('poolboy', ?STEPSWITCH_CNAM_POOL, [[{'name', {'local', ?STEPSWITCH_CNAM_POOL}}
-                                                                        ,{'worker_module', 'stepswitch_cnam'}
-                                                                        ,{'size', 10}
-                                                                        ,{'max_overflow', 50}
-                                                                        ,{'neg_resp_threshold', 1}
-                                                                        ]
-                                                                       ]
+-define(CHILDREN, [?WORKER_NAME_ARGS('poolboy', ?CNAM_POOL, [[{'name', {'local', ?CNAM_POOL}}
+                                                             ,{'worker_module', 'cnam'}
+                                                             ,{'size', 10}
+                                                             ,{'max_overflow', 50}
+                                                             ,{'neg_resp_threshold', 1}
+                                                             ]
+                                                            ]
                                     )
                   ]).
 

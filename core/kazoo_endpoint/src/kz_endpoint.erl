@@ -184,7 +184,10 @@ is_endpoint_enabled(JObj, _) ->
 -spec cache_store_endpoint(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
                                   {'ok', kz_json:object()}.
 cache_store_endpoint(JObj, EndpointId, AccountDb, EndpointType) ->
-    Endpoint = kz_json:set_value(<<"Endpoint-ID">>, EndpointId, merge_attributes(JObj, EndpointType)),
+    Values = [{<<"Endpoint-ID">>, EndpointId}
+             ,{<<"Endpoint-Type">>, EndpointType}
+             ],
+    Endpoint = kz_json:set_values(Values, merge_attributes(JObj, EndpointType)),
     CacheProps = [{'origin', cache_origin(JObj, EndpointId, AccountDb)}],
     catch kz_cache:store_local(?CACHE_NAME, {?MODULE, AccountDb, EndpointId}, Endpoint, CacheProps),
     lager:debug("cached endpoint ~s: ~s", [EndpointId, kz_doc:revision(Endpoint)]),
@@ -1168,7 +1171,7 @@ guess_endpoint_type(Endpoint, []) ->
 
 -spec get_clid(kz_json:object(), kz_json:object(), kapps_call:call()) -> clid().
 get_clid(Endpoint, Properties, Call) ->
-    get_clid(Endpoint, Properties, Call, <<"internal">>).
+    get_clid(Endpoint, Properties, Call, kz_attributes:caller_id_type(Call)).
 
 -spec get_clid(kz_json:object(), kz_json:object(), kapps_call:call(), kz_term:ne_binary()) -> clid().
 get_clid(Endpoint, Properties, Call, Type) ->

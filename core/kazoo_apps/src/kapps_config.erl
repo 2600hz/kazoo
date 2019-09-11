@@ -1154,6 +1154,7 @@ fetch_category(Category, 'false') ->
         ,{{<<"services">>, <<"support_billing_id">>}
          ,'undefined'
          }
+        ,{<<"stepswitch.cnam">>, <<"cnam">>}
         ]).
 
 -spec migrate() -> 'ok'.

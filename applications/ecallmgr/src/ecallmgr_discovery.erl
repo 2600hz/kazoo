@@ -20,6 +20,8 @@
         ,code_change/3
         ]).
 
+-export([discover/0]).
+
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
@@ -67,6 +69,10 @@ handle_call(_Request, _From, Startup) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
+handle_cast('discovery', Startup) ->
+    lager:warning("starting discovery"),
+    _ = sbc_discovery(),
+    {'noreply', Startup, next_timeout(kz_time:elapsed_s(Startup))};
 handle_cast(_Msg, Startup) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', Startup, next_timeout(kz_time:elapsed_s(Startup))}.
@@ -150,11 +156,15 @@ sbc_addresses(#kz_node{roles=Roles}) ->
 sbc_node(#kz_node{node=Name}=Node) ->
     {kz_term:to_binary(Name), sbc_addresses(Node)}.
 
-sbc_verify_ip({IP, _}, CIDRs) ->
-    lists:any(fun({CIDR, _Ports}) when is_list(CIDR) ->
-                      lists:all(fun(CIDR_IP) -> kz_network_utils:verify_cidr(IP, CIDR_IP) end, CIDR);
-                 ({CIDR, _Ports}) ->
+sbc_verify_ip({IP, Ports}, CIDRs) ->
+    lists:any(fun({CIDR, CIDRPorts}) when is_list(CIDR) ->
+                      lists:all(fun(CIDR_IP) -> kz_network_utils:verify_cidr(IP, CIDR_IP) end, CIDR)
+                          andalso Ports -- CIDRPorts  =:= []
+                          andalso CIDRPorts -- Ports =:= [];
+                 ({CIDR, CIDRPorts}) ->
                       kz_network_utils:verify_cidr(IP, CIDR)
+                          andalso CIDRPorts -- Ports =:= []
+                          andalso Ports -- CIDRPorts  =:= []
               end, CIDRs).
 
 sbc_discover({Node, IPs}, CIDRs, Acc) ->
@@ -210,3 +220,7 @@ sbc_discovery(ConfigNode, CurrentACLs) ->
             _ = kapps_config:set_node(?APP_NAME, <<"acls">>, NewAcls, ConfigNode),
             ecallmgr_maintenance:reload_acls()
     end.
+
+-spec discover() -> 'ok'.
+discover() ->
+    gen_server:cast(?MODULE, 'discovery').

@@ -1,0 +1,68 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.cnam",
+    "description": "Schema for cnam system_config",
+    "properties": {
+        "cnam_expires": {
+            "default": 900,
+            "description": "cnam cnam_expires",
+            "type": "integer"
+        },
+        "disable_normalize": {
+            "default": false,
+            "description": "cnam disable_normalize",
+            "type": "boolean"
+        },
+        "http_accept_header": {
+            "default": "text/pbx,text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "description": "cnam http_accept_header",
+            "type": "string"
+        },
+        "http_basic_auth_password": {
+            "default": "",
+            "description": "cnam http_basic_auth_password",
+            "type": "string"
+        },
+        "http_basic_auth_username": {
+            "default": "",
+            "description": "cnam http_basic_auth_username",
+            "type": "string"
+        },
+        "http_body": {
+            "default": "",
+            "description": "cnam http_body",
+            "type": "string"
+        },
+        "http_connect_timeout_ms": {
+            "default": 500,
+            "description": "cnam http_connect_timeout_ms",
+            "type": "integer"
+        },
+        "http_content_type_header": {
+            "default": "application/json",
+            "description": "cnam http_content_type_header",
+            "type": "string"
+        },
+        "http_method": {
+            "default": "get",
+            "description": "cnam http_method",
+            "type": "string"
+        },
+        "http_token_auth_token": {
+            "default": "",
+            "description": "cnam http_token_auth_token",
+            "type": "string"
+        },
+        "http_url": {
+            "default": "https://data.telnyx.com/cnam/v1/caller-information?tn={{phone_number}}",
+            "description": "cnam http_url",
+            "type": "string"
+        },
+        "http_user_agent_header": {
+            "default": "Kazoo CNAM",
+            "description": "cnam http_user_agent_header",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

@@ -8,11 +8,11 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(stepswitch_cnam_telnyx).
+-module(cnam_telnyx).
 
 -export([request/2]).
 
--include("stepswitch.hrl").
+-include("cnam.hrl").
 
 -define(DEFAULT_URL, <<"https://data.telnyx.com/cnam/v1/caller-information?tn={{phone_number}}">>).
 
@@ -43,7 +43,7 @@ request(Number, JObj) ->
 -spec get_http_url(kz_json:object()) -> kz_term:ne_binary().
 get_http_url(JObj) ->
     Template = kapps_config:get_binary(?CNAM_CONFIG_CAT, <<"http_url">>, ?DEFAULT_URL),
-    {'ok', SrcUrl} = stepswitch_cnam:render(JObj, Template),
+    {'ok', SrcUrl} = cnam:render(JObj, Template),
     iolist_to_binary(SrcUrl).
 
 -spec get_http_headers() -> [{nonempty_string(), nonempty_string()}].

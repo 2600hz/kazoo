@@ -46,8 +46,8 @@ fetch_directory(#{node := Node, fetch_id := FetchId, payload := JObj}=Ctx) ->
     case kzd_fetch:fetch_action(JObj, <<"sip_auth">>) of
         <<"reverse-auth-lookup">> -> lookup_user(Node, FetchId, <<"reverse-lookup">>, JObj, Ctx);
         <<"sip_auth">> -> maybe_sip_auth_response(Node, FetchId, JObj, Ctx);
-        <<"jsonrpc-authenticate">> -> maybe_sip_auth_response(Node, FetchId, JObj, Ctx);
-        <<"user_call">> -> lookup_directory(Node, FetchId, JObj, Ctx);
+        <<"user_call">> -> lookup_directory(Node, FetchId, kzd_fetch:fetch_user(JObj), JObj, Ctx);
+        <<"group_call">> -> lookup_directory(Node, FetchId, kzd_fetch:fetch_group(JObj), JObj, Ctx);
         _Other -> lager:debug("unhandled action '~s' in fetch directory", [_Other]),
                   directory_not_found(Ctx)
     end.
@@ -65,18 +65,23 @@ maybe_sip_auth_response(Node, Id, JObj, Ctx) ->
 lookup_directory(Node, Id, JObj, Ctx) ->
     lookup_directory(Node, Id, kzd_fetch:fetch_user(JObj), kzd_fetch:fetch_key_value(JObj), JObj, Ctx).
 
+-spec lookup_directory(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> fs_handlecall_ret().
+lookup_directory(Node, Id, EndpointId, JObj, Ctx) ->
+    lookup_directory(Node, Id, EndpointId, kzd_fetch:fetch_key_value(JObj), JObj, Ctx).
+
 -spec lookup_directory(atom(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_json:object(), map()) -> fs_handlecall_ret().
 lookup_directory(Node, Id, 'undefined', _AccountId, JObj, Ctx) ->
     lookup_user(Node, Id, <<"password">>, JObj, Ctx);
 lookup_directory(Node, Id, _EndpointId, 'undefined', JObj, Ctx) ->
     lookup_user(Node, Id, <<"password">>, JObj, Ctx);
-lookup_directory(_Node, _Id, <<(EndpointId):32/binary>>, ?MATCH_ACCOUNT_RAW(AccountId), JObj, Ctx) ->
+lookup_directory(_Node, _Id, EndpointId, AccountId, JObj, Ctx) ->
     Opts = [{fetch_type, kzd_fetch:fetch_action(JObj, <<"sip_auth">>)}
            ,{kcid_type, kz_json:get_ne_binary_value(<<"KCID-Type">>, JObj, <<"Internal">>)}
            ,{cshs, kzd_fetch:cshs(JObj)}
            ,{ccvs, kzd_fetch:ccvs(JObj)}
            ,{cauth, kzd_fetch:cauth(JObj)}
            ],
+    lager:debug("fetch directory for ~s : ~s", [EndpointId, AccountId]),
     case kz_directory:lookup(EndpointId, AccountId, Opts) of
         {ok, Endpoint} ->
             lager:debug("building directory resp for ~s@~s from endpoint", [EndpointId, AccountId]),
@@ -85,38 +90,6 @@ lookup_directory(_Node, _Id, <<(EndpointId):32/binary>>, ?MATCH_ACCOUNT_RAW(Acco
         {error, _Err} ->
             lager:debug("error getting profile for for ~s@~s from endpoint : ~p", [EndpointId, AccountId, _Err]),
             directory_not_found(Ctx)
-    end;
-lookup_directory(Node, Id, UserId, ?MATCH_ACCOUNT_RAW(AccountId), JObj, Ctx) ->
-    case kz_json:get_ne_binary_value(<<"X-ecallmgr_Authorizing-ID">>, JObj) of
-        'undefined' -> directory_not_found(Ctx);
-        EndpointId ->
-            lager:debug("got the endpoint_id ~s for user ~s", [EndpointId, UserId]),
-            JObjRetry = kz_json:set_value(<<"Requested-User-ID">>, UserId, JObj),
-            lookup_directory(Node, Id, EndpointId, AccountId, JObjRetry, Ctx)
-    end;
-lookup_directory(Node, Id, EndpointId, Realm, JObj, Ctx) ->
-    maybe_x_auth_token(Node, Id, EndpointId, Realm, JObj, Ctx).
-
-maybe_x_auth_token(Node, Id, UserId, Realm, JObj, Ctx) ->
-    case kz_json:get_ne_binary_value(<<"X-AUTH-Token">>, JObj) of
-        'undefined' -> maybe_x_account_id(Node, Id, UserId, Realm, JObj, Ctx);
-        AuthToken ->
-            JObjRetry = kz_json:set_values([{<<"Requested-Domain-Name">>, Realm}
-                                           ,{<<"Requested-User-ID">>, UserId}
-                                           ], JObj),
-            [EndpointId, AccountId] = binary:split(AuthToken, <<"@">>),
-            lager:debug("got the endpoint_id/account_id ~s/~s from x-auth-token", [EndpointId, AccountId]),
-            lookup_directory(Node, Id, EndpointId, AccountId, JObjRetry, Ctx)
-    end.
-
-maybe_x_account_id(Node, Id, EndpointId, Realm, JObj, Ctx) ->
-    case kz_json:get_ne_binary_value(<<"X-ecallmgr_Account-ID">>, JObj) of
-        'undefined' ->
-            lookup_user(Node, Id, <<"password">>,  JObj, Ctx);
-        AccountId ->
-            lager:debug("got the account_id ~s from x-header", [AccountId]),
-            JObjRetry = kz_json:set_value(<<"Requested-Domain-Name">>, Realm, JObj),
-            lookup_directory(Node, Id, EndpointId, AccountId, JObjRetry, Ctx)
     end.
 
 -spec directory_not_found(map()) -> fs_handlecall_ret().

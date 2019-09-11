@@ -26,6 +26,7 @@
 -export([require_flags/1, require_flags/2, set_require_flags/2]).
 -export([rules/1, rules/2, set_rules/2]).
 -export([weight_cost/1, weight_cost/2, set_weight_cost/2]).
+-export([fax_option/1, fax_option/2]).
 
 
 -include("kz_documents.hrl").
@@ -230,3 +231,11 @@ weight_cost(Doc, Default) ->
 -spec set_weight_cost(doc(), integer()) -> doc().
 set_weight_cost(Doc, WeightCost) ->
     kz_json:set_value([<<"weight_cost">>], WeightCost, Doc).
+
+-spec fax_option(doc()) -> kz_term:api_ne_binary().
+fax_option(Doc) ->
+    fax_option(Doc, 'undefined').
+
+-spec fax_option(doc(), Default) -> kz_term:api_ne_binary() | Default.
+fax_option(Doc, Default) ->
+    kz_json:get_ne_binary_value(<<"fax_option">>, media(Doc, kz_json:new()), Default).

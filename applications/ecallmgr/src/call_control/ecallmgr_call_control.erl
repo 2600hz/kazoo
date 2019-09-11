@@ -220,6 +220,7 @@ init_control(Pid, #{node := Node
             lager:debug("callback doesn't want to proceed")
     catch
         _Ex:_Err:_Stacktrace ->
+            kz_util:log_stacktrace(_Stacktrace),
             catch(ExitFun(Payload)),
             lager:debug("error running callback ~p : ~p", [_Ex, _Err])
 

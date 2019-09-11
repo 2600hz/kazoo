@@ -1006,13 +1006,13 @@ users_el(Children) ->
                ,content=Children
                }.
 
--spec user_ptr_el(kz_types:xml_attrib_value()) -> kz_types:xml_el().
-user_ptr_el(Id) ->
-    #xmlElement{name='user'
-               ,attributes=[xml_attrib('id', Id)
-                           ,xml_attrib('type', <<"pointer">>)
-                           ]
-               }.
+%% -spec user_ptr_el(kz_types:xml_attrib_value()) -> kz_types:xml_el().
+%% user_ptr_el(Id) ->
+%%     #xmlElement{name='user'
+%%                ,attributes=[xml_attrib('id', Id)
+%%                            ,xml_attrib('type', <<"pointer">>)
+%%                            ]
+%%                }.
 
 -spec user_el(kz_types:xml_attrib_value() | kz_term:proplist(), kz_types:xml_els()) -> kz_types:xml_el().
 user_el(Id, Children) when not is_list(Id) ->
@@ -1027,11 +1027,11 @@ user_el(Props, Children) ->
                ,content=Children
                }.
 
--spec user_el_props(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
+-spec user_el_props(kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 user_el_props(Number, Username) ->
     user_el_props(Number, Username, 'undefined').
 
--spec user_el_props(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_integer()) -> kz_term:proplist().
+-spec user_el_props(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:api_integer()) -> kz_term:proplist().
 user_el_props(Number, Username, 'undefined') ->
     [{'number-alias', Number}
     ,{'cacheable', kapps_config:get_integer(?APP_NAME, <<"user_cache_time_in_ms">>
@@ -1465,20 +1465,20 @@ directory_resp_group_id(Endpoint, JObj) ->
         GroupID -> GroupID
     end.
 
-dial_string(UserId, Domain, 'undefined', ChannelParams) ->
+dial_string(UserId, Domain, 'undefined', SIPInterface, ChannelParams) ->
     list_to_binary(["{"
                    ,kz_binary:join([<<K/binary, "='", V/binary, "'">> || {K,V} <- ChannelParams], <<",">>)
                    ,"}"
-                   ,"sofia/sipinterface_1/"
+                   ,"sofia/", SIPInterface, "/"
                    ,UserId
                    ,"@"
                    ,Domain
                    ]);
-dial_string(UserId, Domain, Proxy, ChannelParams) ->
+dial_string(UserId, Domain, Proxy, SIPInterface, ChannelParams) ->
     list_to_binary(["{"
                    ,kz_binary:join([<<K/binary, "='", V/binary, "'">> || {K,V} <- ChannelParams], <<",">>)
                    ,"}"
-                   ,"sofia/sipinterface_1/"
+                   ,"sofia/", SIPInterface, "/"
                    ,UserId
                    ,"@"
                    ,Domain
@@ -1494,6 +1494,10 @@ directory_resp_endpoint_xml(Endpoint, JObj) ->
 -spec directory_resp_endpoint_xml(binary(), kz_json:object(), kz_json:object()) -> {'ok', iolist()}.
 directory_resp_endpoint_xml(<<"resource">>, Endpoint, JObj) ->
     directory_resp_resource_xml(Endpoint, JObj);
+directory_resp_endpoint_xml(<<"group">>, Endpoint, JObj) ->
+    directory_resp_group_ep_xml(Endpoint, JObj);
+directory_resp_endpoint_xml(<<"user">>, Endpoint, JObj) ->
+    directory_resp_user_xml(Endpoint, JObj);
 directory_resp_endpoint_xml(<<"device">>, Endpoint, JObj) ->
     directory_resp_device_xml(Endpoint, JObj).
 
@@ -1503,12 +1507,15 @@ directory_resp_resource_xml(Endpoint, JObj) ->
     UserId = directory_resp_user_id(Endpoint, JObj),
 
     ChannelParams = get_channel_params(Endpoint),
+    ProfileParams = get_profile_params(Endpoint),
     SIPHeaders = get_custom_sip_headers(Endpoint),
     VariableEls = [variable_el(K, V) || {K, V} <- ChannelParams],
     HeaderEls = [variable_el(K, V) || {K, V} <- SIPHeaders],
     VariablesEl = variables_el(VariableEls ++ HeaderEls),
+    ProfileEls = [variable_el(K, V) || {K, V} <- ProfileParams],
+    ProfileVariablesEl = variables_el('profile-variables', ProfileEls),
     UserProps = user_el_default_props(UserId),
-    UserEl = user_el(UserProps, [VariablesEl]),
+    UserEl = user_el(UserProps, [VariablesEl, ProfileVariablesEl]),
     DomainEl = domain_el(DomainName, UserEl),
     SectionEl = section_el(<<"directory">>, DomainEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
@@ -1539,12 +1546,75 @@ directory_resp_device_xml(Endpoint, JObj) ->
     DialParams1 = [param_el(<<"dial-var-sip_h_", K/binary>>, V) || {K, V} <- SIPHeaders],
     DialParams2 = [param_el(<<"dial-var-", K/binary>>, V) || {K, V} <- ChannelParams ++ Vars],
 
-    Params = [param_el(<<"group-dial-string">>, <<"user/", UserId/binary, "@", DomainName/binary>>)
-             ,param_el(<<"dial-string">>, dial_string(SIPUsername, SIPRealm, ProxyPath, ChannelParams2))
+    Params = [param_el(<<"group-dial-string">>, <<"kz/", UserId/binary, "@", DomainName/binary>>)
+             ,param_el(<<"dial-string">>, dial_string(SIPUsername, SIPRealm, ProxyPath, ?DEFAULT_FS_PROFILE, ChannelParams2))
              ] ++ DialParams1 ++ DialParams2,
     ParamsEl = params_el(Params),
     UserEl = user_el(UserProps, [VariablesEl, ProfileVariablesEl, ParamsEl]),
     DomainEl = domain_el(DomainName, UserEl),
+    SectionEl = section_el(<<"directory">>, DomainEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
+
+-spec directory_resp_user_xml(kz_json:object(), kz_json:object()) -> {'ok', iolist()}.
+directory_resp_user_xml(Endpoint, JObj) ->
+    DomainName = directory_resp_domain(Endpoint, JObj),
+    UserId = directory_resp_user_id(Endpoint, JObj),
+
+    ProfileParams = get_profile_params(Endpoint),
+    ChannelParams = get_channel_params(Endpoint),
+    SIPHeaders = get_custom_sip_headers(Endpoint),
+    VariableEls = [variable_el(K, V) || {K, V} <- ChannelParams],
+    HeaderEls = [variable_el(K, V) || {K, V} <- SIPHeaders],
+    VariablesEl = variables_el(VariableEls ++ HeaderEls),
+    ProfileEls = [variable_el(K, V) || {K, V} <- ProfileParams],
+    ProfileVariablesEl = variables_el('profile-variables', ProfileEls),
+    UserProps = props:filter_undefined(user_el_props('undefined', UserId)),
+    DialParams1 = [param_el(<<"dial-var-sip_h_", K/binary>>, V) || {K, V} <- SIPHeaders],
+    DialParams2 = [param_el(<<"dial-var-", K/binary>>, V) || {K, V} <- ChannelParams],
+    Members = kz_json:get_list_value(<<"Members">>, Endpoint, []),
+    DialPrefix = list_to_binary(["<"
+                                ,kz_binary:join([<<K/binary, "='", V/binary, "'">> || {K,V} <- ChannelParams], <<",">>)
+                                ,">"
+                                ]),
+    DialEndpoints = kz_binary:join([list_to_binary(["kz/", M, "@", DomainName]) || M <- Members], ?SEPARATOR_ENTERPRISE),
+    Params = [param_el(<<"group-dial-string">>, <<"kz/", UserId/binary, "@", DomainName/binary>>)
+             ,param_el(<<"dial-string">>, list_to_binary([DialPrefix, DialEndpoints]))
+             ] ++ DialParams1 ++ DialParams2,
+    ParamsEl = params_el(Params),
+    UserEl = user_el(UserProps, [VariablesEl, ProfileVariablesEl, ParamsEl]),
+    DomainEl = domain_el(DomainName, UserEl),
+    SectionEl = section_el(<<"directory">>, DomainEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
+
+-spec directory_resp_group_ep_xml(kz_json:object(), kz_json:object()) -> {'ok', iolist()}.
+directory_resp_group_ep_xml(Endpoint, JObj) ->
+    lager:warning_unsafe("GROUP => ~s", [kz_json:encode(Endpoint, [pretty])]),
+    DomainName = directory_resp_domain(Endpoint, JObj),
+    GroupId = directory_resp_user_id(Endpoint, JObj),
+    GroupProps = user_el_default_props(GroupId),
+    ChannelParams = get_channel_params(Endpoint),
+    DialPrefix = list_to_binary(["<"
+                                ,kz_binary:join([<<K/binary, "='", V/binary, "'">> || {K,V} <- ChannelParams], <<",">>)
+                                ,">"
+                                ]),
+    Members = kz_json:get_list_value(<<"Members">>, Endpoint, []),
+    Dial = lists:foldr(fun(EP, Acc) ->
+                               Id = kz_json:get_ne_binary_value(<<"id">>, EP, <<"error">>),
+                               Delay = kz_json:get_integer_value(<<"delay">>, EP, 0),
+                               Timeout = kz_json:get_integer_value(<<"timeout">>, EP, 120),
+                               D = list_to_binary([
+                                                   "["
+                                                  ,"leg_delay_start=", kz_term:to_binary(Delay)
+                                                  ,",leg_timeout=", kz_term:to_binary(Timeout)
+                                                  ,"]",
+                                                   "kz/", Id, "@", DomainName
+                                                  ]),
+                               [D | Acc]
+                       end, [], Members),
+    DialEndpoints = kz_binary:join(Dial, ?SEPARATOR_ENTERPRISE),
+    Params = [param_el(<<"dial-string">>, list_to_binary([DialPrefix, DialEndpoints]))],
+    GroupEl = user_el(GroupProps, [params_el(Params)]),
+    DomainEl = domain_el(DomainName, GroupEl),
     SectionEl = section_el(<<"directory">>, DomainEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
@@ -1553,9 +1623,17 @@ directory_resp_group_xml(Endpoint, JObj) ->
     DomainName = directory_resp_domain(Endpoint, JObj),
     GroupId = directory_resp_group_id(Endpoint, JObj),
     GroupProps = [{<<"name">>, GroupId}],
-    MemberList = kz_json:get_list_value(<<"Members">>, Endpoint),
-    MembersEl = [user_ptr_el(MemberId) || MemberId <- MemberList],
+    Members = kz_json:get_json_value(<<"Members">>, Endpoint, kz_json:new()),
+    MembersEl = kz_json:foldr(fun fold_user_el/3, [], Members),
+
     GroupEl = group_el(GroupProps, [users_el(MembersEl)]),
+
     DomainEl = domain_el(DomainName, [groups_el([GroupEl])]),
     SectionEl = section_el(<<"directory">>, DomainEl),
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
+
+-spec fold_user_el(kz_json:key(), kz_json:json_term(), [kz_types:xml_el()]) -> [kz_types:xml_el()].
+fold_user_el(Key, _J, Acc) ->
+    UserProps = user_el_default_props(Key),
+    Param = param_el(<<"dial-string">>, <<>>),
+    [user_el(UserProps, [params_el([Param])]) | Acc].

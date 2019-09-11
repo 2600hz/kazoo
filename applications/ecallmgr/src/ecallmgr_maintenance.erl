@@ -349,6 +349,7 @@ reload_acls() ->
          end
          || Node <- ecallmgr_fs_nodes:connected()
         ],
+    _ = kz_amqp_worker:cast(kz_api:default_headers(?APP_NAME, ?APP_VERSION), fun kapi_trusted:publish_reload/1),
     'no_return'.
 
 -spec test_ip_against_acl(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.

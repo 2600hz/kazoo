@@ -1,0 +1,14 @@
+{application,kazoo_cnam,
+ [
+  {description, "Kazoo CNAM"}
+ ,{vsn, "5.0.0"}
+ ,{mod,{cnam_app, []}}
+ ,{modules, []}
+ ,{registered, [cnam_cache,cnam_pool_sup,cnam_sup]}
+ ,{applications, [ kernel
+                 , stdlib
+                 , crypto
+
+                 , lager
+                 ]}
+ ]}.

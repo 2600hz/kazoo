@@ -8,11 +8,11 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(stepswitch_cnam_opencnam).
+-module(cnam_opencnam).
 
 -export([request/2]).
 
--include("stepswitch.hrl").
+-include("cnam.hrl").
 
 -define(DEFAULT_METHOD, <<"get">>).
 -define(DEFAULT_CONTENT, <<>>).
@@ -57,7 +57,7 @@ request(Number, JObj) ->
 -spec get_http_url(kz_json:object()) -> kz_term:ne_binary().
 get_http_url(JObj) ->
     Template = kapps_config:get_binary(?CNAM_CONFIG_CAT, <<"http_url">>, ?DEFAULT_URL),
-    {'ok', SrcUrl} = stepswitch_cnam:render(JObj, Template),
+    {'ok', SrcUrl} = cnam:render(JObj, Template),
     Url = iolist_to_binary(SrcUrl),
 
     case binary:match(Template, <<"opencnam">>) of
@@ -77,7 +77,7 @@ get_http_body(JObj) ->
     case kz_term:is_empty(Template) of
         'true' -> [];
         'false' ->
-            {'ok', Body} = stepswitch_cnam:render(JObj, Template),
+            {'ok', Body} = cnam:render(JObj, Template),
             lists:flatten(Body)
     end.
 

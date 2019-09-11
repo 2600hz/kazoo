@@ -23,8 +23,18 @@ lookup(EndpointId, AccountId) ->
 
 -spec lookup(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
 lookup(EndpointId, AccountId, Options) ->
-    case kz_directory_endpoint:profile(EndpointId, AccountId, Options) of
-        {'ok', _Endpoint} = OK -> OK;
-        _Error -> kz_directory_resource:profile(EndpointId, AccountId, Options)
-    end.
+    Routines = [fun kz_directory_user:profile/3
+               ,fun kz_directory_endpoint:profile/3
+               ,fun kz_directory_group:profile/3
+               ,fun kz_directory_resource:profile/3
+               ],
+    lookup(Routines, EndpointId, AccountId, Options).
 
+-spec lookup([fun()], kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
+lookup([], _EndpointId, _AccountId, _Options) ->
+    {'error', 'not_found'};
+lookup([Fun | Routines], EndpointId, AccountId, Options) ->
+    case Fun(EndpointId, AccountId, Options) of
+        {'ok', _Endpoint} = OK -> OK;
+        _Error -> lookup(Routines, EndpointId, AccountId, Options)
+    end.

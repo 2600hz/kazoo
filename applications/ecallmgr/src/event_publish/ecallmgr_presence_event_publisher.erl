@@ -153,7 +153,7 @@ build_presence_event(UUID, #{payload := JObj}) ->
                 ]),
     lager:debug("sending presence ~s to ~s/~s in realm ~s", [State, FromUser, ToUser, Realm]),
     _ = maybe_delay(State),
-    kz_amqp_worker:cast(Payload, fun kapi_presence:publish_dialog/1).
+    kapi_presence:publish_dialog(Payload).
 
 maybe_delay(<<"terminated">>) ->
     timer:sleep(?MILLISECONDS_IN_SECOND);

@@ -11,6 +11,10 @@
 
 -export([get/0, get/1
         ,system/0, system/1
+        ,edge/0, edge/1
+        ,system_config_acls/1
+        ,trusted_acls/0, trusted_acls/1
+        ,media_acls/0, media_acls/1
         ]).
 
 -compile({'no_auto_import', [get/1]}).
@@ -58,6 +62,34 @@ get(Node) ->
     PidRefs = [kz_util:spawn_monitor(fun erlang:apply/2, [F, [self()]]) || F <- Routines],
     lager:debug("collecting ACLs in ~p", [PidRefs]),
     collect(system_config_acls(Node), PidRefs).
+
+-spec media_acls() -> acls().
+media_acls() ->
+    Node = kz_term:to_binary(node()),
+    media_acls(Node).
+
+-spec media_acls(atom() | kz_term:ne_binary()) -> acls().
+media_acls(Node) ->
+    Routines = [fun media_nodes_ips/1
+               ],
+    PidRefs = [kz_util:spawn_monitor(fun erlang:apply/2, [F, [self()]]) || F <- Routines],
+    lager:debug("collecting ACLs in ~p", [PidRefs]),
+    collect(authoritative_acls(Node), PidRefs).
+
+-spec edge() -> acls().
+edge() ->
+    Node = kz_term:to_binary(node()),
+    edge(Node).
+
+-spec edge(atom() | kz_term:ne_binary()) -> acls().
+edge(Node) ->
+    Routines = [fun offnet_resources/1
+               ,fun local_resources/1
+               ,fun sip_auth_ips/1
+               ],
+    PidRefs = [kz_util:spawn_monitor(fun erlang:apply/2, [F, [self()]]) || F <- Routines],
+    lager:debug("collecting ACLs in ~p", [PidRefs]),
+    token(cidrs(collect(trusted_acls(Node), PidRefs))).
 
 %%------------------------------------------------------------------------------
 %% @doc Fetches just the system_config ACLs
@@ -115,6 +147,59 @@ system_config_acls(Node) ->
             kz_json:new();
         JObj -> JObj
     end.
+
+-spec authoritative_acls(atom() | kz_term:ne_binary()) -> acls().
+authoritative_acls(Node) ->
+    case kapps_config:fetch_current(?APP_NAME, <<"acls">>, kz_json:new(), Node) of
+        {'error', Error} ->
+            lager:warning("error getting system acls : ~p", [Error]),
+            kz_json:new();
+        JObj -> kz_json:filter(fun is_authoritative_acl/1, JObj)
+    end.
+
+-spec is_authoritative_acl(tuple()) -> boolean().
+is_authoritative_acl({_K, JObj}) ->
+    kz_json:get_ne_binary_value(<<"network-list-name">>, JObj) =:= <<"authoritative">>.
+
+-spec trusted_acls() -> acls().
+trusted_acls() ->
+    Node = kz_term:to_binary(node()),
+    trusted_acls(Node).
+
+-spec trusted_acls(atom() | kz_term:ne_binary()) -> acls().
+trusted_acls(Node) ->
+    case kapps_config:fetch_current(?APP_NAME, <<"acls">>, kz_json:new(), Node) of
+        {'error', Error} ->
+            lager:warning("error getting system acls : ~p", [Error]),
+            kz_json:new();
+        JObj -> kz_json:filtermap(fun trusted_acl/2, JObj)
+    end.
+
+-spec trusted_acl(kz_term:ne_binary(), kz_json:object()) -> boolean() | {'true', kz_json:object()}.
+trusted_acl(K, V) ->
+    case filter_trusted_acl({K,V}) of
+        'false' -> 'false';
+        'true' ->
+            {ok, Master} = kapps_util:get_master_account_id(),
+            KVs = [{<<"account_id">>, Master}
+                  ,{<<"authorizing_id">>, kz_binary:rand_hex(16)}
+                  ],
+            JObj = kz_json:set_values(KVs, V),
+            {'true', {K, JObj}}
+    end.
+
+-spec filter_trusted_acl(tuple()) -> boolean().
+filter_trusted_acl(ACL) ->
+    is_trusted_acl(ACL)
+        andalso is_allowed(ACL).
+
+-spec is_trusted_acl(tuple()) -> boolean().
+is_trusted_acl({_K, JObj}) ->
+    kz_json:get_ne_binary_value(<<"network-list-name">>, JObj) =:= <<"trusted">>.
+
+-spec is_allowed(tuple()) -> boolean().
+is_allowed({_K, JObj}) ->
+    kz_json:get_ne_binary_value(<<"type">>, JObj) =:= <<"allow">>.
 
 -spec sip_auth_ips(pid()) -> 'ok'.
 sip_auth_ips(Collector) ->
@@ -230,7 +315,9 @@ handle_resource_result(Collector, JObj) ->
 -spec handle_resource_result(pid(), kz_json:object(), kz_term:ne_binaries()) -> 'ok'.
 handle_resource_result(Collector, JObj, IPs) ->
     AuthorizingId = kz_doc:id(JObj),
-    add_trusted_objects(Collector, 'undefined', AuthorizingId, <<"resource">>, IPs).
+    {ok, Master} = kapps_util:get_master_account_id(),
+    AccountId = kz_doc:account_id(JObj, Master),
+    add_trusted_objects(Collector, AccountId, AuthorizingId, <<"resource">>, IPs).
 
 -spec resource_inbound_ips(pid(), kz_json:object()) -> kz_term:pid_refs().
 resource_inbound_ips(Collector, JObj) ->
@@ -250,6 +337,7 @@ resource_server_ips(Collector, JObj) ->
                                                    ,fun handle_resource_result/3
                                                    ])
      || Gateway <- kz_json:get_value(<<"gateways">>, JObj, []),
+        kz_json:get_ne_binary_value(<<"endpoint_type">>, Gateway) =:= <<"sip">>,
         kz_json:is_true(<<"enabled">>, Gateway, 'false')
     ].
 
@@ -269,17 +357,58 @@ add_trusted_objects(Collector, AccountId, AuthorizingId, AuthorizingType, [IP|IP
 
 -spec media_nodes_ips(pid()) -> 'ok'.
 media_nodes_ips(Collector) ->
+    J = media_nodes_ips(),
+    Collector ! ?ACL_RESULT(<<"freeswitch">>, J),
+    'ok'.
+
+-spec media_nodes_ips() -> kz_json:object().
+media_nodes_ips() ->
     URIS = [  {kz_network_utils:to_cidr(kzsip_uri:host(PURI)),kzsip_uri:port(PURI)}
-              || {Node, _} <- gen_server:call(ecallmgr_fs_nodes, 'nodes'),
+              || Node <- gen_server:call(ecallmgr_fs_nodes, {'connected_nodes', false}),
                  I <- [ecallmgr_fs_node:interfaces(Node)],
                  K <- kz_json:get_keys(I),
                  URI <- [kz_json:get_ne_binary_value([K, <<"info">>, <<"url">>], I)],
                  PURI <- [kzsip_uri:parse(URI)]
            ],
-    J = kz_json:from_list([{<<"type">>, <<"allow">>}
-                          ,{<<"network-list-name">>, <<"freeswitch">>}
-                          ,{<<"cidr">>, lists:usort(props:get_keys(URIS))}
-                          ,{<<"ports">>, lists:usort(props:get_values(URIS))}
-                          ]),
-    Collector ! ?ACL_RESULT(<<"freeswitch">>, J),
-    'ok'.
+    kz_json:from_list([{<<"type">>, <<"allow">>}
+                      ,{<<"network-list-name">>, <<"freeswitch">>}
+                      ,{<<"cidr">>, lists:usort(props:get_keys(URIS))}
+                      ,{<<"ports">>, lists:usort(props:get_values(URIS))}
+                      ]).
+
+-spec cidrs(kz_json:object()) -> kz_json:object().
+cidrs(JObj) ->
+    kz_json:map(fun cidrs/2, JObj).
+
+-spec cidrs(kz_term:ne_binary(), kz_json:object()) -> boolean() | {'true', kz_json:object()}.
+cidrs(K, V) ->
+    CIDRs = case kz_json:get_list_value(<<"cidr">>, V) of
+                'undefined' -> [kz_json:get_ne_binary_value(<<"cidr">>, V)];
+                List -> List
+            end,
+    KVs = [{<<"cidrs">>, CIDRs}
+          ,{<<"cidr">>, null}
+          ,{<<"network-list-name">>, null}
+          ,{<<"type">>, null}
+          ],
+    {K, kz_json:set_values(KVs, V)}.
+
+
+-spec token(kz_json:object()) -> kz_json:object().
+token(JObj) ->
+    kz_json:map(fun token/2, JObj).
+
+-spec token(kz_term:ne_binary(), kz_json:object()) -> boolean() | {'true', kz_json:object()}.
+token(K, V) ->
+    KVs = [{<<"network-list-name">>, null}
+          ,{<<"type">>, null}
+          ,{<<"token">>, list_to_binary([kz_json:get_ne_binary_value(<<"authorizing_id">>, V)
+                                        ,"@"
+                                        ,kz_json:get_ne_binary_value(<<"account_id">>, V)
+                                        ])
+           }
+          ,{<<"authorizing_id">>, null}
+          ,{<<"authorizing_type">>, null}
+          ,{<<"account_id">>, null}
+          ],
+    {K, kz_json:set_values(KVs, V)}.

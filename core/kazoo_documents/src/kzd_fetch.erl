@@ -33,6 +33,7 @@
         ,fetch_timeout/1, fetch_timeout/2
         ,fetch_timestamp_micro/1, fetch_timestamp_micro/2
         ,fetch_user/1
+        ,fetch_group/1
         ,fetch_uuid/1
         ,fetch_version/1
         ,fetch_winning_pid/1
@@ -41,6 +42,8 @@
         ,node/1
         ,server_id/1
         ,user_agent/1
+        ,resource/1, resource/2
+        ,formatters/1, formatters/2
         ]).
 
 -include("kz_documents.hrl").
@@ -125,6 +128,10 @@ fetch_timestamp_micro(JObj, Default) ->
 fetch_user(JObj) ->
     kz_json:get_ne_binary_value(<<"user">>, JObj).
 
+-spec fetch_group(data()) -> kz_term:api_ne_binary().
+fetch_group(JObj) ->
+    kz_json:get_ne_binary_value(<<"group">>, JObj).
+
 -spec fetch_auth_endpoint(data()) -> kz_term:api_binary().
 fetch_auth_endpoint(JObj) ->
     list_to_binary([fetch_user(JObj), "@", fetch_key_value(JObj)]).
@@ -192,3 +199,19 @@ auth_to(JObj) ->
 -spec server_id(kz_json:object()) -> kz_term:api_binary().
 server_id(JObj) ->
     kz_json:get_ne_binary_value(<<"Server-ID">>, JObj).
+
+-spec resource(kz_json:object()) -> kz_term:api_object().
+resource(JObj) ->
+    resource(JObj, 'undefined').
+
+-spec resource(kz_json:object(), Default) -> kz_term:api_object() | Default.
+resource(JObj, Default) ->
+    kz_json:get_json_value(<<"Resource">>, JObj, Default).
+
+-spec formatters(kz_json:object()) -> kz_term:api_object().
+formatters(JObj) ->
+    formatters(JObj, 'undefined').
+
+-spec formatters(kz_json:object(), Default) -> kz_term:api_object() | Default.
+formatters(JObj, Default) ->
+    kz_json:get_json_value(<<"Formatters">>, resource(JObj, kz_json:new()), Default).

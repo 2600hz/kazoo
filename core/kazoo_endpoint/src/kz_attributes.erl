@@ -198,7 +198,7 @@ maybe_prefix_cid(Number, Name, Validate, Attribute, Call) ->
     case kapps_call:kvs_fetch('prepend_cid_number', Call) of
         'undefined' -> maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call);
         Prefix ->
-            lager:debug("prepending caller id number with ~s", [Prefix]),
+            lager:debug("prepending caller id number with '~s'", [Prefix]),
             Prefixed = <<(kz_term:to_binary(Prefix))/binary, OrigNumber/binary>>,
             maybe_prefix_cid_name(Prefixed, Name, Validate, Attribute, Call)
     end.
@@ -209,7 +209,7 @@ maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call) ->
     case kapps_call:kvs_fetch('prepend_cid_name', Call) of
         'undefined' -> maybe_rewrite_cid_number(Number, Name, Validate, Attribute, Call);
         Prefix ->
-            lager:debug("prepending caller id name with ~s", [Prefix]),
+            lager:debug("prepending caller id name with '~s'", [Prefix]),
             Prefixed = <<(kz_term:to_binary(Prefix))/binary, OrigName/binary>>,
             maybe_rewrite_cid_number(Number, Prefixed, Validate, Attribute, Call)
     end.

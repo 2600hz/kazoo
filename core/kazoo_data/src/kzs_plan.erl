@@ -175,7 +175,6 @@ aggregate_dataplan(DBName, DocType) ->
     Plan = ?CACHED_SYSTEM_DATAPLAN,
     case dataplan_type_match(<<"aggregate">>, DocType, Plan, DBName) of
         {'error', 'no_plan'} ->
-            lager:info("no dataplan for ~s(~s) in ~p", [DBName, DocType, Plan]),
             system_dataplan(DBName, DocType);
         Dataplan -> Dataplan
     end.

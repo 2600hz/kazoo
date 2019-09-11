@@ -658,12 +658,8 @@
 -type dialplan_init_fun() :: fun((dialplan_context()) -> 'ok').
 
 -type dialplan_timers() :: #{atom() => pos_integer()}. %% #{Name => TimestampUs
--type dialplan_reply() ::  #{payload => kzd_fetch:data() | kz_json:object()
-                            ,props => list()
-                            }.
--type dialplan_winner() :: #{payload => kzd_fetch:data()
-                            ,props => list()
-                            }.
+-type dialplan_reply() ::  #{payload => kzd_fetch:data() | kz_json:object()}.
+-type dialplan_winner() :: #{payload => kzd_fetch:data()}.
 -type dialplan_xml_fun() :: fun((kz_term:ne_binary(), kz_json:objects(), kz_json:object(), dialplan_context()) -> {'ok', iolist()}).
 
 -type dialplan_context() :: #{amqp_worker => pid() %% AMQP Worker
@@ -690,6 +686,7 @@
                              ,request => kapi_route:req()
                              ,route_resp_xml_fun => dialplan_xml_fun()
                              ,winner => dialplan_winner()
+                             ,blocked => boolean()
                              }.
 
 -define(ECALLMGR_HRL, 'true').

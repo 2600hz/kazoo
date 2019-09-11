@@ -509,7 +509,13 @@ authorized(JObj) ->
               ]
              ),
     _ = ets:update_element(?TAB, CallId, Props),
-    lager:debug("channel authorized => ~p", [Props]).
+    lager:debug("channel authorized => ~s", [format_updates(Props)]).
+
+-spec format_updates(kz_term:proplist()) -> kz_term:ne_binary().
+format_updates(Updates) ->
+    Fields = record_info('fields', 'channel'),
+    Out = [io_lib:format("~s=~p", [lists:nth(Field - 1, Fields), V]) || {Field, V} <- Updates],
+    kz_binary:join(Out, <<",">>).
 
 -spec handle_authz_resp(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_authz_resp(JObj, Props) ->

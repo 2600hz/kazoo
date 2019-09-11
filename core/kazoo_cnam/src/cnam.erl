@@ -8,7 +8,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(stepswitch_cnam).
+-module(cnam).
 -behaviour(gen_server).
 
 -export([start_link/1]).
@@ -25,7 +25,7 @@
         ,flush/0
         ]).
 
--include("stepswitch.hrl").
+-include("cnam.hrl").
 
 -type state() :: atom().
 
@@ -43,7 +43,7 @@
 -define(CNAM_EXPIRES,
         kapps_config:get_integer(?CNAM_CONFIG_CAT, <<"cnam_expires">>, ?DEFAULT_EXPIRES)).
 -define(CNAM_PROVIDER_MODULE,
-        kz_term:to_atom(<<"stepswitch_cnam_", (kapps_config:get_binary(?CNAM_CONFIG_CAT, <<"provider">>, ?DEFAULT_PROVIDER))/binary>>, 'true')).
+        kz_term:to_atom(<<"cnam_", (kapps_config:get_binary(?CNAM_CONFIG_CAT, <<"provider">>, ?DEFAULT_PROVIDER))/binary>>, 'true')).
 
 %%%=============================================================================
 %%% API
@@ -61,11 +61,11 @@ start_link(_) ->
 -spec render(kz_json:object(), kz_term:ne_binary()) -> {'ok', iolist()} |
                                                        {'error', 'timeout'}.
 render(JObj, Template) ->
-    case catch poolboy:checkout(?STEPSWITCH_CNAM_POOL, 'false', 1000) of
+    case catch poolboy:checkout(?CNAM_POOL, 'false', 1000) of
         W when is_pid(W) ->
-            Props = stepswitch_util:json_to_template_props(JObj),
+            Props = cnam_util:json_to_template_props(JObj),
             Reply = gen_server:call(W, {'render', Props, Template}),
-            poolboy:checkin(?STEPSWITCH_CNAM_POOL, W),
+            poolboy:checkin(?CNAM_POOL, W),
             Reply;
         _Else -> {'error', 'timeout'}
     end.

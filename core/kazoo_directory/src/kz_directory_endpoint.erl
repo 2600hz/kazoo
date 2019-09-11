@@ -45,7 +45,7 @@ maybe_guess_endpoint_type(Endpoint) ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"restrict_to_known_types">>, 'false') of
         'false' -> guess_endpoint_type(Endpoint);
         'true' ->
-            lager:info("unknown endpoint type and callflows restrictued to known types", []),
+            lager:info("unknown endpoint type and callflows restricted to known types", []),
             <<"unknown">>
     end.
 
@@ -176,7 +176,7 @@ profile(EndpointId, AccountId) ->
 -spec profile(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
 profile(EndpointId, AccountId, Options) ->
     case kz_endpoint:get(EndpointId, AccountId) of
-        {'ok', Endpoint} -> generate_profile(EndpointId, AccountId, Endpoint, Options);
+        {'ok', Endpoint} -> maybe_generate_profile(EndpointId, AccountId, Endpoint, Options);
         Error -> Error
     end.
 
@@ -232,6 +232,13 @@ maybe_add_aor(Username, Endpoint, Headers) ->
           ,{<<"X-KAZOO-INVITE-FORMAT">>, Format}
           ],
     kz_json:set_values(AOR, Headers).
+
+-spec maybe_generate_profile(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) -> {'ok', kz_json:object()}.
+maybe_generate_profile(EndpointId, AccountId, Endpoint, Options) ->
+    case kz_json:get_ne_binary_value(<<"Endpoint-Type">>, Endpoint) of
+        <<"device">> -> generate_profile(EndpointId, AccountId, Endpoint, Options);
+        _ -> {'error', 'not_device'}
+    end.
 
 -spec generate_profile(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) -> {'ok', kz_json:object()}.
 generate_profile(EndpointId, AccountId, Endpoint, Options) ->

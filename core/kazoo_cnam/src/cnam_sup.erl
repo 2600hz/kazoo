@@ -1,7 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2019, 2600Hz
-%%% @doc
-%%% @author Karl Anderson
+%%% @doc Root supervisor tree for stepswitch routing WhApp
 %%%
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,40 +8,21 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(ecallmgr_auxiliary_sup).
+-module(cnam_sup).
 
 -behaviour(supervisor).
 
--include("ecallmgr.hrl").
--include_lib("kazoo_stdlib/include/kz_databases.hrl").
+-include("cnam.hrl").
 
 -define(SERVER, ?MODULE).
 
 -export([start_link/0]).
--export([cache_proc/0]).
 -export([init/1]).
 
--define(CACHE_AUTHN_PROPS, [{'origin_bindings', [[{'type', <<"account">>}]
-                                                ,[{'type', <<"device">>}]
-                                                ,[{'type', <<"user">>}]
-                                                ]
-                            }
-                           ]).
--define(CACHE_UTIL_PROPS, [{'origin_bindings', [[{'db', ?KZ_CONFIG_DB}]
-                                               ,[{'type', <<"media">>}]
-                                               ]
-                           }
-                          ]).
+-define(CACHE_PROPS, []).
 
--define(CHILDREN, [?CACHE_ARGS(?ECALLMGR_UTIL_CACHE, ?CACHE_UTIL_PROPS)
-                  ,?CACHE_ARGS(?ECALLMGR_AUTH_CACHE, ?CACHE_AUTHN_PROPS)
-                  ,?CACHE(?ECALLMGR_CALL_CACHE)
-                  ,?SUPER('ecallmgr_originate_sup')
-                  ,?WORKER('ecallmgr_registrar')
-                  ,?WORKER('ecallmgr_balance_crawler_statem')
-                  ,?WORKER('ecallmgr_discovery')
-                  ,?WORKER('ecallmgr_usurp_monitor')
-                  ,?WORKER('ecallmgr_trusted')
+-define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
+                  ,?SUPER('cnam_pool_sup')
                   ]).
 
 %%==============================================================================
@@ -57,9 +37,6 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec cache_proc() -> atom().
-cache_proc() -> ?ECALLMGR_UTIL_CACHE.
-
 %%==============================================================================
 %% Supervisor callbacks
 %%==============================================================================
@@ -73,6 +50,7 @@ cache_proc() -> ?ECALLMGR_UTIL_CACHE.
 %%------------------------------------------------------------------------------
 -spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
+    _ = kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
