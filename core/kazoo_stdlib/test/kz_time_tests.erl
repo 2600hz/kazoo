@@ -187,7 +187,7 @@ iso8601_test_() ->
 
 iso8601_ms_test_() ->
     TS = {_, _, US} = erlang:timestamp(),
-    USBin = kz_term:to_binary(US div 1000),
+    USBin = kz_binary:pad_left(kz_term:to_binary(US div 1000), 3, <<"0">>),
     Now = kz_time:iso8601_ms(TS),
 
     <<_:20/binary, USNow:3/binary, "Z">> = kz_time:iso8601_ms(),
