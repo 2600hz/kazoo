@@ -6,18 +6,29 @@
 
 -export([main/1]).
 
-main(_) ->
-    case raw_json_usage:process_project() of
-        [] -> 'ok';
-        ModulesWithRawJSON ->
-            handle_potential_usage(ModulesWithRawJSON)
-    end.
+main([]) ->
+    io:format("checking raw JSON {[]} usage: "),
+    ModulesWithRawJSON = raw_json_usage:process_project(),
+    handle_potential_usage(ModulesWithRawJSON);
+main(Files) ->
+    io:format("checking raw JSON {[]} usage: "),
+    ModulesWithRawJSON = lists:foldl(fun process_file/2, [], Files),
+    handle_potential_usage(ModulesWithRawJSON).
+
+process_file(File, Acc) ->
+    process_file(File, Acc, filename:extension(kz_term:to_binary(File))).
+
+process_file(File, Acc, <<".erl">>) ->
+    ModuleName = filename:basename(File, ".erl"),
+    Acc ++ raw_json_usage:process_module(kz_term:to_atom(ModuleName, 'true'));
+process_file(_File, Acc, _Ext) -> Acc.
 
 handle_potential_usage(ModulesWithRawJSON) ->
     ExitCode = lists:foldl(fun handle_potential_usage/2
                           ,0
                           ,ModulesWithRawJSON
                           ),
+    io:format("~n"),
     erlang:halt(ExitCode).
 
 handle_potential_usage({Module, Lines}, ExitCode) ->
@@ -96,7 +107,7 @@ find_source(Module, BeamFile) when is_list(BeamFile) ->
     case file:open(SrcFile, ['read', 'binary', 'raw', 'read_ahead']) of
         {'ok', IODevice} -> IODevice;
         {'error', 'enoent'} ->
-            io:format("failed to find source ~s for beam ~s~n", [SrcFile, BeamFile]),
+            io:format("failed to find module ~s source file ~s in ~s for beam ~s~n", [Module, SrcFile, AppDir, BeamFile]),
             throw({'error', 'enoent'})
     end.
 
@@ -115,7 +126,7 @@ find_source_sub_dir(Module, AppDir) ->
     end.
 
 output_raw_matches(Module, Line, 0, LineData, Matches) ->
-    File = props:get_value(source, Module:module_info(compile), Module),
+    File = props:get_value('source', Module:module_info('compile'), Module),
     Format = "~s:~p: ~s~n",
     output(File, Line, Matches, LineData, Format);
 output_raw_matches(Module, Line, _RawLines, LineData, Matches) ->

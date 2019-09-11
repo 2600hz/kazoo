@@ -21,11 +21,19 @@
         ,code_change/3
         ]).
 
+-export([maybe_record_inbound/3
+        ,maybe_record_outbound/3
+        ]).
+
 -include("kazoo_endpoint.hrl").
 
 -define(SERVER, ?MODULE).
 
 -define(MEDIA_RECORDING_ENDPOINT_ID, <<"Media-Recording-Endpoint-ID">>).
+
+-define(ENDPOINT_INBOUND_RECORDING(Network), [<<"call_recording">>, <<"endpoint">>, <<"inbound">>, Network]).
+-define(ENDPOINT_OUTBOUND_RECORDING(Network), [<<"call_recording">>, <<"endpoint">>, <<"outbound">>, Network]).
+-define(ENDPOINT_OUTBOUND_RECORDING_LABEL(Network), <<"outbound to ", Network/binary, " from endpoint">>).
 
 -type media_directory() :: file:filename_all().
 -type media_name() :: file:filename_all().
@@ -513,3 +521,41 @@ maybe_save_recording(_Pid, EndpointId, JObj) ->
              ,origin => <<"inbound from ", Inception/binary, " to endpoint">>
              },
     save_recording(Store).
+
+%% @doc should recording be started on call TO the endpoint
+-spec maybe_record_inbound(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
+                                  {'true', {kz_json:path(), kz_json:object()}} | 'false'.
+maybe_record_inbound(FromNetwork, Endpoint, Call) ->
+    maybe_record_inbound(FromNetwork, Endpoint, Call, kz_json:get_json_value(?ENDPOINT_INBOUND_RECORDING(FromNetwork), Endpoint)).
+
+-spec maybe_record_inbound(kz_term:ne_binary(), kz_json:object(), kapps_call:call(), kz_term:api_object()) ->
+                                  {'true', {kz_json:path(), kz_json:object()}} | 'false'.
+maybe_record_inbound(_FromNetwork, _Endpoint, _Call, 'undefined') -> 'false';
+maybe_record_inbound(FromNetwork, Endpoint, Call, Data) ->
+    case kz_json:is_true(<<"enabled">>, Data) of
+        'false' -> 'false';
+        'true' ->
+            Values = [{<<"origin">>, <<"inbound from ", FromNetwork/binary, " to endpoint">>}],
+            App = record_call_command(kz_doc:id(Endpoint), FromNetwork, kz_json:set_values(Values, Data), Call),
+            lager:info("setting endpoint ~s to record on answer", [kz_doc:id(Endpoint)]),
+            {'true', {[<<"Execute-On-Answer">>, <<"Record-Endpoint">>], App}}
+    end.
+
+%% @doc maybe start recording on call made FROM the endpoint
+-spec maybe_record_outbound(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
+                                   {'true', kapps_call:call()} | 'false'.
+maybe_record_outbound(ToNetwork, Endpoint, Call) ->
+    maybe_record_outbound(ToNetwork, Endpoint, Call, kz_json:get_json_value(?ENDPOINT_OUTBOUND_RECORDING(ToNetwork), Endpoint)).
+
+-spec maybe_record_outbound(kz_term:ne_binary(), kz_json:object(), kapps_call:call(), kz_term:api_object()) ->
+                                   {'true', kapps_call:call()} | 'false'.
+maybe_record_outbound(_ToNetwork, _Endpoint, _Call, 'undefined') -> 'false';
+maybe_record_outbound(ToNetwork, _Endpoint, Call, Data) ->
+    case kz_json:is_true(<<"enabled">>, Data) of
+        'false' -> 'false';
+        'true' ->
+            LabeledData = kz_json:set_value(<<"origin">>, ?ENDPOINT_OUTBOUND_RECORDING_LABEL(ToNetwork), Data),
+            {'true'
+            ,kapps_call:start_recording(LabeledData, kapps_call:kvs_store('recording_follow_transfer', 'false', Call))
+            }
+    end.

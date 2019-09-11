@@ -38,7 +38,7 @@ process_app(App) ->
     lists:keysort(1, Raw).
 
 -spec process_module(module()) -> [{module(), list()}].
-process_module(Module) ->
+process_module(Module) when is_atom(Module) ->
     Options = [{'accumulator', ?ACC([], [])}
               ,{'module', fun maybe_skip_kz_json/2}
               ,{'after_module', fun print_dot/2}

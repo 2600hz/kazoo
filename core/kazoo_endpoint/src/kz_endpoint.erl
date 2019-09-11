@@ -19,7 +19,11 @@
         ]).
 
 -ifdef(TEST).
--export([attributes_keys/0]).
+-export([attributes_keys/0
+        ,merge_attribute/4
+        ]).
+
+-include_lib("eunit/include/eunit.hrl").
 -endif.
 
 -include("kazoo_endpoint.hrl").
@@ -334,8 +338,8 @@ merge_attribute(<<"record_call">> = Key, Account, Endpoint, Owner) ->
     kz_json:set_value(Key, Merged, Endpoint);
 merge_attribute(<<"call_recording">> = Key, Account, Endpoint, Owner) ->
     AccountAttr = get_account_record_call_properties(Account),
-    OwnerAttr = get_endpoint_record_call_properties(Owner),
-    EndpointAttr = get_endpoint_record_call_properties(Endpoint),
+    OwnerAttr = get_user_record_call_properties(Owner),
+    EndpointAttr = get_device_record_call_properties(Endpoint),
     Merged = kz_json:merge([AccountAttr, OwnerAttr, EndpointAttr]),
     kz_json:set_value(Key, Merged, Endpoint);
 merge_attribute(<<"outbound_flags">>, Account, Endpoint, Owner) ->
@@ -383,65 +387,78 @@ merge_attribute_caller_id_emergency(Attribute, Endpoint, EndpointAttr) ->
         Value -> kz_json:set_value(Key, Value, Endpoint)
     end.
 
--spec merge_call_recording(kz_json:object()) -> kz_json:object().
-merge_call_recording(JObj) ->
+-spec merge_call_recording(kzd_call_recording:doc()) -> kzd_call_recording:doc().
+merge_call_recording(RecordingSettings) ->
     AnyDirections = [<<"inbound">>, <<"outbound">>],
     AnyNets = [<<"onnet">>, <<"offnet">>],
 
-    AnyDirection = kz_json:get_json_value(<<"any">>, JObj, kz_json:new()),
-    F1 = fun(K1, V1) -> merge_call_recording(K1, V1, AnyDirection) end,
-    JObj1 = lists:foldl(F1, kz_json:delete_key(<<"any">>, JObj), AnyDirections),
-    F2 = fun(K, V, Acc) -> merge_call_recording(K, V, Acc, AnyNets) end,
-    kz_json:foldl(F2, JObj1, JObj1).
+    AnyDirectionSettings = kzd_call_recording:any(RecordingSettings, kz_json:new()),
 
--spec merge_call_recording(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> kz_json:object().
-merge_call_recording(K, JObj, ToMerge) ->
-    case kz_json:get_json_value(K, JObj) of
-        'undefined' -> kz_json:set_value(K, ToMerge, JObj);
-        V -> kz_json:set_value(K, kz_json:merge(ToMerge, V), JObj)
+    F1 = fun(Direction, RSAcc1) -> merge_call_recording_direction(Direction, RSAcc1, AnyDirectionSettings) end,
+    RecordingSettings1 = lists:foldl(F1, kz_json:delete_key(<<"any">>, RecordingSettings), AnyDirections),
+
+    F2 = fun(Direction, Networks, RSAcc2) -> merge_call_recording_networks(Direction, Networks, RSAcc2, AnyNets) end,
+    kz_json:foldl(F2, RecordingSettings1, RecordingSettings1).
+
+-spec merge_call_recording_direction(kz_term:ne_binary(), kzd_call_recording:doc(), kz_json:object()) -> kz_json:object().
+merge_call_recording_direction(Direction, RecordingSettings, AnyDirectionSettings) ->
+    case kz_json:get_json_value(Direction, RecordingSettings) of
+        'undefined' -> kz_json:set_value(Direction, AnyDirectionSettings, RecordingSettings);
+        V -> kz_json:set_value(Direction, kz_json:merge(AnyDirectionSettings, V), RecordingSettings)
     end.
 
--spec merge_call_recording(kz_term:ne_binary(), kz_json:object(), kz_json:object(), kz_term:ne_binaries()) -> kz_json:object().
-merge_call_recording(K, JObj, Acc, List) ->
-    Any = kz_json:get_json_value(<<"any">>, JObj, kz_json:from_list([{<<"enabled">>, 'false'}])),
-    Fun = fun(K1, V1) -> merge_call_recording(K1, V1, Any) end,
-    kz_json:set_value(K, lists:foldl(Fun, kz_json:delete_key(<<"any">>, JObj), List), Acc).
+-spec merge_call_recording_networks(kz_term:ne_binary(), kz_json:object(), kz_json:object(), kz_term:ne_binaries()) -> kz_json:object().
+merge_call_recording_networks(Direction, NetworksJObj, RecordingSettings, AnyNetworks) ->
+    AnyNetworkSettings = kzd_call_recording:any(NetworksJObj, kz_json:from_list([{<<"enabled">>, 'false'}])),
+    Fun = fun(Network, NetworksAcc) -> merge_call_recording_direction(Network, NetworksAcc, AnyNetworkSettings) end,
+    UpdatedNetworks = lists:foldl(Fun, kz_json:delete_key(<<"any">>, NetworksJObj), AnyNetworks),
+    kz_json:set_value(Direction, UpdatedNetworks, RecordingSettings).
 
--spec get_account_record_call_properties(kz_term:api_object()) -> kz_json:object().
-get_account_record_call_properties(JObj) ->
-    kz_json:foldl(fun(K, V, Acc) ->
-                          kz_json:set_value(K, merge_call_recording(V), Acc)
+-spec get_account_record_call_properties(kzd_accounts:doc()) -> kz_json:object().
+get_account_record_call_properties(AccountDoc) ->
+    %% Type: account/endpoint
+    kz_json:foldl(fun(Type, RecordingSettings, Acc) ->
+                          kz_json:set_value(Type, merge_call_recording(RecordingSettings), Acc)
                   end
                  ,kz_json:new()
-                 ,kz_json:get_json_value(<<"call_recording">>, JObj, kz_json:new())
+                 ,kzd_accounts:call_recording(AccountDoc, kz_json:new())
                  ).
 
--spec get_endpoint_record_call_properties(kz_json:object()) -> kz_json:object().
-get_endpoint_record_call_properties(JObj) ->
-    CallRecording = kz_json:get_json_value(<<"call_recording">>, JObj),
-    case get_endpoint_record_call_properties(CallRecording, JObj) of
-        'undefined' ->
-            kz_json:new();
-        RecordCall ->
-            kz_json:from_list([{<<"endpoint">>, merge_call_recording(RecordCall)}])
+-spec get_user_record_call_properties(kzd_users:doc()) -> kz_json:object().
+get_user_record_call_properties(UserDoc) ->
+    case kzd_users:call_recording(UserDoc) of
+        'undefined' -> get_legacy_record_call_properties(UserDoc);
+        CallRecording -> endpoint_recording(CallRecording)
     end.
 
--spec get_endpoint_record_call_properties(kz_term:api_object(), kz_json:object()) -> kz_term:api_object().
-get_endpoint_record_call_properties('undefined', JObj) ->
-    Legacy = get_record_call_properties(JObj),
+-spec get_device_record_call_properties(kzd_devices:doc() | 'undefined') -> kz_json:object().
+get_device_record_call_properties('undefined') -> kz_json:new();
+get_device_record_call_properties(DeviceDoc) ->
+    case kzd_users:call_recording(DeviceDoc) of
+        'undefined' -> get_legacy_record_call_properties(DeviceDoc);
+        CallRecording -> endpoint_recording(CallRecording)
+    end.
+
+-spec get_legacy_record_call_properties(kz_json:object()) -> kz_json:object().
+get_legacy_record_call_properties(EndpointDoc) ->
+    Legacy = get_record_call_properties(EndpointDoc),
     case kz_json:is_true(<<"record_call">>, Legacy) of
-        'false' -> 'undefined';
+        'false' -> kz_json:new();
         'true' ->
+            lager:info("adding legacy record_call settings"),
             Settings = kz_json:set_value(<<"enabled">>, 'true', Legacy),
             AnyNet = kz_json:from_list([{<<"onnet">>, Settings}
                                        ,{<<"offnet">>, Settings}
                                        ]),
-            kz_json:from_list([{<<"inbound">>, AnyNet}
-                              ,{<<"outbound">>, AnyNet}
-                              ])
-    end;
-get_endpoint_record_call_properties(JObj, _) ->
-    JObj.
+            RecordCall = kz_json:from_list([{<<"inbound">>, AnyNet}
+                                           ,{<<"outbound">>, AnyNet}
+                                           ]),
+            endpoint_recording(RecordCall)
+    end.
+
+-spec endpoint_recording(kzd_call_recording:doc()) -> kz_json:object().
+endpoint_recording(RecordCall) ->
+    kz_json:from_list([{<<"endpoint">>, merge_call_recording(RecordCall)}]).
 
 %% deprecated, to be removed
 -spec get_record_call_properties(kz_json:object()) -> kz_json:object().
@@ -888,9 +905,7 @@ maybe_start_metaflows(Call, Endpoints, _CallId) ->
 
 -spec maybe_start_metaflow(kapps_call:call(), kz_json:object()) -> 'ok'.
 maybe_start_metaflow(Call, Endpoint) ->
-    case not is_sms(Call)
-        andalso kz_json:get_first_defined([<<"metaflows">>, <<"Metaflows">>], Endpoint)
-    of
+    case kz_json:get_first_defined([<<"metaflows">>, <<"Metaflows">>], Endpoint) of
         'false' -> 'ok';
         'undefined' -> 'ok';
         ?EMPTY_JSON_OBJECT -> 'ok';
@@ -1989,8 +2004,7 @@ endpoint_actions(Endpoint, Call) ->
 
 -spec endpoint_actions(kz_json:object(), kapps_call:call(), kz_term:api_object()) -> kz_json:object().
 endpoint_actions(Endpoint, Call, CallFwd) ->
-    Funs = [fun maybe_record_endpoint/1
-           ],
+    Funs = [fun maybe_record_endpoint/1],
     Acc0 = {Endpoint, Call, CallFwd, kz_json:new()},
     {_Endpoint, _Call, _CallFwd, Actions} = lists:foldr(fun(F, Acc) -> F(Acc) end, Acc0, Funs),
     Actions.
@@ -1998,21 +2012,17 @@ endpoint_actions(Endpoint, Call, CallFwd) ->
 -type actions_acc() :: {kz_json:object(), kapps_call:call(), kz_term:api_object(), kz_json:object()}.
 
 -spec maybe_record_endpoint(actions_acc()) -> actions_acc().
-maybe_record_endpoint({Endpoint, Call, CallFwd, Actions} = Acc) ->
-    case is_sms(Call)
-        orelse kapps_call:call_id_direct(Call) =:= 'undefined'
-    of
-        'true' -> Acc;
-        'false' ->
-            Inception = kapps_call:inception_type(Call),
-            Data = kz_json:get_json_value(?ENDPOINT_INBOUND_RECORDING(Inception), Endpoint),
-            case Data /= 'undefined'
-                andalso kz_json:is_true(<<"enabled">>, Data)
-            of
-                'false' -> Acc;
-                'true' ->
-                    App = kz_endpoint_recording:record_call_command(kz_doc:id(Endpoint), Inception, Data, Call),
-                    NewActions = kz_json:set_value([<<"Execute-On-Answer">>, <<"Record-Endpoint">>], App, Actions),
-                    {Endpoint, Call, CallFwd, NewActions}
-            end
+maybe_record_endpoint({_Endpoint, Call, _CallFwd, _Actions} = Acc) ->
+    ShouldNotCheck = is_sms(Call)
+        orelse kapps_call:call_id_direct(Call) =:= 'undefined',
+    maybe_record_endpoint(Acc, ShouldNotCheck).
+
+-spec maybe_record_endpoint(actions_acc(), boolean()) -> actions_acc().
+maybe_record_endpoint(Acc, 'true') -> Acc;
+maybe_record_endpoint({Endpoint, Call, CallFwd, Actions}=Acc, 'false') ->
+    case kz_endpoint_recording:maybe_record_inbound(kapps_call:inception_type(Call), Endpoint, Call) of
+        'false' -> Acc;
+        {'true', {ActionKey, ActionApp}} ->
+            NewActions = kz_json:set_value(ActionKey, ActionApp, Actions),
+            {Endpoint, Call, CallFwd, NewActions}
     end.

@@ -580,7 +580,7 @@ get_all_default_kvs(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec set_string(config_category(), config_key(), kz_term:text() | binary() | string()) ->
+-spec set_string(config_category(), config_key(), kz_term:text()) ->
                         {'ok', kz_json:object()}.
 set_string(Category, Key, Value) ->
     set(Category, Key, kz_term:to_binary(Value)).

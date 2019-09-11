@@ -181,7 +181,7 @@
                     ,to = ?NO_USER_REALM :: kz_term:ne_binary()           %% Result of sip_to_user + @ + sip_to_host
                     ,to_user = ?NO_USER :: kz_term:ne_binary()              %% SIP to user
                     ,to_realm = ?NO_REALM :: kz_term:ne_binary()            %% SIP to host
-                    ,inception :: kz_term:api_binary()                   %% Origin of the call <<"on-net">> | <<"off-net">>
+                    ,inception :: kz_term:api_binary()                   %% Origin of the call <<"onnet">> | <<"offnet">>
                     ,account_db :: kz_term:api_binary()                  %% The database name of the account that authorized this call
                     ,account_id :: kz_term:api_binary()                  %% The account id that authorized this call
                     ,authorizing_id :: kz_term:api_binary()              %% The ID of the record that authorized this call
@@ -215,14 +215,14 @@
 
 -type kapps_helper_function() :: fun((kz_term:api_binary(), call()) -> kz_term:api_binary()).
 
--define(SPECIAL_VARS, [{<<"Caller-ID-Name">>, #kapps_call.caller_id_name}
-                      ,{<<"Caller-ID-Number">>, #kapps_call.caller_id_number}
-                      ,{<<"Account-ID">>, #kapps_call.account_id}
-                      ,{<<"Owner-ID">>, #kapps_call.owner_id}
-                      ,{<<"Fetch-ID">>, #kapps_call.fetch_id}
-                      ,{<<"Bridge-ID">>, #kapps_call.bridge_id}
+-define(SPECIAL_VARS, [{<<"Account-ID">>, #kapps_call.account_id}
                       ,{<<"Authorizing-ID">>, #kapps_call.authorizing_id}
                       ,{<<"Authorizing-Type">>, #kapps_call.authorizing_type}
+                      ,{<<"Bridge-ID">>, #kapps_call.bridge_id}
+                      ,{<<"Caller-ID-Name">>, #kapps_call.caller_id_name}
+                      ,{<<"Caller-ID-Number">>, #kapps_call.caller_id_number}
+                      ,{<<"Fetch-ID">>, #kapps_call.fetch_id}
+                      ,{<<"Owner-ID">>, #kapps_call.owner_id}
                       ]).
 
 -spec default_helper_function(Field, call()) -> Field.
@@ -1490,6 +1490,7 @@ start_recording(Data0, Call) ->
                         ,kz_json:get_ne_binary_value(?RECORDING_ID_KEY, Data)
                         ,RecorderPid
                         }
+                       ,{fun set_is_recording/2, 'true'}
                        ],
             exec(Routines, Call);
         _Err ->
@@ -1570,7 +1571,7 @@ get_recordings(Call) ->
         Q -> Q
     end.
 
--spec inception_type(call()) -> kz_term:api_binary().
+-spec inception_type(call()) -> kz_term:ne_binary().
 inception_type(#kapps_call{inception='undefined'}) -> <<"onnet">>;
 inception_type(#kapps_call{}) -> <<"offnet">>.
 
