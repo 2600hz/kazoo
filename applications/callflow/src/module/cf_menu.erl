@@ -238,7 +238,7 @@ hunt_for_callflow(Digits, Menu, Call) ->
                     ],
             UpdatedCall = kapps_call:kvs_store_proplist(Props, Call),
             cf_exe:set_call(UpdatedCall),
-            cf_exe:branch(kz_json:get_value(<<"flow">>, Flow, kz_json:new()), UpdatedCall),
+            cf_exe:branch(kzd_callflows:flow(Flow, kz_json:new()), UpdatedCall),
             'true';
         _ ->
             lager:info("callflow hunt failed"),
