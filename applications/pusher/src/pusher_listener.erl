@@ -68,8 +68,8 @@ handle_push(JObj, _Props) ->
     TokenType = kz_json:get_value(<<"Token-Type">>, JObj),
     Module = kz_term:to_atom(<<"pm_",TokenType/binary>> , 'true'),
     lager:debug("pushing for token ~s(~s) to module ~s", [Token, TokenType, Module]),
-    JObj1 = kz_json:insert_value([<<"Payload">>, <<"timestamp">>]
-                                ,kz_time:iso8601_ms()
+    JObj1 = kz_json:insert_value([<<"Payload">>, <<"utc_unix_timestamp_ms">>]
+                                ,os:system_time(millisecond)
                                 ,JObj
                                 ),
     gen_server:cast(Module, {'push', JObj1}).
