@@ -3,6 +3,19 @@
     "_id": "callflows.branch_bnumber",
     "description": "Validator for the branch_bnumber callflow data object",
     "properties": {
+        "hunt": {
+            "default": false,
+            "description": "Should the capture group be used to hunt for a new callflow",
+            "type": "boolean"
+        },
+        "hunt_allow": {
+            "description": "A regexp used to match against the capture group to whitelist allowed numbers to hunt",
+            "type": "string"
+        },
+        "hunt_deny": {
+            "description": "A regexp used to match against the capture group to blacklist denied numbers to hunt",
+            "type": "string"
+        },
         "skip_module": {
             "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
             "type": "boolean"
