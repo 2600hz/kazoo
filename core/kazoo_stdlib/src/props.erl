@@ -259,12 +259,14 @@ get_all_values(Key, Props) -> [V || {K, V} <- Props, K =:= Key].
 
 -spec get_values_and_keys(kz_term:proplist()) -> {[kz_term:proplist_value()], [kz_term:proplist_key()]}.
 get_values_and_keys(Props) ->
-    lists:foldr(fun(Key, {Vs, Ks}) ->
-                        {[get_value(Key, Props)|Vs], [Key|Ks]}
-                end
-               ,{[], []}
-               ,get_keys(Props)
-               ).
+    lists:foldr(fun get_value_and_key/2, {[], []}, Props).
+
+-spec get_value_and_key(kz_term:proplist_property(), {[kz_term:proplist_value()], [kz_term:proplist_key()]}) ->
+                               {[kz_term:proplist_value()], [kz_term:proplist_key()]}.
+get_value_and_key({Key, Value}, {Values, Keys}) ->
+    {[Value | Values], [Key | Keys]};
+get_value_and_key(Key, {Values, Keys}) ->
+    {['true' | Values], [Key | Keys]}.
 
 %%------------------------------------------------------------------------------
 %% @doc Returns the value at Key (or Default) and the (maybe modified) proplist()

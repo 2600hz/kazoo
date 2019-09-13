@@ -16,17 +16,30 @@ urldecode_test_()->
     ,?_assertEqual(<<"abcd">>, kz_http_util:urldecode(<<"%61%62%63%64">>))
     ].
 
-parse_query_string_test_() ->
-    [?_assertEqual([{<<"foo">>, <<"bar">>}, {<<"baz">>, <<"wibble \r\n">>}, {<<"z">>, <<"1">>}]
-                  ,kz_http_util:parse_query_string(<<"foo=bar&baz=wibble+%0D%0a&z=1">>))
-    ,?_assertEqual([{<<"">>, <<"bar">>}, {<<"baz">>, <<"wibble \r\n">>}, {<<"z">>, <<"">>}]
-                  ,kz_http_util:parse_query_string(<<"=bar&baz=wibble+%0D%0a&z=">>))
-    ,?_assertEqual([{<<"foo">>, <<"bar">>}, {<<"baz">>, <<"wibble \r\n">>}, {<<"z">>, <<"1">>}]
-                  ,kz_http_util:parse_query_string(<<"foo=bar&baz=wibble+%0D%0a&z=1">>))
-    ,?_assertEqual([]
-                  ,kz_http_util:parse_query_string(<<"">>))
-    ,?_assertEqual([{<<"foo">>, <<"">>}, {<<"bar">>, <<"">>}, {<<"baz">>, <<"">>}]
-                  ,kz_http_util:parse_query_string(<<"foo;bar&baz">>))
+query_string_test_() ->
+    Tests = [{[{<<"foo">>, <<"bar">>}, {<<"baz">>, <<"wibble \r\n">>}, {<<"z">>, <<"1">>}]
+             ,<<"foo=bar&baz=wibble+%0D%0A&z=1">>
+             }
+            ,{[{<<"">>, <<"bar">>}, {<<"baz">>, <<"wibble \r\n">>}, {<<"z">>, <<"">>}]
+             ,<<"=bar&baz=wibble+%0D%0A&z=">>
+             }
+            ,{[{<<"foo">>, <<"bar">>}, {<<"baz">>, <<"wibble \r\n">>}, {<<"z">>, <<"1">>}]
+             ,<<"foo=bar&baz=wibble+%0D%0A&z=1">>
+             }
+            ,{[], <<>>}
+            ,{[{<<"via">>, <<"example.org">>}, {<<"via">>, <<"other.example.org">>}]
+             ,<<"via=example.org&via=other.example.org">>
+             }
+            ],
+    [?_assertEqual([{<<"foo">>, <<"">>}, {<<"bar">>, <<"">>}, {<<"baz">>, <<"">>}], kz_http_util:parse_query_string(<<"foo;bar&baz">>))
+     | [encode_decode(Decoded, Encoded)
+        || {Decoded, Encoded} <- Tests
+       ]
+    ].
+
+encode_decode(Decoded, Encoded) ->
+    [?_assertEqual(Decoded, kz_http_util:parse_query_string(Encoded))
+    ,?_assertEqual(Encoded, iolist_to_binary(kz_http_util:props_to_querystring(Decoded)))
     ].
 
 urlsplit_test_() ->
