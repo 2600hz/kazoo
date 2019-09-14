@@ -773,7 +773,7 @@ normalize_capture_group(<<>>, _) ->
     'undefined';
 normalize_capture_group(CaptureGroup, 'undefined') ->
     knm_converters:normalize(CaptureGroup);
-normalize_capture_group(CaptureGroup, ?NE_BINARY=AccountId) ->
+normalize_capture_group(CaptureGroup, <<AccountId/binary>>) ->
     knm_converters:normalize(CaptureGroup, AccountId);
 normalize_capture_group(CaptureGroup, Call) ->
     normalize_capture_group(CaptureGroup, kapps_call:account_id(Call)).

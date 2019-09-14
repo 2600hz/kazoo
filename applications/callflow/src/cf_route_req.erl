@@ -6,7 +6,9 @@
 %%%-----------------------------------------------------------------------------
 -module(cf_route_req).
 
--export([handle_req/2]).
+-export([handle_req/2
+        ,allow_no_match/1
+        ]).
 
 -include("callflow.hrl").
 
