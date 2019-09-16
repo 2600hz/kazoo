@@ -1,4 +1,5 @@
 ## Kazoo Makefile targets
+## Targets are run from the application's root directory (not KAZOO root).
 
 .PHONY: compile compile-lean compile-test compile-test-direct compile-test-kz-deps \
 	clean clean-test \
@@ -55,8 +56,34 @@ TEST_EBINS += $(EBINS) $(ROOT)/deps/proper/ebin
 PA      = -pa ebin/ $(foreach EBIN,$(EBINS),-pa $(EBIN))
 TEST_PA = -pa ebin/ $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))
 
-DEPS_RULES = .deps.mk
+DEPS_RULES = .deps.rules
 TEST_DEPS = .test.deps
+DEPS_MK = $(CURDIR)/deps.mk
+
+.PHONY: deps
+ifneq (,$(wildcard $(DEPS_MK)))
+# Track app's dependencies, if any
+DEPS_HASH := $(shell md5sum $(DEPS_MK) | cut -d' ' -f1)
+DEPS_HASH_FILE := .deps.mk.$(DEPS_HASH)
+
+deps: $(DEPS_MK) $(DEPS_HASH_FILE)
+
+$(DEPS_HASH_FILE):
+	@[[ -s $(DEPS_MK) ]] && DEPS_MK='$(DEPS_MK)' $(MAKE) -C $(ROOT)/deps/ all || true
+
+else
+deps: $(DEPS_MK)
+
+$(DEPS_MK):
+	@touch $(DEPS_MK)
+	@touch .deps.mk.$(shell md5sum $(DEPS_MK) | cut -d' ' -f1)
+
+endif
+
+clean-deps: clean-deps-hash
+
+clean-deps-hash:
+	$(if $(wildcard .deps.mk.*), rm .deps.mk.*)
 
 comma := ,
 empty :=
@@ -79,7 +106,7 @@ include $(DEPS_RULES)
 endif
 
 ## COMPILE_MOAR can contain Makefile-specific targets (see CLEAN_MOAR, compile-test)
-compile: $(TEST_DEPS) $(COMPILE_MOAR) ebin/$(PROJECT).app json depend $(BEAMS)
+compile: deps $(TEST_DEPS) $(COMPILE_MOAR) ebin/$(PROJECT).app json depend $(BEAMS)
 
 compile-lean: ERLC_OPTS := $(filter-out +debug_info,$(ERLC_OPTS)) +deterministic
 compile-lean: compile
@@ -109,7 +136,7 @@ json: JSON = $(shell find . -name '*.json')
 json:
 	@$(ROOT)/scripts/format-json.sh $(JSON)
 
-compile-test: $(TEST_DEPS) compile-test-kz-deps compile-test-direct json
+compile-test: deps $(TEST_DEPS) compile-test-kz-deps compile-test-direct json
 
 compile-test-direct: $(COMPILE_MOAR) test/$(PROJECT).app
 
