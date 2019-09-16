@@ -136,9 +136,9 @@ json: JSON = $(shell find . -name '*.json')
 json:
 	@$(ROOT)/scripts/format-json.sh $(JSON)
 
-compile-test: deps $(TEST_DEPS) compile-test-kz-deps compile-test-direct json
+compile-test: $(TEST_DEPS) compile-test-kz-deps compile-test-direct json
 
-compile-test-direct: $(COMPILE_MOAR) test/$(PROJECT).app
+compile-test-direct: deps $(COMPILE_MOAR) test/$(PROJECT).app
 
 $(TEST_DEPS):
 	 ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/calculate-dep-targets.escript $(ROOT) $(PROJECT) > $(TEST_DEPS)
