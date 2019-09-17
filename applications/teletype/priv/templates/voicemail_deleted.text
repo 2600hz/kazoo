@@ -1,0 +1,37 @@
+                Voicemail Deleted
+
+
+Hi{% if user.first_name %} {{user.first_name}}{% endif %},
+
+A voicemail from {{caller_id.name_number}} for
+your voicemail box at {{voicemail.vmbox_name}} (number: {{voicemail.vmbox_number}}) was deleted.
+Please find the message audio file in the attachment.
+{% if voicemail.transcription %}
+
+=== Transcription ===
+
+{{voicemail.transcription}}
+{% endif %}
+
+=== Voicemail Message Details ===
+
+    Caller: {{caller_id.name_number}}
+    Callee: {{to.user}} (originally dialed number)
+    Received: {{date_called.local|date:"l, F j, Y \\a\\t H:i"}}
+    Length: {{voicemail.length}}{% if voicemail.file_name %}
+    File Name: {{voicemail.file_name}}
+    File Type: {{voicemail.file_type|upper}}
+    File Size: {{voicemail.file_size|filesizeformat}}{% endif %}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+Delete reason: {{reason}}
+
+
+Sent from {{system.encoded_node}}

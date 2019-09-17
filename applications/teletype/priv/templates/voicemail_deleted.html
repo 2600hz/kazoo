@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="x-apple-disable-message-reformatting">
+    <title>Voicemail Message Was Deleted</title>
+    <!--[if !mso]><link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'><![endif]-->
+    <style>
+        /* CSS Reset */
+        html,body{margin:0 auto !important;padding:0 !important;height:100% !important;width:100% !important;} *{-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%;}div[style*="margin:16px 0"]{margin:0 !important;}table,td{mso-table-lspace:0pt !important;mso-table-rspace:0pt !important;}table{border-spacing:0 !important;border-collapse:collapse !important;table-layout:fixed !important;margin:0 auto !important;}table table table{table-layout:auto;}img{-ms-interpolation-mode:bicubic;}*[x-apple-data-detectors]{color:inherit !important;text-decoration:none !important;}.x-gmail-data-detectors,.x-gmail-data-detectors *,.aBn{border-bottom:0 !important;cursor:default !important;}.a6S{display:none !important;opacity:0.01 !important;}img.g-img + div{display:none !important;}.button-link{text-decoration:none !important;}@media only screen and (min-device-width:375px) and (max-device-width:413px){.email-container{min-width:375px !important;}}
+        /* Progressive Enhancements */
+        *{font-family:'Open Sans',Arial,sans-serif;}
+        html,body{font-size:15px;line-height:20px;}
+    </style>
+</head>
+<body width="100%" bgcolor="#eaeaea" style="margin:0;mso-line-height-rule:exactly;background-color:#eaeaea">
+    <center style="padding:40px 0;width:100%;background:#eaeaea;text-align:left;">
+        <div style="display:none;font-size:1px;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;font-family:sans-serif;">
+            Voicemail Message Was Deleted from {{caller_id.number}} -
+        </div>
+        <div style="max-width:600px;margin:auto;" class="email-container">
+            <!--[if mso]>
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" align="center">
+            <tr>
+            <td>
+            <![endif]-->
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" bgcolor="#5995f7" align="center" width="100%" style="background-color:#5995f7;border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr><td height="10" style="font-size:10px;line-height:10px;">&nbsp;</td></tr>
+            </table>
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:40px;text-align:center;">
+                        <h2 style="margin:0;padding:0;text-align:center;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">Voicemail Deleted</h2>
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">
+                        <h3 style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">Hi{% if user.first_name %} {{user.first_name}}{% endif %},</h3>
+                    </td>
+                </tr>
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                        <p style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;">The voicemail from <b>{{caller_id.name_number}}</b> for your voicemail box at <b>{{voicemail.vmbox_name}} ({{voicemail.vmbox_number}})</b> was deleted.<br><br>Please find the message audio file in the attachment.</p>
+                    </td>
+                </tr>
+            </table>
+            {% if voicemail.transcription %}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">
+                        <h3 style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">Transcription</h3>
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;">
+                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" bgcolor="#eaeaea" width="80%" style="background-color:#eaeaea;border-radius:5px;">
+                            <tr>
+                                <td style="padding:13px;font-family:'Open Sans',sans-serif;font-size:13px;color:#555555;line-height:20px;border-radius:5px;">
+                                    <p style="margin:0;padding:0">{{voicemail.transcription}}</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            {% endif %}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">
+                        <h3 style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">Voicemail Message Details</h3>
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;">
+                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%">
+                            <tr>
+                                <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Caller</b></td>
+                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{caller_id.name_number}}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Callee</b></td>
+                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{to.user}} (originally dialed number)</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Received</b></td>
+                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{date_called.local|date:"l,F j,Y \\a\\t H:i"}}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Length</b></td>
+                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{voicemail.length|default:"00:00:00"}}</td>
+                            </tr>
+                        </table>
+                        {% if voicemail.file_name %}
+                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%">
+                            <tr>
+                                <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>File Name</b></td>
+                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{voicemail.file_name}}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>File Type</b></td>
+                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{voicemail.file_type|upper}}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>File Size</b></td>
+                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{voicemail.file_size|filesizeformat}}</td>
+                            </tr>
+                        </table>
+                        {% endif %}
+                    </td>
+                </tr>
+            </table>
+            <!-- Pre-Footer -->
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <!-- Clear Spacer -->
+                <tr><td height="50" style="background-color:#ffffff;font-size:50px;line-height:50px;">&nbsp;</td></tr>
+                <tr><!-- #6a59f7 -->
+                    <td bgcolor="#e2e2e2" style="padding:0 20px;background-color:#e2e2e2;color:#555555;">
+                        <h4 style="font-weight:100;line-height:20px;margin:13px 0;font-family:'Open Sans',sans-serif;color:#555555;">Account Information</h4>
+                        <p style="margin:13px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-size:11px;line-height:18px;">
+                            <b>-&nbsp;&nbsp;&nbsp;Account ID:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{account.id}}</span><br>
+                            <b>-&nbsp;&nbsp;&nbsp;Account Name:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{account.name}}</span><br>
+                            <b>-&nbsp;&nbsp;&nbsp;Account Realm:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{account.realm}}</span>
+                        </p>
+                        <p style="margin:13px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-size:11px;line-height:18px;">
+                            <b>-&nbsp;&nbsp;&nbsp;Delete reason:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{reason}}</span>
+                        </p>
+                    </td>
+                </tr>
+            </table>
+            <!-- Email Footer -->
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" bgcolor="#202029" align="center" width="100%" style="background-color:#202029;border-color:#202029;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr><td style="font-size:50px;line-height:50px;" height="50">&nbsp;</td></tr>
+            </table>
+            <p style="margin:0;padding:5px 0;font-family:'Open Sans',sans-serif;color:#a9a9a9;font-size:10px;">Sent from {{system.encoded_node}}</p>
+            <!--[if mso]>
+            </td>
+            </tr>
+            </table>
+            <![endif]-->
+        </div>
+    </center>
+</body>
+</html>

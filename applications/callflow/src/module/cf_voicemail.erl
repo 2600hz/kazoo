@@ -871,7 +871,9 @@ play_messages(Messages, Count, Box, Call) ->
 
 -spec play_messages(kz_json:objects(), kz_json:objects(), non_neg_integer(), mailbox(), kapps_call:call()) ->
           'ok' | 'complete'.
-play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{seek_duration=SeekDuration}=Box, Call) ->
+play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{seek_duration=SeekDuration
+                                                           ,mailbox_id=BoxId
+                                                           }=Box, Call) ->
     AccountId = kapps_call:account_id(Call),
     Message = kvm_message:media_url(AccountId, H),
     lager:info("playing mailbox message ~p (~s)", [Count, Message]),
@@ -895,6 +897,7 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{seek_duration=SeekDu
             lager:info("caller chose to delete the message"),
             _ = kapps_call_command:flush(Call),
             _ = kapps_call_command:b_prompt(<<"vm-deleted">>, Call),
+            'ok' = kvm_util:publish_voicemail_deleted(BoxId, Call, H, 'dtmf'),
             _ = kvm_message:set_folder({?VM_FOLDER_DELETED, 'false'}, H, AccountId),
             play_messages(T, PrevMessages, Count, Box, Call);
         {'ok', 'return'} ->

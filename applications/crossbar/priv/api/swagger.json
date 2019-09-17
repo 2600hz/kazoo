@@ -21159,6 +21159,106 @@
             ],
             "type": "object"
         },
+        "kapi.notifications.voicemail_deleted": {
+            "description": "AMQP API for notifications.voicemail_deleted",
+            "properties": {
+                "Account-DB": {
+                    "type": "string"
+                },
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Attachment-URL": {
+                    "type": "string"
+                },
+                "Bcc": {
+                    "type": "string"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Caller-ID-Name": {
+                    "type": "string"
+                },
+                "Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Cc": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "notification"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "voicemail_deleted"
+                    ],
+                    "type": "string"
+                },
+                "From": {
+                    "type": "string"
+                },
+                "From-Realm": {
+                    "type": "string"
+                },
+                "From-User": {
+                    "type": "string"
+                },
+                "HTML": {
+                    "type": "string"
+                },
+                "Preview": {
+                    "type": "string"
+                },
+                "Reply-To": {
+                    "type": "string"
+                },
+                "Subject": {
+                    "type": "string"
+                },
+                "Text": {
+                    "type": "string"
+                },
+                "To": {
+                    "type": "string"
+                },
+                "To-Realm": {
+                    "type": "string"
+                },
+                "To-User": {
+                    "type": "string"
+                },
+                "Voicemail-Box": {
+                    "type": "string"
+                },
+                "Voicemail-ID": {
+                    "type": "string"
+                },
+                "Voicemail-Length": {
+                    "type": "string"
+                },
+                "Voicemail-Timestamp": {
+                    "type": "string"
+                },
+                "Voicemail-Transcription": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "From-Realm",
+                "From-User",
+                "To-Realm",
+                "To-User",
+                "Voicemail-Box",
+                "Voicemail-ID",
+                "Voicemail-Timestamp"
+            ],
+            "type": "object"
+        },
         "kapi.notifications.voicemail_full": {
             "description": "AMQP API for notifications.voicemail_full",
             "properties": {
@@ -34532,6 +34632,7 @@
                         "teletype_transaction",
                         "teletype_voicemail_full",
                         "teletype_voicemail_to_email",
+                        "teletype_voicemail_deleted",
                         "teletype_webhook_disabled"
                     ],
                     "description": "teletype modules to start when teletype is started",
@@ -35001,6 +35102,22 @@
                 "text_content_transfer_encoding": {
                     "default": "7BIT",
                     "description": "notify.transaction text content transfer encoding",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.notify.voicemail_deleted": {
+            "description": "Schema for notify.voicemail_deleted system_config",
+            "properties": {
+                "html_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "notify.voicemail_deleted html content transfer encoding",
+                    "type": "string"
+                },
+                "text_content_transfer_encoding": {
+                    "default": "7BIT",
+                    "description": "notify.voicemail_deleted text content transfer encoding",
                     "type": "string"
                 }
             },

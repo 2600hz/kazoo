@@ -1,0 +1,111 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.notifications.voicemail_deleted",
+    "description": "AMQP API for notifications.voicemail_deleted",
+    "properties": {
+        "Account-DB": {
+            "type": "string"
+        },
+        "Account-ID": {
+            "type": "string"
+        },
+        "Attachment-URL": {
+            "type": "string"
+        },
+        "Bcc": {
+            "type": "string"
+        },
+        "Call-ID": {
+            "type": "string"
+        },
+        "Caller-ID-Name": {
+            "type": "string"
+        },
+        "Caller-ID-Number": {
+            "type": "string"
+        },
+        "Cc": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "notification"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "voicemail_deleted"
+            ],
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "From-Realm": {
+            "type": "string"
+        },
+        "From-User": {
+            "type": "string"
+        },
+        "HTML": {
+            "type": "string"
+        },
+        "Preview": {
+            "type": "string"
+        },
+        "Reason": {
+            "enum": [
+                "dtmf",
+                "delete_after_notify",
+                "crossbar_action"
+            ],
+            "type": "string"
+        },
+        "Reply-To": {
+            "type": "string"
+        },
+        "Subject": {
+            "type": "string"
+        },
+        "Text": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        },
+        "To-Realm": {
+            "type": "string"
+        },
+        "To-User": {
+            "type": "string"
+        },
+        "Voicemail-Box": {
+            "type": "string"
+        },
+        "Voicemail-ID": {
+            "type": "string"
+        },
+        "Voicemail-Length": {
+            "type": "string"
+        },
+        "Voicemail-Timestamp": {
+            "type": "string"
+        },
+        "Voicemail-Transcription": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "From-Realm",
+        "From-User",
+        "Reason",
+        "To-Realm",
+        "To-User",
+        "Voicemail-Box",
+        "Voicemail-ID",
+        "Voicemail-Timestamp"
+    ],
+    "type": "object"
+}

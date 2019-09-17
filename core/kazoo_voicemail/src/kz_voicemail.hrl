@@ -34,5 +34,7 @@
 
 -type next_account() :: {kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()}.
 
+-type vm_delete_reason() :: 'dtmf' | 'delete_after_notify' | 'crossbar_action'.
+
 -define(KZ_VOICEMAIL_HRL, 'true').
 -endif.

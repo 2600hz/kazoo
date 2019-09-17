@@ -22,7 +22,7 @@
         ,retention_seconds/0, retention_seconds/1
         ,enforce_retention/1, enforce_retention/2, is_prior_to_retention/2
 
-        ,publish_saved_notify/5, publish_voicemail_saved/5
+        ,publish_saved_notify/5, publish_voicemail_saved/5, publish_voicemail_deleted/4
         ,get_caller_id_name/1, get_caller_id_number/1
         ]).
 
@@ -344,6 +344,38 @@ publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
            ],
     _ = kz_amqp_worker:cast(Prop, fun kapi_notifications:publish_voicemail_saved/1),
     lager:debug("published voicemail_saved for ~s", [BoxId]).
+
+%%------------------------------------------------------------------------------
+%% @doc Publishes `voicemail_deleted' notification.
+%% @end
+%%------------------------------------------------------------------------------
+-spec publish_voicemail_deleted(kz_term:ne_binary(), kapps_call:call(), kz_json:object(), vm_delete_reason()) -> 'ok'.
+publish_voicemail_deleted(BoxId, Call, Msg, Reason) ->
+    From = kz_json:get_ne_binary_value(<<"from">>, Msg),
+    To = kz_json:get_ne_binary_value(<<"to">>, Msg),
+
+    [FromUser, FromRealm] = binary:split(From, <<"@">>, [global]),
+    [ToUser, ToRealm] = binary:split(To, <<"@">>, [global]),
+
+    Prop = [{<<"From-User">>, FromUser}
+           ,{<<"From-Realm">>, FromRealm}
+           ,{<<"To-User">>, ToUser}
+           ,{<<"To-Realm">>, ToRealm}
+           ,{<<"Reason">>, Reason}
+           ,{<<"Account-DB">>, kapps_call:account_db(Call)}
+           ,{<<"Account-ID">>, kapps_call:account_id(Call)}
+           ,{<<"Voicemail-Box">>, BoxId}
+           ,{<<"Voicemail-ID">>, kz_json:get_ne_binary_value(<<"media_id">>, Msg)}
+           ,{<<"Caller-ID-Number">>, kz_json:get_ne_binary_value(<<"caller_id_number">>, Msg)}
+           ,{<<"Caller-ID-Name">>, kz_json:get_ne_binary_value(<<"caller_id_name">>, Msg)}
+           ,{<<"Voicemail-Timestamp">>, kz_json:get_ne_binary_value(<<"timestamp">>, Msg)}
+           ,{<<"Voicemail-Length">>, kz_json:get_ne_binary_value(<<"length">>, Msg)}
+           ,{<<"Call-ID">>, kapps_call:call_id_direct(Call)}
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    lager:debug("Props: ~p~n Msg: ~p~n~n", [Prop, Msg]),
+    _ = kz_amqp_worker:cast(Prop, fun kapi_notifications:publish_voicemail_deleted/1),
+    lager:debug("published voicemail_deleted for ~s", [BoxId]).
 
 %%%=============================================================================
 %%% Internal functions
