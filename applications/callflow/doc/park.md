@@ -1,24 +1,34 @@
-## Call Parking
+# Call Parking
 
-### About Call Parking
+## About Call Parking
 
 Parking will place a call in a numbered "slot" where it will remain until it is retrieved or the caller hangs up.  It can be configured so that if the device parking the call is known then the parked call will periodically ring the parker back.  Optionally, if the parker does not answer a ringback the callflow can be configured to advance to a child and execute further callflow actions.
 
-### Schema
+#### Schema
 
 Validator for the park callflow data object
 
-Key | Description | Type | Default | Required | Support
---- | ----------- | ---- | ------- | -------- | --------
-`action` | Action to take for the caller | `string('direct_park', 'park', 'retrieve', 'auto')` | `park` | `false` |
-`custom_presence_id` | use configured presence_id and fallback to request | `boolean` | `false` | `false` | 
-`default_callback_timeout` | How long, in seconds, to wait before calling back the parker | `integer` |   | `false` | 
-`default_presence_type` | Type of presence to update | `string('early', 'terminated', 'confirmed')` |   | `false` | 
-`default_ringback_timeout` | How long, in milliseconds, before ringing back | `integer` |   | `false` | 
-`max_slot_number` | Continue past this module if the selected slot number exceeds this number. Used to restrict the max number of auto-generated slot numbers | `integer()` |   | `false` | 
-`presence_id` | use this presence_id | `string` |   | `false` | 
-`slot` | Static slot number to use | `string` |   | `false`
-`slots` | Statically define slots and their configuration | `object` | `null` | `false` | 
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`action` | Action to take for the caller | `string('direct_park' | 'park' | 'retrieve' | 'auto')` | `park` | `false` |  
+`custom_presence_id` | use configured presence_id and fallback to request | `boolean()` | `false` | `false` |  
+`default_callback_timeout` | How long, in seconds, to wait before calling back the parker | `integer()` |   | `false` |  
+`default_presence_type` | Type of presence to update | `string('early' | 'terminated' | 'confirmed')` |   | `false` |  
+`default_ringback_timeout` | How long, in milliseconds, before ringing back | `integer()` |   | `false` |  
+`max_slot_number` | Continue past this module if the selected slot number exceeds this number. Used to restrict the max number of auto-generated slot numbers | `integer()` |   | `false` |  
+`presence_id` | use this presence_id | `string()` |   | `false` |  
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
+`slot` | Static slot number to use | `string()` |   | `false` |  
+`slots` | Statically define slots and their configuration | `object()` | `{}` | `false` |  
+
+
+
+
+
+
+#### Additonal Information
 
 Some call parking parameters can be configured in a number of ways:
 

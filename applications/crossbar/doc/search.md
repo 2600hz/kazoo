@@ -55,9 +55,9 @@ To look up a single value in the specified field. These should defined in reques
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`t` | document type | `string` |  | `true`
-`q` | the field to look in for value | `string` |  | `true`
-`v` | value to search for | `string` or `boolean` |  | `true`
+`t` | document type | `string()` |  | `true`
+`q` | the field to look in for value | `string()` |  | `true`
+`v` | value to search for | `string()` or `boolean()` |  | `true`
 
 
 ```shell
@@ -110,8 +110,8 @@ To search with multiple values in a single shot. Search parameters should define
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`t` | document type | `string` |  | `true`
-`by_{view_name}` | the values to search for in `{view_name}` results | `string` |  | `true`
+`t` | document type | `string()` |  | `true`
+`by_{view_name}` | the values to search for in `{view_name}` results | `string()` |  | `true`
 
 Here `{view_name}` is referring in what field is available to search. See [above](#databases-to-search-on-fields-to-search-with).
 

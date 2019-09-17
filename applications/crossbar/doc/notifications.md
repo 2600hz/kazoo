@@ -64,28 +64,34 @@ All accounts will continue to be processed by the `notify` application until the
 
 ## Notifications Schema
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`bcc.email_addresses.[]` |   | `string()` |   | `false`
-`bcc.email_addresses` | BCC Email Addresses | `array(string())` |   | `false`
-`bcc.type` |   | `string('original' | 'specified' | 'admins')` |   | `false`
-`bcc` | Bcc email field | `object()` |   | `false`
-`category` | Category of the template, for grouping purposes | `string(1..)` |   | `false`
-`cc` | CC email field | `object()` |   | `false`
-`cc.email_addresses.[]` |   | `string()` |   | `false`
-`cc.email_addresses` | CC Email Addresses | `array(string())` |   | `false`
-`cc.type` |   | `string('original' or 'specified' or 'admins')` |   | `false`
-`enabled` | Enable notification | `boolean()` | `true` | `false`
-`friendly_name` | Friendly name of the template | `string(1..)` |   | `false`
-`from` | From: email address | `string()` |   | `true`
-`macros` |   | `object()` | `{}` | `false`
-`reply_to` | Reply-To: email address | `string()` |   | `false`
-`subject` | Email subject | `string(1..200)` |   | `true`
-`template_charset` |   | `string(1..)` | `utf-8` | `false`
-`to` | To email field | `object()` |   | `true`
-`to.email_addresses.[]` |   | `string()` |   | `false`
-`to.email_addresses` |   | `array(string())` |   | `false`
-`to.type` |   | `string('original' or 'specified' or 'admins')` |   | `false`
+#### Schema
+
+Notifications templates
+
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`bcc.email_addresses.[]` |   | `string()` |   | `false` |  
+`bcc.email_addresses` | BCC Email Addresses | `array(string())` |   | `false` |  
+`bcc.type` |   | `string('original' | 'specified' | 'admins')` |   | `false` |  
+`bcc` | Bcc email field | `object()` |   | `false` |  
+`category` | Category of the template, for grouping purposes | `string(1..)` |   | `false` |  
+`cc.email_addresses.[]` |   | `string()` |   | `false` |  
+`cc.email_addresses` | CC Email Addresses | `array(string())` |   | `false` |  
+`cc.type` |   | `string('original' | 'specified' | 'admins')` |   | `false` |  
+`cc` | CC email field | `object()` |   | `false` |  
+`enabled` | Enable notification | `boolean()` | `true` | `false` |  
+`friendly_name` | Friendly name of the template | `string(1..)` |   | `false` |  
+`from` | From: email address | `string()` |   | `true` |  
+`macros` |   | `object()` | `{}` | `false` |  
+`reply_to` | Reply-To: email address | `string()` |   | `false` |  
+`subject` | Email subject | `string(1..200)` |   | `true` |  
+`template_charset` |   | `string(1..)` | `utf-8` | `false` |  
+`to.email_addresses.[]` |   | `string()` |   | `false` |  
+`to.email_addresses` |   | `array(string())` |   | `false` |  
+`to.type` |   | `string('original' | 'specified' | 'admins')` |   | `false` |  
+`to` | To email field | `object()` |   | `true` |  
 
 
 

@@ -25,27 +25,39 @@ See [Multi Factor Authentication API documentation](./multi_factor.md).
 
 ## Account Auth Configuration Schema
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`cb_api_auth` |   | [#/definitions/auth_module_config](#auth.module.config) |   | `false`
-`cb_auth` |   | [#/definitions/auth_module_config](#auth.module.config) |   | `false`
-`cb_ip_auth` |   | [#/definitions/auth_module_config](#auth.module.config) |   | `false`
-`cb_ubiquiti_auth` |   | [#/definitions/auth_module_config](#auth.module.config) |   | `false`
-`cb_user_auth` |   | [#/definitions/auth_module_config](#auth.module.config) |   | `false`
+#### Schema
 
-#### Auth Module Configuration Schema
+Schema for crossbar.auth account_config
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`enabled` | whether or not this authentication module is enabled | `boolean` |  | `false`
-`log_failed_attempts` | should log failed logging attempts | `boolean` |  | `false`
-`log_successful_attempts` | should log successful logging attempts | `boolean` |  | `false`
-`multi_factor` | control multi factor authentications for this module | `object` |   | `false`
-`multi_factor.account_id` | ID of the account that contains the multi factor configuration | `string` |  | `false`
-`multi_factor.configuration_id` | document ID contains the multi factor configuration | `string` |  | `false`
-`multi_factor.enabled` | turn on/off multi factor authentications for this module | `boolean` |  | `false`
-`multi_factor.include_subaccounts` | should this multi factor authentication settings be applied when used by sub-accounts | `boolean` |  | `false`
-`token_auth_expiry_s` | expiration period of the JWT token (seconds) | `integer` |  | `false`
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`auth_modules.cb_api_auth` | crossbar authenticator module configuration | [#/definitions/auth_module_config](#auth_module_config) |   | `false` |
+`auth_modules.cb_auth` | crossbar authenticator module configuration | [#/definitions/auth_module_config](#auth_module_config) |   | `false` |
+`auth_modules.cb_ip_auth` | crossbar authenticator module configuration | [#/definitions/auth_module_config](#auth_module_config) |   | `false` |
+`auth_modules.cb_ubiquiti_auth` | crossbar authenticator module configuration | [#/definitions/auth_module_config](#auth_module_config) |   | `false` |
+`auth_modules.cb_user_auth` | crossbar authenticator module configuration | [#/definitions/auth_module_config](#auth_module_config) |   | `false` |
+`auth_modules` | Default crossbar authentication modules configuration | `object()` | `{"cb_user_auth":{"token_auth_expiry_s":3600,"log_successful_attempts":true,"log_failed_attempts":true,"enabled":true},"cb_ubiquiti_auth":{"token_auth_expiry_s":3600,"log_successful_attempts":false,"log_failed_attempts":true,"enabled":true},"cb_ip_auth":{"token_auth_expiry_s":3600,"log_successful_attempts":false,"log_failed_attempts":true,"enabled":true},"cb_auth":{"token_auth_expiry_s":3600,"log_successful_attempts":false,"log_failed_attempts":true,"enabled":true},"cb_api_auth":{"token_auth_expiry_s":3600,"log_successful_attempts":false,"log_failed_attempts":true,"enabled":true}}` | `true` |
+
+### auth_module_config
+
+crossbar authenticator module configuration
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`enabled` | whether or not this authenticator module is enabled | `boolean()` |   | `false` |
+`log_failed_attempts` | should log failed logging attempts | `boolean()` |   | `false` |
+`log_successful_attempts` | should log successful logging attempts | `boolean()` |   | `false` |
+`multi_factor.account_id` | ID of the account that contains the multi factor configuration | `string()` |   | `false` |
+`multi_factor.configuration_id` | document ID that contains the multi factor configuration | `string()` |   | `false` |
+`multi_factor.enabled` | turn on/off multi factor authentications for this module | `boolean()` |   | `false` |
+`multi_factor.include_subaccounts` | should this multi factor authentication settings be applied when used by sub-accounts | `boolean()` |   | `false` |
+`multi_factor` | control multi factor authentications for this module | `object()` |   | `false` |
+`token_auth_expiry_s` | expiration period of the JWT token (seconds) | `integer()` |   | `false` |
+
+
 
 ## Get a List of Available Auth Module
 

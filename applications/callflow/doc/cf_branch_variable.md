@@ -1,21 +1,27 @@
-### Callflow Branch on a Variable's Value
+# Callflow Branch on a Variable's Value
 
-#### Overview
+## Overview
 
 The `branch_variable` callflow enables you to branch based on value of some field inside one of the a call CCVs, user's document, device's document or an account's document.
 
-##### Callflow fields
+### Schema
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`scope` | specifies where the variable is defined | `string` | `"custom_channel_vars"` | `false`
-`variable` | specifies the name of variable/property that should be looked up | `string` or a json path | | `true`
+Validator for the branch_variable callflow data object
 
-#### Description
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`scope` | specifies where the variable is defined | `string('account' | 'custom_channel_vars' | 'device' | 'merged' | 'user')` | `custom_channel_vars` | `false` |
+`skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |
+`variable` | specifies the name of variable/property that should be looked up | `string()` | "" | `true` |
+
+
+### Description
 
 The purpose of this callflow is to branch on value of some property so it may have children named after possible values of the property, e.g. branch on boolean value of a property with the name `"call_forward"`. For this, there should be three children on the callflow: `"true"`, `"false"` (and `"_"` for the case when property is not defined anywhere and it's value is unknown).
 
-##### Scope
+#### Scope
 
 The place that the variable can be defined is configurable by `scope`. By default, if the scope is not defined or if it is set to `"custom_channel_vars"`, a call's CCVs would be looking for the variable's value.
 
@@ -27,7 +33,7 @@ Supported places for defining the variable:
 * `"merged"`: in the endpoint object (the merge of device, user and account)
 * `"user"`: in the user's documents
 
-##### Variable
+#### Variable
 
 Variable is the name of the variable or property that should be look for in the specified scope. It must be a valid JSON key, e.g. a single string or a list of string which is a path to deep nested JSON objects.
 
