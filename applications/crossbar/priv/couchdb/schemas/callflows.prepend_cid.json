@@ -5,7 +5,7 @@
     "properties": {
         "action": {
             "default": "prepend",
-            "description": "Action to perform",
+            "description": "If the action parameter is \"reset\" the caller-id-name and caller-id-number will be restored to their original values, if the value is \"prepend\" then the prepending will happen",
             "enum": [
                 "reset",
                 "prepend"
@@ -14,7 +14,7 @@
         },
         "apply_to": {
             "default": "current",
-            "description": "Apply the prepend to which caller ID",
+            "description": "Either \"original\" or \"current\", this specifies that the prefix's should be applied to the current caller-id's or the original values",
             "enum": [
                 "original",
                 "current"
@@ -23,12 +23,12 @@
         },
         "caller_id_name_prefix": {
             "default": "",
-            "description": "Prefix caller ID name",
+            "description": "The prefix that should be applied to the caller-id-name",
             "type": "string"
         },
         "caller_id_number_prefix": {
             "default": "",
-            "description": "Prefix caller ID number",
+            "description": "The prefix that should be applied to the caller-id-number",
             "type": "string"
         },
         "skip_module": {
