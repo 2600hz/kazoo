@@ -1,8 +1,11 @@
 ROOT = $(shell cd "$(dirname '.')" && pwd -P)
-RELX = $(ROOT)/deps/relx
-ELVIS = $(ROOT)/deps/elvis
+
+DEPS_DIR = $(ROOT)/deps
+
+RELX = $(DEPS_DIR)/relx
+ELVIS = $(DEPS_DIR)/elvis
 TAGS = $(ROOT)/TAGS
-ERLANG_MK_COMMIT = d30dda39b08e6ed9e12b44533889eaf90aba86de
+ERLANG_MK_COMMIT = 82179575d9191305805c8e6e8107be7c3f80a6be
 
 BASE_BRANCH := $(shell cat $(ROOT)/.base_branch)
 
@@ -114,7 +117,7 @@ check: ERLC_OPTS += -DPROPER
 check: compile-test eunit clean-kazoo kazoo
 
 clean-deps: clean-deps-hash
-	$(if $(wildcard deps/), rm -rf deps/)
+	$(if $(wildcard $(DEPS_DIR)), rm -rf $(DEPS_DIR))
 	$(if $(wildcard .erlang.mk/), rm -r .erlang.mk/)
 
 clean-deps-hash:
@@ -131,14 +134,14 @@ deps: $(DEPS_HASH_FILE)
 
 $(DEPS_HASH_FILE):
 	@$(MAKE) clean-deps
-	@$(MAKE) deps/Makefile
-	@$(MAKE) -C deps/ all
+	@$(MAKE) $(DEPS_DIR)/Makefile
+	@$(MAKE) -C $(DEPS_DIR)/ all
 	touch $(DEPS_HASH_FILE)
 
-deps/Makefile: .erlang.mk clean-plt
+$(DEPS_DIR)/Makefile: .erlang.mk clean-plt
 	mkdir -p deps
 	@$(MAKE) -f erlang.mk deps
-	cp $(ROOT)/make/Makefile.deps deps/Makefile
+	cp $(ROOT)/make/Makefile.deps $(DEPS_DIR)/Makefile
 
 core:
 	@$(MAKE) -j$(JOBS) -C core/ all
@@ -189,7 +192,7 @@ read-release-cookie:
 	@NODE_NAME='$(REL)' _rel/kazoo/bin/kazoo escript lib/kazoo_config-*/priv/read-cookie.escript "$$@"
 
 fixture_shell: ERL_CRASH_DUMP = "$(ROOT)/$(shell date +%s)_ecallmgr_erl_crash.dump"
-fixture_shell: ERL_LIBS = "$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications:$(shell echo $(ROOT)/deps/rabbitmq_erlang_client-*/deps)"
+fixture_shell: ERL_LIBS = "$(DEPS_DIR):$(ROOT)/core:$(ROOT)/applications:$(shell echo $(DEPS_DIR)/rabbitmq_erlang_client-*/deps)"
 fixture_shell: NODE_NAME ?= fixturedb
 fixture_shell:
 	@ERL_CRASH_DUMP="$(ERL_CRASH_DUMP)" ERL_LIBS="$(ERL_LIBS)" KAZOO_CONFIG=$(ROOT)/rel/config-test.ini \
@@ -200,8 +203,8 @@ DIALYZER += --statistics --no_native
 PLT ?= .kazoo.plt
 
 OTP_APPS ?= erts kernel stdlib crypto public_key ssl asn1 inets xmerl
-EXCLUDE_DEPS = $(ROOT)/deps/erlang_localtime/ebin
-$(PLT): DEPS_EBIN ?= $(filter-out $(EXCLUDE_DEPS),$(wildcard $(ROOT)/deps/*/ebin))
+EXCLUDE_DEPS = $(DEPS_DIR)/erlang_localtime/ebin
+$(PLT): DEPS_EBIN ?= $(filter-out $(EXCLUDE_DEPS),$(wildcard $(DEPS_DIR)/*/ebin))
 # $(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin)
 $(PLT):
 	@-$(DIALYZER) --build_plt --output_plt $(PLT) \
@@ -247,7 +250,7 @@ dialyze-it-changed: $(PLT)
 		echo "no erlang changes to dialyze"; \
 	fi
 
-xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(ROOT)/deps -name ebin)
+xref: TO_XREF ?= $(shell find $(ROOT)/applications $(ROOT)/core $(DEPS_DIR) -name ebin)
 xref:
 	@$(ROOT)/scripts/check-xref.escript $(TO_XREF)
 

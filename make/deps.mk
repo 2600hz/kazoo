@@ -1,7 +1,6 @@
 ## 3rd party dependencies
-DEPS = amqp_client \
+DEPS ?= amqp_client \
 	amqp_dist \
-	apns \
 	couchbeam \
 	cowboy \
 	eflame \
@@ -11,14 +10,9 @@ DEPS = amqp_client \
 	erlcloud \
 	erlsom \
 	erlydtl \
-	escalus \
-	exml \
-	fcm \
-	folsom \
 	gen_smtp \
 	getopt \
 	gproc \
-	hep \
 	inet_cidr \
 	jesse \
 	jiffy \
@@ -35,7 +29,6 @@ DEPS = amqp_client \
 	recon \
 	reloader \
 	syslog \
-	trie \
 	yamerl \
 	zucchini
 
@@ -51,8 +44,6 @@ endif
 dep_amqp_client = git https://github.com/2600hz/erlang-amqp_client.git v3.7.14
 
 dep_amqp_dist = git https://github.com/2600hz/erlang-amqp_dist.git aa10108f1200438fe33a6450dc0909d4cdb37f31
-
-dep_apns = git https://github.com/2600hz/erlang-apns4erl.git aba1fa96a4abbbb2c1628ad5d604f482aad4d12f # latest commit SHA to 2600hz branch
 
 # dep_certifi = hex 0.3.0
 # Used by hackney, let it pull in certifi
@@ -86,19 +77,6 @@ dep_erlazure = git https://github.com/2600hz/erlang-erlazure.git 88e0417251983ab
 dep_erlcloud = git https://github.com/2600hz/erlang-erlcloud 3.2.7
 # used by kazoo_attachments and a crossbar test (cb_storage_tests)
 
-dep_escalus = git https://github.com/2600hz/erlang-escalus 0de0463c345a1ade6fccfb9aadad719b58a1cef5
-# used by fax cloud printer i think?
-
-dep_exml = git https://github.com/2600hz/erlang-exml 2.2.1
-# used by fax cloud printer
-
-dep_fcm = git https://github.com/2600hz/erlang-fcm.git b2f68a4c6f0f59475597a35e2dc9be13d9ba2910
-# Firebase cloud messaging
-# used by pusher
-
-dep_folsom = git https://github.com/2600hz/erlang-folsom 0.8.2
-# used by hangups
-
 ## Code reloaders for dev VMs, uncomment if desired
 # dep_fs_event = git https://github.com/jamhed/fs_event 783400da08c2b55c295dbec81df0d926960c0346
 # dep_fs_sync = git https://github.com/jamhed/fs_sync 2cf85cf5861221128f020c453604d509fd37cd53
@@ -112,10 +90,6 @@ dep_getopt = git https://github.com/2600hz/erlang-getopt v1.0.1
 
 dep_gproc = git https://github.com/2600hz/erlang-gproc 0.8.0
 # used by kazoo_events, webseq, konami, acdc, ecallmgr, callflow
-
-dep_hep = git https://github.com/2600hz/hep-erlang a8f62dbc756fd3d4be1e2f0a6cec47a23f6cd18a
-# Homer encapsulation protocol
-# merged lazedo/hep changes
 
 # dep_horse = git https://github.com/ninenines/horse 4dc81d47c3116b38af673481402f34ce03f8936b
 # used by kazoo_stdlib in some test modules
@@ -167,9 +141,6 @@ dep_reloader = git https://github.com/2600hz/erlang-reloader de1e6c74204b61ccf3b
 # commit adds makefile for compile/clean
 
 dep_syslog = git https://github.com/2600hz/erlang-syslog bbad537a1cb5e4f37e672d2e2665659e850662d0
-
-dep_trie = git https://github.com/2600hz/erlang-trie v1.7.5
-# used by hotornot
 
 # dep_wsock = git https://github.com/madtrick/wsock 1.1.7
 # appears unused
