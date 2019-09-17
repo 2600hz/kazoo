@@ -888,6 +888,8 @@ maybe_update_meta(Length, Action, Call, MediaId, BoxId) ->
         'delete' ->
             lager:debug("attachment was sent out via notification, set folder to delete"),
             Fun = [fun(JObj) ->
+                           Metadata = kz_json:get_value(<<"metadata">>, JObj),
+                           'ok' = kvm_util:publish_voicemail_deleted(BoxId, Call, Metadata, 'delete_after_notify'),
                            kzd_box_message:apply_folder({?VM_FOLDER_DELETED, 'false'}, JObj)
                    end
                   ],
