@@ -17,7 +17,7 @@ Key | Description | Type | Default | Required
 `api_port` | The CouchDB API port, typically 5984 | `integer` | `5984` | `false`
 `autocompaction_check` | kazoo_couch autocompaction check | `integer` | `60000` | `false`
 `bigcouch_cookie` | The cookie value of all the BigCouch nodes | `string` |   | `false`
-`compact_automatically` | kazoo_couch compact automatically | `boolean` | `true` | `false`
+`compact_automatically` | kazoo_couch compact automatically | `boolean` | `false` | `false`
 `default_chunk_size` | kazoo_couch default chunk size | `integer` | `1000` | `false`
 `max_compacting_shards` | kazoo_couch maximum compacting shards | `integer` | `2` | `false`
 `max_compacting_views` | kazoo_couch maximum compacting views | `integer` | `2` | `false`
