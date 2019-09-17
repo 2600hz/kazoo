@@ -1346,7 +1346,6 @@ voicemail_full_definition() ->
                                ,<<"From-User">>
                                ,<<"To-Realm">>
                                ,<<"To-User">>
-                               ,<<"Reason">>
                                ,<<"Voicemail-Box">>
                                ,<<"Voicemail-ID">>
                                ,<<"Voicemail-Timestamp">>
@@ -1358,6 +1357,23 @@ voicemail_full_definition() ->
                                         ,<<"Voicemail-Transcription">>
                                              | ?DEFAULT_OPTIONAL_HEADERS
                                         ]).
+-define(VOICEMAIL_DELETED_HEADERS, [<<"Account-ID">>
+                                    ,<<"From-Realm">>
+                                    ,<<"From-User">>
+                                    ,<<"To-Realm">>
+                                    ,<<"To-User">>
+                                    ,<<"Reason">>
+                                    ,<<"Voicemail-Box">>
+                                    ,<<"Voicemail-ID">>
+                                    ,<<"Voicemail-Timestamp">>
+                                   ]).
+-define(OPTIONAL_VOICEMAIL_DELETED_HEADERS, [<<"Call-ID">>
+                                             ,<<"Caller-ID-Name">>
+                                             ,<<"Caller-ID-Number">>
+                                             ,<<"Voicemail-Length">>
+                                             ,<<"Voicemail-Transcription">>
+                                             | ?DEFAULT_OPTIONAL_HEADERS
+                                            ]).
 %%------------------------------------------------------------------------------
 %% @doc Get Voicemail New Notification API definition.
 %% @end
@@ -1429,8 +1445,8 @@ voicemail_deleted_definition() ->
               ,{fun kapi_definition:set_publish_fun/2, fun publish_voicemail_deleted/1}
               ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, <<"deleted">>)}
               ,{fun kapi_definition:set_restrict_to/2, 'voicemail_deleted'}
-              ,{fun kapi_definition:set_required_headers/2, ?VOICEMAIL_NEW_HEADERS}
-              ,{fun kapi_definition:set_optional_headers/2, ?OPTIONAL_VOICEMAIL_NEW_HEADERS}
+              ,{fun kapi_definition:set_required_headers/2, ?VOICEMAIL_DELETED_HEADERS}
+              ,{fun kapi_definition:set_optional_headers/2, ?OPTIONAL_VOICEMAIL_DELETED_HEADERS}
               ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
               ,{fun kapi_definition:set_types/2, []}
               ],
