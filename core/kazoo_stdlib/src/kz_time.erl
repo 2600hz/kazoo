@@ -64,6 +64,7 @@
 -type unix_seconds() :: pos_integer().
 -type api_seconds() :: 'undefined' | gregorian_seconds().
 -type ordinal() :: kz_term:ne_binary(). % "every" | "first" | "second" | "third" | "fourth" | "fifth" | "last".
+-type kazoo_month() :: {year(), month()}.
 
 %% {'start_time', erlang:monotonic_time()}
 -type start_time() :: {'start_time', integer()}.
@@ -76,6 +77,7 @@
              ,gregorian_seconds/0
              ,hour/0
              ,iso_week/0
+             ,kazoo_month/0
              ,minute/0
              ,month/0
              ,now/0
