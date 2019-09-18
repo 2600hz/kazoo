@@ -4,30 +4,52 @@ Crossbar module for operations on JWT Token, SSO/OAuth tokens.
 
 ## About Authentication
 
-## Schema for auth.callback
+### Schema for auth.callback
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`client_id` | client id, usually application id for OAuth providers | `string` |  | `true`
-`code` | access code emitted by provider | `string` | `true` | `true`
-`provider` | provider | `string` | `true` | `true`
-`redirect_uri` | redirect URI | `string` |   | `true`
-`state` | state | `string` |  | `false`
+#### Schema
+
+callback for authentication providers
+
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`client_id` | client id, usually application id for OAuth providers | `string()` |   | `true` |
+`code` | access code emitted by provider | `string()` |   | `true` |
+`provider` | provider | `string()` |   | `true` |
+`redirect_uri` | redirect URI | `string()` |   | `true` |
+`state` | state | `string()` |   | `false` |
+
+
 
 ### Schema for auth.provider
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`id` | id | `string` |  | `true`
+#### Schema
+
+provider settings for authentication
+
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`id` |   | `string()` |   | `true` |
+
+
 
 ### Schema for auth.app
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`client_id` | client id, usually application id for OAuth providers | `string` |  | `true`
-`email` | email for application | `string` | `true` | `false`
-`provider` | provider | `string` | `true` | `true`
-`secret` | secret for application | `string` |   | `true`
+#### Schema
+
+application description for authentication providers
+
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`client_id` | client_id, usually application id for OAuth providers | `string()` |   | `true` |
+`email` | email for application | `string()` |   | `false` |
+`provider` | provider | `string()` |   | `true` |
+`secret` | secret for application | `string()` |   | `true` |
 
 
 

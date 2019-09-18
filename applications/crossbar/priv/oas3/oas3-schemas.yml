@@ -2610,25 +2610,27 @@
   'properties':
     'action':
       'default': prepend
-      'description': Action to perform
+      'description': |-
+        If the action parameter is "reset" the caller-id-name and caller-id-number will be restored to their original values, if the value is "prepend" then the prepending will happen
       'enum':
         - reset
         - prepend
       'type': string
     'apply_to':
       'default': current
-      'description': Apply the prepend to which caller ID
+      'description': |-
+        Either "original" or "current", this specifies that the prefix's should be applied to the current caller-id's or the original values
       'enum':
         - original
         - current
       'type': string
     'caller_id_name_prefix':
       'default': ''
-      'description': Prefix caller ID name
+      'description': The prefix that should be applied to the caller-id-name
       'type': string
     'caller_id_number_prefix':
       'default': ''
-      'description': Prefix caller ID number
+      'description': The prefix that should be applied to the caller-id-number
       'type': string
     'skip_module':
       'description': |-
@@ -5458,6 +5460,14 @@
 'list_entries':
   'description': Schema for a match list entries
   'properties':
+    'capture_group_key':
+      'description': |-
+        The number which is used to select this entry, length should be same as `capture_group_length`
+      'type': string
+    'capture_group_length':
+      'description': |-
+        Length of the numbers in the list entries for which it used to select desire Caller ID
+      'type': integer
     'displayname':
       'description': Display name
       'maxLength': 128
@@ -9148,27 +9158,27 @@
   'properties':
     'accept_prompt':
       'default': 'tone_stream://%(250,50,440)'
-      'description': callflow.dynamic_cid accept prompt
+      'description': The media that would be played when the new caller id is accepted
       'type': string
     'default_prompt':
       'default': dynamic-cid-enter_cid
-      'description': callflow.dynamic_cid default prompt
+      'description': The media that would be played to user to dial the new caller id
       'type': string
     'max_digits':
       'default': 10
-      'description': callflow.dynamic_cid max digits
+      'description': Maximum length of the new caller id number
       'type': integer
     'min_digits':
       'default': 10
-      'description': callflow.dynamic_cid min digits
+      'description': Minimum length of the new caller id number
       'type': integer
     'reject_prompt':
       'default': dynamic-cid-invalid_using_default
-      'description': callflow.dynamic_cid reject prompt
+      'description': The media that would be played when the new caller id is rejected
       'type': string
     'whitelist_regex':
       'default': \d+
-      'description': callflow.dynamic_cid whitelist regex
+      'description': The regex to use for number to be matched against
       'type': string
   'type': object
 'system_config.callflow.hotdesk':

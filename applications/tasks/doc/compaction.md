@@ -8,27 +8,29 @@ Kazoo allows the cluster operator to enable automatic compaction of all database
 
 ## System Configuration Schema
 
+#### Schema
+
 Schema for kazoo_couch system_config
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`admin_port` | The CouchDB API port, typically 5986 | `integer` |   | `false`
-`allow_maintenance_db_delete` | kazoo_couch allow maintenance db delete | `boolean` | `false` | `false`
-`api_port` | The CouchDB API port, typically 5984 | `integer` | `5984` | `false`
-`autocompaction_check` | kazoo_couch autocompaction check | `integer` | `60000` | `false`
-`bigcouch_cookie` | The cookie value of all the BigCouch nodes | `string` |   | `false`
-`compact_automatically` | kazoo_couch compact automatically | `boolean` | `true` | `false`
-`default_chunk_size` | kazoo_couch default chunk size | `integer` | `1000` | `false`
-`max_compacting_shards` | kazoo_couch maximum compacting shards | `integer` | `2` | `false`
-`max_compacting_views` | kazoo_couch maximum compacting views | `integer` | `2` | `false`
-`max_concurrent_docs_to_archive` | kazoo_couch maximum concurrent docs to archive | `integer` | `500` | `false`
-`max_wait_for_compaction_pids` | kazoo_couch maximum wait for compaction pids | `integer` | `360000` | `false`
-`min_data_size` | kazoo_couch minimum data size | `integer` | `131072` | `false`
-`min_ratio` | kazoo_couch minimum ratio | `number` | `1.2` | `false`
-`sleep_between_compaction` | kazoo_couch sleep between compaction | `integer` | `60000` | `false`
-`sleep_between_poll` | kazoo_couch sleep between poll | `integer` | `3000` | `false`
-`sleep_between_views` | kazoo_couch sleep between views | `integer` | `2000` | `false`
-`use_bigcouch_direct` | kazoo_couch use BigCouch direct | `boolean` | `true` | `false`
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`admin_port` | The CouchDB API port, typically 5986 | `integer()` | `5986` | `false` |
+`allow_maintenance_db_delete` | kazoo_couch allow maintenance db delete | `boolean()` | `false` | `false` |
+`api_port` | The CouchDB API port, typically 5984 | `integer()` | `5984` | `false` |
+`compact_automatically` | kazoo_couch compact automatically | `boolean()` | `false` | `false` |
+`default_chunk_size` | kazoo_couch default chunk size | `integer()` | `1000` | `false` |
+`max_compacting_shards` | kazoo_couch maximum compacting shards | `integer()` | `2` | `false` |
+`max_compacting_views` | kazoo_couch maximum compacting views | `integer()` | `2` | `false` |
+`max_concurrent_docs_to_archive` | kazoo_couch maximum concurrent docs to archive | `integer()` | `500` | `false` |
+`max_wait_for_compaction_pids` | kazoo_couch maximum wait for compaction pids | `integer()` | `360000` | `false` |
+`min_data_size` | kazoo_couch minimum data size | `integer()` | `131072` | `false` |
+`min_ratio` | kazoo_couch minimum ratio | `number()` | `1.2` | `false` |
+`sleep_between_poll` | kazoo_couch sleep between poll | `integer()` | `3000` | `false` |
+`use_bigcouch_direct` | kazoo_couch use bigcouch direct | `boolean()` | `true` | `false` |
+
+
 
 ## Operations
 

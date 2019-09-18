@@ -108,14 +108,22 @@ Sometimes it is necessary to recover a password.
 Similar to user authentication, you can supply the account realm, the account name, or a phone number associated with the account to send a password reset to the user's email.
 This email will contain a link that one then click to verify identity & proceed with recovery.
 
-### Schema
+#### Schema
 
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`account_name` | The account name of the user | `string(1..64)` |   | `false`
-`account_realm` | The account realm of the user | `string(1..64)` |   | `false`
-`phone_number` | A phone number assigned to the user's account | `string(1..64)` |   | `false`
-`username` | The user's API username | `string(1..254)` |   | `true`
+Send a reset-your-password email via user credentials
+
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
+`account_name` | The account name of the user | `string(1..64)` |   | `false` |
+`account_realm` | The account realm of the user | `string(1..64)` |   | `false` |
+`phone_number` | A phone number assigned to the user's account | `string(1..64)` |   | `false` |
+`ui_url` | The UI's root URL | `string(14..2000)` |   | `true` |
+`username` | The user's username | `string(1..254)` |   | `true` |
+
+
+#### API request
 
 > PUT /v2/user_auth/recovery
 
