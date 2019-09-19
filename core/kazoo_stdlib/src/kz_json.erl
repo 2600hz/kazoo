@@ -205,7 +205,7 @@ try_converting(JSON) ->
 is_defined(Path, JObj) ->
     'undefined' =/= get_value(Path, JObj).
 
--spec is_empty(any()) -> boolean().
+-spec is_empty(object()) -> boolean().
 is_empty(MaybeJObj) ->
     MaybeJObj =:= ?EMPTY_JSON_OBJECT.
 

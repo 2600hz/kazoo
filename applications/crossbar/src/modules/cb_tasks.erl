@@ -33,7 +33,6 @@
 
 -define(QS_CATEGORY, <<"category">>).
 -define(QS_ACTION, <<"action">>).
--define(RD_RECORDS, <<"records">>).
 -define(RV_FILENAME, <<"file_name">>).
 
 -define(PATH_STOP, <<"stop">>).
@@ -304,7 +303,7 @@ validate_new_attachment(Context, 'true') ->
             cb_context:add_validation_error(<<"csv">>, <<"format">>, Msg, Context)
     end;
 validate_new_attachment(Context, 'false') ->
-    Records = kz_json:get_value(?RD_RECORDS, cb_context:req_data(Context)),
+    Records = kzd_tasks:records(cb_context:req_data(Context)),
     case kz_term:is_empty(Records) of
         'true' ->
             %% For tasks without input data.
@@ -588,7 +587,7 @@ attached_data(Context, 'true') ->
     [{_Filename, FileJObj}] = cb_context:req_files(Context),
     kz_json:get_value(<<"contents">>, FileJObj);
 attached_data(Context, 'false') ->
-    kz_json:get_value(?RD_RECORDS, cb_context:req_data(Context)).
+    kzd_tasks:records(cb_context:req_data(Context)).
 
 -spec save_attached_data(cb_context:context(), kz_term:ne_binary(), kz_tasks:input(), boolean()) ->
           cb_context:context().

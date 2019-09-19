@@ -287,8 +287,8 @@ get_metadata(AccountId, ConfigId) ->
     case kz_datamgr:open_cache_doc(kzs_util:format_account_db(AccountId), ConfigId) of
         {'ok', JObj} ->
             kz_json:from_list(
-              [{<<"name">>, kz_json:get_value(<<"name">>, JObj)}
-              ,{<<"provider_name">>, kz_json:get_value(<<"provider_name">>, JObj)}
+              [{<<"name">>, kzd_multi_factor_provider:name(JObj)}
+              ,{<<"provider_name">>, kzd_multi_factor_provider:provider_name(JObj)}
               ]);
         _ -> 'undefined'
     end.

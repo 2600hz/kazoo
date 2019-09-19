@@ -22,9 +22,8 @@
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -define(LIST_CONSUMED, <<"allotments/consumed">>).
--define(PVT_TYPE, <<"limits">>).
+-define(PVT_TYPE, kzd_limits:type()).
 -define(CONSUMED, <<"consumed">>).
--define(PVT_ALLOTMENTS, <<"pvt_allotments">>).
 
 %%%=============================================================================
 %%% API
@@ -34,13 +33,13 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.allotments">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.allotments">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.allotments">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.post.allotments">>, ?MODULE, 'post'),
-    ok.
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
@@ -111,22 +110,29 @@ post(Context) ->
 -spec load_allotments(cb_context:context()) -> cb_context:context().
 load_allotments(Context) ->
     C = crossbar_doc:load(?PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE)),
+    Allotments = kzd_limits:pvt_allotments(cb_context:doc(C), kz_json:new()),
+
     case cb_context:resp_status(C) =:= 'success'
-        andalso not kz_json:is_empty(kz_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(C), kz_json:new()))
+        andalso not kz_json:is_empty(Allotments)
     of
         'false' ->
             Msg = <<"allotments are not configured for this account yet">>,
             crossbar_util:response_400(Msg, kz_json:new(), Context);
         'true' ->
-            cb_context:set_resp_data(C, kz_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(C)))
+            cb_context:set_resp_data(C, Allotments)
     end.
 
 
 -spec load_consumed(cb_context:context(), crossbar_status()) -> cb_context:context().
 load_consumed(Context, 'success') ->
-    Allotments = kz_json:get_json_value(?PVT_ALLOTMENTS, cb_context:doc(Context)),
+    Allotments = kzd_limits:pvt_allotments(cb_context:doc(Context)),
     Mode = get_consumed_mode(Context),
-    {ContextResult, _, Result} = kz_json:foldl(fun foldl_consumed/3, {Context, Mode, kz_json:new()}, Allotments),
+    {ContextResult, _, Result} =
+        kz_json:foldl(fun foldl_consumed/3
+                     ,{Context, Mode, kz_json:new()}
+                     ,Allotments
+                     ),
+
     case cb_context:resp_status(ContextResult) of
         'success' ->
             cb_context:setters(Context, [{fun cb_context:set_resp_status/2, 'success'}
@@ -173,7 +179,9 @@ normalize_result(Cycle, From, To, Acc, [Head|Tail]) ->
                              ,{<<"consumed_from">>, From}
                              ,{<<"consumed_to">>, To}
                              ,{<<"consumed">>, Consumed}
-                             ], kz_json:new()),
+                             ]
+                            ,kz_json:new()
+                            ),
                    kz_json:set_value(Classification, Value, Acc);
                AccValue ->
                    AccConsumed = kz_json:get_integer_value(<<"consumed">>, AccValue),
@@ -183,18 +191,20 @@ normalize_result(Cycle, From, To, Acc, [Head|Tail]) ->
 
 -spec get_consumed_mode(cb_context:context()) -> mode().
 get_consumed_mode(Context) ->
-    case
-        {maybe_req_seconds(Context, <<"created_from">>)
-        ,maybe_req_seconds(Context, <<"created_to">>)
-        }
-    of
-        {'undefined', 'undefined'} ->
-            NowDateTime = kz_time:now_s(),
-            {<<"cycle">>, NowDateTime, NowDateTime};
-        {From, 'undefined'} -> {<<"cycle">>, From, From};
-        {'undefined', To} -> {<<"cycle">>, To, To};
-        {From, To} -> {<<"manual">>, From, To}
-    end.
+    get_consumed_mode(maybe_req_seconds(Context, <<"created_from">>)
+                     ,maybe_req_seconds(Context, <<"created_to">>)
+                     ).
+
+-spec get_consumed_mode(kz_term:api_seconds(), kz_term:api_seconds()) -> mode().
+get_consumed_mode('undefined', 'undefined') ->
+    NowDateTime = kz_time:now_s(),
+    {<<"cycle">>, NowDateTime, NowDateTime};
+get_consumed_mode(From, 'undefined') ->
+    {<<"cycle">>, From, From};
+get_consumed_mode('undefined', To) ->
+    {<<"cycle">>, To, To};
+get_consumed_mode(From, To) ->
+    {<<"manual">>, From, To}.
 
 -spec maybe_req_seconds(cb_context:context(), kz_term:api_binary()) -> kz_time:api_seconds().
 maybe_req_seconds(Context, Key) ->
@@ -269,7 +279,7 @@ maybe_create_limits_doc(Context, _RespCode) -> Context.
 update_allotments(Context) ->
     Doc = cb_context:doc(Context),
     Allotments = cb_context:req_data(Context),
-    NewDoc = kz_json:set_value(?PVT_ALLOTMENTS, Allotments, Doc),
+    NewDoc = kzd_limits:set_pvt_allotments(Doc, Allotments),
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, NewDoc)),
     cb_context:set_resp_data(Context1, Allotments).
 

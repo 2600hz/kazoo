@@ -9,7 +9,10 @@
 %%%-----------------------------------------------------------------------------
 -module(kzd_clicktocall).
 
--export([new/0]).
+-export([new/0
+        ,type/0
+        ,schema/0
+        ]).
 -export([auth_required/1, auth_required/2, set_auth_required/2]).
 -export([bypass_media/1, bypass_media/2, set_bypass_media/2]).
 -export([caller_id_number/1, caller_id_number/2, set_caller_id_number/2]).
@@ -31,6 +34,7 @@
 -export([timeout/1, timeout/2, set_timeout/2]).
 -export([whitelist/1, whitelist/2, set_whitelist/2]).
 
+-export([history/1, history/2, set_history/2, path_history/0]).
 
 -include("kz_documents.hrl").
 
@@ -38,14 +42,21 @@
 -export_type([doc/0]).
 
 -define(SCHEMA, <<"clicktocall">>).
+-define(TYPE, <<"click2call">>).
 
 -spec new() -> doc().
 new() ->
     kz_json_schema:default_object(?SCHEMA).
 
+-spec type() -> kz_term:ne_binary().
+type() -> ?TYPE.
+
+-spec schema() -> kz_term:ne_binary().
+schema() -> ?SCHEMA.
+
 -spec auth_required(doc()) -> boolean().
 auth_required(Doc) ->
-    auth_required(Doc, true).
+    auth_required(Doc, 'true').
 
 -spec auth_required(doc(), Default) -> boolean() | Default.
 auth_required(Doc, Default) ->
@@ -282,3 +293,18 @@ whitelist(Doc, Default) ->
 -spec set_whitelist(doc(), kz_term:ne_binaries()) -> doc().
 set_whitelist(Doc, Whitelist) ->
     kz_json:set_value([<<"whitelist">>], Whitelist, Doc).
+
+-spec history(doc()) -> kz_json:objects().
+history(Doc) ->
+    history(Doc, []).
+
+-spec history(doc(), Default) -> kz_term:objects() | Default.
+history(Doc, Default) ->
+    kz_json:get_list_value(path_history(), Doc, Default).
+
+-spec set_history(doc(), kz_term:objects()) -> doc().
+set_history(Doc, History) ->
+    kz_json:set_value(path_history(), History, Doc).
+
+-spec path_history() -> kz_json:path().
+path_history() -> [<<"pvt_history">>].

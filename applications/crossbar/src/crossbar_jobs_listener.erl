@@ -109,7 +109,7 @@ process_job(<<_/binary>> = AccountId, <<_/binary>> = JobId) ->
     JobModb = job_modb(AccountId, JobId),
     {'ok', Job} = kz_datamgr:open_cache_doc(JobModb, JobId),
     lager:debug("processing job ~s for account ~s", [JobId, AccountId]),
-    maybe_start_job(Job, kz_json:get_value(<<"pvt_status">>, Job)).
+    maybe_start_job(Job, kzd_services:status(Job)).
 
 -spec maybe_start_job(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 maybe_start_job(_Job, <<"complete">>) ->

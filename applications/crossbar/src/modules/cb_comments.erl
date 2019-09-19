@@ -268,10 +268,10 @@ create(Context, {<<"port_requests">>, _}) ->
     end;
 create(Context, _Resource) ->
     Doc = cb_context:doc(Context),
-    Comments = kz_json:get_value(?COMMENTS, Doc, []),
+    Comments = kzd_comments:comments(Doc),
     ReqData = cb_context:req_data(Context),
-    NewComments = kz_json:get_value(?COMMENTS, ReqData, []),
-    Doc1 = kz_json:set_value(?COMMENTS, sort(Comments ++ NewComments), Doc),
+    NewComments = kzd_comments:comments(ReqData),
+    Doc1 = kzd_comments:set_comments(Doc, sort(Comments ++ NewComments)),
     crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
 
 %%------------------------------------------------------------------------------
@@ -281,18 +281,14 @@ create(Context, _Resource) ->
 -spec update(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 update(Context, Id) ->
     Doc = cb_context:doc(Context),
-    Comments = kz_json:get_value(?COMMENTS, Doc, []),
+    Comments = kzd_comments:comments(Doc),
     Number = id_to_number(Id),
 
     Comment = cb_context:req_data(Context),
     {Head, Tail} = lists:split(Number, Comments),
     Head1 = lists:delete(lists:last(Head), Head),
 
-    Doc1 =
-        kz_json:set_value(?COMMENTS
-                         ,sort(lists:append([Head1, [Comment], Tail]))
-                         ,Doc
-                         ),
+    Doc1 = kzd_comments:set_comments(Doc, sort(lists:append([Head1, [Comment], Tail]))),
     crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
 
 %%------------------------------------------------------------------------------
@@ -302,20 +298,16 @@ update(Context, Id) ->
 
 -spec remove(cb_context:context()) -> cb_context:context().
 remove(Context) ->
-    Doc = kz_json:set_value(?COMMENTS, [], cb_context:doc(Context)),
+    Doc = kzd_comments:set_comments(cb_context:doc(Context), []),
     crossbar_doc:save(cb_context:set_doc(Context, Doc)).
 
 -spec remove(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 remove(Context, Id) ->
     Doc = cb_context:doc(Context),
-    Comments = kz_json:get_value(?COMMENTS, Doc, []),
+    Comments = kzd_comments:comments(Doc),
     Number = id_to_number(Id),
     Comment = lists:nth(Number, Comments),
-    Doc1 =
-        kz_json:set_value(?COMMENTS
-                         ,lists:delete(Comment, Comments)
-                         ,Doc
-                         ),
+    Doc1 = kzd_comments:set_comments(Doc, lists:delete(Comment, Comments)),
     crossbar_doc:save(cb_context:set_doc(Context, Doc1)).
 
 %%------------------------------------------------------------------------------
@@ -342,7 +334,7 @@ check_comment_number(Context, Id) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             Doc = cb_context:doc(Context1),
-            Comments = kz_json:get_value(?COMMENTS, Doc, []),
+            Comments = kzd_comments:comments(Doc),
             Number = id_to_number(Id),
             case erlang:length(Comments) of
                 Length when Length < Number ->
@@ -397,7 +389,7 @@ only_return_comments(Context) ->
           cb_context:context().
 only_return_comment(Context, Id) ->
     Doc = cb_context:doc(Context),
-    Comments = kz_json:get_value(?COMMENTS, Doc, []),
+    Comments = kzd_comments:comments(Doc),
     Number = id_to_number(Id),
     cb_context:set_resp_data(Context
                             ,lists:nth(Number, Comments)
@@ -411,7 +403,7 @@ get_comments(Context, <<"port_requests">>) ->
     Doc = cb_context:doc(Context),
     kzd_port_requests:comments(cb_port_requests:filter_private_comments(Context, Doc), []);
 get_comments(Context, _) ->
-    kz_json:get_value(?COMMENTS, cb_context:doc(Context), []).
+    kzd_comments:comments(cb_context:doc(Context)).
 
 %%------------------------------------------------------------------------------
 %% @doc

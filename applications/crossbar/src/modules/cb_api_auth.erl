@@ -126,11 +126,13 @@ put(Context) ->
 %%------------------------------------------------------------------------------
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
 on_successful_validation(Context) ->
-    ApiKey = kz_json:get_value(<<"api_key">>, cb_context:doc(Context)),
-
-    case kz_json:is_empty(ApiKey) of
-        'true' -> cb_context:add_system_error('invalid_credentials', Context);
-        'false' -> validate_by_api_key(Context, ApiKey)
+    case kzd_api_auth:api_key(cb_context:doc(Context)) of
+        'undefined' ->
+            cb_context:add_system_error('invalid_credentials', Context);
+        <<>> ->
+            cb_context:add_system_error('invalid_credentials', Context);
+        <<ApiKey/binary>> ->
+            validate_by_api_key(Context, ApiKey)
     end.
 
 -spec validate_by_api_key(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
@@ -148,16 +150,12 @@ validate_by_api_key(Context, ApiKey) ->
 -spec validate_by_api_key(cb_context:context(), kz_term:ne_binary(), kz_json:object() | kz_json:objects()) ->
           cb_context:context().
 validate_by_api_key(Context, ApiKey, []) ->
-    lager:debug("api key '~s' not associated with any accounts"
-               ,[ApiKey]
-               ),
+    lager:debug("api key '~s' not associated with any accounts", [ApiKey]),
     crossbar_util:response_bad_identifier(ApiKey, Context);
 validate_by_api_key(Context, ApiKey, [Doc]) ->
     validate_by_api_key(Context, ApiKey, Doc);
 validate_by_api_key(Context, ApiKey, [Doc|_]) ->
-    lager:debug("found multiple accounts with api key '~s', using '~s'"
-               ,[ApiKey, kz_doc:id(Doc)]
-               ),
+    lager:debug("found multiple accounts with api key '~s', using '~s'", [ApiKey, kz_doc:id(Doc)]),
     validate_by_api_key(Context, ApiKey, Doc);
 validate_by_api_key(Context, ApiKey, Doc) ->
     lager:debug("found API key '~s' belongs to account ~s", [ApiKey, kz_doc:id(Doc)]),

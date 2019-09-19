@@ -186,7 +186,7 @@ track_assignment('delete', Context) ->
 %%------------------------------------------------------------------------------
 -spec  get_numbers(kz_json:object()) -> kz_term:ne_binaries().
 get_numbers(JObj) ->
-    Servers = kz_json:get_value(<<"servers">>, JObj, []),
+    Servers = kzd_connectivity:servers(JObj),
     lists:foldl(fun get_numbers_fold/2, [], Servers).
 
 -spec get_numbers_fold(kz_json:object(), kz_term:ne_binaries()) -> kz_term:ne_binaries().

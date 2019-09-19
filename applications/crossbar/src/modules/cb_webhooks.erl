@@ -533,7 +533,7 @@ maybe_check_modifiers(Context, WebhookDoc, HookEvent) ->
         'undefined' ->
             cb_context:add_system_error('datastore_fault', Context);
         HookDefinition ->
-            check_modifiers(Context, WebhookDoc, kz_json:get_json_value(<<"modifiers">>, HookDefinition))
+            check_modifiers(Context, WebhookDoc, kzd_webhooks:modifiers(HookDefinition))
     end.
 
 -spec check_modifiers(cb_context:context(), kzd_webhooks:doc(), kz_term:api_object()) -> cb_context:context().

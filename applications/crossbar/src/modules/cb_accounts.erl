@@ -617,7 +617,7 @@ maybe_import_enabled(Context) ->
 maybe_import_enabled(Context, 'success') ->
     AuthAccountId = cb_context:auth_account_id(Context),
     Doc = cb_context:doc(Context),
-    Enabled = kz_json:get_value(<<"enabled">>, Doc),
+    Enabled = kzd_accounts:enabled(Doc),
     NewDoc = kz_json:delete_key(<<"enabled">>, Doc),
     lager:debug("import enabled: ~p", [Enabled]),
     case lists:member(AuthAccountId, kzd_accounts:tree(Doc)) of
@@ -625,15 +625,12 @@ maybe_import_enabled(Context, 'success') ->
         'true' -> maybe_import_enabled(Context, NewDoc, Enabled)
     end.
 
--spec maybe_import_enabled(cb_context:context(), kz_json:object(), kz_term:api_binary()) ->
+-spec maybe_import_enabled(cb_context:context(), kzd_accounts:doc(), boolean()) ->
           cb_context:context().
-maybe_import_enabled(Context, _, 'undefined') -> Context;
-maybe_import_enabled(Context, Doc, IsEnabled) ->
-    NewDoc = case kz_term:is_true(IsEnabled) of
-                 'true' -> kzd_accounts:enable(Doc);
-                 'false' -> kzd_accounts:disable(Doc)
-             end,
-    cb_context:set_doc(Context, NewDoc).
+maybe_import_enabled(Context, Doc, 'true') ->
+    cb_context:set_doc(Context, kzd_accounts:enable(Doc));
+maybe_import_enabled(Context, Doc, 'false') ->
+    cb_context:set_doc(Context, kzd_accounts:disable(Doc)).
 
 %%------------------------------------------------------------------------------
 %% @doc Load an account document from the database
@@ -740,11 +737,11 @@ leak_pvt_enabled(Context) ->
     case kzd_accounts:is_enabled(cb_context:doc(Context)) of
         'true' ->
             cb_context:set_resp_data(Context
-                                    ,kz_json:set_value(<<"enabled">>, 'true', RespJObj)
+                                    ,kzd_accounts:set_enabled(RespJObj, 'true')
                                     );
         'false' ->
             cb_context:set_resp_data(Context
-                                    ,kz_json:set_value(<<"enabled">>, 'false', RespJObj)
+                                    ,kzd_accounts:set_enabled(RespJObj, 'false')
                                     )
     end.
 

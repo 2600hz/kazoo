@@ -24,9 +24,9 @@
 new() ->
     kz_json_schema:default_object(?SCHEMA).
 
--spec comments(doc()) -> kz_term:api_objects().
+-spec comments(doc()) -> kz_json:objects().
 comments(Doc) ->
-    comments(Doc, 'undefined').
+    comments(Doc, []).
 
 -spec comments(doc(), Default) -> kz_json:objects() | Default.
 comments(Doc, Default) ->

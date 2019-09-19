@@ -228,8 +228,8 @@ validate(Context, AppId, ?SCREENSHOT, Number) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?BLACKLIST) ->
     ReqData = cb_context:req_data(Context),
-    Blacklist = kz_json:get_value(<<"blacklist">>, ReqData, []),
-    Doc = kz_json:set_value(<<"blacklist">>, Blacklist, cb_context:doc(Context)),
+    Blacklist = kzd_apps_store:blacklist(ReqData),
+    Doc = kzd_apps_store:set_blacklist(cb_context:doc(Context), Blacklist),
     return_only_blacklist(
       crossbar_doc:save(
         cb_context:set_doc(Context, Doc)
@@ -310,7 +310,7 @@ return_only_blacklist(Context) ->
     case cb_context:resp_status(Context) of
         'success' ->
             RespData = cb_context:resp_data(Context),
-            Blacklist = kz_json:get_value(<<"blacklist">>, RespData, []),
+            Blacklist = kzd_apps_store:blacklist(RespData),
             NewRespData =
                 kz_json:from_list([
                                    {<<"blacklist">>, Blacklist}

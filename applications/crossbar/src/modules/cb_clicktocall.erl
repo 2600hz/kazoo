@@ -37,7 +37,7 @@
 -define(HISTORY, <<"history">>).
 -define(CB_LIST, <<"click2call/crossbar_listing">>).
 -define(HISTORY_LIST, <<"clicktocall/history_listing">>).
--define(PVT_TYPE, <<"click2call">>).
+-define(PVT_TYPE, kzd_clicktocall:type()).
 -define(CONNECT_C2C_URL, [{<<"clicktocall">>, [_, ?CONNECT_CALL]}
                          ,{?KZ_ACCOUNTS_DB, [_]}
                          ]).
@@ -151,7 +151,7 @@ is_auth_required(Context) ->
     Nouns = cb_context:req_nouns(Context),
     [C2CID, _] = props:get_value(<<"clicktocall">>, Nouns),
     JObj = cb_context:doc(crossbar_doc:load(C2CID, Context, ?TYPE_CHECK_OPTION(?PVT_TYPE))),
-    kz_json:is_true(<<"auth_required">>, JObj, 'true').
+    kzd_clicktocall:auth_required(JObj, 'true').
 
 -spec is_c2c_url(cb_context:context(), req_nouns()) -> boolean().
 is_c2c_url(Context, ?CONNECT_C2C_URL) ->
@@ -230,7 +230,7 @@ normalize_view_results(JObj, Acc) ->
 
 -spec normalize_history_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_history_results(JObj, Acc) ->
-    [kz_json:get_value(<<"doc">>, JObj)|Acc].
+    [kz_json:get_json_value(<<"doc">>, JObj)|Acc].
 
 -spec load_c2c_summary(cb_context:context()) -> cb_context:context().
 load_c2c_summary(Context) ->
@@ -258,12 +258,12 @@ load_c2c_history(C2CId, Context) ->
 
 -spec create_c2c(cb_context:context()) -> cb_context:context().
 create_c2c(Context) ->
-    cb_context:validate_request_data(<<"clicktocall">>, Context, fun clear_history_set_type/1).
+    cb_context:validate_request_data(kzd_clicktocall:schema(), Context, fun clear_history_set_type/1).
 
 -spec update_c2c(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update_c2c(C2CId, Context) ->
     OnSuccess = fun(C) -> crossbar_doc:load_merge(C2CId, C, ?TYPE_CHECK_OPTION(?PVT_TYPE)) end,
-    cb_context:validate_request_data(<<"clicktocall">>, Context, OnSuccess).
+    cb_context:validate_request_data(kzd_clicktocall:schema(), Context, OnSuccess).
 
 -spec validate_patch_c2c(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 validate_patch_c2c(C2CId, Context) ->
@@ -290,21 +290,21 @@ maybe_migrate_history(Account) ->
 
 -spec migrate_histories(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> 'ok'.
 migrate_histories(AccountId, AccountDb, C2Cs) ->
-    _ = [migrate_history(AccountId, AccountDb, kz_json:get_value(<<"doc">>, C2C)) || C2C <- C2Cs],
+    _ = [migrate_history(AccountId, AccountDb, kz_json:get_json_value(<<"doc">>, C2C)) || C2C <- C2Cs],
     'ok'.
 
 -spec migrate_history(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 migrate_history(AccountId, AccountDb, C2C) ->
-    case kz_json:get_list_value(<<"pvt_history">>, C2C, []) of
+    case kzd_clicktocall:history(C2C, []) of
         [] -> 'ok';
         History ->
-            Id = kz_doc:id(C2C),
-            _ = [save_history_item(AccountId, HistoryItem, Id) || HistoryItem <- History],
-            Update = [{[<<"pvt_history">>], 'null'}],
+            C2CId = kz_doc:id(C2C),
+            _ = [save_history_item(AccountId, HistoryItem, C2CId) || HistoryItem <- History],
+            Update = [{kzd_clicktocall:path_history(), 'null'}],
             UpdateOptions = [{'update', Update}],
-            _Resp = kz_datamgr:update_doc(AccountDb, Id, UpdateOptions),
+            _Resp = kz_datamgr:update_doc(AccountDb, C2CId, UpdateOptions),
             lager:debug("removed history from c2c ~s in ~s: ~p"
-                       ,[Id, AccountId, _Resp]
+                       ,[C2CId, AccountId, _Resp]
                        )
     end.
 
@@ -348,7 +348,7 @@ originate_call(_C2CId, Context, 'undefined') ->
                                    );
 originate_call(C2CId, Context, Contact) ->
     JObj = cb_context:doc(Context),
-    case kz_json:get_ne_value(<<"whitelist">>, JObj, []) of
+    case kzd_clicktocall:whitelist(JObj, []) of
         [] -> originate_call(C2CId, Context, Contact, 'true');
         Whitelist -> originate_call(C2CId, Context, Contact, match_regexps(Whitelist, Contact))
     end.

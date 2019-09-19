@@ -186,13 +186,13 @@ create_request(Context) ->
                 {<<"user">>, UserId, UserId}
         end,
 
-    To = kz_json:get_value(<<"to">>, Payload),
+    To = kzd_sms:to(Payload),
     {Type, ToNum} = case knm_converters:is_reconcilable(To) of
                         'true' -> {<<"offnet">>, knm_converters:normalize(To, AccountId)};
                         'false' -> {<<"onnet">>, To}
                     end,
 
-    FromNum = kz_json:get_value(<<"from">>, Payload, get_default_caller_id(Context, Type, OwnerId)),
+    FromNum = kzd_sms:from(Payload, get_default_caller_id(Context, Type, OwnerId)),
 
     CCVs = [{<<"Account-ID">>, AccountId}
            ,{<<"Reseller-ID">>, ResellerId}
@@ -204,7 +204,7 @@ create_request(Context) ->
     KVs = [{<<"Message-ID">>, cb_context:req_id(Context)}
           ,{<<"From">>, FromNum}
           ,{<<"To">>, ToNum}
-          ,{<<"Body">>, kz_json:get_value(<<"body">>, Payload)}
+          ,{<<"Body">>, kzd_sms:body(Payload)}
           ,{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Custom-Vars">>, kz_json:from_list(CCVs)}
           ,{<<"Route-Type">>, Type}

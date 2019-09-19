@@ -33,7 +33,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.blacklists">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.blacklists">>, ?MODULE, 'resource_exists'),
@@ -42,7 +42,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.blacklists">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.blacklists">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.blacklists">>, ?MODULE, 'delete'),
-    ok.
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
@@ -131,7 +131,7 @@ delete(Context, _) ->
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
-    cb_context:validate_request_data(<<"blacklists">>, Context, OnSuccess).
+    cb_context:validate_request_data(kzd_blacklists:schema(), Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
 %% @doc Load an instance from the database
@@ -139,7 +139,7 @@ create(Context) ->
 %%------------------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"blacklist">>)).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_blacklists:type())).
 
 %%------------------------------------------------------------------------------
 %% @doc Update an existing menu document with the data provided, if it is
@@ -149,7 +149,7 @@ read(Id, Context) ->
 -spec update(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
-    cb_context:validate_request_data(<<"blacklists">>, Context, OnSuccess).
+    cb_context:validate_request_data(kzd_blacklists:schema(), Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
 %% @doc Update-merge an existing menu document partially with the data provided, if it is
@@ -176,9 +176,9 @@ summary(Context) ->
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
     Doc = cb_context:doc(Context),
-    cb_context:set_doc(Context, kz_doc:set_type(Doc, <<"blacklist">>));
+    cb_context:set_doc(Context, kz_doc:set_type(Doc, kzd_blacklists:type()));
 on_successful_validation(Id, Context) ->
-    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"blacklist">>)).
+    crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(kzd_blacklists:type())).
 
 %%------------------------------------------------------------------------------
 %% @doc Normalizes the results of a view.
@@ -197,11 +197,9 @@ format_numbers(Context) ->
     Doc = cb_context:doc(Context),
     Numbers =
         kz_json:map(fun format_number_map/2
-                   ,kz_json:get_value(<<"numbers">>, Doc, kz_json:new())
+                   ,kzd_blacklists:numbers(Doc, kz_json:new())
                    ),
-    cb_context:set_doc(Context
-                      ,kz_json:set_value(<<"numbers">>, Numbers, Doc)
-                      ).
+    cb_context:set_doc(Context, kzd_blacklists:set_numbers(Doc, Numbers)).
 
 -spec format_number_map(kz_term:ne_binary(), kz_json:object()) ->
           {kz_term:ne_binary(), kz_json:object()}.

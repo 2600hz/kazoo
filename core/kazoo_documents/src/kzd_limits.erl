@@ -9,7 +9,9 @@
 %%%-----------------------------------------------------------------------------
 -module(kzd_limits).
 
--export([new/1]).
+-export([new/1
+        ,type/0
+        ]).
 -export([enabled/1, enabled/2
         ,set_enabled/2, set_pvt_enabled/2
         ]).
@@ -70,6 +72,9 @@
 -export([allotments/1, allotments/2
         ,set_allotments/2
         ]).
+-export([pvt_allotments/1, pvt_allotments/2
+        ,set_pvt_allotments/2
+        ]).
 -export([inbound_channels_per_did_rules/1, inbound_channels_per_did_rules/2]).
 
 -include("kz_documents.hrl").
@@ -96,12 +101,15 @@ new(Account) ->
       [{<<"_id">>, <<"limits">>}
       ,{<<"pvt_account_db">>, kzs_util:format_account_db(Account)}
       ,{<<"pvt_account_id">>, kzs_util:format_account_id(Account)}
-      ,{<<"pvt_type">>, <<"limits">>}
+      ,{<<"pvt_type">>, type()}
       ,{<<"pvt_created">>, TStamp}
       ,{<<"pvt_modified">>, TStamp}
       ,{<<"pvt_vsn">>, 1}
       ]
      ).
+
+-spec type() -> kz_term:ne_binary().
+type() -> <<"limits">>.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -463,6 +471,20 @@ allotments(Doc, Default) ->
 -spec set_allotments(doc(), kz_json:object()) -> doc().
 set_allotments(Doc, Allotments) ->
     kz_json:set_value(<<"allotments">>, Allotments, Doc).
+
+-spec pvt_allotments(doc()) -> kz_json:object().
+pvt_allotments(Doc) ->
+    pvt_allotments(Doc, kz_json:new()).
+
+-spec pvt_allotments(doc(), Default) -> kz_json:object() | Default.
+pvt_allotments(Doc, Default) ->
+    kz_json:get_json_value([<<"pvt_allotments">>], Doc, Default).
+
+-spec set_pvt_allotments(doc(), kz_json:object()) -> doc().
+set_pvt_allotments(Doc, Allotments) ->
+    kz_json:set_value(<<"pvt_allotments">>, Allotments, Doc).
+
+
 
 %%------------------------------------------------------------------------------
 %% @doc

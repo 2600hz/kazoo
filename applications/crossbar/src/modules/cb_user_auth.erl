@@ -295,10 +295,10 @@ create_auth_resp(Context, _AccountId, _AuthAccountId) ->
 -spec maybe_authenticate_user(cb_context:context()) -> cb_context:context().
 maybe_authenticate_user(Context) ->
     JObj = cb_context:doc(Context),
-    Credentials = kz_json:get_value(<<"credentials">>, JObj),
-    Method = kz_json:get_value(<<"method">>, JObj, <<"md5">>),
+    Credentials = kzd_user_auth:credentials(JObj),
+    Method = kzd_user_auth:method(JObj),
     AccountName = kzd_accounts:normalize_name(kz_json:get_value(<<"account_name">>, JObj)),
-    PhoneNumber = kz_json:get_ne_value(<<"phone_number">>, JObj),
+    PhoneNumber = kzd_user_auth:phone_number(JObj),
     AccountRealm = kz_json:get_first_defined([<<"account_realm">>, <<"realm">>], JObj),
     case find_account(PhoneNumber, AccountRealm, AccountName, Context) of
         {'error', _} ->
@@ -435,7 +435,7 @@ load_md5_results(Context, JObj, _Account) ->
 maybe_load_user_doc_via_creds(Context) ->
     JObj = cb_context:doc(Context),
     AccountName = kzd_accounts:normalize_name(kz_json:get_value(<<"account_name">>, JObj)),
-    PhoneNumber = kz_json:get_ne_value(<<"phone_number">>, JObj),
+    PhoneNumber = kzd_user_auth:phone_number(JObj),
     AccountRealm = kz_json:get_first_defined([<<"account_realm">>, <<"realm">>], JObj),
     case find_account(PhoneNumber, AccountRealm, AccountName, Context) of
         {'error', C} -> C;

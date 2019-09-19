@@ -9,7 +9,10 @@
 %%%-----------------------------------------------------------------------------
 -module(kzd_blacklists).
 
--export([new/0]).
+-export([new/0
+        ,type/0
+        ,schema/0
+        ]).
 -export([flags/1, flags/2, set_flags/2]).
 -export([name/1, name/2, set_name/2]).
 -export([numbers/1, numbers/2, set_numbers/2]).
@@ -22,10 +25,17 @@
 -export_type([doc/0]).
 
 -define(SCHEMA, <<"blacklists">>).
+-define(PVT_TYPE, <<"blacklist">>).
 
 -spec new() -> doc().
 new() ->
     kz_json_schema:default_object(?SCHEMA).
+
+-spec type() -> kz_term:ne_binary().
+type() -> ?PVT_TYPE.
+
+-spec schema() -> kz_term:ne_binary().
+schema() -> ?SCHEMA.
 
 -spec flags(doc()) -> kz_term:api_ne_binaries().
 flags(Doc) ->
