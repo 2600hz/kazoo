@@ -15,6 +15,7 @@ main(_) ->
                   ,fun kapps_config_usage:to_schema_docs/0
                   ,fun conference_schema_builder:to_schema/0
                   ,fun kapi_schemas:to_schemas/0
+                  ,fun maintenance_docs:to_docs/0
                   ]
                  ).
 

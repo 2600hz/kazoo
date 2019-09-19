@@ -82,6 +82,19 @@ add_module_ast_fold(?AST_FUNCTION(F, Arity, Clauses), Module, #module_ast{functi
     Acc#module_ast{functions=[{Module, F, Arity, Clauses}|Fs]};
 add_module_ast_fold(?AST_RECORD(Name, Fields), _Module, #module_ast{records=Rs}=Acc) ->
     Acc#module_ast{records=[{Name, Fields}|Rs]};
+add_module_ast_fold(?AST_EXPORTS(Exports), _Module, #module_ast{exports=Es}=Acc) ->
+    Acc#module_ast{exports=Exports++Es};
+add_module_ast_fold(?AST_EXPORTED_TYPES(Types), _Module, #module_ast{exported_types=Ts}=Acc) ->
+    Acc#module_ast{exported_types=Types++Ts};
+add_module_ast_fold(?SPEC(Fun, Arity, Args, Return), _Module, #module_ast{specs=Specs}=Acc) ->
+    Acc#module_ast{specs=[{Fun, Arity, Args, Return} | Specs]};
+add_module_ast_fold(?TYPE(Name, TypeDef), _Module, #module_ast{types=Ts}=Acc) ->
+    Acc#module_ast{types=[{Name, TypeDef} | Ts]};
+add_module_ast_fold(?AST_ATTRIBUTE_FILE(_Path), _Module, Acc) -> Acc;
+add_module_ast_fold(?EOF, _Module, Acc) -> Acc;
+add_module_ast_fold(?LAGER_RECORDS, _Module, Acc) -> Acc;
+add_module_ast_fold(?AST_ATTRIBUTE_MODULE(Module), Module, Acc) -> Acc;
+add_module_ast_fold(?BEHAVIOUR(Behaviour), _Module, Acc) -> Acc#module_ast{behaviour=Behaviour};
 add_module_ast_fold(_Other, _Module, Acc) ->
     Acc.
 
