@@ -269,7 +269,8 @@ enabled(Doc) ->
 
 -spec enabled(doc(), Default) -> boolean() | Default.
 enabled(Doc, Default) ->
-    kz_json:get_boolean_value([<<"enabled">>], Doc, Default).
+    kz_json:get_boolean_value([<<"enabled">>], Doc, Default)
+        andalso kz_json:get_boolean_value([<<"pvt_enabled">>], Doc, Default).
 
 -spec set_enabled(doc(), boolean()) -> doc().
 set_enabled(Doc, Enabled) ->
@@ -779,7 +780,7 @@ is_enabled(?NE_BINARY = Id) ->
         {'error', _} -> 'false'
     end;
 is_enabled(JObj) ->
-    kz_json:is_true([<<"pvt_enabled">>], JObj, 'true').
+    enabled(JObj, 'true').
 
 -spec enable(doc()) -> doc().
 enable(JObj) ->

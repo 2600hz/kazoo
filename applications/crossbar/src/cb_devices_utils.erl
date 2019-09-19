@@ -41,7 +41,8 @@ is_ip_unique(JObj, IP, DeviceId) ->
 is_ip_sip_auth_unique(IP, DeviceId) ->
     case kapps_util:get_ccvs_by_ip(IP) of
         {'ok', CCVs} -> props:get_value(<<"Authorizing-ID">>, CCVs) =:= DeviceId;
-        {'error', 'not_found'} -> 'true'
+        {'error', 'not_found'} -> 'true';
+        {'error', _Reason} -> 'false'
     end.
 
 

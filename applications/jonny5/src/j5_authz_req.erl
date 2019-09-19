@@ -36,7 +36,9 @@ determine_account_id_from_ip(Request, IP) ->
             maybe_inbound_account_by_ip(j5_request:from_ccvs(Request, AccountCCVs), IP);
         {'error', 'not_found'} ->
             lager:debug("auth for IP ~s not found, trying number", [IP]),
-            determine_account_id_from_number(Request)
+            determine_account_id_from_number(Request);
+        {'error', {Type, TypeId}} ->
+            send_disabled_deny(Request, Type, TypeId)
     end.
 
 -spec maybe_inbound_account_by_ip(j5_request:request(), kz_term:ne_binary()) -> 'ok'.
@@ -81,21 +83,33 @@ determine_account_id_from_number(Request) ->
                        ],
             maybe_local_resource(Props, lists:foldl(fun(F, R) -> F(R) end, Request, Routines));
         {'error', {'account_disabled', AccountId}} ->
-            lager:debug("account ~s is disabled", [AccountId]),
-            Routines = [fun(R) -> j5_request:set_account_id(AccountId, R) end
-                       ,fun(R) ->
-                                ResellerId = kz_services_reseller:get_id(AccountId),
-                                j5_request:set_reseller_id(ResellerId, R)
-                        end
-                       ,fun(R) -> j5_request:deny_account(<<"disabled">>, R) end
-                       ],
-            send_response(lists:foldl(fun(F, R) -> F(R) end, Request, Routines));
+            send_disabled_deny(Request, 'account_disabled', AccountId);
         {'error', _R} ->
             lager:debug("unable to determine account id for ~s: ~p"
                        ,[Number, _R]
                        ),
             'ok'
     end.
+
+-spec send_disabled_deny(j5_request:request(), kapps_util:not_enabled_error(), kz_term:ne_binary()) -> 'ok'.
+send_disabled_deny(Request, 'account_disabled', AccountId) ->
+    lager:debug("account ~s is disabled, rejecting", [AccountId]),
+    Routines = [fun(R) -> j5_request:set_account_id(AccountId, R) end
+               ,fun(R) ->
+                        ResellerId = kz_services_reseller:get_id(AccountId),
+                        j5_request:set_reseller_id(ResellerId, R)
+                end
+               ,fun(R) -> j5_request:deny_account(<<"disabled">>, R) end
+               ],
+    send_response(lists:foldl(fun(F, R) -> F(R) end, Request, Routines));
+send_disabled_deny(Request, 'owner_disabled', _OwnerId) ->
+    lager:debug("user ~s is disabled, rejecting", [_OwnerId]),
+    Routines = [fun(R) -> j5_request:deny_account(<<"disabled">>, R) end],
+    send_response(lists:foldl(fun(F, R) -> F(R) end, Request, Routines));
+send_disabled_deny(Request, 'device_disabled', _DeviceId) ->
+    lager:debug("device ~s is disabled, rejecting", [_DeviceId]),
+    Routines = [fun(R) -> j5_request:deny_account(<<"disabled">>, R) end],
+    send_response(lists:foldl(fun(F, R) -> F(R) end, Request, Routines)).
 
 -spec maybe_local_resource(knm_number_options:extra_options(), j5_request:request()) -> 'ok'.
 maybe_local_resource( Props, Request) ->

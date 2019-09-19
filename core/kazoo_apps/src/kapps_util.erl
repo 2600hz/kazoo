@@ -54,6 +54,11 @@
 
 -include("kazoo_apps.hrl").
 
+-type not_enabled_error() :: 'device_disabled' |
+                             'owner_disabled' |
+                             'account_disabled'.
+-export_type([not_enabled_error/0]).
+
 -define(REPLICATE_ENCODING, 'encoded').
 -define(AGG_LIST_BY_REALM, <<"accounts/listing_by_realm">>).
 -define(AGG_LIST_BY_NAME, <<"accounts/listing_by_name">>).
@@ -346,70 +351,67 @@ get_account_by_realm(RawRealm) ->
     Realm = kz_term:to_lower_binary(RawRealm),
     get_accounts_by(Realm, ?ACCT_BY_REALM_CACHE(Realm), ?AGG_LIST_BY_REALM).
 
--spec get_ccvs_by_ip(kz_term:ne_binary()) ->
-                            {'ok', kz_term:proplist()} |
-                            {'error', 'not_found'}.
+-type get_by_ip_errors() :: {'error', 'not_found'} |
+                            {'error', {not_enabled_error(), kz_term:ne_binary()}}.
+-type get_by_ip_return() :: {'ok', kz_term:proplist()} |
+                            get_by_ip_errors().
+-spec get_ccvs_by_ip(kz_term:ne_binary()) -> get_by_ip_return().
 get_ccvs_by_ip(IP) ->
     case kz_cache:peek_local(?KAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP)) of
-        {'ok', {'error', 'not_found'}=E} -> E;
         {'error', 'not_found'} -> do_get_ccvs_by_ip(IP);
-        {'ok', _AccountCCVs} = OK -> OK
+        {'ok', {'error', _Reason}=E} -> E;
+        {'ok', {'ok', _AccountCCVs}=Ok} -> Ok
     end.
 
--spec do_get_ccvs_by_ip(kz_term:ne_binary()) ->
-                               {'ok', kz_term:proplist()} |
-                               {'error', 'not_found'}.
+-spec do_get_ccvs_by_ip(kz_term:ne_binary()) -> get_by_ip_return().
 do_get_ccvs_by_ip(IP) ->
+    NotFound = {'error', 'not_found'},
     case kapps_config:get_is_true(<<"registrar">>, <<"use_aggregate">>, 'true')
         andalso kz_datamgr:get_results(?KZ_SIP_DB, ?AGG_LIST_BY_IP, [{'key', IP}])
     of
         'false' ->
-            NotF = {'error', 'not_found'},
             lager:debug("aggregate SIP auth db disabled, skipping CCV lookup by IP ~s", [IP]),
-            kz_cache:store_local(?KAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP), NotF),
-            NotF;
+            kz_cache:store_local(?KAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP), NotFound),
+            NotFound;
         {'ok', []} ->
-            NotF = {'error', 'not_found'},
             lager:debug("no entry in ~s for IP: ~s", [?KZ_SIP_DB, IP]),
-            kz_cache:store_local(?KAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP), NotF),
-            NotF;
+            kz_cache:store_local(?KAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP), NotFound),
+            NotFound;
         {'ok', [Doc|_]} ->
             lager:debug("found IP ~s in db ~s (~s)", [IP, ?KZ_SIP_DB, kz_doc:id(Doc)]),
-            AccountCCVs = account_ccvs_from_ip_auth(Doc),
-            kz_cache:store_local(?KAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP), AccountCCVs),
-            {'ok', AccountCCVs};
+            Result = account_ccvs_from_ip_auth(Doc),
+            kz_cache:store_local(?KAPPS_GETBY_CACHE, ?ACCT_BY_IP_CACHE(IP), Result),
+            Result;
         {'error', _E} = Error ->
             lager:debug("error looking up by IP: ~s: ~p", [IP, _E]),
             Error
     end.
 
--spec account_ccvs_from_ip_auth(kz_json:object()) -> kz_term:proplist().
+-spec account_ccvs_from_ip_auth(kz_json:object()) -> get_by_ip_return().
 account_ccvs_from_ip_auth(Doc) ->
     AccountId = kz_json:get_value([<<"value">>, <<"account_id">>], Doc),
     OwnerId = kz_json:get_value([<<"value">>, <<"owner_id">>], Doc),
     AuthType = kz_json:get_value([<<"value">>, <<"authorizing_type">>], Doc, <<"anonymous">>),
-
     case are_all_enabled([{<<"account">>, AccountId}
                          ,{<<"owner">>, OwnerId}
                          ,{AuthType, kz_doc:id(Doc)}
                          ])
     of
-        {'false', _Reason} ->
-            lager:notice("no IP auth info: ~p", [_Reason]),
-            [];
+        {'false', Reason} ->
+            lager:notice("no IP auth info: ~p", [Reason]),
+            {'error', Reason};
         'true' ->
-            props:filter_undefined(
-              [{<<"Account-ID">>, AccountId}
-              ,{<<"Owner-ID">>, OwnerId}
-              ,{<<"Authorizing-ID">>, kz_doc:id(Doc)}
-              ,{<<"Inception">>, <<"on-net">>}
-              ,{<<"Authorizing-Type">>, AuthType}
-              ])
+            AccountCCVs =
+                props:filter_undefined(
+                  [{<<"Account-ID">>, AccountId}
+                  ,{<<"Owner-ID">>, OwnerId}
+                  ,{<<"Authorizing-ID">>, kz_doc:id(Doc)}
+                  ,{<<"Inception">>, <<"on-net">>}
+                  ,{<<"Authorizing-Type">>, AuthType}
+                  ]),
+            {'ok', AccountCCVs}
     end.
-
--type not_enabled_error() :: 'device_disabled' |
-                             'owner_disabled' |
-                             'account_disabled'.
+ 
 -spec are_all_enabled(kz_term:proplist()) ->
                              'true' |
                              {'false', {not_enabled_error(), kz_term:ne_binary()}}.

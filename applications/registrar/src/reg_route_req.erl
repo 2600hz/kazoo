@@ -38,6 +38,9 @@ maybe_replay_route_req(JObj, CCVs, IP) ->
     case lookup_account_by_ip(IP) of
         {'ok', AccountCCVs} ->
             lager:debug("route req was missing account information, loading from IP ~s and replaying", [IP]),
+            %% NOTE: If this ever comes back empty for any reason it will create a replay loop
+            %%       that will not stop until a restart.
+            ?NE_BINARY = props:get_ne_binary_value(<<"Account-ID">>, AccountCCVs),
             kapi_route:publish_req(
               kz_json:set_value(<<"Custom-Channel-Vars">>
                                ,kz_json:set_values(AccountCCVs, CCVs)
