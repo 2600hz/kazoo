@@ -74,12 +74,13 @@ handle(Data, Call) ->
     PickupType = kz_json:get_ne_binary_value(<<"type">>, Data),
     case build_pickup_params(Number, PickupType, Call) of
         {'ok', Params} ->
-            cf_group_pickup:handle(kz_json:from_list(Params), Call);
+            UpdatedData = kz_json:set_values(Params, Data),
+            cf_group_pickup:handle(UpdatedData, Call);
         {'error', _E} ->
             lager:info("error <<~s>> processing pickup '~s' for number ~s"
                       ,[_E, PickupType, Number]
                       ),
-            _ = kapps_call_command:b_play(<<"park-no_caller">>, Call),
+            _ = kapps_call_command:b_prompt(<<"park-no_caller">>, Call),
             cf_exe:stop(Call)
     end.
 
