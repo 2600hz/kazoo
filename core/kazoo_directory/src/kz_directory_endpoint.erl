@@ -268,6 +268,7 @@ generate_profile(EndpointId, AccountId, Endpoint, Options) ->
            ,{<<"Endpoint-ID">>, EndpointId}
            ,{<<"Endpoint-Caller-ID-Number">>, CIDNumber}
            ,{<<"Endpoint-Caller-ID-Name">>, CIDName}
+           ,{<<"Endpoint-Presence-ID">>, kz_json:get_ne_binary_value(<<"Presence-ID">>, CCVs)}
            ],
     Profile = [{<<"Domain-Name">>, AccountId}
               ,{<<"User-ID">>, EndpointId}

@@ -1088,7 +1088,7 @@ bind_q_to_conference(Queue, 'discovery') ->
 bind_q_to_conference(Queue, 'command') ->
     bind_q_to_conference(Queue, 'command', <<"*">>);
 bind_q_to_conference(Queue, 'event') ->
-    bind_q_to_conference(Queue, 'event', <<"*">>);
+    bind_q_to_conference(Queue, 'event', <<"#">>);
 bind_q_to_conference(Queue, 'config') ->
     bind_q_to_conference(Queue, 'config', <<"*">>).
 

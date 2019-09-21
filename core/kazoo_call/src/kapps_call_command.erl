@@ -2863,7 +2863,7 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
             lager:info("bridge channel replaced ~s for ~s", [EvtCallId, CallId]),
             wait_for_bridge(NewTimeout, Fun, kapps_call:set_call_id(CallId, Call), NewStart, receive_event(NewTimeout));
         {<<"call_event">>, <<"CHANNEL_DIRECT">>, _} ->
-            CallId = kz_json:get_value(<<"Connecting-Leg-A-UUID">>, JObj),
+            CallId = kz_json:get_value(<<"Connecting-Leg-B-UUID">>, JObj),
             _ = kz_util:put_callid(CallId),
             NewTimeout = kz_time:decr_timeout(Timeout, Start),
             NewStart = kz_time:start_time(),
@@ -2894,7 +2894,7 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
 wait_for_noop(Call, NoopId) ->
     case wait_for_message(Call, <<"noop">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, 'infinity') of
         {'ok', JObj}=OK ->
-            case kz_json:get_value(<<"Application-Response">>, JObj) of
+            case kz_json:get_ne_binary_value(<<"Application-Response">>, JObj) of
                 NoopId when is_binary(NoopId), NoopId =/= <<>> -> OK;
                 _No when is_binary(NoopId), NoopId =/= <<>> -> wait_for_noop(Call, NoopId);
                 _ -> OK

@@ -1228,7 +1228,7 @@ to_props(Reg) ->
 
 -spec oldest_registrar() -> boolean().
 oldest_registrar() ->
-    kz_nodes:whapp_zone_count(?APP_NAME) =:= 1
+    kz_nodes:whapp_count(?APP_NAME, 'true') =:= 1
         orelse kz_nodes:whapp_oldest_node(?APP_NAME, 'true') =:= node().
 
 -spec get_fs_contact(kzd_freeswitch:data()) -> kz_term:ne_binary().

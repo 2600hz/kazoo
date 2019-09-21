@@ -25,6 +25,7 @@
         ,channel_call_state/1
         ,channel_name/1
         ,channel_state/1
+        ,connecting_b_leg_id/1
         ,custom_channel_var/2, custom_channel_var/3
         ,custom_channel_vars/1, custom_channel_vars/2
         ,custom_application_var/2, custom_application_var/3
@@ -107,6 +108,10 @@ channel_call_state(JObj) ->
 -spec channel_answer_state(doc()) -> kz_term:api_ne_binary().
 channel_answer_state(JObj) ->
     kz_json:get_ne_binary_value(<<"Channel-Answer-State">>, JObj).
+
+-spec connecting_b_leg_id(doc()) -> kz_term:api_ne_binary().
+connecting_b_leg_id(JObj) ->
+    kz_json:get_ne_binary_value(<<"Connecting-Leg-B-UUID">>, JObj).
 
 -spec custom_channel_vars(doc()) -> kz_term:api_object().
 custom_channel_vars(JObj) ->

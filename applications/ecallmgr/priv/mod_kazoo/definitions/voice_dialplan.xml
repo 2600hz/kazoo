@@ -23,4 +23,5 @@
 	<field name="Event-Category" type="static" value="dialplan" />
 	<field name="Event-Name" type="static" value="route_req" />
 	<field name="Hunt-Context" as="Fetch-Key-Value" />
+	<field name="debug-call" type="reference" />
 </definition>

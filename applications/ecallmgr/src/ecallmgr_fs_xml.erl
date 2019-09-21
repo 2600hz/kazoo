@@ -37,6 +37,7 @@
 -export([xml_attrib/2]).
 
 -export([action_el/1, action_el/2, action_el/3]).
+-export([anti_action_el/1, anti_action_el/2, anti_action_el/3]).
 -export([condition_el/1, condition_el/3]).
 -export([extension_el/1, extension_el/3]).
 -export([context_el/2]).
@@ -389,12 +390,14 @@ route_resp_park() ->
 
 -spec route_resp_capture_id() -> kz_types:xml_el().
 route_resp_capture_id() ->
-    Action = action_el(<<"export">>, <<"sip_h_k-cid=${uuid}">>, 'true'),
-    condition_el(Action, <<"${sip_h_k-cid}">>, <<"^$">>).
+    DP = [action_el(<<"export">>, <<"sip_h_k-cid=${uuid}">>)
+         ,anti_action_el(<<"export">>, <<"sip_h_k-cid=${sip_h_k-cid}">>)
+         ],
+    condition_el(DP, <<"${sip_h_k-cid}">>, <<"^$">>).
 
 -spec route_resp_bridge_id() -> kz_types:xml_el().
 route_resp_bridge_id() ->
-    Action = action_el(<<"export">>, [?SET_CCV(<<"Bridge-ID">>, <<"${UUID}">>)], 'true'),
+    Action = action_el(<<"export">>, [?SET_CCV(<<"Bridge-ID">>, <<"${UUID}">>)]),
     condition_el(Action, <<"${", (?CCV(<<"Bridge-ID">>))/binary, "}">>, <<"^$">>).
 
 -spec unset_custom_sip_headers() -> kz_types:xml_el().
@@ -1236,6 +1239,29 @@ action_el(App, Data) ->
 -spec action_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value(), boolean()) -> kz_types:xml_el().
 action_el(App, Data, Inline) ->
     #xmlElement{name='action'
+               ,attributes=[xml_attrib('application', App)
+                           ,xml_attrib('data', Data)
+                           ,xml_attrib('inline', kz_term:to_binary(Inline))
+                           ]
+               }.
+
+-spec anti_action_el(kz_types:xml_attrib_value()) -> kz_types:xml_el().
+anti_action_el(App) ->
+    #xmlElement{name='anti-action'
+               ,attributes=[xml_attrib('application', App)]
+               }.
+
+-spec anti_action_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value()) -> kz_types:xml_el().
+anti_action_el(App, Data) ->
+    #xmlElement{name='anti-action'
+               ,attributes=[xml_attrib('application', App)
+                           ,xml_attrib('data', Data)
+                           ]
+               }.
+
+-spec anti_action_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value(), boolean()) -> kz_types:xml_el().
+anti_action_el(App, Data, Inline) ->
+    #xmlElement{name='anti-action'
                ,attributes=[xml_attrib('application', App)
                            ,xml_attrib('data', Data)
                            ,xml_attrib('inline', kz_term:to_binary(Inline))

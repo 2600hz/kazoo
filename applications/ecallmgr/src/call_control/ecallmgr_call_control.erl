@@ -322,6 +322,8 @@ handle_info({'call_control', JObj}, State) ->
 handle_info({'kapi', {{<<"callctl">>, _, _}, _, JObj}}, State) ->
     handle_call_control(JObj, State),
     {'noreply', State};
+handle_info({'kapi', _}, State) ->
+    {'noreply', State};
 handle_info({'usurp_control', CallId, FetchId, _JObj}, #state{call_id = CallId
                                                              ,fetch_id = FetchId
                                                              } = State) ->
@@ -1017,7 +1019,7 @@ handle_replaced(JObj, #state{fetch_id=FetchId
             {'noreply', State}
     end.
 
--spec handle_direct(kz_json:object(), state()) ->
+-spec handle_direct(kz_call_event:doc(), state()) ->
                            {'noreply', state()}.
 handle_direct(JObj, #state{fetch_id=FetchId
                           ,node=_Node
@@ -1025,7 +1027,7 @@ handle_direct(JObj, #state{fetch_id=FetchId
                           }=State) ->
     case kz_call_event:custom_channel_var(JObj, <<"Fetch-ID">>) of
         FetchId ->
-            ReplacedBy = kz_json:get_ne_binary_value(<<"Connecting-Leg-A-UUID">>, JObj),
+            ReplacedBy = kz_call_event:connecting_b_leg_id(JObj),
             case ecallmgr_fs_channel:fetch(ReplacedBy) of
                 {'ok', _Channel} ->
                     {'noreply', handle_sofia_replaced(ReplacedBy, State)};

@@ -1537,6 +1537,16 @@
             },
             "type": "object"
         },
+        "callflows.answer": {
+            "description": "Validator for the answer callflow data object",
+            "properties": {
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
         "callflows.audio_macro": {
             "description": "Validator for the audio_macro callflow data object",
             "properties": {
@@ -2885,6 +2895,16 @@
             "required": [
                 "username"
             ],
+            "type": "object"
+        },
+        "callflows.noop": {
+            "description": "Validator for the noop callflow data object",
+            "properties": {
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                }
+            },
             "type": "object"
         },
         "callflows.notification": {
@@ -4253,6 +4273,16 @@
                     "description": "Allow login if caller has a single mailbox",
                     "type": "boolean"
                 },
+                "skip_module": {
+                    "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "callflows.wait_for_hangup": {
+            "description": "Validator for the wait_for_hangup callflow data object",
+            "properties": {
                 "skip_module": {
                     "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
                     "type": "boolean"

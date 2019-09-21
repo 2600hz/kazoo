@@ -18,10 +18,12 @@ listen(Name) ->
 
 -spec select(atom()) -> boolean().
 select(FullNode) ->
-    [Node, _Host] = split_node(atom_to_list(FullNode), $@, []),
-    case Node =:= "freeswitch" of
-        true -> inet_tcp_dist:select(FullNode);
-        false -> false
+    case split_node(atom_to_list(FullNode), $@, []) of
+        [Node, _Host]
+          when Node =:= "freeswitch" ->
+            inet_tcp_dist:select(FullNode);
+        _Else ->
+            false
     end.
 
 -spec accept(term()) -> pid().

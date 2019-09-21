@@ -891,48 +891,48 @@ handle_channel_destroyed(Self, Notify, JObj) ->
     channel_destroyed(Self, kz_json:from_list(Prop)),
     relay_message(Notify, JObj).
 
--spec handle_channel_transfer(kapps_call:call(), kz_json:object()) -> 'ok'.
-handle_channel_transfer(Call, JObj) ->
+-spec handle_channel_transfer(kapps_call:call(), kz_call_event:doc()) -> 'ok'.
+handle_channel_transfer(Call, CallEvent) ->
     OrgFetchId = kapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
-    NewFetchId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
+    NewFetchId = kz_call_event:custom_channel_var(CallEvent, <<"Fetch-ID">>),
     case OrgFetchId =:= NewFetchId of
         'true'  -> transfer(Call);
         'false' -> 'ok'
     end.
 
--spec handle_channel_replaced(kapps_call:call(), kz_json:object(), kz_term:pids()) -> 'ok'.
-handle_channel_replaced(Call, JObj, Notify) ->
+-spec handle_channel_replaced(kapps_call:call(), kz_call_event:doc(), kz_term:pids()) -> 'ok'.
+handle_channel_replaced(Call, CallEvent, Notify) ->
     OrgFetchId = kapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
-    NewFetchId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
+    NewFetchId = kz_call_event:custom_channel_var(CallEvent, <<"Fetch-ID">>),
     case OrgFetchId =:= NewFetchId of
         'true' ->
-            ReplacedBy = kz_json:get_value(<<"Replaced-By">>, JObj),
+            ReplacedBy = kz_call_event:replaced_by(CallEvent),
             callid_update(ReplacedBy, Call),
-            relay_message(Notify, JObj);
+            relay_message(Notify, CallEvent);
         'false' -> 'ok'
     end.
 
--spec handle_channel_direct(kapps_call:call(), kz_json:object(), kz_term:pids()) -> 'ok'.
-handle_channel_direct(Call, JObj, Notify) ->
+-spec handle_channel_direct(kapps_call:call(), kz_call_event:doc(), kz_term:pids()) -> 'ok'.
+handle_channel_direct(Call, CallEvent, Notify) ->
     OrgFetchId = kapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
-    NewFetchId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
+    NewFetchId = kz_call_event:custom_channel_var(CallEvent, <<"Fetch-ID">>),
     case OrgFetchId =:= NewFetchId of
         'true' ->
-            ReplacedBy = kz_json:get_value(<<"Connecting-Leg-A-UUID">>, JObj),
+            ReplacedBy = kz_call_event:connecting_b_leg_id(CallEvent),
             callid_update(ReplacedBy, Call),
-            relay_message(Notify, JObj);
+            relay_message(Notify, CallEvent);
         'false' -> 'ok'
     end.
 
--spec handle_channel_bridged(pid(), kz_term:pids(), kz_json:object(), kapps_call:call()) -> 'ok'.
-handle_channel_bridged(Self, Notify, JObj, Call) ->
+-spec handle_channel_bridged(pid(), kz_term:pids(), kz_call_event:doc(), kapps_call:call()) -> 'ok'.
+handle_channel_bridged(Self, Notify, CallEvent, Call) ->
     gen_server:cast(Self, {'set_call', kapps_call:set_call_bridged('true', Call)}),
-    relay_message(Notify, JObj).
+    relay_message(Notify, CallEvent).
 
--spec handle_usurp(pid(), kapps_call:call(), kz_json:object()) -> 'ok'.
-handle_usurp(Self, Call, JObj) ->
+-spec handle_usurp(pid(), kapps_call:call(), kz_call_event:doc()) -> 'ok'.
+handle_usurp(Self, Call, CallEvent) ->
     OrgFetchId = kapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
-    NewFetchId = kz_json:get_value(<<"Fetch-ID">>, JObj),
+    NewFetchId = kz_call_event:custom_channel_var(CallEvent, <<"Fetch-ID">>),
     case OrgFetchId =:= NewFetchId of
         'false' -> control_usurped(Self);
         'true'  -> 'ok'
@@ -992,13 +992,18 @@ send_command(Command, AMQPWorker, ControlQ, CallId) ->
 
 -spec handle_channel_pivoted(kz_types:server_ref(), kz_term:api_pid_ref(), kz_call_event:doc(), kapps_call:call()) -> 'ok'.
 handle_channel_pivoted(Self, PidRef, JObj, Call) ->
-    case kz_json:get_ne_binary_value(<<"Application-Data">>, JObj) of
+    case kz_json:get_value(<<"Application-Data">>, JObj) of
         'undefined' -> lager:info("no app data to pivot");
-        FlowBin ->
+        <<FlowBin/binary>> ->
             _ = maybe_stop_action(PidRef),
             lager:debug("pivoting to ~s", [FlowBin]),
             cf_util:flush_control_queue(Call),
-            continue_with_flow(kz_json:decode(FlowBin), Self)
+            continue_with_flow(kz_json:decode(FlowBin), Self);
+        FlowJObj ->
+            _ = maybe_stop_action(PidRef),
+            lager:debug("pivoting to ~p", [FlowJObj]),
+            cf_util:flush_control_queue(Call),
+            continue_with_flow(FlowJObj, Self)
     end.
 
 -spec maybe_stop_action(kz_term:api_pid_ref()) -> 'ok'.
