@@ -32,17 +32,22 @@
                         fun((function(), arity(), accumulator()) -> fun_return()).
 -type clause_fun() :: fun(([erl_parse:abstract_expr()], [erl_parse:abstract_expr()], accumulator()) -> accumulator()).
 -type module_fun() :: fun((atom(), accumulator()) -> fun_return()).
+-type export_fun() :: fun((atom(), arity(), accumulator()) -> fun_return()).
 -type app_fun() :: fun((atom(), accumulator()) -> fun_return()).
 -type record_fun() :: fun((any(), accumulator()) -> fun_return()).
+-type behaviour_fun() :: fun((atom(), accumulator()) -> fun_return()).
 
 -type option() :: {'expression', expression_fun()} |
                   {'function', function_fun()} |
                   {'clause', clause_fun()} |
                   {'module', module_fun()} |
                   {'after_module', module_fun()} |
+                  {'export', export_fun()} |
+                  {'exported_type', export_fun()} |
                   {'application', app_fun()} |
                   {'after_application', app_fun()} |
                   {'record', record_fun()} |
+                  {'behaviour', behaviour_fun()} |
                   {'accumulator', accumulator()}.
 -type options() :: [option()].
 
@@ -107,8 +112,14 @@ process_module(Module, Config0) ->
         {M, AST} ->
             #module_ast{functions=Fs
                        ,records=Rs
+                       ,exports=Exports
+                       ,exported_types=Types
+                       ,behaviour=Behaviour
                        } = kz_ast_util:add_module_ast(#module_ast{}, M, AST),
-            Routines = [{fun process_functions/2, Fs}
+            Routines = [{fun process_behaviour/2, Behaviour}
+                       ,{fun process_exports/2, Exports}
+                       ,{fun process_exported_types/2, Types}
+                       ,{fun process_functions/2, Fs}
                        ,{fun process_records/2, Rs}
                        ],
             Config1 = fold_over_module(Module, Config0, Routines),
@@ -120,11 +131,15 @@ process_module(Module, Config0) ->
                                          ]) ->
                               config().
 fold_over_module(Module, Config0, Routines) ->
+    maybe_fold_over_module(Module, Routines, callback_module(Module, Config0)).
+
+maybe_fold_over_module(_Module, _Routines, {'skip', ConfigAcc}) -> ConfigAcc;
+maybe_fold_over_module(Module, Routines, Config0) ->
     try lists:foldl(fun(_, {'skip', ConfigAcc}) -> ConfigAcc;
                        ({Fun, Arg}, ConfigAcc) ->
                             erlang:apply(Fun, [Arg, ConfigAcc])
                     end
-                   ,callback_module(Module, Config0)
+                   ,Config0
                    ,Routines
                    )
     catch
@@ -133,6 +148,51 @@ fold_over_module(Module, Config0, Routines) ->
         [io:format("~p~n", [S]) || S <- ST],
         throw({'error', Module, R})
         end.
+
+process_behaviour(Behaviour, Config) ->
+    callback_behaviour(Behaviour, Config).
+
+callback_behaviour(Behaviour, #{'behaviour' := Fun
+                               ,'accumulator' := Acc0
+                               }=Config0
+                  ) when is_function(Fun, 2) ->
+    Acc1 = Fun(Behaviour, Acc0),
+    Config0#{'accumulator' => Acc1};
+callback_behaviour(_Behaviour, Config) -> Config.
+
+process_exports(Exports, Config0) ->
+    lists:foldl(fun process_export/2, Config0, Exports).
+
+process_export({Fun, Arity}, Config) ->
+    callback_export(Fun, Arity, Config).
+
+-spec callback_export(atom(), arity(), config()) -> {'ok' | 'skip', config()}.
+callback_export(Function
+               ,Arity
+               ,#{'export' := Fun
+                 ,'accumulator' := Acc0
+                 }=Config0
+               ) when is_function(Fun, 3) ->
+    Acc1 = Fun(Function, Arity, Acc0),
+    Config0#{'accumulator' => Acc1};
+callback_export(_Function, _Arity, Config) -> Config.
+
+process_exported_types(Types, Config0) ->
+    lists:foldl(fun process_exported_type/2, Config0, Types).
+
+process_exported_type({Fun, Arity}, Config) ->
+    callback_exported_type(Fun, Arity, Config).
+
+-spec callback_exported_type(atom(), arity(), config()) -> {'ok' | 'skip', config()}.
+callback_exported_type(Function
+                      ,Arity
+                      ,#{'exported_type' := Fun
+                        ,'accumulator' := Acc0
+                        }=Config0
+                      ) when is_function(Fun, 3) ->
+    Acc1 = Fun(Function, Arity, Acc0),
+    Config0#{'accumulator' => Acc1};
+callback_exported_type(_Function, _Arity, Config) -> Config.
 
 process_records(Records, Config0) ->
     lists:foldl(fun process_record_fields/2, Config0, Records).
@@ -157,20 +217,20 @@ process_functions(Functions, Config0) ->
 process_function({_Module, Function, Arity, Clauses}, Config) ->
     case callback_function(Function, Arity, Config) of
         {'skip', Config1} -> Config1;
-        {'ok', Config1} -> process_clauses(Clauses, Config1)
+        {'ok', Config1} -> process_clauses(Function, Clauses, Config1)
     end.
 
-process_clauses(Clauses, Config0) ->
-    lists:foldl(fun process_clause/2
+process_clauses(Function, Clauses, Config0) ->
+    lists:foldl(fun(Clause, ConfigAcc) ->  process_clause(Clause, ConfigAcc, Function) end
                ,Config0
                ,Clauses
                ).
 
-process_clause(?CLAUSE(Args, Guards, Expressions), Config0) ->
+process_clause(?CLAUSE(Args, Guards, Expressions), Config0, Function) ->
     process_expressions(Args
                         ++ lists:flatten(Guards)
                         ++ Expressions
-                       ,callback_clause(Args, Guards, Config0)
+                       ,callback_clause(Args, Guards, Config0, Function)
                        ).
 
 process_expressions(Expressions, Config0) ->
@@ -191,15 +251,18 @@ process_expression(?UNARY_OP(_Name, First)=Expression, Config) ->
 process_expression(?CATCH(CatchExpression)=Expression, Config) ->
     process_expression(CatchExpression, callback_expression(Expression, Config));
 process_expression(?TRY_BODY(Body, Clauses)=Expression, Config) ->
-    process_clauses(Clauses
+    process_clauses('undefined'
+                   ,Clauses
                    ,process_expression(Body, callback_expression(Expression, Config))
                    );
 process_expression(?TRY_EXPR(Expr, Clauses, CatchClauses)=Expression, Config) ->
-    process_clauses(Clauses ++ CatchClauses
+    process_clauses('undefined'
+                   ,Clauses ++ CatchClauses
                    ,process_expressions(Expr, callback_expression(Expression, Config))
                    );
 process_expression(?TRY_BODY_AFTER(Body, Clauses, CatchClauses, AfterBody)=Expression, Config) ->
-    process_clauses(Clauses ++ CatchClauses
+    process_clauses('undefined'
+                   ,Clauses ++ CatchClauses
                    ,process_expressions(Body ++ AfterBody, callback_expression(Expression, Config))
                    );
 process_expression(?LC(Expr, Qualifiers)=Expression, Config) ->
@@ -211,9 +274,10 @@ process_expression(?BC(Expr, Qualifiers)=Expression, Config) ->
 process_expression(?LC_BIN_GENERATOR(Pattern, Expr)=Expression, Config) ->
     process_expressions([Pattern, Expr], callback_expression(Expression, Config));
 process_expression(?ANON(Clauses)=Expression, Config) ->
-    process_clauses(Clauses, callback_expression(Expression, Config));
+    process_clauses('undefined', Clauses, callback_expression(Expression, Config));
 process_expression(?GEN_FUN_ARGS(?ANON(Clauses), Args)=Expression, Config) ->
-    process_clauses(Clauses
+    process_clauses('undefined'
+                   ,Clauses
                    ,process_expressions(Args, callback_expression(Expression, Config))
                    );
 process_expression(?GEN_RECORD(_NameExpr, _RecName, Fields)=Expression, Config) ->
@@ -237,10 +301,10 @@ process_expression(?TUPLE(Elements)=Expression, Config) ->
 process_expression(?LIST(Head, Tail)=Expression, Config) ->
     process_expressions([Head, Tail], callback_expression(Expression, Config));
 process_expression(?RECEIVE(Clauses)=Expression, Config) ->
-    process_clauses(Clauses, callback_expression(Expression, Config));
+    process_clauses('undefined', Clauses, callback_expression(Expression, Config));
 process_expression(?RECEIVE(Clauses, AfterExpr, AfterBody)=Expression, Config) ->
     process_expressions([AfterExpr | AfterBody]
-                       ,process_clauses(Clauses, callback_expression(Expression, Config))
+                       ,process_clauses('undefined', Clauses, callback_expression(Expression, Config))
                        );
 process_expression(?LAGER, Config) ->
     Config;
@@ -249,11 +313,12 @@ process_expression(?MATCH(LHS, RHS)=Expression, Config) ->
 process_expression(?BEGIN_END(Exprs)=Expression, Config) ->
     process_expressions(Exprs, callback_expression(Expression, Config));
 process_expression(?CASE(CaseExpression, Clauses)=Expression, Config) ->
-    process_clauses(Clauses
+    process_clauses('undefined'
+                   ,Clauses
                    ,process_expression(CaseExpression, callback_expression(Expression, Config))
                    );
 process_expression(?IF(Clauses)=Expression, Config) ->
-    process_clauses(Clauses, callback_expression(Expression, Config));
+    process_clauses('undefined', Clauses, callback_expression(Expression, Config));
 process_expression(?MAP_CREATION(Exprs)=Expression, Config) ->
     process_expressions(Exprs, callback_expression(Expression, Config));
 process_expression(?MAP_UPDATE(_Var, Exprs)=Expression, Config) ->
@@ -361,9 +426,13 @@ callback_after_application(App, #{'after_application' := Fun
     end;
 callback_after_application(_App, Config) -> Config.
 
-callback_clause(Args, Guards, #{'accumulator' := Acc
-                               ,'clause' := ClauseFun
-                               }=Config0
-               ) when is_function(ClauseFun, 3) ->
-    Config0#{'accumulator' => ClauseFun(Args, Guards, Acc)};
-callback_clause(_Args, _Guards, Config) -> Config.
+callback_clause(Args
+               ,Guards
+               ,#{'accumulator' := Acc
+                 ,'clause' := ClauseFun
+                 }=Config0
+               ,Function
+               ) when is_function(ClauseFun, 4) ->
+    Config0#{'accumulator' => ClauseFun(Function, Args, Guards, Acc)};
+callback_clause(_Args, _Guards, Config, _Function) ->
+    Config.

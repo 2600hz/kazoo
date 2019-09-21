@@ -1297,7 +1297,7 @@ def_path_param(_OasVersion, _Param) ->
 
 filters_from_module(Module) ->
     Options = [{'accumulator', kz_json:new()}
-              ,{'clause', fun handle_filter_clause/3}
+              ,{'clause', fun handle_filter_clause/4}
               ,{'function', fun maybe_process_function/3}
               ],
     kazoo_ast:walk_modules([Module], Options).
@@ -1305,16 +1305,16 @@ filters_from_module(Module) ->
 maybe_process_function('filter_prop', 3, Acc) -> Acc;
 maybe_process_function(_F, _A, Acc) -> {'skip', Acc}.
 
-handle_filter_clause([?VAR('Doc'), ?BINARY_MATCH([?BINARY_STRING(FilterName)]), ?VAR('Val')], _Guards, Acc) ->
+handle_filter_clause(_F, [?VAR('Doc'), ?BINARY_MATCH([?BINARY_STRING(FilterName)]), ?VAR('Val')], _Guards, Acc) ->
     kz_json:set_value(kz_term:to_binary(FilterName), <<"{VALUE}">>, Acc);
-handle_filter_clause([?VAR('Doc'), ?BINARY_MATCH([?BINARY_STRING(FilterName)]), ?VAR('Key')], _Guards, Acc) ->
+handle_filter_clause(_F, [?VAR('Doc'), ?BINARY_MATCH([?BINARY_STRING(FilterName)]), ?VAR('Key')], _Guards, Acc) ->
     kz_json:set_value(kz_term:to_binary(FilterName), <<"{KEY}">>, Acc);
-handle_filter_clause([?VAR('Doc')
-                     ,?BINARY_MATCH([?BINARY_STRING(FilterName)
-                                    ,?BINARY_VAR('Key')
-                                    ])
-                     ,?VAR('Val')
-                     ], _Guards, Acc) ->
+handle_filter_clause(_F, [?VAR('Doc')
+                         ,?BINARY_MATCH([?BINARY_STRING(FilterName)
+                                        ,?BINARY_VAR('Key')
+                                        ])
+                         ,?VAR('Val')
+                         ], _Guards, Acc) ->
     kz_json:set_value(kz_term:to_binary(FilterName ++ "{KEY}"), <<"{VALUE}">>, Acc);
-handle_filter_clause([?VAR('_') | _], _Guards, Acc) ->
+handle_filter_clause(_F, [?VAR('_') | _], _Guards, Acc) ->
     Acc.
