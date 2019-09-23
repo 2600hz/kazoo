@@ -96,12 +96,12 @@ build_flow_data(Call, DataOut, AuthorizingType, Data)
   when AuthorizingType =:= <<"device">>;
        AuthorizingType =:= <<"mobile">> ->
     build_init_whisper([{<<"approved_device_id">>, kapps_call:authorizing_id(Call)}
-                   | DataOut
-                  ], Data);
+               | DataOut
+              ], Data);
 build_flow_data(Call, DataOut, <<"user">>, Data) ->
     build_init_whisper([{<<"approved_user_id">>, kapps_call:authorizing_id(Call)}
-                   | DataOut
-                  ], Data);
+               | DataOut
+              ], Data);
 build_flow_data(_Call, DataOut, _AuthorizingType, Data) ->
     lager:debug("unhandled authorizing type ~s", [_AuthorizingType]),
     build_init_whisper(DataOut, Data).
