@@ -154,7 +154,6 @@ eavesdrop_cmd(TargetCallId, Data) ->
         [{<<"Application-Name">>, <<"eavesdrop">>}
         ,{<<"Target-Call-ID">>, TargetCallId}
         ,{<<"Enable-DTMF">>, 'true'}
-        %init_whisper_mode: a/b/both
         ,{<<"Init-Whisper-Mode">>, kz_json:get_ne_binary_value(<<"init_whisper_mode">>, Data)}
         ]
     ).
