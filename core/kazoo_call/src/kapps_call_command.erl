@@ -764,6 +764,7 @@ redirect_to_node(Contact, Node, Call) ->
     lager:debug("redirect ~s to ~s", [Contact, Node]),
     Command = [{<<"Redirect-Contact">>, Contact}
               ,{<<"Redirect-Node">>, Node}
+              ,{<<"Redirect-Server">>, Node}
               ,{<<"Application-Name">>, <<"redirect">>}
               ],
     send_command(Command, Call),
