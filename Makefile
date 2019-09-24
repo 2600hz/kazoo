@@ -5,7 +5,10 @@ DEPS_DIR = $(ROOT)/deps
 RELX = $(DEPS_DIR)/relx
 ELVIS = $(DEPS_DIR)/elvis
 TAGS = $(ROOT)/TAGS
+
+ERLANG_MK = $(ROOT)/erlang.mk
 ERLANG_MK_COMMIT = 82179575d9191305805c8e6e8107be7c3f80a6be
+DOT_ERLANG_MK = $(ROOT)/.erlang.mk
 
 BASE_BRANCH := $(shell cat $(ROOT)/.base_branch)
 
@@ -117,15 +120,22 @@ check: ERLC_OPTS += -DPROPER
 check: compile-test eunit clean-kazoo kazoo
 
 clean-deps: clean-deps-hash
-	$(if $(wildcard $(DEPS_DIR)), rm -rf $(DEPS_DIR))
-	$(if $(wildcard .erlang.mk/), rm -r .erlang.mk/)
+	@$(if $(wildcard $(DEPS_DIR)), rm -rf $(DEPS_DIR))
+	@$(if $(wildcard $(DOT_ERLANG_MK)), rm -rf $(DOT_ERLANG_MK))
+	@$(if $(wildcard $(ERLANG_MK)), rm -r $(ERLANG_MK))
+	@echo "Cleaned deps-related files"
 
 clean-deps-hash:
 	$(if $(wildcard make/.deps.mk.*), rm make/.deps.mk.*)
 
-.erlang.mk:
-	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2018.03.01/erlang.mk' -O $(ROOT)/erlang.mk
-	@ERLANG_MK_COMMIT=$(ERLANG_MK_COMMIT) $(MAKE) -f erlang.mk erlang-mk
+.PHONY=dot_erlang_mk
+dot_erlang_mk: $(DOT_ERLANG_MK)
+
+$(DOT_ERLANG_MK): $(ERLANG_MK)
+	ERLANG_MK_COMMIT=$(ERLANG_MK_COMMIT) $(MAKE) -f $(ERLANG_MK) erlang.mk
+
+$(ERLANG_MK):
+	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2018.03.01/erlang.mk' -O $(ERLANG_MK)
 
 DEPS_HASH := $(shell md5sum make/deps.mk | cut -d' ' -f1)
 DEPS_HASH_FILE := make/.deps.mk.$(DEPS_HASH)
@@ -138,9 +148,9 @@ $(DEPS_HASH_FILE):
 	@$(MAKE) -C $(DEPS_DIR)/ all
 	touch $(DEPS_HASH_FILE)
 
-$(DEPS_DIR)/Makefile: .erlang.mk clean-plt
+$(DEPS_DIR)/Makefile: $(DOT_ERLANG_MK) clean-plt
 	mkdir -p deps
-	@$(MAKE) -f erlang.mk deps
+	@$(MAKE) -f $(ERLANG_MK) deps
 	cp $(ROOT)/make/Makefile.deps $(DEPS_DIR)/Makefile
 
 core:
