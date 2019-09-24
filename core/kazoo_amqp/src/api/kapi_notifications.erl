@@ -1358,21 +1358,21 @@ voicemail_full_definition() ->
                                              | ?DEFAULT_OPTIONAL_HEADERS
                                         ]).
 -define(VOICEMAIL_DELETED_HEADERS, [<<"Account-ID">>
-                                    ,<<"From-Realm">>
-                                    ,<<"From-User">>
-                                    ,<<"To-Realm">>
-                                    ,<<"To-User">>
-                                    ,<<"Reason">>
-                                    ,<<"Voicemail-Box">>
-                                    ,<<"Voicemail-ID">>
-                                    ,<<"Voicemail-Timestamp">>
+                                   ,<<"From-Realm">>
+                                   ,<<"From-User">>
+                                   ,<<"To-Realm">>
+                                   ,<<"To-User">>
+                                   ,<<"Reason">>
+                                   ,<<"Voicemail-Box">>
+                                   ,<<"Voicemail-ID">>
+                                   ,<<"Voicemail-Timestamp">>
                                    ]).
 -define(OPTIONAL_VOICEMAIL_DELETED_HEADERS, [<<"Call-ID">>
-                                             ,<<"Caller-ID-Name">>
-                                             ,<<"Caller-ID-Number">>
-                                             ,<<"Voicemail-Length">>
-                                             ,<<"Voicemail-Transcription">>
-                                             | ?DEFAULT_OPTIONAL_HEADERS
+                                            ,<<"Caller-ID-Name">>
+                                            ,<<"Caller-ID-Number">>
+                                            ,<<"Voicemail-Length">>
+                                            ,<<"Voicemail-Transcription">>
+                                                 | ?DEFAULT_OPTIONAL_HEADERS
                                             ]).
 %%------------------------------------------------------------------------------
 %% @doc Get Voicemail New Notification API definition.

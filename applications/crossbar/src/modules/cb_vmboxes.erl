@@ -484,12 +484,12 @@ add_pvt_auth(JObj, Context) ->
 %%------------------------------------------------------------------------------
 -spec publish_voicemail_deleted(kz_term:ne_binary(), path_token(), path_tokens()) -> 'ok'.
 publish_voicemail_deleted(AccountId, BoxId, MessageIds) ->
-      JObjs = kz_json:get_list_value(<<"succeeded">>, kvm_messages:fetch(AccountId, MessageIds, BoxId)),
-      lists:foreach(
-        fun(JObj) -> 
-                kvm_util:publish_voicemail_deleted(BoxId, JObj, 'crossbar_action')
-        end,
-        JObjs).
+    JObjs = kz_json:get_list_value(<<"succeeded">>, kvm_messages:fetch(AccountId, MessageIds, BoxId)),
+    lists:foreach(
+      fun(JObj) -> 
+              kvm_util:publish_voicemail_deleted(BoxId, JObj, 'crossbar_action')
+      end,
+      JObjs).
 
 %%------------------------------------------------------------------------------
 %% @doc disallow vmbox messages array changing.
