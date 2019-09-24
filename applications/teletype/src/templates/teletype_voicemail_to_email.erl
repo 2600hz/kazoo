@@ -75,7 +75,7 @@ init() ->
 
 -spec handle_req(kz_json:object()) -> template_response().
 handle_req(JObj) ->
-            handle_req(JObj, kapi_notifications:voicemail_new_v(JObj)).
+    handle_req(JObj, kapi_notifications:voicemail_new_v(JObj)).
 
 -spec handle_req(kz_json:object(), boolean()) -> template_response().
 handle_req(_, 'false') ->
