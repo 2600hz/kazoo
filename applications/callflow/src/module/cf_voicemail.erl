@@ -897,7 +897,9 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{seek_duration=SeekDu
             lager:info("caller chose to delete the message"),
             _ = kapps_call_command:flush(Call),
             _ = kapps_call_command:b_prompt(<<"vm-deleted">>, Call),
-            'ok' = kvm_util:publish_voicemail_deleted(BoxId, Call, H, 'dtmf'),
+            MessageId = kz_json:get_ne_binary_value(<<"media_id">>, H),
+            JObj = hd(kz_json:get_list_value(<<"succeeded">>, kvm_messages:fetch(AccountId, [MessageId], BoxId))),
+            'ok' = kvm_util:publish_voicemail_deleted(BoxId, JObj, 'dtmf'),
             _ = kvm_message:set_folder({?VM_FOLDER_DELETED, 'false'}, H, AccountId),
             play_messages(T, PrevMessages, Count, Box, Call);
         {'ok', 'return'} ->

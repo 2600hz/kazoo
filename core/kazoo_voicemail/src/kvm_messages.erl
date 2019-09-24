@@ -355,13 +355,15 @@ change_folder(Folder, Msgs, AccountId, BoxId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec change_folder(Folder, Msgs, AccountId, BoxId, Functions) ->
-          kz_json:object() when Folder :: kvm_message:vm_folder(),
-                                Msgs :: messages(),
-                                AccountId :: kz_term:ne_binary(),
-                                BoxId :: kz_term:ne_binary(),
-                                Functions :: update_funs().
-change_folder(Folder, Msgs, AccountId, BoxId, Funs) ->
-    Fun = [fun(JObj) -> kzd_box_message:apply_folder(Folder, JObj) end
+                           kz_json:object() when Folder :: kvm_message:vm_folder(),
+                                                 Msgs :: messages(),
+                                                 AccountId :: kz_term:ne_binary(),
+                                                 BoxId :: kz_term:ne_binary(),
+                                                 Functions :: update_funs().
+change_folder(_Folder, Msgs, AccountId, BoxId, Funs) ->
+    Fun = [fun(JObj) -> 
+                   JObj %kzd_box_message:apply_folder(Folder, JObj) 
+           end
            | Funs
           ],
     update(AccountId, BoxId, Msgs, Fun).

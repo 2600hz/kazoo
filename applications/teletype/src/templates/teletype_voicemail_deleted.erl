@@ -171,7 +171,6 @@ do_process_req(DataJObj) ->
 -spec macros(kz_json:object()) -> kz_term:proplist().
 macros(DataJObj) ->
     TemplateData = template_data(DataJObj),
-    lager:debug("TemplateData: ~p", [TemplateData]),
     EmailAttachements = email_attachments(DataJObj, TemplateData),
     Macros = maybe_add_file_data(TemplateData, EmailAttachements),
     props:set_value(<<"attachments">>, EmailAttachements, Macros).

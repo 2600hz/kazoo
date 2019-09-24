@@ -422,6 +422,7 @@ delete(Context, BoxId) ->
     AccountId = cb_context:account_id(Context),
     Msgs = kvm_messages:get(AccountId, BoxId),
     MsgIds = [kzd_box_message:media_id(M) || M <- Msgs],
+    'ok' = publish_voicemail_deleted(AccountId, BoxId, MsgIds),
     _ = kvm_messages:change_folder(?VM_FOLDER_DELETED, MsgIds, AccountId, BoxId, add_pvt_auth_funs(Context)),
     C = crossbar_doc:delete(Context),
     update_mwi(C, BoxId).
@@ -430,6 +431,7 @@ delete(Context, BoxId) ->
 delete(Context, BoxId, ?MESSAGES_RESOURCE) ->
     AccountId = cb_context:account_id(Context),
     MsgIds = cb_context:resp_data(Context),
+    'ok' = publish_voicemail_deleted(AccountId, BoxId, MsgIds),
     Result = kvm_messages:change_folder({?VM_FOLDER_DELETED, 'true'}, MsgIds, AccountId, BoxId, add_pvt_auth_funs(Context)),
     C = crossbar_util:response(Result, Context),
     update_mwi(C, BoxId).
@@ -437,6 +439,7 @@ delete(Context, BoxId, ?MESSAGES_RESOURCE) ->
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
 delete(Context, BoxId, ?MESSAGES_RESOURCE, MediaId) ->
     AccountId = cb_context:account_id(Context),
+    'ok' = publish_voicemail_deleted(AccountId, BoxId, [MediaId]),
     case kvm_message:change_folder({?VM_FOLDER_DELETED, 'true'}, MediaId, AccountId, BoxId, add_pvt_auth_funs(Context)) of
         {'ok', Message} ->
             C = crossbar_util:response(Message, Context),
@@ -474,6 +477,19 @@ add_pvt_auth_funs(Context) ->
 add_pvt_auth(JObj, Context) ->
     AuthUpdates = crossbar_doc:add_pvt_auth(JObj, [], Context),
     kz_json:set_values(AuthUpdates, JObj).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec publish_voicemail_deleted(kz_term:ne_binary(), path_token(), path_tokens()) -> 'ok'.
+publish_voicemail_deleted(AccountId, BoxId, MessageIds) ->
+      JObjs = kz_json:get_list_value(<<"succeeded">>, kvm_messages:fetch(AccountId, MessageIds, BoxId)),
+      lists:foreach(
+        fun(JObj) -> 
+                kvm_util:publish_voicemail_deleted(BoxId, JObj, 'crossbar_action')
+        end,
+        JObjs).
 
 %%------------------------------------------------------------------------------
 %% @doc disallow vmbox messages array changing.

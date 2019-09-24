@@ -242,8 +242,10 @@ set_folder(Folder, Message, AccountId) ->
         {'error', _} -> {'error', Message}
     end.
 
--spec maybe_set_folder(kz_term:ne_binary(), vm_folder(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> db_ret().
-maybe_set_folder(_, ?VM_FOLDER_DELETED = ToFolder, MessageId, AccountId, _Msg) ->
+-spec maybe_set_folder(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> db_ret().
+maybe_set_folder(_, ToFolder, MessageId, AccountId, _Msg) when ToFolder == ?VM_FOLDER_DELETED; 
+                                                               ToFolder == {?VM_FOLDER_DELETED, 'true'};
+                                                               ToFolder == {?VM_FOLDER_DELETED, 'false'} ->
     %% ensuring that message is really deleted
     change_folder(ToFolder, MessageId, AccountId, 'undefined');
 maybe_set_folder(FromFolder, FromFolder, _MessageId, _AccountId, Msg) ->
@@ -888,8 +890,7 @@ maybe_update_meta(Length, Action, Call, MediaId, BoxId) ->
         'delete' ->
             lager:debug("attachment was sent out via notification, set folder to delete"),
             Fun = [fun(JObj) ->
-                           Metadata = kz_json:get_value(<<"metadata">>, JObj),
-                           'ok' = kvm_util:publish_voicemail_deleted(BoxId, Call, Metadata, 'delete_after_notify'),
+                           'ok' = kvm_util:publish_voicemail_deleted(BoxId, JObj, 'delete_after_notify'),
                            kzd_box_message:apply_folder({?VM_FOLDER_DELETED, 'false'}, JObj)
                    end
                   ],
