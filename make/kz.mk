@@ -59,6 +59,7 @@ TEST_PA = -pa ebin/ $(foreach EBIN,$(TEST_EBINS),-pa $(EBIN))
 DEPS_RULES = .deps.rules
 TEST_DEPS = .test.deps
 DEPS_MK = $(CURDIR)/deps.mk
+DOT_ERLANG_MK = $(ROOT)/.erlang.mk
 
 .PHONY: deps
 ifneq (,$(wildcard $(DEPS_MK)))
@@ -66,7 +67,7 @@ ifneq (,$(wildcard $(DEPS_MK)))
 DEPS_HASH := $(shell md5sum $(DEPS_MK) | cut -d' ' -f1)
 DEPS_HASH_FILE := .deps.mk.$(DEPS_HASH)
 
-deps: $(DEPS_MK) $(DEPS_HASH_FILE)
+deps: $(DOT_ERLANG_MK) $(DEPS_MK) $(DEPS_HASH_FILE)
 
 $(DEPS_HASH_FILE):
 	@[[ -s $(DEPS_MK) ]] && DEPS_MK='$(DEPS_MK)' $(MAKE) -C $(ROOT)/deps/ all || true
@@ -79,6 +80,9 @@ $(DEPS_MK):
 	@touch .deps.mk.$(shell md5sum $(DEPS_MK) | cut -d' ' -f1)
 
 endif
+
+$(DOT_ERLANG_MK):
+	$(MAKE) -C $(ROOT) .erlang.mk
 
 clean-deps: clean-deps-hash
 
