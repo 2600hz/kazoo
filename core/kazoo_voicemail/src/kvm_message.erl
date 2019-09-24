@@ -231,8 +231,8 @@ message(AccountId, MessageId, BoxId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_folder(Folder, Message, AccountId) -> db_ret() when Folder::vm_folder(),
-                                                              Message::kz_json:object(),
-                                                              AccountId::kz_term:ne_binary().
+                                                             Message::kz_json:object(),
+                                                             AccountId::kz_term:ne_binary().
 set_folder(Folder, Message, AccountId) ->
     MessageId = kzd_box_message:media_id(Message),
     FromFolder = kzd_box_message:folder(Message, ?VM_FOLDER_NEW),
@@ -242,7 +242,7 @@ set_folder(Folder, Message, AccountId) ->
         {'error', _} -> {'error', Message}
     end.
 
--spec maybe_set_folder(kz_term:ne_binary(), vm_folder(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> db_ret().
+-spec maybe_set_folder(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> db_ret().
 maybe_set_folder(_, ToFolder, MessageId, AccountId, _Msg) when ToFolder == ?VM_FOLDER_DELETED;
                                                                ToFolder == {?VM_FOLDER_DELETED, 'true'};
                                                                ToFolder == {?VM_FOLDER_DELETED, 'false'} ->
@@ -255,9 +255,9 @@ maybe_set_folder(_FromFolder, ToFolder, MessageId, AccountId, _Msg) ->
 
 %% @equiv change_folder(Folder, Message, AccountId, BoxId, [])
 -spec change_folder(Folder, Message, AccountId, BoxId) -> db_ret() when Folder::vm_folder(),
-                                                                        Message::message(),
-                                                                        AccountId::kz_term:ne_binary(),
-                                                                        BoxId::kz_term:api_binary().
+                                                                       Message::message(),
+                                                                       AccountId::kz_term:ne_binary(),
+                                                                       BoxId::kz_term:api_binary().
 change_folder(Folder, Message, AccountId, BoxId) ->
     change_folder(Folder, Message, AccountId, BoxId, []).
 
@@ -890,8 +890,7 @@ maybe_update_meta(Length, Action, Call, MediaId, BoxId) ->
         'delete' ->
             lager:debug("attachment was sent out via notification, set folder to delete"),
             Fun = [fun(JObj) ->
-                           Metadata = kz_json:get_value(<<"metadata">>, JObj),
-                           'ok' = kvm_util:publish_voicemail_deleted(BoxId, Call, Metadata, 'delete_after_notify'),
+                           'ok' = kvm_util:publish_voicemail_deleted(BoxId, JObj, 'delete_after_notify'),
                            kzd_box_message:apply_folder({?VM_FOLDER_DELETED, 'false'}, JObj)
                    end
                   ],
