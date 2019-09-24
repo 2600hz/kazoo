@@ -1,0 +1,241 @@
+{
+    "_id": "user0000000000000000000000000002",
+    "_rev": "1-7280940a25dcb8eac5ab129dd8fbe5c6",
+    "call_forward": {
+        "direct_calls_only": false,
+        "enabled": false,
+        "failover": false,
+        "ignore_early_media": true,
+        "keep_caller_id": true,
+        "number": "+18554642600",
+        "require_keypress": true,
+        "substitute": false
+    },
+    "call_recording": {
+        "any": {
+            "any": {
+                "enabled": true,
+                "format": "wav",
+                "record_min_sec": 2,
+                "record_sample_rate": 8000,
+                "time_limit": 7200,
+                "url": "https://account-1.2600hz.local/sub/directory?object=user"
+            }
+        },
+        "inbound": {
+            "offnet": {
+                "enabled": true,
+                "format": "wav",
+                "record_min_sec": 2,
+                "record_sample_rate": 8000,
+                "time_limit": 7200,
+                "url": "https://account-1.2600hz.local/sub/directory?object=user"
+            },
+            "onnet": {
+                "enabled": true,
+                "format": "wav",
+                "record_min_sec": 2,
+                "record_sample_rate": 8000,
+                "time_limit": 7200,
+                "url": "https://account-1.2600hz.local/sub/directory?object=user"
+            }
+        },
+        "outbound": {
+            "offnet": {
+                "enabled": true,
+                "format": "wav",
+                "record_min_sec": 2,
+                "record_sample_rate": 8000,
+                "time_limit": 7200,
+                "url": "https://account-1.2600hz.local/sub/directory?object=user"
+            },
+            "onnet": {
+                "enabled": true,
+                "format": "wav",
+                "record_min_sec": 2,
+                "record_sample_rate": 8000,
+                "time_limit": 7200,
+                "url": "https://account-1.2600hz.local/sub/directory?object=user"
+            }
+        }
+    },
+    "call_restriction": {
+        "caribbean": {
+            "action": "inherit"
+        },
+        "did_us": {
+            "action": "inherit"
+        },
+        "emergency": {
+            "action": "inherit"
+        },
+        "international": {
+            "action": "inherit"
+        },
+        "toll_us": {
+            "action": "inherit"
+        },
+        "tollfree_us": {
+            "action": "inherit"
+        },
+        "unknown": {
+            "action": "inherit"
+        }
+    },
+    "call_waiting": {
+        "enabled": true
+    },
+    "caller_id": {
+        "emergency": {
+            "name": "user-emergency-name",
+            "number": "user-emergency-number"
+        },
+        "external": {
+            "name": "user-external-name",
+            "number": "user-external-number"
+        },
+        "internal": {
+            "name": "user-internal-name",
+            "number": "user-internal-number"
+        }
+    },
+    "contact_list": {
+        "exclude": true
+    },
+    "dial_plan": {
+        "system": [
+            "dialplan000000000000000000000003"
+        ],
+        "user-regex": {
+            "description": "user-description",
+            "prefix": "user-prefix",
+            "suffix": "user-suffix"
+        }
+    },
+    "do_no_disturb": {
+        "enabled": false
+    },
+    "email": "user-1002@2600hz.local",
+    "enabled": true,
+    "first_name": "User",
+    "hotdesk": {
+        "enabled": true,
+        "id": "2018",
+        "keep_logged_in_elsewhere": false,
+        "pin": "1234",
+        "require_pin": true
+    },
+    "language": "mk-bs",
+    "last_name": "Two",
+    "media": {
+        "audio": {
+            "codecs": [
+                "PCMU"
+            ]
+        },
+        "bypass_media": false,
+        "encryption": {
+            "enforce_security": false,
+            "methods": []
+        },
+        "fax_option": false,
+        "ignore_early_media": false,
+        "progress_timeout": 6,
+        "rtcp_mux": true,
+        "video": {
+            "codecs": []
+        },
+        "webrtc": false
+    },
+    "metaflows": {
+        "binding_digit": "#",
+        "digit_timeout": 800,
+        "listen_on": "both",
+        "numbers": {
+            "7": {
+                "children": {
+                    "_": {
+                        "data": {
+                            "action": "toggle"
+                        },
+                        "module": "hold_control"
+                    }
+                },
+                "data": {
+                    "id": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659)",
+                    "leg": "self"
+                },
+                "module": "play"
+            },
+            "8": {
+                "children": {
+                    "_": {
+                        "data": {
+                            "engine": "ispeech",
+                            "leg": "self",
+                            "text": "This call is powered by 2600Hz.",
+                            "voice": "female"
+                        },
+                        "module": "tts"
+                    }
+                },
+                "data": {
+                    "id": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659)",
+                    "leg": "self"
+                },
+                "module": "play"
+            },
+            "9": {
+                "children": {
+                    "_": {
+                        "data": {
+                            "engine": "ispeech",
+                            "leg": "peer",
+                            "text": "This call is powered by 2600Hz.",
+                            "voice": "female"
+                        },
+                        "module": "tts"
+                    }
+                },
+                "data": {
+                    "id": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659)",
+                    "leg": "self"
+                },
+                "module": "play"
+            }
+        }
+    },
+    "music_on_hold": {
+        "media_id": "media000000000000000000000000003"
+    },
+    "outbound_flags": [
+        "user_old_static_flag"
+    ],
+    "presence_id": "user-2@4a6863.sip.2600hz.local",
+    "priv_level": "admin",
+    "pronounced_name": {
+        "media_id": "media000000000000000000000000004"
+    },
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000001",
+    "pvt_account_id": "account0000000000000000000000001",
+    "pvt_auth_account_id": "account0000000000000000000000001",
+    "pvt_auth_user_id": "user0000000000000000000000000002",
+    "pvt_created": 63645260666,
+    "pvt_document_hash": "d156f2fbc4098e5db0a156a7471e598f",
+    "pvt_is_authenticated": true,
+    "pvt_modified": 63645260666,
+    "pvt_request_id": "request0000000000000000000000001",
+    "pvt_type": "user",
+    "pvt_vsn": "1",
+    "register_overwrite_notify": false,
+    "require_password_update": true,
+    "ringtones": {
+        "external": "<http://192.168.0.231/Device1/MyRing1.wav>;info=Callers",
+        "internal": "<http://192.168.0.231/Device1/MyRing2.wav>;info=Friends"
+    },
+    "timezone": "Europe/Moscow",
+    "user_type": "sip_user",
+    "username": "usertwo",
+    "verified": true,
+    "vm_to_email_enabled": true
+}

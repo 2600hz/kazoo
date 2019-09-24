@@ -1,0 +1,252 @@
+{
+    "_id": "device00000000000000000000000002",
+    "_rev": "1-7280940a25dcb8eac5ab129dd8fbe5c6",
+    "call_forward": {
+        "direct_calls_only": false,
+        "enabled": false,
+        "failover": false,
+        "ignore_early_media": true,
+        "keep_caller_id": true,
+        "number": "+18554642600",
+        "require_keypress": true,
+        "substitute": false
+    },
+    "call_recording": {
+        "any": {
+            "any": {
+                "enabled": true,
+                "format": "wav",
+                "record_min_sec": 2,
+                "record_sample_rate": 8000,
+                "time_limit": 7200,
+                "url": "https://account-1.2600hz.local/sub/directory?object=device"
+            }
+        },
+        "inbound": {
+            "offnet": {
+                "enabled": true,
+                "format": "wav",
+                "record_min_sec": 2,
+                "record_sample_rate": 8000,
+                "time_limit": 7200,
+                "url": "https://account-1.2600hz.local/sub/directory?object=device"
+            },
+            "onnet": {
+                "enabled": true,
+                "format": "wav",
+                "record_min_sec": 2,
+                "record_sample_rate": 8000,
+                "time_limit": 7200,
+                "url": "https://account-1.2600hz.local/sub/directory?object=device"
+            }
+        },
+        "outbound": {
+            "offnet": {
+                "enabled": true,
+                "format": "wav",
+                "record_min_sec": 2,
+                "record_sample_rate": 8000,
+                "time_limit": 7200,
+                "url": "https://account-1.2600hz.local/sub/directory?object=device"
+            },
+            "onnet": {
+                "enabled": true,
+                "format": "wav",
+                "record_min_sec": 2,
+                "record_sample_rate": 8000,
+                "time_limit": 7200,
+                "url": "https://account-1.2600hz.local/sub/directory?object=device"
+            }
+        }
+    },
+    "call_restriction": {
+        "caribbean": {
+            "action": "inherit"
+        },
+        "did_us": {
+            "action": "inherit"
+        },
+        "emergency": {
+            "action": "inherit"
+        },
+        "international": {
+            "action": "inherit"
+        },
+        "toll_us": {
+            "action": "inherit"
+        },
+        "tollfree_us": {
+            "action": "inherit"
+        },
+        "unknown": {
+            "action": "inherit"
+        }
+    },
+    "call_waiting": {
+        "enabled": true
+    },
+    "caller_id": {
+        "emergency": {
+            "name": "device-emergency-name",
+            "number": "device-emergency-number"
+        },
+        "external": {
+            "name": "device-external-name",
+            "number": "device-external-number"
+        },
+        "internal": {
+            "name": "device-internal-name",
+            "number": "device-internal-number"
+        }
+    },
+    "contact_list": {
+        "exclude": true
+    },
+    "device_type": "sip_device",
+    "dial_plan": {
+        "device-regex": {
+            "description": "device-description",
+            "prefix": "device-prefix",
+            "suffix": "device-suffix"
+        },
+        "system": [
+            "dialplan000000000000000000000002"
+        ]
+    },
+    "do_no_disturb": {
+        "enabled": false
+    },
+    "enabled": true,
+    "exclude_from_queues": false,
+    "language": "fr-fr",
+    "mac_address": "00:15:65:27:C9:8E",
+    "media": {
+        "audio": {
+            "codecs": [
+                "PCMU"
+            ]
+        },
+        "bypass_media": false,
+        "encryption": {
+            "enforce_security": false,
+            "methods": []
+        },
+        "fax_option": false,
+        "ignore_early_media": false,
+        "progress_timeout": 6,
+        "rtcp_mux": true,
+        "video": {
+            "codecs": []
+        },
+        "webrtc": false
+    },
+    "metaflows": {
+        "binding_digit": "#",
+        "digit_timeout": 800,
+        "listen_on": "both",
+        "numbers": {
+            "4": {
+                "children": {
+                    "_": {
+                        "data": {
+                            "action": "toggle",
+                            "time_limit": 3600
+                        },
+                        "module": "record_call"
+                    }
+                },
+                "data": {
+                    "id": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659)",
+                    "leg": "self"
+                },
+                "module": "play"
+            },
+            "5": {
+                "children": {
+                    "_": {
+                        "data": {
+                            "action": "start",
+                            "time_limit": 3600
+                        },
+                        "module": "record_call"
+                    }
+                },
+                "data": {
+                    "id": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659)",
+                    "leg": "self"
+                },
+                "module": "play"
+            },
+            "6": {
+                "children": {
+                    "_": {
+                        "data": {
+                            "action": "stop"
+                        },
+                        "module": "record_call"
+                    }
+                },
+                "data": {
+                    "id": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659)",
+                    "leg": "self"
+                },
+                "module": "play"
+            }
+        }
+    },
+    "music_on_hold": {
+        "media_id": "media000000000000000000000000002"
+    },
+    "mwi_unsolicited_updates": true,
+    "name": "Test Device 2",
+    "outbound_flags": [
+        "device_old_static_flag"
+    ],
+    "owner_id": "user0000000000000000000000000002",
+    "presence_id": "device-2@4a6863.sip.2600hz.local",
+    "provision": {
+        "endpoint_brand": "yealink",
+        "endpoint_family": "t3x",
+        "endpoint_model": "t38g"
+    },
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000000001",
+    "pvt_account_id": "account0000000000000000000000001",
+    "pvt_auth_account_id": "account0000000000000000000000001",
+    "pvt_auth_user_id": "user0000000000000000000000000002",
+    "pvt_created": 63645260666,
+    "pvt_document_hash": "6facbc71a03d95f95560043e15d47a02",
+    "pvt_is_authenticated": true,
+    "pvt_modified": 63645260666,
+    "pvt_request_id": "request0000000000000000000000001",
+    "pvt_type": "device",
+    "pvt_vsn": "1",
+    "register_overwrite_notify": false,
+    "ringtones": {
+        "external": "<http://192.168.0.231/Device1/MyRing1.wav>;info=Callers",
+        "internal": "<http://192.168.0.231/Device1/MyRing2.wav>;info=Friends"
+    },
+    "sip": {
+        "custom_sip_headers": {
+            "in": {
+                "x-device-header": "foo"
+            },
+            "out": {
+                "x-outbound-header": "bar"
+            },
+            "x-device-header": "baz",
+            "x-legacy-header": "Hz"
+        },
+        "expire_seconds": 300,
+        "ignore_completed_elsewhere": false,
+        "invite_format": "contact",
+        "ip": "10.26.20.20",
+        "method": "password",
+        "number": "+14158867901",
+        "password": "device_2_password",
+        "route": "2600hz.local:7000",
+        "static_route": "sip:999#4158867901@2600hz.local:7000",
+        "username": "device_2_username"
+    },
+    "suppress_unregister_notifications": false,
+    "timezone": "America/New_York"
+}
