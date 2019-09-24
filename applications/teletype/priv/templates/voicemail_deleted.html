@@ -43,7 +43,17 @@
                     <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
                         <p style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;">The voicemail from <b>{{caller_id.name_number}}</b> for your voicemail box at <b>{{voicemail.vmbox_name}} ({{voicemail.vmbox_number}})</b> was deleted.<br><br>Please find the message audio file in the attachment.</p>
                     </td>
-                </tr>
+            </tr>
+            <tr>
+                <td bgcolor="#ffffff" style="padding:20px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%">
+                        <tr>
+                            <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Delete reason</b></td>
+                            <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{reason}}</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
             </table>
             {% if voicemail.transcription %}
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
@@ -121,9 +131,6 @@
                             <b>-&nbsp;&nbsp;&nbsp;Account ID:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{account.id}}</span><br>
                             <b>-&nbsp;&nbsp;&nbsp;Account Name:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{account.name}}</span><br>
                             <b>-&nbsp;&nbsp;&nbsp;Account Realm:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{account.realm}}</span>
-                        </p>
-                        <p style="margin:13px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-size:11px;line-height:18px;">
-                            <b>-&nbsp;&nbsp;&nbsp;Delete reason:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{reason}}</span>
                         </p>
                     </td>
                 </tr>

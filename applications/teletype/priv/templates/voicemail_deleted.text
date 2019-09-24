@@ -8,6 +8,8 @@ your voicemail box at {{voicemail.vmbox_name}} (number: {{voicemail.vmbox_number
 Please find the message audio file in the attachment.
 {% if voicemail.transcription %}
 
+Delete reason: {{reason}}
+
 === Transcription ===
 
 {{voicemail.transcription}}
@@ -31,7 +33,6 @@ Account Information
     Account Name: {{account.name}}
     Account Realm: {{account.realm}}
 
-Delete reason: {{reason}}
 
 
 Sent from {{system.encoded_node}}
