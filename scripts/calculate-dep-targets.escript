@@ -66,7 +66,5 @@ consult_for_app_deps(KazooRoot, App) ->
     proplists:get_value('applications', Config, []).
 
 core_or_app(KazooRoot, AppL) ->
-    case filelib:is_dir(filename:join([KazooRoot, "core", AppL])) of
-        'true' -> "core";
-        'false' -> "applications"
-    end.
+    [Path] = filelib:wildcard(KazooRoot ++ "/{core,applications,deps}/" ++ AppL),
+    filename:basename(filename:dirname(Path)).
