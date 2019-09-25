@@ -5,7 +5,6 @@
 | `allow_account_number_additions/1` | `(AccountId)` | |
 | `app/1` | `(AppNameOrId)` | |
 | `apps/0` |  | |
-| `create_account/1` | `(Context)` | |
 | `create_account/4` | `(AccountName,Realm,Username,Password)` | |
 | `db_init/0` |  | |
 | `demote_account/1` | `(AccountId)` | |
@@ -25,10 +24,8 @@
 | `init_apps/1` | `(AppsPath)` | |
 | `init_apps/2` | `(AppsPath,AppUrl)` | |
 | `migrate/0` |  | |
-| `migrate/1` | `(Accounts)` | |
 | `migrate_account_data/1` | `(Account)` | |
 | `migrate_accounts_data/0` |  | |
-| `migrate_ring_group_callflow/1` | `(Account)` | |
 | `move_account/2` | `(Account,ToAccount)` | |
 | `promote_account/1` | `(AccountId)` | |
 | `refresh/0` |  | |
