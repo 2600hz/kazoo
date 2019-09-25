@@ -1542,20 +1542,16 @@ set_init_whisper_mode(Node, UUID, Mode) ->
 
 -spec eavesdrop_bridge_both(atom(), kz_term:ne_binary())  -> 'ok'.
 eavesdrop_bridge_both(Node, UUID) ->
-    _ = ecallmgr_util:send_cmd(Node, UUID, "unset", "eavesdrop_bridge_aleg"),
     _ = ecallmgr_util:send_cmd(Node, UUID, "set", "eavesdrop_bridge_aleg=true"),
-    _ = ecallmgr_util:send_cmd(Node, UUID, "unset", "eavesdrop_bridge_bleg"),
     _ = ecallmgr_util:send_cmd(Node, UUID, "set", "eavesdrop_bridge_bleg=true"),
     'ok'.
     
 -spec eavesdrop_whisper_a(atom(), kz_term:ne_binary())  -> 'ok'.
 eavesdrop_whisper_a(Node, UUID) ->
-    _ = ecallmgr_util:send_cmd(Node, UUID, "unset", "eavesdrop_whisper_aleg"),
     _ = ecallmgr_util:send_cmd(Node, UUID, "set", "eavesdrop_whisper_aleg=true"),
     'ok'.
 
 -spec eavesdrop_whisper_b(atom(), kz_term:ne_binary())  -> 'ok'.
 eavesdrop_whisper_b(Node, UUID) ->
-    _ = ecallmgr_util:send_cmd(Node, UUID, "unset", "eavesdrop_whisper_bleg"),
     _ = ecallmgr_util:send_cmd(Node, UUID, "set", "eavesdrop_whisper_bleg=true"),
     'ok'.
