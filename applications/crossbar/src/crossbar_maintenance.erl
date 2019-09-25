@@ -14,32 +14,39 @@
 -export([migrate/0
         ,migrate_accounts_data/0
         ,migrate_account_data/1
-        ]).
-
--export([start_module/1]).
--export([stop_module/1]).
--export([running_modules/0]).
--export([refresh/0, refresh/1
+        ,refresh/0, refresh/1
         ,register_views/0
         ,flush/0
+        ,update_schemas/0
+        ,db_init/0
         ]).
--export([find_account_by_number/1]).
--export([find_account_by_name/1]).
--export([find_account_by_realm/1]).
--export([find_account_by_id/1]).
--export([enable_account/1, disable_account/1]).
--export([promote_account/1, demote_account/1]).
--export([allow_account_number_additions/1, disallow_account_number_additions/1]).
--export([create_account/4]).
--export([move_account/2]).
--export([descendants_count/0, descendants_count/1]).
 
--export([init_apps/2, init_app/2]).
--export([init_apps/1, init_app/1]).
--export([refresh_apps/2, refresh_app/2]).
--export([refresh_apps/1, refresh_app/1]).
--export([apps/0, app/1
-        ,set_app_field/3%, set_app_field/4, set_app_field/5
+-export([start_module/1
+        ,stop_module/1
+        ,running_modules/0
+        ]).
+
+-export([find_account_by_number/1
+        ,find_account_by_name/1
+        ,find_account_by_realm/1
+        ,find_account_by_id/1
+        ]).
+
+-export([enable_account/1, disable_account/1
+        ,promote_account/1, demote_account/1
+        ,allow_account_number_additions/1, disallow_account_number_additions/1
+        ,descendants_count/0, descendants_count/1
+        ,create_account/4
+        ,move_account/2
+        ]).
+
+-export([init_apps/1, init_apps/2
+        ,init_app/1, init_app/2
+        ,refresh_apps/1, refresh_apps/2
+        ,refresh_app/1, refresh_app/2
+        ,apps/0
+        ,app/1
+        ,set_app_field/3
         ,set_app_label/2
         ,set_app_description/2
         ,set_app_extended_description/2
@@ -49,9 +56,6 @@
         ]).
 
 -export([does_schema_exist/1]).
--export([update_schemas/0]).
-
--export([db_init/0]).
 
 -include("crossbar.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
@@ -1003,24 +1007,24 @@ find_metadata(AppPath) ->
             {'invalid_data', [Error || {'data_invalid', _, Error, _, _} <- Errors]}
     end.
 
--spec apps() -> no_return.
+-spec apps() -> 'no_return'.
 apps() ->
-    {ok, MA} = kapps_util:get_master_account_db(),
+    {'ok', MA} = kapps_util:get_master_account_db(),
     case kz_datamgr:get_results(MA, ?CB_APPS_STORE_LIST) of
-        {error, _R} -> lager:debug("failed to read apps in ~s: ~p", [MA, _R]);
-        {ok, JObjs} -> lists:foreach(fun print_app/1, JObjs)
+        {'error', _R} -> lager:debug("failed to read apps in ~s: ~p", [MA, _R]);
+        {'ok', JObjs} -> lists:foreach(fun print_app/1, JObjs)
     end,
-    no_return.
+    'no_return'.
 
--spec app(kz_term:ne_binary()) -> no_return.
+-spec app(kz_term:ne_binary()) -> 'no_return'.
 app(AppNameOrId) ->
-    {ok, MA} = kapps_util:get_master_account_db(),
+    {'ok', MA} = kapps_util:get_master_account_db(),
     case find_app(MA, AppNameOrId) of
-        {ok, AppJObj} -> print_app(AppJObj);
-        {error, _} ->
+        {'ok', AppJObj} -> print_app(AppJObj);
+        {'error', _} ->
             case kz_datamgr:open_doc(MA, AppNameOrId) of
-                {ok, AppJObj} -> print_app(view_app(AppJObj));
-                _ -> io:format("unknown app\n"), no_return
+                {'ok', AppJObj} -> print_app(view_app(AppJObj));
+                _ -> io:format("unknown app\n"), 'no_return'
             end
     end.
 
