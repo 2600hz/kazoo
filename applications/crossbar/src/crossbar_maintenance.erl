@@ -32,7 +32,6 @@
 -export([promote_account/1, demote_account/1]).
 -export([allow_account_number_additions/1, disallow_account_number_additions/1]).
 -export([create_account/4]).
--export([create_account/1]).
 -export([move_account/2]).
 -export([descendants_count/0, descendants_count/1]).
 -export([migrate_ring_group_callflow/1]).
