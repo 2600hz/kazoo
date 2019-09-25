@@ -34,7 +34,7 @@ Key | Description | Type | Default | Required | Support Level
 
 ## Operations
 
-The compaction module (kt_compactor)[../src/modules/kt_compactor.erl] binds into the triggers for all databases. Based on the `tasks.browse_dbs_interval_s` in `system_config`, each database will be processed each time the timer expires. The default timeout is daily, but the next timer won't start until all the databases have been processed by **all** task modules bound for them. On large systems, there could be so many databases and operations could take a long time on them, that the next timer won't start for more than a day.
+The compaction module [kt_compactor](https://github.com/2600hz/kazoo/blob/master/applications/tasks/src/modules/kt_compactor.erl) binds into the triggers for all databases. Based on the `tasks.browse_dbs_interval_s` in `system_config`, each database will be processed each time the timer expires. The default timeout is daily, but the next timer won't start until all the databases have been processed by **all** task modules bound for them. On large systems, there could be so many databases and operations could take a long time on them, that the next timer won't start for more than a day.
 
 Typically there's nothing wrong with that, just know that the timer isn't a daily timer but instead is 84600 seconds after the last database is processed.
 
