@@ -9,12 +9,20 @@
 %%%-----------------------------------------------------------------------------
 -module(kapi_rate).
 
--export([req/1, req_v/1
-        ,resp/1, resp_v/1
-        ,bind_q/2, unbind_q/2
+-export([api_definitions/0, api_definition/1]).
+
+-export([req/1
+        ,req_v/1
+        ,publish_req/1
+        ,publish_req/2
+        ]).
+-export([resp/1
+        ,resp_v/1
+        ,publish_resp/2
+        ,publish_resp/3
+        ]).
+-export([bind_q/2, unbind_q/2
         ,declare_exchanges/0
-        ,publish_req/1, publish_req/2
-        ,publish_resp/2, publish_resp/3
         ,broadcast_resp/1, broadcast_resp/2
         ]).
 
@@ -41,102 +49,161 @@
 -include_lib("kz_amqp_util.hrl").
 
 -define(EVENT_CATEGORY, <<"rate">>).
--define(KEY_RATE_REQ, <<"rate.req">>).
 -define(KEY_RATE_BROADCAST, <<"rate.resp.broadcast">>).
 
-%% AMQP fields for Rating Request
--define(RATE_REQ_HEADERS, [<<"To-DID">>]).
--define(OPTIONAL_RATE_REQ_HEADERS, [<<"Account-ID">>
-                                   ,<<"Call-ID">>
-                                   ,<<"Direction">>
-                                   ,<<"From-DID">>
-                                   ,<<"Options">>
-                                   ,<<"Outbound-Flags">>
-                                   ,<<"Ratedeck-ID">>
-                                   ,<<"Resource-ID">>
-                                   ,<<"Resource-Type">>
-                                   ,<<"Send-Empty">>
-                                   ,<<"Authorizing-Type">>
-                                   ]).
--define(RATE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                         ,{<<"Event-Name">>, <<"req">>}
-                         ,{<<"Direction">>, [<<"inbound">>, <<"outbound">>]}
-                         ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>, <<"sms">>]}
-                         ]).
--define(RATE_REQ_TYPES, [{<<"Options">>, fun is_list/1}
-                        ,{<<"Send-Empty">>, fun kz_term:is_boolean/1}
-                        ]).
+%%------------------------------------------------------------------------------
+%% @doc Get all API definitions of this module.
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definitions() -> kapi_definition:apis().
+api_definitions() ->
+    [req_definition()
+    ,resp_definition()
+    ].
 
-%% AMQP fields for Rating Response
--define(RATE_RESP_HEADERS, []).
--define(OPTIONAL_RATE_RESP_HEADERS, [<<"Base-Cost">>
-                                    ,<<"Call-ID">>
-                                    ,<<"Discount-Percentage">>
-                                    ,<<"Prefix">>
-                                    ,<<"Pvt-Cost">>
-                                    ,<<"Rate">>
-                                    ,<<"Rate-ID">>
-                                    ,<<"Rate-Description">>
-                                    ,<<"Rate-Increment">>
-                                    ,<<"Rate-Minimum">>
-                                    ,<<"Rate-Name">>
-                                    ,<<"Rate-NoCharge-Time">>
-                                    ,<<"Rate-Version">>
-                                    ,<<"Ratedeck-ID">>
-                                    ,<<"Surcharge">>
-                                    ,<<"Update-Callee-ID">>
-                                    ]).
--define(RATE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                          ,{<<"Event-Name">>, <<"resp">>}
-                          ]).
--define(RATE_RESP_TYPES, [{<<"Rate-Increment">>, fun is_integer/1}
-                         ,{<<"Rate-NoCharge-Time">>, fun is_integer/1}
-                         ,{<<"Update-Callee-ID">>, fun kz_term:is_boolean/1}
-                         ]).
+%%------------------------------------------------------------------------------
+%% @doc Get API definition of the given `Name'.
+%% @see api_definitions/0
+%% @end
+%%------------------------------------------------------------------------------
+-spec api_definition(kz_term:text()) -> kapi_definition:api().
+api_definition(Name) when not is_binary(Name) ->
+    api_definition(kz_term:to_binary(Name));
+api_definition(<<"req">>) ->
+    req_definition();
+api_definition(<<"resp">>) ->
+    resp_definition().
+
+-spec req_definition() -> kapi_definition:api().
+req_definition() ->
+    EventName = <<"req">>,
+    Category = ?EVENT_CATEGORY,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Rating Request">>}
+              ,{fun kapi_definition:set_description/2, <<"Rating Request">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun req/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun req_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_req/1}
+              ,{fun kapi_definition:set_required_headers/2, [<<"To-DID">>]}
+              ,{fun kapi_definition:set_binding/2, <<"rate.req">>}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Account-ID">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Direction">>
+                                                            ,<<"From-DID">>
+                                                            ,<<"Options">>
+                                                            ,<<"Outbound-Flags">>
+                                                            ,<<"Ratedeck-ID">>
+                                                            ,<<"Resource-ID">>
+                                                            ,<<"Resource-Type">>
+                                                            ,<<"Send-Empty">>
+                                                            ,<<"Authorizing-Type">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,[{<<"Direction">>, [<<"inbound">>, <<"outbound">>]}
+                ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>, <<"sms">>]}
+                ] ++ kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Options">>, fun is_list/1}
+                ,{<<"Send-Empty">>, fun kz_term:is_boolean/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec resp_definition() -> kapi_definition:api().
+resp_definition() ->
+    EventName = <<"resp">>,
+    Category = ?EVENT_CATEGORY,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Rating Response">>}
+              ,{fun kapi_definition:set_description/2, <<"Rating Response">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun resp/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun resp_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_resp/2}
+              ,{fun kapi_definition:set_required_headers/2, []}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Base-Cost">>
+                                                            ,<<"Call-ID">>
+                                                            ,<<"Discount-Percentage">>
+                                                            ,<<"Prefix">>
+                                                            ,<<"Pvt-Cost">>
+                                                            ,<<"Rate">>
+                                                            ,<<"Rate-ID">>
+                                                            ,<<"Rate-Description">>
+                                                            ,<<"Rate-Increment">>
+                                                            ,<<"Rate-Minimum">>
+                                                            ,<<"Rate-Name">>
+                                                            ,<<"Rate-NoCharge-Time">>
+                                                            ,<<"Rate-Version">>
+                                                            ,<<"Ratedeck-ID">>
+                                                            ,<<"Surcharge">>
+                                                            ,<<"Update-Callee-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Rate-Increment">>, fun is_integer/1}
+                ,{<<"Rate-NoCharge-Time">>, fun is_integer/1}
+                ,{<<"Update-Callee-ID">>, fun kz_term:is_boolean/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
 
 %%------------------------------------------------------------------------------
 %% @doc Authorization Request.
 %% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec req(kz_term:api_terms()) ->
-                 {'ok', iolist()} |
-                 {'error', string()}.
-req(Prop) when is_list(Prop) ->
-    case req_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?RATE_REQ_HEADERS, ?OPTIONAL_RATE_REQ_HEADERS);
-        'false' -> {'error', "Proplist failed validation for rate_req"}
-    end;
-req(JObj) ->
-    req(kz_json:to_proplist(JObj)).
+-spec req(kz_term:api_terms()) -> kz_api:api_formatter_return().
+req(Req) ->
+    kapi_definition:build_message(Req, req_definition()).
 
 -spec req_v(kz_term:api_terms()) -> boolean().
-req_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?RATE_REQ_HEADERS, ?RATE_REQ_VALUES, ?RATE_REQ_TYPES);
-req_v(JObj) ->
-    req_v(kz_json:to_proplist(JObj)).
+req_v(Req) ->
+    kapi_definition:validate(Req, req_definition()).
+
+-spec publish_req(kz_term:api_terms()) -> 'ok'.
+publish_req(JObj) ->
+    publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_req(Req, ContentType) ->
+    Definition = req_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:callmgr_publish(Payload, ContentType, kapi_definition:binding(Definition)).
 
 %%------------------------------------------------------------------------------
 %% @doc Authorization Response.
 %% Takes proplist, creates JSON string or error.
 %% @end
 %%------------------------------------------------------------------------------
--spec resp(kz_term:api_terms()) ->
-                  {'ok', iolist()} |
-                  {'error', string()}.
-resp(Prop) when is_list(Prop) ->
-    case resp_v(Prop) of
-        'true' -> kz_api:build_message(Prop, ?RATE_RESP_HEADERS, ?OPTIONAL_RATE_RESP_HEADERS);
-        'false' -> {'error', "Proplist failed validation for rate_resp"}
-    end;
-resp(JObj) ->
-    resp(kz_json:to_proplist(JObj)).
+-spec resp(kz_term:api_terms()) -> kz_api:api_formatter_return().
+resp(Req) ->
+    kapi_definition:build_message(Req, resp_definition()).
 
 -spec resp_v(kz_term:api_terms()) -> boolean().
-resp_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?RATE_RESP_HEADERS, ?RATE_RESP_VALUES, ?RATE_RESP_TYPES);
-resp_v(JObj) ->
-    resp_v(kz_json:to_proplist(JObj)).
+resp_v(Req) ->
+    kapi_definition:validate(Req, resp_definition()).
+
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_resp(Queue, JObj) ->
+    publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_resp(Queue, Resp, ContentType) ->
+    Definition = resp_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Setup and tear down bindings for rate `gen_listeners'.
@@ -147,9 +214,9 @@ bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props)).
 
 bind_to_q(Q, 'undefined') ->
-    'ok' = kz_amqp_util:bind_q_to_callmgr(Q, ?KEY_RATE_REQ);
+    'ok' = kz_amqp_util:bind_q_to_callmgr(Q, kapi_definition:binding(req_definition()));
 bind_to_q(Q, ['req'|T]) ->
-    'ok' = kz_amqp_util:bind_q_to_callmgr(Q, ?KEY_RATE_REQ),
+    'ok' = kz_amqp_util:bind_q_to_callmgr(Q, kapi_definition:binding(req_definition())),
     bind_to_q(Q, T);
 bind_to_q(Q, ['broadcast'|T]) ->
     'ok' = kz_amqp_util:bind_q_to_callmgr(Q, ?KEY_RATE_BROADCAST),
@@ -164,9 +231,9 @@ unbind_q(Q, Props) ->
     unbind_q_from(Q, props:get_value('restrict_to', Props)).
 
 unbind_q_from(Q, 'undefined') ->
-    'ok' = kz_amqp_util:unbind_q_from_callmgr(Q, ?KEY_RATE_REQ);
+    'ok' = kz_amqp_util:unbind_q_from_callmgr(Q, kapi_definition:binding(req_definition()));
 unbind_q_from(Q, ['req'|T]) ->
-    'ok' = kz_amqp_util:unbind_q_from_callmgr(Q, ?KEY_RATE_REQ),
+    'ok' = kz_amqp_util:unbind_q_from_callmgr(Q, kapi_definition:binding(req_definition())),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['broadcast'|T]) ->
     'ok' = kz_amqp_util:unbind_q_from_callmgr(Q, ?KEY_RATE_BROADCAST),
@@ -189,31 +256,17 @@ declare_exchanges() ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec publish_req(kz_term:api_terms()) -> 'ok'.
-publish_req(JObj) ->
-    publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_req(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
-publish_req(Req, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?RATE_REQ_VALUES, fun req/1),
-    kz_amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RATE_REQ).
-
--spec publish_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
-publish_resp(Queue, JObj) ->
-    publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
-
--spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
-publish_resp(Queue, Resp, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?RATE_RESP_VALUES, fun resp/1),
-    kz_amqp_util:targeted_publish(Queue, Payload, ContentType).
-
 -spec broadcast_resp(kz_term:api_terms()) -> 'ok'.
 broadcast_resp(JObj) ->
     broadcast_resp(JObj, ?DEFAULT_CONTENT_TYPE).
 
 -spec broadcast_resp(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 broadcast_resp(Resp, ContentType) ->
-    {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?RATE_RESP_VALUES, fun resp/1),
+    Definition = resp_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
     kz_amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RATE_BROADCAST).
 
 -spec to_did(req()) -> kz_term:ne_binary().
