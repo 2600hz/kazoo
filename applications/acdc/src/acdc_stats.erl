@@ -981,7 +981,18 @@ handle_processed_stat(JObj, Props) ->
                 ,{#call_stat.hung_up_by, kz_json:get_value(<<"Hung-Up-By">>, JObj)}
                 ,{#call_stat.status, <<"processed">>}
                 ]),
-    update_call_stat(Id, Updates, Props).
+
+    Stat = find_call_stat(Id),
+    Updates1 = processed_stat_maybe_fix_update(Stat, Updates),
+
+    update_call_stat(Id, Updates1, Props).
+
+-spec processed_stat_maybe_fix_update(call_stat(), kz_term:proplist()) -> kz_term:proplist().
+processed_stat_maybe_fix_update(#call_stat{handled_timestamp='undefined'}, Updates) ->
+                                                % Handle stats where processed came in before handled (hungup quickly after pickup)
+    ProcessedTimestamp = props:get_integer_value(#call_stat.processed_timestamp, Updates),
+    [{#call_stat.handled_timestamp, ProcessedTimestamp} | Updates];
+processed_stat_maybe_fix_update(_, Updates) -> Updates.
 
 -spec flush_call_stat(kz_json:object(), kz_term:proplist()) -> 'ok'.
 flush_call_stat(JObj, Props) ->
