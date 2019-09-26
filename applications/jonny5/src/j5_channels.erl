@@ -642,6 +642,8 @@ handle_info(?HOOK_EVT(_, <<"CHANNEL_DESTROY">>, JObj), State) ->
                                              ])
     end,
     {'noreply', State};
+handle_info(?HOOK_EVT(_, <<"CHANNEL_BRIDGE">>, _JObj), State) ->
+    {'noreply', State};
 handle_info('cleanup', State) ->
     _P = kz_util:spawn(fun delete_destroyed_channels/0),
     {'noreply', start_cleanup_timer(State)};

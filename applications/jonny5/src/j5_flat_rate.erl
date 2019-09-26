@@ -199,9 +199,9 @@ consume_limit(Limit, 0, Type) ->
 consume_limit(Limit, Used, Type) ->
     case Used - Limit of
         Remaining when Remaining > 0 ->
-            lager:debug("all ~p ~s trunks consumed leaving ~p channels unaccounted for"
-                       ,[Limit, Type, Remaining]
-                       ),
+            lager:info("all ~p ~s trunks consumed leaving ~p channels unaccounted for"
+                      ,[Limit, Type, Remaining]
+                      ),
             Remaining;
         _Else ->
             lager:debug("account is consuming ~p/~p ~s trunks"
