@@ -5,9 +5,4 @@
 		<field name="Intercepted-By" type="first-of"
 			value="variable_intercepted_by|intercepted_by" />
 	</fields>
-
-	<routing-key>
-		<param name="format_fields" value="#call,#CHANNEL_INTERCEPTED,Unique-ID" />
-	</routing-key>
-
 </event>

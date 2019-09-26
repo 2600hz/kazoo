@@ -8,6 +8,7 @@
 -define(APP_NAME, <<"kazoo_events">>).
 -define(APP_VERSION, <<"4.0.0">>).
 -define(APP, 'kazoo_events').
+-define(CONFIG_CAT, <<"kazoo_events">>).
 
 -type bind_fun() :: {module(), atom(), list()} |
                     fun().

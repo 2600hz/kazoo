@@ -23,10 +23,10 @@ lookup(EndpointId, AccountId) ->
 
 -spec lookup(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
 lookup(EndpointId, AccountId, Options) ->
-    Routines = [fun kz_directory_user:profile/3
+    Routines = [fun kz_directory_resource:profile/3
+               ,fun kz_directory_user:profile/3
                ,fun kz_directory_endpoint:profile/3
                ,fun kz_directory_group:profile/3
-               ,fun kz_directory_resource:profile/3
                ],
     lookup(Routines, EndpointId, AccountId, Options).
 

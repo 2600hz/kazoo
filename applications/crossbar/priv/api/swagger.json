@@ -29644,6 +29644,16 @@
                     },
                     "type": "object"
                 },
+                "callflow_event_listeners": {
+                    "default": 5,
+                    "description": "callflow callflow_event_listeners",
+                    "type": "integer"
+                },
+                "callflow_listeners": {
+                    "default": 5,
+                    "description": "callflow callflow_listeners",
+                    "type": "integer"
+                },
                 "calls_consume_tokens": {
                     "default": true,
                     "description": "callflow calls consume tokens",
@@ -32779,6 +32789,17 @@
                     "default": "",
                     "description": "kazoo_endpoint.mobile suffix",
                     "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.kazoo_events": {
+            "description": "Schema for kazoo_events system_config",
+            "properties": {
+                "event_listeners": {
+                    "default": 5,
+                    "description": "kazoo_events event_listeners",
+                    "type": "integer"
                 }
             },
             "type": "object"

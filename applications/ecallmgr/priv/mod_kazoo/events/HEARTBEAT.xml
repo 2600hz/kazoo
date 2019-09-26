@@ -1,18 +1,7 @@
 <event name="HEARTBEAT">
 	<fields verbose="true">
 		<field name="Core-UUID" />
-		<field name="FreeSWITCH-Hostname" as="AS-FreeSWITCH-Hostname" />
-		<field name="First-Expanded-FreeSWITCH-Hostname" type="expand"
-			value="${FreeSWITCH-Hostname}" />
-		<field name="Second-Expanded-FreeSWITCH-Hostname" type="expand"
-			value="${Event-Date-Timestamp}@${FreeSWITCH-Hostname}" />
-		<field name="Event-Category" type="static" value="myfreeswitch-category" />
+		<field name="Event-Category" type="static" value="switch" />
 		<field name="Event-Info" as="FreeSWITCH-Is-Ready" />
-		<field name="First-Check-First-Of" type="first-of"
-			value="Event-Calling-Line-Number|Event-Sequence" />
-		<field name="Second-Check-First-Of" type="first-of"
-			value="Non-Existing|Event-Calling-Line-Number|Event-Sequence" />
-		<field name="FreeSWITCH" type="start-with" />
-		<field name="Session-Since-Startup" serialize-as="number" />
 	</fields>
 </event>

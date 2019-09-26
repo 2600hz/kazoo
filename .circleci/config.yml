@@ -108,7 +108,7 @@ jobs:
     docker:
       - image: offical2600hz/circleci:21.3.8
       - image: couchdb:2.1.1
-      - image: rabbitmq:3.7
+      - image: 2600hz/rabbitmq
     environment:
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
       TZ: "/usr/share/zoneinfo/UTC"

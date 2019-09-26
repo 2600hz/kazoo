@@ -5,9 +5,4 @@
 		<field name="att_xfer_replaced_by" type="first-of" as="Replaced-By"
 			value="variable_att_xfer_replaced_by|att_xfer_replaced_by" />
 	</fields>
-
-	<routing-key>
-		<param name="format_fields" value="#call,#CHANNEL_REPLACED,Unique-ID" />
-	</routing-key>
-
 </event>

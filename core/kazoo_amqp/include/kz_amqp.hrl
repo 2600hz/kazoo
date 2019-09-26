@@ -155,7 +155,8 @@
                            #'basic.consume'{} | #'basic.cancel'{} |
                            #'basic.ack'{} | #'basic.nack'{} |
                            #'basic.qos'{} |
-                           #'exchange.declare'{} |
+                           #'exchange.declare'{} | #'exchange.delete'{} |
+                           #'exchange.bind'{} | #'exchange.unbind'{} |
                            #'confirm.select'{} |
                            #'channel.flow'{} | #'channel.flow_ok'{} |
                            basic_publish() |
@@ -168,10 +169,12 @@
 -type kz_amqp_queue() :: #'queue.declare'{}.
 -type kz_amqp_queues() :: [#'queue.declare'{}].
 
--type kz_command_ret_ok() :: #'basic.qos_ok'{} | #'queue.declare_ok'{} |
-                             #'exchange.declare_ok'{} | #'queue.delete_ok'{} |
-                             #'queue.declare_ok'{} | #'queue.unbind_ok'{} |
-                             #'queue.bind_ok'{} | #'basic.consume_ok'{} |
+-type kz_command_ret_ok() :: #'basic.qos_ok'{} |
+                             #'exchange.declare_ok'{} | #'exchange.delete_ok'{} |
+                             #'exchange.bind_ok'{} | #'exchange.unbind_ok'{} |
+                             #'queue.declare_ok'{} | #'queue.delete_ok'{} |
+                             #'queue.bind_ok'{} | #'queue.unbind_ok'{} |
+                             #'basic.consume_ok'{} |
                              #'confirm.select_ok'{} |
                              #'basic.cancel_ok'{}.
 -type command_ret() :: 'ok' |

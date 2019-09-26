@@ -7,7 +7,7 @@
 %%% error if some headers are missing.
 %%%
 %%% To only check the validity, use the API call's corresponding *_v/1 function.
-%%% This will parse the proplist and return a boolean()if the proplist is valid
+%%% This will parse the proplist and return a boolean() if the proplist is valid
 %%% for creating a JSON message.
 %%%
 %%%
@@ -36,11 +36,19 @@ event_category(JObj) ->
 event_name(JObj) ->
     kz_term:to_atom(kz_api:event_name(JObj), 'true').
 
--spec delivery_message(kz_json:object(), kz_term:proplist()) -> term().
+-spec delivery_message(JObj, kz_term:proplist()) ->
+                              {{kz_term:ne_binary(), kz_term:ne_binary(), {#'P_basic'{}, #'basic.deliver'{}}}
+                              ,{atom(), atom()}
+                              ,JObj
+                              }
+                                  when JObj :: kz_json:object().
 delivery_message(JObj, Props) ->
     Basic = props:get_value('basic', Props),
     Deliver = #'basic.deliver'{exchange=Exchange, routing_key=RK} = props:get_value('deliver', Props),
-    {{Exchange, RK, {Basic, Deliver}}, {event_category(JObj), event_name(JObj)}, JObj}.
+    {{Exchange, RK, {Basic, Deliver}}
+    ,{event_category(JObj), event_name(JObj)}
+    ,JObj
+    }.
 
 -spec encode_pid(kz_term:ne_binary()) -> kz_term:ne_binary().
 encode_pid(Queue) ->

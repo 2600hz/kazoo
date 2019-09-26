@@ -26,6 +26,16 @@
             },
             "type": "object"
         },
+        "callflow_event_listeners": {
+            "default": 5,
+            "description": "callflow callflow_event_listeners",
+            "type": "integer"
+        },
+        "callflow_listeners": {
+            "default": 5,
+            "description": "callflow callflow_listeners",
+            "type": "integer"
+        },
         "calls_consume_tokens": {
             "default": true,
             "description": "callflow calls consume tokens",

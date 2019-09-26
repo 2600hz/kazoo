@@ -19,6 +19,7 @@
 -define(SERVER, ?MODULE).
 
 -define(CHILDREN, [?WORKER('kz_hooks_listener')
+                  ,?SUPER('kz_event_listener_sup')
                   ,?CACHE(?HOOKS_CACHE_NAME)
                   ]).
 

@@ -45,7 +45,7 @@
 -export([answer/1, answer_now/1
         ,hangup/1, hangup/2
         ,break/1
-        ,queued_hangup/1
+        ,queued_hangup/1, queued_hangup/2
         ,set/3, set/4, set/5, set_terminators/2
         ,fetch/1, fetch/2
         ]).
@@ -1031,11 +1031,6 @@ hangup(Call) ->
               ],
     send_command(Command, Call).
 
--spec queued_hangup(kapps_call:call()) -> 'ok'.
-queued_hangup(Call) ->
-    Command = [{<<"Application-Name">>, <<"hangup">>}],
-    send_command(Command, Call).
-
 -spec hangup(boolean(), kapps_call:call()) -> 'ok'.
 hangup(OtherLegOnly, Call) when is_boolean(OtherLegOnly) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
@@ -1058,6 +1053,18 @@ b_hangup('false', Call) ->
 b_hangup('true', Call) ->
     hangup('true', Call),
     wait_for_unbridge().
+
+-spec queued_hangup(kapps_call:call()) -> 'ok'.
+queued_hangup(Call) ->
+    queued_hangup(Call, 'undefined').
+
+-spec queued_hangup(kapps_call:call(), kz_term:api_ne_binary()) -> 'ok'.
+queued_hangup(Call, Cause) ->
+    Command = props:filter_undefined(
+                [{<<"Application-Name">>, <<"hangup">>}
+                ,{<<"Hangup-Cause">>, Cause}
+                ]),
+    send_command(Command, Call).
 
 %%------------------------------------------------------------------------------
 %% @doc Produces the low level AMQP request to page the call.

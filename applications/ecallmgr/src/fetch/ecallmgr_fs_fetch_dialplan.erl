@@ -219,6 +219,7 @@ wait_for_route_winner(Ctx) ->
 
 -spec activate_call_control(dialplan_context()) -> {'ok', dialplan_context()}.
 activate_call_control(#{call_id := CallId, winner := #{payload := JObj}} = Map) ->
+    lager:info("we are the route winner handling node"),
     kz_util:put_callid(CallId),
     CCVs = kzd_fetch:ccvs(JObj),
     ControllerQ = kzd_fetch:controller_queue(JObj),
@@ -256,10 +257,9 @@ route_winner(#{payload := JObj}=_Map) ->
     case NodeWinner =:= kz_term:to_binary(node()) of
         'true' ->
             Pid = kz_term:to_pid(kz_api:reply_to(JObj)),
-            Pid ! {'route_winner', JObj, []},
-            lager:debug("we are the route winner handling node");
+            Pid ! {'route_winner', JObj, []};
         'false' ->
-            lager:debug("route winner handled by other node : ~s", [NodeWinner])
+            lager:info("route winner handled by other node : ~s", [NodeWinner])
     end.
 
 

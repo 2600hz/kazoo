@@ -348,7 +348,8 @@ publish_event(Event, ContentType) when is_list(Event) ->
                                                  ,{'remove_recursive', 'false'}
                                                  ]
                                                 ),
-    kz_amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY(EventName, CallId), Payload, ContentType);
+    Props = [{'headers', [{<<"call-id">>, binary, CallId}]}],
+    kz_amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY(EventName, CallId), Payload, ContentType, Props);
 publish_event(Event, ContentType) ->
     publish_event(kz_json:to_proplist(Event), ContentType).
 

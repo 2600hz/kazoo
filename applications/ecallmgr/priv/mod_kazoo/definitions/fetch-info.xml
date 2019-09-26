@@ -5,10 +5,11 @@
 	<field name="Switch-Nodename" as="Node" />
 	<field name="Fetch-UUID" />
 	<field name="Fetch-UUID" as="Msg-ID" />
-	<field name="Call-ID" type="first-of" value="Unique-ID" />
+	<!-- <field name="Call-ID" type="first-of" value="Unique-ID" /> -->
+    <field name="Unique-ID" as="Call-ID"/>
 	<field name="Fetch-Section" />
-	<field name="Fetch-Timeout" />
-	<field name="Fetch-Timestamp-Micro" />
+	<field name="Fetch-Timeout" serialize-as="number" />
+	<field name="Fetch-Timestamp-Micro" serialize-as="number" />
 	<field name="Kazoo-Bundle" as="Fetch-Version" />
 	<field name="Custom-SIP-Headers" type="reference" />
 	<field name="Custom-Channel-Vars" type="reference" />

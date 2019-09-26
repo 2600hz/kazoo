@@ -54,6 +54,8 @@
         ,code_change/3
         ]).
 
+-export([init_cf_exe/2]).
+
 -include("callflow.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include_lib("kazoo_amqp/include/kz_api.hrl").
@@ -75,8 +77,7 @@
                ,cf_module_old_pid :: kz_term:api_pid_ref()
                ,hangup_info = 'undefined' :: kz_term:api_object()
                ,status = 'init' :: callfow_status()
-               ,amqp_worker :: pid()
-               ,amqp_queue :: kz_term:ne_binary()
+               ,queue :: kz_term:api_ne_binary()
                ,self = self() :: pid()
                ,stop_on_destroy = 'true' :: boolean()
                ,destroyed = 'false' :: boolean()
@@ -89,10 +90,6 @@
 cf_exe_pid(Call) ->
     kapps_call:kvs_fetch('cf_exe_pid', Call).
 
--spec consumer_pid(kapps_call:call()) -> pid().
-consumer_pid(Call) ->
-    kapps_call:kvs_fetch('consumer_pid', Call).
-
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -101,9 +98,9 @@ consumer_pid(Call) ->
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link(kapps_call:call()) -> kz_types:startlink_ret().
-start_link(Call) ->
-    gen_server:start_link(?MODULE, [Call], []).
+-spec start_link(map()) -> kz_types:startlink_ret().
+start_link(Map) ->
+    proc_lib:start_link(?MODULE, 'init_cf_exe', [self(), Map]).
 
 -spec get_call(pid() | kapps_call:call()) -> {'ok', kapps_call:call()}.
 get_call(Srv) when is_pid(Srv) ->
@@ -265,7 +262,7 @@ callid(_, Call) ->
 
 -spec queue_name(kapps_call:call() | pid()) -> kz_term:ne_binary().
 queue_name(Srv) when is_pid(Srv) ->
-    gen_server:call(Srv, 'amqp_queue');
+    gen_server:call(Srv, 'control_queue_name');
 queue_name(Call) ->
     Srv = cf_exe_pid(Call),
     queue_name(Srv).
@@ -333,37 +330,35 @@ amqp_call(Call, API, PubFun, VerifyFun) when is_function(PubFun, 1) ->
 %% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec init([kapps_call:call()]) -> {'ok', state()}.
-init([Call]) ->
-    process_flag('trap_exit', 'true'),
+-spec init(term()) -> 'ignore'.
+init(_) -> 'ignore'.
 
-    CallId = kapps_call:call_id(Call),
-    kz_util:put_callid(CallId),
-
-    AMQPWorker = consumer_pid(Call),
-    gen_listener:add_binding(AMQPWorker, 'call', [{'callid', CallId}]),
-    _ = kz_amqp_channel:consumer_pid(AMQPWorker),
-
-    gen_server:cast(self(), 'initialize'),
-
-    QueueName = gen_listener:queue_name(AMQPWorker),
-    kz_amqp_worker:relay_to(AMQPWorker, self()),
-
-    {'ok', #state{call=kapps_call:set_controller_queue(QueueName, Call)
-                 ,amqp_worker=AMQPWorker
-                 ,amqp_queue=gen_listener:queue_name(AMQPWorker)
-                 ,branch_count = ?MAX_BRANCH_COUNT
-                 }}.
+-spec init_cf_exe(pid(), map()) -> 'ok'.
+init_cf_exe(Pid, #{request := JObj
+                  ,props := Props
+                  ,callback := Fun
+                  }) ->
+    proc_lib:init_ack(Pid, {'ok', self()}),
+    kz_amqp_channel:consumer_channel(props:get_value('channel', Props)),
+    CallId = kz_api:call_id(JObj),
+    _ = kz_hooks:bind_call_id(CallId),
+    case Fun(JObj, Props) of
+        {'ok', Call} ->
+            process_flag('trap_exit', 'true'),
+            State = #state{call=Call
+                          ,branch_count = ?MAX_BRANCH_COUNT
+                          ,queue = kapps_call:controller_queue(Call)
+                          },
+            gen_server:cast(self(), 'initialize'),
+            gen_server:enter_loop(?MODULE, [], State);
+        _Other -> 'ok'
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Handling call messages.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
-handle_call('amqp_worker', _From, #state{amqp_worker=AMQPWorker}=State) ->
-    {'reply', AMQPWorker, State};
-handle_call('amqp_queue', _From, #state{amqp_queue=AMQPQueue}=State) ->
-    {'reply', AMQPQueue, State};
 handle_call('is_channel_destroyed', _From, State) ->
     {'reply', State#state.destroyed, State};
 handle_call({'update_call', Routines}, _From, #state{call=Call}=State) ->
@@ -410,13 +405,8 @@ handle_call({'next', Key}, _From, #state{flow=Flow}=State) ->
                               )
     ,State
     };
-handle_call({'amqp_call', API, PubFun, VerifyFun}
-           ,_From
-           ,#state{amqp_worker=AMQPWorker
-                  ,amqp_queue=AMQPQueue
-                  }=State
-           ) ->
-    Reply = amqp_call_message(API, PubFun, VerifyFun, AMQPWorker, AMQPQueue),
+handle_call({'amqp_call', API, PubFun, VerifyFun}, _From, #state{queue=Q}=State) ->
+    Reply = amqp_call_message(API, PubFun, VerifyFun, Q),
     {'reply', Reply, State};
 handle_call({'add_termination_handler', {_M, _F, _Args}=H}
            ,_From
@@ -431,6 +421,7 @@ handle_call({'remove_termination_handler', {_M, _F, _Args}=H}
 handle_call('status', _From, #state{status=Status}=State) ->
     {'reply', Status, State};
 handle_call(_Request, _From, State) ->
+    lager:warning("unhandled request in call: ~p : ~p", [_Request, _From]),
     Reply = {'error', 'unimplemented'},
     {'reply', Reply, State}.
 
@@ -472,9 +463,8 @@ handle_cast({'stop', 'undefined'}, #state{flows=[]}=State) ->
     {'stop', 'normal', State};
 handle_cast({'stop', Cause}, #state{flows=[]
                                    ,call=Call
-                                   ,amqp_worker=AMQPWorker
                                    }=State) ->
-    hangup_call(Call, Cause, AMQPWorker),
+    hangup_call(Call, Cause),
     lager:info("sent call hangup: ~s", [Cause]),
     {'noreply', State};
 handle_cast({'stop', _Cause}, #state{flows=[Flow|Flows]}=State) ->
@@ -522,18 +512,12 @@ handle_cast({'branch', NewFlow}, #state{flow=Flow
                                         )
             }
     end;
-handle_cast({'callid_update', NewCallId}
-           ,#state{call=Call
-                  ,amqp_worker=AMQPWorker
-                  }=State
-           ) ->
+handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
     kz_util:put_callid(NewCallId),
     PrevCallId = kapps_call:call_id_direct(Call),
     lager:info("updating callid to ~s (from ~s), catch you on the flip side", [NewCallId, PrevCallId]),
-    lager:info("removing call event bindings for ~s", [PrevCallId]),
-    gen_listener:rm_binding(AMQPWorker, 'call', [{'callid', PrevCallId}]),
-    lager:info("binding to new call events"),
-    gen_listener:add_binding(AMQPWorker, 'call', [{'callid', NewCallId}]),
+    _ = kz_hooks:unbind_call_id(PrevCallId),
+    _ = kz_hooks:bind_call_id(NewCallId),
     {'noreply', State#state{call=kapps_call:set_call_id(NewCallId, Call)}};
 handle_cast({'add_event_listener', {Mod, Args}}, #state{call=Call}=State) ->
     _EvtL = cf_util:start_event_listener(Call, Mod, Args),
@@ -541,10 +525,8 @@ handle_cast({'add_event_listener', {Mod, Args}}, #state{call=Call}=State) ->
     {'noreply', State};
 handle_cast('initialize', State) ->
     initialize(State);
-handle_cast({'amqp_send', API, PubFun}
-           ,#state{amqp_queue=AMQPQueue}=State
-           ) ->
-    amqp_send_message(API, PubFun, AMQPQueue),
+handle_cast({'amqp_send', API, PubFun}, #state{queue=Q}=State) ->
+    amqp_send_message(API, PubFun, Q),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -556,6 +538,9 @@ handle_cast(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'amqp_msg', JObj}, State) ->
+    _ = handle_event(JObj, State),
+    {'noreply', State};
+handle_info({'kapi', {_, _, JObj}}, State) ->
     _ = handle_event(JObj, State),
     {'noreply', State};
 handle_info({'DOWN', Ref, 'process', Pid, 'normal'}, #state{cf_module_pid={Pid, Ref}
@@ -681,41 +666,27 @@ handle_event(JObj, #state{cf_module_pid=PidRef
 %% @end
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
-terminate({'shutdown', 'transfer'}, #state{amqp_worker=AMQPWorker
-                                          ,call=Call
-                                          }) ->
-    lager:info("callflow execution has been transferred"),
-    gen_listener:rm_binding(AMQPWorker, 'call', [{'callid', kapps_call:call_id_direct(Call)}]),
-    kz_amqp_worker:checkin_worker(AMQPWorker);
-terminate({'shutdown', 'control_usurped'}, #state{amqp_worker=AMQPWorker
-                                                 ,call=Call
-                                                 }) ->
-    lager:info("the call has been usurped by an external process"),
-    gen_listener:rm_binding(AMQPWorker, 'call', [{'callid', kapps_call:call_id_direct(Call)}]),
-    kz_amqp_worker:checkin_worker(AMQPWorker);
+terminate({'shutdown', 'transfer'}, _State) ->
+    lager:info("callflow execution has been transferred");
+terminate({'shutdown', 'control_usurped'}, _State) ->
+    lager:info("the call has been usurped by an external process");
 terminate(_Reason, #state{call=Call
                          ,cf_module_pid='undefined'
-                         ,amqp_worker=AMQPWorker
                          ,hangup_info=HangupInfo
                          ,termination_handlers=DestroyHandlers
                          }=State) ->
     lager:info("callflow execution has been stopped: ~p", [_Reason]),
     maybe_hangup_call(State),
-    run_destroy_handlers(Call, HangupInfo, DestroyHandlers),
-    gen_listener:rm_binding(AMQPWorker, 'call', [{'callid', kapps_call:call_id_direct(Call)}]),
-    kz_amqp_worker:checkin_worker(AMQPWorker);
+    run_destroy_handlers(Call, HangupInfo, DestroyHandlers);
 terminate(_Reason, #state{call=Call
                          ,cf_module_pid={Pid, _}
-                         ,amqp_worker=AMQPWorker
                          ,hangup_info=HangupInfo
                          ,termination_handlers=DestroyHandlers
                          }=State) ->
     lager:info("callflow execution has been stopped: ~p", [_Reason]),
     exit(Pid, 'kill'),
     maybe_hangup_call(State),
-    run_destroy_handlers(Call, HangupInfo, DestroyHandlers),
-    gen_listener:rm_binding(AMQPWorker, 'call', [{'callid', kapps_call:call_id_direct(Call)}]),
-    kz_amqp_worker:checkin_worker(AMQPWorker).
+    run_destroy_handlers(Call, HangupInfo, DestroyHandlers).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.
@@ -768,7 +739,6 @@ do_launch_cf_module(#state{call=Call
 do_launch_cf_module(#state{call=Call
                           ,flow=Flow
                           ,cf_module_pid=OldPidRef
-                          ,amqp_worker=AMQPWorker
                           }=State
                    ,Action
                    ) ->
@@ -778,7 +748,7 @@ do_launch_cf_module(#state{call=Call
     %% the module calls cf_exe:set_call/1 - that would undo the later
     %% old_action/last_action update
     Call1 = update_actions(Action, Call),
-    PidRef = spawn_cf_module(Action, Data, Call1, AMQPWorker),
+    PidRef = spawn_cf_module(Action, Data, Call1),
     link(get_pid(PidRef)),
     State#state{cf_module_pid=PidRef
                ,cf_module_old_pid=OldPidRef
@@ -815,13 +785,16 @@ update_actions(Action, Call) ->
 %% point 'handle' having set the callid on the new process first.
 %% @end
 %%------------------------------------------------------------------------------
--spec spawn_cf_module(atom(), kz_json:object(), kapps_call:call(), pid()) -> kz_term:pid_ref().
-spawn_cf_module(CFModule, Data, Call, AMQPWorker) ->
-    kz_util:spawn_monitor(fun cf_module_task/4, [CFModule, Data, Call, AMQPWorker]).
+-spec spawn_cf_module(atom(), kz_json:object(), kapps_call:call()) -> kz_term:pid_ref().
+spawn_cf_module(CFModule, Data, Call) ->
+    AMQPConsumer = kz_amqp_channel:consumer_pid(),
+    AMQPChannel = kz_amqp_channel:consumer_channel(),
+    kz_util:spawn_monitor(fun cf_module_task/5, [CFModule, Data, Call, AMQPConsumer, AMQPChannel]).
 
--spec cf_module_task(atom(), kz_json:object(), kapps_call:call(), pid()) -> any().
-cf_module_task(CFModule, Data, Call, AMQPWorker) ->
-    _ = kz_amqp_channel:consumer_pid(AMQPWorker),
+-spec cf_module_task(atom(), kz_json:object(), kapps_call:call(), pid(), pid()) -> any().
+cf_module_task(CFModule, Data, Call, AMQPConsumer, AMQPChannel) ->
+    _ = kz_amqp_channel:consumer_channel(AMQPChannel),
+    _ = kz_amqp_channel:consumer_pid(AMQPConsumer),
     kz_util:put_callid(kapps_call:call_id_direct(Call)),
     try CFModule:handle(Data, Call)
     catch
@@ -846,14 +819,16 @@ amqp_send_message(API, PubFun, AMQPQueue) ->
     Req = add_server_id(AMQPQueue, API),
     PubFun(Req).
 
--spec amqp_call_message(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), pid(), kz_term:ne_binary()) ->
+-spec amqp_call_message(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), kz_term:ne_binary()) ->
                                kz_amqp_worker:request_return().
-amqp_call_message(API, PubFun, VerifyFun, AMQPWorker, AMQPQueue) ->
-    Routines = [{fun add_server_id/2, AMQPQueue}
+amqp_call_message(API, PubFun, VerifyFun, Q) ->
+    Routines = [{fun add_server_id/2, Q}
                ,fun add_message_id/1
                ],
     Request = kz_api:exec(Routines, API),
-    kz_amqp_worker:call(Request, PubFun, VerifyFun, AMQPWorker).
+    %% TODO
+    %% Remove kz_amqp_worker
+    kz_amqp_worker:call(Request, PubFun, VerifyFun).
 
 -spec add_server_id(kz_term:ne_binary(), kz_term:api_terms()) -> kz_term:api_terms().
 add_server_id(AMQPQueue, API) when is_list(API) ->
@@ -932,7 +907,7 @@ handle_channel_bridged(Self, Notify, CallEvent, Call) ->
 -spec handle_usurp(pid(), kapps_call:call(), kz_call_event:doc()) -> 'ok'.
 handle_usurp(Self, Call, CallEvent) ->
     OrgFetchId = kapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
-    NewFetchId = kz_call_event:custom_channel_var(CallEvent, <<"Fetch-ID">>),
+    NewFetchId = kz_json:get_ne_binary_value(<<"Fetch-ID">>, CallEvent),
     case OrgFetchId =:= NewFetchId of
         'false' -> control_usurped(Self);
         'true'  -> 'ok'
@@ -964,31 +939,15 @@ get_pid({Pid, _}) when is_pid(Pid) -> Pid;
 get_pid(_) -> 'undefined'.
 
 -spec maybe_hangup_call(state()) -> 'ok'.
-maybe_hangup_call(#state{amqp_worker=AMQPWorker
-                        ,call=Call
+maybe_hangup_call(#state{call=Call
                         ,hangup_info='undefined'
                         }) ->
-    hangup_call(Call, 'undefined', AMQPWorker);
+    hangup_call(Call, 'undefined');
 maybe_hangup_call(#state{}) -> 'ok'.
 
--spec hangup_call(kapps_call:call(), kz_term:api_ne_binary(), pid()) -> 'ok'.
-hangup_call(Call, Cause, AMQPWorker) ->
-    Cmd = [{<<"Event-Name">>, <<"command">>}
-          ,{<<"Event-Category">>, <<"call">>}
-          ,{<<"Application-Name">>, <<"hangup">>}
-          ,{<<"Hangup-Cause">>, Cause}
-          ,{<<"Insert-At">>, <<"tail">>}
-          ],
-    send_command(Cmd, AMQPWorker, kapps_call:control_queue_direct(Call), kapps_call:call_id_direct(Call)).
-
--spec send_command(kz_term:proplist(), pid(), kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
-send_command(_, _, 'undefined', _) -> lager:debug("no control queue to send command to");
-send_command(_, _, _, 'undefined') -> lager:debug("no call id to send command to");
-send_command(Command, AMQPWorker, ControlQ, CallId) ->
-    Props = Command ++ [{<<"Call-ID">>, CallId}
-                        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                       ],
-    kz_amqp_worker:cast(Props, fun(P) -> kapi_dialplan:publish_command(ControlQ, P) end, AMQPWorker).
+-spec hangup_call(kapps_call:call(), kz_term:api_ne_binary()) -> 'ok'.
+hangup_call(Call, Cause) ->
+    kapps_call_command:queued_hangup(kapps_call:clear_helpers(Call), Cause).
 
 -spec handle_channel_pivoted(kz_types:server_ref(), kz_term:api_pid_ref(), kz_call_event:doc(), kapps_call:call()) -> 'ok'.
 handle_channel_pivoted(Self, PidRef, JObj, Call) ->

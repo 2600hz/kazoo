@@ -9,10 +9,10 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(cf_shared_listener).
+-module(kz_event_listener).
 -behaviour(gen_listener).
 
--export([start_link/0]).
+-export([start_link/1]).
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -22,38 +22,21 @@
         ,code_change/3
         ]).
 
--include("callflow.hrl").
+-include("kazoo_events.hrl").
 
--record(state, {}).
--type state() :: #state{}.
+-type state() :: map().
 
 -define(SERVER, ?MODULE).
 
--define(BINDINGS, [{'notifications'
-                   ,[{'restrict_to', ['register']}]
-                   },
-                   {'presence'
-                   ,[{'restrict_to', ['probe', 'mwi_query']}
-                    ,{'probe_type', <<"dialog">>}
-                    ]
-                   }
-                  ,{'self', []}
-                  ,{'callflow', []}
-                  ]).
--define(RESPONDERS, [{{'cf_util', 'presence_probe'}
-                     ,[{<<"presence">>, <<"probe">>}]
-                     }
-                    ,{{'cf_util', 'presence_mwi_query'}
-                     ,[{<<"presence">>, <<"mwi_query">>}]
-                     }
-                    ,{{'cf_util', 'notification_register'}
-                     ,[{<<"notification">>, <<"register">>}]
-                     }
-                    ,{'cf_route_resume', [{<<"callflow">>, <<"resume">>}]}
-                    ]).
--define(QUEUE_NAME, <<"callflow_listener">>).
--define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
--define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+-define(RESPONDERS, []).
+-define(BINDINGS(Exchange), [{'bind', [{'exchange', Exchange}
+                                      ,{'routing', <<"20">>}
+                                      ]
+                             }
+                            ]).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 %%%=============================================================================
 %%% API
@@ -63,10 +46,10 @@
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link() -> kz_types:startlink_ret().
-start_link() ->
+-spec start_link(kz_types:ne_binary()) -> kz_types:startlink_ret().
+start_link(Exchange) ->
     gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
-                                     ,{'bindings', ?BINDINGS}
+                                     ,{'bindings', ?BINDINGS(Exchange)}
                                      ,{'queue_name', ?QUEUE_NAME}
                                      ,{'queue_options', ?QUEUE_OPTIONS}
                                      ,{'consume_options', ?CONSUME_OPTIONS}
@@ -80,10 +63,9 @@ start_link() ->
 %% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec init([]) -> {'ok', state()}.
-init([]) ->
-    lager:debug("starting new callflow shared queue server"),
-    {'ok', #state{}}.
+-spec init(map()) -> {'ok', state()}.
+init(State) ->
+    {'ok', State}.
 
 %%------------------------------------------------------------------------------
 %% @doc Handling call messages.
@@ -98,6 +80,10 @@ handle_call(_Msg, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
+handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
+    {'noreply', State};
+handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
+    {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
@@ -107,7 +93,7 @@ handle_cast(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info(_Info, State) ->
-    lager:debug("unhandled message: ~p", [_Info]),
+    lager:info("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------
@@ -115,9 +101,10 @@ handle_info(_Info, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), kz_term:proplist(), state()) -> gen_listener:handle_event_return().
-handle_event(JObj, Props, State) ->
-    Msg = kapi:delivery_message(JObj, Props),
-    handle_msg(Msg, State).
+handle_event(JObj, Props, _State) ->
+    CallId = kz_call_event:call_id(JObj),
+    gproc:send({'p', 'l', {'call_event', CallId}}, {'kapi', kapi:delivery_message(JObj, Props)}),
+    'ignore'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called by a `gen_listener' when it is about to
@@ -128,8 +115,8 @@ handle_event(JObj, Props, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec terminate(any(), any()) -> 'ok'.
-terminate(_Reason, _) ->
-    lager:debug("callflow shared queue server ~p termination", [_Reason]).
+terminate(_Reason, _State) ->
+    lager:info("kazoo event listener ~p termination", [_Reason]).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.
@@ -138,18 +125,3 @@ terminate(_Reason, _) ->
 -spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
-
-%%%=============================================================================
-%%% Internal functions
-%%%=============================================================================
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
-handle_msg({_, {'callflow', 'resume'}, _} = Msg, _State) ->
-    _ = cf_listener_sup:forward(Msg),
-    'ignore';
-
-handle_msg(_, _State) ->
-    {'reply', []}.

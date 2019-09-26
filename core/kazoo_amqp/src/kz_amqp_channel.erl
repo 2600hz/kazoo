@@ -457,6 +457,11 @@ handle_command_result(#'confirm.select_ok'{}
                      ) ->
     Consumer ! {'$server_confirms', 'true'},
     lager:debug("publisher confirms activated on channel ~p", [Channel]);
+handle_command_result(#'exchange.bind_ok'{}=OK
+                     ,_Command
+                     ,#kz_amqp_assignment{}=_Assignment
+                     ) ->
+    {'ok', OK};
 handle_command_result(#'channel.flow_ok'{active=Active}
                      ,_Command
                      ,#kz_amqp_assignment{channel=Channel

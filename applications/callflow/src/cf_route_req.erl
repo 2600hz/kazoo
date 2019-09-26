@@ -27,22 +27,11 @@
 
 -spec handle_req(kapi_route:req(), kz_term:proplist()) -> 'ok'.
 handle_req(RouteReq, Props) ->
+    CallId = kapi_route:call_id(RouteReq),
+    kz_util:put_callid(CallId),
     'true' = kapi_route:req_v(RouteReq),
-    kz_util:put_callid(kapi_route:call_id(RouteReq)),
-    kz_amqp_worker:worker_pool(callflow_sup:pool_name()),
 
-    handle_req(RouteReq, Props, kz_amqp_worker:checkout_worker()).
-
--spec handle_req(kapi_route:req(), kz_term:proplist(), {'ok', pid()} | {'error', any()}) -> 'ok'.
-handle_req(_RouteReq, _Props, {'error', _E}) ->
-    lager:warning("ignoring req, failed to checkout AMQP worker: ~p", [_E]);
-handle_req(RouteReq, Props, {'ok', AMQPWorker}) ->
-    lager:debug("checked out AMQP worker ~p", [AMQPWorker]),
-    _ = kz_amqp_channel:consumer_pid(AMQPWorker),
-
-    gproc:reg({'p', 'l', {'route_req', kapi_route:call_id(RouteReq)}}),
-    Routines = [{fun kapps_call:kvs_store/3, 'consumer_pid', AMQPWorker}
-               ,fun maybe_referred_call/1
+    Routines = [fun maybe_referred_call/1
                ,fun maybe_device_redirected/1
                ],
     Call = kapps_call:exec(Routines, kapps_call:from_route_req(RouteReq)),
@@ -100,7 +89,7 @@ maybe_reply_to_req(RouteReq, Props, Call, Flow, NoMatch) ->
     case cf_util:token_check(Call, Flow) of
         'false' -> 'ok';
         'true' ->
-            ControllerQ = props:get_value('queue', Props),
+            ControllerQ = kapi:encode_pid(props:get_value('queue', Props)),
             NewCall = update_call(Flow, NoMatch, ControllerQ, Call),
             send_route_response(Flow, RouteReq, NewCall)
     end.
@@ -186,9 +175,13 @@ cavs(_Flow, _RouteReq, _Call) -> 'undefined'.
 send_route_response(Flow, RouteReq, Call) ->
     lager:info("callflows knows how to route the call! sending park response"),
     AccountId = kapps_call:account_id(Call),
+    CallId = kapps_call:call_id(Call),
+    ControllerQ = kapps_call:controller_queue(Call),
+    FetchId =  kz_api:msg_id(RouteReq),
     Resp = props:filter_undefined(
-             [{?KEY_MSG_ID, kz_api:msg_id(RouteReq)}
-             ,{?KEY_MSG_REPLY_ID, kapps_call:call_id_direct(Call)}
+             [{?KEY_MSG_ID, FetchId}
+             ,{?KEY_API_ACCOUNT_ID, AccountId}
+             ,{?KEY_API_CALL_ID, CallId}
              ,{<<"Routes">>, []}
              ,{<<"Method">>, <<"park">>}
              ,{<<"Transfer-Media">>, get_transfer_media(Flow, RouteReq)}
@@ -198,43 +191,25 @@ send_route_response(Flow, RouteReq, Call) ->
              ,{<<"Custom-Channel-Vars">>, ccvs(Flow, RouteReq, Call)}
              ,{<<"Custom-Application-Vars">>, cavs(Flow, RouteReq, Call)}
              ,{<<"Context">>, kapps_call:context(Call)}
-              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | kz_api:default_headers(ControllerQ, ?APP_NAME, ?APP_VERSION)
              ]),
     ServerId = kz_api:server_id(RouteReq),
-    Publisher = fun(P) -> kapi_route:publish_resp(ServerId, P) end,
-    case kz_amqp_worker:call(Resp
-                            ,Publisher
-                            ,fun kapi_route:win_v/1
-                            ,?ROUTE_WIN_TIMEOUT
-                            ,kapps_call:kvs_fetch('consumer_pid', Call)
-                            )
-    of
-        {'ok', RouteWin} ->
-            lager:info("callflow has received a route win, taking control of the call"),
-            NewCall = cf_route_win:execute_callflow(RouteWin, kapps_call:from_route_win(RouteWin, Call)),
-            wait_for_running(NewCall, 0);
-        {'error', _E} ->
-            lager:info("callflow didn't received a route win, exiting : ~p", [_E])
-    end.
+    kapi_route:publish_resp(ServerId, Resp),
+    wait_for_route_win(Call, FetchId).
 
--spec wait_for_running(kapps_call:call(), 0..5) -> 'ok'.
-wait_for_running(_Call, 5) ->
-    lager:info("callflow not ready after 5 tries, exiting");
-wait_for_running(Call, N) ->
-    FetchId = kapps_call:fetch_id(Call),
+wait_for_route_win(Call, FetchId) ->
     receive
-        {'channel_destroy', 'undefined'} ->
-            cf_exe:hard_stop(Call),
-            lager:info("received channel destroy with undefined fetch-id while setting up callflow executor, exiting");
-        {'channel_destroy', FetchId} ->
-            cf_exe:hard_stop(Call),
-            lager:info("received channel destroy while setting up callflow executor, exiting")
-    after 250 ->
-            case cf_exe:status(Call) of
-                'not_running' -> lager:info("callflow not running");
-                'running' -> lager:info("callflow up & running");
-                _ -> wait_for_running(Call, N + 1)
-            end
+        {'kapi', {_, {'call_event', 'CHANNEL_DESTROY'}, JObj}} ->
+            case kz_call_event:fetch_id(JObj) of
+                FetchId -> lager:info("received channel destroy while waiting for route_win, exiting");
+                _Other -> wait_for_route_win(Call, FetchId)
+            end;
+        {'kapi', {_, {'dialplan', 'route_win'}, RouteWin}} ->
+            lager:info("callflow has received a route win, taking control of the call"),
+            _ = cf_route_win:execute_callflow(RouteWin, kapps_call:from_route_win(RouteWin, Call)),
+            lager:debug("callflow executing")
+    after ?ROUTE_WIN_TIMEOUT ->
+            lager:warning("callflow didn't received a route win, exiting")
     end.
 
 -spec get_transfer_media(kz_json:object(), kapi_route:req()) -> kz_term:api_binary().
@@ -261,7 +236,6 @@ get_ringback_media(Flow, RouteReq) ->
 pre_park_action(Call) ->
     case kapps_config:get_is_true(?CF_CONFIG_CAT, <<"ring_ready_offnet">>, 'true')
         andalso kapps_call:inception(Call) =/= 'undefined'
-        andalso kapps_call:authorizing_type(Call) =:= 'undefined'
     of
         'false' -> <<"none">>;
         'true' -> <<"ring_ready">>
@@ -287,6 +261,7 @@ update_call(Flow, NoMatch, ControllerQ, Call) ->
                ,{fun kapps_call:set_controller_queue/2, ControllerQ}
                ,{fun kapps_call:set_application_name/2, ?APP_NAME}
                ,{fun kapps_call:set_application_version/2, ?APP_VERSION}
+               ,{fun kapps_call:insert_custom_channel_var/3, <<"CallFlow-ID">>, kz_doc:id(Flow)}
                ],
     kapps_call:exec(Updaters, Call).
 

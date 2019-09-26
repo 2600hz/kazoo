@@ -44,7 +44,7 @@
 -define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
 
                   ,?WORKER('cf_shared_listener')
-                  ,?WORKER('cf_listener')
+                  ,?SUPER('cf_listener_sup')
                   ,?SUPER('cf_event_handler_sup')
                   ,?SUPER('cf_exe_sup')
                   ]).
@@ -88,27 +88,9 @@ pool_name() -> ?POOL_NAME.
 init([]) ->
     _ = kz_util:set_startup(),
 
-    _ = kz_nodes:bind_for_pool_state('kz_amqp_sup', self()),
-
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
-    PoolSize = kapps_config:get_integer(?CF_CONFIG_CAT, <<"pool_size">>, ?DEFAULT_POOL_SIZE),
-
-    PoolOverflow = kapps_config:get_integer(?CF_CONFIG_CAT, <<"pool_overflow">>, ?DEFAULT_POOL_OVERFLOW),
-
-    PoolThreshold = kapps_config:get_integer(?CF_CONFIG_CAT, <<"pool_threshold">>, ?DEFAULT_POOL_THRESHOLD),
-    PoolServerConfirms = kapps_config:get_boolean(?CF_CONFIG_CAT, <<"pool_server_confirms">>, ?DEFAULT_POOL_SERVER_CONFIRMS),
-
-    PoolArgs = [{'worker_module', 'kz_amqp_worker'}
-               ,{'name', {'local', ?POOL_NAME}}
-               ,{'size', PoolSize}
-               ,{'max_overflow', PoolOverflow}
-               ,{'strategy', 'fifo'}
-               ,{'neg_resp_threshold', PoolThreshold}
-               ,{'amqp_server_confirms', PoolServerConfirms}
-               ],
-
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    {'ok', {SupFlags, [?POOL_NAME_ARGS(?POOL_NAME, [PoolArgs]) | ?CHILDREN]}}.
+    {'ok', {SupFlags, ?CHILDREN}}.

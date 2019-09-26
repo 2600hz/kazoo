@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.kazoo_events",
+    "description": "Schema for kazoo_events system_config",
+    "properties": {
+        "event_listeners": {
+            "default": 5,
+            "description": "kazoo_events event_listeners",
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}
