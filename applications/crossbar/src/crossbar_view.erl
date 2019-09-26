@@ -15,11 +15,13 @@
 -export([load/2, load/3
         ,load_time_range/2, load_time_range/3
         ,load_modb/2, load_modb/3
+        ,load_yodb/2, load_yodb/3
         ,next_chunk/1
 
         ,build_load_params/3
         ,build_load_time_range_params/3
         ,build_load_modb_params/3
+        ,build_load_yodb_params/3
 
         ,direction/1, direction/2
 
@@ -184,6 +186,7 @@ load_time_range(Context, View) ->
 load_time_range(Context, View, Options) ->
     load_view(build_load_time_range_params(Context, View, Options), Context).
 
+
 %% @equiv load_modb(Context, View, [])
 -spec load_modb(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_modb(Context, View) ->
@@ -194,9 +197,26 @@ load_modb(Context, View) ->
 %% run against the account's MODBs.
 %% @end
 %%------------------------------------------------------------------------------
+
 -spec load_modb(cb_context:context(), kz_term:ne_binary(), options()) -> cb_context:context().
 load_modb(Context, View, Options) ->
     LoadParams = build_load_modb_params(Context, View, Options),
+    load_view(LoadParams, Context).
+
+
+%% @equiv load_yodb(Context, View, [])
+-spec load_yodb(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+load_yodb(Context, View) ->
+    load_yodb(Context, View, []).
+
+%%------------------------------------------------------------------------------
+%% @doc This function attempts to load the context with the results of a view
+%% run against the account's YODBs.
+%% @end
+%%------------------------------------------------------------------------------
+-spec load_yodb(cb_context:context(), kz_term:ne_binary(), options()) -> cb_context:context().
+load_yodb(Context, View, Options) ->
+    LoadParams = build_load_yodb_params(Context, View, Options),
     load_view(LoadParams, Context).
 
 %%------------------------------------------------------------------------------
@@ -292,6 +312,26 @@ build_load_modb_params(Context, View, Options) ->
          ,end_time := EndTime
          }=LoadMap ->
             LoadMap#{databases => get_range_modbs(Context, Options, Direction, StartTime, EndTime)};
+        Ctx -> Ctx
+    end.
+
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% Takes {@link options()} and returns {@link load_params()}, for querying
+%% of a view over a specified range of time in account's MODBs.
+%% @end
+%%------------------------------------------------------------------------------
+-spec build_load_yodb_params(cb_context:context(), kz_term:ne_binary(), options()) ->
+          load_params() | cb_context:context().
+build_load_yodb_params(Context, View, Options) ->
+    case build_load_time_range_params(Context, View, Options) of
+        #{direction := Direction
+         ,start_time := StartTime
+         ,end_time := EndTime
+         }=LoadMap ->
+            Databases =  get_range_yodbs(Context, Options, Direction, StartTime, EndTime),
+            LoadMap#{databases => lists:usort(Databases)};
         Ctx -> Ctx
     end.
 
@@ -1174,6 +1214,26 @@ get_range_modbs(Context, Options, Direction, StartTime, EndTime) ->
         Dbs when Direction =:= 'descending' ->
             lists:reverse(lists:usort(Dbs))
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc Create ranged view lookup database list using start/end time and
+%% direction.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_range_yodbs(cb_context:context(), options(), direction(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
+          kz_term:ne_binaries().
+get_range_yodbs(Context, Options, Direction, StartTime, EndTime) ->
+    case props:get_value('databases', Options) of
+        'undefined' when Direction =:= 'ascending' ->
+            kazoo_yodb:get_range(cb_context:account_id(Context), StartTime, EndTime);
+        'undefined' when Direction =:= 'descending' ->
+            lists:reverse(kazoo_yodb:get_range(cb_context:account_id(Context), StartTime, EndTime));
+        Dbs when Direction =:= 'ascending' ->
+            lists:usort(Dbs);
+        Dbs when Direction =:= 'descending' ->
+            lists:reverse(lists:usort(Dbs))
+    end.
+
 
 -spec get_chunk_size(cb_context:context(), options()) -> kz_term:api_pos_integer().
 get_chunk_size(Context, Options) ->

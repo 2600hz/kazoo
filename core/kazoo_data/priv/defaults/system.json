@@ -19,6 +19,11 @@
             "attachments": {},
             "connection": "local",
             "types": {}
+        },
+        "yodb": {
+            "attachments": {},
+            "connection": "local",
+            "types": {}
         }
     },
     "pvt_type": "storage"

@@ -481,6 +481,9 @@ nav:
       - 'core/kazoo_modb/doc/README.md'
       - 'core/kazoo_modb/doc/maintenance.md'
       - 'core/kazoo_modb/doc/kazoo_modb_migrate_maintenance.md'
+    - 'Kazoo YODB':
+      - 'core/kazoo_yodb/doc/README.md'
+      - 'core/kazoo_yodb/doc/maintenance.md'
     - 'Kazoo CouchDB':
       - 'core/kazoo_couch/doc/README.md'
     - 'Kazoo Schemas':

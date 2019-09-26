@@ -107,6 +107,7 @@
                              'deprecated' |
                              'external' |
                              'modb' |
+                             'yodb' |
                              'numbers' |
                              'provisioner' |
                              'ratedeck' |

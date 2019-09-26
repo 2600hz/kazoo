@@ -1004,7 +1004,6 @@ after_create(Context, AccountDoc) ->
 
     _ = crossbar_bindings:map(<<"account.created">>, Context1),
     lager:debug("alerted listeners of new account"),
-
     maybe_notify_new_account(Context1),
     Context1.
 

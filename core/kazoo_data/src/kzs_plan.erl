@@ -100,6 +100,7 @@ get_dataplan(DBName) ->
     Database = kzs_util:to_database(DBName),
     case kzs_util:db_classification(Database) of
         'modb' -> account_modb_dataplan(Database);
+        'yodb' -> account_yodb_dataplan(Database);
         'account' -> account_dataplan(Database);
         'resource_selectors' -> account_dataplan(Database);
         'aggregate' -> aggregate_dataplan(Database);
@@ -113,6 +114,7 @@ get_dataplan(DBName, DocType) ->
     Database = kzs_util:to_database(DBName),
     case kzs_util:db_classification(Database) of
         'modb' -> account_modb_dataplan(Database, DocType);
+        'yodb' -> account_yodb_dataplan(Database, DocType);
         'account' -> account_dataplan(Database, DocType);
         'resource_selectors' -> account_dataplan(Database, DocType);
         'aggregate' -> aggregate_dataplan(Database, DocType);
@@ -125,6 +127,7 @@ get_dataplan(DBName, DocType, DocOwner) ->
     Database = kzs_util:to_database(DBName),
     case kzs_util:db_classification(Database) of
         'modb' -> account_modb_dataplan(Database, DocType, DocOwner);
+        'yodb' -> account_yodb_dataplan(Database, DocType, DocOwner);
         'account' -> account_dataplan(Database, DocType, DocOwner);
         'resource_selectors' -> account_dataplan(Database, DocType, DocOwner);
         Else -> system_dataplan(Database, Else)
@@ -205,6 +208,25 @@ account_modb_dataplan(AccountMODB, DocType, StorageId) ->
     AccountId = kzs_util:format_account_id(AccountMODB),
     Plan = ?CACHED_STORAGE_DATAPLAN(AccountId, StorageId),
     dataplan_type_match(<<"modb">>, DocType, Plan, AccountId).
+
+account_yodb_dataplan(AccountYODB) ->
+    AccountId = kzs_util:format_account_id(AccountYODB),
+    Plan = ?CACHED_ACCOUNT_DATAPLAN(AccountId),
+    dataplan_match(<<"yodb">>, Plan, AccountId).
+
+account_yodb_dataplan(AccountYODB, 'undefined') ->
+    account_yodb_dataplan(AccountYODB);
+account_yodb_dataplan(AccountYODB, DocType) ->
+    AccountId = kzs_util:format_account_id(AccountYODB),
+    Plan = ?CACHED_ACCOUNT_DATAPLAN(AccountId),
+    dataplan_type_match(<<"yodb">>, DocType, Plan, AccountId).
+
+account_yodb_dataplan(AccountYODB, DocType, 'undefined') ->
+    account_modb_dataplan(AccountYODB, DocType);
+account_yodb_dataplan(AccountYODB, DocType, StorageId) ->
+    AccountId = kzs_util:format_account_id(AccountYODB),
+    Plan = ?CACHED_STORAGE_DATAPLAN(AccountId, StorageId),
+    dataplan_type_match(<<"yodb">>, DocType, Plan, AccountId).
 
 -spec dataplan_connections(map()) -> [{kz_term:ne_binary(), server()}].
 dataplan_connections(#{<<"plan">> := _

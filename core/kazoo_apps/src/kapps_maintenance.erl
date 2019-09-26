@@ -25,6 +25,9 @@
 -export([migrate_modbs/0
         ,migrate_modbs/1
         ]).
+-export([migrate_yodbs/0
+        ,migrate_yodbs/1
+        ]).
 -export([parallel_migrate_modbs/1
         ,parallel_migrate_modbs/2
         ]).
@@ -315,6 +318,25 @@ migrate_modbs(Pause) ->
     Databases = [Database
                  || Database <- get_databases()
                         ,kapps_util:is_account_mod(Database)
+                ],
+    _ = refresh(Databases, Pause),
+    'no_return'.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec migrate_yodbs() -> 'no_return'.
+migrate_yodbs() ->
+    migrate_yodbs(?DEFAULT_PAUSE).
+
+-spec migrate_yodbs(text_or_integer()) -> 'no_return'.
+migrate_yodbs(Pause) when not is_integer(Pause) ->
+    migrate_yodbs(kz_term:to_integer(Pause));
+migrate_yodbs(Pause) ->
+    Databases = [Database
+                 || Database <- get_databases()
+                        ,kapps_util:is_account_yod(Database)
                 ],
     _ = refresh(Databases, Pause),
     'no_return'.

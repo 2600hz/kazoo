@@ -39399,6 +39399,25 @@
             },
             "type": "object"
         },
+        "system_config.yodb": {
+            "description": "Schema for yodb system_config",
+            "properties": {
+                "active_yodbs": {
+                    "default": 6,
+                    "description": "yodb active_yodbs",
+                    "type": "integer"
+                },
+                "routines": {
+                    "default": [],
+                    "description": "yodb routines",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        },
         "system_configs": {
             "description": "Schema for system_config documents",
             "properties": {
@@ -48807,6 +48826,43 @@
                 }
             }
         },
+        "/accounts/{ACCOUNT_ID}/services/audit/summary": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/services/audit/summary/{SOURCE_SERVICE}": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/ACCOUNT_ID"
+                    },
+                    {
+                        "$ref": "#/parameters/SOURCE_SERVICE"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "request succeeded"
+                    }
+                }
+            }
+        },
         "/accounts/{ACCOUNT_ID}/services/audit/{AUDIT_ID}": {
             "get": {
                 "parameters": [
@@ -48818,43 +48874,6 @@
                     },
                     {
                         "$ref": "#/parameters/AUDIT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/services/audit_summary": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/services/audit_summary/{SOURCE_SERVICE}": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header"
-                    },
-                    {
-                        "$ref": "#/parameters/ACCOUNT_ID"
-                    },
-                    {
-                        "$ref": "#/parameters/SOURCE_SERVICE"
                     }
                 ],
                 "responses": {

@@ -57,6 +57,8 @@
 | `migrate_modbs_ranged/3` | `(Pause,Start,End)` | |
 | `migrate_system/0` |  | |
 | `migrate_to_4_0/0` |  | |
+| `migrate_yodbs/0` |  | |
+| `migrate_yodbs/1` | `(Pause)` | |
 | `parallel_migrate/1` | `(Workers)` | |
 | `parallel_migrate/2` | `(Workers,Pause)` | |
 | `parallel_migrate_modbs/1` | `(Workers)` | |

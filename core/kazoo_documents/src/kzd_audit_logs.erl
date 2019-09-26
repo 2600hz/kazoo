@@ -10,6 +10,7 @@
 -module(kzd_audit_logs).
 
 -export([new/0]).
+-export([id/1, set_id/2]).
 -export([audit/1, audit/2, set_audit/2]).
 -export([account_id/2, account_id/3, set_account_id/3]).
 -export([authenticating_user/1, authenticating_user/2, set_authenticating_user/2]).
@@ -19,7 +20,12 @@
 -export([authenticating_user_last_name/1, authenticating_user_last_name/2, set_authenticating_user_last_name/2]).
 -export([authenticating_user_user_id/1, authenticating_user_user_id/2, set_authenticating_user_user_id/2]).
 -export([authenticating_user_id/1, authenticating_user_id/2, set_authenticating_user_id/2]).
+-export([message/1, set_message/2]).
+-export([reason/1, set_reason/2]).
+-export([source/1, set_source/2]).
+-export([summary/1, set_summary/2]).
 -export([tree/1, tree/2, set_tree/2]).
+-export([type/0, type/1]).
 
 
 -include("kz_documents.hrl").
@@ -28,10 +34,18 @@
 -export_type([doc/0]).
 
 -define(SCHEMA, <<"audit_logs">>).
+-define(PVT_TYPE, <<"audit_log">>).
 
 -spec new() -> doc().
 new() ->
-    kz_json_schema:default_object(?SCHEMA).
+    kz_doc:set_type(kz_json_schema:default_object(?SCHEMA), type()).
+
+-spec type() -> kz_term:ne_binary().
+type() -> ?PVT_TYPE.
+
+-spec type(doc()) -> kz_term:ne_binary().
+type(Doc) ->
+    kz_doc:type(Doc, ?PVT_TYPE).
 
 -spec audit(doc()) -> kz_term:api_object().
 audit(Doc) ->
@@ -128,6 +142,46 @@ authenticating_user_user_id(Doc, Default) ->
 -spec set_authenticating_user_user_id(doc(), binary()) -> doc().
 set_authenticating_user_user_id(Doc, AuthenticatingUserUserId) ->
     kz_json:set_value([<<"authenticating_user">>, <<"user_id">>], AuthenticatingUserUserId, Doc).
+
+-spec id(doc()) -> kz_term:ne_binary().
+id(Doc) ->
+    kz_json:get_binary_value([<<"id">>], Doc, 'undefined').
+
+-spec set_id(doc(), kz_term:ne_binary()) -> doc().
+set_id(Doc, Id) ->
+    kz_doc:set_id(Doc, Id).
+
+-spec message(doc()) -> kz_term:ne_binary().
+message(Doc) ->
+    kz_json:get_binary_value([<<"message">>], Doc, 'undefined').
+
+-spec set_message(doc(), kz_term:ne_binary()) -> doc().
+set_message(Doc, Message) ->
+    kz_json:set_value([<<"message">>], Message, Doc).
+
+-spec reason(doc()) -> kz_term:ne_binary().
+reason(Doc) ->
+    kz_json:get_binary_value([<<"reason">>], Doc, 'undefined').
+
+-spec set_reason(doc(), kz_term:ne_binary()) -> doc().
+set_reason(Doc, Reason) ->
+    kz_json:set_value([<<"reason">>], Reason, Doc).
+
+-spec source(doc()) -> kz_term:ne_binary().
+source(Doc) ->
+    kz_json:get_binary_value([<<"source">>], Doc, 'undefined').
+
+-spec set_source(doc(), kz_term:ne_binary()) -> doc().
+set_source(Doc, Reason) ->
+    kz_json:set_value([<<"source">>], Reason, Doc).
+
+-spec summary(doc()) -> kz_term:ne_binary().
+summary(Doc) ->
+    kz_json:get_binary_value([<<"summary">>], Doc, 'undefined').
+
+-spec set_summary(doc(), kz_term:ne_binary()) -> doc().
+set_summary(Doc, Reason) ->
+    kz_json:set_value([<<"summary">>], Reason, Doc).
 
 -spec tree(doc()) -> kz_term:api_ne_binaries().
 tree(Doc) ->

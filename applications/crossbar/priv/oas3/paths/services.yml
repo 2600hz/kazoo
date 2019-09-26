@@ -34,20 +34,7 @@ paths:
       summary: Get audit of services
       tags:
         - services
-  /accounts/{ACCOUNT_ID}/services/audit/{AUDIT_ID}:
-    get:
-      operationId: GetAccountsAccountIdServicesAuditAuditId
-      parameters:
-        - $ref: '../oas3-parameters.yml#/auth_token_header'
-        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
-        - $ref: '../oas3-parameters.yml#/AUDIT_ID'
-      responses:
-        200:
-          description: Successful operation
-      summary: Get a services by ID
-      tags:
-        - services
-  /accounts/{ACCOUNT_ID}/services/audit_summary:
+  /accounts/{ACCOUNT_ID}/services/audit/summary:
     get:
       operationId: GetAccountsAccountIdServicesAuditSummary
       parameters:
@@ -56,16 +43,29 @@ paths:
       responses:
         200:
           description: Successful operation
-      summary: Get audit_summary of services
+      summary: Get summary of services
       tags:
         - services
-  /accounts/{ACCOUNT_ID}/services/audit_summary/{SOURCE_SERVICE}:
+  /accounts/{ACCOUNT_ID}/services/audit/summary/{SOURCE_SERVICE}:
     get:
       operationId: GetAccountsAccountIdServicesAuditSummarySourceService
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
         - $ref: '../oas3-parameters.yml#/SOURCE_SERVICE'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a services by ID
+      tags:
+        - services
+  /accounts/{ACCOUNT_ID}/services/audit/{AUDIT_ID}:
+    get:
+      operationId: GetAccountsAccountIdServicesAuditAuditId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/AUDIT_ID'
       responses:
         200:
           description: Successful operation

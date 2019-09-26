@@ -1,0 +1,103 @@
+{
+    "_id": "_design/services",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "yodb"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "day_summary_by_date": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted) return;",
+                "  var unix = new Date(Math.floor((doc.pvt_created - 62167219200) * 1000));",
+                "  var day = unix.getUTCFullYear() + '-' + ('0' + (unix.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + unix.getUTCDate()).slice(-2);",
+                "  if (doc.audit) {",
+                "    var items = doc.audit;",
+                "    for (var index = 0; index < items.length; index++) {",
+                "      var item = items[index];",
+                "      emit([day, item.source], {",
+                "        'addition': item.quantity > 0 ? item.quantity : 0,",
+                "        'last_timestamp': doc.pvt_created,",
+                "        'quantity': item.billable || 0,",
+                "        'removal': item.quantity < 0 ? Math.abs(item.quantity) : 0,",
+                "        'sum_quantity': false,",
+                "      });",
+                "    }",
+                "  }",
+                "}"
+            ],
+            "reduce": [
+                "function(keys, values, rereduce) {",
+                "  return values.reduce(function(reduceObj, obj) {",
+                "    var isLateChange = (obj.last_timestamp || 0) >= (reduceObj.last_timestamp || 0);",
+                "    if (obj.sum_quantity) {",
+                "      return {",
+                "        'last_timestamp': isLateChange ? (obj.last_timestamp || 0) : (reduceObj.last_timestamp || 0),",
+                "        'quantity': (obj.quantity || 0) + (reduceObj.quantity || 0),",
+                "        'sum_quantity': true,",
+                "        'unit': reduceObj.unit || obj.unit",
+                "      }",
+                "    } else {",
+                "      return {",
+                "        'addition': (reduceObj.addition || 0) + (obj.addition || 0),",
+                "        'last_timestamp': isLateChange ? (obj.last_timestamp || 0) : (reduceObj.last_timestamp || 0),",
+                "        'quantity': isLateChange ? (obj.quantity || 0) : (reduceObj.quantity || 0),",
+                "        'removal': (reduceObj.removal || 0) + (obj.removal || 0),",
+                "        'sum_quantity': false",
+                "      }",
+                "    }",
+                "  }, {})",
+                "}"
+            ]
+        },
+        "day_summary_by_source": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted) return;",
+                "  var unix = new Date(Math.floor((doc.pvt_created - 62167219200) * 1000));",
+                "  var day = unix.getUTCFullYear() + '-' + ('0' + (unix.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + unix.getUTCDate()).slice(-2);",
+                "  if (doc.audit) {",
+                "    var items = doc.audit;",
+                "    for (var index = 0; index < items.length; index++) {",
+                "      var item = items[index];",
+                "      emit([item.source, day], {",
+                "        'addition': item.quantity > 0 ? item.quantity : 0,",
+                "        'last_timestamp': doc.pvt_created,",
+                "        'quantity': item.billable || 0,",
+                "        'removal': item.quantity < 0 ? Math.abs(item.quantity) : 0,",
+                "        'sum_quantity': false,",
+                "      });",
+                "    }",
+                "  }",
+                "}"
+            ],
+            "reduce": [
+                "function(keys, values, rereduce) {",
+                "  return values.reduce(function(reduceObj, obj) {",
+                "    var isLateChange = (obj.last_timestamp || 0) >= (reduceObj.last_timestamp || 0);",
+                "    if (obj.sum_quantity) {",
+                "      return {",
+                "        'last_timestamp': isLateChange ? (obj.last_timestamp || 0) : (reduceObj.last_timestamp || 0),",
+                "        'quantity': (obj.quantity || 0) + (reduceObj.quantity || 0),",
+                "        'sum_quantity': true,",
+                "        'unit': reduceObj.unit || obj.unit",
+                "      }",
+                "    } else {",
+                "      return {",
+                "        'addition': (reduceObj.addition || 0) + (obj.addition || 0),",
+                "        'last_timestamp': isLateChange ? (obj.last_timestamp || 0) : (reduceObj.last_timestamp || 0),",
+                "        'quantity': isLateChange ? (obj.quantity || 0) : (reduceObj.quantity || 0),",
+                "        'removal': (reduceObj.removal || 0) + (obj.removal || 0),",
+                "        'sum_quantity': false",
+                "      }",
+                "    }",
+                "  }, {})",
+                "}"
+            ]
+        }
+    }
+}

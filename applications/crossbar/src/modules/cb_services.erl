@@ -14,11 +14,11 @@
 
 -export([init/0
         ,authorize/2
-        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-        ,resource_exists/0, resource_exists/1, resource_exists/2
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+        ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
         ,content_types_provided/1 ,content_types_provided/2
         ,to_csv/1
-        ,validate/1, validate/2, validate/3
+        ,validate/1, validate/2, validate/3, validate/4
         ,post/1 ,post/2
         ,patch/2
         ,delete/2
@@ -35,7 +35,6 @@
 -define(QUOTE, <<"quote">>).
 -define(SUMMARY, <<"summary">>).
 -define(AUDIT, <<"audit">>).
--define(AUDIT_SUMMARY, <<"audit_summary">>).
 -define(OVERRIDES, <<"overrides">>).
 -define(TOPUP, <<"topup">>).
 -define(MANUAL, <<"manual">>).
@@ -80,6 +79,8 @@ is_authorized(_Context, ?HTTP_GET, [{<<"services">>, [?EDITABLE]}]) ->
     'true';
 is_authorized(_Context, ?HTTP_GET, [{<<"services">>, [?QUOTE]}]) ->
     'true';
+is_authorized(Context, ?HTTP_GET, [{<<"services">>, [?AUDIT, ?SUMMARY]}]) ->
+    kz_services_reseller:is_reseller(cb_context:account_id(Context));
 is_authorized(_Context, _, _) ->
     'false'.
 
@@ -101,8 +102,6 @@ allowed_methods(?SUMMARY) ->
     [?HTTP_GET];
 allowed_methods(?AUDIT) ->
     [?HTTP_GET];
-allowed_methods(?AUDIT_SUMMARY) ->
-    [?HTTP_GET];
 allowed_methods(?TOPUP) ->
     [?HTTP_POST];
 allowed_methods(?SYNCHRONIZATION) ->
@@ -119,10 +118,15 @@ allowed_methods(_PlanId) ->
     [?HTTP_POST, ?HTTP_DELETE].
 
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
-allowed_methods(?AUDIT, _AuditId) ->
+allowed_methods(?AUDIT, ?SUMMARY) ->
     [?HTTP_GET];
-allowed_methods(?AUDIT_SUMMARY, _SourceService) ->
+allowed_methods(?AUDIT, _AuditId) ->
     [?HTTP_GET].
+
+-spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
+allowed_methods(?AUDIT, ?SUMMARY, _SourceService) ->
+    [?HTTP_GET].
+
 
 %%------------------------------------------------------------------------------
 %% @doc Does the path point to a valid resource.
@@ -142,8 +146,10 @@ resource_exists() -> 'true'.
 resource_exists(_) -> 'true'.
 
 -spec resource_exists(path_token(), path_token()) -> 'true'.
-resource_exists(?AUDIT, _) -> 'true';
-resource_exists(?AUDIT_SUMMARY, _) -> 'true'.
+resource_exists(?AUDIT, _) -> 'true'.
+
+-spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
+resource_exists(?AUDIT, ?SUMMARY, _) -> 'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc Add content types accepted and provided by this module
@@ -235,16 +241,6 @@ validate(Context, ?SUMMARY) ->
 validate(Context, ?AUDIT) ->
     %% NOTE: show the billing audit logs
     load_audit_logs(Context);
-validate(Context, ?AUDIT_SUMMARY) ->
-    StartKeyFun = fun(Timestamp) -> [audit_summary_range_key(Timestamp)] end,
-    EndKeyFun = fun(Timestamp) -> [audit_summary_range_key(Timestamp), <<16#fff0/utf8>>] end,
-    ViewOptions = [{'group_level', 2}
-                  ,{'mapper', fun normalize_day_summary_by_date/2}
-                  ,{'range_start_keymap', StartKeyFun}
-                  ,{'range_end_keymap', EndKeyFun}
-                  ],
-    ViewName = <<"services/day_summary_by_date">>,
-    audit_summary(Context, ViewName, ViewOptions);
 validate(Context, ?TOPUP) ->
     %% NOTE: top-up the accounts credit
     validate_topup_amount(Context);
@@ -264,10 +260,22 @@ validate(Context, ?AUDIT, ?MATCH_MODB_PREFIX(Year, Month, _)=AuditId) ->
     AccountDb = kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)),
     Context1 = cb_context:set_db_name(Context, AccountDb),
     crossbar_doc:load(AuditId, Context1, ?TYPE_CHECK_OPTION(<<"audit_log">>));
+validate(Context, ?AUDIT, ?SUMMARY) ->
+    StartKeyFun = fun(Timestamp) -> [audit_summary_range_key(Timestamp)] end,
+    EndKeyFun = fun(Timestamp) -> [audit_summary_range_key(Timestamp), <<16#fff0/utf8>>] end,
+    ViewOptions = [{'group_level', 2}
+                  ,{'mapper', fun normalize_day_summary_by_date/2}
+                  ,{'range_start_keymap', StartKeyFun}
+                  ,{'range_end_keymap', EndKeyFun}
+                  ],
+    ViewName = <<"services/day_summary_by_date">>,
+    audit_summary(Context, ViewName, ViewOptions);
 validate(Context, ?AUDIT, AuditId) ->
     ErrorCause = kz_json:from_list([{<<"cause">>, AuditId}]),
-    cb_context:add_system_error('bad_identifier', ErrorCause, Context);
-validate(Context, ?AUDIT_SUMMARY, SourceService) ->
+    cb_context:add_system_error('bad_identifier', ErrorCause, Context).
+
+-spec validate(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+validate(Context, ?AUDIT, ?SUMMARY, SourceService) ->
     RangeKeyFun = fun(Timestamp) -> audit_summary_range_key(SourceService, Timestamp) end,
     ViewOptions = [{'group_level', 2}
                   ,{'mapper', fun normalize_day_summary_by_source/2}
@@ -290,7 +298,7 @@ audit_summary(Context, ViewName, Options) ->
                   ,{'should_paginate', 'false'}
                    | maybe_add_max_range(Context, Options)
                   ],
-    crossbar_view:load_modb(Context, ViewName, ViewOptions).
+    crossbar_view:load_yodb(Context, ViewName, ViewOptions).
 
 -spec maybe_add_max_range(cb_context:context(), crossbar_view:options()) -> crossbar_view:options().
 maybe_add_max_range(Context, Options) ->
@@ -345,6 +353,10 @@ normalize_day_summary_by_source(JObj, Acc) ->
     [_SourceService, DateString] = kz_json:get_value(<<"key">>, JObj),
     [kz_json:from_list([{DateString, kz_json:get_value(<<"value">>, JObj)}]) | Acc].
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec validate_service_plan(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_service_plan(Context, ?SYNCHRONIZATION, ?HTTP_POST) ->
     %% NOTE: sync this accounts billing details with the bookkeeper

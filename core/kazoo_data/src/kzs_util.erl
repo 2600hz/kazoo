@@ -20,8 +20,10 @@
 
 -export([format_account_id/1, format_account_id/2, format_account_id/3
         ,format_account_mod_id/1, format_account_mod_id/2, format_account_mod_id/3
+        ,format_account_yod_id/1, format_account_yod_id/2
         ,format_account_db/1
         ,format_account_modb/1, format_account_modb/2
+        ,format_account_yodb/1, format_account_yodb/2
         ,format_resource_selectors_id/1, format_resource_selectors_id/2
         ,format_resource_selectors_db/1
 
@@ -37,6 +39,8 @@
 -type account_format() :: 'unencoded' | 'encoded' | 'raw'.
 
 -export_type([account_format/0]).
+
+-define(YEAR_INT_BOUNDARY, 9999).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -96,6 +100,10 @@ db_classification(?MATCH_MODB_SUFFIX_UNENCODED(_A,_B,_Rest,_Year,_Month)) -> 'mo
 db_classification(?MATCH_MODB_SUFFIX_ENCODED(_A,_B,_Rest,_Year,_Month)) -> 'modb';%   "account..." then the
 db_classification(?MATCH_MODB_SUFFIX_encoded(_A,_B,_Rest,_Year,_Month)) -> 'modb';%   right size.
 db_classification(?MATCH_MODB_SUFFIX_RAW(_Account,_Year,_Month)) -> 'modb';%   right size.
+db_classification(?MATCH_YODB_SUFFIX_UNENCODED(_A,_B,_Rest,_Year)) -> 'yodb';% these only need to match
+db_classification(?MATCH_YODB_SUFFIX_ENCODED(_A,_B,_Rest,_Year)) -> 'yodb';%   "account..." then the
+db_classification(?MATCH_YODB_SUFFIX_encoded(_A,_B,_Rest,_Year)) -> 'yodb';%   right size.
+db_classification(?MATCH_YODB_SUFFIX_RAW(_Account,_Year)) -> 'yodb';%   right size.
 db_classification(?MATCH_ACCOUNT_RAW(_AccountId)) -> 'account';
 db_classification(?MATCH_ACCOUNT_UNENCODED(_AccountId)) -> 'account';
 db_classification(?MATCH_ACCOUNT_encoded(_AccountId)) -> 'account';
@@ -284,7 +292,7 @@ format_account_id(Account) ->
 format_account_id('undefined', _Encoding) -> 'undefined';
 format_account_id(DbName, Timestamp)
   when is_integer(Timestamp)
-       andalso Timestamp > 0 ->
+       andalso Timestamp > ?YEAR_INT_BOUNDARY ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     format_account_id(DbName, Year, Month);
 format_account_id(<<"accounts">>, _) -> <<"accounts">>;
@@ -295,7 +303,6 @@ format_account_id(?MATCH_ACCOUNT_ENCODED(_)=AccountDb, 'encoded') ->
     AccountDb;
 format_account_id(?MATCH_ACCOUNT_UNENCODED(_)=AccountDbUn, 'unencoded') ->
     AccountDbUn;
-
 format_account_id(AccountId, 'raw') ->
     raw_account_id(AccountId);
 format_account_id(AccountId, 'unencoded') ->
@@ -303,7 +310,12 @@ format_account_id(AccountId, 'unencoded') ->
     kz_term:to_binary(["account/", A, "/", B, "/", Rest]);
 format_account_id(AccountId, 'encoded') ->
     ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_id(AccountId),
-    ?MATCH_ACCOUNT_ENCODED(A, B, Rest).
+    ?MATCH_ACCOUNT_ENCODED(A, B, Rest);
+format_account_id(AccountId, Year) when is_binary(Year) ->
+    format_account_id(AccountId, kz_term:to_integer(Year));
+format_account_id(AccountId, Year) when is_integer(Year) ->
+    ?MATCH_ACCOUNT_RAW(A,B,Rest) = raw_account_id(AccountId),
+    ?MATCH_YODB_SUFFIX_ENCODED(A, B, Rest, kz_term:to_binary(Year)).
 
 %%------------------------------------------------------------------------------
 %% @doc Returns `raw' account ID if it's account ID/DB/MODB/ResourceSelector,
@@ -324,6 +336,12 @@ raw_account_id(?MATCH_MODB_SUFFIX_RAW(AccountId, _, _)) ->
 raw_account_id(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, _, _)) ->
     ?MATCH_ACCOUNT_RAW(A, B, Rest);
 raw_account_id(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, _, _)) ->
+    ?MATCH_ACCOUNT_RAW(A, B, Rest);
+raw_account_id(?MATCH_YODB_SUFFIX_RAW(AccountId, _)) ->
+    AccountId;
+raw_account_id(?MATCH_YODB_SUFFIX_ENCODED(A, B, Rest, _)) ->
+    ?MATCH_ACCOUNT_RAW(A, B, Rest);
+raw_account_id(?MATCH_YODB_SUFFIX_UNENCODED(A, B, Rest, _)) ->
     ?MATCH_ACCOUNT_RAW(A, B, Rest);
 raw_account_id(?MATCH_RESOURCE_SELECTORS_RAW(AccountId)) ->
     AccountId;
@@ -352,6 +370,18 @@ raw_account_modb(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Year, Month)) ->
     ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month);
 raw_account_modb(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month)) ->
     ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month).
+
+%%------------------------------------------------------------------------------
+%% `(yodb()) -> yodb_id() when yodb() :: yodb_id() | yodb_db() | yodb_db_unencoded()'
+%% Crashes if given anything else.
+%%------------------------------------------------------------------------------
+-spec raw_account_yodb(kz_term:ne_binary()) -> kz_term:ne_binary().
+raw_account_yodb(?MATCH_YODB_SUFFIX_RAW(_, _) = AccountId) ->
+    AccountId;
+raw_account_yodb(?MATCH_YODB_SUFFIX_ENCODED(A, B, Rest, Year)) ->
+    ?MATCH_YODB_SUFFIX_RAW(A, B, Rest, Year);
+raw_account_yodb(?MATCH_YODB_SUFFIX_UNENCODED(A, B, Rest, Year)) ->
+    ?MATCH_YODB_SUFFIX_RAW(A, B, Rest, Year).
 
 %% @equiv format_resource_selectors_id(Account, raw)
 
@@ -440,6 +470,12 @@ format_account_id(Account, Year, Month) when is_integer(Year),
 format_account_mod_id(Account) ->
     format_account_mod_id(Account, os:timestamp()).
 
+%% @equiv format_account_yod_id(Account, os:timestamp())
+
+-spec format_account_yod_id(kz_term:api_binary()) -> kz_term:api_binary().
+format_account_yod_id(Account) ->
+    format_account_yod_id(Account, os:timestamp()).
+
 %% @equiv format_account_id(AccountId, Year, Month)
 
 -spec format_account_mod_id(kz_term:api_binary(), kz_time:gregorian_seconds() | kz_time:now()) -> kz_term:api_binary().
@@ -449,6 +485,22 @@ format_account_mod_id(AccountId, {_,_,_}=Timestamp) ->
 format_account_mod_id(AccountId, Timestamp) when is_integer(Timestamp) ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
     format_account_id(AccountId, Year, Month).
+
+%% @equiv format_account_id(AccountId, Year)
+
+-spec format_account_yod_id(kz_term:api_binary(), kz_time:gregorian_seconds() | kz_time:now() | kz_time:year()) -> kz_term:api_binary().
+format_account_yod_id(AccountId, {_,_,_}=Timestamp) ->
+    {{Year, _, _}, _} = calendar:now_to_universal_time(Timestamp),
+    format_account_id(AccountId, Year);
+format_account_yod_id(AccountId, Timestamp)
+  when is_integer(Timestamp)
+       andalso Timestamp > ?YEAR_INT_BOUNDARY ->
+    {{Year, _, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    format_account_id(AccountId, Year);
+format_account_yod_id(AccountId, Year) when is_binary(Year) ->
+    format_account_id(AccountId, kz_term:to_integer(Year));
+format_account_yod_id(AccountId, Year) ->
+    format_account_id(AccountId, Year).
 
 %%------------------------------------------------------------------------------
 %% @doc Given a representation of an account, build an MODb in an `encoded' format.
@@ -474,6 +526,12 @@ format_account_db(AccountId) ->
 format_account_modb(AccountId) ->
     format_account_modb(AccountId, 'raw').
 
+%% @equiv format_account_yodb(AccountId, raw)
+-spec format_account_yodb(kz_term:ne_binary()) -> kz_term:ne_binary().
+format_account_yodb(AccountId) ->
+    format_account_yodb(AccountId, 'raw').
+
+
 %%------------------------------------------------------------------------------
 %% @doc Given a representation of an MODb, returns the MODb in the specified format.
 %%
@@ -491,11 +549,29 @@ format_account_modb(AccountId, 'encoded') ->
     ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month) = raw_account_modb(AccountId),
     ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Year, Month).
 
+%%------------------------------------------------------------------------------
+%% @doc Given a representation of an YODb, returns the YODb in the specified format.
+%%
+%% <div class="notice">crashes if given anything but an YODb (in any format).</div>
+%% @end
+%%------------------------------------------------------------------------------
+-spec format_account_yodb(kz_term:ne_binary(), account_format()) -> kz_term:ne_binary().
+format_account_yodb(AccountId, 'raw') ->
+    raw_account_yodb(AccountId);
+format_account_yodb(AccountId, 'unencoded') ->
+    ?MATCH_YODB_SUFFIX_RAW(A, B, Rest, Year) = raw_account_yodb(AccountId),
+    ?MATCH_YODB_SUFFIX_UNENCODED(A, B, Rest, Year);
+format_account_yodb(AccountId, 'encoded') ->
+    ?MATCH_YODB_SUFFIX_RAW(A, B, Rest, Year) = raw_account_yodb(AccountId),
+    ?MATCH_YODB_SUFFIX_ENCODED(A, B, Rest, Year).
+
 -spec to_database(kz_term:ne_binary()) -> kz_term:ne_binary().
 to_database(?MATCH_ACCOUNT_RAW(A, B, Rest)) ->
     ?MATCH_ACCOUNT_ENCODED(A, B, Rest);
 to_database(?MATCH_ACCOUNT_UNENCODED(A, B, Rest)) ->
     ?MATCH_ACCOUNT_ENCODED(A, B, Rest);
+to_database(?MATCH_YODB_SUFFIX_UNENCODED(A, B, Rest, Year)) ->
+    ?MATCH_YODB_SUFFIX_ENCODED(A, B, Rest, Year);
 to_database(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, Year, Month)) ->
     ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, Year, Month);
 to_database(?MATCH_RESOURCE_SELECTORS_UNENCODED(A, B, Rest)) ->
