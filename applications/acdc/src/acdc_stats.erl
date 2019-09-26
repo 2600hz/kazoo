@@ -968,7 +968,17 @@ handle_handled_stat(JObj, Props) ->
                 ,{#call_stat.handled_timestamp, kz_json:get_value(<<"Handled-Timestamp">>, JObj)}
                 ,{#call_stat.status, <<"handled">>}
                 ]),
-    update_call_stat(Id, Updates, Props).
+
+    Stat = find_call_stat(Id),
+    case handled_stat_should_update(Stat) of
+        'true' -> update_call_stat(Id, Updates, Props);
+        'false' -> 'ok'
+    end.
+
+-spec handled_stat_should_update(call_stat()) -> boolean().
+                                                % Handle stats where processed came in before handled (hungup quickly after pickup)
+handled_stat_should_update(#call_stat{status= <<"processed">>}) -> 'false';
+handled_stat_should_update(_) -> 'true'.
 
 -spec handle_processed_stat(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_processed_stat(JObj, Props) ->
@@ -981,7 +991,18 @@ handle_processed_stat(JObj, Props) ->
                 ,{#call_stat.hung_up_by, kz_json:get_value(<<"Hung-Up-By">>, JObj)}
                 ,{#call_stat.status, <<"processed">>}
                 ]),
-    update_call_stat(Id, Updates, Props).
+
+    Stat = find_call_stat(Id),
+    Updates1 = processed_stat_maybe_fix_update(Stat, Updates),
+
+    update_call_stat(Id, Updates1, Props).
+
+-spec processed_stat_maybe_fix_update(call_stat(), kz_term:proplist()) -> kz_term:proplist().
+processed_stat_maybe_fix_update(#call_stat{handled_timestamp='undefined'}, Updates) ->
+                                                % Handle stats where processed came in before handled (hungup quickly after pickup)
+    ProcessedTimestamp = props:get_integer_value(#call_stat.processed_timestamp, Updates),
+    [{#call_stat.handled_timestamp, ProcessedTimestamp} | Updates];
+processed_stat_maybe_fix_update(_, Updates) -> Updates.
 
 -spec flush_call_stat(kz_json:object(), kz_term:proplist()) -> 'ok'.
 flush_call_stat(JObj, Props) ->
