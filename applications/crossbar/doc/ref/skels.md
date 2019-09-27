@@ -2,7 +2,14 @@
 
 ## About Skels
 
-## Schema
+#### Schema
+
+Skeleton JSON schema
+
+
+
+Key | Description | Type | Default | Required | Support Level
+--- | ----------- | ---- | ------- | -------- | -------------
 
 
 

@@ -8190,7 +8190,7 @@
   'required':
     - shared_auth
   'type': object
-'skel':
+'skels':
   'description': Skeleton JSON schema
   'properties': {}
   'type': object

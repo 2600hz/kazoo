@@ -28610,7 +28610,7 @@
             ],
             "type": "object"
         },
-        "skel": {
+        "skels": {
             "description": "Skeleton JSON schema",
             "properties": {},
             "type": "object"
@@ -45896,6 +45896,14 @@
             "put": {
                 "parameters": [
                     {
+                        "in": "body",
+                        "name": "skels",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/skels"
+                        }
+                    },
+                    {
                         "$ref": "#/parameters/auth_token_header"
                     },
                     {
@@ -45966,6 +45974,14 @@
             },
             "post": {
                 "parameters": [
+                    {
+                        "in": "body",
+                        "name": "skels",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/skels"
+                        }
+                    },
                     {
                         "$ref": "#/parameters/auth_token_header"
                     },

@@ -10,7 +10,7 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'sys_info' || doc.pvt_deleted) return; emit(doc._id, {'realm': doc.account.auth_realm}); }",
+            "map": "function(doc) { if (doc.pvt_type != 'sys_info' || doc.pvt_deleted) return; emit(doc._id, {'name': doc.name, 'servers':doc.servers}); }",
             "reduce": "_count"
         },
         "lookup_did": {
