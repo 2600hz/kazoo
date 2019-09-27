@@ -49,7 +49,7 @@ JOBS ?= 1
 	validate-swagger \
 	xref xref_release
 
-all: compile
+all: prerequisites compile
 
 changed:
 	@echo "changed: $(CHANGED)"
@@ -58,6 +58,11 @@ changed:
 
 changed_swagger:
 	@echo "$(CHANGED_SWAGGER)"
+
+prerequisites: make-dependency-check
+
+make-dependency-check:
+	$(ROOT)/scripts/make-prerequisite.sh
 
 compile: ACTION = all
 compile: deps kazoo

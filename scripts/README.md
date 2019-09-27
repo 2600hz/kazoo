@@ -959,6 +959,10 @@ Part of the great rename, converts Whistle-related names to Kazoo-specific names
 
 Generate API clients in multiple languages from the Swagger file.
 
+## `make-prerequisite.sh`
+
+Check make dependency and prerequisite such as git version.
+
 ## `next_version`
 
 returns next release based on branch & tags.
