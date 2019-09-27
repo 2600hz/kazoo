@@ -82,7 +82,7 @@ $(DEPS_MK):
 endif
 
 $(DOT_ERLANG_MK):
-	$(MAKE) -C $(ROOT) dot_erlang_mk
+	@$(MAKE) -C $(ROOT) dot_erlang_mk
 
 clean-deps: clean-deps-hash
 

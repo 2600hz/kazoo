@@ -64,10 +64,10 @@ main(CommandLineArgs, Loops) ->
             IsVerbose
                 andalso stdout("Running ~s:~s(~s)", [Module, Function, string:join(Args, ", ")]),
 
-            case rpc:call(Target, ?MODULE, in_kazoo, [SUPName, Module, Function, Arguments], Timeout) of
+            case rpc:call(Target, ?MODULE, 'in_kazoo', [SUPName, Module, Function, Arguments], Timeout) of
                 {'badrpc', {'EXIT',{'undef', _}}} ->
                     print_invalid_cli_args();
-                {badrpc, {'EXIT', {timeout_value,[{Module,Function,_,_}|_]}}} ->
+                {'badrpc', {'EXIT', {'timeout_value',[{Module,Function,_,_}|_]}}} ->
                     stderr("Command failed: timeout~n", []),
                     halt(4);
                 {'badrpc', Reason} ->
@@ -261,7 +261,7 @@ option_spec_list() ->
 -spec from_env(list(), list()) -> list().
 from_env(Name, Default) ->
     case os:getenv(Name) of
-        false -> Default;
+        'false' -> Default;
         Value -> Value
     end.
 

@@ -875,7 +875,7 @@ descendants_count() ->
     descendants_count(ViewOptions).
 
 -spec descendants_count(kz_term:proplist() | kz_term:ne_binary()) -> 'ok'.
-descendants_count(<<_/binary>> = Account) ->
+descendants_count(<<Account/binary>>) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     descendants_count([{'key', AccountId}]);
 descendants_count(Opts) ->

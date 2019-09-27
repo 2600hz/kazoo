@@ -12,37 +12,41 @@
 -module(crossbar_maintenance).
 
 -export([migrate/0
-        ,migrate/1
         ,migrate_accounts_data/0
         ,migrate_account_data/1
-        ]).
-
--export([start_module/1]).
--export([stop_module/1]).
--export([running_modules/0]).
--export([refresh/0, refresh/1
+        ,refresh/0, refresh/1
         ,register_views/0
         ,flush/0
+        ,update_schemas/0
+        ,db_init/0
         ]).
--export([find_account_by_number/1]).
--export([find_account_by_name/1]).
--export([find_account_by_realm/1]).
--export([find_account_by_id/1]).
--export([enable_account/1, disable_account/1]).
--export([promote_account/1, demote_account/1]).
--export([allow_account_number_additions/1, disallow_account_number_additions/1]).
--export([create_account/4]).
--export([create_account/1]).
--export([move_account/2]).
--export([descendants_count/0, descendants_count/1]).
--export([migrate_ring_group_callflow/1]).
 
--export([init_apps/2, init_app/2]).
--export([init_apps/1, init_app/1]).
--export([refresh_apps/2, refresh_app/2]).
--export([refresh_apps/1, refresh_app/1]).
--export([apps/0, app/1
-        ,set_app_field/3%, set_app_field/4, set_app_field/5
+-export([start_module/1
+        ,stop_module/1
+        ,running_modules/0
+        ]).
+
+-export([find_account_by_number/1
+        ,find_account_by_name/1
+        ,find_account_by_realm/1
+        ,find_account_by_id/1
+        ]).
+
+-export([enable_account/1, disable_account/1
+        ,promote_account/1, demote_account/1
+        ,allow_account_number_additions/1, disallow_account_number_additions/1
+        ,descendants_count/0, descendants_count/1
+        ,create_account/4
+        ,move_account/2
+        ]).
+
+-export([init_apps/1, init_apps/2
+        ,init_app/1, init_app/2
+        ,refresh_apps/1, refresh_apps/2
+        ,refresh_app/1, refresh_app/2
+        ,apps/0
+        ,app/1
+        ,set_app_field/3
         ,set_app_label/2
         ,set_app_description/2
         ,set_app_extended_description/2
@@ -52,9 +56,6 @@
         ]).
 
 -export([does_schema_exist/1]).
--export([update_schemas/0]).
-
--export([db_init/0]).
 
 -include("crossbar.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
@@ -126,7 +127,6 @@ migrate_accounts_data([Account|Accounts]) ->
 -spec migrate_account_data(kz_term:ne_binary()) -> 'no_return'.
 migrate_account_data(Account) ->
     _ = cb_clicktocall:maybe_migrate_history(Account),
-    _ = migrate_ring_group_callflow(Account),
     _ = cb_vmboxes:migrate(Account),
     _ = cb_lists_v2:maybe_migrate(Account),
     _ = cb_apps_maintenance:migrate(Account),
@@ -765,197 +765,6 @@ descendants_count() ->
 descendants_count(AccountId) ->
     crossbar_util:descendants_count(AccountId).
 
--spec migrate_ring_group_callflow(kz_term:ne_binary()) -> 'ok'.
-migrate_ring_group_callflow(Account) ->
-    lists:foreach(fun create_new_ring_group_callflow/1
-                 ,get_migrateable_ring_group_callflows(Account)
-                 ).
-
--spec get_migrateable_ring_group_callflows(kz_term:ne_binary()) -> kz_json:objects().
-get_migrateable_ring_group_callflows(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    case kz_datamgr:get_all_results(AccountDb, <<"callflows/crossbar_listing">>) of
-        {'error', _M} ->
-            io:format("error fetching callflows in ~p ~p~n", [AccountDb, _M]),
-            [];
-        {'ok', JObjs} ->
-            get_migrateable_ring_group_callflows(AccountDb, JObjs)
-    end.
-
--spec get_migrateable_ring_group_callflows(kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
-get_migrateable_ring_group_callflows(AccountDb, JObjs) ->
-    lists:foldl(fun(JObj, Acc) -> get_migrateable_ring_group_callflow(JObj, Acc, AccountDb) end
-               ,[]
-               ,JObjs
-               ).
-
--spec get_migrateable_ring_group_callflow(kz_json:object(), kz_json:objects(), kz_term:ne_binary()) ->
-                                                 kz_json:objects().
-get_migrateable_ring_group_callflow(JObj, Acc, AccountDb) ->
-    case {kz_json:get_ne_binary_value([<<"value">>, <<"group_id">>], JObj)
-         ,kz_json:get_ne_binary_value([<<"value">>, <<"type">>], JObj)
-         }
-    of
-        {'undefined', _} -> Acc;
-        {_, 'undefined'} ->
-            Id = kz_doc:id(JObj),
-            case kz_datamgr:open_cache_doc(AccountDb, Id) of
-                {'ok', CallflowJObj} -> check_callflow_eligibility(CallflowJObj, Acc);
-                {'error', _M} ->
-                    io:format("  error fetching callflow ~p in ~p ~p~n", [Id, AccountDb, _M]),
-                    Acc
-            end;
-        {_, _} -> Acc
-    end.
-
--spec check_callflow_eligibility(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-check_callflow_eligibility(CallflowJObj, Acc) ->
-    case kz_json:get_value([<<"flow">>, <<"module">>], CallflowJObj) of
-        <<"ring_group">> -> [CallflowJObj|Acc];
-        <<"record_call">> -> [CallflowJObj|Acc];
-        _Module -> Acc
-    end.
-
--spec create_new_ring_group_callflow(kz_json:object()) -> 'ok'.
-create_new_ring_group_callflow(JObj) ->
-    BaseGroup = base_group_ring_group(JObj),
-    save_new_ring_group_callflow(JObj, BaseGroup).
-
--spec base_group_ring_group(kz_json:object()) -> kz_json:object().
-base_group_ring_group(JObj) ->
-    io:format("migrating callflow ~s: ~s~n", [kz_doc:id(JObj), kz_json:encode(JObj)]),
-    BaseGroup = kz_json:from_list(
-                  [{<<"pvt_vsn">>, <<"1">>}
-                  ,{<<"pvt_type">>, <<"callflow">>}
-                  ,{<<"pvt_modified">>, kz_time:now_s()}
-                  ,{<<"pvt_created">>, kz_time:now_s()}
-                  ,{<<"pvt_account_db">>, kz_doc:account_db(JObj)}
-                  ,{<<"pvt_account_id">>, kz_doc:account_id(JObj)}
-                  ,{<<"flow">>, kz_json:from_list([{<<"children">>, kz_json:new()}
-                                                  ,{<<"module">>, <<"ring_group">>}
-                                                  ])
-                   }
-                  ,{<<"group_id">>, kz_json:get_value(<<"group_id">>, JObj)}
-                  ,{<<"type">>, <<"baseGroup">>}
-                  ]),
-    set_data_for_callflow(JObj, BaseGroup).
-
--spec set_data_for_callflow(kz_json:object(), kz_json:object()) -> kz_json:object().
-set_data_for_callflow(JObj, BaseGroup) ->
-    Flow = kz_json:get_value(<<"flow">>, BaseGroup),
-    case kz_json:get_value([<<"flow">>, <<"module">>], JObj) of
-        <<"ring_group">> ->
-            Data = kz_json:get_value([<<"flow">>, <<"data">>], JObj),
-            NewFlow = kz_json:set_value(<<"data">>, Data, Flow),
-            set_number_for_callflow(JObj, kz_json:set_value(<<"flow">>, NewFlow, BaseGroup));
-        <<"record_call">> ->
-            Data = kz_json:get_value([<<"flow">>, <<"children">>, <<"_">>, <<"data">>], JObj),
-            NewFlow = kz_json:set_value(<<"data">>, Data, Flow),
-            set_number_for_callflow(JObj, kz_json:set_value(<<"flow">>, NewFlow, BaseGroup))
-    end.
-
--spec set_number_for_callflow(kz_json:object(), kz_json:object()) -> kz_json:object().
-set_number_for_callflow(JObj, BaseGroup) ->
-    Number = <<"group_", (kz_term:to_binary(kz_time:now_ms()))/binary>>,
-    Numbers = [Number],
-    set_name_for_callflow(JObj, kz_json:set_value(<<"numbers">>, Numbers, BaseGroup)).
-
--spec set_name_for_callflow(kz_json:object(), kz_json:object()) -> kz_json:object().
-set_name_for_callflow(JObj, BaseGroup) ->
-    Name = kz_json:get_value(<<"name">>, JObj),
-    NewName = binary:replace(Name, <<"Ring Group">>, <<"Base Group">>),
-    set_ui_metadata(JObj, kz_json:set_value(<<"name">>, NewName, BaseGroup)).
-
--spec set_ui_metadata(kz_json:object(), kz_json:object()) -> kz_json:object().
-set_ui_metadata(JObj, BaseGroup) ->
-    MetaData = kz_json:get_value(<<"ui_metadata">>, JObj),
-    NewMetaData = kz_json:set_value(<<"version">>, <<"v3.19">>, MetaData),
-    kz_json:set_value(<<"ui_metadata">>, NewMetaData, BaseGroup).
-
--spec save_new_ring_group_callflow(kz_json:object(), kz_json:object()) -> 'ok'.
-save_new_ring_group_callflow(JObj, NewCallflow) ->
-    AccountDb = kz_doc:account_db(JObj),
-    Name = kz_json:get_value(<<"name">>, NewCallflow),
-    case check_if_callflow_exist(AccountDb, Name) of
-        'true' ->
-            io:format("unable to save new callflow '~s' in '~s'; already exists~n", [Name, AccountDb]);
-        'false' ->
-            save_new_ring_group_callflow(JObj, NewCallflow, AccountDb)
-    end.
-
-save_new_ring_group_callflow(JObj, NewCallflow, AccountDb) ->
-    case kz_datamgr:save_doc(AccountDb, NewCallflow) of
-        {'error', _M} ->
-            io:format("unable to save new callflow (old:~p) in ~p aborting...~n"
-                     ,[kz_doc:id(JObj), AccountDb]);
-        {'ok', NewJObj} ->
-            io:format("  saved base group callflow: ~s~n", [kz_json:encode(NewJObj)]),
-            update_old_ring_group_callflow(JObj, NewJObj)
-    end.
-
--spec check_if_callflow_exist(kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
-check_if_callflow_exist(AccountDb, Name) ->
-    case kz_datamgr:get_all_results(AccountDb, <<"callflows/crossbar_listing">>) of
-        {'error', _M} ->
-            io:format("error fetching callflows in ~p ~p~n", [AccountDb, _M]),
-            'true';
-        {'ok', JObjs} ->
-            lists:any(fun(JObj) ->
-                              kz_json:get_value([<<"value">>, <<"name">>], JObj) =:= Name
-                      end
-                     ,JObjs
-                     )
-    end.
-
--spec update_old_ring_group_callflow(kz_json:object(), kz_json:object()) -> 'ok'.
-update_old_ring_group_callflow(JObj, NewCallflow) ->
-    Routines = [fun update_old_ring_group_type/2
-               ,fun update_old_ring_group_metadata/2
-               ,fun update_old_ring_group_flow/2
-               ,fun save_old_ring_group/2
-               ],
-    lists:foldl(fun(F, J) -> F(J, NewCallflow) end, JObj, Routines).
-
--spec update_old_ring_group_type(kz_json:object(), kz_json:object()) -> kz_json:object().
-update_old_ring_group_type(JObj, _NewCallflow) ->
-    kz_json:set_value(<<"type">>, <<"userGroup">>, JObj).
-
--spec update_old_ring_group_metadata(kz_json:object(), kz_json:object()) -> kz_json:object().
-update_old_ring_group_metadata(JObj, _NewCallflow) ->
-    MetaData = kz_json:get_value(<<"ui_metadata">>, JObj),
-    NewMetaData = kz_json:set_value(<<"version">>, <<"v3.19">>, MetaData),
-    kz_json:set_value(<<"ui_metadata">>, NewMetaData, JObj).
-
--spec update_old_ring_group_flow(kz_json:object(), kz_json:object()) -> kz_json:object().
-update_old_ring_group_flow(JObj, NewCallflow) ->
-    Data = kz_json:from_list([{<<"id">>, kz_doc:id(NewCallflow)}]),
-    case kz_json:get_value([<<"flow">>, <<"module">>], JObj) of
-        <<"ring_group">> ->
-            Flow = kz_json:get_value(<<"flow">>, JObj),
-            NewFlow = kz_json:set_values([{<<"data">>, Data}, {<<"module">>, <<"callflow">>}], Flow),
-            kz_json:set_value(<<"flow">>, NewFlow, JObj);
-        <<"record_call">> ->
-            ChFlow = kz_json:get_value([<<"flow">>, <<"children">>, <<"_">>], JObj),
-            ChNewFlow = kz_json:set_values([{<<"data">>, Data}, {<<"module">>, <<"callflow">>}], ChFlow),
-            Children = kz_json:set_value(<<"_">>, ChNewFlow, kz_json:get_value([<<"flow">>, <<"children">>], JObj)),
-            Flow = kz_json:set_value(<<"children">>, Children, kz_json:get_value(<<"flow">>, JObj)),
-            kz_json:set_value(<<"flow">>, Flow, JObj)
-    end.
-
--spec save_old_ring_group(kz_json:object(), kz_json:object()) -> 'ok'.
-save_old_ring_group(JObj, NewCallflow) ->
-    AccountDb = kz_doc:account_db(JObj),
-    case kz_datamgr:save_doc(AccountDb, JObj) of
-        {'error', _M} ->
-            io:format("unable to save callflow ~p in ~p, removing new one (~p)~n"
-                     ,[kz_doc:id(JObj), AccountDb, kz_doc:id(NewCallflow)]),
-            {'ok', _} = kz_datamgr:del_doc(AccountDb, NewCallflow),
-            'ok';
-        {'ok', _OldJObj} ->
-            io:format("  saved ring group callflow: ~s~n", [kz_json:encode(_OldJObj)])
-    end.
-
-
 -spec init_apps(file:name()) -> 'ok'.
 init_apps(AppsPath) ->
     init_apps(AppsPath, 'undefined').
@@ -1198,24 +1007,24 @@ find_metadata(AppPath) ->
             {'invalid_data', [Error || {'data_invalid', _, Error, _, _} <- Errors]}
     end.
 
--spec apps() -> no_return.
+-spec apps() -> 'no_return'.
 apps() ->
-    {ok, MA} = kapps_util:get_master_account_db(),
+    {'ok', MA} = kapps_util:get_master_account_db(),
     case kz_datamgr:get_results(MA, ?CB_APPS_STORE_LIST) of
-        {error, _R} -> lager:debug("failed to read apps in ~s: ~p", [MA, _R]);
-        {ok, JObjs} -> lists:foreach(fun print_app/1, JObjs)
+        {'error', _R} -> lager:debug("failed to read apps in ~s: ~p", [MA, _R]);
+        {'ok', JObjs} -> lists:foreach(fun print_app/1, JObjs)
     end,
-    no_return.
+    'no_return'.
 
--spec app(kz_term:ne_binary()) -> no_return.
+-spec app(kz_term:ne_binary()) -> 'no_return'.
 app(AppNameOrId) ->
-    {ok, MA} = kapps_util:get_master_account_db(),
+    {'ok', MA} = kapps_util:get_master_account_db(),
     case find_app(MA, AppNameOrId) of
-        {ok, AppJObj} -> print_app(AppJObj);
-        {error, _} ->
+        {'ok', AppJObj} -> print_app(AppJObj);
+        {'error', _} ->
             case kz_datamgr:open_doc(MA, AppNameOrId) of
-                {ok, AppJObj} -> print_app(view_app(AppJObj));
-                _ -> io:format("unknown app\n"), no_return
+                {'ok', AppJObj} -> print_app(view_app(AppJObj));
+                _ -> io:format("unknown app\n"), 'no_return'
             end
     end.
 
