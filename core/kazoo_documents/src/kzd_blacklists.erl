@@ -98,7 +98,7 @@ compare_actions(?RELAXED, Action1, Action2) ->
 fetch_patterns(AccountId, OwnerId) ->
     fetch_patterns(AccountId, OwnerId, #{}).
 
--spec fetch_patterns(kz_term:ne_binary(), kz_term:api_ne_binary(), map()) -> {'ok', kz_json:object()} | {'error', 'not_found'}.
+-spec fetch_patterns(kz_term:ne_binary(), kz_term:api_ne_binary(), map()) -> {'ok', kz_term:proplist()} | {'error', 'not_found'}.
 fetch_patterns(AccountId, OwnerId, Options) ->
     Db = kz_util:format_account_db(AccountId),
     ViewOptions = get_view_options(?LIST_BY_OWNER, OwnerId, <<"pattern">>),
@@ -114,18 +114,13 @@ fetch_patterns(AccountId, OwnerId, Options) ->
 fetch_number(AccountId, OwnerId, Number) ->
     fetch_number(AccountId, OwnerId, Number, #{}).
 
--spec fetch_number(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binary(), map()) -> {'ok', kz_json:objects()} | {'error', 'not_found'}.
+-spec fetch_number(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binary(), map()) -> {'ok', kz_term:proplist()} | {'error', 'not_found'}.
 fetch_number(AccountId, OwnerId, Number, Options) ->
     Db = kz_util:format_account_db(AccountId),
     ViewOptions = get_view_options(?LIST_BY_OWNER, OwnerId, <<"number">>, Number),
     case kz_datamgr:get_results(Db, ?LIST_BY_OWNER, ViewOptions) of
         {'ok', []} -> {'error', 'not_found'};
-        {'ok', [JObj]} ->
-            JObjs = kz_json:get_list_value(<<"value">>, JObj),
-            case filter_results(JObjs, Options) of
-                [] -> {'error', 'not_found'};
-                Results -> {'ok', Results}
-            end;
+        {'ok', JObjs} -> format_view_results(JObjs, Options);
         {'error', _}=_E ->
             lager:error("error getting blacklists by number ~s for account ~s and owner ~s : ~p", [Number, AccountId, OwnerId, _E]),
             {'error', 'not_found'}
@@ -142,53 +137,47 @@ filter_results(JObjs, Options) ->
 -spec get_view_options(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> kz_term:proplist().
 get_view_options(?LIST_BY_OWNER, 'undefined', <<"pattern">> = Type) ->
     props:filter_undefined(
-      [{'group', 'true'}
-      ,{'group_level', 3}
-      ,{'startkey', ['null', Type]}
+      [{'startkey', ['null', Type]}
       ,{'endkey', ['null', Type, kz_json:new()]}
       ]);
 get_view_options(?LIST_BY_OWNER, OwnerId, <<"pattern">> = Type) ->
     props:filter_undefined(
-      [{'group', 'true'}
-      ,{'group_level', 3}
-      ,{'startkey', [OwnerId, Type]}
+      [{'startkey', [OwnerId, Type]}
       ,{'endkey', [OwnerId, Type, kz_json:new()]}
       ]).
 
 -spec get_view_options(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:proplist().
 get_view_options(?LIST_BY_OWNER, 'undefined', <<"number">> = Type, Number) ->
     props:filter_undefined(
-      [{'group', 'true'}
-      ,{'group_level', 3}
-      ,{'key', ['null', Type, Number]}
+      [{'key', ['null', Type, Number]}
       ]);
 get_view_options(?LIST_BY_OWNER, OwnerId, <<"number">> = Type, Number) ->
     props:filter_undefined(
-      [{'group', 'true'}
-      ,{'group_level', 3}
-      ,{'key', [OwnerId, Type, Number]}
+      [{'key', [OwnerId, Type, Number]}
       ]).
 
--spec format_view_results(kz_json:objects(), map()) -> {'ok', kz_json:object()} | {'error', 'not_found'}.
+-spec format_view_results(kz_json:objects(), map()) -> {'ok', kz_term:proplist()} | {'error', 'not_found'}.
 format_view_results(JObjs, Options) ->
-    format_view_results(JObjs, kz_json:new(), Options).
-
--spec format_view_results(kz_json:objects(), kz_json:object(), map()) -> {'ok', kz_json:object()} | {'error', 'not_found'}.
-format_view_results([], Acc, _Options) ->
-    case Acc == kz_json:new() of
+    %% Group search results by pattern
+    MergedByKey = lists:foldl(fun(JObj, Acc) ->
+                                        [_Owner, _Type, Key] = kz_json:get_value(<<"key">>, JObj),
+                                        ValueCurrent = kz_json:get_list_value(Key, Acc, []),
+                                        kz_json:set_value(Key, [kz_json:get_value(<<"value">>, JObj) | ValueCurrent], Acc)
+                                  end
+                                 ,kz_json:new()
+                                 ,JObjs),
+    FilteredResults = kz_json:foldl(fun(Key, Values, Acc) ->
+                                            case filter_results(Values, Options) of
+                                                [] -> Acc;
+                                                Results -> [{Key, Results} | Acc]
+                                            end
+                                     end
+                                    ,[]
+                                    ,MergedByKey),
+    case FilteredResults == [] of
         'true' -> {'error', 'not_found'};
-        'false' -> {'ok', Acc}
-    end;
-format_view_results([JObj | JObjs], Acc, Options) ->
-    [_Owner, _Type, Key] = kz_json:get_value(<<"key">>, JObj),
-    Value = kz_json:get_list_value(<<"value">>, JObj),
-    case filter_results(Value, Options) of
-        [] -> format_view_results(JObjs, Acc, Options);
-        Results ->
-            Acc1 = kz_json:insert_value(Key, Results, Acc),
-            format_view_results(JObjs, Acc1, Options)
+        'false' -> {'ok', FilteredResults}
     end.
-
 
 -spec get_view_filters(map()) -> [fun()].
 get_view_filters(Options) ->
@@ -208,7 +197,7 @@ get_view_filters(#{<<"strategy">> := ?RELAXED} = Options, Acc) ->
     Fun = fun(List) -> filter_by_strategy(?RELAXED, List) end,
     get_view_filters(maps:remove(<<"strategy">>, Options), [Fun | Acc]);
 get_view_filters(#{<<"brief">> := 'true'} = Options, Acc) ->
-    %% Brief fucntions must be last
+    %% Brief functions must be last
     Fun = fun(List) ->
                   lists:map(fun(JObj) ->
                                     PropList = [{<<"action">>, kz_json:get_ne_binary_value(<<"action">>, JObj, <<"block">>)}

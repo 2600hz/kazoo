@@ -47,9 +47,10 @@ do_lookup(Number, AccountId, OwnerId, Strategy) ->
         {'error', 'not_found'} when Number =/= ?NO_MATCH_BL ->
             lookup_patterns(Number, AccountId, OwnerId, Strategy);
         {'error', 'not_found'} = Responce -> Responce;
-        {'ok', [JObj] } ->
-            Action = kz_json:get_ne_binary_value(<<"action">>, JObj, <<"block">>),
-            CallerName = kz_json:get_ne_binary_value(<<"name">>, JObj),
+        {'ok', Props } ->
+            [Value] = props:get_value(Number, Props),
+            Action = kz_json:get_ne_binary_value(<<"action">>, Value, <<"block">>),
+            CallerName = kz_json:get_ne_binary_value(<<"name">>, Value),
             cache_number(AccountId, OwnerId, Number, Action, CallerName)
     end.
 
@@ -73,13 +74,13 @@ fetch_patterns(AccountId, OwnerId)->
 -spec load_patterns(kz_term:ne_binary(), kz_term:api_ne_binary()) -> lookup_ret_patterns().
 load_patterns(AccountId, OwnerId) ->
     case kzd_blacklists:fetch_patterns(AccountId, OwnerId, #{<<"enabled">> => 'true', <<"brief">> => 'true'}) of
-        {'ok', JObj} -> compile_patterns(AccountId, OwnerId, JObj);
+        {'ok', Props} -> compile_patterns(AccountId, OwnerId, Props);
         {'error', _} -> cache_patterns(AccountId, OwnerId, [])
     end.
 
--spec compile_patterns(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:object()) -> lookup_ret_patterns().
-compile_patterns(AccountId, OwnerId, JObj) ->
-    compile_patterns(AccountId, OwnerId, kz_json:to_proplist(JObj), []).
+-spec compile_patterns(kz_term:ne_binary(), kz_term:api_ne_binary(), patterns_view_items()) -> lookup_ret_patterns().
+compile_patterns(AccountId, OwnerId, Props) ->
+    compile_patterns(AccountId, OwnerId, Props, []).
 
 -spec compile_patterns(kz_term:ne_binary(), kz_term:api_ne_binary(), patterns_view_items(), patterns()) -> lookup_ret_patterns().
 compile_patterns(AccountId, OwnerId, [], Patterns) ->

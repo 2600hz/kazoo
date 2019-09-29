@@ -181,40 +181,23 @@ read_by_view(Key, ViewName, Context) ->
 
 -spec get_view_options(kz_term:ne_binary(), kz_term:api_ne_binary()) -> crossbar_view:options().
 get_view_options(?CB_LIST_BY_NUMBER, 'undefined') ->
-    props:filter_undefined(
-      [{'group', 'true'}
-      ,{'group_level', 1}
-      ]);
+    props:filter_undefined([]);
 get_view_options(?CB_LIST_BY_NUMBER, Number) ->
     props:filter_undefined(
       [{'startkey', [Number]}
       ,{'endkey', [Number, kz_json:new()]}
-      ,{'group', 'true'}
-      ,{'group_level', 1}
       ]);
 get_view_options(?CB_LIST_BY_PATTERN, 'undefined') ->
-    props:filter_undefined(
-      [{'group', 'true'}
-      ,{'group_level', 1}
-      ]);
+    props:filter_undefined([]);
 get_view_options(?CB_LIST_BY_PATTERN, Pattern) ->
     props:filter_undefined(
       [{'startkey', [Pattern]}
       ,{'endkey', [Pattern, kz_json:new()]}
-      ,{'group', 'true'}
-      ,{'group_level', 1}
       ]).
 
 -spec load_chunk_view(cb_context:context(), kz_term:ne_binary(), kz_term:proplist()) -> cb_context:context().
-load_chunk_view(Context2, ViewName, Options) ->
-    Context = crossbar_doc:load_view(ViewName, Options, Context2, fun normalize_view_results/2),
-    set_resp_data(Context, cb_context:doc(Context)).
-
--spec set_resp_data(cb_context:context(), kz_json:objects()) -> cb_context:context().
-set_resp_data(Context, []) ->
-    cb_context:set_resp_data(Context, kz_json:new());
-set_resp_data(Context, [JObj]) ->
-    cb_context:set_resp_data(Context, JObj).
+load_chunk_view(Context, ViewName, Options) ->
+    crossbar_doc:load_view(ViewName, Options, Context, fun normalize_view_results/2).
 
 %%------------------------------------------------------------------------------
 %% @doc Update an existing menu document with the data provided, if it is
@@ -286,12 +269,12 @@ on_successful_validation(Id, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, []) ->
-    normalize_view_results(JObj, [kz_json:new()]);
-normalize_view_results(JObj, [Acc]) ->
-    [Key] = kz_json:get_list_value(<<"key">>, JObj),
-    Value = kz_json:get_value(<<"value">>, JObj),
-    [kz_json:insert_value(Key, Value, Acc)].
+normalize_view_results(JObj, Acc) ->
+    [Key, _Owner] = kz_json:get_list_value(<<"key">>, JObj),
+    case kz_json:get_value(<<"value">>, JObj) of
+        'undefined' -> Acc;
+            Value -> [kz_json:set_value(<<"key">>, Key, Value)| Acc]
+    end.
 
 -spec normalize_crossbar_list_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_crossbar_list_view_results(JObj, Acc) ->
