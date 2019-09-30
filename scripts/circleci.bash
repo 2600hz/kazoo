@@ -40,5 +40,3 @@ echo committing kazoo changes to avoid false positives later
 git add .gitmodules $APP_PATH
 git commit -m "add submodule"
 
-echo cleaning up kazoo
-make -k clean
