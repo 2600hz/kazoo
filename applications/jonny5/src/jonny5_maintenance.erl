@@ -54,7 +54,7 @@ authz_summary([AccountId|AccountIds]) ->
               ]),
     io:format("+----------------------------------+-------+----------------+------------+----------------+-----------------+------------+~n"),
     authz_summary(AccountIds);
-authz_summary(<<_/binary>> = AccountId) ->
+authz_summary(<<AccountId/binary>>) ->
     print_authz_summary_header(),
     authz_summary([AccountId]).
 
