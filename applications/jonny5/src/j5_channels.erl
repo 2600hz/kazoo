@@ -575,6 +575,7 @@ handle_channel_destroy(<<CallId/binary>>) ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
+    kz_util:put_callid(<<?MODULE_STRING>>),
     kz_hooks:register(),
     kz_nodes:notify_expire(),
     _ = ets:new(?TAB, ['set'
