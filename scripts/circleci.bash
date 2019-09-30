@@ -22,14 +22,10 @@ if [ ! -d $APP_PATH ]; then
     git submodule add ${CIRCLE_REPOSITORY_URL} $APP_PATH
 fi
 
-cd $APP_PATH
-
-echo checking out our commit $CIRCLE_BRANCH
-git fetch --prune
-git checkout -B $CIRCLE_BRANCH
-git reset --hard $CIRCLE_SHA1
-
 cd $KAZOO_ROOT
+
+echo "make a pristine environment for the kazoo dir"
+git clean -x -d -f
 
 # wanted when committing
 echo setup git config
@@ -39,4 +35,3 @@ git config user.name 'CircleCI'
 echo committing kazoo changes to avoid false positives later
 git add .gitmodules $APP_PATH
 git commit -m "add submodule"
-
