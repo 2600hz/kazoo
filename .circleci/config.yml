@@ -4,7 +4,7 @@ workflows:
   version: 2
   build-analyze-run:
     jobs:
-      - build:
+      - build
      
 jobs:
   build:
