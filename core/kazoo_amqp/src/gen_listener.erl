@@ -676,7 +676,7 @@ handle_info({#'basic.deliver'{}=BD
             'true' -> (catch kz_amqp_util:basic_ack(BD));
             'false' -> 'ok'
         end,
-    case props:is_true('spawn_handle_event', Params, 'false') of
+    case props:is_true('spawn_hndle_event', Params, 'false') of
         'false' -> {'noreply', handle_event(Payload, CT, {BD, Basic}, State)};
         'true'  ->
             kz_util:spawn(fun handle_event/4, [Payload, CT, {BD, Basic}, State]),
@@ -739,22 +739,28 @@ handle_info(Message, State) ->
 %% Allows listeners to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(kz_term:ne_binary(), kz_term:ne_binary(), deliver(), state()) ->  state().
+-spec handle_event(kz_term:ne_binary(), kz_term:ne_binary(), deliver(), state()) -> state().
 handle_event(Payload, <<"application/json">>, Deliver, State) ->
     JObj = kz_json:decode(Payload),
-    _ = kz_util:put_callid(JObj),
-    distribute_event(JObj, Deliver, State);
+    Old = kz_util:get_callid(),
+    'ok' = kz_util:put_callid(JObj),
+    NewState = distribute_event(JObj, Deliver, State),
+    kz_util:put_callid(Old),
+    NewState;
 handle_event(Payload, <<"application/erlang">>, Deliver, State) ->
     JObj = binary_to_term(Payload),
-    _ = kz_util:put_callid(JObj),
-    distribute_event(JObj, Deliver, State).
+    Old = kz_util:get_callid(),
+    'ok' = kz_util:put_callid(JObj),
+    NewState = distribute_event(JObj, Deliver, State),
+    kz_util:put_callid(Old),
+    NewState.
 
 %%------------------------------------------------------------------------------
 %% @doc Handles the AMQP messages prior to the spawning a handler.
 %% Allows listeners to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_return(kz_term:ne_binary(), kz_term:ne_binary(), #'basic.return'{}, state()) ->  handle_cast_return().
+-spec handle_return(kz_term:ne_binary(), kz_term:ne_binary(), #'basic.return'{}, state()) -> handle_cast_return().
 handle_return(Payload, <<"application/json">>, BR, State) ->
     JObj = kz_json:decode(Payload),
     _ = kz_util:put_callid(JObj),
