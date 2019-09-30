@@ -147,7 +147,7 @@ total_calls(<<AccountId/binary>>) ->
     MatchSpec = [{#channel{account_id = AccountId
                           ,call_id = '$1'
                           ,other_leg_call_id = '$2'
-                           %% ,destroyed = 'false'
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -156,7 +156,7 @@ total_calls(<<AccountId/binary>>) ->
                 ,{#channel{reseller_id = AccountId
                           ,call_id = '$1'
                           ,other_leg_call_id = '$2'
-                           %% ,destroyed = 'false'
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -172,6 +172,7 @@ total_inbound_channels_per_did_rules(Number, AccountId) ->
                           ,direction = <<"inbound">>
                           ,to_did = ToDID
                           ,call_id = '$1'
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -181,6 +182,7 @@ total_inbound_channels_per_did_rules(Number, AccountId) ->
                           ,direction = <<"inbound">>
                           ,to_did = ToDID
                           ,call_id = '$1'
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -195,6 +197,7 @@ resource_consuming(AccountId) ->
                           ,account_billing = '$1'
                           ,call_id = '$2'
                           ,other_leg_call_id = '$3'
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[{'=/=', '$1', 'undefined'}
@@ -206,6 +209,7 @@ resource_consuming(AccountId) ->
                           ,reseller_billing = '$1'
                           ,call_id = '$2'
                           ,other_leg_call_id = '$3'
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[{'=/=', '$1', 'undefined'}
@@ -221,6 +225,7 @@ inbound_flat_rate(AccountId) ->
     MatchSpec = [{#channel{account_id = AccountId
                           ,account_billing = <<"flat_rate">>
                           ,direction = <<"inbound">>
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -229,6 +234,7 @@ inbound_flat_rate(AccountId) ->
                 ,{#channel{account_id = AccountId
                           ,account_billing = <<"flat_rate_burst">>
                           ,direction = <<"inbound">>
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -237,6 +243,7 @@ inbound_flat_rate(AccountId) ->
                 ,{#channel{reseller_id = AccountId
                           ,reseller_billing = <<"flat_rate">>
                           ,direction = <<"inbound">>
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -245,6 +252,7 @@ inbound_flat_rate(AccountId) ->
                 ,{#channel{reseller_id = AccountId
                           ,reseller_billing = <<"flat_rate_burst">>
                           ,direction = <<"inbound">>
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -258,6 +266,7 @@ outbound_flat_rate(AccountId) ->
     MatchSpec = [{#channel{account_id = AccountId
                           ,account_billing = <<"flat_rate">>
                           ,direction = <<"outbound">>
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -266,6 +275,7 @@ outbound_flat_rate(AccountId) ->
                 ,{#channel{account_id = AccountId
                           ,account_billing = <<"flat_rate_burst">>
                           ,direction = <<"outbound">>
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -274,6 +284,7 @@ outbound_flat_rate(AccountId) ->
                 ,{#channel{reseller_id = AccountId
                           ,reseller_billing = <<"flat_rate">>
                           ,direction = <<"outbound">>
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -282,6 +293,7 @@ outbound_flat_rate(AccountId) ->
                 ,{#channel{reseller_id = AccountId
                           ,reseller_billing = <<"flat_rate_burst">>
                           ,direction = <<"outbound">>
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -294,6 +306,7 @@ outbound_flat_rate(AccountId) ->
 allotments(AccountId) ->
     MatchSpec = [{#channel{account_id = AccountId
                           ,account_allotment = 'true'
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -301,6 +314,7 @@ allotments(AccountId) ->
                  }
                 ,{#channel{reseller_id = AccountId
                           ,reseller_allotment = 'true'
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -315,6 +329,7 @@ allotment_consumed(CycleStart, Span, Classification, AccountId) when is_binary(A
     MatchSpec = [{#channel{account_id = AccountId
                           ,account_billing = <<"allotment_", Classification/binary>>
                           ,answered_timestamp = '$1'
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -323,6 +338,7 @@ allotment_consumed(CycleStart, Span, Classification, AccountId) when is_binary(A
                 ,{#channel{reseller_id = AccountId
                           ,reseller_billing = <<"allotment_", Classification/binary>>
                           ,answered_timestamp = '$1'
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -338,6 +354,7 @@ allotment_consumed(CycleStart, Span, Classification, Limits) ->
 per_minute(AccountId) ->
     MatchSpec = [{#channel{account_id = AccountId
                           ,account_billing = <<"per_minute">>
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -345,6 +362,7 @@ per_minute(AccountId) ->
                  }
                 ,{#channel{reseller_id = AccountId
                           ,reseller_billing = <<"per_minute">>
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -357,6 +375,7 @@ per_minute(AccountId) ->
 per_minute_cost(AccountId) ->
     MatchSpec = [{#channel{account_id = AccountId
                           ,account_billing = <<"per_minute">>
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -364,20 +383,23 @@ per_minute_cost(AccountId) ->
                  }
                 ,{#channel{reseller_id = AccountId
                           ,reseller_billing = <<"per_minute">>
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
                  ,['$_']
                  }
                 ],
-    lists:foldl(fun(Channel, Cost) ->
-                        call_cost(Channel) + Cost
-                end, 0, ets:select(?TAB, MatchSpec)).
+    lists:foldl(fun(Channel, Cost) -> call_cost(Channel) + Cost end
+               ,0
+               ,ets:select(?TAB, MatchSpec)
+               ).
 
 -spec real_per_minute_cost(kz_term:ne_binary()) -> non_neg_integer().
 real_per_minute_cost(AccountId) ->
     MatchSpec = [{#channel{account_id = AccountId
                           ,account_billing = <<"per_minute">>
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
@@ -385,15 +407,17 @@ real_per_minute_cost(AccountId) ->
                  }
                 ,{#channel{reseller_id = AccountId
                           ,reseller_billing = <<"per_minute">>
+                          ,destroyed = 'false'
                           ,_='_'
                           }
                  ,[]
                  ,['$_']
                  }
                 ],
-    lists:foldl(fun(Channel, Cost) ->
-                        call_cost(Channel, 0) + Cost
-                end, 0, ets:select(?TAB, MatchSpec)).
+    lists:foldl(fun(Channel, Cost) -> call_cost(Channel, 0) + Cost end
+               ,0
+               ,ets:select(?TAB, MatchSpec)
+               ).
 
 -spec accounts() -> kz_term:ne_binaries().
 accounts() ->
@@ -461,6 +485,7 @@ to_props(#channel{call_id=CallId
                  ,rate_description=RateDescription
                  ,rate_id=RateId
                  ,base_cost=BaseCost
+                 ,destroyed = IsDestroyed
                  }) ->
     props:filter_undefined(
       [{<<"Call-ID">>, CallId}
@@ -483,6 +508,7 @@ to_props(#channel{call_id=CallId
       ,{<<"Rate-Description">>, RateDescription}
       ,{<<"Rate-ID">>, RateId}
       ,{<<"Base-Cost">>, BaseCost}
+      ,{<<"Is-Destroyed">>, IsDestroyed}
       ]
      ).
 
