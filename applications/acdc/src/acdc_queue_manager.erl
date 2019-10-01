@@ -316,8 +316,6 @@ init([Super, AccountId, QueueId]) ->
     init(Super, AccountId, QueueId, QueueJObj).
 
 init(Super, AccountId, QueueId, QueueJObj) ->
-    process_flag('trap_exit', 'false'),
-
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     _ = kz_datamgr:add_to_doc_cache(AccountDb, QueueId, QueueJObj),
 
