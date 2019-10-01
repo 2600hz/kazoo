@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "skel",
+    "_id": "skels",
     "description": "Skeleton JSON schema",
     "properties": {},
     "type": "object"
