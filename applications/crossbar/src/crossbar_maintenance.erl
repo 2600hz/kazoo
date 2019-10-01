@@ -949,11 +949,11 @@ maybe_add_images(AppPath, ?NE_BINARY=AppId, MetaData, MasterAccountDb) ->
 
 update_icon(AppId, MA, IconPath) ->
     update_images(AppId, MA, [IconPath], <<"icon">>),
-    no_return.
+    'no_return'.
 
 update_screenshots(AppId, MA, SShotPaths) ->
     update_images(AppId, MA, SShotPaths, <<"screenshots">>),
-    no_return.
+    'no_return'.
 
 -type image_path() :: {file:filename_all(), file:filename_all()}.
 -type image_paths() :: [image_path()].

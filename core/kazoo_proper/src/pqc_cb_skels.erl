@@ -82,8 +82,7 @@ seq() ->
 
     SummaryResp = summary(API, AccountId),
     lager:info("summary resp: ~s", [SummaryResp]),
-    [SummarySkel] = kz_json:get_list_value(<<"data">>, kz_json:decode(SummaryResp)),
-    SkelId = kz_doc:id(SummarySkel),
+    [SkelId] = kz_json:get_list_value(<<"data">>, kz_json:decode(SummaryResp)),
 
     DeleteResp = delete(API, AccountId, SkelId),
     lager:info("delete resp: ~s", [DeleteResp]),
