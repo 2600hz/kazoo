@@ -389,9 +389,8 @@ handle_allowed_arity(_F, _Args, _Guards, Acc) -> {'skip', Acc}.
 
 handle_verbs(?VAR(_), Acc) -> Acc;
 handle_verbs(?EMPTY_LIST, Acc) -> Acc;
-handle_verbs(?BINARY_STRING(_)=ASTBin, {MFA, Dict}) ->
-    Bin = kz_ast_util:binary_match_to_binary(ASTBin),
-    {MFA, dict:append(MFA, Bin, Dict)};
+handle_verbs(?BINARY_STRING(Value), {MFA, Dict}) ->
+    {MFA, dict:append(MFA, kz_term:to_binary(Value), Dict)};
 handle_verbs(?BINARY_MATCH(_)=ASTBin, {MFA, Dict}) ->
     Bin = kz_ast_util:binary_match_to_binary(ASTBin),
     {MFA, dict:append(MFA, Bin, Dict)};
