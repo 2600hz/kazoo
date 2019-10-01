@@ -327,4 +327,4 @@ on_successful_validation(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
+    [kz_doc:id(JObj)|Acc].

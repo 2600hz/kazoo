@@ -32,23 +32,23 @@
                         fun((function(), arity(), accumulator()) -> fun_return()).
 -type clause_fun() :: fun(([erl_parse:abstract_expr()], [erl_parse:abstract_expr()], accumulator()) -> accumulator()).
 -type module_fun() :: fun((atom(), accumulator()) -> fun_return()).
--type export_fun() :: fun((atom(), arity(), accumulator()) -> fun_return()).
+-type export_fun() :: fun((atom(), arity(), accumulator()) -> accumulator()).
 -type app_fun() :: fun((atom(), accumulator()) -> fun_return()).
--type record_fun() :: fun((any(), accumulator()) -> fun_return()).
--type behaviour_fun() :: fun((atom(), accumulator()) -> fun_return()).
+-type record_fun() :: fun((atom(), accumulator()) -> accumulator()).
+-type behaviour_fun() :: fun((atom(), accumulator()) -> accumulator()).
 
--type option() :: {'expression', expression_fun()} |
-                  {'function', function_fun()} |
-                  {'clause', clause_fun()} |
-                  {'module', module_fun()} |
-                  {'after_module', module_fun()} |
-                  {'export', export_fun()} |
-                  {'exported_type', export_fun()} |
-                  {'application', app_fun()} |
-                  {'after_application', app_fun()} |
-                  {'record', record_fun()} |
-                  {'behaviour', behaviour_fun()} |
-                  {'accumulator', accumulator()}.
+-type option() :: {'expression', expression_fun()} | %% callback per-expression
+                  {'function', function_fun()} |     %% callback per function/arity
+                  {'clause', clause_fun()} |         %% callback per function clause (with args/guards)
+                  {'module', module_fun()} |         %% callback per module name
+                  {'after_module', module_fun()} |   %% callback after the module is processed
+                  {'export', export_fun()} |         %% callback per exported function/arity
+                  {'exported_type', export_fun()} |  %% callback per exported type
+                  {'application', app_fun()} |       %% callback per Erlang application name
+                  {'after_application', app_fun()} | %% callback after Erlang application is processed
+                  {'record', record_fun()} |         %% callback per record defined in module
+                  {'behaviour', behaviour_fun()} |   %% callback per behaviour name in module
+                  {'accumulator', accumulator()}.    %% user-supplied accumulator passed to callbacks
 -type options() :: [option()].
 
 -type config() :: #{atom() => fun() | accumulator() | atom()}.
@@ -119,8 +119,8 @@ process_module(Module, Config0) ->
             Routines = [{fun process_behaviour/2, Behaviour}
                        ,{fun process_exports/2, Exports}
                        ,{fun process_exported_types/2, Types}
-                       ,{fun process_functions/2, Fs}
                        ,{fun process_records/2, Rs}
+                       ,{fun process_functions/2, Fs}
                        ],
             Config1 = fold_over_module(Module, Config0, Routines),
             callback_after_module(M, Config1)
@@ -156,8 +156,7 @@ callback_behaviour(Behaviour, #{'behaviour' := Fun
                                ,'accumulator' := Acc0
                                }=Config0
                   ) when is_function(Fun, 2) ->
-    Acc1 = Fun(Behaviour, Acc0),
-    Config0#{'accumulator' => Acc1};
+    Config0#{'accumulator' => Fun(Behaviour, Acc0)};
 callback_behaviour(_Behaviour, Config) -> Config.
 
 process_exports(Exports, Config0) ->
@@ -173,8 +172,7 @@ callback_export(Function
                  ,'accumulator' := Acc0
                  }=Config0
                ) when is_function(Fun, 3) ->
-    Acc1 = Fun(Function, Arity, Acc0),
-    Config0#{'accumulator' => Acc1};
+    Config0#{'accumulator' => Fun(Function, Arity, Acc0)};
 callback_export(_Function, _Arity, Config) -> Config.
 
 process_exported_types(Types, Config0) ->
@@ -190,22 +188,37 @@ callback_exported_type(Function
                         ,'accumulator' := Acc0
                         }=Config0
                       ) when is_function(Fun, 3) ->
-    Acc1 = Fun(Function, Arity, Acc0),
-    Config0#{'accumulator' => Acc1};
+    Config0#{'accumulator' => Fun(Function, Arity, Acc0)};
 callback_exported_type(_Function, _Arity, Config) -> Config.
 
 process_records(Records, Config0) ->
     lists:foldl(fun process_record_fields/2, Config0, Records).
 
-process_record_fields({_RecordName, Fields}, Config0) ->
-    lists:foldl(fun process_record_field/2, Config0, Fields).
+process_record_fields({RecordName, Fields}, Config0) ->
+    case callback_record(RecordName, Config0) of
+        {'skip', Config1} -> Config1;
+        Config1 ->
+            lists:foldl(fun process_record_field/2, Config1, Fields)
+    end.
+
+callback_record(RecordName, #{'record' := Fun
+                             ,'accumulator' := Acc0
+                             }=Config0
+               ) when is_function(Fun, 2) ->
+    case Fun(RecordName, Acc0) of
+        {'skip', Acc1} -> {'skip', Config0#{'accumulator' => Acc1}};
+        Acc1 -> Config0#{'accumulator' => Acc1}
+    end;
+callback_record(_RecordName, Config) -> {'skip', Config}.
 
 %% look inside a single record field
 process_record_field(?RECORD_FIELD(_Key), Config) ->
     Config;
 process_record_field(?RECORD_FIELD_BIND(_Key, Value), Config) ->
+    io:format("record field bind: ~p: ~p~n", [_Key, Value]),
     process_expression(Value, Config);
 process_record_field(?TYPED_RECORD_FIELD(RecordField, _Type), Config) ->
+    io:format("typed record field: ~p: ~p~n", [RecordField, _Type]),
     process_record_field(RecordField, Config).
 
 process_functions(Functions, Config0) ->
@@ -217,21 +230,26 @@ process_functions(Functions, Config0) ->
 process_function({_Module, Function, Arity, Clauses}, Config) ->
     case callback_function(Function, Arity, Config) of
         {'skip', Config1} -> Config1;
-        {'ok', Config1} -> process_clauses(Function, Clauses, Config1)
+        {'ok', Config1} ->
+            process_clauses(Function, Clauses, Config1)
     end.
 
 process_clauses(Function, Clauses, Config0) ->
-    lists:foldl(fun(Clause, ConfigAcc) ->  process_clause(Clause, ConfigAcc, Function) end
+    lists:foldl(fun(Clause, ConfigAcc) -> process_clause(Clause, ConfigAcc, Function) end
                ,Config0
                ,Clauses
                ).
 
 process_clause(?CLAUSE(Args, Guards, Expressions), Config0, Function) ->
-    process_expressions(Args
-                        ++ lists:flatten(Guards)
-                        ++ Expressions
-                       ,callback_clause(Args, Guards, Config0, Function)
-                       ).
+    case callback_clause(Args, Guards, Config0, Function) of
+        {'skip', Config1} -> Config1;
+        {'ok', Config1} ->
+            process_expressions(Args
+                                ++ lists:flatten(Guards)
+                                ++ Expressions
+                               ,Config1
+                               )
+    end.
 
 process_expressions(Expressions, Config0) ->
     lists:foldl(fun process_expression/2
@@ -433,6 +451,9 @@ callback_clause(Args
                  }=Config0
                ,Function
                ) when is_function(ClauseFun, 4) ->
-    Config0#{'accumulator' => ClauseFun(Function, Args, Guards, Acc)};
+    case ClauseFun(Function, Args, Guards, Acc) of
+        {'skip', Acc1} -> {'skip', Config0#{'accumulator' => Acc1}};
+        Acc1 -> {'ok', Config0#{'accumulator' => Acc1}}
+    end;
 callback_clause(_Args, _Guards, Config, _Function) ->
-    Config.
+    {'ok', Config}.

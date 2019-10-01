@@ -1,0 +1,16 @@
+{
+    "_id": "_design/skels",
+    "kazoo": {
+        "view_map": [
+            {
+                "classification": "account"
+            }
+        ]
+    },
+    "language": "javascript",
+    "views": {
+        "crossbar_listing": {
+            "map": "function(doc) { if(doc.pvt_type != 'skel' || doc.pvt_deleted) return; emit(doc._id, null);}"
+        }
+    }
+}

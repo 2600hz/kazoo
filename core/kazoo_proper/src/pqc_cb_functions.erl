@@ -31,91 +31,38 @@
 
 -spec summary(pqc_cb_api:state(), kz_term:ne_binary()) -> pqc_cb_api:response().
 summary(API, AccountId) ->
-    Expectations = [#expectation{response_codes = [200]}],
-    pqc_cb_api:make_request(Expectations
-                           ,fun kz_http:get/2
-                           ,functions_url(AccountId)
-                           ,pqc_cb_api:request_headers(API)
-                           ).
+    pqc_cb_crud:summary(API, functions_url(AccountId)).
 
 -spec create(pqc_cb_api:state(), kz_term:ne_binary(), kzd_functions:doc()) -> pqc_cb_api:response().
 create(API, AccountId, FunctionJObj) ->
-    URL = functions_url(AccountId),
-
-    Expectations = [#expectation{response_codes = [201]
-                                ,response_headers = [{"content-type", "application/json"}]
-                                }
-                   ],
-
     Envelope = pqc_cb_api:create_envelope(FunctionJObj),
-
-    pqc_cb_api:make_request(Expectations
-                           ,fun kz_http:put/3
-                           ,URL
-                           ,pqc_cb_api:request_headers(API)
-                           ,kz_json:encode(Envelope)
-                           ).
+    pqc_cb_crud:create(API, functions_url(AccountId), Envelope).
 
 -spec fetch(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 fetch(API, AccountId, FunctionId) ->
-    Expectations = [#expectation{response_codes = [200]}],
-
-    pqc_cb_api:make_request(Expectations
-                           ,fun kz_http:get/2
-                           ,function_url(AccountId, FunctionId)
-                           ,pqc_cb_api:request_headers(API)
-                           ).
+    pqc_cb_crud:fetch(API, function_url(AccountId, FunctionId)).
 
 -spec update(pqc_cb_api:state(), kz_term:ne_binary(), kzd_function:doc()) -> pqc_cb_api:response().
 update(API, AccountId, FunctionJObj) ->
-    URL = function_url(AccountId, kz_doc:id(FunctionJObj)),
-
-    Expectations = [#expectation{response_codes = [200]
-                                ,response_headers = [{"content-type", "application/json"}]
-                                }
-                   ],
-
     Envelope = pqc_cb_api:create_envelope(FunctionJObj),
-
-    pqc_cb_api:make_request(Expectations
-                           ,fun kz_http:post/3
-                           ,URL
-                           ,pqc_cb_api:request_headers(API)
-                           ,kz_json:encode(Envelope)
-                           ).
+    pqc_cb_crud:update(API, function_url(AccountId, kz_doc:id(FunctionJObj)), Envelope).
 
 -spec patch(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> pqc_cb_api:response().
 patch(API, AccountId, FunctionId, PatchJObj) ->
-    URL = function_url(AccountId, FunctionId),
-
-    Expectations = [#expectation{response_codes = [200]}],
-
     Envelope = pqc_cb_api:create_envelope(PatchJObj),
-
-    pqc_cb_api:make_request(Expectations
-                           ,fun kz_http:patch/3
-                           ,URL
-                           ,pqc_cb_api:request_headers(API)
-                           ,kz_json:encode(Envelope)
-                           ).
+    pqc_cb_crud:patch(API, function_url(AccountId, FunctionId), Envelope).
 
 -spec delete(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 delete(API, AccountId, FunctionId) ->
-    URL = function_url(AccountId, FunctionId),
-    Expectations = [#expectation{response_codes = [200]}],
-    pqc_cb_api:make_request(Expectations
-                           ,fun kz_http:delete/2
-                           ,URL
-                           ,pqc_cb_api:request_headers(API)
-                           ).
+    pqc_cb_crud:delete(API, function_url(AccountId, FunctionId)).
 
 -spec functions_url(kz_term:ne_binary()) -> string().
 functions_url(AccountId) ->
-    string:join([pqc_cb_accounts:account_url(AccountId), "functions"], "/").
+    pqc_cb_crud:collection_url(AccountId, <<"functions">>).
 
 -spec function_url(kz_term:ne_binary(), kz_term:ne_binary()) -> string().
 function_url(AccountId, FunctionId) ->
-    string:join([functions_url(AccountId), kz_term:to_list(FunctionId)], "/").
+    pqc_cb_crud:entity_url(AccountId, <<"functions">>, FunctionId).
 
 -spec seq() -> 'ok'.
 seq() ->

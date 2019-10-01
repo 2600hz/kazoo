@@ -16,6 +16,11 @@ paths:
       parameters:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/skels'
       responses:
         200:
           description: Successful operation
@@ -53,6 +58,11 @@ paths:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
         - $ref: '../oas3-parameters.yml#/THING'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/skels'
       responses:
         200:
           description: Successful operation
@@ -65,6 +75,11 @@ paths:
         - $ref: '../oas3-parameters.yml#/auth_token_header'
         - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
         - $ref: '../oas3-parameters.yml#/THING'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/skels'
       responses:
         200:
           description: Successful operation

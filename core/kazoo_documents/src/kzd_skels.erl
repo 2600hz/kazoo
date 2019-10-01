@@ -7,7 +7,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kzd_skel).
+-module(kzd_skels).
 
 -export([new/0]).
 
@@ -17,8 +17,11 @@
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
--define(SCHEMA, <<"skel">>).
+-define(SCHEMA, <<"skels">>).
+-define(TYPE, <<"skel">>).
 
 -spec new() -> doc().
 new() ->
-    kz_json_schema:default_object(?SCHEMA).
+    kz_doc:set_type(kz_json_schema:default_object(?SCHEMA)
+                   ,?TYPE
+                   ).
