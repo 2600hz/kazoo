@@ -12,8 +12,8 @@ fi
 #    CORE_IDENTITY='master'
 #fi
 ## instead of this
-if [[ ! $BASE_BRANCH ]]; then
-    BASE_BRANCH='master'
+if [[ -z $BASE_BRANCH ]]; then
+    BASE_BRANCH='origin/master'
 fi
 
 cd $KAZOO_ROOT
