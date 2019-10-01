@@ -12,6 +12,8 @@ all: compile
 
 compile: compile-autogen $(ERL_FILES)
 
+compile-test: compile-autogen $(ERL_FILES)
+
 compile-autogen: $(addsuffix -compile,$(SRC_FILES))
 
 clean: clean-autogen
