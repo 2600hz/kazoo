@@ -5,17 +5,26 @@ if [ ! -d $KAZOO_ROOT ]; then
     git clone https://github.com/2600hz/kazoo $KAZOO_ROOT
 fi
 
-if [[ $BASE_BRANCH != "origin/master" ]]; then
-    CORE_IDENTITY=`curl https://api.github.com/repos/2600hz/kazoo/git/refs/tags | grep "refs" | sed 's|[^0-9\.]||g' | sort --version-sort | grep "${BASE_BRANCH#origin/}" | tail -1`
-else
-    CORE_IDENTITY='master'
+## TODO: when stable core is ready use this
+#if [[ $BASE_BRANCH != "origin/master" ]]; then
+#    CORE_IDENTITY=`curl https://api.github.com/repos/2600hz/kazoo/git/refs/tags | grep "refs" | sed 's|[^0-9\.]||g' | sort --version-sort | grep "${BASE_BRANCH#origin/}" | tail -1`
+#else
+#    CORE_IDENTITY='master'
+#fi
+## instead of this
+if [[ ! $BASE_BRANCH ]]; then
+    BASE_BRANCH='master'
 fi
 
 cd $KAZOO_ROOT
 
-echo resetting kazoo-core to $CORE_IDENTITY
+## TODO: when stable core is ready use this
+#echo resetting kazoo-core to $CORE_IDENTITY
+#git fetch --prune
+#git checkout $CORE_IDENTITY
+
 git fetch --prune
-git checkout $CORE_IDENTITY
+git checkout $BASE_BRANCH
 
 if [ ! -d $APP_PATH ]; then
     echo adding submodule to $KAZOO_ROOT
