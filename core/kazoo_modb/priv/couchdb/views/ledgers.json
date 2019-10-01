@@ -70,6 +70,8 @@
                 "  var ledgersObj = {};",
                 "  ledgersObj[service] = {",
                 "    'amount': amount,",
+                "    'description': doc.description,",
+                "    'timestamp': doc.period.start,",
                 "    'usage': doc.usage || {}",
                 "  };",
                 "  emit(doc.account.id, {",
