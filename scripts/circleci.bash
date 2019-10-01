@@ -23,6 +23,7 @@ cd $KAZOO_ROOT
 #git fetch --prune
 #git checkout $CORE_IDENTITY
 
+echo resetting kazoo-core to $BASE_BRANCH
 git fetch --prune
 git checkout $BASE_BRANCH
 
