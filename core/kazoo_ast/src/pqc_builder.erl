@@ -18,6 +18,8 @@
 -include_lib("kazoo_ast/src/kz_ast.hrl").
 -include_lib("kazoo_web/include/kazoo_web.hrl").
 
+-define(DOLLAR_SIGN, 36). % formatter (at least in CI) still barfs on $ in regex
+
 -type acc() :: {{module(), atom(), arity()}, dict:dict()}.
 
 -define(CONFIG, [{'after_module', fun print_dot/2}
@@ -264,7 +266,7 @@ singular('cb_connectivity') -> <<"connectivity">>;
 singular(Module) -> singular(kz_term:to_binary(Module)).
 
 maybe_remove_plural(<<Endpoint/binary>>) ->
-    case re:replace(Endpoint, <<"s$">>, <<>>) of
+    case re:replace(Endpoint, <<"s", ?DOLLAR_SIGN>>, <<>>) of
         [Singular, _] -> Singular;
         Endpoint -> Endpoint
     end.
