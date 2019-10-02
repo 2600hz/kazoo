@@ -522,7 +522,7 @@ authorized(JObj) ->
 
 -spec insert_authorized(kz_json:object()) -> 'ok'.
 insert_authorized(JObj) ->
-    Channel = #channel{call_id=CallId}=from_jobj(JObj),
+    Channel = #channel{call_id=CallId} = from_jobj(JObj),
     ets:insert(?TAB, Channel),
     lager:debug("inserted authorized channel ~s", [CallId]).
 
@@ -649,19 +649,28 @@ handle_info({'synchronize_channels', _}, State) ->
 handle_info(?HOOK_EVT(_, <<"CHANNEL_CREATE">>, JObj), State) ->
     %% insert_new keeps a CHANNEL_CREATE from overriding an entry from
     %% an auth_resp BUT an auth_resp CAN override a CHANNEL_CREATE
-    Channel = #channel{call_id=CallId}=from_jobj(JObj),
-    lager:debug("inserting new channel ~s", [CallId]),
-    _ = ets:insert_new(?TAB, Channel),
+    Channel = #channel{call_id=CallId} = from_jobj(JObj),
+
+    case ets:insert_new(?TAB, Channel) of
+        'true' -> lager:debug("inserted new channel ~s", [CallId]);
+        'false' -> lager:debug("channel ~s already exists in cache", [CallId])
+    end,
+
     {'noreply', State};
 handle_info(?HOOK_EVT(_, <<"CHANNEL_ANSWER">>, JObj), State) ->
     CallId = kz_call_event:call_id(JObj),
     Props = [{#channel.answered_timestamp, kz_time:now_s()}],
-    lager:info("updating ~s with answered timestamp", [CallId]),
-    _ = ets:update_element(?TAB, CallId, Props),
+
+    case ets:update_element(?TAB, CallId, Props) of
+        'true' -> lager:info("updated ~s with answered timestamp", [CallId]);
+        'false' -> lager:debug("missing channel ~s, failed to update with answered timestamp", [CallId])
+    end,
+
     {'noreply', State};
 handle_info(?HOOK_EVT(_, <<"CHANNEL_DESTROY">>, JObj), State) ->
     case ets:lookup(?TAB, kz_api:call_id(JObj)) of
         [] -> 'ok';
+        [#channel{destroyed='true'}] -> 'ok';
         [#channel{call_id=CallId}] ->
             lager:debug("noting channel ~s is destroyed", [CallId]),
             ets:update_element(?TAB, CallId, [{#channel.destroyed, 'true'}
@@ -673,6 +682,7 @@ handle_info(?HOOK_EVT(_, <<"CHANNEL_BRIDGE">>, _JObj), State) ->
     {'noreply', State};
 handle_info('cleanup', State) ->
     _P = kz_util:spawn(fun delete_destroyed_channels/0),
+    lager:debug("cleaning up destroyed channels in ~p", [_P]),
     {'noreply', start_cleanup_timer(State)};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
