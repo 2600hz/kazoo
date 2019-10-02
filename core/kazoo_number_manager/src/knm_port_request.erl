@@ -445,24 +445,30 @@ get_user_name(AuthAccountId, UserId) ->
                            {'ok', kz_json:object()} |
                            {'error', any()}.
 assign_to_app(Number, NewApp, JObj) ->
-    case kz_json:get_value([?NUMBERS_KEY, Number, ?USED_BY_KEY], JObj) of
+    Numbers = kzd_port_requests:numbers(JObj),
+    NumObj = kz_json:get_json_value(Number, Numbers),
+    lager:debug("assigning number ~s in port request ~s from ~p to ~s"
+               ,[Number, kz_doc:id(JObj), NumObj, NewApp]
+               ),
+    assign_to_app(Number, NewApp, NumObj, JObj).
+
+assign_to_app(_Number, _NewApp, 'undefined', _JObj) ->
+    {'error', 'not_found'};
+assign_to_app(Number, NewApp, NumObj, JObj) ->
+    case kz_json:get_value(?USED_BY_KEY, NumObj) of
         NewApp -> {'ok', JObj};
         _OldApp ->
-            NumberObj = kz_json:get_value([?NUMBERS_KEY, Number], JObj),
-            lager:debug("assigning number ~s in port request ~s from ~p to ~s"
-                       ,[Number, kz_doc:id(JObj), NumberObj, NewApp]
-                       ),
-            NewNumberJObj = build_number_used_by(NewApp, NumberObj),
-            save_doc(kz_json:set_value([?NUMBERS_KEY, Number], NewNumberJObj, JObj))
+            NewNumJObj = kz_json:set_value(Number, build_number_used_by(NewApp, NumObj), kz_json:new()),
+            lager:debug("set new number app ~p", [NewNumJObj]),
+            save_doc(kzd_port_requests:set_numbers(JObj, NewNumJObj))
     end.
 
 -spec build_number_used_by(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 build_number_used_by('undefined', NumberObj) ->
     kz_json:delete_key(?USED_BY_KEY, NumberObj);
 build_number_used_by(NewApp, NumberObj) ->
-    kz_json:from_list(
-      props:filter_empty([{?USED_BY_KEY, NewApp} | kz_json:to_proplist(NumberObj)])
-    ).
+    kz_json:set_value(?USED_BY_KEY, NewApp, NumberObj).
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
