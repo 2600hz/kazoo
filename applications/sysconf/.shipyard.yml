@@ -1,0 +1,21 @@
+---
+name: kazoo-application-sysconf
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-sysconf
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-sysconf
+    summary: Kazoo core application
+    description: |
+      Provides AMQP-accessible interface to system configuration data
+    app_name: sysconf
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

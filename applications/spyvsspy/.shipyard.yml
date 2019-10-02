@@ -1,0 +1,21 @@
+---
+name: kazoo-application-spyvsspy
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: related
+    branch: master
+    package: kazoo-application-spyvsspy
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-spyvsspy
+    summary: Kazoo core application
+    description: |
+      Provides eavesdrop/whisper/barge capabilities for ACDc
+    app_name: spyvsspy
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://github.com/kazoo-community/kazoo-spyvsspy
+    vendor: Kazoo-Community

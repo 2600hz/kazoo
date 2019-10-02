@@ -1,0 +1,21 @@
+---
+name: kazoo-application-crossbar
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-crossbar
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-crossbar
+    summary: Kazoo core application
+    description: |
+      KAZOO REST API server
+    app_name: crossbar
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

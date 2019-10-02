@@ -1,0 +1,22 @@
+---
+name: kazoo-application-pivot
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-pivot
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-pivot
+    summary: Kazoo core application
+    description: |
+      Provides capabilities for developers to control what callflow is run
+      dynamically, on a per-call basis.
+    app_name: pivot
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

@@ -21,6 +21,7 @@ endif
 CHANGED_SWAGGER ?= $(shell git --no-pager diff --name-only HEAD $(BASE_BRANCH) -- applications/crossbar/priv/api/swagger.json)
 CHANGED_ERL=$(filter %.hrl %.erl %.escript,$(CHANGED))
 CHANGED_JSON=$(filter %.json,$(CHANGED))
+CHANGED_YML=$(filter %.yml,$(CHANGED))
 
 # You can override this when calling make, e.g. make JOBS=1
 # to prevent parallel builds, or make JOBS="8".
@@ -55,6 +56,7 @@ changed:
 	@echo "changed: $(CHANGED)"
 	@echo "changed ERL: $(CHANGED_ERL)"
 	@echo "changed JSON: $(CHANGED_JSON)"
+	@echo "changed YML: $(CHANGED_YML)"
 
 changed_swagger:
 	@echo "$(CHANGED_SWAGGER)"

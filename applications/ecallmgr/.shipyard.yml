@@ -1,0 +1,23 @@
+---
+name: kazoo-application-ecallmgr
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-ecallmgr
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-ecallmgr
+    summary: Kazoo core application
+    description: |
+      KAZOO interface to FreeSWITCH, providing the clustering logic over
+      FreeSWITCH to present a single logical switch to the higher levels
+      of KAZOO.
+    app_name: ecallmgr
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

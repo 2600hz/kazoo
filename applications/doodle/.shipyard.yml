@@ -1,0 +1,21 @@
+---
+name: kazoo-application-doodle
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: related
+    branch: master
+    package: kazoo-application-doodle
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-doodle
+    summary: Kazoo core application
+    description: |
+      Provides SMS routing capabilities (similar to callflows for calls)
+    app_name: doodle
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

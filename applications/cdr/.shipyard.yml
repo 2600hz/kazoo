@@ -1,0 +1,22 @@
+---
+name: kazoo-application-cdr
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-cdr
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-cdr
+    summary: Kazoo core application
+    description: |
+      Responsible for receving CDR events off the AMQP bus and inserting the CDR
+      into the database (after some data munging).
+    app_name: cdr
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

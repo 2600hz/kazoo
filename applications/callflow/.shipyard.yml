@@ -1,0 +1,21 @@
+---
+name: kazoo-application-callflow
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-callflow
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-callflow
+    summary: Kazoo core application
+    description: |
+      Executes the KAZOO Callflow JSON tree on calls
+    app_name: callflow
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

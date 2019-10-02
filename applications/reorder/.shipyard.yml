@@ -1,0 +1,22 @@
+---
+name: kazoo-application-reorder
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-reorder
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-reorder
+    summary: Kazoo core application
+    description: |
+      Provides capabilities for handling numbers unassigned to accounts or
+      callflows
+    app_name: reorder
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

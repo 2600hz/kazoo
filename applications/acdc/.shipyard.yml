@@ -1,0 +1,21 @@
+---
+name: kazoo-application-acdc
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-acdc
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-acdc
+    summary: Automatic Call Distributor commander
+    description: |
+      ACDc is a community-supported call queue application.
+    app_name: acdc
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://github.com/kazoo-community/kazoo-acdc
+    vendor: Kazoo-Community

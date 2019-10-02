@@ -1,0 +1,21 @@
+---
+name: kazoo-application-trunkstore
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-trunkstore
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-trunkstore
+    summary: Kazoo core application
+    description: |
+      Provides SIP trunking services
+    app_name: trunkstore
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

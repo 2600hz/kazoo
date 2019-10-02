@@ -1,0 +1,22 @@
+---
+name: kazoo-application-fax
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: required
+    branch: master
+    package: kazoo-application-fax
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-fax
+    summary: Kazoo core application
+    description: |
+      Provides fax-related functionality such as receiving faxes, scheduling
+      (and retrying) sending faxes, and providing email->fax services.
+    app_name: fax
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

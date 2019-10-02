@@ -2,7 +2,7 @@ version: 2
 
 workflows:
   version: 2
-  build-analyze-run:
+  build-branch:
     jobs:
       - setup
       - build_deps:
@@ -26,6 +26,94 @@ workflows:
       - release:
           requires:
             - build
+      - build_centos7:
+          requires:
+            - build
+            - build_deps
+            - eunit_tests
+            - checks
+            - docs
+            - analyze
+            - release
+
+  build_release:
+    jobs:
+      - setup:
+          filters:
+             tags:
+               only: /^\d+\.\d+\.\d+$/
+             branches:
+               ignore: /.*/
+      - build_deps:
+          filters:
+            tags:
+              only: /^\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
+          requires:
+            - setup
+      - build:
+          filters:
+            tags:
+              only: /^\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
+          requires:
+            - build_deps
+      - eunit_tests:
+         filters:
+           tags:
+             only: /^\d+\.\d+\.\d+$/
+           branches:
+             ignore: /.*/
+         requires:
+           - build_deps
+      - checks:
+          filters:
+             tags:
+               only: /^\d+\.\d+\.\d+$/
+             branches:
+               ignore: /.*/
+          requires:
+            - build
+      - docs:
+          filters:
+            tags:
+              only: /^\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
+          requires:
+            - build
+      - analyze:
+          filters:
+            tags:
+              only: /^\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
+          requires:
+            - build
+      - release:
+          filters:
+            tags:
+              only: /^\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
+          requires:
+            - build
+      - build_centos7:
+          filters:
+            tags:
+              only: /^\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
+          requires:
+            - build
+            - build_deps
+            - eunit_tests
+            - checks
+            - docs
+            - analyze
+            - release
 
 defaults: &defaults
   docker:
@@ -38,48 +126,58 @@ defaults: &defaults
     BASH_ENV: "/home/circleci/2600hz/.bashrc"
 
 jobs:
-
-  # setup build environment sequence
   setup:
     <<: *defaults
     steps:
       - checkout
-      # setup enviroment variable
-      - run: |
-          BAZE="$(cat "${HOME}/2600hz/the_app/.base_branch")"
-          if [ -n "$BAZE" ]; then
-            echo -e "\n\nexport BASE_BRANCH=$BAZE" >> $BASH_ENV
-          else
-            echo "add base branch name of main Kazoo repo (like origin/master) to '.base_branch' in your application root directory"
-            exit 1
-          fi
-      - run: |
-          APP_DASH=${CIRCLE_PROJECT_REPONAME#kazoo-}
-          APP=${APP_DASH/-/_}
-          echo -e "export KAZOO_APP=${APP}\n" >> $BASH_ENV
-          echo -e "export KAZOO_ROOT=${HOME}/2600hz/kazoo" >> $BASH_ENV
-          echo -e "export APP_PATH=applications/${APP}\n\n" >> $BASH_ENV
-      - run: |
-          echo ":: behold, running ci tests for application: $KAZOO_APP"
-          echo "KAZOO_ROOT: $KAZOO_ROOT"
-          echo "APP_PATH: $APP_PATH"
-          echo "BASE_BRANCH: $BASE_BRANCH"
-      - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
-
-      # setup kazoo source code
-      - run: |
-          if [ ! -d ${KAZOO_ROOT} ]; then
-            git clone https://github.com/2600hz/kazoo $KAZOO_ROOT
-          fi
-      - run: ${KAZOO_ROOT}/scripts/circleci.bash
-      - run: echo -e 'export CHANGED="$(echo $(for file in `find ${KAZOO_ROOT}/applications/${KAZOO_APP} -name "*.[e|h]rl"`; do readlink -e $file; done | xargs echo))"' >> $BASH_ENV
-      - run: echo "$CHANGED"
+      - run:
+          name: Setting up core repository
+          command: |
+            BAZE="$(cat "${HOME}/2600hz/the_app/.base_branch")"
+            if [ -n "$BAZE" ]; then
+              echo -e "\n\nexport BASE_BRANCH=$BAZE" >> $BASH_ENV
+            else
+              echo "add base branch name of main Kazoo repo (like origin/master) to '.base_branch' in your application root directory"
+              exit 1
+            fi
+      - run:
+          name: Exporting build environment variables
+          command: |
+            APP_DASH=${CIRCLE_PROJECT_REPONAME#kazoo-}
+            APP=${APP_DASH/-/_}
+            echo -e "export KAZOO_APP=${APP}\n" >> $BASH_ENV
+            echo -e "export KAZOO_ROOT=${HOME}/2600hz/kazoo" >> $BASH_ENV
+            echo -e "export APP_PATH=applications/${APP}\n\n" >> $BASH_ENV
+      - run:
+          name: Displaying environment information
+          command: |
+            echo ":: behold, running ci tests for application: $KAZOO_APP"
+            echo "KAZOO_ROOT: $KAZOO_ROOT"
+            echo "APP_PATH: $APP_PATH"
+            echo "BASE_BRANCH: $BASE_BRANCH"
+      - run:
+          name: Creating artifacts directory
+          command: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
+      - run:
+          name: Cloning core repository
+          command : |
+            if [ ! -d ${KAZOO_ROOT} ]; then
+              git clone https://github.com/2600hz/kazoo $KAZOO_ROOT
+            fi
+      - run:
+          name: Running core setup script
+          command: ${KAZOO_ROOT}/scripts/circleci.bash
+      - run:
+          name: Generating change list for application
+          command: echo -e 'export CHANGED="$(for file in `find ${KAZOO_ROOT}/applications/${KAZOO_APP} -name "*.[e|h]rl"`; do readlink -e $file; done | xargs echo)"' >> $BASH_ENV
+      - run:
+          name: Displaying changed files
+          command: echo $CHANGED
       - persist_to_workspace:
           root: ~/
           paths:
             - 2600hz
 
-  # build deps sequence
   build_deps:
     <<: *defaults
     steps:
@@ -87,19 +185,22 @@ jobs:
           at: ~/
       - restore_cache:
           keys:
-            - deps-erl21-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
-      - run: |
-          deps_hash=$(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1)
-          if [ x"$(cat $KAZOO_ROOT/.git/.kz_deps_hash)" = x"$deps_hash" ]; then
-            touch "$KAZOO_ROOT/make/.deps.mk.$deps_hash"
-          fi
-      - run: echo -n $(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1) > "$KAZOO_ROOT/.git/.kz_deps_hash"
-      - run: |
-          md5sum $KAZOO_ROOT/make/deps.mk || true
-          ls -al $KAZOO_ROOT/make || true
-      - run: make -C ${KAZOO_ROOT} deps
+            - deps-21-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+      - run:
+          name: Calculating dependency hash
+          command: |
+            deps_hash=$(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1)
+            if [ x"$(cat $KAZOO_ROOT/.git/.kz_deps_hash)" = x"$deps_hash" ]; then
+              touch "$KAZOO_ROOT/make/.deps.mk.$deps_hash"
+            fi
+            echo -n $(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1) > "$KAZOO_ROOT/.git/.kz_deps_hash"
+            md5sum $KAZOO_ROOT/make/deps.mk || true
+            ls -al $KAZOO_ROOT/make || true
+      - run:
+          name: Making deps
+          command: make -C ${KAZOO_ROOT} deps
       - save_cache:
-          key: deps-erl21-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+          key: deps-21-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
           paths:
             - ~/2600hz/kazoo/deps/
             - ~/2600hz/kazoo/.git/.kz_deps_hash
@@ -108,7 +209,6 @@ jobs:
           paths:
             - 2600hz
 
-  # build sequence
   build:
     <<: *defaults
     steps:
@@ -116,17 +216,17 @@ jobs:
           at: ~/
       - restore_cache:
           keys:
-            - deps-erl21-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+            - deps-21-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
       - run: |
           md5sum $KAZOO_ROOT/make/deps.mk || true
           ls -al $KAZOO_ROOT/make || true
+      - run: make -C ${KAZOO_ROOT} fmt
       - run: JOBS="2" make -C ${KAZOO_ROOT}
       - persist_to_workspace:
           root: ~/
           paths:
             - 2600hz
 
-  # eunit_tests sequence
   eunit_tests:
     <<: *defaults
     steps:
@@ -134,40 +234,76 @@ jobs:
           at: ~/
       - restore_cache:
           keys:
-            - deps-erl21-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
-      - run: |
-          md5sum $KAZOO_ROOT/make/deps.mk || true
-          ls -al $KAZOO_ROOT/make || true
-      - run: ERLC_OPTS='-DPROPER' make -C ${KAZOO_ROOT}/core compile-test
-      - run: make -C "$KAZOO_ROOT/$APP_PATH" eunit
+            - deps-21-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+      - run:
+          name: Displaying deps hash
+          command: |
+            md5sum $KAZOO_ROOT/make/deps.mk || true
+            ls -al $KAZOO_ROOT/make || true
+      - run:
+          name: Compiling for unit test environment
+          command: ERLC_OPTS='-DPROPER' make -C ${KAZOO_ROOT}/core compile-test
+      - run:
+          name: Running Eunit tests
+          command: make -C "$KAZOO_ROOT/$APP_PATH" eunit
 
-  # code checks sequence
   checks:
     <<: *defaults
     steps:
       - attach_workspace:
           at: ~/
-      - run: TO_FMT="$CHANGED" make -C ${KAZOO_ROOT} fmt
-      - run: make -C ${KAZOO_ROOT} code_checks
-      - run: make -C ${KAZOO_ROOT} app_applications
-      - run: make -C ${KAZOO_ROOT} sup_completion
-      - run: make -C ${KAZOO_ROOT} xref
-      - run: make -C ${KAZOO_ROOT} elvis
+      - run:
+          name: Running code formatter
+          command: make -C ${KAZOO_ROOT} fmt
+      - run:
+          name: Running code checks
+          command: make -C ${KAZOO_ROOT} code_checks
+      - run:
+          name: Running additional code style checks
+          command: ${KAZOO_ROOT}/scripts/code_checks.bash $CHANGED
+      - run:
+          name: Checking app source file
+          command: make -C ${KAZOO_ROOT} app_applications
+      - run:
+          name: Generating sup bash completion file
+          command: make -C ${KAZOO_ROOT} sup_completion
+      - run:
+          name: Running xref check
+          command: make -C ${KAZOO_ROOT} xref
+      - run:
+          name: Running Elvis code style check
+          command: make -C ${KAZOO_ROOT} elvis
+      - run:
+          name: Checking for unstaged files
+          command: ${KAZOO_ROOT}/scripts/check-unstaged.bash
 
-  # docs sequence
   docs:
     <<: *defaults
     steps:
       - attach_workspace:
           at: ~/
-      - run: make -C ${KAZOO_ROOT} apis
-      - run: make -C ${KAZOO_ROOT} validate-js
-      - run: make -C ${KAZOO_ROOT} validate-schemas
-      - run: make -C ${KAZOO_ROOT} docs || true
-      - run: ${KAZOO_ROOT}/scripts/state-of-docs.sh || true
-      - run: ${KAZOO_ROOT}/scripts/state-of-edoc.escript
+      - run:
+          name: Generating APIs
+          command: make -C ${KAZOO_ROOT} apis
+      - run:
+          name: Validating CouchDB view files
+          command: make -C ${KAZOO_ROOT} validate-js
+      - run:
+          name: Validating schemas
+          command: make -C ${KAZOO_ROOT} validate-schemas
+      - run:
+          name: Generating docs
+          command: make -C ${KAZOO_ROOT} docs || true
+      - run:
+          name: Checking doc states
+          command: ${KAZOO_ROOT}/scripts/state-of-docs.sh || true
+      - run:
+          name: Validating EDoc states
+          command: ${KAZOO_ROOT}/scripts/state-of-edoc.escript
+      - run:
+          name: Checking for unstaged files
+          command: ${KAZOO_ROOT}/scripts/check-unstaged.bash
 
-  # analyze sequence
   analyze:
     <<: *defaults
     steps:
@@ -175,33 +311,173 @@ jobs:
           at: ~/
       - restore_cache:
           keys:
-            - plt-erl21-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
-      - run: TO_DIALYZE="$CHANGED" make -C ${KAZOO_ROOT} build-plt dialyze
+            - plt-21-v3.1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+      - run:
+          name: Dailyzing changed Erlang files
+          command: TO_DIALYZE="$(echo $CHANGED)" make -C ${KAZOO_ROOT} build-plt dialyze
       - save_cache:
-          key: plt-erl21-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+          key: plt-21-v3.1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
           paths:
             - ~/2600hz/kazoo/.kazoo.plt
 
-  # release sequence
   release:
     <<: *defaults
     docker:
       - image: offical2600hz/circleci:21.3.8
-      - image: couchdb:2.1.1
-      - image: rabbitmq:3.7
+      - image: couchdb:2.3.1
+      - image: 2600hz/rabbitmq
     steps:
       - attach_workspace:
           at: ~/
-      - run: make -C ${KAZOO_ROOT} build-ci-release
-      - run: ${KAZOO_ROOT}/scripts/check-unstaged.bash
-      - run: KAZOO_CONFIG=${KAZOO_ROOT}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make -C ${KAZOO_ROOT} release
-      - run: cp ${KAZOO_ROOT}/rel/ci.relx.config $CIRCLE_ARTIFACTS/
-
-      - run: find ${KAZOO_ROOT}/_rel/kazoo/releases -name kazoo.rel -exec cp {} $CIRCLE_ARTIFACTS/ \;
+      - run:
+          name: Building CI release
+          command: make -C ${KAZOO_ROOT} build-ci-release
+      - run:
+          name: Checking for unstaged files
+          command: ${KAZOO_ROOT}/scripts/check-unstaged.bash
+      - run:
+          name: Running Kazoo release
+          command: KAZOO_CONFIG=${KAZOO_ROOT}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make -C ${KAZOO_ROOT} release
+      - run:
+          name: Copying Relx config artifacts
+          command: cp ${KAZOO_ROOT}/rel/ci.relx.config $CIRCLE_ARTIFACTS/
+      - run:
+          name: Copying release artifacts
+          command: find ${KAZOO_ROOT}/_rel/kazoo/releases -name kazoo.rel -exec cp {} $CIRCLE_ARTIFACTS/ \;
       - store_artifacts:
           path: /tmp/circleci-artifacts
-      - run: |
-          if [[ $(grep -c -v -F 'exit with reason shutdown' ${CIRCLE_ARTIFACTS}/log/error.log) -gt 0 ]]; then
-            cat ${CIRCLE_ARTIFACTS}/log/error.log
-            exit 1
-          fi
+      - run:
+          name: Checking for errors in artifacts
+          command: |
+            if [[ $(grep -c -v -F 'exit with reason shutdown' ${CIRCLE_ARTIFACTS}/log/error.log) -gt 0 ]]; then
+              cat ${CIRCLE_ARTIFACTS}/log/error.log
+              exit 1
+            fi
+
+  build_centos7:
+    docker:
+      - image: offical2600hz/kazoo-packager-21:1.0-centos-7
+        user: circleci
+    shell: /bin/bash --login
+    working_directory: /home/circleci/2600hz/the_app
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+      BASH_ENV: "/home/circleci/2600hz/.bashrc"
+      BUILD_ROOT: "/home/circleci/2600hz/packager"
+      CORE_ROOT: "/home/circleci/2600hz/kazoo"
+      BUILD_SOURCES: "/home/circleci/2600hz/packager/SOURCES"
+      BUILD_RPMS: "/home/circleci/2600hz/packager/RPMS"
+      APP_DIR: "/home/circleci/2600hz/the_app"
+    steps:
+      - checkout
+      - run:
+          name: Setting up core repository
+          command: |
+            BAZE="$(cat "${HOME}/2600hz/the_app/.base_branch")"
+            if [ -n "$BAZE" ]; then
+              echo -e "\n\nexport BASE_BRANCH=$BAZE" >> $BASH_ENV
+            else
+              echo "add base branch name of main Kazoo repo (like origin/master) to '.base_branch' in your application root directory"
+              exit 1
+            fi
+      - run:
+          name: Generating build environment variables
+          command: |
+            APP_DASH=${CIRCLE_PROJECT_REPONAME#kazoo-}
+            APP=${APP_DASH/-/_}
+            echo -e "export KAZOO_APP=${APP}\n" >> $BASH_ENV
+            echo -e "export KAZOO_ROOT=${HOME}/2600hz/kazoo" >> $BASH_ENV
+            echo -e "export APP_PATH=applications/${APP}\n\n" >> $BASH_ENV
+      - run:
+          name: Displaying environment information
+          command: |
+            echo ":: behold, running ci tests for application: $KAZOO_APP"
+            echo "KAZOO_ROOT: $KAZOO_ROOT"
+            echo "APP_PATH: $APP_PATH"
+            echo "BASE_BRANCH: $BASE_BRANCH"
+      - run:
+          name: Cloning core repository
+          command: |
+            if [ ! -d ${KAZOO_ROOT} ]; then
+              git clone https://github.com/2600hz/kazoo $KAZOO_ROOT
+            fi
+      - run:
+          name: Running core setup script
+          command: ${KAZOO_ROOT}/scripts/circleci.bash
+      - restore_cache:
+          keys:
+            - deps-centos-21-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+      - run:
+          name: Preparing dependencies for CentOS7
+          command: |
+            deps_hash=$(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1)
+            if [ x"$(cat $KAZOO_ROOT/.git/.kz_deps_hash)" = x"$deps_hash" ]; then
+              touch "$KAZOO_ROOT/make/.deps.mk.$deps_hash"
+            fi
+            echo -n $(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1) > "$KAZOO_ROOT/.git/.kz_deps_hash"
+      - run:
+          name: Making dependencies
+          command: |
+            md5sum $KAZOO_ROOT/make/deps.mk || true
+            ls -al $KAZOO_ROOT/make || true
+            make -C ${KAZOO_ROOT} deps
+      - save_cache:
+          key: deps-centos-21-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+          paths:
+            - ~/2600hz/kazoo/deps/
+            - ~/2600hz/kazoo/.git/.kz_deps_hash
+      - run:
+          name: Generating version info
+          command: |
+            cd $BUILD_ROOT
+            VERSION=$(./version)
+            RELEASE=$(./release)
+            PACKAGE_NAME=$(./package_name)
+            echo "export PACKAGE_NAME=${PACKAGE_NAME}" >> $BASH_ENV
+            echo "export VERSION=${VERSION}" >> $BASH_ENV
+            echo "export RELEASE=${RELEASE}" >> $BASH_ENV
+            PACKAGE_NAME=$(./package_name)
+            echo "export PACKAGE_NAME=${PACKAGE_NAME}" >> $BASH_ENV
+            echo "build version for ${PACKAGE_NAME} version: ${VERSION} release: ${RELEASE}"
+      - run:
+          name: Building release
+          command: |
+            cd $BUILD_ROOT
+            EXPOSURE=$(./exposure)
+            cd $CORE_ROOT
+            if [[ $EXPOSURE == 'private' ]]; then
+                make compile-lean KZ_VERSION=$VERSION.$RELEASE
+            else
+                make all KZ_VERSION=$VERSION.$RELEASE
+            fi
+            make build-release KZ_VERSION=$VERSION.$RELEASE
+      - run:
+          name: Building CHANGELOG and VERSION files
+          command: |
+            cd $BUILD_ROOT
+            ./package_docs
+      - run:
+          name: Preparing source for packaging
+          command: |
+            cd $BUILD_SOURCES
+            echo " - copy build into artifacts"
+            cp -R $KAZOO_ROOT/_rel/kazoo/lib/$KAZOO_APP* $BUILD_SOURCES/
+            echo " - removing files that should not be packaged in the source tar"
+            rm -rf ${BUILD_SOURCES}/.??*
+            rm -rf ${BUILD_SOURCES}/doc*
+            rm -rf ${BUILD_SOURCES}/*.md
+            echo " - creating the source tar"
+            cd $BUILD_ROOT
+            ARTIFACTS_NAME=${PACKAGE_NAME}-${VERSION}
+            mkdir -p ${ARTIFACTS_NAME}
+            cp -r ${BUILD_SOURCES}/* ${ARTIFACTS_NAME}/.
+            tar -cf ${ARTIFACTS_NAME}.tar ${ARTIFACTS_NAME}
+            cp ${ARTIFACTS_NAME}.tar ${BUILD_SOURCES}/.
+      - run:
+          name: Building RPM package
+          command: |
+            cd $BUILD_ROOT
+            ./build
+      - store_artifacts:
+          path: /home/circleci/2600hz/packager/RPMS

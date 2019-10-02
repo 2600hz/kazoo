@@ -1,0 +1,21 @@
+---
+name: kazoo-application-braintree
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: related
+    branch: master
+    package: kazoo-application-braintree
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-braintree
+    summary: Kazoo core application
+    description: |
+      Integration with the Braintree platform
+    app_name: braintree
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://2600hz.org/
+    vendor: 2600Hz

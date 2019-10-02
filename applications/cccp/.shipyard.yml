@@ -1,0 +1,21 @@
+---
+name: kazoo-application-cccp
+base_branch: origin/master
+metapackage:
+  - name: meta-kazoo-applications
+    type: related
+    branch: master
+    package: kazoo-application-cccp
+base_core: kazoo
+template: kazoo-application.spec.tmpl
+package:
+  centos7:
+    name: kazoo-application-cccp
+    summary: Kazoo core application
+    description: |
+      Calling card functionality
+    app_name: cccp
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: https://github.com/kazoo-community/kazoo-cccp
+    vendor: Kazoo-Community
