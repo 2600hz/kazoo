@@ -448,20 +448,21 @@ assign_to_app(Number, NewApp, JObj) ->
     case kz_json:get_value([?NUMBERS_KEY, Number, ?USED_BY_KEY], JObj) of
         NewApp -> {'ok', JObj};
         _OldApp ->
-            lager:debug("assigning number ~s in port request ~s to ~s"
-                       ,[Number, kz_doc:id(JObj), NewApp]
+            NumberObj = kz_json:get_value([?NUMBERS_KEY, Number], JObj),
+            lager:debug("assigning number ~s in port request ~s from ~p to ~s"
+                       ,[Number, kz_doc:id(JObj), NumberObj, NewApp]
                        ),
-            NumberJObj = kz_json:from_list(
-                           props:filter_empty(
-                             [{?USED_BY_KEY, NewApp}
-                              | kz_json:to_proplist(
-                                  kz_json:get_value([?NUMBERS_KEY, Number], JObj)
-                                 )
-                             ])
-                          ),
-            save_doc(kz_json:set_value([?NUMBERS_KEY, Number], NumberJObj, JObj))
+            NewNumberJObj = build_number_used_by(NewApp, NumberObj),
+            save_doc(kz_json:set_value([?NUMBERS_KEY, Number], NewNumberJObj, JObj))
     end.
 
+-spec build_number_used_by(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+build_number_used_by('undefined', NumberObj) ->
+    kz_json:delete_key(?USED_BY_KEY, NumberObj);
+build_number_used_by(NewApp, NumberObj) ->
+    kz_json:from_list(
+      props:filter_empty([{?USED_BY_KEY, NewApp} | kz_json:to_proplist(NumberObj)])
+    ).
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
