@@ -12,8 +12,9 @@
 
 -include("kazoo_template.hrl").
 
--export([compile/2, compile/3,
-         render/2, render/3, render/4
+-export([compile/2, compile/3
+        ,render/2, render_with_options/3
+        ,render/3, render/4, render/5
         ]).
 
 -define(COMPILE_OPTS(Options)
@@ -26,7 +27,6 @@
 -type template() :: nonempty_string() | kz_term:ne_binary().
 
 -type template_result() :: {'ok', iolist() | atom()} |
-                           'ok' |
                            {'error', any()}.
 
 %% copied from erlydtl.erl
@@ -50,7 +50,11 @@
 
 -spec render(atom(), kz_term:proplist()) -> template_result().
 render(Module, TemplateData) ->
-    render_template(Module, TemplateData).
+    render_with_options(Module, TemplateData, []).
+
+-spec render_with_options(atom(), kz_term:proplist(), kz_term:proplist()) -> template_result().
+render_with_options(Module, TemplateData, RenderOpts) ->
+    render_template(Module, TemplateData, RenderOpts).
 
 -spec render(template(), atom(), kz_term:proplist()) -> template_result().
 render(Template, Module, TemplateData) ->
@@ -58,8 +62,12 @@ render(Template, Module, TemplateData) ->
 
 -spec render(template(), atom(), kz_term:proplist(), kz_term:proplist()) -> template_result().
 render(Template, Module, TemplateData, CompileOpts) ->
+    render(Template, Module, TemplateData, CompileOpts, []).
+
+-spec render(template(), atom(), kz_term:proplist(), kz_term:proplist(), kz_term:proplist()) -> template_result().
+render(Template, Module, TemplateData, CompileOpts, RenderOpts) ->
     case compile(Template, Module, CompileOpts) of
-        {'ok', Module} -> render_template(Module, TemplateData);
+        {'ok', Module} -> render_template(Module, TemplateData, RenderOpts);
         {'error', _} = Error -> Error
     end.
 
@@ -96,10 +104,10 @@ compile(Path, Module, CompileOpts) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec render_template(atom(), kz_term:proplist()) -> template_result().
-render_template(Module, TemplateData) ->
+-spec render_template(atom(), kz_term:proplist(), kz_term:proplist()) -> template_result().
+render_template(Module, TemplateData, RenderOpts) ->
     lager:debug("rendering using ~s", [Module]),
-    try Module:render(props:filter_empty(TemplateData)) of
+    try Module:render(props:filter_empty(TemplateData), RenderOpts) of
         {'ok', _IOList}=OK ->
             lager:debug("rendered template successfully"),
             OK;
