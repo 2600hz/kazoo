@@ -171,16 +171,16 @@ jobs:
           at: .
       - restore_cache:
           keys:
-            - deps-erl19-v1-{{ checksum "make/deps.mk" }}
+            - deps-erl19-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
       - run: |
           deps_hash=$(md5sum make/deps.mk | cut -d" " -f1)
           if [ x"$(cat .git/.kz_deps_hash)" = x"$deps_hash" ]; then
-            touch "make/.deps.mk.$deps_hash"
+            touch "~/2600hz/kazoo/make/.deps.mk.$deps_hash"
           fi
       - run: JOBS="2" make
-      - run: echo -n $(md5sum make/deps.mk | cut -d" " -f1) > .git/.kz_deps_hash
+      - run: echo -n $(md5sum ~/2600hz/kazoo/make/deps.mk | cut -d" " -f1) > .git/.kz_deps_hash
       - save_cache:
-          key: deps-erl19-v1-{{ checksum "make/deps.mk" }}
+          key: deps-erl19-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
           paths:
             - deps/
             - .git/.kz_deps_hash
@@ -221,7 +221,7 @@ jobs:
       - run: make xref
       - run: make sup_completion
       - run: make elvis
-      - run: ~/2600hz/kazoo/scripts/check-unstaged.bash
+      - run: ${PWD}/scripts/check-unstaged.bash
 
   docs:
     <<: *defaults
@@ -234,7 +234,7 @@ jobs:
       - run: make docs
       - run: ./scripts/state-of-docs.sh || true
       - run: ./scripts/state-of-edoc.escript
-      - run: ~/2600hz/kazoo/scripts/check-unstaged.bash
+      - run: scripts/check-unstaged.bash
 
   analyze:
     <<: *defaults
