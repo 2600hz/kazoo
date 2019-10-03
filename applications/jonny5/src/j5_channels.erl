@@ -92,11 +92,6 @@
                             ,'federate'
                             ]
                    }
-                  ,{'call', [{'restrict_to', [<<"CHANNEL_DESTROY">>, <<"CHANNEL_DISCONNECTED">>]}
-                            ,'federate'
-                            ]
-
-                   }
                   ]).
 
 -define(RESPONDERS, [{{?MODULE, 'handle_authz_resp'}
@@ -554,6 +549,7 @@ handle_channel_destroy(JObj, _Props) ->
 
     handle_channel_destroy(CallId).
 
+-spec handle_channel_destroy(kz_term:ne_binary()) -> 'ok'.
 handle_channel_destroy(<<CallId/binary>>) ->
     case ets:lookup(?TAB, CallId) of
         [] ->
