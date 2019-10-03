@@ -142,17 +142,7 @@ jobs:
           at: .
       - restore_cache:
           keys:
-            - deps-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
-      - run: 
-          name: Calculating dependency hash
-          command: |
-            deps_hash=$(md5sum make/deps.mk | cut -d" " -f1)
-            if [ x"$(cat .git/.kz_deps_hash)" = x"$deps_hash" ]; then
-              touch "make/.deps.mk.$deps_hash"
-            fi
-            echo -n $(md5sum make/deps.mk | cut -d" " -f1) > ".git/.kz_deps_hash"
-            md5sum make/deps.mk || true
-            ls -al make || true
+            - deps-v3.2-{{ checksum "make/deps.mk" }}
       - run: 
           name: Making deps 
           command: make deps
@@ -160,7 +150,6 @@ jobs:
           key: deps-v3.2-{{ checksum "make/deps.mk" }}
           paths:
             - deps/
-            - .git/.kz_deps_hash
       - persist_to_workspace:
           root: .
           paths:
@@ -175,23 +164,12 @@ jobs:
           keys:
             - deps-v3.2-{{ checksum "make/deps.mk" }}
       - run: 
-          name: Calculating deps hash
-          command: |
-            deps_hash=$(md5sum make/deps.mk | cut -d" " -f1)
-            if [ x"$(cat .git/.kz_deps_hash)" = x"$deps_hash" ]; then
-              touch "make/.deps.mk.$deps_hash"
-            fi
-      - run: 
           name: Compiling the project
           command: JOBS="2" make
-      - run: 
-          name: Updating deps hash
-          command: echo -n $(md5sum make/deps.mk | cut -d" " -f1) > .git/.kz_deps_hash
       - save_cache:
           key: deps-v3.2-{{ checksum "make/deps.mk" }}
           paths:
             - deps/
-            - .git/.kz_deps_hash
       - persist_to_workspace:
           root: .
           paths:
@@ -228,7 +206,7 @@ jobs:
           command: make code_checks
       - run: 
           name: Running additional code checks 
-          command: scripts/code_checks.bash $CHANGED
+          command: scripts/code_checks.bash
       - run: 
           name: Making app applications 
           command: make app_applications
