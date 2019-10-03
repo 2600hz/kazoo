@@ -25,7 +25,6 @@
 -export([authorized/1]).
 -export([handle_authz_resp/2]).
 -export([handle_rate_resp/2]).
--export([handle_channel_destroy/2]).
 
 -export([is_destroyed/1]).
 
@@ -99,9 +98,6 @@
                      }
                     ,{{?MODULE, 'handle_rate_resp'}
                      ,[{<<"rate">>, <<"resp">>}]
-                     }
-                    ,{{?MODULE, 'handle_channel_destroy'}
-                     ,[{<<"call_event">>, <<"*">>}]
                      }
                     ]).
 
@@ -542,23 +538,16 @@ handle_rate_resp(JObj, Props) ->
     Srv = props:get_value('server', Props),
     gen_server:cast(Srv, {'rate_resp', JObj}).
 
--spec handle_channel_destroy(kz_json:object(), kz_term:proplist()) -> 'ok'.
-handle_channel_destroy(JObj, _Props) ->
-    'true' = kapi_call:event_v(JObj),
-    CallId = kz_call_event:call_id(JObj),
-
-    handle_channel_destroy(CallId).
-
 -spec handle_channel_destroy(kz_term:ne_binary()) -> 'ok'.
 handle_channel_destroy(<<CallId/binary>>) ->
     case ets:lookup(?TAB, CallId) of
         [] ->
             _ = ets:insert(?TAB, #channel{call_id=CallId, destroyed='true'}),
             lager:info("no channel ~s in ~p, inserted destroyed marker", [CallId, ?TAB]);
+        [#channel{destroyed='true'}] -> 'ok';
         [#channel{destroyed='false'}] ->
             _ = ets:delete(?TAB, CallId),
-            lager:debug("removed channel ~s from ~p", [CallId, ?TAB]);
-        _ -> 'ok'
+            lager:debug("removed channel ~s from ~p", [CallId, ?TAB])
     end.
 
 %%%=============================================================================
@@ -664,15 +653,7 @@ handle_info(?HOOK_EVT(_, <<"CHANNEL_ANSWER">>, JObj), State) ->
 
     {'noreply', State};
 handle_info(?HOOK_EVT(_, <<"CHANNEL_DESTROY">>, JObj), State) ->
-    case ets:lookup(?TAB, kz_api:call_id(JObj)) of
-        [] -> 'ok';
-        [#channel{destroyed='true'}] -> 'ok';
-        [#channel{call_id=CallId}] ->
-            lager:debug("noting channel ~s is destroyed", [CallId]),
-            ets:update_element(?TAB, CallId, [{#channel.destroyed, 'true'}
-                                             ,{#channel.timestamp, kz_time:now_s()}
-                                             ])
-    end,
+    handle_channel_destroy(kz_api:call_id(JObj)),
     {'noreply', State};
 handle_info(?HOOK_EVT(_, <<"CHANNEL_BRIDGE">>, _JObj), State) ->
     {'noreply', State};
