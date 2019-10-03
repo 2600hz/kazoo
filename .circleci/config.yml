@@ -204,10 +204,10 @@ jobs:
             ls -al make || true
       - run: 
           name: Compiling for unit test enviornment
-          command: ERLC_OPTS='-DPROPER' make -C ${KAZOO_ROOT}/core compile-test
+          command: ERLC_OPTS='-DPROPER' make compile-test
       - run: 
           name: Running Eunit tests
-          command: make -C eunit
+          command: make eunit
 
             
   checks:
