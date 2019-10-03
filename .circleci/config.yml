@@ -221,7 +221,7 @@ jobs:
       - run: make xref
       - run: make sup_completion
       - run: make elvis
-      - run: ./scripts/check-unstaged.bash
+      - run: ~/2600hz/kazoo/scripts/check-unstaged.bash
 
   docs:
     <<: *defaults
@@ -234,7 +234,7 @@ jobs:
       - run: make docs
       - run: ./scripts/state-of-docs.sh || true
       - run: ./scripts/state-of-edoc.escript
-      - run: ./scripts/check-unstaged.bash
+      - run: ~/2600hz/kazoo/scripts/check-unstaged.bash
 
   analyze:
     <<: *defaults
