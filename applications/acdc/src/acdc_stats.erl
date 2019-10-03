@@ -968,7 +968,17 @@ handle_handled_stat(JObj, Props) ->
                 ,{#call_stat.handled_timestamp, kz_json:get_value(<<"Handled-Timestamp">>, JObj)}
                 ,{#call_stat.status, <<"handled">>}
                 ]),
-    update_call_stat(Id, Updates, Props).
+
+    Stat = find_call_stat(Id),
+    case handled_stat_should_update(Stat) of
+        'true' -> update_call_stat(Id, Updates, Props);
+        'false' -> 'ok'
+    end.
+
+-spec handled_stat_should_update(call_stat()) -> boolean().
+                                                % Handle stats where processed came in before handled (hungup quickly after pickup)
+handled_stat_should_update(#call_stat{status= <<"processed">>}) -> 'false';
+handled_stat_should_update(_) -> 'true'.
 
 -spec handle_processed_stat(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_processed_stat(JObj, Props) ->
