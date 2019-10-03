@@ -137,7 +137,7 @@ jobs:
     <<: *defaults
     steps:
       - attach_workspace:
-          at: ~/
+          at: .
       - restore_cache:
           keys:
             - deps-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
@@ -160,9 +160,9 @@ jobs:
             - ~/2600hz/kazoo/deps/
             - ~/2600hz/kazoo/.git/.kz_deps_hash
       - persist_to_workspace:
-          root: ~/
+          root: .
           paths:
-            - 2600hz
+            - .
             
   build:
     <<: *defaults
