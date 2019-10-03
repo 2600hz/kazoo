@@ -317,6 +317,7 @@ jobs:
       KAZOO_ROOT: "/home/circleci/2600hz/kazoo"
       BUILD_SOURCES: "/home/circleci/2600hz/packager/SOURCES"
       BUILD_RPMS: "/home/circleci/2600hz/packager/RPMS"
+      APP_DIR: "/home/circleci/2600hz/kazoo"
     steps:
       - checkout
       - restore_cache:
