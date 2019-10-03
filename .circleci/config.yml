@@ -193,7 +193,7 @@ jobs:
     <<: *defaults
     steps:
       - attach_workspace:
-          at: ~/
+          at: .
       - restore_cache:
           keys:
             - deps-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
