@@ -128,8 +128,8 @@ jobs:
     steps:
       - checkout
       - run: 
-        name: Listing Changes
-        command: make changed
+          name: Listing Changes
+          command: make changed
       - persist_to_workspace:
           root: .
           paths:
@@ -182,7 +182,7 @@ jobs:
           at: .
       - restore_cache:
           keys:
-            - deps-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+            - deps-v3.2-{{ checksum "make/deps.mk" }}
       - run:
           name: Displaying deps hash
           command: |
@@ -258,7 +258,9 @@ jobs:
       - restore_cache:
           keys:
             - plt-v2-{{ checksum "make/deps.mk" }}
-      - run: make build-plt dialyze-changed
+      - run: 
+          name: Running dalyzer checks
+          command: make build-plt dialyze-changed
       - save_cache:
           key: plt-v2-{{ checksum "make/deps.mk" }}
           paths:
@@ -320,14 +322,6 @@ jobs:
       - restore_cache:
           keys:
             - deps-centos-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
-      - run:
-          name: Preparing dependencies for CentOS7
-          command: |
-            deps_hash=$(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1)
-            if [ x"$(cat $KAZOO_ROOT/.git/.kz_deps_hash)" = x"$deps_hash" ]; then
-              touch "$KAZOO_ROOT/make/.deps.mk.$deps_hash"
-            fi
-            echo -n $(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1) > "$KAZOO_ROOT/.git/.kz_deps_hash"
       - run:
           name: Making dependencies
           command: |
