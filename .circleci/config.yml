@@ -6,15 +6,12 @@ workflows:
   build-branch:
     jobs:
       - setup
-      - build_deps:
-          requires:
-            - setup
       - build:
           requires:
-            - build_deps
+            - setup
       - eunit_tests:
           requires:
-            - build_deps
+            - setup
       - checks:
           requires:
             - build
@@ -45,14 +42,6 @@ workflows:
                only: /^\d+\.\d+\.\d+$/
              branches:
                ignore: /.*/
-      - build_deps:
-          filters:
-            tags:
-              only: /^\d+\.\d+\.\d+$/
-            branches:
-              ignore: /.*/
-          requires:
-            - setup
       - build:
           filters:
             tags:
@@ -60,7 +49,7 @@ workflows:
             branches:
               ignore: /.*/
           requires:
-            - build_deps
+            - setup
       - eunit_tests:
          filters:
            tags:
@@ -68,7 +57,7 @@ workflows:
            branches:
              ignore: /.*/
          requires:
-           - build_deps
+           - setup
       - checks:
           filters:
              tags:
