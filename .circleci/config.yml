@@ -6,12 +6,15 @@ workflows:
   build-branch:
     jobs:
       - setup
+      - build_deps:
+          requires:
+            - setup
       - build:
           requires:
-            - setup
+            - build_deps
       - eunit_tests:
           requires:
-            - setup
+            - build_deps
       - checks:
           requires:
             - build
@@ -41,7 +44,7 @@ workflows:
                only: /^\d+\.\d+\.\d+$/
              branches:
                ignore: /.*/
-      - build:
+      - build_deps:
           filters:
             tags:
               only: /^\d+\.\d+\.\d+$/
@@ -49,6 +52,14 @@ workflows:
               ignore: /.*/
           requires:
             - setup
+      - build:
+          filters:
+            tags:
+              only: /^\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
+          requires:
+            - build_deps
       - eunit_tests:
          filters:
            tags:
@@ -56,7 +67,7 @@ workflows:
            branches:
              ignore: /.*/
          requires:
-           - setup
+           - build_deps           
       - checks:
           filters:
              tags:
@@ -133,13 +144,13 @@ jobs:
       - run: 
           name: Calculating dependency hash
           command: |
-            deps_hash=$(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1)
-            if [ x"$(cat $KAZOO_ROOT/.git/.kz_deps_hash)" = x"$deps_hash" ]; then
-              touch "$KAZOO_ROOT/make/.deps.mk.$deps_hash"
+            deps_hash=$(md5sum make/deps.mk | cut -d" " -f1)
+            if [ x"$(cat .git/.kz_deps_hash)" = x"$deps_hash" ]; then
+              touch "make/.deps.mk.$deps_hash"
             fi
-            echo -n $(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1) > "$KAZOO_ROOT/.git/.kz_deps_hash"
-            md5sum $KAZOO_ROOT/make/deps.mk || true
-            ls -al $KAZOO_ROOT/make || true
+            echo -n $(md5sum make/deps.mk | cut -d" " -f1) > ".git/.kz_deps_hash"
+            md5sum make/deps.mk || true
+            ls -al make || true
       - run: 
           name: Making deps 
           command: make -C ${KAZOO_ROOT} deps
@@ -189,14 +200,14 @@ jobs:
       - run:
           name: Displaying deps hash
           command: |
-            md5sum $KAZOO_ROOT/make/deps.mk || true
-            ls -al $KAZOO_ROOT/make || true
+            md5sum make/deps.mk || true
+            ls -al make || true
       - run: 
           name: Compiling for unit test enviornment
           command: ERLC_OPTS='-DPROPER' make -C ${KAZOO_ROOT}/core compile-test
       - run: 
           name: Running Eunit tests
-          command: make -C "$KAZOO_ROOT/$APP_PATH" eunit
+          command: make -C eunit
 
             
   checks:
@@ -275,10 +286,9 @@ jobs:
       CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
       BASH_ENV: "/home/circleci/2600hz/.bashrc"
       BUILD_ROOT: "/home/circleci/2600hz/packager"
-      CORE_ROOT: "/home/circleci/2600hz/kazoo"
+      KAZOO_ROOT: "/home/circleci/2600hz/kazoo"
       BUILD_SOURCES: "/home/circleci/2600hz/packager/SOURCES"
       BUILD_RPMS: "/home/circleci/2600hz/packager/RPMS"
-      APP_DIR: "/home/circleci/2600hz/the_app"
     steps:
       - checkout
       - restore_cache:
@@ -319,9 +329,9 @@ jobs:
       - run:
           name: Building release
           command: |
-            cd $CORE_ROOT
+            cd $KAZOO_ROOT
             make all KZ_VERSION=$VERSION.$RELEASE
-            make build-dist-release KZ_VERSION=$VERSION.$RELEASE
+            make build-release KZ_VERSION=$VERSION.$RELEASE
             make sup_completion
       - run:
           name: Preparing source for packaging
