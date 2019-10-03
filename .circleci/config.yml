@@ -121,6 +121,38 @@ jobs:
           root: .
           paths:
             - .
+  
+  build_deps:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: ~/
+      - restore_cache:
+          keys:
+            - deps-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+      - run: 
+          name: Calculating dependency hash
+          command: |
+            deps_hash=$(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1)
+            if [ x"$(cat $KAZOO_ROOT/.git/.kz_deps_hash)" = x"$deps_hash" ]; then
+              touch "$KAZOO_ROOT/make/.deps.mk.$deps_hash"
+            fi
+            echo -n $(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1) > "$KAZOO_ROOT/.git/.kz_deps_hash"
+            md5sum $KAZOO_ROOT/make/deps.mk || true
+            ls -al $KAZOO_ROOT/make || true
+      - run: 
+          name: Making deps 
+          command: make -C ${KAZOO_ROOT} deps
+      - save_cache:
+          key: deps-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+          paths:
+            - ~/2600hz/kazoo/deps/
+            - ~/2600hz/kazoo/.git/.kz_deps_hash
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - 2600hz
+            
   build:
     <<: *defaults
     steps:
@@ -145,6 +177,28 @@ jobs:
           root: .
           paths:
             - .
+            
+  eunit_tests:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: ~/
+      - restore_cache:
+          keys:
+            - deps-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+      - run:
+          name: Displaying deps hash
+          command: |
+            md5sum $KAZOO_ROOT/make/deps.mk || true
+            ls -al $KAZOO_ROOT/make || true
+      - run: 
+          name: Compiling for unit test enviornment
+          command: ERLC_OPTS='-DPROPER' make -C ${KAZOO_ROOT}/core compile-test
+      - run: 
+          name: Running Eunit tests
+          command: make -C "$KAZOO_ROOT/$APP_PATH" eunit
+
+            
   checks:
     <<: *defaults
     steps:
