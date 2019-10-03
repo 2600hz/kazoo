@@ -27,7 +27,6 @@ workflows:
       - build_centos7:
           requires:
             - build
-            - build_deps
             - eunit_tests
             - checks
             - docs
@@ -98,7 +97,6 @@ workflows:
               ignore: /.*/
           requires:
             - build
-            - build_deps
             - eunit_tests
             - checks
             - docs
