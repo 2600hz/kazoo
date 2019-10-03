@@ -541,10 +541,12 @@ handle_rate_resp(JObj, Props) ->
 -spec handle_channel_destroy(kz_term:ne_binary()) -> 'ok'.
 handle_channel_destroy(<<CallId/binary>>) ->
     case ets:lookup(?TAB, CallId) of
-        [] ->
-            _ = ets:insert(?TAB, #channel{call_id=CallId, destroyed='true'}),
-            lager:info("no channel ~s in ~p, inserted destroyed marker", [CallId, ?TAB]);
         [#channel{destroyed='true'}] -> 'ok';
+        [] ->
+            case ets:insert_new(?TAB, #channel{call_id=CallId, destroyed='true'}) of
+                'true' -> lager:info("inserted 'destroyed' marker for ~s", [CallId]);
+                'false' -> handle_channel_destroy(CallId)
+            end;
         [#channel{destroyed='false'}] ->
             _ = ets:delete(?TAB, CallId),
             lager:debug("removed channel ~s from ~p", [CallId, ?TAB])
