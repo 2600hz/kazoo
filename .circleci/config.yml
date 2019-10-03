@@ -2,6 +2,7 @@ version: 2
 
 workflows:
   version: 2
+  
   build-branch:
     jobs:
       - setup
@@ -189,7 +190,7 @@ jobs:
           paths:
             - .kazoo.plt
 
- release:
+  release:
     <<: *defaults
     docker:
       - image: offical2600hz/circleci:19.3.6.13
