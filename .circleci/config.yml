@@ -369,6 +369,7 @@ jobs:
             rm -rf _rel/kazoo/lib/skel-*
             cp -R ${KAZOO_ROOT}/_rel ${BUILD_SOURCES}/
             cp ${KAZOO_ROOT}/sup.bash ${BUILD_SOURCES}/
+            cp ${KAZOO_ROOT}/LICENSE ${BUILD_SOURCES}/
             echo " - creating the source tar"
             cd $BUILD_ROOT
             ARTIFACTS_NAME=${PACKAGE_NAME}-${VERSION}
