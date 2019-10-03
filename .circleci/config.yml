@@ -116,6 +116,14 @@ workflows:
             - analyze
             - release
 
+defaults: &defaults
+  docker:
+    - image: offical2600hz/circleci:19.3.6.13
+  working_directory: ~/2600hz/kazoo
+  shell: /bin/bash --login
+  environment:
+    BASH_ENV: ".git/.bashrc"
+
 jobs:
   setup:
     <<: *defaults
