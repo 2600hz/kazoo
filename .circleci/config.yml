@@ -366,7 +366,7 @@ jobs:
             rm -rf ${BUILD_SOURCES}/*.md
             echo " - preparing apps"
             rm -rf _rel/kazoo/lib/skel-*
-            cp -R _rel ${BUILD_SOURCES}/
+            cp -R ${KAZOO_ROOT}/_rel ${BUILD_SOURCES}/
             echo " - creating the source tar"
             cd $BUILD_ROOT
             ARTIFACTS_NAME=${PACKAGE_NAME}-${VERSION}
