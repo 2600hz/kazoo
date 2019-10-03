@@ -153,7 +153,7 @@ jobs:
             ls -al make || true
       - run: 
           name: Making deps 
-          command: make -C ${KAZOO_ROOT} deps
+          command: make deps
       - save_cache:
           key: deps-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
           paths:
