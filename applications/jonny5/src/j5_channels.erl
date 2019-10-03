@@ -513,9 +513,14 @@ authorized(JObj) ->
 
 -spec insert_authorized(kz_json:object()) -> 'ok'.
 insert_authorized(JObj) ->
-    Channel = #channel{call_id=CallId} = from_jobj(JObj),
-    ets:insert(?TAB, Channel),
-    lager:debug("inserted authorized channel ~s", [CallId]).
+    AuthzChannel = #channel{call_id=CallId} = from_jobj(JObj),
+    case ets:lookup(?TAB, CallId) of
+        [] -> ets:insert_new(?TAB, AuthzChannel);
+        [#channel{destroyed='true'}] -> lager:info("channel ~s already destroyed, not inserting authz", [CallId]);
+        [#channel{destroyed='false'}] ->
+            lager:info("updating ~s with authz info", [CallId]),
+            ets:insert(?TAB, AuthzChannel)
+    end.
 
 -spec is_destroyed(kz_term:ne_binary()) -> boolean().
 is_destroyed(<<CallId/binary>>) ->
