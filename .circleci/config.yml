@@ -259,7 +259,7 @@ jobs:
           keys:
             - plt-v2-{{ checksum "make/deps.mk" }}
       - run: 
-          name: Running dalyzer checks
+          name: Running dailyzer checks
           command: make build-plt dialyze-changed
       - save_cache:
           key: plt-v2-{{ checksum "make/deps.mk" }}
@@ -378,7 +378,7 @@ jobs:
             tar -cf ${ARTIFACTS_NAME}.tar ${ARTIFACTS_NAME}
             cp ${ARTIFACTS_NAME}.tar ${BUILD_SOURCES}/.
       - run:
-          name: Building RPM package
+          name: Building RPM packages
           command: |
             cd $BUILD_ROOT
             ./build
