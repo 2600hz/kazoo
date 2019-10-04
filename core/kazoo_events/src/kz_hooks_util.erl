@@ -260,6 +260,18 @@ handle_call_event(JObj, 'undefined', <<"CHANNEL_CREATE">>, CallId, RR) ->
                                   ], AccountId, JObj),
             handle_call_event(J, AccountId, <<"CHANNEL_CREATE">>, CallId, RR)
     end;
+handle_call_event(JObj, 'undefined', <<"CHANNEL_DESTROY">>, CallId, RR) ->
+    lager:debug("event 'channel_destroy' had no account id"),
+    case lookup_account_id(JObj) of
+        {'error', _R} ->
+            lager:debug("failed to determine account id for 'channel_destroy'", []);
+        {'ok', AccountId} ->
+            lager:debug("determined account id for 'channel_destroy' is ~s", [AccountId]),
+            J = kz_json:set_value([<<"Custom-Channel-Vars">>
+                                  ,<<"Account-ID">>
+                                  ], AccountId, JObj),
+            handle_call_event(J, AccountId, <<"CHANNEL_DESTROY">>, CallId, RR)
+    end;
 handle_call_event(JObj, AccountId, HookEvent, _CallId, 'false') ->
     Evt = ?HOOK_EVT(AccountId, HookEvent, JObj),
     gproc:send(?HOOK_REG, Evt),
