@@ -442,6 +442,12 @@ validator_properties({'kz_term', 'is_ne_binary', 1}) ->
     kz_json:from_list([{<<"type">>, <<"string">>}
                       ,{<<"minLength">>, 1}
                       ]);
+validator_properties({'kz_term', 'is_ne_binaries', 1}) ->
+    kz_json:from_list([{<<"type">>, <<"array">>}
+                      ,{<<"items">>
+                       ,kz_json:from_list([{<<"type">>, <<"string">>}])
+                       }
+                      ]);
 validator_properties({'kapi_dialplan', 'terminators_v', 1}) ->
     kz_json:from_list([{<<"type">>, <<"array">>}
                       ,{<<"items">>
