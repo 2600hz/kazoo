@@ -206,8 +206,7 @@ wait_for_route_win(Call, FetchId) ->
             end;
         {'kapi', {_, {'dialplan', 'route_win'}, RouteWin}} ->
             lager:info("callflow has received a route win, taking control of the call"),
-            _ = cf_route_win:execute_callflow(RouteWin, kapps_call:from_route_win(RouteWin, Call)),
-            lager:debug("callflow executing")
+            cf_route_win:execute_callflow(RouteWin, kapps_call:from_route_win(RouteWin, Call))
     after ?ROUTE_WIN_TIMEOUT ->
             lager:warning("callflow didn't received a route win, exiting")
     end.
