@@ -26,7 +26,7 @@
        ).
 
 -spec execute_callflow(kz_json:object(), kapps_call:call()) ->
-                              kapps_call:call().
+                              {'ok' | 'restricted', kapps_call:call()}.
 execute_callflow(JObj, Call) ->
     case should_restrict_call(Call) of
         'true' ->
@@ -34,10 +34,10 @@ execute_callflow(JObj, Call) ->
             _ = kapps_call_command:answer(Call),
             _ = kapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
             _ = kapps_call_command:queued_hangup(Call),
-            Call;
+            {'restricted', Call};
         'false' ->
             lager:info("setting initial information about the call"),
-            bootstrap_callflow_executer(JObj, Call)
+            {'ok', bootstrap_callflow_executer(JObj, Call)}
     end.
 
 -spec should_restrict_call(kapps_call:call()) -> boolean().

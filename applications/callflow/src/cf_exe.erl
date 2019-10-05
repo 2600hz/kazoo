@@ -351,7 +351,7 @@ init_cf_exe(Pid, #{request := JObj
                           },
             gen_server:cast(self(), 'initialize'),
             gen_server:enter_loop(?MODULE, [], State);
-        _Other -> 'ok'
+        _Other -> lager:debug("not executing callflow => ~p", [_Other])
     end.
 
 %%------------------------------------------------------------------------------
