@@ -1,0 +1,465 @@
+---
+name: kazoo
+base_branch:
+base_core:
+template: kazoo-core.spec.tmpl
+metapackage:
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-core
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-acdc
+    -
+      name: meta-kazoo-applications
+      type: related
+      branch: "4.3"
+      package: kazoo-application-ananke
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-blackhole
+    -
+      name: meta-kazoo-applications
+      type: related
+      branch: "4.3"
+      package: kazoo-application-braintree
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-call_inspector
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-callflow
+    -
+      name: meta-kazoo-applications
+      type: related
+      branch: "4.3"
+      package: kazoo-application-camper
+    -
+      name: meta-kazoo-applications
+      type: related
+      branch: "4.3"
+      package: kazoo-application-cccp
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-cdr
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-conference
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-crossbar
+    -
+      name: meta-kazoo-applications
+      type: related
+      branch: "4.3"
+      package: kazoo-application-doodle
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-ecallmgr
+    -
+      name: meta-kazoo-applications
+      type: related
+      branch: "4.3"
+      package: kazoo-application-edr
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-fax
+    -
+      name: meta-kazoo-applications
+      type: related
+      branch: "4.3"
+      package: kazoo-application-frontier
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-hangups
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-hotornot
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-jonny5
+    -
+      name: meta-kazoo-applications
+      type: related
+      branch: "4.3"
+      package: kazoo-application-konami
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-media_mgr
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-milliwatt
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-notify
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-omnipresence
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-pivot
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-pusher
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-registrar
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-reorder
+    -
+      name: meta-kazoo-applications
+      type: related
+      branch: "4.3"
+      package: kazoo-application-spyvsspy
+    -
+      name: meta-kazoo-applications
+      type: related
+      branch: "4.3"
+      package: kazoo-application-stats
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-stepswitch
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-sysconf
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-tasks
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-teletype
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-trunkstore
+    -
+      name: meta-kazoo-applications
+      type: required
+      branch: "4.3"
+      package: kazoo-application-webhooks
+package:
+  centos7:
+    summary: "2600hz Kazoo communications platform core"
+    description: |
+        Kazoo, an ambitious project to bring cloud-based VoIP
+        and telecommunications to everyone. Our goal is to
+        provide the world with a free, open telecommunications
+        software platform. Released under the OSI-approved
+        MPL 2.0 open source software license, we're building
+        upon strong FOSS components like GNU/Linux, Erlang,
+        FreeSWITCH, Apache CouchDB, and RabbitMQ. Our project
+        is a great example of the wonderful things that can
+        happen when software is open.  If you need help you
+        can contact us via the dev mailing list or on IRC
+        at #2600hz on FreeNode.
+    dist: .el7.centos
+    name: kazoo-core
+    license: MPL 2.0
+    group: Productivity/Telephony
+    url: http://www.2600hz.org/
+    vendor: 2600hz
+    subpackages:
+        -
+          name: kazoo-application-acdc
+          app_name: acdc
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-ananke
+          app_name: ananke
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-blackhole
+          app_name: blackhole
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-braintree
+          app_name: braintree
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-call_inspector
+          app_name: call_inspector
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-callflow
+          app_name: callflow
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-camper
+          app_name: camper
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-cccp
+          app_name: cccp
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-cdr
+          app_name: cdr
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-conference
+          app_name: conference
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-crossbar
+          app_name: crossbar
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-doodle
+          app_name: doodle
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-ecallmgr
+          app_name: ecallmgr
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-edr
+          app_name: edr
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-fax
+          app_name: fax
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-frontier
+          app_name: frontier
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-hangups
+          app_name: hangups
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-hotornot
+          app_name: hotornot
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-jonny5
+          app_name: jonny5
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-konami
+          app_name: konami
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-media_mgr
+          app_name: media_mgr
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-milliwatt
+          app_name: milliwatt
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-notify
+          app_name: notify
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-omnipresence
+          app_name: omnipresence
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-pivot
+          app_name: pivot
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-pusher
+          app_name: pusher
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-registrar
+          app_name: registrar
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-reorder
+          app_name: reorder
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-spyvsspy
+          app_name: spyvsspy
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-stats
+          app_name: stats
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-stepswitch
+          app_name: stepswitch
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-sysconf
+          app_name: sysconf
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-tasks
+          app_name: tasks
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-teletype
+          app_name: teletype
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-trunkstore
+          app_name: trunkstore
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.
+        -
+          name: kazoo-application-webhooks
+          app_name: webhooks
+          summary: Kazoo core application
+          description: |
+            If you need help you can contact us via the dev mailing
+            list or on IRC at #2600hz on FreeNode.

@@ -2,75 +2,385 @@ version: 2
 
 workflows:
   version: 2
-  build-analyze-run:
+  
+  build-branch:
     jobs:
-      - build
-     
+      - setup
+      - build_deps:
+          requires:
+            - setup
+      - build:
+          requires:
+            - build_deps
+      - eunit_tests:
+          requires:
+            - build_deps
+      - checks:
+          requires:
+            - build
+      - docs:
+          requires:
+            - build
+      - analyze:
+          requires:
+            - build
+      - release:
+          requires:
+            - build
+      - build_centos7:
+          requires:
+            - build
+            - eunit_tests
+            - checks
+            - docs
+            - analyze
+            - release
+
+  build_release:
+    jobs:
+      - setup:
+          filters:
+             tags:
+               only: /^\d+\.\d+\.\d+$/
+             branches:
+               ignore: /.*/
+      - build_deps:
+          filters:
+            tags:
+              only: /^\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
+          requires:
+            - setup
+      - build:
+          filters:
+            tags:
+              only: /^\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
+          requires:
+            - build_deps
+      - eunit_tests:
+         filters:
+           tags:
+             only: /^\d+\.\d+\.\d+$/
+           branches:
+             ignore: /.*/
+         requires:
+           - build_deps           
+      - checks:
+          filters:
+             tags:
+               only: /^\d+\.\d+\.\d+$/
+             branches:
+               ignore: /.*/
+          requires:
+            - build
+      - docs:
+          filters:
+            tags:
+              only: /^\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
+          requires:
+            - build
+      - analyze:
+          filters:
+            tags:
+              only: /^\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
+          requires:
+            - build
+      - release:
+          filters:
+            tags:
+              only: /^\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
+          requires:
+            - build
+      - build_centos7:
+          filters:
+            tags:
+              only: /^\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
+          requires:
+            - build
+            - eunit_tests
+            - checks
+            - docs
+            - analyze
+            - release
+
+defaults: &defaults
+  docker:
+    - image: offical2600hz/circleci:19.3.6.13
+  working_directory: ~/2600hz/kazoo
+  shell: /bin/bash --login
+  environment:
+    BASH_ENV: ".git/.bashrc"
+
 jobs:
-  build:
-    working_directory: ~/2600hz/kazoo
-    shell: /bin/bash --login
-    environment:
-      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
-      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
-      TZ: "/usr/share/zoneinfo/UTC"
-    docker:
-      - image: offical2600hz/circleci:19.3.6.13
-      - image: couchdb:2.1.1
-      - image: rabbitmq:3.7
+  setup:
+    <<: *defaults
     steps:
       - checkout
-      - run: make changed
-      - run: mkdir -p $CIRCLE_ARTIFACTS
-
-      # build sequence
+      - run: 
+          name: Listing Changes
+          command: make changed
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+  
+  build_deps:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: .
       - restore_cache:
           keys:
-            - v2-dep-{{ .Branch }}-
-            - v2-dep-master-
-            - v2-dep-
-      - run: make fmt
-      - run: JOBS="2" make
+            - deps-v3.2-{{ checksum "make/deps.mk" }}
+      - run: 
+          name: Making deps 
+          command: make deps
       - save_cache:
-          key: v2-dep-{{ .Branch }}-{{ epoch }}
+          key: deps-v3.2-{{ checksum "make/deps.mk" }}
           paths:
-            - .deps
+            - deps/
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+            
+  build:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: .
+      - restore_cache:
+          keys:
+            - deps-v3.2-{{ checksum "make/deps.mk" }}
+      - run: 
+          name: Compiling the project
+          command: JOBS="2" make
+      - save_cache:
+          key: deps-v3.2-{{ checksum "make/deps.mk" }}
+          paths:
+            - deps/
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+      
+  eunit_tests:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: .
+      - restore_cache:
+          keys:
+            - deps-v3.2-{{ checksum "make/deps.mk" }}
+      - run:
+          name: Displaying deps hash
+          command: |
+            md5sum make/deps.mk || true
+            ls -al make || true
+      - run: 
+          name: Compiling for unit test enviornment
+          command: ERLC_OPTS='-DPROPER' make compile-test
+      - run: 
+          name: Running Eunit tests
+          command: make eunit
 
-      # code check sequence
-      - run: make code_checks
-      - run: make app_applications
-      - run: make sup_completion
-      - run: make xref
-      - run: make elvis
+            
+  checks:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: .
+      - run: 
+          name: Running code checks
+          command: make code_checks
+      - run: 
+          name: Running additional code checks 
+          command: scripts/code_checks.bash
+      - run: 
+          name: Making app applications 
+          command: make app_applications
+      - run: 
+          name: Generating sup bash completion file
+          command: make sup_completion
+      - run: 
+          name: Running xref check
+          command: make xref
+      - run: 
+          name: Running code style check 
+          command: make elvis
+      - run: 
+          name: Checking for unstaged files
+          command: scripts/check-unstaged.bash
 
-      # docs sequence
-      - run: make apis
-      - run: make validate-js
-      - run: make validate-schemas
-      - run: make docs
-      - run: ./scripts/state-of-docs.sh || true
-      - run: ./scripts/state-of-edoc.escript
+  docs:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: .
+      - run: 
+          name: Generating APIs
+          command: make apis
+      - run: 
+          name: Validating view JS
+          command: make validate-js
+      - run: 
+          name: Validating schemas
+          command: make validate-schemas
+      - run: 
+          name: Generating docs
+          command: make docs || true
+      - run: 
+          name: Checking doc states
+          command: scripts/state-of-docs.sh || true
+      - run: 
+          name: Validating doc states
+          command: scripts/state-of-edoc.escript
+      - run: 
+          name: Checking for unstaged files
+          command: scripts/check-unstaged.bash
 
-      # analyze sequence
+  analyze:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: .
       - restore_cache:
           keys:
             - plt-v2-{{ checksum "make/deps.mk" }}
-      - run: make build-plt dialyze-changed
+      - run: 
+          name: Running dailyzer checks
+          command: make build-plt dialyze-changed
       - save_cache:
           key: plt-v2-{{ checksum "make/deps.mk" }}
           paths:
             - .kazoo.plt
 
-      # release sequence
-      - run: make build-ci-release
-      - run: ${PWD}/scripts/check-unstaged.bash
-      - run: KAZOO_CONFIG=${PWD}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make release
-      - run: cp ${PWD}/rel/ci.relx.config $CIRCLE_ARTIFACTS/
-      - run: find ${PWD}/_rel/kazoo/releases -name kazoo.rel -exec cp {} $CIRCLE_ARTIFACTS/ \;
+  release:
+    <<: *defaults
+    docker:
+      - image: offical2600hz/circleci:19.3.6.13
+      - image: couchdb:2.1.1
+      - image: rabbitmq:3.7
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      TZ: "/usr/share/zoneinfo/UTC"
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Creating artifacts directory
+          command: mkdir -p $CIRCLE_ARTIFACTS
+      - run: 
+          name: Making CI release
+          command: make build-ci-release
+      - run: 
+          name: Making release
+          command: KAZOO_CONFIG=${PWD}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make release
+      - run: 
+          name: Copying artifacts 
+          command: cp ${PWD}/rel/ci.relx.config $CIRCLE_ARTIFACTS/
+      - run: 
+          name: Finding Artifacts
+          command: find ${PWD}/_rel/kazoo/releases -name kazoo.rel -exec cp {} $CIRCLE_ARTIFACTS/ \;
       - store_artifacts:
           path: /tmp/circleci-artifacts
-      - run: |
-          if [[ $(grep -c -v -F 'exit with reason shutdown' ${CIRCLE_ARTIFACTS}/log/error.log) -gt 0 ]]; then
-            cat ${CIRCLE_ARTIFACTS}/log/error.log
-            exit 1
-          fi
+      - run: 
+          name: Checking for errors
+          command: |
+            if [[ $(grep -c -v -F 'exit with reason shutdown' ${CIRCLE_ARTIFACTS}/log/error.log) -gt 0 ]]; then
+              cat ${CIRCLE_ARTIFACTS}/log/error.log
+              exit 1
+            fi
+
+  build_centos7:
+    docker:
+      - image: offical2600hz/kazoo-packager-19:1.0-centos-7
+        user: circleci
+    shell: /bin/bash --login
+    working_directory: /home/circleci/2600hz/kazoo
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+      BASH_ENV: "/home/circleci/2600hz/.bashrc"
+      BUILD_ROOT: "/home/circleci/2600hz/packager"
+      KAZOO_ROOT: "/home/circleci/2600hz/kazoo"
+      BUILD_SOURCES: "/home/circleci/2600hz/packager/SOURCES"
+      BUILD_RPMS: "/home/circleci/2600hz/packager/RPMS"
+      APP_DIR: "/home/circleci/2600hz/kazoo"
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - deps-centos7-v3.2-{{ checksum "make/deps.mk" }}
+      - run:
+          name: Making dependencies
+          command: |
+            md5sum make/deps.mk || true
+            ls -al make || true
+            make deps
+      - save_cache:
+          key: deps-centos7-v3.2-{{ checksum "make/deps.mk" }}
+          paths:
+            - deps/
+            - .git/.kz_deps_hash
+      - run:
+          name: Generating version info
+          command: |
+            cd $BUILD_ROOT
+            VERSION=$(./version)
+            RELEASE=$(./release)
+            PACKAGE_NAME=$(./package_name)
+            echo "export PACKAGE_NAME=${PACKAGE_NAME}" >> $BASH_ENV
+            echo "export VERSION=${VERSION}" >> $BASH_ENV
+            echo "export RELEASE=${RELEASE}" >> $BASH_ENV
+            PACKAGE_NAME=$(./package_name)
+            echo "export PACKAGE_NAME=${PACKAGE_NAME}" >> $BASH_ENV
+            echo "build version for ${PACKAGE_NAME} version: ${VERSION} release: ${RELEASE}"
+      - run:
+          name: Building release
+          command: |
+            cd $KAZOO_ROOT
+            make all KZ_VERSION=$VERSION.$RELEASE
+            make build-release KZ_VERSION=$VERSION.$RELEASE
+            make sup_completion
+      - run:
+          name: Preparing source for packaging
+          command: |
+            cd $BUILD_ROOT
+            echo " - generate build version and changelog"
+            ./package_docs
+            cd $BUILD_SOURCES
+            echo " - removing files that should not be packaged in the source tar"
+            rm -rf ${BUILD_SOURCES}/.??*
+            rm -rf ${BUILD_SOURCES}/doc*
+            rm -rf ${BUILD_SOURCES}/*.md
+            echo " - preparing apps"
+            rm -rf _rel/kazoo/lib/skel-*
+            cp -R ${KAZOO_ROOT}/_rel ${BUILD_SOURCES}/
+            cp ${KAZOO_ROOT}/sup.bash ${BUILD_SOURCES}/
+            cp ${KAZOO_ROOT}/LICENSE ${BUILD_SOURCES}/
+            echo " - creating the source tar"
+            cd $BUILD_ROOT
+            ARTIFACTS_NAME=${PACKAGE_NAME}-${VERSION}
+            mkdir -p ${ARTIFACTS_NAME}
+            cp -r ${BUILD_SOURCES}/* ${ARTIFACTS_NAME}/.
+            tar -cf ${ARTIFACTS_NAME}.tar ${ARTIFACTS_NAME}
+            cp ${ARTIFACTS_NAME}.tar ${BUILD_SOURCES}/.
+      - run:
+          name: Building RPM packages
+          command: |
+            cd $BUILD_ROOT
+            ./build
+      - store_artifacts:
+          path: /home/circleci/2600hz/packager/RPMS
