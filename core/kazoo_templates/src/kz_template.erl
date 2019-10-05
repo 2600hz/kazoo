@@ -173,16 +173,39 @@ log_warnings(Ws, Template) ->
 -spec log_infos(string(), string(), [info()], template()) -> 'ok'.
 log_infos(Type, Module, Errors, Template) ->
     ?LOG_INFO("~s in module ~s", [Type, Module]),
-    lists:foreach(fun (Error) -> catch log_info(Error, Template) end, Errors).
+    lists:foreach(fun (Error) -> catch log_info(Error, Template, Module) end, Errors).
 
--spec log_info(info(), template()) -> 'ok'.
-log_info(_, Template) when not is_binary(Template) -> 'ok';
-log_info({{Row, Column}, _ErlydtlModule, Msg}, Template) ->
+-spec log_info(info(), template(), atom()) -> 'ok'.
+log_info({{Row, Column}, _ErlydtlModule, Msg}, Template, Module) when not is_binary(Template) ->
+    ?LOG_INFO("~s:~b:~b: ~s", [Module, Row, Column, Msg]);
+log_info({Line, _ErlydtlModule, Msg}, Template, Module) when not is_binary(Template) ->
+    ?LOG_INFO("~s:~p: ~s", [Module, Line, Msg]);
+log_info({{Row, Column}, _ErlydtlModule, Msg}, Template, Module) ->
     Rows = binary:split(Template, <<"\n">>, ['global']),
-    ErrorRow = lists:nth(Row + 1, Rows),
-    <<Pre:Column/binary, Rest/binary>> = ErrorRow,
-    ?LOG_INFO("~p: '~s' '~s'", [Msg, Pre, Rest]);
-log_info({Line, _ErlydtlModule, Msg}, Template) ->
+    %% Is ErlyDTL count lines as 0-based or 1-based?
+    MaybeRow = case Row of
+                   0 -> 1;
+                   _ -> Row
+               end,
+    %% Is ErlyDTL count lines as 0-based or 1-based?
+    ErrorRow = lists:nth(MaybeRow, Rows),
+
+    %% This tends to crash silently, don't use it:
+    %% <<Pre:Column/binary, Rest/binary>> = ErrorRow,
+    %% ?LOG_INFO("~s:~b:~b: error msg: '~p'; pre: '~s'; Rest: '~s'"
+    %%          ,[Module, Row, Column, Msg, Pre, Rest]
+    %%          );
+
+    ?LOG_INFO("~s:~b:~b (row: '~p'): ~p"
+             ,[Module, Row, Column, ErrorRow, Msg]
+             );
+log_info({Line, _ErlydtlModule, Msg}, Template, Module) ->
     Rows = binary:split(Template, <<"\n">>, ['global']),
-    ErrorRow = lists:nth(Line + 1, Rows),
-    ?LOG_INFO("~p on line ~p: ~s", [Msg, Line, ErrorRow]).
+    %% Is ErlyDTL count lines as 0-based or 1-based?
+    MaybeRow = case Line of
+                   0 -> 1;
+                   _ -> Line
+               end,
+    %% Is ErlyDTL count lines as 0-based or 1-based?
+    ErrorRow = lists:nth(MaybeRow, Rows),
+    ?LOG_INFO("~s:~p (row: '~p'): ~p", [Module, Line, ErrorRow, Msg]).
