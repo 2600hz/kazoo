@@ -46,6 +46,8 @@
 -export([start_link/3
         ,start_link/4
         ,start_link/5
+
+        ,stop/1
         ]).
 
 -export([start_listener/2]).
@@ -233,6 +235,10 @@ start_link(Name, Module, Params, InitArgs, Options) when is_atom(Module),
                                                          is_list(Options)
                                                          ->
     gen_server:start_link(Name, ?MODULE, [Module, Params, InitArgs], Options).
+
+-spec stop(kz_types:server_ref()) -> 'ok'.
+stop(Server) ->
+    gen_server:stop(Server).
 
 -spec queue_name(kz_types:server_ref()) -> kz_term:api_ne_binary().
 queue_name(Srv) -> gen_server:call(Srv, 'queue_name').

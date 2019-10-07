@@ -5,9 +5,15 @@
 %%%-----------------------------------------------------------------------------
 -module(j5_channels).
 
+-ifdef(TEST).
+-behaviour(gen_server).
+-else.
 -behaviour(gen_listener).
+-endif.
 
--export([start_link/0]).
+-export([start_link/0
+        ,stop/0
+        ]).
 -export([sync/0]).
 -export([flush/0]).
 -export([total_calls/1]).
@@ -47,7 +53,7 @@
 -type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
--define(TAB, ?MODULE).
+-define(TAB, 'j5_channels').
 -define(SYNC_PERIOD, 900000). %% 15 minutes
 -define(CLEANUP_PERIOD, ?MILLISECONDS_IN_MINUTE).
 
@@ -114,6 +120,10 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
+-ifdef(TEST).
+start_link() ->
+    gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
+-else.
 start_link() ->
     gen_listener:start_link({'local', ?SERVER}
                            ,?MODULE
@@ -125,6 +135,11 @@ start_link() ->
                             ]
                            ,[]
                            ).
+-endif.
+
+-spec stop() -> 'ok'.
+stop() ->
+    gen_listener:stop(?SERVER).
 
 -spec sync() -> 'ok'.
 sync() ->
@@ -505,17 +520,21 @@ to_props(#channel{call_id=CallId
 
 -spec authorized(kz_json:object()) -> 'ok'.
 authorized(JObj) ->
-    case is_destroyed(kz_call_event:call_id(JObj)) of
+    CallId = kz_call_event:call_id(JObj),
+    case is_destroyed(CallId) of
         'false' -> insert_authorized(JObj);
         'true' ->
-            lager:notice("channel already destroyed not storing authorized payload")
+            lager:notice("channel ~s already destroyed not storing authorized payload", [CallId])
     end.
 
 -spec insert_authorized(kz_json:object()) -> 'ok'.
 insert_authorized(JObj) ->
     AuthzChannel = #channel{call_id=CallId} = from_jobj(JObj),
+    lager:info("authz channel: ~p", [AuthzChannel]),
     case ets:lookup(?TAB, CallId) of
-        [] -> ets:insert_new(?TAB, AuthzChannel);
+        [] ->
+            _Inserted = ets:insert_new(?TAB, AuthzChannel),
+            lager:info("inserted ~s into table: ~p", [CallId, _Inserted]);
         [#channel{destroyed='true'}] -> lager:info("channel ~s already destroyed, not inserting authz", [CallId]);
         [#channel{destroyed='false'}] ->
             lager:info("updating ~s with authz info", [CallId]),
@@ -546,15 +565,17 @@ handle_rate_resp(JObj, Props) ->
 -spec handle_channel_destroy(kz_term:ne_binary()) -> 'ok'.
 handle_channel_destroy(<<CallId/binary>>) ->
     case ets:lookup(?TAB, CallId) of
-        [#channel{destroyed='true'}] -> 'ok';
+        [#channel{destroyed='true'}] ->
+            lager:info("channel ~s is destroyed already, removing", [CallId]),
+            ets:delete(?TAB, CallId);
         [] ->
             case ets:insert_new(?TAB, #channel{call_id=CallId, destroyed='true'}) of
                 'true' -> lager:info("inserted 'destroyed' marker for ~s", [CallId]);
                 'false' -> handle_channel_destroy(CallId)
             end;
         [#channel{destroyed='false'}] ->
-            _ = ets:delete(?TAB, CallId),
-            lager:debug("removed channel ~s from ~p", [CallId, ?TAB])
+            ets:update_element(?TAB, CallId, [{#channel.destroyed, 'true'}]),
+            lager:info("marked channel ~s as destroyed", [CallId])
     end.
 
 %%%=============================================================================
@@ -566,17 +587,28 @@ handle_channel_destroy(<<CallId/binary>>) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
+-ifdef(TEST).
+init(_) ->
+    _TID = init_ets_table(),
+    State = start_cleanup_timer(#state{}),
+    {'ok', start_channel_sync_timer(State)}.
+-else.
 init([]) ->
     kz_util:put_callid(<<?MODULE_STRING>>),
     kz_hooks:register(),
     kz_nodes:notify_expire(),
-    _ = ets:new(?TAB, ['set'
-                      ,'public'
-                      ,'named_table'
-                      ,{'keypos', #channel.call_id}
-                      ]),
+    _TID = init_ets_table(),
     State = start_cleanup_timer(#state{}),
     {'ok', start_channel_sync_timer(State)}.
+-endif.
+
+-spec init_ets_table() -> ets:tid() | atom().
+init_ets_table() ->
+    ets:new(?TAB, ['set'
+                  ,'public'
+                  ,'named_table'
+                  ,{'keypos', #channel.call_id}
+                  ]).
 
 %%------------------------------------------------------------------------------
 %% @doc Handling call messages.
@@ -643,6 +675,7 @@ handle_info(?HOOK_EVT(_, <<"CHANNEL_CREATE">>, JObj), State) ->
     %% an auth_resp BUT an auth_resp CAN override a CHANNEL_CREATE
     Channel = #channel{call_id=CallId} = from_jobj(JObj),
 
+    lager:info("created channel: ~p", [Channel]),
     case ets:insert_new(?TAB, Channel) of
         'true' -> lager:debug("inserted new channel ~s", [CallId]);
         'false' -> lager:debug("channel ~s already exists in cache", [CallId])
@@ -690,6 +723,8 @@ handle_event(_JObj, _State) ->
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
+    ets:info(?TAB) =/= 'undefined'
+        andalso ets:delete(?TAB),
     lager:debug("listener terminating: ~p", [_Reason]).
 
 %%------------------------------------------------------------------------------
