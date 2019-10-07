@@ -357,7 +357,7 @@ handle_cast({'connection_available', Connection}, State) ->
     _ = ets:update_element(?TAB, Connection, Props),
     {'noreply', notify_watchers(State), 'hibernate'};
 handle_cast({'connection_unavailable', Connection}, State) ->
-    lager:warning("connection ~p is no longer available", [Connection]),
+    lager:info("connection ~p is no longer available", [Connection]),
     Props = [{#kz_amqp_connections.available, 'false'}],
     _ = ets:update_element(?TAB, Connection, Props),
     {'noreply', State, 'hibernate'};
@@ -376,7 +376,9 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info({'DOWN', _Ref, 'process', _Connection, shutdown}, State) ->
+handle_info({'DOWN', _Ref, 'process', _Connection, 'shutdown'}, State) ->
+    {'noreply', State, 'hibernate'};
+handle_info({'DOWN', _Ref, 'process', _Connection, 'killed'}, State) ->
     {'noreply', State, 'hibernate'};
 handle_info({'DOWN', Ref, 'process', Connection, _Reason}, State) ->
     lager:warning("connection ~p went down: ~p", [Connection, _Reason]),

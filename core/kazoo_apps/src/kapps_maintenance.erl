@@ -116,6 +116,7 @@
         ]).
 
 -export([check_release/0]).
+-export([graceful_shutdown/0]).
 
 -include("kazoo_apps.hrl").
 
@@ -2156,7 +2157,7 @@ check_release() ->
     try lists:foreach(fun(F) -> run_check(F) end, Checks) of
         'ok' ->
             lager:info("check_release/0 succeeded"),
-            init:stop()
+            graceful_shutdown()
     catch
         'throw':Error ->
             lager:error("check_release/0 failed: ~p", [Error]),
@@ -2166,6 +2167,13 @@ check_release() ->
         kz_util:log_stacktrace(ST),
         init:stop(1)
         end.
+
+-spec graceful_shutdown() -> 'ok' | 'error'.
+graceful_shutdown() ->
+    kz_amqp_sup:stop_bootstrap(),
+    timer:sleep(timer:seconds(5)),
+    init:stop(),
+    io:format("gracefully shutting down ~p", [init:get_status()]).
 
 -spec run_check(fun()) -> 'ok'.
 run_check(CheckFun) ->

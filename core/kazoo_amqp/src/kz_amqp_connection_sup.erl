@@ -40,6 +40,7 @@ add(#kz_amqp_connection{}=Connection) ->
 
 -spec remove(pid()) -> 'ok' | {'error', any()}.
 remove(Connection) when is_pid(Connection) ->
+    lager:debug("remove connection pid ~p", [Connection]),
     supervisor:terminate_child(?SERVER, Connection).
 
 %%==============================================================================

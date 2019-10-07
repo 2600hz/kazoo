@@ -179,20 +179,31 @@ handle_info({'DOWN', Ref, 'process', _Pid, _Reason}
                                ,broker=_Broker
                                }=Connection
            ) ->
-    lager:warning("command channel to the AMQP broker ~s died: ~p"
-                 ,[_Broker, _Reason]
-                 ),
-    {'noreply', create_control_channel(Connection), 'hibernate'};
+    case kz_util:vm_status() of
+        'started_stable' ->
+            lager:warning("command channel to the AMQP broker ~s died: ~p"
+                         ,[_Broker, _Reason]
+                         ),
+            {'noreply', create_control_channel(Connection), 'hibernate'};
+        _OtherState ->
+            lager:info("disconnect connection in the vm status ~p", [_OtherState]),
+            {'noreply', Connection, 'hibernate'}
+    end;
 handle_info({'DOWN', Ref, 'process', _Pid, _Reason}
            ,#kz_amqp_connection{available='true'
                                ,connection_ref=Ref
                                ,broker=_Broker
                                }=Connection
            ) ->
-    lager:critical("connection to the AMQP broker ~s died: ~p"
-                  ,[_Broker, _Reason]
-                  ),
-    {'noreply', disconnected(Connection), 'hibernate'};
+    case kz_util:vm_status() of
+        'started_stable' ->
+            lager:critical("connection to the AMQP broker ~s died: ~p"
+                          ,[_Broker, _Reason]
+                          ),
+            {'noreply', disconnected(Connection), 'hibernate'};
+        _OtherState ->
+            {'noreply', Connection, 'hibernate'}
+    end;
 handle_info({'connect', Timeout}
            ,#kz_amqp_connection{available='false'}=Connection
            ) ->

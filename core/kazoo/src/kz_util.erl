@@ -63,6 +63,8 @@
 
 -export([kz_log_md_clear/0, kz_log_md_put/2]).
 
+-export([vm_status/0]).
+
 -ifdef(TEST).
 -export([resolve_uri_path/2]).
 -endif.
@@ -777,6 +779,15 @@ application_version(Application) ->
         {'ok', Vsn} -> kz_term:to_binary(Vsn);
         'undefined' -> <<"unknown">>
     end.
+
+-spec vm_status() -> 'starting' | 'stopping' | 'started_stable' | 'unknown'.
+vm_status() ->
+    vm_status(init:get_status()).
+
+vm_status({'starting', _ProvidedStatus}) -> 'starting';
+vm_status({'stopping', _ProvidedStatus}) -> 'stopping';
+vm_status({'started', 'started'}) -> 'started_stable';
+vm_status(_) -> 'unknown_state'.
 
 %%------------------------------------------------------------------------------
 %% @doc Like `lists:usort/1' but preserves original ordering.
