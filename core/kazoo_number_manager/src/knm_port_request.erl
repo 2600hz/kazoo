@@ -445,21 +445,27 @@ get_user_name(AuthAccountId, UserId) ->
                            {'ok', kz_json:object()} |
                            {'error', any()}.
 assign_to_app(Number, NewApp, JObj) ->
-    case kz_json:get_value([?NUMBERS_KEY, Number, ?USED_BY_KEY], JObj) of
+    Numbers = kzd_port_requests:numbers(JObj),
+    lager:debug("assigning number ~s in port request ~s from ~p to ~s"
+               ,[Number, kz_doc:id(JObj), Numbers, NewApp]
+               ),
+    assign_to_app(Number, NewApp, Numbers, JObj).
+
+-spec assign_to_app(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:object()|'undefined', kz_json:object()) ->
+                           {'ok', kz_json:object()} |
+                           {'error', any()}.
+assign_to_app(_Number, _NewApp, 'undefined', _JObj) ->
+    {'error', 'not_found'};
+assign_to_app(Number, NewApp, Numbers, JObj) ->
+    case kz_json:get_value([Number, ?USED_BY_KEY], Numbers) of
         NewApp -> {'ok', JObj};
         _OldApp ->
-            lager:debug("assigning number ~s in port request ~s to ~s"
-                       ,[Number, kz_doc:id(JObj), NewApp]
-                       ),
-            NumberJObj = kz_json:from_list(
-                           props:filter_empty(
-                             [{?USED_BY_KEY, NewApp}
-                              | kz_json:to_proplist(
-                                  kz_json:get_value([?NUMBERS_KEY, Number], JObj)
-                                 )
-                             ])
-                          ),
-            save_doc(kz_json:set_value([?NUMBERS_KEY, Number], NumberJObj, JObj))
+            NewNumJObj = kz_json:set_value([Number, ?USED_BY_KEY]
+                                          ,NewApp
+                                          ,kz_json:delete_key([Number, ?USED_BY_KEY], Numbers)
+                                          ),
+            lager:debug("set new number app ~p", [NewNumJObj]),
+            save_doc(kzd_port_requests:set_numbers(JObj, NewNumJObj))
     end.
 
 %%------------------------------------------------------------------------------
