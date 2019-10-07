@@ -116,7 +116,6 @@
         ]).
 
 -export([check_release/0]).
--export([graceful_shutdown/0]).
 
 -include("kazoo_apps.hrl").
 
