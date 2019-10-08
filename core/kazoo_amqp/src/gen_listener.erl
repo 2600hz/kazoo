@@ -682,7 +682,7 @@ handle_info({#'basic.deliver'{}=BD
             'true' -> (catch kz_amqp_util:basic_ack(BD));
             'false' -> 'ok'
         end,
-    case props:is_true('spawn_hndle_event', Params, 'false') of
+    case props:is_true('spawn_handle_event', Params, 'false') of
         'false' -> {'noreply', handle_event(Payload, CT, {BD, Basic}, State)};
         'true'  ->
             kz_util:spawn(fun handle_event/4, [Payload, CT, {BD, Basic}, State]),
