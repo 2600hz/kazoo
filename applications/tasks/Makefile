@@ -6,6 +6,8 @@ all: compile
 
 compile: headers
 
+compile-test: headers
+
 headers: src/modules/kt_rates.hrl src/task_modules.hrl
 
 src/modules/kt_rates.hrl:
