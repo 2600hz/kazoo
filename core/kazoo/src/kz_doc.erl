@@ -16,6 +16,7 @@
 
 -export([id/1, id/2
         ,set_id/2
+        ,delete_id/1
         ,path_id/0
         ]).
 -export([revision/1
@@ -189,6 +190,10 @@ id(JObj, Default) ->
 -spec set_id(doc(), kz_term:ne_binary()) -> doc().
 set_id(JObj, Id) ->
     kz_json:set_value(?KEY_ID, Id, JObj).
+
+-spec delete_id(doc()) -> doc().
+delete_id(JObj) ->
+    kz_json:delete_key(?KEY_ID, JObj).
 
 -spec path_id() -> kz_json:path().
 path_id() ->
