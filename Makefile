@@ -68,7 +68,11 @@ compile: ACTION = all
 compile: deps kazoo
 
 compile-lean: ACTION = compile-lean
-compile-lean: deps $(KAZOODIRS)
+compile-lean: deps compile-lean-core compile-lean-apps
+compile-lean-core:
+	@$(MAKE) -j$(JOBS) -C core/ compile-lean
+compile-lean-apps:
+	@$(MAKE) -j$(JOBS) -C applications/ compile-lean
 
 sparkly-clean: clean-apps clean-kazoo clean-release clean-deps
 
