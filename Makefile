@@ -40,6 +40,9 @@ changed_swagger:
 compile: ACTION = all
 compile: deps kazoo
 
+compile-lean: ACTION = compile-lean
+compile-lean: deps $(KAZOODIRS)
+
 $(KAZOODIRS):
 	@$(MAKE) -C $(@D) $(ACTION)
 
