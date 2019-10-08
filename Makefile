@@ -67,6 +67,9 @@ make-dependency-check:
 compile: ACTION = all
 compile: deps kazoo
 
+compile-lean: ACTION = compile-lean
+compile-lean: deps $(KAZOODIRS)
+
 sparkly-clean: clean-apps clean-kazoo clean-release clean-deps
 
 clean: clean-kazoo

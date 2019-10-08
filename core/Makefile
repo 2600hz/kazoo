@@ -9,6 +9,9 @@ all: compile
 compile: ACTION = all
 compile: $(MAKEDIRS)
 
+compile-lean: ACTION = compile-lean
+compile-lean: $(MAKEDIRS)
+
 compile-test: ACTION = compile-test
 compile-test: $(MAKEDIRS)
 
