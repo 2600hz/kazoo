@@ -373,8 +373,10 @@ handle_info(_Info, State) ->
 %% @doc Allows listener to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
-handle_event(_JObj, _State) ->
+-spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
+handle_event(JObj, #state{job_id=JobId}) ->
+    CallId = kz_json:get_first_defined([[<<"Resource-Response">>, <<"Call-ID">>], <<"Call-ID">>], JObj),
+    kz_util:put_callid(<<JobId/binary, "|", CallId/binary>>),
     {'reply', []}.
 
 %%------------------------------------------------------------------------------
@@ -735,7 +737,7 @@ send_fax(_JobId, _JObj, _Q, 'undefined') ->
 send_fax(_JobId, _JObj, _Q, <<>>) ->
     gen_server:cast(self(), {'error', 'invalid_number', <<"(empty)">>});
 send_fax(JobId, JObj, Q, ToDID) ->
-    IgnoreEarlyMedia = 'true', %kz_term:to_binary(kapps_config:get_is_true(?CONFIG_CAT, <<"ignore_early_media">>, 'false')),
+    IgnoreEarlyMedia = 'true',
     ToNumber = kz_term:to_binary(kz_json:get_value(<<"to_number">>, JObj)),
     ToName = kz_term:to_binary(kz_json:get_value(<<"to_name">>, JObj, ToNumber)),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),

@@ -12,7 +12,7 @@
 -module(kz_event_listener).
 -behaviour(gen_listener).
 
--export([start_link/1]).
+-export([start_link/0]).
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -29,11 +29,11 @@
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, []).
--define(BINDINGS(Exchange), [{'bind', [{'exchange', Exchange}
-                                      ,{'routing', <<"20">>}
-                                      ]
-                             }
-                            ]).
+-define(BINDINGS, [{'bind', [{'exchange', ?KZ_CALL_EVENTS_EXCHANGE}
+                            ,{'routing', <<"20">>}
+                            ]
+                   }
+                  ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -46,10 +46,10 @@
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link(kz_types:ne_binary()) -> kz_types:startlink_ret().
-start_link(Exchange) ->
+-spec start_link() -> kz_types:startlink_ret().
+start_link() ->
     gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
-                                     ,{'bindings', ?BINDINGS(Exchange)}
+                                     ,{'bindings', ?BINDINGS}
                                      ,{'queue_name', ?QUEUE_NAME}
                                      ,{'queue_options', ?QUEUE_OPTIONS}
                                      ,{'consume_options', ?CONSUME_OPTIONS}

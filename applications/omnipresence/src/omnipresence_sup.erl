@@ -20,8 +20,6 @@
 
 -define(SERVER, ?MODULE).
 
--define(SIP_APP, <<"omni">>).
-
 -define(SUBS_ETS_OPTS, [{'table_id', omnip_subscriptions:table_id()}
                        ,{'table_options', omnip_subscriptions:table_config()}
                        ,{'find_me_function', fun subscriptions_srv/0}
@@ -31,7 +29,6 @@
 -define(CHILDREN, [?WORKER_NAME_ARGS('kazoo_etsmgr_srv', 'omnipresence_subscriptions_tbl', [?SUBS_ETS_OPTS])
                   ,?WORKER('omnip_subscriptions')
                   ,?WORKER('omnipresence_listener')
-                  ,?WORKER('omnipresence_shared_listener')
                   ]).
 
 %%==============================================================================
@@ -66,7 +63,7 @@ subscriptions_srv() ->
 %%------------------------------------------------------------------------------
 -spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
-    kz_util:set_startup(),
+    _ = kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

@@ -290,8 +290,17 @@ command(#'exchange.declare'{} = Command) ->
         [] -> {'error', 'not_available'};
         [Pid | _] ->
             case is_consumer_channel_valid() of
-                'true' -> kz_amqp_connection:new_exchange(Pid, consumer_channel(), Command);
-                'false' -> kz_amqp_connection:new_exchange(Pid, Command)
+                'true' -> kz_amqp_connection:declare_exchange(Pid, consumer_channel(), Command);
+                'false' -> kz_amqp_connection:declare_exchange(Pid, Command)
+            end
+    end;
+command(#'exchange.bind'{} = Command) ->
+    case kz_amqp_connections:managers(consumer_broker()) of
+        [] -> {'error', 'not_available'};
+        [Pid | _] ->
+            case is_consumer_channel_valid() of
+                'true' -> kz_amqp_connection:exchange_bind(Pid, consumer_channel(), Command);
+                'false' -> kz_amqp_connection:exchange_bind(Pid, Command)
             end
     end;
 command(Command) ->
@@ -345,6 +354,12 @@ exec_command(#kz_amqp_assignment{consumer=Consumer
             ) ->
     Result = amqp_channel:subscribe(Channel, Command, Consumer),
     lager:debug("consuming for ~p on ~p returned ~p", [Consumer, Channel, Result]),
+    handle_command_result(Result, Command, Assignment);
+exec_command(#kz_amqp_assignment{channel=Channel
+                                }=Assignment
+            ,#'exchange.bind'{}=Command
+            ) ->
+    Result = amqp_channel:call(Channel, Command),
     handle_command_result(Result, Command, Assignment);
 exec_command(#kz_amqp_assignment{channel=Channel
                                 ,consumer=Consumer

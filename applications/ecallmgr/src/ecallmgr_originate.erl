@@ -13,7 +13,7 @@
 -module(ecallmgr_originate).
 -behaviour(gen_listener).
 
--export([start_link/3]).
+-export([start_link/2]).
 -export([handle_originate_execute/2]).
 -export([handle_call_events/2]).
 -export([init/1
@@ -40,7 +40,6 @@
                ,dialstrings :: kz_term:api_binary()
                ,queue :: kz_term:api_binary()
                ,control_pid :: kz_term:api_pid()
-               ,control_context :: map() %% this is the Context for the call control process, if necessary
                ,tref :: kz_term:api_reference()
                ,fetch_id = kz_binary:rand_hex(16)
                }).
@@ -70,8 +69,8 @@
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link(atom(), kz_json:object(), map()) -> kz_types:startlink_ret().
-start_link(Node, JObj, Context) ->
+-spec start_link(atom(), kz_json:object()) -> kz_types:startlink_ret().
+start_link(Node, JObj) ->
     gen_listener:start_link(?SERVER
                            ,[{'bindings', ?BINDINGS}
                             ,{'responders', ?RESPONDERS}
@@ -79,7 +78,7 @@ start_link(Node, JObj, Context) ->
                             ,{'queue_options', ?QUEUE_OPTIONS}
                             ,{'consume_options', ?CONSUME_OPTIONS}
                             ]
-                           ,[Node, JObj, Context]
+                           ,[Node, JObj]
                            ).
 
 %%------------------------------------------------------------------------------
@@ -128,9 +127,8 @@ handle_originate_execute(JObj, Props) ->
 %% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec init([node() | kz_json:object() | map()]) -> {'stop', 'normal'} |
-                                                   {'ok', state()}.
-init([Node, JObj, Context]) ->
+-spec init([node() | kz_json:object()]) -> {'stop', 'normal'} | {'ok', state()}.
+init([Node, JObj]) ->
     _ = kz_util:put_callid(JObj),
     ServerId = kz_api:server_id(JObj),
     ControllerQ = kz_api:queue_id(JObj),
@@ -139,14 +137,12 @@ init([Node, JObj, Context]) ->
         'false' ->
             Error = <<"originate failed to execute as JObj did not validate">>,
             publish_error(Error, 'undefined', JObj, ServerId),
-            ecallmgr_call_sup:release_context(Context),
             {'stop', 'normal'};
         'true' ->
             {'ok', #state{node=Node
                          ,originate_req=JObj
                          ,server_id=ServerId
                          ,controller_q = ControllerQ
-                         ,control_context=Context
                          }}
     end.
 
@@ -787,14 +783,13 @@ start_control_process(#state{originate_req=JObj
                             ,server_id=ServerId
                             ,fetch_id=FetchId
                             ,control_pid='undefined'
-                            ,control_context=Context
                             }=State) ->
-    Ctx = Context#{node => Node
-                  ,call_id => Id
-                  ,fetch_id => FetchId
-                  ,controller_q => ControllerQ
-                  ,initial_ccvs => kz_json:new()
-                  },
+    Ctx = #{node => Node
+           ,call_id => Id
+           ,fetch_id => FetchId
+           ,controller_q => ControllerQ
+           ,initial_ccvs => kz_json:new()
+           },
     case ecallmgr_call_sup:start_control_process(Ctx) of
         {'ok', CtrlPid} when is_pid(CtrlPid) ->
             _ = maybe_send_originate_uuid(UUID, CtrlPid, State),

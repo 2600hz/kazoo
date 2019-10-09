@@ -37,31 +37,20 @@ init() ->
 -spec dialplan(dialplan_context()) -> {'ok', dialplan_context()}.
 dialplan(#{fetch_id := FetchId, payload := FetchJObj}=Map) ->
     lager:debug("start dialplan fetch ~s for ~s", [FetchId, kzd_fetch:call_id(FetchJObj)]),
-    %% lager:debug_unsafe("dialplan request => ~s", [kz_json:encode(JObj, ['pretty'])]),
-    case ecallmgr_call_sup:control_context() of
-        {'ok', Context} -> run(maps:merge(Map, Context));
-        _ -> send_reply(timeout_reply(Map))
-    end.
-
--spec run(dialplan_context()) -> {'ok', dialplan_context()}.
-run(#{}=Map) ->
     Routines = [fun call_id/1
                ,fun timeout/1
                ,{fun add_time_marker/2, 'start_processing'}
+               ,fun(M) -> M#{channel => kz_amqp_channel:consumer_channel()} end
                ,fun(M) -> M#{callback => fun process/1} end
                ,fun(M) -> M#{options => []} end
                ,fun(M) -> M#{start_result => ecallmgr_call_control_sup:start_proc(M)} end
                ],
-    Execed = kz_maps:exec(Routines, Map),
-    wait_for_exit(Execed),
-    {'ok', Execed}.
-
-wait_for_exit(#{start_result := Result}=M) ->
-    ecallmgr_call_sup:wait_for_exit(Result, M).
+    {'ok', kz_maps:exec(Routines, Map)}.
 
 -spec process(dialplan_context()) -> {'ok', dialplan_context()}.
-process(#{payload := FetchJObj}=Map) ->
+process(#{payload := FetchJObj, channel := Channel}=Map) ->
     kz_util:put_callid(FetchJObj),
+    _ = kz_amqp_channel:consumer_channel(Channel),
     Routines = [{fun add_time_marker/2, 'request_ready'}
                ,fun control_p/1
                ,fun request/1

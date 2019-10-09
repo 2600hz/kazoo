@@ -77,7 +77,9 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast('bind', #state{node=Node, section=Section}=State) ->
     case freeswitch:bind(Node, Section) of
-        'ok' -> {'noreply', State};
+        'ok' ->
+            _ = kz_amqp_channel:requisition(),
+            {'noreply', State};
         {'error', Reason} ->
             lager:critical("unable to establish bind for ~s : ~p", [Section, Reason]),
             {'stop', Reason, State}
@@ -92,19 +94,16 @@ handle_cast(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'fetch', JObj}, #state{node=Node}=State) ->
-    _ = kz_util:spawn(fun handle_fetch_req/2, [Node, JObj]),
+    Channel = kz_amqp_channel:consumer_channel(),
+    _ = kz_util:spawn(fun handle_fetch_req/3, [Node, Channel, JObj]),
     {'noreply', State};
-handle_info({'fetch', FetchSection, FetchTag, FetchKeyName, FetchKeyValue, FetchId, [_ | Props]}
-           ,#state{node=Node}=State) ->
-    props:to_log(Props, <<"FETCH">>),
-    KVs = [{<<"Fetch-Section">>, FetchSection}
-          ,{<<"Fetch-Tag">>, FetchTag}
-          ,{<<"Fetch-Key-Name">>, FetchKeyName}
-          ,{<<"Fetch-Key-Value">>, FetchKeyValue}
-          ,{<<"Fetch-UUID">>, FetchId}
-          ],
-    JObj = kz_json:set_values(KVs, kz_json:from_list(Props)),
-    _ = kz_util:spawn(fun handle_fetch_req/2, [Node, JObj]),
+handle_info({'kz_amqp_assignment', {'new_channel', _, Channel}}, State) ->
+    lager:debug("channel acquired ~p", [Channel]),
+    _ = kz_amqp_channel:consumer_channel(Channel),
+    {'noreply', State};
+handle_info({'kz_amqp_assignment', 'lost_channel'}, State) ->
+    _ = kz_amqp_channel:remove_consumer_channel(),
+    lager:debug("channel lost"),
     {'noreply', State};
 handle_info({'EXIT', _, 'noconnection'}, State) ->
     {stop, {'shutdown', 'noconnection'}, State};
@@ -124,6 +123,7 @@ handle_info(_Info, State) ->
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{node=Node}) ->
+    catch(kz_amqp_channel:release()),
     lager:info("config listener for ~s terminating: ~p", [Node, _Reason]).
 
 %%------------------------------------------------------------------------------
@@ -143,9 +143,10 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_fetch_req(atom(), kz_json:object()) -> fs_sendmsg_ret().
-handle_fetch_req(Node, JObj) ->
+-spec handle_fetch_req(atom(), kz_term:api_pid(), kz_json:object()) -> fs_sendmsg_ret().
+handle_fetch_req(Node, Channel, JObj) ->
     kz_util:put_callid(JObj),
+    _ = kz_amqp_channel:consumer_channel(Channel),
     FetchId = kzd_fetch:fetch_uuid(JObj),
     CoreUUID = kzd_fetch:core_uuid(JObj),
     Key = kzd_fetch:fetch_key_value(JObj),

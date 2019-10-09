@@ -101,7 +101,6 @@
                ,node_down_tref :: kz_term:api_reference()
                ,current_cmd_uuid :: kz_term:api_binary()
                ,event_uuids = [] :: kz_term:ne_binaries()
-               ,control_ctx = #{} :: map()
                }).
 -type state() :: #state{}.
 
@@ -189,16 +188,13 @@ init_control(Pid, #{node := Node
                    ,callback := Fun
                    ,fetch_id := FetchId
                    ,control_q := ControlQ
-                   ,init_fun := InitFun
-                   ,exit_fun := ExitFun
                    }=Payload) ->
     proc_lib:init_ack(Pid, {'ok', self()}),
-    InitFun(Payload),
+    bind(Node, CallId),
     try Fun(Payload) of
         {'ok', #{controller_q := ControllerQ
                 ,initial_ccvs := CCVs
-                }=Ctx} ->
-            bind(Node, CallId),
+                }} ->
             TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), 'sanity_check'),
             State = #state{node=Node
                           ,call_id=CallId
@@ -211,17 +207,13 @@ init_control(Pid, #{node := Node
                           ,initial_ccvs=CCVs
                           ,is_node_up=true
                           ,is_call_up=true
-                          ,control_ctx = Ctx
                           },
             call_control_ready(State),
             gen_server:enter_loop(?MODULE, [], State);
-        _Other ->
-    catch(ExitFun(Payload)),
-            lager:debug("callback doesn't want to proceed")
+        _Other -> lager:debug("callback doesn't want to proceed")
     catch
         _Ex:_Err:_Stacktrace ->
             kz_util:log_stacktrace(_Stacktrace),
-            catch(ExitFun(Payload)),
             lager:debug("error running callback ~p : ~p", [_Ex, _Err])
 
     end;
@@ -231,10 +223,8 @@ init_control(Pid, #{node := Node
                    ,controller_q := ControllerQ
                    ,control_q := ControlQ
                    ,initial_ccvs := CCVs
-                   ,init_fun := InitFun
-                   }=Payload) ->
+                   }) ->
     proc_lib:init_ack(Pid, {'ok', self()}),
-    InitFun(Payload),
     bind(Node, CallId),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), 'sanity_check'),
     State = #state{node=Node
@@ -248,7 +238,6 @@ init_control(Pid, #{node := Node
                   ,initial_ccvs=CCVs
                   ,is_node_up=true
                   ,is_call_up=true
-                  ,control_ctx=Payload
                   },
     call_control_ready(State),
     gen_server:enter_loop(?MODULE, [], State).
@@ -397,11 +386,8 @@ handle_conference_command(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
-terminate(_Reason, #state{start_time=StartTime
-                         ,control_ctx=Context
-                         }=State) ->
+terminate(_Reason, #state{start_time=StartTime}=State) ->
     cancel_timers(State),
-    ecallmgr_call_sup:release_context(Context),
     lager:debug("control queue was up for ~p microseconds", [kz_time:elapsed_us(StartTime)]).
 
 %%------------------------------------------------------------------------------

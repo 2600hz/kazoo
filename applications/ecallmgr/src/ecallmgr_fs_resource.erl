@@ -71,26 +71,8 @@ start_link(Node, Options) ->
 -spec handle_originate_req(kz_json:object(), kz_term:proplist()) -> kz_types:sup_startchild_ret().
 handle_originate_req(JObj, Props) ->
     _ = kz_util:put_callid(JObj),
-
     Node = props:get_value('node', Props),
-    case kz_json:is_true(<<"Start-Control-Process">>, JObj, 'true') of
-        'true' ->
-            handle_originate_req_if_possible(JObj
-                                            ,Node
-                                            ,ecallmgr_call_sup:control_context()
-                                            );
-        'false' ->
-            lager:info("originate request does not require an call control process"),
-            ecallmgr_originate_sup:start_originate_proc(Node, JObj, #{})
-    end.
-
-handle_originate_req_if_possible(JObj, _Node, {'error', _E}) ->
-    lager:warning("unable to handle originate request due to AMQP worker error ~p", [_E]),
-    lager:info("republishing request for another ecallmgr"),
-    kz_amqp_worker:cast(JObj, fun kapi_resource:publish_originate_req/1);
-handle_originate_req_if_possible(JObj, Node, {'ok', Context}) ->
-    lager:debug("received originate request for node ~s, starting originate process", [Node]),
-    ecallmgr_call_sup:wait_for_exit(ecallmgr_originate_sup:start_originate_proc(Node, JObj, Context), Context).
+    ecallmgr_originate_sup:start_originate_proc(Node, JObj).
 
 %%%=============================================================================
 %%% gen_server callbacks

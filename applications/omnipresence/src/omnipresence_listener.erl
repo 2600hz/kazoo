@@ -34,7 +34,6 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
-                  ,{'presence', [{'restrict_to', ['dialog', 'mwi_update']}]}
                   ,{'omnipresence', [{'restrict_to', ['subscribe', 'notify']}]}
                   ]).
 -define(RESPONDERS, [{{'omnip_subscriptions', 'handle_kamailio_subscribe'}
@@ -42,12 +41,6 @@
                      }
                     ,{{'omnip_subscriptions', 'handle_kamailio_notify'}
                      ,[{<<"presence">>, <<"notify">>}]
-                     }
-                    ,{{'omnip_subscriptions', 'handle_mwi_update'}
-                     ,[{<<"presence">>, <<"mwi_update">>}]
-                     }
-                    ,{{'omnip_subscriptions', 'handle_dialog_update'}
-                     ,[{<<"presence">>, <<"dialog_update">>}]
                      }
                     ]).
 
@@ -132,9 +125,8 @@ handle_cast('send_sync', #state{queue='undefined'}=State) ->
     {'noreply', State};
 handle_cast('send_sync', #state{consuming='false'}=State) ->
     {'noreply', State};
-handle_cast('send_sync', #state{subs_pid=Pid, queue=Queue, consuming='true', sync='false'} = State) ->
+handle_cast('send_sync', #state{queue=Queue, consuming='true', sync='false'} = State) ->
     maybe_sync_subscriptions(?SUBSCRIPTIONS_SYNC_ENABLED, Queue),
-    erlang:send_after(2 * ?MILLISECONDS_IN_SECOND, Pid, 'check_sync'),
     {'noreply', State#state{sync='true'}};
 handle_cast(_Msg, State) ->
     {'noreply', State}.

@@ -166,6 +166,9 @@
 -type kz_amqp_exchange() :: #'exchange.declare'{}.
 -type kz_amqp_exchanges() :: [#'exchange.declare'{}].
 
+-type kz_amqp_exchange_binding() :: #'exchange.bind'{}.
+-type kz_amqp_exchange_bindings() :: [#'exchange.bind'{}].
+
 -type kz_amqp_queue() :: #'queue.declare'{}.
 -type kz_amqp_queues() :: [#'queue.declare'{}].
 
@@ -218,6 +221,7 @@
                             ,tags = [] :: list() | '_'
                             ,hidden = 'false' :: boolean() | '_'
                             ,exchanges = #{} :: map() | '_'
+                            ,bindings = #{} :: map() | '_'
                             }).
 -type kz_amqp_connection() :: #kz_amqp_connection{}.
 

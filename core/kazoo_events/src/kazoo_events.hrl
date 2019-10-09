@@ -13,5 +13,7 @@
 -type bind_fun() :: {module(), atom(), list()} |
                     fun().
 
+-define(KZ_CALL_EVENTS_EXCHANGE, list_to_binary(["kz_events_", kz_term:to_binary(node())])).
+
 -define(KAZOO_EVENTS_HRL, 'true').
 -endif.

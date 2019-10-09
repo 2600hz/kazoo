@@ -17,6 +17,7 @@
 
 -define(ACCOUNT_NAMES, [<<?MODULE_STRING>>]).
 -define(WAIT_AFTER_DELETE, 1500).
+-define(WAIT_AFTER_UPDATE, 1500).
 
 -spec seq() -> 'ok'.
 seq() ->
@@ -59,6 +60,7 @@ seq() ->
     0 = query_limits(AccountId),
 
     _ = update_limits(API, AccountId, 0),
+    _ = timer:sleep(?WAIT_AFTER_UPDATE),
 
     _ = send_channel_create(AccountId, ResellerId, CallId4),
     {'ok', Resp4} = send_authz_req(AccountId, ResellerId, CallId4),

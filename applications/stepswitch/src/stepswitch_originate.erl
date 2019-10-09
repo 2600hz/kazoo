@@ -96,7 +96,8 @@ handle_cast({'kz_amqp_channel', _}, State) ->
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{queue=Q}};
 handle_cast({'gen_listener', {'is_consuming', 'true'}}, State) ->
-    'ok' = kapi_resource:publish_originate_req(build_originate(State)),
+    Req = build_originate(State),
+    'ok' = kapi_resource:publish_originate_req(Req),
     lager:debug("sent originate command"),
     {'noreply', State};
 handle_cast({'originate_result', _Props}, #state{response_queue='undefined'}=State) ->
@@ -314,7 +315,7 @@ originate_timeout(Request) ->
 -spec originate_error(kz_json:object(), kz_json:object()) -> kz_term:proplist().
 originate_error(JObj, OffnetReq) ->
     lager:debug("error during originate request: ~s", [kz_term:to_binary(kz_json:encode(JObj))]),
-    [{<<"Call-ID">>, kz_json:get_value(<<"Outbound-Call-ID">>, OffnetReq)}
+    [{<<"Call-ID">>, kz_json:get_first_defined([<<"Origination-Call-ID">>, <<"Outbound-Call-ID">>], OffnetReq)}
     ,{<<"Msg-ID">>, kz_api:msg_id(OffnetReq)}
     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
     ,{<<"Response-Code">>, <<"sip:500">>}
@@ -326,7 +327,7 @@ originate_error(JObj, OffnetReq) ->
 -spec originate_success(kz_json:object(), kz_json:object()) -> kz_term:proplist().
 originate_success(JObj, OffnetReq) ->
     lager:debug("originate request successfully completed"),
-    [{<<"Call-ID">>, kz_json:get_value(<<"Outbound-Call-ID">>, OffnetReq)}
+    [{<<"Call-ID">>, kz_json:get_first_defined([<<"Origination-Call-ID">>, <<"Outbound-Call-ID">>], OffnetReq)}
     ,{<<"Msg-ID">>, kz_api:msg_id(OffnetReq)}
     ,{<<"Response-Message">>, <<"SUCCESS">>}
     ,{<<"Response-Code">>, <<"sip:200">>}
@@ -337,7 +338,7 @@ originate_success(JObj, OffnetReq) ->
 -spec originate_failure(kz_json:object(), kz_json:object()) -> kz_term:proplist().
 originate_failure(JObj, OffnetReq) ->
     lager:debug("originate request failed: ~s", [kz_json:get_value(<<"Application-Response">>, JObj)]),
-    [{<<"Call-ID">>, kz_json:get_value(<<"Outbound-Call-ID">>, OffnetReq)}
+    [{<<"Call-ID">>, kz_json:get_first_defined([<<"Origination-Call-ID">>, <<"Outbound-Call-ID">>], OffnetReq)}
     ,{<<"Msg-ID">>, kz_api:msg_id(OffnetReq)}
     ,{<<"Response-Message">>, kz_json:get_first_defined([<<"Application-Response">>
                                                         ,<<"Hangup-Cause">>

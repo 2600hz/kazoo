@@ -40,7 +40,6 @@
                ,port :: inet:port_number() | 'undefined'
                ,socket :: inet:socket() | 'undefined'
                ,idle_alert = 'infinity' :: timeout()
-               ,amqp_channel :: kz_term:api_pid()
                ,packet :: event_packet_type()
                }).
 -type state() :: #state{}.
@@ -122,9 +121,8 @@ handle_cast(_Msg, #state{idle_alert=Timeout}=State) ->
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                          ,node=Node
                                          ,idle_alert=Timeout
-                                         ,amqp_channel=Channel
                                          }=State) ->
-    case handle_data(Node, Data, Channel) of
+    case handle_data(Node, Data) of
         {'error', {'not_handled', _EvtData}} ->
             lager:warning("data from event stream socket not processed => ~p", [_EvtData]),
             {'noreply', State, Timeout};
@@ -168,11 +166,12 @@ handle_info(_Msg, #state{socket='undefined'}=State) ->
 handle_info({'kz_amqp_assignment', {'new_channel', _, Channel}}, State) ->
     lager:debug("channel acquired ~p", [Channel]),
     _ = kz_amqp_channel:consumer_channel(Channel),
-    {'noreply', State#state{amqp_channel=Channel}};
+    {'noreply', State};
 
-handle_info({'kz_amqp_assignment', 'lost_channel'}, #state{amqp_channel=Channel} = State) ->
-    lager:debug("channel lost ~p", [Channel]),
-    {'noreply', State#state{amqp_channel='undefined'}};
+handle_info({'kz_amqp_assignment', 'lost_channel'}, State) ->
+    lager:debug("channel lost"),
+    _ = kz_amqp_channel:remove_consumer_channel(),
+    {'noreply', State};
 
 handle_info(_Msg, #state{idle_alert=Timeout}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
@@ -290,10 +289,11 @@ idle_alert_timeout() ->
         Else -> Else * ?MILLISECONDS_IN_SECOND
     end.
 
--spec handle_data(atom(), binary(), pid()) -> any().
-handle_data(Node, Data, Channel) ->
+-spec handle_data(atom(), binary()) -> any().
+handle_data(Node, Data) ->
     try binary_to_term(Data) of
         {'event', 'json', JObj} ->
+            Channel = kz_amqp_channel:consumer_channel(),
             kz_util:spawn(fun handle_event/3, [Node, JObj, Channel]);
         Else -> {'error', {'not_handled', Else}}
     catch
