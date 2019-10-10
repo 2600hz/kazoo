@@ -1,0 +1,97 @@
+{
+    "_id": "7145b996f7ee0d40b314114a9869b7fe",
+    "_rev": "1-2daf56bf5164e7ff19b6828396fe98db",
+    "call_forward": {
+        "direct_calls_only": false,
+        "enabled": false,
+        "failover": true,
+        "ignore_early_media": true,
+        "keep_caller_id": true,
+        "number": "+18887776666",
+        "require_keypress": false,
+        "substitute": false
+    },
+    "call_restriction": {
+        "caribbean": {
+            "action": "inherit"
+        },
+        "closed_groups": {
+            "action": "inherit"
+        },
+        "did_us": {
+            "action": "inherit"
+        },
+        "emergency": {
+            "action": "inherit"
+        },
+        "international": {
+            "action": "deny"
+        },
+        "toll_us": {
+            "action": "inherit"
+        },
+        "tollfree_us": {
+            "action": "inherit"
+        },
+        "unknown": {
+            "action": "inherit"
+        }
+    },
+    "caller_id": {
+        "emergency": {},
+        "external": {
+            "number": "+18887776666"
+        },
+        "internal": {
+            "name": "Bob Marley",
+            "number": "150"
+        }
+    },
+    "contact_list": {},
+    "email": "bob@10722.com",
+    "enabled": true,
+    "fax_to_email_enabled": false,
+    "first_name": "Bob",
+    "hotdesk": {
+        "enabled": false,
+        "keep_logged_in_elsewhere": false,
+        "require_pin": false
+    },
+    "last_name": "Marley",
+    "media": {
+        "audio": {
+            "codecs": []
+        },
+        "encryption": {
+            "enforce_security": false,
+            "methods": []
+        },
+        "fax_option": false,
+        "ignore_early_media": false,
+        "progress_timeout": 0,
+        "video": {
+            "codecs": []
+        }
+    },
+    "music_on_hold": {},
+    "outbound_call_recording": "true",
+    "presence_id": "150",
+    "priv_level": "admin",
+    "profile": {},
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000010722",
+    "pvt_account_id": "account0000000000000000000010722",
+    "pvt_alphanum_name": "bobmarley",
+    "pvt_auth_account_id": "account0000000000000000000000001",
+    "pvt_auth_user_id": "1eccbaa7e80d60837f2475ec4329ba8a",
+    "pvt_created": 63666931408,
+    "pvt_is_authenticated": true,
+    "pvt_modified": 63735963697,
+    "pvt_request_id": "9ddf9842836ae240326e6d216cf06d5a",
+    "pvt_type": "user",
+    "pvt_vsn": "1",
+    "require_password_update": false,
+    "ringtones": {},
+    "timezone": "America/New_York",
+    "verified": false,
+    "vm_to_email_enabled": true
+}
