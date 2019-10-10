@@ -210,8 +210,13 @@ validate(Context, ?AVAILABLE) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = kz_services_reseller:get_id(AccountId),
     ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
+    Options =
+        case kz_term:is_true(cb_context:req_value(Context, <<"details">>, 'false')) of
+            'false' -> [];
+            'true' -> ['include_docs']
+        end,
     crossbar_doc:load_view(?CB_LIST
-                          ,[]
+                          ,Options
                           ,cb_context:set_account_db(Context, ResellerDb)
                           ,fun normalize_available_view_results/2
                           );
@@ -689,7 +694,10 @@ pipe_services(Context, Routines, RespFunction) ->
 -spec normalize_available_view_results(kz_json:object(), kz_json:objects()) ->
                                               kz_json:objects().
 normalize_available_view_results(JObj, Acc) ->
-    [kz_json:get_json_value(<<"value">>, JObj)|Acc].
+    case kz_json:get_ne_json_value(<<"doc">>, JObj) of
+        'undefined' -> [kz_json:get_json_value(<<"value">>, JObj)|Acc];
+        Doc -> [kz_doc:public_fields(Doc)|Acc]
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Normalizes the results of a view.
