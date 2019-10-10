@@ -29,7 +29,9 @@ maybe_sanitize_fs_value_test_() ->
               end,
     [{TestMsg(Key)
      ,?_assertEqual(Expected, ecallmgr_util:maybe_sanitize_fs_value(Key, UTF8Bin))
-     } || Key <- Keys].
+     }
+     || Key <- Keys
+    ].
 
 build_simple_channels_test_() ->
     SIPHeaders = kz_json:from_list([{<<"X-Account-ID">>, <<"{account_id}">>}

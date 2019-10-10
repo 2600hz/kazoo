@@ -99,7 +99,7 @@
                          ,channel_vars = [] :: kz_term:ne_binaries()
                          ,header_vars = [] :: kz_term:ne_binaries()
                          ,include_channel_vars = 'true' :: boolean()
-                         ,failover
+                         ,failover :: kz_term:api_object()
                          }).
 -type bridge_endpoint() :: #bridge_endpoint{}.
 
@@ -666,7 +666,11 @@ classify_endpoints(Endpoints) ->
     lists:foldl(fun classify_endpoint/2, {[], []}, Endpoints).
 
 -spec classify_endpoint(bridge_endpoint(), {bridge_endpoints(), bridge_endpoints()}) -> {bridge_endpoints(), bridge_endpoints()}.
-classify_endpoint(#bridge_endpoint{channel_vars=CVs}=Endpoint, {Devices, Failovers}) ->
+classify_endpoint(#bridge_endpoint{channel_vars=CVs
+                                  ,failover=EndpointFailover
+                                  }=Endpoint
+                 ,{Devices, Failovers}
+                 ) ->
     IsFailoverEndpoint = lists:member(<<?CHANNEL_VAR_PREFIX, "Is-Failover='true'">>, CVs),
     IsRegistered = is_registered(Endpoint),
 
@@ -677,10 +681,17 @@ classify_endpoint(#bridge_endpoint{channel_vars=CVs}=Endpoint, {Devices, Failove
         'false' when IsRegistered ->
             lager:info("endpoint is an endpoint"),
             {[Endpoint | Devices], Failovers};
-        'false' ->
+        'false' when EndpointFailover =:= 'undefined' ->
             lager:info("endpoint is not failover nor registered, removing"),
-            {Devices, Failovers}
+            {Devices, Failovers};
+        'false' ->
+            lager:info("endpoint is not registered but has failover route defined"),
+            maybe_add_failover_route(EndpointFailover, {Devices, Failovers})
     end.
+
+maybe_add_failover_route(EndpointFailover, {Devices, Failovers}) ->
+    Endpoint = endpoint_jobj_to_record(EndpointFailover),
+    {Devices, maybe_use_fwd_endpoint(Endpoint, Failovers)}.
 
 -spec is_registered(bridge_endpoint()) -> boolean().
 is_registered(Endpoint) ->
