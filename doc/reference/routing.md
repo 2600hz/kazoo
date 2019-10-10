@@ -206,11 +206,11 @@ SUP commands later will help you inspect that cache.
 * Enable authorization on calls
    `sup kapps_config set_default ecallmgr authz_enabled true`
    `sup kapps_config flush ecallmgr`
-   `sup -n ecallmgr ecallmgr_config flush`
+   `sup -n ecallmgr kapps_config flush ecallmgr`
 * Authorize local resource usage
    `sup kapps_config set_default ecallmgr authz_local_resources true`
    `sup kapps_config flush ecallmgr`
-   `sup -n ecallmgr ecallmgr_config flush`
+   `sup -n ecallmgr kapps_config flush ecallmgr`
 * Dry Run authz attempts (useful when testing authz)
    `sup kapps_config set_default ecallmgr authz_dry_run true`
    Still allows a call that would have been denied
