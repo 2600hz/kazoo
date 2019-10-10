@@ -409,28 +409,30 @@ normalize_cdr(Context, <<"json">>, Result) ->
     Duration = kzd_cdrs:duration_seconds(JObj, 0),
     Timestamp = kzd_cdrs:timestamp(JObj, 0) - Duration,
 
-    RowMappers = props:replace_value(<<"datetime">>, fun col_pretty_print/3, csv_rows(Context)),
-
-    kz_json:from_list([{K, apply_row_mapper(F, JObj, Timestamp, Context)} || {K, F} <- RowMappers]);
+    kz_json:from_list([{K, apply_row_mapper(K, F, JObj, Timestamp, Context)} || {K, F} <- csv_rows(Context)]);
 normalize_cdr(Context, <<"csv">>, Result) ->
     JObj = kz_json:get_json_value(<<"doc">>, Result),
     Duration = kzd_cdrs:duration_seconds(JObj, 0),
     Timestamp = kzd_cdrs:timestamp(JObj, 0) - Duration,
 
-    RowMappers = props:replace_value(<<"datetime">>, fun col_pretty_print/3, csv_rows(Context)),
-
-    <<(kz_binary:join([apply_row_mapper(F, JObj, Timestamp, Context)
-                       || {_, F} <- RowMappers
+    <<(kz_binary:join([apply_row_mapper(K, F, JObj, Timestamp, Context)
+                       || {K, F} <- csv_rows(Context)
                       ]
                      ,<<",">>
                      ))/binary
      ,"\r\n"
     >>.
 
-apply_row_mapper(F, JObj, Timestamp, Context) when is_function(F, 3) ->
-    F(JObj, Timestamp, Context);
-apply_row_mapper(F, JObj, Timestamp, _Context) when is_function(F, 2) ->
+-spec apply_row_mapper(kz_term:ne_binary(), fun(), kz_json:object(), kz_time:gregorian_seconds(), cb_context:context()) -> binary().
+apply_row_mapper(<<"datetime">>, _F, JObj, Timestamp, Context) ->
+    col_pretty_print(JObj, Timestamp, Context);
+apply_row_mapper(_, F, JObj, Timestamp, _Context) ->
     F(JObj, Timestamp).
+
+-spec col_pretty_print(kz_json:object(), kz_time:gregorian_seconds(), cb_context:context()) -> kz_term:ne_binary().
+col_pretty_print(_JObj, Timestamp, Context) ->
+    UTCSecondsOffset = cb_context:req_value(Context, ?KEY_UTC_OFFSET),
+    kz_time:pretty_print_datetime(handle_utc_time_offset(Timestamp, UTCSecondsOffset)).
 
 -spec maybe_add_csv_header(cb_context:context(), kz_term:ne_binary(), kz_json:objects() | kz_term:binaries()) -> cb_context:context().
 maybe_add_csv_header(Context, _, []) ->
@@ -506,8 +508,3 @@ load_legs(Id, Context) ->
                                         kz_json:objects().
 normalize_leg_view_results(JObj, Acc) ->
     Acc ++ [kz_json:get_json_value(<<"doc">>, JObj)].
-
--spec col_pretty_print(kz_json:object(), kz_time:gregorian_seconds(), cb_context:context()) -> kz_term:ne_binary().
-col_pretty_print(_JObj, Timestamp, Context) ->
-    UTCSecondsOffset = cb_context:req_value(Context, ?KEY_UTC_OFFSET),
-    kz_time:pretty_print_datetime(handle_utc_time_offset(Timestamp, UTCSecondsOffset)).
