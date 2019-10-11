@@ -1,0 +1,102 @@
+{
+    "_id": "14b279cdaef7d55cff7235ba2a5010e9",
+    "_rev": "1-2e2b7c3dece9d5e8653700e5eb08552f",
+    "call_forward": {
+        "direct_calls_only": false,
+        "enabled": false,
+        "failover": false,
+        "ignore_early_media": true,
+        "keep_caller_id": true,
+        "require_keypress": true,
+        "substitute": true
+    },
+    "call_restriction": {
+        "caribbean": {
+            "action": "deny"
+        },
+        "closed_groups": {
+            "action": "inherit"
+        },
+        "did_us": {
+            "action": "inherit"
+        },
+        "international": {
+            "action": "deny"
+        },
+        "toll_us": {
+            "action": "deny"
+        },
+        "tollfree_us": {
+            "action": "inherit"
+        }
+    },
+    "caller_id": {
+        "emergency": {
+            "number": "+15554443333"
+        },
+        "external": {},
+        "internal": {}
+    },
+    "contact_list": {
+        "exclude": false
+    },
+    "device_type": "sip_device",
+    "dial_plan": {},
+    "do_not_disturb": {
+        "enabled": false
+    },
+    "enabled": true,
+    "exclude_from_queues": false,
+    "ignore_completed_elsewhere": false,
+    "media": {
+        "audio": {
+            "codecs": [
+                "PCMU",
+                "PCMA"
+            ]
+        },
+        "encryption": {
+            "enforce_security": false,
+            "methods": []
+        },
+        "fax_option": true,
+        "ignore_early_media": false,
+        "progress_timeout": 0,
+        "video": {
+            "codecs": []
+        }
+    },
+    "music_on_hold": {},
+    "mwi_unsolicitated_updates": true,
+    "mwi_unsolicited_updates": true,
+    "name": "My Softphone 3",
+    "outbound_flags": [
+        "fax"
+    ],
+    "owner_id": "7145b996f7ee0d40b314114a9869b7fe",
+    "presence_id": "1900",
+    "pvt_account_db": "account%2Fac%2Fco%2Funt0000000000000000000010722",
+    "pvt_account_id": "account0000000000000000000010722",
+    "pvt_alphanum_name": "mysoftphone2",
+    "pvt_auth_account_id": "account0000000000000000000000001",
+    "pvt_auth_user_id": "1eccbaa7e80d60837f2475ec4329ba8a",
+    "pvt_created": 63658530594,
+    "pvt_is_authenticated": true,
+    "pvt_modified": 63721599465,
+    "pvt_request_id": "1613081d7962969b2e0096aee214f87f",
+    "pvt_type": "device",
+    "pvt_vsn": "1",
+    "register_overwrite_notify": false,
+    "ringtones": {},
+    "sip": {
+        "custom_sip_headers": {},
+        "expire_seconds": 360,
+        "ignore_completed_elsewhere": false,
+        "invite_format": "username",
+        "method": "password",
+        "password": "pass_dfg345",
+        "registration_expiration": "360",
+        "username": "user_dfg345"
+    },
+    "suppress_unregister_notifications": false
+}
