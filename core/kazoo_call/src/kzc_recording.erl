@@ -285,10 +285,11 @@ handle_cast({'record_stop', {_, MediaName}=Media, FS, EventJObj},
                   }=State) ->
     lager:debug("received record_stop, storing recording ~s", [MediaName]),
     Call1 = kapps_call:kvs_store(<<"FreeSwitch-Node">>, FS, Call),
+    Call2 = kapps_call:set_switch_nodename(FS, Call1),
     gen_server:cast(self(), 'store_recording'),
     maybe_stop_timer(TRef),
     {'noreply', State#state{media=Media
-                           ,call=Call1
+                           ,call=Call2
                            ,stop_received='true'
                            ,event=EventJObj
                            ,timer_ref='undefined'
