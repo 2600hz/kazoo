@@ -676,7 +676,7 @@ to_public_prop(Doc, IsReseller, Timezone) ->
     Duration = duration_seconds(Doc, 0),
     Timestamp = timestamp(Doc, 0) - Duration,
 
-   [{K, F(Doc, Timestamp, Timezone)} || {K, F} <- csv_headers(IsReseller)].
+    [{K, F(Doc, Timestamp, Timezone)} || {K, F} <- csv_headers(IsReseller)].
 
 -spec to_public_csv(doc()) -> iodata().
 to_public_csv(Doc) -> to_public_csv(Doc, 'false').
