@@ -687,7 +687,7 @@ wait_for_pickup(SlotNumber, Slot, Data, Call) ->
                     lager:info("parked caller ringback was answered"),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
                     _ = publish_retrieved(Call, SlotNumber),
-                    cf_exe:transfer(Call);
+                    wait_for_bridge(Call);
                 'failed' ->
                     unanswered_action(SlotNumber, Slot, Data, Call);
                 'channel_hungup' ->
@@ -1030,3 +1030,8 @@ error_occupied_slot(Call) ->
                 kapps_call_command:b_prompt(<<"park-already_in_use">>, Call)
         end,
     cf_exe:stop(Call).
+
+-spec wait_for_bridge(kapps_call:call()) -> 'ok'.
+wait_for_bridge(Call) ->
+    _ = kapps_call_command:wait_for_bridge('infinity', Call),
+    cf_exe:continue(Call).
