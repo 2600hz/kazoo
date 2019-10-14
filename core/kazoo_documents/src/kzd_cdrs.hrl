@@ -48,7 +48,7 @@
 -define(KEY_CCV, <<"custom_channel_vars">>).
 -define(KEY_UTC_OFFSET, <<"utc_offset">>).
 
--type csv_column_fun() :: fun((kz_json:object(), kz_time:gregorian_seconds()) -> kz_term:ne_binary()).
+-type csv_column_fun() :: fun((kz_json:object(), kz_time:gregorian_seconds(), kz_term:api_ne_binary()) -> kz_term:ne_binary() | kz_term:ne_binaries()).
 
 -define(SCHEMA, <<"cdrs">>).
 -define(PVT_TYPE, <<"cdr">>).

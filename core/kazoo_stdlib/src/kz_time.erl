@@ -469,7 +469,7 @@ adjust_utc_datetime(DateTimeOrTS, Adjustment) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec tz_name(kz_time:datetime() | kz_time:gregorian_seconds(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
+-spec tz_name(datetime() | gregorian_seconds(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 tz_name(_, 'undefined') ->
     <<"UTC">>;
 tz_name({{_, _, _}, {_, _, _}}=DateTime, Timezone) ->

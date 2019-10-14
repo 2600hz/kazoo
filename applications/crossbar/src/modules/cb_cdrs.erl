@@ -427,7 +427,7 @@ normalize_cdr(Context, <<"csv">>, Result) ->
 apply_row_mapper(<<"datetime">>, _F, JObj, Timestamp, Context) ->
     col_pretty_print(JObj, Timestamp, Context);
 apply_row_mapper(_, F, JObj, Timestamp, _Context) ->
-    F(JObj, Timestamp).
+    F(JObj, Timestamp, 'undefined').
 
 -spec col_pretty_print(kz_json:object(), kz_time:gregorian_seconds(), cb_context:context()) -> kz_term:ne_binary().
 col_pretty_print(_JObj, Timestamp, Context) ->
