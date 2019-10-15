@@ -2,12 +2,18 @@ version: 2
 
 workflows:
   version: 2
-  build-analyze-run:
+  build-branch:
     jobs:
       - setup
-      - build:
+      - build_deps:
           requires:
             - setup
+      - build:
+          requires:
+            - build_deps
+      - eunit_tests:
+          requires:
+            - build_deps
       - checks:
           requires:
             - build
@@ -34,7 +40,33 @@ jobs:
     <<: *defaults
     steps:
       - checkout
-      - run: make changed
+      - run:
+          name: Listing Changes
+          command: make changed
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+  build_deps:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: .
+      - restore_cache:
+          keys:
+            - deps-erl21-v1-{{ checksum "make/deps.mk" }}
+      - run:
+          name: Deps hash being used
+          command: |
+            md5sum make/deps.mk || true
+            ls -al make || true
+      - run:
+          name: Making dependencies
+          command : make deps
+      - save_cache:
+          key: deps-erl21-v1-{{ checksum "make/deps.mk" }}
+          paths:
+            - deps/
       - persist_to_workspace:
           root: .
           paths:
@@ -47,48 +79,85 @@ jobs:
       - restore_cache:
           keys:
             - deps-erl21-v1-{{ checksum "make/deps.mk" }}
-      - run: |
-          deps_hash=$(md5sum make/deps.mk | cut -d" " -f1)
-          if [ x"$(cat .git/.kz_deps_hash)" = x"$deps_hash" ]; then
-            touch "make/.deps.mk.$deps_hash"
-          fi
-      - run: JOBS="2" make
-      - run: echo -n $(md5sum make/deps.mk | cut -d" " -f1) > .git/.kz_deps_hash
-      - save_cache:
-          key: deps-erl21-v1-{{ checksum "make/deps.mk" }}
-          paths:
-            - deps/
-            - .git/.kz_deps_hash
+      - run:
+          name: Compiling the project
+          command: JOBS="2" make
       - persist_to_workspace:
           root: .
           paths:
             - .
+  eunit_tests:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: .
+      - restore_cache:
+          keys:
+            - deps-erl21-v1-{{ checksum "make/deps.mk" }}
+      - run:
+          name: Compiling for unit test enviornment
+          command: ERLC_OPTS='-DPROPER' make compile-test
+      - run:
+          name: Running Eunit/Proper tests
+          command: make eunit
+      - run:
+          name: Uploading Coverage Report
+          command: make coverage-report
   checks:
     <<: *defaults
     steps:
       - attach_workspace:
           at: .
-      - run: make fmt
-      - run: make code_checks
-      - run: make app_applications
-      - run: make xref
-      - run: make sup_completion
-      - run: make elvis
-      - run: ${PWD}/scripts/check-unstaged.bash
-
+      - run:
+          name: Running code formatter
+          command: make fmt
+      - run:
+          name: Running code checks
+          command: make code_checks
+      - run:
+          name: Running additional code style checks
+          command: scripts/code_checks.bash
+      - run:
+          name: Making app applications
+          command: make app_applications
+      - run:
+          name: Generating sup bash completion file
+          command: make sup_completion
+      - run:
+          name: Running xref check
+          command: make xref
+      - run:
+          name: Running Elvis code style check
+          command: make elvis
+      - run:
+          name: Checking for unstaged files
+          command: scripts/check-unstaged.bash
   docs:
     <<: *defaults
     steps:
       - attach_workspace:
           at: .
-      - run: make apis
-      - run: make validate-js
-      - run: make validate-schemas
-      - run: make docs
-      - run: ./scripts/state-of-docs.sh || true
-      - run: ./scripts/state-of-edoc.escript
-      - run: ${PWD}/scripts/check-unstaged.bash
-
+      - run:
+          name: Generating APIs
+          command: make apis
+      - run:
+          name: Validating CouchDB view files
+          command: make validate-js
+      - run:
+          name: Validating schemas
+          command: make validate-schemas
+      - run:
+          name: Generating docs
+          command: make docs || true
+      - run:
+          name: Checking doc states
+          command: scripts/state-of-docs.sh || true
+      - run:
+          name: Checking EDoc states
+          command: scripts/state-of-edoc.escript
+      - run:
+          name: Checking for unstaged files
+          command: scripts/check-unstaged.bash
   analyze:
     <<: *defaults
     steps:
@@ -97,17 +166,18 @@ jobs:
       - restore_cache:
           keys:
             - plt-erl21-v1-{{ checksum "make/deps.mk" }}
-      - run: make build-plt dialyze-changed
+      - run:
+          name: Dailyzing changed Erlang files
+          command: make build-plt dialyze-changed
       - save_cache:
           key: plt-erl21-v1-{{ checksum "make/deps.mk" }}
           paths:
             - .kazoo.plt
-
   release:
     <<: *defaults
     docker:
       - image: offical2600hz/circleci:21.3.8
-      - image: couchdb:2.1.1
+      - image: couchdb:2.3.1
       - image: 2600hz/rabbitmq
     environment:
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
@@ -115,15 +185,27 @@ jobs:
     steps:
       - attach_workspace:
           at: .
-      - run: mkdir -p $CIRCLE_ARTIFACTS
-      - run: make build-ci-release
-      - run: KAZOO_CONFIG=${PWD}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make release
-      - run: cp ${PWD}/rel/ci.relx.config $CIRCLE_ARTIFACTS/
-      - run: find ${PWD}/_rel/kazoo/releases -name kazoo.rel -exec cp {} $CIRCLE_ARTIFACTS/ \;
+      - run:
+          name: Creating artifacts directory
+          command: mkdir -p $CIRCLE_ARTIFACTS
+      - run:
+          name: Making CI release
+          command: make build-ci-release
+      - run:
+          name: Running Kazoo release
+          command: KAZOO_CONFIG=${PWD}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make release
+      - run:
+          name: Copying Relx config artifacts
+          command: cp ${PWD}/rel/ci.relx.config $CIRCLE_ARTIFACTS/
+      - run:
+          name: Copying release Artifacts
+          command: find ${PWD}/_rel/kazoo/releases -name kazoo.rel -exec cp {} $CIRCLE_ARTIFACTS/ \;
       - store_artifacts:
           path: /tmp/circleci-artifacts
-      - run: |
-          if [[ $(grep -c -v -F 'exit with reason shutdown' ${CIRCLE_ARTIFACTS}/log/error.log) -gt 0 ]]; then
-            cat ${CIRCLE_ARTIFACTS}/log/error.log
-            exit 1
-          fi
+      - run:
+          name: Checking for errors
+          command: |
+            if [[ $(grep -c -v -F 'exit with reason shutdown' ${CIRCLE_ARTIFACTS}/log/error.log) -gt 0 ]]; then
+              cat ${CIRCLE_ARTIFACTS}/log/error.log
+              exit 1
+            fi
