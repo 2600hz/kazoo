@@ -285,7 +285,7 @@ from_list_recursive(L, Opts)
 -spec recursive_from_list(list(), from_list_options()) -> object().
 recursive_from_list([First | _]=List, Options)
   when is_list(List), is_tuple(First) ->
-    from_list([{kz_term:to_binary(K), recursive_from_list(V), Options}
+    from_list([{kz_term:to_binary(K), recursive_from_list(V, Options)}
                || {K,V} <- List
               ]);
 recursive_from_list(X, _) when is_float(X) -> X;
