@@ -2,7 +2,7 @@ version: 2
 
 workflows:
   version: 2
-  
+
   build-branch:
     jobs:
       - setup
@@ -67,7 +67,7 @@ workflows:
            branches:
              ignore: /.*/
          requires:
-           - build_deps           
+           - build_deps
       - checks:
           filters:
              tags:
@@ -127,14 +127,14 @@ jobs:
     <<: *defaults
     steps:
       - checkout
-      - run: 
+      - run:
           name: Listing Changes
           command: make changed
       - persist_to_workspace:
           root: .
           paths:
             - .
-  
+
   build_deps:
     <<: *defaults
     steps:
@@ -143,8 +143,13 @@ jobs:
       - restore_cache:
           keys:
             - deps-v3.2-{{ checksum "make/deps.mk" }}
-      - run: 
-          name: Making deps 
+      - run:
+          name: Print deps hash being used
+          command: |
+            md5sum make/deps.mk || true
+            ls -al make || true
+      - run:
+          name: Making dependencies
           command: make deps
       - save_cache:
           key: deps-v3.2-{{ checksum "make/deps.mk" }}
@@ -154,7 +159,7 @@ jobs:
           root: .
           paths:
             - .
-            
+
   build:
     <<: *defaults
     steps:
@@ -163,7 +168,7 @@ jobs:
       - restore_cache:
           keys:
             - deps-v3.2-{{ checksum "make/deps.mk" }}
-      - run: 
+      - run:
           name: Compiling the project
           command: JOBS="2" make
       - save_cache:
@@ -174,7 +179,7 @@ jobs:
           root: .
           paths:
             - .
-      
+
   eunit_tests:
     <<: *defaults
     steps:
@@ -184,42 +189,42 @@ jobs:
           keys:
             - deps-v3.2-{{ checksum "make/deps.mk" }}
       - run:
-          name: Displaying deps hash
-          command: |
-            md5sum make/deps.mk || true
-            ls -al make || true
-      - run: 
           name: Compiling for unit test enviornment
           command: ERLC_OPTS='-DPROPER' make compile-test
-      - run: 
+      - run:
           name: Running Eunit tests
           command: make eunit
+      - run:
+          name: Uploading Coverage Report
+          command: make coverage-report
 
-            
   checks:
     <<: *defaults
     steps:
       - attach_workspace:
           at: .
-      - run: 
+      - run:
+          name: Running code formatter
+          command: make fmt
+      - run:
           name: Running code checks
           command: make code_checks
-      - run: 
-          name: Running additional code checks 
+      - run:
+          name: Running additional code style checks
           command: scripts/code_checks.bash
-      - run: 
-          name: Making app applications 
+      - run:
+          name: Checking app source file
           command: make app_applications
-      - run: 
+      - run:
           name: Generating sup bash completion file
           command: make sup_completion
-      - run: 
+      - run:
           name: Running xref check
           command: make xref
-      - run: 
-          name: Running code style check 
+      - run:
+          name: Running Elvis code style check
           command: make elvis
-      - run: 
+      - run:
           name: Checking for unstaged files
           command: scripts/check-unstaged.bash
 
@@ -228,25 +233,25 @@ jobs:
     steps:
       - attach_workspace:
           at: .
-      - run: 
+      - run:
           name: Generating APIs
           command: make apis
-      - run: 
-          name: Validating view JS
+      - run:
+          name: Validating CouchDB view files
           command: make validate-js
-      - run: 
+      - run:
           name: Validating schemas
           command: make validate-schemas
-      - run: 
+      - run:
           name: Generating docs
           command: make docs || true
-      - run: 
+      - run:
           name: Checking doc states
           command: scripts/state-of-docs.sh || true
-      - run: 
-          name: Validating doc states
+      - run:
+          name: Checking EDoc states
           command: scripts/state-of-edoc.escript
-      - run: 
+      - run:
           name: Checking for unstaged files
           command: scripts/check-unstaged.bash
 
@@ -258,8 +263,8 @@ jobs:
       - restore_cache:
           keys:
             - plt-v2-{{ checksum "make/deps.mk" }}
-      - run: 
-          name: Running dailyzer checks
+      - run:
+          name: Dailyzing changed Erlang files
           command: make build-plt dialyze-changed
       - save_cache:
           key: plt-v2-{{ checksum "make/deps.mk" }}
@@ -270,7 +275,7 @@ jobs:
     <<: *defaults
     docker:
       - image: offical2600hz/circleci:19.3.6.13
-      - image: couchdb:2.1.1
+      - image: couchdb:2.3.1
       - image: rabbitmq:3.7
     environment:
       CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
@@ -281,21 +286,21 @@ jobs:
       - run:
           name: Creating artifacts directory
           command: mkdir -p $CIRCLE_ARTIFACTS
-      - run: 
-          name: Making CI release
+      - run:
+          name: Building CI release
           command: make build-ci-release
-      - run: 
-          name: Making release
+      - run:
+          name: Running Kazoo release
           command: KAZOO_CONFIG=${PWD}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make release
-      - run: 
-          name: Copying artifacts 
+      - run:
+          name: Copying Relx config artifacts
           command: cp ${PWD}/rel/ci.relx.config $CIRCLE_ARTIFACTS/
-      - run: 
-          name: Finding Artifacts
+      - run:
+          name: Copying release Artifacts
           command: find ${PWD}/_rel/kazoo/releases -name kazoo.rel -exec cp {} $CIRCLE_ARTIFACTS/ \;
       - store_artifacts:
           path: /tmp/circleci-artifacts
-      - run: 
+      - run:
           name: Checking for errors
           command: |
             if [[ $(grep -c -v -F 'exit with reason shutdown' ${CIRCLE_ARTIFACTS}/log/error.log) -gt 0 ]]; then
