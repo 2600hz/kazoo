@@ -15,7 +15,7 @@ Key | Description | Type | Default | Required | Support Level
 `call_forward.failover` | Enable the call-forwarding parameters if the device is offline | `boolean()` | `false` | `false` | `supported`
 `call_forward.ignore_early_media` | The option to determine if early media from the call forwarded number should ignored | `boolean()` | `true` | `false` |  
 `call_forward.keep_caller_id` | Determines if the caller id is kept when the call is forwarded, if not the devices caller id is used | `boolean()` | `true` | `false` | `supported`
-`call_forward.number` | The number to forward calls to | `string(0..15)` |   | `false` | `supported`
+`call_forward.number` | The number to forward calls to | `string(0..35)` |   | `false` | `supported`
 `call_forward.require_keypress` | Determines if the callee is prompted to press 1 to accept the call | `boolean()` | `true` | `false` | `supported`
 `call_forward.substitute` | Determines if the call forwarding replaces the device | `boolean()` | `true` | `false` | `supported`
 `call_forward` | The device call forward parameters | `object()` |   | `false` |  

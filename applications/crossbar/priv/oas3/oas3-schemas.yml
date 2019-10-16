@@ -4311,7 +4311,7 @@
           'x-support_level': supported
         'number':
           'description': The number to forward calls to
-          'maxLength': 15
+          'maxLength': 35
           'type': string
           'x-support_level': supported
         'require_keypress':

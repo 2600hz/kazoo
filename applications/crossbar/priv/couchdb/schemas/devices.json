@@ -37,7 +37,7 @@
                 },
                 "number": {
                     "description": "The number to forward calls to",
-                    "maxLength": 15,
+                    "maxLength": 35,
                     "support_level": "supported",
                     "type": "string"
                 },
