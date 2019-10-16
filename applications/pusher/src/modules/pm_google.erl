@@ -75,7 +75,7 @@ maybe_send_push_notification({Pid, Envelope}, JObj) ->
 
     lager:debug("pushing to ~p: ~s: ~p", [Pid, TokenID, Message]),
 
-    gcm:push(Pid, [TokenID], Message).
+    gcm:push(Pid, [TokenID], kz_json:from_map(Message)).
 
 -spec build_payload(kz_json:object()) -> kz_json:object().
 build_payload(JObj) ->
