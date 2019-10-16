@@ -160,20 +160,20 @@ get_view_options(?LIST_BY_OWNER, OwnerId, <<"number">> = Type, Number) ->
 format_view_results(JObjs, Options) ->
     %% Group search results by pattern
     MergedByKey = lists:foldl(fun(JObj, Acc) ->
-                                        [_Owner, _Type, Key] = kz_json:get_value(<<"key">>, JObj),
-                                        ValueCurrent = kz_json:get_list_value(Key, Acc, []),
-                                        kz_json:set_value(Key, [kz_json:get_value(<<"value">>, JObj) | ValueCurrent], Acc)
-                                  end
-                                 ,kz_json:new()
-                                 ,JObjs),
+                                      [_Owner, _Type, Key] = kz_json:get_value(<<"key">>, JObj),
+                                      ValueCurrent = kz_json:get_list_value(Key, Acc, []),
+                                      kz_json:set_value(Key, [kz_json:get_value(<<"value">>, JObj) | ValueCurrent], Acc)
+                              end
+                             ,kz_json:new()
+                             ,JObjs),
     FilteredResults = kz_json:foldl(fun(Key, Values, Acc) ->
                                             case filter_results(Values, Options) of
                                                 [] -> Acc;
                                                 Results -> [{Key, Results} | Acc]
                                             end
-                                     end
-                                    ,[]
-                                    ,MergedByKey),
+                                    end
+                                   ,[]
+                                   ,MergedByKey),
     case FilteredResults == [] of
         'true' -> {'error', 'not_found'};
         'false' -> {'ok', FilteredResults}

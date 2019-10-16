@@ -273,7 +273,7 @@ normalize_view_results(JObj, Acc) ->
     [Key, _Owner] = kz_json:get_list_value(<<"key">>, JObj),
     case kz_json:get_value(<<"value">>, JObj) of
         'undefined' -> Acc;
-            Value -> [kz_json:set_value(<<"key">>, Key, Value)| Acc]
+        Value -> [kz_json:set_value(<<"key">>, Key, Value)| Acc]
     end.
 
 -spec normalize_crossbar_list_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
