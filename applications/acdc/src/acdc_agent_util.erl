@@ -142,22 +142,22 @@ most_recent_statuses(AccountId, AgentId, Options) ->
                       {'ok', Statuses} -> Statuses;
                       {'error', _} -> kz_json:new()
                   end,
-    DBStatuses = case fetch_db_statuses(AccountId, AgentId, Options) of
+    DBStatuses = case fetch_db_statuses(AccountId, AgentId) of
                      {'ok', Statuses2} -> Statuses2;
                      {'error', _} -> kz_json:new()
                  end,
     {'ok', kz_json:merge(DBStatuses, ETSStatuses)}.
 
-fetch_db_statuses(AccountId, AgentId, Options) ->
+fetch_db_statuses(AccountId, AgentId) ->
     case kz_cache:fetch_local(?CACHE_NAME, db_fetch_key(AccountId)) of
         {'ok', Statuses} -> {'ok', filter_agent_statuses(Statuses, AgentId)};
-        {'error', 'not_found'} -> maybe_db_lookup(AccountId, AgentId, Options)
+        {'error', 'not_found'} -> maybe_db_lookup(AccountId, AgentId)
     end.
 
--spec maybe_db_lookup(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
+-spec maybe_db_lookup(kz_term:ne_binary(), kz_term:ne_binary()) ->
                              statuses_return() | {'error', any()}.
-maybe_db_lookup(AccountId, AgentId, Options) ->
-    case most_recent_db_statuses(AccountId, Options) of
+maybe_db_lookup(AccountId, AgentId) ->
+    case most_recent_db_statuses(AccountId) of
         {'ok', Statuses} ->
             kz_cache:store_local(?CACHE_NAME, db_fetch_key(AccountId), Statuses),
             {'ok', filter_agent_statuses(Statuses, AgentId)};
