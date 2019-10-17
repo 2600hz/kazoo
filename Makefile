@@ -307,14 +307,23 @@ app_applications:
 	ERL_LIBS=deps:core:applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find applications -name *.app.src)
 
 code_checks:
+	@printf ":: Check for copyright year\n\n"
 	@$(ROOT)/scripts/bump-copyright-year.sh $(CHANGED_ERL)
-	@$(ROOT)/scripts/code_checks.bash $(CHANGED)
+	@printf "\n:: Check code\n\n"
+	@$(ROOT)/scripts/code_checks.bash $(CHANGED_ERL)
+	@printf "\n:: Check for raw JSON usage\n\n"
 	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/no_raw_json.escript $(CHANGED_ERL)
+	@printf "\n:: Check for spelling\n\n"
 	@$(ROOT)/scripts/check-spelling.bash
+	@printf "\n:: Check for Kazoo diaspora\n\n"
 	@$(ROOT)/scripts/kz_diaspora.bash
+	@printf "\n:: Check for Edoc\n\n"
 	@$(ROOT)/scripts/edocify.escript
+	@printf "\n:: Check for Kazoo document accessors\n\n"
 	@$(ROOT)/scripts/kzd_module_check.bash
+	@printf "\n:: Check for proper log message usage\n\n"
 	@$(ROOT)/scripts/check-loglines.bash
+	@printf "\n:: Check for Erlang 21 new stacktrace syntax\n\n"
 	@$(ROOT)/scripts/check-stacktrace.py $(CHANGED_ERL)
 
 .PHONY: raw_json_check

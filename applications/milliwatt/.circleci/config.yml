@@ -2,7 +2,7 @@ version: 2
 
 workflows:
   version: 2
-  build-branch:
+  build_branch:
     jobs:
       - setup
       - build_deps:
@@ -117,7 +117,7 @@ workflows:
 
 defaults: &defaults
   docker:
-    - image: offical2600hz/circleci:21.3.8
+    - image: offical2600hz/circleci:21.3.8.8
   shell: /bin/bash --login
   working_directory: ~/2600hz/the_app
   environment:
@@ -185,9 +185,9 @@ jobs:
           at: ~/
       - restore_cache:
           keys:
-            - deps-21-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+            - deps-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
       - run:
-          name: Calculating dependency hash
+          name: Calculating dependency hash for CircleCI cache
           command: |
             deps_hash=$(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1)
             if [ x"$(cat $KAZOO_ROOT/.git/.kz_deps_hash)" = x"$deps_hash" ]; then
@@ -197,10 +197,15 @@ jobs:
             md5sum $KAZOO_ROOT/make/deps.mk || true
             ls -al $KAZOO_ROOT/make || true
       - run:
+          name: Show dependency hash
+          command: |
+            md5sum make/deps.mk || true
+            ls -al make || true
+      - run:
           name: Making deps
           command: make -C ${KAZOO_ROOT} deps
       - save_cache:
-          key: deps-21-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+          key: deps-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
           paths:
             - ~/2600hz/kazoo/deps/
             - ~/2600hz/kazoo/.git/.kz_deps_hash
@@ -216,12 +221,10 @@ jobs:
           at: ~/
       - restore_cache:
           keys:
-            - deps-21-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
-      - run: |
-          md5sum $KAZOO_ROOT/make/deps.mk || true
-          ls -al $KAZOO_ROOT/make || true
-      - run: make -C ${KAZOO_ROOT} fmt
-      - run: JOBS="2" make -C ${KAZOO_ROOT}
+            - deps-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
+      - run:
+          name: Compiling the project
+          command: JOBS="2" make -C ${KAZOO_ROOT}
       - persist_to_workspace:
           root: ~/
           paths:
@@ -234,7 +237,7 @@ jobs:
           at: ~/
       - restore_cache:
           keys:
-            - deps-21-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+            - deps-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
       - run:
           name: Displaying deps hash
           command: |
@@ -258,9 +261,6 @@ jobs:
       - run:
           name: Running code checks
           command: make -C ${KAZOO_ROOT} code_checks
-      - run:
-          name: Running additional code style checks
-          command: ${KAZOO_ROOT}/scripts/code_checks.bash $CHANGED
       - run:
           name: Checking app source file
           command: make -C ${KAZOO_ROOT} app_applications
@@ -311,19 +311,19 @@ jobs:
           at: ~/
       - restore_cache:
           keys:
-            - plt-21-v3.1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+            - plt-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
       - run:
           name: Dailyzing changed Erlang files
           command: TO_DIALYZE="$(echo $CHANGED)" make -C ${KAZOO_ROOT} build-plt dialyze
       - save_cache:
-          key: plt-21-v3.1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+          key: plt-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
           paths:
             - ~/2600hz/kazoo/.kazoo.plt
 
   release:
     <<: *defaults
     docker:
-      - image: offical2600hz/circleci:21.3.8
+      - image: offical2600hz/circleci:21.3.8.8
       - image: couchdb:2.3.1
       - image: 2600hz/rabbitmq
     steps:
@@ -407,7 +407,7 @@ jobs:
           command: ${KAZOO_ROOT}/scripts/circleci.bash
       - restore_cache:
           keys:
-            - deps-centos-21-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+            - deps-centos-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
       - run:
           name: Preparing dependencies for CentOS7
           command: |
@@ -423,7 +423,7 @@ jobs:
             ls -al $KAZOO_ROOT/make || true
             make -C ${KAZOO_ROOT} deps
       - save_cache:
-          key: deps-centos-21-v3.2-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}
+          key: deps-centos-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
           paths:
             - ~/2600hz/kazoo/deps/
             - ~/2600hz/kazoo/.git/.kz_deps_hash
