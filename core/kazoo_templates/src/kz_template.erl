@@ -169,7 +169,7 @@ log_warnings(Ws, Template) ->
 -spec log_infos(string(), string(), [info()], template()) -> 'ok'.
 log_infos(Type, Module, Errors, Template) ->
     ?LOG_INFO("~s in module ~s", [Type, Module]),
-lists:foreach(fun (Error) -> catch log_info(Error, Template, Module) end, Errors).
+    lists:foreach(fun (Error) -> catch log_info(Error, Template, Module) end, Errors).
 
 -spec log_info(info(), template(), atom()) -> 'ok'.
 log_info({{Row, Column}, _ErlydtlModule, Msg}, Template, Module) when not is_binary(Template) ->
