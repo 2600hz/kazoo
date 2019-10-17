@@ -91,6 +91,12 @@ is_beam(Path) ->
 is_ebin_dir(Path) ->
     "ebin" == filename:basename(Path).
 
+root_dir("/"++Path) ->
+    filename:join(["/" | lists:takewhile(fun is_not_src/1
+                                        ,string:tokens(Path, "/")
+                                        )
+                  ]
+                 );
 root_dir(Path) ->
     filename:join(lists:takewhile(fun is_not_src/1
                                  ,string:tokens(Path, "/")
