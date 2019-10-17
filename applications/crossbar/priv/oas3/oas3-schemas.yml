@@ -2070,6 +2070,7 @@
         When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
       'type': boolean
     'type':
+      'default': extension
       'description': The type of collection to pickup
       'enum':
         - group

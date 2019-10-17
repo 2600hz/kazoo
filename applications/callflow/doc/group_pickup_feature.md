@@ -18,7 +18,7 @@ Key | Description | Type | Default | Required | Support Level
 `device_id` | Device to pickup | `string()` |   | `false` |  
 `group_id` | Group in which to find a call to pickup | `string()` |   | `false` |  
 `skip_module` | When set to true this callflow action is skipped, advancing to the wildcard branch (if any) | `boolean()` |   | `false` |  
-`type` | The type of collection to pickup | `string('group' | 'user' | 'device' | 'extension')` |   | `true` |  
+`type` | The type of collection to pickup | `string('group' | 'user' | 'device' | 'extension')` | `extension` | `true` |  
 `user_id` | User in which to find a call to pickup | `string()` |   | `false` |  
 
 
