@@ -307,15 +307,15 @@ app_applications:
 	ERL_LIBS=deps:core:applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find applications -name *.app.src)
 
 code_checks:
-	@$(ROOT)/scripts/bump-copyright-year.sh $(CHANGED_ERL)
-	@$(ROOT)/scripts/code_checks.bash $(CHANGED)
-	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/no_raw_json.escript $(CHANGED_ERL)
-	@$(ROOT)/scripts/check-spelling.bash
-	@$(ROOT)/scripts/kz_diaspora.bash
-	@$(ROOT)/scripts/edocify.escript
-	@$(ROOT)/scripts/kzd_module_check.bash
-	@$(ROOT)/scripts/check-loglines.bash
-	@$(ROOT)/scripts/check-stacktrace.py $(CHANGED_ERL)
+	$(ROOT)/scripts/bump-copyright-year.sh $(CHANGED_ERL)
+	$(ROOT)/scripts/code_checks.bash $(CHANGED)
+	ERL_LIBS=deps:core:applications $(ROOT)/scripts/no_raw_json.escript $(CHANGED_ERL)
+	$(ROOT)/scripts/check-spelling.bash
+	$(ROOT)/scripts/kz_diaspora.bash
+	$(ROOT)/scripts/edocify.escript
+	$(ROOT)/scripts/kzd_module_check.bash
+	$(ROOT)/scripts/check-loglines.bash
+	$(ROOT)/scripts/check-stacktrace.py $(CHANGED_ERL)
 
 .PHONY: raw_json_check
 raw_json_check:
