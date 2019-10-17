@@ -124,9 +124,6 @@ jobs:
           name: Running code checks
           command: make code_checks
       - run:
-          name: Running additional code style checks
-          command: scripts/code_checks.bash
-      - run:
           name: Making app applications
           command: make app_applications
       - run:
