@@ -8,6 +8,7 @@
             "type": "boolean"
         },
         "type": {
+            "default": "extension",
             "description": "The type of collection to pickup",
             "enum": [
                 "group",
