@@ -78,7 +78,9 @@
         ,merge_right/2, merge_right/3
         ]).
 
--export([from_list/1, from_list_recursive/1, merge_jobjs/2]).
+-export([from_list/1
+        ,from_list_recursive/1, from_list_recursive/2
+        ,merge_jobjs/2]).
 
 -export([load_fixture_from_file/2, load_fixture_from_file/3]).
 
@@ -263,31 +265,66 @@ are_equal(JObj1, JObj2) ->
 from_list(PL) when is_list(PL) ->
     ?JSON_WRAPPER([{K, utf8_binary(V)} || {K, V} <- PL, V =/= 'undefined']).
 
+%% @equiv from_list_recursive(L, #{})
 -spec from_list_recursive(json_proplist()) -> object().
-from_list_recursive([]) -> new();
-from_list_recursive(L)
-  when is_list(L) ->
-    recursive_from_list(L).
+from_list_recursive(L) ->
+    from_list_recursive(L, #{}).
 
--spec recursive_from_list(list()) -> object().
-recursive_from_list([First | _]=List)
+-type from_list_options() :: #{ascii_list_enforced => boolean()
+                              ,invalid_as_null => boolean()
+                              }.
+
+%%------------------------------------------------------------------------------
+%% @doc Convert recursively proplist to JSON object.
+%%
+%%
+%% Options are:
+%%   - `ascii_list_enforced': If the value of a proplist item is list and all
+%%     of the elements are ASCII characters, convert the value to binary.
+%%     This also converts empty list `[]' to binary. If you are sure
+%%     that you don't have any string value, but expect and empty list as value,
+%%     set this option to `false` to not convert the empty list to binary
+%%   - `invalid_as_null': If the value of a proplist item is not any of
+%%     {@link list()}, {@link binary()}, {@link atom()}, {@link integer()},
+%%     {@link float()}, {@link kz_time:date()}, {@link kz_time:datetime()},
+%%     {@link kz_json:object()} or {@link kz_term:proplist()} then
+%%     set this option to `null', otherwise throw `{error, kz_term:ne_binary()}'
+%% @end
+%%------------------------------------------------------------------------------
+-spec from_list_recursive(json_proplist(), from_list_options()) -> object().
+from_list_recursive([], _) -> new();
+from_list_recursive(L, Opts)
+  when is_list(L) ->
+    Options = maps:merge(#{ascii_list_enforced => 'true'
+                          ,invalid_as_null => 'true'
+                          }
+                        ,Opts
+                        ),
+    recursive_from_list(L, Options).
+
+-spec recursive_from_list(list(), from_list_options()) -> object().
+recursive_from_list([First | _]=List, Options)
   when is_list(List), is_tuple(First) ->
-    from_list([{kz_term:to_binary(K), recursive_from_list(V)}
+    from_list([{kz_term:to_binary(K), recursive_from_list(V, Options)}
                || {K,V} <- List
               ]);
-recursive_from_list(X) when is_float(X) -> X;
-recursive_from_list(X) when is_integer(X) -> X;
-recursive_from_list(X) when is_atom(X) -> X;
-recursive_from_list(X) when is_list(X) ->
+recursive_from_list(X, _) when is_float(X) -> X;
+recursive_from_list(X, _) when is_integer(X) -> X;
+recursive_from_list(X, _) when is_atom(X) -> X;
+recursive_from_list(X, #{ascii_list_enforced := 'false'}=Options) when is_list(X) ->
+    [recursive_from_list(Xn, Options) || Xn <- X];
+recursive_from_list(X, #{ascii_list_enforced := 'true'}=Options) when is_list(X) ->
     case lists:all(fun kz_term:is_ascii_code/1, X) of
         'true' -> kz_term:to_binary(X);
-        'false' -> [recursive_from_list(Xn) || Xn <- X]
+        'false' -> [recursive_from_list(Xn, Options) || Xn <- X]
     end;
-recursive_from_list(X) when is_binary(X) -> utf8_binary(X);
-recursive_from_list({_Y, _M, _D}=Date) -> kz_date:to_iso8601_extended(Date);
-recursive_from_list({{_, _, _}, {_, _, _}}=DateTime) -> kz_time:iso8601(DateTime);
-recursive_from_list(?JSON_WRAPPER(_)=JObj) -> JObj;
-recursive_from_list(_Else) -> 'null'.
+recursive_from_list(X, _) when is_binary(X) -> utf8_binary(X);
+recursive_from_list({_Y, _M, _D}=Date, _) -> kz_date:to_iso8601_extended(Date);
+recursive_from_list({{_, _, _}, {_, _, _}}=DateTime, _) -> kz_time:iso8601(DateTime);
+recursive_from_list(?JSON_WRAPPER(_)=JObj, _) -> JObj;
+recursive_from_list(_Else, #{invalid_as_null := 'true'}) -> 'null';
+recursive_from_list(_Else, #{invalid_as_null := 'false'}) ->
+    throw({'error', kz_term:to_binary(io_lib:format("invalid json term ~p", [_Else]))}).
 
 %% Lifted from Jesper's post on the ML (Nov 2016) on merging maps
 

@@ -9,7 +9,7 @@
         ,gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
         ,unix_timestamp_to_gregorian_seconds/1
         ,to_gregorian_seconds/2
-        ,pretty_print_datetime/1
+        ,pretty_print_datetime/1, pretty_print_datetime/2
         ,rfc1036/1, rfc1036/2
         ,iso8601/1, iso8601/2
         ,iso8601_time/1
@@ -29,6 +29,7 @@
         ,weekday/1, month/1
         ,unitfy_seconds/1
         ,adjust_utc_timestamp/2, adjust_utc_datetime/2
+        ,tz_name/2
         ]).
 
 -ifdef(TEST).
@@ -57,6 +58,7 @@
 -type unix_seconds() :: pos_integer().
 -type api_seconds() :: 'undefined' | gregorian_seconds().
 -type ordinal() :: kz_term:ne_binary(). % "every" | "first" | "second" | "third" | "fourth" | "fifth" | "last".
+-type kazoo_month() :: {year(), month()}.
 
 -export_type([api_seconds/0
              ,date/0
@@ -66,6 +68,7 @@
              ,gregorian_seconds/0
              ,hour/0
              ,iso_week/0
+             ,kazoo_month/0
              ,minute/0
              ,month/0
              ,now/0
@@ -117,11 +120,23 @@ pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
                                   ,[Y, Mo, D, H, Mi, S]
                                   )).
 
+-spec pretty_print_datetime(datetime() | gregorian_seconds(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
+pretty_print_datetime(DateTimeOrTS, 'undefined') ->
+    pretty_print_datetime(DateTimeOrTS);
+pretty_print_datetime(DateTimeOrTS, Timezone) ->
+    Prettified = pretty_print_datetime(
+                   adjust_utc_timestamp(DateTimeOrTS, Timezone)
+                  ),
+    TzName = tz_name(DateTimeOrTS, Timezone),
+    <<Prettified/binary, "_", TzName/binary>>.
+
 -spec rfc1036(calendar:datetime() | gregorian_seconds()) -> kz_term:ne_binary().
 rfc1036(DateTime) ->
     rfc1036(DateTime, <<"GMT">>).
 
--spec rfc1036(calendar:datetime() | gregorian_seconds(), kz_term:ne_binary()) -> kz_term:ne_binary().
+-spec rfc1036(calendar:datetime() | gregorian_seconds(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
+rfc1036(Thing, 'undefined') ->
+    rfc1036(Thing, <<"GMT">>);
 rfc1036({Date = {Y, Mo, D}, {H, Mi, S}}, TZ) ->
     Wday = calendar:day_of_the_week(Date),
     <<(weekday(Wday))/binary, ", ",
@@ -178,7 +193,9 @@ iso8601(Timestamp) ->
 %% @throws {error, invalid_offset | unknown_tz}
 %% @end
 %%------------------------------------------------------------------------------
--spec iso8601(datetime() | gregorian_seconds(), kz_term:ne_binary() | integer()) -> kz_term:ne_binary().
+-spec iso8601(datetime() | gregorian_seconds(), kz_term:api_ne_binary() | integer()) -> kz_term:ne_binary().
+iso8601(Thing, 'undefined') ->
+    iso8601(Thing, <<"UTC">>);
 iso8601({{_, _, _}, {_, _, _}}=Datetime, Timezone) ->
     iso8601(calendar:datetime_to_gregorian_seconds(Datetime), Timezone);
 iso8601(Timestamp, Timezone) when is_integer(Timestamp) ->
@@ -357,7 +374,12 @@ from_iso8601(Date, {Time, Offset}) -> adjust_utc_datetime({Date, Time}, Offset).
 %% @throws {error, invalid_offset | unknown_tz}
 %% @end
 %%------------------------------------------------------------------------------
--spec adjust_utc_timestamp(gregorian_seconds(), integer() | kz_term:ne_binary() | integer()) -> gregorian_seconds().
+-spec adjust_utc_timestamp(datetime() | gregorian_seconds(), integer() | kz_term:api_ne_binary() | integer()) -> gregorian_seconds().
+adjust_utc_timestamp({{_, _, _}, {_, _, _}}=DateTime, 'undefined') ->
+    calendar:datetime_to_gregorian_seconds(DateTime);
+adjust_utc_timestamp(Timestamp, 'undefined') -> Timestamp;
+adjust_utc_timestamp({{_, _, _}, {_, _, _}}=DateTime, Timezone) ->
+    adjust_utc_timestamp(calendar:datetime_to_gregorian_seconds(DateTime), Timezone);
 adjust_utc_timestamp(Timestamp, <<"UTC">>) -> Timestamp;
 adjust_utc_timestamp(Timestamp, <<"Etc/UTC">>) -> Timestamp;
 adjust_utc_timestamp(Timestamp, <<"GMT">>) -> Timestamp;
@@ -394,10 +416,32 @@ adjust_utc_timestamp(Timestamp, Timezone) ->
 %% @throws {error, invalid_offset | unknown_tz}
 %% @end
 %%------------------------------------------------------------------------------
--spec adjust_utc_datetime(datetime(), integer() | kz_term:ne_binary()) -> datetime().
-adjust_utc_datetime(DateTime, Adjustment) ->
-    Adjusted = adjust_utc_timestamp(calendar:datetime_to_gregorian_seconds(DateTime), Adjustment),
+-spec adjust_utc_datetime(datetime() | gregorian_seconds(), integer() | kz_term:api_ne_binary()) -> datetime().
+adjust_utc_datetime(Timestamp, 'undefined') when is_integer(Timestamp) ->
+    calendar:gregorian_seconds_to_datetime(Timestamp);
+adjust_utc_datetime(Datetime, 'undefined') ->
+    Datetime;
+adjust_utc_datetime(DateTimeOrTS, Adjustment) ->
+    Adjusted = adjust_utc_timestamp(DateTimeOrTS, Adjustment),
     calendar:gregorian_seconds_to_datetime(Adjusted).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec tz_name(datetime() | gregorian_seconds(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
+tz_name(_, 'undefined') ->
+    <<"UTC">>;
+tz_name({{_, _, _}, {_, _, _}}=DateTime, Timezone) ->
+    try localtime:tz_name(DateTime, kz_term:to_list(Timezone)) of
+        'unable_to_detect' -> Timezone;
+        {'error', 'unknown_tz'} -> Timezone;
+        {{StdAbbr, _}, {_, _}} -> kz_term:to_binary(StdAbbr);
+        {Abbr, _} -> kz_term:to_binary(Abbr)
+    catch _:_ -> Timezone
+    end;
+tz_name(Timestamp, Timezone) when is_integer(Timestamp) ->
+    tz_name(calendar:gregorian_seconds_to_datetime(Timestamp), Timezone).
 
 %%------------------------------------------------------------------------------
 %% @doc

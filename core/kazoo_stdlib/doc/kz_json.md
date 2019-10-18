@@ -62,8 +62,10 @@ Several predicates exist that will return booleans.
 
 -   `from_list(Proplist)`: Top-level change from proplist to object
 -   `from_map(Map)`: Converts map back to JSON object data structure
--   `from_list_recursive(Proplist)`: Converts nested proplists to objects as well
-
+-   `from_list_recursive(Proplist)`: Equivalent to `from_list_recursive/2` with default option: `#{ascii_list_enforced => 'true', invalid_as_null => 'true'}`
+-   `from_list_recursive(Proplist, #{}=Options)`: Converts nested proplists to objects as well. Options are:
+    -   `ascii_list_enforced`: If the value of a proplist item is list and all of the elements are ASCII characters, convert the value to binary. This also converts empty list `[]` to binary. If you are sure that you don't have any string value, but expect and empty list as value, set this option to `false` to not convert the empty list to binary
+    -   `invalid_as_null`: If the value of a proplist item is not any of `list()`, `binary()`, `atom()`, `integer()`, `float()`, `kz_time:date()`, `kz_time:datetime()`, `kz_json:object()` or `kz_term:proplist()` then set the value to `null`, otherwise throw `{'error', kz_term:ne_binary()}`
 
 ## Merging Objects
 

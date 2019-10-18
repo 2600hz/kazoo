@@ -334,7 +334,7 @@ summary(Context, Options) ->
 -spec account_summary(cb_context:context(), kz_term:ne_binary()) ->cb_context:context().
 account_summary(Context, MODB) ->
     Options = [{'databases', [MODB]}
-              ,{'group_level', 2}
+              ,{'group_level', 1}
               ,{'mapper', fun normalize_summary_by_account/2}
               ,{'range_keymap', 'nil'}
               ],
@@ -465,7 +465,7 @@ normalize_view_result(LedgerJObj) ->
 %%------------------------------------------------------------------------------
 -spec normalize_summary_by_account(kz_json:objects(), kz_json:objects()) -> kz_json:objects().
 normalize_summary_by_account(JObj, Acc) ->
-    AccountId = kz_json:get_value(<<"key">>, JObj),
+    [AccountId, _PeriodStartTS, _DocId] = kz_json:get_value(<<"key">>, JObj),
     Ledger = normalize_ledger_jobj(AccountId, kz_json:get_value(<<"value">>, JObj)),
     [kz_json:sum_jobjs([Ledger | Acc])].
 
