@@ -274,19 +274,39 @@ are_equal(JObj1, JObj2) ->
 from_list(PL) when is_list(PL) ->
     ?JSON_WRAPPER([{K, utf8_binary(V)} || {K, V} <- PL, V =/= 'undefined']).
 
+%% @equiv from_list_recursive(L, #{})
 -spec from_list_recursive(json_proplist()) -> object().
 from_list_recursive(L) ->
     from_list_recursive(L, #{}).
 
--type from_list_options() :: #{no_ascii_list => boolean()
+-type from_list_options() :: #{ascii_list_enforced => boolean()
                               ,invalid_as_null => boolean()
                               }.
 
+%%------------------------------------------------------------------------------
+%% @doc Convert recursively proplist to JSON object.
+%%
+%%
+%% Options are:
+%%   - `ascii_list_enforced': If the value of a proplist item is list and all
+%%     of the elements are ASCII characters, convert the value to binary.
+%%     This also converts empty list `[]' to binary. If you are sure
+%%     that you don't have any string value, but expect and empty list as value,
+%%     set this option to `false` to not convert the empty list to binary
+%%   - `invalid_as_null': If the value of a proplist item is not any of
+%%     {@link list()}, {@link binary()}, {@link atom()}, {@link integer()},
+%%     {@link float()}, {@link kz_time:date()}, {@link kz_time:datetime()},
+%%     {@link kz_json:object()} or {@link kz_term:proplist()} then
+%%     set this option to `null', otherwise throw `{error, kz_term:ne_binary()}'
+%% @end
+%%------------------------------------------------------------------------------
 -spec from_list_recursive(json_proplist(), from_list_options()) -> object().
 from_list_recursive([], _) -> new();
 from_list_recursive(L, Opts)
   when is_list(L) ->
-    Options = maps:merge(#{no_ascii_list => 'false',invalid_as_null => 'true'}
+    Options = maps:merge(#{ascii_list_enforced => 'true'
+                          ,invalid_as_null => 'true'
+                          }
                         ,Opts
                         ),
     recursive_from_list(L, Options).
@@ -301,9 +321,9 @@ recursive_from_list(X, _) when is_float(X) -> X;
 recursive_from_list(X, _) when is_integer(X) -> X;
 recursive_from_list(X, _) when is_boolean(X) -> X;
 recursive_from_list(X, _) when is_atom(X) -> X;
-recursive_from_list(X, #{no_ascii_list := 'true'}=Options) when is_list(X) ->
+recursive_from_list(X, #{ascii_list_enforced := 'false'}=Options) when is_list(X) ->
     [recursive_from_list(Xn, Options) || Xn <- X];
-recursive_from_list(X, #{no_ascii_list := 'false'}=Options) when is_list(X) ->
+recursive_from_list(X, #{ascii_list_enforced := 'true'}=Options) when is_list(X) ->
     case lists:all(fun kz_term:is_ascii_code/1, X) of
         'true' -> kz_term:to_binary(X);
         'false' -> [recursive_from_list(Xn, Options) || Xn <- X]
