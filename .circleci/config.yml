@@ -3,7 +3,7 @@ version: 2
 workflows:
   version: 2
 
-  build-branch:
+  build_branch:
     jobs:
       - setup
       - build_deps:
