@@ -20,7 +20,7 @@ Recording the caller (or caller and callee in a bridged-call scenario) is straig
 
 This will start the call recording, limiting it to 1200 seconds, and will encode the audio into an MP3 file (alternatively, you can use "wav"). The `url` is where the resulting file will be sent via an HTTP PUT request. It is then up to the receiving server to properly handle the request and store the file for later use.
 
-Note: `time_limit` is constrained by the `system_config/media` doc's `max_recording_time_limit` entry (default is 600 seconds). If your recordings are not long enough, that is the setting that needs increasing.
+Note: `time_limit` is constrained by the `system_config/media` doc's `max_recording_time_limit` entry (default is 10800 seconds). If your recordings are not long enough, that is the setting that needs increasing.
 
 Note: `url` will be used as the base URL for the resulting PUT. The final URL will be `URL/call_recording_CALL_ID.EXT` where `URL` is the supplied URL, `CALL_ID` is the call ID of the A-leg being recorded, and `EXT` is the `format` parameter.
 

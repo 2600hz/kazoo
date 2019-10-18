@@ -675,7 +675,7 @@ add_pvt_created(Acc, JObj, _, Opts) ->
 
 -spec add_pvt_modified(kz_term:proplist(), doc(), kz_term:api_ne_binary(), kz_term:proplist()) -> kz_term:proplist().
 add_pvt_modified(Acc, _JObj, _, Opts) ->
-    [{?KEY_MODIFIED, props:get_value('now', Opts)} | Acc].
+    [{?KEY_MODIFIED, props:get_value('now', Opts, kz_time:now_s())} | Acc].
 
 -spec add_id(kz_term:proplist(), doc(), any(), kz_term:proplist()) -> kz_term:proplist().
 add_id(Acc, _JObj, _, Opts) ->

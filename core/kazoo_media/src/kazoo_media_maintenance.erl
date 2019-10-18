@@ -263,7 +263,7 @@ maybe_migrate_system_config(ConfigId, DeleteAfter) ->
         {'error', 'not_found'} ->
             io:format("  failed to find ~s, not migrating~n", [ConfigId]);
         {'ok', JObj} ->
-            migrate_system_config(kz_doc:public_fields(JObj)),
+            migrate_system_config(kz_doc:public_fields(JObj), DeleteAfter),
             maybe_delete_system_config(ConfigId, DeleteAfter)
     end.
 
@@ -273,24 +273,42 @@ maybe_delete_system_config(ConfigId, 'true') ->
     {'ok', _} = kz_datamgr:del_doc(?KZ_CONFIG_DB, ConfigId),
     io:format("deleted ~s from ~s", [ConfigId, ?KZ_CONFIG_DB]).
 
--spec migrate_system_config(kz_json:object()) -> 'ok'.
-migrate_system_config(ConfigJObj) ->
+-spec migrate_system_config(kz_json:object(), boolean()) -> 'ok'.
+migrate_system_config(ConfigJObj, DeleteAfter) ->
     {'ok', MediaJObj} = get_media_config_doc(),
 
     {Updates, _} = kz_json:foldl(fun migrate_system_config_fold/3
                                 ,{[], MediaJObj}
                                 ,ConfigJObj
                                 ),
-    maybe_update_media_config(Updates, MediaJObj).
+    maybe_update_media_config(Updates, MediaJObj),
+    delete_original_config(ConfigJObj, Updates, DeleteAfter).
 
 maybe_update_media_config([], _) ->
     io:format("no changes for that need saving~n");
 maybe_update_media_config(Updates, MediaJObj) ->
     io:format("saving updated media config with:~n~p~n", [Updates]),
+    ensure_save_config_db(Updates, MediaJObj).
+
+%%------------------------------------------------------------------------------
+%% @doc Only delete original attributes when the original doc is NOT deleted.
+%% @end
+%%------------------------------------------------------------------------------
+-spec delete_original_config(kz_json:object(), list(), boolean()) -> 'ok'.
+delete_original_config(_OriginalJObj, _Updates, 'true') -> 'ok';
+delete_original_config(OrigJObj, Updates, 'false') ->
+    Removed = lists:foldl(fun({X, _V}, L) -> [{X, 'null'} | L] end, [], Updates),
+    ensure_save_config_db(Removed, OrigJObj).
+
+-spec ensure_save_config_db(kz_json:flat_proplist(), kz_json:object()) -> 'ok'.
+ensure_save_config_db(Updates, JObj) ->
+    Id = kz_doc:id(JObj),
+    PvtUpdates = [{<<"pvt_modified">>, kz_time:now_s()}],
     Update = [{'update', Updates}
+             ,{'extra_update', PvtUpdates}
              ,{'ensure_saved', 'true'}
              ],
-    {'ok', _} = kz_datamgr:update_doc(?KZ_CONFIG_DB, kz_doc:id(MediaJObj), Update),
+    {'ok', _} = kz_datamgr:update_doc(?KZ_CONFIG_DB, Id, Update),
     'ok'.
 
 -spec get_media_config_doc() -> {'ok', kz_json:object()}.
