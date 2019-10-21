@@ -106,9 +106,10 @@ jobs:
       - run:
           name: Running Eunit/Proper tests
           command: make eunit
-      - run:
-          name: Uploading Coverage Report
-          command: make coverage-report
+      ## disabling this for now until we figure out why it is crashing, and how to set token
+      # - run:
+      #     name: Uploading Coverage Report
+      #     command: make coverage-report
   checks:
     <<: *defaults
     steps:
