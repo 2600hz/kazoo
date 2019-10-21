@@ -19,4 +19,4 @@ main(_) ->
 get_ci_job_id("true", _) ->
     {"travis-ci", os:getenv("TRAVIS_JOB_ID")};
 get_ci_job_id(_, "true") ->
-    {"circleci", os:getenv("CIRCLE_BUILD_NUM")}.
+    {"circle-ci", os:getenv("CIRCLE_BUILD_NUM")}.
