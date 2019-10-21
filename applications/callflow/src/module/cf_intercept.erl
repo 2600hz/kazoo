@@ -267,7 +267,7 @@ intercept_cmd(TargetCallId) ->
 wait_for_intercept(Call) ->
     case kapps_call_command:receive_event(10000) of
         {'ok', Evt} ->
-            intercept_event(Call, kz_util:get_event_type(Evt), Evt);
+            intercept_event(Call, kz_api:get_event_type(Evt), Evt);
         {'error', 'timeout'}=E ->
             lager:debug("timed out"),
             E

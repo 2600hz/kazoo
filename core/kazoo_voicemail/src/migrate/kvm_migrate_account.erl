@@ -62,8 +62,8 @@
 -spec start_worker(next_account(), pid()) -> 'ok'.
 start_worker({AccountId, FirstOfMonth, LastOfMonth}, Server) ->
     migration_loop(#ctx{mode = <<"worker">>
-                       ,account_id = kz_util:format_account_id(AccountId)
-                       ,account_db = kz_util:format_account_db(AccountId)
+                       ,account_id = kzd_accounts:format_account_id(AccountId)
+                       ,account_db = kzd_accounts:format_account_db(AccountId)
                        ,startkey = FirstOfMonth
                        ,endkey = LastOfMonth
                        ,server = Server
@@ -76,11 +76,11 @@ start_worker({AccountId, FirstOfMonth, LastOfMonth}, Server) ->
 %%------------------------------------------------------------------------------
 -spec manual_account_migrate(kz_term:ne_binary()) -> kz_term:proplist().
 manual_account_migrate(Account) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzd_accounts:format_account_id(Account),
     ?SUP_LOG_INFO(":: beginning migrating voicemails for account ~s", [AccountId]),
     migration_loop(#ctx{mode = <<"account">>
                        ,account_id = AccountId
-                       ,account_db = kz_util:format_account_db(AccountId)
+                       ,account_db = kzd_accounts:format_account_db(AccountId)
                        }
                   ).
 
@@ -92,11 +92,11 @@ manual_account_migrate(Account) ->
 manual_vmbox_migrate(Account, ?NE_BINARY = BoxId) ->
     manual_vmbox_migrate(Account, [BoxId]);
 manual_vmbox_migrate(Account, BoxIds) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzd_accounts:format_account_id(Account),
     ?SUP_LOG_INFO(":: beginning migrating voicemails for ~b mailbox(es) in account ~s", [length(BoxIds), AccountId]),
     migration_loop(#ctx{mode = <<"vmboxes">>
                        ,account_id = AccountId
-                       ,account_db = kz_util:format_account_db(AccountId)
+                       ,account_db = kzd_accounts:format_account_db(AccountId)
                        ,manual_vmboxes = BoxIds
                        }
                   ).
@@ -358,7 +358,7 @@ get_messages_from_vmboxes(AccountDb, ExpectedBoxIds) ->
     case kz_datamgr:open_cache_docs(AccountDb, ExpectedBoxIds) of
         {'ok', JObjs} -> {'ok', normalize_mailbox_results(JObjs)};
         {'error', _E} = Error ->
-            ?SUP_LOG_ERROR("  [~s] failed to open mailbox(es)", [kz_util:format_account_id(AccountDb)]),
+            ?SUP_LOG_ERROR("  [~s] failed to open mailbox(es)", [kzd_accounts:format_account_id(AccountDb)]),
             Error
     end.
 
@@ -495,7 +495,7 @@ create_message(#ctx{account_id = AccountId
 
     %% setting a db_link as attachment
     AttName = <<(kz_binary:rand_hex(16))/binary, ".", DefaultExt/binary>>,
-    AttHandlerProps = [{<<"att_dbname">>, kz_util:format_account_db(AccountId)}
+    AttHandlerProps = [{<<"att_dbname">>, kzd_accounts:format_account_db(AccountId)}
                       ,{<<"att_docid">>, kzd_box_message:media_id(Metadata)}
                       ],
     AttHandler = kz_json:from_list([{<<"kz_att_link">>, kz_json:from_list(AttHandlerProps)}]),

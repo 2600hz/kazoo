@@ -74,7 +74,7 @@ init(Hostname, SessionCount, Address, Options) ->
                           ,peer_ip = Address
                           ,session_id = kz_binary:rand_hex(16)
                           },
-            kz_util:put_callid(State#state.session_id),
+            kz_log:put_callid(State#state.session_id),
             {'ok', Banner, State};
         'true' ->
             lager:warning("connection limit exceeded ~p", [Address]),
@@ -193,7 +193,7 @@ handle_DATA_exception(Options, Reference, Data) ->
             %% optionally dump the failed email somewhere for analysis
             File = "/tmp/"++Reference,
             case filelib:ensure_dir(File) of
-                'ok' -> kz_util:write_file(File, Data);
+                'ok' -> kz_os:write_file(File, Data);
                 _ -> 'ok'
             end
     end.
@@ -235,7 +235,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec terminate(any(), state()) ->  {'ok', any(), state()}.
 terminate('normal', State) ->
-    _ = kz_util:spawn(fun handle_message/1, [State]),
+    _ = kz_process:spawn(fun handle_message/1, [State]),
     {'ok', 'normal', State};
 terminate(Reason, State) ->
     lager:debug("terminate ~p", [Reason]),
@@ -537,7 +537,7 @@ maybe_faxbox_owner(#state{faxbox=FaxBoxDoc}=State) ->
         'undefined' -> State;
         OwnerId ->
             AccountId = kz_doc:account_id(FaxBoxDoc),
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
             case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
                 {'ok', OwnerDoc} ->
                     OwnerEmail = kz_json:get_value(<<"email">>, OwnerDoc),
@@ -572,7 +572,7 @@ maybe_faxbox_by_owner_email(AccountId, #state{errors=Errors
                                              ,from=From
                                              }=State) ->
     ViewOptions = [{'key', From}],
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzd_accounts:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"users/list_by_email">>, ViewOptions) of
         {'ok', []} ->
             Error = kz_term:to_binary(io_lib:format("user ~s does not exist in account ~s, trying by rules",[From, AccountId])),
@@ -594,7 +594,7 @@ maybe_faxbox_by_owner_email(AccountId, #state{errors=Errors
 -spec maybe_faxbox_by_owner_id(kz_term:ne_binary(), kz_term:ne_binary(),state()) -> state().
 maybe_faxbox_by_owner_id(AccountId, OwnerId, #state{errors=Errors, from=From}=State) ->
     ViewOptions = [{'key', OwnerId}, 'include_docs'],
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzd_accounts:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"faxbox/list_by_ownerid">>, ViewOptions) of
         {'ok', [JObj]} ->
             State#state{faxbox=kz_json:get_value(<<"doc">>,JObj)
@@ -627,7 +627,7 @@ maybe_faxbox_by_owner_id(AccountId, OwnerId, #state{errors=Errors, from=From}=St
 maybe_faxbox_by_rules(AccountId, #state{errors=Errors}=State)
   when is_binary(AccountId) ->
     ViewOptions = ['include_docs'],
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzd_accounts:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"faxbox/email_permissions">>, ViewOptions) of
         {'ok', []} ->
             Error = <<"no faxboxes for account ", AccountId/binary>>,
@@ -908,7 +908,7 @@ maybe_process_image(CT, Body, Size, State) ->
             {'ok', NewState};
         'false' ->
             lager:debug("ignoring part ~s", [CT]),
-            kz_util:delete_file(Filename),
+            kz_os:delete_file(Filename),
             {'ok', State}
     end.
 

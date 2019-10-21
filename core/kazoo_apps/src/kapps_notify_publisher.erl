@@ -67,11 +67,11 @@ call_collect(Req, PublishFun) ->
 %%------------------------------------------------------------------------------
 -spec cast(kz_term:api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
 cast(Req, PublishFun) ->
-    CallId = kz_util:get_callid(),
+    CallId = kz_log:get_callid(),
     Fun = fun() ->
                   _ = case kz_term:is_ne_binary(CallId) of
-                          'true' -> kz_util:put_callid(CallId);
-                          'false' -> kz_util:put_callid(Req)
+                          'true' -> kz_log:put_callid(CallId);
+                          'false' -> kz_log:put_callid(Req)
                       end,
                   call_collect(Req, PublishFun)
           end,

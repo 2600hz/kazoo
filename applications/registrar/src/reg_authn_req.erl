@@ -30,7 +30,7 @@ init() -> 'ok'.
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_authn:req_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     Realm = kz_json:get_value(<<"Auth-Realm">>, JObj, <<"missing.realm">>),
     case kz_network_utils:is_ipv4(Realm)
         orelse kz_network_utils:is_ipv6(Realm)
@@ -446,7 +446,7 @@ gsm_auth(AuthUser) -> {'ok', AuthUser}.
 get_account_id(JObj) ->
     case get_account_db(JObj) of
         'undefined' -> 'undefined';
-        AccountDb -> kz_util:format_account_id(AccountDb, 'raw')
+        AccountDb -> kzd_accounts:format_account_id(AccountDb, 'raw')
     end.
 
 %%------------------------------------------------------------------------------
@@ -462,7 +462,7 @@ get_account_db(JObj) ->
                                    ], JObj)
     of
         'undefined' -> 'undefined';
-        AccountDb -> kz_util:format_account_id(AccountDb, 'encoded')
+        AccountDb -> kzd_accounts:format_account_id(AccountDb, 'encoded')
     end.
 
 -spec remove_dashes(kz_term:ne_binary()) -> kz_term:ne_binary().

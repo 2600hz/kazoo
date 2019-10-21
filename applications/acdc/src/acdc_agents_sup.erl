@@ -56,7 +56,7 @@ start_link() ->
 status() ->
     ?PRINT("ACDc Agents Status"),
     Ws = workers(),
-    _ = kz_util:spawn(fun() -> lists:foreach(fun acdc_agent_sup:status/1, Ws) end),
+    _ = kz_process:spawn(fun() -> lists:foreach(fun acdc_agent_sup:status/1, Ws) end),
     'ok'.
 
 -spec new(kz_json:object()) -> kz_types:sup_startchild_ret().
@@ -67,7 +67,7 @@ new(JObj) ->
 
 -spec new(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:sup_startchild_ret().
 new(AcctId, AgentId) ->
-    {'ok', JObj} = kz_datamgr:open_doc(kz_util:format_account_id(AcctId, 'encoded'), AgentId),
+    {'ok', JObj} = kz_datamgr:open_doc(kzd_accounts:format_account_id(AcctId, 'encoded'), AgentId),
     start_agent(AcctId, AgentId, JObj).
 
 -spec new(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries()) -> kz_types:sup_startchild_ret().

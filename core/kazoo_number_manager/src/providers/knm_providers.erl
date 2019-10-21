@@ -39,7 +39,7 @@
 
 -define(SYSTEM_PROVIDERS, kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, <<"providers">>)).
 
--define(PP(NeBinaries), kz_util:iolist_join($,, NeBinaries)).
+-define(PP(NeBinaries), kz_term:iolist_join($,, NeBinaries)).
 
 -ifdef(TEST).
 %% TODO: no test specific type

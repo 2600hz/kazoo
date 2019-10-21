@@ -1,5 +1,5 @@
 {application,kazoo_documents,
- [{applications,[cowlib,erlang_localtime,kazoo,
+ [{applications,[cowlib,erlang_localtime,
                  kazoo_data,kazoo_modb,kazoo_schemas,
                  kazoo_services,kazoo_stdlib,kazoo_transactions,
                  kazoo_web,kernel,lager,stdlib]},

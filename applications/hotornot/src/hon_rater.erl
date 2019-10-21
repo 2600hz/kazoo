@@ -25,7 +25,7 @@ init() ->
 -spec handle_req(kapi_rate:req(), kz_term:proplist()) -> 'ok'.
 handle_req(RateReq, _Props) ->
     'true' = kapi_rate:req_v(RateReq),
-    _ = kz_util:put_callid(RateReq),
+    _ = kz_log:put_callid(RateReq),
     lager:debug("valid rating request"),
     case get_rate_data(RateReq, kapi_rate:authorizing_type(RateReq)) of
         {'error', 'no_rate_found'} ->
@@ -139,7 +139,7 @@ maybe_get_rate_discount(RateReq) ->
 -spec maybe_get_rate_discount(kapi_rate:req(), kz_term:api_binary()) -> kz_term:api_binary().
 maybe_get_rate_discount(_RateReq, 'undefined') -> 'undefined';
 maybe_get_rate_discount(RateReq, AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, <<"limits">>) of
         {'error', _R} ->
             lager:debug("unable to open account ~s definition: ~p", [AccountId, _R]),

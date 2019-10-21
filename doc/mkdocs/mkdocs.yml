@@ -428,6 +428,7 @@ pages:
     - 'core/kazoo_apps/doc/kapps_account_config.md'
     - 'core/kazoo_apps/doc/kapps_config.md'
     - 'core/kazoo_apps/doc/maintenance.md'
+    - 'core/kazoo_apps/doc/kazoo_maintenance.md'
     - 'core/kazoo_apps/doc/kapps_maintenance.md'
   - 'GCM':
     - 'core/gcm/README.md'

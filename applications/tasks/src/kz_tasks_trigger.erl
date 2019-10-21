@@ -85,7 +85,7 @@ start_link() ->
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     _ = process_flag('trap_exit', 'true'),
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     lager:debug("started ~s", [?MODULE]),
     {'ok', #state{}}.
 
@@ -148,7 +148,7 @@ handle_info({'timeout', Ref, _Msg}, #state{day_ref = Ref}=State) ->
     {'noreply', State#state{day_ref = day_timer()}};
 
 handle_info({'timeout', Ref, _Msg}, #state{browse_dbs_ref = Ref}=State) ->
-    _Pid = kz_util:spawn(fun browse_dbs_for_triggers/1, [Ref]),
+    _Pid = kz_process:spawn(fun browse_dbs_for_triggers/1, [Ref]),
     lager:debug("cleaning up in ~p(~p)", [_Pid, Ref]),
     {'noreply', State};
 
@@ -227,9 +227,9 @@ browse_dbs_timer() ->
 
 -spec spawn_jobs(reference(), kz_term:ne_binary()) -> 'ok'.
 spawn_jobs(Ref, Binding) ->
-    kz_util:put_callid(make_callid(Ref, Binding)),
-    _Pid = kz_util:spawn_link(fun tasks_bindings:map/2, [Binding, []]),
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(make_callid(Ref, Binding)),
+    _Pid = kz_process:spawn_link(fun tasks_bindings:map/2, [Binding, []]),
+    kz_log:put_callid(?MODULE),
     lager:debug("binding ~s triggered ~p via ~p", [Binding, _Pid, Ref]).
 
 -spec make_callid(reference(), kz_term:ne_binary()) -> kz_term:ne_binary().
@@ -261,7 +261,7 @@ ref_to_id(Ref) ->
 -spec browse_dbs_for_triggers(atom() | reference()) -> 'ok'.
 browse_dbs_for_triggers(Ref) ->
     CallId = <<"cleanup_pass_", (kz_binary:rand_hex(4))/binary>>,
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     lager:debug("starting cleanup pass of databases"),
     lager:debug("getting databases list and sorting them by disk size"),
     Sorted = kt_compactor:get_all_dbs_and_sort_by_disk(),
@@ -277,7 +277,7 @@ browse_dbs_for_triggers(Ref) ->
         end,
     _Counter = lists:foldl(F, 1, Sorted),
     'ok' = kt_compaction_reporter:stop_tracking_job(CallId),
-    kz_util:put_callid('undefined'), % Reset callid
+    kz_log:put_callid('undefined'), % Reset callid
     lager:debug("pass completed for ~p", [Ref]),
     gen_server:cast(?SERVER, {'cleanup_finished', Ref}).
 

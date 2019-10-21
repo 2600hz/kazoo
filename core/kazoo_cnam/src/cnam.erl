@@ -40,10 +40,15 @@
 
 -define(CACHE_KEY(Number), {'cnam', Number}).
 
--define(CNAM_EXPIRES,
-        kapps_config:get_integer(?CNAM_CONFIG_CAT, <<"cnam_expires">>, ?DEFAULT_EXPIRES)).
--define(CNAM_PROVIDER_MODULE,
-        kz_term:to_atom(<<"cnam_", (kapps_config:get_binary(?CNAM_CONFIG_CAT, <<"provider">>, ?DEFAULT_PROVIDER))/binary>>, 'true')).
+-define(CNAM_EXPIRES
+       ,kapps_config:get_integer(?CNAM_CONFIG_CAT, <<"cnam_expires">>, ?DEFAULT_EXPIRES)
+       ).
+-define(PROVIDER
+       ,kapps_config:get_binary(?CNAM_CONFIG_CAT, <<"provider">>, ?DEFAULT_PROVIDER)
+       ).
+-define(CNAM_PROVIDER_MODULE
+       ,kz_term:to_atom(<<"cnam_", (?PROVIDER)/binary>>, 'true')
+       ).
 
 %%%=============================================================================
 %%% API
@@ -71,12 +76,12 @@ render(JObj, Template) ->
     end.
 
 -spec lookup(kz_json:object() | kz_term:ne_binary()) -> kz_json:object().
-lookup(<<_/binary>> = Number) ->
+lookup(<<Number/binary>>) ->
     Num = case ?DISABLE_NORMALIZE of
               'false' -> knm_converters:normalize(Number);
               'true'  -> Number
           end,
-    lookup(kz_json:set_values([{<<"phone_number">>, kz_util:uri_encode(Num)}
+    lookup(kz_json:set_values([{<<"phone_number">>, kz_http_util:urlencode(Num)}
                               ,{<<"Caller-ID-Number">>, Num}
                               ]
                              ,kz_json:new()
@@ -98,7 +103,7 @@ lookup(JObj) ->
 
 -spec set_phone_number(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 set_phone_number(Num, JObj) ->
-    kz_json:set_value(<<"phone_number">>, kz_util:uri_encode(Num), JObj).
+    kz_json:set_value(<<"phone_number">>, kz_http_util:urlencode(Num), JObj).
 
 -spec update_request(kz_json:object(), kz_term:api_binary(), boolean()) -> kz_json:object().
 update_request(JObj, 'undefined', _) -> JObj;
@@ -202,9 +207,9 @@ fetch_cnam(Number, JObj) ->
 -spec make_request(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_binary().
 make_request(Number, JObj) ->
     Timeout = 2.99 * ?MILLISECONDS_IN_SECOND,
-    case kz_util:runs_in(Timeout, fun request/2, [Number, JObj]) of
-        {ok, CNAM} -> CNAM;
-        timeout -> undefined
+    case kz_process:runs_in(Timeout, fun request/2, [Number, JObj]) of
+        {'ok', CNAM} -> CNAM;
+        'timeout' -> 'undefined'
     end.
 
 -spec request(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_binary().

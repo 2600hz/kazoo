@@ -83,7 +83,7 @@ start_link(NumberProps, OffnetReq) ->
 %%------------------------------------------------------------------------------
 -spec init([knm_number_options:extra_options() | kapi_offnet_resource:req()]) -> {'ok', state()}.
 init([NumberProps, OffnetReq]) ->
-    kz_util:put_callid(OffnetReq),
+    kz_log:put_callid(OffnetReq),
     case kapi_offnet_resource:control_queue(OffnetReq) of
         'undefined' -> {'stop', 'normal'};
         ControlQ ->
@@ -461,5 +461,5 @@ response_message(CallEvt) ->
 -spec get_event_type(kz_call_event:doc()) ->
                             {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
 get_event_type(JObj) ->
-    {C, E} = kz_util:get_event_type(JObj),
+    {C, E} = kz_api:get_event_type(JObj),
     {C, E, kz_call_event:call_id(JObj)}.

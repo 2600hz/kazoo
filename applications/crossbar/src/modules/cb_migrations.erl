@@ -228,7 +228,7 @@ maybe_mark_as_complete(MigId, Account, Context) ->
 mark_migration_complete(MigId, AccountId, Context) ->
     lager:info("migration ~p completed successfully on account ~p", [MigId, AccountId]),
 
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzd_accounts:format_account_db(AccountId),
     maybe_create_migration_doc(AccountDb),
 
     {'ok', Doc} = kz_datamgr:open_cache_doc(AccountDb, ?MIGRATIONS_DOC),

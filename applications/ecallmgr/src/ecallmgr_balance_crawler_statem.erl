@@ -69,7 +69,7 @@ start_link() ->
 -spec init(list()) -> {'ok', 'idle', 'undefined'}.
 init(_Args) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     _ = timer:apply_after(?CRAWLER_CYCLE_MS, 'gen_statem', 'cast', [self(), 'start_cycle']),
     {'ok', 'idle', 'undefined'}.
 
@@ -127,5 +127,5 @@ worker_timeout('info', Evt, State) ->
 %%------------------------------------------------------------------------------
 spawn_worker(Timeout) when Timeout >= 10 * ?MILLISECONDS_IN_SECOND ->
     _ = timer:apply_after(Timeout, 'gen_statem', 'cast', [self(), 'start_cycle']),
-    kz_util:spawn_link(fun ecallmgr_balance_crawler_worker:start/0);
+    kz_process:spawn_link(fun ecallmgr_balance_crawler_worker:start/0);
 spawn_worker(_) -> spawn_worker(?MILLISECONDS_IN_MINUTE).

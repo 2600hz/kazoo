@@ -97,7 +97,7 @@ init_system() ->
 -spec initial_state() -> state().
 initial_state() ->
     TestId = kz_binary:rand_hex(16),
-    kz_util:put_callid(TestId),
+    kz_log:put_callid(TestId),
 
     API = pqc_cb_api:authenticate(),
     State = #{master => #{model => pqc_kazoo_model:new(API)
@@ -114,7 +114,7 @@ initial_state() ->
     catch
         ?STACKTRACE(_R, _T, ST)
         ?debugFmt("exception ~p:~p", [_R, _T]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         cleanup(State),
         throw('failed')
         end.

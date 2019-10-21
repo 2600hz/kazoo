@@ -50,13 +50,13 @@ validate_content_type(ContentType, SupportedContentTypes, DefaultContentType) ->
 convert_content(Content, <<"audio/mpeg">>=_ConvertFrom, <<"application/wav">> = _ConvertTo) ->
     Mp3File = kazoo_speech_util:tmp_file_name(<<"mp3">>),
     WavFile = kazoo_speech_util:tmp_file_name(<<"wav">>),
-    kz_util:write_file(Mp3File, Content),
+    kz_os:write_file(Mp3File, Content),
     Cmd = io_lib:format("lame --decode ~s ~s &> /dev/null && echo -n \"success\"", [Mp3File, WavFile]),
     _ = os:cmd(Cmd),
-    kz_util:delete_file(Mp3File),
+    kz_os:delete_file(Mp3File),
     case file:read_file(WavFile) of
         {'ok', WavContent} ->
-            kz_util:delete_file(WavFile),
+            kz_os:delete_file(WavFile),
             WavContent;
         {'error', _R} ->
             lager:info("unable to convert mpeg to wav: ~p", [_R]),

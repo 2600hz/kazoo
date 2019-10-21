@@ -38,7 +38,7 @@ fetch(Numbers) when is_list(Numbers)->
 -spec prefix(kz_term:text(), kz_term:text(), kz_term:text()) -> {'ok', kz_json:object()} |
                                                                 {'error', kz_json:object()}.
 prefix(Url, Country, City) ->
-    ReqParam = kz_util:uri_encode(City),
+    ReqParam = kz_http_util:urlencode(City),
     Uri = lists:flatten([Url, "/", Country, "/city?pattern=", ReqParam]),
     case kz_http:get(Uri) of
         {'ok', 200, _Headers, Body} ->

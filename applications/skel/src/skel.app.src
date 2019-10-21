@@ -1,5 +1,5 @@
 {application,skel,
-             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_call,
+             [{applications,[kazoo_amqp,kazoo_apps,kazoo_call,
                              kazoo_stdlib,kernel,lager,stdlib]},
               {description,"Skel - A skeleton application useful for quickly creating services"},
               {env,[{is_kazoo_app,true}]},

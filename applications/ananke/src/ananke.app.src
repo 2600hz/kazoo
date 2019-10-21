@@ -1,5 +1,5 @@
 {application,ananke,
-             [{applications,[amqp_cron,kazoo,kazoo_amqp,kazoo_apps,kazoo_data,
+             [{applications,[amqp_cron,kazoo_amqp,kazoo_apps,kazoo_data,
                              kazoo_documents,kazoo_stdlib,kazoo_voicemail,
                              kernel,lager,stdlib]},
               {description,"Ananke was the personification of destiny, necessity and fate, depicted as holding a spindle in ancient Greek religion. This application to schedule calls on events."},

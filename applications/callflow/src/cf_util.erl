@@ -148,7 +148,7 @@ maybe_presence_parking_slot_resp(Username, Realm, AccountDb) ->
 
 -spec maybe_presence_parking_flow(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | 'not_found'.
 maybe_presence_parking_flow(Username, Realm, AccountDb) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kzd_accounts:format_account_id(AccountDb, 'raw'),
     _ = cf_flow:lookup(Username, AccountId),
     case kz_cache:fetch_local(?CACHE_NAME, ?CF_FLOW_CACHE_KEY(Username, AccountDb)) of
         {'error', 'not_found'} -> 'not_found';
@@ -210,13 +210,13 @@ manual_presence_resp(Username, Realm, JObj) ->
 -spec presence_mwi_query(kz_json:object(), kz_term:proplist()) -> 'ok'.
 presence_mwi_query(JObj, _Props) ->
     'true' = kapi_presence:mwi_query_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     mwi_query(JObj).
 
 -spec notification_register(kz_json:object(), kz_term:proplist()) -> 'ok'.
 notification_register(JObj, _Props) ->
     'true' = kapi_notifications:register_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     mwi_query(JObj).
 
 -spec mwi_query(kz_json:object()) -> 'ok'.
@@ -378,7 +378,7 @@ get_endpoint_id_by_sip_username(AccountDb, Username) ->
 -spec get_operator_callflow(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
                                                     kz_datamgr:data_error().
 get_operator_callflow(Account) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzd_accounts:format_account_db(Account),
     Options = [{'key', ?OPERATOR_KEY}
               ,'include_docs'
               ,'first_when_multiple'

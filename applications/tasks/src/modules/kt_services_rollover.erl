@@ -33,7 +33,7 @@ handle_req() ->
 
 -spec handle_req(kz_time:date()) -> 'ok'.
 handle_req({Year, Month, 1}) ->
-    _P = kz_util:spawn(fun rollover_accounts/2, [Year, Month]),
+    _P = kz_process:spawn(fun rollover_accounts/2, [Year, Month]),
     lager:info("its a new month ~p-~p, rolling over services in ~p", [Year, Month, _P]);
 handle_req({_Year, _Month, _Day}) -> 'ok'.
 

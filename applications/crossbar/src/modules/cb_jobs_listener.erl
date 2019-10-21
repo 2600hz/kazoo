@@ -98,7 +98,7 @@ publish(AccountId, JobId, ReqId) ->
 -spec handle_job(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_job(JObj, _Props) ->
     'true' = kapi_delegate:delegate_v(JObj),
-    kz_util:put_callid(kz_json:get_first_defined([<<"Msg-ID">>, [<<"Delegate-Message">>, <<"Job-ID">>]], JObj)),
+    kz_log:put_callid(kz_json:get_first_defined([<<"Msg-ID">>, [<<"Delegate-Message">>, <<"Job-ID">>]], JObj)),
     Job = kz_json:get_value(<<"Delegate-Message">>, JObj),
     process_job(kz_json:get_value(<<"Account-ID">>, Job)
                ,kz_json:get_value(<<"Job-ID">>, Job)
@@ -187,7 +187,7 @@ create_number(Job, AccountId, AuthAccountId, CarrierModule, DID) ->
             update_with_failure(Job, AccountId, DID, Failure, JObj)
     catch
         ?STACKTRACE(E, _R, ST)
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         lager:debug("exception creating number ~s for account ~s: ~s: ~p"
                    ,[DID, AccountId, E, _R]),
         update_status(kz_json:set_value([<<"errors">>, DID]
@@ -237,7 +237,7 @@ update_status(Job, Status) ->
 
 -spec start_recovery() -> 'ok'.
 start_recovery() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {Year, Month, _} = erlang:date(),
     maybe_recover_jobs(Year, Month, kapps_util:get_all_accounts('raw')).
 
@@ -336,7 +336,7 @@ handle_cast(_Msg, State) ->
 handle_info({'timeout', Ref, ?RECOVERY_MESSAGE}
            ,#state{recovery_ref=Ref}=State
            ) ->
-    _Pid = kz_util:spawn(fun start_recovery/0),
+    _Pid = kz_process:spawn(fun start_recovery/0),
     lager:debug("starting recovery walker in ~p", [_Pid]),
     {'noreply', State#state{recovery_ref=start_timer()}, 'hibernate'};
 handle_info(_Info, State) ->
@@ -381,9 +381,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%------------------------------------------------------------------------------
 -spec job_modb(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 job_modb(AccountId, ?MATCH_MODB_PREFIX(Year,Month,_)) ->
-    kz_util:format_account_mod_id(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month));
+    kzd_accounts:format_account_mod_id(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month));
 job_modb(AccountId, ?MATCH_MODB_PREFIX_M1(Year,Month,_)) ->
-    kz_util:format_account_mod_id(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)).
+    kzd_accounts:format_account_mod_id(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)).
 
 -spec start_timer() -> reference().
 start_timer() ->

@@ -1,5 +1,5 @@
 {application,edr,
-             [{applications,[blackhole,kazoo,kazoo_amqp,kazoo_apps,kazoo_edr,
+             [{applications,[blackhole,kazoo_amqp,kazoo_apps,kazoo_edr,
                              kazoo_stdlib,kazoo_web,kernel,lager,stdlib]},
               {description,"Event Data Record application"},
               {vsn,"4.0.0"},

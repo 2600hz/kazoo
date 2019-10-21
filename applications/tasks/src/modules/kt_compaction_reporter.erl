@@ -211,7 +211,7 @@ job_info(<<JobId/binary>>) ->
             ,{<<"disk_end">>, kz_term:to_binary(DiskEnd)}
             ,{<<"data_start">>, Str([<<"storage">>, <<"data">>, <<"start">>])}
             ,{<<"data_end">>, Str([<<"storage">>, <<"data">>, <<"end">>])}
-            ,{<<"recovered_disk">>, kz_util:pretty_print_bytes(DiskStart - DiskEnd)}
+            ,{<<"recovered_disk">>, kz_term:pretty_print_bytes(DiskStart - DiskEnd)}
             ,{<<"node">>, Str([<<"worker">>, <<"node">>])}
             ,{<<"pid">>, Str([<<"worker">>, <<"pid">>])}
             ,{<<"started">>, kz_term:to_list(kz_time:pretty_print_datetime(Start))}
@@ -504,4 +504,4 @@ save_compaction_stats(#{'id' := Id
 
 -spec normalize_db(kz_term:ne_binary()) -> kz_term:ne_binary().
 normalize_db(Db) ->
-    kz_util:uri_decode(Db).
+    kz_http_util:urldecode(Db).

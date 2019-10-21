@@ -1,5 +1,5 @@
 {application,doodle,
-             [{applications,[callflow,kazoo,kazoo_amqp,kazoo_apps,
+             [{applications,[callflow,kazoo_amqp,kazoo_apps,
                              kazoo_bindings,kazoo_caches,kazoo_call,
                              kazoo_data,kazoo_documents,kazoo_endpoint,
                              kazoo_modb,kazoo_number_manager,kazoo_stdlib,

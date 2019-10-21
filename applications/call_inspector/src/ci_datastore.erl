@@ -159,7 +159,7 @@ handle_cast('flush', State) ->
     recursive_remove(),
     {'noreply', State};
 handle_cast({'flush', CallId}, State) ->
-    kz_util:delete_file(make_name(CallId)),
+    kz_os:delete_file(make_name(CallId)),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled handle_cast ~p", [_Msg]),
@@ -218,7 +218,7 @@ insert_object(#object{call_id = CallId} = Object) ->
     Path = make_name(CallId),
     ensure_path_exists(Path),
     IoData = io_lib:fwrite("~p.\n", [Object]),
-    kz_util:write_file(Path, IoData, ['append']).
+    kz_os:write_file(Path, IoData, ['append']).
 
 -spec lookup_objects(kz_term:ne_binary()) -> [object()].
 lookup_objects(CallId) ->

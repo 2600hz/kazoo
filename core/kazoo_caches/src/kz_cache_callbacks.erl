@@ -211,4 +211,4 @@ is_running(Name) ->
 
 -spec exec_callback(callback_fun(), list()) -> pid().
 exec_callback(Callback, Payload) ->
-    kz_util:spawn(Callback, Payload).
+    kz_process:spawn(Callback, Payload).

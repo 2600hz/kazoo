@@ -71,7 +71,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     {'ok', 'ok'}.
 
 %%------------------------------------------------------------------------------
@@ -149,7 +149,7 @@ exec_dial(ConferenceNode, ConferenceId, JObj) ->
 exec_dial(ConferenceNode, ConferenceId, JObj, Endpoints) ->
     lager:info("conference ~s is running on ~s, dialing out", [ConferenceId, ConferenceNode]),
     Pid = self(),
-    Pids = [kz_util:spawn(fun() ->
+    Pids = [kz_process:spawn(fun() ->
                                   exec_endpoint(Pid, ConferenceNode, ConferenceId, JObj, Endpoint)
                           end) || Endpoint <- Endpoints],
     Num = length(Pids),

@@ -1,5 +1,5 @@
 {application,kazoo_call,
-             [{applications,[crypto,kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
+             [{applications,[crypto,kazoo_amqp,kazoo_apps,kazoo_caches,
                              kazoo_data,kazoo_documents,kazoo_endpoint,
                              kazoo_ledgers,kazoo_media,kazoo_modb,
                              kazoo_number_manager,kazoo_speech,kazoo_stdlib,

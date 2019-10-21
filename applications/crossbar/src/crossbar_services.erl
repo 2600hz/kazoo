@@ -190,7 +190,7 @@ audit_log_agent(Context) ->
 
 -spec audit_log_user(cb_context:context(), kz_term:ne_binary()) -> kz_term:api_proplist().
 audit_log_user(Context, UserId) ->
-    AccountDb = kz_util:format_account_db(
+    AccountDb = kzd_accounts:format_account_db(
                   cb_context:auth_account_id(Context)
                  ),
     case kz_datamgr:open_cache_doc(AccountDb, UserId) of

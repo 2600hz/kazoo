@@ -43,7 +43,7 @@ init() ->
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:low_balance_v(JObj),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
 
     lager:debug("account low balance alert, sending email notification"),
 
@@ -137,7 +137,7 @@ collect_recipients(AccountId) ->
 
 -spec get_email(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_binaries() | kz_term:api_binary().
 get_email(MasterAccountId, MasterAccountId) ->
-    AccountDb = kz_util:format_account_id(MasterAccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(MasterAccountId, 'encoded'),
     lager:debug("attempting to email low balance to master account ~s"
                ,[MasterAccountId]
                ),
@@ -153,7 +153,7 @@ get_email(AccountId, MasterAccountId) ->
     lager:debug("attempting to email low balance to account ~s"
                ,[AccountId]
                ),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'ok', JObj} -> get_email(JObj, AccountId, MasterAccountId);
         {'error', _R} ->

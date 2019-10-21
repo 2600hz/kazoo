@@ -117,11 +117,11 @@ render_template(Module, TemplateData, RenderOpts) ->
     catch
         ?STACKTRACE('error', 'undef', ST)
         ?LOG_DEBUG("something in the template ~s is undefined", [Module]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'error', 'undefined'};
         ?STACKTRACE(_E, R, ST)
         ?LOG_DEBUG("crashed rendering template ~s: ~s: ~p", [Module, _E, R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'error', R}
         end.
 

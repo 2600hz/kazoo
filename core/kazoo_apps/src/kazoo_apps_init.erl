@@ -21,12 +21,12 @@
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     _ = sanity_checks(), %% one day make this true
-    _ = kz_util:spawn(fun init/0),
+    _ = kz_process:spawn(fun init/0),
     'ignore'.
 
 -spec init() -> 'ok'.
 init() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     set_cookie(),
     start_distribution(),
     set_loglevel().

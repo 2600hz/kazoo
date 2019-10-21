@@ -42,7 +42,7 @@
 -spec logout_agents(kz_term:ne_binary()) -> 'ok'.
 logout_agents(AccountId) ->
     ?PRINT("Sending notices to logout agents for ~s", [AccountId]),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     {'ok', AgentView} = kz_datamgr:get_all_results(AccountDb, <<"agents/crossbar_listing">>),
     _ = [logout_agent(AccountId, kz_doc:id(Agent)) || Agent <- AgentView],
     'ok'.
@@ -140,7 +140,7 @@ current_calls(AccountId, Props) ->
     get_and_show(AccountId, <<"custom">>, Req).
 
 get_and_show(AccountId, QueueId, Req) ->
-    kz_util:put_callid(<<"acdc_maint.", AccountId/binary, ".", QueueId/binary>>),
+    kz_log:put_callid(<<"acdc_maint.", AccountId/binary, ".", QueueId/binary>>),
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_acdc_stats:publish_current_calls_req/1
                                     ,'acdc'
@@ -160,7 +160,7 @@ get_and_show(AccountId, QueueId, Req) ->
 
 show_call_stats([], _) -> 'ok';
 show_call_stats([Resp|Resps], Ks) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     show_call_stat_cat(Ks, Resp),
     show_call_stats(Resps, Ks).
 
@@ -273,7 +273,7 @@ migrate_to_acdc_db(AccountId, Retries) ->
 
 -spec maybe_migrate(kz_term:ne_binary()) -> 'ok'.
 maybe_migrate(AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [{'limit', 1}]) of
         {'ok', []} -> 'ok';
         {'ok', [_|_]} ->
@@ -314,12 +314,12 @@ flush_call_stat(CallId) ->
 
 -spec queues_summary() -> 'ok'.
 queues_summary() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     show_queues_summary(acdc_queues_sup:queues_running()).
 
 -spec queues_summary(kz_term:ne_binary()) -> 'ok'.
 queues_summary(AcctId) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     show_queues_summary(
       [Q || {_, {QAcctId, _}} = Q <- acdc_queues_sup:queues_running(),
             QAcctId =:= AcctId
@@ -327,7 +327,7 @@ queues_summary(AcctId) ->
 
 -spec queue_summary(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 queue_summary(AcctId, QueueId) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     show_queues_summary(
       [Q || {_, {QAcctId, QQueueId}} = Q <- acdc_queues_sup:queues_running(),
             QAcctId =:= AcctId,
@@ -346,7 +346,7 @@ queues_detail() ->
 
 -spec queues_detail(kz_term:ne_binary()) -> 'ok'.
 queues_detail(AcctId) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     Supervisors = acdc_queues_sup:find_acct_supervisors(AcctId),
     lists:foreach(fun acdc_queue_sup:status/1, Supervisors).
 
@@ -359,7 +359,7 @@ queue_detail(AcctId, QueueId) ->
 
 -spec queues_restart(kz_term:ne_binary()) -> 'ok'.
 queues_restart(AcctId) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     case acdc_queues_sup:find_acct_supervisors(AcctId) of
         [] -> lager:info("there are no running queues in ~s", [AcctId]);
         Pids ->
@@ -369,7 +369,7 @@ queues_restart(AcctId) ->
 
 -spec queue_restart(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 queue_restart(AcctId, QueueId) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
         'undefined' ->
             lager:info("queue ~s in account ~s not running", [QueueId, AcctId]);
@@ -410,12 +410,12 @@ maybe_start_queue(AcctId, QueueId) ->
 
 -spec agents_summary() -> 'ok'.
 agents_summary() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     show_agents_summary(acdc_agents_sup:agents_running()).
 
 -spec agents_summary(kz_term:ne_binary()) -> 'ok'.
 agents_summary(AcctId) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     show_agents_summary(
       [A || {_, {AAcctId, _, _}} = A <- acdc_agents_sup:agents_running(),
             AAcctId =:= AcctId
@@ -423,7 +423,7 @@ agents_summary(AcctId) ->
 
 -spec agent_summary(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 agent_summary(AcctId, AgentId) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     show_agents_summary(
       [Q || {_, {AAcctId, AAgentId, _}} = Q <- acdc_agents_sup:agents_running(),
             AAcctId =:= AcctId,
@@ -438,18 +438,18 @@ show_agents_summary([{P, {AcctId, QueueId, _AMQPQueue}}|Qs]) ->
 
 -spec agents_detail() -> 'ok'.
 agents_detail() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     acdc_agents_sup:status().
 
 -spec agents_detail(kz_term:ne_binary()) -> 'ok'.
 agents_detail(AcctId) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     Supervisors = acdc_agents_sup:find_acct_supervisors(AcctId),
     lists:foreach(fun acdc_agent_sup:status/1, Supervisors).
 
 -spec agent_detail(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 agent_detail(AcctId, AgentId) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' -> lager:info("no agent ~s in account ~s", [AgentId, AcctId]);
         Pid -> acdc_agent_sup:status(Pid)
@@ -457,7 +457,7 @@ agent_detail(AcctId, AgentId) ->
 
 -spec agent_login(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 agent_login(AcctId, AgentId) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
                ,{<<"Agent-ID">>, AgentId}
@@ -468,7 +468,7 @@ agent_login(AcctId, AgentId) ->
 
 -spec agent_logout(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 agent_logout(AcctId, AgentId) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
                ,{<<"Agent-ID">>, AgentId}
@@ -484,7 +484,7 @@ agent_pause(AcctId, AgentId) ->
 
 -spec agent_pause(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer()) -> 'ok'.
 agent_pause(AcctId, AgentId, Timeout) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
                ,{<<"Agent-ID">>, AgentId}
@@ -496,7 +496,7 @@ agent_pause(AcctId, AgentId, Timeout) ->
 
 -spec agent_resume(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 agent_resume(AcctId, AgentId) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
                ,{<<"Agent-ID">>, AgentId}
@@ -507,7 +507,7 @@ agent_resume(AcctId, AgentId) ->
 
 -spec agent_queue_login(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 agent_queue_login(AcctId, AgentId, QueueId) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
                ,{<<"Agent-ID">>, AgentId}
@@ -519,7 +519,7 @@ agent_queue_login(AcctId, AgentId, QueueId) ->
 
 -spec agent_queue_logout(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 agent_queue_logout(AcctId, AgentId, QueueId) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
                ,{<<"Agent-ID">>, AgentId}

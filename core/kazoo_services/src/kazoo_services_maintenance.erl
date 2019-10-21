@@ -54,7 +54,7 @@
 %%------------------------------------------------------------------------------
 -spec update_tree(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary()) -> kz_services:services().
 update_tree(Account, NewTree, NewResellerId) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzd_accounts:format_account_id(Account),
     Services = kz_services:fetch(AccountId, ['skip_cache']),
     ServicesJObj = kz_services:services_jobj(Services),
     Props = props:filter_undefined(
@@ -253,7 +253,7 @@ migrate_service_plans() ->
 
 -spec migrate_service_plans(kz_term:ne_binary()) -> 'no_return'.
 migrate_service_plans(Account) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzd_accounts:format_account_db(Account),
     ViewOptions = ['include_docs'],
     {'ok', JObjs} = kz_datamgr:get_results(AccountDb, <<"services/plans">>, ViewOptions),
     io:format("verifying ~p service plans have been migrated~n", [length(JObjs)]),
@@ -287,7 +287,7 @@ migrate_service_plans_bookkeeper(AccountDb, JObj) ->
     case migrate_bookkeepers(AccountDb, JObj, Keys) of
         'undefined' -> Cleaned;
         BookkeeperId ->
-            AccountId = kz_util:format_account_id(AccountDb),
+            AccountId = kzd_accounts:format_account_id(AccountDb),
             Setters = [{fun kzd_service_plan:set_bookkeeper_id/2, BookkeeperId}
                       ,{fun kzd_service_plan:set_bookkeeper_vendor_id/2, AccountId}
                       ,{fun kzd_service_plan:set_bookkeeper_type/2, <<"braintree">>}
@@ -332,7 +332,7 @@ merge_bookkeeper(AccountDb, Bookkeeper, NewMappings) ->
 
 -spec create_bookkeeper(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> kz_term:api_binary().
 create_bookkeeper(AccountDb, Mappings, Key) ->
-    AccountId = kz_util:format_account_id(AccountDb),
+    AccountId = kzd_accounts:format_account_id(AccountDb),
     BaseJObj = kz_doc:update_pvt_parameters(kz_json:new()
                                            ,AccountDb
                                            ,[{'account_id', AccountId}
@@ -568,7 +568,7 @@ plan_vendor_id(JObj) ->
                                        ),
     case kz_term:is_empty(Account) of
         'false' ->
-            kz_util:format_account_id(Account);
+            kzd_accounts:format_account_id(Account);
         'true' ->
             {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
             MasterAccountId
@@ -622,7 +622,7 @@ find_ui_apps_vendor(JObj) ->
                                        ,JObj
                                        ),
     case kz_term:is_empty(Account) of
-        'false' -> kz_util:format_account_id(Account);
+        'false' -> kzd_accounts:format_account_id(Account);
         'true' ->
             {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
             MasterAccountId
@@ -634,7 +634,7 @@ find_ui_apps_vendor(JObj) ->
 %%------------------------------------------------------------------------------
 -spec fix_plan_apps(kz_term:ne_binary()) -> 'ok'.
 fix_plan_apps(Account) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzd_accounts:format_account_db(Account),
     ViewOptions = ['include_docs'],
     {'ok', JObjs} = kz_datamgr:get_results(AccountDb, <<"services/plans">>, ViewOptions),
     io:format("verifying ~p service plans have valid applications~n", [length(JObjs)]),
@@ -649,7 +649,7 @@ fix_plan_apps(AccountDb, [JObj|JObjs]) ->
 -spec fix_plan_app(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 fix_plan_app(AccountDb, JObj) ->
     io:format("verifying service plan ~s/~s applications~n"
-             ,[kz_util:format_account_id(AccountDb)
+             ,[kzd_accounts:format_account_id(AccountDb)
               ,kz_doc:id(JObj)
               ]
              ),
@@ -683,7 +683,7 @@ fix_plan_app(AccountDb, JObj, [AppId|AppIds]) ->
 
 -spec maybe_open_app(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
 maybe_open_app(VendorId, Id, PlanApp) ->
-    VendorDb = kz_util:format_account_db(VendorId),
+    VendorDb = kzd_accounts:format_account_db(VendorId),
     case kz_datamgr:open_cache_doc(VendorDb, Id) of
         {'ok', App} ->
             [{[Id, <<"name">>], kzd_app:name(App)}
@@ -700,7 +700,7 @@ maybe_open_app(VendorId, Id, PlanApp) ->
 maybe_find_app(_VendorId, 'undefined') -> [];
 maybe_find_app(?NE_BINARY = VendorId, Name) ->
     ViewOptions = [{'key', Name}],
-    VendorDb = kz_util:format_account_db(VendorId),
+    VendorDb = kzd_accounts:format_account_db(VendorId),
     case kz_datamgr:get_results(VendorDb, <<"apps_store/crossbar_listing">>, ViewOptions) of
         {'ok', [App|_]} ->
             Id = kz_doc:id(App),
@@ -723,7 +723,7 @@ get_plan_app_vendor(JObj) ->
         'undefined' ->
             {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
             MasterAccountId;
-        Account -> kz_util:format_account_id(Account)
+        Account -> kzd_accounts:format_account_id(Account)
     end.
 
 %%------------------------------------------------------------------------------
@@ -752,7 +752,7 @@ reconcile('all') ->
 reconcile(Account) when not is_binary(Account) ->
     reconcile(kz_term:to_binary(Account));
 reconcile(Account) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzd_accounts:format_account_id(Account),
     FetchOptions = ['hydrate_account_quantities'
                    ,'hydrate_cascade_quantities'
                    ,'hydrate_plans'

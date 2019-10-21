@@ -179,7 +179,7 @@ test_get_with_strategy(_) ->
     ].
 
 get_with_strategy_general() ->
-    Db = kz_util:format_account_db(?FIXTURE_PARENT_ACCOUNT_ID),
+    Db = kzd_accounts:format_account_db(?FIXTURE_PARENT_ACCOUNT_ID),
 
     [{"Testing strategy with no account id"
      ,[{"undefined account id should result in system_config value"

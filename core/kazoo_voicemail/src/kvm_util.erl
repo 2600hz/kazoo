@@ -34,7 +34,7 @@
 %%------------------------------------------------------------------------------
 -spec get_db(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_db(AccountId) ->
-    kz_util:format_account_db(AccountId).
+    kzd_accounts:format_account_db(AccountId).
 
 %%------------------------------------------------------------------------------
 %% @doc Get formatted account's MODB database name.

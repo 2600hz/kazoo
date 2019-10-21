@@ -877,7 +877,7 @@ build_bridge_channels([#bridge_endpoint{invite_format = <<"loopback">>}=Endpoint
 %% If this does not have an explicit sip route and we have no ip address, lookup the registration
 build_bridge_channels([#bridge_endpoint{ip_address='undefined'}=Endpoint|Endpoints], Channels) ->
     S = self(),
-    Pid = kz_util:spawn(fun() -> S ! {self(), build_channel(Endpoint)} end),
+    Pid = kz_process:spawn(fun() -> S ! {self(), build_channel(Endpoint)} end),
     build_bridge_channels(Endpoints, [{'worker', Pid}|Channels]);
 %% If we have been given a IP to route to then do that now
 build_bridge_channels([Endpoint|Endpoints], Channels) ->
@@ -974,7 +974,7 @@ build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
             maybe_failover(Failover);
         _E:_R:ST ->
             lager:warning("failed to build sip channel (~s): ~p", [_E, _R]),
-            kz_util:log_stacktrace(ST),
+            kz_log:log_stacktrace(ST),
             {'error', 'invalid'}
     end.
 
@@ -1384,7 +1384,7 @@ maybe_cache_media_response(MediaName, MediaResp) ->
 media_url_cache_props(<<"/", _/binary>> = MediaName) ->
     case binary:split(MediaName, <<"/">>, ['global']) of
         [<<>>, AccountId, MediaId] ->
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
             [{'origin', {'db', AccountDb, MediaId}}];
         _Parts -> []
     end;
@@ -1393,7 +1393,7 @@ media_url_cache_props(<<"prompt://", Prompt/binary>>) ->
         [?KZ_MEDIA_DB, _MediaId] ->
             [{'origin', {'db', ?KZ_MEDIA_DB, <<"media">>}}];
         [AccountId, _MediaId] ->
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
             [{'origin', {'db', AccountDb, <<"media">>}}];
         _ -> []
     end;

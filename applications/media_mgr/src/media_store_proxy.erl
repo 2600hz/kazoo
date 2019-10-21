@@ -32,7 +32,7 @@
 
 -spec init(cowboy_req:req(), kz_term:proplist()) -> handler_return().
 init(Req, _Opts) ->
-    kz_util:put_callid(kz_binary:rand_hex(16)),
+    kz_log:put_callid(kz_binary:rand_hex(16)),
     check_authn(Req, authenticate(Req)).
 
 -spec check_authn(cowboy_req:req(), boolean()) -> handler_return().
@@ -202,7 +202,7 @@ setup_context(Req, #media_store_path{att=Attachment}=Path) ->
 
 -spec decode_url(kz_term:ne_binary()) -> media_store_path() | 'error'.
 decode_url(Url) ->
-    try binary_to_term(base64:decode(kz_util:uri_decode(Url))) of
+    try binary_to_term(base64:decode(kz_http_util:urldecode(Url))) of
         {Db, Id, Attachment, Options} ->
             #media_store_path{db = Db
                              ,id = Id

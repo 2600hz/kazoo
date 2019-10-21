@@ -469,7 +469,7 @@ get_endpoint(Call) ->
 wait_for_stepswitch(Call) ->
     case kapps_call_command:receive_event(?DEFAULT_EVENT_WAIT, 'true') of
         {'ok', JObj} ->
-            case kz_util:get_event_type(JObj) of
+            case kz_api:get_event_type(JObj) of
                 {<<"resource">>, <<"offnet_resp">>} ->
                     {kz_call_event:response_message(JObj)
                     ,kz_call_event:response_code(JObj)

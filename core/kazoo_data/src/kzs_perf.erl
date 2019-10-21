@@ -55,7 +55,7 @@ load_profile_config() ->
 profile_config() ->
     case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {?MODULE, 'config'}) of
         {'error', 'not_found'} ->
-            kz_util:spawn(fun update_profile_config/0),
+            kz_process:spawn(fun update_profile_config/0),
             Config = load_profile_config_from_disk(),
             update_profile_config(Config);
         {'ok', Map} -> Map
@@ -86,7 +86,7 @@ profile_match(Mod, Fun, Arity) ->
 do_profile({Mod, Fun, _Arity}, Args, PD) ->
     [Plan, DbName | Others] = Args,
     {Time, Result} = timer:tc(Mod, Fun, Args),
-    From = kz_util:calling_process(),
+    From = kapps_util:calling_process(),
     FromList = [{kz_term:to_atom(<<"from_", (kz_term:to_binary(K))/binary>>, true), V} || {K,V} <- maps:to_list(From)],
     MD = FromList ++ maps:to_list(maps:merge(Plan, PD)),
     _ = data:debug([{'mod', Mod}

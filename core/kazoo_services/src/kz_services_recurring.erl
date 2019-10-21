@@ -129,7 +129,7 @@ is_current_month_collected(?MATCH_MODB_SUFFIX_UNENCODED(_, Year, Month) = Accoun
 is_current_month_collected(?MATCH_MODB_SUFFIX_ENCODED(_, Year, Month) = AccountMODB) ->
     is_collected(AccountMODB, Year, Month);
 is_current_month_collected(Account) ->
-    ?MATCH_MODB_SUFFIX_ENCODED(_, Year, Month) = kz_util:format_account_mod_id(Account),
+    ?MATCH_MODB_SUFFIX_ENCODED(_, Year, Month) = kzd_accounts:format_account_mod_id(Account),
     is_collected(Account, Year, Month).
 
 %%------------------------------------------------------------------------------
@@ -144,7 +144,7 @@ is_last_month_collected(?MATCH_MODB_SUFFIX_UNENCODED(_, Year, Month) = AccountMO
 is_last_month_collected(?MATCH_MODB_SUFFIX_ENCODED(_, Year, Month) = AccountMODB) ->
     is_last_month_collected(AccountMODB, Year, Month);
 is_last_month_collected(Account) ->
-    MODB = ?MATCH_MODB_SUFFIX_ENCODED(_, _, _) = kz_util:format_account_mod_id(Account),
+    MODB = ?MATCH_MODB_SUFFIX_ENCODED(_, _, _) = kzd_accounts:format_account_mod_id(Account),
     is_last_month_collected(MODB).
 
 %%------------------------------------------------------------------------------
@@ -168,7 +168,7 @@ is_last_month_collected(Account, Year, Month) ->
 -spec is_collected(kz_term:ne_binary(), kz_term:ne_binary() | kz_time:year(), kz_term:ne_binary() | kz_time:month()) ->
                           boolean().
 is_collected(Account, Year, Month) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzd_accounts:format_account_id(Account),
     is_proccessed(AccountId
                  ,?COLLECT_RECURRING_MARKER_ID
                  ,kz_term:to_integer(Year)
@@ -232,7 +232,7 @@ collect_bookkeeper(Invoice, Services, DueTimestamp) ->
     Request = [{<<"Account-ID">>, kz_services:account_id(Services)}
               ,{<<"Bookkeeper-ID">>, kz_services_invoice:bookkeeper_id(Invoice)}
               ,{<<"Bookkeeper-Type">>, kz_services_invoice:bookkeeper_type(Invoice)}
-              ,{<<"Call-ID">>, kz_util:get_callid()}
+              ,{<<"Call-ID">>, kz_log:get_callid()}
               ,{<<"Due-Timestamp">>, DueTimestamp}
               ,{<<"Vendor-ID">>, kz_services_invoice:bookkeeper_vendor_id(Invoice)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -359,7 +359,7 @@ is_account_enabled(AccountId) ->
 %%------------------------------------------------------------------------------
 -spec is_proccessed(kz_term:ne_binary(), kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> boolean().
 is_proccessed(AccountId, MarkerId, Year, Month) ->
-    AccountMODB = kz_util:format_account_mod_id(AccountId, Year, Month),
+    AccountMODB = kzd_accounts:format_account_mod_id(AccountId, Year, Month),
     case kazoo_modb:open_doc(AccountMODB, MarkerId) of
         {'ok', JObj} ->
             lager:debug("recurring charges for account ~s for ~b-~b is processed on ~s"
@@ -378,7 +378,7 @@ is_proccessed(AccountId, MarkerId, Year, Month) ->
                         {'ok', kz_json:object()} |
                         {'error', kazoo_data:data_errors()}.
 set_marker(AccountId, MarkerId, Year, Month) ->
-    AccountMODB = kz_util:format_account_mod_id(AccountId, Year, Month),
+    AccountMODB = kzd_accounts:format_account_mod_id(AccountId, Year, Month),
     PvtOptions = [{'account_id', AccountId}
                  ,{'crossbar_doc_vsn', 1}
                  ,{'id', MarkerId}

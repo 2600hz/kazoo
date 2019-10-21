@@ -237,7 +237,7 @@ pdf_props(Context) ->
 %%------------------------------------------------------------------------------
 -spec pdf_users(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) -> any().
 pdf_users(AccountId, SortBy, Users) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     pdf_users(AccountDb, SortBy, Users, []).
 
 -spec pdf_users(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects(), any()) -> any().

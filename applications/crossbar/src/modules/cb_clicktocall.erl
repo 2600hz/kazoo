@@ -263,8 +263,8 @@ establish_c2c(C2CId, Context) ->
 
 -spec maybe_migrate_history(kz_term:ne_binary()) -> 'ok'.
 maybe_migrate_history(Account) ->
-    AccountId = kz_util:format_account_id(Account),
-    AccountDb = kz_util:format_account_db(Account),
+    AccountId = kzd_accounts:format_account_id(Account),
+    AccountDb = kzd_accounts:format_account_db(Account),
 
     case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
@@ -295,7 +295,7 @@ migrate_history(AccountId, AccountDb, C2C) ->
 -spec save_history_item(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> any().
 save_history_item(AccountId, HistoryItem, C2CId) ->
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, HistoryItem, kz_time:now_s()),
-    AccountModb = kz_util:format_account_mod_id(AccountId, Timestamp),
+    AccountModb = kzd_accounts:format_account_mod_id(AccountId, Timestamp),
     JObj = kz_doc:update_pvt_parameters(kz_json:set_value(<<"pvt_clicktocall_id">>, C2CId, HistoryItem)
                                        ,AccountModb
                                        ,[{'type', <<"c2c_history">>}
@@ -345,7 +345,7 @@ originate_call(C2CId, Context, Contact, 'true') ->
     do_originate_call(C2CId, Context, Contact, Request, cb_context:req_value(Context, <<"blocking">>, 'false')).
 
 do_originate_call(C2CId, Context, Contact, Request, 'false') ->
-    _Pid = kz_util:spawn(fun() -> do_originate_call(C2CId, Context, Contact, Request) end),
+    _Pid = kz_process:spawn(fun() -> do_originate_call(C2CId, Context, Contact, Request) end),
     JObj = kz_json:normalize(kz_json:from_list(kz_api:remove_defaults(Request))),
     lager:debug("attempting call in ~p", [JObj]),
     crossbar_util:response_202(<<"processing request">>, JObj, cb_context:set_resp_data(Context, Request));
@@ -375,7 +375,7 @@ handle_response(C2CId, Context, Contact, Resp) ->
                                kz_datamgr:data_error().
 do_originate_call(C2CId, Context, Contact, Request) ->
     ReqId = cb_context:req_id(Context),
-    kz_util:put_callid(ReqId),
+    kz_log:put_callid(ReqId),
 
     Resp = exec_originate(Request),
     lager:debug("got status for ~p", [Resp]),

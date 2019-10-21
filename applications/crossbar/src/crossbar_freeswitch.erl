@@ -118,7 +118,7 @@ handle_call(_Request, _From, State) ->
 handle_cast('periodic_build', #state{is_running='true'}=State) ->
     {'noreply', State};
 handle_cast('periodic_build', #state{is_running='false'}=State) ->
-    {Pid, Monitor} = kz_util:spawn_monitor(fun build_freeswitch/1, [self()]),
+    {Pid, Monitor} = kz_process:spawn_monitor(fun build_freeswitch/1, [self()]),
     lager:debug("started new freeswitch offline configuration builder ~p", [Pid]),
     {'noreply', State#state{is_running='true', monitor=Monitor}};
 
@@ -131,7 +131,7 @@ handle_cast({'delete', 'undefined'}, State) ->
     {'noreply', State};
 handle_cast({'delete', File}, State) ->
     lager:debug("removing prior freeswitch offline configuration ~s", [File]),
-    kz_util:delete_file(File),
+    kz_os:delete_file(File),
     {'noreply', State};
 
 handle_cast('reset', #state{config=Config}=State) ->
@@ -207,14 +207,14 @@ setup_directory() ->
     TopDir = kz_binary:rand_hex(8),
     WorkRootDir = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"work_dir">>, <<"/tmp/">>),
     WorkDir = filename:join([WorkRootDir, TopDir]),
-    kz_util:make_dir(WorkDir),
+    kz_os:make_dir(WorkDir),
     Files = [{<<"directory">>, ?FS_DIRECTORY}
             ,{<<"chatplan">>, ?FS_CHATPLAN}
             ,{<<"dialplan">>, ?FS_DIALPLAN}
             ],
     Filter = kapps_config:get(?MOD_CONFIG_CAT, <<"files_to_include">>, ?DEFAULT_FS_INCLUDE_DIRECTORY_FILES),
-    _ = [kz_util:make_dir(filename:join([WorkDir, Dir])) || {Dir, _} <- Files],
-    _ = [kz_util:write_file(filename:join([WorkDir, D, xml_file_name(T)])
+    _ = [kz_os:make_dir(filename:join([WorkDir, Dir])) || {Dir, _} <- Files],
+    _ = [kz_os:write_file(filename:join([WorkDir, D, xml_file_name(T)])
                            ,xml_file_from_config(T)
                            )
          || {D, T} <- Files,
@@ -250,11 +250,11 @@ process_realm(Realm, Dir, Module) ->
     Props = [{<<"realm">>, Realm}],
     WorkDir = get(<<"WorkDir">>),
     OutDir = filename:join([WorkDir, Dir]),
-    kz_util:make_dir(OutDir),
+    kz_os:make_dir(OutDir),
     XMLFile = filename:join([OutDir, <<Realm/binary,".xml">>]),
     case kz_template:render(Module, Props) of
         {'ok', Result} ->
-            kz_util:write_file(XMLFile, Result),
+            kz_os:write_file(XMLFile, Result),
             lager:debug("wrote file ~s", [XMLFile]);
         {'error', E} ->
             lager:debug("error rendering template ~s for realm ~s: ~p"
@@ -267,7 +267,7 @@ build_freeswitch(Pid) ->
     lists:foreach(fun crawl_numbers_db/1, knm_util:get_all_number_dbs()),
     process_realms(),
     File = zip_directory(WorkDir),
-    kz_util:delete_dir(kz_term:to_list(WorkDir)),
+    kz_os:delete_dir(kz_term:to_list(WorkDir)),
     gen_server:cast(Pid, {'completed', File}).
 
 -spec crawl_numbers_db(kz_term:ne_binary()) -> 'ok'.
@@ -313,7 +313,7 @@ maybe_export_numbers(Db, [Number|Numbers]) ->
 
 -spec maybe_export_number(kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary()) -> 'ok'.
 maybe_export_number(Number, ?NUMBER_STATE_IN_SERVICE, AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', Number}
                   ,'include_docs'
                   ],
@@ -361,7 +361,7 @@ process_callflow(Number, AccountId, Flow) ->
 process_callflow(_, _, _, 'undefined') -> 'ok';
 process_callflow(Number, AccountId, <<"device">>, DeviceId) ->
     lager:debug("found device ~s associated with ~s", [DeviceId, Number]),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, DeviceId) of
         {'ok', JObj } -> process_device(Number, AccountId, JObj);
         {'error', _R} ->
@@ -370,7 +370,7 @@ process_callflow(Number, AccountId, <<"device">>, DeviceId) ->
     end;
 process_callflow(Number, AccountId, <<"user">>, UserId) ->
     lager:debug("found user ~s associated with ~s", [UserId, Number]),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     ViewOptions = [{'key', UserId}],
     case kz_datamgr:get_results(AccountDb, ?DEVICES_VIEW, ViewOptions) of
         {'ok', JObjs} ->
@@ -453,10 +453,10 @@ render_template(Number, AccountId, Username, Realm, Props, Dir, Module) ->
     maybe_accumulate_realm(lists:member(Realm, get(<<"Realms">>)), Realm),
     WorkDir = get(<<"WorkDir">>),
     OutDir = filename:join([WorkDir, Dir, Realm]),
-    kz_util:make_dir(OutDir),
+    kz_os:make_dir(OutDir),
     XMLFile = filename:join([OutDir, <<Username/binary,".xml">>]),
     case kz_template:render(Module, Props) of
-        {'ok', Result} -> kz_util:write_file(XMLFile, Result);
+        {'ok', Result} -> kz_os:write_file(XMLFile, Result);
         {'error', _R} ->
             lager:debug("unable to render template ~s for ~s in account ~s: ~p"
                        ,[Module, Number, AccountId, _R])

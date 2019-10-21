@@ -56,7 +56,7 @@ start_link([Arg]=Args) ->
 -spec init({'parser_args', kz_term:ne_binary(), pos_integer()}) -> {'ok', state()}.
 init({'parser_args', IP, Port} = Args) ->
     ParserId = ci_parsers_util:make_name(Args),
-    _ = kz_util:put_callid(ParserId),
+    _ = kz_log:put_callid(ParserId),
     {'ok', Socket} = gen_udp:open(Port, ['binary'
                                         ,{'active', 'true'}
                                         ]),

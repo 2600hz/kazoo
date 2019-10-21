@@ -1,15 +1,7 @@
-{application, kazoo_templates,
- [
-  {description, "Blowing pigment over documents like never before"}
- ,{vsn, "4.0.0"}
- ,{modules, []}
- ,{registered, []}
- ,{applications, [ kernel
-                 , stdlib
-                 , crypto
-
-                 , kazoo
-                 , erlydtl
-                 , lager
-                 ]}
- ]}.
+{application,kazoo_templates,
+             [{applications,[erlydtl,kazoo_apps,kazoo_data,kazoo_documents,
+                             kazoo_stdlib,kernel,lager,stdlib]},
+              {description,"Blowing pigment over documents like never before"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[]}]}.

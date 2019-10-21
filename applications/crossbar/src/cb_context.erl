@@ -422,11 +422,11 @@ pretty_print(#cb_context{pretty_print = PrettyPrint}) -> PrettyPrint.
 
 -spec path_token(binary()) -> binary().
 path_token(Token) ->
-    kz_util:uri_decode(Token).
+    kz_http_util:urldecode(Token).
 
 -spec path_tokens(context()) -> kz_term:ne_binaries().
 path_tokens(#cb_context{raw_path=Path}) ->
-    [path_token(kz_util:uri_decode(Token))
+    [path_token(kz_http_util:urldecode(Token))
      || Token <- binary:split(Path, <<"/">>, ['global', 'trim'])
     ].
 
@@ -840,7 +840,7 @@ fetch(#cb_context{storage=Storage}, Key, Default) ->
 %%------------------------------------------------------------------------------
 -spec put_reqid(context()) -> 'ok'.
 put_reqid(#cb_context{req_id=ReqId}) ->
-    kz_util:put_callid(ReqId).
+    kz_log:put_callid(ReqId).
 
 -spec has_errors(context()) -> boolean().
 has_errors(#cb_context{validation_errors=JObj
@@ -946,7 +946,7 @@ validate_request_data(SchemaJObj, Context, OnSuccess, OnFailure, _SchemaRequired
     catch
         ?STACKTRACE('error', 'function_clause', ST)
         lager:debug("function clause failure"),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         Context#cb_context{resp_status = 'fatal'
                           ,resp_error_code = 500
                           ,resp_data = kz_json:new()

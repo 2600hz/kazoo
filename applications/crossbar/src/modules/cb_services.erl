@@ -214,7 +214,7 @@ validate(Context, ?AVAILABLE) ->
     %% NOTE: list service plans available to this account for selection
     AccountId = cb_context:account_id(Context),
     ResellerId = kz_services_reseller:get_id(AccountId),
-    ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
+    ResellerDb = kzd_accounts:format_account_id(ResellerId, 'encoded'),
     Options =
         case kz_term:is_true(cb_context:req_value(Context, <<"details">>, 'false')) of
             'false' -> [];
@@ -801,7 +801,7 @@ check_plan_ids(Context, ResellerId, PlanIds) ->
 -spec check_plan_id(cb_context:context(), path_token(), kz_term:ne_binary()) ->
                            cb_context:context().
 check_plan_id(Context, PlanId, ResellerId) ->
-    ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
+    ResellerDb = kzd_accounts:format_account_id(ResellerId, 'encoded'),
     crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb), ?TYPE_CHECK_OPTION(kzd_service_plan:type())).
 
 -spec maybe_forbid_delete(cb_context:context()) -> cb_context:context().

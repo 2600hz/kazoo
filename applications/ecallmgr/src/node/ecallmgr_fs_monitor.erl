@@ -52,7 +52,7 @@ start_link(Node, Options) ->
 -spec init([atom() | kz_term:proplist()]) -> {'ok', state()}.
 init([Node, Options]) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(Node),
+    kz_log:put_callid(Node),
     erlang:monitor_node(Node, 'true'),
     {'ok', #{node => Node, options => Options}}.
 

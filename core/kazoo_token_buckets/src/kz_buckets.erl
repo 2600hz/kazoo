@@ -297,7 +297,7 @@ gift_data() -> 'ok'.
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {'ok', #state{inactivity_timer_ref=start_inactivity_timer()}}.
 
 %%------------------------------------------------------------------------------
@@ -379,7 +379,7 @@ handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{table_id=Tbl}=State) 
     end,
     {'noreply', State};
 handle_info(?INACTIVITY_MSG, #state{inactivity_timer_ref=_OldRef}=State) ->
-    _Pid = kz_util:spawn(fun check_for_inactive_buckets/0),
+    _Pid = kz_process:spawn(fun check_for_inactive_buckets/0),
     {'noreply', State#state{inactivity_timer_ref=start_inactivity_timer()}};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -426,7 +426,7 @@ start_inactivity_timer() ->
 
 -spec check_for_inactive_buckets() -> 'ok'.
 check_for_inactive_buckets() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     Now = kz_time:now_s(),
     InactivityTimeout = ?INACTIVITY_TIMEOUT_S,
 

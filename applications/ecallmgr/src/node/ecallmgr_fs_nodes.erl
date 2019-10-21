@@ -364,11 +364,11 @@ handle_fs_xml_flush(JObj, _Props) ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     process_flag('trap_exit', 'true'),
     lager:debug("starting new fs handler"),
     _ = ets:new(?CAPABILITY_TBL, ['bag', 'protected', 'named_table', {'keypos', #capability.node}]),
-    InitPidRef = kz_util:spawn_monitor(fun start_preconfigured_servers/0, []),
+    InitPidRef = kz_process:spawn_monitor(fun start_preconfigured_servers/0, []),
     {'ok', #state{init_pidref=InitPidRef}}.
 
 %%------------------------------------------------------------------------------
@@ -405,7 +405,7 @@ handle_call({'connected_nodes', 'true'}, _From, #state{nodes=Nodes}=State) ->
            ],
     {'reply', Resp, State};
 handle_call({'add_fs_node', NodeName, Cookie, Options}, From, State) ->
-    _ = kz_util:spawn(
+    _ = kz_process:spawn(
           fun() ->
                   try maybe_add_node(NodeName, Cookie, Options, State) of
                       Reply ->
@@ -449,7 +449,7 @@ handle_call(_Request, _From, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'fs_nodeup', NodeName, Strategy}, State) ->
-    _ = kz_util:spawn(fun maybe_handle_nodeup/3, [NodeName, Strategy, State]),
+    _ = kz_process:spawn(fun maybe_handle_nodeup/3, [NodeName, Strategy, State]),
     {'noreply', State};
 handle_cast({'update_node', #node{node=NodeName}=Node}
            ,#state{nodes=Nodes}=State) ->
@@ -462,7 +462,7 @@ handle_cast({'remove_capabilities', NodeName}, State) ->
     lager:debug("removed ~p capabilities from ~s", [_Rm, NodeName]),
     {'noreply', State};
 handle_cast({'rm_fs_node', NodeName}, State) ->
-    _ = kz_util:spawn(fun maybe_rm_fs_node/2, [NodeName, State]),
+    _ = kz_process:spawn(fun maybe_rm_fs_node/2, [NodeName, State]),
     {'noreply', State};
 handle_cast(_Cast, State) ->
     lager:debug("unhandled cast: ~p", [_Cast]),
@@ -474,7 +474,7 @@ handle_cast(_Cast, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'nodedown', NodeName}, State) ->
-    _ = kz_util:spawn(fun maybe_handle_nodedown/2, [NodeName, State]),
+    _ = kz_process:spawn(fun maybe_handle_nodedown/2, [NodeName, State]),
     call_control_fs_nodedown(NodeName),
     {'noreply', State};
 handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{init_pidref={Pid, Ref}}=State) ->
@@ -600,7 +600,7 @@ handle_nodeup(#node{}=Node, #state{self=Srv}) ->
     of
         'false' ->
             _ = gen_server:cast(Srv, {'update_node', Node#node{connected='false'}}),
-            _ = kz_util:spawn(fun() ->
+            _ = kz_process:spawn(fun() ->
                                       timer:sleep(?MILLISECONDS_IN_HOUR),
                                       _ = maybe_start_node_pinger(Node)
                               end),
@@ -695,7 +695,7 @@ maybe_start_node_handlers(#node{node=NodeName
     catch
         _:Reason:ST ->
             lager:warning("exception starting node ~s handlers: ~p", [NodeName, Reason]),
-            kz_util:log_stacktrace(ST),
+            kz_log:log_stacktrace(ST),
             {'error', Reason}
     end.
 
@@ -783,10 +783,10 @@ start_preconfigured_servers() ->
 start_preconfigured_servers(5) ->
     lager:info("no preconfigured servers available and default not available.");
 start_preconfigured_servers(Try) ->
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     case get_configured_nodes() of
         Nodes when is_list(Nodes) ->
-            _ = [kz_util:spawn(fun start_node_from_config/1, [N]) || N <- Nodes];
+            _ = [kz_process:spawn(fun start_node_from_config/1, [N]) || N <- Nodes];
         _ ->
             case try_connect_to_default_fs() of
                 'ok' -> 'ok';

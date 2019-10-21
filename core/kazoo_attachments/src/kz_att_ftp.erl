@@ -84,7 +84,9 @@ fetch_attachment(HandlerProps, DbName, DocId, AName) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec send_request(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                          'ok' | {'error', binary(), binary() | atom() | term()}.
+                          'ok' |
+                          {'error', binary(), binary() | atom() | term()} |
+                          {'error', binary() | atom() | term()}.
 send_request(Url, Contents) ->
     case http_uri:parse(kz_term:to_list(Url)) of
         {'ok',{'ftp', UserPass, Host, Port, FullPath,_Query}} ->
@@ -134,7 +136,7 @@ ftp_cmds([Fun|Funs]) ->
 
 -spec ftp_anonymous_user_pass() -> {string(), string()}.
 ftp_anonymous_user_pass() ->
-    Domain = kz_term:to_list(kz_util:node_hostname()),
+    Domain = kz_term:to_list(kapps_util:node_hostname()),
     {"anonymous", "kazoo@" ++ Domain}.
 
 url_fields('undefined', Url) ->

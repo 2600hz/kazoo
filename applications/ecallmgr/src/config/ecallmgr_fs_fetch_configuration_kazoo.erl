@@ -44,7 +44,7 @@ init() ->
 
 -spec kazoo(map()) -> fs_sendmsg_ret().
 kazoo(#{node := Node, fetch_id := Id, payload := JObj} = Ctx) ->
-    kz_util:put_callid(Id),
+    kz_log:put_callid(Id),
     lager:debug("received configuration request for kazoo configuration ~p , ~p", [Node, Id]),
     fs_mod_kazoo_config(kz_api:event_name(JObj), Ctx).
 
@@ -66,7 +66,7 @@ fs_mod_kazoo_config_action(<<"request-handlers">>, Ctx) ->
         {'ok', Xml} -> freeswitch:fetch_reply(Ctx#{reply => iolist_to_binary(Xml)})
     catch
         _Ex:_Er:ST ->
-            kz_util:log_stacktrace(ST),
+            kz_log:log_stacktrace(ST),
             kazoo_req_not_handled(Ctx)
     end;
 fs_mod_kazoo_config_action('undefined', Ctx) ->

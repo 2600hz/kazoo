@@ -154,7 +154,7 @@ methods_to_section('undefined', _Path, Acc) ->
     io:format("skipping path ~p~n", [_Path]),
     Acc;
 methods_to_section(ModuleName, {Path, Methods}, Acc) ->
-    API = kz_util:iolist_join($/, [?CURRENT_VERSION, ModuleName | format_path_tokens(Path)]),
+    API = kz_term:iolist_join($/, [?CURRENT_VERSION, ModuleName | format_path_tokens(Path)]),
     APIPath = iolist_to_binary([$/, API]),
     lists:foldl(fun(Method, Acc1) ->
                         method_to_section(Method, Acc1, APIPath)
@@ -747,7 +747,7 @@ module_version(Module) ->
     end.
 
 swagger_api_path(Path, ModuleName) ->
-    API = kz_util:iolist_join($/, [ModuleName | format_path_tokens(Path)]),
+    API = kz_term:iolist_join($/, [ModuleName | format_path_tokens(Path)]),
     iolist_to_binary([$/, API]).
 
 -spec path_name(atom()) -> kz_term:api_ne_binary().

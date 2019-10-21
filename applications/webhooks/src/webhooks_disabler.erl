@@ -38,7 +38,7 @@ start_link() ->
 
 -spec init(any()) -> {'ok', state()}.
 init(_) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {'ok', start_check_timer()}.
 
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
@@ -51,7 +51,7 @@ handle_cast(_Msg, State) ->
 
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'timeout', Ref, ?EXPIRY_MSG}, Ref) ->
-    _ = kz_util:spawn(fun check_failed_attempts/0),
+    _ = kz_process:spawn(fun check_failed_attempts/0),
     {'noreply', start_check_timer()};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),

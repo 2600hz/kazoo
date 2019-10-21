@@ -23,7 +23,7 @@ profile(EndpointId, AccountId) ->
 
 -spec profile(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
 profile(EndpointId, AccountId, Options) ->
-    case kz_datamgr:get_single_result(kz_util:format_account_db(AccountId), <<"directory/groups">>, [{'key', EndpointId}]) of
+    case kz_datamgr:get_single_result(kzd_accounts:format_account_db(AccountId), <<"directory/groups">>, [{'key', EndpointId}]) of
         {'ok', Endpoint} -> generate_profile(EndpointId, AccountId, Endpoint, Options);
         Error -> Error
     end.

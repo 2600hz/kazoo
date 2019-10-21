@@ -55,7 +55,7 @@ get_reseller_config(Account, Config) ->
 -spec load_config_from_account(kz_term:api_binary(), kz_term:ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
 load_config_from_account(undefined, _Config) -> {ok, kz_json:new()};
 load_config_from_account(Account, Config) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzd_accounts:format_account_db(Account),
     kz_datamgr:open_cache_doc(AccountDb, account_doc_id(Config), [{cache_failures, [not_found]}]).
 
 -spec load_config_from_reseller(kz_term:api_binary(), kz_term:ne_binary()) -> {ok, kz_json:object()} | {error, any()}.

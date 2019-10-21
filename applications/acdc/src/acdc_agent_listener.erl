@@ -126,7 +126,7 @@
                                                    ,{'restrict_to', ['sync', 'stats_req']}
                                                    ]}
                                    ,{'conf', [{'action', <<"*">>}
-                                             ,{'db', kz_util:format_account_id(AcctId, 'encoded')}
+                                             ,{'db', kzd_accounts:format_account_id(AcctId, 'encoded')}
                                              ,{'id', AgentId}
                                              ,'federate'
                                              ]}
@@ -355,7 +355,7 @@ id(Srv) ->
 -spec init([atom() | agent() | kz_term:ne_binaries()]) -> {'ok', state()}.
 init([Supervisor, Agent, Queues]) ->
     AgentId = agent_id(Agent),
-    kz_util:put_callid(AgentId),
+    kz_log:put_callid(AgentId),
     lager:debug("starting acdc agent listener"),
 
     {'ok', #state{agent_id=AgentId
@@ -479,7 +479,7 @@ handle_cast({'channel_hungup', CallId}, #state{call=Call
 
             _ = filter_agent_calls(ACallIds, CallId),
 
-            kz_util:put_callid(AgentId),
+            kz_log:put_callid(AgentId),
             case IsThief of
                 'false' ->
                     {'noreply', State#state{call='undefined'
@@ -518,7 +518,7 @@ handle_cast('agent_timeout', #state{agent_call_ids=ACallIds
 
     _ = filter_agent_calls(ACallIds, AgentId),
 
-    kz_util:put_callid(AgentId),
+    kz_log:put_callid(AgentId),
     {'noreply', State#state{msg_queue_id='undefined'
                            ,acdc_queue_id='undefined'
                            ,agent_call_ids=[]
@@ -539,7 +539,7 @@ handle_cast({'member_connect_retry', CallId}, #state{my_id=MyId
             lists:foreach(fun acdc_util:unbind_from_call_events/1, ACallIds),
             acdc_util:unbind_from_call_events(CallId),
 
-            kz_util:put_callid(AgentId),
+            kz_log:put_callid(AgentId),
 
             {'noreply', State#state{msg_queue_id='undefined'
                                    ,acdc_queue_id='undefined'
@@ -730,7 +730,7 @@ handle_cast({'outbound_call', CallId}, #state{agent_id=AgentId
                                              ,acct_id=AcctId
                                              ,agent_queues=Qs
                                              }=State) ->
-    _ = kz_util:put_callid(CallId),
+    _ = kz_log:put_callid(CallId),
     acdc_util:bind_to_call_events(CallId),
     [send_agent_busy(AcctId, AgentId, QueueId) || QueueId <- Qs],
 
@@ -903,7 +903,7 @@ maybe_stop_agent(_Reason, _AccountId, _AgentId) ->
     'ok'.
 
 stop_agent(AccountId, AgentId) ->
-    kz_util:spawn(fun acdc_agents_sup:stop_agent/2, [AccountId, AgentId]),
+    kz_process:spawn(fun acdc_agents_sup:stop_agent/2, [AccountId, AgentId]),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -1034,7 +1034,7 @@ call_id(Call) ->
                                     kz_term:ne_binaries().
 maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
     MCallId = kapps_call:call_id(Call),
-    kz_util:put_callid(MCallId),
+    kz_log:put_callid(MCallId),
 
     ReqId = kz_binary:rand_hex(6),
     AcctId = kapps_call:account_id(Call),
@@ -1247,7 +1247,7 @@ stop_agent_leg(ACallId, ACtrlQ) ->
 
 find_account_id(JObj) ->
     case kz_doc:account_id(JObj) of
-        'undefined' -> kz_util:format_account_id(kz_doc:account_db(JObj), 'raw');
+        'undefined' -> kzd_accounts:format_account_id(kz_doc:account_db(JObj), 'raw');
         AcctId -> AcctId
     end.
 

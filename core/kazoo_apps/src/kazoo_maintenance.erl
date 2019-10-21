@@ -222,13 +222,13 @@ table_size(T) ->
 -spec print_table({string(), integer()}) -> 'ok'.
 print_table({Name, Mem}) ->
     io:format("  ~-25s: ~6s~n", [Name
-                                ,kz_util:pretty_print_bytes(Mem, 'truncated')
+                                ,kz_term:pretty_print_bytes(Mem, 'truncated')
                                 ]).
 
 -spec log_table({string(), integer()}, file:name_all()) -> 'ok'.
 log_table({Name, Mem}, Filename) ->
     Bytes = io_lib:format("  ~-25s: ~6s~n", [Name
-                                            ,kz_util:pretty_print_bytes(Mem, 'truncated')]),
+                                            ,kz_term:pretty_print_bytes(Mem, 'truncated')]),
     'ok' = file:write_file(Filename, Bytes, ['append']).
 
 -spec mem_info() -> 'ok'.
@@ -239,11 +239,11 @@ mem_info() ->
 
 -spec print_memory_type({erlang:memory_type(), integer()}) -> 'ok'.
 print_memory_type({Type, Size}) ->
-    io:format("  ~-15s : ~6s~n", [Type, kz_util:pretty_print_bytes(Size, 'truncated')]).
+    io:format("  ~-15s : ~6s~n", [Type, kz_term:pretty_print_bytes(Size, 'truncated')]).
 
 -spec log_memory_type({erlang:memory_type(), integer()}, file:name_all()) -> 'ok'.
 log_memory_type({Type, Size}, Filename) ->
-    Bytes = io_lib:format("  ~-15s : ~6s~n", [Type, kz_util:pretty_print_bytes(Size, 'truncated')]),
+    Bytes = io_lib:format("  ~-15s : ~6s~n", [Type, kz_term:pretty_print_bytes(Size, 'truncated')]),
     'ok' = file:write_file(Filename, Bytes, ['append']).
 
 -spec table_name(ets:tab()) -> string().

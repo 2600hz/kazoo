@@ -375,7 +375,7 @@ maybe_user_filename(FilePath, _Options) ->
 format_output(FilePath, #{<<"output_type">> := 'binary'}) ->
     case file:read_file(FilePath) of
         {'ok', _}=Ok ->
-            kz_util:delete_file(FilePath),
+            kz_os:delete_file(FilePath),
             Ok;
         {'error', Reason} ->
             lager:debug("failed to format output file with reason ~p", [Reason]),
@@ -478,14 +478,14 @@ save_file(Content, #{<<"tmp_dir">> := TmpDir
                     }) ->
     Ext = kz_mime:to_extension(FromFormat),
     FilePath = filename:join(TmpDir, <<JobId/binary, ".", Ext/binary>>),
-    kz_util:write_file(FilePath, Content),
+    kz_os:write_file(FilePath, Content),
     FilePath.
 
 -spec maybe_delete_previous_file(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 maybe_delete_previous_file(Filename, Filename) ->
     'ok';
 maybe_delete_previous_file(OldFilename, _NewFilename) ->
-    kz_util:delete_file(OldFilename).
+    kz_os:delete_file(OldFilename).
 
 -spec maybe_rename_file(kz_term:ne_binary(), kz_term:ne_binary()) ->
                                {'ok', kz_term:ne_binary()}|

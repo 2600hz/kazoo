@@ -22,7 +22,7 @@ init() ->
 
 -spec handle_record_stop(map()) -> any().
 handle_record_stop(#{node := Node, call_id := UUID, payload := JObj}) ->
-    kz_util:put_callid(UUID),
+    kz_log:put_callid(UUID),
     IsLocal = handling_locally(JObj),
     MediaRecorder = kz_recording:recorder(JObj),
     maybe_store_recording(IsLocal, MediaRecorder, JObj, UUID, Node).
@@ -39,7 +39,7 @@ maybe_store_recording('true', _, JObj, CallId, Node) ->
         'undefined' -> 'ok';
         <<>> -> 'ok';
         <<_/binary>> = Destination ->
-            kz_util:put_callid(CallId),
+            kz_log:put_callid(CallId),
             lager:debug("no one is handling call recording, storing recording to ~s", [Destination]),
 
             MediaName = kz_call_event:custom_channel_var(JObj, <<"Media-Name">>),

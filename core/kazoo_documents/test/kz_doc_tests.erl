@@ -11,7 +11,7 @@
 -module(kz_doc_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--define(APP, 'kazoo').
+-define(APP, 'kazoo_documents').
 
 latest_attachment_id_test_() ->
     {'ok', JObj1} = kz_json:fixture(?APP, <<"fixtures/doc_no_attachment.json">>),

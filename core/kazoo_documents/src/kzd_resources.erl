@@ -28,7 +28,6 @@
 -export([weight_cost/1, weight_cost/2, set_weight_cost/2]).
 -export([fax_option/1, fax_option/2]).
 
-
 -include("kz_documents.hrl").
 
 -type doc() :: kz_json:object().

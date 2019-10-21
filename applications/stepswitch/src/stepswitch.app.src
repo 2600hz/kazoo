@@ -1,5 +1,5 @@
 {application,stepswitch,
-             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
+             [{applications,[kazoo_amqp,kazoo_apps,kazoo_caches,
                              kazoo_call,kazoo_data,kazoo_documents,
                              kazoo_endpoint,kazoo_globals,kazoo_ips,
                              kazoo_number_manager,kazoo_services,kazoo_sip,

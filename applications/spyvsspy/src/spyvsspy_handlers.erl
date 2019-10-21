@@ -41,7 +41,7 @@ new_call(AccountId) ->
     kapps_call:from_json(
       kz_json:from_list(
         [{<<"Account-ID">>, AccountId}
-        ,{<<"Account-DB">>, kz_util:format_account_id(AccountId, 'encoded')}
+        ,{<<"Account-DB">>, kzd_accounts:format_account_id(AccountId, 'encoded')}
         ,{<<"Resource-Type">>, ?RESOURCE_TYPE_AUDIO}
         ]
        )

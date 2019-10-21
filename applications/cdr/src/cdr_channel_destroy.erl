@@ -33,7 +33,7 @@
 -spec handle_req(kz_call_event:doc(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     Routines = [fun maybe_ignore_app/1
                ,fun maybe_ignore_loopback/1
                ],
@@ -115,7 +115,7 @@ update_pvt_parameters('undefined', _, JObj) ->
     kz_doc:update_pvt_parameters(JObj, ?KZ_ANONYMOUS_CDR_DB, Props);
 update_pvt_parameters(AccountId, Timestamp, JObj) ->
     CorrectTimestamp = kz_json:get_integer_value(<<"Interaction-Time">>, JObj, Timestamp),
-    AccountMODb = kz_util:format_account_id(AccountId, CorrectTimestamp),
+    AccountMODb = kzd_accounts:format_account_id(AccountId, CorrectTimestamp),
     Props = [{'type', 'cdr'}
             ,{'crossbar_doc_vsn', 2}
             ,{'account_id', AccountId}

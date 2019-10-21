@@ -17,6 +17,9 @@
 -export([stop_time/1, stop_time/2, set_stop_time/2]).
 -export([value/1, value/2, set_value/2]).
 
+-export([format_resource_selectors_id/1, format_resource_selectors_id/2
+        ,format_resource_selectors_db/1
+        ]).
 
 -include("kz_documents.hrl").
 
@@ -100,3 +103,67 @@ value(Doc, Default) ->
 -spec set_value(doc(), binary()) -> doc().
 set_value(Doc, Value) ->
     kz_json:set_value([<<"value">>], Value, Doc).
+
+%% @equiv format_resource_selectors_id(Account, raw)
+
+-spec format_resource_selectors_id(kz_term:api_binary()) -> kz_term:api_binary().
+format_resource_selectors_id(Account) ->
+    format_resource_selectors_id(Account, 'raw').
+
+%%------------------------------------------------------------------------------
+%% @doc Given a representation of an account `resource_selectors'.
+%% Returns it in a `encoded', `unencoded' or `raw' format.
+%% @end
+%%------------------------------------------------------------------------------
+-type resource_format() :: 'unencoded' | 'encoded' | 'raw'.
+
+-spec format_resource_selectors_id(kz_term:api_binary(), resource_format()) -> kz_term:api_binary();
+                                  (kz_term:api_binary(), kz_time:gregorian_seconds()) -> kz_term:api_binary(). %% MODb!
+format_resource_selectors_id('undefined', _Encoding) -> 'undefined';
+
+format_resource_selectors_id(?MATCH_RESOURCE_SELECTORS_RAW(_)=AccountId, 'raw') ->
+    AccountId;
+format_resource_selectors_id(?MATCH_RESOURCE_SELECTORS_ENCODED(_)=AccountDb, 'encoded') ->
+    AccountDb;
+format_resource_selectors_id(?MATCH_RESOURCE_SELECTORS_UNENCODED(_)=AccountDbUn, 'unencoded') ->
+    AccountDbUn;
+format_resource_selectors_id(?MATCH_ACCOUNT_RAW(A, B, Rest), 'raw') ->
+    ?MATCH_RESOURCE_SELECTORS_RAW(A, B, Rest);
+format_resource_selectors_id(?MATCH_ACCOUNT_RAW(A, B, Rest), 'encoded') ->
+    ?MATCH_RESOURCE_SELECTORS_ENCODED(A, B, Rest);
+format_resource_selectors_id(?MATCH_ACCOUNT_RAW(A, B, Rest), 'unencoded') ->
+    ?MATCH_RESOURCE_SELECTORS_UNENCODED(A, B, Rest);
+
+format_resource_selectors_id(AccountId, 'raw') ->
+    raw_resource_selectors_id(AccountId);
+format_resource_selectors_id(AccountId, 'unencoded') ->
+    ?MATCH_RESOURCE_SELECTORS_RAW(A,B,Rest) = raw_resource_selectors_id(AccountId),
+    kz_term:to_binary(["account/", A, "/", B, "/", Rest]);
+format_resource_selectors_id(AccountId, 'encoded') ->
+    ?MATCH_RESOURCE_SELECTORS_RAW(A,B,Rest) = raw_resource_selectors_id(AccountId),
+    kz_term:to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
+
+%%------------------------------------------------------------------------------
+%% Returns `account_id() | any()'.
+%% Passes input along if not `account_id() | account_db() | account_db_unencoded().'
+%%------------------------------------------------------------------------------
+-spec raw_resource_selectors_id(kz_term:ne_binary()) -> kz_term:ne_binary().
+raw_resource_selectors_id(?MATCH_RESOURCE_SELECTORS_RAW(AccountId)) ->
+    AccountId;
+raw_resource_selectors_id(?MATCH_RESOURCE_SELECTORS_UNENCODED(A, B, Rest)) ->
+    ?MATCH_RESOURCE_SELECTORS_RAW(A, B, Rest);
+raw_resource_selectors_id(?MATCH_RESOURCE_SELECTORS_ENCODED(A, B, Rest)) ->
+    ?MATCH_RESOURCE_SELECTORS_RAW(A, B, Rest);
+raw_resource_selectors_id(Other) ->
+    case lists:member(Other, ?KZ_SYSTEM_DBS) of
+        'true' -> Other;
+        'false' ->
+            lager:warning("raw account resource_selectors id doesn't process '~p'", [Other]),
+            Other
+    end.
+
+%% @equiv format_resource_selectors_id(Account, encoded)
+
+-spec format_resource_selectors_db(kz_term:api_binary()) -> kz_term:api_binary().
+format_resource_selectors_db(AccountId) ->
+    format_resource_selectors_id(AccountId, 'encoded').

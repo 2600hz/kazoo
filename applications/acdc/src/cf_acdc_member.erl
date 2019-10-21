@@ -115,7 +115,7 @@ wait_for_bridge(#member_call{call=Call}=MC, Timeout, Start) ->
                 end,
     receive
         {'amqp_msg', JObj} ->
-            process_message(MC, Timeout, Start, Wait, JObj, kz_util:get_event_type(JObj))
+            process_message(MC, Timeout, Start, Wait, JObj, kz_api:get_event_type(JObj))
     after TimeoutMs ->
             lager:info("failed to handle the call in time, proceeding"),
             end_member_call(Call)

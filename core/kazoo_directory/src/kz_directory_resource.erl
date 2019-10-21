@@ -97,13 +97,13 @@ load_resource([DBName |DBs], DocId) ->
 %% should be created as resources in master or account
 -spec find_resource_id(resource_context()) -> resource_context().
 find_resource_id(#{endpoint_id := EndpointId, realm_id := MasterId, master_id := MasterId} = Map) ->
-    Map#{resource => load_resource([kz_util:format_account_db(MasterId)
+    Map#{resource => load_resource([kzd_accounts:format_account_db(MasterId)
                                    ,?KZ_OFFNET_DB
                                    ], EndpointId
                                   )
         };
 find_resource_id(#{endpoint_id := EndpointId, realm_id := AccountId} = Map) ->
-    Map#{resource => kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), EndpointId)}.
+    Map#{resource => kz_datamgr:open_cache_doc(kzd_accounts:format_account_db(AccountId), EndpointId)}.
 
 -spec set_resource_id(resource_context()) -> resource_context().
 set_resource_id(#{resource := {'ok', Resource}, ccvs := CCVs, profile := Profile} = Map) ->
@@ -209,7 +209,7 @@ maybe_lookup_cnam(#{caller_id_number := Number
     catch
         _Ex:_Err:ST ->
             lager:error("error running cnam for ~s : ~p / ~p", [Number, _Ex, _Err]),
-            kz_util:log_stacktrace(ST),
+            kz_log:log_stacktrace(ST),
             Map
     end;
 maybe_lookup_cnam(Map) -> Map.
@@ -272,7 +272,7 @@ set_cid_name(#{caller_id_number := CIDName
 maybe_transition_port_in(NumberProps) ->
     case knm_number_options:has_pending_port(NumberProps) of
         'false' -> 'ok';
-        'true' -> kz_util:spawn(fun transition_port_in/1, [NumberProps])
+        'true' -> kz_process:spawn(fun transition_port_in/1, [NumberProps])
     end.
 
 -spec transition_port_in(knm_number_options:extra_options()) -> 'ok'.

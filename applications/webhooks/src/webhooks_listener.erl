@@ -140,7 +140,7 @@ find_hook(JObj) ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {'ok', #state{}}.
 
 %%------------------------------------------------------------------------------
@@ -187,9 +187,9 @@ handle_cast(_Msg, State) ->
 handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
     lager:debug("write access to table '~p' available", [_TblId]),
     Self = self(),
-    _ = kz_util:spawn(
+    _ = kz_process:spawn(
           fun() ->
-                  kz_util:put_callid(?MODULE),
+                  kz_log:put_callid(?MODULE),
                   webhooks_util:load_hooks(Self),
                   webhooks_util:init_webhooks()
           end),

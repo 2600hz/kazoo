@@ -341,7 +341,7 @@ handle_query_channels(JObj, _Props) ->
 -spec handle_channel_status(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_channel_status(JObj, _Props) ->
     'true' = kapi_call:channel_status_req_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     CallId = kz_api:call_id(JObj),
     lager:debug("channel status request received"),
     case ecallmgr_fs_channel:fetch(CallId) of
@@ -400,7 +400,7 @@ send_empty_channel_resp(CallId, JObj) ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     process_flag('trap_exit', 'true'),
     lager:debug("starting new fs channels"),
     _ = ets:new(?CHANNELS_TBL, ['set'
@@ -451,12 +451,12 @@ handle_call(_, _, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> {'noreply', state()}.
 handle_cast({'channel_updates', UUID, Updates}, State) ->
-    kz_util:put_callid(UUID),
+    kz_log:put_callid(UUID),
     lager:debug("updating channel properties: ~s", [format_updates(Updates)]),
     ets:update_element(?CHANNELS_TBL, UUID, Updates),
     {'noreply', State};
 handle_cast({'destroy_channel', UUID, Node}, State) ->
-    kz_util:put_callid(UUID),
+    kz_log:put_callid(UUID),
     MatchSpec = [{#channel{uuid='$1', node='$2', _ = '_'}
                  ,[{'andalso', {'=:=', '$2', {'const', Node}}
                    ,{'=:=', '$1', UUID}}
@@ -508,7 +508,7 @@ handle_cast({'flush_node', Node}, State) ->
         [] ->
             lager:debug("no locally handled channels");
         LocalChannels ->
-            _P = kz_util:spawn(fun handle_channels_disconnected/1, [LocalChannels]),
+            _P = kz_process:spawn(fun handle_channels_disconnected/1, [LocalChannels]),
             lager:debug("sending channel disconnects for local channels: ~p", [LocalChannels])
     end,
 
@@ -862,7 +862,7 @@ maybe_cleanup_old_channels() ->
     case max_channel_uptime() of
         N when N =< 0 -> 'ok';
         MaxAge ->
-            _P = kz_util:spawn(fun cleanup_old_channels/1, [MaxAge]),
+            _P = kz_process:spawn(fun cleanup_old_channels/1, [MaxAge]),
             'ok'
     end.
 

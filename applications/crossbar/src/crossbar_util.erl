@@ -487,7 +487,7 @@ update_descendants_tree([Descendant|Descendants], Tree, NewResellerId, MovedAcco
             case kzd_accounts:update(Descendant, Updates) of
                 {'error', _E}=Error -> Error;
                 {'ok', _DescendantAccountJObj} ->
-                    AccountId = kz_util:format_account_id(Descendant),
+                    AccountId = kzd_accounts:format_account_id(Descendant),
                     lager:debug("updated descendant ~s (~s)", [AccountId, kz_doc:revision(_DescendantAccountJObj)]),
                     _ = kazoo_services_maintenance:update_tree(AccountId, ToTree, NewResellerId),
                     update_descendants_tree(Descendants, Tree, NewResellerId, MovedAccountId)
@@ -742,7 +742,7 @@ apply_response_map_item({Key, ExistingKey}, J, JObj) ->
 
 -spec get_path(cowboy_req:req() | kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 get_path(<<_/binary>> = RawPath, Relative) ->
-    kz_util:resolve_uri(RawPath, Relative);
+    kz_http_util:resolve_uri(RawPath, Relative);
 get_path(Req, Relative) ->
     get_path(cowboy_req:path(Req), Relative).
 
@@ -785,7 +785,7 @@ create_auth_token(Context, AuthModule, JObj) ->
               ,{<<"method">>, kz_term:to_binary(AuthModule)}
               ]),
     JObjToken = kz_doc:update_pvt_parameters(kz_json:from_list(Token)
-                                            ,kz_util:format_account_id(AccountId, 'encoded')
+                                            ,kzd_accounts:format_account_id(AccountId, 'encoded')
                                             ,Token
                                             ),
 
@@ -825,7 +825,7 @@ get_token_restrictions(AuthModule, AccountId, OwnerId) ->
 get_priv_level(_AccountId, 'undefined') ->
     cb_token_restrictions:default_priv_level();
 get_priv_level(AccountId, OwnerId) ->
-    AccountDB = kz_util:format_account_db(AccountId),
+    AccountDB = kzd_accounts:format_account_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDB, OwnerId) of
         {'ok', Doc} -> kzd_users:priv_level(Doc);
         {'error', _} -> cb_token_restrictions:default_priv_level()
@@ -840,7 +840,7 @@ get_system_token_restrictions(AuthModule) ->
 
 -spec get_account_token_restrictions(kz_term:ne_binary(), atom()) -> kz_term:api_object().
 get_account_token_restrictions(AccountId, AuthModule) ->
-    AccountDB = kz_util:format_account_db(AccountId),
+    AccountDB = kzd_accounts:format_account_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDB, ?CB_ACCOUNT_TOKEN_RESTRICTIONS) of
         {'error', _} -> 'undefined';
         {'ok', RestrictionsDoc} ->
@@ -876,7 +876,7 @@ descendants_count() ->
 
 -spec descendants_count(kz_term:proplist() | kz_term:ne_binary()) -> 'ok'.
 descendants_count(<<Account/binary>>) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzd_accounts:format_account_id(Account, 'raw'),
     descendants_count([{'key', AccountId}]);
 descendants_count(Opts) ->
     ViewOptions = [{'group_level', 1}
@@ -1076,7 +1076,7 @@ get_devices_by_owner(AccountDb, OwnerId) ->
 -spec get_account_devices(kz_term:api_binary()) -> kz_term:ne_binaries().
 get_account_devices('undefined') -> [];
 get_account_devices(Account) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzd_accounts:format_account_db(Account),
     case kz_datamgr:get_results(AccountDb, <<"devices/crossbar_listing">>, []) of
         {'ok', JObjs} -> [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
         {'error', _R} ->

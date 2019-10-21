@@ -210,7 +210,7 @@ delivery(Srv) ->
 %%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
 init([WorkerSup, MgrPid, AccountId, QueueId]) ->
-    kz_util:put_callid(QueueId),
+    kz_log:put_callid(QueueId),
     lager:debug("starting queue ~s", [QueueId]),
     gen_listener:cast(self(), {'get_friends', WorkerSup}),
     {'ok', #state{queue_id = QueueId
@@ -258,7 +258,7 @@ handle_cast({'member_connect_req', MemberCallJObj, Delivery, _Url}
                   }=State) ->
     Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, MemberCallJObj)),
 
-    kz_util:put_callid(kapps_call:call_id(Call)),
+    kz_log:put_callid(kapps_call:call_id(Call)),
 
     acdc_util:bind_to_call_events(Call),
     lager:debug("bound to call events for ~s", [kapps_call:call_id(Call)]),
@@ -635,7 +635,7 @@ clear_call_state(#state{account_id=AccountId
                        }=State) ->
     _ = acdc_util:queue_presence_update(AccountId, QueueId),
 
-    kz_util:put_callid(QueueId),
+    kz_log:put_callid(QueueId),
     State#state{call='undefined'
                ,member_call_queue='undefined'
                ,agent_id='undefined'
@@ -648,7 +648,7 @@ publish(Req, F) ->
     catch
         ?STACKTRACE(_E, _R, ST)
         lager:debug("failed to publish message: ~p:~p", [_E, _R]),
-        kz_util:log_stacktrace(ST)
+        kz_log:log_stacktrace(ST)
         end.
 
 -spec publish(kz_term:ne_binary(), kz_term:api_terms(), fun((kz_term:ne_binary(), kz_term:api_terms()) -> 'ok')) -> 'ok'.
@@ -657,5 +657,5 @@ publish(Q, Req, F) ->
     catch
         ?STACKTRACE(_E, _R, ST)
         lager:debug("failed to publish message to ~s: ~p:~p", [Q, _E, _R]),
-        kz_util:log_stacktrace(ST)
+        kz_log:log_stacktrace(ST)
         end.

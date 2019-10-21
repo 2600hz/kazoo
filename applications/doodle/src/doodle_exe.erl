@@ -165,7 +165,7 @@ callid_update(CallId, Call) ->
 -spec callid(kapps_call:call() | pid()) -> kz_term:ne_binary().
 callid(Srv) when is_pid(Srv) ->
     CallId = gen_server:call(Srv, 'callid', ?MILLISECONDS_IN_SECOND),
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     CallId;
 callid(Call) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
@@ -251,7 +251,7 @@ send_amqp(Call, API, PubFun) when is_function(PubFun, 1) ->
 init([Call]) ->
     process_flag('trap_exit', 'true'),
     CallId = kapps_call:call_id(Call),
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     gen_listener:cast(self(), 'initialize'),
     {'ok', #state{call=Call}}.
 
@@ -336,7 +336,7 @@ handle_cast({'continue', Key}, #state{flow=Flow
             end
     end;
 handle_cast('stop', #state{call=Call}=State) ->
-    _ = kz_util:spawn(fun doodle_util:save_sms/1, [kapps_call:clear_helpers(Call)]),
+    _ = kz_process:spawn(fun doodle_util:save_sms/1, [kapps_call:clear_helpers(Call)]),
     {'stop', 'normal', State};
 handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
@@ -346,7 +346,7 @@ handle_cast({'branch', NewFlow}, State) ->
     lager:info("textflow has been branched"),
     {'noreply', launch_cf_module(State#state{flow=NewFlow})};
 handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
-    kz_util:put_callid(NewCallId),
+    kz_log:put_callid(NewCallId),
     PrevCallId = kapps_call:call_id_direct(Call),
     lager:info("updating callid to ~s (from ~s), catch you on the flip side", [NewCallId, PrevCallId]),
     lager:info("removing call event bindings for ~s", [PrevCallId]),
@@ -459,7 +459,7 @@ handle_event(JObj, #state{cf_module_pid=PidRef
     CallId = kapps_call:call_id_direct(Call),
     SmsId = kapps_call:kvs_fetch(<<"sms_docid">>, Call),
     Others = kapps_call:kvs_fetch('cf_event_pids', [], Call),
-    case {kz_util:get_event_type(JObj), kz_json:get_value(<<"Call-ID">>, JObj)} of
+    case {kz_api:get_event_type(JObj), kz_json:get_value(<<"Call-ID">>, JObj)} of
         {{<<"call_event">>, <<"CHANNEL_TRANSFEREE">>}, _} ->
             ExeFetchId = kapps_call:custom_channel_var(<<"Fetch-ID">>, Call),
             TransferFetchId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Fetch-ID">>], JObj),
@@ -610,20 +610,20 @@ cf_module_skip(CFModule, _Call) ->
                              {kz_term:pid_ref(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
     AMQPConsumer = kz_amqp_channel:consumer_pid(),
-    {kz_util:spawn_monitor(fun cf_module_task/4, [CFModule, Data, Call, AMQPConsumer])
+    {kz_process:spawn_monitor(fun cf_module_task/4, [CFModule, Data, Call, AMQPConsumer])
     ,CFModule
     }.
 
 -spec cf_module_task(atom(), list(), kapps_call:call(), pid()) -> any().
 cf_module_task(CFModule, Data, Call, AMQPConsumer) ->
     _ = kz_amqp_channel:consumer_pid(AMQPConsumer),
-    kz_util:put_callid(kapps_call:call_id_direct(Call)),
+    kz_log:put_callid(kapps_call:call_id_direct(Call)),
     try CFModule:handle(Data, Call) of
         _ -> 'ok'
     catch
         ?STACKTRACE(_E, R, ST)
         lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         throw(R)
         end.
 

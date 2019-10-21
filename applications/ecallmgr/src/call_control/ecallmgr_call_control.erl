@@ -215,7 +215,7 @@ init_control(Pid, #{node := Node
         _Other -> lager:debug("callback doesn't want to proceed")
     catch
         _Ex:_Err:_Stacktrace ->
-            kz_util:log_stacktrace(_Stacktrace),
+            kz_log:log_stacktrace(_Stacktrace),
             lager:debug("error running callback ~p : ~p", [_Ex, _Err])
 
     end;
@@ -367,7 +367,7 @@ handle_info(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_call_control(kz_json:object(), state()) -> gen_server:handle_event_return().
 handle_call_control(JObj, _State) ->
-    case kz_util:get_event_type(JObj) of
+    case kz_api:get_event_type(JObj) of
         {<<"call">>, <<"command">>} -> handle_call_command(JObj);
         {<<"conference">>, <<"command">>} -> handle_conference_command(JObj);
         {_Category, _Event} -> lager:debug_unsafe("event ~s : ~s not handled : ~s", [_Category, _Event, kz_json:encode(JObj, ['pretty'])])
@@ -630,7 +630,7 @@ handle_sofia_replaced(<<_/binary>> = ReplacedBy, #state{node=Node
                                                        }=State)->
     lager:debug("channel replaced by ~s for ~s in ~s", [ReplacedBy, CallId, Node]),
     unbind(Node, CallId),
-    kz_util:put_callid(ReplacedBy),
+    kz_log:put_callid(ReplacedBy),
     bind(Node, ReplacedBy),
     lager:info("...call id updated, continuing post-transfer"),
     set_control_info(ReplacedBy, State),
@@ -866,7 +866,7 @@ execute_control_request(Cmd, #state{node=Node
                                    ,call_id=CallId
                                    ,other_legs=OtherLegs
                                    }) ->
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     Srv = self(),
 
     Application = kapi_dialplan:application_name(Cmd),
@@ -906,7 +906,7 @@ execute_control_request(Cmd, #state{node=Node
             'ok';
         'error':{'badmatch', {'error', ErrMsg}}:ST ->
             lager:debug("invalid command ~s: ~p", [Application, ErrMsg]),
-            kz_util:log_stacktrace(ST),
+            kz_log:log_stacktrace(ST),
             send_error_resp(Node, CallId, Cmd, ErrMsg),
             Srv ! {'force_queue_advance', CallId},
             'ok';
@@ -924,7 +924,7 @@ execute_control_request(Cmd, #state{node=Node
             'ok';
         _A:Error:ST ->
             lager:debug("exception (~s) while executing ~s: ~p", [_A, Application, Error]),
-            kz_util:log_stacktrace(ST),
+            kz_log:log_stacktrace(ST),
             send_error_resp(Node, CallId, Cmd, Error),
             Srv ! {'force_queue_advance', CallId},
             'ok'

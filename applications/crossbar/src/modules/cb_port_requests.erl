@@ -1434,7 +1434,7 @@ find_template(ResellerId, 'undefined') ->
     {'ok', Template} = kz_pdf:find_template(ResellerId, <<"loa">>),
     Template;
 find_template(ResellerId, CarrierName) ->
-    EncodedCarrierName = kz_term:to_lower_binary(kz_util:uri_encode(CarrierName)),
+    EncodedCarrierName = kz_term:to_lower_binary(kz_http_util:urlencode(CarrierName)),
     TemplateName = <<EncodedCarrierName/binary, ".tmpl">>,
     lager:debug("looking for carrier template ~s or plain template for reseller ~s"
                ,[TemplateName, ResellerId]),

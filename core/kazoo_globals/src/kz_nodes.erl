@@ -724,7 +724,7 @@ build_advertised_node(JObj, State) ->
 -spec update_advertised_node(kz_types:kz_node(), nodes_state()) -> pid() | 'true'.
 update_advertised_node(Node, #state{tab=Tab}=State) ->
     case ets:insert_new(Tab, Node) of
-        'true' -> kz_util:spawn(fun notify_new/2, [Node, State]);
+        'true' -> kz_process:spawn(fun notify_new/2, [Node, State]);
         'false' -> ets:insert(Tab, Node)
     end.
 
@@ -753,7 +753,7 @@ init([]) ->
                                          ,{'node_type', 'all'}
                                          ]),
     lager:debug("monitoring nodes"),
-    Version = list_to_binary([kz_util:kazoo_version()
+    Version = list_to_binary([kapps_util:kazoo_version()
                              ," - "
                              ,kz_term:to_binary(erlang:system_info('otp_release'))
                              ]),
@@ -837,7 +837,7 @@ handle_info('expire_nodes', #state{node=ThisNode, tab=Tab}=State) ->
                ],
     Nodes = ets:select(Tab, FindSpec),
     _ = [ets:delete(Tab, Node) || #kz_node{node=Node} <- Nodes],
-    _ = kz_util:spawn(fun notify_expire/2, [Nodes, State]),
+    _ = kz_process:spawn(fun notify_expire/2, [Nodes, State]),
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
     {'noreply', State};
 
@@ -870,7 +870,7 @@ handle_info({'heartbeat', Ref}
             {'noreply', State#state{heartbeat_ref=Reference}};
         ?STACKTRACE(_E, _N, ST)
         lager:error("error creating node ~p : ~p", [_E, _N]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'noreply', State#state{heartbeat_ref=Reference}, 'hibernate'}
         end;
 

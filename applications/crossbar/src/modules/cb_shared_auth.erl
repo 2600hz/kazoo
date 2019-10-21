@@ -167,7 +167,7 @@ validate_request(Context, ?HTTP_GET, JObj) ->
     UserId = kz_json:get_value(<<"owner_id">>, JObj),
     case kzd_accounts:fetch(AccountId) of
         {'ok', Account} ->
-            Db = kz_util:format_account_id(AccountId, 'encoded'),
+            Db = kzd_accounts:format_account_id(AccountId, 'encoded'),
             case kz_datamgr:open_doc(Db, UserId) of
                 {'ok', User} ->
                     RespData = kz_json:from_list([{<<"account">>, Account}
@@ -276,7 +276,7 @@ import_missing_account('undefined', _Account) ->
     'false';
 import_missing_account(AccountId, Account) ->
     %% check if the account database exists
-    Db = kz_util:format_account_db(AccountId),
+    Db = kzd_accounts:format_account_db(AccountId),
     case kz_datamgr:db_exists(Db) of
         %% if the account database exists make sure it has the account
         %% definition, because when couch is acting up it can skip this
@@ -333,7 +333,7 @@ import_missing_user(_, 'undefined', _) ->
     lager:debug("shared auth reply did not define an user id"),
     'false';
 import_missing_user(AccountId, UserId, User) ->
-    Db = kz_util:format_account_db(AccountId),
+    Db = kzd_accounts:format_account_db(AccountId),
     case kz_datamgr:lookup_doc_rev(Db, UserId) of
         {'ok', _} ->
             lager:debug("remote user ~s already exists locally in account ~s", [UserId, AccountId]),

@@ -73,7 +73,7 @@ start_link() ->
 handle_amqp_event(EventJObj, _Props, ?MODULE_REQ_ROUTING_KEY) ->
     handle_module_req(EventJObj);
 handle_amqp_event(EventJObj, _Props, <<_/binary>> = RoutingKey) ->
-    Evt = kz_util:get_event_type(EventJObj),
+    Evt = kz_api:get_event_type(EventJObj),
     lager:debug("recv event ~p (~s)", [Evt, RoutingKey]),
     RK = <<"blackhole.event.", RoutingKey/binary>>,
     {Time, Res} = timer:tc(blackhole_bindings, pmap, [RK, [RoutingKey, EventJObj]]),
@@ -246,7 +246,7 @@ handle_cast(_Msg, State) ->
 -spec handle_info(?HOOK_EVT(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()), state()) ->
                          {'noreply', state()}.
 handle_info(?HOOK_EVT(AccountId, EventType, JObj), State) ->
-    _ = kz_util:spawn(fun handle_hook_event/3, [AccountId, EventType, JObj]),
+    _ = kz_process:spawn(fun handle_hook_event/3, [AccountId, EventType, JObj]),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.

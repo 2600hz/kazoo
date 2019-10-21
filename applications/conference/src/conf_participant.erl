@@ -233,7 +233,7 @@ handle_cast('pivoted', Participant) ->
 handle_cast({'channel_replaced', NewCallId}
            ,#participant{call=Call}=Participant
            ) ->
-    kz_util:put_callid(NewCallId),
+    kz_log:put_callid(NewCallId),
     NewCall = kapps_call:set_call_id(NewCallId, Call),
     lager:info("updated call to use ~s instead", [NewCallId]),
     gen_listener:add_binding(self(), 'call', [{'callid', NewCallId}]),
@@ -346,7 +346,7 @@ handle_event(JObj, #participant{call_event_consumers=Consumers
                                ,call=Call
                                }) ->
     CallId = kapps_call:call_id(Call),
-    case {kz_util:get_event_type(JObj)
+    case {kz_api:get_event_type(JObj)
          ,kz_call_event:call_id(JObj)
          }
     of
@@ -402,7 +402,7 @@ terminate(_Reason, #participant{name_pronounced = Name}) ->
 
 -spec maybe_clear(conf_pronounced_name:name_pronounced()) -> 'ok'.
 maybe_clear({'temp_doc_id', AccountId, MediaId}) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     lager:debug("deleting doc: ~s/~s", [AccountDb, MediaId]),
     _ = kz_datamgr:del_doc(AccountDb, MediaId),
     'ok';
@@ -445,7 +445,7 @@ sync_participant(JObj, Call, #participant{in_conference='false'
     ParticipantId = kz_json:get_value(<<"Participant-ID">>, JObj),
     IsModerator = kz_json:is_true([<<"Conference-Channel-Vars">>, <<"Is-Moderator">>], JObj),
     log_conference_join(IsModerator, ParticipantId, Conference),
-    _ = kz_util:spawn(fun notify_requestor/4, [kapps_call:controller_queue(Call)
+    _ = kz_process:spawn(fun notify_requestor/4, [kapps_call:controller_queue(Call)
                                               ,ParticipantId
                                               ,DiscoveryEvent
                                               ,kapps_conference:id(Conference)

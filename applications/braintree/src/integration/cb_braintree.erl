@@ -435,5 +435,5 @@ create_braintree_customer(Context) ->
 -spec sync(cb_context:context()) -> 'ok'.
 sync(Context) ->
     AccountId = cb_context:account_id(Context),
-    _P = kz_util:spawn(fun kz_services_bookkeeper:sync/1, [AccountId]),
+    _P = kz_process:spawn(fun kz_services_bookkeeper:sync/1, [AccountId]),
     lager:debug("syncing ~s in ~p", [AccountId, _P]).

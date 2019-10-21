@@ -69,9 +69,9 @@ pool_name() -> ?POOL_NAME.
 %%------------------------------------------------------------------------------
 -spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
-    _ = kz_util:set_startup(),
+    _ = kapps_util:set_startup(),
 
-    kz_nodes:bind_for_pool_state('kz_amqp_sup', self()),
+    _ = kz_nodes:bind_for_pool_state('kz_amqp_sup', self()),
 
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,

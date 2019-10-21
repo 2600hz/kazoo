@@ -43,7 +43,7 @@
 %%------------------------------------------------------------------------------
 -spec maybe_migrate(kz_term:ne_binary()) -> 'ok'.
 maybe_migrate(Account) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzd_accounts:format_account_db(Account),
     case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', Lists} -> migrate(AccountDb, Lists);
         {'error', _} -> 'ok'
@@ -284,7 +284,7 @@ delete(Context, ListId) ->
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, _ListId, ?ENTRIES) ->
     Docs = [kz_json:get_value(<<"id">>, Entry) || Entry <- cb_context:doc(Context)],
-    AccountDb = kz_util:format_account_id(cb_context:account_db(Context), 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(cb_context:account_db(Context), 'encoded'),
     %% do we need 'soft' delete as in crossbar_doc?
     _ = kz_datamgr:del_docs(AccountDb, Docs),
     Context.

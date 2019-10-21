@@ -86,7 +86,7 @@ cache_rates(RatedeckId, Rates) ->
 
 -spec init([kz_term:ne_binary() | pos_integer()]) -> {'ok', state()}.
 init([RatedeckDb, ExpiresS]) ->
-    kz_util:put_callid(hon_trie:trie_proc_name(RatedeckDb)),
+    kz_log:put_callid(hon_trie:trie_proc_name(RatedeckDb)),
     lager:debug("starting LRU for ~s", [RatedeckDb]),
     {'ok', #state{trie=trie:new()
                  ,ratedeck_db=RatedeckDb

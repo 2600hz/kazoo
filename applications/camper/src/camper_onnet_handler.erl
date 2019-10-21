@@ -107,7 +107,7 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'add_request', JObj}, GlobalState) ->
     AccountDb = kz_json:get_value(<<"Account-DB">>, JObj),
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kzd_accounts:format_account_id(AccountDb, 'raw'),
     Dev = {kz_json:get_value(<<"Authorizing-ID">>, JObj)
           ,kz_json:get_value(<<"Authorizing-Type">>, JObj)
           },
@@ -196,7 +196,7 @@ handle_request(SIPName, Requestor, Local) ->
 -spec originate_call({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 originate_call({Id, Type}, Exten, AccountDb) ->
     Routines = [fun(C) -> kapps_call:set_account_db(AccountDb, C) end
-               ,fun(C) -> kapps_call:set_account_id(kz_util:format_account_id(AccountDb, 'raw'), C) end
+               ,fun(C) -> kapps_call:set_account_id(kzd_accounts:format_account_id(AccountDb, 'raw'), C) end
                ,fun(C) -> kapps_call:set_authorizing_id(Id, C) end
                ,fun(C) -> kapps_call:set_authorizing_type(Type, C) end
                ],

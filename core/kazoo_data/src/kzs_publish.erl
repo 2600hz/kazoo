@@ -33,7 +33,7 @@ maybe_publish_docs(Db, Docs, JObjs) ->
 
 -spec publish_docs(kz_term:ne_binary(), kz_json:objects(), kz_json:objects()) -> 'ok'.
 publish_docs(Db, Docs, JObjs) ->
-    _ = kz_util:spawn(
+    _ = kz_process:spawn(
           fun() ->
                   [publish_doc(Db, Doc, JObj)
                    || {Doc, JObj} <- lists:zip(Docs, JObjs),
@@ -51,7 +51,7 @@ maybe_publish_doc(Db, Doc, JObj) ->
     _PidOrNot = kz_datamgr:change_notice()
         andalso should_publish_db_changes(Db)
         andalso should_publish_doc(Doc)
-        andalso kz_util:spawn(fun publish_doc/3, [Db, Doc, JObj]),
+        andalso kz_process:spawn(fun publish_doc/3, [Db, Doc, JObj]),
     lager:debug("maybe publishing db/doc change: ~p", [_PidOrNot]).
 -endif.
 
@@ -61,7 +61,7 @@ publish_db(_, _) -> 'true'.
 -else.
 publish_db(DbName, Action) ->
     SupressChange = kz_datamgr:change_notice(),
-    _ = kz_util:spawn(fun() -> do_publish_db(SupressChange, DbName, Action) end),
+    _ = kz_process:spawn(fun() -> do_publish_db(SupressChange, DbName, Action) end),
     'true'.
 
 -spec should_publish_doc(kz_json:object()) -> boolean().
@@ -171,8 +171,8 @@ doc_acct_id(Db, Doc) ->
 
 -spec maybe_account_id_from_db(atom(), kz_term:ne_binary()) -> kz_term:api_binary().
 maybe_account_id_from_db('account', Db) ->
-    kz_util:format_account_id(Db);
+    kzd_accounts:format_account_id(Db);
 maybe_account_id_from_db('modb', Db) ->
-    kz_util:format_account_id(Db);
+    kzd_accounts:format_account_id(Db);
 maybe_account_id_from_db(_, _) ->
     'undefined'.

@@ -221,7 +221,7 @@ do_full_provision_contact_list(?NE_BINARY = AccountId) ->
                         end
                        ,fun(J) -> kz_json:delete_key(<<"available_apps">>, J) end
                        ,fun(J) ->
-                                AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+                                AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
                                 ContactList = provisioner_contact_list:build(AccountDb),
                                 kz_json:set_value(<<"directory">>, ContactList, J)
                         end
@@ -433,7 +433,7 @@ merge_device(MACAddress, NewDeviceDoc) ->
 -spec get_owner(kz_term:api_binary(), kz_term:ne_binary()) -> kz_json:object().
 get_owner('undefined', _) -> kz_json:new();
 get_owner(OwnerId, AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
         {'ok', Owner} -> Owner;
         {'error', _R} ->
@@ -687,14 +687,14 @@ sync_device(AccountId, OldDevice, NewDevice) ->
             lager:debug("nothing has changed on device; no check-sync needed");
         'true' ->
             Realm = kzd_accounts:fetch_realm(AccountId),
-            send_check_sync(OldUsername, Realm, kz_util:get_callid())
+            send_check_sync(OldUsername, Realm, kz_log:get_callid())
     end.
 
 -spec force_sync_device(kz_term:ne_binary(), kzd_devices:doc()) -> 'ok'.
 force_sync_device(AccountId, NewDevice) ->
     Username = kzd_devices:sip_username(NewDevice),
     Realm = kzd_accounts:fetch_realm(AccountId),
-    send_check_sync(Username, Realm, kz_util:get_callid()).
+    send_check_sync(Username, Realm, kz_log:get_callid()).
 
 -spec sync_user(kz_term:ne_binary()) -> 'ok'.
 sync_user(AccountId) ->
@@ -722,7 +722,7 @@ sync_user(AccountId) ->
                           {'ok', kz_json:objects()} |
                           kz_datamgr:data_error().
 user_devices(AccountId, UserId) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzd_accounts:format_account_db(AccountId),
 
     Options = [{'key', UserId}, 'include_docs'],
     case kz_datamgr:get_results(AccountDb, ?LIST_BY_PRESENCE_ID, Options) of
@@ -740,7 +740,7 @@ force_sync_user(AccountId, NewUser) ->
             lager:debug("no user devices to sync");
         {'ok', DeviceDocs} ->
             Realm = kzd_accounts:fetch_realm(AccountId),
-            _ = [send_check_sync(kzd_devices:presence_id(DeviceDoc), Realm, kz_util:get_callid())
+            _ = [send_check_sync(kzd_devices:presence_id(DeviceDoc), Realm, kz_log:get_callid())
                  || DeviceDoc <- DeviceDocs
                 ],
             'ok'

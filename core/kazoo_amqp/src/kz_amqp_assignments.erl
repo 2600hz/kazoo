@@ -96,10 +96,10 @@ request_channel(Consumer, Broker) ->
 -spec request_channel(pid(), kz_term:api_binary(), kz_term:api_pid()) -> 'ok'.
 request_channel(Consumer, 'undefined', Watcher) when is_pid(Consumer) ->
     Broker = kz_amqp_connections:primary_broker(),
-    Application = kapps_util:get_application(),
+    Application = kz_application:get_application(),
     gen_server:cast(?SERVER, {'request_float', Consumer, Broker, Application, Watcher});
 request_channel(Consumer, Broker, Watcher) when is_pid(Consumer) ->
-    Application = kapps_util:get_application(),
+    Application = kz_application:get_application(),
     gen_server:cast(?SERVER, {'request_sticky', Consumer, Broker, Application, Watcher}).
 
 -spec add_channel(kz_term:ne_binary(), pid(), pid()) -> 'ok'.
@@ -138,7 +138,7 @@ channel_count(AMQPConn) when is_pid(AMQPConn) ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     _ = ets:new(?TAB, ['named_table'
                       ,{'keypos', #kz_amqp_assignment.timestamp}
                       ,'protected'
@@ -780,7 +780,7 @@ maybe_defer_reassign(#kz_amqp_assignment{}=Assignment
                     ,{'shutdown',{'server_initiated_close', 404, _Msg}}
                     ) ->
     lager:debug("defer channel reassign for ~p ms", [?SERVER_RETRY_PERIOD]),
-    kz_util:spawn(
+    kz_process:spawn(
       fun() ->
               timer:sleep(?SERVER_RETRY_PERIOD),
               gen_server:cast(?SERVER, {'maybe_defer_reassign', Assignment})
@@ -789,7 +789,7 @@ maybe_defer_reassign(#kz_amqp_assignment{}=Assignment
                     ,{'shutdown',{'connection_closing', _}}
                     ) ->
     lager:debug("defer channel reassign for ~p ms", [?SERVER_RETRY_PERIOD]),
-    kz_util:spawn(
+    kz_process:spawn(
       fun() ->
               timer:sleep(?SERVER_RETRY_PERIOD),
               gen_server:cast(?SERVER, {'maybe_defer_reassign', Assignment})

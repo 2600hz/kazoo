@@ -19,7 +19,7 @@
 -spec handle_route_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_route_req(JObj, Props) ->
     'true' = kapi_route:req_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
 
     Call = kapps_call:set_controller_queue(props:get_value('queue', Props)
                                           ,kapps_call:from_route_req(JObj)

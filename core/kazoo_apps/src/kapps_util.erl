@@ -54,11 +54,18 @@
 -export([to_magic_hash/1
         ,from_magic_hash/1
         ]).
--export([get_application/0
-        ,put_application/1
-        ]).
 -export([epmd_enabled/0
         ,epmd_disabled/0
+        ]).
+-export([set_startup/0, startup/0
+        ,kazoo_version/0
+        ,write_pid/1
+        ,node_name/0, node_hostname/0
+        ,calling_app/0
+        ,calling_app_version/0
+        ,calling_process/0
+        ,get_app/1
+        ,application_version/1
         ]).
 
 -include("kazoo_apps.hrl").
@@ -73,6 +80,8 @@
 -define(ACCT_BY_REALM_CACHE(Name), {?MODULE, 'account_by_realm', Name}).
 -define(ACCT_BY_IP_CACHE(IP), {?MODULE, 'account_by_ip', IP}).
 -define(GET_BY_CACHE_ORIGIN, [{'origin', [{'db', ?KZ_ACCOUNTS_DB, <<"account">>}]}]).
+
+-define(KAZOO_VERSION_CACHE_KEY, {?MODULE, 'kazoo_version'}).
 
 %%------------------------------------------------------------------------------
 %% @doc Update a document in each crossbar account database with the
@@ -122,7 +131,7 @@ replicate_from_account(AccountDb, AccountDb, _) ->
     lager:debug("requested to replicate from db ~s to self, skipping", [AccountDb]),
     {'error', 'matching_dbs'};
 replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
-    ReplicateProps = [{<<"source">>, kz_util:format_account_id(AccountDb, ?REPLICATE_ENCODING)}
+    ReplicateProps = [{<<"source">>, kzd_accounts:format_account_id(AccountDb, ?REPLICATE_ENCODING)}
                      ,{<<"target">>, TargetDb}
                      ,{<<"filter">>, FilterDoc}
                      ,{<<"create_target">>, 'true'}
@@ -174,7 +183,7 @@ get_master_account_db() ->
     case get_master_account_id() of
         {'error', _}=E -> E;
         {'ok', AccountId} ->
-            {'ok', kz_util:format_account_db(AccountId)}
+            {'ok', kzd_accounts:format_account_db(AccountId)}
     end.
 
 %%------------------------------------------------------------------------------
@@ -183,7 +192,7 @@ get_master_account_db() ->
 %%------------------------------------------------------------------------------
 -spec is_master_account(kz_term:ne_binary()) -> boolean().
 is_master_account(Account) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzd_accounts:format_account_id(Account),
     case get_master_account_id() of
         {'ok', AccountId} -> 'true';
         _Else -> 'false'
@@ -221,7 +230,7 @@ account_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
 %%------------------------------------------------------------------------------
 -spec account_has_descendants(kz_term:ne_binary()) -> boolean().
 account_has_descendants(Account) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzd_accounts:format_account_id(Account),
     [] =/= (account_descendants(AccountId) -- [AccountId]).
 
 %%------------------------------------------------------------------------------
@@ -259,7 +268,7 @@ get_all_accounts(Encoding) ->
     {'ok', Dbs} = kz_datamgr:db_list([{'startkey', <<"account/">>}
                                      ,{'endkey', <<"account/\ufff0">>}
                                      ]),
-    [kz_util:format_account_id(Db, Encoding)
+    [kzd_accounts:format_account_id(Db, Encoding)
      || Db <- Dbs, is_account_db(Db)
     ].
 
@@ -278,8 +287,8 @@ get_all_accounts_and_mods(Encoding) ->
 
 -spec format_db(kz_term:ne_binary(), kz_util:account_format()) -> kz_term:ne_binary().
 format_db(Db, Encoding) ->
-    Fs = [{fun is_account_db/1, fun kz_util:format_account_id/2}
-         ,{fun is_account_mod/1, fun kz_util:format_account_modb/2}
+    Fs = [{fun is_account_db/1, fun kzd_accounts:format_account_id/2}
+         ,{fun is_account_mod/1, fun kzd_accounts:format_account_modb/2}
          ],
     format_db(Db, Encoding, Fs).
 
@@ -296,7 +305,7 @@ get_all_account_mods() ->
 -spec get_all_account_mods(kz_util:account_format()) -> kz_term:ne_binaries().
 get_all_account_mods(Encoding) ->
     {'ok', Databases} = kz_datamgr:db_info(),
-    [kz_util:format_account_modb(Db, Encoding)
+    [kzd_accounts:format_account_modb(Db, Encoding)
      || Db <- Databases,
         is_account_mod(Db)
     ].
@@ -307,7 +316,7 @@ get_account_mods(Account) ->
 
 -spec get_account_mods(kz_term:ne_binary(), kz_util:account_format()) -> kz_term:ne_binaries().
 get_account_mods(Account, Encoding) ->
-    AccountId = kz_util:format_account_id(Account, Encoding),
+    AccountId = kzd_accounts:format_account_id(Account, Encoding),
     [MOD
      || MOD <- get_all_account_mods(Encoding),
         is_account_mod(MOD),
@@ -433,11 +442,11 @@ are_all_enabled(Things) ->
 is_enabled(_AccountId, {_Type, 'undefined'}) -> 'true';
 is_enabled(AccountId, {<<"device">>, DeviceId}) ->
     Default = kapps_config:get_is_true(<<"registrar">>, <<"device_enabled_default">>, 'true'),
-    {'ok', DeviceJObj} = kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), DeviceId),
+    {'ok', DeviceJObj} = kz_datamgr:open_cache_doc(kzd_accounts:format_account_db(AccountId), DeviceId),
     kzd_devices:enabled(DeviceJObj, Default)
         orelse throw({'error', {'device_disabled', DeviceId}});
 is_enabled(AccountId, {<<"owner">>, OwnerId}) ->
-    case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), OwnerId) of
+    case kz_datamgr:open_cache_doc(kzd_accounts:format_account_db(AccountId), OwnerId) of
         {'ok', UserJObj} ->
             Default = kapps_config:get_is_true(<<"registrar">>, <<"owner_enabled_default">>, 'true'),
             kzd_users:enabled(UserJObj, Default)
@@ -618,8 +627,8 @@ get_origination(_JObj, []) ->
 
 maybe_split(Key, JObj) ->
     case kz_json:get_ne_binary_value(Key, JObj) of
-        undefined -> undefined;
-        <<"nouser@",_/binary>> -> undefined;
+        'undefined' -> 'undefined';
+        <<"nouser@",_/binary>> -> 'undefined';
         Bin -> binary:split(Bin, <<"@">>)
     end.
 
@@ -639,25 +648,6 @@ to_magic_hash(Bin) ->
 from_magic_hash(Bin) ->
     zlib:unzip(kz_binary:from_hex(Bin)).
 
--spec get_application() -> atom().
-get_application() ->
-    case get('application') of
-        'undefined' -> find_application();
-        Application -> Application
-    end.
-
--spec find_application() -> atom().
-find_application() ->
-    case application:get_application() of
-        {'ok', Application} ->
-            Application;
-        _Else -> 'undefined'
-    end.
-
--spec put_application(atom()) -> atom().
-put_application(Application) ->
-    put('application', Application).
-
 -spec epmd_enabled() -> boolean().
 epmd_enabled() ->
     init:get_argument('start_epmd') =/= {'ok', [["false"]]}.
@@ -665,3 +655,114 @@ epmd_enabled() ->
 -spec epmd_disabled() -> boolean().
 epmd_disabled() ->
     init:get_argument('start_epmd') =:= {'ok', [["false"]]}.
+
+-spec set_startup() -> kz_time:api_seconds().
+set_startup() ->
+    put('$startup', kz_time:now_s()).
+
+-spec startup() -> kz_time:api_seconds().
+startup() ->
+    get('$startup').
+
+%%------------------------------------------------------------------------------
+%% @doc Fetch and cache the kazoo version from the VERSION file in kazoo's root folder/
+%% @end
+%%------------------------------------------------------------------------------
+-spec kazoo_version() -> kz_term:ne_binary().
+kazoo_version() ->
+    {_, _, Version} = get_app('kazoo_apps'),
+    kz_term:to_binary(Version).
+
+-spec get_app(atom() | kz_term:ne_binary()) -> {atom(), string(), string()} | 'undefined'.
+get_app(<<_/binary>> = AppName) ->
+    get_app(kz_term:to_atom(AppName));
+get_app(AppName) ->
+    case [App || {Name, _, _}=App <- application:loaded_applications(), Name =:= AppName] of
+        [] -> 'undefined';
+        [Ret | _] -> Ret
+    end.
+
+-spec write_pid(file:filename_all()) -> 'ok' | {'error', atom()}.
+write_pid(FileName) ->
+    file:write_file(FileName, io_lib:format("~s", [os:getpid()]), ['write', 'binary']).
+
+-spec node_name() -> binary().
+node_name() ->
+    [Name, _Host] = binary:split(kz_term:to_binary(node()), <<"@">>),
+    Name.
+
+-spec node_hostname() -> binary().
+node_hostname() ->
+    [_Name, Host] = binary:split(kz_term:to_binary(node()), <<"@">>),
+    Host.
+
+%%------------------------------------------------------------------------------
+%% @doc For core applications that want to know which app is calling.
+%% @end
+%%------------------------------------------------------------------------------
+-spec calling_app() -> kz_term:ne_binary().
+calling_app() ->
+    Modules = calling_app_stacktrace(),
+    [_Me, {Module, _, _, _} | Start] = Modules,
+    {'ok', App} = application:get_application(Module),
+    case process_fold(Start, App) of
+        App -> kz_term:to_binary(App);
+        {Parent, _MFA} -> kz_term:to_binary(Parent)
+    end.
+
+-spec calling_app_version() -> {kz_term:ne_binary(), kz_term:ne_binary()}.
+calling_app_version() ->
+    {'ok', App} = application:get_application(self()),
+    {NewApp, _, Version} = get_app(App),
+    {kz_term:to_binary(NewApp), kz_term:to_binary(Version)}.
+
+-spec calling_process() -> map().
+calling_process() ->
+    Modules = calling_app_stacktrace(),
+    [_Me, {Module, _, _, _}=M | Start] = Modules,
+    App = case application:get_application(Module) of
+              {'ok', KApp} -> KApp;
+              'undefined' -> Module
+          end,
+    {NewApp, {Mod, Function, Arity, [{file, Filename}, {line, Line}]}} =
+        case process_fold(Start, App) of
+            App -> {App, M};
+            {Parent, MFA } -> {Parent, MFA}
+        end,
+    #{app => NewApp
+     ,module => Mod
+     ,function => Function
+     ,arity => Arity
+     ,file => Filename
+     ,line => Line
+     }.
+
+-spec process_fold([tuple()], atom()) -> tuple() | atom().
+process_fold([], App) -> App;
+process_fold([{M, _, _, _}=Mod | Others], App) ->
+    ModApp = case application:get_application(M) of
+                 {'ok', KModApp} -> KModApp;
+                 'undefined' -> M
+             end,
+    process_fold(ModApp, App, Mod, Others).
+
+-spec process_fold(atom(), atom(), tuple(), [tuple()]) -> tuple() | atom().
+process_fold(App, App, _, Others) ->
+    process_fold(Others, App);
+process_fold(App, _, M, _) -> {App, M}.
+
+-spec calling_app_stacktrace() -> any().
+calling_app_stacktrace() ->
+    try throw('get_stacktrace')
+    catch
+        _E:_R:ST ->
+            [_Me | Others] = ST,
+            Others
+    end.
+
+-spec application_version(atom()) -> kz_term:ne_binary().
+application_version(Application) ->
+    case application:get_key(Application, 'vsn') of
+        {'ok', Vsn} -> kz_term:to_binary(Vsn);
+        'undefined' -> <<"unknown">>
+    end.

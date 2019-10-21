@@ -236,7 +236,7 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
         do_revise_docs_from_folder(DbName, Sleep, T)
     catch
         ?STACKTRACE(_, _, ST)
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         do_revise_docs_from_folder(DbName, Sleep, T)
         end.
 
@@ -656,7 +656,7 @@ flush_cache_docs(DbName) ->
 %% -define(OPEN_DOC_LOG(DbName, DocId, Options),
 %%         begin
 %%             {_, ST} = erlang:process_info(self(), current_stacktrace),
-%%             kz_util:log_stacktrace(ST),
+%%             kz_log:log_stacktrace(ST),
 %%             ?LOG_DEBUG("~s:open_doc(~p, ~p, ~p)", [?MODULE, DbName, DocId, Options])
 %%         end
 %%        ).
@@ -1752,7 +1752,7 @@ maybe_register_view({<<"_design/", _Name/binary>>, _}, _App, {'error', _Reason}=
     lager:error("can not register the view ~s for app ~s: ~s", [_Name, _App, _Reason]),
     Error;
 maybe_register_view({<<"_design/", Name/binary>>, View}, App, {ClassId, ViewMaps}) ->
-    Version = kz_util:application_version(App),
+    Version = kapps_util:application_version(App),
     AppName = kz_term:to_binary(App),
     DocId = <<ClassId/binary, "-", AppName/binary, "-", Name/binary>>,
 
@@ -1881,7 +1881,7 @@ do_refresh_views(DbName) ->
     Updated = case view_definitions(DbName, Classification) of
                   [] -> 'false';
                   Views ->
-                      Database = kz_util:uri_encode(kz_util:uri_decode(DbName)),
+                      Database = kz_http_util:urlencode(kz_http_util:urldecode(DbName)),
                       db_view_update(Database, Views)
               end,
 
@@ -1900,7 +1900,7 @@ do_refresh_views(DbName) ->
 
 -spec view_definitions(kz_term:ne_binary(), atom() | kz_term:ne_binary()) -> views_listing().
 view_definitions(DbName, Classification) ->
-    ViewOptions = [kz_util:uri_decode(DbName), kz_term:to_binary(Classification)],
+    ViewOptions = [kz_http_util:urldecode(DbName), kz_term:to_binary(Classification)],
     case get_result_docs(?KZ_DATA_DB, <<"views/views_by_classification">>, ViewOptions) of
         {'error', _} -> [];
         {'ok', JObjs} ->

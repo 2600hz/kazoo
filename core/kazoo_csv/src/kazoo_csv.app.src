@@ -1,12 +1,6 @@
-{application, kazoo_csv,
- [
-  {description, "Kazoo CSV - Application library for handling CSV files (RFC4180)."},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, []},
-  {applications, [kernel
-                 ,stdlib
-
-                 ,kazoo
-                 ]}
- ]}.
+{application,kazoo_csv,
+             [{applications,[kazoo_stdlib,kernel,lager,stdlib]},
+              {description,"Kazoo CSV - Application library for handling CSV files (RFC4180)."},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[]}]}.

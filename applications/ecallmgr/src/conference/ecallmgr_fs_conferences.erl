@@ -304,7 +304,7 @@ is_moderator(#participant{conference_channel_vars=Vars}) ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     process_flag('trap_exit', 'true'),
     lager:info("starting FreeSWITCH conferences tracker"),
     _ = ets:new(?CONFERENCES_TBL, ['set', 'protected', 'named_table', {'keypos', #conference.uuid}]),
@@ -616,7 +616,7 @@ xml_member_to_participant([#xmlElement{name='uuid'
                                       }
                            |XmlElements
                           ], Participant) ->
-    CallId = kz_util:uri_decode(xml_text_to_binary(UUID)),
+    CallId = kz_http_util:urldecode(xml_text_to_binary(UUID)),
     lager:debug("uuid ~s callid ~s", [xml_text_to_binary(UUID), CallId]),
     xml_member_to_participant(XmlElements
                              ,Participant#participant{uuid=kz_term:to_binary(CallId)}

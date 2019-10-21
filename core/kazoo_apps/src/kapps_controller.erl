@@ -73,7 +73,7 @@
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    _ = kz_util:spawn(fun initialize_kapps/0),
+    _ = kz_process:spawn(fun initialize_kapps/0),
     'ignore'.
 
 -spec ready() -> boolean().
@@ -192,7 +192,7 @@ running_apps_list() ->
 
 -spec initialize_kapps() -> 'ok'.
 initialize_kapps() ->
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     _ = kapps_maintenance:init_system(),
     kapps_config:migrate(),
     ToStart = lists:sort(fun sysconf_first/2

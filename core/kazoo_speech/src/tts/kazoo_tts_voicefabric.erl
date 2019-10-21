@@ -132,7 +132,7 @@ create_response({'ok', 200, Headers, Content}) ->
     {'ok', Rate} = voicefabric_get_media_rate(Headers),
     RawFile = kazoo_speech_util:tmp_file_name(<<"raw">>),
     WavFile = kazoo_speech_util:tmp_file_name(<<"wav">>),
-    kz_util:write_file(RawFile, Content),
+    kz_os:write_file(RawFile, Content),
     From = ["raw -r ", Rate, " -e signed-integer -b 16"],
     To = "wav",
     Cmd = binary_to_list(iolist_to_binary(["sox -t ", From, " ", RawFile, " -t ", To, " ", WavFile])),
@@ -140,11 +140,11 @@ create_response({'ok', 200, Headers, Content}) ->
     CmdOut = os:cmd(Cmd),
     CmdOut =:= []
         orelse lager:debug("cmd out: ~ts", [CmdOut]),
-    kz_util:delete_file(RawFile),
+    kz_os:delete_file(RawFile),
     lager:debug("reading file"),
     case file:read_file(WavFile) of
         {'ok', WavContent} ->
-            kz_util:delete_file(WavFile),
+            kz_os:delete_file(WavFile),
             lager:debug("media converted"),
             NewHeaders = props:set_values([{"content-type", "audio/wav"}
                                           ,{"content-length", integer_to_list(byte_size(WavContent))}

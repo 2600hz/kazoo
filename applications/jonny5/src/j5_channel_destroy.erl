@@ -21,7 +21,7 @@
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     timer:sleep(1000 + rand:uniform(2000)),
     Request = j5_request:from_jobj(JObj),
     AccountId = j5_request:account_id(Request),

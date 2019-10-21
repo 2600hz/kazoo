@@ -69,7 +69,7 @@ collect() ->
 scheme(Account, Cluster, Zone) ->
     [Service, Hostname0] = binary:split(kz_term:to_binary(node()), <<$@>>),
     Hostname = binary:replace(Hostname0, <<$.>>, <<"::">>, [global]),
-    kz_util:iolist_join($., [Account, Cluster, Zone, Hostname, Service]).
+    kz_term:iolist_join($., [Account, Cluster, Zone, Hostname, Service]).
 
 print_metric(Scheme, Key, Value) ->
     io:format("~s.~s ~B ~B\n", [Scheme, Key, Value, get(timestamp)]).

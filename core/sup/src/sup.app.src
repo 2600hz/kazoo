@@ -1,5 +1,5 @@
 {application,sup,
-             [{applications,[getopt,kazoo,kazoo_stdlib,kernel,lager,stdlib]},
+             [{applications,[getopt,kazoo_stdlib,kernel,lager,stdlib]},
               {description,"Accept RPC requests & push them into a running Kazoo VM"},
               {vsn,"4.0.0"},
               {modules,[]},

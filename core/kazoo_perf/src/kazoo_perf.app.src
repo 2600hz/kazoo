@@ -1,18 +1,8 @@
-{application, kazoo_perf,
- [
-  {description, "Kazoo Peformance testing"},
-  {vsn, "4.0.0"},
-  {modules, []},
-  {registered, []},
-  {applications, [ kernel
-                 , stdlib
-                 , crypto
-                 , inets
-
-                 , kazoo
-                 , kazoo_amqp
-                 , kazoo_data
-
-                 , lager
-                 ]}
- ]}.
+{application,kazoo_perf,
+             [{applications,[eflame,kazoo_amqp,kazoo_caches,kazoo_data,
+                             kazoo_documents,kazoo_stdlib,kernel,plists,
+                             runtime_tools,stdlib]},
+              {description,"Kazoo Peformance testing"},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[]}]}.

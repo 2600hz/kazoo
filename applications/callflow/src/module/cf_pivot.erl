@@ -75,7 +75,7 @@ handle(Data, Call) ->
 wait_for_pivot(Data, Call) ->
     case kapps_call_command:receive_event(?DEFAULT_EVENT_WAIT, 'true') of
         {'ok', JObj} ->
-            case kz_util:get_event_type(JObj) of
+            case kz_api:get_event_type(JObj) of
                 {<<"call_event">>,<<"CHANNEL_DESTROY">>} ->
                     lager:debug("CHANNEL_DESTROY received stooping call"),
                     cf_exe:stop(Call);

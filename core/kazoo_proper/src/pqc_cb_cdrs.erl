@@ -328,7 +328,7 @@ create_account(API) ->
     kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)).
 
 create_owner(AccountId) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzd_accounts:format_account_db(AccountId),
 
     OwnerId = kz_binary:rand_hex(16),
     Owner = kz_json:set_value(<<"_id">>, OwnerId, kzd_users:new()),
@@ -355,9 +355,9 @@ seed_cdrs(AccountId) ->
 seed_cdrs(AccountId, OwnerId) ->
     {Year, Month, _} = erlang:date(),
 
-    kazoo_modb:create(kz_util:format_account_id(AccountId, Year, Month)),
+    kazoo_modb:create(kzd_accounts:format_account_id(AccountId, Year, Month)),
     {PrevY, PrevM} = kazoo_modb_util:prev_year_month(Year, Month),
-    kazoo_modb:create(kz_util:format_account_id(AccountId, PrevY, PrevM)),
+    kazoo_modb:create(kzd_accounts:format_account_id(AccountId, PrevY, PrevM)),
 
     seed_cdrs(AccountId, OwnerId, Year, Month).
 
@@ -417,7 +417,7 @@ seed_cdr(AccountId, OwnerId, Year, Month, InteractionId) ->
                              ,{<<"timestamp">>, InteractionTime}
                              ]),
 
-    AccountMODb = kz_util:format_account_id(AccountId, InteractionTime),
+    AccountMODb = kzd_accounts:format_account_id(AccountId, InteractionTime),
 
     Props = [{'type', <<"cdr">>}
             ,{'account_id', AccountId}

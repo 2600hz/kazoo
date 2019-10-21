@@ -23,7 +23,7 @@ init() -> 'ok'.
 -spec handle_req(kapi_route:req(), kz_term:proplist()) -> any().
 handle_req(RouteReq, _Options) ->
     'true' = kapi_route:req_v(RouteReq),
-    kz_util:put_callid(kapi_route:call_id(RouteReq)),
+    kz_log:put_callid(kapi_route:call_id(RouteReq)),
     kz_amqp_worker:worker_pool(trunkstore_sup:pool_name()),
 
     lager:info("received request ~s asking if trunkstore can route this call", [kapi_route:fetch_id(RouteReq)]),

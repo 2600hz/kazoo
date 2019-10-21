@@ -80,9 +80,9 @@ send_page(Endpoints, Timeout, CCVs, Options, Call) ->
 get_endpoints(undefined, Call) -> get_endpoints([], Call);
 get_endpoints(Members, Call) ->
     S = self(),
-    Builders = [kz_util:spawn(
+    Builders = [kz_process:spawn(
                   fun() ->
-                          kz_util:put_callid(kapps_call:call_id(Call)),
+                          kz_log:put_callid(kapps_call:call_id(Call)),
                           S ! {self(), catch kz_endpoint:build(EndpointId, Member, Call)}
                   end)
                 || {EndpointId, Member} <- resolve_endpoint_ids(Members, Call)

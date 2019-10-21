@@ -176,7 +176,7 @@ assign_address(Number, AddressId) ->
     catch
         ?STACKTRACE(_T, E, ST)
         lager:error("~p ~p", [_T, E]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'error', kz_term:to_binary(E)}
         end.
 
@@ -208,7 +208,7 @@ remove_number_address(Number) ->
         'undefined' -> 'ok';
         AddrId ->
             Path = ["e911_addresses", binary_to_list(AddrId)],
-            _ = kz_util:spawn(fun() -> catch knm_telnyx_util:req(delete, Path) end),
+            _ = kz_process:spawn(fun() -> catch knm_telnyx_util:req(delete, Path) end),
             'ok'
     end.
 

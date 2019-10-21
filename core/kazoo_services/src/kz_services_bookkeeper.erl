@@ -116,7 +116,7 @@ store_audit_log(Services, Invoice) ->
             ,{[<<"bookkeeper">>, <<"vendor_id">>], kz_services_invoice:bookkeeper_vendor_id(Invoice)}
             ],
     JObj = kz_doc:update_pvt_parameters(kz_json:set_values(Props, kz_json:new())
-                                       ,kz_util:format_account_db(AccountId)
+                                       ,kzd_accounts:format_account_db(AccountId)
                                        ,[{'account_id', AccountId}
                                         ,{'crossbar_doc_vsn', 2}
                                         ,{'id', kazoo_modb_util:modb_id()}
@@ -204,7 +204,7 @@ update_bookkeeper(_Type, Invoice, Services, AuditJObj) ->
               ,{<<"Bookkeeper-Type">>, kz_services_invoice:bookkeeper_type(Invoice)}
               ,{<<"Vendor-ID">>, kz_services_invoice:bookkeeper_vendor_id(Invoice)}
               ,{<<"Invoice">>, kz_json:delete_key(<<"plan">>, kz_services_invoice:public_json(Invoice))}
-              ,{<<"Call-ID">>, kz_util:get_callid()}
+              ,{<<"Call-ID">>, kz_log:get_callid()}
               ,{<<"Audit-Log">>, kz_doc:public_fields(AuditJObj)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],

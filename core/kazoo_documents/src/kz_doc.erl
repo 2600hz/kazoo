@@ -248,7 +248,7 @@ type(JObj, Default) ->
     try kz_json:get_ne_binary_value(?KEY_PVT_TYPE, JObj, Default)
     catch
         ?STACKTRACE('error', 'badarg', ST)
-        kz_util:log_stacktrace(ST, "~s:type(~s)", [?MODULE, kz_json:encode(JObj)]),
+        kz_log:log_stacktrace(ST, "~s:type(~s)", [?MODULE, kz_json:encode(JObj)]),
         Default
         end.
 
@@ -654,7 +654,7 @@ add_pvt_account_id(Acc, _JObj, 'undefined', Opts) ->
 add_pvt_account_id(Acc, _JObj, DBName, Opts) ->
     case props:get_value('account_id', Opts) of
         'undefined' ->
-            [{?KEY_ACCOUNT_ID, kz_util:format_account_id(DBName, 'raw')} | Acc];
+            [{?KEY_ACCOUNT_ID, kzd_accounts:format_account_id(DBName, 'raw')} | Acc];
         Id ->
             [{?KEY_ACCOUNT_ID, Id} | Acc]
     end.

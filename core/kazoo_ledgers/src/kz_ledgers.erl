@@ -382,7 +382,7 @@ rollover(Account) ->
                       {'ok', kz_ledger:ledger()} |
                       {'error', any()}.
 rollover(Account, Year, Month) ->
-    MODB = kz_util:format_account_id(Account, Year, Month),
+    MODB = kzd_accounts:format_account_id(Account, Year, Month),
 
     case should_rollover_monthly_balance() of
         'true' ->

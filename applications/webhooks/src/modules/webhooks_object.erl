@@ -101,7 +101,7 @@ account_bindings(_AccountId) -> [].
 %%------------------------------------------------------------------------------
 -spec handle_event(kapi_conf:doc(), kz_term:proplist()) -> 'ok'.
 handle_event(DocChange, _Props) ->
-    kz_util:put_callid(DocChange),
+    kz_log:put_callid(DocChange),
     'true' = kapi_conf:doc_update_v(DocChange),
 
     case find_account_id(DocChange) of
@@ -197,6 +197,6 @@ find_account_id(ConfChange) ->
 find_account_id(Classification, DB, _Id)
   when Classification =:= 'account';
        Classification =:= 'modb' ->
-    kz_util:format_account_id(DB, 'raw');
+    kzd_accounts:format_account_id(DB, 'raw');
 find_account_id('aggregate', ?KZ_ACCOUNTS_DB, Id) -> Id;
 find_account_id(_, _, _) -> 'undefined'.

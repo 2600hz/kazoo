@@ -35,12 +35,12 @@ handle_req() ->
 
 -spec handle_req(kz_time:date()) -> 'ok'.
 handle_req({Year, Month, 1}) ->
-    _P = kz_util:spawn(fun rollover_accounts/2, [Year, Month]),
+    _P = kz_process:spawn(fun rollover_accounts/2, [Year, Month]),
     lager:info("its a new month ~p-~p, rolling over ledgers in ~p", [Year, Month, _P]);
 handle_req({Year, Month, _Day}) ->
     case kapps_config:is_true(?MOD_CAT, <<"refresh_view_enabled">>, 'true') of
         'true' ->
-            _P = kz_util:spawn(fun refresh_ledger_view/2, [Year, Month]),
+            _P = kz_process:spawn(fun refresh_ledger_view/2, [Year, Month]),
             lager:debug("refreshing ledger totals in ~p", [_P]);
         'false' -> 'ok'
     end.
@@ -58,7 +58,7 @@ refresh_ledger_view(Year, Month, PerPage, {'ok', Accounts, NextStartKey}) ->
     refresh_ledger_view(Year, Month, PerPage, get_page(NextStartKey, PerPage)).
 
 refresh_ledger(Year, Month, AccountId) ->
-    MODB = kz_util:format_account_id(AccountId, Year, Month),
+    MODB = kzd_accounts:format_account_id(AccountId, Year, Month),
     _ = kazoo_modb:get_results(MODB, <<"ledgers/totals_by_source">>, [{'limit', 1}]).
 
 -spec rollover_accounts(kz_time:year(), kz_time:month()) -> 'ok'.

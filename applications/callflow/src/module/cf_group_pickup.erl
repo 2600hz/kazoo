@@ -179,7 +179,7 @@ pickup_cmd(TargetCallId) ->
 wait_for_pickup(Call) ->
     case kapps_call_command:receive_event(10000) of
         {'ok', Evt} ->
-            pickup_event(Call, kz_util:get_event_type(Evt), Evt);
+            pickup_event(Call, kz_api:get_event_type(Evt), Evt);
         {'error', 'timeout'}=E ->
             lager:debug("timed out"),
             E

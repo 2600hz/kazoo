@@ -131,5 +131,5 @@ init_responder(Responder) ->
     catch
         ?STACKTRACE(_E, _R, ST)
         lager:debug("responder ~s crashed: ~s: ~p", [Responder, _E, _R]),
-        kz_util:log_stacktrace(ST)
+        kz_log:log_stacktrace(ST)
         end.

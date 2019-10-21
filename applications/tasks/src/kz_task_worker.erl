@@ -41,7 +41,7 @@
 %%------------------------------------------------------------------------------
 -spec start(kz_tasks:id(), kz_json:object(), kz_tasks:extra_args()) -> ok.
 start(TaskId, API, ExtraArgs) ->
-    _ = kz_util:put_callid(TaskId),
+    _ = kz_log:put_callid(TaskId),
     case init(TaskId, API, ExtraArgs) of
         {'ok', State} ->
             lager:debug("worker for ~s started", [TaskId]),
@@ -193,7 +193,7 @@ is_task_successful(MappedRow
                 [{'EXIT', {_Error, _ST}}] ->
                     lager:error("args: ~p", [Args]),
                     lager:error("error: ~p", [_Error]),
-                    kz_util:log_stacktrace(_ST),
+                    kz_log:log_stacktrace(_ST),
                     {Columns,Written} = store_return(State, MappedRow, ?WORKER_TASK_FAILED),
                     {'false', Columns, Written, 'stop'};
                 [{[_|_]=NewRowOrRows, NewIterValue}] ->
@@ -233,7 +233,7 @@ is_task_successful(MappedRow
     catch
         ?STACKTRACE(_, _R, ST)
         lager:error("verifier crashed: ~p", [_R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {Columns,Written} = store_return(State, MappedRow, ?WORKER_TASK_MAYBE_OK),
         {'false', Columns, Written, 'stop'}
         end.
@@ -275,7 +275,7 @@ write_row(TaskId, Header, MappedRow) ->
 
 -spec write_row(kz_tasks:id(), iodata()) -> 1.
 write_row(TaskId, IOList) ->
-    kz_util:write_file(?OUT(TaskId), [IOList,$\n], ['append']),
+    kz_os:write_file(?OUT(TaskId), [IOList,$\n], ['append']),
     1.
 
 -spec columns(kz_csv:mapped_row()) -> kz_tasks:columns().

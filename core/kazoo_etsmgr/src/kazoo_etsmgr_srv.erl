@@ -100,7 +100,7 @@ init([Opts]) ->
     TableId = opt_table_id(Opts),
     TableOptions = opt_table_options(Opts),
 
-    kz_util:put_callid(<<"etssrv_", (kz_term:to_binary(TableId))/binary>>),
+    kz_log:put_callid(<<"etssrv_", (kz_term:to_binary(TableId))/binary>>),
     gen_server:cast(self(), {'begin', TableId, TableOptions}),
 
     lager:debug("started etsmgr for table ~p", [TableId]),
@@ -180,7 +180,7 @@ handle_info({'give_away', Tbl}, #state{table_id=Tbl
                                       ,find_me_fun=F
                                       }=State) ->
     lager:debug("give away ~p", [Tbl]),
-    FindMe = kz_util:spawn_monitor(fun find_me/2, [F, self()]),
+    FindMe = kz_process:spawn_monitor(fun find_me/2, [F, self()]),
     lager:debug("finding the successor in ~p", [FindMe]),
     {'noreply', State#state{find_me_pid_ref=FindMe}};
 handle_info({'found_me', Pid}, #state{table_id=Tbl

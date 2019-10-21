@@ -119,7 +119,7 @@ unsubscribe(Context, Payload) ->
 
 -spec event(map(), kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 event(Binding, RK, EventJObj) ->
-    kz_util:put_callid(EventJObj),
+    kz_log:put_callid(EventJObj),
     Name = event_name(EventJObj),
     NormJObj = kz_json:normalize_jobj(
                  kz_api:public_fields(EventJObj)

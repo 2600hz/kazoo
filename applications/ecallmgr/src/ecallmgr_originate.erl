@@ -129,7 +129,7 @@ handle_originate_execute(JObj, Props) ->
 %%------------------------------------------------------------------------------
 -spec init([node() | kz_json:object()]) -> {'stop', 'normal'} | {'ok', state()}.
 init([Node, JObj]) ->
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     ServerId = kz_api:server_id(JObj),
     ControllerQ = kz_api:queue_id(JObj),
     _ = bind_to_events(Node),
@@ -179,7 +179,7 @@ handle_cast({'create_uuid'}, #state{node=Node
                                    ,uuid='undefined'
                                    }=State) ->
     UUID = {_, Id} = create_uuid(JObj, Node),
-    kz_util:put_callid(Id),
+    kz_log:put_callid(Id),
     lager:debug("created uuid ~p", [UUID]),
     case kz_json:is_true(<<"Start-Control-Process">>, JObj, 'true')
         andalso start_control_process(State#state{uuid=UUID}) of
@@ -290,7 +290,7 @@ handle_cast({'originate_execute'}, #state{dialstrings=Dialstrings
             _ = publish_originate_resp(ServerId, JObj, CallId),
             {'stop', 'normal', State#state{control_pid='undefined'}};
         {'ok', CallId} ->
-            kz_util:put_callid(CallId),
+            kz_log:put_callid(CallId),
             lager:debug("originate is executing, waiting for completion"),
             erlang:monitor_node(Node, 'true'),
             bind_to_call_events(CallId),
@@ -576,7 +576,7 @@ originate_execute(Node, Dialstrings, Timeout) ->
     of
         {'ok', UUID} ->
             Media = get('hold_media'),
-            _Pid = kz_util:spawn(fun set_music_on_hold/3, [Node, UUID, Media]),
+            _Pid = kz_process:spawn(fun set_music_on_hold/3, [Node, UUID, Media]),
             {'ok', UUID};
         {'error', Error} when is_binary(Error) ->
             lager:debug("error originating: ~s", [Error]),
@@ -607,7 +607,7 @@ unbind_from_call_events() ->
 
 -spec update_uuid(kz_term:api_binary(), kz_term:ne_binary()) -> 'ok'.
 update_uuid(OldUUID, NewUUID) ->
-    kz_util:put_callid(NewUUID),
+    kz_log:put_callid(NewUUID),
     lager:debug("updating call id from ~s to ~s", [OldUUID, NewUUID]),
     unbind_from_call_events(),
     bind_to_call_events(NewUUID),

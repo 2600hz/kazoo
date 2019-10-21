@@ -103,7 +103,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     lager:debug("starting new notify server"),
     {'ok', #state{}}.
 
@@ -143,7 +143,7 @@ handle_event(JObj, _State) ->
     of
         'false' -> 'ignore';
         'true' ->
-            lager:debug("handling notification for ~p", [kz_util:get_event_type(JObj)]),
+            lager:debug("handling notification for ~p", [kz_api:get_event_type(JObj)]),
             {'reply', []}
     end.
 
@@ -169,7 +169,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec should_handle_port(kz_json:object()) -> boolean().
 should_handle_port(JObj) ->
-    case kz_util:get_event_type(JObj) of
+    case kz_api:get_event_type(JObj) of
         {<<"notification">>, <<"port_request">>} ->
             kz_json:get_value(<<"Port-Request-ID">>, JObj) =:= 'undefined';
         {<<"notification">>, <<"ported">>} ->

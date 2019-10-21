@@ -51,12 +51,12 @@ flush_docs() ->
 
 -spec flush_docs(kz_term:ne_binary()) -> 'ok'.
 flush_docs(Account) ->
-    _ = kz_datamgr:flush_cache_docs(kz_util:format_account_db(Account)),
+    _ = kz_datamgr:flush_cache_docs(kzd_accounts:format_account_db(Account)),
     io:format("flushed all docs cached for account ~s~n", [Account]).
 
 -spec flush_docs(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 flush_docs(Account, DocId) ->
-    _ = kz_datamgr:flush_cache_doc(kz_util:format_account_db(Account), DocId),
+    _ = kz_datamgr:flush_cache_doc(kzd_accounts:format_account_db(Account), DocId),
     io:format("flushed cached doc ~s for account ~s~n", [DocId, Account]).
 
 -spec trace_module(kz_term:ne_binary()) -> 'ok'.

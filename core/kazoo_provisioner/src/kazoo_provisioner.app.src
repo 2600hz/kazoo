@@ -1,5 +1,5 @@
 {application,kazoo_provisioner,
-             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_data,
+             [{applications,[kazoo_amqp,kazoo_apps,kazoo_data,
                              kazoo_documents,kazoo_endpoint,
                              kazoo_number_manager,kazoo_services,kazoo_stdlib,
                              kazoo_web,lager,stdlib]},

@@ -198,11 +198,11 @@ log_renotify_result(MessageId, BoxId, Result) ->
 get_modb(?MATCH_MODB_SUFFIX_ENCODED(_A, _B, _C, _Y, _M) = MODb, _) -> MODb;
 get_modb(?MATCH_MODB_SUFFIX_encoded(_A, _B, _C, _Y, _M) = MODb, _) -> MODb;
 get_modb(?MATCH_MODB_SUFFIX_RAW(_A, _B, _C, _Y, _M) = MODb, _) ->
-    kz_util:format_account_modb(MODb, 'encoded');
+    kzd_accounts:format_account_modb(MODb, 'encoded');
 get_modb(?MATCH_MODB_SUFFIX_UNENCODED(_A, _B, _C, _Y, _M) = MODb, _) ->
-    kz_util:format_account_modb(MODb, 'encoded');
+    kzd_accounts:format_account_modb(MODb, 'encoded');
 get_modb(Account, ?MATCH_MODB_PREFIX(Year, Month, _)) ->
-    kz_util:format_account_mod_id(Account, Year, Month).
+    kzd_accounts:format_account_mod_id(Account, Year, Month).
 
 -spec get_account_id(kz_term:ne_binary()) -> kz_term:ne_binary().
 get_account_id(?MATCH_ACCOUNT_RAW(AccountId)) -> AccountId;

@@ -266,7 +266,7 @@ refresh_numbers_db(_Thing) ->
 
 -spec update_number_services_view(kz_term:ne_binary()) -> 'no_return'.
 update_number_services_view(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    update_number_services_view(kz_util:format_account_db(AccountId));
+    update_number_services_view(kzd_accounts:format_account_db(AccountId));
 update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
     FunMatchBlock = fun(Class) -> ["    resC['", Class, "'] = resM;"] end,
     MapView = number_services_map(FunMatchBlock),
@@ -310,7 +310,7 @@ copy_accounts_to_number_dbs(AccountIds) ->
     ?SUP_LOG_DEBUG("::: start copying numbers doc from ~b account dbs to number dbs"
                   ,[length(AccountIds)]
                   ),
-    State = accounts_to_numdbs_state([kz_util:format_account_db(A) || A <- AccountIds]),
+    State = accounts_to_numdbs_state([kzd_accounts:format_account_db(A) || A <- AccountIds]),
     loop_dbs(State, fun copy_account_to_numdbs/2).
 
 %%------------------------------------------------------------------------------
@@ -409,7 +409,7 @@ copy_assigned_number_dbs_to_account(Account) ->
     ?SUP_LOG_DEBUG("::: start copying assigned numbers doc from ~b number dbs to account ~s"
                   ,[length(NumberDbs), Account]
                   ),
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzd_accounts:format_account_id(Account),
     ViewOptions = [{'limit', kz_datamgr:max_bulk_read()}
                   ,{'startkey', [AccountId]}
                   ,{'endkey', [AccountId, kz_json:new()]}
@@ -420,7 +420,7 @@ copy_assigned_number_dbs_to_account(Account) ->
 
 -spec copy_single_assigned_number_db_to_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 copy_single_assigned_number_db_to_account(Account, NumberDb) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzd_accounts:format_account_id(Account),
     ViewOptions = [{'limit', kz_datamgr:max_bulk_read()}
                   ,{'startkey', [AccountId]}
                   ,{'endkey', [AccountId, kz_json:new()]}
@@ -436,8 +436,8 @@ copy_single_assigned_number_db_to_account(Account, NumberDb) ->
 %%------------------------------------------------------------------------------
 -spec copy_single_number_to_account_db(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok' | 'error', kz_term:ne_binary()}.
 copy_single_number_to_account_db(Num, Account) ->
-    AccountId = kz_util:format_account_id(Account),
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountId = kzd_accounts:format_account_id(Account),
+    AccountDb = kzd_accounts:format_account_db(AccountId),
     Number = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(Number),
     case kz_datamgr:open_doc(NumberDb, Number) of
@@ -478,7 +478,7 @@ fix_apps_for_account_dbs(AccountDbs) ->
     ?SUP_LOG_DEBUG("::: start fixing numbers doc used_by field for ~b account dbs"
                   ,[length(AccountDbs)]
                   ),
-    State = apps_fix_state([kz_util:format_account_db(A) || A <- AccountDbs]),
+    State = apps_fix_state([kzd_accounts:format_account_db(A) || A <- AccountDbs]),
     loop_dbs(State, fun fix_apps_for_account/2).
 
 %%------------------------------------------------------------------------------
@@ -558,7 +558,7 @@ fix_apps_in_number_dbs_for_accounts(Accounts) ->
     ?SUP_LOG_DEBUG("::: start fixing numbers doc used_by field in ~b number dbs for ~b accounts"
                   ,[length(NumberDbs), length(Accounts)]
                   ),
-    AccountIds = [kz_util:format_account_id(A) || A <- Accounts],
+    AccountIds = [kzd_accounts:format_account_id(A) || A <- Accounts],
     State = apps_fix_state(NumberDbs),
     Fun = fun(StateAcc, NumberDb) ->
                   fix_apps_in_number_dbs_for_account(StateAcc, NumberDb, length(AccountIds), AccountIds)
@@ -610,12 +610,12 @@ remove_wrong_assigned_from_accounts(AccountDbs) ->
     ?SUP_LOG_DEBUG("::: start removing wrong assigned numbers from ~b account dbs"
                   ,[length(AccountDbs)]
                   ),
-    State = remove_accountdb_wrong_assigned_state([kz_util:format_account_db(A) || A <- AccountDbs]),
+    State = remove_accountdb_wrong_assigned_state([kzd_accounts:format_account_db(A) || A <- AccountDbs]),
     loop_dbs(State, fun loop_remove_bad_assignment_account/2).
 
 -spec remove_wrong_assigned_from_single_accountdb(kz_term:ne_binary()) -> 'ok'.
 remove_wrong_assigned_from_single_accountdb(Account) ->
-    remove_wrong_assigned_from_accounts([kz_util:format_account_db(Account)]).
+    remove_wrong_assigned_from_accounts([kzd_accounts:format_account_db(Account)]).
 
 %% @private
 -spec remove_accountdb_wrong_assigned_state(kz_term:ne_binaries()) -> loop_state().
@@ -639,7 +639,7 @@ do_remove_wrong_assigned_from_account(#{todo := []}=State, _) ->
     ?SUP_LOG_DEBUG("     no wrong assignment to remove"),
     State;
 do_remove_wrong_assigned_from_account(#{todo := JObjs}=State, AccountDb) ->
-    AccountId = kz_util:format_account_id(AccountDb),
+    AccountId = kzd_accounts:format_account_id(AccountDb),
     ToRemove = [kz_doc:id(JObj)
                 || JObj <- JObjs,
                    kz_json:get_value(<<"key">>, JObj) =/= AccountId
@@ -959,7 +959,7 @@ split_docs_by_number_dbs(#{todo := Todos}=State, _Db) ->
 split_docs_by_assigned_to(#{todo := Todos}=State, _Db) ->
     ?SUP_LOG_DEBUG("     grouping ~b docs by assigned_to", [length(Todos)]),
     F = fun (JObj, M) ->
-                AccountDb = kz_util:format_account_db(
+                AccountDb = kzd_accounts:format_account_db(
                               kzd_phone_numbers:pvt_assigned_to(JObj)
                              ),
                 M#{AccountDb => [JObj | maps:get(AccountDb, M, [])]}
@@ -971,7 +971,7 @@ split_by_list_assigned_and_app(#{todo := Todos}=State, _Db) ->
     ?SUP_LOG_DEBUG("     grouping ~b docs by assigned_to", [length(Todos)]),
     F = fun (JObj, M) ->
                 [AssginedTo, _PvtUsedBy] = kz_json:get_value(<<"key">>, JObj),
-                AccountDb = kz_util:format_account_db(AssginedTo),
+                AccountDb = kzd_accounts:format_account_db(AssginedTo),
                 M#{AccountDb => [JObj | maps:get(AccountDb, M, [])]}
         end,
     State#{todo => maps:to_list(lists:foldl(F, #{}, Todos))}.
@@ -1044,7 +1044,7 @@ apply_apps_fixers_fold(State, [], Acc) ->
     State#{todo => maps:to_list(Acc)};
 apply_apps_fixers_fold(#{apps_fixers := AppsFixers}=State, [{Db, JObjs}|Rest], Acc) ->
     ?SUP_LOG_DEBUG("     applying app usage fixes on ~b numbers for account ~s"
-                  ,[length(JObjs), kz_util:format_account_id(Db)]
+                  ,[length(JObjs), kzd_accounts:format_account_id(Db)]
                   ),
     Todo = [(maps:get(kz_doc:id(JObj), AppsFixers, fun kz_term:identity/1))(JObj)
             || JObj <- JObjs
@@ -1320,7 +1320,7 @@ to_binary_data_error(SomethingElse) ->
 get_account_dids_apps(Account, Ids) ->
     ViewOpts= [{'keys', Ids}],
     ?SUP_LOG_DEBUG("      getting app usage for ~b numbers in account ~s", [length(Ids), Account]),
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzd_accounts:format_account_db(Account),
     case get_dids_for_app(AccountDb, <<"callflow">>, ViewOpts) of
         {'ok', CallflowDIDs} ->
             case get_dids_for_app(AccountDb, <<"trunkstore">>, []) of
@@ -1690,7 +1690,7 @@ all_features() ->
 
 -spec list_features(kz_term:ne_binaries()) -> iodata().
 list_features(Features) ->
-    kz_util:iolist_join($\s, Features).
+    kz_term:iolist_join($\s, Features).
 
 -spec error_with_number(kz_term:ne_binary(), any()) -> 'no_return'.
 error_with_number(Num, Error) ->

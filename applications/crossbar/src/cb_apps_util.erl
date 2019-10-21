@@ -286,8 +286,8 @@ load_default_apps() ->
 
 -spec maybe_set_account(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 maybe_set_account(Account, Doc) ->
-    AccountId = kz_util:format_account_id(Account),
-    AccountDb = kz_util:format_account_db(Account),
+    AccountId = kzd_accounts:format_account_id(Account),
+    AccountDb = kzd_accounts:format_account_db(Account),
     Props = [{<<"authority">>, <<"master_account">>}],
     JObj = kz_json:set_values(Props, kz_json:get_value(<<"doc">>, Doc)),
     case kz_doc:account_db(JObj) =/= AccountDb
@@ -300,10 +300,10 @@ maybe_set_account(Account, Doc) ->
 
 -spec set_account(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 set_account(Account, JObj) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzd_accounts:format_account_db(Account),
     Corrected =
         kz_json:set_values(
-          [{<<"pvt_account_id">>, kz_util:format_account_id(Account)}
+          [{<<"pvt_account_id">>, kzd_accounts:format_account_id(Account)}
           ,{<<"pvt_account_db">>, AccountDb}
           ], JObj),
     case kz_datamgr:save_doc(AccountDb, Corrected) of
@@ -320,7 +320,7 @@ set_account(Account, JObj) ->
 -spec create_apps_store_doc(kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 create_apps_store_doc(Account) ->
     Doc = kzd_apps_store:new(Account),
-    kz_datamgr:save_doc(kz_util:format_account_db(Account), Doc).
+    kz_datamgr:save_doc(kzd_accounts:format_account_db(Account), Doc).
 
 %%------------------------------------------------------------------------------
 %% @doc

@@ -249,7 +249,7 @@ new() -> #kapps_call{}.
 -spec put_callid(call()) -> kz_term:api_binary().
 put_callid(#kapps_call{call_id='undefined'}) -> 'undefined';
 put_callid(#kapps_call{call_id=CallId}) ->
-    kz_util:put_callid(CallId).
+    kz_log:put_callid(CallId).
 
 -spec from_route_req(kapi_route:req()) -> call().
 from_route_req(RouteReq) ->
@@ -267,7 +267,7 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
                                     ,to=OldTo
                                     }=Call) ->
     CallId = kz_api:call_id(RouteReq, OldCallId),
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
 
     CCVs = merge(OldCCVs, kz_json:get_json_value(<<"Custom-Channel-Vars">>, RouteReq)),
     CAVs = merge(OldCAVs, kz_json:get_json_value(<<"Custom-Application-Vars">>, RouteReq)),
@@ -348,7 +348,7 @@ from_route_win(RouteWin, #kapps_call{call_id=OldCallId
                                     ,language=OldLanguage
                                     }=Call) ->
     CallId = kz_json:get_value(<<"Call-ID">>, RouteWin, OldCallId),
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
 
     CCVs = merge(OldCCVs, kz_json:get_json_value(<<"Custom-Channel-Vars">>, RouteWin)),
     CAVs = merge(OldCAVs, kz_json:get_json_value(<<"Custom-Application-Vars">>, RouteWin)),
@@ -379,7 +379,7 @@ find_account_info(OldId, OldDb, 'undefined') ->
     {OldId, OldDb};
 find_account_info('undefined', _OldDb, AccountId) ->
     {AccountId
-    ,kz_util:format_account_id(AccountId, 'encoded')
+    ,kzd_accounts:format_account_id(AccountId, 'encoded')
     };
 find_account_info(OldId, OldDb, _AccountId) ->
     {OldId, OldDb}.
@@ -1055,7 +1055,7 @@ resource_type(#kapps_call{resource_type=ResourceType}) ->
 
 -spec set_account_db(kz_term:ne_binary(), call()) -> call().
 set_account_db(<<_/binary>> = AccountDb, #kapps_call{}=Call) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kzd_accounts:format_account_id(AccountDb, 'raw'),
     set_custom_channel_var(<<"Account-ID">>, AccountId, Call#kapps_call{account_db=AccountDb
                                                                        ,account_id=AccountId
                                                                        }).
@@ -1067,13 +1067,13 @@ account_db(#kapps_call{account_db='undefined'
 account_db(#kapps_call{account_db='undefined'
                       ,account_id=AccountId
                       }) ->
-    kz_util:format_account_db(AccountId);
+    kzd_accounts:format_account_db(AccountId);
 account_db(#kapps_call{account_db=AccountDb}) ->
     AccountDb.
 
 -spec set_account_id(kz_term:ne_binary(), call()) -> call().
 set_account_id(<<_/binary>> = AccountId, #kapps_call{}=Call) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     set_custom_channel_var(<<"Account-ID">>, AccountId, Call#kapps_call{account_db=AccountDb
                                                                        ,account_id=AccountId
                                                                        }).

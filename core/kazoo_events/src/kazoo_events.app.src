@@ -1,5 +1,5 @@
 {application,kazoo_events,
-             [{applications,[gproc,kazoo,kazoo_amqp,kazoo_apps,kazoo_bindings,
+             [{applications,[gproc,kazoo_amqp,kazoo_apps,kazoo_bindings,
                              kazoo_caches,kazoo_documents,
                              kazoo_number_manager,kazoo_stdlib,kernel,lager,
                              stdlib]},

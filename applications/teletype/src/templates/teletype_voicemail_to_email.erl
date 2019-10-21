@@ -69,7 +69,7 @@ reply_to() -> teletype_util:default_reply_to().
 
 -spec init() -> 'ok'.
 init() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     teletype_templates:init(?MODULE),
     teletype_bindings:bind(<<"voicemail_new">>, ?MODULE, 'handle_req').
 

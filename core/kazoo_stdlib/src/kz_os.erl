@@ -16,6 +16,13 @@
 
 -export([run_cmd/3]).
 
+-export([write_file/2, write_file/3
+        ,rename_file/2
+        ,delete_file/1
+        ,delete_dir/1
+        ,make_dir/1
+        ]).
+
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -define(DEFAULT_TIMEOUT, 10000).
@@ -224,3 +231,60 @@ opts_to_strings([{Key, Value}|Args], Acc) ->
     opts_to_strings(Args, Acc ++ [{kz_term:to_list(Key), kz_term:to_list(Value)}]);
 opts_to_strings([], Acc) ->
     Acc.
+
+-spec write_file(file:filename_all(), iodata()) -> 'ok'.
+write_file(Filename, Bytes) ->
+    write_file(Filename, Bytes, []).
+
+-spec write_file(file:filename_all(), iodata(), [file:mode()]) -> 'ok'.
+write_file(Filename, Bytes, Modes) ->
+    case file:write_file(Filename, Bytes, Modes) of
+        'ok' -> 'ok';
+        {'error', _}=_E ->
+            lager:error("writing file ~s (~p) failed : ~p", [Filename, Modes, _E])
+    end.
+
+-spec rename_file(file:filename_all(), file:filename_all()) -> 'ok'.
+rename_file(FromFilename, ToFilename) ->
+    case file:rename(FromFilename, ToFilename) of
+        'ok' -> 'ok';
+        {'error', _}=_E ->
+            lager:error("moving file ~s into ~s failed : ~p", [FromFilename, ToFilename, _E])
+    end.
+
+-spec delete_file(file:filename_all()) -> 'ok'.
+delete_file(Filename) ->
+    case file:delete(Filename) of
+        'ok' -> 'ok';
+        {'error', _}=_E ->
+            lager:error("deleting file ~s failed : ~p", [Filename, _E])
+    end.
+
+-spec delete_dir(string()) -> 'ok'.
+delete_dir(Dir) ->
+    F = fun(D) -> 'ok' = file:del_dir(D) end,
+    lists:foreach(F, del_all_files([Dir], [])).
+
+-spec del_all_files(kz_term:strings(), kz_term:strings()) -> kz_term:strings().
+del_all_files([], EmptyDirs) -> EmptyDirs;
+del_all_files([Dir | T], EmptyDirs) ->
+    {'ok', FilesInDir} = file:list_dir(Dir),
+    {Files, Dirs} = lists:foldl(fun(F, {Fs, Ds}) ->
+                                        Path = Dir ++ "/" ++ F,
+                                        case filelib:is_dir(Path) of
+                                            'true' ->
+                                                {Fs, [Path | Ds]};
+                                            'false' ->
+                                                {[Path | Fs], Ds}
+                                        end
+                                end, {[],[]}, FilesInDir),
+    lists:foreach(fun delete_file/1, Files),
+    del_all_files(T ++ Dirs, [Dir | EmptyDirs]).
+
+-spec make_dir(file:filename_all()) -> 'ok'.
+make_dir(Filename) ->
+    case file:make_dir(Filename) of
+        'ok' -> 'ok';
+        {'error', _}=_E ->
+            lager:error("creating directory ~s failed : ~p", [Filename, _E])
+    end.

@@ -67,7 +67,7 @@ stop() ->
 
 -spec crawl_numbers() -> 'ok'.
 crawl_numbers() ->
-    kz_util:put_callid(?SERVER),
+    kz_log:put_callid(?SERVER),
     lager:debug("beginning a number crawl"),
     lists:foreach(fun crawl_number_db/1, knm_util:get_all_number_dbs()),
     lager:debug("finished the number crawl"),
@@ -83,7 +83,7 @@ crawl_numbers() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?SERVER),
+    kz_log:put_callid(?SERVER),
     lager:debug("started ~s", [?SERVER]),
     {'ok', #state{cleanup_ref = cleanup_timer()}}.
 
@@ -113,7 +113,7 @@ handle_cast(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'timeout', Ref, _Msg}, #state{cleanup_ref=Ref}=State) ->
-    _ = kz_util:spawn(fun crawl_numbers/0),
+    _ = kz_process:spawn(fun crawl_numbers/0),
     {'noreply', State#state{cleanup_ref=cleanup_timer()}};
 handle_info(_Msg, State) ->
     lager:debug("unhandled msg: ~p", [_Msg]),
@@ -150,12 +150,12 @@ code_change(_OldVsn, State, _Extra) ->
 cleanup_timer() ->
     erlang:start_timer(?TIME_BETWEEN_CRAWLS, self(), 'ok').
 
--spec crawl_number_db(kz_term:ne_binary()) -> ok.
+-spec crawl_number_db(kz_term:ne_binary()) -> 'ok'.
 crawl_number_db(Db) ->
-    case kz_datamgr:all_docs(Db, [include_docs]) of
-        {error, _E} ->
+    case kz_datamgr:all_docs(Db, ['include_docs']) of
+        {'error', _E} ->
             lager:debug("failed to crawl number db ~s: ~p", [Db, _E]);
-        {ok, JObjs} ->
+        {'ok', JObjs} ->
             lager:debug("starting to crawl '~s'", [Db]),
             _ = knm_numbers:pipe(knm_numbers:from_jobjs(JObjs)
                                 ,[fun maybe_edit/1
@@ -183,14 +183,14 @@ remove(PN, T) ->
 
 maybe_remove(PN, T, Expiry) ->
     case is_old_enough(PN, Expiry) of
-        false -> T;
-        true -> remove(PN, T)
+        'false' -> T;
+        'true' -> remove(PN, T)
     end.
 
 maybe_transition_aging(PN, T, Expiry) ->
     case is_old_enough(PN, Expiry) of
-        false -> T;
-        true ->
+        'false' -> T;
+        'true' ->
             lager:debug("transitioning number '~s' from ~s to ~s"
                        ,[knm_phone_number:number(PN)
                         ,?NUMBER_STATE_AGING

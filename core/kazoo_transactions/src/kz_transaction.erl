@@ -131,7 +131,7 @@
 %%------------------------------------------------------------------------------
 -spec set_account(transaction(), kz_term:ne_binary()) -> transaction().
 set_account(Transaction, Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzd_accounts:format_account_id(Account, 'raw'),
     Setters = [{fun set_account_id/2, AccountId}
               ,{fun set_account_name/2, kzd_accounts:fetch_name(AccountId)}
                | set_bookkeeper(Account)

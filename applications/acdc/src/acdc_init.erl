@@ -27,12 +27,12 @@
 -spec start_link() -> 'ignore'.
 start_link() ->
     _ = declare_exchanges(),
-    _ = kz_util:spawn(fun init_acdc/0, []),
+    _ = kz_process:spawn(fun init_acdc/0, []),
     'ignore'.
 
 -spec init_acdc() -> 'ok'.
 init_acdc() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     case kz_datamgr:get_all_results(?KZ_ACDC_DB, <<"acdc/accounts_listing">>) of
         {'ok', []} ->
             lager:debug("no accounts configured for acdc");
@@ -55,8 +55,8 @@ init_db() ->
 
 -spec init_acct(kz_term:ne_binary()) -> 'ok'.
 init_acct(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountDb = kzd_accounts:format_account_id(Account, 'encoded'),
+    AccountId = kzd_accounts:format_account_id(Account, 'raw'),
 
     lager:debug("init acdc account: ~s", [AccountId]),
 
@@ -67,16 +67,16 @@ init_acct(Account) ->
 
 -spec init_acct_queues(kz_term:ne_binary()) -> 'ok'.
 init_acct_queues(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountDb = kzd_accounts:format_account_id(Account, 'encoded'),
+    AccountId = kzd_accounts:format_account_id(Account, 'raw'),
 
     lager:debug("init acdc account queues: ~s", [AccountId]),
     init_acct_queues(AccountDb, AccountId).
 
 -spec init_acct_agents(kz_term:ne_binary()) -> 'ok'.
 init_acct_agents(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountDb = kzd_accounts:format_account_id(Account, 'encoded'),
+    AccountId = kzd_accounts:format_account_id(Account, 'raw'),
 
     lager:debug("init acdc account agents: ~s", [AccountId]),
     init_acct_agents(AccountDb, AccountId).
@@ -140,16 +140,16 @@ try_agents_again(AccountId) ->
     try_again(AccountId, fun init_acct_agents/2).
 
 try_again(AccountId, F) ->
-    kz_util:spawn(
+    kz_process:spawn(
       fun() ->
               wait_a_bit(),
-              AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+              AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
               F(AccountDb, AccountId)
       end).
 
 -spec spawn_previously_logged_in_agent(kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 spawn_previously_logged_in_agent(AccountId, AgentId) ->
-    kz_util:spawn(
+    kz_process:spawn(
       fun() ->
               {'ok', Status} = acdc_agent_util:most_recent_status(AccountId, AgentId),
               case acdc_agent_util:status_should_auto_start(Status) of

@@ -493,7 +493,7 @@ send_submitted_request(JObj) ->
 %%------------------------------------------------------------------------------
 -spec migrate() -> 'ok'.
 migrate() ->
-    kz_util:put_callid(<<"port_request_migration">>),
+    kz_log:put_callid(<<"port_request_migration">>),
     ?SUP_LOG_DEBUG("migrating port request documents, if necessary"),
     migrate('undefined', 50),
     ?SUP_LOG_DEBUG("finished migrating port request documents").
@@ -605,7 +605,7 @@ clear_numbers_from_port(PortReq) ->
 
 -spec maybe_send_request(kz_json:object()) -> 'ok'.
 maybe_send_request(JObj) ->
-    kz_util:put_callid(kz_doc:id(JObj)),
+    kz_log:put_callid(kz_doc:id(JObj)),
     AccountId = kz_doc:account_id(JObj),
     case kzd_accounts:fetch(AccountId) of
         {'ok', AccountDoc} ->

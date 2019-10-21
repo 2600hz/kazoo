@@ -194,7 +194,7 @@ originate_park(#state{account_id=AccountId
 handle_resource_response(JObj, Props) ->
     Srv = props:get_value('server', Props),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
-    case kz_util:get_event_type(JObj) of
+    case kz_api:get_event_type(JObj) of
         {<<"dialplan">>,<<"route_win">>} ->
             gen_listener:cast(Srv, {'call_update', kapps_call:from_route_win(JObj,call(Props))}),
             gen_listener:add_binding(Srv, {'call',[{'callid', CallId}]});
@@ -279,7 +279,7 @@ call(Props) ->
 
 -spec maybe_handle_doc_id(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 maybe_handle_doc_id(DocId, Props) ->
-    AccountDb = kz_util:format_account_id(props:get_value('account_id', Props), 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(props:get_value('account_id', Props), 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, DocId) of
         {'error', _} -> kapps_call_command:hangup(call(Props));
         {'ok', JObj} -> maybe_handle_doc(JObj, Props)

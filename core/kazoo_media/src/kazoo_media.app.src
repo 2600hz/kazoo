@@ -1,5 +1,5 @@
 {application,kazoo_media,
-             [{applications,[cowboy,cowlib,kazoo,kazoo_amqp,kazoo_apps,
+             [{applications,[cowboy,cowlib,kazoo_amqp,kazoo_apps,
                              kazoo_data,kazoo_documents,
                              kazoo_services,kazoo_speech,kazoo_stdlib,
                              kazoo_web,kernel,lager,stdlib]},

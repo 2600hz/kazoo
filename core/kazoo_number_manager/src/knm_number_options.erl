@@ -89,7 +89,7 @@ mdn_options() ->
 -spec to_phone_number_setters(options()) -> knm_phone_number:set_functions().
 to_phone_number_setters(Options) ->
     [{setter_fun(Option), Value}
-     || {Option, Value} <- kz_util:uniq(Options),
+     || {Option, Value} <- props:unique(Options),
         is_atom(Option),
         Option =/= 'crossbar'
     ].

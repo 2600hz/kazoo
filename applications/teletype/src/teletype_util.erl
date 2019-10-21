@@ -120,7 +120,7 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
     AccountDb = kazoo_modb:get_modb(AccountId),
     Id = make_smtplog_id(AccountDb),
     TemplateId = get('template_id'),
-    CallId = kz_util:get_callid(),
+    CallId = kz_log:get_callid(),
     Doc = kz_json:from_list(
             [{<<"rendered_templates">>, kz_json:from_list(RenderedTemplates)}
             ,{<<"subject">>, Subject}
@@ -185,7 +185,7 @@ relay_email(To, From, {_Type
             {'error', 'missing_from'};
         ?STACKTRACE(_E, _R, ST)
         lager:warning("failed to encode email: ~s: ~p", [_E, _R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'error', 'email_encoding_failed'}
         end.
 
@@ -261,7 +261,7 @@ handle_relay_response(To, From, {'ok', Receipt}) ->
                         ,#email_receipt{to=To
                                        ,from=From
                                        ,timestamp=kz_time:now_s()
-                                       ,call_id=kz_util:get_callid()
+                                       ,call_id=kz_log:get_callid()
                                        }
                         ,[{'expires', ?MILLISECONDS_IN_HOUR}]
                         ),
@@ -277,7 +277,7 @@ handle_relay_response(_To, _From, {'exit', Reason}) ->
 
 -spec log_email_send_error(any()) -> 'ok'.
 log_email_send_error({'function_clause', Stacktrace}) ->
-    kz_util:log_stacktrace(Stacktrace);
+    kz_log:log_stacktrace(Stacktrace);
 log_email_send_error(Reason) ->
     lager:debug("exit relaying message: ~p", [Reason]).
 
@@ -536,7 +536,7 @@ find_account_admin_email(AccountId, ResellerId) ->
 
 -spec query_account_for_admin_emails(kz_term:ne_binary()) -> kz_term:ne_binaries().
 query_account_for_admin_emails(<<_/binary>> = AccountId) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzd_accounts:format_account_db(AccountId),
     ViewOptions = [{'key', <<"user">>}
                   ,'include_docs'
                   ],
@@ -571,7 +571,7 @@ find_account_admin(AccountId, ResellerId) ->
 
 -spec query_for_account_admin(kz_term:ne_binary()) -> 'undefined' | kzd_users:doc().
 query_for_account_admin(AccountId) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzd_accounts:format_account_db(AccountId),
     ViewOptions = [{'key', <<"user">>}
                   ,'include_docs'
                   ],
@@ -632,7 +632,7 @@ is_account_notice_enabled('undefined', TemplateKey, _ResellerAccountId) ->
     lager:debug("no account id to check, checking system config for ~s", [TemplateKey]),
     is_notice_enabled_default(TemplateKey);
 is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     TemplateId = teletype_templates:doc_id(TemplateKey),
 
     case kz_datamgr:open_cache_doc(AccountDb, TemplateId) of

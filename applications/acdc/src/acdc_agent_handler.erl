@@ -33,7 +33,7 @@
 
 -spec handle_status_update(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_status_update(JObj, _Props) ->
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
     AgentId = kz_json:get_value(<<"Agent-ID">>, JObj),
 
@@ -138,7 +138,7 @@ maybe_start_agent(AccountId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
         'undefined' ->
             lager:debug("agent ~s (~s) not found, starting", [AgentId, AccountId]),
-            case kz_datamgr:open_doc(kz_util:format_account_id(AccountId, 'encoded'), AgentId) of
+            case kz_datamgr:open_doc(kzd_accounts:format_account_id(AccountId, 'encoded'), AgentId) of
                 {'ok', AgentJObj} -> acdc_agents_sup:new(AgentJObj);
                 {'error', _E}=E ->
                     lager:debug("error opening agent doc: ~p", [_E]),
@@ -209,11 +209,11 @@ handle_sync_resp(JObj, Props) ->
 
 -spec handle_call_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     FSM = props:get_value('fsm_pid', Props),
     case kapi_call:event_v(JObj) of
         'true' ->
-            {Category, Name} = kz_util:get_event_type(JObj),
+            {Category, Name} = kz_api:get_event_type(JObj),
             handle_call_event(Category, Name, FSM, JObj, Props);
         'false' ->
             'true' = kz_api:error_resp_v(JObj),
@@ -242,7 +242,7 @@ handle_call_event(Category, Name, FSM, JObj, _) ->
 -spec handle_new_channel(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 handle_new_channel(JObj, AccountId) ->
     'true' = kapi_call:event_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     handle_new_channel_acct(JObj, AccountId).
 
 -spec handle_new_channel_acct(kz_json:object(), kz_term:api_binary()) -> 'ok'.
@@ -436,7 +436,7 @@ handle_presence_probe(JObj, _Props) ->
     Realm = kz_json:get_value(<<"Realm">>, JObj),
     case kapps_util:get_account_by_realm(Realm) of
         {'ok', AcctDb} ->
-            AccountId = kz_util:format_account_id(AcctDb, 'raw'),
+            AccountId = kzd_accounts:format_account_id(AcctDb, 'raw'),
             maybe_respond_to_presence_probe(JObj, AccountId);
         _ -> lager:debug("ignoring presence probe from realm ~s", [Realm])
     end.

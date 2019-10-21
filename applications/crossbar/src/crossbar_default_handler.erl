@@ -29,7 +29,7 @@
                   {'ok', cowboy_req:req(), map()} |
                   {?MODULE, cowboy_req:req(), kz_term:proplist()}.
 init(Req, HandlerOpts) ->
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     Path = cowboy_req:path(Req),
     case get_magic_token(Path) of
         'undefined' -> handle(Req, HandlerOpts);

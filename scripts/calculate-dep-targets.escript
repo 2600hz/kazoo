@@ -48,7 +48,7 @@ add_deps(App, {KazooRoot, Apps}) ->
 
 is_kazoo_app(App) when is_atom(App) ->
     is_kazoo_app(atom_to_list(App));
-is_kazoo_app("kazoo" ++ _) -> 'true';
+is_kazoo_app("kazoo_" ++ _) -> 'true';
 is_kazoo_app(_) -> 'false'.
 
 get_dep_apps(KazooRoot, App) ->
@@ -66,5 +66,9 @@ consult_for_app_deps(KazooRoot, App) ->
     proplists:get_value('applications', Config, []).
 
 core_or_app(KazooRoot, AppL) ->
-    [Path] = filelib:wildcard(KazooRoot ++ "/{core,applications,deps}/" ++ AppL),
-    filename:basename(filename:dirname(Path)).
+    case filelib:wildcard(KazooRoot ++ "/{core,applications,deps}/" ++ AppL) of
+        [Path] -> filename:basename(filename:dirname(Path));
+        [] ->
+            io:format("failed to match ~s/{core,applications,deps}/~s~n", [KazooRoot, AppL]),
+            throw({'error', 'not_found', AppL})
+    end.

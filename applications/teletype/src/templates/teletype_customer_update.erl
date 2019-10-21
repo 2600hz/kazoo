@@ -46,7 +46,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
@@ -110,7 +110,7 @@ process_account(AccountId, DataJObj) ->
             {'ok', UserJObj} = kzd_users:fetch(AccountId, UserId),
             [send_update_to_user(UserJObj, DataJObj)];
         _ ->
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
             {'ok', Users} = kz_datamgr:get_results(AccountDb, ?ACC_USERS_LIST, []),
             lists:flatten(select_users_to_update([kz_json:get_value(<<"value">>, User) || User <- Users], DataJObj))
     end.

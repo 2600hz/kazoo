@@ -105,7 +105,7 @@ restore_system_template(TemplateId) ->
     catch
         ?STACKTRACE(_E, _T, ST)
         io:format("  crashed for reason ~p:~p ~n", [_E, _T]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         io:format("St: ~p~n~n", [ST])
 
         end.
@@ -135,7 +135,7 @@ list_templates_from_db(Db) ->
 %%------------------------------------------------------------------------------
 -spec remove_customization(kz_term:ne_binary()) -> 'no_return'.
 remove_customization(Account) ->
-    remove_customization(Account, list_templates_from_db(kz_util:format_account_db(Account))).
+    remove_customization(Account, list_templates_from_db(kzd_accounts:format_account_db(Account))).
 
 -spec remove_customization(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> 'no_return'.
 remove_customization(Account, Id) when is_binary(Id) ->
@@ -145,7 +145,7 @@ remove_customization(_Account, []) ->
     'no_return';
 remove_customization(Account, Ids) ->
     io:format(":: removing ~b template customization(s) from ~s~n", [length(Ids), Account]),
-    case kz_datamgr:del_docs(kz_util:format_account_db(Account), Ids) of
+    case kz_datamgr:del_docs(kzd_accounts:format_account_db(Account), Ids) of
         {'ok', JObjs} ->
             _ = [io:format("  ~s: ~s~n", [kz_notification:resp_id(kz_doc:id(J)), kz_json:get_value(<<"error">>, J, <<"deleted">>)])
                  || J <- JObjs
@@ -173,7 +173,7 @@ force_system_default(_Account, []) -> 'no_return';
 force_system_default(Account, Ids) ->
     _ = remove_customization(Account),
     io:format("~n:: forcing ~b system default template(s) for account ~s~n", [length(Ids), Account]),
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzd_accounts:format_account_db(Account),
     _ = [copy_from_system_to_account(AccountDb, Id) || Id <- Ids],
     'no_return'.
 
@@ -211,7 +211,7 @@ start_module(Module) when is_atom(Module) ->
         lager:error("failed to start teletype module ~s with reason: ~s ~p"
                    ,[Module, _Type, Reason]
                    ),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'error', Reason}
         end;
 start_module(Module) ->

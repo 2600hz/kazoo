@@ -302,7 +302,7 @@ is_plan(_Else) -> 'false'.
 -spec fetch(kz_term:ne_binary(), kz_term:ne_binary()) -> 'undefined' | plan().
 fetch(VendorId, PlanId) ->
     lager:debug("fetching plan ~s/~s", [VendorId, PlanId]),
-    VendorDb = kz_util:format_account_db(VendorId),
+    VendorDb = kzd_accounts:format_account_db(VendorId),
     case kz_datamgr:open_cache_doc(VendorDb, PlanId) of
         {'ok', PlanJObj} ->
             create(VendorId, PlanId, PlanJObj);

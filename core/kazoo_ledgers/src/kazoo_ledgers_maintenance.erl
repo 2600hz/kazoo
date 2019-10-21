@@ -39,7 +39,7 @@ current_rollovers() ->
 current_rollovers([]) -> 'ok';
 current_rollovers([Account|Accounts]) ->
     {Year, Month, _} = erlang:date(),
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzd_accounts:format_account_id(Account, 'raw'),
     Remaining = length(Accounts),
     _ = case kz_ledgers:get_monthly_rollover(Account, Year, Month) of
             {'ok', Ledger} ->
@@ -117,7 +117,7 @@ verify_all_rollovers([MODb|MODbs], Options) ->
 
 -spec verify_rollovers(kz_term:ne_binary(), kz_time:year(), kz_time:month()) -> 'ok'.
 verify_rollovers(AccountDb, Year, Month) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kzd_accounts:format_account_id(AccountDb, 'raw'),
     case kz_ledgers:get_monthly_rollover(AccountDb, Year, Month) of
         {'ok', Ledger} ->
             verify_monthly_rollover(AccountDb, Year, Month, Ledger);
@@ -134,7 +134,7 @@ verify_monthly_rollover(AccountDb, Year, Month, Ledger) ->
     {PreviousYear, PreviousMonth} = kazoo_modb_util:prev_year_month(Year, Month),
     case kz_currency:past_available_units(AccountDb, PreviousYear, PreviousMonth) of
         {'error', _Reason} ->
-            AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+            AccountId = kzd_accounts:format_account_id(AccountDb, 'raw'),
             io:format("    account ~s ~p-~p : error getting balance for ~p-~p: ~p~n"
                      ,[AccountId, Year, Month, PreviousYear, PreviousMonth, _Reason]
                      );
@@ -144,7 +144,7 @@ verify_monthly_rollover(AccountDb, Year, Month, Ledger) ->
 
 -spec verify_rollovers(kz_term:ne_binary(), kz_time:year(), kz_time:month(), kz_ledger:ledger(), kz_currency:units()) -> 'ok'.
 verify_rollovers(AccountDb, Year, Month, Ledger, AvailableUnits) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kzd_accounts:format_account_id(AccountDb, 'raw'),
     case kz_ledger:amount(Ledger) of
         AvailableUnits ->
             io:format("    account ~s ~p-~p rollover confirmed~n", [AccountId, Year, Month]);
@@ -180,7 +180,7 @@ fix_rollover(Account, Year, Month) when not is_integer(Year) ->
 fix_rollover(Account, Year, Month) when not is_integer(Month) ->
     fix_rollover(Account, Year, kz_term:to_integer(Month));
 fix_rollover(Account, Year, Month) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzd_accounts:format_account_id(Account, 'raw'),
     {PreviousYear, PreviousMonth} = kazoo_modb_util:prev_year_month(Year, Month),
     case kz_currency:past_available_units(AccountId, PreviousYear, PreviousMonth) of
         {'error', _R} ->
@@ -240,6 +240,6 @@ rollover_account_fold(Account, {Current, Total}) ->
 %%------------------------------------------------------------------------------
 -spec rollover_account(kz_term:ne_binary()) -> 'ok'.
 rollover_account(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzd_accounts:format_account_id(Account, 'raw'),
     {'ok', _} = kz_ledgers:rollover(AccountId),
     io:format("account ~s rolled up~n", [AccountId]).

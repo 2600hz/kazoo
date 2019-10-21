@@ -125,7 +125,7 @@ check_credentials(Context, AccountId, Credentials, BasicType) ->
 
 -spec get_credential_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
 get_credential_doc(AccountId, View, Key) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     Options = [{'key', Key}, 'include_docs'],
     case kz_datamgr:get_results(AccountDb, View, Options) of
         {'ok', [JObj]} -> kz_json:get_value(<<"doc">>, JObj);
@@ -137,7 +137,7 @@ get_credential_doc(AccountId, View, Key) ->
                         {'stop', cb_context:context()}.
 is_expired(Context, JObj) ->
     AccountId = kz_doc:account_id(JObj),
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzd_accounts:format_account_db(AccountId),
     case kzd_accounts:is_expired(AccountId) of
         'false' ->
             EndpointId = kz_doc:id(JObj),
@@ -146,7 +146,7 @@ is_expired(Context, JObj) ->
             kz_cache:store_local(?CACHE_NAME, {'basic_auth', AuthToken}, JObj, CacheProps),
             {'true', set_auth_doc(Context, JObj)};
         {'true', Expired} ->
-            _ = kz_util:spawn(fun crossbar_util:maybe_disable_account/1, [AccountId]),
+            _ = kz_process:spawn(fun crossbar_util:maybe_disable_account/1, [AccountId]),
             Cause =
                 kz_json:from_list(
                   [{<<"message">>, <<"account expired">>}

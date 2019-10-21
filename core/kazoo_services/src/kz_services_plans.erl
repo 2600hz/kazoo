@@ -132,7 +132,7 @@ get_services_plan_overrides(Services, PlanId) ->
 -spec get_object_plans(kz_services:services(), fetch_context(), fetch_options()) -> fetch_context().
 get_object_plans(Services, FetchContext, Options) ->
     AccountId = kz_services:account_id(Services),
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzd_accounts:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"services/object_plans">>) of
         {'error', _Reason} ->
             lager:info("unable to list object plans: ~p", [_Reason]),

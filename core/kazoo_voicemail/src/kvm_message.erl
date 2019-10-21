@@ -730,7 +730,7 @@ forward_to_vmbox(Call, Metadata, SrcBoxId, Props, Funs) ->
     DestBoxId = props:get_value(<<"Box-Id">>, Props),
     Length = props:get_value(<<"Length">>, Props),
     ResultMap = copy_to_vmbox(AccountId, MediaId, SrcBoxId, DestBoxId, #{}
-                             ,kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), DestBoxId)
+                             ,kz_datamgr:open_cache_doc(kzd_accounts:format_account_db(AccountId), DestBoxId)
                              ,Funs
                              ),
     Failed = maps:get(failed, ResultMap, []),
@@ -761,7 +761,7 @@ prepend_and_notify(Call, ForwardId, Metadata, SrcBoxId, Props) ->
         remove_malform_vm(Call, ForwardId),
         ErrorMessage = kz_term:to_binary(io_lib:format("exception occurred during prepend and joining audio files: ~p:~p", [_T, _E])),
         lager:error(ErrorMessage),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
 
         %% prepend failed, so at least try to forward without a prepend message
         UpdateFuns = [fun(J) -> kz_json:set_value(<<"forward_join_error">>, ErrorMessage, J) end],
@@ -790,11 +790,11 @@ prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
     case kz_media_util:join_media_files([TmpPath, TonePath, OrigPath], [{sample_rate, OrigSampleRate}]) of
         {'ok', FileContents} ->
             JoinFilename = <<(kz_binary:rand_hex(16))/binary, ".mp3">>,
-            _ = [kz_util:delete_file(F) || F <- [TmpPath, OrigPath, TonePath]],
+            _ = [kz_os:delete_file(F) || F <- [TmpPath, OrigPath, TonePath]],
             %%TODO: update forwarded doc with length and media_filename
             try_put_fwd_attachment(AccountId, ForwardId, JoinFilename, FileContents, 3);
         {'error', _} ->
-            _ = [kz_util:delete_file(F) || F <- [TmpPath, OrigPath, TonePath]],
+            _ = [kz_os:delete_file(F) || F <- [TmpPath, OrigPath, TonePath]],
             lager:warning("failed to join forward message media files"),
             {'error', 'join_failed'}
 
@@ -832,13 +832,13 @@ write_attachment_to_file(AccountId, MessageId, [AttachmentId]) ->
     Db = kvm_util:get_db(AccountId, MessageId),
     {'ok', AttachmentBin} = kz_datamgr:fetch_attachment(Db, MessageId, AttachmentId),
     FilePath = kz_binary:join([<<"/tmp/_">>, AttachmentId], <<>>),
-    kz_util:write_file(FilePath, AttachmentBin, ['write', 'binary']),
+    kz_os:write_file(FilePath, AttachmentBin, ['write', 'binary']),
     lager:debug("saved attachment ~s from ~s in ~s", [AttachmentId, MessageId, FilePath]),
     {'ok', FilePath}.
 
 -spec remove_malform_vm(kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 remove_malform_vm(Call, ForwardId) ->
-    AccountDb = kz_util:format_account_db(kapps_call:account_id(Call)),
+    AccountDb = kzd_accounts:format_account_db(kapps_call:account_id(Call)),
     _ = kz_datamgr:del_doc(AccountDb, ForwardId),
     'ok'.
 

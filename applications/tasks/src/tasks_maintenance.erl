@@ -54,8 +54,8 @@ help(Category, Action) ->
 
 -spec add(kz_term:text(), kz_term:text(), kz_term:text(), kz_term:text(), kz_term:text()) -> 'no_return'.
 add(AuthAccount, Account, Category, Action, CSVFile) ->
-    AuthAccountId = kz_util:format_account_id(AuthAccount),
-    AccountId = kz_util:format_account_id(Account),
+    AuthAccountId = kzd_accounts:format_account_id(AuthAccount),
+    AccountId = kzd_accounts:format_account_id(Account),
     case file:read_file(CSVFile) of
         {'ok', CSVBin} ->
             case kz_csv:count_rows(CSVBin) of
@@ -70,8 +70,8 @@ add(AuthAccount, Account, Category, Action, CSVFile) ->
 
 -spec add(kz_term:text(), kz_term:text(), kz_term:text(), kz_term:text()) -> 'no_return'.
 add(AuthAccount, Account, Category, Action) ->
-    AuthAccountId = kz_util:format_account_id(AuthAccount),
-    AccountId = kz_util:format_account_id(Account),
+    AuthAccountId = kzd_accounts:format_account_id(AuthAccount),
+    AccountId = kzd_accounts:format_account_id(Account),
     case kz_tasks:new(AuthAccountId
                      ,AccountId
                      ,Category
@@ -92,7 +92,7 @@ tasks() ->
 
 -spec tasks(kz_term:text()) -> 'no_return'.
 tasks(Account) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzd_accounts:format_account_id(Account),
     Tasks = kz_tasks:all(AccountId),
     print_json(Tasks).
 
@@ -291,7 +291,7 @@ print_compaction_history_row(JObj, FStr) ->
           ,Str([<<"databases">>, <<"found">>])
           ,Str([<<"databases">>, <<"compacted">>])
           ,Str([<<"databases">>, <<"skipped">>])
-          ,kz_util:pretty_print_bytes(DiskStartInt - DiskEndInt, 'truncated')
+          ,kz_term:pretty_print_bytes(DiskStartInt - DiskEndInt, 'truncated')
           ,kz_term:to_list(kz_time:pretty_print_datetime(StartInt))
           ,kz_term:to_list(kz_time:pretty_print_datetime(EndInt))
           ,kz_term:to_list(kz_time:pretty_print_elapsed_s(EndInt - StartInt))

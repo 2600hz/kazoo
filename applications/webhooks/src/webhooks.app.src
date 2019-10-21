@@ -1,5 +1,5 @@
 {application,webhooks,
-             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
+             [{applications,[kazoo_amqp,kazoo_apps,kazoo_caches,
                              kazoo_data,kazoo_documents,kazoo_events,
                              kazoo_modb,kazoo_stdlib,kazoo_web,kernel,lager,
                              stdlib]},

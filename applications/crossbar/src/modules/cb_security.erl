@@ -181,7 +181,7 @@ post(Context) ->
     C1 = crossbar_doc:save(Context),
     case cb_context:resp_status(C1) of
         'success' ->
-            maybe_flush_config(C1),
+            _ = maybe_flush_config(C1),
             RespJObj = maybe_add_multi_factor_metadata(cb_context:resp_data(Context)),
             cb_context:set_resp_data(Context, RespJObj);
         _ -> C1
@@ -198,7 +198,7 @@ patch(Context) ->
     C1 = crossbar_doc:save(Context),
     case cb_context:resp_status(C1) of
         'success' ->
-            maybe_flush_config(C1),
+            _ = maybe_flush_config(C1),
             RespJObj = maybe_add_multi_factor_metadata(cb_context:resp_data(Context)),
             cb_context:set_resp_data(Context, RespJObj);
         _ -> C1
@@ -285,7 +285,7 @@ add_multi_factor_metadata(AuthModule, JObj, AuthConfig) ->
 
 -spec get_metadata(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
 get_metadata(AccountId, ConfigId) ->
-    case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), ConfigId) of
+    case kz_datamgr:open_cache_doc(kzd_accounts:format_account_db(AccountId), ConfigId) of
         {'ok', JObj} ->
             kz_json:from_list(
               [{<<"name">>, kz_json:get_value(<<"name">>, JObj)}

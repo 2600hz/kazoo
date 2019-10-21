@@ -288,7 +288,7 @@ post(Context, AccountId) ->
     case kzd_accounts:save(cb_context:doc(Context)) of
         {'ok', SavedAccount} ->
             Context1 = crossbar_doc:handle_datamgr_success(SavedAccount, Context),
-            _ = kz_util:spawn(fun notification_util:maybe_notify_account_change/2, [Existing, Context]),
+            _ = kz_process:spawn(fun notification_util:maybe_notify_account_change/2, [Existing, Context]),
             update_provisioner_account(Context1),
 
             leak_pvt_fields(AccountId, Context1);
@@ -299,7 +299,7 @@ post(Context, AccountId) ->
 
 -spec update_provisioner_account(cb_context:context()) -> 'ok'.
 update_provisioner_account(Context) ->
-    _ = kz_util:spawn(fun provisioner_util:maybe_update_account/3
+    _ = kz_process:spawn(fun provisioner_util:maybe_update_account/3
                      ,[cb_context:account_id(Context)
                       ,cb_context:auth_token(Context)
                       ,cb_context:doc(Context)
@@ -354,7 +354,7 @@ put(Context, PathAccountId) ->
             unroll(ContextErr, NewAccountId);
         ?STACKTRACE(_E, _R, ST)
         lager:debug("unexpected failure when creating account: ~s: ~p", [_E, _R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         unroll(Context, NewAccountId)
         end.
 
@@ -400,7 +400,7 @@ delete_account(AccountId) ->
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzd_accounts:format_account_id(Account, 'raw'),
 
     case kzdb_account:delete(AccountId) of
         {'ok', AccountJObj} ->
@@ -437,7 +437,7 @@ delete(Context, AccountId, ?RESELLER) ->
 -spec maybe_update_descendants_count(kz_term:ne_binaries()) -> 'ok'.
 maybe_update_descendants_count([]) -> 'ok';
 maybe_update_descendants_count(Tree) ->
-    _CountPid = kz_util:spawn(fun crossbar_util:descendants_count/1, [lists:last(Tree)]),
+    _CountPid = kz_process:spawn(fun crossbar_util:descendants_count/1, [lists:last(Tree)]),
     lager:debug("descendants count calculation in ~p from last in ~p", [_CountPid, Tree]).
 
 %%------------------------------------------------------------------------------
@@ -446,7 +446,7 @@ maybe_update_descendants_count(Tree) ->
 %%------------------------------------------------------------------------------
 -spec create_apps_store_doc(kz_term:ne_binary()) -> 'ok'.
 create_apps_store_doc(AccountId) ->
-    _AppsPid = kz_util:spawn(fun cb_apps_util:create_apps_store_doc/1, [AccountId]),
+    _AppsPid = kz_process:spawn(fun cb_apps_util:create_apps_store_doc/1, [AccountId]),
     lager:debug("creating apps store doc in ~p", [_AppsPid]).
 
 %%------------------------------------------------------------------------------
@@ -501,8 +501,8 @@ move_account(Context, AccountId) ->
 prepare_context('undefined', Context) ->
     cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB);
 prepare_context(Account, Context) ->
-    AccountId = kz_util:format_account_id(Account),
-    AccountDb = kz_util:format_account_db(Account),
+    AccountId = kzd_accounts:format_account_id(Account),
+    AccountDb = kzd_accounts:format_account_db(Account),
     prepare_context(Context, AccountId, AccountDb).
 
 -spec prepare_context(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
@@ -1117,7 +1117,7 @@ load_account_db(Context, [AccountId|_]) ->
 load_account_db(Context, AccountId) when is_binary(AccountId) ->
     case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} ->
-            AccountDb = kz_util:format_account_db(AccountId),
+            AccountDb = kzd_accounts:format_account_db(AccountId),
             lager:debug("account ~s db exists, setting operating database as ~s", [AccountId, AccountDb]),
             ResellerId = kz_services_reseller:find_id(AccountId),
             cb_context:setters(Context

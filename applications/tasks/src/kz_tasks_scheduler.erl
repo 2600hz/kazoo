@@ -176,7 +176,7 @@ worker_finished(TaskId, Columns) ->
     CSVPath = output_path(TaskId),
     _ = try_maybe_strip_columns(Columns, CSVPath),
     {'ok', CSV} = file:read_file(CSVPath),
-    lager:debug("csv size is ~s", [kz_util:pretty_print_bytes(byte_size(CSV))]),
+    lager:debug("csv size is ~s", [kz_term:pretty_print_bytes(byte_size(CSV))]),
     Max = ?UPLOAD_ATTEMPTS,
     attempt_upload(TaskId, ?KZ_TASKS_ANAME_OUT, CSV, CSVPath, Max, Max).
 
@@ -189,7 +189,7 @@ try_maybe_strip_columns(Columns, CSVPath) ->
     catch
         ?STACKTRACE(_E, _R, ST)
         lager:warning("stripping empty columns failed: ~p:~p", [_E, _R]),
-        kz_util:log_stacktrace(ST)
+        kz_log:log_stacktrace(ST)
         end.
 
 maybe_strip_columns(Columns, CSVPath) ->
@@ -201,7 +201,7 @@ maybe_strip_columns(Columns, CSVPath, ColumnsWritten) ->
     lager:debug("attempting to strip empty columns, keeping only ~p", [ColumnsWritten]),
     {'ok', Bin} = file:read_file(CSVPath),
     {FullHeader, CSV} = kz_csv:take_row(Bin),
-    lager:debug("csv size is ~s", [kz_util:pretty_print_bytes(byte_size(CSV))]),
+    lager:debug("csv size is ~s", [kz_term:pretty_print_bytes(byte_size(CSV))]),
     case length(FullHeader) of
         ColumnsWritten -> 'ok';
         MightHaveEmpty when ColumnsWritten < MightHaveEmpty ->
@@ -254,7 +254,7 @@ attempt_upload(TaskId, AName, CSV, CSVPath, Retries, Max) ->
     case kz_datamgr:put_attachment(?KZ_TASKS_DB, TaskId, AName, CSV, Options) of
         {'ok', _TaskJObj} ->
             lager:debug("saved ~s after ~p attempts", [AName, Max-Retries+1]),
-            kz_util:delete_file(CSVPath);
+            kz_os:delete_file(CSVPath);
         {'error', _R} ->
             lager:debug("upload of ~s failed (~s), may retry soon", [TaskId, _R]),
             Pause = ?MILLISECONDS_IN_SECOND * ?PAUSE_BETWEEN_UPLOAD_ATTEMPTS,
@@ -375,7 +375,7 @@ handle_call({'stop_task', TaskId}, _From, State) ->
                     {'ok', JObj} = update_task(Task1),
                     State1 = remove_task(TaskId, State),
                     State2 = remove_last_worker_update(TaskId, State1),
-                    kz_util:spawn(fun try_to_salvage_output/1, [TaskId]),
+                    kz_process:spawn(fun try_to_salvage_output/1, [TaskId]),
                     ?REPLY_FOUND(State2, JObj)
             end
     end;
@@ -493,7 +493,7 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
     {'ok', _JObj} = update_task(Task1),
     State1 = remove_task(TaskId, State),
     State2 = remove_last_worker_update(TaskId, State1),
-    kz_util:spawn(fun try_to_salvage_output/1, [TaskId]),
+    kz_process:spawn(fun try_to_salvage_output/1, [TaskId]),
     {'noreply', State2};
 
 handle_info(_Info, State) ->
@@ -575,7 +575,7 @@ handle_call_start_task(Task=#{id := TaskId
                  },
     lager:debug("extra args: ~p", [ExtraArgs]),
     %% Task needs to run where App is started.
-    try kz_util:spawn_link(fun Worker:start/3, [TaskId, API, ExtraArgs]) of
+    try kz_process:spawn_link(fun Worker:start/3, [TaskId, API, ExtraArgs]) of
         Pid ->
             Task1 = Task#{started => kz_time:now_s()
                          ,worker_pid => Pid

@@ -47,7 +47,7 @@ limits_foldl(_BookkeeperHash, [], Acc) ->
     Acc;
 limits_foldl(_BookkeeperHash, PlansList, #{cache_origins := CacheOrigins}=Acc) ->
     Origins = [{'db'
-               ,kz_util:format_account_db(kz_services_plan:vendor_id(Plan))
+               ,kzd_accounts:format_account_db(kz_services_plan:vendor_id(Plan))
                ,kz_services_plan:id(Plan)
                }
                || Plan <- PlansList
@@ -67,7 +67,7 @@ limits_foldl(_BookkeeperHash, PlansList, #{cache_origins := CacheOrigins}=Acc) -
 %%------------------------------------------------------------------------------
 -spec get_account_limits(kz_services:services()) -> {origin_tuples(), kz_json:object()}.
 get_account_limits(Services) ->
-    AccountDb = kz_util:format_account_db(kz_services:account_id(Services)),
+    AccountDb = kzd_accounts:format_account_db(kz_services:account_id(Services)),
     case kz_datamgr:open_doc(AccountDb, <<"limits">>) of
         {'ok', JObj} ->
             {[{'db', AccountDb, <<"limits">>}], JObj};

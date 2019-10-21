@@ -66,6 +66,8 @@
         ,validate_message/4
         ]).
 
+-export([get_event_type/1]).
+
 -include_lib("kz_amqp_util.hrl").
 
 -ifdef(TEST).
@@ -460,7 +462,7 @@ build_message_specific(Prop, ReqH, OptH) ->
 
 -spec headers_to_json(kz_term:proplist()) -> api_formatter_return().
 headers_to_json([_|_]=HeadersProp) ->
-    _ = kz_util:kz_log_md_put('msg_id', msg_id(HeadersProp)),
+    _ = kz_log:kz_log_md_put('msg_id', msg_id(HeadersProp)),
     try kz_json:encode(kz_json:from_list(HeadersProp)) of
         JSON -> {'ok', JSON}
     catch
@@ -643,3 +645,17 @@ exec_fold({F, K, V}, C) when is_function(F, 3) -> F(K, V, C);
 exec_fold({F, V}, C) when is_function(F, 2) -> F(V, C);
 exec_fold(F, C) when is_function(F, 1) -> F(C);
 exec_fold(_, C) -> C.
+
+%%------------------------------------------------------------------------------
+%% @doc Given an object, extract the category and name into a tuple.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_event_type(kz_term:api_terms()) -> {kz_term:api_binary(), kz_term:api_binary()}.
+get_event_type(Props) when is_list(Props) ->
+    {props:get_value(<<"Event-Category">>, Props)
+    ,props:get_value(<<"Event-Name">>, Props)
+    };
+get_event_type(JObj) ->
+    {kz_json:get_value(<<"Event-Category">>, JObj)
+    ,kz_json:get_value(<<"Event-Name">>, JObj)
+    }.

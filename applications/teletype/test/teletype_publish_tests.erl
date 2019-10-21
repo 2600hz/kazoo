@@ -112,7 +112,7 @@ kz_amqp_worker_call_collect() ->
             catch
                 ?STACKTRACE(_E, T, ST)
                 ?LOG_DEBUG("failed to publish: ~p:~p", [_E, T]),
-                kz_util:log_stacktrace(ST),
+                kz_log:log_stacktrace(ST),
                 {'error', T}
                 end
     end.
@@ -170,6 +170,6 @@ kz_amqp_util_targeted_publish() ->
 
 smtp_send() ->
     fun({_, _, _}, _, CallBack) ->
-            kz_util:runs_in(2000, CallBack, [{'ok', <<"Message accepted">>}]),
+            kz_process:runs_in(2000, CallBack, [{'ok', <<"Message accepted">>}]),
             {'ok', self()}
     end.

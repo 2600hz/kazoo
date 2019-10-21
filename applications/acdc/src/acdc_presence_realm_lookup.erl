@@ -81,7 +81,7 @@ init([]) ->
 handle_call({'lookup', Realm}, _, State) ->
     case kapps_util:get_account_by_realm(Realm) of
         {'ok', AcctDb} ->
-            AccountId = kz_util:format_account_id(AcctDb, 'raw'),
+            AccountId = kzd_accounts:format_account_id(AcctDb, 'raw'),
             {'reply', AccountId, State};
         _ -> {'reply', 'not_found', State}
     end;

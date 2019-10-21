@@ -689,5 +689,5 @@ send_deny_emergency_response(OffnetReq, ControlQ) ->
 -spec get_event_type(kz_call_event:doc()) ->
                             {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
 get_event_type(CallEvt) ->
-    {Cat, Name} = kz_util:get_event_type(CallEvt),
+    {Cat, Name} = kz_api:get_event_type(CallEvt),
     {Cat, Name, kz_call_event:call_id(CallEvt)}.

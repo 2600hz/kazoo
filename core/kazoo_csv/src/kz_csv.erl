@@ -230,7 +230,7 @@ json_to_iolist(Records, Fields)
   when is_list(Records),
        is_list(Fields) ->
     Tmp = <<"/tmp/json_", (kz_binary:rand_hex(11))/binary, ".csv">>,
-    'ok' = file:write_file(Tmp, [kz_util:iolist_join($,, Fields), $\n]),
+    'ok' = file:write_file(Tmp, [kz_term:iolist_join($,, Fields), $\n]),
     lists:foreach(fun (Record) ->
                           Row = [kz_json:get_ne_binary_value(Field, Record, ?ZILCH) || Field <- Fields],
                           _ = file:write_file(Tmp, [row_to_iolist(Row)], ['append'])
@@ -238,7 +238,7 @@ json_to_iolist(Records, Fields)
                  ,Records
                  ),
     {'ok', IOData} = file:read_file(Tmp),
-    kz_util:delete_file(Tmp),
+    kz_os:delete_file(Tmp),
     IOData.
 
 -spec write_header_to_file(file_return()) -> file_return().
@@ -263,7 +263,7 @@ write_header_to_file({File, CellOrdering}, HeaderMap) ->
     {'ok', _} = kz_os:cmd(<<"cat ", File/binary, " >> ", HeaderFile/binary>>),
     {'ok', _} = file:copy(HeaderFile, File),
 
-    kz_util:delete_file(HeaderFile),
+    kz_os:delete_file(HeaderFile),
 
     {File, CellOrdering}.
 

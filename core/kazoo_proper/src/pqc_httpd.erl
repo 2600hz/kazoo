@@ -117,7 +117,7 @@ update_req(Path, <<Content/binary>>) ->
     gen_server:call(?MODULE, {'req', Path, Store}).
 
 log_meta(LogId) ->
-    kz_util:put_callid(LogId),
+    kz_log:put_callid(LogId),
     lager:md([{'request_id', LogId}]),
     put('start_time', kz_time:start_time()),
     'ok'.

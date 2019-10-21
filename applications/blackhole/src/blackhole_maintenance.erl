@@ -15,7 +15,7 @@
 -export([running_modules/0]).
 
 -include("blackhole.hrl").
--include_lib("kazoo/include/kz_system_config.hrl").
+-include_lib("kazoo_apps/include/kz_system_config.hrl").
 
 %%------------------------------------------------------------------------------
 %% @doc

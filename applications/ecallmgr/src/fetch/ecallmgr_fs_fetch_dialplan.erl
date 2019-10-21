@@ -49,7 +49,7 @@ dialplan(#{fetch_id := FetchId, payload := FetchJObj}=Map) ->
 
 -spec process(dialplan_context()) -> {'ok', dialplan_context()}.
 process(#{payload := FetchJObj, channel := Channel}=Map) ->
-    kz_util:put_callid(FetchJObj),
+    kz_log:put_callid(FetchJObj),
     _ = kz_amqp_channel:consumer_channel(Channel),
     Routines = [{fun add_time_marker/2, 'request_ready'}
                ,fun control_p/1
@@ -142,14 +142,14 @@ wait_for_route_resp(#{timeout := TimeoutMs}=Map) ->
 -spec spawn_authorize_call_fun(dialplan_context()) -> dialplan_context().
 spawn_authorize_call_fun(#{node := Node, call_id := CallId, payload := JObj}=Map) ->
     Ref = make_ref(),
-    Pid = kz_util:spawn(fun authorize_call_fun/5, [self(), Ref, Node, CallId, JObj]),
+    Pid = kz_process:spawn(fun authorize_call_fun/5, [self(), Ref, Node, CallId, JObj]),
     Map#{authz_worker => {Pid, Ref}}.
 
 -spec authorize_call_fun(pid(), Ref, atom(), kz_term:ne_binary(), kz_json:object()) ->
                                 {'authorize_reply', Ref, ecallmgr_fs_authz:authz_reply()}
                                     when Ref :: reference().
 authorize_call_fun(Parent, Ref, Node, CallId, JObj) ->
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     Parent ! {'authorize_reply', Ref, ecallmgr_fs_authz:authorize(JObj, CallId, Node)}.
 
 -spec maybe_wait_for_authz(dialplan_context()) -> {'ok', dialplan_context()}.
@@ -209,7 +209,7 @@ wait_for_route_winner(Ctx) ->
 -spec activate_call_control(dialplan_context()) -> {'ok', dialplan_context()}.
 activate_call_control(#{call_id := CallId, winner := #{payload := JObj}} = Map) ->
     lager:info("we are the route winner handling node"),
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     CCVs = kzd_fetch:ccvs(JObj),
     ControllerQ = kzd_fetch:controller_queue(JObj),
     ecallmgr_fs_channels:update(CallId, #channel.handling_locally, 'true'),
@@ -324,7 +324,7 @@ get_blacklist(JObj) ->
 
 -spec get_blacklist(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_json:object().
 get_blacklist(AccountId, Blacklists) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     lists:foldl(fun(BlacklistId, Acc) ->
                         case kz_datamgr:open_cache_doc(AccountDb, BlacklistId) of
                             {'error', _R} ->

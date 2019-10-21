@@ -267,7 +267,7 @@ summary(Context) ->
 
 -spec delete_account(kz_term:ne_binary()) -> 'ok'.
 delete_account(Account) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzd_accounts:format_account_id(Account),
     case kz_datamgr:get_results(?KZ_FUNCTIONS_DB
                                ,?CB_LIST
                                ,[{'startkey', [AccountId]}

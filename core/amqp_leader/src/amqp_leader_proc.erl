@@ -176,7 +176,7 @@ s(Name) ->
 %%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
 init([Name, _CandidateNodes, _OptArgs, Mod, Arg, _Options]) ->
-    kz_util:put_callid(kapi_leader:queue()),
+    kz_log:put_callid(kapi_leader:queue()),
     gen_server:cast(self(), {'init', Arg}),
     State = #state{name = Name
                   ,callback_module = Mod

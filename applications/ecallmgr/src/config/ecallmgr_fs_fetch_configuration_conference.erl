@@ -35,7 +35,7 @@ init() ->
 
 -spec conference(map()) -> fs_sendmsg_ret().
 conference(#{node := Node, fetch_id := Id, payload := JObj}=Ctx) ->
-    kz_util:put_callid(Id),
+    kz_log:put_callid(Id),
     fetch_conference_config(Node, Id, kz_api:event_name(JObj), JObj, Ctx).
 
 -spec fix_conference_profile(kz_json:object()) -> kz_json:object().
@@ -78,7 +78,7 @@ conference_sound(Key, Value, Profile) ->
     maybe_convert_sound(kz_binary:reverse(Key), Key, Value, Profile).
 
 maybe_convert_sound(<<"dnuos-", _/binary>>, Key, Value, Profile) ->
-    MediaName = ecallmgr_util:media_path(Value, 'new', kz_util:get_callid(), kz_json:new()),
+    MediaName = ecallmgr_util:media_path(Value, 'new', kz_log:get_callid(), kz_json:new()),
     lager:debug("fixed up ~s from ~s to ~s", [Key, Value, MediaName]),
     kz_json:set_value(Key, MediaName, Profile);
 maybe_convert_sound(_, _Key, _Value, Profile) ->

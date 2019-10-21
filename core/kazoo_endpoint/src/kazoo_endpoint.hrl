@@ -5,7 +5,7 @@
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
 -define(APP_NAME, <<"kazoo_endpoint">>).
--define(APP_VERSION, kz_util:application_version('kazoo_endpoint')).
+-define(APP_VERSION, kapps_util:application_version('kazoo_endpoint')).
 -define(CONFIG_CAT, <<"kazoo_endpoint">>).
 
 -define(CACHE_NAME, 'kazoo_endpoint_cache').

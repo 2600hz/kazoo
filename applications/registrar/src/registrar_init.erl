@@ -18,11 +18,11 @@
 
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    kz_util:spawn(fun init/0),
+    kz_process:spawn(fun init/0),
     'ignore'.
 
 -spec init() -> any().
 init() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     _ = kapps_maintenance:refresh(?KZ_SIP_DB),
     'ok'.

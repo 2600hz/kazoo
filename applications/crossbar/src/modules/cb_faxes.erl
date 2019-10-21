@@ -319,13 +319,13 @@ validate_inbox_fax_action(Action, Id, Context) ->
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     NewContext = crossbar_doc:save(Context),
-    _ = kz_util:spawn(fun maybe_save_attachment/1, [NewContext]),
+    _ = kz_process:spawn(fun maybe_save_attachment/1, [NewContext]),
     crossbar_util:response_202(<<"processing fax attachments">>, cb_context:doc(NewContext), NewContext).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ?OUTGOING) ->
     NewContext = crossbar_doc:save(Context),
-    _ = kz_util:spawn(fun maybe_save_attachment/1, [NewContext]),
+    _ = kz_process:spawn(fun maybe_save_attachment/1, [NewContext]),
     crossbar_util:response_202(<<"processing fax attachments">>, cb_context:doc(NewContext), NewContext).
 
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -671,7 +671,7 @@ get_timestamp(Context, UtcTime) ->
 
 -spec get_timezone(cb_context:context()) -> kz_term:ne_binary().
 get_timezone(Context) ->
-    AccountDb = kz_util:format_account_db(cb_context:auth_account_id(Context)),
+    AccountDb = kzd_accounts:format_account_db(cb_context:auth_account_id(Context)),
     case kz_datamgr:open_cache_doc(AccountDb, cb_context:auth_user_id(Context)) of
         {'ok', UserDoc} ->
             case kzd_users:timezone(UserDoc) of

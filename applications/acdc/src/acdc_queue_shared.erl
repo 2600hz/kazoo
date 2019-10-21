@@ -71,7 +71,7 @@
 %%------------------------------------------------------------------------------
 -spec start_link(pid(), pid(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:startlink_ret().
 start_link(WorkerSup, _, AccountId, QueueId) ->
-    {'ok', QueueJObj} = kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), QueueId),
+    {'ok', QueueJObj} = kz_datamgr:open_cache_doc(kzd_accounts:format_account_db(AccountId), QueueId),
     Priority = kz_json:get_integer_value(<<"max_priority">>, QueueJObj),
     gen_listener:start_link(?SERVER
                            ,[{'bindings', ?SHARED_QUEUE_BINDINGS(AccountId, QueueId)}
@@ -106,7 +106,7 @@ deliveries(Srv) ->
 %%------------------------------------------------------------------------------
 -spec init([pid()]) -> {'ok', state()}.
 init([WorkerSup]) ->
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
 
     lager:debug("shared queue proc started"),
     gen_listener:cast(self(), {'get_fsm_proc', WorkerSup}),

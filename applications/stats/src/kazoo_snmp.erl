@@ -30,7 +30,7 @@ get_oid('get_next', RowIndex, Cols, Table) ->
 
 -spec kazoo_ver('get') -> {'value', string()}.
 kazoo_ver('get') ->
-    {'value', kz_term:to_list(kz_util:kazoo_version())}.
+    {'value', kz_term:to_list(kapps_util:kazoo_version())}.
 
 %% @doc Create the directories and agent configuration files
 -spec start() -> 'ok'.

@@ -242,4 +242,14 @@ not_oneof(Props) ->
          andalso ('false' =:= lists:keyfind(K, 1, Props))
         ).
 
+uniq_test_() ->
+    [?_assertEqual([], props:unique([]))
+    ,?_assertEqual([{module_name, <<"my_module">>}]
+                  ,props:unique([{module_name, <<"my_module">>}
+                                ,{module_name, <<"blaaa">>}
+                                ,{module_name, false}
+                                ])
+                  )
+    ].
+
 -endif.

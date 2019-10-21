@@ -113,7 +113,7 @@ assign(Account, IPDoc) ->
         'false' -> {'error', 'already_assigned'};
         'true' ->
             IPJObj = to_json(IPDoc),
-            AccountId = kz_util:format_account_id(Account, 'raw'),
+            AccountId = kzd_accounts:format_account_id(Account, 'raw'),
             Props = [{<<"pvt_assigned_to">>, AccountId}
                     ,{<<"pvt_modified">>, kz_time:now_s()}
                     ,{<<"pvt_status">>, ?ASSIGNED}
@@ -124,7 +124,7 @@ assign(Account, IPDoc) ->
 
 -spec maybe_save_in_account(kz_term:ne_binary(), std_return()) -> std_return().
 maybe_save_in_account(AccountId, {'ok', JObj}=Ok) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzd_accounts:format_account_db(AccountId),
     case kz_datamgr:open_doc(AccountDb, kz_doc:id(JObj)) of
         {'error', 'not_found'} ->
             _ = kz_datamgr:save_doc(AccountDb, kz_doc:delete_revision(JObj)),
@@ -167,7 +167,7 @@ release(IP) ->
 
 -spec maybe_remove_from_account(kz_term:ne_binary(), std_return()) -> std_return().
 maybe_remove_from_account(AccountId, {'ok', IP}=Ok) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzd_accounts:format_account_db(AccountId),
     _ = case kz_datamgr:open_doc(AccountDb, ip(IP)) of
             {'ok', JObj} -> kz_datamgr:del_doc(AccountDb, JObj);
             {'error', _} -> 'ok'

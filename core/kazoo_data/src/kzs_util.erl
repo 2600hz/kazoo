@@ -103,7 +103,7 @@ find_first(_Database, [Classification | _]) -> Classification.
 unknown_db_classification(_Database) ->
     lager:warning("unknown type for database ~s", [_Database]),
     {'current_stacktrace', ST} = erlang:process_info(self(), 'current_stacktrace'),
-    kz_util:log_stacktrace(ST),
+    kz_log:log_stacktrace(ST),
     'undefined'.
 
 -spec binding_db_classify(kz_term:ne_binary()) -> kz_term:ne_binary().
@@ -192,13 +192,13 @@ db_priority(?MATCH_ACCOUNT_UNENCODED(_AccountId), _) -> 21;
 db_priority(?MATCH_ACCOUNT_encoded(_AccountId), _) -> 21;
 db_priority(?MATCH_ACCOUNT_ENCODED(_AccountId), _) -> 21;
 db_priority(?MATCH_MODB_SUFFIX_UNENCODED(_A,_B,_Rest,_Year,_Month) = Db, MODBPriority) ->
-    db_priority_modb(kz_util:format_account_modb(Db, 'raw'), MODBPriority);
+    db_priority_modb(kzd_accounts:format_account_modb(Db, 'raw'), MODBPriority);
 db_priority(?MATCH_MODB_SUFFIX_ENCODED(_A,_B,_Rest,_Year,_Month) = Db, MODBPriority) ->
-    db_priority_modb(kz_util:format_account_modb(Db, 'raw'), MODBPriority);
+    db_priority_modb(kzd_accounts:format_account_modb(Db, 'raw'), MODBPriority);
 db_priority(?MATCH_MODB_SUFFIX_encoded(_A,_B,_Rest,_Year,_Month) = Db, MODBPriority) ->
-    db_priority_modb(kz_util:format_account_modb(Db, 'raw'), MODBPriority);
+    db_priority_modb(kzd_accounts:format_account_modb(Db, 'raw'), MODBPriority);
 db_priority(?MATCH_MODB_SUFFIX_RAW(_Account,_Year,_Month) = Db, MODBPriority) ->
-    db_priority_modb(kz_util:format_account_modb(Db, 'raw'), MODBPriority);
+    db_priority_modb(kzd_accounts:format_account_modb(Db, 'raw'), MODBPriority);
 db_priority(?MATCH_RESOURCE_SELECTORS_UNENCODED(_AccountId), _) -> 26;
 db_priority(?MATCH_RESOURCE_SELECTORS_encoded(_AccountId), _) -> 26;
 db_priority(?MATCH_RESOURCE_SELECTORS_ENCODED(_AccountId), _) -> 26;

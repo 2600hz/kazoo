@@ -27,7 +27,7 @@ store_file(Node, Filename, Url) ->
 
 -spec store_file(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | function(), map()) -> 'ok' | {'error', any()}.
 store_file(Node, Filename, Url, Map) ->
-    App = kz_util:calling_app(),
+    App = kapps_util:calling_app(),
     store_file(Filename, Url, storage_retries(App), storage_timeout(App), Map#{media_server => Node}).
 
 %%==============================================================================
@@ -57,7 +57,7 @@ store_file(Filename, Url, Tries, Timeout, #{media_server := Node}=Map) ->
                   io_lib:format("Error Storing File ~s From Media Server ~s",[Filename, Node]);
               ErrorMsg ->ErrorMsg
           end,
-    {AppName, AppVersion} = kz_util:calling_app_version(),
+    {AppName, AppVersion} = kapps_util:calling_app_version(),
     API = fun() -> [{<<"Command">>, <<"send_http">>}
                    ,{<<"Args">>, kz_json:from_list(store_file_args(Filename, Url))}
                    ,{<<"FreeSWITCH-Node">>, Node}

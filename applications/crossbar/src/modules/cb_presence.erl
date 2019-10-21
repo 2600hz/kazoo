@@ -370,7 +370,7 @@ publish_presence_reset(Context, PresenceId) ->
     lager:debug("resetting ~s@~s", [PresenceId, Realm]),
     API = [{<<"Realm">>, Realm}
           ,{<<"Username">>, PresenceId}
-          ,{<<"Msg-ID">>, kz_util:get_callid()}
+          ,{<<"Msg-ID">>, kz_log:get_callid()}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(API, fun kapi_presence:publish_reset/1).
@@ -422,7 +422,7 @@ collect_report(_Context, []) ->
     lager:debug("nothing to collect");
 collect_report(Context, Param) ->
     lager:debug("collecting report for ~s", [Param]),
-    kz_util:spawn(fun send_report/2, [search_detail(Context, Param), Param]).
+    kz_process:spawn(fun send_report/2, [search_detail(Context, Param), Param]).
 
 -spec send_report(cb_context:context(), kz_term:ne_binary() | kz_json:object() | kz_json:objects()) -> 'ok'.
 send_report(Context, Extension)

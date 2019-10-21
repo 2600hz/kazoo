@@ -18,7 +18,7 @@
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_registration:success_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     Username = kz_json:get_value(<<"Username">>, JObj),
     Realm = kz_json:get_value(<<"Realm">>, JObj),
     case kapps_util:get_account_by_realm(Realm) of
@@ -28,7 +28,7 @@ handle_req(JObj, _Props) ->
 
 -spec handle_account_req(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 handle_account_req(AccountDb, Username) ->
-    AccountId = kz_util:format_account_id(AccountDb),
+    AccountId = kzd_accounts:format_account_id(AccountDb),
     case cf_util:endpoint_id_by_sip_username(AccountDb, Username) of
         {'ok', EndpointId} ->
             case kz_endpoint:get(EndpointId, AccountDb) of

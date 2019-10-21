@@ -282,7 +282,7 @@ check_fallbacks(Tree, MethodList, Realm) ->
 -spec check_fallback(kz_term:ne_binary(), atom() | kz_json:objects(), kz_term:ne_binaries(), kz_term:ne_binary()) ->
                             atom() | kz_json:objects().
 check_fallback(AccountId, 'empty', MethodList, Realm) ->
-    AccountDB = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDB = kzd_accounts:format_account_id(AccountId, 'encoded'),
     ViewOpts = [{'key', AccountId}],
     case kz_datamgr:get_results(AccountDB, ?RATES_LISTING_BY_OWNER, ViewOpts) of
         {'ok', []} -> 'empty';

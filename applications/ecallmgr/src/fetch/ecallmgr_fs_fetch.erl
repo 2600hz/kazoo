@@ -55,7 +55,7 @@ start_link(Node, Section) ->
 -spec init([atom() | kz_term:ne_binary()]) -> {'ok', state()}.
 init([Node, Section]) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(Node),
+    kz_log:put_callid(Node),
     lager:info("starting new fs fetch listener for ~s", [Node]),
     gen_server:cast(self(), 'bind'),
     {'ok', #state{node=Node, section=kz_term:to_atom(Section, 'true')}}.
@@ -95,7 +95,7 @@ handle_cast(_Msg, State) ->
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'fetch', JObj}, #state{node=Node}=State) ->
     Channel = kz_amqp_channel:consumer_channel(),
-    _ = kz_util:spawn(fun handle_fetch_req/3, [Node, Channel, JObj]),
+    _ = kz_process:spawn(fun handle_fetch_req/3, [Node, Channel, JObj]),
     {'noreply', State};
 handle_info({'kz_amqp_assignment', {'new_channel', _, Channel}}, State) ->
     lager:debug("channel acquired ~p", [Channel]),
@@ -145,7 +145,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%------------------------------------------------------------------------------
 -spec handle_fetch_req(atom(), kz_term:api_pid(), kz_json:object()) -> fs_sendmsg_ret().
 handle_fetch_req(Node, Channel, JObj) ->
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     _ = kz_amqp_channel:consumer_channel(Channel),
     FetchId = kzd_fetch:fetch_uuid(JObj),
     CoreUUID = kzd_fetch:core_uuid(JObj),

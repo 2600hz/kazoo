@@ -210,7 +210,7 @@ really_remove_call_bindings(CallId, Events) ->
 handle_call_event(JObj, Props) ->
     'true' = kapi_call:event_v(JObj)
         orelse kapi_dialplan:error_v(JObj),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     handle_call_event(JObj, Props, kz_call_event:event_name(JObj)).
 
 handle_call_event(JObj, _Props, <<"CHANNEL_DESTROY">> = Event) ->
@@ -290,7 +290,7 @@ relay_to_fsm(CallId, Event, JObj) ->
 relay_to_pids(CallId, JObj) ->
     [begin
          kapps_call_command:relay_event(Pid, JObj),
-         lager:debug("relaying ~p to ~p", [kz_util:get_event_type(JObj), Pid])
+         lager:debug("relaying ~p to ~p", [kz_api:get_event_type(JObj), Pid])
      end
      || Pid <- pids_for_callid(CallId)
     ].
@@ -359,7 +359,7 @@ handle_info(?HOOK_EVT(AccountId, <<"CHANNEL_ANSWER">> = EventName, Event), State
     _ = relay_to_fsms(AccountId, EventName, Event),
     {'noreply', State};
 handle_info({'timeout', Ref, _Msg}, #state{cleanup_ref=Ref}=State) ->
-    _P = kz_util:spawn(fun cleanup_bindings/1, [self()]),
+    _P = kz_process:spawn(fun cleanup_bindings/1, [self()]),
     {'noreply', State#state{cleanup_ref=cleanup_timer()}};
 handle_info(_Info, State) ->
     {'noreply', State}.
@@ -402,7 +402,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%------------------------------------------------------------------------------
 -spec cleanup_bindings(kz_types:server_ref()) -> 'ok'.
 cleanup_bindings(Srv) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     cleanup_bindings(Srv, gen_listener:bindings(Srv)).
 
 -spec cleanup_bindings(kz_types:server_ref(), gen_listener:bindings()) -> 'ok'.

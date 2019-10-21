@@ -68,7 +68,7 @@ exec_elements(Call, [El|Els]) ->
             {'error', kzt_util:add_error(Call, <<"unknown_element">>, Name)};
         ?STACKTRACE(_E, _R, ST)
         lager:error("'~s' when execing el ~p: ~p", [_E, El, _R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'error', Call}
         end.
 
@@ -284,7 +284,7 @@ exec_gather_els(Parent, Call, [SubAction|SubActions]) ->
                              {'ok', kapps_call:call()}.
 exec_gather_els(Call, SubActions) ->
     {_Pid, _Ref}=PidRef =
-        kz_util:spawn_monitor(fun exec_gather_els/3, [self(), Call, SubActions]),
+        kz_process:spawn_monitor(fun exec_gather_els/3, [self(), Call, SubActions]),
     lager:debug("started to exec gather els: ~p(~p)", [_Pid, _Ref]),
     {'ok', kzt_util:set_gather_pidref(PidRef, Call)}.
 
@@ -373,7 +373,7 @@ record_call(Call, Attrs) ->
     case kzt_receiver:record_loop(Call, Timeout) of
         {'ok', Call1} -> finish_record_call(Call1, Props, MediaName);
         {'empty', Call1} -> {'ok', Call1};
-        _E -> lager:debug("call record failed: ~p", [_E]), {'stop', Call}
+        {'error', _E, _} -> lager:debug("call record failed: ~p", [_E]), {'stop', Call}
     end.
 
 -spec finish_record_call(kapps_call:call(), kz_term:proplist(), kz_term:ne_binary()) ->

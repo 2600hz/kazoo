@@ -18,7 +18,7 @@
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_sms:delivery_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     maybe_update_doc(JObj).
 
 -spec maybe_update_doc(kz_json:object()) -> any().

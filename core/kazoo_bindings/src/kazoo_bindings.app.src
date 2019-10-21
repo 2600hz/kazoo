@@ -1,5 +1,5 @@
 {application,kazoo_bindings,
-             [{applications,[kazoo,kazoo_stdlib,kernel,lager,plists,stdlib]},
+             [{applications,[kazoo_stdlib,kernel,lager,plists,stdlib]},
               {description,"Bindings Server - routing things to places"},
               {vsn,"4.0.0"},
               {modules,[]},

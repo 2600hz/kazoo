@@ -36,7 +36,7 @@
 
 -spec authorize(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
 authorize(Data, CallId, Node) ->
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     AuthorizeReply = is_emergency_number(Data)
         orelse is_mobile_device(Data)
         orelse maybe_authorized_channel(Data, Node),
@@ -202,7 +202,7 @@ authz_response(JObj, Data, CallId, Node) ->
                                                               ,{<<"Reseller-Billing">>, ResellerBilling}
                                                               ,{<<"Reseller-ID">>, ResellerId}
                                                               ]),
-                    _ = kz_util:spawn(fun kill_channel/2, [Data, Node]),
+                    _ = kz_process:spawn(fun kill_channel/2, [Data, Node]),
                     'false'
             end
     end.
@@ -258,7 +258,7 @@ set_ccv_trunk_usage(JObj, Data, CallId, Node) ->
 
 -spec rate_call(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
 rate_call(Data, CallId, Node) ->
-    _P = kz_util:spawn(fun rate_channel/2, [Data, Node]),
+    _P = kz_process:spawn(fun rate_channel/2, [Data, Node]),
     lager:debug("rating call in ~p", [_P]),
     allow_call(Data, CallId, Node).
 
@@ -287,7 +287,7 @@ allow_call(Data, _CallId, _Node) ->
 -spec rate_channel(kzd_freeswitch:data(), atom()) -> 'ok'.
 rate_channel(Data, Node) ->
     CallId = kzd_freeswitch:call_id(Data),
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     Direction = kzd_freeswitch:call_direction(Data),
     ReqResp = kz_amqp_worker:call(rating_req(CallId, Data)
                                  ,fun kapi_rate:publish_req/1
@@ -330,7 +330,7 @@ authz_default(Data, CallId, Node) ->
     of
         'false' -> rate_call(Data, CallId, Node);
         'true' ->
-            _ = kz_util:spawn(fun kill_channel/2, [Data, Node]),
+            _ = kz_process:spawn(fun kill_channel/2, [Data, Node]),
             'false'
     end.
 

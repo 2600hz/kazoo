@@ -268,7 +268,7 @@ Eshell V8.3  (abort with ^G)
 16:36:34.615 [notice] setting zone to local
 16:36:34.616 [info] Application kazoo_config started on node 'fixturedb@hes.2600hz.com'
 {ok,[crypto,inet_cidr,observer,syntax_tools,compiler,
-     goldrush,lager,kazoo,zucchini,kazoo_config]}
+     goldrush,lager,zucchini,kazoo_config]}
 (fixturedb@hes.2600hz.com)2>
 (fixturedb@hes.2600hz.com)2> kazoo_data_link_sup:start_link().
 16:36:46.073 [info] Application asn1 started on node 'fixturedb@hes.2600hz.com'

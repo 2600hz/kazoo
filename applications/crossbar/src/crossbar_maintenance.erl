@@ -58,7 +58,7 @@
 -export([does_schema_exist/1]).
 
 -include("crossbar.hrl").
--include_lib("kazoo/include/kz_system_config.hrl").
+-include_lib("kazoo_apps/include/kz_system_config.hrl").
 
 -type input_term() :: atom() | string() | kz_term:ne_binary().
 
@@ -223,13 +223,13 @@ find_account_by_number(Number) when not is_binary(Number) ->
 find_account_by_number(Number) ->
     case knm_number:lookup_account(Number) of
         {'ok', AccountId, _} ->
-            AccountDb = kz_util:format_account_db(AccountId),
+            AccountDb = kzd_accounts:format_account_db(AccountId),
             print_account_info(AccountDb, AccountId);
         {'error', {'not_in_service', AssignedTo}} ->
-            AccountDb = kz_util:format_account_db(AssignedTo),
+            AccountDb = kzd_accounts:format_account_db(AssignedTo),
             print_account_info(AccountDb, AssignedTo);
         {'error', {'account_disabled', AssignedTo}} ->
-            AccountDb = kz_util:format_account_db(AssignedTo),
+            AccountDb = kzd_accounts:format_account_db(AssignedTo),
             print_account_info(AccountDb, AssignedTo);
         {'error', Reason}=E ->
             io:format("failed to find account assigned to number '~s': ~p~n", [Number, Reason]),
@@ -296,7 +296,7 @@ find_account_by_realm(Realm) ->
                                 {'ok', kz_term:ne_binary()} |
                                 {'error', any()}.
 find_account_by_id(Id) when is_binary(Id) ->
-    print_account_info(kz_util:format_account_id(Id, 'encoded'));
+    print_account_info(kzd_accounts:format_account_id(Id, 'encoded'));
 find_account_by_id(Id) ->
     find_account_by_id(kz_term:to_binary(Id)).
 
@@ -424,7 +424,7 @@ create_account(AccountName, Realm, Username, Password) ->
 
 log_error(Type, Reason, ST, AccountName) ->
     lager:error("crashed creating account: ~s: ~p", [Type, Reason]),
-    kz_util:log_stacktrace(ST),
+    kz_log:log_stacktrace(ST),
 
     io:format("failed to create '~s': ~p~n", [AccountName, Reason]),
     'failed'.
@@ -625,7 +625,7 @@ account_nouns() ->
     end.
 
 master_admin(MasterAccountId) ->
-    AccountDb = kz_util:format_account_db(MasterAccountId),
+    AccountDb = kzd_accounts:format_account_db(MasterAccountId),
     case kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, []) of
         {'ok', Users} -> find_first_admin(Users);
         {'error', _} -> 'undefined'
@@ -681,7 +681,7 @@ create_account(Context) ->
                      ),
             {'ok', Context1};
         'success' ->
-            AccountIdFromDb = kz_util:format_account_id(AccountDb),
+            AccountIdFromDb = kzd_accounts:format_account_id(AccountDb),
             io:format("created new account '~s' in db '~s'~n"
                      ,[AccountIdFromDb, AccountDb]
                      ),
@@ -689,7 +689,7 @@ create_account(Context) ->
         _Status ->
             {'error', {_Code, _Msg, Errors}} = cb_context:response(Context1),
             DocAccountId = kz_doc:id(cb_context:req_data(Context)),
-            kz_datamgr:db_delete(kz_util:format_account_db(DocAccountId)),
+            kz_datamgr:db_delete(kzd_accounts:format_account_db(DocAccountId)),
 
             io:format("failed to create the account ~s: ~p ~s", [DocAccountId, _Code, _Msg]),
             throw(Errors)
@@ -714,7 +714,7 @@ create_user(Context) ->
 
 -spec print_account_info(kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()}.
 print_account_info(AccountDb) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kzd_accounts:format_account_id(AccountDb, 'raw'),
     print_account_info(AccountDb, AccountId).
 
 -spec print_account_info(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()}.
@@ -739,8 +739,8 @@ print_account_info(AccountDb, AccountId) ->
 %%------------------------------------------------------------------------------
 -spec move_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 move_account(Account, ToAccount) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    ToAccountId = kz_util:format_account_id(ToAccount, 'raw'),
+    AccountId = kzd_accounts:format_account_id(Account, 'raw'),
+    ToAccountId = kzd_accounts:format_account_id(ToAccount, 'raw'),
     maybe_move_account(AccountId, ToAccountId).
 
 -spec maybe_move_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
@@ -815,7 +815,7 @@ find_apps(AppsPath) ->
                     [filename:dirname(filename:dirname(App)) | Acc]
                 catch
                     _Ex:_Er:_ST ->
-                        kz_util:log_stacktrace(_ST),
+                        kz_log:log_stacktrace(_ST),
                         Acc
                 end
         end,
@@ -1172,7 +1172,7 @@ db_init_schemas() ->
 %%------------------------------------------------------------------------------
 -spec db_init() -> 'ok'.
 db_init() ->
-    _ = kz_util:spawn(fun db_init_schemas/0),
+    _ = kz_process:spawn(fun db_init_schemas/0),
     'ok'.
 
 -spec register_views() -> 'ok'.

@@ -152,7 +152,7 @@ reseller_template_database(Context) ->
     case kz_services_reseller:get_id(cb_context:account_id(Context)) of
         'undefined' -> Context;
         ResellerId ->
-            ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
+            ResellerDb = kzd_accounts:format_account_id(ResellerId, 'encoded'),
             cb_context:set_account_db(Context, ResellerDb)
     end.
 
@@ -162,7 +162,7 @@ local_template_database(Context) ->
     case kz_services_reseller:is_reseller(AccountId) of
         'false' -> reseller_template_database(Context);
         'true' ->
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
             cb_context:set_account_db(Context, AccountDb)
     end.
 
@@ -173,7 +173,7 @@ local_template_database(Context) ->
 -spec is_allowed_to_update(cb_context:context()) -> boolean().
 is_allowed_to_update(Context) ->
     AccountId = cb_context:auth_account_id(Context),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     cb_context:account_db(Context) =:= AccountDb.
 
 -spec forbidden(cb_context:context()) -> cb_context:context().

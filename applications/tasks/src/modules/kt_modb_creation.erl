@@ -33,7 +33,7 @@ maybe_start_now() ->
     maybe_start_now(CreateOnDay, erlang:date()).
 
 maybe_start_now(CreateOn, {Year, Month, Day}) when Day >= CreateOn ->
-    P = kz_util:spawn(fun create_modbs/2, [Year, Month]),
+    P = kz_process:spawn(fun create_modbs/2, [Year, Month]),
     log_starting_now(CreateOn, Day, P);
 maybe_start_now(_, _) -> 'ok'.
 
@@ -52,7 +52,7 @@ handle_req() ->
 
 -spec handle_req(kz_time:day(), kz_time:date()) -> 'ok'.
 handle_req(Day, {Year, Month, Day}) ->
-    P = kz_util:spawn(fun create_modbs/2, [Year, Month]),
+    P = kz_process:spawn(fun create_modbs/2, [Year, Month]),
     log_started(P);
 handle_req(_CreateOnDay, {_Year, _Month, _Day}) -> 'ok'.
 
@@ -63,7 +63,7 @@ log_started(Pid) ->
 -spec create_modbs() -> 'ok'.
 create_modbs() ->
     {Year, Month, _D} = erlang:date(),
-    _P = kz_util:spawn(fun create_modbs/2, [Year, Month]),
+    _P = kz_process:spawn(fun create_modbs/2, [Year, Month]),
     io:format("creating modbs in ~p~n", [_P]).
 
 -spec create_modbs(kz_time:year(), kz_time:month()) -> 'ok'.
@@ -111,7 +111,7 @@ create_modbs_metered(_Year, _Month, _AccountsPerPass, _SecondsPerPass, {'error',
 -spec create_modb(kz_time:year(), kz_time:month(), kz_json:object()) -> boolean().
 create_modb(Year, Month, AccountView) ->
     AccountId = kz_doc:id(AccountView),
-    AccountMODB = kz_util:format_account_id(AccountId, Year, Month),
+    AccountMODB = kzd_accounts:format_account_id(AccountId, Year, Month),
     kazoo_modb:maybe_create(AccountMODB).
 
 -spec get_page(pos_integer(), kz_json:api_json_term()) -> kz_datamgr:paginated_results().

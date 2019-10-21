@@ -341,7 +341,7 @@ get_correlated_msg_type(JObj) ->
 -spec get_correlated_msg_type(kz_term:ne_binary(), kz_json:object()) ->
                                      {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
 get_correlated_msg_type(Key, JObj) ->
-    {C, N} = kz_util:get_event_type(JObj),
+    {C, N} = kz_api:get_event_type(JObj),
     {C, N, kz_json:get_value(Key, JObj)}.
 
 -spec wait_for_correlated_message(kz_term:ne_binary() | kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), timeout()) ->

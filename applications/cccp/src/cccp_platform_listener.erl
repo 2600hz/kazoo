@@ -133,7 +133,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec handle_answer(kz_json:object(), kz_term:proplist()) -> ok.
 handle_answer(JObj, Props) ->
     Srv = props:get_value('server', Props),
-    case kz_util:get_event_type(JObj) of
+    case kz_api:get_event_type(JObj) of
         {<<"call_event">>,<<"CHANNEL_ANSWER">>} ->
             CallUpdate = kapps_call:kvs_store('consumer_pid', self(), props:get_value('call', Props)),
             gen_listener:cast(Srv, {'call_update', CallUpdate}),
@@ -168,7 +168,7 @@ dial(JObj, Call) ->
     MaxConcurentCallsPerUser = kz_json:get_integer_value(<<"max_concurent_calls_per_user">>, JObj, 1),
     case (cccp_util:count_user_legs(UserId, AccountId) >= MaxConcurentCallsPerUser * 2) of
         'true' ->
-            kapps_call_command:b_prompt(<<"cf-move-too_many_channels">>, Call),
+            _ = kapps_call_command:b_prompt(<<"cf-move-too_many_channels">>, Call),
             kapps_call_command:hangup(Call);
         'false' ->
             AccountId = kz_json:get_value(<<"account_id">>, JObj),

@@ -110,7 +110,7 @@ fetch_recording_tunneled(API, AccountId, RecordingId) ->
 -spec create_recording(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
                               {'ok', kzd_call_recordings:doc()}.
 create_recording(_API, AccountId) ->
-    MODB = kz_util:format_account_mod_id(AccountId),
+    MODB = kzd_accounts:format_account_mod_id(AccountId),
 
     BaseMediaDoc = create_recording_doc(),
     MediaDoc = kz_doc:update_pvt_parameters(BaseMediaDoc, MODB, [{'type', kzd_call_recordings:type()}]),

@@ -117,7 +117,7 @@ collect_dtmfs(Call
 -spec collect_dtmfs(kapps_call:call(), kz_term:api_ne_binary(), timeout(), pos_integer(), function(), binary(), kz_json:object()) ->
                            collect_dtmfs_return().
 collect_dtmfs(Call, FinishKey, Timeout, N, OnFirstFun, Collected, JObj) ->
-    case kz_util:get_event_type(JObj) of
+    case kz_api:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             {'stop', Call};
         {<<"call_event">>, <<"DTMF">>} ->
@@ -238,7 +238,7 @@ play_loop(Call, PlayMe, Terminators, N) ->
 -spec record_loop(kapps_call:call(), pos_integer()) ->
                          {'ok', kapps_call:call()} |
                          {'empty', kapps_call:call()} |
-                         {'error', kapps_call:call()}.
+                         {'error', atom(), kapps_call:call()}.
 record_loop(Call, SilenceTimeout) ->
     case wait_for_call_event(Call, <<"RECORD_STOP">>) of
         {'ok', EvtJObj} ->
@@ -285,7 +285,7 @@ wait_for_call_event(Call, EvtName) ->
     end.
 
 process_call_event(Call, EvtName, JObj) ->
-    case kz_util:get_event_type(JObj) of
+    case kz_api:get_event_type(JObj) of
         {<<"call_event">>, EvtName} ->
             {'ok', JObj};
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
@@ -318,7 +318,7 @@ wait_for_noop(Call, NoopId) ->
                                 {'ok', kapps_call:call()} |
                                 {'error', noop_error(), kapps_call:call()}.
 process_noop_event(Call, NoopId, JObj) ->
-    case kz_util:get_event_type(JObj) of
+    case kz_api:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             {'error', 'channel_destroy', Call};
         {<<"call_event">>, <<"DTMF">>} ->
@@ -368,7 +368,7 @@ wait_for_offnet(Call, DialProps) ->
 wait_for_hangup(Call) ->
     case kapps_call_command:receive_event(?DEFAULT_EVENT_WAIT) of
         {'ok', JObj} ->
-            case kz_util:get_event_type(JObj) of
+            case kz_api:get_event_type(JObj) of
                 { <<"resource">>, <<"offnet_resp">> } ->
                     RespMsg = kz_call_event:response_message(JObj),
                     RespCode = kz_call_event:response_code(JObj),
@@ -428,7 +428,7 @@ process_offnet_event(#dial_req{call=Call}=OffnetReq
                     ,JObj) ->
     CallId = kapps_call:call_id(Call),
 
-    case {kz_util:get_event_type(JObj)
+    case {kz_api:get_event_type(JObj)
          ,kz_call_event:call_id(JObj)
          }
     of
@@ -583,7 +583,7 @@ wait_for_conference_events(#dial_req{call_timeout=CallTimeout
     end.
 
 process_conference_event(#dial_req{call=Call}=OffnetReq, JObj) ->
-    case kz_util:get_event_type(JObj) of
+    case kz_api:get_event_type(JObj) of
         {<<"call_event">>, <<"DTMF">>} ->
             handle_dtmf_event(OffnetReq, JObj, fun wait_for_conference_events/1);
 

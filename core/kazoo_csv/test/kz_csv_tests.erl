@@ -298,7 +298,7 @@ variable_json_test() ->
 
     ?assertEqual(Expected, CSV),
 
-    kz_util:delete_file(File).
+    kz_os:delete_file(File).
 
 comma_list_json_test() ->
     JSONs = [<<"{\"a\":[\"x\",\"y\"]}">>
@@ -317,4 +317,4 @@ comma_list_json_test() ->
 
     ?assertEqual(Expected, CSV),
 
-    kz_util:delete_file(File).
+    kz_os:delete_file(File).

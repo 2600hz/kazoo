@@ -623,10 +623,10 @@ setters_pn(PN, Routines) ->
             [{_M, Name, [_aPN,Arg2|_], _Info}|_] -> {Name, Arg2}
         end,
         ?LOG_ERROR("~s failed, argument: ~p", [FName, Arg]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'error', FName};
         ?STACKTRACE('error', Reason, ST)
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'error', Reason}
         end.
 
@@ -1315,9 +1315,9 @@ remove_denied_features(PN) ->
     RemoveFromPvt = lists:usort(lists:flatmap(fun remove_in_private/1, DeniedFeatures)),
     RemoveFromPub = lists:usort(lists:flatmap(fun remove_in_public/1, DeniedFeatures)),
     ?LOG_WARNING("removing out of sync pvt features: ~s"
-                ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPvt]))]),
+                ,[kz_term:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPvt]))]),
     ?LOG_WARNING("removing out of sync pub features: ~s"
-                ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPub]))]),
+                ,[kz_term:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPub]))]),
     NewPvt = kz_json:prune_keys(RemoveFromPvt, features(PN)),
     NewPub = kz_json:prune_keys(RemoveFromPub, doc(PN)),
     Updates = [{fun set_features/2, NewPvt}
@@ -1744,7 +1744,7 @@ group_phone_number_by_assigned_to(PN, MapAcc) ->
     AssignedTo = assigned_to(PN),
     Key = case kz_term:is_empty(AssignedTo) of
               'true' -> 'undefined';
-              'false' -> existing_db_key(kz_util:format_account_db(AssignedTo))
+              'false' -> existing_db_key(kzd_accounts:format_account_db(AssignedTo))
           end,
     MapAcc#{Key => [PN | maps:get(Key, MapAcc, [])]}.
 
@@ -1763,6 +1763,6 @@ group_phone_number_by_prev_assigned_to(PN, MapAcc) ->
               'true' ->
                   lager:debug("prev_assigned_to is empty for ~s, ignoring", [number(PN)]),
                   'undefined';
-              'false' -> existing_db_key(kz_util:format_account_db(PrevAssignedTo))
+              'false' -> existing_db_key(kzd_accounts:format_account_db(PrevAssignedTo))
           end,
     MapAcc#{Key => [PN | maps:get(Key, MapAcc, [])]}.

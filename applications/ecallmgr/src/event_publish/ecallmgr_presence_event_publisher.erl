@@ -30,7 +30,7 @@ init() ->
 
 -spec publish_presence(map()) -> any().
 publish_presence(#{call_id := UUID, payload := _JObj} = Ctx) ->
-    kz_util:put_callid(UUID),
+    kz_log:put_callid(UUID),
     Routines = [fun check_proto/1
                ,fun check_node/1
                ],

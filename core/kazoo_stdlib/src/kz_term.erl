@@ -11,8 +11,10 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_term).
 
--export([shuffle_list/1]).
--export([uniq_list/1]).
+-export([shuffle_list/1
+        ,uniq_list/1
+        ,iolist_join/2
+        ]).
 
 -export([to_integer/1, to_integer/2
         ,to_float/1, to_float/2
@@ -37,6 +39,9 @@
 
         ,error_to_binary/1
         ]).
+
+-export([pretty_print_bytes/1, pretty_print_bytes/2]).
+
 -export([is_true/1, is_false/1
         ,is_boolean/1
         ,is_ne_binary/1, is_api_ne_binary/1
@@ -51,6 +56,8 @@
         ]).
 
 -export([a1hash/3, floor/1, ceiling/1]).
+
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 -type text() :: string() | atom() | binary() | iolist().
 %% Denotes Erlang data type which can represent as.
@@ -589,3 +596,53 @@ error_to_binary(Reason) ->
 -spec words_to_bytes(integer()) -> integer().
 words_to_bytes(Words) ->
     Words * erlang:system_info('wordsize').
+
+-spec pretty_print_bytes(non_neg_integer()) -> ne_binary().
+pretty_print_bytes(Bytes) ->
+    pretty_print_bytes(Bytes, 'full').
+
+-spec pretty_print_bytes(non_neg_integer(), 'full' | 'truncated') -> ne_binary().
+pretty_print_bytes(0, _) -> <<"0B">>;
+pretty_print_bytes(Bytes, Type) ->
+    iolist_to_binary(unitfy_bytes(Bytes, Type)).
+
+-spec unitfy_bytes(non_neg_integer(), 'full' | 'truncated') -> iolist().
+unitfy_bytes(0, _Type) -> "";
+unitfy_bytes(Bytes, _Type) when Bytes < ?BYTES_K  ->
+    [to_binary(Bytes), "B"];
+unitfy_bytes(Bytes, Type) when Bytes < ?BYTES_M ->
+    K = Bytes div ?BYTES_K,
+    [to_binary(K), "K", maybe_unitfy_bytes(Bytes rem ?BYTES_K, Type)];
+unitfy_bytes(Bytes, Type) when Bytes < ?BYTES_G ->
+    M = Bytes div ?BYTES_M,
+    [to_binary(M), "M", maybe_unitfy_bytes(Bytes rem ?BYTES_M, Type)];
+unitfy_bytes(Bytes, Type) when Bytes < ?BYTES_T ->
+    G = Bytes div ?BYTES_G,
+    [to_binary(G), "G", maybe_unitfy_bytes(Bytes rem ?BYTES_G, Type)];
+unitfy_bytes(Bytes, Type) ->
+    T = Bytes div ?BYTES_T,
+    [to_binary(T), "T", maybe_unitfy_bytes(Bytes rem ?BYTES_T, Type)].
+
+-spec maybe_unitfy_bytes(non_neg_integer(), 'full' | 'truncated') -> iolist().
+maybe_unitfy_bytes(Bytes, 'full'=Type) ->
+    unitfy_bytes(Bytes, Type);
+maybe_unitfy_bytes(_Bytes, 'truncated') ->
+    <<>>.
+
+-spec iolist_join(Sep, List1) -> List2 when
+      Sep :: T,
+      List1 :: [T],
+      List2 :: [T],
+      T :: iodata() | char().
+iolist_join(_, []) -> [];
+iolist_join(Sep, [H|T]) ->
+    [H | iolist_join_prepend(Sep, T)].
+
+-spec iolist_join_prepend(Sep, List1) -> List2 when
+      Sep :: T,
+      List1 :: [T],
+      List2 :: [T],
+      T :: iolist().
+iolist_join_prepend(_, []) -> [];
+iolist_join_prepend(Sep, [H|T]) ->
+    [Sep, H | iolist_join_prepend(Sep, T)].

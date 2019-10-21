@@ -23,7 +23,7 @@ replace_call() {
     NEW_FUN="${3%$4}"
     FILE="$5"
 
-    #echo "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g"
+    #echo "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g in $FILE"
     sed -i "s%$FROM:$OLD_FUN%$TO:$NEW_FUN%g" "$FILE"
 }
 
@@ -139,6 +139,7 @@ kz_util_to_term() {
               a1hash
               floor
               ceiling
+              iolist_join
              )
     search_and_replace fs[@] kz_util kz_term ''
 }
@@ -169,6 +170,33 @@ kz_util_to_binary() {
     search_and_replace             fs[@] kz_util   kz_binary _binary
     search_and_replace        special[@] kz_util   kz_binary binary_
     search_and_replace_prefix special[@] kz_binary kz_binary binary_
+}
+
+kz_util_to_accounts() {
+    local fs=(format_account_id
+              format_account_mod_id
+              format_account_db
+              format_account_modb
+             )
+    search_and_replace fs[@] kz_util kzd_accounts ''
+}
+
+kz_util_to_resources() {
+    local fs=(format_resource_selectors_id
+              format_resource_selectors_db
+             )
+    search_and_replace fs[@] kz_util kzd_resource_selectors ''
+}
+
+kz_util_to_log() {
+    local fs=(log_stacktrace
+              put_callid
+              get_callid
+              find_callid
+              kz_log_md_clear
+              kz_log_md_put
+             )
+    search_and_replace fs[@] kz_util kz_log ''
 }
 
 kz_util_to_time() {
@@ -288,6 +316,52 @@ kz_account_to_kzd_accounts() {
     done
 }
 
+kz_util_uri() {
+    replace 'kz_util' 'uri_' 'kz_http_util' 'url'
+    replace 'kz_util' 'uri' 'kz_http_util' 'uri'
+    replace 'kz_util' 'resolve_uri' 'kz_http_util' 'resolve_uri'
+}
+
+kz_util_pretty_bytes() {
+    replace 'kz_util' 'pretty_print_bytes' 'kz_term' 'pretty_print_bytes'
+}
+
+kz_util_processes() {
+    replace 'kz_util' 'runs_in' 'kz_process' 'runs_in'
+    replace 'kz_util' 'spawn' 'kz_process' 'spawn'
+    replace 'kz_util' 'spawn_link' 'kz_process' 'spawn_link'
+    replace 'kz_util' 'spawn_monitor' 'kz_process' 'spawn_monitor'
+}
+
+kz_util_kapps_util() {
+    replace 'kz_util' 'set_startup' 'kapps_util' 'set_startup'
+    replace 'kz_util' 'startup' 'kapps_util' 'startup'
+    replace 'kz_util' 'kazoo_version' 'kapps_util' 'kazoo_version'
+    replace 'kz_util' 'node_name' 'kapps_util' 'node_name'
+    replace 'kz_util' 'node_hostname' 'kapps_util' 'node_hostname'
+    replace 'kz_util' 'calling_app' 'kapps_util' 'calling_app'
+    replace 'kz_util' 'calling_app_version' 'kapps_util' 'calling_app_version'
+    replace 'kz_util' 'calling_process' 'kapps_util' 'calling_process'
+    replace 'kz_util' 'get_app' 'kapps_util' 'get_app'
+    replace 'kz_util' 'application_version' 'kapps_util' 'application_version'
+}
+
+kz_util_kz_os() {
+    replace 'kz_util' 'write_file' 'kz_os' 'write_file'
+    replace 'kz_util' 'rename_file' 'kz_os' 'rename_file'
+    replace 'kz_util' 'delete_file' 'kz_os' 'delete_file'
+    replace 'kz_util' 'delete_dir' 'kz_os' 'delete_dir'
+    replace 'kz_util' 'make_dir' 'kz_os' 'make_dir'
+}
+
+kz_util_api() {
+    replace 'kz_util' 'get_event_type' 'kz_api' 'get_event_type'
+}
+
+kz_util_props() {
+    replace 'kz_util' 'uniq' 'props' 'unique'
+}
+
 kz_util_to_kzd_accounts() {
     FROM_MOD=kz_util
     TO_MOD=kzd_accounts
@@ -340,8 +414,6 @@ dedupe() {
 
     replace  kapps_util get_account_name kz_account fetch_name
     replace kz_services account_name     kz_account fetch_name
-
-    replace kapps_util get_event_type kz_util get_event_type
 }
 
 replace_types() {
@@ -518,6 +590,8 @@ kapps_util_amqp() {
     replace "kapps_util" "amqp_pool_collect" "kz_amqp_worker" "call_collect"
     replace "kapps_util" "amqp_pool_request_custom" "kz_amqp_worker" "call_custom"
     replace "kapps_util" "amqp_pool_request" "kz_amqp_worker" "call"
+    replace "kapps_util" "get_application" "kz_application" "get_application"
+    replace "kapps_util" "put_application" "kz_application" "put_application"
 }
 
 echo "ensuring kz_term is used"
@@ -552,5 +626,25 @@ echo "updating amqp_util to kz_amqp_util"
 amqp_util_to_kz_amqp_util
 echo "updating kapps_util amqp to kz_amqp_worker"
 kapps_util_amqp
+echo "ensuring kzd_accounts is used"
+kz_util_to_accounts
+echo "ensuring kzd_resource_selectors is used"
+kz_util_to_resources
+echo "ensuring kz_log is used"
+kz_util_to_log
+echo "ensuring URI/URL encoding uses kz_http_util"
+kz_util_uri
+echo "ensuring pretty printed bytes are in kz_term"
+kz_util_pretty_bytes
+echo "ensuring spawning is in kz_process"
+kz_util_processes
+echo "ensuring kz_util->kapps_util"
+kz_util_kapps_util
+echo "ensuring getting event type"
+kz_util_api
+echo "ensuring kz_util->kz_os"
+kz_util_kz_os
+echo "ensuring kz_util->props"
+kz_util_props
 
 popd >/dev/null

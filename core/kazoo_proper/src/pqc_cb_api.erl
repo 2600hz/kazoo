@@ -85,7 +85,7 @@ authenticate() ->
     Resp = make_request([#expectation{response_codes = [201]}]
                        ,fun kz_http:put/3
                        ,URL
-                       ,default_request_headers(kz_util:get_callid())
+                       ,default_request_headers(kz_log:get_callid())
                        ,kz_json:encode(Envelope)
                        ),
     create_api_state(Resp, Trace).
@@ -104,7 +104,7 @@ authenticate(AccountName, Username, Password) ->
     Resp = make_request([#expectation{response_codes = [201]}]
                        ,fun kz_http:put/3
                        ,URL
-                       ,default_request_headers(kz_util:get_callid())
+                       ,default_request_headers(kz_log:get_callid())
                        ,kz_json:encode(Envelope)
                        ),
     create_api_state(Resp, Trace).
@@ -143,7 +143,7 @@ create_api_state(<<_/binary>> = RespJSON, Trace) ->
     RespEnvelope = kz_json:decode(RespJSON),
     #{'auth_token' => kz_json:get_ne_binary_value(<<"auth_token">>, RespEnvelope)
      ,'account_id' => kz_json:get_ne_binary_value([<<"data">>, <<"account_id">>], RespEnvelope)
-     ,'request_id' => kz_util:get_callid()
+     ,'request_id' => kz_log:get_callid()
      ,'trace_file' => Trace
      ,'start' => get('start_time')
      }.
@@ -278,10 +278,10 @@ response_header_matches({ExpectedHeader, ExpectedValue}, RespHeaders) ->
 
 -spec start_trace() -> {'ok', kz_data_tracing:trace_ref()}.
 start_trace() ->
-    RequestId = case kz_util:get_callid() of
+    RequestId = case kz_log:get_callid() of
                     'undefined' ->
                         RID = kz_binary:rand_hex(5),
-                        kz_util:put_callid(RID),
+                        kz_log:put_callid(RID),
                         RID;
                     RID -> RID
                 end,
@@ -334,7 +334,7 @@ initial_state(AppsToStart, ModulesToStart) ->
 -spec init_system([atom()], [module()]) -> 'ok'.
 init_system(AppsToStart, ModulesToStart) ->
     TestId = kz_binary:rand_hex(5),
-    kz_util:put_callid(TestId),
+    kz_log:put_callid(TestId),
 
     _ = kz_data_tracing:clear_all_traces(),
     _ = [kapps_controller:start_app(App) ||

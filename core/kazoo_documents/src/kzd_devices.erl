@@ -898,7 +898,7 @@ set_timezone(Doc, Timezone) ->
 -spec fetch(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> {'ok', doc()} |
                                                                  {'error', any()}.
 fetch(Account=?NE_BINARY, DeviceId=?NE_BINARY) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzd_accounts:format_account_db(Account),
     kz_datamgr:open_cache_doc(AccountDb, DeviceId, [{'cache_failures', 'false'}]);
 fetch(_, _) ->
     {'error', 'invalid_parameters'}.

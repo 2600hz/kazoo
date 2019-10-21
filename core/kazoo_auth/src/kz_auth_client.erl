@@ -262,11 +262,11 @@ jwt_assertion(Map) ->
 jwt_request(#{auth_url := URL
              ,jwt := JWT
              }=Map) ->
-    GrantType = kz_term:to_list(kz_util:uri_encode(?OAUTH_GRANT_TYPE)),
+    GrantType = kz_term:to_list(kz_http_util:urlencode(?OAUTH_GRANT_TYPE)),
     Headers = [{"Content-Type","application/x-www-form-urlencoded"}
               ,{"User-Agent", "Kazoo"}
               ],
-    Fields = [{"assertion", kz_term:to_list(kz_util:uri_encode(JWT))}
+    Fields = [{"assertion", kz_term:to_list(kz_http_util:urlencode(JWT))}
              ,{"grant_type", GrantType}
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K,V], "=") ] end, Fields)),"&"),

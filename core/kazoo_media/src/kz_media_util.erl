@@ -90,7 +90,7 @@ normalize_media(FromFormat, ToFormat, FileContents, Options) ->
     case file:write_file(FileName, FileContents) of
         'ok' ->
             Result = normalize_media_file(FromFormat, ToFormat, FileName, Options),
-            kz_util:delete_file(FileName),
+            kz_os:delete_file(FileName),
             Result;
         {'error', _}=Error -> Error
     end.
@@ -141,7 +141,7 @@ normalize_media_file(FromFormat, ToFormat, FromFile, Options) ->
 return_command_result({'ok', _}, FileName, 'binary') ->
     case file:read_file(FileName) of
         {'ok', _}=OK ->
-            _ = kz_util:delete_file(FileName),
+            _ = kz_os:delete_file(FileName),
             OK;
         {'error', _}=Error -> Error
     end;
@@ -174,7 +174,7 @@ synthesize_tone(SampleRate, Frequency, Length) ->
     case synthesize_tone(SampleRate, Frequency, Length, FileName) of
         {'ok', _} ->
             Result = file:read_file(FileName),
-            kz_util:delete_file(FileName),
+            kz_os:delete_file(FileName),
             Result;
         {'error', _}=Error -> Error
     end.
@@ -293,7 +293,7 @@ do_join_media_files(Files, Options) ->
     lager:debug("joining media files with command: ~p", [Command]),
     Result = return_command_result(run_command(Command), ToFile, OutputType),
     %% cleanup copied files
-    _ = [kz_util:delete_file(F) || {F, _, _} <- Files],
+    _ = [kz_os:delete_file(F) || {F, _, _} <- Files],
     Result.
 
 %%------------------------------------------------------------------------------
@@ -314,7 +314,7 @@ maybe_normalize_copy_files([{File, SampleRate, Format}|Files], SampleRate, Acc) 
         {'error', _Reason} ->
             lager:warning("failed to copy file to a temporary place to join media files: ~p", [_Reason]),
             %% cleanup already copied files
-            _ = [kz_util:delete_file(F) || {F, _, _} <- Files],
+            _ = [kz_os:delete_file(F) || {F, _, _} <- Files],
             {'error', 'normalization_failed'}
     end;
 maybe_normalize_copy_files([{File, _Other, Format}|Files], SampleRate, Acc) ->
@@ -327,7 +327,7 @@ maybe_normalize_copy_files([{File, _Other, Format}|Files], SampleRate, Acc) ->
         {'error', _Reason} ->
             lager:warning("can't normalize file ~s for preforming join media: ~p", [File, _Reason]),
             %% cleanup already copied files
-            _ = [kz_util:delete_file(F) || {F, _, _} <- Files],
+            _ = [kz_os:delete_file(F) || {F, _, _} <- Files],
             {'error', 'normalization_failed'}
     end.
 
@@ -536,7 +536,7 @@ is_not_prompt(?NE_BINARY = _Media) -> 'false'.
 get_account_prompt(Name, 'undefined', AccountId) ->
     PromptId = prompt_id(Name),
     lager:debug("getting account prompt for '~s'", [PromptId]),
-    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
+    case lookup_prompt(kzd_accounts:format_account_db(AccountId), PromptId) of
         {'error', 'not_found'} -> get_prompt(Name, prompt_language(AccountId), 'undefined');
         {'ok', _} -> prompt_path(AccountId, PromptId)
     end;
@@ -544,7 +544,7 @@ get_account_prompt(Name, 'undefined', AccountId) ->
 get_account_prompt(Name, <<_Primary:2/binary>> = Lang, AccountId) ->
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting account prompt for '~s'", [PromptId]),
-    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
+    case lookup_prompt(kzd_accounts:format_account_db(AccountId), PromptId) of
         {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', AccountId, Lang);
         {'ok', _} -> prompt_path(AccountId, PromptId)
     end;
@@ -552,7 +552,7 @@ get_account_prompt(Name, <<_Primary:2/binary>> = Lang, AccountId) ->
 get_account_prompt(Name, <<Primary:2/binary, "-", _SubTag:2/binary>> = Lang, AccountId) ->
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting account prompt for '~s'", [PromptId]),
-    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
+    case lookup_prompt(kzd_accounts:format_account_db(AccountId), PromptId) of
         {'error', 'not_found'} -> get_account_prompt(Name, Primary, AccountId, Lang);
         {'ok', _} -> prompt_path(AccountId, PromptId)
     end;
@@ -560,7 +560,7 @@ get_account_prompt(Name, <<Primary:2/binary, "-", _SubTag:2/binary>> = Lang, Acc
 get_account_prompt(Name, <<Primary:5/binary, "_", _Secondary:5/binary>> = Lang, AccountId) ->
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting account prompt for '~s'", [PromptId]),
-    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
+    case lookup_prompt(kzd_accounts:format_account_db(AccountId), PromptId) of
         {'error', 'not_found'} -> get_account_prompt(Name, Primary, AccountId, Lang);
         {'ok', _} -> prompt_path(AccountId, PromptId)
     end;
@@ -569,7 +569,7 @@ get_account_prompt(Name, Lang, AccountId) ->
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting account prompt for '~s'", [PromptId]),
 
-    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
+    case lookup_prompt(kzd_accounts:format_account_db(AccountId), PromptId) of
         {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', AccountId);
         {'ok', _} -> prompt_path(AccountId, PromptId)
     end.
@@ -579,7 +579,7 @@ get_account_prompt(Name, Lang, AccountId) ->
 get_account_prompt(Name, 'undefined', AccountId, OriginalLang) ->
     PromptId = prompt_id(Name),
     lager:debug("getting account prompt for '~s'", [PromptId]),
-    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
+    case lookup_prompt(kzd_accounts:format_account_db(AccountId), PromptId) of
         {'error', 'not_found'} -> get_prompt(Name, OriginalLang, 'undefined');
         {'ok', _} -> prompt_path(AccountId, PromptId)
     end;
@@ -587,7 +587,7 @@ get_account_prompt(Name, <<_:2/binary>> = Primary, AccountId, Original) ->
     PromptId = prompt_id(Name, Primary),
     lager:debug("getting account prompt for '~s'", [PromptId]),
 
-    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
+    case lookup_prompt(kzd_accounts:format_account_db(AccountId), PromptId) of
         {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', AccountId, Original);
         {'ok', _} -> prompt_path(AccountId, PromptId)
     end;
@@ -595,7 +595,7 @@ get_account_prompt(Name, <<Primary:2/binary, "-", _Secondary:2/binary>> = Lang, 
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting account prompt for '~s'", [PromptId]),
 
-    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
+    case lookup_prompt(kzd_accounts:format_account_db(AccountId), PromptId) of
         {'error', 'not_found'} -> get_account_prompt(Name, Primary, AccountId, Original);
         {'ok', _} -> prompt_path(AccountId, PromptId)
     end;
@@ -603,7 +603,7 @@ get_account_prompt(Name, Lang, AccountId, OriginalLang) ->
     PromptId = prompt_id(Name, Lang),
     lager:debug("getting account prompt for '~s'", [PromptId]),
 
-    case lookup_prompt(kz_util:format_account_db(AccountId), PromptId) of
+    case lookup_prompt(kzd_accounts:format_account_db(AccountId), PromptId) of
         {'error', 'not_found'} -> get_account_prompt(Name, 'undefined', AccountId, OriginalLang);
         {'ok', _} -> prompt_path(AccountId, PromptId)
     end.

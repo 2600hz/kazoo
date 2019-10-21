@@ -62,7 +62,7 @@
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS(A, Q), [{'conf', [{'type', <<"queue">>}
-                                  ,{'db', kz_util:format_account_id(A, 'encoded')}
+                                  ,{'db', kzd_accounts:format_account_id(A, 'encoded')}
                                   ,{'id', Q}
                                   ,'federate'
                                   ]}
@@ -148,7 +148,7 @@ start_link(Super, AccountId, QueueId) ->
 -spec handle_member_call(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_member_call(JObj, Props) ->
     'true' = kapi_acdc_queue:member_call_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
 
     Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),
 
@@ -211,7 +211,7 @@ handle_member_call_success(JObj, Prop) ->
 
 -spec handle_member_call_cancel(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_member_call_cancel(JObj, Props) ->
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     lager:debug("cancel call ~p", [JObj]),
     'true' = kapi_acdc_queue:member_call_cancel_v(JObj),
     K = make_ignore_key(kz_json:get_value(<<"Account-ID">>, JObj)
@@ -303,20 +303,20 @@ init([Super, QueueJObj]) ->
     AccountId = kz_doc:account_id(QueueJObj),
     QueueId = kz_doc:id(QueueJObj),
 
-    kz_util:put_callid(<<"mgr_", QueueId/binary>>),
+    kz_log:put_callid(<<"mgr_", QueueId/binary>>),
 
     init(Super, AccountId, QueueId, QueueJObj);
 
 init([Super, AccountId, QueueId]) ->
-    kz_util:put_callid(<<"mgr_", QueueId/binary>>),
+    kz_log:put_callid(<<"mgr_", QueueId/binary>>),
 
-    AcctDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AcctDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     {'ok', QueueJObj} = kz_datamgr:open_cache_doc(AcctDb, QueueId),
 
     init(Super, AccountId, QueueId, QueueJObj).
 
 init(Super, AccountId, QueueId, QueueJObj) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     _ = kz_datamgr:add_to_doc_cache(AccountDb, QueueId, QueueJObj),
 
     _ = start_secondary_queue(AccountId, QueueId),
@@ -438,7 +438,7 @@ handle_cast({'start_workers'}, #state{account_id=AccountId
                                      ,supervisor=QueueSup
                                      }=State) ->
     WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
-    case kz_datamgr:get_results(kz_util:format_account_id(AccountId, 'encoded')
+    case kz_datamgr:get_results(kzd_accounts:format_account_id(AccountId, 'encoded')
                                ,<<"queues/agents_listing">>
                                ,[{'key', QueueId}
                                 ,{'group', 'true'}
@@ -643,9 +643,9 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%------------------------------------------------------------------------------
 start_secondary_queue(AccountId, QueueId) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzd_accounts:format_account_db(AccountId),
     Priority = lookup_priority_levels(AccountDb, QueueId),
-    kz_util:spawn(fun gen_listener:add_queue/4
+    kz_process:spawn(fun gen_listener:add_queue/4
                  ,[self()
                   ,?SECONDARY_QUEUE_NAME(QueueId)
                   ,[{'queue_options', ?SECONDARY_QUEUE_OPTIONS(Priority)}

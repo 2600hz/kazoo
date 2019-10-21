@@ -151,7 +151,7 @@ handle_job_status_query(JObj, Props) ->
 %%------------------------------------------------------------------------------
 -spec init([kz_term:ne_binary() | kz_term:ne_binary()]) -> {'ok', state()}.
 init([AccountId, JobId]) ->
-    kz_util:put_callid(JobId),
+    kz_log:put_callid(JobId),
     {'ok', #state{callid = JobId
                  ,job_id = JobId
                  ,account_id = AccountId
@@ -376,8 +376,8 @@ handle_info(_Info, State) ->
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
 handle_event(JObj, #state{job_id=JobId}) ->
     case kz_json:get_first_defined([[<<"Resource-Response">>, <<"Call-ID">>], <<"Call-ID">>], JObj) of
-        'undefined' -> kz_util:put_callid(JobId);
-        CallId -> kz_util:put_callid(<<JobId/binary, "|", CallId/binary>>)
+        'undefined' -> kz_log:put_callid(JobId);
+        CallId -> kz_log:put_callid(<<JobId/binary, "|", CallId/binary>>)
     end,
     {'reply', []}.
 
@@ -634,7 +634,7 @@ move_doc(JObj) ->
     FromDB = kz_doc:account_db(JObj),
     AccountId = kz_doc:account_id(JObj),
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
-    ToDB = kz_util:format_account_modb(AccountMODb, 'encoded'),
+    ToDB = kzd_accounts:format_account_modb(AccountMODb, 'encoded'),
     ToId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_date:pad_month(Month), FromId),
     Options = ['override_existing_document'
               ,{'transform', fun(_, B) -> kz_json:set_value(<<"folder">>, <<"outbox">>, B) end}
@@ -706,7 +706,7 @@ write_document(JObj, JobId) ->
     case kz_fax_attachment:fetch_faxable(?KZ_FAXES_DB, JObj) of
         {'ok', Content, _ContentType, Doc} ->
             Filepath = filename:join(?TMP_DIR, <<JobId/binary, ".tiff">>),
-            kz_util:write_file(Filepath, Content),
+            kz_os:write_file(Filepath, Content),
             {'ok', Filepath, Doc};
         Error -> Error
     end.
@@ -778,7 +778,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
 
 -spec get_hunt_account_id(kz_term:ne_binary()) -> kz_term:api_binary().
 get_hunt_account_id(AccountId) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzd_accounts:format_account_db(AccountId),
     Options = [{'key', <<"no_match">>}, 'include_docs'],
     case kz_datamgr:get_results(AccountDb, ?CALLFLOW_LIST, Options) of
         {'ok', [JObj]} -> maybe_hunt_account_id(kz_json:get_value([<<"doc">>, <<"flow">>], JObj), AccountId);

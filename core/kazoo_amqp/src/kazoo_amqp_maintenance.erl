@@ -535,16 +535,16 @@ print_gc_results(Pool, Results) ->
 -spec print_gc_summary([{pid(), integer(), integer(), integer()}]) -> 'ok'.
 print_gc_summary(Results) ->
     {Min, Max, Sum, Count} = gc_summary(Results),
-    Summary = kz_binary:join([kz_util:pretty_print_bytes(kz_term:words_to_bytes(Min), 'truncated')
-                             ,kz_util:pretty_print_bytes(kz_term:words_to_bytes(Sum div Count), 'truncated')
-                             ,kz_util:pretty_print_bytes(kz_term:words_to_bytes(Max), 'truncated')
+    Summary = kz_binary:join([kz_term:pretty_print_bytes(kz_term:words_to_bytes(Min), 'truncated')
+                             ,kz_term:pretty_print_bytes(kz_term:words_to_bytes(Sum div Count), 'truncated')
+                             ,kz_term:pretty_print_bytes(kz_term:words_to_bytes(Max), 'truncated')
                              ]
                             ,<<" < ">>
                             ),
     io:format("  Min/Avg/Max of ~p workers: ~s (~s released)~n"
              ,[Count
               ,Summary
-              ,kz_util:pretty_print_bytes(kz_term:words_to_bytes(Sum), 'truncated')
+              ,kz_term:pretty_print_bytes(kz_term:words_to_bytes(Sum), 'truncated')
               ]).
 
 -spec gc_summary([{pid(), integer(), integer(), integer()}]) ->
@@ -572,8 +572,8 @@ gc_summary_fold({_W, Diff, _B, _A}
 print_gc_result({W, Diff, Before, After}) ->
     io:format(?GC_RESULT_FORMAT
              ,[kz_term:to_list(W)
-              ,kz_util:pretty_print_bytes(kz_term:words_to_bytes(Diff), 'truncated')
-              ,kz_util:pretty_print_bytes(kz_term:words_to_bytes(Before), 'truncated')
-              ,kz_util:pretty_print_bytes(kz_term:words_to_bytes(After), 'truncated')
+              ,kz_term:pretty_print_bytes(kz_term:words_to_bytes(Diff), 'truncated')
+              ,kz_term:pretty_print_bytes(kz_term:words_to_bytes(Before), 'truncated')
+              ,kz_term:pretty_print_bytes(kz_term:words_to_bytes(After), 'truncated')
               ]
              ).

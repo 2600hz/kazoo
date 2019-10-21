@@ -26,7 +26,7 @@
 -spec handle_call_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
     'true' = kapi_call:event_v(JObj),
-    {Cat, Name} = kz_util:get_event_type(JObj),
+    {Cat, Name} = kz_api:get_event_type(JObj),
     handle_call_event(Cat, Name, JObj, Props).
 
 -spec handle_call_event(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) -> 'ok'.

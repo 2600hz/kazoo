@@ -66,7 +66,7 @@ run_counterexample([SeqSteps]) ->
 
 run_counterexample(SeqSteps, State) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     is_pid(whereis(?SERVER))
         andalso kz_cache:stop_local(?SERVER),
     kz_cache_sup:start_link(?SERVER, ?CACHE_TTL_MS),
@@ -118,7 +118,7 @@ correct() ->
     ?FORALL(Cmds
            ,commands(?MODULE)
            ,begin
-                kz_util:put_callid(?MODULE),
+                kz_log:put_callid(?MODULE),
                 stop(?SERVER),
                 kz_cache_sup:start_link(?SERVER, ?CACHE_TTL_MS),
                 {History, State, Result} = run_commands(?MODULE, Cmds),

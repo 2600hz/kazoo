@@ -173,7 +173,7 @@ verbose_debug(Format, Args) ->
     case ?BT_DEBUG of
         'false' -> 'ok';
         'true' ->
-            kz_util:write_file("/tmp/braintree.xml", io_lib:format(Format, Args), ['append'])
+            kz_os:write_file("/tmp/braintree.xml", io_lib:format(Format, Args), ['append'])
     end.
 
 %%------------------------------------------------------------------------------

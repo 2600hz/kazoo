@@ -14,7 +14,7 @@
         ,<<"sys_info">>
         ]).
 
--define(APP_VERSION, kz_util:application_version('jonny5')).
+-define(APP_VERSION, kapps_util:application_version('jonny5')).
 -define(APP_NAME, <<"jonny5">>).
 
 -type tristate_integer() :: -1 | non_neg_integer().

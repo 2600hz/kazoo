@@ -819,7 +819,7 @@ maybe_read_from_parent(Context, Id, LoadFrom, 'undefined') ->
     lager:debug("~s not found in account and reseller is undefined, reading from system_config", [Id]),
     read_system_for_account(Context, Id, LoadFrom);
 maybe_read_from_parent(Context, Id, LoadFrom, ResellerId) ->
-    AccountId = kz_util:format_account_id(cb_context:account_db(Context)),
+    AccountId = kzd_accounts:format_account_id(cb_context:account_db(Context)),
     case AccountId =/= ResellerId
         andalso get_parent_account_id(AccountId) of
         'false' ->
@@ -829,7 +829,7 @@ maybe_read_from_parent(Context, Id, LoadFrom, ResellerId) ->
             lager:debug("~s not found in account and parent is undefined, reading from system_config", [Id]),
             read_system_for_account(Context, Id, LoadFrom);
         ParentId ->
-            ParentDb = kz_util:format_account_db(ParentId),
+            ParentDb = kzd_accounts:format_account_db(ParentId),
             lager:debug("account doesn't have ~s, reading from parent account ~s", [Id, ParentDb]),
             read_account(cb_context:set_account_db(Context, ParentDb), Id, LoadFrom)
     end.
@@ -951,7 +951,7 @@ try_parent_attachments(Context, Id, ParentAccountId, ResellerId) ->
         Attachments ->
             lager:debug("found attachments in account ~s", [ParentAccountId]),
             Doc = kz_json:set_value(<<"_attachments">>, Attachments, cb_context:doc(Context)),
-            AttachmentsDb = kz_util:format_account_id(ParentAccountId, 'encoded'),
+            AttachmentsDb = kzd_accounts:format_account_id(ParentAccountId, 'encoded'),
             cb_context:setters(Context
                               ,[{fun cb_context:store/3, 'db_doc', Doc}
                                ,{fun cb_context:set_doc/2, Doc}
@@ -960,7 +960,7 @@ try_parent_attachments(Context, Id, ParentAccountId, ResellerId) ->
 
 -spec masquerade(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 masquerade(Context, AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     cb_context:setters(Context
                       ,[{fun cb_context:set_account_id/2, AccountId}
                        ,{fun cb_context:set_account_db/2, AccountDb}
@@ -1517,7 +1517,7 @@ maybe_update_db(Context) ->
 %%------------------------------------------------------------------------------
 -spec remove_account_customizations(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 remove_account_customizations(Context, AccountId) ->
-    ToRemove = list_templates_from_db(kz_util:format_account_db(AccountId)),
+    ToRemove = list_templates_from_db(kzd_accounts:format_account_db(AccountId)),
     Result = remove_customization(AccountId, ToRemove),
     Setters = [{fun cb_context:set_resp_status/2, 'success'}
               ,{fun cb_context:set_resp_data/2, Result}
@@ -1529,7 +1529,7 @@ remove_customization(_, []) ->
     kz_json:from_list([{<<"message">>, <<"no template customization(s) found">>}]);
 remove_customization(AccountId, Ids) ->
     lager:debug("removing ~b template customization(s) from ~s~n", [length(Ids), AccountId]),
-    case kz_datamgr:del_docs(kz_util:format_account_db(AccountId), Ids) of
+    case kz_datamgr:del_docs(kzd_accounts:format_account_db(AccountId), Ids) of
         {'ok', JObjs} ->
             Result = [{kz_notification:resp_id(kz_doc:id(J)), kz_term:to_binary(kz_json:get_value(<<"error">>, J, <<"deleted">>))}
                       || J <- JObjs
@@ -1549,7 +1549,7 @@ remove_customization(AccountId, Ids) ->
 %%------------------------------------------------------------------------------
 -spec force_system_templates(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 force_system_templates(Context, AccountId) ->
-    ToRemove = list_templates_from_db(kz_util:format_account_db(AccountId)),
+    ToRemove = list_templates_from_db(kzd_accounts:format_account_db(AccountId)),
     _ = remove_customization(AccountId, ToRemove),
     ToCopy = list_templates_from_db(?KZ_CONFIG_DB),
     Result = force_system_default(AccountId, ToCopy),
@@ -1563,7 +1563,7 @@ force_system_default(_, []) ->
     kz_json:from_list([{<<"message">>, <<"no system template found">>}]);
 force_system_default(AccountId, Ids) ->
     lager:debug("forcing ~b system default template(s) for account ~s~n", [length(Ids), AccountId]),
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzd_accounts:format_account_db(AccountId),
     kz_json:from_list([copy_from_system_to_account(AccountDb, Id) || Id <- Ids]).
 
 -spec copy_from_system_to_account(kz_term:ne_binary(), kz_term:ne_binary()) -> {kz_term:ne_binary(), kz_term:ne_binary()}.

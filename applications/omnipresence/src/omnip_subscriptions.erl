@@ -97,7 +97,7 @@ table_config() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {'ok', #state{expire_ref=start_expire_ref()}}.
 
 %%------------------------------------------------------------------------------
@@ -132,15 +132,15 @@ handle_cast({'notify', JObj}, State) ->
     {'noreply', State};
 
 handle_cast({'after', {'notify', Msg}}, State) ->
-    kz_util:spawn(fun on_notify/1, [Msg]),
+    kz_process:spawn(fun on_notify/1, [Msg]),
     {'noreply', State};
 
 handle_cast({'after', {'subscribe', Msg}}, State) ->
-    kz_util:spawn(fun on_subscribe/1, [Msg]),
+    kz_process:spawn(fun on_subscribe/1, [Msg]),
     {'noreply', State};
 
 handle_cast({'after', {'resubscribe', Msg}}, State) ->
-    kz_util:spawn(fun on_resubscribe/1, [Msg]),
+    kz_process:spawn(fun on_resubscribe/1, [Msg]),
     {'noreply', State};
 
 handle_cast({'after', _Msg}, State) ->
@@ -469,7 +469,7 @@ maybe_probe(_, {<<"message-summary">> = Package, Username, Realm, _}) ->
 maybe_probe(_, {<<"dialog">>, <<"*", _/binary>> = Username, Realm, _}) ->
     case kapps_util:get_account_by_realm(Realm) of
         {'ok', Account} ->
-            VM = ?VM_NUMBER(kz_util:format_account_id(Account)),
+            VM = ?VM_NUMBER(kzd_accounts:format_account_id(Account)),
             S = size(VM),
             case Username of
                 <<VM:S/binary, New/binary>> -> omnip_util:request_probe(<<"message-summary">>, New, Realm);

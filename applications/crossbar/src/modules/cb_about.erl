@@ -72,7 +72,7 @@ validate(Context) ->
 -spec display_version(cb_context:context()) -> cb_context:context().
 display_version(Context) ->
     JObj = kz_json:from_list(
-             [{<<"version">>, kz_util:kazoo_version()}
+             [{<<"version">>, kapps_util:kazoo_version()}
              ,{<<"used_memory">>, erlang:memory('total')}
              ,{<<"processes">>, erlang:system_info('process_count')}
              ,{<<"ports">>, length(erlang:ports())}

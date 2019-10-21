@@ -53,8 +53,8 @@ start_modules(Modules) ->
 
 -spec notification(kz_json:object()) -> 'ok'.
 notification(JObj) ->
-    kz_util:put_callid(JObj),
-    {EventCategory, EventName} = kz_util:get_event_type(JObj),
+    kz_log:put_callid(JObj),
+    {EventCategory, EventName} = kz_api:get_event_type(JObj),
     ShouldHandle = teletype_util:should_handle_notification(JObj),
     RoutingKey = ?ROUTING_KEY(EventCategory, EventName),
     maybe_handle_notification(JObj, RoutingKey, ShouldHandle).

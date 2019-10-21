@@ -36,7 +36,7 @@
                     ,timestamp = kz_time:now_s() :: kz_time:gregorian_seconds() | '_'
                     ,name :: kz_term:api_binary() | '_'
                     ,metadata :: any() | '_'
-                    ,destination = kz_util:node_hostname() :: kz_term:ne_binary() | '_'
+                    ,destination = kapps_util:node_hostname() :: kz_term:ne_binary() | '_'
                     ,source :: kz_term:api_binary() | '_'
                     ,errors = [] :: kz_term:ne_binaries() | '_'
                     ,result = 'ok' :: 'ok' | 'error' | 'shutdown' | '_'

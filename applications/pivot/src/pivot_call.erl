@@ -118,7 +118,7 @@ maybe_relay_event(JObj, Props) ->
 
 -spec handle_call_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
-    case kz_util:get_event_type(JObj) of
+    case kz_api:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             Pid = props:get_value('server', Props),
             gen_listener:cast(Pid, {'cdr', JObj});
@@ -145,7 +145,7 @@ init(_Call, _JObj, 'true') ->
     lager:info("call has gone down while we started up"),
     {'stop', 'normal'};
 init(Call, JObj, 'false') ->
-    kz_util:put_callid(kapps_call:call_id(Call)),
+    kz_log:put_callid(kapps_call:call_id(Call)),
 
     Method = kzt_util:http_method(kz_json:get_value(<<"HTTP-Method">>, JObj, 'get')),
     VoiceUri = kz_json:get_value(<<"Voice-URI">>, JObj),
@@ -340,7 +340,7 @@ handle_info({'http', {ReqId, 'stream_end', FinalHeaders}}
                  ,Body
                  ,AMQPConsumer
                  ],
-    {Pid, Ref} = kz_util:spawn_monitor(fun handle_resp/5, HandleArgs),
+    {Pid, Ref} = kz_process:spawn_monitor(fun handle_resp/5, HandleArgs),
     lager:debug("processing resp with ~p(~p)", [Pid, Ref]),
     {'noreply'
     ,State#state{request_id = 'undefined'
@@ -483,7 +483,7 @@ normalize_resp_headers(Headers) ->
 handle_resp(RequesterQ, Call, CT, <<_/binary>> = RespBody, AMQPConsumer) ->
     _ = kz_amqp_channel:consumer_pid(AMQPConsumer),
 
-    kz_util:put_callid(kapps_call:call_id(Call)),
+    kz_log:put_callid(kapps_call:call_id(Call)),
     Srv = kzt_util:get_amqp_listener(Call),
 
     case process_resp(RequesterQ, Call, CT, RespBody) of
@@ -618,7 +618,7 @@ debug_json_error(Call, Msg, Before, After, RespBody) ->
 store_debug(Call, Doc) when is_list(Doc) ->
     store_debug(Call, kz_json:from_list(Doc));
 store_debug(Call, DebugJObj) ->
-    AccountModDb = kz_util:format_account_mod_id(kapps_call:account_id(Call)),
+    AccountModDb = kzd_accounts:format_account_mod_id(kapps_call:account_id(Call)),
     JObj = debug_doc(Call, DebugJObj, AccountModDb),
 
     case kazoo_modb:save_doc(AccountModDb, JObj) of

@@ -41,7 +41,7 @@ init() ->
 handle_req(JObj, _Props) ->
     true = kapi_notifications:transaction_v(JObj),
 
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
 
     lager:debug("creating transaction notice"),
 

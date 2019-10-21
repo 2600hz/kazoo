@@ -116,7 +116,7 @@ lookup_did(DID, AccountId) ->
                                 {'ok', kz_json:object()} |
                                 kz_datamgr:data_error().
 lookup_did_from_db(DID, AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     Options = [{'key', DID}],
 
     case kz_datamgr:get_results(AccountDb, ?TS_VIEW_DIDLOOKUP, Options) of
@@ -188,7 +188,7 @@ lookup_user_flags('undefined', _, AccountId, DID) ->
             }
     end;
 lookup_user_flags(Name, Realm, AccountId, _) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AccountId, 'encoded'),
     case kz_cache:fetch_local(?CACHE_NAME
                              ,{'lookup_user_flags', Realm, Name, AccountId}
                              )

@@ -122,7 +122,7 @@ validate_claims(#{user_map := #{<<"pvt_account_id">> := AccountId
             Props = [{<<"account_id">>, AccountId}
                     ,{<<"owner_id">>, OwnerId}
                     ],
-            case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), OwnerId) of
+            case kz_datamgr:open_cache_doc(kzd_accounts:format_account_db(AccountId), OwnerId) of
                 {'ok', _Doc} -> {'ok', kz_json:set_values(Props, kz_json:from_map(Payload))};
                 _ -> {'error', {403, <<"mapped account does not exist">>}}
             end;
@@ -197,7 +197,7 @@ authenticate_fold(Token, [Fun | Routines]) ->
     catch
         ?STACKTRACE(_E, _R, ST)
         lager:debug("exception executing ~p : ~p , ~p", [Fun, _E, _R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         authenticate_fold(Token, Routines)
         end.
 

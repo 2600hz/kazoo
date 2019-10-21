@@ -82,7 +82,7 @@ stop(Srv) ->
 %%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
 init([Id, JObj]) ->
-    kz_util:put_callid(Id),
+    kz_log:put_callid(Id),
 
     Voice = list_to_binary([kz_json:get_value(<<"Voice">>, JObj, kazoo_tts:default_voice()), "/"
                            ,get_language(kz_json:get_value(<<"Language">>, JObj, kazoo_tts:default_language()))
@@ -127,7 +127,7 @@ handle_call('single', _From, #state{meta=Meta
                                    ,timer_ref=TRef
                                    }=State) ->
     %% doesn't currently check whether we're still streaming in from the DB
-    lager:debug("returning media contents ~p", [kz_util:pretty_print_bytes(byte_size(Contents))]),
+    lager:debug("returning media contents ~p", [kz_term:pretty_print_bytes(byte_size(Contents))]),
     _ = stop_timer(TRef),
     {'reply', {Meta, Contents}, State#state{timer_ref=start_timer()}};
 handle_call('single', From, #state{reqs=Reqs
@@ -206,7 +206,7 @@ handle_info({'http', {ReqID, 'stream_end', _FinalHeaders}}, #state{kz_http_req_i
     Res = {Meta, Contents},
     _ = [gen_server:reply(From, Res) || From <- Reqs],
 
-    lager:debug("finished receiving file contents: ~p", [kz_util:pretty_print_bytes(byte_size(Contents))]),
+    lager:debug("finished receiving file contents: ~p", [kz_term:pretty_print_bytes(byte_size(Contents))]),
     {'noreply', State#state{status=ready
                            ,timer_ref=start_timer()
                            }
@@ -225,7 +225,7 @@ handle_info({'http', {ReqID, 'stream_end', _FinalHeaders}}, #state{kz_http_req_i
     Res = {NewMeta, BinaryContents},
     _ = [gen_server:reply(From, Res) || From <- Reqs],
 
-    lager:debug("finished receiving file contents: ~p", [kz_util:pretty_print_bytes(byte_size(Contents))]),
+    lager:debug("finished receiving file contents: ~p", [kz_term:pretty_print_bytes(byte_size(Contents))]),
     {'noreply', State#state{status=ready
                            ,timer_ref=start_timer()
                            ,contents=BinaryContents

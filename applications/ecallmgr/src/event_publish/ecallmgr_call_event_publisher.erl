@@ -39,7 +39,7 @@ init() ->
 
 -spec publish_call_event(map()) -> any().
 publish_call_event(#{payload := JObj}=Map) ->
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     EventName = kz_api:event_name(JObj),
     case lists:member(EventName, ?EXCLUDE_PUBLISH_EVENTS) of
         'true' -> 'ok';

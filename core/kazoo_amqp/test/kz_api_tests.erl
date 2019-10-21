@@ -33,3 +33,16 @@ has_any_test_() ->
     [?_assertEqual('true', kz_api:has_any(Prop, Headers))
     ,?_assertEqual('false', kz_api:has_any(Prop, [<<"k4">>]))
     ].
+
+get_event_type_test_() ->
+    EventCategory = {<<"Event-Category">>, <<"call">>},
+    EventName = {<<"Event-Name">>, <<"CHANNEL_CONNECTED">>},
+    [?_assertEqual({undefined,undefined}, kz_api:get_event_type([]))
+    ,?_assertEqual({undefined,undefined}, kz_api:get_event_type(kz_json:from_list([])))
+    ,?_assertEqual({<<"call">>,undefined}, kz_api:get_event_type([EventCategory]))
+    ,?_assertEqual({<<"call">>,undefined}, kz_api:get_event_type(kz_json:from_list([EventCategory])))
+    ,?_assertEqual({undefined,<<"CHANNEL_CONNECTED">>}, kz_api:get_event_type([EventName]))
+    ,?_assertEqual({undefined,<<"CHANNEL_CONNECTED">>}, kz_api:get_event_type(kz_json:from_list([EventName])))
+    ,?_assertEqual({<<"call">>,<<"CHANNEL_CONNECTED">>}, kz_api:get_event_type([EventCategory,EventName]))
+    ,?_assertEqual({<<"call">>,<<"CHANNEL_CONNECTED">>}, kz_api:get_event_type(kz_json:from_list([EventCategory,EventName])))
+    ].

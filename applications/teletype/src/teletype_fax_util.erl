@@ -208,7 +208,7 @@ fax_db(DataJObj, FaxId) ->
 -spec maybe_get_fax_db_from_id(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_term:ne_binary().
 maybe_get_fax_db_from_id('undefined', _) -> ?KZ_FAXES_DB;
 maybe_get_fax_db_from_id(?MATCH_MODB_SUFFIX_ENCODED(_, _, _)=Db, _) -> Db;
-maybe_get_fax_db_from_id(Db, ?MATCH_MODB_PREFIX(Year, Month, _)) -> kazoo_modb:get_modb(kz_util:format_account_id(Db), Year, Month);
+maybe_get_fax_db_from_id(Db, ?MATCH_MODB_PREFIX(Year, Month, _)) -> kazoo_modb:get_modb(kzd_accounts:format_account_id(Db), Year, Month);
 maybe_get_fax_db_from_id(Db, _) -> Db.
 
 -spec maybe_fetch_attachments(kz_json:object(), kz_json:object(), kz_term:proplist(), boolean()) -> attachments().

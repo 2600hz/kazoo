@@ -52,7 +52,7 @@
                   {'error', 'not_ts_account'}.
 init(RouteReqJObj, Type) ->
     CallID = kapi_route:call_id(RouteReqJObj),
-    kz_util:put_callid(CallID),
+    kz_log:put_callid(CallID),
     case is_trunkstore_acct(RouteReqJObj, Type) of
         'false' ->
             lager:info("request is not for a trunkstore account"),
@@ -62,7 +62,7 @@ init(RouteReqJObj, Type) ->
             #ts_callflow_state{aleg_callid=CallID
                               ,route_req_jobj=RouteReqJObj
                               ,acctid=AccountId
-                              ,acctdb=kz_util:format_account_id(AccountId, 'encoded')
+                              ,acctdb=kzd_accounts:format_account_id(AccountId, 'encoded')
                               ,kapps_call=kapps_call:from_route_req(RouteReqJObj)
                               }
     end.
@@ -257,7 +257,7 @@ was_bridge_blocked(JObj) ->
 
 -spec get_event_type(kz_json:object()) -> event_type().
 get_event_type(JObj) ->
-    {C, N} = kz_util:get_event_type(JObj),
+    {C, N} = kz_api:get_event_type(JObj),
     try get_app(JObj) of
         App -> {C, N, App}
     catch

@@ -94,7 +94,7 @@ broker(#kz_amqp_connections{broker=Broker}) ->
 -spec init(list()) -> {'ok', kz_amqp_connection()}.
 init([#kz_amqp_connection{}=Connection]) ->
     _ = process_flag('trap_exit', 'true'),
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
 
     {'ok', disconnected(Connection#kz_amqp_connection{manager=self()})}.
 
@@ -180,7 +180,7 @@ handle_cast('create_prechannel'
 handle_cast('create_prechannel'
            ,#kz_amqp_connection{available='true'}=Connection
            ) ->
-    _ = kz_util:spawn(fun establish_prechannel/1, [Connection]),
+    _ = kz_process:spawn(fun establish_prechannel/1, [Connection]),
     {'noreply', Connection, 'hibernate'};
 handle_cast(_Msg, Connection) ->
     lager:debug("unhandled cast : ~p : ~p", [_Msg, Connection]),

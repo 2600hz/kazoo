@@ -60,7 +60,7 @@ send_email(From, To, Email) ->
                              ,{'auth', Auth}
                              ]
                             ,fun(X) ->
-                                     kz_util:put_callid(ReqId),
+                                     kz_log:put_callid(ReqId),
                                      lager:debug("email relay responded: ~p, send to ~p", [X, Self]),
                                      Self ! {'relay_response', X}
                              end),
@@ -324,13 +324,13 @@ find_rep_email(JObj) ->
 find_admin('undefined') -> kz_json:new();
 find_admin([]) -> kz_json:new();
 find_admin(Account) when is_binary(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzd_accounts:format_account_id(Account, 'raw'),
     case kzd_accounts:fetch(Account) of
         {'error', _} -> find_admin([AccountId]);
         {'ok', JObj} -> find_admin([AccountId | lists:reverse(kzd_accounts:tree(JObj))])
     end;
 find_admin([AcctId|Tree]) ->
-    AccountDb = kz_util:format_account_id(AcctId, 'encoded'),
+    AccountDb = kzd_accounts:format_account_id(AcctId, 'encoded'),
     ViewOptions = [{'key', <<"user">>}
                   ,'include_docs'
                   ],
@@ -418,7 +418,7 @@ category_to_file(_) ->
 qr_code_image('undefined') -> 'undefined';
 qr_code_image(Text) ->
     lager:debug("create qr code for ~s", [Text]),
-    CHL = kz_util:uri_encode(Text),
+    CHL = kz_http_util:urlencode(Text),
     Url = <<"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL/binary, "&choe=UTF-8">>,
 
     case kz_http:get(kz_term:to_list(Url)) of

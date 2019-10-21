@@ -229,7 +229,7 @@ maybe_extract_multipart(Context, Req0, QS) ->
     catch
         ?STACKTRACE(_E, _R, ST)
         lager:debug("failed to extract multipart ~s: ~p", [_E, _R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         handle_failed_multipart(Context, Req0, QS)
         end.
 
@@ -1203,7 +1203,7 @@ finish_request(_Req, Context) ->
     [{Mod, _}|_] = cb_context:req_nouns(Context),
     Verb = cb_context:req_verb(Context),
     Event = create_event_name(Context, [<<"finish_request">>, Verb, Mod]),
-    _ = kz_util:spawn(fun crossbar_bindings:pmap/2, [Event, Context]),
+    _ = kz_process:spawn(fun crossbar_bindings:pmap/2, [Event, Context]),
     maybe_cleanup_file(cb_context:resp_file(Context)).
 
 -spec maybe_cleanup_file(binary()) -> 'ok'.
@@ -1628,7 +1628,7 @@ do_create_resp_envelope(Context) ->
                    ,{<<"status">>, <<"success">>}
                    ,{<<"request_id">>, cb_context:req_id(Context)}
                    ,{<<"node">>, kz_nodes:node_encoded()}
-                   ,{<<"version">>, kz_util:kazoo_version()}
+                   ,{<<"version">>, kapps_util:kazoo_version()}
                    ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
                    ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
                    ,{<<"data">>, RespData}
@@ -1639,7 +1639,7 @@ do_create_resp_envelope(Context) ->
                    ,{<<"tokens">>, get_token_obj(Context)}
                    ,{<<"request_id">>, cb_context:req_id(Context)}
                    ,{<<"node">>, kz_nodes:node_encoded()}
-                   ,{<<"version">>, kz_util:kazoo_version()}
+                   ,{<<"version">>, kapps_util:kazoo_version()}
                    ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
                    ,{<<"status">>, <<"error">>}
                    ,{<<"message">>, ErrorMsg}
@@ -1663,7 +1663,7 @@ close_chunk_json_envelope(Req, Context) ->
         [{<<"status">>, <<"success">>}
         ,{<<"request_id">>, cb_context:req_id(Context)}
         ,{<<"node">>, kz_nodes:node_encoded()}
-        ,{<<"version">>, kz_util:kazoo_version()}
+        ,{<<"version">>, kapps_util:kazoo_version()}
         ,{<<"timestamp">>, kz_time:iso8601(kz_time:now_s())}
         ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
         ,{<<"auth_token">>, cb_context:auth_token(Context)}

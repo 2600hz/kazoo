@@ -1,5 +1,5 @@
 {application,registrar,
-             [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_data,
+             [{applications,[kazoo_amqp,kazoo_apps,kazoo_data,
                              kazoo_documents,kazoo_stdlib,kernel,lager,
                              stdlib]},
               {description,"Registrar For the Stars"},

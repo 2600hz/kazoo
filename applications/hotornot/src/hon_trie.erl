@@ -128,7 +128,7 @@ rebuild() ->
 
 -spec init([kz_term:ne_binary()]) -> {'ok', state()}.
 init([RatedeckDb]) ->
-    kz_util:put_callid(trie_proc_name(RatedeckDb)),
+    kz_log:put_callid(trie_proc_name(RatedeckDb)),
     PidRef = start_builder(RatedeckDb),
     lager:debug("building trie for ~s in ~p", [RatedeckDb, PidRef]),
     {'ok', ?STATE_BUILDING('undefined', RatedeckDb, PidRef)}.

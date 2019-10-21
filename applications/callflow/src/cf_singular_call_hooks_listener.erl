@@ -73,7 +73,7 @@ start_link(Call) ->
 %%------------------------------------------------------------------------------
 -spec handle_call_event(kz_json:object(), kz_term:proplist()) -> any().
 handle_call_event(JObj, Props) ->
-    case kz_util:get_event_type(JObj) of
+    case kz_api:get_event_type(JObj) of
         {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
             gen_listener:cast(props:get_value('server', Props), {'end_hook', JObj});
         {<<"call_event">>, <<"CHANNEL_TRANSFEROR">>} ->

@@ -61,7 +61,7 @@ start_link([Arg]=Args) ->
                   {'stop', any()}.
 init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
     ParserId = ci_parsers_util:make_name(Args),
-    _ = kz_util:put_callid(ParserId),
+    _ = kz_log:put_callid(ParserId),
     case ci_parsers_util:open_file_for_read(LogFile) of
         {'ok', IoDevice} ->
             State = #state{parser_id = ParserId

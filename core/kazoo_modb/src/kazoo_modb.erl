@@ -60,7 +60,7 @@ get_results(_Account, _View, _ViewOptions, Reason, Retry) when Retry =< 0 ->
     {'error', Reason};
 get_results(Account, View, ViewOptions, _Reason, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
-    EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kzd_accounts:format_account_modb(AccountMODb, 'encoded'),
     case kz_datamgr:get_results(EncodedMODb, View, strip_modb_options(ViewOptions)) of
         {'error', 'not_found'} ->
             get_results_missing_db(Account, View, ViewOptions, Retry);
@@ -160,7 +160,7 @@ couch_open(AccountMODb, DocId) ->
                         {'ok', kz_json:object()} |
                         {'error', atom()}.
 couch_open(AccountMODb, DocId, Options) ->
-    EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kzd_accounts:format_account_modb(AccountMODb, 'encoded'),
     case kz_datamgr:open_doc(EncodedMODb, DocId, Options) of
         {'ok', _}=Ok -> Ok;
         Error -> Error
@@ -209,7 +209,7 @@ couch_save(AccountMODb, _Doc, _Options, Reason, Retry) when Retry =< 0 ->
     lager:debug("max retries to save doc in ~s: ~p", [AccountMODb, Reason]),
     {'error', Reason};
 couch_save(AccountMODb, Doc, Options, _Reason, Retry) ->
-    EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kzd_accounts:format_account_modb(AccountMODb, 'encoded'),
     SaveFun = save_fun(props:get_is_true('ensure_saved', Options, 'false')),
     case SaveFun(EncodedMODb, Doc, strip_modb_options(Options)) of
         {'ok', _}=Ok -> Ok;
@@ -364,18 +364,18 @@ maybe_create_destination_db(FromDb, FromId, ToDb, Options) ->
 get_modb(?MATCH_MODB_SUFFIX_RAW(_,_,_) = AccountMODb) ->
     AccountMODb;
 get_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountMODb) ->
-    kz_util:format_account_modb(AccountMODb, 'raw');
+    kzd_accounts:format_account_modb(AccountMODb, 'raw');
 get_modb(?MATCH_MODB_SUFFIX_UNENCODED(_,_,_) = AccountMODb) ->
-    kz_util:format_account_modb(AccountMODb, 'raw');
+    kzd_accounts:format_account_modb(AccountMODb, 'raw');
 get_modb(Account) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzd_accounts:format_account_db(Account),
     {Year, Month, _} = erlang:date(),
     get_modb(AccountDb, Year, Month).
 
 -spec get_modb(kz_term:ne_binary(), view_options() | kz_time:gregorian_seconds() | kz_time:now()) ->
                       kz_term:ne_binary().
 get_modb(Account, ViewOptions) when is_list(ViewOptions) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzd_accounts:format_account_db(Account),
     case {props:get_value('month', ViewOptions)
          ,props:get_value('year', ViewOptions)
          }
@@ -389,19 +389,19 @@ get_modb(Account, ViewOptions) when is_list(ViewOptions) ->
             get_modb(AccountDb, Year, Month)
     end;
 get_modb(Account, Timestamp) ->
-    kz_util:format_account_mod_id(Account, Timestamp).
+    kzd_accounts:format_account_mod_id(Account, Timestamp).
 
 -spec get_modb(kz_term:ne_binary(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) ->
                       kz_term:ne_binary().
 get_modb(?MATCH_MODB_SUFFIX_RAW(_,_,_) = AccountMODb, _Year, _Month) ->
     AccountMODb;
 get_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountMODb, _Year, _Month) ->
-    kz_util:format_account_modb(AccountMODb, 'raw');
+    kzd_accounts:format_account_modb(AccountMODb, 'raw');
 get_modb(?MATCH_MODB_SUFFIX_UNENCODED(_,_,_) = AccountMODb, _Year, _Month) ->
-    kz_util:format_account_modb(AccountMODb, 'raw');
+    kzd_accounts:format_account_modb(AccountMODb, 'raw');
 get_modb(Account, Year, Month) ->
-    AccountDb = kz_util:format_account_db(Account),
-    kz_util:format_account_mod_id(AccountDb, Year, Month).
+    AccountDb = kzd_accounts:format_account_db(Account),
+    kzd_accounts:format_account_mod_id(AccountDb, Year, Month).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -421,17 +421,17 @@ maybe_create_current_modb(?MATCH_MODB_SUFFIX_RAW(_AccountId, Year, Month) = Acco
             'too_old'
     end;
 maybe_create_current_modb(?MATCH_MODB_SUFFIX_ENCODED(_, _, _) = AccountMODb, Options) ->
-    maybe_create_current_modb(kz_util:format_account_modb(AccountMODb, 'raw'), Options);
+    maybe_create_current_modb(kzd_accounts:format_account_modb(AccountMODb, 'raw'), Options);
 maybe_create_current_modb(?MATCH_MODB_SUFFIX_UNENCODED(_, _, _) = AccountMODb, Options) ->
-    maybe_create_current_modb(kz_util:format_account_modb(AccountMODb, 'raw'), Options).
+    maybe_create_current_modb(kzd_accounts:format_account_modb(AccountMODb, 'raw'), Options).
 
 -spec maybe_create(kz_term:ne_binary()) -> boolean().
 maybe_create(?MATCH_MODB_SUFFIX_RAW(AccountId, _, _) = AccountMODb) ->
     maybe_create(AccountMODb, is_account_deleted(AccountId));
 maybe_create(?MATCH_MODB_SUFFIX_ENCODED(_, _, _) = AccountMODb) ->
-    maybe_create(kz_util:format_account_modb(AccountMODb, 'raw'));
+    maybe_create(kzd_accounts:format_account_modb(AccountMODb, 'raw'));
 maybe_create(?MATCH_MODB_SUFFIX_UNENCODED(_, _, _) = AccountMODb) ->
-    maybe_create(kz_util:format_account_modb(AccountMODb, 'raw')).
+    maybe_create(kzd_accounts:format_account_modb(AccountMODb, 'raw')).
 
 -spec maybe_create(kz_term:ne_binary(), boolean()) -> boolean().
 maybe_create(?MATCH_MODB_SUFFIX_RAW(_AccountId, _, _) = _AccountMODb, 'true') ->
@@ -442,20 +442,20 @@ maybe_create(AccountMODb, 'false') ->
 
 -spec create(kz_term:ne_binary()) -> boolean().
 create(AccountMODb) ->
-    EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kzd_accounts:format_account_modb(AccountMODb, 'encoded'),
     IsDbExists = kz_datamgr:db_exists_all(EncodedMODb),
     do_create(AccountMODb, IsDbExists).
 
 -spec do_create(kz_term:ne_binary(), boolean()) -> boolean().
 do_create(AccountMODb, 'true') ->
     lager:info("modb '~s' exists, just refreshing views and running routines...", [AccountMODb]),
-    EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kzd_accounts:format_account_modb(AccountMODb, 'encoded'),
     _ = refresh_views(EncodedMODb),
     run_routines(AccountMODb),
     'true';
 do_create(AccountMODb, 'false') ->
     lager:debug("creating modb '~s'", [AccountMODb]),
-    EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kzd_accounts:format_account_modb(AccountMODb, 'encoded'),
     case kz_datamgr:db_create(EncodedMODb) of
         'true' ->
             _ = refresh_views(EncodedMODb),
@@ -474,7 +474,7 @@ is_account_deleted(AccountId) ->
 -spec refresh_views(kz_term:ne_binary()) -> boolean() | {'error', 'invalid_db_name' | 'db_not_found'}.
 refresh_views(AccountMODb) ->
     lager:debug("refresh views on modb ~p", [AccountMODb]),
-    EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
+    EncodedMODb = kzd_accounts:format_account_modb(AccountMODb, 'encoded'),
     kz_datamgr:refresh_views(EncodedMODb).
 
 %%------------------------------------------------------------------------------
@@ -484,7 +484,7 @@ refresh_views(AccountMODb) ->
 -spec run_routines(kz_term:ne_binary()) -> 'ok'.
 run_routines(AccountMODb) ->
     Routines = kapps_config:get_ne_binaries(?CONFIG_CAT, <<"routines">>, []),
-    Runs = [{Routine, kz_util:spawn_monitor(kz_term:to_atom(Routine), 'modb', [AccountMODb])}
+    Runs = [{Routine, kz_process:spawn_monitor(kz_term:to_atom(Routine), 'modb', [AccountMODb])}
             || Routine <- Routines,
                kz_module:is_exported(Routine, 'modb', 1)
            ],
@@ -578,7 +578,7 @@ should_archive(AccountMODb, Year, Month) ->
 %%------------------------------------------------------------------------------
 -spec maybe_delete(kz_term:ne_binary(), [kz_term:ne_binary()]) -> boolean().
 maybe_delete(AccountMODb, AccountIds) ->
-    AccountId = kz_util:format_account_id(AccountMODb, 'raw'),
+    AccountId = kzd_accounts:format_account_id(AccountMODb, 'raw'),
     IsOrphaned = not lists:member(AccountId, AccountIds),
     delete_if_orphaned(AccountMODb, IsOrphaned).
 

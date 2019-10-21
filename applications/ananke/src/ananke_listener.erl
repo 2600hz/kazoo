@@ -75,7 +75,7 @@ init([]) ->
     %% we should wait about 7-10 seconds before gen_leader syncronization
     %% and leader election
     %% after gen_leader syncronization this task will be scheduled only once
-    _ = kz_util:spawn(fun load_schedules/0),
+    _ = kz_process:spawn(fun load_schedules/0),
     {'ok', #state{}}.
 
 %%------------------------------------------------------------------------------

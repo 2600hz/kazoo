@@ -113,7 +113,7 @@ build_channels(Endpoints) ->
 
 new_call(AccountId) ->
     Exec = [{fun kapps_call:set_account_id/2, AccountId}
-           ,{fun kapps_call:set_account_db/2, kz_util:format_account_db(AccountId)}
+           ,{fun kapps_call:set_account_db/2, kzd_accounts:format_account_db(AccountId)}
            ,{fun kapps_call:set_request/2, <<"+12223334444@2600hz.com">>}
            ,{fun kapps_call:set_to/2, <<"+12223334444@2600hz.com">>}
            ,{fun kapps_call:set_from/2, <<"+19998887777@atari.com">>}

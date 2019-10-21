@@ -70,7 +70,7 @@ start_link(Node, Options) ->
 
 -spec handle_originate_req(kz_json:object(), kz_term:proplist()) -> kz_types:sup_startchild_ret().
 handle_originate_req(JObj, Props) ->
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     Node = props:get_value('node', Props),
     ecallmgr_originate_sup:start_originate_proc(Node, JObj).
 
@@ -85,7 +85,7 @@ handle_originate_req(JObj, Props) ->
 -spec init([atom() | kz_term:proplist()]) -> {'ok', state()}.
 init([Node, Options]) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(Node),
+    kz_log:put_callid(Node),
     lager:info("starting new fs resource listener for ~s", [Node]),
     {'ok', #state{node=Node, options=Options}}.
 

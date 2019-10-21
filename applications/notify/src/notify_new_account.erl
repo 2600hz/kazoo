@@ -43,7 +43,7 @@ init() ->
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:new_account_v(JObj),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
 
     lager:debug("a new account has been created, sending email notification"),
 
@@ -53,7 +53,7 @@ handle_req(JObj, _Props) ->
 
     AccountDb = case {kz_json:get_value(<<"Account-DB">>, JObj), kz_json:get_value(<<"Account-ID">>, JObj)} of
                     {'undefined', 'undefined'} -> 'undefined';
-                    {'undefined', Id1} -> kz_util:format_account_id(Id1, 'encoded');
+                    {'undefined', Id1} -> kzd_accounts:format_account_id(Id1, 'encoded');
                     {Id2, _} -> Id2
                 end,
 

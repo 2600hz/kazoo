@@ -24,3 +24,10 @@ test_get_master_account_id() ->
      ,?_assertEqual({'ok', ?FIXTURE_MASTER_ACCOUNT_ID}, kapps_util:get_master_account_id())
      }
     ].
+
+calling_app_test_() ->
+    [?_assertEqual(eunit_test, maps:get(app, kapps_util:calling_process()))
+    ,?_assertMatch(undefined, kapps_util:get_app("kazoo"))
+    ,?_assertEqual(true, kz_term:is_ne_binary(kapps_util:node_name()))
+    ,?_assertEqual(true, kz_term:is_ne_binary(kapps_util:node_hostname()))
+    ].

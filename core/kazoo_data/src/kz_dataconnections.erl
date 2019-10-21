@@ -132,7 +132,7 @@ test_conn(Tag) ->
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     _ = ets:new(?MODULE, ['ordered_set'
                          ,{'read_concurrency', 'true'}
                          ,{'keypos', #data_connection.id}
