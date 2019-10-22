@@ -92,7 +92,7 @@ send_http_cb('ok', _Reply, FSProps, [_JobId, JObj, _File, _Node, Channel]) ->
     lager:debug("processed http_send command (~s) ~s for file ~s with success : ~s", [_Node, _JobId, _File, _Reply]),
     _ = kz_amqp_channel:consumer_channel(Channel),
     reply_success(JObj, FSProps);
-send_http_cb('error', Reply, [_ | FSProps], [JobId, JObj, _Node, Channel]) ->
+send_http_cb('error', Reply, FSProps, [JobId, JObj, _File, _Node, Channel]) ->
     lager:debug("error processing http_send command ~s : ~p : ", [JobId, Reply]),
     _ = kz_amqp_channel:consumer_channel(Channel),
     Props = ecallmgr_util:unserialize_fs_props(FSProps),
