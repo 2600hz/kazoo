@@ -25,3 +25,5 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/dialplans
 ```
 
+Also make sure the dialplans API endpoint is started: `sup crossbar_maintenance start_module cb_dialplans`
+
