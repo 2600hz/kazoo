@@ -375,8 +375,10 @@ handle_info(_Info, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
 handle_event(JObj, #state{job_id=JobId}) ->
-    CallId = kz_json:get_first_defined([[<<"Resource-Response">>, <<"Call-ID">>], <<"Call-ID">>], JObj),
-    kz_util:put_callid(<<JobId/binary, "|", CallId/binary>>),
+    case kz_json:get_first_defined([[<<"Resource-Response">>, <<"Call-ID">>], <<"Call-ID">>], JObj) of
+        'undefined' -> kz_util:put_callid(JobId);
+        CallId -> kz_util:put_callid(<<JobId/binary, "|", CallId/binary>>)
+    end,
     {'reply', []}.
 
 %%------------------------------------------------------------------------------
