@@ -238,17 +238,15 @@ validate(Context, ?AUDIT) ->
     %% NOTE: show the billing audit logs
     load_audit_logs(Context);
 validate(Context, ?AUDIT_SUMMARY) ->
-    ViewOptions = [{'group_level', 1}
+    StartKeyFun = fun(Timestamp) -> [audit_summary_range_key(Timestamp)] end,
+    EndKeyFun = fun(Timestamp) -> [audit_summary_range_key(Timestamp), <<16#fff0/utf8>>] end,
+    ViewOptions = [{'group_level', 2}
                   ,{'mapper', fun normalize_day_summary_by_date/2}
-                  ,{'range_start_keymap', fun audit_summary_range_key/1}
-                  ,{'range_end_keymap', fun audit_summary_range_key/1}
+                  ,{'range_start_keymap', StartKeyFun}
+                  ,{'range_end_keymap', EndKeyFun}
                   ],
     ViewName = <<"services/day_summary_by_date">>,
-    Context1 = audit_summary(Context, ViewName, ViewOptions),
-    case cb_context:resp_status(Context1) of
-        'success' -> merge_day_summary_by_date_result(Context1);
-        _ -> Context1
-    end;
+    audit_summary(Context, ViewName, ViewOptions);
 validate(Context, ?TOPUP) ->
     %% NOTE: top-up the accounts credit
     validate_topup_amount(Context);
@@ -324,40 +322,20 @@ audit_summary_range_key(SourceService, Timestamp) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec merge_day_summary_by_date_result(cb_context:context()) -> cb_context:context().
-merge_day_summary_by_date_result(Context) ->
-    Result = cb_context:resp_data(Context),
-    merge_day_summary_by_date_result(Context, Result, #{}).
-
--spec merge_day_summary_by_date_result(cb_context:context(), kz_json:objects(), map()) -> cb_context:context().
-merge_day_summary_by_date_result(Context, [], #{}=Acc) ->
-    cb_context:set_resp_data(Context
-                            ,kz_json:from_list(lists:sort(maps:to_list(Acc)))
-                            );
-merge_day_summary_by_date_result(Context, [JObj|JObjs], #{}=Acc) ->
-    [DateString] = kz_json:get_keys(JObj),
-    NewAcc = kz_json:foldl(fun(Service, Summary, AccAcc) ->
-                                   merge_date_to_service(DateString, Service, Summary, AccAcc)
-                           end
-                          ,Acc
-                          ,kz_json:get_value(DateString, JObj)
-                          ),
-    merge_day_summary_by_date_result(Context, JObjs, NewAcc).
-
--spec merge_date_to_service(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), map()) -> map().
-merge_date_to_service(DateString, Service, Summary, AccAcc) ->
-    ServiceAcc = maps:get(Service, AccAcc, []),
-    AccAcc#{Service => [kz_json:from_list([{DateString, Summary}]) | ServiceAcc]}.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
 -spec normalize_day_summary_by_date(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_day_summary_by_date(JObj, Acc) ->
-    DateString = kz_json:get_value(<<"key">>, JObj),
-    [kz_json:from_list([{DateString, kz_json:get_value(<<"value">>, JObj)}])
-     | Acc
+normalize_day_summary_by_date(JObj, []) ->
+    [DateString, SourceService] = kz_json:get_value(<<"key">>, JObj),
+    [kz_json:set_value([SourceService, DateString]
+                      ,kz_json:get_value(<<"value">>, JObj)
+                      ,kz_json:new()
+                      )
+    ];
+normalize_day_summary_by_date(JObj, [Acc]) ->
+    [DateString, SourceService] = kz_json:get_value(<<"key">>, JObj),
+    [kz_json:set_value([SourceService, DateString]
+                      ,kz_json:get_value(<<"value">>, JObj)
+                      ,Acc
+                      )
     ].
 
 %%------------------------------------------------------------------------------
