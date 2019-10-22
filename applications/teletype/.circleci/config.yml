@@ -135,26 +135,31 @@ jobs:
           command: |
             BAZE="$(cat "${HOME}/2600hz/the_app/.base_branch")"
             if [ -n "$BAZE" ]; then
-              echo -e "\n\nexport BASE_BRANCH=$BAZE" >> $BASH_ENV
+              printf "\n\nexport BASE_BRANCH=$BAZE\n" | tee -a $BASH_ENV
             else
               echo "add base branch name of main Kazoo repo (like origin/master) to '.base_branch' in your application root directory"
               exit 1
             fi
       - run:
-          name: Exporting build environment variables
+          name: Generating build environment variables
           command: |
             APP_DASH=${CIRCLE_PROJECT_REPONAME#kazoo-}
             APP=${APP_DASH/-/_}
-            echo -e "export KAZOO_APP=${APP}\n" >> $BASH_ENV
-            echo -e "export KAZOO_ROOT=${HOME}/2600hz/kazoo" >> $BASH_ENV
-            echo -e "export APP_PATH=applications/${APP}\n\n" >> $BASH_ENV
+            printf "export KAZOO_APP=${APP}\n" | tee -a $BASH_ENV
+            printf "export KAZOO_ROOT=${HOME}/2600hz/kazoo\n" | tee -a $BASH_ENV
+            printf "export APP_PATH=applications/${APP}\n\n" | tee -a $BASH_ENV
       - run:
           name: Displaying environment information
           command: |
             echo ":: behold, running ci tests for application: $KAZOO_APP"
+            echo "KAZOO_APP: $KAZOO_APP"
             echo "KAZOO_ROOT: $KAZOO_ROOT"
             echo "APP_PATH: $APP_PATH"
             echo "BASE_BRANCH: $BASE_BRANCH"
+            if [ -z "$KAZOO_APP" ] || [ -z "$KAZOO_ROOT" ] || [ -z "$BASE_BRANCH" ] ; then
+              echo ":: eniroment variable are not set"
+              exit 1
+            fi
       - run:
           name: Creating artifacts directory
           command: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
@@ -162,17 +167,22 @@ jobs:
           name: Cloning core repository
           command : |
             if [ ! -d ${KAZOO_ROOT} ]; then
+              echo ":: Cloning core repository to $KAZOO_ROOT"
               git clone https://github.com/2600hz/kazoo $KAZOO_ROOT
+            else
+              echo ":: Core repository is already cloned"
             fi
       - run:
           name: Running core setup script
           command: ${KAZOO_ROOT}/scripts/circleci.bash
       - run:
-          name: Generating change list for application
-          command: echo -e 'export CHANGED="$(for file in `find ${KAZOO_ROOT}/applications/${KAZOO_APP} -name "*.[e|h]rl"`; do readlink -e $file; done | xargs echo)"' >> $BASH_ENV
-      - run:
-          name: Displaying changed files
-          command: echo $CHANGED
+          name: Export changed files
+          command: |
+            cd "$KAZOO_ROOT/$APP_PATH"
+            for file in $(git --no-pager diff --name-only HEAD $BASE_BRANCH); do
+              CHANGED+=" $KAZOO_ROOT/$APP_PATH/$file"
+            done
+            printf 'export CHANGED="%s"\n' "$CHANGED" | tee -a $BASH_ENV
       - persist_to_workspace:
           root: ~/
           paths:
@@ -193,14 +203,9 @@ jobs:
             if [ x"$(cat $KAZOO_ROOT/.git/.kz_deps_hash)" = x"$deps_hash" ]; then
               touch "$KAZOO_ROOT/make/.deps.mk.$deps_hash"
             fi
-            echo -n $(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1) > "$KAZOO_ROOT/.git/.kz_deps_hash"
-            md5sum $KAZOO_ROOT/make/deps.mk || true
-            ls -al $KAZOO_ROOT/make || true
-      - run:
-          name: Show dependency hash
-          command: |
-            md5sum make/deps.mk || true
-            ls -al make || true
+            (echo -n $(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1) | tee "$KAZOO_ROOT/.git/.kz_deps_hash") && echo
+            md5sum $KAZOO_ROOT/make/deps.mk
+            ls -al $KAZOO_ROOT/make
       - run:
           name: Making deps
           command: make -C ${KAZOO_ROOT} deps
@@ -239,16 +244,15 @@ jobs:
           keys:
             - deps-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
       - run:
-          name: Displaying deps hash
-          command: |
-            md5sum $KAZOO_ROOT/make/deps.mk || true
-            ls -al $KAZOO_ROOT/make || true
-      - run:
-          name: Compiling for unit test environment
+          name: Compiling Kazoo core for unit test environment
           command: ERLC_OPTS='-DPROPER' make -C ${KAZOO_ROOT}/core compile-test
       - run:
           name: Running Eunit tests
           command: make -C "$KAZOO_ROOT/$APP_PATH" eunit
+      ## disabling this for now until we figure out why it is crashing, and how to set token
+      # - run:
+      #     name: Uploading Coverage Report
+      #     command: make coverage-report
 
   checks:
     <<: *defaults
@@ -257,7 +261,7 @@ jobs:
           at: ~/
       - run:
           name: Running code formatter
-          command: make -C ${KAZOO_ROOT} fmt
+          command: TO_FMT="$CHANGED" make -C ${KAZOO_ROOT} fmt
       - run:
           name: Running code checks
           command: make -C ${KAZOO_ROOT} code_checks
@@ -265,7 +269,7 @@ jobs:
           name: Checking app source file
           command: make -C ${KAZOO_ROOT} app_applications
       - run:
-          name: Generating sup bash completion file
+          name: Generating sup bash completion files
           command: make -C ${KAZOO_ROOT} sup_completion
       - run:
           name: Running xref check
@@ -275,7 +279,9 @@ jobs:
           command: make -C ${KAZOO_ROOT} elvis
       - run:
           name: Checking for unstaged files
-          command: ${KAZOO_ROOT}/scripts/check-unstaged.bash
+          command: |
+            cd $KAZOO_ROOT/$APP_PATH
+            $KAZOO_ROOT/scripts/check-unstaged.bash
 
   docs:
     <<: *defaults
@@ -302,7 +308,9 @@ jobs:
           command: ${KAZOO_ROOT}/scripts/state-of-edoc.escript
       - run:
           name: Checking for unstaged files
-          command: ${KAZOO_ROOT}/scripts/check-unstaged.bash
+          command: |
+            cd $KAZOO_ROOT/$APP_PATH
+            $KAZOO_ROOT/scripts/check-unstaged.bash
 
   analyze:
     <<: *defaults
@@ -313,8 +321,11 @@ jobs:
           keys:
             - plt-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
       - run:
+          name: Building plt file
+          command: make -C ${KAZOO_ROOT} build-plt
+      - run:
           name: Dailyzing changed Erlang files
-          command: TO_DIALYZE="$(echo $CHANGED)" make -C ${KAZOO_ROOT} build-plt dialyze
+          command: make -C ${KAZOO_ROOT} dialyze-changed
       - save_cache:
           key: plt-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
           paths:
@@ -333,9 +344,6 @@ jobs:
           name: Building CI release
           command: make -C ${KAZOO_ROOT} build-ci-release
       - run:
-          name: Checking for unstaged files
-          command: ${KAZOO_ROOT}/scripts/check-unstaged.bash
-      - run:
           name: Running Kazoo release
           command: KAZOO_CONFIG=${KAZOO_ROOT}/rel/ci.config.ini REL="kazoo_apps" ACT="console" NODE_NAME_TYPE="-sname" make -C ${KAZOO_ROOT} release
       - run:
@@ -350,8 +358,11 @@ jobs:
           name: Checking for errors in artifacts
           command: |
             if [[ $(grep -c -v -F 'exit with reason shutdown' ${CIRCLE_ARTIFACTS}/log/error.log) -gt 0 ]]; then
+              printf ":: some errors are detected during running release\n\n"
               cat ${CIRCLE_ARTIFACTS}/log/error.log
               exit 1
+            else
+              printf ":: no errors are found in release\n\n"
             fi
 
   build_centos7:
@@ -376,7 +387,7 @@ jobs:
           command: |
             BAZE="$(cat "${HOME}/2600hz/the_app/.base_branch")"
             if [ -n "$BAZE" ]; then
-              echo -e "\n\nexport BASE_BRANCH=$BAZE" >> $BASH_ENV
+              printf "\n\nexport BASE_BRANCH=$BAZE\n" | tee -a $BASH_ENV
             else
               echo "add base branch name of main Kazoo repo (like origin/master) to '.base_branch' in your application root directory"
               exit 1
@@ -386,13 +397,14 @@ jobs:
           command: |
             APP_DASH=${CIRCLE_PROJECT_REPONAME#kazoo-}
             APP=${APP_DASH/-/_}
-            echo -e "export KAZOO_APP=${APP}\n" >> $BASH_ENV
-            echo -e "export KAZOO_ROOT=${HOME}/2600hz/kazoo" >> $BASH_ENV
-            echo -e "export APP_PATH=applications/${APP}\n\n" >> $BASH_ENV
+            printf "export KAZOO_APP=${APP}\n" | tee -a $BASH_ENV
+            printf "export KAZOO_ROOT=${HOME}/2600hz/kazoo\n" | tee -a $BASH_ENV
+            printf "export APP_PATH=applications/${APP}\n\n" | tee -a $BASH_ENV
       - run:
           name: Displaying environment information
           command: |
-            echo ":: behold, running ci tests for application: $KAZOO_APP"
+            echo ":: behold, running build step for application: $KAZOO_APP"
+            echo "KAZOO_APP: $KAZOO_APP"
             echo "KAZOO_ROOT: $KAZOO_ROOT"
             echo "APP_PATH: $APP_PATH"
             echo "BASE_BRANCH: $BASE_BRANCH"
@@ -400,7 +412,10 @@ jobs:
           name: Cloning core repository
           command: |
             if [ ! -d ${KAZOO_ROOT} ]; then
+              echo ":: Cloning core repository to $KAZOO_ROOT"
               git clone https://github.com/2600hz/kazoo $KAZOO_ROOT
+            else
+              echo ":: Core repository is already cloned"
             fi
       - run:
           name: Running core setup script
@@ -415,13 +430,12 @@ jobs:
             if [ x"$(cat $KAZOO_ROOT/.git/.kz_deps_hash)" = x"$deps_hash" ]; then
               touch "$KAZOO_ROOT/make/.deps.mk.$deps_hash"
             fi
-            echo -n $(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1) > "$KAZOO_ROOT/.git/.kz_deps_hash"
+            (echo -n $(md5sum $KAZOO_ROOT/make/deps.mk | cut -d" " -f1) | tee "$KAZOO_ROOT/.git/.kz_deps_hash") && echo
+            md5sum $KAZOO_ROOT/make/deps.mk
+            ls -al $KAZOO_ROOT/make
       - run:
           name: Making dependencies
-          command: |
-            md5sum $KAZOO_ROOT/make/deps.mk || true
-            ls -al $KAZOO_ROOT/make || true
-            make -C ${KAZOO_ROOT} deps
+          command: make -C ${KAZOO_ROOT} deps
       - save_cache:
           key: deps-centos-v1-{{ checksum "~/2600hz/kazoo/make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
           paths:
@@ -434,11 +448,9 @@ jobs:
             VERSION=$(./version)
             RELEASE=$(./release)
             PACKAGE_NAME=$(./package_name)
-            echo "export PACKAGE_NAME=${PACKAGE_NAME}" >> $BASH_ENV
-            echo "export VERSION=${VERSION}" >> $BASH_ENV
-            echo "export RELEASE=${RELEASE}" >> $BASH_ENV
-            PACKAGE_NAME=$(./package_name)
-            echo "export PACKAGE_NAME=${PACKAGE_NAME}" >> $BASH_ENV
+            echo "export PACKAGE_NAME=${PACKAGE_NAME}" | tee -a $BASH_ENV
+            echo "export VERSION=${VERSION}" | tee -a $BASH_ENV
+            echo "export RELEASE=${RELEASE}" | tee -a $BASH_ENV
             echo "build version for ${PACKAGE_NAME} version: ${VERSION} release: ${RELEASE}"
       - run:
           name: Building release
