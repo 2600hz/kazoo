@@ -199,10 +199,9 @@ handle_cast({'get_originate_action'}, #state{originate_req=JObj
                                             ,node=Node
                                             }=State) ->
     gen_listener:cast(self(), {'build_originate_args'}),
-    ApplicationName = kz_json:get_value(<<"Application-Name">>, JObj),
-    Action = get_originate_action(ApplicationName, JObj),
     UseNode = maybe_update_node(JObj, Node),
-    lager:debug("maybe updating node from ~s to ~s", [Node, UseNode]),
+    ApplicationName = kz_json:get_value(<<"Application-Name">>, JObj),
+    Action = get_originate_action(ApplicationName, JObj, UseNode),
     lager:debug("originate action: ~s", [Action]),
     {'noreply', State#state{action=Action
                            ,app=ApplicationName
@@ -393,18 +392,32 @@ code_change(_OldVsn, State, _Extra) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_originate_action(kz_term:ne_binary(), kz_json:object()) -> kz_term:ne_binary().
-get_originate_action(<<"fax">>, JObj) ->
+-spec cache_fax_file(kz_term:ne_binary(), node()) -> {'ok' | 'error', kz_term:ne_binary()}.
+cache_fax_file(File, Node) ->
+    Self = self(),
+    Fun = fun(Res, Reply) ->
+                  lager:debug("cache fax file result : ~p", [{Res, Reply}]),
+                  Self ! {cache_fax_file, {Res, Reply}}
+          end,
+    {ok, JobId} = freeswitch:bgapi(Node, 'http_get', <<"{prefetch=true}", File/binary>>, Fun),
+    lager:debug("waiting for cache fax file result ~s", [JobId]),
+    receive
+        {cache_fax_file, Reply} -> Reply
+    end.
+
+-spec get_originate_action(kz_term:ne_binary(), kz_json:object(), node()) -> kz_term:ne_binary().
+get_originate_action(<<"fax">>, JObj, Node) ->
     lager:debug("got originate with action fax"),
     Data = kz_json:get_value(<<"Application-Data">>, JObj),
-    <<"&txfax(${http_get(", Data/binary, ")})">>;
-get_originate_action(<<"transfer">>, JObj) ->
+    {'ok', File} = cache_fax_file(Data, Node),
+    <<"&txfax(", File/binary, ")">>;
+get_originate_action(<<"transfer">>, JObj, _Node) ->
     get_transfer_action(JObj, kz_json:get_value([<<"Application-Data">>, <<"Route">>], JObj));
-get_originate_action(<<"bridge">>, JObj) ->
+get_originate_action(<<"bridge">>, JObj, _Node) ->
     lager:debug("got originate with action bridge"),
     CallId = kz_json:get_binary_value(<<"Existing-Call-ID">>, JObj),
     intercept_unbridged_only(CallId, JObj);
-get_originate_action(<<"eavesdrop">>, JObj) ->
+get_originate_action(<<"eavesdrop">>, JObj, _Node) ->
     lager:debug("got originate with action eavesdrop"),
     EavesdropCallId = kz_json:get_binary_value(<<"Eavesdrop-Call-ID">>, JObj),
     case ecallmgr_fs_channel:node(EavesdropCallId) of
@@ -415,7 +428,7 @@ get_originate_action(<<"eavesdrop">>, JObj) ->
             gen_listener:cast(self(), {'maybe_update_node', N}),
             get_eavesdrop_action(JObj)
     end;
-get_originate_action(_, _) ->
+get_originate_action(_, _, _) ->
     lager:debug("got originate with action park"),
     ?ORIGINATE_PARK.
 
@@ -463,7 +476,9 @@ maybe_update_node(JObj, Node) ->
         CallId ->
             case ecallmgr_fs_channel:node(CallId) of
                 {'error', _} -> Node;
-                {'ok', N} -> N
+                {'ok', Node} -> Node;
+                {'ok', N} -> lager:debug("updating node from ~s to ~s", [Node, N]),
+                             N
             end
     end.
 
