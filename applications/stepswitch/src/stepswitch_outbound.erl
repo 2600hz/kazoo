@@ -230,16 +230,31 @@ create_loopback_endpoint(Props, OffnetReq) ->
     {CIDNum, CIDName} = local_originate_caller_id(OffnetReq),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     Number = knm_number_options:number(Props),
-    AccountId = knm_number_options:account_id(Props),
-    Realm = get_account_realm(AccountId),
+    TargetAccountId = knm_number_options:account_id(Props),
+    TargetResellerId = kz_services_reseller:get_id(TargetAccountId),
+    TargetRealm = get_account_realm(TargetAccountId),
+    OriginalAccountId = kapi_offnet_resource:account_id(OffnetReq),
+    OriginalResellerId = kz_services_reseller:get_id(OriginalAccountId),
+    FromRealm = get_account_realm(OriginalAccountId),
     CCVs = kz_json:from_list(
-             [{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", Realm/binary>>}
-             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, AccountId}
+             [{<<"Account-ID">>, OriginalAccountId}
+             ,{<<"Reseller-ID">>, OriginalResellerId}
+             ,{<<"Realm">>, FromRealm}
+             ,{<<"Resource-ID">>, TargetAccountId}
+             ,{<<"Resource-Type">>, <<"onnet-termination">>}
+             ,{<<"From-URI">>, <<CIDNum/binary, "@", FromRealm/binary>>}
+             ,{<<"Request-URI">>, <<Number/binary, "@", FromRealm/binary>>}
+             ,{<<"To-URI">>, <<Number/binary, "@", FromRealm/binary>>}
+
+             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception">>, <<Number/binary, "@", TargetRealm/binary>>}
+             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Account-ID">>, TargetAccountId}
+             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Reseller-ID">>, TargetResellerId}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, "true"}
              ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Resource-Type">>, <<"onnet-origination">>}
-             ,{<<"Resource-ID">>, AccountId}
-             ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", Realm/binary>>}
-             ,{<<"Resource-Type">>, <<"onnet-termination">>}
+             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "From-URI">>, <<CIDNum/binary, "@", TargetRealm/binary>>}
+             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Request-URI">>, <<Number/binary, "@", TargetRealm/binary>>}
+             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "To-URI">>, <<Number/binary, "@", TargetRealm/binary>>}
+             ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "SIP-Invite-Domain">>, TargetRealm}
              ]),
     CAVs = kapi_offnet_resource:custom_application_vars(OffnetReq),
     kz_json:from_list(
@@ -256,7 +271,7 @@ create_loopback_endpoint(Props, OffnetReq) ->
       ,{<<"Outbound-Caller-ID-Number">>, CIDNum}
       ,{<<"Route">>, Number}
       ,{<<"To-DID">>, Number}
-      ,{<<"To-Realm">>, Realm}
+      ,{<<"To-Realm">>, TargetRealm}
       ]).
 %%------------------------------------------------------------------------------
 %% @doc
