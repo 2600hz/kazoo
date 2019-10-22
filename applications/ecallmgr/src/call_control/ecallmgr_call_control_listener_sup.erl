@@ -69,8 +69,4 @@ control_q(Map) ->
     lager:debug("fs call control sup control_q returning  ~p, ~p , ~p", [ControlP, Q, Channel]),
     Map#{control_q => Q
         ,channel => Channel
-        ,init_fun => fun(#{channel := C}) ->
-                             kz_amqp_channel:consumer_channel(C)
-                     end
-        ,exit_fun => fun(#{}) -> 'ok' end
         }.

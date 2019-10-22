@@ -188,8 +188,10 @@ init_control(Pid, #{node := Node
                    ,callback := Fun
                    ,fetch_id := FetchId
                    ,control_q := ControlQ
+                   ,channel := Channel
                    }=Payload) ->
     proc_lib:init_ack(Pid, {'ok', self()}),
+    kz_amqp_channel:consumer_channel(Channel),
     bind(Node, CallId),
     try Fun(Payload) of
         {'ok', #{controller_q := ControllerQ
@@ -223,8 +225,10 @@ init_control(Pid, #{node := Node
                    ,controller_q := ControllerQ
                    ,control_q := ControlQ
                    ,initial_ccvs := CCVs
+                   ,channel := Channel
                    }) ->
     proc_lib:init_ack(Pid, {'ok', self()}),
+    kz_amqp_channel:consumer_channel(Channel),
     bind(Node, CallId),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), 'sanity_check'),
     State = #state{node=Node
