@@ -136,7 +136,7 @@ metapackage:
       package: kazoo-application-pivot
     -
       name: meta-kazoo-applications
-      type: required
+      type: related
       branch: "4.3"
       package: kazoo-application-pusher
     -
