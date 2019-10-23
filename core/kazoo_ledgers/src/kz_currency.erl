@@ -39,8 +39,8 @@
 
 -type units() :: integer().
 -type dollars() :: number().
--type available_units_return() :: {'ok', units()} | {'error', any()}.
--type available_dollars_return() :: {'ok', dollars()} | {'error', any()}.
+-type available_units_return() :: {'ok', units()} | kz_datamgr:data_error().
+-type available_dollars_return() :: {'ok', dollars()} | kz_datamgr:data_error().
 -export_type([units/0
              ,dollars/0
              ,available_units_return/0

@@ -231,7 +231,7 @@ rollover_accounts() ->
                                    {pos_integer(), pos_integer()}.
 rollover_account_fold(Account, {Current, Total}) ->
     io:format("rollover accounts (~p/~p) '~s'~n", [Current, Total, Account]),
-    _ = rollover_account(Account),
+    rollover_account(Account),
     {Current + 1, Total}.
 
 %%------------------------------------------------------------------------------

@@ -368,9 +368,9 @@ migrate_legacy_rollover(Account, Options, Year, Month) ->
 %% @doc given the current Year/Month, rollover last month's ledgers
 %% @end
 %%------------------------------------------------------------------------------
--spec rollover(kz_term:ne_binary()) -> {'ok', kz_ledger:ledger()} |
-                                       {'error', any()}.
-rollover(Account) ->
+-spec rollover(kz_term:ne_binary()) ->
+                      kz_currency:available_units_return().
+rollover(<<Account/binary>>) ->
     {Year, Month, _} = erlang:date(),
     rollover(Account, Year, Month).
 
@@ -378,23 +378,23 @@ rollover(Account) ->
 %% @doc rollover the previous MODBs ledgers into the given year/month
 %% @end
 %%------------------------------------------------------------------------------
--spec rollover(kz_term:ne_binary(),  kz_time:year(), kz_time:month()) ->
-                      {'ok', kz_ledger:ledger()} |
-                      {'error', any()}.
-rollover(Account, Year, Month) ->
+-spec rollover(kz_term:ne_binary(), kz_time:year(), kz_time:month()) ->
+                      kz_currency:available_units_return().
+rollover(<<Account/binary>>, Year, Month) ->
     MODB = kzd_accounts:format_account_id(Account, Year, Month),
 
-    case should_rollover_monthly_balance() of
-        'true' ->
-            rollover_past_available_units(MODB, Year, Month);
-        'false' ->
-            lager:debug("monthly balance rollover is disabled, assuming previous balance was 0"),
-            rollover(MODB, Year, Month, 0)
-    end.
+    should_rollover_monthly_balance(MODB, Year, Month, should_rollover_monthly_balance()).
 
--spec rollover_past_available_units(kz_term:ne_binary(),  kz_time:year(), kz_time:month()) ->
-                                           {'ok', kz_ledger:ledger()} |
-                                           {'error', any()}.
+-spec should_rollover_monthly_balance(kz_term:ne_binary(), kz_time:year(), kz_time:month(), boolean()) ->
+                                             kz_currency:available_units_return().
+should_rollover_monthly_balance(MODB, Year, Month, 'true') ->
+    rollover_past_available_units(MODB, Year, Month);
+should_rollover_monthly_balance(MODB, Year, Month, 'false') ->
+    lager:debug("monthly balance rollover is disabled, assuming previous balance was 0"),
+    rollover(MODB, Year, Month, 0).
+
+-spec rollover_past_available_units(kz_term:ne_binary(), kz_time:year(), kz_time:month()) ->
+                                           kz_currency:available_units_return().
 rollover_past_available_units(Account, Year, Month) ->
     {PreviousYear, PreviousMonth} =
         kazoo_modb_util:prev_year_month(Year, Month),
@@ -413,13 +413,15 @@ rollover_past_available_units(Account, Year, Month) ->
             rollover(Account, Year, Month, Total)
     end.
 
--spec rollover(kz_term:ne_binary(),  kz_time:year(), kz_time:month(), kz_currency:units()) ->
-                      kz_currency:available_units_return().
-rollover(Account, Year, Month, Total) ->
+-spec source_ledger_id(kz_time:year(), kz_time:month()) -> kz_term:ne_binary().
+source_ledger_id(Year, Month) ->
+    <<(kz_term:to_binary(Year))/binary,(kz_date:pad_month(Month))/binary>>.
+
+-spec build_rollover_ledger(kz_term:ne_binary(), kz_time:year(), kz_time:month(), kz_currency:units()) ->
+                                   kzd_ledgers:doc().
+build_rollover_ledger(Account, Year, Month, Total) ->
     Metadata = kz_json:from_list([{<<"automatic_description">>, 'true'}]),
-    Id = <<(kz_term:to_binary(Year))/binary
-          ,(kz_date:pad_month(Month))/binary
-         >>,
+    Id = source_ledger_id(Year, Month),
     Setters =
         props:filter_empty(
           [{fun kz_ledger:set_account/2, Account}
@@ -435,8 +437,13 @@ rollover(Account, Year, Month, Total) ->
           ,{fun kz_ledger:set_executor_module/2, ?MODULE}
           ]
          ),
-    LedgerJObj =
-        kz_ledger:to_json(kz_ledger:setters(Setters)),
+    kz_ledger:to_json(kz_ledger:setters(Setters)).
+
+-spec rollover(kz_term:ne_binary(), kz_time:year(), kz_time:month(), kz_currency:units()) ->
+                      kz_currency:available_units_return().
+rollover(Account, Year, Month, Total) ->
+    LedgerJObj = build_rollover_ledger(Account, Year, Month, Total),
+
     case kazoo_modb:save_doc(Account, LedgerJObj, Year, Month) of
         {'ok', _SavedJObj} ->
             lager:info("created ledger rollover for ~s ~p-~p"
