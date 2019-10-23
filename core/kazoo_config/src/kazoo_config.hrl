@@ -6,8 +6,8 @@
 -include_lib("kazoo_apps/include/kz_system_config.hrl").
 
 -define(CONFIG_FILE_ENV, "KAZOO_CONFIG").
--define(CONFIG_FILE, "/etc/kazoo_apps/config.ini").
--define(V4_CONFIG_FILE, "/etc/kazoo_apps/core/config.ini").
+-define(CONFIG_FILE, "/etc/kazoo/config.ini").
+-define(V4_CONFIG_FILE, "/etc/kazoo/core/config.ini").
 
 -define(APP, 'kazoo_config').
 -define(APP_NAME, (atom_to_binary(?APP, 'utf8'))).
