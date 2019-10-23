@@ -165,9 +165,11 @@ crawl_number_db(Db) ->
             timer:sleep(10 * ?MILLISECONDS_IN_SECOND)
     end.
 
+-spec maybe_edit(knm_numbers:ret()) -> knm_number:ret().
 maybe_edit(T0=#{todo := PNs}) ->
     lists:foldl(fun maybe_edit_fold/2, T0, PNs).
 
+-spec maybe_edit_fold(knm_phone_number:phone_number(), knm_number:ret()) -> knm_number:ret().
 maybe_edit_fold(PN, T) ->
     case knm_phone_number:state(PN) of
         ?NUMBER_STATE_DELETED -> remove(PN, T);
@@ -176,6 +178,7 @@ maybe_edit_fold(PN, T) ->
         _ -> T
     end.
 
+-spec remove(knm_phone_number:phone_number(), knm_number:ret()) -> knm_number:ret().
 remove(PN, T) ->
     lager:debug("purging '~s'", [knm_phone_number:number(PN)]),
     NewPN = knm_phone_number:delete(PN),
