@@ -300,10 +300,10 @@ post(Context, AccountId) ->
 -spec update_provisioner_account(cb_context:context()) -> 'ok'.
 update_provisioner_account(Context) ->
     _ = kz_process:spawn(fun provisioner_util:maybe_update_account/3
-                     ,[cb_context:account_id(Context)
-                      ,cb_context:auth_token(Context)
-                      ,cb_context:doc(Context)
-                      ]),
+                        ,[cb_context:account_id(Context)
+                         ,cb_context:auth_token(Context)
+                         ,cb_context:doc(Context)
+                         ]),
     'ok'.
 
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().

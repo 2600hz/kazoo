@@ -608,11 +608,11 @@ maybe_send_contact_list(Context) ->
     case cb_context:resp_status(Context) of
         'success' ->
             _ = kz_process:spawn(fun provisioner_util:maybe_send_contact_list/4
-                             ,[cb_context:account_id(Context)
-                              ,cb_context:auth_token(Context)
-                              ,cb_context:doc(Context)
-                              ,cb_context:fetch(Context, 'db_doc')
-                              ]),
+                                ,[cb_context:account_id(Context)
+                                 ,cb_context:auth_token(Context)
+                                 ,cb_context:doc(Context)
+                                 ,cb_context:fetch(Context, 'db_doc')
+                                 ]),
             'ok';
         _Status -> 'ok'
     end.

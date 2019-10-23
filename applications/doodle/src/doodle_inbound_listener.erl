@@ -146,9 +146,9 @@ terminate('shutdown', _State) ->
 terminate(Reason, #state{connection=Connection}) ->
     lager:error("inbound listener unexpected termination : ~p", [Reason]),
     kz_process:spawn(fun()->
-                          timer:sleep(10000),
-                          doodle_inbound_listener_sup:start_inbound_listener(Connection)
-                  end).
+                             timer:sleep(10000),
+                             doodle_inbound_listener_sup:start_inbound_listener(Connection)
+                     end).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.

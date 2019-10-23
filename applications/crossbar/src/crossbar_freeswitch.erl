@@ -215,8 +215,8 @@ setup_directory() ->
     Filter = kapps_config:get(?MOD_CONFIG_CAT, <<"files_to_include">>, ?DEFAULT_FS_INCLUDE_DIRECTORY_FILES),
     _ = [kz_os:make_dir(filename:join([WorkDir, Dir])) || {Dir, _} <- Files],
     _ = [kz_os:write_file(filename:join([WorkDir, D, xml_file_name(T)])
-                           ,xml_file_from_config(T)
-                           )
+                         ,xml_file_from_config(T)
+                         )
          || {D, T} <- Files,
             lists:member(kz_term:to_binary(T), Filter)
         ],
