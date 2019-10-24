@@ -14708,6 +14708,11 @@
       'description': Play older voicemail messages before new ones
       'type': boolean
       'x-support_level': supported
+    'operator_number':
+      'description': Alternate/override number to use when calling operator from voicemail
+      'oneOf':
+        - 'type': integer
+        - 'type': string
     'owner_id':
       'description': The ID of the user object that 'owns' the voicemail box
       'maxLength': 32

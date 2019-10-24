@@ -197,6 +197,7 @@
                  ,media_extension :: kz_term:api_ne_binary()
                  ,forward_type :: kz_term:api_ne_binary()
                  ,oldest_message_first = 'false' :: boolean()
+                 ,operator_number :: kz_term:api_ne_binary()
                  }).
 -type mailbox() :: #mailbox{}.
 
@@ -457,12 +458,13 @@ handle_compose_dtmf(#mailbox{keys=#keys{login=Login}}=Box, Call, Login) ->
     check_mailbox(Box, Call);
 handle_compose_dtmf(#mailbox{media_extension=Ext
                             ,keys=#keys{operator=Operator}
+                            ,operator_number=OpNum
                             }=Box
                    ,Call
                    ,Operator
                    ) ->
     lager:info("caller chose to ring the operator"),
-    case cf_util:get_operator_callflow(kapps_call:account_id(Call)) of
+    case cf_util:get_operator_callflow(kapps_call:account_id(Call), OpNum) of
         {'ok', Flow} -> {'branch', Flow};
         {'error', _R} -> record_voicemail(tmp_file(Ext), Box, Call)
     end;
@@ -1754,6 +1756,7 @@ get_mailbox_profile(Data, Call) ->
                     ,media_extension = kzd_voicemail_box:media_extension(MailboxJObj)
                     ,forward_type = ?DEFAULT_FORWARD_TYPE
                     ,oldest_message_first = kzd_vmboxes:oldest_message_first(MailboxJObj)
+                    ,operator_number = kzd_vmboxes:operator_number(MailboxJObj)
                     };
         {'error', R} ->
             lager:info("failed to load voicemail box ~s, ~p", [Id, R]),
@@ -1972,6 +1975,7 @@ review_recording(AttachmentName, AllowOperator
                                     ,record=Record
                                     ,operator=Operator
                                     }
+                         ,operator_number=OpNum
                          ,interdigit_timeout=Interdigit
                          }=Box
                 ,Call, Loop) ->
@@ -1997,7 +2001,7 @@ review_recording(AttachmentName, AllowOperator
             {'ok', 'save'};
         {'ok', Operator} when AllowOperator ->
             lager:info("caller chose to ring the operator"),
-            case cf_util:get_operator_callflow(kapps_call:account_id(Call)) of
+            case cf_util:get_operator_callflow(kapps_call:account_id(Call), OpNum) of
                 {'ok', Flow} -> {'branch', Flow};
                 {'error',_R} -> review_recording(AttachmentName, AllowOperator, Box, Call, Loop + 1)
             end;

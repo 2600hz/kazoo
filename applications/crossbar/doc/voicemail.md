@@ -38,6 +38,7 @@ Key | Description | Type | Default | Required | Support Level
 `notify_email_addresses.[]` |   | `string()` |   | `false` | `supported`
 `notify_email_addresses` | List of email addresses to send notifications to (in addition to owner's email, if any) | `array(string())` | `[]` | `false` | `supported`
 `oldest_message_first` | Play older voicemail messages before new ones | `boolean()` | `false` | `false` | `supported`
+`operator_number` | Alternate/override number to use when calling operator from voicemail | `integer() | string()` |   | `false` |  
 `owner_id` | The ID of the user object that 'owns' the voicemail box | `string(32)` |   | `false` | `supported`
 `pin` | The pin number for the voicemail box | `string(4..6)` |   | `false` | `supported`
 `require_pin` | Determines if a pin is required to check the voicemail from the users devices | `boolean()` | `false` | `false` | `supported`

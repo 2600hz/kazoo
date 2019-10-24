@@ -23,7 +23,7 @@
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
 -export([send_default_response/2]).
 
--export([get_operator_callflow/1]).
+-export([get_operator_callflow/1, get_operator_callflow/2]).
 -export([endpoint_id_by_sip_username/2]).
 -export([owner_ids_by_sip_username/2]).
 -export([apply_dialplan/2]).
@@ -377,9 +377,14 @@ get_endpoint_id_by_sip_username(AccountDb, Username) ->
 %%------------------------------------------------------------------------------
 -spec get_operator_callflow(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
                                                     kz_datamgr:data_error().
-get_operator_callflow(Account) ->
+get_operator_callflow(Account) -> get_operator_callflow(Account, 'undefined').
+
+-spec get_operator_callflow(kz_term:ne_binary(), kz_term:api_ne_binary()) -> {'ok', kz_json:object()} |
+                                                                             kz_datamgr:data_error().
+get_operator_callflow(Account, 'undefined') -> get_operator_callflow(Account, ?OPERATOR_KEY);
+get_operator_callflow(Account, OpNum) ->
     AccountDb = kz_util:format_account_db(Account),
-    Options = [{'key', ?OPERATOR_KEY}
+    Options = [{'key', OpNum}
               ,'include_docs'
               ,'first_when_multiple'
               ],
