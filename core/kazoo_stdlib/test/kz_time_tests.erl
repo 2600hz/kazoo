@@ -207,33 +207,33 @@ iso8601_offset_test_() ->
           || {Date, Offset, Expected} <- ThrowsTests
          ].
 
+-define(ISO8601_EXAMPLES, [{<<"2015-04-07T00:00:00">>, {{2015,4,7},{0,0,0}}}
+                          ,{<<"20150407T000000Z">>, {{2015,4,7},{0,0,0}}}
+                          ,{<<"2015-04-07T04:33:02+03:30">>, {{2015,4,7},{1,3,2}}}
+                          ,{<<"2015-04-07T04:33:02-05:00">>, {{2015,4,7},{9,33,2}}}
+                          ,{<<"2015-04-07T04:33:02-0500">>, {{2015,4,7},{9,33,2}}}
+                          ,{<<"20150407T043302-05">>, {{2015,4,7},{9,33,2}}}
+                          ]).
+-define(INVALID_ISO8601_EXAMPLES, [{<<"2015/04/07T00.00.00">>, 'invalid_date'}
+                                  ,{<<"2015-04-07T04.33.02-05:00">>, 'invalid_time'}
+                                  ,{<<"2015-04-07T04:33:02-5:0">>, 'invalid_offset'}
+                                  ,{<<"15-4-7T04:33:02-05:00">>, 'invalid_date'}
+                                  ,{<<"2015-04-07T04:3:2-5:00">>, 'invalid_time'}
+
+                                  ,{<<"201r-04-07T04:33:02-5:0">>, 'invalid_date'}
+                                  ,{<<"2015-04-0704:33:02-05:00">>, 'invalid_date'}
+                                  ,{<<"2015-04-07T0433:02-05:00">>, 'invalid_time'}
+                                  ]).
+
 from_iso8601_test_() ->
-    Tests = [{<<"2015-04-07T00:00:00">>, {{2015,4,7},{0,0,0}}}
-            ,{<<"20150407T000000Z">>, {{2015,4,7},{0,0,0}}}
-            ,{<<"2015-04-07T04:33:02+03:30">>, {{2015,4,7},{1,3,2}}}
-            ,{<<"2015-04-07T04:33:02-05:00">>, {{2015,4,7},{9,33,2}}}
-            ,{<<"2015-04-07T04:33:02-0500">>, {{2015,4,7},{9,33,2}}}
-            ,{<<"20150407T043302-05">>, {{2015,4,7},{9,33,2}}}
-            ],
-
-    ThrowsTests = [{<<"2015/04/07T00.00.00">>, 'invalid_date'}
-                  ,{<<"2015-04-07T04.33.02-05:00">>, 'invalid_time'}
-                  ,{<<"2015-04-07T04:33:02-5:0">>, 'invalid_offset'}
-                  ,{<<"15-4-7T04:33:02-05:00">>, 'invalid_date'}
-                  ,{<<"2015-04-07T04:3:2-5:00">>, 'invalid_time'}
-
-                  ,{<<"201r-04-07T04:33:02-5:0">>, 'invalid_date'}
-                  ,{<<"2015-04-0704:33:02-05:00">>, 'invalid_date'}
-                  ,{<<"2015-04-07T0433:02-05:00">>, 'invalid_time'}
-                  ],
     [{"parsing '" ++ kz_term:to_list(Date) ++ "'"
      ,[?_assertEqual(Expected, kz_time:from_iso8601(Date))]
      }
-     || {Date, Expected} <- Tests
+     || {Date, Expected} <- ?ISO8601_EXAMPLES
     ] ++ [{"parser should throws '" ++ kz_term:to_list(Expected) ++ "' for '" ++ kz_term:to_list(Date) ++ "'"
           ,[?_assertThrow({'error', Expected}, kz_time:from_iso8601(Date))]
           }
-          || {Date, Expected} <- ThrowsTests
+          || {Date, Expected} <- ?INVALID_ISO8601_EXAMPLES
          ].
 
 iso8601_time_test_() ->
@@ -245,6 +245,32 @@ iso8601_time_test_() ->
     [?_assertEqual(Expected, kz_time:iso8601_time(Date))
      || {Date, Expected} <- Tests
     ].
+
+is_iso8601_test_() ->
+    [?_assert(kz_time:is_iso8601(Date)) || {Date, _} <- ?ISO8601_EXAMPLES]
+        ++ [?_assertNot(kz_time:is_iso8601(Date)) || {Date, _} <- ?INVALID_ISO8601_EXAMPLES].
+
+-define(ISO8601_MS_EXAMPLES, [{<<"2019-10-09T18:36:13.000Z">>, <<"2019-10-09T18:36:13Z">>}
+                             ,{<<"2019-10-09T18:36:13.000-05:00">>, <<"2019-10-09T18:36:13-05:00">>}
+                             ,{<<"20191009T183613.000Z">>, <<"20191009T183613Z">>}
+                             ,{<<"20191009T183613.000-05">>, <<"20191009T183613-05">>}
+                             ]).
+
+trim_iso8601_ms_test_() ->
+    [?_assertEqual(kz_time:trim_iso8601_ms(ISO8601WithMS), ISO8601WithoutMS)
+     || {ISO8601WithMS, ISO8601WithoutMS} <- ?ISO8601_MS_EXAMPLES
+    ] ++ [?_assertEqual(kz_time:trim_iso8601_ms(<<"anything else">>), <<"anything else">>)].
+
+maybe_add_iso8601_ms_suffix_test_() ->
+    lists:foldl(fun({ISO8601WithMS, ISO8601WithoutMS}, Tests) ->
+                        [?_assertEqual(kz_time:maybe_add_iso8601_ms_suffix(ISO8601WithoutMS), ISO8601WithMS)
+                        ,?_assertEqual(kz_time:maybe_add_iso8601_ms_suffix(ISO8601WithMS), ISO8601WithMS)
+                         | Tests
+                        ]
+                end
+               ,[]
+               ,?ISO8601_MS_EXAMPLES
+               ).
 
 to_gregorian_seconds_test_() ->
     Datetime = {{2017,04,01}, {12,0,0}},
