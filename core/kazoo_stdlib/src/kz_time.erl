@@ -19,6 +19,9 @@
         ,iso8601/1, iso8601/2
         ,iso8601_time/1
         ,from_iso8601/1
+        ,is_iso8601/1
+        ,trim_iso8601_ms/1
+        ,maybe_add_iso8601_ms_suffix/1
         ,pretty_print_elapsed_s/1
         ,decr_timeout/2, decr_timeout/3
         ,microseconds_to_seconds/1
@@ -400,6 +403,49 @@ from_iso8601(MaybeDate) ->
 %%------------------------------------------------------------------------------
 -spec from_iso8601(date(), {time(), integer()}) -> datetime().
 from_iso8601(Date, {Time, Offset}) -> adjust_utc_datetime({Date, Time}, Offset).
+
+%%------------------------------------------------------------------------------
+%% @doc Return 'true' if the input is an ISO 8601 datetime binary.
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_iso8601(any()) -> boolean().
+is_iso8601(MaybeISO8601) ->
+    try from_iso8601(trim_iso8601_ms(MaybeISO8601)) of
+        _ -> 'true'
+    catch
+        'throw':{'error', _} -> 'false'
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Remove the milliseconds suffix from ISO8601 datetimes of the formats:
+%%
+%% `2019-10-09T18:36:13.000Z'
+%% `20191009T183613.000Z'
+%% @end
+%%------------------------------------------------------------------------------
+-spec trim_iso8601_ms(kz_term:ne_binary()) -> kz_term:ne_binary().
+trim_iso8601_ms(<<NonMS:15/binary, ".", _:3/binary, TzOffset/binary>>) ->
+    <<NonMS/binary, TzOffset/binary>>;
+trim_iso8601_ms(<<NonMS:19/binary, ".", _:3/binary, TzOffset/binary>>) ->
+    <<NonMS/binary, TzOffset/binary>>;
+trim_iso8601_ms(ISO8601) -> ISO8601.
+
+%%------------------------------------------------------------------------------
+%% @doc Add the milliseconds suffix to ISO8601 datetimes of the formats:
+%%
+%% `2019-10-09T18:36:13Z'
+%% `20191009T183613Z'
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_add_iso8601_ms_suffix(kz_term:ne_binary()) -> kz_term:ne_binary().
+maybe_add_iso8601_ms_suffix(<<_:19/binary, ".", _:3/binary, _/binary>>=ISO8601) ->
+    ISO8601;
+maybe_add_iso8601_ms_suffix(<<_:15/binary, ".", _:3/binary, _/binary>>=ISO8601) ->
+    ISO8601;
+maybe_add_iso8601_ms_suffix(<<Date:10/binary, "T", Time:8/binary, TzOffset/binary>>) ->
+    <<Date/binary, "T", Time/binary, ".000", TzOffset/binary>>;
+maybe_add_iso8601_ms_suffix(<<Date:8/binary, "T", Time:6/binary, TzOffset/binary>>) ->
+    <<Date/binary, "T", Time/binary, ".000", TzOffset/binary>>.
 
 %%------------------------------------------------------------------------------
 %% @doc Apply the adjustment to the UTC Timestamp.
