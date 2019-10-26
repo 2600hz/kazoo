@@ -41,6 +41,7 @@
 -export([redirect/2
         ,redirect/3
         ,redirect_to_node/3
+        ,redirect_to_node_eavesdrop/3
         ]).
 -export([answer/1, answer_now/1
         ,hangup/1, hangup/2
@@ -793,12 +794,27 @@ redirect_to_node(Contact, Node, Call) ->
     lager:debug("redirect ~s to ~s", [Contact, Node]),
     Command = [{<<"Redirect-Contact">>, Contact}
               ,{<<"Redirect-Node">>, Node}
+              ,{<<"Application-Name">>, <<"redirect">>}
+              ],
+    send_command(Command, Call),
+    timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
+    'ok'.
+
+%%------------------------------------------------------------------------------
+%% @doc Create a redirect request to Node for eavesdrop.
+%% @end
+%%------------------------------------------------------------------------------
+-spec redirect_to_node_eavesdrop(kz_term:ne_binary(), kz_term:api_binary(), kapps_call:call()) -> 'ok'.
+redirect_to_node_eavesdrop(Contact, Node, Call) ->
+    lager:debug("redirect ~s to ~s", [Contact, Node]),
+    Command = [{<<"Redirect-Contact">>, Contact}
               ,{<<"Redirect-Server">>, Node}
               ,{<<"Application-Name">>, <<"redirect">>}
               ],
     send_command(Command, Call),
     timer:sleep(2 * ?MILLISECONDS_IN_SECOND),
     'ok'.
+
 
 %%------------------------------------------------------------------------------
 %% @doc
