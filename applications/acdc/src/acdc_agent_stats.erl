@@ -339,26 +339,23 @@ status_match_builder_fold(_, _, Acc) -> Acc.
 
 -spec query_statuses(kz_term:ne_binary(), kz_term:ne_binary(), ets:match_spec(), pos_integer() | 'no_limit') -> 'ok'.
 query_statuses(RespQ, MsgId, Match, Limit) ->
-    case ets:select(status_table_id(), Match) of
-        [] ->
-            lager:debug("no stats found, sorry ~s", [RespQ]),
-            Resp = [{<<"Error-Reason">>, <<"No agents found">>}
-                   ,{<<"Msg-ID">>, MsgId}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ],
-            kapi_acdc_stats:publish_status_err(RespQ, Resp);
-        Stats ->
-            QueryResults = lists:foldl(fun query_status_fold/2, kz_json:new(), Stats),
-            TrimmedResults = kz_json:map(fun(A, B) ->
-                                                 {A, trim_query_statuses(B, Limit)}
-                                         end, QueryResults),
+    Stats = ets:select(status_table_id(), Match),
 
-            Resp = [{<<"Agents">>, TrimmedResults}
-                   ,{<<"Msg-ID">>, MsgId}
-                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ],
-            kapi_acdc_stats:publish_status_resp(RespQ, Resp)
-    end.
+    case Stats of
+        [] -> lager:debug("no stats found (requester: ~s)", [RespQ]);
+        _ -> 'ok'
+    end,
+
+    QueryResults = lists:foldl(fun query_status_fold/2, kz_json:new(), Stats),
+    TrimmedResults = kz_json:map(fun(A, B) ->
+                                         {A, trim_query_statuses(B, Limit)}
+                                 end, QueryResults),
+
+    Resp = [{<<"Agents">>, TrimmedResults}
+           ,{<<"Msg-ID">>, MsgId}
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    kapi_acdc_stats:publish_status_resp(RespQ, Resp).
 
 -spec trim_query_statuses(kz_json:object(), pos_integer() | 'no_limit') -> kz_json:object().
 trim_query_statuses(Statuses, Limit) ->
