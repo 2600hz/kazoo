@@ -224,13 +224,13 @@ oldest_message_first(Doc, Default) ->
 set_oldest_message_first(Doc, OldestMessageFirst) ->
     kz_json:set_value([<<"oldest_message_first">>], OldestMessageFirst, Doc).
 
--spec operator_number(doc()) -> kz_term:api_binary().
+-spec operator_number(doc()) -> kz_json:api_json_term().
 operator_number(Doc) ->
     operator_number(Doc, 'undefined').
 
--spec operator_number(doc(), Default) -> binary() | Default.
+-spec operator_number(doc(), Default) -> kz_json:json_term() | Default.
 operator_number(Doc, Default) ->
-    kz_json:get_binary_value([<<"operator_number">>], Doc, Default).
+    kz_json:get_ne_value([<<"operator_number">>], Doc, Default).
 
 -spec set_operator_number(doc(), binary()) -> doc().
 set_operator_number(Doc, OperatorNumber) ->

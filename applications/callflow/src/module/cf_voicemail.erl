@@ -1756,8 +1756,7 @@ get_mailbox_profile(Data, Call) ->
                     ,media_extension = kzd_voicemail_box:media_extension(MailboxJObj)
                     ,forward_type = ?DEFAULT_FORWARD_TYPE
                     ,oldest_message_first = kzd_vmboxes:oldest_message_first(MailboxJObj)
-                    ,operator_number =
-                         kz_json:get_ne_value(<<"operator_number">>, MailboxJObj)
+                    ,operator_number = kzd_vmboxes:operator_number(MailboxJObj)
                     };
         {'error', R} ->
             lager:info("failed to load voicemail box ~s, ~p", [Id, R]),
