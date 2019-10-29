@@ -11,7 +11,7 @@
 %%%-----------------------------------------------------------------------------
 -module(knm_numbers).
 
--export([todo/1
+-export([todo/1, set_todo/2
         ,options/1, options/2
         ]).
 -export([ok/2, ko/3]).
@@ -99,6 +99,10 @@ num(N) ->
 %%------------------------------------------------------------------------------
 -spec todo(t()) -> nums() | oks().
 todo(#{'todo' := ToDo}) -> ToDo.
+
+-spec set_todo(t(), nums() | oks()) -> t().
+set_todo(T, ToDo) ->
+    T#{'todo' => ToDo}.
 
 %%------------------------------------------------------------------------------
 %% @doc Set of numbers' `assigned_to' fields.

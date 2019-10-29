@@ -59,6 +59,21 @@
 
 -export([fix_account_db_numbers/1]).
 
+-export([copy_numbers_from_dbs_to_assigned_accounts/1
+        ,copy_number_from_db_to_assigned_account/1
+        ]).
+
+-export([copy_numbers_from_accountdb_to_numbdbs/2
+        ,copy_number_from_accountdb_to_numbdb/2
+        ]).
+
+-export([fix_numbers_apps_in_accountdb/2
+        ,fix_numbers_apps_in_numbdb/1
+        ]).
+
+-export([fix_numbers/2
+        ,fix_number/2
+        ]).
 
 -export([migrate/0
         ,migrate_unassigned_numbers/0, migrate_unassigned_numbers/1
@@ -488,11 +503,16 @@ apps_fix_state(Dbs) ->
 %% @private
 -spec fix_apps_for_account(loop_state(), kz_term:ne_binary()) -> loop_state().
 fix_apps_for_account(State, AccountDb) ->
+    fix_apps_for_account(State, AccountDb, []).
+
+-spec fix_apps_for_account(loop_state(), kz_term:ne_binary(), kz_term:proplist()) -> loop_state().
+fix_apps_for_account(State, AccountDb, ViewOpts) ->
     ViewOptions = [{'limit', kz_datamgr:max_bulk_read()}
+                   | ViewOpts
                   ],
     View = <<"numbers/list_by_app">>,
     Funs = [fun check_app_usage/2
-           ,fun open_docs_from_dbs/2
+           ,fun open_docs_from_db/2
            ,fun apply_apps_fixers/2
            ,fun save_to_dbs/2
            ],
@@ -523,12 +543,17 @@ fix_apps_for_single_number_db(NumberDb) ->
 %% @private
 -spec fix_apps_for_number_db(loop_state(), kz_term:ne_binary()) -> loop_state().
 fix_apps_for_number_db(State, NumberDb) ->
+    fix_apps_for_number_db(State, NumberDb, []).
+
+-spec fix_apps_for_number_db(loop_state(), kz_term:ne_binary(), kz_term:proplist()) -> loop_state().
+fix_apps_for_number_db(State, NumberDb, ViewOpts) ->
     ViewOptions = [{'limit', kz_datamgr:max_bulk_read()}
+                   | ViewOpts
                   ],
     View = <<"numbers/list_assigned_and_app">>,
     Funs = [fun split_by_list_assigned_and_app/2
            ,fun check_app_usage/2
-           ,fun open_docs_from_dbs/2
+           ,fun open_docs_from_db/2
            ,fun apply_apps_fixers/2
            ,fun save_to_dbs/2
            ],
@@ -573,7 +598,7 @@ fix_apps_in_number_dbs_for_account(State, NumberDb, Total, [AccountId|AccountIds
     View = <<"numbers/list_assigned_and_app">>,
     Funs = [fun split_by_list_assigned_and_app/2
            ,fun check_app_usage/2
-           ,fun open_docs_from_dbs/2
+           ,fun open_docs_from_db/2
            ,fun apply_apps_fixers/2
            ,fun save_to_dbs/2
            ],
@@ -636,6 +661,132 @@ do_remove_wrong_assigned_from_account(#{todo := JObjs}=State, AccountDb) ->
     State#{todo => []}.
 
 %%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec copy_numbers_from_dbs_to_assigned_accounts(kz_term:ne_binaries()) -> 'ok'.
+copy_numbers_from_dbs_to_assigned_accounts(Numbers) ->
+    Numbers1 = knm_converters:normalize(Numbers),
+    DbMap = group_numbers_by_db(Numbers1),
+    NumberDbs = maps:keys(DbMap),
+
+    ?SUP_LOG_DEBUG("::: start copying ~b numbers doc from ~b number dbs to account dbs"
+                  ,[length(Numbers1), length(NumberDbs)]
+                  ),
+
+    loop_dbs(numdbs_to_accounts_state(NumberDbs)
+            ,[fun(StateAcc, Db) ->
+                      open_docs_from_db(StateAcc#{todo => maps:get(Db, DbMap, [])}, Db)
+              end
+             ,fun delete_revision/2
+             ,fun split_docs_by_assigned_to/2
+             ,fun save_to_dbs/2
+             ]
+            ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec copy_number_from_db_to_assigned_account(kz_term:ne_binary()) -> 'ok'.
+copy_number_from_db_to_assigned_account(Num) ->
+    copy_numbers_from_dbs_to_assigned_accounts([Num]).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec copy_numbers_from_accountdb_to_numbdbs(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
+copy_numbers_from_accountdb_to_numbdbs(Account, Numbers) ->
+    Numbers1 = knm_converters:normalize(Numbers),
+
+    ?SUP_LOG_DEBUG("::: start copying ~b numbers doc from account db to number dbs"
+                  ,[length(Numbers1)]
+                  ),
+
+    loop_dbs(accounts_to_numdbs_state([kz_util:format_account_id(Account)])
+            ,[fun(StateAcc, Db) ->
+                      open_docs_from_db(StateAcc#{todo => Numbers1}, Db)
+              end
+             ,fun delete_revision/2
+             ,fun split_docs_by_number_dbs/2
+             ,fun save_to_dbs/2
+             ]
+            ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec copy_number_from_accountdb_to_numbdb(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+copy_number_from_accountdb_to_numbdb(Account, Number) ->
+    copy_numbers_from_accountdb_to_numbdbs(Account, [Number]).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec fix_numbers_apps_in_accountdb(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
+fix_numbers_apps_in_accountdb(Account, Numbers) ->
+    Numbers1 = knm_converters:normalize(Numbers),
+
+    ?SUP_LOG_DEBUG("::: start fixing ~b numbers doc used_by field in account db"
+                  ,[length(Numbers1)]
+                  ),
+
+    loop_dbs(apps_fix_state([kz_util:format_account_id(Account)])
+            ,[fun(StateAcc, Db) -> open_docs_from_db(StateAcc#{todo => Numbers1}, Db) end
+             ,fun fix_apps_usage/2
+             ,fun save_to_dbs/2
+             ]
+            ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec fix_numbers_apps_in_numbdb(kz_term:ne_binaries()) -> 'ok'.
+fix_numbers_apps_in_numbdb(Numbers) ->
+    Numbers1 = knm_converters:normalize(Numbers),
+    DbMap = group_numbers_by_db(Numbers1),
+    NumberDbs = maps:keys(DbMap),
+
+    ?SUP_LOG_DEBUG("::: start fixing ~b numbers doc used_by field in ~b number dbs"
+                  ,[length(Numbers1), length(NumberDbs)]
+                  ),
+
+    loop_dbs(apps_fix_state(NumberDbs)
+            ,[fun(StateAcc, Db) ->
+                      open_docs_from_db(StateAcc#{todo => maps:get(Db, DbMap, [])}, Db)
+              end
+             ,fun split_docs_by_assigned_to/2
+             ,fun fix_apps_usage/2
+             ,fun save_to_dbs/2
+             ]
+            ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec fix_numbers(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
+fix_numbers(Account, Numbers) ->
+    ?SUP_LOG_DEBUG(":::: fixing ~b numbers in account ~s, or not", [length(Numbers), Account]),
+    fix_numbers_apps_in_numbdb(Numbers),
+    copy_numbers_from_dbs_to_assigned_accounts(Numbers),
+    remove_wrong_assigned_from_single_accountdb(Account),
+    _ = kz_services:reconcile(Account),
+    'ok'.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec fix_number(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+fix_number(Account, Number) ->
+    fix_numbers(Account, [Number]).
+
+%%------------------------------------------------------------------------------
 %% @private
 %% @end
 %%------------------------------------------------------------------------------
@@ -649,7 +800,7 @@ loop_dbs_init() ->
 -type loop_db_funs() :: [loop_db_fun()].
 
 %% @private
--spec loop_dbs(loop_state(), loop_db_fun()) -> 'ok'.
+-spec loop_dbs(loop_state(), loop_db_fun() | loop_db_funs()) -> 'ok'.
 loop_dbs(Options, Fun) ->
     Dbs = lists:usort(maps:get('dbs', Options, [])),
     loop_dbs(maps:merge(loop_dbs_init(), Options#{dbs => Dbs})
@@ -659,16 +810,24 @@ loop_dbs(Options, Fun) ->
             ).
 
 %% @private
--spec loop_dbs(loop_state(), non_neg_integer(), non_neg_integer(), loop_db_fun()) -> 'ok'.
+-spec loop_dbs(loop_state(), non_neg_integer(), non_neg_integer(), loop_db_fun() | loop_db_funs()) -> 'ok'.
 loop_dbs(#{dbs := []}=State, _, _, _) ->
     report_loop_state(State);
-loop_dbs(#{dbs := [Db | Dbs]}=State, Total, SleepTime, Fun) ->
+loop_dbs(#{dbs := [Db | Dbs]}=State, Total, SleepTime, Funs) ->
     ?SUP_LOG_DEBUG("(~p/~p) processing '~s' database"
                   ,[length(Dbs) + 1, Total, Db]
                   ),
-    NewState = Fun(State#{dbs => Dbs}, Db),
+    NewState = apply_loop_db_funs(State#{dbs => Dbs}, Db, Funs),
     _ = timer:sleep(SleepTime),
-    loop_dbs(NewState, Total, SleepTime, Fun).
+    loop_dbs(NewState, Total, SleepTime, Funs).
+
+-spec apply_loop_db_funs(loop_state(), kz_term:ne_binary(), loop_db_fun() | loop_db_funs()) -> loop_state().
+apply_loop_db_funs(State, Db, Fun) when is_function(Fun, 2) ->
+    Fun(State, Db);
+apply_loop_db_funs(State, _, []) ->
+    State;
+apply_loop_db_funs(State, Db, [Fun|Funs]) ->
+    apply_loop_db_funs(Fun(State, Db), Db, Funs).
 
 -spec report_loop_state(loop_state()) -> 'ok'.
 report_loop_state(#{ko := KO}) when map_size(KO) > 0 ->
@@ -815,6 +974,21 @@ split_by_list_assigned_and_app(#{todo := Todos}=State, _Db) ->
     State#{todo => maps:to_list(lists:foldl(F, #{}, Todos))}.
 
 %%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec group_numbers_by_db(kz_term:ne_binaries()) -> map().
+group_numbers_by_db(Numbers) ->
+    group_numbers_by_db(Numbers, #{}).
+
+-spec group_numbers_by_db(kz_term:ne_binaries(), map()) -> map().
+group_numbers_by_db([], Acc) ->
+    Acc;
+group_numbers_by_db([Num|Numbers], Acc) ->
+    Db = knm_converters:to_db(Num),
+    group_numbers_by_db(Numbers, Acc#{Db => [Num|maps:get(Db, Acc, [])]}).
+
+%%------------------------------------------------------------------------------
 %% @private We don't save fixed apps to another db, it should always save to
 %% whatever db it reads from. So DONT group todo by {db, objects}!
 %%
@@ -866,6 +1040,54 @@ create_apps_fixer([JObj|JObjs], AppsUsing, Fixers) ->
     create_apps_fixer(JObjs, AppsUsing, maybe_fix_used_by(Number, NumUsedBy, UsedByApp, Fixers)).
 
 %%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec fix_apps_usage(loop_state(), kz_term:ne_binary()) -> loop_state().
+fix_apps_usage(#{todo := []}=State, _Db) ->
+    ?SUP_LOG_DEBUG("     no numbers to fix apps usage", []),
+    State;
+fix_apps_usage(#{todo := [{_AccountDb, _JObjs}|_]=Todos}=State, _NumberDb) ->
+    ?SUP_LOG_DEBUG("     fix apps usage for ~b numbers", [length(Todos)]),
+    fix_apps_usage_fold(State#{todo => []}, Todos);
+fix_apps_usage(#{todo := JObjs}=State, AccountDb) ->
+    ?SUP_LOG_DEBUG("     fix apps usage for ~b numbers", [length(JObjs)]),
+    fix_apps_usage_fold(State#{todo => []}, [{AccountDb, JObjs}]).
+
+-spec fix_apps_usage_fold(loop_state(), kz_term:proplist()) -> loop_state().
+fix_apps_usage_fold(State, []) ->
+    State;
+fix_apps_usage_fold(#{todo := Todo}=State
+                   ,[{AccountDbForEver, JObjs}|Rest]
+                   ) ->
+    Ids = [kz_doc:id(JObj) || JObj <- JObjs],
+    AppsUsing = get_account_dids_apps(AccountDbForEver, Ids),
+
+    FixedJObjs = do_fix_apps_usage(JObjs, AppsUsing, []),
+
+    fix_apps_usage_fold(State#{todo => Todo ++ FixedJObjs}, Rest).
+
+%% @private
+-spec do_fix_apps_usage(kz_json:objects(), map(), kz_json:objects()) -> kz_json:objects().
+do_fix_apps_usage([], _, Acc) ->
+    Acc;
+do_fix_apps_usage([JObj|JObjs], AppsUsing, Acc) ->
+    Number = kz_doc:id(JObj),
+    case {kz_json:get_value(<<"pvt_used_by">>, JObj)
+         ,maps:get(Number, AppsUsing, 'undefined')
+         }
+    of
+        {_YouAreWrongSir, 'undefined'} ->
+            NewAcc = [kz_json:delete_key(<<"pvt_used_by">>, JObj)|Acc],
+            do_fix_apps_usage(JObjs, AppsUsing, NewAcc);
+        {UsedBy, UsedBy} ->
+            do_fix_apps_usage(JObjs, AppsUsing, Acc);
+        {_YouAreWrongSir, UsedBy} ->
+            NewAcc = [kz_json:set_value(<<"pvt_used_by">>, UsedBy, JObj)|Acc],
+            do_fix_apps_usage(JObjs, AppsUsing, NewAcc)
+    end.
+
+%%------------------------------------------------------------------------------
 %% @private
 %% @end
 %%------------------------------------------------------------------------------
@@ -874,36 +1096,32 @@ apply_apps_fixers(#{todo := []}=State, _Db) ->
     ?SUP_LOG_DEBUG("     no numbers to fix apps usage", []),
     State;
 apply_apps_fixers(#{todo := Todos}=State, _Db) ->
-    apply_apps_fixers_fold(State#{todo => []}, Todos, #{}).
+    apply_apps_fixers_fold(State#{todo => []}, Todos).
 
 %% @private
--spec apply_apps_fixers_fold(loop_state(), kz_term:proplist(), map()) -> loop_state().
-apply_apps_fixers_fold(State, [], Acc) ->
-    State#{todo => maps:to_list(Acc)};
-apply_apps_fixers_fold(#{apps_fixers := AppsFixers}=State, [{Db, JObjs}|Rest], Acc) ->
-    ?SUP_LOG_DEBUG("     applying app usage fixes on ~b numbers for account ~s"
-                  ,[length(JObjs), kz_util:format_account_id(Db)]
+-spec apply_apps_fixers_fold(loop_state(), kz_term:proplist()) -> loop_state().
+apply_apps_fixers_fold(#{apps_fixers := AppsFixers}=State, JObjs) ->
+    ?SUP_LOG_DEBUG("     applying app usage fixes on ~b numbers"
+                  ,[length(JObjs)]
                   ),
     Todo = [(maps:get(kz_doc:id(JObj), AppsFixers, fun kz_term:identity/1))(JObj)
             || JObj <- JObjs
            ],
-    apply_apps_fixers_fold(State, Rest, Acc#{Db => Todo}).
+    State#{todo => Todo}.
 
 %%------------------------------------------------------------------------------
 %% @private
 %% @end
 %%------------------------------------------------------------------------------
--spec open_docs_from_dbs(loop_state(), kz_term:ne_binary()) -> loop_state().
-open_docs_from_dbs(#{todo := []}=State, _) ->
+-spec open_docs_from_db(loop_state(), kz_term:ne_binary()) -> loop_state().
+open_docs_from_db(#{todo := []}=State, _) ->
     State;
-open_docs_from_dbs(#{todo := Todos}=State, _Db) ->
-    open_docs_from_dbs_fold(State#{todo := []}, Todos, #{}).
+open_docs_from_db(#{todo := Todos}=State, Db) ->
+    open_docs_from_dbs_fold(State#{todo := []}, Todos, Db).
 
 %% @private
--spec open_docs_from_dbs_fold(loop_state(), kz_term:proplist(), map()) -> loop_state().
-open_docs_from_dbs_fold(State, [], Acc) ->
-    State#{todo => maps:to_list(Acc)};
-open_docs_from_dbs_fold(#{ko := KO}=State, [{Db, Ids}|Rest], Acc) ->
+-spec open_docs_from_dbs_fold(loop_state(), kz_term:proplist(), kz_term:ne_binary()) -> loop_state().
+open_docs_from_dbs_fold(#{ko := KO}=State, Ids, Db) ->
     ?SUP_LOG_DEBUG("     opening ~b documents from ~s", [length(Ids), Db]),
     case kz_datamgr:open_docs(Db, Ids) of
         {'ok', JObjs} ->
@@ -911,15 +1129,14 @@ open_docs_from_dbs_fold(#{ko := KO}=State, [{Db, Ids}|Rest], Acc) ->
                     || JObj <- JObjs,
                        kz_json:get_value(<<"error">>, JObjs) =:= 'undefined'
                    ],
-            open_docs_from_dbs_fold(State, Rest, Acc#{Db => Docs});
+            State#{todo => Docs};
         {'error', Reason} ->
             ?SUP_LOG_ERROR("       failed to open docs, skipping db: ~100p", [Reason]),
             Error = to_binary_data_error(Reason),
             DbKO = maps:get(Db, KO, #{}),
             DbFailed = maps:get(failed, DbKO, #{}),
             NewFailed = merge_error_num_ids(<<"open_doc-",Error/binary>>, Ids, DbFailed),
-            NewState = State#{ko => KO#{Db => add_failed_to_db_ko(DbKO, NewFailed)}},
-            open_docs_from_dbs_fold(NewState, Rest, Acc)
+            State#{ko => KO#{Db => add_failed_to_db_ko(DbKO, NewFailed)}}
     end.
 
 %%------------------------------------------------------------------------------
@@ -1244,11 +1461,9 @@ delete_used_by_fun() ->
 -spec fix_account_db_numbers(kz_term:ne_binary()) -> 'ok'.
 fix_account_db_numbers(Account) ->
     ?SUP_LOG_DEBUG(":::: fixing account ~s, or not", [Account]),
+    _ = fix_apps_in_number_dbs_for_single_account(Account),
     _ = copy_assigned_number_dbs_to_account(Account),
     _ = remove_wrong_assigned_from_single_accountdb(Account),
-
-    _ = fix_apps_for_single_account_db(Account),
-    _ = fix_apps_in_number_dbs_for_single_account(Account),
     _ = kz_services:reconcile(Account),
     'ok'.
 
