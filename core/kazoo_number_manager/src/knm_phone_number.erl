@@ -1534,7 +1534,7 @@ try_delete_from(GroupFun, T0, IgnoreDbNotFound) ->
                 knm_numbers:add_oks(PNs, T);
             (Db, PNs, T) ->
                 lager:debug("deleting from ~s", [Db]),
-                Nums = [kz_doc:id(to_json(PN)) || PN <- PNs],
+                Nums = [to_json(PN) || PN <- PNs],
                 case delete_docs(Db, Nums) of
                     {'ok', JObjs} ->
                         RetryF = fun(Db1, PNs1, Num, T1) ->

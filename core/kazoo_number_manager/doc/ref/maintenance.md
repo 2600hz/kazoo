@@ -19,6 +19,10 @@
 | `copy_assigned_number_dbs_to_account/1` | `(Account)` | |
 | `copy_number_dbs_to_accounts/0` |  | |
 | `copy_number_dbs_to_accounts/1` | `(NumberDbs)` | |
+| `copy_number_from_accountdb_to_numbdb/2` | `(Account,Number)` | |
+| `copy_number_from_db_to_assigned_account/1` | `(Num)` | |
+| `copy_numbers_from_accountdb_to_numbdbs/2` | `(Account,Numbers)` | |
+| `copy_numbers_from_dbs_to_assigned_accounts/1` | `(Numbers)` | |
 | `copy_single_account_to_number_dbs/1` | `(AccountId)` | |
 | `copy_single_assigned_number_db_to_account/2` | `(Account,NumberDb)` | |
 | `copy_single_number_db_to_accounts/1` | `(NumberDb)` | |
@@ -41,6 +45,10 @@
 | `fix_apps_for_single_number_db/1` | `(NumberDb)` | |
 | `fix_apps_in_number_dbs_for_accounts/1` | `(Accounts)` | |
 | `fix_apps_in_number_dbs_for_single_account/1` | `(Account)` | |
+| `fix_number/2` | `(Account,Number)` | |
+| `fix_numbers/2` | `(Account,Numbers)` | |
+| `fix_numbers_apps_in_accountdb/2` | `(Account,Numbers)` | |
+| `fix_numbers_apps_in_numbdb/1` | `(Numbers)` | |
 | `generate_js_classifiers/1` | `(FunMatchBlock)` | |
 | `generate_numbers/4` | `(Type,AccountId,StartingNumber,Quantity)` | |
 | `init_dbs/0` |  | |
