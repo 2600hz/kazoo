@@ -599,7 +599,10 @@ transition_numbers(PortReq) ->
 -spec app_used_by_portin(kz_term:ne_binary(), kz_json:object()) -> 'undefined' | list().
 app_used_by_portin(Numbers, JObj) ->
     NumbersObj = kzd_port_requests:numbers(JObj),
-    [{Num, kz_json:get_value([Num, ?USED_BY_KEY], NumbersObj)} || Num <- Numbers].
+    [{Num, kz_json:get_value([Num, ?USED_BY_KEY], NumbersObj)}
+     || Num <- Numbers,
+        kz_term:is_not_empty(kz_json:get_value([Num, ?USED_BY_KEY], NumbersObj))
+    ].
 
 reconcile_app_used_by(Numbers, JObj) ->
     AccountId = kz_doc:account_id(JObj),
@@ -624,7 +627,7 @@ log_wrong_app_in_portin(PortInApp, App, Num) ->
 -spec get_dids_for_app(kz_term:ne_binary(), list()) -> list().
 get_dids_for_app(AccountDb, Numbers) ->
     get_dids_for_app(AccountDb, Numbers, ?CALLFLOW_LIST, <<"callflow">>)
-    ++ get_dids_for_app(AccountDb, Numbers, ?TRUNKSTORE_LIST, <<"trunkstore">>).
+        ++ get_dids_for_app(AccountDb, Numbers, ?TRUNKSTORE_LIST, <<"trunkstore">>).
 
 -spec get_dids_for_app(kz_term:ne_binary(), list(), kz_term:ne_binary(), kz_term:ne_binary()) -> list().
 get_dids_for_app(AccountDb, Numbers, View, App) ->
