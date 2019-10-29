@@ -623,7 +623,7 @@ reconcile_app_used_by(Numbers, JObj) ->
               end
       end
      , NumAppUsage
-    ).
+     ).
 
 -spec log_wrong_app_in_portin(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | {'ok', kz_term:ne_binary()}.
 log_wrong_app_in_portin(App, App, _Num) -> 'ok';
