@@ -113,23 +113,18 @@
 %%------------------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    {'ok', DirJObj} = kz_datamgr:open_cache_doc(kapps_call:account_db(Call)
-                                               ,kz_json:get_ne_binary_value(<<"id">>, Data)
-                                               ),
+    {'ok', DirJObj} = kz_datamgr:open_cache_doc(kapps_call:account_db(Call), kz_doc:id(Data)),
     kapps_call_command:answer(Call),
 
-    case get_directory_listing(kapps_call:account_db(Call)
-                              ,kz_doc:id(DirJObj)
-                              )
-    of
+    case get_directory_listing(kapps_call:account_db(Call), kz_doc:id(DirJObj)) of
         {'ok', Users} ->
-            SortBy = get_sort_by(kz_json:get_value(<<"sort_by">>, DirJObj, <<"last_name">>)),
+            SortBy = get_sort_by(kzd_directories:sort_by(DirJObj, <<"last_name">>)),
             Users1 = sort_users(Users, SortBy),
             _ = log(Users1),
-            State = #directory{search_fields = get_search_fields(kz_json:get_value(<<"search_fields">>, DirJObj, <<"both">>))
-                              ,min_dtmf = kz_json:get_integer_value(<<"min_dtmf">>, DirJObj, 3)
-                              ,max_dtmf = kz_json:get_integer_value(<<"max_dtmf">>, DirJObj, 0)
-                              ,confirm_match = kz_json:is_true(<<"confirm_match">>, DirJObj, 'false')
+            State = #directory{search_fields = get_search_fields(kzd_directories:search_fields(DirJObj, <<"both">>))
+                              ,min_dtmf = kzd_directories:min_dtmf(DirJObj, 3)
+                              ,max_dtmf = kzd_directories:max_dtmf(DirJObj, 0)
+                              ,confirm_match = kzd_directories:confirm_match(DirJObj, 'false')
                               ,digits_collected = <<>>
                               ,users = Users1
                               },

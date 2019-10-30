@@ -18,6 +18,7 @@ Key | Description | Type | Default | Required | Support Level
 `max_dtmf` | Cap the number of DTMF characters collected from a caller, 0 for unlimited | `integer()` | `0` | `false` | `supported`
 `min_dtmf` | How many DTMF characters to collect from a caller before processing the directory | `integer()` | `3` | `false` | `supported`
 `name` | The name of the directory | `string(1..)` |   | `true` | `supported`
+`search_fields` | What user fields to search DTMF matches on | `string('first_name' | 'last_name' | 'both')` |   | `false` |  
 `sort_by` | What field to sort on in matching documents when a caller enters characters | `string('first_name' | 'last_name')` | `last_name` | `false` | `supported`
 `users.[]` |   | `string()` |   | `false` | `supported`
 `users` | The list of users associated with this directory | `array(string())` | `[]` | `false` | `supported`

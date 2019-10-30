@@ -37,6 +37,15 @@
             "support_level": "supported",
             "type": "string"
         },
+        "search_fields": {
+            "description": "What user fields to search DTMF matches on",
+            "enum": [
+                "first_name",
+                "last_name",
+                "both"
+            ],
+            "type": "string"
+        },
         "sort_by": {
             "default": "last_name",
             "description": "What field to sort on in matching documents when a caller enters characters",

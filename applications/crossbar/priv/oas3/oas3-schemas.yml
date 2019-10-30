@@ -4766,6 +4766,13 @@
       'minLength': 1
       'type': string
       'x-support_level': supported
+    'search_fields':
+      'description': What user fields to search DTMF matches on
+      'enum':
+        - first_name
+        - last_name
+        - both
+      'type': string
     'sort_by':
       'default': last_name
       'description': |-
