@@ -533,9 +533,9 @@ migrate() ->
 completed_port(PortReq) ->
     Numbers = kz_json:get_keys(kzd_port_requests:numbers(PortReq)),
     case transition_numbers(PortReq) of
-        {ok, Save} ->
+        {'ok', Save} ->
             reconcile_app_used_by(Numbers, PortReq),
-            {ok, Save};
+            {'ok', Save};
         Error -> Error
     end.
 
@@ -604,6 +604,7 @@ app_used_by_portin(Numbers, JObj) ->
         kz_term:is_not_empty(kz_json:get_value([Num, ?USED_BY_KEY], NumbersObj))
     ].
 
+-spec reconcile_app_used_by(kz_term:ne_binaries(), kz_json:object()) -> 'ok'.
 reconcile_app_used_by(Numbers, JObj) ->
     AccountId = kz_doc:account_id(JObj),
     AccountDb = kz_util:format_account_db(AccountId),
@@ -612,24 +613,23 @@ reconcile_app_used_by(Numbers, JObj) ->
     lager:debug("transitioning numbers ~p to active used by apps ~p portin usage ~p"
                ,[Numbers, AppUsedBy, PortInUsedBy]
                ),
-    _Ok=[log_wrong_app_in_portin(proplists:get_value(N, PortInUsedBy), App, N) || {N, App} <- AppUsedBy],
+    _ = [log_wrong_app_in_portin(proplists:get_value(N, PortInUsedBy), App, N) || {N, App} <- AppUsedBy],
 
     %% app used_by carried over to phone_number document
     lists:foreach(
       fun({App, Nums}) ->
               case Nums of
-                  [] -> ok;
+                  [] -> 'ok';
                   Nums -> knm_numbers:assign_to_app(Nums, App)
               end
       end
      , NumAppUsage
      ).
 
--spec log_wrong_app_in_portin(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | {'ok', kz_term:ne_binary()}.
+-spec log_wrong_app_in_portin(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 log_wrong_app_in_portin(App, App, _Num) -> 'ok';
 log_wrong_app_in_portin(PortInApp, App, Num) ->
-    lager:error("port in number ~p has an incorrect app ~p, the correct app is ~p", [Num, PortInApp, App]),
-    {'ok', App}.
+    lager:debug("port in number ~p has an incorrect app ~p, the correct app is ~p", [Num, PortInApp, App]).
 
 %%------------------------------------------------------------------------------
 %% @doc Get numbers' app used_by from app's database in different format
@@ -637,14 +637,15 @@ log_wrong_app_in_portin(PortInApp, App, Num) ->
 %% 2) ensure app used_by carried to phone_number when port in is complete
 %% @end
 %%------------------------------------------------------------------------------
--spec get_dids_for_app(kz_term:ne_binary(), list()) -> {list(), list()}.
+-spec get_dids_for_app(kz_term:ne_binary(), kz_term:ne_binaries()) -> {kz_term:proplist(), kz_term:proplist()}.
 get_dids_for_app(AccountDb, Numbers) ->
     CfDIDs = get_dids_for_app(AccountDb, Numbers, ?CALLFLOW_LIST),
     TsDIDs = get_dids_for_app(AccountDb, Numbers, ?TRUNKSTORE_LIST),
     NumApps = [{N, <<"callflow">>} || N <- CfDIDs] ++ [{N, <<"trunkstore">>} || N <- TsDIDs],
     {NumApps, [{<<"callflow">>, CfDIDs}, {<<"trunkstore">>, TsDIDs}]}.
 
--spec get_dids_for_app(kz_term:ne_binary(), list(), kz_term:ne_binary()) -> list().
+-spec get_dids_for_app(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary()) ->
+                              kz_term:ne_binaries().
 get_dids_for_app(AccountDb, Numbers, View) ->
     case kz_datamgr:get_result_keys(AccountDb, View, [{'keys', Numbers}]) of
         {'ok', DIDs} -> DIDs;
