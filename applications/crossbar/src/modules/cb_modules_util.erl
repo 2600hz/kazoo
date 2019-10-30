@@ -254,7 +254,7 @@ apply_assignment_updates(Updates, Context) ->
 split_port_requests({DID, Assign, AccountId}, {PRUpdates, NumUpdates}) ->
     Num = knm_converters:normalize(DID),
     case knm_port_request:get_portin_number(AccountId, Num) of
-        {'ok', JObj} ->
+        {'ok', [JObj|_]} ->
             {[{Num, Assign, JObj}|PRUpdates], NumUpdates};
         {'error', _} ->
             {PRUpdates, [{DID, Assign}|NumUpdates]}
