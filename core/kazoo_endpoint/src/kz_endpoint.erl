@@ -699,24 +699,7 @@ flush_account(AccountDb) ->
 
 -spec flush(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 flush(Db, Id) ->
-    kz_cache:erase_local(?CACHE_NAME, {?MODULE, Db, Id}),
-    {'ok', Rev} = kz_datamgr:lookup_doc_rev(Db, Id),
-    Props =
-        [{<<"ID">>, Id}
-        ,{<<"Database">>, Db}
-        ,{<<"Rev">>, Rev}
-        ,{<<"Type">>, kzd_devices:type()}
-         | kz_api:default_headers(<<"configuration">>
-                                 ,?DOC_EDITED
-                                 ,?APP_NAME
-                                 ,?APP_VERSION
-                                 )
-        ],
-    Fun = fun(P) ->
-                  kapi_conf:publish_doc_update('edited', Db, kzd_devices:type(), Id, P)
-          end,
-
-    'ok' = kz_amqp_worker:cast(Props, Fun).
+    kz_cache:erase_local(?CACHE_NAME, {?MODULE, Db, Id}).
 
 %%------------------------------------------------------------------------------
 %% @doc Creates one or more kazoo API endpoints for use in a bridge string.
