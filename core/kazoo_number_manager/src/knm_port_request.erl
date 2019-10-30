@@ -597,7 +597,7 @@ transition_numbers(PortReq) ->
 %% This may not be a reliable source of used_by comparing to the callflow doc.
 %% @end
 %%------------------------------------------------------------------------------
--spec app_used_by_portin(kz_term:ne_binary(), kz_json:object()) -> 'undefined' | list().
+-spec app_used_by_portin(kz_term:ne_binary(), kz_json:object()) -> kz_term:proplist().
 app_used_by_portin(Numbers, JObj) ->
     NumbersObj = kzd_port_requests:numbers(JObj),
     [{Num, kz_json:get_value([Num, ?USED_BY_KEY], NumbersObj)}
