@@ -1265,7 +1265,7 @@ check_number_portability(PortId, Number, Context) ->
 check_number_portability(_PortId, Number, Context, E164, []) ->
     check_number_existence(E164, Number, Context);
 check_number_portability(PortId, Number, Context, E164, [PortReq]) ->
-    case {kz_json:get_value(<<"value">>, PortReq) =:= cb_context:account_id(Context)
+    case {kz_doc:account_id(PortReq) =:= cb_context:account_id(Context)
          ,kz_doc:id(PortReq) =:= PortId
          }
     of
@@ -1282,8 +1282,7 @@ check_number_portability(PortId, Number, Context, E164, [PortReq]) ->
             number_validation_error(Context, Number, Message);
         {'false', _} ->
             lager:debug("number ~s(~s) is on existing port request for other account(~s)"
-                       ,[E164, Number, kz_json:get_value(<<"value">>, PortReq)]
-                       ),
+                       ,[E164, Number, kz_doc:account_id(PortReq)]),
             Message = <<"Number is being ported for a different account">>,
             number_validation_error(Context, Number, Message)
     end;
