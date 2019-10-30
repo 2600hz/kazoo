@@ -45,7 +45,6 @@
                                ]).
 
 -define(ACCOUNTS_BY_SIMPLE_ID, <<"accounts/listing_by_simple_id">>).
--define(PORT_REQ_NUMBERS, <<"port_requests/port_in_numbers">>).
 -define(ALL_PORT_REQ_NUMBERS, <<"port_requests/all_port_in_numbers">>).
 -define(LISTING_BY_STATE, <<"port_requests/listing_by_state">>).
 -define(LISTING_BY_NUMBER, <<"port_requests/listing_by_number">>).
@@ -1244,15 +1243,6 @@ successful_validation(Context, _Id) ->
     Normalized = knm_port_request:normalize_numbers(cb_context:doc(Context)),
     cb_context:set_doc(Context, Normalized).
 
--spec fetch_by_number(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-fetch_by_number(Context, Number) ->
-    Options = [{'keymap', Number}
-              ,{'databases', [?KZ_PORT_REQUESTS_DB]}
-              ,{'unchunkable', 'true'}
-              ,{'should_paginate', 'false'}
-              ],
-    crossbar_view:load(Context, ?PORT_REQ_NUMBERS, Options).
-
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -1262,12 +1252,12 @@ fetch_by_number(Context, Number) ->
 check_number_portability(PortId, Number, Context) ->
     E164 = knm_converters:normalize(Number),
     lager:debug("checking ~s(~s) for portability", [E164, Number]),
-    Context1 = fetch_by_number(Context, E164),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            DataResp = cb_context:resp_data(Context1),
-            check_number_portability(PortId, Number, Context1, E164, DataResp);
-        _ -> Context1
+    case knm_port_request:get_portin_number(cb_context:account_id(Context), E164) of
+        {'error', Reason}->
+            lager:debug("failed to check ports for number portability: ~p", [Reason]),
+            crossbar_doc:handle_datamgr_errors(Reason, PortId, Context);
+        {'ok', Result} ->
+            check_number_portability(PortId, Number, Context, E164, Result)
     end.
 
 -spec check_number_portability(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary(), kz_json:objects()) ->
@@ -1275,7 +1265,7 @@ check_number_portability(PortId, Number, Context) ->
 check_number_portability(_PortId, Number, Context, E164, []) ->
     check_number_existence(E164, Number, Context);
 check_number_portability(PortId, Number, Context, E164, [PortReq]) ->
-    case {kz_json:get_value(<<"value">>, PortReq) =:= cb_context:account_id(Context)
+    case {kz_doc:account_id(PortReq) =:= cb_context:account_id(Context)
          ,kz_doc:id(PortReq) =:= PortId
          }
     of
@@ -1292,8 +1282,7 @@ check_number_portability(PortId, Number, Context, E164, [PortReq]) ->
             number_validation_error(Context, Number, Message);
         {'false', _} ->
             lager:debug("number ~s(~s) is on existing port request for other account(~s)"
-                       ,[E164, Number, kz_json:get_value(<<"value">>, PortReq)]
-                       ),
+                       ,[E164, Number, kz_doc:account_id(PortReq)]),
             Message = <<"Number is being ported for a different account">>,
             number_validation_error(Context, Number, Message)
     end;

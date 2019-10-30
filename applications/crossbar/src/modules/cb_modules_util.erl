@@ -236,7 +236,8 @@ validate_number_ownership_fold(Number, ReasonJObj, Unauthorized) ->
                                       assignment_updates().
 apply_assignment_updates(Updates, Context) ->
     AccountId = cb_context:account_id(Context),
-    {PRUpdates, NumUpdates} = lists:foldl(fun split_port_requests/2, {[], []}, Updates),
+    AccountUpdates = lists:foldl(fun({Num, App}, X) -> [{Num, App, AccountId} | X] end, [], Updates),
+    {PRUpdates, NumUpdates} = lists:foldl(fun split_port_requests/2, {[], []}, AccountUpdates),
     PortAssignResults = assign_to_port_number(PRUpdates),
     AssignResults = maybe_assign_to_app(NumUpdates, AccountId),
     PortAssignResults ++ AssignResults.
@@ -248,15 +249,18 @@ apply_assignment_updates(Updates, Context) ->
 %%
 %% @end
 %%------------------------------------------------------------------------------
--spec split_port_requests(assignment_to_apply(), {port_req_assignments(), assignments_to_apply()}) ->
+-spec split_port_requests({kz_term:ne_binary(), kz_term:api_binary(), kz_term:ne_binary()}, {port_req_assignments(), assignments_to_apply()}) ->
                                  {port_req_assignments(), assignments_to_apply()}.
-split_port_requests({DID, Assign}=ToApply, {PRUpdates, NumUpdates}) ->
+split_port_requests({DID, Assign, AccountId}, {PRUpdates, NumUpdates}) ->
     Num = knm_converters:normalize(DID),
-    case knm_port_request:get(Num) of
-        {'ok', JObj} ->
+    case knm_port_request:get_portin_number(AccountId, Num) of
+        {'ok', []} ->
+            %% case of number not_found
+            {PRUpdates, [{DID, Assign}|NumUpdates]};
+        {'ok', [JObj|_]} ->
             {[{Num, Assign, JObj}|PRUpdates], NumUpdates};
         {'error', _} ->
-            {PRUpdates, [ToApply|NumUpdates]}
+            {PRUpdates, [{DID, Assign}|NumUpdates]}
     end.
 
 -spec assign_to_port_number(port_req_assignments()) ->
