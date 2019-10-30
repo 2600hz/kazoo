@@ -143,14 +143,15 @@ get(DID=?NE_BINARY) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_portin_number(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
+-spec get_portin_number(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:objects()} |
                                                                      {'error', any()}.
 get_portin_number(AccountId, DID=?NE_BINARY) ->
-    ViewOptions = [{'key', [AccountId, DID]}, 'include_docs'],
-    Result = kz_datamgr:get_single_result(?KZ_PORT_REQUESTS_DB, ?PORT_NUM_LISTING, ViewOptions),
-    case Result of
-        {'ok', Docs} ->
-            {'ok', kz_json:get_value(<<"doc">>, Docs)};
+    ViewOptions = [{'key', [AccountId, DID]}
+                  ,'include_docs'
+                  ],
+    case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?PORT_NUM_LISTING, ViewOptions) of
+        {'ok', JObjs} ->
+            {'ok', [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]};
         {'error', _E}=Error ->
             lager:debug("failed to find portin number '~s': ~p", [DID, _E]),
             Error
