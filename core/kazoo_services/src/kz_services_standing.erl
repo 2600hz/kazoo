@@ -108,7 +108,7 @@ maybe_cache_result(Services, #{cache_expiration := Expiration} = Options, Result
     _ = kz_cache:store_local(?CACHE_NAME, cache_key(Services, Options), Result, CacheOptions),
     Result.
 
--type cache_key() :: {atom(), kz_term:ne_binary(), non_neg_integer(), boolean()}.
+-type cache_key() :: {?MODULE, kz_term:ne_binary(), non_neg_integer()}.
 -spec cache_key(kz_services:services(), acceptable_options()) -> cache_key().
 cache_key(Services, #{cache_expiration := Expiration}) ->
     AccountId = kz_services:account_id(Services),

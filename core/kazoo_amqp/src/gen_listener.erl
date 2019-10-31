@@ -46,6 +46,8 @@
 -export([start_link/3
         ,start_link/4
         ,start_link/5
+
+        ,stop/1
         ]).
 
 -export([start_listener/2]).
@@ -233,6 +235,10 @@ start_link(Name, Module, Params, InitArgs, Options) when is_atom(Module),
                                                          is_list(Options)
                                                          ->
     gen_server:start_link(Name, ?MODULE, [Module, Params, InitArgs], Options).
+
+-spec stop(kz_types:server_ref()) -> 'ok'.
+stop(Server) ->
+    gen_server:stop(Server).
 
 -spec queue_name(kz_types:server_ref()) -> kz_term:api_ne_binary().
 queue_name(Srv) -> gen_server:call(Srv, 'queue_name').
@@ -739,22 +745,28 @@ handle_info(Message, State) ->
 %% Allows listeners to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(kz_term:ne_binary(), kz_term:ne_binary(), deliver(), state()) ->  state().
+-spec handle_event(kz_term:ne_binary(), kz_term:ne_binary(), deliver(), state()) -> state().
 handle_event(Payload, <<"application/json">>, Deliver, State) ->
     JObj = kz_json:decode(Payload),
-    _ = kz_util:put_callid(JObj),
-    distribute_event(JObj, Deliver, State);
+    Old = kz_util:get_callid(),
+    'ok' = kz_util:put_callid(JObj),
+    NewState = distribute_event(JObj, Deliver, State),
+    kz_util:put_callid(Old),
+    NewState;
 handle_event(Payload, <<"application/erlang">>, Deliver, State) ->
     JObj = binary_to_term(Payload),
-    _ = kz_util:put_callid(JObj),
-    distribute_event(JObj, Deliver, State).
+    Old = kz_util:get_callid(),
+    'ok' = kz_util:put_callid(JObj),
+    NewState = distribute_event(JObj, Deliver, State),
+    kz_util:put_callid(Old),
+    NewState.
 
 %%------------------------------------------------------------------------------
 %% @doc Handles the AMQP messages prior to the spawning a handler.
 %% Allows listeners to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_return(kz_term:ne_binary(), kz_term:ne_binary(), #'basic.return'{}, state()) ->  handle_cast_return().
+-spec handle_return(kz_term:ne_binary(), kz_term:ne_binary(), #'basic.return'{}, state()) -> handle_cast_return().
 handle_return(Payload, <<"application/json">>, BR, State) ->
     JObj = kz_json:decode(Payload),
     _ = kz_util:put_callid(JObj),
