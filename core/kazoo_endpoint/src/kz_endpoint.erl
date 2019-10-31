@@ -13,7 +13,11 @@
 -module(kz_endpoint).
 
 -export([get/1, get/2]).
--export([flush_account/1, flush/2]).
+-export([flush_account/1
+        ,flush_account_local/1
+        ,flush/2
+        ,flush_local/2
+        ]).
 -export([build/2, build/3]).
 -export([create_call_fwd_endpoint/3
         ,create_sip_endpoint/3
@@ -689,17 +693,26 @@ create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
 
 -spec flush_account(kz_term:ne_binary()) -> 'ok'.
 flush_account(AccountDb) ->
+    do_flush_account(AccountDb, fun flush/2).
+
+-spec flush_account_local(kz_term:ne_binary()) -> 'ok'.
+flush_account_local(AccountDb) ->
+    do_flush_account(AccountDb, fun flush_local/2).
+
+-type flusher() :: fun((kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok').
+-spec do_flush_account(kz_term:ne_binary(), flusher()) -> 'ok'.
+do_flush_account(AccountDb, Flusher) ->
     ToRemove =
         kz_cache:filter_local(?CACHE_NAME, fun({?MODULE, Db, _Id}, _Value) ->
                                                    Db =:= AccountDb;
                                               (_, _) -> 'false'
                                            end),
-    _ = [flush(Db, Id)|| {{?MODULE, Db, Id}, _} <- ToRemove],
+    _ = [Flusher(Db, Id)|| {{?MODULE, Db, Id}, _} <- ToRemove],
     'ok'.
 
 -spec flush(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 flush(Db, Id) ->
-    kz_cache:erase_local(?CACHE_NAME, {?MODULE, Db, Id}),
+    flush_local(Db, Id),
     {'ok', Rev} = kz_datamgr:lookup_doc_rev(Db, Id),
     Props =
         [{<<"ID">>, Id}
@@ -717,6 +730,10 @@ flush(Db, Id) ->
           end,
 
     'ok' = kz_amqp_worker:cast(Props, Fun).
+
+-spec flush_local(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+flush_local(Db, Id) ->
+    kz_cache:erase_local(?CACHE_NAME, {?MODULE, Db, Id}).
 
 %%------------------------------------------------------------------------------
 %% @doc Creates one or more kazoo API endpoints for use in a bridge string.
