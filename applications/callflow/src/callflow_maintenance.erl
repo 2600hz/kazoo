@@ -352,7 +352,8 @@ set_device_classifier_action(Action, Classifier, Uri) ->
     Update = [{[<<"call_restriction">>, Classifier, <<"action">>], Action}],
     UpdateOptions = [{'update', Update}],
 
-    {'ok', _} = kz_datamgr:update_doc(AccountDb, DeviceId, UpdateOptions).
+    {'ok', _} = kz_datamgr:update_doc(AccountDb, DeviceId, UpdateOptions),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Checks if classifier defined in `system_config -> number_manager' doc.
