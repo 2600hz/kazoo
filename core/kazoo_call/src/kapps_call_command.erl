@@ -832,6 +832,7 @@ recv_dtmf(DTMFs, Call) ->
 recv_dtmf_command(DTMFs) ->
     props:filter_undefined(
       [{<<"DTMFs">>, DTMFs}
+      ,{<<"Insert-At">>, <<"now">>}
       ,{<<"Application-Name">>, <<"recv_dtmf">>}
       ]).
 
