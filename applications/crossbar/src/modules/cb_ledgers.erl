@@ -470,7 +470,7 @@ normalize_view_result(LedgerJObj) ->
 %%------------------------------------------------------------------------------
 -spec normalize_summary_by_account(kz_json:objects(), kz_json:objects()) -> kz_json:objects().
 normalize_summary_by_account(JObj, Acc) ->
-    [AccountId, _PeriodStartTS, _DocId] = kz_json:get_value(<<"key">>, JObj),
+    [AccountId|_] = kz_json:get_value(<<"key">>, JObj),
     Ledger = normalize_ledger_jobj(AccountId, kz_json:get_value(<<"value">>, JObj)),
     [kz_json:sum_jobjs([Ledger | Acc])].
 
