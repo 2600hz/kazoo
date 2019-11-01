@@ -616,7 +616,7 @@ xml_member_to_participant([#xmlElement{name='uuid'
                                       }
                            |XmlElements
                           ], Participant) ->
-    CallId = kz_util:uri_decode(xml_text_to_binary(UUID)),
+    CallId = kz_http_util:urldecode(xml_text_to_binary(UUID)),
     lager:debug("uuid ~s callid ~s", [xml_text_to_binary(UUID), CallId]),
     xml_member_to_participant(XmlElements
                              ,Participant#participant{uuid=kz_term:to_binary(CallId)}

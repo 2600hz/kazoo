@@ -12,6 +12,7 @@
 
 -export([urldecode/1
         ,urlencode/1
+        ,uri/2, resolve_uri/2
         ,parse_query_string/1
         ,urlsplit/1
         ,urlunsplit/1
@@ -22,6 +23,10 @@
         ,encode_multipart/1, encode_multipart/2
         ,create_boundary/0
         ]).
+
+-ifdef(TEST).
+-export([resolve_uri_path/2]).
+-endif.
 
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
@@ -443,3 +448,42 @@ encode_multipart_headers([{K, V} | Headers], Encoded) ->
 -spec create_boundary() -> kz_term:ne_binary().
 create_boundary() ->
     cow_multipart:boundary().
+
+-spec resolve_uri(nonempty_string() | kz_term:ne_binary(), nonempty_string() | kz_term:api_ne_binary()) -> kz_term:ne_binary().
+resolve_uri(Raw, 'undefined') -> kz_term:to_binary(Raw);
+resolve_uri(_Raw, <<"http", _/binary>> = Abs) -> Abs;
+resolve_uri(<<_/binary>> = RawPath, <<_/binary>> = Relative) ->
+    Path = resolve_uri_path(RawPath, Relative),
+    kz_binary:join(Path, <<"/">>);
+resolve_uri(RawPath, Relative) ->
+    resolve_uri(kz_term:to_binary(RawPath), kz_term:to_binary(Relative)).
+
+-spec resolve_uri_path(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binaries().
+resolve_uri_path(RawPath, Relative) ->
+    PathTokensRev = lists:reverse(binary:split(RawPath, <<"/">>, ['global'])),
+    UrlTokens = binary:split(Relative, <<"/">>, ['global']),
+    lists:reverse(
+      lists:foldl(fun resolve_uri_fold/2, PathTokensRev, UrlTokens)
+     ).
+
+-spec resolve_uri_fold(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
+resolve_uri_fold(<<"..">>, []) -> [];
+resolve_uri_fold(<<"..">>, [_ | PathTokens]) -> PathTokens;
+resolve_uri_fold(<<".">>, PathTokens) -> PathTokens;
+resolve_uri_fold(<<>>, PathTokens) -> PathTokens;
+resolve_uri_fold(Segment, [<<>>|DirTokens]) -> [Segment|DirTokens];
+resolve_uri_fold(Segment, [LastToken|DirTokens]=PathTokens) ->
+    case filename:extension(LastToken) of
+        <<>> ->
+            %% no extension, append Segment to Tokens
+            [Segment | PathTokens];
+        _Ext ->
+            %% Extension found, append Segment to DirTokens
+            [Segment|DirTokens]
+    end.
+
+-spec uri(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binary().
+uri(BaseUrl, Tokens) ->
+    [Pro, Url] = binary:split(BaseUrl, <<"://">>),
+    Uri = filename:join([Url | Tokens]),
+    <<Pro/binary, "://", Uri/binary>>.

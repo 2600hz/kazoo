@@ -504,4 +504,4 @@ save_compaction_stats(#{'id' := Id
 
 -spec normalize_db(kz_term:ne_binary()) -> kz_term:ne_binary().
 normalize_db(Db) ->
-    kz_util:uri_decode(Db).
+    kz_http_util:urldecode(Db).

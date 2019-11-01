@@ -489,7 +489,7 @@ get_db_disk_and_data_fold(Conn, UnencDb, State, _ChunkSize) ->
                                   ,{[db_and_sizes()], non_neg_integer()}
                                   ) -> {[db_and_sizes()], pos_integer()}.
 do_get_db_disk_and_data_fold(Conn, UnencDb, {Acc, Counter}) ->
-    EncDb = kz_util:uri_encode(UnencDb),
+    EncDb = kz_http_util:urlencode(UnencDb),
 
     case kt_compactor_worker:get_db_disk_and_data(Conn, EncDb) of
         'not_found' ->

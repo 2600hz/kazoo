@@ -118,3 +118,30 @@ props_to_querystring_test_() ->
     [?_assertEqual(QS, kz_term:to_binary(kz_http_util:props_to_querystring(Props)))
      || {Props, QS} <- Tests
     ].
+
+uri_test_() ->
+    [?_assertEqual(<<"http://test.com/path1/path2">>, kz_http_util:uri(<<"http://test.com">>, [<<"path1">>, <<"path2">>]))
+    ,?_assertEqual(<<"http://192.168.0.1:8888/path1/path2">>, kz_http_util:uri(<<"http://192.168.0.1:8888/">>, [<<"path1">>, <<"path2">>]))
+    ,?_assertEqual(<<"http://test.com/path1/path2">>, kz_http_util:uri(<<"http://test.com/">>, [<<"path1/">>, <<"path2/">>]))
+    ].
+
+resolve_uri_test_() ->
+    RawPath = <<"http://pivot/script.php">>,
+    Relative = <<"script2.php">>,
+    [?_assertEqual(<<"http://pivot/script2.php">>, kz_http_util:resolve_uri(RawPath, Relative))
+    ,?_assertEqual(<<"http://pivot/script2.php">>, kz_http_util:resolve_uri(RawPath, <<"/", Relative/binary>>))
+    ,?_assertEqual(Relative, kz_http_util:resolve_uri(Relative, undefined))
+    ,?_assertEqual(RawPath, kz_http_util:resolve_uri(Relative, RawPath))
+    ,?_assertEqual(Relative, kz_http_util:resolve_uri(kz_term:to_list(Relative), undefined))
+    ,?_assertEqual(RawPath, kz_http_util:resolve_uri(kz_term:to_list(Relative), RawPath))
+    ,?_assertEqual(RawPath, kz_http_util:resolve_uri(Relative, kz_term:to_list(RawPath)))
+    ,?_assertEqual(<<"http://host/d1/d2/a">>, kz_http_util:resolve_uri(<<"http://host/d1/d2/d3/file.ext">>, <<"../.././a">>))
+    ].
+
+resolve_uri_path_test_() ->
+    RawPath = <<"http://pivot/script.php">>,
+    Relative = <<"script2.php">>,
+    RawPathList = [<<"http:">>, <<>>, <<"pivot">>, <<"script2.php">>],
+    [?_assertEqual(RawPathList, kz_http_util:resolve_uri_path(RawPath, Relative))
+    ,?_assertEqual(RawPathList, kz_http_util:resolve_uri_path(RawPath, <<"/", Relative/binary>>))
+    ].

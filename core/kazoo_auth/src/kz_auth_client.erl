@@ -262,11 +262,11 @@ jwt_assertion(Map) ->
 jwt_request(#{auth_url := URL
              ,jwt := JWT
              }=Map) ->
-    GrantType = kz_term:to_list(kz_util:uri_encode(?OAUTH_GRANT_TYPE)),
+    GrantType = kz_term:to_list(kz_http_util:urlencode(?OAUTH_GRANT_TYPE)),
     Headers = [{"Content-Type","application/x-www-form-urlencoded"}
               ,{"User-Agent", "Kazoo"}
               ],
-    Fields = [{"assertion", kz_term:to_list(kz_util:uri_encode(JWT))}
+    Fields = [{"assertion", kz_term:to_list(kz_http_util:urlencode(JWT))}
              ,{"grant_type", GrantType}
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K,V], "=") ] end, Fields)),"&"),
@@ -322,14 +322,14 @@ add_claim(<<"exp">>) -> {'exp', kz_time:current_unix_tstamp()+(2 * ?MILLISECONDS
 request(URL, Token) ->
     request('get', URL, <<>>, Token).
 
--spec request(atom(), kz_term:ne_binary(), binary(), map()) -> {'ok', binary()} | {'error', any()}.
+-spec request(kz_http:method(), kz_term:ne_binary(), kz_http:http_body(), map()) -> {'ok', binary()} | {'error', any()}.
 request(Verb, URL, Body, #{token := #{authorization := Authorization}}) ->
     Options = [{'headers_as_is', 'true'}
               ,{'ssl', [{'versions', ['tlsv1.2']}]}
               ],
-    {'ok',{_,_, Host, _, _, _}} = http_uri:parse(URL),
-    Headers = [{<<"host">>, Host}
-              ,{<<"Content-Type">>, <<"application/json">>}
+    {'ok', {_,_, Host, _, _, _}} = http_uri:parse(URL),
+    Headers = [{"host", Host}
+              ,{"Content-Type", "application/json"}
               ,{"Authorization", kz_term:to_list(Authorization)}
               ],
     case kz_http:req(Verb, URL, Headers, Body, Options) of
