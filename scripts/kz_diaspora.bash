@@ -521,15 +521,14 @@ kapps_util_amqp() {
     replace "kapps_util" "amqp_pool_request" "kz_amqp_worker" "call"
 }
 
-<<<<<<< HEAD
 kz_util_props() {
     replace 'kz_util' 'uniq' 'props' 'unique'
-=======
+}
+
 kz_util_uri() {
     replace 'kz_util' 'uri_' 'kz_http_util' 'url'
     replace 'kz_util' 'uri' 'kz_http_util' 'uri'
     replace 'kz_util' 'resolve_uri' 'kz_http_util' 'resolve_uri'
->>>>>>> move uri-related calls from kz_util to kz_http_util
 }
 
 echo "ensuring kz_term is used"
