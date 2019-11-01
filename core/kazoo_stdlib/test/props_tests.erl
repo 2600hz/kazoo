@@ -48,9 +48,17 @@ filter_undefined_test_() ->
     ,?_assertEqual([{<<"pouet">>, null}], props:filter_undefined([{<<"pouet">>, null}]))
     ].
 
-unique_test() ->
+unique_test_() ->
     L = [{'a', 'b'}, {'a', 'b'}, {'a', 'c'}, {'b','c'}, {'b','d'}],
-    ?assertEqual([{'a', 'b'}, {'b', 'c'}], props:unique(L)).
+    [?_assertEqual([{'a', 'b'}, {'b', 'c'}], props:unique(L))
+    ,?_assertEqual([], props:unique([]))
+    ,?_assertEqual([{module_name, <<"my_module">>}]
+                  ,props:unique([{module_name, <<"my_module">>}
+                                ,{module_name, <<"blaaa">>}
+                                ,{module_name, false}
+                                ])
+                  )
+    ].
 
 delete_test_() ->
     L = [{'a', 1}, {'b', 2}, 'c', {'d', 3}],
