@@ -230,7 +230,7 @@ json_to_iolist(Records, Fields)
   when is_list(Records),
        is_list(Fields) ->
     Tmp = <<"/tmp/json_", (kz_binary:rand_hex(11))/binary, ".csv">>,
-    'ok' = file:write_file(Tmp, [kz_util:iolist_join($,, Fields), $\n]),
+    'ok' = file:write_file(Tmp, [kz_term:iolist_join($,, Fields), $\n]),
     lists:foreach(fun (Record) ->
                           Row = [kz_json:get_ne_binary_value(Field, Record, ?ZILCH) || Field <- Fields],
                           _ = file:write_file(Tmp, [row_to_iolist(Row)], ['append'])

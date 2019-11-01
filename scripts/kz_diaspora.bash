@@ -10,7 +10,7 @@ replace() {
     local F0=$2
     local M1=$3
     local F1=$4
-    for FILE in $(grep -Irl $M0:$F0 "$ROOT"/{core,applications}); do
+    for FILE in $(grep -Irl $M0:$F0 "$ROOT"/{core,applications,scripts}); do
         sed -i "s%$M0:$F0%$M1:$F1%g" "$FILE"
     done
 }
@@ -34,7 +34,7 @@ search_and_replace() {
     SUFFIX="$4"
 
     for FUN in "${FUNS[@]}"; do
-        for FILE in $(grep -Irl $FROM:$FUN "$ROOT"/{core,applications}); do
+        for FILE in $(grep -Irl $FROM:$FUN "$ROOT"/{core,applications,scripts}); do
             replace_call $FROM $TO "$FUN" "$SUFFIX" "$FILE"
         done
     done
@@ -47,7 +47,7 @@ search_and_replace_exact() {
     TOFUN=$4
 
     for FUN in "${FUNS[@]}"; do
-        for FILE in `grep -rl "$FROM:$FUN" $ROOT/{core,applications}`; do
+        for FILE in `grep -rl "$FROM:$FUN" $ROOT/{core,applications,scripts}`; do
             replace $FROM $TO "$FUN" "$TOFUN" $FILE
         done
     done
@@ -71,7 +71,7 @@ search_and_replace_prefix() {
     PREFIX="$4"
 
     for FUN in "${FUNS[@]}"; do
-        for FILE in $(grep -Irl $FROM:$FUN "$ROOT"/{core,applications}); do
+        for FILE in $(grep -Irl $FROM:$FUN "$ROOT"/{core,applications,scripts}); do
             replace_call_prefix $FROM $TO "$FUN" "$PREFIX" "$FILE"
         done
     done
@@ -95,7 +95,7 @@ search_and_replace_with_prefix() {
     PREFIX="$4"
 
     for FUN in "${FUNS[@]}"; do
-        for FILE in $(grep -Irl $FROM:$FUN "$ROOT"/{core,applications}); do
+        for FILE in $(grep -Irl $FROM:$FUN "$ROOT"/{core,applications,scripts}); do
             replace_call_with_prefix $FROM $TO "$FUN" "$PREFIX" "$FILE"
         done
     done
@@ -139,6 +139,7 @@ kz_util_to_term() {
               a1hash
               floor
               ceiling
+              iolist_join
              )
     search_and_replace fs[@] kz_util kz_term ''
 }
@@ -256,7 +257,7 @@ kapps_speech_to_kazoo_speech() {
 kz_media_recording_to_kzc_recording() {
     FROM=kz_media_recording
     TO=kzc_recording
-    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
+    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications,scripts}); do
             replace_call $FROM $TO '' '' "$FILE"
     done
 }
@@ -275,7 +276,7 @@ kzd_accessors() {
 kz_device_to_kzd_devices() {
     FROM=kz_device
     TO=kzd_devices
-    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
+    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications,scripts}); do
         replace_call $FROM $TO '' '' "$FILE"
     done
 }
@@ -283,7 +284,7 @@ kz_device_to_kzd_devices() {
 kz_account_to_kzd_accounts() {
     FROM=kz_account
     TO=kzd_accounts
-    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
+    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications,scripts}); do
         replace_call $FROM $TO '' '' "$FILE"
     done
 }
@@ -304,7 +305,7 @@ kz_util_to_kzd_accounts() {
 kzd_webhook_to_webhooks() {
     FROM='kzd_webhook:'
     TO='kzd_webhooks:'
-    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
+    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications,scripts}); do
         replace_call $FROM $TO '' '' "$FILE"
     done
 }
@@ -312,7 +313,7 @@ kzd_webhook_to_webhooks() {
 amqp_util_to_kz_amqp_util() {
     FROM="amqp_util"
     TO="kz_amqp_util"
-    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications}); do
+    for FILE in $(grep -Irl $FROM: "$ROOT"/{core,applications,scripts}); do
         sed -i -e "s%\b$FROM%$TO%g" "$FILE"
     done
 }
@@ -325,7 +326,7 @@ kz_includes() {
     FROM=kazoo/include
     TO=kazoo_stdlib/include
 
-    for FILE in $(grep -Irl $FROM/ "$ROOT"/{core,applications}); do
+    for FILE in $(grep -Irl $FROM/ "$ROOT"/{core,applications,scripts}); do
         for INCLUDE in "${INCLUDES[@]}"; do
             sed -i "s%$FROM/$INCLUDE%$TO/$INCLUDE%g" "$FILE"
         done
@@ -532,9 +533,9 @@ echo "ensuring kz_time -> kz_date migration is performed"
 kz_time_to_date
 echo "ensuring kz_json:public/private are moved to kz_doc"
 kz_json_to_kz_doc
-echo "ensuring kz_json:to_querystring is moved to kz_http_util"
+echo "ensuring kz_json to_querystring is moved to kz_http_util"
 kz_json_to_kz_http
-echo "ensuring props:to_querystring is moved to kz_http_util"
+echo "ensuring props to_querystring is moved to kz_http_util"
 props_to_kz_http
 echo "ensuring kapps_speech to kazoo_speech"
 kapps_speech_to_kazoo_speech

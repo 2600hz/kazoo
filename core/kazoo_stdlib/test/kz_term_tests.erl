@@ -360,6 +360,11 @@ to_pid_test_() ->
      end
     }.
 
+iolist_join_test_() ->
+    [?_assertEqual([], kz_term:iolist_join($,, []))
+    ,?_assertEqual([$a,<<" || ">>,$b,<<" || ">>,$c], kz_term:iolist_join(<<" || ">>, [$a,$b,$c]))
+    ].
+
 -ifdef(PERF).
 -define(REPEAT, 100000).
 

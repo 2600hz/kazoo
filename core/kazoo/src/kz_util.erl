@@ -59,7 +59,6 @@
 -export([application_version/1]).
 
 -export([uniq/1]).
--export([iolist_join/2]).
 
 -export([kz_log_md_clear/0, kz_log_md_put/2]).
 
@@ -795,21 +794,3 @@ uniq([{K,_}=KV|Rest], S, L) ->
             NewS = sets:add_element(K, S),
             uniq(Rest, NewS, [KV|L])
     end.
-
--spec iolist_join(Sep, List1) -> List2 when
-      Sep :: T,
-      List1 :: [T],
-      List2 :: [T],
-      T :: iodata() | char().
-iolist_join(_, []) -> [];
-iolist_join(Sep, [H|T]) ->
-    [H | iolist_join_prepend(Sep, T)].
-
--spec iolist_join_prepend(Sep, List1) -> List2 when
-      Sep :: T,
-      List1 :: [T],
-      List2 :: [T],
-      T :: iolist().
-iolist_join_prepend(_, []) -> [];
-iolist_join_prepend(Sep, [H|T]) ->
-    [Sep, H | iolist_join_prepend(Sep, T)].
