@@ -521,6 +521,10 @@ kapps_util_amqp() {
     replace "kapps_util" "amqp_pool_request" "kz_amqp_worker" "call"
 }
 
+kz_util_props() {
+    replace 'kz_util' 'uniq' 'props' 'unique'
+}
+
 echo "ensuring kz_term is used"
 kz_util_to_term
 echo "ensuring kz_binary is used"
@@ -553,5 +557,7 @@ echo "updating amqp_util to kz_amqp_util"
 amqp_util_to_kz_amqp_util
 echo "updating kapps_util amqp to kz_amqp_worker"
 kapps_util_amqp
+echo "updating uniq usage to props module"
+kz_util_props
 
 popd >/dev/null

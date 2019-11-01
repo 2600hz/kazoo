@@ -58,8 +58,6 @@
 
 -export([application_version/1]).
 
--export([uniq/1]).
-
 -export([kz_log_md_clear/0, kz_log_md_put/2]).
 
 -ifdef(TEST).
@@ -775,22 +773,4 @@ application_version(Application) ->
     case application:get_key(Application, 'vsn') of
         {'ok', Vsn} -> kz_term:to_binary(Vsn);
         'undefined' -> <<"unknown">>
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc Like `lists:usort/1' but preserves original ordering.
-%%
-%% Time: `O(nlog(n))'
-%% @end
-%%------------------------------------------------------------------------------
--spec uniq(kz_term:proplist()) -> kz_term:proplist().
-uniq(KVs) when is_list(KVs) -> uniq(KVs, sets:new(), []).
-
-uniq([], _, L) -> lists:reverse(L);
-uniq([{K,_}=KV|Rest], S, L) ->
-    case sets:is_element(K, S) of
-        'true' -> uniq(Rest, S, L);
-        'false' ->
-            NewS = sets:add_element(K, S),
-            uniq(Rest, NewS, [KV|L])
     end.
