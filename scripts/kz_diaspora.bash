@@ -139,6 +139,7 @@ kz_util_to_term() {
               a1hash
               floor
               ceiling
+              iolist_join
              )
     search_and_replace fs[@] kz_util kz_term ''
 }
