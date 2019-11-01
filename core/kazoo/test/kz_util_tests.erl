@@ -93,11 +93,6 @@ usages_test_() ->
     ,?_assertEqual(true, kz_term:is_ne_binary(kz_util:node_hostname()))
     ].
 
-iolist_join_test_() ->
-    [?_assertEqual([], kz_util:iolist_join($,, []))
-    ,?_assertEqual([$a,<<" || ">>,$b,<<" || ">>,$c], kz_util:iolist_join(<<" || ">>, [$a,$b,$c]))
-    ].
-
 get_event_type_test_() ->
     EventCategory = {<<"Event-Category">>, <<"call">>},
     EventName = {<<"Event-Name">>, <<"CHANNEL_CONNECTED">>},

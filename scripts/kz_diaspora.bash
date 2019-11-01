@@ -533,9 +533,9 @@ echo "ensuring kz_time -> kz_date migration is performed"
 kz_time_to_date
 echo "ensuring kz_json:public/private are moved to kz_doc"
 kz_json_to_kz_doc
-echo "ensuring kz_json:to_querystring is moved to kz_http_util"
+echo "ensuring kz_json to_querystring is moved to kz_http_util"
 kz_json_to_kz_http
-echo "ensuring props:to_querystring is moved to kz_http_util"
+echo "ensuring props to_querystring is moved to kz_http_util"
 props_to_kz_http
 echo "ensuring kapps_speech to kazoo_speech"
 kapps_speech_to_kazoo_speech

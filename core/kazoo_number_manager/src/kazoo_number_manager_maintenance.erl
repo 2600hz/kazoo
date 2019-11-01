@@ -1690,7 +1690,7 @@ all_features() ->
 
 -spec list_features(kz_term:ne_binaries()) -> iodata().
 list_features(Features) ->
-    kz_util:iolist_join($\s, Features).
+    kz_term:iolist_join($\s, Features).
 
 -spec error_with_number(kz_term:ne_binary(), any()) -> 'no_return'.
 error_with_number(Num, Error) ->

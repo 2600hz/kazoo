@@ -1315,9 +1315,9 @@ remove_denied_features(PN) ->
     RemoveFromPvt = lists:usort(lists:flatmap(fun remove_in_private/1, DeniedFeatures)),
     RemoveFromPub = lists:usort(lists:flatmap(fun remove_in_public/1, DeniedFeatures)),
     ?LOG_WARNING("removing out of sync pvt features: ~s"
-                ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPvt]))]),
+                ,[kz_term:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPvt]))]),
     ?LOG_WARNING("removing out of sync pub features: ~s"
-                ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPub]))]),
+                ,[kz_term:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPub]))]),
     NewPvt = kz_json:prune_keys(RemoveFromPvt, features(PN)),
     NewPub = kz_json:prune_keys(RemoveFromPub, doc(PN)),
     Updates = [{fun set_features/2, NewPvt}

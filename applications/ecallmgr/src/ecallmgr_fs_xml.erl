@@ -694,7 +694,7 @@ kazoo_var_to_fs_var({<<"Confirm-File">>, V}, Vars) ->
                     ]) | Vars];
 
 kazoo_var_to_fs_var({<<"SIP-Invite-Parameters">>, V}, Vars) ->
-    [list_to_binary(["sip_invite_params='", kz_util:iolist_join(<<";">>, V), "'"]) | Vars];
+    [list_to_binary(["sip_invite_params='", kz_term:iolist_join(<<";">>, V), "'"]) | Vars];
 
 kazoo_var_to_fs_var({<<"Participant-Flags">>, [_|_]=Flags}, Vars) ->
     [list_to_binary(["conference_member_flags="
