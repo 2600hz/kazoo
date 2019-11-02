@@ -421,12 +421,12 @@ method(#cb_context{method=M}) -> M.
 pretty_print(#cb_context{pretty_print = PrettyPrint}) -> PrettyPrint.
 
 -spec path_token(binary()) -> binary().
-path_token(Token) ->
-    kz_http_util:urldecode(Token).
+path_token(<<"+", _/binary>>=Token) -> Token;
+path_token(Token) -> kz_http_util:urldecode(Token).
 
 -spec path_tokens(context()) -> kz_term:ne_binaries().
 path_tokens(#cb_context{raw_path=Path}) ->
-    [path_token(kz_http_util:urldecode(Token))
+    [path_token(Token)
      || Token <- binary:split(Path, <<"/">>, ['global', 'trim'])
     ].
 
