@@ -302,8 +302,6 @@ set_account_classifier_action(Action, Classifier, AccountDb) ->
     Update = [{[<<"call_restriction">>, Classifier, <<"action">>], Action}],
     {'ok', _} = kzd_accounts:update(AccountId, Update),
 
-    kz_endpoint:flush_account(AccountDb),
-
     io:format("  ...  classifier '~s' switched to action '~s'\n", [Classifier, Action]).
 
 -spec all_accounts_set_classifier(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
@@ -355,8 +353,7 @@ set_device_classifier_action(Action, Classifier, Uri) ->
     UpdateOptions = [{'update', Update}],
 
     {'ok', _} = kz_datamgr:update_doc(AccountDb, DeviceId, UpdateOptions),
-
-    kz_endpoint:flush(AccountDb, DeviceId).
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Checks if classifier defined in `system_config -> number_manager' doc.
