@@ -371,6 +371,11 @@ handle_change(JObj, <<"undefined">>) ->
     end.
 
 handle_device_change(AccountDb, AccountId, DeviceId, Rev, Type) ->
+    %% Since this event is broadcast to listeners simultaneously, the kz_cache_listener
+    %% may have not flushed the caches needed by this handler yet. Do so manually
+    kz_datamgr:flush_cache_doc(AccountDb, DeviceId),
+    kz_endpoint:flush_local(AccountDb, DeviceId),
+
     handle_device_change(AccountDb, AccountId, DeviceId, Rev, Type, 0).
 
 handle_device_change(_AccountDb, _AccountId, DeviceId, Rev, _Type, Cnt) when Cnt > 3 ->
