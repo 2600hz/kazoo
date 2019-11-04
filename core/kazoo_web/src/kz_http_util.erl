@@ -30,6 +30,8 @@
 
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
+%% @doc `legacy` treats `+` as a space (in addition to %20, while
+%% `rfc` only treats %20 as a space.
 -spec urldecode(kz_term:text()) -> kz_term:text().
 urldecode(URL) -> urldecode(URL, 'rfc').
 
