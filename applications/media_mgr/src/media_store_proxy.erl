@@ -202,7 +202,7 @@ setup_context(Req, #media_store_path{att=Attachment}=Path) ->
 
 -spec decode_url(kz_term:ne_binary()) -> media_store_path() | 'error'.
 decode_url(Url) ->
-    try binary_to_term(base64:decode(kz_util:uri_decode(Url))) of
+    try binary_to_term(base64:decode(kz_http_util:urldecode(Url))) of
         {Db, Id, Attachment, Options} ->
             #media_store_path{db = Db
                              ,id = Id

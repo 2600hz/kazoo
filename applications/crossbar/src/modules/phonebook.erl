@@ -169,7 +169,7 @@ handle_resp(Type, Error) ->
 -spec phonebook_uri(iolist()) -> string().
 phonebook_uri(ExplodedPath) ->
     Url = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"phonebook_url">>),
-    Uri = kz_util:uri(Url, ExplodedPath),
+    Uri = kz_http_util:uri(Url, ExplodedPath),
     kz_term:to_list(Uri).
 
 -spec req_headers(kz_term:ne_binary()) -> kz_term:proplist().

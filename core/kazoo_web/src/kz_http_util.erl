@@ -10,8 +10,9 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_http_util).
 
--export([urldecode/1
-        ,urlencode/1
+-export([urldecode/1, urldecode/2
+        ,urlencode/1, urlencode/2
+        ,uri/2, resolve_uri/2
         ,parse_query_string/1
         ,urlsplit/1
         ,urlunsplit/1
@@ -23,80 +24,111 @@
         ,create_boundary/0
         ]).
 
+-ifdef(TEST).
+-export([resolve_uri_path/2]).
+-endif.
+
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
+
+-spec urldecode(kz_term:text()) -> kz_term:text().
+urldecode(URL) -> urldecode(URL, 'rfc').
+
+%%------------------------------------------------------------------------------
+%% @doc 'legacy' vs 'rfc'.
+%%
+%% 'legacy' treats '+' as a space (in addition to %20)
+%% 'rfc' only treats %20 as a space.
+%% @end
+%%------------------------------------------------------------------------------
+-spec urldecode(kz_term:text(), 'rfc' | 'legacy') -> kz_term:text().
+urldecode(URL, 'rfc') ->
+    urldecode_percent20(URL);
+urldecode(URL, 'legacy') ->
+    urldecode_plus(kz_term:to_binary(URL)).
+
+urldecode_percent20(Binary) when is_binary(Binary) ->
+    kz_term:to_binary(http_uri:decode(kz_term:to_list(Binary)));
+urldecode_percent20(String) when is_list(String) ->
+    http_uri:decode(String);
+urldecode_percent20(Atom) when is_atom(Atom) ->
+    kz_term:to_atom(http_uri:decode(kz_term:to_list(Atom)), 'true').
+
+-spec urlencode(kz_term:text()) -> kz_term:text().
+urlencode(URL) -> urlencode(URL, 'rfc').
+
+-spec urlencode(kz_term:text(), 'rfc' | 'legacy') -> kz_term:text().
+urlencode(URL, 'rfc') ->
+    urlencode_percent20(URL);
+urlencode(URL, 'legacy') ->
+    urlencode_plus(kz_term:to_binary(URL)).
+
+-spec urlencode_percent20(kz_term:text()) -> kz_term:text().
+urlencode_percent20(Binary) when is_binary(Binary) ->
+    kz_term:to_binary(http_uri:encode(kz_term:to_list(Binary)));
+urlencode_percent20(String) when is_list(String) ->
+    http_uri:encode(String);
+urlencode_percent20(Atom) when is_atom(Atom) ->
+    kz_term:to_atom(http_uri:encode(kz_term:to_list(Atom)), 'true');
+urlencode_percent20(Any) ->
+    urlencode_percent20(kz_term:to_binary(Any)).
 
 %%------------------------------------------------------------------------------
 %% @doc URL decodes a URL encoded string.
 %% @end
 %%------------------------------------------------------------------------------
--spec urldecode(binary()) -> binary().
-urldecode(Source) ->
-    urldecode(Source, <<>>).
+-spec urldecode_plus(binary()) -> binary().
+urldecode_plus(Source) ->
+    urldecode_plus(Source, <<>>).
 
--spec urldecode(binary(), binary()) -> binary().
-urldecode(<<>>, Acc) ->
+-spec urldecode_plus(binary(), binary()) -> binary().
+urldecode_plus(<<>>, Acc) ->
     Acc;
 
-urldecode(<<$+, R/binary>>, Acc) ->
-    urldecode(R, <<Acc/binary, " ">>);
+urldecode_plus(<<$+, R/binary>>, Acc) ->
+    urldecode_plus(R, <<Acc/binary, " ">>);
 
-urldecode(<<$%, H, L, R/binary>>, Acc) ->
+urldecode_plus(<<$%, H, L, R/binary>>, Acc) ->
     Code  = <<H, L>>,
     Ascii = list_to_integer(binary_to_list(Code), 16),
 
-    urldecode(R, <<Acc/binary, Ascii>>);
+    urldecode_plus(R, <<Acc/binary, Ascii>>);
 
-urldecode(<<H, R/binary>>, Acc) ->
-    urldecode(R, <<Acc/binary, H>>).
+urldecode_plus(<<H, R/binary>>, Acc) ->
+    urldecode_plus(R, <<Acc/binary, H>>).
 
 %%------------------------------------------------------------------------------
 %% @doc URL encodes a string.
 %% @end
 %%------------------------------------------------------------------------------
--spec urlencode(binary() | atom() | integer() | float() | string()) -> binary().
-urlencode(Source) when is_binary(Source) ->
-    urlencode(Source, <<>>);
+-spec urlencode_plus(binary()) -> binary().
+urlencode_plus(Source) when is_binary(Source) ->
+    urlencode_plus(Source, <<>>).
 
-urlencode(Source) when is_atom(Source) ->
-    urlencode(list_to_binary(atom_to_list(Source)), <<>>);
-
-urlencode(Source) when is_list(Source) ->
-    urlencode(list_to_binary(Source), <<>>);
-
-urlencode(Source) when is_integer(Source) ->
-    urlencode(list_to_binary(integer_to_list(Source)), <<>>);
-
-%% @todo fix this when we move to > R15
-urlencode(Source) when is_float(Source) ->
-    List = float_to_list(Source),
-    Proper = string:substr(List, 1, string:chr(List, $.)+2),
-    urlencode(list_to_binary(Proper), <<>>).
-
--spec urlencode(binary(), binary()) -> binary().
-urlencode(<<>>, Acc) ->
+-spec urlencode_plus(binary(), binary()) -> binary().
+urlencode_plus(<<>>, Acc) ->
     Acc;
 
-urlencode(<<$\s, R/binary>>, Acc) ->
-    urlencode(R, <<Acc/binary, $+>>);
+urlencode_plus(<<$\s, R/binary>>, Acc) ->
+    urlencode_plus(R, <<Acc/binary, $+>>);
 
-urlencode(<<C, R/binary>>, Acc) ->
+urlencode_plus(<<C, R/binary>>, Acc) ->
     case C of
-        $. -> urlencode(R, <<Acc/binary, C>>);
-        $- -> urlencode(R, <<Acc/binary, C>>);
-        $~ -> urlencode(R, <<Acc/binary, C>>);
-        $_ -> urlencode(R, <<Acc/binary, C>>);
+        $. -> urlencode_plus(R, <<Acc/binary, C>>);
+        $- -> urlencode_plus(R, <<Acc/binary, C>>);
+        $~ -> urlencode_plus(R, <<Acc/binary, C>>);
+        $_ -> urlencode_plus(R, <<Acc/binary, C>>);
         C when C >= $0
                andalso C=< $9 ->
-            urlencode(R, <<Acc/binary, C>>);
+            urlencode_plus(R, <<Acc/binary, C>>);
         C when C >= $a
                andalso C=< $z ->
-            urlencode(R, <<Acc/binary, C>>);
+            urlencode_plus(R, <<Acc/binary, C>>);
         C when C >= $A
                andalso C=< $Z ->
-            urlencode(R, <<Acc/binary, C>>);
+            urlencode_plus(R, <<Acc/binary, C>>);
         _NotSafe ->
             SafeChar = encode_char(C),
-            urlencode(R, <<Acc/binary, "%", SafeChar/binary>>)
+            urlencode_plus(R, <<Acc/binary, "%", SafeChar/binary>>)
     end.
 
 %%------------------------------------------------------------------------------
@@ -126,8 +158,8 @@ parse_query_string(_State, <<>>, <<>>, _ValAcc, RetAcc) ->
     RetAcc;
 
 parse_query_string(_State, <<>>, KeyAcc, ValAcc, RetAcc) ->
-    Key = urldecode(KeyAcc),
-    Val = urldecode(ValAcc),
+    Key = urldecode(KeyAcc, 'legacy'),
+    Val = urldecode(ValAcc, 'legacy'),
 
     RetAcc ++ [{Key, Val}];
 
@@ -138,24 +170,24 @@ parse_query_string('key', <<$=, R/binary>>, KeyAcc, _ValAcc, RetAcc) ->
     parse_query_string('val', R, KeyAcc, <<>>, RetAcc);
 
 parse_query_string('key', <<$;, R/binary>>, KeyAcc, _ValAcc, RetAcc) ->
-    Key = urldecode(KeyAcc),
+    Key = urldecode(KeyAcc, 'legacy'),
 
     parse_query_string('key', R, <<>>, <<>>, RetAcc ++ [{Key, <<>>}]);
 
 parse_query_string('key', <<$&, R/binary>>, KeyAcc, _ValAcc, RetAcc) ->
-    Key = urldecode(KeyAcc),
+    Key = urldecode(KeyAcc, 'legacy'),
 
     parse_query_string('key', R, <<>>, <<>>, RetAcc ++ [{Key, <<>>}]);
 
 parse_query_string('val', <<$;, R/binary>>, KeyAcc, ValAcc, RetAcc) ->
-    Key = urldecode(KeyAcc),
-    Val = urldecode(ValAcc),
+    Key = urldecode(KeyAcc, 'legacy'),
+    Val = urldecode(ValAcc, 'legacy'),
 
     parse_query_string('key', R, <<>>, <<>>, RetAcc ++ [{Key, Val}]);
 
 parse_query_string('val', <<$&, R/binary>>, KeyAcc, ValAcc, RetAcc) ->
-    Key = urldecode(KeyAcc),
-    Val = urldecode(ValAcc),
+    Key = urldecode(KeyAcc, 'legacy'),
+    Val = urldecode(ValAcc, 'legacy'),
 
     parse_query_string('key', R, <<>>, <<>>, RetAcc ++ [{Key, Val}]);
 
@@ -325,7 +357,7 @@ encode_kv(Prefix, K, Vs) when is_list(Vs) ->
 %% if the value is a "simple" value, just encode it (url-encoded)
 encode_kv(Prefix, K, V) when is_binary(V);
                              is_number(V) ->
-    encode_kv(Prefix, K, <<"=">>, urlencode(V));
+    encode_kv(Prefix, K, <<"=">>, urlencode(V, 'legacy'));
 encode_kv(Prefix, K, 'true') ->
     encode_kv(Prefix, K, <<"=">>, <<"true">>);
 encode_kv(Prefix, K, 'false') ->
@@ -343,9 +375,9 @@ encode_kv(Prefix, K, Sep, V) -> [Prefix, <<"[">>, kz_term:to_binary(K), <<"]">>,
 
 -spec encode_kv(iolist() | binary(), key(), [string()], kz_term:ne_binary(), iolist()) -> iodata().
 encode_kv(Prefix, K, [V], Sep, Acc) ->
-    lists:reverse([encode_kv(Prefix, K, Sep, urlencode(V)) | Acc]);
+    lists:reverse([encode_kv(Prefix, K, Sep, urlencode(V, 'legacy')) | Acc]);
 encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
-    encode_kv(Prefix, K, Vs, Sep, [ <<"&">>, encode_kv(Prefix, K, Sep, urlencode(V)) | Acc]);
+    encode_kv(Prefix, K, Vs, Sep, [ <<"&">>, encode_kv(Prefix, K, Sep, urlencode(V, 'legacy')) | Acc]);
 encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
 
 %%------------------------------------------------------------------------------
@@ -443,3 +475,42 @@ encode_multipart_headers([{K, V} | Headers], Encoded) ->
 -spec create_boundary() -> kz_term:ne_binary().
 create_boundary() ->
     cow_multipart:boundary().
+
+-spec resolve_uri(nonempty_string() | kz_term:ne_binary(), nonempty_string() | kz_term:api_ne_binary()) -> kz_term:ne_binary().
+resolve_uri(Raw, 'undefined') -> kz_term:to_binary(Raw);
+resolve_uri(_Raw, <<"http", _/binary>> = Abs) -> Abs;
+resolve_uri(<<_/binary>> = RawPath, <<_/binary>> = Relative) ->
+    Path = resolve_uri_path(RawPath, Relative),
+    kz_binary:join(Path, <<"/">>);
+resolve_uri(RawPath, Relative) ->
+    resolve_uri(kz_term:to_binary(RawPath), kz_term:to_binary(Relative)).
+
+-spec resolve_uri_path(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binaries().
+resolve_uri_path(RawPath, Relative) ->
+    PathTokensRev = lists:reverse(binary:split(RawPath, <<"/">>, ['global'])),
+    UrlTokens = binary:split(Relative, <<"/">>, ['global']),
+    lists:reverse(
+      lists:foldl(fun resolve_uri_fold/2, PathTokensRev, UrlTokens)
+     ).
+
+-spec resolve_uri_fold(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
+resolve_uri_fold(<<"..">>, []) -> [];
+resolve_uri_fold(<<"..">>, [_ | PathTokens]) -> PathTokens;
+resolve_uri_fold(<<".">>, PathTokens) -> PathTokens;
+resolve_uri_fold(<<>>, PathTokens) -> PathTokens;
+resolve_uri_fold(Segment, [<<>>|DirTokens]) -> [Segment|DirTokens];
+resolve_uri_fold(Segment, [LastToken|DirTokens]=PathTokens) ->
+    case filename:extension(LastToken) of
+        <<>> ->
+            %% no extension, append Segment to Tokens
+            [Segment | PathTokens];
+        _Ext ->
+            %% Extension found, append Segment to DirTokens
+            [Segment|DirTokens]
+    end.
+
+-spec uri(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binary().
+uri(BaseUrl, Tokens) ->
+    [Pro, Url] = binary:split(BaseUrl, <<"://">>),
+    Uri = filename:join([Url | Tokens]),
+    <<Pro/binary, "://", Uri/binary>>.

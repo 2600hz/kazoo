@@ -54,7 +54,7 @@ authenticate(Claims, JObj) ->
                         ,props:get_ne_binary_value(<<"mfa_resp">>, Claims)
                         ).
 
--spec maybe_sign_or_verify(map() | mfa_error(), kz_term:api_ne_binary()) -> mfa_result().
+-spec maybe_sign_or_verify(map() | {'error', mfa_error()}, kz_term:api_ne_binary()) -> mfa_result().
 maybe_sign_or_verify(#{}=Identity, 'undefined') ->
     sign_request(Identity);
 maybe_sign_or_verify(#{}=Identity, SigResponse) ->
@@ -244,7 +244,7 @@ is_user_name(Maps) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec map_config(kz_term:proplist(), kz_json:object()) -> map() | mfa_error().
+-spec map_config(kz_term:proplist(), kz_json:object()) -> map() | {'error', mfa_error()}.
 map_config(Claims, JObj) ->
     Identity = maps:from_list(
                  [{<<"user_name">>, props:get_value(<<"owner_id">>, Claims)}

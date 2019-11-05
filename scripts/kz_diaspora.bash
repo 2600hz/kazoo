@@ -525,6 +525,12 @@ kz_util_props() {
     replace 'kz_util' 'uniq' 'props' 'unique'
 }
 
+kz_util_uri() {
+    replace 'kz_util' 'uri_' 'kz_http_util' 'url'
+    replace 'kz_util' 'uri' 'kz_http_util' 'uri'
+    replace 'kz_util' 'resolve_uri' 'kz_http_util' 'resolve_uri'
+}
+
 echo "ensuring kz_term is used"
 kz_util_to_term
 echo "ensuring kz_binary is used"
@@ -559,5 +565,7 @@ echo "updating kapps_util amqp to kz_amqp_worker"
 kapps_util_amqp
 echo "updating uniq usage to props module"
 kz_util_props
+echo "updating URI-related functions to kz_http_util"
+kz_util_uri
 
 popd >/dev/null

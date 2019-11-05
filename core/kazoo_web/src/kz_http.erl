@@ -69,6 +69,7 @@
              ,req_id/0
              ,field/0, value/0, header/0, headers/0
              ,method/0
+             ,http_body/0
              ]).
 
 -define(REQ_URL_INDEX, 1).
@@ -348,6 +349,7 @@ build_request(Method, Url, Headers, Body) when Method =:= 'post';
 
 ensure_string_headers(Headers) ->
     [{kz_term:to_list(K), kz_term:to_list(V)} || {K,V} <- Headers].
+
 %%------------------------------------------------------------------------------
 %% @doc Get options out of a proplist based on options type
 %% Two <code>HTTP_OPTIONS</code> and <code>OPTIONS</code> macros are specify

@@ -9,8 +9,6 @@
 %%%-----------------------------------------------------------------------------
 -module(kazoo_oauth_util).
 
--include("kazoo_oauth.hrl").
-
 -export([get_oauth_provider/1
         ,get_oauth_app/1
         ,get_oauth_service_app/1
@@ -24,6 +22,8 @@
 -export([jwt/2, jwt/3]).
 -export([authorization_header/1]).
 
+-include("kazoo_oauth.hrl").
+
 -spec authorization_header(oauth_token()) -> kz_term:api_binary().
 authorization_header(#oauth_token{type=Type,token=Token}) ->
     <<Type/binary, " ", Token/binary>>.
@@ -36,6 +36,7 @@ get_oauth_provider(ProviderId) ->
         {'error', _} -> {'error', <<"OAUTH - Provider ", ProviderId/binary, " not found">>}
     end.
 
+-spec oauth_provider_from_jobj(kz_term:ne_binary(), kz_json:object()) -> oauth_provider().
 oauth_provider_from_jobj(ProviderId, JObj) ->
     #oauth_provider{name=ProviderId
                    ,auth_url= kz_json:get_value(<<"oauth_url">>, JObj)
@@ -45,7 +46,7 @@ oauth_provider_from_jobj(ProviderId, JObj) ->
                    ,scopes= kz_json:get_value(<<"scopes">>, JObj)
                    }.
 
--spec get_oauth_app(kz_term:ne_binary()) -> {'ok', oauth_provider()} |
+-spec get_oauth_app(kz_term:ne_binary()) -> {'ok', oauth_app()} |
                                             {'error', kz_term:ne_binary()}.
 get_oauth_app(AppId) ->
     case kz_datamgr:open_doc(?KZ_OAUTH_DB, AppId) of
@@ -58,12 +59,14 @@ get_oauth_app(AppId) ->
         {'error', _} -> {'error', <<"OAUTH - App ", AppId/binary, " not found">>}
     end.
 
+-spec oauth_app_from_jobj(kz_term:ne_binary(), oauth_provider(), kz_json:object()) -> oauth_app().
 oauth_app_from_jobj(AppId, Provider, JObj) ->
     #oauth_app{name = AppId
               ,account_id = kz_doc:account_id(JObj)
               ,secret = kz_json:get_first_defined([<<"pvt_secret">>, <<"client_secret">>], JObj)
               ,user_prefix = kz_json:get_value(<<"pvt_user_prefix">>, JObj)
-              ,provider = Provider}.
+              ,provider = Provider
+              }.
 
 -spec get_oauth_service_app(kz_term:ne_binary()) ->
                                    {'ok', oauth_service_app()} |
