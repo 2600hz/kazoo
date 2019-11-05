@@ -71,16 +71,6 @@ proper_test_() ->
 -endif.
 
 
-%% Just to please coverage :)
-log_test_() ->
-    ST = try throw('just_for_fun')
-         catch
-             ?STACKTRACE(_E, _R, Stack)
-             Stack
-             end,
-    [?_assertEqual(ok, kz_log:log_stacktrace(ST))
-    ].
-
 calling_app_test_() ->
     [?_assertEqual(eunit_test, maps:get(app, kz_util:calling_process()))
     ,?_assertMatch(undefined, kz_util:get_app("kazoo"))

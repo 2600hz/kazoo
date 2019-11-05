@@ -12,7 +12,7 @@
 -export([stampede_worker/2]).
 
 -include_lib("eunit/include/eunit.hrl").
--include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -define(WORKERS, 5000).
 

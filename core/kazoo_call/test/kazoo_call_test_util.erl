@@ -13,7 +13,7 @@
         ,terminate_db/1
         ]).
 
--include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -spec setup_db() -> pid().
 setup_db() ->
