@@ -262,7 +262,7 @@ callid(_, Call) ->
 
 -spec queue_name(kapps_call:call() | pid()) -> kz_term:ne_binary().
 queue_name(Srv) when is_pid(Srv) ->
-    gen_server:call(Srv, 'control_queue_name');
+    gen_server:call(Srv, 'queue_name');
 queue_name(Call) ->
     Srv = cf_exe_pid(Call),
     queue_name(Srv).
@@ -370,6 +370,8 @@ handle_call('get_call', _From, #state{call=Call}=State) ->
     {'reply', {'ok', Call}, State};
 handle_call('callid', _From, #state{call=Call}=State) ->
     {'reply', kapps_call:call_id_direct(Call), State};
+handle_call('queue_name', _From, #state{queue=Q}=State) ->
+    {'reply', Q, State};
 handle_call('control_queue_name', _From, #state{call=Call}=State) ->
     {'reply', kapps_call:control_queue_direct(Call), State};
 handle_call('get_branch_keys', _From, #state{flow = Flow}=State) ->
