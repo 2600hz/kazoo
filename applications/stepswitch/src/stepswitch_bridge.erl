@@ -27,6 +27,12 @@
         ,code_change/3
         ]).
 
+-ifdef(TEST).
+-export[avoid_privacy_if_emergency_call/2
+       ,contains_emergency_endpoints/1
+       ].
+-endif.
+
 -include("stepswitch.hrl").
 -include_lib("kazoo_amqp/include/kapi_offnet_resource.hrl").
 -include_lib("kazoo_numbers/include/knm_phone_number.hrl").
@@ -422,8 +428,9 @@ build_bridge(#state{endpoints=Endpoints
                  ,{<<"Require-Fail-On-Single-Reject">>, null}
                  ],
 
+    NewEndpoints = avoid_privacy_if_emergency_call(IsEmergency, Endpoints),
     CCVs = kz_json:set_values(AddCCVs ++ RemoveCCVs, ReqCCVs),
-    FmtEndpoints = stepswitch_util:format_endpoints(Endpoints, Name, Number, OffnetReq),
+    FmtEndpoints = stepswitch_util:format_endpoints(NewEndpoints, Name, Number, OffnetReq),
 
     Realm = kzd_accounts:fetch_realm(AccountId),
 
@@ -578,7 +585,7 @@ is_emergency_endpoint('true') ->
     'true';
 is_emergency_endpoint('false') -> 'false';
 is_emergency_endpoint(Endpoint) ->
-    is_emergency_endpoint(kz_json:is_true([<<"Custom-Channel-Vars">>, <<"Emergency-Resource">>], Endpoint)).
+    is_emergency_endpoint(kz_json:is_true([?KEY_CCVS, ?KEY_EMERGENCY_RESOURCE], Endpoint)).
 
 -spec bridge_timeout(kapi_offnet_resource:req()) -> kz_term:proplist().
 bridge_timeout(OffnetReq) ->
@@ -691,3 +698,20 @@ send_deny_emergency_response(OffnetReq, ControlQ) ->
 get_event_type(CallEvt) ->
     {Cat, Name} = kz_util:get_event_type(CallEvt),
     {Cat, Name, kz_call_event:call_id(CallEvt)}.
+
+
+%%------------------------------------------------------------------------------
+%% @doc If it is an emergency call (i.e 911 call) don't honor `privacy' settings.
+%% @end
+%%------------------------------------------------------------------------------
+-spec avoid_privacy_if_emergency_call(boolean(), stepswitch_resources:endpoints()) -> stepswitch_resources:endpoints().
+avoid_privacy_if_emergency_call('true', Endpoints) ->
+    lager:info("emergency call ongoing, ignoring privacy settings"),
+    Values = [{?KEY_PRIVACY_HIDE_NAME, 'false'}
+             ,{?KEY_PRIVACY_HIDE_NUMBER, 'false'}
+             ,{?KEY_PRIVACY_METHOD, <<"none">>}
+             ],
+    F = fun(E, Acc) -> [kz_json:set_values(Values, E) | Acc] end,
+    lists:foldl(F, [], Endpoints);
+avoid_privacy_if_emergency_call('false', Endpoints) ->
+    Endpoints.
