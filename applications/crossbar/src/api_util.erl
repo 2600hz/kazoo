@@ -583,7 +583,7 @@ req_noun_requires_envelope(Context, [{Mod, Params} | _]) ->
     Event = create_event_name(Context, <<"requires_envelope.", Mod/binary>>),
     Payload = [Context | Params],
     case crossbar_bindings:pmap(Event, Payload) of
-        [Value | _] -> not Value;
+        [Value | _] -> Value;
         _Else -> 'true'
     end.
 
