@@ -301,14 +301,14 @@ diff: export TO_DIALYZE = $(shell git diff --name-only $(BASE_BRANCH)... -- $(RO
 diff: dialyze-it
 
 bump-copyright:
-	@$(ROOT)/scripts/bump-copyright-year.sh $(shell find applications core -name '*.erl')
+	@$(ROOT)/scripts/bump-copyright-year.py $(shell find applications core -name '*.erl')
 
 app_applications:
 	ERL_LIBS=deps:core:applications $(ROOT)/scripts/apps_of_app.escript -a $(shell find applications -name *.app.src)
 
 code_checks:
 	@printf ":: Check for copyright year\n\n"
-	@$(ROOT)/scripts/bump-copyright-year.sh $(CHANGED_ERL)
+	@$(ROOT)/scripts/bump-copyright-year.py $(CHANGED_ERL)
 	@printf "\n:: Check code\n\n"
 	@$(ROOT)/scripts/code_checks.bash $(CHANGED_ERL)
 	@printf "\n:: Check for raw JSON usage\n\n"
@@ -335,11 +335,11 @@ check_stacktrace:
 
 apis:
 	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/generate-schemas.escript
-	@$(ROOT)/scripts/format-json.sh $(shell find applications core -wholename '*/schemas/*.json')
+	@$(ROOT)/scripts/format-json.py $(shell find applications core -wholename '*/schemas/*.json')
 	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/generate-api-endpoints.escript
-	@$(ROOT)/scripts/generate-doc-schemas.sh `egrep -rl '(#+) Schema' core/ applications/ | grep -v '.[h|e]rl'`
-	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/api/swagger.json
-	@$(ROOT)/scripts/format-json.sh $(shell find applications core -wholename '*/api/*.json')
+	@$(ROOT)/scripts/generate-doc-schemas.py `egrep -rl '(#+) Schema' core/ applications/ | grep -v '.[h|e]rl'`
+	@$(ROOT)/scripts/format-json.py applications/crossbar/priv/api/swagger.json
+	@$(ROOT)/scripts/format-json.py $(shell find applications core -wholename '*/api/*.json')
 	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/generate-fs-headers-hrl.escript
 	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/generate-kzd-builders.escript
 
@@ -380,7 +380,7 @@ fs-headers:
 	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/generate-fs-headers-hrl.escript
 
 validate-swagger:
-	@$(ROOT)/scripts/validate-swagger.sh
+	@$(ROOT)/scripts/validate-swagger.py
 
 validate-js:
 	@$(ROOT)/scripts/validate-js.py $(CHANGED_JSON)
@@ -389,7 +389,7 @@ sdks:
 	@$(ROOT)/scripts/make-swag.sh
 
 validate-schemas:
-	@$(ROOT)/scripts/validate-schemas.sh $(ROOT)/applications/crossbar/priv/couchdb/schemas
+	@$(ROOT)/scripts/validate-schemas.py $(ROOT)/applications/crossbar/priv/couchdb/schemas
 
 include make/splchk.mk
 include make/ci.mk

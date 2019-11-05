@@ -138,7 +138,7 @@ app_src:
 
 json: JSON = $(shell find . -name '*.json')
 json:
-	@$(ROOT)/scripts/format-json.sh $(JSON)
+	@$(ROOT)/scripts/format-json.py $(JSON)
 
 compile-test: $(TEST_DEPS) compile-test-kz-deps compile-test-direct json
 

@@ -1,7 +1,7 @@
-#!/usr/bin/env python2
-from __future__ import print_function
+#!/usr/bin/env python3
 
 import yaml, os.path, sys
+from functools import reduce
 
 # from https://stackoverflow.com/questions/5574702/how-to-print-to-stderr-in-python
 def eprint(*args, **kwargs):
@@ -25,7 +25,7 @@ def parse_page_string(errors_detected, page):
 def parse_page(errors_detected, page):
     "parse a page for existence"
     if isinstance(page, dict):
-        return reduce(parse_page_dict, page.items(), errors_detected)
+        return reduce(parse_page_dict, list(page.items()), errors_detected)
     elif isinstance(page, list):
         return reduce(parse_page, page, errors_detected)
     elif isinstance(page, str):
@@ -38,7 +38,7 @@ mkdocs = yaml.load_all(stream)
 errors_detected = False
 
 for doc in mkdocs:
-    for k,v in doc.items():
+    for k,v in list(doc.items()):
         if "pages" == k:
             errors_detected = parse_page(False, v)
 

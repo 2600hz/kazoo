@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Validate JSON schemas using python2's jsonschema tool
+# Validate JSON schemas using python3's jsonschema tool
 
 import json
 import jsonschema

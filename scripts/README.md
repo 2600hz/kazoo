@@ -103,12 +103,12 @@ cycle through kazoo_xml: [kazoo_xml,kazoo_stdlib,kazoo_documents,kazoo_apps,
 cycle through tasks: [tasks,kazoo_apps,kazoo_proper,tasks]
 ```
 
-## bump-copyright-year.sh
+## bump-copyright-year.py
 
 Python script to walk the supplied files and bumps the copyright year if appropriate.
 
 ```shell
-./scripts/bump-copyright-year.sh [FILE]
+./scripts/bump-copyright-year.py [FILE]
 ```
 
 ## calculate-dep-targets.escript
@@ -449,12 +449,12 @@ Options:
 -s BASE_URL             Defaults to http://localhost:8000; include the http(s) scheme
 ```
 
-## format-json.sh
+## format-json.py
 
 Python script to format JSON files (like CouchDB views, JSON schemas) and write the formatted version back to the file. 'make apis' runs this as part of its instructions.
 
 ```shell
-./scripts/format-json.sh path/to/file.json [path/to/other/file.json,...]
+./scripts/format-json.py path/to/file.json [path/to/other/file.json,...]
 ```
 
 
@@ -465,7 +465,7 @@ Builds the Crossbar reference docs in 'applications/crossbar/doc/ref'. Helps det
 Also builds the [Swagger](http://swagger.io/) JSON file in applications/crossbar/priv/api/swagger.json
 
 
-## generate-doc-schemas.sh
+## generate-doc-schemas.py
 
 Updates crossbar docs with the schema table from the ref (auto-gen) version
 
@@ -585,12 +585,12 @@ Starts a VM in the background with name kazoo\_apps
 Starts a VM in the background with name ecallmgr
 
 
-## state-of-docs.sh
+## state-of-docs.py
 
 Searches for undocumented APIs and reports percentage of doc coverage.
 
 ```shell
-./scripts/state-of-docs.sh
+./scripts/state-of-docs.py
 ```
 
     Undocumented API endpoints:
@@ -882,12 +882,12 @@ Processes JSON files:
 -   Checks map functions in CouchDB views for 'Object.keys' usage
 
 
-## validate-schemas.sh
+## validate-schemas.py
 
 Validate JSON schema files:
 
 ```shell
-./scripts/validate-schemas.sh applications/crossbar/priv/couchdb/schemas/
+./scripts/validate-schemas.py applications/crossbar/priv/couchdb/schemas/
 Traceback (most recent call last):
   File "/usr/local/bin/jsonschema", line 11, in <module>
     sys.exit(main())
@@ -926,16 +926,16 @@ Bad schema: /home/pete/wefwefwef/kazoo.git/applications/crossbar/priv/couchdb/sc
 }
 
 Run again with:
-./scripts/validate-schemas.sh /home/pete/wefwefwef/kazoo.git/applications/crossbar/priv/couchdb/schemas/callflows.lookupcidname.json
+./scripts/validate-schemas.py /home/pete/wefwefwef/kazoo.git/applications/crossbar/priv/couchdb/schemas/callflows.lookupcidname.json
 ```
 
 
-## validate-swagger.sh
+## validate-swagger.py
 
 Validate Swagger file using online validator
 
 ```shell
-./scripts/validate-swagger.sh
+./scripts/validate-swagger.py
 ```
 
       % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current

@@ -19,7 +19,7 @@ sudo apt-get install build-essential libxslt-dev \
 
 #### CentOS 7
 ```shell
-sudo yum install openssl-devel automake autoconf ncurses-devel gcc python-pip fop
+sudo yum install openssl-devel automake autoconf ncurses-devel gcc python36-pip fop
 ```
 
 Note: `htmldoc` is required only if [you want to be able to download PDFs](./announcements.md#company-directory-pdf).
@@ -29,7 +29,7 @@ Note: `htmldoc` is required only if [you want to be able to download PDFs](./ann
     When running `make docs`, some Python libraries are useful:
 
     ```shell
-    sudo apt-get install python2.7 python-yaml
+    sudo apt-get install python3 python3-yaml
     sudo pip install mkdocs mkdocs-bootstrap mkdocs-bootswatch pymdown-extensions
     ```
 

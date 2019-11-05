@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 # Find undocumented API endpoints
 
@@ -10,7 +10,7 @@ cwd = os.getcwd()
 script_dir = os.path.dirname(sys.argv[0])
 os.chdir(script_dir)
 
-print 'Undocumented API endpoints:'
+print('Undocumented API endpoints:')
 
 def endpoints(wildcard_path):
     APIs = set([])
@@ -30,7 +30,7 @@ Wrong = set.difference(MDs, APIs)
 Undocumented = set.difference(APIs, MDs)
 Documented = set.intersection(APIs, MDs)
 for API in sort_endpoints(Undocumented):
-    print API
+    print(API)
 
 wrong = len(Wrong)
 undocumented = len(Undocumented)
@@ -38,14 +38,14 @@ documented = len(Documented)
 
 total = documented + undocumented
 percent_documented = documented * 100 / total
-print
-print documented, '/', total, '(', str(percent_documented) + '% documented', ')'
+print()
+print(documented, '/', total, '(', str(percent_documented) + '% documented', ')')
 
 if 0 != wrong:
-    print
-    print 'Documented but not matching any allowed_method:'
+    print()
+    print('Documented but not matching any allowed_method:')
     for API in sort_endpoints(Wrong):
-        print API
+        print(API)
     #sys.exit(wrong)
 
 os.chdir(cwd)

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 # bumps copyright year to current year in source/hrl files
 # adds MPL2.0 license to each source file if missing
@@ -97,4 +97,4 @@ for filename in sys.argv[1:]:
 
     replaced += (updated_c or updated_l)
 
-print " done"
+print(" done")

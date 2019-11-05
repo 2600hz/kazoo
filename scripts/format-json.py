@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 # print 'Usage: ' + sys.argv[0] + ' file.json+'
 
@@ -17,7 +17,7 @@ for fn in sys.argv[1:]:
             data = json.load(fd)
             data2 = json.dumps(data, sort_keys=True, indent=4, separators=(",", ": "))
         except ValueError as e:
-            print fn + ": " + str(e)
+            print(fn + ": " + str(e))
             exit(1)
         with open(fn2, 'w') as fd2:
             fd2.write(data2 + '\n')

@@ -29,11 +29,11 @@ ifneq ($(PIP),)
 	@$(PIP) install --user --upgrade pip
 	@$(PIP) install --user PyYAML mkdocs pyembed-markdown jsonschema
 else
-	$(error "pip is not available, please install python2-pip package")
+	$(error "pip is not available, please install python3-pip package")
 endif
 
 ci-docs:
-	@./scripts/state-of-docs.sh || true
+	@./scripts/state-of-docs.py || true
 	@$(ROOT)/scripts/state-of-edoc.escript
 	@$(MAKE) apis
 	@$(MAKE) docs
