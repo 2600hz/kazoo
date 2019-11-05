@@ -55,14 +55,18 @@ number(Options) ->
 set_account_id(#{ccvs := CCVs, profile := Profile, number := #{account_id := AccountId}} = Map) ->
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     {'ok', Account} = kzd_accounts:fetch(AccountId, 'accounts'),
+    ResellerId = kzd_accounts:reseller_id(Account),
     Realm = kzd_accounts:realm(Account),
     Map#{ccvs => [{<<"Account-ID">>, AccountId}
                  ,{<<"Account-Realm">>, Realm}
                  ,{<<"Realm">>, Realm}
-                 ,{<<"Reseller-ID">>, kzd_accounts:reseller_id(Account)}
+                 ,{<<"Reseller-ID">>, ResellerId}
                   | CCVs
                  ]
-        ,profile => [{<<"Account-ID">>, AccountId} | Profile]
+        ,profile => [{<<"Account-ID">>, AccountId}
+                    ,{<<"Reseller-ID">>, ResellerId}
+                     | Profile
+                    ]
         ,account_id => AccountId
         ,master_id => MasterAccountId
         ,anonymous_cid_number => kz_privacy:anonymous_caller_id_number(AccountId)

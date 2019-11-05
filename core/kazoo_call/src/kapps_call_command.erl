@@ -992,8 +992,8 @@ b_answer(Call) ->
     wait_for_message(Call, <<"answer">>).
 
 -spec b_answer_now(kapps_call:call()) ->
-                      kapps_api_error() |
-                      {'ok', kz_json:object()}.
+                          kapps_api_error() |
+                          {'ok', kz_json:object()}.
 b_answer_now(Call) ->
     answer_now(Call),
     wait_for_message(Call, <<"answer">>).
