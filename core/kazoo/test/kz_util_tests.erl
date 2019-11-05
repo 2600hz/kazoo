@@ -78,7 +78,7 @@ log_test_() ->
              ?STACKTRACE(_E, _R, Stack)
              Stack
              end,
-    [?_assertEqual(ok, kz_util:log_stacktrace(ST))
+    [?_assertEqual(ok, kz_log:log_stacktrace(ST))
     ].
 
 calling_app_test_() ->
@@ -108,10 +108,10 @@ get_event_type_test_() ->
 
 put_callid_test_() ->
     ApiCallId = [{<<"Call-ID">>, <<"bla">>}],
-    [?_assertEqual(<<"bla">>, begin kz_util:put_callid(<<"bla">>), kz_util:get_callid() end)
-    ,?_assertEqual(bla, begin kz_util:put_callid(bla), kz_util:get_callid() end)
-    ,?_assertEqual(<<"bla">>, begin kz_util:put_callid(ApiCallId), kz_util:get_callid() end)
-    ,?_assertEqual(<<"bla">>, begin kz_util:put_callid(kz_json:from_list(ApiCallId)), kz_util:get_callid() end)
+    [?_assertEqual(<<"bla">>, begin kz_log:put_callid(<<"bla">>), kz_log:get_callid() end)
+    ,?_assertEqual(bla, begin kz_log:put_callid(bla), kz_log:get_callid() end)
+    ,?_assertEqual(<<"bla">>, begin kz_log:put_callid(ApiCallId), kz_log:get_callid() end)
+    ,?_assertEqual(<<"bla">>, begin kz_log:put_callid(kz_json:from_list(ApiCallId)), kz_log:get_callid() end)
     ,?_assert(is_integer(begin kz_util:set_startup(), kz_util:startup() end))
     ].
 

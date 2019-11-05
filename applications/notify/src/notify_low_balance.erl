@@ -43,7 +43,7 @@ init() ->
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:low_balance_v(JObj),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
 
     lager:debug("account low balance alert, sending email notification"),
 

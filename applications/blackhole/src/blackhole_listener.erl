@@ -140,7 +140,6 @@ persist_module(Module, Mods) ->
           )
     of
         {'ok', _} -> 'true';
-        'ok' -> 'false';
         {'error', _} -> 'false'
     end.
 

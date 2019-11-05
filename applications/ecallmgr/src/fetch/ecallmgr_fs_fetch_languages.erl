@@ -41,7 +41,7 @@ init() ->
 
 -spec language_req(map()) -> fs_sendmsg_ret().
 language_req(#{fetch_id := Id, payload := JObj} = Ctx) ->
-    kz_util:put_callid(Id),
+    kz_log:put_callid(Id),
     {ok, Xml} = language_resp_xml(JObj),
     freeswitch:fetch_reply(Ctx#{reply => iolist_to_binary(Xml)}).
 

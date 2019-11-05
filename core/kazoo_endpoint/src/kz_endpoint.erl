@@ -815,11 +815,11 @@ should_create_endpoint_fold(Routine, {Endpoint, Properties, Call}=Acc) when is_f
         Error -> Error
     catch
         ?STACKTRACE('throw', Error, ST)
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         Error;
         ?STACKTRACE(_E, _R, ST)
         lager:debug("exception ~p:~p", [_E, _R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'error', 'exception'}
         end;
 should_create_endpoint_fold(_Routine, Error) -> Error.
@@ -1032,7 +1032,7 @@ try_create_endpoint(Routine, Endpoints, Endpoint, Properties, Call) when is_func
     catch
         ?STACKTRACE(_E, _R, ST)
         lager:warning("unable to build endpoint(~s): ~p", [_E, _R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         Endpoints
         end.
 

@@ -41,7 +41,7 @@ init() ->
 %%------------------------------------------------------------------------------
 -spec fetch_directory(map()) -> fs_handlecall_ret().
 fetch_directory(#{node := Node, fetch_id := FetchId, payload := JObj}=Ctx) ->
-    kz_util:put_callid(FetchId),
+    kz_log:put_callid(FetchId),
     lager:debug("received fetch request (~s) user directory from ~s", [FetchId, Node]),
     case kzd_fetch:fetch_action(JObj, <<"sip_auth">>) of
         <<"reverse-auth-lookup">> -> lookup_user(Node, FetchId, <<"reverse-lookup">>, JObj, Ctx);

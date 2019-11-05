@@ -99,6 +99,6 @@ run(Token, [Fun | Routines]) ->
     catch
         ?STACKTRACE(_E, _R, ST)
         lager:debug("exception executing ~p : ~p , ~p, ~p", [Fun, _E, _R, Token]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'error', Token}
         end.

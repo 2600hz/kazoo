@@ -88,10 +88,10 @@ handle_call(_Request, _From, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'gen_listener', {'created_queue', _QueueName}}, State) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
@@ -113,7 +113,7 @@ handle_info(_Info, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), kz_term:proplist()) -> gen_listener:handle_event_return().
 handle_event(JObj, _State) ->
-    CallId = kz_util:find_callid(JObj),
+    CallId = kz_log:find_callid(JObj),
     lager:debug("instrumenting teletype for call_id ~p", [CallId]),
     {'reply', []}.
 

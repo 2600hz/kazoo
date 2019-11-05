@@ -65,7 +65,7 @@ account_bindings(_AccountId) -> [].
 %%------------------------------------------------------------------------------
 -spec handle_sms(kapi_conf:doc(), kz_term:proplist()) -> 'ok'.
 handle_sms(ConfChange, _Props) ->
-    kz_util:put_callid(ConfChange),
+    kz_log:put_callid(ConfChange),
     'true' = kapi_conf:doc_update_v(ConfChange),
     Type = kapi_conf:get_type(ConfChange),
     Action = kz_api:event_name(ConfChange),

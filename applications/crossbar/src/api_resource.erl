@@ -157,7 +157,7 @@ get_request_id(Req) ->
                 'undefined' -> kz_datamgr:get_uuid();
                 UserReqId -> kz_term:to_binary(UserReqId)
             end,
-    kz_util:put_callid(ReqId),
+    kz_log:put_callid(ReqId),
     ReqId.
 
 -spec get_profile_id(cowboy_req:req()) -> kz_term:api_ne_binary().

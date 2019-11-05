@@ -157,7 +157,7 @@ worker_pause() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec worker_maybe_send_update(kz_tasks:id(), pos_integer(), pos_integer()) -> 'ok'.
+-spec worker_maybe_send_update(kz_tasks:id(), non_neg_integer(), non_neg_integer()) -> 'ok'.
 worker_maybe_send_update(TaskId, Succeeded, Failed) ->
     gen_server:cast(?SERVER, {'worker_update_processed', TaskId, Succeeded, Failed}).
 
@@ -189,7 +189,7 @@ try_maybe_strip_columns(Columns, CSVPath) ->
     catch
         ?STACKTRACE(_E, _R, ST)
         lager:warning("stripping empty columns failed: ~p:~p", [_E, _R]),
-        kz_util:log_stacktrace(ST)
+        kz_log:log_stacktrace(ST)
         end.
 
 maybe_strip_columns(Columns, CSVPath) ->

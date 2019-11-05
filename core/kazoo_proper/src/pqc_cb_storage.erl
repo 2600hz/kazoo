@@ -134,7 +134,7 @@ initial_state() ->
 
 init_system() ->
     TestId = kz_binary:rand_hex(5),
-    kz_util:put_callid(TestId),
+    kz_log:put_callid(TestId),
 
     _ = kz_data_tracing:clear_all_traces(),
     _ = [kapps_controller:start_app(App) ||

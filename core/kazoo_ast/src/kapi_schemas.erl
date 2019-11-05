@@ -15,6 +15,7 @@
         ]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 -include_lib("kazoo_amqp/src/api/kapi_presence.hrl").

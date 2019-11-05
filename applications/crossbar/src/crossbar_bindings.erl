@@ -197,7 +197,7 @@ start_link() ->
 -spec init() -> 'ok'.
 init() ->
     lager:debug("initializing bindings"),
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     AutoloadModules = crossbar_config:autoload_modules(?DEFAULT_MODULES),
     lists:foreach(fun maybe_init_mod/1, AutoloadModules).
 

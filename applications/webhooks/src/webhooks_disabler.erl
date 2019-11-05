@@ -38,7 +38,7 @@ start_link() ->
 
 -spec init(any()) -> {'ok', state()}.
 init(_) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {'ok', start_check_timer()}.
 
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).

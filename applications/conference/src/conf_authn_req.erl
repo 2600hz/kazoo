@@ -17,7 +17,7 @@
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_authn:req_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     Conference = kapps_conference:new(),
     Username = kapi_authn:get_auth_user(JObj),
     case kapps_conference:bridge_username(Conference) of

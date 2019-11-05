@@ -379,7 +379,7 @@ listen_on(Call, JObj) ->
 -spec has_metaflow(kz_term:ne_binary(), kz_json:object(), kz_json:object()) ->
                           'false' |
                           {'number', kz_json:object()} |
-                          {'patterm', kz_json:object()}.
+                          {'pattern', kz_json:object()}.
 has_metaflow(Collected, Ns, Ps) ->
     case has_number(Collected, Ns) of
         'false' -> has_pattern(Collected, Ps);

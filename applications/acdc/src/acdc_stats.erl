@@ -378,7 +378,7 @@ sort_by_entered_timestamp(#call_stat{entered_timestamp=ATimestamp}, #call_stat{e
 
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(<<"acdc.stats">>),
+    kz_log:put_callid(<<"acdc.stats">>),
     kz_datamgr:suppress_change_notice(),
     lager:debug("started new acdc stats collector"),
 
@@ -727,7 +727,7 @@ cleanup_unfinished(Unfinished) ->
 
 -spec archive_call_data(pid(), boolean()) -> 'ok'.
 archive_call_data(Srv, 'true') ->
-    kz_util:put_callid(<<"acdc_stats.force_call_archiver">>),
+    kz_log:put_callid(<<"acdc_stats.force_call_archiver">>),
 
     Match = [{#call_stat{status='$1'
                         ,is_archived='$2'
@@ -741,7 +741,7 @@ archive_call_data(Srv, 'true') ->
              }],
     maybe_archive_call_data(Srv, Match);
 archive_call_data(Srv, 'false') ->
-    kz_util:put_callid(<<"acdc_stats.call_archiver">>),
+    kz_log:put_callid(<<"acdc_stats.call_archiver">>),
 
     Past = kz_time:now_s() - ?ARCHIVE_WINDOW,
     Match = [{#call_stat{entered_timestamp='$1'

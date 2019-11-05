@@ -32,7 +32,7 @@
 
 -spec init(cowboy_req:req(), kz_term:proplist()) -> handler_return().
 init(Req, _Opts) ->
-    kz_util:put_callid(kz_binary:rand_hex(16)),
+    kz_log:put_callid(kz_binary:rand_hex(16)),
     check_authn(Req, authenticate(Req)).
 
 -spec check_authn(cowboy_req:req(), boolean()) -> handler_return().

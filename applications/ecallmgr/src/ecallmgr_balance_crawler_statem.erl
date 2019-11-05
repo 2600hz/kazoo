@@ -69,7 +69,7 @@ start_link() ->
 -spec init(list()) -> {'ok', 'idle', 'undefined'}.
 init(_Args) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     _ = timer:apply_after(?CRAWLER_CYCLE_MS, 'gen_statem', 'cast', [self(), 'start_cycle']),
     {'ok', 'idle', 'undefined'}.
 

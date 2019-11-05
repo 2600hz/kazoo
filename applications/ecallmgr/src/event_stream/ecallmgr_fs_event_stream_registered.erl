@@ -37,7 +37,7 @@ init() ->
 
 -spec notify_call_event(map()) -> any().
 notify_call_event(#{node := Node, call_id := UUID, event := Event, payload := JObj}) ->
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, Event)}, {'event', UUID, JObj}),
     maybe_send_call_event(UUID, Event, JObj, Node).
 
@@ -49,7 +49,7 @@ maybe_send_call_event(CallId, Event, JObj, Node) ->
 
 -spec notify_conference_event(map()) -> any().
 notify_conference_event(#{node := Node, payload := JObj}) ->
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     ConferenceId = kz_conference_event:conference_id(JObj),
     Event = kz_conference_event:event(JObj),
     gproc:send({'p', 'l', ?FS_CONFERENCE_EVENT_REG_MSG(Node, ConferenceId, Event)}, {'conference', ConferenceId, Event, JObj}),

@@ -185,7 +185,7 @@ call_event(ServerRef, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
 call_event(ServerRef, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, JObj) ->
     maybe_send_execute_complete(ServerRef, kz_json:get_value(<<"Application-Name">>, JObj), JObj);
 call_event(ServerRef, <<"error">>, <<"dialplan">>, JObj) ->
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     lager:debug("error event: ~s", [kz_json:get_value(<<"Error-Message">>, JObj)]),
 
     Req = kz_json:get_value(<<"Request">>, JObj),
@@ -385,7 +385,7 @@ deleted_endpoint(ServerRef, EP) ->
 -spec init(list()) -> {'ok', atom(), state()}.
 init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
     StateMCallId = <<"statem_", AccountId/binary, "_", AgentId/binary>>,
-    kz_util:put_callid(StateMCallId),
+    kz_log:put_callid(StateMCallId),
     lager:debug("started acdc agent statem"),
 
     _P = kz_util:spawn(fun wait_for_listener/4, [Supervisor, self(), Props, IsThief]),
@@ -565,7 +565,7 @@ ready('cast', {'member_connect_win', JObj}, #state{agent_listener=AgentListener
     Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),
     CallId = kapps_call:call_id(Call),
 
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
 
     WrapupTimer = kz_json:get_integer_value(<<"Wrapup-Timeout">>, JObj, 0),
     CallerExitKey = kz_json:get_value(<<"Caller-Exit-Key">>, JObj, <<"#">>),
@@ -1028,7 +1028,7 @@ answered('cast', {'channel_replaced', JObj}, #state{agent_listener=AgentListener
     CallId = kz_call_event:call_id(JObj),
     ReplacedBy = kz_call_event:replaced_by(JObj),
     acdc_agent_listener:rebind_events(AgentListener, CallId, ReplacedBy),
-    kz_util:put_callid(ReplacedBy),
+    kz_log:put_callid(ReplacedBy),
     lager:info("channel ~s replaced by ~s", [CallId, ReplacedBy]),
     {'next_state', 'answered', State#state{member_call_id = ReplacedBy}};
 answered('cast', {'sync_req', JObj}, #state{agent_listener=AgentListener
@@ -1603,7 +1603,7 @@ clear_call(#state{statem_call_id=StateMCallId
                  ,wrapup_ref=WRef
                  ,pause_ref=PRef
                  }=State, NextState)->
-    kz_util:put_callid(StateMCallId),
+    kz_log:put_callid(StateMCallId),
 
     ReadyForAction = NextState =/= 'wrapup'
         andalso NextState =/= 'paused',
@@ -1685,7 +1685,7 @@ start_outbound_call_handling(CallId, #state{agent_listener=AgentListener
                                            ,agent_id=AgentId
                                            ,outbound_call_ids=OutboundCallIds
                                            }=State) when is_binary(CallId) ->
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     lager:debug("agent making outbound call, not receiving ACDc calls"),
     acdc_agent_listener:outbound_call(AgentListener, CallId),
     acdc_agent_stats:agent_outbound(AccountId, AgentId, CallId),
@@ -1875,7 +1875,7 @@ notify(Url, Method, Key, #state{account_id=AccountId
                                ,agent_call_id=AgentCallId
                                ,member_call_queue_id=QueueId
                                }) ->
-    kz_util:put_callid(kapps_call:call_id(MemberCall)),
+    kz_log:put_callid(kapps_call:call_id(MemberCall)),
     Data = kz_json:from_list(
              [{<<"account_id">>, AccountId}
              ,{<<"agent_id">>, AgentId}

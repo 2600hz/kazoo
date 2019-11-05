@@ -18,6 +18,7 @@
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 %% define the callback function for the various options
 

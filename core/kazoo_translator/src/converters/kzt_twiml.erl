@@ -68,7 +68,7 @@ exec_elements(Call, [El|Els]) ->
             {'error', kzt_util:add_error(Call, <<"unknown_element">>, Name)};
         ?STACKTRACE(_E, _R, ST)
         lager:error("'~s' when execing el ~p: ~p", [_E, El, _R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'error', Call}
         end.
 

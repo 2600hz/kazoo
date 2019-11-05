@@ -18,7 +18,7 @@
 -spec handle_req(kapi_callflow:resume(), kz_term:proplist()) -> 'ok'.
 handle_req(ResumeJObj, _Props) ->
     'true' = kapi_callflow:resume_v(ResumeJObj),
-    kz_util:put_callid(ResumeJObj),
+    kz_log:put_callid(ResumeJObj),
     kz_amqp_worker:worker_pool(callflow_sup:pool_name()),
 
     try_handle_req(ResumeJObj, kz_amqp_worker:checkout_worker()).

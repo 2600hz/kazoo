@@ -201,7 +201,7 @@ compact_db(?MATCH_ACCOUNT_RAW(AccountId)) ->
     lager:info("adjusting account id ~s to db name", [AccountId]),
     compact_db(kz_util:format_account_id(AccountId, 'unencoded'));
 compact_db(Database) ->
-    CallIdBin = kz_term:to_binary(kz_util:get_callid()),
+    CallIdBin = kz_term:to_binary(kz_log:get_callid()),
     print_csv(maybe_track_compact_db(Database, ?HEUR_NONE, CallIdBin)).
 
 -spec maybe_track_compact_db(kz_term:ne_binary(), heuristic(), kz_term:ne_binary()) -> rows().
@@ -251,7 +251,7 @@ is_allowed(ExtraArgs) ->
 
 -spec do_compact_all() -> rows().
 do_compact_all() ->
-    CallId = kz_util:get_callid(),
+    CallId = kz_log:get_callid(),
 
     case get_all_dbs_and_sort_by_disk() of
         [] -> lager:info("failed to find any dbs");
@@ -265,7 +265,7 @@ do_compact_all() ->
 -spec compact_node(kz_term:ne_binary()) -> 'ok'.
 compact_node(Node) ->
     %% Same as compact_db/1 but for nodes instead of dbs.
-    CallId = kz_term:to_binary(kz_util:get_callid()),
+    CallId = kz_term:to_binary(kz_log:get_callid()),
     print_csv(maybe_track_compact_node(Node, ?HEUR_NONE, CallId)).
 
 -spec maybe_track_compact_node(kz_term:ne_binary(), heuristic(), kz_term:ne_binary()) -> rows().
@@ -307,14 +307,14 @@ do_compact_node(Node, Heuristic, APIConn, AdminConn) ->
         {'ok', ViewResults} ->
             NodeDBs = [kz_doc:id(ViewResult) || ViewResult <- ViewResults],
             Sorted = sort_by_disk_size(get_dbs_sizes(NodeDBs)),
-            'ok' = kt_compaction_reporter:set_job_dbs(kz_util:get_callid(), Sorted),
+            'ok' = kt_compaction_reporter:set_job_dbs(kz_log:get_callid(), Sorted),
             SortedWithoutSizes = [Db || {Db, _Sizes} <- Sorted],
             do_compact_node(Node, Heuristic, APIConn, AdminConn, SortedWithoutSizes)
     end.
 
 -spec do_compact_node(kz_term:ne_binary(), heuristic(), kz_data:connection(), kz_data:connection(), kz_term:ne_binaries()) -> rows().
 do_compact_node(Node, Heuristic, APIConn, AdminConn, Databases) ->
-    CallId = kz_util:get_callid(),
+    CallId = kz_log:get_callid(),
     lists:foldl(fun(Database, Acc) ->
                         'ok' = kt_compaction_reporter:current_db(CallId, Database),
                         NewAcc = do_compact_node_db(Node, Heuristic, APIConn, AdminConn, Database, Acc),
@@ -329,7 +329,7 @@ do_compact_node(Node, Heuristic, APIConn, AdminConn, Databases) ->
 do_compact_node_db(Node, Heuristic, APIConn, AdminConn, Database, Acc) ->
     Compactor = node_compactor(Node, Heuristic, APIConn, AdminConn, Database),
     Shards = kt_compactor_worker:compactor_shards(Compactor),
-    'ok' = kt_compaction_reporter:add_found_shards(kz_util:get_callid(), length(Shards)),
+    'ok' = kt_compaction_reporter:add_found_shards(kz_log:get_callid(), length(Shards)),
     do_compact_node_db(Compactor, Acc).
 
 -spec do_compact_node_db(kt_compactor_worker:compactor(), rows()) -> rows().
@@ -524,11 +524,11 @@ track_job(_CallId, _Fun, _Args, []) ->
 track_job(CallId, Fun, Args, Dbs) when is_function(Fun)
                                        andalso is_list(Args) ->
     try
-        kz_util:put_callid(CallId),
+        kz_log:put_callid(CallId),
         'ok' = kt_compaction_reporter:start_tracking_job(self(), node(), CallId, Dbs),
         Rows = erlang:apply(Fun, Args),
         'ok' = kt_compaction_reporter:stop_tracking_job(CallId),
-        kz_util:put_callid('undefined'), % Reset callid
+        kz_log:put_callid('undefined'), % Reset callid
         Rows
     catch
         'error':{'badmatch', {'error','not_found'}} -> []

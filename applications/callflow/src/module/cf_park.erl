@@ -593,7 +593,7 @@ load_parked_call(JObj) ->
 %%------------------------------------------------------------------------------
 -spec maybe_cleanup_slot(kz_term:ne_binary(), kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 maybe_cleanup_slot(SlotNumber, Call, OldCallId) ->
-    _ = kz_util:put_callid(OldCallId),
+    _ = kz_log:put_callid(OldCallId),
     ParkedCalls = get_parked_calls(Call),
     AccountDb   = kapps_call:account_db(Call),
 

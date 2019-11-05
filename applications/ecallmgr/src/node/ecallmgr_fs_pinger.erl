@@ -57,7 +57,7 @@ start_link(Node, Options) ->
 %%------------------------------------------------------------------------------
 -spec init([atom() | kz_term:proplist()]) -> {'ok', state()}.
 init([Node, Props]) ->
-    kz_util:put_callid(Node),
+    kz_log:put_callid(Node),
     self() ! 'initialize_pinger',
     lager:info("node ~s not responding, periodically retrying connection", [Node]),
     {'ok', #state{node=Node, options=Props}}.

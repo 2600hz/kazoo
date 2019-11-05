@@ -16,6 +16,7 @@
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_ast/src/kz_ast.hrl").
 
 -record(usage, {usages = [] %% places the Data is accessed

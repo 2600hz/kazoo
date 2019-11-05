@@ -38,7 +38,7 @@ handle(Metaflow, Call) ->
     catch
         ?STACKTRACE(_E, _R, ST)
         lager:debug("failed to exe metaflow 'konami_~s': ~s: ~p", [M, _E, _R]),
-        kz_util:log_stacktrace(ST)
+        kz_log:log_stacktrace(ST)
         end.
 
 -spec find_child_metaflow(kz_term:api_binary(), kz_json:object()) -> kz_term:api_object().

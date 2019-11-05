@@ -460,7 +460,7 @@ build_message_specific(Prop, ReqH, OptH) ->
 
 -spec headers_to_json(kz_term:proplist()) -> api_formatter_return().
 headers_to_json([_|_]=HeadersProp) ->
-    _ = kz_util:kz_log_md_put('msg_id', msg_id(HeadersProp)),
+    _ = kz_log:kz_log_md_put('msg_id', msg_id(HeadersProp)),
     try kz_json:encode(kz_json:from_list(HeadersProp)) of
         JSON -> {'ok', JSON}
     catch

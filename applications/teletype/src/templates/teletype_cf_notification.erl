@@ -21,7 +21,7 @@
 
 -spec init() -> 'ok'.
 init() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     teletype_bindings:bind(<<"cf_notification">>, ?MODULE, 'handle_req').
 
 -spec handle_req(kz_json:object()) -> template_response().

@@ -2865,14 +2865,14 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
             wait_for_bridge('infinity', Fun, Call);
         {<<"call_event">>, <<"CHANNEL_REPLACED">>, _} ->
             CallId = kz_json:get_value(<<"Replaced-By">>, JObj),
-            _ = kz_util:put_callid(CallId),
+            _ = kz_log:put_callid(CallId),
             NewTimeout = kz_time:decr_timeout(Timeout, Start),
             NewStart = kz_time:start_time(),
             lager:info("bridge channel replaced ~s for ~s", [EvtCallId, CallId]),
             wait_for_bridge(NewTimeout, Fun, kapps_call:set_call_id(CallId, Call), NewStart, receive_event(NewTimeout));
         {<<"call_event">>, <<"CHANNEL_DIRECT">>, _} ->
             CallId = kz_json:get_value(<<"Connecting-Leg-B-UUID">>, JObj),
-            _ = kz_util:put_callid(CallId),
+            _ = kz_log:put_callid(CallId),
             NewTimeout = kz_time:decr_timeout(Timeout, Start),
             NewStart = kz_time:start_time(),
             lager:info("bridge channel replaced ~s for ~s", [EvtCallId, CallId]),

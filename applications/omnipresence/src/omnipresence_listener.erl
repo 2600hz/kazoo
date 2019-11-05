@@ -77,7 +77,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     gen_listener:cast(self(), 'find_subscriptions_srv'),
     lager:debug("omnipresence_listener started"),
     {'ok', #state{}}.

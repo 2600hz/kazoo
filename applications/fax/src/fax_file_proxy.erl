@@ -19,7 +19,7 @@
 -spec init(cowboy_req:req(), any()) ->
                   {'ok', cowboy_req:req(), 'ok'}.
 init(Req0, _Opts) ->
-    kz_util:put_callid(kz_binary:rand_hex(16)),
+    kz_log:put_callid(kz_binary:rand_hex(16)),
     maybe_send_job_file(Req0, cowboy_req:path_info(Req0)).
 
 maybe_send_job_file(Req0, [JobId]) ->

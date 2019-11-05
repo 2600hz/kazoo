@@ -77,7 +77,7 @@ check(Account) ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {ok, state()}.
 init([]) ->
-    kz_util:put_callid(?SERVER),
+    kz_log:put_callid(?SERVER),
     lager:debug("started ~s", [?SERVER]),
     {'ok', #state{}}.
 

@@ -16,7 +16,7 @@
 
 -spec handle_req(kapi_authz:req(), kz_term:proplist()) -> any().
 handle_req(JObj, _) ->
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     'true' = kapi_authz:authz_req_v(JObj),
     Request = j5_request:from_jobj(JObj),
     maybe_account_limited(Request).

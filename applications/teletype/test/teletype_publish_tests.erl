@@ -112,7 +112,7 @@ kz_amqp_worker_call_collect() ->
             catch
                 ?STACKTRACE(_E, T, ST)
                 ?LOG_DEBUG("failed to publish: ~p:~p", [_E, T]),
-                kz_util:log_stacktrace(ST),
+                kz_log:log_stacktrace(ST),
                 {'error', T}
                 end
     end.

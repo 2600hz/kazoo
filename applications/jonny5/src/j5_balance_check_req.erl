@@ -18,7 +18,7 @@
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_req(ReqJObj, _Props) ->
     'true' = kapi_authz:balance_check_req_v(ReqJObj),
-    kz_util:put_callid(?APP_NAME),
+    kz_log:put_callid(?APP_NAME),
     ReqAccounts = kz_json:get_list_value(<<"Accounts">>, ReqJObj),
     RespAccounts = kz_json:from_list(lists:foldl(fun account_balance/2, [], ReqAccounts)),
     Resp = build_resp(RespAccounts, ReqJObj),

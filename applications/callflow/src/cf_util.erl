@@ -210,13 +210,13 @@ manual_presence_resp(Username, Realm, JObj) ->
 -spec presence_mwi_query(kz_json:object(), kz_term:proplist()) -> 'ok'.
 presence_mwi_query(JObj, _Props) ->
     'true' = kapi_presence:mwi_query_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     mwi_query(JObj).
 
 -spec notification_register(kz_json:object(), kz_term:proplist()) -> 'ok'.
 notification_register(JObj, _Props) ->
     'true' = kapi_notifications:register_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     mwi_query(JObj).
 
 -spec mwi_query(kz_json:object()) -> 'ok'.

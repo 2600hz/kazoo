@@ -43,5 +43,5 @@ bindings_and_responders() ->
 
 -spec handle_event(kz_json:object(), kz_term:proplist()) -> any().
 handle_event(JObj, _Props) ->
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     lager:debug("event handled").

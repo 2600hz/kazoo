@@ -106,7 +106,7 @@ deliveries(Srv) ->
 %%------------------------------------------------------------------------------
 -spec init([pid()]) -> {'ok', state()}.
 init([WorkerSup]) ->
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
 
     lager:debug("shared queue proc started"),
     gen_listener:cast(self(), {'get_fsm_proc', WorkerSup}),

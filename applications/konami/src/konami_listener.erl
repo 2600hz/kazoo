@@ -81,7 +81,7 @@ handle_metaflow(JObj, Props) ->
 -spec handle_route_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_route_req(JObj, _Props) ->
     'true' = kapi_route:req_v(JObj),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     Call = kapps_call:from_route_req(JObj),
 
     maybe_start_metaflows(kapps_call:account_id(Call)
@@ -94,7 +94,7 @@ handle_route_req(JObj, _Props) ->
 -spec handle_channel_create(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_channel_create(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     Call = kapps_call:from_json(JObj),
 
     maybe_start_metaflows(kapps_call:account_id(Call)

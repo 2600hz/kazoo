@@ -204,7 +204,7 @@ update_bookkeeper(_Type, Invoice, Services, AuditJObj) ->
               ,{<<"Bookkeeper-Type">>, kz_services_invoice:bookkeeper_type(Invoice)}
               ,{<<"Vendor-ID">>, kz_services_invoice:bookkeeper_vendor_id(Invoice)}
               ,{<<"Invoice">>, kz_json:delete_key(<<"plan">>, kz_services_invoice:public_json(Invoice))}
-              ,{<<"Call-ID">>, kz_util:get_callid()}
+              ,{<<"Call-ID">>, kz_log:get_callid()}
               ,{<<"Audit-Log">>, kz_doc:public_fields(AuditJObj)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],

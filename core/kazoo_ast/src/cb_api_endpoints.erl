@@ -35,6 +35,7 @@
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_web/include/kazoo_web.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 

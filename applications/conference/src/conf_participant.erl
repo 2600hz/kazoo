@@ -233,7 +233,7 @@ handle_cast('pivoted', Participant) ->
 handle_cast({'channel_replaced', NewCallId}
            ,#participant{call=Call}=Participant
            ) ->
-    kz_util:put_callid(NewCallId),
+    kz_log:put_callid(NewCallId),
     NewCall = kapps_call:set_call_id(NewCallId, Call),
     lager:info("updated call to use ~s instead", [NewCallId]),
     gen_listener:add_binding(self(), 'call', [{'callid', NewCallId}]),

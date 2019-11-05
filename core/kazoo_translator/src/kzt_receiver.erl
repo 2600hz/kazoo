@@ -238,7 +238,7 @@ play_loop(Call, PlayMe, Terminators, N) ->
 -spec record_loop(kapps_call:call(), pos_integer()) ->
                          {'ok', kapps_call:call()} |
                          {'empty', kapps_call:call()} |
-                         {'error', kapps_call:call()}.
+                         {'error', atom(), kapps_call:call()}.
 record_loop(Call, SilenceTimeout) ->
     case wait_for_call_event(Call, <<"RECORD_STOP">>) of
         {'ok', EvtJObj} ->

@@ -68,7 +68,7 @@ start_link() ->
 
 -spec handle_record_stop(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_record_stop(JObj, Props) ->
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     Pid = props:get_value('server', Props),
     maybe_save_recording(Pid, JObj).
 
@@ -103,7 +103,7 @@ handle_cast({'store_failed', #{retries := Retries} = Store, Error}, State) ->
     lager:debug("store failed : ~p, retrying ~p more times, next in ~p minute(s)"
                ,[Error, Retries, Sleep / ?MILLISECONDS_IN_MINUTE]
                ),
-    timer:send_after(Sleep, self(), {'retry_storage', Store}),
+    _ = timer:send_after(Sleep, self(), {'retry_storage', Store}),
     {'noreply', State};
 handle_cast({'gen_listener',{'created_queue', Queue}}, State) ->
     {'noreply', State#{queue => Queue}};
@@ -376,7 +376,7 @@ store_recording({DirName, MediaName}, StoreUrl, #{event := JObj, pid := Pid} = M
     end.
 
 maybe_save_recording(Pid, JObj) ->
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     maybe_save_recording(kz_recording:recorder(JObj), Pid, JObj).
 
 maybe_save_recording(?KZ_RECORDER, Pid, JObj) ->

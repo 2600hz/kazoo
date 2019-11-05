@@ -65,7 +65,7 @@ cleanup_timer() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     lager:debug("started ~s", [?MODULE]),
     {'ok', #state{cleanup_ref=cleanup_timer()}}.
 

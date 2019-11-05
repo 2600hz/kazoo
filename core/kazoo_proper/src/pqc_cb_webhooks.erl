@@ -225,7 +225,7 @@ initial_state() ->
     API = pqc_cb_api:init_api(['crossbar', 'webhooks']
                              ,['cb_webhooks', 'cb_users']
                              ),
-    _HTTPD = pqc_httpd:start_link(kz_util:get_callid()),
+    _HTTPD = pqc_httpd:start_link(kz_log:get_callid()),
     ?INFO("HTTPD started: ~p", [_HTTPD]),
     API.
 

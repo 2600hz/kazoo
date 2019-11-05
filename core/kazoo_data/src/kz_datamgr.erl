@@ -236,7 +236,7 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
         do_revise_docs_from_folder(DbName, Sleep, T)
     catch
         ?STACKTRACE(_, _, ST)
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         do_revise_docs_from_folder(DbName, Sleep, T)
         end.
 
@@ -656,7 +656,7 @@ flush_cache_docs(DbName) ->
 %% -define(OPEN_DOC_LOG(DbName, DocId, Options),
 %%         begin
 %%             {_, ST} = erlang:process_info(self(), current_stacktrace),
-%%             kz_util:log_stacktrace(ST),
+%%             kz_log:log_stacktrace(ST),
 %%             ?LOG_DEBUG("~s:open_doc(~p, ~p, ~p)", [?MODULE, DbName, DocId, Options])
 %%         end
 %%        ).

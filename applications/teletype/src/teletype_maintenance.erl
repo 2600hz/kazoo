@@ -105,7 +105,7 @@ restore_system_template(TemplateId) ->
     catch
         ?STACKTRACE(_E, _T, ST)
         io:format("  crashed for reason ~p:~p ~n", [_E, _T]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         io:format("St: ~p~n~n", [ST])
 
         end.
@@ -211,7 +211,7 @@ start_module(Module) when is_atom(Module) ->
         lager:error("failed to start teletype module ~s with reason: ~s ~p"
                    ,[Module, _Type, Reason]
                    ),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'error', Reason}
         end;
 start_module(Module) ->

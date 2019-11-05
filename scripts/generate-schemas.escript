@@ -7,6 +7,7 @@
 -export([main/1]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 main(_) ->
     lists:foreach(fun run_generator/1

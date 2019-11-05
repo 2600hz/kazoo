@@ -1084,14 +1084,14 @@ params_el(Children) ->
 
 -spec param_el(kz_types:xml_attrib_value(), kz_types:xml_attrib_value()) -> kz_types:xml_el().
 param_el(<<"moh-sound">> = Name, MediaName) ->
-    Value = ecallmgr_util:media_path(MediaName, kz_util:get_callid(), kz_json:new()),
+    Value = ecallmgr_util:media_path(MediaName, kz_log:get_callid(), kz_json:new()),
     #xmlElement{name='param'
                ,attributes=[xml_attrib('name', Name)
                            ,xml_attrib('value', Value)
                            ]
                };
 param_el(<<"max-members-sound">> = Name, MediaName) ->
-    Value = ecallmgr_util:media_path(MediaName, kz_util:get_callid(), kz_json:new()),
+    Value = ecallmgr_util:media_path(MediaName, kz_log:get_callid(), kz_json:new()),
     #xmlElement{name='param'
                ,attributes=[xml_attrib('name', Name)
                            ,xml_attrib('value', Value)

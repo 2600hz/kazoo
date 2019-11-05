@@ -30,7 +30,7 @@ init() -> 'ok'.
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_authn:req_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     Realm = kz_json:get_value(<<"Auth-Realm">>, JObj, <<"missing.realm">>),
     case kz_network_utils:is_ipv4(Realm)
         orelse kz_network_utils:is_ipv6(Realm)

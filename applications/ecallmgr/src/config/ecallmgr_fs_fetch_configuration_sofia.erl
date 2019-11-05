@@ -37,7 +37,7 @@ init() ->
 
 -spec sofia(map()) -> fs_sendmsg_ret().
 sofia(#{node := Node, fetch_id := Id}=Ctx) ->
-    kz_util:put_callid(Id),
+    kz_log:put_callid(Id),
     case kapps_config:is_true(?APP_NAME, <<"sofia_conf">>, 'false') of
         'false' ->
             lager:info("sofia conf disabled"),

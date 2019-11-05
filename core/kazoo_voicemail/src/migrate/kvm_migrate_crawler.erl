@@ -108,7 +108,7 @@ update_stats(Server, AccountId, Stats) ->
 init([]) -> init('undefined');
 init(Pid) ->
     _ = process_flag('trap_exit', 'true'),
-    kz_util:put_callid(?SERVER),
+    kz_log:put_callid(?SERVER),
     lager:debug("started ~s", [?SERVER]),
     case kapps_util:get_all_accounts('raw') of
         [] ->
@@ -287,7 +287,7 @@ maybe_spawn_worker(#state{workers = Workers
     CallId = make_callid(Ref, AccountId),
     Self = self(),
     Pid = erlang:spawn_link(fun () ->
-                                    _ = kz_util:put_callid(CallId),
+                                    _ = kz_log:put_callid(CallId),
                                     kvm_migrate_account:start_worker(NextAccount, Self)
                             end),
     lager:debug(":: started ~p (~b/~b) to process account ~s"

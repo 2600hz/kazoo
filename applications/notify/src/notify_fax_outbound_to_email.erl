@@ -35,7 +35,7 @@ init() ->
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_req(JObj, _Props) ->
     true = kapi_notifications:fax_outbound_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
 
     lager:debug("new outbound fax left, sending to email if enabled"),
 
@@ -89,7 +89,7 @@ process_req(FaxDoc, JObj, _Props) ->
         ?STACKTRACE(C, R, ST)
         Msg = io_lib:format("failed: ~s:~p", [C, R]),
         lager:debug(Msg),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'error', Msg}
         end.
 

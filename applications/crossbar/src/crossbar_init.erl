@@ -62,7 +62,7 @@ api_version_constraint('forward', NotVersion) ->
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     Dispatch = cowboy_router:compile(crossbar_routes()),
 
     DefaultIP = kz_network_utils:default_binding_ip(),

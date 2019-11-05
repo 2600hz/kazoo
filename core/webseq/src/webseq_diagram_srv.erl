@@ -103,7 +103,7 @@ init([Type]) ->
 init({'file', <<_/binary>>=Filename}) ->
     init({'file', Filename, Filename});
 init({'file', Name, PreFilename}=Type) ->
-    kz_util:put_callid(Name),
+    kz_log:put_callid(Name),
 
     Filename = create_filename(PreFilename),
 
@@ -125,7 +125,7 @@ init({'file', Name, PreFilename}=Type) ->
 init({'db', Database}) ->
     init({'db', kz_binary:rand_hex(4), Database});
 init({'db', Name, Database}=Type) ->
-    kz_util:put_callid(Name),
+    kz_log:put_callid(Name),
 
     case kz_datamgr:db_exists(Database) of
         'true' ->

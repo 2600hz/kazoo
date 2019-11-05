@@ -370,7 +370,7 @@ publish_presence_reset(Context, PresenceId) ->
     lager:debug("resetting ~s@~s", [PresenceId, Realm]),
     API = [{<<"Realm">>, Realm}
           ,{<<"Username">>, PresenceId}
-          ,{<<"Msg-ID">>, kz_util:get_callid()}
+          ,{<<"Msg-ID">>, kz_log:get_callid()}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(API, fun kapi_presence:publish_reset/1).

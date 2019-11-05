@@ -25,7 +25,7 @@ init() -> 'ok'.
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
     'true' = kapi_sysconf:set_req_v(ApiJObj),
-    kz_util:put_callid(ApiJObj),
+    kz_log:put_callid(ApiJObj),
 
     Category = kz_json:get_value(<<"Category">>, ApiJObj),
     Key = kz_json:get_value(<<"Key">>, ApiJObj),

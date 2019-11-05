@@ -32,7 +32,7 @@ start_link() ->
 
 -spec init_acdc() -> 'ok'.
 init_acdc() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     case kz_datamgr:get_all_results(?KZ_ACDC_DB, <<"acdc/accounts_listing">>) of
         {'ok', []} ->
             lager:debug("no accounts configured for acdc");

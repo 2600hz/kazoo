@@ -52,7 +52,7 @@
                   {'error', 'not_ts_account'}.
 init(RouteReqJObj, Type) ->
     CallID = kapi_route:call_id(RouteReqJObj),
-    kz_util:put_callid(CallID),
+    kz_log:put_callid(CallID),
     case is_trunkstore_acct(RouteReqJObj, Type) of
         'false' ->
             lager:info("request is not for a trunkstore account"),

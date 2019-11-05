@@ -94,7 +94,7 @@ broker(#kz_amqp_connections{broker=Broker}) ->
 -spec init(list()) -> {'ok', kz_amqp_connection()}.
 init([#kz_amqp_connection{}=Connection]) ->
     _ = process_flag('trap_exit', 'true'),
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
 
     {'ok', disconnected(Connection#kz_amqp_connection{manager=self()})}.
 

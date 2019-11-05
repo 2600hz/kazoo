@@ -103,7 +103,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     lager:debug("starting new notify server"),
     {'ok', #state{}}.
 

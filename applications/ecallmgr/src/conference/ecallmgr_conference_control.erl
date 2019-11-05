@@ -90,7 +90,7 @@ handle_conference_command(JObj, Props) ->
 %%------------------------------------------------------------------------------
 -spec init([atom() | kz_term:ne_binary()]) -> {'ok', state()}.
 init([Node, ConferenceId, InstanceId]) ->
-    kz_util:put_callid(ConferenceId),
+    kz_log:put_callid(ConferenceId),
     lager:info("starting new conference control for ~s", [ConferenceId]),
     {'ok', #state{node=Node
                  ,conference_id=ConferenceId

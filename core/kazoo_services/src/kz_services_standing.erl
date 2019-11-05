@@ -227,7 +227,7 @@ check_bookkeeper(Invoice, Services, #{amount := Amount}) ->
                  )
                }
               ,{<<"Estimated-Withdrawal">>, Amount}
-              ,{<<"Call-ID">>, kz_util:get_callid()}
+              ,{<<"Call-ID">>, kz_log:get_callid()}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:call(Request

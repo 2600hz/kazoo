@@ -1589,7 +1589,7 @@ validate_account_schema(ParentId, AccountId, Doc, ValidationErrors, SchemaJObj) 
     catch
         ?STACKTRACE('error', 'function_clause', ST)
         lager:error("function clause failure"),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         throw({'system_error', <<"validation failed to run on the server">>})
         end.
 

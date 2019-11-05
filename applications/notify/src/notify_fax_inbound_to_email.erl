@@ -36,7 +36,7 @@ init() ->
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:fax_inbound_v(JObj),
 
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
 
     lager:debug("new fax left, sending to email if enabled"),
 

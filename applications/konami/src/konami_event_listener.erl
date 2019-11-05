@@ -210,7 +210,7 @@ really_remove_call_bindings(CallId, Events) ->
 handle_call_event(JObj, Props) ->
     'true' = kapi_call:event_v(JObj)
         orelse kapi_dialplan:error_v(JObj),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     handle_call_event(JObj, Props, kz_call_event:event_name(JObj)).
 
 handle_call_event(JObj, _Props, <<"CHANNEL_DESTROY">> = Event) ->
@@ -402,7 +402,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%------------------------------------------------------------------------------
 -spec cleanup_bindings(kz_types:server_ref()) -> 'ok'.
 cleanup_bindings(Srv) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     cleanup_bindings(Srv, gen_listener:bindings(Srv)).
 
 -spec cleanup_bindings(kz_types:server_ref(), gen_listener:bindings()) -> 'ok'.

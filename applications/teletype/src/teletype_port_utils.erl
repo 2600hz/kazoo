@@ -76,13 +76,13 @@ fix_port_authority(_DataJObj, _TemplateId, PortReqJObj) ->
 
 -spec fix_numbers(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 fix_numbers(_DataJObj, _TemplateId, PortReqJObj) ->
-    Numbers = kz_json:foldl(fun (Number, _Value, Acc) -> [Number|Acc] end
+    Numbers = kz_json:foldl(fun(Number, _Value, Acc) -> [Number|Acc] end
                            ,[]
                            ,get_numbers(PortReqJObj)
                            ),
     kzd_port_requests:set_numbers(PortReqJObj, Numbers).
 
--spec get_numbers(kz_json:object()) -> kz_json:objects().
+-spec get_numbers(kz_json:object()) -> kz_json:object().
 get_numbers(PortReqJObj) ->
     case kzd_port_requests:pvt_port_state(PortReqJObj) of
         ?PORT_COMPLETED ->

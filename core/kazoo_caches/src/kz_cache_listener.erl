@@ -111,7 +111,7 @@ get_origin_pointers(PointerTab, Key) ->
 
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {'ok', ?MODULE}.
 
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> {'noreply', state()}.

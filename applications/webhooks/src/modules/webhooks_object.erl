@@ -101,7 +101,7 @@ account_bindings(_AccountId) -> [].
 %%------------------------------------------------------------------------------
 -spec handle_event(kapi_conf:doc(), kz_term:proplist()) -> 'ok'.
 handle_event(DocChange, _Props) ->
-    kz_util:put_callid(DocChange),
+    kz_log:put_callid(DocChange),
     'true' = kapi_conf:doc_update_v(DocChange),
 
     case find_account_id(DocChange) of

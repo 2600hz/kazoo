@@ -194,7 +194,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%------------------------------------------------------------------------------
 -spec handle_message_delivery(kz_json:object(), kz_term:proplist()) -> no_return().
 handle_message_delivery(JObj, Props) ->
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     Server = props:get_value('server',Props),
     'true' = kapi_sms:delivery_v(JObj),
     case kz_json:is_true(<<"Delivery-Failure">>, JObj) of

@@ -2145,7 +2145,7 @@ init_system() ->
 
 -spec check_release() -> 'ok' | 'error'.
 check_release() ->
-    kz_util:put_callid('check_release'),
+    kz_log:put_callid('check_release'),
     Checks = [fun kapps_started/0
              ,fun check_system_configs/0
              ,fun master_account_created/0
@@ -2163,7 +2163,7 @@ check_release() ->
             init:stop(1);
         ?STACKTRACE(_E, _R, ST)
         lager:error("check_release/0 crashed: ~s: ~p", [_E, _R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         init:stop(1)
         end.
 

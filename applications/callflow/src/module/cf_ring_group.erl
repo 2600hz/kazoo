@@ -178,7 +178,7 @@ start_builder(EndpointId, Member, Call) ->
 
 -spec builder(kz_term:ne_binary(), kz_json:object(), kapps_call:call(), pid()) -> any().
 builder(EndpointId, Member, Call, Parent) ->
-    kz_util:put_callid(kapps_call:call_id(Call)),
+    kz_log:put_callid(kapps_call:call_id(Call)),
     lager:debug("attempting to build endpoint ~s", [EndpointId]),
     Parent ! {self(), EndpointId, kz_endpoint:build(EndpointId, Member, Call)}.
 

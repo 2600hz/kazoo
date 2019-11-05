@@ -40,7 +40,7 @@ start_link() ->
 
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {'ok', #state{tab=ets:new(?MODULE, [])}}.
 
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
@@ -49,7 +49,7 @@ handle_call(_Request, _From, State) ->
 
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'push', JObj}, #state{tab=ETS}=State) ->
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     TokenApp = kz_json:get_value(<<"Token-App">>, JObj),
     maybe_send_push_notification(get_apns(TokenApp, ETS), JObj),
     {'noreply', State};

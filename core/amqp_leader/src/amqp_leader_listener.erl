@@ -83,7 +83,7 @@ start_link(Name) ->
 %%------------------------------------------------------------------------------
 -spec init([atom()]) -> {'ok', state()}.
 init([Name]) ->
-    kz_util:put_callid(kapi_leader:queue(Name, node())),
+    kz_log:put_callid(kapi_leader:queue(Name, node())),
     kz_nodes:notify_expire(),
     {'ok', #state{self = self(), name = Name}}.
 
@@ -137,7 +137,7 @@ handle_info(_Info, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> {'reply', []}.
 handle_event(JObj, #state{name = Name}) ->
-    kz_util:put_callid(kapi_leader:queue(Name, node())),
+    kz_log:put_callid(kapi_leader:queue(Name, node())),
     NodeBin = kz_term:to_binary(node()),
     case kz_json:get_value(<<"Node">>, JObj) of
         NodeBin -> 'ok';
