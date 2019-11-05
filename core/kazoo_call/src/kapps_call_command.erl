@@ -1179,8 +1179,36 @@ bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHead
     ,{<<"Dial-Endpoint-Method">>, Strategy}
     ,{<<"Custom-SIP-Headers">>, SIPHeaders}
     ,{<<"Ignore-Forward">>, IgnoreForward}
-    ,{<<"Export-Bridge-Variables">>, ?BRIDGE_EXPORT_VARS}
+    ,{<<"Call-Context">>, bridge_context(Call)}
     ].
+
+-spec bridge_context(kapps_call:call()) -> kz_json:object().
+bridge_context(Call) ->
+    Props = [{<<"Inception">>, kapps_call:inception_type(Call)}
+            ,{<<"Other-UUID">>, kapps_call:other_leg_call_id(Call)}
+            ],
+    Routines = [fun bridge_context_flags/2
+               ],
+    KVs = lists:foldl(fun(F, Acc) -> F(Call, Acc) end, Props, Routines),
+    kz_json:set_values(KVs, kapps_call:kvs_fetch('call-context', kz_json:new(), Call)).
+
+-spec bridge_context_flags(kapps_call:call(), kz_term:proplist()) -> kz_term:proplist().
+bridge_context_flags(Call, Props) ->
+    Flags = kapps_call:kvs_fetch('context-flags', [], Call)
+        ++ bridge_context_direct_call_flag(Call),
+    [{<<"Flags">>, Flags} | Props].
+
+-define(BRIDGE_NON_DIRECT_MODULES, [<<"cf_ring_group">>, <<"acdc_util">>]).
+
+-spec bridge_context_direct_call_flag(kapps_call:call()) -> kz_term:ne_binaries().
+bridge_context_direct_call_flag(Call) ->
+    Source = kz_term:to_binary(kapps_call:kvs_fetch('context-source', Call)),
+    case not lists:member(Source, ?BRIDGE_NON_DIRECT_MODULES)
+        andalso kapps_call:custom_channel_var(<<"Call-Forward">>, Call) =:= 'undefined'
+    of
+        'true' -> [<<"direct_call">>];
+        'false' -> [<<"non_direct_call">>]
+    end.
 
 -spec bridge(kz_json:objects(), kapps_call:call()) -> 'ok'.
 bridge(Endpoints, Call) ->

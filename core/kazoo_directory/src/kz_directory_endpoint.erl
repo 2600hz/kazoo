@@ -92,7 +92,7 @@ maybe_fix_presence_id_realm('undefined', _Endpoint, CCVs) -> CCVs;
 maybe_fix_presence_id_realm(PresenceId, Endpoint, CCVs) ->
     case binary:match(PresenceId, <<"@">>) of
         'nomatch' ->
-            Realm = kz_json:get_ne_binary_value(<<"realm">>, Endpoint),
+            Realm = get_realm(Endpoint),
             kz_json:set_value(<<"Presence-ID">>, <<PresenceId/binary, $@, Realm/binary>>, CCVs);
         _Else -> kz_json:set_value(<<"Presence-ID">>, PresenceId, CCVs)
     end.
@@ -122,11 +122,60 @@ hold_music(Endpoint, CCVs) ->
             kz_json:set_value(<<"Hold-Media">>, MOH, CCVs)
     end.
 
+-spec set_invite_uri(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+set_invite_uri(URI, CCVs) ->
+    kz_json:set_values([{<<"SIP-Invite-To-URI">>, URI}
+                       ,{<<"SIP-Invite-Request-URI">>, URI}
+                       ], CCVs).
+
+-spec set_invite_uri(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+set_invite_uri('undefined', _Realm, CCVs) -> CCVs;
+set_invite_uri(URIUser, Realm, CCVs) ->
+    URI = <<"sip:", URIUser/binary, "@", Realm/binary>>,
+    set_invite_uri(URI, CCVs).
+
+-type invite_uri_fun() :: fun((kz_term:ne_binary()) -> kz_term:ne_binary()).
+
+-spec set_invite_uri(invite_uri_fun(), kz_term:api_ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+set_invite_uri(_Fun, 'undefined', _Realm, CCVs) -> CCVs;
+set_invite_uri(Fun, URIUser, Realm, CCVs) ->
+    set_invite_uri(Fun(URIUser), Realm, CCVs).
+
+-spec invite_uri(kz_json:object(), kz_json:object()) -> kz_json:object().
+invite_uri(Endpoint, CCVs) ->
+    Realm = get_realm(Endpoint),
+    case kzd_devices:sip_invite_format(Endpoint) of
+        <<"route">> -> set_invite_uri(kzd_devices:sip_route(Endpoint), CCVs);
+        <<"e164">> -> set_invite_uri(fun knm_converters:normalize/1, kzd_devices:sip_number(Endpoint), Realm, CCVs);
+        <<"1npan">> -> set_invite_uri(fun knm_converters:to_1npan/1, kzd_devices:sip_number(Endpoint), Realm, CCVs);
+        <<"npan">> -> set_invite_uri(fun knm_converters:to_npan/1, kzd_devices:sip_number(Endpoint), Realm, CCVs);
+        <<"contact">> -> set_invite_uri(kzd_devices:sip_username(Endpoint), Realm, CCVs);
+        <<"username">> -> set_invite_uri(kzd_devices:sip_username(Endpoint), Realm, CCVs)
+    end.
+
 -spec rtcp_mux(kz_json:object(), kz_json:object()) -> kz_json:object().
 rtcp_mux(Endpoint, CCVs) ->
     case kz_json:get_boolean_value([<<"media">>, <<"rtcp_mux">>], Endpoint) of
         'undefined' -> CCVs;
         RTCP_MUX -> kz_json:set_value(<<"RTCP-MUX">>, RTCP_MUX, CCVs)
+    end.
+
+-spec webrtc(kz_json:object(), kz_json:object()) -> kz_json:object().
+webrtc(Endpoint, CCVs) ->
+    case kz_json:is_true([<<"media">>, <<"webrtc">>], Endpoint) of
+        'false' -> CCVs;
+        'true' ->
+            Props = [{<<"RTCP-MUX">>, 'true'}
+                    ,{<<"Media-Webrtc">>, 'true'}
+                    ],
+            kz_json:set_values(Props, CCVs)
+    end.
+
+-spec call_waiting(kz_json:object(), kz_json:object()) -> kz_json:object().
+call_waiting(Endpoint, CCVs) ->
+    case kz_json:is_true([<<"call_waiting">>, <<"enabled">>], Endpoint, 'true') of
+        'true' -> CCVs;
+        'false' -> kz_json:set_value(<<"Call-Waiting-Disabled">>, 'true', CCVs)
     end.
 
 -spec enable_fax(kz_json:object(), kz_json:object()) -> kz_json:object().
@@ -135,6 +184,36 @@ enable_fax(Endpoint, CCVs) ->
         <<"auto">> -> kz_json:set_value(<<"Fax-Enabled">>, <<"true">>, CCVs);
         _Else -> CCVs
     end.
+
+-spec progress_timeout(kz_json:object(), kz_json:object()) -> kz_json:object().
+progress_timeout(Endpoint, CCVs) ->
+    case kz_json:get_integer_value([<<"media">>, <<"progress_timeout">>], Endpoint, 0) of
+        Timeout when Timeout > 0 -> kz_json:set_value(<<"Endpoint-Progress-Timeout">>, Timeout, CCVs);
+        _Else -> CCVs
+    end.
+
+-spec ignore_early_media(kz_json:object(), kz_json:object()) -> kz_json:object().
+ignore_early_media(Endpoint, CCVs) ->
+    case kz_json:is_true([<<"media">>, <<"ignore_early_media">>], Endpoint) of
+        'true' -> kz_json:set_value(<<"Ignore-Early-Media">>, 'true', CCVs);
+        'false' -> CCVs
+    end.
+
+-spec bypass_media(kz_json:object(), kz_json:object()) -> kz_json:object().
+bypass_media(Endpoint, CCVs) ->
+    case kz_json:is_true([<<"media">>, <<"bypass_media">>], Endpoint) of
+        'true' -> kz_json:set_value(<<"Bypass-Media">>, 'true', CCVs);
+        'false' -> CCVs
+    end.
+
+-spec ignore_completed_elsewhere(kz_json:object(), kz_json:object()) -> kz_json:object().
+ignore_completed_elsewhere(Endpoint, CCVs) ->
+    Default = kapps_config:get_is_true(?CONFIG_CAT, <<"default_ignore_completed_elsewhere">>, 'true'),
+    Value = kz_json:get_first_defined([[<<"caller_id_options">>, <<"ignore_completed_elsewhere">>]
+                                      ,[<<"sip">>, <<"ignore_completed_elsewhere">>]
+                                      ,<<"ignore_completed_elsewhere">>
+                                      ], Endpoint, Default),
+    kz_json:set_value(<<"Ignore-Completed-Elsewhere">>, kz_term:is_true(Value), CCVs).
 
 -spec enforce_security(kz_json:object(), kz_json:object()) -> kz_json:object().
 enforce_security(Endpoint, CCVs) ->
@@ -182,7 +261,7 @@ profile(EndpointId, AccountId, Options) ->
 
 -spec generate_ccvs(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 generate_ccvs(_EndpointId, AccountId, Endpoint) ->
-    Realm = kz_json:get_ne_binary_value(<<"realm">>, Endpoint),
+    Realm = kzd_devices:sip_realm(Endpoint,  kz_json:get_value(<<"realm">>, Endpoint)),
     Props = [{<<"Account-ID">>, AccountId}
             ,{<<"Reseller-ID">>, kzd_accounts:reseller_id(AccountId)}
             ,{<<"Realm">>, Realm}
@@ -194,12 +273,19 @@ generate_ccvs(_EndpointId, AccountId, Endpoint) ->
     CCVFuns = [fun endpoint_id/2
               ,fun owner_id/2
               ,fun rtcp_mux/2
+              ,fun webrtc/2
               ,fun enable_fax/2
               ,fun enforce_security/2
               ,fun encryption_flags/2
               ,fun presence_id/2
               ,fun add_alert_info/2
               ,fun hold_music/2
+              ,fun invite_uri/2
+              ,fun call_waiting/2
+              ,fun progress_timeout/2
+              ,fun ignore_early_media/2
+              ,fun bypass_media/2
+              ,fun ignore_completed_elsewhere/2
               ],
     lists:foldl(fun(Fun, Acc) -> Fun(Endpoint, Acc) end, CCVs, CCVFuns).
 
@@ -272,10 +358,92 @@ generate_profile(EndpointId, AccountId, Endpoint, Options) ->
            ],
     Profile = [{<<"Domain-Name">>, AccountId}
               ,{<<"User-ID">>, EndpointId}
+              ,{<<"Account-ID">>, AccountId}
               ,{<<"Custom-Channel-Vars">>, CCVs}
               ,{<<"Custom-Profile-Vars">>, kz_json:from_list(CPVs)}
               ,{<<"Custom-SIP-Headers">>, SIPHeaders}
               ,{<<"Codecs">>, get_codecs(Endpoint)}
+              ,{<<"CallForward">> , maybe_build_call_forward(EndpointId, AccountId, Endpoint)}
               ,{<<"Expires">>, 360}
               ],
     {'ok', kz_json:from_list(Profile)}.
+
+
+-spec is_call_forward_enabled(kz_json:object()) -> boolean().
+is_call_forward_enabled(Endpoint) ->
+    kzd_devices:call_forward_number(Endpoint) =/= 'undefined'
+        andalso (kzd_devices:call_forward_enabled(Endpoint)
+                 orelse kzd_devices:call_forward_failover(Endpoint)
+                ).
+
+-spec maybe_build_call_forward(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_term:api_object().
+maybe_build_call_forward(EndpointId, AccountId, Endpoint) ->
+    case is_call_forward_enabled(Endpoint) of
+        'false' -> 'undefined';
+        'true' -> build_call_forward(EndpointId, AccountId, Endpoint)
+    end.
+
+-spec build_call_forward(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+build_call_forward(EndpointId, AccountId, Endpoint) ->
+    Number = kzd_devices:call_forward_number(Endpoint),
+    Realm = get_realm(Endpoint),
+    CallFwdURI = list_to_binary([Number, "@", Realm]),
+    CCVs = call_forward_properties(EndpointId, AccountId, Endpoint),
+    kz_json:set_values([{<<"Call-Forward-Request-URI">>, CallFwdURI}
+                       ,{<<"Custom-Channel-Vars">>, CCVs}
+                       ]
+                      ,kz_json:new()
+                      ).
+
+-spec call_forward_properties(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
+call_forward_properties(EndpointId, AccountId, Endpoint) ->
+    Routines = [fun call_forward_base_properties/3
+               ,fun call_forward_confirm_properties/3
+               ,fun call_forward_maybe_retain_cid/3
+               ],
+    Props = lists:foldl(fun(Fun, Acc) -> Acc ++ Fun(EndpointId, AccountId, Endpoint) end, [], Routines),
+    kz_json:from_list(Props).
+
+call_forward_base_properties(_EndpointId, _AccountId, Endpoint) ->
+    [{<<"Call-Forward">>, 'true'}
+    ,{<<"Is-Failover">>, kzd_devices:call_forward_failover(Endpoint)}
+    ,{<<"Is-Substitute">>, kzd_devices:call_forward_substitute(Endpoint)}
+    ,{<<"Direct-Calls-Only">>, kzd_devices:call_forward_direct_calls_only(Endpoint)}
+    ,{<<"Require-Ignore-Early-Media">>, 'true'}
+    ,{<<"Ignore-Early-Media">>, 'true'}
+    ,{<<"Loopback-Bowout">>, 'true'}
+    ,{<<"Call-Forward-From">>, <<"${kz_ctx_Inception}">>}
+    ,{<<"Call-Forward-For-UUID">>, <<"${Unique-ID}">>}
+    ].
+
+cfw_single_reject() ->
+    [<<"USER_BUSY">>
+    ,<<"CALL_REJECTED">>
+    ,<<"NO_ANSWER">>
+    ,<<"NORMAL_CLEARING">>
+    ,<<"PROGRESS_TIMEOUT">>
+    ,<<"ALLOTTED_TIMEOUT">>
+    ].
+
+call_forward_confirm_properties(_EndpointId, AccountId, Endpoint) ->
+    Lang = kz_media_util:prompt_language(AccountId),
+    case kzd_devices:call_forward_require_keypress(Endpoint) of
+        'false' -> [];
+        'true' -> [{<<"Confirm-Key">>, <<"1">>}
+                  ,{<<"Confirm-Cancel-Timeout">>, 'true'}
+                  ,{<<"Confirm-Read-Timeout">>, 3 * ?MILLISECONDS_IN_SECOND}
+                  ,{<<"Confirm-File">>, kz_media_util:get_prompt(<<"ivr-group_confirm">>, Lang, AccountId)}
+                  ,{<<"Require-Ignore-Early-Media">>, 'true'}
+                  ,{<<"Require-Fail-On-Single-Reject">>, cfw_single_reject()}
+                  ]
+    end.
+
+call_forward_maybe_retain_cid(_EndpointId, _AccountId, Endpoint) ->
+    case kzd_devices:call_forward_keep_caller_id(Endpoint) of
+        'true' -> [{<<"Retain-CID">>, 'true'}];
+        'false' -> []
+    end.
+
+-spec get_realm(kz_json:object()) -> kz_term:ne_binary().
+get_realm(Endpoint) ->
+    kz_json:get_value(<<"realm">>, Endpoint, <<"norealm">>).

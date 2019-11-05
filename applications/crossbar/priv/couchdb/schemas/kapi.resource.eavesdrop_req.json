@@ -24,6 +24,9 @@
         "Bridge-Actions": {
             "type": "object"
         },
+        "Call-Context": {
+            "type": "string"
+        },
         "Call-Restrictions-Enabled": {
             "type": "string"
         },

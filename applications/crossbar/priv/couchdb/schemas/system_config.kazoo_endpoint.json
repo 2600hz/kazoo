@@ -3,6 +3,11 @@
     "_id": "system_config.kazoo_endpoint",
     "description": "Schema for kazoo_endpoint system_config",
     "properties": {
+        "build_metaflows": {
+            "default": false,
+            "description": "kazoo_endpoint build_metaflows",
+            "type": "boolean"
+        },
         "custom_sip_interface": {
             "description": "kazoo_endpoint custom sip interface",
             "type": "string"
@@ -24,6 +29,11 @@
             "default": true,
             "description": "kazoo_endpoint default ignore completed elsewhere",
             "type": "boolean"
+        },
+        "endpoint_module": {
+            "default": "kz_endpoint_v5",
+            "description": "kazoo_endpoint endpoint_module",
+            "type": "string"
         },
         "restrict_to_known_types": {
             "default": false,

@@ -116,10 +116,14 @@ relay_stream_attachment(Caller, Ref, Msg) ->
 -spec do_put_attachment(couchbeam_db(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                                {'ok', kz_json:object()} |
                                couchbeam_error().
-do_put_attachment(#db{}=Db, DocId, AttName, Contents, Options) ->
+do_put_attachment(#db{}=Db, DocId, AttName, Contents, Options0) ->
     %% At the time of this change, couchbeam is striping "/" from attachment name when put_attachment only.
     %% Fetch and delete are encoding properly
     AName = kz_http_util:urlencode(AttName),
+    Options = case props:get_value('content_type', Options0) of
+                  'undefined' -> [{'content_type', kz_mime:from_filename(AName)} | Options0];
+                  _CT -> Options0
+              end,
     ?RETRY_504(couchbeam:put_attachment(Db, DocId, AName, Contents, Options)).
 
 -spec do_del_attachment(couchbeam_db(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->

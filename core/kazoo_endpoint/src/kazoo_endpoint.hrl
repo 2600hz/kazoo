@@ -13,5 +13,13 @@
 -define(ATTR_LOWER_KEY, <<109,108,112,112>>).
 -define(ATTR_UPPER_KEY, <<109,097,120,095,112,114,101,099,101,100,101,110,099,101>>).
 
+-ifdef(TEST).
+-define(MODNAME,'kz_endpoint_v4').
+-else.
+-define(MODNAME,kapps_config:get_atom(?CONFIG_CAT, <<"endpoint_module">>, 'kz_endpoint_v5')).
+-endif.
+
+-define(MOD,(?MODNAME)).
+
 -define(KAZOO_ENDPOINT_HRL, 'true').
 -endif.

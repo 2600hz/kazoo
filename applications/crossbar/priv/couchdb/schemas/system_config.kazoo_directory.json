@@ -3,6 +3,11 @@
     "_id": "system_config.kazoo_directory",
     "description": "Schema for kazoo_directory system_config",
     "properties": {
+        "default_ignore_completed_elsewhere": {
+            "default": true,
+            "description": "kazoo_directory default_ignore_completed_elsewhere",
+            "type": "boolean"
+        },
         "restrict_to_known_types": {
             "default": false,
             "description": "kazoo_directory restrict_to_known_types",

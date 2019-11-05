@@ -205,11 +205,14 @@
 -define(CREDS_KEY(Realm, Username), {'authn', Username, Realm}).
 
 -define(DP_EVENT_VARS, [{<<"Execute-On-Answer">>, <<"execute_on_answer">>}
-                       ,{<<"Execute-On-Bridge">>, <<"execute_on_bridge">>}
+                       ,{<<"Execute-On-Bridge">>, <<"execute_on_pre_bridge">>}
+                       ,{<<"Execute-On-Before-Bridge">>, <<"execute_on_pre_bridge">>}
+                       ,{<<"Execute-On-After-Bridge">>, <<"execute_on_after_bridge">>}
                        ,{<<"Execute-On-Tone-Detect">>, <<"execute_on_tone_detect">>}
                        ,{<<"Execute-On-Record-Post-Process">>, <<"record_post_process_exec_app">>}
                        ]).
 -define(BRIDGE_CHANNEL_VAR_SEPARATOR, "!").
+-define(RECORD_CALL_PARAM_SEPARATOR, "#").
 
 %% Call and Channel Vars that have a special prefix instead of the
 %% standard CHANNEL_VAR_PREFIX prefix [{AMQP-Header, FS-var-name}] so
@@ -247,10 +250,12 @@
 
                               ,{<<"Conference-Entry-Sound">>, <<"conference_enter_sound">>}
                               ,{<<"Conference-Exit-Sound">>, <<"conference_exit_sound">>}
+
                               ,{<<"Confirm-Cancel-Timeout">>, <<"group_confirm_cancel_timeout">>}
                               ,{<<"Confirm-File">>, <<"group_confirm_file">>}
                               ,{<<"Confirm-Key">>, <<"group_confirm_key">>}
                               ,{<<"Confirm-Read-Timeout">>, <<"group_confirm_read_timeout">>}
+
                               ,{<<"Continue-On-Fail">>, <<"continue_on_fail">>}
                               ,{<<"Default-Language">>, <<"default_language">>}
                               ,{<<"Diversions">>, <<"sip_h_Diversion">>}
@@ -285,6 +290,7 @@
                               ,{<<"Loopback-Export">>, <<"loopback_export">>}
                               ,{<<"Loopback-Request-URI">>, <<"sip_loopback_req_uri">>}
                               ,{<<"Loopback-From-URI">>, <<"sip_loopback_from_uri">>}
+                              ,{<<"Call-Forward-Request-URI">>, <<"sip_loopback_req_uri">>}
                               ,{<<"Media-Encryption">>, <<"rtp_secure_media">>}
                               ,{<<"Media-Encryption-Enforce-Security">>,<<"sdp_secure_savp_only">>}
                               ,{<<"Media-Files-Separator">>, <<"playback_delimiter">>}
@@ -311,12 +317,14 @@
                               ,{<<"Request-URI">>, <<"sip_req_uri">>}
                               ,{<<"Signal-Bridge-To">>, <<"signal_bridge_to">>}
                               ,{<<"SIP-Invite-Domain">>, <<"sip_invite_domain">>}
-                              ,{<<"SIP-Invite-URI">>, <<"sip_invite_to_uri">>}
+                              ,{<<"SIP-Invite-To-URI">>, <<"sip_invite_to_uri">>}
+                              ,{<<"SIP-Invite-Request-URI">>, <<"sip_invite_req_uri">>}
                               ,{<<"SIP-Refer-To">>, <<"sip_refer_to">>}
                               ,{<<"SIP-Referred-By">>, <<"sip_h_Referred-By">>}
                               ,{<<"Secure-RTP">>, <<"rtp_secure_media">>}
                               ,{<<"Secure-ZRTP">>, <<"zrtp_secure_media">>}
                               ,{<<"Simplify-Loopback">>, <<"loopback_bowout_on_execute">>}
+                              ,{<<"Proxy-Path">>, <<"sip_route_uri">>}
                               ,{<<"To-URI">>, <<"sip_to_uri">>}
                               ,{<<"To-User">>, <<"sip_to_user">>}
                               ,{<<"To-Realm">>, <<"sip_to_realm">>}

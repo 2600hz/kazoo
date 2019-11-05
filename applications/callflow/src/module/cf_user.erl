@@ -41,10 +41,11 @@ maybe_bridge(Data, Call, Endpoints) ->
 
 -spec bridge(kz_json:object(), kapps_call:call(), kz_json:objects()) -> 'ok'.
 bridge(Data, Call, Endpoints) ->
-    FailOnSingleReject = kz_json:is_true(<<"fail_on_single_reject">>, Data, 'undefined'),
+    FailOnSingleReject = kz_json:is_true(<<"fail_on_single_reject">>, Data, kapps_call:custom_channel_var(<<"Require-Fail-On-Single-Reject">>, Call)),
     Timeout = kz_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
     Strategy = kz_json:get_ne_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
-    IgnoreEarlyMedia = kz_endpoints:ignore_early_media(Endpoints),
+    IgnoreEarlyMedia = Strategy =:= <<"simultaneous">>
+        orelse kz_endpoints:ignore_early_media(Endpoints),
     CustomSIPHeaders = kz_json:get_ne_json_value(<<"custom_sip_headers">>, Data),
 
     lager:info("attempting ~b user devices with strategy ~s", [length(Endpoints), Strategy]),

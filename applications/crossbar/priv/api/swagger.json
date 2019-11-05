@@ -12482,6 +12482,9 @@
                 "Bridge-Actions": {
                     "type": "object"
                 },
+                "Call-Context": {
+                    "type": "string"
+                },
                 "Call-ID": {
                     "type": "string"
                 },
@@ -12731,6 +12734,9 @@
         "kapi.dialplan.bridge_endpoint_headers": {
             "description": "AMQP API for dialplan.bridge_endpoint_headers",
             "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
                 "Auth-Password": {
                     "type": "string"
                 },
@@ -12741,6 +12747,9 @@
                     "type": "string"
                 },
                 "Bypass-Media": {
+                    "type": "string"
+                },
+                "Call-Context": {
                     "type": "string"
                 },
                 "Callee-ID-Name": {
@@ -12785,6 +12794,9 @@
                 "Endpoint-Delay": {
                     "type": "string"
                 },
+                "Endpoint-ID": {
+                    "type": "string"
+                },
                 "Endpoint-Options": {
                     "type": "string"
                 },
@@ -12795,6 +12807,9 @@
                     "type": "integer"
                 },
                 "Endpoint-Type": {
+                    "type": "string"
+                },
+                "Endpoint-URI": {
                     "type": "string"
                 },
                 "Failover": {
@@ -22179,6 +22194,9 @@
                 "Bridge-Actions": {
                     "type": "object"
                 },
+                "Call-Context": {
+                    "type": "string"
+                },
                 "Call-Restrictions-Enabled": {
                     "type": "string"
                 },
@@ -22436,6 +22454,9 @@
                 "Bridge-Actions": {
                     "type": "object"
                 },
+                "Call-Context": {
+                    "type": "string"
+                },
                 "Call-Restrictions-Enabled": {
                     "type": "string"
                 },
@@ -22678,6 +22699,9 @@
         "kapi.resource.originate_req_endpoint_headers": {
             "description": "AMQP API for resource.originate_req_endpoint_headers",
             "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
                 "Auth-Password": {
                     "type": "string"
                 },
@@ -22688,6 +22712,9 @@
                     "type": "string"
                 },
                 "Bypass-Media": {
+                    "type": "string"
+                },
+                "Call-Context": {
                     "type": "string"
                 },
                 "Callee-ID-Name": {
@@ -22732,6 +22759,9 @@
                 "Endpoint-Delay": {
                     "type": "string"
                 },
+                "Endpoint-ID": {
+                    "type": "string"
+                },
                 "Endpoint-Options": {
                     "type": "string"
                 },
@@ -22742,6 +22772,9 @@
                     "type": "integer"
                 },
                 "Endpoint-Type": {
+                    "type": "string"
+                },
+                "Endpoint-URI": {
                     "type": "string"
                 },
                 "Failover": {
@@ -24093,6 +24126,9 @@
                 "Bridge-Actions": {
                     "type": "object"
                 },
+                "Call-Context": {
+                    "type": "string"
+                },
                 "Call-ID": {
                     "type": "string"
                 },
@@ -24318,6 +24354,9 @@
         "kapi.sms.message_endpoint_headers": {
             "description": "AMQP API for sms.message_endpoint_headers",
             "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
                 "Auth-Password": {
                     "type": "string"
                 },
@@ -24328,6 +24367,9 @@
                     "type": "string"
                 },
                 "Bypass-Media": {
+                    "type": "string"
+                },
+                "Call-Context": {
                     "type": "string"
                 },
                 "Callee-ID-Name": {
@@ -24372,6 +24414,9 @@
                 "Endpoint-Delay": {
                     "type": "string"
                 },
+                "Endpoint-ID": {
+                    "type": "string"
+                },
                 "Endpoint-Options": {
                     "type": "string"
                 },
@@ -24382,6 +24427,9 @@
                     "type": "integer"
                 },
                 "Endpoint-Type": {
+                    "type": "string"
+                },
+                "Endpoint-URI": {
                     "type": "string"
                 },
                 "Failover": {
@@ -32680,6 +32728,11 @@
         "system_config.kazoo_directory": {
             "description": "Schema for kazoo_directory system_config",
             "properties": {
+                "default_ignore_completed_elsewhere": {
+                    "default": true,
+                    "description": "kazoo_directory default_ignore_completed_elsewhere",
+                    "type": "boolean"
+                },
                 "restrict_to_known_types": {
                     "default": false,
                     "description": "kazoo_directory restrict_to_known_types",
@@ -32691,6 +32744,11 @@
         "system_config.kazoo_endpoint": {
             "description": "Schema for kazoo_endpoint system_config",
             "properties": {
+                "build_metaflows": {
+                    "default": false,
+                    "description": "kazoo_endpoint build_metaflows",
+                    "type": "boolean"
+                },
                 "custom_sip_interface": {
                     "description": "kazoo_endpoint custom sip interface",
                     "type": "string"
@@ -32712,6 +32770,11 @@
                     "default": true,
                     "description": "kazoo_endpoint default ignore completed elsewhere",
                     "type": "boolean"
+                },
+                "endpoint_module": {
+                    "default": "kz_endpoint_v5",
+                    "description": "kazoo_endpoint endpoint_module",
+                    "type": "string"
                 },
                 "restrict_to_known_types": {
                     "default": false,

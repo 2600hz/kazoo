@@ -3,7 +3,7 @@ ROOT = $(realpath $(CWD)/../..)
 PROJECT = kazoo
 
 # Mimetypes module generator.
-GEN_URL = http://svn.apache.org/repos/asf/httpd/httpd/trunk/docs/conf/mime.types
+GEN_URL = https://raw.githubusercontent.com/apache/httpd/trunk/docs/conf/mime.types
 GEN_FILE = mime.types
 GEN_ERL_SRC = src/kz_mime.erl.src
 GEN_ERL = src/kz_mime.erl

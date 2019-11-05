@@ -49,6 +49,7 @@
                          ,[<<"Custom-Channel-Vars">>, <<"Confirm-File">>]
                          ,[<<"Custom-Channel-Vars">>, <<"Confirm-Key">>]
                          ,[<<"Custom-Channel-Vars">>, <<"Confirm-Read-Timeout">>]
+                         ,<<"Account-ID">>
                          ]).
 
 -spec call_command(atom(), kz_term:ne_binary(), kz_json:object()) -> {'error', binary()} | {binary(), kz_term:proplist()}.
@@ -353,6 +354,7 @@ try_create_bridge_string(Endpoints, JObj) ->
 -spec build_channels_vars(atom(), kz_term:ne_binary(), kz_json:objects(), kz_json:object()) -> iolist().
 build_channels_vars(Node, UUID, Endpoints, JObj) ->
     Routines = [fun maybe_force_fax/4
+               ,fun maybe_ignore_early_media/4
                ,fun add_bridge_actions/4
                ],
     Props = lists:foldl(fun(F, Acc) -> Acc ++ F(Node, UUID, Endpoints, JObj) end, [], Routines),
@@ -363,6 +365,13 @@ maybe_force_fax(_Node, _UUID, Endpoints, JObj) ->
     case kz_json:find(<<"Force-Fax">>, Endpoints, kz_json:get_value(<<"Force-Fax">>, JObj)) of
         'undefined' -> [];
         Direction -> [{[<<"Custom-Channel-Vars">>, <<"Force-Fax">>], Direction}]
+    end.
+
+-spec maybe_ignore_early_media(atom(), kz_term:ne_binary(), kz_json:objects(), kz_json:object()) -> kz_term:proplist().
+maybe_ignore_early_media(_Node, _UUID, Endpoints, JObj) ->
+    case ecallmgr_util:get_dial_separator(JObj, Endpoints) of
+        ?SEPARATOR_SINGLE -> [];
+        _Separator -> [{<<"Ignore-Early-Media">>, 'true'}]
     end.
 
 -spec add_endpoints_channel_actions(atom(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().

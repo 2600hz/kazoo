@@ -100,6 +100,9 @@
                          ,header_vars = [] :: kz_term:ne_binaries()
                          ,include_channel_vars = 'true' :: boolean()
                          ,failover :: kz_term:api_object()
+                         ,account_id
+                         ,endpoint_id
+                         ,endpoint_uri
                          }).
 -type bridge_endpoint() :: #bridge_endpoint{}.
 
@@ -614,6 +617,8 @@ maybe_sanitize_fs_value(<<"Export-Bridge-Variables">>, Val) ->
     kz_binary:join(Val, <<",">>);
 maybe_sanitize_fs_value(<<"Export-Variables">>, Val) ->
     kz_binary:join(Val, <<",">>);
+maybe_sanitize_fs_value(<<"Require-Fail-On-Single-Reject">>, Val) ->
+    kz_binary:join(Val, <<",">>);
 maybe_sanitize_fs_value(Key, Val) when not is_binary(Key) ->
     maybe_sanitize_fs_value(kz_term:to_binary(Key), Val);
 maybe_sanitize_fs_value(Key, Val) when not is_binary(Val) ->
@@ -755,6 +760,7 @@ endpoint_key(Endpoint) ->
     ,kz_json:get_value(<<"Route">>, Endpoint)
     ,kz_json:get_value(<<"Proxy-Zone">>, Endpoint)
     ,kz_json:get_value(<<"Proxy-IP">>, Endpoint)
+    ,kz_json:get_value(<<"Endpoint-ID">>, Endpoint)
     ].
 
 -spec endpoint_jobj_to_record(kz_json:object()) -> bridge_endpoint().
@@ -781,6 +787,9 @@ endpoint_jobj_to_record(Endpoint, IncludeVars) ->
                              ,sip_interface = kz_json:get_ne_value(<<"SIP-Interface">>, Endpoint)
                              ,include_channel_vars = IncludeVars
                              ,failover = kz_json:get_json_value(<<"Failover">>, Endpoint)
+                             ,account_id = kz_json:get_value(<<"Account-ID">>, Endpoint)
+                             ,endpoint_id = kz_json:get_value(<<"Endpoint-ID">>, Endpoint)
+                             ,endpoint_uri = kz_json:get_value(<<"Endpoint-URI">>, Endpoint)
                              },
     endpoint_jobj_to_record_vars(Endpoint, Bridge).
 
@@ -1042,15 +1051,15 @@ get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route=Route}) ->
     Route;
 get_sip_contact(#bridge_endpoint{invite_format = <<"loopback">>, route=Route}) ->
     <<"loopback/", Route/binary, "/", (?DEFAULT_FREESWITCH_CONTEXT)/binary>>;
-get_sip_contact(#bridge_endpoint{ip_address='undefined'
-                                ,realm=Realm
-                                ,username=Username
-                                ,channel_vars=CVs
-                                }=EP) ->
-    {'ok', Contact, Props} = ecallmgr_registrar:lookup_contact(Realm, Username),
-    Vars = ecallmgr_fs_xml:build_leg_vars(Props),
-    NewEP = EP#bridge_endpoint{channel_vars=Vars ++ CVs},
-    {binary:replace(Contact, <<">">>, <<>>), NewEP};
+get_sip_contact(#bridge_endpoint{invite_format = <<"forward">>
+                                ,route=Route
+                                }) ->
+    <<"kz/", Route/binary>>;
+get_sip_contact(#bridge_endpoint{invite_format = <<"endpoint">>
+                                ,endpoint_uri=EndpointURI
+                                }) ->
+    list_to_binary(["kz/", EndpointURI]);
+
 get_sip_contact(#bridge_endpoint{ip_address=IPAddress}) -> IPAddress.
 -endif.
 
@@ -1082,6 +1091,7 @@ guess_username(#bridge_endpoint{user=User}) when is_binary(User) -> User;
 guess_username(_) -> <<"kazoo">>.
 
 -spec maybe_replace_fs_path(kz_term:ne_binary(), bridge_endpoint()) -> kz_term:ne_binary().
+maybe_replace_fs_path(<<"kz/", _/binary>>=Contact, _EP) -> Contact;
 maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address='undefined'}) -> Contact;
 maybe_replace_fs_path(Contact, #bridge_endpoint{proxy_address = <<"sip:", _/binary>> = Proxy}) ->
     case re:replace(Contact, <<";fs_path=[^;?]*">>, <<";fs_path=", Proxy/binary>>, [{'return', 'binary'}]) of
@@ -1109,6 +1119,7 @@ maybe_replace_transport(Contact, #bridge_endpoint{transport=Transport}) ->
     end.
 
 -spec maybe_format_user(kz_term:ne_binary(), bridge_endpoint()) -> kz_term:ne_binary().
+maybe_format_user(<<"kz/", _/binary>>=Contact, _EP) -> Contact;
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"username">>
                                            ,user=User
                                            }) when User =/= 'undefined' ->
@@ -1127,6 +1138,7 @@ maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"1npan">>, number=
 maybe_format_user(Contact, _) -> Contact.
 
 -spec maybe_set_interface(kz_term:ne_binary(), bridge_endpoint()) -> kz_term:ne_binary().
+maybe_set_interface(<<"kz/", _/binary>>=Contact, _EP) -> Contact;
 maybe_set_interface(<<"sofia/", _/binary>>=Contact, _) -> Contact;
 maybe_set_interface(<<"loopback/", _/binary>>=Contact, _) -> Contact;
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface='undefined'}=Endpoint) ->
@@ -1453,6 +1465,7 @@ maybe_add_expires_deviation_ms(Expires) ->
 -spec get_dial_separator(kz_term:api_object() | kz_term:ne_binary(), kz_json:objects()) -> kz_term:ne_binary().
 get_dial_separator(?DIAL_METHOD_SINGLE, _Endpoints) -> ?SEPARATOR_SINGLE;
 get_dial_separator(?DIAL_METHOD_SIMUL, [_, _|_]) -> ?SEPARATOR_SIMULTANEOUS;
+%%get_dial_separator(?DIAL_METHOD_SIMUL, [_, _|_]) -> ?SEPARATOR_ENTERPRISE;
 get_dial_separator(?DIAL_METHOD_SIMUL, [_]) -> ?SEPARATOR_SINGLE;
 get_dial_separator('undefined', _Endpoints) -> ?SEPARATOR_SINGLE;
 get_dial_separator(JObj, Endpoints) ->

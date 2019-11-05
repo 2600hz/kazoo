@@ -788,9 +788,10 @@ update_actions(Action, Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec spawn_cf_module(atom(), kz_json:object(), kapps_call:call()) -> kz_term:pid_ref().
-spawn_cf_module(CFModule, Data, Call) ->
+spawn_cf_module(CFModule, Data, Call0) ->
     AMQPConsumer = kz_amqp_channel:consumer_pid(),
     AMQPChannel = kz_amqp_channel:consumer_channel(),
+    Call = kapps_call:kvs_store('context-source', CFModule, Call0),
     kz_process:spawn_monitor(fun cf_module_task/5, [CFModule, Data, Call, AMQPConsumer, AMQPChannel]).
 
 -spec cf_module_task(atom(), kz_json:object(), kapps_call:call(), pid(), pid()) -> any().

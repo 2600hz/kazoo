@@ -15,6 +15,7 @@
                               ,<<"npan">>, <<"1npan">>
                               ,<<"route">>, <<"loopback">>
                               ,<<"contact">>
+                              ,<<"endpoint">>, <<"forward">>
                               ]
                              }).
 
@@ -85,6 +86,7 @@
         ,<<"Privacy-Hide-Name">>
         ,<<"Privacy-Hide-Number">>
         ,<<"Continue-After">>
+        ,<<"Call-Context">>
         ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                            ,{<<"Event-Name">>, <<"command">>}
@@ -161,6 +163,10 @@
         ,<<"Simplify-Loopback">>
         ,<<"Loopback-Bowout">>
         ,<<"Endpoint-Actions">>
+        ,<<"Endpoint-ID">>
+        ,<<"Account-ID">>
+        ,<<"Endpoint-URI">>
+        ,<<"Call-Context">>
         ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                     ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>, <<"skype">>]}

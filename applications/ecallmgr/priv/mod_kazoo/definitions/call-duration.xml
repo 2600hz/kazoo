@@ -4,5 +4,5 @@
 	<field name="variable_progresssec" as="Ringing-Seconds"
 		serialize-as="number" />
 	<field name="Billing-Seconds" type="expand"
-		value="${expr(ceil(${variable_billmsec} / 1000))}" serialize-as="number" />
+		value="${expr(ceil(first-of(variable_billmsec|#0) / 1000))}" serialize-as="number" />
 </definition>
