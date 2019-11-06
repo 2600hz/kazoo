@@ -211,10 +211,10 @@ sip_auth_ips(Collector) ->
             {RawIPs, RawHosts} = lists:foldl(fun needs_resolving/2, {[], []}, JObjs),
             _ = [handle_sip_auth_result(Collector, JObj, IPs) || {IPs, JObj} <- RawIPs],
             PidRefs = [kz_process:spawn_monitor(fun resolve_hostname/4 ,[Collector
-                                                                     ,Host
-                                                                     ,JObj
-                                                                     ,fun handle_sip_auth_result/3
-                                                                     ])
+                                                                        ,Host
+                                                                        ,JObj
+                                                                        ,fun handle_sip_auth_result/3
+                                                                        ])
                        || {Host, JObj} <- RawHosts
                       ],
             wait_for_pid_refs(PidRefs)
@@ -322,20 +322,20 @@ handle_resource_result(Collector, JObj, IPs) ->
 -spec resource_inbound_ips(pid(), kz_json:object()) -> kz_term:pid_refs().
 resource_inbound_ips(Collector, JObj) ->
     [kz_process:spawn_monitor(fun resolve_hostname/4, [Collector
-                                                   ,IP
-                                                   ,JObj
-                                                   ,fun handle_resource_result/3
-                                                   ])
+                                                      ,IP
+                                                      ,JObj
+                                                      ,fun handle_resource_result/3
+                                                      ])
      || IP <- kz_json:get_value(<<"inbound_ips">>, JObj, [])
     ].
 
 -spec resource_server_ips(pid(), kz_json:object()) -> kz_term:pid_refs().
 resource_server_ips(Collector, JObj) ->
     [kz_process:spawn_monitor(fun resolve_hostname/4, [Collector
-                                                   ,kz_json:get_value(<<"server">>, Gateway)
-                                                   ,JObj
-                                                   ,fun handle_resource_result/3
-                                                   ])
+                                                      ,kz_json:get_value(<<"server">>, Gateway)
+                                                      ,JObj
+                                                      ,fun handle_resource_result/3
+                                                      ])
      || Gateway <- kz_json:get_value(<<"gateways">>, JObj, []),
         kz_json:get_ne_binary_value(<<"endpoint_type">>, Gateway) =:= <<"sip">>,
         kz_json:is_true(<<"enabled">>, Gateway, 'false')

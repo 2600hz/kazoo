@@ -601,9 +601,9 @@ handle_nodeup(#node{}=Node, #state{self=Srv}) ->
         'false' ->
             _ = gen_server:cast(Srv, {'update_node', Node#node{connected='false'}}),
             _ = kz_process:spawn(fun() ->
-                                      timer:sleep(?MILLISECONDS_IN_HOUR),
-                                      _ = maybe_start_node_pinger(Node)
-                              end),
+                                         timer:sleep(?MILLISECONDS_IN_HOUR),
+                                         _ = maybe_start_node_pinger(Node)
+                                 end),
             'ok';
         {'error', _} ->
             _ = gen_server:cast(Srv, {'update_node', Node#node{connected='false'}}),

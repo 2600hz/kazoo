@@ -901,12 +901,12 @@ distribute_event(CallbackData, JObj, Deliver, #state{responders=Responders
     Key = kz_util:get_event_type(JObj),
     Channel = kz_amqp_channel:consumer_channel(),
     _ = [kz_process:spawn(fun client_handle_event/6, [JObj
-                                                  ,Channel
-                                                  ,ConsumerKey
-                                                  ,Callback
-                                                  ,CallbackData
-                                                  ,Deliver
-                                                  ])
+                                                     ,Channel
+                                                     ,ConsumerKey
+                                                     ,Callback
+                                                     ,CallbackData
+                                                     ,Deliver
+                                                     ])
          || {Evt, Callback} <- Responders,
             maybe_event_matches_key(Key, Evt)
         ],
