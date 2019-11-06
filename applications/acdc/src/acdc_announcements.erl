@@ -151,7 +151,7 @@ maybe_announce_wait_time(PromptAcc, #{call := Call
 play_announcements(Prompts, #{call := Call
                              ,config := Config
                              }=State) ->
-    kapps_call_command:audio_macro(Prompts, Call),
+    _ = kapps_call_command:audio_macro(Prompts, Call),
 
     AnnouncementsInterval = announcements_interval(Config),
     timer:sleep(AnnouncementsInterval * ?MILLISECONDS_IN_SECOND),

@@ -499,7 +499,7 @@ external_attachments(JObj, Default) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec attachment_names(doc()) -> kz_term:ne_binaries() | [].
+-spec attachment_names(doc()) -> kz_term:ne_binaries().
 attachment_names(JObj) ->
     kz_json:get_keys(attachments(JObj, kz_json:new())).
 

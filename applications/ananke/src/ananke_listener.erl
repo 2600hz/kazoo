@@ -256,8 +256,8 @@ unknown_type(Type) ->
 -spec load_schedules() -> normal.
 load_schedules() ->
     timer:sleep(60 * ?MILLISECONDS_IN_SECOND),
-    amqp_cron:schedule_task('load_schedules'
-                           ,{'oneshot', 60000}
-                           ,{'gen_listener', 'cast', [?MODULE, 'load_schedules']}
-                           ),
+    _ = amqp_cron:schedule_task('load_schedules'
+                               ,{'oneshot', 60000}
+                               ,{'gen_listener', 'cast', [?MODULE, 'load_schedules']}
+                               ),
     'normal'.
