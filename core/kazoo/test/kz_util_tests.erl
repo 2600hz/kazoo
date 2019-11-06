@@ -105,14 +105,6 @@ put_callid_test_() ->
     ,?_assert(is_integer(begin kz_util:set_startup(), kz_util:startup() end))
     ].
 
-spawns_test_() ->
-    [?_assert(is_pid(kz_process:spawn(fun () -> io:format("x") end)))
-    ,?_assert(is_pid(kz_process:spawn(fun (X) -> io:format("~p",[X]) end, [x])))
-    ,?_assert(is_pid(kz_process:spawn_link(fun () -> io:format("x") end)))
-    ,?_assert(is_pid(kz_process:spawn_link(fun (X) -> io:format("~p",[X]) end, [x])))
-    ,?_assertMatch({_,_}, kz_process:spawn_monitor(fun (X) -> io:format("~p",[X]) end, [x]))
-    ].
-
 account_formats_test_() ->
     AccountId = <<A:2/binary, B:2/binary, Rest:28/binary>> = kz_binary:rand_hex(16),
     AccountDbUn = list_to_binary(["account/", A, "/", B, "/", Rest]),
@@ -230,12 +222,4 @@ pretty_print_bytes_test_() ->
                    }
                   )
      || {Bytes, FullFormatted, TruncFormatted} <- Tests
-    ].
-
-
-runs_in_test_() ->
-    [?_assertEqual(timeout, kz_process:runs_in(1, fun timer:sleep/1, [10]))
-    ,?_assertEqual({ok,ok}, kz_process:runs_in(10, fun timer:sleep/1, [1]))
-    ,?_assertEqual(timeout, kz_process:runs_in(1.0, fun timer:sleep/1, [10]))
-    ,?_assertEqual({ok,ok}, kz_process:runs_in(10.0, fun timer:sleep/1, [1]))
     ].
