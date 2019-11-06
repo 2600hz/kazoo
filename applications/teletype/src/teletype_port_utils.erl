@@ -480,9 +480,6 @@ maybe_use_port_authority_admins(PortAuthority) ->
         'undefined' ->
             lager:debug("~s doesn't have any admins, fallback to template emails", [PortAuthority]),
             'undefined';
-        [] ->
-            lager:debug("~s doesn't have any admins, fallback to template emails", [PortAuthority]),
-            'undefined';
         Admins ->
             lager:debug("using admin emails from ~s", [PortAuthority]),
             Admins
@@ -505,9 +502,6 @@ maybe_use_master_admins(TemplateId, MasterAccountId, MasterAccountId) ->
 maybe_use_master_admins(TemplateId, _, MasterAccountId) ->
     case teletype_util:find_account_admin_email(MasterAccountId) of
         'undefined' ->
-            lager:debug("master doesn't have any admins, maybe using default_to from system template"),
-            maybe_use_system_emails(TemplateId);
-        [] ->
             lager:debug("master doesn't have any admins, maybe using default_to from system template"),
             maybe_use_system_emails(TemplateId);
         Admins ->
