@@ -19,7 +19,7 @@
 
 -spec start_link() -> 'ignore'.
 start_link() ->
-    _ = kz_util:spawn(fun init/0),
+    _ = kz_process:spawn(fun init/0),
     'ignore'.
 
 -spec init() -> 'ok'.

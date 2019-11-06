@@ -284,7 +284,7 @@ exec_gather_els(Parent, Call, [SubAction|SubActions]) ->
                              {'ok', kapps_call:call()}.
 exec_gather_els(Call, SubActions) ->
     {_Pid, _Ref}=PidRef =
-        kz_util:spawn_monitor(fun exec_gather_els/3, [self(), Call, SubActions]),
+        kz_process:spawn_monitor(fun exec_gather_els/3, [self(), Call, SubActions]),
     lager:debug("started to exec gather els: ~p(~p)", [_Pid, _Ref]),
     {'ok', kzt_util:set_gather_pidref(PidRef, Call)}.
 

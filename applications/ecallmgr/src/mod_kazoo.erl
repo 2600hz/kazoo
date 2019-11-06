@@ -243,7 +243,7 @@ json_api_result('ok', Bin) ->
 -spec bgapi(atom(), atom(), string() | binary()) -> freeswitch:fs_api_return().
 bgapi(Node, Cmd, Args) ->
     Self = self(),
-    _ = kz_util:spawn(
+    _ = kz_process:spawn(
           fun() ->
                   try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
                       {'ok', <<"-ERR ", Reason/binary>>} ->
@@ -276,7 +276,7 @@ bgapi(Node, Cmd, Args) ->
 -spec bgapi(atom(), atom(), string() | binary(), fun()) -> freeswitch:fs_api_return().
 bgapi(Node, Cmd, Args, Fun) when is_function(Fun, 2) ->
     Self = self(),
-    _ = kz_util:spawn(
+    _ = kz_process:spawn(
           fun() ->
                   try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
                       {'ok', <<"-ERR ", Reason/binary>>} ->
@@ -309,7 +309,7 @@ bgapi(Node, Cmd, Args, Fun) when is_function(Fun, 2) ->
 -spec bgapi(atom(), atom(), string() | binary(), fun(), list()) -> freeswitch:fs_api_return().
 bgapi(Node, Cmd, Args, Fun, CallBackParams) when is_function(Fun, 3) ->
     Self = self(),
-    _ = kz_util:spawn(
+    _ = kz_process:spawn(
           fun() ->
                   try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
                       {'ok', <<"-ERR ", Reason/binary>>} ->
@@ -342,7 +342,7 @@ bgapi(Node, Cmd, Args, Fun, CallBackParams) when is_function(Fun, 3) ->
 -spec bgapi(atom(), kz_term:ne_binary(), list(), atom(), string() | binary(), fun()) -> freeswitch:fs_api_return().
 bgapi(Node, UUID, CallBackParams, Cmd, Args, Fun) when is_function(Fun, 6) ->
     Self = self(),
-    _ = kz_util:spawn(
+    _ = kz_process:spawn(
           fun() ->
                   try gen_server:call({'mod_kazoo', Node}, {'bgapi', Cmd, Args}, ?TIMEOUT) of
                       {'ok', <<"-ERR ", Reason/binary>>} ->
@@ -433,7 +433,7 @@ config(Node, Section) ->
                     {'error', 'timeout' | 'exception' | binary()}.
 bgapi4(Node, Cmd, Args, Fun, CallBackParams) ->
     Self = self(),
-    _ = kz_util:spawn(fun bgapi4/6, [Node, Cmd, Args, Fun, CallBackParams, Self]),
+    _ = kz_process:spawn(fun bgapi4/6, [Node, Cmd, Args, Fun, CallBackParams, Self]),
     receive
         {'api', Result} -> Result
     end.

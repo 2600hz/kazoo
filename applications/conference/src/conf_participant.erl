@@ -445,7 +445,7 @@ sync_participant(JObj, Call, #participant{in_conference='false'
     ParticipantId = kz_json:get_value(<<"Participant-ID">>, JObj),
     IsModerator = kz_json:is_true([<<"Conference-Channel-Vars">>, <<"Is-Moderator">>], JObj),
     log_conference_join(IsModerator, ParticipantId, Conference),
-    _ = kz_util:spawn(fun notify_requestor/4, [kapps_call:controller_queue(Call)
+    _ = kz_process:spawn(fun notify_requestor/4, [kapps_call:controller_queue(Call)
                                               ,ParticipantId
                                               ,DiscoveryEvent
                                               ,kapps_conference:id(Conference)

@@ -484,7 +484,7 @@ refresh_views(AccountMODb) ->
 -spec run_routines(kz_term:ne_binary()) -> 'ok'.
 run_routines(AccountMODb) ->
     Routines = kapps_config:get_ne_binaries(?CONFIG_CAT, <<"routines">>, []),
-    Runs = [{Routine, kz_util:spawn_monitor(kz_term:to_atom(Routine), 'modb', [AccountMODb])}
+    Runs = [{Routine, kz_process:spawn_monitor(kz_term:to_atom(Routine), 'modb', [AccountMODb])}
             || Routine <- Routines,
                kz_module:is_exported(Routine, 'modb', 1)
            ],

@@ -132,15 +132,15 @@ handle_cast({'notify', JObj}, State) ->
     {'noreply', State};
 
 handle_cast({'after', {'notify', Msg}}, State) ->
-    kz_util:spawn(fun on_notify/1, [Msg]),
+    kz_process:spawn(fun on_notify/1, [Msg]),
     {'noreply', State};
 
 handle_cast({'after', {'subscribe', Msg}}, State) ->
-    kz_util:spawn(fun on_subscribe/1, [Msg]),
+    kz_process:spawn(fun on_subscribe/1, [Msg]),
     {'noreply', State};
 
 handle_cast({'after', {'resubscribe', Msg}}, State) ->
-    kz_util:spawn(fun on_resubscribe/1, [Msg]),
+    kz_process:spawn(fun on_resubscribe/1, [Msg]),
     {'noreply', State};
 
 handle_cast({'after', _Msg}, State) ->

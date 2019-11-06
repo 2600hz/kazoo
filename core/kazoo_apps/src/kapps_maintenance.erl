@@ -255,7 +255,7 @@ parallel_migrate(_, [], Refs) -> wait_for_parallel_migrate(Refs);
 parallel_migrate(Pause, [Databases|Jobs], Refs) ->
     Self = self(),
     Ref = make_ref(),
-    _Pid = kz_util:spawn_link(fun parallel_migrate_worker/4, [Ref, Pause, Databases, Self]),
+    _Pid = kz_process:spawn_link(fun parallel_migrate_worker/4, [Ref, Pause, Databases, Self]),
     parallel_migrate(Pause, Jobs, [Ref|Refs]).
 
 -spec parallel_migrate_worker(reference(), integer(), kz_term:ne_binaries(), pid()) -> reference().
@@ -2169,7 +2169,7 @@ check_release() ->
 
 -spec run_check(fun()) -> 'ok'.
 run_check(CheckFun) ->
-    {Pid, Ref} = kz_util:spawn_monitor(CheckFun, []),
+    {Pid, Ref} = kz_process:spawn_monitor(CheckFun, []),
     wait_for_check(Pid, Ref).
 
 -spec wait_for_check(pid(), reference()) -> 'ok'.

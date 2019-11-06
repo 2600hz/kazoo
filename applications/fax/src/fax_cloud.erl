@@ -87,7 +87,7 @@ handle_push_event(_JID, <<"GCP">>, <<"Queued-Job">>, PrinterId) ->
                 {'ok', 200, _RespHeaders, RespBody} ->
                     JObj = kz_json:decode(RespBody),
                     JObjs = kz_json:get_value(<<"jobs">>, JObj, []),
-                    _P = kz_util:spawn(fun maybe_process_job/2, [JObjs, Authorization]),
+                    _P = kz_process:spawn(fun maybe_process_job/2, [JObjs, Authorization]),
                     lager:debug("maybe processing job in ~p", [_P]);
                 {'ok', 403, _RespHeaders, _RespBody} ->
                     lager:debug("something wrong with oauth credentials"),
@@ -401,7 +401,7 @@ handle_faxbox_created(JObj, _Props) ->
     State = kz_json:get_value(<<"pvt_cloud_state">>, Doc),
     ResellerId = kzd_services:reseller_id(Doc),
     AppId = kapps_account_config:get(ResellerId, ?CONFIG_CAT, <<"cloud_oauth_app">>),
-    kz_util:spawn(fun check_registration/3, [AppId, State, Doc]).
+    kz_process:spawn(fun check_registration/3, [AppId, State, Doc]).
 
 -spec check_registration(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object() ) -> 'ok'.
 check_registration('undefined', _, _JObj) -> 'ok';

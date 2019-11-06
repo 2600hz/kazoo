@@ -36,7 +36,7 @@ fetch_attachment(Server, DbName, DocId, AName) ->
 stream_attachment(Server, DbName, DocId, AName, Caller) ->
     AttResult = fetch_attachment(Server, DbName, DocId, AName),
     Ref = erlang:make_ref(),
-    kz_util:spawn(fun relay_stream_attachment/3, [Caller, Ref, AttResult]),
+    kz_process:spawn(fun relay_stream_attachment/3, [Caller, Ref, AttResult]),
     {ok, Ref}.
 
 -spec put_attachment(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> doc_resp().

@@ -607,7 +607,7 @@ save_jobjs(Context, JObjs0, Options) ->
 maybe_send_contact_list(Context) ->
     case cb_context:resp_status(Context) of
         'success' ->
-            _ = kz_util:spawn(fun provisioner_util:maybe_send_contact_list/4
+            _ = kz_process:spawn(fun provisioner_util:maybe_send_contact_list/4
                              ,[cb_context:account_id(Context)
                               ,cb_context:auth_token(Context)
                               ,cb_context:doc(Context)
@@ -619,7 +619,7 @@ maybe_send_contact_list(Context) ->
 
 -spec maybe_spawn_service_updates(cb_context:context(), kz_json:object() | kz_json:objects(), boolean()) -> 'ok'.
 maybe_spawn_service_updates(Context, JObjs, 'false') ->
-    _ = kz_util:spawn(fun crossbar_services:update_subscriptions/2, [Context, JObjs]),
+    _ = kz_process:spawn(fun crossbar_services:update_subscriptions/2, [Context, JObjs]),
     lager:debug("executing service subscriptions update in the background");
 maybe_spawn_service_updates(Context, JObjs, 'true') ->
     lager:debug("executing service subscriptions update in the foreground, this will take a while"),

@@ -276,7 +276,7 @@ set_cid_name(#{caller_id_number := CIDName
 maybe_transition_port_in(NumberProps) ->
     case knm_number_options:has_pending_port(NumberProps) of
         'false' -> 'ok';
-        'true' -> kz_util:spawn(fun transition_port_in/1, [NumberProps])
+        'true' -> kz_process:spawn(fun transition_port_in/1, [NumberProps])
     end.
 
 -spec transition_port_in(knm_number_options:extra_options()) -> 'ok'.

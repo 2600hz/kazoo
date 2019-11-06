@@ -340,7 +340,7 @@ handle_info({'http', {ReqId, 'stream_end', FinalHeaders}}
                  ,Body
                  ,AMQPConsumer
                  ],
-    {Pid, Ref} = kz_util:spawn_monitor(fun handle_resp/5, HandleArgs),
+    {Pid, Ref} = kz_process:spawn_monitor(fun handle_resp/5, HandleArgs),
     lager:debug("processing resp with ~p(~p)", [Pid, Ref]),
     {'noreply'
     ,State#state{request_id = 'undefined'

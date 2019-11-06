@@ -645,7 +645,7 @@ code_change(_OldVsn, State, _Extra) ->
 start_secondary_queue(AccountId, QueueId) ->
     AccountDb = kz_util:format_account_db(AccountId),
     Priority = lookup_priority_levels(AccountDb, QueueId),
-    kz_util:spawn(fun gen_listener:add_queue/4
+    kz_process:spawn(fun gen_listener:add_queue/4
                  ,[self()
                   ,?SECONDARY_QUEUE_NAME(QueueId)
                   ,[{'queue_options', ?SECONDARY_QUEUE_OPTIONS(Priority)}

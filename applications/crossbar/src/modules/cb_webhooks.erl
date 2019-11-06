@@ -308,7 +308,7 @@ delete(Context, _) ->
 
 -spec delete_account(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 delete_account(Context, AccountId) ->
-    _P = kz_util:spawn(fun delete_account_webhooks/1, [AccountId]),
+    _P = kz_process:spawn(fun delete_account_webhooks/1, [AccountId]),
     lager:debug("account ~s deleted, removing any webhooks in ~p", [AccountId, _P]),
     cb_context:set_resp_status(Context, 'success').
 

@@ -791,7 +791,7 @@ update_actions(Action, Call) ->
 spawn_cf_module(CFModule, Data, Call) ->
     AMQPConsumer = kz_amqp_channel:consumer_pid(),
     AMQPChannel = kz_amqp_channel:consumer_channel(),
-    kz_util:spawn_monitor(fun cf_module_task/5, [CFModule, Data, Call, AMQPConsumer, AMQPChannel]).
+    kz_process:spawn_monitor(fun cf_module_task/5, [CFModule, Data, Call, AMQPConsumer, AMQPChannel]).
 
 -spec cf_module_task(atom(), kz_json:object(), kapps_call:call(), pid(), pid()) -> any().
 cf_module_task(CFModule, Data, Call, AMQPConsumer, AMQPChannel) ->
@@ -1001,7 +1001,7 @@ initialize(State, Call, 'false') ->
                ,{fun kapps_call:control_queue_helper/2, fun control_queue/2}
                ],
     CallWithHelpers = kapps_call:exec(Updaters, Call),
-    _ = kz_util:spawn(fun cf_singular_call_hooks:maybe_hook_call/1, [CallWithHelpers]),
+    _ = kz_process:spawn(fun cf_singular_call_hooks:maybe_hook_call/1, [CallWithHelpers]),
     {'noreply'
     ,launch_cf_module(State#state{call=CallWithHelpers
                                  ,flow=Flow

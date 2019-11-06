@@ -677,14 +677,14 @@ average_wait_time_fold([EnteredT, AbandonedT, HandledT], {CallCount, TotalWaitTi
 -spec archive_data() -> 'ok'.
 archive_data() ->
     Self = self(),
-    _ = kz_util:spawn(fun archive_call_data/2, [Self, 'false']),
-    _ = kz_util:spawn(fun acdc_agent_stats:archive_status_data/2, [Self, 'false']),
+    _ = kz_process:spawn(fun archive_call_data/2, [Self, 'false']),
+    _ = kz_process:spawn(fun acdc_agent_stats:archive_status_data/2, [Self, 'false']),
     'ok'.
 
 force_archive_data() ->
     Self = self(),
-    _ = kz_util:spawn(fun archive_call_data/2, [Self, 'true']),
-    _ = kz_util:spawn(fun acdc_agent_stats:archive_status_data/2, [Self, 'true']),
+    _ = kz_process:spawn(fun archive_call_data/2, [Self, 'true']),
+    _ = kz_process:spawn(fun acdc_agent_stats:archive_status_data/2, [Self, 'true']),
     'ok'.
 
 cleanup_data(Srv) ->

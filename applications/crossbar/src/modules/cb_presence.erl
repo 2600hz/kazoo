@@ -422,7 +422,7 @@ collect_report(_Context, []) ->
     lager:debug("nothing to collect");
 collect_report(Context, Param) ->
     lager:debug("collecting report for ~s", [Param]),
-    kz_util:spawn(fun send_report/2, [search_detail(Context, Param), Param]).
+    kz_process:spawn(fun send_report/2, [search_detail(Context, Param), Param]).
 
 -spec send_report(cb_context:context(), kz_term:ne_binary() | kz_json:object() | kz_json:objects()) -> 'ok'.
 send_report(Context, Extension)

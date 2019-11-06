@@ -124,7 +124,7 @@ handle_cast(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'retry_storage', #{retries := Retries} = Store}, State) ->
-    _ = kz_util:spawn(fun() -> save_recording(Store#{retries => Retries - 1}) end),
+    _ = kz_process:spawn(fun() -> save_recording(Store#{retries => Retries - 1}) end),
     {'noreply', State};
 
 handle_info(_Info, State) ->

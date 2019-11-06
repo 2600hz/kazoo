@@ -1172,7 +1172,7 @@ db_init_schemas() ->
 %%------------------------------------------------------------------------------
 -spec db_init() -> 'ok'.
 db_init() ->
-    _ = kz_util:spawn(fun db_init_schemas/0),
+    _ = kz_process:spawn(fun db_init_schemas/0),
     'ok'.
 
 -spec register_views() -> 'ok'.

@@ -95,7 +95,7 @@ handle_cast(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'timeout', Ref, _Msg}, #state{cleanup_ref=Ref}=State) ->
-    _ = kz_util:spawn(fun crawl_port_requests/0),
+    _ = kz_process:spawn(fun crawl_port_requests/0),
     {'noreply', State#state{cleanup_ref=cleanup_timer()}, 'hibernate'};
 handle_info(_Msg, State) ->
     lager:debug("unhandled msg: ~p", [_Msg]),

@@ -367,7 +367,7 @@ maybe_account_is_expired(Context, Account) ->
     case kzd_accounts:is_expired(Account) of
         'false' -> maybe_account_is_enabled(Context, Account);
         {'true', Expired} ->
-            _ = kz_util:spawn(fun crossbar_util:maybe_disable_account/1, [Account]),
+            _ = kz_process:spawn(fun crossbar_util:maybe_disable_account/1, [Account]),
             Cause =
                 kz_json:from_list(
                   [{<<"message">>, <<"account expired">>}

@@ -180,7 +180,7 @@ handle_info({'give_away', Tbl}, #state{table_id=Tbl
                                       ,find_me_fun=F
                                       }=State) ->
     lager:debug("give away ~p", [Tbl]),
-    FindMe = kz_util:spawn_monitor(fun find_me/2, [F, self()]),
+    FindMe = kz_process:spawn_monitor(fun find_me/2, [F, self()]),
     lager:debug("finding the successor in ~p", [FindMe]),
     {'noreply', State#state{find_me_pid_ref=FindMe}};
 handle_info({'found_me', Pid}, #state{table_id=Tbl

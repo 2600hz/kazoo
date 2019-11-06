@@ -243,7 +243,7 @@ handle_call('flush', _From, State) ->
     lager:debug("flushed table"),
     {'reply', 'ok', State};
 handle_call({'whereis_name', Name}, From, State) ->
-    kz_util:spawn(fun maybe_amqp_query/2 , [Name, From]),
+    kz_process:spawn(fun maybe_amqp_query/2 , [Name, From]),
     {'noreply', State};
 handle_call({'delete_remote', Pid}, _From, State) ->
     _ = delete_by_pid(Pid),
@@ -263,7 +263,7 @@ handle_call({'register', Name, Pid}, From
     Global = kz_global:new_global(Name, Pid, Zone, Q, 'pending'),
     lager:debug("inserting ~p for ~p", [Name, Pid]),
     ets:insert(?TAB_NAME, Global),
-    kz_util:spawn(fun amqp_register/2 , [Global, From]),
+    kz_process:spawn(fun amqp_register/2 , [Global, From]),
     {'noreply', State};
 handle_call({'unregister', Name}, _From, State) ->
     {'reply', amqp_unregister(Name), State};

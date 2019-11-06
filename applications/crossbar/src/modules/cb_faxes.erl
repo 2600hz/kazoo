@@ -319,13 +319,13 @@ validate_inbox_fax_action(Action, Id, Context) ->
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     NewContext = crossbar_doc:save(Context),
-    _ = kz_util:spawn(fun maybe_save_attachment/1, [NewContext]),
+    _ = kz_process:spawn(fun maybe_save_attachment/1, [NewContext]),
     crossbar_util:response_202(<<"processing fax attachments">>, cb_context:doc(NewContext), NewContext).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ?OUTGOING) ->
     NewContext = crossbar_doc:save(Context),
-    _ = kz_util:spawn(fun maybe_save_attachment/1, [NewContext]),
+    _ = kz_process:spawn(fun maybe_save_attachment/1, [NewContext]),
     crossbar_util:response_202(<<"processing fax attachments">>, cb_context:doc(NewContext), NewContext).
 
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().

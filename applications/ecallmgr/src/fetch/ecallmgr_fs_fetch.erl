@@ -95,7 +95,7 @@ handle_cast(_Msg, State) ->
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'fetch', JObj}, #state{node=Node}=State) ->
     Channel = kz_amqp_channel:consumer_channel(),
-    _ = kz_util:spawn(fun handle_fetch_req/3, [Node, Channel, JObj]),
+    _ = kz_process:spawn(fun handle_fetch_req/3, [Node, Channel, JObj]),
     {'noreply', State};
 handle_info({'kz_amqp_assignment', {'new_channel', _, Channel}}, State) ->
     lager:debug("channel acquired ~p", [Channel]),

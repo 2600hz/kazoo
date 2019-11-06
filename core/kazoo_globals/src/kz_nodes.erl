@@ -724,7 +724,7 @@ build_advertised_node(JObj, State) ->
 -spec update_advertised_node(kz_types:kz_node(), nodes_state()) -> pid() | 'true'.
 update_advertised_node(Node, #state{tab=Tab}=State) ->
     case ets:insert_new(Tab, Node) of
-        'true' -> kz_util:spawn(fun notify_new/2, [Node, State]);
+        'true' -> kz_process:spawn(fun notify_new/2, [Node, State]);
         'false' -> ets:insert(Tab, Node)
     end.
 
@@ -837,7 +837,7 @@ handle_info('expire_nodes', #state{node=ThisNode, tab=Tab}=State) ->
                ],
     Nodes = ets:select(Tab, FindSpec),
     _ = [ets:delete(Tab, Node) || #kz_node{node=Node} <- Nodes],
-    _ = kz_util:spawn(fun notify_expire/2, [Nodes, State]),
+    _ = kz_process:spawn(fun notify_expire/2, [Nodes, State]),
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
     {'noreply', State};
 

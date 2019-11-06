@@ -174,7 +174,7 @@ start_builders(Data, Call) ->
 
 -spec start_builder(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) -> {pid(), reference()}.
 start_builder(EndpointId, Member, Call) ->
-    kz_util:spawn_monitor(fun builder/4, [EndpointId, Member, Call, self()]).
+    kz_process:spawn_monitor(fun builder/4, [EndpointId, Member, Call, self()]).
 
 -spec builder(kz_term:ne_binary(), kz_json:object(), kapps_call:call(), pid()) -> any().
 builder(EndpointId, Member, Call, Parent) ->

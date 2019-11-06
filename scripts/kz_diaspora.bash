@@ -542,6 +542,13 @@ kz_util_uri() {
     replace 'kz_util' 'resolve_uri' 'kz_http_util' 'resolve_uri'
 }
 
+kz_util_processes() {
+    replace 'kz_util' 'runs_in' 'kz_process' 'runs_in'
+    replace 'kz_util' 'spawn' 'kz_process' 'spawn'
+    replace 'kz_util' 'spawn_link' 'kz_process' 'spawn_link'
+    replace 'kz_util' 'spawn_monitor' 'kz_process' 'spawn_monitor'
+}
+
 echo "ensuring kz_term is used"
 kz_util_to_term
 echo "ensuring kz_binary is used"
@@ -580,5 +587,7 @@ echo "updating URI-related functions to kz_http_util"
 kz_util_uri
 echo "ensuring kz_log is used"
 kz_util_to_log
+echo "ensuring spawning is in kz_process"
+kz_util_processes
 
 popd >/dev/null

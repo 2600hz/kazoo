@@ -345,7 +345,7 @@ originate_call(C2CId, Context, Contact, 'true') ->
     do_originate_call(C2CId, Context, Contact, Request, cb_context:req_value(Context, <<"blocking">>, 'false')).
 
 do_originate_call(C2CId, Context, Contact, Request, 'false') ->
-    _Pid = kz_util:spawn(fun() -> do_originate_call(C2CId, Context, Contact, Request) end),
+    _Pid = kz_process:spawn(fun() -> do_originate_call(C2CId, Context, Contact, Request) end),
     JObj = kz_json:normalize(kz_json:from_list(kz_api:remove_defaults(Request))),
     lager:debug("attempting call in ~p", [JObj]),
     crossbar_util:response_202(<<"processing request">>, JObj, cb_context:set_resp_data(Context, Request));

@@ -417,7 +417,7 @@ update_device_presence(Context, DeviceDoc) ->
 
     lager:debug("re-provisioning device ~s", [kz_doc:id(DeviceDoc)]),
 
-    kz_util:spawn(fun() ->
+    kz_process:spawn(fun() ->
                           kz_log:put_callid(ReqId),
                           provisioner_v5:update_device(DeviceDoc, AuthToken)
                   end).

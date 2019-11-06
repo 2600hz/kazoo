@@ -1203,7 +1203,7 @@ finish_request(_Req, Context) ->
     [{Mod, _}|_] = cb_context:req_nouns(Context),
     Verb = cb_context:req_verb(Context),
     Event = create_event_name(Context, [<<"finish_request">>, Verb, Mod]),
-    _ = kz_util:spawn(fun crossbar_bindings:pmap/2, [Event, Context]),
+    _ = kz_process:spawn(fun crossbar_bindings:pmap/2, [Event, Context]),
     maybe_cleanup_file(cb_context:resp_file(Context)).
 
 -spec maybe_cleanup_file(binary()) -> 'ok'.

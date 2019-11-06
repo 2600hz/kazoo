@@ -142,7 +142,7 @@ wait_for_route_resp(#{timeout := TimeoutMs}=Map) ->
 -spec spawn_authorize_call_fun(dialplan_context()) -> dialplan_context().
 spawn_authorize_call_fun(#{node := Node, call_id := CallId, payload := JObj}=Map) ->
     Ref = make_ref(),
-    Pid = kz_util:spawn(fun authorize_call_fun/5, [self(), Ref, Node, CallId, JObj]),
+    Pid = kz_process:spawn(fun authorize_call_fun/5, [self(), Ref, Node, CallId, JObj]),
     Map#{authz_worker => {Pid, Ref}}.
 
 -spec authorize_call_fun(pid(), Ref, atom(), kz_term:ne_binary(), kz_json:object()) ->

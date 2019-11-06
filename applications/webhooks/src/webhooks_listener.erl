@@ -187,7 +187,7 @@ handle_cast(_Msg, State) ->
 handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
     lager:debug("write access to table '~p' available", [_TblId]),
     Self = self(),
-    _ = kz_util:spawn(
+    _ = kz_process:spawn(
           fun() ->
                   kz_log:put_callid(?MODULE),
                   webhooks_util:load_hooks(Self),

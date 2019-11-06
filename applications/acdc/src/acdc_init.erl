@@ -27,7 +27,7 @@
 -spec start_link() -> 'ignore'.
 start_link() ->
     _ = declare_exchanges(),
-    _ = kz_util:spawn(fun init_acdc/0, []),
+    _ = kz_process:spawn(fun init_acdc/0, []),
     'ignore'.
 
 -spec init_acdc() -> 'ok'.
@@ -140,7 +140,7 @@ try_agents_again(AccountId) ->
     try_again(AccountId, fun init_acct_agents/2).
 
 try_again(AccountId, F) ->
-    kz_util:spawn(
+    kz_process:spawn(
       fun() ->
               wait_a_bit(),
               AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
@@ -149,7 +149,7 @@ try_again(AccountId, F) ->
 
 -spec spawn_previously_logged_in_agent(kz_term:ne_binary(), kz_term:ne_binary()) -> any().
 spawn_previously_logged_in_agent(AccountId, AgentId) ->
-    kz_util:spawn(
+    kz_process:spawn(
       fun() ->
               {'ok', Status} = acdc_agent_util:most_recent_status(AccountId, AgentId),
               case acdc_agent_util:status_should_auto_start(Status) of

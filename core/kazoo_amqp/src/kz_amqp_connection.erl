@@ -180,7 +180,7 @@ handle_cast('create_prechannel'
 handle_cast('create_prechannel'
            ,#kz_amqp_connection{available='true'}=Connection
            ) ->
-    _ = kz_util:spawn(fun establish_prechannel/1, [Connection]),
+    _ = kz_process:spawn(fun establish_prechannel/1, [Connection]),
     {'noreply', Connection, 'hibernate'};
 handle_cast(_Msg, Connection) ->
     lager:debug("unhandled cast : ~p : ~p", [_Msg, Connection]),

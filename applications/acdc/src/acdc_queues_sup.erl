@@ -84,7 +84,7 @@ find_queue_supervisor(AcctId, QueueId, [Super|Rest]) ->
 status() ->
     ?PRINT("ACDc Queues Status"),
     Ws = workers(),
-    _ = kz_util:spawn(fun() -> lists:foreach(fun acdc_queue_sup:status/1, Ws) end),
+    _ = kz_process:spawn(fun() -> lists:foreach(fun acdc_queue_sup:status/1, Ws) end),
     'ok'.
 
 -spec queues_running() -> [{pid(), any()}].

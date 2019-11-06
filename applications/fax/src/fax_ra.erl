@@ -418,7 +418,7 @@ stop() ->
 
 -spec start_worker(kz_term:ne_binary(), kz_term:ne_binary(), reference()) -> 'ok'.
 start_worker(AccountId, JobId, Ref) ->
-    kz_util:spawn(fun start_worker/1 , [{AccountId, JobId, Ref}]).
+    kz_process:spawn(fun start_worker/1 , [{AccountId, JobId, Ref}]).
 
 start_worker({AccountId, JobId, Ref}) ->
     Node = rand_node(),

@@ -55,7 +55,7 @@ load_profile_config() ->
 profile_config() ->
     case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {?MODULE, 'config'}) of
         {'error', 'not_found'} ->
-            kz_util:spawn(fun update_profile_config/0),
+            kz_process:spawn(fun update_profile_config/0),
             Config = load_profile_config_from_disk(),
             update_profile_config(Config);
         {'ok', Map} -> Map

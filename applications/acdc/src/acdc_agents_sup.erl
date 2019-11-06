@@ -56,7 +56,7 @@ start_link() ->
 status() ->
     ?PRINT("ACDc Agents Status"),
     Ws = workers(),
-    _ = kz_util:spawn(fun() -> lists:foreach(fun acdc_agent_sup:status/1, Ws) end),
+    _ = kz_process:spawn(fun() -> lists:foreach(fun acdc_agent_sup:status/1, Ws) end),
     'ok'.
 
 -spec new(kz_json:object()) -> kz_types:sup_startchild_ret().

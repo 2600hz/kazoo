@@ -235,7 +235,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec terminate(any(), state()) ->  {'ok', any(), state()}.
 terminate('normal', State) ->
-    _ = kz_util:spawn(fun handle_message/1, [State]),
+    _ = kz_process:spawn(fun handle_message/1, [State]),
     {'ok', 'normal', State};
 terminate(Reason, State) ->
     lager:debug("terminate ~p", [Reason]),
