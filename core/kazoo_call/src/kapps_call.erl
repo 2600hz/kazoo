@@ -249,7 +249,7 @@ new() -> #kapps_call{}.
 -spec put_callid(call()) -> kz_term:api_binary().
 put_callid(#kapps_call{call_id='undefined'}) -> 'undefined';
 put_callid(#kapps_call{call_id=CallId}) ->
-    kz_util:put_callid(CallId).
+    kz_log:put_callid(CallId).
 
 -spec from_route_req(kapi_route:req()) -> call().
 from_route_req(RouteReq) ->
@@ -267,7 +267,7 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
                                     ,to=OldTo
                                     }=Call) ->
     CallId = kz_api:call_id(RouteReq, OldCallId),
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
 
     CCVs = merge(OldCCVs, kz_json:get_json_value(<<"Custom-Channel-Vars">>, RouteReq)),
     CAVs = merge(OldCAVs, kz_json:get_json_value(<<"Custom-Application-Vars">>, RouteReq)),
@@ -348,7 +348,7 @@ from_route_win(RouteWin, #kapps_call{call_id=OldCallId
                                     ,language=OldLanguage
                                     }=Call) ->
     CallId = kz_json:get_value(<<"Call-ID">>, RouteWin, OldCallId),
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
 
     CCVs = merge(OldCCVs, kz_json:get_json_value(<<"Custom-Channel-Vars">>, RouteWin)),
     CAVs = merge(OldCAVs, kz_json:get_json_value(<<"Custom-Application-Vars">>, RouteWin)),

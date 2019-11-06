@@ -438,7 +438,7 @@ req_to_jobj(?REQ_TYPE(JObj)) -> JObj.
 
 -spec put_callid(req()) -> 'ok'.
 put_callid(?REQ_TYPE(JObj)) ->
-    kz_util:put_callid(JObj).
+    kz_log:put_callid(JObj).
 
 -spec set_outbound_call_id(req(), kz_term:ne_binary()) -> req().
 set_outbound_call_id(?REQ_TYPE(JObj), CallId) ->

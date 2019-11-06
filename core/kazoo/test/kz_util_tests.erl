@@ -71,16 +71,6 @@ proper_test_() ->
 -endif.
 
 
-%% Just to please coverage :)
-log_test_() ->
-    ST = try throw('just_for_fun')
-         catch
-             ?STACKTRACE(_E, _R, Stack)
-             Stack
-             end,
-    [?_assertEqual(ok, kz_util:log_stacktrace(ST))
-    ].
-
 calling_app_test_() ->
     [?_assertEqual(eunit_test, maps:get(app, kz_util:calling_process()))
     ,?_assertMatch(undefined, kz_util:get_app("kazoo"))
@@ -108,10 +98,10 @@ get_event_type_test_() ->
 
 put_callid_test_() ->
     ApiCallId = [{<<"Call-ID">>, <<"bla">>}],
-    [?_assertEqual(<<"bla">>, begin kz_util:put_callid(<<"bla">>), kz_util:get_callid() end)
-    ,?_assertEqual(bla, begin kz_util:put_callid(bla), kz_util:get_callid() end)
-    ,?_assertEqual(<<"bla">>, begin kz_util:put_callid(ApiCallId), kz_util:get_callid() end)
-    ,?_assertEqual(<<"bla">>, begin kz_util:put_callid(kz_json:from_list(ApiCallId)), kz_util:get_callid() end)
+    [?_assertEqual(<<"bla">>, begin kz_log:put_callid(<<"bla">>), kz_log:get_callid() end)
+    ,?_assertEqual(bla, begin kz_log:put_callid(bla), kz_log:get_callid() end)
+    ,?_assertEqual(<<"bla">>, begin kz_log:put_callid(ApiCallId), kz_log:get_callid() end)
+    ,?_assertEqual(<<"bla">>, begin kz_log:put_callid(kz_json:from_list(ApiCallId)), kz_log:get_callid() end)
     ,?_assert(is_integer(begin kz_util:set_startup(), kz_util:startup() end))
     ].
 

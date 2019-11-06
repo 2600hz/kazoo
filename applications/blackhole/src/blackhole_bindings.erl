@@ -203,7 +203,7 @@ is_bh_module(Mod) -> is_bh_module(kz_term:to_binary(Mod)).
 -spec init() -> 'ok'.
 init() ->
     lager:debug("initializing blackhole bindings"),
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     Mods = lists:usort(blackhole_config:autoload_modules() ++ ?COMMAND_MODULES),
     lists:foreach(fun init_mod/1, Mods).
 

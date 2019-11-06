@@ -36,7 +36,7 @@
 
 -spec authorize(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
 authorize(Data, CallId, Node) ->
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     AuthorizeReply = is_emergency_number(Data)
         orelse is_mobile_device(Data)
         orelse maybe_authorized_channel(Data, Node),
@@ -287,7 +287,7 @@ allow_call(Data, _CallId, _Node) ->
 -spec rate_channel(kzd_freeswitch:data(), atom()) -> 'ok'.
 rate_channel(Data, Node) ->
     CallId = kzd_freeswitch:call_id(Data),
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     Direction = kzd_freeswitch:call_direction(Data),
     ReqResp = kz_amqp_worker:call(rating_req(CallId, Data)
                                  ,fun kapi_rate:publish_req/1

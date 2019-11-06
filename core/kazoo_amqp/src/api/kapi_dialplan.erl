@@ -1158,7 +1158,7 @@ build_command(Prop, DPApp) when is_list(Prop) ->
             end
     catch
         ?STACKTRACE(_, R, ST)
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         throw({R, Prop})
         end;
 build_command(JObj, DPApp) ->

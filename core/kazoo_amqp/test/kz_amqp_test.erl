@@ -58,7 +58,7 @@ start_publisher() ->
     spawn_monitor(fun run_publisher/0).
 
 run_publisher() ->
-    kz_util:put_callid(<<?MODULE_STRING"-publisher">>),
+    kz_log:put_callid(<<?MODULE_STRING"-publisher">>),
     'ok' = kz_amqp_channel:requisition(),
 
     Payload = [{<<"Category">>, <<"amqp">>}
@@ -99,7 +99,7 @@ start_consumer() ->
     spawn_monitor(fun run_consumer/0).
 
 run_consumer() ->
-    kz_util:put_callid(<<?MODULE_STRING"-consumer">>),
+    kz_log:put_callid(<<?MODULE_STRING"-consumer">>),
     'ok' = kz_amqp_channel:requisition(),
 
     loop_consumer(<<?MODULE_STRING>>).

@@ -8,10 +8,7 @@
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(ci_parser_hep).
-
 -behaviour(gen_server).
-
--include("call_inspector.hrl").
 
 %% API
 -export([start_link/1]).
@@ -24,6 +21,8 @@
         ,terminate/2
         ,code_change/3
         ]).
+
+-include("call_inspector.hrl").
 
 -record(state, {parser_id :: atom()
                ,socket :: gen_udp:socket()
@@ -56,7 +55,7 @@ start_link([Arg]=Args) ->
 -spec init({'parser_args', kz_term:ne_binary(), pos_integer()}) -> {'ok', state()}.
 init({'parser_args', IP, Port} = Args) ->
     ParserId = ci_parsers_util:make_name(Args),
-    _ = kz_util:put_callid(ParserId),
+    _ = kz_log:put_callid(ParserId),
     {'ok', Socket} = gen_udp:open(Port, ['binary'
                                         ,{'active', 'true'}
                                         ]),
@@ -91,9 +90,11 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
-handle_info({'udp', _Socket, _IPTuple, _InPortNo, Packet}, State) ->
+handle_info({'udp', _Socket, _IPTuple, _InPortNo, Packet}
+           ,#state{parser_id=ParserId}=State
+           ) ->
     {'ok', Hep} = hep:decode(Packet),
-    make_and_store_chunk(State#state.parser_id, Hep),
+    make_and_store_chunk(ParserId, Hep),
     {'noreply', State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),

@@ -49,7 +49,7 @@ dialplan(#{fetch_id := FetchId, payload := FetchJObj}=Map) ->
 
 -spec process(dialplan_context()) -> {'ok', dialplan_context()}.
 process(#{payload := FetchJObj, channel := Channel}=Map) ->
-    kz_util:put_callid(FetchJObj),
+    kz_log:put_callid(FetchJObj),
     _ = kz_amqp_channel:consumer_channel(Channel),
     Routines = [{fun add_time_marker/2, 'request_ready'}
                ,fun control_p/1
@@ -149,7 +149,7 @@ spawn_authorize_call_fun(#{node := Node, call_id := CallId, payload := JObj}=Map
                                 {'authorize_reply', Ref, ecallmgr_fs_authz:authz_reply()}
                                     when Ref :: reference().
 authorize_call_fun(Parent, Ref, Node, CallId, JObj) ->
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     Parent ! {'authorize_reply', Ref, ecallmgr_fs_authz:authorize(JObj, CallId, Node)}.
 
 -spec maybe_wait_for_authz(dialplan_context()) -> {'ok', dialplan_context()}.
@@ -209,7 +209,7 @@ wait_for_route_winner(Ctx) ->
 -spec activate_call_control(dialplan_context()) -> {'ok', dialplan_context()}.
 activate_call_control(#{call_id := CallId, winner := #{payload := JObj}} = Map) ->
     lager:info("we are the route winner handling node"),
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     CCVs = kzd_fetch:ccvs(JObj),
     ControllerQ = kzd_fetch:controller_queue(JObj),
     ecallmgr_fs_channels:update(CallId, #channel.handling_locally, 'true'),

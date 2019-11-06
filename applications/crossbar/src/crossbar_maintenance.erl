@@ -424,7 +424,7 @@ create_account(AccountName, Realm, Username, Password) ->
 
 log_error(Type, Reason, ST, AccountName) ->
     lager:error("crashed creating account: ~s: ~p", [Type, Reason]),
-    kz_util:log_stacktrace(ST),
+    kz_log:log_stacktrace(ST),
 
     io:format("failed to create '~s': ~p~n", [AccountName, Reason]),
     'failed'.
@@ -815,7 +815,7 @@ find_apps(AppsPath) ->
                     [filename:dirname(filename:dirname(App)) | Acc]
                 catch
                     _Ex:_Er:_ST ->
-                        kz_util:log_stacktrace(_ST),
+                        kz_log:log_stacktrace(_ST),
                         Acc
                 end
         end,

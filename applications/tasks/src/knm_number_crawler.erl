@@ -67,7 +67,7 @@ stop() ->
 
 -spec crawl_numbers() -> 'ok'.
 crawl_numbers() ->
-    kz_util:put_callid(?SERVER),
+    kz_log:put_callid(?SERVER),
     lager:debug("beginning a number crawl"),
     lists:foreach(fun crawl_number_db/1, knm_util:get_all_number_dbs()),
     lager:debug("finished the number crawl"),
@@ -83,7 +83,7 @@ crawl_numbers() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?SERVER),
+    kz_log:put_callid(?SERVER),
     lager:debug("started ~s", [?SERVER]),
     {'ok', #state{cleanup_ref = cleanup_timer()}}.
 

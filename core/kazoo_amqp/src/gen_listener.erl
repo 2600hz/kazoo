@@ -278,7 +278,7 @@ cast(Name, Request) -> gen_server:cast(Name, {'$client_cast', Request}).
 delayed_cast(Name, Request, Wait) when is_integer(Wait), Wait > 0 ->
     _P = kz_util:spawn(
            fun() ->
-                   kz_util:put_callid(?MODULE),
+                   kz_log:put_callid(?MODULE),
                    timer:sleep(Wait),
                    gen_server:cast(Name, Request)
            end),
@@ -746,11 +746,11 @@ handle_info(Message, State) ->
 -spec handle_event(kz_term:ne_binary(), kz_term:ne_binary(), deliver(), state()) ->  kz_types:handle_info_ret().
 handle_event(Payload, <<"application/json">>, Deliver, State) ->
     JObj = kz_json:decode(Payload),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     distribute_event(JObj, Deliver, State);
 handle_event(Payload, <<"application/erlang">>, Deliver, State) ->
     JObj = binary_to_term(Payload),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     distribute_event(JObj, Deliver, State).
 
 %%------------------------------------------------------------------------------
@@ -761,11 +761,11 @@ handle_event(Payload, <<"application/erlang">>, Deliver, State) ->
 -spec handle_return(kz_term:ne_binary(), kz_term:ne_binary(), #'basic.return'{}, state()) ->  handle_cast_return().
 handle_return(Payload, <<"application/json">>, BR, State) ->
     JObj = kz_json:decode(Payload),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     handle_return(JObj, BR, State);
 handle_return(Payload, <<"application/erlang">>, BR, State) ->
     JObj = binary_to_term(Payload),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     handle_return(JObj, BR, State).
 
 -spec handle_return(kz_json:object(), #'basic.return'{}, state()) -> handle_cast_return().
@@ -844,7 +844,7 @@ handle_callback_info(Message
     catch
         ?STACKTRACE(_E, R, ST)
         lager:debug("handle_info exception: ~s: ~p", [_E, R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'stop', R, State}
         end.
 
@@ -915,26 +915,26 @@ distribute_event(CallbackData, JObj, Deliver, #state{responders=Responders
 -spec client_handle_event(kz_json:object(), pid() | kz_amqp_channel:consumer_channel(), kz_amqp_channel:consumer_pid(), responder_mfa(), callback_data(), deliver()) -> any().
 client_handle_event(JObj, 'undefined', ConsumerKey, Callback, CallbackData, Deliver) ->
     lager:warning("no consumer channel to provide to spawned process"),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     _ = kz_amqp_channel:consumer_pid(ConsumerKey),
     client_handle_event(JObj, Callback, CallbackData, Deliver);
 client_handle_event(JObj, #kz_amqp_assignment{channel=Channel}, ConsumerKey, Callback, CallbackData, Deliver)
   when is_pid(Channel)->
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     _ = kz_amqp_channel:consumer_pid(ConsumerKey),
     _ = is_process_alive(Channel)
         andalso kz_amqp_channel:consumer_channel(Channel),
     client_handle_event(JObj, Callback, CallbackData, Deliver);
 client_handle_event(JObj, Channel, ConsumerKey, Callback, CallbackData, Deliver)
   when is_pid(Channel) ->
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     _ = kz_amqp_channel:consumer_pid(ConsumerKey),
     _ = is_process_alive(Channel)
         andalso kz_amqp_channel:consumer_channel(Channel),
     client_handle_event(JObj, Callback, CallbackData, Deliver);
 client_handle_event(JObj, _, ConsumerKey, Callback, CallbackData, Deliver) ->
     lager:warning("no usable consumer channel to provide to spawned process"),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     _ = kz_amqp_channel:consumer_pid(ConsumerKey),
     client_handle_event(JObj, Callback, CallbackData, Deliver).
 
@@ -1174,7 +1174,7 @@ handle_module_call(Request, From, #state{module=Module
     catch
         ?STACKTRACE(_E, R, ST)
         lager:debug("handle_call exception: ~s: ~p", [_E, R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'stop', R, State}
         end.
 
@@ -1198,7 +1198,7 @@ handle_module_cast(Msg, #state{module=Module
     catch
         ?STACKTRACE(_E, R, ST)
         lager:debug("handle_cast exception: ~s: ~p", [_E, R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'stop', R, State}
         end.
 

@@ -215,7 +215,7 @@ init_control(Pid, #{node := Node
         _Other -> lager:debug("callback doesn't want to proceed")
     catch
         _Ex:_Err:_Stacktrace ->
-            kz_util:log_stacktrace(_Stacktrace),
+            kz_log:log_stacktrace(_Stacktrace),
             lager:debug("error running callback ~p : ~p", [_Ex, _Err])
 
     end;
@@ -630,7 +630,7 @@ handle_sofia_replaced(<<_/binary>> = ReplacedBy, #state{node=Node
                                                        }=State)->
     lager:debug("channel replaced by ~s for ~s in ~s", [ReplacedBy, CallId, Node]),
     unbind(Node, CallId),
-    kz_util:put_callid(ReplacedBy),
+    kz_log:put_callid(ReplacedBy),
     bind(Node, ReplacedBy),
     lager:info("...call id updated, continuing post-transfer"),
     set_control_info(ReplacedBy, State),
@@ -861,7 +861,7 @@ execute_control_request(Cmd, #state{node=Node
                                    ,call_id=CallId
                                    ,other_legs=OtherLegs
                                    }) ->
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     Srv = self(),
 
     Application = kapi_dialplan:application_name(Cmd),
@@ -901,7 +901,7 @@ execute_control_request(Cmd, #state{node=Node
             'ok';
         'error':{'badmatch', {'error', ErrMsg}}:ST ->
             lager:debug("invalid command ~s: ~p", [Application, ErrMsg]),
-            kz_util:log_stacktrace(ST),
+            kz_log:log_stacktrace(ST),
             send_error_resp(Node, CallId, Cmd, ErrMsg),
             Srv ! {'force_queue_advance', CallId},
             'ok';
@@ -919,7 +919,7 @@ execute_control_request(Cmd, #state{node=Node
             'ok';
         _A:Error:ST ->
             lager:debug("exception (~s) while executing ~s: ~p", [_A, Application, Error]),
-            kz_util:log_stacktrace(ST),
+            kz_log:log_stacktrace(ST),
             send_error_resp(Node, CallId, Cmd, Error),
             Srv ! {'force_queue_advance', CallId},
             'ok'

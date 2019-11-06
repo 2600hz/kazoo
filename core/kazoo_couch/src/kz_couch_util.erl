@@ -82,7 +82,7 @@ retry504s(Fun, Cnt) ->
     catch
         ?STACKTRACE(_E, _R, ST)
         lager:debug("exception running fun: ~p:~p", [_E, _R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
         retry504s(Fun, Cnt+1)
         end.

@@ -40,7 +40,7 @@ update_expire_period(Name, ExpirePeriodS) ->
 
 -spec init(list()) -> {'ok', state()}.
 init([Name, ExpirePeriod]) ->
-    kz_util:put_callid(lru_name(Name)),
+    kz_log:put_callid(lru_name(Name)),
     lager:debug("LRU expiration checks every ~pms", [ExpirePeriod]),
 
     {'ok', #state{name=Name

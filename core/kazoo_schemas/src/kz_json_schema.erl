@@ -40,7 +40,7 @@
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
-
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -type extra_validator() :: fun((jesse:json_term(), jesse_state:state()) -> jesse_state:state()).
 -type validator_option() :: 'use_defaults' | 'apply_defaults_to_empty_objects'.
@@ -102,7 +102,7 @@ load(Schema) -> load(kz_term:to_binary(Schema)).
 -endif.
 
 -spec fload(kz_term:ne_binary() | string()) -> {'ok', kz_json:object()} |
-                                               {'error', 'not_found'}.
+                                               {'error', 'not_found' | file:posix()}.
 fload(<<"./", Schema/binary>>) -> fload(Schema);
 fload(<<"file://", Schema/binary>>) -> fload(Schema);
 fload(<<_/binary>> = Schema) ->
@@ -114,7 +114,7 @@ fload(Schema) -> fload(kz_term:to_binary(Schema)).
 
 -spec find_and_fload(kz_term:ne_binary()) ->
                             {'ok', kz_json:object()} |
-                            {'error', 'not_found'}.
+                            {'error', 'not_found' | file:posix()}.
 find_and_fload(Schema) ->
     PrivDir = code:priv_dir('crossbar'),
     SchemaPath = filename:join([PrivDir, "couchdb", "schemas", maybe_add_ext(Schema)]),
@@ -123,7 +123,8 @@ find_and_fload(Schema) ->
         'false'-> {'error', 'not_found'}
     end.
 
--spec fload_file(kz_term:ne_binary()) -> {'ok', kz_json:object()}.
+-spec fload_file(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
+                                         {'error', 'not_found' | file:posix()}.
 fload_file(SchemaPath) ->
     Schema = filename:basename(SchemaPath, ".json"),
     case file:read_file(SchemaPath) of
@@ -1013,7 +1014,7 @@ default_object(Schema) ->
     catch
         ?STACKTRACE(_Ex, _Err, ST)
         lager:error("exception getting schema default ~p : ~p", [_Ex, _Err]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         kz_json:new()
         end.
 

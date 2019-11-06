@@ -250,7 +250,7 @@ is_channel_destroyed(Call) ->
 -spec callid(kapps_call:call() | pid()) -> kz_term:ne_binary().
 callid(Srv) when is_pid(Srv) ->
     CallId = gen_server:call(Srv, 'callid', 1000),
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     CallId;
 callid(Call) ->
     Srv = cf_exe_pid(Call),
@@ -515,7 +515,7 @@ handle_cast({'branch', NewFlow}, #state{flow=Flow
             }
     end;
 handle_cast({'callid_update', NewCallId}, #state{call=Call}=State) ->
-    kz_util:put_callid(NewCallId),
+    kz_log:put_callid(NewCallId),
     PrevCallId = kapps_call:call_id_direct(Call),
     lager:info("updating callid to ~s (from ~s), catch you on the flip side", [NewCallId, PrevCallId]),
     _ = kz_hooks:unbind_call_id(PrevCallId),
@@ -797,7 +797,7 @@ spawn_cf_module(CFModule, Data, Call) ->
 cf_module_task(CFModule, Data, Call, AMQPConsumer, AMQPChannel) ->
     _ = kz_amqp_channel:consumer_channel(AMQPChannel),
     _ = kz_amqp_channel:consumer_pid(AMQPConsumer),
-    kz_util:put_callid(kapps_call:call_id_direct(Call)),
+    kz_log:put_callid(kapps_call:call_id_direct(Call)),
     try CFModule:handle(Data, Call)
     catch
 
@@ -805,7 +805,7 @@ cf_module_task(CFModule, Data, Call, AMQPConsumer, AMQPChannel) ->
             lager:info("action ~s finished", [CFModule]);
         ?STACKTRACE(_E, R, ST)
         lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         throw(R)
         end.
 

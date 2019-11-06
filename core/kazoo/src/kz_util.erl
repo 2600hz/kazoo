@@ -11,8 +11,7 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_util).
 
--export([log_stacktrace/0, log_stacktrace/1, log_stacktrace/2, log_stacktrace/3
-        ,format_account_id/1, format_account_id/2, format_account_id/3
+-export([format_account_id/1, format_account_id/2, format_account_id/3
         ,format_account_mod_id/1, format_account_mod_id/2, format_account_mod_id/3
         ,format_account_db/1
         ,format_account_modb/1, format_account_modb/2
@@ -25,8 +24,7 @@
         ]).
 
 -export([runs_in/3]).
--export([put_callid/1, get_callid/0, find_callid/1
-        ,spawn/1, spawn/2
+-export([spawn/1, spawn/2
         ,spawn_link/1, spawn_link/2
         ,spawn_monitor/2, spawn_monitor/3
         ,set_startup/0, startup/0
@@ -51,77 +49,15 @@
 
 -export([application_version/1]).
 
--export([kz_log_md_clear/0, kz_log_md_put/2]).
-
--deprecated({'log_stacktrace', 0, 'next_major_release'}).
--deprecated({'log_stacktrace', 2, 'next_major_release'}).
-
 -include_lib("kernel/include/inet.hrl").
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
--include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
--include_lib("kazoo/include/kz_api_literals.hrl").
+-include_lib("kazoo_amqp/include/kz_api_literals.hrl").
 
 -define(KAZOO_VERSION_CACHE_KEY, {?MODULE, 'kazoo_version'}).
 
 -export_type([account_format/0]).
-
-%%------------------------------------------------------------------------------
-%% @doc Standardized way of logging the stack-trace.
-%% @deprecated `erlang:get_stacktrace/0' used by this function is deprecated
-%% in OTP 21, please use the new try/catch syntax and pass stacktrace to
-%% {@link kz_util:log_stacktrace/1} instead.
-%% @end
-%%------------------------------------------------------------------------------
--spec log_stacktrace() -> 'ok'.
-log_stacktrace() ->
-    try throw('get_stacktrace')
-    catch
-        ?STACKTRACE(_E, _R, ST)
-        log_stacktrace(ST, "log_stacktrace/0 is deprecated: ", [])
-        end.
-
-%%------------------------------------------------------------------------------
-%% @doc Standardized way of logging the stack-trace.
-%% @end
-%%------------------------------------------------------------------------------
--spec log_stacktrace(list()) -> 'ok'.
-log_stacktrace(ST) ->
-    log_stacktrace(ST, "", []).
-
-%%------------------------------------------------------------------------------
-%% @doc Standardized way of logging the stack-trace.
-%% @deprecated `erlang:get_stacktrace/0' used by this function is deprecated
-%% in OTP 21, please use the new try/catch syntax and pass stacktrace to
-%% {@link kz_util:log_stacktrace/3} instead.
-%% @end
-%%------------------------------------------------------------------------------
--spec log_stacktrace(string(), list()) -> 'ok'.
-log_stacktrace(Fmt, Args) ->
-    try throw('get_stacktrace')
-    catch
-        ?STACKTRACE(_E, _R, ST)
-        log_stacktrace(ST, "log_stacktrace/2 is deprecated: " ++ Fmt, Args)
-        end.
-
-%%------------------------------------------------------------------------------
-%% @doc Standardized way of logging the stack-trace.
-%% @end
-%%------------------------------------------------------------------------------
--spec log_stacktrace(list(), string(), list()) -> 'ok'.
-log_stacktrace(ST, Fmt, Args) ->
-    ?LOG_ERROR("stacktrace: " ++ Fmt, Args),
-    _ = [log_stacktrace_mfa(M, F, A, Info)
-         || {M, F, A, Info} <- ST
-        ],
-    'ok'.
-
-log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
-    ?LOG_ERROR("st: ~s:~s/~b at (~b)", [M, F, Arity, props:get_value('line', Info, 0)]);
-log_stacktrace_mfa(M, F, Args, Info) ->
-    ?LOG_ERROR("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
-    lists:foreach(fun (Arg) -> ?LOG_ERROR("args: ~p", [Arg]) end, Args).
 
 -type account_format() :: 'unencoded' | 'encoded' | 'raw'.
 
@@ -354,57 +290,6 @@ format_account_modb(AccountId, 'encoded') ->
     kz_term:to_binary(["account%2F", A, "%2F", B, "%2F", Rest]).
 
 %%------------------------------------------------------------------------------
-%% @doc Given an JSON Object extracts the `Call-ID' into the processes
-%% dictionary, failing that the `Msg-ID' and finally a generic.
-%% @end
-%%------------------------------------------------------------------------------
--spec put_callid(kz_json:object() | kz_term:proplist() | kz_term:ne_binary() | atom()) -> 'ok'.
-put_callid(?NE_BINARY = CallId) ->
-    _ = kz_log_md_put('callid', CallId),
-    _ = erlang:put('callid', CallId),
-    'ok';
-put_callid(Atom) when is_atom(Atom) ->
-    _ = kz_log_md_put('callid', Atom),
-    _ = erlang:put('callid', Atom),
-    'ok';
-put_callid(APITerm) ->
-    put_callid(find_callid(APITerm)).
-
--spec get_callid() -> kz_term:api_ne_binary().
-get_callid() -> erlang:get('callid').
-
--spec find_callid(kz_term:api_terms()) -> kz_term:api_binary().
-find_callid(APITerm) when is_list(APITerm) ->
-    find_callid(APITerm, fun props:get_first_defined/3);
-find_callid(APITerm) ->
-    find_callid(APITerm, fun kz_json:get_first_defined/3).
-
--spec find_callid(kz_term:api_terms(), fun()) -> kz_term:api_binary().
-find_callid(APITerm, GetFun) ->
-    GetFun([?KEY_LOG_ID, ?KEY_API_CALL_ID, ?KEY_MSG_ID]
-          ,APITerm
-          ,?DEFAULT_LOG_SYSTEM_ID
-          ).
-
--spec kz_log_md_put(atom(), any()) -> any().
-kz_log_md_put(K, V) ->
-    lager:md(lists:usort(fun is_kz_log_md_equal/2, [{K, V} | lager:md()])).
-
-is_kz_log_md_equal({K1, _}, {K2, _}) -> K1 =< K2;
-is_kz_log_md_equal(K1, K2) -> K1 =< K2.
-
--define(LAGER_MD_KEY, '__lager_metadata').
-
--spec kz_log_md_clear() -> 'ok'.
-kz_log_md_clear() ->
-    %% `lager:md([])' causing dialyzer to complain:
-    %% warn_failing_call
-    %% `kz_util.erl:408: The call lager:md([]) breaks the contract ([{atom(),any()},...]) -> ok`'
-    %% lager:md([]).
-    _ = erlang:put(?LAGER_MD_KEY, []),
-    'ok'.
-
-%%------------------------------------------------------------------------------
 %% @doc Gives `MaxTime' milliseconds to `Fun' of `Arguments' to apply.
 %% If time is elapsed, the sub-process is killed and returns `timeout'.
 %% @end
@@ -425,60 +310,60 @@ runs_in(MaxTime, Fun, Arguments)
 
 -spec spawn(fun(), list()) -> pid().
 spawn(Fun, Arguments) ->
-    CallId = get_callid(),
+    CallId = kz_log:get_callid(),
     Application = kapps_util:get_application(),
     erlang:spawn(fun() ->
-                         _ = put_callid(CallId),
+                         _ = kz_log:put_callid(CallId),
                          _ = kapps_util:put_application(Application),
                          erlang:apply(Fun, Arguments)
                  end).
 
 -spec spawn(fun(() -> any())) -> pid().
 spawn(Fun) ->
-    CallId = get_callid(),
+    CallId = kz_log:get_callid(),
     Application = kapps_util:get_application(),
     erlang:spawn(fun() ->
-                         _ = put_callid(CallId),
+                         _ = kz_log:put_callid(CallId),
                          _ = kapps_util:put_application(Application),
                          Fun()
                  end).
 
 -spec spawn_link(fun(), list()) -> pid().
 spawn_link(Fun, Arguments) ->
-    CallId = get_callid(),
+    CallId = kz_log:get_callid(),
     Application = kapps_util:get_application(),
     erlang:spawn_link(fun () ->
-                              _ = put_callid(CallId),
+                              _ = kz_log:put_callid(CallId),
                               _ = kapps_util:put_application(Application),
                               erlang:apply(Fun, Arguments)
                       end).
 
 -spec spawn_link(fun(() -> any())) -> pid().
 spawn_link(Fun) ->
-    CallId = get_callid(),
+    CallId = kz_log:get_callid(),
     Application = kapps_util:get_application(),
     erlang:spawn_link(fun() ->
-                              _ = put_callid(CallId),
+                              _ = kz_log:put_callid(CallId),
                               _ = kapps_util:put_application(Application),
                               Fun()
                       end).
 
 -spec spawn_monitor(fun(), list()) -> kz_term:pid_ref().
 spawn_monitor(Fun, Arguments) ->
-    CallId = get_callid(),
+    CallId = kz_log:get_callid(),
     Application = kapps_util:get_application(),
     erlang:spawn_monitor(fun () ->
-                                 _ = put_callid(CallId),
+                                 _ = kz_log:put_callid(CallId),
                                  _ = kapps_util:put_application(Application),
                                  erlang:apply(Fun, Arguments)
                          end).
 
 -spec spawn_monitor(module(), atom(), list()) -> kz_term:pid_ref().
 spawn_monitor(Module, Fun, Args) ->
-    CallId = get_callid(),
+    CallId = kz_log:get_callid(),
     Application = kapps_util:get_application(),
     erlang:spawn_monitor(fun () ->
-                                 _ = put_callid(CallId),
+                                 _ = kz_log:put_callid(CallId),
                                  _ = kapps_util:put_application(Application),
                                  erlang:apply(Module, Fun, Args)
                          end).

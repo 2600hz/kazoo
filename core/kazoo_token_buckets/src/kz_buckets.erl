@@ -297,7 +297,7 @@ gift_data() -> 'ok'.
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {'ok', #state{inactivity_timer_ref=start_inactivity_timer()}}.
 
 %%------------------------------------------------------------------------------
@@ -322,12 +322,12 @@ handle_call({'start', App, Name, MaxTokens, FillRate, FillTime}, _From, #state{t
     of
         {'ok', Pid} when is_pid(Pid) ->
             T = {App, Name},
-            case ets:insert_new(Tbl, new_bucket(Pid, T)) of
-                'true' -> lager:debug("new bucket for ~s, ~s: ~p", [App, Name, Pid]);
-                'false' ->
-                    lager:debug("hmm, bucket appears to exist for ~s, ~s, stopping ~p", [App, Name, Pid]),
-                    kz_buckets_sup:stop_bucket(Pid)
-            end,
+            _ = case ets:insert_new(Tbl, new_bucket(Pid, T)) of
+                    'true' -> lager:debug("new bucket for ~s, ~s: ~p", [App, Name, Pid]);
+                    'false' ->
+                        lager:debug("hmm, bucket appears to exist for ~s, ~s, stopping ~p", [App, Name, Pid]),
+                        kz_buckets_sup:stop_bucket(Pid)
+                end,
             kz_token_bucket:set_name(Pid, T),
             {'reply', 'ok', State};
         'false' ->
@@ -426,7 +426,7 @@ start_inactivity_timer() ->
 
 -spec check_for_inactive_buckets() -> 'ok'.
 check_for_inactive_buckets() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     Now = kz_time:now_s(),
     InactivityTimeout = ?INACTIVITY_TIMEOUT_S,
 

@@ -129,7 +129,7 @@ from_token_fold(Token, [Fun | Routines]) ->
     catch
         ?STACKTRACE(_E, _R, ST)
         lager:debug("error running public key routine ~p : ~p , ~p", [Fun, _E, _R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         from_token_fold(Token, Routines)
         end.
 

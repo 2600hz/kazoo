@@ -58,7 +58,7 @@ has_unread(AccountId, VMBoxId) ->
 handle_req(JObj, Props) ->
     'true' = props:get_value(<<"skip_verification">>, Props, 'false')
         orelse kapi_notifications:voicemail_saved_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
     AccountDb = kz_json:get_value(<<"Account-DB">>, JObj),
     VMBoxId = kz_json:get_value(<<"Voicemail-Box">>, JObj),

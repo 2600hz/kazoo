@@ -89,7 +89,7 @@ start_link(Node, Options) ->
 -spec maybe_presence_probe(kz_json:object(), kz_term:proplist()) -> 'ok'.
 maybe_presence_probe(JObj, _Props) ->
     'true' = kapi_presence:probe_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     Username = kz_json:get_value(<<"Username">>, JObj),
     Realm = kz_json:get_value(<<"Realm">>, JObj),
     presence_probe(Username, Realm).
@@ -118,7 +118,7 @@ resp_to_probe(State, User, Realm) ->
 -spec notify_api(kz_json:object(), kz_term:proplist()) -> 'ok'.
 notify_api(JObj, _Props) ->
     'true' = kapi_switch:notify_v(JObj),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     maybe_send_notify(kapi_switch:notify_username(JObj)
                      ,kapi_switch:notify_realm(JObj)
                      ,JObj
@@ -169,7 +169,7 @@ send_notify(Node, Username, Realm, JObj, Contact) ->
 
 -spec mwi_update(kz_json:object(), kz_term:proplist()) -> no_return().
 mwi_update(JObj, Props) ->
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     'true' = kapi_presence:mwi_unsolicited_update_v(JObj),
     [Username, Realm] = binary:split(kz_json:get_value(<<"To">>, JObj), <<"@">>),
     case ecallmgr_registrar:lookup_registration(Realm, Username) of
@@ -284,7 +284,7 @@ ensure_contact_user(OriginalContact, Username, Realm) ->
 -spec init([atom() | kz_term:proplist()]) -> {'ok', state()}.
 init([Node, Options]) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(Node),
+    kz_log:put_callid(Node),
     lager:debug("starting new ecallmgr notify process"),
     gproc:reg({'p', 'l', 'fs_notify'}),
     {'ok', #state{node=Node, options=Options}}.

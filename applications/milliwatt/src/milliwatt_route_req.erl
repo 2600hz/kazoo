@@ -31,7 +31,7 @@
 handle_req(JObj, _Props) ->
     'true' = kapi_route:req_v(JObj),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     Call = kapps_call:from_route_req(JObj),
 
     %% do magic to determine if we should respond...

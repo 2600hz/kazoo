@@ -408,7 +408,7 @@ status_stat_to_doc(#status_stat{id=Id
 
 -spec archive_status_data(pid(), boolean()) -> 'ok'.
 archive_status_data(Srv, 'true') ->
-    kz_util:put_callid(<<"acdc_stats.force_status_archiver">>),
+    kz_log:put_callid(<<"acdc_stats.force_status_archiver">>),
     Match = [{#status_stat{is_archived='$1'
                           ,_='_'
                           }
@@ -418,7 +418,7 @@ archive_status_data(Srv, 'true') ->
     maybe_archive_status_data(Srv, Match);
 
 archive_status_data(Srv, 'false') ->
-    kz_util:put_callid(<<"acdc_stats.status_archiver">>),
+    kz_log:put_callid(<<"acdc_stats.status_archiver">>),
     Past = kz_time:now_s() - ?ARCHIVE_WINDOW,
     Match = [{#status_stat{timestamp='$1'
                           ,is_archived='$2'

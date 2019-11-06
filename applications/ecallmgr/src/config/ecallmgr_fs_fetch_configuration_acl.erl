@@ -37,7 +37,7 @@ init() ->
 
 -spec acl(map()) -> fs_sendmsg_ret().
 acl(#{node := Node, fetch_id := Id}=Ctx) ->
-    kz_util:put_callid(Id),
+    kz_log:put_callid(Id),
     ACLs = ecallmgr_fs_acls:media_acls(),
     ConfigXML = generate_acl_xml(ACLs),
     lager:debug_unsafe("sending acl XML to ~s: ~s", [Node, ConfigXML]),

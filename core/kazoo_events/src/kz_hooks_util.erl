@@ -239,7 +239,7 @@ handle_call_event(JObj, Props) ->
     HookEvent = kz_api:event_name(JObj),
     AccountId = kz_call_event:account_id(JObj),
     CallId = kz_call_event:call_id(JObj),
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
 
     RoutingKey = binding_key(AccountId, HookEvent),
     _ = kazoo_bindings:map(RoutingKey, [JObj]),

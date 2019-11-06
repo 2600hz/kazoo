@@ -33,7 +33,7 @@
 
 -spec handle_status_update(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_status_update(JObj, _Props) ->
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
     AgentId = kz_json:get_value(<<"Agent-ID">>, JObj),
 
@@ -209,7 +209,7 @@ handle_sync_resp(JObj, Props) ->
 
 -spec handle_call_event(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     FSM = props:get_value('fsm_pid', Props),
     case kapi_call:event_v(JObj) of
         'true' ->
@@ -242,7 +242,7 @@ handle_call_event(Category, Name, FSM, JObj, _) ->
 -spec handle_new_channel(kz_json:object(), kz_term:ne_binary()) -> 'ok'.
 handle_new_channel(JObj, AccountId) ->
     'true' = kapi_call:event_v(JObj),
-    _ = kz_util:put_callid(JObj),
+    _ = kz_log:put_callid(JObj),
     handle_new_channel_acct(JObj, AccountId).
 
 -spec handle_new_channel_acct(kz_json:object(), kz_term:api_binary()) -> 'ok'.

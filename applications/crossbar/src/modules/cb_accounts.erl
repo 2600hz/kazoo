@@ -354,7 +354,7 @@ put(Context, PathAccountId) ->
             unroll(ContextErr, NewAccountId);
         ?STACKTRACE(_E, _R, ST)
         lager:debug("unexpected failure when creating account: ~s: ~p", [_E, _R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         unroll(Context, NewAccountId)
         end.
 

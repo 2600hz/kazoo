@@ -60,7 +60,7 @@ send_email(From, To, Email) ->
                              ,{'auth', Auth}
                              ]
                             ,fun(X) ->
-                                     kz_util:put_callid(ReqId),
+                                     kz_log:put_callid(ReqId),
                                      lager:debug("email relay responded: ~p, send to ~p", [X, Self]),
                                      Self ! {'relay_response', X}
                              end),

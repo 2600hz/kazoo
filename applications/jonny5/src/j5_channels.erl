@@ -568,11 +568,11 @@ handle_call(_Request, _From, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'rate_resp', JObj}, State) ->
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     rated(JObj),
     {'noreply', State};
 handle_cast({'authz_resp', JObj}, State) ->
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     authorized(JObj),
     {'noreply', State};
 handle_cast('synchronize_channels', #state{sync_ref=SyncRef}=State) ->
@@ -606,7 +606,7 @@ handle_info({'synchronize_channels', SyncRef}, #state{sync_ref=SyncRef}=State) -
 handle_info({'synchronize_channels', _}, State) ->
     {'noreply', State};
 handle_info(?HOOK_EVT(_, <<"CHANNEL_CREATE">>, JObj), State) ->
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     %% insert_new keeps a CHANNEL_CREATE from overriding an entry from
     %% an auth_resp BUT an auth_resp CAN override a CHANNEL_CREATE
     Channel = #channel{call_id=CallId}=from_jobj(JObj),

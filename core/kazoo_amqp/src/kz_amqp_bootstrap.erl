@@ -53,7 +53,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state(), timeout()}.
 init([]) ->
-    kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
+    kz_log:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     add_zones(get_config()),
     lager:info("waiting for first amqp connection..."),
     kz_amqp_connections:wait_for_available(),

@@ -38,7 +38,7 @@
 %%------------------------------------------------------------------------------
 -spec start(kz_tasks:id(), kz_json:object(), kz_tasks:extra_args()) -> ok.
 start(TaskId, API, ExtraArgs) ->
-    _ = kz_util:put_callid(TaskId),
+    _ = kz_log:put_callid(TaskId),
     case init(TaskId, API, ExtraArgs) of
         {'ok', State} ->
             lager:debug("worker for ~s started", [TaskId]),
@@ -139,7 +139,7 @@ is_task_successful(IterValue
         ['stop'] -> 'stop';
         [{'EXIT', {_Error, _ST=[_|_]}}] ->
             lager:error("error: ~p", [_Error]),
-            kz_util:log_stacktrace(_ST),
+            kz_log:log_stacktrace(_ST),
             {Columns, Written} = store_return(State, ?WORKER_TASK_FAILED),
             {'false', Columns, Written, 'stop'};
         [{'ok', NewIterValue}] ->

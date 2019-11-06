@@ -84,7 +84,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?SERVER),
+    kz_log:put_callid(?SERVER),
     lager:debug("starting usurp monitor"),
     {'ok', #{calls => ets:new('calls', ['set', {'keypos', #cache.key}])
             ,pids => ets:new('pids', ['set', {'keypos', #cache.pid}])
@@ -106,7 +106,7 @@ handle_call(_Request, _From, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({register, Type, CallId, RefId, Pid}, State) ->
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     {'noreply', handle_register(#cache{key={Type, CallId}, ref_id=RefId, pid=Pid}, State)};
 handle_cast(_, State) ->
     {'noreply', State}.
@@ -130,7 +130,7 @@ handle_info(_Msg, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
 handle_event(JObj, #{calls := Calls}) ->
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     CallId = kz_call_event:call_id(JObj),
     Type = usurp_type(JObj),
     RefId = usurp_reference(Type, JObj),

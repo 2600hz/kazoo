@@ -116,7 +116,7 @@ init(_) ->
     Self = kz_term:to_hex_binary(list_to_binary(pid_to_list(self()))),
     ModuleBin = <<"teletype_", Self/binary, "_", (kz_binary:rand_hex(4))/binary>>,
     Module = kz_term:to_atom(ModuleBin, 'true'),
-    kz_util:put_callid(Module),
+    kz_log:put_callid(Module),
     %% ?LOG_DEBUG("starting template renderer, using ~s as compiled module name", [Module]),
     lager:debug("starting template renderer, using ~s as compiled module name", [Module]),
     {'ok', Module}.

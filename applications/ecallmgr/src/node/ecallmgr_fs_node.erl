@@ -276,7 +276,7 @@ init([Node, Info, Options]) ->
 -spec init(atom(), kz_json:object(), kz_term:proplist()) -> {'ok', state()}.
 init(Node, Info, Options) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(Node),
+    kz_log:put_callid(Node),
     process_flag('priority', 'high'), %% Living dangerously!
     lager:info("starting new fs node listener for ~s", [Node]),
     gproc:reg({'p', 'l', 'fs_node'}),
@@ -412,7 +412,7 @@ run_start_cmds(Node, Info, Options) when is_atom(Node) ->
 
 -spec run_start_cmds(atom(), kz_json:object(), kz_term:proplist(), pid()) -> any().
 run_start_cmds(Node, Info, Options, Parent) when is_atom(Node) ->
-    kz_util:put_callid(Node),
+    kz_log:put_callid(Node),
     timer:sleep(kapps_config:get_integer(?APP_NAME, <<"fs_cmds_wait_ms">>, 5 * ?MILLISECONDS_IN_SECOND, Node)),
     run_start_cmds(Node, Info, Options, Parent, is_restarting(Info)).
 

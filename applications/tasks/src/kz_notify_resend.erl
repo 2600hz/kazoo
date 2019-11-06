@@ -118,7 +118,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?NAME),
+    kz_log:put_callid(?NAME),
     lager:debug("~s has been started", [?NAME]),
     {'ok', #state{timer_ref = set_timer()}}.
 
@@ -145,7 +145,7 @@ set_timer() ->
 send_single(Id) ->
     case kz_datamgr:open_doc(?KZ_PENDING_NOTIFY_DB, Id) of
         {'ok', JObj} ->
-            kz_util:put_callid(kz_json:get_value(<<"payload">>, JObj)),
+            kz_log:put_callid(kz_json:get_value(<<"payload">>, JObj)),
             process_single(JObj);
         {'error', _}=Error -> Error
     end.

@@ -213,7 +213,7 @@ maybe_lookup_cnam(#{caller_id_number := Number
     catch
         _Ex:_Err:ST ->
             lager:error("error running cnam for ~s : ~p / ~p", [Number, _Ex, _Err]),
-            kz_util:log_stacktrace(ST),
+            kz_log:log_stacktrace(ST),
             Map
     end;
 maybe_lookup_cnam(Map) -> Map.

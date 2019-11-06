@@ -74,7 +74,7 @@ init(Hostname, SessionCount, Address, Options) ->
                           ,peer_ip = Address
                           ,session_id = kz_binary:rand_hex(16)
                           },
-            kz_util:put_callid(State#state.session_id),
+            kz_log:put_callid(State#state.session_id),
             {'ok', Banner, State};
         'true' ->
             lager:warning("connection limit exceeded ~p", [Address]),

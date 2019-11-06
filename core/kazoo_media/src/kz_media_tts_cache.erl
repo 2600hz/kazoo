@@ -82,7 +82,7 @@ stop(Srv) ->
 %%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
 init([Id, JObj]) ->
-    kz_util:put_callid(Id),
+    kz_log:put_callid(Id),
 
     Voice = list_to_binary([kz_json:get_value(<<"Voice">>, JObj, kazoo_tts:default_voice()), "/"
                            ,get_language(kz_json:get_value(<<"Language">>, JObj, kazoo_tts:default_language()))

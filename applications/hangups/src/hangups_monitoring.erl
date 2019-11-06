@@ -61,7 +61,7 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {'ok', #state{stat_timer_ref=start_timer()}}.
 
 %%------------------------------------------------------------------------------
@@ -128,7 +128,7 @@ start_timer() ->
 
 -spec check_stats() -> 'ok'.
 check_stats() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     lists:foreach(fun check_stats/1, hangups_config:monitored_hangup_causes()).
 
 -spec check_stats(kz_term:ne_binary()) -> 'ok'.

@@ -46,7 +46,7 @@ init() ->
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:system_alert_v(JObj),
 
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
 
     lager:debug("creating system alert notice"),
 

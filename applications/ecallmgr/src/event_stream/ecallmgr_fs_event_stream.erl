@@ -71,7 +71,7 @@ init([Node, {ProfileName, Bindings}, Packet]) ->
 -spec init(atom(), profile_name(), bindings(), event_packet_type()) -> {'ok', state()} | {'stop', any()}.
 init(Node, ProfileName, Bindings, Packet) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(list_to_binary([kz_term:to_binary(Node), <<"-eventstream-">>, kz_term:to_binary(ProfileName)])),
+    kz_log:put_callid(list_to_binary([kz_term:to_binary(Node), <<"-eventstream-">>, kz_term:to_binary(ProfileName)])),
     request_event_stream(#state{node=Node
                                ,profile_name=ProfileName
                                ,bindings=Bindings
@@ -221,10 +221,10 @@ request_event_stream(#state{node=Node}=State) ->
         {'ok', {IP, Port}} ->
             {'ok', IPAddress} = inet_parse:address(IP),
             gen_server:cast(self(), 'connect'),
-            kz_util:put_callid(list_to_binary([kz_term:to_binary(Node)
-                                              ,$-, kz_term:to_binary(IP)
-                                              ,$:, kz_term:to_binary(Port)
-                                              ])),
+            kz_log:put_callid(list_to_binary([kz_term:to_binary(Node)
+                                             ,$-, kz_term:to_binary(IP)
+                                             ,$:, kz_term:to_binary(Port)
+                                             ])),
             {'ok', State#state{ip=IPAddress, port=kz_term:to_integer(Port)}};
         {'EXIT', ExitReason} ->
             {'stop', {'shutdown', ExitReason}};
@@ -304,7 +304,7 @@ handle_data(Node, Data) ->
 -spec handle_event(atom(), kz_json:object(), pid()) -> any().
 handle_event(Node, JObj, Channel) ->
     kz_amqp_channel:consumer_channel(Channel),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
     log_json_event(Node, kz_api:event_name(JObj), JObj),
     UUID = kz_api:call_id(JObj),
     Category = kz_api:event_category(JObj),

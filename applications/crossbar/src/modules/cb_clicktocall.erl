@@ -375,7 +375,7 @@ handle_response(C2CId, Context, Contact, Resp) ->
                                kz_datamgr:data_error().
 do_originate_call(C2CId, Context, Contact, Request) ->
     ReqId = cb_context:req_id(Context),
-    kz_util:put_callid(ReqId),
+    kz_log:put_callid(ReqId),
 
     Resp = exec_originate(Request),
     lager:debug("got status for ~p", [Resp]),

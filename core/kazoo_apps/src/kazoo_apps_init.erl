@@ -26,7 +26,7 @@ start_link() ->
 
 -spec init() -> 'ok'.
 init() ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     set_cookie(),
     start_distribution(),
     set_loglevel().

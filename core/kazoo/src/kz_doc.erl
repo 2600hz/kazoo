@@ -11,9 +11,6 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_doc).
 
--include_lib("kazoo_stdlib/include/kz_types.hrl").
--include_lib("kazoo_stdlib/include/kazoo_json.hrl").
-
 -export([id/1, id/2
         ,set_id/2
         ,delete_id/1
@@ -115,6 +112,10 @@
 -ifdef(TEST).
 -export([remove_pvt/1]).
 -endif.
+
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -define(PVT_FUNS, [fun add_pvt_vsn/4
                   ,fun add_pvt_account_id/4
@@ -248,7 +249,7 @@ type(JObj, Default) ->
     try kz_json:get_ne_binary_value(?KEY_PVT_TYPE, JObj, Default)
     catch
         ?STACKTRACE('error', 'badarg', ST)
-        kz_util:log_stacktrace(ST, "~s:type(~s)", [?MODULE, kz_json:encode(JObj)]),
+        kz_log:log_stacktrace(ST, "~s:type(~s)", [?MODULE, kz_json:encode(JObj)]),
         Default
         end.
 

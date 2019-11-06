@@ -870,7 +870,7 @@ handle_info({'heartbeat', Ref}
             {'noreply', State#state{heartbeat_ref=Reference}};
         ?STACKTRACE(_E, _N, ST)
         lager:error("error creating node ~p : ~p", [_E, _N]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'noreply', State#state{heartbeat_ref=Reference}, 'hibernate'}
         end;
 

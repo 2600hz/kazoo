@@ -215,6 +215,17 @@ kz_util_to_module() {
     replace "$FROM" "$OLD_FUN" "$TO" "$NEW_FUN"
 }
 
+kz_util_to_log() {
+    local fs=(log_stacktrace
+              put_callid
+              get_callid
+              find_callid
+              kz_log_md_clear
+              kz_log_md_put
+             )
+    search_and_replace fs[@] kz_util kz_log ''
+}
+
 kz_time_to_date() {
     local fs=(iso8601_date)
     local fs2=(pad_date
@@ -567,5 +578,7 @@ echo "updating uniq usage to props module"
 kz_util_props
 echo "updating URI-related functions to kz_http_util"
 kz_util_uri
+echo "ensuring kz_log is used"
+kz_util_to_log
 
 popd >/dev/null

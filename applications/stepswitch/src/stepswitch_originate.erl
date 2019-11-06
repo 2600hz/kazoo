@@ -69,7 +69,7 @@ start_link(Endpoints, OffnetReq) ->
 %%------------------------------------------------------------------------------
 -spec init([kz_json:objects() | kapi_offnet_resource:req()]) -> {'ok', state()}.
 init([Endpoints, OffnetReq]) ->
-    kz_util:put_callid(OffnetReq),
+    kz_log:put_callid(OffnetReq),
     {'ok', #state{endpoints=Endpoints
                  ,resource_req=OffnetReq
                  ,request_handler=self()
@@ -123,7 +123,7 @@ handle_cast({'bind_to_call', 'undefined'}, #state{resource_req=OffnetReq}=State)
     gen_listener:cast(self(), {'originate_result', originate_failure(kz_json:new(), OffnetReq)}),
     {'stop', 'normal', State};
 handle_cast({'bind_to_call', CallId}, State) ->
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
     Props = [{'callid', CallId}
             ,{'restrict_to', [<<"CHANNEL_DESTROY">>
                              ,<<"CHANNEL_BRIDGE">>

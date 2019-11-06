@@ -62,7 +62,7 @@ start_link() ->
 
 -spec init_io(pid()) -> any().
 init_io(Parent) ->
-    kz_util:put_callid(<<"cb_sup_io_server">>),
+    kz_log:put_callid(<<"cb_sup_io_server">>),
     register(?SERVER, self()),
     lager:debug("acking to ~p", [Parent]),
     Debug = sys:debug_options([]),

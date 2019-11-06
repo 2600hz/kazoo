@@ -295,7 +295,7 @@ req_id(#bh_context{req_id=Id}) ->
 
 -spec set_req_id(context(), kz_term:ne_binary()) -> context().
 set_req_id(#bh_context{}=Context, ReqId) ->
-    kz_util:put_callid(ReqId),
+    kz_log:put_callid(ReqId),
     Context#bh_context{req_id=ReqId}.
 
 %%%=============================================================================

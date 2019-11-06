@@ -138,7 +138,7 @@ channel_count(AMQPConn) when is_pid(AMQPConn) ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     _ = ets:new(?TAB, ['named_table'
                       ,{'keypos', #kz_amqp_assignment.timestamp}
                       ,'protected'

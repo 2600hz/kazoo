@@ -34,6 +34,7 @@
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include_lib("kazoo_amqp/src/api/kapi_dialplan.hrl").
 -include_lib("kazoo_amqp/src/api/kapi_call.hrl").
+-include_lib("kazoo_stdlib/include/kz_log.hrl").
 
 -type ast() :: [erl_parse:abstract_form()].
 -type abstract_code() :: {'raw_abstract_v1', ast()}.

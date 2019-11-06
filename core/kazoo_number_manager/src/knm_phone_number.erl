@@ -623,10 +623,10 @@ setters_pn(PN, Routines) ->
             [{_M, Name, [_aPN,Arg2|_], _Info}|_] -> {Name, Arg2}
         end,
         ?LOG_ERROR("~s failed, argument: ~p", [FName, Arg]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'error', FName};
         ?STACKTRACE('error', Reason, ST)
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         {'error', Reason}
         end.
 

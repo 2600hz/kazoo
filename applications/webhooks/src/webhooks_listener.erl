@@ -140,7 +140,7 @@ find_hook(JObj) ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_util:put_callid(?MODULE),
+    kz_log:put_callid(?MODULE),
     {'ok', #state{}}.
 
 %%------------------------------------------------------------------------------
@@ -189,7 +189,7 @@ handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
     Self = self(),
     _ = kz_util:spawn(
           fun() ->
-                  kz_util:put_callid(?MODULE),
+                  kz_log:put_callid(?MODULE),
                   webhooks_util:load_hooks(Self),
                   webhooks_util:init_webhooks()
           end),

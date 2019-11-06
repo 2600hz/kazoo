@@ -120,11 +120,11 @@ cleanup_zone_prop(Prop) -> Prop.
 %% @doc Reads `config.ini' without starting the `kazoo_config' application.
 %% @end
 %%------------------------------------------------------------------------------
--spec read_cookie(section()) -> [atom()].
+-spec read_cookie(atom() | section()) -> [atom()].
 read_cookie(NodeName) ->
     AppEnv = load_file(),
     erlang:put(?SETTINGS_KEY, AppEnv),
-    kz_config:get_atom(NodeName, <<"cookie">>, []).
+    kz_config:get_atom(kz_term:to_binary(NodeName), <<"cookie">>, []).
 
 -spec strip_quotes(binary()) -> binary().
 strip_quotes(Bin) ->

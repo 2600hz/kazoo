@@ -24,7 +24,7 @@ init() -> 'ok'.
 -spec handle_route_req(kz_json:object(), kz_term:proplist()) -> any().
 handle_route_req(JObj, _Props) ->
     'true' = kapi_route:req_v(JObj),
-    kz_util:put_callid(JObj),
+    kz_log:put_callid(JObj),
 
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
     case kz_json:get_ne_value(<<"Account-ID">>, CCVs) of

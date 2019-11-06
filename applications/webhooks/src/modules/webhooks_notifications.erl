@@ -105,7 +105,7 @@ account_bindings(_AccountId) -> [].
 %%------------------------------------------------------------------------------
 -spec handle_event(kapi_notifications:doc(), kz_term:proplist()) -> 'ok'.
 handle_event(Notification, _Props) ->
-    kz_util:put_callid(Notification),
+    kz_log:put_callid(Notification),
 
     EventName = kz_api:event_name(Notification),
 

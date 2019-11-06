@@ -24,7 +24,7 @@
 
 -spec start_link(atom(), kz_cache:start_options()) -> 'ignore'.
 start_link(Name, CacheOptions) ->
-    kz_util:put_callid(listener_name(Name)),
+    kz_log:put_callid(listener_name(Name)),
     BindingProps = props:get_value('origin_bindings', CacheOptions, []),
     _ = [kz_cache_listener:add_binding(Name, BP)
          || BP <- BindingProps
@@ -32,7 +32,7 @@ start_link(Name, CacheOptions) ->
 
     NewChannelFlush = props:is_true('new_channel_flush', CacheOptions, 'false'),
     ChannelReconnectFlush = props:is_true('channel_reconnect_flush', CacheOptions, 'false'),
-    add_bindings(Name, NewChannelFlush, ChannelReconnectFlush),
+    _ = add_bindings(Name, NewChannelFlush, ChannelReconnectFlush),
     'ignore'.
 
 -spec listener_name(atom()) -> atom().
@@ -40,7 +40,7 @@ listener_name(Name) ->
     kz_term:to_atom(atom_to_list(Name) ++ "_listener", 'true').
 
 add_bindings(Name, NewChannelFlush, ChannelReconnectFlush) ->
-    maybe_bind_for_new_channel(Name, NewChannelFlush),
+    _ = maybe_bind_for_new_channel(Name, NewChannelFlush),
     maybe_bind_for_reconnected_channel(Name, ChannelReconnectFlush).
 
 maybe_bind_for_new_channel(_Name, 'false') -> 'ok';
@@ -77,7 +77,7 @@ handle_change(Name, JObj, 'true') ->
 handle_if_valid(_Name, _JObj, 'false') ->
     lager:debug("not handling invalid JSON for ~s", [_Name]);
 handle_if_valid(Name, JObj, 'true') ->
-    kz_util:put_callid(Name),
+    kz_log:put_callid(Name),
     IsFromSameNode = kz_api:node(JObj) =:= kz_term:to_binary(node()),
     IsFromSameCache = kz_json:get_atom_value(<<"Origin-Cache">>, JObj) =:= Name,
 
@@ -176,7 +176,7 @@ erase_changed(#cache_obj{key=Key}, Removed, Name) ->
             [Key | Removed]
     end.
 
--spec exec_bindings(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
+-spec exec_bindings(atom(), kz_json:object()) -> list().
 exec_bindings(Name, JObj) ->
     Db = kapi_conf:get_database(JObj),
     Type = kapi_conf:get_type(JObj),

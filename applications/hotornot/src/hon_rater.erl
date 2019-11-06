@@ -25,7 +25,7 @@ init() ->
 -spec handle_req(kapi_rate:req(), kz_term:proplist()) -> 'ok'.
 handle_req(RateReq, _Props) ->
     'true' = kapi_rate:req_v(RateReq),
-    _ = kz_util:put_callid(RateReq),
+    _ = kz_log:put_callid(RateReq),
     lager:debug("valid rating request"),
     case get_rate_data(RateReq, kapi_rate:authorizing_type(RateReq)) of
         {'error', 'no_rate_found'} ->

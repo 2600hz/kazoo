@@ -229,7 +229,7 @@ maybe_extract_multipart(Context, Req0, QS) ->
     catch
         ?STACKTRACE(_E, _R, ST)
         lager:debug("failed to extract multipart ~s: ~p", [_E, _R]),
-        kz_util:log_stacktrace(ST),
+        kz_log:log_stacktrace(ST),
         handle_failed_multipart(Context, Req0, QS)
         end.
 
@@ -690,7 +690,7 @@ is_cb_module([Module|Modules]) ->
 %% `POST' from the allowed methods.
 %% @end
 %%------------------------------------------------------------------------------
--spec allow_methods([http_methods(),...], kz_term:ne_binary(), http_method()) -> http_methods().
+-spec allow_methods([http_methods()], kz_term:ne_binary(), http_method()) -> http_methods().
 allow_methods(Responses, ReqVerb, HttpVerb) ->
     case crossbar_bindings:succeeded(Responses) of
         [] -> [];
