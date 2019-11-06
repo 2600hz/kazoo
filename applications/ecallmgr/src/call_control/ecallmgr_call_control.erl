@@ -649,16 +649,11 @@ set_control_info(UUID, #state{node=Node
                              })->
     Cmd = 'kz_uuid_setvar_multi_encoded',
     Arg = list_to_binary([UUID
-                         ," ^^;Call-Control-Queue="
-                         ,kapi:encode_pid(ControlQ)
-                         ,";Call-Control-PID="
-                         ,kz_term:to_binary(self())
-                         ,";ecallmgr_Ecallmgr-Node="
-                         ,kz_term:to_binary(node())
-                         ,";Call-Control-Node="
-                         ,kz_term:to_binary(node())
-                         ,";"
-                         ,?SET_CCV(<<"Fetch-ID">>, FetchId)
+                         ," ^^;Call-Control-Queue=", kapi:encode_pid(ControlQ)
+                         ,";Call-Control-PID=", kz_term:to_binary(self())
+                         ,";ecallmgr_Ecallmgr-Node=", kz_term:to_binary(node())
+                         ,";Call-Control-Node=", kz_term:to_binary(node())
+                         ,";Fetch-UUID=", FetchId
                          ]),
     _ = freeswitch:api(Node, Cmd, Arg),
     'ok'.

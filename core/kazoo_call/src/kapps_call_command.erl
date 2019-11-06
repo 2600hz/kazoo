@@ -133,7 +133,7 @@
         ,privacy/2
         ]).
 
--export([b_answer/1, b_hangup/1, b_hangup/2, b_fetch/1, b_fetch/2]).
+-export([b_answer/1, b_answer_now/1, b_hangup/1, b_hangup/2, b_fetch/1, b_fetch/2]).
 -export([b_echo/1]).
 -export([b_ring/1]).
 
@@ -989,6 +989,13 @@ answer_now(Call) -> send_command([{<<"Application-Name">>, <<"answer">>}
                       {'ok', kz_json:object()}.
 b_answer(Call) ->
     answer(Call),
+    wait_for_message(Call, <<"answer">>).
+
+-spec b_answer_now(kapps_call:call()) ->
+                          kapps_api_error() |
+                          {'ok', kz_json:object()}.
+b_answer_now(Call) ->
+    answer_now(Call),
     wait_for_message(Call, <<"answer">>).
 
 %%------------------------------------------------------------------------------
