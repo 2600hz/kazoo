@@ -325,7 +325,7 @@ handle_cast('sync_info', #state{node=Node}=State) ->
         _ -> {'noreply', State}
     end;
 handle_cast('sync_capabilities', #state{node=Node, info=Info}=State) ->
-    _Pid = kz_util:spawn(fun probe_capabilities/2, [Node, Info]),
+    _Pid = kz_process:spawn(fun probe_capabilities/2, [Node, Info]),
     lager:debug("syncing capabilities in ~p", [_Pid]),
     {'noreply', State};
 handle_cast('sync_channels', #state{node=Node}=State) ->
@@ -408,7 +408,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec run_start_cmds(atom(), kz_json:object(), kz_term:proplist()) -> kz_term:pid_ref().
 run_start_cmds(Node, Info, Options) when is_atom(Node) ->
-    kz_util:spawn_monitor(fun run_start_cmds/4, [Node, Info, Options, self()]).
+    kz_process:spawn_monitor(fun run_start_cmds/4, [Node, Info, Options, self()]).
 
 -spec run_start_cmds(atom(), kz_json:object(), kz_term:proplist(), pid()) -> any().
 run_start_cmds(Node, Info, Options, Parent) when is_atom(Node) ->

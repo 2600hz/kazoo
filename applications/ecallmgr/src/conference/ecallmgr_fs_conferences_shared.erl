@@ -149,9 +149,9 @@ exec_dial(ConferenceNode, ConferenceId, JObj) ->
 exec_dial(ConferenceNode, ConferenceId, JObj, Endpoints) ->
     lager:info("conference ~s is running on ~s, dialing out", [ConferenceId, ConferenceNode]),
     Pid = self(),
-    Pids = [kz_util:spawn(fun() ->
-                                  exec_endpoint(Pid, ConferenceNode, ConferenceId, JObj, Endpoint)
-                          end) || Endpoint <- Endpoints],
+    Pids = [kz_process:spawn(fun() ->
+                                     exec_endpoint(Pid, ConferenceNode, ConferenceId, JObj, Endpoint)
+                             end) || Endpoint <- Endpoints],
     Num = length(Pids),
     handle_responses(JObj, Num, []).
 

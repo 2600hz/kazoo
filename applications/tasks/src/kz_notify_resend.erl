@@ -200,7 +200,7 @@ handle_info({'timeout', Ref, _Msg}, #state{timer_ref = Ref}=State) ->
             {'noreply', State#state{timer_ref = set_timer()}};
         {'ok', Pendings} ->
             lager:info("processing ~b pending notifications", [length(Pendings)]),
-            _ = kz_util:spawn(fun () -> process_then_next_cycle([kz_json:get_value(<<"doc">>, J) || J <- Pendings]) end),
+            _ = kz_process:spawn(fun () -> process_then_next_cycle([kz_json:get_value(<<"doc">>, J) || J <- Pendings]) end),
             {'noreply', State#state{running=Pendings}};
         {'error', 'not_found'} ->
             lager:error("unable to find pending view, this is not good..."),

@@ -508,7 +508,7 @@ handle_cast({'flush_node', Node}, State) ->
         [] ->
             lager:debug("no locally handled channels");
         LocalChannels ->
-            _P = kz_util:spawn(fun handle_channels_disconnected/1, [LocalChannels]),
+            _P = kz_process:spawn(fun handle_channels_disconnected/1, [LocalChannels]),
             lager:debug("sending channel disconnects for local channels: ~p", [LocalChannels])
     end,
 
@@ -862,7 +862,7 @@ maybe_cleanup_old_channels() ->
     case max_channel_uptime() of
         N when N =< 0 -> 'ok';
         MaxAge ->
-            _P = kz_util:spawn(fun cleanup_old_channels/1, [MaxAge]),
+            _P = kz_process:spawn(fun cleanup_old_channels/1, [MaxAge]),
             'ok'
     end.
 

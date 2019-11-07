@@ -561,7 +561,7 @@ should_filter_alert(Alert) ->
     case kzd_alert:expired(Alert) of
         'false' -> 'true';
         'true' ->
-            _ = kz_util:spawn(fun kapps_alert:delete/1, [kzd_alert:id(Alert)]),
+            _ = kz_process:spawn(fun kapps_alert:delete/1, [kzd_alert:id(Alert)]),
             'false'
     end.
 

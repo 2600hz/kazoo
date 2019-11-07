@@ -463,7 +463,7 @@ end_receive_fax(#state{}=State) ->
 
 -spec store_document(state()) -> kz_term:pid_ref().
 store_document(#state{}=State) ->
-    kz_util:spawn_monitor(fun store_document/2, [self(), State]).
+    kz_process:spawn_monitor(fun store_document/2, [self(), State]).
 
 -spec store_document(pid(), state() ) -> 'ok'.
 store_document(Pid, #state{fax_result=JObj
@@ -480,7 +480,7 @@ store_document(Pid, #state{fax_result=JObj
 
 -spec store_attachment(state()) -> kz_term:pid_ref().
 store_attachment(#state{}=State) ->
-    kz_util:spawn_monitor(fun store_attachment/2, [self(), State]).
+    kz_process:spawn_monitor(fun store_attachment/2, [self(), State]).
 
 -spec store_attachment(pid(), state()) -> 'ok'.
 store_attachment(Pid, #state{call=Call

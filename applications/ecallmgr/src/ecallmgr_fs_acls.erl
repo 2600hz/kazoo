@@ -59,7 +59,7 @@ get(Node) ->
                ,fun sip_auth_ips/1
                ,fun media_nodes_ips/1
                ],
-    PidRefs = [kz_util:spawn_monitor(fun erlang:apply/2, [F, [self()]]) || F <- Routines],
+    PidRefs = [kz_process:spawn_monitor(fun erlang:apply/2, [F, [self()]]) || F <- Routines],
     lager:debug("collecting ACLs in ~p", [PidRefs]),
     collect(system_config_acls(Node), PidRefs).
 
@@ -72,7 +72,7 @@ media_acls() ->
 media_acls(Node) ->
     Routines = [fun media_nodes_ips/1
                ],
-    PidRefs = [kz_util:spawn_monitor(fun erlang:apply/2, [F, [self()]]) || F <- Routines],
+    PidRefs = [kz_process:spawn_monitor(fun erlang:apply/2, [F, [self()]]) || F <- Routines],
     lager:debug("collecting ACLs in ~p", [PidRefs]),
     collect(authoritative_acls(Node), PidRefs).
 
@@ -87,7 +87,7 @@ edge(Node) ->
                ,fun local_resources/1
                ,fun sip_auth_ips/1
                ],
-    PidRefs = [kz_util:spawn_monitor(fun erlang:apply/2, [F, [self()]]) || F <- Routines],
+    PidRefs = [kz_process:spawn_monitor(fun erlang:apply/2, [F, [self()]]) || F <- Routines],
     lager:debug("collecting ACLs in ~p", [PidRefs]),
     token(cidrs(collect(trusted_acls(Node), PidRefs))).
 
@@ -210,11 +210,11 @@ sip_auth_ips(Collector) ->
         {'ok', JObjs} ->
             {RawIPs, RawHosts} = lists:foldl(fun needs_resolving/2, {[], []}, JObjs),
             _ = [handle_sip_auth_result(Collector, JObj, IPs) || {IPs, JObj} <- RawIPs],
-            PidRefs = [kz_util:spawn_monitor(fun resolve_hostname/4 ,[Collector
-                                                                     ,Host
-                                                                     ,JObj
-                                                                     ,fun handle_sip_auth_result/3
-                                                                     ])
+            PidRefs = [kz_process:spawn_monitor(fun resolve_hostname/4 ,[Collector
+                                                                        ,Host
+                                                                        ,JObj
+                                                                        ,fun handle_sip_auth_result/3
+                                                                        ])
                        || {Host, JObj} <- RawHosts
                       ],
             wait_for_pid_refs(PidRefs)
@@ -321,21 +321,21 @@ handle_resource_result(Collector, JObj, IPs) ->
 
 -spec resource_inbound_ips(pid(), kz_json:object()) -> kz_term:pid_refs().
 resource_inbound_ips(Collector, JObj) ->
-    [kz_util:spawn_monitor(fun resolve_hostname/4, [Collector
-                                                   ,IP
-                                                   ,JObj
-                                                   ,fun handle_resource_result/3
-                                                   ])
+    [kz_process:spawn_monitor(fun resolve_hostname/4, [Collector
+                                                      ,IP
+                                                      ,JObj
+                                                      ,fun handle_resource_result/3
+                                                      ])
      || IP <- kz_json:get_value(<<"inbound_ips">>, JObj, [])
     ].
 
 -spec resource_server_ips(pid(), kz_json:object()) -> kz_term:pid_refs().
 resource_server_ips(Collector, JObj) ->
-    [kz_util:spawn_monitor(fun resolve_hostname/4, [Collector
-                                                   ,kz_json:get_value(<<"server">>, Gateway)
-                                                   ,JObj
-                                                   ,fun handle_resource_result/3
-                                                   ])
+    [kz_process:spawn_monitor(fun resolve_hostname/4, [Collector
+                                                      ,kz_json:get_value(<<"server">>, Gateway)
+                                                      ,JObj
+                                                      ,fun handle_resource_result/3
+                                                      ])
      || Gateway <- kz_json:get_value(<<"gateways">>, JObj, []),
         kz_json:get_ne_binary_value(<<"endpoint_type">>, Gateway) =:= <<"sip">>,
         kz_json:is_true(<<"enabled">>, Gateway, 'false')

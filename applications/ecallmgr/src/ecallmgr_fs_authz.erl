@@ -202,7 +202,7 @@ authz_response(JObj, Data, CallId, Node) ->
                                                               ,{<<"Reseller-Billing">>, ResellerBilling}
                                                               ,{<<"Reseller-ID">>, ResellerId}
                                                               ]),
-                    _ = kz_util:spawn(fun kill_channel/2, [Data, Node]),
+                    _ = kz_process:spawn(fun kill_channel/2, [Data, Node]),
                     'false'
             end
     end.
@@ -258,7 +258,7 @@ set_ccv_trunk_usage(JObj, Data, CallId, Node) ->
 
 -spec rate_call(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) -> authz_reply().
 rate_call(Data, CallId, Node) ->
-    _P = kz_util:spawn(fun rate_channel/2, [Data, Node]),
+    _P = kz_process:spawn(fun rate_channel/2, [Data, Node]),
     lager:debug("rating call in ~p", [_P]),
     allow_call(Data, CallId, Node).
 
@@ -330,7 +330,7 @@ authz_default(Data, CallId, Node) ->
     of
         'false' -> rate_call(Data, CallId, Node);
         'true' ->
-            _ = kz_util:spawn(fun kill_channel/2, [Data, Node]),
+            _ = kz_process:spawn(fun kill_channel/2, [Data, Node]),
             'false'
     end.
 

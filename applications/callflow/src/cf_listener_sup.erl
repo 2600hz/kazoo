@@ -33,13 +33,13 @@
 start_link() ->
     {'ok', Pid} = supervisor:start_link({'local', ?SERVER}, ?MODULE, []),
     Workers = kapps_config:get_integer(?CF_CONFIG_CAT, <<"callflow_listeners">>, 5),
-    _ = kz_util:spawn(fun() -> [begin
-                                    _ = supervisor:start_child(Pid, []),
-                                    timer:sleep(500)
-                                end
-                                || _N <- lists:seq(1, Workers)
-                               ]
-                      end),
+    _ = kz_process:spawn(fun() -> [begin
+                                       _ = supervisor:start_child(Pid, []),
+                                       timer:sleep(500)
+                                   end
+                                   || _N <- lists:seq(1, Workers)
+                                  ]
+                         end),
     {'ok', Pid}.
 
 %% ===================================================================

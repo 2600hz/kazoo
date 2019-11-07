@@ -171,7 +171,7 @@ launch_task(#state{queue=Q
                   ,args=Args
                   }=State
            ) ->
-    {Pid, Ref} = kz_util:spawn_monitor(fun task_launched/5, [Q, Call, Callback, Args, self()]),
+    {Pid, Ref} = kz_process:spawn_monitor(fun task_launched/5, [Q, Call, Callback, Args, self()]),
     lager:debug("watching task execute in ~p (~p)", [Pid, Ref]),
     State#state{pid=Pid, ref=Ref}.
 

@@ -276,7 +276,7 @@ cast(Name, Request) -> gen_server:cast(Name, {'$client_cast', Request}).
 
 -spec delayed_cast(kz_types:server_ref(), any(), pos_integer()) -> 'ok'.
 delayed_cast(Name, Request, Wait) when is_integer(Wait), Wait > 0 ->
-    _P = kz_util:spawn(
+    _P = kz_process:spawn(
            fun() ->
                    kz_log:put_callid(?MODULE),
                    timer:sleep(Wait),
@@ -533,7 +533,7 @@ handle_cast({'federated_event', JObj, Props}, #state{params=Params}=State) ->
     Deliver = props:get_value('deliver', Props),
     Basic = props:get_value('basic', Props),
     case props:is_true('spawn_handle_event', Params, 'false') of
-        'true'  -> kz_util:spawn(fun distribute_event/3, [JObj, {Deliver, Basic}, State]),
+        'true'  -> kz_process:spawn(fun distribute_event/3, [JObj, {Deliver, Basic}, State]),
                    {'noreply', State};
         'false' -> distribute_event(JObj, {Deliver, Basic}, State)
     end;
@@ -683,7 +683,7 @@ handle_info({#'basic.deliver'{}=BD
         end,
     case props:is_true('spawn_handle_event', Params, 'false') of
         'false' -> handle_event(Payload, CT, {BD, Basic}, State);
-        'true'  -> kz_util:spawn(fun handle_event/4, [Payload, CT, {BD, Basic}, State]),
+        'true'  -> kz_process:spawn(fun handle_event/4, [Payload, CT, {BD, Basic}, State]),
                    {'noreply', State}
     end;
 handle_info({#'basic.return'{}=BR
@@ -900,13 +900,13 @@ distribute_event(CallbackData, JObj, Deliver, #state{responders=Responders
                                                     }=State) ->
     Key = kz_util:get_event_type(JObj),
     Channel = kz_amqp_channel:consumer_channel(),
-    _ = [kz_util:spawn(fun client_handle_event/6, [JObj
-                                                  ,Channel
-                                                  ,ConsumerKey
-                                                  ,Callback
-                                                  ,CallbackData
-                                                  ,Deliver
-                                                  ])
+    _ = [kz_process:spawn(fun client_handle_event/6, [JObj
+                                                     ,Channel
+                                                     ,ConsumerKey
+                                                     ,Callback
+                                                     ,CallbackData
+                                                     ,Deliver
+                                                     ])
          || {Evt, Callback} <- Responders,
             maybe_event_matches_key(Key, Evt)
         ],

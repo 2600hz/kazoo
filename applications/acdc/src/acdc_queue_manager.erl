@@ -645,14 +645,14 @@ code_change(_OldVsn, State, _Extra) ->
 start_secondary_queue(AccountId, QueueId) ->
     AccountDb = kz_util:format_account_db(AccountId),
     Priority = lookup_priority_levels(AccountDb, QueueId),
-    kz_util:spawn(fun gen_listener:add_queue/4
-                 ,[self()
-                  ,?SECONDARY_QUEUE_NAME(QueueId)
-                  ,[{'queue_options', ?SECONDARY_QUEUE_OPTIONS(Priority)}
-                   ,{'consume_options', ?SECONDARY_CONSUME_OPTIONS}
-                   ]
-                  ,?SECONDARY_BINDINGS(AccountId, QueueId)
-                  ]).
+    kz_process:spawn(fun gen_listener:add_queue/4
+                    ,[self()
+                     ,?SECONDARY_QUEUE_NAME(QueueId)
+                     ,[{'queue_options', ?SECONDARY_QUEUE_OPTIONS(Priority)}
+                      ,{'consume_options', ?SECONDARY_CONSUME_OPTIONS}
+                      ]
+                     ,?SECONDARY_BINDINGS(AccountId, QueueId)
+                     ]).
 
 -spec lookup_priority_levels(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_integer().
 lookup_priority_levels(AccountDB, QueueId) ->

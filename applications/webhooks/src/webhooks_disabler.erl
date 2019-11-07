@@ -51,7 +51,7 @@ handle_cast(_Msg, State) ->
 
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'timeout', Ref, ?EXPIRY_MSG}, Ref) ->
-    _ = kz_util:spawn(fun check_failed_attempts/0),
+    _ = kz_process:spawn(fun check_failed_attempts/0),
     {'noreply', start_check_timer()};
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),

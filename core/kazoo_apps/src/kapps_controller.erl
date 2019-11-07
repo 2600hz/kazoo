@@ -73,7 +73,7 @@
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    _ = kz_util:spawn(fun initialize_kapps/0),
+    _ = kz_process:spawn(fun initialize_kapps/0),
     'ignore'.
 
 -spec ready() -> boolean().

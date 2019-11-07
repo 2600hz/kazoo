@@ -112,7 +112,7 @@ channel_unhold(#{call_id := UUID}) ->
 %%------------------------------------------------------------------------------
 maybe_authorize_channel(Node, UUID, JObj) ->
     case kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Ecallmgr-Node">>], JObj) =:= kz_term:to_binary(node()) of
-        'true' -> kz_util:spawn(fun authorize_channel/3, [Node, UUID, JObj]);
+        'true' -> kz_process:spawn(fun authorize_channel/3, [Node, UUID, JObj]);
         'false' -> 'ok'
     end.
 

@@ -294,7 +294,7 @@ handle_data(Node, Data) ->
     try binary_to_term(Data) of
         {'event', 'json', JObj} ->
             Channel = kz_amqp_channel:consumer_channel(),
-            kz_util:spawn(fun handle_event/3, [Node, JObj, Channel]);
+            kz_process:spawn(fun handle_event/3, [Node, JObj, Channel]);
         Else -> {'error', {'not_handled', Else}}
     catch
         'error':'badarg':_ -> {'error', 'decode_error'};

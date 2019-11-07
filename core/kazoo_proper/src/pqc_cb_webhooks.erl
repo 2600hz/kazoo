@@ -157,7 +157,7 @@ seq_recv_events() ->
     [WebhookSummary] = kz_json:get_list_value([<<"data">>], kz_json:decode(SummaryResp)),
     WebhookId = kz_doc:id(WebhookSummary),
 
-    UserPid = kz_util:spawn_link(fun create_user_and_wait/3, [self(), API, AccountId]),
+    UserPid = kz_process:spawn_link(fun create_user_and_wait/3, [self(), API, AccountId]),
     lager:info("managing user CRUD in ~p", [UserPid]),
 
     CreatedHookQS = pqc_httpd:fetch_req([<<?MODULE_STRING>>], 2000),

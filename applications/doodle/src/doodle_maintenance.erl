@@ -26,11 +26,11 @@ flush() ->
 
 -spec start_check_sms_by_device_id(kz_term:ne_binary(), kz_term:ne_binary()) -> pid().
 start_check_sms_by_device_id(AccountId, DeviceId) ->
-    kz_util:spawn(fun check_sms_by_device_id/2, [AccountId, DeviceId]).
+    kz_process:spawn(fun check_sms_by_device_id/2, [AccountId, DeviceId]).
 
 -spec start_check_sms_by_owner_id(kz_term:ne_binary(), kz_term:ne_binary()) -> pid().
 start_check_sms_by_owner_id(AccountId, OwnerId) ->
-    kz_util:spawn(fun check_sms_by_owner_id/2, [AccountId, OwnerId]).
+    kz_process:spawn(fun check_sms_by_owner_id/2, [AccountId, OwnerId]).
 
 -spec check_sms_by_device_id(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 check_sms_by_device_id(_AccountId, 'undefined') -> 'ok';
@@ -65,12 +65,12 @@ start_check_sms_by_account(AccountId, JObj) ->
 
 -spec check_sms_by_account(kz_term:ne_binary()) -> pid().
 check_sms_by_account(AccountId) ->
-    kz_util:spawn(fun check_pending_sms_for_delivery/1, [AccountId]),
-    kz_util:spawn(fun check_queued_sms/1, [AccountId]).
+    kz_process:spawn(fun check_pending_sms_for_delivery/1, [AccountId]),
+    kz_process:spawn(fun check_queued_sms/1, [AccountId]).
 
 -spec check_pending_sms_for_outbound_delivery(kz_term:ne_binary()) -> pid().
 check_pending_sms_for_outbound_delivery(AccountId) ->
-    kz_util:spawn(fun check_pending_sms_for_offnet_delivery/1, [AccountId]).
+    kz_process:spawn(fun check_pending_sms_for_offnet_delivery/1, [AccountId]).
 
 -spec check_pending_sms_for_delivery(kz_term:ne_binary()) -> 'ok'.
 check_pending_sms_for_delivery(AccountId) ->
@@ -109,8 +109,8 @@ spawn_handler(AccountId, JObj) ->
     AccountDb = kazoo_modb:get_modb(AccountId, Year, Month),
     {'ok', Doc} = kz_datamgr:open_doc(AccountDb, DocId),
     _ = case kz_json:get_value(<<"pvt_origin">>, Doc) of
-            <<"api">> -> kz_util:spawn(fun doodle_api:handle_api_sms/2, [AccountDb, DocId]);
-            _Else -> kz_util:spawn(fun doodle_util:replay_sms/2, [AccountId, DocId])
+            <<"api">> -> kz_process:spawn(fun doodle_api:handle_api_sms/2, [AccountDb, DocId]);
+            _Else -> kz_process:spawn(fun doodle_util:replay_sms/2, [AccountId, DocId])
         end,
     timer:sleep(200).
 

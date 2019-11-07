@@ -336,7 +336,7 @@ handle_cast({'continue', Key}, #state{flow=Flow
             end
     end;
 handle_cast('stop', #state{call=Call}=State) ->
-    _ = kz_util:spawn(fun doodle_util:save_sms/1, [kapps_call:clear_helpers(Call)]),
+    _ = kz_process:spawn(fun doodle_util:save_sms/1, [kapps_call:clear_helpers(Call)]),
     {'stop', 'normal', State};
 handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
@@ -610,7 +610,7 @@ cf_module_skip(CFModule, _Call) ->
                              {kz_term:pid_ref(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
     AMQPConsumer = kz_amqp_channel:consumer_pid(),
-    {kz_util:spawn_monitor(fun cf_module_task/4, [CFModule, Data, Call, AMQPConsumer])
+    {kz_process:spawn_monitor(fun cf_module_task/4, [CFModule, Data, Call, AMQPConsumer])
     ,CFModule
     }.
 

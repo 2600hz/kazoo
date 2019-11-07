@@ -82,12 +82,14 @@ handle_push_event(_JID, <<"GCP">>, <<"Queued-Job">>, PrinterId) ->
     URL = <<?POOL_URL,PrinterId/binary>>,
     case get_printer_oauth_credentials(PrinterId) of
         {'ok', Authorization} ->
-            Headers = [?GPC_PROXY_HEADER , {"Authorization",Authorization}],
+            Headers = [?GPC_PROXY_HEADER
+                      ,{"Authorization", Authorization}
+                      ],
             case kz_http:get(kz_term:to_list(URL), Headers) of
                 {'ok', 200, _RespHeaders, RespBody} ->
                     JObj = kz_json:decode(RespBody),
                     JObjs = kz_json:get_value(<<"jobs">>, JObj, []),
-                    _P = kz_util:spawn(fun maybe_process_job/2, [JObjs, Authorization]),
+                    _P = kz_process:spawn(fun maybe_process_job/2, [JObjs, Authorization]),
                     lager:debug("maybe processing job in ~p", [_P]);
                 {'ok', 403, _RespHeaders, _RespBody} ->
                     lager:debug("something wrong with oauth credentials"),
@@ -102,7 +104,7 @@ handle_push_event(_JID, <<"GCP">>, <<"Queued-Job">>, PrinterId) ->
 handle_push_event(JID, AppName, AppEvent, AppData) ->
     lager:debug("unhandled xmpp push event ~s/~s/~s/~p",[JID, AppName, AppEvent, AppData]).
 
--spec maybe_process_job(kz_json:objects(), kz_term:ne_binary()) -> 'ok'.
+-spec maybe_process_job(kz_json:objects(), string()) -> 'ok'.
 maybe_process_job([], _Authorization) -> 'ok';
 maybe_process_job([JObj | JObjs], Authorization) ->
     JobId = kz_doc:id(JObj),
@@ -118,7 +120,7 @@ maybe_process_job([JObj | JObjs], Authorization) ->
         FaxNumber ->
             maybe_save_fax_document(JObj, JobId, PrinterId, FaxNumber, FileURL )
     end,
-    maybe_process_job(JObjs,Authorization).
+    maybe_process_job(JObjs, Authorization).
 
 -spec maybe_fax_number(kz_json:object(), kz_json:object()) -> kz_json:object().
 maybe_fax_number(A, B) ->
@@ -132,9 +134,9 @@ maybe_fax_number(A, B) ->
         _Other -> B
     end.
 
--spec fetch_ticket(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
+-spec fetch_ticket(kz_term:ne_binary(), string()) -> kz_json:object().
 fetch_ticket(JobId, Authorization) ->
-    URL = <<?TICKET_URL,JobId/binary>>,
+    URL = <<?TICKET_URL, JobId/binary>>,
     Headers = [?GPC_PROXY_HEADER
               ,{"Authorization",Authorization}
               ],
@@ -173,11 +175,11 @@ update_job_status(PrinterId, JobId, Status) ->
             lager:debug("error getting printer (~s) oauth credentials when updating job (~s) status : ~p",[PrinterId, JobId, E])
     end.
 
--spec send_update_job_status(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+-spec send_update_job_status(kz_term:ne_binary(), kz_term:ne_binary(), string()) -> 'ok'.
 send_update_job_status(JobId, Status, Authorization) ->
     Headers = [?GPC_PROXY_HEADER
-              ,{"Authorization",Authorization}
-              ,{"Content-Type","application/x-www-form-urlencoded"}
+              ,{"Authorization", Authorization}
+              ,{"Content-Type", "application/x-www-form-urlencoded"}
               ],
 
     Fields = [{"jobid", JobId}
@@ -199,11 +201,13 @@ send_update_job_status(JobId, Status, Authorization) ->
             lager:debug("unexpected response  sending update_job_status: ~p", [_Response])
     end.
 
--spec download_file(kz_term:ne_binary(), kz_term:ne_binary()) ->
+-spec download_file(kz_term:ne_binary(), string()) ->
                            {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
                            {'error', any()}.
 download_file(URL, Authorization) ->
-    Headers = [?GPC_PROXY_HEADER , {"Authorization",Authorization}],
+    Headers = [?GPC_PROXY_HEADER
+              ,{"Authorization", Authorization}
+              ],
     case kz_http:get(kz_term:to_list(URL), Headers) of
         {'ok', 200, RespHeaders, RespBody} ->
             CT = kz_term:to_binary(props:get_value("content-type", RespHeaders)),
@@ -240,7 +244,7 @@ maybe_save_fax_document(Job, JobId, PrinterId, FaxNumber, FileURL ) ->
 maybe_save_fax_attachment(JObj, JobId, PrinterId, FileURL ) ->
     case get_printer_oauth_credentials(PrinterId) of
         {'ok', Authorization} ->
-            case download_file(FileURL,Authorization) of
+            case download_file(FileURL, Authorization) of
                 {'ok', CT, FileContents} ->
                     case kz_fax_attachment:save_outbound(?KZ_FAXES_DB, JObj, FileContents, CT) of
                         {'ok', _} -> update_job_status(PrinterId, JobId, <<"IN_PROGRESS">>);
@@ -365,17 +369,17 @@ get_faxbox_owner_email(FaxBoxDoc, OwnerId) ->
     end.
 
 -spec get_printer_oauth_credentials(kz_term:ne_binary()) ->
-                                           {'ok', kz_term:ne_binary()} |
+                                           {'ok', string()} |
                                            {'error', any()}.
 get_printer_oauth_credentials(PrinterId) ->
-    case kz_cache:peek_local(?CACHE_NAME, {'gcp', PrinterId }) of
+    case kz_cache:peek_local(?CACHE_NAME, {'gcp', PrinterId}) of
         {'ok', _Auth}=OK -> OK;
         {'error', _} ->
             fetch_printer_oauth_credentials(PrinterId)
     end.
 
 -spec fetch_printer_oauth_credentials(kz_term:ne_binary()) ->
-                                             {'ok', kz_term:ne_binary()} |
+                                             {'ok', string()} |
                                              {'error', any()}.
 fetch_printer_oauth_credentials(PrinterId) ->
     case get_faxbox_doc(PrinterId) of
@@ -401,7 +405,7 @@ handle_faxbox_created(JObj, _Props) ->
     State = kz_json:get_value(<<"pvt_cloud_state">>, Doc),
     ResellerId = kzd_services:reseller_id(Doc),
     AppId = kapps_account_config:get(ResellerId, ?CONFIG_CAT, <<"cloud_oauth_app">>),
-    kz_util:spawn(fun check_registration/3, [AppId, State, Doc]).
+    kz_process:spawn(fun check_registration/3, [AppId, State, Doc]).
 
 -spec check_registration(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object() ) -> 'ok'.
 check_registration('undefined', _, _JObj) -> 'ok';

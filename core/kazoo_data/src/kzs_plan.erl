@@ -627,7 +627,7 @@ reload(AccountId, StorageId) ->
 load_accounts(Accounts)
   when length(Accounts) > ?KZS_PLAN_INIT_SLICE ->
     {A, B} = lists:split(?KZS_PLAN_INIT_SLICE, Accounts),
-    _ = kz_util:spawn(fun load_accounts/1, [B]),
+    _ = kz_process:spawn(fun load_accounts/1, [B]),
     load_accounts(A);
 load_accounts(Accounts) ->
     lists:foreach(fun load_account/1, Accounts).

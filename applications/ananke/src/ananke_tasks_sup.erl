@@ -67,7 +67,7 @@ delete_child(Id) ->
 
 -spec delete_child(any(), non_neg_integer()) -> 'ok'.
 delete_child(Id, Timeout) ->
-    _ = kz_util:spawn(delete_child_after_timeout(Id, Timeout)),
+    _ = kz_process:spawn(delete_child_after_timeout(Id, Timeout)),
     'ok'.
 
 %%==============================================================================

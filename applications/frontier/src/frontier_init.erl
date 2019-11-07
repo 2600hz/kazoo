@@ -52,7 +52,7 @@
 
 -spec start_link() -> 'ignore'.
 start_link() ->
-    _ = kz_util:spawn(fun default_rate_limits/0),
+    _ = kz_process:spawn(fun default_rate_limits/0),
     'ignore'.
 
 -spec default_rate_limits() -> kz_json:object().

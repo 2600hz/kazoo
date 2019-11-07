@@ -38,13 +38,13 @@ start_link() ->
     {'ok', Pid} = supervisor:start_link({'local', ?SERVER}, ?MODULE, []),
     lager:debug("started media recording supervisor"),
     Workers = kapps_config:get_integer(?CONFIG_CAT, [<<"call_recording">>, <<"workers">>], 1),
-    kz_util:spawn(fun() -> [begin
-                                timer:sleep(500),
-                                supervisor:start_child(Pid, [])
-                            end
-                            || _N <- lists:seq(1, Workers)
-                           ]
-                  end),
+    kz_process:spawn(fun() -> [begin
+                                   timer:sleep(500),
+                                   supervisor:start_child(Pid, [])
+                               end
+                               || _N <- lists:seq(1, Workers)
+                              ]
+                     end),
     {'ok', Pid}.
 
 %%==============================================================================

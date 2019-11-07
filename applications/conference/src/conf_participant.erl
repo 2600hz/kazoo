@@ -445,11 +445,11 @@ sync_participant(JObj, Call, #participant{in_conference='false'
     ParticipantId = kz_json:get_value(<<"Participant-ID">>, JObj),
     IsModerator = kz_json:is_true([<<"Conference-Channel-Vars">>, <<"Is-Moderator">>], JObj),
     log_conference_join(IsModerator, ParticipantId, Conference),
-    _ = kz_util:spawn(fun notify_requestor/4, [kapps_call:controller_queue(Call)
-                                              ,ParticipantId
-                                              ,DiscoveryEvent
-                                              ,kapps_conference:id(Conference)
-                                              ]),
+    _ = kz_process:spawn(fun notify_requestor/4, [kapps_call:controller_queue(Call)
+                                                 ,ParticipantId
+                                                 ,DiscoveryEvent
+                                                 ,kapps_conference:id(Conference)
+                                                 ]),
     Muted = kz_json:is_false([<<"Conference-Channel-Vars">>, <<"Speak">>], JObj),
     Deaf = kz_json:is_false([<<"Conference-Channel-Vars">>, <<"Hear">>], JObj),
     Participant#participant{in_conference='true'

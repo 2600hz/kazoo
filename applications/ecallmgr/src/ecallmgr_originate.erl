@@ -576,7 +576,7 @@ originate_execute(Node, Dialstrings, Timeout) ->
     of
         {'ok', UUID} ->
             Media = get('hold_media'),
-            _Pid = kz_util:spawn(fun set_music_on_hold/3, [Node, UUID, Media]),
+            _Pid = kz_process:spawn(fun set_music_on_hold/3, [Node, UUID, Media]),
             {'ok', UUID};
         {'error', Error} when is_binary(Error) ->
             lager:debug("error originating: ~s", [Error]),

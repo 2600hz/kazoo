@@ -792,7 +792,7 @@ update_locality(Context, []) -> Context;
 update_locality(Context, Numbers) ->
     case knm_locality:fetch(Numbers) of
         {'ok', Localities} ->
-            _ = kz_util:spawn(fun update_phone_numbers_locality/2, [Context, Localities]),
+            _ = kz_process:spawn(fun update_phone_numbers_locality/2, [Context, Localities]),
             update_context_locality(Context, Localities);
         {'error', _} -> Context
     end.

@@ -172,7 +172,7 @@ handle_account(Counter, AccountId) ->
     RefreshThreshold = ?REFRESH_THRESHOLD,
     Count = case value(maps:find(AccountId, Counter)) of
                 {From, Value} when Value >= RefreshThreshold ->
-                    _ = kz_util:spawn(fun update_account_view/3, [AccountId, From, kz_time:now_s()]),
+                    _ = kz_process:spawn(fun update_account_view/3, [AccountId, From, kz_time:now_s()]),
                     {kz_time:now_s(), 0};
                 {From, Value} -> {From, Value + 1}
             end,
@@ -195,4 +195,4 @@ update_accounts_view(UpdateList) ->
 -spec maybe_spawn_refresh_process([{kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()}]) -> any().
 maybe_spawn_refresh_process([]) -> ok;
 maybe_spawn_refresh_process(RefreshList) ->
-    _ = kz_util:spawn(fun update_accounts_view/1, [RefreshList]).
+    _ = kz_process:spawn(fun update_accounts_view/1, [RefreshList]).

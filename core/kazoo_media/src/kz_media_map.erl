@@ -203,7 +203,7 @@ handle_call(_Request, _From, State) ->
 handle_cast('flush', State) ->
     ets:delete_all_objects(table_id()),
     lager:debug("flushed all media mappings"),
-    _ = kz_util:spawn(fun init_map/0),
+    _ = kz_process:spawn(fun init_map/0),
     {'noreply', State};
 handle_cast({'add_mapping', ?KZ_MEDIA_DB, JObj}, State) ->
     _ = maybe_add_prompt(?KZ_MEDIA_DB, JObj),
@@ -237,7 +237,7 @@ handle_cast(_Msg, State) ->
 -spec handle_info(any(), state()) -> kz_types:handle_info_ret_state(state()).
 handle_info({'ETS-TRANSFER', _TableId, _From, _GiftData}, State) ->
     lager:debug("recv control of ~p from ~p", [_TableId, _From]),
-    _ = kz_util:spawn(fun init_map/0),
+    _ = kz_process:spawn(fun init_map/0),
     {'noreply', State};
 handle_info(_Info, State) ->
     {'noreply', State}.

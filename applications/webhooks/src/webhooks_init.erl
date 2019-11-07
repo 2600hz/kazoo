@@ -20,7 +20,7 @@
 -spec start_link() -> 'ignore'.
 start_link() ->
     kz_log:put_callid(?MODULE),
-    _ = kz_util:spawn(fun do_init/0),
+    _ = kz_process:spawn(fun do_init/0),
     'ignore'.
 
 -spec do_init() -> 'ok'.

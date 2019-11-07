@@ -14,8 +14,6 @@
 
 -compile({no_auto_import, [apply/3]}).
 
--include("fax.hrl").
-
 -export([init/1
         ,apply/3
         ,state_enter/2
@@ -41,11 +39,12 @@
         ,start_worker/3
         ]).
 
+-include("fax.hrl").
+
 -type state() :: map().
 
 -define(DEFAULT_LIMITS(AccountId), kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"max_outbound">>, 10)).
--define(POLLING_INTERVAL, 5 * ?MILLISECONDS_IN_SECOND).
--define(TICK_INTERVAL, 5000).
+-define(TICK_INTERVAL, 5 * ?MILLISECONDS_IN_SECOND).
 
 -spec init(map()) -> state().
 init(#{name := Name}) ->
@@ -204,10 +203,13 @@ apply(#{index := RaftIdx}
             {State, {error, not_found}}
     end;
 
-apply(#{index := RaftIdx}, {'start_worker', {AccountId, JobId, Ref}}, #{accounts := Accounts} = State) ->
+apply(#{index := RaftIdx}
+     ,{'start_worker', {AccountId, JobId, Ref}}
+     ,#{accounts := Accounts} = State
+     ) ->
     case Accounts of
         #{AccountId := #{jobs := #{JobId := P}}} ->
-            {State, {error, {exists, P}}};
+            {State, {'error', {'exists', P}}};
         #{AccountId := #{limit := Limit
                         ,jobs := #{} = Jobs
                         } = Account
@@ -215,11 +217,11 @@ apply(#{index := RaftIdx}, {'start_worker', {AccountId, JobId, Ref}}, #{accounts
             {State#{accounts => maps:update(AccountId, Account#{jobs => Jobs#{JobId => #{ref => Ref
                                                                                         ,raft => RaftIdx
                                                                                         }}}, Accounts)}
-            ,ok
-            ,[{mod_call, ?MODULE, 'start_worker', [AccountId, JobId, Ref]}]
+            ,'ok'
+            ,[{'mod_call', ?MODULE, 'start_worker', [AccountId, JobId, Ref]}]
             };
         #{AccountId := #{limit := Limit}} ->
-            {State#{}, {error, {limit, Limit}}};
+            {State#{}, {'error', {'limit', Limit}}};
         _NoAccount ->
             {State#{accounts => Accounts#{AccountId => #{jobs => #{JobId => #{ref => Ref
                                                                              ,raft => RaftIdx
@@ -228,26 +230,26 @@ apply(#{index := RaftIdx}, {'start_worker', {AccountId, JobId, Ref}}, #{accounts
                                                         }
                                          }
                    }
-            ,ok
-            ,[{mod_call, ?MODULE, 'start_worker', [AccountId, JobId, Ref]}]
+            ,'ok'
+            ,[{'mod_call', ?MODULE, 'start_worker', [AccountId, JobId, Ref]}]
             }
     end;
 
 apply(_Meta, _Msg, State) ->
-    {State, ok}.
+    {State, 'ok'}.
 
 -spec state_enter(ra_server:ra_state(), state()) -> ra_machine:effects().
-state_enter(leader, #{pids := PMap}) ->
+state_enter('leader', #{pids := PMap}) ->
     Pids = maps:keys(PMap),
-    Mons = [{monitor, process, P} || P <- Pids],
-    NodeMons = lists:usort([{monitor, node, node(P)} || P <- Pids]),
+    Mons = [{'monitor', 'process', P} || P <- Pids],
+    NodeMons = lists:usort([{'monitor', 'node', node(P)} || P <- Pids]),
     Effects = Mons ++ NodeMons,
     Effects;
 state_enter(_, _) -> [].
 
 -spec tick(non_neg_integer(), state()) -> ra_machine:effects().
 tick(_Ts, _) ->
-    _ = erlang:spawn(?MODULE, process_accounts, []),
+    _ = erlang:spawn(?MODULE, 'process_accounts', []),
     [].
 
 -spec overview(state()) -> map().
@@ -290,15 +292,15 @@ process_account(AccountId) ->
                   ,{'endkey', [AccountId, Upto]}
                   ],
     case kz_datamgr:get_result_ids(?KZ_FAXES_DB, <<"faxes/jobs_by_account">>, ViewOptions) of
-        {'ok', []} -> ok;
+        {'ok', []} -> 'ok';
         {'ok', JobIds} ->
-            Options = [{'should_create', false}
-                      ,{update, [{<<"pvt_job_status">>, <<"locked">>}]}
+            Options = [{'should_create', 'false'}
+                      ,{'update', [{<<"pvt_job_status">>, <<"locked">>}]}
                       ],
             _LockResults = [kz_datamgr:update_doc(?KZ_FAXES_DB, JobId, Options) || JobId <- JobIds],
             _Results = [ra:process_command(ra_name(), {'start_worker', {AccountId, JobId, make_ref()}}) || JobId <- JobIds],
-            ok;
-        {'error', _Reason} -> ok
+            'ok';
+        {'error', _Reason} -> 'ok'
     end.
 
 
@@ -329,7 +331,7 @@ members(I) ->
     ].
 
 ra_machine() ->
-    {module, ?MODULE, ra_machine_config()}.
+    {'module', ?MODULE, ra_machine_config()}.
 
 ra_machine_config() -> #{}.
 
@@ -358,15 +360,15 @@ app_nodes() ->
 restart() ->
     Name = id(),
     case ra:restart_server(Name) of
-        ok ->
-            ok;
-        {error, Err1}
-          when Err1 == not_started
-               orelse Err1 == name_not_registered ->
-            false;
+        'ok' ->
+            'ok';
+        {'error', Err1}
+          when Err1 == 'not_started'
+               orelse Err1 == 'name_not_registered' ->
+            'false';
 
-        {error, {already_started, _}} ->
-            ok;
+        {'error', {'already_started', _}} ->
+            'ok';
         Err ->
             lager:warning("recover: ra ~w could not be restarted ~w", [Name, Err])
     end.
@@ -375,8 +377,8 @@ restart() ->
 start() ->
     ra:start(),
     case restart() of
-        false -> maybe_join();
-        _ -> ok
+        'false' -> maybe_join();
+        _ -> 'ok'
     end.
 
 -spec maybe_join() -> any().
@@ -390,9 +392,9 @@ maybe_join() ->
 join() ->
     RaConf = make_ra_conf(id()),
     case ra:start_server(RaConf) of
-        ok ->
+        'ok' ->
             case ra:add_member(members(), id()) of
-                {ok, _, _Leader} -> ok;
+                {'ok', _, _Leader} -> 'ok';
                 Else -> Else
             end;
         Else -> Else
@@ -400,14 +402,14 @@ join() ->
 
 -spec delete() -> any().
 delete() ->
-    {ok, Members, _Leader} = ra:members(ra_name()),
+    {'ok', Members, _Leader} = ra:members(ra_name()),
     ra:delete_cluster(Members).
 
 -spec start_new() -> any().
 start_new() ->
     RaConfs = [make_ra_conf(ServerId) || ServerId <- members()],
     case ra:start_cluster(RaConfs) of
-        {ok, _, _} -> ok;
+        {'ok', _, _} -> 'ok';
         Else -> Else
     end.
 
@@ -415,19 +417,18 @@ start_new() ->
 stop() ->
     ra:stop_server(id()).
 
-
--spec start_worker(kz_term:ne_binary(), kz_term:ne_binary(), reference()) -> 'ok'.
+-spec start_worker(kz_term:ne_binary(), kz_term:ne_binary(), reference()) -> pid().
 start_worker(AccountId, JobId, Ref) ->
-    kz_util:spawn(fun start_worker/1 , [{AccountId, JobId, Ref}]).
+    kz_process:spawn(fun start_worker/1 , [{AccountId, JobId, Ref}]).
 
 start_worker({AccountId, JobId, Ref}) ->
     Node = rand_node(),
-    Reply = rpc:call(Node, fax_worker_sup, start_fax_job, [AccountId, JobId]),
+    Reply = rpc:call(Node, 'fax_worker_sup', 'start_fax_job', [AccountId, JobId]),
     ra:process_command(id(), {'start_worker_result', {AccountId, JobId, Ref, Node, Reply}}).
 
 
 available_nodes() ->
-    {ok, Members, _Leader} = ra:members(ra_name()),
+    {'ok', Members, _Leader} = ra:members(ra_name()),
     lists:usort([Node || {_, Node} <- Members, lists:member(Node, nodes())]).
 
 -spec rand_node() -> node().

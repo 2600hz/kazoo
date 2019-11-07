@@ -780,7 +780,7 @@ maybe_defer_reassign(#kz_amqp_assignment{}=Assignment
                     ,{'shutdown',{'server_initiated_close', 404, _Msg}}
                     ) ->
     lager:debug("defer channel reassign for ~p ms", [?SERVER_RETRY_PERIOD]),
-    kz_util:spawn(
+    kz_process:spawn(
       fun() ->
               timer:sleep(?SERVER_RETRY_PERIOD),
               gen_server:cast(?SERVER, {'maybe_defer_reassign', Assignment})
@@ -789,7 +789,7 @@ maybe_defer_reassign(#kz_amqp_assignment{}=Assignment
                     ,{'shutdown',{'connection_closing', _}}
                     ) ->
     lager:debug("defer channel reassign for ~p ms", [?SERVER_RETRY_PERIOD]),
-    kz_util:spawn(
+    kz_process:spawn(
       fun() ->
               timer:sleep(?SERVER_RETRY_PERIOD),
               gen_server:cast(?SERVER, {'maybe_defer_reassign', Assignment})

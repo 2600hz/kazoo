@@ -388,7 +388,7 @@ init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
     kz_log:put_callid(StateMCallId),
     lager:debug("started acdc agent statem"),
 
-    _P = kz_util:spawn(fun wait_for_listener/4, [Supervisor, self(), Props, IsThief]),
+    _P = kz_process:spawn(fun wait_for_listener/4, [Supervisor, self(), Props, IsThief]),
     lager:debug("waiting for listener in ~p", [_P]),
 
     {'ok'
@@ -1528,7 +1528,7 @@ maybe_stop_agent(_Reason, _AccountId, _AgentId) ->
     'ok'.
 
 stop_agent(AccountId, AgentId) ->
-    kz_util:spawn(fun acdc_agents_sup:stop_agent/2, [AccountId, AgentId]),
+    kz_process:spawn(fun acdc_agents_sup:stop_agent/2, [AccountId, AgentId]),
     'ok'.
 
 %%------------------------------------------------------------------------------
@@ -1848,12 +1848,12 @@ maybe_notify(Ns, Key, State) ->
                 'undefined' -> 'ok';
                 Url ->
                     lager:debug("send update for ~s to ~s", [?NOTIFY_ALL, Url]),
-                    _ = kz_util:spawn(fun notify/4, [Url, get_method(Ns), Key, State]),
+                    _ = kz_process:spawn(fun notify/4, [Url, get_method(Ns), Key, State]),
                     'ok'
             end;
         Url ->
             lager:debug("send update for ~s to ~s", [Key, Url]),
-            _ = kz_util:spawn(fun notify/4, [Url, get_method(Ns), Key, State]),
+            _ = kz_process:spawn(fun notify/4, [Url, get_method(Ns), Key, State]),
             'ok'
     end.
 

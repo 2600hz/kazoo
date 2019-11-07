@@ -148,7 +148,7 @@ handle_info({'timeout', Ref, _Msg}, #state{day_ref = Ref}=State) ->
     {'noreply', State#state{day_ref = day_timer()}};
 
 handle_info({'timeout', Ref, _Msg}, #state{browse_dbs_ref = Ref}=State) ->
-    _Pid = kz_util:spawn(fun browse_dbs_for_triggers/1, [Ref]),
+    _Pid = kz_process:spawn(fun browse_dbs_for_triggers/1, [Ref]),
     lager:debug("cleaning up in ~p(~p)", [_Pid, Ref]),
     {'noreply', State};
 
@@ -228,7 +228,7 @@ browse_dbs_timer() ->
 -spec spawn_jobs(reference(), kz_term:ne_binary()) -> 'ok'.
 spawn_jobs(Ref, Binding) ->
     kz_log:put_callid(make_callid(Ref, Binding)),
-    _Pid = kz_util:spawn_link(fun tasks_bindings:map/2, [Binding, []]),
+    _Pid = kz_process:spawn_link(fun tasks_bindings:map/2, [Binding, []]),
     kz_log:put_callid(?MODULE),
     lager:debug("binding ~s triggered ~p via ~p", [Binding, _Pid, Ref]).
 

@@ -310,12 +310,14 @@ maybe_save_pdf(Db, Pdf, Doc) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch_received_pdf(kz_term:ne_binary(), kz_json:object()) ->
-                                kz_json:object().
+                                {'ok', iodata(), kz_term:ne_binary(), kz_json:object()} |
+                                kz_datamgr:data_error().
 fetch_received_pdf(Db, Doc) ->
     fetch_received_pdf(Db, Doc, kz_doc:attachment_names(Doc)).
 
--spec fetch_received_pdf(kz_term:ne_binary(), kz_json:object(), list()) ->
-                                kz_json:object().
+-spec fetch_received_pdf(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries()) ->
+                                {'ok', iodata(), kz_term:ne_binary(), kz_json:object()} |
+                                kz_datamgr:data_error().
 fetch_received_pdf(Db, Doc, [?PDF_FILENAME|_]) ->
     case kz_datamgr:fetch_attachment(Db, kz_doc:id(Doc), ?PDF_FILENAME) of
         {'ok', Content} -> {'ok', Content, <<"application/pdf">>, Doc};

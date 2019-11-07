@@ -903,7 +903,7 @@ maybe_stop_agent(_Reason, _AccountId, _AgentId) ->
     'ok'.
 
 stop_agent(AccountId, AgentId) ->
-    kz_util:spawn(fun acdc_agents_sup:stop_agent/2, [AccountId, AgentId]),
+    kz_process:spawn(fun acdc_agents_sup:stop_agent/2, [AccountId, AgentId]),
     'ok'.
 
 %%------------------------------------------------------------------------------

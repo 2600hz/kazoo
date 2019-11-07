@@ -127,5 +127,5 @@ worker_timeout('info', Evt, State) ->
 %%------------------------------------------------------------------------------
 spawn_worker(Timeout) when Timeout >= 10 * ?MILLISECONDS_IN_SECOND ->
     _ = timer:apply_after(Timeout, 'gen_statem', 'cast', [self(), 'start_cycle']),
-    kz_util:spawn_link(fun ecallmgr_balance_crawler_worker:start/0);
+    kz_process:spawn_link(fun ecallmgr_balance_crawler_worker:start/0);
 spawn_worker(_) -> spawn_worker(?MILLISECONDS_IN_MINUTE).
