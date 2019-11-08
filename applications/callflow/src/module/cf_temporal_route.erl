@@ -165,7 +165,7 @@ get_temporal_rules(#temporal{local_sec=LSec
 
 -spec get_temporal_rules(kz_json:path(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary(), rules()) -> rules().
 get_temporal_rules(Routes, LSec, AccountDb, TZ, Rules) when is_binary(TZ) ->
-    Now = localtime:utc_to_local(calendar:universal_time(), kz_term:to_list(TZ)),
+    Now = kz_time:adjust_utc_timestamp(calendar:universal_time(), kz_term:to_list(TZ)),
     get_temporal_rules(Routes, LSec, AccountDb, TZ, Now, Rules).
 
 -spec get_temporal_rules(routes(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary(), kz_time:datetime(), rules()) -> rules().
@@ -435,7 +435,7 @@ enable_temporal_rules(Temporal, [RuleId|T]=Rules, Call) ->
 %%------------------------------------------------------------------------------
 -spec load_current_time(temporal()) -> temporal().
 load_current_time(#temporal{timezone=Timezone}=Temporal)->
-    {LocalDate, LocalTime} = localtime:utc_to_local(calendar:universal_time()
+    {LocalDate, LocalTime} = kz_time:adjust_utc_timestamp(calendar:universal_time()
                                                    ,kz_term:to_list(Timezone)
                                                    ),
     lager:info("local time for ~s is {~w,~w}", [Timezone, LocalDate, LocalTime]),
