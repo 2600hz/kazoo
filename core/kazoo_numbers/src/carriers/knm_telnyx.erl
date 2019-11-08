@@ -51,8 +51,8 @@ info() ->
 -spec is_local() -> boolean().
 is_local() -> 'false'.
 
--spec is_number_billable(knm_phone_number:knm_phone_number()) -> 'true'.
-is_number_billable(_Number) -> 'true'.
+-spec is_number_billable(knm_phone_number:record()) -> 'true'.
+is_number_billable(_PN) -> 'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc Check with carrier if these numbers are registered with it.
@@ -68,41 +68,40 @@ check_numbers(_Numbers) -> {'error', 'not_implemented'}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
-          {'ok', knm_number:knm_numbers()}.
+          {'ok', knm_search:results()}.
 find_numbers(<<"+1", Prefix:3/binary, _/binary>>, Quantity, Options)
   when ?IS_US_TOLLFREE(Prefix) ->
-    Results = numbers('tollfree', Quantity, Prefix, 'undefined'),
-    {'ok', numbers(Results, Options)};
+    Results = search_numbers('tollfree', Quantity, Prefix, 'undefined'),
+    {'ok', format_search_numbers_resp(Results, Options)};
 
 find_numbers(<<"+1", NPA:3/binary, _/binary>>=Num, Quantity, Options) ->
     NXX = case byte_size(Num) >= 2+3+3 of
               'true' -> binary:part(Num, 2+3, 3);
               'false' -> 'undefined'
           end,
-    Results = numbers('npa', Quantity, NPA, NXX),
-    {'ok', numbers(Results, Options)};
+    Results = search_numbers('npa', Quantity, NPA, NXX),
+    {'ok', format_search_numbers_resp(Results, Options)};
 
 find_numbers(<<"+",_/binary>>=_InternationalNum, Quantity, Options) ->
     Country = knm_search:country(Options),
-    Results = numbers('region', Quantity, Country, 'undefined'),
-    {'ok', international_numbers(Results, Options)}.
+    Results = search_numbers('region', Quantity, Country, 'undefined'),
+    {'ok', format_international_numbers_search_resp(Results, Options)}.
 
 %%------------------------------------------------------------------------------
 %% @doc Acquire a given number from the carrier
 %% @end
 %%------------------------------------------------------------------------------
--spec acquire_number(knm_number:knm_number()) -> knm_number:knm_number().
-acquire_number(Number) ->
+-spec acquire_number(knm_phone_number:record()) -> knm_phone_number:record().
+acquire_number(PN) ->
     Debug = ?IS_SANDBOX_PROVISIONING_TRUE,
     case ?IS_PROVISIONING_ENABLED of
         'false' when Debug ->
             lager:debug("allowing sandbox provisioning"),
-            Number;
+            PN;
         'false' ->
-            knm_errors:unspecified('provisioning_disabled', Number);
+            knm_errors:unspecified('provisioning_disabled', PN);
         'true' ->
-            PhoneNumber = knm_number:phone_number(Number),
-            Num = knm_phone_number:number(PhoneNumber),
+            Num = knm_phone_number:number(PN),
             Req = kz_json:from_list([{<<"requested_numbers">>, [Num]}
                                     ]),
             Rep = knm_telnyx_util:req('post', ["number_orders"], Req),
@@ -113,8 +112,7 @@ acquire_number(Number) ->
                     knm_errors:by_carrier(?MODULE, Reason, Num);
                 OrderId ->
                     Data = kz_json:from_list([{<<"order_id">>, OrderId}]),
-                    PN = knm_phone_number:update_carrier_data(PhoneNumber, Data),
-                    knm_number:set_phone_number(Number, PN)
+                    knm_phone_number:update_carrier_data(PN, Data)
             end
     end.
 
@@ -122,16 +120,16 @@ acquire_number(Number) ->
 %% @doc Release a number from the routing table
 %% @end
 %%------------------------------------------------------------------------------
--spec disconnect_number(knm_number:knm_number()) -> knm_number:knm_number().
-disconnect_number(Number) ->
+-spec disconnect_number(knm_phone_number:record()) -> knm_phone_number:record().
+disconnect_number(PN) ->
     Debug = ?IS_SANDBOX_PROVISIONING_TRUE,
     case ?IS_PROVISIONING_ENABLED of
-        'true' -> Number;
+        'true' -> PN;
         'false' when Debug ->
             lager:debug("allowing sandbox provisioning"),
-            Number;
+            PN;
         'false' ->
-            knm_errors:unspecified('provisioning_disabled', Number)
+            knm_errors:unspecified('provisioning_disabled', PN)
     end.
 
 -spec should_lookup_cnam() -> boolean().
@@ -141,9 +139,9 @@ should_lookup_cnam() -> 'true'.
 %%% Internals
 
 -type kind() :: 'npa' | 'tollfree' | 'region'.
--spec numbers(kind(), pos_integer(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
+-spec search_numbers(kind(), pos_integer(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
           kz_json:objects().
-numbers(SearchKind, Quantity, Prefix, NXX) ->
+search_numbers(SearchKind, Quantity, Prefix, NXX) ->
     Descriptor = kz_json:from_list(search_prefix(SearchKind, Prefix, NXX)),
     Req = kz_json:from_list(
             [{<<"search_type">>, search_kind(SearchKind)}
@@ -157,14 +155,16 @@ numbers(SearchKind, Quantity, Prefix, NXX) ->
         _ -> kz_json:get_value(<<"result">>, Rep)
     end.
 
-numbers(JObjs, Options) ->
+-spec format_search_numbers_resp(kz_json:objects(), knm_search:options()) -> knm_search:results().
+format_search_numbers_resp(JObjs, Options) ->
     QID = knm_search:query_id(Options),
     [{QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, Data}}
      || Data <- JObjs,
         Num <- [kz_json:get_ne_binary_value(<<"number_e164">>, Data)]
     ].
 
-international_numbers(JObjs, Options) ->
+-spec format_international_numbers_search_resp(kz_json:objects(), knm_search:options()) -> knm_search:results().
+format_international_numbers_search_resp(JObjs, Options) ->
     Dialcode = knm_search:dialcode(Options),
     QID = knm_search:query_id(Options),
     [{QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, Data}}

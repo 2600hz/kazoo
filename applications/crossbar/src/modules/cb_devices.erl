@@ -1063,10 +1063,9 @@ maybe_remove_mdn(_DeviceId, Context) ->
 -spec remove_mdn(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 remove_mdn(MDN, Context) ->
     case knm_number:get(MDN, knm_number_options:mdn_options()) of
-        {'ok', Number} ->
-            PN = knm_number:phone_number(Number),
+        {'ok', PN} ->
             IsMdnCarrier = ?CARRIER_MDN =:= knm_phone_number:module_name(PN),
-            case kz_json:get_ne_value(<<"mobile">>, knm_number:to_public_json(Number)) of
+            case kz_json:get_ne_value(<<"mobile">>, knm_phone_number:to_public_json(PN)) of
                 'undefined' when not IsMdnCarrier ->
                     lager:error("not removing number ~s: somehow not an mdn", [MDN]),
                     Context;

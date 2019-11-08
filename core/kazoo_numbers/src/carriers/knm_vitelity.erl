@@ -47,9 +47,9 @@ is_local() -> 'false'.
 %% @doc Check with carrier if these numbers are registered with it.
 %% @end
 %%------------------------------------------------------------------------------
--spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
-          {error, any()}.
-check_numbers(_Numbers) -> {error, not_implemented}.
+-spec check_numbers(kz_term:ne_binaries()) -> {'ok', kz_json:object()} |
+          {'error', any()}.
+check_numbers(_Numbers) -> {'error', 'not_implemented'}.
 
 %%------------------------------------------------------------------------------
 %% @doc Query the Vitelity system for a quantity of available numbers
@@ -57,12 +57,11 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
-          {'ok', knm_number:knm_numbers()} |
-          {'error', any()}.
+          knm_search:mod_response().
 find_numbers(<<"+1",Prefix/binary>>, Quantity, Options) ->
     find_numbers(Prefix, Quantity, Options);
 find_numbers(Prefix, Quantity, Options) ->
-    case props:is_true(tollfree, Options, 'false') of
+    case props:is_true('tollfree', Options, 'false') of
         'false' -> classify_and_find(Prefix, Quantity, Options);
         'true' ->
             TFOpts = tollfree_options(Quantity, Options),
@@ -73,31 +72,29 @@ find_numbers(Prefix, Quantity, Options) ->
 %% @doc Acquire a given number from the carrier
 %% @end
 %%------------------------------------------------------------------------------
--spec acquire_number(knm_number:knm_number()) ->
-          knm_number:knm_number().
-acquire_number(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    DID = knm_phone_number:number(PhoneNumber),
+-spec acquire_number(knm_phone_number:record()) ->
+          knm_phone_number:record().
+acquire_number(PN) ->
+    DID = knm_phone_number:number(PN),
     case knm_converters:classify(DID) of
         <<"tollfree_us">> ->
-            query_vitelity(Number, purchase_tollfree_options(DID));
+            query_vitelity(PN, purchase_tollfree_options(DID));
         <<"tollfree">> ->
-            query_vitelity(Number, purchase_tollfree_options(DID));
+            query_vitelity(PN, purchase_tollfree_options(DID));
         _ ->
-            query_vitelity(Number, purchase_local_options(DID))
+            query_vitelity(PN, purchase_local_options(DID))
     end.
 
 %%------------------------------------------------------------------------------
 %% @doc Release a number from the routing table
 %% @end
 %%------------------------------------------------------------------------------
--spec disconnect_number(knm_number:knm_number()) ->
-          knm_number:knm_number().
-disconnect_number(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    DID = knm_phone_number:number(PhoneNumber),
+-spec disconnect_number(knm_phone_number:record()) ->
+          knm_phone_number:record().
+disconnect_number(PN) ->
+    DID = knm_phone_number:number(PN),
     lager:debug("attempting to disconnect ~s", [DID]),
-    query_vitelity(Number, release_did_options(DID)).
+    query_vitelity(PN, release_did_options(DID)).
 
 %%------------------------------------------------------------------------------
 %% @doc Check to see if use_stepswitch_cnam is defined in the couchdoc. If it is
@@ -112,7 +109,7 @@ should_lookup_cnam() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
+-spec is_number_billable(knm_phone_number:record()) -> boolean().
 is_number_billable(_) -> 'true'.
 
 %%%=============================================================================
@@ -124,8 +121,7 @@ is_number_billable(_) -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec classify_and_find(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
-          {'ok', knm_number:knm_numbers()} |
-          {'error', any()}.
+          knm_search:mod_response().
 classify_and_find(Prefix, Quantity, Options) ->
     case knm_converters:classify(Prefix) of
         <<"tollfree_us">> ->
@@ -194,24 +190,17 @@ local_options(Prefix, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec find(kz_term:ne_binary(), pos_integer(), knm_carriers:options(), knm_vitelity_util:query_options()) ->
-          {'ok', knm_number:knm_numbers()} |
-          {'error', any()}.
+          knm_search:mod_response().
 find(Prefix, Quantity, Options, VitelityOptions) ->
     case query_vitelity(Prefix, Quantity, VitelityOptions) of
         {'error', _}=Error -> Error;
-        {'ok', JObj} -> response_to_numbers(JObj, Options)
+        {'ok', JObj} ->
+            QID = knm_search:query_id(Options),
+            Results = [{QID, {DID, ?MODULE, ?NUMBER_STATE_DISCOVERY, CarrierData}}
+                       || {DID, CarrierData} <- kz_json:to_proplist(JObj)
+                      ],
+            {'ok', Results}
     end.
-
-response_to_numbers(JObj, Options) ->
-    QID = knm_search:query_id(Options),
-    Ns = [to_number(Num, CarrierData, QID)
-          || {Num, CarrierData} <- kz_json:to_proplist(JObj)
-         ],
-    {'ok', Ns}.
-
-to_number(DID, CarrierData, QID) ->
-    {QID, {DID, ?MODULE, ?NUMBER_STATE_DISCOVERY, CarrierData}}.
-
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -219,7 +208,7 @@ to_number(DID, CarrierData, QID) ->
 %%------------------------------------------------------------------------------
 -spec query_vitelity(kz_term:ne_binary(), pos_integer(), knm_vitelity_util:query_options()) ->
           {'ok', kz_json:object()} |
-          {'error', any()}.
+          {'error', kz_term:api_binary()}.
 -ifdef(TEST).
 query_vitelity(Prefix, Quantity, QOptions) ->
     URI = knm_vitelity_util:build_uri(QOptions),
@@ -272,7 +261,7 @@ process_xml_resp(Prefix, Quantity, XML_binary) ->
 %%------------------------------------------------------------------------------
 -spec process_xml_content_tag(kz_term:ne_binary(), pos_integer(), kz_types:xml_el()) ->
           {'ok', kz_json:object()} |
-          {'error', any()}.
+          {'error', kz_term:api_binary()}.
 process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
                                                      ,content=Children
                                                      }) ->
@@ -292,7 +281,7 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
 
 -spec process_xml_numbers(kz_term:ne_binary(), pos_integer(), 'undefined' | kz_types:xml_el()) ->
           {'ok', kz_json:object()} |
-          {'error', any()}.
+          {'error', kz_term:api_binary()}.
 process_xml_numbers(_Prefix, _Quantity, 'undefined') ->
     {'error', 'no_numbers'};
 process_xml_numbers(Prefix, Quantity, #xmlElement{name='numbers'
@@ -302,7 +291,7 @@ process_xml_numbers(Prefix, Quantity, #xmlElement{name='numbers'
 
 -spec process_xml_numbers(kz_term:ne_binary(), pos_integer(), 'undefined' | kz_types:xml_els(), kz_term:proplist()) ->
           {'ok', kz_json:object()} |
-          {'error', any()}.
+          {'error', kz_term:api_binary()}.
 process_xml_numbers(_Prefix, 0, _Els, Acc) ->
     {'ok', kz_json:from_list(Acc)};
 process_xml_numbers(_Prefix, _Quantity, [#xmlElement{name='response'
@@ -401,54 +390,54 @@ purchase_tollfree_options(DID) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec query_vitelity(knm_number:knm_number(), knm_vitelity_util:query_options()) ->
-          knm_number:knm_number().
-query_vitelity(Number, QOptions) ->
+-spec query_vitelity(knm_phone_number:record(), knm_vitelity_util:query_options()) ->
+          knm_phone_number:record().
+query_vitelity(PN, QOptions) ->
     URI = knm_vitelity_util:build_uri(QOptions),
     lager:debug("querying ~s", [URI]),
     case kz_http:post(kz_term:to_list(URI)) of
         {'ok', _RespCode, _RespHeaders, RespXML} ->
             lager:debug("recv ~p: ~s", [_RespCode, RespXML]),
-            process_xml_resp(Number, RespXML);
+            process_xml_resp(PN, RespXML);
         {'error', Error} ->
             lager:debug("error querying: ~p", [Error]),
-            knm_errors:by_carrier(?MODULE, Error, Number)
+            knm_errors:by_carrier(?MODULE, Error, PN)
     end.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec process_xml_resp(knm_number:knm_number(), kz_term:text()) ->
-          knm_number:knm_number().
-process_xml_resp(Number, XML_binary) ->
+-spec process_xml_resp(knm_phone_number:record(), kz_term:text()) ->
+          knm_phone_number:record().
+process_xml_resp(PN, XML_binary) ->
     XML = unicode:characters_to_list(XML_binary),
     try xmerl_scan:string(XML) of
-        {XmlEl, _} -> process_xml_content_tag(Number, XmlEl)
+        {XmlEl, _} -> process_xml_content_tag(PN, XmlEl)
     catch
         _E:_R ->
             lager:debug("failed to decode xml: ~s: ~p", [_E, _R]),
-            knm_errors:by_carrier(?MODULE, 'failed_decode_resp', Number)
+            knm_errors:by_carrier(?MODULE, 'failed_decode_resp', PN)
     end.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec process_xml_content_tag(knm_number:knm_number(), kz_types:xml_el()) ->
-          knm_number:knm_number().
-process_xml_content_tag(Number, #xmlElement{name='content'
-                                           ,content=Children
-                                           }) ->
+-spec process_xml_content_tag(knm_phone_number:record(), kz_types:xml_el()) ->
+          knm_phone_number:record().
+process_xml_content_tag(PN, #xmlElement{name='content'
+                                       ,content=Children
+                                       }) ->
     Els = kz_xml:elements(Children),
     case knm_vitelity_util:xml_resp_status_msg(Els) of
         <<"fail">> ->
             Msg = knm_vitelity_util:xml_resp_error_msg(Els),
             lager:debug("xml status is 'fail': ~s", [Msg]),
-            knm_errors:by_carrier(?MODULE, Msg, Number);
+            knm_errors:by_carrier(?MODULE, Msg, PN);
         <<"ok">> ->
             lager:debug("successful provisioning"),
-            Number
+            PN
     end.
 
 %%------------------------------------------------------------------------------

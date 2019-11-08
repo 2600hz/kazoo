@@ -30,14 +30,13 @@ db_dependant() ->
     ].
 
 release_unknown_number() ->
-    [{"verfiy missing numbers return errors"
+    [{"verify missing numbers return errors"
      ,?_assertMatch({error, not_found}, knm_number:release(?TEST_CREATE_NUM))
      }
     ].
 
 release_available_number() ->
-    {ok, N} = knm_number:release(?TEST_AVAILABLE_NUM),
-    PN = knm_number:phone_number(N),
+    {ok, PN} = knm_number:release(?TEST_AVAILABLE_NUM),
     {error, Error} = knm_number:release(?TEST_TELNYX_NUM),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify releasing available local number results in deletion"
@@ -55,8 +54,7 @@ release_available_number() ->
     ].
 
 release_in_service_bad_carrier_number() ->
-    {ok, N} = knm_number:release(?TEST_IN_SERVICE_BAD_CARRIER_NUM),
-    PN = knm_number:phone_number(N),
+    {ok, PN} = knm_number:release(?TEST_IN_SERVICE_BAD_CARRIER_NUM),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"verify number state is changed"
      ,?_assertEqual(?NUMBER_STATE_AVAILABLE, knm_phone_number:state(PN))
@@ -70,8 +68,7 @@ release_in_service_bad_carrier_number() ->
     ].
 
 release_in_service_mdn_number() ->
-    {ok, N} = knm_number:release(?TEST_IN_SERVICE_MDN, knm_number_options:mdn_options()),
-    PN = knm_number:phone_number(N),
+    {ok, PN} = knm_number:release(?TEST_IN_SERVICE_MDN, knm_number_options:mdn_options()),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"verify number state is changed"
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PN))
@@ -105,10 +102,8 @@ release_in_service_numbers() ->
     ].
 
 release_in_service(Num, Options, PreHistory) ->
-    {ok, N0} = knm_number:get(Num, Options),
-    PN0 = knm_number:phone_number(N0),
-    {ok, N} = knm_number:release(Num, Options),
-    PN = knm_number:phone_number(N),
+    {ok, PN0} = knm_number:get(Num, Options),
+    {ok, PN} = knm_number:release(Num, Options),
     [?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN0))
     ,?_assertEqual(PreHistory, knm_phone_number:reserve_history(PN0))
     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN0))
@@ -155,10 +150,8 @@ delete_in_service() ->
     ].
 
 delete_in_service(Num, Options) ->
-    {ok, N0} = knm_number:get(Num, Options),
-    PN0 = knm_number:phone_number(N0),
-    {ok, N} = knm_number:delete(Num, Options),
-    PN = knm_number:phone_number(N),
+    {ok, PN0} = knm_number:get(Num, Options),
+    {ok, PN} = knm_number:delete(Num, Options),
     [?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN0))
     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN0))
     ,?_assertEqual([?FEATURE_LOCAL], knm_phone_number:features_list(PN0))

@@ -142,7 +142,7 @@ send_new_camping(JObj, AccountId) ->
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     Context2 = crossbar_doc:save(Context),
-    kz_datamgr:ensure_saved(<<"cccps">>, cb_context:doc(Context2)),
+    _ = kz_datamgr:ensure_saved(<<"cccps">>, cb_context:doc(Context2)),
     Context2.
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
@@ -157,7 +157,7 @@ put(Context, ?AUTODIAL) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
     Context2 = crossbar_doc:save(Context),
-    kz_datamgr:ensure_saved(<<"cccps">>, cb_context:doc(Context2)),
+    _ = kz_datamgr:ensure_saved(<<"cccps">>, cb_context:doc(Context2)),
     Context2.
 
 %%------------------------------------------------------------------------------

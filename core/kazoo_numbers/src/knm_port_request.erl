@@ -576,14 +576,15 @@ transition_numbers(PortReq) ->
     lager:debug("account ~p creating local numbers for port ~s", [AccountId, PortReqId]),
     Numbers = kz_json:get_keys(kzd_port_requests:numbers(PortReq)),
     case knm_numbers:create(Numbers, Options) of
-        #{ko := KOs} when map_size(KOs) =:= 0 ->
+        %% FIXME: opaque
+        #{'failed' := Failed} when map_size(Failed) =:= 0 ->
             lager:debug("all numbers ported, removing from port request"),
             clear_numbers_from_port(PortReq);
-        #{ko := KOs, ok := _OKs} ->
-            NumsKO = maps:keys(KOs),
-            case numbers_not_in_account_nor_in_service(AccountId, NumsKO) of
+        #{'failed' := Failed, 'succeeded' := _OKs} ->
+            NumsFailed = maps:keys(Failed),
+            case numbers_not_in_account_nor_in_service(AccountId, NumsFailed) of
                 [] ->
-                    lager:debug("these were already assigned and in service: ~p", [NumsKO]),
+                    lager:debug("these were already assigned and in service: ~p", [NumsFailed]),
                     clear_numbers_from_port(PortReq);
                 _NumsNotTransitioned ->
                     lager:debug("failed to transition ~p/~p numbers"
@@ -653,15 +654,18 @@ get_dids_for_app(AccountDb, Numbers, View) ->
         {'error', _} -> []
     end.
 
+-spec numbers_not_in_account_nor_in_service(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 numbers_not_in_account_nor_in_service(AccountId, Nums) ->
-    #{ko := KOs, ok := Ns} = knm_numbers:get(Nums),
+    Collection = knm_numbers:get(Nums),
+    Failed = knm_pipe:failed(Collection),
+    PNs = knm_pipe:succeeded(Collection),
     [knm_phone_number:number(PN)
-     || N <- Ns,
-        PN <- [knm_number:phone_number(N)],
+     || PN <- PNs,
         not is_in_account_and_in_service(AccountId, PN)
     ]
-        ++ maps:keys(KOs).
+        ++ maps:keys(Failed).
 
+-spec is_in_account_and_in_service(kz_term:ne_binary(), knm_phone_number:phone_number()) -> boolean().
 is_in_account_and_in_service(AccountId, PN) ->
     AccountId =:= knm_phone_number:assigned_to(PN)
         andalso ?NUMBER_STATE_IN_SERVICE =:= knm_phone_number:state(PN).

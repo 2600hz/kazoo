@@ -53,8 +53,7 @@ carrier_info() ->
     ].
 
 is_number_billable() ->
-    {ok, N} = knm_number:get(?TEST_OLD1_NUM),
-    PN1 = knm_number:phone_number(N),
+    {ok, PN1} = knm_number:get(?TEST_OLD1_NUM),
     PN2 = knm_phone_number:set_module_name(PN1, <<"knm_bandwidth2">>),
     PN3 = knm_phone_number:set_module_name(PN1, <<"wnm_pacwest">>),
     [?_assertEqual(false, knm_carriers:is_number_billable(PN1))

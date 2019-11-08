@@ -384,11 +384,11 @@ is_cell_true(_) -> 'false'.
 %%% Appliers
 
 -spec list(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-list(#{account_id := ForAccount}, 'init') ->
+list(#{'account_id' := ForAccount}, 'init') ->
     ToList = [{ForAccount, NumberDb} || NumberDb <- knm_util:get_all_number_dbs()],
     {'ok', ToList};
 list(_, []) -> 'stop';
-list(#{auth_account_id := AuthBy}, Todo) ->
+list(#{'auth_account_id' := AuthBy}, Todo) ->
     list_assigned_to(AuthBy, Todo).
 
 -spec list_numbers(kz_term:ne_binary(), kz_term:ne_binaries()) -> [kz_csv:row()].
@@ -396,9 +396,11 @@ list_numbers(AuthBy, E164s) ->
     Options = [{'auth_by', AuthBy}
               ,{'batch_run', 'true'}
               ],
-    #{ok := Ns, ko := KOs} = knm_numbers:get(E164s, Options),
-    maps:fold(fun list_bad_rows/3, [], KOs)
-        ++ [list_number(N) || N <- Ns].
+    Collection = knm_numbers:get(E164s, Options),
+    PNs = knm_pipe:succeeded(Collection),
+    Failed = knm_pipe:failed(Collection),
+    maps:fold(fun list_bad_rows/3, [], Failed)
+        ++ [list_number(PN) || PN <- PNs].
 
 list_bad_rows(E164, 'not_reconcilable', Rows) ->
     %% Numbers that shouldn't be in the system (e.g. '+141510010+14')
@@ -409,9 +411,8 @@ list_bad_rows(_E164, _R, Rows) ->
     lager:error("wild number ~s appeared: ~p", [_E164, _R]),
     Rows.
 
--spec list_number(knm_number:knm_number()) -> map().
-list_number(N) ->
-    PN = knm_number:phone_number(N),
+-spec list_number(knm_phone_number:record()) -> map().
+list_number(PN) ->
     InboundCNAM = knm_phone_number:feature(PN, ?FEATURE_CNAM_INBOUND),
     OutboundCNAM = knm_phone_number:feature(PN, ?FEATURE_CNAM_OUTBOUND),
     E911 = knm_phone_number:feature(PN, ?FEATURE_E911),
@@ -459,19 +460,19 @@ quote('undefined') -> 'undefined';
 quote(Bin) -> <<$\", Bin/binary, $\">>.
 
 -spec list_all(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
-list_all(#{account_id := Account}, 'init') ->
+list_all(#{'account_id' := Account}, 'init') ->
     ForAccounts = [Account | kapps_util:account_descendants(Account)],
     ToList = [{ForAccount, NumberDb}
               || ForAccount <- ForAccounts,
                  NumberDb <- knm_util:get_all_number_dbs()
              ],
     {'ok', ToList};
-list_all(_, []) -> stop;
+list_all(_, []) -> 'stop';
 list_all(_, Todo) ->
     list_assigned_to(?KNM_DEFAULT_AUTH_BY, Todo).
 
 -spec find(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-find(#{auth_account_id := AuthBy}, _IterValue, Args=#{<<"e164">> := Num}) ->
+find(#{'auth_account_id' := AuthBy}, _IterValue, Args=#{<<"e164">> := Num}) ->
     handle_result(Args, knm_number:get(Num, [{'auth_by', AuthBy}])).
 
 -spec dump(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
@@ -543,8 +544,8 @@ import(ExtraArgs, 'init', Args) ->
     kz_datamgr:suppress_change_notice(),
     IterValue = sets:new(),
     import(ExtraArgs, IterValue, Args);
-import(#{account_id := Account
-        ,auth_account_id := AuthAccountId
+import(#{'account_id' := Account
+        ,'auth_account_id' := AuthAccountId
         }
       ,AccountIds
       ,Args=#{<<"e164">> := E164
@@ -671,7 +672,7 @@ select_account_id(?MATCH_ACCOUNT_RAW(_)=AccountId, _) -> AccountId;
 select_account_id(_, AccountId) -> AccountId.
 
 -spec assign_to(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-assign_to(#{auth_account_id := AuthBy, account_id := Account}
+assign_to(#{'auth_account_id' := AuthBy, 'account_id' := Account}
          ,_IterValue
          ,Args=#{<<"e164">> := Num, <<"account_id">> := AccountId0}
          ) ->
@@ -682,7 +683,7 @@ assign_to(#{auth_account_id := AuthBy, account_id := Account}
     handle_result(Args, knm_number:move(Num, AccountId, Options)).
 
 -spec update_merge(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-update_merge(#{auth_account_id := AuthBy}
+update_merge(#{'auth_account_id' := AuthBy}
             ,_IterValue
             ,Args=#{<<"e164">> := Num}
             ) ->
@@ -693,7 +694,7 @@ update_merge(#{auth_account_id := AuthBy}
     handle_result(Args, knm_number:update(Num, Updates, Options)).
 
 -spec update_overwrite(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-update_overwrite(#{auth_account_id := AuthBy}
+update_overwrite(#{'auth_account_id' := AuthBy}
                 ,_IterValue
                 ,Args=#{<<"e164">> := Num}
                 ) ->
@@ -704,7 +705,7 @@ update_overwrite(#{auth_account_id := AuthBy}
     handle_result(Args, knm_number:update(Num, Updates, Options)).
 
 -spec release(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-release(#{auth_account_id := AuthBy}
+release(#{'auth_account_id' := AuthBy}
        ,_IterValue
        ,Args=#{<<"e164">> := Num}
        ) ->
@@ -714,7 +715,7 @@ release(#{auth_account_id := AuthBy}
     handle_result(Args, knm_number:release(Num, Options)).
 
 -spec reserve(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-reserve(#{auth_account_id := AuthBy, account_id := Account}
+reserve(#{'auth_account_id' := AuthBy, 'account_id' := Account}
        ,_IterValue
        ,Args=#{<<"e164">> := Num, <<"account_id">> := AccountId0}
        ) ->
@@ -725,7 +726,7 @@ reserve(#{auth_account_id := AuthBy, account_id := Account}
     handle_result(Args, knm_number:reserve(Num, Options)).
 
 -spec delete(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-delete(#{auth_account_id := AuthBy}
+delete(#{'auth_account_id' := AuthBy}
       ,_IterValue
       ,Args=#{<<"e164">> := Num}
       ) ->
@@ -742,9 +743,9 @@ delete(#{auth_account_id := AuthBy}
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_result(kz_tasks:args(), knm_number_return()) -> kz_tasks:return().
-handle_result(Args, {'ok', N}) ->
-    format_result(Args, N);
+-spec handle_result(kz_tasks:args(), knm_number:return()) -> kz_tasks:return().
+handle_result(Args, {'ok', PN}) ->
+    format_result(Args, PN);
 handle_result(Args, {'dry_run', _Quotes}) ->
     format_result(Args, <<"accept_charges">>);
 handle_result(Args, {'error', Reason})
@@ -757,73 +758,73 @@ handle_result(Args, {'error', KNMError}) ->
              end,
     format_result(Args, kz_term:to_binary(Reason)).
 
--spec format_result(kz_tasks:args(), kz_term:ne_binary() | knm_number:knm_number()) -> kz_csv:mapped_row().
+-spec format_result(kz_tasks:args(), kz_term:ne_binary() | knm_phone_number:record()) -> kz_csv:mapped_row().
 format_result(Args, Reason=?NE_BINARY) ->
     Args#{?OUTPUT_CSV_HEADER_ERROR => Reason};
-format_result(_, N) ->
-    Map = list_number(N),
+format_result(_, PN) ->
+    Map = list_number(PN),
     Map#{?OUTPUT_CSV_HEADER_ERROR => 'undefined'}.
 
 -type accountid_or_startkey_and_numberdbs() :: [{kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:ne_binary()}].
 -spec list_assigned_to(kz_term:ne_binary(), accountid_or_startkey_and_numberdbs()) ->
-          {ok | error  | [kz_csv:row()], accountid_or_startkey_and_numberdbs()}.
+          {'ok' | 'error'  | [kz_csv:row()], accountid_or_startkey_and_numberdbs()}.
 list_assigned_to(AuthBy, [{Next,NumberDb}|Rest]) ->
-    ViewOptions = [{limit,?DB_DUMP_BULK_SIZE} | view_for_list_assigned(Next)],
+    ViewOptions = [{'limit', ?DB_DUMP_BULK_SIZE} | view_for_list_assigned(Next)],
     case kz_datamgr:get_result_keys(NumberDb, <<"numbers/assigned_to">>, ViewOptions) of
-        {ok, []} -> {ok, Rest};
-        {error, _R} ->
+        {'ok', []} -> {'ok', Rest};
+        {'error', _R} ->
             lager:error("could not get ~p's numbers in ~s: ~p", [ViewOptions, NumberDb, _R]),
-            {error, Rest};
-        {ok, Keys} ->
+            {'error', Rest};
+        {'ok', Keys} ->
             Rows = list_numbers(AuthBy, [lists:last(Key) || Key <- Keys]),
             {Rows, [{lists:last(Keys),NumberDb}|Rest]}
     end.
 
 -spec view_for_list_assigned(kz_term:ne_binary() | kz_term:ne_binaries()) -> kz_datamgr:view_options().
 view_for_list_assigned(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    [{startkey, [AccountId]}
-    ,{endkey, [AccountId, kz_json:new()]}
+    [{'startkey', [AccountId]}
+    ,{'endkey', [AccountId, kz_json:new()]}
     ];
 view_for_list_assigned(StartKey=[AccountId,_]) ->
-    [{startkey, StartKey}
-    ,{endkey, [AccountId, kz_json:new()]}
-    ,{skip, 1}
+    [{'startkey', StartKey}
+    ,{'endkey', [AccountId, kz_json:new()]}
+    ,{'skip', 1}
     ].
 
 -type startkey_or_numberdb() :: kz_term:ne_binary() | kz_term:ne_binaries().
 -spec dump_next(fun((startkey_or_numberdb()) -> {kz_term:ne_binary(), kz_datamgr:view_options()}), startkey_or_numberdb()) ->
-          {ok | error | [kz_csv:row()], [startkey_or_numberdb()]}.
+          {'ok' | 'error' | [kz_csv:row()], [startkey_or_numberdb()]}.
 dump_next(ViewFun, [Next|Rest]) ->
     {NumberDb, MoreViewOptions} = ViewFun(Next),
     ViewOptions = [{limit, ?DB_DUMP_BULK_SIZE} | MoreViewOptions],
     case kz_datamgr:get_result_keys(NumberDb, <<"numbers/status">>, ViewOptions) of
-        {ok, []} -> {ok, Rest};
-        {error, _R} ->
+        {'ok', []} -> {'ok', Rest};
+        {'error', _R} ->
             lager:error("could not get ~p from ~s: ~p", [ViewOptions, NumberDb, _R]),
-            {error, Rest};
-        {ok, Keys} ->
+            {'error', Rest};
+        {'ok', Keys} ->
             Rows = list_numbers(?KNM_DEFAULT_AUTH_BY, [lists:last(Key) || Key <- Keys]),
             {Rows, [lists:last(Keys)|Rest]}
     end.
 
 -spec db_and_view_for_dump(kz_term:ne_binary() | kz_term:ne_binaries()) -> {kz_term:ne_binary(), kz_datamgr:view_options()}.
-db_and_view_for_dump(NumberDb=?NE_BINARY) -> {NumberDb, []};
-db_and_view_for_dump(StartKey=[_,_,LastNum]) ->
-    ViewOpts = [{startkey, StartKey}
-               ,{skip, 1}
+db_and_view_for_dump(<<NumberDb/binary>>) -> {NumberDb, []};
+db_and_view_for_dump(StartKey=[_, _, LastNum]) ->
+    ViewOpts = [{'startkey', StartKey}
+               ,{'skip', 1}
                ],
     {knm_converters:to_db(LastNum), ViewOpts}.
 
 -spec db_and_view_for_dump_by_state(kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()) -> {kz_term:ne_binary(), kz_datamgr:view_options()}.
-db_and_view_for_dump_by_state(State, NumberDb=?NE_BINARY) ->
-    ViewOptions = [{startkey, [State]}
-                  ,{endkey, [State, kz_json:new()]}
+db_and_view_for_dump_by_state(State, <<NumberDb/binary>>) ->
+    ViewOptions = [{'startkey', [State]}
+                  ,{'endkey', [State, kz_json:new()]}
                   ],
     {NumberDb, ViewOptions};
-db_and_view_for_dump_by_state(State, StartKey=[_,_,LastNum]) ->
-    ViewOptions = [{startkey, StartKey}
-                  ,{endkey, [State, kz_json:new()]}
-                  ,{skip, 1}
+db_and_view_for_dump_by_state(State, StartKey=[_ ,_, LastNum]) ->
+    ViewOptions = [{'startkey', StartKey}
+                  ,{'endkey', [State, kz_json:new()]}
+                  ,{'skip', 1}
                   ],
     {knm_converters:to_db(LastNum), ViewOptions}.
 

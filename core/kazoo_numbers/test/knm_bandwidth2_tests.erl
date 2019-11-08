@@ -82,10 +82,9 @@ find_tollfree_numbers(Options) ->
 acquire_number() ->
     Num = <<"+19734096113">>,
     PN = knm_phone_number:from_number(Num),
-    N = knm_number:set_phone_number(knm_number:new(), PN),
-    Result = knm_bandwidth2:acquire_number(N),
+    Result = knm_bandwidth2:acquire_number(PN),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify number is still one inputed"
-     ,?_assertEqual(Num, knm_phone_number:number(knm_number:phone_number(Result)))
+     ,?_assertEqual(Num, knm_phone_number:number(Result))
      }
     ].

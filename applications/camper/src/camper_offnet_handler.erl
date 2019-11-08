@@ -3,7 +3,7 @@
 %%% @doc Read `tries`, 'try_interval' and 'stop_after' from app's config
 %%%  document.
 %%%
-%%%  Ring to offnet number, parks it and bridge with reqester.
+%%%  Ring to offnet number, parks it and bridge with requester.
 %%%
 %%%
 %%% @author SIPLABS LLC (Maksim Krzhemenevskiy)
@@ -322,7 +322,7 @@ handle_originate_ready(JObj, Props) ->
             gen_listener:cast(Srv, {'offnet_ctl_queue', CtrlQ}),
             gen_listener:add_binding(Srv, {'call', ?MK_CALL_BINDING(CallId)}),
             kapi_dialplan:publish_originate_execute(Q, Prop);
-        _Ev -> lager:info("unkown event: ~p", [_Ev])
+        _Ev -> lager:info("unknown event: ~p", [_Ev])
     end.
 
 -spec build_offnet_request(kz_term:ne_binary(), kapps_call:call(), kz_term:ne_binary()) -> kz_term:proplist().

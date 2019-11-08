@@ -68,8 +68,7 @@
 -define(API_SUCCESS, <<"100">>).
 
 -type soap_response() :: {'ok', kz_types:xml_el()} | {'error', any()}.
--type to_json_ret() :: {'ok', kz_json:object() | kz_json:objects()} |
-                       {'error', any()}.
+-type handle_action_resp_ret() :: {'ok', kz_json:object() | kz_json:objects()} | {'error', any()}.
 
 %%% API
 
@@ -91,16 +90,16 @@ info() ->
 -spec is_local() -> boolean().
 is_local() -> 'false'.
 
--spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
+-spec is_number_billable(knm_phone_number:record()) -> boolean().
 is_number_billable(_Number) -> 'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc Check with carrier if these numbers are registered with it.
 %% @end
 %%------------------------------------------------------------------------------
--spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
-          {error, any()}.
-check_numbers(_Numbers) -> {error, not_implemented}.
+-spec check_numbers(kz_term:ne_binaries()) -> {'ok', kz_json:object()} |
+          {'error', any()}.
+check_numbers(_Numbers) -> {'error', 'not_implemented'}.
 
 
 %%------------------------------------------------------------------------------
@@ -108,64 +107,63 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
-          {'ok', list()} |
-          {'error', any()}.
+          knm_search:mod_response().
 find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
     find_numbers(Rest, Quantity, Options);
 find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
     find_numbers(Rest, Quantity, Options);
 find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     Resp = soap_request("getDIDs", [{"npa", NPA}]),
-    MaybeJson = to_json('find_numbers', Quantity, Resp),
-    to_numbers(MaybeJson, knm_search:query_id(Options));
+    MaybeJson = handle_action_resp('find_numbers', Quantity, Resp),
+    do_find_numbers(MaybeJson, knm_search:query_id(Options));
 find_numbers(<<NXX:6/binary,_/binary>>, Quantity, Options) ->
     Resp = soap_request("getDIDs", [{"nxx", NXX}]),
-    MaybeJson = to_json('find_numbers', Quantity, Resp),
-    to_numbers(MaybeJson, knm_search:query_id(Options)).
+    MaybeJson = handle_action_resp('find_numbers', Quantity, Resp),
+    do_find_numbers(MaybeJson, knm_search:query_id(Options)).
 
 %%------------------------------------------------------------------------------
 %% @doc Acquire a given number from the carrier
 %% @end
 %%------------------------------------------------------------------------------
--spec acquire_number(knm_number:knm_number()) -> knm_number:knm_number().
-acquire_number(Number) ->
+-spec acquire_number(knm_phone_number:record()) -> knm_phone_number:record().
+acquire_number(PN) ->
     Debug = ?IS_SANDBOX_PROVISIONING_TRUE,
     case ?IS_PROVISIONING_ENABLED of
         'false' when Debug ->
             lager:debug("allowing sandbox provisioning"),
-            Number;
+            PN;
         'false' ->
-            knm_errors:unspecified('provisioning_disabled', Number);
+            knm_errors:unspecified('provisioning_disabled', PN);
         'true' ->
-            N = 'remove +1'(
-                  knm_phone_number:number(knm_number:phone_number(Number))
+            N = sanitize_number(
+                  knm_phone_number:number(PN)
                  ),
             Resp = soap_request("assignDID", [N]),
-            Ret = to_json('acquire_number', [N], Resp),
-            maybe_return(Ret, Number)
+            Ret = handle_action_resp('acquire_number', [N], Resp),
+            maybe_return(Ret, PN)
     end.
 
 %%------------------------------------------------------------------------------
 %% @doc Release a number from the routing table
 %% @end
 %%------------------------------------------------------------------------------
--spec disconnect_number(knm_number:knm_number()) ->
-          knm_number:knm_number().
-disconnect_number(Number) ->
+-spec disconnect_number(knm_phone_number:record()) ->
+          knm_phone_number:record().
+disconnect_number(PN) ->
     Debug = ?IS_SANDBOX_PROVISIONING_TRUE,
     case ?IS_PROVISIONING_ENABLED of
         'false' when Debug ->
             lager:debug("allowing sandbox provisioning"),
-            Number;
+            PN;
         'false' ->
-            knm_errors:unspecified('provisioning_disabled', Number);
+            knm_errors:unspecified('provisioning_disabled', PN);
         'true' ->
-            N = 'remove +1'(
-                  knm_phone_number:number(knm_number:phone_number(Number))
+            N = sanitize_number(
+                  knm_phone_number:number(PN)
                  ),
             Resp = soap_request("releaseDID", [N]),
-            Ret = to_json('disconnect_number', [N], Resp),
-            maybe_return(Ret, Number)
+            Ret = handle_action_resp('disconnect_number', [N], Resp),
+            maybe_return(Ret, PN)
     end.
 
 -spec should_lookup_cnam() -> boolean().
@@ -174,42 +172,39 @@ should_lookup_cnam() -> 'true'.
 
 %%% Internals
 
--spec 'remove +1'(kz_term:ne_binary()) -> kz_term:ne_binary().
-'remove +1'(<<"+", Rest/binary>>) ->
-    'remove +1'(Rest);
-'remove +1'(<<"1", Rest/binary>>) ->
-    'remove +1'(Rest);
-'remove +1'(Else) ->
+-spec sanitize_number(kz_term:ne_binary()) -> kz_term:ne_binary().
+sanitize_number(<<"+", Rest/binary>>) ->
+    sanitize_number(Rest);
+sanitize_number(<<"1", Rest/binary>>) ->
+    sanitize_number(Rest);
+sanitize_number(Else) ->
     Else.
 
--spec to_numbers(to_json_ret(), QID) ->
-          {'ok', [{QID, tuple()}]} |
-          {'error', any()}
-              when QID :: kz_term:ne_binary().
-to_numbers({'error',_R}=Error, _) ->
-    Error;
-to_numbers({'ok',JObjs}, QID) ->
+-spec do_find_numbers(handle_action_resp_ret(), kz_term:ne_binary()) -> knm_search:mod_response().
+do_find_numbers({'error', _}, _) ->
+    {'error', 'datastore_fault'};
+do_find_numbers({'ok',JObjs}, QID) ->
     Numbers =
         [{QID, {kz_json:get_value(<<"e164">>, JObj), ?MODULE, ?NUMBER_STATE_DISCOVERY, JObj}}
          || JObj <- JObjs
         ],
     {'ok', Numbers}.
 
--spec maybe_return(to_json_ret(), knm_number:knm_number()) ->
-          knm_number:knm_number().
-maybe_return({'error', Reason}, N) ->
-    knm_errors:by_carrier(?MODULE, Reason, N);
-maybe_return({'ok', JObj}, N) ->
+-spec maybe_return(handle_action_resp_ret(), knm_phone_number:record()) ->
+          knm_phone_number:record().
+maybe_return({'error', Reason}, PN) ->
+    knm_errors:by_carrier(?MODULE, Reason, PN);
+maybe_return({'ok', JObj}, PN) ->
     case ?API_SUCCESS == kz_json:get_value(<<"code">>, JObj) of
-        'true' -> N;
+        'true' -> PN;
         'false' ->
             Reason = kz_json:get_value(<<"msg">>, JObj),
-            maybe_return({'error', Reason}, N)
+            knm_errors:by_carrier(?MODULE, Reason, PN)
     end.
 
--spec to_json(atom(), any(), soap_response()) -> to_json_ret().
+-spec handle_action_resp(atom(), any(), soap_response()) -> handle_action_resp_ret().
 
-to_json('find_numbers', Quantity, {'ok', Xml}) ->
+handle_action_resp('find_numbers', Quantity, {'ok', Xml}) ->
     XPath = xpath("getDIDs", ["DIDLocators", "DIDLocator"]),
     DIDs = xmerl_xpath:string(XPath, Xml),
     lager:debug("found ~p numbers", [length(DIDs)]),
@@ -225,7 +220,7 @@ to_json('find_numbers', Quantity, {'ok', Xml}) ->
      ]
     };
 
-to_json('acquire_number', _Numbers, {'ok', Xml}) ->
+handle_action_resp('acquire_number', _Numbers, {'ok', Xml}) ->
     XPath = xpath("assignDID", ["DIDs", "DID"]),
     [JObj] = [ begin
                    Code = kz_xml:get_value("//statusCode/text()", DID),
@@ -241,7 +236,7 @@ to_json('acquire_number', _Numbers, {'ok', Xml}) ->
              ],
     {'ok', JObj};
 
-to_json('disconnect_number', _Numbers, {'ok', Xml}) ->
+handle_action_resp('disconnect_number', _Numbers, {'ok', Xml}) ->
     XPath = xpath("releaseDID", ["DIDs", "DID"]),
     [JObj] = [ begin
                    N = kz_xml:get_value("//tn/text()", DID),
@@ -259,7 +254,7 @@ to_json('disconnect_number', _Numbers, {'ok', Xml}) ->
              ],
     {'ok', JObj};
 
-to_json(_Target, _, {'error',_R}=Error) ->
+handle_action_resp(_Target, _, {'error',_R}=Error) ->
     Error.
 
 -spec soap_request(nonempty_string(), any()) -> soap_response().
@@ -314,7 +309,8 @@ soap_envelope(Action, Props) ->
      "<tns:secret>", ?VI_PASSWORD, "</tns:secret>"
      "</tns:", Action, ">"
      "</env:Body>"
-     "</env:Envelope>"].
+     "</env:Envelope>"
+    ].
 
 -spec body(nonempty_string(), any()) -> iolist().
 
@@ -348,7 +344,8 @@ body("assignDID", Numbers=[_|_]) ->
         "</tns:DIDParam>"]
        || Number <- Numbers
      ],
-     "</tns:didParams>"];
+     "</tns:didParams>"
+    ];
 
 body("releaseDID", Numbers=[_|_]) ->
     ["<tns:didParams>",
@@ -357,7 +354,8 @@ body("releaseDID", Numbers=[_|_]) ->
         "</tns:DIDParam>"]
        || Number <- Numbers
      ],
-     "</tns:didParams>"].
+     "</tns:didParams>"
+    ].
 
 -spec handle_response(kz_http:ret()) -> soap_response().
 handle_response({'ok', _Code, _Headers, "<?xml"++_=Response}) ->

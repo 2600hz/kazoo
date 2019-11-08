@@ -1282,12 +1282,12 @@ maybe_update_view(Plan, Database, DesignDoc, ViewDoc, {'ok', CurrentDoc}) ->
 maybe_update_view(_Plan, _Database, _DesignDoc, _ViewDoc, _Error) -> 'ok'.
 
 -spec get_result_keys(database_name(), kz_term:ne_binary()) ->
-          {'ok', kz_term:ne_binaries() | [kz_term:ne_binaries()]} | data_error().
+          {'ok', kz_json:path() | kz_json:paths()} | data_error().
 get_result_keys(DbName, DesignDoc) ->
     get_result_keys(DbName, DesignDoc, []).
 
 -spec get_result_keys(database_name(), kz_term:ne_binary(), view_options()) ->
-          {'ok', kz_term:ne_binaries() | [kz_term:ne_binaries()]} | data_error().
+          {'ok', kz_json:path() | kz_json:paths()} | data_error().
 get_result_keys(DbName, DesignDoc, Options) ->
     Database = kzs_util:to_database(DbName),
     ?GET_RESULTS(Database, DesignDoc, Options),
@@ -1297,7 +1297,7 @@ get_result_keys(DbName, DesignDoc, Options) ->
         {'error', _} = Error -> Error
     end.
 
--spec get_result_keys(kz_json:objects()) -> kz_json:path().
+-spec get_result_keys(kz_json:objects()) -> kz_json:path() | kz_json:paths().
 get_result_keys(JObjs) ->
     [kz_json:get_value(<<"key">>, JObj)
      || JObj <- JObjs

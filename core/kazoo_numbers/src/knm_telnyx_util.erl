@@ -53,12 +53,13 @@
 %% @doc Turns +13129677542 into %2B13129677542.
 %% @end
 %%------------------------------------------------------------------------------
--spec did(knm_number:knm_number()) -> nonempty_string().
-did(Number) ->
+-spec did(knm_phone_number:record()) -> nonempty_string().
+did(PN) ->
     binary_to_list(
       kz_http_util:urlencode(
-        knm_phone_number:number(
-          knm_number:phone_number(Number)))).
+        knm_phone_number:number(PN)
+       )
+     ).
 
 
 -spec req(atom(), [nonempty_string()]) -> kz_json:object().
@@ -87,10 +88,10 @@ req('put', ["numbers", "%2B1"++_, "e911_settings"], _) ->
 req('put', ["numbers", "%2B1"++_], Body) ->
     EnableCNAM = <<"enable_caller_id_name">>,
     case kz_json:is_true(EnableCNAM, Body) of
-        false -> rep({ok, 200, [], kz_json:encode(kz_json:from_list([{EnableCNAM, false}]))});
-        true ->
+        'false' -> rep({'ok', 200, [], kz_json:encode(kz_json:from_list([{EnableCNAM, 'false'}]))});
+        'true' ->
             case kz_json:get_ne_binary_value(<<"cnam_listing_details">>, Body) of
-                undefined -> rep_fixture("telnyx_activate_cnam_inbound.json");
+                'undefined' -> rep_fixture("telnyx_activate_cnam_inbound.json");
                 _ -> rep_fixture("telnyx_activate_cnam_outbound.json")
             end
     end;
@@ -157,10 +158,11 @@ rep({'ok', Code, _Headers, _Response}) ->
     Reason = http_code(Code),
     lager:warning("request error: ~p (~s)", [Code, Reason]),
     lager:debug("response: ~s", [_Response]),
-    knm_errors:by_carrier(?CARRIER, Reason, <<>>);
+    %% FIXME: investigate do we have the number here to log?
+    knm_errors:by_carrier(?CARRIER, Reason, 'undefined');
 rep({'error', R}=_E) ->
     lager:warning("request error: ~p", [_E]),
-    knm_errors:by_carrier(?CARRIER, kz_term:to_binary(R), <<>>).
+    knm_errors:by_carrier(?CARRIER, kz_term:to_binary(R), 'undefined').
 
 -spec http_code(pos_integer()) -> atom().
 http_code(400) -> 'bad_request';

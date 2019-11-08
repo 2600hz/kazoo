@@ -875,8 +875,8 @@ is_account_id(?MATCH_ACCOUNT_RAW(_)) -> true;
 is_account_id(_) -> false.
 
 pn(Num) ->
-    {'ok', N} = knm_number:get(Num),
-    knm_number:phone_number(N).
+    {'ok', PN} = knm_number:get(Num),
+    PN.
 
 nums() ->
     [?TEST_AVAILABLE_NUM

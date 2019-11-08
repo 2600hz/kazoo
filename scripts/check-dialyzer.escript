@@ -128,13 +128,19 @@ warn(PLT, Options, Paths) ->
 
     do_warn(PLT, AllModules, Bulk).
 
-log_work_to_do([_], _AllModules, 'false') ->
-    io:format("analyzing 1 path...~n", []);
+log_work_to_do([BeamPath], _AllModules, 'false') ->
+    io:format("analyzing 1 path...~n~p~n~n", [BeamPath]);
 log_work_to_do(BeamPaths, _AllModules, 'false') ->
-    io:format("analyzing ~p paths...~n", [length(BeamPaths)]);
+    io:format("analyzing ~p paths...~n", [length(BeamPaths)]),
+    _ = [io:format("~s~n", [File]) || File <- lists:usort(BeamPaths)],
+    io:format("\n"),
+    'ok';
 log_work_to_do(BeamPaths, AllModules, 'true') ->
     Len = length(BeamPaths),
-    io:format("analyzing ~p paths + ~p called modules...~n", [Len, length(AllModules)-Len]).
+    io:format("analyzing ~p paths + ~p called modules...~n~n", [Len, length(AllModules)-Len]),
+    _ = [io:format("~s~n", [File]) || File <- lists:usort(BeamPaths ++ AllModules)],
+    io:format("\n"),
+    'ok'.
 
 find_unknown_modules(_PLT, BeamPaths, 'false') -> BeamPaths;
 find_unknown_modules(PLT, BeamPaths, 'true') ->

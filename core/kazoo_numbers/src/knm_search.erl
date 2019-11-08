@@ -44,11 +44,27 @@
                   {'country', knm_util:country_iso3166a2()} |
                   {'offset', non_neg_integer()} |
                   {'blocks', boolean()} |
-                  {'account_id', kz_term:ne_binary()} |
+
+                  %% FIXME: knm_managed.erl:76:
+                  %% The test `<<_:8,_:_*8>> =:= undefined'
+                  %% can never evaluate to `true'
+                  {'account_id', kz_term:api_ne_binary()} |
+
                   {'query_id', kz_term:ne_binary()} |
-                  {'reseller_id', kz_term:ne_binary()}.
+                  {'reseller_id', kz_term:api_ne_binary()}. %% Same dialyzer warning
+
+-type result() :: {kz_term:ne_binary(), {kz_term:ne_binary(), module(), kz_term:ne_binary(), kz_json:object()}}.
+-type results() :: [result()].
+-type mod_response() ::
+        kz_either:either(kz_term:ne_binary() | atom(), results()) |
+        {'bulk', results()}.
+
 -type options() :: [option()].
--export_type([option/0, options/0]).
+-export_type([option/0, options/0
+             ,results/0
+             ,result/0
+             ,mod_response/0
+             ]).
 
 -define(MAX_SEARCH, kapps_config:get_pos_integer(?KNM_CONFIG_CAT, <<"maximum_search_quantity">>, 500)).
 -define(NUMBER_SEARCH_TIMEOUT
@@ -263,18 +279,18 @@ search_carrier(Carrier, Options) ->
 wait_for_search(0) -> 'ok';
 wait_for_search(N) ->
     receive
-        {_Carrier, {ok, []}} ->
+        {_Carrier, {'ok', []}} ->
             lager:debug("~s found no numbers", [_Carrier]),
             wait_for_search(N - 1);
         {_Carrier, {'ok', Numbers}} ->
             lager:debug("~s found numbers", [_Carrier]),
             gen_listener:cast(?MODULE, {'add_result', Numbers}),
             wait_for_search(N - 1);
-        {_Carrier, {bulk, Numbers}} ->
+        {_Carrier, {'bulk', Numbers}} ->
             lager:debug("~s found bulk numbers", [_Carrier]),
             gen_listener:cast(?MODULE, {'add_result', Numbers}),
             wait_for_search(N - 1);
-        {_Carrier, {error, not_available}} ->
+        {_Carrier, {'error', 'not_available'}} ->
             lager:debug("~s had no results", [_Carrier]),
             wait_for_search(N - 1);
         _Other ->
@@ -311,7 +327,7 @@ next(Options) ->
 %%------------------------------------------------------------------------------
 -ifndef(TEST).
 -spec create_discovery(kz_term:ne_binary(), module(), kz_json:object(), knm_number_options:options()) ->
-          knm_number:knm_number().
+          knm_phone_number:record().
 create_discovery(DID=?NE_BINARY, Carrier, Data, Options0) ->
     Options = [{'state', ?NUMBER_STATE_DISCOVERY}
               ,{'module_name', kz_term:to_binary(Carrier)}
@@ -321,12 +337,11 @@ create_discovery(DID=?NE_BINARY, Carrier, Data, Options0) ->
         knm_phone_number:setters(knm_phone_number:from_number_with_options(DID, Options)
                                 ,[{fun knm_phone_number:set_carrier_data/2, Data}]
                                 ),
-    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+    PhoneNumber.
 
--spec create_discovery(kz_json:object(), knm_number_options:options()) -> knm_number:knm_number().
+-spec create_discovery(kz_json:object(), knm_number_options:options()) -> knm_phone_number:record().
 create_discovery(JObj, Options) ->
-    PhoneNumber = knm_phone_number:from_json_with_options(JObj, Options),
-    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
+    knm_phone_number:from_json_with_options(JObj, Options).
 -endif.
 
 -spec quantity(options()) -> pos_integer().
@@ -395,18 +410,24 @@ reseller_id(Options) ->
 is_local(QID) ->
     ets:match_object(?ETS_DISCOVERY_CACHE, {QID, '_'}) =/= [].
 
--spec discovery(kz_term:ne_binary()) -> knm_number:knm_number_return().
+-spec discovery(kz_term:ne_binary()) ->
+          {'ok', knm_phone_number:record()} |
+          {'error', any()}.
 discovery(Num) ->
     discovery(Num, []).
 
--spec discovery(kz_term:ne_binary(), knm_number_options:options()) -> knm_number:knm_number_return().
+-spec discovery(kz_term:ne_binary(), knm_number_options:options()) ->
+          {'ok', knm_phone_number:record()} |
+          {'error', any()}.
 discovery(Num, Options) ->
     case local_discovery(Num, Options) of
         {'ok', _}=OK -> OK;
         {'error', 'not_found'} -> remote_discovery(Num, Options)
     end.
 
--spec local_discovery(kz_term:ne_binary(), knm_number_options:options()) -> knm_number:knm_number_return().
+-spec local_discovery(kz_term:ne_binary(), knm_number_options:options()) ->
+          {'ok', knm_phone_number:record()} |
+          {'error', any()}.
 -ifdef(TEST).
 local_discovery(_Num, _Options) -> {'error', 'not_found'}.
 -else.
@@ -418,7 +439,9 @@ local_discovery(Num, Options) ->
     end.
 -endif.
 
--spec remote_discovery(kz_term:ne_binary(), knm_number_options:options()) -> knm_number:knm_number_return().
+-spec remote_discovery(kz_term:ne_binary(), knm_number_options:options()) ->
+          {'ok', knm_phone_number:record()} |
+          {'error', any()}.
 -ifdef(TEST).
 remote_discovery(_Num, _Options) -> {'error', 'not_found'}.
 -else.
@@ -488,9 +511,9 @@ handle_number(JObj) ->
     Number = kapi_discovery:number(JObj),
     case local_discovery(Number, []) of
         {'error', 'not_found'} -> 'ok';
-        {'ok', KNumber} ->
+        {'ok', PN} ->
             Payload = [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
-                      ,{<<"Results">>, knm_phone_number:to_json(knm_number:phone_number(KNumber))}
+                      ,{<<"Results">>, knm_phone_number:to_json(PN)}
                        | kz_api:default_headers(kz_api:server_id(JObj), ?APP_NAME, ?APP_VERSION)
                       ],
             Publisher = fun(P) -> kapi_discovery:publish_resp(kz_api:server_id(JObj), P) end,

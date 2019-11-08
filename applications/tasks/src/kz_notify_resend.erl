@@ -122,9 +122,9 @@ init([]) ->
     lager:debug("~s has been started", [?NAME]),
     {'ok', #state{timer_ref = set_timer()}}.
 
--spec stop() -> ok.
+-spec stop() -> 'ok'.
 stop() ->
-    gen_server:cast(?SERVER, stop).
+    gen_server:cast(?SERVER, 'stop').
 
 -spec running() -> kz_json:objects().
 running() ->
@@ -257,11 +257,11 @@ process_single(JObj) ->
 -spec process_then_next_cycle(kz_json:objects()) -> 'ok'.
 process_then_next_cycle(Pendings) ->
     save_result(
-      lists:foldl(fun(JObj, #{ko := KO}=Map) ->
+      lists:foldl(fun(JObj, #{'failed' := Failed}=Map) ->
                           try send_notification(JObj, Map)
                           catch
                               _T:_E ->
-                                  Map#{ko := [JObj|KO]}
+                                  Map#{'failed' := [JObj|Failed]}
                           end
                   end
                  ,new_results_map()
@@ -271,7 +271,7 @@ process_then_next_cycle(Pendings) ->
     next().
 
 -spec send_notification(kz_json:object(), map()) -> map().
-send_notification(JObj, #{ok := OK}=Map) ->
+send_notification(JObj, #{'succeeded' := Succeeded}=Map) ->
     API = kz_json:get_value(<<"payload">>, JObj, kz_json:new()),
     NotifyType = kz_json:get_ne_binary_value(<<"notification_type">>, JObj),
     PublishFun = map_to_publish_fun(NotifyType),
@@ -279,7 +279,7 @@ send_notification(JObj, #{ok := OK}=Map) ->
     case handle_result(call_collect(API, PublishFun)) of
         'true' ->
             maybe_send_mwi(NotifyType, JObj),
-            Map#{ok := [JObj|OK]};
+            Map#{'succeeded' := [JObj|Succeeded]};
         'false' -> maybe_reschedule(NotifyType, JObj, Map)
     end.
 
@@ -299,8 +299,8 @@ save_result(Map) ->
     save_reschedules_publish(Map).
 
 -spec delete_successful_publish(map()) -> 'ok'.
-delete_successful_publish(#{ok := OK}) ->
-    case kz_datamgr:del_docs(?KZ_PENDING_NOTIFY_DB, OK) of
+delete_successful_publish(#{'succeeded' := Succeeded}) ->
+    case kz_datamgr:del_docs(?KZ_PENDING_NOTIFY_DB, Succeeded) of
         {'ok', Js} ->
             {_Saved, _Failed} = lists:partition(fun db_bulk_result/1, Js),
             lager:debug("successfully deleted ~b jobs", [length(_Saved)]);
@@ -309,8 +309,8 @@ delete_successful_publish(#{ok := OK}) ->
     end.
 
 -spec save_reschedules_publish(map()) -> 'ok'.
-save_reschedules_publish(#{ko := KO}) ->
-    case kz_datamgr:save_docs(?KZ_PENDING_NOTIFY_DB, KO) of
+save_reschedules_publish(#{'failed' := Failed}) ->
+    case kz_datamgr:save_docs(?KZ_PENDING_NOTIFY_DB, Failed) of
         {'ok', Js} ->
             {_Saved, _Failed} = lists:partition(fun db_bulk_result/1, Js),
             lager:debug("~b notifications was rescheduled", [length(_Saved)]);
@@ -339,7 +339,7 @@ handle_result({'returned', _, Resp}) -> kapps_notify_publisher:is_completed(Resp
 handle_result({'timeout', Resp}) -> kapps_notify_publisher:is_completed(Resp).
 
 -spec maybe_reschedule(kz_term:ne_binary(), kz_json:object(), map()) -> map().
-maybe_reschedule(NotifyType, JObj, #{ko := KO}=Map) ->
+maybe_reschedule(NotifyType, JObj, #{'failed' := Failed}=Map) ->
     J = apply_reschedule_logic(NotifyType, JObj),
     Attempts = kz_json:get_integer_value(<<"attempts">>, J, 0),
     Retries = kz_json:get_integer_value(<<"retries">>, J, ?DEFAULT_RETRY_COUNT),
@@ -347,10 +347,10 @@ maybe_reschedule(NotifyType, JObj, #{ko := KO}=Map) ->
     case Retries - Attempts >= 1 of
         'true' ->
             lager:debug("notification is rescheduled"),
-            Map#{ko := [kz_json:set_value(<<"attempts">>, Attempts + 1, J)|KO]};
+            Map#{'failed' := [kz_json:set_value(<<"attempts">>, Attempts + 1, J)|Failed]};
         'false' ->
             lager:debug("max retires reached"),
-            Map#{ko := [kz_json:set_value(<<"max_retried">>, 'true', J)|KO]} %% attempts ++ 1
+            Map#{'failed' := [kz_json:set_value(<<"max_retried">>, 'true', J)|Failed]} %% attempts ++ 1
     end.
 
 -spec apply_reschedule_logic(kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
@@ -417,8 +417,8 @@ map_to_publish_fun(Type) ->
 
 -spec new_results_map() -> map().
 new_results_map() ->
-    #{ok => []
-     ,ko => []
+    #{'succeeded' => []
+     ,'failed' => []
      }.
 
 maybe_send_mwi(<<"voicemail_new">>, JObj) ->

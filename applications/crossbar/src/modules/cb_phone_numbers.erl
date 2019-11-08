@@ -458,8 +458,8 @@ delete(Context, Number) ->
 -spec summary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 summary(Context, Number) ->
     case knm_number:get(Number, [{'auth_by', cb_context:auth_account_id(Context)}]) of
-        {'ok', KNMNumber} ->
-            crossbar_util:response(knm_number:to_public_json(KNMNumber), Context);
+        {'ok', PN} ->
+            crossbar_util:response(knm_phone_number:to_public_json(PN), Context);
         {'error', _JObj} ->
             maybe_find_port_number(Context, Number, should_include_ports(Context))
     end.
@@ -491,7 +491,7 @@ port_number_summary(_PhoneNumber, Context, 'false') ->
     reply_number_not_found(Context).
 
 -spec normalize_port_number(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-          knm_phone_number_return().
+          knm_phone_number:return().
 normalize_port_number(JObj, Num, AuthBy) ->
     knm_phone_number:setters(knm_phone_number:from_number_with_options(Num, [{'auth_by', AuthBy}])
                             ,[{fun knm_phone_number:set_assigned_to/2, kz_json:get_value(<<"assigned_to">>, JObj)}
@@ -888,16 +888,16 @@ set_response(Result, Context) ->
     set_response(Result, Context, fun() -> Context end).
 
 -type result() :: {'ok', kz_json:object()} |
-                  knm_numbers:ret() |
-                  knm_number_return() |
+                  knm_pipe:collection() |
+                  knm_number:return() |
                   {binary(), binary()}.
 -type cb() :: fun(() -> cb_context:context()).
 
 -spec set_response(result(), cb_context:context(), cb()) -> cb_context:context().
 set_response({'ok', Thing}, Context, _) ->
-    case knm_number:is_number(Thing) of
-        'true' -> crossbar_util:response(knm_number:to_public_json(Thing), Context);
-        'false' -> crossbar_util:response(Thing, Context)
+    case kz_json:is_json_object(Thing) of
+        'false' -> crossbar_util:response(knm_phone_number:to_public_json(Thing), Context);
+        'true' -> crossbar_util:response(Thing, Context)
     end;
 
 set_response(Ret=#{'quotes' := Quotes, 'options' := Options}, Context, CB) ->
@@ -909,7 +909,7 @@ set_response(Ret=#{'quotes' := Quotes, 'options' := Options}, Context, CB) ->
             crossbar_util:response_402(Quotes, Context);
         {'true', 'true'} -> CB();
         _ ->
-            ResultJObj = knm_numbers:to_json(Ret),
+            ResultJObj = knm_pipe:to_json(Ret),
             crossbar_util:response(ResultJObj, Context)
     end;
 
@@ -972,14 +972,14 @@ reply_number_not_found(Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec collection_process(cb_context:context(), kz_term:ne_binary() | http_method()) -> knm_numbers:ret().
+-spec collection_process(cb_context:context(), http_method()) -> knm_pipe:collection().
 collection_process(Context, Action) ->
     ReqData = cb_context:req_data(Context),
     Numbers = kz_json:get_list_value(<<"numbers">>, ReqData),
     Context1 = cb_context:set_req_data(Context, kz_json:delete_key(<<"numbers">>, ReqData)),
     numbers_action(Context1, Action, Numbers).
 
--spec numbers_action(cb_context:context(), kz_term:ne_binary() | http_method(), kz_term:ne_binaries()) -> knm_numbers:ret().
+-spec numbers_action(cb_context:context(), http_method(), kz_term:ne_binaries()) -> knm_pipe:collection().
 numbers_action(Context, ?ACTIVATE, Numbers) ->
     Options = [{'public_fields', cb_context:req_data(Context)}
                | default_knm_options(Context)

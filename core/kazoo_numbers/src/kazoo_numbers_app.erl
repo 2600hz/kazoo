@@ -28,17 +28,17 @@
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_StartType, _StartArgs) ->
     declare_exchanges(),
-    kapps_maintenance:bind({'migrate', <<"4.0">>}, 'kazoo_numbers_maintenance', 'migrate'),
-    kapps_maintenance:bind({'refresh_account', <<"*">>}, 'kazoo_numbers_maintenance', 'update_number_services_view'),
+    _ = kapps_maintenance:bind({'migrate', <<"4.0">>}, 'kazoo_numbers_maintenance', 'migrate'),
+    _ = kapps_maintenance:bind({'refresh_account', <<"*">>}, 'kazoo_numbers_maintenance', 'update_number_services_view'),
     kapps_maintenance:bind_and_register_views(?APP, 'kazoo_numbers_maintenance', 'register_views'),
     kazoo_numbers_maintenance:init_dbs(),
     kazoo_numbers_sup:start_link().
 
 -spec stop(any()) -> any().
 stop(_State) ->
-    kapps_maintenance:unbind({'migrate', <<"4.0">>}, 'kazoo_numbers_maintenance', 'migrate'),
-    kapps_maintenance:unbind({'refresh_account', <<"*">>}, 'kazoo_numbers_maintenance', 'update_number_services_view'),
-    kapps_maintenance:unbind('register_views', 'kazoo_numbers_maintenance', 'register_views'),
+    _ = kapps_maintenance:unbind({'migrate', <<"4.0">>}, 'kazoo_numbers_maintenance', 'migrate'),
+    _ = kapps_maintenance:unbind({'refresh_account', <<"*">>}, 'kazoo_numbers_maintenance', 'update_number_services_view'),
+    _ = kapps_maintenance:unbind('register_views', 'kazoo_numbers_maintenance', 'register_views'),
     'ok'.
 
 -spec declare_exchanges() -> 'ok'.

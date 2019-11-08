@@ -44,9 +44,9 @@ is_local() -> 'false'.
 %% @doc Check with carrier if these numbers are registered with it.
 %% @end
 %%------------------------------------------------------------------------------
--spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
-          {error, any()}.
-check_numbers(_Numbers) -> {error, not_implemented}.
+-spec check_numbers(kz_term:ne_binaries()) -> {'ok', kz_json:object()} |
+          {'error', any()}.
+check_numbers(_Numbers) -> {'error', 'not_implemented'}.
 
 %%------------------------------------------------------------------------------
 %% @doc Query the local system for a quantity of available numbers
@@ -54,8 +54,7 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
-          {'ok', knm_number:knm_numbers()} |
-          {'error', any()}.
+          {'error', 'not_available'}.
 find_numbers(_Prefix, _Quantity, _Options) ->
     {'error', 'not_available'}.
 
@@ -63,22 +62,22 @@ find_numbers(_Prefix, _Quantity, _Options) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
-is_number_billable(_Number) -> 'false'.
+-spec is_number_billable(knm_phone_number:record()) -> boolean().
+is_number_billable(_PN) -> 'false'.
 
 %%------------------------------------------------------------------------------
 %% @doc Acquire a given number from the carrier
 %% @end
 %%------------------------------------------------------------------------------
--spec acquire_number(knm_number:knm_number()) -> knm_number:knm_number().
-acquire_number(Number) -> Number.
+-spec acquire_number(knm_phone_number:record()) -> knm_phone_number:record().
+acquire_number(PN) -> PN.
 
 %%------------------------------------------------------------------------------
 %% @doc Release a number from the routing table
 %% @end
 %%------------------------------------------------------------------------------
--spec disconnect_number(knm_number:knm_number()) -> knm_number:knm_number().
-disconnect_number(Number) -> Number.
+-spec disconnect_number(knm_phone_number:record()) -> knm_phone_number:record().
+disconnect_number(PN) -> PN.
 
 %%------------------------------------------------------------------------------
 %% @doc

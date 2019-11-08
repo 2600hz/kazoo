@@ -7,20 +7,6 @@
 
 -define(KNM_DEFAULT_COUNTRY, <<"US">>).
 
--type knm_phone_number_return() ::
-        {'ok', knm_phone_number:knm_phone_number()} |
-        {'error', any()}.
-
--type quotes() :: kz_term:api_objects().
-
--type dry_run_return() :: {'dry_run', quotes()}.
-
--type knm_number_return() ::
-        {'ok', knm_number:knm_number()} |
-        dry_run_return() |
-        {'error', atom()} |
-        {'error', knm_errors:error()}.
-
 -define(PVT_STATE_LEGACY, <<"pvt_number_state">>).
 
 -define(KNM_DB_PREFIX, "numbers/").

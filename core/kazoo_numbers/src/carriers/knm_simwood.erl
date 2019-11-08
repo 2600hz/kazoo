@@ -63,32 +63,34 @@ is_local() -> 'false'.
 %% @doc Check with carrier if these numbers are registered with it.
 %% @end
 %%------------------------------------------------------------------------------
--spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
-          {error, any()}.
-check_numbers(_Numbers) -> {error, not_implemented}.
+-spec check_numbers(kz_term:ne_binaries()) -> {'ok', kz_json:object()} |
+          {'error', any()}.
+check_numbers(_Numbers) -> {'error', 'not_implemented'}.
 
 %%------------------------------------------------------------------------------
 %% @doc Query Simwood for available numbers.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
-          {'ok', knm_number:knm_numbers()}.
+          knm_search:mod_response().
 find_numbers(Prefix, Quantity, Options) ->
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/available/standard/">>, sw_quantity(Quantity), "?pattern=", Prefix, "*"]),
-    {'ok', Body} = query_simwood(URL, 'get'),
-    process_response(kz_json:decode(Body), Options).
+    case query_simwood(URL, 'get') of
+        {'ok', Body} -> process_response(kz_json:decode(Body), Options);
+        {'error', 'not_available'}=Error -> Error
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Acquire a given number from Simwood.
 %% @end
 %%------------------------------------------------------------------------------
--spec acquire_number(knm_number:knm_number()) ->
-          knm_number:knm_number().
-acquire_number(Number) ->
-    Num = to_simwood(Number),
+-spec acquire_number(knm_phone_number:record()) ->
+          knm_phone_number:record().
+acquire_number(PN) ->
+    Num = to_simwood(PN),
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, Num]),
     case query_simwood(URL, 'put') of
-        {'ok', _Body} -> Number;
+        {'ok', _Body} -> PN;
         {'error', Error} ->
             knm_errors:by_carrier(?MODULE, Error, Num)
     end.
@@ -97,13 +99,13 @@ acquire_number(Number) ->
 %% @doc Return number back to Simwood.
 %% @end
 %%------------------------------------------------------------------------------
--spec disconnect_number(knm_number:knm_number()) ->
-          knm_number:knm_number().
-disconnect_number(Number) ->
-    Num = to_simwood(Number),
+-spec disconnect_number(knm_phone_number:record()) ->
+          knm_phone_number:record().
+disconnect_number(PN) ->
+    Num = to_simwood(PN),
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, Num]),
     case query_simwood(URL, 'delete') of
-        {'ok', _Body} -> Number;
+        {'ok', _Body} -> PN;
         {'error', Error} ->
             knm_errors:by_carrier(?MODULE, Error, Num)
     end.
@@ -112,8 +114,8 @@ disconnect_number(Number) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
-is_number_billable(_Number) -> 'true'.
+-spec is_number_billable(knm_phone_number:record()) -> boolean().
+is_number_billable(_PN) -> 'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -130,9 +132,9 @@ should_lookup_cnam() -> 'true'.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec to_simwood(knm_number:knm_number()) -> kz_term:ne_binary().
-to_simwood(Number) ->
-    case knm_phone_number:number(knm_number:phone_number(Number)) of
+-spec to_simwood(knm_phone_number:record()) -> kz_term:ne_binary().
+to_simwood(PN) ->
+    case knm_phone_number:number(PN) of
         <<$+, N/binary>> -> N;
         N -> N
     end.
@@ -174,13 +176,14 @@ sw_quantity(_Quantity) -> <<"100">>.
 %% @end
 %%------------------------------------------------------------------------------
 -spec process_response(kz_json:objects(), knm_carriers:options()) ->
-          {'ok', knm_number:knm_numbers()}.
+          {'ok', knm_search:results()}.
 process_response(JObjs, Options) ->
     QID = knm_search:query_id(Options),
     {'ok', [N || JObj <- JObjs,
                  N <- [response_jobj_to_number(JObj, QID)]
            ]}.
 
+-spec response_jobj_to_number(kz_json:object(), kz_term:ne_binary()) -> knm_search:result().
 response_jobj_to_number(JObj, QID) ->
     Num = list_to_binary([kz_json:get_binary_value(<<"country_code">>, JObj)
                          ,kz_json:get_binary_value(<<"number">>, JObj)

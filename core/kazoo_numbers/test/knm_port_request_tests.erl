@@ -37,8 +37,7 @@ transition_port_from_port_in() ->
               ,{ported_in, true}
                |base()
               ],
-    {ok, N} = knm_number:create(?TEST_PORT_IN_NUM, Options),
-    PN = knm_number:phone_number(N),
+    {ok, PN} = knm_number:create(?TEST_PORT_IN_NUM, Options),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
@@ -68,8 +67,7 @@ transition_port_from_port_in_with_different_module_configured() ->
               ,{ported_in, true}
                |base()
               ],
-    {ok, N} = knm_number:create(?TEST_PORT_IN2_NUM, Options),
-    PN = knm_number:phone_number(N),
+    {ok, PN} = knm_number:create(?TEST_PORT_IN2_NUM, Options),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
@@ -84,7 +82,7 @@ transition_port_from_port_in_with_different_module_configured() ->
      ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(PN))
      }
     ,{"Verify the configured port in module name is being used"
-      %% TODO: set number_manager.port_in_module_name to knm_telnyx after ficture sace fatures
+      %% TODO: set number_manager.port_in_module_name to knm_telnyx after fixture have save feature
       %% ,?_assertEqual(<<"knm_telnyx">>, knm_phone_number:module_name(PN))
      ,?_assertEqual(?PORT_IN_MODULE_NAME, knm_phone_number:module_name(PN))
      }
@@ -103,8 +101,7 @@ transition_port_from_available() ->
               ,{ported_in, true}
                |base()
               ],
-    {ok, N} = knm_number:create(?TEST_AVAILABLE_NUM, Options),
-    PN = knm_number:phone_number(N),
+    {ok, PN} = knm_number:create(?TEST_AVAILABLE_NUM, Options),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
@@ -119,7 +116,7 @@ transition_port_from_available() ->
      ,?_assertEqual([], knm_phone_number:reserve_history(PN))
      }
     ,{"Verify the configured port in module name is being used"
-      %% TODO: set number_manager.port_in_module_name to knm_telnyx after ficture sace fatures
+      %% TODO: set number_manager.port_in_module_name to knm_telnyx after fixture have save feature
       %% ,?_assertEqual(<<"knm_bandwidth2">>, knm_phone_number:module_name(PN))
      ,?_assertEqual(?PORT_IN_MODULE_NAME, knm_phone_number:module_name(PN))
      }
@@ -137,10 +134,8 @@ transition_port_from_available_not_specifying() ->
     Options1 = [{auth_by,?MASTER_ACCOUNT_ID} | base()],
     Options2 = [{auth_by,?KNM_DEFAULT_AUTH_BY} | base()],
     Num = ?TEST_AVAILABLE_NUM,
-    {ok, N1} = knm_number:create(Num, Options1),
-    PN1 = knm_number:phone_number(N1),
-    {ok, N2} = knm_number:create(Num, Options2),
-    PN2 = knm_number:phone_number(N2),
+    {ok, PN1} = knm_number:create(Num, Options1),
+    {ok, PN2} = knm_number:create(Num, Options2),
     [?_assert(knm_phone_number:is_dirty(PN1))
     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN1))
     ,{"Verify number create has nothing to do with ports and is not ported_in"
@@ -158,8 +153,7 @@ transition_port_from_not_found() ->
               ,{ported_in, true}
                |base()
               ],
-    {ok, N} = knm_number:create(?TEST_CREATE_NUM, Options),
-    PN = knm_number:phone_number(N),
+    {ok, PN} = knm_number:create(?TEST_CREATE_NUM, Options),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
@@ -174,7 +168,7 @@ transition_port_from_not_found() ->
      ,?_assertEqual([], knm_phone_number:reserve_history(PN))
      }
     ,{"Verify the configured port in module name is being used"
-      %% TODO: set number_manager.port_in_module_name to knm_telnyx after ficture sace fatures
+      %% TODO: set number_manager.port_in_module_name to knm_telnyx after fixture have save feature
       %% ,?_assertEqual(<<"knm_vitelity">>, knm_phone_number:module_name(PN))
      ,?_assertEqual(?PORT_IN_MODULE_NAME, knm_phone_number:module_name(PN))
      }

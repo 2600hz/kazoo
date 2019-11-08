@@ -173,8 +173,7 @@ create_number(Job, AccountId, AuthAccountId, CarrierModule, DID) ->
               ,{'module_name', CarrierModule}
               ],
     try knm_number:create(DID, Options) of
-        {'ok', Number} ->
-            PhoneNumber = knm_number:phone_number(Number),
+        {'ok', PhoneNumber} ->
             lager:debug("successfully created number ~s for account ~s"
                        ,[knm_phone_number:number(PhoneNumber), AccountId]),
             update_status(kz_json:set_value([?KEY_SUCCESS, knm_phone_number:number(PhoneNumber)]

@@ -72,20 +72,18 @@ matcher(Prefix) ->
 acquire_number() ->
     Num = <<"+14352154006">>,
     PN = knm_phone_number:from_number(Num),
-    N = knm_number:set_phone_number(knm_number:new(), PN),
-    Result = knm_voip_innovations:acquire_number(N),
+    Result = knm_voip_innovations:acquire_number(PN),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify number is still one inputed"
-     ,?_assertEqual(Num, knm_phone_number:number(knm_number:phone_number(Result)))
+     ,?_assertEqual(Num, knm_phone_number:number(Result))
      }
     ].
 
 disconnect_number() ->
     N = <<"+14352154974">>,
-    PhoneNumber = knm_phone_number:from_number(N),
-    Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),
+    PN = knm_phone_number:from_number(N),
     Msg = <<"Number currently available">>,
     [{"Verify cannot release number not detained"
-     ,?_assertException('throw', {'error','by_carrier',N,{'knm_voip_innovations',Msg}}, knm_voip_innovations:disconnect_number(Number))
+     ,?_assertException('throw', {'error','by_carrier',N,{'knm_voip_innovations',Msg}}, knm_voip_innovations:disconnect_number(PN))
      }
     ].

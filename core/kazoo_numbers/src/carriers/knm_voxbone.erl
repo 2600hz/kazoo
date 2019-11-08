@@ -56,12 +56,14 @@ check_numbers(_Numbers) ->
 %% Query the voxbone system for a quantity of available numbers
 %% @end
 %%------------------------------------------------------------------------------
--spec find_numbers(kz_term:ne_binary(), kz_term:api_pos_integer(), knm_carriers:options()) -> {'ok', knm_number:numbers()} | {'error', any()}.
+-spec find_numbers(kz_term:ne_binary(), kz_term:api_pos_integer(), knm_search:options()) ->
+          {'ok', knm_search:results()}.
 find_numbers(Number, Quantity, Options) ->
     Country = knm_iso3166_util:country(proplists:get_value('country', Options)),
     find_numbers(Number, Quantity, Options, Country).
 
--spec find_numbers(kz_term:ne_binary(), kz_term:api_pos_integer(), knm_carriers:options(), knm_iso3166_util:country()) -> {'ok', knm_number:phone_numbers()} | {'error', any()}.
+-spec find_numbers(kz_term:ne_binary(), kz_term:api_pos_integer(), knm_search:options(), knm_iso3166_util:country()) ->
+          {'ok', knm_search:results()}.
 find_numbers(_Number, _Quantity, Options, #{a3 := A3}=_Country) ->
     Qty = lists:min([Q || {'quantity', Q} <- Options]),
     Prefix = maybe_escape_wildcard(knm_search:prefix(Options)),
@@ -87,26 +89,26 @@ maybe_escape_wildcard(Prefix) ->
 %% Acquire a given number from the carrier
 %% @end
 %%------------------------------------------------------------------------------
--spec acquire_number(knm_number:knm_number()) -> knm_number:knm_number().
-acquire_number(Number) -> Number.
+-spec acquire_number(knm_phone_number:record()) -> knm_phone_number:record().
+acquire_number(PN) -> PN.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec disconnect_number(knm_number:knm_number()) -> knm_number:knm_number().
-disconnect_number(Number) ->
-    {'ok', Response} = fetch_did(Number),
+-spec disconnect_number(knm_phone_number:record()) -> knm_phone_number:record().
+disconnect_number(PN) ->
+    {'ok', Response} = fetch_did(PN),
     {Numbers, _Keys} = kz_json:get_values(<<"dids">>, Response),
     _ = release(Numbers),
-    Number.
+    PN.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
-is_number_billable(_Number) -> 'true'.
+-spec is_number_billable(knm_phone_number:record()) -> boolean().
+is_number_billable(_PN) -> 'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -156,7 +158,8 @@ create_cart(Options) ->
 %% Verify order can be fulfilled and initialize cart
 %% @end
 %%------------------------------------------------------------------------------
--spec search(kz_term:api_pos_integer(), kz_term:proplist(), kz_term:proplist()) -> {'ok', knm_number:numbers()}.
+-spec search(kz_term:api_pos_integer(), kz_search:options(), kz_term:proplist()) ->
+          {'ok', knm_search:results()}.
 search(Quantity, Options, SearchOptions) ->
     Balance = account_balance(),
     #{total := Total
@@ -167,7 +170,7 @@ search(Quantity, Options, SearchOptions) ->
     case {Total < Quantity, Balance}  of
         %% We can't fulfill the quantity so return
         {_, Balance} when Balance < Cost -> knm_errors:unspecified("please contact the carrier administrator", -61);
-        {'true', Balance} when Balance >= Cost -> knm_errors:unspecified("insufficient inventory to sastisfy request", 404);
+        {'true', Balance} when Balance >= Cost -> knm_errors:unspecified("insufficient inventory to satisfy request", 404);
         {'false', Balance} when Balance >= Cost ->
             Cart = create_cart(Options),
             maybe_start_order(Cart, Order)
@@ -233,10 +236,11 @@ maybe_reserve_did_qty(_Available, Need) ->
 %% @doc Attempt to add quantities to cart and checkout
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_start_order(map(), [{kz_term:api_pos_integer(), kz_term:api_pos_integer()}]) -> {'ok', knm_number:phone_numbers()}.
+-spec maybe_start_order(map(), [{kz_term:api_pos_integer(), kz_term:api_pos_integer()}]) ->
+          {'ok', knm_search:results()}.
 maybe_start_order(#{id := _CartId, query_id := _QueryId}=Cart, Order) ->
     lager:debug("initializing order for query ~s with cart ~s", [_QueryId, _CartId]),
-    'ok' = maybe_add_to_cart(Order, Cart),
+    maybe_add_to_cart(Order, Cart),
     checkout(Cart).
 
 %%------------------------------------------------------------------------------
@@ -261,7 +265,7 @@ maybe_add_to_cart([{DidGroupId, Quantity} | Rest], #{id := CartId, query_id := _
     of
         {'ok', _} -> maybe_add_to_cart(Rest, Cart);
         {'error', Message} ->
-            _ = maybe_destroy_cart(Cart),
+            maybe_destroy_cart(Cart),
             knm_errors:unspecified(Message, 503)
     end.
 
@@ -270,7 +274,7 @@ maybe_add_to_cart([{DidGroupId, Quantity} | Rest], #{id := CartId, query_id := _
 %% Checkout the order and generate the DID summary
 %% @end
 %%------------------------------------------------------------------------------
--spec checkout(map()) -> {'error', any()} | {'ok', knm_number:phone_numbers()}.
+-spec checkout(map()) -> {'ok', knm_search:results()}.
 checkout(#{id := CartId, query_id := _QueryId}=Cart) ->
     case knm_voxbone_util:voxbone_request('get'
                                          ,<<"ordering/cart/", (kz_term:to_binary(CartId))/binary, "/checkout">>
@@ -278,7 +282,7 @@ checkout(#{id := CartId, query_id := _QueryId}=Cart) ->
                                          )
     of
         {'error', Message} ->
-            _ = maybe_destroy_cart(Cart),
+            maybe_destroy_cart(Cart),
             knm_errors:unspecified(Message, 503);
         {'ok',  Response} ->
             generate_number_summary(Cart, kz_json:get_value(<<"productCheckoutList">>, Response))
@@ -289,11 +293,13 @@ checkout(#{id := CartId, query_id := _QueryId}=Cart) ->
 %% Extract actual DIDs from order and normalize to knm search results
 %% @end
 %%------------------------------------------------------------------------------
--spec generate_number_summary(map(), kz_json:objects()) -> {'error', any()} | {'ok', knm_number:numbers()}.
+-spec generate_number_summary(map(), kz_json:objects()) ->
+          {'ok', knm_search:results()}.
 generate_number_summary(#{id := _CartId, query_id := _QueryId}=Cart, OrderSummary) ->
     generate_number_summary(Cart, OrderSummary, []).
 
--spec generate_number_summary(map(), kz_json:objects(), knm_number:numbers()) -> {'error', any()} | {'ok', knm_number:numbers()}.
+-spec generate_number_summary(map(), kz_json:objects(), knm_number:numbers()) ->
+          {'ok', knm_search:results()}.
 generate_number_summary(#{id := _CartId, query_id := _QueryId}=_Cart, [], Acc) ->
     {'ok', Acc};
 generate_number_summary(#{id := _CartId, query_id := QueryId}=Cart, [Order | Rest], Acc) ->
@@ -305,7 +311,7 @@ generate_number_summary(#{id := _CartId, query_id := QueryId}=Cart, [Order | Res
                        | knm_voxbone_util:required_params()
                       ],
             {'ok', DIDs} = knm_voxbone_util:voxbone_request('get', <<"inventory/did">>, Options),
-            KNMs = order_to_KNM(QueryId, DIDs),
+            KNMs = order_to_search_result(QueryId, DIDs),
             generate_number_summary(Cart, Rest, KNMs ++ Acc)
     end.
 
@@ -314,18 +320,17 @@ generate_number_summary(#{id := _CartId, query_id := QueryId}=Cart, [Order | Res
 %% Convert voxbone dids into knm phone numbers
 %% @end
 %%------------------------------------------------------------------------------
--type knm_order() :: {kz_term:ne_binary(), ?MODULE, kz_term:ne_binary(), kz_json:object()}.
-
--spec order_to_KNM(QueryId, kz_json:object()) -> [{QueryId, knm_order()}].
-order_to_KNM(QueryId, DIDs) ->
+-spec order_to_search_result(kz_term:ne_binary(), kz_json:object()) -> knm_search:results().
+order_to_search_result(QueryId, DIDs) ->
     JObjs = kz_json:get_value(<<"dids">>, DIDs),
-    order_to_KNM(QueryId, JObjs, []).
+    order_to_search_result(QueryId, JObjs, []).
 
--spec order_to_KNM(QueryId, kz_json:objects(), knm_number:phone_numbers()) -> [{QueryId, knm_order()}].
+-spec order_to_search_result(kz_term:ne_binary(), kz_json:objects(), knm_search:results()) ->
+          knm_search:results().
 -ifndef(TEST).
-order_to_KNM(_QueryId, [], Acc) ->
+order_to_search_result(_QueryId, [], Acc) ->
     Acc;
-order_to_KNM(QueryId, [DID | Rest], Acc) ->
+order_to_search_result(QueryId, [DID | Rest], Acc) ->
     MasterAccountId = kapps_config:get(<<"accounts">>, <<"master_account_id">>),
     Options = [{'auth_by', MasterAccountId}
               ,{'assign_to', MasterAccountId}
@@ -339,25 +344,25 @@ order_to_KNM(QueryId, [DID | Rest], Acc) ->
 
     NumberReturn = {E164, ?MODULE, ?NUMBER_STATE_AVAILABLE, DID},
 
-    order_to_KNM(QueryId, Rest, [{QueryId, NumberReturn} | Acc]).
+    order_to_search_result(QueryId, Rest, [{QueryId, NumberReturn} | Acc]).
 -else.
-order_to_KNM(_QueryId, [], Acc) ->
+order_to_search_result(_QueryId, [], Acc) ->
     Acc;
-order_to_KNM(QueryId, [DID | Rest], Acc) ->
+order_to_search_result(QueryId, [DID | Rest], Acc) ->
     DID2 = kz_json:get_value(<<"e164">>, DID),
     Number = {DID2, ?MODULE, ?NUMBER_STATE_AVAILABLE, DID},
-    order_to_KNM(QueryId, Rest, [{QueryId, Number} | Acc]).
+    order_to_search_result(QueryId, Rest, [{QueryId, Number} | Acc]).
 -endif.
 %%------------------------------------------------------------------------------
 %% @doc
 %% Cleanup voxbone cart artifact when order can't be satisfied.
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_destroy_cart(map()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec maybe_destroy_cart(map()) -> 'ok'.
 maybe_destroy_cart(#{id := CartId, query_id := _QueryId}=_Cart) ->
     case knm_voxbone_util:voxbone_request('delete', <<"ordering/cart/",(kz_term:to_binary(CartId))/binary>>, []) of
         {'error', _Msg} -> knm_errors:unspecified("there was an error destroying cart", 500);
-        Response -> Response
+        _ -> 'ok'
     end.
 
 %%------------------------------------------------------------------------------
@@ -365,14 +370,13 @@ maybe_destroy_cart(#{id := CartId, query_id := _QueryId}=_Cart) ->
 %% Fetches DID metadata from voxbone portal
 %% @end
 %%------------------------------------------------------------------------------
--spec fetch_did(knm_number:knm_number()) -> {'ok', kz_json:object()} | {'error', any()}.
-fetch_did(Number) ->
-    PN = knm_number:phone_number(Number),
+-spec fetch_did(knm_phone_number:record()) -> {'ok', kz_json:object()} | {'error', any()}.
+fetch_did(PN) ->
     Options = [{'e164Pattern', knm_voxbone_util:to_voxbone_pattern(knm_phone_number:number(PN))}
                | knm_voxbone_util:required_params()
               ],
     case knm_voxbone_util:voxbone_request('get', <<"inventory/did">>, Options) of
-        {'error', _Msg} -> knm_errors:by_carrier(?MODULE, "there was an error fetching metadata for number ", Number);
+        {'error', _Msg} -> knm_errors:by_carrier(?MODULE, "there was an error fetching metadata for number ", PN);
         Response -> Response
     end.
 

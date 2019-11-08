@@ -26,11 +26,9 @@ db_dependant() ->
 
 keeps_carrier() ->
     Num = ?BW_EXISTING_DID,
-    {ok, N0} = knm_number:get(Num),
-    PN0 = knm_number:phone_number(N0),
+    {ok, PN0} = knm_number:get(Num),
     Options = [{assign_to, ?RESELLER_ACCOUNT_ID} | knm_number_options:default()],
-    {ok, N1} = knm_number:reconcile(Num, Options),
-    PN1 = knm_number:phone_number(N1),
+    {ok, PN1} = knm_number:reconcile(Num, Options),
     [?_assert(knm_phone_number:is_dirty(PN1))
     ,?_assertNotEqual(knm_carriers:default_carrier(), knm_phone_number:module_name(PN0))
     ,{"Verify number carrier stayed the same"
@@ -40,14 +38,12 @@ keeps_carrier() ->
 
 sets_carrier_for_mobile() ->
     Num = ?BW_EXISTING_DID,
-    {ok, N0} = knm_number:get(Num),
-    PN0 = knm_number:phone_number(N0),
+    {ok, PN0} = knm_number:get(Num),
     Options = [{assign_to, ?RESELLER_ACCOUNT_ID}
               ,{module_name, ?CARRIER_MDN}
                | knm_number_options:default()
               ],
-    {ok, N1} = knm_number:reconcile(Num, Options),
-    PN1 = knm_number:phone_number(N1),
+    {ok, PN1} = knm_number:reconcile(Num, Options),
     [?_assert(knm_phone_number:is_dirty(PN1))
     ,?_assertNotEqual(knm_carriers:default_carrier(), knm_phone_number:module_name(PN0))
     ,?_assertNotEqual(?CARRIER_MDN, knm_phone_number:module_name(PN0))

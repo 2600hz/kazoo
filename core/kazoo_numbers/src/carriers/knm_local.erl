@@ -48,9 +48,9 @@ is_local() -> 'true'.
 %% @doc Check with carrier if these numbers are registered with it.
 %% @end
 %%------------------------------------------------------------------------------
--spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
-          {error, any()}.
-check_numbers(_Numbers) -> {error, not_implemented}.
+-spec check_numbers(kz_term:ne_binaries()) -> {'ok', kz_json:object()} |
+          {'error', any()}.
+check_numbers(_Numbers) -> {'error', 'not_implemented'}.
 
 %%------------------------------------------------------------------------------
 %% @doc Query the local system for a quantity of available numbers
@@ -58,8 +58,7 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
-          {'ok', knm_number:knm_numbers()} |
-          {'error', any()}.
+          knm_search:mod_response().
 find_numbers(Prefix, Quantity, Options) ->
     case knm_carriers:account_id(Options) of
         'undefined' -> {'error', 'not_available'};
@@ -70,15 +69,14 @@ find_numbers(Prefix, Quantity, Options) ->
     end.
 
 -spec do_find_numbers(kz_term:ne_binary(), pos_integer(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-          {'ok', knm_number:knm_numbers()} |
-          {'error', any()}.
+          knm_search:mod_response().
 do_find_numbers(<<"+",_/binary>>=Prefix, Quantity, Offset, AccountId, QID)
   when is_integer(Quantity), Quantity > 0 ->
     Local = erlang:atom_to_binary(?MODULE, 'utf8'),
     ViewOptions = [{'startkey', [?NUMBER_STATE_AVAILABLE, Local, Prefix]}
                   ,{'endkey', [?NUMBER_STATE_AVAILABLE, Local, <<"\ufff0">>]}
                   ,{'limit', Quantity}
-                  ,{skip, Offset}
+                  ,{'skip', Offset}
                   ],
     case
         'undefined' /= (DB = knm_converters:to_db(Prefix))
@@ -92,15 +90,15 @@ do_find_numbers(<<"+",_/binary>>=Prefix, Quantity, Offset, AccountId, QID)
             lager:debug("found available local numbers for account ~s", [AccountId]),
             Numbers = format_numbers(QID, JObjs),
             find_more(Prefix, Quantity, Offset, AccountId, length(Numbers), QID, Numbers);
-        {'error', _R}=E ->
+        {'error', _R} ->
             lager:debug("failed to lookup available local numbers: ~p", [_R]),
-            E
+            {'error', 'datastore_fault'}
     end;
 do_find_numbers(_, _, _, _, _) ->
     {'error', 'not_available'}.
 
--spec find_more(kz_term:ne_binary(), pos_integer(), non_neg_integer(), kz_term:ne_binary(), non_neg_integer(), kz_term:ne_binary(), knm_number:knm_numbers()) ->
-          {'ok', knm_number:knm_numbers()}.
+-spec find_more(kz_term:ne_binary(), pos_integer(), non_neg_integer(), kz_term:ne_binary(), non_neg_integer(), kz_term:ne_binary(), knm_search:results()) ->
+          {'ok', knm_search:results()}.
 find_more(Prefix, Quantity, Offset, AccountId, NotEnough, QID, Numbers)
   when NotEnough < Quantity ->
     case do_find_numbers(Prefix, Quantity - NotEnough, Offset + NotEnough, AccountId, QID) of
@@ -110,36 +108,34 @@ find_more(Prefix, Quantity, Offset, AccountId, NotEnough, QID, Numbers)
 find_more(_, _, _, _, _Enough, _, Numbers) ->
     {'ok', Numbers}.
 
+-spec format_numbers(kz_term:ne_binary(), kz_json:objects()) -> knm_search:results().
 format_numbers(QID, JObjs) ->
-    Nums = [kz_doc:id(JObj) || JObj <- JObjs],
-    #{ok := Ns} = knm_numbers:get(Nums),
     [{QID, {knm_phone_number:number(PN), knm_phone_number:module_name(PN), knm_phone_number:state(PN), knm_phone_number:carrier_data(PN)}}
-     || N <- Ns,
-        PN <- [knm_number:phone_number(N)]
+     || PN <- knm_pipe:succeeded(knm_numbers:get([kz_doc:id(JObj) || JObj <- JObjs]))
     ].
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
-is_number_billable(_Number) -> 'false'.
+-spec is_number_billable(knm_phone_number:record()) -> boolean().
+is_number_billable(_PN) -> 'false'.
 
 %%------------------------------------------------------------------------------
 %% @doc Acquire a given number from the carrier
 %% @end
 %%------------------------------------------------------------------------------
--spec acquire_number(knm_number:knm_number()) -> knm_number:knm_number().
-acquire_number(Number) -> Number.
+-spec acquire_number(knm_phone_number:record()) -> knm_phone_number:record().
+acquire_number(PN) -> PN.
 
 %%------------------------------------------------------------------------------
 %% @doc Release a number from the routing table
 %% @end
 %%------------------------------------------------------------------------------
 
--spec disconnect_number(knm_number:knm_number()) ->
-          knm_number:knm_number().
-disconnect_number(Number) -> Number.
+-spec disconnect_number(knm_phone_number:record()) ->
+          knm_phone_number:record().
+disconnect_number(PN) -> PN.
 
 %%------------------------------------------------------------------------------
 %% @doc

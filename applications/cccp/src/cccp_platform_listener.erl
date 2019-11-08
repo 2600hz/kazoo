@@ -168,7 +168,7 @@ dial(JObj, Call) ->
     MaxConcurentCallsPerUser = kz_json:get_integer_value(<<"max_concurent_calls_per_user">>, JObj, 1),
     case (cccp_util:count_user_legs(UserId, AccountId) >= MaxConcurentCallsPerUser * 2) of
         'true' ->
-            kapps_call_command:b_prompt(<<"cf-move-too_many_channels">>, Call),
+            _ = kapps_call_command:b_prompt(<<"cf-move-too_many_channels">>, Call),
             kapps_call_command:hangup(Call);
         'false' ->
             AccountId = kz_json:get_value(<<"account_id">>, JObj),
@@ -194,13 +194,13 @@ pin_collect(Call, 0) ->
 pin_collect(Call, Retries) ->
     case kapps_call_command:b_prompt_and_collect_digits(9, 12, <<"disa-enter_pin">>, 3, Call) of
         {'ok', <<>>} ->
-            kapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
+            _ = kapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
             pin_collect(Call, Retries - 1);
         {'ok', EnteredPin} ->
             handle_entered_pin(Call, Retries, EnteredPin);
         _ ->
             lager:info("no pin entered."),
-            kapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
+            _ = kapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
             pin_collect(Call, Retries - 1)
     end.
 
@@ -211,6 +211,6 @@ handle_entered_pin(Call, Retries, EnteredPin) ->
             dial(AuthJObj, Call);
         _ ->
             lager:info("wrong Pin entered."),
-            kapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
+            _ = kapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
             pin_collect(Call, Retries - 1)
     end.

@@ -43,9 +43,6 @@
 -type reason() :: atom() | kz_term:ne_binary().
 -type error() :: kz_json:object().
 
--type kn() :: knm_number:knm_number().
--type kpn() :: knm_phone_number:knm_phone_number().
-
 -type thrown_error() :: {'error', atom()} |
                         {'error', atom(), any()} |
                         {'error', atom(), any(), any()}.
@@ -54,9 +51,9 @@
              ,thrown_error/0
              ]).
 
--spec unspecified(any(), kn() | kz_term:ne_binary()) -> no_return().
-unspecified(Error, Number) ->
-    throw({'error', Error, Number}).
+-spec unspecified(any(), knm_phone_number:record() | kz_term:ne_binary()) -> no_return().
+unspecified(Error, PN) ->
+    throw({'error', Error, PN}).
 
 -spec unauthorized() -> no_return().
 unauthorized() ->
@@ -66,55 +63,60 @@ unauthorized() ->
 number_exists(DID) ->
     throw({'error', 'number_exists', DID}).
 
--spec invalid_state_transition(kn() | kpn(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> no_return().
-invalid_state_transition(Number, undefined, ToState) ->
-    invalid_state_transition(Number, <<"(nothing)">>, ToState);
-invalid_state_transition(Number, FromState, ToState) ->
+-spec invalid_state_transition(knm_phone_number:record() | knm_phone_number:record(), kz_term:api_ne_binary(), kz_term:ne_binary()) -> no_return().
+invalid_state_transition(PN, undefined, ToState) ->
+    invalid_state_transition(PN, <<"(nothing)">>, ToState);
+invalid_state_transition(PN, FromState, ToState) ->
     Reason = <<"from ", FromState/binary, " to ", ToState/binary>>,
-    throw({'error', 'invalid_state_transition', Number, Reason}).
+    throw({'error', 'invalid_state_transition', PN, Reason}).
 
--spec no_change_required(kn()) -> no_return().
-no_change_required(Number) ->
-    throw({'error', 'no_change_required', Number}).
+-spec no_change_required(knm_phone_number:record()) -> no_return().
+no_change_required(PN) ->
+    throw({'error', 'no_change_required', PN}).
 
--spec service_restriction(kn(), kz_term:ne_binary()) -> no_return().
-service_restriction(Number, Message) ->
-    throw({'error', 'service_restriction', Number, Message}).
+-spec service_restriction(knm_phone_number:record(), kz_term:ne_binary()) -> no_return().
+service_restriction(PN, Message) ->
+    throw({'error', 'service_restriction', PN, Message}).
 
--spec carrier_not_specified(kn()) -> no_return().
-carrier_not_specified(Number) ->
-    throw({'error', 'carrier_not_specified', Number}).
+-spec carrier_not_specified(knm_phone_number:record()) -> no_return().
+carrier_not_specified(PN) ->
+    throw({'error', 'carrier_not_specified', PN}).
 
 -spec billing_issue(kz_term:ne_binary(), kz_json:object()) -> no_return().
 billing_issue(AccountId, Reason) ->
     throw({'error', 'billing_issue', AccountId, Reason}).
 
--spec invalid(kn(), kz_term:ne_binary()) -> no_return().
-invalid(Number, Reason) ->
-    throw({'error', 'invalid', Number, Reason}).
+-spec invalid(knm_phone_number:record(), kz_term:ne_binary()) -> no_return().
+invalid(PN, Reason) ->
+    throw({'error', 'invalid', PN, Reason}).
 
--spec multiple_choice(kn(), kz_json:object()) -> no_return().
-multiple_choice(Number, Update) ->
-    throw({'error', 'multiple_choice', Number, Update}).
+-spec multiple_choice(knm_phone_number:record(), kz_json:object()) -> no_return().
+multiple_choice(PN, Update) ->
+    throw({'error', 'multiple_choice', PN, Update}).
 
--spec assign_failure(knm_phone_number:knm_phone_number(), any()) -> no_return().
-assign_failure(PhoneNumber, E) ->
-    throw({'error', 'assign_failure', PhoneNumber, E}).
+-spec assign_failure(knm_phone_number:record(), any()) -> no_return().
+assign_failure(PN, E) ->
+    throw({'error', 'assign_failure', PN, E}).
 
--spec database_error(kz_data:data_errors(), knm_phone_number:knm_phone_number()) -> no_return().
-database_error(E, PhoneNumber) ->
-    throw({'error', 'database_error', PhoneNumber, E}).
+-spec database_error(kz_data:data_errors(), knm_phone_number:record()) -> no_return().
+database_error(E, PN) ->
+    throw({'error', 'database_error', PN, E}).
 
 -spec number_is_porting(kz_term:ne_binary()) -> no_return().
 number_is_porting(Num) ->
     throw({'error', 'number_is_porting', Num}).
 
--spec by_carrier(module(), kz_term:ne_binary() | atom(), kz_term:ne_binary() | kn()) -> no_return().
-by_carrier(Carrier, E, Num) when is_binary(Num) ->
-    throw({'error', 'by_carrier', Num, {Carrier,E}});
-by_carrier(Carrier, E, Number) ->
-    Num = knm_phone_number:number(knm_number:phone_number(Number)),
-    by_carrier(Carrier, E, Num).
+-spec by_carrier(module(), reason(), kz_term:api_ne_binary() | knm_phone_number:record()) -> no_return().
+by_carrier(Carrier, E, 'undefined') ->
+    throw_by_carrier(Carrier, E, <<"unknown">>);
+by_carrier(Carrier, E, <<Num/binary>>) ->
+    throw_by_carrier(Carrier, E, Num);
+by_carrier(Carrier, E, PN) ->
+    throw_by_carrier(Carrier, E, knm_phone_number:number(PN)).
+
+-spec throw_by_carrier(module(), reason(), kz_term:ne_binary()) -> no_return().
+throw_by_carrier(Carrier, E, Num) ->
+    throw({'error', 'by_carrier', Num, {Carrier, E}}).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -167,6 +169,9 @@ to_json('not_enough_credit', AccountId, Reason) ->
                            ,[AccountId]
                            ),
     build_error(402, 'not_enough_credit', kz_term:to_binary(Message), Reason);
+to_json(Reason='internal_error', _, _Cause) ->
+    lager:error("internal error: ~p", [_Cause]),
+    build_error(500, Reason, 'internal_error', 'undefined');
 to_json(Reason, _, Cause) ->
     ?LOG_ERROR("funky 500 error: ~p/~p", [Reason, Cause]),
     build_error(500, 'unspecified_fault', Reason, Cause).
@@ -179,7 +184,7 @@ to_json(Reason, _, Cause) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec build_error(integer(), atom(), kz_term:api_binary(), atom() | kz_term:ne_binary()) ->
+-spec build_error(integer(), atom(), reason(), reason()) ->
           error().
 build_error(Code, Error, Message, Cause) ->
     kz_json:from_list(

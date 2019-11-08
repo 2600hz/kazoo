@@ -258,17 +258,16 @@ dialyze-hard: TO_DIALYZE = $(CHANGED)
 dialyze-hard: dialyze-it-hard
 
 dialyze-it: $(PLT)
-	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
+	@echo ":: dialyzing"
+	@ERL_LIBS=deps:core:applications $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt $(filter %.beam %.erl %/ebin,$(TO_DIALYZE)) && echo "dialyzer is happy!"
 
 dialyze-it-hard: $(PLT)
-	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --hard $(filter %.beam %.erl %/ebin,$(TO_DIALYZE))
+	@echo ":: dialyzing hard"
+	@ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --hard $(filter %.beam %.erl %/ebin,$(TO_DIALYZE)) && echo "dialyzer is happy!"
 
 dialyze-it-changed: $(PLT)
 	@if [ -n "$(TO_DIALYZE)" ]; then \
-		echo "dialyzing changes against $(BASE_BRANCH) ..." ; \
-		echo; \
-		echo "$(TO_DIALYZE)" ;\
-		echo; \
+		echo "dialyzing changes against $(BASE_BRANCH)" ; \
 		ERL_LIBS=deps:core:applications $(if $(DEBUG),time -v) $(ROOT)/scripts/check-dialyzer.escript $(ROOT)/.kazoo.plt --bulk $(TO_DIALYZE) && echo "dialyzer is happy!"; \
 	else \
 		echo "no erlang changes to dialyze"; \

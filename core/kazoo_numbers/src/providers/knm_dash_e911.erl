@@ -40,38 +40,38 @@
 %% @end
 %%------------------------------------------------------------------------------
 
--spec save(knm_number:knm_number()) ->
-          knm_number:knm_number().
-save(Number) ->
-    State = knm_phone_number:state(knm_number:phone_number(Number)),
-    save(Number, State).
+-spec save(knm_phone_number:record()) ->
+          knm_phone_number:record().
+save(PN) ->
+    State = knm_phone_number:state(PN),
+    save(PN, State).
 
--spec save(knm_number:knm_number(), kz_term:api_binary()) ->
-          knm_number:knm_number().
-save(Number, ?NUMBER_STATE_RESERVED) ->
-    maybe_update_e911(Number);
-save(Number, ?NUMBER_STATE_IN_SERVICE) ->
-    maybe_update_e911(Number);
-save(Number, ?NUMBER_STATE_PORT_IN) ->
-    maybe_update_e911(Number);
-save(Number, _State) ->
-    delete(Number).
+-spec save(knm_phone_number:record(), kz_term:api_binary()) ->
+          knm_phone_number:record().
+save(PN, ?NUMBER_STATE_RESERVED) ->
+    maybe_update_e911(PN);
+save(PN, ?NUMBER_STATE_IN_SERVICE) ->
+    maybe_update_e911(PN);
+save(PN, ?NUMBER_STATE_PORT_IN) ->
+    maybe_update_e911(PN);
+save(PN, _State) ->
+    delete(PN).
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called each time a number is deleted, and will
 %% provision e911 or remove the number depending on the state
 %% @end
 %%------------------------------------------------------------------------------
--spec delete(knm_number:knm_number()) ->
-          knm_number:knm_number().
-delete(Number) ->
-    case feature(Number) of
-        'undefined' -> Number;
+-spec delete(knm_phone_number:record()) ->
+          knm_phone_number:record().
+delete(PN) ->
+    case knm_phone_number:feature(PN, ?FEATURE_E911) of
+        'undefined' -> PN;
         _Else ->
             lager:debug("removing e911 information from ~s"
-                       ,[knm_phone_number:number(knm_number:phone_number(Number))]),
-            _ = remove_number(Number),
-            knm_providers:deactivate_feature(Number, ?FEATURE_E911)
+                       ,[knm_phone_number:number(PN)]),
+            _ = remove_number(PN),
+            knm_providers:deactivate_feature(PN, ?FEATURE_E911)
     end.
 
 %%%=============================================================================
@@ -82,54 +82,44 @@ delete(Number) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
-feature(Number) ->
-    knm_phone_number:feature(knm_number:phone_number(Number), ?FEATURE_E911).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec maybe_update_e911(knm_number:knm_number()) -> knm_number:knm_number().
-maybe_update_e911(N) ->
-    PN = knm_number:phone_number(N),
-    CurrentE911 = feature(N),
+-spec maybe_update_e911(knm_phone_number:record()) -> knm_phone_number:record().
+maybe_update_e911(PN) ->
+    CurrentE911 = knm_phone_number:feature(PN, ?FEATURE_E911),
     E911 = kz_json:get_ne_value(?FEATURE_E911, knm_phone_number:doc(PN)),
     NotChanged = kz_json:are_equal(CurrentE911, E911),
     case kz_term:is_empty(E911) of
         'true' ->
             lager:debug("information has been removed, updating upstream"),
-            _ = remove_number(N),
-            knm_providers:deactivate_feature(N, ?FEATURE_E911);
+            _ = remove_number(PN),
+            knm_providers:deactivate_feature(PN, ?FEATURE_E911);
         'false' when NotChanged  ->
-            N;
+            PN;
         'false' ->
             lager:debug("information has been changed: ~s", [kz_json:encode(E911)]),
-            NewE911 = maybe_update_e911(N, E911),
+            NewE911 = maybe_update_e911(PN, E911),
             lager:debug("using address ~p", [NewE911]),
             NewDoc = kz_json:set_value(?FEATURE_E911, NewE911, knm_phone_number:doc(PN)),
             NewPN = knm_phone_number:reset_doc(PN, NewDoc),
-            NewN = knm_number:set_phone_number(N, NewPN),
-            knm_providers:activate_feature(NewN, {?FEATURE_E911, NewE911})
+            knm_providers:activate_feature(NewPN, {?FEATURE_E911, NewE911})
     end.
 
--spec maybe_update_e911(knm_number:knm_number(), kz_json:object()) -> kz_json:object().
-maybe_update_e911(Number, Address) ->
+-spec maybe_update_e911(knm_phone_number:record(), kz_json:object()) -> kz_json:object().
+maybe_update_e911(PN, Address) ->
     Location = json_address_to_xml_location(Address),
     case is_valid_location(Location) of
         {'error', E} ->
             lager:error("error while checking location ~p", [E]),
-            knm_errors:unspecified(E, Number);
+            knm_errors:unspecified(E, PN);
         {'invalid', Reason}->
             lager:error("error while checking location ~p", [Reason]),
             Error = <<Reason/binary, " (", (kz_json:encode(Address))/binary, ")">>,
-            knm_errors:invalid(Number, Error);
+            knm_errors:invalid(PN, Error);
         {'provisioned', _} ->
             lager:debug("location seems already provisioned"),
-            update_e911(Number, Address);
+            update_e911(PN, Address);
         {'geocoded', [_Loc]} ->
             lager:debug("location seems geocoded to only one address"),
-            update_e911(Number, Address);
+            update_e911(PN, Address);
         {'geocoded', [_|_]=Addresses} ->
             lager:warning("location could correspond to multiple addresses"),
             Msg = <<"more than one address found">>,
@@ -138,10 +128,10 @@ maybe_update_e911(Number, Address) ->
                                   ,{<<"details">>, Addresses}
                                   ,{<<"message">>, Msg}
                                   ]),
-            knm_errors:multiple_choice(Number, Update);
+            knm_errors:multiple_choice(PN, Update);
         {'geocoded', _Loc} ->
             lager:debug("location seems geocoded to only one address"),
-            update_e911(Number, Address)
+            update_e911(PN, Address)
     end.
 
 %%------------------------------------------------------------------------------
@@ -149,18 +139,18 @@ maybe_update_e911(Number, Address) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec update_e911(knm_number:knm_number(), kz_json:object()) -> kz_json:object().
-update_e911(Number, Address) ->
-    DryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
-    update_e911(Number, Address, DryRun).
+-spec update_e911(knm_phone_number:record(), kz_json:object()) -> kz_json:object().
+update_e911(PN, Address) ->
+    DryRun = knm_phone_number:dry_run(PN),
+    update_e911(PN, Address, DryRun).
 
--spec update_e911(knm_number:knm_number(), kz_json:object(), boolean()) -> kz_json:object().
-update_e911(_Number, Address, 'true') -> Address;
-update_e911(Number, Address, 'false') ->
-    Num = knm_phone_number:number(knm_number:phone_number(Number)),
+-spec update_e911(knm_phone_number:record(), kz_json:object(), boolean()) -> kz_json:object().
+update_e911(_PN, Address, 'true') -> Address;
+update_e911(PN, Address, 'false') ->
+    Num = knm_phone_number:number(PN),
     Location = json_address_to_xml_location(Address),
     E911Name = kz_json:get_ne_binary_value(?E911_NAME, Address),
-    CallerName = knm_providers:e911_caller_name(Number, E911Name),
+    CallerName = knm_providers:e911_caller_name(PN, E911Name),
     case add_location(Num, Location, CallerName) of
         {'provisioned', E911} ->
             lager:debug("provisioned address"),
@@ -169,7 +159,7 @@ update_e911(Number, Address, 'false') ->
             provision_geocoded(E911);
         {_E, Reason} ->
             lager:debug("~s provisioning address: ~p", [_E, Reason]),
-            knm_errors:unspecified(Reason, Number)
+            knm_errors:unspecified(Reason, PN)
     end.
 
 -spec provision_geocoded(kz_json:object()) -> kz_json:object().
@@ -254,9 +244,9 @@ provision_location(LocationId) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec remove_number(knm_number:knm_number()) -> kz_term:api_binary().
-remove_number(Number) ->
-    Num = knm_phone_number:number(knm_number:phone_number(Number)),
+-spec remove_number(knm_phone_number:record()) -> kz_term:api_binary().
+remove_number(PN) ->
+    Num = knm_phone_number:number(PN),
     lager:debug("removing from upstream '~s'", [Num]),
     Props = [{'uri', [kz_term:to_list(<<"tel:", (knm_converters:to_1npan(Num))/binary>>)]}],
     case emergency_provisioning_request('removeURI', Props) of

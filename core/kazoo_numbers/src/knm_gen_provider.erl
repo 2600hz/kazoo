@@ -12,8 +12,8 @@
 
 -include("knm.hrl").
 
--callback save(knm_number:knm_number()) ->
-    knm_number:knm_number().
+-callback save(knm_phone_number:record()) ->
+    knm_phone_number:record().
 
--callback delete(knm_number:knm_number()) ->
-    knm_number:knm_number().
+-callback delete(knm_phone_number:record()) ->
+    knm_phone_number:record().

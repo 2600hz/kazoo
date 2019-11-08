@@ -102,7 +102,7 @@ start_expires_check_timer(ExpiresS) ->
 
 -spec handle_call(any(), kz_term:pid_ref(), state()) ->
           {'noreply', state()} |
-          {'reply', match_return(), state()}.
+          {'reply', 'ok' | match_return(), state()}.
 handle_call({'match_did', DID}, _From, ?STATE_READY(Trie, RatedeckDb, CheckRef)=State) ->
     io:format("~pms elapsed~n", [kz_time:elapsed_ms(State#state.start_time)]),
     {UpdatedTrie, Resp} = match_did_in_trie(DID, Trie, State#state.expires_s),
@@ -208,7 +208,7 @@ bump_prefix_timestamp(Trie, Prefix, RateIds, OldestMs) ->
          ]
     of
         [] ->
-            io:format("  eraseing prefix ~p from trie~n", [Prefix]),
+            io:format("  erasing prefix ~p from trie~n", [Prefix]),
             trie:erase(Prefix, Trie);
         BumpedRateIds ->
             trie:store(Prefix, BumpedRateIds, Trie)

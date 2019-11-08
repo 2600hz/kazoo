@@ -93,18 +93,16 @@ is_local() -> 'false'.
 %% @doc Check with carrier if these numbers are registered with it.
 %% @end
 %%------------------------------------------------------------------------------
--spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
-          {error, any()}.
-check_numbers(_Numbers) -> {error, not_implemented}.
+-spec check_numbers(kz_term:ne_binaries()) -> {'ok', kz_json:object()} |
+          {'error', any()}.
+check_numbers(_Numbers) -> {'error', 'not_implemented'}.
 
 %%------------------------------------------------------------------------------
 %% @doc Query the Bandwidth.com system for a quantity of available numbers
 %% in a rate center
 %% @end
 %%------------------------------------------------------------------------------
--spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
-          {'ok', knm_number:knm_numbers()} |
-          {'error', any()}.
+-spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) -> knm_search:mod_response().
 find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
     find_numbers(Rest, Quantity, Options);
 find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
@@ -128,18 +126,19 @@ find_numbers(Search, Quantity, Options) ->
     end.
 
 -spec process_numbers_search_resp(kz_types:xml_el(), knm_search:options()) ->
-          {'ok', list()}.
+          {'ok', knm_search:results()}.
 process_numbers_search_resp(Xml, Options) ->
     TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
     QID = knm_search:query_id(Options),
-    {'ok', [N
+    {'ok', [SearchResp
             || Number <- xmerl_xpath:string(TelephoneNumbers, Xml),
-               N <- [found_number_to_KNM(Number, QID)]
+               SearchResp <- [found_number_to_search_response(Number, QID)]
            ]
     }.
 
--spec found_number_to_KNM(kz_types:xml_el() | kz_types:xml_els(), kz_term:ne_binary()) -> tuple().
-found_number_to_KNM(Found, QID) ->
+-spec found_number_to_search_response(kz_types:xml_el() | kz_types:xml_els(), kz_term:ne_binary()) ->
+          knm_search:result().
+found_number_to_search_response(Found, QID) ->
     JObj = number_search_response_to_json(Found),
     Num = kz_json:get_value(<<"e164">>, JObj),
     {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, JObj}}.
@@ -148,27 +147,26 @@ found_number_to_KNM(Found, QID) ->
 %% @doc Acquire a given number from the carrier
 %% @end
 %%------------------------------------------------------------------------------
--spec acquire_number(knm_number:knm_number()) ->
-          knm_number:knm_number().
-acquire_number(Number) ->
+-spec acquire_number(knm_phone_number:record()) ->
+          knm_phone_number:record().
+acquire_number(PN) ->
     Debug = ?IS_SANDBOX_PROVISIONING_TRUE,
     case ?IS_PROVISIONING_ENABLED of
         'false' when Debug ->
             lager:debug("allowing sandbox provisioning"),
-            Number;
+            PN;
         'false' ->
-            knm_errors:unspecified('provisioning_disabled', Number);
+            knm_errors:unspecified('provisioning_disabled', PN);
         'true' ->
-            acquire_and_provision_number(Number)
+            acquire_and_provision_number(PN)
     end.
 
--spec acquire_and_provision_number(knm_number:knm_number()) ->
-          knm_number:knm_number().
-acquire_and_provision_number(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    AuthBy = knm_phone_number:auth_by(PhoneNumber),
-    AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
-    Id = kz_json:get_string_value(<<"number_id">>, knm_phone_number:carrier_data(PhoneNumber)),
+-spec acquire_and_provision_number(knm_phone_number:record()) ->
+          knm_phone_number:record().
+acquire_and_provision_number(PN) ->
+    AuthBy = knm_phone_number:auth_by(PN),
+    AssignedTo = knm_phone_number:assigned_to(PN),
+    Id = kz_json:get_string_value(<<"number_id">>, knm_phone_number:carrier_data(PN)),
     Hosts = case ?BW_ENDPOINTS of
                 'undefined' -> [];
                 Endpoint when is_binary(Endpoint) ->
@@ -189,27 +187,26 @@ acquire_and_provision_number(Number) ->
             ],
     case make_numbers_request('basicNumberOrder', Props) of
         {'error', Error} ->
-            knm_errors:by_carrier(?MODULE, Error, Number);
+            knm_errors:by_carrier(?MODULE, Error, PN);
         {'ok', Xml} ->
             Response = xmerl_xpath:string("/numberOrderResponse/numberOrder", Xml),
             Data = number_order_response_to_json(Response),
-            PN = knm_phone_number:set_carrier_data(PhoneNumber, Data),
-            knm_number:set_phone_number(Number, PN)
+            knm_phone_number:set_carrier_data(PN, Data)
     end.
 
 %%------------------------------------------------------------------------------
 %% @doc Release a number from the routing table
 %% @end
 %%------------------------------------------------------------------------------
--spec disconnect_number(knm_number:knm_number()) -> knm_number:knm_number().
-disconnect_number(Number) -> Number.
+-spec disconnect_number(knm_phone_number:record()) -> knm_phone_number:record().
+disconnect_number(PN) -> PN.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
-is_number_billable(_Number) -> 'true'.
+-spec is_number_billable(knm_phone_number:record()) -> boolean().
+is_number_billable(_PN) -> 'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -228,8 +225,8 @@ should_lookup_cnam() -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec make_numbers_request(atom(), kz_term:proplist()) ->
-          {'ok', any()} |
-          {'error', any()}.
+          {'ok', kz_types:xml_el() | atom()} |
+          {'error', kz_term:api_binary()}.
 
 -ifdef(TEST).
 make_numbers_request('npaNxxNumberSearch', _Props) ->
@@ -377,7 +374,7 @@ rate_center_to_json(Xml) ->
 %%------------------------------------------------------------------------------
 -spec verify_response(kz_types:xml_el()) ->
           {'ok', kz_types:xml_el()} |
-          {'error', kz_term:api_binary() | kz_term:ne_binaries()}.
+          {'error', kz_term:api_binary()}.
 verify_response(Xml) ->
     case get_cleaned("/*/status/text()", Xml) of
         <<"success">> ->

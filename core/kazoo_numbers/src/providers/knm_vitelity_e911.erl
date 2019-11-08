@@ -27,34 +27,34 @@
 %% @end
 %%------------------------------------------------------------------------------
 
--spec save(knm_number:knm_number()) -> knm_number:knm_number().
-save(Number) ->
-    State = knm_phone_number:state(knm_number:phone_number(Number)),
-    save(Number, State).
+-spec save(knm_phone_number:record()) -> knm_phone_number:record().
+save(PN) ->
+    State = knm_phone_number:state(PN),
+    save(PN, State).
 
--spec save(knm_number:knm_number(), kz_term:ne_binary()) -> knm_number:knm_number().
-save(Number, ?NUMBER_STATE_RESERVED) ->
-    maybe_update_e911(Number);
-save(Number, ?NUMBER_STATE_IN_SERVICE) ->
-    maybe_update_e911(Number);
-save(Number, ?NUMBER_STATE_PORT_IN) ->
-    maybe_update_e911(Number);
-save(Number, _State) ->
-    delete(Number).
+-spec save(knm_phone_number:record(), kz_term:ne_binary()) -> knm_phone_number:record().
+save(PN, ?NUMBER_STATE_RESERVED) ->
+    maybe_update_e911(PN);
+save(PN, ?NUMBER_STATE_IN_SERVICE) ->
+    maybe_update_e911(PN);
+save(PN, ?NUMBER_STATE_PORT_IN) ->
+    maybe_update_e911(PN);
+save(PN, _State) ->
+    delete(PN).
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called each time a number is deleted, and will
 %% provision e911 or remove the number depending on the state
 %% @end
 %%------------------------------------------------------------------------------
--spec delete(knm_number:knm_number()) -> knm_number:knm_number().
-delete(Number) ->
-    case feature(Number) of
-        'undefined' -> Number;
+-spec delete(knm_phone_number:record()) -> knm_phone_number:record().
+delete(PN) ->
+    case knm_phone_number:feature(PN, ?FEATURE_E911) of
+        'undefined' -> PN;
         _Else ->
             lager:debug("removing e911 information"),
-            _ = remove_number(Number),
-            knm_providers:deactivate_feature(Number, ?FEATURE_E911)
+            _ = remove_number(PN),
+            knm_providers:deactivate_feature(PN, ?FEATURE_E911)
     end.
 
 %%------------------------------------------------------------------------------
@@ -74,7 +74,7 @@ is_valid_location(Location) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_location(kz_term:ne_binary() | knm_number:knm_number()) ->
+-spec get_location(kz_term:ne_binary() | knm_phone_number:record()) ->
           {'ok', kz_json:object()} |
           {'error', any()}.
 get_location(?NE_BINARY=DID) ->
@@ -83,8 +83,8 @@ get_location(?NE_BINARY=DID) ->
         {'ok', RespXML} -> process_xml_resp(RespXML);
         {'error', _}=E -> E
     end;
-get_location(Number) ->
-    DID = knm_phone_number:number(knm_number:phone_number(Number)),
+get_location(PN) ->
+    DID = knm_phone_number:number(PN),
     get_location(DID).
 
 %%%=============================================================================
@@ -95,55 +95,46 @@ get_location(Number) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
-feature(Number) ->
-    knm_phone_number:feature(knm_number:phone_number(Number), ?FEATURE_E911).
+-spec maybe_update_e911(knm_phone_number:record()) -> knm_phone_number:record().
+maybe_update_e911(PN) ->
+    IsDryRun = knm_phone_number:dry_run(PN),
+    maybe_update_e911(PN, IsDryRun).
 
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
-
--spec maybe_update_e911(knm_number:knm_number()) -> knm_number:knm_number().
-maybe_update_e911(Number) ->
-    IsDryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
-    maybe_update_e911(Number, IsDryRun).
-
--spec maybe_update_e911(knm_number:knm_number(), boolean()) -> knm_number:knm_number().
-maybe_update_e911(Number, 'true') ->
-    CurrentE911 = feature(Number),
-    E911 = kz_json:get_ne_value(?FEATURE_E911, knm_phone_number:doc(knm_number:phone_number(Number))),
+-spec maybe_update_e911(knm_phone_number:record(), boolean()) -> knm_phone_number:record().
+maybe_update_e911(PN, 'true') ->
+    CurrentE911 = knm_phone_number:feature(PN, ?FEATURE_E911),
+    E911 = kz_json:get_ne_value(?FEATURE_E911, knm_phone_number:doc(PN)),
     NotChanged = kz_json:are_equal(CurrentE911, E911),
     case kz_term:is_empty(E911) of
         'true' ->
             lager:debug("dry run: information has been removed, updating upstream"),
-            knm_providers:deactivate_feature(Number, ?FEATURE_E911);
+            knm_providers:deactivate_feature(PN, ?FEATURE_E911);
         'false' when NotChanged  ->
-            Number;
+            PN;
         'false' ->
             lager:debug("dry run: information has been changed: ~s", [kz_json:encode(E911)]),
-            knm_providers:activate_feature(Number, {?FEATURE_E911, E911})
+            knm_providers:activate_feature(PN, {?FEATURE_E911, E911})
     end;
 
-maybe_update_e911(Number, 'false') ->
-    CurrentE911 = feature(Number),
-    E911 = kz_json:get_ne_value(?FEATURE_E911, knm_phone_number:doc(knm_number:phone_number(Number))),
+maybe_update_e911(PN, 'false') ->
+    CurrentE911 = knm_phone_number:feature(PN, ?FEATURE_E911),
+    E911 = kz_json:get_ne_value(?FEATURE_E911, knm_phone_number:doc(PN)),
     NotChanged = kz_json:are_equal(CurrentE911, E911),
     case kz_term:is_empty(E911) of
         'true' ->
             lager:debug("information has been removed, updating upstream"),
-            _ = remove_number(Number),
-            knm_providers:deactivate_feature(Number, ?FEATURE_E911);
+            _ = remove_number(PN),
+            knm_providers:deactivate_feature(PN, ?FEATURE_E911);
         'false' when NotChanged  ->
-            Number;
+            PN;
         'false' ->
             lager:debug("information has been changed: ~s", [kz_json:encode(E911)]),
-            case update_e911(Number, E911) of
+            case update_e911(PN, E911) of
                 {'ok', Data} ->
-                    knm_providers:activate_feature(Number, {?FEATURE_E911, Data});
+                    knm_providers:activate_feature(PN, {?FEATURE_E911, Data});
                 {'error', E} ->
                     lager:error("information update failed: ~p", [E]),
-                    knm_errors:unspecified(E, Number)
+                    knm_errors:unspecified(E, PN)
             end
     end.
 
@@ -151,11 +142,11 @@ maybe_update_e911(Number, 'false') ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec remove_number(knm_number:knm_number()) ->
+-spec remove_number(knm_phone_number:record()) ->
           {'ok', kz_json:object() | kz_term:ne_binary()} |
           {'error', kz_term:ne_binary()}.
-remove_number(Number) ->
-    DID = knm_phone_number:number(knm_number:phone_number(Number)),
+remove_number(PN) ->
+    DID = knm_phone_number:number(PN),
     URI = knm_vitelity_util:build_uri(remove_e911_options(DID)),
     case knm_vitelity_util:query_vitelity(URI) of
         {'error', _}=E -> E;
@@ -194,11 +185,11 @@ get_location_options(DID) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_e911(knm_number:knm_number(), kz_json:object()) ->
+-spec update_e911(knm_phone_number:record(), kz_json:object()) ->
           {'ok', kz_json:object() | kz_term:ne_binary()} |
           {'error', kz_term:ne_binary()}.
-update_e911(Number, Address) ->
-    URI = knm_vitelity_util:build_uri(e911_options(Number, Address)),
+update_e911(PN, Address) ->
+    URI = knm_vitelity_util:build_uri(e911_options(PN, Address)),
     case knm_vitelity_util:query_vitelity(URI) of
         {'ok', XML} -> process_xml_resp(XML);
         {'error', _E}=E -> E
@@ -208,15 +199,15 @@ update_e911(Number, Address) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec e911_options(knm_number:knm_number(), kz_json:object()) ->
+-spec e911_options(knm_phone_number:record(), kz_json:object()) ->
           knm_vitelity_util:query_options().
-e911_options(Number, AddressJObj) ->
-    DID = knm_phone_number:number(knm_number:phone_number(Number)),
+e911_options(PN, AddressJObj) ->
+    DID = knm_phone_number:number(PN),
     State = knm_vitelity_util:get_short_state(kz_json:get_value(?E911_STATE, AddressJObj)),
     {UnitType, UnitNumber} = get_unit(kz_json:get_value(?E911_STREET2, AddressJObj)),
     [{'qs', props:filter_undefined(
               [{'did', knm_converters:to_npan(DID)}
-              ,{'name', get_caller_name(Number, AddressJObj)}
+              ,{'name', get_caller_name(PN, AddressJObj)}
               ,{'address', kz_json:get_value(?E911_STREET1, AddressJObj)}
               ,{'unittype', UnitType}
               ,{'unitnumber', UnitNumber}
@@ -243,13 +234,13 @@ get_unit(ExtendedAddress) ->
         _ -> {'undefined', 'undefined'}
     end.
 
--spec get_caller_name(knm_number:knm_number(), kz_json:object()) -> kz_term:ne_binary().
-get_caller_name(Number, AddressJObj) ->
+-spec get_caller_name(knm_phone_number:record(), kz_json:object()) -> kz_term:ne_binary().
+get_caller_name(PN, AddressJObj) ->
     case kz_json:get_ne_binary_value(?CUSTOMER_NAME, AddressJObj) of
         ?NE_BINARY=Name -> Name;
         'undefined' ->
             E911Name = kz_json:get_ne_binary_value(?E911_NAME, AddressJObj),
-            knm_providers:e911_caller_name(Number, E911Name)
+            knm_providers:e911_caller_name(PN, E911Name)
     end.
 
 %%------------------------------------------------------------------------------

@@ -24,27 +24,27 @@
 %% @end
 %%------------------------------------------------------------------------------
 
--spec save(knm_number:knm_number()) -> knm_number:knm_number().
-save(Number) ->
-    State = knm_phone_number:state(knm_number:phone_number(Number)),
-    save(Number, State).
+-spec save(knm_phone_number:record()) -> knm_phone_number:record().
+save(PN) ->
+    State = knm_phone_number:state(PN),
+    save(PN, State).
 
--spec save(knm_number:knm_number(), kz_term:ne_binary()) -> knm_number:knm_number().
-save(Number, ?NUMBER_STATE_IN_SERVICE) ->
-    update_prepend(Number);
-save(Number, _State) ->
-    delete(Number).
+-spec save(knm_phone_number:record(), kz_term:ne_binary()) -> knm_phone_number:record().
+save(PN, ?NUMBER_STATE_IN_SERVICE) ->
+    update_prepend(PN);
+save(PN, _State) ->
+    delete(PN).
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called each time a number is deleted, and will
 %% remove the prepend route
 %% @end
 %%------------------------------------------------------------------------------
--spec delete(knm_number:knm_number()) -> knm_number:knm_number().
-delete(Number) ->
-    case feature(Number) of
-        'undefined' -> Number;
-        _Else -> knm_providers:deactivate_feature(Number, ?KEY)
+-spec delete(knm_phone_number:record()) -> knm_phone_number:record().
+delete(PN) ->
+    case knm_phone_number:feature(PN, ?KEY) of
+        'undefined' -> PN;
+        _Else -> knm_providers:deactivate_feature(PN, ?KEY)
     end.
 
 %%%=============================================================================
@@ -55,28 +55,19 @@ delete(Number) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
-feature(Number) ->
-    knm_phone_number:feature(knm_number:phone_number(Number), ?KEY).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec update_prepend(knm_number:knm_number()) -> knm_number:knm_number().
-update_prepend(Number) ->
-    CurrentPrepend = feature(Number),
-    PhoneNumber = knm_number:phone_number(Number),
-    Prepend = kz_json:get_ne_value(?KEY, knm_phone_number:doc(PhoneNumber)),
+-spec update_prepend(knm_phone_number:record()) -> knm_phone_number:record().
+update_prepend(PN) ->
+    CurrentPrepend = knm_phone_number:feature(PN, ?KEY),
+    Prepend = kz_json:get_ne_value(?KEY, knm_phone_number:doc(PN)),
     NotChanged = kz_json:are_equal(CurrentPrepend, Prepend),
     case kz_term:is_empty(Prepend) of
         'true' ->
-            knm_providers:deactivate_feature(Number, ?KEY);
+            knm_providers:deactivate_feature(PN, ?KEY);
         'false' when NotChanged  ->
-            Number;
+            PN;
         'false' ->
             case kz_json:is_true(?PREPEND_ENABLED, Prepend) of
-                'false' -> knm_providers:deactivate_feature(Number, ?KEY);
-                'true' -> knm_providers:activate_feature(Number, {?KEY, Prepend})
+                'false' -> knm_providers:deactivate_feature(PN, ?KEY);
+                'true' -> knm_providers:activate_feature(PN, {?KEY, Prepend})
             end
     end.

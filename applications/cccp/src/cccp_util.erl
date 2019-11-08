@@ -70,8 +70,7 @@ handle_disconnect_cause(JObj, Call) ->
 
 -spec authorize(kz_term:ne_binary(), kz_term:ne_binary()) ->
           {'ok', kz_json:object()} |
-          'empty' |
-          'error'.
+          kazoo_data:data_error().
 authorize(Value, View) ->
     ViewOptions = [{'key', Value}],
     case kz_datamgr:get_results(?KZ_CCCPS_DB, View, ViewOptions) of

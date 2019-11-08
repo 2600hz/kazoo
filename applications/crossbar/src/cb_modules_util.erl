@@ -243,8 +243,8 @@ remove_plaintext_password(Context) ->
           cb_context:context().
 validate_number_ownership(Numbers, Context) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}],
-    #{ko := KOs} = knm_numbers:get(Numbers, Options),
-    case maps:fold(fun validate_number_ownership_fold/3, [], KOs) of
+    Failed = knm_pipe:failed(knm_numbers:get(Numbers, Options)),
+    case maps:fold(fun validate_number_ownership_fold/3, [], Failed) of
         [] -> Context;
         Unauthorized ->
             Prefix = <<"unauthorized to use ">>,
@@ -253,7 +253,7 @@ validate_number_ownership(Numbers, Context) ->
             cb_context:add_system_error(403, 'forbidden', Message, Context)
     end.
 
--spec validate_number_ownership_fold(knm_numbers:num(), knm_numbers:ko(), kz_term:ne_binaries()) ->
+-spec validate_number_ownership_fold(knm_numbers:num(), knm_pipe:reason(), kz_term:ne_binaries()) ->
           kz_term:ne_binaries().
 validate_number_ownership_fold(_, Reason, Unauthorized) when is_atom(Reason) ->
     %% Ignoring atom reasons, i.e. 'not_found' or 'not_reconcilable'
@@ -268,7 +268,7 @@ validate_number_ownership_fold(Number, ReasonJObj, Unauthorized) ->
 -type assignments_to_apply() :: [assignment_to_apply()].
 -type port_req_assignment() :: {kz_term:ne_binary(), kz_term:api_binary(), kz_json:object()}.
 -type port_req_assignments() :: [port_req_assignment()].
--type assignment_update() :: {kz_term:ne_binary(), knm_number:knm_number_return()} |
+-type assignment_update() :: {kz_term:ne_binary(), knm_number:return()} |
                              {kz_term:ne_binary(), {'ok', kz_json:object()}} |
                              {kz_term:ne_binary(), {'error', any()}}.
 -type assignment_updates() :: [assignment_update()].
@@ -333,27 +333,28 @@ group_by_assign_to([{DID, Assign}|NumUpdates], Groups) ->
     Groups1 = Groups#{Assign => [DID|DIDs]},
     group_by_assign_to(NumUpdates, Groups1).
 
--spec format_assignment_results(knm_numbers:ret()) -> assignment_updates().
-format_assignment_results(#{ok := OKs
-                           ,ko := KOs}) ->
-    format_assignment_oks(OKs) ++ format_assignment_kos(KOs).
+-spec format_assignment_results(knm_pipe:collection()) -> assignment_updates().
+%% FIXME: opaque
+format_assignment_results(#{'succeeded' := PNs
+                           ,'failed' := Failed
+                           }) ->
+    format_assignment_succeeded(PNs) ++ format_assignment_failure(Failed).
 
--spec format_assignment_oks(knm_number:knm_numbers()) -> assignment_updates().
-format_assignment_oks(Numbers) ->
-    [{knm_phone_number:number(PN), {'ok', Number}}
-     || Number <- Numbers,
-        PN <- [knm_number:phone_number(Number)]
+-spec format_assignment_succeeded(knm_phone_number:records()) -> assignment_updates().
+format_assignment_succeeded(PhoneNumbers) ->
+    [{knm_phone_number:number(PN), {'ok', PN}}
+     || PN <- PhoneNumbers
     ].
 
--spec format_assignment_kos(knm_numbers:kos()) -> assignment_updates().
-format_assignment_kos(KOs) ->
-    maps:fold(fun format_assignment_kos_fold/3, [], KOs).
+-spec format_assignment_failure(knm_pipe:failed()) -> assignment_updates().
+format_assignment_failure(Failed) ->
+    maps:fold(fun format_assignment_failure_fold/3, [], Failed).
 
--spec format_assignment_kos_fold(knm_numbers:num(), knm_numbers:ko(), assignment_updates()) ->
+-spec format_assignment_failure_fold(knm_numbers:num(), knm_pipe:reason(), assignment_updates()) ->
           assignment_updates().
-format_assignment_kos_fold(Number, Reason, Updates) when is_atom(Reason) ->
+format_assignment_failure_fold(Number, Reason, Updates) when is_atom(Reason) ->
     [{Number, {'error', Reason}} | Updates];
-format_assignment_kos_fold(Number, ReasonJObj, Updates) ->
+format_assignment_failure_fold(Number, ReasonJObj, Updates) ->
     [{Number, {'error', ReasonJObj}} | Updates].
 
 -spec log_assignment_updates(assignment_updates()) -> 'ok'.
@@ -361,7 +362,7 @@ log_assignment_updates(Updates) ->
     lists:foreach(fun log_assignment_update/1, Updates).
 
 -spec log_assignment_update(assignment_update()) -> 'ok'.
-log_assignment_update({DID, {'ok', _Number}}) ->
+log_assignment_update({DID, {'ok', _PN}}) ->
     lager:debug("successfully updated ~s", [DID]);
 log_assignment_update({DID, {'error', E}}) ->
     lager:debug("failed to update ~s: ~p", [DID, E]).

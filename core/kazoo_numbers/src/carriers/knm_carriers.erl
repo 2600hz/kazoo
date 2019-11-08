@@ -14,7 +14,7 @@
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include("knm.hrl").
 
--compile({no_auto_import,[apply/3]}).
+-compile({'no_auto_import',[apply/3]}).
 
 -export([check/1
         ,available_carriers/1, all_modules/0, info/3
@@ -34,7 +34,7 @@
         ,is_local/1
         ]).
 
-%% CHILD_ACCOUNT_ID is not a reseller but that's okay:
+%% FIXME:`?' CHILD_ACCOUNT_ID is not a reseller but that's okay:
 %% [?CARRIER_LOCAL, <<"knm_bandwidth2">>]
 -define(CARRIER_MODULES(AccountId)
        ,kapps_account_config:get_ne_binaries(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)
@@ -85,27 +85,30 @@
 check(Numbers) ->
     Nums = lists:usort([knm_converters:normalize(Num) || Num <- Numbers]),
     lager:info("attempting to check ~p ", [Nums]),
-    {_, OKs, KOs} =
+    {_, OKs, Failed} =
         lists:foldl(fun check_fold/2, {Nums, #{}, #{}}, available_carriers([])),
-    kz_json:from_map(maps:merge(KOs, OKs)).
+    kz_json:from_map(maps:merge(Failed, OKs)).
 
+-spec check_fold(module(), {kz_term:ne_binaries(), JObj::map(), NumErrorMap::map()}) ->
+          {kz_term:ne_binaries(), JObj::map(), NumErrorMap::map()}.
 check_fold(_, {[], _, _}=Acc) -> Acc;
-check_fold(Module, {Nums, OKs0, KOs0}) ->
-    {OKs, KOs} = check_numbers(Module, Nums),
+check_fold(Module, {Nums, OKs0, Failed0}) ->
+    {OKs, Failed} = check_numbers(Module, Nums),
     OKNums = maps:keys(OKs0),
     {Nums -- OKNums
     ,maps:merge(OKs, OKs0)
-    ,maps:merge(maps:without(OKNums, KOs), KOs0)
+    ,maps:merge(maps:without(OKNums, Failed), Failed0)
     }.
 
+-spec check_numbers(module(), kz_term:ne_binaries()) -> {JObj::map(), NumErrorMap::map()}.
 check_numbers(Module, Nums) ->
-    try apply(Module, check_numbers, [Nums]) of
-        {ok, JObj} -> {kz_json:to_map(JObj), #{}};
-        {error, _} -> {#{}, maps:from_list([{Num,<<"error">>} || Num <- Nums])}
+    try apply(Module, 'check_numbers', [Nums]) of
+        {'ok', JObj} -> {kz_json:to_map(JObj), #{}};
+        {'error', _} -> {#{}, maps:from_list([{Num, <<"error">>} || Num <- Nums])}
     catch
         ?STACKTRACE(_, _, ST)
         kz_log:log_stacktrace(ST),
-        {#{}, maps:from_list([{Num,<<"error">>} || Num <- Nums])}
+        {#{}, maps:from_list([{Num, <<"error">>} || Num <- Nums])}
         end.
 
 %%------------------------------------------------------------------------------
@@ -126,8 +129,8 @@ available_carriers(Options) ->
 
 -spec get_available_carriers(options()) -> kz_term:atoms().
 get_available_carriers(Options) ->
-    case account_id(Options) =:= undefined
-        orelse reseller_id(Options) =:= undefined
+    case account_id(Options) =:= 'undefined'
+        orelse reseller_id(Options) =:= 'undefined'
     of
         'true' -> keep_only_reachable(?CARRIER_MODULES);
         'false' ->
@@ -173,8 +176,8 @@ all_modules() ->
 %%------------------------------------------------------------------------------
 -spec info(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> kz_json:object().
 info(AuthAccountId, AccountId, ResellerId) ->
-    AvailableCarriers = available_carriers([{account_id, AccountId}
-                                           ,{reseller_id, ResellerId}
+    AvailableCarriers = available_carriers([{'account_id', AccountId}
+                                           ,{'reseller_id', ResellerId}
                                            ]),
     Acc0 = #{?CARRIER_INFO_MAX_PREFIX => 15
             },
@@ -187,7 +190,7 @@ info(AuthAccountId, AccountId, ResellerId) ->
 
 -spec info_fold(module(), map()) -> map().
 info_fold(Module, Info=#{?CARRIER_INFO_MAX_PREFIX := MaxPrefix}) ->
-    try apply(Module, info, []) of
+    try apply(Module, 'info', []) of
         #{?CARRIER_INFO_MAX_PREFIX := Lower}
           when is_integer(Lower), Lower < MaxPrefix ->
             Info#{?CARRIER_INFO_MAX_PREFIX => Lower
@@ -210,60 +213,61 @@ usable_carriers() ->
 %% @doc Buy a number from its carrier module
 %% @end
 %%------------------------------------------------------------------------------
--spec acquire(knm_number:knm_number()) -> knm_number:knm_number();
-             (knm_numbers:collection()) -> knm_numbers:collection().
-acquire(T0=#{todo := Ns}) ->
-    F = fun (N, T) ->
-                case knm_number:attempt(fun acquire/1, [N]) of
-                    {ok, NewN} -> knm_numbers:ok(NewN, T);
-                    {error, R} -> knm_numbers:ko(N, R, T)
+-spec acquire(knm_phone_number:record()) -> knm_phone_number:record();
+             (knm_pipe:collection()) -> knm_pipe:collection().
+%% FIXME: opaque
+acquire(T0=#{'todo' := PNs}) ->
+    F = fun (PN, T) ->
+                case knm_pipe:attempt(fun acquire/1, [PN]) of
+                    {'ok', NewPN} -> knm_pipe:set_succeeded(T, NewPN);
+                    {'error', R} -> knm_pipe:set_failed(T, PN, R)
                 end
         end,
-    lists:foldl(F, T0, Ns);
-acquire(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    Module = knm_phone_number:module_name(PhoneNumber),
-    DryRun = knm_phone_number:dry_run(PhoneNumber),
-    acquire(Number, Module, DryRun).
+    lists:foldl(F, T0, PNs);
+acquire(PN) ->
+    Module = knm_phone_number:module_name(PN),
+    DryRun = knm_phone_number:dry_run(PN),
+    acquire(PN, Module, DryRun).
 
--spec acquire(knm_number:knm_number(), kz_term:api_ne_binary(), boolean()) ->
-          knm_number:knm_number().
-acquire(Number, 'undefined', _DryRun) ->
-    knm_errors:carrier_not_specified(Number);
-acquire(Number, _Mod, 'true') ->
-    Number;
-acquire(Number, ?NE_BINARY=Mod, 'false') ->
+-spec acquire(knm_phone_number:record(), kz_term:api_ne_binary(), boolean()) ->
+          knm_phone_number:record().
+acquire(PN, 'undefined', _DryRun) ->
+    knm_errors:carrier_not_specified(PN);
+acquire(PN, _Mod, 'true') ->
+    PN;
+acquire(PN, ?NE_BINARY=Mod, 'false') ->
     case 'false' =:= kz_module:ensure_loaded(Mod) of
-        'false' -> apply(Mod, 'acquire_number', [Number]);
+        'false' -> apply(Mod, 'acquire_number', [PN]);
         'true' ->
             lager:info("carrier '~s' does not exist, skipping", [Mod]),
-            Number
+            PN
     end.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec disconnect(knm_number:knm_number()) -> knm_number:knm_number();
-                (knm_numbers:collection()) -> knm_numbers:collection().
-disconnect(T0=#{todo := Ns}) ->
-    F = fun (N, T) ->
-                case knm_number:attempt(fun disconnect/1, [N]) of
-                    {ok, NewN} -> knm_numbers:ok(NewN, T);
-                    {error, R} ->
-                        Num = knm_phone_number:number(knm_number:phone_number(N)),
-                        knm_numbers:ko(Num, R, T)
+-spec disconnect(knm_phone_number:record()) -> knm_phone_number:record();
+                (knm_pipe:collection()) -> knm_pipe:collection().
+%% FIXME: opaque
+disconnect(T0=#{'todo' := PNs}) ->
+    F = fun (PN, T) ->
+                case knm_pipe:attempt(fun disconnect/1, [PN]) of
+                    {'ok', NewPN} -> knm_pipe:set_succeeded(T, NewPN);
+                    {'error', R} ->
+                        Num = knm_phone_number:number(PN),
+                        knm_pipe:set_failed(T, Num, R)
                 end
         end,
-    lists:foldl(F, T0, Ns);
-disconnect(Number) ->
-    Module = knm_phone_number:module_name(knm_number:phone_number(Number)),
-    try apply(Module, disconnect_number, [Number]) of
+    lists:foldl(F, T0, PNs);
+disconnect(PN) ->
+    Module = knm_phone_number:module_name(PN),
+    try apply(Module, 'disconnect_number', [PN]) of
         Result -> Result
     catch
         'error':_ ->
             lager:debug("nonexistent carrier module ~p, allowing disconnect", [Module]),
-            Number
+            PN
     end.
 
 -spec prefix(options()) -> kz_term:ne_binary().
@@ -307,10 +311,10 @@ reseller_id(Options) ->
 %% @doc Returns whether carrier handles numbers local to the system.
 %% @end
 %%------------------------------------------------------------------------------
--spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
-is_number_billable(PhoneNumber) ->
-    Carrier = knm_phone_number:module_name(PhoneNumber),
-    try apply(Carrier, 'is_number_billable', [PhoneNumber])
+-spec is_number_billable(knm_phone_number:record()) -> boolean().
+is_number_billable(PN) ->
+    Carrier = knm_phone_number:module_name(PN),
+    try apply(Carrier, 'is_number_billable', [PN])
     catch
         'error':_R -> 'true'
     end.
@@ -327,7 +331,7 @@ is_number_billable(PhoneNumber) ->
 %%------------------------------------------------------------------------------
 -spec is_local(kz_term:ne_binary()) -> boolean().
 is_local(Carrier) ->
-    try apply(Carrier, is_local, [])
+    try apply(Carrier, 'is_local', [])
     catch
         ?STACKTRACE(_E, _R, ST)
         kz_log:log_stacktrace(ST),
@@ -338,15 +342,15 @@ is_local(Carrier) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec apply(module() | kz_term:ne_binary() | knm_number:knm_number(), atom(), list()) -> any().
-apply(Module, FName, Args) when is_atom(Module), Module =/= undefined ->
+-spec apply(module() | kz_term:ne_binary() | knm_phone_number:record(), atom(), list()) -> any().
+apply(Module, FName, Args) when is_atom(Module), Module =/= 'undefined' ->
     lager:debug("contacting carrier ~s for ~s", [Module, FName]),
     erlang:apply(Module, FName, Args);
 apply(?NE_BINARY=Carrier, FName, Args) ->
-    Module = erlang:binary_to_atom(Carrier, utf8),
+    Module = erlang:binary_to_atom(Carrier, 'utf8'),
     apply(Module, FName, Args);
-apply(Number, FName, Args) ->
-    Carrier = knm_phone_number:module_name(knm_number:phone_number(Number)),
+apply(PN, FName, Args) ->
+    Carrier = knm_phone_number:module_name(PN),
     apply(Carrier, FName, Args).
 
 %%------------------------------------------------------------------------------

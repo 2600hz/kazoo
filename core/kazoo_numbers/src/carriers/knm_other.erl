@@ -86,9 +86,7 @@ is_local() -> 'false'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
-          {'ok', list()} |
-          {'bulk', list()} |
-          {'error', any()}.
+          knm_search:mod_response().
 find_numbers(Prefix, Quantity, Options) ->
     case ?PHONEBOOK_URL(Options) of
         'undefined' -> {'error', 'not_available'};
@@ -130,16 +128,16 @@ check_numbers(Numbers) ->
 %% in a rate center
 %% @end
 %%------------------------------------------------------------------------------
--spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
-is_number_billable(_Number) -> 'true'.
+-spec is_number_billable(knm_phone_number:record()) -> boolean().
+is_number_billable(_PN) -> 'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc Acquire a given number from the carrier
 %% @end
 %%------------------------------------------------------------------------------
--spec acquire_number(knm_number:knm_number()) -> knm_number:knm_number().
-acquire_number(Number) ->
-    Num = knm_phone_number:number(knm_number:phone_number(Number)),
+-spec acquire_number(knm_phone_number:record()) -> knm_phone_number:record().
+acquire_number(PN) ->
+    Num = knm_phone_number:number(PN),
     case ?PHONEBOOK_URL of
         'undefined' ->
             knm_errors:unspecified('missing_provider_url', Num);
@@ -162,13 +160,14 @@ acquire_number(Number) ->
             Uri = <<Url/binary,  "/numbers/", (?COUNTRY)/binary, "/order">>,
             case kz_http:put(binary:bin_to_list(Uri), [], kz_json:encode(ReqBody)) of
                 {'ok', 200, _Headers, Body} ->
-                    format_acquire_resp(Number, kz_json:decode(Body));
+                    format_acquire_resp(PN, kz_json:decode(Body));
                 {'ok', _Status, _Headers, Body} ->
                     lager:error("number lookup failed to ~s with ~p: ~s"
                                ,[Uri, _Status, Body]),
                     knm_errors:by_carrier(?MODULE, 'lookup_failed', Num);
                 {'error', Reason} ->
-                    knm_errors:by_carrier(?MODULE, Reason, Num)
+                    lager:debug("failed to acquire number ~s: ~p", [Num, Reason]),
+                    knm_errors:by_carrier(?MODULE, 'lookup_failed', Num)
             end
     end.
 
@@ -176,8 +175,8 @@ acquire_number(Number) ->
 %% @doc Release a number from the routing table
 %% @end
 %%------------------------------------------------------------------------------
--spec disconnect_number(knm_number:knm_number()) -> knm_number:knm_number().
-disconnect_number(Number) -> Number.
+-spec disconnect_number(knm_phone_number:record()) -> knm_phone_number:record().
+disconnect_number(PN) -> PN.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -225,7 +224,7 @@ format_check_numbers_success(Body) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_numbers(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), knm_search:options()) ->
-          {'ok', list()} |
+          {'ok', knm_search:results()} |
           {'error', 'not_available'}.
 get_numbers(Url, Prefix, Quantity, Options) ->
     Offset = props:get_binary_value('offset', Options, <<"0">>),
@@ -258,7 +257,7 @@ handle_number_query_results({'ok', _Status, _Headers, _Body}, _Options) ->
     {'error', 'not_available'}.
 
 -spec format_numbers_resp(kz_json:object(), knm_search:options()) ->
-          {'ok', list()} |
+          {'ok', knm_search:results()} |
           {'error', 'not_available'}.
 format_numbers_resp(JObj, Options) ->
     case kz_json:get_value(<<"status">>, JObj) of
@@ -274,6 +273,7 @@ format_numbers_resp(JObj, Options) ->
             {'error', 'not_available'}
     end.
 
+-spec format_found(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> knm_search:result().
 format_found(QID, DID, CarrierData) ->
     {QID, {DID, ?MODULE, ?NUMBER_STATE_DISCOVERY, CarrierData}}.
 
@@ -282,7 +282,7 @@ format_found(QID, DID, CarrierData) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_blocks(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), knm_search:options()) ->
-          {'ok', list()} |
+          {'bulk', knm_search:results()} |
           {'error', 'not_available'}.
 -ifdef(TEST).
 get_blocks(?BLOCK_PHONEBOOK_URL, _Prefix, _Quantity, Options) ->
@@ -314,7 +314,7 @@ get_blocks(Url, Prefix, Quantity, Options) ->
 -endif.
 
 -spec format_blocks_resp(kz_json:object(), knm_search:options()) ->
-          {'bulk', list()} |
+          {'bulk', knm_search:results()} |
           {'error', 'not_available'}.
 format_blocks_resp(JObj, Options) ->
     case kz_json:get_value(<<"status">>, JObj) of
@@ -330,6 +330,7 @@ format_blocks_resp(JObj, Options) ->
             {'error', 'not_available'}
     end.
 
+-spec format_block_resp_fold(kz_json:object(), kz_term:ne_binary()) -> knm_search:results().
 format_block_resp_fold(Block, QID) ->
     StartNumber = kz_json:get_value(<<"start_number">>, Block),
     EndNumber = kz_json:get_value(<<"end_number">>, Block),
@@ -341,20 +342,17 @@ format_block_resp_fold(Block, QID) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec format_acquire_resp(knm_number:knm_number(), kz_json:object()) ->
-          knm_number:knm_number().
-format_acquire_resp(Number, Body) ->
-    Num = knm_phone_number:number(knm_number:phone_number(Number)),
+-spec format_acquire_resp(knm_phone_number:record(), kz_json:object()) ->
+          knm_phone_number:record().
+format_acquire_resp(PN, Body) ->
+    Num = knm_phone_number:number(PN),
     JObj = kz_json:get_value([<<"data">>, Num], Body, kz_json:new()),
     case kz_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
             Routines = [fun maybe_merge_opaque/2
                        ,fun maybe_merge_locality/2
                        ],
-            lists:foldl(fun(F, N) -> F(JObj, N) end
-                       ,Number
-                       ,Routines
-                       );
+            lists:foldl(fun(F, N) -> F(JObj, N) end, PN, Routines);
         Error ->
             lager:error("number lookup resp error: ~p", [Error]),
             knm_errors:by_carrier(?MODULE, 'lookup_resp_error', Num)
@@ -364,29 +362,24 @@ format_acquire_resp(Number, Body) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_merge_opaque(kz_json:object(), knm_number:knm_number()) ->
-          knm_number:knm_number().
-maybe_merge_opaque(JObj, Number) ->
+-spec maybe_merge_opaque(kz_json:object(), knm_phone_number:record()) ->
+          knm_phone_number:record().
+maybe_merge_opaque(JObj, PN) ->
     case kz_json:get_ne_value(<<"opaque">>, JObj) of
-        'undefined' -> Number;
+        'undefined' -> PN;
         Opaque ->
-            PN = knm_phone_number:set_carrier_data(knm_number:phone_number(Number), Opaque),
-            knm_number:set_phone_number(Number, PN)
+            knm_phone_number:set_carrier_data(PN, Opaque)
     end.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_merge_locality(kz_json:object(), knm_number:knm_number()) ->
-          knm_number:knm_number().
-maybe_merge_locality(JObj, Number) ->
+-spec maybe_merge_locality(kz_json:object(), knm_phone_number:record()) ->
+          knm_phone_number:record().
+maybe_merge_locality(JObj, PN) ->
     case kz_json:get_ne_value(<<"locality">>,  JObj) of
-        'undefined' -> Number;
+        'undefined' -> PN;
         Locality ->
-            PN = knm_phone_number:set_feature(knm_number:phone_number(Number)
-                                             ,<<"locality">>
-                                             ,Locality
-                                             ),
-            knm_number:set_phone_number(Number, PN)
+            knm_phone_number:set_feature(PN, <<"locality">>, Locality)
     end.

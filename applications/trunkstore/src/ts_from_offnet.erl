@@ -333,7 +333,7 @@ routing_data(ToDID, AccountId, Settings) ->
     HuntAccountId = kz_json:get_value([<<"server">>, <<"hunt_account_id">>], Settings),
     RouteOpts = kz_json:get_value(<<"options">>, DIDOptions, []),
     NumConfig = case knm_number:get(ToDID, [{'auth_by', AccountId}]) of
-                    {'ok', KNum} -> knm_number:to_public_json(KNum);
+                    {'ok', PN} -> knm_phone_number:to_public_json(PN);
                     {'error', _} -> kz_json:new()
                 end,
     AuthU = kz_json:get_value(<<"auth_user">>, AuthOpts),

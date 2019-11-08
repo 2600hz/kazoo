@@ -13,21 +13,19 @@
 
 -include("knm.hrl").
 
--callback find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
-    {'ok', knm_number:knm_numbers()} |
-    {'bulk', knm_number:knm_numbers()} |
-    {'error', any()}.
+-callback find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
+    knm_search:mod_response().
 
--callback acquire_number(knm_number:knm_number()) ->
-    knm_number:knm_number().
+-callback acquire_number(knm_phone_number:record()) ->
+    knm_phone_number:record().
 
--callback disconnect_number(knm_number:knm_number()) ->
-    knm_number:knm_number().
+-callback disconnect_number(knm_phone_number:record()) ->
+    knm_phone_number:record().
 
 -callback should_lookup_cnam() ->
     boolean().
 
--callback is_number_billable(knm_phone_number:knm_phone_number()) ->
+-callback is_number_billable(knm_phone_number:record()) ->
     boolean().
 
 -callback is_local() ->

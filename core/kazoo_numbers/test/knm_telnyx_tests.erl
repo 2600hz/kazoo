@@ -91,11 +91,10 @@ matcher(Dialcode, Prefix) ->
 acquire_number() ->
     Num = ?TEST_TELNYX_NUM,
     PN = knm_phone_number:from_number(Num),
-    N = knm_number:set_phone_number(knm_number:new(), PN),
-    Result = knm_telnyx:acquire_number(N),
+    Result = knm_telnyx:acquire_number(PN),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify number is still one inputed"
-     ,?_assertEqual(Num, knm_phone_number:number(knm_number:phone_number(Result)))
+     ,?_assertEqual(Num, knm_phone_number:number(Result))
      }
     ].
 
@@ -111,10 +110,8 @@ e911() ->
               ,{'assign_to', ?RESELLER_ACCOUNT_ID}
               ,{'public_fields', JObj}
               ],
-    {ok, N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
-    PN1 = knm_number:phone_number(N1),
-    #{ok := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, JObj}]),
-    PN2 = knm_number:phone_number(N2),
+    {ok, PN1} = knm_number:create(?TEST_TELNYX_NUM, Options),
+    #{'succeeded' := [PN2]} = knm_numbers:update([PN1], [{fun knm_phone_number:reset_doc/2, JObj}]),
     [?_assert(knm_phone_number:is_dirty(PN1))
     ,{"Verify feature is properly set"
      ,?_assert(kz_json:are_equal(E911, knm_phone_number:feature(PN1, ?FEATURE_E911)))
@@ -145,16 +142,13 @@ cnam() ->
               ,{'assign_to', ?RESELLER_ACCOUNT_ID}
               ,{'public_fields', JObj}
               ],
-    {ok, N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
-    PN1 = knm_number:phone_number(N1),
-    #{ok := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, JObj}]),
-    PN2 = knm_number:phone_number(N2),
+    {ok, PN1} = knm_number:create(?TEST_TELNYX_NUM, Options),
+    #{'succeeded' := [PN2]} = knm_numbers:update([PN1], [{fun knm_phone_number:reset_doc/2, JObj}]),
     Deactivate = kz_json:from_list(
                    [{?CNAM_INBOUND_LOOKUP, false}
                    ,{?CNAM_DISPLAY_NAME, undefined}
                    ]),
-    #{ok := [N3]} = knm_numbers:update([N2], [{fun knm_phone_number:reset_doc/2, Deactivate}]),
-    PN3 = knm_number:phone_number(N3),
+    #{'succeeded' := [PN3]} = knm_numbers:update([PN2], [{fun knm_phone_number:reset_doc/2, Deactivate}]),
     [?_assert(knm_phone_number:is_dirty(PN1))
     ,{"Verify inbound CNAM is properly activated"
      ,?_assertEqual(true, is_cnam_activated(PN1))

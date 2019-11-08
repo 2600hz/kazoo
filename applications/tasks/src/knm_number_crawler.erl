@@ -163,18 +163,19 @@ crawl_number_db(Db) ->
             lager:debug("failed to crawl number db ~s: ~p", [Db, _E]);
         {ok, JObjs} ->
             lager:debug("starting to crawl '~s'", [Db]),
-            _ = knm_numbers:pipe(knm_numbers:from_jobjs(JObjs)
-                                ,[fun maybe_edit/1
-                                 ,fun knm_phone_number:save/1
-                                 ]),
+            _ = knm_pipe:pipe(knm_numbers:from_jobjs(JObjs)
+                             ,[fun maybe_edit/1
+                              ,fun knm_phone_number:save/1
+                              ]),
             lager:debug("finished crawling '~s'", [Db])
     end.
 
--spec maybe_edit(knm_numbers:collection()) -> knm_numbers:collection().
-maybe_edit(T0=#{todo := PNs}) ->
+-spec maybe_edit(knm_pipe:collection()) -> knm_pipe:collection().
+%% FIXME: opaque
+maybe_edit(T0=#{'todo' := PNs}) ->
     {ToRemove, ToSave} = lists:foldl(fun maybe_edit_fold/2, {[], []}, PNs),
-    _ = knm_phone_number:delete(knm_numbers:set_todo(T0, ToRemove)),
-    knm_numbers:ok(ToSave, T0).
+    _ = knm_phone_number:delete(knm_pipe:set_todo(T0, ToRemove)),
+    knm_pipe:set_succeeded(T0, ToSave).
 
 -spec maybe_edit_fold(knm_phone_number:phone_number(), {knm_phone_number:phone_numbers(), knm_phone_number:phone_numbers()}) ->
           {knm_phone_number:phone_numbers(), knm_phone_number:phone_numbers()}.
@@ -212,7 +213,7 @@ maybe_transition_aging(PN, ToSave, Expiry) ->
             [NewPN|ToSave]
     end.
 
--spec is_old_enough(knm_phone_number:knm_phone_number(), pos_integer()) -> boolean().
+-spec is_old_enough(knm_phone_number:record(), pos_integer()) -> boolean().
 is_old_enough(PN, Expiry) ->
     knm_phone_number:modified(PN) + Expiry * ?SECONDS_IN_DAY
         < kz_time:now_s().
