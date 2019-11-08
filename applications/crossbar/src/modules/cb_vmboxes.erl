@@ -1127,7 +1127,7 @@ generate_media_name('undefined', GregorianSeconds, Ext, Timezone) ->
     generate_media_name(<<"unknown">>, GregorianSeconds, Ext, Timezone);
 generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
     UTCDateTime = calendar:gregorian_seconds_to_datetime(kz_term:to_integer(GregorianSeconds)),
-    LocalTime = case localtime:utc_to_local(UTCDateTime, kz_term:to_list(Timezone)) of
+    LocalTime = case kz_time:adjust_utc_timestamp(UTCDateTime, kz_term:to_list(Timezone)) of
                     {{_,_,_},{_,_,_}}=LT ->
                         lager:debug("converted to TZ: ~s", [Timezone]),
                         LT;

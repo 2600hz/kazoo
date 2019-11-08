@@ -654,7 +654,7 @@ get_file_name(Context, Doc, ContentType) ->
 -spec get_timestamp(cb_context:context(), kz_time:datetime()) -> kz_term:ne_binary().
 get_timestamp(Context, UtcTime) ->
     Timezone = get_timezone(Context),
-    LocalTime = case localtime:utc_to_local(UtcTime, kz_term:to_list(Timezone)) of
+    LocalTime = case kz_time:adjust_utc_timestamp(UtcTime, kz_term:to_list(Timezone)) of
                     {{_,_,_},{_,_,_}}=LT ->
                         lager:debug("converted to TZ: ~s", [Timezone]),
                         LT;
