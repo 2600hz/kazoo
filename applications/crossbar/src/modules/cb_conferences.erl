@@ -888,21 +888,29 @@ request_conference_details(ConferenceId) ->
         {'error', _E} ->
             lager:debug("unable to lookup conference details: ~p", [_E]),
             kz_json:new();
-        {_, JObjs} -> find_conference_details(JObjs)
+        {'ok', JObjs} -> find_conference_details(JObjs);
+        {'timeout', JObjs} ->
+            lager:info("failed to hear from all expected nodes, using what was received"),
+            find_conference_details(JObjs)
     end.
 
 -spec find_conference_details(kz_json:objects()) -> kz_json:object().
 find_conference_details(JObjs) ->
-    ValidRespones = [JObj || JObj <- JObjs, kapi_conference:search_resp_v(JObj)],
-    case lists:sort(fun(A, B) ->
-                            run_time(A) > run_time(B)
-                    end
-                   ,ValidRespones
-                   )
-    of
-        [Latest|_] -> Latest;
-        _Else -> kz_json:new()
+    ValidResponses = [JObj || JObj <- JObjs, kapi_conference:search_resp_v(JObj)],
+    case find_most_recent_conference(ValidResponses) of
+        'undefined' -> kz_json:new();
+        Latest -> Latest
     end.
+
+-spec find_most_recent_conference(kz_json:objects()) -> kz_term:api_object().
+find_most_recent_conference(ValidResponses) ->
+    case lists:sort(fun sort_by_runtime/2, ValidResponses) of
+        [Latest|_] -> Latest;
+        [] -> 'undefined'
+    end.
+
+-spec sort_by_runtime(kz_json:object(), kz_json:object()) -> boolean().
+sort_by_runtime(A, B) -> run_time(A) > run_time(B).
 
 %%%=============================================================================
 %%% Utility functions
@@ -959,9 +967,16 @@ search_conferences(Context) ->
             lager:debug("error searching conferences for account ~s: ~p", [AccountId, _E]),
             cb_context:store(Context, 'conferences', kz_json:new());
         {'ok', JObjs} ->
-            Res = lists:foldl(fun search_conferences_fold/2, kz_json:new(), JObjs),
-            cb_context:store(Context, 'conferences', Res)
+            handle_search_resp(Context, JObjs);
+        {'timeout', JObjs} ->
+            lager:info("failed to hear from all expected nodes, using what was received"),
+            handle_search_resp(Context, JObjs)
     end.
+
+-spec handle_search_resp(cb_context:context(), kz_json:objects()) -> cb_context:context().
+handle_search_resp(Context, JObjs) ->
+    Res = lists:foldl(fun search_conferences_fold/2, kz_json:new(), JObjs),
+    cb_context:store(Context, 'conferences', Res).
 
 -spec search_conferences_fold(kz_json:object(), kz_json:object()) ->
                                      kz_json:object().
