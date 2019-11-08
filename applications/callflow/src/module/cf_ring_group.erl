@@ -133,12 +133,20 @@ attempt_endpoints(Endpoints, Data, Call) ->
 
 -spec get_endpoints(kz_json:object(), kapps_call:call()) -> kz_json:objects().
 get_endpoints(Data, Call) ->
+    maybe_order_endpoints_by_delay(strategy(Data)
+                                  ,receive_endpoints(start_builders(Data, Call))
+                                  ).
+
+-spec maybe_order_endpoints_by_delay(kz_term:ne_binary(), kz_json:objects()) -> kz_json:objects().
+maybe_order_endpoints_by_delay(?DIAL_METHOD_SIMUL, Endpoints) ->
     Key = <<"Endpoint-Delay">>,
     F = fun(AObj, BObj) ->
                 kz_json:get_integer_value(Key, AObj, 0) =<
                     kz_json:get_integer_value(Key, BObj, 0)
         end,
-    lists:sort(F, receive_endpoints(start_builders(Data, Call))).
+    lists:sort(F, Endpoints);
+maybe_order_endpoints_by_delay(_, Endpoints) ->
+    Endpoints.
 
 -spec receive_endpoints(kz_term:pid_refs()) -> kz_json:objects().
 receive_endpoints(Builders) ->

@@ -13,6 +13,11 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-define(HELP_10392_ACCOUNT_ID, <<"account0000000000000000000000001">>).
+-define(HELP_10392_USER_ID, <<"user0000000000000000000000000001">>).
+-define(HELP_10392_DEVICE_ID, <<"device00000000000000000000000001">>).
+-define(HELP_10392_GROUP_ID, <<"group000000000000000000000000001">>).
+
 weighted_random_sort_test_() ->
     EndpointsInt = [{1, <<"ep1">>}
                    ,{2, <<"ep2">>}
@@ -35,25 +40,23 @@ help_10392_test_() ->
     ,fun() -> kz_fixturedb_util:start_me('true') end
     ,fun kz_fixturedb_util:stop_me/1
     ,fun(_ReturnOfSetup) ->
-             [{"HELP-10392: Honor RG member's order", help_10392()}
-             ,{"Sort endpoints by delay", get_endpoints()}
+             [{"HELP-10392: Resolve RG endpoints' in order", help_10392()}
+             ,{"HELP-10392: Sort endpoints by delay (Ring strategy=simultaneous (at the same time))", get_endpoints()}
+             ,{"Ring strategy=single (in order)", get_endpoints_in_order()}
              ]
      end
     }.
 
 help_10392() ->
-    AccountId = <<"account0000000000000000000000001">>,
-    DeviceId = <<"device00000000000000000000000001">>,
-
-    Endpoint = help_10392_rg_member(<<"user">>, <<"user0000000000000000000000000001">>),
+    Endpoint = help_10392_rg_member(<<"user">>, ?HELP_10392_USER_ID),
     User = kz_json:set_value(<<"delay">>, 0, Endpoint),
-    Group = help_10392_rg_member(<<"group">>, <<"group000000000000000000000000001">>),
-    EndpointDelay10 = {DeviceId
+    Group = help_10392_rg_member(<<"group">>, ?HELP_10392_GROUP_ID),
+    EndpointDelay10 = {?HELP_10392_DEVICE_ID
                       ,help_10392_add_source(help_10392_add_group_weight(Endpoint))
                       },
-    EndpointDelay0 = {DeviceId, help_10392_add_source(User)},
+    EndpointDelay0 = {?HELP_10392_DEVICE_ID, help_10392_add_source(User)},
 
-    Call = kapps_call:set_account_id(AccountId, kapps_call:new()),
+    Call = kapps_call:set_account_id(?HELP_10392_ACCOUNT_ID, kapps_call:new()),
 
     Resp0 = cf_ring_group:resolve_endpoint_ids(help_10392_data([User, Group]), Call),
     Resp1 = cf_ring_group:resolve_endpoint_ids(help_10392_data([Group, User]), Call),
@@ -72,32 +75,19 @@ help_10392() ->
     ].
 
 get_endpoints() ->
-    AccountId = <<"account0000000000000000000000001">>,
-
-    Routines = [{fun kapps_call:set_account_id/2, AccountId}
-               ,{fun kapps_call:set_account_db/2, kz_util:format_account_db(AccountId)}
-               ,{fun kapps_call:set_request/2, <<"+14158867901@4a6863.sip.2600hz.local">>}
-               ,{fun kapps_call:set_to/2, <<"+14158867901@4a6863.sip.2600hz.local">>}
-               ,{fun kapps_call:set_from/2, <<"+14158867900@4a6863.sip.2600hz.local">>}
-               ,{fun kapps_call:set_call_id/2, kz_binary:rand_hex(6)}
-               ,{fun kapps_call:set_resource_type/2, <<"audio">>}
-               ,{fun kapps_call:set_caller_id_name/2, <<"Test Device 1">>}
-               ,{fun kapps_call:set_caller_id_number/2, <<"+14158867900">>}
-               ,{fun kapps_call:set_custom_channel_var/3, <<"Metaflow-App">>, 'false'}
-               ],
-    Call = kapps_call:exec(Routines, kapps_call:new()),
+    Call = help_10392_call(),
 
     %% User with delay = 10.
-    MemberUser10 = help_10392_rg_member(<<"user">>, <<"user0000000000000000000000000001">>),
+    MemberUser10 = help_10392_rg_member(<<"user">>, ?HELP_10392_USER_ID),
     %% User with delay = 0.
     MemberUser0 = kz_json:set_value(<<"delay">>, 0, MemberUser10),
     %% Group with delay = 10.
-    MemberGroup10 = help_10392_rg_member(<<"group">>, <<"group000000000000000000000000001">>),
+    MemberGroup10 = help_10392_rg_member(<<"group">>, ?HELP_10392_GROUP_ID),
     %% Group with delay = 0.
     MemberGroup0 = kz_json:set_value(<<"delay">>, 0, MemberGroup10),
 
     %% Build and Endpoint with delay = 0.
-    {'ok', [ExpectedDelay0]} = kz_endpoint:build(<<"device00000000000000000000000001">>, MemberGroup0, Call),
+    {'ok', [ExpectedDelay0]} = kz_endpoint:build(?HELP_10392_DEVICE_ID, MemberGroup0, Call),
     ExpectedDelay10 = kz_json:set_value(<<"Endpoint-Delay">>, <<"10">>, ExpectedDelay0),
 
     Expected = [ExpectedDelay0, ExpectedDelay10],
@@ -141,6 +131,44 @@ get_endpoints() ->
      }
     ].
 
+get_endpoints_in_order() ->
+    Call = help_10392_call(),
+
+    %% User with delay = 10.
+    MemberUser10 = help_10392_rg_member(<<"user">>, ?HELP_10392_USER_ID),
+    %% User with delay = 0.
+    MemberUser0 = kz_json:set_value(<<"delay">>, 0, MemberUser10),
+    %% Group with delay = 10.
+    MemberGroup10 = help_10392_rg_member(<<"group">>, ?HELP_10392_GROUP_ID),
+    %% Group with delay = 0.
+    MemberGroup0 = kz_json:set_value(<<"delay">>, 0, MemberGroup10),
+
+    %% Build and Endpoint with delay = 0.
+    {'ok', [ExpectedDelay0]} = kz_endpoint:build(?HELP_10392_DEVICE_ID, MemberGroup0, Call),
+    ExpectedDelay10 = kz_json:set_value(<<"Endpoint-Delay">>, <<"10">>, ExpectedDelay0),
+
+    Expected0 = [ExpectedDelay0, ExpectedDelay10],
+    Expected1 = [ExpectedDelay10, ExpectedDelay0],
+
+    Resp0 = cf_ring_group:get_endpoints(help_10392_data([MemberUser10, MemberUser0], <<"single">>), Call),
+    Resp1 = cf_ring_group:get_endpoints(help_10392_data([MemberUser0, MemberUser10], <<"single">>), Call),
+    Resp2 = cf_ring_group:get_endpoints(help_10392_data([MemberGroup0, MemberGroup10], <<"single">>), Call),
+    Resp3 = cf_ring_group:get_endpoints(help_10392_data([MemberGroup10, MemberGroup0], <<"single">>), Call),
+
+    [{"When ring-strategy=single (in order) don't order endpoints by delay"
+     ,?_assert(match_jobjs_delay(Expected1, Resp0))
+     }
+    ,{"When ring-strategy=single (in order) don't order endpoints by delay"
+     ,?_assert(match_jobjs_delay(Expected0, Resp1))
+     }
+    ,{"When ring-strategy=single (in order) don't order endpoints by delay"
+     ,?_assert(match_jobjs_delay(Expected0, Resp2))
+     }
+    ,{"When ring-strategy=single (in order) don't order endpoints by delay"
+     ,?_assert(match_jobjs_delay(Expected1, Resp3))
+     }
+    ].
+
 match_jobjs_delay(L0, L1) ->
     match_jobjs_delay(L0, L1, 'false').
 
@@ -172,9 +200,12 @@ help_10392_add_group_weight(RGMember) ->
     kz_json:set_value(<<"weight">>, 20, RGMember).
 
 help_10392_data(TestEndpoints) ->
+    help_10392_data(TestEndpoints, <<"simultaneous">>).
+
+help_10392_data(TestEndpoints, Strategy) ->
     kz_json:from_list([{<<"name">>, <<"RG HELP-10392">>}
                       ,{<<"endpoints">>, TestEndpoints}
-                      ,{<<"strategy">>, <<"simultaneous">>}
+                      ,{<<"strategy">>, Strategy}
                       ,{<<"timeout">>, 30}
                       ,{<<"repeats">>, 1}
                       ,{<<"ignore_forward">>, true}
@@ -182,3 +213,17 @@ help_10392_data(TestEndpoints) ->
 
 help_10392_add_source(RGMember) ->
     kz_json:set_value(<<"source">>, <<"cf_ring_group">>, RGMember).
+
+help_10392_call() ->
+    Routines = [{fun kapps_call:set_account_id/2, ?HELP_10392_ACCOUNT_ID}
+               ,{fun kapps_call:set_account_db/2, kz_util:format_account_db(?HELP_10392_ACCOUNT_ID)}
+               ,{fun kapps_call:set_request/2, <<"+14158867901@4a6863.sip.2600hz.local">>}
+               ,{fun kapps_call:set_to/2, <<"+14158867901@4a6863.sip.2600hz.local">>}
+               ,{fun kapps_call:set_from/2, <<"+14158867900@4a6863.sip.2600hz.local">>}
+               ,{fun kapps_call:set_call_id/2, kz_binary:rand_hex(6)}
+               ,{fun kapps_call:set_resource_type/2, <<"audio">>}
+               ,{fun kapps_call:set_caller_id_name/2, <<"Test Device 1">>}
+               ,{fun kapps_call:set_caller_id_number/2, <<"+14158867900">>}
+               ,{fun kapps_call:set_custom_channel_var/3, <<"Metaflow-App">>, 'false'}
+               ],
+    kapps_call:exec(Routines, kapps_call:new()).
