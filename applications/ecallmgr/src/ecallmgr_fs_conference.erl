@@ -170,6 +170,8 @@ init_props(Props, Options) ->
 
 -spec handle_conference_event(atom(), kz_term:ne_binaries(), kzd_freeswitch:data(), kz_term:proplist()) -> 'ok'.
 handle_conference_event(Node, Events, [_UUID | FSProps], Options) ->
+    kz_util:put_callid(_UUID),
+
     Props = init_props(FSProps, Options),
     Action = props:get_value(<<"Action">>, Props),
     _ = process_event(Action, Props, Node),
@@ -178,11 +180,11 @@ handle_conference_event(Node, Events, [_UUID | FSProps], Options) ->
 -spec process_event(kz_term:ne_binary(), kzd_freeswitch:data(), atom()) -> any().
 process_event(<<"conference-create">>, Props, Node) ->
     _ = ecallmgr_fs_conferences:create(Props, Node),
-    ConferenceId = props:get_value(<<"Conference-Name">>, Props),
-    UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
+    ConferenceId = kzd_freeswitch:conference_name(Props),
+    UUID = kzd_freeswitch:conference_uuid(Props),
     ecallmgr_conference_sup:start_conference_control(Node, ConferenceId, UUID);
 process_event(<<"conference-destroy">>= Action, Props, Node) ->
-    UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
+    UUID = kzd_freeswitch:conference_uuid(Props),
     case ecallmgr_fs_conferences:conference(UUID) of
         {'ok', #conference{name=ConferenceId}=Conference} ->
             publish_event(Action, Conference, Props, Node),
@@ -197,10 +199,10 @@ process_event(<<"add-member">>, Props, Node) ->
 process_event(<<"del-member">>, Props, _Node) ->
     ecallmgr_fs_conferences:participant_destroy(kzd_freeswitch:call_id(Props));
 process_event(<<"lock">>, Props, _) ->
-    UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
+    UUID = kzd_freeswitch:conference_uuid(Props),
     ecallmgr_fs_conferences:update(UUID, {#conference.locked, 'true'});
 process_event(<<"unlock">>, Props, _) ->
-    UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
+    UUID = kzd_freeswitch:conference_uuid(Props),
     ecallmgr_fs_conferences:update(UUID, {#conference.locked, 'false'});
 process_event(Action, Props, _Node) ->
     case lists:member(Action, ?MEMBER_UPDATE_EVENTS) of
@@ -228,7 +230,7 @@ maybe_publish_event(Action, Props, Node, EventsToPublish) ->
     end.
 
 publish_event(Action, Props, Node) ->
-    UUID = props:get_value(<<"Conference-Unique-ID">>, Props),
+    UUID = kzd_freeswitch:conference_uuid(Props),
     case ecallmgr_fs_conferences:conference(UUID) of
         {'ok', #conference{}=Conference} -> publish_event(Action, Conference, Props, Node);
         {'error', 'not_found'} -> lager:debug("not publishing conference event ~s for nonexistent ~s ", [Action, UUID])
@@ -258,15 +260,15 @@ conference_event(Action, Conference, Props) ->
     props:filter_undefined(
       [{<<"Account-ID">>, Conference#conference.account_id}
       ,{<<"Call-ID">>, kzd_freeswitch:call_id(Props)}
-      ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, Props)}
-      ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, Props)}
-      ,{<<"Channel-Presence-ID">>, props:get_value(<<"Channel-Presence-ID">>, Props)}
+      ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props)}
+      ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props)}
+      ,{<<"Channel-Presence-ID">>, kzd_freeswitch:presence_id(Props)}
       ,{<<"Conference-Channel-Vars">>, kz_json:from_list(ConfVars)}
-      ,{<<"Conference-ID">>, props:get_value(<<"Conference-Name">>, Props)}
+      ,{<<"Conference-ID">>, kzd_freeswitch:conference_name(Props)}
       ,{<<"Custom-Application-Vars">>, kz_json:from_list(CAVs)}
       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
       ,{<<"Event">>, Action}
-      ,{<<"Instance-ID">>, props:get_value(<<"Conference-Unique-ID">>, Props)}
+      ,{<<"Instance-ID">>, kzd_freeswitch:conference_uuid(Props)}
       ,{<<"Participant-ID">>, props:get_value(<<"Member-ID">>, ConfVars)}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
