@@ -47,7 +47,7 @@
 %%------------------------------------------------------------------------------
 -spec start_link(pid(), kz_term:ne_binary(), kz_term:proplist()) -> kz_types:startlink_ret().
 start_link(Parent, Broker, Params) ->
-    ParentCallId = kz_util:get_callid(),
+    ParentCallId = kz_log:get_callid(),
     gen_listener:start_link(?SERVER, Params, [Parent, ParentCallId, Broker]).
 
 -spec broker(kz_types:server_ref()) -> kz_term:ne_binary().
@@ -73,7 +73,7 @@ init([Parent, ParentCallId, Broker]=L) ->
     Zone = kz_term:to_binary(kz_amqp_connections:broker_zone(Broker)),
 
     CallId = kz_binary:join([ParentCallId, Zone], <<"-">>),
-    kz_util:put_callid(CallId),
+    kz_log:put_callid(CallId),
 
     {'ok', #state{parent=Parent
                  ,broker=Broker
