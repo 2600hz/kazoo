@@ -53,6 +53,8 @@
 
 -type direction() :: 'ascending' | 'descending'.
 
+-type page_size() :: kz_term:api_pos_integer() | 'infinity'.
+
 -type time_range() :: {kz_time:gregorian_seconds(), kz_time:gregorian_seconds()}.
 %% `{StartTimestamp, EndTimestamp}'.
 -type api_range_key() :: 'undefined' | ['undefined'] | kazoo_data:range_key().
@@ -185,7 +187,8 @@ load_modb(Context, View) ->
 %%------------------------------------------------------------------------------
 -spec load_modb(cb_context:context(), kz_term:ne_binary(), options()) -> cb_context:context().
 load_modb(Context, View, Options) ->
-    load_view(build_load_modb_params(Context, View, Options), Context).
+    LoadParams = build_load_modb_params(Context, View, Options),
+    load_view(LoadParams, Context).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -578,9 +581,11 @@ map_value_fun() -> fun(JObj, Acc) -> [kz_json:get_value(<<"value">>, JObj)|Acc] 
 %%
 %% <div class="notice">DO NOT ADD ONE (1) TO PAGE_SIZE OR LIMIT YOURSELF!
 %% It will be added by this module during querying.</div>
+%% If `paginate=false` is explicitly set, still load results in pages but check
+%% process' memory usage on each page, terminating if memory exceeds a threshold
 %% @end
 %%------------------------------------------------------------------------------
--spec get_page_size(cb_context:context(), options()) -> kz_term:api_pos_integer().
+-spec get_page_size(cb_context:context(), options()) -> page_size().
 get_page_size(Context, Options) ->
     case props:is_true('should_paginate', Options, 'true')
         andalso cb_context:should_paginate(Context)
@@ -595,7 +600,7 @@ get_page_size(Context, Options) ->
             end;
         'false' ->
             lager:debug("pagination disabled in context or option"),
-            'undefined'
+            'infinity'
     end.
 
 %%%=============================================================================
@@ -764,7 +769,7 @@ chunk_map_roll_in(#{last_key := OldLastKey}=ChunkMap
 get_results(#{databases := []}=LoadMap) ->
     lager:debug("databases exhausted"),
     LoadMap;
-get_results(#{databases := [Db|RestDbs]=Dbs
+get_results(#{databases := [Db|RestDbs]
              ,view := View
              ,view_options := ViewOpts
              ,direction := Direction
@@ -804,16 +809,39 @@ get_results(#{databases := [Db|RestDbs]=Dbs
             lager:debug("failed to query view ~s from db ~s: ~p", [View, Db, Error]),
             LoadMap#{context => crossbar_doc:handle_datamgr_errors(Error, View, Context)};
         {'ok', JObjs} ->
-            %% catching crashes when applying users map functions (filter map)
-            %% so we can handle errors when request is chunked and chunk is already started
-            try handle_query_result(LoadMap, Dbs, JObjs, LimitWithLast)
-            catch
-                _E:_T ->
-                    lager:debug("exception occurred during querying db ~s for view ~s : ~p:~p", [Db, View, _E, _T]),
-                    ST = erlang:get_stacktrace(),
-                    kz_util:log_stacktrace(ST),
-                    LoadMap#{context => cb_context:add_system_error('datastore_fault', Context)}
-            end
+            handle_query_results(LoadMap, JObjs, LimitWithLast)
+    end.
+
+handle_query_results(LoadMap, JObjs, LimitWithLast) ->
+    [{'memory', End}] = process_info(self(), ['memory']),
+    MemoryLimit = kapps_config:get_integer(?CONFIG_CAT, <<"request_memory_limit">>),
+    handle_query_results(LoadMap, JObjs, LimitWithLast, End, MemoryLimit).
+
+handle_query_results(LoadMap, JObjs, LimitWithLast, _End, 'undefined') ->
+    process_query_results(LoadMap, JObjs, LimitWithLast);
+handle_query_results(LoadMap, JObjs, LimitWithLast, MemoryUsed, MemoryLimit) when MemoryUsed < MemoryLimit ->
+    lager:debug("under memory cap of ~p: ~p used", [MemoryLimit, MemoryUsed]),
+    process_query_results(LoadMap, JObjs, LimitWithLast);
+handle_query_results(#{context := Context}=LoadMap, _JObjs, _LimitWithLast, _TooMuch, _Limit) ->
+    lager:warning("memory used ~p exceeds limit ~p", [_TooMuch, _Limit]),
+    LoadMap#{context => crossbar_util:response_range_not_satisfiable(Context)}.
+
+process_query_results(#{databases := [Db|_]=Dbs
+                       ,context := Context
+                       ,view := View
+                       }=LoadMap
+                     ,JObjs
+                     ,LimitWithLast
+                     ) ->
+    %% catching crashes when applying users map functions (filter map)
+    %% so we can handle errors when request is chunked and chunk is already started
+    try handle_query_result(LoadMap, Dbs, JObjs, LimitWithLast)
+    catch
+        _E:_T ->
+            lager:warning("exception occurred during querying db ~s for view ~s : ~p:~p", [Db, View, _E, _T]),
+            ST = erlang:get_stacktrace(),
+            kz_util:log_stacktrace(ST),
+            LoadMap#{context => cb_context:add_system_error('datastore_fault', Context)}
     end.
 
 %%------------------------------------------------------------------------------
@@ -826,10 +854,11 @@ get_results(#{databases := [Db|RestDbs]=Dbs
 handle_query_result(#{last_key := LastKey
                      ,mapper := Mapper
                      ,context := Context
+                     ,page_size := PageSize
                      }=LoadMap, Dbs, Results, Limit) ->
     ResultsLength = erlang:length(Results),
 
-    {NewLastKey, JObjs} = last_key(LastKey, Results, Limit, ResultsLength),
+    {NewLastKey, JObjs} = last_key(LastKey, Results, Limit, ResultsLength, PageSize),
 
     case apply_filter(Mapper, JObjs) of
         {'error', Reason} ->
@@ -837,10 +866,7 @@ handle_query_result(#{last_key := LastKey
         FilteredJObjs when is_list(FilteredJObjs) ->
             FilteredLength = length(FilteredJObjs),
             lager:debug("db_returned: ~b passed_filter: ~p next_start_key: ~p", [ResultsLength, FilteredLength, NewLastKey]),
-            handle_query_result(LoadMap, Dbs, FilteredJObjs, FilteredLength, NewLastKey);
-        FilteredJObj ->
-            lager:debug("db_returned: ~b passed_filter: ~p next_start_key: ~p", [ResultsLength, 1, NewLastKey]),
-            handle_query_result(LoadMap, Dbs, FilteredJObj, 1, NewLastKey)
+            handle_query_result(LoadMap, Dbs, FilteredJObjs, FilteredLength, NewLastKey)
     end.
 
 -spec handle_query_result(load_params(), kz_term:ne_binaries(), kz_json:objects(), non_neg_integer(), last_key()) -> load_params().
@@ -855,9 +881,15 @@ handle_query_result(#{is_chunked := 'true'
             ,context => Context1
             ,previous_chunk_length => FilteredLength
             };
-handle_query_result(LoadMap, [_|RestDbs], FilteredJObjs, FilteredLength, NewLastKey) ->
+handle_query_result(#{page_size := PageSize}=LoadMap
+                   ,[_|RestDbs]
+                   ,FilteredJObjs
+                   ,FilteredLength
+                   ,NewLastKey
+                   ) ->
     case check_page_size_and_length(LoadMap, FilteredLength, FilteredJObjs, NewLastKey) of
         {'exhausted', LoadMap2} -> LoadMap2;
+        {'next_db', LoadMap2} when PageSize =:= 'infinity', FilteredLength > 0 -> get_results(LoadMap2);
         {'next_db', LoadMap2} -> get_results(LoadMap2#{databases => RestDbs})
     end.
 
@@ -870,10 +902,27 @@ handle_query_result(LoadMap, [_|RestDbs], FilteredJObjs, FilteredLength, NewLast
 %% page_size is exhausted when query is limited by page_size
 %% Condition: page_size = total_queried + current_db_results
 %%            and the last key has been found.
+check_page_size_and_length(#{page_size := 'infinity'
+                            ,queried_jobjs := QueriedJObjs
+                            ,total_queried := TotalQueried
+                            }=LoadMap
+                          ,Length
+                          ,FilteredJObjs
+                          ,LastKey
+                          ) ->
+    {'next_db', LoadMap#{total_queried => TotalQueried + Length
+                        ,queried_jobjs => QueriedJObjs ++ FilteredJObjs
+                        ,last_key => LastKey
+                        }
+    };
 check_page_size_and_length(#{page_size := PageSize
                             ,queried_jobjs := QueriedJObjs
                             ,total_queried := TotalQueried
-                            }=LoadMap, Length, FilteredJObjs, LastKey)
+                            }=LoadMap
+                          ,Length
+                          ,FilteredJObjs
+                          ,LastKey
+                          )
   when is_integer(PageSize)
        andalso PageSize > 0
        andalso TotalQueried + Length == PageSize
@@ -884,10 +933,15 @@ check_page_size_and_length(#{page_size := PageSize
                           ,last_key => LastKey
                           }
     };
+
 %% just query next_db
 check_page_size_and_length(#{total_queried := TotalQueried
                             ,queried_jobjs := QueriedJObjs
-                            }=LoadMap, Length, FilteredJObjs, LastKey) ->
+                            }=LoadMap
+                          ,Length
+                          ,FilteredJObjs
+                          ,LastKey
+                          ) ->
     {'next_db', LoadMap#{total_queried => TotalQueried + Length
                         ,queried_jobjs => QueriedJObjs ++ FilteredJObjs
                         ,last_key => LastKey
@@ -899,11 +953,14 @@ check_page_size_and_length(#{total_queried := TotalQueried
 %% amount to satisfy page_size.
 %% @end
 %%------------------------------------------------------------------------------
--spec limit_with_last_key(boolean(), kz_term:api_pos_integer(), pos_integer(), non_neg_integer()) ->
+-spec limit_with_last_key(boolean(), page_size(), pos_integer(), non_neg_integer()) ->
                                  kz_term:api_pos_integer().
 %% non-chunked unlimited request => no limit
 limit_with_last_key('false', 'undefined', _, _) ->
     'undefined';
+%% explicitly disabled pagination
+limit_with_last_key('false', 'infinity', ChunkSize, _TotalQueried) ->
+    1 + ChunkSize;
 %% non-chunked limited request
 limit_with_last_key('false', PageSize, _, TotalQueried) ->
     1 + PageSize - TotalQueried;
@@ -944,8 +1001,7 @@ limit_with_last_key('true', PageSize, _ChunkSize, TotalQueried) ->
 -spec apply_filter(mapper_fun(), kz_json:objects()) ->
                           kz_json:objects() |
                           {'error', any()}.
-apply_filter(_Mapper, []) ->
-    [];
+apply_filter(_Mapper, []) -> [];
 apply_filter('undefined', JObjs) ->
     lists:reverse(JObjs);
 apply_filter(Mapper, JObjs) when is_function(Mapper, 1) ->
@@ -973,15 +1029,22 @@ filter_foldl(Mapper, [JObj | JObjs], Acc) ->
 %% exhausted yet.
 %% @end
 %%------------------------------------------------------------------------------
--spec last_key(last_key(), kz_json:objects(), non_neg_integer() | 'undefined', non_neg_integer()) ->
+-spec last_key(last_key(), kz_json:objects(), non_neg_integer() | 'undefined', non_neg_integer(), page_size()) ->
                       {last_key(), kz_json:objects()}.
-last_key(LastKey, [], _, _) ->
+last_key(LastKey, [], _Limit, _Returned, _PageSize) ->
     {LastKey, []};
-last_key(LastKey, JObjs, 'undefined', _) ->
+last_key(LastKey, JObjs, 'undefined', _Returned, _PageSize) ->
+    lager:info("no limit, re-using last key ~p", [LastKey]),
     {LastKey, lists:reverse(JObjs)};
-last_key(LastKey, JObjs, Limit, Returned) when Returned < Limit ->
+last_key(_LastKey, JObjs, _Limit, _Returned, 'infinity') ->
+    new_last_key(JObjs);
+last_key(LastKey, JObjs, Limit, Returned, _PageSize) when Returned < Limit ->
     {LastKey, lists:reverse(JObjs)};
-last_key(_LastKey, JObjs, Limit, Returned) when Returned == Limit ->
+last_key(_LastKey, JObjs, Limit, Limit, _PageSize) ->
+    new_last_key(JObjs).
+
+-spec new_last_key(kz_json:objects()) -> {last_key(), kz_json:objects()}.
+new_last_key(JObjs) ->
     [Last|JObjs1] = lists:reverse(JObjs),
     {kz_json:get_value(<<"key">>, Last), JObjs1}.
 
@@ -991,12 +1054,21 @@ last_key(_LastKey, JObjs, Limit, Returned) when Returned == Limit ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec format_response(load_params()) -> cb_context:context().
-format_response(#{total_queried := TotalQueried
-                 ,queried_jobjs := JObjs
-                 ,context := Context
-                 ,last_key := NextStartKey
-                 ,start_key := StartKey
-                 }) ->
+format_response(#{context := Context}=LoadMap) ->
+    case cb_context:resp_status(Context) of
+        'success' -> format_success_response(LoadMap);
+        _Error ->
+            lager:info("returning ~p context", [_Error]),
+            Context
+    end.
+
+-spec format_success_response(load_params()) -> cb_context:context().
+format_success_response(#{total_queried := TotalQueried
+                         ,queried_jobjs := JObjs
+                         ,context := Context
+                         ,last_key := NextStartKey
+                         ,start_key := StartKey
+                         }) ->
     Envelope = add_paging(StartKey, TotalQueried, NextStartKey, cb_context:resp_envelope(Context)),
     crossbar_doc:handle_datamgr_success(JObjs, cb_context:set_resp_envelope(Context, Envelope)).
 
@@ -1034,7 +1106,7 @@ build_general_load_params(Context, View, Options) ->
           ,{'view', View}
           ])
     catch
-        throw:{'error', ErrorMsg} ->
+        'throw':{'error', ErrorMsg} ->
             cb_context:add_system_error(404, 'faulty_request', ErrorMsg, Context)
     end.
 

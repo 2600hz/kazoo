@@ -42,6 +42,20 @@ summary(API, AccountId, Accept) ->
                            ,RequestHeaders
                            ).
 
+unpaginated_summary(API, AccountId) ->
+    URL = cdrs_url(AccountId) ++ "?paginate=false&is_chunked=false",
+    RequestHeaders = pqc_cb_api:request_headers(API),
+
+    Expectations = [#{'response_codes' => [200]}
+                   ,#{'response_codes' => [204]}
+                   ],
+
+    pqc_cb_api:make_request(Expectations
+                           ,fun kz_http:get/2
+                           ,URL
+                           ,RequestHeaders
+                           ).
+
 paginated_summary(API, AccountId) ->
     paginated_summary(API, AccountId, 'undefined').
 
@@ -168,8 +182,9 @@ start_key(StartKey) -> "start_key=" ++ kz_term:to_list(StartKey).
 
 -spec seq() -> 'ok'.
 seq() ->
-    straight_seq(),
-    paginated_seq().
+    _ = straight_seq(),
+    _ = paginated_seq(),
+    big_dataset_seq().
 
 straight_seq() ->
     API = pqc_cb_api:init_api(['crossbar'], ['cb_cdrs']),
@@ -240,6 +255,43 @@ paginated_seq() ->
     cleanup(API),
     ?INFO("FINISHED PAGINATED SEQ").
 
+-spec big_dataset_seq() -> 'ok'.
+big_dataset_seq() ->
+    ?INFO("creating large dataset and not paginating results"),
+    API = pqc_cb_api:init_api(['crossbar'], ['cb_cdrs']),
+    AccountId = create_account(API),
+
+    {Year, Month, Day} = erlang:date(),
+
+    CDRCount = 5000,
+
+    CDRs = lists:foldl(fun(_, Acc) ->
+                               InteractionId = interaction_id(Year, Month, Day),
+                               [create_cdr(AccountId, 'undefined', Year, Month, InteractionId) | Acc]
+                       end
+                      ,[]
+                      ,lists:seq(1,CDRCount)
+                      ),
+
+    AccountMODb = kz_util:format_account_id(AccountId, Year, Month),
+    kazoo_modb:save_docs(AccountMODb, CDRs, [{'publish_change_notice', 'false'}]),
+
+    kapps_config:set_default(<<"crossbar">>, <<"request_memory_limit">>, 'null'),
+    JSON = unpaginated_summary(API, AccountId),
+    JObj = kz_json:decode(JSON),
+    lager:info("unpaginated and unbound memory resp returned ~p CDRs", [length(kz_json:get_list_value(<<"data">>, JObj))]),
+    CDRCount = length(kz_json:get_list_value(<<"data">>, JObj)),
+
+    kapps_config:set_default(<<"crossbar">>, <<"request_memory_limit">>, 1024 * 1024 * 10), % cap at 10Mb
+    {'error', ErrorJSON} = unpaginated_summary(API, AccountId),
+    ErrorJObj = kz_json:decode(ErrorJSON),
+    416 = kz_json:get_integer_value(<<"error">>, ErrorJObj),
+    <<"range not satisfiable">> = kz_json:get_ne_binary_value(<<"message">>, ErrorJObj),
+    lager:info("unpaginated and bound memory resp: ~s", [ErrorJSON]),
+
+    cleanup(API),
+    ?INFO("FINISHED BIG DATASET SEQ").
+
 seq_cdr(API, AccountId, CDR) ->
     CDRId = kz_doc:id(CDR),
     InteractionId = kzd_cdrs:interaction_id(CDR),
@@ -294,6 +346,7 @@ create_owner(AccountId) ->
 -spec cleanup() -> 'ok'.
 cleanup() ->
     _ = pqc_cb_accounts:cleanup_accounts(?ACCOUNT_NAMES),
+    kapps_config:set_default(<<"crossbar">>, <<"request_memory_limit">>, 'null'),
     cleanup_system().
 
 cleanup(API) ->
@@ -312,6 +365,9 @@ seed_cdrs(AccountId, OwnerId) ->
     seed_cdrs(AccountId, OwnerId, Year, Month).
 
 seed_cdrs(AccountId, OwnerId, Year, Month) ->
+    AccountMODb = kz_util:format_account_id(AccountId, Year, Month),
+    _ = kazoo_modb:create(AccountMODb),
+
     CDRs = seed_interaction(AccountId, OwnerId, Year, Month),
     MoreCDRs = seed_interaction(AccountId, OwnerId, Year, Month),
     EvenMoreCDRs = seed_interaction(AccountId, OwnerId, Year, Month),
@@ -333,11 +389,27 @@ interaction_id(Year, Month, Day) ->
     list_to_binary([integer_to_binary(InteractionTime), "-", InteractionKey]).
 
 seed_cdr(AccountId, OwnerId, Year, Month, InteractionId) ->
+    [ITime, InteractionKey] = binary:split(InteractionId, <<"-">>),
+    InteractionTime = kz_term:to_integer(ITime),
+
+    CDR = create_cdr(AccountId, OwnerId, Year, Month
+                    ,InteractionId, InteractionTime, InteractionKey
+                    ),
+
+    AccountMODb = kz_util:format_account_id(AccountId, InteractionTime),
+    kazoo_modb:save_doc(AccountMODb, CDR).
+
+create_cdr(AccountId, OwnerId, Year, Month, InteractionId) ->
+    [ITime, InteractionKey] = binary:split(InteractionId, <<"-">>),
+    InteractionTime = kz_term:to_integer(ITime),
+    create_cdr(AccountId, OwnerId, Year, Month, InteractionId, InteractionTime, InteractionKey).
+
+create_cdr(AccountId, OwnerId, Year, Month, InteractionId, InteractionTime, InteractionKey) ->
     CallId = kz_binary:rand_hex(6),
 
     CDRId = kzd_cdrs:create_doc_id(CallId, Year, Month),
-    [ITime, InteractionKey] = binary:split(InteractionId, <<"-">>),
-    InteractionTime = kz_term:to_integer(ITime),
+
+    AccountMODb = kz_util:format_account_id(AccountId, InteractionTime),
 
     JObj = kz_json:from_list([{<<"_id">>, CDRId}
                              ,{<<"call_id">>, CallId}
@@ -360,18 +432,11 @@ seed_cdr(AccountId, OwnerId, Year, Month, InteractionId) ->
                              ,{<<"timestamp">>, InteractionTime}
                              ]),
 
-    AccountMODb = kz_util:format_account_id(AccountId, InteractionTime),
-
     Props = [{'type', <<"cdr">>}
             ,{'account_id', AccountId}
             ,{'now', InteractionTime}
             ],
-    CDR = kz_doc:update_pvt_parameters(JObj, AccountMODb, Props),
-    ?INFO("creating ~s in ~s", [CDRId, AccountMODb]),
-
-    _ = kazoo_modb:create(AccountMODb),
-
-    kazoo_modb:save_doc(AccountMODb, CDR).
+    kz_doc:update_pvt_parameters(JObj, AccountMODb, Props).
 
 interaction_time(Year, Month, Day) ->
     {Today, _} = calendar:universal_time(),

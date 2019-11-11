@@ -11,6 +11,7 @@
 -export([get_results/3]).
 -export([open_doc/2, open_doc/3, open_doc/4]).
 -export([save_doc/2, save_doc/3, save_doc/4]).
+-export([save_docs/2, save_docs/3]).
 -export([move_doc/4, move_doc/5]).
 -export([copy_doc/4, copy_doc/5]).
 -export([get_modb/1, get_modb/2, get_modb/3]).
@@ -234,6 +235,19 @@ couch_save(AccountMODb, Doc, Options, _Reason, Retry) ->
 -spec save_fun(boolean()) -> function().
 save_fun('false') -> fun kz_datamgr:save_doc/3;
 save_fun('true') -> fun kz_datamgr:ensure_saved/3.
+
+
+-spec save_docs(kz_term:text(), kz_json:objects()) ->
+                       {'ok', kz_json:objects()} |
+                       kz_datamgr:data_error().
+save_docs(AccountMODb, Docs) ->
+    save_docs(AccountMODb, Docs, []).
+
+-spec save_docs(kz_term:text(), kz_json:objects(), kz_term:proplist()) ->
+                       {'ok', kz_json:objects()} |
+                       kz_datamgr:data_error().
+save_docs(AccountMODb, Docs, Options) ->
+    kz_datamgr:save_docs(AccountMODb, Docs, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc Move a document from source to destination with attachments,

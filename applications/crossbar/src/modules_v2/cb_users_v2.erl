@@ -231,7 +231,7 @@ validate(Context, UserId, ?PHOTO) ->
     validate_photo(Context, UserId , cb_context:req_verb(Context)).
 
 validate_users(Context, ?HTTP_GET) ->
-    load_user_summary(Context);
+    load_users_summary(Context);
 validate_users(Context, ?HTTP_PUT) ->
     validate_request('undefined', Context).
 
@@ -437,8 +437,8 @@ send_email(Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec load_user_summary(cb_context:context()) -> cb_context:context().
-load_user_summary(Context) ->
+-spec load_users_summary(cb_context:context()) -> cb_context:context().
+load_users_summary(Context) ->
     fix_envelope(
       crossbar_doc:load_view(?CB_LIST
                             ,[]

@@ -26,6 +26,7 @@
         ]).
 -export([response_faulty_request/1]).
 -export([response_bad_identifier/2]).
+-export([response_range_not_satisfiable/1]).
 -export([response_conflicting_docs/1]).
 -export([response_datastore_timeout/1]).
 -export([response_datastore_conn_refused/1]).
@@ -181,6 +182,10 @@ create_response(Status, Msg, Code, JTerm, Context) ->
 -spec response_faulty_request(cb_context:context()) -> cb_context:context().
 response_faulty_request(Context) ->
     response('error', <<"faulty request">>, 404, Context).
+
+-spec response_range_not_satisfiable(cb_context:context()) -> cb_context:context().
+response_range_not_satisfiable(Context) ->
+    response('error', <<"range not satisfiable">>, 416, Context).
 
 %%------------------------------------------------------------------------------
 %% @doc When a module is no longer valid, alert the client of the deprecated status
