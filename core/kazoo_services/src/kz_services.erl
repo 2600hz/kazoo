@@ -752,9 +752,13 @@ summary(?NE_BINARY=Account) ->
                    ],
     summary(fetch(Account, FetchOptions));
 summary(Services) ->
+    ServicesJObj = kz_services:services_jobj(Services),
     kz_json:from_list(
       [{<<"plans">>
        ,kz_services_plans:assigned(Services)
+       }
+      ,{<<"overrides">>
+       ,kzd_services:overrides(ServicesJObj)
        }
       ,{<<"invoices">>
        ,kz_services_invoices:public_json(invoices(Services))
@@ -767,6 +771,17 @@ summary(Services) ->
        }
       ,{<<"ratedeck">>
        ,kz_services_ratedecks:fetch(Services)
+       }
+      ,{<<"applications">>
+       ,kz_services_applications:fetch(Services)
+       }
+      ,{<<"limits">>
+       ,kz_doc:public_fields(
+          kz_services_limits:fetch(Services)
+         )
+       }
+      ,{<<"payment_tokens">>
+       ,kz_services_payment_tokens:fetch(Services)
        }
       ,{<<"billing_cycle">>
        ,summary_billing_cycle(Services)
