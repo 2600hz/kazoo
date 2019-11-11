@@ -390,14 +390,14 @@ route_resp_park() ->
 
 -spec route_resp_capture_id() -> kz_types:xml_el().
 route_resp_capture_id() ->
-    DP = [action_el(<<"export">>, <<"sip_h_k-cid=${uuid}">>)
-         ,anti_action_el(<<"export">>, <<"sip_h_k-cid=${sip_h_k-cid}">>)
+    DP = [action_el(<<"export">>, <<"sip_h_k-cid=${uuid}">>, 'true')
+         ,anti_action_el(<<"export">>, <<"sip_h_k-cid=${sip_h_k-cid}">>, 'true')
          ],
     condition_el(DP, <<"${sip_h_k-cid}">>, <<"^$">>).
 
 -spec route_resp_bridge_id() -> kz_types:xml_el().
 route_resp_bridge_id() ->
-    Action = action_el(<<"export">>, [?SET_CCV(<<"Bridge-ID">>, <<"${UUID}">>)]),
+    Action = action_el(<<"export">>, [?SET_CCV(<<"Bridge-ID">>, <<"${UUID}">>)], 'true'),
     condition_el(Action, <<"${", (?CCV(<<"Bridge-ID">>))/binary, "}">>, <<"^$">>).
 
 -spec unset_custom_sip_headers() -> kz_types:xml_el().
@@ -769,8 +769,17 @@ kazoo_var_to_fs_var_fold(<<?CHANNEL_LOOPBACK_HEADER_PREFIX, K/binary>>, V, Acc) 
     Key = <<?CHANNEL_LOOPBACK_HEADER_PREFIX, (ecallmgr_util:get_fs_key(K))/binary>>,
     [list_to_binary([kz_term:to_list(Key), "='",  kz_term:to_list(V), "'"]) |Acc];
 
+kazoo_var_to_fs_var_fold(<<"Loopback-Export">> = Key, Vars, Acc) ->
+    Value = kz_binary:join([ecallmgr_util:get_fs_key(Var) || Var <- Vars], <<",">>),
+    [list_to_binary([ecallmgr_util:get_fs_key(Key), "='",  Value, "'"]) |Acc];
+
+kazoo_var_to_fs_var_fold(<<"Loopback-Request-Variables">> = Key, Vars, Acc) ->
+    Value = kz_binary:join([ecallmgr_util:get_fs_key(Var) || Var <- Vars], <<",">>),
+    [list_to_binary([ecallmgr_util:get_fs_key(Key), "='",  Value, "'"]) |Acc];
+
 kazoo_var_to_fs_var_fold(<<"Channel-Actions">>, Actions, Acc) ->
     [Actions |Acc];
+
 kazoo_var_to_fs_var_fold(K, V, Acc) ->
     case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->

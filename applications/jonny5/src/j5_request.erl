@@ -207,6 +207,7 @@ request_number(Number, CCVs) ->
                                   )
     of
         'undefined' -> Number;
+        Number -> Number;
         Original ->
             lager:debug("using original number ~s instead of ~s", [Original, Number]),
             Original

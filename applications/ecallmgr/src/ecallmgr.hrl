@@ -287,9 +287,11 @@
                               ,{<<"Ignore-Forward">>, <<"outbound_redirect_fatal">>}
                               ,{<<"Inherit-Codec">>, <<"inherit_codec">>}
                               ,{<<"Loopback-Bowout">>, <<"loopback_bowout">>}
+                              ,{<<"Loopback-Request-Variables">>, <<"loopback_bleg_variables">>}
                               ,{<<"Loopback-Export">>, <<"loopback_export">>}
                               ,{<<"Loopback-Request-URI">>, <<"sip_loopback_req_uri">>}
                               ,{<<"Loopback-From-URI">>, <<"sip_loopback_from_uri">>}
+                              ,{<<"Call-Forward-For-UUID">>, <<"loopback_from_uuid">>}
                               ,{<<"Call-Forward-Request-URI">>, <<"sip_loopback_req_uri">>}
                               ,{<<"Media-Encryption">>, <<"rtp_secure_media">>}
                               ,{<<"Media-Encryption-Enforce-Security">>,<<"sdp_secure_savp_only">>}
