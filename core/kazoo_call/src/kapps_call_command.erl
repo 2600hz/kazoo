@@ -1188,9 +1188,19 @@ bridge_context(Call) ->
             ,{<<"Other-UUID">>, kapps_call:other_leg_call_id(Call)}
             ],
     Routines = [fun bridge_context_flags/2
+               ,fun bridge_context_request_uris/2
                ],
     KVs = lists:foldl(fun(F, Acc) -> F(Call, Acc) end, Props, Routines),
     kz_json:set_values(KVs, kapps_call:kvs_fetch('call-context', kz_json:new(), Call)).
+
+-spec bridge_context_request_uris(kapps_call:call(), kz_term:proplist()) -> kz_term:proplist().
+bridge_context_request_uris(Call, Props) ->
+    URIs = [{<<"e164">>, knm_converters:normalize(kapps_call:request_user(Call), kapps_call:account_id(Call))}
+           ,{<<"npan">>, knm_converters:to_npan(kapps_call:request_user(Call))}
+           ,{<<"1npan">>, knm_converters:to_1npan(kapps_call:request_user(Call))}
+           ,{<<"route">>, kapps_call:request_user(Call)}
+           ],
+    [{<<"request">>, kz_json:from_list(URIs)} | Props].
 
 -spec bridge_context_flags(kapps_call:call(), kz_term:proplist()) -> kz_term:proplist().
 bridge_context_flags(Call, Props) ->

@@ -1622,7 +1622,6 @@ generate_ccvs(Endpoint, Call) ->
 -spec generate_ccvs(kz_json:object(), kapps_call:call(), kz_term:api_object()) -> kz_json:object().
 generate_ccvs(Endpoint, Call, 'undefined' = CallFwd) ->
     CCVFuns = [fun maybe_auto_answer/1
-              ,fun maybe_set_invite_uri/1
               ],
     Acc0 = {Endpoint, Call, CallFwd, kz_json:new()},
     {_Endpoint, _Call, _CallFwd, CCVs} = lists:foldr(fun(F, Acc) -> F(Acc) end, Acc0, CCVFuns),
@@ -1641,39 +1640,6 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
     CCVs.
 
 -type ccv_acc() :: {kz_json:object(), kapps_call:call(), kz_term:api_object(), kz_json:object()}.
-
-set_invite_uri(URI, CCVs) ->
-    kz_json:set_values([{<<"SIP-Invite-To-URI">>, URI}
-                       ,{<<"SIP-Invite-Request-URI">>, URI}
-                       ], CCVs).
-
-set_invite_uri(URIUser, Realm, CCVs) ->
-    URI = <<"sip:", URIUser/binary, "@", Realm/binary>>,
-    set_invite_uri(URI, CCVs).
-
--spec maybe_set_invite_uri(ccv_acc()) -> ccv_acc().
-maybe_set_invite_uri({Endpoint, Call, 'undefined' = CallFwd, CCVs}) ->
-    {Endpoint, Call, CallFwd
-    ,case {kzd_devices:sip_number(Endpoint)
-          ,kzd_devices:sip_route(Endpoint)
-          ,kzd_devices:sip_invite_format(Endpoint)
-          }
-     of
-         {'undefined', _, <<"e164">>} ->
-             Number = knm_converters:normalize(kapps_call:request_user(Call), kapps_call:account_id(Call)),
-             set_invite_uri(Number, kapps_call:account_realm(Call), CCVs);
-         {'undefined', _, <<"npan">>} ->
-             Number = knm_converters:to_npan(kapps_call:request_user(Call)),
-             set_invite_uri(Number, kapps_call:account_realm(Call), CCVs);
-         {'undefined', _, <<"1npan">>} ->
-             Number = knm_converters:to_1npan(kapps_call:request_user(Call)),
-             set_invite_uri(Number, kapps_call:account_realm(Call), CCVs);
-         {_, Route, <<"route">>} ->
-             set_invite_uri(Route, CCVs);
-         _ -> CCVs
-     end
-    };
-maybe_set_invite_uri(Acc) -> Acc.
 
 -spec maybe_retain_caller_id(ccv_acc()) -> ccv_acc().
 maybe_retain_caller_id({_Endpoint, _Call, 'undefined', _JObj}=Acc) ->
