@@ -36935,9 +36935,13 @@
                 },
                 "operator_number": {
                     "description": "Alternate/override number to use when calling operator from voicemail",
-                    "type": [
-                        "integer",
-                        "string"
+                    "oneOf": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "string"
+                        }
                     ]
                 },
                 "owner_id": {
