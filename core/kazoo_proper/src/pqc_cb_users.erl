@@ -123,7 +123,7 @@ user_url(AccountId, UserId) ->
 
 -spec seq() -> 'ok'.
 seq() ->
-    API = pqc_cb_api:init_api(['crossbar'], ['cb_users_v2']),
+    API = pqc_cb_api:init_api(['crossbar'], ['cb_users']),
     AccountId = create_account(API),
 
     'ok' = create_simple_user(API, AccountId),

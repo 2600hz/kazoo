@@ -433,9 +433,6 @@ path_tokens(#cb_context{raw_path=Path}) ->
 magic_pathed(#cb_context{magic_pathed=MP}) -> MP.
 
 -spec should_paginate(context()) -> boolean().
-should_paginate(#cb_context{api_version=?VERSION_1}) ->
-    lager:debug("pagination disabled in this API version"),
-    'false';
 should_paginate(#cb_context{should_paginate='undefined'}=Context) ->
     case req_value(Context, <<"paginate">>) of
         'undefined' -> 'true';
@@ -451,10 +448,6 @@ pagination_page_size() ->
 
 -spec pagination_page_size(context()) -> pos_integer().
 pagination_page_size(Context) ->
-    pagination_page_size(Context, api_version(Context)).
-
--spec pagination_page_size(context(), kz_term:ne_binary()) -> pos_integer().
-pagination_page_size(Context, _Version) ->
     case req_value(Context, <<"page_size">>) of
         'undefined' -> pagination_page_size();
         V ->

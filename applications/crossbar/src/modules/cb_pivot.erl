@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2019, 2600Hz
-%%% @doc Listing of all expected v1 callbacks
+%%% @doc Crossbar API for pivot.
 %%% @author James Aimonetti
 %%%
 %%% This Source Code Form is subject to the terms of the Mozilla Public

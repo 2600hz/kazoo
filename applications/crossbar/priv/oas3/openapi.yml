@@ -74,8 +74,6 @@
   '/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}':
     '$ref': >-
       paths/blacklists.yml#/paths/~1accounts~1{ACCOUNT_ID}~1blacklists~1{BLACKLIST_ID}
-  '/accounts/{ACCOUNT_ID}/bulk':
-    '$ref': 'paths/bulk.yml#/paths/~1accounts~1{ACCOUNT_ID}~1bulk'
   '/accounts/{ACCOUNT_ID}/call_inspector':
     '$ref': 'paths/call_inspector.yml#/paths/~1accounts~1{ACCOUNT_ID}~1call_inspector'
   '/accounts/{ACCOUNT_ID}/call_inspector/{CALL_ID}':
@@ -194,8 +192,6 @@
   '/accounts/{ACCOUNT_ID}/faxes/smtplog/{ATTEMPT_ID}':
     '$ref': >-
       paths/faxes.yml#/paths/~1accounts~1{ACCOUNT_ID}~1faxes~1smtplog~1{ATTEMPT_ID}
-  '/accounts/{ACCOUNT_ID}/freeswitch':
-    '$ref': 'paths/freeswitch.yml#/paths/~1accounts~1{ACCOUNT_ID}~1freeswitch'
   '/accounts/{ACCOUNT_ID}/functions':
     '$ref': 'paths/functions.yml#/paths/~1accounts~1{ACCOUNT_ID}~1functions'
   '/accounts/{ACCOUNT_ID}/functions/samples':
@@ -203,15 +199,6 @@
   '/accounts/{ACCOUNT_ID}/functions/{FUNCTION_ID}':
     '$ref': >-
       paths/functions.yml#/paths/~1accounts~1{ACCOUNT_ID}~1functions~1{FUNCTION_ID}
-  '/accounts/{ACCOUNT_ID}/global_provisioner_templates':
-    '$ref': >-
-      paths/global_provisioner_templates.yml#/paths/~1accounts~1{ACCOUNT_ID}~1global_provisioner_templates
-  '/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}':
-    '$ref': >-
-      paths/global_provisioner_templates.yml#/paths/~1accounts~1{ACCOUNT_ID}~1global_provisioner_templates~1{TEMPLATE_ID}
-  '/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}/image':
-    '$ref': >-
-      paths/global_provisioner_templates.yml#/paths/~1accounts~1{ACCOUNT_ID}~1global_provisioner_templates~1{TEMPLATE_ID}~1image
   '/accounts/{ACCOUNT_ID}/groups':
     '$ref': 'paths/groups.yml#/paths/~1accounts~1{ACCOUNT_ID}~1groups'
   '/accounts/{ACCOUNT_ID}/groups/{GROUP_ID}':
@@ -264,15 +251,6 @@
   '/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries/{LIST_ENTRY_ID}/vcard':
     '$ref': >-
       paths/lists.yml#/paths/~1accounts~1{ACCOUNT_ID}~1lists~1{LIST_ID}~1entries~1{LIST_ENTRY_ID}~1vcard
-  '/accounts/{ACCOUNT_ID}/local_provisioner_templates':
-    '$ref': >-
-      paths/local_provisioner_templates.yml#/paths/~1accounts~1{ACCOUNT_ID}~1local_provisioner_templates
-  '/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}':
-    '$ref': >-
-      paths/local_provisioner_templates.yml#/paths/~1accounts~1{ACCOUNT_ID}~1local_provisioner_templates~1{TEMPLATE_ID}
-  '/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}/image':
-    '$ref': >-
-      paths/local_provisioner_templates.yml#/paths/~1accounts~1{ACCOUNT_ID}~1local_provisioner_templates~1{TEMPLATE_ID}~1image
   '/accounts/{ACCOUNT_ID}/media':
     '$ref': 'paths/media.yml#/paths/~1accounts~1{ACCOUNT_ID}~1media'
   '/accounts/{ACCOUNT_ID}/media/languages':
@@ -330,8 +308,6 @@
   '/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}/preview':
     '$ref': >-
       paths/notifications.yml#/paths/~1accounts~1{ACCOUNT_ID}~1notifications~1{NOTIFICATION_ID}~1preview
-  '/accounts/{ACCOUNT_ID}/onboard':
-    '$ref': 'paths/onboard.yml#/paths/~1accounts~1{ACCOUNT_ID}~1onboard'
   '/accounts/{ACCOUNT_ID}/parents':
     '$ref': 'paths/accounts.yml#/paths/~1accounts~1{ACCOUNT_ID}~1parents'
   '/accounts/{ACCOUNT_ID}/parked_calls':
@@ -719,8 +695,6 @@
     '$ref': 'paths/schemas.yml#/paths/~1schemas~1{SCHEMA_NAME}'
   '/schemas/{SCHEMA_NAME}/validation':
     '$ref': 'paths/schemas.yml#/paths/~1schemas~1{SCHEMA_NAME}~1validation'
-  '/shared_auth':
-    '$ref': 'paths/shared_auth.yml#/paths/~1shared_auth'
   '/sup/{MODULE}':
     '$ref': 'paths/sup.yml#/paths/~1sup~1{MODULE}'
   '/sup/{MODULE}/{FUNCTION}':
@@ -736,14 +710,8 @@
       paths/system_configs.yml#/paths/~1system_configs~1{SYSTEM_CONFIG_ID}~1{NODE}
   '/system_status':
     '$ref': 'paths/system_status.yml#/paths/~1system_status'
-  '/templates':
-    '$ref': 'paths/templates.yml#/paths/~1templates'
-  '/templates/{TEMPLATE_NAME}':
-    '$ref': 'paths/templates.yml#/paths/~1templates~1{TEMPLATE_NAME}'
   '/token_auth':
     '$ref': 'paths/token_auth.yml#/paths/~1token_auth'
-  '/ubiquiti_auth':
-    '$ref': 'paths/ubiquiti_auth.yml#/paths/~1ubiquiti_auth'
   '/user_auth':
     '$ref': 'paths/user_auth.yml#/paths/~1user_auth'
   '/user_auth/recovery':

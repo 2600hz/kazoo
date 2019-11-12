@@ -106,7 +106,6 @@ curl -v -X GET \
     "datamgr",
     "crossbar.resources",
     "crossbar.media",
-    "crossbar.local_resources",
     "crossbar.callflows",
     "crossbar.auth",
     "crossbar.accounts",

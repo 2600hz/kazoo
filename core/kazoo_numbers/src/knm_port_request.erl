@@ -706,8 +706,8 @@ maybe_send_request(JObj) ->
     end.
 
 -spec maybe_send_request(kz_json:object(), kz_term:api_binary()) -> 'ok'.
-maybe_send_request(JObj, 'undefined') ->
-    lager:debug("'submitted_port_requests_url' is not set for account ~s", [kz_doc:account_id(JObj)]);
+maybe_send_request(_, 'undefined') ->
+    'ok';
 maybe_send_request(JObj, Url)->
     case send_request(JObj, Url) of
         'error' -> 'ok';

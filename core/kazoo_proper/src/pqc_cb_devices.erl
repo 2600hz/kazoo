@@ -9,7 +9,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(pqc_cb_devices_v2).
+-module(pqc_cb_devices).
 
 -export([summary/2]).
 -export([create/3]).
@@ -66,7 +66,7 @@ device_url(AccountId, DeviceId) ->
 
 -spec seq() -> 'ok'.
 seq() ->
-    API = pqc_cb_api:init_api(['crossbar'], ['cb_devices_v2']),
+    API = pqc_cb_api:init_api(['crossbar'], ['cb_devices']),
     AccountId = create_account(API),
 
     EmptySummaryResp = summary(API, AccountId),

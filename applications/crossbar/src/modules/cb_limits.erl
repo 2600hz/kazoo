@@ -9,7 +9,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(cb_limits_v2).
+-module(cb_limits).
 
 -export([init/0
         ,allowed_methods/0
@@ -34,10 +34,10 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.limits">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.limits">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v2_resource.validate.limits">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.post.limits">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.limits">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.limits">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.limits">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.limits">>, ?MODULE, 'post'),
     'ok'.
 
 %%------------------------------------------------------------------------------

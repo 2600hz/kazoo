@@ -593,6 +593,7 @@ Searches for undocumented APIs and reports percentage of doc coverage.
 ./scripts/state-of-docs.py
 ```
 
+```
     Undocumented API endpoints:
     > DELETE /v2/templates/{TEMPLATE_NAME}
     > PUT /v2/templates/{TEMPLATE_NAME}
@@ -600,177 +601,10 @@ Searches for undocumented APIs and reports percentage of doc coverage.
     > GET /v2/accounts/{ACCOUNT_ID}/agents
     > GET /v2/accounts/{ACCOUNT_ID}/agents/stats
     > GET /v2/accounts/{ACCOUNT_ID}/agents/status
-    > POST /v2/accounts/{ACCOUNT_ID}/agents/status/{USER_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/agents/status/{USER_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/queue_status
-    > POST /v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/queue_status
-    > GET /v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/status
-    > POST /v2/accounts/{ACCOUNT_ID}/agents/{USER_ID}/status
-    > GET /v2/accounts/{ACCOUNT_ID}/alerts
-    > PUT /v2/accounts/{ACCOUNT_ID}/alerts
-    > DELETE /v2/accounts/{ACCOUNT_ID}/alerts/{ALERT_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/alerts/{ALERT_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/blacklists
-    > PUT /v2/accounts/{ACCOUNT_ID}/blacklists
-    > GET /v2/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/blacklists/{BLACKLIST_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/bulk
-    > POST /v2/accounts/{ACCOUNT_ID}/bulk
-    > PUT /v2/accounts/{ACCOUNT_ID}/cccps
-    > PUT /v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/cdrs/summary
-    > PUT /v2/accounts/{ACCOUNT_ID}/clicktocall
-    > PATCH /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/connect
-    > POST /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/connect
-    > GET /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}/history
-    > GET /v2/accounts/{ACCOUNT_ID}/conferences
-    > PUT /v2/accounts/{ACCOUNT_ID}/conferences
-    > PATCH /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants
-    > GET /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}/participants/{PARTICIPANT_ID}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
-    > PUT /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
-    > PUT /v2/accounts/{ACCOUNT_ID}/connectivity
-    > DELETE /v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
-    > PUT /v2/accounts/{ACCOUNT_ID}/directories
-    > POST /v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/faxboxes
-    > PUT /v2/accounts/{ACCOUNT_ID}/faxboxes
-    > DELETE /v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
-    > PUT /v2/accounts/{ACCOUNT_ID}/faxes/inbox/{FAX_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/freeswitch
-    > PUT /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates
-    > GET /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates
-    > GET /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}/image
-    > GET /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}/image
-    > DELETE /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}/image
-    > GET /v2/accounts/{ACCOUNT_ID}/hotdesks
-    > GET /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates
-    > PUT /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates
-    > GET /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}/image
-    > POST /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}/image
-    > DELETE /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates/{TEMPLATE_ID}/image
-    > GET /v2/accounts/{ACCOUNT_ID}/menus
-    > PUT /v2/accounts/{ACCOUNT_ID}/menus
-    > PATCH /v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/metaflows
-    > DELETE /v2/accounts/{ACCOUNT_ID}/metaflows
-    > POST /v2/accounts/{ACCOUNT_ID}/metaflows
-    > PUT /v2/accounts/{ACCOUNT_ID}/onboard
-    > GET /v2/accounts/{ACCOUNT_ID}/parked_calls
-    > POST /v2/accounts/{ACCOUNT_ID}/presence
-    > GET /v2/accounts/{ACCOUNT_ID}/presence/report-{REPORT_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}
-    > PUT /v2/accounts/{ACCOUNT_ID}/queues/eavesdrop
-    > PUT /v2/accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}/eavesdrop
-    > POST /v2/accounts/{ACCOUNT_ID}/queues/{QUEUE_ID}/roster
-    > GET /v2/accounts/{ACCOUNT_ID}/rate_limits
-    > DELETE /v2/accounts/{ACCOUNT_ID}/rate_limits
-    > POST /v2/accounts/{ACCOUNT_ID}/rate_limits
-    > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors
-    > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}/resource/{RESOURCE_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/rules
-    > POST /v2/accounts/{ACCOUNT_ID}/resource_selectors/rules
-    > DELETE /v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
-    > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
-    > POST /v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
-    > PUT /v2/accounts/{ACCOUNT_ID}/resource_templates
-    > GET /v2/accounts/{ACCOUNT_ID}/resource_templates
-    > POST /v2/accounts/{ACCOUNT_ID}/resource_templates/{RESOURCE_TEMPLATE_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/resource_templates/{RESOURCE_TEMPLATE_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/resource_templates/{RESOURCE_TEMPLATE_ID}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/resource_templates/{RESOURCE_TEMPLATE_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/service_plans/reconciliation
-    > POST /v2/accounts/{ACCOUNT_ID}/service_plans/synchronization
-    > GET /v2/accounts/{ACCOUNT_ID}/services/plan
-    > POST /v2/accounts/{ACCOUNT_ID}/services/status
-    > GET /v2/accounts/{ACCOUNT_ID}/services/status
-    > PUT /v2/accounts/{ACCOUNT_ID}/signup
-    > POST /v2/accounts/{ACCOUNT_ID}/signup/{THING}
-    > PUT /v2/accounts/{ACCOUNT_ID}/sms
-    > GET /v2/accounts/{ACCOUNT_ID}/sms/{SMS_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/sms/{SMS_ID}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/storage
-    > DELETE /v2/accounts/{ACCOUNT_ID}/storage
-    > PUT /v2/accounts/{ACCOUNT_ID}/storage
-    > POST /v2/accounts/{ACCOUNT_ID}/storage
-    > PUT /v2/accounts/{ACCOUNT_ID}/storage/plans
-    > GET /v2/accounts/{ACCOUNT_ID}/storage/plans
-    > PATCH /v2/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}
-    > POST /v2/accounts/{ACCOUNT_ID}/storage/plans/{STORAGE_PLAN_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output
-    > PUT /v2/accounts/{ACCOUNT_ID}/temporal_rules
-    > POST /v2/accounts/{ACCOUNT_ID}/temporal_rules/{TEMPORAL_RULE_ID}
-    > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules/{TEMPORAL_RULE_ID}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/temporal_rules/{TEMPORAL_RULE_ID}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/temporal_rules/{TEMPORAL_RULE_ID}
-    > PUT /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
-    > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
-    > POST /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
-    > PATCH /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
-    > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
-    > DELETE /v2/accounts/{ACCOUNT_ID}/whitelabel
-    > PUT /v2/accounts/{ACCOUNT_ID}/whitelabel
-    > POST /v2/accounts/{ACCOUNT_ID}/whitelabel
-    > GET /v2/accounts/{ACCOUNT_ID}/whitelabel
-    > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/icon
-    > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/icon
-    > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/logo
-    > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/logo
-    > POST /v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
-    > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/welcome
-    > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}
-    > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/icon
-    > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/logo
-    > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/welcome
     > GET /v2/sup/{MODULE}/{FUNCTION}
     > GET /v2/sup/{MODULE}/{FUNCTION}/{ARGS}
     > DELETE /v2/auth/links
-    > GET /v2/about
-    > GET /v2/auth/links
-    > GET /v2/auth/tokeninfo
-    > GET /v2/templates
-    > POST /v2/auth/links
-    > PUT /v2/auth/authorize
-    > PUT /v2/auth/callback
-    > PUT /v2/ip_auth
-    > PUT /v2/shared_auth
-
+....
     349 / 526 ( 66% documented )
 
     Documented but not matching any allowed_method:
@@ -780,22 +614,7 @@ Searches for undocumented APIs and reports percentage of doc coverage.
     > PATCH /v2/accounts/{ACCOUNT_ID}/descendants/webhooks
     > DELETE /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/access_lists
     > GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/channels
-    > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/cdrs
-    > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/channels
-    > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/devices
-    > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/recordings
-    > GET /v1/accounts
-    > GET /v2/channels
-    > GET /v2/notifications
-    > GET /v2/phone_numbers
-    > GET /v2/resource_selectors/rules
-    > GET /v2/search
-    > GET /v2/search/multi
-    > GET /v2/tasks
-    > GET /v2/webhooks
-    > GET /v2/websockets
-    > POST /v2/resource_selectors/rules
-    > POST /v2/whitelabel/domains
+```
 
 ## state-of-edoc.escript
 

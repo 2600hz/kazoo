@@ -39,6 +39,12 @@
         ,maybe_convert_numbers_to_list/1
         ]).
 
+-export([phonebook_port_in/1
+        ,phonebook_comment/2
+
+        ,should_send_to_phonebook/1
+        ]).
+
 -include("crossbar.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
@@ -84,6 +90,29 @@ cavs_from_context(Context) ->
 cavs_from_request(ReqData, QueryString) ->
     CAVs = kz_json:get_json_value(<<"custom_application_vars">>, ReqData, kz_json:new()),
     kapps_call_util:filter_ccvs(kz_json:merge(CAVs, QueryString)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec phonebook_port_in(cb_context:context()) -> knm_phonebook:response().
+phonebook_port_in(Context) ->
+    knm_phonebook:maybe_create_port_in(cb_context:doc(Context), phonebook_options(Context)).
+
+-spec phonebook_comment(cb_context:context(), kz_json:objects()) -> knm_phonebook:response().
+phonebook_comment(Context, Comments) ->
+    knm_phonebook:maybe_add_comment(cb_context:doc(Context), Comments, phonebook_options(Context)).
+
+-spec should_send_to_phonebook(cb_context:context()) -> boolean().
+should_send_to_phonebook(Context) ->
+    knm_phonebook:should_send_to_phonebook(phonebook_options(Context)).
+
+phonebook_options(Context) ->
+    [{'auth_token', cb_context:auth_token(Context)}
+    ,{'port_authority_id', cb_context:fetch(Context, 'port_authority_id')}
+    ,{'master_account_id', cb_context:master_account_id(Context)}
+    ,{'user_agent', cb_context:req_header(Context, <<"User-Agent">>)}
+    ].
 
 %%------------------------------------------------------------------------------
 %% @doc Generate an attachment name if one is not provided and ensure

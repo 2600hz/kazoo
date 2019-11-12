@@ -13,7 +13,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(cb_devices_v2).
+-module(cb_devices).
 
 -export([init/0
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
@@ -59,16 +59,16 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    Bindings = [{<<"v2_resource.allowed_methods.devices">>, 'allowed_methods'}
-               ,{<<"v2_resource.resource_exists.devices">>, 'resource_exists'}
-               ,{<<"v2_resource.authenticate.devices">>, 'authenticate'}
-               ,{<<"v2_resource.authorize.devices">>, 'authorize'}
-               ,{<<"v2_resource.validate_resource.devices">>, 'validate_resource'}
-               ,{<<"v2_resource.validate.devices">>, 'validate'}
-               ,{<<"v2_resource.execute.put.devices">>, 'put'}
-               ,{<<"v2_resource.execute.post.devices">>, 'post'}
-               ,{<<"v2_resource.execute.patch.devices">>, 'patch'}
-               ,{<<"v2_resource.execute.delete.devices">>, 'delete'}
+    Bindings = [{<<"*.allowed_methods.devices">>, 'allowed_methods'}
+               ,{<<"*.resource_exists.devices">>, 'resource_exists'}
+               ,{<<"*.authenticate.devices">>, 'authenticate'}
+               ,{<<"*.authorize.devices">>, 'authorize'}
+               ,{<<"*.validate_resource.devices">>, 'validate_resource'}
+               ,{<<"*.validate.devices">>, 'validate'}
+               ,{<<"*.execute.put.devices">>, 'put'}
+               ,{<<"*.execute.post.devices">>, 'post'}
+               ,{<<"*.execute.patch.devices">>, 'patch'}
+               ,{<<"*.execute.delete.devices">>, 'delete'}
                ],
     cb_modules_util:bind(?MODULE, Bindings),
     'ok'.
@@ -957,7 +957,7 @@ add_mdn(MDN, Context) ->
     case knm_number:create(MDN, Options) of
         {'error', _}=Error ->
             _ = crossbar_doc:delete(Context),
-            cb_phone_numbers_v2:set_response(Error, Context);
+            cb_phone_numbers:set_response(Error, Context);
         {'ok', _} ->
             lager:debug("created new mdn ~s with public fields set to ~s"
                        ,[MDN, kz_json:encode(PublicFields)]

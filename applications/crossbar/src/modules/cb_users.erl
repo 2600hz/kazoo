@@ -14,11 +14,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(cb_users_v2).
-
--export([create_user/1
-        ,user_devices/1
-        ]).
+-module(cb_users).
 
 -export([init/0
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
@@ -49,28 +45,23 @@
 %%% API
 %%%=============================================================================
 
-%% SUPPORT FOR THE DEPRECIATED CB_SIGNUPS...
--spec create_user(cb_context:context()) -> cb_context:context().
-create_user(Context) ->
-    Context1 = validate_request('undefined', cb_context:set_req_verb(Context, ?HTTP_PUT)),
-    case cb_context:resp_status(Context1) of
-        'success' -> put(Context1);
-        _Status -> Context1
-    end.
-
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.users">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v2_resource.content_types_provided.users">>, ?MODULE, 'content_types_provided'),
-    _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.users">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v2_resource.authenticate.users">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.authorize.users">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"v2_resource.validate_resource.users">>, ?MODULE, 'validate_resource'),
-    _ = crossbar_bindings:bind(<<"v2_resource.validate.users">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.put.users">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.post.users">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.users">>, ?MODULE, 'delete'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.patch.users">>, ?MODULE, 'patch'),
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.users">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.users">>, ?MODULE, 'content_types_provided'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.users">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.authenticate.users">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.authorize.users">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.validate_resource.users">>, ?MODULE, 'validate_resource'),
+    _ = crossbar_bindings:bind(<<"*.validate.users">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.users">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.users">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.users">>, ?MODULE, 'delete'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.users">>, ?MODULE, 'patch'),
     'ok'.
 
 %%------------------------------------------------------------------------------

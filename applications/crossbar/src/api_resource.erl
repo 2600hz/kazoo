@@ -234,7 +234,7 @@ find_version(Path, Req) ->
 find_version(Path) ->
     lager:info("find version in ~s", [Path]),
     case binary:split(Path, <<"/">>, ['global']) of
-        [Path] -> ?VERSION_1;
+        [Path] -> ?VERSION_2;
         [<<>>, Ver | _] -> to_version(Ver);
         [Ver | _] -> to_version(Ver)
     end.
@@ -244,9 +244,9 @@ to_version(<<"v", Int/binary>>=Version) ->
     try kz_term:to_integer(Int) of
         _ -> Version
     catch
-        _:_ -> ?VERSION_1
+        _:_ -> ?VERSION_2
     end;
-to_version(_) -> ?VERSION_1.
+to_version(_) -> ?VERSION_2.
 
 -spec maybe_allow_proxy_req(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 maybe_allow_proxy_req(Peer, ForwardIP) ->

@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2019, 2600Hz
-%%% @doc Listing of all expected v1 callbacks
+%%% @doc Crossnar API for skel.
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%%

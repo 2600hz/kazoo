@@ -25,11 +25,8 @@
 -define(SERVER, ?MODULE).
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
 -define(SYS_ADMIN_MODS, [<<"acls">>
-                        ,<<"global_provisioner_templates">>
-                        ,<<"global_resources">>
                         ,<<"rates">>
                         ,<<"sup">>
-                        ,<<"templates">>
                         ]).
 
 %% Endpoints performing their own auth
@@ -56,8 +53,6 @@ authorize(Context) ->
 authorize(Context, Verb, [{?KZ_ACCOUNTS_DB, []}]) ->
     cb_context:is_superduper_admin(Context)
         orelse Verb =:= ?HTTP_PUT;
-authorize(_Context, ?HTTP_GET, [{<<"global_provisioner_templates">>,_}|_]) ->
-    'true';
 authorize(Context, Verb, _Nouns) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     IsSysAdmin = cb_context:is_superduper_admin(AuthAccountId),

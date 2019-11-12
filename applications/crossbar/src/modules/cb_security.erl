@@ -25,7 +25,6 @@
 -define(DEFAULT_AUTH_METHODS, [<<"cb_api_auth">>
                               ,<<"cb_auth">>
                               ,<<"cb_ip_auth">>
-                              ,<<"cb_ubiquiti_auth">>
                               ,<<"cb_user_auth">>
                               ]).
 
@@ -216,7 +215,7 @@ maybe_flush_config(Context) ->
     case cb_context:fetch(Context, 'flush', 'false') of
         'true' ->
             kapps_account_config:flush(cb_context:account_id(Context), ?AUTH_CONFIG_CAT, <<"hierarchy_merge">>);
-        'false' -> Context
+        'false' -> 'ok'
     end.
 
 %%------------------------------------------------------------------------------

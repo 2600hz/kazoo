@@ -762,13 +762,10 @@ path_name(Module) ->
         {'match', [<<"ip_auth">>=Name]} -> Name;
         {'match', [<<"rates">>=Name]} -> Name;
         {'match', [<<"schemas">>=Name]} -> Name;
-        {'match', [<<"shared_auth">>=Name]} -> Name;
         {'match', [<<"sup">>=Name]} -> Name;
         {'match', [<<"system_configs">>=Name]} -> Name;
         {'match', [<<"system_status">>=Name]} -> Name;
-        {'match', [<<"templates">>=Name]} -> Name;
         {'match', [<<"token_auth">>=Name]} -> Name;
-        {'match', [<<"ubiquiti_auth">>=Name]} -> Name;
         {'match', [<<"user_auth">>=Name]} -> Name;
         {'match', [<<"quickcall">>=Name]} -> <<?ACCOUNTS_PREFIX"/"?ENDPOINTS_PREFIX"/", Name/binary>>;
         {'match', [Name]} -> <<?ACCOUNTS_PREFIX"/", Name/binary>>;
@@ -957,10 +954,6 @@ find_methods_in_clause(?FUN_ARGS('content_types_provided_for_attachments', _Args
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_domain_attachments', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
      || {Type, SubType, _} <- cb_whitelabel:acceptable_content_types()
-    ] ++ Acc;
-find_methods_in_clause(?FUN_ARGS('content_types_provided_for_provisioner', _Args), Acc) ->
-    [kz_binary:join([Type, SubType], <<"/">>)
-     || {Type, SubType, _} <- cb_global_provisioner_templates:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_vm_download', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)

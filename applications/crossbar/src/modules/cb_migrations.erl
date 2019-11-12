@@ -20,19 +20,23 @@
 -include("crossbar.hrl").
 
 %% {ACCOUNT_ID}.migrations
--define(MIGRATIONS_DOC, <<"migrations">>).
+-define(MIGRATIONS_DOC_ID, <<"migrations">>).
 
-%% Id, Description, Callback Module
--define(MIGRATIONS_LIST, [{<<"notify_to_teletype">>, <<"Migrate account and all sub accounts to Teletype">>, 'cb_migration_disable_notify'}
-                         ]).
-
--spec init() -> ok.
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.migrations">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.migrations">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.migrations">>, ?MODULE, 'validate'),
-    ok.
+    'ok'.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
     [?HTTP_GET].
@@ -41,15 +45,23 @@ allowed_methods() ->
 allowed_methods(_MigrationId) ->
     [?HTTP_GET, ?HTTP_POST].
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists(_) -> 'true'.
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    maybe_create_migration_doc(cb_context:account_db(Context)),
+    maybe_create_migration_doc(Context),
     validate(Context, cb_context:req_verb(Context)).
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
@@ -66,43 +78,50 @@ validate(Context, DocId, ?HTTP_GET) ->
 validate(Context, DocId, ?HTTP_POST) ->
     maybe_perform_migration(DocId, Context).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec load_migration_list(cb_context:context()) -> cb_context:context().
 load_migration_list(Context) ->
-    Format = fun({I, D, _C}, Acc) ->
-                     kz_json:set_value(I, D, Acc)
-             end,
-
-    Resp     = lists:foldl(Format, kz_json:new(), ?MIGRATIONS_LIST),
-    Context1 = cb_context:set_resp_data(Context, Resp),
-
-    cb_context:set_resp_status(Context1, 'success').
+    Setters = [{fun cb_context:set_resp_data/2, 'success'}
+              ,{fun cb_context:set_resp_data/2, crossbar_migration:list()}
+              ],
+    cb_context:setters(Context, Setters).
 
 -spec load_migration_summary(binary(), cb_context:context()) -> cb_context:context().
 load_migration_summary(MigId, Context) ->
-    case lists:keyfind(MigId, 1, ?MIGRATIONS_LIST) of
-        'false' ->
+    case kz_json:get_ne_binary_value(MigId, crossbar_migration:list()) of
+        'undefined' ->
             Context1 = cb_context:set_resp_data(Context, <<"migration not found">>),
             cb_context:set_resp_error_code(Context1, 404);
 
-        Migration ->
-            render_migration_summary(Migration, Context)
+        Desc ->
+            render_migration_summary(MigId, Desc, Context)
     end.
 
--spec render_migration_summary({binary(), binary(), atom()}, cb_context:context()) -> cb_context:context().
-render_migration_summary({Id, Desc, _Callback}, Context) ->
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec render_migration_summary(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
+render_migration_summary(Id, Desc, Context) ->
     Base = [{<<"id">>, Id}
            ,{<<"description">>, Desc}
+            | get_migration_performed(Id, Context)
            ],
-
-    Perf = get_migration_performed(Id, Context),
-    Resp = kz_json:from_list(Base ++ Perf),
+    Resp = kz_json:from_list(Base),
 
     Context1 = cb_context:set_resp_data(Context, Resp),
     cb_context:set_resp_status(Context1, 'success').
 
--spec get_migration_performed(binary(), cb_context:context()) -> list().
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_migration_performed(binary(), cb_context:context()) -> kz_term:proplist().
 get_migration_performed(Id, Context) ->
-    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), ?MIGRATIONS_DOC) of
+    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), ?MIGRATIONS_DOC_ID) of
         {'ok', Doc} ->
             check_migration_performed(Id, Doc);
 
@@ -110,7 +129,7 @@ get_migration_performed(Id, Context) ->
             [{<<"performed">>, 'false'}]
     end.
 
--spec check_migration_performed(binary(), kz_json:object()) -> list().
+-spec check_migration_performed(binary(), kz_json:object()) -> kz_term:proplist().
 check_migration_performed(Id, Doc) ->
     case kz_json:get_value([<<"migrations_performed">>, Id], Doc) of
         'undefined' ->
@@ -120,7 +139,11 @@ check_migration_performed(Id, Doc) ->
             [{<<"performed">>, 'true'}, {<<"performed_time">>, kz_json:get_value(<<"performed_time">>, Value)}]
     end.
 
--spec maybe_perform_migration(binary(), cb_context:context()) -> cb_context:context().
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_perform_migration(path_token(), cb_context:context()) -> cb_context:context().
 maybe_perform_migration(MigId, Context) ->
     case kz_json:get_value(<<"perform_migration">>, cb_context:req_data(Context)) of
         <<"now">> ->
@@ -131,91 +154,69 @@ maybe_perform_migration(MigId, Context) ->
             cb_context:add_validation_error(<<"migration">>, <<"failed">>, Cause, Context)
     end.
 
--spec check_migration_valid(binary(), cb_context:context()) -> cb_context:context().
+-spec check_migration_valid(path_token(), cb_context:context()) -> cb_context:context().
 check_migration_valid(MigId, Context) ->
-    case lists:keyfind(MigId, 1, ?MIGRATIONS_LIST) of
-        'false' ->
+    case kz_json:get_ne_binary_value(MigId, crossbar_migration:list()) of
+        'undefined' ->
             Cause = kz_json:from_list([{<<"migration">>, <<"not found">>}]),
             cb_context:add_validation_error(<<"migration">>, <<"invalid">>, Cause, Context);
 
-        {_, _, Module} ->
-            Context1 = perform_migration(MigId, Module, Context),
+        _ ->
+            Context1 = perform_migration(MigId, Context),
             cb_context:set_resp_status(Context1, 'success')
     end.
 
--spec perform_migration(binary(), atom(), cb_context:context()) -> cb_context:context().
-perform_migration(MigId, Module, Context) ->
-    {'ok', All} = kz_datamgr:get_all_results(<<"accounts">>, <<"accounts/listing_by_descendants">>),
-    Account     = cb_context:account_id(Context),
+-spec perform_migration(path_token(), cb_context:context()) -> cb_context:context().
+perform_migration(MigId, Context) ->
+    case kz_json:is_true(<<"include_descendants">>, cb_context:req_data(Context)) of
+        'true' ->
+            Descendants = get_account_descendants(Context),
+            List = [migrate_on_account(AccountId, MigId, Context) || AccountId <- Descendants],
+            cb_context:set_resp_data(Context, kz_json:from_list([{<<"performed_on">>, List}]));
 
-    Result = case kz_json:is_true(<<"include_descendants">>, cb_context:req_data(Context)) of
-                 'true' ->
-                     Descendants = filter_account_descendants(Account, All, []),
-                     Filtered    = maybe_filter_resellers(Descendants, Context),
-                     List = [migrate_on_account(kz_json:get_value(<<"id">>, X), MigId, Module, Context) || X <- Filtered],
-                     kz_json:from_list([{<<"performed_on">>, List}]);
-
-                 'false' ->
-                     _ = migrate_on_account(cb_context:account_id(Context), MigId, Module, Context),
-                     kz_json:from_list([{<<"performed_on">>, [cb_context:account_id(Context)]}])
-             end,
-    cb_context:set_resp_data(Context, Result).
-
--spec maybe_filter_resellers(list(), cb_context:context()) -> list(kz_json:object()).
-maybe_filter_resellers(Accounts, Context) ->
-    case kz_json:is_true(<<"include_resellers">>, cb_context:req_data(Context)) of
-        'true'  -> Accounts;
-        'false' -> filter_account_resellers(Accounts)
+        'false' ->
+            _ = migrate_on_account(cb_context:account_id(Context), MigId, Context),
+            cb_context:set_resp_data(Context, kz_json:from_list([{<<"performed_on">>, [cb_context:account_id(Context)]}]))
     end.
 
--spec filter_account_descendants(binary(), list(), list()) -> list().
-filter_account_descendants(Account, [H|T], Acc) ->
-    case kz_json:get_value(<<"key">>, H) of
-        [Account, _] -> filter_account_descendants(Account, T, [H|Acc]);
-        _OtherValue  -> filter_account_descendants(Account, T, Acc)
-    end;
+-spec get_account_descendants(cb_context:context()) -> kz_term:ne_binaries().
+get_account_descendants(Context) ->
+    AccountId = cb_context:account_id(Context),
+    IncludeResellers = kz_json:is_true(<<"include_resellers">>, cb_context:req_data(Context)),
 
-filter_account_descendants(_Account, [], Acc) ->
-    Acc.
+    ViewOptions = [{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, kz_json:new()]}
+                  ],
+    View = <<"accounts/listing_by_descendants">>,
+    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, View, ViewOptions) of
+        {'ok', JObjs} ->
+            Descendants = [kz_doc:id(JObj) || JObj <- JObjs],
+            [AccountId, maybe_filter_resellers(Descendants, IncludeResellers)];
+        {'error', _Reason}  ->
+            lager:debug("failed to get account ~s descendants: ~p", [AccountId, _Reason]),
+            [AccountId]
+    end.
 
--spec filter_account_resellers(list()) -> list().
-filter_account_resellers(Accounts) ->
-    Resellers = get_resellers(Accounts, []),
-    filter_account_resellers(Accounts, Resellers, []).
+-spec maybe_filter_resellers(kz_term:ne_binaries(), boolean()) -> kz_term:ne_binaries().
+maybe_filter_resellers(AccountIds, 'false') ->
+    [Id
+     || Id <- AccountIds,
+        not kz_services_reseller:is_reseller(Id)
+    ];
+maybe_filter_resellers(AccountIds, 'true') ->
+    AccountIds.
 
--spec filter_account_resellers(list(), list(), list()) -> list().
-filter_account_resellers([H|T], Res, Acc) ->
-    Tree = kz_json:get_value([<<"value">>, <<"tree">>], H),
-
-    case lists:subtract(Tree, Res) of
-        New when length(New) < length(Tree) ->
-            filter_account_resellers(T, Res, Acc);
-
-        _NotInList ->
-            filter_account_resellers(T, Res, [H|Acc])
-    end;
-
-filter_account_resellers([], _Res, Acc) ->
-    Acc.
-
--spec get_resellers(list(), list()) -> list().
-get_resellers([H|T], Acc) ->
-    Account = kz_json:get_value(<<"id">>, H),
-    case kz_services_reseller:is_reseller(Account) of
-        'true'  -> get_resellers(T, [Account|Acc]);
-        'false' -> get_resellers(T, Acc)
-    end;
-
-get_resellers([], Acc) ->
-    Acc.
-
--spec migrate_on_account(binary(), binary(), atom(), cb_context:context()) -> binary().
-migrate_on_account(Account, MigId, Module, Context) ->
-    Result = Module:perform_migration(Account, Context),
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec migrate_on_account(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> binary().
+migrate_on_account(Account, MigId, Context) ->
+    Result = crossbar_migration:perform(MigId, Account, Context),
     maybe_mark_as_complete(MigId, Account, Result),
     Account.
 
--spec maybe_mark_as_complete(binary(), binary(), cb_context:context()) -> 'ok'.
+-spec maybe_mark_as_complete(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> 'ok'.
 maybe_mark_as_complete(MigId, Account, Context) ->
     case cb_context:resp_status(Context) of
         'success' ->
@@ -224,14 +225,14 @@ maybe_mark_as_complete(MigId, Account, Context) ->
             lager:info("migration ~p failed to complete", [MigId])
     end.
 
--spec mark_migration_complete(binary(), binary(), cb_context:context()) -> 'ok'.
+-spec mark_migration_complete(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) -> 'ok'.
 mark_migration_complete(MigId, AccountId, Context) ->
     lager:info("migration ~p completed successfully on account ~p", [MigId, AccountId]),
 
     AccountDb = kz_util:format_account_db(AccountId),
-    maybe_create_migration_doc(AccountDb),
+    maybe_create_migration_doc(Context),
 
-    {'ok', Doc} = kz_datamgr:open_cache_doc(AccountDb, ?MIGRATIONS_DOC),
+    {'ok', Doc} = kz_datamgr:open_cache_doc(AccountDb, ?MIGRATIONS_DOC_ID),
     Migrations  = kz_json:get_value(<<"migrations_performed">>, Doc),
 
     User = cb_context:auth_user_id(Context),
@@ -259,22 +260,30 @@ get_user_name(AccountId, UserId) ->
         _ -> 'undefined'
     end.
 
--spec maybe_create_migration_doc(binary()) -> 'ok'.
-maybe_create_migration_doc(Account) ->
-    case kz_datamgr:open_cache_doc(Account, ?MIGRATIONS_DOC) of
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_create_migration_doc(cb_context:context()) -> 'ok'.
+maybe_create_migration_doc(Context) ->
+    AccountDb = cb_context:account_db(Context),
+    case kz_datamgr:open_cache_doc(AccountDb, ?MIGRATIONS_DOC_ID) of
         {'ok', _} -> 'ok';
         {'error', 'not_found'} ->
-            lager:info("creating migrations document for account ~p", [Account]),
-            create_migration_doc(Account)
+            lager:info("creating migrations document for account ~p", [kz_util:format_account_id(AccountDb)]),
+            create_migration_doc(Context)
     end.
 
--spec create_migration_doc(binary()) -> 'ok'.
-create_migration_doc(Account) ->
-    Update = [{<<"pvt_created">>, kz_time:now_s()}
-             ,{<<"migrations_performed">>, []}
-             ],
-    UpdateOptions = [{'update', Update}
-                    ,{'ensure_saved', 'true'}
-                    ],
-    {'ok', _} = kz_datamgr:update_doc(Account, ?MIGRATIONS_DOC, UpdateOptions),
-    lager:debug("created migration doc for account ~s", [Account]).
+-spec create_migration_doc(cb_context:context()) -> 'ok'.
+create_migration_doc(Context) ->
+    AccountDb = cb_context:account_db(Context),
+
+    Setters = [{fun kz_doc:set_id/2, ?MIGRATIONS_DOC_ID}
+              ,{fun kz_doc:set_type/2, <<"migrations">>}
+              ],
+    Doc = kz_doc:setters(kz_json:from_list([{<<"migrations_performed">>, []}]), Setters),
+    JObj = crossbar_doc:update_pvt_parameters(Doc, Context),
+
+    _ = kz_datamgr:save_doc(AccountDb, JObj),
+
+    lager:debug("created migration doc for account ~s", [kz_util:format_account_id(AccountDb)]).

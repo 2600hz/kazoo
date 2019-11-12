@@ -14,9 +14,7 @@ Requests Crossbar follows this structure:
 
 Here the explanation:
 
-* `{VERSION}` - The version of the API you are calling.
-    * `v1` - Most APIs respond on the `v1`
-    * `v2` - A select number of APIs have newer behaviour. If you used the its `v1` version, it will work as before.
+* `{VERSION}` - The version of the API you are calling. Currently the only support value is `v2`.
 * `{ACCOUNT_ID}` - Most requests operate against a specific account and thus require the `account_id` to route the request properly
 * `{RESOURCE_ID}` - When accessing a specific resource, like a device, user, or callflow, this is the `{RESOURCE_ID}` points to the specific instance you're accessing.
 
@@ -151,7 +149,7 @@ When receiving JSON responses, clients will receive the response in an envelope.
 
 ## Pagination
 
-All listing APIs in `v2` will be paginated by default (`v1` will operate as before without pagination).
+All listing APIs will be paginated by default.
 
 Let's take a look at the CDRs API to see how to interpret pagination.
 

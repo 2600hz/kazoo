@@ -199,7 +199,7 @@ response_range_not_satisfiable(Context) ->
 %%
 %% The RedirectUrl should be relative to the accessed URL. So, if the
 %% URL accessed that is deprecated is:
-%% `/v1/account/{AID}/module/{MID}'
+%% `/v2/account/{AID}/module/{MID}'
 %% and that MID moved to `module2', the RedirectURL should be:
 %% `../../module2/{MID}'
 %%

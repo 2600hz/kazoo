@@ -71,8 +71,7 @@ dry_run(Context, Quotes, 'true') ->
 
 -spec should_dry_run(cb_context:context()) -> boolean().
 should_dry_run(Context) ->
-    cb_context:accepting_charges(Context) =/= 'true'
-        andalso cb_context:api_version(Context) =/= ?VERSION_1.
+    cb_context:accepting_charges(Context) =/= 'true'.
 
 -spec check_creditably(cb_context:context(), kz_services:services(), kz_services_invoices:invoices(), boolean() | number()) ->
           cb_context:context().

@@ -156,7 +156,7 @@ magic_hash(Event) ->
     VMBoxId = kz_json:get_value(<<"Voicemail-Box">>, Event),
     MessageId = kz_json:get_value(<<"Voicemail-ID">>, Event),
 
-    try list_to_binary([<<"/v1/accounts/">>, AccountId, <<"/vmboxes/">>, VMBoxId
+    try list_to_binary([<<"/v2/accounts/">>, AccountId, <<"/vmboxes/">>, VMBoxId
                        ,<<"/messages/">>, MessageId, <<"/raw">>
                        ])
     of

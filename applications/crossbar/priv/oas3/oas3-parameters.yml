@@ -630,23 +630,6 @@
     'minLength': 15
     'pattern': '^[0-9a-f]+$'
     'type': string
-'TEMPLATE_ID':
-  'description': request TEMPLATE_ID parameter
-  'in': path
-  'name': TEMPLATE_ID
-  'required': true
-  'schema':
-    'maxLength': 32
-    'minLength': 32
-    'pattern': '^[0-9a-f]+$'
-    'type': string
-'TEMPLATE_NAME':
-  'description': request TEMPLATE_NAME parameter
-  'in': path
-  'name': TEMPLATE_NAME
-  'required': true
-  'schema':
-    'type': string
 'TEMPORAL_RULE_ID':
   'description': request TEMPORAL_RULE_ID parameter
   'in': path

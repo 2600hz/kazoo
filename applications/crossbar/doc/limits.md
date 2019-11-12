@@ -51,36 +51,6 @@ curl -v -X GET \
 
 > POST /v2/accounts/{ACCOUNT_ID}/limits
 
-First using API v1 (simplest):
-
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {
-        "twoway_trunks": 0,
-        "inbound_trunks": 11,
-        "id": "limits",
-        "allow_prepay": true,
-        "outbound_trunks": 5
-    }}' \
-    http://{SERVER}:8000/v1/accounts/{ACCOUNT_ID}/limits
-```
-
-```json
-{
-    "data": {
-        "twoway_trunks": 0,
-        "inbound_trunks": 11,
-        "id": "limits",
-        "allow_prepay": true,
-        "outbound_trunks": 5
-    },
-    "status": "success",
-}
-```
-
-Now with API v2:
-
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \

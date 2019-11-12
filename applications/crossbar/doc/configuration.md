@@ -49,14 +49,10 @@ Some modules use the `crossbar` namespace to create a specific `system_config` d
 ##### `crossbar.cdrs`
 ##### `crossbar.devices`
 ##### `crossbar.fax`
-##### `crossbar.freeswitch`
-##### `crossbar.local_resources`
 ##### `crossbar.media`
 ##### `crossbar.notifications`
-##### `crossbar.onboard`
 ##### `crossbar.port_requests`
 ##### `crossbar.presence`
-##### `crossbar.provisioner_templates`
 ##### `crossbar.queues`
 ##### `crossbar.resource_selectors`
 ##### `crossbar.resource_templates`

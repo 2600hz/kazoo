@@ -1155,6 +1155,9 @@ fetch_category(Category, 'false') ->
          ,'undefined'
          }
         ,{<<"stepswitch.cnam">>, <<"cnam">>}
+        ,{{<<"crossbar.local_resources">>, <<"allow_peers">>}
+         ,{<<"crossbar.resources">>, <<"allow_peers">>}
+         }
         ]).
 
 -spec migrate() -> 'ok'.

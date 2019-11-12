@@ -1,6 +1,6 @@
 {application,crossbar,
-             [{applications,[cowboy,cowlib,crypto,erlang_localtime,inets,
-                             kazoo,kazoo_amqp,kazoo_apps,kazoo_attachments,
+             [{applications,[cowboy,cowlib,crypto,erlang_localtime,kazoo,
+                             kazoo_amqp,kazoo_apps,kazoo_attachments,
                              kazoo_auth,kazoo_bindings,kazoo_caches,
                              kazoo_call,kazoo_config,kazoo_csv,kazoo_data,
                              kazoo_databases,kazoo_documents,kazoo_endpoint,
@@ -16,6 +16,6 @@
               {env,[{is_kazoo_app,true}]},
               {mod,{crossbar_app,[]}},
               {modules,[]},
-              {registered,[crossbar_cache,cb_jobs_listener,crossbar_sup,
+              {registered,[crossbar_cache,crossbar_jobs_listener,crossbar_sup,
                            crossbar_module_sup]},
               {vsn,"4.0.0"}]}.

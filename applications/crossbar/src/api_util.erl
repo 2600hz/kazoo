@@ -146,6 +146,17 @@ get_cors_headers(Allow) ->
           {cb_context:context(), cowboy_req:req()} |
           stop_return().
 get_req_data(Context, Req0) ->
+    maybe_get_req_data(Context, Req0, cb_context:api_version(Context)).
+
+-spec maybe_get_req_data(cb_context:context(), cowboy_req:req(), kz_term:ne_binary()) ->
+          {cb_context:context(), cowboy_req:req()} |
+          stop_return().
+maybe_get_req_data(Context, Req, ?VERSION_1) ->
+    lager:debug("unsupported version 1 request, stopping here..."),
+    Message = <<"API version 1 is not supported. Please upgrade your code to use version 2.">>,
+    Context1 = cb_context:add_system_error(410, 'gone', Message, Context),
+    ?MODULE:stop(Req, Context1);
+maybe_get_req_data(Context, Req0, _Version) ->
     {QS, Req1} = get_query_string_data(Req0),
     get_req_data(Context, Req1, get_content_type(Req1), QS).
 
@@ -1149,12 +1160,11 @@ execute_request(Req, Context) ->
 -spec execute_request(cowboy_req:req(), cb_context:context(), kz_term:ne_binary(), kz_term:ne_binaries(), http_method()) ->
           {boolean() | 'stop', cowboy_req:req(), cb_context:context()}.
 execute_request(Req, Context, Mod, Params, Verb) ->
-    Context1 = maybe_set_accepting_charges(Context),
-    Event = create_event_name(Context1, [<<"execute">>
-                                        ,kz_term:to_lower_binary(Verb)
-                                        ,Mod
-                                        ]),
-    Payload = [Context1 | Params],
+    Event = create_event_name(Context, [<<"execute">>
+                                       ,kz_term:to_lower_binary(Verb)
+                                       ,Mod
+                                       ]),
+    Payload = [Context | Params],
     Context2 = crossbar_bindings:fold(Event, Payload),
 
     case cb_context:is_context(Context2) of
@@ -1162,17 +1172,6 @@ execute_request(Req, Context, Mod, Params, Verb) ->
             execute_request_results(Req, Context2, cb_context:resp_status(Context2));
         'false' ->
             execute_request_failure(Req, Context, Context2)
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc Backwards compatibility: no 402 Payment Required for v1 APIs
-%% @end
-%%------------------------------------------------------------------------------
--spec maybe_set_accepting_charges(cb_context:context()) -> cb_context:context().
-maybe_set_accepting_charges(Context) ->
-    case cb_context:api_version(Context) of
-        <<"v1">> -> cb_context:set_accepting_charges(Context);
-        _ -> Context
     end.
 
 -spec execute_request_failure(cowboy_req:req(), cb_context:context(), any()) ->

@@ -36,9 +36,8 @@ Key | Description | Type | Default | Required | Support Level
 `auth_modules.cb_api_auth` | crossbar authenticator module configuration | [#/definitions/auth_module_config](#auth_module_config) |   | `false` |
 `auth_modules.cb_auth` | crossbar authenticator module configuration | [#/definitions/auth_module_config](#auth_module_config) |   | `false` |
 `auth_modules.cb_ip_auth` | crossbar authenticator module configuration | [#/definitions/auth_module_config](#auth_module_config) |   | `false` |
-`auth_modules.cb_ubiquiti_auth` | crossbar authenticator module configuration | [#/definitions/auth_module_config](#auth_module_config) |   | `false` |
 `auth_modules.cb_user_auth` | crossbar authenticator module configuration | [#/definitions/auth_module_config](#auth_module_config) |   | `false` |
-`auth_modules` | Default crossbar authentication modules configuration | `object()` | `{"cb_user_auth":{"token_auth_expiry_s":3600,"log_successful_attempts":true,"log_failed_attempts":true,"enabled":true},"cb_ubiquiti_auth":{"token_auth_expiry_s":3600,"log_successful_attempts":false,"log_failed_attempts":true,"enabled":true},"cb_ip_auth":{"token_auth_expiry_s":3600,"log_successful_attempts":false,"log_failed_attempts":true,"enabled":true},"cb_auth":{"token_auth_expiry_s":3600,"log_successful_attempts":false,"log_failed_attempts":true,"enabled":true},"cb_api_auth":{"token_auth_expiry_s":3600,"log_successful_attempts":false,"log_failed_attempts":true,"enabled":true}}` | `true` |
+`auth_modules` | Default crossbar authentication modules configuration | `object()` | `{"cb_user_auth":{"token_auth_expiry_s":3600,"log_successful_attempts":true,"log_failed_attempts":true,"enabled":true},"cb_ip_auth":{"token_auth_expiry_s":3600,"log_successful_attempts":false,"log_failed_attempts":true,"enabled":true},"cb_auth":{"token_auth_expiry_s":3600,"log_successful_attempts":false,"log_failed_attempts":true,"enabled":true},"cb_api_auth":{"token_auth_expiry_s":3600,"log_successful_attempts":false,"log_failed_attempts":true,"enabled":true}}` | `true` |
 
 ### auth_module_config
 
@@ -80,7 +79,6 @@ curl -v -X GET \
       "cb_api_auth",
       "cb_auth",
       "cb_ip_auth",
-      "cb_ubiquiti_auth",
       "cb_user_auth"
     ]
   },
@@ -139,12 +137,6 @@ curl -v -X GET \
           "log_successful_attempts": true
         },
         "cb_ip_auth": {
-          "enabled": true,
-          "token_auth_expiry_s": 3600,
-          "log_failed_attempts": true,
-          "log_successful_attempts": true
-        },
-        "cb_ubiquiti_auth": {
           "enabled": true,
           "token_auth_expiry_s": 3600,
           "log_failed_attempts": true,

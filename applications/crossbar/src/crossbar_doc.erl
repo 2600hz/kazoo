@@ -998,9 +998,8 @@ maybe_apply_custom_filter(Context, FilterFun, JObjs) ->
 
 -spec handle_datamgr_success(kz_json:object() | kz_json:objects(), cb_context:context()) -> cb_context:context().
 handle_datamgr_success([], Context) ->
-    cb_context:setters(handle_thing_success([], Context)
-                      ,version_specific_success([], Context)
-                      );
+    RespEnv = kz_json:set_value(<<"page_size">>, 0, cb_context:resp_envelope(Context)),
+    handle_thing_success([], cb_context:set_resp_envelope(Context, RespEnv));
 handle_datamgr_success([JObj|_]=JObjs, Context) ->
     case kz_json:is_json_object(JObj) of
         'true' -> handle_json_success(JObjs, Context);
@@ -1061,12 +1060,13 @@ handle_json_success(JObjs, Context, _Verb) when is_list(JObjs) ->
                 || JObj <- JObjs,
                    not kz_doc:is_soft_deleted(JObj)
                ],
+    RespEnv = kz_json:set_value(<<"page_size">>, length(JObjs), cb_context:resp_envelope(Context)),
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, JObjs}
                        ,{fun cb_context:set_resp_status/2, 'success'}
                        ,{fun cb_context:set_resp_data/2, RespData}
                        ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObjs)}
-                        | version_specific_success(JObjs, Context)
+                       ,{fun cb_context:set_resp_envelope/2, RespEnv}
                        ]);
 handle_json_success(JObj, Context, ?HTTP_PUT) ->
     RespHeaders = add_location_header(JObj, cb_context:resp_headers(Context)),
@@ -1093,17 +1093,6 @@ handle_json_success(JObj, Context, _Verb) ->
                        ,{fun cb_context:set_resp_data/2, public_and_read_only(JObj)}
                        ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
                        ]).
-
--spec version_specific_success(kz_json:objects(), cb_context:context()) -> list().
-version_specific_success(JObjs, Context) ->
-    version_specific_success(JObjs, Context, cb_context:api_version(Context)).
-version_specific_success(_JObjs, _Context, ?VERSION_1) ->
-    [];
-version_specific_success(JObjs, Context, _Version) ->
-    [{fun cb_context:set_resp_envelope/2
-     ,kz_json:set_value(<<"page_size">>, length(JObjs), cb_context:resp_envelope(Context))
-     }
-    ].
 
 %%------------------------------------------------------------------------------
 %% @doc

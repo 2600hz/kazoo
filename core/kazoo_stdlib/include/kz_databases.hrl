@@ -7,7 +7,6 @@
 -define(KZ_ACCOUNTS_DB, <<"accounts">>).
 -define(KZ_ALERTS_DB, <<"alerts">>).
 -define(KZ_RATES_DB, <<"ratedeck">>).
--define(KZ_PROVISIONER_DB, <<"global_provisioner">>).
 -define(KZ_FAXES_DB, <<"faxes">>).
 -define(KZ_SERVICES_DB, <<"services">>).
 -define(KZ_OFFNET_DB, <<"offnet">>).
@@ -43,7 +42,6 @@
                        ,?KZ_SIP_DB
                        ,?KZ_ACCOUNTS_DB
                        ,?KZ_RATES_DB
-                       ,?KZ_PROVISIONER_DB
                        ,?KZ_FAXES_DB
                        ,?KZ_SERVICES_DB
                        ,?KZ_OFFNET_DB

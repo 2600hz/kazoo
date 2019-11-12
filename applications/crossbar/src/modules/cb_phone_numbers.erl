@@ -10,7 +10,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(cb_phone_numbers_v2).
+-module(cb_phone_numbers).
 
 -export([init/0
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
@@ -88,15 +88,15 @@
 %%------------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
-    _ = crossbar_bindings:bind(<<"v2_resource.authenticate.phone_numbers">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.authorize.phone_numbers">>, ?MODULE, 'authorize'),
-    _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.phone_numbers">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"v2_resource.resource_exists.phone_numbers">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"v2_resource.validate.phone_numbers">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.put.phone_numbers">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.post.phone_numbers">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.patch.phone_numbers">>, ?MODULE, 'patch'),
-    _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.phone_numbers">>, ?MODULE, 'delete'),
+    _ = crossbar_bindings:bind(<<"*.authenticate.phone_numbers">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.authorize.phone_numbers">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.phone_numbers">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.phone_numbers">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.phone_numbers">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.phone_numbers">>, ?MODULE, 'put'),
+    _ = crossbar_bindings:bind(<<"*.execute.post.phone_numbers">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.phone_numbers">>, ?MODULE, 'patch'),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.phone_numbers">>, ?MODULE, 'delete'),
     ok.
 
 %%------------------------------------------------------------------------------

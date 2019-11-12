@@ -9,10 +9,24 @@ This file will serve as a reference point for upcoming announcements, both of th
 The 5.0 release will start Kazoo's official support for OTP 21 ([21.3](http://www.erlang.org/news/127) currently being the preferred version).
 
 1. The big change for Erlang code is the deprecation of using `erlang:get_stacktrace()`. There is a target in the root Makefile `make check_stacktrace` that will update uses of `get_stacktrace()` from `try/catch` clauses. Please ensure any private code is adjusted accordingly.
-
 2. Community-supported and deprecated apps will be moved out of Kazoo and into a [kazoo-community](https://github.com/kazoo-community) organization. De-factor maintainers of the community apps have been added to remove 2600Hz from blocking PR and code management for those apps. Tooling will continue to be improved for those apps (and 3rd party apps in general). If you would like to take on a maintainer's role for any of the kazoo-community apps, let us know!
-
 3. Dependencies have been re-evaluated, updated, or removed as necessary. Please check that your use of them is still available. We're thinking on how community/private apps can include unique dependencies within themselves without impacting core Kazoo's dependency list.
+4. All Crossbar API version 1 modules are removed. The supported API version is now version 2. Please upgrade your applications, UI or scripts to work with version 2.
+5. These long deprecated and unused Crossbar modules are remove:
+    * `cb_bulk `: Old unused, error prone, and version 1 API. There is no substituted API.
+    * `cb_freeswitch`: Old unused module. There is no substituted API.
+    * `cb_global_provisioner_templates`: Long deprecated and unsupported provisioner, you should use already migrated to the new 2600Hz provisioner.
+    * `cb_local_provisioner_templates`: Long deprecated and unsupported provisioner, you should use already migrated to the new 2600Hz provisioner.
+    * `cb_local_resources`: APIs for `/local_resources` and `/global_resources` are deprecated for along time. Use the new `/resources` API with or without `{ACCOUNT_ID}`  for configuring global or local resources instead.
+    * `cb_onboard`: Old unused, error prone modules. There is no substituted API.
+    * `cb_shared_auth`: Old unused module with possible security issues.
+    * `cb_templates`
+    * `cb_ubiquiti_auth` and `cb_ubiquiti_util`
+6. These long deprecated and unsupported provisioner are remove:
+    * `super_awesome_provisioner`
+    * `awesome_provisioner`
+    * `simple_provisioner`
+    * Database `global_provisioner` used by these provisioners are remove.
 
 5. Kazoo Number Manager core application has been renamed to `kazoo_numbers`. This should be almost transparent to the client users. Applications not included in KAZOO repo should do this rename if they are depending on knm app or include one of its header files. `scripts/kz_diaspora.bash` script has been updated to do this rename.
 
@@ -31,6 +45,8 @@ Instead, we've moved to using `kz_datamgr:update_doc` and adjusted it to take an
 The old `save/2` took an updater function and tried to save the result. Because we want to be sure the changes are saved both to the account DB and the `accounts` DB, we need to be able to apply the update to the `accounts` DB version independently of the account DB version.
 
 4. New parameters were added to the account, user and device documents to set the asserted identity.  These parameters are currently free-form but will be strictly verified by default in the future!
+
+5. Crossbar API version 1 has been deprecated. This is the last major version of Kazoo with support of `v1`. Please consider migrating your customize Crossbar modules from version 1 to version 2. Also upgrade your applications, UI or scripts to use version 2. This is the last version of Kazoo which is deprecated Kazoo-UI works with.
 
 ### 4.2
 

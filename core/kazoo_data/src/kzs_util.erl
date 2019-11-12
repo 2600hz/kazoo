@@ -44,7 +44,6 @@ db_classification(<<"registrations">>) -> 'deprecated';
 db_classification(<<"crossbar%2Fsessions">>) -> 'deprecated';
 db_classification(<<"sms">>) -> 'deprecated';
 db_classification(<<"cccps">>) -> 'system';
-db_classification(<<"signups">>) -> 'deprecated';
 db_classification(?KZ_RATES_DB) -> 'ratedeck';
 db_classification(?MATCH_RATEDECK_DB_ENCODED(_)) -> 'ratedeck';
 db_classification(?MATCH_RATEDECK_DB_encoded(_)) -> 'ratedeck';
@@ -61,7 +60,6 @@ db_classification(?KZ_AUTH_DB) -> 'system';
 db_classification(?KZ_DATA_DB) -> 'system';
 db_classification(?KZ_TASKS_DB) -> 'system';
 db_classification(?KZ_PENDING_NOTIFY_DB) -> 'system';
-db_classification(?KZ_PROVISIONER_DB) -> 'system'; %% Soon to be deprecated
 db_classification(?KZ_ACCOUNTS_DB) -> 'aggregate';
 db_classification(?KZ_TOKEN_DB) -> 'aggregate';
 db_classification(?KZ_SIP_DB) -> 'aggregate';

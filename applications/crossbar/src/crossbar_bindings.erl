@@ -52,10 +52,10 @@
 -type payload() :: path_tokens() | % mapping over path tokens in URI
                    [cb_context:context() | path_token() | 'undefined',...] |
                    cb_context:context() |
-                   {cb_context:context(), kz_term:proplist()} | % v1_resource:rest_init/2
-                   {'error', _} | % v1_util:execute_request/2
+                   {cb_context:context(), kz_term:proplist()} | % api_resource:rest_init/2
+                   {'error', _} | % api_util:execute_request/2
                    {kz_json:path(), cb_context:context(), path_tokens()} |
-                   {kz_time:datetime(), cowboy_req:req(), cb_context:context()} | % v1_resource:expires/2
+                   {kz_time:datetime(), cowboy_req:req(), cb_context:context()} | % api_resource:expires/2
                    {cowboy_req:req(), cb_context:context()}. % mapping over the request/context records
 
 %%%=============================================================================

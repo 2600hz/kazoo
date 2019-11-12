@@ -7,7 +7,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(cb_jobs_listener).
+-module(crossbar_jobs_listener).
 -behaviour(gen_listener).
 
 -export([start_link/0

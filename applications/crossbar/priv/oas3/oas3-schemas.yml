@@ -127,11 +127,6 @@
           'log_failed_attempts': true
           'log_successful_attempts': false
           'token_auth_expiry_s': 3600
-        'cb_ubiquiti_auth':
-          'enabled': true
-          'log_failed_attempts': true
-          'log_successful_attempts': false
-          'token_auth_expiry_s': 3600
         'cb_user_auth':
           'enabled': true
           'log_failed_attempts': true
@@ -144,8 +139,6 @@
         'cb_auth':
           '$ref': '#/auth_module_config'
         'cb_ip_auth':
-          '$ref': '#/auth_module_config'
-        'cb_ubiquiti_auth':
           '$ref': '#/auth_module_config'
         'cb_user_auth':
           '$ref': '#/auth_module_config'
@@ -8186,18 +8179,6 @@
         'type': object
       'type': array
   'type': object
-'shared_auth':
-  'additionalProperties': false
-  'description': Provides a local auth-token via a shared auth-token
-  'properties':
-    'shared_auth':
-      'description': The shared token
-      'maxLength': 64
-      'minLength': 64
-      'type': string
-  'required':
-    - shared_auth
-  'type': object
 'skels':
   'description': Skeleton JSON schema
   'properties': {}
@@ -9820,11 +9801,6 @@
           'log_failed_attempts': true
           'log_successful_attempts': false
           'token_auth_expiry_s': 3600
-        'cb_ubiquiti_auth':
-          'enabled': true
-          'log_failed_attempts': true
-          'log_successful_attempts': false
-          'token_auth_expiry_s': 3600
         'cb_user_auth':
           'enabled': true
           'log_failed_attempts': true
@@ -9838,8 +9814,6 @@
           '$ref': '#/auth_module_config'
         'cb_ip_auth':
           '$ref': '#/auth_module_config'
-        'cb_ubiquiti_auth':
-          '$ref': '#/auth_module_config'
         'cb_user_auth':
           '$ref': '#/auth_module_config'
       'type': object
@@ -9849,7 +9823,6 @@
         - cb_api_auth
         - cb_auth
         - cb_ip_auth
-        - cb_ubiquiti_auth
       'description': List of crossbar auth configurable modules
       'items':
         'type': string
@@ -9966,47 +9939,6 @@
       'description': crossbar.devices provisioning url
       'type': string
   'type': object
-'system_config.crossbar.freeswitch':
-  'description': Schema for crossbar.freeswitch system_config
-  'properties':
-    'files_to_include':
-      'default':
-        - freeswitch_dialplan
-        - freeswitch_chatplan
-      'description': crossbar.freeswitch files to include
-      'items':
-        'type': string
-      'type': array
-    'offline_configuration_key':
-      'description': crossbar.freeswitch offline configuration key
-      'type': string
-    'realm_templates_to_process':
-      'default':
-        - freeswitch_directory_realm
-      'description': crossbar.freeswitch realm templates to process
-      'items':
-        'type': string
-      'type': array
-    'templates_to_process':
-      'default':
-        - freeswitch_directory
-      'description': crossbar.freeswitch templates to process
-      'items':
-        'type': string
-      'type': array
-    'work_dir':
-      'default': /tmp/
-      'description': crossbar.freeswitch work dir
-      'type': string
-  'type': object
-'system_config.crossbar.local_resources':
-  'description': Schema for crossbar.local_resources system_config
-  'properties':
-    'allow_peers':
-      'default': false
-      'description': crossbar.local_resources allow peers
-      'type': boolean
-  'type': object
 'system_config.crossbar.media':
   'description': Schema for crossbar.media system_config
   'properties':
@@ -10030,31 +9962,6 @@
     'notification_timeout_ms':
       'default': 5000
       'description': crossbar.notifications notification timeout in milliseconds
-      'type': integer
-  'type': object
-'system_config.crossbar.onboard':
-  'description': Schema for crossbar.onboard system_config
-  'properties':
-    'default_callflow_start_exten':
-      'default': 2000
-      'description': crossbar.onboard default callflow start exten
-      'type': integer
-    'default_extension_callflow':
-      'default': |-
-        {"data": { "id": "~s" }, "module": "user", "children": { "_": { "data": { "id": "~s" }, "module": "voicemail", "children": {}}}}
-      'description': crossbar.onboard default extension callflow
-      'type': string
-    'default_vm_start_exten':
-      'default': 3000
-      'description': crossbar.onboard default vm start exten
-      'type': integer
-    'device_pwd_strength':
-      'default': 6
-      'description': crossbar.onboard device pwd strength
-      'type': integer
-    'device_username_strength':
-      'default': 3
-      'description': crossbar.onboard device username strength
       'type': integer
   'type': object
 'system_config.crossbar.phone_numbers':
@@ -10082,6 +9989,10 @@
 'system_config.crossbar.resources':
   'description': Schema for crossbar.resources system_config
   'properties':
+    'allow_peers':
+      'default': false
+      'description': crossbar.resources allow peers
+      'type': boolean
     'job_recovery_threshold_s':
       'default': 3600
       'description': crossbar.resources job recovery threshold in seconds
@@ -10090,13 +10001,6 @@
       'default': 21600
       'description': crossbar.resources job recovery timeout in seconds
       'type': integer
-  'type': object
-'system_config.crossbar.shared_auth':
-  'description': Schema for crossbar.shared_auth system_config
-  'properties':
-    'authoritative_crossbar':
-      'description': crossbar.shared_auth authoritative crossbar
-      'type': string
   'type': object
 'system_config.crossbar.sms':
   'description': Schema for crossbar.sms system_config
@@ -10120,44 +10024,6 @@
       'default': admin
       'description': crossbar.token_restrictions default priv level
       'type': string
-  'type': object
-'system_config.crossbar.ubiquiti':
-  'description': Schema for crossbar.ubiquiti system_config
-  'properties':
-    'api_secret':
-      'description': crossbar.ubiquiti api secret
-      'type': string
-    'api_token_expires_s':
-      'default': 1800
-      'description': crossbar.ubiquiti api token expires in seconds
-      'type': integer
-    'production':
-      'properties':
-        'sso_url':
-          'default': 'https://sso.ubnt.com/api/sso/v1/'
-          'description': crossbar.ubiquiti sso url
-          'type': string
-    'salt_length':
-      'default': 20
-      'description': crossbar.ubiquiti salt length
-      'type': integer
-    'sso_environment':
-      'default': staging
-      'description': crossbar.ubiquiti sso environment
-      'type': string
-    'sso_provider_id':
-      'description': crossbar.ubiquiti sso provider id
-      'type': string
-    'staging':
-      'properties':
-        'sso_url':
-          'default': 'https://sso-stage.ubnt.com/api/sso/v1/'
-          'description': crossbar.ubiquiti sso url
-          'type': string
-    'tokens_per_request':
-      'default': 35
-      'description': crossbar.ubiquiti tokens per request
-      'type': integer
   'type': object
 'system_config.crossbar.users':
   'description': Schema for crossbar.users system_config
@@ -14233,23 +14099,6 @@
   'required':
     - account
     - type
-'ubiquiti_auth':
-  'description': Provides an auth-token via Ubiquiti's SSO
-  'properties':
-    'password':
-      'description': Ubiquiti SSO Password
-      'maxLength': 64
-      'minLength': 1
-      'type': string
-    'username':
-      'description': Ubiquiti SSO Username
-      'maxLength': 64
-      'minLength': 1
-      'type': string
-  'required':
-    - password
-    - username
-  'type': object
 'user_auth':
   'description': Provides an auth-token via user credentials
   'properties':

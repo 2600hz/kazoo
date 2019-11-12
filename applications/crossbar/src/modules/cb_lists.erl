@@ -12,7 +12,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(cb_lists_v2).
+-module(cb_lists).
 
 -export([maybe_migrate/1]).
 -export([init/0
@@ -121,14 +121,14 @@ migrate_to_entry_doc(AccountDb, EntryId, EntryJObj, ListJObj) ->
 -spec init() -> any().
 init() ->
     [crossbar_bindings:bind(Binding, ?MODULE, F)
-     || {Binding, F} <- [{<<"v2_resource.allowed_methods.lists">>, 'allowed_methods'}
-                        ,{<<"v2_resource.resource_exists.lists">>, 'resource_exists'}
-                        ,{<<"v2_resource.content_types_provided.lists">>, 'content_types_provided'}
-                        ,{<<"v2_resource.validate.lists">>, 'validate'}
-                        ,{<<"v2_resource.execute.put.lists">>, 'save'}
-                        ,{<<"v2_resource.execute.post.lists">>, 'save'}
-                        ,{<<"v2_resource.execute.patch.lists">>, 'save'}
-                        ,{<<"v2_resource.execute.delete.lists">>, 'delete'}
+     || {Binding, F} <- [{<<"*.allowed_methods.lists">>, 'allowed_methods'}
+                        ,{<<"*.resource_exists.lists">>, 'resource_exists'}
+                        ,{<<"*.content_types_provided.lists">>, 'content_types_provided'}
+                        ,{<<"*.validate.lists">>, 'validate'}
+                        ,{<<"*.execute.put.lists">>, 'save'}
+                        ,{<<"*.execute.post.lists">>, 'save'}
+                        ,{<<"*.execute.patch.lists">>, 'save'}
+                        ,{<<"*.execute.delete.lists">>, 'delete'}
                         ]
     ].
 
@@ -311,8 +311,8 @@ save(Context, _, ?ENTRIES, _) ->
 
 -spec save(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
 save(Context, _, ?ENTRIES, EntryId, ?PHOTO) ->
-    %% May be move code from cb_users_v2 to crossbar_doc?
-    cb_users_v2:post(Context, EntryId, ?PHOTO).
+    %% May be move code from cb_users to crossbar_doc?
+    cb_users:post(Context, EntryId, ?PHOTO).
 
 -spec type_schema_name(kz_term:ne_binary()) -> kz_term:ne_binary().
 type_schema_name(?TYPE_LIST) -> <<"lists">>;
@@ -345,7 +345,7 @@ set_org(JObj, _, _, ListId) ->
 
 -spec set_photo(kz_json:object(), cb_context:context()) -> kz_json:object().
 set_photo(JObj, Context) ->
-    %% This code is copied from cb_users_v2. May be move it to crossbar_doc?
+    %% This code is copied from cb_users. May be move it to crossbar_doc?
     DocId = kz_json:get_value(<<"_id">>, cb_context:doc(Context)),
     Attach = crossbar_doc:load_attachment(DocId, ?PHOTO, ?TYPE_CHECK_OPTION(?TYPE_LIST_ENTRY), Context),
     case cb_context:resp_status(Attach) of

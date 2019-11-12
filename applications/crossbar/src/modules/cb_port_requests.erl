@@ -386,7 +386,7 @@ patch(Context, Id) ->
 
 -spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 patch(Context, Id, NewState=?PORT_SUBMITTED) ->
-    case phonebook:maybe_create_port_in(Context) of
+    case cb_modules_util:phonebook_port_in(Context) of
         {'ok', 'disabled'} ->
             save_then_maybe_notify(Context, Id, NewState);
         {'ok', Response} ->
@@ -474,7 +474,7 @@ save_and_send_comments(Context, _, []) ->
             Context1
     end;
 save_and_send_comments(Context, Id, NewComments) ->
-    case phonebook:maybe_add_comment(Context, NewComments) of
+    case cb_modules_util:phonebook_comment(Context, NewComments) of
         {'ok', _} ->
             Context1 = save(Context),
             case cb_context:resp_status(Context1) of
@@ -538,7 +538,7 @@ date_as_configured_timezone(Date, Time, FromTimezone) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_phonebook_error(cb_context:context(), phonebook:errors()) -> cb_context:context().
+-spec handle_phonebook_error(cb_context:context(), knm_phonebook:errors()) -> cb_context:context().
 handle_phonebook_error(Context, #{code := Code
                                  ,payload := Payload
                                  ,reason := 'bad_phonebook'
@@ -571,7 +571,7 @@ handle_phonebook_error(Context, #{payload := Payload}) ->
 %% this could cause the UI to not showing the 'Fix' button.
 -define(IMMEDIATELY_REJECTION_FUDGE_SECONDS, 1).
 
--spec maybe_reject_port(cb_context:context(), phonebook:errors()) -> cb_context:context().
+-spec maybe_reject_port(cb_context:context(), knm_phonebook:errors()) -> cb_context:context().
 maybe_reject_port(Context, #{code := Code
                             ,req_type := 'port_in'
                             ,payload := Payload
@@ -1456,7 +1456,7 @@ port_state_change_notify(Context, Id, State) ->
             lager:debug("failed to send the  port ~s notification, maybe reverting the state change: ~s:~p"
                        ,[State, _E, _R]
                        ),
-            maybe_revert_patch(Context, phonebook:should_send_to_phonebook(Context))
+            maybe_revert_patch(Context, cb_modules_util:should_send_to_phonebook(Context))
     end.
 
 -spec state_change_notify_fun(kz_term:ne_binary()) -> function().

@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2019, 2600Hz
-%%% @doc Listing of all expected v1 callbacks
+%%% @doc Crossbar API for comment.
 %%% @author Karl Anderson
 %%% @author James Aimonetti
 %%%
@@ -259,7 +259,7 @@ create(Context) ->
 -spec create(cb_context:context(), {kz_term:ne_binary(), kz_term:ne_binaries()}) -> cb_context:context().
 create(Context, {<<"port_requests">>, _}) ->
     NewComments = cb_context:fetch(Context, 'req_comments', []),
-    case phonebook:maybe_add_comment(Context, NewComments) of
+    case cb_modules_util:phonebook_comment(Context, NewComments) of
         {'ok', _} ->
             crossbar_doc:save(Context);
         {'error', _} ->

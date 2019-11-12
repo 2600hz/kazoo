@@ -22,7 +22,7 @@
 -spec seq() -> 'ok'.
 seq() ->
     API = pqc_cb_api:init_api(['crossbar', 'jonny5']
-                             ,['cb_accounts', 'cb_limits_v2']
+                             ,['cb_accounts', 'cb_limits']
                              ),
     AccountId = create_account(API),
     ResellerId = reseller_id(API, AccountId),

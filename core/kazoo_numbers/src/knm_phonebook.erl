@@ -9,18 +9,23 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(phonebook).
+-module(knm_phonebook).
 
--export([maybe_create_port_in/1
-        ,maybe_add_comment/2
+-export([maybe_create_port_in/2
+        ,maybe_add_comment/3
 
         ,should_send_to_phonebook/1
         ]).
 
--include("crossbar.hrl").
--include_lib("kazoo_numbers/include/knm_port_request.hrl").
-
 -define(MOD_CONFIG_CAT, <<"crossbar.phonebook">>).
+
+-type phonebook_options() :: [{'auth_token', kz_term:ne_binary()} | %% Crossbar auth token
+                              {'port_authority_id', kz_term:ne_binary()} |
+                              {'master_account_id', kz_term:ne_binary()} |
+                              %% Crossbar User-Agent header, to check if request is from project phonebook or not.
+                              {'user_agent', kz_term:ne_binary()}
+                             ].
+
 
 -type req_type() :: 'add_comment' | 'port_in'.
 -type reason() :: 'bad_phonebook' | 'bad_http'.
@@ -43,19 +48,19 @@
 %% @end
 %%------------------------------------------------------------------------------
 
--spec maybe_create_port_in(cb_context:context()) -> response().
-maybe_create_port_in(Context) ->
-    case should_send_to_phonebook(Context) of
+-spec maybe_create_port_in(kz_json:object(), phonebook_options()) -> response().
+maybe_create_port_in(JObj, Options) ->
+    case should_send_to_phonebook(Options) of
         'true' ->
-            create_port_in(cb_context:doc(Context), cb_context:auth_token(Context));
+            create_port_in(JObj, props:get_value('auth_token', Options));
         'false' -> {'ok', 'disabled'}
     end.
 
--spec maybe_add_comment(cb_context:context(), kz_json:objects()) -> response().
-maybe_add_comment(Context, Comment) ->
-    case should_send_to_phonebook(Context) of
+-spec maybe_add_comment(kz_json:object(), kz_json:objects(), phonebook_options()) -> response().
+maybe_add_comment(JObj, Comments, Options) ->
+    case should_send_to_phonebook(Options) of
         'true' ->
-            add_comment(cb_context:doc(Context), cb_context:auth_token(Context), Comment);
+            add_comment(JObj, props:get_value('auth_token', Options), Comments);
         'false' -> {'ok', 'disabled'}
     end.
 
@@ -63,22 +68,11 @@ maybe_add_comment(Context, Comment) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec should_send_to_phonebook(cb_context:context()) -> boolean().
-should_send_to_phonebook(Context) ->
-    phonebook_enabled()
-        andalso cb_context:fetch(Context, 'port_authority_id') =:= cb_context:master_account_id(Context)
-        andalso not req_from_phonebook(Context).
-
--spec phonebook_enabled() -> boolean().
-phonebook_enabled() ->
-    kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enabled">>, 'false').
-
--spec req_from_phonebook(cb_context:context()) -> boolean().
-req_from_phonebook(Context) ->
-    case cb_context:req_header(Context, <<"User-Agent">>) of
-        <<"phonebook">> -> 'true';
-        _ -> 'false'
-    end.
+-spec should_send_to_phonebook(phonebook_options()) -> boolean().
+should_send_to_phonebook(Options) ->
+    kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enabled">>, 'false')
+        andalso props:get_value('port_authority_id', Options) =:= props:get_value('master_account_id', Options)
+        andalso props:get_value('user_agent', Options) =/= <<"phonebook">>.
 
 %%------------------------------------------------------------------------------
 %% @doc

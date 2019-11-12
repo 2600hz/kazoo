@@ -34,7 +34,6 @@ init() ->
     Bindings = [{<<"*.allowed_methods">>, 'allowed_methods'}
                ,{<<"*.resource_exists">>, 'resource_exists'}
                ,{<<"*.validate">>, 'validate'}
-               ,{<<"*.execute.get">>, 'get'}
                ],
     _ = [crossbar_bindings:bind(<<Binding/binary, ".att_handlers_errors">>, ?MODULE, Fun)
          || {Binding, Fun} <- Bindings

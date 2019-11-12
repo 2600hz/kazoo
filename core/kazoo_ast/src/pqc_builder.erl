@@ -281,7 +281,6 @@ maybe_remove_version(<<Endpoint/binary>>) ->
     Split = binary:split(Endpoint, <<"_">>, ['global']),
     case lists:last(Split) of
         <<"v2">> -> kz_binary:join(lists:droplast(Split), $_);
-        <<"v1">> -> kz_binary:join(lists:droplast(Split), $_);
         _ -> Endpoint
     end.
 
@@ -329,41 +328,34 @@ process_module(Module) ->
 %% @doc these excluded modules are not CRUD-y or deprecated
 -spec start_module(module(), acc()) -> acc() | {'skip', acc()}.
 start_module('cb_about', Acc) -> {'skip', Acc};
-start_module('cb_api_auth', Acc) -> {'skip', Acc};
-start_module('cb_apps_link', Acc) -> {'skip', Acc};
-start_module('cb_apps_store', Acc) -> {'skip', Acc};
-start_module('cb_auth', Acc) -> {'skip', Acc};
-start_module('cb_basic_auth', Acc) -> {'skip', Acc};
-start_module('cb_braintree', Acc) -> {'skip', Acc};
-start_module('cb_bulk', Acc) -> {'skip', Acc};
-start_module('cb_call_inspector', Acc) -> {'skip', Acc};
-start_module('cb_contact_list', Acc) -> {'skip', Acc};
-start_module('cb_ip_auth', Acc) -> {'skip', Acc};
-start_module('cb_shared_auth', Acc) -> {'skip', Acc};
-start_module('cb_sup', Acc) -> {'skip', Acc};
-start_module('cb_token_auth', Acc) -> {'skip', Acc};
-start_module('cb_ubiquiti_auth', Acc) -> {'skip', Acc};
-start_module('cb_user_auth', Acc) -> {'skip', Acc};
-start_module('cb_global_provisioner_templates', Acc) -> {'skip', Acc};
-start_module('cb_local_provisioner_templates', Acc) -> {'skip', Acc};
-start_module('cb_att_handlers_errors', Acc) -> {'skip', Acc};
-start_module('cb_token_restrictions', Acc) -> {'skip', Acc};
-start_module('cb_websockets', Acc) -> {'skip', Acc};
-start_module('cb_system_status', Acc) -> {'skip', Acc};
-start_module('cb_security', Acc) -> {'skip', Acc};
-start_module('cb_quickcall', Acc) -> {'skip', Acc};
-start_module('cb_presence', Acc) -> {'skip', Acc};
-start_module('cb_onboard', Acc) -> {'skip', Acc};
-start_module('cb_multi_factor', Acc) -> {'skip', Acc};
-start_module('cb_migrations', Acc) -> {'skip', Acc};
-start_module('cb_freeswitch', Acc) -> {'skip', Acc};
-start_module('cb_configs', Acc) -> {'skip', Acc};
 start_module('cb_access_lists', Acc) -> {'skip', Acc};
 start_module('cb_acdc_call_stats', Acc) -> {'skip', Acc};
 start_module('cb_acls', Acc) -> {'skip', Acc};
 start_module('cb_agents', Acc) -> {'skip', Acc};
 start_module('cb_alerts', Acc) -> {'skip', Acc};
 start_module('cb_allotments', Acc) -> {'skip', Acc};
+start_module('cb_api_auth', Acc) -> {'skip', Acc};
+start_module('cb_apps_link', Acc) -> {'skip', Acc};
+start_module('cb_apps_store', Acc) -> {'skip', Acc};
+start_module('cb_att_handlers_errors', Acc) -> {'skip', Acc};
+start_module('cb_auth', Acc) -> {'skip', Acc};
+start_module('cb_basic_auth', Acc) -> {'skip', Acc};
+start_module('cb_braintree', Acc) -> {'skip', Acc};
+start_module('cb_call_inspector', Acc) -> {'skip', Acc};
+start_module('cb_configs', Acc) -> {'skip', Acc};
+start_module('cb_contact_list', Acc) -> {'skip', Acc};
+start_module('cb_ip_auth', Acc) -> {'skip', Acc};
+start_module('cb_migrations', Acc) -> {'skip', Acc};
+start_module('cb_multi_factor', Acc) -> {'skip', Acc};
+start_module('cb_presence', Acc) -> {'skip', Acc};
+start_module('cb_quickcall', Acc) -> {'skip', Acc};
+start_module('cb_security', Acc) -> {'skip', Acc};
+start_module('cb_sup', Acc) -> {'skip', Acc};
+start_module('cb_system_status', Acc) -> {'skip', Acc};
+start_module('cb_token_auth', Acc) -> {'skip', Acc};
+start_module('cb_token_restrictions', Acc) -> {'skip', Acc};
+start_module('cb_user_auth', Acc) -> {'skip', Acc};
+start_module('cb_websockets', Acc) -> {'skip', Acc};
 start_module(Module, {_MFA, Dict}) ->
     {{Module, 'undefined', 0}, Dict}.
 

@@ -30,9 +30,7 @@ pages:
 #    - 'applications/crossbar/doc/ip_auth.md' ##
 #    - 'Adding Multi-factor': 'applications/crossbar/doc/multi_factor.md'
 #    - 'applications/crossbar/doc/security.md'
-#    - 'applications/crossbar/doc/shared_auth.md' ##
 #    - 'applications/crossbar/doc/token_auth.md'
-#    - 'applications/crossbar/doc/ubiquiti_auth.md'
 #    - 'applications/crossbar/doc/user_authentication.md'
 
 - 'System Preparation':
@@ -180,9 +178,7 @@ pages:
 #    - 'applications/crossbar/doc/ip_auth.md' ##
     - 'Adding Multi-factor': 'applications/crossbar/doc/multi_factor.md'
     - 'applications/crossbar/doc/security.md'
-#    - 'applications/crossbar/doc/shared_auth.md' ##
 #    - 'applications/crossbar/doc/token_auth.md'
-#    - 'applications/crossbar/doc/ubiquiti_auth.md'
     - 'applications/crossbar/doc/user_authentication.md'
 
 - 'Advanced System Configuration':
@@ -316,15 +312,6 @@ pages:
 #    - 'applications/crossbar/doc/system_configs.md'
 #    - 'applications/crossbar/doc/tasks.md'
 #    - 'applications/crossbar/doc/token_restrictions.md'
-#  - 'Deprecated':
-#    - 'applications/crossbar/doc/bulk.md'
-#    - 'applications/crossbar/doc/global_provisioner_templates.md'
-#    - 'applications/crossbar/doc/local_provisioner_templates.md'
-#    - 'applications/crossbar/doc/onboard.md'
-#    - 'applications/crossbar/doc/onboarding.md'
-#    - 'applications/crossbar/doc/signup.md'
-#    - 'applications/crossbar/doc/templates.md'
-
 #  - 'System Status':
 #    - 'applications/crossbar/doc/about.md'
 #    - 'applications/crossbar/doc/acls.md' ##

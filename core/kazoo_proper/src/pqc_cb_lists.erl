@@ -9,7 +9,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(pqc_cb_lists_v2).
+-module(pqc_cb_lists).
 
 -export([summary/2]).
 -export([create/3]).
@@ -66,7 +66,7 @@ list_url(AccountId, ListId) ->
 
 -spec seq() -> 'ok'.
 seq() ->
-    API = pqc_cb_api:init_api(['crossbar'], ['cb_lists_v2']),
+    API = pqc_cb_api:init_api(['crossbar'], ['cb_lists']),
     AccountId = create_account(API),
 
     EmptySummaryResp = summary(API, AccountId),

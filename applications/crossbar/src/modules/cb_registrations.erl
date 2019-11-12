@@ -1,11 +1,11 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2011-2019, 2600Hz
 %%% @doc Registration viewer / creator
-%%% GET /v1/accounts/{account_id}/registrations :
+%%% GET /v2/accounts/{account_id}/registrations :
 %%%   Get a list of account registrations
-%%% GET /v1/accounts/{account_id}/registrations/count :
+%%% GET /v2/accounts/{account_id}/registrations/count :
 %%%   Get a count of account registrations
-%%% GET /v1/registrations :
+%%% GET /v2/registrations :
 %%%   Get a count of system-wide registrations - for superduper admins only
 %%%
 %%%

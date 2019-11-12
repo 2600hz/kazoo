@@ -9,7 +9,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(notification_util).
+-module(crossbar_notify_util).
 
 -include("crossbar.hrl").
 

@@ -288,7 +288,7 @@ post(Context, AccountId) ->
     case kzd_accounts:save(cb_context:doc(Context)) of
         {'ok', SavedAccount} ->
             Context1 = crossbar_doc:handle_datamgr_success(SavedAccount, Context),
-            _ = kz_process:spawn(fun notification_util:maybe_notify_account_change/2, [Existing, Context]),
+            _ = kz_process:spawn(fun crossbar_notify_util:maybe_notify_account_change/2, [Existing, Context]),
             update_provisioner_account(Context1),
 
             leak_pvt_fields(AccountId, Context1);
@@ -843,26 +843,6 @@ leak_trial_time_left(Context, JObj, _Expiration) ->
 %%------------------------------------------------------------------------------
 -spec load_children(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_children(AccountId, Context) ->
-    load_children(AccountId, Context, cb_context:api_version(Context)).
-
--spec load_children(kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-load_children(AccountId, Context, ?VERSION_1) ->
-    load_children_v1(AccountId, Context);
-load_children(AccountId, Context, _Version) ->
-    load_paginated_children(AccountId, Context).
-
--spec load_children_v1(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
-load_children_v1(AccountId, Context) ->
-    crossbar_doc:load_view(?AGG_VIEW_CHILDREN
-                          ,[{'startkey', [AccountId]}
-                           ,{'endkey', [AccountId, kz_json:new()]}
-                           ]
-                          ,Context
-                          ,fun normalize_view_results/2
-                          ).
-
--spec load_paginated_children(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
-load_paginated_children(AccountId, Context) ->
     StartKey = start_key(Context),
     fix_envelope(
       crossbar_doc:load_view(?AGG_VIEW_CHILDREN
@@ -879,25 +859,6 @@ load_paginated_children(AccountId, Context) ->
 %%------------------------------------------------------------------------------
 -spec load_descendants(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_descendants(AccountId, Context) ->
-    load_descendants(AccountId, Context, cb_context:api_version(Context)).
-
-load_descendants(AccountId, Context, ?VERSION_1) ->
-    load_descendants_v1(AccountId, Context);
-load_descendants(AccountId, Context, _Version) ->
-    load_paginated_descendants(AccountId, Context).
-
--spec load_descendants_v1(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
-load_descendants_v1(AccountId, Context) ->
-    crossbar_doc:load_view(?AGG_VIEW_DESCENDANTS
-                          ,[{'startkey', [AccountId]}
-                           ,{'endkey', [AccountId, kz_json:new()]}
-                           ]
-                          ,Context
-                          ,fun normalize_view_results/2
-                          ).
-
--spec load_paginated_descendants(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
-load_paginated_descendants(AccountId, Context) ->
     StartKey = start_key(Context),
     lager:debug("account ~s startkey ~s", [AccountId, StartKey]),
     fix_envelope(
@@ -922,29 +883,8 @@ load_siblings(AccountId, Context) ->
          andalso kapps_config:get_is_true(?ACCOUNTS_CONFIG_CAT, <<"allow_sibling_listing">>, 'true')
         )
     of
-        'true' -> load_siblings(AccountId, Context, cb_context:api_version(Context));
+        'true' -> load_paginated_siblings(AccountId, Context);
         'false' -> cb_context:add_system_error('forbidden', Context)
-    end.
-
--spec load_siblings(kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
-load_siblings(AccountId, Context, ?VERSION_1) ->
-    load_siblings_v1(AccountId, Context);
-load_siblings(AccountId, Context, _Version) ->
-    load_paginated_siblings(AccountId, Context).
-
--spec load_siblings_v1(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
-load_siblings_v1(AccountId, Context) ->
-    Context1 = crossbar_doc:load_view(?AGG_VIEW_PARENT
-                                     ,[{'startkey', AccountId}
-                                      ,{'endkey', AccountId}
-                                      ]
-                                     ,Context
-                                     ),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            load_siblings_results(AccountId, Context1, cb_context:doc(Context1));
-        _Status ->
-            cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, AccountId}]), Context)
     end.
 
 -spec load_paginated_siblings(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().

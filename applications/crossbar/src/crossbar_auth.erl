@@ -37,7 +37,6 @@
           ,{<<"cb_api_auth">>, ?DEFAULT_METHOD_CONFIG('false')}
           ,{<<"cb_auth">>, ?DEFAULT_METHOD_CONFIG('false')}
           ,{<<"cb_ip_auth">>, ?DEFAULT_METHOD_CONFIG('false')}
-          ,{<<"cb_ubiquiti_auth">>, ?DEFAULT_METHOD_CONFIG('false')}
           ]
          )
        ).

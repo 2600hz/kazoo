@@ -110,7 +110,7 @@ Getting Private key
 You can now test your new SSL-enabled APIs via:
 
 ```shell
-$ curl -v --cacert crossbar.crt https://api.2600hz.com:8443/v1/accounts
+$ curl -v --cacert crossbar.crt https://api.2600hz.com:8443/v2/accounts
 * About to connect() to api.2600hz.com port 8443 (#0)
 *   Trying 127.0.0.1... connected
 * successfully set certificate verify locations:
@@ -134,7 +134,7 @@ CApath: /etc/ssl/certs
 *        common name: api.2600hz.com (matched)
 *        issuer: C=US; ST=California; L=San Francisco; O=2600Hz; CN=api.2600hz.com
 *        SSL certificate verify ok.
-> GET /v1/accounts HTTP/1.1
+> GET /v2/accounts HTTP/1.1
 > User-Agent: curl/7.22.0 (x86_64-pc-linux-gnu) libcurl/7.22.0 OpenSSL/1.0.1 zlib/1.2.3.4 libidn/1.23 librtmp/2.3
 > Host: api.2600hz.com:8443
 > Accept: */*

@@ -110,7 +110,7 @@ The *transfer* module requires being used with Metaflow "patterns". In the examp
 This requires the cb_channels module to be started: `sup crossbar_maintenance start_module cb_channels`
 
 ```json
-     POST v1/accounts/{ACCOUNT_ID}/channels/{CALL_ID}
+     POST v2/accounts/{ACCOUNT_ID}/channels/{CALL_ID}
      {
        "data": {
          "action": "transfer",

@@ -79,10 +79,9 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec is_versioned_module(binary()) -> boolean().
 is_versioned_module(Module) ->
-    Mod = lists:reverse(binary_to_list(Module)),
-    case Mod of
-        "1v_" ++ _ -> 'true';
-        "2v_" ++ _ -> 'true';
+    case kz_binary:reverse(Module) of
+        <<"1v_", _/binary>> -> 'true';
+        <<"2v_", _/binary>> -> 'true';
         _ -> 'false'
     end.
 

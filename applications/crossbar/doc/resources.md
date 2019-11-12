@@ -10,8 +10,6 @@ When interacting with an account's resources, the URL structure is as one would 
 
 To perform bulk resource operations use the collections endpoints.
 
-There are two deprecated API endpoints, `global_resources` and `local_resources`. These should continue to work as before, but it is recommended to use `resources` instead, using the presence of an account id to toggle whether the resource is global or not.
-
 ### About Adding Bulk Numbers
 
 It is possible to add numbers, in bulk, to an account using the Jobs API below. If a job fails to run, there is a recovery process that runs periodically to attempt to resume stalled jobs.
