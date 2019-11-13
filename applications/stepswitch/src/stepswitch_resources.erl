@@ -531,12 +531,11 @@ maybe_resource_to_endpoints(#resrc{id=Id
                                   ,name=Name
                                   ,rules=Rules
                                   ,cid_rules=CallerIdRules
-                                  ,gateways=Gateways
                                   ,global=Global
                                   ,weight=Weight
                                   ,proxies=Proxies
                                   ,classifier=Classifier
-                                  }
+                                  } = Resource
                            ,Number
                            ,OffnetJObj
                            ,Endpoints
@@ -562,6 +561,8 @@ maybe_resource_to_endpoints(#resrc{id=Id
             Updates = [{<<"Name">>, Name}
                       ,{<<"Weight">>, Weight}
                       ],
+            Gateways = get_resrc_gateways(Resource),
+
             EndpointList = [update_endpoint(Endpoint, Updates, CCVUpdates)
                             || Endpoint <- gateways_to_endpoints(NumberMatch, Gateways, OffnetJObj, [])
                            ],
