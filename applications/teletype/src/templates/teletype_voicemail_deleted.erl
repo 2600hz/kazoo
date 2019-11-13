@@ -275,7 +275,7 @@ build_voicemail_data(DataJObj) ->
       ]).
 
 -spec render_vm_delete_reason(kz_json:object()) -> kz_term:api_ne_binary().
-render_vm_delete_reason(DataJObj) -> 
+render_vm_delete_reason(DataJObj) ->
     case kz_json:get_atom_value(<<"reason">>, DataJObj) of
         'dtmf' -> <<"user pressed DTMF key">>;
         'delete_after_notify' -> <<"due to 'Deleted after notify'">>;

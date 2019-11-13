@@ -243,7 +243,7 @@ set_folder(Folder, Message, AccountId) ->
     end.
 
 -spec maybe_set_folder(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> db_ret().
-maybe_set_folder(_, ToFolder, MessageId, AccountId, _Msg) when ToFolder == ?VM_FOLDER_DELETED; 
+maybe_set_folder(_, ToFolder, MessageId, AccountId, _Msg) when ToFolder == ?VM_FOLDER_DELETED;
                                                                ToFolder == {?VM_FOLDER_DELETED, 'true'};
                                                                ToFolder == {?VM_FOLDER_DELETED, 'false'} ->
     %% ensuring that message is really deleted

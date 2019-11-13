@@ -486,7 +486,7 @@ add_pvt_auth(JObj, Context) ->
 publish_voicemail_deleted(AccountId, BoxId, MessageIds) ->
     JObjs = kz_json:get_list_value(<<"succeeded">>, kvm_messages:fetch(AccountId, MessageIds, BoxId)),
     lists:foreach(
-      fun(JObj) -> 
+      fun(JObj) ->
               kvm_util:publish_voicemail_deleted(BoxId, JObj, 'crossbar_action')
       end,
       JObjs).
