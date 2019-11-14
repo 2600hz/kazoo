@@ -274,6 +274,7 @@ log_error(_Error, _Contents) ->
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{id=Id, reqs=Reqs}) ->
+    'ok' = ecallmgr_util:remove_media(<<"tts://", Id/bytes>>),
     publish_doc_update(Id),
     _ = [gen_server:reply(From, {'error', 'shutdown'}) || From <- Reqs],
     lager:debug("media tts ~s going down: ~p", [Id, _Reason]).
