@@ -397,7 +397,7 @@ seed_cdr(AccountId, OwnerId, Year, Month, InteractionId) ->
                     ),
 
     AccountMODb = kz_util:format_account_id(AccountId, InteractionTime),
-    kazoo_modb:save_doc(AccountMODb, CDR).
+    kazoo_modb:save_doc(AccountMODb, CDR, ['allow_old_modb_creation']).
 
 create_cdr(AccountId, OwnerId, Year, Month, InteractionId) ->
     [ITime, InteractionKey] = binary:split(InteractionId, <<"-">>),
