@@ -1441,7 +1441,7 @@ lookup_media(MediaName, Type, CallId, JObj) ->
 -spec remove_media(kz_term:ne_binary()) -> 'ok'.
 remove_media(MediaName) ->
     kz_cache:erase_local(?ECALLMGR_UTIL_CACHE
-                         ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
+                        ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
                         ).
 
 -spec request_media_url(kz_term:ne_binary(), media_types(), kz_term:ne_binary(), kz_json:object()) ->
