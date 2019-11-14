@@ -309,8 +309,9 @@ stop_timer(Ref) when is_reference(Ref) ->
 
 -spec publish_doc_update(kz_term:ne_binary()) -> 'ok'.
 publish_doc_update(Id) ->
+    DbId = kz_binary:md5(Id),
     API =
-        [{<<"ID">>, Id}
+        [{<<"ID">>, DbId}
         ,{<<"Type">>, Type = <<"media">>}
         ,{<<"Database">>, Db = <<"tts">>}
         ,{<<"Rev">>, <<"0">>}

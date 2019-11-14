@@ -411,7 +411,7 @@ account_ccvs_from_ip_auth(Doc) ->
                   ]),
             {'ok', AccountCCVs}
     end.
- 
+
 -spec are_all_enabled(kz_term:proplist()) ->
                              'true' |
                              {'false', {not_enabled_error(), kz_term:ne_binary()}}.
