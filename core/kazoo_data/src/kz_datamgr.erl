@@ -1331,7 +1331,7 @@ maybe_create_view(Plan, DbName, DesignDoc, Options, 'true') ->
                                 ,get_registered_view(Plan, DbName, DesignDoc)
                                 ).
 
--spec maybe_create_registered_view(map(), kz_term:ne_binary(), kz_term:ne_binary(), view_options(), kz_json:object() | 'not_registered') ->
+-spec maybe_create_registered_view(map(), kz_term:ne_binary(), 'all_docs' | kz_term:ne_binary(), view_options(), kz_json:object() | 'not_registered') ->
                                           get_results_return().
 maybe_create_registered_view(_Plan, _DbName, _DesignDoc, _Options, 'not_registered') ->
     {'error', 'not_found'};
@@ -1476,7 +1476,7 @@ get_result_docs(DbName, DesignDoc, Keys) ->
 -type paginated_results() :: {'ok', kz_json:objects(), kz_json:api_json_term()} |
                              data_error().
 
--spec paginate_results(kz_term:ne_binary(), kz_term:ne_binary(), paginate_options()) ->
+-spec paginate_results(kz_term:ne_binary(), 'all_docs' | kz_term:ne_binary(), paginate_options()) ->
                               {'ok', kz_json:objects(), kz_json:api_json_term()} |
                               data_error().
 paginate_results(DbName, DesignDoc, Options) ->
