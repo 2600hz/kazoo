@@ -93,7 +93,7 @@ get_results_count(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
 -spec do_fetch_results(couchbeam_db(), kz_term:ne_binary() | ddoc(), view_options()) ->
                               {'ok', kz_json:objects() | kz_term:ne_binaries()} |
                               couchbeam_error().
-do_fetch_results(Db, <<DesignDoc/binary>>, Options) ->
+do_fetch_results(Db, ?NE_BINARY = DesignDoc, Options) ->
     [DesignName, ViewName|_] = binary:split(DesignDoc, <<"/">>, ['global']),
     do_fetch_results(Db, {DesignName, ViewName}, map_options(Options));
 do_fetch_results(Db, DesignDoc, Options)
