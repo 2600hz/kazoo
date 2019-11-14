@@ -274,15 +274,15 @@ big_dataset_seq() ->
                       ),
 
     AccountMODb = kz_util:format_account_id(AccountId, Year, Month),
-    kazoo_modb:save_docs(AccountMODb, CDRs, [{'publish_change_notice', 'false'}]),
+    {'ok', _} = kazoo_modb:save_docs(AccountMODb, CDRs, [{'publish_change_notice', 'false'}]),
 
-    kapps_config:set_default(<<"crossbar">>, <<"request_memory_limit">>, 'null'),
+    _ = kapps_config:set_default(<<"crossbar">>, <<"request_memory_limit">>, 'null'),
     JSON = unpaginated_summary(API, AccountId),
     JObj = kz_json:decode(JSON),
     lager:info("unpaginated and unbound memory resp returned ~p CDRs", [length(kz_json:get_list_value(<<"data">>, JObj))]),
     CDRCount = length(kz_json:get_list_value(<<"data">>, JObj)),
 
-    kapps_config:set_default(<<"crossbar">>, <<"request_memory_limit">>, 1024 * 1024 * 10), % cap at 10Mb
+    _ = kapps_config:set_default(<<"crossbar">>, <<"request_memory_limit">>, 1024 * 1024 * 10), % cap at 10Mb
     {'error', ErrorJSON} = unpaginated_summary(API, AccountId),
     ErrorJObj = kz_json:decode(ErrorJSON),
     416 = kz_json:get_integer_value(<<"error">>, ErrorJObj),
@@ -346,7 +346,7 @@ create_owner(AccountId) ->
 -spec cleanup() -> 'ok'.
 cleanup() ->
     _ = pqc_cb_accounts:cleanup_accounts(?ACCOUNT_NAMES),
-    kapps_config:set_default(<<"crossbar">>, <<"request_memory_limit">>, 'null'),
+    _ = kapps_config:set_default(<<"crossbar">>, <<"request_memory_limit">>, 'null'),
     cleanup_system().
 
 cleanup(API) ->
