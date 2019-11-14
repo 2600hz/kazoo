@@ -136,9 +136,9 @@ build_push_fold(K, V, Acc, JObj, Params) ->
         'undefined' ->
             case kz_json:get_value(V, JObj) of
                 'undefined' -> Acc;
-                V1 -> kz_json:set_value(K, V1, Acc)
+                V1 -> kz_json:set_value(K, kz_http_util:urldecode(V1), Acc)
             end;
-        V2 -> kz_json:set_value(K, V2, Acc)
+        V2 -> kz_json:set_value(K, kz_http_util:urldecode(V2), Acc)
     end.
 
 %%------------------------------------------------------------------------------
