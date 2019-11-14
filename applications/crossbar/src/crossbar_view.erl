@@ -855,7 +855,11 @@ handle_query_result(#{last_key := LastKey
                      ,mapper := Mapper
                      ,context := Context
                      ,page_size := PageSize
-                     }=LoadMap, Dbs, Results, Limit) ->
+                     }=LoadMap
+                   ,Dbs
+                   ,Results
+                   ,Limit
+                   ) ->
     ResultsLength = erlang:length(Results),
 
     {NewLastKey, JObjs} = last_key(LastKey, Results, Limit, ResultsLength, PageSize),
@@ -865,14 +869,21 @@ handle_query_result(#{last_key := LastKey
             LoadMap#{context => cb_context:add_system_error('datastore_fault', kz_term:to_binary(Reason), Context)};
         FilteredJObjs when is_list(FilteredJObjs) ->
             FilteredLength = length(FilteredJObjs),
-            lager:debug("db_returned: ~b passed_filter: ~p next_start_key: ~p", [ResultsLength, FilteredLength, NewLastKey]),
+            lager:debug("db_returned: ~b(~p) passed_filter: ~p next_start_key: ~p"
+                       ,[ResultsLength, PageSize, FilteredLength, NewLastKey]
+                       ),
             handle_query_result(LoadMap, Dbs, FilteredJObjs, FilteredLength, NewLastKey)
     end.
 
 -spec handle_query_result(load_params(), kz_term:ne_binaries(), kz_json:objects(), non_neg_integer(), last_key()) -> load_params().
 handle_query_result(#{is_chunked := 'true'
                      ,context := Context
-                     }=LoadMap, [Db|_], FilteredJObjs, FilteredLength, NewLastKey) ->
+                     }=LoadMap
+                   ,[Db|_]
+                   ,FilteredJObjs
+                   ,FilteredLength
+                   ,NewLastKey
+                   ) ->
     Setters = [{fun cb_context:set_resp_data/2, FilteredJObjs}
               ,{fun cb_context:set_account_db/2, Db}
               ],
@@ -881,7 +892,9 @@ handle_query_result(#{is_chunked := 'true'
             ,context => Context1
             ,previous_chunk_length => FilteredLength
             };
-handle_query_result(#{page_size := PageSize}=LoadMap
+handle_query_result(#{page_size := PageSize
+                     ,last_key := _OldLastKey
+                     }=LoadMap
                    ,[_|RestDbs]
                    ,FilteredJObjs
                    ,FilteredLength
@@ -889,7 +902,9 @@ handle_query_result(#{page_size := PageSize}=LoadMap
                    ) ->
     case check_page_size_and_length(LoadMap, FilteredLength, FilteredJObjs, NewLastKey) of
         {'exhausted', LoadMap2} -> LoadMap2;
-        {'next_db', LoadMap2} when PageSize =:= 'infinity', FilteredLength > 0 -> get_results(LoadMap2);
+        {'next_db', LoadMap2} when PageSize =:= 'infinity', NewLastKey =/= 'undefined' ->
+            lager:info("updating new last key to ~p from ~p", [NewLastKey, _OldLastKey]),
+            get_results(LoadMap2#{last_key => NewLastKey});
         {'next_db', LoadMap2} -> get_results(LoadMap2#{databases => RestDbs})
     end.
 
@@ -1032,16 +1047,17 @@ filter_foldl(Mapper, [JObj | JObjs], Acc) ->
 -spec last_key(last_key(), kz_json:objects(), non_neg_integer() | 'undefined', non_neg_integer(), page_size()) ->
                       {last_key(), kz_json:objects()}.
 last_key(LastKey, [], _Limit, _Returned, _PageSize) ->
+    lager:info("no results same last key ~p", [LastKey]),
     {LastKey, []};
 last_key(LastKey, JObjs, 'undefined', _Returned, _PageSize) ->
     lager:info("no limit, re-using last key ~p", [LastKey]),
     {LastKey, lists:reverse(JObjs)};
-last_key(_LastKey, JObjs, _Limit, _Returned, 'infinity') ->
-    new_last_key(JObjs);
-last_key(LastKey, JObjs, Limit, Returned, _PageSize) when Returned < Limit ->
-    {LastKey, lists:reverse(JObjs)};
 last_key(_LastKey, JObjs, Limit, Limit, _PageSize) ->
-    new_last_key(JObjs).
+    lager:info("full page fetched, calculating new key"),
+    new_last_key(JObjs);
+last_key(_LastKey, JObjs, _Limit, _Returned, _PageSize) ->
+    lager:info("returned ~p < limit ~p ps: ~p lk: ~p", [_Returned, _Limit, _PageSize, _LastKey]),
+    {'undefined', lists:reverse(JObjs)}.
 
 -spec new_last_key(kz_json:objects()) -> {last_key(), kz_json:objects()}.
 new_last_key(JObjs) ->
