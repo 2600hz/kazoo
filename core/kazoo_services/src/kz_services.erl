@@ -151,7 +151,7 @@
              ]).
 
 %%------------------------------------------------------------------------------
-%% @doc Returns the account id of the kz_services:services()
+%% @doc Returns the account id of the {@link services()}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec account_id(services()) -> kz_term:api_ne_binary().
@@ -752,7 +752,7 @@ summary(?NE_BINARY=Account) ->
                    ],
     summary(fetch(Account, FetchOptions));
 summary(Services) ->
-    ServicesJObj = kz_services:services_jobj(Services),
+    ServicesJObj = services_jobj(Services),
     kz_json:from_list(
       [{<<"plans">>
        ,kz_services_plans:assigned(Services)
