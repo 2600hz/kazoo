@@ -82,7 +82,7 @@ get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
 %% Need to see how to get couchbeam to return the "rows" property instead of the result
 %% list; that would be better, but for not, setting the view's "reduce" to the _count
 %% function will suffice (provided a reduce isn't already defined).
--spec get_results_count(server(), kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
+-spec get_results_count(server(), 'all_docs' | kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
                                {'ok', kz_term:api_integer()} |
                                couchbeam_error().
 get_results_count(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
@@ -120,7 +120,7 @@ map_view_option({K, V})
     {kz_term:to_atom(K, 'true'), V};
 map_view_option(KV) -> KV.
 
--spec do_fetch_results_count(couchbeam_db(), ddoc(), view_options()) ->
+-spec do_fetch_results_count(couchbeam_db(), kz_term:ne_binary() | ddoc(), view_options()) ->
                                     {'ok', kz_term:api_integer()} |
                                     couchbeam_error().
 do_fetch_results_count(Db, DesignDoc, Options)
