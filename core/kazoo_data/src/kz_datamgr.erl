@@ -137,8 +137,8 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_doc_from_file(kz_term:ne_binary(), nonempty_string() | kz_term:ne_binary()) ->
-                                  {'ok', kz_json:object()} |
-                                  data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 update_doc_from_file(DbName, Path) when ?VALID_DBNAME(DbName) ->
     lager:debug("update db ~s from CouchDB file: ~s", [DbName, Path]),
     try
@@ -160,8 +160,8 @@ update_doc_from_file(DbName, File) ->
     end.
 
 -spec maybe_update_doc_from_file(kz_term:ne_binary(), kz_json:object(), any()) ->
-                                        {'ok', kz_json:object()} |
-                                        data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 maybe_update_doc_from_file(DbName, JObj, {'ok', Doc}=OK) ->
     case should_update(DbName, JObj, OK) of
         'false' ->
@@ -184,8 +184,8 @@ maybe_update_doc_from_file(_, _, {'error', _}=Error) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec revise_doc_from_file(kz_term:ne_binary(), atom(), kz_term:ne_binary() | nonempty_string()) ->
-                                  {'ok', kz_json:object()} |
-                                  data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 revise_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
     case update_doc_from_file(DbName, Path) of
@@ -241,8 +241,8 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
         end.
 
 -spec maybe_update_doc(kz_term:ne_binary(), kz_json:object()) ->
-                              {'ok', kz_json:object()} |
-                              data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 maybe_update_doc(DbName, JObj) ->
     case should_update(DbName, JObj) of
         'false' ->
@@ -287,7 +287,7 @@ maybe_adapt_multilines(JObj) ->
     end.
 
 -spec inline_js_fun(kz_term:ne_binary(), kz_term:ne_binaries() | kz_json:json_term(), kz_json:object()) ->
-                           kz_json:object().
+          kz_json:object().
 inline_js_fun(Type, Code=[<<"function",_/binary>>|_], Acc) ->
     kz_json:set_value(Type, iolist_to_binary(Code), Acc);
 inline_js_fun(Type, Code, Acc) ->
@@ -330,7 +330,7 @@ do_load_fixtures_from_folder(DbName, [F|Fs]) ->
 %% @doc Determines if a database exists.
 %% @end
 %%------------------------------------------------------------------------------
--spec db_exists(kz_term:text()) -> boolean().
+-spec db_exists(kz_term:ne_binary()) -> boolean().
 db_exists(DbName) when ?VALID_DBNAME(DbName) ->
     kzs_db:db_exists(kzs_plan:plan(DbName), DbName);
 db_exists(DbName) ->
@@ -339,7 +339,7 @@ db_exists(DbName) ->
         {'error', _}=E -> E
     end.
 
--spec db_exists(kz_term:text(), kz_term:api_binary() | kz_term:proplist()) -> boolean().
+-spec db_exists(kz_term:ne_binary(), kz_term:api_binary() | kz_term:proplist()) -> boolean().
 db_exists(DbName, 'undefined') ->
     db_exists(DbName);
 db_exists(DbName, Type)
@@ -360,7 +360,7 @@ db_exists(DbName, Options) ->
 %% @doc Determines if a database exists, also checks other connections.
 %% @end
 %%------------------------------------------------------------------------------
--spec db_exists_all(kz_term:text()) -> boolean().
+-spec db_exists_all(kz_term:ne_binary()) -> boolean().
 db_exists_all(DbName) when ?VALID_DBNAME(DbName) ->
     kzs_db:db_exists_all(kzs_plan:plan(DbName), DbName);
 db_exists_all(DbName) ->
@@ -374,7 +374,7 @@ db_exists_all(DbName) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec db_info() -> {'ok', kz_term:ne_binaries()} |
-                   data_error().
+          data_error().
 db_info() ->
     kzs_db:db_info(kzs_plan:plan()).
 
@@ -382,8 +382,8 @@ db_info() ->
 %% @doc Retrieve information regarding a database.
 %% @end
 %%------------------------------------------------------------------------------
--spec db_info(kz_term:text()) -> {'ok', kz_json:object()} |
-                                 data_error().
+-spec db_info(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
+          data_error().
 db_info(DbName) when ?VALID_DBNAME(DbName) ->
     kzs_db:db_info(kzs_plan:plan(DbName), DbName);
 db_info(DbName) ->
@@ -396,9 +396,9 @@ db_info(DbName) ->
 %% @doc Retrieve information regarding a database design doc.
 %% @end
 %%------------------------------------------------------------------------------
--spec design_info(kz_term:text(), kz_term:ne_binary()) ->
-                         {'ok', kz_json:object()} |
-                         data_error().
+-spec design_info(kz_term:ne_binary(), kz_term:ne_binary()) ->
+          {'ok', kz_json:object()} |
+          data_error().
 
 design_info(DbName, DesignName) when ?VALID_DBNAME(DbName) ->
     kzs_view:design_info(kzs_plan:plan(DbName, DesignName), DbName, DesignName);
@@ -431,16 +431,16 @@ db_view_cleanup(DbName) ->
     end.
 
 -spec db_view_update(kz_term:ne_binary(), views_listing()) ->
-                            boolean() |
-                            {'error', 'db_not_found'} |
-                            {'error', 'invalid_db_name'}.
+          boolean() |
+          {'error', 'db_not_found'} |
+          {'error', 'invalid_db_name'}.
 db_view_update(DbName, Views) ->
     db_view_update(DbName, Views, 'false').
 
 -spec db_view_update(kz_term:ne_binary(), views_listing(), boolean()) ->
-                            boolean() |
-                            {'error', 'db_not_found'} |
-                            {'error', 'invalid_db_name'}.
+          boolean() |
+          {'error', 'db_not_found'} |
+          {'error', 'invalid_db_name'}.
 db_view_update(DbName, Views0, Remove) when ?VALID_DBNAME(DbName) ->
     case lists:keymap(fun maybe_adapt_multilines/1, 2, Views0) of
         [] -> 'false';
@@ -482,8 +482,8 @@ db_view_update(DbName, Views, Remove) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec db_replicate(kz_term:proplist() | kz_json:object()) ->
-                          {'ok', kz_json:object()} |
-                          data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 db_replicate(Prop) when is_list(Prop) ->
     db_replicate(kz_json:from_list(Prop));
 db_replicate(JObj) ->
@@ -493,11 +493,11 @@ db_replicate(JObj) ->
 %% @doc Determines if a database exists.
 %% @end
 %%------------------------------------------------------------------------------
--spec db_create(kz_term:text()) -> boolean().
+-spec db_create(kz_term:ne_binary()) -> boolean().
 db_create(DbName) ->
     db_create(DbName, []).
 
--spec db_create(kz_term:text(), kzs_db:db_create_options()) -> boolean().
+-spec db_create(kz_term:ne_binary(), kzs_db:db_create_options()) -> boolean().
 db_create(DbName, Options) when ?VALID_DBNAME(DbName) ->
     kzs_db:db_create(kzs_plan:plan(DbName), DbName, Options);
 db_create(DbName, Options) ->
@@ -510,7 +510,7 @@ db_create(DbName, Options) ->
 %% @doc Compact a database.
 %% @end
 %%------------------------------------------------------------------------------
--spec db_compact(kz_term:text()) -> boolean().
+-spec db_compact(kz_term:ne_binary()) -> boolean().
 
 db_compact(DbName) when ?VALID_DBNAME(DbName) ->
     kzs_db:db_compact(kzs_plan:plan(DbName), DbName);
@@ -524,11 +524,11 @@ db_compact(DbName) ->
 %% @doc Delete a database (takes an `encoded' DbName).
 %% @end
 %%------------------------------------------------------------------------------
--spec db_delete(kz_term:text()) -> boolean().
+-spec db_delete(kz_term:ne_binary()) -> boolean().
 db_delete(DbName) ->
     db_delete(DbName, []).
 
--spec db_delete(kz_term:text(), db_delete_options()) -> boolean().
+-spec db_delete(kz_term:ne_binary(), db_delete_options()) -> boolean().
 db_delete(DbName, Options) when ?VALID_DBNAME(DbName) ->
     kzs_db:db_delete(kzs_plan:plan(DbName), DbName, Options);
 db_delete(DbName, Options) ->
@@ -572,17 +572,17 @@ db_import(DbName, ArchiveFile) ->
 %% @doc fetch a cached doc or open it if not available.
 %% @end
 %%------------------------------------------------------------------------------
--spec open_cache_doc(kz_term:text(), docid()) ->
-                            {'ok', kz_json:object()} |
-                            data_error().
+-spec open_cache_doc(kz_term:ne_binary(), docid()) ->
+          {'ok', kz_json:object()} |
+          data_error().
 open_cache_doc(DbName, {DocType, DocId}) ->
     open_cache_doc(DbName, DocId, [{'doc_type', DocType}]);
 open_cache_doc(DbName, DocId) ->
     open_cache_doc(DbName, DocId, []).
 
--spec open_cache_doc(kz_term:text(), docid(), kz_term:proplist()) ->
-                            {'ok', kz_json:object()} |
-                            data_error().
+-spec open_cache_doc(kz_term:ne_binary(), docid(), kz_term:proplist()) ->
+          {'ok', kz_json:object()} |
+          data_error().
 open_cache_doc(DbName, {DocType, DocId}, Options) ->
     open_cache_doc(DbName, DocId, maybe_add_doc_type(DocType, Options));
 open_cache_doc(DbName, DocId, Options) when ?VALID_DBNAME(DbName) ->
@@ -593,9 +593,9 @@ open_cache_doc(DbName, DocId, Options) ->
         {'error', _}=E -> E
     end.
 
--spec add_to_doc_cache(kz_term:text(), kz_term:ne_binary(), kz_json:object()) ->
-                              'ok' |
-                              data_error().
+-spec add_to_doc_cache(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
+          'ok' |
+          data_error().
 add_to_doc_cache(DbName, DocId, Doc) when ?VALID_DBNAME(DbName) ->
     kzs_cache:add_to_doc_cache(DbName, DocId, Doc);
 add_to_doc_cache(DbName, DocId, Doc) ->
@@ -604,9 +604,9 @@ add_to_doc_cache(DbName, DocId, Doc) ->
         {'error', _}=E -> E
     end.
 
--spec update_cache_doc(kz_term:text(), kz_term:ne_binary(), fun((kz_json:object()) -> kz_json:object() | 'skip')) ->
-                              {'ok', kz_json:object()} |
-                              data_error().
+-spec update_cache_doc(kz_term:ne_binary(), kz_term:ne_binary(), fun((kz_json:object()) -> kz_json:object() | 'skip')) ->
+          {'ok', kz_json:object()} |
+          data_error().
 update_cache_doc(DbName, DocId, Fun) when is_function(Fun, 1) ->
     case open_cache_doc(DbName, DocId) of
         {'ok', JObj} ->
@@ -617,23 +617,23 @@ update_cache_doc(DbName, DocId, Fun) when is_function(Fun, 1) ->
             Else
     end.
 
--spec maybe_save_doc(kz_term:text(), kz_json:object() | 'skip', kz_json:object()) ->
-                            {'ok', kz_json:object() | kz_json:objects()} |
-                            data_error().
+-spec maybe_save_doc(kz_term:ne_binary(), kz_json:object() | 'skip', kz_json:object()) ->
+          {'ok', kz_json:object() | kz_json:objects()} |
+          data_error().
 maybe_save_doc(_DbName, 'skip', Jobj) ->
     {'ok', Jobj};
 maybe_save_doc(DbName, JObj, _OldJobj) ->
     save_doc(DbName, JObj).
 
 -spec flush_cache_doc(kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object()) ->
-                             'ok' |
-                             {'error', 'invalid_db_name'}.
+          'ok' |
+          {'error', 'invalid_db_name'}.
 flush_cache_doc(DbName, Doc) ->
     flush_cache_doc(DbName, Doc, []).
 
 -spec flush_cache_doc(kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), kz_term:proplist()) ->
-                             'ok' |
-                             {'error', 'invalid_db_name'}.
+          'ok' |
+          {'error', 'invalid_db_name'}.
 flush_cache_doc(DbName, Doc, Options) when ?VALID_DBNAME(DbName) ->
     kzs_cache:flush_cache_doc(DbName, Doc, Options);
 flush_cache_doc(DbName, Doc, Options) ->
@@ -645,7 +645,7 @@ flush_cache_doc(DbName, Doc, Options) ->
 -spec flush_cache_docs() -> 'ok'.
 flush_cache_docs() -> kzs_cache:flush_cache_docs().
 
--spec flush_cache_docs(kz_term:text()) -> 'ok' | {'error', 'invalid_db_name'}.
+-spec flush_cache_docs(kz_term:ne_binary()) -> 'ok' | {'error', 'invalid_db_name'}.
 flush_cache_docs(DbName) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> kzs_cache:flush_cache_docs(Db);
@@ -669,19 +669,19 @@ flush_cache_docs(DbName) ->
 %% @doc open a document given a doc id returns an error tuple or the json.
 %% @end
 %%------------------------------------------------------------------------------
--spec open_doc(kz_term:text(), docid()) ->
-                      {'ok', kz_json:object()} |
-                      data_error() |
-                      {'error', 'not_found'}.
+-spec open_doc(kz_term:ne_binary(), docid()) ->
+          {'ok', kz_json:object()} |
+          data_error() |
+          {'error', 'not_found'}.
 open_doc(DbName, {DocType, DocId}) ->
     open_doc(DbName, DocId, [{'doc_type', DocType}]);
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 
--spec open_doc(kz_term:text(), docid(), kz_term:proplist()) ->
-                      {'ok', kz_json:object()} |
-                      data_error() |
-                      {'error', 'not_found'}.
+-spec open_doc(kz_term:ne_binary(), docid(), kz_term:proplist()) ->
+          {'ok', kz_json:object()} |
+          data_error() |
+          {'error', 'not_found'}.
 open_doc(DbName, {DocType, DocId}, Options) ->
     open_doc(DbName, DocId, maybe_add_doc_type(DocType, Options));
 open_doc(DbName, DocId, Options) when ?VALID_DBNAME(DbName) ->
@@ -699,17 +699,17 @@ open_doc(DbName, DocId, Options) ->
 %% So: match both error tuple and each JSON of the list.
 %% @end
 %%------------------------------------------------------------------------------
--spec open_docs(kz_term:text(), docids()) ->
-                       {'ok', kz_json:objects()} |
-                       data_error() |
-                       {'error', 'not_found'}.
+-spec open_docs(kz_term:ne_binary(), docids()) ->
+          {'ok', kz_json:objects()} |
+          data_error() |
+          {'error', 'not_found'}.
 open_docs(DbName, DocIds) ->
     open_docs(DbName, DocIds, []).
 
--spec open_docs(kz_term:text(), docids(), kz_term:proplist()) ->
-                       {'ok', kz_json:objects()} |
-                       data_error() |
-                       {'error', 'not_found'}.
+-spec open_docs(kz_term:ne_binary(), docids(), kz_term:proplist()) ->
+          {'ok', kz_json:objects()} |
+          data_error() |
+          {'error', 'not_found'}.
 open_docs(DbName, DocIds, Options) ->
     read_chunked(fun do_open_docs/3, DbName, DocIds, Options).
 
@@ -731,7 +731,7 @@ read_chunked(Opener, DbName, DocIds, Options, Acc) ->
             end
     end.
 
-read_chunked_results(_, _, _, _, {'error',_}=Acc) -> Acc;
+read_chunked_results(_, _, _, _, {'error', _}=Acc) -> Acc;
 read_chunked_results(Opener, DbName, DocIds, Options, Acc) ->
     read_chunked_results(DocIds, Opener(DbName, DocIds, Options), Acc).
 
@@ -757,17 +757,17 @@ read_chunked_results(DocIds, {'error', Reason}, Acc) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec open_cache_docs(kz_term:text(), docids()) ->
-                             {'ok', kz_json:objects()} |
-                             data_error() |
-                             {'error', 'not_found'}.
+-spec open_cache_docs(kz_term:ne_binary(), docids()) ->
+          {'ok', kz_json:objects()} |
+          data_error() |
+          {'error', 'not_found'}.
 open_cache_docs(DbName, DocIds) ->
     open_cache_docs(DbName, DocIds, []).
 
--spec open_cache_docs(kz_term:text(), docids(), kz_term:proplist()) ->
-                             {'ok', kz_json:objects()} |
-                             data_error() |
-                             {'error', 'not_found'}.
+-spec open_cache_docs(kz_term:ne_binary(), docids(), kz_term:proplist()) ->
+          {'ok', kz_json:objects()} |
+          data_error() |
+          {'error', 'not_found'}.
 open_cache_docs(DbName, DocIds, Options) when ?VALID_DBNAME(DbName) ->
     read_chunked(fun kzs_cache:open_cache_docs/3, DbName, DocIds, Options);
 open_cache_docs(DbName, DocIds, Options) ->
@@ -776,15 +776,15 @@ open_cache_docs(DbName, DocIds, Options) ->
         {'error', _}=E -> E
     end.
 
--spec all_docs(kz_term:text()) ->
-                      {'ok', kz_json:objects()} |
-                      data_error().
+-spec all_docs(kz_term:ne_binary()) ->
+          {'ok', kz_json:objects()} |
+          data_error().
 all_docs(DbName) ->
     all_docs(DbName, []).
 
--spec all_docs(kz_term:text(), kz_term:proplist()) ->
-                      {'ok', kz_json:objects()} |
-                      data_error().
+-spec all_docs(kz_term:ne_binary(), kz_term:proplist()) ->
+          {'ok', kz_json:objects()} |
+          data_error().
 all_docs(DbName, Options) when ?VALID_DBNAME(DbName) ->
     kzs_view:all_docs(kzs_plan:plan(DbName, Options), DbName, Options);
 all_docs(DbName, Options) ->
@@ -792,7 +792,6 @@ all_docs(DbName, Options) ->
         {'ok', Db} -> all_docs(Db, Options);
         {'error', _}=E -> E
     end.
-
 
 -spec db_list() -> {'ok', kz_term:ne_binaries()} | data_error().
 db_list() ->
@@ -802,13 +801,13 @@ db_list() ->
 db_list(Options) ->
     kzs_db:db_list(kzs_plan:plan(), Options).
 
--spec all_design_docs(kz_term:text()) -> {'ok', kz_json:objects()} |
-                                         data_error().
+-spec all_design_docs(kz_term:ne_binary()) -> {'ok', kz_json:objects()} |
+          data_error().
 all_design_docs(DbName) ->
     all_design_docs(DbName, []).
 
--spec all_design_docs(kz_term:text(), kz_term:proplist()) -> {'ok', kz_json:objects()} |
-                                                             data_error().
+-spec all_design_docs(kz_term:ne_binary(), kz_term:proplist()) -> {'ok', kz_json:objects()} |
+          data_error().
 all_design_docs(DbName, Options) when ?VALID_DBNAME(DbName) ->
     kzs_view:all_design_docs(kzs_plan:plan(DbName), DbName, Options);
 all_design_docs(DbName, Options) ->
@@ -821,16 +820,16 @@ all_design_docs(DbName, Options) ->
 %% @doc Get the revision of a document (much faster than requesting the whole document).
 %% @end
 %%------------------------------------------------------------------------------
--spec lookup_doc_rev(kz_term:text(), docid()) ->
-                            {'ok', kz_term:ne_binary()} |
-                            data_error().
+-spec lookup_doc_rev(kz_term:ne_binary(), docid()) ->
+          {'ok', kz_term:ne_binary()} |
+          data_error().
 lookup_doc_rev(DbName, {DocType, DocId}) ->
     lookup_doc_rev(DbName, DocId, [{'doc_type', DocType}]);
 lookup_doc_rev(DbName, DocId) ->
     lookup_doc_rev(DbName, DocId, []).
 
--spec lookup_doc_rev(kz_term:text(), docid(), kz_term:proplist()) ->
-                            {'ok', kz_term:ne_binary()} | data_error().
+-spec lookup_doc_rev(kz_term:ne_binary(), docid(), kz_term:proplist()) ->
+          {'ok', kz_term:ne_binary()} | data_error().
 lookup_doc_rev(DbName, {DocType, DocId}, Options) ->
     lookup_doc_rev(DbName, DocId, maybe_add_doc_type(DocType, Options));
 lookup_doc_rev(DbName, DocId, Options) when ?VALID_DBNAME(DbName) ->
@@ -845,9 +844,9 @@ lookup_doc_rev(DbName, DocId, Options) ->
 %% @doc Save document to database.
 %% @end
 %%------------------------------------------------------------------------------
--spec save_doc(kz_term:text(), kz_json:object() | kz_json:objects()) ->
-                      {'ok', kz_json:object() | kz_json:objects()} |
-                      data_error().
+-spec save_doc(kz_term:ne_binary(), kz_json:object() | kz_json:objects()) ->
+          {'ok', kz_json:object() | kz_json:objects()} |
+          data_error().
 save_doc(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []);
 save_doc(DbName, Doc) ->
@@ -859,15 +858,15 @@ save_doc(DbName, Doc) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec ensure_saved(kz_term:text(), kz_json:object()) ->
-                          {'ok', kz_json:object()} |
-                          data_error().
+-spec ensure_saved(kz_term:ne_binary(), kz_json:object()) ->
+          {'ok', kz_json:object()} |
+          data_error().
 ensure_saved(DbName, Doc) ->
     ensure_saved(DbName, Doc, []).
 
--spec ensure_saved(kz_term:text(), kz_json:object(), kz_term:proplist()) ->
-                          {'ok', kz_json:object()} |
-                          data_error().
+-spec ensure_saved(kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) ->
+          {'ok', kz_json:object()} |
+          data_error().
 ensure_saved(DbName, Doc, Options) when ?VALID_DBNAME(DbName) ->
     kzs_doc:ensure_saved(kzs_plan:plan(DbName, Doc), DbName, Doc, Options);
 ensure_saved(DbName, Doc, Options) ->
@@ -876,9 +875,9 @@ ensure_saved(DbName, Doc, Options) ->
         {'error', _}=E -> E
     end.
 
--spec save_doc(kz_term:text(), kz_json:object(), kz_term:proplist()) ->
-                      {'ok', kz_json:object()} |
-                      data_error().
+-spec save_doc(kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) ->
+          {'ok', kz_json:object()} |
+          data_error().
 save_doc(DbName, Doc, Options) when ?VALID_DBNAME(DbName) ->
     OldSetting = maybe_toggle_publish(Options),
     Result = kzs_doc:save_doc(kzs_plan:plan(DbName, Doc), DbName, Doc, Options),
@@ -907,15 +906,15 @@ maybe_revert_publish('false') ->
     suppress_change_notice().
 
 
--spec save_docs(kz_term:text(), kz_json:objects()) ->
-                       {'ok', kz_json:objects()} |
-                       data_error().
+-spec save_docs(kz_term:ne_binary(), kz_json:objects()) ->
+          {'ok', kz_json:objects()} |
+          data_error().
 save_docs(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []).
 
--spec save_docs(kz_term:text(), kz_json:objects(), kz_term:proplist()) ->
-                       {'ok', kz_json:objects()} |
-                       data_error().
+-spec save_docs(kz_term:ne_binary(), kz_json:objects(), kz_term:proplist()) ->
+          {'ok', kz_json:objects()} |
+          data_error().
 save_docs(DbName, [Doc|_]=Docs, Options)
   when is_list(Docs), ?VALID_DBNAME(DbName) ->
     OldSetting = maybe_toggle_publish(Options),
@@ -936,8 +935,8 @@ save_docs(DbName, Docs, Options) when is_list(Docs) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_doc(kz_term:ne_binary(), docid(), update_options()) ->
-                        {'ok', kz_json:object()} |
-                        data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 update_doc(DbName, Id, Options) ->
     case open_doc(DbName, Id) of
         {'error', 'not_found'} ->
@@ -948,8 +947,8 @@ update_doc(DbName, Id, Options) ->
     end.
 
 -spec apply_updates_and_save(kz_term:ne_binary(), docid(), update_options(), kz_json:object()) ->
-                                    {'ok', kz_json:object()} |
-                                    data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 apply_updates_and_save(DbName, Id, Options, CurrentDoc) ->
     apply_updates_and_save(DbName, Id, Options, CurrentDoc, props:get_value('update', Options)).
 
@@ -969,8 +968,8 @@ apply_updates_and_save(DbName, Id, Options, CurrentDoc, UpdateProps) ->
     end.
 
 -spec save_update(kz_term:ne_binary(), docid(), update_options(), kz_json:object()) ->
-                         {'ok', kz_json:object()} |
-                         data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 save_update(DbName, Id, Options, UpdatedDoc) ->
     ExtraProps = props:get_value('extra_update', Options, []),
     ExtraUpdatedDoc = kz_json:set_values(ExtraProps, UpdatedDoc),
@@ -991,8 +990,8 @@ save_update(DbName, Id, Options, UpdatedDoc) ->
     end.
 
 -spec update_not_found(kz_term:ne_binary(), docid(), update_options(), boolean()) ->
-                              {'ok', kz_json:object()} |
-                              data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 update_not_found(_DbName, _Id, _Options, 'false') ->
     {'error', 'not_found'};
 update_not_found(DbName, Id, Options, 'true') ->
@@ -1012,15 +1011,15 @@ update_not_found(DbName, Id, Options, 'true') ->
 %% @doc Remove document from the db.
 %% @end
 %%------------------------------------------------------------------------------
--spec del_doc(kz_term:text(), kz_json:object() | kz_json:objects() | kz_term:ne_binary()) ->
-                     {'ok', kz_json:objects()} |
-                     data_error().
+-spec del_doc(kz_term:ne_binary(), kz_json:object() | kz_json:objects() | kz_term:ne_binary()) ->
+          {'ok', kz_json:objects()} |
+          data_error().
 del_doc(DbName, Doc) ->
     del_doc(DbName, Doc, []).
 
--spec del_doc(kz_term:text(), kz_json:object() | kz_json:objects() | kz_term:ne_binary(), kz_term:proplist()) ->
-                     {'ok', kz_json:objects()} |
-                     data_error().
+-spec del_doc(kz_term:ne_binary(), kz_json:object() | kz_json:objects() | kz_term:ne_binary(), kz_term:proplist()) ->
+          {'ok', kz_json:objects()} |
+          data_error().
 del_doc(DbName, Doc, Options) when is_list(Doc) ->
     del_docs(DbName, Doc, Options);
 del_doc(DbName, Doc, Options) when ?VALID_DBNAME(DbName) ->
@@ -1035,15 +1034,15 @@ del_doc(DbName, Doc, Options) ->
 %% @doc Remove documents from the db.
 %% @end
 %%------------------------------------------------------------------------------
--spec del_docs(kz_term:text(), kz_json:objects() | kz_term:ne_binaries()) ->
-                      {'ok', kz_json:objects()} |
-                      data_error().
+-spec del_docs(kz_term:ne_binary(), kz_json:objects() | kz_term:ne_binaries()) ->
+          {'ok', kz_json:objects()} |
+          data_error().
 del_docs(DbName, Docs) ->
     del_docs(DbName, Docs, []).
 
--spec del_docs(kz_term:text(), kz_json:objects() | kz_term:ne_binaries(), kz_term:proplist()) ->
-                      {'ok', kz_json:objects()} |
-                      data_error().
+-spec del_docs(kz_term:ne_binary(), kz_json:objects() | kz_term:ne_binaries(), kz_term:proplist()) ->
+          {'ok', kz_json:objects()} |
+          data_error().
 del_docs(DbName, Docs, Options)
   when is_list(Docs), ?VALID_DBNAME(DbName) ->
     kzs_doc:del_docs(kzs_plan:plan(DbName), DbName, Docs, Options);
@@ -1061,19 +1060,19 @@ del_docs(DbName, Docs, Options) when is_list(Docs) ->
 %% @doc Fetch attachment with `AName' from document `DocId'.
 %% @end
 %%------------------------------------------------------------------------------
--spec fetch_attachment(kz_term:text(), docid(), kz_term:ne_binary()) ->
-                              {'ok', binary()} |
-                              data_error() |
-                              kz_att_error:error().
+-spec fetch_attachment(kz_term:ne_binary(), docid(), kz_term:ne_binary()) ->
+          {'ok', binary()} |
+          data_error() |
+          kz_att_error:error().
 fetch_attachment(DbName, {DocType, DocId}, AName) ->
     fetch_attachment(DbName, DocId, AName, [{'doc_type', DocType}]);
 fetch_attachment(DbName, DocId, AName) ->
     fetch_attachment(DbName, DocId, AName, []).
 
--spec fetch_attachment(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:proplist()) ->
-                              {'ok', binary()} |
-                              data_error() |
-                              kz_att_error:error().
+-spec fetch_attachment(kz_term:ne_binary(), docid(), kz_term:ne_binary(), kz_term:proplist()) ->
+          {'ok', binary()} |
+          data_error() |
+          kz_att_error:error().
 fetch_attachment(DbName, {DocType, DocId}, AName, Options) when ?VALID_DBNAME(DbName) ->
     fetch_attachment(DbName, DocId, AName, maybe_add_doc_type(DocType, Options));
 fetch_attachment(DbName, DocId, AName, Options) when ?VALID_DBNAME(DbName) ->
@@ -1084,21 +1083,21 @@ fetch_attachment(DbName, DocId, AName, Options) ->
         {'error', _}=E -> E
     end.
 
--spec stream_attachment(kz_term:text(), docid(), kz_term:ne_binary()) ->
-                               {'ok', reference()} |
-                               {'error', any()}.
+-spec stream_attachment(kz_term:ne_binary(), docid(), kz_term:ne_binary()) ->
+          {'ok', reference()} |
+          {'error', any()}.
 stream_attachment(DbName, DocId, AName) ->
     stream_attachment(DbName, DocId, AName, []).
 
--spec stream_attachment(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:proplist()) ->
-                               {'ok', reference()} |
-                               {'error', any()}.
+-spec stream_attachment(kz_term:ne_binary(), docid(), kz_term:ne_binary(), kz_term:proplist()) ->
+          {'ok', reference()} |
+          {'error', any()}.
 stream_attachment(DbName, DocId, AName, Options) ->
     stream_attachment(DbName, DocId, AName, Options, self()).
 
--spec stream_attachment(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:proplist(), pid()) ->
-                               {'ok', reference()} |
-                               {'error', any()}.
+-spec stream_attachment(kz_term:ne_binary(), docid(), kz_term:ne_binary(), kz_term:proplist(), pid()) ->
+          {'ok', reference()} |
+          {'error', any()}.
 stream_attachment(DbName, {DocType, DocId}, AName, Options, Pid) when ?VALID_DBNAME(DbName) ->
     stream_attachment(DbName, DocId, AName, maybe_add_doc_type(DocType, Options), Pid);
 stream_attachment(DbName, DocId, AName, Options, Pid) when ?VALID_DBNAME(DbName) ->
@@ -1121,18 +1120,18 @@ stream_attachment(DbName, DocId, AName, Options, Pid) ->
 %% <div class="notice">Note atoms as keys in proplist.</div>
 %% @end
 %%------------------------------------------------------------------------------
--spec put_attachment(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                            {'ok', kz_json:object()} |
-                            data_error() |
-                            kz_att_error:error().
+-spec put_attachment(kz_term:ne_binary(), docid(), kz_term:ne_binary(), iodata()) ->
+          {'ok', kz_json:object()} |
+          data_error() |
+          kz_att_error:error().
 put_attachment(DbName, DocId, AName, Contents) ->
     put_attachment(DbName, DocId, AName, Contents, []).
 
--spec put_attachment(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                            {'ok', kz_json:object()} |
-                            {'ok', kz_json:object(), kz_term:proplist()} |
-                            data_error() |
-                            kz_att_error:error().
+-spec put_attachment(kz_term:ne_binary(), docid(), kz_term:ne_binary(), iodata(), kz_term:proplist()) ->
+          {'ok', kz_json:object()} |
+          {'ok', kz_json:object(), kz_term:proplist()} |
+          data_error() |
+          kz_att_error:error().
 put_attachment(DbName, {DocType, DocId}, AName, Contents, Options) ->
     put_attachment(DbName, DocId, AName, Contents, maybe_add_doc_type(DocType, Options));
 put_attachment(DbName, DocId, AName, Contents, Options) when ?VALID_DBNAME(DbName) ->
@@ -1148,15 +1147,15 @@ put_attachment(DbName, DocId, AName, Contents, Options) ->
         {'error', _}=E -> E
     end.
 
--spec delete_attachment(kz_term:text(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               {'ok', kz_json:object()} |
-                               data_error().
+-spec delete_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+          {'ok', kz_json:object()} |
+          data_error().
 delete_attachment(DbName, DocId, AName) ->
     delete_attachment(DbName, DocId, AName, []).
 
--spec delete_attachment(kz_term:text(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                               {'ok', kz_json:object()} |
-                               data_error().
+-spec delete_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
+          {'ok', kz_json:object()} |
+          data_error().
 delete_attachment(DbName, DocId, AName, Options) when ?VALID_DBNAME(DbName) ->
     kzs_attachments:delete_attachment(kzs_plan:plan(DbName, DocId), DbName, DocId, AName, Options);
 delete_attachment(DbName, DocId, AName, Options) ->
@@ -1165,17 +1164,17 @@ delete_attachment(DbName, DocId, AName, Options) ->
         {'error', _}=E -> E
     end.
 
--spec attachment_url(kz_term:text(), docid(), kz_term:ne_binary()) ->
-                            kz_term:ne_binary() |
-                            {'proxy', tuple()} |
-                            {'error', any()}.
+-spec attachment_url(kz_term:ne_binary(), docid(), kz_term:ne_binary()) ->
+          kz_term:ne_binary() |
+          {'proxy', tuple()} |
+          {'error', any()}.
 attachment_url(DbName, DocId, AttachmentId) ->
     attachment_url(DbName, DocId, AttachmentId, []).
 
--spec attachment_url(kz_term:text(), docid(), kz_term:ne_binary(), kz_term:proplist()) ->
-                            kz_term:ne_binary() |
-                            {'proxy', tuple()} |
-                            {'error', any()}.
+-spec attachment_url(kz_term:ne_binary(), docid(), kz_term:ne_binary(), kz_term:proplist()) ->
+          kz_term:ne_binary() |
+          {'proxy', tuple()} |
+          {'error', any()}.
 attachment_url(DbName, {DocType, DocId}, AttachmentId, Options) when ?VALID_DBNAME(DbName) ->
     attachment_url(DbName, DocId, AttachmentId, maybe_add_doc_type(DocType, Options));
 attachment_url(DbName, DocId, AttachmentId, Options) when ?VALID_DBNAME(DbName) ->
@@ -1278,15 +1277,15 @@ add_required_option({Key, Fun}, {JObj, Options}=Acc) ->
 %% Returns `{Total, Offset, Meta, Rows}'
 %% @end
 %%------------------------------------------------------------------------------
--spec get_all_results(kz_term:ne_binary(), kz_term:ne_binary()) -> get_results_return().
+-spec get_all_results(kz_term:ne_binary(), 'all_docs' | kz_term:ne_binary()) -> get_results_return().
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
--spec get_results(kz_term:ne_binary(), kz_term:ne_binary()) -> get_results_return().
+-spec get_results(kz_term:ne_binary(), 'all_docs' | kz_term:ne_binary()) -> get_results_return().
 get_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
--spec get_results(kz_term:ne_binary(), kz_term:ne_binary(), view_options()) -> get_results_return().
+-spec get_results(kz_term:ne_binary(), 'all_docs' | kz_term:ne_binary(), view_options()) -> get_results_return().
 get_results(DbName, DesignDoc, Options) when ?VALID_DBNAME(DbName) ->
     ?GET_RESULTS(DbName, DesignDoc, Options),
     Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
@@ -1302,20 +1301,20 @@ get_results(DbName, DesignDoc, Options) ->
     end.
 
 -spec show(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                  {'ok', kz_json:object()} |
-                  data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 show(DbName, DesignDoc) ->
     show(DbName, DesignDoc, 'null').
 
 -spec show(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | 'null') ->
-                  {'ok', kz_json:object()} |
-                  data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 show(DbName, DesignDoc, DocId) ->
     show(DbName, DesignDoc, DocId, []).
 
 -spec show(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | 'null', kz_term:proplist()) ->
-                  {'ok', kz_json:object()} |
-                  data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 show(DbName, DesignDoc, DocId, Options) when ?VALID_DBNAME(DbName) ->
     Plan = kzs_plan:plan(DbName),
     kzs_view:show(Plan, DbName, DesignDoc, DocId, Options);
@@ -1326,15 +1325,15 @@ show(DbName, DesignDoc, DocId, Options) ->
     end.
 
 -spec get_results_count(kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
-                               {'ok', integer()} |
-                               data_error().
+          {'ok', integer()} |
+          data_error().
 get_results_count(DbName, DesignDoc, Options) ->
     ?GET_RESULTS(DbName, DesignDoc, Options),
     Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
     kzs_view:get_results_count(kzs_plan:plan(DbName, Opts), DbName, DesignDoc, Options).
 
 -spec get_registered_view(map(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                 'not_registered' | kz_json:object().
+          'not_registered' | kz_json:object().
 get_registered_view(Plan, DbName, DesignDoc) ->
     Classification = kz_term:to_binary(kzs_util:db_classification(DbName)),
 
@@ -1350,7 +1349,7 @@ get_registered_view(Plan, DbName, DesignDoc) ->
     end.
 
 -spec query_registered_views(map(), view_options()) -> {'ok', kz_json:objects()} |
-                                                       data_error().
+          data_error().
 query_registered_views(Plan, Options) ->
     kzs_view:get_results(Plan, ?KZ_DATA_DB, <<"views/registered">>, Options).
 
@@ -1361,7 +1360,7 @@ registration_options(Keys) ->
     ].
 
 -spec registration_keys(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               [[kz_term:ne_binary()]].
+          [[kz_term:ne_binary()]].
 registration_keys(DbName, DesignDoc, Classification) ->
     [[Classification, DesignDoc]
     ,[DbName, DesignDoc]
@@ -1379,8 +1378,8 @@ maybe_create_view(Plan, DbName, DesignDoc, Options, 'true') ->
                                 ,get_registered_view(Plan, DbName, DesignDoc)
                                 ).
 
--spec maybe_create_registered_view(map(), kz_term:ne_binary(), kz_term:ne_binary(), view_options(), kz_json:object() | 'not_registered') ->
-                                          get_results_return().
+-spec maybe_create_registered_view(map(), kz_term:ne_binary(), 'all_docs' | kz_term:ne_binary(), view_options(), kz_json:object() | 'not_registered') ->
+          get_results_return().
 maybe_create_registered_view(_Plan, _DbName, _DesignDoc, _Options, 'not_registered') ->
     {'error', 'not_found'};
 maybe_create_registered_view(Plan, DbName, DesignDoc, Options, ViewJObj) ->
@@ -1424,12 +1423,12 @@ maybe_update_view(Plan, DbName, DesignDoc, ViewDoc, {'ok', CurrentDoc}) ->
 maybe_update_view(_, _, _, _, _Error) -> 'ok'.
 
 -spec get_result_keys(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                             {'ok', kz_term:ne_binaries() | [kz_term:ne_binaries()]} | data_error().
+          {'ok', kz_term:ne_binaries() | [kz_term:ne_binaries()]} | data_error().
 get_result_keys(DbName, DesignDoc) ->
     get_result_keys(DbName, DesignDoc, []).
 
 -spec get_result_keys(kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
-                             {'ok', kz_term:ne_binaries() | [kz_term:ne_binaries()]} | data_error().
+          {'ok', kz_term:ne_binaries() | [kz_term:ne_binaries()]} | data_error().
 get_result_keys(DbName, DesignDoc, Options) ->
     ?GET_RESULTS(DbName, DesignDoc, Options),
     Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
@@ -1445,12 +1444,12 @@ get_result_keys(JObjs) ->
     ].
 
 -spec get_result_ids(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                            {'ok', kz_term:ne_binaries()} | data_error().
+          {'ok', kz_term:ne_binaries()} | data_error().
 get_result_ids(DbName, DesignDoc) ->
     get_result_ids(DbName, DesignDoc, []).
 
 -spec get_result_ids(kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
-                            {'ok', kz_term:ne_binaries()} | data_error().
+          {'ok', kz_term:ne_binaries()} | data_error().
 get_result_ids(DbName, DesignDoc, Options) ->
     ?GET_RESULTS(DbName, DesignDoc, Options),
     Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
@@ -1465,17 +1464,17 @@ get_result_ids(JObjs) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Gets the only result of a view.
-%% If no result is found: returns `{error, not_found}'.
+%% If no result is found: returns `{'error', not_found}'.
 %% If more than one result is found, either:
 %% - if `Options' contains `first_when_multiple'
 %%     then the first one will be returned;
-%% - otherwise `{error, multiple_results}' is returned.
+%% - otherwise `{'error', multiple_results}' is returned.
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_single_result(kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
-                               {'ok', kz_json:object()} |
-                               {'error', 'multiple_results'} |
-                               data_error().
+          {'ok', kz_json:object()} |
+          {'error', 'multiple_results'} |
+          data_error().
 get_single_result(DbName, DesignDoc, Options) ->
     case get_results(DbName, DesignDoc, Options) of
         {'ok', [Result]} -> {'ok', Result};
@@ -1489,9 +1488,9 @@ get_single_result(DbName, DesignDoc, Options) ->
     end.
 
 -spec get_result_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                            {'ok', kz_json:object()} |
-                            {'error', 'multiple_results'} |
-                            data_error().
+          {'ok', kz_json:object()} |
+          {'error', 'multiple_results'} |
+          data_error().
 get_result_doc(DbName, DesignDoc, Key) ->
     Options = ['include_docs'
               ,{'key', Key}
@@ -1504,8 +1503,8 @@ get_result_doc(DbName, DesignDoc, Key) ->
     end.
 
 -spec get_result_docs(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
-                             {'ok', kz_json:objects()} |
-                             data_error().
+          {'ok', kz_json:objects()} |
+          data_error().
 get_result_docs(DbName, DesignDoc, Keys) ->
     Options = ['include_docs'
               ,{'keys', Keys}
@@ -1524,9 +1523,9 @@ get_result_docs(DbName, DesignDoc, Keys) ->
 -type paginated_results() :: {'ok', kz_json:objects(), kz_json:api_json_term()} |
                              data_error().
 
--spec paginate_results(kz_term:ne_binary(), kz_term:ne_binary(), paginate_options()) ->
-                              {'ok', kz_json:objects(), kz_json:api_json_term()} |
-                              data_error().
+-spec paginate_results(kz_term:ne_binary(), 'all_docs' | kz_term:ne_binary(), paginate_options()) ->
+          {'ok', kz_json:objects(), kz_json:api_json_term()} |
+          data_error().
 paginate_results(DbName, DesignDoc, Options) ->
     {PageSize, ViewOptions} = props:take_value('page_size', Options, 50),
     GetResultsOptions = props:set_value('limit', PageSize+1, ViewOptions),
@@ -1536,8 +1535,8 @@ paginate_results(DbName, DesignDoc, Options) ->
     end.
 
 -spec paginate_results(pos_integer(), kz_json:objects()) ->
-                              {'ok', kz_json:objects(), kz_json:api_json_term()} |
-                              data_error().
+          {'ok', kz_json:objects(), kz_json:api_json_term()} |
+          data_error().
 paginate_results(_PageSize, []) -> {'ok', [], 'undefined'};
 paginate_results(PageSize, Results) ->
     try lists:split(PageSize, Results) of
@@ -1596,8 +1595,8 @@ change_notice() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_convert_dbname(kz_term:text()) ->
-                                  {'ok', kz_term:ne_binary()} |
-                                  {'error', 'invalid_db_name'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'invalid_db_name'}.
 maybe_convert_dbname(DbName) ->
     case kz_term:is_empty(DbName) of
         'true' -> {'error', 'invalid_db_name'};
@@ -1605,14 +1604,14 @@ maybe_convert_dbname(DbName) ->
     end.
 
 -spec copy_doc(kz_term:ne_binary(), docid(), kz_term:ne_binary(), kz_term:proplist()) ->
-                      {'ok', kz_json:object()} |
-                      data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 copy_doc(FromDB, FromId, ToDB, Options) ->
     copy_doc(FromDB, FromId, ToDB, FromId, Options).
 
 -spec copy_doc(kz_term:ne_binary(), docid(), kz_term:ne_binary(), docid(), kz_term:proplist()) ->
-                      {'ok', kz_json:object()} |
-                      data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 copy_doc(FromDB, {DocType, FromId}, ToDB, ToId, Options) ->
     copy_doc(FromDB, FromId, ToDB, ToId, maybe_add_doc_type(DocType, Options));
 copy_doc(FromDB, FromId, ToDB, {DocType, ToId}, Options) ->
@@ -1628,14 +1627,14 @@ copy_doc(FromDB, FromId, ToDB, ToId, Options) ->
     kzs_doc:copy_doc(Src, Dst, CopySpec, Options).
 
 -spec move_doc(kz_term:ne_binary(), docid(), kz_term:ne_binary(), kz_term:proplist()) ->
-                      {'ok', kz_json:object()} |
-                      data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 move_doc(FromDB, FromId, ToDB, Options) ->
     move_doc(FromDB, FromId, ToDB, FromId, Options).
 
 -spec move_doc(kz_term:ne_binary(), docid(), kz_term:ne_binary(), docid(), kz_term:proplist()) ->
-                      {'ok', kz_json:object()} |
-                      data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 move_doc(FromDB, {DocType, FromId}, ToDB, ToId, Options) ->
     move_doc(FromDB, FromId, ToDB, ToId, maybe_add_doc_type(DocType, Options));
 move_doc(FromDB, FromId, ToDB, {DocType, ToId}, Options) ->
@@ -1692,7 +1691,8 @@ maybe_add_doc_type_from_view(ViewName, Options) ->
         _ -> Options
     end.
 
--spec add_doc_type_from_view(kz_term:ne_binary(), view_options()) -> view_options().
+-spec add_doc_type_from_view(kz_term:ne_binary() | 'all_docs', view_options()) -> view_options().
+add_doc_type_from_view('all_docs', Options) -> Options;
 add_doc_type_from_view(View, Options) ->
     case binary:split(View, <<"/">>, ['global']) of
         [ViewType, ViewName] ->
@@ -1737,8 +1737,8 @@ register_views(App, [View | Other]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec register_view(atom(), view_listing() | string() | kz_term:ne_binary()) ->
-                           {'ok', kz_json:object()} |
-                           data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 register_view(App, {_, ViewJObj}=View) ->
     Validate = validate_view_map(kz_json:get_ne_json_value(<<"kazoo">>, ViewJObj)),
     maybe_register_view(View, App, Validate);
@@ -1746,8 +1746,8 @@ register_view(App, ViewName) ->
     register_view(App, kzs_util:get_view_json(App, ViewName)).
 
 -spec maybe_register_view(view_listing(), atom(), {'error', any()} | {kz_term:ne_binary() | kz_json:objects()}) ->
-                                 {'ok', kz_json:object()} |
-                                 data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 maybe_register_view({<<"_design/", _Name/binary>>, _}, _App, {'error', _Reason}=Error) ->
     lager:error("can not register the view ~s for app ~s: ~s", [_Name, _App, _Reason]),
     Error;
@@ -1784,8 +1784,8 @@ log_register_views(Name, DocId, App, [ViewMap | ViewMaps]) ->
     log_register_views(Name, DocId, App, ViewMaps).
 
 -spec validate_view_map(kz_term:api_object()) ->
-                               {kz_term:ne_binary(), kz_json:objects()} |
-                               {'error', kz_term:ne_binary()}.
+          {kz_term:ne_binary(), kz_json:objects()} |
+          {'error', kz_term:ne_binary()}.
 validate_view_map('undefined') ->
     {'error', <<"no_view_registration_info">>};
 validate_view_map(JObj) ->
@@ -1793,8 +1793,8 @@ validate_view_map(JObj) ->
     validate_view_map(ViewMap, []).
 
 -spec validate_view_map(kz_json:objects(), kz_json:objects() | {'error', kz_term:ne_binary()}) ->
-                               {kz_term:ne_binary(), kz_json:objects()} |
-                               {'error', any()}.
+          {kz_term:ne_binary(), kz_json:objects()} |
+          {'error', any()}.
 validate_view_map(_, {'error', _}=Error) ->
     Error;
 validate_view_map([], []) ->
@@ -1846,8 +1846,8 @@ register_views_from_folder(App, Folder) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec refresh_views(kz_term:ne_binary()) ->
-                           boolean() |
-                           {'error', 'db_not_found' | 'invalid_db_name'}.
+          boolean() |
+          {'error', 'db_not_found' | 'invalid_db_name'}.
 refresh_views(DbName) when ?VALID_DBNAME(DbName) ->
     maybe_refresh_system_db(DbName, lists:member(DbName, ?KZ_SYSTEM_DBS));
 refresh_views(DbName) ->
@@ -1857,8 +1857,8 @@ refresh_views(DbName) ->
     end.
 
 -spec maybe_refresh_system_db(kz_term:ne_binary(), boolean()) ->
-                                     boolean() |
-                                     {'error', 'db_not_found' | 'invalid_db_name'}.
+          boolean() |
+          {'error', 'db_not_found' | 'invalid_db_name'}.
 maybe_refresh_system_db(DbName, 'false') ->
     do_refresh_views(DbName);
 maybe_refresh_system_db(DbName, 'true') ->
@@ -1872,8 +1872,8 @@ maybe_refresh_system_db(DbName, 'true') ->
     end.
 
 -spec do_refresh_views(kz_term:ne_binary()) ->
-                              boolean() |
-                              {'error', 'db_not_found' | 'invalid_db_name'}.
+          boolean() |
+          {'error', 'db_not_found' | 'invalid_db_name'}.
 do_refresh_views(DbName) ->
     suppress_change_notice(),
     Classification = kzs_util:db_classification(DbName),

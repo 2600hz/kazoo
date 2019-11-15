@@ -24,47 +24,47 @@
 
 %% Attachment-related functions ------------------------------------------------
 -spec fetch_attachment(server(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                              {'ok', binary()} |
-                              couchbeam_error().
+          {'ok', iodata()} |
+          couchbeam_error().
 fetch_attachment(#server{}=Conn, DbName, DocId, AName) ->
     Db = kz_couch_util:get_db(Conn, DbName),
     do_fetch_attachment(Db, DocId, AName).
 
 -spec stream_attachment(server(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), pid()) ->
-                               {'ok', reference()} |
-                               couchbeam_error().
+          {'ok', reference()} |
+          couchbeam_error().
 stream_attachment(#server{}=Conn, DbName, DocId, AName, Caller) ->
     do_stream_attachment(kz_couch_util:get_db(Conn, DbName), DocId, AName, Caller).
 
--spec put_attachment(server(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                            {'ok', kz_json:object()} |
-                            couchbeam_error().
+-spec put_attachment(server(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), iodata()) ->
+          {'ok', kz_json:object()} |
+          couchbeam_error().
 put_attachment(#server{}=Conn, DbName, DocId, AName, Contents) ->
     put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, []).
 
--spec put_attachment(server(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                            {'ok', kz_json:object()} |
-                            couchbeam_error().
+-spec put_attachment(server(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), iodata(), kz_term:proplist()) ->
+          {'ok', kz_json:object()} |
+          couchbeam_error().
 put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, Options) ->
     Db = kz_couch_util:get_db(Conn, DbName),
     do_put_attachment(Db, DocId, AName, Contents, Options).
 
 -spec delete_attachment(server(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               {'ok', kz_json:object()} |
-                               couchbeam_error().
+          {'ok', kz_json:object()} |
+          couchbeam_error().
 delete_attachment(#server{}=Conn, DbName, DocId, AName) ->
     delete_attachment(#server{}=Conn, DbName, DocId, AName, []).
 
 -spec delete_attachment(server(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                               {'ok', kz_json:object()} |
-                               couchbeam_error().
+          {'ok', kz_json:object()} |
+          couchbeam_error().
 delete_attachment(#server{}=Conn, DbName, DocId, AName, Options) ->
     Db = kz_couch_util:get_db(Conn, DbName),
     do_del_attachment(Db, DocId, AName,  kz_couch_util:maybe_add_rev(Db, DocId, Options)).
 
 -spec attachment_url(server(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                            kz_term:ne_binary() |
-                            {'proxy', tuple()}.
+          kz_term:ne_binary() |
+          {'proxy', tuple()}.
 attachment_url(#server{}=Conn, DbName, DocId, AName, Options) ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"use_bigcouch_direct">>, 'true') of
         'true' ->
@@ -79,14 +79,14 @@ attachment_url(#server{}=Conn, DbName, DocId, AName, Options) ->
 
 %% Internal Attachment-related functions ---------------------------------------
 -spec do_fetch_attachment(couchbeam_db(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                 {'ok', binary()} |
-                                 couchbeam_error().
+          {'ok', binary()} |
+          couchbeam_error().
 do_fetch_attachment(#db{}=Db, DocId, AName) ->
     ?RETRY_504(couchbeam:fetch_attachment(Db, DocId, AName)).
 
 -spec do_stream_attachment(couchbeam_db(), kz_term:ne_binary(), kz_term:ne_binary(), pid()) ->
-                                  {'ok', reference() | atom()} |
-                                  couchbeam_error().
+          {'ok', reference() | atom()} |
+          couchbeam_error().
 do_stream_attachment(#db{}=Db, DocId, AName, Caller) ->
     case couchbeam:fetch_attachment(Db, DocId, AName, [{'stream', 'true'}
                                                       ,{'async', 'true'}
@@ -113,9 +113,9 @@ relay_stream_attachment(Caller, Ref, Msg) ->
     Caller ! {Ref, Msg},
     relay_stream_attachment(Caller, Ref, couchbeam:stream_attachment(Ref)).
 
--spec do_put_attachment(couchbeam_db(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                               {'ok', kz_json:object()} |
-                               couchbeam_error().
+-spec do_put_attachment(couchbeam_db(), kz_term:ne_binary(), kz_term:ne_binary(), iodata(), kz_term:proplist()) ->
+          {'ok', kz_json:object()} |
+          couchbeam_error().
 do_put_attachment(#db{}=Db, DocId, AttName, Contents, Options0) ->
     %% At the time of this change, couchbeam is striping "/" from attachment name when put_attachment only.
     %% Fetch and delete are encoding properly
@@ -127,8 +127,8 @@ do_put_attachment(#db{}=Db, DocId, AttName, Contents, Options0) ->
     ?RETRY_504(couchbeam:put_attachment(Db, DocId, AName, Contents, Options)).
 
 -spec do_del_attachment(couchbeam_db(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                               {'ok', kz_json:object()} |
-                               couchbeam_error().
+          {'ok', kz_json:object()} |
+          couchbeam_error().
 do_del_attachment(#db{}=Db, DocId, AName, Options) ->
     Doc = kz_term:to_binary(http_uri:encode(kz_term:to_list(DocId))),
     ?RETRY_504(couchbeam:delete_attachment(Db, Doc, AName, Options)).

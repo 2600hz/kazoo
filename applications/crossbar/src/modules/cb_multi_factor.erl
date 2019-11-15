@@ -54,14 +54,14 @@ init() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) ->
-                       boolean() |
-                       {'stop', cb_context:context()}.
+          boolean() |
+          {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize_system_multi_factor(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
 -spec authorize(cb_context:context(), path_token()) ->
-                       boolean() |
-                       {'stop', cb_context:context()}.
+          boolean() |
+          {'stop', cb_context:context()}.
 authorize(Context, _) ->
     authorize_system_multi_factor(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
@@ -69,8 +69,8 @@ authorize(Context, _) ->
 authorize(_Context, _, _) -> 'true'.
 
 -spec authorize_system_multi_factor(cb_context:context(), req_nouns(), http_method()) ->
-                                           boolean() |
-                                           {'stop', cb_context:context()}.
+          boolean() |
+          {'stop', cb_context:context()}.
 authorize_system_multi_factor(_, [{<<"multi_factor">>, []}], ?HTTP_GET) -> 'true';
 authorize_system_multi_factor(C, [{<<"multi_factor">>, []}], ?HTTP_PUT) -> cb_context:is_superduper_admin(C);
 authorize_system_multi_factor(C, [{<<"multi_factor">>, _}], ?HTTP_GET) -> cb_context:is_superduper_admin(C);
@@ -133,7 +133,7 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ?ATTEMPTS) ->
-    Options = [{mapper, crossbar_view:map_value_fun()}
+    Options = [{'mapper', crossbar_view:map_value_fun()}
               ,{'range_keymap', <<"multi_factor">>}
               ],
     crossbar_view:load_modb(Context, ?CB_LIST_ATTEMPT_LOG, Options);

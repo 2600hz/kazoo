@@ -18,17 +18,26 @@
                    ,name => kz_term:ne_binary()
                    }.
 
--type fixture_errors() :: not_found | timeout |
-                          conflict | db_not_found |
-                          empty_doc_id.
--type fixture_error() :: {error, fixture_errors()}.
+-type fixture_errors() :: 'conflict' |
+                          'db_not_found' |
+                          'empty_doc_id' |
+                          'invalid_view_name' |
+                          'not_found' |
+                          'timeout'.
+-type fixture_error() :: {'error', fixture_errors()}.
 
--type doc_resp() :: {ok, kz_json:object()} | fixture_error().
--type docs_resp() :: {ok, kz_json:objects()} | fixture_error().
+-type doc_resp() :: {'ok', kz_json:object()} | fixture_error().
+-type docs_resp() :: {'ok', kz_json:objects()} | fixture_error().
 
--define(DANGEROUS_VIEW_OPTS, [startkey, endkey, key
-                             ,keys, group, group_level
-                             ,reduce, list, skip
+-define(DANGEROUS_VIEW_OPTS, ['endkey'
+                             ,'group'
+                             ,'group_level'
+                             ,'key'
+                             ,'keys'
+                             ,'list'
+                             ,'reduce'
+                             ,'skip'
+                             ,'startkey'
                              ]).
 
 -define(KZ_FIXTUREDB_HRL, 'true').

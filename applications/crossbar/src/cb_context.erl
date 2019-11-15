@@ -440,7 +440,7 @@ should_paginate(#cb_context{should_paginate='undefined'}=Context) ->
     case req_value(Context, <<"paginate">>) of
         'undefined' -> 'true';
         ShouldPaginate ->
-            lager:debug("request has paginate flag: ~s", [ShouldPaginate]),
+            lager:debug("request has paginate flag = '~s'", [ShouldPaginate]),
             kz_term:is_true(ShouldPaginate)
     end;
 should_paginate(#cb_context{should_paginate=Should}) -> Should.
@@ -449,12 +449,11 @@ should_paginate(#cb_context{should_paginate=Should}) -> Should.
 pagination_page_size() ->
     ?PAGINATION_PAGE_SIZE.
 
--spec pagination_page_size(context()) -> kz_term:api_pos_integer().
+-spec pagination_page_size(context()) -> pos_integer().
 pagination_page_size(Context) ->
     pagination_page_size(Context, api_version(Context)).
 
--spec pagination_page_size(context(), kz_term:ne_binary()) -> kz_term:api_pos_integer().
-pagination_page_size(_Context, ?VERSION_1) -> 'undefined';
+-spec pagination_page_size(context(), kz_term:ne_binary()) -> pos_integer().
 pagination_page_size(Context, _Version) ->
     case req_value(Context, <<"page_size">>) of
         'undefined' -> pagination_page_size();
@@ -508,7 +507,7 @@ setters(#cb_context{}=Context, [_|_]=Setters) ->
     lists:foldl(fun setters_fold/2, Context, Setters).
 
 -spec setters_fold(setter_kv(), context() | kz_json:object()) ->
-                          context() | kz_json:object().
+          context() | kz_json:object().
 setters_fold({F, V}, C) -> F(C, V);
 setters_fold({F, K, V}, C) -> F(C, K, V);
 setters_fold(F, C) when is_function(F, 1) -> F(C).
@@ -779,12 +778,12 @@ update_doc(#cb_context{doc=Doc}=Context, Updater) ->
 %% % Helpers
 
 -spec add_content_types_provided(context(), crossbar_content_handlers()) ->
-                                        context().
+          context().
 add_content_types_provided(#cb_context{content_types_provided=CTPs}=Context, NewCTPs) when is_list(NewCTPs) ->
     Context#cb_context{content_types_provided = NewCTPs ++ CTPs}.
 
 -spec add_content_types_accepted(context(), crossbar_content_handler() | crossbar_content_handlers()) ->
-                                        context().
+          context().
 add_content_types_accepted(#cb_context{content_types_accepted=CTAs}=Context, [_|_]=NewCTAs) ->
     Context#cb_context{content_types_accepted = NewCTAs ++ CTAs};
 add_content_types_accepted(#cb_context{}=Context, NewCTA) ->
@@ -861,7 +860,7 @@ import_errors(#cb_context{}=Context) ->
     end.
 
 -spec response(context()) -> {'ok', kz_json:object()} |
-                             {'error', {pos_integer(), kz_term:ne_binary(), kz_json:object()}}.
+          {'error', {pos_integer(), kz_term:ne_binary(), kz_json:object()}}.
 response(#cb_context{resp_status='success'
                     ,resp_data=JObj
                     }) ->
@@ -893,23 +892,23 @@ response(#cb_context{resp_error_code=Code
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate_request_data(kz_term:ne_binary() | kz_term:api_object(), context()) ->
-                                   context().
+          context().
 validate_request_data(SchemaId, Context) ->
     validate_request_data(SchemaId, Context, 'undefined').
 
 -spec validate_request_data(kz_term:ne_binary() | kz_term:api_object(), context(), after_fun()) ->
-                                   context().
+          context().
 validate_request_data(SchemaId, Context, OnSuccess) ->
     validate_request_data(SchemaId, Context, OnSuccess, 'undefined').
 
 -spec validate_request_data(kz_term:ne_binary() | kz_term:api_object(), context(), after_fun(), after_fun()) ->
-                                   context().
+          context().
 validate_request_data(SchemaId, Context, OnSuccess, OnFailure) ->
     SchemaRequired = fetch(Context, 'ensure_valid_schema', ?SHOULD_ENSURE_SCHEMA_IS_VALID),
     validate_request_data(SchemaId, Context, OnSuccess, OnFailure, SchemaRequired).
 
 -spec validate_request_data(kz_term:ne_binary() | kz_term:api_object(), context(), after_fun(), after_fun(), boolean()) ->
-                                   context().
+          context().
 validate_request_data('undefined', Context, OnSuccess, _OnFailure, 'false') ->
     lager:error("schema id or schema JSON not defined, continuing anyway"),
     validate_passed(Context, OnSuccess);
@@ -1130,7 +1129,7 @@ build_system_error(Code, Error, JObj, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec add_validation_error(kz_json:get_key(), kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), context()) ->
-                                  context().
+          context().
 add_validation_error(<<_/binary>> = Property, Code, Message, Context) ->
     add_validation_error([Property], Code, Message, Context);
 add_validation_error(Property, Code, <<_/binary>> = Message, Context) ->
