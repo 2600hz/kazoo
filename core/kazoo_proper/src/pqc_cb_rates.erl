@@ -79,6 +79,7 @@ upload_csv(API, CSV, _RatedeckId) ->
                                  'ok' | {'error', any()}.
 create_service_plan(API, RatedeckId) ->
     RatesResp = get_rates(API, RatedeckId),
+    ?INFO("rate resp: ~s~n", [RatesResp]),
     case kz_json:get_list_value(<<"data">>, kz_json:decode(RatesResp), []) of
         [] ->
             ?INFO("no rates in ratedeck ~s, not creating service plan", [RatedeckId]),
@@ -151,7 +152,7 @@ wait_for_task(API, TaskId) ->
 
 get_csvs(_API, _TaskId, []) -> 'ok';
 get_csvs(API, TaskId, [CSV|CSVs]) ->
-    get_csv(API, TaskId, CSV),
+    _ = get_csv(API, TaskId, CSV),
     get_csvs(API, TaskId, CSVs).
 
 get_csv(API, TaskId, CSV) ->
@@ -338,6 +339,7 @@ seq() ->
     ?INFO("uploaded task: ~s~n", [TaskId]),
 
     GetResp = ?MODULE:get_rate(API, RateDoc),
+    ?INFO("get rate: ~s", [GetResp]),
     GetJObj = kz_json:decode(GetResp),
     RateJObj = kz_json:get_json_value(<<"data">>, GetJObj),
     ?INFO("get rate: ~p~n", [RateJObj]),

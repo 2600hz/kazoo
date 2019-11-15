@@ -36,7 +36,7 @@ all_design_docs(#{server := {App, Conn}}, DBName, Options) ->
 all_docs(#{server := {App, Conn}}, DbName, Options) ->
     App:all_docs(Conn, DbName, Options).
 
--spec get_results(map(), kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
+-spec get_results(map(), kz_term:ne_binary(), 'all_docs' | kz_term:ne_binary(), view_options()) ->
                          {'ok', kz_json:objects() | kz_json:path()} |
                          data_error().
 get_results(#{server := {App, Conn}}, DbName, DesignDoc, ViewOptions) ->

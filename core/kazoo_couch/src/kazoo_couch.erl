@@ -237,13 +237,13 @@ design_compact(Server, DbName, Design) ->
 all_design_docs(#server{}=Server, ?NE_BINARY = DBName, Options) ->
     kz_couch_view:all_design_docs(Server, DBName, Options).
 
--spec get_results(server(), kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
+-spec get_results(server(), kz_term:ne_binary(), 'all_docs' | kz_term:ne_binary(), view_options()) ->
                          {'ok', kz_json:objects() | kz_json:path()} |
                          couchbeam_error().
 get_results(Server, DbName, DesignDoc, ViewOptions) ->
     kz_couch_view:get_results(Server, DbName, DesignDoc, ViewOptions).
 
--spec get_results_count(server(), kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
+-spec get_results_count(server(), 'all_docs' | kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
                                {'ok', kz_term:api_integer()} |
                                couchbeam_error().
 get_results_count(Server, DbName, DesignDoc, ViewOptions) ->

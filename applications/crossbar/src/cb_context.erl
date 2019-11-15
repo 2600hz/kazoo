@@ -110,11 +110,11 @@
 -define(KEY_ACCEPT_CHARGES, <<"accept_charges">>).
 
 -define(SHOULD_ENSURE_SCHEMA_IS_VALID
-       ,kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_schema">>, true)
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_schema">>, 'true')
        ).
 
 -define(SHOULD_FAIL_ON_INVALID_DATA
-       ,kapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, false)
+       ,kapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, 'false')
        ).
 
 -define(PAGINATION_PAGE_SIZE
@@ -389,7 +389,7 @@ should_paginate(#cb_context{should_paginate='undefined'}=Context) ->
     case req_value(Context, <<"paginate">>) of
         'undefined' -> 'true';
         ShouldPaginate ->
-            lager:debug("request has paginate flag: ~s", [ShouldPaginate]),
+            lager:debug("request has paginate flag = '~s'", [ShouldPaginate]),
             kz_term:is_true(ShouldPaginate)
     end;
 should_paginate(#cb_context{should_paginate=Should}) -> Should.
@@ -398,12 +398,11 @@ should_paginate(#cb_context{should_paginate=Should}) -> Should.
 pagination_page_size() ->
     ?PAGINATION_PAGE_SIZE.
 
--spec pagination_page_size(context()) -> kz_term:api_pos_integer().
+-spec pagination_page_size(context()) -> pos_integer().
 pagination_page_size(Context) ->
     pagination_page_size(Context, api_version(Context)).
 
--spec pagination_page_size(context(), kz_term:ne_binary()) -> kz_term:api_pos_integer().
-pagination_page_size(_Context, ?VERSION_1) -> 'undefined';
+-spec pagination_page_size(context(), kz_term:ne_binary()) -> pos_integer().
 pagination_page_size(Context, _Version) ->
     case req_value(Context, <<"page_size">>) of
         'undefined' -> pagination_page_size();

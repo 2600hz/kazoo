@@ -451,6 +451,7 @@ pages:
       - 'core/kazoo_perf/doc/maintenance.md'
   - 'Kazoo Test FixtureDB':
       - 'core/kazoo_fixturedb/doc/README.md'
+      - 'Persist Database to disk': 'core/kazoo_fixturedb/doc/db-to-disk.md'
 - 'Articles':
   - 'Introduction to Storage Plans - S3': 'doc/blog/storage.md'
   - 'Bypass Media Mode': 'doc/blog/bypass_media.md'

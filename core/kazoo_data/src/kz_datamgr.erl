@@ -707,7 +707,7 @@ open_docs(DbName, DocIds, Options) ->
     read_chunked(fun do_open_docs/3, DbName, DocIds, Options).
 
 do_open_docs(DbName, DocIds, Options) ->
-    NewOptions = [{keys, DocIds}, include_docs | Options],
+    NewOptions = [{'keys', DocIds}, 'include_docs' | Options],
     all_docs(DbName, NewOptions).
 
 read_chunked(Opener, DbName, DocIds, Options) ->
@@ -717,22 +717,22 @@ read_chunked(Opener, DbName, DocIds, Options, Acc) ->
         {NewDocIds, DocIdsLeft} ->
             NewAcc = read_chunked_results(Opener, DbName, NewDocIds, Options, Acc),
             read_chunked(Opener, DbName, DocIdsLeft, Options, NewAcc)
-    catch error:badarg ->
+    catch 'error':'badarg' ->
             case read_chunked_results(Opener, DbName, DocIds, Options, Acc) of
-                {error, _R}=E -> E;
-                JObjs -> {ok, lists:flatten(lists:reverse(JObjs))}
+                {'error', _R}=E -> E;
+                JObjs -> {'ok', lists:flatten(lists:reverse(JObjs))}
             end
     end.
 
-read_chunked_results(_, _, _, _, {error,_}=Acc) -> Acc;
+read_chunked_results(_, _, _, _, {'error', _}=Acc) -> Acc;
 read_chunked_results(Opener, DbName, DocIds, Options, Acc) ->
     read_chunked_results(DocIds, Opener(DbName, DocIds, Options), Acc).
 
-read_chunked_results(_DocIds, {ok, JObjs}, Acc) ->
+read_chunked_results(_DocIds, {'ok', JObjs}, Acc) ->
     [JObjs | Acc];
-read_chunked_results(_DocIds, {error,_}=Reason, []) ->
+read_chunked_results(_DocIds, {'error',_}=Reason, []) ->
     Reason;
-read_chunked_results(DocIds, {error, Reason}, Acc) ->
+read_chunked_results(DocIds, {'error', Reason}, Acc) ->
     [kz_json:from_list(
        [{<<"id">>, DocId}
        ,{<<"error">>, Reason}
@@ -787,7 +787,6 @@ all_docs(DbName, Options) ->
         {'ok', Db} -> all_docs(Db, Options);
         {'error', _}=E -> E
     end.
-
 
 -spec db_list() -> {'ok', kz_term:ne_binaries()} | data_error().
 db_list() ->
@@ -1332,7 +1331,7 @@ maybe_create_view(Plan, DbName, DesignDoc, Options, 'true') ->
                                 ,get_registered_view(Plan, DbName, DesignDoc)
                                 ).
 
--spec maybe_create_registered_view(map(), kz_term:ne_binary(), kz_term:ne_binary(), view_options(), kz_json:object() | 'not_registered') ->
+-spec maybe_create_registered_view(map(), kz_term:ne_binary(), 'all_docs' | kz_term:ne_binary(), view_options(), kz_json:object() | 'not_registered') ->
                                           get_results_return().
 maybe_create_registered_view(_Plan, _DbName, _DesignDoc, _Options, 'not_registered') ->
     {'error', 'not_found'};
@@ -1418,11 +1417,11 @@ get_result_ids(JObjs) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Gets the only result of a view.
-%% If no result is found: returns `{error, not_found}'.
+%% If no result is found: returns `{'error', not_found}'.
 %% If more than one result is found, either:
 %% - if `Options' contains `first_when_multiple'
 %%     then the first one will be returned;
-%% - otherwise `{error, multiple_results}' is returned.
+%% - otherwise `{'error', multiple_results}' is returned.
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_single_result(kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
@@ -1477,7 +1476,7 @@ get_result_docs(DbName, DesignDoc, Keys) ->
 -type paginated_results() :: {'ok', kz_json:objects(), kz_json:api_json_term()} |
                              data_error().
 
--spec paginate_results(kz_term:ne_binary(), kz_term:ne_binary(), paginate_options()) ->
+-spec paginate_results(kz_term:ne_binary(), 'all_docs' | kz_term:ne_binary(), paginate_options()) ->
                               {'ok', kz_json:objects(), kz_json:api_json_term()} |
                               data_error().
 paginate_results(DbName, DesignDoc, Options) ->
@@ -1645,7 +1644,8 @@ maybe_add_doc_type_from_view(ViewName, Options) ->
         _ -> Options
     end.
 
--spec add_doc_type_from_view(kz_term:ne_binary(), view_options()) -> view_options().
+-spec add_doc_type_from_view(kz_term:ne_binary() | 'all_docs', view_options()) -> view_options().
+add_doc_type_from_view('all_docs', Options) -> Options;
 add_doc_type_from_view(View, Options) ->
     case binary:split(View, <<"/">>, ['global']) of
         [ViewType, ViewName] ->
