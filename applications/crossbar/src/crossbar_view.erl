@@ -903,7 +903,7 @@ handle_query_result(#{page_size := PageSize
     case check_page_size_and_length(LoadMap, FilteredLength, FilteredJObjs, NewLastKey) of
         {'exhausted', LoadMap2} -> LoadMap2;
         {'next_db', LoadMap2} when PageSize =:= 'infinity', NewLastKey =/= 'undefined' ->
-            lager:info("updating new last key to ~p from ~p", [NewLastKey, _OldLastKey]),
+            lager:debug("updating new last key to ~p from ~p", [NewLastKey, _OldLastKey]),
             get_results(LoadMap2#{last_key => NewLastKey});
         {'next_db', LoadMap2} -> get_results(LoadMap2#{databases => RestDbs})
     end.
@@ -1047,16 +1047,16 @@ filter_foldl(Mapper, [JObj | JObjs], Acc) ->
 -spec last_key(last_key(), kz_json:objects(), non_neg_integer() | 'undefined', non_neg_integer(), page_size()) ->
                       {last_key(), kz_json:objects()}.
 last_key(LastKey, [], _Limit, _Returned, _PageSize) ->
-    lager:info("no results same last key ~p", [LastKey]),
+    lager:debug("no results same last key ~p", [LastKey]),
     {LastKey, []};
 last_key(LastKey, JObjs, 'undefined', _Returned, _PageSize) ->
-    lager:info("no limit, re-using last key ~p", [LastKey]),
+    lager:debug("no limit, re-using last key ~p", [LastKey]),
     {LastKey, lists:reverse(JObjs)};
 last_key(_LastKey, JObjs, Limit, Limit, _PageSize) ->
-    lager:info("full page fetched, calculating new key"),
+    lager:debug("full page fetched, calculating new key"),
     new_last_key(JObjs);
 last_key(_LastKey, JObjs, _Limit, _Returned, _PageSize) ->
-    lager:info("returned ~p < limit ~p ps: ~p lk: ~p", [_Returned, _Limit, _PageSize, _LastKey]),
+    lager:debug("returned page ~p smaller than page limit ~p", [_Returned, _Limit]),
     {'undefined', lists:reverse(JObjs)}.
 
 -spec new_last_key(kz_json:objects()) -> {last_key(), kz_json:objects()}.
@@ -1073,9 +1073,7 @@ new_last_key(JObjs) ->
 format_response(#{context := Context}=LoadMap) ->
     case cb_context:resp_status(Context) of
         'success' -> format_success_response(LoadMap);
-        _Error ->
-            lager:info("returning ~p context", [_Error]),
-            Context
+        _Error -> Context
     end.
 
 -spec format_success_response(load_params()) -> cb_context:context().
