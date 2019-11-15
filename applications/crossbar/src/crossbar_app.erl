@@ -38,12 +38,9 @@ start(_StartType, _StartArgs) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
-    _ = kapps_maintenance:unbind('migrate', 'crossbar_maintenance', 'migrate'),
-    _ = kapps_maintenance:unbind({'refresh_account', <<"*">>}, 'crossbar_util', 'descendants_count'),
-    _ = kapps_maintenance:unbind('register_views', 'crossbar_maintenance', 'register_views'),
     _ = cowboy:stop_listener('api_resource'),
     _ = cowboy:stop_listener('api_resource_ssl'),
-    _ = crossbar_bindings:flush(),
+    _ = kazoo_bindings:flush_app(?APP),
     'ok'.
 
 %%------------------------------------------------------------------------------

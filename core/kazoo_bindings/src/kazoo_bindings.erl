@@ -32,7 +32,7 @@
         ,unbind/2, unbind/3, unbind/4
         ,map/2, map/3, pmap/2, pmap/3
         ,fold/2, fold/3
-        ,flush/0, flush/1, flush_mod/1
+        ,flush/0, flush/1, flush_mod/1, flush_app/1
         ,filter/1
         ,stop/0
         ,modules_loaded/0
@@ -89,6 +89,7 @@
 -record(kz_responder, {module :: module()
                       ,function :: responder_fun()
                       ,payload :: payload()
+                      ,app :: atom()
                       }).
 -type kz_responder() :: #kz_responder{}.
 -type kz_responders() :: [kz_responder()].
@@ -324,11 +325,13 @@ bind(Binding, Module, Fun) when is_binary(Binding) ->
 bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
 bind(Binding, 'undefined' = Module, Fun, Payload) ->
+    App = kapps_util:get_application(),
     lager:debug("adding binding ~s for ~p (~p)", [Binding, Fun, Payload]),
-    gen_server:call(?SERVER, {'bind', Binding, Module, Fun, Payload}, 'infinity');
+    gen_server:call(?SERVER, {'bind', Binding, App, Module, Fun, Payload}, 'infinity');
 bind(Binding, Module, Fun, Payload) ->
+    App = kapps_util:get_application(),
     lager:debug("adding binding ~s for ~s:~s (~p)", [Binding, Module, Fun, Payload]),
-    gen_server:call(?SERVER, {'bind', Binding, Module, Fun, Payload}, 'infinity').
+    gen_server:call(?SERVER, {'bind', Binding, App, Module, Fun, Payload}, 'infinity').
 
 -type unbind_result() :: {'ok', 'deleted_binding' | 'updated_binding'} |
                          {'error', 'not_found'}.
@@ -362,6 +365,9 @@ flush(Binding) -> gen_server:cast(?SERVER, {'flush', Binding}).
 
 -spec flush_mod(module()) -> 'ok'.
 flush_mod(Module) -> gen_server:cast(?SERVER, {'flush_mod', Module}).
+
+-spec flush_app(atom()) -> 'ok'.
+flush_app(App) -> gen_server:cast(?SERVER, {'flush_app', App}).
 
 -type filter_fun() :: fun((kz_term:ne_binary(), module(), responder_fun(), payload()) -> boolean()).
 -spec filter(filter_fun()) -> 'ok'.
@@ -417,8 +423,8 @@ handle_call('is_ready', _From, State) ->
     {'reply', 'false', State};
 handle_call('current_bindings', _, #state{bindings=Bs}=State) ->
     {'reply', Bs, State};
-handle_call({'bind', Binding, Mod, Fun, Payload}, _, #state{}=State) ->
-    Resp = maybe_add_binding(Binding, Mod, Fun, Payload),
+handle_call({'bind', Binding, App, Mod, Fun, Payload}, _, #state{}=State) ->
+    Resp = maybe_add_binding(Binding, App, Mod, Fun, Payload),
     lager:debug("maybe add binding ~s: ~p", [Binding, Resp]),
     {'reply', Resp, State};
 handle_call({'unbind', Binding, Mod, Fun, Payload}, _, #state{}=State) ->
@@ -426,11 +432,12 @@ handle_call({'unbind', Binding, Mod, Fun, Payload}, _, #state{}=State) ->
     lager:debug("maybe rm binding ~s: ~p", [Binding, Resp]),
     {'reply', Resp, State}.
 
--spec maybe_add_binding(kz_term:ne_binary(), module(), responder_fun(), payload()) ->
+-spec maybe_add_binding(kz_term:ne_binary(), atom(), module(), responder_fun(), payload()) ->
                                'ok' |
                                {'error', 'exists'}.
-maybe_add_binding(Binding, Mod, Fun, Payload) ->
-    Responder = #kz_responder{module=Mod
+maybe_add_binding(Binding, App, Mod, Fun, Payload) ->
+    Responder = #kz_responder{app=App
+                             ,module=Mod
                              ,function=Fun
                              ,payload=Payload
                              },
@@ -519,6 +526,9 @@ handle_cast({'flush_mod', Mod}, State) ->
     lager:debug("trying to flush ~s", [Mod]),
     ets:foldl(fun(El, _) -> flush_mod(Mod, El) end, 'ok', table_id()),
     {'noreply', State};
+handle_cast({'flush_app', App}, State) ->
+    ets:foldl(fun(El, _) -> flush_app(App, El) end, 'ok', table_id()),
+    {'noreply', State};
 handle_cast({'filter', Predicate}, State) ->
     filter_bindings(Predicate),
     {'noreply', State};
@@ -539,6 +549,22 @@ flush_mod(ClientMod, #kz_binding{binding=Binding
                     ets:delete(table_id(), Binding);
                 _Len ->
                     lager:debug("removing mod ~s from ~s", [ClientMod, Binding]),
+                    ets:update_element(table_id(), Binding, {#kz_binding.binding_responders, Filtered})
+            end
+    end.
+
+-spec flush_app(atom(), kz_binding()) -> boolean().
+flush_app(ClientApp, #kz_binding{binding=Binding
+                                ,binding_responders=Responders
+                                }) ->
+    Filtered = queue:filter(fun(#kz_responder{app=App}) -> ClientApp =/= App end, Responders),
+    case queue:len(Filtered) =:= queue:len(Responders) of
+        'true' -> 'false'; %% nothing to update
+        'false' ->
+            case queue:len(Filtered) of
+                0 ->
+                    ets:delete(table_id(), Binding);
+                _Len ->
                     ets:update_element(table_id(), Binding, {#kz_binding.binding_responders, Filtered})
             end
     end.
