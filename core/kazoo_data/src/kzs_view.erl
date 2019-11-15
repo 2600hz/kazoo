@@ -31,20 +31,20 @@ design_compact(#{server := {App, Conn}}, DbName, Design) -> App:design_compact(C
 design_info(#{server := {App, Conn}}, DBName, Design) -> App:design_info(Conn, DBName, Design).
 
 -spec all_design_docs(map(), kz_term:ne_binary(), view_options()) ->
-                             {'ok', kz_json:objects()} |
-                             data_error().
+          {'ok', kz_json:objects()} |
+          data_error().
 all_design_docs(#{server := {App, Conn}}, DBName, Options) ->
     App:all_design_docs(Conn, DBName, Options).
 
 -spec all_docs(map(), kz_term:ne_binary(), view_options()) ->
-                      {'ok', kz_json:objects()} |
-                      data_error().
+          {'ok', kz_json:objects()} |
+          data_error().
 all_docs(#{server := {App, Conn}}, DbName, Options) ->
     App:all_docs(Conn, DbName, Options).
 
 -spec get_results(map(), kz_term:ne_binary(), 'all_docs' | kz_term:ne_binary(), view_options()) ->
-                         {'ok', kz_json:objects() | kz_json:path()} |
-                         data_error().
+          {'ok', kz_json:objects() | kz_json:path()} |
+          data_error().
 get_results(#{server := {App, Conn}}, DbName, DesignDoc, ViewOptions) ->
     ResultKey = props:get_value('result_key', ViewOptions),
     case App:get_results(Conn, DbName, DesignDoc, ViewOptions) of
@@ -58,8 +58,8 @@ get_results(#{server := {App, Conn}}, DbName, DesignDoc, ViewOptions) ->
 %% list; that would be better, but for not, setting the view's "reduce" to the _count
 %% function will suffice (provided a reduce isn't already defined).
 -spec get_results_count(map(), kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
-                               {'ok', integer()} |
-                               data_error().
+          {'ok', integer()} |
+          data_error().
 get_results_count(#{server := {App, Conn}}, DbName, DesignDoc, ViewOptions) ->
     App:get_results_count(Conn, DbName, DesignDoc, ViewOptions).
 
@@ -72,7 +72,7 @@ doc_type_from_view(<<"sms">>, _ViewName) -> <<"sms">>;
 doc_type_from_view(_ViewType, _ViewName) -> <<"any">>.
 
 -spec show(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | 'null', kz_term:proplist()) ->
-                  {'ok', kz_json:objects() | kz_json:path()} |
-                  data_error().
+          {'ok', kz_json:objects() | kz_json:path()} |
+          data_error().
 show(#{server := {App, Conn}}, DbName, DesignDoc, DocId, Options) ->
     App:show(Conn, DbName, DesignDoc, DocId, Options).
