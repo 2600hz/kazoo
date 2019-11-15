@@ -49,7 +49,7 @@
 -define(ACCOUNT_NAMES, [<<"account_for_rates">>]).
 
 -spec rate_doc(kz_term:ne_binary() | proper_types:type(), number() | proper_types:type()) ->
-                      kzd_rates:doc().
+          kzd_rates:doc().
 rate_doc(RatedeckId, Cost) ->
     kzd_rates:from_map(#{<<"prefix">> => 1222
                         ,<<"rate_cost">> => Cost
@@ -88,7 +88,7 @@ upload_rates(API, RateDocs) when is_list(RateDocs) ->
     upload_csv(API, CSV).
 
 -spec upload_csv(pqc_cb_api:state(), iodata()) ->
-                        {'ok', kz_term:api_ne_binary()}.
+          {'ok', kz_term:api_ne_binary()}.
 upload_csv(API, CSV) ->
     CreateResp = pqc_cb_tasks:create(API, "category=rates&action=import", CSV),
     TaskId = kz_json:get_ne_binary_value([<<"data">>, <<"_read_only">>, <<"id">>]
@@ -101,9 +101,10 @@ upload_csv(API, CSV) ->
     {'ok', TaskId}.
 
 -spec create_service_plan(pqc_cb_api:state(), kz_term:ne_binary() | proper_types:type()) ->
-                                 'ok' | {'error', any()}.
+          'ok' | {'error', any()}.
 create_service_plan(API, RatedeckId) ->
     RatesResp = get_rates(API, RatedeckId),
+    ?INFO("rate resp: ~s~n", [RatesResp]),
     case kz_json:get_list_value(<<"data">>, kz_json:decode(RatesResp), []) of
         [] ->
             ?INFO("no rates in ratedeck ~s, not creating service plan", [RatedeckId]),
@@ -115,7 +116,7 @@ create_service_plan(API, RatedeckId) ->
     end.
 
 -spec assign_service_plan(pqc_cb_api:state(), kz_term:api_ne_binary() | proper_types:type(), kz_term:ne_binary()) ->
-                                 pqc_cb_api:response().
+          pqc_cb_api:response().
 assign_service_plan(_API, 'undefined', _RatedeckId) ->
     ?INFO("no account to assign ~s to", [_RatedeckId]),
     ?FAILED_RESPONSE;
@@ -125,7 +126,7 @@ assign_service_plan(API, AccountId, RatedeckId) ->
     pqc_cb_services:assign_service_plan(API, AccountId, ServicePlanId).
 
 -spec rate_account_did(pqc_cb_api:state(), kz_term:api_ne_binary() | proper_types:type(), kz_term:ne_binary()) ->
-                              kz_term:api_number().
+          kz_term:api_number().
 rate_account_did(_API, 'undefined', _DID) ->
     ?INFO("account doesn't exist to rate DID ~p", [_DID]),
     ?FAILED_RESPONSE;
@@ -392,6 +393,13 @@ seq() ->
     ?INFO("listed by prefix: ~s", [ListByPrefixResp]),
     [Listed] = kz_json:get_value(<<"data">>, kz_json:decode(ListByPrefixResp)),
     'true' = kz_doc:id(Listed) =:= kz_doc:id(RateDoc),
+
+    GetResp = ?MODULE:get_rate(API, RateDoc),
+    ?INFO("get rate: ~s", [GetResp]),
+    GetJObj = kz_json:decode(GetResp),
+    RateJObj = kz_json:get_json_value(<<"data">>, GetJObj),
+    ?INFO("get rate: ~p~n", [RateJObj]),
+    'true' = kz_doc:id(RateDoc) =:= kz_doc:id(RateJObj),
 
     RateCost = ?MODULE:rate_did(API, kzd_rates:ratedeck_id(RateDoc), hd(?PHONE_NUMBERS)),
     ?INFO("successfully rated ~p using global ratedeck", [hd(?PHONE_NUMBERS)]),

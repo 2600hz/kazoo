@@ -232,7 +232,7 @@ get_integer(Category, Key, Default, Node) ->
 get_pos_integer(Category, Key) ->
     case get(Category, Key) of
         'undefined' -> 'undefined';
-        Else -> to_pos_integer(Else, undefined)
+        Else -> to_pos_integer(Else, 'undefined')
     end.
 
 -spec get_pos_integer(config_category(), config_key(), Default) -> pos_integer() | Default.
@@ -259,7 +259,7 @@ to_pos_integer(Value, Default) ->
 get_non_neg_integer(Category, Key) ->
     case get(Category, Key) of
         'undefined' -> 'undefined';
-        Else -> to_non_neg_integer(Else, undefined)
+        Else -> to_non_neg_integer(Else, 'undefined')
     end.
 
 -spec get_non_neg_integer(config_category(), config_key(), Default) -> non_neg_integer() | Default.

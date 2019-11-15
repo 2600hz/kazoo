@@ -10,8 +10,7 @@
 -module(kz_fixturedb_util).
 
 %% Driver callbacks
--export([format_error/1
-        ]).
+-export([format_error/1]).
 
 %% API
 -export([open_json/2, doc_path/2
@@ -36,6 +35,9 @@
         ,update_pvt_doc_hash/0, update_pvt_doc_hash/1
 
         ,start_me/0, start_me/1, stop_me/1
+
+        ,db_to_disk/1, db_to_disk/2
+        ,view_index_to_disk/3
         ]).
 
 -include("kz_fixturedb.hrl").
@@ -232,7 +234,6 @@ maybe_symlink_att_file(AName, AttPath) ->
             ?DEV_LOG("attchment ~s file doesn't exists", [AName])
     end.
 
-
 -spec add_view_to_index(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> binary_or_error().
 add_view_to_index(DbName, Design, Options) ->
     add_view_to_index(kz_fixturedb_maintenance:new_connection(), DbName, Design, Options).
@@ -297,12 +298,12 @@ read_file(Path) ->
     end.
 
 -spec update_index_file(file:filename_all(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               binary_or_error().
+          binary_or_error().
 update_index_file(Path, Header, NewLine) ->
     write_index_file(Path, NewLine, read_index_file(Path, Header, NewLine)).
 
 -spec write_index_file(file:filename_all(), kz_term:ne_binary(), binary_or_error()) ->
-                              binary_or_error().
+          binary_or_error().
 write_index_file(_, _, {'error', _}=Error) ->
     Error;
 write_index_file(Path, NewLine, {'ok', IndexLines}) ->
@@ -354,3 +355,57 @@ design_view(Design) ->
         [DesignName] -> DesignName;
         [DesignName, ViewName|_] -> <<DesignName/binary, "+", ViewName/binary>>
     end.
+
+-spec db_to_disk(kz_term:ne_binary()) -> 'ok' | {'error', kz_datamgr:data_error()}.
+db_to_disk(Database) ->
+    db_to_disk(Database, fun kz_term:always_true/1).
+
+-type filter_fun() :: fun((kz_json:object()) -> boolean()).
+-spec db_to_disk(kz_term:ne_binary(), filter_fun()) -> 'ok' | {'error', kz_datamgr:data_error()}.
+db_to_disk(Database, FilterFun) ->
+    case kz_datamgr:db_exists(Database) of
+        'true' -> db_to_disk_persist(Database, FilterFun);
+        'false' -> {'error', 'not_found'}
+    end.
+
+db_to_disk_persist(Database, FilterFun) ->
+    db_to_disk_persist(Database, FilterFun, get_page(Database, 'undefined')).
+
+get_page(Database, 'undefined') ->
+    query(Database, []);
+get_page(Database, StartKey) ->
+    query(Database, [{'startkey', StartKey}]).
+
+query(Database, Options) ->
+    kz_datamgr:paginate_results(Database, 'all_docs', ['include_docs' | Options]).
+
+db_to_disk_persist(Database, FilterFun, {'ok', ViewResults, 'undefined'}) ->
+    _ = filter_and_persist(Database, FilterFun, ViewResults),
+    lager:info("finished persisting ~s", [Database]);
+db_to_disk_persist(Database, FilterFun, {'ok', ViewResults, NextStartKey}) ->
+    _ = filter_and_persist(Database, FilterFun, ViewResults),
+    db_to_disk_persist(Database, FilterFun, get_page(Database, NextStartKey));
+db_to_disk_persist(_Database, _FilterFun, {'error', _E}=Error) ->
+    Error.
+
+filter_and_persist(Database, FilterFun, ViewResults) ->
+    _ = [persist(Database, Document) || ViewResult <- ViewResults,
+                                        Document <- [kz_json:get_json_value(<<"doc">>, ViewResult)],
+                                        FilterFun(Document)
+        ].
+
+persist(Database, Document) ->
+    Path = get_doc_path(Database, kz_doc:id(Document)),
+    'ok' = filelib:ensure_dir(Path),
+
+    lager:info("  persisting doc ~s to ~s", [kz_doc:id(Document), Path]),
+    'ok' = file:write_file(Database, kz_json:encode(Document, ['pretty'])).
+
+-spec view_index_to_disk(kz_term:ne_binary(), kz_term:ne_binary(), kz_datamgr:view_options()) -> 'ok'.
+view_index_to_disk(Database, ViewName, Options) ->
+    Path = get_view_path(Database, ViewName, Options),
+    'ok' = filelib:ensure_dir(Path),
+
+    {'ok', Results} = kz_datamgr:get_results(Database, ViewName, Options),
+    lager:info(" persisting view index ~s/~s to ~s", [Database, ViewName, Path]),
+    'ok' = file:write_file(Path, kz_json:encode(Results, ['pretty'])).

@@ -191,7 +191,7 @@ The pagination response keys are `next_start_key`, `page_size`, and `start_key`.
 
 Assuming no changes are made to the underlying documents, `start_key` will get you this page of results, and `next_start_key` will give you a pointer to the next page (imagine a linked-list).
 
-#### Encoded Start Keys (Kazoo 4.2+ Only)
+### Encoded Start Keys (Kazoo 4.2+ Only)
 
 As you can see from the response above, both the `start_key` and `next_start_key` are encoded as URL-safe Base64 strings of their Erlang term representation. A couple character substitutions (`_` for `/` and `_` for `+`) and one character removal (`=`) ensures a string that plays nice in URLs.
 
@@ -248,6 +248,12 @@ By default, Crossbar returns the results in descending order. To get results in 
 ### Disabling Pagination
 
 If you want to disable pagination for a request, simply include `paginate=false` on the query string.
+
+#### Protecting from (un)intentional abuse
+
+Since pagination can be turned off by a client-supplied query string parameter, it is important that KAZOO still protect itself from overly large datasets being loaded. Examples seen include large CDR listings, call recording listings, and ledger listings.
+
+Therefore, during a non-paginated request, KAZOO monitors memory consumption of the handling server process and will abort the request if the processing is exceeding a high watermark setting (configured by the system operator). The client can expect to receive an HTTP "416 Range Not Satisfiable" error as a result of exceeding the limit.
 
 ## Chunked Response
 

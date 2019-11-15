@@ -57,7 +57,9 @@ get_results(Server, DbName, Design, Options) ->
             {'error', 'invalid_view_name'}
     end.
 
--spec get_results_count(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> {ok, non_neg_integer()} | fixture_error().
+-spec get_results_count(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) ->
+          {'ok', non_neg_integer()} |
+          fixture_error().
 get_results_count(Server, DbName, Design, Options) ->
     case get_results(Server, DbName, Design, Options) of
         {'ok', JObjs} -> {'ok', erlang:length(JObjs)};
