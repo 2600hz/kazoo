@@ -69,7 +69,10 @@ remove_consumer_pid() ->
 -spec consumer_channel() -> pid() | kz_amqp_assignment() | {'error', 'timeout'}.
 consumer_channel() ->
     case get('$kz_amqp_consumer_channel') of
-        'undefined' -> kz_amqp_assignments:get_channel();
+        'undefined' ->
+            #kz_amqp_assignment{channel=Channel} = kz_amqp_assignments:get_channel(),
+            put('$kz_amqp_consumer_channel', Channel),
+            Channel;
         Channel -> Channel
     end.
 

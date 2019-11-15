@@ -800,11 +800,15 @@ terminate(Reason, #state{module=Module
                         ,federators=Fs
                         ,consumer_tags=Tags
                         }) ->
-    _ = (catch(lists:foreach(fun kz_amqp_util:basic_cancel/1, Tags))),
-    _Terminated = (catch Module:terminate(Reason, ModuleState)),
-    _ = (catch kz_amqp_channel:release()),
+    Terminated = (catch Module:terminate(Reason, ModuleState)),
+    kz_amqp_assignments:release_consumer(Tags),
     _ = [listener_federator:stop(F) || {_Broker, F} <- Fs],
-    lager:debug("~s terminated (~p): ~p", [Module, Reason, _Terminated]).
+    maybe_log_module_terminate(Module, Reason, Terminated).
+
+-spec maybe_log_module_terminate(module(), any(), any()) -> 'ok'.
+maybe_log_module_terminate(_Module, _Reason, 'ok') -> 'ok';
+maybe_log_module_terminate(Module, Reason, Terminated) ->
+    lager:debug("~s terminated (~p): ~p", [Module, Reason, Terminated]).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.
