@@ -246,7 +246,7 @@ fetch_attachment(Server, DbName, DocId, AName) ->
 stream_attachment(Server, DbName, DocId, AName, Caller) ->
     kz_couch_attachments:stream_attachment(Server, DbName, DocId, AName, Caller).
 
--spec put_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> any().
+-spec put_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), iodata(), kz_data:options()) -> any().
 put_attachment(Server, DbName, DocId, AName, Contents, Options) ->
     kz_couch_attachments:put_attachment(Server, DbName, DocId, AName, Contents, Options).
 

@@ -1120,14 +1120,14 @@ stream_attachment(DbName, DocId, AName, Options, Pid) ->
 %% <div class="notice">Note atoms as keys in proplist.</div>
 %% @end
 %%------------------------------------------------------------------------------
--spec put_attachment(kz_term:ne_binary(), docid(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+-spec put_attachment(kz_term:ne_binary(), docid(), kz_term:ne_binary(), iodata()) ->
           {'ok', kz_json:object()} |
           data_error() |
           kz_att_error:error().
 put_attachment(DbName, DocId, AName, Contents) ->
     put_attachment(DbName, DocId, AName, Contents, []).
 
--spec put_attachment(kz_term:ne_binary(), docid(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
+-spec put_attachment(kz_term:ne_binary(), docid(), kz_term:ne_binary(), iodata(), kz_term:proplist()) ->
           {'ok', kz_json:object()} |
           {'ok', kz_json:object(), kz_term:proplist()} |
           data_error() |
