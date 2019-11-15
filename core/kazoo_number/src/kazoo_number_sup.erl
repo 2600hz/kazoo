@@ -9,7 +9,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kazoo_number_manager_sup).
+-module(kazoo_number_sup).
 
 -behaviour(supervisor).
 

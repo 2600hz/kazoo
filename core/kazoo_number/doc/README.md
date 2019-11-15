@@ -60,7 +60,7 @@ Note: the number document in the numbers DB is the source of truth, above the on
 Note: while a number document should exist in at most one account database, it is possible that a bug left some number documents in the wrong account databases.
 Use the Sync button from the owning account, to delete these number documents from the wrong account database.
 
-Run `sup kazoo_number_manager_maintenance migrate {ACCOUNT_ID}` or a full migration to make sure these documents are all in sync on `{ACCOUNT_ID}` or throughout your system.
+Run `sup kazoo_number_maintenance migrate {ACCOUNT_ID}` or a full migration to make sure these documents are all in sync on `{ACCOUNT_ID}` or throughout your system.
 Do note though that this operation can take a long time, depending on the amount of accounts and numbers in your system.
 
 #### Options
@@ -131,9 +131,9 @@ By default, here is what the `system_config/number_manager` document looks like:
        ...
 ```
 
-To make sure your system has these defaults, run [`sup kazoo_number_manager_maintenance reset_allowed_features_to_defaults_on_system_config`](./maintenance.md#reset_allowed_features_to_defaults_on_system_config).
+To make sure your system has these defaults, run [`sup kazoo_number_maintenance reset_allowed_features_to_defaults_on_system_config`](./maintenance.md#reset_allowed_features_to_defaults_on_system_config).
 
-On migration, `sup kazoo_number_manager_maintenance ensure_adminonly_features_are_reachable` is run. This ensures that admins have access to admin-only features and also keeps the possible manual settings of system_config.
+On migration, `sup kazoo_number_maintenance ensure_adminonly_features_are_reachable` is run. This ensures that admins have access to admin-only features and also keeps the possible manual settings of system_config.
 
 There are more maintenance commands to manage number features for the different documents listed above.
 

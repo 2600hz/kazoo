@@ -32,7 +32,7 @@ db_dependant() ->
     ].
 
 setup(TestState) ->
-    {'ok', Sup} = kazoo_number_manager_sup:start_link(),
+    {'ok', Sup} = kazoo_number_sup:start_link(),
     TestState#{number_cache_pid => Sup}.
 
 cleanup(#{number_cache_pid := Pid}) ->

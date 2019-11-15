@@ -5,7 +5,7 @@
 
 * `Prefix`: the first few characters of an E164 number
 
-> sup kazoo_number_manager_maintenance carrier_module_usage +1555
+> sup kazoo_number_maintenance carrier_module_usage +1555
 
 ```
 numbers%2F%2B1555:
@@ -19,7 +19,7 @@ knm_managed: 14
 
 ## carrier_module_usage
 
-> sup kazoo_number_manager_maintenance carrier_module_usage
+> sup kazoo_number_maintenance carrier_module_usage
 
 ```
 ...snip...
@@ -38,13 +38,13 @@ knm_mdn: 1
 * `{NUM}`: a phone number convertible to E164 format
 * `Target`: a valid carrier module name
 
-> sup kazoo_number_manager_maintenance convert_carrier_module_number 4152266659 knm_bandwid
+> sup kazoo_number_maintenance convert_carrier_module_number 4152266659 knm_bandwid
 
 ```
 Bad carrier module: knm_bandwid
 ```
 
-> sup kazoo_number_manager_maintenance convert_carrier_module_number 4152266659 knm_bandwidth2
+> sup kazoo_number_maintenance convert_carrier_module_number 4152266659 knm_bandwidth2
 
 ```
 updated carrier module to knm_bandwidth2 for 1:
@@ -59,7 +59,7 @@ updating carrier module failed for 0:
 * `Target`: a valid carrier module name
 * `Prefix`: the first few characters of an E164 number
 
-> sup kazoo_number_manager_maintenance convert_carrier_module knm_band knm_bandwidth2 +1415
+> sup kazoo_number_maintenance convert_carrier_module knm_band knm_bandwidth2 +1415
 
 ```
 attempt to convert numbers with carrier module knm_band to knm_bandwidth2 in database numbers%2F%2B1415
@@ -73,7 +73,7 @@ updating carrier module failed for 0:
 * `Source`: the carrier to match with (does not need to be valid)
 * `Target`: a valid carrier module name
 
-> sup kazoo_number_manager_maintenance convert_carrier_module knm_bandwidth knm_bandwidth2
+> sup kazoo_number_maintenance convert_carrier_module knm_bandwidth knm_bandwidth2
 
 ```
 attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 in database numbers%2F%2B1202
@@ -221,7 +221,7 @@ updating carrier module failed for 0:
 
 ## reset_allowed_features_to_defaults_on_system_config
 
-> sup kazoo_number_manager_maintenance reset_allowed_features_to_defaults_on_system_config
+> sup kazoo_number_maintenance reset_allowed_features_to_defaults_on_system_config
 
 ```
 Features allowed on system config document:
@@ -240,13 +240,13 @@ You usually want to run these commands when you're importing account database fr
 
 Commands to sync/import numbers from account databases to number databases.
 
-`sup kazoo_number_manager_maintenance copy_accounts_to_number_dbs`
+`sup kazoo_number_maintenance copy_accounts_to_number_dbs`
 : Copy all number docs from all account dbs to their corresponding number dbs.
 
-`kazoo_number_manager_maintenance:copy_accounts_to_number_dbs(AccountDbsList)`
+`kazoo_number_maintenance:copy_accounts_to_number_dbs(AccountDbsList)`
 : Copy all number docs from a list of account dbs to their corresponding number dbs _(Can only be called from Erlang Shell)_.
 
-`sup kazoo_number_manager_maintenance copy_single_account_to_number_dbs {ACCOUNT_DB}`
+`sup kazoo_number_maintenance copy_single_account_to_number_dbs {ACCOUNT_DB}`
 : Copy all number docs from a single account db to their corresponding number dbs.
 
 
@@ -254,13 +254,13 @@ Commands to sync/import numbers from account databases to number databases.
 
 Commands to sync/enforce numbers from number databases to their assigned account databases.
 
-`sup kazoo_number_manager_maintenance copy_number_dbs_to_accounts`
+`sup kazoo_number_maintenance copy_number_dbs_to_accounts`
 : Copy all numbers from all number databases to their assigned account databases.
 
-`kazoo_number_manager_maintenance:copy_number_dbs_to_accounts(NumberDbsList)`
+`kazoo_number_maintenance:copy_number_dbs_to_accounts(NumberDbsList)`
 : Copy all numbers from a list of number databases to their assigned account databases _(Can only be called from Erlang Shell)_.
 
-`sup kazoo_number_manager_maintenance copy_single_number_db_to_accounts {NUMBERDB}`
+`sup kazoo_number_maintenance copy_single_number_db_to_accounts {NUMBERDB}`
 : Copy all numbers from a single number database to their assigned account databases.
 
 
@@ -268,10 +268,10 @@ Commands to sync/enforce numbers from number databases to their assigned account
 
 Commands to sync/enforce numbers assigned to a specific account.
 
-`sup kazoo_number_manager_maintenance copy_assigned_number_dbs_to_account {ACCOUNT}`
+`sup kazoo_number_maintenance copy_assigned_number_dbs_to_account {ACCOUNT}`
 : Copy all number documents assigned to `{ACCOUNT}` from all number databases to account database.
 
-`sup kazoo_number_manager_maintenance copy_single_assigned_number_db_to_account {ACCOUNT} {NUMBERDB}`
+`sup kazoo_number_maintenance copy_single_assigned_number_db_to_account {ACCOUNT} {NUMBERDB}`
 : Copy all number documents assigned to `{ACCOUNT}` from a single number database to account database.
 
 
@@ -279,19 +279,19 @@ Commands to sync/enforce numbers assigned to a specific account.
 
 These commands are their counterpart commands above, but instead of operating on whole documents from database(s) they just documents for specified list of numbers.
 
-`sup kazoo_number_manager_maintenance copy_number_from_accountdb_to_numbdb {ACCOUNT} {NUMBER}`
+`sup kazoo_number_maintenance copy_number_from_accountdb_to_numbdb {ACCOUNT} {NUMBER}`
 : Copy the document for a single `{NUMBER}` from `{ACCOUNT}` database to its corresponding number database.
 
-`kazoo_number_manager_maintenance:copy_numbers_from_accountdb_to_numbdbs(Account, NumbersList)`
+`kazoo_number_maintenance:copy_numbers_from_accountdb_to_numbdbs(Account, NumbersList)`
 : Copy documents for `NumbersList` from `Account` database to their corresponding number databases _(Can only be called from Erlang Shell)_.
 
-`sup kazoo_number_manager_maintenance copy_number_from_db_to_assigned_account {NUMBER}`
+`sup kazoo_number_maintenance copy_number_from_db_to_assigned_account {NUMBER}`
 : Copy the document for a single `{NUMBER}` from its number database to its assigned account database.
 
-`kazoo_number_manager_maintenance:copy_numbers_from_dbs_to_assigned_accounts(NumbersList)`
+`kazoo_number_maintenance:copy_numbers_from_dbs_to_assigned_accounts(NumbersList)`
 : Copy documents for a list of numbers `NumbersList` from their corresponding number databases to their assigned account databases  _(Can only be called from Erlang Shell)_.
 
-`sup kazoo_number_manager_maintenance copy_single_number_to_account_db {Number} {Account}`
+`sup kazoo_number_maintenance copy_single_number_to_account_db {Number} {Account}`
 : **DANGER:** Copy a single number from its number database to the `{Account}` database without checking if the number is really assigned to that account.
 
 
@@ -304,13 +304,13 @@ These commands are attempting to fix mosy common issues with out of sync numbers
 * Remove numbers from account daatasbe that are not belong to the account (have wrong `pvt_assigned_to` field).
 * Reconsile the services (to sync service doc if any number is removed from account database in previous step).
 
-`sup kazoo_number_manager_maintenance fix_account_db_numbers {ACCOUNT}`
+`sup kazoo_number_maintenance fix_account_db_numbers {ACCOUNT}`
 : Try to fix all numbers assigned `{ACCOUNT}`.
 
-`sup kazoo_number_manager_maintenance fix_number {ACCOUNT} {NUMBER}`
+`sup kazoo_number_maintenance fix_number {ACCOUNT} {NUMBER}`
 : Try to fix a single number assigned to account.
 
-`sup kazoo_number_manager_maintenance fix_numbers(Account, NumbersList)`
+`sup kazoo_number_maintenance fix_numbers(Account, NumbersList)`
 : Try to fix a list of numbers assigned to account _(Can only be called from Erlang Shell)_.
 
 
@@ -318,35 +318,35 @@ These commands are attempting to fix mosy common issues with out of sync numbers
 
 These commands try to fix numbers in databases which have wrong applications usage set (wrong `used_by` field), by looking for assigned numbers in assigned account's callflow and trunkstore documents and check `used_by` field of number docs and fix the disparity.
 
-`sup kazoo_number_manager_maintenance fix_apps_for_account_dbs`
+`sup kazoo_number_maintenance fix_apps_for_account_dbs`
 : Fix apps for all numbers in all account databases.
 
-`kazoo_number_manager_maintenance:fix_apps_for_account_dbs(AccountsList)`
+`kazoo_number_maintenance:fix_apps_for_account_dbs(AccountsList)`
 : Fix apps for all numbers for a list of account databases _(Can only be called from Erlang Shell)_.
 
-`sup kazoo_number_manager_maintenance fix_apps_for_single_account_db {ACCOUNT}`
+`sup kazoo_number_maintenance fix_apps_for_single_account_db {ACCOUNT}`
 : Fix apps for all numbers in a single account database.
 
-`sup kazoo_number_manager_maintenance fix_apps_for_number_dbs`
+`sup kazoo_number_maintenance fix_apps_for_number_dbs`
 : Fix apps for all assigned numbers in all number databases.
 
-`kazoo_number_manager_maintenance:fix_apps_for_number_dbs(NumberDbsList)`
+`kazoo_number_maintenance:fix_apps_for_number_dbs(NumberDbsList)`
 : Fix apps for all assigned numbers in a list of number databases _(Can only be called from Erlang Shell)_.
 
-`kazoo_number_manager_maintenance:fix_apps_in_number_dbs_for_accounts(AccountsList)`
+`kazoo_number_maintenance:fix_apps_in_number_dbs_for_accounts(AccountsList)`
 : Fix apps for all numbers in number databases assigned to corsspanding account in `AccountsList` _(Can only be called from Erlang Shell)_.
 
-`sup kazoo_number_manager_maintenance fix_apps_in_number_dbs_for_single_account {ACCOUNT}`
+`sup kazoo_number_maintenance fix_apps_in_number_dbs_for_single_account {ACCOUNT}`
 : Fix apps for all numbers in number databases assigned to account `ACCOUNT`.
 
-`sup kazoo_number_manager_maintenance fix_apps_for_single_number_db {NUMBER_DB}`
+`sup kazoo_number_maintenance fix_apps_for_single_number_db {NUMBER_DB}`
 : Fix apps for all numbers in a single number databases.
 
 
-`kazoo_number_manager_maintenance:fix_numbers_apps_in_accountdb(Account, NumbersList)`
+`kazoo_number_maintenance:fix_numbers_apps_in_accountdb(Account, NumbersList)`
 : Fix apps for a list of numbers in a single account database _(Can only be called from Erlang Shell)_.
 
-`kazoo_number_manager_maintenance:fix_numbers_apps_in_numbdb(NumbersList)`
+`kazoo_number_maintenance:fix_numbers_apps_in_numbdb(NumbersList)`
 : Fix apps for a list of numbers in their corsspanding number databases _(Can only be called from Erlang Shell)_.
 
 
@@ -354,10 +354,10 @@ These commands try to fix numbers in databases which have wrong applications usa
 
 This check `pvt_assigned_to` field of all numbers in account database(s) and if its is not equal to the account ID, will remove the ndocument(s).
 
-`sup kazoo_number_manager_maintenance remove_wrong_assigned_from_accounts`
+`sup kazoo_number_maintenance remove_wrong_assigned_from_accounts`
 : Remove numbers with wrong assignment from all account databases.
 
-`sup kazoo_number_manager_maintenance remove_wrong_assigned_from_single_accountdb {Account}`
+`sup kazoo_number_maintenance remove_wrong_assigned_from_single_accountdb {Account}`
 : Remove numbers with wrong assignment from a single account database.
 
 
@@ -368,14 +368,14 @@ These are handy commands which removing number documents if their are missing fr
 !!! Caution
     Use these commands if you really understand what are you doing.
 
-`sup kazoo_number_manager_maintenance destructively_remove_from_account_db_if_not_in_numdb/0`
+`sup kazoo_number_maintenance destructively_remove_from_account_db_if_not_in_numdb/0`
 : Remove numbers from all account databases if they're not exists in any number database.
 
-`sup kazoo_number_manager_maintenance destructively_remove_from_number_dbs_if_not_in_accountdb/0`
+`sup kazoo_number_maintenance destructively_remove_from_number_dbs_if_not_in_accountdb/0`
 : Remove numbers from all number databases if they're not exists in any account database.
 
-`sup kazoo_number_manager_maintenance destructively_remove_from_single_account_db_if_not_in_numdb/1`
+`sup kazoo_number_maintenance destructively_remove_from_single_account_db_if_not_in_numdb/1`
 : Remove numbers from a single account database if they're not exists in any number database.
 
-`sup kazoo_number_manager_maintenance destructively_remove_from_single_numdb_if_not_in_accountdb/1`
+`sup kazoo_number_maintenance destructively_remove_from_single_numdb_if_not_in_accountdb/1`
 : Remove numbers from all a single number database if they're not exists in any account database.

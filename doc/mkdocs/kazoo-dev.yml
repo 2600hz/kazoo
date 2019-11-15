@@ -190,14 +190,14 @@ pages:
   - 'Kazoo Translator':
     - 'core/kazoo_translator/doc/README.md'
   - 'Kazoo Number Manager':
-    - 'core/kazoo_number_manager/doc/README.md'
-    - 'core/kazoo_number_manager/doc/knm_voip_innovations.md'
-    - 'core/kazoo_number_manager/doc/number_states.md'
-    - 'core/kazoo_number_manager/doc/carriers.md'
-    - 'core/kazoo_number_manager/doc/knm_bandwidth2.md'
-    - 'core/kazoo_number_manager/doc/maintenance.md'
-    - 'core/kazoo_number_manager/doc/knm_rename_carrier.md'
-    - 'core/kazoo_number_manager/doc/carrier_types.md'
+    - 'core/kazoo_number/doc/README.md'
+    - 'core/kazoo_number/doc/knm_voip_innovations.md'
+    - 'core/kazoo_number/doc/number_states.md'
+    - 'core/kazoo_number/doc/carriers.md'
+    - 'core/kazoo_number/doc/knm_bandwidth2.md'
+    - 'core/kazoo_number/doc/maintenance.md'
+    - 'core/kazoo_number/doc/knm_rename_carrier.md'
+    - 'core/kazoo_number/doc/carrier_types.md'
   - 'Kazoo AMQP':
     - 'core/kazoo_amqp/doc/README.md'
     - 'core/kazoo_amqp/doc/amqp_workers.md'

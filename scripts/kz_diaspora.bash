@@ -549,6 +549,12 @@ kz_util_processes() {
     replace 'kz_util' 'spawn_monitor' 'kz_process' 'spawn_monitor'
 }
 
+rename_knm_to_knum() {
+    for FILE in $(grep -Irl kazoo_number_manager "$ROOT"/{core,applications}); do
+        sed -i "s/kazoo_number_manager/kazoo_number/g" "$FILE"
+    done
+}
+
 echo "ensuring kz_term is used"
 kz_util_to_term
 echo "ensuring kz_binary is used"
@@ -589,5 +595,7 @@ echo "ensuring kz_log is used"
 kz_util_to_log
 echo "ensuring spawning is in kz_process"
 kz_util_processes
+echo "ensuring kazoo_number_manager is renamed to kazoo_number"
+rename_knm_to_knum
 
 popd >/dev/null

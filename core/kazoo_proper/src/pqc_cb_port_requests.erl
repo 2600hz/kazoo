@@ -18,7 +18,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include("kazoo_proper.hrl").
--include_lib("kazoo_number_manager/include/knm_port_request.hrl").
+-include_lib("kazoo_number/include/knm_port_request.hrl").
 
 -define(ACCOUNTS_SETTINGS
        ,#{<<"pqc_ports_normal">> => #{<<"numbers">> => [<<"+13335551234">>]

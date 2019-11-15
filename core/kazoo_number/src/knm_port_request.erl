@@ -36,7 +36,7 @@
 -compile({'no_auto_import', [get/1]}).
 
 -include("knm.hrl").
--include_lib("kazoo_number_manager/include/knm_port_request.hrl").
+-include_lib("kazoo_number/include/knm_port_request.hrl").
 
 -type transition_metadata() :: #{auth_account_id => kz_term:ne_binary()
                                 ,auth_account_name => kz_term:api_ne_binary()

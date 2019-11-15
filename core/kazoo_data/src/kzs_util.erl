@@ -18,7 +18,7 @@
 
 -export([get_view_json/1, get_view_json/2, get_views_json/2]).
 
--include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
+-include_lib("kazoo_number/include/knm_phone_number.hrl").
 -include_lib("kazoo_documents/include/kzd_ratedeck.hrl").
 -include("kz_data.hrl").
 

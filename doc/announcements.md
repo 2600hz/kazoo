@@ -30,6 +30,8 @@ The old `save/2` took an updater function and tried to save the result. Because 
 
 4. New parameters were added to the account, user and device documents to set the asserted identity.  These parameters are currently free-form but will be strictly verified by default in the future!
 
+5. Kazoo Number Manager core application has been renamed by dropping `_manager` from the name to `kazoo_number`. This is completely is transparent to client users, but if you include any header files from `kazoo_number_manager/include/` you have to remove the `_manager` bit.
+
 ### 4.2
 
 1.  Erlang Version Support
