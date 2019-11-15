@@ -48,23 +48,31 @@ all_design_docs(Server, DbName, _Options) ->
 -spec get_results(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> docs_resp().
 get_results(Server, DbName, Design, Options) ->
     Db = kz_fixturedb_server:get_db(Server, DbName),
-    case kz_fixturedb_util:open_view(Db, kz_term:to_binary(Design), Options) of
-        {'ok', Result} -> {'ok', prepare_view_result(Server, DbName, Result, Options)};
-        {'error', _} ->
-            ?SUP_LOG_ERROR("view file ~s does not not exists, view_options ~p"
-                          ,[kz_fixturedb_util:view_path(Db, Design, Options), Options]
-                          ),
-            {'error', 'invalid_view_name'}
-    end.
+
+    get_results(Server, DbName, Design, Options, Db).
+
+-spec get_results(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options(), map()) -> docs_resp().
+get_results(Server, DbName, Design, Options, Db) ->
+    process_view_results(Server, DbName, Design, Options, Db, kz_fixturedb_util:open_view(Db, Design, Options)).
+
+-spec process_view_results(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options(), map(), docs_resp()) -> docs_resp().
+process_view_results(Server, DbName, _Design, Options, _Db, {'ok', Result}) ->
+    {'ok', prepare_view_result(Server, DbName, Result, Options)};
+process_view_results(_Server, _DbName, Design, Options, Db, {'error', _}) ->
+    ?SUP_LOG_ERROR("view file ~s does not not exists, view_options ~p"
+                  ,[kz_fixturedb_util:view_path(Db, Design, Options), Options]
+                  ),
+    {'error', 'invalid_view_name'}.
 
 -spec get_results_count(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) ->
           {'ok', non_neg_integer()} |
           fixture_error().
 get_results_count(Server, DbName, Design, Options) ->
-    case get_results(Server, DbName, Design, Options) of
-        {'ok', JObjs} -> {'ok', erlang:length(JObjs)};
-        {'error', _}=Error -> Error
-    end.
+    process_results_count(get_results(Server, DbName, Design, Options)).
+
+-spec process_results_count(docs_resp()) -> {'ok', non_neg_integer()} | fixture_error().
+process_results_count({'ok', JObjs}) -> {'ok', erlang:length(JObjs)};
+process_results_count({'error', _}=Error) -> Error.
 
 -spec all_docs(server_map(), kz_term:ne_binary(), kz_data:options()) -> docs_resp().
 all_docs(Server, DbName, Options) ->

@@ -285,17 +285,17 @@ get_default_fixtures_db(DbName) ->
 %%------------------------------------------------------------------------------
 -spec read_json(file:filename_all()) -> {'ok', kz_json:object() | kz_json:objects()} | {'error', 'not_found'}.
 read_json(Path) ->
-    case read_file(Path) of
-        {'ok', Bin} -> {'ok', kz_json:decode(Bin)};
-        {'error', _} -> {'error', 'not_found'}
-    end.
+    process_read_json(read_file(Path)).
+
+process_read_json({'ok', Bin}) -> {'ok', kz_json:decode(Bin)};
+process_read_json({'error', _}) -> {'error', 'not_found'}.
 
 -spec read_file(file:filename_all()) -> binary_or_error().
 read_file(Path) ->
-    case file:read_file(Path) of
-        {'ok', _}=OK -> OK;
-        {'error', _} -> {'error', 'not_found'}
-    end.
+    process_read_file(file:read_file(Path)).
+
+process_read_file({'ok', _}=OK) -> OK;
+process_read_file({'error', _}) -> {'error', 'not_found'}.
 
 -spec update_index_file(file:filename_all(), kz_term:ne_binary(), kz_term:ne_binary()) ->
           binary_or_error().
