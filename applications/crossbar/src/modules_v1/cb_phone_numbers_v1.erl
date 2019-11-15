@@ -26,7 +26,7 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
+-include_lib("kazoo_numbers/include/knm_phone_number.hrl").
 
 -define(CB_LIST, <<"phone_numbers/crossbar_listing">>).
 

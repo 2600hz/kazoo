@@ -1,8 +1,8 @@
 -ifndef(KNM_HRL).
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
--include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
+-include_lib("kazoo_numbers/include/knm_phone_number.hrl").
 
--define(APP, 'kazoo_number_manager').
+-define(APP, 'kazoo_numbers').
 -define(APP_VERSION, <<"4.0.0">>).
 -define(APP_NAME, atom_to_binary(?APP, 'utf8')).
 

@@ -2,7 +2,7 @@
              [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
                              kazoo_call,kazoo_data,kazoo_documents,
                              kazoo_endpoint,kazoo_globals,
-                             kazoo_number_manager,kazoo_stdlib,kernel,lager,
+                             kazoo_numbers,kazoo_stdlib,kernel,lager,
                              stdlib]},
               {description,"Trunk Store Backend - Authentication and Routing"},
               {env,[{is_kazoo_app,true}]},

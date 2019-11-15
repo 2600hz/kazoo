@@ -22,7 +22,7 @@
         ]).
 
 -include("tasks.hrl").
--include_lib("kazoo_number_manager/include/knm_port_request.hrl").
+-include_lib("kazoo_numbers/include/knm_port_request.hrl").
 
 -define(LISTING_BY_STATE, <<"port_requests/listing_by_state">>).
 

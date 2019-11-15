@@ -208,7 +208,7 @@ js_quantify_map() ->
        "                }"
        "            }"
        "            if (features.local) return;"
-      ,kazoo_number_manager_maintenance:generate_js_classifiers(FunMatchBlock),
+      ,kazoo_numbers_maintenance:generate_js_classifiers(FunMatchBlock),
        "            break;"
        "        case 'qubicle_queue':"
        "            emit(['qubicle', 'queues'], 1);"

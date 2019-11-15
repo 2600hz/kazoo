@@ -2,7 +2,7 @@
              [{applications,[couchbeam,kazoo,kazoo_amqp,kazoo_apps,
                              kazoo_bindings,kazoo_couch,kazoo_csv,kazoo_data,
                              kazoo_documents,kazoo_globals,kazoo_ledgers,
-                             kazoo_modb,kazoo_number_manager,kazoo_services,
+                             kazoo_modb,kazoo_numbers,kazoo_services,
                              kazoo_stdlib,kazoo_tasks,kazoo_voicemail,
                              kazoo_web,kernel,lager,stdlib]},
               {description,"Tasks - Schedule one-offs cluster-wide tasks"},

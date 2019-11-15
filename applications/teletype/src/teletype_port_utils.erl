@@ -15,7 +15,7 @@
         ]).
 
 -include("teletype.hrl").
--include_lib("kazoo_number_manager/include/knm_port_request.hrl").
+-include_lib("kazoo_numbers/include/knm_port_request.hrl").
 
 -spec port_request_data(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 port_request_data(DataJObj, TemplateId) ->

@@ -28,7 +28,7 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
+-include_lib("kazoo_numbers/include/knm_phone_number.hrl").
 
 -define(CB_LIST, <<"phone_numbers/crossbar_listing">>).
 -define(PORT_NUM_LISTING, <<"port_requests/phone_numbers_listing">>).
@@ -336,14 +336,14 @@ classified_number(Context, Number, Classifier) ->
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, ?FIX, Num) ->
     AccountDb = cb_context:account_db(Context),
-    _ = kazoo_number_manager_maintenance:copy_single_number_to_account_db(Num, AccountDb),
+    _ = kazoo_numbers_maintenance:copy_single_number_to_account_db(Num, AccountDb),
     CB = fun() -> ?MODULE:post(cb_context:set_accepting_charges(Context), ?FIX, Num) end,
     set_response({'ok', kz_json:new()}, Context, CB).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?FIX) ->
     AccountDb = cb_context:account_db(Context),
-    _ = kazoo_number_manager_maintenance:fix_account_db_numbers(AccountDb),
+    _ = kazoo_numbers_maintenance:fix_account_db_numbers(AccountDb),
     summary(Context);
 post(Context, ?CHECK) ->
     Numbers = cb_context:req_value(Context, ?COLLECTION_NUMBERS),

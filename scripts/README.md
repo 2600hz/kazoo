@@ -70,8 +70,8 @@ cycle through kazoo_ledgers: [kazoo_ledgers,kazoo_config,kazoo_services,
                               kazoo_ledgers]
 cycle through kazoo_media: [kazoo_media,kazoo_config,kazoo_call,kazoo_media]
 cycle through kazoo_modb: [kazoo_modb,kazoo_apps,kazoo_modb]
-cycle through kazoo_number_manager: [kazoo_number_manager,kazoo_apps,
-                                     kazoo_number_manager]
+cycle through kazoo_numbers: [kazoo_numbers,kazoo_apps,
+                                     kazoo_numbers]
 cycle through kazoo_oauth: [kazoo_oauth,kazoo,kazoo_documents,kazoo_apps,
                             kazoo_proper,crossbar,kazoo_oauth]
 cycle through kazoo_perf: [kazoo_perf,kazoo,kazoo_documents,kazoo_apps,
@@ -99,7 +99,7 @@ cycle through kazoo_transactions: [kazoo_transactions,kazoo_documents,
 cycle through kazoo_voicemail: [kazoo_voicemail,kazoo_apps,kazoo_voicemail]
 cycle through kazoo_web: [kazoo_web,kazoo_stdlib,kazoo_documents,kazoo_web]
 cycle through kazoo_xml: [kazoo_xml,kazoo_stdlib,kazoo_documents,kazoo_apps,
-                          kazoo_number_manager,kazoo_xml]
+                          kazoo_numbers,kazoo_xml]
 cycle through tasks: [tasks,kazoo_apps,kazoo_proper,tasks]
 ```
 

@@ -434,15 +434,15 @@ pages:
   - 'Kazoo Translator':
     - 'core/kazoo_translator/doc/README.md'
   - 'Kazoo Number Manager':
-    - 'core/kazoo_number_manager/doc/README.md'
-    - 'core/kazoo_number_manager/doc/knm_voip_innovations.md'
-    - 'core/kazoo_number_manager/doc/number_states.md'
-    - 'core/kazoo_number_manager/doc/carriers.md'
-    - 'core/kazoo_number_manager/doc/knm_bandwidth2.md'
-    - 'core/kazoo_number_manager/doc/maintenance.md'
-    - 'core/kazoo_number_manager/doc/knm_rename_carrier.md'
-    - 'core/kazoo_number_manager/doc/carrier_types.md'
-    - 'core/kazoo_number_manager/doc/knm_voxbone.md'
+    - 'core/kazoo_numbers/doc/README.md'
+    - 'core/kazoo_numbers/doc/knm_voip_innovations.md'
+    - 'core/kazoo_numbers/doc/number_states.md'
+    - 'core/kazoo_numbers/doc/carriers.md'
+    - 'core/kazoo_numbers/doc/knm_bandwidth2.md'
+    - 'core/kazoo_numbers/doc/maintenance.md'
+    - 'core/kazoo_numbers/doc/knm_rename_carrier.md'
+    - 'core/kazoo_numbers/doc/carrier_types.md'
+    - 'core/kazoo_numbers/doc/knm_voxbone.md'
   - 'Kazoo CNAM':
     - 'core/kazoo_cnam/doc/cnam_maintenance.md'
   - 'Kazoo AMQP':

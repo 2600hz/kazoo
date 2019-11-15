@@ -2,7 +2,7 @@
              [{applications,[crypto,kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
                              kazoo_call,kazoo_data,kazoo_documents,kazoo_edr,
                              kazoo_endpoint,kazoo_events,kazoo_globals,
-                             kazoo_media,kazoo_number_manager,kazoo_schemas,
+                             kazoo_media,kazoo_numbers,kazoo_schemas,
                              kazoo_stdlib,kazoo_token_buckets,
                              kazoo_translator,kazoo_voicemail,kazoo_web,
                              kernel,lager,stdlib]},

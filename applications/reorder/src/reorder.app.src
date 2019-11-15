@@ -1,6 +1,6 @@
 {application,reorder,
              [{applications,[kazoo,kazoo_amqp,kazoo_apps,kazoo_call,
-                             kazoo_endpoint,kazoo_number_manager,kazoo_stdlib,
+                             kazoo_endpoint,kazoo_numbers,kazoo_stdlib,
                              kernel,lager,stdlib]},
               {description,"Reorder - "},
               {env,[{is_kazoo_app,true}]},

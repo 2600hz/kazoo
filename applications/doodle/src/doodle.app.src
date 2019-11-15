@@ -2,7 +2,7 @@
              [{applications,[callflow,kazoo,kazoo_amqp,kazoo_apps,
                              kazoo_bindings,kazoo_caches,kazoo_call,
                              kazoo_data,kazoo_documents,kazoo_endpoint,
-                             kazoo_modb,kazoo_number_manager,kazoo_stdlib,
+                             kazoo_modb,kazoo_numbers,kazoo_stdlib,
                              kazoo_token_buckets,kernel,lager,stdlib]},
               {description,"doodle - sms store and forward"},
               {env,[{is_kazoo_app,true}]},

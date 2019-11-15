@@ -34,7 +34,7 @@ Here are some general resources to keep handy and enjoy your experience with Kaz
 
 * [Code Standards](/CONTRIBUTING.md)
 * [AMQP Library](/core/kazoo_amqp/doc)
-* [Number Manager Library](/core/kazoo_number_manager/doc)
+* [Number Manager Library](/core/kazoo_numbers/doc)
 * [Datastore Library](/core/kazoo_data/doc) (docs coming soon)
 * [Kazoo Docs Site](https://docs.2600hz.com/dev)
 * [Testing Kazoo with MakeBusy](https://docs.2600hz.com/testing/)

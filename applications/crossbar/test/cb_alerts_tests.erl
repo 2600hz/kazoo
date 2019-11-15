@@ -10,7 +10,7 @@
 -module(cb_alerts_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include_lib("kazoo_number_manager/include/knm_port_request.hrl"). %% PORT_SUSPENDED
+-include_lib("kazoo_numbers/include/knm_port_request.hrl"). %% PORT_SUSPENDED
 -include_lib("kazoo_stdlib/include/kz_types.hrl"). %% SECONDS_IN_DAY
 
 %%%=======================================================================================

@@ -135,7 +135,7 @@ core/kazoo_events/src/kz_hooks_listener.erl
 core/kazoo_globals/src/kz_globals.erl
 core/kazoo_globals/src/kz_nodes.erl
 core/kazoo_media/src/kz_media_map.erl
-core/kazoo_number_manager/src/knm_search.erl
+core/kazoo_numbers/src/knm_search.erl
 #+end_src
 
 *** Long-lived anon queue names
@@ -162,7 +162,7 @@ core/kazoo_events/src/kz_hooks_listener.erl
 core/kazoo_globals/src/kz_globals.erl
 core/kazoo_globals/src/kz_nodes.erl
 core/kazoo_media/src/kz_media_map.erl
-core/kazoo_number_manager/src/knm_search.erl
+core/kazoo_numbers/src/knm_search.erl
 *** Ephemeral processes
 applications/callflow/src/cf_exe.erl
 applications/callflow/src/cf_singular_call_hooks_listener.erl

@@ -27,7 +27,7 @@
         ]).
 
 -include("tasks.hrl").
--include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
+-include_lib("kazoo_numbers/include/knm_phone_number.hrl").
 
 -define(CLEANUP_ROUNDTRIP_TIME
        ,kapps_config:get_integer(?CONFIG_CAT, <<"crawler_delay_time_ms">>, ?MILLISECONDS_IN_MINUTE)

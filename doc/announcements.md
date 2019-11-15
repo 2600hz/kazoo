@@ -14,6 +14,8 @@ The 5.0 release will start Kazoo's official support for OTP 21 ([21.3](http://ww
 
 3. Dependencies have been re-evaluated, updated, or removed as necessary. Please check that your use of them is still available. We're thinking on how community/private apps can include unique dependencies within themselves without impacting core Kazoo's dependency list.
 
+5. Kazoo Number Manager core application has been renamed to `kazoo_numbers`. This should be almost transparent to the client users. Applications not included in KAZOO repo should do this rename if they are depending on knm app or include one of its header files. `scripts/kz_diaspora.bash` script has been updated to do this rename.
+
 ### 4.3
 
 1. The Kazoo services have been significantly refactored.  This has resulted in changes to the APIs related to services (prior service_plans), ledgers and transactions as well as the documents in the services database and service plans.  See the documentation in `core/kazoo_services/doc` for more information.

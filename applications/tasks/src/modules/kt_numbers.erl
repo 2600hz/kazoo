@@ -45,7 +45,7 @@
         ,delete/3
         ]).
 
--include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
+-include_lib("kazoo_numbers/include/knm_phone_number.hrl").
 -include("tasks.hrl").
 
 -define(MOD_CAT, <<(?CONFIG_CAT)/binary, ".numbers">>).

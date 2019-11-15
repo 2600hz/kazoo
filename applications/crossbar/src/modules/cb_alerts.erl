@@ -28,7 +28,7 @@
 -endif.
 
 -include("crossbar.hrl").
--include_lib("kazoo_number_manager/include/knm_port_request.hrl").
+-include_lib("kazoo_numbers/include/knm_port_request.hrl").
 
 -define(AVAILABLE_LIST, <<"alerts/available">>).
 

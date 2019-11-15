@@ -2,7 +2,7 @@
              [{applications,[crypto,kazoo,kazoo_amqp,kazoo_apps,kazoo_caches,
                              kazoo_data,kazoo_documents,kazoo_endpoint,
                              kazoo_ledgers,kazoo_media,kazoo_modb,
-                             kazoo_number_manager,kazoo_speech,kazoo_stdlib,
+                             kazoo_numbers,kazoo_speech,kazoo_stdlib,
                              kazoo_web,lager,stdlib]},
               {description,"Representing calls in Kazoo since 2011"},
               {id,[]},

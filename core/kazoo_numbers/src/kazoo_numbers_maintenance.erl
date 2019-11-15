@@ -8,7 +8,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kazoo_number_manager_maintenance).
+-module(kazoo_numbers_maintenance).
 
 -include("knm.hrl").
 

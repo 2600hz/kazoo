@@ -8,7 +8,7 @@
                  , stdlib
 
                  , kazoo
-                 , kazoo_number_manager
+                 , kazoo_numbers
 
                  , lager
                  ]}

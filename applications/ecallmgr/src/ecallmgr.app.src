@@ -2,7 +2,7 @@
     [{applications,
          [gproc,kazoo,kazoo_amqp,kazoo_apps,kazoo_bindings,kazoo_caches,
           kazoo_config,kazoo_data,kazoo_directory,kazoo_documents,
-          kazoo_endpoint,kazoo_globals,kazoo_ledgers,kazoo_number_manager,
+          kazoo_endpoint,kazoo_globals,kazoo_ledgers,kazoo_numbers,
           kazoo_sip,kazoo_speech,kazoo_stdlib,kazoo_web,kazoo_xml,kernel,
           lager,stdlib,xmerl]},
      {description,"Manage resource requests and interface with FreeSWITCH"},
