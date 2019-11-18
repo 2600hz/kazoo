@@ -1,12 +1,11 @@
 FMT = $(ROOT)/make/erlang-formatter/fmt.sh
-FMT_SHA = 237604a566879bda46d55d9e74e3e66daf1b557a
+FMT_SHA = 4e9b3379952e0cb3319308d7bdef832eb305f816
 
 .PHONY: fmt fmt-all clean-fmt clean-$(FMT)
 
 $(FMT):
 	@wget -qO - 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/$(FMT_SHA)' | tar -vxz -C $(ROOT)/make/
 	@mv $(ROOT)/make/erlang-formatter-$(FMT_SHA) $(ROOT)/make/erlang-formatter
-	@cp $(ROOT)/make/emacs/*.el $(ROOT)/make/erlang-formatter/emacs
 
 fmt-all: $(FMT)
 	@$(FMT) $(shell find core applications scripts -name "*.erl" -or -name "*.hrl" -or -name "*.escript")
