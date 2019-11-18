@@ -135,12 +135,12 @@ handle_call_event(JObj, Props) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init([kapps_call:call() | kz_json:object()]) -> {'ok', state(), 'hibernate'} |
-                                                      {'stop', 'normal'}.
+          {'stop', 'normal'}.
 init([Call, JObj]) ->
     init(Call, JObj, kapps_call_events:is_destroyed(Call)).
 
 -spec init(kapps_call:call(), kz_json:object(), boolean()) -> {'ok', state(), 'hibernate'} |
-                                                              {'stop', 'normal'}.
+          {'stop', 'normal'}.
 init(_Call, _JObj, 'true') ->
     lager:info("call has gone down while we started up"),
     {'stop', 'normal'};
@@ -182,7 +182,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> {'noreply', state()} |
-                                     {'stop', 'normal', state()}.
+          {'stop', 'normal', state()}.
 handle_cast('usurp', State) ->
     lager:debug("terminating pivot call because of usurp"),
     {'stop', 'normal', State#state{call='undefined'}};
@@ -294,7 +294,7 @@ handle_cast(_Req, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(any(), state()) -> {'noreply', state()} |
-                                     {'stop', any(), state()}.
+          {'stop', any(), state()}.
 handle_info({'stop', _Call}, State) ->
     {'stop', 'normal', State};
 handle_info({'http', {ReqId, 'stream_start', Hdrs}}
@@ -442,8 +442,8 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec send_req(kapps_call:call(), kz_term:ne_binary(), http_method(), kz_json:object() | kz_term:proplist(), kz_term:ne_binary(), boolean()) ->
-                      {'ok', kz_http:req_id(), kapps_call:call()} |
-                      {'stop', kapps_call:call()}.
+          {'ok', kz_http:req_id(), kapps_call:call()} |
+          {'stop', kapps_call:call()}.
 send_req(Call, Uri, Method, BaseParams, ReqBodyFormat, Debug) when not is_list(BaseParams) ->
     send_req(Call, Uri, Method, kz_json:to_proplist(BaseParams), ReqBodyFormat, Debug);
 send_req(Call, Uri, 'get', BaseParams, _ReqBodyFormat, Debug) ->
@@ -459,8 +459,8 @@ send_req(Call, Uri, 'post', BaseParams, ReqBodyFormat, Debug) ->
     send(UpdatedCall, Uri, 'post', Headers, format_request(Params, ReqBodyFormat), Debug).
 
 -spec send(kapps_call:call(), kz_term:ne_binary(), http_method(), kz_term:proplist(), iolist(), boolean()) ->
-                  {'ok', kz_http:req_id(), kapps_call:call()} |
-                  {'stop', kapps_call:call()}.
+          {'ok', kz_http:req_id(), kapps_call:call()} |
+          {'stop', kapps_call:call()}.
 send(Call, Uri, Method, ReqHdrs, ReqBody, Debug) ->
     lager:info("sending req to ~s(~s): ~s", [Uri, Method, iolist_to_binary(ReqBody)]),
 
@@ -499,10 +499,10 @@ handle_resp(RequesterQ, Call, CT, <<_/binary>> = RespBody, AMQPConsumer) ->
     end.
 
 -spec process_resp(kz_term:api_binary(), kapps_call:call(), list() | binary(), binary()) ->
-                          {'stop', kapps_call:call()} |
-                          {'ok', kapps_call:call()} |
-                          {'request', kapps_call:call()} |
-                          {'usurp', kapps_call:call()}.
+          {'stop', kapps_call:call()} |
+          {'ok', kapps_call:call()} |
+          {'request', kapps_call:call()} |
+          {'usurp', kapps_call:call()}.
 process_resp(_, Call, _, <<>>) ->
     lager:debug("no response body, finishing up"),
     {'stop', Call};
@@ -629,7 +629,7 @@ store_debug(Call, DebugJObj) ->
     end.
 
 -spec debug_doc(kapps_call:call(), kz_json:object(), kz_term:ne_binary()) ->
-                       kz_json:object().
+          kz_json:object().
 debug_doc(Call, DebugJObj, AccountModDb) ->
     WithCallJObj = kz_json:set_values([{<<"call_id">>, kapps_call:call_id(Call)}
                                       ,{<<"iteration">>, kzt_util:iteration(Call)}

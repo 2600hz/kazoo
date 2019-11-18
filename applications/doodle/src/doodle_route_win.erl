@@ -41,7 +41,7 @@ execute_text_flow(JObj, Call) ->
     end.
 
 -spec maybe_scheduled_delivery(kz_json:object(), kapps_call:call(), integer(), integer()) ->
-                                      kapps_call:call() | {'ok', pid()}.
+          kapps_call:call() | {'ok', pid()}.
 maybe_scheduled_delivery(_JObj, Call, DeliveryAt, Now)
   when DeliveryAt > Now ->
     lager:info("scheduling sms delivery"),

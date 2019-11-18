@@ -113,7 +113,7 @@ sync_req_routing_key(AcctId, Id) ->
 -define(SYNC_RESP_TYPES, []).
 
 -spec sync_resp(kz_term:api_terms()) -> {'ok', iolist()} |
-                                        {'error', string()}.
+          {'error', string()}.
 sync_resp(Props) when is_list(Props) ->
     case sync_resp_v(Props) of
         'true' -> kz_api:build_message(Props, ?SYNC_RESP_HEADERS, ?OPTIONAL_SYNC_RESP_HEADERS);
@@ -145,7 +145,7 @@ sync_resp_v(JObj) ->
 -define(STATS_REQ_TYPES, []).
 
 -spec stats_req(kz_term:api_terms()) -> {'ok', iolist()} |
-                                        {'error', string()}.
+          {'error', string()}.
 stats_req(Props) when is_list(Props) ->
     case stats_req_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATS_REQ_HEADERS, ?OPTIONAL_STATS_REQ_HEADERS);
@@ -234,8 +234,8 @@ stats_resp_v(JObj) ->
 -define(LOGOUT_QUEUE_VALUES, [{<<"Event-Name">>, <<"logout_queue">>} | ?AGENT_VALUES]).
 
 -spec login(kz_term:api_terms()) ->
-                   {'ok', iolist()} |
-                   {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 login(Props) when is_list(Props) ->
     case login_v(Props) of
         'true' -> kz_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
@@ -251,8 +251,8 @@ login_v(JObj) ->
     login_v(kz_json:to_proplist(JObj)).
 
 -spec login_queue(kz_term:api_terms()) ->
-                         {'ok', iolist()} |
-                         {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 login_queue(Props) when is_list(Props) ->
     case login_queue_v(Props) of
         'true' -> kz_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
@@ -269,8 +269,8 @@ login_queue_v(JObj) ->
 
 
 -spec logout(kz_term:api_terms()) ->
-                    {'ok', iolist()} |
-                    {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 logout(Props) when is_list(Props) ->
     case logout_v(Props) of
         'true' -> kz_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
@@ -286,8 +286,8 @@ logout_v(JObj) ->
     logout_v(kz_json:to_proplist(JObj)).
 
 -spec logout_queue(kz_term:api_terms()) ->
-                          {'ok', iolist()} |
-                          {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 logout_queue(Props) when is_list(Props) ->
     case logout_queue_v(Props) of
         'true' -> kz_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
@@ -303,8 +303,8 @@ logout_queue_v(JObj) ->
     logout_queue_v(kz_json:to_proplist(JObj)).
 
 -spec pause(kz_term:api_terms()) ->
-                   {'ok', iolist()} |
-                   {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 pause(Props) when is_list(Props) ->
     case pause_v(Props) of
         'true' -> kz_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
@@ -320,8 +320,8 @@ pause_v(JObj) ->
     pause_v(kz_json:to_proplist(JObj)).
 
 -spec resume(kz_term:api_terms()) ->
-                    {'ok', iolist()} |
-                    {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 resume(Props) when is_list(Props) ->
     case resume_v(Props) of
         'true' -> kz_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
@@ -335,8 +335,8 @@ resume_v(Prop) when is_list(Prop) ->
 resume_v(JObj) -> resume_v(kz_json:to_proplist(JObj)).
 
 -spec end_wrapup(kz_term:api_terms()) ->
-                        {'ok', iolist()} |
-                        {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 end_wrapup(Props) when is_list(Props) ->
     case end_wrapup_v(Props) of
         'true' -> kz_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
@@ -369,8 +369,8 @@ agent_status_routing_key(AcctId, AgentId, Status) ->
 -define(LOGIN_RESP_TYPES, []).
 
 -spec login_resp(kz_term:api_terms()) ->
-                        {'ok', iolist()} |
-                        {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 login_resp(Props) when is_list(Props) ->
     case login_resp_v(Props) of
         'true' -> kz_api:build_message(Props, ?LOGIN_RESP_HEADERS, ?OPTIONAL_LOGIN_RESP_HEADERS);

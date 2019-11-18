@@ -335,7 +335,7 @@ save_attempt(AccountId, Attempt) ->
     'ok'.
 
 -spec debug_req(webhook(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), iodata()) ->
-                       kz_term:proplist().
+          kz_term:proplist().
 debug_req(#webhook{hook_id=HookId
                   ,hook_event = HookEvent
                   ,http_verb = Method
@@ -356,7 +356,7 @@ debug_req(#webhook{hook_id=HookId
     ].
 
 -spec debug_resp(kz_http:ret(), kz_term:proplist(), hook_retries() | 'undefined') ->
-                        kz_json:object().
+          kz_json:object().
 debug_resp({'ok', RespCode, RespHeaders, RespBody}, Debug, Retries) ->
     Headers = kz_json:from_list(
                 [{fix_value(K), fix_value(V)}

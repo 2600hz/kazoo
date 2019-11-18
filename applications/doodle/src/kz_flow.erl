@@ -178,8 +178,8 @@ cache_patterns(AccountId, Patterns) ->
     {'ok', Patterns}.
 
 -spec lookup_patterns(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                             {'ok', {kz_json:object(), kz_term:api_binary()}} |
-                             {'error', any()}.
+          {'ok', {kz_json:object(), kz_term:api_binary()}} |
+          {'error', any()}.
 lookup_patterns(Number, AccountId) ->
     case fetch_patterns(AccountId) of
         {'ok', Patterns} -> lookup_flow_patterns(Patterns, Number, AccountId);
@@ -217,7 +217,7 @@ test_flow_patterns(Patterns, Number) ->
     test_flow_patterns(Patterns, Number, {<<>>, 'undefined'}).
 
 -spec test_flow_patterns(patterns(), kz_term:ne_binary(), test_pattern_acc()) ->
-                                'no_match' | test_pattern_acc().
+          'no_match' | test_pattern_acc().
 test_flow_patterns([], _, {_, 'undefined'}) -> 'no_match';
 test_flow_patterns([], _, Result) -> Result;
 test_flow_patterns([#pattern{regex=Regex}=Pattern |T], Number, {Matched, P}=Result) ->

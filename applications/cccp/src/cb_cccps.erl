@@ -269,7 +269,7 @@ error_pin_exists(Context) ->
                                    ).
 
 -spec error_number_is_not_reconcilable(cb_context:context(), kz_term:ne_binary()) ->
-                                              cb_context:context().
+          cb_context:context().
 error_number_is_not_reconcilable(Context, CID) ->
     cb_context:add_validation_error(<<"cccp">>
                                    ,<<"unique">>
@@ -307,9 +307,9 @@ unique_pin(Context) ->
     end.
 
 -spec authorize_listing(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               {'ok', kz_json:object() | kz_json:objects()} |
-                               'empty' |
-                               'error'.
+          {'ok', kz_json:object() | kz_json:objects()} |
+          'empty' |
+          'error'.
 authorize_listing(Value, View) ->
     ViewOptions = [{'key', Value}],
     case kz_datamgr:get_results(?KZ_CCCPS_DB, View, ViewOptions) of

@@ -230,7 +230,7 @@ format_sections([Section | T], ZoneFilter, Acc) ->
     end.
 
 -spec format_zone_section(kz_term:proplist(), kz_term:proplist(), section_key(), kz_term:proplist()) ->
-                                 kz_term:proplist().
+          kz_term:proplist().
 format_zone_section(Section, Sections, ZoneFilter, Acc) ->
     case props:get_value(ZoneFilter, Section, <<"generic">>) of
         <<"generic">> ->
@@ -260,7 +260,7 @@ local_sections([Section | T], Acc) ->
 -type section_type() :: {kz_term:ne_binary() | {kz_term:ne_binary(), atom()}, kz_term:proplist()}.
 
 -spec add_section(kz_term:ne_binary(), section_type(), kz_term:proplist()) ->
-                         kz_term:proplist().
+          kz_term:proplist().
 add_section(Group, Value, Props) ->
     props:set_value(Group, [Value | props:get_value(Group, Props, [])], Props).
 

@@ -511,7 +511,7 @@ build_originate_args(Action, State, JObj, FetchId) ->
     end.
 
 -spec build_originate_args_from_endpoints(kz_term:ne_binary(), kz_json:objects(), kz_json:object(), kz_term:ne_binary()) ->
-                                                 kz_term:ne_binary().
+          kz_term:ne_binary().
 build_originate_args_from_endpoints(Action, Endpoints, JObj, FetchId) ->
     lager:debug("building originate command arguments"),
     DialSeparator = ecallmgr_util:get_dial_separator(JObj, Endpoints),
@@ -564,8 +564,8 @@ add_loopback('false') ->
     ].
 
 -spec originate_execute(atom(), kz_term:ne_binary(), pos_integer()) ->
-                               {'ok', kz_term:ne_binary()} |
-                               {'error', kz_term:ne_binary() | 'timeout' | 'crash'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', kz_term:ne_binary() | 'timeout' | 'crash'}.
 originate_execute(Node, Dialstrings, Timeout) ->
     lager:debug("executing originate on ~s: ~s", [Node, Dialstrings]),
     case freeswitch:api(Node
@@ -789,8 +789,8 @@ find_max_endpoint_timeout([EP|EPs], T) ->
     end.
 
 -spec start_control_process(state()) ->
-                                   {'ok', state()} |
-                                   {'error', any()}.
+          {'ok', state()} |
+          {'error', any()}.
 start_control_process(#state{originate_req=JObj
                             ,node=Node
                             ,uuid={_, Id}=UUID

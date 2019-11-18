@@ -244,8 +244,8 @@ create_media_doc(Name, SourceType, SourceId, Db) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_doc(list() | binary(), kz_json:json_term(), binary(), binary()) ->
-                        'ok' |
-                        {'error', atom()}.
+          'ok' |
+          {'error', atom()}.
 update_doc(Key, Value, Id, Db) ->
     case kz_datamgr:open_doc(Db, Id) of
         {'ok', JObj} ->

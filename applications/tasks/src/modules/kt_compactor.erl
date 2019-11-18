@@ -280,7 +280,7 @@ maybe_track_compact_node(Node, Heur, _CallId) ->
     do_compact_node(Node, Heur).
 
 -spec do_compact_node(kz_term:ne_binary(), heuristic()) ->
-                             rows().
+          rows().
 do_compact_node(Node, Heuristic) ->
     #{server := {_App, #server{}=Conn}} = kzs_plan:plan(),
 
@@ -293,7 +293,7 @@ do_compact_node(Node, Heuristic) ->
     end.
 
 -spec do_compact_node(kz_term:ne_binary(), heuristic(), kz_data:connection(), kz_data:connection()) ->
-                             rows().
+          rows().
 do_compact_node(Node, Heuristic, APIConn, AdminConn) ->
     case kz_datamgr:get_results(kazoo_couch:get_admin_dbs(APIConn)
                                ,<<"compactor/listing_by_node">>
@@ -409,13 +409,13 @@ db_usage_cols(Conn, Database) ->
     end.
 
 -spec node_compactor(kz_term:ne_binary(), heuristic(), kz_data:connection(), kz_data:connection(), kz_term:ne_binary()) ->
-                            kt_compactor_worker:compactor().
+          kt_compactor_worker:compactor().
 node_compactor(Node, Heuristic, APIConn, AdminConn, Database) ->
     kt_compactor_worker:new(Node, Heuristic, APIConn, AdminConn, Database).
 
 -spec get_node_connections(kz_term:ne_binary(), kz_data:connection()) ->
-                                  {kz_data:connection(), kz_data:connection()} |
-                                  {'error', 'no_connection'}.
+          {kz_data:connection(), kz_data:connection()} |
+          {'error', 'no_connection'}.
 get_node_connections(Node, #server{options=Options}) ->
     [_, Host] = binary:split(Node, <<"@">>),
     Hostname = kz_term:to_list(Host),

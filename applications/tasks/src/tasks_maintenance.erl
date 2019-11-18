@@ -212,7 +212,7 @@ attachment(TaskId, AName) ->
     end.
 
 -spec new_task(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), pos_integer(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                      'no_return'.
+          'no_return'.
 new_task(AuthAccountId, AccountId, Category, Action, TotalRows, CSVBin, CSVName) ->
     case kz_tasks:new(AuthAccountId, AccountId, Category, Action, TotalRows, CSVBin, CSVName) of
         {'ok', TaskJObj} ->
@@ -238,7 +238,7 @@ handle_new_task_error(JObj, _, _) ->
     print_json(kz_json:from_list([{<<"errors">>, JObj}])).
 
 -spec compaction_history(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                {'ok', kz_json:json_terms()} | {'error', atom()}.
+          {'ok', kz_json:json_terms()} | {'error', atom()}.
 compaction_history(Year, Month) ->
     kt_compaction_reporter:history(kz_term:to_integer(Year), kz_term:to_integer(Month)).
 
@@ -253,7 +253,7 @@ job_info(JobId) ->
     'no_return'.
 
 -spec maybe_print_compaction_history({'ok', kz_json:json_terms()} | {'error', atom()}) ->
-                                            'no_return'.
+          'no_return'.
 maybe_print_compaction_history({'ok', []}) ->
     io:format("no history found~n"),
     'no_return';

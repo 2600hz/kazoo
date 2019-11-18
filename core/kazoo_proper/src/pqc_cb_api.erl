@@ -189,13 +189,13 @@ default_request_headers(RequestId) ->
     ].
 
 -spec make_request(expectations(), fun_2(), string(), request_headers()) ->
-                          response().
+          response().
 make_request(Expectations, HTTP, URL, RequestHeaders) ->
     ?INFO("~p(~s, ~p)", [HTTP, URL, RequestHeaders]),
     handle_response(Expectations, HTTP(URL, RequestHeaders)).
 
 -spec make_request(expectations(), fun_3(), string(), request_headers(), iodata()) ->
-                          response().
+          response().
 make_request(Expectations, HTTP, URL, RequestHeaders, RequestBody) ->
     ?INFO("~p: ~s", [HTTP, URL]),
     ?DEBUG("headers: ~p", [RequestHeaders]),
@@ -207,7 +207,7 @@ create_envelope(Data) ->
     create_envelope(Data, kz_json:new()).
 
 -spec create_envelope(kz_json:json_term(), kz_json:object()) ->
-                             kz_json:object().
+          kz_json:object().
 create_envelope(Data, Envelope) ->
     kz_json:set_value(<<"data">>, Data, Envelope).
 

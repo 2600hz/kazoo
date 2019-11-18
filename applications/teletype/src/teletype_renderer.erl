@@ -34,15 +34,15 @@ start_link(Args) ->
     gen_server:start_link(?SERVER, [], [Args]).
 
 -spec render(kz_term:ne_binary(), binary(), kz_term:proplist()) ->
-                    {'ok', iolist()} |
-                    {'error', any()}.
+          {'ok', iolist()} |
+          {'error', any()}.
 render(TemplateId, Template, TemplateData) ->
     Renderer = next_renderer(),
     render(Renderer, TemplateId, Template, TemplateData, 3).
 
 -spec render(pid(), kz_term:ne_binary(), binary(), kz_term:proplist(), integer()) ->
-                    {'ok', iolist()} |
-                    {'error', any()}.
+          {'ok', iolist()} |
+          {'error', any()}.
 
 render(Renderer, TemplateId, _Template, _TemplateData, 0) ->
     ?LOG_ERROR("rendering of ~p failed after several tries", [TemplateId]),
@@ -65,8 +65,8 @@ render(Renderer, TemplateId, Template, TemplateData, Tries) ->
     end.
 
 -spec do_render(pid(), kz_term:ne_binary(), binary(), kz_term:proplist()) ->
-                       {'ok', iolist()} |
-                       {'error', any()}.
+          {'ok', iolist()} |
+          {'error', any()}.
 do_render(Renderer, TemplateId, Template, TemplateData) ->
     try gen_server:call(Renderer
                        ,{'render', TemplateId, Template, TemplateData}

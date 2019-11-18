@@ -147,12 +147,12 @@ filter_out_succeeded(Term) -> kz_term:is_empty(Term).
                        {'error', 'exists'}.
 -type bind_results() :: [bind_result()].
 -spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom()) ->
-                  bind_result() | bind_results().
+          bind_result() | bind_results().
 bind(Bindings, Module, Fun) ->
     bind(Bindings, Module, Fun, 'undefined').
 
 -spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom(), any()) ->
-                  bind_result() | bind_results().
+          bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
 bind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
@@ -208,15 +208,15 @@ init() ->
     lists:foreach(fun init_mod/1, Mods).
 
 -spec init_mod(kz_term:ne_binary() | atom()) ->
-                      'ok' |
-                      {'error', 'undefined' | 'unknown'}.
+          'ok' |
+          {'error', 'undefined' | 'unknown'}.
 init_mod(ModuleName) ->
     lager:debug("initializing module: ~p", [ModuleName]),
     maybe_init_mod(ModuleName).
 
 -spec maybe_init_mod(kz_term:ne_binary() | atom()) ->
-                            'ok' |
-                            {'error', 'undefined' | 'unknown'}.
+          'ok' |
+          {'error', 'undefined' | 'unknown'}.
 maybe_init_mod(ModuleName) ->
     lager:debug("trying to init module: ~p", [ModuleName]),
     try (kz_term:to_atom(ModuleName, 'true')):init() of

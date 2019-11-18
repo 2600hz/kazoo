@@ -377,9 +377,9 @@ listen_on(Call, JObj) ->
     end.
 
 -spec has_metaflow(kz_term:ne_binary(), kz_json:object(), kz_json:object()) ->
-                          'false' |
-                          {'number', kz_json:object()} |
-                          {'pattern', kz_json:object()}.
+          'false' |
+          {'number', kz_json:object()} |
+          {'pattern', kz_json:object()}.
 has_metaflow(Collected, Ns, Ps) ->
     case has_number(Collected, Ns) of
         'false' -> has_pattern(Collected, Ps);
@@ -387,8 +387,8 @@ has_metaflow(Collected, Ns, Ps) ->
     end.
 
 -spec has_number(kz_term:ne_binary(), kz_json:object()) ->
-                        'false' |
-                        {'number', kz_json:object()}.
+          'false' |
+          {'number', kz_json:object()}.
 has_number(Collected, Ns) ->
     case kz_json:get_value(Collected, Ns) of
         'undefined' -> 'false';
@@ -396,8 +396,8 @@ has_number(Collected, Ns) ->
     end.
 
 -spec has_pattern(kz_term:ne_binary(), kz_json:object()) ->
-                         'false' |
-                         {'pattern', kz_json:object()}.
+          'false' |
+          {'pattern', kz_json:object()}.
 has_pattern(Collected, Ps) ->
     Regexes = kz_json:get_keys(Ps),
     has_pattern(Collected, Ps, Regexes).

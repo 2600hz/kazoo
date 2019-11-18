@@ -548,7 +548,7 @@ print_gc_summary(Results) ->
               ]).
 
 -spec gc_summary([{pid(), integer(), integer(), integer()}]) ->
-                        {integer(), integer(), integer(), integer()}.
+          {integer(), integer(), integer(), integer()}.
 gc_summary([{_W, Diff, _B, _A} | Results]) ->
     lists:foldl(fun gc_summary_fold/2
                ,{Diff, Diff, Diff, 1}
@@ -558,7 +558,7 @@ gc_summary([{_W, Diff, _B, _A} | Results]) ->
 -spec gc_summary_fold({pid(), integer(), integer(), integer()}
                      ,{integer(), integer(), integer(), integer()}
                      ) ->
-                             {integer(), integer(), integer(), integer()}.
+          {integer(), integer(), integer(), integer()}.
 gc_summary_fold({_W, Diff, _B, _A}
                ,{Min, Max, Sum, Count}
                ) ->

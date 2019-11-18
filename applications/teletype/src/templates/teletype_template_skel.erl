@@ -103,7 +103,7 @@ build_macro_data(DataJObj) ->
                  ).
 
 -spec maybe_add_macro_key(kz_term:ne_binary(), kz_term:proplist(), kz_json:object()) ->
-                                 kz_term:proplist().
+          kz_term:proplist().
 maybe_add_macro_key(<<"user.", UserKey/binary>>, Acc, DataJObj) ->
     maybe_add_user_data(UserKey, Acc, DataJObj);
 maybe_add_macro_key(_Key, Acc, _DataJObj) ->
@@ -111,7 +111,7 @@ maybe_add_macro_key(_Key, Acc, _DataJObj) ->
     Acc.
 
 -spec maybe_add_user_data(kz_term:ne_binary(), kz_term:proplist(), kz_json:object()) ->
-                                 kz_term:proplist().
+          kz_term:proplist().
 maybe_add_user_data(Key, Acc, DataJObj) ->
     User = get_user(DataJObj),
 

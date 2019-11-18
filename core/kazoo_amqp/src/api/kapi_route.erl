@@ -45,8 +45,8 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) ->
-                 {'ok', iolist()} |
-                 {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?ROUTE_REQ_HEADERS, ?OPTIONAL_ROUTE_REQ_HEADERS);
@@ -68,8 +68,8 @@ req_event_type() -> {?EVENT_CATEGORY, ?ROUTE_REQ_EVENT_NAME}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec resp(kz_term:api_terms()) ->
-                  {'ok', iolist()} |
-                  {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     Prop1 = case props:get_value(<<"Method">>, Prop) of
                 <<"bridge">> ->
@@ -120,8 +120,8 @@ is_actionable_resp(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec resp_route(kz_term:api_terms()) ->
-                        {'ok', iolist()} |
-                        {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 resp_route(Prop) when is_list(Prop) ->
     case resp_route_v(Prop) of
         'true' -> kz_api:build_message_specific_headers(Prop, ?ROUTE_RESP_ROUTE_HEADERS, ?OPTIONAL_ROUTE_RESP_ROUTE_HEADERS);
@@ -140,8 +140,8 @@ resp_route_v(JObj) -> resp_route_v(kz_json:to_proplist(JObj)).
 %% @end
 %%------------------------------------------------------------------------------
 -spec win(kz_term:api_terms()) ->
-                 {'ok', iolist()} |
-                 {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 win(Prop) when is_list(Prop) ->
     case win_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?ROUTE_WIN_HEADERS, ?OPTIONAL_ROUTE_WIN_HEADERS);

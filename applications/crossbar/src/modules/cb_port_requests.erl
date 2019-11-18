@@ -94,16 +94,16 @@ init() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) ->
-                       'false' |
-                       {'true', cb_context:context()} |
-                       {'stop', cb_context:context()}.
+          'false' |
+          {'true', cb_context:context()} |
+          {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
 -spec authorize(cb_context:context(), req_nouns(), req_verb()) ->
-                       boolean() |
-                       {'true', cb_context:context()} |
-                       {'stop', cb_context:context()}.
+          boolean() |
+          {'true', cb_context:context()} |
+          {'stop', cb_context:context()}.
 authorize(Context, [{<<"port_requests">>, []}], ?HTTP_GET) ->
     C1 = set_port_authority(Context),
     case cb_context:fetch(C1, 'is_port_authority', 'false')
@@ -200,14 +200,14 @@ resource_exists(_PortRequestId, ?PORT_ATTACHMENT, _AttachmentId) -> 'true'.
 acceptable_content_types() -> ?ATTACHMENT_MIME_TYPES.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, _Id, ?PATH_TOKEN_LOA) ->
     cb_context:add_content_types_provided(Context, [{'to_binary', ?PDF_CONTENT_TYPES}]);
 content_types_provided(Context, _Id, _Path) ->
     Context.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
     case cb_context:req_verb(Context) of
         ?HTTP_GET -> content_types_provided_get(Context, _Id, _AttachmentId);
@@ -226,7 +226,7 @@ content_types_provided_get(Context, Id, AttachmentId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec content_types_accepted(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_accepted(Context, _Id, ?PORT_ATTACHMENT) ->
     CTA = [{'from_binary', ?ATTACHMENT_MIME_TYPES}],
     cb_context:add_content_types_accepted(Context, CTA);
@@ -234,7 +234,7 @@ content_types_accepted(Context, _Id, _) ->
     Context.
 
 -spec content_types_accepted(cb_context:context(), path_token(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_accepted(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
     case cb_context:req_verb(Context) of
         ?HTTP_POST ->
@@ -276,7 +276,7 @@ validate(Context, Id) ->
     validate_port_request(set_port_authority(C1), Id, cb_context:req_verb(C1)).
 
 -spec validate_port_request(cb_context:context(), kz_term:ne_binary(), http_method()) ->
-                                   cb_context:context().
+          cb_context:context().
 validate_port_request(Context, ?PATH_TOKEN_LAST_SUBMITTED, ?HTTP_GET) ->
     C1 = cb_context:set_req_data(Context, kz_json:from_list([{<<"by_types">>, ?PATH_TOKEN_LAST_SUBMITTED}])),
     summary(set_port_authority(C1));
@@ -294,7 +294,7 @@ validate_port_request(Context, Id, ?HTTP_DELETE) ->
     is_deletable(load_port_request(Context, Id)).
 
 -spec validate(cb_context:context(), path_token(), path_token()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context, Id, ToState=?PORT_SUBMITTED) ->
     patch_then_validate_then_maybe_transition(Context, Id, ToState);
 validate(Context, Id, ToState=?PORT_PENDING) ->
@@ -321,19 +321,19 @@ validate(Context, Id, ?PATH_TOKEN_TIMELINE) ->
     end.
 
 -spec validate_attachments(cb_context:context(), kz_term:ne_binary(), http_method()) ->
-                                  cb_context:context().
+          cb_context:context().
 validate_attachments(Context, Id, ?HTTP_GET) ->
     summary_attachments(Context, Id);
 validate_attachments(Context, Id, ?HTTP_PUT) ->
     read(Context, Id).
 
 -spec validate(cb_context:context(), path_token(), path_token(), path_token()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
     validate_attachment(set_port_authority(Context), Id, AttachmentId, cb_context:req_verb(Context)).
 
 -spec validate_attachment(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), http_method()) ->
-                                 cb_context:context().
+          cb_context:context().
 validate_attachment(Context, Id, AttachmentId, ?HTTP_GET) ->
     load_attachment(Id, AttachmentId, Context);
 validate_attachment(Context, Id, AttachmentId, ?HTTP_POST) ->
@@ -439,7 +439,7 @@ delete(Context, _Id) ->
     crossbar_doc:delete(Context).
 
 -spec delete(cb_context:context(), path_token(), path_token(), path_token()) ->
-                    cb_context:context().
+          cb_context:context().
 delete(Context, Id, ?PORT_ATTACHMENT, AttachmentName) ->
     crossbar_doc:delete_attachment(Id, AttachmentName, Context).
 
@@ -678,7 +678,7 @@ load_port_request(Context, Id) ->
     end.
 
 -spec patch_then_validate_then_maybe_transition(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                                       cb_context:context().
+          cb_context:context().
 patch_then_validate_then_maybe_transition(Context, PortId, ToState) ->
     OnSuccess = fun(C) ->
                         validate_port_comments(C, fun(OtherC) -> maybe_move_state(OtherC, ToState) end)
@@ -703,7 +703,7 @@ patch_then_validate_then_maybe_transition(Context, PortId, ToState) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate_port_comments(cb_context:context(), fun((cb_context:context()) -> cb_context:context())) ->
-                                    cb_context:context().
+          cb_context:context().
 validate_port_comments(Context, OnSuccess) ->
     validate_port_comments(Context, OnSuccess, get_new_comments(Context)).
 
@@ -1043,7 +1043,7 @@ load_summary_by_number(Context, Number) ->
     crossbar_view:load(Context, ?LISTING_BY_NUMBER, Options).
 
 -spec normalize_number_summarize_results(cb_context:context(), kz_json:object(), kz_json:objects()) ->
-                                                kz_json:objects().
+          kz_json:objects().
 normalize_number_summarize_results(Context, JObj, Acc) ->
     AccountId = case cb_context:account_id(Context) of
                     'undefined' -> cb_context:auth_account_id(Context);
@@ -1124,7 +1124,7 @@ filter_private_comments(Context, JObj) ->
     end.
 
 -spec run_comment_filter([kzd_comment:doc()], [{kz_json:get_key(), fun((kz_json:json_term()) -> boolean())}]) ->
-                                [kzd_comment:doc()].
+          [kzd_comment:doc()].
 run_comment_filter(Comments, Filters) ->
     [Comment
      || Comment <- Comments,
@@ -1140,7 +1140,7 @@ run_comment_filter(Comments, Filters) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
-                                    kz_json:objects().
+          kz_json:objects().
 normalize_view_results(Res, Acc) ->
     [leak_pvt_fields(Res, knm_port_request:public_fields(kz_json:get_value(<<"doc">>, Res)))
      | Acc
@@ -1253,7 +1253,7 @@ successful_validation(Context, _Id) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_number_portability(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) ->
-                                      cb_context:context().
+          cb_context:context().
 check_number_portability(PortId, Number, Context) ->
     E164 = knm_converters:normalize(Number),
     lager:debug("checking ~s(~s) for portability", [E164, Number]),
@@ -1266,7 +1266,7 @@ check_number_portability(PortId, Number, Context) ->
     end.
 
 -spec check_number_portability(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary(), kz_json:objects()) ->
-                                      cb_context:context().
+          cb_context:context().
 check_number_portability(_PortId, Number, Context, E164, []) ->
     check_number_existence(E164, Number, Context);
 check_number_portability(PortId, Number, Context, E164, [PortReq]) ->
@@ -1296,7 +1296,7 @@ check_number_portability(_PortId, Number, Context, E164, [_|_]) ->
     number_validation_error(Context, Number, Msg).
 
 -spec number_validation_error(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                     cb_context:context().
+          cb_context:context().
 number_validation_error(Context, Number, Message) ->
     Msg = kz_json:from_list([{<<"message">>, Message}
                             ,{<<"cause">>, Number}
@@ -1308,7 +1308,7 @@ number_validation_error(Context, Number, Message) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_number_existence(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) ->
-                                    cb_context:context().
+          cb_context:context().
 check_number_existence(E164, Number, Context) ->
     case knm_number:lookup_account(E164) of
         {'ok', _AccountId, _} ->
@@ -1333,7 +1333,7 @@ check_number_existence(E164, Number, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec load_attachment(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) ->
-                             cb_context:context().
+          cb_context:context().
 load_attachment(Id, AttachmentId, Context) ->
     Context1 = read(Context, Id),
     case cb_context:resp_status(Context1) of
@@ -1404,12 +1404,12 @@ move_state(Context, PortState, Metadata) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec generate_loa(cb_context:context()) ->
-                          cb_context:context().
+          cb_context:context().
 generate_loa(Context) ->
     generate_loa(Context, cb_context:resp_status(Context)).
 
 -spec generate_loa(cb_context:context(), crossbar_status()) ->
-                          cb_context:context().
+          cb_context:context().
 generate_loa(Context, 'success') ->
     generate_loa_from_port(Context, cb_context:doc(Context));
 generate_loa(Context, _RespStatus) ->
@@ -1527,7 +1527,7 @@ send_port_comment_notifications(Context, Id, NewComments) ->
     'ok'.
 
 -spec send_port_comment_notification(kz_json:object(), {cb_context:context(), kz_term:ne_binary(), non_neg_integer(), non_neg_integer()}) ->
-                                            {cb_context:context(), kz_term:ne_binary(), non_neg_integer(), non_neg_integer()}.
+          {cb_context:context(), kz_term:ne_binary(), non_neg_integer(), non_neg_integer()}.
 send_port_comment_notification(NewComment, {Context, Id, TotalNew, Index}) ->
     Setters = [{fun kzd_comment:set_user_id/2, kzd_comment:user_id(NewComment, cb_context:auth_user_id(Context))}
               ,{fun kzd_comment:set_account_id/2, kzd_comment:account_id(NewComment, cb_context:auth_account_id(Context))}
@@ -1555,7 +1555,7 @@ send_port_comment_notification(NewComment, {Context, Id, TotalNew, Index}) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec generate_loa_from_port(cb_context:context(), kz_json:object()) ->
-                                    cb_context:context().
+          cb_context:context().
 generate_loa_from_port(Context, PortRequest) ->
     AccountId = cb_context:account_id(Context),
     ResellerId = kz_services_reseller:get_id(AccountId),

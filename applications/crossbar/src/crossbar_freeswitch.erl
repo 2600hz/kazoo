@@ -468,7 +468,7 @@ maybe_accumulate_realm('false', Realm) ->
     put(<<"Realms">>, [Realm | get(<<"Realms">>)]).
 
 -spec query_registrar(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()}
-                                                                       | {'error', any()}.
+              | {'error', any()}.
 query_registrar(Realm, Username) ->
     FullUser = <<Username/binary, "@", Realm/binary>>,
     Req = [{<<"To">>, FullUser}

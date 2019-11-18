@@ -22,7 +22,7 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec call_command(atom(), kz_term:ne_binary(), kz_json:object()) ->
-                          {kz_term:ne_binary(), kz_term:ne_binary()}.
+          {kz_term:ne_binary(), kz_term:ne_binary()}.
 call_command(Node, UUID, JObj) ->
     _ = ecallmgr_fs_command:set(Node, UUID
                                ,[{<<"tts_engine">>, <<"flite">>}

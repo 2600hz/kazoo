@@ -87,7 +87,7 @@ connections() ->
     end.
 
 -spec connections_fold(kz_json:key(), kz_json:object(), amqp_listener_connections()) ->
-                              amqp_listener_connections().
+          amqp_listener_connections().
 connections_fold(K, V, Acc) ->
     C = #amqp_listener_connection{name = K
                                  ,broker = kz_json:get_value(<<"broker">>, V)

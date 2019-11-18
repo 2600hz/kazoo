@@ -111,8 +111,8 @@ authorize(Context, Path) ->
     end.
 
 -spec authorize_request(cb_context:context(), path_token(), http_method()) ->
-                               boolean() |
-                               {'stop', cb_context:context()}.
+          boolean() |
+          {'stop', cb_context:context()}.
 authorize_request(Context, ?REFUND, ?HTTP_PUT) ->
     authorize_create(Context);
 authorize_request(Context, ?SALE, ?HTTP_PUT) ->
@@ -123,7 +123,7 @@ authorize_request(_Context, _Path, _Verb) ->
     'false'.
 
 -spec authorize_create(cb_context:context()) -> boolean() |
-                                                {'stop', cb_context:context()}.
+          {'stop', cb_context:context()}.
 authorize_create(Context) ->
     IsAuthenticated = cb_context:is_authenticated(Context),
     IsSuperDuperAdmin = cb_context:is_superduper_admin(Context),
@@ -240,7 +240,7 @@ put(Context, Action) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec process_action(cb_context:context(), kz_term:ne_binary(), kz_transaction:transaction()) ->
-                            cb_context:context().
+          cb_context:context().
 process_action(Context, ?REFUND, Transaction) ->
     case kz_transaction:refund(Transaction) of
         {'error', Reason} ->
@@ -265,7 +265,7 @@ handle_bookkeeper_result(Context, Transaction) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(cb_context:context(), kzd_transactions:doc(), kz_json:objects()) ->
-                                    kz_json:objects().
+          kz_json:objects().
 normalize_view_results(_Context, JObj, Acc) ->
     [normalize_view_result(JObj) | Acc].
 

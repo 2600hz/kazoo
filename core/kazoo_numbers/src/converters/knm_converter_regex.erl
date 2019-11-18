@@ -42,17 +42,17 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize(kz_term:ne_binary()) ->
-                       kz_term:ne_binary().
+          kz_term:ne_binary().
 normalize(?NE_BINARY = Num) ->
     to_e164(Num).
 
 -spec normalize(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                       kz_term:ne_binary().
+          kz_term:ne_binary().
 normalize(?NE_BINARY = Num, AccountId) ->
     to_e164(Num, AccountId).
 
 -spec normalize(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                       kz_term:ne_binary().
+          kz_term:ne_binary().
 normalize(?NE_BINARY = Num, AccountId, DialPlan) ->
     to_e164_from_account_dialplan(Num, AccountId, DialPlan).
 

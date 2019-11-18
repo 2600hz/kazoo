@@ -256,12 +256,12 @@ update_kazoo_secret(#{auth_db := Db
     update_kazoo_secret(Token, generate_new_kazoo_signing_secret()).
 
 -spec update_kazoo_secret(map(), kz_term:ne_binary()) ->
-                                 map() | kz_datamgr:data_error().
+          map() | kz_datamgr:data_error().
 update_kazoo_secret(#{auth_db := Db}=Token, Secret) ->
     update_kazoo_secret(Token, Secret, kzs_util:db_classification(Db)).
 
 -spec update_kazoo_secret(map(), kz_term:ne_binary(), kz_data:db_classification()) ->
-                                 map() | kz_datamgr:data_error().
+          map() | kz_datamgr:data_error().
 update_kazoo_secret(#{auth_db := AccountDb, auth_db_id := DocId}=Token, Secret, 'account') ->
     case kz_util:format_account_id(AccountDb) of
         DocId -> update_account_secret(Token, Secret);
@@ -270,13 +270,13 @@ update_kazoo_secret(#{auth_db := AccountDb, auth_db_id := DocId}=Token, Secret, 
 update_kazoo_secret(Token, Secret, _Type) -> update_doc_secret(Token, Secret).
 
 -spec update_account_secret(map(), kz_term:ne_binary()) ->
-                                   map() | kz_datamgr:data_error().
+          map() | kz_datamgr:data_error().
 update_account_secret(#{auth_db_id := AccountId}=Token, Secret) ->
     Updates = [{[?PVT_SIGNING_SECRET], Secret}],
     handle_updated_secret(Token, kzd_accounts:update(AccountId, Updates)).
 
 -spec update_doc_secret(map(), kz_term:ne_binary()) ->
-                               map() | kz_datamgr:data_error().
+          map() | kz_datamgr:data_error().
 update_doc_secret(#{auth_db := Db
                    ,auth_db_id := Key
                    }=Token
@@ -287,7 +287,7 @@ update_doc_secret(#{auth_db := Db
     handle_updated_secret(Token, kz_datamgr:update_doc(Db, Key, UpdateOptions)).
 
 -spec handle_updated_secret(map(), {'ok', kz_json:object()} | kz_datamgr:data_error()) ->
-                                   map() | kz_datamgr:data_error().
+          map() | kz_datamgr:data_error().
 handle_updated_secret(Token, {'ok', Doc}) ->
     Token#{identity_secret => kz_json:get_value(?PVT_SIGNING_SECRET, Doc)};
 handle_updated_secret(#{auth_db := _Db, auth_db_id := _Key}=_Token, {'error', _Reason}=Error) ->

@@ -235,7 +235,7 @@ check_port_requests(Context) ->
     end.
 
 -spec check_port_requests(kz_json:objects(), cb_context:context()) ->
-                                 cb_context:context().
+          cb_context:context().
 check_port_requests([], Context) ->
     Context;
 check_port_requests([PortRequest|PortRequests], Context) ->
@@ -253,7 +253,7 @@ check_port_requests([PortRequest|PortRequests], Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_port_action_required(kzd_port_requests:doc(), cb_context:context()) ->
-                                        cb_context:context().
+          cb_context:context().
 check_port_action_required(PortRequest, Context) ->
     LastComment = port_request_last_comment(Context, PortRequest),
     case kzd_comment:action_required(LastComment) of
@@ -295,7 +295,7 @@ port_request_last_comment(Context, PortRequest) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_port_suspended(kzd_port_requests:doc(), cb_context:context()) ->
-                                  cb_context:context().
+          cb_context:context().
 check_port_suspended(PortRequest, Context) ->
     State = kzd_port_requests:pvt_port_state(PortRequest),
     Transition = kzd_port_requests:get_transition(PortRequest, State),
@@ -372,7 +372,7 @@ check_low_balance(Context) ->
     check_low_balance(Context, AvailableDollars, ThresholdDollars).
 
 -spec check_low_balance(cb_context:context(), kz_currency:available_dollars_return(), float() | 'undefined') ->
-                               cb_context:context().
+          cb_context:context().
 check_low_balance(Context, {'error', _R}, _Threshold) ->
     lager:debug("unable to get current balance: ~p", [_R]),
     Context;

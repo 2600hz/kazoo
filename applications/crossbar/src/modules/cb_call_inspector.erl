@@ -202,7 +202,7 @@ cdrs_listing_mapper(Context, JObjs) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec filter_callids(kz_term:ne_binaries()) -> {'ok', kz_term:ne_binaries()} |
-                                               {'error', kz_term:ne_binary()}.
+          {'error', kz_term:ne_binary()}.
 filter_callids([]) -> {'ok', []};
 filter_callids(CallIds) ->
     Req = [{<<"Call-IDs">>, CallIds}

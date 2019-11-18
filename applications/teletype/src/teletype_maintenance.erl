@@ -231,8 +231,8 @@ stop_module(Module) ->
     end.
 
 -spec module_from_binary(kz_term:ne_binary()) ->
-                                {'ok', module()} |
-                                {'error', 'invalid_mod'}.
+          {'ok', module()} |
+          {'error', 'invalid_mod'}.
 module_from_binary(<<"teletype_", _/binary>> = Template) ->
     case kz_module:ensure_loaded(Template) of
         'false' -> invalid_module(Template);

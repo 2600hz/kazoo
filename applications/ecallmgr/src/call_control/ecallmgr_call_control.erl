@@ -984,7 +984,7 @@ unbind(Node, CallId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_replaced(kz_json:object(), state()) ->
-                             {'noreply', state()}.
+          {'noreply', state()}.
 handle_replaced(JObj, #state{fetch_id=FetchId
                             ,node=_Node
                             ,call_id=_CallId
@@ -1005,7 +1005,7 @@ handle_replaced(JObj, #state{fetch_id=FetchId
     end.
 
 -spec handle_direct(kz_call_event:doc(), state()) ->
-                           {'noreply', state()}.
+          {'noreply', state()}.
 handle_direct(JObj, #state{fetch_id=FetchId
                           ,node=_Node
                           ,call_id=_CallId
@@ -1026,7 +1026,7 @@ handle_direct(JObj, #state{fetch_id=FetchId
     end.
 
 -spec handle_sync(kz_json:object(), state()) ->
-                         {'noreply', state()}.
+          {'noreply', state()}.
 handle_sync(JObj, #state{fetch_id=FetchId
                         ,node=_Node
                         ,call_id=_CallId
@@ -1037,7 +1037,7 @@ handle_sync(JObj, #state{fetch_id=FetchId
     end.
 
 -spec handle_transferee(kz_json:object(), state()) ->
-                               {'noreply', state()}.
+          {'noreply', state()}.
 handle_transferee(JObj, #state{fetch_id=FetchId
                               ,node=_Node
                               ,call_id=CallId
@@ -1052,7 +1052,7 @@ handle_transferee(JObj, #state{fetch_id=FetchId
     end.
 
 -spec handle_transferor(kz_json:object(), state()) ->
-                               {'noreply', state()}.
+          {'noreply', state()}.
 handle_transferor(JObj, #state{fetch_id=FetchId
                               ,call_id=CallId
                               }=State) ->
@@ -1066,8 +1066,8 @@ handle_transferor(JObj, #state{fetch_id=FetchId
     end.
 
 -spec handle_event_info(kz_term:ne_binary(), kz_evt_freeswitch:data(), state()) ->
-                               {'noreply', state()} |
-                               {'stop', any(), state()}.
+          {'noreply', state()} |
+          {'stop', any(), state()}.
 handle_event_info(CallId, JObj, #state{call_id=CallId}=State) ->
     Application = kz_call_event:application_name(JObj),
     case kz_call_event:event_name(JObj) of

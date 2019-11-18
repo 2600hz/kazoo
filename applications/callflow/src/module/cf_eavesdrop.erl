@@ -63,7 +63,7 @@ fields_to_check() ->
     ].
 
 -spec maybe_allowed_to_eavesdrop(kz_json:object(), kapps_call:call()) ->
-                                        boolean().
+          boolean().
 maybe_allowed_to_eavesdrop(Data, Call) ->
     cf_util:check_value_of_fields(fields_to_check(), 'false', Data, Call).
 
@@ -156,7 +156,7 @@ eavesdrop_cmd(TargetCallId) ->
     ].
 
 -spec find_sip_endpoints(kz_json:object(), kapps_call:call()) ->
-                                kz_term:ne_binaries().
+          kz_term:ne_binaries().
 find_sip_endpoints(Data, Call) ->
     case kz_json:get_ne_binary_value(<<"device_id">>, Data) of
         'undefined' ->
@@ -168,7 +168,7 @@ find_sip_endpoints(Data, Call) ->
     end.
 
 -spec sip_users_from_endpoints(kz_term:ne_binaries(), kapps_call:call()) ->
-                                      kz_term:ne_binaries().
+          kz_term:ne_binaries().
 sip_users_from_endpoints(EndpointIds, Call) ->
     lists:foldl(fun(EndpointId, Acc) ->
                         case sip_user_of_endpoint(EndpointId, Call) of

@@ -148,8 +148,8 @@ should_topup(?NE_BINARY=AccountId, AvailableUnits) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec should_topup(kz_term:ne_binary(), kz_currency:units(), kz_currency:units()) ->
-                          'true' |
-                          {'error', error()}.
+          'true' |
+          {'error', error()}.
 should_topup(AccountId, AvailableUnits, ThresholdUnits)
   when AvailableUnits < ThresholdUnits ->
     case do_transactions_have_topup(AccountId)
@@ -209,8 +209,8 @@ do_ledgers_have_topup([Ledger|Ledgers]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_topup(kz_term:api_ne_binary() | kzd_accounts:doc()) ->
-                       {'ok', kz_currency:units(), kz_currency:units()} |
-                       {'error', error()}.
+          {'ok', kz_currency:units(), kz_currency:units()} |
+          {'error', error()}.
 get_topup('undefined') -> {'error', 'topup_undefined'};
 get_topup(?NE_BINARY = Account) ->
     case kapps_config:get_is_true(?TOPUP_CONFIG, <<"enable">>, 'false') of
@@ -225,8 +225,8 @@ get_topup(?NE_BINARY = Account) ->
     end.
 
 -spec get_account_topup(kzd_accounts:doc()) ->
-                               {'ok', kz_currency:units(), kz_currency:units()} |
-                               {'error', error()}.
+          {'ok', kz_currency:units(), kz_currency:units()} |
+          {'error', error()}.
 get_account_topup(AccountJObj) ->
     case
         {kzd_accounts:topup_amount(AccountJObj)
@@ -268,7 +268,7 @@ maybe_topup(Account, AvailableUnits) ->
     end.
 
 -spec maybe_topup(kz_term:ne_binary(), kz_currency:units(), kz_currency:units(), kz_currency:units()) ->
-                         topup_return().
+          topup_return().
 maybe_topup(AccountId, AvailableUnits, ReplenishUnits, ThresholdUnits) ->
     case should_topup(AccountId, AvailableUnits, ThresholdUnits) of
         'true' -> topup(AccountId, ReplenishUnits);
@@ -284,12 +284,12 @@ topup(AccountId, ReplenishUnits) ->
     topup(AccountId, ReplenishUnits, automatic_trigger()).
 
 -spec topup(kz_term:ne_binary(), kz_currency:units(), kz_term:ne_binary()) ->
-                   topup_return().
+          topup_return().
 topup(AccountId, ReplenishUnits, Trigger) ->
     topup(AccountId, ReplenishUnits, Trigger, 'undefined').
 
 -spec topup(kz_term:ne_binary(), kz_currency:units(), kz_term:ne_binary(), kz_term:api_object()) ->
-                   topup_return().
+          topup_return().
 topup(AccountId, ReplenishUnits, Trigger, Audit) ->
     TopupTransaction = create_topup_transaction(AccountId, ReplenishUnits, Trigger, Audit),
     case kz_transaction:sale(TopupTransaction) of
@@ -301,7 +301,7 @@ topup(AccountId, ReplenishUnits, Trigger, Audit) ->
     end.
 
 -spec create_topup_transaction(kz_term:ne_binary(), kz_currency:units(), kz_term:ne_binary(), kz_term:api_object()) ->
-                                      kz_transaction:transaction().
+          kz_transaction:transaction().
 create_topup_transaction(AccountId, ReplenishUnits, Trigger, Audit) ->
     Metadata = kz_json:from_list([{<<"automatic_description">>, 'true'}]),
     Setters =
@@ -347,7 +347,7 @@ create_ledger(Transaction) ->
     end.
 
 -spec create_ledger(kz_term:ne_binary(), kz_currency:units(), kz_term:ne_binary(), kz_term:api_object()) ->
-                           topup_return().
+          topup_return().
 create_ledger(AccountId, ReplenishUnits, Trigger, Audit) ->
     Metadata = kz_json:from_list([{<<"automatic_description">>, 'true'}]),
     case create_ledger(AccountId, ReplenishUnits, Trigger, Audit, Metadata) of
@@ -358,7 +358,7 @@ create_ledger(AccountId, ReplenishUnits, Trigger, Audit) ->
     end.
 
 -spec create_ledger(kz_term:ne_binary(), kz_currency:units(), kz_term:ne_binary(), kz_term:api_object(), kz_json:object()) ->
-                           {'ok', kz_ledger:ledger()} | {'error', any()}.
+          {'ok', kz_ledger:ledger()} | {'error', any()}.
 create_ledger(AccountId, ReplenishUnits, Trigger, Audit, Metadata) ->
     SourceId = kz_json:get_ne_binary_value([<<"transaction">>, <<"id">>]
                                           ,Metadata

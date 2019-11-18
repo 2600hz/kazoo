@@ -104,8 +104,8 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec number_req(kz_term:api_terms()) ->
-                        {'ok', iolist()} |
-                        {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 number_req(Prop) when is_list(Prop) ->
     case number_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?NUMBER_REQ_HEADERS, ?NUMBER_REQ_OPTIONAL_HEADERS);
@@ -124,8 +124,8 @@ number_req_v(JObj) -> number_req_v(kz_json:to_proplist(JObj)).
 %% @end
 %%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) ->
-                 {'ok', iolist()} |
-                 {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?DISCOVERY_REQ_HEADERS, ?DISCOVERY_REQ_OPTIONAL_HEADERS);
@@ -145,8 +145,8 @@ req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 %% @end
 %%------------------------------------------------------------------------------
 -spec resp(kz_term:api_terms()) ->
-                  {'ok', iolist()} |
-                  {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?DISCOVERY_RESP_HEADERS, ?DISCOVERY_RESP_OPTIONAL_HEADERS);
@@ -166,8 +166,8 @@ resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
 %% @end
 %%------------------------------------------------------------------------------
 -spec flush(kz_term:api_terms()) ->
-                   {'ok', iolist()} |
-                   {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 flush(Prop) when is_list(Prop) ->
     case flush_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?DISCOVERY_FLUSH_HEADERS, ?DISCOVERY_FLUSH_OPTIONAL_HEADERS);

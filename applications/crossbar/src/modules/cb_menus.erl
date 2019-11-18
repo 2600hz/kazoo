@@ -176,7 +176,7 @@ validate_patch(DocId, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) ->
-                                      cb_context:context().
+          cb_context:context().
 on_successful_validation('undefined', Context) ->
     MenuReq = cb_context:doc(Context),
     MenuDoc = kz_doc:set_vsn(kz_doc:set_type(MenuReq, kzd_menus:type()), <<"2">>),

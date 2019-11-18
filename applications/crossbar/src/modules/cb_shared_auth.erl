@@ -230,9 +230,9 @@ create_local_token(Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec authenticate_shared_token(kz_term:api_binary(), nonempty_string()) ->
-                                       {'ok', string() | binary()} |
-                                       {'error', atom()} |
-                                       {'forbidden', atom()}.
+          {'ok', string() | binary()} |
+          {'error', atom()} |
+          {'forbidden', atom()}.
 authenticate_shared_token('undefined', _) ->
     {'forbidden', 'missing_shared_token'};
 authenticate_shared_token(SharedToken, XBarUrl) ->

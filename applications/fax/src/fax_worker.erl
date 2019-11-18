@@ -558,8 +558,8 @@ apply_reschedule_logic(JObj) ->
     end.
 
 -spec apply_reschedule_rules({kz_json:objects(), kz_json:path()}, kz_json:object()) ->
-                                    {'ok', kz_json:object()} |
-                                    {'no_rules', kz_json:object()}.
+          {'ok', kz_json:object()} |
+          {'no_rules', kz_json:object()}.
 apply_reschedule_rules({[], _}, JObj) -> {'no_rules', JObj};
 apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj) ->
     Attempts = kz_json:get_integer_value(<<"attempts">>, JObj, 0),
@@ -616,8 +616,8 @@ maybe_notify(_JObj, _Resp, Status) ->
     lager:debug("notify Status ~p not handled",[Status]).
 
 -spec maybe_move_doc(kz_json:object(), kz_term:ne_binary()) ->
-                            {'ok', kz_json:object()} |
-                            {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 maybe_move_doc(JObj, <<"completed">>) ->
     move_doc(JObj);
 maybe_move_doc(JObj, <<"failed">>) ->
@@ -626,8 +626,8 @@ maybe_move_doc(JObj, _) ->
     {'ok', JObj}.
 
 -spec move_doc(kz_json:object()) ->
-                      {'ok', kz_json:object()} |
-                      {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 move_doc(JObj) ->
     FromId = kz_doc:id(JObj),
     {Year, Month, _D} = kz_term:to_date(kz_doc:created(JObj)),
@@ -700,8 +700,8 @@ elapsed_time(JObj) ->
     Now - Created.
 
 -spec write_document(kz_json:object(), kz_term:ne_binary()) ->
-                            {'ok', kz_term:ne_binary(), kz_json:object()} |
-                            {'error', any()}.
+          {'ok', kz_term:ne_binary(), kz_json:object()} |
+          {'error', any()}.
 write_document(JObj, JobId) ->
     case kz_fax_attachment:fetch_faxable(?KZ_FAXES_DB, JObj) of
         {'ok', Content, _ContentType, Doc} ->

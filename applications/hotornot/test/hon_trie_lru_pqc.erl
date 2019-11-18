@@ -258,8 +258,8 @@ bump_matched(Cache, NowMs, Prefix, RateIds) ->
     props:set_value(Prefix, BumpedRateIds, Cache).
 
 -spec find_prefix(cache(), string()) ->
-                         'error' |
-                         {'ok', prefix(), any()}.
+          'error' |
+          {'ok', prefix(), any()}.
 find_prefix(Cache, PhoneNumber) ->
     PNBin = kz_term:to_binary(PhoneNumber),
     case lists:foldl(fun longest_prefix/2, {PNBin, <<>>, 0, []}, Cache) of

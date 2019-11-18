@@ -49,7 +49,7 @@ is_local() -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
-                                              {error, any()}.
+          {error, any()}.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%------------------------------------------------------------------------------
@@ -58,8 +58,8 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
-                          {'ok', knm_number:knm_numbers()} |
-                          {'error', any()}.
+          {'ok', knm_number:knm_numbers()} |
+          {'error', any()}.
 find_numbers(<<"+", _/binary>>=Prefix, Quantity, Options) ->
     AccountId = knm_search:account_id(Options),
     find_numbers_in_account(Prefix, Quantity, AccountId, Options);
@@ -67,8 +67,8 @@ find_numbers(Prefix, Quantity, Options) ->
     find_numbers(<<"+",Prefix/binary>>, Quantity, Options).
 
 -spec find_numbers_in_account(kz_term:ne_binary(), pos_integer(), kz_term:api_ne_binary(), knm_search:options()) ->
-                                     {'ok', knm_number:knm_numbers()} |
-                                     {'error', any()}.
+          {'ok', knm_number:knm_numbers()} |
+          {'error', any()}.
 find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
     case do_find_numbers_in_account(Prefix, Quantity, AccountId, Options) of
         {'error', 'not_available'}=Error ->
@@ -84,8 +84,8 @@ find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
     end.
 
 -spec do_find_numbers_in_account(kz_term:ne_binary(), pos_integer(), kz_term:api_ne_binary(), knm_search:options()) ->
-                                        {'ok', list()} |
-                                        {'error', any()}.
+          {'ok', list()} |
+          {'error', any()}.
 do_find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
     ViewOptions = [{'startkey', [AccountId, ?NUMBER_STATE_AVAILABLE, Prefix]}
                   ,{'endkey', [AccountId, ?NUMBER_STATE_AVAILABLE, <<Prefix/binary,"\ufff0">>]}
@@ -140,7 +140,7 @@ acquire_number(Number) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec disconnect_number(knm_number:knm_number()) ->
-                               knm_number:knm_number().
+          knm_number:knm_number().
 disconnect_number(Number) ->
     lager:debug("disconnecting number ~s"
                ,[knm_phone_number:number(knm_number:phone_number(Number))]
@@ -178,7 +178,7 @@ import_numbers(AccountId, [Number | Numbers], JObj) ->
     import_numbers(AccountId, Numbers, NewJObj).
 
 -spec save_doc(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
-                                                            {'error', any()}.
+          {'error', any()}.
 save_doc(AccountId, Number) ->
     Setters = [{fun kzd_phone_numbers:set_pvt_module_name/2, kz_term:to_binary(?MODULE)}
               ,{fun kzd_phone_numbers:set_pvt_state/2, ?NUMBER_STATE_AVAILABLE}
@@ -190,7 +190,7 @@ save_doc(AccountId, Number) ->
     kz_datamgr:save_doc(?KZ_MANAGED_DB, kz_doc:update_pvt_parameters(kz_doc:setters(Setters), 'undefined', PvtOptions)).
 
 -spec update_doc(knm_number:knm_number(), kz_term:proplist()) ->
-                        knm_number:knm_number().
+          knm_number:knm_number().
 update_doc(Number, UpdateProps) ->
     PhoneNumber = knm_number:phone_number(Number),
     Num = knm_phone_number:number(PhoneNumber),

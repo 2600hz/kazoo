@@ -185,24 +185,24 @@ api(Node, Cmd, Args, Timeout) when is_atom(Node) ->
 
 
 -spec json_api(atom(), kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:api_object()}) ->
-                      freeswitch:fs_json_api_return().
+          freeswitch:fs_json_api_return().
 json_api(Node, {Cmd, Args}) ->
     json_api(Node, 'undefined', Cmd, Args, ?TIMEOUT);
 json_api(Node, Cmd) ->
     json_api(Node, 'undefined', Cmd, 'undefined', ?TIMEOUT).
 
 -spec json_api(atom(), kz_term:api_ne_binary(), kz_term:text()) ->
-                      freeswitch:fs_json_api_return().
+          freeswitch:fs_json_api_return().
 json_api(Node, UUID, Cmd) ->
     json_api(Node, UUID, Cmd, 'undefined', ?TIMEOUT).
 
 -spec json_api(atom(), kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:api_object()) ->
-                      freeswitch:fs_json_api_return().
+          freeswitch:fs_json_api_return().
 json_api(Node, UUID, Cmd, Args) ->
     json_api(Node, UUID, Cmd, Args, ?TIMEOUT).
 
 -spec json_api(atom(), kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:api_object() | binary(), timeout()) ->
-                      freeswitch:fs_json_api_return().
+          freeswitch:fs_json_api_return().
 json_api(Node, UUID, Cmd, 'undefined', Timeout) ->
     json_api(Node, UUID, Cmd, <<>>, Timeout);
 json_api(Node, UUID, Cmd, Data, Timeout) when is_atom(Node) ->
@@ -429,8 +429,8 @@ config(Node, Section) ->
     gen_server:cast({'mod_kazoo', Node}, {'config', [Section]}).
 
 -spec bgapi4(atom(), atom(), string() | binary(), fun(), list()) ->
-                    {'ok', binary()} |
-                    {'error', 'timeout' | 'exception' | binary()}.
+          {'ok', binary()} |
+          {'error', 'timeout' | 'exception' | binary()}.
 bgapi4(Node, Cmd, Args, Fun, CallBackParams) ->
     Self = self(),
     _ = kz_process:spawn(fun bgapi4/6, [Node, Cmd, Args, Fun, CallBackParams, Self]),

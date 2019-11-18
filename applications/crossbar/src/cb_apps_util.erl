@@ -93,7 +93,7 @@ ensure_allowed_service_apps(ServicesApps, AppJObjs) ->
     kz_json:foldl(ensure_allowed_service_apps_fold(MasterAccountId), [], ServicesApps) ++ AppJObjs.
 
 -spec ensure_allowed_service_apps_fold(kz_term:ne_binary()) ->
-                                              fun((kz_term:ne_binary(), kz_json:object(), kz_json:objects()) -> kz_json:objects()).
+          fun((kz_term:ne_binary(), kz_json:object(), kz_json:objects()) -> kz_json:objects()).
 ensure_allowed_service_apps_fold(MasterAccountId) ->
     fun(AppId, ServicesAppJObj, AppJObjs) ->
             VendorId = kz_json:get_ne_binary_value(<<"vendor_id">>, ServicesAppJObj, MasterAccountId),
@@ -141,7 +141,7 @@ allowed_apps_store_doc(AccountId, UserId, AppJObjs) ->
     end.
 
 -spec allowed_apps_store_doc_map(kz_term:ne_binary(), kz_term:api_binary(), kz_json:object()) ->
-                                        fun((kz_json:object()) -> kz_json:object()).
+          fun((kz_json:object()) -> kz_json:object()).
 allowed_apps_store_doc_map(AccountId, UserId, AppStoreJObj) ->
     fun(AppJObj) ->
             AppId = kz_doc:id(AppJObj),

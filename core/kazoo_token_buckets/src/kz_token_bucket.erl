@@ -317,7 +317,7 @@ start_fill_timer(Timeout) ->
     erlang:start_timer(Timeout, self(), ?TOKEN_FILL_TIME).
 
 -spec add_tokens(pos_integer(), non_neg_integer(), pos_integer(), boolean(), fill_rate_time() | pos_integer()) ->
-                        non_neg_integer().
+          non_neg_integer().
 add_tokens(Max, Count, FillRate, 'true', _FillTime) ->
     constrain(Max, Count, FillRate);
 add_tokens(Max, Count, FillRate, 'false', FillTime) ->

@@ -645,8 +645,8 @@ handle_event(_Event, StateName, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_sync_event(any(), From :: pid(), StateName :: atom(), state()) ->
-                               {'next_state', StateName :: atom(), state()
-                               ,{'reply', From :: pid(), any()}}.
+          {'next_state', StateName :: atom(), state()
+          ,{'reply', From :: pid(), any()}}.
 handle_sync_event('cdr_url', From, StateName, #state{cdr_url=Url}=State) ->
     {'next_state', StateName, State
     ,{'reply', From, Url}
@@ -756,7 +756,7 @@ update_properties(QueueJObj, State) ->
                }.
 
 -spec current_call('undefined' | kapps_call:call(), kz_term:api_reference() | timeout(), kz_time:start_time()) ->
-                          kz_term:api_object().
+          kz_term:api_object().
 current_call('undefined', _, _) -> 'undefined';
 current_call(Call, QueueTimeLeft, Start) ->
     kz_json:from_list([{<<"call_id">>, kapps_call:call_id(Call)}
@@ -784,7 +784,7 @@ elapsed(Time) -> kz_time:elapsed_s(Time).
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_delay_connect_req(kapps_call:call(), kz_json:object(), gen_listener:basic_deliver(), state()) ->
-                                     {'next_state', 'ready' | 'connect_req', state()}.
+          {'next_state', 'ready' | 'connect_req', state()}.
 maybe_delay_connect_req(Call, CallJObj, Delivery, #state{listener_proc=ListenerSrv
                                                         ,manager_proc=MgrSrv
                                                         ,connection_timeout=ConnTimeout
@@ -837,7 +837,7 @@ maybe_connect_re_req(MgrSrv, ListenerSrv, #state{account_id=AccountId
     end.
 
 -spec maybe_delay_connect_re_req(pid(), pid(), state()) ->
-                                        {'next_state', 'connect_req', state()}.
+          {'next_state', 'connect_req', state()}.
 maybe_delay_connect_re_req(MgrSrv, ListenerSrv, #state{member_call=Call}=State) ->
     CallId = kapps_call:call_id(Call),
     case acdc_queue_manager:up_next(MgrSrv, CallId) of

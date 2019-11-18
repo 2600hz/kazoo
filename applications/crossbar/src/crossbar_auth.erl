@@ -47,7 +47,7 @@
 -define(SHOULD_LOG_SUCCESS, kapps_config:get_is_true(?AUTH_CONFIG_CAT, <<"log_successful_attempts">>, 'true')).
 
 -spec create_auth_token(cb_context:context(), atom()) ->
-                               cb_context:context().
+          cb_context:context().
 create_auth_token(Context, AuthModule) ->
     JObj = cb_context:doc(Context),
     Method = kz_term:to_binary(AuthModule),
@@ -63,7 +63,7 @@ create_auth_token(Context, AuthModule) ->
     end.
 
 -spec create_auth_token(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
-                               cb_context:context().
+          cb_context:context().
 create_auth_token(Context, Method, JObj) ->
     Data = cb_context:req_data(Context),
 
@@ -127,9 +127,9 @@ create_auth_token(Context, Method, JObj) ->
     end.
 
 -spec maybe_create_token(cb_context:context(), kz_term:proplist(), kz_json:object(), kz_term:ne_binary(), boolean()) ->
-                                {'ok', kz_term:ne_binary()} |
-                                {'error', any()} |
-                                {'error', any(), any()}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', any()} |
+          {'error', any(), any()}.
 maybe_create_token(_Context, Claims, _AuthConfig, _Method, 'false') ->
     kz_auth:create_token(Claims);
 maybe_create_token(Context, Claims, AuthConfig, Method, 'true') ->
@@ -163,12 +163,12 @@ maybe_create_token(Context, Claims, AuthConfig, Method, 'true') ->
     end.
 
 -spec validate_auth_token(map() | kz_term:ne_binary()) ->
-                                 {ok, kz_json:object()} | {error, any()}.
+          {ok, kz_json:object()} | {error, any()}.
 validate_auth_token(Token) ->
     validate_auth_token(Token, []).
 
 -spec validate_auth_token(map() | kz_term:ne_binary(), kz_term:proplist()) ->
-                                 {ok, kz_json:object()} | {error, any()}.
+          {ok, kz_json:object()} | {error, any()}.
 validate_auth_token(Token, Options) ->
     case kz_auth:validate_token(Token, Options) of
         {'error', 'no_jwt_signed_token'} -> maybe_db_token(Token);

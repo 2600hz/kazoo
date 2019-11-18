@@ -77,7 +77,7 @@ handle(Data, Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec process_rules(temporal(), rules(), kapps_call:call()) ->
-                           'default' | binary().
+          'default' | binary().
 process_rules(Temporal
              ,[#rule{enabled='false'
                     ,id=Id

@@ -20,7 +20,7 @@
 -include("kzt.hrl").
 
 -spec exec(kz_term:ne_binary(), kapps_call:call(), binary(), kz_term:api_binary() | list()) ->
-                  exec_return().
+          exec_return().
 exec(RequesterQ, Call, 'undefined', Cmds) ->
     exec(RequesterQ, Call, <<"text/xml">>, Cmds);
 exec(RequesterQ, Call, CT, Cmds) when not is_binary(CT) ->

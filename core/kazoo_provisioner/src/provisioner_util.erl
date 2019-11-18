@@ -260,8 +260,8 @@ should_build_contact_list(JObj, OriginalJObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_provision_defaults(kz_json:object()) ->
-                                    {'ok', kz_json:object()} |
-                                    {'error', kz_term:ne_binary()}.
+          {'ok', kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 get_provision_defaults(JObj) ->
     Brand   = kz_http_util:urlencode(kz_json:get_string_value([<<"properties">>, <<"brand">>], JObj)),
     Model   = kz_http_util:urlencode(kz_json:get_string_value([<<"properties">>, <<"model">>], JObj)),
@@ -409,12 +409,12 @@ send_to_full_provisioner('post', FullUrl, JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_merged_device(kz_term:ne_binary(), kzd_devices:doc()) ->
-                               {'ok', kz_json:object()}.
+          {'ok', kz_json:object()}.
 get_merged_device(MACAddress, NewDeviceDoc) ->
     {'ok', _Data} = merge_device(MACAddress, NewDeviceDoc).
 
 -spec merge_device(kz_term:ne_binary(), kzd_devices:doc()) ->
-                          {'ok', kz_json:object()}.
+          {'ok', kz_json:object()}.
 merge_device(MACAddress, NewDeviceDoc) ->
     AccountId = kz_doc:account_id(NewDeviceDoc),
 
@@ -477,8 +477,8 @@ send_provisioning_template(NewDeviceDoc, _DeviceTemplate) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_template(kzd_devices:doc()) ->
-                          {'ok', kz_json:object()} |
-                          {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 get_template(NewDeviceDoc) ->
     get_template(NewDeviceDoc, kzd_devices:provision_id(NewDeviceDoc)).
 
@@ -499,7 +499,7 @@ get_template(NewDeviceDoc, TemplateId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_account_id(kzd_devices:doc()) ->
-                            [fun((kz_json:object()) -> kz_json:object()),...].
+          [fun((kz_json:object()) -> kz_json:object()),...].
 set_account_id(_NewDeviceDoc) ->
     [fun(J) ->
              kz_json:set_value(<<"account_id">>, kz_doc:account_id(J), J)
@@ -512,7 +512,7 @@ set_account_id(_NewDeviceDoc) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_account_line_defaults(kzd_devices:doc()) ->
-                                       [fun((kz_json:object()) -> kz_json:object()),...].
+          [fun((kz_json:object()) -> kz_json:object()),...].
 set_account_line_defaults(NewDeviceDoc) ->
     Account = case kzd_accounts:fetch(kz_doc:id(NewDeviceDoc)) of
                   {'ok', AccountJObj} -> AccountJObj;
@@ -540,7 +540,7 @@ set_if_defined(Acc, JObj, Getter, SetPath) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_device_line_defaults(kzd_devices:doc()) ->
-                                      [fun((kz_json:object()) -> kz_json:object()),...].
+          [fun((kz_json:object()) -> kz_json:object()),...].
 set_device_line_defaults(Device) ->
     [fun(J) ->
              set_if_defined(J, Device, fun kzd_devices:sip_username/1, [<<"authname">>, <<"value">>])
@@ -564,7 +564,7 @@ set_device_line_defaults(Device) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_global_overrides(kzd_devices:doc()) ->
-                                  [fun((kz_json:object()) -> kz_json:object()),...].
+          [fun((kz_json:object()) -> kz_json:object()),...].
 set_global_overrides(_) ->
     GlobalDefaults = case kz_datamgr:open_cache_doc(?KZ_PROVISIONER_DB, <<"base_properties">>) of
                          {'ok', JObj} -> JObj;
@@ -581,7 +581,7 @@ set_global_overrides(_) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_account_overrides(kzd_devices:doc()) ->
-                                   [fun((kz_json:object()) -> kz_json:object()),...].
+          [fun((kz_json:object()) -> kz_json:object()),...].
 set_account_overrides(DeviceDoc) ->
     AccountJObj = case kzd_accounts:fetch(kz_doc:account_id(DeviceDoc)) of
                       {'ok', JObj} -> JObj;
@@ -598,7 +598,7 @@ set_account_overrides(DeviceDoc) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_user_overrides(kzd_devices:doc()) ->
-                                [fun((kz_json:object()) -> kz_json:object()),...].
+          [fun((kz_json:object()) -> kz_json:object()),...].
 set_user_overrides(DeviceDoc) ->
     set_user_overrides(DeviceDoc, kzd_devices:owner_id(DeviceDoc)).
 
@@ -620,7 +620,7 @@ set_user_overrides(_DeviceDoc, _OwnerId, {'ok', Owner}) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_device_overrides(kzd_devices:doc()) ->
-                                  [fun((kz_json:object()) -> kz_json:object()),...].
+          [fun((kz_json:object()) -> kz_json:object()),...].
 set_device_overrides(Device) ->
     case kz_json:get_json_value([<<"provision">>, <<"overrides">>], Device) of
         'undefined' -> [fun kz_term:identity/1];
@@ -719,8 +719,8 @@ sync_user(AccountId) ->
     end.
 
 -spec user_devices(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                          {'ok', kz_json:objects()} |
-                          kz_datamgr:data_error().
+          {'ok', kz_json:objects()} |
+          kz_datamgr:data_error().
 user_devices(AccountId, UserId) ->
     AccountDb = kz_util:format_account_db(AccountId),
 

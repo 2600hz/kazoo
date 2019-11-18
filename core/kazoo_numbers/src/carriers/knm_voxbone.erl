@@ -222,7 +222,7 @@ resolve_order_quantities([DidGroup | Rest], Remaining, #{total :=Total, order :=
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_reserve_did_qty(kz_term:api_pos_integer(), pos_integer()) ->
-                                   {non_neg_integer(), non_neg_integer()}.
+          {non_neg_integer(), non_neg_integer()}.
 maybe_reserve_did_qty('undefined', Need) -> {0, Need};
 maybe_reserve_did_qty(Available, Need) when Available < Need ->
     {Need - Available, Available};

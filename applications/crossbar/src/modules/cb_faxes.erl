@@ -180,7 +180,7 @@ maybe_add_types_accepted(Context, _) -> Context.
 %% @end
 %%------------------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, ?OUTBOX, ?MATCH_MODB_PREFIX(YYYY,MM,_) = FaxId, ?ATTACHMENT) ->
     Year  = kz_term:to_integer(YYYY),
     Month = kz_term:to_integer(MM),
@@ -199,7 +199,7 @@ content_types_provided(Context, _, _, _) ->
     Context.
 
 -spec content_types_provided_for_fax(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), http_method()) ->
-                                            cb_context:context().
+          cb_context:context().
 content_types_provided_for_fax(Context, FaxId, Folder, ?HTTP_GET) ->
     Context1 = load_fax_meta(FaxId, Folder, Context),
     case cb_context:resp_status(Context1) of
@@ -561,7 +561,7 @@ fax_modb_summary(Context, Folder) ->
     crossbar_view:load_modb(Context, ViewName, Options).
 
 -spec get_view_and_filter(cb_context:context(), {kz_term:api_ne_binary(), kz_term:api_ne_binary()}, kz_term:api_ne_binary()) ->
-                                 {kz_term:ne_binary(), crossbar_view:options()}.
+          {kz_term:ne_binary(), crossbar_view:options()}.
 get_view_and_filter(_, {?NE_BINARY=Id, <<"faxbox">>}, ?NE_BINARY=Folder) ->
     {?CB_LIST_BY_FAXBOX
     ,[{'range_keymap', [Id, Folder]}]

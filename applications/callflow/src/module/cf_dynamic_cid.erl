@@ -251,7 +251,7 @@ maybe_restrict_call(Data, Call, Number, Flow) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec should_restrict_call(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) ->
-                                  boolean().
+          boolean().
 should_restrict_call(Data, Call, Number) ->
     case kz_json:is_true(<<"enforce_call_restriction">>, Data, 'true') of
         'true' -> should_restrict_call(Call, Number);
@@ -279,8 +279,8 @@ should_restrict_call(Call, Number) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec collect_cid_number(kz_json:object(), kapps_call:call()) ->
-                                {'ok', kz_term:ne_binary()} |
-                                {'error', 'channel_hungup'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'channel_hungup'}.
 collect_cid_number(Data, Call) ->
     DynamicCID = #dynamic_cid{},
     Prompts = DynamicCID#dynamic_cid.prompts,
@@ -367,7 +367,7 @@ maybe_key_and_dest_using_data(Data, Call) ->
     end.
 
 -spec get_caller_id_from_entries(kapps_call:call(), kz_term:api_ne_binary(), key_dest()) ->
-                                        list_cid_entry().
+          list_cid_entry().
 get_caller_id_from_entries(_Call, 'undefined', _KeyDest) ->
     lager:warning("list id is missing"),
     {'error', 'not_found'};
@@ -382,7 +382,7 @@ get_caller_id_from_entries(Call, ListId, KeyDest) ->
     end.
 
 -spec get_new_caller_id(kapps_call:call(), kz_json:objects(), kz_term:ne_binary(), key_dest()) ->
-                               list_cid_entry().
+          list_cid_entry().
 get_new_caller_id(Call, [], _ListId, {_, Destination}) ->
     lager:warning("no entries were found in list ~p", [_ListId]),
     {CidName, CidNumber} = maybe_set_default_cid('undefined', 'undefined', Call),
@@ -405,7 +405,7 @@ get_new_caller_id(Call, [JObj | Entries], ListId, KeyDest) ->
     end.
 
 -spec get_entry_caller_id(kapps_call:call(), kz_json:object(), kz_term:ne_binary(), binary()) ->
-                                 cid_entry() | 'undefined'.
+          cid_entry() | 'undefined'.
 get_entry_caller_id(Call, Entry, CIDKey, Destination) ->
     case kz_json:get_ne_binary_value(<<"capture_group_key">>, Entry) of
         CIDKey ->
@@ -417,8 +417,8 @@ get_entry_caller_id(Call, Entry, CIDKey, Destination) ->
     end.
 
 -spec get_key_and_dest(kapps_call:call(), kz_json:object(), key_dest()) ->
-                              key_dest() |
-                              {'error', kz_term:ne_binary() | atom()}.
+          key_dest() |
+          {'error', kz_term:ne_binary() | atom()}.
 get_key_and_dest(_Call, _Entry, {CIDKey, _}=KeyDest) ->
     case not kz_term:is_ne_binary(CIDKey) of
         'true' -> KeyDest;
@@ -431,8 +431,8 @@ get_key_and_dest(Call, Entry, 'undefined') ->
     captured_key_and_destination(LengthDigits, CaptureGroup).
 
 -spec captured_key_and_destination(non_neg_integer(), kz_term:ne_binary()) ->
-                                          key_dest() |
-                                          {'error', 'not_found'}.
+          key_dest() |
+          {'error', 'not_found'}.
 captured_key_and_destination(LengthDigits, CaptureGroup) when byte_size(CaptureGroup) >= LengthDigits ->
     <<CIDKey:LengthDigits/binary, Destination/binary>> = CaptureGroup,
     {CIDKey, Destination};

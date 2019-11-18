@@ -20,8 +20,8 @@
 -include("teletype.hrl").
 
 -spec voicemail_to_email(kz_term:ne_binary()) -> 'ok' |
-                                                 {'ok', kz_json:objects()} |
-                                                 {'error', any()}.
+          {'ok', kz_json:objects()} |
+          {'error', any()}.
 voicemail_to_email(?NE_BINARY=AccountId) ->
     case find_vmboxes(AccountId) of
         [] -> lager:debug("no voicemail boxes in account ~s", [AccountId]);
@@ -39,9 +39,9 @@ find_vmboxes(?NE_BINARY=AccountId) ->
     end.
 
 -spec find_vmbox_messages(kz_term:ne_binary(), kz_json:objects()) ->
-                                 'ok' |
-                                 {'ok', kz_json:objects()} |
-                                 {'error', any()}.
+          'ok' |
+          {'ok', kz_json:objects()} |
+          {'error', any()}.
 find_vmbox_messages(_AccountId, []) ->
     lager:debug("no vmboxes had messages in ~p", [_AccountId]);
 find_vmbox_messages(AccountId, [Box|Boxes]) ->
@@ -52,17 +52,17 @@ find_vmbox_messages(AccountId, [Box|Boxes]) ->
     end.
 
 -spec voicemail_to_email(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                'ok' |
-                                {'ok', kz_json:objects()} |
-                                {'error', any()}.
+          'ok' |
+          {'ok', kz_json:objects()} |
+          {'error', any()}.
 voicemail_to_email(AccountId, ?NE_BINARY=VoicemailBoxId) ->
     AccountDb = kz_util:format_account_db(AccountId),
     {'ok', VMBox} = kz_datamgr:open_cache_doc(AccountDb, VoicemailBoxId),
     find_vmbox_messages(AccountId, [VMBox]).
 
 -spec voicemail_to_email(kz_term:ne_binary(), kz_json:object(), kz_json:objects()) ->
-                                {'ok', kz_json:objects()} |
-                                {'error', any()}.
+          {'ok', kz_json:objects()} |
+          {'error', any()}.
 voicemail_to_email(AccountId, VMBox,  [Message|_]) ->
     MediaId = kz_json:get_value(<<"media_id">>, Message),
     Length = kz_json:get_value(<<"length">>, Message),
@@ -129,7 +129,7 @@ voicemail_full(AccountId) ->
     end.
 
 -spec voicemail_full(kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object()) ->
-                            kz_amqp_worker:request_return().
+          kz_amqp_worker:request_return().
 voicemail_full(AccountId, ?NE_BINARY=BoxId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     {'ok', Box} = kz_datamgr:open_cache_doc(AccountDb, BoxId),
@@ -165,7 +165,7 @@ find_fax_with_attachment(AccountId, [Fax|Faxes]) ->
     end.
 
 -spec fax_inbound_to_email(kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object()) ->
-                                  kz_amqp_worker:request_return().
+          kz_amqp_worker:request_return().
 fax_inbound_to_email(AccountId, ?NE_BINARY=FaxId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     {'ok', Fax} = kz_datamgr:open_cache_doc(AccountDb, FaxId),

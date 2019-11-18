@@ -229,7 +229,7 @@ message_v(JObj) ->
     message_v(kz_json:to_proplist(JObj)).
 
 -spec message_endpoint_headers(kz_term:api_terms()) -> {'ok', kz_term:proplist()} |
-                                                       {'error', string()}.
+          {'error', string()}.
 message_endpoint_headers(Prop) when is_list(Prop) ->
     kz_api:build_message_specific_headers(Prop, ?SMS_REQ_ENDPOINT_HEADERS, ?OPTIONAL_SMS_REQ_ENDPOINT_HEADERS);
 message_endpoint_headers(JObj) ->
@@ -242,7 +242,7 @@ message_endpoint_v(JObj) ->
     message_endpoint_v(kz_json:to_proplist(JObj)).
 
 -spec delivery(kz_term:api_terms()) -> {'ok', iolist()} |
-                                       {'error', string()}.
+          {'error', string()}.
 delivery(Prop) when is_list(Prop) ->
     case delivery_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?DELIVERY_HEADERS, ?OPTIONAL_DELIVERY_HEADERS);
@@ -256,7 +256,7 @@ delivery_v(Prop) when is_list(Prop) ->
 delivery_v(JObj) -> delivery_v(kz_json:to_proplist(JObj)).
 
 -spec inbound(kz_term:api_terms()) -> {'ok', iolist()} |
-                                      {'error', string()}.
+          {'error', string()}.
 inbound(Prop) when is_list(Prop) ->
     case inbound_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?INBOUND_HEADERS, ?OPTIONAL_INBOUND_HEADERS);
@@ -270,7 +270,7 @@ inbound_v(Prop) when is_list(Prop) ->
 inbound_v(JObj) -> inbound_v(kz_json:to_proplist(JObj)).
 
 -spec outbound(kz_term:api_terms()) -> {'ok', iolist()} |
-                                       {'error', string()}.
+          {'error', string()}.
 outbound(Prop) when is_list(Prop) ->
     case outbound_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?OUTBOUND_HEADERS, ?OPTIONAL_OUTBOUND_HEADERS);
@@ -284,7 +284,7 @@ outbound_v(Prop) when is_list(Prop) ->
 outbound_v(JObj) -> outbound_v(kz_json:to_proplist(JObj)).
 
 -spec resume(kz_term:api_terms()) -> {'ok', iolist()} |
-                                     {'error', string()}.
+          {'error', string()}.
 resume(Prop) when is_list(Prop) ->
     case resume_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?RESUME_REQ_HEADERS, ?OPTIONAL_RESUME_REQ_HEADERS);

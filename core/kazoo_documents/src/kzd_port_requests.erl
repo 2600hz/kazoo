@@ -602,7 +602,7 @@ find_port_authority(Doc) ->
     end.
 
 -spec find_port_authority(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
-                                 kz_term:api_binary().
+          kz_term:api_binary().
 find_port_authority(MasterAccountId, SubmittedAccountId, 'undefined') ->
     lager:debug("account id is undefined, checking master"),
     find_port_authority(MasterAccountId, SubmittedAccountId, MasterAccountId);
@@ -614,7 +614,7 @@ find_port_authority(MasterAccountId, SubmittedAccountId, AccountId) ->
     find_port_authority(MasterAccountId, SubmittedAccountId, AccountId, WhiteAuthority).
 
 -spec find_port_authority(kz_term:api_ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
-                                 kz_term:api_binary().
+          kz_term:api_binary().
 find_port_authority(MasterAccountId, SubmittedAccountId, AccountId, 'undefined') ->
     ParentId = kzd_accounts:get_authoritative_parent_id(AccountId, MasterAccountId),
     lager:debug("no port authority key found for ~s, checking parent ~s", [AccountId, ParentId]),

@@ -83,7 +83,7 @@ maybe_handle_bridge_failure(Reason, Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_endpoints(kz_term:api_binary(), kz_json:object(), kapps_call:call()) ->
-                           kz_json:objects().
+          kz_json:objects().
 get_endpoints('undefined', _, _) -> [];
 get_endpoints(UserId, Data, Call) ->
     Params = kz_json:set_value(<<"source">>, kz_term:to_binary(?MODULE), Data),

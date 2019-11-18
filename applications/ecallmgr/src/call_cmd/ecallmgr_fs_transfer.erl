@@ -28,8 +28,8 @@
              ]).
 
 -spec attended(Node, kz_term:ne_binary(), kz_json:object()) ->
-                      attended_resp(Node)
-                          when Node :: atom().
+          attended_resp(Node)
+              when Node :: atom().
 attended(Node, UUID, JObj) ->
     TransferTo = kz_json:get_ne_binary_value(<<"Transfer-To">>, JObj),
     Realm = transfer_realm(UUID, JObj),
@@ -100,7 +100,7 @@ transfer_ccvs(JObj) ->
     kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()).
 
 -spec add_transfer_ccv_to_vars(kz_json:key(), kz_json:json_term(), kz_term:proplist()) ->
-                                      kz_term:proplist().
+          kz_term:proplist().
 add_transfer_ccv_to_vars(<<"Account-ID">>=K, V, Vars) -> [{K, V} | Vars];
 add_transfer_ccv_to_vars(<<"Authorizing-ID">>=K, V, Vars) -> [{K, V} | Vars];
 add_transfer_ccv_to_vars(<<"Authorizing-Type">>=K, V, Vars) -> [{K, V} | Vars];

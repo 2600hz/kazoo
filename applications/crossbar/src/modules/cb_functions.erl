@@ -62,14 +62,14 @@ init() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec authenticate(cb_context:context()) ->
-                          {'true', cb_context:context()} |
-                          'false'.
+          {'true', cb_context:context()} |
+          'false'.
 authenticate(Context) ->
     authenticate(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 -spec authenticate(cb_context:context(), http_method(), req_nouns()) ->
-                          {'true', cb_context:context()} |
-                          'false'.
+          {'true', cb_context:context()} |
+          'false'.
 authenticate(Context, ?HTTP_GET, [{<<"functions">>, []}]) ->
     {'true', Context};
 authenticate(Context, ?HTTP_GET, [{<<"functions">>, [?PATH_TOKEN_SAMPLES]}]) ->
@@ -283,7 +283,7 @@ delete_account(Account) ->
     end.
 
 -spec summary_available(cb_context:context()) ->
-                               cb_context:context().
+          cb_context:context().
 summary_available(Context) ->
     {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
     IsSuperAdmin = cb_context:is_superduper_admin(Context),
@@ -294,7 +294,7 @@ summary_available(Context) ->
     crossbar_view:load(cb_context:set_account_db(C1, MasterAccountDb), ?AVAILABLE_FUNCTIONS, Options).
 
 -spec normalize_available(cb_context:context(), kz_json:object(), kz_json:objects()) ->
-                                 kz_json:objects().
+          kz_json:objects().
 normalize_available(Context, JObj, Acc) ->
     maybe_filter_non_admin_hooks(Context, kz_doc:id(JObj), kz_json:get_json_value(<<"doc">>, JObj), Acc).
 

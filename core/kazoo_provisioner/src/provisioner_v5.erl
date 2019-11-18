@@ -175,7 +175,7 @@ save_user(AccountId, JObj, AuthToken) ->
                  ).
 
 -spec maybe_save_device(kzd_devices:doc(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               'ok' | {'EXIT', _}.
+          'ok' | {'EXIT', _}.
 maybe_save_device(Device, Settings, AccountId, AuthToken) ->
     Request = kz_json:from_list(
                 [{<<"brand">>, get_brand(Device)}
@@ -285,7 +285,7 @@ settings_basic(DeviceDoc) ->
     settings_basic(DeviceDoc, UserDoc, AccountDoc).
 
 -spec settings_basic(kzd_devices:doc(), kzd_users:doc(), kzd_accounts:doc()) ->
-                            kz_json:object().
+          kz_json:object().
 settings_basic(DeviceDoc, UserDoc, AccountDoc) ->
     IsEnabled = is_device_enabled(DeviceDoc, UserDoc, AccountDoc),
     DisplayName = device_display_name(DeviceDoc, UserDoc, AccountDoc),
@@ -296,7 +296,7 @@ settings_basic(DeviceDoc, UserDoc, AccountDoc) ->
     kz_json:from_list(Props).
 
 -spec device_display_name(kzd_devices:doc(), kzd_users:doc(), kzd_accounts:doc()) ->
-                                 kz_term:api_ne_binary().
+          kz_term:api_ne_binary().
 device_display_name(DeviceDoc, UserDoc, AccountDoc) ->
     case [DN || DN <- [kzd_devices:name(DeviceDoc)
                       ,kzd_users:name(UserDoc)
@@ -316,7 +316,7 @@ is_empty_display_name('undefined') -> 'true';
 is_empty_display_name(_DN) -> 'false'.
 
 -spec is_device_enabled(kzd_devices:doc(), kzd_users:doc(), kzd_accounts:doc()) ->
-                               boolean().
+          boolean().
 is_device_enabled(DeviceDoc, UserDoc, AccountDoc) ->
     lists:all(fun kz_term:is_true/1
              ,[kzd_devices:enabled(DeviceDoc)
@@ -325,20 +325,20 @@ is_device_enabled(DeviceDoc, UserDoc, AccountDoc) ->
               ]).
 
 -spec fetch_account_from_device(kzd_devices:doc()) ->
-                                       {'ok', kzd_accounts:doc()} |
-                                       kz_datamgr:data_error().
+          {'ok', kzd_accounts:doc()} |
+          kz_datamgr:data_error().
 fetch_account_from_device(DeviceDoc) ->
     kzd_accounts:fetch(kz_doc:account_id(DeviceDoc)).
 
 -spec fetch_user_from_device(kzd_devices:doc()) ->
-                                    {'ok', kzd_users:doc()} |
-                                    kz_datamgr:data_error().
+          {'ok', kzd_users:doc()} |
+          kz_datamgr:data_error().
 fetch_user_from_device(DeviceDoc) ->
     fetch_user_from_device(DeviceDoc, kzd_devices:owner_id(DeviceDoc)).
 
 -spec fetch_user_from_device(kzd_devices:doc(), kz_term:api_ne_binary()) ->
-                                    {'ok', kzd_users:doc()} |
-                                    kz_datamgr:data_error().
+          {'ok', kzd_users:doc()} |
+          kz_datamgr:data_error().
 fetch_user_from_device(_DeviceDoc, 'undefined') ->
     {'ok', kzd_users:new()};
 fetch_user_from_device(DeviceDoc, OwnerId) ->
@@ -496,8 +496,8 @@ get_feature_key_type(Assoc, Type, Brand, Family) ->
                              ).
 
 -spec get_user(kz_term:ne_binary(), kz_term:ne_binary(), binary()) ->
-                      {kz_term:ne_binary(), kz_term:api_ne_binary()} |
-                      'undefined'.
+          {kz_term:ne_binary(), kz_term:api_ne_binary()} |
+          'undefined'.
 get_user(AccountId, ?NE_BINARY = UserId, PrefixLabel) ->
     {'ok', UserJObj} = kzd_users:fetch(AccountId, UserId),
 
@@ -523,8 +523,8 @@ get_user(AccountId, JObj, PrefixLabel) ->
     end.
 
 -spec get_user(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), binary()) ->
-                      {kz_term:ne_binary(), kz_term:api_ne_binary()} |
-                      'undefined'.
+          {kz_term:ne_binary(), kz_term:api_ne_binary()} |
+          'undefined'.
 get_user(_AccountId, _CustomLabel, 'undefined', _PrefixLabel) ->
     'undefined';
 get_user(AccountId, CustomLabel, UserId, PrefixLabel) ->
@@ -541,8 +541,8 @@ get_user(AccountId, CustomLabel, UserId, PrefixLabel) ->
     end.
 
 -spec get_label_value(kz_term:ne_binary() | kz_json:object() | pos_integer(), binary()) ->
-                             {kz_term:ne_binary(), kz_term:ne_binary()} |
-                             'undefined'.
+          {kz_term:ne_binary(), kz_term:ne_binary()} |
+          'undefined'.
 get_label_value(Value, PrefixLabel) when is_integer(Value) ->
     get_label_value(kz_term:to_binary(Value), PrefixLabel);
 get_label_value(?NE_BINARY = Value, PrefixLabel) ->

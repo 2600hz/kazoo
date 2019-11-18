@@ -15,8 +15,8 @@
 -include("kzt.hrl").
 
 -spec exec(kapps_call:call(), kz_types:xml_els() | kz_types:xml_texts(), kz_types:xml_attribs()) ->
-                  {'ok', kapps_call:call()} |
-                  {'error', _, kapps_call:call()}.
+          {'ok', kapps_call:call()} |
+          {'error', _, kapps_call:call()}.
 exec(Call, XmlText, Attrs) ->
     kapps_call_command:answer(Call),
     SayMe = kz_xml:texts_to_binary(XmlText, kapps_config:get_integer(<<"pivot">>, <<"tts_texts_size">>, ?TTS_SIZE_LIMIT)),

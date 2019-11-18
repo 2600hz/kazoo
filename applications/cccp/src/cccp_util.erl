@@ -69,9 +69,9 @@ handle_disconnect_cause(JObj, Call) ->
     end.
 
 -spec authorize(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                       {'ok', kz_json:object()} |
-                       'empty' |
-                       'error'.
+          {'ok', kz_json:object()} |
+          'empty' |
+          'error'.
 authorize(Value, View) ->
     ViewOptions = [{'key', Value}],
     case kz_datamgr:get_results(?KZ_CCCPS_DB, View, ViewOptions) of
@@ -83,14 +83,14 @@ authorize(Value, View) ->
     end.
 
 -spec get_number(kapps_call:call()) ->
-                        {'num_to_dial', kz_term:ne_binary()} |
-                        'ok'.
+          {'num_to_dial', kz_term:ne_binary()} |
+          'ok'.
 get_number(Call) ->
     get_number(Call, 3).
 
 -spec get_number(kapps_call:call(), integer()) ->
-                        {'num_to_dial', kz_term:ne_binary()} |
-                        'ok'.
+          {'num_to_dial', kz_term:ne_binary()} |
+          'ok'.
 get_number(Call, 0) ->
     lager:info("run out of attempts amount... hanging up"),
     _ = kapps_call_command:prompt(<<"hotdesk-invalid_entry">>, Call),
@@ -121,8 +121,8 @@ verify_entered_number(EnteredNumber, Call, Retries) ->
     end.
 
 -spec get_last_dialed_number(kapps_call:call()) ->
-                                    {'num_to_dial', kz_term:ne_binary()} |
-                                    'ok'.
+          {'num_to_dial', kz_term:ne_binary()} |
+          'ok'.
 get_last_dialed_number(Call) ->
     DocId = kapps_call:kvs_fetch('auth_doc_id', Call),
     {'ok', Doc} = kz_datamgr:open_doc(?KZ_CCCPS_DB, DocId),
@@ -146,8 +146,8 @@ store_last_dialed(Number, DocId) ->
     'ok'.
 
 -spec check_restrictions(kz_term:ne_binary(), kapps_call:call()) ->
-                                {'num_to_dial', kz_term:ne_binary()} |
-                                'ok'.
+          {'num_to_dial', kz_term:ne_binary()} |
+          'ok'.
 check_restrictions(Number, Call) ->
     DocId = kapps_call:kvs_fetch('auth_doc_id', Call),
     {'ok', Doc} = kz_datamgr:open_doc(?KZ_CCCPS_DB, DocId),
@@ -171,8 +171,8 @@ is_number_restricted(Number, DocId, AccountDb) ->
     end.
 
 -spec is_user_restricted(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) ->
-                                {'num_to_dial', kz_term:ne_binary()} |
-                                'ok'.
+          {'num_to_dial', kz_term:ne_binary()} |
+          'ok'.
 is_user_restricted(Number, UserId, AccountDb, Call) ->
     case is_number_restricted(Number, UserId, AccountDb) of
         'true' ->
@@ -248,7 +248,7 @@ bridge(CallId, ToDID, AuthorizingId, CtrlQ, AccountId, RetainCID, RetainName, Re
     kapi_resource:publish_originate_req(Req).
 
 -spec compose_cid(kz_term:ne_binary(), kz_term:ne_binary(), binary(), binary(), kz_term:ne_binary()) ->
-                         {kz_term:api_binary(), kz_term:api_binary()}.
+          {kz_term:api_binary(), kz_term:api_binary()}.
 compose_cid(ToDID, RetainCID, RetainNumber, RetainName, AccountId) ->
     case RetainCID of
         <<"true">> ->
@@ -258,7 +258,7 @@ compose_cid(ToDID, RetainCID, RetainNumber, RetainName, AccountId) ->
     end.
 
 -spec maybe_outbound_call(kz_term:ne_binary(), binary(), binary(), kz_term:ne_binary()) ->
-                                 {binary(), binary()}.
+          {binary(), binary()}.
 maybe_outbound_call(ToDID, RetainNumber, RetainName, AccountId) ->
     case knm_converters:is_reconcilable(ToDID) of
         'false' -> {RetainNumber, RetainName};

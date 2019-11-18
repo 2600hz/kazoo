@@ -79,7 +79,7 @@ handle(Data, Call) ->
     end.
 
 -spec nomorobo_score(kz_json:object(), kapps_call:call()) ->
-                            kz_term:api_integer().
+          kz_term:api_integer().
 nomorobo_score(Data, Call) ->
     URI = nomorobo_uri(Call),
 

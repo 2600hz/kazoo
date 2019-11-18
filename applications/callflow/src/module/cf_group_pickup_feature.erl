@@ -85,8 +85,8 @@ handle(Data, Call) ->
     end.
 
 -spec build_pickup_params(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) ->
-                                 {'ok', kz_term:proplist()} |
-                                 {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:proplist()} |
+          {'error', kz_term:ne_binary()}.
 build_pickup_params(Number, <<"device">>, Call) ->
     AccountDb = kapps_call:account_db(Call),
     case cf_util:endpoint_id_by_sip_username(AccountDb, Number) of
@@ -113,8 +113,8 @@ build_pickup_params(_, Other, _) ->
     {'error', <<Other/binary," not implemented">>}.
 
 -spec params_from_data(kz_term:api_ne_binary(), kz_json:object(), kz_term:api_object()) ->
-                              {'ok', kz_term:proplist()} |
-                              {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:proplist()} |
+          {'error', kz_term:ne_binary()}.
 params_from_data(_, _, 'undefined') ->
     {'error',<<"callflow not defined">>};
 params_from_data(<<"user">>, Data, _Flow) ->

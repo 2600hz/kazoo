@@ -72,7 +72,7 @@ allow_no_match_type(Call) ->
     end.
 
 -spec maybe_reply_to_req(kz_json:object(), kz_term:proplist(), kapps_call:call(), kz_json:object(), boolean()) ->
-                                'ok'.
+          'ok'.
 maybe_reply_to_req(JObj, Props, Call, Flow, NoMatch) ->
     lager:info("callflow ~s in ~s satisfies request"
               ,[kz_doc:id(Flow), kapps_call:account_id(Call)]),

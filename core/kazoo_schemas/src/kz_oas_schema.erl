@@ -84,12 +84,12 @@ print_messages([Msg | Msgs]) ->
     print_messages(Msgs).
 
 -spec process_schema(file:filename_all(), kz_json:object(), kz_term:ne_binary(), map(), boolean()) ->
-                            {kz_json:object(), map(), boolean()}.
+          {kz_json:object(), map(), boolean()}.
 process_schema(Filename, Definitions, OasVersion, Warn, Err) ->
     process_schema(Filename, Definitions, OasVersion, filename:basename(Filename, ".json"), Warn, Err).
 
 -spec process_schema(file:filename_all(), kz_json:object(), kz_term:ne_binary(), string(), map(), boolean()) ->
-                            {kz_json:object(), map(), boolean()}.
+          {kz_json:object(), map(), boolean()}.
 process_schema(_Filename, Definitions, <<"oas3">>, "kapi."++_ = Name, Report, HasError) ->
     {kz_json:delete_key(kz_term:to_binary(Name), Definitions), Report, HasError};
 process_schema(Filename, Definitions, OasVersion, Name, Report, HasError) ->
@@ -122,8 +122,8 @@ convert(File, OasVersion) ->
     end.
 
 -spec to_oas_schema(kz_json:flat_proplist(), kz_term:ne_binary()) ->
-                           {'ok', kz_json:flat_proplist(), kz_term:ne_binaries()} |
-                           {'error', kz_term:ne_binaries(), kz_term:ne_binaries()}.
+          {'ok', kz_json:flat_proplist(), kz_term:ne_binaries()} |
+          {'error', kz_term:ne_binaries(), kz_term:ne_binaries()}.
 to_oas_schema(KVs, <<"swagger2">>) ->
     {'ok'
     ,[case lists:last(Path) =:= <<"$ref">> of
@@ -371,12 +371,12 @@ to_oas3_type(OrigP, [P | Ps], ReverseP, Val, KVs, OrigKVs, Warn, Err) ->
     end.
 
 -spec oas3_type_type(kz_term:ne_binaries(), kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:proplist()) ->
-                            'array' |
-                            'binary' |
-                            'missing_items' |
-                            'null' |
-                            'null_in_array' |
-                            'undefined'.
+          'array' |
+          'binary' |
+          'missing_items' |
+          'null' |
+          'null_in_array' |
+          'undefined'.
 oas3_type_type(Path, Value, KVs) when is_list(Value) ->
     HasArray = lists:member(<<"array">>, Value),
     case lists:any(fun(Null) -> lists:member(Null, Value) end, ['null', <<"null">>])

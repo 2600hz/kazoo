@@ -181,13 +181,13 @@ validate_delete_rate_limits(Context, ThingId) ->
     end.
 
 -spec validate_set_rate_limits(cb_context:context()) ->
-                                      cb_context:context().
+          cb_context:context().
 validate_set_rate_limits(Context) ->
     lager:debug("rate limits data is valid, setting on thing"),
     validate_set_rate_limits(Context, thing_id(Context)).
 
 -spec validate_set_rate_limits(cb_context:context(), kz_term:api_binary()) ->
-                                      cb_context:context().
+          cb_context:context().
 validate_set_rate_limits(Context, 'undefined') ->
     lager:debug("no thing found"),
     crossbar_util:response_faulty_request(Context);

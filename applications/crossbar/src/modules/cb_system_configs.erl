@@ -158,7 +158,7 @@ validate_document(Context, Id, ?HTTP_DELETE) ->
     read_for_delete(Id, Context).
 
 -spec validate_document_request(cb_context:context(), path_token(), kz_json:object()) ->
-                                       cb_context:context().
+          cb_context:context().
 validate_document_request(Context, Id, FullConfig) ->
     cb_context:validate_request_data(kapps_config_util:system_config_document_schema(Id)
                                     ,cb_context:set_req_data(Context, FullConfig)
@@ -248,18 +248,18 @@ patch(Context, Id, Node) ->
 %%------------------------------------------------------------------------------
 
 -spec delete(cb_context:context(), path_token()) ->
-                    cb_context:context().
+          cb_context:context().
 delete(Context, _Id) ->
     _ = crossbar_doc:delete(Context, ?HARD_DELETE),
     Context.
 
 -spec delete(cb_context:context(), path_token(), path_token()) ->
-                    cb_context:context().
+          cb_context:context().
 delete(Context, Id, Node) ->
     delete(Context, Id, Node, cb_context:doc(Context)).
 
 -spec delete(cb_context:context(), path_token(), path_token(), kz_term:api_object() | kz_json:objects()) ->
-                    cb_context:context().
+          cb_context:context().
 delete(Context, Id, _Node, 'undefined') ->
     crossbar_util:response_bad_identifier(Id, Context);
 delete(Context, Id, Node, Doc) ->

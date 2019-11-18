@@ -102,7 +102,7 @@ load(Schema) -> load(kz_term:to_binary(Schema)).
 -endif.
 
 -spec fload(kz_term:ne_binary() | string()) -> {'ok', kz_json:object()} |
-                                               {'error', 'not_found' | file:posix()}.
+          {'error', 'not_found' | file:posix()}.
 fload(<<"./", Schema/binary>>) -> fload(Schema);
 fload(<<"file://", Schema/binary>>) -> fload(Schema);
 fload(<<_/binary>> = Schema) ->
@@ -113,8 +113,8 @@ fload(<<_/binary>> = Schema) ->
 fload(Schema) -> fload(kz_term:to_binary(Schema)).
 
 -spec find_and_fload(kz_term:ne_binary()) ->
-                            {'ok', kz_json:object()} |
-                            {'error', 'not_found' | file:posix()}.
+          {'ok', kz_json:object()} |
+          {'error', 'not_found' | file:posix()}.
 find_and_fload(Schema) ->
     PrivDir = code:priv_dir('crossbar'),
     SchemaPath = filename:join([PrivDir, "couchdb", "schemas", maybe_add_ext(Schema)]),
@@ -124,7 +124,7 @@ find_and_fload(Schema) ->
     end.
 
 -spec fload_file(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
-                                         {'error', 'not_found' | file:posix()}.
+          {'error', 'not_found' | file:posix()}.
 fload_file(SchemaPath) ->
     Schema = filename:basename(SchemaPath, ".json"),
     case file:read_file(SchemaPath) of
@@ -162,13 +162,13 @@ diff_schema(Filename) ->
     'ok'.
 
 -spec diff_schema(file:filename_all(), Verbosity) ->
-                         Verbosity when Verbosity :: diff_verbosity().
+          Verbosity when Verbosity :: diff_verbosity().
 diff_schema(Filename, Verbosity) ->
     SchemaName = filename:basename(Filename, ".json"),
     diff_schema(Filename, Verbosity, SchemaName, load(SchemaName)).
 
 -spec diff_schema(file:filename_all(), Verbosity, kz_term:ne_binary(), load_return()) ->
-                         Verbosity when Verbosity :: diff_verbosity().
+          Verbosity when Verbosity :: diff_verbosity().
 diff_schema(Filename, Verbosity, SchemaName, {'ok', Schema}) ->
     {'ok', File} = fload(Filename),
 
@@ -250,8 +250,8 @@ add_defaults(JObj, SchemaJObj) ->
     end.
 
 -spec validate(kz_term:ne_binary() | kz_json:object(), kz_json:object()) ->
-                      {'ok', kz_json:object()} |
-                      jesse_error:error().
+          {'ok', kz_json:object()} |
+          jesse_error:error().
 validate(SchemaJObj, DataJObj) ->
     validate(SchemaJObj, DataJObj, ?DEFAULT_OPTIONS).
 
@@ -262,8 +262,8 @@ validate(SchemaJObj, DataJObj) ->
 -endif.
 
 -spec validate(kz_term:ne_binary() | kz_json:object(), kz_json:object(), jesse_options()) ->
-                      {'ok', kz_json:object()} |
-                      jesse_error:error().
+          {'ok', kz_json:object()} |
+          jesse_error:error().
 validate(<<_/binary>> = Schema, DataJObj, Options) ->
     Fun = props:get_value('schema_loader_fun', Options, ?DEFAULT_LOADER),
     {'ok', SchemaJObj} = Fun(Schema),
@@ -282,22 +282,22 @@ validate(SchemaJObj, DataJObj, Options0) when is_list(Options0) ->
 -type validation_errors() :: [validation_error()].
 
 -spec errors_to_jobj([jesse_error:error_reason()]) ->
-                            validation_errors().
+          validation_errors().
 errors_to_jobj(Errors) ->
     errors_to_jobj(Errors, [{'version', ?CURRENT_VERSION}]).
 
 -spec errors_to_jobj([jesse_error:error_reason()], options()) ->
-                            validation_errors().
+          validation_errors().
 errors_to_jobj(Errors, Options) ->
     [error_to_jobj(Error, Options) || Error <- Errors].
 
 -spec error_to_jobj(jesse_error:error_reason()) ->
-                           validation_error().
+          validation_error().
 error_to_jobj(Error) ->
     error_to_jobj(Error, [{'version', ?CURRENT_VERSION}]).
 
 -spec error_to_jobj(jesse_error:error_reason(), options()) ->
-                           validation_error().
+          validation_error().
 error_to_jobj({'data_invalid'
               ,_FailedSchemaJObj
               ,{'external_error', Message}
@@ -821,7 +821,7 @@ error_to_jobj(Other, _Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec validation_error(kz_json:path(), kz_term:ne_binary(), kz_json:object(), options()) ->
-                              validation_error().
+          validation_error().
 validation_error(Property, <<"type">>=C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, <<"items">>=C, Message, Options) ->
@@ -892,7 +892,7 @@ validation_error(Property, Code, Message, Options) ->
     depreciated_validation_error(Property, Code, Message, Options).
 
 -spec depreciated_validation_error(kz_json:path(), kz_term:ne_binary(), kz_json:object(), options()) ->
-                                          validation_error().
+          validation_error().
 depreciated_validation_error(<<"account">>, <<"expired">>, Message, Options) ->
     build_validate_error([<<"account">>]
                         ,<<"expired">>
@@ -928,7 +928,7 @@ set_default_options(Options) ->
                     ).
 
 -spec build_validate_error(kz_json:path(), kz_term:ne_binary(), kz_json:object(), options()) ->
-                                  validation_error().
+          validation_error().
 build_validate_error(Property, Code, Message, Options) ->
     %% Maintain the same error format we are currently using until we are ready to
     %% convert to something that makes sense....
@@ -1054,8 +1054,8 @@ fix_el(I) when is_integer(I) -> I+1;
 fix_el(El) -> El.
 
 -spec fix_js_types(kz_json:object(), [jesse_error:error_reason()]) ->
-                          {'true', kz_json:object()} |
-                          'false'.
+          {'true', kz_json:object()} |
+          'false'.
 fix_js_types(JObj, ValidationErrors) ->
     case lists:foldl(fun maybe_fix_js_type/2, {'false', JObj}, ValidationErrors) of
         {'false', _} -> 'false';
@@ -1063,7 +1063,7 @@ fix_js_types(JObj, ValidationErrors) ->
     end.
 
 -spec maybe_fix_js_type(validation_error(), {boolean(), kz_json:object()}) ->
-                               {boolean(), kz_json:object()}.
+          {boolean(), kz_json:object()}.
 maybe_fix_js_type({'data_invalid', SchemaJObj, 'wrong_type', Value, Key}, {WasFixed, JObj}) ->
     case kz_json:get_value(<<"type">>, SchemaJObj) of
         <<"integer">> -> maybe_fix_js_integer(Key, Value, WasFixed, JObj);
@@ -1074,7 +1074,7 @@ maybe_fix_js_type({'data_invalid', SchemaJObj, 'wrong_type', Value, Key}, {WasFi
 maybe_fix_js_type(_, Acc) -> Acc.
 
 -spec maybe_fix_js_integer(kz_json:get_key(), kz_json:json_term(), boolean(), kz_json:object()) ->
-                                  {boolean(), kz_json:object()}.
+          {boolean(), kz_json:object()}.
 maybe_fix_js_integer(Key, Value, WasFixed, JObj) ->
     try kz_term:to_integer(Value) of
         V ->
@@ -1086,7 +1086,7 @@ maybe_fix_js_integer(Key, Value, WasFixed, JObj) ->
     end.
 
 -spec maybe_fix_js_boolean(kz_json:get_key(), kz_json:json_term(), boolean(), kz_json:object()) ->
-                                  {boolean(), kz_json:object()}.
+          {boolean(), kz_json:object()}.
 maybe_fix_js_boolean(Key, Value, WasFixed, JObj) ->
     try kz_term:to_boolean(Value) of
         V ->
@@ -1098,7 +1098,7 @@ maybe_fix_js_boolean(Key, Value, WasFixed, JObj) ->
     end.
 
 -spec maybe_fix_js_number(kz_json:get_key(), kz_json:json_term(), boolean(), kz_json:object()) ->
-                                 {boolean(), kz_json:object()}.
+          {boolean(), kz_json:object()}.
 maybe_fix_js_number(Key, Value, WasFixed, JObj) ->
     try kz_term:to_number(Value) of
         V -> {'true', kz_json:set_value(maybe_fix_index(Key), V, JObj)}

@@ -335,7 +335,7 @@ rate_for_number(Phonenumber, Context) ->
     end.
 
 -spec maybe_handle_rate(kz_term:ne_binary(), cb_context:context(), kz_json:object()) ->
-                               cb_context:context().
+          cb_context:context().
 maybe_handle_rate(Phonenumber, Context, Rate) ->
     case kz_json:get_value(<<"Base-Cost">>, Rate) of
         'undefined' ->
@@ -364,7 +364,7 @@ normalize_fields(Rate) ->
     kz_json:map(fun normalize_field/2, Rate).
 
 -spec normalize_field(kz_json:path(), kz_json:json_term()) ->
-                             {kz_json:path(), kz_json:json_term()}.
+          {kz_json:path(), kz_json:json_term()}.
 normalize_field(<<"Base-Cost">> = K, BaseCost) ->
     {K, kz_currency:units_to_dollars(BaseCost)};
 normalize_field(K, V) ->

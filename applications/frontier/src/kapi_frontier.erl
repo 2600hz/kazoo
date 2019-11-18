@@ -130,8 +130,8 @@ unbind_q(Q, _Props) ->
     kz_amqp_util:unbind_q_from_exchange(Q, ?ROUTE_KEY, ?FRONTIER_EXCHANGE).
 
 -spec flush(kz_term:api_terms()) ->
-                   {'ok', iolist()} |
-                   {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 flush(Prop) when is_list(Prop) ->
     case flush_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?ACL_FLUSH_HEADERS, ?OPTIONAL_ACL_FLUSH_HEADERS);

@@ -295,7 +295,7 @@ build_number(Number) ->
     end.
 
 -spec parse_number(kz_term:ne_binary(), {kz_term:api_binary(), kz_term:proplist()}) ->
-                          {kz_term:api_binary(), kz_term:proplist()}.
+          {kz_term:api_binary(), kz_term:proplist()}.
 parse_number(<<"TON=", N/binary>>, {Num, Options}) ->
     {Num, [{<<"TON">>, kz_term:to_integer(N) } | Options]};
 parse_number(<<"NPI=", N/binary>>, {Num, Options}) ->

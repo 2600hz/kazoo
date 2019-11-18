@@ -52,7 +52,7 @@ maybe_handle_bridge_failure(Reason, Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec bridge_to_endpoints(kz_json:object(), kapps_call:call()) ->
-                                 cf_api_bridge_return().
+          cf_api_bridge_return().
 bridge_to_endpoints(Data, Call) ->
     EndpointId = kz_json:get_ne_binary_value(<<"id">>, Data),
     Params = kz_json:set_value(<<"source">>, kz_term:to_binary(?MODULE), Data),

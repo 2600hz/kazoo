@@ -146,7 +146,7 @@ create_extensions([Exten|Extens], Iteration, Context, {PassAcc, FailAcc}) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec create_account(kz_json:object(), cb_context:context(), {kz_term:proplist(), kz_json:object()}) ->
-                            {kz_term:proplist(), kz_json:object()}.
+          {kz_term:proplist(), kz_json:object()}.
 create_account(JObj, Context, {Pass, Fail}) ->
     Account = kz_json:get_value(<<"account">>, JObj, kz_json:new()),
     Generators = [fun(J) -> kz_doc:set_id(J, kz_datamgr:get_uuid()) end
@@ -169,7 +169,7 @@ create_account(JObj, Context, {Pass, Fail}) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec create_phone_numbers(kz_json:object(), cb_context:context(), {kz_term:proplist(), kz_json:object()}) ->
-                                  {kz_term:proplist(), kz_json:object()}.
+          {kz_term:proplist(), kz_json:object()}.
 create_phone_numbers(JObj, Context, Results) ->
     PhoneNumbers = kz_json:get_value(<<"phone_numbers">>, JObj),
     lists:foldr(fun(Number, R) ->
@@ -586,7 +586,7 @@ notfy_new_account(JObj) ->
     kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_new_account/1).
 
 -spec generate_username(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
-                               kz_term:ne_binary().
+          kz_term:ne_binary().
 generate_username('undefined', 'undefined', _) ->
     kz_binary:rand_hex(3);
 generate_username('undefined', _, 'undefined') ->

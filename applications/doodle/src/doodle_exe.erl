@@ -205,13 +205,13 @@ get_all_branch_keys(Call) ->
     get_all_branch_keys(Srv).
 
 -spec attempt(kapps_call:call() | pid()) ->
-                     {'attempt_resp', 'ok'} |
-                     {'attempt_resp', {'error', any()}}.
+          {'attempt_resp', 'ok'} |
+          {'attempt_resp', {'error', any()}}.
 attempt(Srv) -> attempt(<<"_">>, Srv).
 
 -spec attempt(kz_json:key(), kapps_call:call() | pid()) ->
-                     {'attempt_resp', 'ok'} |
-                     {'attempt_resp', {'error', any()}}.
+          {'attempt_resp', 'ok'} |
+          {'attempt_resp', {'error', any()}}.
 attempt(Key, Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'attempt', Key});
 attempt(Key, Call) ->
@@ -583,7 +583,7 @@ cf_module_prefix(_Call, <<"sms">>) -> <<"cf_sms_">>;
 cf_module_prefix(_Call, _) -> <<"cf_">>.
 
 -spec maybe_start_cf_module(kz_term:ne_binary(), kz_term:proplist(), kapps_call:call()) ->
-                                   {kz_term:pid_ref() | 'undefined', atom()}.
+          {kz_term:pid_ref() | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = kz_term:to_atom(ModuleBin, 'true'),
     case kz_module:is_exported(CFModule, 'handle', 2) of
@@ -595,7 +595,7 @@ maybe_start_cf_module(ModuleBin, Data, Call) ->
     end.
 
 -spec cf_module_skip(CFModule, kapps_call:call()) ->
-                            {'undefined', CFModule}.
+          {'undefined', CFModule}.
 cf_module_skip(CFModule, _Call) ->
     lager:info("unknown textflow action '~s', skipping to next action", [CFModule]),
     continue(self()),
@@ -607,7 +607,7 @@ cf_module_skip(CFModule, _Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec spawn_cf_module(CFModule, list(), kapps_call:call()) ->
-                             {kz_term:pid_ref(), CFModule}.
+          {kz_term:pid_ref(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
     AMQPConsumer = kz_amqp_channel:consumer_pid(),
     {kz_process:spawn_monitor(fun cf_module_task/4, [CFModule, Data, Call, AMQPConsumer])

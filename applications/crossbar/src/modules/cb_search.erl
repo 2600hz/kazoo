@@ -132,7 +132,7 @@ validate_search(Context, Type) ->
     validate_search(Context, Type, cb_context:req_value(Context, <<"q">>)).
 
 -spec validate_search(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                             cb_context:context().
+          cb_context:context().
 validate_search(Context, _Type, 'undefined') ->
     lager:debug("'q' required"),
     NeedViewMsg = kz_json:from_list([{<<"message">>, <<"search needs a view to search in">>}
@@ -149,7 +149,7 @@ validate_search(Context, Type, Query) ->
     end.
 
 -spec validate_search(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                             cb_context:context().
+          cb_context:context().
 validate_search(Context, _Type, _Query, 'undefined') ->
     Message = kz_json:from_list([{<<"message">>, <<"search needs a value to search for">>}]),
     cb_context:add_validation_error(<<"v">>, <<"required">>, Message, Context);

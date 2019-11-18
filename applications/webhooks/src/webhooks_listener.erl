@@ -125,8 +125,8 @@ find_and_remove_hook(JObj, Srv) ->
     gen_listener:cast(Srv, {'remove_hook', webhooks_util:hook_id(JObj)}).
 
 -spec find_hook(kz_json:object()) ->
-                       {'ok', kzd_webhooks:doc()} |
-                       {'error', any()}.
+          {'ok', kzd_webhooks:doc()} |
+          {'error', any()}.
 find_hook(JObj) ->
     kz_datamgr:open_cache_doc(?KZ_WEBHOOKS_DB, kapi_conf:get_id(JObj)).
 

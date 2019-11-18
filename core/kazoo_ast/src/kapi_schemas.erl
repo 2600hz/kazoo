@@ -125,8 +125,8 @@ process_module(KapiModule) ->
     Schemas.
 
 -spec print_dot(kz_term:ne_binary() | module(), acc()) ->
-                       acc() |
-                       {'skip', acc()}.
+          acc() |
+          {'skip', acc()}.
 print_dot(<<"kapi_fs">>, #acc{}=Acc) ->
     {'skip', Acc};
 print_dot(<<"kapi_schemas">>, #acc{}=Acc) ->

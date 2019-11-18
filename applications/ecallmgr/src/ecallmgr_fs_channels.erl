@@ -576,8 +576,8 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_by_auth_id(kz_term:ne_binary()) ->
-                             {'ok', kz_json:objects()} |
-                             {'error', 'not_found'}.
+          {'ok', kz_json:objects()} |
+          {'error', 'not_found'}.
 find_by_auth_id(AuthorizingId) ->
     MatchSpec = [{#channel{authorizing_id = '$1', _ = '_'}
                  ,[{'=:=', '$1', {'const', AuthorizingId}}]
@@ -672,8 +672,8 @@ find_by_user_realm(Username, Realm) ->
     end.
 
 -spec find_account_channels(kz_term:ne_binary()) ->
-                                   {'ok', kz_json:objects()} |
-                                   {'error', 'not_found'}.
+          {'ok', kz_json:objects()} |
+          {'error', 'not_found'}.
 find_account_channels(<<"all">>) ->
     case ets:match_object(?CHANNELS_TBL, #channel{_='_'}) of
         [] -> {'error', 'not_found'};
@@ -715,7 +715,7 @@ query_channels(Fields, CallId) ->
                   ).
 
 -spec query_channels({[channel()], ets:continuation()} | '$end_of_table', kz_term:ne_binary() | kz_term:ne_binaries(), kz_json:object()) ->
-                            kz_json:object().
+          kz_json:object().
 query_channels('$end_of_table', _, Channels) -> Channels;
 query_channels({[#channel{uuid=CallId}=Channel], Continuation}
               ,<<"all">>, Channels) ->
@@ -844,14 +844,14 @@ max_channel_uptime() ->
     kapps_config:get_integer(?APP_NAME, ?MAX_CHANNEL_UPTIME_KEY, 0).
 
 -spec set_max_channel_uptime(non_neg_integer()) ->
-                                    {'ok', kz_json:object()} |
-                                    {'error', kz_datamgr:data_error()}.
+          {'ok', kz_json:object()} |
+          {'error', kz_datamgr:data_error()}.
 set_max_channel_uptime(MaxAge) ->
     set_max_channel_uptime(MaxAge, 'true').
 
 -spec set_max_channel_uptime(non_neg_integer(), boolean()) ->
-                                    {'ok', kz_json:object()} |
-                                    {'error', kz_datamgr:data_error()}.
+          {'ok', kz_json:object()} |
+          {'error', kz_datamgr:data_error()}.
 set_max_channel_uptime(MaxAge, 'true') ->
     kapps_config:set_default(?APP_NAME, ?MAX_CHANNEL_UPTIME_KEY, kz_term:to_integer(MaxAge));
 set_max_channel_uptime(MaxAge, 'false') ->
