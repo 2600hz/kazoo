@@ -20,7 +20,8 @@
         ]).
 
 -ifdef(TEST).
--export([check_port_requests/1
+-include_lib("eunit/include/eunit.hrl").
+-export([maybe_check_port_requests/1
         ,maybe_check_financials/1
         ,check_low_balance/1
         ,check_payment_token/1
@@ -202,7 +203,7 @@ summary(Context) ->
 %%------------------------------------------------------------------------------
 -spec load_summary(cb_context:context()) -> cb_context:context().
 load_summary(Context) ->
-    Routines = [fun check_port_requests/1
+    Routines = [fun maybe_check_port_requests/1
                ,fun maybe_check_financials/1
                ,fun check_system_alerts/1
                ,fun set_success_resp_status/1
@@ -224,21 +225,43 @@ set_success_resp_status(Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec check_port_requests(cb_context:context()) -> cb_context:context().
-check_port_requests(Context) ->
-    case knm_port_request:account_active_ports(cb_context:account_id(Context)) of
-        {'error', _R} ->
-            lager:debug("unable to fetch port requests: ~p", [_R]),
+-spec maybe_check_port_requests(cb_context:context()) -> cb_context:context().
+maybe_check_port_requests(Context) ->
+    ResellerId = cb_context:reseller_id(Context),
+    AccountId = cb_context:account_id(Context),
+    ?debugFmt("ResellerId: ~p, AccountId: ~p", [ResellerId, AccountId]),
+
+    case {is_reseller_handling_port_requests(ResellerId)
+         ,ResellerId =:= AccountId
+         }
+    of
+        {'true', 'false'} ->
+            %% Reseller is handling port request so not bother the user with port request alerts.
             Context;
-        {'ok', PortRequests} ->
-            check_port_requests(PortRequests, Context)
+        {'true', 'true'} ->
+            F = fun(DesId, ContextAcc) -> do_check_port_requests(DesId, ContextAcc) end,
+            lists:foldl(F, Context, kapps_util:account_descendants(ResellerId));
+        {'false', _} ->
+            do_check_port_requests(AccountId, Context)
     end.
 
--spec check_port_requests(kz_json:objects(), cb_context:context()) ->
-          cb_context:context().
-check_port_requests([], Context) ->
+-spec is_reseller_handling_port_requests(kz_term:api_ne_binary()) -> boolean().
+is_reseller_handling_port_requests('undefined') ->
+    'false';
+is_reseller_handling_port_requests(ResellerId) ->
+    is_reseller_handling_port_requests(kzd_whitelabel:fetch(ResellerId), ResellerId).
+
+-spec is_reseller_handling_port_requests({'ok', kz_json:object()} | {'error', any()}, kz_term:api_ne_binary()) ->
+                                             boolean().
+is_reseller_handling_port_requests({'ok', Whitelabel}, ResellerId) ->
+    kzd_whitelabel:port_authority(Whitelabel) =:= ResellerId;
+is_reseller_handling_port_requests({'error', 'not_found'}, _ResellerId) ->
+    'false'.
+
+-spec do_check_port_requests(kz_term:api_ne_binary() | kz_json:objects(), cb_context:context()) -> cb_context:context().
+do_check_port_requests([], Context) ->
     Context;
-check_port_requests([PortRequest|PortRequests], Context) ->
+do_check_port_requests([PortRequest|PortRequests], Context) ->
     Routines = [fun check_port_action_required/2
                ,fun check_port_suspended/2
                ],
@@ -246,7 +269,15 @@ check_port_requests([PortRequest|PortRequests], Context) ->
                           ,Context
                           ,Routines
                           ),
-    check_port_requests(PortRequests, Context1).
+    do_check_port_requests(PortRequests, Context1);
+do_check_port_requests(OwnerId, Context) ->
+    case knm_port_request:account_active_ports(OwnerId) of
+        {'error', _R} ->
+            lager:debug("unable to fetch port requests: ~p", [_R]),
+            Context;
+        {'ok', PortRequests} ->
+            do_check_port_requests(PortRequests, Context)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc
