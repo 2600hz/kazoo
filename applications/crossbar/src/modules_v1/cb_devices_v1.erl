@@ -185,7 +185,6 @@ update_device_provisioning(Context, 'success') ->
                                          ,cb_context:fetch(Context, 'db_doc')
                                          ,#{'req_verb' => cb_context:req_verb(Context)
                                            ,'auth_token' => cb_context:auth_token(Context)
-                                           ,'new_mac_address' => cb_context:req_value(Context, <<"mac_address">>)
                                            }
                                          ),
     sync_sip_data(Context);

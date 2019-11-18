@@ -213,7 +213,7 @@ fix_date_fold(Key, JObj, 'false') ->
 -spec fix_notifications(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 fix_notifications(_DataJObj, _TemplateId, PortReqJObj) ->
     case kzd_port_requests:notifications_email_send_to(PortReqJObj) of
-        <<_/binary>> =Email -> kz_json:set_value(<<"customer_contact">>, [Email], PortReqJObj);
+        <<Email/binary>> -> kz_json:set_value(<<"customer_contact">>, [Email], PortReqJObj);
         [_|_]=Emails -> kz_json:set_value(<<"customer_contact">>, Emails, PortReqJObj);
         _ -> PortReqJObj
     end.
