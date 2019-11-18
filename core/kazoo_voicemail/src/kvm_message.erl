@@ -242,7 +242,7 @@ set_folder(Folder, Message, AccountId) ->
         {'error', _} -> {'error', Message}
     end.
 
--spec maybe_set_folder(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> db_ret().
+-spec maybe_set_folder(kz_term:ne_binary(), vm_folder(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) -> db_ret().
 maybe_set_folder(_, ToFolder, MessageId, AccountId, _Msg) when ToFolder == ?VM_FOLDER_DELETED;
                                                                ToFolder == {?VM_FOLDER_DELETED, 'true'};
                                                                ToFolder == {?VM_FOLDER_DELETED, 'false'} ->
