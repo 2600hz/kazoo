@@ -30,8 +30,8 @@ erlang.mk
 
 deps/
 
-core/kazoo/src/kz_mime.erl
-core/kazoo/mime.types
+core/kazoo_web/src/kz_mime.erl
+core/kazoo_web/mime.types
 
 applications/*/priv/archive_data/*
 applications/registrar/c_src/env.mk

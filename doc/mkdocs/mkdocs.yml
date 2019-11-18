@@ -429,6 +429,7 @@ pages:
     - 'core/kazoo_apps/doc/kapps_config.md'
     - 'core/kazoo_apps/doc/maintenance.md'
     - 'core/kazoo_apps/doc/kapps_maintenance.md'
+    - 'core/kazoo_apps/doc/kazoo_maintenance.md'
   - 'GCM':
     - 'core/gcm/README.md'
   - 'Kazoo Translator':
@@ -471,7 +472,6 @@ pages:
     - 'core/kazoo_bindings/doc/README.md'
   - 'Kazoo Core':
     - 'core/kazoo/doc/README.md'
-    - 'core/kazoo/doc/maintenance.md'
   - 'Kazoo Speech':
     - 'core/kazoo_speech/doc/README.md'
     - 'core/kazoo_speech/doc/ispeech.md'
