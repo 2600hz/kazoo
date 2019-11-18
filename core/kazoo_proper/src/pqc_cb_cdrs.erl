@@ -54,7 +54,10 @@ summary(API, AccountId, Accept) ->
                            ).
 
 unpaginated_summary(API, AccountId) ->
-    URL = cdrs_url(AccountId) ++ "?paginate=false&is_chunked=false",
+    unpaginated_summary(API, AccountId, 'true').
+
+unpaginated_summary(API, AccountId, ShouldChunk) ->
+    URL = cdrs_url(AccountId) ++ "?paginate=false" ++ should_chunk(ShouldChunk),
     RequestHeaders = pqc_cb_api:request_headers(API),
 
     Expectations = [#expectation{response_codes = [200, 204]}],
@@ -64,6 +67,9 @@ unpaginated_summary(API, AccountId) ->
                            ,URL
                            ,RequestHeaders
                            ).
+
+should_chunk('true') -> "";
+should_chunk('false') -> "&is_chunked=false".
 
 paginated_summary(API, AccountId) ->
     paginated_summary(API, AccountId, 'undefined').
@@ -118,7 +124,7 @@ update_request_id(RequestHeaders) ->
     props:set_value(<<"x-request-id">>, kz_term:to_list(NewRequestId), RequestHeaders).
 
 incr_nth(Nth) ->
-    kz_term:to_integer(Nth) + 1 + $0.
+    integer_to_list(kz_term:to_integer(Nth) + 1).
 
 -spec fetch(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> pqc_cb_api:response().
 fetch(API, AccountId, CDRId) ->
@@ -295,17 +301,35 @@ big_dataset_seq() ->
     {'ok', _} = kazoo_modb:save_docs(AccountMODb, CDRs, [{'publish_change_notice', 'false'}]),
 
     _ = kapps_config:set_default(<<"crossbar">>, <<"request_memory_limit">>, 'null'),
-    JSON = unpaginated_summary(API, AccountId),
-    JObj = kz_json:decode(JSON),
-    lager:info("unpaginated and unbound memory resp returned ~p CDRs", [length(kz_json:get_list_value(<<"data">>, JObj))]),
-    CDRCount = length(kz_json:get_list_value(<<"data">>, JObj)),
+    ChunkedJSON = unpaginated_summary(API, AccountId),
+    ChunkedJObj = kz_json:decode(ChunkedJSON),
+    ChunkedCount = length(kz_json:get_list_value(<<"data">>, ChunkedJObj)),
+    lager:info("unpaginated and unbound memory resp returned ~p CDRs", [ChunkedCount]),
+    CDRCount = ChunkedCount,
+
+    UnChunkedJSON = unpaginated_summary(API, AccountId, 'false'),
+    UnChunkedJObj = kz_json:decode(UnChunkedJSON),
+    UnChunkedCount = length(kz_json:get_list_value(<<"data">>, UnChunkedJObj)),
+    lager:info("unpaginated/unchunked and unbound memory resp returned ~p CDRs", [UnChunkedCount]),
+    CDRCount = UnChunkedCount,
 
     _ = kapps_config:set_default(<<"crossbar">>, <<"request_memory_limit">>, 1024 * 1024 * 10), % cap at 10Mb
-    {'error', ErrorJSON} = unpaginated_summary(API, AccountId),
-    lager:info("unpaginated and bound memory resp: ~s", [ErrorJSON]),
-    ErrorJObj = kz_json:decode(ErrorJSON),
-    416 = kz_json:get_integer_value(<<"error">>, ErrorJObj),
-    <<"range not satisfiable">> = kz_json:get_ne_binary_value(<<"message">>, ErrorJObj),
+
+    ChunkedUnpaginatedJSON = unpaginated_summary(API, AccountId),
+    ChunkedUnpaginatedJObj = kz_json:decode(ChunkedUnpaginatedJSON),
+    ChunkedUnpaginatedCount = length(kz_json:get_list_value(<<"data">>, ChunkedUnpaginatedJObj)),
+    lager:info("chunked/unpaginated and unbound memory resp returned ~p CDRs", [ChunkedUnpaginatedCount]),
+    CDRCount = ChunkedUnpaginatedCount,
+
+    {'error', UnChunkedErrorJSON} = unpaginated_summary(API, AccountId, 'false'),
+    lager:info("unchunked/unpaginated and bound memory resp: ~s", [UnChunkedErrorJSON]),
+    UnChunkedErrorJObj = kz_json:decode(UnChunkedErrorJSON),
+    416 = kz_json:get_integer_value(<<"error">>, UnChunkedErrorJObj),
+    <<"range not satisfiable">> = kz_json:get_ne_binary_value(<<"message">>, UnChunkedErrorJObj),
+
+    _ = kapps_config:set_default(<<"crossbar">>, <<"request_memory_limit">>, 'null'),
+    PaginatedSummary = paginated_summary(API, AccountId),
+    lager:info("paginated: ~s", [PaginatedSummary]),
 
     cleanup(API),
     lager:info("FINISHED BIG DATASET SEQ").
