@@ -92,34 +92,37 @@ maybe_override_plan(Plan, #{}=Map) ->
     maps:merge(Plan, Map).
 
 get_dataplan(DBName) ->
-    case kzs_util:db_classification(DBName) of
-        'modb' -> account_modb_dataplan(DBName);
-        'account' -> account_dataplan(DBName);
-        'resource_selectors' -> account_dataplan(DBName);
-        'aggregate' -> aggregate_dataplan(DBName);
-        Else -> system_dataplan(DBName, Else)
+    Database = kzs_util:to_database(DBName),
+    case kzs_util:db_classification(Database) of
+        'modb' -> account_modb_dataplan(Database);
+        'account' -> account_dataplan(Database);
+        'resource_selectors' -> account_dataplan(Database);
+        'aggregate' -> aggregate_dataplan(Database);
+        Else -> system_dataplan(Database, Else)
     end.
 
 -spec get_dataplan(kz_term:ne_binary(), kz_term:api_ne_binary()) -> map().
 get_dataplan(DBName, 'undefined') ->
     get_dataplan(DBName);
 get_dataplan(DBName, DocType) ->
-    case kzs_util:db_classification(DBName) of
-        'modb' -> account_modb_dataplan(DBName, DocType);
-        'account' -> account_dataplan(DBName, DocType);
-        'resource_selectors' -> account_dataplan(DBName, DocType);
-        'aggregate' -> aggregate_dataplan(DBName, DocType);
-        Else -> system_dataplan(DBName, Else)
+    Database = kzs_util:to_database(DBName),
+    case kzs_util:db_classification(Database) of
+        'modb' -> account_modb_dataplan(Database, DocType);
+        'account' -> account_dataplan(Database, DocType);
+        'resource_selectors' -> account_dataplan(Database, DocType);
+        'aggregate' -> aggregate_dataplan(Database, DocType);
+        Else -> system_dataplan(Database, Else)
     end.
 
 get_dataplan(DBName, DocType, 'undefined') ->
     get_dataplan(DBName, DocType);
 get_dataplan(DBName, DocType, DocOwner) ->
-    case kzs_util:db_classification(DBName) of
-        'modb' -> account_modb_dataplan(DBName, DocType, DocOwner);
-        'account' -> account_dataplan(DBName, DocType, DocOwner);
-        'resource_selectors' -> account_dataplan(DBName, DocType, DocOwner);
-        Else -> system_dataplan(DBName, Else)
+    Database = kzs_util:to_database(DBName),
+    case kzs_util:db_classification(Database) of
+        'modb' -> account_modb_dataplan(Database, DocType, DocOwner);
+        'account' -> account_dataplan(Database, DocType, DocOwner);
+        'resource_selectors' -> account_dataplan(Database, DocType, DocOwner);
+        Else -> system_dataplan(Database, Else)
     end.
 
 -spec system_dataplan() -> map().
@@ -145,21 +148,21 @@ system_dataplan(DBName, _Classification) ->
     dataplan_type_match(?SYSTEM_DATAPLAN_ID, DBName, Plan).
 
 account_dataplan(AccountDb) ->
-    AccountId = kz_util:format_account_id(AccountDb),
+    AccountId = kzs_util:format_account_id(AccountDb),
     Plan = ?CACHED_ACCOUNT_DATAPLAN(AccountId),
     dataplan_match(<<"account">>, Plan, AccountId).
 
 account_dataplan(AccountDb, 'undefined') ->
     account_dataplan(AccountDb);
 account_dataplan(AccountDb, DocType) ->
-    AccountId = kz_util:format_account_id(AccountDb),
+    AccountId = kzs_util:format_account_id(AccountDb),
     Plan = ?CACHED_ACCOUNT_DATAPLAN(AccountId),
     dataplan_type_match(<<"account">>, DocType, Plan, AccountId).
 
 account_dataplan(AccountDb, DocType, 'undefined') ->
     account_dataplan(AccountDb, DocType);
 account_dataplan(AccountDb, DocType, StorageId) ->
-    AccountId = kz_util:format_account_id(AccountDb),
+    AccountId = kzs_util:format_account_id(AccountDb),
     Plan = ?CACHED_STORAGE_DATAPLAN(AccountId, StorageId),
     dataplan_type_match(<<"account">>, DocType, Plan, AccountId).
 
@@ -180,21 +183,21 @@ aggregate_dataplan(DBName, DocType) ->
     end.
 
 account_modb_dataplan(AccountMODB) ->
-    AccountId = kz_util:format_account_id(AccountMODB),
+    AccountId = kzs_util:format_account_id(AccountMODB),
     Plan = ?CACHED_ACCOUNT_DATAPLAN(AccountId),
     dataplan_match(<<"modb">>, Plan, AccountId).
 
 account_modb_dataplan(AccountMODB, 'undefined') ->
     account_modb_dataplan(AccountMODB);
 account_modb_dataplan(AccountMODB, DocType) ->
-    AccountId = kz_util:format_account_id(AccountMODB),
+    AccountId = kzs_util:format_account_id(AccountMODB),
     Plan = ?CACHED_ACCOUNT_DATAPLAN(AccountId),
     dataplan_type_match(<<"modb">>, DocType, Plan, AccountId).
 
 account_modb_dataplan(AccountMODB, DocType, 'undefined') ->
     account_modb_dataplan(AccountMODB, DocType);
 account_modb_dataplan(AccountMODB, DocType, StorageId) ->
-    AccountId = kz_util:format_account_id(AccountMODB),
+    AccountId = kzs_util:format_account_id(AccountMODB),
     Plan = ?CACHED_STORAGE_DATAPLAN(AccountId, StorageId),
     dataplan_type_match(<<"modb">>, DocType, Plan, AccountId).
 

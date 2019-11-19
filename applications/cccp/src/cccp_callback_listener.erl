@@ -279,7 +279,7 @@ call(Props) ->
 
 -spec maybe_handle_doc_id(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 maybe_handle_doc_id(DocId, Props) ->
-    AccountDb = kz_util:format_account_id(props:get_value('account_id', Props), 'encoded'),
+    AccountDb = kzs_util:format_account_db(props:get_value('account_id', Props)),
     case kz_datamgr:open_cache_doc(AccountDb, DocId) of
         {'error', _} -> kapps_call_command:hangup(call(Props));
         {'ok', JObj} -> maybe_handle_doc(JObj, Props)

@@ -402,7 +402,7 @@ terminate(_Reason, #participant{name_pronounced = Name}) ->
 
 -spec maybe_clear(conf_pronounced_name:name_pronounced()) -> 'ok'.
 maybe_clear({'temp_doc_id', AccountId, MediaId}) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     lager:debug("deleting doc: ~s/~s", [AccountDb, MediaId]),
     _ = kz_datamgr:del_doc(AccountDb, MediaId),
     'ok';

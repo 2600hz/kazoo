@@ -104,7 +104,7 @@ validate(Context, Id) ->
 %%------------------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    Context1 = cb_context:set_account_db(Context, ?KZ_ALERTS_DB),
+    Context1 = cb_context:set_db_name(Context, ?KZ_ALERTS_DB),
     crossbar_doc:save(Context1).
 
 %%------------------------------------------------------------------------------
@@ -178,7 +178,7 @@ create(Context) ->
 %%------------------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    Context1 = cb_context:set_account_db(Context, ?KZ_ALERTS_DB),
+    Context1 = cb_context:set_db_name(Context, ?KZ_ALERTS_DB),
     crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(<<"alert">>)).
 
 %%------------------------------------------------------------------------------

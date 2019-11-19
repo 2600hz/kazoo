@@ -298,7 +298,7 @@ maybe_get_account_default_number(Number, Name, Account, Call) ->
 
 -spec maybe_get_assigned_number(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary()|kapps_call:call()) -> cid().
 maybe_get_assigned_number(CandidateNumber, Name, ?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
-    AccountId = kz_util:format_account_id(AccountDb),
+    AccountId = kzs_util:format_account_id(AccountDb),
     case knm_numbers:account_listing(AccountDb) of
         [_|_] = NumbersList ->
             Numbers = [Num
@@ -539,7 +539,7 @@ owned_by(OwnerId, Type, Call) ->
           kz_term:api_objects().
 owned_by_docs('undefined', _) -> [];
 owned_by_docs(OwnerId, ?NE_BINARY=Account) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzs_util:format_account_db(Account),
     ViewOptions = [{'startkey', [OwnerId]}
                   ,{'endkey', [OwnerId, kz_json:new()]}
                   ,'include_docs'

@@ -155,7 +155,7 @@ match_modb_plan_type_split() ->
 
 handle_missing_connection() ->
     AccountId = <<"account0000000000000000000000005">>,
-    Plan = kzs_plan:plan(kz_util:format_account_mod_id(AccountId)),
+    Plan = kzs_plan:plan(kzs_util:format_account_mod_id(AccountId)),
     ?assertMatch(#{classification := ?MODB
                   ,tag := <<"local">>
                   ,others := []

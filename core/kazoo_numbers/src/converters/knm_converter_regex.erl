@@ -98,7 +98,7 @@ to_e164(Number) ->
 
 to_e164(<<"+",_/binary>> = N, _AccountId) -> N;
 to_e164(Number, Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} ->
             to_e164_from_account_dialplan(Number, AccountId, kzd_accounts:dial_plan(JObj));

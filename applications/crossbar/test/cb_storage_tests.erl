@@ -14,7 +14,7 @@
 -include("cb_token_restrictions_test.hrl").
 
 -define(ACCOUNT_DB_CURRENT_MONTH
-       ,kazoo_modb:get_modb(kz_util:format_account_id(?FIXTURE_MASTER_ACCOUNT_ID))
+       ,kazoo_modb:get_modb(kzs_util:format_account_id(?FIXTURE_MASTER_ACCOUNT_ID))
        ).
 
 %%%=============================================================================

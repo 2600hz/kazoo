@@ -104,7 +104,7 @@
        ).
 
 -define(MATCH_ACCOUNT_RAW(A, B, Rest)
-       ,<<(A):2/binary, (B):2/binary, (Rest)/binary>>  %% FIXME: add missing size (Rest:28)
+       ,<<(A):2/binary, (B):2/binary, (Rest):28/binary>>  %% FIXME: add missing size (Rest:28)
        ).
 -define(MATCH_ACCOUNT_UNENCODED(A, B, Rest)
        ,<<"account/", (A):2/binary, "/", (B):2/binary, "/", (Rest):28/binary>>

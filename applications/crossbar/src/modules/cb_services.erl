@@ -214,7 +214,7 @@ validate(Context, ?AVAILABLE) ->
     %% NOTE: list service plans available to this account for selection
     AccountId = cb_context:account_id(Context),
     ResellerId = kz_services_reseller:get_id(AccountId),
-    ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
+    ResellerDb = kzs_util:format_account_db(ResellerId),
     Options =
         case kz_term:is_true(cb_context:req_value(Context, <<"details">>, 'false')) of
             'false' -> [];
@@ -222,7 +222,7 @@ validate(Context, ?AVAILABLE) ->
         end,
     crossbar_doc:load_view(?CB_LIST
                           ,Options
-                          ,cb_context:set_account_db(Context, ResellerDb)
+                          ,cb_context:set_db_name(Context, ResellerDb)
                           ,fun normalize_available_view_results/2
                           );
 validate(Context, ?SUMMARY) ->
@@ -264,7 +264,7 @@ validate(Context, ?AUDIT, ?MATCH_MODB_PREFIX(Year, Month, _)=AuditId) ->
     %% NOTE: show a billing audit log
     AccountId = cb_context:account_id(Context),
     AccountDb = kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)),
-    Context1 = cb_context:set_account_db(Context, AccountDb),
+    Context1 = cb_context:set_db_name(Context, AccountDb),
     crossbar_doc:load(AuditId, Context1, ?TYPE_CHECK_OPTION(<<"audit_log">>));
 validate(Context, ?AUDIT, AuditId) ->
     ErrorCause = kz_json:from_list([{<<"cause">>, AuditId}]),
@@ -779,8 +779,8 @@ check_plan_ids(Context, ResellerId, PlanIds) ->
 -spec check_plan_id(cb_context:context(), path_token(), kz_term:ne_binary()) ->
           cb_context:context().
 check_plan_id(Context, PlanId, ResellerId) ->
-    ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
-    crossbar_doc:load(PlanId, cb_context:set_account_db(Context, ResellerDb), ?TYPE_CHECK_OPTION(kzd_service_plan:type())).
+    ResellerDb = kzs_util:format_account_db(ResellerId),
+    crossbar_doc:load(PlanId, cb_context:set_db_name(Context, ResellerDb), ?TYPE_CHECK_OPTION(kzd_service_plan:type())).
 
 -spec maybe_forbid_delete(cb_context:context()) -> cb_context:context().
 maybe_forbid_delete(Context) ->

@@ -144,7 +144,7 @@ resource_exists(_, _) -> 'false'.
 %%------------------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    validate_functions(cb_context:set_account_db(Context, ?KZ_FUNCTIONS_DB), cb_context:req_verb(Context)).
+    validate_functions(cb_context:set_db_name(Context, ?KZ_FUNCTIONS_DB), cb_context:req_verb(Context)).
 
 -spec validate_functions(cb_context:context(), http_method()) -> cb_context:context().
 validate_functions(Context, ?HTTP_GET) ->
@@ -172,7 +172,7 @@ validate(Context, ?PATH_TOKEN_SAMPLES) ->
             cb_context:add_system_error('datastore_fault', Context)
     end;
 validate(Context, FunctionId) ->
-    validate_function(cb_context:set_account_db(Context, ?KZ_FUNCTIONS_DB), FunctionId, cb_context:req_verb(Context)).
+    validate_function(cb_context:set_db_name(Context, ?KZ_FUNCTIONS_DB), FunctionId, cb_context:req_verb(Context)).
 
 -spec validate_function(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_function(Context, Id, ?HTTP_GET) ->
@@ -267,7 +267,7 @@ summary(Context) ->
 
 -spec delete_account(kz_term:ne_binary()) -> 'ok'.
 delete_account(Account) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     case kz_datamgr:get_results(?KZ_FUNCTIONS_DB
                                ,?CB_LIST
                                ,[{'startkey', [AccountId]}
@@ -291,7 +291,7 @@ summary_available(Context) ->
     Options = [{'mapper', fun normalize_available/3}
               ,'include_docs'
               ],
-    crossbar_view:load(cb_context:set_account_db(C1, MasterAccountDb), ?AVAILABLE_FUNCTIONS, Options).
+    crossbar_view:load(cb_context:set_db_name(C1, MasterAccountDb), ?AVAILABLE_FUNCTIONS, Options).
 
 -spec normalize_available(cb_context:context(), kz_json:object(), kz_json:objects()) ->
           kz_json:objects().

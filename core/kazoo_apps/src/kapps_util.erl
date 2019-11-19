@@ -122,7 +122,7 @@ replicate_from_account(AccountDb, AccountDb, _) ->
     lager:debug("requested to replicate from db ~s to self, skipping", [AccountDb]),
     {'error', 'matching_dbs'};
 replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
-    ReplicateProps = [{<<"source">>, kz_util:format_account_id(AccountDb, ?REPLICATE_ENCODING)}
+    ReplicateProps = [{<<"source">>, kzs_util:format_account_id(AccountDb, ?REPLICATE_ENCODING)}
                      ,{<<"target">>, TargetDb}
                      ,{<<"filter">>, FilterDoc}
                      ,{<<"create_target">>, 'true'}
@@ -174,7 +174,7 @@ get_master_account_db() ->
     case get_master_account_id() of
         {'error', _}=E -> E;
         {'ok', AccountId} ->
-            {'ok', kz_util:format_account_db(AccountId)}
+            {'ok', kzs_util:format_account_db(AccountId)}
     end.
 
 %%------------------------------------------------------------------------------
@@ -183,7 +183,7 @@ get_master_account_db() ->
 %%------------------------------------------------------------------------------
 -spec is_master_account(kz_term:ne_binary()) -> boolean().
 is_master_account(Account) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     case get_master_account_id() of
         {'ok', AccountId} -> 'true';
         _Else -> 'false'
@@ -221,7 +221,7 @@ account_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
 %%------------------------------------------------------------------------------
 -spec account_has_descendants(kz_term:ne_binary()) -> boolean().
 account_has_descendants(Account) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     [] =/= (account_descendants(AccountId) -- [AccountId]).
 
 %%------------------------------------------------------------------------------
@@ -259,7 +259,7 @@ get_all_accounts(Encoding) ->
     {'ok', Dbs} = kz_datamgr:db_list([{'startkey', <<"account/">>}
                                      ,{'endkey', <<"account/\ufff0">>}
                                      ]),
-    [kz_util:format_account_id(Db, Encoding)
+    [kzs_util:format_account_id(Db, Encoding)
      || Db <- Dbs, is_account_db(Db)
     ].
 
@@ -278,8 +278,8 @@ get_all_accounts_and_mods(Encoding) ->
 
 -spec format_db(kz_term:ne_binary(), kz_util:account_format()) -> kz_term:ne_binary().
 format_db(Db, Encoding) ->
-    Fs = [{fun is_account_db/1, fun kz_util:format_account_id/2}
-         ,{fun is_account_mod/1, fun kz_util:format_account_modb/2}
+    Fs = [{fun is_account_db/1, fun kzs_util:format_account_id/2}
+         ,{fun is_account_mod/1, fun kzs_util:format_account_modb/2}
          ],
     format_db(Db, Encoding, Fs).
 
@@ -296,7 +296,7 @@ get_all_account_mods() ->
 -spec get_all_account_mods(kz_util:account_format()) -> kz_term:ne_binaries().
 get_all_account_mods(Encoding) ->
     {'ok', Databases} = kz_datamgr:db_info(),
-    [kz_util:format_account_modb(Db, Encoding)
+    [kzs_util:format_account_modb(Db, Encoding)
      || Db <- Databases,
         is_account_mod(Db)
     ].
@@ -307,7 +307,7 @@ get_account_mods(Account) ->
 
 -spec get_account_mods(kz_term:ne_binary(), kz_util:account_format()) -> kz_term:ne_binaries().
 get_account_mods(Account, Encoding) ->
-    AccountId = kz_util:format_account_id(Account, Encoding),
+    AccountId = kzs_util:format_account_id(Account, Encoding),
     [MOD
      || MOD <- get_all_account_mods(Encoding),
         is_account_mod(MOD),
@@ -433,11 +433,11 @@ are_all_enabled(Things) ->
 is_enabled(_AccountId, {_Type, 'undefined'}) -> 'true';
 is_enabled(AccountId, {<<"device">>, DeviceId}) ->
     Default = kapps_config:get_is_true(<<"registrar">>, <<"device_enabled_default">>, 'true'),
-    {'ok', DeviceJObj} = kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), DeviceId),
+    {'ok', DeviceJObj} = kz_datamgr:open_cache_doc(kzs_util:format_account_db(AccountId), DeviceId),
     kzd_devices:enabled(DeviceJObj, Default)
         orelse throw({'error', {'device_disabled', DeviceId}});
 is_enabled(AccountId, {<<"owner">>, OwnerId}) ->
-    case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), OwnerId) of
+    case kz_datamgr:open_cache_doc(kzs_util:format_account_db(AccountId), OwnerId) of
         {'ok', UserJObj} ->
             Default = kapps_config:get_is_true(<<"registrar">>, <<"owner_enabled_default">>, 'true'),
             kzd_users:enabled(UserJObj, Default)

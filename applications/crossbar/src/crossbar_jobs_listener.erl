@@ -381,9 +381,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%------------------------------------------------------------------------------
 -spec job_modb(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 job_modb(AccountId, ?MATCH_MODB_PREFIX(Year,Month,_)) ->
-    kz_util:format_account_mod_id(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month));
+    kzs_util:format_account_mod_id(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month));
 job_modb(AccountId, ?MATCH_MODB_PREFIX_M1(Year,Month,_)) ->
-    kz_util:format_account_mod_id(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)).
+    kzs_util:format_account_mod_id(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)).
 
 -spec start_timer() -> reference().
 start_timer() ->

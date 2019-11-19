@@ -141,7 +141,12 @@ create(Context) ->
 %%------------------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(?MATCH_MODB_PREFIX(Year,Month,_) = Id, Context) ->
-    Context1 = cb_context:set_account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)),
+    Context1 = cb_context:set_db_name(Context
+                                     ,kzs_util:format_account_id(cb_context:account_id(Context)
+                                                                ,kz_term:to_integer(Year)
+                                                                ,kz_term:to_integer(Month)
+                                                                )
+                                     ),
     crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(kzd_sms:type()));
 read(Id, Context) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_sms:type())).
@@ -215,7 +220,7 @@ on_successful_validation(Context) ->
              ]
             ),
     Doc = kz_doc:update_pvt_parameters(kz_json:merge(ContextDoc, JObj), MODB, [{'type', kzd_sms:type()}]),
-    cb_context:set_doc(cb_context:set_account_db(Context, MODB), Doc).
+    cb_context:set_doc(cb_context:set_db_name(Context, MODB), Doc).
 
 -define(CALLER_ID_INTERNAL, [<<"caller_id">>, <<"internal">>, <<"number">>]).
 -define(CALLER_ID_EXTERNAL, [<<"caller_id">>, <<"external">>, <<"number">>]).
@@ -228,7 +233,7 @@ get_default_caller_id(Context, 'undefined') ->
                              ,kz_privacy:anonymous_caller_id_number(cb_context:account_id(Context))
                              );
 get_default_caller_id(Context, OwnerId) ->
-    AccountDb = cb_context:account_db(Context),
+    AccountDb = cb_context:db_name(Context),
     {'ok', JObj1} = kzd_accounts:fetch(AccountDb),
     {'ok', JObj2} = kz_datamgr:open_cache_doc(AccountDb, OwnerId),
     kz_json:get_first_defined([?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]

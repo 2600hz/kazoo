@@ -105,11 +105,11 @@ resource_exists(_SchemaName, ?VALIDATION_PATH_TOKEN) -> 'true'.
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
     lager:debug("load summary of schemas from ~s", [?KZ_SCHEMA_DB]),
-    summary(cb_context:set_account_db(Context, ?KZ_SCHEMA_DB)).
+    summary(cb_context:set_db_name(Context, ?KZ_SCHEMA_DB)).
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
-    read(Id, cb_context:set_account_db(Context, ?KZ_SCHEMA_DB)).
+    read(Id, cb_context:set_db_name(Context, ?KZ_SCHEMA_DB)).
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, Id, ?VALIDATION_PATH_TOKEN) ->

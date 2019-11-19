@@ -137,7 +137,7 @@ on_successful_validation(Context) ->
 validate_by_api_key(Context, ApiKey) ->
     Context1 = crossbar_doc:load_view(?AGG_VIEW_API
                                      ,[{'key', ApiKey}]
-                                     ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
+                                     ,cb_context:set_db_name(Context, ?KZ_ACCOUNTS_DB)
                                      ),
     case cb_context:resp_status(Context1) of
         'success' ->

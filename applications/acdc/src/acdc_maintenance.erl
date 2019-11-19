@@ -42,7 +42,7 @@
 -spec logout_agents(kz_term:ne_binary()) -> 'ok'.
 logout_agents(AccountId) ->
     ?PRINT("Sending notices to logout agents for ~s", [AccountId]),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     {'ok', AgentView} = kz_datamgr:get_all_results(AccountDb, <<"agents/crossbar_listing">>),
     _ = [logout_agent(AccountId, kz_doc:id(Agent)) || Agent <- AgentView],
     'ok'.
@@ -273,7 +273,7 @@ migrate_to_acdc_db(AccountId, Retries) ->
 
 -spec maybe_migrate(kz_term:ne_binary()) -> 'ok'.
 maybe_migrate(AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [{'limit', 1}]) of
         {'ok', []} -> 'ok';
         {'ok', [_|_]} ->

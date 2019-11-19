@@ -30,7 +30,7 @@ sync_all_accounts_payments_info() ->
 
 -spec sync_all_accounts_payments_info_fold(kz_term:ne_binary(), non_neg_integer(), non_neg_integer()) -> integer().
 sync_all_accounts_payments_info_fold(Account, Count, TotalLength) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     io:format(" (~b/~b) ", [Count, TotalLength]),
     sync_account_services_payments_info(AccountId),
     timer:sleep(1000),

@@ -242,9 +242,12 @@ fetch(Num=?NE_BINARY, Options) ->
             Error
     end.
 
--spec fetch(kz_term:ne_binary(), kz_term:ne_binary(), knm_number_options:options()) ->
+-spec fetch(kz_term:api_ne_binary(), kz_term:ne_binary(), knm_number_options:options()) ->
           {'ok', kz_json:object()} |
           {'error', any()}.
+fetch('undefined', _Normalized, _Options) ->
+    lager:info("no database for number ~s", [_Normalized]),
+    {'error', 'not_found'};
 fetch(NumberDb, NormalizedNum, Options) ->
     case knm_number_options:batch_run(Options) of
         'true' -> kz_datamgr:open_doc(NumberDb, NormalizedNum);
@@ -1744,7 +1747,7 @@ group_phone_number_by_assigned_to(PN, MapAcc) ->
     AssignedTo = assigned_to(PN),
     Key = case kz_term:is_empty(AssignedTo) of
               'true' -> 'undefined';
-              'false' -> existing_db_key(kz_util:format_account_db(AssignedTo))
+              'false' -> existing_db_key(kzs_util:format_account_db(AssignedTo))
           end,
     MapAcc#{Key => [PN | maps:get(Key, MapAcc, [])]}.
 
@@ -1763,6 +1766,6 @@ group_phone_number_by_prev_assigned_to(PN, MapAcc) ->
               'true' ->
                   lager:debug("prev_assigned_to is empty for ~s, ignoring", [number(PN)]),
                   'undefined';
-              'false' -> existing_db_key(kz_util:format_account_db(PrevAssignedTo))
+              'false' -> existing_db_key(kzs_util:format_account_db(PrevAssignedTo))
           end,
     MapAcc#{Key => [PN | maps:get(Key, MapAcc, [])]}.

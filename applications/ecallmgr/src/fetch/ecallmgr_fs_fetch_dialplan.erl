@@ -324,7 +324,7 @@ get_blacklist(JObj) ->
 
 -spec get_blacklist(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_json:object().
 get_blacklist(AccountId, Blacklists) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     lists:foldl(fun(BlacklistId, Acc) ->
                         case kz_datamgr:open_cache_doc(AccountDb, BlacklistId) of
                             {'error', _R} ->

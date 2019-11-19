@@ -302,7 +302,7 @@ normalize_view_results(JObj, Acc) ->
 -spec set_db_to_system(cb_context:context()) -> cb_context:context().
 set_db_to_system(Context) ->
     cb_context:setters(Context
-                      ,[{fun cb_context:set_account_db/2, ?KZ_CONFIG_DB}
+                      ,[{fun cb_context:set_db_name/2, ?KZ_CONFIG_DB}
                        ,{fun cb_context:set_account_id/2, cb_context:auth_account_id(Context)}
                        ]).
 

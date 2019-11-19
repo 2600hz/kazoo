@@ -216,7 +216,7 @@ help_10392_add_source(RGMember) ->
 
 help_10392_call() ->
     Routines = [{fun kapps_call:set_account_id/2, ?HELP_10392_ACCOUNT_ID}
-               ,{fun kapps_call:set_account_db/2, kz_util:format_account_db(?HELP_10392_ACCOUNT_ID)}
+               ,{fun kapps_call:set_account_db/2, kzs_util:format_account_db(?HELP_10392_ACCOUNT_ID)}
                ,{fun kapps_call:set_request/2, <<"+14158867901@4a6863.sip.2600hz.local">>}
                ,{fun kapps_call:set_to/2, <<"+14158867901@4a6863.sip.2600hz.local">>}
                ,{fun kapps_call:set_from/2, <<"+14158867900@4a6863.sip.2600hz.local">>}

@@ -203,9 +203,9 @@ port_authority(Doc, Default) ->
     %% as 'to' Email address but the UI was setting that as account id!
     case kz_json:get_ne_binary_value([<<"port">>, <<"authority">>], Doc) of
         ?MATCH_ACCOUNT_RAW(_)=Id -> Id;
-        ?MATCH_ACCOUNT_UNENCODED(_)=Db -> kz_util:format_account_id(Db);
-        ?MATCH_ACCOUNT_ENCODED(_)=Db -> kz_util:format_account_id(Db);
-        ?MATCH_ACCOUNT_encoded(_)=Db -> kz_util:format_account_id(Db);
+        ?MATCH_ACCOUNT_UNENCODED(_)=Db -> kzs_util:format_account_id(Db);
+        ?MATCH_ACCOUNT_ENCODED(_)=Db -> kzs_util:format_account_id(Db);
+        ?MATCH_ACCOUNT_encoded(_)=Db -> kzs_util:format_account_id(Db);
         _ -> Default
     end.
 
@@ -303,7 +303,7 @@ set_twoway_trunks_price(Doc, TwowayTrunksPrice) ->
 fetch('undefined') ->
     {'error', 'account_id_undefined'};
 fetch(Account) ->
-    AccoundDb = kz_util:format_account_db(Account),
+    AccoundDb = kzs_util:format_account_db(Account),
     kz_datamgr:open_cache_doc(AccoundDb, ?ID).
 
 -spec fetch_port_authority(kz_term:api_binary(), Default) -> kz_term:api_ne_binary() | Default.

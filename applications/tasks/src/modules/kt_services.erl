@@ -200,7 +200,7 @@ cleanup_orphaned_services_docs([View|Views]) ->
 -spec cleanup_orphaned_services_doc(kz_json:object() | kz_term:ne_binary()) -> 'ok'.
 cleanup_orphaned_services_doc(<<"_design/", _/binary>>) -> 'ok';
 cleanup_orphaned_services_doc(AccountId=?NE_BINARY) ->
-    case kz_datamgr:db_exists(kz_util:format_account_id(AccountId, 'encoded')) of
+    case kz_datamgr:db_exists(kzs_util:format_account_db(AccountId)) of
         'true' -> 'ok';
         'false' ->
             lager:info("account ~s no longer exists but has a services doc", [AccountId]),

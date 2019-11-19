@@ -215,7 +215,7 @@ validate(Context, ?RECOVERY) ->
     end,
     cb_context:validate_request_data(Schema, Context, OnSuccess);
 validate(Context, AuthToken) ->
-    Context1 = cb_context:set_account_db(Context, ?KZ_TOKEN_DB),
+    Context1 = cb_context:set_db_name(Context, ?KZ_TOKEN_DB),
     maybe_get_auth_token(Context1, AuthToken).
 
 -spec put(cb_context:context()) -> cb_context:context().
@@ -234,7 +234,7 @@ post(Context, ?RECOVERY) ->
     Context1 = crossbar_doc:save(Context),
     DocForCreation =
         kz_json:from_list(
-          [{<<"account_id">>, kz_util:format_account_id(cb_context:account_db(Context1))}
+          [{<<"account_id">>, kzs_util:format_account_id(cb_context:db_name(Context1))}
           ,{<<"owner_id">>, kz_doc:id(cb_context:doc(Context1))}
           ]),
     Context2 = cb_context:set_doc(Context1, DocForCreation),
@@ -304,10 +304,10 @@ maybe_authenticate_user(Context) ->
 -spec maybe_authenticate_user(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
           cb_context:context().
 maybe_authenticate_user(Context, Credentials, <<"md5">>, ?NE_BINARY=Account) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzs_util:format_account_db(Account),
     Context1 = crossbar_doc:load_view(?ACCT_MD5_LIST
                                      ,[{'key', Credentials}]
-                                     ,cb_context:set_account_db(Context, AccountDb)
+                                     ,cb_context:set_db_name(Context, AccountDb)
                                      ),
     case cb_context:resp_status(Context1) of
         'success' -> load_md5_results(Context1, cb_context:doc(Context1), Account);
@@ -319,10 +319,10 @@ maybe_authenticate_user(Context, Credentials, <<"md5">>, ?NE_BINARY=Account) ->
             cb_context:add_system_error('invalid_credentials', Context1)
     end;
 maybe_authenticate_user(Context, Credentials, <<"sha">>, ?NE_BINARY=Account) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzs_util:format_account_db(Account),
     Context1 = crossbar_doc:load_view(?ACCT_SHA1_LIST
                                      ,[{'key', Credentials}]
-                                     ,cb_context:set_account_db(Context, AccountDb)
+                                     ,cb_context:set_db_name(Context, AccountDb)
                                      ),
     case cb_context:resp_status(Context1) of
         'success' -> load_sha1_results(Context1, cb_context:doc(Context1), Account);
@@ -438,7 +438,7 @@ maybe_load_user_doc_via_creds(Context) ->
 -spec maybe_load_user_doc_by_username(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 maybe_load_user_doc_by_username(Account, Context) ->
     JObj = cb_context:doc(Context),
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzs_util:format_account_db(Account),
     lager:debug("attempting to lookup user name in db: ~s", [AccountDb]),
     AuthType = <<"user_auth_recovery">>,
     Username = kz_json:get_value(<<"username">>, JObj),
@@ -451,7 +451,7 @@ maybe_load_user_doc_by_username(Account, Context) ->
                 'false' ->
                     lager:debug("user name '~s' was found and is not disabled, continue", [Username]),
                     Doc = kz_json:get_value(<<"doc">>, User),
-                    cb_context:setters(Context, [{fun cb_context:set_account_db/2, Account}
+                    cb_context:setters(Context, [{fun cb_context:set_db_name/2, Account}
                                                 ,{fun cb_context:set_doc/2, Doc}
                                                 ,{fun cb_context:set_resp_status/2, 'success'}
                                                 ,{fun cb_context:store/3, 'auth_type', AuthType}
@@ -480,7 +480,7 @@ maybe_load_user_doc_by_username(Account, Context) ->
 
 -spec save_reset_id_then_send_email(cb_context:context()) -> cb_context:context().
 save_reset_id_then_send_email(Context) ->
-    MoDb = kazoo_modb:get_modb(cb_context:account_db(Context)),
+    MoDb = kazoo_modb:get_modb(cb_context:db_name(Context)),
     ResetId = reset_id(MoDb),
     UserDoc = cb_context:doc(Context),
     UserId = kz_doc:id(UserDoc),
@@ -521,7 +521,7 @@ maybe_load_user_doc_via_reset_id(Context) ->
             lager:debug("found password reset doc"),
             AccountDb = ?MATCH_ACCOUNT_ENCODED(A, B, Rest),
             Context1 = crossbar_doc:load(kz_json:get_value(<<"pvt_userid">>, ResetIdDoc)
-                                        ,cb_context:set_account_db(Context, AccountDb)
+                                        ,cb_context:set_db_name(Context, AccountDb)
                                         ,?TYPE_CHECK_OPTION(kzd_users:type())
                                         ),
             NewUserDoc =
@@ -614,7 +614,7 @@ find_account('undefined', AccountRealm, AccountName, Context) ->
 find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
     case knm_number:lookup_account(PhoneNumber) of
         {'ok', AccountId, _} ->
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            AccountDb = kzs_util:format_account_db(AccountId),
             lager:debug("found account by phone number '~s': ~s", [PhoneNumber, AccountDb]),
             {'ok', AccountDb};
         {'error', _} ->

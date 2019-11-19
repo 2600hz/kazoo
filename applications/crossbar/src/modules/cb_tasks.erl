@@ -437,7 +437,7 @@ delete(Context, TaskId) ->
 %%------------------------------------------------------------------------------
 -spec set_db(cb_context:context()) -> cb_context:context().
 set_db(Context) ->
-    cb_context:set_account_db(Context, ?KZ_TASKS_DB).
+    cb_context:set_db_name(Context, ?KZ_TASKS_DB).
 
 %%------------------------------------------------------------------------------
 %% @doc Load an instance from the database

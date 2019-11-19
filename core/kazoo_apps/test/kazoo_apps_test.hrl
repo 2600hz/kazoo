@@ -9,14 +9,14 @@
 -define(SYSTEM_ONLY, <<"test_account_config_system_only">>).
 
 get_fixture_value(Key, DbName, Category) ->
-    {ok, JObj} = get_fixture(DbName, Category),
+    {'ok', JObj} = get_fixture(DbName, Category),
     kz_json:get_value(Key, JObj).
 
 get_fixture(?KZ_CONFIG_DB, Category) ->
     Path = kz_fixturedb_util:get_doc_path(?KZ_CONFIG_DB, Category),
     kz_json:fixture(Path);
 get_fixture(AccountId, Category) ->
-    Path = kz_fixturedb_util:get_doc_path(kz_util:format_account_db(AccountId), <<"configs_", Category/binary>>),
+    Path = kz_fixturedb_util:get_doc_path(kzs_util:format_account_db(AccountId), <<"configs_", Category/binary>>),
     kz_json:fixture(Path).
 
 

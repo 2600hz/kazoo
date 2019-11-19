@@ -295,4 +295,4 @@ fetch('undefined', _) ->
 fetch(_, 'undefined') ->
     {'error', 'app_id_undefined'};
 fetch(Account, Id) ->
-    kz_datamgr:open_cache_doc(kz_util:format_account_db(Account), Id).
+    kz_datamgr:open_cache_doc(kzs_util:format_account_db(Account), Id).

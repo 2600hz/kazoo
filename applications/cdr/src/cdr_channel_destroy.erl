@@ -115,7 +115,7 @@ update_pvt_parameters('undefined', _, JObj) ->
     kz_doc:update_pvt_parameters(JObj, ?KZ_ANONYMOUS_CDR_DB, Props);
 update_pvt_parameters(AccountId, Timestamp, JObj) ->
     CorrectTimestamp = kz_json:get_integer_value(<<"Interaction-Time">>, JObj, Timestamp),
-    AccountMODb = kz_util:format_account_id(AccountId, CorrectTimestamp),
+    AccountMODb = kzs_util:format_account_id(AccountId, CorrectTimestamp),
     Props = [{'type', 'cdr'}
             ,{'crossbar_doc_vsn', 2}
             ,{'account_id', AccountId}

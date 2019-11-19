@@ -400,7 +400,7 @@ delete_account(AccountId) ->
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
 
     case kzdb_account:delete(AccountId) of
         {'ok', AccountJObj} ->
@@ -499,17 +499,10 @@ move_account(Context, AccountId) ->
 
 -spec prepare_context(kz_term:api_ne_binary(), cb_context:context()) -> cb_context:context().
 prepare_context('undefined', Context) ->
-    cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB);
+    cb_context:set_db_name(Context, ?KZ_ACCOUNTS_DB);
 prepare_context(Account, Context) ->
-    AccountId = kz_util:format_account_id(Account),
-    AccountDb = kz_util:format_account_db(Account),
-    prepare_context(Context, AccountId, AccountDb).
-
--spec prepare_context(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
-prepare_context(Context, AccountId, AccountDb) ->
-    cb_context:setters(Context, [{fun cb_context:set_account_db/2, AccountDb}
-                                ,{fun cb_context:set_account_id/2, AccountId}
-                                ]).
+    AccountId = kzs_util:format_account_id(Account),
+    cb_context:setters(Context, [{fun cb_context:set_account_id/2, AccountId}]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -976,7 +969,7 @@ format_account_tree_results(Context, JObjs) ->
 load_parents(AccountId, Context) ->
     Context1 = crossbar_doc:load_view(?AGG_VIEW_SUMMARY
                                      ,[]
-                                     ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
+                                     ,cb_context:set_db_name(Context, ?KZ_ACCOUNTS_DB)
                                      ),
     case cb_context:resp_status(Context1) of
         'success' -> load_parent_tree(AccountId, Context1);
@@ -1057,12 +1050,10 @@ load_account_db(Context, [AccountId|_]) ->
 load_account_db(Context, AccountId) when is_binary(AccountId) ->
     case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} ->
-            AccountDb = kz_util:format_account_db(AccountId),
-            lager:debug("account ~s db exists, setting operating database as ~s", [AccountId, AccountDb]),
+            lager:debug("account ~s db exists", [AccountId]),
             ResellerId = kz_services_reseller:find_id(AccountId),
             cb_context:setters(Context
                               ,[{fun cb_context:set_resp_status/2, 'success'}
-                               ,{fun cb_context:set_account_db/2, AccountDb}
                                ,{fun cb_context:set_account_id/2, AccountId}
                                ,{fun cb_context:set_account_name/2, kzd_accounts:name(JObj)}
                                ,{fun cb_context:set_reseller_id/2, ResellerId}
@@ -1117,7 +1108,6 @@ notify_new_account(Context, _AuthDoc) ->
              ,{<<"Account-Realm">>, kzd_accounts:realm(JObj)}
              ,{<<"Account-API-Key">>, kzd_accounts:api_key(JObj)}
              ,{<<"Account-ID">>, cb_context:account_id(Context)}
-             ,{<<"Account-DB">>, cb_context:account_db(Context)}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_new_account/1).

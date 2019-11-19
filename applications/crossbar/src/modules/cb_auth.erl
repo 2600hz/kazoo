@@ -210,13 +210,13 @@ authenticate_nouns(?TOKENINFO_PATH, ?HTTP_POST, [{<<"auth">>, _}]) -> 'true';
 authenticate_nouns(_, _, _) -> 'false'.
 
 -spec validate_resource(cb_context:context()) -> cb_context:context().
-validate_resource(Context) -> cb_context:set_account_db(Context, ?KZ_AUTH_DB).
+validate_resource(Context) -> cb_context:set_db_name(Context, ?KZ_AUTH_DB).
 
 -spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
-validate_resource(Context, _Path) -> cb_context:set_account_db(Context, ?KZ_AUTH_DB).
+validate_resource(Context, _Path) -> cb_context:set_db_name(Context, ?KZ_AUTH_DB).
 
 -spec validate_resource(cb_context:context(), path_token(), kz_term:ne_binary()) -> cb_context:context().
-validate_resource(Context, _Path, _Id) -> cb_context:set_account_db(Context, ?KZ_AUTH_DB).
+validate_resource(Context, _Path, _Id) -> cb_context:set_db_name(Context, ?KZ_AUTH_DB).
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines if the parameters and content are correct
@@ -321,7 +321,7 @@ validate_path(Context, ?PROVIDERS_PATH, Id, ?HTTP_POST) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"provider">>));
 validate_path(Context, ?PROVIDERS_PATH, Id, ?HTTP_DELETE) ->
     Options = [{'key', Id}],
-    case kz_datamgr:get_result_keys(cb_context:account_db(Context), ?PROVIDERS_APP_VIEW, Options) of
+    case kz_datamgr:get_result_keys(cb_context:db_name(Context), ?PROVIDERS_APP_VIEW, Options) of
         {'ok', []} -> Context;
         {'ok', _} -> cb_context:add_system_error(<<"apps exist for provider">>, Context);
         {'error', _E} ->

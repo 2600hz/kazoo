@@ -64,7 +64,7 @@ cleanup(_) -> 'ok'.
 
 -spec unconfirmed_port_reminder(kz_term:ne_binary()) -> 'ok'.
 unconfirmed_port_reminder(AccountDb) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kzs_util:format_account_id(AccountDb),
     ViewOpts = [{'startkey', [AccountId, ?PORT_UNCONFIRMED, kz_json:new()]}
                ,{'endkey', [AccountId, ?PORT_UNCONFIRMED]}
                ,'descending'

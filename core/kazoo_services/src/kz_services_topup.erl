@@ -263,7 +263,7 @@ maybe_topup(Account, AvailableUnits) ->
                        ,kz_currency:units_to_dollars(AvailableUnits)
                        ,kz_currency:units_to_dollars(ThresholdUnits)
                        ]),
-            AccountId = kz_util:format_account_id(Account, 'raw'),
+            AccountId = kzs_util:format_account_id(Account),
             maybe_topup(AccountId, AvailableUnits, ReplenishUnits, ThresholdUnits)
     end.
 

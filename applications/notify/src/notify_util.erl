@@ -324,13 +324,13 @@ find_rep_email(JObj) ->
 find_admin('undefined') -> kz_json:new();
 find_admin([]) -> kz_json:new();
 find_admin(Account) when is_binary(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     case kzd_accounts:fetch(Account) of
         {'error', _} -> find_admin([AccountId]);
         {'ok', JObj} -> find_admin([AccountId | lists:reverse(kzd_accounts:tree(JObj))])
     end;
 find_admin([AcctId|Tree]) ->
-    AccountDb = kz_util:format_account_id(AcctId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AcctId),
     ViewOptions = [{'key', <<"user">>}
                   ,'include_docs'
                   ],

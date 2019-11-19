@@ -201,7 +201,7 @@ init([WorkerSup, MgrPid, AccountId, QueueId]) ->
     _ = webseq:start(?WSD_ID),
     webseq:reg_who(?WSD_ID, self(), iolist_to_binary([<<"qFSM">>, pid_to_list(self())])),
 
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     {'ok', QueueJObj} = kz_datamgr:open_cache_doc(AccountDb, QueueId),
 
     gen_statem:cast(self(), {'get_listener_proc', WorkerSup}),

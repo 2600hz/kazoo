@@ -397,7 +397,8 @@ validate_error_not_found(Context, IP, Index) ->
 -spec maybe_dry_run_assignment(cb_context:context()) -> cb_context:context().
 maybe_dry_run_assignment(Context) ->
     ProposedJObjs = cb_context:fetch(Context, 'assign_ips', []),
-    crossbar_services:maybe_dry_run(Context, [], ProposedJObjs).
+    {_AllowedOrDenied, Context1} = crossbar_services:maybe_dry_run(Context, [], ProposedJObjs),
+    Context1.
 
 %%------------------------------------------------------------------------------
 %% @doc

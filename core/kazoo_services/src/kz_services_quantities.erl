@@ -42,7 +42,7 @@
 fetch_account(Services) ->
     AccountId = kz_services:account_id(Services),
     lager:debug("fetching account quantities for ~s", [AccountId]),
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     ViewOptions = ['reduce'
                   ,'group'
                   ],

@@ -289,7 +289,7 @@ sync_user(AccountId) ->
           {'ok', kz_json:objects()} |
           kz_datamgr:data_error().
 user_devices(AccountId, UserId) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
 
     Options = [{'key', UserId}, 'include_docs'],
     case kz_datamgr:get_results(AccountDb, ?LIST_BY_PRESENCE_ID, Options) of

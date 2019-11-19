@@ -62,7 +62,7 @@
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS(A, Q), [{'conf', [{'type', <<"queue">>}
-                                  ,{'db', kz_util:format_account_id(A, 'encoded')}
+                                  ,{'db', kzs_util:format_account_db(A)}
                                   ,{'id', Q}
                                   ,'federate'
                                   ]}
@@ -310,13 +310,13 @@ init([Super, QueueJObj]) ->
 init([Super, AccountId, QueueId]) ->
     kz_log:put_callid(<<"mgr_", QueueId/binary>>),
 
-    AcctDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AcctDb = kzs_util:format_account_db(AccountId),
     {'ok', QueueJObj} = kz_datamgr:open_cache_doc(AcctDb, QueueId),
 
     init(Super, AccountId, QueueId, QueueJObj).
 
 init(Super, AccountId, QueueId, QueueJObj) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     _ = kz_datamgr:add_to_doc_cache(AccountDb, QueueId, QueueJObj),
 
     _ = start_secondary_queue(AccountId, QueueId),
@@ -438,7 +438,7 @@ handle_cast({'start_workers'}, #state{account_id=AccountId
                                      ,supervisor=QueueSup
                                      }=State) ->
     WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
-    case kz_datamgr:get_results(kz_util:format_account_id(AccountId, 'encoded')
+    case kz_datamgr:get_results(kzs_util:format_account_db(AccountId)
                                ,<<"queues/agents_listing">>
                                ,[{'key', QueueId}
                                 ,{'group', 'true'}
@@ -643,7 +643,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%------------------------------------------------------------------------------
 start_secondary_queue(AccountId, QueueId) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     Priority = lookup_priority_levels(AccountDb, QueueId),
     kz_process:spawn(fun gen_listener:add_queue/4
                     ,[self()

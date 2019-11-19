@@ -321,8 +321,8 @@ validate_numbers(Id, Context) ->
     Member = kz_json:get_value([<<"member">>, <<"numbers">>], Doc, []),
     Moderator = kz_json:get_value([<<"moderator">>, <<"numbers">>], Doc, []),
     Keys = Conf ++ Member ++ Moderator,
-    AccountDb = cb_context:account_db(Context),
-    case kz_datamgr:get_results(AccountDb, ?CB_LIST_BY_NUMBER, [{'keys', Keys}]) of
+    AccountId = cb_context:account_id(Context),
+    case kz_datamgr:get_results(AccountId, ?CB_LIST_BY_NUMBER, [{'keys', Keys}]) of
         {'error', _R} -> cb_context:add_system_error('datastore_fault', Context);
         {'ok', []} -> on_successful_validation(Id, Context);
         {'ok', JObjs} when Id =:= 'undefined' -> invalid_numbers(Context, JObjs);
@@ -598,8 +598,7 @@ error_no_endpoints(Context) ->
 create_call(Context, ConferenceId) ->
     Routines =
         [{F, V}
-         || {F, V} <- [{fun kapps_call:set_account_db/2, cb_context:account_db(Context)}
-                      ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
+         || {F, V} <- [{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
                       ,{fun kapps_call:set_resource_type/2, <<"audio">>}
                       ,{fun kapps_call:set_authorizing_id/2, ConferenceId}
                       ,{fun kapps_call:set_authorizing_type/2, <<"conference">>}

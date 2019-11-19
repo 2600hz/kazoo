@@ -140,7 +140,7 @@ validate(Context, ?ATTEMPTS) ->
 validate(Context, ConfigId) ->
     case cb_context:req_nouns(Context) of
         [{<<"multi_factor">>, _}] ->
-            validate_multi_factor_config(cb_context:set_account_db(Context, ?KZ_AUTH_DB), ConfigId, cb_context:req_verb(Context));
+            validate_multi_factor_config(cb_context:set_db_name(Context, ?KZ_AUTH_DB), ConfigId, cb_context:req_verb(Context));
         _ ->
             validate_multi_factor_config(Context, ConfigId, cb_context:req_verb(Context))
     end.
@@ -153,7 +153,7 @@ validate(Context, ?ATTEMPTS, AttemptId) ->
 validate_multi_factor(Context, [{<<"multi_factor">>, _}], ?HTTP_GET) ->
     system_summary(Context);
 validate_multi_factor(Context, [{<<"multi_factor">>, _}], ?HTTP_PUT) ->
-    create(cb_context:set_account_db(Context, ?KZ_AUTH_DB));
+    create(cb_context:set_db_name(Context, ?KZ_AUTH_DB));
 validate_multi_factor(Context, _, ?HTTP_GET) ->
     summary(Context);
 validate_multi_factor(Context, _, ?HTTP_PUT) ->
@@ -238,7 +238,15 @@ update(Id, Context) ->
 read_attempt_log(?MATCH_MODB_PREFIX(YYYY, MM, _) = AttemptId, Context) ->
     Year  = kz_term:to_integer(YYYY),
     Month = kz_term:to_integer(MM),
-    crossbar_doc:load(AttemptId, cb_context:set_account_modb(Context, Year, Month), ?TYPE_CHECK_OPTION(?ATTEMPTS_TYPE)).
+    crossbar_doc:load(AttemptId
+                     ,cb_context:set_db_name(Context
+                                            ,kzs_util:format_account_id(cb_context:account_id(Context)
+                                                                       ,Year
+                                                                       ,Month
+                                                                       )
+                                            )
+                     ,?TYPE_CHECK_OPTION(?ATTEMPTS_TYPE)
+                     ).
 
 %%------------------------------------------------------------------------------
 %% @doc Update-merge an existing menu document with the data provided, if it is

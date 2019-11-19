@@ -88,7 +88,7 @@ table_status(Ts) ->
 
 do_load_gen(Ds) ->
     AccountId = kz_binary:rand_hex(16),
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     'true' = kz_datamgr:db_create(AccountDb),
 
     io:format("building ~p with ~p docs~n", [AccountDb, Ds]),

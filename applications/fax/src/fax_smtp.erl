@@ -537,7 +537,7 @@ maybe_faxbox_owner(#state{faxbox=FaxBoxDoc}=State) ->
         'undefined' -> State;
         OwnerId ->
             AccountId = kz_doc:account_id(FaxBoxDoc),
-            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            AccountDb = kzs_util:format_account_db(AccountId),
             case kz_datamgr:open_cache_doc(AccountDb, OwnerId) of
                 {'ok', OwnerDoc} ->
                     OwnerEmail = kz_json:get_value(<<"email">>, OwnerDoc),
@@ -572,7 +572,7 @@ maybe_faxbox_by_owner_email(AccountId, #state{errors=Errors
                                              ,from=From
                                              }=State) ->
     ViewOptions = [{'key', From}],
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"users/list_by_email">>, ViewOptions) of
         {'ok', []} ->
             Error = kz_term:to_binary(io_lib:format("user ~s does not exist in account ~s, trying by rules",[From, AccountId])),
@@ -594,7 +594,7 @@ maybe_faxbox_by_owner_email(AccountId, #state{errors=Errors
 -spec maybe_faxbox_by_owner_id(kz_term:ne_binary(), kz_term:ne_binary(),state()) -> state().
 maybe_faxbox_by_owner_id(AccountId, OwnerId, #state{errors=Errors, from=From}=State) ->
     ViewOptions = [{'key', OwnerId}, 'include_docs'],
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"faxbox/list_by_ownerid">>, ViewOptions) of
         {'ok', [JObj]} ->
             State#state{faxbox=kz_json:get_value(<<"doc">>,JObj)
@@ -627,7 +627,7 @@ maybe_faxbox_by_owner_id(AccountId, OwnerId, #state{errors=Errors, from=From}=St
 maybe_faxbox_by_rules(AccountId, #state{errors=Errors}=State)
   when is_binary(AccountId) ->
     ViewOptions = ['include_docs'],
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"faxbox/email_permissions">>, ViewOptions) of
         {'ok', []} ->
             Error = <<"no faxboxes for account ", AccountId/binary>>,

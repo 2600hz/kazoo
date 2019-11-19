@@ -73,7 +73,7 @@ identity_secret(#{auth_provider := #{name := <<"kazoo">>}
                               ,<<"device_id">> := DeviceId
                               }
                  }=Token) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     get_identity_secret(Token#{auth_db => AccountDb
                               ,auth_id => DeviceId
                               ,auth_db_id => DeviceId
@@ -84,7 +84,7 @@ identity_secret(#{auth_provider := #{name := <<"kazoo">>}
                               ,<<"owner_id">> := OwnerId
                               }
                  }=Token) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     get_identity_secret(Token#{auth_db => AccountDb
                               ,auth_id => OwnerId
                               ,auth_db_id => OwnerId
@@ -93,7 +93,7 @@ identity_secret(#{auth_provider := #{name := <<"kazoo">>}
 identity_secret(#{auth_provider := #{name := <<"kazoo">>}
                  ,payload := #{<<"account_id">> := AccountId}
                  }=Token) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     get_identity_secret(Token#{auth_db => AccountDb
                               ,auth_id => AccountId
                               ,auth_db_id => AccountId
@@ -263,7 +263,7 @@ update_kazoo_secret(#{auth_db := Db}=Token, Secret) ->
 -spec update_kazoo_secret(map(), kz_term:ne_binary(), kz_data:db_classification()) ->
           map() | kz_datamgr:data_error().
 update_kazoo_secret(#{auth_db := AccountDb, auth_db_id := DocId}=Token, Secret, 'account') ->
-    case kz_util:format_account_id(AccountDb) of
+    case kzs_util:format_account_id(AccountDb) of
         DocId -> update_account_secret(Token, Secret);
         _AccountId -> update_doc_secret(Token, Secret)
     end;
@@ -396,14 +396,14 @@ reset_system_secret() ->
 reset_secret(#{<<"account_id">> := Account
               ,<<"owner_id">> := OwnerId
               }) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzs_util:format_account_db(Account),
     reset_identity_secret(#{auth_db => AccountDb
                            ,auth_id => OwnerId
                            ,auth_db_id => OwnerId
                            });
 reset_secret(#{<<"account_id">> := Account}) ->
-    AccountId = kz_util:format_account_id(Account),
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountId = kzs_util:format_account_id(Account),
+    AccountDb = kzs_util:format_account_db(AccountId),
     reset_identity_secret(#{auth_db => AccountDb
                            ,auth_id => AccountId
                            ,auth_db_id => AccountId

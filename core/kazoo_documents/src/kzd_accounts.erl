@@ -774,9 +774,8 @@ fetch(Account=?NE_BINARY) ->
 fetch('undefined', _) ->
     {'error', 'invalid_db_name'};
 fetch(Account, 'account') ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    open_cache_doc(AccountDb, AccountId);
+    AccountId = kzs_util:format_account_id(Account),
+    open_cache_doc(AccountId, AccountId);
 fetch(AccountId, 'accounts') ->
     open_cache_doc(?KZ_ACCOUNTS_DB, AccountId).
 
@@ -1305,8 +1304,8 @@ handle_saved_accounts_doc(_AccountDoc, Error) ->
           {'ok', doc()} |
           kz_datamgr:data_error().
 update(?NE_BINARY = Account, UpdateProps) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountId = kzs_util:format_account_id(Account),
+    AccountDb = kzs_util:format_account_db(AccountId),
 
     UpdateOptions = [{'update', UpdateProps}
                     ,{'ensure_saved', 'true'}
@@ -1337,8 +1336,8 @@ is_in_account_hierarchy(CheckFor, InAccount) ->
 is_in_account_hierarchy('undefined', _, _) -> 'false';
 is_in_account_hierarchy(_, 'undefined', _) -> 'false';
 is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
-    CheckId = kz_util:format_account_id(CheckFor),
-    AccountId = kz_util:format_account_id(InAccount),
+    CheckId = kzs_util:format_account_id(CheckFor),
+    AccountId = kzs_util:format_account_id(InAccount),
     case (IncludeSelf
           andalso AccountId =:= CheckId
          )

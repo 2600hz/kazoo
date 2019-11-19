@@ -600,7 +600,7 @@ find_whitelabel(Context, Domain) ->
     ViewOptions = [{'key', kz_term:to_lower_binary(Domain)}],
     Context1 = crossbar_doc:load_view(?AGG_VIEW_WHITELABEL_DOMAIN
                                      ,ViewOptions
-                                     ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
+                                     ,cb_context:set_db_name(Context, ?KZ_ACCOUNTS_DB)
                                      ),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -609,7 +609,7 @@ find_whitelabel(Context, Domain) ->
                     Db = kz_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
                     Id = kz_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
                     cb_context:setters(Context1
-                                      ,[{fun cb_context:set_account_db/2, Db}
+                                      ,[{fun cb_context:set_db_name/2, Db}
                                        ,{fun cb_context:set_account_id/2, Id}
                                        ]);
                 _Doc ->

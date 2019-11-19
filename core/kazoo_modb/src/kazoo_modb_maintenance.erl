@@ -75,7 +75,7 @@ should_delete(AccountModb, Months) ->
 
 -spec delete_modb(kz_term:ne_binary(), boolean()) -> 'ok'.
 delete_modb(?MATCH_MODB_SUFFIX_UNENCODED(_,_,_) = AccountModb, ShouldArchive) ->
-    delete_modb(kz_util:format_account_db(AccountModb), ShouldArchive);
+    delete_modb(kzs_util:format_account_db(AccountModb), ShouldArchive);
 delete_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountModb, ShouldArchive) ->
     'ok' = case ShouldArchive of
                'true' -> kz_datamgr:db_archive(AccountModb);

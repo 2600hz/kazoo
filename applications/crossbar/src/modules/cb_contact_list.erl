@@ -69,7 +69,7 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), http_method()) -> cb_context:context().
 validate(Context, ?HTTP_GET) ->
-    ContactList = provisioner_contact_list:build(cb_context:account_db(Context)),
+    ContactList = provisioner_contact_list:build(cb_context:account_id(Context)),
     cb_context:setters(Context, [{fun cb_context:set_resp_data/2, ContactList}
                                 ,{fun cb_context:set_resp_status/2, 'success'}
                                 ]).

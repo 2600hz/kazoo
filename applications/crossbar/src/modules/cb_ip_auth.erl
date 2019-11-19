@@ -90,7 +90,7 @@ authenticate_ip(Context, IpKey) ->
     case kz_json:is_empty(IpKey)
         orelse crossbar_doc:load_view(?AGG_VIEW_IP
                                      ,ViewOptions
-                                     ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
+                                     ,cb_context:set_db_name(Context, ?KZ_ACCOUNTS_DB)
                                      )
     of
         'true' ->
@@ -136,7 +136,7 @@ validate(Context) ->
     case kz_json:is_empty(IpKey)
         orelse crossbar_doc:load_view(?AGG_VIEW_IP
                                      ,[{'key', IpKey}]
-                                     ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
+                                     ,cb_context:set_db_name(Context, ?KZ_ACCOUNTS_DB)
                                      )
     of
         'true' ->

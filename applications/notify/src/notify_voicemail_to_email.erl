@@ -50,7 +50,7 @@ handle_req(JObj, _Props) ->
     MsgId = kz_api:msg_id(JObj),
     notify_util:send_update(RespQ, MsgId, <<"pending">>),
 
-    AccountDb = kz_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
+    AccountDb = kzs_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
 
     VMBoxId = kz_json:get_value(<<"Voicemail-Box">>, JObj),
     lager:debug("loading vm box ~s", [VMBoxId]),
@@ -71,7 +71,7 @@ handle_req(JObj, _Props) ->
 
 -spec continue_processing(kz_json:object(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binaries()) -> send_email_return().
 continue_processing(JObj, AccountDb, VMBox, Emails) ->
-    AccountDb = kz_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
+    AccountDb = kzs_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
 
     lager:debug("VM->Email enabled for user, sending to ~p", [Emails]),
     {'ok', AccountJObj} = kzd_accounts:fetch(AccountDb),

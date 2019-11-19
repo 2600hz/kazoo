@@ -181,7 +181,7 @@ validate_resource(Context, UserId, _, _) -> validate_user_id(UserId, Context).
 
 -spec validate_user_id(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_user_id(UserId, Context) ->
-    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), UserId) of
+    case kz_datamgr:open_cache_doc(cb_context:db_name(Context), UserId) of
         {'ok', Doc} -> validate_user_id(UserId, Context, Doc);
         {'error', 'not_found'} ->
             cb_context:add_system_error('bad_identifier'
@@ -392,7 +392,7 @@ update_devices_presence(Context, DeviceDocs) ->
           {'error', any()}.
 user_devices(Context) ->
     UserId = kz_doc:id(cb_context:doc(Context)),
-    AccountDb = cb_context:account_db(Context),
+    AccountDb = cb_context:db_name(Context),
 
     Options = [{'key', UserId}, 'include_docs'],
     case kz_datamgr:get_results(AccountDb, ?LIST_BY_PRESENCE_ID, Options) of
@@ -583,7 +583,7 @@ check_username(UserId, Context) ->
     Username = kzd_users:username(JObj),
     CurrentJObj = cb_context:fetch(Context, 'db_doc', kz_json:new()),
     CurrentUsername = kzd_users:username(CurrentJObj),
-    AccountDb = cb_context:account_db(Context),
+    AccountDb = cb_context:db_name(Context),
     case kz_term:is_empty(Username)
         orelse Username =:= CurrentUsername
         orelse is_username_unique(AccountDb, UserId, Username)
@@ -607,7 +607,7 @@ is_username_unique(AccountDb, UserId, UserName) ->
         {'ok', []} -> 'true';
         {'ok', [JObj|_]} -> kz_doc:id(JObj) =:= UserId;
         {'error', _R} ->
-            lager:error("error checking view ~p in ~p"
+            lager:error("error checking view ~p in ~p: ~p"
                        ,[?LIST_BY_USERNAME, AccountDb, _R]
                        ),
             'false'
@@ -632,7 +632,7 @@ check_hotdesk_id(UserId, Context) ->
     HotdeskId = kzd_users:hotdesk_id(JObj),
     CurrentJObj = cb_context:fetch(Context, 'db_doc', kz_json:new()),
     CurrentHotdeskId = kzd_users:hotdesk_id(CurrentJObj),
-    AccountDb = cb_context:account_db(Context),
+    AccountDb = cb_context:db_name(Context),
     case kz_term:is_empty(HotdeskId)
         orelse HotdeskId =:= CurrentHotdeskId
         orelse is_hotdesk_id_unique(AccountDb, UserId, HotdeskId)

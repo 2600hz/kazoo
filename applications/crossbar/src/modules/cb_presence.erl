@@ -379,7 +379,7 @@ publish_presence_reset(Context, PresenceId) ->
 publish_presence_update(_Context, 'undefined', _PresenceState) -> 'ok';
 publish_presence_update(Context, PresenceId, PresenceState) ->
     Realm = cb_context:account_realm(Context),
-    AccountDb = cb_context:account_db(Context),
+    AccountDb = cb_context:db_name(Context),
     lager:debug("updating presence for ~s@~s to state ~s", [PresenceId, Realm, PresenceState]),
     %% persist presence setting
     Update = [{PresenceId, PresenceState}],

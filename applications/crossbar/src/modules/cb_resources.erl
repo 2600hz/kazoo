@@ -150,7 +150,7 @@ resource_exists(?JOBS, _ID) -> 'true'.
 validate(Context) ->
     case is_global_resource_request(Context) of
         'true' ->
-            validate_resources(cb_context:set_account_db(Context, ?KZ_OFFNET_DB)
+            validate_resources(cb_context:set_db_name(Context, ?KZ_OFFNET_DB)
                               ,cb_context:req_verb(Context)
                               );
         'false' ->
@@ -161,7 +161,7 @@ validate(Context) ->
 validate(Context, ?COLLECTION) ->
     case is_global_resource_request(Context) of
         'true' ->
-            validate_collection(cb_context:set_account_db(Context, ?KZ_OFFNET_DB));
+            validate_collection(cb_context:set_db_name(Context, ?KZ_OFFNET_DB));
         'false' ->
             validate_collection(Context)
     end;
@@ -170,7 +170,7 @@ validate(Context, ?JOBS) ->
 validate(Context, Id) ->
     case is_global_resource_request(Context) of
         'true' ->
-            validate_resource(cb_context:set_account_db(Context, ?KZ_OFFNET_DB)
+            validate_resource(cb_context:set_db_name(Context, ?KZ_OFFNET_DB)
                              ,Id
                              ,cb_context:req_verb(Context)
                              );
@@ -198,7 +198,7 @@ set_account_to_master(Context) ->
 validate_resources(Context, ?HTTP_GET) ->
     summary(Context);
 validate_resources(Context, ?HTTP_PUT) ->
-    case cb_context:account_db(Context) of
+    case cb_context:db_name(Context) of
         ?KZ_OFFNET_DB -> create(Context);
         _AccountDb -> create_local(Context)
     end.
@@ -207,7 +207,7 @@ validate_resources(Context, ?HTTP_PUT) ->
 validate_resource(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
 validate_resource(Context, Id, ?HTTP_POST) ->
-    case cb_context:account_db(Context) of
+    case cb_context:db_name(Context) of
         ?KZ_OFFNET_DB -> update(Id, Context);
         _AccountDb -> update_local(Context, Id)
     end;
@@ -298,14 +298,14 @@ validate_jobs(Context, ?HTTP_PUT) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?COLLECTION) ->
-    maybe_reload_acls(cb_context:account_db(Context)),
+    maybe_reload_acls(cb_context:db_name(Context)),
     collection_process(Context);
 post(Context, Id) ->
     do_post(Context, Id).
 
 -spec do_post(cb_context:context(), path_token()) -> cb_context:context().
 do_post(Context, _Id) ->
-    Db = cb_context:account_db(Context),
+    Db = cb_context:db_name(Context),
     maybe_reload_acls(Db),
     Context1 = crossbar_doc:save(Context),
     maybe_aggregate_resource(Context1, Db, cb_context:resp_status(Context1)).
@@ -315,17 +315,17 @@ patch(Context, Id) -> do_post(Context, Id).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    Db = cb_context:account_db(Context),
+    Db = cb_context:db_name(Context),
     maybe_reload_acls(Db),
     Context1 = crossbar_doc:save(Context),
     maybe_aggregate_resource(Context1, Db, cb_context:resp_status(Context1)).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ?COLLECTION) ->
-    maybe_reload_acls(cb_context:account_db(Context)),
+    maybe_reload_acls(cb_context:db_name(Context)),
     collection_process(Context);
 put(Context, ?JOBS) ->
-    Context1 = crossbar_doc:save(cb_context:set_account_db(Context, cb_context:account_modb(Context))),
+    Context1 = crossbar_doc:save(cb_context:set_db_name(Context, cb_context:account_modb(Context))),
 
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -337,9 +337,9 @@ put(Context, ?JOBS) ->
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ResourceId) ->
-    maybe_reload_acls(cb_context:account_db(Context)),
+    maybe_reload_acls(cb_context:db_name(Context)),
     Context1 = crossbar_doc:delete(Context),
-    maybe_remove_aggregate(Context1, ResourceId, cb_context:account_db(Context), cb_context:resp_status(Context)).
+    maybe_remove_aggregate(Context1, ResourceId, cb_context:db_name(Context), cb_context:resp_status(Context)).
 
 %%%=============================================================================
 %%% Internal functions
@@ -384,11 +384,11 @@ read(Id, Context) ->
 
 -spec read_job(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 read_job(Context, ?MATCH_MODB_PREFIX(Year,Month,_) = JobId) ->
-    Modb = cb_context:account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)),
-    leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb), ?TYPE_CHECK_OPTION(<<"resource_job">>)));
+    Modb = kzs_util:format_account_id(cb_context:account_id(Context), kz_term:to_integer(Year), kz_term:to_integer(Month)),
+    leak_job_fields(crossbar_doc:load(JobId, cb_context:set_db_name(Context, Modb), ?TYPE_CHECK_OPTION(<<"resource_job">>)));
 read_job(Context, ?MATCH_MODB_PREFIX_M1(Year,Month,_) = JobId) ->
-    Modb = cb_context:account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)),
-    leak_job_fields(crossbar_doc:load(JobId, cb_context:set_account_db(Context, Modb), ?TYPE_CHECK_OPTION(<<"resource_job">>)));
+    Modb = kzs_util:format_account_id(cb_context:account_id(Context), kz_term:to_integer(Year), kz_term:to_integer(Month)),
+    leak_job_fields(crossbar_doc:load(JobId, cb_context:set_db_name(Context, Modb), ?TYPE_CHECK_OPTION(<<"resource_job">>)));
 read_job(Context, JobId) ->
     lager:debug("invalid job id format: ~s", [JobId]),
     crossbar_util:response_bad_identifier(JobId, Context).
@@ -531,7 +531,7 @@ collection_process(Context, Successes) ->
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, Resources)),
     case cb_context:resp_status(Context1) of
         'success' ->
-            (cb_context:account_db(Context1) =/= ?KZ_OFFNET_DB)
+            (cb_context:db_name(Context1) =/= ?KZ_OFFNET_DB)
                 andalso maybe_aggregate_resources(Resources),
             summary(Context1);
         _Status -> 'ok'

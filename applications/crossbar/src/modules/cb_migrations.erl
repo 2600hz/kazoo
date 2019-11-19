@@ -121,7 +121,7 @@ render_migration_summary(Id, Desc, Context) ->
 %%------------------------------------------------------------------------------
 -spec get_migration_performed(binary(), cb_context:context()) -> kz_term:proplist().
 get_migration_performed(Id, Context) ->
-    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), ?MIGRATIONS_DOC_ID) of
+    case kz_datamgr:open_cache_doc(cb_context:db_name(Context), ?MIGRATIONS_DOC_ID) of
         {'ok', Doc} ->
             check_migration_performed(Id, Doc);
 
@@ -229,7 +229,7 @@ maybe_mark_as_complete(MigId, Account, Context) ->
 mark_migration_complete(MigId, AccountId, Context) ->
     lager:info("migration ~p completed successfully on account ~p", [MigId, AccountId]),
 
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     maybe_create_migration_doc(Context),
 
     {'ok', Doc} = kz_datamgr:open_cache_doc(AccountDb, ?MIGRATIONS_DOC_ID),
@@ -266,17 +266,17 @@ get_user_name(AccountId, UserId) ->
 %%------------------------------------------------------------------------------
 -spec maybe_create_migration_doc(cb_context:context()) -> 'ok'.
 maybe_create_migration_doc(Context) ->
-    AccountDb = cb_context:account_db(Context),
-    case kz_datamgr:open_cache_doc(AccountDb, ?MIGRATIONS_DOC_ID) of
+    DbName = cb_context:db_name(Context),
+    case kz_datamgr:open_cache_doc(DbName, ?MIGRATIONS_DOC_ID) of
         {'ok', _} -> 'ok';
         {'error', 'not_found'} ->
-            lager:info("creating migrations document for account ~p", [kz_util:format_account_id(AccountDb)]),
+            lager:info("creating migrations document for account ~p", [cb_context:account_id(Context)]),
             create_migration_doc(Context)
     end.
 
 -spec create_migration_doc(cb_context:context()) -> 'ok'.
 create_migration_doc(Context) ->
-    AccountDb = cb_context:account_db(Context),
+    DbName = cb_context:db_name(Context),
 
     Setters = [{fun kz_doc:set_id/2, ?MIGRATIONS_DOC_ID}
               ,{fun kz_doc:set_type/2, <<"migrations">>}
@@ -284,6 +284,6 @@ create_migration_doc(Context) ->
     Doc = kz_doc:setters(kz_json:from_list([{<<"migrations_performed">>, []}]), Setters),
     JObj = crossbar_doc:update_pvt_parameters(Doc, Context),
 
-    _ = kz_datamgr:save_doc(AccountDb, JObj),
+    _ = kz_datamgr:save_doc(DbName, JObj),
 
-    lager:debug("created migration doc for account ~s", [kz_util:format_account_id(AccountDb)]).
+    lager:debug("created migration doc for account ~s", [cb_context:account_id(Context)]).

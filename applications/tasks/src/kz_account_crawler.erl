@@ -57,7 +57,7 @@ stop() ->
 -spec check(kz_term:ne_binary()) -> 'ok'.
 check(Account)
   when is_binary(Account) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId) of
         {'ok', AccountJObj} ->
             process_account(AccountId, AccountJObj);

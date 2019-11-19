@@ -116,7 +116,7 @@ store_audit_log(Services, Invoice) ->
             ,{[<<"bookkeeper">>, <<"vendor_id">>], kz_services_invoice:bookkeeper_vendor_id(Invoice)}
             ],
     JObj = kz_doc:update_pvt_parameters(kz_json:set_values(Props, kz_json:new())
-                                       ,kz_util:format_account_db(AccountId)
+                                       ,kzs_util:format_account_db(AccountId)
                                        ,[{'account_id', AccountId}
                                         ,{'crossbar_doc_vsn', 2}
                                         ,{'id', kazoo_modb_util:modb_id()}

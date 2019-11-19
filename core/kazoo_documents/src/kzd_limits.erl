@@ -94,8 +94,8 @@ new(Account) ->
     TStamp = kz_time:now_s(),
     kz_json:from_list(
       [{<<"_id">>, <<"limits">>}
-      ,{<<"pvt_account_db">>, kz_util:format_account_db(Account)}
-      ,{<<"pvt_account_id">>, kz_util:format_account_id(Account)}
+      ,{<<"pvt_account_db">>, kzs_util:format_account_db(Account)}
+      ,{<<"pvt_account_id">>, kzs_util:format_account_id(Account)}
       ,{<<"pvt_type">>, <<"limits">>}
       ,{<<"pvt_created">>, TStamp}
       ,{<<"pvt_modified">>, TStamp}

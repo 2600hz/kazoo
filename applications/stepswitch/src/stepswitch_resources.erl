@@ -928,7 +928,7 @@ fetch_local_resources(AccountId) ->
     fetch_local_resources(AccountId, JObjs).
 -else.
 fetch_local_resources(AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     ViewOptions = ['include_docs'],
     lager:debug("local resource cache miss, fetching from db ~s", [AccountDb]),
     case kz_datamgr:get_results(AccountDb, ?LIST_RESOURCES_BY_ID, ViewOptions) of

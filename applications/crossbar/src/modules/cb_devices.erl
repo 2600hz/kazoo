@@ -150,7 +150,7 @@ validate_resource(Context, DeviceId) -> validate_device_id(Context, DeviceId).
 
 -spec validate_device_id(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 validate_device_id(Context, DeviceId) ->
-    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), DeviceId) of
+    case kz_datamgr:open_cache_doc(cb_context:account_id(Context), DeviceId) of
         {'ok', _} -> cb_context:set_device_id(Context, DeviceId);
         {'error', 'not_found'} ->
             error_no_entity(Context, DeviceId);
@@ -648,7 +648,7 @@ error_used_mac_address(Context) ->
 -spec unique_mac_address(kz_term:api_binary(), cb_context:context()) -> boolean().
 unique_mac_address('undefined', _Context) -> 'true';
 unique_mac_address(MacAddress, Context) ->
-    DbName = cb_context:account_db(Context),
+    DbName = cb_context:db_name(Context),
     not lists:member(MacAddress, get_mac_addresses(DbName))
         andalso not provisioner_util:is_mac_address_in_use(MacAddress, cb_context:auth_token(Context)).
 
@@ -697,7 +697,7 @@ validate_device_creds(DeviceId, Context) ->
 -spec check_device_password(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 check_device_password(Realm, DeviceId, Context) ->
     Username = cb_context:req_value(Context, ?KEY_SIP_USERNAME),
-    case check_sip_creds_unique(cb_context:account_db(Context), Realm, Username, DeviceId) of
+    case check_sip_creds_unique(cb_context:account_id(Context), Realm, Username, DeviceId) of
         'true' -> Context;
         'false' ->
             Msg =
@@ -715,14 +715,14 @@ check_device_password(Realm, DeviceId, Context) ->
           boolean().
 %% no account id and no doc id (ie initial create with no account)
 check_sip_creds_unique('undefined', _, _, 'undefined') -> 'true';
-check_sip_creds_unique(AccountDb, Realm, Username, DeviceId) ->
-    is_creds_locally_unique(AccountDb, Username, DeviceId)
+check_sip_creds_unique(AccountId, Realm, Username, DeviceId) ->
+    is_creds_locally_unique(AccountId, Username, DeviceId)
         andalso is_creds_global_unique(Realm, Username, DeviceId).
 
 -spec is_creds_locally_unique(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
-is_creds_locally_unique(AccountDb, Username, DeviceId) ->
+is_creds_locally_unique(AccountId, Username, DeviceId) ->
     ViewOptions = [{'key', kz_term:to_lower_binary(Username)}],
-    case kz_datamgr:get_results(AccountDb, <<"devices/sip_credentials">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountId, <<"devices/sip_credentials">>, ViewOptions) of
         {'ok', []} -> 'true';
         {'ok', [JObj]} -> kz_doc:id(JObj) =:= DeviceId;
         {'error', 'not_found'} -> 'true';

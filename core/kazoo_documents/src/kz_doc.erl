@@ -655,7 +655,7 @@ add_pvt_account_id(Acc, _JObj, 'undefined', Opts) ->
 add_pvt_account_id(Acc, _JObj, DBName, Opts) ->
     case props:get_value('account_id', Opts) of
         'undefined' ->
-            [{?KEY_ACCOUNT_ID, kz_util:format_account_id(DBName, 'raw')} | Acc];
+            [{?KEY_ACCOUNT_ID, kzs_util:format_account_id(DBName)} | Acc];
         Id ->
             [{?KEY_ACCOUNT_ID, Id} | Acc]
     end.

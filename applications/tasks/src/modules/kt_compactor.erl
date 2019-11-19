@@ -199,7 +199,7 @@ compact_db(_Extra, 'true', #{<<"database">> := Database}=Row) ->
 -spec compact_db(kz_term:ne_binary()) -> 'ok'.
 compact_db(?MATCH_ACCOUNT_RAW(AccountId)) ->
     lager:info("adjusting account id ~s to db name", [AccountId]),
-    compact_db(kz_util:format_account_id(AccountId, 'unencoded'));
+    compact_db(kzs_util:format_account_id(AccountId, 'unencoded'));
 compact_db(Database) ->
     CallIdBin = kz_term:to_binary(kz_log:get_callid()),
     print_csv(maybe_track_compact_db(Database, ?HEUR_NONE, CallIdBin)).
@@ -364,13 +364,13 @@ do_compact_db_fold(Database, Rows) ->
 -spec do_compact_db_by_nodes(kz_term:ne_binary(), heuristic()) -> rows().
 do_compact_db_by_nodes(?MATCH_ACCOUNT_RAW(_)=AccountId, Heuristic) ->
     lager:info("formatting raw account id ~s", [AccountId]),
-    do_compact_db_by_nodes(kz_util:format_account_id(AccountId, 'unencoded'), Heuristic);
+    do_compact_db_by_nodes(kzs_util:format_account_id(AccountId, 'unencoded'), Heuristic);
 do_compact_db_by_nodes(?MATCH_ACCOUNT_ENCODED(_)=AccountDb, Heuristic) ->
     lager:info("formatting unencoded account db ~s", [AccountDb]),
-    do_compact_db_by_nodes(kz_util:format_account_id(AccountDb, 'unencoded'), Heuristic);
+    do_compact_db_by_nodes(kzs_util:format_account_id(AccountDb, 'unencoded'), Heuristic);
 do_compact_db_by_nodes(?MATCH_MODB_SUFFIX_RAW(_AccountId, _Year, _Month)=MODB, Heuristic) ->
     lager:info("formatting raw modb ~s", [MODB]),
-    do_compact_db_by_nodes(kz_util:format_account_modb(MODB, 'unencoded'), Heuristic);
+    do_compact_db_by_nodes(kzs_util:format_account_modb(MODB, 'unencoded'), Heuristic);
 do_compact_db_by_nodes(Database, Heuristic) ->
     AdminDbs = kazoo_couch:get_admin_dbs(),
     lager:info("opening in ~s: ~p", [AdminDbs, Database]),

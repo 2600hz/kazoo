@@ -131,7 +131,7 @@
 %%------------------------------------------------------------------------------
 -spec set_account(ledger(), kz_term:ne_binary()) -> ledger().
 set_account(Ledger, Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     Setters = [{fun set_account_id/2, AccountId}
               ,{fun set_account_name/2, kzd_accounts:fetch_name(AccountId)}
               ],

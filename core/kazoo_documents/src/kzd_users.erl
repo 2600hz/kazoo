@@ -756,7 +756,7 @@ fetch('undefined', _UserId) ->
 fetch(_Account, 'undefined') ->
     {'error', 'not_found'};
 fetch(Account, UserId=?NE_BINARY) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzs_util:format_account_db(Account),
     kz_datamgr:open_cache_doc(AccountDb, UserId).
 
 -spec to_vcard(doc()) -> binary().

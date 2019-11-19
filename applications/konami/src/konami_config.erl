@@ -130,7 +130,7 @@ konami_doc(Account) ->
         {'ok', JObj} -> kz_json:get_value(<<"metaflows">>, JObj);
         {'error', 'not_found'} -> 'undefined';
         {'error', _E} ->
-            AccountId = kz_util:format_account_id(Account, 'raw'),
+            AccountId = kzs_util:format_account_id(Account),
             lager:debug("failed to open account(~s)'s konami doc: ~p", [AccountId, _E]),
             'undefined'
     end.

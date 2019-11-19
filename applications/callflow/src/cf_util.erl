@@ -148,7 +148,7 @@ maybe_presence_parking_slot_resp(Username, Realm, AccountDb) ->
 
 -spec maybe_presence_parking_flow(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok' | 'not_found'.
 maybe_presence_parking_flow(Username, Realm, AccountDb) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kzs_util:format_account_id(AccountDb),
     _ = cf_flow:lookup(Username, AccountId),
     case kz_cache:fetch_local(?CACHE_NAME, ?CF_FLOW_CACHE_KEY(Username, AccountDb)) of
         {'error', 'not_found'} -> 'not_found';
@@ -383,7 +383,7 @@ get_operator_callflow(Account) -> get_operator_callflow(Account, 'undefined').
           kz_datamgr:data_error().
 get_operator_callflow(Account, 'undefined') -> get_operator_callflow(Account, ?OPERATOR_KEY);
 get_operator_callflow(Account, OpNum) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzs_util:format_account_db(Account),
     Options = [{'key', OpNum}
               ,'include_docs'
               ,'first_when_multiple'

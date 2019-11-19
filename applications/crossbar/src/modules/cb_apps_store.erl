@@ -421,14 +421,12 @@ load_app(Context, AppId) ->
 
 -spec load_app_from_master_account(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_app_from_master_account(Context, AppId) ->
-    {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     DefaultApps = cb_apps_util:load_default_apps(),
     case [JObj || JObj <- DefaultApps, kz_doc:id(JObj) == AppId] of
         [AppJObj] ->
             cb_context:setters(Context
                               ,[{fun cb_context:set_account_id/2, MasterAccountId}
-                               ,{fun cb_context:set_account_db/2, MasterAccountDb}
                                ,{fun cb_context:set_doc/2, AppJObj}
                                ,{fun cb_context:set_resp_status/2, 'success'}
                                ]

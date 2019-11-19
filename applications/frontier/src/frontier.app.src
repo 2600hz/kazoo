@@ -1,5 +1,5 @@
 {application,frontier,
-             [{applications,[crossbar,kazoo,kazoo_amqp,kazoo_apps,kazoo_data,
+             [{applications,[crossbar,kazoo_amqp,kazoo_apps,kazoo_data,
                              kazoo_documents,kazoo_stdlib,kernel,lager,
                              stdlib]},
               {description,"Frontier - An application that provide acl/ratelimit info to kamailio"},

@@ -51,7 +51,7 @@
 -spec endpoints(kz_term:ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
 endpoints(Number, OffnetJObj) ->
     HuntAccountId  = maybe_get_hunt_account(OffnetJObj),
-    SelectorsDb = kz_util:format_resource_selectors_db(HuntAccountId),
+    SelectorsDb = kzs_util:format_resource_selectors_db(HuntAccountId),
     case get_selector_rules(HuntAccountId) of
         {'ok', SelectorRules} ->
             Resources = foldl_modules(Number, OffnetJObj, SelectorsDb, SelectorRules),
@@ -114,7 +114,7 @@ maybe_get_hunt_account(OffnetJObj) ->
           {'ok', kz_json:objects()} |
           {'error', any()}.
 get_selector_rules(HuntAccountId) ->
-    Db = kz_util:format_account_db(HuntAccountId),
+    Db = kzs_util:format_account_db(HuntAccountId),
     case kz_datamgr:open_doc(Db, ?SRS_RULES_DOC) of
         {'ok', Doc} ->
             Rules = kz_json:get_list_value(<<"rules">>, Doc, ?DEFAULT_SRS_RULES),

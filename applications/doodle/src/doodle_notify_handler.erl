@@ -28,7 +28,7 @@ handle_req(JObj, _Props) ->
 
 -spec handle_account_req(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 handle_account_req(AccountDb, Username) ->
-    AccountId = kz_util:format_account_id(AccountDb),
+    AccountId = kzs_util:format_account_id(AccountDb),
     case cf_util:endpoint_id_by_sip_username(AccountDb, Username) of
         {'ok', EndpointId} ->
             case kz_endpoint:get(EndpointId, AccountDb) of

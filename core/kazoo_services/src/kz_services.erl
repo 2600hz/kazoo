@@ -409,7 +409,7 @@ has_updates(Services) ->
 
 -spec set_updates(services(), kz_term:ne_binary(), kz_services_quantities:billables(), kz_services_quantities:billables()) -> services().
 set_updates(Services, Account, Current, Proposed) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     case account_id(Services) =:= AccountId of
         'true' -> set_account_updates(Services, Current, Proposed);
         'false' -> set_cascade_updates(Services, Current, Proposed)
@@ -860,7 +860,7 @@ fetch(Account) ->
 fetch('undefined', Options) ->
     handle_fetch_options(empty(), Options);
 fetch(Account=?NE_BINARY, Options) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     OpenDocFun = choose_open_doc_fun(Options, AccountId),
 
     handle_fetched_doc(AccountId, Options, OpenDocFun(?KZ_SERVICES_DB, AccountId)).
@@ -913,7 +913,7 @@ create(_AccountId, {'error', 'not_found'}) ->
 create(AccountId, {'ok', AccountJObj}) ->
     ResellerId = kz_services_reseller:find_id(AccountId),
     BaseJObj = kz_doc:update_pvt_parameters(kz_json:new()
-                                           ,kz_util:format_account_db(AccountId)
+                                           ,kzs_util:format_account_db(AccountId)
                                            ,[{'account_id', AccountId}
                                             ,{'crossbar_doc_vsn', 2}
                                             ,{'id', AccountId}
@@ -964,7 +964,7 @@ commit_updates(Account, Current, Proposed) ->
                     ,kz_json:object()
                     ) -> services().
 commit_updates(Account, Current, Proposed, AuditLog) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     FetchOptions = [{'updates', AccountId, to_billables(Current), to_billables(Proposed)}
                    ,{'audit_log', add_audit_log_changes_account(AccountId, AuditLog)}
                    ],
@@ -1205,7 +1205,7 @@ reconcile(Account) ->
 
 -spec reconcile(kz_term:ne_binary(), kz_json:object()) -> services().
 reconcile(Account, AuditLog) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     lager:debug("reconcile ~s", [AccountId]),
     FetchOptions = ['hydrate_account_quantities'
                    ,'hydrate_cascade_quantities'

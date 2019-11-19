@@ -34,18 +34,22 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_dry_run(cb_context:context(), billables()) -> cb_context:context().
+-spec maybe_dry_run(cb_context:context(), billables()) ->
+          {'allowed' | 'denied', cb_context:context()}.
 maybe_dry_run(Context, ProposedJObj) ->
     CurrentJObj = cb_context:fetch(Context, 'db_doc'),
     maybe_dry_run(Context, CurrentJObj, ProposedJObj).
 
--spec maybe_dry_run(cb_context:context(), billables(), billables()) -> cb_context:context().
+-spec maybe_dry_run(cb_context:context(), billables(), billables()) ->
+          {'allowed' | 'denied', cb_context:context()}.
 maybe_dry_run(Context, CurrentJObj, ProposedJObj) ->
     AccountId = cb_context:account_id(Context),
-    lager:debug("verifying billing services requirements for account ~s"
-               ,[AccountId]
-               ),
     AuthAccountId = cb_context:auth_account_id(Context),
+
+    lager:debug("verifying billing services requirements for account ~s (auth'd by ~s)"
+               ,[AccountId, AuthAccountId]
+               ),
+
     Services = kz_services:fetch(AuthAccountId),
     Updated = kz_services:set_updates(Services
                                      ,AccountId
@@ -60,24 +64,24 @@ maybe_dry_run(Context, CurrentJObj, ProposedJObj) ->
     end.
 
 -spec dry_run(cb_context:context(), kz_services_invoices:invoices(), boolean()) ->
-          cb_context:context().
+          {'allowed' | 'denied', cb_context:context()}.
 dry_run(Context, _Quotes, 'false') ->
     lager:debug("request has no billable additions, allowing"),
-    Context;
+    {'allowed', Context};
 dry_run(Context, Quotes, 'true') ->
     lager:debug("request has not accepted notice of billable additions, rejecting"),
     JObj = kz_services_invoices:public_json(Quotes),
-    crossbar_util:response_402(JObj, Context).
+    {'denied', crossbar_util:response_402(JObj, Context)}.
 
 -spec should_dry_run(cb_context:context()) -> boolean().
 should_dry_run(Context) ->
     cb_context:accepting_charges(Context) =/= 'true'.
 
 -spec check_creditably(cb_context:context(), kz_services:services(), kz_services_invoices:invoices(), boolean() | number()) ->
-          cb_context:context().
+          {'allowed' | 'denied', cb_context:context()}.
 check_creditably(Context, _Services, _Quotes, 'false') ->
     lager:debug("request has no billable additions, skipping standing check"),
-    Context;
+    {'allowed', Context};
 check_creditably(Context, Services, Quotes, 'true') ->
     lager:debug("request has billable additions, verifying account standing"),
     Key = [<<"difference">>, <<"billable">>],
@@ -98,17 +102,17 @@ check_creditably(Context, Services, Quotes, 'true') ->
                   ],
     check_creditably(Context, Services, Quotes, lists:sum(Additions ++ Activations));
 check_creditably(Context, _Services, _Quotes, Amount) when Amount =< 0 ->
-    Context;
+    {'allowed', Context};
 check_creditably(Context, Services, Quotes, Amount) ->
     Options = #{amount => kz_currency:dollars_to_units(Amount)
                ,quotes => Quotes
                },
     case kz_services_standing:acceptable(Services, Options) of
-        {'true', _} -> Context;
+        {'true', _} -> {'allowed', Context};
         {'false', Reason} ->
             ErrorJObj = kz_json:from_map(Reason),
             lager:debug("request denied for billing reasons: ~p", [ErrorJObj]),
-            cb_context:add_system_error(402, 'billing_issue', ErrorJObj, Context)
+            {'denied', cb_context:add_system_error(402, 'billing_issue', ErrorJObj, Context)}
     end.
 
 %%------------------------------------------------------------------------------
@@ -189,7 +193,7 @@ audit_log_agent(Context) ->
 
 -spec audit_log_user(cb_context:context(), kz_term:ne_binary()) -> kz_term:api_proplist().
 audit_log_user(Context, UserId) ->
-    AccountDb = kz_util:format_account_db(
+    AccountDb = kzs_util:format_account_db(
                   cb_context:auth_account_id(Context)
                  ),
     case kz_datamgr:open_cache_doc(AccountDb, UserId) of

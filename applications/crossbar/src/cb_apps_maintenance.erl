@@ -45,7 +45,7 @@ migrate(Account) when is_binary(Account) ->
           {'ok', kzd_accounts:doc()} |
           kz_datamgr:data_error().
 save(Account, AppsStoreDoc) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kzs_util:format_account_db(Account),
     case kz_datamgr:save_doc(AccountDb, AppsStoreDoc) of
         {'error', _R}=Error -> Error;
         {'ok', _SavedAppsStoreDoc}=Ok ->
