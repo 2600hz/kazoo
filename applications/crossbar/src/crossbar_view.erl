@@ -976,7 +976,7 @@ check_page_size_and_length(#{total_queried := TotalQueried
 limit_with_last_key('false', 'undefined', _, _) ->
     'undefined';
 %% explicitly disabled pagination
-limit_with_last_key('false', 'infinity', ChunkSize, _TotalQueried) ->
+limit_with_last_key(_IsChunked, 'infinity', ChunkSize, _TotalQueried) ->
     1 + ChunkSize;
 %% non-chunked limited request
 limit_with_last_key('false', PageSize, _, TotalQueried) ->
