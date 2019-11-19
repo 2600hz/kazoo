@@ -538,7 +538,7 @@ dump_reserved(_, []) -> 'stop';
 dump_reserved(_, Todo) -> dump_by_state(?NUMBER_STATE_RESERVED, Todo).
 
 -spec import(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) ->
-                    {kz_tasks:return(), sets:set()}.
+          {kz_tasks:return(), sets:set()}.
 import(ExtraArgs, 'init', Args) ->
     kz_datamgr:suppress_change_notice(),
     IterValue = sets:new(),
@@ -766,7 +766,7 @@ format_result(_, N) ->
 
 -type accountid_or_startkey_and_numberdbs() :: [{kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:ne_binary()}].
 -spec list_assigned_to(kz_term:ne_binary(), accountid_or_startkey_and_numberdbs()) ->
-                              {ok | error  | [kz_csv:row()], accountid_or_startkey_and_numberdbs()}.
+          {ok | error  | [kz_csv:row()], accountid_or_startkey_and_numberdbs()}.
 list_assigned_to(AuthBy, [{Next,NumberDb}|Rest]) ->
     ViewOptions = [{limit,?DB_DUMP_BULK_SIZE} | view_for_list_assigned(Next)],
     case kz_datamgr:get_result_keys(NumberDb, <<"numbers/assigned_to">>, ViewOptions) of
@@ -792,7 +792,7 @@ view_for_list_assigned(StartKey=[AccountId,_]) ->
 
 -type startkey_or_numberdb() :: kz_term:ne_binary() | kz_term:ne_binaries().
 -spec dump_next(fun((startkey_or_numberdb()) -> {kz_term:ne_binary(), kz_datamgr:view_options()}), startkey_or_numberdb()) ->
-                       {ok | error | [kz_csv:row()], [startkey_or_numberdb()]}.
+          {ok | error | [kz_csv:row()], [startkey_or_numberdb()]}.
 dump_next(ViewFun, [Next|Rest]) ->
     {NumberDb, MoreViewOptions} = ViewFun(Next),
     ViewOptions = [{limit, ?DB_DUMP_BULK_SIZE} | MoreViewOptions],

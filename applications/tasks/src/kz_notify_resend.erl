@@ -374,8 +374,8 @@ apply_reschedule_logic(NotifyType, JObj) ->
     end.
 
 -spec apply_reschedule_rules(kz_term:ne_binary(),{kz_json:objects(), kz_json:path()}, kz_json:object()) ->
-                                    {'ok', kz_json:object()} |
-                                    {'no_rules', kz_json:object()}.
+          {'ok', kz_json:object()} |
+          {'no_rules', kz_json:object()}.
 apply_reschedule_rules(_NotifyType, {[], _}, JObj) -> {'no_rules', JObj};
 apply_reschedule_rules(NotifyType, {[Rule | Rules], [Key | Keys]}, JObj) ->
     Attempts = kz_json:get_integer_value(<<"attempts">>, JObj, 0),

@@ -180,7 +180,7 @@ to_json(Reason, _, Cause) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec build_error(integer(), atom(), kz_term:api_binary(), atom() | kz_term:ne_binary()) ->
-                         error().
+          error().
 build_error(Code, Error, Message, Cause) ->
     kz_json:from_list(
       [{?CODE, Code}]

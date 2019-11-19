@@ -334,7 +334,7 @@ additional_assignment_validations(Context) ->
     additional_assignment_validations(Context, IPs, [], 0).
 
 -spec additional_assignment_validations(cb_context:context(), kz_term:proplist(), kz_json:objects(), non_neg_integer()) ->
-                                               cb_context:context().
+          cb_context:context().
 additional_assignment_validations(Context, [], Assign, _Index) ->
     case cb_context:resp_status(Context) =:= 'success' of
         'false' -> Context;
@@ -365,7 +365,7 @@ additional_assignment_validations(Context, [{_Address, {'error', Reason}}|_IPs],
                                ).
 
 -spec validate_error_already_assigned(cb_context:context(), kz_term:ne_binary(), non_neg_integer()) ->
-                                             cb_context:context().
+          cb_context:context().
 validate_error_already_assigned(Context, IP, Index) ->
     Key = <<"ips.", (kz_term:to_binary(Index))/binary>>,
     Message = kz_json:from_list(
@@ -375,7 +375,7 @@ validate_error_already_assigned(Context, IP, Index) ->
     cb_context:add_validation_error(Key, <<"superfluous">>, Message, Context).
 
 -spec validate_error_assigned(cb_context:context(), kz_term:ne_binary(), non_neg_integer()) ->
-                                     cb_context:context().
+          cb_context:context().
 validate_error_assigned(Context, IP, Index) ->
     Key = <<"ips.", (kz_term:to_binary(Index))/binary>>,
     Message = kz_json:from_list(
@@ -385,7 +385,7 @@ validate_error_assigned(Context, IP, Index) ->
     cb_context:add_validation_error(Key, <<"forbidden">>, Message, Context).
 
 -spec validate_error_not_found(cb_context:context(), kz_term:ne_binary(), non_neg_integer()) ->
-                                      cb_context:context().
+          cb_context:context().
 validate_error_not_found(Context, IP, Index) ->
     Key = <<"ips.", (kz_term:to_binary(Index))/binary>>,
     Message = kz_json:from_list(
@@ -463,7 +463,7 @@ additional_release_validations(Context) ->
     additional_release_validations(Context, IPs, [], 0).
 
 -spec additional_release_validations(cb_context:context(), kz_term:proplist(), kz_json:objects(), non_neg_integer()) ->
-                                            cb_context:context().
+          cb_context:context().
 additional_release_validations(Context, [], Release, _Index) ->
     cb_context:store(Context, 'release_ips', Release);
 additional_release_validations(Context, [{Address, {'ok', JObj}} | IPs], Release, Index) ->
@@ -488,7 +488,7 @@ additional_release_validations(Context, [{_Address, {'error', Reason}}|_IPs], _R
                                ).
 
 -spec validate_error_not_assigned(cb_context:context(), kz_term:ne_binary(), non_neg_integer()) ->
-                                         cb_context:context().
+          cb_context:context().
 validate_error_not_assigned(Context, IP, Index) ->
     Key = <<"ips.", (kz_term:to_binary(Index))/binary>>,
     Message = kz_json:from_list(

@@ -475,7 +475,7 @@ collection_process(Context, Numbers, Action) ->
                ).
 
 -spec collection_process_action_fold(kz_term:ne_binary(), kz_json:object(), cb_context:context(), kz_term:ne_binary()) ->
-                                            kz_json:object().
+          kz_json:object().
 collection_process_action_fold(Number, Acc, Context, Action) ->
     case collection_action(Context, cb_context:req_verb(Context), Number, Action) of
         {'ok', JObj} ->
@@ -486,7 +486,7 @@ collection_process_action_fold(Number, Acc, Context, Action) ->
     end.
 
 -spec collection_process_fold(kz_term:ne_binary(), kz_json:object(), cb_context:context()) ->
-                                     kz_json:object().
+          kz_json:object().
 collection_process_fold(Number, Acc, Context) ->
     case collection_action(Context, cb_context:req_verb(Context), Number) of
         {'ok', KNum} ->
@@ -516,8 +516,8 @@ collection_action(Context, ?HTTP_DELETE, Number) ->
     knm_number:release(Number, Options).
 
 -spec collection_action(cb_context:context(), http_method(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               knm_number_return() |
-                               {'ok', kz_json:object()}.
+          knm_number_return() |
+          {'ok', kz_json:object()}.
 collection_action(Context, ?HTTP_PUT, Number, ?ACTIVATE) ->
     Options = [{'public_fields', kz_json:delete_key(<<"numbers">>, cb_context:doc(Context))}
                | default_knm_options(Context)

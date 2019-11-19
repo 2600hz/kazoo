@@ -38,15 +38,15 @@ get_file_name(Props, Ext) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_attachment(kz_term:proplist()) ->
-                            {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} |
-                            {'error', any()}.
+          {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} |
+          {'error', any()}.
 get_attachment(Props) ->
     UseDb = props:get_value(<<"account_db">>, Props, ?KZ_FAXES_DB),
     get_attachment(UseDb, Props).
 
 -spec get_attachment(kz_term:ne_binary(), kz_term:proplist()) ->
-                            {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} |
-                            {'error', any()}.
+          {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()} |
+          {'error', any()}.
 get_attachment(UseDb, Props) ->
     Fax   = props:get_value(<<"fax">>, Props),
     FaxId = props:get_first_defined([<<"fax_jobid">>, <<"fax_id">>], Fax),
@@ -59,12 +59,12 @@ get_attachment(UseDb, Props) ->
 %%------------------------------------------------------------------------------
 
 -spec raw_attachment_binary(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                   {'ok', kz_term:ne_binary(), kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary()}.
 raw_attachment_binary(Db, FaxId) ->
     raw_attachment_binary(Db, FaxId, 2).
 
 -spec raw_attachment_binary(kz_term:ne_binary(), kz_term:ne_binary(), non_neg_integer()) ->
-                                   {'ok', kz_term:ne_binary(), kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary()}.
 raw_attachment_binary(Db, FaxId, Retries) when Retries > 0 ->
     lager:debug("get raw attachment ~s / ~s", [Db, FaxId]),
 

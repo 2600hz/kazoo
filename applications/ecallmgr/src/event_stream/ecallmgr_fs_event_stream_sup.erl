@@ -62,6 +62,6 @@ init([Node, _Props]) ->
     {'ok', {SupFlags, ?CHILDREN(PacketSize)}}.
 
 -spec event_child(atom(), ecallmgr_fs_event_stream:profile(), ecallmgr_fs_event_stream:event_packet_type()) ->
-                         kz_types:sup_child_spec().
+          kz_types:sup_child_spec().
 event_child(Node, Event, Packet) ->
     ?WORKER_NAME_ARGS_TYPE(Event, 'ecallmgr_fs_event_stream', [Node, Event, Packet], 'transient').

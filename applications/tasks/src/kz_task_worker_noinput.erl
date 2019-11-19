@@ -57,7 +57,7 @@ start(TaskId, API, ExtraArgs) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init(kz_tasks:id(), kz_json:object(), kz_tasks:extra_args()) -> {'ok', state()} |
-                                                                      {'error', any()}.
+          {'error', any()}.
 init(TaskId, API, ExtraArgs) ->
     Header = kz_tasks_scheduler:get_output_header(API),
     case write_output_csv_header(TaskId, Header) of
@@ -128,8 +128,8 @@ store_file(#state{task_id = TaskId}, File) ->
     end.
 
 -spec is_task_successful(kz_tasks:iterator(), state()) ->
-                                {boolean(), kz_tasks:columns(), non_neg_integer(), kz_tasks:iterator()} |
-                                'stop'.
+          {boolean(), kz_tasks:columns(), non_neg_integer(), kz_tasks:iterator()} |
+          'stop'.
 is_task_successful(IterValue
                   ,State=#state{api = API
                                ,extra_args = ExtraArgs
@@ -203,7 +203,7 @@ columns(_, _) ->
     sets:new().
 
 -spec write_output_csv_header(kz_tasks:id(), kz_csv:row()) ->
-                                     'ok' | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
+          'ok' | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 write_output_csv_header(TaskId, Header) ->
     Data = [kz_csv:row_to_iolist(Header)],
     file:write_file(?OUT(TaskId), Data).

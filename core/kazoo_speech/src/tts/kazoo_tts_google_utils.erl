@@ -14,7 +14,7 @@
 -include("kazoo_tts_google.hrl").
 
 -spec getJson(synthesisInput() | voiceSelectionParams() | audioConfig()) -> {'ok', kz_json:object()} |
-                                                                            {'error', kz_term:ne_binary()}.
+          {'error', kz_term:ne_binary()}.
 getJson(#synthesisInput{}=SysthesisInput) ->
     synthesis_input_to_json(SysthesisInput, validate_synthesis_input(SysthesisInput));
 getJson(#voiceSelectionParams{}=VoiceSelection) ->

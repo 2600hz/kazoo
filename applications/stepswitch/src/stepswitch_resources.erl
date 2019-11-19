@@ -292,8 +292,8 @@ endpoint_ordering(P1, P2) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec reverse_lookup(kz_json:object()) ->
-                            {'ok', kz_term:proplist()} |
-                            {'error', 'not_found'}.
+          {'ok', kz_term:proplist()} |
+          {'error', 'not_found'}.
 reverse_lookup(JObj) ->
     Realm = stepswitch_util:get_realm(JObj),
     IP = kz_json:get_first_defined([<<"From-Network-Addr">>
@@ -336,21 +336,21 @@ find_account_id(Realm) ->
     end.
 
 -spec maybe_find_global(kz_term:api_binary(), kz_term:api_integer(), kz_term:api_binary()) ->
-                               {'ok', kz_term:proplist()} |
-                               {'error', 'not_found'}.
+          {'ok', kz_term:proplist()} |
+          {'error', 'not_found'}.
 maybe_find_global(IP, Port, Realm) ->
     search_resources(IP, Port, Realm, get()).
 
 -spec maybe_find_local(kz_term:api_binary(), kz_term:api_integer(), kz_term:api_binary(), kz_term:api_binary()) ->
-                              {'ok', kz_term:proplist()} |
-                              {'error', 'not_found'}.
+          {'ok', kz_term:proplist()} |
+          {'error', 'not_found'}.
 maybe_find_local(_, _, _, 'undefined') -> {'error', 'not_found'};
 maybe_find_local(IP, Port, Realm, AccountId) ->
     search_resources(IP, Port, Realm, get(AccountId)).
 
 -spec search_resources(kz_term:api_binary(), kz_term:api_integer(), kz_term:api_binary(), resources()) ->
-                              {'ok', kz_term:proplist()} |
-                              {'error', 'not_found'}.
+          {'ok', kz_term:proplist()} |
+          {'error', 'not_found'}.
 search_resources(_IP, _Port, _Realm, []) ->
     lager:debug("failed to find matching resource for ~s:~p(~s)", [_IP, _Port, _Realm]),
     {'error', 'not_found'};
@@ -380,8 +380,8 @@ search_resources(IP, Port, Realm, [#resrc{id=Id
     end.
 
 -spec search_gateways(kz_term:api_binary(), kz_term:api_integer(), kz_term:api_binary(), gateways()) ->
-                             gateway() |
-                             {'error', 'not_found'}.
+          gateway() |
+          {'error', 'not_found'}.
 search_gateways(_, _, _, []) -> {'error', 'not_found'};
 search_gateways(IP, Port, Realm, [Gateway | Gateways]) ->
     case search_gateway(IP, Port, Realm, Gateway) of
@@ -390,8 +390,8 @@ search_gateways(IP, Port, Realm, [Gateway | Gateways]) ->
     end.
 
 -spec search_gateway(kz_term:api_binary(), kz_term:api_integer(), kz_term:api_binary(), gateway()) ->
-                            gateway() |
-                            {'error', 'not_found'}.
+          gateway() |
+          {'error', 'not_found'}.
 search_gateway(IP, Port, _, #gateway{server=IP
                                     ,port=Port
                                     ,force_port='true'
@@ -468,7 +468,7 @@ resource_has_flag(Flag, #resrc{flags=ResourceFlags, id=_Id}) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec resources_to_endpoints(resources(), kz_term:ne_binary(), kapi_offnet_resource:req()) ->
-                                    kz_json:objects().
+          kz_json:objects().
 resources_to_endpoints(Resources, Number, OffnetJObj) ->
     ResourceMap = lists:foldl(fun resource_classifier_map/2, maps:new(), Resources),
     Classification = knm_converters:classify(Number),
@@ -523,8 +523,8 @@ build_endpoints_from_resources([Resource|Resources], Number, OffnetJObj, Endpoin
     end.
 
 -spec maybe_resource_to_endpoints(resource(), kz_term:ne_binary(), kapi_offnet_resource:req(), kz_json:objects()) ->
-                                         {'error', 'no_match'} |
-                                         kz_json:objects().
+          {'error', 'no_match'} |
+          kz_json:objects().
 maybe_resource_to_endpoints(#resrc{id=Id
                                   ,name=Name
                                   ,rules=Rules
@@ -577,7 +577,7 @@ check_diversion_fields(OffnetJObj) ->
     end.
 
 -spec update_endpoint(kz_json:object(), kz_term:proplist(), kz_term:proplist()) ->
-                             kz_json:object().
+          kz_json:object().
 update_endpoint(Endpoint, Updates, CCVUpdates) ->
     kz_json:set_values(Updates, update_ccvs(Endpoint, CCVUpdates)).
 
@@ -596,8 +596,8 @@ add_proxy(Endpoint, {Zone, IP}) ->
     kz_json:set_values(Updates ,Endpoint).
 
 -spec filter_resource_by_rules(kz_term:ne_binary(), kz_term:ne_binary(), re:mp(), kz_term:ne_binary(), re:mp()) ->
-                                      {'ok', kz_term:ne_binary()} |
-                                      {'error', 'no_match'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'no_match'}.
 filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) ->
     case evaluate_rules(Rules, Number) of
         {'error', 'no_match'} ->
@@ -608,8 +608,8 @@ filter_resource_by_rules(Id, Number, Rules, CallerIdNumber, CallerIdRules) ->
     end.
 
 -spec filter_resource_by_match(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), re:mp(), kz_term:ne_binary()) ->
-                                      {'ok', kz_term:ne_binary()} |
-                                      {'error', 'no_match'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'no_match'}.
 filter_resource_by_match(Id, Number, CallerIdNumber, CallerIdRules, Match) ->
     case evaluate_cid_rules(CallerIdRules, CallerIdNumber) of
         {'ok', 'empty_rules'} ->
@@ -631,8 +631,8 @@ update_ccvs(Endpoint, Updates) ->
     kz_json:set_value(<<"Custom-Channel-Vars">>, kz_json:set_values(Updates, CCVs), Endpoint).
 
 -spec evaluate_rules(re:mp(), kz_term:ne_binary()) ->
-                            {'ok', kz_term:ne_binary()} |
-                            {'error', 'no_match'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'no_match'}.
 evaluate_rules([], _) -> {'error', 'no_match'};
 evaluate_rules([Rule|Rules], Number) ->
     case re:run(Number, Rule) of
@@ -648,9 +648,9 @@ evaluate_rules([Rule|Rules], Number) ->
     end.
 
 -spec evaluate_cid_rules(re:mp(), kz_term:ne_binary()) ->
-                                {'ok', kz_term:ne_binary()} |
-                                {'ok', 'empty_rules'} | %% empty rules, it`s ok, allow any number
-                                {'error', 'no_match'}.
+          {'ok', kz_term:ne_binary()} |
+          {'ok', 'empty_rules'} | %% empty rules, it`s ok, allow any number
+          {'error', 'no_match'}.
 evaluate_cid_rules([], _) -> {'ok','empty_rules'};
 evaluate_cid_rules(CIDRules, CIDNumber) -> evaluate_rules(CIDRules, CIDNumber).
 
@@ -659,7 +659,7 @@ evaluate_cid_rules(CIDRules, CIDNumber) -> evaluate_rules(CIDRules, CIDNumber).
 %% @end
 %%------------------------------------------------------------------------------
 -spec gateways_to_endpoints(kz_term:ne_binary(), gateways(), kapi_offnet_resource:req(), kz_json:objects()) ->
-                                   kz_json:objects().
+          kz_json:objects().
 gateways_to_endpoints(_Number, [], _OffnetJObj, Endpoints) -> Endpoints;
 gateways_to_endpoints(Number, [Gateway|Gateways], OffnetJObj, Endpoints) ->
     gateways_to_endpoints(Number
@@ -669,7 +669,7 @@ gateways_to_endpoints(Number, [Gateway|Gateways], OffnetJObj, Endpoints) ->
                          ).
 
 -spec gateway_to_endpoint(kz_term:ne_binary(), gateway(), kapi_offnet_resource:req()) ->
-                                 kz_json:object().
+          kz_json:object().
 gateway_to_endpoint(DestinationNumber
                    ,#gateway{invite_format=InviteFormat
                             ,caller_id_type=CallerIdType
@@ -748,7 +748,7 @@ static_sip_invite_parameters(#gateway{invite_parameters=Parameters}) ->
     kz_json:get_list_value(<<"static">>, Parameters, []).
 
 -spec dynamic_sip_invite_parameters(gateway(), kapi_offnet_resource:req()) ->
-                                           kz_term:ne_binaries().
+          kz_term:ne_binaries().
 dynamic_sip_invite_parameters(#gateway{invite_parameters='undefined'}, _) -> [];
 dynamic_sip_invite_parameters(#gateway{invite_parameters=Parameters}, OffnetJObj) ->
     CCVs = kz_json:normalize(kapi_offnet_resource:requestor_custom_channel_vars(OffnetJObj, kz_json:new())),

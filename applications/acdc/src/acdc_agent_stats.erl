@@ -91,7 +91,7 @@ agent_logged_out(AccountId, AgentId) ->
                        ).
 
 -spec agent_pending_logged_out(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                      'ok'.
+          'ok'.
 agent_pending_logged_out(AccountId, AgentId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -106,11 +106,11 @@ agent_pending_logged_out(AccountId, AgentId) ->
                        ).
 
 -spec agent_connecting(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                              'ok'.
+          'ok'.
 agent_connecting(AccountId, AgentId, CallId) ->
     agent_connecting(AccountId, AgentId, CallId, 'undefined', 'undefined', 'undefined').
 -spec agent_connecting(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
-                              'ok'.
+          'ok'.
 agent_connecting(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber, QueueId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -129,11 +129,11 @@ agent_connecting(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber, Queue
                        ).
 
 -spec agent_connected(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                             'ok'.
+          'ok'.
 agent_connected(AccountId, AgentId, CallId) ->
     agent_connected(AccountId, AgentId, CallId, 'undefined', 'undefined', 'undefined').
 -spec agent_connected(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
-                             'ok'.
+          'ok'.
 agent_connected(AccountId, AgentId, CallId, CallerIDName, CallerIDNumber, QueueId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -272,8 +272,8 @@ status_build_match_spec(JObj) ->
     end.
 
 -spec status_build_match_spec(kz_json:object(), {status_stat(), list()}) ->
-                                     {'ok', ets:match_spec()} |
-                                     {'error', kz_json:object()}.
+          {'ok', ets:match_spec()} |
+          {'error', kz_json:object()}.
 status_build_match_spec(JObj, AcctMatch) ->
     case kz_json:foldl(fun status_match_builder_fold/3, AcctMatch, JObj) of
         {'error', _Errs}=Errors -> Errors;

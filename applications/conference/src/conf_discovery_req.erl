@@ -114,12 +114,12 @@ maybe_collect_conference_id(Srv, Conference) ->
     end.
 
 -spec collect_conference_id(pid(), kapps_conference:conference()) ->
-                                   'ok'.
+          'ok'.
 collect_conference_id(Srv, Conference) ->
     collect_conference_id(Srv, Conference, 1).
 
 -spec collect_conference_id(pid(), kapps_conference:conference(), pos_integer()) ->
-                                   'ok'.
+          'ok'.
 collect_conference_id(Srv, Conference, Loop) when Loop > 3 ->
     lager:debug("caller has failed to provide a valid conference number to many times"),
     Call = kapps_conference:call(Conference),
@@ -136,7 +136,7 @@ collect_conference_id(Srv, Conference, Loop) ->
     end.
 
 -spec validate_collected_conference_id(pid(), kapps_conference:conference(), pos_integer(), binary()) ->
-                                              'ok'.
+          'ok'.
 validate_collected_conference_id(Srv, Conference, Loop, <<>>) ->
     Call = kapps_conference:call(Conference),
     _ = kapps_call_command:prompt(<<"conf-bad_conf">>, Call),
@@ -191,7 +191,7 @@ valid_conference_id(Srv, Conference, Digits) ->
     end.
 
 -spec maybe_set_conference_tones(kapps_conference:conference(), kz_json:object()) ->
-                                        kapps_conference:conference().
+          kapps_conference:conference().
 maybe_set_conference_tones(Conference, JObj) ->
     ShouldPlayOnEntry = kz_json:get_ne_value(<<"Play-Entry-Tone">>, JObj, kapps_conference:play_entry_tone(Conference)),
     ShouldPlayOnExit = kz_json:get_ne_value(<<"Play-Exit-Tone">>, JObj, kapps_conference:play_exit_tone(Conference)),
@@ -265,7 +265,7 @@ prepare_kapps_conference(Conference, Call, Srv) ->
     search_for_conference(C, Call, Srv).
 
 -spec maybe_set_as_moderator(pid(), kapps_conference:conference()) ->
-                                    kapps_conference:conference().
+          kapps_conference:conference().
 maybe_set_as_moderator(Srv, Conference) ->
     {'ok', JObj} = conf_participant:discovery_event(Srv),
     case kz_json:is_true(<<"Moderator">>, JObj, 'false')
@@ -316,15 +316,15 @@ handle_resource_locked(Conference, Call, Srv) ->
     end.
 
 -spec wait_for_creation(kapps_conference:conference()) ->
-                               {'ok', kz_json:object()} |
-                               {'error', 'timeout'}.
+          {'ok', kz_json:object()} |
+          {'error', 'timeout'}.
 wait_for_creation(Conference) ->
     lager:debug("checking if conference ~s has been created", [kapps_conference:id(Conference)]),
     wait_for_creation(Conference, 8 * ?MILLISECONDS_IN_SECOND).
 
 -spec wait_for_creation(kapps_conference:conference(), non_neg_integer()) ->
-                               {'ok', kz_json:object()} |
-                               {'error', 'timeout'}.
+          {'ok', kz_json:object()} |
+          {'error', 'timeout'}.
 wait_for_creation(_, After) when After =< 0 ->
     kz_amqp_channel:release(),
     {'error', 'timeout'};
@@ -390,8 +390,8 @@ add_participant_to_conference(JObj, Conference, Call, Srv) ->
 discovery_failed(Call, _) -> kapps_call_command:hangup(Call).
 
 -spec validate_conference_pin(kz_term:api_boolean(), kapps_conference:conference(), kapps_call:call(), pos_integer()) ->
-                                     {'ok', kapps_conference:conference()} |
-                                     {'error', any()}.
+          {'ok', kapps_conference:conference()} |
+          {'error', any()}.
 validate_conference_pin(_, _, Call, Loop) when Loop > 3->
     lager:debug("caller has failed to provide a valid conference pin to many times"),
     _ = kapps_call_command:b_prompt(<<"conf-too_many_attempts">>, Call),
@@ -423,8 +423,8 @@ collect_pin(Conference, Call) ->
     kapps_call_command:b_prompt_and_collect_digits(1, 16, <<"conf-enter_conf_pin">>, 1, Timeout, Call).
 
 -spec validate_if_pin_is_for_moderator(kapps_conference:conference(), kapps_call:call(), non_neg_integer(), binary()) ->
-                                              {'ok', kapps_conference:conference()} |
-                                              {'error', any()}.
+          {'ok', kapps_conference:conference()} |
+          {'error', any()}.
 validate_if_pin_is_for_moderator(Conference, Call, Loop, Digits) ->
     MemberPins = kapps_conference:member_pins(Conference),
     ModeratorPins = kapps_conference:moderator_pins(Conference),
@@ -451,14 +451,14 @@ validate_if_pin_is_for_moderator(Conference, Call, Loop, Digits) ->
     end.
 
 -spec validate_collected_member_pins(kapps_conference:conference(), kapps_call:call(), non_neg_integer(), binary()) ->
-                                            {'ok', kapps_conference:conference()} |
-                                            {'error', any()}.
+          {'ok', kapps_conference:conference()} |
+          {'error', any()}.
 validate_collected_member_pins(Conference, Call, Loop, Digits) ->
     validate_collected_member_pins(Conference, Call, Loop, Digits, kapps_conference:member_pins(Conference)).
 
 -spec validate_collected_member_pins(kapps_conference:conference(), kapps_call:call(), non_neg_integer(), binary(), kz_term:ne_binaries()) ->
-                                            {'ok', kapps_conference:conference()} |
-                                            {'error', any()}.
+          {'ok', kapps_conference:conference()} |
+          {'error', any()}.
 validate_collected_member_pins(Conference, _Call, _Loop, <<>>, []) ->
     lager:info("no member pins configured or necessary and empty collection"),
     {'ok', Conference};
@@ -475,14 +475,14 @@ validate_collected_member_pins(Conference, Call, Loop, Digits, Pins) ->
     end.
 
 -spec validate_collected_conference_pin(kapps_conference:conference(), kapps_call:call(), pos_integer(), binary()) ->
-                                               {'ok', kapps_conference:conference()} |
-                                               {'error', any()}.
+          {'ok', kapps_conference:conference()} |
+          {'error', any()}.
 validate_collected_conference_pin(Conference, Call, Loop, Digits) ->
     validate_collected_conference_pin(Conference, Call, Loop, Digits, kapps_conference:moderator_pins(Conference)).
 
 -spec validate_collected_conference_pin(kapps_conference:conference(), kapps_call:call(), pos_integer(), binary(), kz_term:ne_binaries()) ->
-                                               {'ok', kapps_conference:conference()} |
-                                               {'error', any()}.
+          {'ok', kapps_conference:conference()} |
+          {'error', any()}.
 validate_collected_conference_pin(Conference, _Call, _Loop, <<>>, []) ->
     lager:info("no moderator pins configured or necessary and empty collection"),
     {'ok', Conference};

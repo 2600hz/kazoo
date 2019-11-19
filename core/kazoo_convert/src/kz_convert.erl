@@ -16,7 +16,7 @@
 
 %% @equiv fax(FromFormat, ToFormat, Content, [])
 -spec fax(kz_term:api_ne_binary(), kz_term:api_ne_binary(), binary()|{'file', filename:name()}) ->
-                 gen_kz_converter:converted().
+          gen_kz_converter:converted().
 fax(FromFormat, ToFormat, Content) ->
     fax(FromFormat, ToFormat, Content, []).
 
@@ -41,7 +41,7 @@ fax(FromFormat, ToFormat, Content) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec fax(kz_term:api_binary(), kz_term:api_binary(), binary()|{'file', filename:name()}, kz_term:proplist()) ->
-                 gen_kz_converter:converted().
+          gen_kz_converter:converted().
 fax('undefined', _ToFormat, <<>>, _Options) ->
     {'error', <<"undefined from format">>};
 fax(_FromFormat, 'undefined', <<>>, _Options) ->

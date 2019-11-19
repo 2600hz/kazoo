@@ -25,7 +25,7 @@
 -include("konami.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'continue', kapps_call:call()}.
+          {'continue', kapps_call:call()}.
 handle(Data, Call) ->
     AMOH = kz_json:get_value(<<"moh_aleg">>, Data),
     AMOHToPlay = kz_media_util:media_path(AMOH, kapps_call:account_id(Call)),

@@ -243,7 +243,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_info(?HOOK_EVT(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()), state()) ->
-                         {'noreply', state()}.
+          {'noreply', state()}.
 handle_info(?HOOK_EVT(AccountId, EventType, JObj), State) ->
     _ = kz_process:spawn(fun handle_hook_event/3, [AccountId, EventType, JObj]),
     {'noreply', State};

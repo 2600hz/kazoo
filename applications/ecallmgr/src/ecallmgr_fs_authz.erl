@@ -157,7 +157,7 @@ is_consuming_inbound_resource(Data, CallId, Node) ->
     end.
 
 -spec request_channel_authorization(kzd_freeswitch:data(), kz_term:ne_binary(), atom()) ->
-                                           authz_reply().
+          authz_reply().
 request_channel_authorization(Data, CallId, Node) ->
     lager:debug("channel authorization request started"),
     ReqResp = kz_amqp_worker:call(authz_req(Data)
@@ -208,7 +208,7 @@ authz_response(JObj, Data, CallId, Node) ->
     end.
 
 -spec authorize_account(kz_json:object(), kzd_freeswitch:data(), kz_term:ne_binary(), atom()) ->
-                               authz_reply().
+          authz_reply().
 authorize_account(JObj, Data, CallId, Node) ->
     AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
     Type      = kz_json:get_value(<<"Account-Billing">>, JObj),
@@ -230,7 +230,7 @@ maybe_add_outbound_flags(JObj) ->
     end.
 
 -spec authorize_reseller(kz_json:object(), kzd_freeswitch:data(), kz_term:ne_binary(), atom()) ->
-                                authz_reply().
+          authz_reply().
 authorize_reseller(JObj, Data, CallId, Node) ->
     AccountId = kzd_freeswitch:account_id(Data),
     case kz_json:get_value(<<"Reseller-ID">>, JObj, AccountId) of
@@ -245,7 +245,7 @@ authorize_reseller(JObj, Data, CallId, Node) ->
     end.
 
 -spec set_ccv_trunk_usage(kz_json:object(), kzd_freeswitch:data(), kz_term:ne_binary(), atom()) ->
-                                 authz_reply().
+          authz_reply().
 set_ccv_trunk_usage(JObj, Data, CallId, Node) ->
     Usage = [{Key, TrunkUsage}
              || Key <- [<<"Account-Trunk-Usage">>
@@ -359,7 +359,7 @@ get_rating_ccvs(JObj) ->
                ).
 
 -spec rating_ccv(kz_term:ne_binary(), kz_term:proplist(), kz_json:object()) ->
-                        kz_term:proplist().
+          kz_term:proplist().
 rating_ccv(<<"Rate">>, Acc, JObj) ->
     maybe_update_callee_id(JObj, Acc);
 rating_ccv(Key, Acc, JObj) ->

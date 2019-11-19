@@ -93,13 +93,13 @@ flush_local(Db, Id) -> ?MOD:flush_local(Db, Id).
 
 
 -spec build(kz_term:api_ne_binary() | kz_json:object(), kapps_call:call()) ->
-                   {'ok', kz_json:objects()} |
-                   {'error', build_errors()}.
+          {'ok', kz_json:objects()} |
+          {'error', build_errors()}.
 build(EndpointId, Call) -> ?MOD:build(EndpointId, Call).
 
 -spec build(kz_term:api_ne_binary() | kz_json:object(), kz_term:api_object(), kapps_call:call()) ->
-                   {'ok', kz_json:objects()} |
-                   {'error', build_errors()}.
+          {'ok', kz_json:objects()} |
+          {'error', build_errors()}.
 build(EndpointId, Properties, Call) -> ?MOD:build(EndpointId, Properties, Call).
 
 -spec maybe_start_metaflow(kapps_call:call(), kz_json:object()) -> 'ok'.
@@ -113,7 +113,7 @@ maybe_start_metaflow(Call, Endpoint) -> ?MOD:maybe_start_metaflow(Call, Endpoint
 %%------------------------------------------------------------------------------
 
 -spec create_sip_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
-                                 kz_json:object().
+          kz_json:object().
 create_sip_endpoint(Endpoint, Properties, Call) -> ?MOD:create_sip_endpoint(Endpoint, Properties, Call).
 
 
@@ -126,7 +126,7 @@ create_sip_endpoint(Endpoint, Properties, Call) -> ?MOD:create_sip_endpoint(Endp
 %% @end
 %%------------------------------------------------------------------------------
 -spec create_call_fwd_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
-                                      kz_json:object().
+          kz_json:object().
 create_call_fwd_endpoint(Endpoint, Properties, Call) -> ?MOD:create_call_fwd_endpoint(Endpoint, Properties, Call).
 
 

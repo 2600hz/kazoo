@@ -279,13 +279,13 @@ maybe_has_comfort_noise_option_enabled(Endpoint, Acc) ->
     end.
 
 -spec get_caller_id(kz_json:object(), kapps_call:call()) ->
-                           {kz_term:api_binary(), kz_term:api_binary()}.
+          {kz_term:api_binary(), kz_term:api_binary()}.
 get_caller_id(Data, Call) ->
     Type = kz_json:get_value(<<"caller_id_type">>, Data, <<"external">>),
     kz_attributes:caller_id(Type, Call).
 
 -spec get_asserted_identity(kz_json:object(), kapps_call:call()) ->
-                                   {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
+          {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
 get_asserted_identity(_Data, Call) ->
     case get_endpoint(Call) of
         {'error', _E} ->
@@ -301,7 +301,7 @@ get_asserted_identity(_Data, Call) ->
     end.
 
 -spec maybe_default_asserted_identity(kz_endpoint:endpoint(), kapps_call:call()) ->
-                                             {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
+          {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
 maybe_default_asserted_identity(Endpoint, Call) ->
     CallerId = kzd_devices:caller_id(Endpoint),
     case kapps_config:get_is_true(?RES_CONFIG_CAT, <<"default_asserted_identity">>, 'false') of
@@ -397,7 +397,7 @@ maybe_merge('undefined', JObj2) -> JObj2;
 maybe_merge(JObj1, JObj2) -> kz_json:merge_jobjs(JObj1, JObj2).
 
 -spec maybe_include_diversions(kz_json:object(), kapps_call:call()) ->
-                                      kz_json:object().
+          kz_json:object().
 maybe_include_diversions(JObj, Call) ->
     case kapps_call:custom_sip_header(<<"Diversions">>, Call) of
         'undefined' -> JObj;
@@ -406,7 +406,7 @@ maybe_include_diversions(JObj, Call) ->
     end.
 
 -spec maybe_emit_account_id(kz_json:object(), kz_json:object(), kapps_call:call()) ->
-                                   kz_json:object().
+          kz_json:object().
 maybe_emit_account_id(JObj, Data, Call) ->
     Default = kapps_config:get_is_true(?RES_CONFIG_CAT, <<"default_emit_account_id">>, 'false'),
     case kz_json:is_true(<<"emit_account_id">>, Data, Default) of
@@ -435,7 +435,7 @@ get_flags(Data, Call) ->
     lists:foldl(fun(F, A) -> F(Data, Call, A) end, Flags, Routines).
 
 -spec get_flow_flags(kz_json:object(), kapps_call:call(), kz_term:ne_binaries()) ->
-                            kz_term:ne_binaries().
+          kz_term:ne_binaries().
 get_flow_flags(Data, _Call, Flags) ->
     case kz_json:get_list_value(<<"outbound_flags">>, Data, []) of
         [] -> Flags;
@@ -443,7 +443,7 @@ get_flow_flags(Data, _Call, Flags) ->
     end.
 
 -spec get_flow_dynamic_flags(kz_json:object(), kapps_call:call(), kz_term:ne_binaries()) ->
-                                    kz_term:ne_binaries().
+          kz_term:ne_binaries().
 get_flow_dynamic_flags(Data, Call, Flags) ->
     case kz_json:get_list_value(<<"dynamic_flags">>, Data) of
         'undefined' -> Flags;

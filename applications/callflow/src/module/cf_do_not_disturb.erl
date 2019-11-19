@@ -46,8 +46,8 @@ handle(Data, Call) ->
     end.
 
 -spec maybe_build_dnd_record(kz_json:object(), kapps_call:call()) ->
-                                    {'ok', dnd()} |
-                                    {'error', any()}.
+          {'ok', dnd()} |
+          {'error', any()}.
 maybe_build_dnd_record(Data, Call) ->
     AccountDb = kapps_call:account_db(Call),
     case maybe_get_data_id(AccountDb, Data, Call) of

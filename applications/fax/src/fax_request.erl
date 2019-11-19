@@ -513,9 +513,9 @@ store_attachment(Pid, #state{call=Call
     end.
 
 -spec check_fax_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary())->
-                                  {'ok', kz_json:object()} |
-                                  {'missing', kz_json:object()} |
-                                  {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'missing', kz_json:object()} |
+          {'error', any()}.
 check_fax_attachment(Modb, DocId, Name) ->
     case kz_datamgr:open_doc(Modb, DocId) of
         {'ok', JObj} ->
@@ -532,8 +532,8 @@ get_fs_filename(#state{storage=#fax_storage{attachment_id=AttachmentId}}) ->
     <<LocalPath/binary, AttachmentId/binary>>.
 
 -spec create_fax_doc(kz_json:object(), state()) ->
-                            {'ok', kz_json:object()} |
-                            {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 create_fax_doc(JObj, #state{owner_id = OwnerId
                            ,faxbox_id = FaxBoxId
                            ,fax_notify = Notify

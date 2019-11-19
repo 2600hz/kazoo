@@ -160,7 +160,7 @@ filter_out_succeeded(Term) -> kz_term:is_empty(Term).
 -type bind_results() :: [bind_result()].
 
 -spec bind(kz_term:ne_binary(), atom(), atom()) ->
-                  bind_result() | bind_results().
+          bind_result() | bind_results().
 bind(Binding=?NE_BINARY, Module, Fun) ->
     kazoo_bindings:bind(Binding, Module, Fun).
 

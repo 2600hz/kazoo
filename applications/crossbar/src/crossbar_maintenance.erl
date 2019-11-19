@@ -217,7 +217,7 @@ running_modules() -> crossbar_bindings:modules_loaded().
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_account_by_number(input_term()) -> {'ok', kz_term:ne_binary()} |
-                                              {'error', any()}.
+          {'error', any()}.
 find_account_by_number(Number) when not is_binary(Number) ->
     find_account_by_number(kz_term:to_binary(Number));
 find_account_by_number(Number) ->
@@ -241,9 +241,9 @@ find_account_by_number(Number) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_account_by_name(input_term()) ->
-                                  {'ok', kz_term:ne_binary()} |
-                                  {'multiples', [kz_term:ne_binary(),...]} |
-                                  {'error', any()}.
+          {'ok', kz_term:ne_binary()} |
+          {'multiples', [kz_term:ne_binary(),...]} |
+          {'error', any()}.
 find_account_by_name(Name) when not is_binary(Name) ->
     find_account_by_name(kz_term:to_binary(Name));
 find_account_by_name(Name) ->
@@ -267,9 +267,9 @@ find_account_by_name(Name) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_account_by_realm(input_term()) ->
-                                   {'ok', kz_term:ne_binary()} |
-                                   {'multiples', [kz_term:ne_binary(),...]} |
-                                   {'error', any()}.
+          {'ok', kz_term:ne_binary()} |
+          {'multiples', [kz_term:ne_binary(),...]} |
+          {'error', any()}.
 find_account_by_realm(Realm) when not is_binary(Realm) ->
     find_account_by_realm(kz_term:to_binary(Realm));
 find_account_by_realm(Realm) ->
@@ -293,8 +293,8 @@ find_account_by_realm(Realm) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_account_by_id(input_term()) ->
-                                {'ok', kz_term:ne_binary()} |
-                                {'error', any()}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', any()}.
 find_account_by_id(Id) when is_binary(Id) ->
     print_account_info(kz_util:format_account_id(Id, 'encoded'));
 find_account_by_id(Id) ->
@@ -450,7 +450,7 @@ maybe_promote_account(Context) ->
     end.
 
 -spec create_account_and_user(kz_json:object(), kz_json:object()) ->
-                                     {'ok', cb_context:context()}.
+          {'ok', cb_context:context()}.
 create_account_and_user(Account, User) ->
     Funs = [fun prechecks/1
            ,{fun validate_account/2, Account}
@@ -465,7 +465,7 @@ create_account_and_user(Account, User) ->
                ).
 
 -spec create_fold(fun() | {fun(), kz_json:object()}, {'ok', cb_context:context()}) ->
-                         {'ok', cb_context:context()}.
+          {'ok', cb_context:context()}.
 create_fold({F, V}, {'ok', C}) -> F(V, C);
 create_fold(F, {'ok', C}) -> F(C).
 
@@ -984,7 +984,7 @@ add_image(AppId, MasterAccountDb, ImageId, ImageData) ->
     end.
 
 -spec read_images(image_paths()) ->
-                         {'ok', [{file:filename_all(), binary()}]}.
+          {'ok', [{file:filename_all(), binary()}]}.
 read_images(Images) ->
     {'ok', [{Image, read_image(ImagePath)}
             || {Image, ImagePath} <- Images
@@ -996,8 +996,8 @@ read_image(File) ->
     ImageData.
 
 -spec find_metadata(file:filename_all()) ->
-                           {'ok', kz_json:object()} |
-                           {'invalid_data', kz_term:proplist()}.
+          {'ok', kz_json:object()} |
+          {'invalid_data', kz_term:proplist()}.
 find_metadata(AppPath) ->
     {'ok', Bin} = file:read_file(filename:join([AppPath, <<"metadata">>, <<"app.json">>])),
     JSON = kz_json:decode(Bin),
@@ -1029,9 +1029,9 @@ app(AppNameOrId) ->
     end.
 
 -spec find_app(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                      {'ok', kz_json:object()} |
-                      kz_datamgr:data_error() |
-                      {'error', 'multiple_results'}.
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error() |
+          {'error', 'multiple_results'}.
 find_app(Db, Name) ->
     ViewOptions = [{'key', Name}
                   ,'include_docs'

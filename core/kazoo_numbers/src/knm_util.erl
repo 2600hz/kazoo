@@ -113,7 +113,7 @@ maybe_use_us_default(_) ->
     'undefined'.
 
 -spec get_classifier_regex(kz_term:ne_binary() | kz_json:object()) ->
-                                  kz_term:ne_binary().
+          kz_term:ne_binary().
 get_classifier_regex(Classifier) when is_binary(Classifier) ->
     Classifier;
 get_classifier_regex(JObj) ->

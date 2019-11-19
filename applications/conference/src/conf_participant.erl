@@ -437,7 +437,7 @@ sync_participant(<<"conference-destroyed">>, _JObj, _Call, Participant) -> Parti
 sync_participant(_Event, _JObj, _Call, Participant) -> Participant.
 
 -spec sync_participant(kz_json:objects(), kapps_call:call(), participant()) ->
-                              participant().
+          participant().
 sync_participant(JObj, Call, #participant{in_conference='false'
                                          ,conference=Conference
                                          ,discovery_event=DiscoveryEvent

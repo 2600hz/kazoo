@@ -78,7 +78,7 @@ hook_event_name(<<"CHANNEL_DISCONNECTED">>) -> <<"CHANNEL_DESTROY">>;
 hook_event_name(Event) -> Event.
 
 -spec format_event(kz_call_event:doc(), kz_term:api_binary(), kz_term:ne_binary()) ->
-                          kz_json:object().
+          kz_json:object().
 format_event(CallEvent, AccountId, <<"CHANNEL_CREATE">>) ->
     kz_json:set_value(<<"hook_event">>
                      ,<<"channel_create">>
@@ -150,12 +150,12 @@ resource_used('true', _CallEvent) -> 'undefined';
 resource_used('false', CallEvent) -> ccv(CallEvent, <<"Resource-ID">>).
 
 -spec ccv(kz_call_event:doc(), kz_json:key()) ->
-                 kz_term:api_ne_binary().
+          kz_term:api_ne_binary().
 ccv(CallEvent, Key) ->
     ccv(CallEvent, Key, 'undefined').
 
 -spec ccv(kz_call_event:doc(), kz_json:key(), Default) ->
-                 kz_term:ne_binary() | Default.
+          kz_term:ne_binary() | Default.
 ccv(CallEvent, Key, Default) ->
     kz_call_event:custom_channel_var(CallEvent, Key, Default).
 

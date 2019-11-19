@@ -45,7 +45,7 @@ is_local() -> 'false'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
-                                              {error, any()}.
+          {error, any()}.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%------------------------------------------------------------------------------
@@ -54,8 +54,8 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
-                          {'ok', knm_number:knm_numbers()} |
-                          {'error', any()}.
+          {'ok', knm_number:knm_numbers()} |
+          {'error', any()}.
 find_numbers(_Prefix, _Quantity, _Options) ->
     {'error', 'not_available'}.
 

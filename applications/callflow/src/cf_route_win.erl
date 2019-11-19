@@ -26,7 +26,7 @@
        ).
 
 -spec execute_callflow(kz_json:object(), kapps_call:call()) ->
-                              {'ok' | 'restricted', kapps_call:call()}.
+          {'ok' | 'restricted', kapps_call:call()}.
 execute_callflow(JObj, Call) ->
     case should_restrict_call(Call) of
         'true' ->
@@ -85,7 +85,7 @@ maybe_account_service_unavailable(JObj, Call) ->
     end.
 
 -spec maybe_closed_group_restriction(kz_json:object(), kapps_call:call()) ->
-                                            boolean().
+          boolean().
 maybe_closed_group_restriction(JObj, Call) ->
     case kz_json:get_value([<<"call_restriction">>, <<"closed_groups">>, <<"action">>], JObj) of
         <<"deny">> -> enforce_closed_groups(JObj, Call);
@@ -93,7 +93,7 @@ maybe_closed_group_restriction(JObj, Call) ->
     end.
 
 -spec maybe_classification_restriction(kz_json:object(), kapps_call:call()) ->
-                                              boolean().
+          boolean().
 maybe_classification_restriction(JObj, Call) ->
     Request = find_request(Call),
     AccountId = kapps_call:account_id(Call),
@@ -288,7 +288,7 @@ maybe_start_account_recording(FromNetwork, ToNetwork, Call) ->
     end.
 
 -spec maybe_start_endpoint_recording(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call()) ->
-                                            kapps_call:call().
+          kapps_call:call().
 maybe_start_endpoint_recording(<<"onnet">>, ToNetwork, Call) ->
     EndpointId = get_endpoint_id(Call),
 
@@ -307,7 +307,7 @@ maybe_start_endpoint_recording(<<"offnet">>, ToNetwork, Call) ->
     end.
 
 -spec maybe_start_onnet_endpoint_recording(kz_term:api_binary(), kz_term:ne_binary(), boolean(), kapps_call:call()) ->
-                                                  {'true', kapps_call:call()} | 'false'.
+          {'true', kapps_call:call()} | 'false'.
 maybe_start_onnet_endpoint_recording('undefined', _ToNetwork, _IsCallForward, _Call) -> 'false';
 maybe_start_onnet_endpoint_recording(EndpointId, ToNetwork, 'false', Call) ->
     case kz_endpoint:get(EndpointId, Call) of
@@ -321,14 +321,14 @@ maybe_start_onnet_endpoint_recording(EndpointId, _ToNetwork, 'true', Call) ->
 %% @doc if the call isn't call-fowarded, and the endpoint is known, kz_endpoint will setup recording
 %% on answer
 -spec maybe_start_offnet_endpoint_recording(kz_term:api_binary(), kz_term:ne_binary(), boolean(), kapps_call:call()) ->
-                                                   {'true', kapps_call:call()} | 'false'.
+          {'true', kapps_call:call()} | 'false'.
 maybe_start_offnet_endpoint_recording('undefined', _ToNetwork, _IsCallForward, _Call) -> 'false';
 maybe_start_offnet_endpoint_recording(_EndpointId, _ToNetwork, 'false', _Call) -> 'false';
 maybe_start_offnet_endpoint_recording(EndpointId, _ToNetwork, 'true', Call) ->
     maybe_start_call_forwarded_recording(EndpointId, Call, kz_endpoint:get(EndpointId, Call)).
 
 -spec maybe_start_call_forwarded_recording(kz_term:ne_binary(), kapps_call:call(), {'ok', kz_json:object()} | {'error', any()}) ->
-                                                  {'true', kapps_call:call()} | 'false'.
+          {'true', kapps_call:call()} | 'false'.
 maybe_start_call_forwarded_recording(_EndpointId, _Call, {'error', _E}) -> 'false';
 maybe_start_call_forwarded_recording(_EndpointId, Call, {'ok', Endpoint}) ->
     FromNetwork = kapps_call:custom_channel_var(<<"Call-Forward-From">>, Call),

@@ -57,8 +57,8 @@ start_link([Arg]=Args) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init({'parser_args', file:filename_all(), kz_term:ne_binary(), pos_integer()}) ->
-                  {'ok', state()} |
-                  {'stop', any()}.
+          {'ok', state()} |
+          {'stop', any()}.
 init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
     ParserId = ci_parsers_util:make_name(Args),
     _ = kz_log:put_callid(ParserId),
@@ -249,7 +249,7 @@ buffer(Buffer) ->
 
 
 -spec set_legs(kz_term:ne_binary(), pos_integer(), ci_chunk:chunk(), [kz_term:ne_binary()]) ->
-                      ci_chunk:chunk().
+          ci_chunk:chunk().
 set_legs(LogIP, LogPort, Chunk, [FirstLine|_Lines]) ->
     case FirstLine of
         <<"send ", _/binary>> ->

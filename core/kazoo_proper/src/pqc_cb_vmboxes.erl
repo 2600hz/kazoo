@@ -18,7 +18,7 @@
 -include("kazoo_proper.hrl").
 
 -spec new_message(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), binary()) ->
-                         pqc_cb_api:response().
+          pqc_cb_api:response().
 new_message(API, AccountId, BoxId, MessageJObj, MessageBin) ->
     MessagesURL = messages_url(AccountId, BoxId),
 

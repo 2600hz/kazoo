@@ -107,7 +107,7 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
     'ok'.
 
 -spec update_pvt_parameters(kz_term:api_ne_binary(), kz_time:gregorian_seconds(), kz_call_event:doc()) ->
-                                   kz_call_event:doc().
+          kz_call_event:doc().
 update_pvt_parameters('undefined', _, JObj) ->
     Props = [{'type', 'cdr'}
             ,{'crossbar_doc_vsn', 2}
@@ -123,7 +123,7 @@ update_pvt_parameters(AccountId, Timestamp, JObj) ->
     kz_doc:update_pvt_parameters(JObj, AccountMODb, Props).
 
 -spec update_ccvs(kz_term:api_ne_binary(), kz_time:gregorian_seconds(), kz_call_event:doc()) ->
-                         kz_call_event:doc().
+          kz_call_event:doc().
 update_ccvs(_, _, JObj) ->
     CCVs = kz_call_event:custom_channel_vars(JObj, kz_json:new()),
     {UpdatedJobj, UpdatedCCVs} =
@@ -134,7 +134,7 @@ update_ccvs(_, _, JObj) ->
     kz_json:set_value(?CHANNEL_VARS, UpdatedCCVs, UpdatedJobj).
 
 -spec update_ccvs_foldl(kz_json:get_key(), kz_json:json_term(), {kz_call_event:doc(), kz_json:object()}) ->
-                               {kz_call_event:doc(), kz_json:object()}.
+          {kz_call_event:doc(), kz_json:object()}.
 update_ccvs_foldl(Key, Value,  {JObj, CCVs}=Acc) ->
     case kz_doc:is_private_key(Key) of
         'false' -> Acc;
@@ -145,7 +145,7 @@ update_ccvs_foldl(Key, Value,  {JObj, CCVs}=Acc) ->
     end.
 
 -spec set_doc_id(kz_term:api_ne_binary(), kz_time:gregorian_seconds(), kz_call_event:doc()) ->
-                        kz_call_event:doc().
+          kz_call_event:doc().
 set_doc_id(_AcctId, Timestamp, JObj) ->
     CallId = kz_call_event:call_id(JObj),
     %% we should consider this because there is a lost channel in case of
@@ -200,7 +200,7 @@ maybe_leak_ccv(JObj, Key, {GetFun, Default}) ->
     end.
 
 -spec set_interaction(kz_term:api_ne_binary(), kz_time:gregorian_seconds(), kz_call_event:doc()) ->
-                             kz_call_event:doc().
+          kz_call_event:doc().
 set_interaction(_AccountId, _Timestamp, JObj) ->
     %% See {@link prepare_and_save/3} for an edge case for Timestamp
     Interaction = kz_call_event:custom_channel_var(JObj, <<?CALL_INTERACTION_ID>>, ?CALL_INTERACTION_DEFAULT),

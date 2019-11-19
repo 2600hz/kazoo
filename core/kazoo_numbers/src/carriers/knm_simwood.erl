@@ -64,7 +64,7 @@ is_local() -> 'false'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
-                                              {error, any()}.
+          {error, any()}.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
-                          {'ok', knm_number:knm_numbers()}.
+          {'ok', knm_number:knm_numbers()}.
 find_numbers(Prefix, Quantity, Options) ->
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/available/standard/">>, sw_quantity(Quantity), "?pattern=", Prefix, "*"]),
     {'ok', Body} = query_simwood(URL, 'get'),
@@ -83,7 +83,7 @@ find_numbers(Prefix, Quantity, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
-                            knm_number:knm_number().
+          knm_number:knm_number().
 acquire_number(Number) ->
     Num = to_simwood(Number),
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, Num]),
@@ -98,7 +98,7 @@ acquire_number(Number) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec disconnect_number(knm_number:knm_number()) ->
-                               knm_number:knm_number().
+          knm_number:knm_number().
 disconnect_number(Number) ->
     Num = to_simwood(Number),
     URL = list_to_binary([?SW_NUMBER_URL, "/", ?SW_ACCOUNT_ID, <<"/allocated/">>, Num]),
@@ -142,8 +142,8 @@ to_simwood(Number) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec query_simwood(kz_term:ne_binary(), 'get' | 'put' | 'delete') ->
-                           {'ok', iolist()} |
-                           {'error', 'not_available'}.
+          {'ok', iolist()} |
+          {'error', 'not_available'}.
 query_simwood(URL, Verb) ->
     lager:debug("querying Simwood. Verb: ~p. URL: ~p.", [Verb, URL]),
     HTTPOptions = [{'ssl', [{'verify', 'verify_none'}]}
@@ -174,7 +174,7 @@ sw_quantity(_Quantity) -> <<"100">>.
 %% @end
 %%------------------------------------------------------------------------------
 -spec process_response(kz_json:objects(), knm_carriers:options()) ->
-                              {'ok', knm_number:knm_numbers()}.
+          {'ok', knm_number:knm_numbers()}.
 process_response(JObjs, Options) ->
     QID = knm_search:query_id(Options),
     {'ok', [N || JObj <- JObjs,

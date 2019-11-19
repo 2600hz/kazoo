@@ -114,7 +114,7 @@ validate(Context) ->
     validate_comments(C1, Type, cb_context:req_verb(Context)).
 
 -spec validate_comments(cb_context:context(), path_token(), http_method()) ->
-                               cb_context:context().
+          cb_context:context().
 validate_comments(Context, _, ?HTTP_GET) ->
     summary(Context);
 validate_comments(Context, _, ?HTTP_PUT) ->
@@ -139,7 +139,7 @@ validate(Context, Id) ->
     validate_comment(C1, Id, Type, cb_context:req_verb(Context)).
 
 -spec validate_comment(cb_context:context(), path_token(), path_token(), http_method()) ->
-                              cb_context:context().
+          cb_context:context().
 validate_comment(Context, _, <<"port_requests">>, _) ->
     Msg = kz_json:from_list(
             [{<<"message">>, <<"operation on a single comment is not allowed">>}
@@ -336,7 +336,7 @@ finish_req(_Context, _Type, _Verb) -> 'ok'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_comment_number(cb_context:context(), kz_term:ne_binary()) ->
-                                  cb_context:context().
+          cb_context:context().
 check_comment_number(Context, Id) ->
     Context1 = load_doc(Context),
     case cb_context:resp_status(Context1) of
@@ -362,7 +362,7 @@ load_doc(Context) ->
     load_doc(Context, Type, Id).
 
 -spec load_doc(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
-                      cb_context:context().
+          cb_context:context().
 load_doc(Context0, <<"port_requests">>, [Id]) ->
     Comments = kzd_port_requests:comments(cb_context:req_data(Context0), []),
     Context1 = cb_context:store(Context0, 'req_comments', Comments),
@@ -394,7 +394,7 @@ only_return_comments(Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec only_return_comment(cb_context:context(), kz_term:ne_binary()) ->
-                                 cb_context:context().
+          cb_context:context().
 only_return_comment(Context, Id) ->
     Doc = cb_context:doc(Context),
     Comments = kz_json:get_value(?COMMENTS, Doc, []),

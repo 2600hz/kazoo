@@ -101,8 +101,8 @@ start_expires_check_timer(ExpiresS) ->
     erlang:start_timer(Check, self(), ?CHECK_MSG(ExpiresS)).
 
 -spec handle_call(any(), kz_term:pid_ref(), state()) ->
-                         {'noreply', state()} |
-                         {'reply', match_return(), state()}.
+          {'noreply', state()} |
+          {'reply', match_return(), state()}.
 handle_call({'match_did', DID}, _From, ?STATE_READY(Trie, RatedeckDb, CheckRef)=State) ->
     io:format("~pms elapsed~n", [kz_time:elapsed_ms(State#state.start_time)]),
     {UpdatedTrie, Resp} = match_did_in_trie(DID, Trie, State#state.expires_s),
@@ -149,7 +149,7 @@ oldest_ms(ExpiresS) ->
     kz_time:now_ms() - (ExpiresS * ?MILLISECONDS_IN_SECOND).
 
 -spec check_if_expired(prefix(), [{kz_term:ne_binary(), pos_integer()}], {pid(), pos_integer()}) ->
-                              {pid(), pos_integer()}.
+          {pid(), pos_integer()}.
 check_if_expired(Prefix, Rates, {Trie, OldestTimestamp}=Acc) ->
     case has_expired_rates(Rates, OldestTimestamp) of
         'false' -> Acc;
@@ -158,7 +158,7 @@ check_if_expired(Prefix, Rates, {Trie, OldestTimestamp}=Acc) ->
     end.
 
 -spec has_expired_rates([{kz_term:ne_binary(), pos_integer()}], pos_integer()) ->
-                               boolean().
+          boolean().
 has_expired_rates([], _) -> 'false';
 has_expired_rates([{_RateId, LastUsed}|Rates], OldestTimestamp) ->
     case LastUsed < OldestTimestamp of

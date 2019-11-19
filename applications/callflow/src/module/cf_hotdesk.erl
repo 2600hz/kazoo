@@ -107,9 +107,9 @@ handle_action(<<"toggle">>, Hotdesk, Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec bridge_to_endpoints(hotdesk(), kapps_call:call()) ->
-                                 {'ok', kz_json:object()} |
-                                 {'fail', kz_json:object()} |
-                                 {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'fail', kz_json:object()} |
+          {'error', any()}.
 
 bridge_to_endpoints(#hotdesk{endpoint_ids=EndpointIds}, Call) ->
     Endpoints = build_endpoints(EndpointIds, Call),
@@ -156,7 +156,7 @@ require_login_pin(Hotdesk, Call) ->
     require_login_pin(Hotdesk, Call, ?MAX_LOGIN_ATTEMPTS, 1).
 
 -spec require_login_pin(hotdesk(), kapps_call:call(), pos_integer(), pos_integer()) ->
-                               kapps_api_std_return().
+          kapps_api_std_return().
 require_login_pin(_, Call, Max, Loop) when Loop > Max ->
     lager:info("maximum number of invalid hotdesk pin attempts"),
     _ = kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
@@ -186,7 +186,7 @@ require_login_pin(#hotdesk{require_pin='true'
     end.
 
 -spec maybe_logout_elsewhere(hotdesk(), kapps_call:call()) ->
-                                    kapps_api_std_return().
+          kapps_api_std_return().
 maybe_logout_elsewhere(#hotdesk{keep_logged_in_elsewhere='false'}=Hotdesk, Call) ->
     H = remove_from_endpoints(Hotdesk, Call),
     get_authorizing_id(H, Call);
@@ -194,12 +194,12 @@ maybe_logout_elsewhere(Hotdesk, Call) ->
     get_authorizing_id(Hotdesk, Call).
 
 -spec get_authorizing_id(hotdesk(), kapps_call:call()) ->
-                                kapps_api_std_return().
+          kapps_api_std_return().
 get_authorizing_id(Hotdesk, Call) ->
     login_authorizing_id(kapps_call:authorizing_id(Call), Hotdesk, Call).
 
 -spec login_authorizing_id(kz_term:api_binary(), hotdesk(), kapps_call:call()) ->
-                                  kapps_api_std_return().
+          kapps_api_std_return().
 login_authorizing_id('undefined', _, Call) ->
     _ = kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
     kapps_call_command:b_prompt(<<"vm-goodbye">>, Call);
@@ -216,7 +216,7 @@ login_authorizing_id(AuthorizingId, #hotdesk{owner_id=OwnerId}=Hotdesk, Call) ->
     end.
 
 -spec logged_in(hotdesk(), kapps_call:call()) ->
-                       kapps_api_std_return().
+          kapps_api_std_return().
 logged_in(_, Call) ->
     _ = kapps_call_command:b_prompt(<<"hotdesk-logged_in">>, Call),
     kapps_call_command:b_prompt(<<"vm-goodbye">>, Call).
@@ -236,7 +236,7 @@ logged_in(_, Call) ->
 logout(Hotdesk, Call) -> maybe_keep_logged_in_elsewhere(Hotdesk, Call).
 
 -spec maybe_keep_logged_in_elsewhere(hotdesk(), kapps_call:call()) ->
-                                            kapps_api_std_return().
+          kapps_api_std_return().
 maybe_keep_logged_in_elsewhere(#hotdesk{keep_logged_in_elsewhere='true'}=Hotdesk
                               ,Call) ->
     keep_logged_in_elsewhere(kapps_call:authorizing_id(Call), Hotdesk, Call);
@@ -245,7 +245,7 @@ maybe_keep_logged_in_elsewhere(Hotdesk, Call) ->
     logged_out(H, Call).
 
 -spec keep_logged_in_elsewhere(kz_term:api_binary(), hotdesk(), kapps_call:call()) ->
-                                      kapps_api_std_return().
+          kapps_api_std_return().
 keep_logged_in_elsewhere('undefined', Hotdesk, Call) ->
     logged_out(Hotdesk, Call);
 keep_logged_in_elsewhere(AuthorizingId, #hotdesk{endpoint_ids=EndpointIds
@@ -275,8 +275,8 @@ logged_out(_, Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_hotdesk_profile(kz_term:api_binary(), kz_json:object(), kapps_call:call()) ->
-                                 hotdesk() |
-                                 {'error', any()}.
+          hotdesk() |
+          {'error', any()}.
 get_hotdesk_profile('undefined', Data, Call) ->
     find_hotdesk_profile(Call, Data, ?MAX_LOGIN_ATTEMPTS, 1);
 get_hotdesk_profile(OwnerId, Data, Call) ->
@@ -290,8 +290,8 @@ get_hotdesk_profile(OwnerId, Data, Call) ->
     end.
 
 -spec find_hotdesk_profile(kapps_call:call(), kz_json:object(), pos_integer(), pos_integer()) ->
-                                  hotdesk() |
-                                  {'error', any()}.
+          hotdesk() |
+          {'error', any()}.
 find_hotdesk_profile(Call, _Data, Max, Loop) when Loop > Max ->
     lager:info("too many failed attempts to get the hotdesk id"),
     _ = kapps_call_command:b_prompt(<<"hotdesk-abort">>, Call),
@@ -324,8 +324,8 @@ find_hotdesk_profile(Call, Data, Max, Loop) ->
     end.
 
 -spec lookup_hotdesk_id(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
-                               hotdesk() |
-                               {'error', any()}.
+          hotdesk() |
+          {'error', any()}.
 lookup_hotdesk_id(HotdeskId, Data, Call) ->
     AccountDb = kapps_call:account_db(Call),
     ViewOptions = [{'key', HotdeskId}
@@ -369,7 +369,7 @@ remove_from_endpoints(#hotdesk{endpoint_ids=[EndpointId|Endpoints]
     remove_from_endpoints(Hotdesk#hotdesk{endpoint_ids=Endpoints}, Call).
 
 -spec update_hotdesk_endpoint(kz_term:ne_binary(), kz_term:api_binary() | kz_json:object(), function()) ->
-                                     kz_term:jobj_return().
+          kz_term:jobj_return().
 update_hotdesk_endpoint(_, 'undefined', _) -> {'error', 'not_found'};
 update_hotdesk_endpoint(AccountDb, EndpointId, Fun) when is_binary(EndpointId) ->
     case kz_datamgr:open_doc(AccountDb, EndpointId) of

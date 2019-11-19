@@ -26,7 +26,7 @@ transition_if(CurrentModel, Checks) ->
     end.
 
 -spec transition_if_fold({fun(), list()}, {boolean(), pqc_kazoo_model:model()}) ->
-                                {boolean(), pqc_kazoo_model:model()}.
+          {boolean(), pqc_kazoo_model:model()}.
 transition_if_fold({_Fun, _Args}, {'false', _}=False) -> False;
 transition_if_fold({Fun, Args}, {'true', Model}) ->
     case apply(Fun, [Model | Args]) of
@@ -57,9 +57,9 @@ cleanup_arg(Arg) -> Arg.
 %% {M, F, Args/Arity, [{file, Filename}, {line, LineNo}]}
 -type stack_item() :: {module(), atom(), arity() | [term()], [{'file', string()} | {'line', integer()}]}.
 -spec run_counterexample(module()) ->
-                                {kz_term:ne_binary(), 'postcondition_failed'} |
-                                {kz_term:ne_binary(), atom(), any(), [stack_item()]} |
-                                {'ok', kz_term:ne_binary()}.
+          {kz_term:ne_binary(), 'postcondition_failed'} |
+          {kz_term:ne_binary(), atom(), any(), [stack_item()]} |
+          {'ok', kz_term:ne_binary()}.
 run_counterexample(PQC) ->
     PQC:cleanup(),
     io:format("cleaned up, running counterexample~n", []),

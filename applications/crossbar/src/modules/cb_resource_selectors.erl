@@ -56,12 +56,12 @@ init() ->
     ok.
 
 -spec authorize(cb_context:context()) ->
-                       boolean() | {'stop', cb_context:context()}.
+          boolean() | {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).
 
 -spec authorize(cb_context:context(), req_nouns()) ->
-                       boolean() | {'stop', cb_context:context()}.
+          boolean() | {'stop', cb_context:context()}.
 authorize(Context, [{<<"resource_selectors">>, _} | _]) ->
     case cb_context:account_id(Context) of
         'undefined' -> maybe_authorize_admin(Context);
@@ -71,8 +71,8 @@ authorize(_Context, _Nouns) ->
     'false'.
 
 -spec maybe_authorize_admin(cb_context:context()) ->
-                                   'true' |
-                                   {'stop', cb_context:context()}.
+          'true' |
+          {'stop', cb_context:context()}.
 maybe_authorize_admin(Context) ->
     case cb_context:is_superduper_admin(Context) of
         'true' ->
@@ -337,12 +337,12 @@ is_global_request(Context) ->
     end.
 
 -spec maybe_handle_load_failure(cb_context:context()) ->
-                                       cb_context:context().
+          cb_context:context().
 maybe_handle_load_failure(Context) ->
     maybe_handle_load_failure(Context, cb_context:resp_error_code(Context)).
 
 -spec maybe_handle_load_failure(cb_context:context(), pos_integer()) ->
-                                       cb_context:context().
+          cb_context:context().
 maybe_handle_load_failure(Context, 404) ->
     JObj = kz_doc:set_type(kz_doc:set_id(cb_context:req_data(Context),?RULES_PVT_TYPE), ?RULES_PVT_TYPE),
     cb_context:setters(Context

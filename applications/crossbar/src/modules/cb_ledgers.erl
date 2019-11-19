@@ -111,8 +111,8 @@ authorize(Context, Path) ->
     end.
 
 -spec authorize_request(cb_context:context(), path_token(), http_method()) ->
-                               boolean() |
-                               {'stop', cb_context:context()}.
+          boolean() |
+          {'stop', cb_context:context()}.
 authorize_request(Context, ?DEBIT, ?HTTP_PUT) ->
     authorize_create(Context);
 authorize_request(Context, ?CREDIT, ?HTTP_PUT) ->
@@ -123,7 +123,7 @@ authorize_request(Context, _, ?HTTP_PUT) ->
     {'stop', cb_context:add_system_error('forbidden', Context)}.
 
 -spec authorize_create(cb_context:context()) -> boolean() |
-                                                {'stop', cb_context:context()}.
+          {'stop', cb_context:context()}.
 authorize_create(Context) ->
     IsAuthenticated = cb_context:is_authenticated(Context),
     IsSuperDuperAdmin = cb_context:is_superduper_admin(Context),
@@ -198,7 +198,7 @@ validate(Context, SourceService, Id) ->
     end.
 
 -spec validate_fetch_ledger(cb_context:context(), kz_term:ne_binary(), kz_ledger:ledger()) ->
-                                   cb_context:context().
+          cb_context:context().
 validate_fetch_ledger(Context, SourceService, Ledger) ->
     case kz_ledger:source_service(Ledger) =:= SourceService of
         'true' ->
@@ -357,7 +357,7 @@ summary_to_dollars(Summary) ->
     kz_json:expand(kz_json:from_list(ConvertedUnits)).
 
 -spec maybe_convert_units(kz_term:ne_binary(), kz_json:keys(), kz_currency:units() | T) ->
-                                 kz_currency:dollars() | T when T::any().
+          kz_currency:dollars() | T when T::any().
 maybe_convert_units(<<"amount">>, _, Units) when is_integer(Units) ->
     kz_currency:units_to_dollars(Units);
 maybe_convert_units(_, [_AccountId, <<"total">>], Units) ->
@@ -424,7 +424,7 @@ maybe_impact_reseller(Context, AccountLedger, 'true', ResellerId) ->
 
 -spec build_response(kz_term:ne_binary(), kz_json:object()
                     ,kz_term:ne_binary(), kz_json:object()) ->
-                            kz_json:object().
+          kz_json:object().
 build_response(AccountId, AccountResponse, ResellerId, ResellerResponse) ->
     kz_json:from_list(
       [{AccountId, AccountResponse},
@@ -456,7 +456,7 @@ build_success_response(AccountId, Ledger) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(cb_context:context(), kzd_ledgers:doc(), kz_json:objects()) ->
-                                    kz_json:objects().
+          kz_json:objects().
 normalize_view_results(_Context, JObj, Acc) ->
     [normalize_view_result(kz_json:get_value(<<"doc">>, JObj)) | Acc].
 

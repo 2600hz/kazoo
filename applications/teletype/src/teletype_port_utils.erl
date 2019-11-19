@@ -123,7 +123,7 @@ fix_bill_object(PortReqJObj) ->
     fix_bill_object(PortReqJObj, KeyMap).
 
 -spec fix_bill_object(kz_json:object(), [{kz_term:ne_binary(), [kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:ne_binary()}]}]) ->
-                             kz_json:object().
+          kz_json:object().
 fix_bill_object(PortReqJObj, []) -> PortReqJObj;
 fix_bill_object(PortReqJObj, [{Category, KeyMaps} | Rest]) ->
     NewPort = lists:foldl(fun(KeyMap, Acc) -> fix_bill_object(Acc, Category, KeyMap) end
@@ -133,7 +133,7 @@ fix_bill_object(PortReqJObj, [{Category, KeyMaps} | Rest]) ->
     fix_bill_object(NewPort, Rest).
 
 -spec fix_bill_object(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:ne_binary()}) ->
-                             kz_json:object().
+          kz_json:object().
 fix_bill_object(PortReqJObj, Category, {OldKeyName, NewKeyName}) ->
     kz_json:set_value([<<"bill">>, Category, NewKeyName]
                      ,kz_json:get_ne_binary_value([<<"bill">>, OldKeyName], PortReqJObj, <<"-">>)
@@ -213,7 +213,7 @@ fix_date_fold(Key, JObj, 'false') ->
 -spec fix_notifications(kz_json:object(), kz_term:ne_binary(), kz_json:object()) -> kz_json:object().
 fix_notifications(_DataJObj, _TemplateId, PortReqJObj) ->
     case kzd_port_requests:notifications_email_send_to(PortReqJObj) of
-        <<_/binary>> =Email -> kz_json:set_value(<<"customer_contact">>, [Email], PortReqJObj);
+        <<Email/binary>> -> kz_json:set_value(<<"customer_contact">>, [Email], PortReqJObj);
         [_|_]=Emails -> kz_json:set_value(<<"customer_contact">>, Emails, PortReqJObj);
         _ -> PortReqJObj
     end.
@@ -349,7 +349,7 @@ maybe_add_attachments(DataJObj, _, 'false') ->
     DataJObj.
 
 -spec get_attachment_fold(kz_json:key(), attachments(), kz_term:ne_binary(), kz_json:object()) ->
-                                 attachments().
+          attachments().
 get_attachment_fold(Name, Acc, PortReqId, Doc) ->
     case kz_datamgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, PortReqId, Name) of
         {'ok', Attachment} ->

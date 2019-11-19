@@ -189,8 +189,8 @@ handle_fs_reg(Node, FSJObj) ->
     kz_amqp_worker:cast(Req, fun kapi_registration:publish_success/1).
 
 -spec lookup_proxy_path(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               {'ok', kz_term:api_ne_binary(), kz_term:proplist()} |
-                               {'error', 'not_found'}.
+          {'ok', kz_term:api_ne_binary(), kz_term:proplist()} |
+          {'error', 'not_found'}.
 lookup_proxy_path(<<>>, _Username) -> {'error', 'not_found'};
 lookup_proxy_path(_Realm, <<>>) -> {'error', 'not_found'};
 lookup_proxy_path(<<_/binary>> = Realm, <<_/binary>> = Username) ->
@@ -207,8 +207,8 @@ lookup_proxy_path(<<_/binary>> = Realm, <<_/binary>> = Username) ->
     end.
 
 -spec lookup_contact(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                            {'ok', kz_term:ne_binary(), kz_term:proplist()} |
-                            {'error', 'not_found'}.
+          {'ok', kz_term:ne_binary(), kz_term:proplist()} |
+          {'error', 'not_found'}.
 lookup_contact(<<>>, _Username) -> {'error', 'not_found'};
 lookup_contact(_Realm, <<>>) -> {'error', 'not_found'};
 lookup_contact(<<_/binary>> = Realm, <<_/binary>> = Username) ->
@@ -251,8 +251,8 @@ contact_vars_fold({<<"Original-Contact">>, Contact}, Props) ->
 contact_vars_fold(_ , Props) -> Props.
 
 -spec lookup_original_contact(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                     {'ok', kz_term:ne_binary()} |
-                                     {'error', 'not_found'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'not_found'}.
 lookup_original_contact(Realm, Username) ->
     case kz_term:is_empty(Realm)
         orelse kz_term:is_empty(Username)
@@ -270,8 +270,8 @@ lookup_original_contact(Realm, Username) ->
     end.
 
 -spec lookup_registration(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                 {'ok', kz_json:object()} |
-                                 {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          {'error', 'not_found'}.
 lookup_registration(Realm, Username) ->
     case get_registration(Realm, Username) of
         #registration{}=Registration ->
@@ -567,8 +567,8 @@ insert_registration(#registration{}=Registration) ->
                 ]).
 
 -spec fetch_registration(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                {'ok', kz_json:object()} |
-                                {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          {'error', 'not_found'}.
 fetch_registration(Username, Realm) ->
     Reg = [{<<"Username">>, Username}
           ,{<<"Realm">>, Realm}
@@ -584,8 +584,8 @@ fetch_registration(Username, Realm) ->
     end.
 
 -spec query_for_registration(kz_term:api_terms()) ->
-                                    {'ok', kz_json:objects()} |
-                                    {'error', any()}.
+          {'ok', kz_json:objects()} |
+          {'error', any()}.
 query_for_registration(Reg) ->
     kz_amqp_worker:call_collect(Reg
                                ,fun kapi_registration:publish_query_req/1
@@ -594,8 +594,8 @@ query_for_registration(Reg) ->
                                ).
 
 -spec find_newest_fetched_registration(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()) ->
-                                              {'ok', kz_json:object()} |
-                                              {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          {'error', 'not_found'}.
 find_newest_fetched_registration(Username, Realm, JObjs) ->
     Registrations =
         lists:flatten(
@@ -643,8 +643,8 @@ sort_fetched_registrations(A, B) ->
         kz_json:get_integer_value(<<"Event-Timestamp">>, A).
 
 -spec fetch_contact(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                           {'ok', kz_term:ne_binary()} |
-                           {'error', 'not_found'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'not_found'}.
 fetch_contact(Username, Realm) ->
     case fetch_registration(Username, Realm) of
         {'ok', JObj} ->
@@ -659,8 +659,8 @@ fetch_contact(Username, Realm) ->
     end.
 
 -spec fetch_original_contact(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                    {'ok', kz_term:ne_binary()} |
-                                    {'error', 'not_found'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'not_found'}.
 fetch_original_contact(Username, Realm) ->
     case fetch_registration(Username, Realm) of
         {'ok', JObj} ->

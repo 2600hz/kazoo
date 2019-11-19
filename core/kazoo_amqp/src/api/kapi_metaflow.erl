@@ -114,8 +114,8 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec action(kz_json:object() | kz_term:proplist()) ->
-                    {'ok', iolist()} |
-                    {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 action(Prop) when is_list(Prop) ->
     case action_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?METAFLOW_ACTION_HEADERS, ?OPTIONAL_METAFLOW_ACTION_HEADERS);
@@ -135,8 +135,8 @@ action_v(JObj) -> action_v(kz_json:to_proplist(JObj)).
 %% @end
 %%------------------------------------------------------------------------------
 -spec flow(kz_json:object() | kz_term:proplist()) ->
-                  {'ok', iolist()} |
-                  {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 flow(Prop) when is_list(Prop) ->
     case flow_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?METAFLOW_FLOW_HEADERS, ?OPTIONAL_METAFLOW_FLOW_HEADERS);
@@ -155,8 +155,8 @@ flow_v(JObj) -> flow_v(kz_json:to_proplist(JObj)).
 %% @end
 %%------------------------------------------------------------------------------
 -spec bind_req(kz_json:object() | kz_term:proplist()) ->
-                      {'ok', iolist()} |
-                      {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 bind_req(Prop) when is_list(Prop) ->
     case bind_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?METAFLOW_BIND_REQ_HEADERS, ?OPTIONAL_METAFLOW_BIND_REQ_HEADERS);

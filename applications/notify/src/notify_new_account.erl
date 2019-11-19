@@ -87,7 +87,7 @@ handle_req(JObj, _Props) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec create_template_props(kz_json:object(), kz_json:object(), kz_json:object(), kz_json:objects()) ->
-                                   kz_term:proplist().
+          kz_term:proplist().
 create_template_props(Event, Admin, Account, AllDocs) ->
     Owners = [{kz_json:get_value([<<"doc">>, <<"_id">>], J1), kz_json:get_value(<<"doc">>, J1)}
               || J1 <- AllDocs,

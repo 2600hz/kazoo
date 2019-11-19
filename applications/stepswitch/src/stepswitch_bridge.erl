@@ -77,7 +77,7 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec start_link(stepswitch_resources:endpoints(), kapi_offnet_resource:req()) ->
-                        kz_types:startlink_ret().
+          kz_types:startlink_ret().
 start_link(Endpoints, OffnetReq) ->
     CallId = kapi_offnet_resource:call_id(OffnetReq),
     Bindings = [?CALL_BINDING(CallId)
@@ -102,7 +102,7 @@ start_link(Endpoints, OffnetReq) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init([stepswitch_resources:endpoints() | kapi_offnet_resource:req()]) ->
-                  {'ok', state()}.
+          {'ok', state()}.
 init([Endpoints, OffnetReq]) ->
     kapi_offnet_resource:put_callid(OffnetReq),
     case kapi_offnet_resource:control_queue(OffnetReq) of
@@ -362,7 +362,7 @@ maybe_deny_emergency_bridge(#state{control_queue=ControlQ
     lager:debug("sent bridge command to ~s", [ControlQ]).
 
 -spec update_endpoints_emergency_cid(stepswitch_resources:endpoints(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
-                                            stepswitch_resources:endpoints().
+          stepswitch_resources:endpoints().
 update_endpoints_emergency_cid(Endpoints, Number, Name) ->
     [update_endpoint_emergency_cid(Endpoint, Number, Name)
      || Endpoint <- Endpoints
@@ -392,7 +392,7 @@ outbound_flags(OffnetReq) ->
     end.
 
 -spec build_bridge(state(), kz_term:api_binary(), kz_term:api_binary(), boolean()) ->
-                          kz_term:proplist().
+          kz_term:proplist().
 build_bridge(#state{endpoints=Endpoints
                    ,resource_req=OffnetReq
                    ,queue=Q
@@ -478,7 +478,7 @@ maybe_override_asserted_identity(OffnetReq, {'true', Number, Name}) ->
     end.
 
 -spec bridge_from_uri(kz_term:api_binary(), kapi_offnet_resource:req()) ->
-                             kz_term:api_binary().
+          kz_term:api_binary().
 bridge_from_uri(Number, OffnetReq) ->
     Realm = stepswitch_util:default_realm(OffnetReq),
 
@@ -671,8 +671,8 @@ send_deny_emergency_notification(OffnetReq) ->
     kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_denied_emergency_bridge/1).
 
 -spec send_deny_emergency_response(kapi_offnet_resource:req(), kz_term:ne_binary()) ->
-                                          {'ok', kz_term:ne_binary()} |
-                                          {'error', 'no_response'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'no_response'}.
 send_deny_emergency_response(OffnetReq, ControlQ) ->
     CallId = kapi_offnet_resource:call_id(OffnetReq),
     Code = kapps_config:get_integer(?SS_CONFIG_CAT, <<"deny_emergency_bridge_code">>, 486),
@@ -687,7 +687,7 @@ send_deny_emergency_response(OffnetReq, ControlQ) ->
     kz_call_response:send(CallId, ControlQ, Code, Cause, Media).
 
 -spec get_event_type(kz_call_event:doc()) ->
-                            {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
+          {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
 get_event_type(CallEvt) ->
     {Cat, Name} = kz_util:get_event_type(CallEvt),
     {Cat, Name, kz_call_event:call_id(CallEvt)}.

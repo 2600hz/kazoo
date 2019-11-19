@@ -22,7 +22,7 @@
 -define(LIST_BY_NUMBER, <<"callflows/listing_by_number">>).
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'stop', kapps_call:call()}.
+          {'stop', kapps_call:call()}.
 handle(Data, Call) ->
     {'ok', CallflowJObj} = callflow(Data, Call),
     Flow = kz_json:get_value(<<"flow">>, CallflowJObj),

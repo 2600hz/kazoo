@@ -25,13 +25,13 @@
 -include("konami.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'continue', kapps_call:call()}.
+          {'continue', kapps_call:call()}.
 handle(Data, Call) ->
     Call1 = handle(Data, Call, get_action(kz_json:get_ne_binary_value(<<"action">>, Data))),
     {'continue', Call1}.
 
 -spec handle(kz_json:object(), kapps_call:call(), kz_term:ne_binary()) ->
-                    kapps_call:call().
+          kapps_call:call().
 handle(Data, Call, <<"mask">>) ->
     LegId = kz_json:get_ne_binary_value(<<"dtmf_leg">>, Data),
     lager:debug("masking recording on leg ~s, see you on the other side", [LegId]),

@@ -122,7 +122,7 @@ system_config_no_document_schema() ->
     kz_doc:public_fields(SysConfigSchema).
 
 -spec load_system_config_schema() -> {'ok', kz_json:object()} |
-                                     {'error', 'not_found'}.
+          {'error', 'not_found'}.
 load_system_config_schema() ->
     case kz_json_schema:load(<<"system_configs">>) of
         {'ok', _}=OK -> OK;

@@ -64,9 +64,9 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec build_endpoint(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
-                            {'error', atom() | kz_json:object()} |
-                            {'fail', kz_term:ne_binary() | kz_json:object()} |
-                            {kz_json:objects(), kapps_call:call()}.
+          {'error', atom() | kz_json:object()} |
+          {'fail', kz_term:ne_binary() | kz_json:object()} |
+          {kz_json:objects(), kapps_call:call()}.
 build_endpoint(EndpointId, Data, Call) ->
     Params = kz_json:set_value(<<"source">>, kz_term:to_binary(?MODULE), Data),
     case kz_endpoint:build(EndpointId, Params, Call) of
@@ -75,7 +75,7 @@ build_endpoint(EndpointId, Data, Call) ->
     end.
 
 -spec maybe_note_owner(kz_json:objects(), kapps_call:call()) ->
-                              {kz_json:objects(), kapps_call:call()}.
+          {kz_json:objects(), kapps_call:call()}.
 maybe_note_owner([Endpoint]=Endpoints, Call) ->
     case kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Owner-ID">>], Endpoint) of
         'undefined' -> {Endpoints, Call};

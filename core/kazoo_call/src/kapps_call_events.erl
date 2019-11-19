@@ -38,7 +38,7 @@ is_destroyed(Call) ->
     is_destroyed(kapps_call:call_id(Call)).
 
 -spec get_event(kz_term:ne_binary() | kapps_call:call()) -> {'ok', kz_call_event:doc()} |
-                                                            {'error', 'not_found'}.
+          {'error', 'not_found'}.
 get_event(<<CallId/binary>>) ->
     kz_cache:peek_local(?KAPPS_CALL_CACHE, {?MODULE, CallId});
 get_event(Call) ->

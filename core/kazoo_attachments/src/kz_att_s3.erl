@@ -262,8 +262,8 @@ convert_kv({<<"etag">> = K, V}) ->
 convert_kv(KV) -> KV.
 
 -spec put_object(string(), string() | kz_term:ne_binary(), binary(), aws_config()) ->
-                        {'ok', kz_term:proplist()} |
-                        {'error', string() | kz_term:ne_binary(), s3_error()}.
+          {'ok', kz_term:proplist()} |
+          {'error', string() | kz_term:ne_binary(), s3_error()}.
 put_object(Bucket, FilePath, Contents,Config)
   when is_binary(FilePath) ->
     put_object(Bucket, kz_term:to_list(FilePath), Contents,Config);
@@ -279,8 +279,8 @@ put_object(Bucket, FilePath, Contents, #aws_config{s3_host=Host} = Config) ->
     end.
 
 -spec get_object(string(), kz_term:ne_binary(), aws_config()) ->
-                        {'ok', kz_term:proplist()} |
-                        {'error', kz_term:ne_binary(), s3_error()}.
+          {'ok', kz_term:proplist()} |
+          {'error', kz_term:ne_binary(), s3_error()}.
 get_object(Bucket, FilePath, #aws_config{s3_host=Host} = Config) ->
     lager:debug("retrieving ~s from ~s", [FilePath, Host]),
     Options = [],

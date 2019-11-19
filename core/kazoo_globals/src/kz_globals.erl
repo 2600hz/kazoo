@@ -837,7 +837,7 @@ remonitor_globals() ->
      ).
 
 -spec remonitor_globals('$end_of_table' | {[kz_global:global()], ets:continuation()}) ->
-                               'ok'.
+          'ok'.
 remonitor_globals('$end_of_table') -> 'ok';
 remonitor_globals({[Global], Continuation}) ->
     remonitor_global(Global),

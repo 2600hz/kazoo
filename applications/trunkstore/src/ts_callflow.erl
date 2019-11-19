@@ -48,8 +48,8 @@
 -export_type([state/0]).
 
 -spec init(kapi_route:req(), kz_term:api_binary() | kz_term:api_binaries()) ->
-                  state() |
-                  {'error', 'not_ts_account'}.
+          state() |
+          {'error', 'not_ts_account'}.
 init(RouteReqJObj, Type) ->
     CallID = kapi_route:call_id(RouteReqJObj),
     kz_log:put_callid(CallID),
@@ -111,7 +111,7 @@ wait_for_win(State, Timeout) ->
     wait_for_win(State, Timeout, kapps_call_command:receive_event(Timeout)).
 
 -spec wait_for_win(state(), pos_integer(), kapps_call_command:request_return()) ->
-                          {'won' | 'lost', state()}.
+          {'won' | 'lost', state()}.
 wait_for_win(State, Timeout, {'ok', JObj}) ->
     case kapi_route:win_v(JObj) of
         'true' -> route_won(State, JObj);
@@ -136,14 +136,14 @@ route_won(#ts_callflow_state{amqp_worker=Worker, kapps_call=Call}=State, RouteWi
     }.
 
 -spec wait_for_bridge(state(), kz_term:api_integer()) ->
-                             {'hangup' | 'error' | 'bridged', state()}.
+          {'hangup' | 'error' | 'bridged', state()}.
 wait_for_bridge(State, 'undefined') ->
     wait_for_bridge(State, 20);
 wait_for_bridge(State, Timeout) ->
     wait_for_bridge(State, Timeout, kapps_call_command:receive_event(Timeout * 1000)).
 
 -spec wait_for_bridge(state(), kz_term:api_integer(), kapps_call_command:request_return()) ->
-                             {'hangup' | 'error' | 'bridged', state()}.
+          {'hangup' | 'error' | 'bridged', state()}.
 wait_for_bridge(State, Timeout, {'ok', EventJObj}) ->
     case process_event_for_bridge(State, EventJObj) of
         'ignore' -> wait_for_bridge(State, Timeout);
@@ -156,12 +156,12 @@ wait_for_bridge(State, Timeout, {'error', 'timeout'}) ->
     wait_for_bridge(State, Timeout).
 
 -spec process_event_for_bridge(state(), kz_json:object()) ->
-                                      'ignore' | {'hangup' | 'error' | 'bridged', state()}.
+          'ignore' | {'hangup' | 'error' | 'bridged', state()}.
 process_event_for_bridge(State, JObj) ->
     process_event_for_bridge(State, JObj, get_event_type(JObj)).
 
 -spec process_event_for_bridge(state(), kz_json:object(), event_type()) ->
-                                      'ignore' | {'hangup' | 'error' | 'bridged', state()}.
+          'ignore' | {'hangup' | 'error' | 'bridged', state()}.
 process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg} = State
                         ,JObj
                         ,{<<"resource">>, <<"offnet_resp">>, _}

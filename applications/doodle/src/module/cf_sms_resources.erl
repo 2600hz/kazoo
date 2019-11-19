@@ -187,7 +187,7 @@ get_flags(Data, Call) ->
     lists:foldl(fun(F, A) -> F(Data, Call, A) end, Flags, Routines).
 
 -spec get_flow_flags(kz_json:object(), kapps_call:call(), kz_term:ne_binaries()) ->
-                            kz_term:ne_binaries().
+          kz_term:ne_binaries().
 get_flow_flags(Data, _Call, Flags) ->
     case kz_json:get_list_value(<<"outbound_flags">>, Data, []) of
         [] -> Flags;
@@ -195,7 +195,7 @@ get_flow_flags(Data, _Call, Flags) ->
     end.
 
 -spec get_flow_dynamic_flags(kz_json:object(), kapps_call:call(), kz_term:ne_binaries()) ->
-                                    kz_term:ne_binaries().
+          kz_term:ne_binaries().
 get_flow_dynamic_flags(Data, Call, Flags) ->
     case kz_json:get_list_value(<<"dynamic_flags">>, Data) of
         'undefined' -> Flags;

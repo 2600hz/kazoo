@@ -77,8 +77,8 @@ store_async(Srv, K, V, Props) ->
     gen_server:cast(Srv, {'store', cache_obj(K, V, Props)}).
 
 -spec peek(atom(), any()) -> {'ok', any()} |
-                             {?MITIGATION, pid()} |
-                             {'error', 'not_found'}.
+          {?MITIGATION, pid()} |
+          {'error', 'not_found'}.
 peek(Srv, Key) ->
     try ets:lookup_element(Srv, Key, #cache_obj.value) of
         {?MITIGATION, _Pid}=Mitigation -> Mitigation;
@@ -89,8 +89,8 @@ peek(Srv, Key) ->
     end.
 
 -spec fetch(atom(), any()) -> {'ok', any()} |
-                              {'error', 'not_found'} |
-                              {?MITIGATION, pid()}.
+          {'error', 'not_found'} |
+          {?MITIGATION, pid()}.
 fetch(Srv, Key) ->
     case peek(Srv, Key) of
         {'error', 'not_found'}=E -> E;
@@ -146,8 +146,8 @@ get_props_callback(Props) ->
 get_props_origin(Props) -> props:get_value('origin', Props).
 
 -spec wait_for_key(kz_types:server_ref(), any(), pos_integer()) ->
-                          {'ok', any()} |
-                          {'error', 'timeout'}.
+          {'ok', any()} |
+          {'error', 'timeout'}.
 wait_for_key(Srv, Key, Timeout) when is_integer(Timeout) ->
     WaitFor = Timeout + 100,
 
@@ -157,13 +157,13 @@ wait_for_key(Srv, Key, Timeout) when is_integer(Timeout) ->
     end.
 
 -spec wait_for_stampede(kz_types:server_ref(), any(), pos_integer()) ->
-                               {'ok', any()} |
-                               {'error', 'timeout'}.
+          {'ok', any()} |
+          {'error', 'timeout'}.
 wait_for_stampede(Srv, Key, Timeout) when is_integer(Timeout) ->
     wait_for_key(Srv, Key, Timeout).
 
 -spec wait_for_response(reference(), timeout()) -> {'ok', any()} |
-                                                   {'error', 'timeout'}.
+          {'error', 'timeout'}.
 wait_for_response(Ref, WaitFor) ->
     receive
         {'exists', Ref, {'error', _Reason}=Error} ->
@@ -284,8 +284,8 @@ store_cache_obj(#cache_obj{key=Key
     'ok'.
 
 -spec handle_wait_for_key(atom(), atom(), any(), pos_integer()) ->
-                                 {'ok', reference()} |
-                                 {'exists', any()}.
+          {'ok', reference()} |
+          {'exists', any()}.
 handle_wait_for_key(Name, MonitorName, Key, Timeout) ->
     case peek(Name, Key) of
         {'ok', Value} ->

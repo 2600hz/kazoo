@@ -291,7 +291,7 @@ create_sms_endpoint(Endpoint, <<"sip">>) ->
     end.
 
 -spec lookup_reg(kz_term:ne_binary(), kz_term:ne_binary()) -> {'error', any()} |
-                                                              {'ok', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary()}.
 lookup_reg('undefined', _Realm) -> {'error', 'invalid_user'};
 lookup_reg(_Username, 'undefined') -> {'error', 'invalid_realm'};
 lookup_reg(Username, Realm) ->
@@ -334,18 +334,18 @@ extract_device_registrar_fold(JObj, Set) ->
     end.
 
 -spec get_correlated_msg_type(kz_json:object()) ->
-                                     {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
+          {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
 get_correlated_msg_type(JObj) ->
     get_correlated_msg_type(<<"Call-ID">>, JObj).
 
 -spec get_correlated_msg_type(kz_term:ne_binary(), kz_json:object()) ->
-                                     {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
+          {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
 get_correlated_msg_type(Key, JObj) ->
     {C, N} = kz_util:get_event_type(JObj),
     {C, N, kz_json:get_value(Key, JObj)}.
 
 -spec wait_for_correlated_message(kz_term:ne_binary() | kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), timeout()) ->
-                                         kapps_api_std_return().
+          kapps_api_std_return().
 wait_for_correlated_message(CallId, Event, Type, Timeout) when is_binary(CallId) ->
     Start = kz_time:start_time(),
     case kapps_call_command:receive_event(Timeout) of

@@ -50,7 +50,7 @@ store_file_args(Filename, UrlFun) ->
     ].
 
 -spec store_file(kz_term:ne_binary(), kz_term:ne_binary() | function(), pos_integer(), timeout(), map()) ->
-                        'ok' | {'error', any()}.
+          'ok' | {'error', any()}.
 store_file(Filename, Url, Tries, Timeout, #{media_server := Node}=Map) ->
     Msg = case kz_maps:get('alert_msg', Map) of
               'undefined' ->
@@ -67,7 +67,7 @@ store_file(Filename, Url, Tries, Timeout, #{media_server := Node}=Map) ->
     do_store_file(Tries, Timeout, API, Msg, Map).
 
 -spec do_store_file(pos_integer(), timeout(), function(), kz_term:ne_binary(), map()) ->
-                           'ok' | {'error', any()}.
+          'ok' | {'error', any()}.
 do_store_file(Tries, Timeout, API, Msg, #{media_server := Node}=Map) ->
     Payload = API(),
     case kz_amqp_worker:call(Payload, fun kapi_switch:publish_command/1, fun kapi_switch:fs_reply_v/1, Timeout) of
@@ -94,7 +94,7 @@ do_store_file(Tries, Timeout, API, Msg, #{media_server := Node}=Map) ->
 
 -spec retry_store_file(integer(), timeout(), kz_term:proplist() | function()
                       ,kz_term:ne_binary(), kz_term:ne_binary(), map()) ->
-                              'ok' | {'error', any()}.
+          'ok' | {'error', any()}.
 retry_store_file(0, _Timeout, _API, Msg, Error, Map) ->
     lager:critical("~s : ~s", [Msg, Error]),
     kz_notify:detailed_alert(kz_term:to_binary(Msg)

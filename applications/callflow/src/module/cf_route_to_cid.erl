@@ -41,7 +41,7 @@ endpoints_lookup(Data, Call) ->
     cid_type_based_lookup(Data, Call, kz_json:get_list_value(<<"cid_types">>, Data, [])).
 
 -spec cid_type_based_lookup(kz_json:object(), kapps_call:call(), kz_term:ne_binaries()) ->
-                                   kz_json:objects().
+          kz_json:objects().
 cid_type_based_lookup(Data, Call, []) ->
     lager:info("no CID type restrictions"),
     lookup(Data, Call, [{'key', [kapps_call:callee_id_number(Call)]}]);
@@ -50,7 +50,7 @@ cid_type_based_lookup(Data, Call, CIDTypes) ->
     lookup(Data, Call, [{'keys', Keys}]).
 
 -spec lookup(kz_json:object(), kapps_call:call(), kz_datamgr:view_options()) ->
-                    kz_json:objects().
+          kz_json:objects().
 lookup(Data, Call, ViewOptions) ->
     AccountDb = kapps_call:account_db(Call),
     case kz_datamgr:get_results(AccountDb, <<"attributes/endpoints_lookup">>, ViewOptions) of

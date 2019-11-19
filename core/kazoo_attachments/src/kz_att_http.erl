@@ -127,7 +127,7 @@ fetch_attachment(HandlerProps, DbName, DocId, AName) ->
     end.
 
 -spec handle_fetch_attachment_resp(gen_attachment:fetch_response(), kz_att_error:update_routines()) ->
-                                          gen_attachment:fetch_response().
+          gen_attachment:fetch_response().
 handle_fetch_attachment_resp({'error', Url, Resp}, Routines) ->
     handle_http_error_response(Resp, [{fun kz_att_error:set_req_url/2, Url} | Routines]);
 handle_fetch_attachment_resp({'ok', Body}, _Routines) ->
@@ -207,14 +207,14 @@ maybe_add_settings(#{'base64_encode_data' := 'true'}) ->
 maybe_add_settings(_Settings) -> [].
 
 -spec fetch_attachment(kz_term:ne_binary()) ->
-                              gen_attachment:fetch_response() |
-                              {'error', kz_term:ne_binary(), atom() | kz_http:ret()}.
+          gen_attachment:fetch_response() |
+          {'error', kz_term:ne_binary(), atom() | kz_http:ret()}.
 fetch_attachment(URL) ->
     fetch_attachment(URL, 0, kz_json:new()).
 
 -spec fetch_attachment(kz_term:ne_binary(), integer(), kz_json:object()) ->
-                              gen_attachment:fetch_response() |
-                              {'error', kz_term:ne_binary(), atom() | kz_http:ret()}.
+          gen_attachment:fetch_response() |
+          {'error', kz_term:ne_binary(), atom() | kz_http:ret()}.
 fetch_attachment(Url, Redirects, _)
   when Redirects > ?MAX_REDIRECTS ->
     {'error', Url, 'too_many_redirects'};

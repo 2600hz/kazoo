@@ -99,7 +99,7 @@ repeat(_Data, _Call, _N, 'fail') ->
     'ok'.
 
 -spec attempt_endpoints(kz_json:objects(), kz_json:object(), kapps_call:call()) ->
-                               'stop' | 'fail' | 'continue'.
+          'stop' | 'fail' | 'continue'.
 attempt_endpoints(Endpoints, Data, Call) ->
     FailOnSingleReject = kz_json:is_true(<<"fail_on_single_reject">>, Data, 'undefined'),
     Timeout = kz_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
@@ -230,7 +230,7 @@ order_endpoints(<<"weighted_random">>, Endpoints) ->
     weighted_random_sort(Endpoints).
 
 -spec resolve_endpoint_ids(kz_json:objects(), endpoint_intermediates(), kz_json:object(), kapps_call:call()) ->
-                                  endpoint_intermediates().
+          endpoint_intermediates().
 resolve_endpoint_ids(Members, EndpointIds, Data, Call) ->
     %% resolve the members in reverse order because `resolve_endpoint_id/1` prepends member
     %% endpoints onto the accumulator
@@ -253,7 +253,7 @@ is_endpoint_resolved(Id, Delay, Timeout, {_EG, Id, Delay, Timeout, _EW}) -> 'tru
 is_endpoint_resolved(_Id, _Delay, _Timeout, _) -> 'false'.
 
 -spec resolve_endpoint_id(kz_json:object(), endpoint_intermediates(), kz_json:object(), kapps_call:call()) ->
-                                 endpoint_intermediates().
+          endpoint_intermediates().
 resolve_endpoint_id(Member, EndpointIds, Data, Call) ->
     Id = kz_doc:id(Member),
     Delay = get_member_delay(Member),
@@ -279,7 +279,7 @@ resolve_endpoint_id(Member, EndpointIds, Data, Call) ->
     end.
 
 -spec get_user_endpoint_ids(kz_json:object(), endpoint_intermediates(), kz_term:ne_binary(), group_weight(), kapps_call:call()) ->
-                                   endpoint_intermediates().
+          endpoint_intermediates().
 get_user_endpoint_ids(Member, EndpointIds, Id, GroupWeight, Call) ->
     Delay = get_member_delay(Member),
     Timeout = get_member_timeout(Member),
@@ -307,7 +307,7 @@ get_group_members(Member, Id, GroupWeight, Data, Call) ->
     end.
 
 -spec maybe_order_group_members(group_weight(), kz_json:object(), kz_json:object(), kz_json:object()) ->
-                                       kz_json:objects().
+          kz_json:objects().
 maybe_order_group_members(Weight, Member, JObj, Data) ->
     case strategy(Data) of
         ?DIAL_METHOD_SINGLE ->
@@ -317,7 +317,7 @@ maybe_order_group_members(Weight, Member, JObj, Data) ->
     end.
 
 -spec unordered_group_members(group_weight(), kz_json:object(), kz_json:object()) ->
-                                     kz_json:objects().
+          kz_json:objects().
 unordered_group_members(Weight, Member, JObj) ->
     Endpoints = kz_json:get_json_value(<<"endpoints">>, JObj, kz_json:new()),
     kz_json:foldl(fun(Key, Endpoint, Acc) ->
@@ -340,7 +340,7 @@ order_group_members(GroupWeight, Member, JObj) ->
     [V || {_, V} <- orddict:to_list(GroupMembers)].
 
 -spec order_group_member_fold(kz_json:path(), kz_json:object(), orddict:orddict(), group_weight(), kz_json:object()) ->
-                                     orddict:orddict().
+          orddict:orddict().
 order_group_member_fold(Key, Endpoint, Acc, GroupWeight, Member) ->
     case group_weight(Endpoint) of
         'undefined' ->
@@ -352,7 +352,7 @@ order_group_member_fold(Key, Endpoint, Acc, GroupWeight, Member) ->
     end.
 
 -spec create_group_member(kz_term:ne_binary(), kz_json:object(), group_weight(), kz_json:object()) ->
-                                 kz_json:object().
+          kz_json:object().
 create_group_member(Key, Endpoint, GroupWeight, Member) ->
     DefaultDelay = get_member_delay(Member),
     DefaultTimeout = get_member_timeout(Member),
@@ -381,7 +381,7 @@ weighted_random_sort([], Acc) ->
     Acc.
 
 -spec set_intervals_on_weight(weighted_endpoints(), weighted_endpoints(), integer()) ->
-                                     weighted_endpoints().
+          weighted_endpoints().
 set_intervals_on_weight([{Weight, _}=E | Tail], Acc, Sum) ->
     set_intervals_on_weight(Tail, [{Weight + Sum, E} | Acc], Sum + Weight);
 set_intervals_on_weight([], Acc, _Sum) ->

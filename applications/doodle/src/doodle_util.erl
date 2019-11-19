@@ -135,7 +135,7 @@ save_sms(JObj, DocId, Call) ->
     save_sms(JObj, DocId, Doc, Call).
 
 -spec save_sms(kz_json:object(), kz_term:api_binary(), kz_json:object(), kapps_call:call()) ->
-                      kapps_call:call().
+          kapps_call:call().
 save_sms(JObj, ?MATCH_MODB_PREFIX(Year,Month,_) = DocId, Doc, Call) ->
     AccountId = kapps_call:account_id(Call),
     AccountMODB = kazoo_modb:get_modb(AccountId, Year, Month),
@@ -211,8 +211,8 @@ remove_keys(Call, Keys) ->
     lists:foldl(fun kapps_call:kvs_erase/2, Call, Keys).
 
 -spec endpoint_id_from_sipdb(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                    {'ok', kz_term:ne_binary()} |
-                                    {'error', any()}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', any()}.
 endpoint_id_from_sipdb(Realm, Username) ->
     case kz_cache:peek_local(?CACHE_NAME, ?SIP_ENDPOINT_ID_KEY(Realm, Username)) of
         {'ok', _}=Ok -> Ok;
@@ -221,8 +221,8 @@ endpoint_id_from_sipdb(Realm, Username) ->
     end.
 
 -spec get_endpoint_id_from_sipdb(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                        {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
-                                        {'error', any()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
+          {'error', any()}.
 get_endpoint_id_from_sipdb(Realm, Username) ->
     ViewOptions = [{'key', [kz_term:to_lower_binary(Realm)
                            ,kz_term:to_lower_binary(Username)
@@ -241,8 +241,8 @@ get_endpoint_id_from_sipdb(Realm, Username) ->
     end.
 
 -spec endpoint_from_sipdb(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                 {'ok', kz_json:object()} |
-                                 {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 endpoint_from_sipdb(Realm, Username) ->
     case kz_cache:peek_local(?CACHE_NAME, ?SIP_ENDPOINT_KEY(Realm, Username)) of
         {'ok', _}=Ok -> Ok;
@@ -251,8 +251,8 @@ endpoint_from_sipdb(Realm, Username) ->
     end.
 
 -spec get_endpoint_from_sipdb(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                     {'ok', kz_json:object()} |
-                                     {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 get_endpoint_from_sipdb(Realm, Username) ->
     ViewOptions = [{'key', [kz_term:to_lower_binary(Realm)
                            ,kz_term:to_lower_binary(Username)
@@ -316,7 +316,7 @@ sms_status(_, _) -> <<"pending">>.
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_bridge_failure({'fail' | 'error', kz_json:object() | atom()} | kz_term:api_binary(), kapps_call:call()) ->
-                                   'ok' | 'not_found'.
+          'ok' | 'not_found'.
 handle_bridge_failure({'fail', Reason}, Call) ->
     {Cause, Code} = kapps_util:get_call_termination_reason(Reason),
     handle_bridge_failure(Cause, Code, Call);
@@ -333,7 +333,7 @@ handle_bridge_failure(<<_/binary>> = Failure, Call) ->
 handle_bridge_failure(_, _Call) -> 'not_found'.
 
 -spec handle_bridge_failure(kz_term:api_binary(), kz_term:api_binary(), kapps_call:call()) ->
-                                   'ok' | 'not_found'.
+          'ok' | 'not_found'.
 handle_bridge_failure(Cause, Code, Call) ->
     lager:info("attempting to find failure branch for ~s:~s", [Code, Cause]),
     case (handle_bridge_failure(Cause, Call) =:= 'ok')
@@ -400,8 +400,8 @@ get_inbound_destination(JObj) ->
     {knm_converters:normalize(Number), Inception}.
 
 -spec lookup_mdn(kz_term:ne_binary()) ->
-                        {'ok', kz_term:ne_binary(), kz_term:api_binary()} |
-                        {'error', any()}.
+          {'ok', kz_term:ne_binary(), kz_term:api_binary()} |
+          {'error', any()}.
 lookup_mdn(Number) ->
     Num = knm_converters:normalize(Number),
     case kz_cache:fetch_local(?CACHE_NAME, cache_key_mdn(Num)) of
@@ -412,8 +412,8 @@ lookup_mdn(Number) ->
     end.
 
 -spec fetch_mdn(kz_term:ne_binary()) ->
-                       {'ok', kz_term:ne_binary(), kz_term:api_binary()} |
-                       {'error', any()}.
+          {'ok', kz_term:ne_binary(), kz_term:api_binary()} |
+          {'error', any()}.
 fetch_mdn(Num) ->
     case knm_number:lookup_account(Num) of
         {'ok', AccountId, _Props} ->
@@ -424,8 +424,8 @@ fetch_mdn(Num) ->
     end.
 
 -spec fetch_mdn_result(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                              {'ok', kz_term:ne_binary(), kz_term:api_binary()} |
-                              {'error', 'not_found'}.
+          {'ok', kz_term:ne_binary(), kz_term:api_binary()} |
+          {'error', 'not_found'}.
 fetch_mdn_result(AccountId, Num) ->
     AccountDb = kz_util:format_account_db(AccountId),
     ViewOptions = [{'key', mdn_from_e164(Num)}],
@@ -441,7 +441,7 @@ fetch_mdn_result(AccountId, Num) ->
     end.
 
 -spec cache_mdn_result(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                              {'ok', kz_term:ne_binary(), kz_term:api_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:api_binary()}.
 cache_mdn_result(AccountDb, Id, OwnerId) ->
     CacheProps = [{'origin', [{'db', AccountDb, Id}]}],
     kz_cache:store_local(?CACHE_NAME, cache_key_mdn(Id), {Id, OwnerId}, CacheProps),
@@ -505,14 +505,14 @@ inc_counter(Key, JObj) ->
     kz_json:set_value(Key, kz_json:get_integer_value(Key, JObj, 0) + 1, JObj).
 
 -spec apply_reschedule_logic({kz_json:json_terms(), kz_json:path()}, kz_json:object()) ->
-                                    'no_rule' | 'end_rules' | kz_json:object().
+          'no_rule' | 'end_rules' | kz_json:object().
 apply_reschedule_logic({[], []}, _JObj) -> 'no_rule';
 apply_reschedule_logic(Rules, JObj) ->
     Step = kz_json:get_integer_value(<<"rule">>, JObj, 1),
     apply_reschedule_logic(Rules, inc_counters(JObj, ?RESCHEDULE_COUNTERS), Step).
 
 -spec apply_reschedule_logic({kz_json:json_terms(), kz_json:path()}, kz_json:object(), integer()) ->
-                                    'no_rule' | 'end_rules' | kz_json:object().
+          'no_rule' | 'end_rules' | kz_json:object().
 apply_reschedule_logic({_Vs, Ks}, _JObj, Step)
   when Step > length(Ks) -> 'end_rules';
 apply_reschedule_logic({Vs, Ks}, JObj, Step) ->
@@ -520,7 +520,7 @@ apply_reschedule_logic({Vs, Ks}, JObj, Step) ->
     apply_reschedule_rules(Rules, JObj, Step).
 
 -spec apply_reschedule_rules({kz_json:json_terms(), kz_json:path()}, kz_json:object(), integer()) ->
-                                    kz_json:object() | 'end_rules'.
+          kz_json:object() | 'end_rules'.
 apply_reschedule_rules({[], _}, _JObj, _Step) -> 'end_rules';
 apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj, Step) ->
     case apply_reschedule_step(kz_json:get_values(Rule), JObj) of
@@ -537,7 +537,7 @@ apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj, Step) ->
     end.
 
 -spec apply_reschedule_step({kz_json:json_terms(), kz_json:path()}, kz_json:object()) ->
-                                   'no_match' | kz_json:object().
+          'no_match' | kz_json:object().
 apply_reschedule_step({[], []}, JObj) -> JObj;
 apply_reschedule_step({[Value | Values], [Key | Keys]}, JObj) ->
     case apply_reschedule_rule(Key, Value, JObj) of

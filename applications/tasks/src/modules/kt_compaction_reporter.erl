@@ -179,7 +179,7 @@ history() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec history(kz_time:year(), kz_time:month()) -> {'ok', kz_json:json_terms()} |
-                                                  {'error', atom()}.
+          {'error', atom()}.
 history(Year, Month) when is_integer(Year)
                           andalso is_integer(Month) ->
     {'ok', AccountId} = kapps_util:get_master_account_id(),
@@ -431,7 +431,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec stats_to_status_fold(kz_term:ne_binary(), compaction_stats(), [kz_term:proplist()]) ->
-                                  [kz_term:proplist()].
+          [kz_term:proplist()].
 stats_to_status_fold(_CallId, Stats = #{'queued_dbs' := QueuedDBs}, Acc) ->
     Keys = ['id', 'found_dbs', 'compacted_dbs', 'queued_dbs', 'skipped_dbs', 'current_db',
             'found_shards', 'compacted_shards', 'recovered_disk', 'pid', 'node', 'started'],

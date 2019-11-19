@@ -148,7 +148,7 @@ summary_doc_fun(View, Acc) ->
     ].
 
 -spec attachment_content_type(kz_json:key(), kz_json:object(), kz_term:ne_binaries()) ->
-                                     kz_term:ne_binaries().
+          kz_term:ne_binaries().
 attachment_content_type(_Name, Meta, CTs) ->
     [kz_json:get_ne_binary_value(<<"content_type">>, Meta) | CTs].
 
@@ -181,7 +181,7 @@ do_load_recording_binary(Context, DocId) ->
     end.
 
 -spec do_load_recording_binary_attachment(cb_context:context(), kz_term:ne_binary()) ->
-                                                 cb_context:context().
+          cb_context:context().
 do_load_recording_binary_attachment(Context, DocId) ->
     case kz_doc:attachment_names(cb_context:doc(Context)) of
         [] ->
@@ -207,7 +207,7 @@ do_load_recording_binary_attachment(Context, DocId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_resp_headers(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
-                              cb_context:context().
+          cb_context:context().
 set_resp_headers(Context, AName, Attachment) ->
     Headers = #{<<"content-disposition">> => get_disposition(AName, Context)
                ,<<"content-type">> => kz_json:get_ne_binary_value(<<"content_type">>, Attachment)

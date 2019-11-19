@@ -74,8 +74,8 @@ clean_channels_fold(JObj, Dict) ->
                ).
 
 -spec filter_channels(dict:dict(), kapps_call:call()) ->
-                             {'ok', kz_json:object()} |
-                             {'error', no_channel | too_many_channels}.
+          {'ok', kz_json:object()} |
+          {'error', no_channel | too_many_channels}.
 filter_channels(Channels, Call) ->
     CallId = kapps_call:call_id(Call),
     case dict:to_list(dict:erase(CallId, Channels)) of

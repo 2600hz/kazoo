@@ -96,7 +96,7 @@ allowed_methods(AccountId) ->
     allowed_methods_on_account(AccountId, kapps_util:get_master_account_id()).
 
 -spec allowed_methods_on_account(kz_term:ne_binary(), {'ok', kz_term:ne_binary()} | {'error', any()}) ->
-                                        http_methods().
+          http_methods().
 allowed_methods_on_account(AccountId, {'ok', AccountId}) ->
     lager:debug("accessing master account, disallowing DELETE"),
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH];
@@ -173,7 +173,7 @@ validate_resource(Context, AccountId, _Path) ->
 %%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context) ->
     validate_accounts(Context, cb_context:req_verb(Context)).
 
@@ -182,7 +182,7 @@ validate_accounts(Context, ?HTTP_PUT) ->
     validate_request('undefined', prepare_context('undefined', Context)).
 
 -spec validate(cb_context:context(), path_token()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context, AccountId) ->
     validate_account(Context, AccountId, cb_context:req_verb(Context)).
 
@@ -199,12 +199,12 @@ validate_account(Context, AccountId, ?HTTP_DELETE) ->
     validate_delete_request(AccountId, prepare_context(AccountId, Context)).
 
 -spec validate(cb_context:context(), path_token(), kz_term:ne_binary()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context, AccountId, PathToken) ->
     validate_account_path(Context, AccountId, PathToken, cb_context:req_verb(Context)).
 
 -spec validate_account_path(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), http_method()) ->
-                                   cb_context:context().
+          cb_context:context().
 validate_account_path(Context, AccountId, ?CHILDREN, ?HTTP_GET) ->
     load_children(AccountId, prepare_context('undefined', Context));
 validate_account_path(Context, AccountId, ?DESCENDANTS, ?HTTP_GET) ->
@@ -392,9 +392,9 @@ put(Context, AccountId, ?RESELLER) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec delete_account(kz_term:api_ne_binary()) ->
-                            {'ok', kzd_accounts:doc() | 'undefined'} |
-                            {'error', kz_json_schema:validation_errors()} |
-                            kz_datamgr:data_error().
+          {'ok', kzd_accounts:doc() | 'undefined'} |
+          {'error', kz_json_schema:validation_errors()} |
+          kz_datamgr:data_error().
 delete_account(AccountId) ->
     kzdb_account:delete(AccountId).
 
@@ -588,7 +588,7 @@ disallow_direct_clients(AccountId, Context) ->
     maybe_disallow_direct_clients(AccountId, Context, ShouldAllow).
 
 -spec maybe_disallow_direct_clients(kz_term:api_binary(), cb_context:context(), boolean()) ->
-                                           cb_context:context().
+          cb_context:context().
 maybe_disallow_direct_clients(_AccountId, Context, 'true') ->
     Context;
 maybe_disallow_direct_clients(_AccountId, Context, 'false') ->
@@ -620,7 +620,7 @@ maybe_import_enabled(Context) ->
     end.
 
 -spec maybe_import_enabled(cb_context:context(), crossbar_status()) ->
-                                  cb_context:context().
+          cb_context:context().
 maybe_import_enabled(Context, 'success') ->
     AuthAccountId = cb_context:auth_account_id(Context),
     Doc = cb_context:doc(Context),
@@ -633,7 +633,7 @@ maybe_import_enabled(Context, 'success') ->
     end.
 
 -spec maybe_import_enabled(cb_context:context(), kz_json:object(), kz_term:api_binary()) ->
-                                  cb_context:context().
+          cb_context:context().
 maybe_import_enabled(Context, _, 'undefined') -> Context;
 maybe_import_enabled(Context, Doc, IsEnabled) ->
     NewDoc = case kz_term:is_true(IsEnabled) of
@@ -818,13 +818,13 @@ leak_notification_preference(Context, Pref) ->
     cb_context:set_resp_data(Context, UpdatedRespJObj).
 
 -spec leak_trial_time_left(cb_context:context()) ->
-                                  cb_context:context().
+          cb_context:context().
 leak_trial_time_left(Context) ->
     JObj = cb_context:doc(Context),
     leak_trial_time_left(Context, JObj, kzd_accounts:trial_expiration(JObj)).
 
 -spec leak_trial_time_left(cb_context:context(), kz_json:object(), kz_term:api_integer()) ->
-                                  cb_context:context().
+          cb_context:context().
 leak_trial_time_left(Context, _JObj, 'undefined') ->
     RespData = kz_json:delete_key(<<"trial_time_left">>
                                  ,cb_context:resp_data(Context)
@@ -1111,7 +1111,7 @@ normalize_view_results(JObj, Acc) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec load_account_db(cb_context:context(), kz_term:ne_binary() | kz_term:ne_binaries()) ->
-                             cb_context:context().
+          cb_context:context().
 load_account_db(Context, [AccountId|_]) ->
     load_account_db(Context, AccountId);
 load_account_db(Context, AccountId) when is_binary(AccountId) ->

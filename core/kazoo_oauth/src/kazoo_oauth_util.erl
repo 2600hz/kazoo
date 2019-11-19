@@ -29,7 +29,7 @@ authorization_header(#oauth_token{type=Type,token=Token}) ->
     <<Type/binary, " ", Token/binary>>.
 
 -spec get_oauth_provider(kz_term:ne_binary()) -> {'ok', oauth_provider()} |
-                                                 {'error', kz_term:ne_binary()}.
+          {'error', kz_term:ne_binary()}.
 get_oauth_provider(ProviderId) ->
     case kz_datamgr:open_doc(?KZ_OAUTH_DB, ProviderId) of
         {'ok', JObj} -> {'ok', oauth_provider_from_jobj(ProviderId, JObj)};
@@ -47,7 +47,7 @@ oauth_provider_from_jobj(ProviderId, JObj) ->
                    }.
 
 -spec get_oauth_app(kz_term:ne_binary()) -> {'ok', oauth_app()} |
-                                            {'error', kz_term:ne_binary()}.
+          {'error', kz_term:ne_binary()}.
 get_oauth_app(AppId) ->
     case kz_datamgr:open_doc(?KZ_OAUTH_DB, AppId) of
         {'ok', JObj} ->
@@ -69,8 +69,8 @@ oauth_app_from_jobj(AppId, Provider, JObj) ->
               }.
 
 -spec get_oauth_service_app(kz_term:ne_binary()) ->
-                                   {'ok', oauth_service_app()} |
-                                   {'error', any()}.
+          {'ok', oauth_service_app()} |
+          {'error', any()}.
 get_oauth_service_app(AppId) ->
     case kz_datamgr:open_doc(?KZ_OAUTH_DB, AppId) of
         {'ok', JObj} ->
@@ -93,8 +93,8 @@ oauth_service_from_jobj(AppId, Provider, JObj) ->
                       }.
 
 -spec load_service_app_keys(oauth_service_app()) ->
-                                   {'ok', oauth_service_app()} |
-                                   {'error', any()}.
+          {'ok', oauth_service_app()} |
+          {'error', any()}.
 load_service_app_keys(#oauth_service_app{name=AppId}=App) ->
     case kz_datamgr:fetch_attachment(?KZ_OAUTH_DB, AppId, <<"public_key.pem">>) of
         {'ok', PublicKey} ->
@@ -111,7 +111,7 @@ load_service_app_keys(#oauth_service_app{name=AppId}=App) ->
     end.
 
 -spec oauth_service_app_from_keys(binary(), binary(), oauth_service_app()) ->
-                                         oauth_service_app().
+          oauth_service_app().
 oauth_service_app_from_keys(PublicKey, PrivateKey, App) ->
     App#oauth_service_app{public_key=pem_to_rsa(PublicKey)
                          ,private_key=pem_to_rsa(PrivateKey)
@@ -163,8 +163,8 @@ token(DocId) when is_binary(DocId) ->
     end.
 
 -spec token(kz_term:api_binary() | oauth_app(), kz_term:api_binary() | oauth_refresh_token()) ->
-                   {'ok', oauth_token()} |
-                   {'error', any()}.
+          {'ok', oauth_token()} |
+          {'error', any()}.
 token(AppId, UserId) when is_binary(AppId) ->
     lager:debug("getting oauth-app ~p",[AppId]),
     case get_oauth_app(AppId) of
@@ -211,8 +211,8 @@ token(#oauth_app{name=AppId
     end.
 
 -spec verify_token(kz_term:api_binary() | oauth_provider(), kz_term:api_binary()) ->
-                          {'ok', kz_term:api_object()} |
-                          {'error', kz_term:api_binary()}.
+          {'ok', kz_term:api_object()} |
+          {'error', kz_term:api_binary()}.
 verify_token(ProviderId, AccessToken) when is_binary(ProviderId) ->
     case get_oauth_provider(ProviderId) of
         {'ok', Provider} -> verify_token(Provider, AccessToken);
@@ -237,8 +237,8 @@ refresh_token(Token) ->
     #oauth_refresh_token{token=Token}.
 
 -spec refresh_token(kz_term:api_binary() | oauth_app(), kz_term:api_binary(), kz_term:api_binary(), kz_term:proplist() ) ->
-                           {'ok', kz_term:api_object()} |
-                           {'error', any()}.
+          {'ok', kz_term:api_object()} |
+          {'error', any()}.
 refresh_token(AppId, Scope, AuthorizationCode, ExtraHeaders)
   when is_binary(AppId) ->
     lager:debug("getting oauth-app ~p",[AppId]),
@@ -250,8 +250,8 @@ refresh_token(App, Scope, AuthorizationCode, ExtraHeaders) ->
     refresh_token(App, Scope, AuthorizationCode, ExtraHeaders, <<"postmessage">>).
 
 -spec refresh_token(oauth_app(), kz_term:api_binary(), kz_term:api_binary(), kz_term:proplist(), kz_term:api_binary()) ->
-                           {'ok', kz_term:api_object()} |
-                           {'error', any()}.
+          {'ok', kz_term:api_object()} |
+          {'error', any()}.
 refresh_token(#oauth_app{name=ClientId
                         ,secret=Secret
                         ,provider=#oauth_provider{auth_url=URL}

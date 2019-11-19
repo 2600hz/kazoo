@@ -59,12 +59,12 @@ default() ->
     kz_json:load_fixture_from_file(?APP, "fixtures", "domains.json").
 
 -spec save(doc()) -> {'ok', doc()} |
-                     {'error', any()}.
+          {'error', any()}.
 save(Domains) ->
     save(Domains, 'undefined').
 
 -spec save(doc(), kz_term:api_object()) -> {'ok', doc()} |
-                                           {'error', any()}.
+          {'error', any()}.
 save(Domains, PvtFields) ->
     case is_valid(Domains) of
         'true' ->
@@ -74,7 +74,7 @@ save(Domains, PvtFields) ->
     end.
 
 -spec try_save(doc(), kz_term:api_object()) -> {'ok', doc()} |
-                                               {'error', any()}.
+          {'error', any()}.
 try_save(Domains, PvtFields) ->
     case kapps_config:update_default(<<"whitelabel">>
                                     ,<<"domains">>
@@ -88,12 +88,12 @@ try_save(Domains, PvtFields) ->
     end.
 
 -spec is_valid(doc()) ->
-                      'true' | {'false', _}.
+          'true' | {'false', _}.
 is_valid(Domains) ->
     is_valid(Domains, kz_json_schema:load(<<"domains">>)).
 
 -spec is_valid(doc(), {'ok', kz_json:object()} | {'error', any()}) ->
-                      'true' | {'false', any()}.
+          'true' | {'false', any()}.
 is_valid(_Domains, {'error', E}) ->
     lager:warning("failed to find domains JSON schema"),
     {'false', E};
@@ -261,7 +261,7 @@ format(Domains, WhitelabelDomain) ->
                ).
 
 -spec format_domain_type(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) ->
-                                {kz_term:ne_binary(), kz_json:object()}.
+          {kz_term:ne_binary(), kz_json:object()}.
 format_domain_type(DomainType, DomainConfig, WhitelabelDomain) ->
     {DomainType
     ,kz_json:map(fun(Host, HostConfig) ->
@@ -272,14 +272,14 @@ format_domain_type(DomainType, DomainConfig, WhitelabelDomain) ->
     }.
 
 -spec format_host_config(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) ->
-                                {kz_term:ne_binary(), kz_json:object()}.
+          {kz_term:ne_binary(), kz_json:object()}.
 format_host_config(Host, HostConfig, WhitelabelDomain) ->
     {format_host(Host, WhitelabelDomain)
     ,format_host_mappings(HostConfig, WhitelabelDomain)
     }.
 
 -spec format_host_mappings(kz_json:object(), kz_term:ne_binary()) ->
-                                  kz_json:object().
+          kz_json:object().
 format_host_mappings(HostConfig, WhitelabelDomain) ->
     Mappings =
         [format_mapping(Mapping, WhitelabelDomain)
@@ -304,7 +304,7 @@ name(JObj) ->
     kz_json:get_value(<<"name">>, JObj).
 
 -spec host_mappings(kz_term:api_object(), kz_term:ne_binary(), Default) ->
-                           kz_term:ne_binaries() | Default.
+          kz_term:ne_binaries() | Default.
 host_mappings('undefined', _Host, Default) -> Default;
 host_mappings(Domain, Host, Default) ->
     kz_json:get_value([Host, <<"mapping">>], Domain, Default).

@@ -65,8 +65,8 @@ handle(Data, Call) ->
     end.
 
 -spec maybe_build_call_waiting_record(kz_json:object(), kapps_call:call()) ->
-                                             {'ok', call_waiting()} |
-                                             {'error', any()}.
+          {'ok', call_waiting()} |
+          {'error', any()}.
 maybe_build_call_waiting_record(Data, Call) ->
     AccountDb = kapps_call:account_db(Call),
     DocId = get_doc_id(kz_json:get_ne_binary_value(<<"scope">>, Data, <<"device">>), Call),

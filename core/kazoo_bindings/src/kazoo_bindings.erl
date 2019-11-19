@@ -308,19 +308,19 @@ stop() -> gen_server:cast(?SERVER, 'stop').
 -type bind_results() :: [bind_result()].
 
 -spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), responder_fun()) ->
-                  bind_result() | bind_results().
+          bind_result() | bind_results().
 bind(Bindings, Fun) ->
     bind(Bindings, 'undefined', Fun).
 
 -spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), module(), responder_fun()) ->
-                  bind_result() | bind_results().
+          bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun) ->
     [bind(Binding, Module, Fun) || Binding <- Bindings];
 bind(Binding, Module, Fun) when is_binary(Binding) ->
     bind(Binding, Module, Fun, 'undefined').
 
 -spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), module(), responder_fun(), payload()) ->
-                  bind_result() | bind_results().
+          bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
 bind(Binding, 'undefined' = Module, Fun, Payload) ->
@@ -335,19 +335,19 @@ bind(Binding, Module, Fun, Payload) ->
 -type unbind_results() :: [unbind_result()].
 
 -spec unbind(kz_term:ne_binary() | kz_term:ne_binaries(), responder_fun()) ->
-                    unbind_result() | unbind_results().
+          unbind_result() | unbind_results().
 unbind(Bindings, Fun) ->
     unbind(Bindings, 'undefined', Fun).
 
 -spec unbind(kz_term:ne_binary() | kz_term:ne_binaries(), module(), responder_fun()) ->
-                    unbind_result() | unbind_results().
+          unbind_result() | unbind_results().
 unbind([_|_]=Bindings, Module, Fun) ->
     [unbind(Binding, Module, Fun) || Binding <- Bindings];
 unbind(Binding, Module, Fun) when is_binary(Binding) ->
     unbind(Binding, Module, Fun, 'undefined').
 
 -spec unbind(kz_term:ne_binary() | kz_term:ne_binaries(), module(), responder_fun(), payload()) ->
-                    unbind_result() | unbind_results().
+          unbind_result() | unbind_results().
 unbind([_|_]=Bindings, Module, Fun, Payload) ->
     [unbind(Binding, Module, Fun, Payload) || Binding <- Bindings];
 unbind(Binding, Module, Fun, Payload) ->
@@ -427,8 +427,8 @@ handle_call({'unbind', Binding, Mod, Fun, Payload}, _, #state{}=State) ->
     {'reply', Resp, State}.
 
 -spec maybe_add_binding(kz_term:ne_binary(), module(), responder_fun(), payload()) ->
-                               'ok' |
-                               {'error', 'exists'}.
+          'ok' |
+          {'error', 'exists'}.
 maybe_add_binding(Binding, Mod, Fun, Payload) ->
     Responder = #kz_responder{module=Mod
                              ,function=Fun
@@ -458,8 +458,8 @@ maybe_add_binding(Binding, Mod, Fun, Payload) ->
     end.
 
 -spec maybe_rm_binding(kz_term:ne_binary(), module(), responder_fun(), payload()) ->
-                              {'ok', 'deleted_binding' | 'updated_binding'} |
-                              {'error', 'not_found'}.
+          {'ok', 'deleted_binding' | 'updated_binding'} |
+          {'error', 'not_found'}.
 maybe_rm_binding(Binding, Mod, Fun, Payload) ->
     Responder = #kz_responder{module=Mod
                              ,function=Fun
@@ -472,8 +472,8 @@ maybe_rm_binding(Binding, Mod, Fun, Payload) ->
     end.
 
 -spec maybe_rm_responder(kz_term:ne_binary(), kz_responder(), kz_binding()) ->
-                                {'ok', 'deleted_binding' | 'updated_binding'} |
-                                {'error', 'not_found'}.
+          {'ok', 'deleted_binding' | 'updated_binding'} |
+          {'error', 'not_found'}.
 maybe_rm_responder(Binding, Responder, #kz_binding{binding_responders=Responders}=Bind) ->
     case queue:member(Responder, Responders) of
         'false' ->

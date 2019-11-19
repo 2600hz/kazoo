@@ -126,7 +126,7 @@ resource_exists(?PROMPTS, _PromptId) -> 'true';
 resource_exists(_, ?BIN_DATA) -> 'true'.
 
 -spec authorize(cb_context:context()) -> boolean() |
-                                         {'stop', cb_context:context()}.
+          {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize_media(Context, cb_context:req_nouns(Context), cb_context:account_id(Context)).
 
@@ -171,7 +171,7 @@ acceptable_content_types() ->
     ?MEDIA_MIME_TYPES.
 
 -spec content_types_provided(cb_context:context(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, MediaId) ->
     Verb = cb_context:req_verb(Context),
     ContentType = cb_context:req_header(Context, <<"accept">>),
@@ -184,12 +184,12 @@ content_types_provided(Context, MediaId) ->
     end.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, MediaId, ?BIN_DATA) ->
     content_types_provided_for_media(Context, MediaId, ?BIN_DATA, cb_context:req_verb(Context)).
 
 -spec content_types_provided_for_media(cb_context:context(), path_token(), path_token(), http_method()) ->
-                                              cb_context:context().
+          cb_context:context().
 content_types_provided_for_media(Context, MediaId, ?BIN_DATA, ?HTTP_GET) ->
     Context1 = load_media_meta(Context, MediaId),
     case cb_context:resp_status(Context1) of
@@ -221,12 +221,12 @@ content_types_accepted(Context, _MediaId) ->
     end.
 
 -spec content_types_accepted(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_accepted(Context, _MediaId, ?BIN_DATA) ->
     content_types_accepted_for_upload(Context, cb_context:req_verb(Context)).
 
 -spec content_types_accepted_for_upload(cb_context:context(), http_method()) ->
-                                               cb_context:context().
+          cb_context:context().
 content_types_accepted_for_upload(Context, ?HTTP_POST) ->
     CTA = [{'from_binary', acceptable_content_types()}],
     cb_context:set_content_types_accepted(Context, CTA);
@@ -350,14 +350,14 @@ maybe_normalize_upload(Context, MediaId, FileJObj) ->
     end.
 
 -spec normalize_upload(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
-                              cb_context:context().
+          cb_context:context().
 normalize_upload(Context, MediaId, FileJObj) ->
     normalize_upload(Context, MediaId, FileJObj
                     ,kz_json:get_ne_binary_value([<<"headers">>, <<"content_type">>], FileJObj)
                     ).
 
 -spec normalize_upload(cb_context:context(), kz_term:ne_binary(), kz_json:object(), kz_term:api_binary()) ->
-                              cb_context:context().
+          cb_context:context().
 normalize_upload(Context, MediaId, FileJObj, UploadContentType) ->
     FromExt = kz_mime:to_extension(UploadContentType),
     ToExt =  ?NORMALIZATION_FORMAT,
@@ -448,7 +448,7 @@ create_update_tts(Context, <<"update">>) ->
     maybe_update_media_file(Context, <<"update">>, is_tts_changed(cb_context:doc(Context)), cb_context:resp_status(Context)).
 
 -spec maybe_update_media_file(cb_context:context(), kz_term:ne_binary(), boolean(), crossbar_status()) ->
-                                     cb_context:context().
+          cb_context:context().
 maybe_update_media_file(Context, CreateOrUpdate, 'true', 'success') ->
     JObj = cb_context:doc(Context),
     Text = kz_json:get_value([<<"tts">>, <<"text">>], JObj),
@@ -624,7 +624,7 @@ normalize_count_results(JObj, [Acc]) ->
     end.
 
 -spec load_media_docs_by_language(cb_context:context(), kz_term:ne_binary()) ->
-                                         cb_context:context().
+          cb_context:context().
 load_media_docs_by_language(Context, <<"missing">>) ->
     lager:debug("loading media files missing a language"),
     load_media_docs_by_language(Context, 'null', cb_context:account_id(Context));
@@ -633,7 +633,7 @@ load_media_docs_by_language(Context, Language) ->
     load_media_docs_by_language(Context, Language, cb_context:account_id(Context)).
 
 -spec load_media_docs_by_language(cb_context:context(), kz_term:ne_binary() | 'null', kz_term:api_binary()) ->
-                                         cb_context:context().
+          cb_context:context().
 load_media_docs_by_language(Context, Language, 'undefined') ->
     fix_start_keys(
       crossbar_doc:load_view(?CB_LIST_BY_LANG
@@ -681,12 +681,12 @@ normalize_language_results(JObj, Acc) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec load_available_prompts(cb_context:context()) ->
-                                    cb_context:context().
+          cb_context:context().
 load_available_prompts(Context) ->
     load_available_prompts(Context, cb_context:account_id(Context)).
 
 -spec load_available_prompts(cb_context:context(), kz_term:api_binary()) ->
-                                    cb_context:context().
+          cb_context:context().
 load_available_prompts(Context, 'undefined') ->
     fix_prompt_start_keys(
       crossbar_doc:load_view(?CB_LIST_BY_PROMPT
@@ -741,12 +741,12 @@ load_media_docs_by_prompt(Context, PromptId, _AccountId) ->
 
 
 -spec prompt_start_key(cb_context:context()) ->
-                              kz_term:ne_binaries().
+          kz_term:ne_binaries().
 prompt_start_key(Context) ->
     prompt_start_key(Context, 'undefined').
 
 -spec prompt_start_key(cb_context:context(), kz_term:api_binary()) ->
-                              kz_term:ne_binaries().
+          kz_term:ne_binaries().
 prompt_start_key(Context, PromptId) ->
     case crossbar_doc:start_key(Context) of
         PromptId -> PromptId;
@@ -795,12 +795,12 @@ fix_prompt_start_keys_fold(Key, JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec load_media_meta(cb_context:context(), kz_term:ne_binary()) ->
-                             cb_context:context().
+          cb_context:context().
 load_media_meta(Context, MediaId) ->
     load_media_meta(Context, MediaId, cb_context:account_id(Context)).
 
 -spec load_media_meta(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                             cb_context:context().
+          cb_context:context().
 load_media_meta(Context, MediaId, 'undefined') ->
     crossbar_doc:load(MediaId, cb_context:set_account_db(Context, ?KZ_MEDIA_DB), ?TYPE_CHECK_OPTION(kzd_media:type()));
 load_media_meta(Context, MediaId, _AccountId) ->
@@ -827,7 +827,7 @@ on_successful_validation(MediaId, Context) ->
     maybe_validate_prompt(MediaId, Context1, cb_context:resp_status(Context1)).
 
 -spec maybe_validate_prompt(kz_term:ne_binary(), cb_context:context(), crossbar_status()) ->
-                                   cb_context:context().
+          cb_context:context().
 maybe_validate_prompt(MediaId, Context, 'success') ->
     case kzd_media:prompt_id(cb_context:doc(Context)) of
         'undefined' -> Context;
@@ -838,7 +838,7 @@ maybe_validate_prompt(_MediaId, Context, _Status) ->
     Context.
 
 -spec validate_prompt(kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary()) ->
-                             cb_context:context().
+          cb_context:context().
 validate_prompt(MediaId, Context, PromptId) ->
     Language = kz_term:to_lower_binary(kzd_media:language(cb_context:doc(Context))),
     case kz_media_util:prompt_id(PromptId, Language) of
@@ -879,7 +879,7 @@ maybe_add_prompt_fields(Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
-                                    kz_json:objects().
+          kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -914,7 +914,7 @@ load_media_binary(Context, MediaId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_media_binary(cb_context:context(), path_token()) ->
-                                 cb_context:context().
+          cb_context:context().
 update_media_binary(Context, MediaId) ->
     update_media_binary(crossbar_util:maybe_remove_attachments(Context)
                        ,MediaId
@@ -922,7 +922,7 @@ update_media_binary(Context, MediaId) ->
                        ).
 
 -spec update_media_binary(cb_context:context(), path_token(), req_files()) ->
-                                 cb_context:context().
+          cb_context:context().
 update_media_binary(Context, _MediaId, []) -> Context;
 update_media_binary(Context, MediaId, [{Filename, FileObj}|Files]) ->
     Contents = kz_json:get_value(<<"contents">>, FileObj),

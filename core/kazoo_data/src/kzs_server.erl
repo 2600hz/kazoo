@@ -21,7 +21,7 @@
 -include("kz_data.hrl").
 
 -spec server_info(map() | server()) -> {'ok', kz_json:object()} |
-                                       {'error', any()}.
+          {'error', any()}.
 server_info(#{server := {App, Conn}}) -> App:server_info(Conn);
 server_info({App, Conn}) -> App:server_info(Conn).
 

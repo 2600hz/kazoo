@@ -132,8 +132,8 @@ continue(Data, Call) ->
     end.
 
 -spec maybe_allowed_to_intercept(kz_json:object(), kapps_call:call()) ->
-                                        {'ok', boolean()} |
-                                        {'error', 'not_found'}.
+          {'ok', boolean()} |
+          {'error', 'not_found'}.
 maybe_allowed_to_intercept(Data, Call) ->
     case kz_json:get_ne_binary_value(<<"approved_device_id">>, Data) of
         'undefined' ->
@@ -144,8 +144,8 @@ maybe_allowed_to_intercept(Data, Call) ->
     end.
 
 -spec maybe_approved_user(kz_json:object(), kapps_call:call()) ->
-                                 {'ok', boolean()} |
-                                 {'error', 'not_found'}.
+          {'ok', boolean()} |
+          {'error', 'not_found'}.
 maybe_approved_user(Data, Call) ->
     case kz_json:get_ne_binary_value(<<"approved_user_id">>, Data) of
         'undefined' -> maybe_approved_group(Data, Call);
@@ -153,8 +153,8 @@ maybe_approved_user(Data, Call) ->
     end.
 
 -spec maybe_approved_group(kz_json:object(), kapps_call:call()) ->
-                                  {'ok', boolean()} |
-                                  {'error', 'not_found'}.
+          {'ok', boolean()} |
+          {'error', 'not_found'}.
 maybe_approved_group(Data, Call) ->
     case kz_json:get_ne_binary_value(<<"approved_group_id">>, Data) of
         'undefined' -> {'error', 'not_found'};
@@ -203,12 +203,12 @@ connect_to_a_channel(Channels, Call) ->
     end.
 
 -spec sort_channels(kz_json:objects(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                           {kz_term:ne_binaries(), kz_term:ne_binaries()}.
+          {kz_term:ne_binaries(), kz_term:ne_binaries()}.
 sort_channels(Channels, MyUUID, MyMediaServer) ->
     sort_channels(Channels, MyUUID, MyMediaServer, {[], []}).
 
 -spec sort_channels(kz_json:objects(), kz_term:ne_binary(), kz_term:ne_binary(), {kz_term:ne_binaries(), kz_term:ne_binaries()}) ->
-                           {kz_term:ne_binaries(), kz_term:ne_binaries()}.
+          {kz_term:ne_binaries(), kz_term:ne_binaries()}.
 sort_channels([], _MyUUID, _MyMediaServer, Acc) -> Acc;
 sort_channels([Channel|Channels], MyUUID, MyMediaServer, Acc) ->
     lager:debug("channel: c: ~s a: ~s n: ~s oleg: ~s", [kz_json:get_ne_binary_value(<<"uuid">>, Channel)
@@ -219,7 +219,7 @@ sort_channels([Channel|Channels], MyUUID, MyMediaServer, Acc) ->
     maybe_add_leg(Channels, MyUUID, MyMediaServer, Acc, Channel).
 
 -spec maybe_add_leg(kz_json:objects(), kz_term:ne_binary(), kz_term:ne_binary(), {kz_term:ne_binaries(), kz_term:ne_binaries()}, kz_json:object()) ->
-                           {kz_term:ne_binaries(), kz_term:ne_binaries()}.
+          {kz_term:ne_binaries(), kz_term:ne_binaries()}.
 maybe_add_leg(Channels, MyUUID, MyMediaServer, {Local, Remote}=Acc, Channel) ->
     case kz_json:get_ne_binary_value(<<"node">>, Channel) of
         MyMediaServer ->
@@ -261,9 +261,9 @@ intercept_cmd(TargetCallId) ->
     ].
 
 -spec wait_for_intercept(kapps_call:call()) ->
-                                'ok' |
-                                {'error', 'failed'} |
-                                {'error', 'timeout'}.
+          'ok' |
+          {'error', 'failed'} |
+          {'error', 'timeout'}.
 wait_for_intercept(Call) ->
     case kapps_call_command:receive_event(10000) of
         {'ok', Evt} ->
@@ -274,8 +274,8 @@ wait_for_intercept(Call) ->
     end.
 
 -spec intercept_event(kapps_call:call(), {kz_term:ne_binary(), kz_term:ne_binary()}, kz_json:object()) ->
-                             {'error', 'failed' | 'timeout'} |
-                             'ok'.
+          {'error', 'failed' | 'timeout'} |
+          'ok'.
 intercept_event(_Call, {<<"error">>, <<"dialplan">>}, Evt) ->
     lager:debug("error in dialplan: ~s", [kz_json:get_ne_binary_value(<<"Error-Message">>, Evt)]),
     {'error', 'failed'};
@@ -286,7 +286,7 @@ intercept_event(Call, _Type, _Evt) ->
     wait_for_intercept(Call).
 
 -spec find_sip_endpoints(kz_json:object(), kapps_call:call()) ->
-                                kz_term:ne_binaries().
+          kz_term:ne_binaries().
 find_sip_endpoints(Data, Call) ->
     case kz_json:get_ne_binary_value(<<"device_id">>, Data) of
         'undefined' -> find_user_endpoints(Data, Call);

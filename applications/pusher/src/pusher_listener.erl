@@ -123,7 +123,7 @@ maybe_update_push_token(AccountId, AuthorizingId, UA, JObj, Params) ->
     end.
 
 -spec build_push(kz_json:object(), kz_json:object(), kz_term:proplist(), kz_json:object()) ->
-                        kz_json:object().
+          kz_json:object().
 build_push(UA, JObj, Params, InitialAcc) ->
     kz_json:foldl(
       fun(K, V, Acc) ->

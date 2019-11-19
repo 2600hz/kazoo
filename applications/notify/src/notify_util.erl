@@ -183,8 +183,8 @@ get_default_template(Category, Key) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec render_template(kz_term:api_binary(), atom(), kz_term:proplist()) ->
-                             {'ok', string()} |
-                             {'error', any()}.
+          {'ok', string()} |
+          {'error', any()}.
 render_template(Template, DefaultTemplate, Props) ->
     case do_render_template(Template, DefaultTemplate, Props) of
         {'ok', R} -> {'ok', binary_to_list(iolist_to_binary(R))};
@@ -192,8 +192,8 @@ render_template(Template, DefaultTemplate, Props) ->
     end.
 
 -spec do_render_template(kz_term:api_binary(), atom(), kz_term:proplist()) ->
-                                {'ok', string()} |
-                                {'error', any()}.
+          {'ok', string()} |
+          {'error', any()}.
 do_render_template('undefined', DefaultTemplate, Props) ->
     lager:debug("rendering default ~s template", [DefaultTemplate]),
     kz_template:render(DefaultTemplate, Props);
@@ -360,9 +360,9 @@ find_admin(Account) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_account_doc(kz_json:object()) ->
-                             {'ok', kz_json:object()} |
-                             {'error', _} |
-                             'undefined'.
+          {'ok', kz_json:object()} |
+          {'error', _} |
+          'undefined'.
 get_account_doc(JObj) ->
     case kz_json:get_first_defined([<<"Account-DB">>
                                    ,<<"Account-ID">>

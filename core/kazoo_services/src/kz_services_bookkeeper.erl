@@ -63,7 +63,7 @@ maybe_update(Services) ->
 %%------------------------------------------------------------------------------
 -type invoices_acc() :: [{kz_json:object(), kz_amqp_worker:request_return()}].
 -spec invoices_foldl_fun(kz_services:services()) ->
-                                fun((kz_json:object(), invoices_acc()) -> invoices_acc()).
+          fun((kz_json:object(), invoices_acc()) -> invoices_acc()).
 invoices_foldl_fun(Services) ->
     fun(Invoice, Results) ->
             Type = kz_services_invoice:bookkeeper_type(Invoice),
@@ -86,7 +86,7 @@ invoices_foldl_fun(Services) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_store_audit_log(kz_services:services(), kz_services_invoice:invoice()) ->
-                                   kz_term:api_object().
+          kz_term:api_object().
 maybe_store_audit_log(Services, Invoice) ->
     case kz_services:account_id(Services) =:= master_account_id()
         andalso (not ?KZ_SERVICE_STORE_MASTER_AUDIT)
@@ -103,7 +103,7 @@ master_account_id() ->
     end.
 
 -spec store_audit_log(kz_services:services(), kz_services_invoice:invoice()) ->
-                             kz_term:api_object().
+          kz_term:api_object().
 store_audit_log(Services, Invoice) ->
     AccountId = kz_services:account_id(Services),
     AuditJObj = kz_services:audit_log(Services),
@@ -135,7 +135,7 @@ store_audit_log(Services, Invoice) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_audit_log(kz_services:services(), kz_term:api_object(), kz_amqp_worker:request_return() | kz_term:proplist()) ->
-                              kz_term:api_object().
+          kz_term:api_object().
 update_audit_log(_Services, 'undefined', _Result) -> 'undefined';
 update_audit_log(Services, AuditJObj, {'error', 'timeout'}) ->
     Props = [{<<"status">>, ?STATUS_FAILED}
@@ -194,7 +194,7 @@ notify_reseller(Services, Invoice, AuditJObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_bookkeeper(kz_term:ne_binary(), kz_services_invoice:invoice(), kz_services:services(), kz_term:api_object()) ->
-                               kz_amqp_worker:request_return().
+          kz_amqp_worker:request_return().
 update_bookkeeper(Type, Invoice, Services, 'undefined') ->
     AuditJObj = kz_json:from_list([{<<"audit">>, kz_services:audit_log(Services)}]),
     update_bookkeeper(Type, Invoice, Services, AuditJObj);

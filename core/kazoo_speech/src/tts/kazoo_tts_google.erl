@@ -56,7 +56,7 @@ get_mapped_voice(Voice) ->
     end.
 
 -spec get_mapped_voice(kz_term:ne_binary(), 'nomatch' | tuple()) ->
-                              mapped_voice().
+          mapped_voice().
 get_mapped_voice(_Voice, 'nomatch') -> 'undefined';
 get_mapped_voice(Voice, _Match) ->
     case get_matched_voice(Voice) of
@@ -112,7 +112,7 @@ req_headers() ->
     ].
 
 -spec build_request_body(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), audioEncoding()) ->
-                                kz_term:ne_binary().
+          kz_term:ne_binary().
 build_request_body(Text, Voice, Language, GoogleFormat) ->
     Req = kz_json:set_values([{<<"input">>, kazoo_tts_google_utils:getJson(#synthesisInput{text=Text})}
                              ,{<<"voice">>, kazoo_tts_google_utils:getJson(#voiceSelectionParams{languageCode=Language, name=Voice})}

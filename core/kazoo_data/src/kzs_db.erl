@@ -102,8 +102,8 @@ do_db_delete(#{server := {App, Conn}}, DbName) ->
     App:db_delete(Conn, DbName).
 
 -spec db_replicate(map(), kz_json:object() | kz_term:proplist()) ->
-                          {'ok', kz_json:object()} |
-                          data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 db_replicate(#{server := {App, Conn}}, Prop) ->
     App:db_replicate(Conn,Prop).
 
@@ -211,8 +211,8 @@ db_list_all_fold({_Tag, Server}, {Options, DBs}) ->
     {Options, {'ok', lists:usort(DBs ++ DBList)}}.
 
 -spec db_view_update(map(), kz_term:ne_binary(), views_listing(), boolean()) ->
-                            boolean() |
-                            {'error', 'db_not_found'}.
+          boolean() |
+          {'error', 'db_not_found'}.
 db_view_update(#{}=Map, DbName, Views, Remove) ->
     Others = maps:get('others', Map, []),
     case do_db_view_update(Map, DbName, Views, Remove) of
@@ -228,8 +228,8 @@ db_view_update(#{}=Map, DbName, Views, Remove) ->
 
 
 -spec do_db_view_update(map(), kz_term:ne_binary(), views_listing(), boolean()) ->
-                               boolean() |
-                               {'error', 'db_not_found'}.
+          boolean() |
+          {'error', 'db_not_found'}.
 do_db_view_update(#{server := {App, Conn}}=Server, Db, NewViews, Remove) ->
     case kzs_view:all_design_docs(Server, Db, ['include_docs']) of
         {'ok', JObjs} ->

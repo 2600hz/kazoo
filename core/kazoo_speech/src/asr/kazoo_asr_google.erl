@@ -41,7 +41,7 @@ freeform(Content, ContentType, Locale, Options) ->
     end.
 
 -spec exec_freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                           asr_resp().
+          asr_resp().
 exec_freeform(Content, _ContentType, Locale, Options) ->
     BaseUrl = ?GOOGLE_ASR_URL,
     Headers = req_headers(),

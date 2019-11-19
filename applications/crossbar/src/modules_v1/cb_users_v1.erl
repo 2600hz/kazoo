@@ -91,17 +91,17 @@ allowed_methods(_, ?VCARD) ->
     [?HTTP_GET].
 
 -spec content_types_provided(cb_context:context()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context) ->
     Context.
 
 -spec content_types_provided(cb_context:context(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, _) ->
     Context.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, _, ?VCARD) ->
     cb_context:set_content_types_provided(Context, [{'to_binary', [{<<"text">>, <<"x-vcard">>}
                                                                   ,{<<"text">>, <<"directory">>}
@@ -648,7 +648,7 @@ maybe_rehash_creds(UserId, Username, Context) ->
     end.
 
 -spec manditory_rehash_creds(kz_term:api_binary(), kz_term:api_binary(), cb_context:context()) ->
-                                    cb_context:context().
+          cb_context:context().
 manditory_rehash_creds(UserId, Username, Context) ->
     case kz_json:get_ne_value(<<"password">>, cb_context:doc(Context)) of
         'undefined' ->
@@ -660,7 +660,7 @@ manditory_rehash_creds(UserId, Username, Context) ->
     end.
 
 -spec rehash_creds(kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) ->
-                          cb_context:context().
+          cb_context:context().
 rehash_creds(_UserId, 'undefined', _Password, Context) ->
     Msg = kz_json:from_list(
             [{<<"message">>, <<"The user name must be provided when updating the password">>}

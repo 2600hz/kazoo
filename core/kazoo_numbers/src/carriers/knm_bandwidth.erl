@@ -94,7 +94,7 @@ is_local() -> 'false'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
-                                              {error, any()}.
+          {error, any()}.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%------------------------------------------------------------------------------
@@ -103,8 +103,8 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
-                          {'ok', knm_number:knm_numbers()} |
-                          {'error', any()}.
+          {'ok', knm_number:knm_numbers()} |
+          {'error', any()}.
 find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
     find_numbers(Rest, Quantity, Options);
 find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
@@ -128,7 +128,7 @@ find_numbers(Search, Quantity, Options) ->
     end.
 
 -spec process_numbers_search_resp(kz_types:xml_el(), knm_search:options()) ->
-                                         {'ok', list()}.
+          {'ok', list()}.
 process_numbers_search_resp(Xml, Options) ->
     TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
     QID = knm_search:query_id(Options),
@@ -149,7 +149,7 @@ found_number_to_KNM(Found, QID) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
-                            knm_number:knm_number().
+          knm_number:knm_number().
 acquire_number(Number) ->
     Debug = ?IS_SANDBOX_PROVISIONING_TRUE,
     case ?IS_PROVISIONING_ENABLED of
@@ -163,7 +163,7 @@ acquire_number(Number) ->
     end.
 
 -spec acquire_and_provision_number(knm_number:knm_number()) ->
-                                          knm_number:knm_number().
+          knm_number:knm_number().
 acquire_and_provision_number(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     AuthBy = knm_phone_number:auth_by(PhoneNumber),
@@ -228,8 +228,8 @@ should_lookup_cnam() -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec make_numbers_request(atom(), kz_term:proplist()) ->
-                                  {'ok', any()} |
-                                  {'error', any()}.
+          {'ok', any()} |
+          {'error', any()}.
 
 -ifdef(TEST).
 make_numbers_request('npaNxxNumberSearch', _Props) ->
@@ -376,8 +376,8 @@ rate_center_to_json(Xml) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec verify_response(kz_types:xml_el()) ->
-                             {'ok', kz_types:xml_el()} |
-                             {'error', kz_term:api_binary() | kz_term:ne_binaries()}.
+          {'ok', kz_types:xml_el()} |
+          {'error', kz_term:api_binary() | kz_term:ne_binaries()}.
 verify_response(Xml) ->
     case get_cleaned("/*/status/text()", Xml) of
         <<"success">> ->

@@ -287,7 +287,7 @@ reset_discounts(#bt_subscription{discounts=Discounts}=Subscription) ->
 %%------------------------------------------------------------------------------
 
 -spec update_addon_quantity(subscription() | kz_term:ne_binary(), kz_term:ne_binary(), integer() | kz_term:api_binary()) ->
-                                   subscription().
+          subscription().
 update_addon_quantity(Subscription, AddOnId, Quantity) when not is_integer(Quantity) ->
     update_addon_quantity(Subscription, AddOnId, kz_term:to_integer(Quantity));
 update_addon_quantity(<<_/binary>> = SubscriptionId, AddOnId, Quantity) ->

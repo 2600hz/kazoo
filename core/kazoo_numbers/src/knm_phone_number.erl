@@ -186,8 +186,8 @@ from_number_with_options(DID, Options) ->
 %%------------------------------------------------------------------------------
 
 -spec fetch(kz_term:ne_binary() | knm_numbers:collection()) ->
-                   knm_phone_number_return() |
-                   knm_numbers:collection().
+          knm_phone_number_return() |
+          knm_numbers:collection().
 fetch(?NE_BINARY=Num) ->
     fetch(Num, knm_number_options:default());
 fetch(T0=#{todo := Nums, options := Options}) ->
@@ -243,8 +243,8 @@ fetch(Num=?NE_BINARY, Options) ->
     end.
 
 -spec fetch(kz_term:ne_binary(), kz_term:ne_binary(), knm_number_options:options()) ->
-                   {'ok', kz_json:object()} |
-                   {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 fetch(NumberDb, NormalizedNum, Options) ->
     case knm_number_options:batch_run(Options) of
         'true' -> kz_datamgr:open_doc(NumberDb, NormalizedNum);
@@ -252,7 +252,7 @@ fetch(NumberDb, NormalizedNum, Options) ->
     end.
 
 -spec handle_fetch(kz_json:object(), knm_number_options:options()) ->
-                          {'ok', knm_phone_number()}.
+          {'ok', knm_phone_number()}.
 handle_fetch(JObj, Options) ->
     PN = from_json_with_options(JObj, Options),
     case state(PN) =:= ?NUMBER_STATE_AVAILABLE
@@ -565,7 +565,7 @@ features_fold(FeatureKey, Acc, JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec from_json_with_options(kz_json:object(), knm_phone_number() | knm_number_options:options()) ->
-                                    knm_phone_number().
+          knm_phone_number().
 from_json_with_options(JObj, #knm_phone_number{}=PN) ->
     Options = [{'dry_run', dry_run(PN)}
               ,{'batch_run', batch_run(PN)}
@@ -602,8 +602,8 @@ is_phone_number(_) -> 'false'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec setters(knm_phone_number() | knm_numbers:collection(), set_functions()) ->
-                     knm_phone_number_return() |
-                     knm_numbers:collection().
+          knm_phone_number_return() |
+          knm_numbers:collection().
 
 setters(#knm_phone_number{}=PN, Routines) ->
     setters_pn(PN, Routines);

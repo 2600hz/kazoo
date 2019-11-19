@@ -104,7 +104,7 @@ system(Node) ->
     kapps_config:fetch_current(?APP_NAME, <<"acls">>, kz_json:new(), Node).
 
 -spec collect(kz_json:object(), kz_term:pid_refs()) ->
-                     kz_json:object().
+          kz_json:object().
 collect(ACLs, PidRefs) ->
     collect(ACLs, PidRefs, request_timeout()).
 
@@ -113,7 +113,7 @@ request_timeout() ->
     ?REQUEST_TIMEOUT + ?REQUEST_TIMEOUT_FUDGE.
 
 -spec collect(kz_json:object(), kz_term:pid_refs(), timeout()) ->
-                     kz_json:object().
+          kz_json:object().
 collect(ACLs, [], _Timeout) ->
     lager:debug("acls built with ~p ms to spare", [_Timeout]),
     ACLs;

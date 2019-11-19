@@ -117,7 +117,7 @@ required_params() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec voxbone_request(kz_http:method(), kz_term:ne_binary(), qs_options()) -> {'ok', kz_json:object()} |
-                                                                              {'error', atom()}.
+          {'error', atom()}.
 -ifndef(TEST).
 voxbone_request(Method, <<Resource/binary>>, QueryString) ->
     voxbone_request(Method, Resource, QueryString, []).
@@ -140,8 +140,8 @@ voxbone_request('delete', <<"ordering/cart/3312757">>, _) ->
 -endif.
 
 -spec voxbone_request(atom(), kz_term:ne_binary(), qs_options(), iodata()) ->
-                             {'ok', kz_json:object()} |
-                             {'error', atom()}.
+          {'ok', kz_json:object()} |
+          {'error', atom()}.
 -ifndef(TEST).
 voxbone_request(Method, <<Resource/binary>>, QueryString, Body) ->
     URI = build_uri(Resource, QueryString),
@@ -197,7 +197,7 @@ maybe_delete_cart([Cart | Rest]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_response(kz_http:ret()) -> {'ok', kz_json:object()} |
-                                        {'error', atom()} .
+          {'error', atom()} .
 handle_response({Result, Code, Props, Response})
   when is_binary(Response) ->
     handle_response({Result, Code, Props, kz_term:to_list(Response)});

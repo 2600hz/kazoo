@@ -80,7 +80,7 @@ init([Name, ExpirePeriod, Props]) ->
 
 
 -spec maybe_add_child_spec(atom(), atom(), kz_cache:start_options(), kz_types:sup_child_specs()) ->
-                                  kz_types:sup_child_specs().
+          kz_types:sup_child_specs().
 maybe_add_child_spec('kz_cache_conf_change', Name, Props, Children) ->
     case props:get_value('origin_bindings', Props) of
         'undefined' -> Children;

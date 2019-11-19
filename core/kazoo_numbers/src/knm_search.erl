@@ -311,7 +311,7 @@ next(Options) ->
 %%------------------------------------------------------------------------------
 -ifndef(TEST).
 -spec create_discovery(kz_term:ne_binary(), module(), kz_json:object(), knm_number_options:options()) ->
-                              knm_number:knm_number().
+          knm_number:knm_number().
 create_discovery(DID=?NE_BINARY, Carrier, Data, Options0) ->
     Options = [{'state', ?NUMBER_STATE_DISCOVERY}
               ,{'module_name', kz_term:to_binary(Carrier)}

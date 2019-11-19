@@ -68,8 +68,8 @@ find(Consumer) when is_pid(Consumer) ->
 get_channel() -> get_channel(kz_amqp_channel:consumer_pid()).
 
 -spec get_channel(pid() | non_neg_integer() | 'infinity') ->
-                         kz_amqp_assignment() |
-                         {'error', 'timeout'}.
+          kz_amqp_assignment() |
+          {'error', 'timeout'}.
 get_channel(Consumer) when is_pid(Consumer) ->
     get_channel(Consumer, 'infinity');
 get_channel(Timeout) when is_integer(Timeout)
@@ -77,8 +77,8 @@ get_channel(Timeout) when is_integer(Timeout)
     get_channel(kz_amqp_channel:consumer_pid(), Timeout).
 
 -spec get_channel(pid(), non_neg_integer() | 'infinity') ->
-                         kz_amqp_assignment() |
-                         {'error', 'timeout'}.
+          kz_amqp_assignment() |
+          {'error', 'timeout'}.
 get_channel(Consumer, Timeout) when is_pid(Consumer) ->
     case find(Consumer) of
         #kz_amqp_assignment{channel=Channel}=Assignment
@@ -848,7 +848,7 @@ add_watcher(#kz_amqp_assignment{watchers=Watchers
 
 -spec wait_for_assignment('infinity') -> kz_amqp_assignment();
                          (non_neg_integer()) -> kz_amqp_assignment() |
-                                                {'error', 'timeout'}.
+          {'error', 'timeout'}.
 wait_for_assignment(Timeout) ->
     receive
         #kz_amqp_assignment{channel=Channel}=Assignment
@@ -858,8 +858,8 @@ wait_for_assignment(Timeout) ->
     end.
 
 -spec request_and_wait(pid(), kz_term:api_ne_binary(), timeout()) ->
-                              kz_amqp_assignment() |
-                              {'error', 'timeout'}.
+          kz_amqp_assignment() |
+          {'error', 'timeout'}.
 request_and_wait(Consumer, Broker, Timeout) when is_pid(Consumer) ->
     request_channel(Consumer, Broker, self()),
     wait_for_assignment(Timeout).

@@ -46,9 +46,9 @@ api(Node, ConferenceId, {AppName, AppData}) ->
     freeswitch:api(Node, 'conference', Command).
 
 -spec get_conf_command(kz_term:ne_binary(), atom(), kz_term:ne_binary(), kz_json:object()) ->
-                              fs_app() | fs_apps() |
-                              {'return', 'error' | kz_term:ne_binary()} |
-                              {'error', kz_term:ne_binary()}.
+          fs_app() | fs_apps() |
+          {'return', 'error' | kz_term:ne_binary()} |
+          {'error', kz_term:ne_binary()}.
 
 %% The following conference commands can operate on the entire conference
 
@@ -261,7 +261,7 @@ get_conf_command(Cmd, _Focus, _ConferenceId, _JObj) ->
     {'error', list_to_binary([<<"unknown conference command: ">>, Cmd])}.
 
 -spec dial(atom(), kz_term:ne_binary(), kz_json:object(), kz_json:object() | kz_json:objects()) ->
-                  api_response().
+          api_response().
 dial(Node, ConferenceId, JObj, [_|_]=Endpoints) ->
     DialCmd = list_to_binary([ecallmgr_fs_xml:get_channel_vars(kz_json:set_value(<<"Outbound-Context">>, <<"context_2">>, JObj))
                              ,ecallmgr_fs_bridge:try_create_bridge_string(Endpoints, JObj)

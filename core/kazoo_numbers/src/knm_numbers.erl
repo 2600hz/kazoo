@@ -548,9 +548,9 @@ to_json(#{'ok' := Ns, 'ko' := KOs}) ->
         ])).
 
 -spec unwrap_phone_numbers(knm_number:knm_numbers()) ->
-                                  {#{num() => knm_number:knm_number()}
-                                  ,knm_phone_number:knm_phone_numbers()
-                                  }.
+          {#{num() => knm_number:knm_number()}
+          ,knm_phone_number:knm_phone_numbers()
+          }.
 unwrap_phone_numbers(Ns) ->
     F = fun (N, {M, PNs}) ->
                 PN = knm_number:phone_number(N),

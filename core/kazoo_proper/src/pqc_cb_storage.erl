@@ -49,12 +49,12 @@
 -define(SEND_MULTIPART, 'true').
 
 -spec create(pqc_cb_api:state(), kz_term:api_ne_binary(), kz_term:ne_binary() | kz_json:object()) ->
-                    pqc_cb_api:response().
+          pqc_cb_api:response().
 create(API, AccountId, StorageDoc) ->
     create(API, AccountId, StorageDoc, 'undefined').
 
 -spec create(pqc_cb_api:state(), kz_term:api_ne_binary(), kz_term:ne_binary() | kz_json:object(), kz_term:api_boolean()) ->
-                    pqc_cb_api:response().
+          pqc_cb_api:response().
 create(API, AccountId, ?NE_BINARY=UUID, ValidateSettings) ->
     create(API, AccountId, storage_doc(UUID), ValidateSettings);
 create(API, AccountId, StorageDoc, ValidateSettings) ->

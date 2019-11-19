@@ -109,7 +109,7 @@ init([Call]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), any(), state()) ->
-                         {'reply', {'error', 'not_implemented'}, state()}.
+          {'reply', {'error', 'not_implemented'}, state()}.
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -118,7 +118,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> {'noreply', state()} |
-                                     {'stop', 'normal', state()}.
+          {'stop', 'normal', state()}.
 handle_cast({'init_hook'}, #state{call=Call}=State) ->
     cf_singular_call_hooks:send_init_hook(Call),
     {'noreply', State};

@@ -343,7 +343,7 @@ custom_application_vars_fold(?GET_JSON_CAV(Key), V, Acc) ->
 custom_application_vars_fold(_K, _V, Acc) -> Acc.
 
 -spec application_var_map({kz_term:ne_binary(), kz_term:ne_binary()}) ->
-                                 {kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()}.
+          {kz_term:ne_binary(), kz_term:ne_binary() | kz_term:ne_binaries()}.
 application_var_map({Key, <<"ARRAY::", Serialized/binary>>}) ->
     {Key, binary:split(Serialized, <<"|:">>, ['global'])};
 application_var_map({Key, Other}) -> {Key, Other}.
@@ -564,9 +564,9 @@ get_fs_key(Key) ->
                           ,kz_term:ne_binary() | kz_term:ne_binaries() | kz_json:object()
                           ,kz_term:ne_binary()
                           ) ->
-                                  {kz_term:ne_binary(), binary()} |
-                                  [{kz_term:ne_binary(), binary()}] |
-                                  'skip'.
+          {kz_term:ne_binary(), binary()} |
+          [{kz_term:ne_binary(), binary()}] |
+          'skip'.
 get_fs_key_and_value(<<"Hold-Media">>=Key, Media, UUID) ->
     {get_fs_key(Key), media_path(Media, 'extant', UUID, kz_json:new())};
 get_fs_key_and_value(<<"Diversions">>=Key, Diversions, _UUID) ->
@@ -914,8 +914,8 @@ maybe_collect_worker_channel(Pid, Channels) ->
     end.
 
 -spec build_channel(bridge_endpoint() | kz_json:object()) ->
-                           {'ok', bridge_channel()} |
-                           {'error', 'invalid' | 'number_not_provided'}.
+          {'ok', bridge_channel()} |
+          {'error', 'invalid' | 'number_not_provided'}.
 build_channel(#bridge_endpoint{endpoint_type = <<"freetdm">>}=Endpoint) ->
     build_freetdm_channel(Endpoint);
 build_channel(#bridge_endpoint{endpoint_type = <<"skype">>}=Endpoint) ->
@@ -926,8 +926,8 @@ build_channel(EndpointJObj) ->
     build_channel(endpoint_jobj_to_record(EndpointJObj)).
 
 -spec build_freetdm_channel(bridge_endpoint()) ->
-                                   {'ok', bridge_channel()} |
-                                   {'error', 'number_not_provided'}.
+          {'ok', bridge_channel()} |
+          {'error', 'number_not_provided'}.
 build_freetdm_channel(#bridge_endpoint{number='undefined'}) ->
     {'error', 'number_not_provided'};
 build_freetdm_channel(#bridge_endpoint{invite_format = <<"e164">>
@@ -955,16 +955,16 @@ build_freetdm_channel(#bridge_endpoint{number=Number
     {'ok', <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", Number/binary>>}.
 
 -spec build_skype_channel(bridge_endpoint()) ->
-                                 {'ok', bridge_channel()} |
-                                 {'error', 'number_not_provided'}.
+          {'ok', bridge_channel()} |
+          {'error', 'number_not_provided'}.
 build_skype_channel(#bridge_endpoint{user='undefined'}) ->
     {'error', 'number_not_provided'};
 build_skype_channel(#bridge_endpoint{user=User, interface=IFace}) ->
     {'ok', <<"skypopen/", IFace/binary, "/", User/binary>>}.
 
 -spec build_sip_channel(bridge_endpoint()) ->
-                               {'ok', bridge_channel()} |
-                               {'error', 'invalid'}.
+          {'ok', bridge_channel()} |
+          {'error', 'invalid'}.
 build_sip_channel(#bridge_endpoint{failover=Failover}=Endpoint) ->
     Routines = [fun get_sip_contact/1
                ,fun maybe_clean_contact/2
@@ -1006,8 +1006,8 @@ build_sip_channel_fold(Fun, Endpoint) ->
     end.
 
 -spec maybe_failover(kz_json:object()) ->
-                            {'ok', bridge_channel()} |
-                            {'error', 'invalid'}.
+          {'ok', bridge_channel()} |
+          {'error', 'invalid'}.
 maybe_failover(Endpoint) ->
     case kz_term:is_empty(Endpoint) of
         'true' -> {'error', 'invalid'};
@@ -1330,8 +1330,8 @@ convert_kazoo_app_name(App) ->
 
 -type media_types() :: 'new' | 'extant'.
 -spec lookup_media(kz_term:ne_binary(), media_types(), kz_term:ne_binary(), kz_json:object()) ->
-                          {'ok', kz_term:ne_binary()} |
-                          {'error', any()}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', any()}.
 lookup_media(MediaName, Type, CallId, JObj) ->
     case kz_cache:fetch_local(?ECALLMGR_UTIL_CACHE
                              ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
@@ -1345,8 +1345,8 @@ lookup_media(MediaName, Type, CallId, JObj) ->
     end.
 
 -spec request_media_url(kz_term:ne_binary(), media_types(), kz_term:ne_binary(), kz_json:object()) ->
-                               {'ok', kz_term:ne_binary()} |
-                               {'error', any()}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', any()}.
 request_media_url(MediaName, Type, CallId, JObj) ->
     MsgProps = props:filter_undefined(
                  [{<<"Media-Name">>, MediaName}
@@ -1374,8 +1374,8 @@ request_media_url(MediaName, Type, CallId, JObj) ->
     end.
 
 -spec maybe_cache_media_response(kz_term:ne_binary(), kz_json:objects()) ->
-                                        {'ok', kz_term:ne_binary()} |
-                                        {'error', 'not_found'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'not_found'}.
 maybe_cache_media_response(MediaName, MediaResp) ->
     case kz_json:find(<<"Stream-URL">>, MediaResp, <<>>) of
         <<>> ->
@@ -1422,7 +1422,7 @@ custom_sip_headers(Props) ->
                ).
 
 -spec maybe_aggregate_headers({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) ->
-                                     kz_term:proplist().
+          kz_term:proplist().
 maybe_aggregate_headers(KV, Acc) ->
     {K, V} = normalize_custom_sip_header_name(KV),
     maybe_aggregate_headers(K, V, Acc).

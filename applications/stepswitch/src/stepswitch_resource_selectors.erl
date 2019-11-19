@@ -69,7 +69,7 @@ foldl_modules(Number, OffnetJObj, SelectorsDb, SelectorRules) ->
                ).
 
 -spec rule_to_resource(kz_json:object(), stepswitch_resources:resources(), kz_term:ne_binary(), kapi_offnet_resource:req(), kz_term:ne_binary()) ->
-                              stepswitch_resources:resources().
+          stepswitch_resources:resources().
 rule_to_resource(Rule, Resources, Number, OffnetJObj, SelectorsDb) ->
     [Module|_] = kz_json:get_keys(Rule),
     ModuleName = real_module_name(Module),
@@ -111,8 +111,8 @@ maybe_get_hunt_account(OffnetJObj) ->
     end.
 
 -spec get_selector_rules(kz_term:api_binary()) ->
-                                {'ok', kz_json:objects()} |
-                                {'error', any()}.
+          {'ok', kz_json:objects()} |
+          {'error', any()}.
 get_selector_rules(HuntAccountId) ->
     Db = kz_util:format_account_db(HuntAccountId),
     case kz_datamgr:open_doc(Db, ?SRS_RULES_DOC) of

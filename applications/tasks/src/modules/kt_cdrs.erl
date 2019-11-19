@@ -90,7 +90,7 @@ dump(#{}=_ExtraArgs, {AccountDb, NextStartKey}) ->
     process_rows(AccountDb, NextStartKey).
 
 -spec process_rows(kz_term:ne_binary(), 'undefined' | {kz_term:ne_binary(), kz_json:api_json_term()}) ->
-                          {[iolist()] | kz_datamgr:data_error(), {kz_term:ne_binary(), kz_json:api_json_term()}}.
+          {[iolist()] | kz_datamgr:data_error(), {kz_term:ne_binary(), kz_json:api_json_term()}}.
 process_rows(AccountDb, 'undefined') ->
     case get_page(AccountDb, 'undefined') of
         {'ok', Rows, NextStartKey} ->

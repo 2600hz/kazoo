@@ -56,8 +56,8 @@ init(#{name := Name}) ->
      }.
 
 -spec apply(ra_machine:command_meta_data(), term(), state()) ->
-                   {state(), Reply :: term(), ra_machine:effects()} |
-                   {state(), Reply :: term()}.
+          {state(), Reply :: term(), ra_machine:effects()} |
+          {state(), Reply :: term()}.
 
 apply(#{index := RaftIdx}, {down, Pid, normal}, #{pids := Pids, accounts := Accounts} = State0) ->
     case Pids of

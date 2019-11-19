@@ -276,7 +276,7 @@ route_to_match(Call, Callflow) ->
 %% Audio Prompts
 %%------------------------------------------------------------------------------
 -spec play_user(kapps_call:call(), kapps_call_command:audio_macro_prompt(), any()) ->
-                       kapps_call_command:collect_digits_return().
+          kapps_call_command:collect_digits_return().
 play_user(Call, UsernameTuple, _MatchNum) ->
     play_and_collect(Call, [{'prompt', ?PROMPT_RESULT_NUMBER}
                            ,UsernameTuple
@@ -288,7 +288,7 @@ play_invalid(Call) ->
     kapps_call_command:audio_macro([{'prompt', ?PROMPT_INVALID_KEY}], Call).
 
 -spec play_confirm_match(kapps_call:call(), directory_user()) ->
-                                kapps_call_command:collect_digits_return().
+          kapps_call_command:collect_digits_return().
 play_confirm_match(Call, User) ->
     UserName = username_audio_macro(Call, User),
     lager:info("playing confirm_match with username: ~p", [UserName]),
@@ -306,7 +306,7 @@ username_audio_macro(Call, User) ->
     end.
 
 -spec maybe_play_media(kapps_call:call(), directory_user(), kz_term:api_binary()) ->
-                              kapps_call_command:audio_macro_prompt().
+          kapps_call_command:audio_macro_prompt().
 maybe_play_media(Call, User, MediaId) ->
     AccountDb = kapps_call:account_db(Call),
 
@@ -320,8 +320,8 @@ maybe_play_media(Call, User, MediaId) ->
     end.
 
 -spec play_directory_instructions(kapps_call:call(), search_field()) ->
-                                         {'ok', binary()} |
-                                         {'error', atom()}.
+          {'ok', binary()} |
+          {'error', atom()}.
 play_directory_instructions(Call, 'first') ->
     play_and_collect(Call, [{'prompt', ?PROMPT_ENTER_PERSON_FIRSTNAME}]);
 play_directory_instructions(Call, 'last') ->
@@ -338,13 +338,13 @@ play_no_users_found(Call) ->
     kapps_call_command:audio_macro([{'prompt', ?PROMPT_NO_RESULTS_FOUND}], Call).
 
 -spec play_and_collect(kapps_call:call(), kapps_call_command:audio_macro_prompts()) ->
-                              {'ok', binary()} |
-                              {'error', atom()}.
+          {'ok', binary()} |
+          {'error', atom()}.
 play_and_collect(Call, AudioMacro) ->
     play_and_collect(Call, AudioMacro, 1).
 
 -spec play_and_collect(kapps_call:call(), kapps_call_command:audio_macro_prompts(), non_neg_integer()) ->
-                              kapps_call_command:collect_digits_return().
+          kapps_call_command:collect_digits_return().
 play_and_collect(Call, AudioMacro, NumDigits) ->
     NoopID = kapps_call_command:audio_macro(AudioMacro, Call),
     lager:info("play and collect noopID: ~s", [NoopID]),
@@ -395,8 +395,8 @@ get_search_fields(<<"first", _/binary>>) -> 'first';
 get_search_fields(_) -> 'last'.
 
 -spec get_directory_listing(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                   {'ok', directory_users()} |
-                                   {'error', any()}.
+          {'ok', directory_users()} |
+          {'error', any()}.
 get_directory_listing(Db, DirId) ->
     case kz_datamgr:get_results(Db, ?DIR_DOCS_VIEW, [{'key', DirId}, 'include_docs']) of
         {'ok', []} ->
@@ -466,7 +466,7 @@ queue_users(Users, DTMFs, FirstCheck) ->
                ).
 
 -spec maybe_queue_user(directory_user(), queue:queue(), kz_term:ne_binary(), pos_integer(), search_field()) ->
-                              queue:queue().
+          queue:queue().
 maybe_queue_user(User, Queue, DTMFs, Size, 'both') ->
     case maybe_dtmf_matches(DTMFs, Size, first_check('first', User)) of
         'true' -> queue:in(User, Queue);

@@ -61,7 +61,7 @@ get_http_options() ->
     ].
 
 -spec maybe_enable_auth([{nonempty_string(), nonempty_string()}]) ->
-                               [{nonempty_string(), nonempty_string()}].
+          [{nonempty_string(), nonempty_string()}].
 maybe_enable_auth(Props) ->
     Token = kapps_config:get_string(?CNAM_CONFIG_CAT, <<"http_token_auth_token">>, <<>>),
     case kz_term:is_empty(Token) of

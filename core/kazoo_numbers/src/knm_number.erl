@@ -98,7 +98,7 @@
 new() -> #knm_number{}.
 
 -spec new(knm_phone_number:knm_phone_number() | knm_numbers:collection()) ->
-                 knm_numbers:collection() | knm_number().
+          knm_numbers:collection() | knm_number().
 new(T=#{todo := PNs}) ->
     Numbers = [new(PN) || PN <- PNs],
     knm_numbers:ok(Numbers, T);
@@ -184,8 +184,8 @@ allowed_creation_states(Options, AuthBy) ->
     end.
 
 -spec ensure_can_load_to_create(knm_numbers:collection() | knm_phone_number:knm_phone_number()) ->
-                                       'true' |
-                                       knm_numbers:collection().
+          'true' |
+          knm_numbers:collection().
 ensure_can_load_to_create(T0=#{todo := PNs}) ->
     F = fun (PN, T) ->
                 case attempt(fun ensure_can_load_to_create/1, [PN]) of
@@ -319,7 +319,7 @@ update(Num, Routines) ->
     update(Num, Routines, knm_number_options:default()).
 
 -spec update(kz_term:ne_binary(), knm_phone_number:set_functions(), knm_number_options:options()) ->
-                    knm_number_return().
+          knm_number_return().
 update(Num, Routines, Options) ->
     ?RUN_KNM_NUMBERS_FUN_ARGS('update', Num, Routines, Options).
 
@@ -552,7 +552,7 @@ force_local_outbound() ->
 phone_number(#knm_number{knm_phone_number=PhoneNumber}) -> PhoneNumber.
 
 -spec set_phone_number(knm_number(), knm_phone_number:knm_phone_number()) ->
-                              knm_number().
+          knm_number().
 set_phone_number(Number, PhoneNumber) ->
     Number#knm_number{knm_phone_number=PhoneNumber}.
 
@@ -561,8 +561,8 @@ to_public_json(#knm_number{}=Number) ->
     knm_phone_number:to_public_json(phone_number(Number)).
 
 -spec attempt(fun(), list()) -> knm_number_return() |
-                                knm_phone_number_return() |
-                                'true'.
+          knm_phone_number_return() |
+          'true'.
 attempt(Fun, Args) ->
     try apply(Fun, Args) of
         #knm_number{}=N -> {'ok', N};

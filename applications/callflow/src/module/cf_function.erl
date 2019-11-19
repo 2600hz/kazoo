@@ -56,7 +56,7 @@ handle(Data, Call) ->
     end.
 
 -spec run_function(kz_term:ne_binary(), kapps_call:call()) -> {'ok', kz_json:object()} |
-                                                              kz_datamgr:data_error().
+          kz_datamgr:data_error().
 run_function(FunctionId, Call) ->
     BaseParams = kzt_kazoo:req_params(Call),
     UserParams = kzt_translator:get_user_vars(Call),

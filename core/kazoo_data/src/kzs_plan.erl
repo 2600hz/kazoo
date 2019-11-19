@@ -209,12 +209,12 @@ dataplan_connections(Connections) ->
     ].
 
 -spec dataplan_match(kz_term:ne_binary(), map(), kz_term:api_binary()) ->
-                            map() | {'error', 'no_plan'}.
+          map() | {'error', 'no_plan'}.
 dataplan_match(Classification, #{<<"plan">> := Plans}=Plan, AccountId) ->
     dataplan_match_by_classification(Classification, Plan, AccountId, maps:get(Classification, Plans, 'undefined')).
 
 -spec dataplan_match_by_classification(kz_term:ne_binary(), map(), kz_term:api_binary(), 'undefined' | map()) ->
-                                              map() | {'error', 'no_plan'}.
+          map() | {'error', 'no_plan'}.
 dataplan_match_by_classification(_Classification, _Plan, _AccountId, 'undefined') ->
     {'error', 'no_plan'};
 dataplan_match_by_classification(Classification, Plan, DBName, #{<<"database">> := #{<<"names">> := [_|_]=DBNames}=DBProperties}=ClassificationPlan) ->
@@ -276,12 +276,12 @@ add_attachment_proxy(BasePlan, RootAttachments, ClassificationAttachments, Attac
              }.
 
 -spec dataplan_type_match(kz_term:ne_binary(), kz_term:ne_binary(), map()) ->
-                                 map() | {'error', 'no_plan'}.
+          map() | {'error', 'no_plan'}.
 dataplan_type_match(Classification, DocType, Plan) ->
     dataplan_type_match(Classification, DocType, Plan, 'undefined').
 
 -spec dataplan_type_match(kz_term:ne_binary(), kz_term:ne_binary(), map(), kz_term:api_binary()) ->
-                                 map() | {'error', 'no_plan'}.
+          map() | {'error', 'no_plan'}.
 dataplan_type_match(Classification, DocType, #{<<"plan">> := Plans}=Plan, AccountId) ->
     dataplan_type_match_by_classification(Classification, DocType, Plan, AccountId, maps:get(Classification, Plans, 'undefined')).
 
@@ -302,7 +302,7 @@ plan_attachments(#{<<"attachments">> := Att}, _Default) -> Att;
 plan_attachments(_Plan, Default) -> Default.
 
 -spec dataplan_type_match_by_classification(kz_term:ne_binary(), kz_term:ne_binary(), map(), kz_term:api_binary(), map() | 'undefined') ->
-                                                   map() | {'error', 'no_plan'}.
+          map() | {'error', 'no_plan'}.
 dataplan_type_match_by_classification(_Classification, _DocType, _Plan, _AccountId, 'undefined') ->
     {'error', 'no_plan'};
 dataplan_type_match_by_classification(Classification

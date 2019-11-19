@@ -77,7 +77,7 @@ send_route_win(_FetchId, CallId, JObj) ->
     kz_amqp_worker:cast(Win, fun(Payload)-> kapi_route:publish_win(ServerQ, Payload) end).
 
 -spec delivery_from_req(kapi_offnet_resource:req(), binary(), kz_term:api_binary(), kz_term:api_boolean()) ->
-                               kz_json:object().
+          kz_json:object().
 delivery_from_req(OffnetReq, Status, DeliveryCode, DeliveryFailure) ->
     OffnetJObj = kapi_offnet_resource:req_to_jobj(OffnetReq),
     Keys = [<<"Event-Category">>

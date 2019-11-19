@@ -20,7 +20,7 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch(kz_term:ne_binaries()) -> {'ok', kz_json:object()} |
-                                      {'error', 'lookup_failed' | 'missing_url'}.
+          {'error', 'lookup_failed' | 'missing_url'}.
 fetch(Numbers) when is_list(Numbers)->
     case knm_config:locality_url() of
         'undefined' ->
@@ -36,7 +36,7 @@ fetch(Numbers) when is_list(Numbers)->
 %% @end
 %%------------------------------------------------------------------------------
 -spec prefix(kz_term:text(), kz_term:text(), kz_term:text()) -> {'ok', kz_json:object()} |
-                                                                {'error', kz_json:object()}.
+          {'error', kz_json:object()}.
 prefix(Url, Country, City) ->
     ReqParam = kz_http_util:urlencode(City),
     Uri = lists:flatten([Url, "/", Country, "/city?pattern=", ReqParam]),
@@ -71,7 +71,7 @@ fetch_req(Numbers, Url) ->
     kz_http:post(Uri, Headers, kz_json:encode(ReqBody)).
 
 -spec handle_resp(kz_http:http_ret()) -> {'ok', kz_json:object()} |
-                                         {'error', 'lookup_failed'}.
+          {'error', 'lookup_failed'}.
 handle_resp({'error', Reason}) ->
     lager:error("number locality lookup failed: ~p", [Reason]),
     {'error', 'lookup_failed'};
@@ -82,7 +82,7 @@ handle_resp({'ok', _Status, _, _Body}) ->
     {'error', 'lookup_failed'}.
 
 -spec handle_resp_body(kz_json:object()) -> {'ok', kz_json:object()} |
-                                            {'error', 'lookup_failed'}.
+          {'error', 'lookup_failed'}.
 handle_resp_body(Resp) ->
     case kz_json:get_value(<<"status">>, Resp, <<"error">>) of
         <<"success">> ->

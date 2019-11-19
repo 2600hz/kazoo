@@ -28,9 +28,9 @@
 -type delete_errors() :: [delete_error()].
 
 -spec delete(kz_term:api_ne_binary()) ->
-                    {'ok', kzd_accounts:doc() | 'undefined'} |
-                    kz_datamgr:data_error() |
-                    {'error', delete_errors()}.
+          {'ok', kzd_accounts:doc() | 'undefined'} |
+          kz_datamgr:data_error() |
+          {'error', delete_errors()}.
 delete('undefined') -> {'ok', 'undefined'};
 delete(?MATCH_ACCOUNT_RAW(AccountId)) ->
     case kzd_accounts:fetch(AccountId) of
@@ -41,8 +41,8 @@ delete(?MATCH_ACCOUNT_RAW(AccountId)) ->
     end.
 
 -spec delete(kz_term:ne_binary(), kzd_accounts:doc()) ->
-                    {'ok', kzd_accounts:doc()} |
-                    {'error', delete_errors()}.
+          {'ok', kzd_accounts:doc()} |
+          {'error', delete_errors()}.
 delete(_AccountId, AccountJObj) ->
     DeleteRoutines = [fun delete_remove_services/1
                      ,fun delete_free_numbers/1

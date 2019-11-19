@@ -110,7 +110,7 @@ dry_run(Options, Default) ->
     maybe_dry_run(props:get_is_true('dry_run', Options, Default)).
 
 -spec maybe_dry_run(DryRun) -> DryRun
-                                   when DryRun :: boolean().
+              when DryRun :: boolean().
 maybe_dry_run('true') ->
     lager:debug("dry_run-ing btw"),
     'true';

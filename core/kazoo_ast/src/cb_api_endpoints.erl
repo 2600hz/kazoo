@@ -288,7 +288,7 @@ generate_oas_json(Callbacks, OasVersion) ->
     generate_oas_paths_json(Paths, OasVersion, Parameters).
 
 -spec generate_oas_paths_json(kz_json:object(), kz_term:ne_binary(), kz_json:object()) ->
-                                     kz_term:proplist().
+          kz_term:proplist().
 generate_oas_paths_json(Paths, <<"oas_two_and_three">>, Parameters) ->
     generate_oas_paths_json(Paths, <<"oas3">>, Parameters)
         ++ generate_oas_paths_json(Paths, <<"swagger2">>, Parameters);
@@ -514,7 +514,7 @@ generate_method_summary(EndpointName, <<"put">>, _) ->
     <<"Add an instance of ", EndpointName/binary>>.
 
 -spec make_camel_case_path(kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:ne_binary()) ->
-                                  kz_term:ne_binary().
+          kz_term:ne_binary().
 make_camel_case_path(Path, Acc) when is_binary(Path) ->
     make_camel_case_path(split_url(Path), Acc);
 make_camel_case_path([<<"{", _/binary>> = B | Rest], Acc) ->
@@ -550,7 +550,7 @@ to_swagger_path(Path, PathMeta, Acc, SchemaParameter) ->
     lists:foldl(F, Acc, Methods).
 
 -spec add_swagger_path(kz_term:ne_binary(), kz_json:object(), kz_json:key(), kz_term:api_object()) ->
-                              kz_json:object().
+          kz_json:object().
 add_swagger_path(Method, Acc, Path, SchemaParameter) ->
     MethodJObj = kz_json:get_value([Path, Method], Acc, kz_json:new()),
     Parameters = make_parameters(Path, Method, SchemaParameter, <<"swagger2">>),
@@ -668,7 +668,7 @@ format_pc_module(_MC, Acc) ->
     Acc.
 
 -spec format_pc_config(path_with_methods(), kz_json:object(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
-                              kz_json:object().
+          kz_json:object().
 format_pc_config(_ConfigData, Acc, _Module, 'undefined') ->
     Acc;
 format_pc_config({'app', AppName}, Acc, EndpointName, _ModuleName) ->
@@ -818,7 +818,7 @@ is_api_function({'allowed_methods', _Arity}) -> 'true';
 is_api_function(_) ->  'false'.
 
 -spec process_exports(file:filename_all(), module(), fun_arities()) ->
-                             callback_config() | 'undefined'.
+          callback_config() | 'undefined'.
 process_exports(_File, 'api_resource', _) -> 'undefined';
 process_exports(_File, 'cb_context', _) -> 'undefined';
 process_exports(File, Module, Fs) ->
@@ -839,7 +839,7 @@ process_api_module(File, Module) ->
         end.
 
 -spec process_api_ast(module(), kz_ast_util:abstract_code()) ->
-                             {module(), [allowed_methods() | content_types_provided()]}.
+          {module(), [allowed_methods() | content_types_provided()]}.
 process_api_ast(Module, {'raw_abstract_v1', Attributes}) ->
     APIFunctions = [{F, A, Clauses}
                     || ?AST_FUNCTION(F, A, Clauses) <- Attributes,
@@ -854,15 +854,15 @@ process_api_ast(Module, {'raw_abstract_v1', Attributes}) ->
 -type content_types_provided() :: {'content_types_provided', paths_with_methods()}.
 
 -spec process_api_ast_functions(module(), [{atom(), arity(), [erl_parse:abstract_clause()]}]) ->
-                                       {module(), [allowed_methods() | content_types_provided()]}.
+          {module(), [allowed_methods() | content_types_provided()]}.
 process_api_ast_functions(Module, Functions) ->
     {Module
     ,[process_api_ast_function(Module, F, A, Cs) || {F, A, Cs} <- Functions]
     }.
 
 -spec process_api_ast_function(module(), atom(), arity(), [erl_parse:abstract_clause()]) ->
-                                      allowed_methods() |
-                                      content_types_provided().
+          allowed_methods() |
+          content_types_provided().
 process_api_ast_function(_Module, 'allowed_methods', _Arity, Clauses) ->
     Methods = find_http_methods(Clauses),
     {'allowed_methods', Methods};
@@ -875,7 +875,7 @@ find_http_methods(Clauses) ->
     lists:foldl(fun find_http_methods_from_clause/2, [], Clauses).
 
 -spec find_http_methods_from_clause(erl_parse:abstract_clause(), paths_with_methods()) ->
-                                           paths_with_methods().
+          paths_with_methods().
 find_http_methods_from_clause(?CLAUSE(ArgsList, _Guards, ClauseBody), Methods) ->
     [{args_list_to_path(ArgsList), find_methods(ClauseBody)}
      | Methods
@@ -897,12 +897,12 @@ arg_to_path(?MATCH(?BINARY_MATCH(_), ?VAR(Name)), Acc) ->
     [kz_term:to_binary(Name) | Acc].
 
 -spec binary_match_to_path([?BINARY_STRING(atom()) | ?BINARY_VAR(atom())]) ->
-                                  kz_term:ne_binary().
+          kz_term:ne_binary().
 binary_match_to_path(Matches) ->
     iolist_to_binary([binary_to_path(Match) || Match <- Matches]).
 
 -spec binary_to_path(?BINARY_STRING(Name) | ?BINARY_VAR(atom())) ->
-                            Name | iodata().
+          Name | iodata().
 binary_to_path(?BINARY_STRING(Name)) ->
     Name;
 binary_to_path(?BINARY_VAR(VarName)) ->
@@ -1028,7 +1028,7 @@ find_methods_in_clause(?CASE(_CaseConditional, CaseClauses), Acc0) ->
 -define(CONTENT_TYPE_VARS(Type, SubType), [?VAR(Type), ?VAR(SubType)]).
 
 -spec find_content_types_in_clause(erl_parse:abstract_expr(), kz_term:ne_binaries()) ->
-                                          kz_term:ne_binaries().
+          kz_term:ne_binaries().
 find_content_types_in_clause(?EMPTY_LIST, Acc) -> Acc;
 find_content_types_in_clause(?LIST(?TUPLE(?CONTENT_TYPE_VARS(_Type, _SubType))
                                   ,Rest
@@ -1043,8 +1043,8 @@ find_content_types_in_clause(?LIST(?TUPLE(?CONTENT_TYPE_BINS(Type, SubType))
     find_content_types_in_clause(Rest, [CT | Acc]).
 
 -spec grep_cb_module(atom() | kz_term:ne_binary()) ->
-                            {'match', kz_term:ne_binaries()} |
-                            'nomatch'.
+          {'match', kz_term:ne_binaries()} |
+          'nomatch'.
 grep_cb_module(Module) when is_atom(Module) ->
     grep_cb_module(kz_term:to_binary(Module));
 grep_cb_module(?NE_BINARY=Module) ->

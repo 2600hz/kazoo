@@ -128,7 +128,7 @@ read_only_public_fields(Doc) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
-                                  {'error', any()}.
+          {'error', any()}.
 get(DID=?NE_BINARY) ->
     View = ?ACTIVE_PORT_IN_NUMBERS,
     ViewOptions = [{'key', DID}, 'include_docs'],
@@ -144,7 +144,7 @@ get(DID=?NE_BINARY) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_portin_number(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:objects()} |
-                                                                     {'error', any()}.
+          {'error', any()}.
 get_portin_number(AccountId, DID=?NE_BINARY) ->
     ViewOptions = [{'key', [AccountId, DID]}
                   ,'include_docs'
@@ -162,7 +162,7 @@ get_portin_number(AccountId, DID=?NE_BINARY) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec account_active_ports(kz_term:ne_binary()) -> {'ok', kz_json:objects()} |
-                                                   {'error', 'not_found'}.
+          {'error', 'not_found'}.
 account_active_ports(AccountId) ->
     ViewOptions = [{'key', AccountId}
                   ,'include_docs'
@@ -180,7 +180,7 @@ account_active_ports(AccountId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec descendant_active_ports(kz_term:ne_binary()) -> {'ok', kz_json:objects()} |
-                                                      {'error', 'not_found'}.
+          {'error', 'not_found'}.
 descendant_active_ports(AccountId) ->
     ViewOptions = [{'startkey', [AccountId]}
                   ,{'endkey', [AccountId, kz_json:new()]}
@@ -224,7 +224,7 @@ normalize_attachments(Attachments) ->
     kz_json:map(fun normalize_attachments_map/2, Attachments).
 
 -spec normalize_attachments_map(kz_json:path(), kz_json:json_term()) ->
-                                       {kz_json:path(), kz_json:json_term()}.
+          {kz_json:path(), kz_json:json_term()}.
 normalize_attachments_map(K, V) ->
     {K, kz_json:delete_keys([<<"digest">>, <<"revpos">>, <<"stub">>], V)}.
 
@@ -239,7 +239,7 @@ normalize_numbers(PortReq) ->
     kzd_port_requests:set_numbers(PortReq, Normalized).
 
 -spec normalize_number_map(kz_json:path(), kz_json:json_term()) ->
-                                  {kz_json:path(), kz_json:json_term()}.
+          {kz_json:path(), kz_json:json_term()}.
 normalize_number_map(N, Meta) ->
     {knm_converters:normalize(N), Meta}.
 
@@ -311,7 +311,7 @@ attempt_transition(PortReq, Metadata, ToState) ->
     end.
 
 -spec is_user_allowed_to_move_state(kz_json:object(), transition_metadata(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
-                                           boolean().
+          boolean().
 is_user_allowed_to_move_state(_, #{}, ToState, _)
   when ToState =:= ?PORT_UNCONFIRMED;
        ToState =:= ?PORT_SUBMITTED ->
@@ -358,12 +358,12 @@ compatibility_transition(NumberProps, Metadata) ->
     completed_portin(Num, AccountId, Metadata).
 
 -spec transition(kz_json:object(), transition_metadata(), kz_term:ne_binaries(), kz_term:ne_binary()) ->
-                        transition_response().
+          transition_response().
 transition(JObj, Metadata, FromStates, ToState) ->
     transition(JObj, Metadata, FromStates, ToState, current_state(JObj)).
 
 -spec transition(kz_json:object(), transition_metadata(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                        transition_response().
+          transition_response().
 transition(_JObj, _Metadata, [], _ToState, _CurrentState) ->
     lager:debug("cant go from ~s to ~s", [_CurrentState, _ToState]),
     lager:debug("metadata: ~p", [_Metadata]),
@@ -466,8 +466,8 @@ get_user_name(AuthAccountId, UserId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec assign_to_app(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:object()) ->
-                           {'ok', kz_json:object()} |
-                           {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 assign_to_app(Number, NewApp, JObj) ->
     Numbers = kzd_port_requests:numbers(JObj),
     lager:debug("assigning number ~s in port request ~s from ~p to ~s"
@@ -476,8 +476,8 @@ assign_to_app(Number, NewApp, JObj) ->
     assign_to_app(Number, NewApp, Numbers, JObj).
 
 -spec assign_to_app(kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:object()|'undefined', kz_json:object()) ->
-                           {'ok', kz_json:object()} |
-                           {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 assign_to_app(_Number, _NewApp, 'undefined', _JObj) ->
     {'error', 'not_found'};
 assign_to_app(Number, NewApp, Numbers, JObj) ->
@@ -646,7 +646,7 @@ get_dids_for_app(AccountDb, Numbers) ->
     {NumApps, [{<<"callflow">>, CfDIDs}, {<<"trunkstore">>, TsDIDs}]}.
 
 -spec get_dids_for_app(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary()) ->
-                              kz_term:ne_binaries().
+          kz_term:ne_binaries().
 get_dids_for_app(AccountDb, Numbers, View) ->
     case kz_datamgr:get_result_keys(AccountDb, View, [{'keys', Numbers}]) of
         {'ok', DIDs} -> DIDs;
@@ -787,7 +787,7 @@ fetch_and_send(Url, JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec send_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), binary()) ->
-                             'error' | 'ok'.
+          'error' | 'ok'.
 send_attachment(Url, Id, Name, Options, Attachment) ->
     ContentType = kz_json:get_value(<<"content_type">>, Options),
     Headers = [{"Content-Type", kz_term:to_list(ContentType)}
@@ -860,7 +860,7 @@ migrate_doc(PortRequest) ->
     lists:foldl(fun migrate_doc/2, {PortRequest, 'false'}, MigrateFuns).
 
 -spec migrate_doc(fun((kz_json:object()) -> kz_term:api_object()), {kz_json:object(), boolean()}) ->
-                         {kz_json:object(), boolean()}.
+          {kz_json:object(), boolean()}.
 migrate_doc(Fun, {Doc, IsUpdated}) ->
     case Fun(Doc) of
         'undefined' -> {Doc, IsUpdated};
@@ -940,6 +940,6 @@ fetch_docs(StartKey, Limit) ->
     kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, <<"port_requests/listing_by_state">>,  ViewOptions).
 
 -spec save_doc(kz_json:object()) -> {'ok', kz_json:object()} |
-                                    {'error', any()}.
+          {'error', any()}.
 save_doc(JObj) ->
     kz_datamgr:save_doc(?KZ_PORT_REQUESTS_DB, JObj).

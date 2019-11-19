@@ -100,7 +100,7 @@ init([]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec delete_child_after_timeout(any(), non_neg_integer()) ->
-                                        fun(() -> 'ok' | {'error', any()}).
+          fun(() -> 'ok' | {'error', any()}).
 delete_child_after_timeout(Id, Timeout) ->
     fun() ->
             timer:sleep(Timeout),

@@ -45,7 +45,7 @@ handle_macros(Call, Macros) ->
     end.
 
 -spec get_macro(kz_json:object(), kapps_call:call()) ->
-                       kapps_call_command:audio_macro_prompts().
+          kapps_call_command:audio_macro_prompts().
 get_macro(Data, Call) ->
     {Macros, _, _} = lists:foldl(fun get_macro_entry/2
                                 ,{[]
@@ -122,18 +122,18 @@ get_macro_entry(Macro, {Macros, Data, AccountId}, <<"tone">>) ->
     {[{'tones', [Tone]} | Macros], Data, AccountId}.
 
 -spec say_macro(kz_term:api_ne_binaries()) ->
-                       kapps_call_command:audio_macro_prompt() | 'undefined'.
+          kapps_call_command:audio_macro_prompt() | 'undefined'.
 say_macro(SayArgs) ->
     macro(SayArgs, 'say').
 
 -spec tts_macro(kz_term:api_ne_binaries()) ->
-                       kapps_call_command:audio_macro_prompt() | 'undefined'.
+          kapps_call_command:audio_macro_prompt() | 'undefined'.
 tts_macro(TTSArgs) ->
     macro(TTSArgs, 'tts').
 
 
 -spec macro(kz_term:api_ne_binaries(), atom()) ->
-                   kapps_call_command:audio_macro_prompt() | 'undefined'.
+          kapps_call_command:audio_macro_prompt() | 'undefined'.
 macro(Args, Type) ->
     case lists:takewhile(fun kz_term:is_not_empty/1, Args) of
         [] -> 'undefined';

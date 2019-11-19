@@ -189,7 +189,7 @@ update_status(Doc, OldStatus, NewStatus) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec format_modb(kzd_fax:doc()) ->
-                         {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
+          {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
 format_modb(Doc) ->
     FromId = kz_doc:id(Doc),
     FromDB = kz_doc:account_db(Doc),

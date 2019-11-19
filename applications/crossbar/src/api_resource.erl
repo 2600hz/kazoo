@@ -65,7 +65,7 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec service_available(cowboy_req:req(), kz_term:proplist() | cb_context:context()) ->
-                               {'true', cowboy_req:req(), cb_context:context()}.
+          {'true', cowboy_req:req(), cb_context:context()}.
 service_available(Req0, Opts)
   when is_list(Opts) ->
     {'cowboy_rest', Req, Context} = rest_init(Req0, Opts),
@@ -74,12 +74,12 @@ service_available(Req, Context) ->
     {'true', Req, Context}.
 
 -spec init(cowboy_req:req(), kz_term:proplist()) ->
-                  {'cowboy_rest', cowboy_req:req(), cb_context:context()}.
+          {'cowboy_rest', cowboy_req:req(), cb_context:context()}.
 init(Req, Opts) ->
     rest_init(Req, Opts).
 
 -spec rest_init(cowboy_req:req(), kz_term:proplist()) ->
-                       {'cowboy_rest', cowboy_req:req(), cb_context:context()}.
+          {'cowboy_rest', cowboy_req:req(), cb_context:context()}.
 rest_init(Req, Opts) ->
     maybe_trace(Req),
 
@@ -223,7 +223,7 @@ metrics() ->
     {kz_util:bin_usage(), kz_util:mem_usage()}.
 
 -spec find_version(kz_term:ne_binary(), cowboy_req:req()) ->
-                          kz_term:ne_binary().
+          kz_term:ne_binary().
 find_version(Path, Req) ->
     case cowboy_req:binding('version', Req) of
         'undefined' -> find_version(Path);
@@ -334,7 +334,7 @@ pretty_metric(N, 'true') ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec known_methods(cowboy_req:req(), cb_context:context()) ->
-                           {http_methods() | 'stop', cowboy_req:req(), cb_context:context()}.
+          {http_methods() | 'stop', cowboy_req:req(), cb_context:context()}.
 known_methods(Req, Context) ->
     case cb_context:resp_status(Context) of
         'stop' ->
@@ -351,7 +351,7 @@ known_methods(Req, Context) ->
     end.
 
 -spec allowed_methods(cowboy_req:req(), cb_context:context()) ->
-                             {http_methods() | 'stop', cowboy_req:req(), cb_context:context()}.
+          {http_methods() | 'stop', cowboy_req:req(), cb_context:context()}.
 allowed_methods(Req, Context) ->
     lager:debug("run: allowed_methods"),
 
@@ -364,7 +364,7 @@ allowed_methods(Req, Context) ->
     end.
 
 -spec authed_allowed_methods(cowboy_req:req(), cb_context:context()) ->
-                                    {http_methods() | 'stop', cowboy_req:req(), cb_context:context()}.
+          {http_methods() | 'stop', cowboy_req:req(), cb_context:context()}.
 authed_allowed_methods(Req, Context) ->
     lager:debug("run: authed_allowed_methods"),
 
@@ -384,7 +384,7 @@ authed_allowed_methods(Req, Context) ->
     end.
 
 -spec determine_http_verb(cowboy_req:req(), cb_context:context()) ->
-                                 {http_methods() | 'stop', cowboy_req:req(), cb_context:context()}.
+          {http_methods() | 'stop', cowboy_req:req(), cb_context:context()}.
 determine_http_verb(Req, Context) ->
     Method = cowboy_req:method(Req),
     ReqVerb = api_util:get_http_verb(Method, Context),
@@ -404,7 +404,7 @@ find_allowed_methods(Req, Context) ->
     maybe_add_cors_headers(Req, cb_context:set_allow_methods(Context, AllowMethods)).
 
 -spec maybe_add_cors_headers(cowboy_req:req(), cb_context:context()) ->
-                                    {http_methods() | 'stop', cowboy_req:req(), cb_context:context()}.
+          {http_methods() | 'stop', cowboy_req:req(), cb_context:context()}.
 maybe_add_cors_headers(Req, Context) ->
     case api_util:is_cors_request(Req) of
         'true' ->
@@ -415,7 +415,7 @@ maybe_add_cors_headers(Req, Context) ->
     end.
 
 -spec check_preflight(cowboy_req:req(), cb_context:context()) ->
-                             {http_methods(), cowboy_req:req(), cb_context:context()}.
+          {http_methods(), cowboy_req:req(), cb_context:context()}.
 check_preflight(Req, Context) ->
     check_preflight(Req, Context, cb_context:req_verb(Context)).
 
@@ -441,12 +441,12 @@ maybe_allow_method(Req, Context, Methods, Verb) ->
     end.
 
 -spec malformed_request(cowboy_req:req(), cb_context:context()) ->
-                               {boolean(), cowboy_req:req(), cb_context:context()}.
+          {boolean(), cowboy_req:req(), cb_context:context()}.
 malformed_request(Req, Context) ->
     malformed_request(Req, Context, cb_context:req_verb(Context)).
 
 -spec malformed_request(cowboy_req:req(), cb_context:context(), http_method()) ->
-                               {boolean(), cowboy_req:req(), cb_context:context()}.
+          {boolean(), cowboy_req:req(), cb_context:context()}.
 malformed_request(Req, Context, ?HTTP_OPTIONS) ->
     {'false', Req, Context};
 malformed_request(Req, Context, _ReqVerb) ->
@@ -471,7 +471,7 @@ malformed_request(Req, Context, _ReqVerb) ->
     end.
 
 -spec validate_account_resource(cb_context:context(), path_tokens()) ->
-                                       cb_context:context().
+          cb_context:context().
 validate_account_resource(Context, [AccountId]) ->
     cb_accounts:validate_resource(Context, AccountId);
 validate_account_resource(Context, [AccountId, PathToken]) ->
@@ -480,12 +480,12 @@ validate_account_resource(Context, AccountArgs) ->
     apply('cb_accounts', 'validate_resource', [Context | AccountArgs]).
 
 -spec is_authorized(cowboy_req:req(), cb_context:context()) ->
-                           {'true' | {'false', <<>>} | 'stop', cowboy_req:req(), cb_context:context()}.
+          {'true' | {'false', <<>>} | 'stop', cowboy_req:req(), cb_context:context()}.
 is_authorized(Req, Context) ->
     api_util:is_authentic(Req, Context).
 
 -spec forbidden(cowboy_req:req(), cb_context:context()) ->
-                       {'false', cowboy_req:req(), cb_context:context()}.
+          {'false', cowboy_req:req(), cb_context:context()}.
 forbidden(Req0, Context0) ->
     case api_util:is_permitted(Req0, Context0) of
         {'stop', Req1, Context1} -> {'stop', Req1, Context1};
@@ -494,17 +494,17 @@ forbidden(Req0, Context0) ->
     end.
 
 -spec valid_content_headers(cowboy_req:req(), cb_context:context()) ->
-                                   {'true', cowboy_req:req(), cb_context:context()}.
+          {'true', cowboy_req:req(), cb_context:context()}.
 valid_content_headers(Req, Context) ->
     {'true', Req, Context}.
 
 -spec known_content_type(cowboy_req:req(), cb_context:context()) ->
-                                {boolean(), cowboy_req:req(), cb_context:context()}.
+          {boolean(), cowboy_req:req(), cb_context:context()}.
 known_content_type(Req, Context) ->
     known_content_type(Req, Context, cb_context:req_verb(Context)).
 
 -spec known_content_type(cowboy_req:req(), cb_context:context(), http_method()) ->
-                                {boolean(), cowboy_req:req(), cb_context:context()}.
+          {boolean(), cowboy_req:req(), cb_context:context()}.
 known_content_type(Req, Context, ?HTTP_OPTIONS) ->
     {'true', Req, Context};
 known_content_type(Req, Context, ?HTTP_GET) ->
@@ -523,12 +523,12 @@ known_content_type(Req, Context, _ReqVerb) ->
     api_util:is_known_content_type(Req1, Context).
 
 -spec valid_entity_length(cowboy_req:req(), cb_context:context()) ->
-                                 {'true', cowboy_req:req(), cb_context:context()}.
+          {'true', cowboy_req:req(), cb_context:context()}.
 valid_entity_length(Req, Context) ->
     {'true', Req, Context}.
 
 -spec options(cowboy_req:req(), cb_context:context()) ->
-                     {'ok', cowboy_req:req(), cb_context:context()}.
+          {'ok', cowboy_req:req(), cb_context:context()}.
 options(Req0, Context) ->
     case api_util:is_cors_request(Req0) of
         'true' ->
@@ -542,7 +542,7 @@ options(Req0, Context) ->
     end.
 
 -spec content_types_provided(cowboy_req:req(), cb_context:context()) ->
-                                    {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
+          {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
 content_types_provided(Req, Context0) ->
     lager:debug("run: content_types_provided"),
 
@@ -555,7 +555,7 @@ content_types_provided(Req, Context0) ->
     content_types_provided(Req, Context1, cb_context:content_types_provided(Context1)).
 
 -spec content_types_provided(cowboy_req:req(), cb_context:context(), crossbar_content_handlers()) ->
-                                    {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
+          {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
 content_types_provided(Req, Context, []) ->
     Def = ?CONTENT_PROVIDED,
     content_types_provided(Req, cb_context:set_content_types_provided(Context, Def), Def);
@@ -579,7 +579,7 @@ content_handlers_to_cowboy_providers({ToFun, ContentTypes}, Acc) ->
                ).
 
 -spec content_types_accepted(cowboy_req:req(), cb_context:context()) ->
-                                    {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
+          {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
 content_types_accepted(Req0, Context0) ->
     lager:debug("run: content_types_accepted"),
 
@@ -600,7 +600,7 @@ content_types_accepted(Req0, Context0) ->
     end.
 
 -spec default_content_types_accepted(cowboy_req:req(), cb_context:context()) ->
-                                            {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
+          {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
 default_content_types_accepted(Req, Context) ->
     CTA = [{?CROSSBAR_DEFAULT_CONTENT_TYPE, Fun}
            || {Fun, ContentTypes} <- cb_context:content_types_accepted(Context),
@@ -631,12 +631,12 @@ set_content_type_header(#{headers := Headers}=Req, {Type, SubType, _}) ->
     Req#{headers => maps:put(<<"content-type">>, <<Type/binary, "/", SubType/binary>>, Headers)}.
 
 -spec content_types_accepted(kz_term:ne_binary(), cowboy_req:req(), cb_context:context()) ->
-                                    {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
+          {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
 content_types_accepted(ClientCT, Req, Context) ->
     content_types_accepted(ClientCT, Req, Context, cb_context:content_types_accepted(Context)).
 
 -spec content_types_accepted(kz_term:ne_binary(), cowboy_req:req(), cb_context:context(), crossbar_content_handlers()) ->
-                                    {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
+          {content_type_callbacks(), cowboy_req:req(), cb_context:context()}.
 content_types_accepted(ClientCT, Req, Context, []) ->
     lager:debug("endpoint(s) specify no accepted content-types, using defaults"),
     content_types_accepted(ClientCT, Req, cb_context:set_content_types_accepted(Context, ?CONTENT_ACCEPTED));
@@ -651,7 +651,7 @@ content_types_accepted(ClientCT, Req, Context, Accepted) ->
     {CTA, Req, Context}.
 
 -spec content_types_accepted_fold(crossbar_content_handler(), content_type_callbacks(), kz_term:ne_binary()) ->
-                                         content_type_callbacks().
+          content_type_callbacks().
 content_types_accepted_fold({Fun, ContentTypes}, Acc, ClientCT) ->
     lists:foldl(fun(ContentType, Acc1) ->
                         content_type_accepted_fold(ContentType, Acc1, Fun, ClientCT)
@@ -661,7 +661,7 @@ content_types_accepted_fold({Fun, ContentTypes}, Acc, ClientCT) ->
                ).
 
 -spec content_type_accepted_fold(cowboy_content_type(), content_type_callbacks(), content_conversion_fun(), kz_term:ne_binary()) ->
-                                        content_type_callbacks().
+          content_type_callbacks().
 content_type_accepted_fold(<<ContentType/binary>>, Acc, FromFun, ClientCT) ->
     [Type, SubType | _] = binary:split(ContentType, <<"/">>, ['global']),
 
@@ -678,7 +678,7 @@ content_type_accepted_fold({_,_,_}=EncType, Acc, FromFun, _ClientCT) ->
     [{EncType, FromFun} | Acc].
 
 -spec languages_provided(cowboy_req:req(), cb_context:context()) ->
-                                {[binary()], cowboy_req:req(), cb_context:context()}.
+          {[binary()], cowboy_req:req(), cb_context:context()}.
 languages_provided(Req0, Context0) ->
     lager:debug("run: languages_provided"),
 
@@ -696,7 +696,7 @@ languages_provided(Req0, Context0) ->
     end.
 
 -spec resource_exists(cowboy_req:req(), cb_context:context()) ->
-                             {boolean(), cowboy_req:req(), cb_context:context()}.
+          {boolean(), cowboy_req:req(), cb_context:context()}.
 resource_exists(Req, Context) ->
     resource_exists(Req, Context, cb_context:req_nouns(Context)).
 
@@ -714,7 +714,7 @@ resource_exists(Req, Context, _Nouns) ->
     end.
 
 -spec does_request_validate(cowboy_req:req(), cb_context:context()) ->
-                                   {boolean(), cowboy_req:req(), cb_context:context()}.
+          {boolean(), cowboy_req:req(), cb_context:context()}.
 does_request_validate(Req, Context0) ->
     lager:debug("requested resource exists, validating it"),
     Context1 = cb_context:store(Context0, 'req', Req),
@@ -743,19 +743,19 @@ does_request_validate(Req, Context0) ->
     end.
 
 -spec moved_temporarily(cowboy_req:req(), cb_context:context()) ->
-                               {'false', cowboy_req:req(), cb_context:context()}.
+          {'false', cowboy_req:req(), cb_context:context()}.
 moved_temporarily(Req, Context) ->
     lager:debug("run: moved_temporarily"),
     {'false', Req, Context}.
 
 -spec moved_permanently(cowboy_req:req(), cb_context:context()) ->
-                               {'false', cowboy_req:req(), cb_context:context()}.
+          {'false', cowboy_req:req(), cb_context:context()}.
 moved_permanently(Req, Context) ->
     lager:debug("run: moved_permanently"),
     {'false', Req, Context}.
 
 -spec previously_existed(cowboy_req:req(), cb_context:context()) ->
-                                {'false', cowboy_req:req(), cb_context:context()}.
+          {'false', cowboy_req:req(), cb_context:context()}.
 previously_existed(Req, State) ->
     lager:debug("run: previously_existed"),
     {'false', Req, State}.
@@ -767,25 +767,25 @@ previously_existed(Req, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec allow_missing_post(cowboy_req:req(), cb_context:context()) ->
-                                {boolean(), cowboy_req:req(), cb_context:context()}.
+          {boolean(), cowboy_req:req(), cb_context:context()}.
 allow_missing_post(Req, Context) ->
     lager:debug("run: allow_missing_post when req_verb = ~s", [cb_context:req_verb(Context)]),
     {cowboy_req:method(Req) =:= ?HTTP_POST, Req, Context}.
 
 -spec delete_resource(cowboy_req:req(), cb_context:context()) ->
-                             {boolean() | 'stop', cowboy_req:req(), cb_context:context()}.
+          {boolean() | 'stop', cowboy_req:req(), cb_context:context()}.
 delete_resource(Req, Context) ->
     lager:debug("run: delete_resource"),
     api_util:execute_request(Req, Context).
 
 -spec delete_completed(cowboy_req:req(), cb_context:context()) ->
-                              {boolean(), cowboy_req:req(), cb_context:context()}.
+          {boolean(), cowboy_req:req(), cb_context:context()}.
 delete_completed(Req, Context) ->
     lager:debug("run: delete_completed"),
     api_util:create_push_response(Req, Context).
 
 -spec is_conflict(cowboy_req:req(), cb_context:context()) ->
-                         {boolean(), cowboy_req:req(), cb_context:context()}.
+          {boolean(), cowboy_req:req(), cb_context:context()}.
 is_conflict(Req, Context) ->
     is_conflict(Req, Context, cb_context:resp_error_code(Context)).
 
@@ -797,7 +797,7 @@ is_conflict(Req, Context, _RespCode) ->
     {'false', Req, Context}.
 
 -spec from_binary(cowboy_req:req(), cb_context:context()) ->
-                         {boolean(), cowboy_req:req(), cb_context:context()}.
+          {boolean(), cowboy_req:req(), cb_context:context()}.
 from_binary(Req0, Context0) ->
     lager:debug("run: from_binary"),
     case api_util:execute_request(Req0, Context0) of
@@ -807,7 +807,7 @@ from_binary(Req0, Context0) ->
     end.
 
 -spec from_json(cowboy_req:req(), cb_context:context()) ->
-                       {boolean(), cowboy_req:req(), cb_context:context()}.
+          {boolean(), cowboy_req:req(), cb_context:context()}.
 from_json(Req0, Context0) ->
     lager:debug("run: from_json"),
     case api_util:execute_request(Req0, Context0) of
@@ -817,7 +817,7 @@ from_json(Req0, Context0) ->
     end.
 
 -spec from_form(cowboy_req:req(), cb_context:context()) ->
-                       {boolean(), cowboy_req:req(), cb_context:context()}.
+          {boolean(), cowboy_req:req(), cb_context:context()}.
 from_form(Req0, Context0) ->
     lager:debug("run: from_form"),
     case api_util:execute_request(Req0, Context0) of
@@ -827,12 +827,12 @@ from_form(Req0, Context0) ->
     end.
 
 -spec create_from_response(cowboy_req:req(), cb_context:context()) ->
-                                  {boolean(), cowboy_req:req(), cb_context:context()}.
+          {boolean(), cowboy_req:req(), cb_context:context()}.
 create_from_response(Req, Context) ->
     create_from_response(Req, Context, cb_context:req_header(Context, <<"accept">>)).
 
 -spec create_from_response(cowboy_req:req(), cb_context:context(), kz_term:api_binary()) ->
-                                  {boolean(), cowboy_req:req(), cb_context:context()}.
+          {boolean(), cowboy_req:req(), cb_context:context()}.
 create_from_response(Req, Context, 'undefined') ->
     create_from_response(Req, Context, <<"*/*">>);
 create_from_response(Req, Context, Accept) ->
@@ -858,7 +858,7 @@ content_type_provided_fun(Context) ->
     end.
 
 -spec to_json(cowboy_req:req(), cb_context:context()) ->
-                     {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+          {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 to_json(Req, Context) ->
     to_json(Req, Context, accept_override(Context)).
 
@@ -896,12 +896,12 @@ to_custom(Req0, Context0) ->
     {'stop', Req, Context}.
 
 -spec to_binary(cowboy_req:req(), cb_context:context()) ->
-                       {binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+          {binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 to_binary(Req, Context) ->
     to_binary(Req, Context, accept_override(Context)).
 
 -spec to_binary(cowboy_req:req(), cb_context:context(), kz_term:api_ne_binary()) ->
-                       {binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+          {binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 to_binary(Req, Context, 'undefined') ->
     lager:debug("run: to_binary"),
     RespData = cb_context:resp_data(Context),
@@ -999,7 +999,7 @@ to_fun(Context, Major, Minor, Default) ->
     end.
 
 -spec to_csv(cowboy_req:req(), cb_context:context()) ->
-                    {iolist(), cowboy_req:req(), cb_context:context()}.
+          {iolist(), cowboy_req:req(), cb_context:context()}.
 to_csv(Req0, Context0) ->
     case cb_context:fetch(Context0, 'is_chunked') of
         'true' ->
@@ -1015,7 +1015,7 @@ to_csv(Req0, Context0) ->
     end.
 
 -spec to_pdf(cowboy_req:req(), cb_context:context()) ->
-                    {binary(), cowboy_req:req(), cb_context:context()}.
+          {binary(), cowboy_req:req(), cb_context:context()}.
 to_pdf(Req, Context) ->
     lager:debug("run: to_pdf"),
     Event = to_fun_event_name(<<"to_pdf">>, Context),
@@ -1023,7 +1023,7 @@ to_pdf(Req, Context) ->
     to_pdf(Req1, Context1, cb_context:resp_data(Context1)).
 
 -spec to_pdf(cowboy_req:req(), cb_context:context(), kz_term:api_binary()) ->
-                    {binary(), cowboy_req:req(), cb_context:context()}.
+          {binary(), cowboy_req:req(), cb_context:context()}.
 to_pdf(Req, Context, 'undefined') ->
     to_pdf(Req, Context, kz_pdf:error_empty());
 to_pdf(Req, Context, <<>>) ->
@@ -1040,7 +1040,7 @@ to_pdf(Req, Context, RespData) ->
     }.
 
 -spec to_chunk(kz_term:ne_binary(), cowboy_req:req(), cb_context:context()) ->
-                      {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
+          {iolist() | kz_term:ne_binary() | 'stop', cowboy_req:req(), cb_context:context()}.
 to_chunk(ToFun, Req, Context) ->
     lager:debug("(chunked) starting '~s' chunked query", [ToFun]),
     EventName = to_fun_event_name(ToFun, Context),
@@ -1207,7 +1207,7 @@ reset_context_between_chunks(Context, _StartedChunk, 'false') ->
     end.
 
 -spec send_chunk_response(kz_term:ne_binary(), cowboy_req:req(), cb_context:context()) ->
-                                 {boolean(), cowboy_req:req(), cb_context:context()}.
+          {boolean(), cowboy_req:req(), cb_context:context()}.
 send_chunk_response(<<"to_json">>, Req, Context) ->
     api_util:create_json_chunk_response(Req, Context);
 send_chunk_response(<<"to_csv">>, Req, Context) ->
@@ -1264,12 +1264,12 @@ accept_override(Context) ->
     cb_context:req_value(Context, <<"accept">>).
 
 -spec multiple_choices(cowboy_req:req(), cb_context:context()) ->
-                              {'false', cowboy_req:req(), cb_context:context()}.
+          {'false', cowboy_req:req(), cb_context:context()}.
 multiple_choices(Req, Context) ->
     {'false', Req, Context}.
 
 -spec generate_etag(cowboy_req:req(), cb_context:context()) ->
-                           {binary(), cowboy_req:req(), cb_context:context()}.
+          {binary(), cowboy_req:req(), cb_context:context()}.
 generate_etag(Req0, Context0) ->
     Event = api_util:create_event_name(Context0, <<"etag">>),
     {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
@@ -1285,7 +1285,7 @@ generate_etag(Req0, Context0) ->
     end.
 
 -spec expires(cowboy_req:req(), cb_context:context()) ->
-                     {calendar:datetime(), cowboy_req:req(), cb_context:context()}.
+          {calendar:datetime(), cowboy_req:req(), cb_context:context()}.
 expires(Req, Context) ->
     Event = api_util:create_event_name(Context, <<"expires">>),
     Context1 = crossbar_bindings:fold(Event, Context),

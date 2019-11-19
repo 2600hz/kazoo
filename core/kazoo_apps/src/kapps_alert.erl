@@ -35,8 +35,8 @@ enabled() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch(kz_term:ne_binary()) ->
-                   {'ok', kz_json:object()} |
-                   {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 fetch(AlertId) ->
     kzd_alert:fetch(AlertId).
 
@@ -46,17 +46,17 @@ fetch(AlertId) ->
 %%------------------------------------------------------------------------------
 
 -spec create(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects(), kz_json:objects()) ->
-                    {'ok', kzd_alert:doc()} |
-                    {'error', any()}.
+          {'ok', kzd_alert:doc()} |
+          {'error', any()}.
 create(Title, Message, From, To) ->
     create(Title, Message, From, To, []).
 
 -spec create(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:objects()
             ,kz_json:objects(), kz_term:proplist()
             ) ->
-                    {'ok', kz_json:object()} |
-                    {'required', kz_term:ne_binary()} |
-                    {'error', 'disabled'}.
+          {'ok', kz_json:object()} |
+          {'required', kz_term:ne_binary()} |
+          {'error', 'disabled'}.
 create('undefined', _Message, _From, _To, _Opts) ->
     {'required', kzd_alert:title()};
 create(_Title, 'undefined', _From, _To, _Opts) ->
@@ -83,8 +83,8 @@ create(Title, Message, From, To, Opts) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec save(kzd_alert:doc()) ->
-                  {'ok', kzd_alert:doc()} |
-                  {'error', any()}.
+          {'ok', kzd_alert:doc()} |
+          {'error', any()}.
 save(JObj) ->
     case enabled() of
         'false' -> {'error', 'alerts_disabled'};
@@ -97,8 +97,8 @@ save(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec delete(kzd_alert:doc() | kz_term:ne_binary()) ->
-                    {'ok', kzd_alert:doc()} |
-                    {'error', any()}.
+          {'ok', kzd_alert:doc()} |
+          {'error', any()}.
 delete(AlertId) when is_binary(AlertId) ->
     case fetch(AlertId) of
         {'error', _}=Error -> Error;
@@ -131,7 +131,7 @@ maybe_add_options(JObj, Props) ->
 
 -type update_fun() :: fun((kzd_alert:doc(), kz_json:json_term()) -> kzd_alert:doc()).
 -spec maybe_add_option({kz_term:ne_binary(), update_fun()}, kzd_alert:doc(), kz_term:proplist()) ->
-                              kzd_alert:doc().
+          kzd_alert:doc().
 maybe_add_option({Option, Fun}, Acc, Props) ->
     case props:get_value(Option, Props) of
         'undefined' -> Acc;

@@ -366,7 +366,7 @@ any_of_to_row(Option, Refs) ->
     maybe_add_ref(Refs, Option).
 
 -spec property_to_row(kz_json:object(), kz_term:ne_binary() | kz_term:ne_binaries(), kz_json:object(), {iodata(), kz_term:ne_binaries()}) ->
-                             {iodata(), kz_term:ne_binaries()}.
+          {iodata(), kz_term:ne_binaries()}.
 property_to_row(SchemaJObj, Name=?NE_BINARY, Settings, {_, _}=Acc) ->
     property_to_row(SchemaJObj, [Name], Settings, Acc);
 property_to_row(SchemaJObj, Names, Settings, {Table, Refs}) ->

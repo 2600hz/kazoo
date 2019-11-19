@@ -38,7 +38,7 @@ maybe_send_route_response(JObj, Call) ->
     end.
 
 -spec send_route_response(kz_json:object(), kapps_call:call(), kapps_conference:conference()) ->
-                                 'ok'.
+          'ok'.
 send_route_response(JObj, Call, Conference) ->
     lager:info("conference knows how to route the call! sending park response"),
     Resp = props:filter_undefined([{?KEY_MSG_ID, kz_api:msg_id(JObj)}
@@ -96,7 +96,7 @@ maybe_set_name_pronounced(AccountId, MediaId, Participant) ->
     conf_participant:set_name_pronounced({'undefined', AccountId, MediaId}, Participant).
 
 -spec find_conference(kapps_call:call()) -> {'error', any()} |
-                                            {'ok', kapps_conference:conference()}.
+          {'ok', kapps_conference:conference()}.
 find_conference(Call) ->
     find_conference(Call, find_account_db(Call)).
 

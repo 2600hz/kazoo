@@ -189,13 +189,13 @@ compact_design_docs(Compactor, Shard, DDs) ->
                             {'error', any()}.
 
 -spec wait_for_design_compaction(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
-                                        'ok'.
+          'ok'.
 wait_for_design_compaction(_, _, []) -> 'ok';
 wait_for_design_compaction(AdminConn, Shard, [DD|DDs]) ->
     wait_for_design_compaction(AdminConn, Shard, DDs, DD, kz_couch_view:design_info(AdminConn, Shard, DD)).
 
 -spec wait_for_design_compaction(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), design_info_resp()) ->
-                                        'ok'.
+          'ok'.
 wait_for_design_compaction(AdminConn, Shard, DDs, DD, {'error', {'conn_failed', {'error', 'timeout'}}}) ->
     lager:warning("timed out, waiting then retrying"),
     'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
@@ -257,12 +257,12 @@ should_compact(Compactor, ?HEUR_RATIO) ->
     end.
 
 -spec get_db_disk_and_data(kz_data:connection(), kz_term:ne_binary()) ->
-                                  db_disk_and_data().
+          db_disk_and_data().
 get_db_disk_and_data(Conn, DbName) ->
     get_db_disk_and_data(Conn, DbName, 0).
 
 -spec get_db_disk_and_data(kz_data:connection(), kz_term:ne_binary(), 0..3) ->
-                                  db_disk_and_data().
+          db_disk_and_data().
 get_db_disk_and_data(_Conn, _DbName, 3=_N) ->
     lager:warning("getting db info for ~s failed ~b times", [_DbName, _N]),
     'undefined';
@@ -340,7 +340,7 @@ compactor_heuristic(#compactor{heuristic=Heuristic}) -> Heuristic.
 compactor_callid(#compactor{callid=CallId}) -> CallId.
 
 -spec new(kz_term:ne_binary(), heuristic(), kz_data:connection(), kz_data:connection(), kz_term:ne_binary()) ->
-                 compactor().
+          compactor().
 new(Node, Heuristic, APIConn, AdminConn, Database) ->
     #compactor{node=Node
               ,database=kz_http_util:urlencode(Database)

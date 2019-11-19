@@ -146,8 +146,8 @@ spawn_authorize_call_fun(#{node := Node, call_id := CallId, payload := JObj}=Map
     Map#{authz_worker => {Pid, Ref}}.
 
 -spec authorize_call_fun(pid(), Ref, atom(), kz_term:ne_binary(), kz_json:object()) ->
-                                {'authorize_reply', Ref, ecallmgr_fs_authz:authz_reply()}
-                                    when Ref :: reference().
+          {'authorize_reply', Ref, ecallmgr_fs_authz:authz_reply()}
+              when Ref :: reference().
 authorize_call_fun(Parent, Ref, Node, CallId, JObj) ->
     kz_log:put_callid(CallId),
     Parent ! {'authorize_reply', Ref, ecallmgr_fs_authz:authorize(JObj, CallId, Node)}.
@@ -299,8 +299,8 @@ is_number_blacklisted(Blacklist, JObj) ->
     end.
 
 -spec get_blacklists(kz_term:ne_binary()) ->
-                            {'ok', kz_term:ne_binaries()} |
-                            {'error', any()}.
+          {'ok', kz_term:ne_binaries()} |
+          {'error', any()}.
 get_blacklists(AccountId) ->
     case kzd_accounts:fetch(AccountId) of
         {'error', _R}=E ->

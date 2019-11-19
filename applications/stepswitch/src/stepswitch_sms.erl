@@ -293,8 +293,8 @@ amqp_exchange_options(JObj) ->
     ].
 
 -spec send_amqp_sms(kz_term:proplist(), atom()) ->
-                           'ok' |
-                           {'error', kz_term:ne_binary() | 'timeout'}.
+          'ok' |
+          {'error', kz_term:ne_binary() | 'timeout'}.
 send_amqp_sms(Payload, Pool) ->
     kapps_sms_command:send_amqp_sms(Payload, Pool).
 
@@ -353,7 +353,7 @@ build_sms_base({CIDNum, CIDName}, OffnetReq, Q) ->
       ]).
 
 -spec maybe_endpoints_format_from(kz_json:objects(), kz_term:api_binary(), kapi_offnet_resource:req()) ->
-                                         kz_json:objects().
+          kz_json:objects().
 maybe_endpoints_format_from([], _ , _) -> [];
 maybe_endpoints_format_from(Endpoints, 'undefined', _) -> Endpoints;
 maybe_endpoints_format_from(Endpoints, CIDNum, OffnetReq) ->
@@ -363,7 +363,7 @@ maybe_endpoints_format_from(Endpoints, CIDNum, OffnetReq) ->
     ].
 
 -spec maybe_endpoint_format_from(kz_json:object(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                                        kz_json:object().
+          kz_json:object().
 maybe_endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
     CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
     case kz_json:is_true(<<"Format-From-URI">>, CCVs) of
@@ -411,7 +411,7 @@ endpoint_format_from(Endpoint, CIDNum, DefaultRealm) ->
     end.
 
 -spec bridge_caller_id(kz_json:objects(), kapi_offnet_resource:req()) ->
-                              {kz_term:api_binary(), kz_term:api_binary()}.
+          {kz_term:api_binary(), kz_term:api_binary()}.
 bridge_caller_id(Endpoints, JObj) ->
     case contains_emergency_endpoints(Endpoints) of
         'true' -> bridge_emergency_caller_id(JObj);
@@ -419,7 +419,7 @@ bridge_caller_id(Endpoints, JObj) ->
     end.
 
 -spec bridge_emergency_caller_id(kapi_offnet_resource:req()) ->
-                                        {kz_term:api_binary(), kz_term:api_binary()}.
+          {kz_term:api_binary(), kz_term:api_binary()}.
 bridge_emergency_caller_id(OffnetReq) ->
     lager:debug("outbound call is using an emergency route, attempting to set CID accordingly"),
     {maybe_emergency_cid_number(OffnetReq)
@@ -427,14 +427,14 @@ bridge_emergency_caller_id(OffnetReq) ->
     }.
 
 -spec bridge_caller_id(kapi_offnet_resource:req()) ->
-                              {kz_term:ne_binary(), kz_term:ne_binary()}.
+          {kz_term:ne_binary(), kz_term:ne_binary()}.
 bridge_caller_id(OffnetReq) ->
     {stepswitch_bridge:bridge_outbound_cid_number(OffnetReq)
     ,stepswitch_bridge:bridge_outbound_cid_name(OffnetReq)
     }.
 
 -spec bridge_from_uri(kz_term:api_binary(), kapi_offnet_resource:req()) ->
-                             kz_term:api_binary().
+          kz_term:api_binary().
 bridge_from_uri(CIDNum, OffnetReq) ->
     Realm = stepswitch_util:default_realm(OffnetReq),
     case (kapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, 'false')
@@ -452,7 +452,7 @@ bridge_from_uri(CIDNum, OffnetReq) ->
     end.
 
 -spec maybe_emergency_cid_number(kapi_offnet_resource:req()) ->
-                                        kz_term:api_binary().
+          kz_term:api_binary().
 maybe_emergency_cid_number(OffnetReq) ->
     %% NOTE: if this request had a hunt-account-id then we
     %%   are assuming it was for a local resource (at the

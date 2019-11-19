@@ -31,8 +31,8 @@ handle_eavesdrop_req(JObj, _Props) ->
     end.
 
 -spec get_endpoints(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                           {'ok', kz_json:objects()} |
-                           {'error', any()}.
+          {'ok', kz_json:objects()} |
+          {'error', any()}.
 get_endpoints(AccountId, EndpointId) ->
     kz_endpoint:build(EndpointId, new_call(AccountId)).
 
@@ -145,14 +145,14 @@ send_originate_execute(JObj, Q) ->
     kapi_dialplan:publish_originate_execute(kz_json:get_value(<<"Server-ID">>, JObj), Prop).
 
 -spec find_caller_id(kz_json:object()) ->
-                            {kz_term:ne_binary(), kz_term:api_binary()}.
+          {kz_term:ne_binary(), kz_term:api_binary()}.
 find_caller_id(JObj) ->
     find_caller_id(JObj, [{<<"Outbound-Caller-ID-Name">>, <<"Outbound-Caller-ID-Number">>}
                          ,{<<"Caller-ID-Name">>, <<"Caller-ID-Number">>}
                          ]).
 
 -spec find_caller_id(kz_json:object(), kz_term:proplist()) ->
-                            {kz_term:ne_binary(), kz_term:api_binary()}.
+          {kz_term:ne_binary(), kz_term:api_binary()}.
 find_caller_id(_JObj, []) -> {<<"SpyVsSpy">>, <<"01010101">>};
 find_caller_id(JObj, [{KName, KNum}|Ks]) ->
     case kz_json:get_value(KName, JObj) of

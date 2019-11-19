@@ -47,8 +47,8 @@ start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
 -spec stats_srv() ->
-                       {'ok', pid()} |
-                       {'error', 'not_found'}.
+          {'ok', pid()} |
+          {'error', 'not_found'}.
 stats_srv() ->
     case [P || {'acdc_stats', P, _, _} <- supervisor:which_children(?SERVER)] of
         [P] when is_pid(P) -> {'ok', P};

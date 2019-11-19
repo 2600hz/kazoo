@@ -135,8 +135,8 @@ delete(Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) ->
-                       'false' |
-                       {'true' | 'stop', cb_context:context()}.
+          'false' |
+          {'true' | 'stop', cb_context:context()}.
 authorize(Context) ->
     case maybe_deny_access(Context) of
         'false' -> 'false';
@@ -192,14 +192,14 @@ maybe_deny_access(Context, Restrictions) ->
     end.
 
 -spec match_endpoint(cb_context:context(), kz_term:api_object()) ->
-                            kz_term:api_object().
+          kz_term:api_object().
 match_endpoint(Context, Restrictions) ->
     [{ReqEndpoint, _}|_] = cb_context:req_nouns(Context),
 
     match_request_endpoint(Restrictions, ReqEndpoint).
 
 -spec match_request_endpoint(kz_term:api_object(), kz_term:ne_binary()) ->
-                                    kz_term:api_objects().
+          kz_term:api_objects().
 match_request_endpoint(Restrictions, ?CATCH_ALL = ReqEndpoint) ->
     kz_json:get_list_value(ReqEndpoint, Restrictions);
 match_request_endpoint(Restrictions, ReqEndpoint) ->
@@ -216,7 +216,7 @@ match_account(Context, EndpointRestrictions) ->
     find_endpoint_restrictions_by_account(AllowedAccounts, EndpointRestrictions).
 
 -spec find_endpoint_restrictions_by_account(kz_term:ne_binaries(), kz_json:objects()) ->
-                                                   kz_term:api_object().
+          kz_term:api_object().
 find_endpoint_restrictions_by_account(_Accounts, []) ->
     'undefined';
 find_endpoint_restrictions_by_account(AllowedAccounts
@@ -266,7 +266,7 @@ allowed_accounts(AuthAccountId, AccountId) ->
 -endif.
 
 -spec match_arguments(cb_context:context(), kz_term:api_object()) ->
-                             http_methods().
+          http_methods().
 match_arguments(_Context, 'undefined') -> [];
 match_arguments(Context, RulesJObj) ->
     [{_, ReqParams}|_] = cb_context:req_nouns(Context),
@@ -274,7 +274,7 @@ match_arguments(Context, RulesJObj) ->
     match_argument_patterns(ReqParams, RulesJObj, RuleKeys).
 
 -spec match_argument_patterns(req_nouns(), kz_json:object(), kz_term:ne_binaries()) ->
-                                     http_methods().
+          http_methods().
 match_argument_patterns(_ReqParams, _RulesJObj, []) -> [];
 match_argument_patterns(ReqParams, RulesJObj, RuleKeys) ->
     case match_rules(ReqParams, RuleKeys) of

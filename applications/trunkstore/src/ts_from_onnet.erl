@@ -263,19 +263,19 @@ fix_request_values(Username, Realm) ->
     ].
 
 -spec get_referred_by(kz_json:object()) ->
-                             'undefined' | {kz_term:ne_binary(), kz_term:ne_binary()}.
+          'undefined' | {kz_term:ne_binary(), kz_term:ne_binary()}.
 get_referred_by(JObj) ->
     ReferredBy = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Referred-By">>], JObj),
     extract_sip_username(ReferredBy).
 
 -spec get_redirected_by(kz_json:object()) ->
-                               'undefined' | {kz_term:ne_binary(), kz_term:ne_binary()}.
+          'undefined' | {kz_term:ne_binary(), kz_term:ne_binary()}.
 get_redirected_by(JObj) ->
     RedirectedBy = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Redirected-By">>], JObj),
     extract_sip_username(RedirectedBy).
 
 -spec extract_sip_username(kz_term:api_ne_binary()) ->
-                                  'undefined' | {kz_term:ne_binary(), kz_term:ne_binary()}.
+          'undefined' | {kz_term:ne_binary(), kz_term:ne_binary()}.
 extract_sip_username('undefined') -> 'undefined';
 extract_sip_username(Contact) ->
     ReOptions = [{'capture', 'all_but_first', 'binary'}],

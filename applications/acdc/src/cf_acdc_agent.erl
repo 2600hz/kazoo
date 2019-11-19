@@ -203,8 +203,8 @@ format_presence_state(_) -> 'undefined'.
 
 -type find_agent_error() :: 'unknown_endpoint' | 'multiple_owners'.
 -spec find_agent(kapps_call:call()) ->
-                        {'ok', kz_term:api_binary()} |
-                        {'error', find_agent_error()}.
+          {'ok', kz_term:api_binary()} |
+          {'error', find_agent_error()}.
 find_agent(Call) ->
     find_agent(Call, kapps_call:authorizing_id(Call)).
 

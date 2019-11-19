@@ -152,7 +152,7 @@ is_last_month_collected(Account) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_last_month_collected(kz_term:ne_binary(), kz_term:ne_binary() | kz_time:year(), kz_term:ne_binary() | kz_time:month()) ->
-                                     boolean().
+          boolean().
 is_last_month_collected(Account, Year, Month) ->
     Timestamp =
         calendar:datetime_to_gregorian_seconds({{kz_term:to_integer(Year), kz_term:to_integer(Month), 1}
@@ -166,7 +166,7 @@ is_last_month_collected(Account, Year, Month) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_collected(kz_term:ne_binary(), kz_term:ne_binary() | kz_time:year(), kz_term:ne_binary() | kz_time:month()) ->
-                          boolean().
+          boolean().
 is_collected(Account, Year, Month) ->
     AccountId = kz_util:format_account_id(Account),
     is_proccessed(AccountId
@@ -227,7 +227,7 @@ collect_invoices_fold_fun(Services, DueTimestamp) ->
     end.
 
 -spec collect_bookkeeper(kz_services_invoice:invoice(), kz_services:services(), kz_time:gregorian_seconds()) ->
-                                kz_amqp_worker:request_return().
+          kz_amqp_worker:request_return().
 collect_bookkeeper(Invoice, Services, DueTimestamp) ->
     Request = [{<<"Account-ID">>, kz_services:account_id(Services)}
               ,{<<"Bookkeeper-ID">>, kz_services_invoice:bookkeeper_id(Invoice)}
@@ -261,7 +261,7 @@ handle_collect_bookkeeper_results([_Error | Results]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec send_early_reminder(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:year(), kz_time:month(), boolean()) ->
-                                 {'ok', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary()}.
 send_early_reminder(AccountId, DueTimestamp, Year, Month, 'false') ->
     lager:debug("attempting to send bill reminder ~s", [AccountId]),
     _ = send_reminder(AccountId, DueTimestamp),
@@ -313,7 +313,7 @@ do_notify_reseller(AccountId, Services, Invoice, DueTimestamp) ->
     kapps_notify_publisher:cast(props:filter_undefined(Props), fun kapi_notifications:publish_bill_reminder/1).
 
 -spec maybe_add_payment_token(kz_services:services(), kz_services_invoice:invoice()) ->
-                                     kz_term:proplist().
+          kz_term:proplist().
 maybe_add_payment_token(Services, Invoice) ->
     case kz_services_invoice:bookkeeper_type(Invoice) of
         'undefined' -> [];
@@ -375,8 +375,8 @@ is_proccessed(AccountId, MarkerId, Year, Month) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_marker(kz_term:ne_binary(), kz_term:ne_binary(), kz_time:year(), kz_time:month()) ->
-                        {'ok', kz_json:object()} |
-                        {'error', kazoo_data:data_errors()}.
+          {'ok', kz_json:object()} |
+          {'error', kazoo_data:data_errors()}.
 set_marker(AccountId, MarkerId, Year, Month) ->
     AccountMODB = kz_util:format_account_mod_id(AccountId, Year, Month),
     PvtOptions = [{'account_id', AccountId}

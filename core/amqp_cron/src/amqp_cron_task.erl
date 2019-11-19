@@ -420,7 +420,7 @@ advance_seconds(DateTime, Seconds) ->
     calendar:gregorian_seconds_to_datetime(Seconds1).
 
 -spec extract_integers([rangespec()|listspec()], integer(), integer()) ->
-                              [integer()].
+          [integer()].
 extract_integers(Spec, Min, Max) when Min < Max ->
     extract_integers(Spec, Min, Max, []).
 
