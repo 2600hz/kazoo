@@ -10,8 +10,10 @@
 -module(cb_alerts_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include_lib("kazoo_numbers/include/knm_port_request.hrl"). %% PORT_SUSPENDED
--include_lib("kazoo_stdlib/include/kz_types.hrl"). %% SECONDS_IN_DAY
+%% PORT_SUSPENDED_STATES, PORT_SUSPENDED, PORT_REJECTED
+-include_lib("kazoo_numbers/include/knm_port_request.hrl").
+%% SECONDS_IN_DAY
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 %%%=======================================================================================
 %%% Tests generator
@@ -23,7 +25,7 @@
 %%--------------------------------------------------------------------
 -spec cb_alerts_test_() -> [{string(), boolean()}].
 cb_alerts_test_() ->
-    [{"Check port requests", check_port_requests()}
+    [{"Maybe check port requests", maybe_check_port_requests()}
     ,{"Check no plans financials", check_no_plans_financials()}
     ,{"Check low balance", check_low_balance()}
     ,{"Check payment token", check_payment_token()}
@@ -37,8 +39,8 @@ cb_alerts_test_() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec check_port_requests() -> [{string(), boolean()}].
-check_port_requests() ->
+-spec maybe_check_port_requests() -> [{string(), boolean()}].
+maybe_check_port_requests() ->
     Mod = 'knm_port_request',
     ToMeck = ['kz_services_reseller', Mod],
     _ = lists:foreach(fun(M) -> meck:new(M, [passthrough]) end, ToMeck),
@@ -49,30 +51,31 @@ check_port_requests() ->
 
     %% 1 submitted, 1 unconfirmed, and 1 rejected.
     meck:expect(Mod, 'account_active_ports', fun(_) -> AccountActivePorts end),
-    Context1 = cb_alerts:check_port_requests(Context),
-    [Alert1, Alert2] = cb_context:resp_data(Context1),
+    Context1 = cb_alerts:maybe_check_port_requests(Context),
+    Resp = cb_context:resp_data(Context1),
+    [Alert1, Alert2] = Resp,
 
     %% All ports (3) have last comment with `action_required=true' within the last comment
     %% and also there is 1 rejected and 1 unconfirmed.
     PortsWithComments = [add_comments(Port) || Port <- ActivePorts],
     meck:expect(Mod, 'account_active_ports', fun(_) -> {'ok', PortsWithComments} end),
-    Context2 = cb_alerts:check_port_requests(Context),
+    Context2 = cb_alerts:maybe_check_port_requests(Context),
 
     %% Only 1 port with `action_required=true' within the last comment
     Port = add_comments(example_port_request()),
     %% Same as Port but last comment doesn't have `action_required=true'
     Port1 = swap_comments(Port),
     meck:expect(Mod, 'account_active_ports', fun(_) -> {'ok', [Port, Port1]} end),
-    Context3 = cb_alerts:check_port_requests(Context),
+    Context3 = cb_alerts:maybe_check_port_requests(Context),
     [Alert3] = cb_context:resp_data(Context3),
 
     %% Not active ports found.
     meck:expect(Mod, 'account_active_ports', fun(_) -> {'error', 'not_found'} end),
-    Context4 = cb_alerts:check_port_requests(Context),
+    Context4 = cb_alerts:maybe_check_port_requests(Context),
 
     %% Ports with state /= (unconfirmed|rejected) and no comments.
     meck:expect(Mod, 'account_active_ports', fun(_) -> {'ok', [example_port_request()]} end),
-    Context5 = cb_alerts:check_port_requests(Context),
+    Context5 = cb_alerts:maybe_check_port_requests(Context),
 
     MeckValidate = lists:all(fun(Mecked) -> meck:validate(Mecked) end, ToMeck),
     lists:foreach(fun(M) -> meck:unload(M) end, ToMeck),
@@ -368,11 +371,11 @@ account_active_ports() ->
 
 -spec unconfirmed_port_request() -> kzd_port_requests:doc().
 unconfirmed_port_request() ->
-    kz_json:set_value(<<"pvt_port_state">>, <<"unconfirmed">>, example_port_request()).
+    example_port_request(?PORT_UNCONFIRMED).
 
 -spec rejected_port_request() -> kzd_port_requests:doc().
 rejected_port_request() ->
-    kz_json:set_value(<<"pvt_port_state">>, <<"unconfirmed">>, example_port_request()).
+    example_port_request(?PORT_REJECTED).
 
 -spec swap_comments(kzd_port_requests:doc()) -> kzd_port_requests:doc().
 swap_comments(Port) ->
@@ -476,6 +479,10 @@ limits() ->
 
 -spec example_port_request() -> kzd_port_requests:doc().
 example_port_request() ->
+    example_port_request(?PORT_SUBMITTED).
+
+-spec example_port_request(binary()) -> kzd_port_requests:doc().
+example_port_request(<<_/binary>> = State) ->
     PortRequest =
         #{<<"_attachments">> =>
               #{<<"bill.pdf">> =>
@@ -502,7 +509,7 @@ example_port_request() ->
           <<"notifications">> =>
               #{<<"email">> => #{<<"send_to">> => <<"email@example.com">>}},
           <<"numbers">> => #{<<"+12345678901">> => #{<<"used_by">> => <<"callflow">>}},
-          <<"port_state">> => <<"submitted">>,
+          <<"port_state">> => State,
           <<"pvt_account_db">> => <<"port_requests">>,
           <<"pvt_account_id">> => <<"8a089c2a7e6c77be2e2e68c5c366f460">>,
           <<"pvt_alphanum_name">> => <<"testcbalerts">>,
@@ -511,7 +518,7 @@ example_port_request() ->
           <<"pvt_created">> => 63689901514,
           <<"pvt_is_authenticated">> => true,
           <<"pvt_modified">> => 63709957339,
-          <<"pvt_port_state">> => <<"submitted">>,
+          <<"pvt_port_state">> => State,
           <<"pvt_request_id">> => <<"f68d2c3658a26018e43729b214bc84c9">>,
           <<"pvt_transitions">> =>
               [#{<<"authorization">> =>
@@ -524,8 +531,8 @@ example_port_request() ->
                              <<"last_name">> => <<"Admin">>}},
                  <<"timestamp">> => 63689901515,
                  <<"transition">> =>
-                     #{<<"new">> => <<"submitted">>,
-                       <<"previous">> => <<"unconfirmed">>},
+                     #{<<"new">> => State,
+                       <<"previous">> => ?PORT_UNCONFIRMED},
                  <<"type">> => <<"transition">>},
                #{<<"authorization">> =>
                      #{<<"account">> =>
@@ -536,7 +543,7 @@ example_port_request() ->
                              <<"id">> => <<"e8701ad48ba05a91604e480dd60899a3">>,
                              <<"last_name">> => <<"Admin">>}},
                  <<"timestamp">> => 63689901514,
-                 <<"transition">> => #{<<"new">> => <<"unconfirmed">>},
+                 <<"transition">> => #{<<"new">> => ?PORT_UNCONFIRMED},
                  <<"type">> => <<"transition">>}],
           <<"pvt_tree">> => <<>>,
           <<"pvt_type">> => <<"port_request">>,

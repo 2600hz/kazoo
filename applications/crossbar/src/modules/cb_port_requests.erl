@@ -734,10 +734,12 @@ validate_comments(Context, NewComments) ->
     end.
 
 -spec validate_comments(cb_context:context(), kz_json:objects(), boolean()) -> cb_context:context().
+validate_comments(Context, NewComments, 'true') ->
+    add_commentors_info(Context, NewComments);
 validate_comments(Context, NewComments, 'false') ->
     Filters = [{kzd_comment:action_required_path(), fun kz_term:is_true/1}
               ,{kzd_comment:superduper_comment_path(), fun kz_term:is_true/1} %% old key
-              ,{kzd_comment:is_private_path(), fun kz_term:is_true/1}
+              ,{kzd_comment:is_private_path(), fun kz_term:is_false/1}
               ],
     case run_comment_filter(NewComments, Filters) of
         [] ->
@@ -745,24 +747,6 @@ validate_comments(Context, NewComments, 'false') ->
         [_|_] ->
             Msg = kz_json:from_list(
                     [{<<"message">>, <<"you're not allowed to make private comment or set action_required">>}
-                    ,{<<"cause">>, <<"comments">>}
-                    ]),
-            cb_context:add_validation_error(<<"comments">>, <<"forbidden">>, Msg, Context)
-    end;
-validate_comments(Context, NewComments, 'true') ->
-    Filters = [{kzd_comment:superduper_comment_path(), fun kz_term:is_false/1} %% old key
-              ,{kzd_comment:is_private_path(), fun kz_term:is_false/1}
-              ],
-    case [Comment
-          || Comment <- run_comment_filter(NewComments, Filters),
-             kz_json:is_true(<<"action_required">>, Comment, 'false')
-         ]
-    of
-        [] ->
-            add_commentors_info(Context, NewComments);
-        [_|_] ->
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<"setting action_required on public comment is not allowed">>}
                     ,{<<"cause">>, <<"comments">>}
                     ]),
             cb_context:add_validation_error(<<"comments">>, <<"forbidden">>, Msg, Context)
