@@ -20,7 +20,6 @@
         ]).
 
 -ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
 -export([maybe_check_port_requests/1
         ,maybe_check_financials/1
         ,check_low_balance/1
@@ -229,7 +228,6 @@ set_success_resp_status(Context) ->
 maybe_check_port_requests(Context) ->
     ResellerId = cb_context:reseller_id(Context),
     AccountId = cb_context:account_id(Context),
-    ?debugFmt("ResellerId: ~p, AccountId: ~p", [ResellerId, AccountId]),
 
     case {is_reseller_handling_port_requests(ResellerId)
          ,ResellerId =:= AccountId

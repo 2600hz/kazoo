@@ -10,8 +10,10 @@
 -module(cb_alerts_tests).
 
 -include_lib("eunit/include/eunit.hrl").
--include_lib("kazoo_numbers/include/knm_port_request.hrl"). %% PORT_SUSPENDED
--include_lib("kazoo_stdlib/include/kz_types.hrl"). %% SECONDS_IN_DAY
+%% PORT_SUSPENDED_STATES, PORT_SUSPENDED, PORT_REJECTED
+-include_lib("kazoo_number_manager/include/knm_port_request.hrl").
+%% SECONDS_IN_DAY
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
 
 %%%=======================================================================================
 %%% Tests generator
@@ -370,11 +372,11 @@ account_active_ports() ->
 
 -spec unconfirmed_port_request() -> kzd_port_requests:doc().
 unconfirmed_port_request() ->
-    kz_json:set_value(<<"pvt_port_state">>, <<"unconfirmed">>, example_port_request()).
+    example_port_request(?PORT_UNCONFIRMED).
 
 -spec rejected_port_request() -> kzd_port_requests:doc().
 rejected_port_request() ->
-    kz_json:set_value(<<"pvt_port_state">>, <<"rejected">>, example_port_request()).
+    example_port_request(?PORT_REJECTED).
 
 -spec swap_comments(kzd_port_requests:doc()) -> kzd_port_requests:doc().
 swap_comments(Port) ->
@@ -478,6 +480,10 @@ limits() ->
 
 -spec example_port_request() -> kzd_port_requests:doc().
 example_port_request() ->
+    example_port_request(?PORT_SUBMITTED).
+
+-spec example_port_request(binary()) -> kzd_port_requests:doc().
+example_port_request(<<_/binary>> = State) ->
     PortRequest =
         #{<<"_attachments">> =>
               #{<<"bill.pdf">> =>
@@ -504,7 +510,7 @@ example_port_request() ->
           <<"notifications">> =>
               #{<<"email">> => #{<<"send_to">> => <<"email@example.com">>}},
           <<"numbers">> => #{<<"+12345678901">> => #{<<"used_by">> => <<"callflow">>}},
-          <<"port_state">> => <<"submitted">>,
+          <<"port_state">> => State,
           <<"pvt_account_db">> => <<"port_requests">>,
           <<"pvt_account_id">> => <<"8a089c2a7e6c77be2e2e68c5c366f460">>,
           <<"pvt_alphanum_name">> => <<"testcbalerts">>,
@@ -513,7 +519,7 @@ example_port_request() ->
           <<"pvt_created">> => 63689901514,
           <<"pvt_is_authenticated">> => true,
           <<"pvt_modified">> => 63709957339,
-          <<"pvt_port_state">> => <<"submitted">>,
+          <<"pvt_port_state">> => State,
           <<"pvt_request_id">> => <<"f68d2c3658a26018e43729b214bc84c9">>,
           <<"pvt_transitions">> =>
               [#{<<"authorization">> =>
@@ -526,8 +532,8 @@ example_port_request() ->
                              <<"last_name">> => <<"Admin">>}},
                  <<"timestamp">> => 63689901515,
                  <<"transition">> =>
-                     #{<<"new">> => <<"submitted">>,
-                       <<"previous">> => <<"unconfirmed">>},
+                     #{<<"new">> => State,
+                       <<"previous">> => ?PORT_UNCONFIRMED},
                  <<"type">> => <<"transition">>},
                #{<<"authorization">> =>
                      #{<<"account">> =>
@@ -538,7 +544,7 @@ example_port_request() ->
                              <<"id">> => <<"e8701ad48ba05a91604e480dd60899a3">>,
                              <<"last_name">> => <<"Admin">>}},
                  <<"timestamp">> => 63689901514,
-                 <<"transition">> => #{<<"new">> => <<"unconfirmed">>},
+                 <<"transition">> => #{<<"new">> => ?PORT_UNCONFIRMED},
                  <<"type">> => <<"transition">>}],
           <<"pvt_tree">> => <<>>,
           <<"pvt_type">> => <<"port_request">>,
