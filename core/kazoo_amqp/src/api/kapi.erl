@@ -24,6 +24,7 @@
 %% API
 -export([delivery_message/2
         ,encode_pid/1, encode_pid/2
+        ,decode_pid/1
         ]).
 
 -include_lib("kz_amqp_util.hrl").
@@ -57,3 +58,11 @@ encode_pid(Queue) ->
 -spec encode_pid(kz_term:ne_binary(), pid()) -> kz_term:ne_binary().
 encode_pid(Queue, Pid) ->
     list_to_binary(["pid://", kz_term:to_binary(Pid), "/", Queue]).
+
+-spec decode_pid(kz_term:ne_binary()) -> kz_term:api_pid().
+decode_pid(<<"pid://", Pid/binary>>) ->
+    case binary:split(Pid, <<"/">>) of
+        [Pid, _RK] -> kz_term:to_pid(Pid);
+        _ -> 'undefined'
+    end;
+decode_pid(_Queue) -> 'undefined'.

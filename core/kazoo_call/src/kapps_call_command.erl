@@ -479,6 +479,7 @@ receive_event(Timeout, IgnoreOthers) ->
     Start = kz_time:start_time(),
     receive
         {'amqp_msg', JObj} -> {'ok', JObj};
+        {'kapi',{ _, _, JObj}} -> {'ok', JObj};
         _Msg when IgnoreOthers ->
             lager:debug_unsafe("ignoring received event : ~p", [_Msg]),
             receive_event(kz_time:decr_timeout(Timeout, Start), IgnoreOthers);

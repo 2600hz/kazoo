@@ -86,7 +86,15 @@ handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
     {'noreply', State};
+handle_cast({'gen_listener', {'return', JObj, Returned}}, State) ->
+    ServerId = kz_api:server_id(JObj),
+    lager:debug("returned: ~p", [ServerId]),
+    Pid = kapi:decode_pid(ServerId),
+    lager:debug("returned: ~p", [Pid]),
+    Pid ! {'amqp_return', JObj, Returned},
+    {'noreply', State};
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
 
 %%------------------------------------------------------------------------------

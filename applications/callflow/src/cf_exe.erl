@@ -606,6 +606,17 @@ handle_info({'EXIT', Pid, _Reason}, #state{cf_module_old_pid={Pid, Ref}
     LastAction = kapps_call:kvs_fetch('cf_old_action', Call),
     lager:error("action ~s died unexpectedly: ~p", [LastAction, _Reason]),
     {'noreply', State#state{cf_module_old_pid='undefined'}};
+handle_info({'amqp_return', _JObj, _Returned} = Msg, #state{cf_module_pid=PidRef
+                                                           ,call=Call
+                                                           } = State) ->
+    Others = kapps_call:kvs_fetch('cf_event_pids', [], Call),
+    Notify = case get_pid(PidRef) of
+                 'undefined' -> Others;
+                 ModPid -> [ModPid | Others]
+             end,
+    relay_message(Notify, Msg),
+    {'noreply', State};
+
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.
@@ -742,7 +753,7 @@ do_launch_cf_module(#state{call=Call
                           ,flow=Flow
                           ,cf_module_pid=OldPidRef
                           }=State
-                   ,Action
+                   ,{Where, Action}
                    ) ->
     Data = kz_json:get_json_value(<<"data">>, Flow, kz_json:new()),
     lager:info("moving to action '~s'", [Action]),
@@ -750,24 +761,29 @@ do_launch_cf_module(#state{call=Call
     %% the module calls cf_exe:set_call/1 - that would undo the later
     %% old_action/last_action update
     Call1 = update_actions(Action, Call),
-    PidRef = spawn_cf_module(Action, Data, Call1),
+    PidRef = spawn_cf_module(Where, Action, Data, Call1),
     link(get_pid(PidRef)),
     State#state{cf_module_pid=PidRef
                ,cf_module_old_pid=OldPidRef
                ,call=Call1
                }.
 
--spec find_cf_module(kz_json:object()) -> kz_term:api_atom().
+-spec find_cf_module(kz_json:object()) -> 'undefined' | {'local' | 'remote', atom()}.
 find_cf_module(Flow) ->
-    ModuleBin = <<"cf_", (kz_json:get_ne_binary_value(<<"module">>, Flow))/binary>>,
+    Module = kz_json:get_ne_binary_value(<<"module">>, Flow),
+    ModuleBin = <<"cf_", Module/binary>>,
     Data = kz_json:get_json_value(<<"data">>, Flow, kz_json:new()),
     CFModule = kz_term:to_atom(ModuleBin, 'true'),
     IsExported = kz_module:is_exported(CFModule, 'handle', 2),
+    IsRemote = kz_json:is_true(<<"remote_execution">>, Flow),
     SkipModule = kz_json:is_true(<<"skip_module">>, Data, 'false'),
-    case IsExported
+    case (IsExported
+          orelse IsRemote
+         )
         andalso (not SkipModule)
     of
-        'true' -> CFModule;
+        'true' when IsRemote -> {'remote', kz_term:to_atom(Module, 'true')};
+        'true' -> {'local', CFModule};
         'false' ->
             lager:debug("skipping callflow module ~s (handle exported: ~s skip_module: ~s)"
                        ,[CFModule, IsExported, SkipModule]),
@@ -787,11 +803,18 @@ update_actions(Action, Call) ->
 %% point 'handle' having set the callid on the new process first.
 %% @end
 %%------------------------------------------------------------------------------
+-spec spawn_cf_module(atom(), atom(), kz_json:object(), kapps_call:call()) -> kz_term:pid_ref().
+spawn_cf_module('local', CFModule, Data, Call0) ->
+    Call = kapps_call:kvs_store('context-source', CFModule, Call0),
+    spawn_cf_module(CFModule, Data, Call);
+spawn_cf_module('remote', CFModule, Data, Call0) ->
+    Call = kapps_call:kvs_store('remote-action', CFModule, Call0),
+    spawn_cf_module('cf_remote_action', Data, Call).
+
 -spec spawn_cf_module(atom(), kz_json:object(), kapps_call:call()) -> kz_term:pid_ref().
-spawn_cf_module(CFModule, Data, Call0) ->
+spawn_cf_module(CFModule, Data, Call) ->
     AMQPConsumer = kz_amqp_channel:consumer_pid(),
     AMQPChannel = kz_amqp_channel:consumer_channel(),
-    Call = kapps_call:kvs_store('context-source', CFModule, Call0),
     kz_process:spawn_monitor(fun cf_module_task/5, [CFModule, Data, Call, AMQPConsumer, AMQPChannel]).
 
 -spec cf_module_task(atom(), kz_json:object(), kapps_call:call(), pid(), pid()) -> any().
@@ -924,7 +947,7 @@ handle_error(CallId, Notify, JObj) ->
         _Else -> 'ok'
     end.
 
--spec relay_message(kz_term:pids(), kz_json:object()) -> 'ok'.
+-spec relay_message(kz_term:pids(), kz_json:object() | {'amqp_return', kz_json:object(), kz_json:object()}) -> 'ok'.
 relay_message(Notify, Message) ->
     _ = [kapps_call_command:relay_event(Pid, Message)
          || Pid <- Notify,
