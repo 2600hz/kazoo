@@ -15,11 +15,6 @@
         ,allow_no_match/1
         ]).
 
--ifdef(TEST).
--export([avoid_privacy_if_emergency_call/2
-        ]).
--endif.
-
 -include("callflow.hrl").
 
 -define(DEFAULT_METAFLOWS(AccountId)
@@ -252,23 +247,20 @@ pre_park_action(Call) ->
 -spec update_call(kz_json:object(), boolean(), kz_term:ne_binary(), kapps_call:call()) ->
           kapps_call:call().
 update_call(Flow, NoMatch, ControllerQ, Call) ->
-    FlowId = kz_doc:id(Flow),
-    CaptureGroup = kz_json:get_ne_value(<<"capture_group">>, Flow),
-    NewFlow = avoid_privacy_if_emergency_call(CaptureGroup, Flow),
-    Props = [{'cf_flow_id', FlowId}
-            ,{'cf_flow_name', kz_json:get_ne_binary_value(<<"name">>, NewFlow, kapps_call:request_user(Call))}
-            ,{'cf_flow', kz_json:get_value(<<"flow">>, NewFlow)}
-            ,{'cf_capture_group', CaptureGroup}
-            ,{'cf_capture_groups', kz_json:get_value(<<"capture_groups">>, NewFlow, kz_json:new())}
+    Props = [{'cf_flow_id', kz_doc:id(Flow)}
+            ,{'cf_flow_name', kz_json:get_ne_binary_value(<<"name">>, Flow, kapps_call:request_user(Call))}
+            ,{'cf_flow', kz_json:get_value(<<"flow">>, Flow)}
+            ,{'cf_capture_group', kz_json:get_ne_value(<<"capture_group">>, Flow)}
+            ,{'cf_capture_groups', kz_json:get_value(<<"capture_groups">>, Flow, kz_json:new())}
             ,{'cf_no_match', NoMatch}
-            ,{'cf_metaflow', kz_json:get_value(<<"metaflows">>, NewFlow, ?DEFAULT_METAFLOWS(kapps_call:account_id(Call)))}
+            ,{'cf_metaflow', kz_json:get_value(<<"metaflows">>, Flow, ?DEFAULT_METAFLOWS(kapps_call:account_id(Call)))}
             ],
 
     Updaters = [{fun kapps_call:kvs_store_proplist/2, Props}
                ,{fun kapps_call:set_controller_queue/2, ControllerQ}
                ,{fun kapps_call:set_application_name/2, ?APP_NAME}
                ,{fun kapps_call:set_application_version/2, ?APP_VERSION}
-               ,{fun kapps_call:insert_custom_channel_var/3, <<"CallFlow-ID">>, FlowId}
+               ,{fun kapps_call:insert_custom_channel_var/3, <<"CallFlow-ID">>, kz_doc:id(Flow)}
                ],
     kapps_call:exec(Updaters, Call).
 
@@ -326,20 +318,4 @@ extract_sip_username(Contact) ->
     case catch(re:run(Contact, <<".*sip:(.*)@.*">>, ReOptions)) of
         {'match', [Match]} -> Match;
         _ -> 'undefined'
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc If dialing an emergency number (e.g. 911) using the `*67' feature code, then don't honor privacy settings.
-%% @end
-%%------------------------------------------------------------------------------
--spec avoid_privacy_if_emergency_call(kz_term:api_binary(), kzd_callflows:doc()) -> kzd_callflows:doc().
-avoid_privacy_if_emergency_call('undefined', Flow) ->
-    Flow;
-avoid_privacy_if_emergency_call(CaptureGroup, Flow) ->
-    case knm_converters:classify(CaptureGroup) of
-        <<"emergency">> ->
-            lager:info("emergency call ongoing, ignoring privacy settings"),
-            kz_json:set_value([<<"flow">>, <<"data">>, <<"mode">>], <<"none">>, Flow);
-        _ ->
-            Flow
     end.
