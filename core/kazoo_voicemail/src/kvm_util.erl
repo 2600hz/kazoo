@@ -375,8 +375,13 @@ publish_voicemail_deleted(BoxId, Msg, Reason) ->
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
 
-    _ = kz_amqp_worker:cast(Prop, fun kapi_notifications:publish_voicemail_deleted/1),
-    lager:debug("published voicemail_deleted for ~s", [BoxId]).
+    case ?SEND_DELETE_NOTIFY_AMPQ of
+        true ->
+            _ = kz_amqp_worker:cast(Prop, fun kapi_notifications:publish_voicemail_deleted/1),
+            lager:debug("published voicemail_deleted for ~s", [BoxId]);
+        _ ->
+            ok
+    end.
 
 %%%=============================================================================
 %%% Internal functions
