@@ -381,9 +381,9 @@ is_classifier(Classifier) ->
 -spec list_account_restrictions(kz_term:ne_binary()) -> 'ok'.
 list_account_restrictions(Account) ->
     {'ok', AccountDb} = kapps_util:get_accounts_by_name(kzd_accounts:normalize_name(Account)),
-    DbNameEncoded = kzs_util:format_account_id(AccountDb,'encoded'),
+    DbNameEncoded = kzs_util:format_account_db(AccountDb),
     io:format("\nAccount level classifiers:\n\n"),
-    print_call_restrictions(DbNameEncoded, kzs_util:format_account_id(AccountDb,'raw')),
+    print_call_restrictions(DbNameEncoded, kzs_util:format_account_id(AccountDb)),
     print_users_level_call_restrictions(DbNameEncoded),
     print_devices_level_call_restrictions(DbNameEncoded),
     print_trunkstore_call_restrictions(DbNameEncoded).
@@ -394,8 +394,9 @@ print_call_restrictions(DbName, DocId) ->
         {'ok', JObj} ->
             lists:foreach(fun(Classifier) ->
                                   io:format("Classifier ~p:\t\t action ~p\n",[Classifier, kz_json:get_value([<<"call_restriction">>,Classifier,<<"action">>], JObj)])
-                          end,
-                          kz_json:get_keys(<<"call_restriction">>, JObj));
+                          end
+                         ,kz_json:get_keys(<<"call_restriction">>, JObj)
+                         );
         {'error', E} ->
             io:format("An error occurred: ~p\n", [E])
     end.
