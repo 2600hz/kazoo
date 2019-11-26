@@ -31134,6 +31134,11 @@
                     "description": "callflow singular call hook url",
                     "type": "string"
                 },
+                "vm_delete_amqp": {
+                    "default": false,
+                    "description": "callflow vm_delete_amqp",
+                    "type": "boolean"
+                },
                 "voicemail": {
                     "properties": {
                         "delete_after_notify": {
@@ -31216,6 +31221,11 @@
                             "description": "callflow fastforward and rewind seek duration",
                             "minimum": 0,
                             "type": "integer"
+                        },
+                        "vm_delete_amqp": {
+                            "default": false,
+                            "description": "send ampq message to notify about voicemail deletion",
+                            "type": "boolean"
                         },
                         "vm_message_forward_type": {
                             "default": "only_forward",

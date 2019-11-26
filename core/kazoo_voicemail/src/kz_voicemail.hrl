@@ -11,6 +11,12 @@
 -define(VM_CONFIG_CAT, <<"callflow">>).
 -define(KEY_VOICEMAIL, <<"voicemail">>).
 -define(KEY_RETENTION_DURATION, <<"message_retention_duration">>).
+-define(KEY_VM_DELETE_NOTIFY_AMPQ, <<"vm_delete_amqp">>).
+
+-define(VM_DELETE_NOTIFY_AMPQ_PATH, [?KEY_VOICEMAIL, ?KEY_VM_DELETE_NOTIFY_AMPQ]).
+-define(SEND_DELETE_NOTIFY_AMPQ,
+        kapps_config:get_boolean(?VM_CONFIG_CAT, ?VM_DELETE_NOTIFY_AMPQ_PATH, false)
+       ).
 
 -define(RETENTION_PATH, [?KEY_VOICEMAIL, ?KEY_RETENTION_DURATION]).
 -define(RETENTION_DAYS,
