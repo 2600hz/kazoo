@@ -482,7 +482,7 @@ dial(Context, ConferenceId, Data) ->
 build_valid_endpoints(Context, ConferenceId, Data) ->
     case kz_json_schema:validate(<<"conferences.dial">>, Data) of
         {'ok', ValidData} ->
-            build_endpoints_to_dial(Context, ConferenceId, kz_json:get_list_value(<<"endpoints">>, ValidData));
+            build_endpoints_to_dial(Context, ConferenceId, ValidData);
         {'error', Errors} ->
             lager:info("dial data failed to validate"),
             {cb_context:failed(Context, Errors), []}
@@ -574,12 +574,13 @@ zone(TargetCallId) ->
                   }
        ).
 
--spec build_endpoints_to_dial(cb_context:context(), path_token(), kz_term:ne_binaries()) ->
+-spec build_endpoints_to_dial(cb_context:context(), path_token(), kz_json:object()) ->
           {cb_context:context(), kz_json:objects()}.
-build_endpoints_to_dial(Context, ConferenceId, Endpoints) ->
+build_endpoints_to_dial(Context, ConferenceId, Data) ->
+    Endpoints = kz_json:get_list_value(<<"endpoints">>, Data),
     ?BUILD_ACC(ToDial, _Call, Context1, _Element) =
         lists:foldl(fun build_endpoint/2
-                   ,?BUILD_ACC([], create_call(Context, ConferenceId), Context, 1)
+                   ,?BUILD_ACC([], create_call(Context, ConferenceId, Data), Context, 1)
                    ,Endpoints
                    ),
     {Context1, ToDial}.
@@ -594,14 +595,18 @@ error_no_endpoints(Context) ->
                                    ,Context
                                    ).
 
--spec create_call(cb_context:context(), kz_term:ne_binary()) -> kapps_call:call().
-create_call(Context, ConferenceId) ->
+-spec create_call(cb_context:context(), kz_term:ne_binary(), kz_json:object()) -> kapps_call:call().
+create_call(Context, ConferenceId, Data) ->
+    Conference = cb_context:doc(Context),
+    CallerIdName = kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference)),
+    CallerIdNumber = kz_json:get_ne_binary_value(<<"caller_id_number">>, Data),
     Routines =
         [{F, V}
          || {F, V} <- [{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
                       ,{fun kapps_call:set_resource_type/2, <<"audio">>}
-                      ,{fun kapps_call:set_authorizing_id/2, ConferenceId}
                       ,{fun kapps_call:set_authorizing_type/2, <<"conference">>}
+                      ,{fun kapps_call:set_caller_id_name/2, CallerIdName}
+                      ,{fun kapps_call:set_caller_id_number/2, CallerIdNumber}
                       ],
             'undefined' =/= V
         ],
