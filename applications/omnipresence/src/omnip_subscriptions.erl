@@ -469,7 +469,7 @@ maybe_probe(_, {<<"message-summary">> = Package, Username, Realm, _}) ->
 maybe_probe(_, {<<"dialog">>, <<"*", _/binary>> = Username, Realm, _}) ->
     case kapps_util:get_account_by_realm(Realm) of
         {'ok', Account} ->
-            VM = ?VM_NUMBER(kz_util:format_account_id(Account)),
+            VM = ?VM_NUMBER(kzs_util:format_account_id(Account)),
             S = size(VM),
             case Username of
                 <<VM:S/binary, New/binary>> -> omnip_util:request_probe(<<"message-summary">>, New, Realm);

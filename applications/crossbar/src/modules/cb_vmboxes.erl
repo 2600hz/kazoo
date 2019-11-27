@@ -410,7 +410,7 @@ put(Context, _BoxId, ?MESSAGES_RESOURCE) ->
 
 -spec put(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
 put(Context, _BoxId, ?MESSAGES_RESOURCE, MsgID, ?BIN_DATA) ->
-    maybe_save_attachment(cb_context:set_account_db(Context, kvm_util:get_db(cb_context:account_id(Context), MsgID))).
+    maybe_save_attachment(cb_context:set_db_name(Context, kvm_util:get_db(cb_context:account_id(Context), MsgID))).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -639,7 +639,7 @@ normalize_upload(Context, FileJObj, UploadContentType) ->
 -spec normalization_format(cb_context:context()) -> kz_term:ne_binary().
 normalization_format(Context) ->
     BoxId = kzd_box_message:source_id(cb_context:doc(Context)),
-    AccountDb = kz_util:format_account_db(cb_context:account_id(Context)),
+    AccountDb = kzs_util:format_account_db(cb_context:account_id(Context)),
     case kz_datamgr:open_cache_doc(AccountDb, BoxId) of
         {'ok', BoxJObj} -> kzd_voicemail_box:media_extension(BoxJObj);
         {'error', _} -> ?NORMALIZATION_FORMAT
@@ -660,7 +660,7 @@ validate_request(VMBoxId, Context) ->
 
 -spec validate_unique_vmbox(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 validate_unique_vmbox(VMBoxId, Context) ->
-    validate_unique_vmbox(VMBoxId, Context, cb_context:account_db(Context)).
+    validate_unique_vmbox(VMBoxId, Context, cb_context:db_name(Context)).
 
 -spec validate_unique_vmbox(kz_term:api_binary(), cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 validate_unique_vmbox(VMBoxId, Context, 'undefined') ->
@@ -960,7 +960,7 @@ create_new_message_document(Context, BoxJObj) ->
     Metadata = kzd_box_message:build_metadata_object(Length, Call, MsgId, CallerNumber, CallerName, Timestamp),
 
     Message = kzd_box_message:update_media_id(MsgId, kzd_box_message:set_metadata(Metadata, JObj)),
-    cb_context:set_doc(cb_context:set_account_db(Context, kz_doc:account_db(Message)), Message).
+    cb_context:set_doc(cb_context:set_db_name(Context, kz_doc:account_db(Message)), Message).
 
 %%------------------------------------------------------------------------------
 %% @doc Get message binary content so it can be downloaded
@@ -973,7 +973,7 @@ load_message_binary(BoxId, MediaId, Context) ->
     case kvm_message:fetch(cb_context:account_id(Context), MediaId, BoxId) of
         {'ok', JObj} ->
             case kz_term:is_not_empty(kz_doc:attachment_names(JObj))
-                andalso kz_datamgr:open_cache_doc(cb_context:account_db(Context), BoxId)
+                andalso kz_datamgr:open_cache_doc(cb_context:db_name(Context), BoxId)
             of
                 'false' ->
                     Msg = <<"voicemail message does not have any audio file">>,
@@ -1025,7 +1025,7 @@ load_messages_binaries(BoxId, Context) ->
     WorkDir = kz_term:to_list(<<"/tmp/", (cb_context:req_id(Context))/binary, "/">>),
     Ids = kz_json:get_value(?VM_KEY_MESSAGES, cb_context:req_data(Context), []),
     case Ids =/= []
-        andalso kz_datamgr:open_cache_doc(cb_context:account_db(Context), BoxId)
+        andalso kz_datamgr:open_cache_doc(cb_context:db_name(Context), BoxId)
     of
         'false' ->
             Message = kz_json:from_list([{<<"message">>, <<"No array of message ids are specified">>}]),
@@ -1164,7 +1164,7 @@ check_uniqueness(VMBoxId, Context) ->
 -spec check_uniqueness(kz_term:api_binary(), cb_context:context(), pos_integer()) -> boolean().
 check_uniqueness(VMBoxId, Context, Mailbox) ->
     ViewOptions = [{'key', Mailbox}],
-    case kz_datamgr:get_results(cb_context:account_db(Context)
+    case kz_datamgr:get_results(cb_context:db_name(Context)
                                ,<<"vmboxes/listing_by_mailbox">>
                                ,ViewOptions
                                )
@@ -1221,7 +1221,7 @@ maybe_migrate_vm_box(Box) ->
 %%------------------------------------------------------------------------------
 -spec migrate(kz_term:ne_binary()) -> 'ok'.
 migrate(Account) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    AccountDb = kzs_util:format_account_db(Account),
     case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
         {'error', _E} -> io:format("failed to check account ~s for voicemail boxes: ~p~n", [Account, _E]);

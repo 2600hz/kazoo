@@ -25,7 +25,7 @@ flush() ->
 
 -spec flush(kz_term:ne_binary()) -> 'ok'.
 flush(Account) ->
-    AccountId = kz_util:format_account_id(Account),
+    AccountId = kzs_util:format_account_id(Account),
     Flush = kz_cache:filter_local(?CACHE_NAME
                                  ,fun(Key, _Value) -> is_ts_cache_object(Key, AccountId) end
                                  ),

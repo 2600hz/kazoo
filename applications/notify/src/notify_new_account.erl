@@ -53,7 +53,7 @@ handle_req(JObj, _Props) ->
 
     AccountDb = case {kz_json:get_value(<<"Account-DB">>, JObj), kz_json:get_value(<<"Account-ID">>, JObj)} of
                     {'undefined', 'undefined'} -> 'undefined';
-                    {'undefined', Id1} -> kz_util:format_account_id(Id1, 'encoded');
+                    {'undefined', Id1} -> kzs_util:format_account_db(Id1);
                     {Id2, _} -> Id2
                 end,
 

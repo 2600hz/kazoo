@@ -335,14 +335,14 @@ classified_number(Context, Number, Classifier) ->
 
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, ?FIX, Num) ->
-    AccountDb = cb_context:account_db(Context),
+    AccountDb = cb_context:db_name(Context),
     _ = kazoo_numbers_maintenance:copy_single_number_to_account_db(Num, AccountDb),
     CB = fun() -> ?MODULE:post(cb_context:set_accepting_charges(Context), ?FIX, Num) end,
     set_response({'ok', kz_json:new()}, Context, CB).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?FIX) ->
-    AccountDb = cb_context:account_db(Context),
+    AccountDb = cb_context:db_name(Context),
     _ = kazoo_numbers_maintenance:fix_account_db_numbers(AccountDb),
     summary(Context);
 post(Context, ?CHECK) ->
@@ -817,7 +817,7 @@ update_context_locality_fold(Key, Value, JObj) ->
           {'ok', kz_json:object()} |
           {'error', any()}.
 update_phone_numbers_locality(Context, Localities) ->
-    AccountDb = cb_context:account_db(Context),
+    AccountDb = cb_context:db_name(Context),
     DocId = kz_doc:id(cb_context:doc(Context)),
     case kz_datamgr:open_doc(AccountDb, DocId) of
         {'ok', JObj} ->

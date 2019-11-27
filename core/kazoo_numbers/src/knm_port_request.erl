@@ -608,7 +608,7 @@ app_used_by_portin(Numbers, JObj) ->
 -spec reconcile_app_used_by(kz_term:ne_binaries(), kz_json:object()) -> 'ok'.
 reconcile_app_used_by(Numbers, JObj) ->
     AccountId = kz_doc:account_id(JObj),
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     PortInUsedBy = app_used_by_portin(Numbers, JObj),
     {AppUsedBy, NumAppUsage} = get_dids_for_app(AccountDb, Numbers),
     lager:debug("transitioning numbers ~p to active used by apps ~p portin usage ~p"

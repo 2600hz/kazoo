@@ -162,14 +162,19 @@ get_view_name(_) -> ?CB_LIST_BY_OWNERID.
 
 -spec load_recording_doc(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_recording_doc(Context, ?MATCH_MODB_PREFIX(Year, Month, _) = RecordingId) ->
-    Ctx = cb_context:set_account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)),
+    Ctx = cb_context:set_db_name(Context
+                                ,kzs_util:format_account_id(cb_context:account_id(Context)
+                                                           ,kz_term:to_integer(Year)
+                                                           ,kz_term:to_integer(Month)
+                                                           )
+                                ),
     crossbar_doc:load({<<"call_recording">>, RecordingId}, Ctx, ?TYPE_CHECK_OPTION(<<"call_recording">>));
 load_recording_doc(Context, Id) ->
     crossbar_util:response_bad_identifier(Id, Context).
 
 -spec load_recording_binary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_recording_binary(Context, ?MATCH_MODB_PREFIX(Year, Month, _) = DocId) ->
-    do_load_recording_binary(cb_context:set_account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)), DocId).
+    do_load_recording_binary(cb_context:set_db_name(Context, kzs_util:format_account_id(cb_context:account_id(Context), kz_term:to_integer(Year), kz_term:to_integer(Month))), DocId).
 
 -spec do_load_recording_binary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 do_load_recording_binary(Context, DocId) ->

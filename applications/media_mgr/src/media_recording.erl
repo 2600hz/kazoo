@@ -338,7 +338,7 @@ should_store_recording(AccountId, Url) ->
 
 -spec maybe_storage_plan(kz_term:ne_binary()) -> store_url().
 maybe_storage_plan(AccountId) ->
-    AccountDb = kz_util:format_account_mod_id(AccountId),
+    AccountDb = kzs_util:format_account_mod_id(AccountId),
     Plan = kzs_plan:get_dataplan(AccountDb, <<"call_recording">>),
     case maps:get('tag', Plan, <<"local">>) =/= <<"local">>
         orelse maps:is_key('att_handler', Plan) of
@@ -387,7 +387,7 @@ maybe_save_recording(?KZ_RECORDER, Pid, JObj) ->
     Data = kz_recording:data(JObj, kz_json:new()),
     DocId = kz_recording:id(JObj),
     {Year, Month, _} = erlang:date(),
-    AccountDb = kz_util:format_account_modb(kazoo_modb:get_modb(AccountId, Year, Month),'encoded'),
+    AccountDb = kzs_util:format_account_modb(kazoo_modb:get_modb(AccountId, Year, Month),'encoded'),
     CallId = kz_call_event:call_id(JObj),
     CdrId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_date:pad_month(Month), CallId),
     InteractionId = kz_call_event:custom_channel_var(JObj, <<?CALL_INTERACTION_ID>>),

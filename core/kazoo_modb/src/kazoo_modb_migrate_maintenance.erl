@@ -60,7 +60,7 @@ get_view_count(_AccountId, _View, Retry) when Retry < 0 ->
     io:format("[~s] failed to fetch view ~s count~n", [_AccountId, _View]),
     0;
 get_view_count(AccountId, View, Retry) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     case kz_datamgr:get_results_count(AccountDb, View, []) of
         {'ok', Total} -> Total;
         {'error', 'not_found'} ->
@@ -96,7 +96,7 @@ maps_update_with(Key, UpdateFun, Init, Map) ->
 %%------------------------------------------------------------------------------
 -spec migrate_voicemails(kz_term:ne_binary()) -> 'ok'.
 migrate_voicemails(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     Total = get_view_count(AccountId, <<"vmboxes/legacy_msg_by_timestamp">>),
     migrate_voicemails(AccountId, Total).
 
@@ -116,7 +116,7 @@ migrate_voicemails(AccountId, Total) ->
 
 -spec migrate_voicemails(kz_term:ne_binary(), map(), kz_term:proplist()) -> 'ok'.
 migrate_voicemails(AccountId, #{total := Total, processed := Processed, moved := Moved, skip := Skip}=Stats, ViewOptions) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"vmboxes/legacy_msg_by_timestamp">>, ViewOptions) of
         {'ok', []} ->
             io:format("[~s] voicemail message migration finished, (~b/~b) messages has been moved~n"
@@ -157,7 +157,7 @@ move_vm_to_modb(AccountId, LegacyVMJObj, #{total := Total
                                           ,skip := Skip
                                           ,result := Result
                                           }=Map) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     BoxId = kz_json:get_value(<<"source_id">>, LegacyVMJObj),
     {ToDb, ToId, TransformFuns} = transform_vm_doc_funs(AccountDb, LegacyVMJObj),
 
@@ -230,7 +230,7 @@ transform_vm_doc_funs(AccountDb, LegacyVMJObj) ->
 update_mailboxes(AccountId, Map) ->
     BoxIds = maps:keys(Map),
 
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     case kz_term:is_not_empty(BoxIds)
         andalso kz_datamgr:open_docs(AccountDb, BoxIds) of
         false -> ok;
@@ -273,7 +273,7 @@ update_message_array(BoxJObj, ResultSet) ->
 %%------------------------------------------------------------------------------
 -spec migrate_cdrs(kz_term:ne_binary()) -> 'ok'.
 migrate_cdrs(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     Total = get_view_count(AccountId, <<"cdrs/crossbar_listing">>),
     migrate_cdrs(AccountId, Total).
 
@@ -292,7 +292,7 @@ migrate_cdrs(AccountId, Total) ->
 
 -spec migrate_cdrs(kz_term:ne_binary(), map(), kz_term:proplist()) -> 'ok'.
 migrate_cdrs(AccountId, #{total := Total, processed := Processed, moved := Moved, skip := Skip}=Stats, ViewOptions) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     case kz_datamgr:get_results(AccountDb, <<"cdrs/crossbar_listing">>, ViewOptions) of
         {'ok', []} ->
             io:format("[~s] cdrs migration finished, (~b/~b) doc has been moved~n"
@@ -338,7 +338,7 @@ move_cdrs_to_modb(AccountId, ViewResults) ->
 -spec map_tranform_cdrs(kz_term:ne_binary(), kz_json:objects(), map()) -> map().
 map_tranform_cdrs(_AccountId, [], Map) -> Map;
 map_tranform_cdrs(AccountId, [VR|VRs], Map) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     Doc = kz_json:get_value(<<"doc">>, VR),
     OldId = kz_doc:id(Doc),
     Created = kz_doc:created(Doc),
@@ -360,7 +360,7 @@ map_tranform_cdrs(AccountId, [VR|VRs], Map) ->
 -spec do_move_cdrs(kz_term:ne_binary(), kz_json:objects(), kz_term:ne_binaries()) ->
                           kz_term:ne_binaries().
 do_move_cdrs(MODB, Docs, MovedAcc) ->
-    _AccountId = kz_util:format_account_id(MODB),
+    _AccountId = kzs_util:format_account_id(MODB),
     case kz_datamgr:save_docs(MODB, Docs) of
         {'ok', SavedJObj} -> check_for_failure(SavedJObj, MovedAcc);
         {'error', _Reason} ->

@@ -189,7 +189,7 @@ migrate_menus() ->
 
 -spec migrate_menus(kz_term:ne_binary()) -> 'done' | 'error'.
 migrate_menus(Account) ->
-    Db = kz_util:format_account_id(Account, 'encoded'),
+    Db = kzs_util:format_account_db(Account),
     lager:info("migrating all menus in ~s", [Db]),
     case kz_datamgr:get_results(Db, <<"menus/crossbar_listing">>, ['include_docs']) of
         {'ok', []} ->
@@ -297,7 +297,7 @@ all_accounts_set_classifier_deny(Classifier) ->
 set_account_classifier_action(Action, Classifier, AccountDb) ->
     'true' = is_classifier(Classifier),
     io:format("found account: ~p", [kzd_accounts:fetch_name(AccountDb)]),
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kzs_util:format_account_id(AccountDb),
 
     Update = [{[<<"call_restriction">>, Classifier, <<"action">>], Action}],
     {'ok', _} = kzd_accounts:update(AccountId, Update),
@@ -381,9 +381,9 @@ is_classifier(Classifier) ->
 -spec list_account_restrictions(kz_term:ne_binary()) -> 'ok'.
 list_account_restrictions(Account) ->
     {'ok', AccountDb} = kapps_util:get_accounts_by_name(kzd_accounts:normalize_name(Account)),
-    DbNameEncoded = kz_util:format_account_id(AccountDb,'encoded'),
+    DbNameEncoded = kzs_util:format_account_db(AccountDb),
     io:format("\nAccount level classifiers:\n\n"),
-    print_call_restrictions(DbNameEncoded, kz_util:format_account_id(AccountDb,'raw')),
+    print_call_restrictions(DbNameEncoded, kzs_util:format_account_id(AccountDb)),
     print_users_level_call_restrictions(DbNameEncoded),
     print_devices_level_call_restrictions(DbNameEncoded),
     print_trunkstore_call_restrictions(DbNameEncoded).
@@ -394,8 +394,9 @@ print_call_restrictions(DbName, DocId) ->
         {'ok', JObj} ->
             lists:foreach(fun(Classifier) ->
                                   io:format("Classifier ~p:\t\t action ~p\n",[Classifier, kz_json:get_value([<<"call_restriction">>,Classifier,<<"action">>], JObj)])
-                          end,
-                          kz_json:get_keys(<<"call_restriction">>, JObj));
+                          end
+                         ,kz_json:get_keys(<<"call_restriction">>, JObj)
+                         );
         {'error', E} ->
             io:format("An error occurred: ~p\n", [E])
     end.
@@ -457,12 +458,12 @@ update_feature_codes(Account)
   when not is_binary(Account) ->
     update_feature_codes(kz_term:to_binary(Account));
 update_feature_codes(Account) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzs_util:format_account_db(Account),
     case kz_datamgr:get_results(AccountDb, ?LIST_BY_PATTERN, ['include_docs']) of
         {'error', _Reason} ->
             io:format("error listing feature code patterns: ~p\n", [_Reason]);
         {'ok', Patterns} ->
-            AccountId = kz_util:format_account_id(Account, 'raw'),
+            AccountId = kzs_util:format_account_id(Account),
             io:format("~s : looking through patterns...\n", [AccountId]),
             maybe_update_feature_codes(AccountDb, Patterns)
     end.
@@ -472,7 +473,7 @@ maybe_update_feature_codes(Db, Patterns) ->
     lists:foreach(fun(Pattern) -> maybe_update_feature_code(Db, Pattern) end
                  ,Patterns
                  ),
-    io:format("~s : feature codes up to date\n", [kz_util:format_account_id(Db, 'raw')]).
+    io:format("~s : feature codes up to date\n", [kzs_util:format_account_id(Db)]).
 
 -spec maybe_update_feature_code(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_update_feature_code(Db, Pattern) ->

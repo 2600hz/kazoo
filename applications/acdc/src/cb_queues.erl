@@ -309,9 +309,9 @@ is_active_call(Context, CallId) ->
         {'ok', _} -> 'true'
     end.
 
-is_valid_queue(Context, <<_/binary>> = QueueId) ->
-    AcctDb = cb_context:account_db(Context),
-    case kz_datamgr:open_cache_doc(AcctDb, QueueId) of
+is_valid_queue(Context, <<QueueId/binary>>) ->
+    AccountDb = cb_context:db_name(Context),
+    case kz_datamgr:open_cache_doc(AccountDb, QueueId) of
         {'ok', QueueJObj} -> is_valid_queue(Context, QueueJObj);
         {'error', _} ->
             {'false'
@@ -339,9 +339,9 @@ is_valid_queue(Context, QueueJObj) ->
     end.
 
 is_valid_endpoint(Context, DataJObj) ->
-    AcctDb = cb_context:account_db(Context),
+    AccountDb = cb_context:db_name(Context),
     Id = kz_doc:id(DataJObj),
-    case kz_datamgr:open_cache_doc(AcctDb, Id) of
+    case kz_datamgr:open_cache_doc(AccountDb, Id) of
         {'ok', CallMeJObj} -> is_valid_endpoint_type(Context, CallMeJObj);
         {'error', _} ->
             {'false'

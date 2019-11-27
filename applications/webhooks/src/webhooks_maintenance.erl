@@ -51,7 +51,7 @@ set_failure_expiry(Expires) ->
 
 -spec set_failure_expiry(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 set_failure_expiry(Account, Expires) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     try kz_term:to_integer(Expires) of
         I ->
             _ = kapps_account_config:set(AccountId, ?APP_NAME, ?ATTEMPT_EXPIRY_KEY, I),
@@ -74,7 +74,7 @@ set_disable_threshold(Count) ->
 
 -spec set_disable_threshold(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 set_disable_threshold(Account, Count) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     try kz_term:to_integer(Count) of
         I ->
             _ = kapps_account_config:set(AccountId, ?APP_NAME, ?FAILURE_COUNT_KEY, I),
@@ -94,7 +94,7 @@ failure_status() ->
 
 -spec failure_status(kz_term:ne_binary()) -> 'ok'.
 failure_status(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     Failed = webhooks_disabler:find_failures(),
 
     Sorted = lists:keysort(1, Failed),

@@ -284,7 +284,7 @@ add_multi_factor_metadata(AuthModule, JObj, AuthConfig) ->
 
 -spec get_metadata(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:api_object().
 get_metadata(AccountId, ConfigId) ->
-    case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), ConfigId) of
+    case kz_datamgr:open_cache_doc(kzs_util:format_account_db(AccountId), ConfigId) of
         {'ok', JObj} ->
             kz_json:from_list(
               [{<<"name">>, kz_json:get_value(<<"name">>, JObj)}
@@ -408,4 +408,9 @@ failed_multi_factor_validation(AuthModule, ErrMsg, Context) ->
 %%------------------------------------------------------------------------------
 -spec read_attempt_log(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read_attempt_log(?MATCH_MODB_PREFIX(Year, Month, _)=AttemptId, Context) ->
-    crossbar_doc:load(AttemptId, cb_context:set_account_modb(Context, Year, Month), ?TYPE_CHECK_OPTION(?AUTH_ATTEMPT_TYPE)).
+    crossbar_doc:load(AttemptId
+                     ,cb_context:set_db_name(Context
+                                            ,kzs_util:format_account_id(cb_context:account_id(Context), Year, Month)
+                                            )
+                     ,?TYPE_CHECK_OPTION(?AUTH_ATTEMPT_TYPE)
+                     ).

@@ -67,7 +67,7 @@
 %%------------------------------------------------------------------------------
 -spec get(kz_term:ne_binary()) -> limits().
 get(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     case kz_cache:peek_local(?CACHE_NAME, ?LIMITS_KEY(AccountId)) of
         {'ok', Limits} -> Limits;
         {'error', 'not_found'} -> fetch(AccountId)
@@ -75,8 +75,8 @@ get(Account) ->
 
 -spec fetch(kz_term:ne_binary()) -> limits().
 fetch(<<Account/binary>>) ->
-    AccountId = kz_util:format_account_id(Account),
-    AccountDb = kz_util:format_account_db(Account),
+    AccountId = kzs_util:format_account_id(Account),
+    AccountDb = kzs_util:format_account_db(Account),
     JObj = kz_services_limits:fetch(AccountId),
     CacheOrigins = kz_json:get_ne_value(<<"pvt_cache_origins">>, JObj, []),
     case kz_term:is_empty(JObj) of

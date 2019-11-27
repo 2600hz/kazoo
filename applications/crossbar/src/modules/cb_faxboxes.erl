@@ -117,7 +117,7 @@ validate_resource(Context) -> Context.
 
 -spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
 validate_resource(Context, FaxboxId) ->
-    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), FaxboxId) of
+    case kz_datamgr:open_cache_doc(cb_context:account_id(Context), FaxboxId) of
         {'ok', JObj} -> cb_context:store(Context, <<"faxbox">>, JObj);
         _ -> Context
     end.
@@ -324,7 +324,7 @@ on_faxbox_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context
                       ,kz_json:set_values([{<<"pvt_type">>, kzd_fax_box:type()}
                                           ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
-                                          ,{<<"pvt_account_db">>, cb_context:account_db(Context)}
+                                          ,{<<"pvt_account_db">>, cb_context:db_name(Context)}
                                           ,{<<"pvt_reseller_id">>, cb_context:reseller_id(Context)}
                                           ,{<<"_id">>, kz_binary:rand_hex(16)}
                                           ,{<<"pvt_smtp_email_address">>, generate_email_address(Context)}
@@ -591,7 +591,7 @@ prepare_faxes_doc(Context, Action) ->
                                ,cb_context:doc(Context)
                                ),
     Context1 = cb_context:setters(Context
-                                 ,[{fun cb_context:set_account_db/2, ?KZ_FAXES_DB}
+                                 ,[{fun cb_context:set_db_name/2, ?KZ_FAXES_DB}
                                   ,{fun cb_context:set_doc/2, ToSave}
                                   ]),
     maybe_load_merge(Context1, Action).
@@ -607,6 +607,6 @@ maybe_load_merge(Context, 'update') ->
 faxbox_doc_delete(Context, Id) ->
     Ctx2 = crossbar_doc:delete(Context),
     _ = crossbar_doc:delete(
-          read(Id, cb_context:set_account_db(Context, ?KZ_FAXES_DB))
+          read(Id, cb_context:set_db_name(Context, ?KZ_FAXES_DB))
          ),
     Ctx2.

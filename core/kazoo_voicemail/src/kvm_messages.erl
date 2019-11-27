@@ -120,7 +120,7 @@ count_non_deleted(AccountId, BoxId) ->
                                                        OwnerId :: kz_term:ne_binary(),
                                                        Count :: non_deleted_tuple().
 count_by_owner(?MATCH_ACCOUNT_ENCODED(_)=AccountDb, OwnerId) ->
-    AccountId = kz_util:format_account_id(AccountDb),
+    AccountId = kzs_util:format_account_id(AccountDb),
     count_by_owner(AccountId, OwnerId);
 count_by_owner(AccountId, OwnerId) ->
     ViewOptions = [{'key', [OwnerId, <<"vmbox">>]}],

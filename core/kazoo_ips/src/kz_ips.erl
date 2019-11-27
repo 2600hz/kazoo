@@ -77,7 +77,7 @@ assigned() ->
           {'ok', kz_json:objects()} |
           {'error', any()}.
 assigned(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     ViewOptions = [{'key', AccountId}],
     case fetch_assigned(ViewOptions) of
         {'ok', JObjs} ->

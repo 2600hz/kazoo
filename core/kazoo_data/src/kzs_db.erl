@@ -105,7 +105,7 @@ do_db_delete(#{server := {App, Conn}}, DbName) ->
           {'ok', kz_json:object()} |
           data_error().
 db_replicate(#{server := {App, Conn}}, Prop) ->
-    App:db_replicate(Conn,Prop).
+    App:db_replicate(Conn, Prop).
 
 -spec db_view_cleanup(map(), kz_term:ne_binary()) -> boolean().
 db_view_cleanup(#{}=Map, DbName) ->

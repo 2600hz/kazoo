@@ -138,7 +138,7 @@ delete_remove_from_accounts({AccountJObj, Errors}=Acc) ->
 
 -spec create(kz_term:ne_binary(), kz_json:object()) -> kzd_accounts:doc() | 'undefined'.
 create(AccountId, ReqJObj) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     case kapps_util:is_account_db(AccountDb)
         andalso kz_datamgr:db_create(AccountDb)
     of
@@ -191,7 +191,7 @@ load_initial_views(AccountDoc) ->
 
 -spec create_account_mod(kzd_accounts:doc()) -> kzd_accounts:doc().
 create_account_mod(AccountDoc) ->
-    Db = kz_util:format_account_mod_id(kz_doc:account_id(AccountDoc)),
+    Db = kzs_util:format_account_mod_id(kz_doc:account_id(AccountDoc)),
     case kazoo_modb:create(Db) of
         'true' ->
             lager:info("created this month's MODb for account"),

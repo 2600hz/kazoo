@@ -144,7 +144,7 @@ update_account(AccountId, JObj, AuthToken) ->
 
 -spec update_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 update_account(Account, AuthToken) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     case kzd_accounts:fetch(AccountId) of
         {'ok', JObj} -> update_account(AccountId, JObj, AuthToken);
         {'error', _R} ->
@@ -165,7 +165,7 @@ update_user(AccountId, JObj, AuthToken) ->
 -spec save_user(kz_term:ne_binary(), kzd_users:doc(), kz_term:ne_binary()) -> 'ok'.
 save_user(AccountId, JObj, AuthToken) ->
     _ = update_account(AccountId, AuthToken),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     Devices = kz_attributes:owned_by_docs(kz_doc:id(JObj), AccountDb),
     lists:foreach(fun(Device) ->
                           Settings = settings(Device),

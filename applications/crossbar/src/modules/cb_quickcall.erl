@@ -118,7 +118,7 @@ maybe_originate_quickcall(Context) ->
 create_call_from_context(Context) ->
     Routines =
         [{F, V}
-         || {F, V} <- [{fun kapps_call:set_account_db/2, cb_context:account_db(Context)}
+         || {F, V} <- [{fun kapps_call:set_account_db/2, cb_context:db_name(Context)}
                       ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
                       ,{fun kapps_call:set_resource_type/2, <<"audio">>}
                       ,{fun kapps_call:set_owner_id/2, kz_json:get_ne_binary_value(<<"owner_id">>, cb_context:doc(Context))}

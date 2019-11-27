@@ -730,7 +730,7 @@ forward_to_vmbox(Call, Metadata, SrcBoxId, Props, Funs) ->
     DestBoxId = props:get_value(<<"Box-Id">>, Props),
     Length = props:get_value(<<"Length">>, Props),
     ResultMap = copy_to_vmbox(AccountId, MediaId, SrcBoxId, DestBoxId, #{}
-                             ,kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), DestBoxId)
+                             ,kz_datamgr:open_cache_doc(kzs_util:format_account_db(AccountId), DestBoxId)
                              ,Funs
                              ),
     Failed = maps:get(failed, ResultMap, []),
@@ -838,7 +838,7 @@ write_attachment_to_file(AccountId, MessageId, [AttachmentId]) ->
 
 -spec remove_malform_vm(kapps_call:call(), kz_term:ne_binary()) -> 'ok'.
 remove_malform_vm(Call, ForwardId) ->
-    AccountDb = kz_util:format_account_db(kapps_call:account_id(Call)),
+    AccountDb = kzs_util:format_account_db(kapps_call:account_id(Call)),
     _ = kz_datamgr:del_doc(AccountDb, ForwardId),
     'ok'.
 

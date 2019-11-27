@@ -112,7 +112,7 @@ get(Call) -> get(kapps_call:authorizing_id(Call), Call).
 get('undefined', _Call) ->
     {'error', 'invalid_endpoint_id'};
 get(EndpointId, ?MATCH_ACCOUNT_RAW(AccountId)) ->
-    get(EndpointId, kz_util:format_account_db(AccountId));
+    get(EndpointId, kzs_util:format_account_db(AccountId));
 get(EndpointId, AccountDb) when is_binary(AccountDb) ->
     case kz_cache:peek_local(?CACHE_NAME, {?MODULE, AccountDb, EndpointId}) of
         {'ok', _Endpoint}=Ok ->
@@ -201,7 +201,7 @@ cache_store_endpoint(JObj, EndpointId, AccountDb, EndpointType) ->
 cache_origin(JObj, EndpointId, AccountDb) ->
     Routines = [fun(P) -> [{'db', AccountDb, EndpointId} | P] end
                ,fun(P) ->
-                        [{'db', AccountDb, kz_util:format_account_id(AccountDb, 'raw')}
+                        [{'db', AccountDb, kzs_util:format_account_id(AccountDb)}
                          | P
                         ]
                 end

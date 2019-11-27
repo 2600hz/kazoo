@@ -887,7 +887,7 @@ handle_query_result(#{is_chunked := 'true'
                    ,NewLastKey
                    ) ->
     Setters = [{fun cb_context:set_resp_data/2, FilteredJObjs}
-              ,{fun cb_context:set_account_db/2, Db}
+              ,{fun cb_context:set_db_name/2, Db}
               ],
     Context1 = cb_context:setters(Context, Setters),
     LoadMap#{last_key => NewLastKey
@@ -1112,7 +1112,7 @@ build_general_load_params(Context, View, Options) ->
     Direction = direction(Context, Options),
     try maps:from_list(
           [{'chunk_size', get_chunk_size(Context, Options)}
-          ,{'databases', props:get_value('databases', Options, [cb_context:account_db(Context)])}
+          ,{'databases', props:get_value('databases', Options, [cb_context:db_name(Context)])}
           ,{'direction', Direction}
           ,{'is_chunked', is_chunked(Context, Options)}
           ,{'last_key', 'undefined'}

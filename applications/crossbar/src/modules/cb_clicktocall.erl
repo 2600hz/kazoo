@@ -236,7 +236,7 @@ load_c2c_history(C2CId, Context) ->
               ],
     crossbar_doc:load_view(?HISTORY_LIST
                           ,Options
-                          ,cb_context:set_account_db(Context, cb_context:account_modb(Context))
+                          ,cb_context:set_db_name(Context, cb_context:account_modb(Context))
                           ,fun normalize_history_results/2
                           ).
 
@@ -263,8 +263,8 @@ establish_c2c(C2CId, Context) ->
 
 -spec maybe_migrate_history(kz_term:ne_binary()) -> 'ok'.
 maybe_migrate_history(Account) ->
-    AccountId = kz_util:format_account_id(Account),
-    AccountDb = kz_util:format_account_db(Account),
+    AccountId = kzs_util:format_account_id(Account),
+    AccountDb = kzs_util:format_account_db(Account),
 
     case kz_datamgr:get_results(AccountDb, ?CB_LIST, ['include_docs']) of
         {'ok', []} -> 'ok';
@@ -295,7 +295,7 @@ migrate_history(AccountId, AccountDb, C2C) ->
 -spec save_history_item(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> any().
 save_history_item(AccountId, HistoryItem, C2CId) ->
     Timestamp = kz_json:get_integer_value(<<"timestamp">>, HistoryItem, kz_time:now_s()),
-    AccountModb = kz_util:format_account_mod_id(AccountId, Timestamp),
+    AccountModb = kzs_util:format_account_mod_id(AccountId, Timestamp),
     JObj = kz_doc:update_pvt_parameters(kz_json:set_value(<<"pvt_clicktocall_id">>, C2CId, HistoryItem)
                                        ,AccountModb
                                        ,[{'type', <<"c2c_history">>}
@@ -308,7 +308,7 @@ save_history_item(AccountId, HistoryItem, C2CId) ->
 clear_history_set_type(Context) ->
     cb_context:set_doc(Context
                       ,kz_doc:update_pvt_parameters(cb_context:doc(Context)
-                                                   ,cb_context:account_db(Context)
+                                                   ,cb_context:db_name(Context)
                                                    ,[{'type', ?PVT_TYPE}]
                                                    )
                       ).

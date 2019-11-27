@@ -817,7 +817,8 @@ map_responders(Acc, Responders, Payload) ->
 
 -spec pmap_responders(map_results(), queue:queue(), payload()) -> map_results().
 pmap_responders(Acc, Responders, Payload) ->
-    plists:map(fun(R) -> apply_map_responder(R, Payload) end
+    LogId = kz_log:get_callid(),
+    plists:map(fun(R) -> kz_log:put_callid(LogId), apply_map_responder(R, Payload) end
               ,queue:to_list(Responders)
               ,[{'processes', 'schedulers'}]
               )

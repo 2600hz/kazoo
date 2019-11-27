@@ -75,7 +75,7 @@ handle_sms(ConfChange, _Props) ->
 handle_sms(?DOC_CREATED, <<"sms">>, ConfChange) ->
     Db = kapi_conf:get_database(ConfChange),
 
-    case kz_util:format_account_id(Db) of
+    case kzs_util:format_account_id(Db) of
         'undefined' -> 'ok';
         AccountId ->
             handle_account_sms(ConfChange, Db, AccountId)

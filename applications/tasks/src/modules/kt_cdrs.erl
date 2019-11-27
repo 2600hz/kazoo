@@ -80,7 +80,7 @@ output_header(<<"dump">>) ->
 
 -spec dump(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 dump(#{'account_id' := AccountId}=_ExtraArgs, 'init') ->
-    AccountDb = kz_util:format_account_mod_id(AccountId),
+    AccountDb = kzs_util:format_account_mod_id(AccountId),
     lager:info("starting dump of ~s", [AccountDb]),
 
     process_rows(AccountDb, 'undefined');

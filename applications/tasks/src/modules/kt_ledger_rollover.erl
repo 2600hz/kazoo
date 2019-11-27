@@ -58,7 +58,7 @@ refresh_ledger_view(Year, Month, PerPage, {'ok', Accounts, NextStartKey}) ->
     refresh_ledger_view(Year, Month, PerPage, get_page(NextStartKey, PerPage)).
 
 refresh_ledger(Year, Month, AccountId) ->
-    MODB = kz_util:format_account_id(AccountId, Year, Month),
+    MODB = kzs_util:format_account_id(AccountId, Year, Month),
     _ = kazoo_modb:get_results(MODB, <<"ledgers/totals_by_source">>, [{'limit', 1}]).
 
 -spec rollover_accounts(kz_time:year(), kz_time:month()) -> 'ok'.

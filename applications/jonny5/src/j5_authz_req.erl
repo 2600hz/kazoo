@@ -207,7 +207,7 @@ get_outbound_flags(Endpoint) ->
 -spec send_response(j5_request:request()) -> 'ok'.
 send_response(Request) ->
     ServerId  = j5_request:server_id(Request),
-    AccountDb = kz_util:format_account_id(j5_request:account_id(Request), 'encoded'),
+    AccountDb = kzs_util:format_account_db(j5_request:account_id(Request)),
     AuthType  = kz_json:get_value(<<"Authorizing-Type">>, j5_request:ccvs(Request)),
     AuthId    = kz_json:get_value(<<"Authorizing-ID">>, j5_request:ccvs(Request)),
 

@@ -50,7 +50,7 @@ refresh_assigned() ->
 refresh_assigned([]) -> 'no_return';
 refresh_assigned([IP|IPs]) ->
     AssignedTo = kz_ip:assigned_to(IP),
-    AccountDb = kz_util:format_account_db(AssignedTo),
+    AccountDb = kzs_util:format_account_db(AssignedTo),
     JObj = kz_json:delete_key(<<"_rev">>, kz_ip:to_json(IP)),
     _ = kz_datamgr:save_doc(AccountDb, JObj),
     refresh_assigned(IPs).

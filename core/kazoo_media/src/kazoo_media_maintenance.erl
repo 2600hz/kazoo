@@ -39,7 +39,7 @@ migrate_prompts() ->
 
 -spec set_account_language(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 set_account_language(Account, Language) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     OldLang = kz_media_util:prompt_language(AccountId),
 
     try kapps_account_config:set(AccountId
@@ -402,7 +402,7 @@ remove_empty_system_media([JObj|JObjs]) ->
 
 -spec remove_empty_media_docs(kz_term:ne_binary()) -> 'ok'.
 remove_empty_media_docs(AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    AccountDb = kzs_util:format_account_db(AccountId),
     remove_empty_media_docs(AccountId, AccountDb).
 
 -spec remove_empty_media_docs(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.

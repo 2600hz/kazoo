@@ -394,7 +394,7 @@ init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
     {'ok'
     ,'wait'
     ,#state{account_id = AccountId
-           ,account_db = kz_util:format_account_db(AccountId)
+           ,account_db = kzs_util:format_account_db(AccountId)
            ,agent_id = AgentId
            ,statem_call_id = StateMCallId
            ,max_connect_failures = max_failures(AccountId)

@@ -355,7 +355,7 @@ scope(Context) ->
 -spec set_scope(cb_context:context()) -> cb_context:context().
 set_scope(Context) ->
     Setters = [{fun cb_context:store/3, 'ensure_valid_schema', 'true'}
-              ,{fun cb_context:set_account_db/2, ?KZ_DATA_DB}
+              ,{fun cb_context:set_db_name/2, ?KZ_DATA_DB}
               ],
     set_scope(cb_context:setters(Context, Setters), cb_context:req_nouns(Context)).
 

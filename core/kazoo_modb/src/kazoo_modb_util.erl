@@ -58,17 +58,17 @@ prev_year_month_mod(?MATCH_MODB_SUFFIX_encoded(A, B, Rest, Year, Month)) ->
 
 -spec split_account_mod(kz_term:ne_binary()) -> {kz_term:ne_binary(), kz_time:year(), kz_time:month()}.
 split_account_mod(?MATCH_MODB_SUFFIX_RAW(Account,Year,Month)) ->
-    {kz_util:format_account_id(Account, 'raw')
+    {kzs_util:format_account_id(Account)
     ,kz_term:to_integer(Year)
     ,kz_term:to_integer(Month)
     };
 split_account_mod(?MATCH_MODB_SUFFIX_UNENCODED(Account,Year,Month)) ->
-    {kz_util:format_account_id(Account, 'raw')
+    {kzs_util:format_account_id(Account)
     ,kz_term:to_integer(Year)
     ,kz_term:to_integer(Month)
     };
 split_account_mod(?MATCH_MODB_SUFFIX_ENCODED(Account,Year,Month)) ->
-    {kz_util:format_account_id(Account, 'raw')
+    {kzs_util:format_account_id(Account)
     ,kz_term:to_integer(Year)
     ,kz_term:to_integer(Month)
     }.

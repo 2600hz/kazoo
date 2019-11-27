@@ -159,19 +159,19 @@ validate(Context, ?NUMBER, Phonenumber) ->
 
 -spec validate_rates(cb_context:context(), http_method()) -> cb_context:context().
 validate_rates(Context, ?HTTP_GET) ->
-    summary(cb_context:set_account_db(Context, ratedeck_db(Context)), cb_context:req_value(Context, <<"prefix">>));
+    summary(cb_context:set_db_name(Context, ratedeck_db(Context)), cb_context:req_value(Context, <<"prefix">>));
 validate_rates(Context, ?HTTP_PUT) ->
-    create(cb_context:set_account_db(Context, ratedeck_db(Context))).
+    create(cb_context:set_db_name(Context, ratedeck_db(Context))).
 
 -spec validate_rate(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_rate(Context, Id, ?HTTP_GET) ->
-    read(Id, cb_context:set_account_db(Context, ratedeck_db(Context)));
+    read(Id, cb_context:set_db_name(Context, ratedeck_db(Context)));
 validate_rate(Context, Id, ?HTTP_POST) ->
-    update(Id, cb_context:set_account_db(Context, ratedeck_db(Context)));
+    update(Id, cb_context:set_db_name(Context, ratedeck_db(Context)));
 validate_rate(Context, Id, ?HTTP_PATCH) ->
-    validate_patch(Id, cb_context:set_account_db(Context, ratedeck_db(Context)));
+    validate_patch(Id, cb_context:set_db_name(Context, ratedeck_db(Context)));
 validate_rate(Context, Id, ?HTTP_DELETE) ->
-    read(Id, cb_context:set_account_db(Context, ratedeck_db(Context))).
+    read(Id, cb_context:set_db_name(Context, ratedeck_db(Context))).
 
 -spec ratedeck_db(cb_context:context()) -> kz_term:ne_binary().
 ratedeck_db(Context) ->

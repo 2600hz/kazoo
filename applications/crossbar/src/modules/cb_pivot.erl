@@ -129,7 +129,7 @@ debug_read(Context, ?MATCH_MODB_PREFIX(Year, Month, CallId)) ->
                                ,{'startkey', [CallId]}
                                ,'include_docs'
                                ]
-                              ,cb_context:set_account_db(Context, AccountModb)
+                              ,cb_context:set_db_name(Context, AccountModb)
                               ,fun normalize_debug_read/2
                               ),
     case cb_context:resp_status(Context1) of

@@ -109,7 +109,7 @@ remove_deprecated_modules(Modules, Deprecated) ->
     case lists:foldl(fun lists:delete/2, Modules, Deprecated) of
         Modules -> Modules;
         Ms ->
-            io:format(" removed deprecated modules from autoloaded modules: ~p~n", [Deprecated]),
+            ?SUP_LOG_INFO(" removed deprecated modules from autoloaded modules: ~p~n", [Deprecated]),
             {'ok', _} = crossbar_config:set_autoload_modules(Ms),
             Ms
     end.
@@ -135,7 +135,7 @@ migrate_account_data(Account) ->
 -spec add_missing_modules(kz_term:atoms(), kz_term:atoms()) -> 'no_return'.
 add_missing_modules(_, []) -> 'no_return';
 add_missing_modules(Modules, MissingModules) ->
-    io:format("  saving autoload_modules with missing modules added: ~p~n", [MissingModules]),
+    ?SUP_LOG_INFO("  saving autoload_modules with missing modules added: ~p~n", [MissingModules]),
     {'ok', _} = crossbar_config:set_autoload_modules(lists:sort(Modules ++ MissingModules)),
     'no_return'.
 
@@ -147,7 +147,7 @@ add_missing_modules(Modules, MissingModules) ->
 %%------------------------------------------------------------------------------
 -spec refresh() -> 'ok'.
 refresh() ->
-    io:format("please use kapps_maintenance:refresh().").
+    ?SUP_LOG_INFO("please use kapps_maintenance:refresh().").
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -157,7 +157,7 @@ refresh() ->
 %%------------------------------------------------------------------------------
 -spec refresh(input_term()) -> 'ok'.
 refresh(Value) ->
-    io:format("please use kapps_maintenance:refresh(~p).", [Value]).
+    ?SUP_LOG_INFO("please use kapps_maintenance:refresh(~p).", [Value]).
 
 -spec flush() -> 'ok'.
 flush() ->
@@ -172,7 +172,7 @@ flush() ->
 start_module(Module) ->
     case crossbar_init:start_mod(Module) of
         'ok' -> maybe_autoload_module(kz_term:to_binary(Module));
-        {'error', Error} -> io:format("failed to start ~s: ~p~n", [Module, Error])
+        {'error', Error} -> ?SUP_LOG_INFO("failed to start ~s: ~p~n", [Module, Error])
     end.
 
 -spec maybe_autoload_module(kz_term:ne_binary()) -> 'ok'.
@@ -180,10 +180,10 @@ maybe_autoload_module(Module) ->
     Mods = crossbar_config:autoload_modules(),
     case lists:member(Module, Mods) of
         'true' ->
-            io:format("module ~s started~n", [Module]);
+            ?SUP_LOG_INFO("module ~s started~n", [Module]);
         'false' ->
             persist_module(Module, Mods),
-            io:format("started and added ~s to autoloaded modules~n", [Module])
+            ?SUP_LOG_INFO("started and added ~s to autoloaded modules~n", [Module])
     end.
 
 -spec persist_module(kz_term:ne_binary(), kz_term:ne_binaries()) -> 'ok'.
@@ -203,7 +203,7 @@ stop_module(Module) ->
     'ok' = crossbar_init:stop_mod(Module),
     Mods = crossbar_config:autoload_modules(),
     {'ok', _} = crossbar_config:set_default_autoload_modules(lists:delete(kz_term:to_binary(Module), Mods)),
-    io:format("stopped and removed ~s from autoloaded modules~n", [Module]).
+    ?SUP_LOG_INFO("stopped and removed ~s from autoloaded modules~n", [Module]).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -223,16 +223,16 @@ find_account_by_number(Number) when not is_binary(Number) ->
 find_account_by_number(Number) ->
     case knm_number:lookup_account(Number) of
         {'ok', AccountId, _} ->
-            AccountDb = kz_util:format_account_db(AccountId),
+            AccountDb = kzs_util:format_account_db(AccountId),
             print_account_info(AccountDb, AccountId);
         {'error', {'not_in_service', AssignedTo}} ->
-            AccountDb = kz_util:format_account_db(AssignedTo),
+            AccountDb = kzs_util:format_account_db(AssignedTo),
             print_account_info(AccountDb, AssignedTo);
         {'error', {'account_disabled', AssignedTo}} ->
-            AccountDb = kz_util:format_account_db(AssignedTo),
+            AccountDb = kzs_util:format_account_db(AssignedTo),
             print_account_info(AccountDb, AssignedTo);
         {'error', Reason}=E ->
-            io:format("failed to find account assigned to number '~s': ~p~n", [Number, Reason]),
+            ?SUP_LOG_INFO("failed to find account assigned to number '~s': ~p~n", [Number, Reason]),
             E
     end.
 
@@ -258,7 +258,7 @@ find_account_by_name(Name) ->
                          ],
             {'multiples', AccountIds};
         {'error', Reason}=E ->
-            io:format("failed to find account: ~p~n", [Reason]),
+            ?SUP_LOG_INFO("failed to find account: ~p~n", [Reason]),
             E
     end.
 
@@ -284,7 +284,7 @@ find_account_by_realm(Realm) ->
                          ],
             {'multiples', AccountIds};
         {'error', Reason}=E ->
-            io:format("failed to find account: ~p~n", [Reason]),
+            ?SUP_LOG_INFO("failed to find account: ~p~n", [Reason]),
             E
     end.
 
@@ -296,7 +296,7 @@ find_account_by_realm(Realm) ->
           {'ok', kz_term:ne_binary()} |
           {'error', any()}.
 find_account_by_id(Id) when is_binary(Id) ->
-    print_account_info(kz_util:format_account_id(Id, 'encoded'));
+    print_account_info(kzs_util:format_account_db(Id));
 find_account_by_id(Id) ->
     find_account_by_id(kz_term:to_binary(Id)).
 
@@ -309,11 +309,9 @@ allow_account_number_additions(AccountId) ->
     Update = [{kzd_accounts:path_allow_number_additions(), 'true'}],
     case kzd_accounts:update(AccountId, Update) of
         {'ok', _A} ->
-            io:format("  account ~s allowed to add numbers: ~s~n", [AccountId, kz_json:encode(_A)]),
-            lager:debug("  account ~s allowed to add numbers: ~s", [AccountId, kz_json:encode(_A)]);
+            ?SUP_LOG_INFO("  account ~s allowed to add numbers: ~s~n", [AccountId, kz_json:encode(_A)]);
         {'error', _R} ->
-            io:format("  failed to allow account ~s to add numbers: ~p~n", [AccountId, _R]),
-            lager:debug("  failed to allow account ~s to add numbers: ~p", [AccountId, _R]),
+            ?SUP_LOG_INFO("  failed to allow account ~s to add numbers: ~p~n", [AccountId, _R]),
             'failed'
     end.
 
@@ -362,11 +360,9 @@ promote_account(AccountId) ->
     Update = [{kzd_accounts:path_superduper_admin(), 'true'}],
     case kzd_accounts:update(AccountId, Update) of
         {'ok', _A} ->
-            io:format("  account ~s is admin-ified: ~s~n", [AccountId, kz_json:encode(_A)]),
-            lager:debug("  account ~s is admin-ified: ~s~n", [AccountId, kz_json:encode(_A)]);
+            ?SUP_LOG_INFO("  account ~s is admin-ified: ~s~n", [AccountId, kz_json:encode(_A)]);
         {'error', _R} ->
-            io:format("  failed to admin-ify account ~s: ~p~n", [AccountId, _R]),
-            lager:debug("  failed to admin-ify account ~s: ~p~n", [AccountId, _R]),
+            ?SUP_LOG_INFO("  failed to admin-ify account ~s: ~p~n", [AccountId, _R]),
             'failed'
     end.
 
@@ -423,29 +419,27 @@ create_account(AccountName, Realm, Username, Password) ->
                   ).
 
 log_error(Type, Reason, ST, AccountName) ->
-    lager:error("crashed creating account: ~s: ~p", [Type, Reason]),
-    kz_log:log_stacktrace(ST),
-
-    io:format("failed to create '~s': ~p~n", [AccountName, Reason]),
+    ?SUP_LOG_ERROR("crashed creating account: ~s: ~p", [Type, Reason]),
+    ?SUP_LOG_ERROR("stacktrace: ~p", [ST]),
+    ?SUP_LOG_INFO("failed to create '~s': ~p~n", [AccountName, Reason]),
     'failed'.
-
 
 -spec maybe_promote_account(cb_context:context()) -> {'ok', cb_context:context()}.
 maybe_promote_account(Context) ->
-    AccountDb = cb_context:account_db(Context),
+    AccountDb = cb_context:db_name(Context),
     AccountId = cb_context:account_id(Context),
 
     case kapps_util:get_all_accounts() of
         [AccountDb] ->
-            lager:info("account ~s is the first, promoting it to sysadmin", [AccountId]),
+            ?SUP_LOG_INFO("account ~s is the first, promoting it to sysadmin", [AccountId]),
             'ok' = promote_account(AccountId),
             'ok' = allow_account_number_additions(AccountId),
             'ok' = kz_services_reseller:force_promote(AccountId),
             'ok' = update_system_config(AccountId),
-            lager:info("finished promoting account"),
+            ?SUP_LOG_INFO("finished promoting account"),
             {'ok', Context};
         _Else ->
-            lager:debug("account ~s is not the first account in the system", [AccountId]),
+            ?SUP_LOG_DEBUG("account ~s is not the first account in the system", [AccountId]),
             {'ok', Context}
     end.
 
@@ -472,8 +466,7 @@ create_fold(F, {'ok', C}) -> F(C).
 -spec update_system_config(kz_term:ne_binary()) -> 'ok'.
 update_system_config(AccountId) ->
     {'ok', _} = kapps_config:set(<<"accounts">>, <<"master_account_id">>, AccountId),
-    io:format("updated master account id in system_config.accounts~n"),
-    lager:debug("updated master account id in system_config.accounts~n").
+    ?SUP_LOG_INFO("updated master account id in system_config.accounts~n").
 
 -spec prechecks(cb_context:context()) -> {'ok', cb_context:context()}.
 prechecks(Context) ->
@@ -484,7 +477,7 @@ prechecks(Context) ->
            ,fun do_schemas_exist/0
            ],
     'true' = lists:all(fun(F) -> F() end, Funs),
-    lager:info("prechecks passed"),
+    ?SUP_LOG_INFO("prechecks passed"),
     {'ok', Context}.
 
 -spec is_crossbar_running() -> boolean().
@@ -498,7 +491,7 @@ start_crossbar() ->
     case kapps_controller:start_app('crossbar') of
         {'ok', _} -> 'true';
         {'error', _E} ->
-            io:format("failed to start crossbar: ~p~n", [_E]),
+            ?SUP_LOG_INFO("failed to start crossbar: ~p~n", [_E]),
             'false'
     end.
 
@@ -525,7 +518,7 @@ db_exists(Database, ShouldRetry) ->
     case kz_datamgr:db_exists(Database) of
         'true' -> 'true';
         'false' when ShouldRetry ->
-            io:format("db '~s' doesn't exist~n", [Database]),
+            ?SUP_LOG_INFO("db '~s' doesn't exist~n", [Database]),
             _ = kapps_maintenance:refresh(Database),
             db_exists(Database, 'false');
         'false' ->
@@ -554,14 +547,14 @@ does_schema_exist(Schema) ->
 maybe_fload(Schema) ->
     case kz_json_schema:fload(Schema) of
         {'ok', SchemaJObj} ->
-            lager:info("schema ~s exists on disk, refreshing in db", [Schema]),
+            ?SUP_LOG_INFO("schema ~s exists on disk, refreshing in db", [Schema]),
             case kz_datamgr:save_doc(?KZ_SCHEMA_DB, SchemaJObj) of
                 {'ok', _} -> 'ok';
                 {'error', 'conflict'} -> 'ok'
             end,
             maybe_load_refs(SchemaJObj);
         {'error', _E} ->
-            lager:error("schema ~s not in db or on disk: ~p", [Schema, _E]),
+            ?SUP_LOG_ERROR("schema ~s not in db or on disk: ~p", [Schema, _E]),
             throw(kz_json:from_list([{<<"error">>, <<"schema ", Schema/binary, " not found">>}
                                     ,{<<"schema">>, Schema}
                                     ])
@@ -603,11 +596,11 @@ validate_account(JObj, Context) ->
     Context1 = apply('cb_accounts', 'validate', Payload),
     case cb_context:resp_status(Context1) of
         'success' ->
-            {'ok', Context1};
+            {'ok', cb_context:set_auth_account_id(Context1, cb_context:account_id(Context1))};
         _Status ->
             {'error', {_Code, _Msg, Errors}} = cb_context:response(Context1),
             AccountId = cb_context:account_id(Context1),
-            io:format("failed to validate account ~s: ~p ~s~n", [AccountId, _Code, _Msg]),
+            ?SUP_LOG_INFO("failed to validate account ~s: ~p ~s~n", [AccountId, _Code, _Msg]),
             _ = cb_accounts:delete_account(AccountId),
             throw(Errors)
     end.
@@ -625,8 +618,7 @@ account_nouns() ->
     end.
 
 master_admin(MasterAccountId) ->
-    AccountDb = kz_util:format_account_db(MasterAccountId),
-    case kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, []) of
+    case kz_datamgr:get_results(MasterAccountId, <<"users/crossbar_listing">>, []) of
         {'ok', Users} -> find_first_admin(Users);
         {'error', _} -> 'undefined'
     end.
@@ -653,15 +645,18 @@ validate_user(JObj, Context) ->
                                   ,{fun cb_context:set_resp_status/2, 'fatal'}
                                   ,{fun cb_context:set_doc/2, 'undefined'}
                                   ,{fun cb_context:set_resp_data/2, 'undefined'}
+                                  ,{fun cb_context:set_db_name/2, 'undefined'}
+                                  ,{fun cb_context:set_auth_account_id/2, cb_context:account_id(Context)}
                                   ]
                                  )
               ],
     Context1 = crossbar_bindings:fold(<<"v2_resource.validate.users">>, Payload),
     case cb_context:resp_status(Context1) of
-        'success' -> {'ok', Context1};
+        'success' ->
+            {'ok', Context1};
         _Status ->
             {'error', {_Code, _Msg, Errors}} = cb_context:response(Context1),
-            io:format("failed to validate user: ~p ~s~n", [_Code, _Msg]),
+            ?SUP_LOG_INFO("failed to validate user: ~p ~s~n", [_Code, _Msg]),
             throw(Errors)
     end.
 
@@ -673,25 +668,25 @@ validate_user(JObj, Context) ->
 create_account(Context) ->
     Context1 = apply('cb_accounts', 'put', [Context | account_nouns()]),
     AccountId = cb_context:account_id(Context1),
-    AccountDb = cb_context:account_db(Context1),
+    AccountDb = cb_context:db_name(Context1),
     case cb_context:resp_status(Context1) of
         'success' when AccountId =/= 'undefined' ->
-            io:format("created new account '~s' in db '~s'~n"
-                     ,[AccountId, AccountDb]
-                     ),
-            {'ok', Context1};
+            ?SUP_LOG_INFO("created new account '~s' in db '~s'~n"
+                         ,[AccountId, AccountDb]
+                         ),
+            {'ok', cb_context:set_account_id(Context1, AccountId)};
         'success' ->
-            AccountIdFromDb = kz_util:format_account_id(AccountDb),
-            io:format("created new account '~s' in db '~s'~n"
-                     ,[AccountIdFromDb, AccountDb]
-                     ),
+            AccountIdFromDb = kzs_util:format_account_id(AccountDb),
+            ?SUP_LOG_INFO("created new account '~s' in db '~s'~n"
+                         ,[AccountIdFromDb, AccountDb]
+                         ),
             {'ok', cb_context:set_account_id(Context1, AccountIdFromDb)};
         _Status ->
             {'error', {_Code, _Msg, Errors}} = cb_context:response(Context1),
             DocAccountId = kz_doc:id(cb_context:req_data(Context)),
-            kz_datamgr:db_delete(kz_util:format_account_db(DocAccountId)),
+            kz_datamgr:db_delete(kzs_util:format_account_db(DocAccountId)),
 
-            io:format("failed to create the account ~s: ~p ~s", [DocAccountId, _Code, _Msg]),
+            ?SUP_LOG_ERROR("failed to create the account ~s: ~p ~s", [DocAccountId, _Code, _Msg]),
             throw(Errors)
     end.
 
@@ -704,32 +699,32 @@ create_user(Context) ->
     Context1 = crossbar_bindings:fold(<<"v2_resource.execute.put.users">>, [Context]),
     case cb_context:resp_status(Context1) of
         'success' ->
-            io:format("created new account admin user '~s'~n", [kz_doc:id(cb_context:doc(Context1))]),
+            ?SUP_LOG_INFO("created new account admin user '~s'~n", [kz_doc:id(cb_context:doc(Context1))]),
             {'ok', Context1};
         _Status ->
             {'error', {_Code, _Msg, Errors}} = cb_context:response(Context1),
-            io:format("failed to create the admin user: ~p ~s", [_Code, _Msg]),
+            ?SUP_LOG_INFO("failed to create the admin user: ~p ~s", [_Code, _Msg]),
             throw(Errors)
     end.
 
 -spec print_account_info(kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()}.
 print_account_info(AccountDb) ->
-    AccountId = kz_util:format_account_id(AccountDb, 'raw'),
+    AccountId = kzs_util:format_account_id(AccountDb),
     print_account_info(AccountDb, AccountId).
 
 -spec print_account_info(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_term:ne_binary()}.
 print_account_info(AccountDb, AccountId) ->
     case kz_datamgr:open_doc(AccountDb, AccountId) of
         {'ok', JObj} ->
-            io:format("Account ID: ~s (~s)~n", [AccountId, AccountDb]),
-            io:format("  Name: ~s~n", [kzd_accounts:name(JObj)]),
-            io:format("  Realm: ~s~n", [kzd_accounts:realm(JObj)]),
-            io:format("  Enabled: ~s~n", [kzd_accounts:is_enabled(JObj)]),
-            io:format("  System Admin: ~s~n", [kzd_accounts:is_superduper_admin(JObj)]);
+            ?SUP_LOG_INFO("Account ID: ~s (~s)~n", [AccountId, AccountDb]),
+            ?SUP_LOG_INFO("  Name: ~s~n", [kzd_accounts:name(JObj)]),
+            ?SUP_LOG_INFO("  Realm: ~s~n", [kzd_accounts:realm(JObj)]),
+            ?SUP_LOG_INFO("  Enabled: ~s~n", [kzd_accounts:is_enabled(JObj)]),
+            ?SUP_LOG_INFO("  System Admin: ~s~n", [kzd_accounts:is_superduper_admin(JObj)]);
         {'error', 'not_found'} ->
-            io:format("Account ID: ~s (~s) does not exist~n", [AccountId, AccountDb]);
+            ?SUP_LOG_INFO("Account ID: ~s (~s) does not exist~n", [AccountId, AccountDb]);
         {'error', _} ->
-            io:format("Account ID: ~s (~s)~n", [AccountId, AccountDb])
+            ?SUP_LOG_INFO("Account ID: ~s (~s)~n", [AccountId, AccountDb])
     end,
     {'ok', AccountId}.
 
@@ -739,18 +734,18 @@ print_account_info(AccountDb, AccountId) ->
 %%------------------------------------------------------------------------------
 -spec move_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 move_account(Account, ToAccount) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    ToAccountId = kz_util:format_account_id(ToAccount, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
+    ToAccountId = kzs_util:format_account_id(ToAccount),
     maybe_move_account(AccountId, ToAccountId).
 
 -spec maybe_move_account(kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
 maybe_move_account(AccountId, AccountId) ->
-    io:format("can not move to the same account~n");
+    ?SUP_LOG_INFO("can not move to the same account~n");
 maybe_move_account(AccountId, ToAccountId) ->
     case crossbar_util:move_account(AccountId, ToAccountId) of
-        {'ok', _} -> io:format("move complete!~n");
+        {'ok', _} -> ?SUP_LOG_INFO("move complete!~n");
         {'error', Reason} ->
-            io:format("unable to complete move: ~p~n", [Reason])
+            ?SUP_LOG_INFO("unable to complete move: ~p~n", [Reason])
     end.
 
 %%------------------------------------------------------------------------------
@@ -782,7 +777,7 @@ init_app(AppPath) ->
 -spec init_app(file:filename_all(), kz_term:api_binary()) -> 'ok'.
 init_app(AppPath, AppUrl) ->
     Keys = [<<"api_url">>],
-    io:format("trying to init app from ~s~n", [AppPath]),
+    ?SUP_LOG_INFO("trying to init app from ~s~n", [AppPath]),
     maybe_update_app(AppPath, AppUrl, Keys).
 
 -spec refresh_apps(file:name()) -> 'ok'.
@@ -801,7 +796,7 @@ refresh_app(AppPath) ->
 
 -spec refresh_app(file:filename_all(), kz_term:api_binary()) -> 'ok'.
 refresh_app(AppPath, AppUrl) ->
-    io:format("trying to refresh app from ~s~n", [AppPath]),
+    ?SUP_LOG_INFO("trying to refresh app from ~s~n", [AppPath]),
     maybe_update_app(AppPath, AppUrl, ?REFRESH_APP_KEYS).
 
 -spec find_apps(file:name()) -> [file:name()].
@@ -809,7 +804,7 @@ find_apps(AppsPath) ->
     AccFun =
         fun(AppJSONPath, Acc) ->
                 try
-                    lager:debug("find...~p", [AppJSONPath]),
+                    ?SUP_LOG_DEBUG("find...~p", [AppJSONPath]),
                     App = AppJSONPath, %%filename:absname(AppJSONPath),
                     %% /.../App/metadata/app.json --> App
                     [filename:dirname(filename:dirname(App)) | Acc]
@@ -827,13 +822,13 @@ maybe_update_app(AppPath, AppUrl, Keys) ->
         {'ok', MetaData} ->
             maybe_create_app(AppPath, maybe_set_api_url(AppUrl, MetaData), Keys);
         {'invalid_data', _E} ->
-            io:format("  failed to validate app data ~s: ~p~n", [AppPath, _E])
+            ?SUP_LOG_INFO("  failed to validate app data ~s: ~p~n", [AppPath, _E])
     catch
         'error':{'badmatch', {'error', 'enoent'}} ->
-            io:format("  failed to incorporate app because there was no app.json in ~s~n"
-                     ,[filename:join([AppPath, <<"metadata">>])]);
+            ?SUP_LOG_INFO("  failed to incorporate app because there was no app.json in ~s~n"
+                         ,[filename:join([AppPath, <<"metadata">>])]);
         'error':_E ->
-            io:format("  failed to find metadata in ~s: ~p~n", [AppPath, _E])
+            ?SUP_LOG_INFO("  failed to find metadata in ~s: ~p~n", [AppPath, _E])
     end.
 
 -spec maybe_set_api_url(kz_term:api_binary(), kz_json:object()) -> kz_json:object().
@@ -852,11 +847,11 @@ maybe_create_app(AppPath, MetaData, Keys, MasterAccountDb) ->
     AppName = kzd_app:name(MetaData),
     case find_app(MasterAccountDb, AppName) of
         {'ok', JObj} ->
-            io:format(" app ~s already loaded in system~n", [AppName]),
+            ?SUP_LOG_INFO(" app ~s already loaded in system~n", [AppName]),
             AppJObj = kz_json:get_json_value(<<"doc">>, JObj),
             maybe_update_app(AppPath, MetaData, Keys, MasterAccountDb, AppJObj);
         {'error', 'not_found'} -> create_app(AppPath, MetaData, MasterAccountDb);
-        {'error', _E} -> io:format(" failed to find app ~s: ~p", [AppName, _E])
+        {'error', _E} -> ?SUP_LOG_INFO(" failed to find app ~s: ~p", [AppName, _E])
     end.
 
 -spec create_app(file:filename_all(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
@@ -866,18 +861,18 @@ create_app(AppPath, MetaData, MasterAccountDb) ->
     case kz_datamgr:save_doc(MasterAccountDb, Doc) of
         {'ok', AppJObj} ->
             AppId = kz_doc:id(AppJObj),
-            io:format(" saved app ~s as doc ~s~n", [kzd_app:name(AppJObj), AppId]),
+            ?SUP_LOG_INFO(" saved app ~s as doc ~s~n", [kzd_app:name(AppJObj), AppId]),
             maybe_add_images(AppPath, AppId, MetaData, MasterAccountDb);
         {'error', _E} ->
-            io:format(" failed to save app ~s to ~s: ~p~n"
-                     ,[kzd_app:name(MetaData), MasterAccountDb, _E])
+            ?SUP_LOG_INFO(" failed to save app ~s to ~s: ~p~n"
+                         ,[kzd_app:name(MetaData), MasterAccountDb, _E])
     end.
 
 -spec maybe_update_app(file:filename_all(), kz_json:object(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_json:object()) -> 'no_return'.
 maybe_update_app(AppPath, MetaData, Keys, MasterAccountDb, AppJObj) ->
     CurrentDocId = kz_doc:id(AppJObj),
     case update_app_updates(Keys, MetaData, AppJObj) of
-        [] -> io:format(" no metadata changes for app ~s~n", [CurrentDocId]);
+        [] -> ?SUP_LOG_INFO(" no metadata changes for app ~s~n", [CurrentDocId]);
         Updates -> save_app_updates(MasterAccountDb, CurrentDocId, AppJObj, Updates)
     end,
     'ok' = delete_old_images(CurrentDocId, MetaData, MasterAccountDb),
@@ -888,9 +883,9 @@ save_app_updates(MasterAccountDb, CurrentDocId, AppJObj, Updates) ->
     case kz_datamgr:save_doc(MasterAccountDb, kz_json:set_values(Updates, AppJObj)) of
         {'ok', NewAppJObj} ->
             AppName = kzd_app:name(NewAppJObj),
-            io:format(" updated ~s app ~s metadata~n", [AppName, CurrentDocId]);
+            ?SUP_LOG_INFO(" updated ~s app ~s metadata~n", [AppName, CurrentDocId]);
         {'error', Err} ->
-            io:format(" error updating app ~s metadata: ~p~n", [CurrentDocId, Err])
+            ?SUP_LOG_INFO(" error updating app ~s metadata: ~p~n", [CurrentDocId, Err])
     end.
 
 -spec update_app_updates(kz_term:ne_binaries(), kz_json:object(), kz_json:object()) -> kz_term:proplist().
@@ -904,11 +899,11 @@ update_app_updates([Key|Keys], MetaData, AppJObj, Props) ->
     NewValue = kz_json:get_ne_value(Key, MetaData),
     case update_app_values_differ(CurrentValue, NewValue) of
         'false' ->
-            io:format(" not updating ~s, it is unchanged~n", [Key]),
+            ?SUP_LOG_INFO(" not updating ~s, it is unchanged~n", [Key]),
             update_app_updates(Keys, MetaData, AppJObj, Props);
         'true' ->
             Updates = [{Key, NewValue} | Props],
-            io:format(" preparing to update ~s~n", [Key]),
+            ?SUP_LOG_INFO(" preparing to update ~s~n", [Key]),
             update_app_updates(Keys, MetaData, AppJObj, Updates)
     end.
 
@@ -964,9 +959,9 @@ update_images(AppId, MasterAccountDb, ImagePaths, Type) ->
         {'ok', Images} -> add_images(AppId, MasterAccountDb, Images)
     catch
         'error':{'badmatch', {'error', 'enoent'}} ->
-            io:format("  failed to find ~s in ~s~n", [Type, AppId]);
+            ?SUP_LOG_INFO("  failed to find ~s in ~s~n", [Type, AppId]);
         'error':_E ->
-            io:format("  failed to load ~s in ~s: ~p~n", [Type, AppId, _E])
+            ?SUP_LOG_INFO("  failed to load ~s in ~s: ~p~n", [Type, AppId, _E])
     end.
 
 -spec add_images(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
@@ -979,8 +974,8 @@ add_images(AppId, MasterAccountDb, Images) ->
 -spec add_image(kz_term:ne_binary(), kz_term:ne_binary(), file:filename_all(), binary()) -> 'ok'.
 add_image(AppId, MasterAccountDb, ImageId, ImageData) ->
     case kz_datamgr:put_attachment(MasterAccountDb, AppId, ImageId, ImageData) of
-        {'ok', _} ->     io:format("   saved ~s to ~s~n", [ImageId, AppId]);
-        {'error', _E} -> io:format("   failed to save ~s to ~s: ~p~n", [ImageId, AppId, _E])
+        {'ok', _} ->     ?SUP_LOG_INFO("   saved ~s to ~s~n", [ImageId, AppId]);
+        {'error', _E} -> ?SUP_LOG_INFO("   failed to save ~s to ~s: ~p~n", [ImageId, AppId, _E])
     end.
 
 -spec read_images(image_paths()) ->
@@ -1011,7 +1006,7 @@ find_metadata(AppPath) ->
 apps() ->
     {'ok', MA} = kapps_util:get_master_account_db(),
     case kz_datamgr:get_results(MA, ?CB_APPS_STORE_LIST) of
-        {'error', _R} -> lager:debug("failed to read apps in ~s: ~p", [MA, _R]);
+        {'error', _R} -> ?SUP_LOG_DEBUG("failed to read apps in ~s: ~p", [MA, _R]);
         {'ok', JObjs} -> lists:foreach(fun print_app/1, JObjs)
     end,
     'no_return'.
@@ -1024,7 +1019,7 @@ app(AppNameOrId) ->
         {'error', _} ->
             case kz_datamgr:open_doc(MA, AppNameOrId) of
                 {'ok', AppJObj} -> print_app(view_app(AppJObj));
-                _ -> io:format("unknown app\n"), 'no_return'
+                _ -> ?SUP_LOG_INFO("unknown app\n"), 'no_return'
             end
     end.
 
@@ -1049,10 +1044,10 @@ view_app(AppJObj) ->
                       ]).
 
 print_app(AppJObj) ->
-    io:format("App ~s\n", [kz_json:get_ne_value(<<"key">>, AppJObj)]),
+    ?SUP_LOG_INFO("App ~s\n", [kz_json:get_ne_value(<<"key">>, AppJObj)]),
     _ = put('pp_lvl', 1),
     _ = print_kvs(kz_json:get_json_value(<<"value">>, AppJObj)),
-    io:format("\n"),
+    ?SUP_LOG_INFO("\n"),
     'no_return'.
 
 print_kvs(JObj) -> kz_json:foreach(fun print_k_v/1, JObj).
@@ -1061,9 +1056,9 @@ print_k_v({K, V}) ->
     Lvl = get('pp_lvl'),
     Indent = string:copies("  ", Lvl),
     case kz_json:is_json_object(V) of
-        'false' -> io:format("~s~s: ~s\n", [Indent, K, kz_json:encode(V)]);
+        'false' -> ?SUP_LOG_INFO("~s~s: ~s\n", [Indent, K, kz_json:encode(V)]);
         'true' ->
-            io:format("~s~s:\n", [Indent, K]),
+            ?SUP_LOG_INFO("~s~s:\n", [Indent, K]),
             _ = put('pp_lvl', Lvl + 1),
             _ = print_kvs(V),
             _ = put('pp_lvl', Lvl)
@@ -1079,7 +1074,7 @@ update_app(AppId, Path, Value) ->
             UpdateOptions = [{'update', Updates}],
             case kz_datamgr:update_doc(MA, AppId, UpdateOptions) of
                 {'ok', _} -> app(AppId);
-                {'error', _R} -> io:format("updating ~s failed: ~p\n", [AppId, _R])
+                {'error', _R} -> ?SUP_LOG_INFO("updating ~s failed: ~p\n", [AppId, _R])
             end
     end,
     'no_return'.
@@ -1110,14 +1105,14 @@ set_app_features(AppId, Value) ->
 -spec set_app_icon(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 set_app_icon(AppId, PathToPNGIcon) ->
     {'ok', MA} = kapps_util:get_master_account_db(),
-    io:format("Processing...\n"),
+    ?SUP_LOG_INFO("Processing...\n"),
     Icon = {filename:basename(PathToPNGIcon), PathToPNGIcon},
     update_icon(AppId, MA, Icon).
 
 -spec set_app_screenshots(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.
 set_app_screenshots(AppId, PathToScreenshotsFolder) ->
     {'ok', MA} = kapps_util:get_master_account_db(),
-    io:format("Processing...\n"),
+    ?SUP_LOG_INFO("processing...\n"),
     SShots = [{filename:basename(SShot), SShot}
               || SShot <- filelib:wildcard(kz_term:to_list(PathToScreenshotsFolder) ++ "/*.png")
              ],
@@ -1132,9 +1127,9 @@ set_app_screenshots(AppId, PathToScreenshotsFolder) ->
 %%------------------------------------------------------------------------------
 -spec update_schemas() -> 'ok'.
 update_schemas() ->
-    lager:notice("starting system schemas update"),
+    ?SUP_LOG_WARNING("starting system schemas update"),
     kz_datamgr:revise_docs_from_folder(?KZ_SCHEMA_DB, ?APP, <<"schemas">>),
-    lager:notice("finished system schemas update").
+    ?SUP_LOG_WARNING("finished system schemas update").
 
 %%------------------------------------------------------------------------------
 %% @doc Updates system schemas using files in Crossbar `priv' folder during
@@ -1177,5 +1172,5 @@ db_init() ->
 
 -spec register_views() -> 'ok'.
 register_views() ->
-    lager:warning("crossbar register_views()"),
+    ?SUP_LOG_WARNING("crossbar register_views()"),
     kz_datamgr:register_views_from_folder('crossbar').

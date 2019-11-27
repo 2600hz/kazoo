@@ -233,7 +233,7 @@ get_selectors_db(#{account_id := AccountId
                   ,auth_account_id := AuthAccountId
                   }) ->
     true =  kzd_accounts:is_in_account_hierarchy(AuthAccountId, AccountId, true),
-    kz_util:format_resource_selectors_db(AccountId).
+    kzs_util:format_resource_selectors_db(AccountId).
 
 -spec split_keys(kz_term:ne_binaries(), non_neg_integer()) -> [kz_term:ne_binaries()].
 split_keys(Keys, BlockSize) -> split_keys(Keys, [], BlockSize).

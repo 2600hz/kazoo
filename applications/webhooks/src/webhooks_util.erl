@@ -321,7 +321,7 @@ failed_hook(#webhook{hook_id = HookId
 -spec save_attempt(kz_term:api_binary(), kz_json:object()) -> 'ok'.
 save_attempt(AccountId, Attempt) ->
     Now = kz_time:now_s(),
-    ModDb = kz_util:format_account_mod_id(AccountId, Now),
+    ModDb = kzs_util:format_account_mod_id(AccountId, Now),
 
     Doc = kz_json:set_values(
             props:filter_undefined(
@@ -641,7 +641,7 @@ init_webhooks(WebHooks, Year, Month) ->
 
 -spec init_webhook(kz_json:object(), kz_time:year(), kz_time:month()) -> 'ok'.
 init_webhook(WebHook, Year, Month) ->
-    Db = kz_util:format_account_id(kz_json:get_value(<<"key">>, WebHook), Year, Month),
+    Db = kzs_util:format_account_id(kz_json:get_value(<<"key">>, WebHook), Year, Month),
     kazoo_modb:maybe_create(Db),
     lager:debug("updated account_modb ~s", [Db]).
 
@@ -689,7 +689,7 @@ reenable(AccountId, <<"descendants">>) ->
 
 -spec enable_account_hooks(kz_term:ne_binary()) -> 'ok'.
 enable_account_hooks(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
 
     case kz_datamgr:get_results(?KZ_WEBHOOKS_DB
                                ,<<"webhooks/accounts_listing">>
@@ -725,7 +725,7 @@ hooks_to_reenable(Hooks) ->
 
 -spec enable_descendant_hooks(kz_term:ne_binary()) -> 'ok'.
 enable_descendant_hooks(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB
                                ,<<"accounts/listing_by_descendants">>
                                ,[{'startkey', [AccountId]}

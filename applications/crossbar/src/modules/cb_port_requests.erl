@@ -216,7 +216,7 @@ content_types_provided(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
 
 -spec content_types_provided_get(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) -> cb_context:context().
 content_types_provided_get(Context, Id, AttachmentId) ->
-    Context1 = cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB),
+    Context1 = cb_context:set_db_name(Context, ?KZ_PORT_REQUESTS_DB),
     cb_context:add_attachment_content_type(Context1, Id, AttachmentId).
 
 %%------------------------------------------------------------------------------
@@ -270,7 +270,7 @@ validate_port_requests(Context, ?HTTP_PUT) ->
 validate(Context, Id) ->
     Comments = kzd_port_requests:comments(cb_context:req_data(Context), []),
     Setters = [{fun cb_context:store/3, 'req_comments', Comments}
-              ,{fun cb_context:set_account_db/2, ?KZ_PORT_REQUESTS_DB}
+              ,{fun cb_context:set_db_name/2, ?KZ_PORT_REQUESTS_DB}
               ],
     C1 = cb_context:setters(Context, Setters),
     validate_port_request(set_port_authority(C1), Id, cb_context:req_verb(C1)).
@@ -373,7 +373,7 @@ put(Context, Id, ?PORT_ATTACHMENT) ->
     CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     Opts = [{'content_type', CT} | ?TYPE_CHECK_OPTION(?TYPE_PORT_REQUEST)],
     AName = cb_modules_util:attachment_name(Filename, CT),
-    Context1 = cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB),
+    Context1 = cb_context:set_db_name(Context, ?KZ_PORT_REQUESTS_DB),
     crossbar_doc:save_attachment(Id, AName, Contents, Context1, Opts).
 
 %%------------------------------------------------------------------------------
@@ -426,7 +426,7 @@ post(Context, Id, ?PORT_ATTACHMENT, AttachmentId) ->
             'undefined' -> lager:debug("no attachment named ~s", [AttachmentId]);
             _AttachmentMeta ->
                 lager:debug("deleting old attachment ~s", [AttachmentId]),
-                kz_datamgr:delete_attachment(cb_context:account_db(Context), Id, AttachmentId)
+                kz_datamgr:delete_attachment(cb_context:db_name(Context), Id, AttachmentId)
         end,
     crossbar_doc:save_attachment(Id, AttachmentId, Contents, Context, Options).
 
@@ -457,7 +457,7 @@ save(Context) ->
     NewDoc = kzd_accounts:set_tree(NewDoc1, kzd_accounts:tree(cb_context:account_doc(Context))),
     NewerDoc = kz_json:delete_keys([<<"reason">> | knm_port_request:public_fields()], NewDoc),
     Context1 = cb_context:setters(Context
-                                 ,[{fun cb_context:set_account_db/2, ?KZ_PORT_REQUESTS_DB}
+                                 ,[{fun cb_context:set_db_name/2, ?KZ_PORT_REQUESTS_DB}
                                   ,{fun cb_context:set_doc/2, NewerDoc}
                                   ]
                                  ),
@@ -664,7 +664,7 @@ fix_phonebook_comments(Comment) ->
 %%------------------------------------------------------------------------------
 -spec load_port_request(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 load_port_request(Context, Id) ->
-    Context1 = cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB),
+    Context1 = cb_context:set_db_name(Context, ?KZ_PORT_REQUESTS_DB),
     Context2 = crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(?TYPE_PORT_REQUEST)),
     case cb_context:resp_status(Context2) =:= 'success' of
         'false' -> Context2;
@@ -688,7 +688,7 @@ patch_then_validate_then_maybe_transition(Context, PortId, ToState) ->
                   end,
     Comments = kzd_port_requests:comments(cb_context:req_data(Context), []),
     Setters = [{fun cb_context:store/3, 'req_comments', Comments}
-              ,{fun cb_context:set_account_db/2, ?KZ_PORT_REQUESTS_DB}
+              ,{fun cb_context:set_db_name/2, ?KZ_PORT_REQUESTS_DB}
               ],
     Context1 = cb_context:setters(Context, Setters),
     LoadOptions = ?TYPE_CHECK_OPTION(?TYPE_PORT_REQUEST),
@@ -1162,7 +1162,7 @@ on_successful_validation(Context, 'undefined') ->
     on_successful_validation(Context, 'undefined', 'true');
 on_successful_validation(Context, Id) ->
     Context1 = crossbar_doc:load_merge(Id
-                                      ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                                      ,cb_context:set_db_name(Context, ?KZ_PORT_REQUESTS_DB)
                                       ,?TYPE_CHECK_OPTION(?TYPE_PORT_REQUEST)
                                       ),
     on_successful_validation(Context1, Id, can_update_port_request(Context1)).
@@ -1334,7 +1334,7 @@ load_attachment(AttachmentId, Context) ->
     Context1 = crossbar_doc:load_attachment(cb_context:doc(Context)
                                            ,AttachmentId
                                            ,?TYPE_CHECK_OPTION(?TYPE_PORT_REQUEST)
-                                           ,cb_context:set_account_db(Context, ?KZ_PORT_REQUESTS_DB)
+                                           ,cb_context:set_db_name(Context, ?KZ_PORT_REQUESTS_DB)
                                            ),
     Headers =
         #{<<"content-disposition">> => <<"attachment; filename=", AttachmentId/binary>>

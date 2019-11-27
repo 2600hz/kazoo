@@ -54,7 +54,7 @@ return_flow_doc(FlowId, AccountId) ->
 
 -spec return_flow_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> lookup_ret().
 return_flow_doc(FlowId, AccountId, Props) ->
-    Db = kz_util:format_account_db(AccountId),
+    Db = kzs_util:format_account_db(AccountId),
     case kz_datamgr:open_cache_doc(Db, FlowId) of
         {'ok', Doc} ->
             {'ok', kz_json:set_values(Props, Doc), contains_no_match(Doc)};
@@ -77,7 +77,7 @@ do_lookup(Number, AccountId) ->
 
 -spec do_lookup(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> lookup_ret().
 do_lookup(Number, AccountId, ViewName, LookupOptions) ->
-    Db = kz_util:format_account_db(AccountId),
+    Db = kzs_util:format_account_db(AccountId),
     Options = [{'key', Number}, 'include_docs'],
     LookupCallflows = props:is_true('lookup_callflows', LookupOptions, 'true'),
     case kz_datamgr:get_results(Db, ViewName, Options) of
@@ -106,7 +106,7 @@ do_lookup(Number, AccountId, ViewName, LookupOptions) ->
 
 -spec cache_flow_number(kz_term:ne_binary(), kz_term:ne_binary(), kzd_callflows:doc()) -> lookup_ret().
 cache_flow_number(Number, AccountId, Flow) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     CacheOptions = [{'origin', [{'db', AccountDb, kz_doc:type(Flow)}]}
                    ,{'expires', ?MILLISECONDS_IN_HOUR}
                    ],
@@ -138,7 +138,7 @@ fetch_patterns(AccountId)->
 
 -spec load_patterns(kz_term:ne_binary()) -> {'ok', patterns()} | {'error', 'not_found'}.
 load_patterns(AccountId) ->
-    Db = kz_util:format_account_db(AccountId),
+    Db = kzs_util:format_account_db(AccountId),
     case kz_datamgr:get_results(Db, ?MSG_LIST_BY_PATTERN, ['include_docs']) of
         {'ok', []} -> {'error', 'not_found'};
         {'ok', JObjs} -> compile_patterns(AccountId, JObjs);
@@ -172,7 +172,7 @@ compile_patterns(AccountId, [JObj | JObjs], Acc) ->
 
 -spec cache_patterns(kz_term:ne_binary(), patterns()) -> {'ok', patterns()}.
 cache_patterns(AccountId, Patterns) ->
-    AccountDb = kz_util:format_account_db(AccountId),
+    AccountDb = kzs_util:format_account_db(AccountId),
     CacheOptions = [{'origin', [{'db', AccountDb, <<"textflow">>}]}],
     kz_cache:store_local(?CACHE_NAME, ?MSG_PATTERN_CACHE_KEY(AccountId), Patterns, CacheOptions),
     {'ok', Patterns}.

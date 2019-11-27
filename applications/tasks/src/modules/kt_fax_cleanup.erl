@@ -196,7 +196,7 @@ format_modb(Doc) ->
     AccountId = kz_doc:account_id(Doc),
     {Year, Month, _D} = kz_term:to_date(kz_doc:created(Doc)),
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
-    ToDB = kz_util:format_account_modb(AccountMODb, 'encoded'),
+    ToDB = kzs_util:format_account_modb(AccountMODb, 'encoded'),
     ToId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_date:pad_month(Month), FromId),
     {FromDB, FromId, ToDB, ToId}.
 

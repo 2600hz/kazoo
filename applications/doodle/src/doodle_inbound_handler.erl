@@ -109,7 +109,7 @@ custom_header_token(Map, JObj, Token) ->
     case binary:split(Token, <<"@">>, ['global']) of
         [AuthorizingId, AccountId | _] ->
             AccountRealm = kzd_accounts:fetch_realm(AccountId),
-            AccountDb = kz_util:format_account_db(AccountId),
+            AccountDb = kzs_util:format_account_db(AccountId),
             case kz_datamgr:open_cache_doc(AccountDb, AuthorizingId) of
                 {'ok', Doc} ->
                     Props = props:filter_undefined([{?CCV(<<"Authorizing-Type">>), kz_doc:type(Doc)}

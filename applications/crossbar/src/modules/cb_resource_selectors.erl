@@ -207,12 +207,12 @@ set_selectors_db(Context) ->
     case is_global_request(Context) of
         'true' ->
             {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
-            MasterSelectorsDb = kz_util:format_resource_selectors_db(MasterAccountId),
-            cb_context:set_account_db(Context, MasterSelectorsDb);
+            MasterSelectorsDb = kzs_util:format_resource_selectors_db(MasterAccountId),
+            cb_context:set_db_name(Context, MasterSelectorsDb);
         'false' ->
             AccountId = cb_context:account_id(Context),
-            SelectorsDb = kz_util:format_resource_selectors_db(AccountId),
-            cb_context:set_account_db(Context, SelectorsDb)
+            SelectorsDb = kzs_util:format_resource_selectors_db(AccountId),
+            cb_context:set_db_name(Context, SelectorsDb)
     end.
 
 -spec set_account_db(cb_context:context()) -> cb_context:context().
@@ -220,7 +220,7 @@ set_account_db(Context) ->
     case is_global_request(Context) of
         'true' ->
             {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
-            cb_context:set_account_db(Context, MasterAccountDb);
+            cb_context:set_db_name(Context, MasterAccountDb);
         'false' -> Context
     end.
 

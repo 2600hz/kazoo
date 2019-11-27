@@ -40,50 +40,50 @@
         ,setters/2
         ,new/0
 
-        ,account_id/1, set_account_id/2
+        ,account_id/1, set_account_id/2, account_modb/1
         ,account_name/1, set_account_name/2
-        ,account_db/1, set_account_db/2
-        ,user_id/1, set_user_id/2
-        ,device_id/1, set_device_id/2
-        ,account_modb/1, account_modb/2, account_modb/3
-        ,set_account_modb/3, set_account_modb/4
-        ,reseller_id/1, set_reseller_id/2
-        ,account_realm/1
-        ,account_doc/1
-        ,auth_token_type/1, set_auth_token_type/2
-        ,auth_token/1, set_auth_token/2
-        ,auth_doc/1, set_auth_doc/2
-        ,auth_account_id/1, set_auth_account_id/2
-        ,auth_account_doc/1
-        ,auth_user_id/1
-        ,req_verb/1, set_req_verb/2
-        ,req_data/1, set_req_data/2
-        ,req_id/1, set_req_id/2
-        ,req_files/1, set_req_files/2
-        ,req_nouns/1, set_req_nouns/2
-        ,req_headers/1, set_req_headers/2
-        ,req_header/2, set_req_header/3
-        ,query_string/1, set_query_string/2
-        ,client_ip/1, set_client_ip/2
-        ,doc/1, set_doc/2, update_doc/2
-        ,load_merge_bypass/1, set_load_merge_bypass/2
-        ,start/1, set_start/2
-        ,pretty_print/1
-        ,resp_file/1, set_resp_file/2
-        ,resp_data/1, set_resp_data/2
-        ,resp_status/1, set_resp_status/2
-        ,resp_expires/1, set_resp_expires/2
-        ,api_version/1, set_api_version/2
-        ,resp_etag/1, set_resp_etag/2
-        ,resp_envelope/1, set_resp_envelope/2
         ,allow_methods/1, set_allow_methods/2
         ,allowed_methods/1, set_allowed_methods/2
-        ,method/1, set_method/2
-        ,path_tokens/1
+        ,api_version/1, set_api_version/2
+        ,auth_account_id/1, set_auth_account_id/2
+        ,auth_doc/1, set_auth_doc/2
+        ,auth_token/1, set_auth_token/2
+        ,auth_token_type/1, set_auth_token_type/2
+        ,client_ip/1, set_client_ip/2
+        ,db_name/1, set_db_name/2
+        ,device_id/1, set_device_id/2
+        ,doc/1, set_doc/2, update_doc/2
+        ,load_merge_bypass/1, set_load_merge_bypass/2
         ,magic_pathed/1, set_magic_pathed/2
+        ,method/1, set_method/2
+        ,query_string/1, set_query_string/2
+        ,req_data/1, set_req_data/2
+        ,req_files/1, set_req_files/2
+        ,req_header/2, set_req_header/3
+        ,req_headers/1, set_req_headers/2
+        ,req_id/1, set_req_id/2
+        ,req_nouns/1, set_req_nouns/2
+        ,req_verb/1, set_req_verb/2
+        ,reseller_id/1, set_reseller_id/2
+        ,resp_data/1, set_resp_data/2
+        ,resp_envelope/1, set_resp_envelope/2
+        ,resp_etag/1, set_resp_etag/2
+        ,resp_expires/1, set_resp_expires/2
+        ,resp_file/1, set_resp_file/2
+        ,resp_status/1, set_resp_status/2
+        ,start/1, set_start/2
+        ,user_id/1, set_user_id/2
+
+        ,pretty_print/1
+        ,path_tokens/1
         ,should_soft_delete/1
         ,should_paginate/1, set_should_paginate/2
         ,pagination_page_size/0, pagination_page_size/1
+        ,auth_account_doc/1
+        ,auth_user_id/1
+
+        ,account_realm/1
+        ,account_doc/1
 
         ,req_json/1, set_req_json/2
         ,resp_error_code/1, set_resp_error_code/2
@@ -186,11 +186,22 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 -spec account_id(context()) -> kz_term:api_ne_binary().
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
 
+-spec account_modb(context()) -> kz_term:ne_binary().
+account_modb(#cb_context{account_id=AcctId}) -> kzs_util:format_account_modb(AcctId, 'encoded').
+
 -spec account_name(context()) -> kz_term:api_ne_binary().
 account_name(#cb_context{account_name=Name}) -> Name.
 
 -spec user_id(context()) -> kz_term:api_ne_binary().
 user_id(#cb_context{user_id=UserId}) -> UserId.
+
+-spec db_name(context()) -> kz_term:ne_binary().
+db_name(#cb_context{db_name='undefined'
+                   ,account_id=AccountId
+                   }) ->
+    kzs_util:to_database(AccountId);
+db_name(#cb_context{db_name=DbName}) ->
+    DbName.
 
 -spec device_id(context()) -> kz_term:api_ne_binary().
 device_id(#cb_context{device_id=DeviceId}) -> DeviceId.
@@ -198,25 +209,8 @@ device_id(#cb_context{device_id=DeviceId}) -> DeviceId.
 -spec reseller_id(context()) -> kz_term:api_ne_binary().
 reseller_id(#cb_context{reseller_id=AcctId}) -> AcctId.
 
--spec account_db(context()) -> kz_term:api_ne_binary().
-account_db(#cb_context{db_name=AcctDb}) -> AcctDb.
-
 -spec profile_id(context()) -> kz_term:api_ne_binary().
 profile_id(#cb_context{profile_id = Value}) -> Value.
-
--spec account_modb(context()) -> kz_term:api_ne_binary().
-account_modb(Context) ->
-    kazoo_modb:get_modb(account_id(Context)).
-
--spec account_modb(context(), kz_time:now() | timeout()) -> kz_term:api_ne_binary().
-account_modb(Context, {_,_,_}=Timestamp) ->
-    kazoo_modb:get_modb(account_id(Context), Timestamp);
-account_modb(Context, Timestamp) when is_integer(Timestamp), Timestamp > 0 ->
-    kazoo_modb:get_modb(account_id(Context), Timestamp).
-
--spec account_modb(context(), kz_time:year(), kz_time:month()) -> kz_term:api_ne_binary().
-account_modb(Context, Year, Month) ->
-    kazoo_modb:get_modb(account_id(Context), Year, Month).
 
 -spec account_realm(context()) -> kz_term:api_ne_binary().
 account_realm(Context) ->
@@ -235,7 +229,6 @@ account_doc(#cb_context{account_id = AccountId}) ->
 -spec is_authenticated(context()) -> boolean().
 is_authenticated(#cb_context{auth_doc='undefined'}) -> 'false';
 is_authenticated(#cb_context{}) -> 'true'.
-
 
 -spec master_account_id(context()) -> kz_term:api_ne_binary().
 master_account_id(#cb_context{master_account_id = ?NE_BINARY = MasterId}) ->
@@ -518,6 +511,10 @@ set_account_name(#cb_context{}=Context, Name) ->
 set_user_id(#cb_context{}=Context, UserId) ->
     Context#cb_context{user_id=UserId}.
 
+-spec set_db_name(context(), kz_term:ne_binary()) -> context().
+set_db_name(#cb_context{}=Context, DbName) ->
+    Context#cb_context{db_name=DbName}.
+
 -spec set_device_id(context(), kz_term:ne_binary()) -> context().
 set_device_id(#cb_context{}=Context, DeviceId) ->
     Context#cb_context{device_id=DeviceId}.
@@ -525,18 +522,6 @@ set_device_id(#cb_context{}=Context, DeviceId) ->
 -spec set_reseller_id(context(), kz_term:api_ne_binary()) -> context().
 set_reseller_id(#cb_context{}=Context, AcctId) ->
     Context#cb_context{reseller_id=AcctId}.
-
--spec set_account_db(context(), kz_term:ne_binary()) -> context().
-set_account_db(#cb_context{}=Context, AcctDb) ->
-    Context#cb_context{db_name=AcctDb}.
-
--spec set_account_modb(context(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) -> context().
-set_account_modb(#cb_context{}=Context, Year, Month) ->
-    Context#cb_context{db_name=kazoo_modb:get_modb(account_id(Context), Year, Month)}.
-
--spec set_account_modb(context(), kz_term:ne_binary(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) -> context().
-set_account_modb(#cb_context{}=Context, AcctId, Year, Month) ->
-    Context#cb_context{db_name=kazoo_modb:get_modb(AcctId, Year, Month)}.
 
 -spec set_auth_token_type(context(), 'x-auth-token' | 'basic' | 'oauth' | 'unknown') -> context().
 set_auth_token_type(#cb_context{}=Context, AuthTokenType) ->

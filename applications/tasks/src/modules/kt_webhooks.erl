@@ -73,7 +73,7 @@ cleanup_orphaned_hooks(Accounts) ->
            || Account <- Accounts,
               begin
                   AccountId = kz_json:get_value(<<"key">>, Account),
-                  not kz_datamgr:db_exists(kz_util:format_account_id(AccountId, 'encoded'))
+                  not kz_datamgr:db_exists(kzs_util:format_account_db(AccountId))
               end
           ],
     _Rm =/= []

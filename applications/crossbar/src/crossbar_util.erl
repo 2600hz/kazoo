@@ -492,7 +492,7 @@ update_descendants_tree([Descendant|Descendants], Tree, NewResellerId, MovedAcco
             case kzd_accounts:update(Descendant, Updates) of
                 {'error', _E}=Error -> Error;
                 {'ok', _DescendantAccountJObj} ->
-                    AccountId = kz_util:format_account_id(Descendant),
+                    AccountId = kzs_util:format_account_id(Descendant),
                     lager:debug("updated descendant ~s (~s)", [AccountId, kz_doc:revision(_DescendantAccountJObj)]),
                     _ = kazoo_services_maintenance:update_tree(AccountId, ToTree, NewResellerId),
                     update_descendants_tree(Descendants, Tree, NewResellerId, MovedAccountId)
@@ -790,7 +790,7 @@ create_auth_token(Context, AuthModule, JObj) ->
               ,{<<"method">>, kz_term:to_binary(AuthModule)}
               ]),
     JObjToken = kz_doc:update_pvt_parameters(kz_json:from_list(Token)
-                                            ,kz_util:format_account_id(AccountId, 'encoded')
+                                            ,kzs_util:format_account_db(AccountId)
                                             ,Token
                                             ),
 
@@ -830,7 +830,7 @@ get_token_restrictions(AuthModule, AccountId, OwnerId) ->
 get_priv_level(_AccountId, 'undefined') ->
     cb_token_restrictions:default_priv_level();
 get_priv_level(AccountId, OwnerId) ->
-    AccountDB = kz_util:format_account_db(AccountId),
+    AccountDB = kzs_util:format_account_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDB, OwnerId) of
         {'ok', Doc} -> kzd_users:priv_level(Doc);
         {'error', _} -> cb_token_restrictions:default_priv_level()
@@ -845,7 +845,7 @@ get_system_token_restrictions(AuthModule) ->
 
 -spec get_account_token_restrictions(kz_term:ne_binary(), atom()) -> kz_term:api_object().
 get_account_token_restrictions(AccountId, AuthModule) ->
-    AccountDB = kz_util:format_account_db(AccountId),
+    AccountDB = kzs_util:format_account_db(AccountId),
     case kz_datamgr:open_cache_doc(AccountDB, ?CB_ACCOUNT_TOKEN_RESTRICTIONS) of
         {'error', _} -> 'undefined';
         {'ok', RestrictionsDoc} ->
@@ -881,7 +881,7 @@ descendants_count() ->
 
 -spec descendants_count(kz_term:proplist() | kz_term:ne_binary()) -> 'ok'.
 descendants_count(<<Account/binary>>) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
+    AccountId = kzs_util:format_account_id(Account),
     descendants_count([{'key', AccountId}]);
 descendants_count(Opts) ->
     ViewOptions = [{'group_level', 1}
@@ -965,7 +965,7 @@ maybe_refresh_fs_xml(Kind, Context) ->
 maybe_refresh_fs_xml('user', _Context, 'false') -> 'ok';
 maybe_refresh_fs_xml('user', Context, 'true') ->
     Doc = cb_context:doc(Context),
-    AccountDb = cb_context:account_db(Context),
+    AccountDb = cb_context:db_name(Context),
     Realm = kzd_accounts:fetch_realm(AccountDb),
     Id = kz_doc:id(Doc),
     Devices = get_devices_by_owner(AccountDb, Id),
@@ -982,13 +982,13 @@ maybe_refresh_fs_xml('device', Context, Precondition) ->
           andalso not kz_json:is_true(<<"enabled">>, Doc)
          )
     )
-        andalso refresh_fs_xml(kzd_accounts:fetch_realm(cb_context:account_db(Context))
+        andalso refresh_fs_xml(kzd_accounts:fetch_realm(cb_context:db_name(Context))
                               ,DbDoc
                               ),
     'ok';
 maybe_refresh_fs_xml('account', Context, _) ->
     Devices = get_account_devices(cb_context:account_id(Context)),
-    Realm = kzd_accounts:fetch_realm(cb_context:account_db(Context)),
+    Realm = kzd_accounts:fetch_realm(cb_context:db_name(Context)),
     lists:foreach(fun(DevDoc) -> refresh_fs_xml(Realm, DevDoc) end, Devices);
 maybe_refresh_fs_xml('sys_info', Context, Precondition) ->
     Doc = cb_context:doc(Context),
@@ -1048,7 +1048,7 @@ map_server(Server, Acc) ->
 
 -spec refresh_fs_xml(cb_context:context()) -> 'ok'.
 refresh_fs_xml(Context) ->
-    Realm = kzd_accounts:fetch_realm(cb_context:account_db(Context)),
+    Realm = kzd_accounts:fetch_realm(cb_context:db_name(Context)),
     DbDoc = cb_context:fetch(Context, 'db_doc'),
     refresh_fs_xml(Realm, DbDoc).
 
@@ -1081,7 +1081,7 @@ get_devices_by_owner(AccountDb, OwnerId) ->
 -spec get_account_devices(kz_term:api_binary()) -> kz_term:ne_binaries().
 get_account_devices('undefined') -> [];
 get_account_devices(Account) ->
-    AccountDb = kz_util:format_account_db(Account),
+    AccountDb = kzs_util:format_account_db(Account),
     case kz_datamgr:get_results(AccountDb, <<"devices/crossbar_listing">>, []) of
         {'ok', JObjs} -> [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
         {'error', _R} ->

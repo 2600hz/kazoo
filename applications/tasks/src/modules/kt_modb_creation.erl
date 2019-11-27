@@ -111,7 +111,7 @@ create_modbs_metered(_Year, _Month, _AccountsPerPass, _SecondsPerPass, {'error',
 -spec create_modb(kz_time:year(), kz_time:month(), kz_json:object()) -> boolean().
 create_modb(Year, Month, AccountView) ->
     AccountId = kz_doc:id(AccountView),
-    AccountMODB = kz_util:format_account_id(AccountId, Year, Month),
+    AccountMODB = kzs_util:format_account_id(AccountId, Year, Month),
     kazoo_modb:maybe_create(AccountMODB).
 
 -spec get_page(pos_integer(), kz_json:api_json_term()) -> kz_datamgr:paginated_results().

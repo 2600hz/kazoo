@@ -230,7 +230,7 @@ resource_exists(_WebhookId, ?PATH_TOKEN_ATTEMPTS) -> 'true'.
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    validate_webhooks(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB), cb_context:req_verb(Context)).
+    validate_webhooks(cb_context:set_db_name(Context, ?KZ_WEBHOOKS_DB), cb_context:req_verb(Context)).
 
 -spec validate_webhooks(cb_context:context(), http_method()) -> cb_context:context().
 validate_webhooks(Context, ?HTTP_GET) ->
@@ -256,7 +256,7 @@ validate(Context, ?PATH_TOKEN_SAMPLES) ->
             cb_context:setters(Context, Setters)
     end;
 validate(Context, Id) ->
-    validate_webhook(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB), Id, cb_context:req_verb(Context)).
+    validate_webhook(cb_context:set_db_name(Context, ?KZ_WEBHOOKS_DB), Id, cb_context:req_verb(Context)).
 
 -spec validate_webhook(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_webhook(Context, WebhookId, ?HTTP_GET) ->
@@ -288,11 +288,11 @@ validate_patch(Context, WebhookId) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _Id) ->
     Context1 = maybe_update_hook(Context),
-    crossbar_doc:save(cb_context:set_account_db(Context1, ?KZ_WEBHOOKS_DB)).
+    crossbar_doc:save(cb_context:set_db_name(Context1, ?KZ_WEBHOOKS_DB)).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    crossbar_doc:save(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
+    crossbar_doc:save(cb_context:set_db_name(Context, ?KZ_WEBHOOKS_DB)).
 
 -spec patch(cb_context:context()) -> cb_context:context().
 patch(Context) ->
@@ -304,7 +304,7 @@ patch(Context, WebhookId) ->
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
-    crossbar_doc:delete(cb_context:set_account_db(Context, ?KZ_WEBHOOKS_DB)).
+    crossbar_doc:delete(cb_context:set_db_name(Context, ?KZ_WEBHOOKS_DB)).
 
 -spec delete_account(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 delete_account(Context, AccountId) ->
@@ -418,7 +418,7 @@ summary_available(Context) ->
     Options = [{'mapper', fun normalize_available/3}
               ,'include_docs'
               ],
-    crossbar_view:load(cb_context:set_account_db(C1, MasterAccountDb), ?AVAILABLE_HOOKS, Options).
+    crossbar_view:load(cb_context:set_db_name(C1, MasterAccountDb), ?AVAILABLE_HOOKS, Options).
 
 %%------------------------------------------------------------------------------
 %% @doc

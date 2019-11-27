@@ -397,7 +397,7 @@ put(Context) ->
 
 -spec put_media(cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 put_media(Context, 'undefined') ->
-    put_media(cb_context:set_account_db(Context, ?KZ_MEDIA_DB), <<"ignore">>);
+    put_media(cb_context:set_db_name(Context, ?KZ_MEDIA_DB), <<"ignore">>);
 put_media(Context, _AccountId) ->
     case is_tts(cb_context:doc(Context)) of
         'true' -> create_update_tts(Context, <<"create">>);
@@ -410,7 +410,7 @@ post(Context, MediaId) ->
 
 -spec post_media_doc(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) -> cb_context:context().
 post_media_doc(Context, MediaId, 'undefined') ->
-    post_media_doc(cb_context:set_account_db(Context, ?KZ_MEDIA_DB), MediaId, <<"ignore">>);
+    post_media_doc(cb_context:set_db_name(Context, ?KZ_MEDIA_DB), MediaId, <<"ignore">>);
 post_media_doc(Context, MediaId, _AccountId) ->
     case is_tts(cb_context:doc(Context)) of
         'true' -> create_update_tts(Context, <<"update">>);
@@ -437,7 +437,7 @@ remove_tts_keys(Context) ->
 
 -spec post_media_binary(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) -> cb_context:context().
 post_media_binary(Context, MediaId, 'undefined') ->
-    post_media_binary(cb_context:set_account_db(Context, ?KZ_MEDIA_DB), MediaId, <<"ignore">>);
+    post_media_binary(cb_context:set_db_name(Context, ?KZ_MEDIA_DB), MediaId, <<"ignore">>);
 post_media_binary(Context, MediaId, _AccountId) ->
     update_media_binary(Context, MediaId).
 
@@ -550,7 +550,7 @@ load_media_summary(Context, 'undefined') ->
     fix_start_keys(
       crossbar_doc:load_view(?CB_LIST
                             ,[{'startkey_fun', fun start_key/1}]
-                            ,cb_context:set_account_db(Context, ?KZ_MEDIA_DB)
+                            ,cb_context:set_db_name(Context, ?KZ_MEDIA_DB)
                             ,fun normalize_view_results/2
                             )
      );
@@ -599,7 +599,7 @@ load_available_languages(Context, 'undefined') ->
     fix_start_keys(
       crossbar_doc:load_view(?CB_LIST_BY_LANG
                             ,[{'group_level', 1}]
-                            ,cb_context:set_account_db(Context, ?KZ_MEDIA_DB)
+                            ,cb_context:set_db_name(Context, ?KZ_MEDIA_DB)
                             ,fun normalize_count_results/2
                             )
      );
@@ -642,7 +642,7 @@ load_media_docs_by_language(Context, Language, 'undefined') ->
                              ,{'reduce', 'false'}
                              ,{'include_docs', 'false'}
                              ]
-                            ,cb_context:set_account_db(Context, ?KZ_MEDIA_DB)
+                            ,cb_context:set_db_name(Context, ?KZ_MEDIA_DB)
                             ,fun normalize_language_results/2
                             )
      );
@@ -693,7 +693,7 @@ load_available_prompts(Context, 'undefined') ->
                             ,[{'group_level', 1}
                              ,{'startkey_fun', fun prompt_start_key/1}
                              ]
-                            ,cb_context:set_account_db(Context, ?KZ_MEDIA_DB)
+                            ,cb_context:set_db_name(Context, ?KZ_MEDIA_DB)
                             ,fun normalize_count_results/2
                             )
      );
@@ -722,7 +722,7 @@ load_media_docs_by_prompt(Context, PromptId, 'undefined') ->
                              ,{'reduce', 'false'}
                              ,'include_docs'
                              ]
-                            ,cb_context:set_account_db(Context, ?KZ_MEDIA_DB)
+                            ,cb_context:set_db_name(Context, ?KZ_MEDIA_DB)
                             ,fun normalize_prompt_results/2
                             )
      );
@@ -802,7 +802,7 @@ load_media_meta(Context, MediaId) ->
 -spec load_media_meta(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) ->
           cb_context:context().
 load_media_meta(Context, MediaId, 'undefined') ->
-    crossbar_doc:load(MediaId, cb_context:set_account_db(Context, ?KZ_MEDIA_DB), ?TYPE_CHECK_OPTION(kzd_media:type()));
+    crossbar_doc:load(MediaId, cb_context:set_db_name(Context, ?KZ_MEDIA_DB), ?TYPE_CHECK_OPTION(kzd_media:type()));
 load_media_meta(Context, MediaId, _AccountId) ->
     crossbar_doc:load(MediaId, Context, ?TYPE_CHECK_OPTION(kzd_media:type())).
 
@@ -950,7 +950,7 @@ update_media_binary(Context, MediaId, [{Filename, FileObj}|Files]) ->
 %%------------------------------------------------------------------------------
 -spec delete_media_binary(path_token(), cb_context:context(), kz_term:api_binary()) -> cb_context:context().
 delete_media_binary(MediaId, Context, 'undefined') ->
-    delete_media_binary(MediaId, cb_context:set_account_db(Context, ?KZ_MEDIA_DB), <<"ignore">>);
+    delete_media_binary(MediaId, cb_context:set_db_name(Context, ?KZ_MEDIA_DB), <<"ignore">>);
 delete_media_binary(MediaId, Context, _AccountId) ->
     Context1 = crossbar_doc:load(MediaId, Context, ?TYPE_CHECK_OPTION(kzd_media:type())),
     case cb_context:resp_status(Context1) of

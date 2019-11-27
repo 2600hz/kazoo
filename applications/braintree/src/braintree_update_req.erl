@@ -121,7 +121,7 @@ sync(#request{bookkeeper_jobj='undefined'
     lager:debug("fetching bookkeeper document ~s/~s"
                ,[VendorId, BookkeeperId]
                ),
-    VendorDb = kz_util:format_account_db(VendorId),
+    VendorDb = kzs_util:format_account_db(VendorId),
     case kz_datamgr:open_cache_doc(VendorDb, BookkeeperId) of
         {'ok', BookkeeperJObj} ->
             ?APP_NAME = kzd_bookkeeper:bookkeeper_type(BookkeeperJObj),

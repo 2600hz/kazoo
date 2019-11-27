@@ -618,7 +618,7 @@ debug_json_error(Call, Msg, Before, After, RespBody) ->
 store_debug(Call, Doc) when is_list(Doc) ->
     store_debug(Call, kz_json:from_list(Doc));
 store_debug(Call, DebugJObj) ->
-    AccountModDb = kz_util:format_account_mod_id(kapps_call:account_id(Call)),
+    AccountModDb = kzs_util:format_account_mod_id(kapps_call:account_id(Call)),
     JObj = debug_doc(Call, DebugJObj, AccountModDb),
 
     case kazoo_modb:save_doc(AccountModDb, JObj) of

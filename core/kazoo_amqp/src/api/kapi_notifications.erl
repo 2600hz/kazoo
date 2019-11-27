@@ -356,7 +356,6 @@ new_account_definition() ->
               ,{fun kapi_definition:set_restrict_to/2, 'new_account'}
               ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>]}
               ,{fun kapi_definition:set_optional_headers/2, [<<"Account-API-Key">>
-                                                            ,<<"Account-DB">>
                                                             ,<<"Account-Name">>
                                                             ,<<"Account-Realm">>
                                                                  | ?DEFAULT_OPTIONAL_HEADERS
@@ -1781,23 +1780,23 @@ find_account_db(Req, StrictMODB, GetFun) ->
         'undefined' ->
             case find_account_id(Req, GetFun) of
                 'undefined' -> 'undefined';
-                AccountId -> kz_util:format_account_db(AccountId)
+                AccountId -> kzs_util:format_account_db(AccountId)
             end;
         ?MATCH_MODB_SUFFIX_RAW(_, _, _)=Db -> maybe_strict_modb(Db, StrictMODB);
         ?MATCH_MODB_SUFFIX_UNENCODED(_, _, _)=Db -> maybe_strict_modb(Db, StrictMODB);
         ?MATCH_MODB_SUFFIX_ENCODED(_, _, _)=Db -> maybe_strict_modb(Db, StrictMODB);
-        ?MATCH_ACCOUNT_RAW(_)=Db -> kz_util:format_account_db(Db);
-        ?MATCH_ACCOUNT_UNENCODED(_)=Db -> kz_util:format_account_db(Db);
-        ?MATCH_ACCOUNT_ENCODED(_)=Db -> kz_util:format_account_db(Db);
-        ?MATCH_ACCOUNT_encoded(_)=Db -> kz_util:format_account_db(Db);
+        ?MATCH_ACCOUNT_RAW(_)=Db -> kzs_util:format_account_db(Db);
+        ?MATCH_ACCOUNT_UNENCODED(_)=Db -> kzs_util:format_account_db(Db);
+        ?MATCH_ACCOUNT_ENCODED(_)=Db -> kzs_util:format_account_db(Db);
+        ?MATCH_ACCOUNT_encoded(_)=Db -> kzs_util:format_account_db(Db);
         OtherDb -> OtherDb
     end.
 
 -spec maybe_strict_modb(kz_term:ne_binary(), boolean()) -> kz_term:ne_binary().
 maybe_strict_modb(Db, 'true') ->
-    kz_util:format_account_modb(Db, 'encoded');
+    kzs_util:format_account_modb(Db, 'encoded');
 maybe_strict_modb(Db, 'false') ->
-    kz_util:format_account_db(Db).
+    kzs_util:format_account_db(Db).
 
 %%------------------------------------------------------------------------------
 %% @doc Get a list of required and optional headers of the given Notification API.
