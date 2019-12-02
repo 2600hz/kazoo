@@ -861,26 +861,36 @@ get_parent_account_id(AccountId) ->
 
 -spec revert_context_to_account(cb_context:context(), cb_context:context()) -> cb_context:context().
 revert_context_to_account(AccountContext, SystemContext) ->
-    cb_context:setters(SystemContext
-                      ,[{fun cb_context:set_db_name/2, cb_context:db_name(AccountContext)}
-                       ,{fun cb_context:set_account_id/2, cb_context:account_id(AccountContext)}
-                       ]).
+    AccountDb = cb_context:db_name(AccountContext),
+    AccountId = cb_context:account_id(AccountContext),
+    SystemContext1 = cb_context:setters(
+                       SystemContext
+                      ,[{fun cb_context:set_db_name/2, AccountDb}
+                       ,{fun cb_context:set_account_id/2, AccountId}
+                       ]
+                      ),
+    SystemDoc = kz_doc:delete_revision(cb_context:doc(SystemContext)),
+    SystemDoc1 = kz_doc:setters(SystemDoc, [{fun kz_doc:set_account_db/2, AccountDb}
+                                           ,{fun kz_doc:set_account_id/2, AccountId}
+                                           ]),
+    cb_context:set_doc(SystemContext1, SystemDoc1).
 
 -spec migrate_template_to_account(cb_context:context(), path_token()) -> cb_context:context().
 migrate_template_to_account(Context, Id) ->
     lager:debug("saving template ~s from system config to account ~s", [Id, cb_context:account_id(Context)]),
 
-    Template = cb_context:fetch(Context, 'db_doc'),
-    Updates = kz_notification:base_properties(kz_doc:public_fields(Template), Id),
+    Template = cb_context:doc(Context),
+    %% Remove attachments when saving the template doc to the account
+    Context1 = cb_context:set_doc(Context, kz_doc:delete_attachments(Template)),
 
-    Context1 = crossbar_doc:update(Context, Id, Updates),
-    case cb_context:resp_status(Context1) of
+    Context2 = crossbar_doc:save(Context1),
+    case cb_context:resp_status(Context2) of
         'success' ->
-            lager:debug("saved template ~s to account ~s", [Id, cb_context:db_name(Context1)]),
-            Context2 = migrate_template_attachments(Context1, Id, kz_doc:attachments(Template)),
-            maybe_set_teletype_as_default(Context2),
-            Context2;
-        _Status -> Context1
+            lager:debug("saved template ~s to account ~s", [Id, cb_context:db_name(Context2)]),
+            Context3 = migrate_template_attachments(Context2, Id, kz_doc:attachments(Template)),
+            maybe_set_teletype_as_default(Context3),
+            Context3;
+        _Status -> Context2
     end.
 
 -spec maybe_hard_delete(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
