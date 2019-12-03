@@ -51,7 +51,6 @@ start_listener(Workers, Dispatch, Port) ->
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     _ = kapi_fax:declare_exchanges(),
-    _ = kapi_xmpp:declare_exchanges(),
     _ = kapi_conf:declare_exchanges(),
     _ = kapi_notifications:declare_exchanges(),
     _ = kapi_offnet_resource:declare_exchanges(),

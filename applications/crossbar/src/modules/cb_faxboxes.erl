@@ -23,43 +23,15 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("kazoo_oauth/include/kazoo_oauth_types.hrl").
 
 -define(CB_LIST, <<"faxbox/crossbar_listing">>).
 
--define(GPC_URL, "https://www.google.com/cloudprint/").
--define(GPC_URL_REGISTER, <<?GPC_URL,"register">>).
--define(GPC_PROXY, <<"kazoo-cloud-fax-printer-proxy">>).
--define(GPC_PROXY_HEADER,{"X-CloudPrint-Proxy","kazoo-cloud-fax-printer-proxy"}).
 -define(DEFAULT_FAX_SMTP_DOMAIN, <<"fax.kazoo.io">>).
 
--define(CLOUD_STATE_FIELD, <<"pvt_cloud_state">>).
--define(CLOUD_CLAIM_URL_FIELD, <<"pvt_cloud_connector_claim_url">>).
--define(CLOUD_PRINTER_ID_FIELD, <<"pvt_cloud_printer_id">>).
 -define(SMTP_EMAIL_FIELD, <<"pvt_smtp_email_address">>).
 
--define(LEAKED_FIELDS, [?CLOUD_STATE_FIELD
-                       ,?CLOUD_CLAIM_URL_FIELD
-                       ,?CLOUD_PRINTER_ID_FIELD
-                       ,?SMTP_EMAIL_FIELD
+-define(LEAKED_FIELDS, [?SMTP_EMAIL_FIELD
                        ]).
-
--define(CLOUD_PROPERTIES, [<<"printer">>
-                          ,<<"default_display_name">>
-                          ,<<"manufacturer">>
-                          ,<<"model">>
-                          ,<<"setup_url">>
-                          ,<<"support_url">>
-                          ,<<"update_url">>
-                          ]).
-
--type fax_field_name() :: kz_term:ne_binary().
--type fax_file_name() :: kz_term:ne_binary().
--type fax_file_content() :: binary() | iolist().
--type fax_content_type() :: kz_term:ne_binary().
-
--type fax_file() :: {fax_field_name(), fax_file_name(), fax_file_content(), fax_content_type()}.
--type fax_files() :: [fax_file()].
 
 %%%=============================================================================
 %%% API
@@ -206,7 +178,7 @@ validate_patch(Context) ->
 %%------------------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    Context1 = save_faxbox_doc(maybe_register_cloud_printer(Context), 'create'),
+    Context1 = save_faxbox_doc(Context, 'create'),
     case cb_context:resp_status(Context1) of
         'success' ->
             RespData = kz_doc:public_fields(leak_private_fields(cb_context:doc(Context1))),
@@ -221,7 +193,7 @@ put(Context) ->
 %%------------------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _Id) ->
-    Context1 = save_faxbox_doc(maybe_register_cloud_printer(Context), 'update'),
+    Context1 = save_faxbox_doc(Context, 'update'),
     case cb_context:resp_status(Context1) of
         'success' ->
             RespData = kz_doc:public_fields(leak_private_fields(cb_context:doc(Context1))),
@@ -261,11 +233,7 @@ delete_faxbox(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec read(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
-    Ctx1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_fax_box:type())),
-    case cb_context:doc(Ctx1) of
-        'undefined' -> Ctx1;
-        Doc -> maybe_oauth_req(Doc, cb_context:req_value(Context, <<"oauth">>), Ctx1)
-    end.
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_fax_box:type())).
 
 -spec leak_private_fields(kz_json:object()) -> kz_json:object().
 leak_private_fields(JObj) ->
@@ -282,11 +250,6 @@ leak_private_field(_K, Acc) -> Acc.
 
 -spec leak_private_field_value(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:json_term(), kz_json:object()) ->
           kz_json:object().
-leak_private_field_value(?CLOUD_CLAIM_URL_FIELD, K1, V, Acc) ->
-    case kz_json:get_value(?CLOUD_STATE_FIELD, Acc) of
-        <<"registered">> ->  kz_json:set_value(K1, V, Acc);
-        _ -> Acc
-    end;
 leak_private_field_value(_K, K1, V, Acc) ->
     kz_json:set_value(K1, V, Acc).
 
@@ -369,178 +332,6 @@ is_faxbox_email_global_unique(Email, FaxBoxId) ->
         {'error', 'not_found'} -> 'true';
         _ -> 'false'
     end.
-
--spec maybe_reregister_cloud_printer(cb_context:context()) -> cb_context:context().
-maybe_reregister_cloud_printer(Context) ->
-    CurrentState = kz_json:get_value(<<"pvt_cloud_state">>, cb_context:doc(Context)),
-    Ctx = maybe_reregister_cloud_printer(CurrentState, Context),
-    Ctx1 = case kz_json:get_value(<<"pvt_cloud_state">>, cb_context:doc(Ctx)) of
-               CurrentState -> cb_context:set_resp_status(Context, 'success');
-               _ -> save_faxbox_doc(Ctx, 'update')
-           end,
-    case cb_context:resp_status(Ctx1) of
-        'success' ->
-            cb_context:set_resp_data(Ctx1, kz_doc:public_fields(leak_private_fields(cb_context:doc(Ctx1))));
-        _ -> Ctx1
-    end.
-
--spec maybe_reregister_cloud_printer(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-maybe_reregister_cloud_printer('undefined', Context) ->
-    maybe_register_cloud_printer(Context);
-maybe_reregister_cloud_printer(<<"expired">>, Context) ->
-    maybe_register_cloud_printer(Context);
-maybe_reregister_cloud_printer(_, Context) -> Context.
-
--spec maybe_register_cloud_printer(cb_context:context()) -> cb_context:context().
-maybe_register_cloud_printer(Context) ->
-    ResellerId =  cb_context:reseller_id(Context),
-    CloudConnectorEnable = kapps_account_config:get(ResellerId, <<"fax">>, <<"enable_cloud_connector">>, 'false'),
-    case kz_term:is_true(CloudConnectorEnable) of
-        'true' -> maybe_register_cloud_printer(Context, cb_context:doc(Context));
-        'false' -> Context
-    end.
-
--spec maybe_register_cloud_printer(cb_context:context(), kz_json:object()) -> cb_context:context().
-maybe_register_cloud_printer(Context, JObj) ->
-    case kz_json:get_value(<<"pvt_cloud_printer_id">>, JObj) of
-        'undefined' ->
-            DocId = kz_doc:id(JObj),
-            NewDoc = kz_json:set_values(register_cloud_printer(Context, DocId), JObj),
-            cb_context:set_doc(Context, NewDoc);
-        _PrinterId -> Context
-    end.
-
--spec register_cloud_printer(cb_context:context(), kz_term:ne_binary()) -> kz_term:proplist().
-register_cloud_printer(Context, FaxboxId) ->
-    ResellerId =  cb_context:reseller_id(Context),
-    Boundary = <<"------", (kz_binary:rand_hex(16))/binary>>,
-    Body = register_body(ResellerId, FaxboxId, Boundary),
-    ContentType = kz_term:to_list(<<"multipart/form-data; boundary=", Boundary/binary>>),
-    Headers = [?GPC_PROXY_HEADER
-              ,{"content-type", ContentType}
-              ],
-    Url = kz_term:to_list(?GPC_URL_REGISTER),
-    case kz_http:post(Url, Headers, Body) of
-        {'ok', 200, _RespHeaders, RespJSON} ->
-            JObj = kz_json:decode(RespJSON),
-            case kz_json:is_true(<<"success">>, JObj, 'false') of
-                'true' ->
-                    get_cloud_registered_properties(JObj);
-                'false' ->
-                    lager:info("request was not successful: ~s", [RespJSON]),
-                    []
-            end;
-        {'ok', _RespCode, _RespHeaders, _RespJSON} ->
-            lager:info("unexpected resp ~p: ~s", [_RespCode, _RespJSON]),
-            [];
-        {'error', _R} ->
-            lager:info("error querying: ~p", [_R]),
-            []
-    end.
-
--spec get_cloud_registered_properties(kz_json:object()) -> kz_term:proplist().
-get_cloud_registered_properties(JObj) ->
-    [PrinterDoc] = kz_json:get_value(<<"printers">>, JObj),
-    [{<<"pvt_cloud_printer_id">>, kz_doc:id(PrinterDoc)}
-    ,{<<"pvt_cloud_proxy">>, kz_json:get_value(<<"proxy">>, PrinterDoc)}
-    ,{<<"pvt_cloud_created_time">>, kz_json:get_integer_value(<<"createTime">>, PrinterDoc)}
-    ,{<<"pvt_cloud_registration_token">>, kz_json:get_value(<<"registration_token">>, JObj)}
-    ,{<<"pvt_cloud_token_duration">>, kz_json:get_integer_value(<<"token_duration">>, JObj)}
-    ,{<<"pvt_cloud_polling_url">>, kz_json:get_value(<<"polling_url">>, JObj)}
-    ,{<<"pvt_cloud_connector_claim_url">>, kz_json:get_value(<<"complete_invite_url">>, JObj)}
-    ,{<<"pvt_cloud_state">>, <<"registered">>}
-    ,{<<"pvt_cloud_oauth_scope">>, kz_json:get_value(<<"oauth_scope">>, JObj)}
-    ].
-
--spec register_body(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> iolist().
-register_body(ResellerId, FaxboxId, Boundary) ->
-    {'ok', DefaultFields} = file:consult(
-                              [filename:join(
-                                 [code:priv_dir('fax'), "cloud/register.props"])
-                              ]),
-    OverrideFields = kapps_account_config:get(ResellerId, <<"fax">>, <<"cloud_properties">>, []),
-    Fields = lists:foldl(fun({<<"tag">>, _}=P, Acc) ->
-                                 [P | Acc];
-                            ({K, V}, Acc) ->
-                                 case lists:member(K, ?CLOUD_PROPERTIES) of
-                                     'true' -> props:set_value(K, V, props:delete(K, Acc));
-                                     'false' -> Acc
-                                 end
-                         end, DefaultFields, OverrideFields),
-    {'ok', PrinterDef} = file:read_file(
-                           [filename:join(
-                              [code:priv_dir('fax'), "cloud/printer.json"])
-                           ]),
-    Files = [{<<"capabilities">>
-             ,<<"capabilities">>
-             ,PrinterDef
-             ,<<"application/json">>
-             }],
-    format_multipart_formdata(Boundary
-                             ,[{<<"uuid">>, FaxboxId}
-                              ,{<<"proxy">> , ?GPC_PROXY}
-                               | Fields
-                              ]
-                             ,Files
-                             ).
-
--spec format_multipart_formdata(kz_term:ne_binary(), kz_term:proplist(), fax_files()) -> iolist().
-format_multipart_formdata(Boundary, Fields, Files) ->
-    EndingParts = [<<"--", Boundary/binary, "--">>, <<"">>],
-    FileParts = build_file_parts(Boundary, Files, EndingParts),
-    FieldParts = build_field_parts(Boundary, Fields, FileParts),
-    lists:foldr(fun join_formdata_fold/2, [], FieldParts).
-
--spec build_field_parts(kz_term:ne_binary(), kz_term:proplist(), iolist()) -> iolist().
-build_field_parts(Boundary, Fields, Acc0) ->
-    lists:foldr(fun({FieldName, FieldContent}, Acc) ->
-                        [<<"--", Boundary/binary>>
-                        ,<<"content-disposition: form-data; name=\"",FieldName/binary,"\"">>
-                        ,<<>>
-                        ,FieldContent
-                         | Acc
-                        ]
-                end
-               ,Acc0
-               ,Fields
-               ).
-
--spec build_file_parts(kz_term:ne_binary(), fax_files(), iolist()) -> iolist().
-build_file_parts(Boundary, Files, Acc0) ->
-    lists:foldr(fun({FieldName, FileName, FileContent, FileContentType}, Acc) ->
-                        [<<"--", Boundary/binary>>
-                        ,<<"content-disposition: format-data; name=\"",FieldName/binary,"\"; filename=\"",FileName/binary,"\"">>
-                        ,<<"content-type: ", FileContentType/binary>>
-                        ,<<>>
-                        ,FileContent
-                         | Acc
-                        ]
-                end
-               ,Acc0
-               ,Files
-               ).
-
--spec join_formdata_fold(kz_term:ne_binary(), iolist()) -> iolist().
-join_formdata_fold(Bin, Acc) ->
-    string:join([binary_to_list(Bin), Acc], "\r\n").
-
--spec maybe_oauth_req(kz_json:object(), kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-maybe_oauth_req(_Doc, 'undefined', Context) ->
-    maybe_reregister_cloud_printer(Context);
-maybe_oauth_req(Doc, _, Context) ->
-    oauth_req(Doc, kz_json:get_value(<<"pvt_cloud_refresh_token">>, Doc), Context).
-
--spec oauth_req(kz_json:object(), kz_term:api_binary(), cb_context:context()) -> cb_context:context().
-oauth_req(Doc, 'undefined', Context) ->
-    cb_context:set_resp_data(Context, kz_doc:public_fields(leak_private_fields(Doc)));
-oauth_req(Doc, OAuthRefresh, Context) ->
-    {'ok',App} = kazoo_oauth_util:get_oauth_app(kz_json:get_value(<<"pvt_cloud_oauth_app">>, Doc)),
-    RefreshToken = #oauth_refresh_token{token = OAuthRefresh},
-    {'ok', #oauth_token{expires=Expires}=Token} = kazoo_oauth_util:token(App, RefreshToken),
-    TokenString = kazoo_oauth_util:authorization_header(Token),
-    cb_context:set_resp_data(Context, kz_json:set_values([{<<"expires">>, Expires}
-                                                         ,{<<"token">>, TokenString}
-                                                         ], kz_json:new())).
 
 -spec save_faxbox_doc(cb_context:context(), 'create' | 'update') -> cb_context:context().
 save_faxbox_doc(Context0, Action) ->
