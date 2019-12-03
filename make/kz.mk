@@ -262,5 +262,8 @@ code_checks:
 	@printf "\n:: Check for Erlang 21 new stacktrace syntax\n\n"
 	@$(ROOT)/scripts/check-stacktrace.py $(SOURCES)
 
+apps_of_app:
+	ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/apps_of_app.escript -a $(ROOT)/applications/$(PROJECT)/src/$(PROJECT).app.src
+
 include $(ROOT)/make/splchk.mk
 include $(ROOT)/make/fmt.mk
