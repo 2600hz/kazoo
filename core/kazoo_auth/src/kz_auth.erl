@@ -24,7 +24,8 @@
 
 -include("kazoo_auth.hrl").
 
--spec create_token(kz_term:proplist()) -> {'ok', kz_term:ne_binary()} |
+-spec create_token(kz_term:proplist()) ->
+          {'ok', kz_term:ne_binary()} |
           {'error', 'algorithm_not_supported'}.
 create_token(Claims) ->
     kz_auth_jwt:encode(include_claims(Claims)).
