@@ -169,14 +169,15 @@ renew(Node, UUID) ->
         {'error', _}=E -> E
     end.
 
--spec channel_data(atom(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
+-spec channel_data(atom(), kz_term:ne_binary()) ->
+          {'ok', kz_json:object()} |
           freeswitch:fs_api_error().
 channel_data(Node, UUID) ->
     freeswitch:sync_channel(Node, UUID),
     receive
         {'channel_sync', JObj} -> {'ok', JObj}
     after ?SYNC_TIMEOUT ->
-            {'error', timeout}
+            {'error', 'timeout'}
     end.
 
 -spec to_json(channel()) -> kz_json:object().

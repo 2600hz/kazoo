@@ -129,10 +129,10 @@ json_api(Node, Cmd) -> ?FS_MODULE:json_api(Node, Cmd).
 -spec json_api(atom(), kz_term:text(), kz_term:api_object()) -> fs_json_api_return().
 json_api(Node, Cmd, Args) -> ?FS_MODULE:json_api(Node, Cmd, Args).
 
--spec json_api(atom(), kz_term:text(), kz_term:api_object(), timeout()) -> fs_json_api_return().
-json_api(Node, Cmd, Args, Timeout) -> ?FS_MODULE:json_api(Node, Cmd, Args, Timeout).
+-spec json_api(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_object()) -> fs_json_api_return().
+json_api(Node, UUID, Cmd, Args) -> ?FS_MODULE:json_api(Node, UUID, Cmd, Args).
 
--spec json_api(atom(), kz_term:api_object(), kz_term:text(), kz_term:api_object(), timeout()) -> fs_json_api_return().
+-spec json_api(atom(), kz_term:api_ne_binary(), kz_term:text(), kz_term:api_object(), timeout()) -> fs_json_api_return().
 json_api(Node, UUID, Cmd, Args, Timeout) -> ?FS_MODULE:json_api(Node, UUID, Cmd, Args, Timeout).
 
 %%------------------------------------------------------------------------------
