@@ -16,7 +16,7 @@
 -export([start_link/2]).
 -export([init/1]).
 
--define(PACKET_SIZE, kapps_config:get_integer(?APP_NAME, <<"tcp_packet_type">>, 4)).
+-define(PACKET_SIZE, kapps_config:get_integer(?APP_NAME, <<"tcp_packet_type">>, 2)).
 
 -define(CHILDREN(PacketSize), [event_child(Node, Event, PacketSize) || Event <- ?FS_EVENTS]).
 
