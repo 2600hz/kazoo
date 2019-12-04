@@ -53,7 +53,7 @@ init() ->
                           ,{<<"*.execute.post.resources">>, 'post'}
                           ,{<<"*.execute.patch.resources">>, 'patch'}
                           ,{<<"*.execute.delete.resources">>, 'delete'}
-                          ,{<<"*.authorize">>, 'authorize'}
+                          ,{<<"*.authorize.resources">>, 'authorize'}
                           ]).
 
 -spec maybe_start_jobs_listener() -> pid().

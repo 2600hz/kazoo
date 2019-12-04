@@ -162,11 +162,21 @@ is_expired(Context, JObj) ->
 set_auth_doc(Context, JObj) ->
     AuthAccountId = kz_doc:account_id(JObj),
     OwnerId = kz_doc:id(JObj),
-    Setters = [{fun cb_context:set_auth_doc/2, JObj}
+    Setters = [{fun cb_context:set_auth_doc/2, auth_doc(JObj)}
               ,{fun cb_context:set_auth_account_id/2, AuthAccountId}
                | maybe_add_is_admins(AuthAccountId, OwnerId)
               ],
     cb_context:setters(Context, Setters).
+
+-spec auth_doc(kz_json:object()) -> kz_json:object().
+auth_doc(JObj) ->
+    kz_json:from_list(
+      [{<<"account_id">>, kz_doc:account_id(JObj)}
+      ,{<<"identity_sig">>, kzd_users:signature_secret(JObj)}
+      ,{<<"iss">>, <<"kazoo">>}
+      ,{<<"method">>, kz_term:to_binary(?MODULE)}
+      ,{<<"owner_id">>, kz_doc:id(JObj)}
+      ]).
 
 -spec maybe_add_is_admins(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> cb_context:setters().
 maybe_add_is_admins(?NE_BINARY = AuthAccountId, ?NE_BINARY = OwnerId) ->

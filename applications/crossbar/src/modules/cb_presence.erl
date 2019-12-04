@@ -58,8 +58,8 @@
 -spec init() -> ok.
 init() ->
     Bindings = [{<<"*.allowed_methods.presence">>, 'allowed_methods'}
-               ,{<<"*.authenticate">>, 'authenticate'}
-               ,{<<"*.authorize">>, 'authorize'}
+               ,{<<"*.authenticate.presence">>, 'authenticate'}
+               ,{<<"*.authorize.presence">>, 'authorize'}
                ,{<<"*.resource_exists.presence">>, 'resource_exists'}
                ,{<<"*.content_types_provided.presence">>, 'content_types_provided'}
                ,{<<"*.validate.presence">>, 'validate'}

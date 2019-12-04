@@ -57,8 +57,8 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    Bindings = [{<<"*.authenticate">>, 'authenticate'}
-               ,{<<"*.authorize">>, 'authorize'}
+    Bindings = [{<<"*.authenticate.whitelabel">>, 'authenticate'}
+               ,{<<"*.authorize.whitelabel">>, 'authorize'}
                ,{<<"*.content_types_provided.whitelabel">>, 'content_types_provided'}
                ,{<<"*.content_types_accepted.whitelabel">>, 'content_types_accepted'}
                ,{<<"*.allowed_methods.whitelabel">>, 'allowed_methods'}

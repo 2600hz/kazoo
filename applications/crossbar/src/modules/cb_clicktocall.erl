@@ -55,8 +55,8 @@
 init() ->
     Bindings = [{<<"*.allowed_methods.clicktocall">>, 'allowed_methods'}
                ,{<<"*.resource_exists.clicktocall">>, 'resource_exists'}
-               ,{<<"*.authenticate">>, 'authenticate'}
-               ,{<<"*.authorize">>, 'authorize'}
+               ,{<<"*.authenticate.clicktocall">>, 'authenticate'}
+               ,{<<"*.authorize.clicktocall">>, 'authorize'}
                ,{<<"*.validate.clicktocall">>, 'validate'}
                ,{<<"*.execute.put.clicktocall">>, 'put'}
                ,{<<"*.execute.post.clicktocall">>, 'post'}
