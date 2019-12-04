@@ -77,9 +77,15 @@ handle_req(JObj, 'true') ->
 
     ReqData =
         kz_json:set_value(<<"user">>, teletype_util:find_account_admin(AccountId), DataJObj),
-    case kz_json:is_false(<<"success">>, DataJObj) %% check if it's for transaction failed template
-        andalso teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID)
-    of
+    case processability(kz_json:is_false(<<"success">>, DataJObj), JObj) of
+        'ignore' -> teletype_util:notification_ignored(?TEMPLATE_ID);
         'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
         'true' -> teletype_transaction:process_req(kz_json:merge_jobjs(DataJObj, ReqData), ?TEMPLATE_ID)
     end.
+
+-spec processability(boolean(), kz_json:object()) -> 'ignore' | boolean().
+processability('true', JObj) ->
+    %% it's for transaction failed template
+    teletype_util:is_notice_enabled(kz_json:get_value(<<"Account-ID">>, JObj), JObj, ?TEMPLATE_ID);
+processability('false', _) ->
+    'ignore'.
