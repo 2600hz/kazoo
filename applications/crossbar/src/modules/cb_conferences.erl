@@ -466,7 +466,7 @@ media_id_required(Context) ->
 dial(Context, _ConferenceId, 'undefined') ->
     data_required(Context, <<"dial">>);
 dial(Context, ConferenceId, Data) ->
-    case build_valid_endpoints(Context, ConferenceId, Data) of
+    case build_valid_endpoints(Context, Data) of
         {Context1, []} -> error_no_endpoints(Context1);
         {Context1, Endpoints} ->
             case cb_context:has_errors(Context1) of
@@ -477,12 +477,12 @@ dial(Context, ConferenceId, Data) ->
             end
     end.
 
--spec build_valid_endpoints(cb_context:context(), kz_term:ne_binary(), kz_json:object()) ->
+-spec build_valid_endpoints(cb_context:context(), kz_json:object()) ->
           {cb_context:context(), kz_json:objects()}.
-build_valid_endpoints(Context, ConferenceId, Data) ->
+build_valid_endpoints(Context, Data) ->
     case kz_json_schema:validate(<<"conferences.dial">>, Data) of
         {'ok', ValidData} ->
-            build_endpoints_to_dial(Context, ConferenceId, ValidData);
+            build_endpoints_to_dial(Context, ValidData);
         {'error', Errors} ->
             lager:info("dial data failed to validate"),
             {cb_context:failed(Context, Errors), []}
@@ -574,13 +574,13 @@ zone(TargetCallId) ->
                   }
        ).
 
--spec build_endpoints_to_dial(cb_context:context(), path_token(), kz_json:object()) ->
+-spec build_endpoints_to_dial(cb_context:context(), kz_json:object()) ->
           {cb_context:context(), kz_json:objects()}.
-build_endpoints_to_dial(Context, ConferenceId, Data) ->
+build_endpoints_to_dial(Context, Data) ->
     Endpoints = kz_json:get_list_value(<<"endpoints">>, Data),
     ?BUILD_ACC(ToDial, _Call, Context1, _Element) =
         lists:foldl(fun build_endpoint/2
-                   ,?BUILD_ACC([], create_call(Context, ConferenceId, Data), Context, 1)
+                   ,?BUILD_ACC([], create_call(Context, Data), Context, 1)
                    ,Endpoints
                    ),
     {Context1, ToDial}.
@@ -595,8 +595,8 @@ error_no_endpoints(Context) ->
                                    ,Context
                                    ).
 
--spec create_call(cb_context:context(), kz_term:ne_binary(), kz_json:object()) -> kapps_call:call().
-create_call(Context, ConferenceId, Data) ->
+-spec create_call(cb_context:context(), kz_json:object()) -> kapps_call:call().
+create_call(Context, Data) ->
     Conference = cb_context:doc(Context),
     CallerIdName = kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, kz_json:get_ne_binary_value(<<"name">>, Conference)),
     CallerIdNumber = kz_json:get_ne_binary_value(<<"caller_id_number">>, Data),
