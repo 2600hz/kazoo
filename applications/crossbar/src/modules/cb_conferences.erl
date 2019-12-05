@@ -33,7 +33,7 @@
         ]).
 
 -ifdef(TEST).
--export([build_valid_endpoints/3]).
+-export([build_valid_endpoints/2]).
 -endif.
 
 -include("crossbar.hrl").
