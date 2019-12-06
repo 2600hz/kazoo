@@ -230,19 +230,26 @@ maybe_check_port_requests(Context) ->
     AccountId = cb_context:account_id(Context),
 
     case {is_reseller_handling_port_requests(ResellerId)
-         ,ResellerId =:= AccountId
+         ,kz_services_reseller:is_reseller(AccountId)
+          andalso is_reseller_handling_port_requests(AccountId)
          }
     of
-        {'true', 'false'} ->
+        {'true', _} ->
             %% Reseller is handling port requests so not bother the user with port request alerts.
             Context;
-        {'true', 'true'} ->
-            %% Reseller is handling port requests for sub-accounts and current request was
-            %% made by reseller so get the alerts (if any) for each sub-account.
-            F = fun(DesId, ContextAcc) -> do_check_port_requests(DesId, ContextAcc) end,
-            lists:foldl(F, Context, kapps_util:account_descendants(ResellerId));
+        {'false', 'true'} ->
+            %% Reseller is NOT handling port requests for sub-accounts and current request
+            %% was made by a reseller and it is handling port requests for its sub-accounts
+            %% so get the alerts (if any) for each sub-account.
+            do_check_port_requests(knm_port_request:descendant_active_ports(ResellerId), Context);
         {'false', _} ->
-            do_check_port_requests(AccountId, Context)
+            %% Reseller is not handling port requests and either the current account is
+            %% not a reseller or it is not handling port requests for its sub-accounts.
+            Ports = maybe_merge_active_and_unconfirmed_ports(
+                      knm_port_request:account_active_ports(AccountId)
+                     ,knm_port_request:account_ports_by_state(AccountId, ?PORT_UNCONFIRMED)
+                     ),
+            do_check_port_requests(Ports, Context)
     end.
 
 -spec is_reseller_handling_port_requests(kz_term:api_ne_binary() | {'ok', kz_json:object()} | {'error', any()}) -> boolean().
@@ -254,6 +261,14 @@ is_reseller_handling_port_requests({'ok', Whitelabel}) ->
     kz_json:is_true(<<"hide_port">>, Whitelabel);
 is_reseller_handling_port_requests({'error', 'not_found'}) ->
     'false'.
+
+-spec maybe_merge_active_and_unconfirmed_ports({'ok', kz_json:objects()} | {'error', 'not_found'}
+                                              ,{'ok', kz_json:objects()} | {'error', 'not_found'}
+                                              ) -> kz_json:objects().
+maybe_merge_active_and_unconfirmed_ports({'ok', Active}, {'ok', Unconfirmed}) ->
+    lists:flatten([Active, Unconfirmed]);
+maybe_merge_active_and_unconfirmed_ports(_, _) ->
+    [].
 
 -spec do_check_port_requests(kz_term:api_ne_binary() | kz_json:objects(), cb_context:context()) -> cb_context:context().
 do_check_port_requests([], Context) ->
@@ -267,14 +282,11 @@ do_check_port_requests([PortRequest|PortRequests], Context) ->
                           ,Routines
                           ),
     do_check_port_requests(PortRequests, Context1);
-do_check_port_requests(OwnerId, Context) ->
-    case knm_port_request:account_active_ports(OwnerId) of
-        {'error', _R} ->
-            lager:debug("unable to fetch port requests: ~p", [_R]),
-            Context;
-        {'ok', PortRequests} ->
-            do_check_port_requests(PortRequests, Context)
-    end.
+do_check_port_requests({'ok', PortRequests}, Context) ->
+    do_check_port_requests(PortRequests, Context);
+do_check_port_requests({'error', _R}, Context) ->
+    lager:debug("unable to fetch port requests: ~p", [_R]),
+    Context.
 
 %%------------------------------------------------------------------------------
 %% @doc

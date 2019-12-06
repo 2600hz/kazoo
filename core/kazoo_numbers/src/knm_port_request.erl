@@ -17,6 +17,7 @@
         ,get_portin_number/2
         ,new/2
         ,account_active_ports/1
+        ,account_ports_by_state/2
         ,descendant_active_ports/1
         ,account_has_active_port/1
         ,normalize_attachments/1
@@ -53,6 +54,7 @@
 -define(DESCENDANT_ACTIVE_PORT_LISTING, <<"port_requests/listing_by_descendant_state">>).
 -define(ACTIVE_PORT_IN_NUMBERS, <<"port_requests/port_in_numbers">>).
 -define(PORT_NUM_LISTING, <<"port_requests/phone_numbers_listing">>).
+-define(PORT_LISTING_BY_STATE, <<"port_requests/listing_by_state">>).
 -define(CALLFLOW_LIST, <<"callflows/listing_by_number">>).
 -define(TRUNKSTORE_LIST, <<"trunkstore/lookup_did">>).
 
@@ -168,6 +170,27 @@ account_active_ports(AccountId) ->
                   ,'include_docs'
                   ],
     case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?ACTIVE_PORT_LISTING, ViewOptions) of
+        {'ok', []} -> {'error', 'not_found'};
+        {'ok', Ports} -> {'ok', [kz_json:get_value(<<"doc">>, Doc) || Doc <- Ports]};
+        {'error', _R} ->
+            lager:error("failed to query for account port numbers ~p", [_R]),
+            {'error', 'not_found'}
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec account_ports_by_state(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:objects()} |
+          {'error', 'not_found'}.
+account_ports_by_state(AccountId, PortState) ->
+    ViewOptions = [{'startkey', [AccountId, PortState]}
+                  ,{endkey, [AccountId, PortState, kz_json:new()]}
+                  ,'include_docs'
+                  ],
+    case lists:member(PortState, ?PORT_STATES) %% Make sure it is a valid state
+         andalso kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?PORT_LISTING_BY_STATE, ViewOptions)
+    of
         {'ok', []} -> {'error', 'not_found'};
         {'ok', Ports} -> {'ok', [kz_json:get_value(<<"doc">>, Doc) || Doc <- Ports]};
         {'error', _R} ->
