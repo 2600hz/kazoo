@@ -253,6 +253,12 @@ Since pagination can be turned off by a client-supplied query string parameter, 
 
 Therefore, during a non-paginated request, KAZOO monitors memory consumption of the handling server process and will abort the request if the processing is exceeding a high watermark setting (configured by the system operator). The client can expect to receive an HTTP "416 Range Not Satisfiable" error as a result of exceeding the limit.
 
+The memory limit threshold can be set by system administrators with
+
+    sup kapps_config set_default crossbar request_memory_limit 10485760
+
+In this case, memory per-request (for listings) is constrained to 10MB.
+
 ## Chunked Response
 
 Starting with Kazoo 4.2, most of the summary API endpoints can send [chunked responses](https://en.wikipedia.org/wiki/Chunked_transfer_encoding). Some known APIs, which tend to have larger datasets, are chunked by default (e.g. `/cdrs/interaction` and `/ledgers/{LEDGER}`).
@@ -323,7 +329,7 @@ curl -v -X GET \
 
 KAZOO, unless explicitly stated, represents time in Gregorian seconds.
 
-Conversion with UNIX timestamps is straigtforward:
+Conversion with UNIX timestamps is straightforward:
 
 ```
 UnixEpochInGregorian = 62167219200
