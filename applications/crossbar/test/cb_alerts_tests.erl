@@ -45,6 +45,7 @@ maybe_check_port_requests() ->
     ToMeck = ['kz_services_reseller', Mod],
     _ = lists:foreach(fun(M) -> meck:new(M, [passthrough]) end, ToMeck),
     meck:expect('kz_services_reseller', 'is_reseller', fun(_) -> 'false' end),
+    meck:expect('knm_port_request', 'account_ports_by_state', fun(_, ?PORT_UNCONFIRMED) -> {'ok', []} end),
 
     Context = cb_context:set_resp_data(cb_context:new(), []),
     {'ok', ActivePorts} = AccountActivePorts = account_active_ports(),

@@ -189,7 +189,7 @@ account_ports_by_state(AccountId, PortState) ->
                   ,'include_docs'
                   ],
     case lists:member(PortState, ?PORT_STATES) %% Make sure it is a valid state
-         andalso kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?PORT_LISTING_BY_STATE, ViewOptions)
+        andalso kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?PORT_LISTING_BY_STATE, ViewOptions)
     of
         {'ok', []} -> {'error', 'not_found'};
         {'ok', Ports} -> {'ok', [kz_json:get_value(<<"doc">>, Doc) || Doc <- Ports]};
