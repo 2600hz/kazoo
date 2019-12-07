@@ -100,6 +100,7 @@ SOURCES     ?= $(wildcard src/*.erl) $(wildcard src/*/*.erl)
 MODULE_NAMES := $(sort $(foreach module,$(SOURCES),$(shell basename $(module) .erl)))
 MODULES := $(shell echo $(MODULE_NAMES) | sed 's/ /,/g')
 BEAMS := $(sort $(foreach module,$(SOURCES),ebin/$(shell basename $(module) .erl).beam))
+JSON := $(find . -name "*.json")
 
 TEST_SOURCES := $(SOURCES) $(wildcard test/*.erl)
 TEST_MODULE_NAMES := $(sort $(foreach module,$(TEST_SOURCES),$(shell basename $(module) .erl)))
@@ -250,6 +251,19 @@ fixture_shell: NODE_NAME ?= fixturedb
 fixture_shell:
 	@ERL_CRASH_DUMP="$(ERL_CRASH_DUMP)" ERL_LIBS="$(ERL_LIBS)" KAZOO_CONFIG=$(ROOT)/rel/config-test.ini \
 		erl -name '$(NODE_NAME)' -s reloader "$$@"
+
+code_checks:
+	@printf ":: Check for copyright year\n\n"
+	@$(ROOT)/scripts/bump-copyright-year.py $(SOURCES)
+	@printf "\n:: Check code\n\n"
+	@$(ROOT)/scripts/code_checks.bash $(SOURCES)
+	@printf "\n:: Check for raw JSON usage\n\n"
+	@ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/no_raw_json.escript $(SOURCES)
+	@printf "\n:: Check for Erlang 21 new stacktrace syntax\n\n"
+	@$(ROOT)/scripts/check-stacktrace.py $(SOURCES)
+
+apps_of_app:
+	ERL_LIBS=$(ROOT)/deps:$(ROOT)/core:$(ROOT)/applications $(ROOT)/scripts/apps_of_app.escript -a $(ROOT)/applications/$(PROJECT)/src/$(PROJECT).app.src
 
 include $(ROOT)/make/splchk.mk
 include $(ROOT)/make/fmt.mk

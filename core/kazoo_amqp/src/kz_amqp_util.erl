@@ -1122,13 +1122,13 @@ bind_q_to_tasks(Queue, Routing) ->
 bind_q_to_tasks(Queue, Routing, Options) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_TASKS, Options).
 
--spec bind_q_to_exchange(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+-spec bind_q_to_exchange(kz_term:ne_binary(), binary(), kz_term:ne_binary()) -> 'ok'.
 bind_q_to_exchange(Queue, _Routing, _Exchange) when not is_binary(Queue) ->
     {'error', 'invalid_queue_name'};
 bind_q_to_exchange(Queue, Routing, Exchange) ->
     bind_q_to_exchange(Queue, Routing, Exchange, []).
 
--spec bind_q_to_exchange(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
+-spec bind_q_to_exchange(kz_term:ne_binary(), binary(), kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
     QB = #'queue.bind'{queue = Queue %% what queue does the binding attach to?
                       ,exchange = Exchange %% what exchange does the binding attach to?
