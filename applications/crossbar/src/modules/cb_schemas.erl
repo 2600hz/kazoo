@@ -14,8 +14,8 @@
 -export([init/0
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
-        ,authorize/1
-        ,authenticate/1
+        ,authorize/1, authorize/2
+        ,authenticate/1, authenticate/2
         ,validate/1, validate/2, validate/3
         ]).
 
@@ -42,22 +42,24 @@ init() ->
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
-    authorize_nouns(cb_context:req_nouns(Context)).
+    auth_nouns(Context, cb_context:req_nouns(Context)).
 
--spec authorize_nouns(req_nouns()) -> boolean().
-authorize_nouns([{<<"schemas">>,_}]) ->
-    lager:debug("authorizing request to fetch schema(s)"),
-    'true';
-authorize_nouns(_) -> 'false'.
+-spec authorize(cb_context:context(), path_token()) -> boolean().
+authorize(Context, _Schema) ->
+    auth_nouns(Context, cb_context:req_nouns(Context)).
 
 -spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->
-    authenticate_nouns(cb_context:req_nouns(Context)).
+    auth_nouns(Context, cb_context:req_nouns(Context)).
 
-authenticate_nouns([{<<"schemas">>,_}]) ->
+-spec authenticate(cb_context:context(), path_token()) -> boolean().
+authenticate(Context, _Schema) ->
+    auth_nouns(Context, cb_context:req_nouns(Context)).
+
+-spec auth_nouns(cb_context:context(), req_nouns()) -> boolean().
+auth_nouns(Context, [{<<"schemas">>,_}]) ->
     lager:debug("authenticating request to fetch schema(s)"),
-    'true';
-authenticate_nouns(_) -> 'false'.
+    cb_context:req_verb(Context) =:= ?HTTP_GET.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the

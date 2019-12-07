@@ -13,7 +13,7 @@
 -module(cb_resources).
 
 -export([init/0
-        ,authorize/1
+        ,authorize/1, authorize/2, authorize/3
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,validate/1, validate/2, validate/3
@@ -56,6 +56,9 @@ init() ->
                           ,{<<"*.authorize.resources">>, 'authorize'}
                           ]).
 
+-spec authorize(cb_context:context()) -> boolean() | {'stop', cb_context:context()}.
+authorize(Context) ->
+    authorize_nouns(Context, cb_context:req_nouns(Context)).
 -spec maybe_start_jobs_listener() -> pid().
 maybe_start_jobs_listener() ->
     case jobs_listener_pid() of
@@ -65,27 +68,26 @@ maybe_start_jobs_listener() ->
         Pid -> Pid
     end.
 
+-spec authorize(cb_context:context(), path_token()) -> boolean() | {'stop', cb_context:context()}.
+authorize(Context, _) ->
+    authorize_nouns(Context, cb_context:req_nouns(Context)).
 -spec jobs_listener_pid() -> kz_term:api_pid().
 jobs_listener_pid() ->
     whereis('crossbar_jobs_listener').
 
--spec authorize(cb_context:context()) ->
-          boolean() |
-          {'stop', cb_context:context()}.
-authorize(Context) ->
-    authorize(Context, cb_context:req_nouns(Context)).
+-spec authorize(cb_context:context(), path_token(), path_token()) -> boolean() | {'stop', cb_context:context()}.
+authorize(Context, _, _) ->
+    authorize_nouns(Context, cb_context:req_nouns(Context)).
 
--spec authorize(cb_context:context(), req_nouns()) ->
-          boolean() |
-          {'stop', cb_context:context()}.
-authorize(Context, [{<<"global_resources">>, _}|_]) ->
+-spec authorize_nouns(cb_context:context(), req_nouns()) -> boolean() | {'stop', cb_context:context()}.
+authorize_nouns(Context, [{<<"global_resources">>, _}|_]) ->
     maybe_authorize_admin(Context);
-authorize(Context, [{<<"resources">>, _} | _]) ->
+authorize_nouns(Context, [{<<"resources">>, _} | _]) ->
     case cb_context:account_id(Context) of
         'undefined' -> maybe_authorize_admin(Context);
         _AccountId -> 'true'
     end;
-authorize(_Context, _Nouns) ->
+authorize_nouns(_Context, _Nouns) ->
     'false'.
 
 -spec maybe_authorize_admin(cb_context:context()) ->

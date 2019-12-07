@@ -12,7 +12,7 @@
 -module(cb_ips).
 
 -export([init/0
-        ,authorize/1
+        ,authorize/1, authorize/2
         ,allowed_methods/0, allowed_methods/1
         ,resource_exists/0, resource_exists/1
         ,validate/1, validate/2
@@ -48,11 +48,16 @@ init() ->
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
     _ = cb_context:put_reqid(Context),
-    authorize(Context, cb_context:req_nouns(Context)).
+    authorize_nouns(Context, cb_context:req_nouns(Context)).
 
-authorize(Context, [{<<"ips">>, _}]) ->
+-spec authorize(cb_context:context(), path_token()) -> boolean().
+authorize(Context, _) ->
+    _ = cb_context:put_reqid(Context),
+    authorize_nouns(Context, cb_context:req_nouns(Context)).
+
+authorize_nouns(Context, [{<<"ips">>, _}]) ->
     cb_context:is_superduper_admin(Context);
-authorize(_Context, _Nouns) -> 'false'.
+authorize_nouns(_Context, _Nouns) -> 'false'.
 
 %%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are

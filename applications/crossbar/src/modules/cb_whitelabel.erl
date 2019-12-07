@@ -14,7 +14,8 @@
 -export([init/0
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
-        ,authorize/1, authenticate/1
+        ,authenticate/2, authenticate/3
+        ,authorize/2, authorize/3
         ,validate/1, validate/2, validate/3
         ,content_types_provided/2, content_types_provided/3
         ,content_types_accepted/2
@@ -128,47 +129,36 @@ resource_exists(_, ?ICON_REQ) -> 'true'.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec authorize(cb_context:context()) -> boolean().
-authorize(Context) ->
-    authorize(Context
-             ,cb_context:req_nouns(Context)
-             ,cb_context:req_verb(Context)
-             ).
+-spec authorize(cb_context:context(), path_token()) -> boolean().
+authorize(Context, ?DOMAINS_REQ) ->
+    cb_context:req_verb(Context) =:= ?HTTP_GET
+        orelse cb_context:is_superduper_admin(Context);
+authorize(Context, _Domain) ->
+    cb_context:req_verb(Context) =:= ?HTTP_GET.
 
--spec authorize(cb_context:context(), req_nouns(), http_method()) -> boolean().
-authorize(Context, [{<<"whitelabel">>, [?DOMAINS_REQ]}], ?HTTP_POST) ->
-    %% /{VERSION}/whitelabel/domains restricted to sys-admin account
-    cb_context:is_superduper_admin(Context);
-authorize(_Context, [{<<"whitelabel">>, [_]}], ?HTTP_GET) ->
-    'true';
-authorize(_Context, [{<<"whitelabel">>, [_ | [?LOGO_REQ]]}], ?HTTP_GET) ->
-    'true';
-authorize(_Context, [{<<"whitelabel">>, [_ | [?ICON_REQ]]}], ?HTTP_GET) ->
-    'true';
-authorize(_Context, [{<<"whitelabel">>, [_ | [?WELCOME_REQ]]}], ?HTTP_GET) ->
-    'true';
-authorize(_Context, _Nouns, _Verb) ->
-    'false'.
+-spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
+authorize(Context, _Domain, ?LOGO_REQ) ->
+    cb_context:req_verb(Context) =:= ?HTTP_GET;
+authorize(Context, _Domain, ?ICON_REQ) ->
+    cb_context:req_verb(Context) =:= ?HTTP_GET;
+authorize(Context, _Domain, ?WELCOME_REQ) ->
+    cb_context:req_verb(Context) =:= ?HTTP_GET.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec authenticate(cb_context:context()) -> boolean().
-authenticate(Context) ->
-    authenticate(cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+-spec authenticate(cb_context:context(), path_token()) -> boolean().
+authenticate(Context, _Domain) ->
+    cb_context:req_verb(Context) =:= ?HTTP_GET.
 
--spec authenticate(req_nouns(), http_method()) -> boolean().
-authenticate([{<<"whitelabel">>, [_]}], ?HTTP_GET) ->
-    'true';
-authenticate([{<<"whitelabel">>, [_ | [?LOGO_REQ]]}], ?HTTP_GET) ->
-    'true';
-authenticate([{<<"whitelabel">>, [_ | [?ICON_REQ]]}], ?HTTP_GET) ->
-    'true';
-authenticate([{<<"whitelabel">>, [_ | [?WELCOME_REQ]]}], ?HTTP_GET) ->
-    'true';
-authenticate(_Nouns, _Verb) ->
-    'false'.
+-spec authenticate(cb_context:context(), path_token(), path_token()) -> boolean().
+authenticate(Context, _Domain, ?LOGO_REQ) ->
+    cb_context:req_verb(Context) =:= ?HTTP_GET;
+authenticate(Context, _Domain, ?ICON_REQ) ->
+    cb_context:req_verb(Context) =:= ?HTTP_GET;
+authenticate(Context, _Domain, ?WELCOME_REQ) ->
+    cb_context:req_verb(Context) =:= ?HTTP_GET.
 
 %%------------------------------------------------------------------------------
 %% @doc Add content types accepted and provided by this module

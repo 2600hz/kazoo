@@ -15,8 +15,8 @@
 -export([init/0
         ,allowed_methods/0, allowed_methods/1
         ,resource_exists/0, resource_exists/1
-        ,authorize/1
-        ,authenticate/1
+        ,authorize/1, authorize/2
+        ,authenticate/1, authenticate/2
         ,validate/1, validate/2
         ,put/1, put/2
         ,post/2
@@ -98,6 +98,10 @@ resource_exists(_AuthToken) -> 'true'.
 authorize(Context) ->
     authorize_nouns(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
+-spec authorize(cb_context:context(), path_token()) -> boolean() | {'stop', cb_context:context()}.
+authorize(Context, _) ->
+    authorize_nouns(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+
 -spec authorize_nouns(cb_context:context(), req_nouns(), req_verb()) -> boolean() | {'stop', cb_context:context()}.
 authorize_nouns(Context
                ,[{<<"user_auth">>, []}
@@ -151,6 +155,10 @@ authorize_nouns(_, _Nouns, _) -> 'false'.
 %%------------------------------------------------------------------------------
 -spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->
+    authenticate_nouns(cb_context:req_nouns(Context)).
+
+-spec authenticate(cb_context:context(), path_token()) -> boolean().
+authenticate(Context, _) ->
     authenticate_nouns(cb_context:req_nouns(Context)).
 
 authenticate_nouns([{<<"user_auth">>, []}]) -> 'true';

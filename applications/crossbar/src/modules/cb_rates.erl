@@ -12,7 +12,7 @@
 -module(cb_rates).
 
 -export([init/0
-        ,authorize/1
+        ,authorize/1, authorize/2, authorize/3
         ,allowed_methods/0, allowed_methods/1 ,allowed_methods/2
         ,resource_exists/0, resource_exists/1 ,resource_exists/2
         ,content_types_provided/1
@@ -74,17 +74,25 @@ init_db() ->
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
-    authorize(Context, cb_context:req_nouns(Context)).
+    authorize_nouns(Context, cb_context:req_nouns(Context)).
 
-authorize(Context, [{<<"rates">>, [?RATEDECKS]}]) ->
+-spec authorize(cb_context:context(), path_token()) -> boolean().
+authorize(Context, _) ->
+    authorize_nouns(Context, cb_context:req_nouns(Context)).
+
+-spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
+authorize(Context, _, _) ->
+    authorize_nouns(Context, cb_context:req_nouns(Context)).
+
+authorize_nouns(Context, [{<<"rates">>, [?RATEDECKS]}]) ->
     case cb_context:is_superduper_admin(Context) of
         'true' -> 'true';
         'false' -> {'stop', cb_context:add_system_error('forbidden', Context)}
     end;
-authorize(_Context, [{<<"rates">>, [?NUMBER, _NumberToRate]}]) ->
+authorize_nouns(_Context, [{<<"rates">>, [?NUMBER, _NumberToRate]}]) ->
     lager:debug("authorizing rate request for ~s", [_NumberToRate]),
     'true';
-authorize(_Context, _Nouns) ->
+authorize_nouns(_Context, _Nouns) ->
     'false'.
 
 %%------------------------------------------------------------------------------

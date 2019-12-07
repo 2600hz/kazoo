@@ -17,7 +17,7 @@
 -export([init/0
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
-        ,authorize/1
+        ,authorize/1, authorize/2, authorize/3
         ,validate/1, validate/2, validate/3
         ,content_types_provided/2, content_types_provided/3
         ,content_types_accepted/2, content_types_accepted/3
@@ -125,9 +125,16 @@ resource_exists(?LANGUAGES, _Language) -> 'true';
 resource_exists(?PROMPTS, _PromptId) -> 'true';
 resource_exists(_, ?BIN_DATA) -> 'true'.
 
--spec authorize(cb_context:context()) -> boolean() |
-          {'stop', cb_context:context()}.
+-spec authorize(cb_context:context()) -> boolean() | {'stop', cb_context:context()}.
 authorize(Context) ->
+    authorize_media(Context, cb_context:req_nouns(Context), cb_context:account_id(Context)).
+
+-spec authorize(cb_context:context(), path_token()) -> boolean() | {'stop', cb_context:context()}.
+authorize(Context, _) ->
+    authorize_media(Context, cb_context:req_nouns(Context), cb_context:account_id(Context)).
+
+-spec authorize(cb_context:context(), path_token(), path_token()) -> boolean() | {'stop', cb_context:context()}.
+authorize(Context, _, _) ->
     authorize_media(Context, cb_context:req_nouns(Context), cb_context:account_id(Context)).
 
 -spec authorize_media(cb_context:context(), req_nouns(), kz_term:api_binary()) -> boolean().

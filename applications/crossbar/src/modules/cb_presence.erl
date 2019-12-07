@@ -10,8 +10,8 @@
 -module('cb_presence').
 
 -export([init/0
-        ,authenticate/1
-        ,authorize/1
+        ,authenticate/1, authenticate/2
+        ,authorize/1, authorize/2
         ,allowed_methods/0, allowed_methods/1
         ,resource_exists/0, resource_exists/1
         ,content_types_provided/2
@@ -70,12 +70,16 @@ init() ->
 
 -spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->
-    authenticate(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+    authenticate_nouns(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
--spec authenticate(cb_context:context(), req_nouns(), http_method()) -> boolean().
-authenticate(Context, [{<<"presence">>,[?MATCH_REPORT_PREFIX]}], ?HTTP_GET) ->
+-spec authenticate(cb_context:context(), path_token()) -> boolean().
+authenticate(Context, _) ->
+    authenticate_nouns(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+
+-spec authenticate_nouns(cb_context:context(), req_nouns(), http_method()) -> boolean().
+authenticate_nouns(Context, [{<<"presence">>,[?MATCH_REPORT_PREFIX]}], ?HTTP_GET) ->
     cb_context:magic_pathed(Context);
-authenticate(_Context, _Nouns, _Verb) -> 'false'.
+authenticate_nouns(_Context, _Nouns, _Verb) -> 'false'.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -83,12 +87,16 @@ authenticate(_Context, _Nouns, _Verb) -> 'false'.
 %%------------------------------------------------------------------------------
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
-    authorize(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+    authorize_nouns(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 
--spec authorize(cb_context:context(), req_nouns(), http_method()) -> boolean().
-authorize(Context, [{<<"presence">>,[?MATCH_REPORT_PREFIX]}], ?HTTP_GET) ->
+-spec authorize(cb_context:context(), path_token()) -> boolean().
+authorize(Context, _) ->
+    authorize_nouns(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
+
+-spec authorize_nouns(cb_context:context(), req_nouns(), http_method()) -> boolean().
+authorize_nouns(Context, [{<<"presence">>,[?MATCH_REPORT_PREFIX]}], ?HTTP_GET) ->
     cb_context:magic_pathed(Context);
-authorize(_Context, _Nouns, _Verb) -> 'false'.
+authorize_nouns(_Context, _Nouns, _Verb) -> 'false'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the

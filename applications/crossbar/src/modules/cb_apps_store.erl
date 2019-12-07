@@ -14,8 +14,8 @@
 -export([init/0
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
-        ,authenticate/1
-        ,authorize/1
+        ,authenticate/1, authenticate/2, authenticate/3, authenticate/4
+        ,authorize/1, authorize/2, authorize/3, authorize/4
         ,validate/1, validate/2, validate/3, validate/4
         ,content_types_provided/3 ,content_types_provided/4
         ,put/2
@@ -139,30 +139,54 @@ content_types_provided(Context, _, _, _) -> Context.
 
 -spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->
-    authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+    authenticate_nouns(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
--spec authenticate(http_method(), req_nouns()) -> boolean().
-authenticate(?HTTP_GET, [{<<"apps_store">>,[_Id, ?ICON]}]) ->
+-spec authenticate(cb_context:context(), path_token()) -> boolean().
+authenticate(Context, _) ->
+    authenticate_nouns(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authenticate(cb_context:context(), path_token(), path_token()) -> boolean().
+authenticate(Context, _, _) ->
+    authenticate_nouns(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authenticate(cb_context:context(), path_token(), path_token(), path_token()) -> boolean().
+authenticate(Context, _, _, _) ->
+    authenticate_nouns(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authenticate_nouns(http_method(), req_nouns()) -> boolean().
+authenticate_nouns(?HTTP_GET, [{<<"apps_store">>,[_Id, ?ICON]}]) ->
     lager:debug("authenticating request"),
     'true';
-authenticate(?HTTP_GET, [{<<"apps_store">>,[_Id, ?SCREENSHOT, _Number]}]) ->
+authenticate_nouns(?HTTP_GET, [{<<"apps_store">>,[_Id, ?SCREENSHOT, _Number]}]) ->
     lager:debug("authenticating request"),
     'true';
-authenticate(_Verb, _Nouns) ->
+authenticate_nouns(_Verb, _Nouns) ->
     'false'.
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
-    authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+    authorize_nouns(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
--spec authorize(http_method(), req_nouns()) -> boolean().
-authorize(?HTTP_GET, [{<<"apps_store">>,[_Id, ?ICON]}]) ->
+-spec authorize(cb_context:context(), path_token()) -> boolean().
+authorize(Context, _) ->
+    authorize_nouns(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
+authorize(Context, _, _) ->
+    authorize_nouns(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authorize(cb_context:context(), path_token(), path_token(), path_token()) -> boolean().
+authorize(Context, _, _, _) ->
+    authorize_nouns(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authorize_nouns(http_method(), req_nouns()) -> boolean().
+authorize_nouns(?HTTP_GET, [{<<"apps_store">>,[_Id, ?ICON]}]) ->
     lager:debug("authorizing request"),
     'true';
-authorize(?HTTP_GET, [{<<"apps_store">>,[_Id, ?SCREENSHOT, _Number]}]) ->
+authorize_nouns(?HTTP_GET, [{<<"apps_store">>,[_Id, ?SCREENSHOT, _Number]}]) ->
     lager:debug("authorizing request"),
     'true';
-authorize(_Verb, _Nouns) ->
+authorize_nouns(_Verb, _Nouns) ->
     'false'.
 
 %%------------------------------------------------------------------------------

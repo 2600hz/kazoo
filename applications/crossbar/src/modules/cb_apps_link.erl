@@ -13,7 +13,7 @@
 -module(cb_apps_link).
 
 -export([init/0
-        ,authorize/1
+        ,authorize/2
         ,allowed_methods/1
         ,resource_exists/1
         ,validate/2
@@ -45,8 +45,8 @@ init() ->
 %% allowed to access the resource, or false if not.
 %% @end
 %%------------------------------------------------------------------------------
--spec authorize(cb_context:context()) -> boolean().
-authorize(Context) ->
+-spec authorize(cb_context:context(), path_token()) -> boolean().
+authorize(Context, _) ->
     authorize_nouns(cb_context:req_nouns(Context)).
 
 -spec authorize_nouns(req_nouns()) -> boolean().

@@ -22,8 +22,8 @@
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,validate/1, validate/2, validate/3
-        ,authenticate/1
-        ,authorize/1
+        ,authenticate/1, authenticate/2, authenticate/3
+        ,authorize/1, authorize/2, authorize/3
         ,put/1
         ,post/2, post/3
         ,patch/2
@@ -107,10 +107,26 @@ authenticate(Context) ->
     is_c2c_url(Context, cb_context:req_nouns(Context))
         andalso maybe_authenticate(Context).
 
+-spec authenticate(cb_context:context(), path_token()) -> 'true'.
+authenticate(Context, _) ->
+    authenticate(Context).
+
+-spec authenticate(cb_context:context(), path_token(), path_token()) -> 'true'.
+authenticate(Context, _, _) ->
+    authenticate(Context).
+
 -spec authorize(cb_context:context()) -> 'true'.
 authorize(Context) ->
     is_c2c_url(Context, cb_context:req_nouns(Context))
         andalso maybe_authorize(Context).
+
+-spec authorize(cb_context:context(), path_token()) -> 'true'.
+authorize(Context, _) ->
+    authorize(Context).
+
+-spec authorize(cb_context:context(), path_token(), path_token()) -> 'true'.
+authorize(Context, _, _) ->
+    authorize(Context).
 
 -spec maybe_authenticate(cb_context:context()) -> boolean().
 maybe_authenticate(Context) ->

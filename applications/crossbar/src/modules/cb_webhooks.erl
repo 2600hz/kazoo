@@ -13,7 +13,7 @@
 
 -export([init/0
         ,authorize/1, authorize/2, authorize/3
-        ,authenticate/1
+        ,authenticate/1, authenticate/2, authenticate/3
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,validate/1, validate/2, validate/3
@@ -133,50 +133,61 @@ get_available_hook_ids(MasterDb) ->
           boolean() |
           {'stop', cb_context:context()}.
 authorize(Context) ->
-    is_authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+    authorize_webhook(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 -spec authorize(cb_context:context(), path_token()) ->
           boolean() |
           {'stop', cb_context:context()}.
 authorize(Context, _) ->
-    is_authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+    authorize_webhook(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 -spec authorize(cb_context:context(), path_token(), path_token()) ->
           boolean() |
           {'stop', cb_context:context()}.
 authorize(Context, _, _) ->
-    is_authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+    authorize_webhook(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
--spec is_authorize(cb_context:context(), http_method(), req_nouns()) ->
+-spec authorize_webhook(cb_context:context(), http_method(), req_nouns()) ->
           boolean() |
           {'stop', cb_context:context()}.
-is_authorize(_, ?HTTP_GET, [{<<"webhooks">>, []}]) ->
+authorize_webhook(_, ?HTTP_GET, [{<<"webhooks">>, []}]) ->
     lager:debug("authorizing request"),
     'true';
-is_authorize(_, ?HTTP_GET, [{<<"webhooks">>, [?PATH_TOKEN_SAMPLES | _]}]) ->
+authorize_webhook(_, ?HTTP_GET, [{<<"webhooks">>, [?PATH_TOKEN_SAMPLES | _]}]) ->
     lager:debug("authorizing fetching webhook samples"),
     'true';
-is_authorize(Context, _, [{<<"webhooks">>, _}]) ->
+authorize_webhook(Context, _, [{<<"webhooks">>, _}]) ->
     {'stop', cb_context:add_system_error('forbidden', Context)};
-is_authorize(_, _Verb, _Nouns) ->
+authorize_webhook(_, _Verb, _Nouns) ->
     'false'.
 
 -spec authenticate(cb_context:context()) ->
           {'true', cb_context:context()} |
           'false'.
 authenticate(Context) ->
-    authenticate(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+    authenticate_webhook(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
--spec authenticate(cb_context:context(), http_method(), req_nouns()) ->
+-spec authenticate(cb_context:context(), path_token()) ->
           {'true', cb_context:context()} |
           'false'.
-authenticate(Context, ?HTTP_GET, [{<<"webhooks">>, []}]) ->
+authenticate(Context, _) ->
+    authenticate_webhook(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authenticate(cb_context:context(), path_token(), path_token()) ->
+          {'true', cb_context:context()} |
+          'false'.
+authenticate(Context, _, _) ->
+    authenticate_webhook(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
+-spec authenticate_webhook(cb_context:context(), http_method(), req_nouns()) ->
+          {'true', cb_context:context()} |
+          'false'.
+authenticate_webhook(Context, ?HTTP_GET, [{<<"webhooks">>, []}]) ->
     lager:debug("authenticating request"),
     {'true', Context};
-authenticate(Context, ?HTTP_GET, [{<<"webhooks">>, [?PATH_TOKEN_SAMPLES | _]}]) ->
+authenticate_webhook(Context, ?HTTP_GET, [{<<"webhooks">>, [?PATH_TOKEN_SAMPLES | _]}]) ->
     lager:debug("authenticating request for fetching webhook samples"),
-    {'true', Context};
-authenticate(_Context, _Verb, _Nouns) -> 'false'.
+    {'true', Context}.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
