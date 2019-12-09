@@ -78,6 +78,9 @@ exec_freeform(Content, _ContentType, Locale, Options) ->
     AudioConfig = [{<<"languageCode">>, Locale}
                   ,{<<"profanityFilter">>, ?GOOGLE_ASR_PROFANITY_FILTER}
                   ,{<<"enableWordTimeOffsets">>, ?GOOGLE_ASR_ENABLE_WORD_TIME_OFFSETS}
+                  ,{<<"enableAutomaticPunctuation">>, ?GOOGLE_ASR_ENABLE_AUTOMATIC_PUNCTUATION}
+                  ,{<<"model">>, ?GOOGLE_ASR_MODEL}
+                  ,{<<"useEnhanced">>, ?GOOGLE_ASR_USE_ENHANCED}
                   ],
     AudioContent = [{<<"content">>, base64:encode(Content)}],
     Req = kz_json:from_list([{<<"config">>,kz_json:from_list(AudioConfig)}

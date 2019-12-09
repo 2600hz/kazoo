@@ -47,23 +47,6 @@ default_url() ->
 default_api_key() ->
     kapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_api_key">>, <<>>).
 
--spec default_preferred_content_type() -> kz_term:ne_binary().
-default_preferred_content_type() ->
-    PreferredContentType = kapps_config:get_binary(?MOD_CONFIG_CAT
-                                                  ,<<"asr_preferred_content_type">>
-                                                  ,?DEFAULT_ASR_CONTENT_TYPE
-                                                  ),
-    validate_content_type(PreferredContentType).
-
--spec validate_content_type(binary()) -> kz_term:ne_binary().
-validate_content_type(ContentType) ->
-    case lists:member(ContentType, ?SUPPORTED_CONTENT_TYPES) of
-        'true' -> ContentType;
-        'false' ->
-            lager:debug("content-type ~s is not supported by ispeech", [ContentType]),
-            ?DEFAULT_ASR_CONTENT_TYPE
-    end.
-
 -spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
 freeform(Content, ContentType, Locale, Options) ->
     case kazoo_asr_util:maybe_convert_content(Content, ContentType, accepted_content_types(), preferred_content_type()) of
@@ -72,7 +55,7 @@ freeform(Content, ContentType, Locale, Options) ->
     end.
 
 -spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                      provider_return().
+          provider_return().
 commands(Content, Commands, ContentType, Locale, Options) ->
     case kazoo_asr_util:maybe_convert_content(Content, ContentType, accepted_content_types(), preferred_content_type()) of
         {'error', _}=E -> E;
@@ -111,7 +94,7 @@ handle_response({'ok', _Code, _Hdrs, Content2}) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec exec_freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                           asr_resp().
+          asr_resp().
 exec_freeform(Content, ContentType, Locale, Options) ->
     BaseUrl = default_url(),
     lager:debug("sending request to ~s", [BaseUrl]),
@@ -134,7 +117,7 @@ exec_freeform(Content, ContentType, Locale, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec exec_commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                           provider_return().
+          provider_return().
 exec_commands(Bin, Commands, ContentType, Locale, Opts) ->
     BaseUrl = default_url(),
 
@@ -158,4 +141,3 @@ exec_commands(Bin, Commands, ContentType, Locale, Opts) ->
     lager:debug("req body: ~s", [Body]),
 
     handle_response(make_request(BaseUrl, Headers, Body, Opts)).
-
