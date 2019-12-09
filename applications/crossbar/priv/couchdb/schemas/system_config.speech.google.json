@@ -8,9 +8,25 @@
             "description": "API key for Google Cloud Speech",
             "type": "string"
         },
+        "asr_enable_automatic_punctuation": {
+            "default": true,
+            "description": "detect and insert punctuation in transcription results",
+            "type": "boolean"
+        },
         "asr_enable_word_time_offsets": {
             "description": "top result includes a list of words and the start and end time offsets",
             "type": "boolean"
+        },
+        "asr_model": {
+            "default": "phone_call",
+            "description": "model to select for the given request",
+            "enum": [
+                "command_and_search",
+                "phone_call",
+                "video",
+                "default"
+            ],
+            "type": "string"
         },
         "asr_profanity_filter": {
             "description": "server will attempt to filter out profanities, replacing all but the initial character in each filtered word with asterisk",
@@ -20,6 +36,11 @@
             "default": "https://speech.googleapis.com/v1/speech:recognize",
             "description": "Google Cloud Speech API url",
             "type": "string"
+        },
+        "asr_use_enhanced": {
+            "default": true,
+            "description": "use an enhanced model for speech recognition",
+            "type": "boolean"
         },
         "tts_api_key": {
             "default": "",

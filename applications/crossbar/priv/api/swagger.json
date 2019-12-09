@@ -34232,12 +34232,27 @@
                     "description": "API key for Google Cloud Speech",
                     "type": "string"
                 },
+                "asr_enable_automatic_punctuation": {
+                    "default": true,
+                    "description": "speech google asr_enable_automatic_punctuation",
+                    "type": "boolean"
+                },
                 "asr_enable_word_time_offsets": {
                     "description": "top result includes a list of words and the start and end time offsets",
                     "type": "boolean"
                 },
+                "asr_model": {
+                    "default": "phone_call",
+                    "description": "speech google asr_model",
+                    "type": "string"
+                },
                 "asr_profanity_filter": {
                     "description": "server will attempt to filter out profanities, replacing all but the initial character in each filtered word with asterisk",
+                    "type": "boolean"
+                },
+                "asr_use_enhanced": {
+                    "default": true,
+                    "description": "speech google asr_use_enhanced",
                     "type": "boolean"
                 },
                 "asr_url": {
