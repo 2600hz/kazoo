@@ -52,7 +52,7 @@ freeform(Content, ContentType, Locale, Options) ->
     end.
 
 -spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-          provider_return().
+                      provider_return().
 commands(Content, Commands, ContentType, Locale, Options) ->
     case kazoo_asr_util:maybe_convert_content(Content, ContentType, accepted_content_types(), preferred_content_type()) of
         {'error', _}=E -> E;
@@ -91,7 +91,7 @@ handle_response({'ok', _Code, _Hdrs, Content2}) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec exec_freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-          asr_resp().
+                           asr_resp().
 exec_freeform(Content, ContentType, Locale, Options) ->
     BaseUrl = default_url(),
     lager:debug("sending request to ~s", [BaseUrl]),
@@ -114,7 +114,7 @@ exec_freeform(Content, ContentType, Locale, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec exec_commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-          provider_return().
+                           provider_return().
 exec_commands(Bin, Commands, ContentType, Locale, Opts) ->
     BaseUrl = default_url(),
 
