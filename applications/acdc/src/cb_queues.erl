@@ -534,12 +534,15 @@ load_queue_agents(Id, Context) ->
     Context1 = load_agent_roster(Id, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            cb_context:set_resp_data(Context
-                                    ,kz_json:set_value(<<"agents">>
-                                                      ,cb_context:resp_data(Context1)
-                                                      ,cb_context:resp_data(Context)
-                                                      )
-                                    );
+            Agents = kz_json:set_value(<<"agents">>
+                                      ,cb_context:resp_data(Context1)
+                                      ,cb_context:resp_data(Context)
+                                      ),
+            cb_context:setters(Context, [{fun cb_context:set_resp_data/2, Agents}
+                                         %% Because the response can be dynamic depending on the results of Context1, the
+                                         %% etag of Context cannot be trusted as a strong cache validator
+                                        ,{fun cb_context:set_resp_etag/2, 'undefined'}
+                                        ]);
         _Status -> Context1
     end.
 
