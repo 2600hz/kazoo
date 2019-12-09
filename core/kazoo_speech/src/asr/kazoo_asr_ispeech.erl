@@ -1,12 +1,17 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2019, 2600Hz
-%%% @doc
+%%% @doc This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(kazoo_asr_ispeech).
 -behaviour(gen_asr_provider).
 
--export([freeform/4
+-export([preferred_content_type/0
+        ,accepted_content_types/0
+        ,freeform/4
         ,commands/5
         ]).
 
@@ -14,6 +19,22 @@
 
 -define(DEFAULT_ASR_CONTENT_TYPE, <<"application/wav">>).
 -define(SUPPORTED_CONTENT_TYPES, [<<"application/wav">>]).
+
+%%%-----------------------------------------------------------------------------
+%%% @doc Return or set the preferred asr content type for the ASR provider
+%%% @end
+%%%-----------------------------------------------------------------------------
+-spec preferred_content_type() -> kz_term:ne_binary().
+preferred_content_type() ->
+    ?DEFAULT_ASR_CONTENT_TYPE.
+
+%%%-----------------------------------------------------------------------------
+%%% @doc Return list of supported Content Types by ASR provider
+%%% @end
+%%%-----------------------------------------------------------------------------
+-spec accepted_content_types() -> kz_term:ne_binaries().
+accepted_content_types() ->
+    ?SUPPORTED_CONTENT_TYPES.
 
 -spec default_url() -> kz_term:ne_binary().
 default_url() ->
@@ -23,26 +44,9 @@ default_url() ->
 default_api_key() ->
     kapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_api_key">>, <<>>).
 
--spec default_preferred_content_type() -> kz_term:ne_binary().
-default_preferred_content_type() ->
-    PreferredContentType = kapps_config:get_binary(?MOD_CONFIG_CAT
-                                                  ,<<"asr_preferred_content_type">>
-                                                  ,?DEFAULT_ASR_CONTENT_TYPE
-                                                  ),
-    validate_content_type(PreferredContentType).
-
--spec validate_content_type(binary()) -> kz_term:ne_binary().
-validate_content_type(ContentType) ->
-    case lists:member(ContentType, ?SUPPORTED_CONTENT_TYPES) of
-        'true' -> ContentType;
-        'false' ->
-            lager:debug("content-type ~s is not supported by ispeech", [ContentType]),
-            ?DEFAULT_ASR_CONTENT_TYPE
-    end.
-
 -spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
 freeform(Content, ContentType, Locale, Options) ->
-    case maybe_convert_content(Content, ContentType) of
+    case kazoo_asr_util:maybe_convert_content(Content, ContentType, accepted_content_types(), preferred_content_type()) of
         {'error', _}=E -> E;
         {Content1, ContentType1} -> exec_freeform(Content1, ContentType1, Locale, Options)
     end.
@@ -50,7 +54,7 @@ freeform(Content, ContentType, Locale, Options) ->
 -spec commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
                       provider_return().
 commands(Content, Commands, ContentType, Locale, Options) ->
-    case maybe_convert_content(Content, ContentType) of
+    case kazoo_asr_util:maybe_convert_content(Content, ContentType, accepted_content_types(), preferred_content_type()) of
         {'error', _}=E -> E;
         {Content1, ContentType1} -> exec_commands(Content1, Commands, ContentType1, Locale, Options)
     end.
@@ -134,19 +138,3 @@ exec_commands(Bin, Commands, ContentType, Locale, Opts) ->
     lager:debug("req body: ~s", [Body]),
 
     handle_response(make_request(BaseUrl, Headers, Body, Opts)).
-
-%%------------------------------------------------------------------------------
-%% @doc Convert audio file/content-type if initial format not supported
-%% @end
-%%------------------------------------------------------------------------------
--spec maybe_convert_content(binary(), kz_term:ne_binary()) -> conversion_return().
-maybe_convert_content(Content, ContentType) ->
-    case lists:member(ContentType, ?SUPPORTED_CONTENT_TYPES) of
-        'true' -> {Content, ContentType};
-        'false' ->
-            ConvertTo = default_preferred_content_type(),
-            case kazoo_asr_util:convert_content(Content, ContentType, ConvertTo) of
-                'error' -> {'error', 'unsupported_content_type'};
-                Converted -> {Converted, ConvertTo}
-            end
-    end.
