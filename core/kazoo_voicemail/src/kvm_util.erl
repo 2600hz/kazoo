@@ -346,8 +346,7 @@ publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% generate and asr request to transcribe voicemail recording
+%% @doc generate and asr request to transcribe voicemail recording
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_transcribe(kapps_call:call(), kz_term:ne_binary(), boolean()) -> 'undefined' | kazoo_speech:asr_resp().

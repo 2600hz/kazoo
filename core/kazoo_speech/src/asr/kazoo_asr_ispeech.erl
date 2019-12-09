@@ -1,7 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2019, 2600Hz
-%%% @doc
-%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% @doc This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
 %%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
 %%%
@@ -22,8 +21,7 @@
 -define(SUPPORTED_CONTENT_TYPES, [<<"application/wav">>]).
 
 %%%-----------------------------------------------------------------------------
-%%% @doc
-%%% Return or set the preferred asr content type for the ASR provider
+%%% @doc Return or set the preferred asr content type for the ASR provider
 %%% @end
 %%%-----------------------------------------------------------------------------
 -spec preferred_content_type() -> kz_term:ne_binary().
@@ -31,8 +29,7 @@ preferred_content_type() ->
     ?DEFAULT_ASR_CONTENT_TYPE.
 
 %%%-----------------------------------------------------------------------------
-%%% @doc
-%%% Return list of supported Content Types by ASR provider
+%%% @doc Return list of supported Content Types by ASR provider
 %%% @end
 %%%-----------------------------------------------------------------------------
 -spec accepted_content_types() -> kz_term:ne_binaries().

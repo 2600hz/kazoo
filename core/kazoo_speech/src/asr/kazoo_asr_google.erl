@@ -31,8 +31,7 @@
 -define(GOOGLE_ASR_ACCEPTED_CONTENT_TYPES, [<<"audio/wav">>, <<"application/wav">>]).
 
 %%%-----------------------------------------------------------------------------
-%%% @doc
-%%% Return or set the preferred asr content type for the ASR provider
+%%% @doc Return or set the preferred asr content type for the ASR provider
 %%% @end
 %%%-----------------------------------------------------------------------------
 -spec preferred_content_type() -> kz_term:ne_binary().
@@ -40,8 +39,7 @@ preferred_content_type() ->
     ?GOOGLE_ASR_PREFERRED_CONTENT_TYPE.
 
 %%%-----------------------------------------------------------------------------
-%%% @doc
-%%% Return list of supported Content Types by ASR provider
+%%% @doc Return list of supported Content Types by ASR provider
 %%% @end
 %%%-----------------------------------------------------------------------------
 -spec accepted_content_types() -> kz_term:ne_binaries().
@@ -57,8 +55,7 @@ commands(_Bin, _Commands, _ContentType, _Locale, _Opts) ->
     {'error', 'asr_provider_failure', <<"Not implemented">>}.
 
 %%%-----------------------------------------------------------------------------
-%%% @doc
-%%% Callback for API request to ASR Provider and handle transcription response.
+%%% @doc Callback for API request to ASR Provider and handle transcription response.
 %%% @end
 %%%-----------------------------------------------------------------------------
 -spec freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
@@ -99,8 +96,7 @@ req_headers() ->
     ].
 
 %%%-----------------------------------------------------------------------------
-%%% @doc
-%%% Execute API request to ASR Provider and handle transcription response.
+%%% @doc Execute API request to ASR Provider and handle transcription response.
 %%% @end
 %%%-----------------------------------------------------------------------------
 -spec make_request(kz_term:ne_binary(), kz_term:proplist(), iolist(), kz_term:proplist()) -> kz_http:ret().

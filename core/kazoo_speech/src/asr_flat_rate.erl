@@ -1,8 +1,7 @@
 
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2019, 2600Hz
-%%% @doc
-%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% @doc This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
 %%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
 %%%
@@ -19,8 +18,7 @@
 -define(ASR_LEDGER, <<"asr">>).
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% Authorize the ASR request has sufficient funds
+%% @doc Authorize the ASR request has sufficient funds
 %% @end
 %%------------------------------------------------------------------------------
 -spec authorize(asr_req()) -> asr_req().

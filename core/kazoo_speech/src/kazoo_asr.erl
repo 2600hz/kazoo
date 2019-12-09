@@ -20,8 +20,7 @@
 -define(ACCEPTED_CONTENT_TYPES, [<<"audio/mpeg">>, <<"audio/wav">>, <<"application/wav">>]).
 
 %%%------------------------------------------------------------------------------
-%%% @doc
-%%% Return return configured or set the default ASR provider
+%%% @doc Return return configured or set the default ASR provider
 %%% @end
 %%%------------------------------------------------------------------------------
 -spec default_provider() -> kz_term:ne_binary().
@@ -29,8 +28,7 @@ default_provider() ->
     kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_provider">>, ?DEFAULT_ASR_PROVIDER).
 
 %%%------------------------------------------------------------------------------
-%%% @doc
-%%% Return preferred content_type for ASR Provider
+%%% @doc Return preferred content_type for ASR Provider
 %%% @end
 %%%------------------------------------------------------------------------------
 -spec preferred_content_type() -> kz_term:ne_binary().
@@ -47,8 +45,7 @@ preferred_content_type(Provider) ->
     end.
 
 %%%------------------------------------------------------------------------------
-%%% @doc
-%%% Return configured local for ASR
+%%% @doc Return configured local for ASR
 %%% @end
 %%%------------------------------------------------------------------------------
 -spec default_locale() -> kz_term:ne_binary().
@@ -56,8 +53,7 @@ default_locale() ->
     kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_locale">>, ?DEFAULT_ASR_LOCALE).
 
 %%%------------------------------------------------------------------------------
-%%% @doc
-%%% Return list of accepted content types for passthrough or conversion
+%%% @doc Return list of accepted content types for passthrough or conversion
 %%% @end
 %%%------------------------------------------------------------------------------
 -spec accepted_content_types() -> kz_term:ne_binaries().
@@ -65,8 +61,7 @@ accepted_content_types() ->
     ?ACCEPTED_CONTENT_TYPES.
 
 %%%------------------------------------------------------------------------------
-%%% @doc
-%%% Transcribe the audio binary
+%%% @doc Transcribe the audio binary
 %%% @end
 %%%------------------------------------------------------------------------------
 -spec freeform(binary()) -> asr_resp().
@@ -95,8 +90,7 @@ freeform(Content, ContentType, Locale, Options, ASRProvider) ->
     end.
 
 %%%------------------------------------------------------------------------------
-%%% @doc
-%%% Transcribe the audio binary
+%%% @doc Transcribe the audio binary
 %%% @end
 %%%------------------------------------------------------------------------------
 -spec commands(kz_term:ne_binary(), kz_term:ne_binaries()) -> asr_resp().

@@ -1,7 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2010-2019, 2600Hz
-%%% @doc
-%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% @doc This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
 %%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
 %%%
@@ -85,16 +84,14 @@ amount(#asr_req{amount=Amount}) -> Amount.
 asr_provider(#asr_req{asr_provider=ASRProvider}) -> ASRProvider.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% attachment getter
+%% @doc attachment getter
 %% @end
 %%------------------------------------------------------------------------------
 -spec attachment(asr_req()) -> kz_term:ne_binary().
 attachment(#asr_req{attachment_id=AttachmentId}) -> AttachmentId.
 
 %%------------------------------------------------------------------------------
-%% @doc
-%% attachment getter
+%% @doc attachment getter
 %% @end
 %%------------------------------------------------------------------------------
 -spec authorize(asr_req()) -> asr_req().
