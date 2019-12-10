@@ -43,8 +43,8 @@ send_sms(Endpoints, Data, Im) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_endpoints(kz_term:ne_binary(), kz_json:object(), kapps_im:im()) ->
-          {'error', any()} |
-          {'ok', kz_json:objects()}.
+                           {'error', any()} |
+                           {'ok', kz_json:objects()}.
 get_endpoints(EndpointId, Data, Im) ->
     Params = kz_json:set_value(<<"source">>, kz_term:to_binary(?MODULE), Data),
     case kz_endpoint:get(EndpointId, kapps_im:account_id(Im)) of

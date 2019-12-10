@@ -71,9 +71,9 @@ init([]) ->
 init_workers(Pid) ->
     Workers = kapps_config:get_integer(?CONFIG_CAT, <<"listeners">>, 1),
     _ = kz_util:spawn(fun() -> [begin
-                                       _ = supervisor:start_child(Pid, []),
-                                       timer:sleep(500)
-                                   end
-                                   || _N <- lists:seq(1, Workers)
-                                  ]
-                         end).
+                                    _ = supervisor:start_child(Pid, []),
+                                    timer:sleep(500)
+                                end
+                                || _N <- lists:seq(1, Workers)
+                               ]
+                      end).
