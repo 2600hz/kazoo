@@ -315,7 +315,7 @@ reseller_standing_is_acceptable(Map) -> Map.
 
 number(#{enabled := 'false'} = Map) -> Map;
 number(#{payload := JObj} = Map) ->
-    case knm_phone_number:fetch(kz_api_sms:from(JObj)) of
+    case knm_number:get(kz_api_sms:from(JObj)) of
         {'ok', Num} ->
             case knm_sms:enabled(Num)
                 andalso number_provider(Num)
@@ -338,7 +338,7 @@ number(#{payload := JObj} = Map) ->
     end.
 
 number_provider(Num) ->
-    Mod = knm_phone_number:module_name(Num),
+    Mod = knm_phone_number:module_name(knm_number:phone_number(Num)),
     kz_json:get_ne_binary_value([<<"outbound">>, <<"knm">>, Mod], config(), Mod).
 
 config() ->

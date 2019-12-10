@@ -253,13 +253,15 @@ maybe_relay_request(JObj) ->
 
 lookup_number(#{account_id := _AccountId} = Map) -> Map;
 lookup_number(#{number := Number} = Map) ->
-    case knm_phone_number:fetch(Number) of
+    case knm_number:get(Number) of
         {'error', _R} -> Map;
-        {'ok', KNumber} -> Map#{phone_number => KNumber}
+        {'ok', KNumber} -> Map#{knm => KNumber
+                               ,phone_number => knm_number:phone_number(KNumber)
+                               }
     end;
 lookup_number(Map) -> Map.
 
-number_has_sms_enabled(#{phone_number := PN} = Map) ->
+number_has_sms_enabled(#{knm := PN} = Map) ->
     case knm_sms:enabled(PN) of
         'true' -> Map;
         'false' -> maps:without([account_id, account, phone_number]

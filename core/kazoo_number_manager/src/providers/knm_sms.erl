@@ -25,12 +25,12 @@
 %% @end
 %%------------------------------------------------------------------------------
 
--spec save(knm_phone_number:record()) -> knm_phone_number:record().
+-spec save(knm_number:knm_number()) -> knm_number:knm_number().
 save(PN) ->
-    State = knm_phone_number:state(PN),
+    State = knm_phone_number:state(knm_number:phone_number(PN)),
     save(PN, State).
 
--spec save(knm_phone_number:record(), kz_term:ne_binary()) -> knm_phone_number:record().
+-spec save(knm_number:knm_number(), kz_term:ne_binary()) -> knm_number:knm_number().
 save(PN, ?NUMBER_STATE_IN_SERVICE) ->
     update_sms(PN);
 save(PN, _State) ->
@@ -41,16 +41,16 @@ save(PN, _State) ->
 %% remove the prepend route
 %% @end
 %%------------------------------------------------------------------------------
--spec delete(knm_phone_number:record()) -> knm_phone_number:record().
-delete(PN) ->
-    case knm_phone_number:feature(PN, ?KEY) of
-        'undefined' -> PN;
-        _Else -> knm_providers:deactivate_feature(PN, ?KEY)
+-spec delete(knm_number:knm_number()) -> knm_number:knm_number().
+delete(Number) ->
+    case feature(Number) of
+        'undefined' -> Number;
+        _Else -> knm_providers:deactivate_feature(Number, ?KEY)
     end.
 
--spec enabled(knm_phone_number:record()) -> boolean().
+-spec enabled(knm_number:knm_number()) -> boolean().
 enabled(PN) ->
-    Feature = knm_phone_number:feature(PN, ?KEY),
+    Feature = feature(PN),
     case kz_term:is_empty(Feature) of
         'true' -> 'false';
         'false' -> kz_json:is_true(?FEATURE_ENABLED, Feature)
@@ -64,10 +64,11 @@ enabled(PN) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_sms(knm_phone_number:record()) -> knm_phone_number:record().
+-spec update_sms(knm_number:knm_number()) -> knm_number:knm_number().
 update_sms(PN) ->
-    CurrentFeature = knm_phone_number:feature(PN, ?KEY),
-    Feature = kz_json:get_ne_value(?KEY, knm_phone_number:doc(PN)),
+    CurrentFeature = feature(PN),
+    PhoneNumber = knm_number:phone_number(PN),
+    Feature = kz_json:get_ne_value(?KEY, knm_phone_number:doc(PhoneNumber)),
     NotChanged = kz_json:are_equal(CurrentFeature, Feature),
     case kz_term:is_empty(Feature) of
         'true' ->
@@ -80,3 +81,12 @@ update_sms(PN) ->
                 'true' -> knm_providers:activate_feature(PN, {?KEY, Feature})
             end
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
+feature(Number) ->
+    knm_phone_number:feature(knm_number:phone_number(Number), ?KEY).
+

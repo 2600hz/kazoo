@@ -353,25 +353,25 @@ unbind_q(Queue, Props) ->
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist(), kz_term:proplist()) -> 'ok'.
 unbind_q(Queue, Props, 'undefined') ->
-    kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_SMS_ROUTING_KEY(Props), bind_exchange_id(Props)),
-    kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_DELIVERY_ROUTING_KEY(Props), bind_exchange_id(Props)),
-    kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_RESUME_ROUTING_KEY(Props), bind_exchange_id(Props)),
-    kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_INBOUND_ROUTING_KEY(Props), bind_exchange_id(Props)),
+    _ = kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_SMS_ROUTING_KEY(Props), bind_exchange_id(Props)),
+    _ = kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_DELIVERY_ROUTING_KEY(Props), bind_exchange_id(Props)),
+    _ = kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_RESUME_ROUTING_KEY(Props), bind_exchange_id(Props)),
+    _ = kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_INBOUND_ROUTING_KEY(Props), bind_exchange_id(Props)),
     kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_OUTBOUND_ROUTING_KEY(Props), bind_exchange_id(Props));
 unbind_q(Queue, Props, ['route'|Restrict]) ->
-    kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_SMS_ROUTING_KEY(Props), bind_exchange_id(Props)),
+    _ = kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_SMS_ROUTING_KEY(Props), bind_exchange_id(Props)),
     unbind_q(Queue, Props, Restrict);
 unbind_q(Queue, Props, ['delivery'|Restrict]) ->
-    kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_DELIVERY_ROUTING_KEY(Props), bind_exchange_id(Props)),
+    _ = kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_DELIVERY_ROUTING_KEY(Props), bind_exchange_id(Props)),
     unbind_q(Queue, Props, Restrict);
 unbind_q(Queue, Props, ['resume'|Restrict]) ->
-    kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_RESUME_ROUTING_KEY(Props), bind_exchange_id(Props)),
+    _ = kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_RESUME_ROUTING_KEY(Props), bind_exchange_id(Props)),
     unbind_q(Queue, Props, Restrict);
 unbind_q(Queue, Props, ['inbound'|Restrict]) ->
-    kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_INBOUND_ROUTING_KEY(Props), bind_exchange_id(Props)),
+    _ = kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_INBOUND_ROUTING_KEY(Props), bind_exchange_id(Props)),
     unbind_q(Queue, Props, Restrict);
 unbind_q(Queue, Props, ['outbound'|Restrict]) ->
-    kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_OUTBOUND_ROUTING_KEY(Props), bind_exchange_id(Props)),
+    _ = kz_amqp_util:unbind_q_from_exchange(Queue, ?BIND_OUTBOUND_ROUTING_KEY(Props), bind_exchange_id(Props)),
     unbind_q(Queue, Props, Restrict);
 unbind_q( _, _, []) -> 'ok'.
 
