@@ -507,6 +507,8 @@ pages:
     - 'applications/edr/doc/maintenance.md'
   - 'Kazoo Performance Testing':
     - 'core/kazoo_perf/doc/maintenance.md'
+  - 'Kazoo Telemetry':
+    - 'core/kazoo_telemetry/doc/README.md'
   - 'Kazoo Test FixtureDB':
     - 'core/kazoo_fixturedb/doc/README.md'
     - 'core/kazoo_fixturedb/doc/kz_fixturedb_maintenance.md'

@@ -1,0 +1,43 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.telemetry",
+    "description": "Schema for telemetry system_config",
+    "properties": {
+        "cluster_id_anonymized": {
+            "default": true,
+            "description": "telemetry cluster_id_anonymized",
+            "type": "boolean"
+        },
+        "collection_interval_s": {
+            "default": 86400,
+            "description": "telemetry collection_interval_s",
+            "type": "integer"
+        },
+        "include_apps": {
+            "default": true,
+            "description": "telemetry include_apps",
+            "type": "boolean"
+        },
+        "include_database": {
+            "default": true,
+            "description": "telemetry include_database",
+            "type": "boolean"
+        },
+        "include_freeswitch": {
+            "default": true,
+            "description": "telemetry include_freeswitch",
+            "type": "boolean"
+        },
+        "include_kamailio": {
+            "default": true,
+            "description": "telemetry include_kamailio",
+            "type": "boolean"
+        },
+        "include_services": {
+            "default": true,
+            "description": "telemetry include_services",
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}

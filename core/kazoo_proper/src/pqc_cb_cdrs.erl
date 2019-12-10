@@ -291,8 +291,13 @@ big_dataset_seq() ->
     lager:info("generated ~p CDRs", [length(CDRs)]),
 
     AccountMODb = kzs_util:format_account_id(AccountId, Year, Month),
-    {'ok', _Saved} = kazoo_modb:save_docs(AccountMODb, CDRs, [{'publish_change_notice', 'false'}]),
-    lager:info("saved: ~p", [_Saved]),
+    {'ok', Saved} = kazoo_modb:save_docs(AccountMODb, CDRs, [{'publish_change_notice', 'false'}]),
+
+    Fails = [S || S <- Saved, not kz_json:is_true(<<"ok">>, S)],
+    ([] =:= Fails)
+        orelse lager:warning("failed to save ~p", [Fails]),
+    [] = Fails,
+    CDRCount = length(Saved),
 
     _ = kapps_config:set_default(<<"crossbar">>, <<"request_memory_limit">>, 'null'),
     ChunkedJSON = unpaginated_summary(API, AccountId),
@@ -307,7 +312,7 @@ big_dataset_seq() ->
     lager:info("unpaginated/unchunked and unbound memory resp returned ~p CDRs", [UnChunkedCount]),
     CDRCount = UnChunkedCount,
 
-    _ = kapps_config:set_default(<<"crossbar">>, <<"request_memory_limit">>, 1024 * 1024 * 10), % cap at 10Mb
+    _ = kapps_config:set_default(<<"crossbar">>, <<"request_memory_limit">>, 8 * ?BYTES_M), % cap at 8Mb
 
     ChunkedUnpaginatedJSON = unpaginated_summary(API, AccountId),
     ChunkedUnpaginatedJObj = kz_json:decode(ChunkedUnpaginatedJSON),
@@ -401,7 +406,7 @@ create_owner(AccountId) ->
     OwnerId = kz_binary:rand_hex(16),
     Owner = kz_json:set_value(<<"_id">>, OwnerId, kzd_users:new()),
     {'ok', _Saved}= kz_datamgr:save_doc(AccountDb, Owner),
-    lager:info("saved owner to ~s: ~p", [AccountDb, _Saved]),
+    lager:info("saved owner to ~s", [AccountDb, _Saved]),
     OwnerId.
 
 -spec cleanup() -> 'ok'.

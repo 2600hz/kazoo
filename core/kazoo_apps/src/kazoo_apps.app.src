@@ -3,7 +3,7 @@
                              kazoo_caches,kazoo_config,kazoo_data,
                              kazoo_documents,kazoo_globals,kazoo_modb,
                              kazoo_proper,kazoo_schemas,kazoo_services,
-                             kazoo_speech,kazoo_stdlib,lager,poolboy,stdlib]},
+                             kazoo_speech,kazoo_stdlib,kazoo_telemetry,lager,poolboy,stdlib]},
               {description,"Applications on top of Kazoo"},
               {id,"9fd3b140-8727-11e0-9d78-0800200c9a66"},
               {vsn,"4.0.0"},

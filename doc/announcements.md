@@ -57,6 +57,15 @@ Two new **en-US** prompts have been added to handle this feature and should be i
 
 For instructions on how to import prompts please consult the [Kazoo Core Media](https://github.com/2600hz/kazoo-sounds/tree/master/kazoo-core#importing-prompts-for-a-language) documentation.
 
+7. Adds kazoo_telemetry application
+
+KAZOO collects anonymous telemetry data by default so that we can provide you with the best performance, stability, and security. It enables us to continuously improve the platform for you and helps inform our roadmap decisions so we can create the products, features, and functionality that will best serve you. Rest assured — no sensitive data is transmitted and metrics are limited to aggregate values, aggregate statistics, and software version information. By allowing us to collect this data, you are making a contribution to the KAZOO community and are helping us make KAZOO better for you and the entire KAZOO community. You can opt-out at any time by consulting the configuration document in the system_config database.
+
+Here are a few examples:
+- https://success.trendmicro.com/data-collection-disclosure
+- https://www.mozilla.org/en-US/privacy/firefox/
+- https://derflounder.wordpress.com/2019/07/23/suppressing-microsoft-autoupdates-required-data-notice-screen/
+
 ### 4.2
 
 1.  Erlang Version Support
