@@ -2,7 +2,7 @@
              [{applications,[crypto,kazoo,kazoo_amqp,
                              kazoo_documents,
                              kazoo_ledgers,
-                             kazoo_numbers,kazoo_stdlib,
+                             kazoo_number_manager,kazoo_stdlib,
                              lager,stdlib]},
               {description,"Representing IM in Kazoo"},
               {id,[]},
