@@ -1248,21 +1248,6 @@ endpoint_options(JObj, <<"skype">>) ->
       [{<<"Skype-Interface">>, kz_json:get_value(<<"interface">>, JObj)}
       ,{<<"Skype-RR">>, kz_json:is_true(<<"skype_rr">>, JObj, true)}
       ]);
-endpoint_options(JObj, <<"amqp">>) ->
-    Server = kz_json:get_value(<<"server">>, JObj),
-    User = kz_json:get_value(<<"username">>, JObj),
-    Password = kz_json:get_value(<<"password">>, JObj),
-    Broker = <<"amqp://", User/binary, ":", Password/binary, "@", Server/binary>>,
-
-    kz_json:from_list(
-      [{<<"AMQP-Broker">>, Broker}
-      ,{<<"Exchange-ID">>, kz_json:get_value(<<"amqp_exchange">>, JObj)}
-      ,{<<"Exchange-Type">>, kz_json:get_value(<<"amqp_exchange_type">>, JObj)}
-      ,{<<"Route-ID">>, kz_json:get_value(<<"route_id">>, JObj)}
-      ,{<<"System-ID">>, kz_json:get_value(<<"system_id">>, JObj)}
-      ,{<<"Broker-Name">>, kz_json:get_value(<<"broker_name">>, JObj, kz_binary:rand_hex(6))}
-      ,{<<"Exchange-Options">>, kz_json:get_value(<<"amqp_exchange_options">>, JObj, ?DEFAULT_AMQP_EXCHANGE_OPTIONS)}
-      ]);
 endpoint_options(JObj, <<"sip">>) ->
     kz_json:from_list(
       [{<<"Route-ID">>, kz_json:get_value(<<"route_id">>, JObj)}

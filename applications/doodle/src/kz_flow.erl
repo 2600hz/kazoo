@@ -15,7 +15,6 @@
 -export([contains_no_match/1]).
 
 -include("doodle.hrl").
--include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -record(pattern, {flow_id :: kz_term:ne_binary()
                  ,has_groups :: boolean()
@@ -33,9 +32,9 @@
 
 -type lookup_ret() :: {'ok', kzd_flows:doc(), boolean()} | {'error', any()}.
 
--spec lookup(kapps_call:call()) -> lookup_ret().
-lookup(Call) ->
-    lookup(kapps_call:request_user(Call), kapps_call:account_id(Call)).
+-spec lookup(kapps_im:im()) -> lookup_ret().
+lookup(Im) ->
+    lookup(kapps_im:request_user(Im), kapps_im:account_id(Im)).
 
 -spec lookup(kz_term:ne_binary(), kz_term:ne_binary()) -> lookup_ret().
 lookup(Number, AccountId) when not is_binary(Number) ->

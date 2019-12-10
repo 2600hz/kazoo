@@ -38,6 +38,7 @@
 
          %% Getters / Setters
         ,setters/2
+        ,validators/2
         ,new/0
 
         ,account_id/1, set_account_id/2, account_modb/1
@@ -295,7 +296,7 @@ is_account_admin(_, 'undefined') ->
     lager:debug("auth user id is undefined, ignoring checking account admin..."),
     'false';
 is_account_admin(AuthAccountId, AuthUserId) ->
-    lager:debug("checking if user ~s is account admin of ~s", [AuthAccountId, AuthUserId]),
+    lager:debug("checking if user ~s is account admin of ~s", [AuthUserId, AuthAccountId]),
     case kzd_users:is_account_admin(AuthAccountId, AuthUserId) of
         'true' ->
             lager:debug("the requestor is an account admin"),
@@ -498,6 +499,23 @@ setters_fold({F, V}, C) -> F(C, V);
 setters_fold({F, K, V}, C) -> F(C, K, V);
 setters_fold(F, C) when is_function(F, 1) -> F(C).
 
+%%------------------------------------------------------------------------------
+%% @doc Loop over a list of functions and values to validate `cb_context()'.
+%% @end
+%%------------------------------------------------------------------------------
+-spec validators(context(), setters()) -> context().
+validators(#cb_context{}=Context, []) -> Context;
+validators(#cb_context{}=Context, [_|_]=Setters) ->
+    validators_fold(Context, Setters).
+
+-spec validators_fold(context(), setters()) -> context().
+validators_fold(Context, []) -> Context;
+validators_fold(Context, [Setter | Setters]) ->
+    NewContext = setters_fold(Setter, Context),
+    case resp_status(NewContext) of
+        'success' -> validators_fold(NewContext, Setters);
+        'error' -> NewContext
+    end.
 
 -spec set_account_id(context(), kz_term:ne_binary()) -> context().
 set_account_id(#cb_context{}=Context, AcctId) ->

@@ -17,13 +17,11 @@
         ]).
 
 -include("webhooks.hrl").
--include_lib("kazoo_amqp/include/kapi_conf.hrl").
--include_lib("kazoo_documents/include/doc_types.hrl").
 
 -define(ID, kz_term:to_binary(?MODULE)).
 -define(HOOK_NAME, <<"sms">>).
 -define(NAME, <<"SMS">>).
--define(DESC, <<"Receive notifications when sms is created">>).
+-define(DESC, <<"Receive notifications when sms is received">>).
 
 -define(METADATA
        ,kz_json:from_list(
@@ -49,7 +47,7 @@ init() ->
 -spec bindings_and_responders() -> {gen_listener:bindings(), gen_listener:responders()}.
 bindings_and_responders() ->
     Bindings = bindings(),
-    Responders = [{{?MODULE, 'handle_sms'}, [{<<"configuration">>, ?DOC_CREATED}]}],
+    Responders = [{{?MODULE, 'handle_sms'}, [{<<"message">>, <<"inbound">>}]}],
     {Bindings, Responders}.
 
 %%------------------------------------------------------------------------------
@@ -63,35 +61,16 @@ account_bindings(_AccountId) -> [].
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_sms(kapi_conf:doc(), kz_term:proplist()) -> 'ok'.
-handle_sms(ConfChange, _Props) ->
-    kz_log:put_callid(ConfChange),
-    'true' = kapi_conf:doc_update_v(ConfChange),
-    Type = kapi_conf:get_type(ConfChange),
-    Action = kz_api:event_name(ConfChange),
-    handle_sms(Action, Type, ConfChange).
-
--spec handle_sms(kz_term:api_ne_binary(), kz_term:api_ne_binary(), kapi_conf:doc()) -> 'ok'.
-handle_sms(?DOC_CREATED, <<"sms">>, ConfChange) ->
-    Db = kapi_conf:get_database(ConfChange),
-
-    case kzs_util:format_account_id(Db) of
-        'undefined' -> 'ok';
-        AccountId ->
-            handle_account_sms(ConfChange, Db, AccountId)
-    end;
-handle_sms(_Action, _Type, _ConfChange) -> 'ok'.
-
--spec handle_account_sms(kapi_conf:doc(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
-handle_account_sms(ConfChange, Db, AccountId) ->
-    Id = kapi_conf:get_id(ConfChange),
-    {'ok', SMSDoc} = kz_datamgr:open_cache_doc(Db, {kzd_sms:type(), Id}),
-
+-spec handle_sms(kz_json:object(), kz_term:proplist()) -> 'ok'.
+handle_sms(Payload, _Props) ->
+    kz_log:put_callid(Payload),
+    'true' = kapi_sms:inbound_v(Payload),
+    AccountId = kz_api_sms:account_id(Payload),
     case webhooks_util:find_webhooks(?HOOK_NAME, AccountId) of
         [] ->
-            lager:debug("no hooks to handle ~s for ~s", [kz_api:event_name(ConfChange), AccountId]);
+            lager:debug("no hooks to handle ~s for ~s", [kz_api:event_name(Payload), AccountId]);
         Hooks ->
-            Event = format_event(SMSDoc, AccountId),
+            Event = format_event(Payload, AccountId),
             webhooks_util:fire_hooks(Event, Hooks)
     end.
 
@@ -106,22 +85,22 @@ handle_account_sms(ConfChange, Db, AccountId) ->
 %%------------------------------------------------------------------------------
 -spec bindings() -> gen_listener:bindings().
 bindings() ->
-    [{'conf', [{'restrict_to', ['doc_updates']}
-              ,{'action', 'created'}
-              ,{'doc_type', <<"sms">>}
-              ]}].
+    [{'sms', [{'restrict_to', ['inbound']}
+             ,{'route_type', 'offnet'}
+             ]
+     }
+    ].
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec format_event(kzd_sms:doc(), kz_term:ne_binary()) -> kz_json:object().
-format_event(SMSDoc, AccountId) ->
+-spec format_event(kz_api_sms:payload(), kz_term:ne_binary()) -> kz_json:object().
+format_event(Payload, AccountId) ->
     kz_json:from_list(
-      [{<<"id">>, kz_doc:id(SMSDoc)}
+      [{<<"id">>, kz_doc:id(Payload, kz_api_sms:message_id(Payload))}
       ,{<<"account_id">>, AccountId}
-      ,{<<"from">>, kzd_sms:from_user(SMSDoc)}
-      ,{<<"to">>, kzd_sms:to_user(SMSDoc)}
-      ,{<<"body">>, kzd_sms:body(SMSDoc)}
-      ,{<<"direction">>, kzd_sms:direction(SMSDoc)}
-      ,{<<"status">>, kzd_sms:status(SMSDoc)}
+      ,{<<"from">>, kz_api_sms:from(Payload)}
+      ,{<<"to">>, kz_api_sms:to(Payload)}
+      ,{<<"body">>, kz_api_sms:body(Payload)}
+      ,{<<"origin">>, kz_api_sms:route_type(Payload)}
       ]).
