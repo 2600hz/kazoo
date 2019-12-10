@@ -701,7 +701,7 @@ cleanup_data(Srv) ->
                  }],
     gen_listener:cast(Srv, {'remove_call', CallMatch}),
 
-    StatusMatch = [{#status_stat{timestamp='$1', _='_'}
+    StatusMatch = [{#status_stat{key=#status_stat_key{timestamp='$1'}, _='_'}
                    ,[{'=<', '$1', Past}]
                    ,['$_']
                    }],
