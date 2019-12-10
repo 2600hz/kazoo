@@ -219,8 +219,9 @@ handle_outbound_route(JObj, Props) ->
 route_offnet(#{enabled := 'true'
               ,payload := Payload
               ,account_id := AccountId
+              ,route := RouteId
               }) ->
-    case kz_im_offnet:route(Payload) of
+    case kz_im_offnet:route(kzd_sms:set_route_id(Payload, RouteId)) of
         'ok' -> 'ack';
         {'error', _Error} ->
             lager:warning("offnet rejected request for account ~s : ~p", [AccountId, _Error]),
@@ -331,6 +332,7 @@ number(#{payload := JObj} = Map) ->
                               ],
                     Map#{number => Num
                         ,module => Provider
+                        ,route => Provider
                         ,payload => kz_json:exec_first(Setters, JObj)
                         }
             end;

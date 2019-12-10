@@ -27,7 +27,9 @@
                          {'basic_qos', non_neg_integer()} |
                          {'broker' | 'broker_tag', kz_term:ne_binary()} |
                          {'declare_exchanges', declare_exchanges()} |
-                         {'auto_ack', boolean()}
+                         {'auto_ack', boolean()} |
+                         {'server_confirms', boolean()} |
+                         {'channel_flow', boolean()}
                         ].
 
 -type responder_callback_fun2() :: fun((kz_json:object(), kz_term:proplist()) -> any()).
