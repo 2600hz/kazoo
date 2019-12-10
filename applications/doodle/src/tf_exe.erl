@@ -354,7 +354,7 @@ update_actions(Action, Im) ->
 spawn_tf_module(TFModule, Data, Im) ->
     AMQPConsumer = kapps_im:kvs_fetch('consumer_pid', Im),
     AMQPChannel = kapps_im:kvs_fetch('consumer_channel', Im),
-    kz_process:spawn_monitor(fun tf_module_task/5, [TFModule, Data, Im, AMQPConsumer, AMQPChannel]).
+    kz_util:spawn_monitor(fun tf_module_task/5, [TFModule, Data, Im, AMQPConsumer, AMQPChannel]).
 
 -spec tf_module_task(atom(), kz_json:object(), kapps_im:im(), pid(), pid()) -> any().
 tf_module_task(TFModule, Data, Im, AMQPConsumer, AMQPChannel) ->
@@ -374,7 +374,6 @@ tf_module_task(TFModule, Data, Im, AMQPConsumer, AMQPChannel) ->
 
 -spec log_call_information(kapps_im:im()) -> 'ok'.
 log_call_information(Im) ->
-                                                %lager:info("executing textflow ~s / ~s", [kapps_im:kvs_fetch('tf_flow_id', Im), kapps_im:account_id(Im)]),
     lager:info("~s request ~s => ~s", [kapps_im:inception_type(Im), kapps_im:from_user(Im), kapps_im:to_user(Im)]).
 
 -spec relay_message(kz_term:pids(), kz_json:object() | {'amqp_return', kz_json:object(), kz_json:object()}) -> 'ok'.

@@ -58,7 +58,7 @@ account_bindings(_AccountId) -> [].
 %%------------------------------------------------------------------------------
 -spec handle_sms(kz_json:object(), kz_term:proplist()) -> any().
 handle_sms(Payload, _Props) ->
-    kz_log:put_callid(Payload),
+    kz_util:put_callid(Payload),
     'true' = kapi_sms:inbound_v(Payload),
     AccountId = kz_api_sms:account_id(Payload),
     case webhooks_util:find_webhooks(?HOOK_NAME, AccountId) of

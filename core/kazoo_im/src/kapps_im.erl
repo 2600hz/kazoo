@@ -161,7 +161,7 @@ new() -> #kapps_im{}.
 -spec put_message_id(im()) -> kz_term:api_binary().
 put_message_id(#kapps_im{message_id='undefined'}) -> 'undefined';
 put_message_id(#kapps_im{message_id=MsgId}) ->
-    kz_log:put_callid(MsgId).
+    kz_util:put_callid(MsgId).
 
 -spec is_im(any()) -> boolean().
 is_im(#kapps_im{}) -> 'true';
@@ -303,7 +303,7 @@ inception(#kapps_im{inception=Inception}) ->
 
 -spec account_db(im()) -> kz_term:api_ne_binary().
 account_db(#kapps_im{account_id='undefined'}) -> 'undefined';
-account_db(#kapps_im{account_id=AccountId}) -> kzs_util:format_account_db(AccountId).
+account_db(#kapps_im{account_id=AccountId}) -> kz_util:format_account_db(AccountId).
 
 -spec set_account_id(kz_term:ne_binary(), im()) -> im().
 set_account_id(<<_/binary>> = AccountId, #kapps_im{}=Im) ->

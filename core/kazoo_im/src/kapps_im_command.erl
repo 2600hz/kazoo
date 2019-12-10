@@ -206,7 +206,7 @@ get_correlated_msg_type(Key, JObj) ->
           kapps_api_std_return().
 wait_for_correlated_message(MsgId, Event, Type, Timeout)
   when is_binary(MsgId) ->
-    Start = kz_time:start_time(),
+    Start = os:timestamp(),
     case receive_event(Timeout) of
         {'error', 'timeout'}=E -> E;
         {'ok', JObj}=Ok ->
@@ -236,7 +236,7 @@ receive_event(Timeout) -> receive_event(Timeout, 'true').
           {'other', kz_json:object() | any()}.
 receive_event(T, _) when T =< 0 -> {'error', 'timeout'};
 receive_event(Timeout, IgnoreOthers) ->
-    Start = kz_time:start_time(),
+    Start = os:timestamp(),
     receive
         {'amqp_msg', JObj} -> {'ok', JObj};
         {'kapi',{ _, _, JObj}} -> {'ok', JObj};

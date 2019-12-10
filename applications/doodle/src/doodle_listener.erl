@@ -157,7 +157,7 @@ handle_message(JObj, Props) ->
     case kapi_sms:inbound_v(JObj) of
         'true' ->
             Context = inbound_context(JObj, Props),
-            kz_log:put_callid(kz_api_sms:message_id(JObj)),
+            kz_util:put_callid(kz_api_sms:message_id(JObj)),
             handle_inbound(Context);
         'false' ->
             lager:debug("error validating inbound message : ~p", [JObj]),
@@ -231,7 +231,7 @@ custom_header_token(Map, JObj, Token) ->
     case binary:split(Token, <<"@">>, ['global']) of
         [AuthorizingId, AccountId | _] ->
             AccountRealm = kzd_accounts:fetch_realm(AccountId),
-            AccountDb = kzs_util:format_account_db(AccountId),
+            AccountDb = kz_util:format_account_db(AccountId),
             case kz_datamgr:open_cache_doc(AccountDb, AuthorizingId) of
                 {'ok', Doc} ->
                     Props = props:filter_undefined([{?CCV(<<"Authorizing-Type">>), kz_doc:type(Doc)}

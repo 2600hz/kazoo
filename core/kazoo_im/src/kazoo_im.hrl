@@ -39,11 +39,11 @@
 -ifdef(OTP_RELEASE).
 %% >= OTP 21
 -define(CATCH(Type, Reason, Stacktrace), Type:Reason:Stacktrace).
--define(LOGSTACK(Stacktrace), kz_log:log_stacktrace(Stacktrace)).
+-define(LOGSTACK(Stacktrace), kz_util:log_stacktrace(Stacktrace)).
 -else.
 %% =< OTP 20
 -define(CATCH(Type, Reason, Stacktrace), Type:Reason).
--define(LOGSTACK(Stacktrace), kz_log:log_stacktrace()).
+-define(LOGSTACK(Stacktrace), kz_util:log_stacktrace()).
 -endif.
 
 

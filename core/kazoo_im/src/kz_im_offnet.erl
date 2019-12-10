@@ -370,7 +370,7 @@ handle_confirm(#'basic.nack'{delivery_tag = Idx, multiple = 'false'}
 
 reply_ok(Key, #{payload := Payload, from := Pid}, Acc) ->
     gen_server:reply(Pid, 'ok'),
-    _ = kz_process:spawn(fun create_ledger/2, ['outbound', Payload]),
+    _ = kz_util:spawn(fun create_ledger/2, ['outbound', Payload]),
     [Key | Acc].
 
 reply_error(Key, Pid, Acc) ->

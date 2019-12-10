@@ -875,13 +875,30 @@ format_status(_Opt
     end.
 
 -spec distribute_event(kz_json:object(), deliver(), state()) -> state().
-distribute_event(JObj, Deliver, State) ->
-    case callback_handle_event(JObj, Deliver, State) of
+distribute_event(JObj, {_ , #'P_basic'{headers='undefined'}}=BasicDeliver, State) ->
+    case callback_handle_event(JObj, BasicDeliver, State) of
         'ignore' -> State;
         {'ignore', ModuleState} -> State#state{module_state=ModuleState};
-        {CallbackData, ModuleState} -> distribute_event(CallbackData, JObj, Deliver, State#state{module_state=ModuleState});
-        CallbackData -> distribute_event(CallbackData, JObj, Deliver, State)
+        {CallbackData, ModuleState} -> distribute_event(CallbackData, JObj, BasicDeliver, State#state{module_state=ModuleState});
+        CallbackData -> distribute_event(CallbackData, JObj, BasicDeliver, State)
+    end;
+distribute_event(JObj, {Deliver, #'P_basic'{headers=Headers}=Basic}=BasicDeliver, State) ->
+    case lists:keyfind(?KEY_DELIVER_TO_PID, 1, Headers) of
+        {?KEY_DELIVER_TO_PID, _, Pid} ->
+            Props = [{'basic', Basic}
+                    ,{'deliver', Deliver}
+                    ],
+            kz_term:to_pid(Pid) ! {'kapi', kapi:delivery_message(JObj, Props)},
+            {'noreply', State};
+        'false' ->
+            case callback_handle_event(JObj, BasicDeliver, State) of
+                'ignore' -> State;
+                {'ignore', ModuleState} -> State#state{module_state=ModuleState};
+                {CallbackData, ModuleState} -> distribute_event(CallbackData, JObj, BasicDeliver, State#state{module_state=ModuleState});
+                CallbackData -> distribute_event(CallbackData, JObj, BasicDeliver, State)
+            end
     end.
+
 
 -spec distribute_event(callback_data(), kz_json:object(), deliver(), state()) -> state().
 distribute_event(CallbackData

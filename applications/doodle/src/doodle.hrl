@@ -61,7 +61,7 @@
 -else.
 %% =< OTP 20
 -define(CATCH(Type, Reason, Stacktrace), Type:Reason).
--define(LOGSTACK(Stacktrace), kz_log:log_stacktrace()).
+-define(LOGSTACK(Stacktrace), kz_util:log_stacktrace()).
 -endif.
 
 -define(DEFAULT_CHILD_KEY, <<"_">>).
