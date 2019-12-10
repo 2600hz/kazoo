@@ -23515,6 +23515,9 @@
                 "Force-Fax": {
                     "type": "string"
                 },
+                "From": {
+                    "type": "string"
+                },
                 "From-Realm": {
                     "type": "string"
                 },
@@ -23603,6 +23606,9 @@
                     "type": "string"
                 },
                 "Timeout": {
+                    "type": "string"
+                },
+                "To": {
                     "type": "string"
                 },
                 "To-Realm": {
@@ -23819,6 +23825,9 @@
                 "Account-ID": {
                     "type": "string"
                 },
+                "Application-ID": {
+                    "type": "string"
+                },
                 "Body": {
                     "type": "string"
                 },
@@ -23891,6 +23900,12 @@
                 "Orig-Port": {
                     "type": "string"
                 },
+                "Originator-Flags": {
+                    "type": "string"
+                },
+                "Originator-Properties": {
+                    "type": "string"
+                },
                 "Request": {
                     "type": "string"
                 },
@@ -23914,6 +23929,12 @@
                     "type": "string"
                 },
                 "System-ID": {
+                    "type": "string"
+                },
+                "Target-Flags": {
+                    "type": "string"
+                },
+                "Target-Properties": {
                     "type": "string"
                 },
                 "To": {
@@ -30530,6 +30551,11 @@
                     "description": "doodle inbound queue name",
                     "type": "string"
                 },
+                "listeners": {
+                    "default": 1,
+                    "description": "doodle listeners",
+                    "type": "integer"
+                },
                 "min_bucket_cost": {
                     "default": 1,
                     "description": "doodle minimum bucket cost",
@@ -32025,6 +32051,25 @@
                     "default": "",
                     "description": "kazoo_endpoint.mobile suffix",
                     "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.kazoo_im": {
+            "description": "Schema for kazoo_im system_config",
+            "properties": {
+                "connector": {
+                    "properties": {
+                        "connections": {
+                            "description": "kazoo_im connector connections",
+                            "type": "object"
+                        }
+                    }
+                },
+                "onnet_listeners": {
+                    "default": 1,
+                    "description": "kazoo_im onnet_listeners",
+                    "type": "integer"
                 }
             },
             "type": "object"

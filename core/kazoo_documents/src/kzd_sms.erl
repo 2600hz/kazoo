@@ -19,8 +19,23 @@
 -export([caller_id_number/1, caller_id_number/2]).
 -export([callee_id_number/1, callee_id_number/2]).
 -export([account_id/1, account_id/2]).
+-export([application_id/1, application_id/2]).
 -export([route_id/1, route_id/2, set_route_id/2]).
+-export([message_id/1, message_id/2, set_message_id/2]).
+-export([exchange_id/1, exchange_id/2, set_exchange_id/2]).
 
+-export([originator_properties/1
+        ,set_originator_properties/2
+        ,originator_property/2
+        ,set_originator_property/3
+        ,remove_originator_property/2
+        ,originator_flags/1
+        ,set_originator_flags/2
+        ,set_originator_flag/2
+        ,remove_originator_flag/2
+        ]).
+
+-export([type/0, type/1]).
 
 -include("kz_documents.hrl").
 
@@ -28,6 +43,8 @@
 -export_type([doc/0]).
 
 -define(SCHEMA, <<"sms">>).
+-define(TYPE, <<"sms">>).
+
 
 -spec new() -> doc().
 new() ->
@@ -153,6 +170,14 @@ account_id(Doc) ->
 account_id(Doc, Default) ->
     kz_json:get_binary_value(<<"Account-ID">>, Doc, Default).
 
+-spec application_id(doc()) -> kz_term:api_binary().
+application_id(Doc) ->
+    application_id(Doc, <<"sms">>).
+
+-spec application_id(doc(), Default) -> binary() | Default.
+application_id(Doc, Default) ->
+    kz_json:get_binary_value(<<"Application-ID">>, Doc, Default).
+
 -spec route_id(doc()) -> kz_term:api_binary().
 route_id(Doc) ->
     route_id(Doc, 'undefined').
@@ -164,3 +189,75 @@ route_id(Doc, Default) ->
 -spec set_route_id(doc(), kz_term:ne_binary()) -> doc().
 set_route_id(Doc, RouteId) ->
     kz_json:set_value(<<"Route-ID">>, RouteId, Doc).
+
+-spec type() -> kz_term:ne_binary().
+type() -> ?TYPE.
+
+-spec type(doc()) -> kz_term:ne_binary().
+type(Doc) ->
+    kz_doc:type(Doc, ?TYPE).
+
+-spec originator_properties(doc()) -> doc().
+originator_properties(Doc) ->
+    kz_json:get_json_value(<<"Originator-Properties">>, Doc, kz_json:new()).
+
+-spec set_originator_properties(doc(), kz_json:object()) -> doc().
+set_originator_properties(Doc, JObj) ->
+    kz_json:set_value(<<"Originator-Properties">>, JObj, Doc).
+
+-spec originator_property(doc(), kz_term:ne_binary()) -> json_term().
+originator_property(Doc, Key) ->
+    kz_json:get_value(Key, originator_properties(Doc)).
+
+-spec set_originator_property(doc(), kz_term:ne_binary(), json_term()) -> doc().
+set_originator_property(Doc, Key, Value) ->
+    set_originator_properties(Doc, kz_json:set_value(Key, Value, originator_properties(Doc))).
+
+-spec remove_originator_property(doc(), kz_term:ne_binary()) -> doc().
+remove_originator_property(Doc, Key) ->
+    JObj = kz_json:set_value(Key, null, originator_properties(Doc)),
+    case kz_json:is_empty(JObj) of
+        'true' -> kz_json:set_value(<<"Originator-Properties">>, null, Doc);
+        'false' -> set_originator_properties(Doc, JObj)
+    end.
+
+-spec originator_flags(doc()) -> kz_term:ne_binaries().
+originator_flags(Doc) ->
+    kz_json:get_list_value(<<"Originator-Flags">>, Doc, []).
+
+-spec set_originator_flags(doc(), kz_term:ne_binaries()) -> doc().
+set_originator_flags(Doc, Flags) ->
+    kz_json:set_value(<<"Originator-Flags">>, Flags, Doc).
+
+-spec set_originator_flag(doc(), kz_term:ne_binary()) -> doc().
+set_originator_flag(Doc, Flag) ->
+    set_originator_flags(Doc, [Flag | originator_flags(Doc)]).
+
+-spec remove_originator_flag(doc(), kz_term:ne_binary()) -> doc().
+remove_originator_flag(Doc, Flag) ->
+    set_originator_flags(Doc, lists:filter(fun(F) -> F =/= Flag end, originator_flags(Doc))).
+
+-spec message_id(doc()) -> kz_term:api_binary().
+message_id(Doc) ->
+    message_id(Doc, 'undefined').
+
+-spec message_id(doc(), Default) -> binary() | Default.
+message_id(Doc, Default) ->
+    kz_json:get_binary_value(<<"Message-ID">>, Doc, Default).
+
+-spec set_message_id(doc(), kz_term:ne_binary()) -> doc().
+set_message_id(Doc, MessageId) ->
+    kz_json:set_value(<<"Message-ID">>, MessageId, Doc).
+
+-spec exchange_id(doc()) -> kz_term:api_binary().
+exchange_id(Doc) ->
+    exchange_id(Doc, 'undefined').
+
+-spec exchange_id(doc(), Default) -> binary() | Default.
+exchange_id(Doc, Default) ->
+    kz_json:get_binary_value(<<"Exchange-ID">>, Doc, Default).
+
+-spec set_exchange_id(doc(), kz_term:ne_binary()) -> doc().
+set_exchange_id(Doc, ExhangeId) ->
+    kz_json:set_value(<<"Exchange-ID">>, ExhangeId, Doc).
+

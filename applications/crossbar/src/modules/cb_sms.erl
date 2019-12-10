@@ -106,12 +106,12 @@ validate_sms(Context, Id, ?HTTP_DELETE) ->
 %%------------------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    Doc = cb_context:doc(Context),
-    case kazoo_modb:save_doc(kz_doc:account_db(Doc), Doc) of
-        {'ok', Saved} -> crossbar_util:response(Saved, Context);
-        {'error', Error} ->
-            crossbar_doc:handle_datamgr_errors(Error, kz_doc:id(Doc), Context)
-    end.
+    Payload = cb_context:doc(Context),
+    _ = case kz_api_sms:route_type(Payload) of
+            <<"onnet">> -> kz_amqp_worker:cast(Payload, fun kapi_sms:publish_inbound/1);
+            <<"offnet">> -> kz_amqp_worker:cast(Payload, fun kapi_sms:publish_outbound/1)
+        end,
+    crossbar_util:response(kz_api:remove_defaults(Payload), Context).
 
 %%------------------------------------------------------------------------------
 %% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
@@ -147,12 +147,20 @@ read(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
 on_successful_validation(Context) ->
-    ContextDoc = cb_context:doc(Context),
+    Setters = [fun account_is_enabled/1
+              ,fun account_is_in_good_standing/1
+              ,fun account_has_sms_enabled/1
+              ,fun create_request/1
+              ,fun validate_from/1
+              ],
+    cb_context:validators(Context, Setters).
+
+-spec create_request(cb_context:context()) -> cb_context:context().
+create_request(Context) ->
+    Payload = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
     AuthAccountId = cb_context:auth_account_id(Context),
-    MODB = cb_context:account_modb(Context),
     ResellerId = cb_context:reseller_id(Context),
-    Realm = kzd_accounts:fetch_realm(AccountId),
 
     {AuthorizationType, Authorization, OwnerId} =
         case {cb_context:user_id(Context), cb_context:auth_user_id(Context)} of
@@ -168,68 +176,108 @@ on_successful_validation(Context) ->
                 {<<"user">>, UserId, UserId}
         end,
 
-    {ToNum, ToOptions} = build_number(kz_json:get_value(<<"to">>, ContextDoc)),
-    ToUser =
-        case kapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_to">>, 'false')
-            andalso knm_converters:is_reconcilable(filter_number(ToNum), AccountId)
-        of
-            'true' -> knm_converters:normalize(filter_number(ToNum), AccountId);
-            'false' -> ToNum
-        end,
+    To = kz_json:get_value(<<"to">>, Payload),
+    {Type, ToNum} = case knm_converters:is_reconcilable(To) of
+                        'true' -> {<<"offnet">>, knm_converters:normalize(To, AccountId)};
+                        'false' -> {<<"onnet">>, To}
+                    end,
 
-    {FromNum, FromOptions} = build_number(kz_json:get_value(<<"from">>, ContextDoc, get_default_caller_id(Context, OwnerId))),
-    FromUser =
-        case kapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"api_e164_convert_from">>, 'false')
-            andalso knm_converters:is_reconcilable(filter_number(FromNum), AccountId)
-        of
-            'true' -> knm_converters:normalize(filter_number(FromNum), AccountId);
-            'false' -> FromNum
-        end,
+    FromNum = kz_json:get_value(<<"from">>, Payload, get_default_caller_id(Context, Type, OwnerId)),
 
-    AddrOpts = [{<<"SMPP-Address-From-", K/binary>>, V} || {K, V} <- FromOptions]
-        ++ [{<<"SMPP-Address-To-", K/binary>>, V} || {K, V} <- ToOptions],
+    CCVs = [{<<"Account-ID">>, AccountId}
+           ,{<<"Reseller-ID">>, ResellerId}
+           ,{<<"Authorizing-Type">>, AuthorizationType}
+           ,{<<"Authorizing-ID">>, Authorization}
+           ,{<<"Owner-ID">>, OwnerId}
+           ],
 
-    JObj = kz_json:from_list(
-             [{<<"_id">>, kazoo_modb_util:modb_id()}
-             ,{<<"request">>, <<ToUser/binary, "@", Realm/binary>>}
-             ,{<<"request_user">>, ToUser}
-             ,{<<"request_realm">>, Realm}
-             ,{<<"to">>, <<ToUser/binary, "@", Realm/binary>>}
-             ,{<<"to_user">>, ToUser}
-             ,{<<"to_realm">>, Realm}
-             ,{<<"from">>, <<FromUser/binary, "@", Realm/binary>>}
-             ,{<<"from_user">>, FromUser}
-             ,{<<"from_realm">>, Realm}
-             ,{<<"pvt_status">>, <<"queued">>}
-             ,{<<"pvt_reseller_id">>, ResellerId}
-             ,{<<"pvt_owner_id">>, OwnerId}
-             ,{<<"pvt_authorization_type">>, AuthorizationType}
-             ,{<<"pvt_authorization">>, Authorization}
-             ,{<<"pvt_origin">>, <<"api">>}
-             ,{<<"pvt_address_options">>, kz_json:from_list(AddrOpts)}
-             ]
-            ),
-    Doc = kz_doc:update_pvt_parameters(kz_json:merge(ContextDoc, JObj), MODB, [{'type', <<"sms">>}]),
-    cb_context:set_doc(cb_context:set_account_db(Context, MODB), Doc).
+    KVs = [{<<"Message-ID">>, cb_context:req_id(Context)}
+          ,{<<"From">>, FromNum}
+          ,{<<"To">>, ToNum}
+          ,{<<"Body">>, kz_json:get_value(<<"body">>, Payload)}
+          ,{<<"Account-ID">>, cb_context:account_id(Context)}
+          ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+          ,{<<"Route-Type">>, Type}
+          ,{<<"from">>, null}
+          ,{<<"to">>, null}
+          ,{<<"body">>, null}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
 
--define(CALLER_ID_INTERNAL, [<<"caller_id">>, <<"internal">>, <<"number">>]).
--define(CALLER_ID_EXTERNAL, [<<"caller_id">>, <<"external">>, <<"number">>]).
+    cb_context:set_doc(Context, kz_json:set_values(KVs, Payload)).
 
--spec get_default_caller_id(cb_context:context(), kz_term:api_binary()) -> kz_term:api_binary().
-get_default_caller_id(Context, 'undefined') ->
-    {'ok', JObj} = kzd_accounts:fetch(cb_context:account_id(Context)),
-    kz_json:get_first_defined([?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]
-                             ,JObj
-                             ,kz_privacy:anonymous_caller_id_number(cb_context:account_id(Context))
-                             );
-get_default_caller_id(Context, OwnerId) ->
-    AccountDb = cb_context:account_db(Context),
-    {'ok', JObj1} = kzd_accounts:fetch(AccountDb),
-    {'ok', JObj2} = kz_datamgr:open_cache_doc(AccountDb, OwnerId),
-    kz_json:get_first_defined([?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]
-                             ,kz_json:merge(JObj1, JObj2)
-                             ,kz_privacy:anonymous_caller_id_number(cb_context:account_id(Context))
-                             ).
+-spec get_default_caller_id(cb_context:context(), binary(), kz_term:api_binary()) -> kz_term:api_binary().
+get_default_caller_id(Context, <<"offnet">>, 'undefined') ->
+    {'ok', EP} = kz_endpoint:get(cb_context:account_id(Context), cb_context:account_id(Context)),
+    kzd_caller_id:external(kzd_accounts:caller_id(EP, kz_json:new()));
+get_default_caller_id(Context, <<"onnet">>, 'undefined') ->
+    {'ok', EP} = kz_endpoint:get(cb_context:account_id(Context), cb_context:account_id(Context)),
+    kzd_caller_id:internal(kzd_accounts:caller_id(EP, kz_json:new()));
+get_default_caller_id(Context, <<"offnet">>, OwnerId) ->
+    {'ok', EP} = kz_endpoint:get(OwnerId, cb_context:account_id(Context)),
+    kzd_caller_id:external(kzd_accounts:caller_id(EP, kz_json:new()));
+get_default_caller_id(Context, <<"onnet">>, OwnerId) ->
+    {'ok', EP} = kz_endpoint:get(OwnerId, cb_context:account_id(Context)),
+    kzd_caller_id:internal(kzd_accounts:caller_id(EP, kz_json:new())).
+
+
+-spec account_is_enabled(cb_context:context()) -> cb_context:context().
+account_is_enabled(Context) ->
+    case kzd_accounts:enabled(cb_context:account_doc(Context)) of
+        'true' -> Context;
+        'false' -> cb_context:add_system_error('disabled', Context)
+    end.
+
+-spec account_is_in_good_standing(cb_context:context()) -> cb_context:context().
+account_is_in_good_standing(Context) ->
+    case kz_services_standing:acceptable(cb_context:account_id(Context)) of
+        {'true', _} -> Context;
+        {'false', #{message := Msg}} -> cb_context:add_system_error('account', Msg, Context)
+    end.
+
+-spec account_has_sms_enabled(cb_context:context()) -> cb_context:context().
+account_has_sms_enabled(Context) ->
+    case kz_services_im:is_sms_enabled(cb_context:account_id(Context)) of
+        'true' -> Context;
+        'false' -> cb_context:add_system_error('account', <<"sms services not enabled for account">>, Context)
+    end.
+
+-spec validate_from(cb_context:context()) -> cb_context:context().
+validate_from(Context) ->
+    case kz_api_sms:route_type(cb_context:doc(Context)) of
+        <<"onnet">> ->
+            Context;
+        <<"offnet">> ->
+            Setters = [{fun number_exists/2, kz_api_sms:from(cb_context:doc(Context))}
+                      ,fun number_belongs_to_account/1
+                      ,fun number_has_sms_enabled/1
+                      ],
+            cb_context:validators(Context, Setters)
+    end.
+
+-spec number_exists(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
+number_exists(Context, Number) ->
+    case knm_phone_number:fetch(Number) of
+        {'error', _R} -> cb_context:add_validation_error(<<"from">>, <<"invalid">>, <<"number is invalid">>, Context);
+        {'ok', KNumber} -> cb_context:store(Context, 'from_number', KNumber)
+    end.
+
+-spec number_belongs_to_account(cb_context:context()) -> cb_context:context().
+number_belongs_to_account(Context) ->
+    Number = cb_context:fetch(Context, 'from_number'),
+    AccountId = cb_context:account_id(Context),
+    case knm_phone_number:assigned_to(Number) =:= AccountId of
+        'true' -> Context;
+        'false' -> cb_context:add_validation_error(<<"from">>, <<"forbidden">>, <<"number does not belong to account">>, Context)
+    end.
+
+-spec number_has_sms_enabled(cb_context:context()) -> cb_context:context().
+number_has_sms_enabled(Context) ->
+    Number = cb_context:fetch(Context, 'from_number'),
+    case knm_sms:enabled(Number) of
+        'true' -> Context;
+        'false' -> cb_context:add_validation_error(<<"from">>, <<"forbidden">>, <<"number does not have sms enabled">>, Context)
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Attempt to load a summarized listing of all instances of this
@@ -271,29 +319,3 @@ normalize_view_results(JObj, Acc) ->
     Date = kz_time:rfc1036(kz_json:get_value(<<"created">>, ValueJObj)),
     [kz_json:set_value(<<"date">>, Date, JObj) | Acc].
 
--spec filter_number(binary()) -> binary().
-filter_number(Number) ->
-    << <<X>> || <<X>> <= Number, is_digit(X)>>.
-
--spec is_digit(integer()) -> boolean().
-is_digit(N) when is_integer(N),
-                 N >= $0,
-                 N =< $9 -> true;
-is_digit(_) -> false.
-
--spec build_number(kz_term:ne_binary()) -> {kz_term:api_binary(), kz_term:proplist()}.
-build_number(Number) ->
-    N = binary:split(Number, <<",">>, ['global']),
-    case N of
-        [_One] -> {Number, []};
-        _ -> lists:foldl(fun parse_number/2, {'undefined', []}, N)
-    end.
-
--spec parse_number(kz_term:ne_binary(), {kz_term:api_binary(), kz_term:proplist()}) ->
-                          {kz_term:api_binary(), kz_term:proplist()}.
-parse_number(<<"TON=", N/binary>>, {Num, Options}) ->
-    {Num, [{<<"TON">>, kz_term:to_integer(N) } | Options]};
-parse_number(<<"NPI=", N/binary>>, {Num, Options}) ->
-    {Num, [{<<"NPI">>, kz_term:to_integer(N) } | Options]};
-parse_number(N, {_, Options}) ->
-    {N, Options}.

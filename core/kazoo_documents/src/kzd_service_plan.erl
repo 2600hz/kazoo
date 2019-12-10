@@ -40,6 +40,9 @@
 -export([asr/1
         ,asr/2
         ]).
+-export([im/1
+        ,im/2
+        ]).
 -export([applications/1
         ,applications/2
         ,set_applications/2
@@ -294,6 +297,17 @@ asr(JObj) ->
 asr(JObj, Default) ->
     kz_json:get_ne_json_value(<<"asr">>, JObj, Default).
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec im(doc()) -> kz_json:object().
+im(JObj) ->
+    im(JObj, kz_json:new()).
+
+-spec im(doc(), Default) -> Default | kz_json:object().
+im(JObj, Default) ->
+    kz_json:get_ne_json_value(<<"im">>, JObj, Default).
 
 %%------------------------------------------------------------------------------
 %% @doc

@@ -2,6 +2,7 @@
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
 -define(APP, 'kazoo_documents').

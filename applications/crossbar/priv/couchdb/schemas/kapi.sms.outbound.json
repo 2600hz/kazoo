@@ -6,6 +6,9 @@
         "Account-ID": {
             "type": "string"
         },
+        "Application-ID": {
+            "type": "string"
+        },
         "Body": {
             "type": "string"
         },
@@ -78,6 +81,12 @@
         "Orig-Port": {
             "type": "string"
         },
+        "Originator-Flags": {
+            "type": "string"
+        },
+        "Originator-Properties": {
+            "type": "string"
+        },
         "Request": {
             "type": "string"
         },
@@ -101,6 +110,12 @@
             "type": "string"
         },
         "System-ID": {
+            "type": "string"
+        },
+        "Target-Flags": {
+            "type": "string"
+        },
+        "Target-Properties": {
             "type": "string"
         },
         "To": {
