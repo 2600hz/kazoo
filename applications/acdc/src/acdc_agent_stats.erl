@@ -282,8 +282,8 @@ publish_query_errors(RespQ, MsgId, Errors) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec status_build_match_spec(kz_json:object()) ->
-                                     {'ok', ets:match_spec()} |
-                                     {'error', kz_json:object()}.
+          {'ok', ets:match_spec()} |
+          {'error', kz_json:object()}.
 status_build_match_spec(JObj) ->
     case kz_json:get_value(<<"Account-ID">>, JObj) of
         'undefined' ->
