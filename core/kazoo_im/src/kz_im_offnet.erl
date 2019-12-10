@@ -86,7 +86,6 @@ start_link(#amqp_listener_connection{broker=Broker
                             ,{'server_confirms', 'true'}
                             ]
                            ,[C]
-                           ,[]
                            ).
 
 -spec handle_message(kz_json:object(), kz_term:proplist()) -> 'ok'.
