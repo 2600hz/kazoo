@@ -323,6 +323,7 @@ fetch_current_status(Context, AgentId, 'true') ->
     Req = props:filter_undefined(
             [{<<"Account-ID">>, cb_context:account_id(Context)}
             ,{<<"Agent-ID">>, AgentId}
+            ,{<<"Limit">>, 1}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     case kz_amqp_worker:call(Req
@@ -338,10 +339,14 @@ fetch_current_status(Context, AgentId, 'true') ->
                                   ,Context
                                   );
         {'ok', Resp} ->
-            Stats = kz_json:get_value([<<"Agents">>, AgentId], Resp),
-            {_, StatusJObj} = kz_json:foldl(fun acdc_agent_util:find_most_recent_fold/3, {0, kz_json:new()}, Stats),
-            crossbar_util:response(StatusJObj, Context)
+            Agents = kz_json:get_value(<<"Agents">>, Resp, kz_json:new()),
+            Agents1 = kz_json:map(fun(K, AgentStats) -> {K, remove_timestamps(AgentStats)} end, Agents),
+            crossbar_util:response(kz_json:get_json_value(AgentId, Agents1), Context)
     end.
+
+remove_timestamps(AgentStats) ->
+    [Key|_] = kz_json:get_keys(AgentStats),
+    kz_json:get_json_value(Key, AgentStats).
 
 -spec fetch_all_current_statuses(cb_context:context(), kz_term:api_binary(), kz_term:api_binary()) ->
           cb_context:context().
