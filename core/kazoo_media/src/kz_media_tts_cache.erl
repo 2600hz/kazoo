@@ -274,7 +274,6 @@ log_error(_Error, _Contents) ->
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{id=Id, reqs=Reqs}) ->
-    'ok' = ecallmgr_util:remove_media(<<"tts://", Id/bytes>>),
     publish_doc_update(Id),
     _ = [gen_server:reply(From, {'error', 'shutdown'}) || From <- Reqs],
     lager:debug("media tts ~s going down: ~p", [Id, _Reason]).
@@ -310,8 +309,9 @@ stop_timer(Ref) when is_reference(Ref) ->
 
 -spec publish_doc_update(kz_term:ne_binary()) -> 'ok'.
 publish_doc_update(Id) ->
+    DbId = kz_binary:md5(Id),
     API =
-        [{<<"ID">>, Id}
+        [{<<"ID">>, DbId}
         ,{<<"Type">>, Type = <<"media">>}
         ,{<<"Database">>, Db = <<"tts">>}
         ,{<<"Rev">>, <<"0">>}
