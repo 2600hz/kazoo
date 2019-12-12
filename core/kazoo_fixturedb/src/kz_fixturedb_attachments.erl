@@ -44,7 +44,7 @@ put_attachment(Server, DbName, DocId, AName, Contents, Options) ->
     Doc = kz_fixturedb_doc:open_doc(Server, DbName, DocId, Options),
     prepare_att_doc(Doc, AName, Contents, Options).
 
--spec delete_attachment(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> docs_resp().
+-spec delete_attachment(server_map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_data:options()) -> doc_resp().
 delete_attachment(Server, DbName, DocId, _AName, Options) ->
     Doc = kz_fixturedb_doc:open_doc(Server, DbName, DocId, Options),
     del_att_response(Doc).

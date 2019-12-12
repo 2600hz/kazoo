@@ -9,7 +9,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_number_states).
+-module(knm_states).
 
 -export([to_options_state/1]).
 
@@ -29,7 +29,7 @@
 -spec to_options_state(knm_pipe:collection()) -> knm_pipe:collection().
 %% FIXME: opaque
 to_options_state(T=#{'options' := Options}) ->
-    TargetState = knm_number_options:state(Options),
+    TargetState = knm_options:state(Options),
     lager:debug("attempting to change to state ~s", [TargetState]),
     change_state(T, TargetState).
 
@@ -192,21 +192,23 @@ authorize(T) ->
 
 -spec not_assigning_to_self(knm_phone_number:record()) -> knm_phone_number:record();
                            (knm_pipe:collection()) -> knm_pipe:collection().
-%% FIXME: opaque
-not_assigning_to_self(T0=#{'todo' := PNs}) ->
-    F = fun (PN, T) ->
-                case knm_pipe:attempt(fun not_assigning_to_self/1, [PN]) of
-                    {'ok', NewPN} -> knm_pipe:set_succeeded(T, NewPN);
-                    {'error', R} -> knm_pipe:set_failed(T, PN, R)
-                end
-        end,
-    lists:foldl(F, T0, PNs);
-not_assigning_to_self(PN) ->
+not_assigning_to_self(Collection) ->
+    not_assigning_to_self(knm_pipe:todo(Collection), Collection).
+
+-spec not_assigning_to_self(knm_phone_number:records(), knm_pipe:collection()) -> knm_pipe:collection().
+not_assigning_to_self([], Collection) ->
+    Collection;
+not_assigning_to_self([PN|PNs], Collection) ->
     AssignedTo = knm_phone_number:assigned_to(PN),
     case knm_phone_number:assign_to(PN) of
-        'undefined' -> knm_errors:unauthorized();
-        AssignedTo -> knm_errors:no_change_required(PN);
-        _AssignTo -> PN
+        'undefined' ->
+            Reason = knm_errors:to_json('unauthorized', 'undefined', <<"can not assign to self">>),
+            not_assigning_to_self(PNs, knm_pipe:set_failed(Collection, PN, Reason));
+        AssignedTo ->
+            Reason = knm_errors:to_json('no_change_required', knm_phone_number:number(PN)),
+            not_assigning_to_self(PNs, knm_pipe:set_failed(Collection, PN, Reason));
+        _AssignTo ->
+            not_assigning_to_self(PNs, knm_pipe:add_success(Collection, PN))
     end.
 
 -spec update_reserve_history(knm_pipe:collection()) -> knm_pipe:collection().

@@ -221,7 +221,7 @@ running_modules() -> crossbar_bindings:modules_loaded().
 find_account_by_number(Number) when not is_binary(Number) ->
     find_account_by_number(kz_term:to_binary(Number));
 find_account_by_number(Number) ->
-    case knm_number:lookup_account(Number) of
+    case knm_numbers:lookup_account(Number) of
         {'ok', AccountId, _} ->
             AccountDb = kzs_util:format_account_db(AccountId),
             print_account_info(AccountDb, AccountId);

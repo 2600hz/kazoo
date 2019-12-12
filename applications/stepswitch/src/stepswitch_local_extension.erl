@@ -24,7 +24,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {number_props = [] :: knm_number_options:extra_options()
+-record(state, {number_props = [] :: knm_options:extra_options()
                ,resource_req :: kapi_offnet_resource:req()
                ,request_handler :: pid()
                ,control_queue :: kz_term:api_binary()
@@ -60,7 +60,7 @@
 %% @doc Starts the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec start_link(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> kz_types:startlink_ret().
+-spec start_link(knm_options:extra_options(), kapi_offnet_resource:req()) -> kz_types:startlink_ret().
 start_link(NumberProps, OffnetReq) ->
     CallId = kapi_offnet_resource:call_id(OffnetReq),
     Bindings = [?CALL_BINDING(CallId)
@@ -81,7 +81,7 @@ start_link(NumberProps, OffnetReq) ->
 %% @doc Initializes the server.
 %% @end
 %%------------------------------------------------------------------------------
--spec init([knm_number_options:extra_options() | kapi_offnet_resource:req()]) -> {'ok', state()}.
+-spec init([knm_options:extra_options() | kapi_offnet_resource:req()]) -> {'ok', state()}.
 init([NumberProps, OffnetReq]) ->
     kz_log:put_callid(OffnetReq),
     case kapi_offnet_resource:control_queue(OffnetReq) of
@@ -299,8 +299,8 @@ build_local_extension(#state{number_props=Props
                             }) ->
     {CIDName, CIDNum} = local_extension_caller_id(OffnetJObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
-    Number = knm_number_options:number(Props),
-    AccountId = knm_number_options:account_id(Props),
+    Number = knm_options:number(Props),
+    AccountId = knm_options:account_id(Props),
     ResellerId = kz_services_reseller:get_id(AccountId),
     OriginalAccountId = kapi_offnet_resource:account_id(OffnetJObj),
     OriginalResellerId = kz_services_reseller:get_id(OriginalAccountId),

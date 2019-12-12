@@ -243,7 +243,7 @@ remove_plaintext_password(Context) ->
           cb_context:context().
 validate_number_ownership(Numbers, Context) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}],
-    Failed = knm_pipe:failed(knm_numbers:get(Numbers, Options)),
+    Failed = knm_pipe:failed(knm_ops:get(Numbers, Options)),
     case maps:fold(fun validate_number_ownership_fold/3, [], Failed) of
         [] -> Context;
         Unauthorized ->
@@ -253,7 +253,7 @@ validate_number_ownership(Numbers, Context) ->
             cb_context:add_system_error(403, 'forbidden', Message, Context)
     end.
 
--spec validate_number_ownership_fold(knm_numbers:num(), knm_pipe:reason(), kz_term:ne_binaries()) ->
+-spec validate_number_ownership_fold(kz_term:ne_binary(), knm_errors:reason(), kz_term:ne_binaries()) ->
           kz_term:ne_binaries().
 validate_number_ownership_fold(_, Reason, Unauthorized) when is_atom(Reason) ->
     %% Ignoring atom reasons, i.e. 'not_found' or 'not_reconcilable'
@@ -268,7 +268,7 @@ validate_number_ownership_fold(Number, ReasonJObj, Unauthorized) ->
 -type assignments_to_apply() :: [assignment_to_apply()].
 -type port_req_assignment() :: {kz_term:ne_binary(), kz_term:api_binary(), kz_json:object()}.
 -type port_req_assignments() :: [port_req_assignment()].
--type assignment_update() :: {kz_term:ne_binary(), knm_number:return()} |
+-type assignment_update() :: {kz_term:ne_binary(), knm_numbers:return()} |
                              {kz_term:ne_binary(), {'ok', kz_json:object()}} |
                              {kz_term:ne_binary(), {'error', any()}}.
 -type assignment_updates() :: [assignment_update()].
@@ -317,7 +317,7 @@ maybe_assign_to_app(NumUpdates, AccountId) ->
     Options = [{'auth_by', AccountId}],
     Groups = group_by_assign_to(NumUpdates),
     maps:fold(fun(Assign, Nums, Acc) ->
-                      Results = knm_numbers:assign_to_app(Nums, Assign, Options),
+                      Results = knm_ops:assign_to_app(Nums, Assign, Options),
                       format_assignment_results(Results) ++ Acc
               end, [], Groups).
 
@@ -346,11 +346,11 @@ format_assignment_succeeded(PhoneNumbers) ->
      || PN <- PhoneNumbers
     ].
 
--spec format_assignment_failure(knm_pipe:failed()) -> assignment_updates().
+-spec format_assignment_failure(knm_errors:failed()) -> assignment_updates().
 format_assignment_failure(Failed) ->
     maps:fold(fun format_assignment_failure_fold/3, [], Failed).
 
--spec format_assignment_failure_fold(knm_numbers:num(), knm_pipe:reason(), assignment_updates()) ->
+-spec format_assignment_failure_fold(kz_term:ne_binary(), knm_errors:reason(), assignment_updates()) ->
           assignment_updates().
 format_assignment_failure_fold(Number, Reason, Updates) when is_atom(Reason) ->
     [{Number, {'error', Reason}} | Updates];
@@ -362,7 +362,7 @@ log_assignment_updates(Updates) ->
     lists:foreach(fun log_assignment_update/1, Updates).
 
 -spec log_assignment_update(assignment_update()) -> 'ok'.
-log_assignment_update({DID, {'ok', _PN}}) ->
+log_assignment_update({DID, {'ok', _}}) ->
     lager:debug("successfully updated ~s", [DID]);
 log_assignment_update({DID, {'error', E}}) ->
     lager:debug("failed to update ~s: ~p", [DID, E]).

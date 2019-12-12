@@ -39,34 +39,34 @@ cleanup(#{'number_cache_pid' := Pid}) ->
     erlang:exit(Pid, 'normal').
 
 is_force_outbound() ->
-    {'ok', ?RESELLER_ACCOUNT_ID, Props1} = knm_number:lookup_account(?TEST_PORT_IN_NUM),
-    {'error', {'not_in_service', ?RESELLER_ACCOUNT_ID}} = knm_number:lookup_account(?TEST_TELNYX_NUM),
-    {'ok', ?RESELLER_ACCOUNT_ID, Props2} = knm_number:lookup_account(?TEST_VITELITY_NUM),
-    {'ok', ?RESELLER_ACCOUNT_ID, Props3} = knm_number:lookup_account(?TEST_IN_SERVICE_NUM),
-    {'ok', ?RESELLER_ACCOUNT_ID, Props4} = knm_number:lookup_account(?TEST_IN_SERVICE_MDN),
-    {'ok', ?RESELLER_ACCOUNT_ID, Props5} = knm_number:lookup_account(?TEST_IN_SERVICE_BAD_CARRIER_NUM),
-    {'ok', ?RESELLER_ACCOUNT_ID, Props6} = knm_number:lookup_account(?TEST_NEW_PORT_NUM),
-    {'ok', ?RESELLER_ACCOUNT_ID, Props7} = knm_number:lookup_account(?TEST_PORT_IN3_NUM),
+    {'ok', ?RESELLER_ACCOUNT_ID, Props1} = knm_numbers:lookup_account(?TEST_PORT_IN_NUM),
+    {'error', {'not_in_service', ?RESELLER_ACCOUNT_ID}} = knm_numbers:lookup_account(?TEST_TELNYX_NUM),
+    {'ok', ?RESELLER_ACCOUNT_ID, Props2} = knm_numbers:lookup_account(?TEST_VITELITY_NUM),
+    {'ok', ?RESELLER_ACCOUNT_ID, Props3} = knm_numbers:lookup_account(?TEST_IN_SERVICE_NUM),
+    {'ok', ?RESELLER_ACCOUNT_ID, Props4} = knm_numbers:lookup_account(?TEST_IN_SERVICE_MDN),
+    {'ok', ?RESELLER_ACCOUNT_ID, Props5} = knm_numbers:lookup_account(?TEST_IN_SERVICE_BAD_CARRIER_NUM),
+    {'ok', ?RESELLER_ACCOUNT_ID, Props6} = knm_numbers:lookup_account(?TEST_NEW_PORT_NUM),
+    {'ok', ?RESELLER_ACCOUNT_ID, Props7} = knm_numbers:lookup_account(?TEST_PORT_IN3_NUM),
     [{"knm_local + port_in --> true"
-     ,?_assert(knm_number_options:should_force_outbound(Props1))
+     ,?_assert(knm_options:should_force_outbound(Props1))
      }
     ,{"knm_vitelity + in_service --> false"
-     ,?_assert(not knm_number_options:should_force_outbound(Props2))
+     ,?_assert(not knm_options:should_force_outbound(Props2))
      }
     ,{"knm_local + in_service --> true"
-     ,?_assert(knm_number_options:should_force_outbound(Props3))
+     ,?_assert(knm_options:should_force_outbound(Props3))
      }
     ,{"knm_mdn + in_service --> true"
-     ,?_assert(knm_number_options:should_force_outbound(Props4))
+     ,?_assert(knm_options:should_force_outbound(Props4))
      }
     ,{"knm_pacwest + in_service --> false"
-     ,?_assert(not knm_number_options:should_force_outbound(Props5))
+     ,?_assert(not knm_options:should_force_outbound(Props5))
      }
     ,{"pending port request --> true"
-     ,?_assert(knm_number_options:should_force_outbound(Props6))
+     ,?_assert(knm_options:should_force_outbound(Props6))
      }
     ,{"knm_bandwidth2 + port_in --> true"
-     ,?_assert(knm_number_options:should_force_outbound(Props7))
+     ,?_assert(knm_options:should_force_outbound(Props7))
      }
     ].
 
@@ -74,13 +74,14 @@ force_outbound() ->
     Options = [{'auth_by', ?RESELLER_ACCOUNT_ID}
               ,{'assign_to', ?RESELLER_ACCOUNT_ID}
               ],
-    {ok, PN1} = knm_number:create(?TEST_TELNYX_NUM, Options),
-    [PN2] = knm_pipe:succeeded(knm_numbers:update([PN1], [{fun knm_phone_number:reset_doc/2, ?J('true')}])),
-    [PN3] = knm_pipe:succeeded(knm_numbers:update([PN1], [{fun knm_phone_number:update_doc/2, ?J(<<"blabla">>)}])),
-    [PN4] = knm_pipe:succeeded(knm_numbers:update([PN2], [{fun knm_phone_number:reset_doc/2, ?J('undefined')}])),
-    [PN5] = knm_pipe:succeeded(knm_numbers:update([PN4], [{fun knm_phone_number:update_doc/2, ?J(<<"false">>)}])),
-    [PN6] = knm_pipe:succeeded(knm_numbers:update([PN3], [{fun knm_phone_number:reset_doc/2, ?J('false')}])),
-    [PN7] = knm_pipe:succeeded(knm_numbers:update([undirty(PN6)], [{fun knm_phone_number:reset_doc/2, ?J('false')}])),
+    [PN1] = knm_pipe:succeeded(knm_ops:create([?TEST_TELNYX_NUM], Options)),
+
+    [PN2] = knm_pipe:succeeded(knm_ops:update([PN1], [{fun knm_phone_number:reset_doc/2, ?J('true')}])),
+    [PN3] = knm_pipe:succeeded(knm_ops:update([PN1], [{fun knm_phone_number:update_doc/2, ?J(<<"blabla">>)}])),
+    [PN4] = knm_pipe:succeeded(knm_ops:update([PN2], [{fun knm_phone_number:reset_doc/2, ?J('undefined')}])),
+    [PN5] = knm_pipe:succeeded(knm_ops:update([PN4], [{fun knm_phone_number:update_doc/2, ?J(<<"false">>)}])),
+    [PN6] = knm_pipe:succeeded(knm_ops:update([PN3], [{fun knm_phone_number:reset_doc/2, ?J('false')}])),
+    [PN7] = knm_pipe:succeeded(knm_ops:update([undirty(PN6)], [{fun knm_phone_number:reset_doc/2, ?J('false')}])),
     [?_assert(is_dirty(PN1))
     ,{"Verify private feature", ?_assertEqual('undefined', pvt_feature(PN1))}
     ,{"Verify public feature", ?_assertEqual('undefined', pub_feature(PN1))}
@@ -151,7 +152,7 @@ is_dirty(PN) ->
     knm_phone_number:is_dirty(PN).
 
 is_feature_available(Num, Options) ->
-    {'ok', PN} = knm_number:get(Num, Options),
+    [PN] = knm_pipe:succeeded(knm_ops:get([Num], Options)),
     lists:member(?KEY, knm_providers:available_features(PN)).
 
 is_feature_set(PN) ->
@@ -165,4 +166,4 @@ pub_feature(PN) ->
     kz_json:get_value(?KEY, Doc).
 
 is_force_outbound(PN) ->
-    knm_number:is_force_outbound(PN).
+    knm_lib:is_force_outbound(PN).

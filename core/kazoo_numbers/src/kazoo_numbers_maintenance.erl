@@ -201,7 +201,7 @@ convert_carrier_module_numbers(Nums, Target) ->
         'false' -> io:format("Bad carrier module: ~s\n", [Target]);
         'true' ->
             Routines = [{fun knm_phone_number:set_module_name/2, Target}],
-            Updated = knm_numbers:update(Nums, Routines),
+            Updated = knm_ops:update(Nums, Routines),
             PNs = knm_pipe:succeeded(Updated),
             Failed = knm_pipe:failed(Updated),
             TotalLength = length(Nums),
@@ -1832,10 +1832,11 @@ fix_unassign_doc(DIDs) ->
               ,{'batch_run', 'true'}
               ],
     case knm_numbers:update(DIDs, Setters, Options) of
-        %% FIXME: opaque
-        #{'failed' := Map} when map_size(Map) =:= 0 -> 'ok';
-        #{'failed' := Failed} ->
-            ?SUP_LOG_DEBUG("failed fixing ~b unassigned numbers.", [maps:size(Failed)])
+        {'ok', _} -> 'ok';
+        {'ok', _, Failed} ->
+            ?SUP_LOG_DEBUG("failed fixing ~b unassigned numbers.", [length(Failed)]);
+        {'dry_run', _} ->
+            ?SUP_LOG_DEBUG("hit dry_run when fixing ~b unassigned numbers.", [length(DIDs)])
     end.
 
 -spec generate_numbers(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer(), non_neg_integer()) -> 'ok'.
@@ -1846,9 +1847,9 @@ generate_numbers(Type, AccountId, StartingNumber, Quantity) ->
 
 -spec delete(kz_term:ne_binary()) -> 'no_return'.
 delete(Num) ->
-    case knm_number:delete(Num, knm_number_options:default()) of
+    case knm_numbers:delete(Num, knm_options:default()) of
         {'ok', _} -> io:format("Removed ~s\n", [Num]);
-        {'error', _R} -> io:format("ERROR: ~p\n", [_R])
+        _R -> io:format("ERROR: ~p\n", [_R])
     end,
     'no_return'.
 
@@ -1941,17 +1942,23 @@ edit_feature_permissions_on_number(Num, Fun, Feature) ->
         'false' -> invalid_feature(Feature);
         'true' ->
             Updates = [{Fun, Feature}],
-            case knm_number:update(Num, Updates) of
-                {'ok', PN} -> list_number_feature_permissions(PN);
-                {'error', Error} -> error_with_number(Num, Error)
+            Collection = knm_ops:update([Num], Updates),
+            case knm_pipe:succeeded(Collection) of
+                [] ->
+                    [{_, Error}|_] = knm_pipe:failed_to_proplist(Collection),
+                    error_with_number(Num, Error);
+                [PN] -> list_number_feature_permissions(PN)
             end
     end.
 
 -spec feature_permissions_on_number(kz_term:ne_binary()) -> 'no_return'.
 feature_permissions_on_number(Num) ->
-    case knm_number:get(Num) of
-        {'error', Error} -> error_with_number(Num, Error);
-        {'ok', PN} -> list_number_feature_permissions(PN)
+    Collection = knm_ops:get([Num]),
+    case knm_pipe:succeeded(Collection) of
+        [] ->
+            [{_, Error}|_] = knm_pipe:failed_to_proplist(Collection),
+            error_with_number(Num, Error);
+        [PN] -> list_number_feature_permissions(PN)
     end.
 
 -spec add_allowed_feature_on_number(kz_term:ne_binary(), kz_term:ne_binary()) -> 'no_return'.

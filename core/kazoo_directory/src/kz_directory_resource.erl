@@ -18,7 +18,7 @@
 -include("kazoo_directory.hrl").
 
 -type resource_context() :: map().
--type resource_param() :: {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), knm_number_options:extra_options()}.
+-type resource_param() :: {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), knm_options:extra_options()}.
 
 -spec profile(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 profile(EndpointId, AccountId) ->
@@ -33,7 +33,7 @@ profile(EndpointId, AccountId, Options) ->
 
 -spec lookup_account(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
 lookup_account(EndpointId, AccountId, Number, Options) ->
-    case knm_number:lookup_account(Number) of
+    case knm_numbers:lookup_account(Number) of
         {'error', _R} = Error ->
             lager:info("unable to determine account for number ~s: ~p",[Number, _R]),
             Error;
@@ -272,16 +272,16 @@ set_cid_name(#{caller_id_number := CIDName
                      | Profile
                     ]}.
 
--spec maybe_transition_port_in(knm_number_options:extra_options()) -> 'ok' | pid().
+-spec maybe_transition_port_in(knm_options:extra_options()) -> 'ok' | pid().
 maybe_transition_port_in(NumberProps) ->
-    case knm_number_options:has_pending_port(NumberProps) of
+    case knm_options:has_pending_port(NumberProps) of
         'false' -> 'ok';
         'true' -> kz_process:spawn(fun transition_port_in/1, [NumberProps])
     end.
 
--spec transition_port_in(knm_number_options:extra_options()) -> 'ok'.
+-spec transition_port_in(knm_options:extra_options()) -> 'ok'.
 transition_port_in(NumberProps) ->
-    Number = knm_number_options:number(NumberProps),
+    Number = knm_options:number(NumberProps),
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     Comment = <<(?APP_NAME)/binary, "-", (?APP_VERSION)/binary, " automagic">>,
     Metadata = knm_port_request:transition_metadata(MasterAccountId, 'undefined', Comment),

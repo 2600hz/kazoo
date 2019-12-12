@@ -24,7 +24,7 @@
         ,patch/2
         ,delete/2
 
-        ,set_response/2
+        ,set_response/3
         ]).
 
 -include("crossbar.hrl").
@@ -324,7 +324,7 @@ classified_number(Context, Number, Classifier) ->
     ClassifierJObj = kz_json:get_value(Classifier, knm_converters:available_classifiers()),
     BaseData = base_classified_number(Context, Number),
     RespData = kz_json:set_values([{<<"name">>, Classifier}
-                                   | BaseData
+                                  | BaseData
                                   ]
                                  ,ClassifierJObj
                                  ),
@@ -337,8 +337,7 @@ classified_number(Context, Number, Classifier) ->
 post(Context, ?FIX, Num) ->
     AccountDb = cb_context:db_name(Context),
     _ = kazoo_numbers_maintenance:copy_single_number_to_account_db(Num, AccountDb),
-    CB = fun() -> ?MODULE:post(cb_context:set_accepting_charges(Context), ?FIX, Num) end,
-    set_response({'ok', kz_json:new()}, Context, CB).
+    crossbar_util:response(kz_json:new(), Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?FIX) ->
@@ -347,101 +346,121 @@ post(Context, ?FIX) ->
     summary(Context);
 post(Context, ?CHECK) ->
     Numbers = cb_context:req_value(Context, ?COLLECTION_NUMBERS),
-    cb_context:set_resp_data(Context, knm_carriers:check(Numbers));
+    crossbar_util:response(knm_carriers:check(Numbers), Context);
 post(Context, ?COLLECTION) ->
-    Results = collection_process(Context, ?HTTP_POST),
+    {Numbers, ReqData} = take_collection_numbers(Context),
+    Options = [{'assign_to', cb_context:account_id(Context)}
+              | default_knm_options(Context)
+              ],
+    Results = knm_numbers:update(Numbers, [{fun knm_phone_number:reset_doc/2, ReqData}], Options),
     CB = fun() -> ?MODULE:post(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
     set_response(Results, Context, CB);
 post(Context, ?LOCALITY) ->
     fetch_locality(Context);
 post(Context, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
-               | default_knm_options(Context)
+              | default_knm_options(Context)
               ],
     JObj = cb_context:doc(Context),
-    Result = knm_number:update(Number, [{fun knm_phone_number:reset_doc/2, JObj}], Options),
+    Result = knm_numbers:update(Number, [{fun knm_phone_number:reset_doc/2, JObj}], Options),
     CB = fun() -> ?MODULE:post(cb_context:set_accepting_charges(Context), Number) end,
     set_response(Result, Context, CB).
 
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ?COLLECTION) ->
-    Results = collection_process(Context, ?HTTP_PUT),
+    {Numbers, ReqData} = take_collection_numbers(Context),
+    Options = [{'assign_to', cb_context:account_id(Context)}
+              ,{'public_fields', kz_json:delete_key(?PUBLIC_FIELDS_STATE, ReqData)}
+              | maybe_ask_for_state(kz_json:get_ne_binary_value(?PUBLIC_FIELDS_STATE, ReqData))
+               ++ default_knm_options(Context)
+              ],
+    Results = knm_numbers:create(Numbers, Options),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
     set_response(Results, Context, CB);
 put(Context, Number) ->
     Doc = cb_context:doc(Context),
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'public_fields', kz_json:delete_key(?PUBLIC_FIELDS_STATE, Doc)}
-               | maybe_ask_for_state(kz_json:get_ne_binary_value(?PUBLIC_FIELDS_STATE, Doc))
+              | maybe_ask_for_state(kz_json:get_ne_binary_value(?PUBLIC_FIELDS_STATE, Doc))
                ++ default_knm_options(Context)
               ],
-    Result = knm_number:create(Number, Options),
+    Result = knm_numbers:create(Number, Options),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number) end,
     set_response(Result, Context, CB).
 
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, ?COLLECTION, ?ACTIVATE) ->
-    Results = collection_process(Context, ?ACTIVATE),
+    {Numbers, _} = take_collection_numbers(Context),
+    Options = [{'public_fields', cb_context:req_data(Context)}
+              | default_knm_options(Context)
+              ],
+    Results = knm_numbers:move(Numbers, cb_context:account_id(Context), Options),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION, ?ACTIVATE) end,
     set_response(Results, Context, CB);
-put(Context, ?NE_BINARY=Number, ?ACTIVATE) ->
+put(Context, <<Number/binary>>, ?ACTIVATE) ->
     Options = [{'public_fields', cb_context:doc(Context)}
-               | default_knm_options(Context)
+              | default_knm_options(Context)
               ],
-    Result = knm_number:move(Number, cb_context:account_id(Context), Options),
+    Result = knm_numbers:move(Number, cb_context:account_id(Context), Options),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?ACTIVATE) end,
     set_response(Result, Context, CB);
 put(Context, Number, ?RESERVE) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'public_fields', cb_context:doc(Context)}
-               | default_knm_options(Context)
+              | default_knm_options(Context)
               ],
-    Result = knm_number:reserve(Number, Options),
+    Result = knm_numbers:reserve(Number, Options),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?RESERVE) end,
     set_response(Result, Context, CB);
 put(Context, Number, ?PORT) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'public_fields', cb_context:doc(Context)}
               ,{'state', ?NUMBER_STATE_PORT_IN}
-               | default_knm_options(Context)
+              | default_knm_options(Context)
               ],
-    Result = knm_number:create(Number, Options),
+    Result = knm_numbers:create(Number, Options),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number, ?PORT) end,
     set_response(Result, Context, CB).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, ?COLLECTION) ->
-    Results = collection_process(Context, ?HTTP_PATCH),
+    {Numbers, ReqData} = take_collection_numbers(Context),
+    Options = [{'assign_to', cb_context:account_id(Context)}
+              | default_knm_options(Context)
+              ],
+    Results = knm_numbers:update(Numbers, [{fun knm_phone_number:update_doc/2, ReqData}], Options),
     CB = fun() -> ?MODULE:patch(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
     set_response(Results, Context, CB);
 patch(Context, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
-               | default_knm_options(Context)
+              | default_knm_options(Context)
               ],
     JObj = cb_context:doc(Context),
-    Result = knm_number:update(Number, [{fun knm_phone_number:update_doc/2, JObj}], Options),
+    Result = knm_numbers:update(Number, [{fun knm_phone_number:update_doc/2, JObj}], Options),
     CB = fun() -> ?MODULE:patch(cb_context:set_accepting_charges(Context), Number) end,
     set_response(Result, Context, CB).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?COLLECTION) ->
-    Results = collection_process(Context, ?HTTP_DELETE),
+    {Numbers, _} = take_collection_numbers(Context),
+    Options = default_knm_options(Context),
     CB = fun() -> ?MODULE:delete(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
-    set_response(Results, Context, CB);
+    set_response(release_or_delete(Context, Numbers, Options), Context, CB);
 delete(Context, Number) ->
     Options = default_knm_options(Context),
 
-    Releaser = pick_release_or_delete(Context, Options),
     CB = fun() -> ?MODULE:delete(cb_context:set_accepting_charges(Context), Number) end,
-    case knm_number:Releaser(Number, Options) of
-        {'error', Data}=Error ->
-            case kz_json:is_json_object(Data)
-                andalso knm_errors:error(Data) == <<"invalid_state_transition">>
-                andalso knm_errors:cause(Data) == <<"from available to released">>
+    case release_or_delete(Context, Number, Options) of
+        {'ok', [_]}=OK ->
+            set_response(OK, Context, CB);
+        {'ok', [], [{_, Error}]}=Result ->
+            case kz_json:is_json_object(Error)
+                andalso knm_errors:error(Error) == <<"invalid_state_transition">>
+                andalso knm_errors:cause(Error) == <<"from available to released">>
             of
                 'true' -> reply_number_not_found(Context);
-                'false' -> set_response(Error, Context, CB)
+                'false' -> set_response(Result, Context, CB)
             end;
         Else ->
             set_response(Else, Context, CB)
@@ -457,10 +476,10 @@ delete(Context, Number) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 summary(Context, Number) ->
-    case knm_number:get(Number, [{'auth_by', cb_context:auth_account_id(Context)}]) of
-        {'ok', PN} ->
-            crossbar_util:response(knm_phone_number:to_public_json(PN), Context);
-        {'error', _JObj} ->
+    case knm_numbers:get(Number, [{'auth_by', cb_context:auth_account_id(Context)}]) of
+        {'ok', [JObj]} ->
+            crossbar_util:response(JObj, Context);
+        _ ->
             maybe_find_port_number(Context, Number, should_include_ports(Context))
     end.
 
@@ -835,16 +854,26 @@ update_phone_numbers_locality_fold(Key, Value, JObj, Context) ->
 %%------------------------------------------------------------------------------
 -spec identify(cb_context:context(), kz_term:ne_binary()) -> cb_context:context().
 identify(Context, Num) ->
-    case knm_number:lookup_account(Num) of
+    case knm_numbers:lookup_account(Num) of
         {'ok', AccountId, ExtraOptions} ->
             JObj = kz_json:from_list(
                      [{<<"account_id">>, AccountId}
-                     ,{<<"number">>, knm_number_options:number(ExtraOptions)}
+                     ,{<<"number">>, knm_options:number(ExtraOptions)}
                      ]),
             crossbar_util:response(JObj, Context);
-        {'error', _R}=Error ->
-            Context1 = cb_context:store(Context, 'num', knm_converters:normalize(Num)),
-            set_response(Error, Context1)
+
+        {'error', {Cause, AccountId}} when Cause =:= 'not_in_service';
+                                           Cause =:= 'account_disabled' ->
+            Data = kz_json:from_list(
+                     [{<<"cause">>, kz_term:to_binary(Cause)}
+                     ,{<<"account_id">>, AccountId}
+                     ,{<<"number">>, knm_converters:normalize(Num)}
+                     ]),
+            crossbar_util:response_400(<<"client error">>, Data, Context);
+        {'error', 'not_found'} ->
+            reply_number_not_found(Context);
+        {'error', Reason} ->
+            crossbar_util:response_400(<<"client error">>, kz_term:to_binary(Reason), Context)
     end.
 
 %%------------------------------------------------------------------------------
@@ -869,61 +898,43 @@ validate_delete(Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec set_response(result(), cb_context:context()) -> cb_context:context().
-set_response(Result, Context) ->
-    set_response(Result, Context, fun() -> Context end).
 
--type result() :: {'ok', kz_json:object()} |
-                  knm_pipe:collection() |
-                  knm_number:return() |
-                  {binary(), binary()}.
 -type cb() :: fun(() -> cb_context:context()).
 
--spec set_response(result(), cb_context:context(), cb()) -> cb_context:context().
-set_response({'ok', Thing}, Context, _) ->
-    case kz_json:is_json_object(Thing) of
-        'false' -> crossbar_util:response(knm_phone_number:to_public_json(Thing), Context);
-        'true' -> crossbar_util:response(Thing, Context)
-    end;
-
-set_response(Ret=#{'quotes' := Quotes, 'options' := Options}, Context, CB) ->
-    case {knm_number_options:dry_run(Options)
-         ,kz_term:is_empty(Quotes)
-         }
-    of
-        {'true', 'false'} ->
-            crossbar_util:response_402(Quotes, Context);
-        {'true', 'true'} -> CB();
-        _ ->
-            ResultJObj = knm_pipe:to_json(Ret),
-            crossbar_util:response(ResultJObj, Context)
-    end;
-
+-spec set_response(knm_numbers:return(), cb_context:context(), cb()) -> cb_context:context().
+set_response({'ok', [JObj]}, Context, _) ->
+    %% single number operation
+    crossbar_util:response(JObj, Context);
+set_response({'ok', JObjs}, Context, _) ->
+    %% collection operation (multi numbers)
+    Resp = kz_json:from_list(
+             [{<<"success">>, kz_json:from_list([{kz_doc:id(JObj), JObj} || JObj <- JObjs])}
+             ,{<<"error">>, []}
+             ]),
+    crossbar_util:response(Resp, Context);
+set_response({'ok', [], [Failed]}, Context, _) ->
+    %% single number operation
+    set_error(Failed, Context);
+set_response({'ok', Success, FailedProp}, Context, _) ->
+    %% collection operation (multi numbers)
+    Resp = kz_json:from_list(
+             [{<<"success">>, kz_json:from_list([{kz_doc:id(JObj), JObj} || JObj <- Success])}
+             ,{<<"error">>, kz_json:from_list(FailedProp)}
+             ]),
+    crossbar_util:response(Resp, Context);
 set_response({'dry_run', Quotes}, Context, CB) ->
     case kz_term:is_empty(Quotes) of
         'false' -> crossbar_util:response_402(Quotes, Context);
         'true' -> CB()
-    end;
+    end.
 
-set_response({'error', 'not_found'}, Context, _) ->
+-spec set_error(knm_errors:reason(), cb_context:context()) -> cb_context:context().
+set_error('not_found', Context) ->
     reply_number_not_found(Context);
-
-set_response({'error', {Cause, AccountId}}, Context, _)
-  when Cause =:= 'not_in_service';
-       Cause =:= 'account_disabled' ->
-    Data = kz_json:from_list(
-             [{<<"cause">>, kz_term:to_binary(Cause)}
-             ,{<<"account_id">>, AccountId}
-             ,{<<"number">>, cb_context:fetch(Context, 'num')}
-             ]),
-    crossbar_util:response_400(<<"client error">>, Data, Context);
-
-set_response({'error', Data}, Context, _)
-  when is_atom(Data) ->
+set_error(Data, Context) when is_atom(Data) ->
     lager:debug("error: ~p", [Data]),
     crossbar_util:response_400(<<"client error">>, Data, Context);
-
-set_response({'error', Data}, Context, _) ->
+set_error(Data, Context) ->
     case kz_json:is_json_object(Data) of
         'true' ->
             Code = knm_errors:code(Data),
@@ -931,21 +942,9 @@ set_response({'error', Data}, Context, _) ->
             lager:debug("error ~p: ~p", [Code, Msg]),
             cb_context:add_system_error(Code, Msg, Data, Context);
         'false' ->
-            lager:debug("error: ~p", [Data]),
-            crossbar_util:response_400(<<"client error">>, kz_json:new(), Context)
-    end;
-
-set_response({'invalid', Reason}, Context, _) ->
-    lager:debug("invalid: ~p", [Reason]),
-    cb_context:add_validation_error(<<"address">>, <<"invalid">>, Reason, Context);
-
-set_response({Error, Reason}, Context, _) ->
-    lager:debug("error ~p: ~p", [Error, Reason]),
-    cb_context:add_system_error(Error, Reason, Context);
-
-set_response(_Else, Context, _) ->
-    lager:debug("unexpected response: ~p", [_Else]),
-    cb_context:add_system_error('unspecified_fault', Context).
+            lager:debug("unexpected response: ~p", [Data]),
+            cb_context:add_system_error('unspecified_fault', Context)
+    end.
 
 -spec reply_number_not_found(cb_context:context()) -> cb_context:context().
 reply_number_not_found(Context) ->
@@ -958,55 +957,31 @@ reply_number_not_found(Context) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec collection_process(cb_context:context(), http_method()) -> knm_pipe:collection().
-collection_process(Context, Action) ->
+-spec take_collection_numbers(cb_context:context()) -> {kz_term:ne_binaries(), kz_json:object()}.
+take_collection_numbers(Context) ->
     ReqData = cb_context:req_data(Context),
-    Numbers = kz_json:get_list_value(<<"numbers">>, ReqData),
-    Context1 = cb_context:set_req_data(Context, kz_json:delete_key(<<"numbers">>, ReqData)),
-    numbers_action(Context1, Action, Numbers).
+    {kz_json:get_list_value(?COLLECTION_NUMBERS, ReqData, [])
+    ,kz_json:delete_key(<<"numbers">>, ReqData)
+    }.
 
--spec numbers_action(cb_context:context(), http_method(), kz_term:ne_binaries()) -> knm_pipe:collection().
-numbers_action(Context, ?ACTIVATE, Numbers) ->
-    Options = [{'public_fields', cb_context:req_data(Context)}
-               | default_knm_options(Context)
-              ],
-    knm_numbers:move(Numbers, cb_context:account_id(Context), Options);
-numbers_action(Context, ?HTTP_PUT, Numbers) ->
-    ReqData = cb_context:req_data(Context),
-    Options = [{'assign_to', cb_context:account_id(Context)}
-              ,{'public_fields', kz_json:delete_key(?PUBLIC_FIELDS_STATE, ReqData)}
-               | maybe_ask_for_state(kz_json:get_ne_binary_value(?PUBLIC_FIELDS_STATE, ReqData))
-               ++ default_knm_options(Context)
-              ],
-    knm_numbers:create(Numbers, Options);
-numbers_action(Context, ?HTTP_POST, Numbers) ->
-    Options = [{'assign_to', cb_context:account_id(Context)}
-               | default_knm_options(Context)
-              ],
-    JObj = cb_context:req_data(Context),
-    knm_numbers:update(Numbers, [{fun knm_phone_number:reset_doc/2, JObj}], Options);
-numbers_action(Context, ?HTTP_PATCH, Numbers) ->
-    Options = [{'assign_to', cb_context:account_id(Context)}
-               | default_knm_options(Context)
-              ],
-    JObj = cb_context:req_data(Context),
-    knm_numbers:update(Numbers, [{fun knm_phone_number:update_doc/2, JObj}], Options);
-numbers_action(Context, ?HTTP_DELETE, Numbers) ->
-    Options = default_knm_options(Context),
-    Releaser = pick_release_or_delete(Context, Options),
-    knm_numbers:Releaser(Numbers, Options).
+-spec release_or_delete(cb_context:context(), kz_term:ne_binary() | kz_term:ne_binaries(), knm_options:options()) ->
+          knm_numbers:result() |
+          knm_numbers:results().
+release_or_delete(Context, Numbers, Options) ->
+    case pick_release_or_delete(Context, Options) of
+        'delete' -> knm_numbers:delete(Numbers, Options);
+        'release' -> knm_numbers:release(Numbers, Options)
+    end.
 
--spec pick_release_or_delete(cb_context:context(), knm_number_options:options()) -> 'release' | 'delete'.
+-spec pick_release_or_delete(cb_context:context(), knm_options:options()) -> 'release' | 'delete'.
 pick_release_or_delete(Context, Options) ->
-    AuthBy = knm_number_options:auth_by(Options),
-    Pick = case kz_term:is_true(cb_context:req_param(Context, <<"hard">>, 'false'))
-               andalso kzd_accounts:is_superduper_admin(AuthBy)
-           of
-               'false' -> 'release';
-               'true' -> 'delete'
-           end,
-    lager:debug("picked ~s", [Pick]),
-    Pick.
+    AuthBy = knm_options:auth_by(Options),
+    case kz_term:is_true(cb_context:req_param(Context, <<"hard">>, 'false'))
+        andalso kzd_accounts:is_superduper_admin(AuthBy)
+    of
+        'false' -> 'release';
+        'true' -> 'delete'
+    end.
 
 -spec maybe_ask_for_state(kz_term:api_ne_binary()) -> [{'state', kz_term:ne_binary()}].
 maybe_ask_for_state('undefined') -> [];
@@ -1031,7 +1006,7 @@ has_tokens(Context, Count) ->
             'false'
     end.
 
--spec default_knm_options(cb_context:context()) -> knm_number_options:options().
+-spec default_knm_options(cb_context:context()) -> knm_options:options().
 default_knm_options(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     [{'crossbar', [{'services', kz_services:fetch(AuthAccountId)}

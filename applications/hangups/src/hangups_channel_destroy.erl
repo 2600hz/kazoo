@@ -68,7 +68,7 @@ maybe_add_hangup_specific(_HangupCause, JObj) ->
 maybe_add_number_info(JObj) ->
     Destination = find_destination(JObj),
     Props = kz_json:recursive_to_proplist(JObj),
-    try knm_number:lookup_account(Destination) of
+    try knm_numbers:lookup_account(Destination) of
         {'ok', AccountId, _Props} ->
             Tree = build_account_tree(AccountId),
             props:set_value(<<"Account-Tree">>, Tree, Props);

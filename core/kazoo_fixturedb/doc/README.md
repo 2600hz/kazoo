@@ -53,7 +53,6 @@ core/kazoo_fixturedb/priv/dbs/
 ...
 ├── accounts
 │   └── docs
-│       ├── 009afc511c97b2ae693c6cc4920988e8.json
 │       ├── account0000000000000000000000001.json
 │       ├── account0000000000000000000000002.json
 │       └── account0000000000000000000000003.json

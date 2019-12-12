@@ -28,6 +28,8 @@
         ,to_database/1
         ]).
 
+-export([is_account_id/1]).
+
 -include_lib("kazoo_numbers/include/knm_phone_number.hrl").
 -include_lib("kazoo_documents/include/kzd_ratedeck.hrl").
 -include("kz_data.hrl").
@@ -255,8 +257,15 @@ get_view_json(Path) ->
     JObj = kz_json:decode(Bin),
     {kz_doc:id(JObj), JObj}.
 
-%% @equiv format_account_id(Account, raw)
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_account_id(kz_term:api_binary()) -> boolean().
+is_account_id(?MATCH_ACCOUNT_RAW(_)) -> 'true';
+is_account_id(_) -> 'false'.
 
+%% @equiv format_account_id(Account, raw)
 -spec format_account_id(kz_term:api_binary()) -> kz_term:api_binary().
 format_account_id(Account) ->
     format_account_id(Account, 'raw').
@@ -270,7 +279,6 @@ format_account_id(Account) ->
 %% an MODB in the `encoded' format.</div>
 %% @end
 %%------------------------------------------------------------------------------
-
 -spec format_account_id(kz_term:api_binary(), account_format()) -> kz_term:api_ne_binary();
                        (kz_term:api_binary(), kz_time:gregorian_seconds()) -> kz_term:api_ne_binary(). %% for MODb!
 format_account_id('undefined', _Encoding) -> 'undefined';

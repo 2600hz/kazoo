@@ -14,6 +14,7 @@
         ,public_fields/0
         ,public_fields/1
         ,get/1
+        ,are_porting/1
         ,get_portin_number/2
         ,new/2
         ,account_active_ports/1
@@ -138,6 +139,29 @@ get(DID=?NE_BINARY) ->
         {'ok', Port} -> {'ok', kz_json:get_value(<<"doc">>, Port)};
         {'error', _E}=Error ->
             lager:debug("failed to query for port number '~s': ~p", [DID, _E]),
+            Error
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Used by knm when creating numbers, to check the numbers being created
+%% are not numbers specified in port requests.
+%% @end
+%%------------------------------------------------------------------------------
+-spec are_porting(kz_term:ne_binaries()) ->
+          kz_either:either(kazoo_data:data_error(), {kz_term:ne_binaries(), kz_term:ne_binaries()}).
+are_porting(Numbers) ->
+    View = ?ACTIVE_PORT_IN_NUMBERS,
+    ViewOptions = [{'keys', Numbers}],
+    case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, View, ViewOptions) of
+        {'ok', JObjs} ->
+            PortingNums = [kz_json:get_ne_binary_value(<<"key">>, JObj)
+                           || JObj <- JObjs,
+                              kz_term:is_empty(kz_json:get_ne_binary_value(<<"error">>, JObj))
+                          ],
+            Fun = fun(Number) -> lists:member(Number, PortingNums) end,
+            {'ok', lists:partition(Fun, Numbers)};
+        {'error', _Reason}=Error ->
+            lager:debug("failed to check if numbers are port_in: ~p", [_Reason]),
             Error
     end.
 
@@ -370,10 +394,10 @@ maybe_transition(PortReq, Metadata, ?PORT_CANCELED) ->
 %% `port_request' which the number doc is already created.
 %% @end
 %%------------------------------------------------------------------------------
--spec compatibility_transition(knm_number_options:extra_options(), transition_metadata()) -> 'ok' | {'error', any()}.
+-spec compatibility_transition(knm_options:extra_options(), transition_metadata()) -> 'ok' | {'error', any()}.
 compatibility_transition(NumberProps, Metadata) ->
-    Num = knm_number_options:number(NumberProps),
-    AccountId = knm_number_options:account_id(NumberProps),
+    Num = knm_options:number(NumberProps),
+    AccountId = knm_options:account_id(NumberProps),
     completed_portin(Num, AccountId, Metadata).
 
 -spec transition(kz_json:object(), transition_metadata(), kz_term:ne_binaries(), kz_term:ne_binary()) ->
@@ -561,8 +585,8 @@ completed_port(PortReq) ->
 
 -spec completed_portin(kz_term:ne_binary(), kz_term:ne_binary(), transition_metadata()) -> 'ok' | {'error', any()}.
 completed_portin(Num, AccountId, #{optional_reason := OptionalReason}) ->
-    Options = [{auth_by, ?KNM_DEFAULT_AUTH_BY}
-              ,{assign_to, AccountId}
+    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
+              ,{'assign_to', AccountId}
               ],
     Routins = [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
               ,{fun knm_phone_number:set_ported_in/2, 'true'}
@@ -570,11 +594,11 @@ completed_portin(Num, AccountId, #{optional_reason := OptionalReason}) ->
               ],
 
     lager:debug("transitioning legacy port_in number ~s to in_service", [Num]),
-    case knm_number:update(Num, Routins, Options) of
+    case knm_numbers:update(Num, Routins, Options) of
         {'ok', _} ->
             lager:debug("number ~s ported successfully", [Num]);
-        {'error', _Reason} ->
-            lager:debug("failed to transition number ~s: ~p", [Num, _Reason]),
+        _Else ->
+            lager:debug("failed to transition number ~s: ~p", [Num, _Else]),
             {'error', <<"transition_failed">>}
     end.
 
@@ -594,7 +618,7 @@ transition_numbers(PortReq) ->
               ],
     lager:debug("account ~p creating local numbers for port ~s", [AccountId, PortReqId]),
     Numbers = kz_json:get_keys(kzd_port_requests:numbers(PortReq)),
-    case knm_numbers:create(Numbers, Options) of
+    case knm_ops:create(Numbers, Options) of
         %% FIXME: opaque
         #{'failed' := Failed} when map_size(Failed) =:= 0 ->
             lager:debug("all numbers ported, removing from port request"),
@@ -641,7 +665,7 @@ reconcile_app_used_by(Numbers, JObj) ->
       fun({App, Nums}) ->
               case Nums of
                   [] -> 'ok';
-                  Nums -> knm_numbers:assign_to_app(Nums, App)
+                  Nums -> knm_ops:assign_to_app(Nums, App)
               end
       end
      , NumAppUsage
@@ -675,7 +699,7 @@ get_dids_for_app(AccountDb, Numbers, View) ->
 
 -spec numbers_not_in_account_nor_in_service(kz_term:ne_binary(), kz_term:ne_binaries()) -> kz_term:ne_binaries().
 numbers_not_in_account_nor_in_service(AccountId, Nums) ->
-    Collection = knm_numbers:get(Nums),
+    Collection = knm_ops:get(Nums),
     Failed = knm_pipe:failed(Collection),
     PNs = knm_pipe:succeeded(Collection),
     [knm_phone_number:number(PN)
@@ -684,7 +708,7 @@ numbers_not_in_account_nor_in_service(AccountId, Nums) ->
     ]
         ++ maps:keys(Failed).
 
--spec is_in_account_and_in_service(kz_term:ne_binary(), knm_phone_number:phone_number()) -> boolean().
+-spec is_in_account_and_in_service(kz_term:ne_binary(), knm_phone_number:record()) -> boolean().
 is_in_account_and_in_service(AccountId, PN) ->
     AccountId =:= knm_phone_number:assigned_to(PN)
         andalso ?NUMBER_STATE_IN_SERVICE =:= knm_phone_number:state(PN).

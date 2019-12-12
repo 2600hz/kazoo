@@ -184,7 +184,7 @@ info(AuthAccountId, AccountId, ResellerId) ->
     Map = lists:foldl(fun info_fold/2, Acc0, AvailableCarriers),
     kz_json:from_map(
       Map#{?CARRIER_INFO_USABLE_CARRIERS => usable_carriers()
-          ,?CARRIER_INFO_USABLE_CREATION_STATES => knm_number:allowed_creation_states(AuthAccountId)
+          ,?CARRIER_INFO_USABLE_CREATION_STATES => knm_lib:allowed_creation_states(AuthAccountId)
           }
      ).
 

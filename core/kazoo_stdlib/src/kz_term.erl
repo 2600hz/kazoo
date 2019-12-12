@@ -55,6 +55,8 @@
 
 -export([iolist_join/2]).
 
+-export([xnor/2]).
+
 -type text() :: string() | atom() | binary() | iolist().
 %% Denotes Erlang data type which can represent as.
 
@@ -616,3 +618,13 @@ iolist_join(Sep, [H|T]) ->
 iolist_join_prepend(_, []) -> [];
 iolist_join_prepend(Sep, [H|T]) ->
     [Sep, H | iolist_join_prepend(Sep, T)].
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec xnor(boolean(), boolean()) -> boolean().
+xnor('false', 'false') -> 'true';
+xnor('false', 'true') -> 'false';
+xnor('true', 'false') -> 'false';
+xnor('true', 'true') -> 'true'.

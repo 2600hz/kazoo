@@ -905,7 +905,7 @@ update_not_found(Database, Id, Options, 'true') ->
 
     JObj = kz_json:set_values(CreateProps, kz_json:new()),
     Updated = kz_json:set_values([{kz_doc:path_id(), Id}
-                                  | props:get_value('update', Options)
+                                 | props:get_value('update', Options)
                                  ]
                                  ++ props:get_value('extra_update', Options, [])
                                 ,JObj
@@ -1065,7 +1065,7 @@ attachment_url(DbName, DocId, AttachmentId, Options) ->
     case kzs_doc:open_doc(Plan, Database, DocId, props:delete('plan_override', Options)) of
         {'ok', JObj} ->
             NewOptions = [{'rev', kz_doc:revision(JObj)}
-                          | maybe_add_doc_type(kz_doc:type(JObj), Options)
+                         | maybe_add_doc_type(kz_doc:type(JObj), Options)
                          ],
             Handler = kz_doc:attachment_property(JObj, AttachmentId, <<"handler">>),
             kzs_attachments:attachment_url(Plan, Database, DocId, AttachmentId, Handler, NewOptions);
@@ -1204,7 +1204,7 @@ get_results_count(DbName, DesignDoc, Options) ->
     Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
     kzs_view:get_results_count(kzs_plan:plan(Database, Opts), Database, DesignDoc, Options).
 
--spec get_registered_view(map(), database_name(), kz_term:ne_binary()) ->
+-spec get_registered_view(map(), database_name(), 'all_docs' | kz_term:ne_binary()) ->
           'not_registered' | kz_json:object().
 get_registered_view(Plan, DbName, DesignDoc) ->
     Database = kzs_util:to_database(DbName),
@@ -1232,18 +1232,20 @@ registration_options(Keys) ->
     ,{'keys', Keys}
     ].
 
--spec registration_keys(database_name(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+-spec registration_keys(database_name(), 'all_docs' | kz_term:ne_binary(), kz_term:ne_binary()) ->
           [[kz_term:ne_binary()]].
 registration_keys(Database, DesignDoc, Classification) ->
     [[Classification, DesignDoc]
     ,[Database, DesignDoc]
     ].
 
--spec maybe_create_view(map(), database_name(), kz_term:ne_binary(), view_options()) -> get_results_return().
+-spec maybe_create_view(map(), database_name(), 'all_docs' | kz_term:ne_binary(), view_options()) ->
+          get_results_return().
 maybe_create_view(Plan, Database, DesignDoc, Options) ->
     maybe_create_view(Plan, Database, DesignDoc, Options, kzs_db:db_exists(Plan, Database)).
 
--spec maybe_create_view(map(), database_name(), kz_term:ne_binary(), view_options(), boolean()) -> get_results_return().
+-spec maybe_create_view(map(), database_name(), 'all_docs' | kz_term:ne_binary(), view_options(), boolean()) ->
+          get_results_return().
 maybe_create_view(_Plan, _Database, _DesignDoc, _Options, 'false') ->
     {'error', 'not_found'};
 maybe_create_view(Plan, Database, DesignDoc, Options, 'true') ->
@@ -1300,7 +1302,7 @@ maybe_update_view(_Plan, _Database, _DesignDoc, _ViewDoc, _Error) -> 'ok'.
 get_result_keys(DbName, DesignDoc) ->
     get_result_keys(DbName, DesignDoc, []).
 
--spec get_result_keys(database_name(), kz_term:ne_binary(), view_options()) ->
+-spec get_result_keys(database_name(), 'all_docs' | kz_term:ne_binary(), view_options()) ->
           {'ok', kz_json:path() | kz_json:paths()} | data_error().
 get_result_keys(DbName, DesignDoc, Options) ->
     Database = kzs_util:to_database(DbName),
@@ -1552,7 +1554,7 @@ maybe_add_doc_type(DocType, Options) ->
         _ -> Options
     end.
 
--spec maybe_add_doc_type_from_view(kz_term:ne_binary(), view_options()) -> view_options().
+-spec maybe_add_doc_type_from_view('all_docs' | kz_term:ne_binary(), view_options()) -> view_options().
 maybe_add_doc_type_from_view(ViewName, Options) ->
     case props:get_value('doc_type', Options) of
         'undefined' -> add_doc_type_from_view(ViewName, Options);

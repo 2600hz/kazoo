@@ -29,7 +29,7 @@ handle_req(JObj, Props) ->
 -spec maybe_known_number(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_known_number(ControllerQ, JObj) ->
     Number = get_dest_number(JObj),
-    case knm_number:lookup_account(Number) of
+    case knm_numbers:lookup_account(Number) of
         {'ok', _, _} -> choose_response(ControllerQ, JObj, 'false', <<"known_number">>);
         {'error', _R} ->
             lager:debug("~s is not associated with any account, ~p", [Number, _R]),

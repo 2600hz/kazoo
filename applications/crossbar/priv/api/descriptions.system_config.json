@@ -146,7 +146,6 @@
     "crossbar.auth.token_auth_expiry_s": "crossbar token auth expiry in seconds",
     "crossbar.autoload_modules": "crossbar autoload modules",
     "crossbar.braintree.max_account_credit": "crossbar.braintree maximum account credit",
-    "crossbar.callflows.default_reconcile_numbers": "crossbar.callflows default reconcile numbers",
     "crossbar.cdrs.cdr_stale_view": "force cdr to return stale records only",
     "crossbar.cdrs.maximum_bulk": "crossbar.cdrs maximum bulk",
     "crossbar.cdrs.maximum_range": "crossbar.cdrs maximum range",

@@ -33,6 +33,10 @@
         ,message/1
         ]).
 
+-export([failed_to_proplist/1
+        ,failed_to_json/1
+        ]).
+
 -include("knm.hrl").
 
 -define(CODE, <<"code">>).
@@ -40,16 +44,41 @@
 -define(CAUSE, <<"cause">>).
 -define(MESSAGE, <<"message">>).
 
--type reason() :: atom() | kz_term:ne_binary().
+-type binatom_reason() :: atom() | kz_term:ne_binary().
 -type error() :: kz_json:object().
+
+%% used by knm_pipe
+-type reason() :: error() | atom().
+-type reasons() :: [reason()].
+-type failed() :: #{kz_term:ne_binary() => reason()}.
+-type proplist() :: [{kz_term:ne_binary(), reason()}].
 
 -type thrown_error() :: {'error', atom()} |
                         {'error', atom(), any()} |
                         {'error', atom(), any(), any()}.
 
 -export_type([error/0
+             ,failed/0
+             ,proplist/0
+             ,reason/0, reasons/0
              ,thrown_error/0
              ]).
+
+%%------------------------------------------------------------------------------
+%% @doc Convert knm_pipe failed map to proplist.
+%% @end
+%%------------------------------------------------------------------------------
+-spec failed_to_proplist(failed()) -> proplist().
+failed_to_proplist(Failed) ->
+    maps:to_list(Failed).
+
+%%------------------------------------------------------------------------------
+%% @doc Convert knm_pipe failed map to proplist.
+%% @end
+%%------------------------------------------------------------------------------
+-spec failed_to_json(failed()) -> kz_json:object().
+failed_to_json(Failed) ->
+    kz_json:from_map(Failed).
 
 -spec unspecified(any(), knm_phone_number:record() | kz_term:ne_binary()) -> no_return().
 unspecified(Error, PN) ->
@@ -106,7 +135,7 @@ database_error(E, PN) ->
 number_is_porting(Num) ->
     throw({'error', 'number_is_porting', Num}).
 
--spec by_carrier(module(), reason(), kz_term:api_ne_binary() | knm_phone_number:record()) -> no_return().
+-spec by_carrier(module(), binatom_reason(), kz_term:api_ne_binary() | knm_phone_number:record()) -> no_return().
 by_carrier(Carrier, E, 'undefined') ->
     throw_by_carrier(Carrier, E, <<"unknown">>);
 by_carrier(Carrier, E, <<Num/binary>>) ->
@@ -114,7 +143,7 @@ by_carrier(Carrier, E, <<Num/binary>>) ->
 by_carrier(Carrier, E, PN) ->
     throw_by_carrier(Carrier, E, knm_phone_number:number(PN)).
 
--spec throw_by_carrier(module(), reason(), kz_term:ne_binary()) -> no_return().
+-spec throw_by_carrier(module(), binatom_reason(), kz_term:ne_binary()) -> no_return().
 throw_by_carrier(Carrier, E, Num) ->
     throw({'error', 'by_carrier', Num, {Carrier, E}}).
 
@@ -123,15 +152,15 @@ throw_by_carrier(Carrier, E, Num) ->
 %% @end
 %%------------------------------------------------------------------------------
 
--spec to_json(reason()) -> error().
+-spec to_json(binatom_reason()) -> error().
 to_json(Reason)->
     to_json(Reason, 'undefined').
 
--spec to_json(reason(), kz_term:api_ne_binary()) -> error().
+-spec to_json(binatom_reason(), kz_term:api_ne_binary()) -> error().
 to_json(Reason, Num)->
     to_json(Reason, Num, 'undefined').
 
--spec to_json(reason(), kz_term:api_ne_binary() | kz_term:ne_binaries(), atom() | kz_term:ne_binary() | any()) -> error().
+-spec to_json(binatom_reason(), kz_term:api_ne_binary() | kz_term:ne_binaries(), atom() | kz_term:ne_binary() | any()) -> error().
 to_json('number_is_porting', Num=?NE_BINARY, _) ->
     Message = <<"number ", Num/binary, " is porting">>,
     build_error(400, 'number_is_porting', Message, Num);
@@ -184,7 +213,7 @@ to_json(Reason, _, Cause) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec build_error(integer(), atom(), reason(), reason()) ->
+-spec build_error(integer(), atom(), binatom_reason(), binatom_reason()) ->
           error().
 build_error(Code, Error, Message, Cause) ->
     kz_json:from_list(

@@ -35,7 +35,7 @@ A number document should look something like this:
        "inbound_lookup": true,
        "display_name": "My display name"
    },
-   "pvt_assigned_to": "009afc511c97b2ae693c6cc4920988e8",
+   "pvt_assigned_to": "account0000000000000000000000002",
    "pvt_features": {
        "prepend": {
            "name": "My prepended name",
@@ -66,12 +66,12 @@ Do note though that this operation can take a long time, depending on the amount
 #### Options
 
 The `knm_number` API functions often take a second argument of options.
-These are encapsulated in the `knm_number_options` module, including a handy `-type` for better type checking.
+These are encapsulated in the `knm_options` module, including a handy `-type` for better type checking.
 
 
 #### Bulk operations
 
-When you want to perform operations on a list of numbers, `knm_numbers` provides a nice way to do that, versus iterating over the list yourself.
+When you want to perform operations on a list of numbers, `knm_ops` provides a nice way to do that, versus iterating over the list yourself.
 
 
 ### Phone Numbers

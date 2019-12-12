@@ -298,7 +298,7 @@ checkout(#{id := CartId, query_id := _QueryId}=Cart) ->
 generate_number_summary(#{id := _CartId, query_id := _QueryId}=Cart, OrderSummary) ->
     generate_number_summary(Cart, OrderSummary, []).
 
--spec generate_number_summary(map(), kz_json:objects(), knm_number:numbers()) ->
+-spec generate_number_summary(map(), kz_json:objects(), knm_search:results()) ->
           {'ok', knm_search:results()}.
 generate_number_summary(#{id := _CartId, query_id := _QueryId}=_Cart, [], Acc) ->
     {'ok', Acc};
@@ -340,7 +340,7 @@ order_to_search_result(QueryId, [DID | Rest], Acc) ->
     E164 = kz_json:get_ne_binary_value(<<"e164">>, DID),
 
     %% Add number to database to ensure inventory is updated before acquire_number stub
-    {'ok', _} = knm_number:create(E164, Options),
+    {'ok', _} = knm_numbers:create(E164, Options),
 
     NumberReturn = {E164, ?MODULE, ?NUMBER_STATE_AVAILABLE, DID},
 

@@ -28,16 +28,16 @@ db_dependant() ->
     ].
 
 base() ->
-    [{assign_to, ?RESELLER_ACCOUNT_ID}
-    ,{dry_run, false}
+    [{'assign_to', ?RESELLER_ACCOUNT_ID}
+    ,{'dry_run', 'false'}
     ].
 
 transition_port_from_port_in() ->
-    Options = [{auth_by, ?MASTER_ACCOUNT_ID}
-              ,{ported_in, true}
+    Options = [{'auth_by', ?MASTER_ACCOUNT_ID}
+              ,{'ported_in', 'true'}
                |base()
               ],
-    {ok, PN} = knm_number:create(?TEST_PORT_IN_NUM, Options),
+    [PN] = knm_pipe:succeeded(knm_ops:create([?TEST_PORT_IN_NUM], Options)),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
@@ -55,19 +55,19 @@ transition_port_from_port_in() ->
      ,?_assertEqual(?PORT_IN_MODULE_NAME, knm_phone_number:module_name(PN))
      }
     ,{"Verify local number is not billable"
-     ,?_assertEqual(false, knm_carriers:is_number_billable(PN))
+     ,?_assertEqual('false', knm_carriers:is_number_billable(PN))
      }
     ,{"Verify number is marked as ported_in"
-     ,?_assertEqual(true, knm_phone_number:ported_in(PN))
+     ,?_assertEqual('true', knm_phone_number:ported_in(PN))
      }
     ].
 
 transition_port_from_port_in_with_different_module_configured() ->
-    Options = [{auth_by, ?MASTER_ACCOUNT_ID}
-              ,{ported_in, true}
-               |base()
+    Options = [{'auth_by', ?MASTER_ACCOUNT_ID}
+              ,{'ported_in', 'true'}
+               | base()
               ],
-    {ok, PN} = knm_number:create(?TEST_PORT_IN2_NUM, Options),
+    [PN] = knm_pipe:succeeded(knm_ops:create([?TEST_PORT_IN2_NUM], Options)),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
@@ -89,19 +89,19 @@ transition_port_from_port_in_with_different_module_configured() ->
     ,{"Verify number is billable"
       %% See TODO above
       %% ,?_assertEqual(true, knm_carriers:is_number_billable(PN))
-     ,?_assertEqual(false, knm_carriers:is_number_billable(PN))
+     ,?_assertEqual('false', knm_carriers:is_number_billable(PN))
      }
     ,{"Verify number is marked as ported_in"
-     ,?_assertEqual(true, knm_phone_number:ported_in(PN))
+     ,?_assertEqual('true', knm_phone_number:ported_in(PN))
      }
     ].
 
 transition_port_from_available() ->
-    Options = [{auth_by, ?MASTER_ACCOUNT_ID}
-              ,{ported_in, true}
-               |base()
+    Options = [{'auth_by', ?MASTER_ACCOUNT_ID}
+              ,{'ported_in', 'true'}
+               | base()
               ],
-    {ok, PN} = knm_number:create(?TEST_AVAILABLE_NUM, Options),
+    [PN] = knm_pipe:succeeded(knm_ops:create([?TEST_AVAILABLE_NUM], Options)),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
@@ -123,37 +123,37 @@ transition_port_from_available() ->
     ,{"Verify number is billable"
       %% See TODO above
       %% ,?_assertEqual(true, knm_carriers:is_number_billable(PN))
-     ,?_assertEqual(false, knm_carriers:is_number_billable(PN))
+     ,?_assertEqual('false', knm_carriers:is_number_billable(PN))
      }
     ,{"Verify number is marked as ported_in"
-     ,?_assertEqual(true, knm_phone_number:ported_in(PN))
+     ,?_assertEqual('true', knm_phone_number:ported_in(PN))
      }
     ].
 
 transition_port_from_available_not_specifying() ->
-    Options1 = [{auth_by,?MASTER_ACCOUNT_ID} | base()],
-    Options2 = [{auth_by,?KNM_DEFAULT_AUTH_BY} | base()],
+    Options1 = [{'auth_by',?MASTER_ACCOUNT_ID} | base()],
+    Options2 = [{'auth_by',?KNM_DEFAULT_AUTH_BY} | base()],
     Num = ?TEST_AVAILABLE_NUM,
-    {ok, PN1} = knm_number:create(Num, Options1),
-    {ok, PN2} = knm_number:create(Num, Options2),
+    [PN1] = knm_pipe:succeeded(knm_ops:create([Num], Options1)),
+    [PN2] = knm_pipe:succeeded(knm_ops:create([Num], Options2)),
     [?_assert(knm_phone_number:is_dirty(PN1))
     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN1))
     ,{"Verify number create has nothing to do with ports and is not ported_in"
-     ,?_assertEqual(false, knm_phone_number:ported_in(PN1))
+     ,?_assertEqual('false', knm_phone_number:ported_in(PN1))
      }
     ,?_assert(knm_phone_number:is_dirty(PN2))
     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN2))
     ,{"Verify number create has nothing to do with ports and is not ported_in"
-     ,?_assertEqual(false, knm_phone_number:ported_in(PN2))
+     ,?_assertEqual('false', knm_phone_number:ported_in(PN2))
      }
     ].
 
 transition_port_from_not_found() ->
-    Options = [{auth_by, ?MASTER_ACCOUNT_ID}
-              ,{ported_in, true}
+    Options = [{'auth_by', ?MASTER_ACCOUNT_ID}
+              ,{'ported_in', 'true'}
                |base()
               ],
-    {ok, PN} = knm_number:create(?TEST_CREATE_NUM, Options),
+    [PN] = knm_pipe:succeeded(knm_ops:create([?TEST_NEW_PORT_IN_NUM], Options)),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
@@ -175,9 +175,9 @@ transition_port_from_not_found() ->
     ,{"Verify number is billable"
       %% See TODO above
       %% ,?_assertEqual(true, knm_carriers:is_number_billable(PN))
-     ,?_assertEqual(false, knm_carriers:is_number_billable(PN))
+     ,?_assertEqual('false', knm_carriers:is_number_billable(PN))
      }
     ,{"Verify number is marked as ported_in"
-     ,?_assertEqual(true, knm_phone_number:ported_in(PN))
+     ,?_assertEqual('true', knm_phone_number:ported_in(PN))
      }
     ].

@@ -46,9 +46,13 @@ available_as_random() ->
     available_as(kz_binary:rand_hex(16)).
 
 available_as(AuthAccountId) ->
-    case knm_number:get(?TEST_AVAILABLE_NUM, [{'auth_by', AuthAccountId}]) of
-        {'ok', Number} -> available_tests(Number);
-        {'error', Error} -> unavailable_tests(Error)
+    %% FIXME: update these tests to work on knm_numbers successes jobjs
+    Collection = knm_ops:get([?TEST_AVAILABLE_NUM], [{'auth_by', AuthAccountId}]),
+    case knm_pipe:succeeded(Collection) of
+        [Number] -> available_tests(Number);
+        [] ->
+            [{_, Error}] = knm_pipe:failed_to_proplist(Collection),
+            unavailable_tests(Error)
     end.
 
 unavailable_tests(ErrorJObj) ->
@@ -75,21 +79,23 @@ available_tests(PN) ->
 
 get_unreconcilable_number() ->
     [{"Verify non-reconcilable numbers result in errors"
-     ,?_assertMatch({'error', 'not_reconcilable'}, knm_number:get(<<"1000">>))
+     ,?_assertMatch({'ok', [], [{_, 'not_reconcilable'}]}, knm_numbers:get(<<"1000">>))
      }
     ].
 
 get_not_found() ->
-    [?_assertEqual({error, not_found}, knm_number:get(<<"4156301234">>))
+    [?_assertEqual({'ok', [], [{<<"+14156301234">>, 'not_found'}]}, knm_numbers:get(<<"4156301234">>))
     ].
 
 mdn_transitions() ->
     Num = ?TEST_IN_SERVICE_MDN,
-    DefaultOptions = [{assign_to, ?MASTER_ACCOUNT_ID} | knm_number_options:mdn_options()],
-    {ok, PN1} = knm_number:move(Num, ?MASTER_ACCOUNT_ID, DefaultOptions),
-    {ok, PN2} = knm_number:release(Num, DefaultOptions),
-    {ok, PN3} = knm_number:reconcile(Num, DefaultOptions),
-    {ok, PN4} = knm_number:create(?TEST_CREATE_NUM, [{module_name,?CARRIER_MDN}|DefaultOptions]),
+    DefaultOptions = [{'assign_to', ?MASTER_ACCOUNT_ID} | knm_options:mdn_options()],
+
+    %% FIXME: update these tests to work on knm_numbers successes jobjs
+    [PN1] = knm_pipe:succeeded(knm_ops:move([Num], ?MASTER_ACCOUNT_ID, DefaultOptions)),
+    [PN2] = knm_pipe:succeeded(knm_ops:release([Num], DefaultOptions)),
+    [PN4] = knm_pipe:succeeded(knm_ops:create([?TEST_CREATE_NUM], [{'module_name', ?CARRIER_MDN} | DefaultOptions])),
+
     [?_assert(knm_phone_number:is_dirty(PN1))
     ,{"Verify MDN can move from in_service to in_service"
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN1))
@@ -98,12 +104,8 @@ mdn_transitions() ->
     ,{"Verify releasing MDN results in deletion"
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PN2))
      }
-    ,?_assert(knm_phone_number:is_dirty(PN3))
-    ,{"Verify MDN can reconcile from in_service to in_service"
-     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN3))
-     }
     ,{"Verify MDN cannot be reserved"
-     ,?_assertMatch({error,_}, knm_number:reserve(Num, knm_number_options:default()))
+     ,?_assertMatch({'ok', [], [{Num, _Error}]}, knm_numbers:reserve(Num, knm_options:default()))
      }
     ,?_assert(knm_phone_number:is_dirty(PN4))
     ,{"Verify MDN creation forces state to in_service"
@@ -115,33 +117,38 @@ mdn_transitions() ->
     ].
 
 is_mdn_for_mdn_run() ->
-    Run = {mdn_run, true},
-    Base = [{auth_by,?MASTER_ACCOUNT_ID}],
-    Sudo = knm_number_options:default(),
+    Run = {'mdn_run', 'true'},
+    Base = [{'auth_by',?MASTER_ACCOUNT_ID}],
+    Sudo = knm_options:default(),
     Fs = [{fun knm_phone_number:update_doc/2, kz_json:from_list([{<<"*">>,42}])}],
+
     [{"Verify an mdn_run && knm_mdn number can be updated"
-     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_MDN, Fs, [Run|Base]))
+     ,?_assertMatch({'ok', [_JObj]}, knm_numbers:update(?TEST_IN_SERVICE_MDN, Fs, [Run|Base]))
      }
     ,{"Verify an mdn_run && !knm_mdn number cannot be updated"
-     ,?_assertMatch({error,_}, knm_number:update(?TEST_IN_SERVICE_NUM, Fs, [Run|Base]))
+     ,?_assertMatch({'ok', [], [{?TEST_IN_SERVICE_NUM, _Error}]}
+                   ,knm_numbers:update(?TEST_IN_SERVICE_NUM, Fs, [Run|Base])
+                   )
      }
     ,{"Verify a !mdn_run && knm_mdn number cannot be updated"
-     ,?_assertMatch({error,_}, knm_number:update(?TEST_IN_SERVICE_MDN, Fs, Base))
+     ,?_assertMatch({'ok', [], [{?TEST_IN_SERVICE_MDN, _Error}]}
+                   ,knm_numbers:update(?TEST_IN_SERVICE_MDN, Fs, Base)
+                   )
      }
     ,{"Verify a !mdn_run && !knm_mdn number can be updated"
-     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_NUM, Fs, Base))
+     ,?_assertMatch({'ok', [_]}, knm_numbers:update(?TEST_IN_SERVICE_NUM, Fs, Base))
      }
     ,{"Verify sudo can update mdn_run && knm_mdn number"
-     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_MDN, Fs, [Run|Sudo]))
+     ,?_assertMatch({'ok', [_]}, knm_numbers:update(?TEST_IN_SERVICE_MDN, Fs, [Run|Sudo]))
      }
     ,{"Verify sudo can update mdn_run && !knm_mdn number"
-     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_NUM, Fs, [Run|Sudo]))
+     ,?_assertMatch({'ok', [_]}, knm_numbers:update(?TEST_IN_SERVICE_NUM, Fs, [Run|Sudo]))
      }
     ,{"Verify sudo can update !mdn_run && knm_mdn number"
-     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_MDN, Fs, Sudo))
+     ,?_assertMatch({'ok', [_]}, knm_numbers:update(?TEST_IN_SERVICE_MDN, Fs, Sudo))
      }
     ,{"Verify sudo can update !mdn_run && !knm_mdn number"
-     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_NUM, Fs, Sudo))
+     ,?_assertMatch({'ok', [_]}, knm_numbers:update(?TEST_IN_SERVICE_NUM, Fs, Sudo))
      }
     ].
 
@@ -158,15 +165,19 @@ attempt_setting_e911_on_disallowed_local_number() ->
                  ])
               }
              ]),
-    Options = [{auth_by, ?RESELLER_ACCOUNT_ID}
-              ,{public_fields, JObj}
+    Options = [{'auth_by', ?RESELLER_ACCOUNT_ID}
+              ,{'public_fields', JObj}
               ],
     Updates = [{fun knm_phone_number:reset_doc/2, JObj}],
     Num = ?TEST_IN_SERVICE_NUM,
-    {ok, PN} = knm_number:get(Num),
-    #{Num := Error} = knm_pipe:failed(knm_numbers:update([PN], Updates, Options)),
+
+    %% FIXME: update these tests to work on knm_numbers successes jobjs
+    [PN] = knm_pipe:succeeded(knm_ops:get([Num])),
+
+    [{Num, Error}] = knm_pipe:failed_to_proplist(knm_ops:update([PN], Updates, Options)),
+
     [{"Verify feature is not set"
-     ,?_assertEqual(undefined, knm_phone_number:feature(PN, ?FEATURE_E911))
+     ,?_assertEqual('undefined', knm_phone_number:feature(PN, ?FEATURE_E911))
      }
     ,{"Verify feature cannot be set"
      ,?_assertEqual(<<"forbidden">>, knm_errors:error(Error))
@@ -185,16 +196,19 @@ attempt_setting_e911_on_explicitly_disallowed_number() ->
                  ])
               }
              ]),
-    Options = [{auth_by, ?RESELLER_ACCOUNT_ID}
-              ,{public_fields, JObj}
+    Options = [{'auth_by', ?RESELLER_ACCOUNT_ID}
+              ,{'public_fields', JObj}
               ],
     Updates = [{fun knm_phone_number:reset_doc/2, JObj}],
     Num = ?BW_EXISTING_DID,
-    {ok, PN} = knm_number:get(Num),
-    #{Num := ErrorJObj} = knm_pipe:failed(knm_numbers:update([PN], Updates, Options)),
-    [?_assertEqual(false, knm_phone_number:is_dirty(PN))
+
+    %% FIXME: update these tests to work on knm_numbers successes jobjs
+    [PN] = knm_pipe:succeeded(knm_ops:get([Num])),
+    [{Num, ErrorJObj}] = knm_pipe:failed_to_proplist(knm_ops:update([PN], Updates, Options)),
+
+    [?_assertEqual('false', knm_phone_number:is_dirty(PN))
     ,{"Verify feature is not set"
-     ,?_assertEqual(undefined, knm_phone_number:feature(PN, ?FEATURE_E911))
+     ,?_assertEqual('undefined', knm_phone_number:feature(PN, ?FEATURE_E911))
      }
     ,{"Verify feature cannot be set"
      ,?_assertEqual(<<"forbidden">>, knm_errors:error(ErrorJObj))
@@ -204,27 +218,34 @@ attempt_setting_e911_on_explicitly_disallowed_number() ->
 assign_to_app() ->
     Num = ?TEST_IN_SERVICE_NUM,
     MyApp = <<"my_app">>,
-    {ok, PN0} = knm_number:get(Num),
-    {ok, PN1} = knm_number:assign_to_app(Num, MyApp),
+    Collection0 = knm_ops:get([Num]),
+    [PN0] = knm_pipe:succeeded(Collection0),
+
+    %% FIXME: update these tests to work on knm_numbers successes jobjs
+    [PN1] = knm_pipe:succeeded(knm_ops:assign_to_app([Num], MyApp)),
+
     [{"Verify number is not already assigned to MyApp"
      ,?_assertNotEqual(MyApp, knm_phone_number:used_by(PN0))
      }
-    ,?_assertEqual(false, knm_phone_number:is_dirty(PN0))
+    ,?_assertEqual('false', knm_phone_number:is_dirty(PN0))
     ,{"Verify number is now used by MyApp"
      ,?_assertEqual(MyApp, knm_phone_number:used_by(PN1))
      }
     ,{"Verify updated number will get saved"
-     ,?_assertEqual(true, knm_phone_number:is_dirty(PN1))
+     ,?_assertEqual('true', knm_phone_number:is_dirty(PN1))
      }
     ].
 
 update_used_by_from_defined() ->
     Num = ?TEST_IN_SERVICE_NUM,
     MyApp = <<"my_app">>,
-    {ok, PN0} = knm_number:get(Num),
-    [PN1a] = knm_pipe:succeeded(knm_numbers:update([PN0], [{fun knm_phone_number:set_used_by/2, undefined}])),
-    [PN1b] = knm_pipe:succeeded(knm_numbers:update([PN0], [{fun knm_phone_number:set_used_by/2, MyApp}])),
-    [PN2] = knm_pipe:succeeded(knm_numbers:update([PN1b], [{fun knm_phone_number:set_used_by/2, undefined}])),
+
+    %% FIXME: update these tests to work on knm_numbers successes jobjs
+    [PN0] = knm_pipe:succeeded(knm_ops:get([Num])),
+    [PN1a] = knm_pipe:succeeded(knm_ops:update([PN0], [{fun knm_phone_number:set_used_by/2, undefined}])),
+    [PN1b] = knm_pipe:succeeded(knm_ops:update([PN0], [{fun knm_phone_number:set_used_by/2, MyApp}])),
+    [PN2] = knm_pipe:succeeded(knm_ops:update([PN1b], [{fun knm_phone_number:set_used_by/2, undefined}])),
+
     [?_assertEqual(<<"callflow">>, knm_phone_number:used_by(PN0))
     ,?_assert(not knm_phone_number:is_dirty(PN0))
     ,?_assertEqual(undefined, knm_phone_number:used_by(PN1a))
@@ -238,10 +259,13 @@ update_used_by_from_defined() ->
 update_used_by_from_undefined() ->
     Num = ?TEST_IN_SERVICE_MDN,
     MyApp = <<"my_app">>,
-    {ok, PN0} = knm_number:get(Num),
-    [PN1a] = knm_pipe:succeeded(knm_numbers:update([PN0], [{fun knm_phone_number:set_used_by/2, undefined}])),
-    [PN1b] = knm_pipe:succeeded(knm_numbers:update([PN0], [{fun knm_phone_number:set_used_by/2, MyApp}])),
-    [PN2] = knm_pipe:succeeded(knm_numbers:update([PN1b], [{fun knm_phone_number:set_used_by/2, undefined}])),
+
+    %% FIXME: update these tests to work on knm_numbers successes jobjs
+    [PN0] = knm_pipe:succeeded(knm_ops:get([Num])),
+    [PN1a] = knm_pipe:succeeded(knm_ops:update([PN0], [{fun knm_phone_number:set_used_by/2, undefined}])),
+    [PN1b] = knm_pipe:succeeded(knm_ops:update([PN0], [{fun knm_phone_number:set_used_by/2, MyApp}])),
+    [PN2] = knm_pipe:succeeded(knm_ops:update([PN1b], [{fun knm_phone_number:set_used_by/2, undefined}])),
+
     [?_assertEqual(undefined, knm_phone_number:used_by(PN0))
     ,?_assert(not knm_phone_number:is_dirty(PN0))
     ,?_assertEqual(undefined, knm_phone_number:used_by(PN1a))
@@ -254,12 +278,15 @@ update_used_by_from_undefined() ->
 
 fix_number() ->
     Num = ?TEST_OLD5_1_NUM,
-    {ok, PN1} = knm_number:get(Num),
+
+    %% FIXME: update these tests to work on knm_numbers successes jobjs
+    [PN1] = knm_pipe:succeeded(knm_ops:get([Num])),
     Doc1 = knm_phone_number:doc(PN1),
     FeaturesList1 = knm_phone_number:features_list(PN1),
     [PN2] = knm_pipe:succeeded(fix_number(PN1)),
     Doc2 = knm_phone_number:doc(PN2),
     FeaturesList2 = knm_phone_number:features_list(PN2),
+
     [?_assert(not knm_phone_number:is_dirty(PN1))
     ,?_assertEqual(Num, knm_phone_number:number(PN1))
     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN1))
@@ -297,8 +324,10 @@ fix_number() ->
     ].
 
 fix_number_wrong_used_by_and_dangling_pvt_features() ->
-    {ok, PN1} = knm_number:get(?TEST_OLD7_NUM),
+    %% FIXME: update these tests to work on knm_numbers successes jobjs
+    [PN1] = knm_pipe:succeeded(knm_ops:get([?TEST_OLD7_NUM])),
     [PN2] = knm_pipe:succeeded(fix_number(PN1)),
+
     [?_assert(not knm_phone_number:is_dirty(PN1))
     ,?_assertEqual(?TEST_OLD7_NUM, knm_phone_number:number(PN1))
     ,?_assertEqual(?CHILD_ACCOUNT_ID, knm_phone_number:assigned_to(PN1))
@@ -337,4 +366,4 @@ fix_number(PN) ->
               ,{'batch_run', 'false'}
               ],
     %% -- above is verbatim from maintenance module --
-    knm_numbers:update([PN], Routines, Options).
+    knm_ops:update([PN], Routines, Options).

@@ -126,6 +126,9 @@ maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, 'false') ->
     end.
 
 -spec log_smtp(email_map(), kz_term:ne_binary(), list(), kz_term:api_binary(), kz_term:api_binary(), kz_term:ne_binary()) -> 'ok'.
+-ifdef(TEST).
+log_smtp(_, _, _, _, _, _) -> 'ok'.
+-else.
 log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
     AccountDb = kazoo_modb:get_modb(AccountId),
     Id = make_smtplog_id(AccountDb),
@@ -154,6 +157,7 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
 -spec make_smtplog_id(kz_term:ne_binary()) -> kz_term:ne_binary().
 make_smtplog_id(?MATCH_MODB_SUFFIX_ENCODED(_Account, Year, Month)) ->
     ?MATCH_MODB_PREFIX(Year, Month, kz_binary:rand_hex(16)).
+-endif.
 
 -spec email_body(rendered_templates()) -> mimemail:mimetuple().
 email_body(RenderedTemplates) ->

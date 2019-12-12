@@ -59,7 +59,7 @@ bridge(Endpoints, OffnetReq) ->
                                                  )
                           ).
 
--spec local_extension(knm_number_options:extra_options(), kapi_offnet_resource:req()) ->
+-spec local_extension(knm_options:extra_options(), kapi_offnet_resource:req()) ->
           kz_types:sup_startchild_ret().
 local_extension(Props, OffnetReq) ->
     supervisor:start_child(?SERVER

@@ -333,7 +333,7 @@ maybe_get_assigned_numbers(_AccountId, [Number|_], Name) ->
 is_valid_caller_id('undefined', _) -> 'false';
 is_valid_caller_id(Number, Call) ->
     AccountId = kapps_call:account_id(Call),
-    case knm_number:lookup_account(Number) of
+    case knm_numbers:lookup_account(Number) of
         {'ok', AccountId, _} -> 'true';
         _Else -> 'false'
     end.

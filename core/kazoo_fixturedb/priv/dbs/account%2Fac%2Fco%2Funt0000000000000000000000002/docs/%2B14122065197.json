@@ -1,0 +1,25 @@
+{
+    "_id": "+14122065197",
+    "_rev": "4-96e8a3de0419862c3e4a18e3251a6dd7",
+    "pvt_assigned_to": "account0000000000000000000000002",
+    "pvt_carrier_data": {
+        "e164": "+14122065197",
+        "formatted_number": "1-412-206-5197",
+        "npa_nxx": "412206",
+        "number_id": "0C107941-CDDA-42FE-823C-042EADBD3719",
+        "rate_center": {
+            "lata": "234",
+            "name": "PITTSBURGH SUBURBAN ZONE 13",
+            "state": "PA"
+        },
+        "status": "Available",
+        "ten_digit": "4122065197"
+    },
+    "pvt_created": 63610268576,
+    "pvt_db_name": "numbers%2F%2B1412",
+    "pvt_modified": 63610268576,
+    "pvt_module_name": "knm_bandwidth2",
+    "pvt_ported_in": false,
+    "pvt_reserve_history": [],
+    "pvt_state": "discovery"
+}

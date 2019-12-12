@@ -9,7 +9,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_number_options).
+-module(knm_options).
 
 -export([assign_to/1, assign_to/2, set_assign_to/2
         ,auth_by/1, auth_by/2
@@ -37,6 +37,10 @@
         ,ringback_media_id/1
         ,should_force_outbound/1
         ,transfer_media_id/1
+        ]).
+
+-export([is_defined/2
+        ,are_defined/2
         ]).
 
 -include("knm.hrl").
@@ -82,6 +86,32 @@ default() ->
     ,{'mdn_run', 'false'}
     ].
 
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec is_defined(options(), fun() | {fun(), any()}) -> boolean().
+is_defined(Options, {Getter, ExpectedVal}) when is_function(Getter, 2) ->
+    case Getter(Options, ExpectedVal) of
+        ExpectedVal -> 'true';
+        _ -> 'false'
+    end;
+is_defined(Options, Getter) when is_function(Getter, 1) ->
+    case Getter(Options) of
+        'undefined' -> 'false';
+        [] -> 'false';
+        <<>> -> 'false';
+        _ -> 'true'
+    end.
+
+-spec are_defined(options(), [fun() | {fun(), any()}]) -> boolean().
+are_defined(Options, Getters) ->
+    lists:all(fun(Getter) -> is_defined(Options, Getter) end, Getters).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec mdn_options() -> options().
 mdn_options() ->
     props:set_value('mdn_run', 'true', default()).
@@ -146,7 +176,7 @@ assign_to(Options, Default) ->
 set_assign_to(Options, AssignTo) ->
     props:set_value('assign_to', AssignTo, Options).
 
--spec auth_by(options()) -> kz_term:api_binary().
+-spec auth_by(options()) -> kz_term:api_ne_binary().
 auth_by(Options) ->
     auth_by(Options, 'undefined').
 

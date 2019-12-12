@@ -28,6 +28,7 @@
 
 -type doc_resp() :: {'ok', kz_json:object()} | fixture_error().
 -type docs_resp() :: {'ok', kz_json:objects()} | fixture_error().
+-type get_results() :: {'ok', kz_json:objects()} | no_return().
 
 -define(DANGEROUS_VIEW_OPTS, ['endkey'
                              ,'group'
@@ -39,6 +40,35 @@
                              ,'skip'
                              ,'startkey'
                              ]).
+
+
+-define(WARN_BANNER
+       ,"~n"
+        "╻┏ ┏━┓╺━┓┏━┓┏━┓~n"
+        "┣┻┓┣━┫┏━┛┃ ┃┃ ┃~n"
+        "╹ ╹╹ ╹┗━╸┗━┛┗━┛~n"
+        "┏━╸╻╻ ╻╺┳╸╻ ╻┏━┓┏━╸╺┳┓┏┓~n"
+        "┣╸ ┃┏╋┛ ┃ ┃ ┃┣┳┛┣╸  ┃┃┣┻┓~n"
+        "╹  ╹╹ ╹ ╹ ┗━┛╹┗╸┗━╸╺┻┛┗━┛~n"
+        "(you're being warned)~n"
+       ).
+
+-define(WARN_BANNER_2
+       ," _  __~n"
+        "| |/ /__ _ _______   ___~n"
+        "| ' // _` |_  / _ \\ / _ \\~n"
+        "| . \\ (_| |/ / (_) | (_) |~n"
+        "|_|\\_\\__,_/___\\___/ \\___/~n"
+        " _____ _      _                  ____  ____~n"
+        "|  ___(_)_  _| |_ _   _ _ __ ___|  _ \\| __ )~n"
+        "| |_  | \\ \\/ / __| | | | '__/ _ \\ | | |  _ \\~n"
+        "|  _| | |>  <| |_| |_| | | |  __/ |_| | |_) |~n"
+        "|_|   |_/_/\\_\\\\__|\\__,_|_|  \\___|____/|____/~n"
+        "~n"
+        "(you're being warned)~n"
+       ).
+
+-define(BIG_WARN(Fmt, Args), ?DEV_LOG("~n~n~n~n~n~n" ++ ?WARN_BANNER_2 ++ "~n~n~n" ++ Fmt ++ "~n~n~n~n~n~n", Args)).
 
 -define(KZ_FIXTUREDB_HRL, 'true').
 -endif.

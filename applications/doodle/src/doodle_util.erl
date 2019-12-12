@@ -65,7 +65,7 @@ lookup_mdn(Number) ->
           {'ok', kz_term:ne_binary(), kz_term:api_binary()} |
           {'error', any()}.
 fetch_mdn(Num) ->
-    case knm_number:lookup_account(Num) of
+    case knm_numbers:lookup_account(Num) of
         {'ok', AccountId, _Props} ->
             fetch_mdn_result(AccountId, Num);
         {'error', Reason}=E ->

@@ -1,0 +1,85 @@
+{
+    "_id": "+19377038881",
+    "_rev": "2-baaaaaa30bae51385cb4c6d56f294444",
+    "cnam": {
+        "display_name": "Bruce Wayne",
+        "inbound_lookup": true
+    },
+    "dash_e911": {
+        "caller_name": "Valued Customer",
+        "latitude": "40.05424",
+        "legacy_data": {
+            "house_number": "23",
+            "predirectional": "N",
+            "streetname": "MAIN ST"
+        },
+        "locality": "PLEASANT SIDE",
+        "location_id": "32379723",
+        "longitude": "-87.34416",
+        "plus_four": "8001",
+        "postal_code": "55359",
+        "region": "KZ",
+        "status": "PROVISIONED",
+        "street_address": "23 N MAIN ST"
+    },
+    "e911": {
+        "caller_name": "Valued Customer",
+        "latitude": "40.05424",
+        "legacy_data": {
+            "house_number": "23",
+            "predirectional": "N",
+            "streetname": "MAIN ST"
+        },
+        "locality": "PLEASANT SIDE",
+        "location_id": "32379723",
+        "longitude": "-87.34416",
+        "plus_four": "8001",
+        "postal_code": "55359",
+        "region": "KZ",
+        "status": "PROVISIONED",
+        "street_address": "23 N MAIN ST"
+    },
+    "pvt_assigned_to": "account0000000000000000000000002",
+    "pvt_authorizing_account": "system",
+    "pvt_created": 63606025486,
+    "pvt_db_name": "numbers%2F%2B1937",
+    "pvt_features": {
+        "e911": {
+            "caller_name": "Valued Customer",
+            "latitude": "40.05424",
+            "legacy_data": {
+                "house_number": "23",
+                "predirectional": "N",
+                "streetname": "MAIN ST"
+            },
+            "locality": "PLEASANT SIDE",
+            "location_id": "32379723",
+            "longitude": "-87.34416",
+            "plus_four": "8001",
+            "postal_code": "55359",
+            "region": "KZ",
+            "status": "PROVISIONED",
+            "street_address": "23 N MAIN ST"
+        },
+        "inbound_cnam": {
+            "inbound_lookup": true
+        },
+        "outbound_cnam": {
+            "display_name": "Bruce Wayne"
+        }
+    },
+    "pvt_features_denied": [
+        "failover"
+    ],
+    "pvt_is_billable": true,
+    "pvt_modified": 63648435293,
+    "pvt_module_name": "knm_bandwidth2",
+    "pvt_ported_in": false,
+    "pvt_state": "in_service",
+    "pvt_type": "number",
+    "state": "in_service",
+    "ui_metadata": {
+        "ui": "kazoo-ui",
+        "version": "3.14-1"
+    }
+}

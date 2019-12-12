@@ -103,7 +103,7 @@ find_more(_, _, _, _, _Enough, _, Numbers) ->
 -spec format_numbers(kz_term:ne_binary(), kz_json:objects()) -> knm_search:results().
 format_numbers(QID, JObjs) ->
     [{QID, {knm_phone_number:number(PN), knm_phone_number:module_name(PN), knm_phone_number:state(PN), knm_phone_number:carrier_data(PN)}}
-     || PN <- knm_pipe:succeeded(knm_numbers:get([kz_doc:id(JObj) || JObj <- JObjs]))
+     || PN <- knm_pipe:succeeded(knm_ops:get([kz_doc:id(JObj) || JObj <- JObjs]))
     ].
 
 %%------------------------------------------------------------------------------

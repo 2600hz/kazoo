@@ -120,14 +120,14 @@ post(Context, _CallflowId) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             'ok' = track_assignment('post', Context),
-            maybe_reconcile_numbers(Context1);
+            Context1;
         _Status -> Context1
     end.
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _CallflowId) ->
     'ok' = track_assignment('post', Context),
-    maybe_reconcile_numbers(crossbar_doc:save(Context)).
+    crossbar_doc:save(Context).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
@@ -135,7 +135,7 @@ put(Context) ->
     case cb_context:resp_status(Context1) of
         'success' ->
             'ok' = track_assignment('put', Context),
-            maybe_reconcile_numbers(Context1);
+            Context1;
         _Status -> Context1
     end.
 
@@ -176,11 +176,11 @@ load_callflow(CallflowId, Context) ->
         _Status -> Context1
     end.
 
--spec request_numbers(cb_context:context()) -> kz_json:json_term().
+-spec request_numbers(cb_context:context()) -> kz_json:api_json_term().
 request_numbers(Context) ->
     kz_json:get_value(<<"numbers">>, cb_context:req_data(Context)).
 
--spec request_patterns(cb_context:context()) -> kz_json:json_term().
+-spec request_patterns(cb_context:context()) -> kz_json:api_json_term().
 request_patterns(Context) ->
     kz_json:get_value(<<"patterns">>, cb_context:req_data(Context)).
 
@@ -351,26 +351,6 @@ on_successful_validation(CallflowId, Context) ->
           kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec maybe_reconcile_numbers(cb_context:context()) -> cb_context:context().
-maybe_reconcile_numbers(Context) ->
-    case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_reconcile_numbers">>, 'false') of
-        'false' -> Context;
-        'true' ->
-            CurrentJObj = cb_context:fetch(Context, 'db_doc', kz_json:new()),
-            Set1 = sets:from_list(kzd_callflows:numbers(CurrentJObj)),
-            Set2 = sets:from_list(kzd_callflows:numbers(cb_context:doc(Context))),
-            NewNumbers = sets:to_list(sets:subtract(Set2, Set1)),
-            Options = [{'assign_to', cb_context:account_id(Context)}
-                      ,{'dry_run', not cb_context:accepting_charges(Context)}
-                      ],
-            _ = knm_numbers:reconcile(NewNumbers, Options),
-            Context
-    end.
 
 %%------------------------------------------------------------------------------
 %% @doc

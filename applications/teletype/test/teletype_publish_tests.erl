@@ -77,7 +77,12 @@ pulish_notification(TemplateId, PubFun) ->
 
 get_status([]) -> 'false';
 get_status([JObj|_]) ->
-    kz_json:get_ne_binary_value(<<"Status">>, JObj);
+    case kz_json:get_ne_binary_value(<<"Status">>, JObj) of
+        <<"failed">> = Status ->
+            ?debugFmt("~n~nTeletype responded with failure:~n~p~n~n", [JObj]),
+            Status;
+        Status -> Status
+    end;
 get_status({_, JObjs}) when is_list(JObjs) ->
     get_status(JObjs);
 get_status({_, JObj}) ->
@@ -110,9 +115,9 @@ kz_amqp_worker_call_collect() ->
             try PublishFun(Req) of
                 'ok' -> wait_collect_until(UntilFun, [], erlang:start_timer(Timeout, self(), 'req_timeout'))
             catch
-                ?STACKTRACE(_E, T, ST)
+                ?STACKTRACE(_E, T, _ST)
                 ?LOG_DEBUG("failed to publish: ~p:~p", [_E, T]),
-                kz_log:log_stacktrace(ST),
+                %% kz_log:log_stacktrace(ST),
                 {'error', T}
                 end
     end.

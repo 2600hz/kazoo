@@ -490,15 +490,14 @@ provider_module(Other, _) ->
 -type exec_action() :: 'save' | 'delete'.
 
 -spec do_exec(knm_pipe:collection(), exec_action()) -> knm_pipe:collection().
-do_exec(T0=#{'todo' := Ns}, Action) ->
-    %% FIXME: user try(safe?) monadic either pipe/loop/fold operation
-    F = fun (N, T) ->
-                case knm_pipe:attempt(fun exec/2, [N, Action]) of
-                    {'ok', NewN} -> knm_pipe:set_succeeded(T, NewN);
-                    {'error', R} -> knm_pipe:set_failed(T, N, R)
+do_exec(T0=#{'todo' := PNs}, Action) ->
+    F = fun (PN, T) ->
+                case knm_pipe:attempt(fun exec/2, [PN, Action]) of
+                    {'ok', NewPN} -> knm_pipe:set_succeeded(T, NewPN);
+                    {'error', R} -> knm_pipe:set_failed(T, PN, R)
                 end
         end,
-    lists:foldl(F, T0, Ns).
+    lists:foldl(F, T0, PNs).
 
 
 -spec exec(knm_phone_number:record(), exec_action()) -> knm_phone_number:record().

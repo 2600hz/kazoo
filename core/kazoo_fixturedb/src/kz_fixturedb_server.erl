@@ -36,7 +36,7 @@
 %%------------------------------------------------------------------------------
 -spec new_connection(map()) -> {'ok', server_map()}.
 new_connection(Map) ->
-    Url = code:priv_dir(kazoo_fixturedb),
+    Url = code:priv_dir('kazoo_fixturedb'),
     {'ok', #{url => Url ++ "/dbs"
             ,options => Map
             }
@@ -62,7 +62,7 @@ server_url(#{url := Url}) ->
 -spec db_url(server_map(), kz_term:ne_binary()) -> kz_term:ne_binary().
 db_url(Server, DbName) ->
     #{url := Url} = maybe_use_app_connection(Server, DbName),
-    <<(kz_term:to_binary(Url))/binary, "/", DbName/binary>>.
+    kz_term:to_binary(filename:join([Url, DbName])).
 
 
 -spec server_info(server_map()) -> doc_resp().
@@ -85,7 +85,7 @@ server_info(_Server) ->
 %%------------------------------------------------------------------------------
 -spec get_app_connection(server_map()) -> server_map().
 get_app_connection(#{options := Options}=Server) ->
-    case maps:get(test_app, Options, 'undefined') of
+    case maps:get('test_app', Options, 'undefined') of
         'undefined' -> Server;
         AppName ->
             set_app_connection(Server, AppName)
@@ -93,8 +93,8 @@ get_app_connection(#{options := Options}=Server) ->
 
 -spec maybe_use_app_connection(server_map(), kz_term:ne_binary()) -> server_map().
 maybe_use_app_connection(#{options := Options}=Server, DbName) ->
-    case {maps:get(test_app, Options, 'undefined')
-         ,maps:get(test_db, Options, 'undefined')
+    case {maps:get('test_app', Options, 'undefined')
+         ,maps:get('test_db', Options, 'undefined')
          }
     of
         {'undefined', _} -> Server;
@@ -118,7 +118,7 @@ maybe_use_app_connection(#{options := Options}=Server, DbName) ->
 %%------------------------------------------------------------------------------
 -spec set_app_connection(server_map(), atom()) -> server_map().
 set_app_connection(#{options := Options}=Server, AppName) ->
-    Path = case maps:get(test_db_subdir, Options, 'undefined') of
+    Path = case maps:get('test_db_subdir', Options, 'undefined') of
                'undefined' -> code:priv_dir(AppName);
                P -> code:lib_dir(AppName, kz_term:to_atom(P, 'true'))
            end,

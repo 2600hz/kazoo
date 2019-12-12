@@ -31,13 +31,13 @@ db_dependant() ->
 
 release_unknown_number() ->
     [{"verify missing numbers return errors"
-     ,?_assertMatch({error, not_found}, knm_number:release(?TEST_CREATE_NUM))
+     ,?_assertMatch({'ok', [], [{?TEST_CREATE_NUM, 'not_found'}]}, knm_numbers:release(?TEST_CREATE_NUM))
      }
     ].
 
 release_available_number() ->
-    {ok, PN} = knm_number:release(?TEST_AVAILABLE_NUM),
-    {error, Error} = knm_number:release(?TEST_TELNYX_NUM),
+    [PN] = knm_pipe:succeeded(knm_ops:release([?TEST_AVAILABLE_NUM])),
+    [{?TEST_TELNYX_NUM, Error}] = knm_pipe:failed_to_proplist(knm_ops:release([?TEST_TELNYX_NUM])),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify releasing available local number results in deletion"
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PN))
@@ -54,7 +54,7 @@ release_available_number() ->
     ].
 
 release_in_service_bad_carrier_number() ->
-    {ok, PN} = knm_number:release(?TEST_IN_SERVICE_BAD_CARRIER_NUM),
+    [PN] = knm_pipe:succeeded(knm_ops:release([?TEST_IN_SERVICE_BAD_CARRIER_NUM])),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"verify number state is changed"
      ,?_assertEqual(?NUMBER_STATE_AVAILABLE, knm_phone_number:state(PN))
@@ -68,7 +68,7 @@ release_in_service_bad_carrier_number() ->
     ].
 
 release_in_service_mdn_number() ->
-    {ok, PN} = knm_number:release(?TEST_IN_SERVICE_MDN, knm_number_options:mdn_options()),
+    [PN] = knm_pipe:succeeded(knm_ops:release([?TEST_IN_SERVICE_MDN], knm_options:mdn_options())),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"verify number state is changed"
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PN))
@@ -83,11 +83,11 @@ release_in_service_mdn_number() ->
     ].
 
 release_in_service_numbers() ->
-    DefaultAuth = knm_number_options:default(),
+    DefaultAuth = knm_options:default(),
     ResellerAuth = [{auth_by, ?RESELLER_ACCOUNT_ID}],
     MasterAuth = [{auth_by, ?MASTER_ACCOUNT_ID}],
-    ResellerMDNAuth = [{auth_by, ?RESELLER_ACCOUNT_ID}|knm_number_options:mdn_options()],
-    MasterMDNAuth = [{auth_by, ?MASTER_ACCOUNT_ID}|knm_number_options:mdn_options()],
+    ResellerMDNAuth = [{auth_by, ?RESELLER_ACCOUNT_ID}|knm_options:mdn_options()],
+    MasterMDNAuth = [{auth_by, ?MASTER_ACCOUNT_ID}|knm_options:mdn_options()],
     SimpleHistory = [?RESELLER_ACCOUNT_ID],
     DeeperHistory = [?RESELLER_ACCOUNT_ID, ?MASTER_ACCOUNT_ID],
     [release_in_service(?TEST_IN_SERVICE_NUM, DefaultAuth, SimpleHistory)
@@ -102,8 +102,8 @@ release_in_service_numbers() ->
     ].
 
 release_in_service(Num, Options, PreHistory) ->
-    {ok, PN0} = knm_number:get(Num, Options),
-    {ok, PN} = knm_number:release(Num, Options),
+    [PN0] = knm_pipe:succeeded(knm_ops:get([Num], Options)),
+    [PN] =  knm_pipe:succeeded(knm_ops:release([Num], Options)),
     [?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN0))
     ,?_assertEqual(PreHistory, knm_phone_number:reserve_history(PN0))
     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN0))
@@ -138,9 +138,9 @@ release_in_service(Num, Options, PreHistory) ->
     ].
 
 delete_in_service() ->
-    DefaultAuth = knm_number_options:default(),
+    DefaultAuth = knm_options:default(),
     MasterAuth = [{auth_by, ?MASTER_ACCOUNT_ID}],
-    MasterMDNAuth = [{auth_by, ?MASTER_ACCOUNT_ID}|knm_number_options:mdn_options()],
+    MasterMDNAuth = [{auth_by, ?MASTER_ACCOUNT_ID}|knm_options:mdn_options()],
     [delete_in_service(?TEST_IN_SERVICE_NUM, DefaultAuth)
     ,delete_in_service(?TEST_IN_SERVICE_NUM, MasterAuth)
     ,delete_in_service(?TEST_IN_SERVICE_WITH_HISTORY_NUM, DefaultAuth)
@@ -150,8 +150,8 @@ delete_in_service() ->
     ].
 
 delete_in_service(Num, Options) ->
-    {ok, PN0} = knm_number:get(Num, Options),
-    {ok, PN} = knm_number:delete(Num, Options),
+    [PN0] = knm_pipe:succeeded(knm_ops:get([Num], Options)),
+    [PN] =  knm_pipe:succeeded(knm_ops:delete([Num], Options)),
     [?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN0))
     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN0))
     ,?_assertEqual([?FEATURE_LOCAL], knm_phone_number:features_list(PN0))

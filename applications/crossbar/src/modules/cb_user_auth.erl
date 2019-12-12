@@ -620,7 +620,7 @@ find_account('undefined', AccountRealm, AccountName, Context) ->
             find_account('undefined', 'undefined', AccountName, ErrorContext)
     end;
 find_account(PhoneNumber, AccountRealm, AccountName, Context) ->
-    case knm_number:lookup_account(PhoneNumber) of
+    case knm_numbers:lookup_account(PhoneNumber) of
         {'ok', AccountId, _} ->
             AccountDb = kzs_util:format_account_db(AccountId),
             lager:debug("found account by phone number '~s': ~s", [PhoneNumber, AccountDb]),

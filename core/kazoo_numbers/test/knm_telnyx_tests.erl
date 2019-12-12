@@ -110,8 +110,8 @@ e911() ->
               ,{'assign_to', ?RESELLER_ACCOUNT_ID}
               ,{'public_fields', JObj}
               ],
-    {ok, PN1} = knm_number:create(?TEST_TELNYX_NUM, Options),
-    #{'succeeded' := [PN2]} = knm_numbers:update([PN1], [{fun knm_phone_number:reset_doc/2, JObj}]),
+    [PN1] = knm_pipe:succeeded(knm_ops:create([?TEST_TELNYX_NUM], Options)),
+    #{'succeeded' := [PN2]} = knm_ops:update([PN1], [{fun knm_phone_number:reset_doc/2, JObj}]),
     [?_assert(knm_phone_number:is_dirty(PN1))
     ,{"Verify feature is properly set"
      ,?_assert(kz_json:are_equal(E911, knm_phone_number:feature(PN1, ?FEATURE_E911)))
@@ -142,13 +142,13 @@ cnam() ->
               ,{'assign_to', ?RESELLER_ACCOUNT_ID}
               ,{'public_fields', JObj}
               ],
-    {ok, PN1} = knm_number:create(?TEST_TELNYX_NUM, Options),
-    #{'succeeded' := [PN2]} = knm_numbers:update([PN1], [{fun knm_phone_number:reset_doc/2, JObj}]),
+    [PN1] = knm_pipe:succeeded(knm_ops:create([?TEST_TELNYX_NUM], Options)),
+    #{'succeeded' := [PN2]} = knm_ops:update([PN1], [{fun knm_phone_number:reset_doc/2, JObj}]),
     Deactivate = kz_json:from_list(
                    [{?CNAM_INBOUND_LOOKUP, false}
                    ,{?CNAM_DISPLAY_NAME, undefined}
                    ]),
-    #{'succeeded' := [PN3]} = knm_numbers:update([PN2], [{fun knm_phone_number:reset_doc/2, Deactivate}]),
+    #{'succeeded' := [PN3]} = knm_ops:update([PN2], [{fun knm_phone_number:reset_doc/2, Deactivate}]),
     [?_assert(knm_phone_number:is_dirty(PN1))
     ,{"Verify inbound CNAM is properly activated"
      ,?_assertEqual(true, is_cnam_activated(PN1))

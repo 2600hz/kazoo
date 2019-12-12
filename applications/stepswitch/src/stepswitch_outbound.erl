@@ -47,7 +47,7 @@ handle_audio_req(OffnetReq) ->
 
 -spec handle_audio_req(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
 handle_audio_req(Number, OffnetReq) ->
-    case knm_number:lookup_account(Number) of
+    case knm_numbers:lookup_account(Number) of
         {'ok', _AccountId, Props} -> maybe_force_outbound(Props, OffnetReq);
         _ -> maybe_bridge(Number, OffnetReq)
     end.
@@ -66,7 +66,7 @@ handle_originate_req(OffnetReq) ->
 
 -spec handle_originate_req(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
 handle_originate_req(Number, OffnetReq) ->
-    case knm_number:lookup_account(Number) of
+    case knm_numbers:lookup_account(Number) of
         {'ok', _AccountId, Props} ->
             maybe_force_originate_outbound(Props, OffnetReq);
         _ -> maybe_originate(Number, OffnetReq)
@@ -77,28 +77,28 @@ maybe_add_call_id('undefined', OffnetReq) ->
     kz_json:set_value(<<"Outbound-Call-ID">>, kz_binary:rand_hex(8), OffnetReq);
 maybe_add_call_id(_, OffnetReq) -> OffnetReq.
 
--spec maybe_force_originate_outbound(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> any().
+-spec maybe_force_originate_outbound(knm_options:extra_options(), kapi_offnet_resource:req()) -> any().
 maybe_force_originate_outbound(Props, OffnetReq) ->
-    case knm_number_options:should_force_outbound(Props)
+    case knm_options:should_force_outbound(Props)
         orelse kz_json:is_true(<<"Force-Outbound">>, OffnetReq, 'false')
         orelse kz_term:is_ne_binary(kapi_offnet_resource:hunt_account_id(OffnetReq))
     of
         'false' -> local_originate(Props, OffnetReq);
-        'true' -> maybe_originate(knm_number_options:number(Props), OffnetReq)
+        'true' -> maybe_originate(knm_options:number(Props), OffnetReq)
     end.
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_force_outbound(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> any().
+-spec maybe_force_outbound(knm_options:extra_options(), kapi_offnet_resource:req()) -> any().
 maybe_force_outbound(Props, OffnetReq) ->
-    case knm_number_options:should_force_outbound(Props)
+    case knm_options:should_force_outbound(Props)
         orelse kapi_offnet_resource:force_outbound(OffnetReq, 'false')
         orelse kapi_offnet_resource:hunt_account_id(OffnetReq) /= 'undefined'
     of
         'false' -> local_extension(Props, OffnetReq);
-        'true' -> maybe_bridge(knm_number_options:number(Props), OffnetReq)
+        'true' -> maybe_bridge(knm_options:number(Props), OffnetReq)
     end.
 
 %%------------------------------------------------------------------------------
@@ -131,7 +131,7 @@ maybe_correct_shortdial(Number, OffnetReq) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec local_extension(knm_number_options:extra_options(), kapi_offnet_resource:req()) ->
+-spec local_extension(knm_options:extra_options(), kapi_offnet_resource:req()) ->
           kz_types:sup_startchild_ret().
 local_extension(Props, OffnetReq) ->
     stepswitch_request_sup:local_extension(Props, OffnetReq).
@@ -148,7 +148,7 @@ maybe_originate(Number, OffnetReq) ->
         Endpoints -> stepswitch_request_sup:originate(Endpoints, OffnetReq)
     end.
 
--spec local_originate(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> any().
+-spec local_originate(knm_options:extra_options(), kapi_offnet_resource:req()) -> any().
 local_originate(Props, OffnetReq) ->
     Endpoints = [create_loopback_endpoint(Props, OffnetReq)],
     J = kz_json:set_values([{<<"Simplify-Loopback">>, <<"false">>}
@@ -174,13 +174,13 @@ get_account_realm(AccountId) ->
         Realm -> Realm
     end.
 
--spec create_loopback_endpoint(knm_number_options:extra_options(), kapi_offnet_resource:req()) ->
+-spec create_loopback_endpoint(knm_options:extra_options(), kapi_offnet_resource:req()) ->
           kz_json:object().
 create_loopback_endpoint(Props, OffnetReq) ->
     {CIDNum, CIDName} = local_originate_caller_id(OffnetReq),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
-    Number = knm_number_options:number(Props),
-    TargetAccountId = knm_number_options:account_id(Props),
+    Number = knm_options:number(Props),
+    TargetAccountId = knm_options:account_id(Props),
     TargetResellerId = kz_services_reseller:get_id(TargetAccountId),
     TargetRealm = get_account_realm(TargetAccountId),
     OriginalAccountId = kapi_offnet_resource:account_id(OffnetReq),

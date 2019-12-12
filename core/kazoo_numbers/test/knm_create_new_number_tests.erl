@@ -39,7 +39,7 @@ create_new_test_number() ->
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'false'}
             ],
-    {'ok', PN} = knm_number:create(?TEST_CREATE_NUM, Props),
+    [PN] = knm_pipe:succeeded(knm_ops:create([?TEST_CREATE_NUM], Props)),
     JObj = knm_phone_number:to_public_json(PN),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify phone number is assigned to reseller account"
@@ -75,7 +75,7 @@ create_with_carrier() ->
             ,{'dry_run', 'false'}
             ,{'module_name', CarrierModule}
             ],
-    {'ok', PN} = knm_number:create(?TEST_CREATE_NUM, Props),
+    [PN] = knm_pipe:succeeded(knm_ops:create([?TEST_CREATE_NUM], Props)),
     JObj = knm_phone_number:to_public_json(PN),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify phone number is assigned to reseller account"
@@ -112,7 +112,7 @@ reseller_new_number() ->
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'false'}
             ],
-    {'ok', PN} = knm_number:create(?TEST_CREATE_NUM, Props),
+    [PN] = knm_pipe:succeeded(knm_ops:create([?TEST_CREATE_NUM], Props)),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
@@ -142,7 +142,7 @@ fail_new_number() ->
              ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'false')
              }
             ],
-    {'error', Reason} = knm_number:create(?TEST_CREATE_NUM, Props),
+    [{?TEST_CREATE_NUM, Reason}] = knm_pipe:failed_to_proplist(knm_ops:create([?TEST_CREATE_NUM], Props)),
     [{"Verify that without the allow number additions the proper error is thrown"
      ,?_assertEqual(<<"forbidden">>, kz_json:get_value(<<"error">>, Reason))
      }
@@ -157,7 +157,7 @@ create_new_available_number() ->
             ,{'dry_run', 'false'}
             ,{state, ?NUMBER_STATE_AVAILABLE}
             ],
-    {'ok', PN} = knm_number:create(?TEST_CREATE_NUM, Props),
+    [PN] = knm_pipe:succeeded(knm_ops:create([?TEST_CREATE_NUM], Props)),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify available number is unassigned"
      ,?_assertEqual(undefined, knm_phone_number:assigned_to(PN))
@@ -184,7 +184,7 @@ create_existing_number() ->
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'false'}
             ],
-    {'ok', PN} = knm_number:create(?TEST_AVAILABLE_NUM, Props),
+    [PN] = knm_pipe:succeeded(knm_ops:create([?TEST_AVAILABLE_NUM], Props)),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
@@ -216,7 +216,7 @@ create_new_port_in() ->
             ,{'state', ?NUMBER_STATE_PORT_IN}
             ,{'module_name', ?CARRIER_LOCAL}
             ],
-    {'ok', PN} = knm_number:create(?TEST_CREATE_NUM, Props),
+    [PN] = knm_pipe:succeeded(knm_ops:create([?TEST_CREATE_NUM], Props)),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
@@ -245,10 +245,10 @@ create_new_port_in() ->
     ].
 
 create_existing_in_service() ->
-    Options = [{'assign_to', ?RESELLER_ACCOUNT_ID} | knm_number_options:default()],
-    Resp = knm_number:create(?TEST_IN_SERVICE_NUM, Options),
+    Options = [{'assign_to', ?RESELLER_ACCOUNT_ID} | knm_options:default()],
+    Resp = knm_numbers:create(?TEST_IN_SERVICE_NUM, Options),
     [{"Verifying that IN SERVICE numbers can't be created"
-     ,?_assertMatch({'error', _}, Resp)
+     ,?_assertMatch({'ok', [], _}, Resp)
      }
      | check_error_response(Resp, 409, <<"number_exists">>, ?TEST_IN_SERVICE_NUM)
     ].
@@ -258,10 +258,7 @@ create_dry_run() ->
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'true'}
             ],
-    {'dry_run', Quotes} = knm_number:create(?TEST_CREATE_NUM, Props),
-    ?debugFmt("quotes: ~p~n", [Quotes]),
-    %%TODO: make a stub service plan to test this
-    [?_assert('true')].
+    [?_assertMatch({'dry_run', _Quotes}, knm_numbers:create(?TEST_CREATE_NUM, Props))].
 
 move_non_existing_mobile_number() ->
     MobileField =
@@ -277,7 +274,7 @@ move_non_existing_mobile_number() ->
             ,{'module_name', ?CARRIER_MDN}
             ],
     [{"Verify a non existing mdn cannot be moved to in_service"
-     ,?_assertEqual({'error', 'not_found'}, knm_number:move(?TEST_CREATE_NUM, ?RESELLER_ACCOUNT_ID, Props))
+     ,?_assertEqual({'ok', [], [{?TEST_CREATE_NUM, 'not_found'}]}, knm_numbers:move(?TEST_CREATE_NUM, ?RESELLER_ACCOUNT_ID, Props))
      }
     ].
 
@@ -296,7 +293,7 @@ create_non_existing_mobile_number() ->
             ,{'module_name', ?CARRIER_MDN}
             ,{'mdn_run', 'true'}
             ],
-    {'ok', PN} = knm_number:create(?TEST_CREATE_NUM, Props),
+    [PN] = knm_pipe:succeeded(knm_ops:create([?TEST_CREATE_NUM], Props)),
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
@@ -343,17 +340,29 @@ load_existing_checks() ->
 
 existing_in_state(PN, 'false') ->
     State = kz_term:to_list(knm_phone_number:state(PN)),
-    Resp = knm_pipe:attempt(fun knm_number:ensure_can_load_to_create/1, [PN]),
+    Col0 = #{'failed' => #{}
+            ,'options' => knm_options:default()
+            ,'quotes' => 'undefined'
+            ,'succeeded' => []
+            ,'todo' => [PN]
+            },
+    Collection = knm_lib:ensure_can_load_to_create(Col0),
     [{lists:flatten(["Ensure number in ", State, " cannot be 'created'"])
-     ,?_assertMatch({'error', _}, Resp)
+     ,?_assert(kz_term:is_empty(knm_pipe:succeeded(Collection)))
      }
-     | check_error_response(Resp, 409, <<"number_exists">>, ?TEST_AVAILABLE_NUM)
+     | check_error_response(knm_pipe:failed(Collection), 409, <<"number_exists">>, ?TEST_AVAILABLE_NUM)
     ];
 
 existing_in_state(PN, 'true') ->
     State = kz_term:to_list(knm_phone_number:state(PN)),
+    Col0 = #{'failed' => #{}
+            ,'options' => knm_options:default()
+            ,'quotes' => 'undefined'
+            ,'succeeded' => []
+            ,'todo' => [PN]
+            },
     [{lists:flatten(["Ensure number in ", State, " can be 'created'"])
-     ,?_assert(knm_number:ensure_can_load_to_create(PN))
+     ,?_assertMatch([PN], knm_pipe:succeeded(knm_lib:ensure_can_load_to_create(Col0)))
      }
     ].
 
@@ -365,9 +374,7 @@ create_available_checks() ->
     ].
 
 create_with_no_auth_by() ->
-    Resp = knm_pipe:attempt(fun knm_number:ensure_can_create/2
-                           ,[?TEST_CREATE_NUM, []]
-                           ),
+    Resp = knm_lib:ensure_can_create([]),
     [{"Ensure unauthorized error thrown when no auth_by supplied"
      ,?_assertMatch({'error', _}, Resp)
      }
@@ -375,15 +382,13 @@ create_with_no_auth_by() ->
     ].
 
 create_with_disallowed_account() ->
-    Resp = knm_pipe:attempt(fun knm_number:ensure_can_create/2
-                           ,[?TEST_CREATE_NUM
-                            ,[{'auth_by', ?RESELLER_ACCOUNT_ID}
-                             ,{<<"auth_by_account">>
-                              ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'false')
-                              }
-                             ]
-                            ]
-                           ),
+    Resp = knm_lib:ensure_can_create(
+             [{'auth_by', ?RESELLER_ACCOUNT_ID}
+             ,{<<"auth_by_account">>
+              ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'false')
+              }
+             ]
+            ),
     [{"Ensure unauthorized error when auth_by account isn't allowed to create numbers"
      ,?_assertMatch({'error', _}, Resp)
      }
@@ -391,24 +396,26 @@ create_with_disallowed_account() ->
     ].
 
 create_with_number_porting() ->
-    Resp = knm_pipe:attempt(fun knm_number:ensure_can_create/2
-                           ,[?TEST_AVAILABLE_NUM %% pretend it is porting
-                            ,[{'auth_by', ?RESELLER_ACCOUNT_ID}
-                             ,{<<"auth_by_account">>
-                              ,kzd_accounts:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
-                              }
-                             ]
-                            ]),
-    [{"Ensure number_is_porting error when auth_by account isn't allowed to create numbers"
-     ,?_assertMatch({'error', _}, Resp)
+    Collection = knm_pipe:new([], []),
+    Col1 = knm_lib:ensure_numbers_are_not_porting([?TEST_NEW_PORT_NUM], Collection),
+    [{"Ensure number_is_porting when creating a port request number"
+     ,check_error_response(knm_pipe:failed_to_proplist(Col1), 400, <<"number_is_porting">>, ?TEST_NEW_PORT_NUM)
      }
-     | check_error_response(Resp, 400, <<"number_is_porting">>, ?TEST_AVAILABLE_NUM)
     ].
 
 check_error_response(E, Code, Error) ->
     check_error_response(E, Code, Error, 'undefined').
+
 check_error_response(E, Code, Error, Cause) ->
     check_error_response(E, Code, Error, Cause, 'undefined').
+
+check_error_response(#{}=E, Code, Error, Cause, Message) ->
+    [{_, JObj}] = maps:to_list(E),
+    check_error_response({'error', JObj}, Code, Error, Cause, Message);
+check_error_response({'ok', [], [{_Num, JObj}]}, Code, Error, Cause, Message) ->
+    check_error_response({'error', JObj}, Code, Error, Cause, Message);
+check_error_response([{_Num, JObj}], Code, Error, Cause, Message) ->
+    check_error_response({'error', JObj}, Code, Error, Cause, Message);
 check_error_response({'error', JObj}, Code, Error, Cause, Message) ->
     validate_errors(JObj
                    ,[{Code, fun knm_errors:code/1, "Verify 'code' is set properly"}
@@ -432,9 +439,14 @@ validate_errors(JObj, [{V, F, L}|Vs], Tests) ->
 
 create_new_number() ->
     {"Ensure success when auth_by account is allowed to create numbers"
-    ,?_assert(knm_number:ensure_can_create(?TEST_CREATE_NUM
-                                          ,[{'auth_by', ?RESELLER_ACCOUNT_ID}
-                                           ]
-                                          )
-             )
+    ,?_assertMatch({'ok',[{'state', ?NUMBER_STATE_IN_SERVICE}
+                         ,{'assign_to', ?RESELLER_ACCOUNT_ID}
+                         ,{'auth_by', ?RESELLER_ACCOUNT_ID}
+                         ]
+                   }
+                  ,knm_lib:ensure_can_create([{'assign_to', ?RESELLER_ACCOUNT_ID}
+                                             ,{'auth_by', ?RESELLER_ACCOUNT_ID}
+                                             ]
+                                            )
+                  )
     }.

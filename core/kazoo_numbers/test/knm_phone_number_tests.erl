@@ -826,7 +826,7 @@ all_gets_should_not_be_dirty() ->
       | verify_to_json(Num, PN)
      ]
      || Num <- nums(),
-        PN <- [pn(Num)]
+        PN <- knm_pipe:succeeded(knm_ops:get([Num]))
     ].
 
 verify_to_json(Num, PN) ->
@@ -873,10 +873,6 @@ is_api_account_id(V) -> is_account_id(V).
 
 is_account_id(?MATCH_ACCOUNT_RAW(_)) -> true;
 is_account_id(_) -> false.
-
-pn(Num) ->
-    {'ok', PN} = knm_number:get(Num),
-    PN.
 
 nums() ->
     [?TEST_AVAILABLE_NUM

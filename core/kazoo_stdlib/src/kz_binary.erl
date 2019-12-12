@@ -11,6 +11,8 @@
 %%%-----------------------------------------------------------------------------
 -module(kz_binary).
 
+-export([format/2]).
+
 -export([rand_hex/1
         ,hexencode/1
         ,from_hex/1
@@ -40,6 +42,16 @@
 -export([pos/2, closests/2]).
 
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec format(string() | binary(), [term()]) -> binary().
+format(Format, Args) ->
+    kz_term:to_binary(
+      io_lib:format(Format, Args)
+     ).
 
 %%------------------------------------------------------------------------------
 %% @doc Ensure a binary is a minimum size, padding it if not with a given

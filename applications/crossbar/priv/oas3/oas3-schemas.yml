@@ -9957,14 +9957,6 @@
       'minimum': 1
       'type': integer
   'type': object
-'system_config.crossbar.callflows':
-  'description': Schema for crossbar.callflows system_config
-  'properties':
-    'default_reconcile_numbers':
-      'default': false
-      'description': crossbar.callflows default reconcile numbers
-      'type': boolean
-  'type': object
 'system_config.crossbar.cdrs':
   'description': Schema for crossbar.cdrs system_config
   'properties':

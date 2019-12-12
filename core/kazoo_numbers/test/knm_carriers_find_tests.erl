@@ -53,12 +53,12 @@ carrier_info() ->
     ].
 
 is_number_billable() ->
-    {ok, PN1} = knm_number:get(?TEST_OLD1_NUM),
+    [PN1] = knm_pipe:succeeded(knm_ops:get([?TEST_OLD1_NUM])),
     PN2 = knm_phone_number:set_module_name(PN1, <<"knm_bandwidth2">>),
     PN3 = knm_phone_number:set_module_name(PN1, <<"wnm_pacwest">>),
-    [?_assertEqual(false, knm_carriers:is_number_billable(PN1))
-    ,?_assertEqual(true, knm_carriers:is_number_billable(PN2))
-    ,?_assertEqual(true, knm_carriers:is_number_billable(PN3))
+    [?_assertEqual('false', knm_carriers:is_number_billable(PN1))
+    ,?_assertEqual('true', knm_carriers:is_number_billable(PN2))
+    ,?_assertEqual('true', knm_carriers:is_number_billable(PN3))
     ].
 
 check() ->

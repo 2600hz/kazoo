@@ -106,11 +106,11 @@ encode_query_filename(Design, Options) ->
 
 -spec docs_dir(db_map()) -> kz_term:text().
 docs_dir(#{server := #{url := Url}, name := DbName}) ->
-    kz_term:to_list(<<Url/binary, "/", DbName/binary, "/docs">>).
+    kz_term:to_list(filename:join([Url, DbName, "docs"])).
 
 -spec views_dir(db_map()) -> kz_term:text().
 views_dir(#{server := #{url := Url}, name := DbName}) ->
-    kz_term:to_list(<<Url/binary, "/", DbName/binary, "/views">>).
+    kz_term:to_list(filename:join([Url, DbName, "views"])).
 
 -spec update_doc(kz_json:object()) -> kz_json:object().
 update_doc(JObj) ->
@@ -309,10 +309,10 @@ write_index_file(_, _, {'error', _}=Error) ->
 write_index_file(Path, NewLine, {'ok', IndexLines}) ->
     [Header|Lines] = binary:split(IndexLines, <<"\n">>, ['global']),
     ToWrite = [<<Header/binary, "\n">>
-                   | [<<L/binary, "\n">>
-                          || L <- lists:usort(Lines),
-                             kz_term:is_not_empty(L)
-                     ]
+              | [<<L/binary, "\n">>
+                     || L <- lists:usort(Lines),
+                        kz_term:is_not_empty(L)
+                ]
               ],
     case file:write_file(Path, ToWrite) of
         'ok' -> {'ok', NewLine};
@@ -356,12 +356,12 @@ design_view(Design) ->
         [DesignName, ViewName|_] -> <<DesignName/binary, "+", ViewName/binary>>
     end.
 
--spec db_to_disk(kz_term:ne_binary()) -> 'ok' | {'error', kz_datamgr:data_error()}.
+-spec db_to_disk(kz_term:ne_binary()) -> 'ok' | kz_datamgr:data_error().
 db_to_disk(Database) ->
     db_to_disk(Database, fun kz_term:always_true/1).
 
 -type filter_fun() :: fun((kz_json:object()) -> boolean()).
--spec db_to_disk(kz_term:ne_binary(), filter_fun()) -> 'ok' | {'error', kz_datamgr:data_error()}.
+-spec db_to_disk(kz_term:ne_binary(), filter_fun()) -> 'ok' | kz_datamgr:data_error().
 db_to_disk(Database, FilterFun) ->
     case kz_datamgr:db_exists(Database) of
         'true' -> db_to_disk_persist(Database, FilterFun);

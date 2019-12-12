@@ -387,7 +387,7 @@ honor_diversion(CIDNum, FromUser, AccountId, CustomSIPHeaders) ->
     case kz_json:get_value(<<"Diversions">>, CustomSIPHeaders) of
         [Diversion|_] ->
             [_,CallerIdNumber,_] = binary:split(Diversion, [<<":">>,<<"@">>], ['global']),
-            case knm_number:lookup_account(CallerIdNumber) of
+            case knm_numbers:lookup_account(CallerIdNumber) of
                 {'ok', AccountId, _} -> CIDNum;
                 _ ->
                     DefaultCID = kapps_config:get_ne_binary(<<"trunkstore">>, <<"default_caller_id_number">>, kz_privacy:anonymous_caller_id_number(AccountId)),
@@ -401,7 +401,7 @@ honor_diversion(CIDNum, FromUser, AccountId, CustomSIPHeaders) ->
 -spec validate_external_cid(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 validate_external_cid(CIDNum, FromUser, AccountId) ->
     lager:info("ensure_valid_caller_id flag detected, will check whether CID is legal..."),
-    case knm_number:lookup_account(CIDNum) of
+    case knm_numbers:lookup_account(CIDNum) of
         {'ok', AccountId, _} -> CIDNum;
         _Else -> validate_from_user(FromUser, AccountId)
     end.
@@ -409,7 +409,7 @@ validate_external_cid(CIDNum, FromUser, AccountId) ->
 -spec validate_from_user(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_term:ne_binary().
 validate_from_user(FromUser, AccountId) ->
     NormalizedFromUser = knm_converters:normalize(FromUser),
-    case knm_number:lookup_account(NormalizedFromUser) of
+    case knm_numbers:lookup_account(NormalizedFromUser) of
         {'ok', AccountId, _} ->
             lager:info("CID Number derived from CID Name, normalized and set to: ~s", [NormalizedFromUser]),
             NormalizedFromUser;

@@ -17,6 +17,7 @@
         ,todo/1, set_todo/2
 
         ,id/1
+        ,add_success/2
         ,add_succeeded/2
         ]).
 
@@ -25,10 +26,13 @@
         ,pipe/2
         ]).
 
-%% Monad Utilities
--export([attempt/2
+%% Utilities
+-export([all_succeeded/1
+        ,attempt/2
+        ,failed_to_proplist/1
         ,new/2, new/3, new/4
         ,merge_okkos/1, merge_okkos/2
+        ,setters/2
         ,to_json/1
         ]).
 
@@ -37,10 +41,6 @@
 %% {{{ Type definitions
 -type success() :: knm_phone_number:record().
 -type succeeded() :: [success()].
-
--type reason() :: knm_errors:error() | atom().
--type reasons() :: [reason()].
--type failed() :: #{kz_term:ne_binary() => reason()}.
 
 -type set_failed() :: kz_term:ne_binary() |
                       kz_term:ne_binaries() |
@@ -51,8 +51,8 @@
 
 -type collection() :: collection(succeeded()).
 -type collection(Succeeded) :: collection(Succeeded, Succeeded).
--type collection(Succeeded, TODOs) :: #{'failed' => failed()
-                                       ,'options' => knm_number_options:options()
+-type collection(Succeeded, TODOs) :: #{'failed' => knm_errors:failed()
+                                       ,'options' => knm_options:options()
                                        ,'quotes' => quotes() %% defined in knm_phone_number.hrl
                                        ,'succeeded' => Succeeded
                                        ,'todo' => kz_term:ne_binary() | TODOs
@@ -60,12 +60,14 @@
 
 -type applier() :: fun((collection()) -> collection()).
 -type appliers() :: [applier()].
+-type setter_fun() :: {fun((collection(), Value) -> collection()), Value}.
+-type setter_funs() :: [setter_fun()
+                        | {fun((collection(), set_failed(), knm_errors:reason()) -> collection()), set_failed(), knm_errors:reason()}
+                       ].
 %% }}}
 
 -export_type([collection/0
-             ,failed/0
              ,quotes/0
-             ,reason/0, reasons/0
              ,success/0, succeeded/0
              ]).
 
@@ -77,33 +79,36 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec failed(collection()) -> failed().
+-spec failed(collection()) -> knm_errors:failed().
 failed(#{'failed' := Failed}) -> Failed.
 
--spec set_failed(collection(), failed()) -> collection().
+-spec set_failed(collection(), knm_errors:failed()) -> collection().
 set_failed(Collection, Failed) -> Collection#{'failed' => Failed}.
 
--spec set_failed(collection(), set_failed(), reason()) -> collection().
-set_failed(Collection, <<Num/binary>>, Reason) ->
+-spec set_failed(collection(), set_failed(), knm_errors:reason()) -> collection().
+set_failed(#{'failed' := FailedAcc}=Collection, <<Num/binary>>, Reason) ->
     lager:debug("number ~s error: ~p", [Num, Reason]),
-    FailedAcc = maps:get('failed', Collection),
     Collection#{'failed' => FailedAcc#{Num => Reason}};
-set_failed(Collection0, Nums, Reason) when is_list(Nums) ->
-    F = fun (Num, ColAcc) -> set_failed(ColAcc, Num, Reason) end,
-    lists:foldl(F, Collection0, Nums);
+set_failed(#{'failed' := FailedAcc}=Collection, Things, Reason) when is_list(Things) ->
+    lager:debug("~b numbers failed with reason ~p", [length(Things), Reason]),
+    F = fun (<<Num/binary>>, Acc) -> Acc#{Num => Reason};
+            (PN            , Acc) -> Acc#{knm_phone_number:number(PN) => Reason}
+        end,
+    NewFailed = lists:foldl(F, #{}, Things),
+    Collection#{'failed' => maps:merge(FailedAcc, NewFailed)};
 set_failed(Collection, PN, Reason) ->
     Num = knm_phone_number:number(PN),
-    ?LOG_DEBUG("number ~s state: ~s", [Num, knm_phone_number:state(PN)]),
+    %% ?LOG_DEBUG("number ~s state: ~s", [Num, knm_phone_number:state(PN)]),
     set_failed(Collection, Num, Reason).
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec options(collection()) -> knm_number_options:options().
+-spec options(collection()) -> knm_options:options().
 options(#{'options' := Options}) -> Options.
 
--spec set_options(collection(), knm_number_options:options()) -> collection().
+-spec set_options(collection(), knm_options:options()) -> collection().
 set_options(Collection, Options) -> Collection#{'options' => Options}.
 
 %%------------------------------------------------------------------------------
@@ -126,7 +131,16 @@ succeeded(#{'succeeded' := Succeeded}) -> Succeeded.
 -spec set_succeeded(collection(), success() | succeeded()) -> collection().
 set_succeeded(Collection, Succeeded) when is_list(Succeeded) -> Collection#{'succeeded' => Succeeded};
 set_succeeded(Collection, Success) when not is_list(Success) ->
+    %% FIXME: DO NOT ADD, REPLACE. FOR ADD USE add_succeeded/2 and add_success/2
     Collection#{'succeeded' => [Success | maps:get('succeeded', Collection)]}.
+
+-spec add_success(collection(), success()) -> collection().
+add_success(Collection, Success) when not is_list(Success) ->
+    Collection#{'succeeded' => [Success | maps:get('succeeded', Collection)]}.
+
+-spec add_succeeded(collection(), succeeded()) -> collection().
+add_succeeded(Collection=#{'succeeded' := Succeeded}, Numbers) when is_list(Numbers) ->
+    Collection#{'succeeded' => Numbers ++ Succeeded}.
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -138,32 +152,38 @@ todo(#{'todo' := ToDo}) -> ToDo.
 -spec set_todo(collection(), kz_term:ne_binaries() | succeeded()) -> collection().
 set_todo(Collection, ToDo) -> Collection#{'todo' => ToDo}.
 
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec add_succeeded(collection(), succeeded()) -> collection().
-%% FIXME: unify with succeeded/2.
-add_succeeded(Collection=#{'succeeded' := Succeeded}, Numbers) when is_list(Numbers) ->
-    Collection#{'succeeded' => Numbers ++ Succeeded}.
-
 %%%=============================================================================
-%%% Internal functions
+%%% Other functions
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec new(knm_number_options:options(), kz_term:ne_binaries()) ->
+-spec setters(collection(), setter_funs()) -> collection().
+setters(Collection, Routines) ->
+    lists:foldl(fun({Setter, Value}, ColAcc) ->
+                        Setter(ColAcc, Value);
+                   ({FailedSetter, SetFailed, Reason}, ColAcc) ->
+                        FailedSetter(ColAcc, SetFailed, Reason)
+                end
+               ,Collection
+               ,Routines
+               ).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec new(knm_options:options(), kz_term:ne_binaries()) ->
           collection(succeeded(), kz_term:ne_binaries()).
 new(Options, ToDos) -> new(Options, ToDos, []).
 
--spec new(knm_number_options:options(), kz_term:ne_binaries(), kz_term:ne_binaries()) ->
+-spec new(knm_options:options(), kz_term:ne_binaries(), kz_term:ne_binaries()) ->
           collection(succeeded(), kz_term:ne_binaries()).
 new(Options, ToDos, FailedNums) -> new(Options, ToDos, FailedNums, 'not_reconcilable').
 
--spec new(knm_number_options:options(), kz_term:ne_binaries(), kz_term:ne_binaries(), reason()) ->
+-spec new(knm_options:options(), kz_term:ne_binaries(), kz_term:ne_binaries(), knm_errors:reason()) ->
           collection(succeeded(), kz_term:ne_binaries()).
 new(Options, ToDos, FailedNums, Reason) ->
     #{'failed' => maps:from_list([{Num, Reason} || Num <- FailedNums])
@@ -245,17 +265,19 @@ to_json(#{'succeeded' := PNs, 'failed' := Failed}) ->
 
 %%------------------------------------------------------------------------------
 %% @doc
+%% FIXME: this is being used by knm_provders and knm_carriers modules. refactor
+%% all those modules (returning kz_either as oppose to throwing error) and
+%% get rid of this _thing_.
 %% @end
 %%------------------------------------------------------------------------------
--spec attempt(fun(), list()) ->
-          knm_number:return() |
+-type attempt_fun() :: fun((knm_phone_number:record()) -> knm_phone_number:record()) |
+                       fun((knm_phone_number:record(), atom()) -> knm_phone_number:record()).
+
+-spec attempt(attempt_fun(), [knm_phone_number:record()] | [knm_phone_number:record() | atom()]) ->
           {'ok', knm_phone_number:record()} |
-          'true'.
+          {'error', knm_errors:error()}.
 attempt(Fun, Args) ->
     try apply(Fun, Args) of
-        {'ok', _}=OK -> OK;
-        {'error', _}=Error -> Error;
-        'true' -> 'true';
         Resp ->
             case knm_phone_number:is_phone_number(Resp) of
                 'true' -> {'ok', Resp};
@@ -274,5 +296,21 @@ attempt(Fun, Args) ->
 
 -spec num_to_did(kz_term:api_ne_binary() | knm_phone_number:record()) -> kz_term:api_ne_binary().
 num_to_did('undefined') -> 'undefined';
-num_to_did(?NE_BINARY = DID) -> DID;
+num_to_did(<<DID/binary>>) -> DID;
 num_to_did(PhoneNumber) -> knm_phone_number:number(PhoneNumber).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec failed_to_proplist(collection()) -> knm_errors:proplist().
+failed_to_proplist(#{'failed' := Failed}) ->
+    maps:to_list(Failed).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec all_succeeded(collection()) -> boolean().
+all_succeeded(#{'failed' := Failed}) ->
+    kz_term:is_empty(Failed).

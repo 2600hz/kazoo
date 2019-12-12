@@ -78,7 +78,7 @@ filter_numbers(Number) ->
 is_valid_caller_id('undefined', _) -> 'false';
 is_valid_caller_id(<<>>, _) -> 'false';
 is_valid_caller_id(Number, AccountId) ->
-    case knm_number:lookup_account(Number) of
+    case knm_numbers:lookup_account(Number) of
         {'ok', AccountId, _} -> 'true';
         _Else -> 'false'
     end.
