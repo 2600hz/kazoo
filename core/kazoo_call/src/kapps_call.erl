@@ -71,7 +71,7 @@
 -export([get_prompt/2, get_prompt/3]).
 -export([set_to_tag/2, to_tag/1]).
 -export([set_from_tag/2, from_tag/1]).
--export([direction/1]).
+-export([set_direction/2, direction/1]).
 -export([set_call_bridged/2, call_bridged/1]).
 -export([set_message_left/2, message_left/1]).
 
@@ -223,6 +223,7 @@
                       ,{<<"Caller-ID-Number">>, #kapps_call.caller_id_number}
                       ,{<<"Fetch-ID">>, #kapps_call.fetch_id}
                       ,{<<"Owner-ID">>, #kapps_call.owner_id}
+                      ,{<<"Inception">>, #kapps_call.inception}
                       ]).
 
 -spec default_helper_function(Field, call()) -> Field.
@@ -287,7 +288,7 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
                     ,origination_call_id=kz_json:get_ne_binary_value(<<"Origination-Call-ID">>, RouteReq, origination_call_id(Call1))
                     ,context=kz_json:get_ne_binary_value(<<"Context">>, RouteReq, context(Call))
                     ,request=Request
-                    ,request_user=to_e164(RequestUser)
+                    ,request_user=to_e164(RequestUser, AccountId)
                     ,request_realm=RequestRealm
                     ,from=From
                     ,from_user=FromUser
@@ -873,19 +874,21 @@ callee_id_number(#kapps_call{callee_id_number='undefined'}) -> <<>>;
 callee_id_number(#kapps_call{callee_id_number=CIDNumber}) -> CIDNumber.
 
 -spec set_request(kz_term:ne_binary(), call()) -> call().
-set_request(Request, #kapps_call{}=Call) when is_binary(Request) ->
+set_request(Request, #kapps_call{account_id=AccountId}=Call) when is_binary(Request) ->
     [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
     Call#kapps_call{request=Request
-                   ,request_user=to_e164(RequestUser)
+                   ,request_user=to_e164(RequestUser, AccountId)
                    ,request_realm=RequestRealm
                    }.
 
 -ifdef(TEST).
-to_e164(Number) -> Number.
+to_e164(Number, _AccountId) -> Number.
 -else.
-to_e164(<<"*", _/binary>>=Number) -> Number;
-to_e164(Number) ->
-    knm_converters:normalize(Number).
+to_e164(<<"*", _/binary>>=Number, _AccountId) -> Number;
+to_e164(Number, 'undefined') ->
+    knm_converters:normalize(Number);
+to_e164(Number, AccountId) ->
+    knm_converters:normalize(Number, AccountId).
 -endif.
 
 -spec request(call()) -> kz_term:ne_binary().
@@ -1173,6 +1176,10 @@ from_tag(#kapps_call{from_tag=FromTag}) ->
 -spec direction(call()) -> kz_term:ne_binary().
 direction(#kapps_call{direction=Direction}) ->
     Direction.
+
+-spec set_direction(kz_term:ne_binary(), call()) -> call().
+set_direction(Direction, #kapps_call{}=Call) when is_binary(Direction) ->
+    Call#kapps_call{direction=Direction}.
 
 -spec call_bridged(call()) -> boolean().
 call_bridged(#kapps_call{call_bridged=IsBridged}) ->

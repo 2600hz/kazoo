@@ -428,9 +428,7 @@ fetch(Num=?NE_BINARY, Options) ->
     NumberDb = knm_converters:to_db(NormalizedNum),
     case fetch(NumberDb, NormalizedNum, Options) of
         {'ok', JObj} -> handle_fetch(JObj, Options);
-        {'error', _R}=Error ->
-            lager:debug("failed to open ~s in ~s: ~p", [NormalizedNum, NumberDb, _R]),
-            Error
+        {'error', _R}=Error -> Error
     end.
 
 -spec fetch(kz_term:ne_binary(), kz_term:ne_binary(), knm_number_options:options()) ->
@@ -1574,6 +1572,8 @@ private_to_public() ->
      ,?FEATURE_FAILOVER => FailoverPub
      ,?FEATURE_RINGBACK => RingbackPub
      ,?FEATURE_FORCE_OUTBOUND => [[?FEATURE_FORCE_OUTBOUND]]
+     ,?FEATURE_SMS => [[?FEATURE_SMS]]
+     ,?FEATURE_MMS => [[?FEATURE_MMS]]
      }.
 
 %%------------------------------------------------------------------------------
@@ -1610,9 +1610,7 @@ sanitize_public_fields(JObj) ->
                            knm_numbers:collection() |
                            boolean().
 is_authorized(T) when is_map(T) -> is_authorized_collection(T);
-is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) ->
-    lager:info("bypassing auth"),
-    'true';
+is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) -> 'true';
 is_authorized(#knm_phone_number{auth_by = 'undefined'}) -> 'false';
 is_authorized(#knm_phone_number{assigned_to = 'undefined'
                                ,assign_to = 'undefined'

@@ -1,26 +1,26 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
-%%% @doc
-%%% @author Karl Anderson
+%%% @copyright (C) 2012-2019, 2600Hz
+%%% @doc This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
+%%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(doodle_exe_sup).
-
+-module(kazoo_im_sup).
 -behaviour(supervisor).
 
--include("doodle.hrl").
+-export([start_link/0
+        ,init/1
+        ]).
+
+-include_lib("kazoo_stdlib/include/kz_types.hrl").
+-include("kapps_im_command.hrl").
 
 -define(SERVER, ?MODULE).
 
-%% API
--export([start_link/0]).
--export([new/1]).
--export([workers/0]).
-
-%% Supervisor callbacks
--export([init/1]).
-
--define(CHILDREN, [?WORKER_TYPE('doodle_exe', 'temporary')]).
+-define(CHILDREN, [?SUPER('kz_im_offnet_sup')
+                  ,?SUPER('kz_im_onnet_sup')
+                  ]).
 
 %%==============================================================================
 %% API functions
@@ -33,14 +33,6 @@
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
-
--spec new(kapps_call:call()) -> kz_types:sup_startchild_ret().
-new(Call) ->
-    supervisor:start_child(?SERVER, [Call]).
-
--spec workers() -> kz_term:pids().
-workers() ->
-    [Pid || {_, Pid, 'worker', [_]} <- supervisor:which_children(?SERVER)].
 
 %%==============================================================================
 %% Supervisor callbacks
@@ -55,8 +47,8 @@ workers() ->
 %%------------------------------------------------------------------------------
 -spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
-    RestartStrategy = 'simple_one_for_one',
-    MaxRestarts = 0,
+    RestartStrategy = 'one_for_one',
+    MaxRestarts = 25,
     MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
