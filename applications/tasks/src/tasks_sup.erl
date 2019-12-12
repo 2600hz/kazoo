@@ -25,8 +25,8 @@
                    %% Jobs not generating CSV output
                   ,?WORKER('kz_tasks_trigger')
                    %% Numbers
-                  ,?WORKER('knm_port_request_crawler')
-                  ,?WORKER('knm_number_crawler')
+                  ,?WORKER('kt_port_request_crawler')
+                  ,?WORKER('kt_number_crawler')
                    %% DB
                   ,?WORKER('kz_account_crawler')
                    %% Standalone tasks

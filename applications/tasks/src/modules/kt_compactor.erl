@@ -37,7 +37,7 @@
 -endif.
 
 -include("tasks.hrl").
--include("src/modules/kt_compactor.hrl").
+-include("kt_compactor.hrl").
 
 -define(CATEGORY, "compaction").
 -define(ACTIONS, [<<"compact_all">>

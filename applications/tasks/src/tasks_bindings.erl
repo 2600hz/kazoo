@@ -49,6 +49,7 @@
         ]).
 
 -include("tasks.hrl").
+-include("task_modules.hrl").
 
 -type payload() :: list() | kz_json:object() | kz_term:ne_binary().
 

@@ -5,8 +5,6 @@
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
 -include_lib("kazoo_tasks/include/tasks.hrl").
 
--include_lib("task_modules.hrl").
-
 -define(APP, 'tasks').
 -define(APP_NAME, <<"tasks">>).
 -define(APP_VERSION, <<"4.0.0">> ).
