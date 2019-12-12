@@ -11,6 +11,7 @@
 -include_lib("kazoo_amqp/include/kz_amqp.hrl").
 
 -export([start/2, stop/1]).
+-export([register_views/0]).
 
 %%------------------------------------------------------------------------------
 %% @doc Implement the application start behaviour.
