@@ -25,6 +25,7 @@
 -export([ratedeck_name/1]).
 -export([applications/1]).
 -export([asr/1]).
+-export([im/1]).
 -export([limits/1]).
 -export([jobj/1
         ,set_jobj/2
@@ -181,6 +182,14 @@ applications(Plan) ->
 -spec asr(plan()) -> kz_json:object().
 asr(Plan) ->
     kzd_service_plan:asr(jobj(Plan)).
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec im(plan()) -> kz_json:object().
+im(Plan) ->
+    kzd_service_plan:im(jobj(Plan)).
 
 %%------------------------------------------------------------------------------
 %% @doc

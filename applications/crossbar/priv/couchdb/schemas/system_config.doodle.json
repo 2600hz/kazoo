@@ -47,6 +47,11 @@
             "description": "doodle inbound queue name",
             "type": "string"
         },
+        "listeners": {
+            "default": 1,
+            "description": "doodle listeners",
+            "type": "integer"
+        },
         "min_bucket_cost": {
             "default": 1,
             "description": "doodle minimum bucket cost",

@@ -10151,6 +10151,10 @@
     'inbound_queue_name':
       'description': doodle inbound queue name
       'type': string
+    'listeners':
+      'default': 1
+      'description': doodle listeners
+      'type': integer
     'min_bucket_cost':
       'default': 1
       'description': doodle minimum bucket cost
@@ -11347,6 +11351,19 @@
     'event_listeners':
       'default': 5
       'description': kazoo_events event_listeners
+      'type': integer
+  'type': object
+'system_config.kazoo_im':
+  'description': Schema for kazoo_im system_config
+  'properties':
+    'connector':
+      'properties':
+        'connections':
+          'description': kazoo_im connector connections
+          'type': object
+    'onnet_listeners':
+      'default': 1
+      'description': kazoo_im onnet_listeners
       'type': integer
   'type': object
 'system_config.keys':

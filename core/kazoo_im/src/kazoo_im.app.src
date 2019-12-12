@@ -1,0 +1,13 @@
+{application,kazoo_im,
+             [{applications,[crypto,kazoo,kazoo_amqp,
+                             kazoo_documents,
+                             kazoo_ledgers,
+                             kazoo_numbers,kazoo_stdlib,
+                             lager,stdlib]},
+              {description,"Representing IM in Kazoo"},
+              {id,[]},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[]},
+              {env,[]},
+              {mod,{kazoo_im_app,[]}}]}.

@@ -122,6 +122,9 @@
         "Force-Fax": {
             "type": "string"
         },
+        "From": {
+            "type": "string"
+        },
         "From-Realm": {
             "type": "string"
         },
@@ -210,6 +213,9 @@
             "type": "string"
         },
         "Timeout": {
+            "type": "string"
+        },
+        "To": {
             "type": "string"
         },
         "To-Realm": {

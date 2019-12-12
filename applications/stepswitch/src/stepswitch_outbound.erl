@@ -31,8 +31,7 @@ handle_req(OffnetJObj, _Props) ->
     _ = kapi_offnet_resource:put_callid(OffnetReq),
     case kapi_offnet_resource:resource_type(OffnetReq) of
         ?RESOURCE_TYPE_AUDIO -> handle_audio_req(OffnetReq);
-        ?RESOURCE_TYPE_ORIGINATE -> handle_originate_req(OffnetReq);
-        ?RESOURCE_TYPE_SMS -> handle_sms_req(OffnetReq)
+        ?RESOURCE_TYPE_ORIGINATE -> handle_originate_req(OffnetReq)
     end.
 
 %%------------------------------------------------------------------------------
@@ -92,20 +91,6 @@ maybe_force_originate_outbound(Props, OffnetReq) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_sms_req(kapi_offnet_resource:req()) -> any().
-handle_sms_req(OffnetReq) ->
-    Number = stepswitch_util:get_outbound_destination(OffnetReq),
-    lager:debug("received outbound sms resource request for ~s", [Number]),
-    case knm_number:lookup_account(Number) of
-        {'ok', _AccountId, Props} ->
-            maybe_force_outbound_sms(Props, OffnetReq);
-        _ -> maybe_sms(Number, OffnetReq)
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
 -spec maybe_force_outbound(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> any().
 maybe_force_outbound(Props, OffnetReq) ->
     case knm_number_options:should_force_outbound(Props)
@@ -114,21 +99,6 @@ maybe_force_outbound(Props, OffnetReq) ->
     of
         'false' -> local_extension(Props, OffnetReq);
         'true' -> maybe_bridge(knm_number_options:number(Props), OffnetReq)
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec maybe_force_outbound_sms(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> any().
-maybe_force_outbound_sms(Props, OffnetReq) ->
-    case knm_number_options:should_force_outbound(Props)
-        orelse kapi_offnet_resource:force_outbound(OffnetReq, 'false')
-        orelse kapi_offnet_resource:hunt_account_id(OffnetReq) /= 'undefined'
-        orelse knm_number_options:assign_to(Props) =:= 'undefined'
-    of
-        'false' -> local_sms(Props, OffnetReq);
-        'true' -> maybe_sms(knm_number_options:number(Props), OffnetReq)
     end.
 
 %%------------------------------------------------------------------------------
@@ -161,30 +131,10 @@ maybe_correct_shortdial(Number, OffnetReq) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec maybe_sms(kz_term:ne_binary(), kapi_offnet_resource:req()) -> any().
-maybe_sms(Number, OffnetReq) ->
-    RouteBy = stepswitch_util:route_by(),
-    case RouteBy:endpoints(Number, OffnetReq) of
-        [] -> publish_no_resources(OffnetReq);
-        Endpoints -> stepswitch_request_sup:sms(Endpoints, OffnetReq)
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
 -spec local_extension(knm_number_options:extra_options(), kapi_offnet_resource:req()) ->
           kz_types:sup_startchild_ret().
 local_extension(Props, OffnetReq) ->
     stepswitch_request_sup:local_extension(Props, OffnetReq).
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec local_sms(knm_number_options:extra_options(), kapi_offnet_resource:req()) -> 'ok'.
-local_sms(Props, OffnetReq) ->
-    stepswitch_local_sms:local_message_handling(Props, OffnetReq).
 
 %%------------------------------------------------------------------------------
 %% @doc

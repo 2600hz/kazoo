@@ -1,7 +1,7 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2011-2019, 2600Hz
 %%% @doc
-%%% @author James Aimonetti
+%%% @author Karl Anderson
 %%%
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,7 +9,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(doodle_event_handler_sup).
+-module(tf_exe_sup).
 
 -behaviour(supervisor).
 
@@ -19,13 +19,13 @@
 
 %% API
 -export([start_link/0]).
--export([new/3]).
+-export([new/1]).
 -export([workers/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
--define(CHILDREN, []).
+-define(CHILDREN, [?WORKER_TYPE('tf_exe', 'temporary')]).
 
 %%==============================================================================
 %% API functions
@@ -39,9 +39,10 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec new(any(), atom(), list()) -> kz_types:sup_startchild_ret().
-new(Name, M, A) ->
-    supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS_TYPE(Name, M, A, 'temporary')).
+-spec new(kapps_im:im()) -> kz_types:sup_startchild_ret().
+new(Im) ->
+    Context = tf_exe_listener:tf_context(),
+    supervisor:start_child(?SERVER, [Im, Context]).
 
 -spec workers() -> kz_term:pids().
 workers() ->
@@ -60,7 +61,7 @@ workers() ->
 %%------------------------------------------------------------------------------
 -spec init(any()) -> kz_types:sup_init_ret().
 init([]) ->
-    RestartStrategy = 'one_for_one',
+    RestartStrategy = 'simple_one_for_one',
     MaxRestarts = 0,
     MaxSecondsBetweenRestarts = 1,
 
