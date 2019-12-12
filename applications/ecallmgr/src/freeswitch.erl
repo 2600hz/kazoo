@@ -41,6 +41,8 @@
         ,bgapi4/5
         ]).
 
+-export([async_api/3]).
+
 -include("ecallmgr.hrl").
 
 -define(TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
@@ -140,3 +142,7 @@ config(Node) -> ?FS_MODULE:config(Node).
                     {'ok', binary()} |
                     {'error', 'timeout' | 'exception' | binary()}.
 bgapi4(Node, Cmd, Args, Fun, CallBackParams) -> ?FS_MODULE:bgapi4(Node, Cmd, Args, Fun, CallBackParams).
+
+-spec async_api(atom(), atom(), string() | binary()) -> fs_api_return().
+async_api(Node, Cmd, Args) -> ?FS_MODULE:async_api(Node, Cmd, Args).
+
