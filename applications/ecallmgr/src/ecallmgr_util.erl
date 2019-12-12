@@ -38,7 +38,6 @@
 -export([media_path/1, media_path/2, media_path/3, media_path/4
         ,lookup_media/4
         ]).
--export([remove_media/1]).
 -export([unserialize_fs_array/1, unserialize_fs_props/1]).
 -export([convert_fs_evt_name/1, convert_kazoo_app_name/1]).
 -export([fax_filename/1
@@ -1438,11 +1437,6 @@ lookup_media(MediaName, Type, CallId, JObj) ->
         {'error', 'not_found'} ->
             request_media_url(MediaName, Type, CallId, JObj)
     end.
--spec remove_media(kz_term:ne_binary()) -> 'ok'.
-remove_media(MediaName) ->
-    kz_cache:erase_local(?ECALLMGR_UTIL_CACHE
-                        ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
-                        ).
 
 -spec request_media_url(kz_term:ne_binary(), media_types(), kz_term:ne_binary(), kz_json:object()) ->
                                {'ok', kz_term:ne_binary()} |
