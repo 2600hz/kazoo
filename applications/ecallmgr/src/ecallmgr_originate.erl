@@ -546,22 +546,20 @@ add_loopback('false') ->
 -spec originate_execute(atom(), kz_term:ne_binary(), pos_integer()) ->
                                {'ok', kz_term:ne_binary()} |
                                {'error', kz_term:ne_binary() | 'timeout' | 'crash'}.
-originate_execute(Node, Dialstrings, Timeout) ->
+originate_execute(Node, Dialstrings, _Timeout) ->
     lager:debug("executing originate on ~s: ~s", [Node, Dialstrings]),
-    case freeswitch:api(Node
-                       ,'originate'
-                       ,kz_term:to_list(Dialstrings)
-                       ,Timeout * ?MILLISECONDS_IN_SECOND + 2000
-                       )
+    case freeswitch:async_api(Node
+                             ,'originate'
+                             ,kz_term:to_list(Dialstrings)
+                             )
     of
-        {'ok', <<"+OK ", ID/binary>>} ->
-            UUID = kz_binary:strip(binary:replace(ID, <<"\n">>, <<>>)),
+        {'ok', UUID} ->
             Media = get('hold_media'),
             _Pid = kz_util:spawn(fun set_music_on_hold/3, [Node, UUID, Media]),
             {'ok', UUID};
-        {'ok', Other} ->
-            lager:debug("recv other 'ok': ~s", [Other]),
-            {'error', kz_binary:strip(binary:replace(Other, <<"\n">>, <<>>))};
+        'ok' ->
+            lager:debug("recv other 'ok'"),
+            {'error', 'empty_response'};
         {'error', Error} when is_binary(Error) ->
             lager:debug("error originating: ~s", [Error]),
             {'error', kz_binary:strip(binary:replace(Error, <<"\n">>, <<>>))};
