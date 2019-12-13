@@ -523,6 +523,7 @@ on_successful_validation(Id, Context) ->
 -spec maybe_check_modifiers(cb_context:context()) -> cb_context:context().
 maybe_check_modifiers(Context) ->
     WebhookDoc = cb_context:doc(Context),
+    lager:info("checking modifiers for ~s", [kzd_webhooks:hook(WebhookDoc)]),
     maybe_check_modifiers(Context, WebhookDoc, kzd_webhooks:hook(WebhookDoc)).
 
 -spec maybe_check_modifiers(cb_context:context(), kzd_webhooks:doc(), kz_term:api_ne_binary()) -> cb_context:context().
@@ -545,7 +546,7 @@ check_modifiers(Context, WebhookDoc, Modifiers) ->
 check_modifiers(WebhookDoc, ModifierKey, ModifierValue, Context) ->
     case kz_json:get_value([ModifierKey], kzd_webhooks:custom_data(WebhookDoc, kz_json:new())) of
         'undefined' ->
-            lager:debug("failed to find ~s in webhook's custom data", [ModifierKey]),
+            lager:info("failed to find ~s in webhook's custom data", [ModifierKey]),
             Msg = kz_json:from_list([{<<"message">>, <<"missing required modifier">>}]),
             cb_context:add_validation_error([<<"custom_data">>, ModifierKey], <<"required">>, Msg, Context);
         CustomValue ->
@@ -558,14 +559,16 @@ check_modifiers(WebhookDoc, ModifierKey, ModifierValue, Context) ->
 check_modifier_values(CustomValue, ModifierKey, ModifierValue, <<"array">>, Context) ->
     Items = kz_json:get_value(<<"items">>, ModifierValue, []),
     case lists:member(CustomValue, Items) of
+        'true' -> Context;
+        'false' when CustomValue =:= <<"all">> ->
+            lager:info("modifier ~s is for all items in ~p", [ModifierKey, Items]),
+            Context;
         'false' ->
             Msg = kz_json:from_list([{<<"message">>, <<"value not found in enumerated list of values">>}
                                     ,{<<"cause">>, CustomValue}
                                     ,{<<"target">>, Items}
                                     ]),
-            cb_context:add_validation_error([<<"custom_data">>, ModifierKey], <<"enum">>, Msg, Context);
-        'true' ->
-            Context
+            cb_context:add_validation_error([<<"custom_data">>, ModifierKey], <<"enum">>, Msg, Context)
     end;
 check_modifier_values(CustomValue, ModifierKey, ModifierValue, <<"object">>, Context) ->
     case kz_json:get_value([<<"items">>, CustomValue], ModifierValue) of

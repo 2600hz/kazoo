@@ -19,6 +19,8 @@
         ,delete/3
         ]).
 
+-export([user_webhook/0, user_webhook/1]).
+
 %% Manual test functions
 -export([seq/0, seq_recv_events/0
         ,cleanup/0
@@ -148,7 +150,8 @@ seq_recv_events() ->
     lager:info("empty summary: ~s", [EmptySummaryResp]),
     'true' = ([] =:= kz_json:get_list_value([<<"data">>], kz_json:decode(EmptySummaryResp))),
 
-    CreateResp = create(API, AccountId, user_webhook()),
+    [Verb | _] = kz_term:shuffle_list([<<"put">>, <<"post">>]),
+    CreateResp = create(API, AccountId, user_webhook(Verb)),
     lager:info("created hook: ~s", [CreateResp]),
     WebhookId = kz_json:get_ne_binary_value([<<"data">>, <<"id">>], kz_json:decode(CreateResp)),
 
@@ -162,6 +165,7 @@ seq_recv_events() ->
 
     CreatedHookQS = pqc_httpd:fetch_req([<<?MODULE_STRING>>], 2000),
     lager:info("created event: ~s", [CreatedHookQS]),
+
     CreatedHookProps = kz_http_util:parse_query_string(CreatedHookQS),
     UserId = props:get_value(<<"id">>, CreatedHookProps),
     'true' = <<"user">> =:= props:get_value(<<"type">>, CreatedHookProps),
@@ -194,6 +198,9 @@ seq_recv_events() ->
     EmptyAgainResp = summary(API, AccountId),
     lager:info("empty again summary: ~s", [EmptyAgainResp]),
     'true' = ([] =:= kz_json:get_list_value([<<"data">>], kz_json:decode(EmptyAgainResp))),
+
+    [] = ets:tab2list(webhooks_util:table_id()),
+    lager:info("table is empty as well"),
 
     cleanup(API).
 
@@ -253,7 +260,12 @@ create_account(API) ->
     ?INFO("created account: ~s", [AccountResp]),
     kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)).
 
+-spec user_webhook() -> kzd_webhooks:doc().
 user_webhook() ->
+    user_webhook(<<"post">>).
+
+-spec user_webhook(kz_term:ne_binary()) -> kzd_webhooks:doc().
+user_webhook(Verb) ->
     URL = <<(pqc_httpd:base_url())/binary, ?MODULE_STRING>>,
 
     ModifiedUserDocs = [{<<"type">>, kzd_users:type()}
@@ -262,7 +274,7 @@ user_webhook() ->
 
     Webhook = kz_json:exec_first([{fun kzd_webhooks:set_uri/2, URL}
                                  ,{fun kzd_webhooks:set_name/2, <<?MODULE_STRING, "_user">>}
-                                 ,{fun kzd_webhooks:set_http_verb/2, <<"post">>}
+                                 ,{fun kzd_webhooks:set_http_verb/2, Verb}
                                  ,{fun kzd_webhooks:set_hook/2, <<"object">>}
                                  ,{fun kzd_webhooks:set_custom_data/2, kz_json:from_list(ModifiedUserDocs)}
                                  ]
