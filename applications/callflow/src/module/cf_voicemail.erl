@@ -1125,6 +1125,11 @@ forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_numb
                                                                    ,after_notify_action=Action
                                                                    ,media_extension=Extension
                                                                    }=DestBox, Call) ->
+
+    %% When we forward a message to another vmbox, we want to update the Call `To` field to match the destination
+    To = <<BoxNum/binary, "@", (kapps_call:to_realm(Call))/binary>>,
+    UpdatedCall = kapps_call:set_to(To, Call),
+
     NewMsgProps = props:filter_undefined(
                     [{<<"Box-Id">>, BoxId}
                     ,{<<"Owner-Id">>, OwnerId}
@@ -1138,7 +1143,7 @@ forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_numb
                     ,{<<"Media-Extension">>, Extension}
                     ]
                    ),
-    case kvm_message:forward_message(Call, Message, SrcBoxId, NewMsgProps) of
+    case kvm_message:forward_message(UpdatedCall, Message, SrcBoxId, NewMsgProps) of
         {'ok', NewCall} ->
             _ = kapps_call_command:b_prompt(<<"vm-forward_confirmed">>, NewCall),
             send_mwi_update(DestBox);
