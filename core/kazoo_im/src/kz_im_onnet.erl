@@ -318,7 +318,7 @@ number(#{enabled := 'false'} = Map) -> Map;
 number(#{payload := JObj} = Map) ->
     case knm_number:get(kz_api_sms:from(JObj)) of
         {'ok', Num} ->
-            case knm_sms:enabled(Num)
+            case knm_im:enabled(Num, 'sms')
                 andalso number_provider(Num)
             of
                 'false' ->

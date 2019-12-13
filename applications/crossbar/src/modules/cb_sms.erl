@@ -274,7 +274,7 @@ number_belongs_to_account(Context) ->
 -spec number_has_sms_enabled(cb_context:context()) -> cb_context:context().
 number_has_sms_enabled(Context) ->
     Number = cb_context:fetch(Context, 'from_number'),
-    case knm_sms:enabled(Number) of
+    case knm_im:enabled(Number, 'sms') of
         'true' -> Context;
         'false' -> cb_context:add_validation_error(<<"from">>, <<"forbidden">>, <<"number does not have sms enabled">>, Context)
     end.

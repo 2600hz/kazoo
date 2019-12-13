@@ -80,8 +80,7 @@
 -define(FEATURE_PREPEND, <<"prepend">>).
 -define(FEATURE_RENAME_CARRIER, <<"carrier_name">>).
 -define(FEATURE_RINGBACK, <<"ringback">>).
--define(FEATURE_SMS, <<"sms">>).
--define(FEATURE_MMS, <<"mms">>).
+-define(FEATURE_IM, <<"im">>).
 
 -define(PROVIDER_RENAME_CARRIER, <<"knm_rename_carrier">>).
 -define(PROVIDER_FORCE_OUTBOUND, <<"knm_", (?FEATURE_FORCE_OUTBOUND)/binary>>).
@@ -101,8 +100,7 @@
                                   ,?FEATURE_CNAM_OUTBOUND
                                   ,?FEATURE_E911
                                   ,?FEATURE_PORT
-                                  ,?FEATURE_SMS
-                                  ,?FEATURE_MMS
+                                  ,?FEATURE_IM
                                   ]).
 
 -define(ADMIN_ONLY_FEATURES, [?FEATURE_RENAME_CARRIER
@@ -120,8 +118,7 @@
                             ,?FEATURE_PREPEND
                             ,?FEATURE_RENAME_CARRIER
                             ,?FEATURE_RINGBACK
-                            ,?FEATURE_SMS
-                            ,?FEATURE_MMS
+                            ,?FEATURE_IM
                             ]).
 
 -define(CNAM_DISPLAY_NAME, <<"display_name">>).
