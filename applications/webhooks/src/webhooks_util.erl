@@ -213,37 +213,45 @@ do_fire(#webhook{uri = ?NE_BINARY = URI
     Fired = kz_http:get(Url, Headers, ?HTTP_OPTS),
     handle_resp(Hook, EventId, JObj, Debug, Fired);
 do_fire(#webhook{uri = ?NE_BINARY = URI
-                ,http_verb = 'post'
+                ,http_verb = Verb
                 ,retries = Retries
                 ,hook_event = _HookEvent
                 ,hook_id = _HookId
                 ,format = 'form-data'
-                } = Hook, EventId, JObj) ->
-    lager:debug("sending hook ~s(~s) with interaction id ~s via 'post' (retries ~b): ~s", [_HookEvent, _HookId, EventId, Retries, URI]),
+                } = Hook
+       ,EventId
+       ,JObj
+       ) when Verb =:= 'put'
+              orelse Verb =:= 'post' ->
+    lager:debug("sending hook ~s(~s) with interaction id ~s via '~s' (retries ~b): ~s", [_HookEvent, _HookId, EventId, Verb, Retries, URI]),
 
     Body = kz_http_util:json_to_querystring(JObj),
     Headers = [{"Content-Type", "application/x-www-form-urlencoded"}
                | ?HTTP_REQ_HEADERS(Hook)
               ],
     Debug = debug_req(Hook, EventId, URI, Headers, Body),
-    Fired = kz_http:post(URI, Headers, Body, ?HTTP_OPTS),
+    Fired = kz_http:req(Verb, URI, Headers, Body, ?HTTP_OPTS),
 
     handle_resp(Hook, EventId, JObj, Debug, Fired);
 do_fire(#webhook{uri = ?NE_BINARY = URI
-                ,http_verb = 'post'
+                ,http_verb = Verb
                 ,retries = Retries
                 ,hook_event = _HookEvent
                 ,hook_id = _HookId
                 ,format = 'json'
-                } = Hook, EventId, JObj) ->
-    lager:debug("sending hook ~s(~s) with interaction id ~s via 'post' (retries ~b): ~s", [_HookEvent, _HookId, EventId, Retries, URI]),
+                } = Hook
+       ,EventId
+       ,JObj
+       ) when Verb =:= 'put'
+              orelse Verb =:= 'post' ->
+    lager:debug("sending hook ~s(~s) with interaction id ~s via '~s' (retries ~b): ~s", [_HookEvent, _HookId, EventId, Verb, Retries, URI]),
 
     Body = kz_json:encode(JObj, ['pretty']),
     Headers = [{"Content-Type", "application/json"}
                | ?HTTP_REQ_HEADERS(Hook)
               ],
     Debug = debug_req(Hook, EventId, URI, Headers, Body),
-    Fired = kz_http:post(URI, Headers, Body, ?HTTP_OPTS),
+    Fired = kz_http:req(Verb, URI, Headers, Body, ?HTTP_OPTS),
 
     handle_resp(Hook, EventId, JObj, Debug, Fired).
 
@@ -322,7 +330,7 @@ save_attempt(AccountId, Attempt) ->
     'ok'.
 
 -spec debug_req(webhook(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), iodata()) ->
-                       kz_term:proplist().
+          kz_term:proplist().
 debug_req(#webhook{hook_id=HookId
                   ,hook_event = HookEvent
                   ,http_verb = Method
@@ -343,7 +351,7 @@ debug_req(#webhook{hook_id=HookId
     ].
 
 -spec debug_resp(kz_http:ret(), kz_term:proplist(), hook_retries() | 'undefined') ->
-                        kz_json:object().
+          kz_json:object().
 debug_resp({'ok', RespCode, RespHeaders, RespBody}, Debug, Retries) ->
     Headers = kz_json:from_list(
                 [{fix_value(K), fix_value(V)}
