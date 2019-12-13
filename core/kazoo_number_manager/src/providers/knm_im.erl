@@ -8,16 +8,25 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_sms).
+-module(knm_im).
 -behaviour(knm_gen_provider).
 
 -export([save/1]).
 -export([delete/1]).
--export([enabled/1]).
+-export([enabled/1, enabled/2]).
+
+-type im_type() :: kapps_im:im_type().
+-type knm_number() :: knm_number:knm_number().
+-type knm_phone_number() :: knm_phone_number:knm_phone_number().
+
+-export_type([im_type/0
+             ]).
 
 -include("knm.hrl").
 
--define(KEY, ?FEATURE_SMS).
+-define(KEY, ?FEATURE_IM).
+-define(IM_TYPES, ['sms', 'mms']).
+
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called each time a number is saved, and will
@@ -25,14 +34,14 @@
 %% @end
 %%------------------------------------------------------------------------------
 
--spec save(knm_number:knm_number()) -> knm_number:knm_number().
+-spec save(knm_number()) -> knm_number().
 save(PN) ->
     State = knm_phone_number:state(knm_number:phone_number(PN)),
     save(PN, State).
 
--spec save(knm_number:knm_number(), kz_term:ne_binary()) -> knm_number:knm_number().
+-spec save(knm_number(), kz_term:ne_binary()) -> knm_number().
 save(PN, ?NUMBER_STATE_IN_SERVICE) ->
-    update_sms(PN);
+    update_im(PN);
 save(PN, _State) ->
     delete(PN).
 
@@ -41,20 +50,24 @@ save(PN, _State) ->
 %% remove the prepend route
 %% @end
 %%------------------------------------------------------------------------------
--spec delete(knm_number:knm_number()) -> knm_number:knm_number().
+-spec delete(knm_number()) -> knm_number().
 delete(Number) ->
     case feature(Number) of
         'undefined' -> Number;
         _Else -> knm_providers:deactivate_feature(Number, ?KEY)
     end.
 
--spec enabled(knm_number:knm_number()) -> boolean().
-enabled(PN) ->
+-spec enabled(knm_number() | knm_phone_number(), im_type()) -> boolean().
+enabled(PN, Type) ->
     Feature = feature(PN),
     case kz_term:is_empty(Feature) of
         'true' -> 'false';
-        'false' -> kz_json:is_true(?FEATURE_ENABLED, Feature)
+        'false' -> kz_json:is_true([kz_term:to_binary(Type), ?FEATURE_ENABLED], Feature)
     end.
+
+-spec enabled(knm_number() | knm_phone_number()) -> boolean().
+enabled(PN) ->
+    lists:any(fun(Type) -> enabled(PN, Type) end, ?IM_TYPES).
 
 %%%=============================================================================
 %%% Internal functions
@@ -64,8 +77,8 @@ enabled(PN) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_sms(knm_number:knm_number()) -> knm_number:knm_number().
-update_sms(PN) ->
+-spec update_im(knm_number()) -> knm_number().
+update_im(PN) ->
     CurrentFeature = feature(PN),
     PhoneNumber = knm_number:phone_number(PN),
     Feature = kz_json:get_ne_value(?KEY, knm_phone_number:doc(PhoneNumber)),
@@ -76,7 +89,9 @@ update_sms(PN) ->
         'false' when NotChanged  ->
             PN;
         'false' ->
-            case kz_json:is_true(?FEATURE_ENABLED, Feature) of
+            case kz_json:is_true([<<"sms">>, ?FEATURE_ENABLED], Feature)
+                orelse kz_json:is_true([<<"mms">>, ?FEATURE_ENABLED], Feature)
+            of
                 'false' -> knm_providers:deactivate_feature(PN, ?KEY);
                 'true' -> knm_providers:activate_feature(PN, {?KEY, Feature})
             end
@@ -86,7 +101,10 @@ update_sms(PN) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
+-spec feature(knm_number() | knm_phone_number()) -> kz_json:api_json_term().
 feature(Number) ->
-    knm_phone_number:feature(knm_number:phone_number(Number), ?KEY).
+    case knm_phone_number:is_phone_number(Number) of
+        'true' -> knm_phone_number:feature(Number, ?KEY);
+        'false' -> knm_phone_number:feature(knm_number:phone_number(Number), ?KEY)
+    end.
 

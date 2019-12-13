@@ -261,7 +261,7 @@ lookup_number(#{number := Number} = Map) ->
 lookup_number(Map) -> Map.
 
 number_has_sms_enabled(#{knm := PN} = Map) ->
-    case knm_sms:enabled(PN) of
+    case knm_im:enabled(PN, 'sms') of
         'true' -> Map;
         'false' -> maps:without([account_id, account, phone_number]
                                ,Map#{error => <<"number does not have sms enabled">>}
