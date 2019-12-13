@@ -70,7 +70,7 @@ hook_event_name(<<"CHANNEL_DISCONNECTED">>) -> <<"CHANNEL_DESTROY">>;
 hook_event_name(Event) -> Event.
 
 -spec format_event(kz_json:object(), kz_term:api_binary(), kz_term:ne_binary()) ->
-                          kz_json:object().
+          kz_json:object().
 format_event(JObj, AccountId, <<"CHANNEL_CREATE">>) ->
     kz_json:set_value(<<"hook_event">>, <<"channel_create">>
                      ,base_hook_event(JObj, AccountId)
@@ -140,12 +140,12 @@ resource_used('true', _JObj) -> 'undefined';
 resource_used('false', JObj) -> ccv(JObj, <<"Resource-ID">>).
 
 -spec ccv(kz_json:object(), kz_json:path()) ->
-                 kz_term:api_binary().
+          kz_term:api_binary().
 ccv(JObj, Key) ->
     ccv(JObj, Key, 'undefined').
 
 -spec ccv(kz_json:object(), kz_json:path(), Default) ->
-                 kz_term:ne_binary() | Default.
+          kz_term:ne_binary() | Default.
 ccv(JObj, Key, Default) ->
     kz_call_event:custom_channel_var(JObj, Key, Default).
 
@@ -160,6 +160,6 @@ non_reserved_ccvs(CCVs, Keys) ->
     kz_json:filter(fun({K, _}) -> not lists:member(K, Keys) end, CCVs).
 
 -spec cavs(kz_json:object()) ->
-                  kz_term:api_object().
+          kz_term:api_object().
 cavs(JObj) ->
     kz_call_event:custom_application_vars(JObj).
