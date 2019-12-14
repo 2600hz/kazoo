@@ -181,9 +181,9 @@ xref: compile
 	@ERL_LIBS=$(ELIBS) $(REBAR) xref skip_deps=true -C $(ROOT)/make/xref.local.config
 
 
-FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
+FMT = $(ROOT)/make/erlang-formatter/fmt.sh
 $(FMT):
-	wget 'https://codeload.github.com/fenollp/erlang-formatter/tar.gz/master' -O - | tar xvz -C $(ROOT)/make/
+	$(MAKE) -C $(ROOT)/ $(FMT)
 
 fmt: TO_FMT ?= $(shell find src include -iname '*.erl' -or -iname '*.hrl' -or -iname '*.escript')
 fmt: $(FMT)
