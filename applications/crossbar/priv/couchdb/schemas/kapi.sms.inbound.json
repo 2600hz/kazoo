@@ -86,8 +86,9 @@
         },
         "Route-Type": {
             "enum": [
-                "on-net",
-                "off-net"
+                "onnet",
+                "offnet",
+                "api"
             ],
             "type": "string"
         },
@@ -112,10 +113,9 @@
     },
     "required": [
         "Body",
-        "Callee-ID-Number",
-        "Caller-ID-Number",
+        "From",
         "Message-ID",
-        "Route-ID"
+        "To"
     ],
     "type": "object"
 }

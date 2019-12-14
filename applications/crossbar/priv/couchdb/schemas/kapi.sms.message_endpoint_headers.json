@@ -52,7 +52,7 @@
             "type": "string"
         },
         "Endpoint-Actions": {
-            "type": "string"
+            "type": "object"
         },
         "Endpoint-Delay": {
             "type": "string"
