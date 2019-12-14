@@ -889,7 +889,7 @@ distribute_event(JObj, {Deliver, #'P_basic'{headers=Headers}=Basic}=BasicDeliver
                     ,{'deliver', Deliver}
                     ],
             kz_term:to_pid(Pid) ! {'kapi', kapi:delivery_message(JObj, Props)},
-            {'noreply', State};
+            State;
         'false' ->
             case callback_handle_event(JObj, BasicDeliver, State) of
                 'ignore' -> State;
