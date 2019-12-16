@@ -51,7 +51,7 @@
                         ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
                         ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>]}
                         ,{<<"Application-Name">>, [<<"send">>]}
-                        ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
+                        ,{<<"Route-Type">>, [<<"onnet">>, <<"offnet">>]}
                         ]).
 -define(SMS_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
                        ,{<<"SIP-Headers">>, fun kz_json:is_json_object/1}
@@ -215,7 +215,7 @@
                         ]).
 -define(OUTBOUND_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                              ,{<<"Event-Name">>, ?OUTBOUND_REQ_EVENT_NAME}
-                             ,{<<"Route-Type">>, [<<"on-net">>, <<"off-net">>]}
+                             ,{<<"Route-Type">>, [<<"onnet">>, <<"offnet">>]}
                              ]).
 -define(OUTBOUND_ROUTING_KEY(RouteId, CallId), outbound_routing_key(RouteId, CallId)).
 -define(BIND_OUTBOUND_ROUTING_KEY(Props)
