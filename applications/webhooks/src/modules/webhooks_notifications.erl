@@ -119,6 +119,7 @@ handle_account_notification(Notification, <<"webhook">>) ->
     webhooks_util:fire_hooks(Data, [Hook]);
 handle_account_notification(Notification, EventName) ->
     AccountId = kapi_notifications:account_id(Notification),
+    lager:info("searching for hook ~s(~s) for account ~s", [EventName, ?HOOK_NAME, AccountId]),
     handle_account_notification(Notification, EventName, AccountId
                                ,webhooks_util:find_webhooks(?HOOK_NAME, AccountId)
                                ).
