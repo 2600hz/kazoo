@@ -94,7 +94,9 @@ server_id(JObj) ->
 queue_id(JObj) ->
     kz_json:get_ne_binary_value(?KEY_QUEUE_ID, JObj, server_id(JObj)).
 
--spec event_category(kz_json:object()) -> kz_term:api_binary().
+-spec event_category(kz_term:api_terms()) -> kz_term:api_binary().
+event_category(Props) when is_list(Props) ->
+    props:get_value(?KEY_EVENT_CATEGORY, Props);
 event_category(JObj) ->
     kz_json:get_value(?KEY_EVENT_CATEGORY, JObj).
 

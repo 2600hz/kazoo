@@ -6446,6 +6446,22 @@
       'description': What voice to use when speaking
       'type': string
   'type': object
+'mms':
+  'description': mms document
+  'properties':
+    'body':
+      'description': mime encoded mms message
+      'minLength': 1
+      'type': string
+    'from':
+      'description': 'caller-id-number, taken from user if absent'
+      'type': string
+    'to':
+      'description': callee-id-number
+      'type': string
+  'required':
+    - to
+  'type': object
 'multi_factor_provider':
   'additionalProperties': true
   'description': multi factor provider configuration
@@ -8196,9 +8212,6 @@
     'from':
       'description': 'caller-id-number, taken from user if absent'
       'type': string
-    'scheduled':
-      'description': The timestamp to start delivering the message
-      'type': integer
     'to':
       'description': callee-id-number
       'type': string

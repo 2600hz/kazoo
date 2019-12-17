@@ -3,6 +3,7 @@
 -include_lib("kazoo_stdlib/include/kz_types.hrl").
 -include_lib("kazoo_stdlib/include/kz_log.hrl").
 -include_lib("kazoo_stdlib/include/kz_databases.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include_lib("kazoo_amqp/include/kz_api_literals.hrl").
 -include_lib("kazoo_amqp/include/kz_amqp.hrl").
 -include_lib("kazoo_numbers/include/knm_phone_number.hrl").

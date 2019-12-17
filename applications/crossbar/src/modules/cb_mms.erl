@@ -9,7 +9,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(cb_sms).
+-module(cb_mms).
 
 -export([init/0
         ,allowed_methods/0, allowed_methods/1
@@ -21,12 +21,13 @@
 
 -include("crossbar.hrl").
 
+-type mime_tuple() :: mimemail:mimetuple().
 
--define(CB_LIST_ALL, <<"sms/crossbar_listing">>).
--define(CB_LIST_BY_DEVICE, <<"sms/listing_by_device">>).
--define(CB_LIST_BY_OWNERID, <<"sms/listing_by_owner">>).
+-define(CB_LIST_ALL, <<"mms/crossbar_listing">>).
+-define(CB_LIST_BY_DEVICE, <<"mms/listing_by_device">>).
+-define(CB_LIST_BY_OWNERID, <<"mms/listing_by_owner">>).
 
--define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".sms">>).
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".mms">>).
 
 %%%=============================================================================
 %%% API
@@ -38,11 +39,11 @@
 %%------------------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.sms">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.sms">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.sms">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.sms">>, ?MODULE, 'put'),
-    crossbar_bindings:bind(<<"*.execute.delete.sms">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.mms">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.mms">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate.mms">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.execute.put.mms">>, ?MODULE, 'put'),
+    crossbar_bindings:bind(<<"*.execute.delete.mms">>, ?MODULE, 'delete').
 
 %%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are
@@ -91,7 +92,7 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
-    validate_sms(Context, Id, cb_context:req_verb(Context)).
+    validate_mms(Context, Id, cb_context:req_verb(Context)).
 
 -spec validate_request(cb_context:context(), http_method()) -> cb_context:context().
 validate_request(Context, ?HTTP_GET) ->
@@ -99,10 +100,10 @@ validate_request(Context, ?HTTP_GET) ->
 validate_request(Context, ?HTTP_PUT) ->
     create(Context).
 
--spec validate_sms(cb_context:context(), path_token(), http_method()) -> cb_context:context().
-validate_sms(Context, Id, ?HTTP_GET) ->
+-spec validate_mms(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+validate_mms(Context, Id, ?HTTP_GET) ->
     read(Id, Context);
-validate_sms(Context, Id, ?HTTP_DELETE) ->
+validate_mms(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
 %%------------------------------------------------------------------------------
@@ -116,7 +117,7 @@ put(Context) ->
             <<"onnet">> -> kz_amqp_worker:cast(Payload, fun kapi_im:publish_inbound/1);
             <<"offnet">> -> kz_amqp_worker:cast(Payload, fun kapi_im:publish_outbound/1)
         end,
-    crossbar_util:response(kz_api:remove_defaults(Payload), Context).
+    crossbar_util:response(kz_im:set_body(kz_api:remove_defaults(Payload), 'null'), Context).
 
 %%------------------------------------------------------------------------------
 %% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
@@ -133,7 +134,7 @@ delete(Context, _Id) ->
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     OnSuccess = fun(C) -> on_successful_validation(C) end,
-    cb_context:validate_request_data(kzd_sms:type(), Context, OnSuccess).
+    cb_context:validate_request_data(kzd_mms:type(), Context, OnSuccess).
 
 %%------------------------------------------------------------------------------
 %% @doc Load an instance from the database
@@ -147,9 +148,9 @@ read(?MATCH_MODB_PREFIX(Year,Month,_) = Id, Context) ->
                                                                 ,kz_term:to_integer(Month)
                                                                 )
                                      ),
-    crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(kzd_sms:type()));
+    crossbar_doc:load(Id, Context1, ?TYPE_CHECK_OPTION(kzd_mms:type()));
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_sms:type())).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(kzd_mms:type())).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -157,9 +158,12 @@ read(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec on_successful_validation(cb_context:context()) -> cb_context:context().
 on_successful_validation(Context) ->
-    Setters = [fun account_is_enabled/1
+    Setters = [fun body_or_attachment/1
+              ,fun body_is_mime_encoded/1
+              ,fun body_from_files/1
+              ,fun account_is_enabled/1
               ,fun account_is_in_good_standing/1
-              ,fun account_has_sms_enabled/1
+              ,fun account_has_mms_enabled/1
               ,fun create_request/1
               ,fun validate_from/1
               ],
@@ -204,15 +208,14 @@ create_request(Context) ->
     KVs = [{<<"Message-ID">>, cb_context:req_id(Context)}
           ,{<<"From">>, FromNum}
           ,{<<"To">>, ToNum}
-          ,{<<"Body">>, kz_json:get_value(<<"body">>, Payload)}
           ,{<<"Account-ID">>, cb_context:account_id(Context)}
           ,{<<"Custom-Vars">>, kz_json:from_list(CCVs)}
           ,{<<"Route-Type">>, Type}
-          ,{<<"Event-Category">>, <<"sms">>}
+          ,{<<"Event-Category">>, <<"mms">>}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
 
-    cb_context:set_doc(Context, kz_json:from_list(KVs)).
+    cb_context:set_doc(Context, kz_json:set_values(KVs, Payload)).
 
 -spec get_default_caller_id(cb_context:context(), binary(), kz_term:api_binary()) -> kz_term:api_binary().
 get_default_caller_id(Context, <<"offnet">>, 'undefined') ->
@@ -229,6 +232,65 @@ get_default_caller_id(Context, <<"onnet">>, OwnerId) ->
     kzd_caller_id:internal(kzd_accounts:caller_id(EP, kz_json:new())).
 
 
+-spec body_or_attachment(cb_context:context()) -> cb_context:context().
+body_or_attachment(Context) ->
+    case cb_context:req_files(Context) =:= []
+        andalso kzd_mms:body(cb_context:doc(Context)) =:= 'undefined'
+    of
+        'true' ->
+            Property = <<"body">>,
+            Code = <<"required">>,
+            Message = <<"add mime encoded body or upload one or more files">>,
+            cb_context:add_validation_error(Property, Code, Message, Context);
+        'false' -> Context
+    end.
+
+-spec body_is_mime_encoded(cb_context:context()) -> cb_context:context().
+body_is_mime_encoded(Context) ->
+    case kzd_mms:body(cb_context:doc(Context)) of
+        'undefined' -> Context;
+        Body ->
+            try mimemail:decode(Body) of
+                {_Type, _SubType, _Headers, _Parameters, _Body} ->
+                    KVs = [{<<"Body">>, Body}
+                          ,{<<"body">>, null}
+                          ],
+                    cb_context:set_doc(Context, kz_json:set_values(KVs, cb_context:doc(Context)))
+            catch
+                _What:_Why:_ST ->
+                    lager:debug("body decoding failed with ~p:~p", [_What, _Why]),
+                    Property = <<"body">>,
+                    Code = <<"required">>,
+                    Message = <<"add mime encoded body or upload one or more files">>,
+                    cb_context:add_validation_error(Property, Code, Message, Context)
+            end
+    end.
+
+-spec body_from_files(cb_context:context()) -> cb_context:context().
+body_from_files(Context) ->
+    case cb_context:req_files(Context) of
+        [] -> Context;
+        Files -> body_from_files(Context, Files)
+    end.
+
+-spec body_from_files(cb_context:context(), req_files()) -> cb_context:context().
+body_from_files(Context, Files) ->
+    Parts = [mimepart_from_file(File)|| File <- Files],
+    Encoded = mimemail:encode_part({<<"multipart">>, <<"related">>, [], [], Parts}),
+    Body = kz_binary:join(Encoded, <<"\r\n">>),
+    cb_context:set_doc(Context, kz_im:set_body(cb_context:doc(Context), Body)).
+
+-spec mimepart_from_file(req_file()) -> mime_tuple().
+mimepart_from_file({Filename, FileJObj}) ->
+    ContentType = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
+    Headers = [{<<"Content-Type">>, <<ContentType/binary, "; name=\"", Filename/binary, "\"">>}
+              ,{<<"Content-Disposition">>, <<"attachment; filename=\"", Filename/binary, "\"">>}
+              ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
+              ],
+    Content = kz_json:get_value(<<"contents">>, FileJObj),
+    [Type, SubType] = binary:split(ContentType, <<"/">>),
+    {Type, SubType, Headers, [], Content}.
+
 -spec account_is_enabled(cb_context:context()) -> cb_context:context().
 account_is_enabled(Context) ->
     case kzd_accounts:enabled(cb_context:account_doc(Context)) of
@@ -243,11 +305,11 @@ account_is_in_good_standing(Context) ->
         {'false', #{message := Msg}} -> cb_context:add_system_error('account', Msg, Context)
     end.
 
--spec account_has_sms_enabled(cb_context:context()) -> cb_context:context().
-account_has_sms_enabled(Context) ->
-    case kz_services_im:is_sms_enabled(cb_context:account_id(Context)) of
+-spec account_has_mms_enabled(cb_context:context()) -> cb_context:context().
+account_has_mms_enabled(Context) ->
+    case kz_services_im:is_mms_enabled(cb_context:account_id(Context)) of
         'true' -> Context;
-        'false' -> cb_context:add_system_error('account', <<"sms services not enabled for account">>, Context)
+        'false' -> cb_context:add_system_error('account', <<"mms services not enabled for account">>, Context)
     end.
 
 
@@ -259,7 +321,7 @@ validate_from(Context) ->
         <<"offnet">> ->
             Setters = [{fun number_exists/2, kz_im:from(cb_context:doc(Context))}
                       ,fun number_belongs_to_account/1
-                      ,fun number_has_sms_enabled/1
+                      ,fun number_has_mms_enabled/1
                       ],
             cb_context:validators(Context, Setters)
     end.
@@ -280,12 +342,12 @@ number_belongs_to_account(Context) ->
         'false' -> cb_context:add_validation_error(<<"from">>, <<"forbidden">>, <<"number does not belong to account">>, Context)
     end.
 
--spec number_has_sms_enabled(cb_context:context()) -> cb_context:context().
-number_has_sms_enabled(Context) ->
+-spec number_has_mms_enabled(cb_context:context()) -> cb_context:context().
+number_has_mms_enabled(Context) ->
     Number = cb_context:fetch(Context, 'from_number'),
-    case knm_im:enabled(Number, 'sms') of
+    case knm_im:enabled(Number, 'mms') of
         'true' -> Context;
-        'false' -> cb_context:add_validation_error(<<"from">>, <<"forbidden">>, <<"number does not have sms enabled">>, Context)
+        'false' -> cb_context:add_validation_error(<<"from">>, <<"forbidden">>, <<"number does not have mms enabled">>, Context)
     end.
 
 %%------------------------------------------------------------------------------

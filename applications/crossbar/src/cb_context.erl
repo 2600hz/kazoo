@@ -59,7 +59,7 @@
         ,method/1, set_method/2
         ,query_string/1, set_query_string/2
         ,req_data/1, set_req_data/2
-        ,req_files/1, set_req_files/2
+        ,req_files/1, set_req_files/2, add_req_file/2
         ,req_header/2, set_req_header/3
         ,req_headers/1, set_req_headers/2
         ,req_id/1, set_req_id/2
@@ -576,6 +576,10 @@ set_req_data(#cb_context{}=Context, ReqData) ->
 -spec set_req_files(context(), req_files()) -> context().
 set_req_files(#cb_context{}=Context, ReqFiles) ->
     Context#cb_context{req_files=ReqFiles}.
+
+-spec add_req_file(context(), req_file()) -> context().
+add_req_file(#cb_context{req_files=ReqFiles}=Context, ReqFile) ->
+    Context#cb_context{req_files=ReqFiles++[ReqFile]}.
 
 -spec set_req_nouns(context(), req_nouns()) -> context().
 set_req_nouns(#cb_context{}=Context, ReqNouns) ->

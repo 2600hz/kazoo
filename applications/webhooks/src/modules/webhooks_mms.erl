@@ -8,20 +8,20 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(webhooks_sms).
+-module(webhooks_mms).
 
 -export([init/0
         ,bindings_and_responders/0
         ,account_bindings/1
-        ,handle_sms/2
+        ,handle_mms/2
         ]).
 
 -include("webhooks.hrl").
 
 -define(ID, kz_term:to_binary(?MODULE)).
--define(HOOK_NAME, <<"sms">>).
--define(NAME, <<"SMS">>).
--define(DESC, <<"Receive notifications when sms is received">>).
+-define(HOOK_NAME, <<"mms">>).
+-define(NAME, <<"MMS">>).
+-define(DESC, <<"Receive notifications when mms is received">>).
 
 -define(METADATA
        ,kz_json:from_list(
@@ -47,7 +47,7 @@ init() ->
 -spec bindings_and_responders() -> {gen_listener:bindings(), gen_listener:responders()}.
 bindings_and_responders() ->
     Bindings = bindings(),
-    Responders = [{{?MODULE, 'handle_sms'}, [{<<"sms">>, <<"inbound">>}]}],
+    Responders = [{{?MODULE, 'handle_mms'}, [{<<"mms">>, <<"inbound">>}]}],
     {Bindings, Responders}.
 
 %%------------------------------------------------------------------------------
@@ -61,8 +61,8 @@ account_bindings(_AccountId) -> [].
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_sms(kz_json:object(), kz_term:proplist()) -> 'ok'.
-handle_sms(Payload, _Props) ->
+-spec handle_mms(kz_json:object(), kz_term:proplist()) -> 'ok'.
+handle_mms(Payload, _Props) ->
     kz_log:put_callid(Payload),
     'true' = kapi_im:inbound_v(Payload),
     AccountId = kz_im:account_id(Payload),
@@ -87,7 +87,7 @@ handle_sms(Payload, _Props) ->
 bindings() ->
     [{'im', [{'restrict_to', ['inbound']}
             ,{'route_type', 'offnet'}
-            ,{'im_types', ['sms']}
+            ,{'im_types', ['mms']}
             ]
      }
     ].

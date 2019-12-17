@@ -11,8 +11,7 @@
 
 -export([fetch/1
         ,flat_rate/3
-        ,is_sms_enabled/1
-        ,is_mms_enabled/1
+        ,is_enabled/2, is_sms_enabled/1, is_mms_enabled/1
         ]).
 
 -include("services.hrl").
@@ -91,3 +90,10 @@ is_sms_enabled(AccountId) ->
 -spec is_mms_enabled(kz_services:services() | kz_term:ne_binary()) -> boolean().
 is_mms_enabled(AccountId) ->
     kz_json:is_true([<<"mms">>, <<"enabled">>], fetch(AccountId)).
+
+-spec is_enabled(kz_services:services() | kz_term:ne_binary(), im_type()) -> boolean().
+is_enabled(AccountId, 'sms') ->
+    is_sms_enabled(AccountId);
+is_enabled(AccountId, 'mms') ->
+    is_mms_enabled(AccountId);
+is_enabled(_AccountId, _) -> 'false'.

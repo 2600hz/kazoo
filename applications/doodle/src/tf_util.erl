@@ -24,6 +24,8 @@
              ,delivery_status/0
              ]).
 
+-define(SIP_MSG_DEVICES, [<<"sip_device">>, <<"softphone">>]).
+
 -spec build_im_endpoint(kz_json:object(), kz_json:object(), kapps_im:im()) -> {'ok', kz_json:objects()} | {'error', build_error()}.
 build_im_endpoint(Endpoint, Properties, Im) ->
     case should_create_endpoint(Endpoint, Properties, Im) of
@@ -85,17 +87,17 @@ maybe_do_not_disturb(Endpoint, _Properties, _Im) ->
 
 -spec create_im_endpoints(kz_json:object(), kz_json:object(), kapps_im:im()) -> kz_json:objects().
 create_im_endpoints(Endpoint, Properties, Im) ->
-    create_im_endpoints(kz_doc:type(Endpoint), Endpoint, Properties, Im).
+    create_im_endpoints(kzd_endpoint:type(Endpoint), Endpoint, Properties, Im).
 
 -spec create_im_endpoints(kz_term:ne_binary(), kz_json:object(), kz_json:object(), kapps_im:im()) -> kz_json:objects().
 create_im_endpoints(<<"device">>, Endpoint, Properties, Im) ->
     [create_im_endpoint(Endpoint, Properties, Im)];
 create_im_endpoints(<<"user">>, Endpoint, Properties, Im) ->
-    OwnerId = kz_doc:id(Endpoint),
+    OwnerId = kzd_endpoint:id(Endpoint),
     EndpointIds = [kz_doc:id(EP) || EP
                                         <- kz_attributes:owned_by_docs(OwnerId, kapps_im:account_id(Im))
                                         ,<<"device">> =:= kz_doc:type(EP)
-                                        ,<<"sip_device">> =:= kzd_devices:device_type(EP)
+                                        ,lists:member(kzd_devices:device_type(EP), ?SIP_MSG_DEVICES)
                   ],
     EPs = [kz_endpoint:get(EndpointId, kapps_im:account_id(Im)) || EndpointId <- EndpointIds],
     [create_im_endpoint(EP, Properties, Im) || {'ok', EP} <- EPs];
@@ -105,9 +107,9 @@ create_im_endpoints(_, _Endpoint, _Properties, _Im) -> [].
 create_im_endpoint(Endpoint, _Properties, Im) ->
     kz_json:from_list(
       [{<<"To-Username">>, kzd_devices:sip_username(Endpoint)}
-      ,{<<"To-Realm">>, kzd_devices:sip_realm(Endpoint, kapps_im:to_realm(Im))}
-      ,{<<"To-DID">>, kapps_im:request_user(Im)}
-      ,{<<"Endpoint-ID">>, kz_doc:id(Endpoint)}
+      ,{<<"To-Realm">>, kzd_devices:sip_realm(Endpoint, kapps_im:account_realm(Im))}
+      ,{<<"To-DID">>, kapps_im:to(Im)}
+      ,{<<"Endpoint-ID">>, kzd_endpoint:id(Endpoint)}
       ,{<<"Invite-Format">>, kzd_devices:sip_invite_format(Endpoint)}
       ]).
 

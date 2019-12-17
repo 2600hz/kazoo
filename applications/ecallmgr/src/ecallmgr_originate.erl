@@ -566,31 +566,9 @@ add_loopback('false') ->
 -spec originate_execute(atom(), kz_term:ne_binary(), pos_integer()) ->
           {'ok', kz_term:ne_binary()} |
           {'error', kz_term:ne_binary() | 'timeout' | 'crash'}.
-originate_execute(Node, Dialstrings, Timeout) ->
+originate_execute(Node, Dialstrings, _Timeout) ->
     lager:debug("executing originate on ~s: ~s", [Node, Dialstrings]),
-    case freeswitch:api(Node
-                       ,'originate'
-                       ,kz_term:to_list(Dialstrings)
-                       ,Timeout * ?MILLISECONDS_IN_SECOND + 2000
-                       )
-    of
-        {'ok', UUID} ->
-            Media = get('hold_media'),
-            _Pid = kz_process:spawn(fun set_music_on_hold/3, [Node, UUID, Media]),
-            {'ok', UUID};
-        {'error', Error} when is_binary(Error) ->
-            lager:debug("error originating: ~s", [Error]),
-            {'error', kz_binary:strip(binary:replace(Error, <<"\n">>, <<>>))};
-        {'error', _Reason} ->
-            lager:debug("error originating: ~p", [_Reason]),
-            {'error', <<"unspecified">>}
-    end.
-
--spec set_music_on_hold(atom(), kz_term:ne_binary(), kz_term:api_binary()) -> 'ok'.
-set_music_on_hold(_, _, 'undefined') -> 'ok';
-set_music_on_hold(Node, UUID, Media) ->
-    Resp = ecallmgr_fs_command:set(Node, UUID, [{<<"Hold-Media">>, Media}]),
-    lager:debug("setting Hold-Media resp: ~p", [Resp]).
+    freeswitch:async_api(Node, 'originate', Dialstrings).
 
 -spec bind_to_call_events(kz_term:ne_binary()) -> 'ok'.
 bind_to_call_events(CallId) ->

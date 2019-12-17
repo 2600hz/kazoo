@@ -1,11 +1,10 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "sms",
-    "description": "sms document",
+    "_id": "mms",
+    "description": "mms document",
     "properties": {
         "body": {
-            "description": "text message",
-            "maxLength": 700,
+            "description": "mime encoded mms message",
             "minLength": 1,
             "type": "string"
         },
@@ -19,7 +18,6 @@
         }
     },
     "required": [
-        "body",
         "to"
     ],
     "type": "object"

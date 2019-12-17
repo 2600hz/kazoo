@@ -25,10 +25,15 @@
 %%%------------------------------------------------------------------------------
 -spec create_ledgers(kapps_im:im()) -> ledgers_results().
 create_ledgers(IM) ->
-    Ids = [{'account', kapps_im:account_id(IM)}
-          ,{'reseller', kapps_im:reseller_id(IM)}
-          ],
-    [{Id, create_ledger(IM, AccountId)} || {_, AccountId} = Id <- Ids].
+    Ids = case {kapps_im:account_id(IM), kapps_im:reseller_id(IM)} of
+              {AccountId, AccountId} ->
+                  [{'account', AccountId}];
+              {AccountId, ResellerId} ->
+                  [{'account', AccountId}
+                  ,{'reseller', ResellerId}
+                  ]
+          end,
+    [{Pair, create_ledger(IM, Id)} || {_, Id} = Pair <- Ids].
 
 -spec create_ledger(kapps_im:im(), kz_term:api_ne_binary()) -> ledger_result().
 create_ledger(IM, AccountId) ->
@@ -53,9 +58,9 @@ create_ledger(IM, AccountId) ->
 description(IM) ->
     list_to_binary([kz_term:to_binary(kapps_im:direction(IM))
                    ," from "
-                   ,kapps_im:from_user(IM)
+                   ,kapps_im:from(IM)
                    ," to "
-                   ,kapps_im:to_user(IM)
+                   ,kapps_im:to(IM)
                    ]).
 
 %%%------------------------------------------------------------------------------

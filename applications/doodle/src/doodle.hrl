@@ -13,7 +13,7 @@
 
 -define(CACHE_NAME, 'doodle_cache').
 
--define(CCV(Key), [<<"Custom-Channel-Vars">>, Key]).
+-define(CV(Key), [<<"Custom-Vars">>, Key]).
 
 -record(amqp_listener_connection, {name :: binary()
                                   ,broker :: binary()

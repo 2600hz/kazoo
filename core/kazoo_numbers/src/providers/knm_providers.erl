@@ -387,10 +387,8 @@ provider_module(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     ?E911_PROVIDER(AccountId);
 provider_module(?FEATURE_PREPEND, _) ->
     <<"knm_prepend">>;
-provider_module(?FEATURE_SMS, _) ->
-    <<"knm_sms">>;
-provider_module(?FEATURE_MMS, _) ->
-    <<"knm_mms">>;
+provider_module(?FEATURE_IM, _) ->
+    <<"knm_im">>;
 provider_module(?FEATURE_PORT, _) ->
     <<"knm_port_notifier">>;
 provider_module(?FEATURE_FAILOVER, _) ->

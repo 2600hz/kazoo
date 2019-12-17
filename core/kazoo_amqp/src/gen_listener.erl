@@ -144,6 +144,8 @@
                }).
 -type state() :: #state{}.
 
+-type content() :: {kz_term:api_binary(), kz_term:api_binary()}.
+
 -type deliver() :: {basic_deliver(), amqp_basic()}.
 
 -type callback_datum() :: {'server', pid()} |
@@ -671,7 +673,9 @@ handle_info({'kz_amqp_assignment', 'lost_channel'}
                            ,params=props:set_value('bindings', NewParams, Params)
                            }};
 handle_info({#'basic.deliver'{}=BD
-            ,#amqp_msg{props=#'P_basic'{content_type=CT}=Basic
+            ,#amqp_msg{props=#'P_basic'{content_type=CT
+                                       ,content_encoding=CE
+                                       }=Basic
                       ,payload=Payload
                       }
             }
@@ -682,18 +686,20 @@ handle_info({#'basic.deliver'{}=BD
             'false' -> 'ok'
         end,
     case props:is_true('spawn_handle_event', Params, 'false') of
-        'false' -> handle_event(Payload, CT, {BD, Basic}, State);
-        'true'  -> kz_process:spawn(fun handle_event/4, [Payload, CT, {BD, Basic}, State]),
+        'false' -> handle_event(Payload, {CT, CE}, {BD, Basic}, State);
+        'true'  -> kz_process:spawn(fun handle_event/4, [Payload, {CT, CE}, {BD, Basic}, State]),
                    {'noreply', State}
     end;
 handle_info({#'basic.return'{}=BR
-            ,#amqp_msg{props=#'P_basic'{content_type=CT}
+            ,#amqp_msg{props=#'P_basic'{content_type=CT
+                                       ,content_encoding=CE
+                                       }
                       ,payload=Payload
                       }
             }
            ,State
            ) ->
-    handle_return(Payload, CT, BR, State);
+    handle_return(Payload, {CT, CE}, BR, State);
 handle_info(#'basic.consume_ok'{consumer_tag=CTag}
            ,#state{queue='undefined'}=State
            ) ->
@@ -743,12 +749,20 @@ handle_info(Message, State) ->
 %% Allows listeners to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_event(kz_term:ne_binary(), kz_term:ne_binary(), deliver(), state()) ->  kz_types:handle_info_ret().
-handle_event(Payload, <<"application/json">>, Deliver, State) ->
+-spec handle_event(kz_term:ne_binary(), content(), deliver(), state()) ->  kz_types:handle_info_ret().
+handle_event(Payload, {<<"application/json">>, <<"gzip">>}, Deliver, State) ->
+    JObj = kz_json:decode(zlib:gunzip(Payload)),
+    _ = kz_log:put_callid(JObj),
+    distribute_event(JObj, Deliver, State);
+handle_event(Payload, {<<"application/json">>, _}, Deliver, State) ->
     JObj = kz_json:decode(Payload),
     _ = kz_log:put_callid(JObj),
     distribute_event(JObj, Deliver, State);
-handle_event(Payload, <<"application/erlang">>, Deliver, State) ->
+handle_event(Payload,  {<<"application/erlang">>, <<"gzip">>}, Deliver, State) ->
+    JObj = binary_to_term(zlib:gunzip(Payload)),
+    _ = kz_log:put_callid(JObj),
+    distribute_event(JObj, Deliver, State);
+handle_event(Payload,  {<<"application/erlang">>, _}, Deliver, State) ->
     JObj = binary_to_term(Payload),
     _ = kz_log:put_callid(JObj),
     distribute_event(JObj, Deliver, State).
@@ -758,12 +772,20 @@ handle_event(Payload, <<"application/erlang">>, Deliver, State) ->
 %% Allows listeners to pass options to handlers.
 %% @end
 %%------------------------------------------------------------------------------
--spec handle_return(kz_term:ne_binary(), kz_term:ne_binary(), #'basic.return'{}, state()) ->  handle_cast_return().
-handle_return(Payload, <<"application/json">>, BR, State) ->
+-spec handle_return(kz_term:ne_binary(), content(), #'basic.return'{}, state()) ->  handle_cast_return().
+handle_return(Payload, {<<"application/json">>, <<"gzip">>}, BR, State) ->
+    JObj = kz_json:decode(zlib:gunzip(Payload)),
+    _ = kz_log:put_callid(JObj),
+    handle_return(JObj, BR, State);
+handle_return(Payload, {<<"application/json">>, _}, BR, State) ->
     JObj = kz_json:decode(Payload),
     _ = kz_log:put_callid(JObj),
     handle_return(JObj, BR, State);
-handle_return(Payload, <<"application/erlang">>, BR, State) ->
+handle_return(Payload, {<<"application/erlang">>, <<"gzip">>}, BR, State) ->
+    JObj = binary_to_term(zlib:gunzip(Payload)),
+    _ = kz_log:put_callid(JObj),
+    handle_return(JObj, BR, State);
+handle_return(Payload, {<<"application/erlang">>, _}, BR, State) ->
     JObj = binary_to_term(Payload),
     _ = kz_log:put_callid(JObj),
     handle_return(JObj, BR, State).

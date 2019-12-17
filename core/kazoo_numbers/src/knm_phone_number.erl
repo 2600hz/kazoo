@@ -1389,8 +1389,7 @@ private_to_public() ->
      ,?FEATURE_FAILOVER => FailoverPub
      ,?FEATURE_RINGBACK => RingbackPub
      ,?FEATURE_FORCE_OUTBOUND => [[?FEATURE_FORCE_OUTBOUND]]
-     ,?FEATURE_SMS => [[?FEATURE_SMS]]
-     ,?FEATURE_MMS => [[?FEATURE_MMS]]
+     ,?FEATURE_IM => [[?FEATURE_IM]]
      }.
 
 %%------------------------------------------------------------------------------

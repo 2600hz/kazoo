@@ -406,8 +406,7 @@ check_account(PN) ->
                     ,{'ringback_media', find_early_ringback(PN)}
                     ,{'transfer_media', find_transfer_ringback(PN)}
                     ,{'force_outbound', is_force_outbound(PN)}
-                    ,{'sms', feature_sms(PN)}
-                    ,{'mms', feature_mms(PN)}
+                    ,{'im', feature_im(PN)}
                     ],
             {'ok', AssignedTo, Props}
     end.
@@ -454,24 +453,12 @@ feature_prepend(PhoneNumber) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec feature_sms(knm_phone_number:record()) -> kz_term:api_binary().
-feature_sms(PhoneNumber) ->
-    Sms = knm_phone_number:feature(PhoneNumber, ?FEATURE_SMS),
-    case kz_json:is_true(?FEATURE_ENABLED, Sms) of
+-spec feature_im(knm_phone_number:record()) -> kz_term:api_binary().
+feature_im(PhoneNumber) ->
+    IM = knm_phone_number:feature(PhoneNumber, ?FEATURE_IM),
+    case knm_im:enabled(PhoneNumber) of
         'false' -> 'undefined';
-        'true' -> Sms
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec feature_mms(knm_phone_number:record()) -> kz_term:api_binary().
-feature_mms(PhoneNumber) ->
-    Mms = knm_phone_number:feature(PhoneNumber, ?FEATURE_MMS),
-    case kz_json:is_true(?FEATURE_ENABLED, Mms) of
-        'false' -> 'undefined';
-        'true' -> Mms
+        'true' -> IM
     end.
 
 %%------------------------------------------------------------------------------

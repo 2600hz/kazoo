@@ -53,6 +53,8 @@
 -export([sync_channel/2]).
 -export([no_legacy/1]).
 
+-export([async_api/3]).
+
 -include("ecallmgr.hrl").
 
 -define(TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
@@ -513,4 +515,21 @@ no_legacy(Node) ->
             lager:info("failed to set mod_kazoo no_legacy on ~s: ~p ~p"
                       ,[Node, _E, _R]),
             {'error', 'exception'}
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc Make a background API call to FreeSWITCH and wait for reply.
+%% @end
+%%------------------------------------------------------------------------------
+-spec async_api(atom(), atom(), string() | binary()) -> freeswitch:fs_api_return().
+async_api(Node, Cmd, Args) ->
+    case bgapi(Node, Cmd, Args) of
+        {'error', _} = Error -> Error;
+        {'ok', JobId} ->
+            receive
+                {'bgok', JobId, <<"-ERR", Reason/binary>>} -> api_result('error', Reason);
+                {'bgok', JobId, <<"+OK", Result/binary>>} -> api_result('ok', Result);
+                {'bgok', JobId, Result} -> api_result('ok', Result);
+                {'bgerror', JobId, Error} -> api_result('error', Error)
+            end
     end.

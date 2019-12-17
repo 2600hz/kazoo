@@ -467,6 +467,7 @@ encode_multipart_headers(Headers) ->
     encode_multipart_headers(Headers, <<>>).
 
 -spec encode_multipart_headers(kz_term:proplist(), binary()) -> binary().
+encode_multipart_headers([], <<>>) -> <<>>;
 encode_multipart_headers([], Encoded) -> <<Encoded/binary, "\r\n">>;
 encode_multipart_headers([{K, V} | Headers], Encoded) ->
     Acc = <<Encoded/binary, K/binary, ": ", V/binary, "\r\n">>,

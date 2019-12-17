@@ -400,8 +400,7 @@ handle_file_contents(Context, ContentType, Req, FileContents) ->
             lager:debug("request is a file upload of type: ~s", [ContentType]),
 
             Filename = uploaded_filename(Context),
-            %% TODO: if request has more files this line will replace old files in context
-            {cb_context:set_req_files(Context, [{Filename, FileJObj}]), Req}
+            {cb_context:add_req_file(Context, {Filename, FileJObj}), Req}
     end.
 
 -spec uploaded_filename(cb_context:context()) -> kz_term:ne_binary().
@@ -447,8 +446,7 @@ decode_base64(Context, CT, Req, Base64Data) ->
                                          ,{<<"contents">>, FileContents}
                                          ]),
             lager:debug("request is a base64 file upload of type: ~s", [ContentType]),
-            %% TODO: if request has more files this line will replace old files in context
-            {cb_context:set_req_files(Context, [{default_filename(), FileJObj}]), Req}
+            {cb_context:add_req_file(Context, {default_filename(), FileJObj}), Req}
     catch
         _T:_E ->
             lager:debug("failed to decode base64 data: ~p:~p", [_T,_E]),

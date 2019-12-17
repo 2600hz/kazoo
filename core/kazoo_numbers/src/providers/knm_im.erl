@@ -8,16 +8,22 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(knm_sms).
+-module(knm_im).
 -behaviour(knm_gen_provider).
 
 -export([save/1]).
 -export([delete/1]).
--export([enabled/1]).
+-export([enabled/1, enabled/2]).
+
+-type im_type() :: kapps_im:im_type().
+
+-export_type([im_type/0
+             ]).
 
 -include("knm.hrl").
 
--define(KEY, ?FEATURE_SMS).
+-define(KEY, ?FEATURE_IM).
+-define(IM_TYPES, ['sms', 'mms']).
 
 %%------------------------------------------------------------------------------
 %% @doc This function is called each time a number is saved, and will
@@ -32,7 +38,7 @@ save(PN) ->
 
 -spec save(knm_phone_number:record(), kz_term:ne_binary()) -> knm_phone_number:record().
 save(PN, ?NUMBER_STATE_IN_SERVICE) ->
-    update_sms(PN);
+    update_im(PN);
 save(PN, _State) ->
     delete(PN).
 
@@ -48,13 +54,17 @@ delete(PN) ->
         _Else -> knm_providers:deactivate_feature(PN, ?KEY)
     end.
 
--spec enabled(knm_phone_number:record()) -> boolean().
-enabled(PN) ->
+-spec enabled(knm_phone_number:record(), im_type()) -> boolean().
+enabled(PN, Type) ->
     Feature = knm_phone_number:feature(PN, ?KEY),
     case kz_term:is_empty(Feature) of
         'true' -> 'false';
-        'false' -> kz_json:is_true(?FEATURE_ENABLED, Feature)
+        'false' -> kz_json:is_true([kz_term:to_binary(Type), ?FEATURE_ENABLED], Feature)
     end.
+
+-spec enabled(knm_phone_number:record()) -> boolean().
+enabled(PN) ->
+    lists:any(fun(Type) -> enabled(PN, Type) end, ?IM_TYPES).
 
 %%%=============================================================================
 %%% Internal functions
@@ -64,8 +74,8 @@ enabled(PN) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec update_sms(knm_phone_number:record()) -> knm_phone_number:record().
-update_sms(PN) ->
+-spec update_im(knm_phone_number:record()) -> knm_phone_number:record().
+update_im(PN) ->
     CurrentFeature = knm_phone_number:feature(PN, ?KEY),
     Feature = kz_json:get_ne_value(?KEY, knm_phone_number:doc(PN)),
     NotChanged = kz_json:are_equal(CurrentFeature, Feature),
@@ -75,7 +85,9 @@ update_sms(PN) ->
         'false' when NotChanged  ->
             PN;
         'false' ->
-            case kz_json:is_true(?FEATURE_ENABLED, Feature) of
+            case kz_json:is_true([<<"sms">>, ?FEATURE_ENABLED], Feature)
+                orelse kz_json:is_true([<<"mms">>, ?FEATURE_ENABLED], Feature)
+            of
                 'false' -> knm_providers:deactivate_feature(PN, ?KEY);
                 'true' -> knm_providers:activate_feature(PN, {?KEY, Feature})
             end

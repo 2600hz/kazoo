@@ -36,7 +36,7 @@ stop(_State) ->
 
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    _ = kapi_sms:declare_exchanges(),
+    _ = kapi_im:declare_exchanges(),
     _ = kapi_self:declare_exchanges().
 
 -spec register_views() -> 'ok'.

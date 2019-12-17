@@ -278,6 +278,10 @@
   '/accounts/{ACCOUNT_ID}/migrations/{MIGRATION_ID}':
     '$ref': >-
       paths/migrations.yml#/paths/~1accounts~1{ACCOUNT_ID}~1migrations~1{MIGRATION_ID}
+  '/accounts/{ACCOUNT_ID}/mms':
+    '$ref': 'paths/mms.yml#/paths/~1accounts~1{ACCOUNT_ID}~1mms'
+  '/accounts/{ACCOUNT_ID}/mms/{SMS_ID}':
+    '$ref': 'paths/mms.yml#/paths/~1accounts~1{ACCOUNT_ID}~1mms~1{SMS_ID}'
   '/accounts/{ACCOUNT_ID}/move':
     '$ref': 'paths/accounts.yml#/paths/~1accounts~1{ACCOUNT_ID}~1move'
   '/accounts/{ACCOUNT_ID}/multi_factor':

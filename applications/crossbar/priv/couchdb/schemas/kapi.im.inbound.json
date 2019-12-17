@@ -1,0 +1,67 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.im.inbound",
+    "description": "AMQP API for im.inbound",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Body": {
+            "type": "string"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Custom-Vars": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "sms",
+                "mms"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "inbound"
+            ],
+            "type": "string"
+        },
+        "From": {
+            "type": "string"
+        },
+        "Message-ID": {
+            "type": "string"
+        },
+        "Request": {
+            "type": "string"
+        },
+        "Route-ID": {
+            "type": "string"
+        },
+        "Route-Type": {
+            "enum": [
+                "onnet",
+                "offnet"
+            ],
+            "type": "string"
+        },
+        "System-ID": {
+            "type": "string"
+        },
+        "To": {
+            "type": "string"
+        },
+        "Transaction-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Body",
+        "From",
+        "Message-ID",
+        "To"
+    ],
+    "type": "object"
+}

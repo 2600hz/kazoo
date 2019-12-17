@@ -34,7 +34,7 @@
 
 -spec lookup(kapps_im:im()) -> lookup_ret().
 lookup(Im) ->
-    lookup(kapps_im:request_user(Im), kapps_im:account_id(Im)).
+    lookup(kapps_im:to(Im), kapps_im:account_id(Im)).
 
 -spec lookup(kz_term:ne_binary(), kz_term:ne_binary()) -> lookup_ret().
 lookup(Number, AccountId) when not is_binary(Number) ->

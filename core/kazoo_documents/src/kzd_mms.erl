@@ -7,7 +7,7 @@
 %%%
 %%% @end
 %%%-----------------------------------------------------------------------------
--module(kzd_sms).
+-module(kzd_mms).
 
 -export([new/0]).
 -export([body/1, body/2, set_body/2]).
@@ -21,8 +21,8 @@
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
 
--define(SCHEMA, <<"sms">>).
--define(TYPE, <<"sms">>).
+-define(SCHEMA, <<"mms">>).
+-define(TYPE, <<"mms">>).
 
 -spec new() -> doc().
 new() ->

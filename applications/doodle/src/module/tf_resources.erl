@@ -33,16 +33,16 @@ handle(Data, Im) ->
           ,{<<"To">>, get_to_did(Data, Im)}
           ,{<<"Account-ID">>, kapps_im:account_id(Im)}
           ,{<<"Route-Type">>, <<"offnet">>}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(<<"sms">>, <<"outbound">>, ?APP_NAME, ?APP_VERSION)
           ],
-    kapi_sms:publish_outbound(API),
+    kapi_im:publish_outbound(API),
     tf_exe:stop(Im, 'offnet').
 
 -spec get_to_did(kz_json:object(), kapps_im:im()) -> kz_term:ne_binary().
 get_to_did(Data, Im) ->
     case kz_json:is_true(<<"do_not_normalize">>, Data) of
-        'false' -> get_normalized_did(Im, kapps_im:request_user(Im));
-        'true' -> kapps_im:request_user(Im)
+        'false' -> get_normalized_did(Im, kapps_im:to(Im));
+        'true' -> kapps_im:to(Im)
     end.
 
 -spec get_normalized_did(kapps_im:im(), kz_term:ne_binary()) -> kz_term:ne_binary().
@@ -54,7 +54,7 @@ get_normalized_did(Im, Number) ->
 
 -spec get_from_did(kz_json:object(), kapps_im:im()) -> kz_term:ne_binary().
 get_from_did(_Data, Im) ->
-    case knm_converters:is_reconcilable(kapps_im:from_user(Im)) of
-        'true' -> get_normalized_did(Im, kapps_im:request_user(Im));
+    case knm_converters:is_reconcilable(kapps_im:from(Im)) of
+        'true' -> get_normalized_did(Im, kapps_im:from(Im));
         'false' -> kz_json:get_ne_value(?CID_EXT_KEY, kapps_im:endpoint(Im))
     end.

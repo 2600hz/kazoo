@@ -1,0 +1,54 @@
+paths:
+  /accounts/{ACCOUNT_ID}/mms:
+    get:
+      operationId: GetAccountsAccountIdMms
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get all mms
+      tags:
+        - mms
+    put:
+      operationId: PutAccountsAccountIdMms
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../oas3-schemas.yml#/mms'
+      responses:
+        200:
+          description: Successful operation
+      summary: Add an instance of mms
+      tags:
+        - mms
+  /accounts/{ACCOUNT_ID}/mms/{SMS_ID}:
+    delete:
+      operationId: DeleteAccountsAccountIdMmsSmsId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/SMS_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Delete an instance of mms
+      tags:
+        - mms
+    get:
+      operationId: GetAccountsAccountIdMmsSmsId
+      parameters:
+        - $ref: '../oas3-parameters.yml#/auth_token_header'
+        - $ref: '../oas3-parameters.yml#/ACCOUNT_ID'
+        - $ref: '../oas3-parameters.yml#/SMS_ID'
+      responses:
+        200:
+          description: Successful operation
+      summary: Get a mms by ID
+      tags:
+        - mms

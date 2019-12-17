@@ -33,7 +33,7 @@
 
 -type state() :: map().
 
--define(BINDINGS, [{'sms', [{'restrict_to', ['outbound']}]}]).
+-define(BINDINGS, [{'im', [{'restrict_to', ['outbound']}]}]).
 
 -define(QUEUE_NAME, <<"im">>).
 
@@ -48,7 +48,7 @@
                          ,{'no_ack', 'false'}
                          ]).
 
--define(RESPONDERS, [{{?MODULE, 'handle_outbound'}, [{<<"message">>, <<"outbound">>}]}]).
+-define(RESPONDERS, [{{?MODULE, 'handle_outbound'}, [{<<"*">>, <<"outbound">>}]}]).
 
 -define(AMQP_PUBLISH_OPTIONS, [{'mandatory', 'true'}
                               ,{'delivery_mode', 2}
@@ -110,7 +110,7 @@ init([]) ->
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
 handle_call({'route', Payload}, From, State) ->
-    kapi_sms:publish_inbound(Payload, ?AMQP_PUBLISH_OPTIONS),
+    kapi_im:publish_inbound(Payload, ?AMQP_PUBLISH_OPTIONS),
     #{count := Count, pids := Pids} = State,
     Info = #{payload => kz_json:delete_key(<<"Body">>, Payload), from => From},
     {'noreply', State#{count => Count + 1, pids => Pids#{Count => Info}}};
@@ -186,7 +186,7 @@ handle_outbound(JObj, Props) ->
     _ = kz_log:put_callid(JObj),
     Srv = props:get_value('server', Props),
     Deliver = props:get_value('deliver', Props),
-    case kapi_sms:outbound_v(JObj)
+    case kapi_im:outbound_v(JObj)
         andalso handle_outbound_route(JObj, Props)
     of
         'false' -> gen_listener:ack(Srv, Deliver);
@@ -197,22 +197,24 @@ handle_outbound(JObj, Props) ->
 
 -spec handle_outbound_route(kz_json:object(), kz_term:proplist()) -> 'ack' | 'nack'.
 handle_outbound_route(JObj, Props) ->
+    IM = kapps_im:from_payload(JObj),
     Funs = [fun account/1
            ,fun trusted_application/1
            ,fun account_fetch/1
            ,fun reseller_fetch/1
            ,fun account_is_enabled/1
            ,fun reseller_is_enabled/1
-           ,fun account_has_sms/1
-           ,fun reseller_has_sms/1
+           ,fun account_has_im/1
+           ,fun reseller_has_im/1
            ,fun account_standing_is_acceptable/1
            ,fun reseller_standing_is_acceptable/1
            ,fun number/1
            ],
     route_offnet(kz_maps:exec(Funs
                              ,#{payload => JObj
-                               ,route => kz_api_sms:route_id(JObj)
+                               ,route => kz_im:route_id(JObj)
                                ,props => Props
+                               ,im => IM
                                }
                              )).
 
@@ -222,18 +224,18 @@ route_offnet(#{enabled := 'true'
               ,account_id := AccountId
               ,route := RouteId
               }) ->
-    case kz_im_offnet:route(kzd_sms:set_route_id(Payload, RouteId)) of
+    case kz_im_offnet:route(kz_im:set_route_id(Payload, RouteId)) of
         'ok' -> 'ack';
         {'error', _Error} ->
             lager:warning("offnet rejected request for account ~s : ~p", [AccountId, _Error]),
             'ack'
     end;
 route_offnet(_Map) ->
-    lager:debug_unsafe("not routing sms ~p", [_Map]),
+    lager:debug_unsafe("not routing ~p", [_Map]),
     'nack'.
 
 account(#{payload := JObj} = Map) ->
-    case kz_api_sms:account_id(JObj) of
+    case kz_im:account_id(JObj) of
         'undefined' -> Map;
         AccountId -> Map#{account_id => AccountId
                          ,reseller_id => kz_services_reseller:get_id(AccountId)
@@ -242,7 +244,7 @@ account(#{payload := JObj} = Map) ->
     end.
 
 trusted_application(#{payload := JObj} = Map) ->
-    case kz_api_sms:application_id(JObj) of
+    case kz_im:application_id(JObj) of
         'undefined' -> Map;
         AppId ->
             Trusted = kz_json:get_list_value([<<"outbound">>, <<"trusted_apps">>], config(), []),
@@ -281,55 +283,51 @@ reseller_is_enabled(#{reseller := Reseller} = Map) ->
     end;
 reseller_is_enabled(Map) -> Map.
 
-account_has_sms(#{account_id := AccountId} = Map) ->
-    case kz_services_im:is_sms_enabled(AccountId) of
+account_has_im(#{account_id := AccountId, im := IM} = Map) ->
+    case kz_services_im:is_enabled(AccountId, kapps_im:type(IM)) of
         'true' -> Map;
         'false' -> Map#{enabled => 'false'}
     end;
-account_has_sms(Map) -> Map.
+account_has_im(Map) -> Map.
 
-reseller_has_sms(#{reseller_id := ResellerId} = Map) ->
-    case kz_services_im:is_sms_enabled(ResellerId) of
+reseller_has_im(#{reseller_id := ResellerId, im := IM} = Map) ->
+    case kz_services_im:is_enabled(ResellerId, kapps_im:type(IM)) of
         'true' -> Map;
         'false' -> Map#{enabled => 'false'}
     end;
-reseller_has_sms(Map) -> Map.
+reseller_has_im(Map) -> Map.
 
 -define(STANDING_ACCEPTABLE_OPTIONS, #{cache_acceptable => true}).
 
 account_standing_is_acceptable(#{account_id := AccountId} = Map) ->
     case kz_services_standing:acceptable(AccountId, ?STANDING_ACCEPTABLE_OPTIONS) of
         {'true', _} -> Map;
-        _Else ->
-            lager:debug("ACCOUNT STANDING => ~p", [_Else]),
-            Map#{enabled => 'false'}
+        _Else -> Map#{enabled => 'false'}
     end;
 account_standing_is_acceptable(Map) -> Map.
 
 reseller_standing_is_acceptable(#{reseller_id := ResellerId} = Map) ->
     case kz_services_standing:acceptable(ResellerId, ?STANDING_ACCEPTABLE_OPTIONS) of
         {'true', _} -> Map;
-        _Else ->
-            lager:debug("RESELLER STANDING => ~p", [_Else]),
-            Map#{enabled => 'false'}
+        _Else -> Map#{enabled => 'false'}
     end;
 reseller_standing_is_acceptable(Map) -> Map.
 
 number(#{enabled := 'false'} = Map) -> Map;
-number(#{payload := JObj} = Map) ->
-    case knm_phone_number:fetch(kz_api_sms:from(JObj)) of
+number(#{payload := JObj, im := IM} = Map) ->
+    case knm_phone_number:fetch(kz_im:from(JObj)) of
         {'ok', Num} ->
-            case knm_sms:enabled(Num)
+            case knm_im:enabled(Num, kapps_im:type(IM))
                 andalso number_provider(Num)
             of
                 'false' ->
-                    lager:debug("number does not have sms enabled"),
+                    lager:debug("number does not have ~s enabled", [kapps_im:type(IM)]),
                     Map#{enabled => 'false'};
                 'undefined' ->
                     Map#{number => Num};
                 Provider ->
-                    Setters = [{fun kz_api_sms:set_originator_property/3, <<"Number-Provider">>, Provider}
-                              ,{fun kz_api_sms:set_originator_flag/2, Provider}
+                    Setters = [{fun kz_im:set_originator_property/3, <<"Number-Provider">>, Provider}
+                              ,{fun kz_im:set_originator_flag/2, Provider}
                               ],
                     Map#{number => Num
                         ,module => Provider
