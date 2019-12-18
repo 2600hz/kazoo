@@ -188,6 +188,9 @@ handle_inbound(#{number := Number} = Context0) ->
                ,fun account_from_number/1
                ,fun set_inception/1
                ,fun lookup_mdn/1
+               ,fun set_default_headers/1
+               ,fun set_account_id/1
+               ,fun set_caller_id/1
                ,fun create_im/1
                ],
     case kz_maps:exec(Routines, Context0) of
@@ -307,6 +310,32 @@ lookup_mdn(#{phone_number := KNumber, request := JObj} = Map) ->
         {'error', _} -> Map
     end;
 lookup_mdn(Map) -> Map.
+
+-spec set_default_headers(map()) -> map().
+set_default_headers(#{request:= SmsReq, account_id := _AccountId} = Map) ->
+    Map#{request => kz_json:set_values(kz_api:default_headers(?APP_NAME, ?APP_VERSION), SmsReq)};
+set_default_headers(Map) -> Map.
+
+-spec set_account_id(map()) -> map().
+set_account_id(#{request:= SmsReq, account_id := AccountId} = Map) ->
+    Map#{request => kz_api_sms:set_account_id(SmsReq, AccountId)};
+set_account_id(Map) -> Map.
+
+-spec set_caller_id(map()) -> map().
+set_caller_id(#{request:= SmsReq
+               ,account_id := AccountId
+               ,authorizing_id := AuthorizingId
+               } = Map) ->
+    case kz_endpoint:get(AuthorizingId, AccountId) of
+        {'error', Error} ->
+            lager:warning("unable to get endpoint ~s/~s : ~p", [AuthorizingId, AccountId, Error]),
+            Map;
+        {'ok', EP} ->
+            CID = kzd_devices:caller_id(EP, kz_json:new()),
+            From = kzd_caller_id:internal_number(CID, kz_api_sms:from(SmsReq)),
+            Map#{request => kz_api_sms:set_from(SmsReq, From)}
+    end;
+set_caller_id(Map) -> Map.
 
 -spec create_im(map()) -> map().
 create_im(#{request:= SmsReq, account_id := _AccountId} = Map) ->
