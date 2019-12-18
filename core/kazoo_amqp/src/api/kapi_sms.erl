@@ -485,7 +485,7 @@ outbound_routing_key(RouteId, CallId) ->
     Parts = ["message"
             ,"outbound"
             ,to_lower(RouteId)
-            ,CallId
+            ,kz_amqp_util:encode(CallId)
             ],
     kz_binary:join(lists:filter(fun(Part) -> Part =/= 'undefined' end, Parts), <<".">>).
 
