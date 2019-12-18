@@ -25,7 +25,7 @@
 %%--------------------------------------------------------------------
 -spec cb_alerts_test_() -> [{string(), boolean()}].
 cb_alerts_test_() ->
-    [{"Maybe check port requests", maybe_check_port_requests()}
+    [{"Check port requests", do_check_port_requests()}
     ,{"Check no plans financials", check_no_plans_financials()}
     ,{"Check low balance", check_low_balance()}
     ,{"Check payment token", check_payment_token()}
@@ -39,47 +39,33 @@ cb_alerts_test_() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_check_port_requests() -> [{string(), boolean()}].
-maybe_check_port_requests() ->
-    Mod = 'knm_port_request',
-    ToMeck = ['kz_services_reseller', Mod],
-    _ = lists:foreach(fun(M) -> meck:new(M, [passthrough]) end, ToMeck),
-    meck:expect('kz_services_reseller', 'is_reseller', fun(_) -> 'false' end),
-    meck:expect('knm_port_request', 'account_ports_by_state', fun(_, ?PORT_UNCONFIRMED) -> {'ok', []} end),
-
+-spec do_check_port_requests() -> [{string(), boolean()}].
+do_check_port_requests() ->
     Context = cb_context:set_resp_data(cb_context:new(), []),
-    {'ok', ActivePorts} = AccountActivePorts = account_active_ports(),
+    {'ok', ActivePorts} = AccountActivePorts = account_active_and_unconfirmed_ports(),
 
     %% 1 submitted, 1 unconfirmed, and 1 rejected.
-    meck:expect(Mod, 'account_active_ports', fun(_) -> AccountActivePorts end),
-    Context1 = cb_alerts:maybe_check_port_requests(Context),
+    Context1 = cb_alerts:do_check_port_requests(AccountActivePorts, Context),
     Resp = cb_context:resp_data(Context1),
     [Alert1, Alert2] = Resp,
 
     %% All ports (3) have last comment with `action_required=true' within the last comment
     %% and also there is 1 rejected and 1 unconfirmed.
     PortsWithComments = [add_comments(Port) || Port <- ActivePorts],
-    meck:expect(Mod, 'account_active_ports', fun(_) -> {'ok', PortsWithComments} end),
-    Context2 = cb_alerts:maybe_check_port_requests(Context),
+    Context2 = cb_alerts:do_check_port_requests({'ok', PortsWithComments}, Context),
 
     %% Only 1 port with `action_required=true' within the last comment
     Port = add_comments(example_port_request()),
     %% Same as Port but last comment doesn't have `action_required=true'
     Port1 = swap_comments(Port),
-    meck:expect(Mod, 'account_active_ports', fun(_) -> {'ok', [Port, Port1]} end),
-    Context3 = cb_alerts:maybe_check_port_requests(Context),
+    Context3 = cb_alerts:do_check_port_requests({'ok', [Port, Port1]}, Context),
     [Alert3] = cb_context:resp_data(Context3),
 
     %% Not active ports found.
-    meck:expect(Mod, 'account_active_ports', fun(_) -> {'error', 'not_found'} end),
-    Context4 = cb_alerts:maybe_check_port_requests(Context),
+    Context4 = cb_alerts:do_check_port_requests({'error', 'not_found'}, Context),
 
     %% Ports with state /= (unconfirmed|rejected) and no comments.
-    meck:expect(Mod, 'account_active_ports', fun(_) -> {'ok', [example_port_request()]} end),
-    Context5 = cb_alerts:maybe_check_port_requests(Context),
-
-    MeckValidate = lists:all(fun(Mecked) -> meck:validate(Mecked) end, ToMeck),
-    lists:foreach(fun(M) -> meck:unload(M) end, ToMeck),
+    Context5 = cb_alerts:do_check_port_requests({'ok', [example_port_request()]}, Context),
 
     [{"Only return ports with `last_comment`.action_required=true or state=(rejected|unconfirmed)"
      ,?_assertEqual({'true', <<"port_suspended">>},
@@ -107,9 +93,6 @@ maybe_check_port_requests() ->
      }
     ,{"When not ports with action_required=true or state=(unconfirmed|rejected) found the context should not change"
      ,?_assertEqual(Context5, Context)
-     }
-    ,{"Validate mecked modules"
-     ,?_assert(MeckValidate)
      }
     ].
 
@@ -366,9 +349,19 @@ check_payment_token() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec account_active_and_unconfirmed_ports() -> {'ok', [kzd_port_requests:doc()]}.
+account_active_and_unconfirmed_ports() ->
+    {'ok', Active} = account_active_ports(),
+    {'ok', Unconfirmed} = account_unconfirmed_ports(),
+    {'ok', lists:flatten([Active, Unconfirmed])}.
+
 -spec account_active_ports() -> {'ok', [kzd_port_requests:doc()]}.
 account_active_ports() ->
-    {'ok', [example_port_request(), unconfirmed_port_request(), rejected_port_request()]}.
+    {'ok', [example_port_request(), rejected_port_request()]}.
+
+-spec account_unconfirmed_ports() -> {'ok', [kzd_port_requests:doc()]}.
+account_unconfirmed_ports() ->
+    {'ok', [unconfirmed_port_request()]}.
 
 -spec unconfirmed_port_request() -> kzd_port_requests:doc().
 unconfirmed_port_request() ->

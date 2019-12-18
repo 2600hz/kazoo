@@ -722,9 +722,7 @@ validate_port_comments(Context, OnSuccess, NewComments) ->
 
 -spec validate_comments(cb_context:context(), kz_json:objects()) -> cb_context:context().
 validate_comments(Context, NewComments) ->
-    AccountId = cb_context:account_id(Context),
     IsPortAuthority = cb_context:fetch(Context, 'is_port_authority', 'false')
-        orelse (AccountId =:= kzd_whitelabel:fetch_port_authority(AccountId, 'undefined'))
         orelse cb_context:is_superduper_admin(Context),
     ContextToValidate = cb_context:set_req_data(Context, kzd_port_requests:set_comments(kz_json:new(), NewComments)),
     ValidatedContext = cb_context:validate_request_data(<<"comments">>, ContextToValidate),
@@ -758,7 +756,7 @@ validate_comments(Context, NewComments, 'false') ->
             cb_context:add_system_error('forbidden', Msg, Context)
     end;
 validate_comments(Context, NewComments, 'true') ->
-    Filters = [{kzd_comment:superduper_comment_path(), fun kz_term:is_false/1} %% old key
+    Filters = [{kzd_comment:superduper_comment_path(), fun kz_term:is_true/1} %% old key
               ,{kzd_comment:is_private_path(), fun kz_term:is_true/1}
               ],
     case [Comment
