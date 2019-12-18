@@ -24,6 +24,8 @@
              ,delivery_status/0
              ]).
 
+-define(SIP_MSG_DEVICES, [<<"sip_device">>, <<"softphone">>]).
+
 -spec build_im_endpoint(kz_json:object(), kz_json:object(), kapps_im:im()) -> {'ok', kz_json:objects()} | {'error', build_error()}.
 build_im_endpoint(Endpoint, Properties, Im) ->
     case should_create_endpoint(Endpoint, Properties, Im) of
@@ -95,7 +97,7 @@ create_im_endpoints(<<"user">>, Endpoint, Properties, Im) ->
     EndpointIds = [kz_doc:id(EP) || EP
                                         <- kz_attributes:owned_by_docs(OwnerId, kapps_im:account_id(Im))
                                         ,<<"device">> =:= kz_doc:type(EP)
-                                        ,<<"sip_device">> =:= kzd_devices:device_type(EP)
+                                        ,lists:member(kzd_devices:device_type(EP), ?SIP_MSG_DEVICES)
                   ],
     EPs = [kz_endpoint:get(EndpointId, kapps_im:account_id(Im)) || EndpointId <- EndpointIds],
     [create_im_endpoint(EP, Properties, Im) || {'ok', EP} <- EPs];
