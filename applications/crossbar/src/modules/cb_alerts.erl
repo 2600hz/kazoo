@@ -264,14 +264,14 @@ maybe_check_port_requests(Context, 'false', _) ->
         'false' -> do_check_port_requests(fetch_account_active_ports(AccountId), Context)
     end.
 
--spec should_hide_port(kz_term:api_ne_binary() | {'ok', kz_json:object()} | {'error', any()}) -> boolean().
+-spec should_hide_port(kz_term:api_ne_binary() | {'ok', kz_json:object()} | kz_datamgr:data_error()) -> boolean().
 should_hide_port('undefined') ->
     'false';
 should_hide_port(<<ResellerId/binary>>) ->
     should_hide_port(kzd_whitelabel:fetch(ResellerId));
 should_hide_port({'ok', Whitelabel}) ->
     kzd_whitelabel:hide_port(Whitelabel);
-should_hide_port({'error', 'not_found'}) ->
+should_hide_port({'error', _}) ->
     'false'.
 
 -spec fetch_account_active_ports(kz_term:api_ne_binary()) -> kz_json:objects().
@@ -280,7 +280,7 @@ fetch_account_active_ports(AccountId) ->
     get_active_ports(knm_port_request:account_active_ports(AccountId))
         ++ get_active_ports(knm_port_request:account_ports_by_state(AccountId, ?PORT_UNCONFIRMED)).
 
--spec get_active_ports({'ok', kz_json:objects()} | {'error', 'not_found'}) -> kz_json:objects().
+-spec get_active_ports({'ok', kz_json:objects()} | kz_datamgr:data_error()) -> kz_json:objects().
 get_active_ports({'ok', Active}) ->
     Active;
 get_active_ports(_) ->
@@ -302,6 +302,9 @@ do_check_port_requests({'ok', PortRequests}, Context) ->
     do_check_port_requests(PortRequests, Context);
 do_check_port_requests({'error', _R}, Context) ->
     lager:debug("unable to fetch port requests: ~p", [_R]),
+    Context;
+do_check_port_requests(Unexpected, Context) ->
+    lager:debug("unable to fetch port requests: ~p", [Unexpected]),
     Context.
 
 %%------------------------------------------------------------------------------
