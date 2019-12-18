@@ -14638,7 +14638,7 @@
       'default': false
       'description': Transcribe voicemail using ASR engine
       'type': boolean
-      'x-support_level': supported
+      'x-support_level': alpha
   'required':
     - mailbox
     - name

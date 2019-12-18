@@ -461,6 +461,8 @@ pages:
     - 'core/kazoo_bindings/doc/README.md'
   - 'Kazoo Core':
     - 'core/kazoo/doc/README.md'
+  - 'Kazoo IM':
+    - 'core/kazoo_im/doc/README.md'
   - 'Kazoo Speech':
     - 'core/kazoo_speech/doc/README.md'
     - 'core/kazoo_speech/doc/ispeech.md'

@@ -176,7 +176,7 @@
         "transcribe": {
             "default": false,
             "description": "Transcribe voicemail using ASR engine",
-            "support_level": "supported",
+            "support_level": "alpha",
             "type": "boolean"
         }
     },
