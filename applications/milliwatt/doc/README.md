@@ -1,3 +1,3 @@
-
 # Milliwatt *Echo and tone for monitoring*
-Beeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeep
+
+Provides rudimentary testing of RTP via an echo test and a tone test.

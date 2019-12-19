@@ -1,4 +1,3 @@
-
 # Fax
 
 Faxing is still a critical business requirement for many industries. The faxes app provides a set of faxing related features to kazoo accounts and supports sending and receiving faxes directly from email or the API. The fax entities can be tied to a callflow to terminate incoming faxes without having to use a fax machine.

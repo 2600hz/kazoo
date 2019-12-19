@@ -1,11 +1,8 @@
 # Webhooks *Event driven HTTP*
 
-Smee: I've just had an apostrophe.
-Captain Hook: I think you mean an epiphany.
-Smee: Lightning has stuck my brain
-Captain Hook: That must've hurt
+The webhooks app provides accounts the ability to receive HTTP requests in response to events within KAZOO.
 
-## Get notified when things happen
+## Overview
 
 KAZOO, internally, runs messages through a message broker; in this case RabbitMQ via the AMQP protocol. These messages are flowing in a protected, high-trust environment which necessitates no 3rd party client access.
 
