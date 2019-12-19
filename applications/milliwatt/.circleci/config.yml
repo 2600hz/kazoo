@@ -299,7 +299,7 @@ jobs:
           command: make -C ${KAZOO_ROOT} validate-schemas
       - run:
           name: Generating docs
-          command: make -C ${KAZOO_ROOT} docs || true
+          command: make -C ${KAZOO_ROOT} docs
       - run:
           name: Checking doc states
           command: ${KAZOO_ROOT}/scripts/state-of-docs.sh || true

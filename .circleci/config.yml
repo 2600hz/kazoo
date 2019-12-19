@@ -152,7 +152,7 @@ jobs:
           command: make validate-schemas
       - run:
           name: Generating docs
-          command: make docs || true
+          command: make docs
       - run:
           name: Checking doc states
           command: scripts/state-of-docs.sh || true

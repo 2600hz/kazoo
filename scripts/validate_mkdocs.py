@@ -34,7 +34,7 @@ def parse_page(errors_detected, page):
         return errors_detected
 
 stream = open("doc/mkdocs/mkdocs.yml", 'r')
-mkdocs = yaml.load_all(stream)
+mkdocs = yaml.safe_load_all(stream)
 errors_detected = False
 
 for doc in mkdocs:
