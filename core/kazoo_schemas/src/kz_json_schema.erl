@@ -861,6 +861,9 @@ validation_error(Property, <<"unique">> = C, Message, Options) ->
 %% User is not authorized to update the property
 validation_error(Property, <<"forbidden">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
+%% Request to update the property was rejected
+validation_error(Property, <<"rejected">> = C, Message, Options) ->
+    depreciated_validation_error(Property, C, Message, Options);
 %% Date range is invalid, too small, or too large
 validation_error(Property, <<"date_range">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
