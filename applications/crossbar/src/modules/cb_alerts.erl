@@ -286,7 +286,7 @@ get_active_ports({'ok', Active}) ->
 get_active_ports(_) ->
     [].
 
--spec do_check_port_requests(kz_term:api_ne_binary() | kz_json:objects(), cb_context:context()) -> cb_context:context().
+-spec do_check_port_requests(kz_json:objects(), cb_context:context()) -> cb_context:context().
 do_check_port_requests([], Context) ->
     Context;
 do_check_port_requests([PortRequest|PortRequests], Context) ->
@@ -297,15 +297,7 @@ do_check_port_requests([PortRequest|PortRequests], Context) ->
                           ,Context
                           ,Routines
                           ),
-    do_check_port_requests(PortRequests, Context1);
-do_check_port_requests({'ok', PortRequests}, Context) ->
-    do_check_port_requests(PortRequests, Context);
-do_check_port_requests({'error', _R}, Context) ->
-    lager:debug("unable to fetch port requests: ~p", [_R]),
-    Context;
-do_check_port_requests(Unexpected, Context) ->
-    lager:debug("unable to fetch port requests: ~p", [Unexpected]),
-    Context.
+    do_check_port_requests(PortRequests, Context1).
 
 %%------------------------------------------------------------------------------
 %% @doc

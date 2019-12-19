@@ -42,30 +42,30 @@ cb_alerts_test_() ->
 -spec do_check_port_requests() -> [{string(), boolean()}].
 do_check_port_requests() ->
     Context = cb_context:set_resp_data(cb_context:new(), []),
-    {'ok', ActivePorts} = AccountActivePorts = account_active_and_unconfirmed_ports(),
+    {'ok', ActivePorts} = account_active_and_unconfirmed_ports(),
 
     %% 1 submitted, 1 unconfirmed, and 1 rejected.
-    Context1 = cb_alerts:do_check_port_requests(AccountActivePorts, Context),
+    Context1 = cb_alerts:do_check_port_requests(ActivePorts, Context),
     Resp = cb_context:resp_data(Context1),
     [Alert1, Alert2] = Resp,
 
     %% All ports (3) have last comment with `action_required=true' within the last comment
     %% and also there is 1 rejected and 1 unconfirmed.
     PortsWithComments = [add_comments(Port) || Port <- ActivePorts],
-    Context2 = cb_alerts:do_check_port_requests({'ok', PortsWithComments}, Context),
+    Context2 = cb_alerts:do_check_port_requests(PortsWithComments, Context),
 
     %% Only 1 port with `action_required=true' within the last comment
     Port = add_comments(example_port_request()),
     %% Same as Port but last comment doesn't have `action_required=true'
     Port1 = swap_comments(Port),
-    Context3 = cb_alerts:do_check_port_requests({'ok', [Port, Port1]}, Context),
+    Context3 = cb_alerts:do_check_port_requests([Port, Port1], Context),
     [Alert3] = cb_context:resp_data(Context3),
 
     %% Not active ports found.
-    Context4 = cb_alerts:do_check_port_requests({'error', 'not_found'}, Context),
+    Context4 = cb_alerts:do_check_port_requests([], Context),
 
     %% Ports with state /= (unconfirmed|rejected) and no comments.
-    Context5 = cb_alerts:do_check_port_requests({'ok', [example_port_request()]}, Context),
+    Context5 = cb_alerts:do_check_port_requests([example_port_request()], Context),
 
     [{"Only return ports with `last_comment`.action_required=true or state=(rejected|unconfirmed)"
      ,?_assertEqual({'true', <<"port_suspended">>},
