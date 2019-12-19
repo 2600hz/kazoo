@@ -13,6 +13,7 @@
         ,get_portin_number/2
         ,new/2
         ,account_active_ports/1
+        ,account_ports_by_state/2
         ,descendant_active_ports/1
         ,account_has_active_port/1
         ,normalize_attachments/1
@@ -49,6 +50,7 @@
 -define(DESCENDANT_ACTIVE_PORT_LISTING, <<"port_requests/listing_by_descendant_state">>).
 -define(ACTIVE_PORT_IN_NUMBERS, <<"port_requests/port_in_numbers">>).
 -define(PORT_NUM_LISTING, <<"port_requests/phone_numbers_listing">>).
+-define(PORT_LISTING_BY_STATE, <<"port_requests/listing_by_state">>).
 -define(CALLFLOW_LIST, <<"callflows/listing_by_number">>).
 -define(TRUNKSTORE_LIST, <<"trunkstore/lookup_did">>).
 
@@ -124,7 +126,7 @@ read_only_public_fields(Doc) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
-          {'error', any()}.
+          kz_datamgr:data_error().
 -ifdef(TEST).
 get(?TEST_NEW_PORT_NUM) -> {'ok', ?TEST_NEW_PORT_REQ};
 get(?NE_BINARY) -> {'error', 'not_found'}.
@@ -145,7 +147,7 @@ get(DID=?NE_BINARY) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_portin_number(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:objects()} |
-          {'error', any()}.
+          kz_datamgr:data_error().
 get_portin_number(AccountId, DID=?NE_BINARY) ->
     ViewOptions = [{'key', [AccountId, DID]}
                   ,'include_docs'
@@ -163,17 +165,34 @@ get_portin_number(AccountId, DID=?NE_BINARY) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec account_active_ports(kz_term:ne_binary()) -> {'ok', kz_json:objects()} |
-          {'error', 'not_found'}.
+          kz_datamgr:data_error().
 account_active_ports(AccountId) ->
     ViewOptions = [{'key', AccountId}
                   ,'include_docs'
                   ],
     case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?ACTIVE_PORT_LISTING, ViewOptions) of
-        {'ok', []} -> {'error', 'not_found'};
         {'ok', Ports} -> {'ok', [kz_json:get_value(<<"doc">>, Doc) || Doc <- Ports]};
-        {'error', _R} ->
+        {'error', _R} = Err ->
             lager:error("failed to query for account port numbers ~p", [_R]),
-            {'error', 'not_found'}
+            Err
+    end.
+
+%%------------------------------------------------------------------------------
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec account_ports_by_state(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:objects()} |
+          kz_datamgr:data_error().
+account_ports_by_state(AccountId, PortState) ->
+    ViewOptions = [{'startkey', [AccountId, PortState]}
+                  ,{endkey, [AccountId, PortState, kz_json:new()]}
+                  ,'include_docs'
+                  ],
+    case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?PORT_LISTING_BY_STATE, ViewOptions) of
+        {'ok', Ports} -> {'ok', [kz_json:get_value(<<"doc">>, Doc) || Doc <- Ports]};
+        {'error', _R} = Err ->
+            lager:error("failed to query for account port numbers ~p", [_R]),
+            Err
     end.
 
 %%------------------------------------------------------------------------------
@@ -181,23 +200,22 @@ account_active_ports(AccountId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec descendant_active_ports(kz_term:ne_binary()) -> {'ok', kz_json:objects()} |
-          {'error', 'not_found'}.
+          kz_datamgr:data_error().
 descendant_active_ports(AccountId) ->
     ViewOptions = [{'startkey', [AccountId]}
                   ,{'endkey', [AccountId, kz_json:new()]}
                   ,'include_docs'
                   ],
     case kz_datamgr:get_results(?KZ_PORT_REQUESTS_DB, ?DESCENDANT_ACTIVE_PORT_LISTING, ViewOptions) of
-        {'ok', []} -> {'error', 'not_found'};
         {'ok', Ports} ->
             {'ok', [kz_json:get_value(<<"doc">>, Doc)
                     || Doc <- Ports
                            ,is_active_descendant_port(Doc)
                    ]
             };
-        {'error', _R} ->
+        {'error', _R} = Err ->
             lager:error("failed to query for descendant port numbers ~p", [_R]),
-            {'error', 'not_found'}
+            Err
     end.
 
 -spec is_active_descendant_port(kz_json:object()) -> boolean().
@@ -212,8 +230,9 @@ is_active_descendant_port(JObj) ->
 -spec account_has_active_port(kz_term:ne_binary()) -> boolean().
 account_has_active_port(AccountId) ->
     case account_active_ports(AccountId) of
+        {'ok', []} -> 'false';
         {'ok', [_|_]} -> 'true';
-        {'error', 'not_found'} -> 'false'
+        {'error', _} -> 'false'
     end.
 
 %%------------------------------------------------------------------------------
