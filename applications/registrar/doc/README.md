@@ -1,3 +1,3 @@
-
 # Registrar *The star registration application*
-Papers, please.
+
+Handles caller authentication requests, by sender's IP address or SIP username/password.

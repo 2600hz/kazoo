@@ -1,4 +1,3 @@
-
 # Doodle *Store and Forward SMS*
 
-"Stop that pigeon!"
+IM services, like SMS and MMS routing.

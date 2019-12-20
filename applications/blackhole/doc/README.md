@@ -1,5 +1,7 @@
 # Blackhole - Real-time HTTP Websocket Events
 
+Blackhole creates a point of contact between KAZOO and your system, using websockets, to stream events occurring in KAZOO to your connected session(s). Blackhole is effectively an AMQP->Websocket bridge, providing you with real-time event streams about calls, API changes, and more.
+
 ## Setting up
 
 1. Start the Blackhole Crossbar module

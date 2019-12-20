@@ -1,4 +1,4 @@
-# Pivot Intro
+# Pivot
 
 ## Overview
 
