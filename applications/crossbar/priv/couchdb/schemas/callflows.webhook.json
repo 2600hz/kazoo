@@ -25,6 +25,7 @@
         },
         "uri": {
             "description": "The HTTP URI to send the request",
+            "kazoo-validation": true,
             "type": "string"
         }
     },

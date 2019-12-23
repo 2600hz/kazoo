@@ -26,7 +26,7 @@
         },
         "req_body_format": {
             "default": "form",
-            "description": "What format should the request body have",
+            "description": "What format should the request body have when using POST",
             "enum": [
                 "form",
                 "json"
@@ -42,12 +42,18 @@
             ],
             "type": "string"
         },
+        "req_timeout_ms": {
+            "description": "How long, in milliseconds, to wait for a Pivot response from the HTTP server",
+            "maximum": 5000,
+            "type": "integer"
+        },
         "skip_module": {
             "description": "When set to true this callflow action is skipped, advancing to the wildcard branch (if any)",
             "type": "boolean"
         },
         "voice_url": {
             "description": "What URL to request the initial Pivot callflow",
+            "kazoo-validation": true,
             "pattern": "^https?://",
             "type": "string"
         }

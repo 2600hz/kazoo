@@ -44,14 +44,28 @@ encode_decode(Decoded, Encoded) ->
 
 urlsplit_test_() ->
     [?_assertEqual({<<"">>, <<"">>, <<"/foo">>, <<"">>, <<"bar?baz">>}, kz_http_util:urlsplit(<<"/foo#bar?baz">>))
-    ,?_assertEqual({<<"http">>, <<"host:port">>, <<"/foo">>, <<"">>, <<"bar?baz">>}, kz_http_util:urlsplit(<<"http://host:port/foo#bar?baz">>))
+    ,?_assertEqual({<<"http">>, {<<"host">>, 345}, <<"/foo">>, <<"">>, <<"bar?baz">>}, kz_http_util:urlsplit(<<"http://host:345/foo#bar?baz">>))
     ,?_assertEqual({<<"http">>, <<"host">>, <<"">>, <<"">>, <<"">>}, kz_http_util:urlsplit(<<"http://host">>))
     ,?_assertEqual({<<"">>, <<"">>, <<"/wiki/Category:Fruit">>, <<"">>, <<"">>}, kz_http_util:urlsplit(<<"/wiki/Category:Fruit">>))
+    ,?_assertEqual({<<"https">>, {{<<"client.host">>, 1234}, <<"username">>, <<"password">>}, <<>>, <<>>, <<>>}
+                  ,kz_http_util:urlsplit(<<"https://username@password:client.host:1234">>)
+                  )
     ].
 
 urlunsplit_test_() ->
     [?_assertEqual(<<"/foo#bar?baz">>, kz_http_util:urlunsplit({<<"">>, <<"">>, <<"/foo">>, <<"">>, <<"bar?baz">>}))
     ,?_assertEqual(<<"http://host:port/foo#bar?baz">>, kz_http_util:urlunsplit({<<"http">>, <<"host:port">>, <<"/foo">>, <<"">>, <<"bar?baz">>}))
+    ].
+
+url_split_unsplit_test_() ->
+    Tests = [{<<"">>, <<"">>, <<"/foo">>, <<"">>, <<"bar?baz">>}
+            ,{<<"http">>, {<<"host">>, 345}, <<"/foo">>, <<"">>, <<"bar?baz">>}
+            ,{<<"http">>, <<"host">>, <<"">>, <<"">>, <<"">>}
+            ,{<<"">>, <<"">>, <<"/wiki/Category:Fruit">>, <<"">>, <<"">>}
+            ,{<<"https">>, {{<<"client.host">>, 1234}, <<"username">>, <<"password">>}, <<>>, <<>>, <<>>}
+            ],
+    [?_assertEqual(Test, kz_http_util:urlsplit(kz_http_util:urlunsplit(Test)))
+     || Test <- Tests
     ].
 
 urlencode_test_() ->
