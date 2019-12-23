@@ -114,7 +114,7 @@ maybe_load_gcm(App, _, 'undefined', _) ->
     lager:debug("google pusher secret for app ~s not found", [App]),
     'undefined';
 maybe_load_gcm(App, ETS, Secret, Envelope) ->
-    case gcm:start(kz_term:to_atom(App, 'true'), Secret) of
+    case gcm:start(kz_term:to_atom(App, 'true'), kz_term:to_list(Secret)) of
         {'ok', Pid} ->
             ets:insert(ETS, {App, {Pid, Envelope}}),
             {Pid, Envelope};
