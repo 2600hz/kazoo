@@ -21,8 +21,7 @@
 -define(ACCOUNT_NAMES, [<<?MODULE_STRING>>]).
 
 -spec list_callflows(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
-          {'error', 'not_found'} |
-          {'ok', kz_json:objects()}.
+          pqc_cb_api:response().
 list_callflows(API, AccountId) ->
     pqc_cb_api:make_request(#{'response_codes' => [200]}
                            ,fun kz_http:get/2
@@ -31,8 +30,7 @@ list_callflows(API, AccountId) ->
                            ).
 
 -spec fetch_callflow(pqc_cb_api:state(), pqc_cb_accounts:account_id(), kz_term:ne_binary()) ->
-          {'ok', kz_json:object()} |
-          {'error', 'not_found'}.
+          pqc_cb_api:response().
 fetch_callflow(API, AccountId, CallflowId) ->
     pqc_cb_api:make_request(#{'response_codes' => [200]}
                            ,fun kz_http:get/2
@@ -41,7 +39,7 @@ fetch_callflow(API, AccountId, CallflowId) ->
                            ).
 
 -spec create_callflow(pqc_cb_api:state(), pqc_cb_accounts:account_id(), kzd_callflows:doc()) ->
-          {'ok', kzd_call_callflows:doc()}.
+          pqc_cb_api:response().
 create_callflow(API, AccountId, CallflowDoc) ->
     URL = callflows_url(AccountId),
     RequestHeaders = pqc_cb_api:request_headers(API),
@@ -68,8 +66,7 @@ create_callflow_doc() ->
                ).
 
 -spec delete_callflow(pqc_cb_api:state(), pqc_cb_accounts:account_id(), kz_term:ne_binary()) ->
-          {'ok', kz_json:object()} |
-          {'error', 'not_found'}.
+          pqc_cb_api:response().
 delete_callflow(API, AccountId, CallflowId) ->
     pqc_cb_api:make_request(#{'response_codes' => [200]}
                            ,fun kz_http:delete/2

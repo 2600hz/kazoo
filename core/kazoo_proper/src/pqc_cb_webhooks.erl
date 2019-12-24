@@ -31,8 +31,7 @@ list_webhooks(API, AccountId) ->
                            ).
 
 -spec fetch_webhook(pqc_cb_api:state(), pqc_cb_accounts:account_id(), kz_term:ne_binary()) ->
-          {'ok', kz_json:object()} |
-          {'error', 'not_found'}.
+          pqc_cb_api:response().
 fetch_webhook(API, AccountId, WebhookId) ->
     pqc_cb_api:make_request(#{'response_codes' => [200]}
                            ,fun kz_http:get/2
@@ -41,7 +40,7 @@ fetch_webhook(API, AccountId, WebhookId) ->
                            ).
 
 -spec create_webhook(pqc_cb_api:state(), pqc_cb_accounts:account_id(), kzd_webhooks:doc()) ->
-          {'ok', kzd_call_webhooks:doc()}.
+          pqc_cb_api:response().
 create_webhook(API, AccountId, WebhookDoc) ->
     URL = webhooks_url(AccountId),
     RequestHeaders = pqc_cb_api:request_headers(API),
@@ -65,8 +64,7 @@ create_webhook_doc() ->
                ).
 
 -spec delete_webhook(pqc_cb_api:state(), pqc_cb_accounts:account_id(), kz_term:ne_binary()) ->
-          {'ok', kz_json:object()} |
-          {'error', 'not_found'}.
+          pqc_cb_api:response().
 delete_webhook(API, AccountId, WebhookId) ->
     pqc_cb_api:make_request(#{'response_codes' => [200]}
                            ,fun kz_http:delete/2

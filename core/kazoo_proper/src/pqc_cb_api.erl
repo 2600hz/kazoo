@@ -193,7 +193,7 @@ default_request_headers(RequestId) ->
     ].
 
 -spec make_request(expectations() | expectation() | expected_code() | expected_codes(), fun_2(), string(), kz_term:proplist()) ->
-                          response().
+          response().
 make_request(Code, HTTP, URL, RequestHeaders) when is_integer(Code) ->
     make_request([#{'response_codes' => [Code]}], HTTP, URL, RequestHeaders);
 make_request([Code|_]=Codes, HTTP, URL, RequestHeaders) when is_integer(Code) ->
@@ -206,7 +206,7 @@ make_request([#{}|_]=Expectations, HTTP, URL, RequestHeaders) ->
     handle_response(Expectations, HTTP(URL, RequestHeaders)).
 
 -spec make_request(expectations() | expectation() | expected_code() | expected_codes(), fun_3(), string(), kz_term:proplist(), iodata()) ->
-                          response().
+          response().
 make_request(Code, HTTP, URL, RequestHeaders, RequestBody) when is_integer(Code) ->
     make_request([#{'response_codes' => [Code]}], HTTP, URL, RequestHeaders, RequestBody);
 make_request([Code|_]=Codes, HTTP, URL, RequestHeaders, RequestBody) when is_integer(Code) ->
@@ -220,12 +220,12 @@ make_request([#{}|_]=Expectations, HTTP, URL, RequestHeaders, RequestBody) ->
     handle_response(Expectations, HTTP(URL, RequestHeaders, iolist_to_binary(RequestBody))).
 
 -spec create_envelope(kz_json:json_term()) ->
-                             kz_json:object().
+          kz_json:object().
 create_envelope(Data) ->
     create_envelope(Data, kz_json:new()).
 
 -spec create_envelope(kz_json:json_term(), kz_json:object()) ->
-                             kz_json:object().
+          kz_json:object().
 create_envelope(Data, Envelope) ->
     kz_json:set_value(<<"data">>, Data, Envelope).
 
