@@ -22,6 +22,9 @@
         ,get_resp_header/2, get_resp_header/3
         ,encode_multipart/1, encode_multipart/2
         ,create_boundary/0
+
+        ,client_ip_blacklist/0, set_client_ip_blacklist/1
+        ,client_host_blacklist/0, set_client_host_blacklist/1
         ]).
 
 -ifdef(TEST).
@@ -29,6 +32,35 @@
 -endif.
 
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
+-include("kz_web.hrl").
+
+-export_type([scheme/0
+             ,location/0
+             ,resource_path/0
+             ,querystring/0
+             ,fragment/0
+             ]).
+
+-define(INVALID_HOSTS, kapps_config:get(?APP_NAME
+                                       ,[<<"client">>, <<"blacklist">>, <<"hosts">>]
+                                       ,[<<"localhost">>]
+                                       )).
+-define(SET_INVALID_HOSTS(Hosts), kapps_config:set_default(?APP_NAME
+                                                          ,[<<"client">>, <<"blacklist">>, <<"hosts">>]
+                                                          ,Hosts
+                                                          )).
+
+-define(INVALID_NETWORK_CIDRS, kapps_config:get(?APP_NAME
+                                               ,[<<"client">>, <<"blacklist">>, <<"cidrs">>]
+                                               ,[<<"127.0.0.1/32">>
+                                                ,<<"0.0.0.0/32">>
+                                                ]
+                                               )).
+
+-define(SET_INVALID_NETWORK_CIDRS(Cidrs), kapps_config:set_default(?APP_NAME
+                                                                  ,[<<"client">>, <<"blacklist">>, <<"cidrs">>]
+                                                                  ,Cidrs
+                                                                  )).
 
 -spec urldecode(kz_term:text()) -> kz_term:text().
 urldecode(URL) -> urldecode(URL, 'rfc').
@@ -198,10 +230,22 @@ parse_query_string('val', <<C, R/binary>>, KeyAcc, ValAcc, RetAcc) ->
     parse_query_string('val', R, KeyAcc, <<ValAcc/binary, C>>, RetAcc).
 
 %%------------------------------------------------------------------------------
-%% @doc Splits a URL into scheme, location, path, query, and fragment parts.
+%% @doc Splits a URL
+%%
+%% Parts will be scheme, location, path, query, fragment parts, and optionally
+%% username/password if HTTP Basic Auth creds are included
 %% @end
 %%------------------------------------------------------------------------------
--spec urlsplit(binary()) -> {binary(), binary(), binary(), binary(), binary()}.
+-type scheme() :: binary().
+-type host() :: binary() | {binary(), inet:port_number()}.
+-type username() :: binary().
+-type password() :: binary().
+-type location() :: host() | {host(), username(), password()}.
+-type resource_path() :: binary().
+-type querystring() :: binary().
+-type fragment() :: binary().
+
+-spec urlsplit(binary()) -> {scheme(), location(), resource_path(), querystring(), fragment()}.
 urlsplit(Source) ->
     {Scheme, Url1}      = urlsplit_s(Source),
     {Location, Url2}    = urlsplit_l(Url1),
@@ -253,7 +297,8 @@ urlsplit_l(<<"//", R/binary>>) ->
 urlsplit_l(Source) ->
     {<<>>, Source}.
 
--spec urlsplit_l(binary(), binary()) -> {binary(), binary()}.
+-spec urlsplit_l(binary(), binary()) -> {binary(), binary()} |
+          {{binary(), binary(), binary()}, binary()}.
 urlsplit_l(<<>>, Acc) ->
     {Acc, <<>>};
 
@@ -266,8 +311,28 @@ urlsplit_l(<<$?, _I/binary>> = R, Acc) ->
 urlsplit_l(<<$#, _I/binary>> = R, Acc) ->
     {Acc, R};
 
+urlsplit_l(<<$@, Rest/binary>>, User) ->
+    urlsplit_basic_auth(Rest, User, []);
+
+urlsplit_l(<<$:, Rest/binary>>, Host) ->
+    urlsplit_host_port(Rest, Host, []);
+
 urlsplit_l(<<C, R/binary>>, Acc) ->
     urlsplit_l(R, <<Acc/binary, C>>).
+
+urlsplit_host_port(<<C, Rest/binary>>, Host, Trop) when C >= $0, C =< $9 ->
+    urlsplit_host_port(Rest, Host, [C | Trop]);
+urlsplit_host_port(Acc, Host, []) ->
+    {Host, Acc};
+urlsplit_host_port(Acc, Host, Trop) ->
+    {{Host, kz_term:to_integer(lists:reverse(Trop))}, Acc}.
+
+urlsplit_basic_auth(<<$:, Rest/binary>>, User, Ssap) ->
+    {Host, Acc} = urlsplit_l(Rest, <<>>),
+    {{Host, User, kz_term:to_binary(lists:reverse(Ssap))}, Acc};
+urlsplit_basic_auth(<<C:1/binary, Rest/binary>>, User, Ssap) ->
+    urlsplit_basic_auth(Rest, User, [C | Ssap]).
+
 
 %%------------------------------------------------------------------------------
 %% @doc Splits and returns the path, query string, and fragment portions
@@ -306,13 +371,19 @@ urlsplit_q(<<C, R/binary>>, Acc) ->
 %% @doc Joins the elements of a URL together.
 %% @end
 %%------------------------------------------------------------------------------
--spec urlunsplit({binary(), binary(), binary(), binary(), binary()}) -> binary().
+-spec urlunsplit({scheme(), location(), resource_path(), querystring(), fragment()}) -> binary().
 urlunsplit({S, N, P, Q, F}) ->
     Us = case S of <<>> -> <<>>; _ -> [S, "://"] end,
     Uq = case Q of <<>> -> <<>>; _ -> [$?, Q] end,
     Uf = case F of <<>> -> <<>>; _ -> [$#, F] end,
 
-    iolist_to_binary([Us, N, P, Uq, Uf]).
+    iolist_to_binary([Us, location_to_binary(N), P, Uq, Uf]).
+
+location_to_binary(<<Location/binary>>) -> Location;
+location_to_binary({<<Location/binary>>, Port}) when is_integer(Port) ->
+    [Location, ":", kz_term:to_list(Port)];
+location_to_binary({Host, <<Username/binary>>, <<Password/binary>>}) ->
+    [Username, "@", Password, ":", location_to_binary(Host)].
 
 %%------------------------------------------------------------------------------
 %% @doc Convert JSON object to encoded query string.
@@ -515,3 +586,19 @@ uri(BaseUrl, Tokens) ->
     [Pro, Url] = binary:split(BaseUrl, <<"://">>),
     Uri = filename:join([Url | Tokens]),
     <<Pro/binary, "://", Uri/binary>>.
+
+-spec client_ip_blacklist() -> kz_term:api_ne_binaries().
+client_ip_blacklist() -> ?INVALID_NETWORK_CIDRS.
+
+-spec set_client_ip_blacklist(kz_term:ne_binaries()) -> kz_term:ne_binaries().
+set_client_ip_blacklist(Blacklist) ->
+    {'ok', _} = ?SET_INVALID_NETWORK_CIDRS(Blacklist),
+    client_ip_blacklist().
+
+-spec client_host_blacklist() -> kz_term:api_ne_binaries().
+client_host_blacklist() -> ?INVALID_HOSTS.
+
+-spec set_client_host_blacklist(kz_term:ne_binaries()) -> kz_term:ne_binaries().
+set_client_host_blacklist(Blacklist) ->
+    {'ok', _} = ?SET_INVALID_HOSTS(Blacklist),
+    client_host_blacklist().

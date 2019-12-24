@@ -1,28 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2012-2019, 2600Hz
-%%% @doc Accept third-party `dialplan'.
-%%%
-%%% <h4>Data options:</h4>
-%%% <dl>
-%%%   <dt>`voice_url'</dt>
-%%%   <dd>Voice URL.</dd>
-%%%
-%%%   <dt>`cdr_url'</dt>
-%%%   <dd>CDR URL.</dd>
-%%%
-%%%   <dt>`req_format'</dt>
-%%%   <dd>`kazoo' or `twiml'.</dd>
-%%%
-%%%   <dt>`req_body_format'</dt>
-%%%   <dd>`form' or `json'.</dd>
-%%%
-%%%   <dt>`method'</dt>
-%%%   <dd>`get' or `post'.</dd>
-%%%
-%%%   <dt>`debug'</dt>
-%%%   <dd>`boolean()'</dd>
-%%% </dl>
-%%%
+%%% @doc Accept third-party `callflow' actions (or TwiML)
 %%% @author James Aimonetti
 %%%
 %%% This Source Code Form is subject to the terms of the Mozilla Public
@@ -59,12 +37,13 @@
 handle(Data, Call) ->
     Prop = props:filter_empty(
              [{<<"Call">>, kapps_call:to_json(Call)}
-             ,{<<"Voice-URI">>, kz_json:get_ne_binary_value(<<"voice_url">>, Data)}
              ,{<<"CDR-URI">>, kz_json:get_ne_binary_value(<<"cdr_url">>, Data)}
-             ,{<<"Request-Format">>, kz_json:get_ne_binary_value(<<"req_format">>, Data)}
-             ,{<<"Request-Body-Format">>, kz_json:get_ne_binary_value(<<"req_body_format">>, Data, <<"form">>)}
-             ,{<<"HTTP-Method">>, kzt_util:http_method(kz_json:get_value(<<"method">>, Data, 'get'))}
              ,{<<"Debug">>, kz_json:is_true(<<"debug">>, Data, 'false')}
+             ,{<<"HTTP-Method">>, kzt_util:http_method(kz_json:get_value(<<"method">>, Data, 'get'))}
+             ,{<<"Request-Body-Format">>, kz_json:get_ne_binary_value(<<"req_body_format">>, Data, <<"form">>)}
+             ,{<<"Request-Format">>, kz_json:get_ne_binary_value(<<"req_format">>, Data)}
+             ,{<<"Request-Timeout">>, kz_json:get_integer_value(<<"req_timeout_ms">>, Data)}
+             ,{<<"Voice-URI">>, kz_json:get_ne_binary_value(<<"voice_url">>, Data)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     kapi_pivot:publish_req(Prop),

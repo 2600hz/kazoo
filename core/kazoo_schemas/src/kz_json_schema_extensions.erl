@@ -58,6 +58,7 @@ extra_validation(Value, State) ->
     ElementId = kz_term:to_binary(lists:last(Path)),
     Keys = [SchemaId, ElementId],
     Key = kz_binary:join(lists:filter(fun kz_term:is_not_empty/1, Keys), <<".">>),
+    lager:info("extra for ~p : ~p", [Key, Value]),
     extra_validation(Key, Value, State).
 
 extra_validation(<<"metaflow.data">>, Value, State) ->
@@ -84,7 +85,6 @@ extra_validation(<<"callflows.action.data">>, Value, State) ->
         Module -> validate_module_data(<<"callflows.", Module/binary>>, Value, State)
     end;
 extra_validation(<<"callflows.action.module">>, Value, State) ->
-    lager:debug("validating callflow action '~s'", [Value]),
     Schema = <<"callflows.", Value/binary>>,
     State1 = jesse_state:resolve_ref(State, Schema),
     State2 = case jesse_state:get_current_schema_id(State1) of
@@ -92,6 +92,28 @@ extra_validation(<<"callflows.action.module">>, Value, State) ->
                  _OtherSchema -> jesse_error:handle_data_invalid({'external_error', <<"unable to find callflow schema for module ", Value/binary>>}, Value, State)
              end,
     jesse_state:undo_resolve_ref(State2, State);
+extra_validation(<<"webhooks.uri">>, URL, State) ->
+    url_validation(URL, State);
+extra_validation(<<"callflows.webhook.uri">>, URL, State) ->
+    url_validation(URL, State);
+extra_validation(<<"callflows.pivot.voice_url">>, URL, State) ->
+    url_validation(URL, State);
+extra_validation(<<"callflows.record_caller.url">>, URL, State) ->
+    url_validation(URL, State);
+extra_validation(<<"callflows.record_call.url">>, URL, State) ->
+    url_validation(URL, State);
+extra_validation(<<"metaflows.pivot.voice_url">>, URL, State) ->
+    url_validation(URL, State);
+extra_validation(<<"metaflows.record_call.url">>, URL, State) ->
+    url_validation(URL, State);
+extra_validation(<<"call_recording.parameters.url">>, URL, State) ->
+    url_validation(URL, State);
+extra_validation(<<"faxbox.notifications.inbound.callback.url">>, URL, State) ->
+    url_validation(URL, State);
+extra_validation(<<"faxbox.notifications.outbound.callback.url">>, URL, State) ->
+    url_validation(URL, State);
+extra_validation(<<"storage.attachment.http.url">>, URL, State) ->
+    url_validation(URL, State);
 extra_validation(<<"storage.plan.database.document.connection">>, Value, State) ->
     JObj = jesse_state:get_current_value(State),
     Keys = kz_json:get_keys(<<"connections">>, JObj),
@@ -121,7 +143,7 @@ extra_validation(<<"storage.attachment.onedrive.oauth_doc_id">>, Value, State) -
 extra_validation(<<"storage.attachment.dropbox.oauth_doc_id">>, Value, State) ->
     validate_attachment_oauth_doc_id(Value, State);
 extra_validation(_Key, _Value, State) ->
-    lager:debug("extra validation of ~s not handled for value ~p", [_Key, _Value]),
+    lager:info("extra validation of ~s not handled for value ~p", [_Key, _Value]),
     State.
 
 validate_module_data(Schema, Value, State) ->
@@ -187,3 +209,60 @@ check_param_stability_level(_SystemSLInt, _ParamSLInt) ->
 stability_level_to_int(<<"stable">>) -> 3;
 stability_level_to_int(<<"beta">>) -> 2;
 stability_level_to_int(<<"alpha">>) -> 1.
+
+url_validation(URL, State) ->
+    case is_valid_client_url(URL) of
+        'true' -> State;
+        'false' ->
+            lager:info("client URL '~s' not valid", [URL]),
+            UpdatedState = jesse_error:handle_data_invalid({'external_error', <<"invalid client URL">>}, URL, State),
+            lager:info("~p", [UpdatedState]),
+            UpdatedState
+    end.
+
+is_valid_client_url({Scheme, Host, _Path, _QueryString, _Fragment}) ->
+    lists:all(fun is_valid_url_part/1
+             ,[{fun is_valid_scheme/1, Scheme}
+              ,{fun is_valid_host/1, Host}
+              ]
+             );
+is_valid_client_url(<<URL/binary>>) ->
+    is_valid_client_url(kz_http_util:urlsplit(URL)).
+
+is_valid_url_part({Fun, Part}) ->
+    Fun(Part).
+
+is_valid_scheme(<<"http">>) -> 'true';
+is_valid_scheme(<<"https">>) -> 'true';
+is_valid_scheme(_) -> 'false'.
+
+-spec is_valid_host(kz_http_util:location()) -> boolean().
+is_valid_host(<<Host/binary>>) ->
+    is_valid_host(kz_term:to_lower_binary(Host), kz_network_utils:is_ip(Host));
+is_valid_host({Host, _Port}) when is_integer(_Port) ->
+    is_valid_host(Host);
+is_valid_host({Host, _Username, _Password}) ->
+    is_valid_host(Host).
+
+-spec is_valid_host(kz_term:ne_binary(), boolean()) -> boolean().
+is_valid_host(Host, 'true') ->
+    is_valid_host_value(Host, 'true', kz_http_util:client_ip_blacklist());
+is_valid_host(Host, 'false') ->
+    is_valid_host_value(Host, 'false', kz_http_util:client_host_blacklist()).
+
+-spec is_valid_host_value(kz_term:ne_binary(), boolean(), kz_term:api_ne_binaries()) -> boolean().
+is_valid_host_value(_Host, _IsIp, 'undefined') -> 'true';
+is_valid_host_value(Host, IsIp, Blacklist) ->
+    not lists:any(fun(B) -> is_host_blacklisted(Host, IsIp, B) end, Blacklist).
+
+is_host_blacklisted(Host, _IsIp, Host) ->
+    lager:debug("host matches blacklisted value ~s", [Host]),
+    'true';
+is_host_blacklisted(Host, 'true', CIDR) ->
+    case kz_network_utils:verify_cidr(Host, CIDR) of
+        'false' -> 'false';
+        'true' ->
+            lager:debug("host ~s is part of CIDR ~s", [Host, CIDR]),
+            'true'
+    end;
+is_host_blacklisted(_Host, 'false', _Hostname) -> 'false'.

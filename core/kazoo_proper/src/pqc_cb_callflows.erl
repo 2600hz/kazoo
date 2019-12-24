@@ -18,7 +18,7 @@
 -export([patch/4]).
 -export([delete/3]).
 
--export([seq/0
+-export([seq/0, seq_url/0
         ,cleanup/0
         ,new_callflow/0
         ]).
@@ -66,6 +66,10 @@ callflow_url(AccountId, CallflowId) ->
 
 -spec seq() -> 'ok'.
 seq() ->
+    _ = seq_crud(),
+    seq_url().
+
+seq_crud() ->
     API = pqc_cb_api:init_api(['crossbar'], ['cb_callflows']),
     AccountId = create_account(API),
 
@@ -125,3 +129,24 @@ new_callflow() ->
                                ,[<<"2600">>]
                                )
      ).
+
+-spec seq_url() -> any().
+seq_url() ->
+    API = pqc_cb_api:init_api(['crossbar'], ['cb_callflows']),
+    AccountId = create_account(API),
+
+    {'error', ErrorResp} = create(API, AccountId, pivot_url_callflow()),
+    lager:info("create resp failed with internal url: ~s", [ErrorResp]),
+
+    lager:info("COMPLETED SUCCESSFULLY!"),
+    _ = cleanup(API).
+
+pivot_url_callflow() ->
+    PivotData = kz_json:from_list([{<<"voice_url">>, <<"http://localhost/123">>}]),
+    Flow = kz_json:from_list([{<<"module">>, <<"pivot">>}
+                             ,{<<"data">>, PivotData}
+                             ]),
+    kz_doc:setters(kzd_callflows:new()
+                  ,[{fun kzd_callflows:set_numbers/2, [<<"345">>]}
+                   ,{fun kzd_callflows:set_flow/2, Flow}
+                   ]).

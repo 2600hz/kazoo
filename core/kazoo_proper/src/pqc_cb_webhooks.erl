@@ -23,6 +23,7 @@
 
 %% Manual test functions
 -export([seq/0, seq_recv_events/0
+        ,seq_url/0
         ,cleanup/0
         ]).
 
@@ -304,3 +305,21 @@ wait_for_instructions(ParentPid, API, AccountId, UserId) ->
             ParentPid ! {'deleted', kz_json:get_ne_binary_value(<<"revision">>, kz_json:decode(DeleteResp))};
         'stop' -> 'ok'
     end.
+
+-spec seq_url() -> any().
+seq_url() ->
+    API = initial_state(),
+    AccountId = create_account(API),
+
+    {'error', ErrorResp} = create(API, AccountId, bad_url_webhook()),
+    lager:info("create resp failed with internal url: ~s", [ErrorResp]),
+
+    lager:info("COMPLETED SUCCESSFULLY!"),
+    _ = cleanup(API).
+
+bad_url_webhook() ->
+    kz_doc:setters(kzd_webhooks:new()
+                  ,[{fun kzd_webhooks:set_uri/2, <<"https://localhost:345/webhook">>}
+                   ,{fun kzd_webhooks:set_name/2, <<?MODULE_STRING>>}
+                   ,{fun kzd_webhooks:set_hook/2, <<"channel_destroy">>}
+                   ]).
