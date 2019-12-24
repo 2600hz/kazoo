@@ -343,6 +343,7 @@ urlunsplit({S, N, P, Q, F}) ->
 
     iolist_to_binary([Us, location_to_binary(N), P, Uq, Uf]).
 
+-spec location_to_binary(location()) -> iodata().
 location_to_binary(<<Location/binary>>) -> Location;
 location_to_binary({<<Location/binary>>, Port}) when is_integer(Port) ->
     [Location, ":", kz_term:to_list(Port)];
