@@ -196,7 +196,11 @@ account_name(#cb_context{account_name=Name}) -> Name.
 -spec user_id(context()) -> kz_term:api_ne_binary().
 user_id(#cb_context{user_id=UserId}) -> UserId.
 
--spec db_name(context()) -> kz_term:ne_binary().
+-spec db_name(context()) -> kz_term:api_ne_binary().
+db_name(#cb_context{db_name='undefined'
+                   ,account_id='undefined'
+                   }) ->
+    'undefined';
 db_name(#cb_context{db_name='undefined'
                    ,account_id=AccountId
                    }) ->
