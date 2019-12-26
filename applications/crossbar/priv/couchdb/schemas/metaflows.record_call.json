@@ -67,6 +67,7 @@
         },
         "url": {
             "description": "HTTP URL to send the finished recording",
+            "kazoo-validation": true,
             "type": "string"
         }
     },

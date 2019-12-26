@@ -79,6 +79,7 @@ req_definition() ->
               ,{fun kapi_definition:set_optional_headers/2, [<<"CDR-URI">>
                                                             ,<<"Request-Format">>
                                                             ,<<"Request-Body-Format">>
+                                                            ,<<"Request-Timeout">>
                                                             ,<<"HTTP-Method">>
                                                             ,<<"Debug">>
                                                             ]}
@@ -88,6 +89,9 @@ req_definition() ->
               ,{fun kapi_definition:set_types/2
                ,[{<<"Call">>, fun kz_json:is_json_object/1}
                 ,{<<"Debug">>, fun kz_term:is_boolean/1}
+                ,{<<"Request-Format">>, fun erlang:is_binary/1}
+                ,{<<"Reqeust-Body-Format">>, fun erlang:is_binary/1}
+                ,{<<"Request-Timeout">>, fun erlang:is_integer/1}
                 ]
                }
               ],

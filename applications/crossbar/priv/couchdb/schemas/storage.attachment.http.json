@@ -24,6 +24,7 @@
                 },
                 "url": {
                     "description": "The base HTTP(s) URL to use when creating the request",
+                    "kazoo-validation": true,
                     "type": "string"
                 },
                 "verb": {

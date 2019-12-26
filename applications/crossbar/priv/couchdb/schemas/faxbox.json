@@ -97,6 +97,7 @@
                                 },
                                 "url": {
                                     "description": "The URL to call back with the results",
+                                    "kazoo-validation": true,
                                     "pattern": "^https?://",
                                     "type": "string"
                                 }
@@ -176,6 +177,7 @@
                                 },
                                 "url": {
                                     "description": "The URL to call back with the results",
+                                    "kazoo-validation": true,
                                     "pattern": "^https?://",
                                     "type": "string"
                                 }

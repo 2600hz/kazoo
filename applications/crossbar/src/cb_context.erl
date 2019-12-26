@@ -196,7 +196,11 @@ account_name(#cb_context{account_name=Name}) -> Name.
 -spec user_id(context()) -> kz_term:api_ne_binary().
 user_id(#cb_context{user_id=UserId}) -> UserId.
 
--spec db_name(context()) -> kz_term:ne_binary().
+-spec db_name(context()) -> kz_term:api_ne_binary().
+db_name(#cb_context{db_name='undefined'
+                   ,account_id='undefined'
+                   }) ->
+    'undefined';
 db_name(#cb_context{db_name='undefined'
                    ,account_id=AccountId
                    }) ->
@@ -493,11 +497,11 @@ setters(#cb_context{}=Context, []) -> Context;
 setters(#cb_context{}=Context, [_|_]=Setters) ->
     lists:foldl(fun setters_fold/2, Context, Setters).
 
--spec setters_fold(setter_kv(), context() | kz_json:object()) ->
-          context() | kz_json:object().
-setters_fold({F, V}, C) -> F(C, V);
-setters_fold({F, K, V}, C) -> F(C, K, V);
-setters_fold(F, C) when is_function(F, 1) -> F(C).
+-spec setters_fold(setter_kv(), context()) ->
+          context().
+setters_fold({F, V}, #cb_context{}=C) -> #cb_context{} = F(C, V);
+setters_fold({F, K, V}, #cb_context{}=C) -> #cb_context{} = F(C, K, V);
+setters_fold(F, #cb_context{}=C) when is_function(F, 1) -> #cb_context{} = F(C).
 
 %%------------------------------------------------------------------------------
 %% @doc Loop over a list of functions and values to validate `cb_context()'.
@@ -771,9 +775,9 @@ set_profile_id(#cb_context{}=Context, Value) ->
 -spec update_doc(context(), setter_kv() | setters()) -> context().
 update_doc(#cb_context{doc=Doc}=Context, Updaters)
   when is_list(Updaters) ->
-    Context#cb_context{doc=lists:foldl(fun setters_fold/2, Doc, Updaters)};
-update_doc(#cb_context{doc=Doc}=Context, Updater) ->
-    Context#cb_context{doc=setters_fold(Updater, Doc)}.
+    Context#cb_context{doc=kz_json:exec_first(Updaters, Doc)};
+update_doc(#cb_context{}=Context, Updater) ->
+    update_doc(Context, [Updater]).
 
 %% % Helpers
 

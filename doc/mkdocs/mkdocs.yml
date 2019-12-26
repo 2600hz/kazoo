@@ -477,6 +477,7 @@ pages:
     - 'core/kazoo_schemas/doc/maintenance.md'
   - 'Kazoo Web':
     - 'core/kazoo_web/doc/README.md'
+    - 'core/kazoo_web/doc/maintenance.md'
   - 'Kazoo XML':
     - 'core/kazoo_xml/doc/README.md'
   - 'Kazoo Token Buckets':

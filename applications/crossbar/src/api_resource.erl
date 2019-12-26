@@ -110,7 +110,6 @@ rest_init(Req, Opts) ->
               ],
 
     Context0 = cb_context:setters(cb_context:new(), Setters),
-
     lager:info("~s: ~s?~s from ~s"
               ,[cb_context:method(Context0)
                ,Path
@@ -140,15 +139,17 @@ rest_init(Req, Opts) ->
 host_url(Context, Req) ->
     URI = kz_term:to_binary(cowboy_req:uri(Req)),
     {Scheme, Location, _Path, _Query, _Frag} = kz_http_util:urlsplit(URI),
-    Value = list_to_binary([Scheme, "://", Location]),
+    Value = list_to_binary([Scheme, "://", kz_http_util:location_host(Location)]),
     cb_context:set_host_url(Context, Value).
 
 -spec req_nouns(cb_context:context()) -> cb_context:context().
 req_nouns(Context) ->
     Tokens = api_util:path_tokens(Context),
     case api_util:parse_path_tokens(Context, Tokens) of
-        [_|_] = Nouns -> cb_context:set_req_nouns(Context, Nouns);
-        _Else -> Context
+        [_|_] = Nouns ->
+            cb_context:set_req_nouns(Context, Nouns);
+        _Else ->
+            Context
     end.
 
 -spec get_request_id(cowboy_req:req()) -> kz_term:ne_binary().

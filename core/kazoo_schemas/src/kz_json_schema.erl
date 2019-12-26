@@ -93,7 +93,7 @@ load(Schema) -> fload(Schema).
 -spec load(kz_term:ne_binary() | string()) -> load_return().
 load(<<"./", Schema/binary>>) -> load(Schema);
 load(<<"file://", Schema/binary>>) -> load(Schema);
-load(<<_/binary>> = Schema) ->
+load(<<Schema/binary>>) ->
     case kz_datamgr:open_cache_doc(?KZ_SCHEMA_DB, Schema, [{'cache_failures', ['not_found']}]) of
         {'error', _E}=E -> E;
         {'ok', JObj} -> {'ok', kz_json:insert_value(<<"id">>, Schema, JObj)}
@@ -105,7 +105,7 @@ load(Schema) -> load(kz_term:to_binary(Schema)).
           {'error', 'not_found' | file:posix()}.
 fload(<<"./", Schema/binary>>) -> fload(Schema);
 fload(<<"file://", Schema/binary>>) -> fload(Schema);
-fload(<<_/binary>> = Schema) ->
+fload(<<Schema/binary>>) ->
     case filelib:is_regular(Schema) of
         'true' -> fload_file(Schema);
         'false' -> find_and_fload(Schema)
@@ -234,7 +234,7 @@ flush(Schema) ->
     kz_datamgr:flush_cache_doc(?KZ_SCHEMA_DB, Schema).
 
 -spec add_defaults(kz_term:api_object() | kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object()) -> kz_term:api_object().
-add_defaults(JObj, <<_/binary>> = Schema) ->
+add_defaults(JObj, <<Schema/binary>>) ->
     {'ok', SchemaJObj} = load(Schema),
     add_defaults(JObj, SchemaJObj);
 add_defaults(JObj, SchemaJObj) ->
@@ -264,7 +264,7 @@ validate(SchemaJObj, DataJObj) ->
 -spec validate(kz_term:ne_binary() | kz_json:object(), kz_json:object(), jesse_options()) ->
           {'ok', kz_json:object()} |
           jesse_error:error().
-validate(<<_/binary>> = Schema, DataJObj, Options) ->
+validate(<<Schema/binary>>, DataJObj, Options) ->
     Fun = props:get_value('schema_loader_fun', Options, ?DEFAULT_LOADER),
     {'ok', SchemaJObj} = Fun(Schema),
     validate(SchemaJObj, DataJObj, props:insert_values([{'schema_loader_fun', ?DEFAULT_LOADER}], Options));
@@ -890,6 +890,8 @@ validation_error(Property, <<"additionalItems">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, <<"wrong_format">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
+validation_error(Property, <<"not_one_schema_valid">> = C, Message, Options) ->
+    depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, Code, Message, Options) ->
     lager:warning("UNKNOWN ERROR CODE: ~p", [Code]),
     depreciated_validation_error(Property, Code, Message, Options).
@@ -959,14 +961,14 @@ build_error_message(_Version, JObj) ->
 -spec get_disallow(kz_json:object()) -> kz_term:ne_binary().
 get_disallow(JObj) ->
     case kz_json:get_value(<<"disallow">>, JObj) of
-        <<_/binary>> = Disallow -> Disallow;
+        <<Disallow/binary>> -> Disallow;
         Disallows when is_list(Disallows) -> kz_binary:join(Disallows)
     end.
 
 -spec get_types(kz_json:object()) -> kz_term:ne_binary().
 get_types(JObj) ->
     case kz_json:get_first_defined([<<"type">>, <<"types">>], JObj) of
-        <<_/binary>> = Type -> Type;
+        <<Type/binary>> -> Type;
         Types when is_list(Types) -> kz_binary:join(Types);
         _TypeSchema -> <<"type schema">>
     end.

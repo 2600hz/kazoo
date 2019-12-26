@@ -662,7 +662,7 @@ validate_request(VMBoxId, Context) ->
 validate_unique_vmbox(VMBoxId, Context) ->
     validate_unique_vmbox(VMBoxId, Context, cb_context:db_name(Context)).
 
--spec validate_unique_vmbox(kz_term:api_binary(), cb_context:context(), kz_term:api_binary()) -> cb_context:context().
+-spec validate_unique_vmbox(kz_term:api_binary(), cb_context:context(), kz_term:api_ne_binary()) -> cb_context:context().
 validate_unique_vmbox(VMBoxId, Context, 'undefined') ->
     check_vmbox_schema(VMBoxId, Context);
 validate_unique_vmbox(VMBoxId, Context, _AccountDb) ->
