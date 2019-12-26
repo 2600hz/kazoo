@@ -900,6 +900,7 @@
       'description': The URL to use when sending the recording for storage
       'format': uri
       'type': string
+      'x-kazoo-validation': true
   'type': object
 'call_recording.source':
   'additionalProperties': false
@@ -2574,7 +2575,7 @@
       'type': string
     'req_body_format':
       'default': form
-      'description': What format should the request body have
+      'description': What format should the request body have when using POST
       'enum':
         - form
         - json
@@ -2586,6 +2587,11 @@
         - kazoo
         - twiml
       'type': string
+    'req_timeout_ms':
+      'description': |-
+        How long, in milliseconds, to wait for a Pivot response from the HTTP server
+      'maximum': 5000
+      'type': integer
     'skip_module':
       'description': |-
         When set to true this callflow action is skipped, advancing to the wildcard branch (if any)
@@ -2594,6 +2600,7 @@
       'description': What URL to request the initial Pivot callflow
       'pattern': '^https?://'
       'type': string
+      'x-kazoo-validation': true
   'required':
     - voice_url
   'type': object
@@ -2783,6 +2790,7 @@
       'description': The URL to use when sending the recording for storage
       'format': uri
       'type': string
+      'x-kazoo-validation': true
   'required':
     - action
   'type': object
@@ -2816,6 +2824,7 @@
       'description': The URL to use when sending the recording for storage
       'format': uri
       'type': string
+      'x-kazoo-validation': true
   'type': object
 'callflows.resources':
   'description': Validator for the resources callflow data object
@@ -3413,6 +3422,7 @@
     'uri':
       'description': The HTTP URI to send the request
       'type': string
+      'x-kazoo-validation': true
   'type': object
 'cccps':
   'description': Calling cards callback platform user's info
@@ -5003,6 +5013,7 @@
                   'description': The URL to call back with the results
                   'pattern': '^https?://'
                   'type': string
+                  'x-kazoo-validation': true
               'type': object
               'x-support_level': beta
             'email':
@@ -5055,6 +5066,7 @@
                   'description': The URL to call back with the results
                   'pattern': '^https?://'
                   'type': string
+                  'x-kazoo-validation': true
               'type': object
               'x-support_level': beta
             'email':
@@ -6168,6 +6180,7 @@
       'description': What URL to request the initial Pivot callflow
       'pattern': '^https?://'
       'type': string
+      'x-kazoo-validation': true
   'required':
     - voice_url
   'type': object
@@ -6240,6 +6253,7 @@
     'url':
       'description': HTTP URL to send the finished recording
       'type': string
+      'x-kazoo-validation': true
   'type': object
 'metaflows.relate':
   'description': Relate two participants to each other in a conference
@@ -8444,6 +8458,7 @@
         'url':
           'description': The base HTTP(s) URL to use when creating the request
           'type': string
+          'x-kazoo-validation': true
         'verb':
           'default': put
           'description': The HTTP verb to use when sending the data
@@ -11379,6 +11394,29 @@
       'description': kazoo_im onnet_listeners
       'type': integer
   'type': object
+'system_config.kazoo_web':
+  'description': Schema for kazoo_web system_config
+  'properties':
+    'client':
+      'properties':
+        'blacklist':
+          'properties':
+            'cidrs':
+              'default':
+                - 127.0.0.1/32
+                - 0.0.0.0/32
+              'description': kazoo_web client blacklist cidrs
+              'items':
+                'type': string
+              'type': array
+            'hosts':
+              'default':
+                - localhost
+              'description': kazoo_web client blacklist hosts
+              'items':
+                'type': string
+              'type': array
+  'type': object
 'system_config.keys':
   'description': Schema for DTMF keys system_config
   'properties':
@@ -12558,6 +12596,10 @@
 'system_config.pivot':
   'description': Schema for pivot system_config
   'properties':
+    'request_timeout_ms':
+      'default': 5000
+      'description': pivot request_timeout_ms
+      'type': integer
     'tts_texts_size':
       'default': 4000
       'description': pivot tts texts size
@@ -14844,6 +14886,7 @@
       'description': The 3rd party URI to call out to an event
       'format': uri
       'type': string
+      'x-kazoo-validation': true
       'x-support_level': supported
   'required':
     - hook
