@@ -139,7 +139,8 @@ sample_url(SampleId) ->
 -spec seq() -> 'ok'.
 seq() ->
     seq_samples(),
-    seq_recv_events().
+    seq_recv_events(),
+    seq_url().
 
 -spec seq_recv_events() -> 'ok'.
 seq_recv_events() ->

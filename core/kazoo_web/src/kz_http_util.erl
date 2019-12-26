@@ -16,6 +16,7 @@
         ,parse_query_string/1
         ,urlsplit/1
         ,urlunsplit/1
+        ,location_host/1, location_port/1, location_username/1, location_password/1
         ,json_to_querystring/1
         ,props_to_querystring/1
         ,http_code_to_status_line/1
@@ -244,6 +245,26 @@ parse_query_string('val', <<C, R/binary>>, KeyAcc, ValAcc, RetAcc) ->
 -type resource_path() :: binary().
 -type querystring() :: binary().
 -type fragment() :: binary().
+
+-spec location_host(location()) -> binary().
+location_host(<<Host/binary>>) -> Host;
+location_host({<<Host/binary>>, Port}) when is_integer(Port) -> Host;
+location_host({Host, <<_/binary>>, <<_/binary>>}) -> location_host(Host).
+
+-spec location_port(location()) -> inet:port_number() | 'undefined'.
+location_port(<<_/binary>>) -> 'undefined';
+location_port({<<_/binary>>, Port}) when is_integer(Port) -> Port;
+location_port({Host, _Username, _Password}) -> location_host(Host).
+
+-spec location_username(location()) -> binary() | 'undefined'.
+location_username(<<_/binary>>) -> 'undefined';
+location_username({<<_/binary>>, _Port}) when is_integer(_Port) -> 'undefined';
+location_username({_Host, <<Username/binary>>, _Password}) -> Username.
+
+-spec location_password(location()) -> binary() | 'undefined'.
+location_password(<<_/binary>>) -> 'undefined';
+location_password({<<_/binary>>, _Port}) when is_integer(_Port) -> 'undefined';
+location_password({_Host, <<_/binary>>, <<Password/binary>>}) -> Password.
 
 -spec urlsplit(binary()) -> {scheme(), location(), resource_path(), querystring(), fragment()}.
 urlsplit(Source) ->
