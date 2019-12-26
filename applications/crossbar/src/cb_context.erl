@@ -771,9 +771,9 @@ set_profile_id(#cb_context{}=Context, Value) ->
 -spec update_doc(context(), setter_kv() | setters()) -> context().
 update_doc(#cb_context{doc=Doc}=Context, Updaters)
   when is_list(Updaters) ->
-    Context#cb_context{doc=lists:foldl(fun setters_fold/2, Doc, Updaters)};
-update_doc(#cb_context{doc=Doc}=Context, Updater) ->
-    Context#cb_context{doc=setters_fold(Updater, Doc)}.
+    Context#cb_context{doc=kz_json:exec_first(Updaters, Doc)};
+update_doc(#cb_context{}=Context, Updater) ->
+    update_doc(Context, [Updater]).
 
 %% % Helpers
 
