@@ -18,9 +18,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [ ?WORKER(kz_term:to_atom(Mod, 'true'))
-                    || Mod <- kapps_config:get_ne_binaries(?CONFIG_CAT, <<"modules">>, [])
-                  ]).
+-define(CHILDREN, [?WORKER(Mod) || Mod <- ?MODULES]).
 
 %%%=============================================================================
 %%% API functions
