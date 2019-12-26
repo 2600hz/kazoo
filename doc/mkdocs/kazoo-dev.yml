@@ -185,8 +185,6 @@ pages:
     - 'core/kazoo_media/doc/README.md'
   - 'Kazoo Apps':
     - 'core/kazoo_apps/doc/README.md'
-  - 'GCM':
-    - 'core/gcm/README.md'
   - 'Kazoo Translator':
     - 'core/kazoo_translator/doc/README.md'
   - 'Kazoo Number Manager':

@@ -420,8 +420,6 @@ pages:
     - 'core/kazoo_apps/doc/maintenance.md'
     - 'core/kazoo_apps/doc/kapps_maintenance.md'
     - 'core/kazoo_apps/doc/kazoo_maintenance.md'
-  - 'GCM':
-    - 'core/gcm/README.md'
   - 'Kazoo Translator':
     - 'core/kazoo_translator/doc/README.md'
   - 'Kazoo Number Manager':

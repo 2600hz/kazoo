@@ -65,14 +65,28 @@
 -spec handle_push(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_push(JObj, _Props) ->
     Token = kz_json:get_value(<<"Token-ID">>, JObj),
-    TokenType = kz_json:get_value(<<"Token-Type">>, JObj),
+    TokenType = pm_module(kz_json:get_value(<<"Token-Type">>, JObj)),
     Module = kz_term:to_atom(<<"pm_",TokenType/binary>> , 'true'),
-    lager:debug("pushing for token ~s(~s) to module ~s", [Token, TokenType, Module]),
-    JObj1 = kz_json:insert_value([<<"Payload">>, <<"utc_unix_timestamp_ms">>]
-                                ,kz_term:to_binary(os:system_time(millisecond))
-                                ,JObj
-                                ),
-    gen_server:cast(Module, {'push', JObj1}).
+    case lists:member(Module, ?MODULES)
+        andalso whereis(Module)
+    of
+        'false' ->
+            lager:error("module ~s not available for token ~s(~s)", [Module, Token, TokenType]);
+        'undefined' ->
+            lager:error("module ~s not available for token ~s(~s)", [Module, Token, TokenType]);
+        Pid ->
+            lager:debug("pushing for token ~s(~s) to module ~s", [Token, TokenType, Module]),
+            gen_server:cast(Pid, {'push', add_timestamp_to_payload(JObj)})
+    end.
+
+pm_module(<<"google">>) -> <<"firebase">>;
+pm_module(<<"android">>) -> <<"firebase">>;
+pm_module(Any) -> Any.
+
+add_timestamp_to_payload(JObj) ->
+    kz_json:insert_value([<<"Payload">>, <<"utc_unix_timestamp_ms">>]
+                        ,kz_term:to_binary(os:system_time(millisecond))
+                        ,JObj).
 
 -spec handle_reg_success(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_reg_success(JObj, _Props) ->

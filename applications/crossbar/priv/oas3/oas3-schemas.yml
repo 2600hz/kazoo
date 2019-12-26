@@ -12749,24 +12749,6 @@
           'description': pusher firebase headers
           'type': object
       'type': object
-    'google':
-      'default': {}
-      'description': pusher google
-      'properties':
-        'api_key':
-          'description': API Key for gcm
-          'type': string
-        'headers':
-          'default': {}
-          'description': pusher google headers
-          'type': object
-      'type': object
-    'modules':
-      'default': []
-      'description': pusher modules
-      'items':
-        'type': string
-      'type': array
   'type': object
 'system_config.qubicle':
   'description': Schema for qubicle system_config
