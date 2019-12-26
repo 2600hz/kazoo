@@ -21,8 +21,7 @@
 -define(ACCOUNT_NAMES, [<<?MODULE_STRING>>]).
 
 -spec list_webhooks(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
-          {'error', 'not_found'} |
-          {'ok', kz_json:objects()}.
+          pqc_cb_api:response().
 list_webhooks(API, AccountId) ->
     pqc_cb_api:make_request(#{'response_codes' => [200]}
                            ,fun kz_http:get/2

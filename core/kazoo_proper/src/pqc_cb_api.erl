@@ -34,18 +34,17 @@
 
 -type expected_code() :: 200..600.
 -type expected_codes() :: [expected_code()].
--type expected_headers() :: [{string(), string()}].
+-type expected_headers() :: kz_http:headers().
 -type expectation() :: #{'response_codes' := expected_codes()
                         ,'response_headers' => expected_headers()
                         }.
 -type expectations() :: [expectation()].
 
 -type response_code() :: 200..600.
--type response_headers() :: [{string(), string()}].
+-type response_headers() :: kz_http:headers().
 
 -type response() :: binary() |
-                    kz_http:ret() |
-                    {'error', binary()}.
+                    {'error', any()}.
 
 -type fun_2() :: fun((string(), kz_term:proplist()) -> kz_http:ret()).
 -type fun_3() :: fun((string(), kz_term:proplist(), iodata()) -> kz_http:ret()).
@@ -141,11 +140,8 @@ api_key(MasterAccountId) ->
             throw('missing_master_account')
     end.
 
--spec create_api_state(response(), kz_data_tracing:trace_ref()) -> state().
-create_api_state({'error', {'failed_connect', 'econnrefused'}}, _Trace) ->
-    lager:warning("failed to connect to Crossbar; is it running?"),
-    throw({'error', 'econnrefused'});
-create_api_state(<<_/binary>> = RespJSON, Trace) ->
+-spec create_api_state(binary(), kz_data_tracing:trace_ref()) -> state().
+create_api_state(<<RespJSON/binary>>, Trace) ->
     RespEnvelope = kz_json:decode(RespJSON),
     #{'auth_token' => kz_json:get_ne_binary_value(<<"auth_token">>, RespEnvelope)
      ,'account_id' => kz_json:get_ne_binary_value([<<"data">>, <<"account_id">>], RespEnvelope)
@@ -230,7 +226,7 @@ create_envelope(Data, Envelope) ->
     kz_json:set_value(<<"data">>, Data, Envelope).
 
 -spec handle_response(expectations(), kz_http:ret()) -> response().
-handle_response([#{}|_]=Expectations, {'ok', ActualCode, RespHeaders, RespBody}) ->
+handle_response([#{}|_]=Expectations, {'ok', ActualCode, RespHeaders, <<RespBody/binary>>}) ->
     case expectations_met(Expectations, ActualCode, [{"resp_code", ActualCode} | RespHeaders]) of
         'true' -> RespBody;
         'false' ->
@@ -238,12 +234,15 @@ handle_response([#{}|_]=Expectations, {'ok', ActualCode, RespHeaders, RespBody})
             lager:debug("~p: ~p", [ActualCode, RespHeaders]),
             {'error', RespBody}
     end;
+handle_response(_Expectations, {'error', {'failed_connect', 'econnrefused'}}) ->
+    lager:warning("failed to connect to Crossbar; is it running?"),
+    throw({'error', 'econnrefused'});
 handle_response(_Expectations, {'error','socket_closed_remotely'}=E) ->
     lager:error("~nwe broke crossbar!"),
     throw(E);
-handle_response(_ExpectedCode, {'error', _}=E) ->
-    lager:error("broken req: ~p", [E]),
-    E.
+handle_response(_Expectations, {'error', E}) ->
+    lager:warning("failed to query API: ~p", [E]),
+    throw({'error', E}).
 
 -spec expectations_met(expectations(), response_code(), response_headers()) -> boolean().
 expectations_met(Expectations, RespCode, RespHeaders) ->
