@@ -67,6 +67,7 @@
         "uri": {
             "description": "The 3rd party URI to call out to an event",
             "format": "uri",
+            "kazoo-validation": true,
             "support_level": "supported",
             "type": "string"
         }

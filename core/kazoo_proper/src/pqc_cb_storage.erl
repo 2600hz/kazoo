@@ -7,7 +7,7 @@
 -module(pqc_cb_storage).
 
 %% Manual testing
--export([seq/0
+-export([seq/0, blacklisted_url/0
         ,cleanup/0
         ,storage_doc/1
         ]).
@@ -39,12 +39,12 @@
 -define(SEND_MULTIPART, 'true').
 
 -spec create(pqc_cb_api:state(), kz_term:api_ne_binary(), kz_term:ne_binary() | kz_json:object()) ->
-                    pqc_cb_api:response().
+          pqc_cb_api:response().
 create(API, AccountId, StorageDoc) ->
     create(API, AccountId, StorageDoc, 'undefined').
 
 -spec create(pqc_cb_api:state(), kz_term:api_ne_binary(), kz_term:ne_binary() | kz_json:object(), kz_term:api_boolean()) ->
-                    pqc_cb_api:response().
+          pqc_cb_api:response().
 create(API, AccountId, ?NE_BINARY=UUID, ValidateSettings) ->
     create(API, AccountId, storage_doc(UUID), ValidateSettings);
 create(API, AccountId, StorageDoc, ValidateSettings) ->
@@ -86,9 +86,9 @@ init_system() ->
         ],
 
     _HTTPD = pqc_httpd:start_link(TestId),
-    ?INFO("HTTPD started: ~p", [_HTTPD]),
+    lager:info("HTTPD started: ~p", [_HTTPD]),
 
-    ?INFO("INIT FINISHED").
+    lager:info("INIT FINISHED").
 
 -spec seq() -> 'ok'.
 seq() ->
@@ -96,6 +96,7 @@ seq() ->
             ,fun skip_validation_test/0
             ,fun global_test/0
             ,fun missing_ref_test/0
+            ,fun blacklisted_url/0
             ],
     lists:foreach(fun run_test/1, Tests).
 
@@ -103,8 +104,23 @@ run_test(TestFun) ->
     TestFun(),
     cleanup().
 
+-spec blacklisted_url() -> 'ok'.
+blacklisted_url() ->
+    lager:info("SKIP TEST"),
+
+    API = init_api(),
+
+    AccountId = create_account(API),
+
+    StorageDoc = storage_doc(kz_binary:rand_hex(16), <<"https://ignore@me:0.0.0.0">>),
+    {'error', ShouldFailToCreate} = create(API, AccountId, StorageDoc),
+    lager:info("should fail: ~s", [ShouldFailToCreate]),
+
+    cleanup(API),
+    lager:info("FINISHED BLACKLIST").
+
 skip_validation_test() ->
-    ?INFO("SKIP TEST"),
+    lager:info("SKIP TEST"),
 
     API = init_api(),
 
@@ -112,65 +128,65 @@ skip_validation_test() ->
 
     StorageDoc = storage_doc(kz_binary:rand_hex(16)),
     {'error', ShouldFailToCreate} = create(API, AccountId, StorageDoc, 'false'),
-    ?INFO("should fail: ~s", [ShouldFailToCreate]),
+    lager:info("should fail: ~s", [ShouldFailToCreate]),
 
     check_if_allowed(kz_json:decode(ShouldFailToCreate), 'false'),
 
     kzs_plan:allow_validation_overrides(),
-    ?INFO("allowing validation overrides"),
+    lager:info("allowing validation overrides"),
 
     ShouldSucceedToCreate = create(API, AccountId, StorageDoc, 'false'),
-    ?INFO("should succeed: ~s", [ShouldSucceedToCreate]),
+    lager:info("should succeed: ~s", [ShouldSucceedToCreate]),
 
     check_if_allowed(kz_json:decode(ShouldSucceedToCreate), 'true'),
 
-    ?INFO("created without validation successfully"),
+    lager:info("created without validation successfully"),
 
     kzs_plan:disallow_validation_overrides(),
-    ?INFO("dis-allowing validation overrides"),
+    lager:info("dis-allowing validation overrides"),
 
     {'error', ShouldAgainFailToCreate} = create(API, AccountId, StorageDoc, 'false'),
-    ?INFO("should fail again: ~s", [ShouldAgainFailToCreate]),
+    lager:info("should fail again: ~s", [ShouldAgainFailToCreate]),
     check_if_allowed(kz_json:decode(ShouldAgainFailToCreate), 'false'),
 
     cleanup(API),
-    ?INFO("FINISHED NON-VALIDATION").
+    lager:info("FINISHED NON-VALIDATION").
 
 create_account(API) ->
     AccountResp = pqc_cb_accounts:create_account(API, hd(?ACCOUNT_NAMES)),
-    ?INFO("created account: ~s", [AccountResp]),
+    lager:info("created account: ~s", [AccountResp]),
 
     kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(AccountResp)).
 
 check_if_allowed(RespJObj, ShouldAllow) ->
     Errored = 'undefined' =:= kz_json:get_json_value([<<"data">>, <<"validate_settings">>], RespJObj),
-    ?INFO("request errored: ~p", [Errored]),
+    lager:info("request errored: ~p", [Errored]),
     ShouldAllow = Errored.
 
 base_test() ->
-    ?INFO("BASE TEST"),
+    lager:info("BASE TEST"),
     API = init_api(),
 
     AccountId = create_account(API),
 
     StorageDoc = storage_doc(kz_binary:rand_hex(16)),
     CreatedStorage = create(API, AccountId, StorageDoc),
-    ?INFO("created storage: ~p", [CreatedStorage]),
+    lager:info("created storage: ~p", [CreatedStorage]),
 
     Test = pqc_httpd:get_req([<<?MODULE_STRING>>, AccountId]),
-    ?INFO("test created ~p", [Test]),
+    lager:info("test created ~p", [Test]),
 
     _ = test_vm_message(API, AccountId),
 
     cleanup(API),
-    ?INFO("FINISHED").
+    lager:info("FINISHED").
 
 init_api() ->
     Model = initial_state(),
     pqc_kazoo_model:api(Model).
 
 global_test() ->
-    ?INFO("GLOBAL TEST"),
+    lager:info("GLOBAL TEST"),
 
     API = init_api(),
 
@@ -178,43 +194,43 @@ global_test() ->
 
     StorageDoc = storage_doc(kz_binary:rand_hex(16)),
     CreatedStorage = create(API, 'undefined', StorageDoc),
-    ?INFO("created storage: ~p", [CreatedStorage]),
+    lager:info("created storage: ~p", [CreatedStorage]),
 
     Test = pqc_httpd:get_req([<<?MODULE_STRING>>, <<"system_data">>]),
-    ?INFO("test created ~p", [Test]),
+    lager:info("test created ~p", [Test]),
 
     _ = test_vm_message(API, AccountId),
     cleanup(API),
-    ?INFO("FINISHED").
+    lager:info("FINISHED").
 
 test_vm_message(API, AccountId) ->
     CreateBox = pqc_cb_vmboxes:create_box(API, AccountId, <<"1010">>),
-    ?INFO("create VM box: ~p", [CreateBox]),
+    lager:info("create VM box: ~p", [CreateBox]),
     BoxId = kz_json:get_value([<<"data">>, <<"id">>], kz_json:decode(CreateBox)),
 
     {'ok', MP3} = file:read_file(filename:join([code:priv_dir('kazoo_proper'), "mp3.mp3"])),
     CreateVM = create_voicemail(API, AccountId, BoxId, MP3),
-    ?INFO("create VM: ~p", [CreateVM]),
+    lager:info("create VM: ~p", [CreateVM]),
 
     CreatedVM = kz_json:decode(CreateVM),
     MediaId = kz_json:get_ne_binary_value([<<"data">>, <<"media_id">>], CreatedVM),
 
     {'ok', GetVM} = pqc_httpd:wait_for_req([<<?MODULE_STRING>>, AccountId, MediaId]),
-    ?INFO("get VM: ~p", [GetVM]),
+    lager:info("get VM: ~p", [GetVM]),
     {[RequestBody], [_AttachmentName]} = kz_json:get_values(GetVM),
 
     'true' = handle_multipart_store(MediaId, MP3, RequestBody),
-    ?INFO("got mp3 data on our web server!"),
+    lager:info("got mp3 data on our web server!"),
 
     %% pqc_httpd:update_req([<<?MODULE_STRING>>, AccountId, MediaId, AttachmentName], MP3),
-    %% ?INFO("updating media to non-encoded MP3"),
+    %% lager:info("updating media to non-encoded MP3"),
 
     MetadataResp = pqc_cb_vmboxes:fetch_message_metadata(API, AccountId, BoxId, MediaId),
-    ?INFO("message ~s meta: ~s", [MediaId, MetadataResp]),
+    lager:info("message ~s meta: ~s", [MediaId, MetadataResp]),
     MediaId = kz_json:get_ne_binary_value([<<"data">>, <<"media_id">>], kz_json:decode(MetadataResp)),
 
     MessageBin = pqc_cb_vmboxes:fetch_message_binary(API, AccountId, BoxId, MediaId),
-    ?INFO("message bin =:= MP3: ~p", [MessageBin =:= MP3]),
+    lager:info("message bin =:= MP3: ~p", [MessageBin =:= MP3]),
     MessageBin = MP3.
 
 create_voicemail(API, AccountId, BoxId, MP3) ->
@@ -234,10 +250,10 @@ handle_multipart_contents(_MediaId, _MP3, []) -> 'true';
 handle_multipart_contents(MediaId, MP3, [<<>> | Parts]) ->
     handle_multipart_contents(MediaId, MP3, Parts);
 handle_multipart_contents(MediaId, MP3, [<<"content-type: application/json">>, <<>>, JSON | Parts]) ->
-    ?INFO("json body: ~s", [JSON]),
+    lager:info("json body: ~s", [JSON]),
     JObj = kz_json:decode(JSON),
     MediaId = kz_json:get_ne_binary_value([<<"metadata">>, <<"media_id">>], JObj),
-    ?INFO("got expected media id ~s", [MediaId]),
+    lager:info("got expected media id ~s", [MediaId]),
 
     kz_json:all(fun({MessageKey, MessageValue}) ->
                         MessageValue =:= kz_json:get_value([<<"metadata">>, MessageKey], JObj)
@@ -263,10 +279,10 @@ handle_multipart_contents(MediaId, MP3, [_Part | Parts]) ->
     handle_multipart_contents(MediaId, MP3, Parts).
 
 handle_mp3_contents(MP3, Base64MP3, 'true') ->
-    ?INFO("checking base64-encoded data"),
+    lager:info("checking base64-encoded data"),
     case base64:decode(Base64MP3) of
         MP3 ->
-            ?INFO("got expected mp3 data"),
+            lager:info("got expected mp3 data"),
             'true';
         _Data ->
             ?ERROR("failed to decode to mp3: ~w", [Base64MP3]),
@@ -279,7 +295,7 @@ cleanup() ->
     cleanup_system().
 
 cleanup(API) ->
-    ?INFO("CLEANUP TIME, EVERYBODY HELPS"),
+    lager:info("CLEANUP TIME, EVERYBODY HELPS"),
     _ = pqc_cb_accounts:cleanup_accounts(API, ?ACCOUNT_NAMES),
     _ = pqc_cb_api:cleanup(API),
     cleanup_system().
@@ -291,23 +307,27 @@ cleanup_system() ->
 
 -spec storage_doc(kz_term:ne_binary()) -> kzd_storage:doc().
 storage_doc(UUID) ->
-    kz_json:from_list([{<<"attachments">>, storage_attachments(UUID)}
+    storage_doc(UUID, 'undefined').
+
+storage_doc(UUID, URL) ->
+    kz_json:from_list([{<<"attachments">>, storage_attachments(UUID, URL)}
                       ,{<<"plan">>, storage_plan(UUID)}
                       ]).
 
-storage_attachments(UUID) ->
-    kz_json:from_list([{UUID, http_handler()}]).
+storage_attachments(UUID, URL) ->
+    kz_json:from_list([{UUID, http_handler(URL)}]).
 
-http_handler() ->
+http_handler(URL) ->
     kz_json:from_list([{<<"handler">>, <<"http">>}
                       ,{<<"name">>, <<?MODULE_STRING>>}
-                      ,{<<"settings">>, http_handler_settings()}
+                      ,{<<"settings">>, http_handler_settings(URL)}
                       ]).
 
-http_handler_settings() ->
+http_handler_settings('undefined') ->
     Base = pqc_httpd:base_url(),
     URL = <<Base/binary, ?MODULE_STRING>>,
-
+    http_handler_settings(URL);
+http_handler_settings(<<URL/binary>>) ->
     kz_json:from_list([{<<"url">>, URL}
                       ,{<<"verb">>, <<"post">>}
                       ,{<<"send_multipart">>, ?SEND_MULTIPART}
@@ -343,13 +363,13 @@ mailbox_handler(AttUUID, ConnUUID) ->
                       ]).
 
 storage_doc_missing_conn(AttUUID, ConnUUID) ->
-    kz_json:from_list([{<<"attachments">>, storage_attachments(AttUUID)}
+    kz_json:from_list([{<<"attachments">>, storage_attachments(AttUUID, 'undefined')}
                       ,{<<"plan">>, storage_plan(AttUUID, ConnUUID)}
                       ]).
 
 -spec missing_ref_test() -> 'ok'.
 missing_ref_test() ->
-    ?INFO("GLOBAL TEST"),
+    lager:info("GLOBAL TEST"),
 
     API = init_api(),
 
@@ -357,4 +377,4 @@ missing_ref_test() ->
 
     MissingConnDoc = storage_doc_missing_conn(kz_binary:rand_hex(16), kz_binary:rand_hex(16)),
     {'error', ErrMsg} = create(API, AccountId, MissingConnDoc),
-    ?INFO("failed to create storage: ~s", [ErrMsg]).
+    lager:info("failed to create storage: ~s", [ErrMsg]).

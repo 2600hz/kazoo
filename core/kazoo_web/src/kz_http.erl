@@ -30,7 +30,7 @@
                   'trace'.
 
 -type field() :: string().
--type value() :: string().
+-type value() :: string() | integer().
 -type header() :: {field(), value()}.
 -type headers() :: [header()].
 

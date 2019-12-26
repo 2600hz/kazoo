@@ -35,6 +35,7 @@
         },
         "voice_url": {
             "description": "What URL to request the initial Pivot callflow",
+            "kazoo-validation": true,
             "pattern": "^https?://",
             "type": "string"
         }

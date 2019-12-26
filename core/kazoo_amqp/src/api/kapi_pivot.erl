@@ -27,16 +27,21 @@
 
 -define(PIVOT_REQ_HEADERS, [<<"Call">>, <<"Voice-URI">>]).
 -define(OPTIONAL_PIVOT_REQ_HEADERS, [<<"CDR-URI">>
-                                    ,<<"Request-Format">>
-                                    ,<<"Request-Body-Format">>
-                                    ,<<"HTTP-Method">>
                                     ,<<"Debug">>
+                                    ,<<"HTTP-Method">>
+                                    ,<<"Request-Body-Format">>
+                                    ,<<"Request-Format">>
+                                    ,<<"Request-Timeout">>
                                     ]).
 -define(PIVOT_REQ_VALUES, [{<<"Event-Category">>,<<"dialplan">>}
                           ,{<<"Event-Name">>, <<"pivot_req">>}
                           ]).
 -define(PIVOT_REQ_TYPES, [{<<"Call">>, fun kz_json:is_json_object/1}
+                         ,{<<"CDR-URI">>, fun erlang:is_binary/1}
                          ,{<<"Debug">>, fun kz_term:is_boolean/1}
+                         ,{<<"Request-Body-Format">>, fun erlang:is_binary/1}
+                         ,{<<"Request-Format">>, fun erlang:is_binary/1}
+                         ,{<<"Request-Timeout">>, fun erlang:is_integer/1}
                          ]).
 
 -define(PIVOT_FAILED_HEADERS, [<<"Call-ID">>]).
@@ -54,7 +59,7 @@
 -define(PIVOT_PROCESSING_TYPES, []).
 
 -spec req(kz_term:api_terms()) -> {'ok', iolist()} |
-                                  {'error', string()}.
+          {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         'false' -> {'error', "Proplist failed validation for pivot_req"};
@@ -70,7 +75,7 @@ req_v(JObj) ->
     req_v(kz_json:to_proplist(JObj)).
 
 -spec failed(kz_term:api_terms()) -> {'ok', iolist()} |
-                                     {'error', string()}.
+          {'error', string()}.
 failed(Prop) when is_list(Prop) ->
     case failed_v(Prop) of
         'false' -> {'error', "Proplist failed validation for pivot_failed"};
@@ -86,7 +91,7 @@ failed_v(JObj) ->
     failed_v(kz_json:to_proplist(JObj)).
 
 -spec processing(kz_term:api_terms()) -> {'ok', iolist()} |
-                                         {'error', string()}.
+          {'error', string()}.
 processing(Prop) when is_list(Prop) ->
     case processing_v(Prop) of
         'false' -> {'error', "Proplist processing validation for pivot_processing"};
