@@ -27,7 +27,8 @@
 %% `{ContentType, Content}'
 -type rendered_templates() :: [rendered_template()].
 
--type email_map() :: [{kz_term:ne_binary(), kz_term:api_ne_binaries()}].
+-type email_item() :: {kz_term:ne_binary(), kz_term:api_ne_binaries()}.
+-type email_map() :: [email_item()].
 %% `{"to"/"cc"/etc, [Address,...]}'
 
 -type init_param() :: {'macros', kz_json:object()} |

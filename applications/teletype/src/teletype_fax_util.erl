@@ -101,7 +101,7 @@ to_email_addresses(_DataJObj, TemplateId, _) ->
     lager:debug("can not find email address for the fax notification, maybe using defaults"),
     case teletype_util:template_system_value(TemplateId, <<"default_to">>) of
         'undefined' -> 'undefined';
-        ?NE_BINARY=Email -> [Email];
+        <<Email/binary>> -> [Email];
         Emails when is_list(Emails) -> Emails
     end.
 

@@ -510,6 +510,11 @@ kapps_util_amqp() {
     replace "kapps_util" "amqp_pool_request" "kz_amqp_worker" "call"
 }
 
+kz_services_reseller_id() {
+    replace "kzd_accounts" "reseller_id" "kz_services_reseller" "get_id"
+}
+
+
 echo "ensuring kz_term is used"
 kz_util_to_term
 echo "ensuring kz_binary is used"
@@ -542,5 +547,7 @@ echo "updating amqp_util to kz_amqp_util"
 amqp_util_to_kz_amqp_util
 echo "updating kapps_util amqp to kz_amqp_worker"
 kapps_util_amqp
+echo "use kz_services_reseller to find reseller_id"
+kz_services_reseller_id
 
 popd >/dev/null

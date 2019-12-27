@@ -17,7 +17,7 @@
 -spec start(application:start_type(), any()) -> kz_types:startapp_ret().
 start(_Type, _Args) ->
     _ = declare_exchanges(),
-    kapps_maintenance:bind_and_register_views(?APP, 'teletype_maintenance', 'register_views'),
+    _ = kapps_maintenance:bind_and_register_views(?APP, 'teletype_maintenance', 'register_views'),
     teletype_sup:start_link().
 
 %%------------------------------------------------------------------------------
@@ -26,7 +26,7 @@ start(_Type, _Args) ->
 %%------------------------------------------------------------------------------
 -spec stop(any()) -> any().
 stop(_State) ->
-    kapps_maintenance:unbind('register_views', 'teletype_maintenance', 'register_views'),
+    _ = kapps_maintenance:unbind('register_views', 'teletype_maintenance', 'register_views'),
     'ok'.
 
 -spec declare_exchanges() -> 'ok'.
