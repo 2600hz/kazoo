@@ -33,31 +33,38 @@ TwiML support is limited at the moment; KAZOO JSON is highly encouraged.
 !!! note
     `cdr_url` is only applicable when using the XML (TwiML) format. When using the kazoo format, control is handed off to the Callflows app, with the Pivot process ending (and nothing waiting for the CDR). Instead, please use [webhooks](./webhooks.md) (specifically the CHANNEL_DESTROY event) to receive CDRs.
 
-### Allowed Hosts
+## Handling failures
 
-It is advisable to restrict the hostname in the `voice_url` by setting up some blacklists. These will be consulted when validating the URL provided by the client.
+The Pivot request can fail for a number of reasons:
 
-By default RFC1918 IPs and `localhost` blocked.
+* DNS resolution of the web server fails
+* Connection (TLS or clear) to the web server fails
+* Response is not of a known `content-type`
+* Response is not valid callflow JSON
 
-#### Blacklist CIDR
+The pivot callflow action waits until either
+  1. The Pivot response is processed successfully, in which case the pivot callflow action exits quietly
+  2. The Pivot response fails (for whatever reason), in which case the pivot callflow action goes to the default `_` child branch (if any).
 
-Blacklist network ranges using CIDR notation:
+In the example below, if an error occurs when getting a response from `{SERVER_URL}`, the caller will hear the media at `{MEDIA_ID}` played and the call will end.
 
-    sup kazoo_web_maintenance blacklist_client_ip aaa.bbb.ccc.ddd/32
-
-The default list is `127.0.0.1/32` and `0.0.0.0/32`. Consider adding RFC1918 addresses, `10.0.0.0/8`, `172.16.0.0/12`, and `192.168.0.0/16`, as well as your cluster's subnets.
-
-#### Blacklist Hostname
-
-Blacklist a hostname:
-
-    sup kazoo_web_maintenance blacklist_client_host {HOSTNAME}
-
-`{HOSTNAME}` will just match the `HOST` portion of a URL. In the following examples, the `HOST` portion will be `client.host`:
-
-    http://client.host
-    https://client.host:9876
-    http://user@pass:client.host
-    https://user@pass:client.host:4356
-
-Currently, there is no attempt to resolve the hostname to an IP address for CIDR checking.
+```json
+"flow": {
+    "data": {
+        "method": "GET",
+        "req_timeout": "5",
+        "req_format": "kazoo",
+        "voice_url": "{SERVER_URL}"
+    },
+    "module": "pivot",
+    "children": {
+        "_": {
+            "module": "play",
+            "data": {
+                "id": "{MEDIA_ID}"
+            },
+            "children": {}
+        }
+    }
+}
+```
