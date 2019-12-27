@@ -54,7 +54,7 @@ get_id('undefined') ->
         {'error', _} -> 'undefined';
         {'ok', MasterAccountId} -> MasterAccountId
     end;
-get_id(Account=?NE_BINARY) ->
+get_id(<<Account/binary>>) ->
     get_id(kz_services:fetch(Account));
 get_id(Services) ->
     kzd_services:reseller_id(kz_services:services_jobj(Services)).
@@ -66,7 +66,7 @@ get_id(Services) ->
 %%------------------------------------------------------------------------------
 -spec find_id(kz_term:ne_binaries() | kz_term:api_binary() | kz_services:services()) -> kz_term:api_ne_binary().
 find_id('undefined') -> find_id([]);
-find_id(Account=?NE_BINARY) ->
+find_id(<<Account/binary>>) ->
     case kzd_accounts:fetch(Account) of
         {'ok', AccountJObj} ->
             find_id(lists:reverse(kzd_accounts:tree(AccountJObj)));
