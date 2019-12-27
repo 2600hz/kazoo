@@ -12,16 +12,6 @@ if the device is already registered, and the client is alive, kamailio will allo
 
 ### System Config
 
-* `modules` : list of modules to load on app start.
-
-```
-"modules": [
-       "pm_apple",
-       "pm_google"
-   ],
-
-```
-
 * `User-Agents`: list of user agents to check for pusher properties.
 
 ```
@@ -38,8 +28,9 @@ if the device is already registered, and the client is alive, kamailio will allo
 ```
 
 ### Maintenance
-in order for the push services from apple / google to work they need to be configured with application secrets / certificates. the app used in the push message is taken from Token-App.
 
-* `sup pusher_maintenance add_google_app(AppId, Secret)`
+In order for the push services from apple / firebase to work they need to be configured with application secrets / certificates. The app used in the push message is taken from Token-App.
+
+* `sup pusher_maintenance add_firebase_app(AppId, Secret)`
 * `sup pusher_maintenance add_apple_app(AppId, CertFile)` (uses the default APNs host: api.push.apple.com)
 * `sup pusher_maintenance add_apple_app(AppId, CertFile, Host)` (uses a custom APNs host, i.e. api.development.push.apple.com)

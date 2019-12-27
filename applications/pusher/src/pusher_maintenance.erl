@@ -8,13 +8,13 @@
 
 -include("pusher.hrl").
 
--export([add_google_app/2
+-export([add_firebase_app/2
         ,add_apple_app/2, add_apple_app/3
         ]).
 
--spec add_google_app(binary(), binary()) -> 'ok'.
-add_google_app(AppId, Secret) ->
-    kapps_config:set_node(?CONFIG_CAT, <<"google">>, Secret, AppId),
+-spec add_firebase_app(binary(), binary()) -> 'ok'.
+add_firebase_app(AppId, Secret) ->
+    kapps_config:set_node(?CONFIG_CAT, [<<"firebase">>, <<"api_key">>], Secret, AppId),
     'ok'.
 
 -spec add_apple_app(binary(), binary()) -> 'ok' | {'error', any()}.
