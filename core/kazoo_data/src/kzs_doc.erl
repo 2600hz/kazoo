@@ -42,16 +42,33 @@ open_doc(#{server := {App, Conn}}, DbName, DocId, Options) ->
           {'ok', kz_json:object()} | data_error().
 handle_opened_doc({'error', _}=Error, _Options) -> Error;
 handle_opened_doc({'ok', Doc}, Options) ->
-    handle_opened_doc(Doc, kz_doc:is_soft_deleted(Doc), props:get_is_true('deleted', Options, 'false')).
+    maybe_soft_deleted(Doc, kz_doc:is_soft_deleted(Doc), Options).
 
--spec handle_opened_doc(kz_json:object(), boolean(), boolean()) ->
+-spec maybe_soft_deleted(kz_json:object(), boolean(), kz_term:proplist()) ->
           {'ok', kz_json:object()} |
           {'error', 'not_found'}.
-handle_opened_doc(Doc, 'false',  _ReturnDeleted) -> {'ok', Doc};
-handle_opened_doc(Doc, 'true', 'true') -> {'ok', Doc};
-handle_opened_doc(Doc, 'true', 'false') ->
-    lager:info("denying access to soft deleted doc: ~s", [kz_doc:id(Doc)]),
-    {'error', 'not_found'}.
+maybe_soft_deleted(Doc, 'false', Options) ->
+    maybe_type_mismatch(Doc, props:get_ne_binary_value('doc_type', Options));
+maybe_soft_deleted(Doc, 'true', Options) ->
+    case props:get_is_true('deleted', Options, 'false') of
+        'true' -> maybe_type_mismatch(Doc, props:get_ne_binary_value('doc_type', Options));
+        'false' ->
+            lager:info("denying access to soft deleted doc: ~s", [kz_doc:id(Doc)]),
+            {'error', 'not_found'}
+    end.
+
+-spec maybe_type_mismatch(kz_json:object(), kz_term:api_ne_binary()) ->
+          {'ok', kz_json:object()} |
+          {'error', 'not_found'}.
+maybe_type_mismatch(Doc, 'undefined') ->
+    {'ok', Doc};
+maybe_type_mismatch(Doc, ReqestedType) ->
+    case kz_doc:type(Doc) of
+        ReqestedType -> {'ok', Doc};
+        DocType ->
+            lager:info("requested doc_type '~s', denying access to doc with type: '~s'", [ReqestedType, DocType]),
+            {'error', 'not_found'}
+    end.
 
 -spec save_doc(map(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) ->
           {'ok', kz_json:object()} |
