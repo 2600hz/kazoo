@@ -264,7 +264,7 @@ profile(EndpointId, AccountId, Options) ->
 generate_ccvs(_EndpointId, AccountId, Endpoint) ->
     Realm = kzd_devices:sip_realm(Endpoint,  kz_json:get_value(<<"realm">>, Endpoint)),
     Props = [{<<"Account-ID">>, AccountId}
-            ,{<<"Reseller-ID">>, kzd_accounts:reseller_id(AccountId)}
+            ,{<<"Reseller-ID">>, kz_services_reseller:get_id(AccountId)}
             ,{<<"Realm">>, Realm}
             ,{<<"Username">>, kzd_devices:sip_username(Endpoint)}
             ,{<<"SIP-Invite-Domain">>, Realm}
