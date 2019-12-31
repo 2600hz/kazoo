@@ -55,7 +55,7 @@ number(Options) ->
 set_account_id(#{ccvs := CCVs, profile := Profile, number := #{account_id := AccountId}} = Map) ->
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     {'ok', Account} = kzd_accounts:fetch(AccountId, 'accounts'),
-    ResellerId = kzd_accounts:reseller_id(Account),
+    ResellerId = kz_services_reseller:get_id(AccountId),
     Realm = kzd_accounts:realm(Account),
     Map#{ccvs => [{<<"Account-ID">>, AccountId}
                  ,{<<"Account-Realm">>, Realm}

@@ -578,6 +578,10 @@ cb_context_rename() {
     done
 }
 
+kz_services_reseller_id() {
+    replace "kzd_accounts" "reseller_id" "kz_services_reseller" "get_id"
+}
+
 echo "ensuring kz_term is used"
 kz_util_to_term
 echo "ensuring kz_binary is used"
@@ -624,5 +628,7 @@ echo "formatting account/resource ids to dbs moved to kzs_util"
 kz_util_format_ids
 echo "cb_context account_db to db_name"
 cb_context_rename
+echo "use kz_services_reseller to find reseller_id"
+kz_services_reseller_id
 
 popd >/dev/null

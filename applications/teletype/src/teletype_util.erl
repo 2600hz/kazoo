@@ -229,9 +229,8 @@ send(To, From, Encoded) ->
 
 -spec handle_send(kz_term:binaries(), kz_term:ne_binary(), gen_smtp_send_resp()) ->
           {'ok', kz_term:ne_binary()} | {'error', any()}.
-handle_send(To, From, {'ok', _Pid}) ->
-    lager:debug("smtp client is processing with pid ~p", [_Pid]),
-    wait_for_response(To, From);
+handle_send(To, From, {'ok', Pid}) ->
+    handle_send(To, From, Pid);
 handle_send(_To, _From, {'error', _R}=Error) ->
     lager:info("error trying to send email: ~p", [_R]),
     Error;
@@ -535,7 +534,7 @@ find_account_admin_email(AccountId, ResellerId) ->
     end.
 
 -spec query_account_for_admin_emails(kz_term:ne_binary()) -> kz_term:ne_binaries().
-query_account_for_admin_emails(<<_/binary>> = AccountId) ->
+query_account_for_admin_emails(<<AccountId/binary>>) ->
     AccountDb = kzs_util:format_account_db(AccountId),
     ViewOptions = [{'key', <<"user">>}
                   ,'include_docs'
@@ -665,18 +664,7 @@ is_notice_enabled_default(TemplateKey) ->
           email_map().
 find_addresses(DataJObj, TemplateMetaJObj, ConfigCat) ->
     AddressKeys = [<<"to">>, <<"cc">>, <<"bcc">>, <<"from">>, <<"reply_to">>],
-    find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, AddressKeys, []).
-
--spec find_addresses(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binaries(), email_map()) ->
-          email_map().
-find_addresses(_DataJObj, _TemplateMetaJObj, _ConfigCat, [], Acc) -> Acc;
-find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
-    find_addresses(DataJObj
-                  ,TemplateMetaJObj
-                  ,ConfigCat
-                  ,Keys
-                  ,[find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key)|Acc]
-                  ).
+    [find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) || Key <- AddressKeys].
 
 -spec find_address(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
           email_pair().
@@ -695,7 +683,7 @@ find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
           email_pair().
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined', _) ->
     lager:debug("email type for '~s' not defined in template, checking just the key", [Key]),
-    {Key, find_first_defined_address(Key, [Key], [DataJObj, TemplateMetaJObj])};
+    {Key, find_first_defined_address(Key, [[Key]], [DataJObj, TemplateMetaJObj])};
 find_address(DataJObj, _TemplateMetaJObj, _ConfigCat, <<"to">> = Key, ?EMAIL_SPECIFIED, 'true') ->
     lager:debug("notification is preview, checking data only for '~s' email addresses", [Key]),
     {Key, find_first_defined_address(Key, [[Key, <<"email_addresses">>], Key], [DataJObj])};
@@ -704,7 +692,7 @@ find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_SPECIFIED, _) -
     {Key, find_first_defined_address(Key, [[Key, <<"email_addresses">>], Key], [TemplateMetaJObj, DataJObj])};
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_ORIGINAL, _) ->
     lager:debug("checking data for '~s' email address(es)", [Key]),
-    {Key, find_first_defined_address(Key, [Key, [Key, <<"email_addresses">>]], [DataJObj, TemplateMetaJObj])};
+    {Key, find_first_defined_address(Key, [[Key], [Key, <<"email_addresses">>]], [DataJObj, TemplateMetaJObj])};
 find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS, _) ->
     lager:debug("looking for admin emails for '~s'", [Key]),
     {Key, find_admin_emails(DataJObj, ConfigCat, Key)}.
@@ -731,13 +719,9 @@ get_address_value(Key, Path, [JObj|JObjs]) ->
           kz_term:api_ne_binaries().
 check_address_value('undefined') -> 'undefined';
 check_address_value(<<>>) -> 'undefined';
-check_address_value(<<_/binary>> = Email) -> check_address_value([Email]);
+check_address_value(<<Email/binary>>) -> check_address_value([Email]);
 check_address_value(Emails) when is_list(Emails) ->
-    case [E || E <- Emails,
-               kz_term:is_ne_binary(E),
-               length(binary:split(E, <<"@">>, ['global'])) == 2
-         ]
-    of
+    case only_valid_emails(Emails) of
         [] -> 'undefined';
         Es -> Es
     end;
@@ -747,7 +731,19 @@ check_address_value(Emails) ->
         'false' -> 'undefined'
     end.
 
--spec find_admin_emails(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
+-spec only_valid_emails(kz_term:ne_binaries()) -> kz_term:ne_binaries().
+only_valid_emails(Emails) ->
+    [Email || <<Email/binary>> <- Emails,
+              has_user_and_server(Email)
+    ].
+
+-spec has_user_and_server(kz_term:ne_binary() | kz_term:ne_binaries()) -> boolean().
+has_user_and_server(<<Email/binary>>) ->
+    has_user_and_server(binary:split(Email, <<"@">>, ['global']));
+has_user_and_server([_, _]) -> 'true';
+has_user_and_server(_) -> 'false'.
+
+-spec find_admin_emails(kz_json:object(), kz_term:ne_binary(), kz_json:key()) ->
           kz_term:api_ne_binaries().
 find_admin_emails(DataJObj, ConfigCat, Key) ->
     case find_account_rep_email(kapi_notifications:account_id(DataJObj)) of
