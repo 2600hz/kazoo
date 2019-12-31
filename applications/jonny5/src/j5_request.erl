@@ -137,7 +137,7 @@ from_jobj(JObj) ->
 -spec ccv_reseller_id(kz_term:ne_binary(), kz_json:object()) -> kz_term:api_ne_binary().
 ccv_reseller_id(AccountId, CCVs) ->
     case kz_json:get_ne_value(<<"Reseller-ID">>, CCVs) of
-        'undefined' -> kzd_accounts:reseller_id(AccountId);
+        'undefined' -> kz_services_reseller:get_id(AccountId);
         ResellerId -> ResellerId
     end.
 

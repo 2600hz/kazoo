@@ -228,8 +228,8 @@ stop_module(Module) ->
     end.
 
 -spec module_from_binary(kz_term:ne_binary()) ->
-                                {'ok', module()} |
-                                {'error', 'invalid_mod'}.
+          {'ok', module()} |
+          {'error', 'invalid_mod'}.
 module_from_binary(<<"teletype_", _/binary>> = Template) ->
     case kz_module:ensure_loaded(Template) of
         'false' -> invalid_module(Template);
@@ -249,7 +249,7 @@ maybe_add_module_to_autoload(Module) when is_binary(Module) ->
     case lists:member(Module, Autoload) of
         'true' -> 'ok';
         'false' ->
-            kapps_config:set_default(?NOTIFY_CONFIG_CAT, ?AUTOLOAD_MODULES_KEY, [Module | Autoload]),
+            _ = kapps_config:set_default(?NOTIFY_CONFIG_CAT, ?AUTOLOAD_MODULES_KEY, [Module | Autoload]),
             io:format("added module ~s to autoloaded teletype modules~n", [Module])
     end;
 maybe_add_module_to_autoload(Module) ->
@@ -261,7 +261,7 @@ maybe_remove_module_from_autoload(Module) when is_binary(Module) ->
     case lists:member(Module, Autoload) of
         'false' -> 'ok';
         'true' ->
-            kapps_config:set_default(?NOTIFY_CONFIG_CAT, ?AUTOLOAD_MODULES_KEY, lists:delete(Module, Autoload)),
+            _ = kapps_config:set_default(?NOTIFY_CONFIG_CAT, ?AUTOLOAD_MODULES_KEY, lists:delete(Module, Autoload)),
             io:format("removed module ~s to autoloaded teletype modules~n", [Module])
     end;
 maybe_remove_module_from_autoload(Module) ->

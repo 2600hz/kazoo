@@ -118,7 +118,7 @@ fix_bill_object(PortReqJObj) ->
     fix_bill_object(PortReqJObj, KeyMap).
 
 -spec fix_bill_object(kz_json:object(), [{kz_term:ne_binary(), [kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:ne_binary()}]}]) ->
-                             kz_json:object().
+          kz_json:object().
 fix_bill_object(PortReqJObj, []) -> PortReqJObj;
 fix_bill_object(PortReqJObj, [{Category, KeyMaps} | Rest]) ->
     NewPort = lists:foldl(fun(KeyMap, Acc) -> fix_bill_object(Acc, Category, KeyMap) end
@@ -128,7 +128,7 @@ fix_bill_object(PortReqJObj, [{Category, KeyMaps} | Rest]) ->
     fix_bill_object(NewPort, Rest).
 
 -spec fix_bill_object(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary() | {kz_term:ne_binary(), kz_term:ne_binary()}) ->
-                             kz_json:object().
+          kz_json:object().
 fix_bill_object(PortReqJObj, Category, {OldKeyName, NewKeyName}) ->
     kz_json:set_value([<<"bill">>, Category, NewKeyName]
                      ,kz_json:get_ne_binary_value([<<"bill">>, OldKeyName], PortReqJObj, <<"-">>)
@@ -344,7 +344,7 @@ maybe_add_attachments(DataJObj, _, 'false') ->
     DataJObj.
 
 -spec get_attachment_fold(kz_json:key(), attachments(), kz_term:ne_binary(), kz_json:object()) ->
-                                 attachments().
+          attachments().
 get_attachment_fold(Name, Acc, PortReqId, Doc) ->
     case kz_datamgr:fetch_attachment(?KZ_PORT_REQUESTS_DB, PortReqId, Name) of
         {'ok', Attachment} ->
@@ -452,17 +452,11 @@ maybe_use_port_support(PortAuthority) ->
     case kzd_whitelabel:fetch(PortAuthority) of
         {'ok', JObj} ->
             case kzd_whitelabel:port_support_email(JObj) of
-                ?NE_BINARY = Email ->
+                <<Email/binary>>->
                     lager:debug("using port support emails from port authority ~s", [PortAuthority]),
                     [Email];
-                [] ->
-                    lager:debug("no port support, maybe using port authority admins"),
-                    maybe_use_port_authority_admins(PortAuthority);
-                Emails when is_list(Emails) ->
-                    lager:debug("using port support emails from port authority ~s", [PortAuthority]),
-                    Emails;
-                _ ->
-                    lager:debug("no port support, maybe using port authority admins"),
+                _Else ->
+                    lager:debug("no port support, maybe using port authority admins: ~p", [_Else]),
                     maybe_use_port_authority_admins(PortAuthority)
             end;
         {'error', _} ->
@@ -476,10 +470,7 @@ maybe_use_port_authority_admins(PortAuthority) ->
         'undefined' ->
             lager:debug("~s doesn't have any admins, fallback to template emails", [PortAuthority]),
             'undefined';
-        [] ->
-            lager:debug("~s doesn't have any admins, fallback to template emails", [PortAuthority]),
-            'undefined';
-        Admins ->
+        [_|_]=Admins ->
             lager:debug("using admin emails from ~s", [PortAuthority]),
             Admins
     end.
@@ -503,10 +494,7 @@ maybe_use_master_admins(TemplateId, _, MasterAccountId) ->
         'undefined' ->
             lager:debug("master doesn't have any admins, maybe using default_to from system template"),
             maybe_use_system_emails(TemplateId);
-        [] ->
-            lager:debug("master doesn't have any admins, maybe using default_to from system template"),
-            maybe_use_system_emails(TemplateId);
-        Admins ->
+        [_|_]=Admins ->
             lager:debug("using admin emails from ~s", [MasterAccountId]),
             Admins
     end.
@@ -520,7 +508,7 @@ maybe_use_system_emails(TemplateId) ->
         [] ->
             lager:debug("system template doesn't have default_to"),
             'undefined';
-        ?NE_BINARY = To ->
+        <<To/binary>> ->
             lager:debug("using default_to from system template"),
             [To];
         Emails when is_list(Emails) ->

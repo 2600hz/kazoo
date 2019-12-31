@@ -123,7 +123,7 @@ fetch_attachments(TemplateId, Account) ->
     end.
 
 -spec fetch_attachment(kz_term:ne_binary(), kz_json:object(), template_attachments(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                              template_attachments().
+          template_attachments().
 fetch_attachment(AttachmentName, AttachmentProps, Acc, AccountDb, DocId) ->
     ContentType = kz_json:get_value(<<"content_type">>, AttachmentProps),
     case kz_datamgr:fetch_attachment(AccountDb, DocId, AttachmentName) of
@@ -209,7 +209,7 @@ templates_source(TemplateId, AccountId, ResellerId) ->
     end.
 
 -spec templates_source_has_attachments(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                                              kz_term:api_binary().
+          kz_term:api_binary().
 templates_source_has_attachments(TemplateId, AccountId, ResellerId, Template) ->
     case kz_doc:attachments(Template) of
         'undefined' -> parent_templates_source(TemplateId, AccountId, ResellerId);
@@ -217,7 +217,7 @@ templates_source_has_attachments(TemplateId, AccountId, ResellerId, Template) ->
     end.
 
 -spec parent_templates_source(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                     kz_term:api_binary().
+          kz_term:api_binary().
 parent_templates_source(_TemplateId, AccountId, AccountId) -> ?KZ_CONFIG_DB;
 parent_templates_source(TemplateId, AccountId, ResellerId) ->
     lager:debug("failed to find template ~s in account ~s", [TemplateId, AccountId]),
@@ -225,8 +225,8 @@ parent_templates_source(TemplateId, AccountId, ResellerId) ->
     templates_source(TemplateId, ParentId, ResellerId).
 
 -spec fetch_notification(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                {'ok', kz_json:object()} |
-                                {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 fetch_notification(TemplateId, ?KZ_CONFIG_DB) ->
     fetch_notification(TemplateId, ?KZ_CONFIG_DB, 'undefined');
 fetch_notification(TemplateId, Account) ->
@@ -372,8 +372,8 @@ has_manual_modifications(TemplateJObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec update(kz_json:object(), init_params()) ->
-                    'ok' | {'ok', kz_json:object()} |
-                    {'error', any()}.
+          'ok' | {'ok', kz_json:object()} |
+          {'error', any()}.
 update(TemplateJObj, Params) ->
     case update_from_params(TemplateJObj, Params) of
         {'false', _} -> lager:debug("no updates to template");
@@ -387,8 +387,8 @@ update(TemplateJObj, Params) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec save(kz_json:object()) ->
-                  {'ok', kz_json:object()} |
-                  {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 save(TemplateJObj) ->
     SaveJObj = kz_doc:update_pvt_parameters(TemplateJObj, ?KZ_CONFIG_DB, [{'type', kz_notification:pvt_type()}]),
     case kz_datamgr:save_doc(?KZ_CONFIG_DB, SaveJObj) of
@@ -409,7 +409,7 @@ save(TemplateJObj) ->
 -type update_acc() :: {boolean(), kz_json:object()}.
 
 -spec update_from_params(kz_json:object(), init_params()) ->
-                                update_acc().
+          update_acc().
 update_from_params(TemplateJObj, Params) ->
     lists:foldl(fun update_from_param/2
                ,{'false', TemplateJObj}
@@ -455,7 +455,7 @@ update_from_param({'pvt_type', PvtType}, Acc) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_category(kz_term:ne_binary(), update_acc()) ->
-                             update_acc().
+          update_acc().
 update_category(Category, Acc) ->
     update_field(Category
                 ,Acc
@@ -464,7 +464,7 @@ update_category(Category, Acc) ->
                 ).
 
 -spec update_name(kz_term:ne_binary(), update_acc()) ->
-                         update_acc().
+          update_acc().
 update_name(Name, Acc) ->
     update_field(Name
                 ,Acc
@@ -473,7 +473,7 @@ update_name(Name, Acc) ->
                 ).
 
 -spec update_from(kz_term:ne_binary(), update_acc()) ->
-                         update_acc().
+          update_acc().
 update_from(From, Acc) ->
     update_field(From
                 ,Acc
@@ -482,7 +482,7 @@ update_from(From, Acc) ->
                 ).
 
 -spec update_reply_to(kz_term:ne_binary(), update_acc()) ->
-                             update_acc().
+          update_acc().
 update_reply_to(ReplyTo, Acc) ->
     update_field(ReplyTo
                 ,Acc
@@ -491,7 +491,7 @@ update_reply_to(ReplyTo, Acc) ->
                 ).
 
 -spec update_to(kz_json:object(), update_acc()) ->
-                       update_acc().
+          update_acc().
 update_to(To, Acc) ->
     update_field(To
                 ,Acc
@@ -500,7 +500,7 @@ update_to(To, Acc) ->
                 ).
 
 -spec update_cc(kz_json:object(), update_acc()) ->
-                       update_acc().
+          update_acc().
 update_cc(CC, Acc) ->
     update_field(CC
                 ,Acc
@@ -509,7 +509,7 @@ update_cc(CC, Acc) ->
                 ).
 
 -spec update_bcc(kz_json:object(), update_acc()) ->
-                        update_acc().
+          update_acc().
 update_bcc(Bcc, Acc) ->
     update_field(Bcc
                 ,Acc
@@ -518,7 +518,7 @@ update_bcc(Bcc, Acc) ->
                 ).
 
 -spec update_field(kz_term:api_object() | kz_term:ne_binary(), update_acc(), fun(), fun()) ->
-                          update_acc().
+          update_acc().
 update_field('undefined', Acc, _GetFun, _SetFun) -> Acc;
 update_field(Value, {_IsUpdated, TemplateJObj}=Acc, GetFun, SetFun) ->
     case GetFun(TemplateJObj) of
@@ -532,7 +532,7 @@ update_field(Value, {_IsUpdated, TemplateJObj}=Acc, GetFun, SetFun) ->
     end.
 
 -spec update_subject(kz_term:ne_binary(), update_acc()) ->
-                            update_acc().
+          update_acc().
 update_subject(Subject, Acc) ->
     update_field(Subject
                 ,Acc
@@ -566,7 +566,7 @@ update_text_attachment(Basename, Acc) ->
 %%------------------------------------------------------------------------------
 
 -spec update_attachment(binary(), update_acc(), kz_term:ne_binary()) ->
-                               update_acc().
+          update_acc().
 update_attachment(Contents, {_IsUpdated, TemplateJObj}=Acc, ContentType) ->
     AttachmentName = attachment_name(ContentType),
     Id = kz_doc:id(TemplateJObj),
@@ -577,7 +577,7 @@ update_attachment(Contents, {_IsUpdated, TemplateJObj}=Acc, ContentType) ->
     end.
 
 -spec update_attachment(binary(), update_acc(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               update_acc().
+          update_acc().
 update_attachment(Contents, {IsUpdated, TemplateJObj}=Acc, ContentType, Id, AName) ->
     lager:debug("attachment ~s doesn't exist for ~s", [AName, Id]),
     case save_attachment(Id, AName, ContentType, Contents) of
@@ -596,12 +596,12 @@ update_attachment(Contents, {IsUpdated, TemplateJObj}=Acc, ContentType, Id, ANam
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_macros(kz_json:object(), update_acc()) ->
-                           update_acc().
+          update_acc().
 update_macros(Macros, Acc) ->
     kz_json:foldl(fun update_macro/3, Acc, Macros).
 
--spec update_macro(kz_json:path(), kz_json:json_term(), update_acc()) ->
-                          update_acc().
+-spec update_macro(kz_json:key(), kz_json:json_term(), update_acc()) ->
+          update_acc().
 update_macro(MacroKey, MacroValue, {_IsUpdated, TemplateJObj}=Acc) ->
     case kz_notification:macro(TemplateJObj, MacroKey) of
         'undefined' ->
@@ -636,8 +636,8 @@ does_attachment_exist(DocId, AName) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec save_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), binary()) ->
-                             {'ok', kz_json:object()} |
-                             {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 save_attachment(DocId, AName, ContentType, Contents) ->
     Options = [{'content_type', kz_term:to_list(ContentType)}],
     case kz_datamgr:put_attachment(?KZ_CONFIG_DB, DocId, AName, Contents, Options) of
@@ -671,8 +671,8 @@ write_templates_to_disk(TemplateId, Params) ->
                  ).
 
 -spec read_template_from_disk(kz_term:ne_binary(), 'html' | 'text') ->
-                                     {'ok', binary()} |
-                                     {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
+          {'ok', binary()} |
+          {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 read_template_from_disk(TemplateId, Type) ->
     file:read_file(
       template_filename(TemplateId, Type)).

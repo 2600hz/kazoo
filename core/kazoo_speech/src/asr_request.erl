@@ -180,7 +180,7 @@ from_call(Request, Call) ->
                    ,'asr_provider' = ASRProvider
                    ,'call_id' = kapps_call:call_id(Call)
                    ,'description' = <<ASRProvider/binary, " ASR transcription">>
-                   ,'reseller_id' = kzd_accounts:reseller_id(AccountId)
+                   ,'reseller_id' = kz_services_reseller:get_id(AccountId)
                    ,'services' = kz_services:fetch(AccountId)
                    }.
 %%------------------------------------------------------------------------------
