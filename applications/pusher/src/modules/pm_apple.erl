@@ -120,7 +120,7 @@ maybe_load_apns(App, _, 'undefined', _, _) ->
 maybe_load_apns(App, ETS, CertBin, Host, Headers) ->
     {Key, Cert} = pusher_util:binary_to_keycert(CertBin),
     lager:debug("starting apple push connection for ~s : ~s", [App, Host]),
-    Connection = #{name => kz_term:to_atom(App, 'true')
+    Connection = #{name => kz_term:to_atom(<<"apns_", App/binary>>, 'true')
                   ,apple_host => kz_term:to_list(Host)
                   ,apple_port => 443
                   ,certdata => Cert
