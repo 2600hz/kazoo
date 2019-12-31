@@ -35,7 +35,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.early_authenticate">>, ?MODULE, 'early_authenticate'),
@@ -44,7 +44,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.resource_exists.token_auth">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.token_auth">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.token_auth">>, ?MODULE, 'delete'),
-    ok.
+    'ok'.
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() -> [?HTTP_DELETE, ?HTTP_GET].
