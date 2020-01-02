@@ -11,7 +11,7 @@
 %%%-----------------------------------------------------------------------------
 -module(kapi_authn).
 
--compile({no_auto_import, [error/1]}).
+-compile({'no_auto_import', [error/1]}).
 
 -export([api_definitions/0, api_definition/1]).
 
@@ -30,6 +30,14 @@
         ,publish_error/2
         ,publish_error/3
         ]).
+-export([token_req/1
+        ,token_req_v/1
+        ,token_resp/1
+        ,token_resp_v/1
+        ,publish_token_req/1
+        ,publish_token_resp/2
+        ]).
+
 -export([bind_q/2, unbind_q/2
         ,declare_exchanges/0
         ,get_auth_user/1, get_auth_realm/1
@@ -38,7 +46,12 @@
 
 -include_lib("kz_amqp_util.hrl").
 
+-type token_req() :: kz_term:api_terms().
+
+-export_type([token_req/0]).
+
 -define(KEY_AUTHN_REQ, <<"authn.req">>). %% corresponds to the authn_req/1 api call
+-define(KEY_AUTHN_TOKEN_REQ, <<"authn.token_req">>). %% corresponds to the authn_token_req/1 api call
 
 %%------------------------------------------------------------------------------
 %% @doc Get all API definitions of this module.
@@ -48,6 +61,8 @@
 api_definitions() ->
     [req_definition()
     ,resp_definition()
+    ,token_req_definition()
+    ,token_resp_definition()
     ,error_definition()
     ].
 
@@ -63,6 +78,10 @@ api_definition(<<"req">>) ->
     req_definition();
 api_definition(<<"resp">>) ->
     resp_definition();
+api_definition(<<"token_req">>) ->
+    token_req_definition();
+api_definition(<<"token_resp">>) ->
+    token_resp_definition();
 api_definition(<<"error">>) ->
     error_definition().
 
@@ -104,6 +123,45 @@ req_definition() ->
                 ,{<<"Orig-Port">>, fun is_binary/1}
                 ,{<<"Auth-User">>, fun is_binary/1}
                 ,{<<"Auth-Realm">>, fun is_binary/1}
+                ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
+-spec token_req_definition() -> kapi_definition:api().
+token_req_definition() ->
+    EventName = <<"token_req">>,
+    Category = <<"directory">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Token Authentication Request">>}
+              ,{fun kapi_definition:set_description/2, <<"Token Authentication Request">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun token_req/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun token_req_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_token_req/1}
+              ,{fun kapi_definition:set_required_headers/2, [<<"To">>
+                                                            ,<<"From">>
+                                                            ,<<"Auth-Token">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Call-ID">>
+                                                            ,<<"Contact">>
+                                                            ,<<"Custom-SIP-Headers">>
+                                                            ,<<"Expires">>
+                                                            ,<<"Orig-IP">>
+                                                            ,<<"Orig-Port">>
+                                                            ,<<"Switch-Hostname">>
+                                                            ,<<"User-Agent">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"To">>, fun is_binary/1}
+                ,{<<"From">>, fun is_binary/1}
+                ,{<<"Orig-IP">>, fun is_binary/1}
+                ,{<<"Orig-Port">>, fun is_binary/1}
+                ,{<<"Auth-Token">>, fun is_binary/1}
                 ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
                 ]
                }
@@ -153,6 +211,42 @@ resp_definition() ->
               ],
     kapi_definition:setters(Setters).
 
+
+-spec token_resp_definition() -> kapi_definition:api().
+token_resp_definition() ->
+    EventName = <<"token_resp">>,
+    Category = <<"directory">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Token Authentication Response">>}
+              ,{fun kapi_definition:set_description/2, <<"Token Authentication Response">>}
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun token_resp/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun token_resp_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_token_resp/2}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Token-Data">>]}
+              ,{fun kapi_definition:set_optional_headers/2, [<<"Access-Group">>
+                                                            ,<<"Auth-Nonce">>
+                                                            ,<<"Custom-Channel-Vars">>
+                                                            ,<<"Custom-SIP-Headers">>
+                                                            ,<<"Expires">>
+                                                            ,<<"Register-Overwrite-Notify">>
+                                                            ,<<"Suppress-Unregister-Notifications">>
+                                                            ,<<"Tenant-ID">>
+                                                            ]}
+              ,{fun kapi_definition:set_values/2
+               ,kapi_definition:event_type_headers(Category, EventName)
+               }
+              ,{fun kapi_definition:set_types/2
+               ,[{<<"Access-Group">>, fun is_binary/1}
+                ,{<<"Token-Data">>, fun kz_json:is_json_object/1}
+                ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
+                ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                ,{<<"Tenant-ID">>, fun is_binary/1}
+                ]
+               }
+              ],
+    kapi_definition:setters(Setters).
+
 -spec error_definition() -> kapi_definition:api().
 error_definition() ->
     EventName = <<"authn_err">>,
@@ -193,11 +287,37 @@ publish_req(JObj) ->
 -spec publish_req(kz_term:api_terms(), binary()) -> 'ok'.
 publish_req(Req, ContentType) ->
     Definition = req_definition(),
-    {ok, Payload} = kz_api:prepare_api_payload(Req
-                                              ,kapi_definition:values(Definition)
-                                              ,kapi_definition:build_fun(Definition)
-                                              ),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
     kz_amqp_util:callmgr_publish(Payload, ContentType, get_authn_req_routing(Req)).
+
+%%------------------------------------------------------------------------------
+%% @doc Token Authentication Request.
+%% Takes {@link kz_term:proplist()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec token_req(kz_term:api_terms()) -> kz_api:api_formatter_return().
+token_req(Req) ->
+    kapi_definition:build_message(Req, token_req_definition()).
+
+-spec token_req_v(kz_term:api_terms()) -> boolean().
+token_req_v(Req) ->
+    kapi_definition:validate(Req, token_req_definition()).
+
+-spec publish_token_req(kz_term:api_terms()) -> 'ok'.
+publish_token_req(JObj) ->
+    publish_token_req(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_token_req(kz_term:api_terms(), binary()) -> 'ok'.
+publish_token_req(Req, ContentType) ->
+    Definition = token_req_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:callmgr_publish(Payload, ContentType, get_authn_token_req_routing(Req)).
 
 %%------------------------------------------------------------------------------
 %% @doc Authentication Response.
@@ -219,10 +339,36 @@ publish_resp(Queue, JObj) ->
 -spec publish_resp(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_resp(Queue, Resp, ContentType) ->
     Definition = resp_definition(),
-    {ok, Payload} = kz_api:prepare_api_payload(Resp
-                                              ,kapi_definition:values(Definition)
-                                              ,kapi_definition:build_fun(Definition)
-                                              ),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
+    kz_amqp_util:targeted_publish(Queue, Payload, ContentType).
+
+%%------------------------------------------------------------------------------
+%% @doc Token Authentication Response.
+%% Takes {@link kz_term:proplist()}, creates JSON string or error.
+%% @end
+%%------------------------------------------------------------------------------
+-spec token_resp(kz_term:api_terms()) -> kz_api:api_formatter_return().
+token_resp(Req) ->
+    kapi_definition:build_message(Req, token_resp_definition()).
+
+-spec token_resp_v(kz_term:api_terms()) -> boolean().
+token_resp_v(Req) ->
+    kapi_definition:validate(Req, token_resp_definition()).
+
+-spec publish_token_resp(kz_term:ne_binary(), kz_term:api_terms()) -> 'ok'.
+publish_token_resp(Queue, JObj) ->
+    publish_token_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_token_resp(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
+publish_token_resp(Queue, Resp, ContentType) ->
+    Definition = token_resp_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
     kz_amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
@@ -245,25 +391,49 @@ publish_error(Queue, JObj) ->
 -spec publish_error(kz_term:ne_binary(), kz_term:api_terms(), binary()) -> 'ok'.
 publish_error(Queue, Resp, ContentType) ->
     Definition = error_definition(),
-    {ok, Payload} = kz_api:prepare_api_payload(Resp
-                                              ,kapi_definition:values(Definition)
-                                              ,kapi_definition:build_fun(Definition)
-                                              ),
+    {'ok', Payload} = kz_api:prepare_api_payload(Resp
+                                                ,kapi_definition:values(Definition)
+                                                ,kapi_definition:build_fun(Definition)
+                                                ),
     kz_amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%------------------------------------------------------------------------------
 %% @doc Setup and tear down bindings for authn `gen_listeners'
 %% @end
 %%------------------------------------------------------------------------------
--spec bind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
+-type restrict() :: 'authn_req' | 'token_req'.
+-type restrict_to() :: [restrict()].
+-type option() :: {'realm', kz_term:ne_binary()} |
+                  {'restrict_to', restrict_to()}.
+-type options() :: [option()].
+
+-spec bind_q(kz_term:ne_binary(), options()) -> 'ok'.
 bind_q(Q, Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
-    kz_amqp_util:bind_q_to_callmgr(Q, get_authn_req_routing(Realm)).
+    RestrictTo = props:get_value('restrict_to', Props, ['authn_req']),
+    bind_q(Q, Realm, RestrictTo).
+
+bind_q(Q, Realm, ['authn_req'|RestrictTo]) ->
+    kz_amqp_util:bind_q_to_callmgr(Q, get_authn_req_routing(Realm)),
+    bind_q(Q, Realm, RestrictTo);
+bind_q(Q, Realm, ['token_req'|RestrictTo]) ->
+    kz_amqp_util:bind_q_to_callmgr(Q, get_authn_token_req_routing(Realm)),
+    bind_q(Q, Realm, RestrictTo);
+bind_q(_Q, _Realm, []) -> 'ok'.
 
 -spec unbind_q(kz_term:ne_binary(), kz_term:proplist()) -> 'ok'.
 unbind_q(Q, Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
-    kz_amqp_util:unbind_q_from_callmgr(Q, get_authn_req_routing(Realm)).
+    RestrictTo = props:get_value('restrict_to', Props, ['authn_req']),
+    unbind_q(Q, Realm, RestrictTo).
+
+unbind_q(Q, Realm, ['authn_req' | RestrictTo]) ->
+    kz_amqp_util:unbind_q_from_callmgr(Q, get_authn_req_routing(Realm)),
+    unbind_q(Q, Realm, RestrictTo);
+unbind_q(Q, Realm, ['token_req' | RestrictTo]) ->
+    kz_amqp_util:unbind_q_from_callmgr(Q, get_authn_token_req_routing(Realm)),
+    unbind_q(Q, Realm, RestrictTo);
+unbind_q(_Q, _Realm, []) -> 'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc Declare the exchanges used by this API.
@@ -283,6 +453,15 @@ get_authn_req_routing(Realm) when is_binary(Realm) ->
 get_authn_req_routing(Req) ->
     get_authn_req_routing(get_auth_realm(Req)).
 
+%%------------------------------------------------------------------------------
+%% @doc Creating the routing key for either binding queues or publishing messages.
+%% @end
+%%------------------------------------------------------------------------------
+-spec get_authn_token_req_routing(kz_term:ne_binary() | kz_term:api_terms()) -> kz_term:ne_binary().
+get_authn_token_req_routing(Realm) when is_binary(Realm) ->
+    list_to_binary([?KEY_AUTHN_TOKEN_REQ, ".", kz_amqp_util:encode(Realm)]);
+get_authn_token_req_routing(Req) ->
+    get_authn_token_req_routing(get_auth_realm(Req)).
 
 -define(AUTH_DEFAULT_USERATDOMAIN, <<"nouser@nodomain">>).
 
