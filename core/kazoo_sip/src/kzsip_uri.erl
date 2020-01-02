@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc Parse and manipulate SIP URIs
 %%% @author James Aimonetti
 %%% This Source Code Form is subject to the terms of the Mozilla Public

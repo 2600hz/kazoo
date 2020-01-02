@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Jon Blanton <jon@2600hz.com>
 %%% This Source Code Form is subject to the terms of the Mozilla Public

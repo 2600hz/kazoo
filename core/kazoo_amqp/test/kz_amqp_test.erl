@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Test module to work on recovering after AMQP disconnect
 %%%
 %%% Creates a basic publisher and consumer and starts appropriate timers. When

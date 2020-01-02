@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc A singular call is as an entire conversation as dialed by the caller,
 %%% and it may comprise of multiple "legs" or "calls".
 %%%

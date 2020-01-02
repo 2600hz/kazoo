@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc Handle rolling over services at the start of the month
 %%%
 %%% This Source Code Form is subject to the terms of the Mozilla Public

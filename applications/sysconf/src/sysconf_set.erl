@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Handle AMQP requests to write system configuration data.
 %%% Support nested keys like key#subkey#subsubkey
 %%%

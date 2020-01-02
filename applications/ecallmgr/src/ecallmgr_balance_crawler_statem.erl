@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Ecallmgr module (`statem') for disconnecting calls when account
 %%% balance drops below zero.
 %%%

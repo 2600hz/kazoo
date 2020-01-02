@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Generic HTTP backend module
 %%% @author SIPLABS, LLC (Vorontsov Nikita) <info@siplabs.ru>
 %%% @author Conversant Ltd (Max Lay)

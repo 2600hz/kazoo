@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Routing requests, responses, and wins!
 %%% @author Luis Azedo
 %%% This Source Code Form is subject to the terms of the Mozilla Public

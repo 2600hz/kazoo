@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc Manage the ETS table separate from the main process to use the ETS table
 %%% Protects against the main writer dying.
 %%%

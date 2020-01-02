@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc XML-formatter for FreeSWITCH XML responses
 %%% Copy of xmerl/src/xmerl_xml.erl
 %%%

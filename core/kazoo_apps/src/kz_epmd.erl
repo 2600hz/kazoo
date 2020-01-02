@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Monitors EPMD connection and restarts it when necessary
 %%%
 %%% This Source Code Form is subject to the terms of the Mozilla Public

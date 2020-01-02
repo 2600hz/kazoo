@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc Generic module to walk project, applications and module to read
 %%% create module's AST and do job various jobs on them.
 %%% @author James Aimonetti

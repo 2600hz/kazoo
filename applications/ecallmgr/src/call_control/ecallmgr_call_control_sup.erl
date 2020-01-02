@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Simple-One-For-One strategy for restarting call event processes
 %%% @author James Aimonetti <james@2600hz.org>
 %%% @author Karl Anderson <karl@2600hz.org>

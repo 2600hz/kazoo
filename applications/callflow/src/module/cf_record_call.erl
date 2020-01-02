@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Handles starting/stopping a call recording.
 %%% @author James Aimonetti
 %%% @author Sponsored by Velvetech LLC, Implemented by SIPLABS LLC

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Renders a custom account email template, or the system default,
 %%% @author Karl Anderson <karl@2600hz.org>
 %%%

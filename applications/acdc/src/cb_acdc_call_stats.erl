@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Read only access to ACDC stats docs
 %%% This code is VERY similar to that in cb_cdrs. At some point code
 %%% that is used by both should be re-factored into a MODB utility

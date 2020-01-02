@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2019-, 2600Hz
+%%% @copyright (C) 2020-, 2600Hz
 %%% @doc An attempt to capture the account update interleaving via property tests
 %%%
 %%% Also served to introduce PropEr to devs. Never got it to reproduce the issue
