@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc Module for interacting with JSON schema docs
 %%% @author James Aimonetti
 %%%

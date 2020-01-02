@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc When connecting to a FreeSWITCH node, we create this process
 %%% to monitor the node.
 %%%

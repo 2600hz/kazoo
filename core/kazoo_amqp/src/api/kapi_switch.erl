@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Switch events messages.
 %%% @author Edouard Swiac
 %%% This Source Code Form is subject to the terms of the Mozilla Public

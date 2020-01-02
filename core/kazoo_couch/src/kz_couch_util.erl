@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Util functions used by kazoo_couch.
 %%% @author James Aimonetti
 %%% This Source Code Form is subject to the terms of the Mozilla Public

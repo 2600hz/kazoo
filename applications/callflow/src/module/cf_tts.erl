@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc Takes a text and uses TTS to play it to the caller.
 %%%
 %%% <h4>Data options:</h4>

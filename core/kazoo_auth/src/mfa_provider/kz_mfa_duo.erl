@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2019, 2600Hz
+%%% @copyright (C) 2017-2020, 2600Hz
 %%% @doc Kazoo Duo multi factor authenticator.
 %%% @author Hesaam Farhang
 %%% This Source Code Form is subject to the terms of the Mozilla Public

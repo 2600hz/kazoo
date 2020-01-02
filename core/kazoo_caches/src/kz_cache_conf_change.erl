@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2019-, 2600Hz
+%%% @copyright (C) 2020-, 2600Hz
 %%% @doc Handles document change AMQP payloads and flushes caches appropriately
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this

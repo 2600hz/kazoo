@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc menu greeting media when referencing other account's media
 %%%
 %%% 1. create media in account 1

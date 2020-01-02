@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2019, 2600Hz
+%%% @copyright (C) 2017-2020, 2600Hz
 %%% @doc FreeSWITCH proplists
 %%%
 %%% @author James Aimonetti

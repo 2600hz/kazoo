@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Instructs the switch to receive a fax from the caller
 %%% Stores the fax in the database and optionally emails a configured
 %%% user(s).

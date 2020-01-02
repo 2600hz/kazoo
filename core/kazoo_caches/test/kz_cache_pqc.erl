@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc PropEr testing of the cache
 %%% @author James Aimonetti
 %%% @todo refactor how wait_for_* functions work in the model. need to track the

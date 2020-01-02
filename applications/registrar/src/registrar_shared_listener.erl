@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Listener for authn_req, reg_success, and reg_query AMQP requests
 %%% @author James Aimonetti
 %%%

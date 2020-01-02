@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Helpers for manipulating the #bh_context{} record
 %%% @author Ben Wann
 %%%

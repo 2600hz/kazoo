@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @author James Aimonetti
 %%% @doc
 %%% invoke with `proper:quickcheck(hon_trie_lru_pqc:correct())` or `correct_parallel`

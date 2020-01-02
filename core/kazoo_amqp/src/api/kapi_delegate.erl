@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc Delegate JObj from one application to another application.
 %%% App/Key combo used to send messages.
 %%%

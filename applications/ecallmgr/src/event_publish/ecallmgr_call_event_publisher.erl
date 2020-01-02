@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc Track the FreeSWITCH channel information, and provide accessors
 %%%
 %%%

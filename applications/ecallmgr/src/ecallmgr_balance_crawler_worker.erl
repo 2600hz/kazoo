@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Jonny5 module (worker) for disconnect calls when account
 %%% balance drops below zero.
 %%%

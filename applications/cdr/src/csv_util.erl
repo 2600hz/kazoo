@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Utility module for V3 Kazoo Migration
 %%% @author Ben Wann
 %%% @author James Aimonetti

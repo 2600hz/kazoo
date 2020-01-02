@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc Transfers caller to the extension extracted in the regex.
 %%%
 %%% <h4>Data options:</h4>

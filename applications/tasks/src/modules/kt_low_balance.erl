@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Check and notify if account's balance is below notification threshold.
 %%% @author Harenson Henao
 %%%
