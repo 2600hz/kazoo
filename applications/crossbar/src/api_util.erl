@@ -1248,23 +1248,35 @@ execute_request_results(Req, Context, _RespStatus) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec finish_request(cowboy_req:req(), cb_context:context()) -> 'ok'.
-finish_request(_Req, Context) ->
+finish_request(Req, Context) ->
     [{Mod, _}|_] = cb_context:req_nouns(Context),
     Verb = cb_context:req_verb(Context),
     Event = create_event_name(Context, [<<"finish_request">>, Verb, Mod]),
     _ = kz_process:spawn(fun crossbar_bindings:pmap/2, [Event, Context]),
-    maybe_cleanup_file(cb_context:resp_file(Context)).
+    maybe_cleanup_file(Req, cb_context:resp_file(Context)).
 
--spec maybe_cleanup_file(binary()) -> 'ok'.
-maybe_cleanup_file(<<>>) -> 'ok';
-maybe_cleanup_file(File) ->
-    _P = spawn(fun() -> cleanup_file(File) end),
+-spec maybe_cleanup_file(cowboy_req:req(), binary()) -> 'ok'.
+maybe_cleanup_file(_Req, <<>>) -> 'ok';
+maybe_cleanup_file(#{pid := ConnPid}, File) ->
+    _P = kz_process:spawn(fun() -> cleanup_file(ConnPid, File) end),
     lager:debug("deleting ~s in ~p", [File, _P]).
 
--spec cleanup_file(file:filename_all()) -> 'ok'.
-cleanup_file(File) ->
+-spec cleanup_file(pid(), file:filename_all()) -> 'ok'.
+cleanup_file(ConnPid, File) ->
+    Ref = monitor('process', ConnPid),
+    Start = kz_time:start_time(),
+
+    wait_for_exit(ConnPid, Ref),
+
     'ok' = file:delete(File),
-    lager:debug("deleted file ~s", [File]).
+    lager:debug("deleted file ~s after ~pms", [File, kz_time:elapsed_ms(Start)]).
+
+wait_for_exit(ConnPid, Ref) ->
+    receive
+        {'DOWN', Ref, 'process', ConnPid, _Reason} -> 'ok';
+        _Msg -> wait_for_exit(ConnPid, Ref)
+    after 5 * ?MILLISECONDS_IN_MINUTE -> lager:info("timed out waiting for connection process")
+    end.
 
 -spec create_resp_body(cb_context:context(), cowboy_req:req()) -> cowboy_req:req().
 create_resp_body(Context, Req0) ->
