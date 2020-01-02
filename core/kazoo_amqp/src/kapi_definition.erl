@@ -32,25 +32,8 @@
         ,values/1, set_values/2
         ]).
 
+-include_lib("kazoo_amqp/include/kapi_definition.hrl").
 -include_lib("kazoo_amqp/include/kz_api_literals.hrl").
-
--record(kapi_definition, {name :: kz_term:api_ne_binary()
-                         ,friendly_name :: kz_term:api_ne_binary()
-                         ,description :: kz_term:api_ne_binary()
-                         ,category = 'undefined' :: kz_term:api_ne_binary()
-                         ,build_fun :: fun((kz_term:api_terms()) -> kz_api:api_formatter_return()) | 'undefined'
-                         ,validate_fun :: fun((kz_term:api_terms()) -> boolean()) | 'undefined'
-                         ,publish_fun :: fun((...) -> 'ok') | 'undefined'
-                         ,binding = 'undefined' :: kz_term:api_ne_binary()
-                         ,restrict_to = 'undefined' :: kz_term:api_atom()
-                         ,required_headers = [] :: kz_api:api_headers()
-                         ,optional_headers = [] :: kz_api:api_headers()
-                         ,values = [] :: kz_api:api_valid_values()
-                         ,types = [] :: kz_api:api_types()
-                         }).
-
--opaque api() :: #kapi_definition{}.
--type apis() :: [api()].
 
 -type setter_fun() :: {fun((api(), Value) -> api()), Value}.
 -type setter_funs() :: [setter_fun()].
