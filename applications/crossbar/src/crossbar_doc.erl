@@ -996,7 +996,7 @@ maybe_apply_custom_filter(Context, FilterFun, JObjs) ->
         not kz_term:is_empty(JObj)
     ].
 
--spec handle_datamgr_success(kz_json:object() | kz_json:objects(), cb_context:context()) -> cb_context:context().
+-spec handle_datamgr_success(kz_json:json_term(), cb_context:context()) -> cb_context:context().
 handle_datamgr_success([], Context) ->
     RespEnv = kz_json:set_value(<<"page_size">>, 0, cb_context:resp_envelope(Context)),
     handle_thing_success([], cb_context:set_resp_envelope(Context, RespEnv));
@@ -1011,7 +1011,7 @@ handle_datamgr_success(JObj, Context) ->
         'false' -> handle_thing_success(JObj, Context)
     end.
 
--spec handle_thing_success(any(), cb_context:context()) -> cb_context:context().
+-spec handle_thing_success(kz_json:json_term(), cb_context:context()) -> cb_context:context().
 handle_thing_success(Thing, Context) ->
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, Thing}

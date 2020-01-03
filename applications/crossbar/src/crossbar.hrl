@@ -167,7 +167,7 @@
                     ,device_id :: kz_term:api_ne_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/devices/{device-id}/*
                     ,reseller_id :: kz_term:api_ne_binary()
                     ,db_name :: kz_term:api_binary() | kz_term:ne_binaries()
-                    ,doc :: kz_term:api_object() | kz_json:objects()
+                    ,doc :: kz_json:api_json_term()
                     ,pretty_print = 'false' :: boolean()
                     ,resp_expires = {{1999,1,1},{0,0,0}} :: kz_time:datetime()
                     ,resp_etag :: 'automatic' | string() | kz_term:api_binary()
