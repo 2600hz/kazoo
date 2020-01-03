@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.fs.command",
+    "description": "AMQP API for fs.command",
+    "properties": {
+        "Application-Name": {
+            "type": "string"
+        },
+        "Args": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "fs"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "command"
+            ],
+            "type": "string"
+        },
+        "Insert-At": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Application-Name",
+        "Args"
+    ],
+    "type": "object"
+}

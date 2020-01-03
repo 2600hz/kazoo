@@ -1,0 +1,66 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.authn.authn_resp",
+    "description": "AMQP API for authn.authn_resp",
+    "properties": {
+        "Access-Group": {
+            "type": "string"
+        },
+        "Auth-Method": {
+            "enum": [
+                "password",
+                "ip",
+                "a1-hash",
+                "error",
+                "gsm",
+                "nonce",
+                "a3a8"
+            ],
+            "type": "string"
+        },
+        "Auth-Nonce": {
+            "type": "string"
+        },
+        "Auth-Password": {
+            "type": "string"
+        },
+        "Auth-Username": {
+            "type": "string"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "directory"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "authn_resp"
+            ],
+            "type": "string"
+        },
+        "Expires": {
+            "type": "string"
+        },
+        "Register-Overwrite-Notify": {
+            "type": "string"
+        },
+        "Suppress-Unregister-Notifications": {
+            "type": "string"
+        },
+        "Tenant-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Auth-Method",
+        "Auth-Password"
+    ],
+    "type": "object"
+}

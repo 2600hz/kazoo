@@ -14,8 +14,5 @@
                          ,types = [] :: kz_api:api_types()
                          }).
 
--opaque api() :: #kapi_definition{}.
--type apis() :: [api()].
-
 -define(KAPI_DEFINITION_HRL, 'true').
 -endif.

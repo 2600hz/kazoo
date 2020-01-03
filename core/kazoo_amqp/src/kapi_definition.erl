@@ -38,6 +38,9 @@
 -type setter_fun() :: {fun((api(), Value) -> api()), Value}.
 -type setter_funs() :: [setter_fun()].
 
+-opaque api() :: #kapi_definition{}.
+-type apis() :: [api()].
+
 -export_type([api/0
              ,apis/0
              ,setter_funs/0

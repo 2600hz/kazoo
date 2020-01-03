@@ -1,87 +1,71 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "_id": "kapi.notifications.system_alert",
-    "description": "AMQP API for notifications.system_alert",
+    "_id": "kapi.authn.authn_req",
+    "description": "AMQP API for authn.authn_req",
     "properties": {
-        "Account-DB": {
+        "Auth-Nonce": {
             "type": "string"
         },
-        "Account-ID": {
+        "Auth-Realm": {
             "type": "string"
         },
-        "Attachment-URL": {
+        "Auth-Response": {
             "type": "string"
         },
-        "Bcc": {
+        "Auth-User": {
             "type": "string"
         },
-        "Cc": {
+        "Call-ID": {
             "type": "string"
         },
-        "Details": {
+        "Contact": {
             "type": "string"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
         },
         "Event-Category": {
             "enum": [
-                "notification"
+                "directory"
             ],
             "type": "string"
         },
         "Event-Name": {
             "enum": [
-                "system_alert"
+                "authn_req"
             ],
+            "type": "string"
+        },
+        "Expires": {
             "type": "string"
         },
         "From": {
             "type": "string"
         },
-        "HTML": {
+        "Method": {
             "type": "string"
         },
-        "Line": {
+        "Orig-IP": {
             "type": "string"
         },
-        "Message": {
+        "Orig-Port": {
             "type": "string"
         },
-        "Module": {
-            "type": "string"
-        },
-        "Node": {
-            "type": "string"
-        },
-        "Pid": {
-            "type": "string"
-        },
-        "Preview": {
-            "type": "string"
-        },
-        "Reply-To": {
-            "type": "string"
-        },
-        "Request-ID": {
-            "type": "string"
-        },
-        "Section": {
-            "type": "string"
-        },
-        "Subject": {
-            "type": "string"
-        },
-        "Text": {
+        "Switch-Hostname": {
             "type": "string"
         },
         "To": {
             "type": "string"
         },
-        "kapi_definitionule": {
+        "User-Agent": {
             "type": "string"
         }
     },
     "required": [
-        "Message",
-        "Subject"
+        "Auth-Realm",
+        "Auth-User",
+        "From",
+        "To"
     ],
     "type": "object"
 }

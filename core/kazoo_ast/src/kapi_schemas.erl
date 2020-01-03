@@ -22,8 +22,8 @@
 -include_lib("kazoo_amqp/src/api/kapi_route.hrl").
 -include_lib("kazoo_amqp/include/kapi_definition.hrl").
 
-%%-define(DEBUG(_Fmt, _Args), 'ok').
--define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
+-define(DEBUG(_Fmt, _Args), 'ok').
+%%-define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
 
 -record(acc, {kapi_name = <<"empty">> :: kz_term:ne_binary() %% s/kapi_(.+)/\1/
              ,api_name = <<"empty">> :: kz_term:api_ne_binary() %% api function
@@ -249,10 +249,11 @@ kapi_definition_field_to_schema({'values', Values}, Acc) ->
 
 kapi_definition_field_to_schema(?RECORD_FIELD_BIND('types', Types), Acc) ->
     kapi_definition_field_to_schema({'types', Types}, Acc);
-kapi_definition_field_to_schema(?RECORD_FIELD_BIND('types', Types), Acc) ->
+kapi_definition_field_to_schema({'types', Types}, Acc) ->
     validators_to_schema([], ast_to_proplist(Types), Acc);
 
-kapi_definition_field_to_schema(_, Acc) ->
+kapi_definition_field_to_schema(_Field, Acc) ->
+    ?DEBUG("ignoring field ~p~n", [_Field]),
     Acc.
 
 optional_validators(?EMPTY_LIST) -> [];
@@ -519,7 +520,7 @@ validator_properties({'function', 'has_cost_parameters', 1}) ->
 validator_properties({'function', 'store_media_content_v', 1}) ->
     kz_json:from_list([{<<"type">>, <<"string">>}]);
 validator_properties({'function', _F, _A}) ->
-    ?LOG_DEBUG("  no properties for fun ~p/~p~n", [_F, _A]),
+    ?DEBUG("  no properties for fun ~p/~p~n", [_F, _A]),
     kz_json:from_list([{<<"type">>, <<"string">>}]).
 
 cost_parameters_schema() ->
@@ -560,6 +561,8 @@ ast_to_kv({Key, Value}) ->
 ast_to_kv(?TUPLE([Key, Value])) ->
     ast_to_kv({Key, Value}).
 
+ast_to_value(Fun) when is_function(Fun) ->
+    value_from_fun(Fun);
 ast_to_value(<<Bin/binary>>) -> Bin;
 ast_to_value(Bins) when is_list(Bins) -> Bins;
 ast_to_value(?MOD_FUN_ARGS('kapi_presence', 'presence_states', [])) ->
@@ -576,6 +579,19 @@ ast_to_value(?ANON(Clauses)) ->
     clauses_to_value(Clauses);
 ast_to_value(?VAR(_)) ->
     'undefined'.
+
+value_from_fun(Fun) ->
+    Info = erlang:fun_info(Fun),
+    value_from_fun(props:get_value('module', Info)
+                  ,props:get_value('name', Info)
+                  ,props:get_value('arity', Info)
+                  ,props:get_value('type', Info)
+                  ).
+
+value_from_fun(Module, Function, Arity, 'external') ->
+    {Module, Function, Arity};
+value_from_fun(_Module, Function, Arity, 'local') ->
+    {'function', Function, Arity}.
 
 clauses_to_value(?CLAUSE([?BINARY_STRING(Value)
                          ,?BINARY_VAR('_')
