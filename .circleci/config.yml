@@ -174,7 +174,7 @@ jobs:
           name: Building plt file
           command: make build-plt
       - run:
-          name: Dailyzing changed Erlang files
+          name: Dialyzing changed Erlang files
           command: make dialyze-changed
       - save_cache:
           key: plt-v1-{{ checksum "make/deps.mk" }}-{{ checksum "/usr/local/lib/erlang/releases/RELEASES" }}
