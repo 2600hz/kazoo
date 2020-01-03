@@ -96,34 +96,46 @@ req_definition() ->
               ,{fun kapi_definition:set_build_fun/2, fun req/1}
               ,{fun kapi_definition:set_validate_fun/2, fun req_v/1}
               ,{fun kapi_definition:set_publish_fun/2, fun publish_req/1}
-              ,{fun kapi_definition:set_required_headers/2, [<<"To">>
-                                                            ,<<"From">>
-                                                            ,<<"Auth-User">>
-                                                            ,<<"Auth-Realm">>
-                                                            ]}
-              ,{fun kapi_definition:set_optional_headers/2, [<<"Method">>
-                                                            ,<<"Switch-Hostname">>
-                                                            ,<<"Orig-IP">>
-                                                            ,<<"Orig-Port">>
-                                                            ,<<"Call-ID">>
-                                                            ,<<"Auth-Nonce">>
-                                                            ,<<"Auth-Response">>
-                                                            ,<<"User-Agent">>
-                                                            ,<<"Expires">>
-                                                            ,<<"Contact">>
-                                                            ,<<"Custom-SIP-Headers">>
-                                                            ]}
+              ,{fun kapi_definition:set_required_headers/2
+               ,[<<"Auth-Realm">>
+                ,<<"Auth-User">>
+                ,<<"From">>
+                ,<<"To">>
+                ]
+               }
+              ,{fun kapi_definition:set_optional_headers/2
+               ,[<<"Auth-Nonce">>
+                ,<<"Auth-Response">>
+                ,<<"Call-ID">>
+                ,<<"Contact">>
+                ,<<"Custom-SIP-Headers">>
+                ,<<"Expires">>
+                ,<<"Method">>
+                ,<<"Orig-IP">>
+                ,<<"Orig-Port">>
+                ,<<"Switch-Hostname">>
+                ,<<"User-Agent">>
+                ]
+               }
               ,{fun kapi_definition:set_values/2
                ,kapi_definition:event_type_headers(Category, EventName)
                }
               ,{fun kapi_definition:set_types/2
-               ,[{<<"To">>, fun is_binary/1}
+               ,[{<<"Auth-Nonce">>, fun is_binary/1}
+                ,{<<"Auth-Realm">>, fun is_binary/1}
+                ,{<<"Auth-Response">>, fun is_binary/1}
+                ,{<<"Auth-User">>, fun is_binary/1}
+                ,{<<"Call-ID">>, fun is_binary/1}
+                ,{<<"Contact">>, fun is_binary/1}
+                ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                ,{<<"Expires">>, fun is_integer/1}
                 ,{<<"From">>, fun is_binary/1}
+                ,{<<"Method">>, fun is_binary/1}
                 ,{<<"Orig-IP">>, fun is_binary/1}
                 ,{<<"Orig-Port">>, fun is_binary/1}
-                ,{<<"Auth-User">>, fun is_binary/1}
-                ,{<<"Auth-Realm">>, fun is_binary/1}
-                ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                ,{<<"Switch-Hostname">>, fun is_binary/1}
+                ,{<<"To">>, fun is_binary/1}
+                ,{<<"User-Agent">>, fun is_binary/1}
                 ]
                }
               ],
@@ -140,29 +152,37 @@ token_req_definition() ->
               ,{fun kapi_definition:set_build_fun/2, fun token_req/1}
               ,{fun kapi_definition:set_validate_fun/2, fun token_req_v/1}
               ,{fun kapi_definition:set_publish_fun/2, fun publish_token_req/1}
-              ,{fun kapi_definition:set_required_headers/2, [<<"To">>
-                                                            ,<<"From">>
-                                                            ,<<"Auth-Token">>
-                                                            ]}
-              ,{fun kapi_definition:set_optional_headers/2, [<<"Call-ID">>
-                                                            ,<<"Contact">>
-                                                            ,<<"Custom-SIP-Headers">>
-                                                            ,<<"Expires">>
-                                                            ,<<"Orig-IP">>
-                                                            ,<<"Orig-Port">>
-                                                            ,<<"Switch-Hostname">>
-                                                            ,<<"User-Agent">>
-                                                            ]}
+              ,{fun kapi_definition:set_required_headers/2
+               ,[<<"Auth-Token">>
+                ,<<"From">>
+                ,<<"To">>
+                ]
+               }
+              ,{fun kapi_definition:set_optional_headers/2
+               ,[<<"Call-ID">>
+                ,<<"Contact">>
+                ,<<"Custom-SIP-Headers">>
+                ,<<"Expires">>
+                ,<<"Orig-IP">>
+                ,<<"Orig-Port">>
+                ,<<"Switch-Hostname">>
+                ,<<"User-Agent">>
+                ]
+               }
               ,{fun kapi_definition:set_values/2
                ,kapi_definition:event_type_headers(Category, EventName)
                }
               ,{fun kapi_definition:set_types/2
-               ,[{<<"To">>, fun is_binary/1}
+               ,[{<<"Auth-Token">>, fun is_binary/1}
+                ,{<<"Call-ID">>, fun is_binary/1}
+                ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                ,{<<"Expires">>, fun is_integer/1}
                 ,{<<"From">>, fun is_binary/1}
                 ,{<<"Orig-IP">>, fun is_binary/1}
                 ,{<<"Orig-Port">>, fun is_binary/1}
-                ,{<<"Auth-Token">>, fun is_binary/1}
-                ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                ,{<<"Switch-Hostname">>, fun is_binary/1}
+                ,{<<"To">>, fun is_binary/1}
+                ,{<<"User-Agent">>, fun is_binary/1}
                 ]
                }
               ],
@@ -179,19 +199,23 @@ resp_definition() ->
               ,{fun kapi_definition:set_build_fun/2, fun resp/1}
               ,{fun kapi_definition:set_validate_fun/2, fun resp_v/1}
               ,{fun kapi_definition:set_publish_fun/2, fun publish_resp/2}
-              ,{fun kapi_definition:set_required_headers/2, [<<"Auth-Method">>
-                                                            ,<<"Auth-Password">>
-                                                            ]}
-              ,{fun kapi_definition:set_optional_headers/2, [<<"Custom-Channel-Vars">>
-                                                            ,<<"Custom-SIP-Headers">>
-                                                            ,<<"Auth-Username">>
-                                                            ,<<"Auth-Nonce">>
-                                                            ,<<"Access-Group">>
-                                                            ,<<"Tenant-ID">>
-                                                            ,<<"Expires">>
-                                                            ,<<"Suppress-Unregister-Notifications">>
-                                                            ,<<"Register-Overwrite-Notify">>
-                                                            ]}
+              ,{fun kapi_definition:set_required_headers/2
+               ,[<<"Auth-Method">>
+                ,<<"Auth-Password">>
+                ]
+               }
+              ,{fun kapi_definition:set_optional_headers/2
+               ,[<<"Access-Group">>
+                ,<<"Auth-Nonce">>
+                ,<<"Auth-Username">>
+                ,<<"Custom-Channel-Vars">>
+                ,<<"Custom-SIP-Headers">>
+                ,<<"Expires">>
+                ,<<"Register-Overwrite-Notify">>
+                ,<<"Suppress-Unregister-Notifications">>
+                ,<<"Tenant-ID">>
+                ]
+               }
               ,{fun kapi_definition:set_values/2
                ,[{<<"Auth-Method">>, [<<"password">>, <<"ip">>
                                      ,<<"a1-hash">>, <<"error">>
@@ -201,16 +225,16 @@ resp_definition() ->
                 ]
                }
               ,{fun kapi_definition:set_types/2
-               ,[{<<"Auth-Password">>, fun is_binary/1}
+               ,[{<<"Access-Group">>, fun is_binary/1}
+                ,{<<"Auth-Password">>, fun is_binary/1}
                 ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-                ,{<<"Access-Group">>, fun is_binary/1}
-                ,{<<"Tenant-ID">>, fun is_binary/1}
                 ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                ,{<<"Expires">>, fun is_integer/1}
+                ,{<<"Tenant-ID">>, fun is_binary/1}
                 ]
                }
               ],
     kapi_definition:setters(Setters).
-
 
 -spec token_resp_definition() -> kapi_definition:api().
 token_resp_definition() ->
@@ -224,24 +248,27 @@ token_resp_definition() ->
               ,{fun kapi_definition:set_validate_fun/2, fun token_resp_v/1}
               ,{fun kapi_definition:set_publish_fun/2, fun publish_token_resp/2}
               ,{fun kapi_definition:set_required_headers/2, [<<"Token-Data">>]}
-              ,{fun kapi_definition:set_optional_headers/2, [<<"Access-Group">>
-                                                            ,<<"Auth-Nonce">>
-                                                            ,<<"Custom-Channel-Vars">>
-                                                            ,<<"Custom-SIP-Headers">>
-                                                            ,<<"Expires">>
-                                                            ,<<"Register-Overwrite-Notify">>
-                                                            ,<<"Suppress-Unregister-Notifications">>
-                                                            ,<<"Tenant-ID">>
-                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2
+               ,[<<"Access-Group">>
+                ,<<"Auth-Nonce">>
+                ,<<"Custom-Channel-Vars">>
+                ,<<"Custom-SIP-Headers">>
+                ,<<"Expires">>
+                ,<<"Register-Overwrite-Notify">>
+                ,<<"Suppress-Unregister-Notifications">>
+                ,<<"Tenant-ID">>
+                ]
+               }
               ,{fun kapi_definition:set_values/2
                ,kapi_definition:event_type_headers(Category, EventName)
                }
               ,{fun kapi_definition:set_types/2
                ,[{<<"Access-Group">>, fun is_binary/1}
-                ,{<<"Token-Data">>, fun kz_json:is_json_object/1}
                 ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
                 ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
+                ,{<<"Expires">>, fun is_integer/1}
                 ,{<<"Tenant-ID">>, fun is_binary/1}
+                ,{<<"Token-Data">>, fun kz_json:is_json_object/1}
                 ]
                }
               ],
