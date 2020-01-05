@@ -10,7 +10,7 @@
 
 To enable kazoo number manager to use the telnyx module you will need to first update the `number_manager` document in the `system_config` database.
 
-In the configuration section that applies to your crossbar servers (or the default) add `"knm_voxbone"` to the `carrier_modules` parameter.
+In the configuration section that applies to your crossbar servers (or the default) add `"knm_telnyx"` to the `carrier_modules` parameter.
 
 For example:
 
@@ -21,12 +21,12 @@ For example:
            "knm_managed",
            "knm_reserved",
            "knm_reserved_reseller"
-           "knm_voxbone"
+           "knm_telnyx"
        ]
 ```
 
 
-### Configuring the voxbone module
+### Configuring the telnyx module
 ```json
 {
    "_id": "number_manager.telnyx",
