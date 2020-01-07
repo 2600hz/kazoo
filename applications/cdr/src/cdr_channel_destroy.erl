@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Listen for CDR events and record them to the database
 %%% @author James Aimonetti
 %%% @author Edouard Swiac

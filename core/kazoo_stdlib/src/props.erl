@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Mostly a drop-in replacement and extension of the proplists module,
 %%% but using the lists module to implement
 %%%

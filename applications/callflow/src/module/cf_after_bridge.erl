@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Sets `[park|transfer|hangup]_after_bridge' variable.
 %%%
 %%% <h4>Data options:</h4>

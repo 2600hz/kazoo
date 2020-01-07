@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Expose system configuration data.
 %%% System configuration data is stored as key/values in a namespace
 %%% (a doc) in `system_config' DB.
