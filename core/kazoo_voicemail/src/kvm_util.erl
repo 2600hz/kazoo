@@ -218,7 +218,7 @@ is_prior_to_retention(JObj, RetentionTimestamp) ->
 
 %% @equiv get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId, 'undefined')
 -spec get_change_vmbox_funs(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) ->
-                                   {kz_term:ne_binary(), update_funs()}.
+          {kz_term:ne_binary(), update_funs()}.
 get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId) ->
     get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId, 'undefined').
 
@@ -227,7 +227,7 @@ get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_change_vmbox_funs(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                                   {kz_term:ne_binary(), update_funs()}.
+          {kz_term:ne_binary(), update_funs()}.
 get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId, ToId) ->
     Timestamp = kz_time:now_s(),
     {{Y, M, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
@@ -292,7 +292,7 @@ get_caller_id_number(Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec publish_saved_notify(kz_term:ne_binary(), kz_term:ne_binary(), kapps_call:call(), pos_integer(), kz_term:proplist()) ->
-                                  kz_amqp_worker:request_return().
+          kz_amqp_worker:request_return().
 publish_saved_notify(MediaId, BoxId, Call, Length, Props) ->
     MaybeTranscribe = props:get_value(<<"Transcribe-Voicemail">>, Props, 'false'),
     Transcription = maybe_transcribe(Call, MediaId, MaybeTranscribe),

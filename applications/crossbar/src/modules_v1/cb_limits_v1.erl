@@ -138,12 +138,12 @@ on_successful_validation(Context) ->
 %%------------------------------------------------------------------------------
 
 -spec maybe_handle_load_failure(cb_context:context()) ->
-                                       cb_context:context().
+          cb_context:context().
 maybe_handle_load_failure(Context) ->
     maybe_handle_load_failure(Context, cb_context:resp_error_code(Context)).
 
 -spec maybe_handle_load_failure(cb_context:context(), pos_integer()) ->
-                                       cb_context:context().
+          cb_context:context().
 maybe_handle_load_failure(Context, 404) ->
     Data = cb_context:req_data(Context),
     NewLimits = kz_json:from_list([{<<"pvt_type">>, ?PVT_TYPE}

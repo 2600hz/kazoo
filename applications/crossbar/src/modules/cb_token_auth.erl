@@ -107,15 +107,15 @@ authorize(Context) ->
 %%------------------------------------------------------------------------------
 
 -spec authenticate(cb_context:context()) ->
-                          boolean() |
-                          {'true' | 'stop', cb_context:context()}.
+          boolean() |
+          {'true' | 'stop', cb_context:context()}.
 authenticate(Context) ->
     _ = cb_context:put_reqid(Context),
     authenticate(Context, cb_context:auth_account_id(Context), cb_context:auth_token_type(Context)).
 
 -spec authenticate(cb_context:context(), kz_term:api_ne_binary(), atom()) ->
-                          boolean() |
-                          {'true' | 'stop', cb_context:context()}.
+          boolean() |
+          {'true' | 'stop', cb_context:context()}.
 authenticate(_Context, ?NE_BINARY = _AccountId, 'x-auth-token') -> 'true';
 authenticate(Context, 'undefined', 'x-auth-token') ->
     _ = cb_context:put_reqid(Context),
@@ -139,29 +139,29 @@ authenticate(Context, 'undefined', 'x-auth-token') ->
 authenticate(_Context, _AccountId, _TokenType) -> 'false'.
 
 -spec early_authenticate(cb_context:context()) ->
-                                boolean() |
-                                {'true', cb_context:context()}.
+          boolean() |
+          {'true', cb_context:context()}.
 early_authenticate(Context) ->
     _ = cb_context:put_reqid(Context),
     early_authenticate(Context, cb_context:auth_token_type(Context)).
 
 -spec early_authenticate(cb_context:context(), atom() | kz_term:api_binary()) ->
-                                boolean() |
-                                {'true', cb_context:context()}.
+          boolean() |
+          {'true', cb_context:context()}.
 early_authenticate(Context, 'x-auth-token') ->
     early_authenticate_token(Context, cb_context:auth_token(Context));
 early_authenticate(_Context, _TokenType) -> 'false'.
 
 -spec early_authenticate_token(cb_context:context(), kz_term:api_binary()) ->
-                                      boolean() |
-                                      {'true', cb_context:context()}.
+          boolean() |
+          {'true', cb_context:context()}.
 early_authenticate_token(Context, AuthToken) when is_binary(AuthToken) ->
     validate_auth_token(Context, AuthToken);
 early_authenticate_token(_Context, 'undefined') -> 'true'.
 
 -spec check_auth_token(cb_context:context(), kz_term:api_binary(), boolean()) ->
-                              boolean() |
-                              {'true', cb_context:context()}.
+          boolean() |
+          {'true', cb_context:context()}.
 check_auth_token(_Context, <<>>, MagicPathed) ->
     lager:info("empty auth token - magic path'd: ~p", [MagicPathed]),
     MagicPathed;
@@ -172,8 +172,8 @@ check_auth_token(Context, AuthToken, _MagicPathed) ->
     validate_auth_token(Context, AuthToken).
 
 -spec validate_auth_token(cb_context:context(), kz_term:ne_binary()) ->
-                                 boolean() |
-                                 {'true', cb_context:context()}.
+          boolean() |
+          {'true', cb_context:context()}.
 validate_auth_token(Context, ?NE_BINARY = AuthToken) ->
     Options = [{<<"account_id">>, cb_context:req_header(Context, <<"x-auth-account-id">>)}],
     lager:debug("checking auth token"),
@@ -193,8 +193,8 @@ validate_auth_token(Context, ?NE_BINARY = AuthToken) ->
     end.
 
 -spec is_account_expired(cb_context:context(), kz_json:object()) ->
-                                boolean() |
-                                {'stop', cb_context:context()}.
+          boolean() |
+          {'stop', cb_context:context()}.
 is_account_expired(Context, JObj) ->
     AccountId = kz_json:get_ne_binary_value(<<"account_id">>, JObj),
     case kzd_accounts:is_expired(AccountId) of
@@ -212,8 +212,8 @@ is_account_expired(Context, JObj) ->
     end.
 
 -spec check_as(cb_context:context(), kz_json:object()) ->
-                      boolean() |
-                      {'true', cb_context:context()}.
+          boolean() |
+          {'true', cb_context:context()}.
 check_as(Context, JObj) ->
     case kz_json:get_ne_binary_value(<<"account_id">>, JObj, 'undefined') of
         'undefined' -> {'true', set_auth_doc(Context, JObj)};
@@ -221,8 +221,8 @@ check_as(Context, JObj) ->
     end.
 
 -spec check_as_payload(cb_context:context(), kz_json:object(), kz_term:ne_binary()) ->
-                              boolean() |
-                              {'true', cb_context:context()}.
+          boolean() |
+          {'true', cb_context:context()}.
 check_as_payload(Context, JObj, AccountId) ->
     case {kz_json:get_value([<<"as">>, <<"account_id">>], JObj, 'undefined')
          ,kz_json:get_value([<<"as">>, <<"owner_id">>], JObj, 'undefined')
@@ -234,8 +234,8 @@ check_as_payload(Context, JObj, AccountId) ->
     end.
 
 -spec check_descendants(cb_context:context(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               boolean() |
-                               {'true', cb_context:context()}.
+          boolean() |
+          {'true', cb_context:context()}.
 check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId) ->
     case kapps_util:account_descendants(AccountId) of
         [] -> false;

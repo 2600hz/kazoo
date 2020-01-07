@@ -258,7 +258,7 @@ get_auth_uri_realm(Props) ->
 
 -spec handle_lookup_resp(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()
                         ,{'ok', kz_json:object()} | {'error', _}) ->
-                                {'ok', _}.
+          {'ok', _}.
 handle_lookup_resp(<<"reverse-lookup">>, Realm, Username, {'ok', JObj}) ->
     Props = [{<<"Domain-Name">>, Realm}
             ,{<<"User-ID">>, Username}
@@ -277,8 +277,8 @@ handle_lookup_resp(_, _, _, {'error', _R}) ->
     ecallmgr_fs_xml:not_found().
 
 -spec maybe_query_registrar(kz_term:ne_binary(), kz_term:ne_binary(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                                   {'ok', kz_json:object()} |
-                                   {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 maybe_query_registrar(Realm, Username, Node, Id, Method, Props) ->
     case kz_cache:peek_local(?ECALLMGR_AUTH_CACHE, ?CREDS_KEY(Realm, Username)) of
         {'ok', _}=Ok -> Ok;
@@ -286,8 +286,8 @@ maybe_query_registrar(Realm, Username, Node, Id, Method, Props) ->
     end.
 
 -spec query_registrar(kz_term:ne_binary(), kz_term:ne_binary(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                             {'ok', kz_json:object()} |
-                             {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 query_registrar(Realm, Username, Node, Id, Method, Props) ->
     lager:debug("looking up credentials of ~s@~s for a ~s", [Username, Realm, Method]),
     Req = [{<<"Msg-ID">>, Id}

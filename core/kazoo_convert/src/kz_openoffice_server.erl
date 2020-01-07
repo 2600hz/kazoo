@@ -71,7 +71,7 @@ add(Source, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()} |
-                      {'stop', any()}.
+          {'stop', any()}.
 init([]) ->
     {'ok', #state{
               'timer_ref' = start_timer(?TIMEOUT_DEQUEUE)
@@ -82,7 +82,7 @@ init([]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call({atom(), {'file', kz_term:ne_binary()}, map()}, kz_term:pid_ref(), state()) ->
-                         kz_types:handle_call_ret_state(state()).
+          kz_types:handle_call_ret_state(state()).
 handle_call('stop', _From, #state{} = State) ->
     {'stop', 'normal', 'ok', State};
 handle_call({'add', Content, Options}, From, #state{queue=Queue}=State) ->

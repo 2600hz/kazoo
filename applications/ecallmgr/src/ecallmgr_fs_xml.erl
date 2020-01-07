@@ -141,7 +141,7 @@ reverse_authn_resp_xml(JObj) ->
     end.
 
 -spec reverse_authn_resp_xml(kz_term:ne_binary(), kz_json:object()) ->
-                                    {'ok', kz_types:xml_els()}.
+          {'ok', kz_types:xml_els()}.
 reverse_authn_resp_xml(<<"password">>, JObj) ->
     UserId = kz_json:get_value(<<"User-ID">>, JObj),
 
@@ -234,7 +234,7 @@ route_resp_xml(Section, RespJObj, Props) ->
 -type route_resp_fold_acc() :: {pos_integer(), kz_types:xml_els()}.
 
 -spec route_resp_fold(kz_json:object(), route_resp_fold_acc()) ->
-                             route_resp_fold_acc().
+          route_resp_fold_acc().
 route_resp_fold(RouteJObj, {Idx, Acc}) ->
     case ecallmgr_util:build_channel(RouteJObj) of
         {'error', _} -> {Idx+1, Acc};
@@ -243,7 +243,7 @@ route_resp_fold(RouteJObj, {Idx, Acc}) ->
     end.
 
 -spec route_resp_fold(kz_json:object(), route_resp_fold_acc(), kz_term:ne_binary()) ->
-                             route_resp_fold_acc().
+          route_resp_fold_acc().
 route_resp_fold(RouteJObj, {Idx, Acc}, Channel) ->
     RouteJObj1 =
         case kz_json:get_value(<<"Progress-Timeout">>, RouteJObj) of
@@ -565,7 +565,7 @@ build_asserted_identity(AssertedIdentity, Props, Results) ->
     end.
 
 -spec create_asserted_identity_header(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
-                                             kz_term:api_binary().
+          kz_term:api_binary().
 create_asserted_identity_header(_, 'undefined', _) ->
     'undefined';
 create_asserted_identity_header(_, _, 'undefined') ->
@@ -780,7 +780,7 @@ get_channel_params(JObj) ->
        )).
 
 -spec get_channel_params_fold(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                     {kz_term:ne_binary(), kz_term:ne_binary()}.
+          {kz_term:ne_binary(), kz_term:ne_binary()}.
 get_channel_params_fold(Key, Val) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' ->

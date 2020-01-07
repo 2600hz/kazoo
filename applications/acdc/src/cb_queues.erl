@@ -155,11 +155,11 @@ resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> 'true'.
 %%------------------------------------------------------------------------------
 
 -spec content_types_provided(cb_context:context()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context) -> Context.
 
 -spec content_types_provided(cb_context:context(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, ?STATS_PATH_TOKEN) ->
     cb_context:add_content_types_provided(Context
                                          ,[{'to_json', ?JSON_CONTENT_TYPES}
@@ -176,7 +176,7 @@ content_types_provided(Context, ?STATS_PATH_TOKEN) ->
 %%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context) ->
     validate_queues(Context, cb_context:req_verb(Context)).
 
@@ -184,7 +184,7 @@ validate_queues(Context, ?HTTP_GET) -> summary(Context);
 validate_queues(Context, ?HTTP_PUT) -> validate_request('undefined', Context).
 
 -spec validate(cb_context:context(), path_token()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context, PathToken) ->
     validate_queue(Context, PathToken, cb_context:req_verb(Context)).
 
@@ -202,7 +202,7 @@ validate_queue(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
 
 -spec validate(cb_context:context(), path_token(), path_token()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context, Id, Token) ->
     validate_queue_operation(Context, Id, Token, cb_context:req_verb(Context)).
 
@@ -238,16 +238,16 @@ validate_eavesdrop_on_queue(Context, QueueId) ->
     end.
 
 -spec all_true([{fun(), list()},...]) ->
-                      'true' |
-                      {'false', cb_context:context()}.
+          'true' |
+          {'false', cb_context:context()}.
 all_true(Fs) ->
     lists:foldl(fun({F, Args}, 'true') -> apply(F, Args);
                    (_, Acc) -> Acc
                 end, 'true', Fs).
 
 -spec is_valid_mode(cb_context:context(), kz_json:object()) ->
-                           'true' |
-                           {'false', cb_context:context()}.
+          'true' |
+          {'false', cb_context:context()}.
 is_valid_mode(Context, Data) ->
     Mode = kz_json:get_value(<<"mode">>, Data, <<"listen">>),
     case kapi_resource:is_valid_mode(Mode) of
@@ -266,8 +266,8 @@ is_valid_mode(Context, Data) ->
     end.
 
 -spec is_valid_call(cb_context:context(), kz_json:object()) ->
-                           'true' |
-                           {'false', cb_context:context()}.
+          'true' |
+          {'false', cb_context:context()}.
 is_valid_call(Context, Data) ->
     case kz_json:get_binary_value(<<"call_id">>, Data) of
         'undefined' ->
@@ -285,8 +285,8 @@ is_valid_call(Context, Data) ->
     end.
 
 -spec is_active_call(cb_context:context(), kz_term:ne_binary()) ->
-                            'true' |
-                            {'false', cb_context:context()}.
+          'true' |
+          {'false', cb_context:context()}.
 is_active_call(Context, CallId) ->
     case kapps_call_command:b_channel_status(CallId) of
         {'error', _E} ->
@@ -373,13 +373,13 @@ is_valid_endpoint_type(Context, CallMeJObj) ->
 %%------------------------------------------------------------------------------
 
 -spec put(cb_context:context()) ->
-                 cb_context:context().
+          cb_context:context().
 put(Context) ->
     activate_account_for_acdc(Context),
     crossbar_doc:save(Context).
 
 -spec put(cb_context:context(), path_token()) ->
-                 cb_context:context().
+          cb_context:context().
 put(Context, ?EAVESDROP_PATH_TOKEN) ->
     Prop = [{<<"Eavesdrop-Call-ID">>, cb_context:req_value(Context, <<"call_id">>)}
             | default_eavesdrop_req(Context)
@@ -387,7 +387,7 @@ put(Context, ?EAVESDROP_PATH_TOKEN) ->
     eavesdrop_req(Context, Prop).
 
 -spec put(cb_context:context(), path_token(), path_token()) ->
-                 cb_context:context().
+          cb_context:context().
 put(Context, QID, ?EAVESDROP_PATH_TOKEN) ->
     Prop = [{<<"Eavesdrop-Group-ID">>, QID}
             | default_eavesdrop_req(Context)
@@ -603,13 +603,13 @@ maybe_rm_agents(Id, Context, AgentIds) ->
     RMContext1.
 
 -spec rm_queue_from_agents(kz_term:ne_binary(), cb_context:context()) ->
-                                  cb_context:context().
+          cb_context:context().
 rm_queue_from_agents(Id, Context) ->
     Context1 = load_agent_roster(Id, Context),
     rm_queue_from_agents(Id, Context, cb_context:doc(Context1)).
 
 -spec rm_queue_from_agents(kz_term:ne_binary(), cb_context:context(), kz_json:path()) ->
-                                  cb_context:context().
+          cb_context:context().
 rm_queue_from_agents(_Id, Context, []) ->
     cb_context:set_resp_status(Context, 'success');
 rm_queue_from_agents(Id, Context, [_|_]=AgentIds) ->

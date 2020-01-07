@@ -54,7 +54,7 @@ start_link(_) ->
     gen_server:start_link(?SERVER, [], []).
 
 -spec render(kz_json:object(), kz_term:ne_binary()) -> {'ok', iolist()} |
-                                                       {'error', 'timeout'}.
+          {'error', 'timeout'}.
 render(JObj, Template) ->
     case catch poolboy:checkout(?STEPSWITCH_CNAM_POOL, 'false', 1000) of
         W when is_pid(W) ->

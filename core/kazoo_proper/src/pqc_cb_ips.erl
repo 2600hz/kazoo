@@ -67,8 +67,8 @@ ip_url(AccountId, IP) ->
     string:join([pqc_cb_accounts:account_url(AccountId), "ips", kz_term:to_list(IP)], "/").
 
 -spec list_ips(pqc_cb_api:state()) ->
-                      {'ok', kz_json:objects()} |
-                      {'error', 'not_found'}.
+          {'ok', kz_json:objects()} |
+          {'error', 'not_found'}.
 list_ips(API) ->
     case pqc_cb_api:make_request([200]
                                 ,fun kz_http:get/2
@@ -85,8 +85,8 @@ list_ips(API) ->
     end.
 
 -spec assign_ips(pqc_cb_api:state(), pqc_cb_accounts:account_id(), [dedicated()]) ->
-                        {'ok', kz_json:objects()} |
-                        {'error', 'not_found'}.
+          {'ok', kz_json:objects()} |
+          {'error', 'not_found'}.
 assign_ips(_API, 'undefined', _Dedicateds) ->
     {'error', 'not_found'};
 assign_ips(API, AccountId, Dedicateds) ->
@@ -109,8 +109,8 @@ assign_ips(API, AccountId, Dedicateds) ->
 
 
 -spec remove_ip(pqc_cb_api:state(), pqc_cb_accounts:account_id(), dedicated()) ->
-                       {'ok', kz_json:object()} |
-                       {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          {'error', 'not_found'}.
 remove_ip(_API, 'undefined', _Dedicated) ->
     {'error', 'not_found'};
 remove_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
@@ -128,8 +128,8 @@ remove_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
     end.
 
 -spec fetch_ip(pqc_cb_api:state(), pqc_cb_accounts:account_id(), dedicated()) ->
-                      {'ok', kz_json:object()} |
-                      {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          {'error', 'not_found'}.
 fetch_ip(_API, 'undefined', _Dedicated) ->
     {'error', 'not_found'};
 fetch_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
@@ -147,8 +147,8 @@ fetch_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
     end.
 
 -spec assign_ip(pqc_cb_api:state(), pqc_cb_accounts:account_id(), dedicated()) ->
-                       {'ok', kz_json:object()} |
-                       {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          {'error', 'not_found'}.
 assign_ip(_API, 'undefined', _Dedicated) ->
     {'error', 'not_found'};
 assign_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
@@ -168,8 +168,8 @@ assign_ip(API, AccountId, ?DEDICATED(IP, _, _)) ->
     end.
 
 -spec fetch_hosts(pqc_cb_api:state()) ->
-                         {'ok', kz_term:ne_binaries()} |
-                         {'error', 'not_found'}.
+          {'ok', kz_term:ne_binaries()} |
+          {'error', 'not_found'}.
 fetch_hosts(API) ->
     case pqc_cb_api:make_request([200]
                                 ,fun kz_http:get/2
@@ -185,8 +185,8 @@ fetch_hosts(API) ->
     end.
 
 -spec fetch_zones(pqc_cb_api:state()) ->
-                         {'ok', kz_term:ne_binaries()} |
-                         {'error', 'not_found'}.
+          {'ok', kz_term:ne_binaries()} |
+          {'error', 'not_found'}.
 fetch_zones(API) ->
     case pqc_cb_api:make_request([200]
                                 ,fun kz_http:get/2
@@ -202,8 +202,8 @@ fetch_zones(API) ->
     end.
 
 -spec fetch_assigned(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
-                            {'ok', kz_json:objects()} |
-                            {'error', 'not_found'}.
+          {'ok', kz_json:objects()} |
+          {'error', 'not_found'}.
 fetch_assigned(_API, 'undefined') ->
     {'error', 'not_found'};
 fetch_assigned(API, AccountId) ->
@@ -221,8 +221,8 @@ fetch_assigned(API, AccountId) ->
     end.
 
 -spec create_ip(pqc_cb_api:state(), dedicated()) ->
-                       {'ok', kz_json:object()} |
-                       {'error', 'not_found' | 'conflict'}.
+          {'ok', kz_json:object()} |
+          {'error', 'not_found' | 'conflict'}.
 create_ip(API, ?DEDICATED(IP, Host, Zone)) ->
     Data = kz_json:from_list([{<<"ip">>, IP}
                              ,{<<"host">>, Host}
@@ -250,8 +250,8 @@ create_ip(API, ?DEDICATED(IP, Host, Zone)) ->
     end.
 
 -spec delete_ip(pqc_cb_api:state(), dedicated()) ->
-                       {'ok', kz_json:object()} |
-                       {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          {'error', 'not_found'}.
 delete_ip(API, ?DEDICATED(IP, _Host, _Zone)) ->
     case pqc_cb_api:make_request([200, 404]
                                 ,fun kz_http:delete/2
@@ -555,21 +555,21 @@ correct_parallel() ->
 
 %%% Helpers
 -spec do_dedicated_ips_exist(pqc_kazoo_model:model(), [dedicated()]) ->
-                                    boolean().
+          boolean().
 do_dedicated_ips_exist(Model, Dedicateds) ->
     lists:all(fun(?DEDICATED(IP, _, _)) -> pqc_kazoo_model:does_ip_exist(Model, IP) end
              ,Dedicateds
              ).
 
 -spec are_dedicated_ips_unassigned(pqc_kazoo_model:model(), [dedicated()]) ->
-                                          boolean().
+          boolean().
 are_dedicated_ips_unassigned(Model, Dedicateds) ->
     lists:all(fun(?DEDICATED(IP, _, _)) -> pqc_kazoo_model:is_ip_unassigned(Model, IP) end
              ,Dedicateds
              ).
 
 -spec assign_dedicated_ips(pqc_kazoo_model:model(), pqc_cb_accounts:account_id(), [dedicated()]) ->
-                                  pqc_kazoo_model:model().
+          pqc_kazoo_model:model().
 assign_dedicated_ips(Model, AccountId, Dedicateds) ->
     lists:foldl(fun(?DEDICATED(IP, _, _), Mdl) ->
                         pqc_kazoo_model:assign_dedicated_ip(Mdl, AccountId, IP)
@@ -579,7 +579,7 @@ assign_dedicated_ips(Model, AccountId, Dedicateds) ->
                ).
 
 -spec are_all_ips_listed([{kz_term:ne_binary(), pqc_kazoo_model:dedicated_ip()}], kz_json:objects(), boolean()) ->
-                                boolean().
+          boolean().
 are_all_ips_listed([], [], _CheckHost) -> 'true';
 are_all_ips_listed(_ModelIPs, [], _CheckHost) -> 'false';
 are_all_ips_listed([], _ListedIPs, _CheckHost) -> 'false';
@@ -591,7 +591,7 @@ are_all_ips_listed(ModelIPs, ListedIPs, CheckHost) ->
              ).
 
 -spec is_ip_listed(kz_term:ne_binary(), pqc_kazoo_model:dedicated_ip(), kz_json:objects()) ->
-                          boolean().
+          boolean().
 is_ip_listed(IP, IPInfo, ListedIPs) ->
     is_ip_listed(IP, IPInfo, ListedIPs, 'true').
 

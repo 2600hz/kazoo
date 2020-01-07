@@ -98,7 +98,7 @@ agent_devices(AcctDb, AgentId) ->
     end.
 
 -spec get_endpoints(kapps_call:call(), kz_term:ne_binary() | kazoo_data:get_results_return()) ->
-                           kz_json:objects().
+          kz_json:objects().
 get_endpoints(Call, ?NE_BINARY = AgentId) ->
     Params = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
     kz_endpoints:by_owner_id(AgentId, Params, Call).

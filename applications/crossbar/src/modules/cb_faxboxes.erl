@@ -276,7 +276,7 @@ leak_private_field(<<"pvt_", K1/binary>> = K, Acc) ->
 leak_private_field(_K, Acc) -> Acc.
 
 -spec leak_private_field_value(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:json_term(), kz_json:object()) ->
-                                      kz_json:object().
+          kz_json:object().
 leak_private_field_value(?CLOUD_CLAIM_URL_FIELD, K1, V, Acc) ->
     case kz_json:get_value(?CLOUD_STATE_FIELD, Acc) of
         <<"registered">> ->  kz_json:set_value(K1, V, Acc);

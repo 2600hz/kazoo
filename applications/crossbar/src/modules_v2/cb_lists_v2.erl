@@ -90,7 +90,7 @@ migrate_old_entry_doc(AccountDb, ListJObj, EntryJObj) ->
     end.
 
 -spec migrate_to_entry_doc(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_json:object()) ->
-                                  kz_json:object().
+          kz_json:object().
 migrate_to_entry_doc(AccountDb, EntryId, EntryJObj, ListJObj) ->
     CaptureGroupKey = kz_json:get_first_defined([<<"capture_group_key">>, <<"cid_key">>, <<"list_entry_old_id">>]
                                                ,EntryJObj
@@ -165,27 +165,27 @@ resource_exists(_ListId, ?ENTRIES, _EntryId) -> 'true'.
 resource_exists(_ListId, ?ENTRIES, _EntryId, ?VCARD) -> 'true'.
 
 -spec content_types_provided(cb_context:context()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context) ->
     Context.
 
 -spec content_types_provided(cb_context:context(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, _) ->
     Context.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, _, _) ->
     Context.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, _, _, _) ->
     Context.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, _, ?ENTRIES, _, ?VCARD) ->
     cb_context:set_content_types_provided(Context
                                          ,[{'to_binary'

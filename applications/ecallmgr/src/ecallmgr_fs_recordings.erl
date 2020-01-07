@@ -177,10 +177,10 @@ maybe_publish_record_event(Props) ->
     end.
 
 -spec maybe_store_recording(boolean(), kz_term:api_binary(), kz_term:proplist(), kz_term:ne_binary(), atom()) ->
-                                   'ok' |
-                                   'error' |
-                                   ecallmgr_util:send_cmd_ret() |
-                                   [ecallmgr_util:send_cmd_ret(),...].
+          'ok' |
+          'error' |
+          ecallmgr_util:send_cmd_ret() |
+          [ecallmgr_util:send_cmd_ret(),...].
 maybe_store_recording('false', _, _Props, _CallId, _Node) -> 'ok';
 maybe_store_recording('true', <<"kz_media_recording">>, _Props, _CallId, _Node) -> 'ok';
 maybe_store_recording('true', _, Props, CallId, Node) ->

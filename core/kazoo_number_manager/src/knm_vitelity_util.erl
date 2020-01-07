@@ -44,7 +44,7 @@ api_uri() -> ?API_URL.
 config_cat() -> ?KNM_VITELITY_CONFIG_CAT.
 
 -spec add_options_fold({atom(), kz_term:api_binary()}, query_options()) ->
-                              query_options().
+          query_options().
 add_options_fold({_K, 'undefined'}, Options) -> Options;
 add_options_fold({K, V}, Options) ->
     props:insert_value(K, V, Options).
@@ -168,8 +168,8 @@ xml_el_to_kv_pair(#xmlElement{name=Name
     end.
 
 -spec query_vitelity(kz_term:ne_binary()) ->
-                            {'ok', kz_term:text()} |
-                            {'error', any()}.
+          {'ok', kz_term:text()} |
+          {'error', any()}.
 query_vitelity(URI) ->
     lager:debug("querying ~s", [URI]),
     case kz_http:post(kz_term:to_list(URI)) of

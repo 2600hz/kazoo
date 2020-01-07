@@ -152,9 +152,9 @@ gstorage_token(#{'oauth_app_id' := AppId}) ->
     kz_auth_client:token_for_app(AppId, ?DRV_TOKEN_OPTIONS).
 
 -spec send_attachment(binary(), kz_term:ne_binary(), kz_term:ne_binary(), binary(), kz_term:proplist(), binary()) ->
-                             {'ok', kz_term:proplist()} |
-                             {'ok', kz_term:ne_binary(), kz_term:proplist()} |
-                             {'error', kz_term:ne_binary(), kz_http:ret()}.
+          {'ok', kz_term:proplist()} |
+          {'ok', kz_term:ne_binary(), kz_term:proplist()} |
+          {'error', kz_term:ne_binary(), kz_http:ret()}.
 send_attachment(Authorization, Bucket, AName, CT, Options, Contents) ->
     JObj = kz_json:from_list(
              props:filter_empty(

@@ -63,13 +63,13 @@ resource_exists() -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec authenticate(cb_context:context()) ->
-                          'false' |
-                          {'true', cb_context:context()}.
+          'false' |
+          {'true', cb_context:context()}.
 authenticate(Context) ->
     authenticate_nouns(Context, cb_context:req_nouns(Context)).
 
 -spec authenticate_nouns(cb_context:context(), req_nouns()) ->
-                                'false' | 'true' | {'true', cb_context:context()}.
+          'false' | 'true' | {'true', cb_context:context()}.
 authenticate_nouns(_Context, [{<<"ip_auth">>, _}]) ->
     lager:debug("request is for the ip_auth module", []),
     'true';
@@ -77,8 +77,8 @@ authenticate_nouns(Context, _Nouns) ->
     authenticate_ip(Context, cb_context:client_ip(Context)).
 
 -spec authenticate_ip(cb_context:context(), kz_term:ne_binary()) ->
-                             'false' |
-                             {'true', cb_context:context()}.
+          'false' |
+          {'true', cb_context:context()}.
 authenticate_ip(Context, IpKey) ->
     ViewOptions = [{'key', IpKey}],
     lager:debug("attempting to authenticate ip ~s", [IpKey]),
@@ -96,8 +96,8 @@ authenticate_ip(Context, IpKey) ->
     end.
 
 -spec authenticate_view(cb_context:context(), atom()) ->
-                               'false' |
-                               {'true', cb_context:context()}.
+          'false' |
+          {'true', cb_context:context()}.
 authenticate_view(Context, 'success') ->
     case cb_context:doc(Context) of
         [] -> 'false';

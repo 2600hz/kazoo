@@ -15,7 +15,7 @@
 -include("kzt.hrl").
 
 -spec exec(kapps_call:call(), kz_types:xml_els() | kz_types:xml_texts(), kz_types:xml_attribs()) ->
-                  {'ok' | 'stop', kapps_call:call()}.
+          {'ok' | 'stop', kapps_call:call()}.
 exec(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
     kapps_call_command:answer(Call),
 
@@ -180,7 +180,7 @@ setup_call_for_dial(Call, Props) ->
     kapps_call:exec(Setters, Call).
 
 -spec maybe_end_dial(kapps_call:call(), kz_term:proplist()) ->
-                            {'ok' | 'stop' | 'request', kapps_call:call()}.
+          {'ok' | 'stop' | 'request', kapps_call:call()}.
 maybe_end_dial(Call, Props) ->
     maybe_end_dial(Call, Props, kzt_twiml_util:action_url(Props)).
 
@@ -214,12 +214,12 @@ is_numeric_or_plus(_) -> 'false'.
 force_outbound(Props) -> props:get_is_true('continueOnFail', Props, 'true').
 
 -spec xml_elements_to_endpoints(kapps_call:call(), kz_types:xml_els()) ->
-                                       kz_json:objects().
+          kz_json:objects().
 xml_elements_to_endpoints(Call, EPs) ->
     xml_elements_to_endpoints(Call, EPs, []).
 
 -spec xml_elements_to_endpoints(kapps_call:call(), kz_types:xml_els(), kz_json:objects()) ->
-                                       kz_json:objects().
+          kz_json:objects().
 xml_elements_to_endpoints(_, [], Acc) -> Acc;
 xml_elements_to_endpoints(Call
                          ,[#xmlElement{name='Device'
@@ -371,7 +371,7 @@ should_record_call(Props) -> kz_term:is_true(props:get_value('record', Props, 'f
 timelimit_s(Props) -> props:get_integer_value('timeLimit', Props, 14400).
 
 -spec build_conference_doc(kapps_call:call(), kz_term:ne_binary(), kz_term:proplist()) ->
-                                  kz_json:object().
+          kz_json:object().
 build_conference_doc(Call, ConfId, ConfProps) ->
     StartOnEnter = props:is_true('startConferenceOnEnter', ConfProps),
     AccountId = kapps_call:account_id(Call),
@@ -461,7 +461,7 @@ conference_member_flags(ConfProps) ->
     end.
 
 -spec get_endpoints(binary(), kz_json:object(), kapps_call:call()) ->
-                           kz_json:objects().
+          kz_json:objects().
 get_endpoints(UserId, Data, Call) ->
     Params = kz_json:set_value(<<"source">>, kz_term:to_binary(?MODULE), Data),
     kz_endpoints:by_owner_id(UserId, Params, Call).

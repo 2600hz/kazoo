@@ -166,7 +166,7 @@ remove_event_bindings(Context, BindingResults) ->
     end.
 
 -spec remove_event_bindings_fold(map(), {bh_context:context(), list()}) ->
-                                        {bh_context:context(), list()}.
+          {bh_context:context(), list()}.
 remove_event_bindings_fold(#{requested := Requested
                             ,subscribed := Subscribed
                             ,listeners := Listeners

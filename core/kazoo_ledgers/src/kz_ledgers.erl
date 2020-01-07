@@ -62,7 +62,7 @@ total_sources(Account) ->
     total_sources(Account, []).
 
 -spec total_sources(kz_term:ne_binary(), kz_time:year(), kz_time:month()) ->
-                           kz_currency:available_units_return().
+          kz_currency:available_units_return().
 total_sources(Account, Year, Month) ->
     Options = [{'year', Year}
               ,{'month', Month}
@@ -70,7 +70,7 @@ total_sources(Account, Year, Month) ->
     total_sources(Account, Options).
 
 -spec total_sources(kz_term:ne_binary(), kazoo_modb:view_options()) ->
-                           kz_currency:available_units_return().
+          kz_currency:available_units_return().
 total_sources(Account, Options) ->
     case get_sources_total(Account, Options) of
         {'ok', Total} -> {'ok', Total};
@@ -102,7 +102,7 @@ total_sources_from_previous(Account) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_sources_total(kz_term:ne_binary(), kazoo_modb:view_options()) ->
-                               kz_currency:available_units_return().
+          kz_currency:available_units_return().
 get_sources_total(Account, Options) ->
     View = ?TOTAL_BY_SOURCE,
     ViewOptions = ['reduce'
@@ -141,7 +141,7 @@ sum_sources(JObjs) ->
     end.
 
 -spec sum_sources_foldl(kz_json:object(), {boolean(), kz_currency:units()}) ->
-                               {boolean(), kz_currency:units()}.
+          {boolean(), kz_currency:units()}.
 sum_sources_foldl(JObj, {FoundRollover, Sum}) ->
     Value = kz_json:get_integer_value(<<"value">>, JObj, 0),
     case kz_json:get_value(<<"key">>, JObj) of
@@ -156,8 +156,8 @@ sum_sources_foldl(JObj, {FoundRollover, Sum}) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec list_source(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                         {'ok', ledgers()} |
-                         {'error', any()}.
+          {'ok', ledgers()} |
+          {'error', any()}.
 list_source(Account, Source) ->
     ViewOptions = [{'startkey', [Source]}
                   ,{'endkey', [Source, kz_json:new()]}
@@ -175,8 +175,8 @@ list_source(Account, Source) ->
     end.
 
 -spec list_source(kz_term:ne_binary(), kz_term:ne_binary(), kz_time:seconds(), kz_time:seconds()) ->
-                         {'ok', ledgers()} |
-                         {'error', any()}.
+          {'ok', ledgers()} |
+          {'error', any()}.
 list_source(Account, Source, CreatedFrom, CreatedTo)
   when is_integer(CreatedFrom), CreatedFrom > 0,
        is_integer(CreatedTo), CreatedTo > 0 ->
@@ -195,7 +195,7 @@ list_source(Account, Source, CreatedFrom, CreatedTo)
 %% @end
 %%------------------------------------------------------------------------------
 -spec total_source(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                          kz_currency:available_units_return().
+          kz_currency:available_units_return().
 total_source(Account, Source) ->
     ViewOptions = [{'startkey', [Source]}
                   ,{'endkey', [Source, kz_json:new()]}
@@ -209,7 +209,7 @@ total_source(Account, Source) ->
      ).
 
 -spec total_source(kz_term:ne_binary(), kz_term:ne_binary(), kz_time:seconds(), kz_time:seconds()) ->
-                          kz_currency:available_units_return().
+          kz_currency:available_units_return().
 total_source(Account, Source, CreatedFrom, CreatedTo)
   when is_integer(CreatedFrom), CreatedFrom > 0,
        is_integer(CreatedTo), CreatedTo > 0 ->
@@ -227,7 +227,7 @@ total_source(Account, Source, CreatedFrom, CreatedTo)
      ).
 
 -spec handle_total_source_result({'ok', [kz_currency:units()]} | {'error', any()}) ->
-                                        kz_currency:available_units_return().
+          kz_currency:available_units_return().
 handle_total_source_result({'error', _} = Error) -> Error;
 handle_total_source_result({'ok', []}) -> {'ok', 0};
 handle_total_source_result({'ok', [Total]}) -> {'ok', Total}.
@@ -237,8 +237,8 @@ handle_total_source_result({'ok', [Total]}) -> {'ok', Total}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_ranged(kz_term:ne_binary(), kz_term:proplist()) ->
-                        {'ok', kz_json:objects() | ledgers()} |
-                        {'error', any()}.
+          {'ok', kz_json:objects() | ledgers()} |
+          {'error', any()}.
 get_ranged(View, Options) ->
     MODbs = props:get_value('databases', Options, []),
     case MODbs =:= [] of
@@ -258,8 +258,8 @@ get_ranged(View, Options) ->
     end.
 
 -spec get_ranged(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binaries(), kz_json:objects()) ->
-                        {'ok', kz_json:objects() | ledgers()} |
-                        {'error', any()}.
+          {'ok', kz_json:objects() | ledgers()} |
+          {'error', any()}.
 get_ranged(_View, _Options, [], Results) -> {'ok', Results};
 get_ranged(View, Options, [MODb|MODbs], Results) ->
     HasDoc = props:get_value('result_key', Options) =:= <<"doc">>,
@@ -294,14 +294,14 @@ verify_monthly_rollover_exists(Account) ->
     end.
 
 -spec get_monthly_rollover(kz_term:ne_binary()) -> {'ok', kz_ledger:ledger()} |
-                                                   {'error', any()}.
+          {'error', any()}.
 get_monthly_rollover(Account) ->
     {CurrentYear, CurrentMonth, _} = erlang:date(),
     get_monthly_rollover(Account, CurrentYear, CurrentMonth).
 
 -spec get_monthly_rollover(kz_term:ne_binary(), kz_time:year(), kz_time:month()) ->
-                                  {'ok', kz_ledger:ledger()} |
-                                  {'error', any()}.
+          {'ok', kz_ledger:ledger()} |
+          {'error', any()}.
 get_monthly_rollover(Account, Year, Month) ->
     case kazoo_modb:open_doc(Account, ?ROLLOVER_ID(Year,Month), Year, Month) of
         {'ok', LedgerJObj} ->
@@ -323,7 +323,7 @@ get_monthly_rollover(Account, Year, Month) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_migrate_legacy_rollover(kz_term:ne_binary(), kazoo_modb:view_options()) ->
-                                           kz_currency:available_units_return().
+          kz_currency:available_units_return().
 maybe_migrate_legacy_rollover(Account, Options) ->
     {DefaultYear, DefaultMonth, _} = erlang:date(),
     Year = props:get_integer_value('year', Options, DefaultYear),
@@ -344,7 +344,7 @@ maybe_migrate_legacy_rollover(Account, Options) ->
     end.
 
 -spec migrate_legacy_rollover(kz_tern:ne_binary(), kazoo_modb:view_options(), kz_time:year(), kz_time:month()) ->
-                                     kz_currency:available_units_return().
+          kz_currency:available_units_return().
 migrate_legacy_rollover(Account, Options, Year, Month) ->
     case kz_transactions:legacy_total(Account, Year, Month) of
         {'ok', Amount} ->
@@ -365,7 +365,7 @@ migrate_legacy_rollover(Account, Options, Year, Month) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec rollover(kz_term:ne_binary()) -> {'ok', kz_ledger:ledger()} |
-                                       {'error', any()}.
+          {'error', any()}.
 rollover(Account) ->
     {Year, Month, _} = erlang:date(),
     rollover(Account, Year, Month).
@@ -375,8 +375,8 @@ rollover(Account) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec rollover(kz_term:ne_binary(),  kz_time:year(), kz_time:month()) ->
-                      {'ok', kz_ledger:ledger()} |
-                      {'error', any()}.
+          {'ok', kz_ledger:ledger()} |
+          {'error', any()}.
 rollover(Account, Year, Month) ->
     MODB = kz_util:format_account_id(Account, Year, Month),
 
@@ -389,8 +389,8 @@ rollover(Account, Year, Month) ->
     end.
 
 -spec rollover_past_available_units(kz_term:ne_binary(),  kz_time:year(), kz_time:month()) ->
-                                           {'ok', kz_ledger:ledger()} |
-                                           {'error', any()}.
+          {'ok', kz_ledger:ledger()} |
+          {'error', any()}.
 rollover_past_available_units(Account, Year, Month) ->
     {PreviousYear, PreviousMonth} =
         kazoo_modb_util:prev_year_month(Year, Month),
@@ -410,7 +410,7 @@ rollover_past_available_units(Account, Year, Month) ->
     end.
 
 -spec rollover(kz_term:ne_binary(),  kz_time:year(), kz_time:month(), kz_currency:units()) ->
-                      kz_currency:available_units_return().
+          kz_currency:available_units_return().
 rollover(Account, Year, Month, Total) ->
     Metadata = kz_json:from_list([{<<"automatic_description">>, 'true'}]),
     Id = <<(kz_term:to_binary(Year))/binary

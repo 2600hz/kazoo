@@ -33,7 +33,7 @@ add_responder(Responders, Responder, Keys) ->
     end.
 
 -spec update_responders(responders(), responder_mfa(), responder_callback_mappings()) ->
-                               responders().
+          responders().
 update_responders(Responders, ResponderMFA, Keys) ->
     lists:foldr(fun maybe_add_mapping/2
                ,Responders
@@ -41,7 +41,7 @@ update_responders(Responders, ResponderMFA, Keys) ->
                ).
 
 -spec rm_responder(responders(), responder_callback(), responder_callback_mapping()) ->
-                          responders().
+          responders().
 %% remove all events for responder
 rm_responder(Responders, Responder, Keys) when is_atom(Responder) ->
     rm_responder(Responders, {Responder, ?DEFAULT_CALLBACK}, Keys);

@@ -478,7 +478,7 @@ get_format(<<"wav">> = WAV) -> WAV;
 get_format(_) -> get_format('undefined').
 
 -spec store_recording_meta(state()) -> {'ok', kz_json:object()} |
-                                       {'error', any()}.
+          {'error', any()}.
 store_recording_meta(#state{call=Call
                            ,format=Ext
                            ,media={_, MediaName}
@@ -532,7 +532,7 @@ store_recording_meta(#state{call=Call
     end.
 
 -spec maybe_store_recording_meta(state()) -> {'ok', kzd_call_recording:doc()} |
-                                             {'error', any()}.
+          {'error', any()}.
 maybe_store_recording_meta(#state{doc_db=Db
                                  ,doc_id=DocId
                                  }=State) ->
@@ -578,13 +578,13 @@ store_url(#state{doc_db=Db
     kz_media_url:store(Db, {kzd_call_recordings:type(), MediaId}, MediaName, Options).
 
 -spec handler_fields(kz_term:ne_binary(), state()) ->
-                            kz_att_util:format_fields().
+          kz_att_util:format_fields().
 handler_fields(Url, State) ->
     {Protocol, _, _, _, _} = kz_http_util:urlsplit(Url),
     handler_fields_for_protocol(Protocol, Url, State).
 
 -spec handler_fields_for_protocol(kz_term:ne_binary(), kz_term:ne_binary(), state()) ->
-                                         kz_att_util:format_fields().
+          kz_att_util:format_fields().
 handler_fields_for_protocol(<<"ftp", _/binary>>, _Url, #state{format=Ext}) ->
     [{'const', <<"call_recording_">>}
     ,{'field', <<"call_id">>}
@@ -703,7 +703,7 @@ start_recording(Call, MediaName, TimeLimit, MediaDocId, SampleRate, RecordMinSec
     gen_server:cast(self(), 'recording_started').
 
 -spec store_recording({kz_term:ne_binary(), kz_term:ne_binary()}, kapps_call_command:store_fun(), kapps_call:call()) ->
-                             pid().
+          pid().
 store_recording({DirName, MediaName}, StoreUrl, Call) ->
     Filename = filename:join(DirName, MediaName),
     kz_util:spawn(fun store_recording/4, [self(), Filename, StoreUrl, Call]).

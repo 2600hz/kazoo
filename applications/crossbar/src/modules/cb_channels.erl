@@ -288,7 +288,7 @@ maybe_get_user_channels(Context, Endpoints) ->
     end.
 
 -spec user_endpoints(cb_context:context(), kz_term:ne_binary()) ->
-                            endpoints_return().
+          endpoints_return().
 user_endpoints(Context, UserId) ->
     Options = [{'key', [UserId, <<"device">>]}
               ,'include_docs'
@@ -316,7 +316,7 @@ group_endpoints(Context, _GroupId) ->
                  ).
 
 -spec group_endpoints_fold(kz_term:ne_binary(), kz_json:object(), endpoints_return()) ->
-                                  endpoints_return().
+          endpoints_return().
 group_endpoints_fold(EndpointId, EndpointData, {Acc, Context}) ->
     case kz_json:get_value(<<"type">>, EndpointData) of
         <<"user">> ->

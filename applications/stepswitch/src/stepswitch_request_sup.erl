@@ -45,7 +45,7 @@ outbound_child_name(OffnetReq) ->
                    ]).
 
 -spec bridge(stepswitch_resources:endpoints(), kapi_offnet_resource:req()) ->
-                    kz_types:sup_startchild_ret().
+          kz_types:sup_startchild_ret().
 bridge(Endpoints, OffnetReq) ->
     supervisor:start_child(?SERVER
                           ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)
@@ -56,7 +56,7 @@ bridge(Endpoints, OffnetReq) ->
                           ).
 
 -spec local_extension(knm_number_options:extra_options(), kapi_offnet_resource:req()) ->
-                             kz_types:sup_startchild_ret().
+          kz_types:sup_startchild_ret().
 local_extension(Props, OffnetReq) ->
     supervisor:start_child(?SERVER
                           ,?WORKER_NAME_ARGS_TYPE(child_name(OffnetReq)

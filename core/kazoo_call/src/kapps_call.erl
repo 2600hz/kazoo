@@ -368,7 +368,7 @@ from_route_win(RouteWin, #kapps_call{call_id=OldCallId
                    }.
 
 -spec find_account_info(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()) ->
-                               {kz_term:api_binary(), kz_term:api_binary()}.
+          {kz_term:api_binary(), kz_term:api_binary()}.
 find_account_info(OldId, OldDb, 'undefined') ->
     {OldId, OldDb};
 find_account_info('undefined', _OldDb, AccountId) ->

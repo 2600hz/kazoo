@@ -1031,7 +1031,7 @@ idle_time('undefined') -> 'undefined';
 idle_time(T) -> kz_time:elapsed_s(T).
 
 -spec call_id(kapps_call:call() | kz_term:api_object()) ->
-                     kz_term:api_binary().
+          kz_term:api_binary().
 call_id('undefined') -> 'undefined';
 call_id(Call) ->
     case kapps_call:is_call(Call) of
@@ -1047,7 +1047,7 @@ call_id(Call) ->
     end.
 
 -spec maybe_connect_to_agent(kz_term:ne_binary(), kz_json:objects(), kapps_call:call(), kz_term:api_integer(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                                    kz_term:ne_binaries().
+          kz_term:ne_binaries().
 maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
     MCallId = kapps_call:call_id(Call),
     kz_util:put_callid(MCallId),
@@ -1112,7 +1112,7 @@ outbound_call_id(Call, AgentId) ->
     outbound_call_id(kapps_call:call_id(Call), AgentId).
 
 -spec add_queue_binding(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), fsm_state_name()) ->
-                               'ok'.
+          'ok'.
 add_queue_binding(AcctId, AgentId, QueueId, StateName) ->
     lager:debug("adding queue binding for ~s", [QueueId]),
     Body = kz_json:from_list([{<<"agent_id">>, AgentId}
@@ -1145,7 +1145,7 @@ rm_queue_binding(AcctId, AgentId, QueueId) ->
     send_agent_unavailable(AcctId, AgentId, QueueId).
 
 -spec send_availability_update(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), fsm_state_name()) ->
-                                      'ok'.
+          'ok'.
 send_availability_update(AcctId, AgentId, QueueId, 'ready') ->
     send_agent_available(AcctId, AgentId, QueueId);
 send_availability_update(AcctId, AgentId, QueueId, _) ->

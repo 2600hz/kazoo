@@ -171,7 +171,7 @@ expand_message_vars(Props) ->
                ).
 
 -spec expand_message_var({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) ->
-                                kz_term:proplist().
+          kz_term:proplist().
 expand_message_var({K,V}, Ac) ->
     case props:get_value(<<"variable_", K/binary>>, Ac) of
         'undefined' -> props:set_value(<<"variable_", K/binary>>, V, Ac);

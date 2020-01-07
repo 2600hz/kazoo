@@ -76,7 +76,7 @@ get_resp_v(JObj) ->
 
 
 -spec module_req(kz_term:api_terms()) -> {'ok', iolist()} |
-                                         {'error', string()}.
+          {'error', string()}.
 module_req(Prop) when is_list(Prop) ->
     case module_req_v(Prop) of
         'false' -> {'error', "Proplist failed validation for module_req"};
@@ -92,7 +92,7 @@ module_req_v(JObj) ->
     module_req_v(kz_json:to_proplist(JObj)).
 
 -spec module_resp(kz_term:api_terms()) -> {'ok', iolist()} |
-                                          {'error', string()}.
+          {'error', string()}.
 module_resp(Prop) when is_list(Prop) ->
     case module_resp_v(Prop) of
         'false' -> {'error', "Proplist failed validation for module_resp"};

@@ -41,12 +41,12 @@ fetch(API, ?NE_BINARY=AccountId, ?NE_BINARY=AcceptType) ->
                            ).
 
 -spec fetch_by_source(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                             pqc_cb_api:response().
+          pqc_cb_api:response().
 fetch_by_source(API, ?NE_BINARY=AccountId, ?NE_BINARY=SourceType) ->
     fetch_by_source(API, AccountId, SourceType, <<"application/json">>).
 
 -spec fetch_by_source(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                             pqc_cb_api:response().
+          pqc_cb_api:response().
 fetch_by_source(API, ?NE_BINARY=AccountId, SourceType, ?NE_BINARY=AcceptType) ->
     LedgersURL = ledgers_source_url(AccountId, SourceType),
     RequestHeaders = pqc_cb_api:request_headers(API, [{<<"accept">>, AcceptType}]),
@@ -64,7 +64,7 @@ fetch_by_source(API, ?NE_BINARY=AccountId, SourceType, ?NE_BINARY=AcceptType) ->
                            ).
 
 -spec credit(pqc_cb_api:state(), kz_term:ne_binary(), kzd_ledger:doc()) ->
-                    pqc_cb_api:response().
+          pqc_cb_api:response().
 credit(API, ?NE_BINARY=AccountId, Ledger) ->
     LedgersURL = ledgers_credit_url(AccountId),
     RequestHeaders = pqc_cb_api:request_headers(API),
@@ -81,7 +81,7 @@ credit(API, ?NE_BINARY=AccountId, Ledger) ->
                            ).
 
 -spec debit(pqc_cb_api:state(), kz_term:ne_binary(), kzd_ledger:doc()) ->
-                   pqc_cb_api:response().
+          pqc_cb_api:response().
 debit(API, ?NE_BINARY=AccountId, Ledger) ->
     LedgersURL = ledgers_debit_url(AccountId),
     RequestHeaders = pqc_cb_api:request_headers(API),

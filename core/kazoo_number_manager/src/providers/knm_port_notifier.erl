@@ -66,13 +66,13 @@ maybe_port_feature(Number) ->
     end.
 
 -spec maybe_port_changed(knm_number:knm_number(), kz_json:object()) ->
-                                knm_number:knm_number().
+          knm_number:knm_number().
 maybe_port_changed(Number, Port) ->
     DryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
     maybe_port_changed(Number, Port, DryRun).
 
 -spec maybe_port_changed(knm_number:knm_number(), kz_json:object(), boolean()) ->
-                                knm_number:knm_number().
+          knm_number:knm_number().
 maybe_port_changed(Number, _Port, 'true') -> Number;
 maybe_port_changed(Number, Port, 'false') ->
     CurrentPort = feature(Number),

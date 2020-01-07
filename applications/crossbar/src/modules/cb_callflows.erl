@@ -338,7 +338,7 @@ on_successful_validation(CallflowId, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
-                                    kz_json:objects().
+          kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -442,7 +442,7 @@ get_metadata('undefined', _Db) -> kz_json:new();
 get_metadata(Flow, Db) -> get_metadata(Flow, Db, kz_json:new()).
 
 -spec get_metadata(kz_json:object(), kz_term:ne_binary(), kz_json:object()) ->
-                          kz_json:object().
+          kz_json:object().
 get_metadata(Flow, Db, Metadata) ->
     UpdatedMetadata
         = lists:foldl(fun(ID, MetaAcc) -> create_metadata(Db, ID, MetaAcc) end
@@ -470,7 +470,7 @@ get_metadata(Flow, Db, Metadata) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec create_metadata(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                             kz_json:object().
+          kz_json:object().
 create_metadata(_, <<"_">>, Metadata) -> Metadata;
 create_metadata(_, Id, Metadata) when byte_size(Id) < 2 -> Metadata;
 create_metadata(Db, Id, Metadata) ->
@@ -483,8 +483,8 @@ create_metadata(Db, Id, Metadata) ->
     end.
 
 -spec fetch_id_from_db(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                              {'ok', kz_json:object()} |
-                              kz_datamgr:data_error().
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error().
 -ifdef(TEST).
 fetch_id_from_db(_Db, <<"{USER_ID}">>) ->
     {'ok', ?TEST_USER};
@@ -508,7 +508,7 @@ create_metadata(Doc) ->
                ).
 
 -spec metadata_builder(kz_json:path(), kz_json:object(), kz_json:object()) ->
-                              kz_json:object().
+          kz_json:object().
 metadata_builder(<<"name">> = Key, Doc, Metadata) ->
     case kz_doc:type(Doc) of
         <<"user">> ->
@@ -520,7 +520,7 @@ metadata_builder(Key, Doc, Metadata) ->
     maybe_copy_value(Key, Doc, Metadata).
 
 -spec maybe_copy_value(kz_json:path(), kz_json:object(), kz_json:object()) ->
-                              kz_json:object().
+          kz_json:object().
 maybe_copy_value(Key, Doc, Metadata) ->
     case kz_json:get_value(Key, Doc) of
         'undefined' -> Metadata;

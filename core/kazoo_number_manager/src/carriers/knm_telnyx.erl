@@ -55,7 +55,7 @@ is_number_billable(_Number) -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {'ok', kz_json:object()} |
-                                              {'error', any()}.
+          {'error', any()}.
 check_numbers(_Numbers) -> {'error', 'not_implemented'}.
 
 
@@ -64,7 +64,7 @@ check_numbers(_Numbers) -> {'error', 'not_implemented'}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
-                          {'ok', knm_number:knm_numbers()}.
+          {'ok', knm_number:knm_numbers()}.
 find_numbers(<<"+1", Prefix:3/binary, _/binary>>, Quantity, Options)
   when ?IS_US_TOLLFREE(Prefix) ->
     Results = numbers('tollfree', Quantity, Prefix, 'undefined'),
@@ -138,7 +138,7 @@ should_lookup_cnam() -> 'true'.
 
 -type kind() :: 'npa' | 'tollfree' | 'region'.
 -spec numbers(kind(), pos_integer(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
-                     kz_json:objects().
+          kz_json:objects().
 numbers(SearchKind, Quantity, Prefix, NXX) ->
     Descriptor = kz_json:from_list(search_prefix(SearchKind, Prefix, NXX)),
     Req = kz_json:from_list(

@@ -411,7 +411,7 @@ check_integrity(JObjs, _Options) ->
     check_integrity(JObjs, Headers, []).
 
 -spec check_integrity(kz_json:objects(), kz_term:ne_binaries(), kz_json:objects()) ->
-                             kz_json:objects().
+          kz_json:objects().
 check_integrity([], _, Acc) ->
     lists:reverse(Acc);
 check_integrity([JObj|JObjs], Headers, Acc) ->
@@ -420,7 +420,7 @@ check_integrity([JObj|JObjs], Headers, Acc) ->
     check_integrity(JObjs, Headers, [NJObj1|Acc]).
 
 -spec check_integrity_fold(kz_json:path(), kz_json:object()) ->
-                                  kz_json:json_term().
+          kz_json:json_term().
 check_integrity_fold(Header, JObj) ->
     case kz_json:get_value(Header, JObj) of
         'undefined' ->

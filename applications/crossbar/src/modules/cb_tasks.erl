@@ -162,17 +162,17 @@ cta(Context, _) ->
 %%------------------------------------------------------------------------------
 
 -spec content_types_provided(cb_context:context()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context) ->
     ctp(Context).
 
 -spec content_types_provided(cb_context:context(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, _TaskId) ->
     ctp(Context).
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, _TaskId, _CSV) ->
     cb_context:add_content_types_provided(Context, [{'to_csv', ?CSV_CONTENT_TYPES}]).
 
@@ -183,7 +183,7 @@ ctp(Context) ->
                                                    ]).
 
 -spec to_csv({cowboy_req:req(), cb_context:context()}) ->
-                    {cowboy_req:req(), cb_context:context()}.
+          {cowboy_req:req(), cb_context:context()}.
 to_csv({Req, Context}) ->
     Filename = download_filename(Context, requested_attachment_name(Context)),
     lager:debug("download named ~s", [Filename]),
@@ -472,7 +472,7 @@ read(TaskId, Context, AccountId, Accept) ->
 -type parsed_accept_values() :: {'error', 'badarg'} | media_values().
 
 -spec read_doc_or_attachment(kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary(), parsed_accept_values()) ->
-                                    cb_context:context().
+          cb_context:context().
 read_doc_or_attachment(TaskId, Context, AccountId, {'error', 'badarg'}) ->
     lager:info("failed to parse the accept header"),
     read_doc(TaskId, Context, AccountId);
@@ -496,7 +496,7 @@ read_doc_or_attachment(TaskId, Context, AccountId, []) ->
     read_doc(TaskId, Context, AccountId).
 
 -spec read_doc(kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary()) ->
-                      cb_context:context().
+          cb_context:context().
 read_doc(TaskId, Context, AccountId) ->
     Ctx = crossbar_doc:load_view(?KZ_TASKS_BY_ACCOUNT
                                 ,[{'key', [AccountId, TaskId]}]
@@ -587,7 +587,7 @@ attached_data(Context, 'false') ->
     kz_json:get_value(?RD_RECORDS, cb_context:req_data(Context)).
 
 -spec save_attached_data(cb_context:context(), kz_term:ne_binary(), kz_tasks:input(), boolean()) ->
-                                cb_context:context().
+          cb_context:context().
 save_attached_data(Context, TaskId, CSV, 'true') ->
     CT = req_content_type(Context),
     Options = [{'content_type', CT}],

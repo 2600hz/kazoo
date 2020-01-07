@@ -14,8 +14,8 @@
 -include("kzt.hrl").
 
 -spec exec(kapps_call:call(), kz_json:object()) ->
-                  usurp_return() |
-                  {'error', [jesse_error:error_return()]}.
+          usurp_return() |
+          {'error', [jesse_error:error_return()]}.
 exec(Call, FlowJObj) ->
     case kzd_callflow:validate_flow(
            kzd_callflow:set_flow(kzd_callflow:new(), FlowJObj)
@@ -37,8 +37,8 @@ resume_callflow(Call, FlowJObj) ->
     {'usurp', Call}.
 
 -spec parse_cmds(kz_term:ne_binary()) ->
-                        {'ok', kz_json:object()} |
-                        {'error', 'not_parsed'}.
+          {'ok', kz_json:object()} |
+          {'error', 'not_parsed'}.
 parse_cmds(<<_/binary>> = JSON) ->
     try kz_json:unsafe_decode(JSON) of
         JObj -> {'ok', JObj}

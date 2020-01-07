@@ -79,14 +79,14 @@ start_link(Node, Options) ->
 -type channel_format() :: 'json' | 'proplist' | 'record'.
 
 -spec fetch(kz_term:ne_binary()) ->
-                   {'ok', fetch_resp()} |
-                   {'error', 'not_found'}.
+          {'ok', fetch_resp()} |
+          {'error', 'not_found'}.
 fetch(UUID) ->
     fetch(UUID, 'json').
 
 -spec fetch(kz_term:ne_binary(), channel_format()) ->
-                   {'ok', fetch_resp()} |
-                   {'error', 'not_found'}.
+          {'ok', fetch_resp()} |
+          {'error', 'not_found'}.
 fetch(UUID, Format) ->
     case ets:lookup(?CHANNELS_TBL, UUID) of
         [Channel] -> {'ok', format(Format, Channel)};
@@ -94,14 +94,14 @@ fetch(UUID, Format) ->
     end.
 
 -spec fetch_other_leg(kz_term:ne_binary()) ->
-                             {'ok', fetch_resp()} |
-                             {'error', 'not_found'}.
+          {'ok', fetch_resp()} |
+          {'error', 'not_found'}.
 fetch_other_leg(UUID) ->
     fetch_other_leg(UUID, 'json').
 
 -spec fetch_other_leg(kz_term:ne_binary(), channel_format()) ->
-                             {'ok', fetch_resp()} |
-                             {'error', 'not_found'}.
+          {'ok', fetch_resp()} |
+          {'error', 'not_found'}.
 fetch_other_leg(UUID, Format) ->
     case ets:lookup(?CHANNELS_TBL, UUID) of
         [#channel{other_leg=OtherLeg}] -> fetch(OtherLeg, Format);
@@ -114,8 +114,8 @@ format('proplist', Channel) -> to_props(Channel);
 format('record', Channel) -> Channel.
 
 -spec node(kz_term:ne_binary()) ->
-                  {'ok', atom()} |
-                  {'error', 'not_found'}.
+          {'ok', atom()} |
+          {'error', 'not_found'}.
 node(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', node = '$2', _ = '_'}
                  ,[{'=:=', '$1', {'const', UUID}}]
@@ -140,8 +140,8 @@ set_node(Node, UUID) ->
     ecallmgr_fs_channels:updates(UUID, Updates).
 
 -spec former_node(kz_term:ne_binary()) ->
-                         {'ok', atom()} |
-                         {'error', any()}.
+          {'ok', atom()} |
+          {'error', any()}.
 former_node(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', former_node = '$2', _ = '_'}
                  ,[{'=:=', '$1', {'const', UUID}}]
@@ -186,8 +186,8 @@ set_authorized(UUID, Value) ->
     ecallmgr_fs_channels:update(UUID, #channel.is_authorized, kz_term:is_true(Value)).
 
 -spec renew(atom(), kz_term:ne_binary()) ->
-                   {'ok', channel()} |
-                   {'error', 'timeout' | 'badarg'}.
+          {'ok', channel()} |
+          {'error', 'timeout' | 'badarg'}.
 renew(Node, UUID) ->
     case channel_data(Node, UUID) of
         {'ok', Props} ->
@@ -196,7 +196,7 @@ renew(Node, UUID) ->
     end.
 
 -spec channel_data(atom(), kz_term:ne_binary()) -> {'ok', kz_term:proplist()} |
-                                                   freeswitch:fs_api_error().
+          freeswitch:fs_api_error().
 channel_data(Node, UUID) ->
     case freeswitch:api(Node, 'uuid_dump', UUID) of
         {'error', _}=E -> E;
@@ -597,7 +597,7 @@ process_event(UUID, Props, Node, Pid) ->
     process_specific_event(EventName, UUID, Props, Node).
 
 -spec process_specific_event(kz_term:ne_binary(), kz_term:api_binary(), kz_term:proplist(), atom()) ->
-                                    any().
+          any().
 process_specific_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     _ = maybe_publish_channel_state(Props, Node),
     case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)
@@ -760,7 +760,7 @@ get_username(Props) ->
     end.
 
 -spec get_realm(kzd_freeswitch:data(), kz_term:proplist()) ->
-                       kz_term:api_ne_binary().
+          kz_term:api_ne_binary().
 get_realm(Props, CCVs) ->
     case props:get_value(<<"Realm">>, CCVs) of
         'undefined' ->
@@ -770,7 +770,7 @@ get_realm(Props, CCVs) ->
     end.
 
 -spec get_realm_from_props(kzd_freeswitch:data()) ->
-                                  kz_term:api_ne_binary().
+          kz_term:api_ne_binary().
 get_realm_from_props(Props) ->
     case props:get_value(<<"variable_domain_name">>, Props) of
         'undefined' ->
@@ -871,7 +871,7 @@ get_other_leg(UUID, Props, 'undefined') ->
 get_other_leg(_UUID, _Props, OtherLeg) -> OtherLeg.
 
 -spec maybe_other_bridge_leg(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                    kz_term:api_binary().
+          kz_term:api_binary().
 maybe_other_bridge_leg(UUID, _Props, UUID, OtherLeg) -> OtherLeg;
 maybe_other_bridge_leg(UUID, _Props, OtherLeg, UUID) -> OtherLeg;
 maybe_other_bridge_leg(UUID, Props, _, _) ->

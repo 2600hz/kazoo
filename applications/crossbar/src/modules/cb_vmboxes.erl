@@ -720,7 +720,7 @@ validate_media_extension(VMBoxId, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) ->
-                                      cb_context:context().
+          cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, kzd_voicemail_box:type()}],
     cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context)));
@@ -858,7 +858,7 @@ prefix_filter_key(Key, Value) ->
     {Key, Value}.
 
 -spec message_summary_normalizer(kz_term:api_binary(), kz_json:object(), kz_json:objects(), kz_time:gregorian_seconds()) ->
-                                        kz_json:objects().
+          kz_json:objects().
 message_summary_normalizer('undefined', JObj, Acc, RetentionTimestamp) ->
     [kz_json:from_list(
        [{kz_json:get_value([<<"key">>, ?BOX_ID_KEY_INDEX], JObj)
@@ -987,7 +987,7 @@ load_message_binary(BoxId, MediaId, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec load_attachment_from_message(kz_json:object(), cb_context:context(), kz_term:ne_binary()) ->
-                                          cb_context:context().
+          cb_context:context().
 load_attachment_from_message(Doc, Context, Timezone) ->
     MediaId = kz_doc:id(Doc),
     VMMetaJObj = kzd_box_message:metadata(Doc),
@@ -1034,7 +1034,7 @@ load_messages_binaries(BoxId, Context) ->
     end.
 
 -spec save_attachments_to_file(kz_term:ne_binaries(), kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary(), string()) ->
-                                      cb_context:context().
+          cb_context:context().
 save_attachments_to_file([], _, Context, _, _) -> Context;
 save_attachments_to_file([Id|Ids], BoxId, Context, Timezone, WorkDir) ->
     _ = file:make_dir(WorkDir),
@@ -1050,7 +1050,7 @@ save_attachments_to_file([Id|Ids], BoxId, Context, Timezone, WorkDir) ->
     end.
 
 -spec save_attachment_to_file(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context(), kz_term:ne_binary(), string()) ->
-                                     'ok' | {'error', any()}.
+          'ok' | {'error', any()}.
 save_attachment_to_file(MsgId, BoxId, Context, Timezone, WorkDir) ->
     case kvm_message:fetch(cb_context:account_id(Context), MsgId, BoxId) of
         {'ok', Doc} ->
@@ -1199,8 +1199,8 @@ update_mwi(Context, _BoxId, _Status) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_migrate_vm_box(kzd_voicemail_box:doc()) ->
-                                  {'true', kzd_voicemail_box:doc()} |
-                                  'false'.
+          {'true', kzd_voicemail_box:doc()} |
+          'false'.
 maybe_migrate_vm_box(Box) ->
     case kz_json:get_value(<<"notify_email_address">>, Box) of
         'undefined' -> 'false';

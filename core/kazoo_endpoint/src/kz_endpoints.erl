@@ -15,7 +15,7 @@
 -include("kazoo_endpoint.hrl").
 
 -spec by_owner_id(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
-                         kz_json:objects().
+          kz_json:objects().
 by_owner_id(OwnerId, Data, Call) ->
     lists:foldr(fun(EndpointId, Acc) ->
                         case kz_endpoint:build(EndpointId, Data, Call) of

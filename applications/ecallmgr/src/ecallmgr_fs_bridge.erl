@@ -89,8 +89,8 @@ call_command(Node, UUID, JObj) ->
     end.
 
 -spec unbridge(kz_term:ne_binary(), kz_json:object()) ->
-                      kz_term:proplist() |
-                      {'error', kz_term:ne_binary()}.
+          kz_term:proplist() |
+          {'error', kz_term:ne_binary()}.
 unbridge(UUID, JObj) ->
     case kapi_dialplan:unbridge_v(JObj) of
         'false' -> {'error', <<"unbridge failed to execute as API did not validate">>};
@@ -366,14 +366,14 @@ build_endpoint_actions(Node, UUID, Endpoint) ->
 -type ep_actions() :: kz_term:ne_binaries().
 
 -spec build_endpoint_actions(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), ep_actions()) ->
-                                    ep_actions().
+          ep_actions().
 build_endpoint_actions(Node, UUID, K, V, Acc) ->
     Fun = fun(K1, V1, Acc1)-> build_endpoint_action(Node, UUID, K1, V1, Acc1) end,
     DP = kz_json:foldr(Fun, [], V),
     Acc ++ build_endpoint_action_dp(K, DP).
 
 -spec build_endpoint_action(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), fs_apps()) ->
-                                   fs_apps().
+          fs_apps().
 build_endpoint_action(Node, UUID, _K, V, Acc) ->
     lager:debug("building dialplan action for ~s", [_K]),
     DP = ecallmgr_call_command:fetch_dialplan(Node, UUID, V, self()),
@@ -410,14 +410,14 @@ add_bridge_actions(Node, UUID, _Endpoints, JObj) ->
     end.
 
 -spec build_bridge_actions(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), ep_actions()) ->
-                                  ep_actions().
+          ep_actions().
 build_bridge_actions(Node, UUID, K, V, Acc) ->
     Fun = fun(K1, V1, Acc1)-> build_bridge_action(Node, UUID, K1, V1, Acc1) end,
     DP = kz_json:foldr(Fun, [], V),
     Acc ++ build_bridge_action_dp(K, DP).
 
 -spec build_bridge_action(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), fs_apps()) ->
-                                 fs_apps().
+          fs_apps().
 build_bridge_action(Node, UUID, _K, V, Acc) ->
     lager:debug("building dialplan action for ~s", [_K]),
     DP = ecallmgr_call_command:fetch_dialplan(Node, UUID, V, self()),

@@ -96,17 +96,17 @@ allowed_methods(_UserId, ?VCARD) ->
 %%------------------------------------------------------------------------------
 
 -spec content_types_provided(cb_context:context()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context) ->
     Context.
 
 -spec content_types_provided(cb_context:context(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, _) ->
     Context.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, _, ?VCARD) ->
     cb_context:set_content_types_provided(Context, [{'to_binary', [{<<"text">>, <<"x-vcard">>}
                                                                   ,{<<"text">>, <<"directory">>}
@@ -321,7 +321,7 @@ patch(Context, Id) ->
 %%------------------------------------------------------------------------------
 
 -spec load_attachment(kz_term:ne_binary(), cb_context:context()) ->
-                             cb_context:context().
+          cb_context:context().
 load_attachment(AttachmentId, Context) ->
     Headers =
         #{<<"content-disposition">> => <<"attachment; filename=", AttachmentId/binary>>
@@ -335,7 +335,7 @@ load_attachment(AttachmentId, Context) ->
     cb_context:add_resp_headers(LoadedContext, Headers).
 
 -spec load_attachment(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) ->
-                             cb_context:context().
+          cb_context:context().
 load_attachment(UserId, AttachmentId, Context) ->
     Context1 = load_user(UserId, Context),
     case cb_context:resp_status(Context1) of
@@ -377,8 +377,8 @@ update_devices_presence(Context, DeviceDocs) ->
                  ).
 
 -spec user_devices(cb_context:context()) ->
-                          {'ok', kzd_devices:docs()} |
-                          {'error', any()}.
+          {'ok', kzd_devices:docs()} |
+          {'error', any()}.
 user_devices(Context) ->
     UserId = kz_doc:id(cb_context:doc(Context)),
     AccountDb = cb_context:account_db(Context),
@@ -768,7 +768,7 @@ remove_creds(Context) ->
     cb_context:set_doc(Context, kz_json:delete_keys(HashKeys, cb_context:doc(Context))).
 
 -spec rehash_creds(kz_term:api_binary(), kz_term:ne_binary(), cb_context:context()) ->
-                          cb_context:context().
+          cb_context:context().
 rehash_creds(Username, Password, Context) ->
     lager:debug("updating cred hashes for ~s", [Username]),
     CurrentJObj = cb_context:doc(Context),

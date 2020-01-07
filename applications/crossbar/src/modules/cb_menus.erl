@@ -171,7 +171,7 @@ validate_patch(DocId, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) ->
-                                      cb_context:context().
+          cb_context:context().
 on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, kz_json:set_values([{<<"pvt_type">>, <<"menu">>}
                                                    ,{<<"pvt_vsn">>, <<"2">>}

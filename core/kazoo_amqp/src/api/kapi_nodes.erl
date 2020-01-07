@@ -41,7 +41,7 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec advertise(kz_term:api_terms()) -> {'ok', iolist()} |
-                                        {'error', string()}.
+          {'error', string()}.
 advertise(Prop) when is_list(Prop) ->
     case advertise_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?ADVERTISE_HEADERS, ?OPTIONAL_ADVERTISE_HEADERS);

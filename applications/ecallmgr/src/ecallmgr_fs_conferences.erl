@@ -127,8 +127,8 @@ destroy(UUID) ->
     gen_server:call(?SERVER, {'conference_destroy', UUID}).
 
 -spec node(kz_term:ne_binary()) ->
-                  {'ok', atom()} |
-                  {'error', 'not_found'}.
+          {'ok', atom()} |
+          {'error', 'not_found'}.
 node(Name) ->
     case ets:match_object(?CONFERENCES_TBL, #conference{name=Name, _ = '_'}) of
         %% TODO: this ignores conferences on multiple nodes until big-conferences
@@ -622,7 +622,7 @@ xml_to_conference(#xmlElement{name='conference'
                                               }).
 
 -spec xml_attrs_to_conference(kz_types:xml_attribs(), conference()) ->
-                                     conference().
+          conference().
 xml_attrs_to_conference([], Conference) -> Conference;
 xml_attrs_to_conference([#xmlAttribute{name=Name, value=Value}
                          |Attrs
@@ -631,7 +631,7 @@ xml_attrs_to_conference([#xmlAttribute{name=Name, value=Value}
     xml_attrs_to_conference(Attrs, C).
 
 -spec xml_attr_to_conference(conference(), kz_types:xml_attrib_name(), kz_types:xml_attrib_value()) ->
-                                    conference().
+          conference().
 xml_attr_to_conference(Conference, 'name', Value) ->
     Conference#conference{name=kz_term:to_binary(Value)};
 xml_attr_to_conference(Conference, 'member-count', Value) ->

@@ -127,7 +127,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec send_error_resp(kz_json:object(), atom() | kz_term:ne_binary()) ->
-                             kz_amqp_worker:cast_return().
+          kz_amqp_worker:cast_return().
 send_error_resp(JObj, ErrMsg) ->
     MediaName = kz_json:get_value(<<"Media-Name">>, JObj),
     Error = [{<<"Media-Name">>, MediaName}
@@ -142,7 +142,7 @@ send_error_resp(JObj, ErrMsg) ->
     kz_amqp_worker:cast(Error, Publisher).
 
 -spec send_media_resp(kz_json:object(), kz_term:ne_binary()) ->
-                             kz_amqp_worker:cast_return().
+          kz_amqp_worker:cast_return().
 send_media_resp(JObj, StreamURL) ->
     lager:debug("media stream URL: ~s", [StreamURL]),
     Resp = [{<<"Media-Name">>, kz_json:get_value(<<"Media-Name">>, JObj)}

@@ -46,7 +46,7 @@ get_node(Config, Node) ->
     kzd_system_configs:node(Config, Node, kz_json:new()).
 
 -spec apply_default_values(kzd_system_configs:doc(), kz_term:ne_binary(), kzd_system_configs:doc()) ->
-                                  kzd_system_configs:doc().
+          kzd_system_configs:doc().
 apply_default_values(Config, Node, Defaults) ->
     NodeSection = get_node(Config, Node),
     DefaultSection = get_node(Config, ?DEFAULT),
@@ -66,7 +66,7 @@ apply_default_node(Config) ->
                ).
 
 -spec apply_schema_defaults(kz_term:ne_binary(), kzd_system_configs:doc()) ->
-                                   kzd_system_configs:doc().
+          kzd_system_configs:doc().
 apply_schema_defaults(Id, Config) ->
     SchemaDefaults = schema_defaults(Id),
 
@@ -78,7 +78,7 @@ apply_schema_defaults(Id, Config) ->
                ).
 
 -spec apply_schema_defaults_to_default(kz_term:ne_binary(), kzd_system_configs:doc()) ->
-                                              kzd_system_configs:doc().
+          kzd_system_configs:doc().
 apply_schema_defaults_to_default(Id, Config) ->
     SchemaDefaults = schema_defaults(Id),
     apply_default_values(Config, ?DEFAULT, SchemaDefaults).

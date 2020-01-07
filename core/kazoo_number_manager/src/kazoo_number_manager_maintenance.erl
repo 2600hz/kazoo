@@ -583,7 +583,7 @@ fix_apps_in_number_dbs_for_single_account(Account) ->
 
 %% @private
 -spec fix_apps_in_number_dbs_for_account(loop_state(), kz_term:ne_binary(), non_neg_integer(), kz_term:ne_binaries()) ->
-                                                loop_state().
+          loop_state().
 fix_apps_in_number_dbs_for_account(State, _, _, []) ->
     State;
 fix_apps_in_number_dbs_for_account(State, NumberDb, Total, [AccountId|AccountIds]) ->
@@ -855,7 +855,7 @@ report_loop_state(_) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_results_loop(loop_state(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist(), loop_db_funs()) ->
-                              loop_state().
+          loop_state().
 get_results_loop(State, Db, View, ViewOpts, Funs) ->
     get_results_loop(State#{get_loop_count => 1}, Db, View, ViewOpts, Funs, 2).
 
@@ -1211,7 +1211,7 @@ save_to_dbs(#{ko := KO}=State, Total, [{Db, JObjs} | Rest], Retries) ->
 
 %% @private
 -spec handle_bulk_save_errors(loop_state(), kz_term:ne_binary(), kz_json:objects(), kz_json:objects(), boolean()) ->
-                                     loop_state().
+          loop_state().
 handle_bulk_save_errors(#{ko := KO}=State, Db, Saved, JObjs, IsConflictTry) ->
     DbKO = maps:get(Db, KO, #{}),
     DbFailed = maps:get(failed, DbKO, #{}),
@@ -1256,7 +1256,7 @@ merge_error_num_ids(ErrorType, Ids, Acc) ->
 
 %% @private
 -spec split_by_error(kz_json:objects(), gb_sets:set(), map(), non_neg_integer()) ->
-                            {gb_sets:set(), map()}.
+          {gb_sets:set(), map()}.
 split_by_error([], ConflictSet, Failed, TotalFailed) ->
     maybe_log_failed_saves(ConflictSet, TotalFailed),
     {ConflictSet, Failed};
@@ -1292,7 +1292,7 @@ maybe_log_failed_saves(ConflictSet, TotalFailed) when TotalFailed > 0 ->
 
 %% @private
 -spec save_conflicts_to_db(loop_state(), kz_term:ne_binary(), kz_json:objects()) ->
-                                  loop_state().
+          loop_state().
 save_conflicts_to_db(#{ko := KO}=State, Db, ConflictJObjs) ->
     ?SUP_LOG_DEBUG("         trying to ensure save ~b conflicts", [length(ConflictJObjs)]),
     DbKO = maps:get(Db, KO, #{}),
@@ -1324,7 +1324,7 @@ save_conflicts_to_db(#{ko := KO}=State, Db, ConflictJObjs) ->
 
 %% @private
 -spec get_conflicts_revs(kz_term:ne_binary(), kz_term:ne_binaries()) ->
-                                {map(), map()}.
+          {map(), map()}.
 get_conflicts_revs(Db, ConflictIds) ->
     ?SUP_LOG_DEBUG("           fetching ~b revs from ~s", [length(ConflictIds), Db]),
     case kz_datamgr:all_docs(Db, [{'keys', ConflictIds}]) of
@@ -1338,7 +1338,7 @@ get_conflicts_revs(Db, ConflictIds) ->
 
 %% @private
 -spec split_errors_opened_revs(kz_json:objects(), {map(), map()}) ->
-                                      {map(), map()}.
+          {map(), map()}.
 split_errors_opened_revs([], Acc) -> Acc;
 split_errors_opened_revs([JObj|JObjs], {Errors, Revs}) ->
     Id = kz_json:get_value(<<"key">>, JObj),

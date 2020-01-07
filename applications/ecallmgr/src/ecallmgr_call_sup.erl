@@ -43,7 +43,7 @@ start_control_process(Node, CallId, FetchId) ->
     start_control_process(Node, CallId, FetchId, 'undefined', kz_json:new()).
 
 -spec start_control_process(atom(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_json:object()) ->
-                                   kz_types:sup_startchild_ret().
+          kz_types:sup_startchild_ret().
 start_control_process(Node, CallId, FetchId, ControllerQ, CCVs) ->
     ecallmgr_call_control_sup:start_proc([Node
                                          ,CallId

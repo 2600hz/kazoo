@@ -57,8 +57,8 @@ maybe_empty_mobile_log(RateReq) ->
     end.
 
 -spec get_rate_data(kapi_rate:req(), kz_term:api_ne_binary()) ->
-                           {'ok', kz_term:api_terms()} |
-                           {'error', 'no_rate_found'}.
+          {'ok', kz_term:api_terms()} |
+          {'error', 'no_rate_found'}.
 get_rate_data(RateReq, <<"mobile">>) ->
     ToDID = kapi_rate:to_did(RateReq),
     FromDID = kapi_rate:from_did(RateReq),
@@ -102,8 +102,8 @@ maybe_send_system_alert(RateReq, FromDID, ToDID) ->
     end.
 
 -spec get_rate_data(kapi_rate:req(), kz_term:ne_binary(), kz_term:api_binary(), kz_json:objects()) ->
-                           {'ok', kz_term:api_terms()} |
-                           {'error', 'no_rate_found'}.
+          {'ok', kz_term:api_terms()} |
+          {'error', 'no_rate_found'}.
 get_rate_data(RateReq, ToDID, FromDID, Rates) ->
     lager:debug("candidate rates found, filtering"),
     Matching = hon_util:matching_rates(Rates, RateReq),

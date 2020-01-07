@@ -16,7 +16,7 @@
 -include("konami.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'continue', kapps_call:call()}.
+          {'continue', kapps_call:call()}.
 handle(_Data, Call) ->
     lager:debug("reconnecting ~s and ~s", [kapps_call:call_id(Call)
                                           ,kapps_call:other_leg_call_id(Call)

@@ -22,7 +22,7 @@
 -spec base_call_cost(kz_currency:units() | kz_currency:dollars()
                     ,kz_currency:units() | kz_currency:dollars()
                     ,kz_currency:units() | kz_currency:dollars()) ->
-                            kz_currency:units().
+          kz_currency:units().
 base_call_cost(RateCost, 0, RateSurcharge) ->
     base_call_cost(RateCost, 60, RateSurcharge);
 base_call_cost(RateCost, RateMin, RateSurcharge)

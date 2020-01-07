@@ -86,15 +86,15 @@ db_delete(#server{}=Conn, DbName) ->
     end.
 
 -spec db_replicate(server(), kz_json:object() | kz_term:proplist()) ->
-                          {'ok', kz_json:object()} |
-                          couchbeam_error().
+          {'ok', kz_json:object()} |
+          couchbeam_error().
 db_replicate(#server{}=Conn, Prop) when is_list(Prop) ->
     couchbeam:replicate(Conn, kz_json:from_list(Prop));
 db_replicate(#server{}=Conn, JObj) ->
     couchbeam:replicate(Conn, JObj).
 
 -spec db_list(server(), view_options()) ->
-                     {'ok', kz_json:objects() | kz_term:ne_binaries()} | couchbeam_error().
+          {'ok', kz_json:objects() | kz_term:ne_binaries()} | couchbeam_error().
 db_list(#server{}=Conn, Options) ->
     couchbeam:all_dbs(Conn, Options).
 
@@ -103,14 +103,14 @@ db_view_cleanup(#server{}=Conn, DbName) ->
     do_db_view_cleanup(get_db(Conn, DbName)).
 
 -spec db_info(server()) ->
-                     {'ok', kz_term:ne_binaries()} |
-                     couchbeam_error().
+          {'ok', kz_term:ne_binaries()} |
+          couchbeam_error().
 db_info(#server{}=Conn) ->
     ?RETRY_504(couchbeam:all_dbs(Conn)).
 
 -spec db_info(server(), kz_term:ne_binary()) ->
-                     {'ok', kz_json:object()} |
-                     couchbeam_error().
+          {'ok', kz_json:object()} |
+          couchbeam_error().
 db_info(#server{}=Conn, DbName) ->
     ?RETRY_504(couchbeam:db_info(get_db(Conn, DbName))).
 
@@ -119,8 +119,8 @@ db_exists(#server{}=Conn, DbName) ->
     couchbeam:db_exists(Conn, kz_term:to_list(DbName)).
 
 -spec db_archive(server(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                        'ok' |
-                        couchbeam_error().
+          'ok' |
+          couchbeam_error().
 db_archive(#server{}=Conn, DbName, Filename) ->
     Db = get_db(Conn, DbName),
     {'ok', DbInfo} = db_info(Conn, DbName),
@@ -193,8 +193,8 @@ archive_docs(File, [Doc|Docs]) ->
     archive_docs(File, Docs).
 
 -spec db_import(server(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                       'ok' |
-                       couchbeam_error().
+          'ok' |
+          couchbeam_error().
 db_import(#server{}=Conn, DbName, Filename) ->
     case file:read_file(Filename) of
         {'ok', Text} -> do_db_import(Conn, DbName, kz_json:decode(Text));
@@ -202,8 +202,8 @@ db_import(#server{}=Conn, DbName, Filename) ->
     end.
 
 -spec do_db_import(server(), kz_term:ne_binary(), kz_json:objects()) ->
-                          'ok' |
-                          couchbeam_error().
+          'ok' |
+          couchbeam_error().
 do_db_import(#server{}=Conn, DbName, Docs) ->
     JObjs = [cleanup_for_import(Doc)
              || Doc <- Docs,

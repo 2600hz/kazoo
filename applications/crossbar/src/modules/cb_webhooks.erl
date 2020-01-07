@@ -125,26 +125,26 @@ get_available_hook_ids(MasterDb) ->
     end.
 
 -spec authorize(cb_context:context()) ->
-                       boolean() |
-                       {'stop', cb_context:context()}.
+          boolean() |
+          {'stop', cb_context:context()}.
 authorize(Context) ->
     is_authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 -spec authorize(cb_context:context(), path_token()) ->
-                       boolean() |
-                       {'stop', cb_context:context()}.
+          boolean() |
+          {'stop', cb_context:context()}.
 authorize(Context, _) ->
     is_authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 -spec authorize(cb_context:context(), path_token(), path_token()) ->
-                       boolean() |
-                       {'stop', cb_context:context()}.
+          boolean() |
+          {'stop', cb_context:context()}.
 authorize(Context, _, _) ->
     is_authorize(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 -spec is_authorize(cb_context:context(), http_method(), req_nouns()) ->
-                          boolean() |
-                          {'stop', cb_context:context()}.
+          boolean() |
+          {'stop', cb_context:context()}.
 is_authorize(_, ?HTTP_GET, [{<<"webhooks">>, []}]) ->
     lager:debug("authorizing request"),
     'true';
@@ -157,14 +157,14 @@ is_authorize(_, _Verb, _Nouns) ->
     'false'.
 
 -spec authenticate(cb_context:context()) ->
-                          {'true', cb_context:context()} |
-                          'false'.
+          {'true', cb_context:context()} |
+          'false'.
 authenticate(Context) ->
     authenticate(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
 -spec authenticate(cb_context:context(), http_method(), req_nouns()) ->
-                          {'true', cb_context:context()} |
-                          'false'.
+          {'true', cb_context:context()} |
+          'false'.
 authenticate(Context, ?HTTP_GET, [{<<"webhooks">>, []}]) ->
     lager:debug("authenticating request"),
     {'true', Context};
@@ -345,7 +345,7 @@ validate_collection_patch(Context) ->
     validate_collection_patch(Context, cb_context:req_value(Context, ?REENABLE)).
 
 -spec validate_collection_patch(cb_context:context(), kz_term:api_boolean()) ->
-                                       cb_context:context().
+          cb_context:context().
 validate_collection_patch(Context, 'undefined') ->
     Msg = kz_json:from_list([{<<"message">>, <<"re-enable is required to patch collections">>}]),
     cb_context:add_validation_error(?REENABLE, <<"required">>, Msg, Context);
@@ -405,7 +405,7 @@ summary(Context) ->
     crossbar_view:load(Context, ?CB_LIST, Options).
 
 -spec summary_available(cb_context:context()) ->
-                               cb_context:context().
+          cb_context:context().
 summary_available(Context) ->
     {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
     IsSuperAdmin = cb_context:is_superduper_admin(Context),
@@ -443,7 +443,7 @@ get_available_hook_samples() ->
     ].
 
 -spec normalize_available(cb_context:context(), kz_json:object(), kz_json:objects()) ->
-                                 kz_json:objects().
+          kz_json:objects().
 normalize_available(Context, JObj, Acc) ->
     maybe_filter_non_admin_hooks(Context, kz_doc:id(JObj), kz_json:get_value(<<"doc">>, JObj), Acc).
 
@@ -495,7 +495,7 @@ normalize_attempt_results(JObj, Acc) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) ->
-                                      cb_context:context().
+          cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, kzd_webhook:type()}
             ,{<<"pvt_account_id">>, cb_context:account_id(Context)}
@@ -596,19 +596,19 @@ maybe_update_hook(Context) ->
     end.
 
 -spec reenable_hooks(cb_context:context()) ->
-                            cb_context:context().
+          cb_context:context().
 reenable_hooks(Context) ->
     reenable_hooks(Context, props:get_value(<<"accounts">>, cb_context:req_nouns(Context))).
 
 -spec reenable_hooks(cb_context:context(), kz_term:ne_binaries()) ->
-                            cb_context:context().
+          cb_context:context().
 reenable_hooks(Context, [AccountId]) ->
     handle_resp(Context, send_reenable_req(Context, AccountId, <<"account">>));
 reenable_hooks(Context, [AccountId, ?DESCENDANTS]) ->
     handle_resp(Context, send_reenable_req(Context, AccountId, ?DESCENDANTS)).
 
 -spec send_reenable_req(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               kz_amqp_worker:request_return().
+          kz_amqp_worker:request_return().
 send_reenable_req(Context, AccountId, Action) ->
     Req = [{<<"Type">>, kzd_webhook:type()}
           ,{<<"Action">>, Action}
@@ -622,7 +622,7 @@ send_reenable_req(Context, AccountId, Action) ->
                        ).
 
 -spec handle_resp(cb_context:context(), kz_amqp_worker:request_return()) ->
-                         cb_context:context().
+          cb_context:context().
 handle_resp(Context, {'ok', _Resp}) ->
     lager:debug("received resp from update"),
     crossbar_util:response(<<"hooks updated">>, Context);

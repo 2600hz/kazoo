@@ -530,7 +530,7 @@ create_event(EventName, ApplicationName, Props) ->
       ]).
 
 -spec specific_call_channel_vars_props(kz_term:ne_binary(), kz_term:proplist()) ->
-                                              kz_term:proplist().
+          kz_term:proplist().
 specific_call_channel_vars_props(<<"CHANNEL_DESTROY">>, Props) ->
     UUID = get_call_id(Props),
     ChanVars = kz_json:from_list(ecallmgr_util:custom_channel_vars(Props)),

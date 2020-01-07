@@ -195,7 +195,7 @@ handle_bookkeeper_results([{_Invoice, _Error}|_]) ->
 %%------------------------------------------------------------------------------
 -type invoices_acc() :: [{kz_json:object(), kz_amqp_worker:request_return()}].
 -spec invoices_foldl_fun(kz_services:services(), acceptable_options()) ->
-                                fun((kz_json:object(), invoices_acc()) -> invoices_acc()).
+          fun((kz_json:object(), invoices_acc()) -> invoices_acc()).
 invoices_foldl_fun(Services, Options) ->
     fun(Invoice, Results) ->
             Type = kz_services_invoice:bookkeeper_type(Invoice),
@@ -210,7 +210,7 @@ invoices_foldl_fun(Services, Options) ->
     end.
 
 -spec check_bookkeeper(kz_term:ne_binary(), kz_services_invoice:invoice(), kz_services:services(), acceptable_options()) ->
-                              kz_amqp_worker:request_return().
+          kz_amqp_worker:request_return().
 check_bookkeeper(_Type, Invoice, Services, #{amount := Amount}) ->
     Request = [{<<"Account-ID">>, kz_services:account_id(Services)}
               ,{<<"Bookkeeper-ID">>, kz_services_invoice:bookkeeper_id(Invoice)}

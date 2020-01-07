@@ -153,7 +153,7 @@ validate_device_id(Context, DeviceId) ->
     end.
 
 -spec error_no_entity(cb_context:context(), path_token()) ->
-                             cb_context:context().
+          cb_context:context().
 error_no_entity(Context, DeviceId) ->
     cb_context:add_system_error('bad_identifier'
                                ,kz_json:from_list([{<<"cause">>, DeviceId}])
@@ -209,7 +209,7 @@ post(Context, DeviceId) ->
     handle_device_update(DeviceId, Context1).
 
 -spec post(cb_context:context(), path_token(), path_token()) ->
-                  cb_context:context().
+          cb_context:context().
 post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     lager:debug("publishing check_sync for ~s", [DeviceId]),
     Context1 = cb_context:store(Context, 'sync', 'force'),
@@ -245,12 +245,12 @@ delete(Context, DeviceId) ->
 %%------------------------------------------------------------------------------
 
 -spec load_device_summary(cb_context:context()) ->
-                                 cb_context:context().
+          cb_context:context().
 load_device_summary(Context) ->
     load_device_summary(Context, cb_context:req_nouns(Context)).
 
 -spec load_device_summary(cb_context:context(), req_nouns()) ->
-                                 cb_context:context().
+          cb_context:context().
 load_device_summary(Context, [{<<"devices">>, []}
                              ,{<<"users">>, [UserId]}
                               |_]
@@ -292,7 +292,7 @@ validate_device(DeviceId, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate_action(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                             cb_context:context().
+          cb_context:context().
 validate_action(Context, DeviceId, <<"notify">>) ->
     Context1 = cb_context:validate_request_data(<<"devices_notify">>, Context),
     case cb_context:resp_status(Context1) of
@@ -382,7 +382,7 @@ extract_device_registrations([JObj|JObjs], Set) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec put_action(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                        cb_context:context().
+          cb_context:context().
 put_action(Context, DeviceId, <<"notify">>) ->
     lager:debug("publishing NOTIFY for ~s", [DeviceId]),
     Username = kzd_devices:sip_username(cb_context:doc(Context)),
@@ -710,7 +710,7 @@ check_device_password(Realm, DeviceId, Context) ->
     end.
 
 -spec check_sip_creds_unique(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                                    boolean().
+          boolean().
 %% no account id and no doc id (ie initial create with no account)
 check_sip_creds_unique('undefined', _, _, 'undefined') -> 'true';
 check_sip_creds_unique(AccountDb, Realm, Username, DeviceId) ->
@@ -742,7 +742,7 @@ is_creds_global_unique(Realm, Username, DeviceId) ->
     end.
 
 -spec check_device_ip(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) ->
-                             cb_context:context().
+          cb_context:context().
 check_device_ip(IP, DeviceId, Context) ->
     case kz_network_utils:is_ipv4(IP) of
         'true' ->
@@ -760,7 +760,7 @@ check_device_ip(IP, DeviceId, Context) ->
     end.
 
 -spec check_device_ip_unique(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) ->
-                                    cb_context:context().
+          cb_context:context().
 check_device_ip_unique(IP, DeviceId, Context) ->
     case cb_devices_utils:is_ip_unique(IP, DeviceId) of
         'true' ->

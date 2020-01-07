@@ -261,12 +261,12 @@ remove_capability(Node, Name) ->
     ets:select_delete(?CAPABILITY_TBL, MatchSpec).
 
 -spec get_capability(atom(), kz_term:ne_binary()) ->
-                            capability() | kz_term:api_object().
+          capability() | kz_term:api_object().
 get_capability(Node, Capability) ->
     get_capability(Node, Capability, 'json').
 
 -spec get_capability(atom(), kz_term:ne_binary(), 'json' | 'record') ->
-                            capability() | kz_term:api_object().
+          capability() | kz_term:api_object().
 get_capability(Node, Capability, Format) ->
     MatchSpec = [{#capability{node='$1'
                              ,name='$2'
@@ -280,12 +280,12 @@ get_capability(Node, Capability, Format) ->
     format_capability(Format, ets:select(?CAPABILITY_TBL, MatchSpec)).
 
 -spec get_capabilities(atom()) ->
-                              kz_json:objects() | capabilities().
+          kz_json:objects() | capabilities().
 get_capabilities(Node) ->
     get_capabilities(Node, 'json').
 
 -spec get_capabilities(atom(), 'json' | 'record') ->
-                              kz_json:objects() | capabilities().
+          kz_json:objects() | capabilities().
 get_capabilities(Node, Format) ->
     MatchSpec = [{#capability{node='$1'
                              ,_='_'
@@ -551,7 +551,7 @@ maybe_handle_nodedown(NodeName, #state{nodes=Nodes}=State) ->
     end.
 
 -spec maybe_add_node(kz_term:text(), kz_term:text(), kz_term:proplist(), state()) ->
-                            'ok' | {'error', any()}.
+          'ok' | {'error', any()}.
 maybe_add_node(NodeName, Cookie, Options, #state{self=Srv, nodes=Nodes}) ->
     case dict:find(NodeName, Nodes) of
         {'ok', #node{}} -> {'error', 'node_exists'};

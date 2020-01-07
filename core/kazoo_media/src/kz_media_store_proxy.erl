@@ -275,7 +275,7 @@ store(#state{filename=Filename, media=Path}=State, Req) ->
     end.
 
 -spec store(media_store_path(), kz_term:ne_binary(), state(), cowboy_req:req()) ->
-                   {'ok', cowboy_req:req(), state()}.
+          {'ok', cowboy_req:req(), state()}.
 store(#media_store_path{db=Db
                        ,id=Id
                        ,att=Attachment

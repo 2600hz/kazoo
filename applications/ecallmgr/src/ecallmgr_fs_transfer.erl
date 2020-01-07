@@ -44,7 +44,7 @@ attended(Node, UUID, JObj) ->
     {<<"att_xfer">>, list_to_binary(["{", Arg, "}loopback/", TransferTo, <<"/">>, TransferContext])}.
 
 -spec blind(atom(), kz_term:ne_binary(), kz_json:object()) ->
-                   [{kz_term:ne_binary(), kz_term:ne_binary()}].
+          [{kz_term:ne_binary(), kz_term:ne_binary()}].
 blind(Node, UUID, JObj) ->
     TransferTo = kz_json:get_ne_binary_value(<<"Transfer-To">>, JObj),
 
@@ -67,7 +67,7 @@ add_transfer_ccvs_to_vars(CCVs, Vars) ->
     kz_json:foldl(fun add_transfer_ccv_to_vars/3, Vars, CCVs).
 
 -spec add_transfer_ccv_to_vars(kz_json:key(), kz_json:json_term(), kz_term:proplist()) ->
-                                      kz_term:proplist().
+          kz_term:proplist().
 add_transfer_ccv_to_vars(<<"Account-ID">>=K, V, Vars) -> [{K, V} | Vars];
 add_transfer_ccv_to_vars(<<"Authorizing-ID">>=K, V, Vars) -> [{K, V} | Vars];
 add_transfer_ccv_to_vars(<<"Authorizing-Type">>=K, V, Vars) -> [{K, V} | Vars];

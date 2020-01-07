@@ -443,7 +443,7 @@ process_messages(Ctx0, JObjs) ->
     {Ctx3, sets:to_list(BoxSet), MsgMap1}.
 
 -spec check_create_and_map(kz_json:object(), {ctx(), sets:set(), map(), kz_json:objects()}) ->
-                                  {ctx(), sets:set(), map(), kz_json:objects()}.
+          {ctx(), sets:set(), map(), kz_json:objects()}.
 check_create_and_map(JObj, {Ctx, BoxSet, MsgMap, NoTimestamp}) ->
     Value = kz_json:get_value(<<"value">>, JObj),
     MediaId = kz_json:get_ne_binary_value([<<"metadata">>, <<"media_id">>], Value),

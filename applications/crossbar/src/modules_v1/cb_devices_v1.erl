@@ -175,7 +175,7 @@ post(Context, DeviceId) ->
     end.
 
 -spec post(cb_context:context(), path_token(), path_token()) ->
-                  cb_context:context().
+          cb_context:context().
 post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     lager:debug("publishing check_sync for ~s", [DeviceId]),
     Context1 = cb_context:store(Context, 'sync', 'force'),
@@ -218,12 +218,12 @@ delete(Context, DeviceId) ->
 %%------------------------------------------------------------------------------
 
 -spec load_device_summary(cb_context:context()) ->
-                                 cb_context:context().
+          cb_context:context().
 load_device_summary(Context) ->
     load_device_summary(Context, cb_context:req_nouns(Context)).
 
 -spec load_device_summary(cb_context:context(), req_nouns()) ->
-                                 cb_context:context().
+          cb_context:context().
 load_device_summary(Context, [{<<"devices">>, []}
                              ,{<<"users">>, [UserId]}
                               |_]
@@ -233,7 +233,7 @@ load_device_summary(Context, _ReqNouns) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 -spec load_users_device_summary(cb_context:context(), kz_term:ne_binary()) ->
-                                       cb_context:context().
+          cb_context:context().
 load_users_device_summary(Context, UserId) ->
     crossbar_doc:load_view(?OWNER_LIST
                           ,[{'key', UserId}]
@@ -256,7 +256,7 @@ validate_request(DeviceId, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec validate_action(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                             cb_context:context().
+          cb_context:context().
 validate_action(Context, DeviceId, <<"notify">>) ->
     Context1 = cb_context:validate_request_data(<<"devices_notify">>, Context),
     case cb_context:resp_status(Context1) of
@@ -312,7 +312,7 @@ get_mac_addresses(DbName) ->
     end.
 
 -spec prepare_outbound_flags(kz_term:api_binary(), cb_context:context()) ->
-                                    cb_context:context().
+          cb_context:context().
 prepare_outbound_flags(DeviceId, Context) ->
     JObj =
         case cb_context:req_value(Context, <<"outbound_flags">>) of
@@ -339,7 +339,7 @@ prepare_device_realm(DeviceId, Context) ->
     end.
 
 -spec validate_device_creds(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) ->
-                                   cb_context:context().
+          cb_context:context().
 validate_device_creds(Realm, DeviceId, Context) ->
     case cb_context:req_value(Context, [<<"sip">>, <<"method">>], <<"password">>) of
         <<"password">> -> validate_device_password(Realm, DeviceId, Context);
@@ -359,7 +359,7 @@ validate_device_creds(Realm, DeviceId, Context) ->
     end.
 
 -spec validate_device_password(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) ->
-                                      cb_context:context().
+          cb_context:context().
 validate_device_password(Realm, DeviceId, Context) ->
     Username = cb_context:req_value(Context, [<<"sip">>, <<"username">>]),
     case is_sip_creds_unique(cb_context:account_db(Context), Realm, Username, DeviceId) of
@@ -376,7 +376,7 @@ validate_device_password(Realm, DeviceId, Context) ->
     end.
 
 -spec validate_device_ip(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) ->
-                                cb_context:context().
+          cb_context:context().
 validate_device_ip(IP, DeviceId, Context) ->
     case kz_network_utils:is_ipv4(IP) of
         'true' -> validate_device_ip_unique(IP, DeviceId, Context);
@@ -392,7 +392,7 @@ validate_device_ip(IP, DeviceId, Context) ->
     end.
 
 -spec validate_device_ip_unique(kz_term:ne_binary(), kz_term:api_binary(), cb_context:context()) ->
-                                       cb_context:context().
+          cb_context:context().
 validate_device_ip_unique(IP, DeviceId, Context) ->
     case cb_devices_utils:is_ip_unique(IP, DeviceId) of
         'true' ->
@@ -409,19 +409,19 @@ validate_device_ip_unique(IP, DeviceId, Context) ->
     end.
 
 -spec check_emergency_caller_id(kz_term:api_binary(), cb_context:context()) ->
-                                       cb_context:context().
+          cb_context:context().
 check_emergency_caller_id(DeviceId, Context) ->
     Context1 = crossbar_util:format_emergency_caller_id_number(Context),
     check_device_schema(DeviceId, Context1).
 
 -spec check_device_schema(kz_term:api_binary(), cb_context:context()) ->
-                                 cb_context:context().
+          cb_context:context().
 check_device_schema(DeviceId, Context) ->
     OnSuccess = fun(C) -> on_successful_validation(DeviceId, C) end,
     cb_context:validate_request_data(<<"devices">>, Context, OnSuccess).
 
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) ->
-                                      cb_context:context().
+          cb_context:context().
 on_successful_validation('undefined', Context) ->
     Props = [{<<"pvt_type">>, <<"device">>}],
     cb_context:set_doc(Context, kz_json:set_values(Props, cb_context:doc(Context)));
@@ -453,7 +453,7 @@ load_device_status(Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
-                                    kz_json:objects().
+          kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
@@ -511,7 +511,7 @@ extract_device_registration(JObj, Set) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_sip_creds_unique(kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                                 boolean().
+          boolean().
 
 %% no account id and no doc id (ie initial create with no account)
 is_sip_creds_unique('undefined', _, _, 'undefined') -> 'true';
@@ -602,7 +602,7 @@ maybe_remove_aggregate(_, _, _) -> 'false'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec put_action(cb_context:context(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                        cb_context:context().
+          cb_context:context().
 put_action(Context, DeviceId, <<"notify">>) ->
     lager:debug("publishing NOTIFY for ~s", [DeviceId]),
     Username = kzd_devices:sip_username(cb_context:doc(Context)),

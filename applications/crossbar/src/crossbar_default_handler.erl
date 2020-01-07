@@ -21,7 +21,7 @@
                        ]).
 
 -spec init(cowboy_req:req(), kz_term:proplist()) ->
-                  {'ok', cowboy_req:req(), 'undefined'}.
+          {'ok', cowboy_req:req(), 'undefined'}.
 init(Req, HandlerOpts) ->
     kz_util:put_callid(?DEFAULT_LOG_SYSTEM_ID),
     Path = cowboy_req:path(Req),

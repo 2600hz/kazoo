@@ -43,7 +43,7 @@
 -define(KEY_CALL_RESTRICTION_ACTION, <<"action">>).
 
 -spec fetch(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> {'ok', doc()} |
-                                                                 {'error', any()}.
+          {'error', any()}.
 fetch(Account=?NE_BINARY, UserId=?NE_BINARY) ->
     AccountDb = kz_util:format_account_db(Account),
     kz_datamgr:open_cache_doc(AccountDb, UserId, [{cache_failures,false}]);

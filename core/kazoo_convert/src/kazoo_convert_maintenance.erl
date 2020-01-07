@@ -63,7 +63,7 @@ convert_fax_file(FromFile, ToFormat) ->
     convert_fax_file(FromFile, ToFormat, ?TMP_DIR).
 
 -spec do_convert(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                        'ok'|'error'.
+          'ok'|'error'.
 do_convert(FromFile, ToFormat, Options) ->
     FromMime = kz_mime:from_filename(FromFile),
     {'ok', Content} = file:read_file(FromFile),

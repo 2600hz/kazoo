@@ -47,8 +47,8 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec query_req(kz_term:api_terms()) ->
-                       {'ok', iolist()} |
-                       {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 query_req(Prop) when is_list(Prop) ->
     case query_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?QUERY_REQ_HEADERS, ?OPTIONAL_QUERY_REQ_HEADERS);
@@ -66,8 +66,8 @@ query_req_v(JObj) -> query_req_v(kz_json:to_proplist(JObj)).
 %% @end
 %%------------------------------------------------------------------------------
 -spec query_resp(kz_term:api_terms()) ->
-                        {'ok', iolist()} |
-                        {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 query_resp(Prop) when is_list(Prop) ->
     case query_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?QUERY_RESP_HEADERS, ?OPTIONAL_QUERY_RESP_HEADERS);

@@ -92,7 +92,7 @@ do_format_url(Fields, JObj, Args, Separator) ->
     kz_binary:join(Reversed, Separator).
 
 -spec format_url_field(kz_json:object(), kz_term:proplist(), url_field(), kz_term:ne_binaries()) ->
-                              kz_term:ne_binaries().
+          kz_term:ne_binaries().
 format_url_field(JObj, Args, #{<<"group">> := Arg}, Acc) ->
     format_url_field(JObj, Args, {'group', Arg}, Acc);
 format_url_field(JObj, Args, {'group', Arg}, Acc) ->

@@ -249,7 +249,7 @@ pre_park_action(Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec update_call(kz_json:object(), boolean(), kz_term:ne_binary(), kapps_call:call()) ->
-                         kapps_call:call().
+          kapps_call:call().
 update_call(Flow, NoMatch, ControllerQ, Call) ->
     FlowId = kz_doc:id(Flow),
     Props = [{'cf_flow_id', FlowId}

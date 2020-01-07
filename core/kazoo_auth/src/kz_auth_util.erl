@@ -37,15 +37,15 @@ get_json_from_url(Url, ReqHeaders) ->
     end.
 
 -spec fetch_access_code(kz_term:ne_binary() | map(), kz_term:ne_binary() ) ->
-                               {'ok', kz_json:object()} |
-                               {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 fetch_access_code(AppId, AuthorizationCode) ->
     fetch_access_code(AppId, AuthorizationCode, <<"postmessage">>).
 
 
 -spec fetch_access_code(kz_term:ne_binary() | map(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               {'ok', kz_json:object()} |
-                               {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 fetch_access_code(AppId, AuthorizationCode, RedirectUri)
   when is_binary(AppId) ->
     lager:debug("getting auth-app ~p",[AppId]),

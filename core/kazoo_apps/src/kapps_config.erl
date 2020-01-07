@@ -90,12 +90,12 @@ get_string(Category, Key) ->
     end.
 
 -spec get_string(config_category(), config_key(), Default) ->
-                        nonempty_string() | Default.
+          nonempty_string() | Default.
 get_string(Category, Key, Default) ->
     get_string(Category, Key, Default, kz_term:to_binary(node())).
 
 -spec get_string(config_category(), config_key(), Default, config_node()) ->
-                        nonempty_string() | Default.
+          nonempty_string() | Default.
 get_string(Category, Key, Default, Node) ->
     kz_term:to_list(get(Category, Key, Default, Node)).
 
@@ -125,7 +125,7 @@ get_binary(Category, Key, Default, Node) ->
 %%------------------------------------------------------------------------------
 
 -spec get_json(config_category(), config_key()) ->
-                      kz_term:api_object().
+          kz_term:api_object().
 get_json(Category, Key) ->
     V = get(Category, Key),
     as_json_value(V, undefined).
@@ -139,19 +139,19 @@ as_json_value(V, Default) ->
     end.
 
 -spec get_json(config_category(), config_key(), Default) ->
-                      kz_json:object() | Default.
+          kz_json:object() | Default.
 get_json(Category, Key, Default) ->
     get_json(Category, Key, Default, kz_term:to_binary(node())).
 
 -spec get_json(config_category(), config_key(), Default, config_node()) ->
-                      kz_json:object() | Default.
+          kz_json:object() | Default.
 get_json(Category, Key, Default, Node) ->
     V = get(Category, Key, Default, Node),
     as_json_value(V, Default).
 
 
 -spec get_jsons(config_category(), config_key()) ->
-                       kz_json:objects().
+          kz_json:objects().
 get_jsons(Category, Key) ->
     V = get(Category, Key),
     as_jsons_value(V, []).
@@ -165,12 +165,12 @@ as_jsons_value(V, Default) when is_list(V) ->
 as_jsons_value(_V, Default) -> Default.
 
 -spec get_jsons(config_category(), config_key(), Default) ->
-                       kz_json:objects() | Default.
+          kz_json:objects() | Default.
 get_jsons(Category, Key, Default) ->
     get_jsons(Category, Key, Default, kz_term:to_binary(node())).
 
 -spec get_jsons(config_category(), config_key(), Default, config_node()) ->
-                       kz_json:objects() | Default.
+          kz_json:objects() | Default.
 get_jsons(Category, Key, Default, Node) ->
     V = get(Category, Key, Default, Node),
     as_jsons_value(V, Default).
@@ -520,7 +520,7 @@ get_current(Category, Keys, Default, Node) ->
     end.
 
 -spec get_value(config_category(), config_key(), config_key(), Default, kz_json:object()) ->
-                       Default | any().
+          Default | any().
 get_value(Category, ?KEY_DEFAULT, Keys, Default, JObj) ->
     get_default_value(Category, Keys, Default, JObj);
 get_value(Category, Node, Keys, Default, JObj) ->
@@ -530,7 +530,7 @@ get_value(Category, Node, Keys, Default, JObj) ->
     end.
 
 -spec get_zone_value(config_category(), config_key(), config_key(), Default, kz_json:object()) ->
-                            Default | any().
+          Default | any().
 get_zone_value(Category, _Node, Keys, Default, JObj) ->
     Zone = kz_term:to_binary(kz_config:zone()),
     case kz_json:get_value([Zone | Keys], JObj) of
@@ -539,7 +539,7 @@ get_zone_value(Category, _Node, Keys, Default, JObj) ->
     end.
 
 -spec get_default_value(config_category(), config_key(), Default, kz_json:object()) ->
-                               Default | _.
+          Default | _.
 get_default_value(Category, [?KEY_DEFAULT | Keys]=Path, Default, JObj) ->
     case kz_json:get_value(Path, JObj) of
         'undefined' ->
@@ -581,27 +581,27 @@ get_all_default_kvs(JObj) ->
 %%------------------------------------------------------------------------------
 
 -spec set_string(config_category(), config_key(), kz_term:text()) ->
-                        {'ok', kz_json:object()}.
+          {'ok', kz_json:object()}.
 set_string(Category, Key, Value) ->
     set(Category, Key, kz_term:to_binary(Value)).
 
 -spec set_integer(config_category(), config_key(), kz_term:text() | integer()) ->
-                         {'ok', kz_json:object()}.
+          {'ok', kz_json:object()}.
 set_integer(Category, Key, Value) ->
     set(Category, Key, kz_term:to_integer(Value)).
 
 -spec set_float(config_category(), config_key(), kz_term:text() | float()) ->
-                       {'ok', kz_json:object()}.
+          {'ok', kz_json:object()}.
 set_float(Category, Key, Value) ->
     set(Category, Key, kz_term:to_float(Value)).
 
 -spec set_boolean(config_category(), config_key(), kz_term:text() | boolean()) ->
-                         {'ok', kz_json:object()}.
+          {'ok', kz_json:object()}.
 set_boolean(Category, Key, Value) ->
     set(Category, Key, kz_term:to_boolean(Value)).
 
 -spec set_json(config_category(), config_key(), kz_term:text() | kz_json:object()) ->
-                      {'ok', kz_json:object()}.
+          {'ok', kz_json:object()}.
 set_json(Category, Key, Value) ->
     set(Category, Key, kz_json:decode(Value)).
 
@@ -610,44 +610,44 @@ set_json(Category, Key, Value) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec set(config_category(), config_key(), any()) ->
-                 {'ok', kz_json:object()}.
+          {'ok', kz_json:object()}.
 set(Category, Key, Value) ->
     set(Category, Key, Value, node()).
 
 -spec set(config_category(), config_key(), any(), kz_term:ne_binary() | atom()) ->
-                 {'ok', kz_json:object()}.
+          {'ok', kz_json:object()}.
 set(Category, Key, Value, Node) ->
     update_category(Category, Key, Value, Node, []).
 
 -spec set_default(config_category(), config_key(), any()) ->
-                         {'ok', kz_json:object()} | 'ok' |
-                         {'error', any()}.
+          {'ok', kz_json:object()} | 'ok' |
+          {'error', any()}.
 set_default(Category, Key, Value) ->
     update_category(Category, Key, Value, ?KEY_DEFAULT, []).
 
 -spec update_default(config_category(), config_key(), kz_json:json_term()) ->
-                            {'ok', kz_json:object()} | 'ok' |
-                            {'error', any()}.
+          {'ok', kz_json:object()} | 'ok' |
+          {'error', any()}.
 update_default(Category, Key, Value) ->
     update_default(Category, Key, Value, []).
 
 -spec update_default(config_category(), config_key(), kz_json:json_term(), update_options()) ->
-                            {'ok', kz_json:object()} | 'ok' |
-                            {'error', any()}.
+          {'ok', kz_json:object()} | 'ok' |
+          {'error', any()}.
 update_default(Category, Key, Value, Options) ->
     update_category(Category, Key, Value, ?KEY_DEFAULT, Options).
 
 -spec set_node(config_category(), config_key(), any(), kz_term:ne_binary() | atom()) ->
-                      'ok' |
-                      {'ok', kz_json:object()}.
+          'ok' |
+          {'ok', kz_json:object()}.
 set_node(Category, _, _, 'undefined') -> get_category(Category);
 set_node(Category, Key, Value, Node) ->
     update_category(Category, Key, Value, Node, [{'node_specific', 'true'}]).
 
 -spec update_category(config_category(), config_key(), any(), kz_term:ne_binary() | atom(), update_options()) ->
-                             'ok' |
-                             {'ok', kz_json:object()} |
-                             {'error', kz_datamgr:data_error()}.
+          'ok' |
+          {'ok', kz_json:object()} |
+          {'error', kz_datamgr:data_error()}.
 -ifdef(TEST).
 update_category(_, _, _, _, _) -> 'ok'.
 -else.
@@ -680,7 +680,7 @@ update_category(Category, Keys, Value, Node, Options) ->
     end.
 
 -spec update_category(config_category(), config_key(), any(), kz_term:ne_binary(), update_options(), kz_json:object()) ->
-                             {'ok', kz_json:object()}.
+          {'ok', kz_json:object()}.
 update_category(Category, Keys, Value, Node, Options, JObj) ->
     PvtFields = props:get_value('pvt_fields', Options),
     NodePath = [Node | Keys],
@@ -704,27 +704,27 @@ update_category(Category, Keys, Value, Node, Options, JObj) ->
     end.
 
 -spec update_category(config_category(), kz_json:object(), kz_datamgr:update_options(), kz_term:api_object()) ->
-                             {'ok', kz_json:object()} |
-                             kz_datamgr:data_error().
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error().
 update_category(Category, JObj, Updates, PvtFields) ->
     maybe_save_category(Category, JObj, Updates, PvtFields).
 -endif.
 
 -spec maybe_save_category(kz_term:ne_binary(), kz_json:object(), kz_datamgr:update_options(), kz_term:api_object()) ->
-                                 {'ok', kz_json:object()} |
-                                 kz_datamgr:data_error().
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error().
 maybe_save_category(Category, JObj, Updates, PvtFields) ->
     maybe_save_category(Category, JObj, Updates, PvtFields, 'false').
 
 -spec maybe_save_category(kz_term:ne_binary(), kz_json:object(), kz_datamger:update_options(), kz_term:api_object(), boolean()) ->
-                                 {'ok', kz_json:object()} |
-                                 kz_datamgr:data_error().
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error().
 maybe_save_category(Category, JObj, Updates, PvtFields, Looped) ->
     maybe_save_category(Category, JObj, Updates, PvtFields, Looped, is_locked()).
 
 -spec maybe_save_category(kz_term:ne_binary(), kz_json:object(), kz_datamgr:update_options(), kz_term:api_object(), boolean(), boolean()) ->
-                                 {'ok', kz_json:object()} |
-                                 kz_datamgr:data_error().
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error().
 maybe_save_category(_Category, JObj, _Updates, _PvtFields, _Looped, 'true') ->
     lager:warning("failed to update category, system config database is locked!"),
     lager:warning("please update /etc/kazoo/config.ini or use 'sup kapps_config lock_db <boolean>' to enable system config writes."),
@@ -754,7 +754,7 @@ maybe_save_category(Category, JObj, Updates, PvtFields, Looped, _) ->
     end.
 
 -spec update_pvt_fields(config_category(), kz_json:object(), kz_term:api_object()) ->
-                               kz_json:proplist().
+          kz_json:proplist().
 update_pvt_fields(Category, JObj, 'undefined') ->
     kz_doc:get_pvt_updates(kz_doc:set_id(JObj, Category)
                           ,?KZ_CONFIG_DB
@@ -1156,8 +1156,8 @@ migrate() ->
     lists:foreach(fun migrate_config_setting/1, ?CONFIG_MIGRATIONS).
 
 -spec migrate_config_setting({migrate_setting(), migrate_setting()}) ->
-                                    'ok' |
-                                    {'error', any()}.
+          'ok' |
+          {'error', any()}.
 migrate_config_setting({?NE_BINARY = FromId, ?NE_BINARY = ToId}) ->
     migrate_config_doc(FromId, ToId);
 migrate_config_setting({From, To}) ->
@@ -1171,8 +1171,8 @@ migrate_config_setting({From, To}) ->
     end.
 
 -spec migrate_config_setting(kz_json:object(), migrate_values(), migrate_setting()) ->
-                                    'ok' |
-                                    {'error', any()}.
+          'ok' |
+          {'error', any()}.
 migrate_config_setting(UpdatedFrom, Removed, Fun)
   when is_function(Fun) ->
     case migrate_config_setting_fun(Fun, Removed) of
@@ -1203,12 +1203,12 @@ migrate_config_setting(UpdatedFrom, Removed, {ToId, ToSetting}) ->
     end.
 
 -spec migrate_config_setting_fun(migrate_fun(), migrate_values()) ->
-                                        {migrate_values(), migrate_setting()}.
+          {migrate_values(), migrate_setting()}.
 migrate_config_setting_fun(Fun, Removed) ->
     migrate_config_setting_fun(Fun, Removed, 'undefined', []).
 
 -spec migrate_config_setting_fun(migrate_fun(), migrate_values(), 'undefined' | migrate_setting(), migrate_values()) ->
-                                        {migrate_values(), migrate_setting()}.
+          {migrate_values(), migrate_setting()}.
 migrate_config_setting_fun(_Fun, [], To, Removed) ->
     {Removed, To};
 migrate_config_setting_fun(Fun, [{FromId, Node, FromSetting, Value}=Remove|Removals], _To, Removed) ->
@@ -1235,8 +1235,8 @@ migrate_config_setting_fun(Fun, [{FromId, Node, FromSetting, Value}=Remove|Remov
     end.
 
 -spec add_config_setting(kz_term:ne_binary(), config_key(), migrate_values()) ->
-                                'ok' |
-                                {'error', any()}.
+          'ok' |
+          {'error', any()}.
 add_config_setting(Id, Setting, Values) when is_binary(Id) ->
     case kz_datamgr:open_doc(?KZ_CONFIG_DB, Id) of
         {'ok', JObj} -> add_config_setting(JObj, Setting, Values);
@@ -1276,14 +1276,14 @@ add_config_setting(JObj, ToSetting, [{FromId, Node, FromSetting, Value} | Values
     end.
 
 -spec remove_config_setting(migrate_setting()) ->
-                                   {'ok', kz_json:object(), migrate_values()} |
-                                   {'error', any()}.
+          {'ok', kz_json:object(), migrate_values()} |
+          {'error', any()}.
 remove_config_setting({Id, Setting}) ->
     remove_config_setting(Id, Setting).
 
 -spec remove_config_setting(kz_term:ne_binary() | kz_json:object(), config_key()) ->
-                                   {'ok', kz_json:object(), migrate_values()} |
-                                   {'error', any()}.
+          {'ok', kz_json:object(), migrate_values()} |
+          {'error', any()}.
 remove_config_setting(Id, Setting) when is_binary(Id) ->
     case kz_datamgr:open_doc(?KZ_CONFIG_DB, Id) of
         {'ok', JObj} -> remove_config_setting(JObj, Setting);
@@ -1298,7 +1298,7 @@ remove_config_setting(JObj, Setting) ->
     remove_config_setting(Keys, JObj, []).
 
 -spec remove_config_setting([{kz_term:ne_binary(), kz_term:ne_binary(), config_key()}], kz_json:object(), migrate_values()) ->
-                                   {'ok', kz_json:object(), migrate_values()}.
+          {'ok', kz_json:object(), migrate_values()}.
 remove_config_setting([], JObj, Removed) ->
     {'ok', JObj, Removed};
 remove_config_setting([{Id, Node, Setting} | Keys], JObj, Removed) ->
@@ -1359,7 +1359,7 @@ migrate_config_doc_node(FromNodeBefore, FromConfig, ToJObj) ->
                  ).
 
 -spec migrate_config_value(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:json_term(), kz_json:object()) ->
-                                  kz_json:object().
+          kz_json:object().
 migrate_config_value(FromNode, <<"whapps">>, ConfigValue, ToJObj) ->
     kz_json:set_value([FromNode, <<"kapps">>], ConfigValue, ToJObj);
 migrate_config_value(FromNode, ConfigKey, ConfigValue, ToJObj) ->

@@ -112,7 +112,7 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec start_link(atom(), kz_term:ne_binary(), kz_term:api_ne_binary(), kz_term:api_ne_binary(), kz_json:object()) ->
-                        kz_types:startlink_ret().
+          kz_types:startlink_ret().
 start_link(Node, CallId, FetchId, ControllerQ, CCVs) ->
     %% We need to become completely decoupled from ecallmgr_call_events
     %% because the call_events process might have been spun up with A->B
@@ -1234,7 +1234,7 @@ unreg_for_call_related_events(CallId) ->
     'ok'.
 
 -spec handle_replaced(kz_term:proplist(), state()) ->
-                             {'noreply', state()}.
+          {'noreply', state()}.
 handle_replaced(Props, #state{fetch_id=FetchId
                              ,node=Node
                              ,call_id=CallId
@@ -1261,7 +1261,7 @@ handle_replaced(Props, #state{fetch_id=FetchId
     end.
 
 -spec handle_transferee(kz_term:proplist(), state()) ->
-                               {'noreply', state()}.
+          {'noreply', state()}.
 handle_transferee(Props, #state{fetch_id=FetchId
                                ,node=_Node
                                ,call_id=CallId
@@ -1276,7 +1276,7 @@ handle_transferee(Props, #state{fetch_id=FetchId
     end.
 
 -spec handle_transferor(kz_term:proplist(), state()) ->
-                               {'noreply', state()}.
+          {'noreply', state()}.
 handle_transferor(_Props, #state{fetch_id=_FetchId
                                 ,node=_Node
                                 ,call_id=_CallId
@@ -1307,8 +1307,8 @@ handle_intercepted(Node, CallId, Props) ->
     'ok'.
 
 -spec handle_event_info(kz_term:ne_binary(), kzd_freeswitch:data(), state()) ->
-                               {'noreply', state()} |
-                               {'stop', any(), state()}.
+          {'noreply', state()} |
+          {'stop', any(), state()}.
 handle_event_info(CallId, Props, #state{call_id=CallId
                                        ,node=Node
                                        }=State) ->

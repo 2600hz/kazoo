@@ -258,7 +258,7 @@ maybe_get_auth_token(Context, AuthToken) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec create_auth_resp(cb_context:context(), kz_term:ne_binary(),  kz_term:ne_binary()) ->
-                              cb_context:context().
+          cb_context:context().
 create_auth_resp(Context, AccountId, AccountId) ->
     lager:debug("account ~s is same as auth account", [AccountId]),
     crossbar_util:response(crossbar_util:response_auth(cb_context:auth_doc(Context))
@@ -297,7 +297,7 @@ maybe_authenticate_user(Context) ->
     end.
 
 -spec maybe_authenticate_user(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                     cb_context:context().
+          cb_context:context().
 maybe_authenticate_user(Context, Credentials, <<"md5">>, ?NE_BINARY=Account) ->
     AccountDb = kz_util:format_account_db(Account),
     Context1 = crossbar_doc:load_view(?ACCT_MD5_LIST
@@ -334,7 +334,7 @@ maybe_authenticate_user(Context, _Creds, _Method, Account) ->
     cb_context:add_system_error('invalid_credentials', Context).
 
 -spec maybe_auth_account(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                cb_context:context().
+          cb_context:context().
 maybe_auth_account(Context, Credentials, Method, Account) ->
     Context1 = maybe_authenticate_user(Context, Credentials, Method, Account),
     case cb_context:resp_status(Context1) of
@@ -344,7 +344,7 @@ maybe_auth_account(Context, Credentials, Method, Account) ->
     end.
 
 -spec maybe_auth_accounts(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
-                                 cb_context:context().
+          cb_context:context().
 maybe_auth_accounts(Context, _, _, []) ->
     lager:debug("no account(s) specified"),
     cb_context:add_system_error('invalid_credentials', Context);
@@ -390,7 +390,7 @@ maybe_account_is_enabled(Context, Account) ->
     end.
 
 -spec load_sha1_results(cb_context:context(), kz_json:objects() | kz_json:object(), kz_term:ne_binary())->
-                               cb_context:context().
+          cb_context:context().
 load_sha1_results(Context, [JObj|_], _Account)->
     lager:debug("found more that one user with SHA1 creds, using ~s", [kz_doc:id(JObj)]),
     cb_context:set_doc(Context, kz_json:get_value(<<"value">>, JObj));
@@ -404,7 +404,7 @@ load_sha1_results(Context, JObj, _Account)->
     cb_context:set_doc(cb_context:store(Context, 'auth_type', <<"credentials">>), kz_json:get_value(<<"value">>, JObj)).
 
 -spec load_md5_results(cb_context:context(), kz_json:objects() | kz_json:object(), kz_term:ne_binary()) ->
-                              cb_context:context().
+          cb_context:context().
 load_md5_results(Context, [JObj|_], _Account) ->
     lager:debug("found more that one user with MD5 creds, using ~s", [kz_doc:id(JObj)]),
     cb_context:set_doc(Context, kz_json:get_value(<<"value">>, JObj));
@@ -579,8 +579,8 @@ create_resetid_doc(ResetId, UserId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_account(kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary(), cb_context:context()) ->
-                          {'ok', kz_term:ne_binary() | kz_term:ne_binaries()} |
-                          {'error', cb_context:context()}.
+          {'ok', kz_term:ne_binary() | kz_term:ne_binaries()} |
+          {'error', cb_context:context()}.
 find_account('undefined', 'undefined', 'undefined', Context) ->
     {'error', Context};
 find_account('undefined', 'undefined', AccountName, Context) ->

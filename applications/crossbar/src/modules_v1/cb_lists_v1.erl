@@ -175,7 +175,7 @@ entry_schema_success(Context, ListId, EntryId) ->
     end.
 
 -spec error_in_pattern(cb_context:context(), binary(), iolist()) ->
-                              cb_context:context().
+          cb_context:context().
 error_in_pattern(Context, Pattern, Reason) ->
     cb_context:add_validation_error(<<"pattern">>
                                    ,<<"type">>
@@ -187,7 +187,7 @@ error_in_pattern(Context, Pattern, Reason) ->
                                    ).
 
 -spec on_entry_successful_validation(path_token(), path_token() | 'undefined', cb_context:context()) ->
-                                            cb_context:context().
+          cb_context:context().
 on_entry_successful_validation(_ListId, 'undefined', Context) ->
     cb_context:set_doc(Context
                       ,kz_json:set_values([{<<"pvt_type">>, <<"list_entry">>}]
@@ -230,7 +230,7 @@ delete(Context, _ListId, _EntryId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
-                                    kz_json:objects().
+          kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 

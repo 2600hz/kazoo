@@ -74,14 +74,14 @@ store_local_async(Srv, K, V, Props) ->
     kz_cache_ets:store_async(Srv, K, V, Props).
 
 -spec peek_local(atom(), any()) -> {'ok', any()} |
-                                   {?MITIGATION, pid()} |
-                                   {'error', 'not_found'}.
+          {?MITIGATION, pid()} |
+          {'error', 'not_found'}.
 peek_local(Srv, Key) ->
     kz_cache_ets:peek(Srv, Key).
 
 -spec fetch_local(atom(), any()) -> {'ok', any()} |
-                                    {?MITIGATION, pid()} |
-                                    {'error', 'not_found'}.
+          {?MITIGATION, pid()} |
+          {'error', 'not_found'}.
 fetch_local(Srv, K) ->
     kz_cache_ets:fetch(Srv, K).
 
@@ -106,7 +106,7 @@ fetch_keys_local(Srv) ->
     ets:select(Srv, MatchSpec).
 
 -spec filter_erase_local(atom(), fun((any(), any()) -> boolean())) ->
-                                non_neg_integer().
+          non_neg_integer().
 filter_erase_local(Srv, Pred) when is_function(Pred, 2) ->
     ets:foldl(fun(#cache_obj{key=K, value=V}, Count) ->
                       case Pred(K, V) of
@@ -184,25 +184,25 @@ display_cache_obj(#cache_obj{key=Key
     io:format('user', "~n", []).
 
 -spec wait_for_key_local(kz_types:server_ref(), any()) -> {'ok', any()} |
-                                                          {'error', 'timeout'}.
+          {'error', 'timeout'}.
 wait_for_key_local(Srv, Key) ->
     wait_for_key_local(Srv, Key, ?DEFAULT_WAIT_TIMEOUT_MS).
 
 -spec wait_for_key_local(kz_types:server_ref(), any(), pos_integer()) ->
-                                {'ok', any()} |
-                                {'error', 'timeout'}.
+          {'ok', any()} |
+          {'error', 'timeout'}.
 wait_for_key_local(Srv, Key, Timeout) when is_integer(Timeout) ->
     kz_cache_ets:wait_for_key(Srv, Key, Timeout).
 
 -spec wait_for_stampede_local(kz_types:server_ref(), any()) ->
-                                     {'ok', any()} |
-                                     {'error', 'timeout'}.
+          {'ok', any()} |
+          {'error', 'timeout'}.
 wait_for_stampede_local(Srv, Key) ->
     wait_for_stampede_local(Srv, Key, ?DEFAULT_WAIT_TIMEOUT_MS).
 
 -spec wait_for_stampede_local(kz_types:server_ref(), any(), pos_integer()) ->
-                                     {'ok', any()} |
-                                     {'error', 'timeout'}.
+          {'ok', any()} |
+          {'error', 'timeout'}.
 wait_for_stampede_local(Srv, Key, Timeout) when is_integer(Timeout) ->
     wait_for_key_local(Srv, Key, Timeout).
 

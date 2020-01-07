@@ -972,7 +972,7 @@ remove_orphaned_services() ->
     'no_return'.
 
 -spec maybe_remove_orphan(kz_json:object() | kz_term:ne_binary(), non_neg_integer()) ->
-                                 non_neg_integer().
+          non_neg_integer().
 maybe_remove_orphan(<<"_design/", _/binary>>, Count) -> Count;
 maybe_remove_orphan(<<_/binary>> = AccountId, Count) ->
     case kzd_accounts:fetch(AccountId) of

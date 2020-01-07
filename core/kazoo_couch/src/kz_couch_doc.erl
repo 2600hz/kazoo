@@ -39,32 +39,32 @@ get_db(#server{}=Conn, DbName) ->
 %% Document related functions --------------------------------------------------
 
 -spec open_doc(server(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                      doc_return().
+          doc_return().
 open_doc(Conn, DbName, DocId) ->
     open_doc(Conn, DbName, DocId, []).
 
 -spec open_doc(server(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                      doc_return().
+          doc_return().
 open_doc(#server{}=Conn, DbName, DocId, Options) ->
     Db = get_db(Conn, DbName),
     do_fetch_doc(Db, DocId, Options).
 
 -spec save_doc(server(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) ->
-                      doc_return().
+          doc_return().
 save_doc(#server{}=Conn, DbName, Doc, Options) ->
     Db = get_db(Conn, DbName),
     do_save_doc(Db, Doc, Options).
 
 -spec save_docs(server(), kz_term:ne_binary(), kz_json:objects(), kz_term:proplist()) ->
-                       {'ok', kz_json:objects()} |
-                       couchbeam_error().
+          {'ok', kz_json:objects()} |
+          couchbeam_error().
 save_docs(#server{}=Conn, DbName, Docs, Options) ->
     Db = get_db(Conn, DbName),
     do_save_docs(Db, Docs, Options).
 
 -spec lookup_doc_rev(server(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                            {'ok', kz_term:ne_binary()} |
-                            couchbeam_error().
+          {'ok', kz_term:ne_binary()} |
+          couchbeam_error().
 lookup_doc_rev(#server{}=Conn, DbName, DocId) ->
     case do_fetch_rev(get_db(Conn, DbName), DocId) of
         ?NE_BINARY=Rev -> {'ok', Rev};
@@ -72,20 +72,20 @@ lookup_doc_rev(#server{}=Conn, DbName, DocId) ->
     end.
 
 -spec ensure_saved(server(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) ->
-                          doc_return().
+          doc_return().
 ensure_saved(#server{}=Conn, DbName, Doc, Opts) ->
     Db = get_db(Conn, DbName),
     do_ensure_saved(Db, Doc, Opts).
 
 -spec del_doc(server(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) ->
-                     doc_return().
+          doc_return().
 del_doc(#server{}=Conn, DbName, Doc, Options) ->
     Db = get_db(Conn, DbName),
     ?RETRY_504(couchbeam:delete_doc(Db, Doc, Options)).
 
 -spec del_docs(server(), kz_term:ne_binary(), kz_json:objects(), kz_term:proplist()) ->
-                      {'ok', kz_json:objects()} |
-                      couchbeam_error().
+          {'ok', kz_json:objects()} |
+          couchbeam_error().
 del_docs(#server{}=Conn, DbName, Doc, Options) ->
     Db = get_db(Conn, DbName),
     ?RETRY_504(couchbeam:delete_docs(Db, Doc, Options)).
@@ -93,7 +93,7 @@ del_docs(#server{}=Conn, DbName, Doc, Options) ->
 %% Internal Doc functions
 
 -spec do_ensure_saved(couchbeam_db(), kz_json:object(), kz_term:proplist()) ->
-                             doc_return().
+          doc_return().
 do_ensure_saved(#db{}=Db, Doc, Opts) ->
     case do_save_doc(Db, Doc, Opts) of
         {'ok', _}=Ok -> Ok;
@@ -103,12 +103,12 @@ do_ensure_saved(#db{}=Db, Doc, Opts) ->
     end.
 
 -spec handle_conflict(couchbeam_db(), kz_json:object(), kz_term:proplist()) ->
-                             doc_return().
+          doc_return().
 handle_conflict(Db, Doc, Opts) ->
     handle_conflict(Db, Doc, Opts, do_fetch_doc(Db, kz_doc:id(Doc), Opts)).
 
 -spec handle_conflict(couchbeam_db(), kz_json:object(), kz_term:proplist(), doc_return()) ->
-                             doc_return().
+          doc_return().
 handle_conflict(_Db, _Doc, _Opts, {'error', _}=Error) -> Error;
 handle_conflict(Db, Doc, Opts, {'ok', CurrentDoc}) ->
 
@@ -124,8 +124,8 @@ handle_conflict(Db, Doc, Opts, {'ok', CurrentDoc}) ->
     do_ensure_saved(Db, NewDoc, Opts).
 
 -spec do_fetch_rev(couchbeam_db(), kz_term:ne_binary()) ->
-                          kz_term:ne_binary() |
-                          couchbeam_error().
+          kz_term:ne_binary() |
+          couchbeam_error().
 do_fetch_rev(#db{}=Db, DocId) ->
     case kz_term:is_empty(DocId) of
         'true' -> {'error', 'empty_doc_id'};
@@ -133,7 +133,7 @@ do_fetch_rev(#db{}=Db, DocId) ->
     end.
 
 -spec do_fetch_doc(couchbeam_db(), kz_term:ne_binary(), kz_term:proplist()) ->
-                          doc_return().
+          doc_return().
 do_fetch_doc(#db{}=Db, DocId, Options) ->
     case kz_term:is_empty(DocId) of
         'true' -> {'error', 'empty_doc_id'};
@@ -141,21 +141,21 @@ do_fetch_doc(#db{}=Db, DocId, Options) ->
     end.
 
 -spec do_save_doc(couchbeam_db(), kz_json:object() | kz_json:objects(), kz_term:proplist()) ->
-                         doc_return().
+          doc_return().
 do_save_doc(#db{}=Db, Docs, Options) when is_list(Docs) ->
     do_save_docs(Db, Docs, Options);
 do_save_doc(#db{}=Db, Doc, Options) ->
     ?RETRY_504(couchbeam:save_doc(Db, Doc, Options)).
 
 -spec do_save_docs(couchbeam_db(), kz_json:objects(), kz_term:proplist()) ->
-                          {'ok', kz_json:objects()} |
-                          couchbeam_error().
+          {'ok', kz_json:objects()} |
+          couchbeam_error().
 do_save_docs(#db{}=Db, Docs, Options) ->
     do_save_docs(Db, Docs, Options, []).
 
 -spec do_save_docs(couchbeam_db(), kz_json:objects(), kz_term:proplist(), kz_json:objects()) ->
-                          {'ok', kz_json:objects()} |
-                          couchbeam_error().
+          {'ok', kz_json:objects()} |
+          couchbeam_error().
 do_save_docs(#db{}=Db, Docs, Options, Acc) ->
     try lists:split(?COUCH_MAX_BULK_INSERT, Docs) of
         {Save, Cont} ->
@@ -174,8 +174,8 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
     end.
 
 -spec perform_save_docs(couchbeam_db(), kz_json:objects(), kz_term:proplist()) ->
-                               {'ok', kz_json:objects()} |
-                               couchbeam_error().
+          {'ok', kz_json:objects()} |
+          couchbeam_error().
 perform_save_docs(Db, Docs, Options) ->
     ?RETRY_504(couchbeam:save_docs(Db, Docs, Options)).
 
@@ -188,7 +188,7 @@ default_copy_function('true') -> fun ensure_saved/4;
 default_copy_function('false') -> fun save_doc/4.
 
 -spec copy_doc(server(), copy_doc(), kz_term:proplist()) ->
-                      doc_return().
+          doc_return().
 copy_doc(#server{}=Conn, #kz_copy_doc{source_dbname = SourceDb
                                      ,dest_dbname='undefined'
                                      }=CopySpec, Options) ->
@@ -203,7 +203,7 @@ copy_doc(#server{}=Conn, CopySpec, Options) ->
 
 
 -spec copy_doc(server(), copy_doc(), copy_function(), kz_term:proplist()) ->
-                      doc_return().
+          doc_return().
 copy_doc(#server{}=Conn, CopySpec, CopyFun, Options) ->
     #kz_copy_doc{source_dbname = SourceDbName
                 ,source_doc_id = SourceDocId
@@ -226,7 +226,7 @@ copy_doc(#server{}=Conn, CopySpec, CopyFun, Options) ->
     end.
 
 -spec copy_attachments(server(), copy_doc(), {kz_json:json_terms(), kz_json:path()}) ->
-                              doc_return().
+          doc_return().
 copy_attachments(#server{}=Conn, CopySpec, {[], []}) ->
     #kz_copy_doc{dest_dbname = DestDbName
                 ,dest_doc_id = DestDocId
@@ -256,7 +256,7 @@ maybe_set_account_db(DB, DB, DestDbName) ->
 maybe_set_account_db(_, _, _) -> [].
 
 -spec move_doc(server(), copy_doc(), kz_term:proplist()) ->
-                      doc_return().
+          doc_return().
 move_doc(Conn, CopySpec, Options) ->
     #kz_copy_doc{source_dbname = SourceDbName
                 ,source_doc_id = SourceDocId

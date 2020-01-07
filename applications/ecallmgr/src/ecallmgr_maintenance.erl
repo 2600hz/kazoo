@@ -191,7 +191,7 @@ allow_carrier(Name, IP, 'false') ->
     allow_carrier(Name, IP, get_acls(), fun kapps_config:set_node/4).
 
 -spec allow_carrier(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), config_fun()) ->
-                           'no_return'.
+          'no_return'.
 allow_carrier(Name, IP, ACLs, SetterFun) ->
     modify_acls(Name, IP, ACLs, fun carrier_acl/1, SetterFun).
 
@@ -210,7 +210,7 @@ deny_carrier(Name, IP, 'false') ->
     deny_carrier(Name, IP, get_acls(), fun kapps_config:set_node/4).
 
 -spec deny_carrier(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), config_fun()) ->
-                          'no_return'.
+          'no_return'.
 deny_carrier(Name, IP, ACLs, SetterFun) ->
     modify_acls(Name, IP, ACLs, fun(_) -> carrier_acl(IP, <<"deny">>) end, SetterFun).
 
@@ -520,8 +520,8 @@ check_sync(Username, Realm) ->
                              ).
 
 -spec add_fs_node(kz_term:text(), kz_term:ne_binaries(), config_fun()) ->
-                         'ok' |
-                         {'error', any()}.
+          'ok' |
+          {'error', any()}.
 add_fs_node(FSNode, FSNodes, ConfigFun) when not is_binary(FSNode) ->
     add_fs_node(kz_term:to_binary(FSNode), FSNodes, ConfigFun);
 add_fs_node(FSNode, FSNodes, ConfigFun) ->
@@ -556,7 +556,7 @@ get_fs_nodes(Node) ->
     end.
 
 -spec modify_acls(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), acl_fun(), config_fun()) ->
-                         'no_return'.
+          'no_return'.
 modify_acls(Name, IP0, ACLS, ACLFun, ConfigFun) ->
     case kz_network_utils:resolve(IP0) of
         [] ->
@@ -585,8 +585,8 @@ modify_acls(Name, IP0, ACLS, ACLFun, ConfigFun) ->
     end.
 
 -spec run_config_fun(config_fun(), kz_json:key(), kz_json:json_term()) ->
-                            {'ok', kz_json:object()} |
-                            {'error', kz_datamgr:data_error()}.
+          {'ok', kz_json:object()} |
+          {'error', kz_datamgr:data_error()}.
 run_config_fun(ConfigFun, Key, Value) when is_function(ConfigFun, 3) ->
     ConfigFun(?APP_NAME, Key, Value);
 run_config_fun(ConfigFun, Key, Value) when is_function(ConfigFun, 4) ->

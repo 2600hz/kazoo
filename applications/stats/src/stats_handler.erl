@@ -18,9 +18,9 @@
 -include("stats.hrl").
 
 -spec handle_req(kz_json:object(), kz_term:proplist()) -> 'no_node_name' |
-                                                          'no_tables' |
-                                                          'no_items' |
-                                                          'ok'.
+          'no_tables' |
+          'no_items' |
+          'ok'.
 handle_req(JObj, _Props) ->
     Items = kz_json:recursive_to_proplist(JObj),
     Nodename = props:get_value(<<"nodename">>, Items),

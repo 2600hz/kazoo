@@ -90,7 +90,7 @@ get_allotment_seconds(BillingSeconds, Allotment) ->
     end.
 
 -spec reconcile_allotment(non_neg_integer(), kz_json:object(), j5_request:request(), j5_limits:limits()) ->
-                                 'ok'.
+          'ok'.
 reconcile_allotment(0, _, _, _) -> 'ok';
 reconcile_allotment(Seconds, Allotment, Request, Limits) ->
     CallId = j5_request:call_id(Request),
@@ -158,8 +158,8 @@ find_allotment_by_classification(Classification, Limits) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec allotment_consumed_so_far(kz_json:object(), j5_limits:limits()) ->
-                                       integer() |
-                                       {'error', any()}.
+          integer() |
+          {'error', any()}.
 allotment_consumed_so_far(Allotment, Limits) ->
     Classification = kz_json:get_value(<<"classification">>, Allotment),
     Cycle = kz_json:get_ne_value(<<"cycle">>, Allotment, <<"monthly">>),
@@ -173,8 +173,8 @@ allotment_consumed_so_far(Allotment, Limits) ->
     end.
 
 -spec allotment_consumed_so_far(non_neg_integer(), non_neg_integer(), kz_term:ne_binary(), j5_limits:limits(), 0..3) ->
-                                       integer() |
-                                       {'error', any()}.
+          integer() |
+          {'error', any()}.
 allotment_consumed_so_far(_, _, _, _, Attempts) when Attempts > 2 -> 0;
 allotment_consumed_so_far(CycleStart, CycleEnd, Classification, Limits, Attempts) ->
     AccountId = j5_limits:account_id(Limits),

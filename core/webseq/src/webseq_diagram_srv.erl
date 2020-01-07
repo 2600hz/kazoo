@@ -252,8 +252,8 @@ write_to_db(Database, Name, Str, Args) ->
     end.
 
 -spec start_file(kz_term:ne_binary()) ->
-                        {'ok', file:io_device()} |
-                        {'error', any()}.
+          {'ok', file:io_device()} |
+          {'error', any()}.
 start_file(Filename) ->
     _ = file:rename(Filename, iolist_to_binary([Filename, ".", kz_term:to_binary(kz_time:now_s())])),
     file:open(Filename, ['append', 'raw', 'delayed_write']).
@@ -275,8 +275,8 @@ trunc_database(Database, Name) ->
     end.
 
 -spec get_docs_by_name(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                              {'ok', kz_json:objects()} |
-                              {'error', any()}.
+          {'ok', kz_json:objects()} |
+          {'error', any()}.
 get_docs_by_name(Database, Name) ->
     get_docs_by_name(Database, Name, []).
 get_docs_by_name(Database, Name, Opts) ->

@@ -95,12 +95,12 @@ is_number_eligible_for_flat_rate(Request) ->
        ).
 
 -spec maybe_get_resource_flat_rate(j5_request:request()) ->
-                                          {kz_term:ne_binary(), kz_term:ne_binary()}.
+          {kz_term:ne_binary(), kz_term:ne_binary()}.
 maybe_get_resource_flat_rate(Request) ->
     maybe_get_resource_flat_rate(Request, ?SHOULD_LOOKUP_FLAT_RATE).
 
 -spec maybe_get_resource_flat_rate(j5_request:request(), boolean()) ->
-                                          {kz_term:ne_binary(), kz_term:ne_binary()}.
+          {kz_term:ne_binary(), kz_term:ne_binary()}.
 maybe_get_resource_flat_rate(_Request, 'false') ->
     {?WHITELIST, ?BLACKLIST};
 maybe_get_resource_flat_rate(Request, 'true') ->

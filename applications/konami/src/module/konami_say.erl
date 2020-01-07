@@ -18,7 +18,7 @@
 -include("konami.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'continue', kapps_call:call()}.
+          {'continue', kapps_call:call()}.
 handle(Data, Call) ->
     Say = kz_json:get_value(<<"text">>, Data),
     lager:debug("saying '~s'", [Say]),

@@ -76,7 +76,7 @@ get_is_true(Key, Default) ->
     end.
 
 -spec get(kz_term:ne_binary()) -> 'undefined' |
-                                  {'ok', any()}.
+          {'ok', any()}.
 get(<<_/binary>>=Key) ->
     application:get_env(?APP, kz_term:to_atom(Key, 'true')).
 

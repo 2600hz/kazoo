@@ -197,7 +197,7 @@ check_reseller_limits(Request, ResellerId) ->
     send_response(R).
 
 -spec maybe_authorize(j5_request:request(), j5_limits:limits()) ->
-                             j5_request:request().
+          j5_request:request().
 maybe_authorize(Request, Limits) ->
     case j5_limits:enabled(Limits) of
         'true' -> maybe_authorize_exception(Request, Limits);

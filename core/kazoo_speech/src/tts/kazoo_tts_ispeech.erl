@@ -105,9 +105,9 @@ make_request(Text, ISpeechVoice, Format, Options) ->
     end.
 
 -spec create_response(kz_http:ret()) ->
-                             kz_http:req_id() |
-                             {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
-                             {'error', 'tts_provider_failure', binary()}.
+          kz_http:req_id() |
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
+          {'error', 'tts_provider_failure', binary()}.
 create_response({'error', _R}) ->
     lager:warning("creating speech file failed with error ~p", [_R]),
     {'error', 'tts_provider_failure', <<"unexpected error encountered accessing provider">>};

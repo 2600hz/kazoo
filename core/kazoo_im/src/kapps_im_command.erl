@@ -149,7 +149,7 @@ create_sms_endpoint(Endpoint) ->
     end.
 
 -spec lookup_reg(kz_term:ne_binary(), kz_term:ne_binary()) -> {'error', any()} |
-                                                              {'ok', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary()}.
 lookup_reg('undefined', _Realm) -> {'error', 'invalid_user'};
 lookup_reg(_Username, 'undefined') -> {'error', 'invalid_realm'};
 lookup_reg(Username, Realm) ->
@@ -192,18 +192,18 @@ extract_device_registrar_fold(JObj, Set) ->
     end.
 
 -spec get_correlated_msg_type(kz_json:object()) ->
-                                     {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
+          {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
 get_correlated_msg_type(JObj) ->
     get_correlated_msg_type(<<"Message-ID">>, JObj).
 
 -spec get_correlated_msg_type(kz_term:ne_binary(), kz_json:object()) ->
-                                     {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
+          {kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()}.
 get_correlated_msg_type(Key, JObj) ->
     {C, N} = kz_util:get_event_type(JObj),
     {C, N, kz_json:get_value(Key, JObj)}.
 
 -spec wait_for_correlated_message(kz_term:ne_binary() | im(), kz_term:ne_binary(), kz_term:ne_binary(), timeout()) ->
-                                         kapps_api_std_return().
+          kapps_api_std_return().
 wait_for_correlated_message(MsgId, Event, Type, Timeout)
   when is_binary(MsgId) ->
     Start = os:timestamp(),
@@ -232,8 +232,8 @@ wait_for_correlated_message(Im, Event, Type, Timeout) ->
 receive_event(Timeout) -> receive_event(Timeout, 'true').
 
 -spec receive_event(timeout(), boolean()) ->
-                           received_event() |
-                           {'other', kz_json:object() | any()}.
+          received_event() |
+          {'other', kz_json:object() | any()}.
 receive_event(T, _) when T =< 0 -> {'error', 'timeout'};
 receive_event(Timeout, IgnoreOthers) ->
     Start = os:timestamp(),

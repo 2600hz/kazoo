@@ -24,17 +24,17 @@
 %%------------------------------------------------------------------------------
 
 -spec available() -> {'ok', kz_json:objects()} |
-                     {'error', any()}.
+          {'error', any()}.
 available() -> available('undefined').
 
 -spec available(kz_term:api_binary()) ->
-                       {'ok', kz_json:objects()} |
-                       {'error', any()}.
+          {'ok', kz_json:objects()} |
+          {'error', any()}.
 available(Zone) -> available(Zone, 1).
 
 -spec available(kz_term:api_binary(), non_neg_integer()) ->
-                       {'ok', kz_json:objects()} |
-                       {'error', any()}.
+          {'ok', kz_json:objects()} |
+          {'error', any()}.
 available(Zone, Quantity) ->
     ViewOptions = props:filter_undefined(
                     [{'key', Zone}
@@ -60,7 +60,7 @@ available(Zone, Quantity) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec assigned() -> {'ok', kz_json:objects()} |
-                    {'error', any()}.
+          {'error', any()}.
 assigned() ->
     case fetch_assigned(['include_docs']) of
         {'ok', JObjs} ->
@@ -70,8 +70,8 @@ assigned() ->
     end.
 
 -spec assigned(kz_term:ne_binary()) ->
-                      {'ok', kz_json:objects()} |
-                      {'error', any()}.
+          {'ok', kz_json:objects()} |
+          {'error', any()}.
 assigned(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     ViewOptions = [{'key', AccountId}],
@@ -83,8 +83,8 @@ assigned(Account) ->
     end.
 
 -spec fetch_assigned(kz_datamgr:view_options()) ->
-                            {'ok', kz_json:objects()} |
-                            {'error', any()}.
+          {'ok', kz_json:objects()} |
+          {'error', any()}.
 fetch_assigned(ViewOptions) ->
     case kz_datamgr:get_results(?KZ_DEDICATED_IP_DB
                                ,<<"dedicated_ips/assigned_to_listing">>
@@ -123,8 +123,8 @@ get_zone_name() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec zones() ->
-                   {'ok', kz_term:ne_binaries()} |
-                   {'error', any()}.
+          {'ok', kz_term:ne_binaries()} |
+          {'error', any()}.
 zones() ->
     ViewOptions = ['group'
                   ,{'group_level', 1}
@@ -150,8 +150,8 @@ zones() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec hosts() ->
-                   {'ok', kz_term:ne_binaries()} |
-                   {'error', any()}.
+          {'ok', kz_term:ne_binaries()} |
+          {'error', any()}.
 hosts() ->
     ViewOptions = ['group'
                   ,{'group_level', 1}
@@ -177,8 +177,8 @@ hosts() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec summary(kz_term:api_binary()) ->
-                     {'ok', kz_json:objects()} |
-                     {'error', any()}.
+          {'ok', kz_json:objects()} |
+          {'error', any()}.
 summary(Host) ->
     ViewOptions = props:filter_undefined([{'key', Host}]),
     case kz_datamgr:get_results(?KZ_DEDICATED_IP_DB

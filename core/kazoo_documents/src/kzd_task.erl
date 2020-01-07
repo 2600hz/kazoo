@@ -35,8 +35,8 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch(kz_term:ne_binary(), kz_tasks:id()) ->
-                   {ok, kz_json:object()} |
-                   {error, any()}.
+          {ok, kz_json:object()} |
+          {error, any()}.
 fetch(Account, TaskId) ->
     View = ?KZ_TASKS_BY_ACCOUNT,
     ViewOptions = [{'key', [kz_util:format_account_id(Account), TaskId]}],

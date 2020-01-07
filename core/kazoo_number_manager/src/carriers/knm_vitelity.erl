@@ -44,7 +44,7 @@ is_local() -> 'false'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
-                                              {error, any()}.
+          {error, any()}.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%------------------------------------------------------------------------------
@@ -53,8 +53,8 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
-                          {'ok', knm_number:knm_numbers()} |
-                          {'error', any()}.
+          {'ok', knm_number:knm_numbers()} |
+          {'error', any()}.
 find_numbers(<<"+1",Prefix/binary>>, Quantity, Options) ->
     find_numbers(Prefix, Quantity, Options);
 find_numbers(Prefix, Quantity, Options) ->
@@ -70,7 +70,7 @@ find_numbers(Prefix, Quantity, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec acquire_number(knm_number:knm_number()) ->
-                            knm_number:knm_number().
+          knm_number:knm_number().
 acquire_number(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     DID = knm_phone_number:number(PhoneNumber),
@@ -88,7 +88,7 @@ acquire_number(Number) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec disconnect_number(knm_number:knm_number()) ->
-                               knm_number:knm_number().
+          knm_number:knm_number().
 disconnect_number(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     DID = knm_phone_number:number(PhoneNumber),
@@ -120,8 +120,8 @@ is_number_billable(_) -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec classify_and_find(kz_term:ne_binary(), pos_integer(), knm_carriers:options()) ->
-                               {'ok', knm_number:knm_numbers()} |
-                               {'error', any()}.
+          {'ok', knm_number:knm_numbers()} |
+          {'error', any()}.
 classify_and_find(Prefix, Quantity, Options) ->
     case knm_converters:classify(Prefix) of
         <<"tollfree_us">> ->
@@ -137,7 +137,7 @@ classify_and_find(Prefix, Quantity, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec tollfree_options(pos_integer(), knm_carriers:options()) ->
-                              knm_vitelity_util:query_options().
+          knm_vitelity_util:query_options().
 tollfree_options(Quantity, Options) ->
     TollFreeOptions = [{'qs', [{'cmd', <<"listtollfree">>}
                               ,{'limit', Quantity}
@@ -154,7 +154,7 @@ tollfree_options(Quantity, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec local_options(kz_term:ne_binary(), knm_carriers:options()) ->
-                           knm_vitelity_util:query_options().
+          knm_vitelity_util:query_options().
 local_options(Prefix, Options) when byte_size(Prefix) =< 3 ->
     LocalOptions = [{'qs', [{'npa', Prefix}
                            ,{'cmd', <<"listnpa">>}
@@ -190,8 +190,8 @@ local_options(Prefix, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec find(kz_term:ne_binary(), pos_integer(), knm_carriers:options(), knm_vitelity_util:query_options()) ->
-                  {'ok', knm_number:knm_numbers()} |
-                  {'error', any()}.
+          {'ok', knm_number:knm_numbers()} |
+          {'error', any()}.
 find(Prefix, Quantity, Options, VitelityOptions) ->
     case query_vitelity(Prefix, Quantity, VitelityOptions) of
         {'error', _}=Error -> Error;
@@ -214,8 +214,8 @@ to_number(DID, CarrierData, QID) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec query_vitelity(kz_term:ne_binary(), pos_integer(), knm_vitelity_util:query_options()) ->
-                            {'ok', kz_json:object()} |
-                            {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 -ifdef(TEST).
 query_vitelity(Prefix, Quantity, QOptions) ->
     URI = knm_vitelity_util:build_uri(QOptions),
@@ -250,8 +250,8 @@ query_vitelity(Prefix, Quantity, QOptions) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec process_xml_resp(kz_term:ne_binary(), pos_integer(), kz_term:text()) ->
-                              {'ok', kz_json:object()} |
-                              {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 process_xml_resp(Prefix, Quantity, XML_binary) ->
     XML = unicode:characters_to_list(XML_binary),
     try xmerl_scan:string(XML) of
@@ -267,8 +267,8 @@ process_xml_resp(Prefix, Quantity, XML_binary) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec process_xml_content_tag(kz_term:ne_binary(), pos_integer(), kz_types:xml_el()) ->
-                                     {'ok', kz_json:object()} |
-                                     {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
                                                      ,content=Children
                                                      }) ->
@@ -287,8 +287,8 @@ process_xml_content_tag(Prefix, Quantity, #xmlElement{name='content'
 %%------------------------------------------------------------------------------
 
 -spec process_xml_numbers(kz_term:ne_binary(), pos_integer(), 'undefined' | kz_types:xml_el()) ->
-                                 {'ok', kz_json:object()} |
-                                 {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 process_xml_numbers(_Prefix, _Quantity, 'undefined') ->
     {'error', 'no_numbers'};
 process_xml_numbers(Prefix, Quantity, #xmlElement{name='numbers'
@@ -297,8 +297,8 @@ process_xml_numbers(Prefix, Quantity, #xmlElement{name='numbers'
     process_xml_numbers(Prefix, Quantity, kz_xml:elements(Content), []).
 
 -spec process_xml_numbers(kz_term:ne_binary(), pos_integer(), 'undefined' | kz_types:xml_els(), kz_term:proplist()) ->
-                                 {'ok', kz_json:object()} |
-                                 {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 process_xml_numbers(_Prefix, 0, _Els, Acc) ->
     {'ok', kz_json:from_list(Acc)};
 process_xml_numbers(_Prefix, _Quantity, [#xmlElement{name='response'
@@ -398,7 +398,7 @@ purchase_tollfree_options(DID) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec query_vitelity(knm_number:knm_number(), knm_vitelity_util:query_options()) ->
-                            knm_number:knm_number().
+          knm_number:knm_number().
 query_vitelity(Number, QOptions) ->
     URI = knm_vitelity_util:build_uri(QOptions),
     ?LOG_DEBUG("querying ~s", [URI]),
@@ -416,7 +416,7 @@ query_vitelity(Number, QOptions) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec process_xml_resp(knm_number:knm_number(), kz_term:text()) ->
-                              knm_number:knm_number().
+          knm_number:knm_number().
 process_xml_resp(Number, XML_binary) ->
     XML = unicode:characters_to_list(XML_binary),
     try xmerl_scan:string(XML) of
@@ -432,7 +432,7 @@ process_xml_resp(Number, XML_binary) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec process_xml_content_tag(knm_number:knm_number(), kz_types:xml_el()) ->
-                                     knm_number:knm_number().
+          knm_number:knm_number().
 process_xml_content_tag(Number, #xmlElement{name='content'
                                            ,content=Children
                                            }) ->

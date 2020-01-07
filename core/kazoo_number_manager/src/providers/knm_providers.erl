@@ -487,7 +487,7 @@ split_requests(Number) ->
     lists:partition(F, RequestedModules).
 
 -spec exec(knm_number:knm_number(), exec_action(), kz_term:ne_binaries()) ->
-                  knm_number:knm_number().
+          knm_number:knm_number().
 exec(Number, _, []) -> Number;
 exec(Number, Action, [Provider|Providers]) ->
     case apply_action(Number, Action, Provider) of
@@ -497,7 +497,7 @@ exec(Number, Action, [Provider|Providers]) ->
     end.
 
 -spec apply_action(knm_number:knm_number(), exec_action(), kz_term:ne_binary()) ->
-                          {'true', any()} | 'false'.
+          {'true', any()} | 'false'.
 apply_action(Number, Action, Provider) ->
     case kz_module:ensure_loaded(Provider) of
         'false' ->
@@ -516,14 +516,14 @@ apply_action(Number, Action, Provider) ->
 -type set_feature() :: {kz_term:ne_binary(), kz_json:object()}.
 
 -spec activate_feature(knm_number:knm_number(), set_feature() | kz_term:ne_binary()) ->
-                              knm_number:knm_number().
+          knm_number:knm_number().
 activate_feature(Number, Feature=?NE_BINARY) ->
     activate_feature(Number, {Feature, kz_json:new()});
 activate_feature(Number, FeatureToSet={?NE_BINARY,_}) ->
     do_activate_feature(Number, FeatureToSet).
 
 -spec do_activate_feature(knm_number:knm_number(), set_feature()) ->
-                                 knm_number:knm_number().
+          knm_number:knm_number().
 do_activate_feature(Number, {Feature,FeatureData}) ->
     PhoneNumber = knm_number:phone_number(Number),
     lager:debug("adding feature ~s to ~s"

@@ -263,7 +263,7 @@ get_endpoint_data(State) ->
     end.
 
 -spec get_endpoint_data(ts_callflow:state(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), knm_number_options:extra_options()) ->
-                               {'endpoint', kz_json:object()}.
+          {'endpoint', kz_json:object()}.
 get_endpoint_data(State, JObj, ToDID, AccountId, NumberProps) ->
     ForceOut = knm_number_options:should_force_outbound(NumberProps),
     lager:info("building endpoint for account id ~s with force out ~s", [AccountId, ForceOut]),
@@ -445,7 +445,7 @@ callee_id([JObj | T]) ->
     end.
 
 -spec maybe_anonymize_caller_id(ts_callflow:state(), {kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:api_object()) ->
-                                       kz_term:proplist().
+          kz_term:proplist().
 maybe_anonymize_caller_id(State, {Name, Number}, CidFormat) ->
     CCVs = ts_callflow:get_custom_channel_vars(State),
     [{<<"Outbound-Caller-ID-Number">>, kapps_call:maybe_format_caller_id_str(Number, CidFormat)}

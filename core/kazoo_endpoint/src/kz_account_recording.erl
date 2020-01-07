@@ -19,12 +19,12 @@
 
 %% @doc should recording be started on call TO the endpoint
 -spec maybe_record_inbound(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
-                                  {'true', kapps_call:call()} | 'false'.
+          {'true', kapps_call:call()} | 'false'.
 maybe_record_inbound(FromNetwork, Endpoint, Call) ->
     maybe_record_inbound(FromNetwork, Endpoint, Call, kz_json:get_json_value(?ACCOUNT_INBOUND_RECORDING(FromNetwork), Endpoint)).
 
 -spec maybe_record_inbound(kz_term:ne_binary(), kz_json:object(), kapps_call:call(), kz_term:api_object()) ->
-                                  {'true', kapps_call:call()} | 'false'.
+          {'true', kapps_call:call()} | 'false'.
 maybe_record_inbound(_FromNetwork, _Endpoint, _Call, 'undefined') -> 'false';
 maybe_record_inbound(FromNetwork, _Endpoint, Call, Data) ->
     case kz_json:is_true(<<"enabled">>, Data) of
@@ -38,12 +38,12 @@ maybe_record_inbound(FromNetwork, _Endpoint, Call, Data) ->
 
 %% @doc maybe start recording on call made FROM the endpoint
 -spec maybe_record_outbound(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
-                                   {'true', kapps_call:call()} | 'false'.
+          {'true', kapps_call:call()} | 'false'.
 maybe_record_outbound(ToNetwork, Endpoint, Call) ->
     maybe_record_outbound(ToNetwork, Endpoint, Call, kz_json:get_json_value(?ACCOUNT_OUTBOUND_RECORDING(ToNetwork), Endpoint)).
 
 -spec maybe_record_outbound(kz_term:ne_binary(), kz_json:object(), kapps_call:call(), kz_term:api_object()) ->
-                                   {'true', kapps_call:call()} | 'false'.
+          {'true', kapps_call:call()} | 'false'.
 maybe_record_outbound(_ToNetwork, _Endpoint, _Call, 'undefined') -> 'false';
 maybe_record_outbound(ToNetwork, _Endpoint, Call, Data) ->
     case kz_json:is_true(<<"enabled">>, Data) of

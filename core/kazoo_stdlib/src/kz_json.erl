@@ -627,12 +627,12 @@ order_by(Path, Ids, ListOfJObjs)
 %% @end
 %%%-----------------------------------------------------------------------------
 -spec lift_common_properties(objects()) ->
-                                    {object(), objects()}.
+          {object(), objects()}.
 lift_common_properties(JObjs) ->
     lift_common_properties(JObjs, []).
 
 -spec lift_common_properties(objects(), [key() | path()]) ->
-                                    {object(), objects()}.
+          {object(), objects()}.
 lift_common_properties([], _Unliftable) -> {new(), []};
 lift_common_properties([JObj], _Unliftable) -> {new(), [JObj]};
 lift_common_properties([JObj | JObjs], Unliftable) ->
@@ -685,14 +685,14 @@ remove_common_property(Path, _Value, JObjs) ->
 %% Convert a JSON object to a proplist %% only top-level conversion is supported
 
 -spec to_proplist(object() | objects()) ->
-                         json_proplist() | json_proplists() | flat_proplist().
+          json_proplist() | json_proplists() | flat_proplist().
 to_proplist(JObjs) when is_list(JObjs) -> [to_proplist(JObj) || JObj <- JObjs];
 to_proplist(?JSON_WRAPPER(Prop)) -> Prop.
 
 %% convert everything starting at a specific key
 
 -spec to_proplist(get_key(), object() | objects()) ->
-                         json_proplist() | json_proplists() | flat_proplist().
+          json_proplist() | json_proplists() | flat_proplist().
 to_proplist(Key, JObj) -> to_proplist(get_json_value(Key, JObj, new())).
 
 -spec recursive_to_proplist(object() | objects() | kz_term:proplist()) -> kz_term:proplist().
@@ -1110,7 +1110,7 @@ get_value(K, Doc, Default) ->
     get_value1(K, Doc, Default).
 
 -spec get_value1(get_key(), kz_term:api_object() | objects(), Default) ->
-                        json_term() | Default.
+          json_term() | Default.
 get_value1([], 'undefined', Default) -> Default;
 get_value1([], JObj, _Default) -> JObj;
 get_value1(Key, JObj, Default) when not is_list(Key)->

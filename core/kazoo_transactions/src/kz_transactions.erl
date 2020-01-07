@@ -43,8 +43,8 @@ fetch(?NE_BINARY=Account, Options) ->
     end.
 
 -spec fetch(kz_term:ne_binary(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
-                   {'ok', transactions()} |
-                   {'error', any()}.
+          {'ok', transactions()} |
+          {'error', any()}.
 fetch(?NE_BINARY=Account, CreatedFrom, CreatedTo)
   when is_integer(CreatedFrom), CreatedFrom > 0,
        is_integer(CreatedTo), CreatedTo > 0 ->
@@ -68,7 +68,7 @@ legacy_total(Account) ->
     legacy_total(Account, Year, Month).
 
 -spec legacy_total(kz_term:ne_binary(), kz_time:year(), kz_time:month()) ->
-                          kz_currency:available_units_return().
+          kz_currency:available_units_return().
 legacy_total(Account, Year, Month) ->
     View = <<"transactions/legacy_total">>,
     ViewOptions = [{'year', Year}
@@ -104,8 +104,8 @@ get_ranged(View, Options) ->
     end.
 
 -spec get_ranged(kz_term:ne_binary(), kz_term:proplist(), kz_term:ne_binaries(), kz_json:objects()) ->
-                        {'ok', transactions()} |
-                        {'error', any()}.
+          {'ok', transactions()} |
+          {'error', any()}.
 get_ranged(_View, _Options, [], Results) -> {'ok', Results};
 get_ranged(View, Options, [MODb|MODbs], Results) ->
     case kazoo_modb:get_results(MODb, View, Options) of

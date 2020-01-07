@@ -45,8 +45,8 @@ get_inbound_destination(JObj) ->
     {knm_converters:normalize(Number), Inception}.
 
 -spec lookup_mdn(kz_term:ne_binary()) ->
-                        {'ok', kz_term:ne_binary(), kz_term:api_binary()} |
-                        {'error', any()}.
+          {'ok', kz_term:ne_binary(), kz_term:api_binary()} |
+          {'error', any()}.
 lookup_mdn(Number) ->
     Num = knm_converters:normalize(Number),
     case kz_cache:fetch_local(?CACHE_NAME, cache_key_mdn(Num)) of
@@ -57,8 +57,8 @@ lookup_mdn(Number) ->
     end.
 
 -spec fetch_mdn(kz_term:ne_binary()) ->
-                       {'ok', kz_term:ne_binary(), kz_term:api_binary()} |
-                       {'error', any()}.
+          {'ok', kz_term:ne_binary(), kz_term:api_binary()} |
+          {'error', any()}.
 fetch_mdn(Num) ->
     case knm_number:lookup_account(Num) of
         {'ok', AccountId, _Props} ->
@@ -69,8 +69,8 @@ fetch_mdn(Num) ->
     end.
 
 -spec fetch_mdn_result(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                              {'ok', kz_term:ne_binary(), kz_term:api_binary()} |
-                              {'error', 'not_found'}.
+          {'ok', kz_term:ne_binary(), kz_term:api_binary()} |
+          {'error', 'not_found'}.
 fetch_mdn_result(AccountId, Num) ->
     AccountDb = kz_util:format_account_db(AccountId),
     ViewOptions = [{'key', mdn_from_e164(Num)}],
@@ -87,7 +87,7 @@ fetch_mdn_result(AccountId, Num) ->
     end.
 
 -spec cache_mdn_result(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary()) ->
-                              {'ok', kz_term:ne_binary(), kz_term:api_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:api_binary()}.
 cache_mdn_result(AccountDb, Id, OwnerId) ->
     CacheProps = [{'origin', [{'db', AccountDb, Id}]}],
     kz_cache:store_local(?CACHE_NAME, cache_key_mdn(Id), {Id, OwnerId}, CacheProps),

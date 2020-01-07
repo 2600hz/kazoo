@@ -46,8 +46,8 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec save_outbound(kz_term:ne_binary(), kz_json:object(), kz_term:api_binary(), kz_term:api_binary()) ->
-                           {'ok', kz_json:object()} |
-                           {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 save_outbound(Db, Doc, 'undefined', _) ->
     case kapps_config:get_is_true(?FAX_CONFIG_CAT, <<"store_url_document">>, true) of
         'true' ->
@@ -85,7 +85,7 @@ update_fax_props(Doc, Props) ->
                       ).
 
 -spec maybe_store_fax_tiff(kz_term:ne_binary()) ->
-                                  [{kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}] | [].
+          [{kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}] | [].
 maybe_store_fax_tiff(Content) ->
     case kapps_config:get_is_true(?FAX_CONFIG_CAT, <<"store_fax_tiff">>, true) of
         'true' -> [{Content, <<"image/tiff">>, ?FAX_FILENAME}];
@@ -93,7 +93,7 @@ maybe_store_fax_tiff(Content) ->
     end.
 
 -spec maybe_convert_to_pdf(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                  [{kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}] | [].
+          [{kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}] | [].
 maybe_convert_to_pdf(ContentType, Content, Id) ->
     case kapps_config:get_is_true(?FAX_CONFIG_CAT, <<"store_fax_pdf">>, true) of
         'true' ->
@@ -105,8 +105,8 @@ maybe_convert_to_pdf(ContentType, Content, Id) ->
     end.
 
 -spec convert_to_fax(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                            {'ok', kz_term:ne_binary(), kz_term:proplist()} |
-                            {'error', any()}.
+          {'ok', kz_term:ne_binary(), kz_term:proplist()} |
+          {'error', any()}.
 convert_to_fax(FromFormat, File, Id) ->
     Options = [{<<"output_type">>, 'binary'}
               ,{<<"job_id">>, Id}
@@ -115,8 +115,8 @@ convert_to_fax(FromFormat, File, Id) ->
     kz_convert:fax(FromFormat, <<"image/tiff">>, File, Options).
 
 -spec convert_to_pdf(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                            {'ok', kz_term:ne_binary()} |
-                            {'error', any()}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', any()}.
 convert_to_pdf(FromFormat, Content, Id) ->
     Options = [{<<"output_type">>, 'binary'}
               ,{<<"job_id">>, Id}
@@ -136,8 +136,8 @@ convert_to_pdf(FromFormat, Content, Id) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                   {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
-                   {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 fetch(Format, Db, Doc) ->
     case kz_json:get_binary_value(<<"folder">>, Doc) of
         <<"inbox">> ->
@@ -150,8 +150,8 @@ fetch(Format, Db, Doc) ->
     end.
 
 -spec fetch_sent_format(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                               {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
-                               {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 fetch_sent_format(<<"original">>, Db, Doc) ->
     fetch_original(Db, Doc);
 fetch_sent_format(<<"pdf">>, Db, Doc) ->
@@ -162,8 +162,8 @@ fetch_sent_format(_, _, _) ->
     {'error', <<"invalid format for attachment">>}.
 
 -spec fetch_received_format(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                                   {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
-                                   {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 fetch_received_format(<<"original">>, Db, Doc) ->
     fetch_received(Db, Doc);
 fetch_received_format(<<"pdf">>, Db, Doc) ->
@@ -178,14 +178,14 @@ fetch_received_format(_, _, _) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch_received(kz_term:ne_binary(), kz_json:object()) ->
-                            {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
-                            {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 fetch_received(Db, Doc) ->
     fetch_received(Db, Doc, kz_doc:attachment_names(Doc)).
 
 -spec fetch_received(kz_term:ne_binary(), kz_json:object(), list()) ->
-                            {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
-                            {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 fetch_received(Db, Doc, [<<?RECEIVED_FILE_PREFIX, _/binary>>=Name|_]) ->
     case kz_datamgr:fetch_attachment(Db, kz_doc:id(Doc), Name) of
         {'ok', Content} -> {'ok', Content, <<"image/tiff">>, Doc};
@@ -205,14 +205,14 @@ fetch_received(Db, Doc, []) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch_faxable(kz_term:ne_binary(), kz_json:object()) ->
-                           {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
-                           {'error', any()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+          {'error', any()}.
 fetch_faxable(Db, Doc) ->
     fetch_faxable(Db, Doc, kz_doc:attachment_names(Doc)).
 
 -spec fetch_faxable(kz_term:ne_binary(), kz_json:object(), list()) ->
-                           {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
-                           {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 fetch_faxable(Db, Doc, [?FAX_FILENAME|_]) ->
     case kz_datamgr:fetch_attachment(Db, kz_doc:id(Doc), ?FAX_FILENAME) of
         {'ok', Content} -> {'ok', Content, <<"image/tiff">>, Doc};
@@ -255,14 +255,14 @@ maybe_save_faxable(Db, Doc, Content) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch_pdf(kz_term:ne_binary(), kz_json:object()) ->
-                       {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
-                       {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 fetch_pdf(Db, Doc) ->
     fetch_pdf(Db, Doc, kz_doc:attachment_names(Doc)).
 
 -spec fetch_pdf(kz_term:ne_binary(), kz_json:object(), list()) ->
-                       {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
-                       {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 fetch_pdf(Db, Doc, [?PDF_FILENAME|_]) ->
     case kz_datamgr:fetch_attachment(Db, kz_doc:id(Doc), ?PDF_FILENAME) of
         {'ok', Content} -> {'ok', Content, <<"application/pdf">>, Doc};
@@ -284,7 +284,7 @@ fetch_pdf(Db, Doc, []) ->
     end.
 
 -spec maybe_save_pdf(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                            kz_json:object().
+          kz_json:object().
 maybe_save_pdf(Db, Pdf, Doc) ->
     case kapps_config:get_is_true(?FAX_CONFIG_CAT, <<"store_fax_pdf">>, true) of
         'true' ->
@@ -306,12 +306,12 @@ maybe_save_pdf(Db, Pdf, Doc) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch_received_pdf(kz_term:ne_binary(), kz_json:object()) ->
-                                kz_json:object().
+          kz_json:object().
 fetch_received_pdf(Db, Doc) ->
     fetch_received_pdf(Db, Doc, kz_doc:attachment_names(Doc)).
 
 -spec fetch_received_pdf(kz_term:ne_binary(), kz_json:object(), list()) ->
-                                kz_json:object().
+          kz_json:object().
 fetch_received_pdf(Db, Doc, [?PDF_FILENAME|_]) ->
     case kz_datamgr:fetch_attachment(Db, kz_doc:id(Doc), ?PDF_FILENAME) of
         {'ok', Content} -> {'ok', Content, <<"application/pdf">>, Doc};
@@ -338,14 +338,14 @@ fetch_received_pdf(Db, Doc, []) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch_original(kz_term:ne_binary(), kz_json:object()) ->
-                            {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
-                            {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 fetch_original(Db, Doc) ->
     fetch_original(Db, Doc, kz_doc:attachment_names(Doc)).
 
 -spec fetch_original(kz_term:ne_binary(), kz_json:object(), list()) ->
-                            {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
-                            {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 fetch_original(Db, Doc, [<<?ORIGINAL_FILE_PREFIX, _/binary>>=Name|_]) ->
     case kz_datamgr:fetch_attachment(Db, kz_doc:id(Doc), Name) of
         {'ok', Content} -> {'ok', Content, kz_doc:attachment_content_type(Doc, Name), Doc};
@@ -366,14 +366,14 @@ fetch_original(Db, Doc, []) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch_legacy(kz_term:ne_binary(), kz_json:object()) ->
-                          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
-                          {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 fetch_legacy(Db, Doc) ->
     fetch_legacy(Db, Doc, kz_doc:attachment_names(Doc)).
 
 -spec fetch_legacy(kz_term:ne_binary(), kz_json:object(), list()) ->
-                          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
-                          {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 fetch_legacy(Db, Doc, [?FAX_FILENAME|Attachments]) ->
     fetch_legacy(Db, Doc, Attachments);
 fetch_legacy(Db, Doc, [?PDF_FILENAME|Attachments]) ->
@@ -405,8 +405,8 @@ fetch_legacy(Db, Doc, []) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch_url(kz_json:object()) ->
-                       {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
-                       {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
+          {'error', kz_term:ne_binary()}.
 fetch_url(Doc) ->
     case kzd_fax:document(Doc, 'undefined') of
         'undefined' ->
@@ -417,8 +417,8 @@ fetch_url(Doc) ->
     end.
 
 -spec fetch_url(kz_term:api_binary(), kz_json:object()) ->
-                       {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
-                       {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
+          {'error', kz_term:ne_binary()}.
 fetch_url('undefined', _) ->
     {'error', <<"attachment not found">>};
 fetch_url(Url, FetchRequest) ->
@@ -443,7 +443,7 @@ fetch_url(Url, FetchRequest) ->
     end.
 
 -spec maybe_store_url_attachment(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                        kz_json:object().
+          kz_json:object().
 maybe_store_url_attachment(Db, Doc, Content, ContentType) ->
     case kapps_config:get_is_true(?FAX_CONFIG_CAT, <<"store_url_document">>, true) of
         true ->
@@ -476,8 +476,8 @@ maybe_store_url_attachment(Db, Doc, Content, ContentType) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec store_attachments(kz_term:ne_binary(), kz_json:object(), list()) ->
-                               {'ok', kz_json:object()} |
-                               {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 store_attachments(Db, Doc, [{Content, CT, Name}|Files]) ->
     case save_fax_doc(Db, Doc, Content, CT, Name) of
         {'ok', NewDoc} ->
@@ -488,8 +488,8 @@ store_attachments(_, Doc, []) ->
     {'ok', Doc}.
 
 -spec maybe_save_fax_doc(kz_term:ne_binary(), kz_json:object()) ->
-                                {'ok', kz_json:object()} |
-                                {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 maybe_save_fax_doc(Db, Doc) ->
     case kz_doc:revision(Doc) of
         'undefined' ->
@@ -499,8 +499,8 @@ maybe_save_fax_doc(Db, Doc) ->
     end.
 
 -spec save_fax_doc(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                          {'ok', kz_json:object()} |
-                          {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 save_fax_doc(Db, Doc, Content, CT, Name) ->
     case maybe_save_fax_doc(Db, Doc) of
         {'error', _}=Error -> Error;
@@ -508,16 +508,16 @@ save_fax_doc(Db, Doc, Content, CT, Name) ->
     end.
 
 -spec store_attachment(kz_term:ne_binary(), kz_term:api_object(), binary(), kz_term:ne_binary(), kz_term:ne_binary())->
-                              {'ok', kz_json:object()} |
-                              {'error', kz_term:ne_binary()}.
+          {'ok', kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 store_attachment(Db, Doc, Content, CT, Name) ->
     MaxStorageRetry = kapps_config:get_integer(?FAX_CONFIG_CAT, <<"max_storage_retry">>, 5),
     lager:debug("saving fax attachment ~s to ~s", [Name, kz_doc:id(Doc)]),
     store_attachment(Db, Doc, Content, CT, Name, MaxStorageRetry).
 
 -spec store_attachment(kz_term:ne_binary(), kz_term:api_object(), binary(), kz_term:ne_binary(), kz_term:ne_binary(), non_neg_integer())->
-                              {'ok', kz_json:object()} |
-                              {'error', kz_term:ne_binary()}.
+          {'ok', kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 store_attachment(_, Doc, _Content, _CT, _Name, 0) ->
     lager:error("max retry saving attachment ~s on fax id ~s rev ~s"
                ,[_Name, kz_doc:id(Doc), kz_doc:revision(Doc)]
@@ -540,17 +540,17 @@ store_attachment(Db, Doc, Content, CT, Name, Count) ->
     end.
 
 -spec attempt_save(kz_term:ne_binary(), kz_json:object(), binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                          {'ok', kz_json:object()} |
-                          kz_datamgr:data_error().
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error().
 attempt_save(Db, Doc, Content, CT, Name) ->
     Opts = [{'content_type', CT}
            ],
     kz_datamgr:put_attachment(Db, kz_doc:id(Doc), Name, Content, Opts).
 
 -spec check_fax_attachment(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary())->
-                                  {'ok', kz_json:object()} |
-                                  {'missing', kz_json:object()} |
-                                  {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'missing', kz_json:object()} |
+          {'error', any()}.
 check_fax_attachment(Db, DocId, Name) ->
     case kz_datamgr:open_doc(Db, DocId) of
         {'ok', Doc} ->

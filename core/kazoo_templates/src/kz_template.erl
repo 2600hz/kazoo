@@ -131,7 +131,7 @@ render_template(Module, TemplateData, RenderOpts) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_compile_result(template(), atom(), template_result()) ->
-                                   template_result().
+          template_result().
 handle_compile_result(_Template, Module, {'ok', Module} = OK) ->
     lager:debug("built renderer for ~p", [Module]),
     OK;

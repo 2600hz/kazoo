@@ -18,7 +18,7 @@
 -include("konami.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'continue', kapps_call:call()}.
+          {'continue', kapps_call:call()}.
 handle(Data, Call) ->
     AccountId = kapps_call:account_id(Call),
     Path = kz_doc:id(Data),

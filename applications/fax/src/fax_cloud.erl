@@ -195,8 +195,8 @@ send_update_job_status(JobId, Status, Authorization) ->
     end.
 
 -spec download_file(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                           {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
-                           {'error', any()}.
+          {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
+          {'error', any()}.
 download_file(URL, Authorization) ->
     Headers = [?GPC_PROXY_HEADER , {"Authorization",Authorization}],
     case kz_http:get(kz_term:to_list(URL), Headers) of
@@ -250,8 +250,8 @@ maybe_save_fax_attachment(JObj, JobId, PrinterId, FileURL ) ->
     end.
 
 -spec save_fax_document(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               {'ok', kz_json:object()} |
-                               {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
     {'ok', FaxBoxDoc} = get_faxbox_doc(PrinterId),
 
@@ -313,8 +313,8 @@ save_fax_document(Job, JobId, PrinterId, FaxNumber ) ->
     kz_datamgr:save_doc(?KZ_FAXES_DB, Doc).
 
 -spec get_faxbox_doc(kz_term:ne_binary()) ->
-                            {'ok', kz_json:object()} |
-                            {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 get_faxbox_doc(PrinterId) ->
     case kz_cache:peek_local(?CACHE_NAME, {'faxbox', PrinterId }) of
         {'ok', _Doc}=OK -> OK;
@@ -323,8 +323,8 @@ get_faxbox_doc(PrinterId) ->
     end.
 
 -spec fetch_faxbox_doc(kz_term:ne_binary()) ->
-                              {'ok', kz_json:object()} |
-                              {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 fetch_faxbox_doc(PrinterId) ->
     ViewOptions = [{'key', PrinterId}, 'include_docs'],
     case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxbox/cloud">>, ViewOptions) of
@@ -345,7 +345,7 @@ maybe_get_faxbox_owner_email(FaxBoxDoc) ->
     end.
 
 -spec get_faxbox_owner_email(kz_json:object(), kz_term:ne_binary()) ->
-                                    kz_json:object().
+          kz_json:object().
 get_faxbox_owner_email(FaxBoxDoc, OwnerId) ->
     AccountId = kz_doc:account_id(FaxBoxDoc),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
@@ -360,8 +360,8 @@ get_faxbox_owner_email(FaxBoxDoc, OwnerId) ->
     end.
 
 -spec get_printer_oauth_credentials(kz_term:ne_binary()) ->
-                                           {'ok', kz_term:ne_binary()} |
-                                           {'error', any()}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', any()}.
 get_printer_oauth_credentials(PrinterId) ->
     case kz_cache:peek_local(?CACHE_NAME, {'gcp', PrinterId }) of
         {'ok', _Auth}=OK -> OK;
@@ -370,8 +370,8 @@ get_printer_oauth_credentials(PrinterId) ->
     end.
 
 -spec fetch_printer_oauth_credentials(kz_term:ne_binary()) ->
-                                             {'ok', kz_term:ne_binary()} |
-                                             {'error', any()}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', any()}.
 fetch_printer_oauth_credentials(PrinterId) ->
     case get_faxbox_doc(PrinterId) of
         {'error', _}=E -> E;

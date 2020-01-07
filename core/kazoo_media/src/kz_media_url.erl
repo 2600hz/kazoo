@@ -58,18 +58,18 @@ playback(Doc, JObj) ->
     end.
 
 -spec store(kz_json:object(), kz_term:ne_binary()) ->
-                   build_media_url_ret().
+          build_media_url_ret().
 store(JObj, AName) ->
     Media = kz_media_util:store_path_from_doc(JObj, AName),
     kz_media_file:get_uri(Media, ?STREAM_TYPE_STORE).
 
 -spec store(kz_term:ne_binary(), kazoo_data:docid(), kz_term:ne_binary()) ->
-                   build_media_url_ret().
+          build_media_url_ret().
 store(Db, Id, Attachment) ->
     store(Db, Id, Attachment, []).
 
 -spec store(kz_term:ne_binary(), kazoo_data:docid(), kz_term:ne_binary(), kz_term:proplist()) ->
-                   build_media_url_ret().
+          build_media_url_ret().
 store(Db, {Type, Id}, Attachment, Options) ->
     store(Db, Id, Attachment, [{'doc_type', Type} | Options]);
 store(Db, ?NE_BINARY = Id, Attachment, Options) ->

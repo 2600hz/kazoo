@@ -72,7 +72,7 @@ bindings(_Context, #{account_id := AccountId
         }.
 
 -spec fax_status_bind_options(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                     kz_term:proplist().
+          kz_term:proplist().
 fax_status_bind_options(AccountId, FaxId) ->
     [{'restrict_to', ['status']}
     ,{'account_id', AccountId}
@@ -81,7 +81,7 @@ fax_status_bind_options(AccountId, FaxId) ->
     ].
 
 -spec fax_object_bind_options(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                     kz_term:proplist().
+          kz_term:proplist().
 fax_object_bind_options(MODB, Action) ->
     [{'keys', [[{'action', Action}
                ,{'db', MODB}

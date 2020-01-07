@@ -223,7 +223,7 @@ prepare_api_payload(Prop, HeaderValues) ->
     prepare_api_payload(Prop, HeaderValues, []).
 
 -spec prepare_api_payload(kz_term:api_terms(), kz_term:proplist(), api_formatter_fun() | prepare_options()) ->
-                                 api_formatter_return() | kz_term:proplist().
+          api_formatter_return() | kz_term:proplist().
 prepare_api_payload(Prop, HeaderValues, FormatterFun) when is_function(FormatterFun, 1) ->
     prepare_api_payload(Prop, HeaderValues, [{'formatter', FormatterFun}]);
 prepare_api_payload(Prop, HeaderValues, Options) when is_list(Prop) ->
@@ -415,8 +415,8 @@ build_message(JObj, ReqH, OptH) ->
     build_message(kz_json:to_proplist(JObj), ReqH, OptH).
 
 -spec build_message_specific_headers(kz_term:proplist() | {api_headers(), kz_term:proplist()}, api_headers(), api_headers()) ->
-                                            {'ok', kz_term:proplist()} |
-                                            {'error', string()}.
+          {'ok', kz_term:proplist()} |
+          {'error', string()}.
 build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {'error', _Reason} = Error ->
@@ -432,7 +432,7 @@ build_message_specific_headers(Prop, ReqH, OptH) ->
     build_message_specific_headers({[], Prop}, ReqH, OptH).
 
 -spec build_message_specific(kz_term:proplist() | {api_headers(), kz_term:proplist()}, api_headers(), api_headers()) ->
-                                    api_formatter_return().
+          api_formatter_return().
 build_message_specific({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {'error', _Reason} = Error ->
@@ -460,8 +460,8 @@ headers_to_json([_|_]=HeadersProp) ->
 %% defaults(PassedProps, MessageHeaders) -> { Headers, NewPropList } | {error, Reason}
 
 -spec defaults(kz_term:api_terms(), api_headers()) ->
-                      {kz_term:proplist(), kz_term:proplist()} |
-                      {'error', string()}.
+          {kz_term:proplist(), kz_term:proplist()} |
+          {'error', string()}.
 defaults(Prop, MsgHeaders) -> defaults(Prop, expand_headers(MsgHeaders), []).
 defaults(Prop, MsgHeaders, Headers) ->
     case update_required_headers(Prop, ?DEFAULT_HEADERS -- MsgHeaders, Headers) of
@@ -482,8 +482,8 @@ expand_header(Headers, Acc)
   when is_list(Headers) -> expand_headers(Headers) ++ Acc.
 
 -spec update_required_headers(kz_term:proplist(), api_headers(), kz_term:proplist()) ->
-                                     {kz_term:proplist(), kz_term:proplist()} |
-                                     {'error', string()}.
+          {kz_term:proplist(), kz_term:proplist()} |
+          {'error', string()}.
 update_required_headers(Prop, Fields, Headers) ->
     case has_all(Prop, Fields) of
         'true' -> add_headers(Prop, Fields, Headers);
@@ -491,7 +491,7 @@ update_required_headers(Prop, Fields, Headers) ->
     end.
 
 -spec update_optional_headers(kz_term:proplist(), api_headers(), kz_term:proplist()) ->
-                                     {kz_term:proplist(), kz_term:proplist()}.
+          {kz_term:proplist(), kz_term:proplist()}.
 update_optional_headers(Prop, Fields, Headers) ->
     case has_any(Prop, Fields) of
         'true' -> add_optional_headers(Prop, Fields, Headers);
@@ -500,7 +500,7 @@ update_optional_headers(Prop, Fields, Headers) ->
 
 %% add [Header] from Prop to HeadProp
 -spec add_headers(kz_term:proplist(), api_headers(), kz_term:proplist()) ->
-                         {kz_term:proplist(), kz_term:proplist()}.
+          {kz_term:proplist(), kz_term:proplist()}.
 add_headers(Prop, Fields, Headers) ->
     lists:foldl(fun(K, {Headers1, KVs}) when is_list(K) ->
                         K1 = [Ki || Ki <- K, props:is_defined(Ki, KVs)],
@@ -510,7 +510,7 @@ add_headers(Prop, Fields, Headers) ->
                 end, {Headers, Prop}, Fields).
 
 -spec add_optional_headers(kz_term:proplist(), api_headers(), kz_term:proplist()) ->
-                                  {kz_term:proplist(), kz_term:proplist()}.
+          {kz_term:proplist(), kz_term:proplist()}.
 add_optional_headers(Prop, Fields, Headers) ->
     lists:foldl(fun(K, {Headers1, KVs}) ->
                         case props:get_value(K, KVs) of

@@ -240,7 +240,7 @@ acquire(Number) ->
     acquire(Number, Module, DryRun).
 
 -spec acquire(knm_number:knm_number(), kz_term:api_ne_binary(), boolean()) ->
-                     knm_number:knm_number().
+          knm_number:knm_number().
 acquire(Number, 'undefined', _DryRun) ->
     knm_errors:carrier_not_specified(Number);
 acquire(Number, _Mod, 'true') ->

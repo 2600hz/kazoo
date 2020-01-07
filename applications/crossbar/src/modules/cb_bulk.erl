@@ -82,7 +82,7 @@ maybe_follow_groups(Ids, Context) ->
     maybe_follow_groups(cb_context:doc(Context), Ids, cb_context:set_doc(Context, [])).
 
 -spec maybe_follow_groups(kz_json:objects(), sets:set(), cb_context:context()) ->
-                                 cb_context:context().
+          cb_context:context().
 maybe_follow_groups([], _, Context) ->
     maybe_update_docs(Context);
 maybe_follow_groups([JObj|JObjs], Ids, Context) ->
@@ -96,7 +96,7 @@ maybe_follow_groups([JObj|JObjs], Ids, Context) ->
     end.
 
 -spec follow_group(kz_json:object(), kz_json:objects(), sets:set(), cb_context:context()) ->
-                          cb_context:context().
+          cb_context:context().
 follow_group(JObj, JObjs, Ids, Context) ->
     lager:debug("trying to follow group members"),
     Members = lists:foldr(fun(Id, S) ->
@@ -152,7 +152,7 @@ revalidate_doc(JObj, Context) ->
     end.
 
 -spec revalidate_doc(kz_term:ne_binary(), kz_json:object(), cb_context:context()) ->
-                            cb_context:context().
+          cb_context:context().
 revalidate_doc(Id, JObj, Context) ->
     case get_validate_binding(JObj) of
         'undefined' ->
@@ -192,12 +192,12 @@ post(Context) ->
     maybe_save_docs(JObjs, Context).
 
 -spec maybe_save_docs(kz_json:objects(), cb_context:context()) ->
-                             cb_context:context().
+          cb_context:context().
 maybe_save_docs(JObjs, Context) ->
     lists:foldl(fun maybe_save_doc/2, Context, JObjs).
 
 -spec maybe_save_doc(kz_json:object(), cb_context:context()) ->
-                            cb_context:context().
+          cb_context:context().
 maybe_save_doc(JObj, Context) ->
     Doc = kz_json:get_value(<<"doc">>, JObj),
     DbDoc = kz_json:get_value(<<"db_doc">>, JObj),
@@ -208,7 +208,7 @@ maybe_save_doc(JObj, Context) ->
     end.
 
 -spec maybe_save_doc(kz_term:ne_binary(), kz_json:object(), kz_json:object(), cb_context:context()) ->
-                            cb_context:context().
+          cb_context:context().
 maybe_save_doc(Id, JObj, DbDoc, Context) ->
     case get_post_binding(JObj) of
         'undefined' ->
@@ -244,12 +244,12 @@ delete(Context) ->
     maybe_delete_docs(JObjs, Context1).
 
 -spec maybe_delete_docs(kz_json:objects(), cb_context:context()) ->
-                               cb_context:context().
+          cb_context:context().
 maybe_delete_docs(JObjs, Context) ->
     lists:foldl(fun maybe_delete_doc/2, Context, JObjs).
 
 -spec maybe_delete_doc(kz_json:object(), cb_context:context()) ->
-                              cb_context:context().
+          cb_context:context().
 maybe_delete_doc(JObj, Context) ->
     Doc = kz_json:get_value(<<"doc">>, JObj),
     DbDoc = kz_json:get_value(<<"db_doc">>, JObj),
@@ -260,7 +260,7 @@ maybe_delete_doc(JObj, Context) ->
     end.
 
 -spec maybe_delete_doc(kz_term:ne_binary(), kz_json:object(), kz_json:object(), cb_context:context()) ->
-                              cb_context:context().
+          cb_context:context().
 maybe_delete_doc(Id, JObj, DbDoc, Context) ->
     lager:debug("try to delete ~p", [Id]),
     case get_delete_binding(JObj) of
@@ -296,7 +296,7 @@ run_binding(Binding, Payload, Id, Context) ->
     import_results(Id, cb_context:import_errors(InterimContext), Context).
 
 -spec import_results(kz_term:ne_binary(), cb_context:context(), cb_context:context()) ->
-                            cb_context:context().
+          cb_context:context().
 import_results(Id, C, Context) ->
     case cb_context:resp_status(C) of
         'success' -> import_results_success(Id, C, Context);
@@ -304,7 +304,7 @@ import_results(Id, C, Context) ->
     end.
 
 -spec import_results_success(kz_term:ne_binary(), cb_context:context(), cb_context:context()) ->
-                                    cb_context:context().
+          cb_context:context().
 import_results_success(Id, C, Context) ->
     Doc  = cb_context:doc(C),
     Docs = cb_context:doc(Context),
@@ -323,7 +323,7 @@ import_results_success(Id, C, Context) ->
                        ]).
 
 -spec import_results_error(kz_term:ne_binary(), cb_context:context(), cb_context:context()) ->
-                                  cb_context:context().
+          cb_context:context().
 import_results_error(Id, C, Context) ->
     Status    = cb_context:resp_status(C),
     ErrorCode = cb_context:resp_error_code(C),
@@ -355,7 +355,7 @@ get_doc_updates(Context) ->
     end.
 
 -spec update_docs(kz_json:object(), cb_context:context()) ->
-                         cb_context:context().
+          cb_context:context().
 update_docs(Updates, Context) ->
     JObjs = [kz_json:merge(JObj, Updates)
              || JObj <- cb_context:doc(Context)

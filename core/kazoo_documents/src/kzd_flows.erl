@@ -131,7 +131,7 @@ is_feature_code(Doc) ->
     featurecode(Doc, 'false') =/= 'false'.
 
 -spec validate(doc()) -> {'ok', doc()} |
-                         {'error', kz_json_schema:validation_errors()}.
+          {'error', kz_json_schema:validation_errors()}.
 validate(Doc) ->
     case kz_json_schema:validate(<<"callflows">>, Doc) of
         {'ok', _}= OK -> OK;

@@ -199,6 +199,6 @@ format_numbers(Context) ->
                       ).
 
 -spec format_number_map(kz_term:ne_binary(), kz_json:object()) ->
-                               {kz_term:ne_binary(), kz_json:object()}.
+          {kz_term:ne_binary(), kz_json:object()}.
 format_number_map(Number, Data) ->
     {knm_converters:normalize(Number), Data}.

@@ -77,8 +77,8 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_req(kz_term:api_terms()) ->
-                     {'ok', iolist()} |
-                     {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 get_req(Prop) when is_list(Prop) ->
     case get_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SYSCONF_GET_REQ_HEADERS, ?OPTIONAL_SYSCONF_GET_REQ_HEADERS);
@@ -94,8 +94,8 @@ get_req_v(JObj) ->
     get_req_v(kz_json:to_proplist(JObj)).
 
 -spec get_resp(kz_term:api_terms()) ->
-                      {'ok', iolist()} |
-                      {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 get_resp(Prop) when is_list(Prop) ->
     case get_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SYSCONF_GET_RESP_HEADERS, ?OPTIONAL_SYSCONF_GET_RESP_HEADERS);
@@ -115,8 +115,8 @@ get_resp_v(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec set_req(kz_term:api_terms()) ->
-                     {'ok', iolist()} |
-                     {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 set_req(Prop) when is_list(Prop) ->
     case set_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SYSCONF_SET_REQ_HEADERS, ?OPTIONAL_SYSCONF_SET_REQ_HEADERS);
@@ -132,8 +132,8 @@ set_req_v(JObj) ->
     set_req_v(kz_json:to_proplist(JObj)).
 
 -spec set_resp(kz_term:api_terms()) ->
-                      {'ok', iolist()} |
-                      {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 set_resp(Prop) when is_list(Prop) ->
     case set_resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SYSCONF_SET_RESP_HEADERS, ?OPTIONAL_SYSCONF_SET_RESP_HEADERS);
@@ -153,8 +153,8 @@ set_resp_v(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec flush_req(kz_term:api_terms()) ->
-                       {'ok', iolist()} |
-                       {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 flush_req(Prop) when is_list(Prop) ->
     case flush_req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?SYSCONF_FLUSH_REQ_HEADERS, ?OPTIONAL_SYSCONF_FLUSH_REQ_HEADERS);

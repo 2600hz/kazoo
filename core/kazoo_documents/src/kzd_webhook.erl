@@ -146,7 +146,7 @@ verb(Hook, Default) ->
     end.
 
 -spec safe_verbs(kz_term:api_binary(), http_verb() | Default) ->
-                        http_verb() | Default.
+          http_verb() | Default.
 safe_verbs(<<"get">>, _Default) -> <<"get">>;
 safe_verbs(<<"post">>, _Default) -> <<"post">>;
 safe_verbs(<<"put">>, _Default) -> <<"put">>;
