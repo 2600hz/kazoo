@@ -156,3 +156,27 @@ CApath: /etc/ssl/certs
 * Closing connection #0
 * SSLv3, TLS alert, Client hello (1):
 ```
+
+
+If u strugle with this u can also use apache or nginx to act as a reverse proxy
+
+Instructions for apache:
+add 
+Listen 8443 to your httpd.conf, optionally u can remove port 80
+
+add this virtual host:
+
+<VirtualHost *:8443>
+    ServerName yourdomainname
+    ProxyPreserveHost On
+
+     SSLEngine on
+     SSLCertificateKeyFile "/locationOfYourCerts"
+     SSLCertificateFile "/LocationOfYourCerts"
+
+    ProxyPass / http://yourip:8000/
+    ProxyPassReverse / http://yourip:8000/
+</VirtualHost>
+
+Save httpd conf and restart apache
+
