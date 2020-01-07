@@ -1,0 +1,14 @@
+	"dial_plan": {
+		   "^00(\\d{5,})$": {
+			   "description": "international",
+			   "prefix": "+"
+		   },
+		   "^0(\\d{5,})$": {
+			   "description": "IR national",
+			   "prefix": "+353"
+		   },
+		   "^([1-9]\\d{4,})$": {
+			   "description": "IR Dublin local",
+			   "prefix": "+3531"
+		   }
+}

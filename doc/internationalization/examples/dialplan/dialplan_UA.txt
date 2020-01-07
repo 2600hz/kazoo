@@ -1,0 +1,14 @@
+	"dial_plan": {
+		   "^00(\\d{5,})$": {
+			   "description": "international",
+			   "prefix": "+"
+		   },
+		   "^0(\\d{5,})$": {
+			   "description": "UA national",
+			   "prefix": "+380"
+		   },
+		   "^([1-9]\\d{4,})$": {
+			   "description": "UA Kiev local",
+			   "prefix": "+38044"
+		   }
+}

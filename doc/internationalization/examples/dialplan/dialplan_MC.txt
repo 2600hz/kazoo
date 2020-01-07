@@ -1,0 +1,10 @@
+	"dial_plan": {
+		   "^00(\\d{5,})$": {
+			   "description": "international",
+			   "prefix": "+"
+		   },
+		   "^([1-9]\\d{6,7})$": {
+			   "description": "MC national",
+			   "prefix": "+377"
+		   }
+}

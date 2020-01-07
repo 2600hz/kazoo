@@ -1,0 +1,14 @@
+	"dial_plan": {
+		   "^00(\\d{5,})$": {
+			   "description": "international",
+			   "prefix": "+"
+		   },
+		   "^0(\\d{5,})$": {
+			   "description": "HR national",
+			   "prefix": "+385"
+		   },
+		   "^([1-9]\\d{4,})$": {
+			   "description": "HR Zagreb local",
+			   "prefix": "+3851"
+		   }
+}
