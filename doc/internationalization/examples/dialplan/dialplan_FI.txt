@@ -1,0 +1,14 @@
+	"dial_plan": {
+		   "^00(\\d{5,})$": {
+			   "description": "international",
+			   "prefix": "+"
+		   },
+		   "^0(\\d{5,})$": {
+			   "description": "FI national",
+			   "prefix": "+358"
+		   },
+		   "^([1-9]\\d{4,})$": {
+			   "description": "FI Helsinki  local",
+			   "prefix": "+3589"
+		   }
+}

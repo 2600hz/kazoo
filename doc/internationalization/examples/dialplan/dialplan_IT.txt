@@ -1,0 +1,18 @@
+	"dial_plan": {
+		   "^00(\\d{5,})$": {
+			   "description": "international",
+			   "prefix": "+"
+		   },
+		   "^0(\\d{5,12})$": {
+			   "description": "IT national",
+			   "prefix": "+390"
+		   },
+		   "^3(\\d{9,10})$": {
+			   "description": "IT mobile",
+			   "prefix": "+393"
+		   },
+		   "^([1-9]\\d{4,11})$": {
+			   "description": "IT Rome local",
+			   "prefix": "+3906"
+		   }
+}

@@ -1,0 +1,14 @@
+	"dial_plan": {
+		   "^00(\\d{5,})$": {
+			   "description": "international",
+			   "prefix": "+"
+		   },
+		   "^06(\\d{5,})$": {
+			   "description": "HU national",
+			   "prefix": "+36"
+		   },
+		   "^([1-9]\\d{4,})$": {
+			   "description": "HU Budapest local",
+			   "prefix": "+361"
+		   }
+}
