@@ -1,0 +1,46 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.bookkeepers.refund_req",
+    "description": "AMQP API for bookkeepers.refund_req",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Amount": {
+            "type": "string"
+        },
+        "Bookkeeper-Type": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "bookkeepers"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "refund_req"
+            ],
+            "type": "string"
+        },
+        "Transaction-DB": {
+            "type": "string"
+        },
+        "Transaction-ID": {
+            "type": "string"
+        },
+        "Vendor-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Amount",
+        "Bookkeeper-Type",
+        "Transaction-DB",
+        "Transaction-ID",
+        "Vendor-ID"
+    ],
+    "type": "object"
+}

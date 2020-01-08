@@ -1,0 +1,35 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.bookkeepers.standing_resp",
+    "description": "AMQP API for bookkeepers.standing_resp",
+    "properties": {
+        "Details": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "bookkeepers"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "standing_resp"
+            ],
+            "type": "string"
+        },
+        "Message": {
+            "type": "string"
+        },
+        "Reason": {
+            "type": "string"
+        },
+        "Status": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Status"
+    ],
+    "type": "object"
+}

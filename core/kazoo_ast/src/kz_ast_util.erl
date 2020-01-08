@@ -103,6 +103,10 @@ add_module_ast_fold(_Other, _Module, Acc) ->
 ast_to_list_of_binaries(ASTList) ->
     ast_to_list_of_binaries(ASTList, []).
 
+ast_to_list_of_binaries(List, Binaries) when is_list(List) ->
+    lists:foldl(fun ast_to_list_of_binaries/2, Binaries, List);
+ast_to_list_of_binaries(<<Bin/binary>>, Binaries) ->
+    [Bin | Binaries];
 ast_to_list_of_binaries(?APPEND(First, Second), Binaries) ->
     ast_to_list_of_binaries(Second, ast_to_list_of_binaries(First, Binaries));
 ast_to_list_of_binaries(?SUBTRACT(First, Second), Binaries) ->
@@ -123,6 +127,7 @@ ast_to_list_of_binaries(?VAR(_), Binaries) ->
     Binaries.
 
 -spec binary_match_to_binary(erl_parse:abstract_expr()) -> binary().
+binary_match_to_binary(<<Bin/binary>>) -> Bin;
 binary_match_to_binary(?ATOM(A)) -> kz_term:to_binary(A);
 binary_match_to_binary(?BINARY_STRING(V)) ->
     kz_term:to_binary(V);

@@ -119,7 +119,6 @@ verify_signature(Token) ->
     lager:info("unexpected/invalid jwt signature"),
     Token#{verify_result => 'false', verify_error => 'invalid_jwt'}.
 
-
 -spec verify_expiration(map()) -> map().
 verify_expiration(#{payload := #{<<"exp">> := Expiration}}=Token) ->
     case Expiration - epoch() > 0 of

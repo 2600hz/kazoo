@@ -13,11 +13,16 @@
 -compile({'no_auto_import', [get/0]}).
 
 -export([get/0
-        ,get_app/2
+        ,get_app/1, get_app/2
         ,process_module/3
-        ,to_swagger_file/0
-        ,to_oas3_file/0
+
+        ,to_swagger_file/0, app_to_swagger_file/1
+
+        ,to_oas3_file/0, app_to_oas3_file/1
+
         ,to_ref_doc/0, to_ref_doc/2
+        ,app_to_ref_doc/1
+
         ,schema_to_doc/2, ref_tables_to_doc/1
 
         ,generate_oas_json/2
@@ -82,6 +87,10 @@
 -spec to_ref_doc() -> 'ok'.
 to_ref_doc() ->
     lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
+
+-spec app_to_ref_doc(atom()) -> 'ok'.
+app_to_ref_doc(App) ->
+    lists:foreach(fun api_to_ref_doc/1, get_app(App)).
 
 -spec to_ref_doc(atom(), atom()) -> 'ok'.
 to_ref_doc(_, 'crossbar_filter'=Module) ->
@@ -273,9 +282,19 @@ to_swagger_file() ->
     OASs = generate_oas_json(get(), <<"oas_two_and_three">>),
     write_swagger_file(OASs, <<"oas_two_and_three">>).
 
+-spec app_to_swagger_file(atom()) -> 'ok'.
+app_to_swagger_file(App) ->
+    OASs = generate_oas_json(get_app(App), <<"oas_two_and_three">>),
+    write_swagger_file(OASs, <<"oas_two_and_three">>).
+
 -spec to_oas3_file() -> 'ok'.
 to_oas3_file() ->
     OAS3 = generate_oas_json(get(), <<"oas3">>),
+    write_swagger_file(OAS3, <<"oas3">>).
+
+-spec app_to_oas3_file(atom()) -> 'ok'.
+app_to_oas3_file(App) ->
+    OAS3 = generate_oas_json(get_app(App), <<"oas3">>),
     write_swagger_file(OAS3, <<"oas3">>).
 
 -spec generate_oas_json(callback_configs(), kz_term:ne_binary()) -> kz_term:proplist().
@@ -782,6 +801,10 @@ path_name(Module) ->
 get() ->
     Apps = ['crossbar', 'acdc', 'frontier', 'cccp'],
     lists:foldl(fun get_app/2, [], Apps).
+
+-spec get_app(atom()) -> callback_configs().
+get_app(App) ->
+    get_app(App, []).
 
 -spec get_app(module(), callback_configs()) -> callback_configs().
 get_app(App, Acc) ->

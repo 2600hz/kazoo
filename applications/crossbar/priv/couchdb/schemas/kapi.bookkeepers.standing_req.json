@@ -1,0 +1,46 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.bookkeepers.standing_req",
+    "description": "AMQP API for bookkeepers.standing_req",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Bookkeeper-ID": {
+            "type": "string"
+        },
+        "Bookkeeper-Type": {
+            "type": "string"
+        },
+        "Estimated-Withdrawal": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "bookkeepers"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "standing_req"
+            ],
+            "type": "string"
+        },
+        "Items": {
+            "type": "string"
+        },
+        "Vendor-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Bookkeeper-ID",
+        "Bookkeeper-Type",
+        "Estimated-Withdrawal",
+        "Items",
+        "Vendor-ID"
+    ],
+    "type": "object"
+}

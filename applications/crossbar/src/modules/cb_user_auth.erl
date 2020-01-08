@@ -51,7 +51,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authenticate.user_auth">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize.user_auth">>, ?MODULE, 'authorize'),
@@ -60,7 +60,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.user_auth">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.user_auth">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.user_auth">>, ?MODULE, 'post'),
-    ok.
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
@@ -86,7 +86,7 @@ allowed_methods(_AuthToken) -> [?HTTP_GET].
 -spec resource_exists() -> 'true'.
 resource_exists() -> 'true'.
 
--spec resource_exists(path_tokens()) -> boolean().
+-spec resource_exists(path_token()) -> boolean().
 resource_exists(?RECOVERY) -> 'true';
 resource_exists(_AuthToken) -> 'true'.
 

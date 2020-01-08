@@ -373,7 +373,7 @@ client_ip(#cb_context{client_ip=IP}) -> IP.
 -spec req_id(context()) -> kz_term:ne_binary().
 req_id(#cb_context{req_id=ReqId}) -> ReqId.
 
--spec doc(context()) -> kz_term:api_object() | kz_json:objects().
+-spec doc(context()) -> kz_json:api_json_term().
 doc(#cb_context{doc=Doc}) -> Doc.
 
 -spec load_merge_bypass(context()) -> kz_term:api_object().
@@ -605,7 +605,7 @@ set_query_string(#cb_context{}=Context, Q) ->
 set_req_id(#cb_context{}=Context, ReqId) ->
     Context#cb_context{req_id=ReqId}.
 
--spec set_doc(context(), kz_json:api_json_term() | kz_json:objects()) -> context().
+-spec set_doc(context(), kz_json:api_json_term()) -> context().
 set_doc(#cb_context{}=Context, Doc) ->
     Context#cb_context{doc=Doc}.
 

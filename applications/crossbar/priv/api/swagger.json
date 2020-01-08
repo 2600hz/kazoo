@@ -8998,6 +8998,157 @@
             ],
             "type": "object"
         },
+        "kapi.authn.authn_err": {
+            "description": "AMQP API for authn.authn_err",
+            "properties": {
+                "Event-Category": {
+                    "enum": [
+                        "directory"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "authn_err"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "kapi.authn.authn_req": {
+            "description": "AMQP API for authn.authn_req",
+            "properties": {
+                "Auth-Nonce": {
+                    "type": "string"
+                },
+                "Auth-Realm": {
+                    "type": "string"
+                },
+                "Auth-Response": {
+                    "type": "string"
+                },
+                "Auth-User": {
+                    "type": "string"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Contact": {
+                    "type": "string"
+                },
+                "Custom-SIP-Headers": {
+                    "type": "object"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "directory"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "authn_req"
+                    ],
+                    "type": "string"
+                },
+                "Expires": {
+                    "type": "string"
+                },
+                "From": {
+                    "type": "string"
+                },
+                "Method": {
+                    "type": "string"
+                },
+                "Orig-IP": {
+                    "type": "string"
+                },
+                "Orig-Port": {
+                    "type": "string"
+                },
+                "Switch-Hostname": {
+                    "type": "string"
+                },
+                "To": {
+                    "type": "string"
+                },
+                "User-Agent": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Auth-Realm",
+                "Auth-User",
+                "From",
+                "To"
+            ],
+            "type": "object"
+        },
+        "kapi.authn.authn_resp": {
+            "description": "AMQP API for authn.authn_resp",
+            "properties": {
+                "Access-Group": {
+                    "type": "string"
+                },
+                "Auth-Method": {
+                    "enum": [
+                        "password",
+                        "ip",
+                        "a1-hash",
+                        "error",
+                        "gsm",
+                        "nonce",
+                        "a3a8"
+                    ],
+                    "type": "string"
+                },
+                "Auth-Nonce": {
+                    "type": "string"
+                },
+                "Auth-Password": {
+                    "type": "string"
+                },
+                "Auth-Username": {
+                    "type": "string"
+                },
+                "Custom-Channel-Vars": {
+                    "type": "object"
+                },
+                "Custom-SIP-Headers": {
+                    "type": "object"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "directory"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "authn_resp"
+                    ],
+                    "type": "string"
+                },
+                "Expires": {
+                    "type": "string"
+                },
+                "Register-Overwrite-Notify": {
+                    "type": "string"
+                },
+                "Suppress-Unregister-Notifications": {
+                    "type": "string"
+                },
+                "Tenant-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Auth-Method",
+                "Auth-Password"
+            ],
+            "type": "object"
+        },
         "kapi.authn.error": {
             "description": "AMQP API for authn.error",
             "properties": {
@@ -9146,6 +9297,110 @@
             "required": [
                 "Auth-Method",
                 "Auth-Password"
+            ],
+            "type": "object"
+        },
+        "kapi.authn.token_req": {
+            "description": "AMQP API for authn.token_req",
+            "properties": {
+                "Auth-Token": {
+                    "type": "string"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Contact": {
+                    "type": "string"
+                },
+                "Custom-SIP-Headers": {
+                    "type": "object"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "directory"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "token_req"
+                    ],
+                    "type": "string"
+                },
+                "Expires": {
+                    "type": "string"
+                },
+                "From": {
+                    "type": "string"
+                },
+                "Orig-IP": {
+                    "type": "string"
+                },
+                "Orig-Port": {
+                    "type": "string"
+                },
+                "Switch-Hostname": {
+                    "type": "string"
+                },
+                "To": {
+                    "type": "string"
+                },
+                "User-Agent": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Auth-Token",
+                "From",
+                "To"
+            ],
+            "type": "object"
+        },
+        "kapi.authn.token_resp": {
+            "description": "AMQP API for authn.token_resp",
+            "properties": {
+                "Access-Group": {
+                    "type": "string"
+                },
+                "Auth-Nonce": {
+                    "type": "string"
+                },
+                "Custom-Channel-Vars": {
+                    "type": "object"
+                },
+                "Custom-SIP-Headers": {
+                    "type": "object"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "directory"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "token_resp"
+                    ],
+                    "type": "string"
+                },
+                "Expires": {
+                    "type": "string"
+                },
+                "Register-Overwrite-Notify": {
+                    "type": "string"
+                },
+                "Suppress-Unregister-Notifications": {
+                    "type": "string"
+                },
+                "Tenant-ID": {
+                    "type": "string"
+                },
+                "Token-Data": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Token-Data"
             ],
             "type": "object"
         },
@@ -9446,6 +9701,49 @@
             ],
             "type": "object"
         },
+        "kapi.bookkeepers.collect_recurring_req": {
+            "description": "AMQP API for bookkeepers.collect_recurring_req",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Audit-Log": {
+                    "type": "string"
+                },
+                "Bookkeeper-ID": {
+                    "type": "string"
+                },
+                "Bookkeeper-Type": {
+                    "type": "string"
+                },
+                "Due-Timestamp": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "collect_recurring_req"
+                    ],
+                    "type": "string"
+                },
+                "Vendor-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Bookkeeper-ID",
+                "Bookkeeper-Type",
+                "Due-Timestamp",
+                "Vendor-ID"
+            ],
+            "type": "object"
+        },
         "kapi.bookkeepers.collect_recurring_req_definition": {
             "description": "AMQP API for bookkeepers.collect_recurring_req_definition",
             "properties": {
@@ -9485,6 +9783,57 @@
                 "Bookkeeper-ID",
                 "Bookkeeper-Type",
                 "Vendor-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.bookkeepers.collect_recurring_resp": {
+            "description": "AMQP API for bookkeepers.collect_recurring_resp",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Bookkeeper-ID": {
+                    "type": "string"
+                },
+                "Bookkeeper-Type": {
+                    "type": "string"
+                },
+                "Details": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "collect_recurring_resp"
+                    ],
+                    "type": "string"
+                },
+                "Message": {
+                    "type": "string"
+                },
+                "Reason": {
+                    "type": "string"
+                },
+                "Status": {
+                    "type": "string"
+                },
+                "Transaction-DB": {
+                    "type": "string"
+                },
+                "Transaction-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Bookkeeper-ID",
+                "Bookkeeper-Type",
+                "Status"
             ],
             "type": "object"
         },
@@ -9539,6 +9888,50 @@
             ],
             "type": "object"
         },
+        "kapi.bookkeepers.refund_req": {
+            "description": "AMQP API for bookkeepers.refund_req",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Amount": {
+                    "type": "string"
+                },
+                "Bookkeeper-Type": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "refund_req"
+                    ],
+                    "type": "string"
+                },
+                "Transaction-DB": {
+                    "type": "string"
+                },
+                "Transaction-ID": {
+                    "type": "string"
+                },
+                "Vendor-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Amount",
+                "Bookkeeper-Type",
+                "Transaction-DB",
+                "Transaction-ID",
+                "Vendor-ID"
+            ],
+            "type": "object"
+        },
         "kapi.bookkeepers.refund_req_definition": {
             "description": "AMQP API for bookkeepers.refund_req_definition",
             "properties": {
@@ -9583,6 +9976,47 @@
             ],
             "type": "object"
         },
+        "kapi.bookkeepers.refund_resp": {
+            "description": "AMQP API for bookkeepers.refund_resp",
+            "properties": {
+                "Details": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "refund_resp"
+                    ],
+                    "type": "string"
+                },
+                "Message": {
+                    "type": "string"
+                },
+                "Reason": {
+                    "type": "string"
+                },
+                "Status": {
+                    "type": "string"
+                },
+                "Transaction-DB": {
+                    "type": "string"
+                },
+                "Transaction-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Status",
+                "Transaction-DB",
+                "Transaction-ID"
+            ],
+            "type": "object"
+        },
         "kapi.bookkeepers.refund_resp_definition": {
             "description": "AMQP API for bookkeepers.refund_resp_definition",
             "properties": {
@@ -9621,6 +10055,50 @@
                 "Status",
                 "Transaction-DB",
                 "Transaction-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.bookkeepers.sale_req": {
+            "description": "AMQP API for bookkeepers.sale_req",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Amount": {
+                    "type": "string"
+                },
+                "Bookkeeper-Type": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "sale_req"
+                    ],
+                    "type": "string"
+                },
+                "Transaction-DB": {
+                    "type": "string"
+                },
+                "Transaction-ID": {
+                    "type": "string"
+                },
+                "Vendor-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Amount",
+                "Bookkeeper-Type",
+                "Transaction-DB",
+                "Transaction-ID",
+                "Vendor-ID"
             ],
             "type": "object"
         },
@@ -9668,6 +10146,47 @@
             ],
             "type": "object"
         },
+        "kapi.bookkeepers.sale_resp": {
+            "description": "AMQP API for bookkeepers.sale_resp",
+            "properties": {
+                "Details": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "sale_resp"
+                    ],
+                    "type": "string"
+                },
+                "Message": {
+                    "type": "string"
+                },
+                "Reason": {
+                    "type": "string"
+                },
+                "Status": {
+                    "type": "string"
+                },
+                "Transaction-DB": {
+                    "type": "string"
+                },
+                "Transaction-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Status",
+                "Transaction-DB",
+                "Transaction-ID"
+            ],
+            "type": "object"
+        },
         "kapi.bookkeepers.sale_resp_definition": {
             "description": "AMQP API for bookkeepers.sale_resp_definition",
             "properties": {
@@ -9706,6 +10225,50 @@
                 "Status",
                 "Transaction-DB",
                 "Transaction-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.bookkeepers.standing_req": {
+            "description": "AMQP API for bookkeepers.standing_req",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Bookkeeper-ID": {
+                    "type": "string"
+                },
+                "Bookkeeper-Type": {
+                    "type": "string"
+                },
+                "Estimated-Withdrawal": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "standing_req"
+                    ],
+                    "type": "string"
+                },
+                "Items": {
+                    "type": "string"
+                },
+                "Vendor-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Bookkeeper-ID",
+                "Bookkeeper-Type",
+                "Estimated-Withdrawal",
+                "Items",
+                "Vendor-ID"
             ],
             "type": "object"
         },
@@ -9753,6 +10316,39 @@
             ],
             "type": "object"
         },
+        "kapi.bookkeepers.standing_resp": {
+            "description": "AMQP API for bookkeepers.standing_resp",
+            "properties": {
+                "Details": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "standing_resp"
+                    ],
+                    "type": "string"
+                },
+                "Message": {
+                    "type": "string"
+                },
+                "Reason": {
+                    "type": "string"
+                },
+                "Status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Status"
+            ],
+            "type": "object"
+        },
         "kapi.bookkeepers.standing_resp_definition": {
             "description": "AMQP API for bookkeepers.standing_resp_definition",
             "properties": {
@@ -9783,6 +10379,52 @@
             },
             "required": [
                 "Status"
+            ],
+            "type": "object"
+        },
+        "kapi.bookkeepers.update_req": {
+            "description": "AMQP API for bookkeepers.update_req",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Audit-Log": {
+                    "type": "string"
+                },
+                "Bookkeeper-ID": {
+                    "type": "string"
+                },
+                "Bookkeeper-Type": {
+                    "type": "string"
+                },
+                "Dry-Run": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "update_req"
+                    ],
+                    "type": "string"
+                },
+                "Invoice": {
+                    "type": "string"
+                },
+                "Vendor-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Bookkeeper-ID",
+                "Bookkeeper-Type",
+                "Invoice",
+                "Vendor-ID"
             ],
             "type": "object"
         },
@@ -9832,6 +10474,39 @@
                 "Bookkeeper-Type",
                 "Invoice",
                 "Vendor-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.bookkeepers.update_resp": {
+            "description": "AMQP API for bookkeepers.update_resp",
+            "properties": {
+                "Details": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "bookkeepers"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "update_resp"
+                    ],
+                    "type": "string"
+                },
+                "Message": {
+                    "type": "string"
+                },
+                "Reason": {
+                    "type": "string"
+                },
+                "Status": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Status"
             ],
             "type": "object"
         },
@@ -16311,6 +16986,37 @@
             },
             "type": "object"
         },
+        "kapi.fs.command": {
+            "description": "AMQP API for fs.command",
+            "properties": {
+                "Application-Name": {
+                    "type": "string"
+                },
+                "Args": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "fs"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "command"
+                    ],
+                    "type": "string"
+                },
+                "Insert-At": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Application-Name",
+                "Args"
+            ],
+            "type": "object"
+        },
         "kapi.globals.call": {
             "description": "AMQP API for globals.call",
             "properties": {
@@ -17009,6 +17715,139 @@
             "required": [
                 "Error-Code",
                 "Media-Name"
+            ],
+            "type": "object"
+        },
+        "kapi.media.media_error": {
+            "description": "AMQP API for media.media_error",
+            "properties": {
+                "Error-Code": {
+                    "enum": [
+                        "not_found",
+                        "no_data",
+                        "other"
+                    ],
+                    "type": "string"
+                },
+                "Error-Msg": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "media"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "media_error"
+                    ],
+                    "type": "string"
+                },
+                "Media-Name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Error-Code",
+                "Media-Name"
+            ],
+            "type": "object"
+        },
+        "kapi.media.media_req": {
+            "description": "AMQP API for media.media_req",
+            "properties": {
+                "Account-ID": {
+                    "type": "string"
+                },
+                "Call-ID": {
+                    "type": "string"
+                },
+                "Engine": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "media"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "media_req"
+                    ],
+                    "type": "string"
+                },
+                "Format": {
+                    "enum": [
+                        "mp3",
+                        "wav"
+                    ],
+                    "type": "string"
+                },
+                "Language": {
+                    "type": "string"
+                },
+                "Media-Name": {
+                    "type": "string"
+                },
+                "Protocol": {
+                    "enum": [
+                        "http",
+                        "https",
+                        "shout",
+                        "vlc"
+                    ],
+                    "type": "string"
+                },
+                "Stream-Type": {
+                    "enum": [
+                        "new",
+                        "extant"
+                    ],
+                    "type": "string"
+                },
+                "Text": {
+                    "type": "string"
+                },
+                "Voice": {
+                    "enum": [
+                        "male",
+                        "female"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Media-Name"
+            ],
+            "type": "object"
+        },
+        "kapi.media.media_resp": {
+            "description": "AMQP API for media.media_resp",
+            "properties": {
+                "Event-Category": {
+                    "enum": [
+                        "media"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "media_resp"
+                    ],
+                    "type": "string"
+                },
+                "Media-Name": {
+                    "type": "string"
+                },
+                "Stream-URL": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Media-Name",
+                "Stream-URL"
             ],
             "type": "object"
         },
@@ -20040,6 +20879,9 @@
                 },
                 "To": {
                     "type": "string"
+                },
+                "kapi_definitionule": {
+                    "type": "string"
                 }
             },
             "required": [
@@ -21040,6 +21882,55 @@
             },
             "required": [
                 "Call-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.pivot.pivot_req": {
+            "description": "AMQP API for pivot.pivot_req",
+            "properties": {
+                "CDR-URI": {
+                    "type": "string"
+                },
+                "Call": {
+                    "type": "object"
+                },
+                "Debug": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "dialplan"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "pivot_req"
+                    ],
+                    "type": "string"
+                },
+                "HTTP-Method": {
+                    "type": "string"
+                },
+                "Reqeust-Body-Format": {
+                    "type": "string"
+                },
+                "Request-Body-Format": {
+                    "type": "string"
+                },
+                "Request-Format": {
+                    "type": "string"
+                },
+                "Request-Timeout": {
+                    "type": "integer"
+                },
+                "Voice-URI": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Call",
+                "Voice-URI"
             ],
             "type": "object"
         },
@@ -25379,6 +26270,72 @@
             },
             "required": [
                 "Reply"
+            ],
+            "type": "object"
+        },
+        "kapi.trusted.query": {
+            "description": "AMQP API for trusted.query",
+            "properties": {
+                "Event-Category": {
+                    "enum": [
+                        "trusted"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "query"
+                    ],
+                    "type": "string"
+                },
+                "Server-ID": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Server-ID"
+            ],
+            "type": "object"
+        },
+        "kapi.trusted.reload": {
+            "description": "AMQP API for trusted.reload",
+            "properties": {
+                "Event-Category": {
+                    "enum": [
+                        "trusted"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "reload"
+                    ],
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "kapi.trusted.reply": {
+            "description": "AMQP API for trusted.reply",
+            "properties": {
+                "Event-Category": {
+                    "enum": [
+                        "trusted"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {
+                    "enum": [
+                        "reply"
+                    ],
+                    "type": "string"
+                },
+                "Trusted": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "Trusted"
             ],
             "type": "object"
         },

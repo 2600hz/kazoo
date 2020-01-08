@@ -117,7 +117,9 @@ validate_claims(#{user_map := #{<<"pvt_account_id">> := AccountId
                                ,<<"pvt_owner_id">> := OwnerId
                                }
                  ,payload := Payload
-                 }, Options) ->
+                 }
+               ,Options
+               ) ->
     case props:get_value(<<"account_id">>, Options, AccountId) of
         AccountId ->
             Props = [{<<"account_id">>, AccountId}

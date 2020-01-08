@@ -5,7 +5,8 @@
 	clean clean-test \
 	json \
 	eunit proper test \
-	dialyze xref fixture_shell app_src depend splchk
+	dialyze xref fixture_shell app_src depend splchk \
+	code_checks apps_of_app
 
 ## Platform detection.
 ifeq ($(PLATFORM),)

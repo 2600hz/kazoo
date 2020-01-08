@@ -1,0 +1,45 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.bookkeepers.collect_recurring_req",
+    "description": "AMQP API for bookkeepers.collect_recurring_req",
+    "properties": {
+        "Account-ID": {
+            "type": "string"
+        },
+        "Audit-Log": {
+            "type": "string"
+        },
+        "Bookkeeper-ID": {
+            "type": "string"
+        },
+        "Bookkeeper-Type": {
+            "type": "string"
+        },
+        "Due-Timestamp": {
+            "type": "string"
+        },
+        "Event-Category": {
+            "enum": [
+                "bookkeepers"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "collect_recurring_req"
+            ],
+            "type": "string"
+        },
+        "Vendor-ID": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Account-ID",
+        "Bookkeeper-ID",
+        "Bookkeeper-Type",
+        "Due-Timestamp",
+        "Vendor-ID"
+    ],
+    "type": "object"
+}

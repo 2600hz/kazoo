@@ -1,0 +1,50 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "kapi.authn.token_resp",
+    "description": "AMQP API for authn.token_resp",
+    "properties": {
+        "Access-Group": {
+            "type": "string"
+        },
+        "Auth-Nonce": {
+            "type": "string"
+        },
+        "Custom-Channel-Vars": {
+            "type": "object"
+        },
+        "Custom-SIP-Headers": {
+            "type": "object"
+        },
+        "Event-Category": {
+            "enum": [
+                "directory"
+            ],
+            "type": "string"
+        },
+        "Event-Name": {
+            "enum": [
+                "token_resp"
+            ],
+            "type": "string"
+        },
+        "Expires": {
+            "type": "string"
+        },
+        "Register-Overwrite-Notify": {
+            "type": "string"
+        },
+        "Suppress-Unregister-Notifications": {
+            "type": "string"
+        },
+        "Tenant-ID": {
+            "type": "string"
+        },
+        "Token-Data": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "Token-Data"
+    ],
+    "type": "object"
+}
