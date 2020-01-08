@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @end
@@ -1180,7 +1180,7 @@ whapp_oldest_node(Whapp, Zone)
     determine_whapp_oldest_node(kz_term:to_binary(Whapp), MatchSpec).
 
 -spec determine_whapp_oldest_node(kz_term:ne_binary(), ets:match_spec()) ->
-                                         'undefined' | node().
+          'undefined' | node().
 determine_whapp_oldest_node(Whapp, MatchSpec) ->
     case oldest_whapp_node(Whapp, MatchSpec) of
         {Node, _Start} -> Node;
@@ -1191,7 +1191,7 @@ determine_whapp_oldest_node(Whapp, MatchSpec) ->
                              {node(), kz_time:gregorian_seconds()}.
 
 -spec oldest_whapp_node(kz_term:ne_binary(), ets:match_spec()) ->
-                               oldest_whapp_node().
+          oldest_whapp_node().
 oldest_whapp_node(Whapp, MatchSpec) ->
     lists:foldl(fun({Whapps, _Node}=Info, Acc) when is_list(Whapps) ->
                         determine_whapp_oldest_node_fold(Info, Acc, Whapp)
@@ -1201,7 +1201,7 @@ oldest_whapp_node(Whapp, MatchSpec) ->
                ).
 
 -spec determine_whapp_oldest_node_fold({kz_types:kapps_info(), node()}, oldest_whapp_node(), kz_term:ne_binary()) ->
-                                              oldest_whapp_node().
+          oldest_whapp_node().
 determine_whapp_oldest_node_fold({Whapps, Node}, 'undefined', Whapp) ->
     case props:get_value(Whapp, Whapps) of
         'undefined' -> 'undefined';

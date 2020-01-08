@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Handle offnet requests, including rating them
 %%% @author Karl Anderson
 %%% @author James Aimonetti
@@ -127,7 +127,7 @@ maybe_correct_shortdial(Number, OffnetReq) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec local_extension(knm_number_options:extra_options(), kapi_offnet_resource:req()) ->
-                             kz_types:sup_startchild_ret().
+          kz_types:sup_startchild_ret().
 local_extension(Props, OffnetReq) ->
     stepswitch_request_sup:local_extension(Props, OffnetReq).
 
@@ -170,7 +170,7 @@ get_account_realm(AccountId) ->
     end.
 
 -spec create_loopback_endpoint(knm_number_options:extra_options(), kapi_offnet_resource:req()) ->
-                                      kz_json:object().
+          kz_json:object().
 create_loopback_endpoint(Props, OffnetReq) ->
     {CIDNum, CIDName} = local_originate_caller_id(OffnetReq),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),

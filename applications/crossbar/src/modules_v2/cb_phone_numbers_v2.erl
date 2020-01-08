@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Handle client requests for phone_number documents
 %%% @author Karl Anderson
 %%% @author James Aimonetti
@@ -217,7 +217,7 @@ validate(Context) ->
     validate_phone_numbers(Context, cb_context:req_verb(Context), cb_context:account_id(Context)).
 
 -spec validate_phone_numbers(cb_context:context(), http_method(), kz_term:api_binary()) ->
-                                    cb_context:context().
+          cb_context:context().
 validate_phone_numbers(Context, ?HTTP_GET, 'undefined') ->
     maybe_find_numbers(Context);
 validate_phone_numbers(Context, ?HTTP_GET, _AccountId) ->
@@ -460,7 +460,7 @@ summary(Context, Number) ->
     end.
 
 -spec maybe_find_port_number(cb_context:context(), kz_term:ne_binary(), boolean()) ->
-                                    cb_context:context().
+          cb_context:context().
 maybe_find_port_number(Context, _Number, 'false') ->
     reply_number_not_found(Context);
 maybe_find_port_number(Context, Number, 'true') ->
@@ -486,7 +486,7 @@ port_number_summary(_PhoneNumber, Context, 'false') ->
     reply_number_not_found(Context).
 
 -spec normalize_port_number(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                   knm_phone_number_return().
+          knm_phone_number_return().
 normalize_port_number(JObj, Num, AuthBy) ->
     knm_phone_number:setters(knm_phone_number:from_number_with_options(Num, [{'auth_by', AuthBy}])
                             ,[{fun knm_phone_number:set_assigned_to/2, kz_json:get_value(<<"assigned_to">>, JObj)}
@@ -613,7 +613,7 @@ maybe_find_numbers(Context) ->
     end.
 
 -spec pick_account_and_reseller_id(cb_context:context()) -> {'ok', kz_term:ne_binary(), kz_term:api_ne_binary()} |
-                                                            {'error', kz_term:ne_binary()}.
+          {'error', kz_term:ne_binary()}.
 pick_account_and_reseller_id(Context) ->
     case kz_json:get_value(<<"reseller_id">>, cb_context:query_string(Context)) of
         'undefined' ->
@@ -663,7 +663,7 @@ find_numbers(Context, AccountId, ResellerId) ->
     cb_context:validate_request_data(?SCHEMA_FIND_NUMBERS, Context1, OnSuccess).
 
 -spec maybe_reseller_id_lookup(kz_term:ne_binary()) -> {'ok', kz_term:ne_binary(), kz_term:ne_binary()} |
-                                                       {'error', kz_term:ne_binary()}.
+          {'error', kz_term:ne_binary()}.
 maybe_reseller_id_lookup(ReqResellerId) ->
     try
         ?UNAUTHORIZED_NUMBERS_LOOKUP(ReqResellerId)
@@ -738,7 +738,7 @@ validate_collection_request(Context, _E) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_prefix(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
-                                         {'error', any()}.
+          {'error', any()}.
 get_prefix(City) ->
     case kapps_config:get_string(?PHONE_NUMBERS_CONFIG_CAT, ?KEY_PHONEBOOK_FREE_URL) of
         'undefined' ->
@@ -782,7 +782,7 @@ maybe_update_locality(Context) ->
     update_locality(Context, ToUpdate).
 
 -spec update_locality(cb_context:context(), kz_term:ne_binaries()) ->
-                             cb_context:context().
+          cb_context:context().
 update_locality(Context, []) -> Context;
 update_locality(Context, Numbers) ->
     case knm_locality:fetch(Numbers) of
@@ -793,7 +793,7 @@ update_locality(Context, Numbers) ->
     end.
 
 -spec update_context_locality(cb_context:context(), kz_json:object()) ->
-                                     cb_context:context().
+          cb_context:context().
 update_context_locality(Context, Localities) ->
     JObj = kz_json:foldl(fun update_context_locality_fold/3, cb_context:resp_data(Context), Localities),
     cb_context:set_resp_data(Context, JObj).
@@ -809,8 +809,8 @@ update_context_locality_fold(Key, Value, JObj) ->
     end.
 
 -spec update_phone_numbers_locality(cb_context:context(), kz_json:object()) ->
-                                           {'ok', kz_json:object()} |
-                                           {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 update_phone_numbers_locality(Context, Localities) ->
     AccountDb = cb_context:account_db(Context),
     DocId = kz_doc:id(cb_context:doc(Context)),
@@ -824,7 +824,7 @@ update_phone_numbers_locality(Context, Localities) ->
     end.
 
 -spec update_phone_numbers_locality_fold(kz_term:ne_binary(), kz_json:object(), kz_json:object(), cb_context:context()) ->
-                                                kz_json:object().
+          kz_json:object().
 update_phone_numbers_locality_fold(Key, Value, JObj, Context) ->
     case kz_json:get_value(<<"status">>, Value) of
         <<"success">> ->

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
 %%% @end
@@ -89,7 +89,7 @@ tone_or_echo(Call) ->
     end.
 
 -spec maybe_echo(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                        'undefined' | 'echo'.
+          'undefined' | 'echo'.
 maybe_echo(Echo, To, From) ->
     case rule_exist(Echo, To, From) of
         'true' -> 'echo';
@@ -97,7 +97,7 @@ maybe_echo(Echo, To, From) ->
     end.
 
 -spec maybe_tone(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                        'undefined' | 'tone'.
+          'undefined' | 'tone'.
 maybe_tone(Tone, To, From) ->
     case rule_exist(Tone, To, From) of
         'true' -> 'tone';
@@ -105,7 +105,7 @@ maybe_tone(Tone, To, From) ->
     end.
 
 -spec maybe_echo_maybe_tone(kz_json:object(), kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                   'undefined' | 'tone' | 'echo'.
+          'undefined' | 'tone' | 'echo'.
 maybe_echo_maybe_tone(Echo, Tone, To, From) ->
     case {rule_exist(Echo, To, From)
          ,rule_exist(Tone, To, From)

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%%
@@ -389,7 +389,7 @@ get_pid({Pid, _}) when is_pid(Pid) -> Pid;
 get_pid(_) -> 'undefined'.
 
 -spec initialize(state()) -> {'stop', 'normal', state()} |
-                             {'noreply', state()}.
+          {'noreply', state()}.
 initialize(#state{call=Im}=State) ->
     log_call_information(Im),
     Flow = kapps_im:kvs_fetch('tf_flow', Im),

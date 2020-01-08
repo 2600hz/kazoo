@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc This listener handles call `CHANNEL_DESTROY' events.
 %%% It is started by {@link cf_singular_call_hooks} and will
 %%% trigger when it is time to send the call end hook.
@@ -104,7 +104,7 @@ init([Call]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), any(), state()) ->
-                         {'reply', {'error', 'not_implemented'}, state()}.
+          {'reply', {'error', 'not_implemented'}, state()}.
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -113,7 +113,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> {'noreply', state()} |
-                                     {'stop', 'normal', state()}.
+          {'stop', 'normal', state()}.
 handle_cast({'init_hook'}, #state{call=Call}=State) ->
     cf_singular_call_hooks:send_init_hook(Call),
     {'noreply', State};

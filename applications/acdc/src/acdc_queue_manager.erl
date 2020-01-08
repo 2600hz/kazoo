@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Manages queue processes:
 %%%   starting when a queue is created
 %%%   stopping when a queue is deleted
@@ -276,8 +276,8 @@ next_winner(Srv) -> gen_listener:call(Srv, 'next_winner').
 agents_available(Srv) -> gen_listener:call(Srv, 'agents_available').
 
 -spec pick_winner(pid(), kz_json:objects()) ->
-                         'undefined' |
-                         {kz_json:objects(), kz_json:objects()}.
+          'undefined' |
+          {kz_json:objects(), kz_json:objects()}.
 pick_winner(Srv, Resps) -> pick_winner(Srv, Resps, strategy(Srv), next_winner(Srv)).
 
 %%%=============================================================================
@@ -694,8 +694,8 @@ start_agent_and_worker(WorkersSup, AccountId, QueueId, AgentJObj) ->
 
 %% Really sophisticated selection algorithm
 -spec pick_winner(pid(), kz_json:objects(), queue_strategy(), kz_term:api_binary()) ->
-                         'undefined' |
-                         {kz_json:objects(), kz_json:objects()}.
+          'undefined' |
+          {kz_json:objects(), kz_json:objects()}.
 pick_winner(_, [], _, _) ->
     lager:debug("no agent responses are left to choose from"),
     'undefined';
@@ -716,7 +716,7 @@ pick_winner(_Mgr, CRs, 'mi', _) ->
     {[MostIdle|Same], Other}.
 
 -spec update_strategy_with_agent(queue_strategy(), strategy_state(), kz_term:ne_binary(), 'add' | 'remove', 'busy' | 'undefined') ->
-                                        strategy_state().
+          strategy_state().
 update_strategy_with_agent('rr', #strategy_state{agents=AgentQueue}=SS, AgentId, 'add', Busy) ->
     case queue:member(AgentId, AgentQueue) of
         'true' -> set_busy(AgentId, Busy, SS);
@@ -784,12 +784,12 @@ remove_agent('mi', AgentId, #strategy_state{agents=AgentL
     end.
 
 -spec incr_agent(kz_term:ne_binary(), dict:dict(kz_term:ne_binary(), ss_details())) ->
-                        dict:dict(kz_term:ne_binary(), ss_details()).
+          dict:dict(kz_term:ne_binary(), ss_details()).
 incr_agent(AgentId, Details) ->
     dict:update(AgentId, fun({Count, Busy}) -> {Count + 1, Busy} end, {1, 'undefined'}, Details).
 
 -spec decr_agent(kz_term:ne_binary(), dict:dict(kz_term:ne_binary(), ss_details())) ->
-                        dict:dict(kz_term:ne_binary(), ss_details()).
+          dict:dict(kz_term:ne_binary(), ss_details()).
 decr_agent(AgentId, Details) ->
     dict:update(AgentId, fun({Count, Busy}) when Count > 1 -> {Count - 1, Busy};
                             ({_, Busy}) -> {0, Busy} end
@@ -829,7 +829,7 @@ remove_unknown_agents(Mgr, CRs) ->
     end.
 
 -spec split_agents(kz_term:ne_binary(), kz_json:objects()) ->
-                          {kz_json:objects(), kz_json:objects()}.
+          {kz_json:objects(), kz_json:objects()}.
 split_agents(AgentId, Rest) ->
     lists:partition(fun(R) ->
                             AgentId =:= kz_json:get_value(<<"Agent-ID">>, R)
@@ -943,7 +943,7 @@ announcements_config(Config) ->
       kz_json:get_json_value(<<"announcements">>, Config, kz_json:new())).
 
 -spec cancel_position_announcements(kapps_call:call() | 'false', map()) ->
-                                           map().
+          map().
 cancel_position_announcements('false', Pids) -> Pids;
 cancel_position_announcements(Call, Pids) ->
     CallId = kapps_call:call_id(Call),

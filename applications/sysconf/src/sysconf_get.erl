@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Handle requests to read configuration data
 %%% Support nested keys a la kz_json, with a #
 %%% as a separator i.e key#subkey#subsubkey

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc API interface for buckets
 %%% ETS writer for table
 %%%
@@ -192,27 +192,27 @@ exists(App, Key) ->
     end.
 
 -spec start_bucket(kz_term:ne_binary()) ->
-                          'ok' | 'error' | 'exists'.
+          'ok' | 'error' | 'exists'.
 start_bucket(Name) ->
     start_bucket(?DEFAULT_APP, Name).
 
 -spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                          'ok' | 'error' | 'exists'.
+          'ok' | 'error' | 'exists'.
 start_bucket(App, Name) ->
     start_bucket(App, Name, ?MAX_TOKENS(App)).
 
 -spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer()) ->
-                          'ok' | 'error' | 'exists'.
+          'ok' | 'error' | 'exists'.
 start_bucket(App, Name, MaxTokens) ->
     start_bucket(App, Name, MaxTokens, ?FILL_RATE(App)).
 
 -spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer(), pos_integer()) ->
-                          'ok' | 'error' | 'exists'.
+          'ok' | 'error' | 'exists'.
 start_bucket(App, Name, MaxTokens, FillRate) ->
     start_bucket(App, Name, MaxTokens, FillRate, kz_token_bucket:default_fill_time(App)).
 
 -spec start_bucket(kz_term:ne_binary(), kz_term:ne_binary(), pos_integer(), pos_integer(), kz_token_bucket:fill_rate_time()) ->
-                          'ok' | 'error' | 'exists'.
+          'ok' | 'error' | 'exists'.
 start_bucket(App, Name, MaxTokens, FillRate, FillTime) ->
     case exists(App, Name) of
         'true' ->

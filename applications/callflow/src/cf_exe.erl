@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @end
@@ -289,7 +289,7 @@ get_branch_keys(Call) ->
     get_branch_keys(Srv).
 
 -spec get_all_branch_keys(kapps_call:call() | pid()) ->
-                                 {'branch_keys', kz_json:path()}.
+          {'branch_keys', kz_json:path()}.
 get_all_branch_keys(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'get_branch_keys', 'all'});
 get_all_branch_keys(Call) ->
@@ -297,13 +297,13 @@ get_all_branch_keys(Call) ->
     get_all_branch_keys(Srv).
 
 -spec attempt(kapps_call:call() | pid()) ->
-                     {'attempt_resp', 'ok'} |
-                     {'attempt_resp', {'error', any()}}.
+          {'attempt_resp', 'ok'} |
+          {'attempt_resp', {'error', any()}}.
 attempt(Srv) -> attempt(?DEFAULT_CHILD_KEY, Srv).
 
 -spec attempt(kz_term:ne_binary(), kapps_call:call() | pid()) ->
-                     {'attempt_resp', 'ok'} |
-                     {'attempt_resp', {'error', any()}}.
+          {'attempt_resp', 'ok'} |
+          {'attempt_resp', {'error', any()}}.
 attempt(Key, Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {'attempt', Key});
 attempt(Key, Call) ->
@@ -746,7 +746,7 @@ do_launch_cf_module(#state{call=Call
                }.
 
 -spec maybe_start_cf_module(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
-                                   {{pid() | 'undefined', reference() | atom()} | 'undefined', atom()}.
+          {{pid() | 'undefined', reference() | atom()} | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = kz_term:to_atom(ModuleBin, 'true'),
     IsExported = kz_module:is_exported(CFModule, 'handle', 2),
@@ -764,7 +764,7 @@ maybe_start_cf_module(ModuleBin, Data, Call) ->
     end.
 
 -spec cf_module_not_found(kapps_call:call()) ->
-                                 {'undefined', atom()}.
+          {'undefined', atom()}.
 cf_module_not_found(Call) ->
     lager:error("unknown callflow action, reverting to last action"),
     continue(self()),
@@ -776,7 +776,7 @@ cf_module_not_found(Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec spawn_cf_module(CFModule, kz_json:object(), kapps_call:call()) ->
-                             {kz_term:pid_ref(), CFModule}.
+          {kz_term:pid_ref(), CFModule}.
 spawn_cf_module(CFModule, Data, Call) ->
     AMQPConsumer = kz_amqp_channel:consumer_pid(),
     {kz_util:spawn_monitor(fun cf_module_task/4, [CFModule, Data, Call, AMQPConsumer])
@@ -808,7 +808,7 @@ amqp_send_message(API, PubFun, Q) ->
     PubFun(add_server_id(Q, API)).
 
 -spec amqp_call_message(kz_term:api_terms(), kz_amqp_worker:publish_fun(), kz_amqp_worker:validate_fun(), kz_term:ne_binary()) ->
-                               kz_amqp_worker:request_return().
+          kz_amqp_worker:request_return().
 amqp_call_message(API, PubFun, VerifyFun, Q) ->
     Routines = [{fun add_server_id/2, Q}
                ,fun add_message_id/1

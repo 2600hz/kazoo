@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Handle client requests for template documents
 %%% @author Karl Anderson
 %%% @author James Aimonetti
@@ -83,7 +83,7 @@ validate_request(Context, ?HTTP_GET, [{<<"templates">>, _}]) ->
     summary(Context).
 
 -spec validate_request(cb_context:context(), http_method(), req_nouns(), path_token()) ->
-                              cb_context:context().
+          cb_context:context().
 validate_request(Context, ?HTTP_PUT, [{<<"templates">>, _}], TemplateName) ->
     case cb_context:resp_status(load_template_db(TemplateName, Context)) of
         'success' -> cb_context:add_system_error('datastore_conflict', Context);

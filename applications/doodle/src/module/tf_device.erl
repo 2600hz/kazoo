@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%%
@@ -42,8 +42,8 @@ send_sms(Endpoints, Im) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_endpoint(kz_term:ne_binary(), kz_json:object(), kapps_im:im()) ->
-                          {'error', any()} |
-                          {'ok', kz_json:objects()}.
+          {'error', any()} |
+          {'ok', kz_json:objects()}.
 get_endpoint(EndpointId, Data, Im) ->
     Params = kz_json:set_value(<<"source">>, kz_term:to_binary(?MODULE), Data),
     case kz_endpoint:get(EndpointId, kapps_im:account_id(Im)) of

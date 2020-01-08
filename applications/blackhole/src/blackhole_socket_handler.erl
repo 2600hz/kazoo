@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @end
@@ -20,8 +20,8 @@
 -type blackhole_init() :: {inet:ip_address(), kz_term:ne_binary()}.
 
 -spec init(cowboy_req:req(), cowboy_websocket:opts()) ->
-                  {'ok' , cowboy_req:req(), cowboy_websocket:opts()} |
-                  {'cowboy_websocket', cowboy_req:req(), blackhole_init(), cowboy_websocket:opts()}.
+          {'ok' , cowboy_req:req(), cowboy_websocket:opts()} |
+          {'cowboy_websocket', cowboy_req:req(), blackhole_init(), cowboy_websocket:opts()}.
 init(Req, HandlerOpts) ->
     lager:info("handling socket init"),
     case cowboy_req:parse_header(<<"sec-websocket-protocol">>, Req) of
@@ -46,7 +46,7 @@ websocket_init({RemoteIP, SessionsId}) ->
     {'ok', _State} = blackhole_socket_callback:open(self(), SessionsId, RemoteIP).
 
 -spec websocket_handle(any(), bh_context:context()) ->
-                              {'ok', bh_context:context(), 'hibernate'}.
+          {'ok', bh_context:context(), 'hibernate'}.
 websocket_handle({'text', Data}, State) ->
     Obj    = kz_json:decode(Data),
     Action = kz_json:get_value(<<"action">>, Obj, <<"noop">>),

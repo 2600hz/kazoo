@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author SIPLABS, LLC (Ilya Ashchepkov)
 %%% @end
@@ -161,7 +161,7 @@ stop_originate_timer(Timer) ->
     erlang:cancel_timer(Timer).
 
 -spec handle_originate_response(kz_json:object(), state()) -> {'stop', 'normal', state()} |
-                                                              state().
+          state().
 handle_originate_response(Resp, State) ->
     case kz_json:get_first_defined([<<"Application-Response">>, <<"Error-Message">>], Resp) of
         <<"SUCCESS">> ->

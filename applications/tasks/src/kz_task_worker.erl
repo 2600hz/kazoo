@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc Run tasks scheduled by kz_tasks.
 %%% @author Pierre Fenoll
 %%% @end
@@ -55,7 +55,7 @@ start(TaskId, API, ExtraArgs) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init(kz_tasks:id(), kz_json:object(), kz_tasks:extra_args()) -> {ok, state()} |
-                                                                      {error, any()}.
+          {error, any()}.
 init(TaskId, API, ExtraArgs) ->
     case kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, ?KZ_TASKS_ANAME_IN) of
         {'error', _R}=Error ->
@@ -68,8 +68,8 @@ init(TaskId, API, ExtraArgs) ->
     end.
 
 -spec init_from_csv(kz_tasks:id(), kz_json:object(), kz_tasks:extra_args(), binary()) ->
-                           {'ok', state()} |
-                           {'error', any()}.
+          {'ok', state()} |
+          {'error', any()}.
 init_from_csv(TaskId, API, ExtraArgs, CSV) ->
     {InputHeader, CSVRest} = kz_csv:take_row(CSV),
     OutputHeader = output_csv_header(API, InputHeader),
@@ -172,8 +172,8 @@ new_state_after_writing(NewColumns, WrittenSucceeded, WrittenFailed
     S.
 
 -spec is_task_successful(kz_csv:mapped_row(), kz_tasks:iterator(), state()) ->
-                                {boolean(), kz_tasks:columns(), non_neg_integer(), kz_tasks:iterator()} |
-                                stop.
+          {boolean(), kz_tasks:columns(), non_neg_integer(), kz_tasks:iterator()} |
+          stop.
 is_task_successful(MappedRow
                   ,IterValue
                   ,State=#state{api = API

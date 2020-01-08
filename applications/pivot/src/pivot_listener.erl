@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -70,7 +70,7 @@ init([]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_call(any(), kz_term:pid_ref(), state()) ->
-                         {'reply', {'error', 'not_implemented'}, state()}.
+          {'reply', {'error', 'not_implemented'}, state()}.
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -79,7 +79,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> {'noreply', state()} |
-                                     {'noreply', state(), 'hibernate'}.
+          {'noreply', state(), 'hibernate'}.
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State, 'hibernate'};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->

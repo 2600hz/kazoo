@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -535,7 +535,7 @@ print_gc_summary(Results) ->
     io:format("  Min/Avg/Max of ~p workers: ~s~n", [Count, Summary]).
 
 -spec gc_summary([{pid(), integer(), integer(), integer()}]) ->
-                        {integer(), integer(), integer(), integer()}.
+          {integer(), integer(), integer(), integer()}.
 gc_summary([{_W, Diff, _B, _A} | Results]) ->
     lists:foldl(fun gc_summary_fold/2
                ,{Diff, Diff, Diff, 1}
@@ -545,7 +545,7 @@ gc_summary([{_W, Diff, _B, _A} | Results]) ->
 -spec gc_summary_fold({pid(), integer(), integer(), integer()}
                      ,{integer(), integer(), integer(), integer()}
                      ) ->
-                             {integer(), integer(), integer(), integer()}.
+          {integer(), integer(), integer(), integer()}.
 gc_summary_fold({_W, Diff, _B, _A}
                ,{Min, Max, Sum, Count}
                ) ->

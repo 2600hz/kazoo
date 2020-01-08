@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -149,8 +149,8 @@ alg_2_digest_type(_)           -> 'undefined'.
 epoch() -> erlang:system_time('seconds').
 
 -spec encode(kz_term:proplist() | map()) ->
-                    {'ok', kz_term:ne_binary()} |
-                    {'error', any()}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', any()}.
 encode(Claims) when is_list(Claims) ->
     case props:get_value(<<"iss">>, Claims) of
         undefined -> {'error', 'no_issuer'};

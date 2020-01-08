@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Create freeswitch offline configuration
 %%% @author Luis Azedo
 %%% @end
@@ -463,7 +463,7 @@ maybe_accumulate_realm('false', Realm) ->
     put(<<"Realms">>, [Realm | get(<<"Realms">>)]).
 
 -spec query_registrar(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()}
-                                                                       | {'error', any()}.
+              | {'error', any()}.
 query_registrar(Realm, Username) ->
     FullUser = <<Username/binary, "@", Realm/binary>>,
     Req = [{<<"To">>, FullUser}

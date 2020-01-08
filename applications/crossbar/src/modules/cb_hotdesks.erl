@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Hotdesk module
 %%% Handle client requests for hotdesk management
 %%%
@@ -89,7 +89,7 @@ validate_hotdesks(Context, ?HTTP_GET, _) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
-                                    kz_json:objects().
+          kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 

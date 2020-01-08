@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc Bulk operations on numbers.
 %%%
 %%% <div class="notice">Functions should not throw, instead should return
@@ -569,9 +569,9 @@ to_json(#{'ok' := Ns, 'ko' := KOs}) ->
         ])).
 
 -spec unwrap_phone_numbers(knm_number:knm_numbers()) ->
-                                  {#{num() => knm_number:knm_number()}
-                                  ,knm_phone_number:knm_phone_numbers()
-                                  }.
+          {#{num() => knm_number:knm_number()}
+          ,knm_phone_number:knm_phone_numbers()
+          }.
 unwrap_phone_numbers(Ns) ->
     F = fun (N, {M, PNs}) ->
                 PN = knm_number:phone_number(N),

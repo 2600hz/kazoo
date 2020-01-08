@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Upload a rate deck, query rates for a given DID
 %%% @author James Aimonetti
 %%% @end
@@ -336,7 +336,7 @@ upload_csv(Context) ->
     lager:debug("it took ~b ms to process and save ~b rates", [kz_time:elapsed_ms(Now), Count]).
 
 -spec process_upload_file(cb_context:context()) ->
-                                 {'ok', {non_neg_integer(), kz_json:objects()}}.
+          {'ok', {non_neg_integer(), kz_json:objects()}}.
 process_upload_file(Context) ->
     process_upload_file(Context, cb_context:req_files(Context)).
 process_upload_file(Context, [{_Name, File}|_]) ->
@@ -349,7 +349,7 @@ process_upload_file(Context, _ReqFiles) ->
     error_no_file(Context).
 
 -spec convert_file(kz_term:ne_binary(), kz_term:ne_binary(), cb_context:context()) ->
-                          {'ok', {non_neg_integer(), kz_json:objects()}}.
+          {'ok', {non_neg_integer(), kz_json:objects()}}.
 convert_file(<<"text/csv">>, FileContents, Context) ->
     csv_to_rates(FileContents, Context);
 convert_file(<<"text/comma-separated-values">>, FileContents, Context) ->
@@ -362,7 +362,7 @@ convert_file(ContentType, _, _) ->
     throw({'unknown_content_type', ContentType}).
 
 -spec csv_to_rates(kz_term:ne_binary(), cb_context:context()) ->
-                          {'ok', {integer(), kz_json:objects()}}.
+          {'ok', {integer(), kz_json:objects()}}.
 csv_to_rates(CSV, Context) ->
     BulkInsert = kz_datamgr:max_bulk_insert(),
     ecsv:process_csv_binary_with(CSV
@@ -384,7 +384,7 @@ csv_to_rates(CSV, Context) ->
 -type rate_row_acc() :: {integer(), kz_json:objects()}.
 
 -spec process_row(cb_context:context(), rate_row(), integer(), kz_json:objects(), integer()) ->
-                         rate_row_acc().
+          rate_row_acc().
 process_row(Context, Row, Count, JObjs, BulkInsert) ->
     J = case Count > 1
             andalso (Count rem BulkInsert) =:= 0 of
@@ -563,7 +563,7 @@ rate_for_number(Phonenumber, Context) ->
     end.
 
 -spec maybe_handle_rate(kz_term:ne_binary(), cb_context:context(), kz_json:object()) ->
-                               cb_context:context().
+          cb_context:context().
 maybe_handle_rate(Phonenumber, Context, Rate) ->
     case kz_json:get_value(<<"Base-Cost">>, Rate) of
         'undefined' ->
@@ -592,7 +592,7 @@ normalize_fields(Rate) ->
     kz_json:map(fun normalize_field/2, Rate).
 
 -spec normalize_field(kz_json:path(), kz_json:json_term()) ->
-                             {kz_json:path(), kz_json:json_term()}.
+          {kz_json:path(), kz_json:json_term()}.
 normalize_field(<<"Base-Cost">> = K, BaseCost) ->
     {K, kz_currency:units_to_dollars(BaseCost)};
 normalize_field(K, V) ->

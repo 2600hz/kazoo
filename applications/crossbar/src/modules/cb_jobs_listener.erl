@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -146,7 +146,7 @@ select_carrier_module(Job) ->
     end.
 
 -spec maybe_create_number(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:ne_binary()) ->
-                                 kz_json:object().
+          kz_json:object().
 maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
     case kz_json:get_first_defined([[?KEY_SUCCESS, Number]
                                    ,[<<"errors">>, Number]
@@ -159,7 +159,7 @@ maybe_create_number(Job, AccountId, AuthAccountId, CarrierModule, Number) ->
     end.
 
 -spec create_number(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:api_binary(), kz_term:ne_binary()) ->
-                           kz_json:object().
+          kz_json:object().
 create_number(Job, AccountId, AuthAccountId, CarrierModule, DID) ->
     Options = [{'assign_to', AccountId}
               ,{'auth_by', AuthAccountId}
@@ -196,7 +196,7 @@ create_number(Job, AccountId, AuthAccountId, CarrierModule, DID) ->
     end.
 
 -spec update_with_failure(kz_json:object(), kz_term:ne_binary(), kz_term:ne_binary(), atom(), kz_json:object()) ->
-                                 kz_json:object().
+          kz_json:object().
 update_with_failure(Job, AccountId, Number, Failure, JObj) ->
     lager:debug("failed to create number ~s for account ~s: ~p ~p", [Number, AccountId, Failure, JObj]),
     case kz_json:is_json_object(JObj)

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
@@ -19,17 +19,17 @@ fax_properties(JObj) ->
     [{kz_json:normalize_key(K), V} || {<<"Fax-", K/binary>>, V} <- kz_json:to_proplist(JObj)].
 
 -spec collect_channel_props(kz_json:object()) ->
-                                   kz_term:proplist().
+          kz_term:proplist().
 collect_channel_props(JObj) ->
     collect_channel_props(JObj, ?FAX_CHANNEL_DESTROY_PROPS).
 
 -spec collect_channel_props(kz_json:object(), kz_term:proplist() | kz_term:ne_binaries()) ->
-                                   kz_term:proplist().
+          kz_term:proplist().
 collect_channel_props(JObj, List) ->
     collect_channel_props(JObj, List, []).
 
 -spec collect_channel_props(kz_json:object(), kz_term:proplist() | kz_term:ne_binaries(), kz_term:proplist()) ->
-                                   kz_term:proplist().
+          kz_term:proplist().
 collect_channel_props(JObj, List, Acc) ->
     lists:foldl(fun({Key, Keys}, Acc0) ->
                         collect_channel_props(kz_json:get_value(Key, JObj), Keys, Acc0);
@@ -38,7 +38,7 @@ collect_channel_props(JObj, List, Acc) ->
                 end, Acc, List).
 
 -spec collect_channel_prop(kz_term:ne_binary(), kz_json:object()) ->
-                                  {kz_json:path(), kz_json:json_term()}.
+          {kz_json:path(), kz_json:json_term()}.
 collect_channel_prop(<<"Hangup-Code">> = Key, JObj) ->
     <<"sip:", Code/binary>> = kz_json:get_value(Key, JObj, <<"sip:500">>),
     {Key, Code};

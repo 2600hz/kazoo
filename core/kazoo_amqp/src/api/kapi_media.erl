@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Media requests, responses, and errors.
 %%% @author James Aimonetti
 %%% @end
@@ -66,8 +66,8 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec req(kz_term:api_terms()) ->
-                 {'ok', iolist()} |
-                 {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?MEDIA_REQ_HEADERS, ?OPTIONAL_MEDIA_REQ_HEADERS);
@@ -86,8 +86,8 @@ req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 %% @end
 %%------------------------------------------------------------------------------
 -spec resp(kz_json:object() | kz_term:proplist()) ->
-                  {'ok', iolist()} |
-                  {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?MEDIA_RESP_HEADERS, ?OPTIONAL_MEDIA_RESP_HEADERS);
@@ -106,8 +106,8 @@ resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
 %% @end
 %%------------------------------------------------------------------------------
 -spec error(kz_term:proplist() | kz_json:object()) ->
-                   {'ok', iolist()} |
-                   {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 error(Prop) when is_list(Prop) ->
     case error_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?MEDIA_ERROR_HEADERS, ?OPTIONAL_MEDIA_ERROR_HEADERS);

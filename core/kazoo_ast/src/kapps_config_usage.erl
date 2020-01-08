@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc Generate schema for Account and System configurations.
 %%% @author James Aimonetti
 %%% @end
@@ -382,7 +382,7 @@ guess_type_by_default(?MOD_FUN_ARGS('kz_binary', 'rand_hex', _Args)) -> <<"strin
 guess_type_by_default(?MOD_FUN_ARGS(_Mod, 'type', [])) -> <<"string">>.
 
 -spec guess_properties(binary(), module(), kz_json:get_key(), kz_term:api_ne_binary(), any()) ->
-                              kz_json:object().
+          kz_json:object().
 guess_properties(Document, SourceModule, Key=?NE_BINARY, Type, Default) ->
     DescriptionKey = description_key(Document, Key),
 

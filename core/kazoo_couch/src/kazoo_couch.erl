@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -68,7 +68,7 @@
 
 %% Server operations
 -spec new_connection(map()) -> kz_data:connection() |
-                               {'error', 'timeout' | 'ehostunreach' | _}.
+          {'error', 'timeout' | 'ehostunreach' | _}.
 new_connection(Map) ->
     kz_couch_util:new_connection(Map).
 
@@ -207,8 +207,8 @@ fetch_attachment(Server, DbName, DocId, AName) ->
     kz_couch_attachments:fetch_attachment(Server, DbName, DocId, AName).
 
 -spec stream_attachment(kz_data:connection(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), pid()) ->
-                               {'ok', doc()} |
-                               {'error', any()}.
+          {'ok', doc()} |
+          {'error', any()}.
 stream_attachment(Server, DbName, DocId, AName, Caller) ->
     kz_couch_attachments:stream_attachment(Server, DbName, DocId, AName, Caller).
 
@@ -238,14 +238,14 @@ all_design_docs(#server{}=Server, ?NE_BINARY = DBName, Options) ->
     kz_couch_view:all_design_docs(Server, DBName, Options).
 
 -spec get_results(server(), kz_term:ne_binary(), 'all_docs' | kz_term:ne_binary(), view_options()) ->
-                         {'ok', kz_json:objects() | kz_json:path()} |
-                         couchbeam_error().
+          {'ok', kz_json:objects() | kz_json:path()} |
+          couchbeam_error().
 get_results(Server, DbName, DesignDoc, ViewOptions) ->
     kz_couch_view:get_results(Server, DbName, DesignDoc, ViewOptions).
 
 -spec get_results_count(server(), 'all_docs' | kz_term:ne_binary(), kz_term:ne_binary(), view_options()) ->
-                               {'ok', kz_term:api_integer()} |
-                               couchbeam_error().
+          {'ok', kz_term:api_integer()} |
+          couchbeam_error().
 get_results_count(Server, DbName, DesignDoc, ViewOptions) ->
     kz_couch_view:get_results_count(Server, DbName, DesignDoc, ViewOptions).
 

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -477,7 +477,7 @@ inbound_channels_per_did_rules(Doc, Default) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_limit(kz_term:ne_binary(), kz_json:object(), tristate_integer()) ->
-                       tristate_integer().
+          tristate_integer().
 get_limit(Key, Doc, Default) ->
     PrivateValue = get_private_limit(Key, Doc),
     PublicValue =  kz_json:get_integer_value(Key, Doc),
@@ -496,7 +496,7 @@ get_limit(Key, Doc, Default) ->
     end.
 
 -spec get_public_limit(kz_term:ne_binary(), kz_json:object(), tristate_integer()) ->
-                              non_neg_integer().
+          non_neg_integer().
 get_public_limit(Key, Doc, Default) ->
     case kz_json:get_integer_value(Key, Doc) of
         'undefined' -> get_default_limit(Key, Default);

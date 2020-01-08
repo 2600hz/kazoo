@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc Listing of all expected v1 callbacks
 %%% @author Peter Defebvre
 %%% @end
@@ -92,7 +92,7 @@ resource_exists(_, _, _) -> 'true'.
 %%------------------------------------------------------------------------------
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, Id, ?ICON) ->
     Context1 = load_app_from_master_account(Context, Id),
     case cb_context:resp_status(Context1) of
@@ -111,7 +111,7 @@ content_types_provided(Context, Id, ?ICON) ->
 content_types_provided(Context, _, _) -> Context.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, Id, ?SCREENSHOT, Number) ->
     Context1 = load_app_from_master_account(Context, Id),
     case cb_context:resp_status(Context1) of
@@ -522,8 +522,8 @@ get_icon(Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_get_screenshot(cb_context:context(), kz_term:ne_binary()) ->
-                                  'error' |
-                                  {'ok', kz_term:ne_binary(), kz_json:object()}.
+          'error' |
+          {'ok', kz_term:ne_binary(), kz_json:object()}.
 maybe_get_screenshot(Context, Number) ->
     JObj = cb_context:doc(Context),
     Screenshots = kz_json:get_value(<<"screenshots">>, JObj),
@@ -582,7 +582,7 @@ load_apps_store(Context) ->
 %%------------------------------------------------------------------------------
 
 -spec get_attachment(cb_context:context(), kz_term:ne_binary()) ->
-                            cb_context:context().
+          cb_context:context().
 get_attachment(Context, Id) ->
     JObj = cb_context:doc(Context),
     case kz_doc:attachment(JObj, Id) of
@@ -594,7 +594,7 @@ get_attachment(Context, Id) ->
     end.
 
 -spec get_attachment(cb_context:context(), kz_term:ne_binary(), kz_json:object(), kz_json:object()) ->
-                            cb_context:context().
+          cb_context:context().
 get_attachment(Context, Id, JObj, Attachment) ->
     Db = kz_doc:account_db(JObj),
     AppId = kz_doc:id(JObj),
@@ -608,7 +608,7 @@ get_attachment(Context, Id, JObj, Attachment) ->
     end.
 
 -spec add_attachment(cb_context:context(), kz_term:ne_binary(), kz_json:object(), binary()) ->
-                            cb_context:context().
+          cb_context:context().
 add_attachment(Context, Id, Attachment, AttachBin) ->
     RespHeaders =
         #{<<"content-disposition">> => <<"attachment; filename=", Id/binary>>

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -358,7 +358,7 @@ get_account_realm(AccountId) ->
     end.
 
 -spec local_extension_caller_id(kapi_offnet_resource:req()) ->
-                                       {kz_term:api_ne_binary(), kz_term:api_ne_binary()}.
+          {kz_term:api_ne_binary(), kz_term:api_ne_binary()}.
 local_extension_caller_id(OffnetReq) ->
     {kz_json:get_first_defined([<<"Outbound-Caller-ID-Name">>
                                ,<<"Emergency-Caller-ID-Name">>
@@ -434,7 +434,7 @@ response_message(CallEvt) ->
     end.
 
 -spec get_event_type(kz_call_event:doc()) ->
-                            {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
+          {kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
 get_event_type(JObj) ->
     {C, E} = kz_util:get_event_type(JObj),
     {C, E, kz_call_event:call_id(JObj)}.

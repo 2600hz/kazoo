@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Say something
 %%% Data = {
 %%%   "text":"text to say"
@@ -18,7 +18,7 @@
 -include("konami.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'continue', kapps_call:call()}.
+          {'continue', kapps_call:call()}.
 handle(Data, Call) ->
     Say = kz_json:get_value(<<"text">>, Data),
     lager:debug("saying '~s'", [Say]),

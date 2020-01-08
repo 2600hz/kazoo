@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
@@ -167,8 +167,8 @@ has_accounts(#kazoo_model{'accounts'=Accounts}) ->
     0 =:= map_size(Accounts).
 
 -spec has_rate_matching(model(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                               'false' |
-                               {'true', integer()}.
+          'false' |
+          {'true', integer()}.
 has_rate_matching(#kazoo_model{}=Model, RatedeckId, DID) ->
     Ratedeck = ratedeck(Model, RatedeckId),
     has_rate_matching(Ratedeck, DID).
@@ -329,7 +329,7 @@ add_service_plan_to_account(#kazoo_model{'accounts'=Accounts}=Model, AccountId, 
     Model#kazoo_model{'accounts'=Accounts1}.
 
 -spec add_dedicated_ip(model(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                              model().
+          model().
 add_dedicated_ip(#kazoo_model{'dedicated_ips'=IPs}=Model, IP, Host, Zone) ->
     UpdatedIPs =
         case dedicated_ip(Model, IP) of
@@ -349,7 +349,7 @@ remove_dedicated_ip(#kazoo_model{'dedicated_ips'=IPs}=Model, IP) ->
     Model#kazoo_model{'dedicated_ips'=maps:remove(IP, IPs)}.
 
 -spec assign_dedicated_ip(model(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                 model().
+          model().
 assign_dedicated_ip(#kazoo_model{'dedicated_ips'=IPs}=Model, AccountId, IP) ->
     IPInfo = dedicated_ip(Model, IP),
     Model#kazoo_model{'dedicated_ips'=IPs#{IP => IPInfo#{'assigned_to' => AccountId}}}.

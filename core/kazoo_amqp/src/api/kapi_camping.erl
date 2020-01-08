@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Routing requests, responses, and wins!
 %%% @author James Aimonetti
 %%% @author Karl Anderson
@@ -28,8 +28,8 @@
 -define(REQ_TYPES, [{<<"Camping-Request">>, fun kz_json:is_json_object/1}]).
 
 -spec req(kz_term:api_terms()) ->
-                 {'ok', iolist()} |
-                 {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?REQ_HEADERS, ?OPTIONAL_REQ_HEADERS);

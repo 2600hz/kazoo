@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -123,7 +123,7 @@ fetch_reply(Node, FetchID, Section, Reply) ->
     gen_server:cast({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}).
 
 -spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string(), pos_integer() | 'infinity') ->
-                         'ok' | {'error', 'baduuid'}.
+          'ok' | {'error', 'baduuid'}.
 fetch_reply(Node, FetchID, Section, Reply, Timeout) ->
     try gen_server:call({'mod_kazoo', Node}, {'fetch_reply', Section, FetchID, Reply}, Timeout) of
         'timeout' -> {'error', 'timeout'};
@@ -367,8 +367,8 @@ config(Node) ->
     gen_server:cast({'mod_kazoo', Node}, {'config', []}).
 
 -spec bgapi4(atom(), atom(), string() | binary(), fun(), list()) ->
-                    {'ok', binary()} |
-                    {'error', 'timeout' | 'exception' | binary()}.
+          {'ok', binary()} |
+          {'error', 'timeout' | 'exception' | binary()}.
 bgapi4(Node, Cmd, Args, Fun, CallBackParams) ->
     Self = self(),
     _ = kz_util:spawn(

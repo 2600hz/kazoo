@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Handle client requests for resource documents
 %%% @author Karl Anderson
 %%% @author James Aimonetti
@@ -80,14 +80,14 @@ jobs_listener_pid() ->
     whereis('cb_jobs_listener').
 
 -spec authorize(cb_context:context()) ->
-                       boolean() |
-                       {'stop', cb_context:context()}.
+          boolean() |
+          {'stop', cb_context:context()}.
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).
 
 -spec authorize(cb_context:context(), req_nouns()) ->
-                       boolean() |
-                       {'stop', cb_context:context()}.
+          boolean() |
+          {'stop', cb_context:context()}.
 authorize(Context, [{<<"global_resources">>, _}|_]) ->
     maybe_authorize_admin(Context);
 authorize(Context, [{<<"resources">>, _} | _]) ->
@@ -99,8 +99,8 @@ authorize(_Context, _Nouns) ->
     'false'.
 
 -spec maybe_authorize_admin(cb_context:context()) ->
-                                   'true' |
-                                   {'stop', cb_context:context()}.
+          'true' |
+          {'stop', cb_context:context()}.
 maybe_authorize_admin(Context) ->
     case cb_context:is_superduper_admin(Context) of
         'true' ->
@@ -272,8 +272,8 @@ validate_collection_fold(Resource, C) ->
     end.
 
 -spec validate_collection_resource(kz_json:object(), cb_context:context(), http_method()) ->
-                                          {'ok', cb_context:context()} |
-                                          {'error', 'not_found' | kz_json:object()}.
+          {'ok', cb_context:context()} |
+          {'error', 'not_found' | kz_json:object()}.
 validate_collection_resource(Resource, Context, ?HTTP_POST) ->
     C1 = crossbar_doc:load(kz_doc:id(Resource), Context, ?TYPE_CHECK_OPTION(<<"resource">>)),
     case cb_context:resp_status(C1) of
@@ -288,8 +288,8 @@ validate_collection_resource(Resource, Context, ?HTTP_PUT) ->
     end.
 
 -spec validate_collection_resource_patch(kz_json:object(), cb_context:context()) ->
-                                                {'ok', cb_context:context()} |
-                                                {'error', kz_json:object()}.
+          {'ok', cb_context:context()} |
+          {'error', kz_json:object()}.
 validate_collection_resource_patch(PatchJObj, Context) ->
     PatchedJObj = kz_json:merge(cb_context:doc(Context), kz_doc:public_fields(PatchJObj)),
     Context1 = update(kz_doc:id(PatchedJObj)

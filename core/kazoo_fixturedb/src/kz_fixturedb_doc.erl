@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -96,7 +96,7 @@ ensure_saved(Server, DbName, Doc, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec perform_save_doc(server_map(), kz_term:ne_binary(), kz_json:object(), kz_data:options()) ->
-                              kz_json:object().
+          kz_json:object().
 perform_save_doc(Server, DbName, JObj, Options) ->
     prepare_bulk_save_response(save_doc(Server, DbName, JObj, Options), JObj).
 

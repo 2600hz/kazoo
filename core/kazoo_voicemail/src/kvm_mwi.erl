@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018-2019, 2600Hz
+%%% @copyright (C) 2018-2020, 2600Hz
 %%% @doc Message Wait Indicator utilities.
 %%% @author Luis Azedo
 %%% @end
@@ -68,8 +68,8 @@ extended_presence_id(AccountId, BoxJObj) ->
     end.
 
 -spec unsolicited_owner_mwi_update(kz_term:api_binary(), kz_term:api_binary()) ->
-                                          'ok' |
-                                          kz_datamgr:data_error().
+          'ok' |
+          kz_datamgr:data_error().
 unsolicited_owner_mwi_update('undefined', _) ->
     lager:warning("unsolicited owner mwi update for undefined Account");
 unsolicited_owner_mwi_update(_, 'undefined') ->

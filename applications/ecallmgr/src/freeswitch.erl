@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -84,7 +84,7 @@ bind(Node, Type, Timeout) -> ?FS_MODULE:bind(Node, Type, Timeout).
 fetch_reply(Node, FetchID, Section, Reply) -> ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply).
 
 -spec fetch_reply(atom(), binary(), atom() | binary(), binary() | string(), pos_integer() | 'infinity') ->
-                         'ok' | {'error', 'baduuid'}.
+          'ok' | {'error', 'baduuid'}.
 fetch_reply(Node, FetchID, Section, Reply, Timeout) -> ?FS_MODULE:fetch_reply(Node, FetchID, Section, Reply, Timeout).
 
 -spec api(atom(), kz_term:text()) -> fs_api_return().
@@ -139,8 +139,8 @@ sendmsg(Node, UUID, Headers) -> ?FS_MODULE:sendmsg(Node, UUID, Headers).
 config(Node) -> ?FS_MODULE:config(Node).
 
 -spec bgapi4(atom(), atom(), string() | binary(), fun(), list()) ->
-                    {'ok', binary()} |
-                    {'error', 'timeout' | 'exception' | binary()}.
+          {'ok', binary()} |
+          {'error', 'timeout' | 'exception' | binary()}.
 bgapi4(Node, Cmd, Args, Fun, CallBackParams) -> ?FS_MODULE:bgapi4(Node, Cmd, Args, Fun, CallBackParams).
 
 -spec async_api(atom(), atom(), string() | binary()) -> fs_api_return().

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Shared token auth module, this module validates the token
 %%% against a trusted central token server.  If the token
 %%% is valid then it will create a local token.  It will
@@ -225,9 +225,9 @@ create_local_token(Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec authenticate_shared_token(kz_term:api_binary(), nonempty_string()) ->
-                                       {'ok', string() | binary()} |
-                                       {'error', atom()} |
-                                       {'forbidden', atom()}.
+          {'ok', string() | binary()} |
+          {'error', atom()} |
+          {'forbidden', atom()}.
 authenticate_shared_token('undefined', _) ->
     {'forbidden', 'missing_shared_token'};
 authenticate_shared_token(SharedToken, XBarUrl) ->

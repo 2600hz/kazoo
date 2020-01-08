@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Look up caller ID number for spam score using Nomorobo.
 %%%
 %%% <h4>Data options:</h4>
@@ -74,7 +74,7 @@ handle(Data, Call) ->
     end.
 
 -spec nomorobo_score(kz_json:object(), kapps_call:call()) ->
-                            kz_term:api_integer().
+          kz_term:api_integer().
 nomorobo_score(Data, Call) ->
     URI = nomorobo_uri(Call),
 

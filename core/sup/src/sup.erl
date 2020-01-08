@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc A really simple escript to accept RPC request and push them
 %%% into a running kazoo virtual machine.
 %%%

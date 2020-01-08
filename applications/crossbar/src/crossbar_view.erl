@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author Roman Galeev
 %%% @author Hesaam Farhang
@@ -233,7 +233,7 @@ build_load_params(Context, View, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec build_load_range_params(cb_context:context(), kz_term:ne_binary(), options()) ->
-                                     load_params() | cb_context:context().
+          load_params() | cb_context:context().
 build_load_range_params(Context, View, Options) ->
     try build_general_load_params(Context, View, Options) of
         #{direction := Direction}=LoadMap ->
@@ -277,7 +277,7 @@ build_load_range_params(Context, View, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec build_load_modb_params(cb_context:context(), kz_term:ne_binary(), options()) ->
-                                    load_params() | cb_context:context().
+          load_params() | cb_context:context().
 build_load_modb_params(Context, View, Options) ->
     case build_load_range_params(Context, View, Options) of
         #{direction := Direction
@@ -298,7 +298,7 @@ build_load_modb_params(Context, View, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec build_view_query(options(), direction(), api_range_key(), api_range_key(), boolean()) ->
-                              kazoo_data:view_options().
+          kazoo_data:view_options().
 build_view_query(Options, Direction, StartKey, EndKey, HasQSFilter) ->
     DeleteKeys = ['startkey', 'endkey'
                  ,'descending', 'limit'
@@ -544,7 +544,7 @@ time_range(Context, Options, Key) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec time_range(cb_context:context(), pos_integer(), kz_term:ne_binary(), pos_integer(), pos_integer()) ->
-                        time_range() | cb_context:context().
+          time_range() | cb_context:context().
 time_range(Context, MaxRange, Key, RangeFrom, RangeTo) ->
     Path = <<Key/binary, "_from">>,
     case RangeTo - RangeFrom of
@@ -913,7 +913,7 @@ handle_query_result(#{page_size := PageSize
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_page_size_and_length(load_params(), non_neg_integer(), kz_json:objects(), last_key()) ->
-                                        {'exhausted' | 'next_db', load_params()}.
+          {'exhausted' | 'next_db', load_params()}.
 %% page_size is exhausted when query is limited by page_size
 %% Condition: page_size = total_queried + current_db_results
 %%            and the last key has been found.
@@ -969,7 +969,7 @@ check_page_size_and_length(#{total_queried := TotalQueried
 %% @end
 %%------------------------------------------------------------------------------
 -spec limit_with_last_key(boolean(), page_size(), pos_integer(), non_neg_integer()) ->
-                                 kz_term:api_pos_integer().
+          kz_term:api_pos_integer().
 %% non-chunked unlimited request => no limit
 limit_with_last_key('false', 'undefined', _, _) ->
     'undefined';
@@ -1014,8 +1014,8 @@ limit_with_last_key('true', PageSize, _ChunkSize, TotalQueried) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec apply_filter(mapper_fun(), kz_json:objects()) ->
-                          kz_json:objects() |
-                          {'error', any()}.
+          kz_json:objects() |
+          {'error', any()}.
 apply_filter(_Mapper, []) -> [];
 apply_filter('undefined', JObjs) ->
     lists:reverse(JObjs);
@@ -1026,8 +1026,8 @@ apply_filter(Mapper, JObjs) when is_function(Mapper, 2) ->
     filter_foldl(Mapper, JObjs, []).
 
 -spec filter_foldl(mapper_fun(), kz_json:objects(), kz_json:objects()) ->
-                          kz_json:objects() |
-                          {'error', any()}.
+          kz_json:objects() |
+          {'error', any()}.
 filter_foldl(_Mapper, [], Acc) ->
     [JObj
      || JObj <- Acc,
@@ -1045,7 +1045,7 @@ filter_foldl(Mapper, [JObj | JObjs], Acc) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec last_key(last_key(), kz_json:objects(), non_neg_integer() | 'undefined', non_neg_integer(), page_size()) ->
-                      {last_key(), kz_json:objects()}.
+          {last_key(), kz_json:objects()}.
 last_key(LastKey, [], _Limit, _Returned, _PageSize) ->
     lager:debug("no results same last key ~p", [LastKey]),
     {LastKey, []};
@@ -1138,7 +1138,7 @@ is_chunked(Context, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_range_modbs(cb_context:context(), options(), direction(), kz_time:gregorian_seconds(), kz_time:gregorian_seconds()) ->
-                             kz_term:ne_binaries().
+          kz_term:ne_binaries().
 get_range_modbs(Context, Options, Direction, StartTime, EndTime) ->
     case props:get_value('databases', Options) of
         'undefined' when Direction =:= 'ascending' ->

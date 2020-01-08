@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
@@ -25,8 +25,8 @@
 -define(ACCOUNT_NAMES, [<<"account_for_recordings">>]).
 
 -spec list_recordings(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
-                             {'error', 'not_found'} |
-                             {'ok', kz_json:objects()}.
+          {'error', 'not_found'} |
+          {'ok', kz_json:objects()}.
 list_recordings(API, AccountId) ->
     case pqc_cb_api:make_request(#{'response_codes' => [200]}
                                 ,fun kz_http:get/2
@@ -43,8 +43,8 @@ list_recordings(API, AccountId) ->
     end.
 
 -spec fetch_recording(pqc_cb_api:state(), pqc_cb_accounts:account_id(), kz_term:ne_binary()) ->
-                             {'ok', kz_json:object()} |
-                             {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          {'error', 'not_found'}.
 fetch_recording(API, AccountId, RecordingId) ->
     case pqc_cb_api:make_request(#{'response_codes' => [200]}
                                 ,fun kz_http:get/2
@@ -61,8 +61,8 @@ fetch_recording(API, AccountId, RecordingId) ->
     end.
 
 -spec fetch_recording_binary(pqc_cb_api:state(), pqc_cb_accounts:account_id(), kz_term:ne_binary()) ->
-                                    {'ok', kz_json:object()} |
-                                    {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          {'error', 'not_found'}.
 fetch_recording_binary(API, AccountId, RecordingId) ->
     case pqc_cb_api:make_request(#{'response_codes' => [200]
                                   ,'response_headers' =>
@@ -81,8 +81,8 @@ fetch_recording_binary(API, AccountId, RecordingId) ->
     end.
 
 -spec fetch_recording_tunneled(pqc_cb_api:state(), pqc_cb_accounts:account_id(), kz_term:ne_binary()) ->
-                                      {'ok', kz_json:object()} |
-                                      {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          {'error', 'not_found'}.
 fetch_recording_tunneled(API, AccountId, RecordingId) ->
     case pqc_cb_api:make_request(#{'response_codes' => [200]
                                   ,'response_headers' =>
@@ -101,7 +101,7 @@ fetch_recording_tunneled(API, AccountId, RecordingId) ->
     end.
 
 -spec create_recording(pqc_cb_api:state(), pqc_cb_accounts:account_id()) ->
-                              {'ok', kzd_call_recordings:doc()}.
+          {'ok', kzd_call_recordings:doc()}.
 create_recording(_API, AccountId) ->
     MODB = kz_util:format_account_mod_id(AccountId),
 
@@ -131,8 +131,8 @@ create_attachment(MODB, DocId) ->
     kz_datamgr:put_attachment(MODB, DocId, AName, Contents, [{'content_type', kz_mime:from_filename(File)}]).
 
 -spec delete_recording(pqc_cb_api:state(), pqc_cb_accounts:account_id(), kz_term:ne_binary()) ->
-                              {'ok', kz_json:object()} |
-                              {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          {'error', 'not_found'}.
 delete_recording(API, AccountId, RecordingId) ->
     case pqc_cb_api:make_request(#{'response_codes' => [200, 404]}
                                 ,fun kz_http:delete/2

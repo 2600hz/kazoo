@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Controls how a queue process progresses a member_call
 %%% @author James Aimonetti
 %%% @end
@@ -620,8 +620,8 @@ handle_event(_Event, StateName, State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec handle_sync_event(any(), From :: pid(), StateName :: atom(), state()) ->
-                               {'next_state', StateName :: atom(), state()
-                               ,{'reply', From :: pid(), any()}}.
+          {'next_state', StateName :: atom(), state()
+          ,{'reply', From :: pid(), any()}}.
 handle_sync_event('cdr_url', From, StateName, #state{cdr_url=Url}=State) ->
     {'next_state', StateName, State
     ,{'reply', From, Url}
@@ -758,7 +758,7 @@ elapsed(Time) -> kz_time:elapsed_s(Time).
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_delay_connect_req(kapps_call:call(), kz_json:object(), gen_listener:basic_deliver(), state()) ->
-                                     {'next_state', 'ready' | 'connect_req', state()}.
+          {'next_state', 'ready' | 'connect_req', state()}.
 maybe_delay_connect_req(Call, CallJObj, Delivery, #state{queue_proc=QueueSrv
                                                         ,manager_proc=MgrSrv
                                                         ,connection_timeout=ConnTimeout
@@ -811,7 +811,7 @@ maybe_connect_re_req(MgrSrv, ListenerSrv, #state{account_id=AccountId
     end.
 
 -spec maybe_delay_connect_re_req(pid(), pid(), state()) ->
-                                        {'next_state', 'connect_req', state()}.
+          {'next_state', 'connect_req', state()}.
 maybe_delay_connect_re_req(MgrSrv, ListenerSrv, #state{member_call=Call}=State) ->
     CallId = kapps_call:call_id(Call),
     case acdc_queue_manager:up_next(MgrSrv, CallId) of

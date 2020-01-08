@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
@@ -16,7 +16,7 @@
 -include("kazoo_proper.hrl").
 
 -spec create_service_plan(pqc_cb_api:state(), kzd_service_plan:doc()) ->
-                                 {'ok', kzd_service_plan:doc()}.
+          {'ok', kzd_service_plan:doc()}.
 create_service_plan(_API, ServicePlan) ->
     %% No API to add service plans to master account
     %% Doing so manually for now
@@ -28,8 +28,8 @@ create_service_plan(_API, ServicePlan) ->
     {'ok', Migrate}.
 
 -spec delete_service_plan(pqc_cb_api:state(), kz_term:ne_binary()) ->
-                                 {'ok', kz_json:object()} |
-                                 {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 delete_service_plan(_API, ServicePlanId) ->
     {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
     kz_datamgr:del_doc(MasterAccountDb, ServicePlanId).
@@ -50,7 +50,7 @@ assign_service_plan(API, AccountId, ServicePlanId) ->
                            ).
 
 -spec available_service_plans(pqc_cb_api:state(), kz_term:ne_binary() | proper_types:type()) ->
-                                     pqc_cb_api:response().
+          pqc_cb_api:response().
 available_service_plans(API, AccountId) ->
     URL = string:join([account_service_plan_url(AccountId), "available"], "/"),
     RequestHeaders = pqc_cb_api:request_headers(API),

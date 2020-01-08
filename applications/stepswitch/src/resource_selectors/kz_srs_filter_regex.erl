@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -81,8 +81,8 @@ evaluate_rules(Id, Rules, Data, 'drop', _EmptyMode) ->
     end.
 
 -spec do_evaluate_rules(re:mp(), kz_term:ne_binary()) ->
-                               {'ok', kz_term:ne_binary()} |
-                               {'error', 'no_match'}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', 'no_match'}.
 do_evaluate_rules([], _) -> {'error', 'no_match'};
 do_evaluate_rules([Rule|Rules], Data) ->
     case re:run(Data, Rule) of

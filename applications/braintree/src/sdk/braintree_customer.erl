@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @end
@@ -114,7 +114,7 @@ get_subscriptions(#bt_customer{subscriptions=Subscriptions}) ->
 %%------------------------------------------------------------------------------
 
 -spec get_subscription(kz_term:ne_binary(), customer() | bt_subscriptions()) ->
-                              bt_subscription().
+          bt_subscription().
 get_subscription(PlanId, #bt_customer{subscriptions=Subscriptions}) ->
     get_subscription(PlanId, Subscriptions);
 get_subscription(_, []) ->

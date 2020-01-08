@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc A Number Manager module for carrier: VoIPInnovations.com
 %%% @author Pierre Fenoll, Joe Black
 %%% @end
@@ -101,7 +101,7 @@ is_number_billable(_Number) -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
-                                              {error, any()}.
+          {error, any()}.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 
@@ -110,8 +110,8 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
-                          {'ok', list()} |
-                          {'error', any()}.
+          {'ok', list()} |
+          {'error', any()}.
 find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
     find_numbers(Rest, Quantity, Options);
 find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
@@ -152,7 +152,7 @@ acquire_number(Number) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec disconnect_number(knm_number:knm_number()) ->
-                               knm_number:knm_number().
+          knm_number:knm_number().
 disconnect_number(Number) ->
     Debug = ?IS_SANDBOX_PROVISIONING_TRUE,
     case ?IS_PROVISIONING_ENABLED of
@@ -185,8 +185,8 @@ should_lookup_cnam() -> 'true'.
     Else.
 
 -spec to_numbers(to_json_ret(), kz_term:ne_binary()) ->
-                        {'ok', [tuple()]} |
-                        {'error', any()}.
+          {'ok', [tuple()]} |
+          {'error', any()}.
 to_numbers({'error',_R}=Error, _) ->
     Error;
 to_numbers({'ok',JObjs}, QID) ->
@@ -197,7 +197,7 @@ to_numbers({'ok',JObjs}, QID) ->
     {'ok', Numbers}.
 
 -spec maybe_return(to_json_ret(), knm_number:knm_number()) ->
-                          knm_number:knm_number().
+          knm_number:knm_number().
 maybe_return({'error', Reason}, N) ->
     knm_errors:by_carrier(?MODULE, Reason, N);
 maybe_return({'ok', JObj}, N) ->

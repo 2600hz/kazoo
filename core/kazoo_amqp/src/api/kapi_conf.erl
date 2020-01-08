@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Configuration updates (like DB doc changes) can be communicated across
 %%% the AMQP bus so WhApps can flush cache entries, update settings, etc.
 %%%
@@ -114,8 +114,8 @@ get_value(JObj, Key) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec doc_update(kz_term:api_terms()) ->
-                        {'ok', iolist()} |
-                        {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 doc_update(Prop) when is_list(Prop) ->
     case doc_update_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?CONF_DOC_UPDATE_HEADERS, ?OPTIONAL_CONF_DOC_UPDATE_HEADERS);
@@ -136,8 +136,8 @@ doc_update_v(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec doc_type_update(kz_term:api_terms()) ->
-                             {'ok', iolist()} |
-                             {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 doc_type_update(Prop) when is_list(Prop) ->
     case doc_type_update_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?DOC_TYPE_UPDATE_HEADERS, ?OPTIONAL_DOC_TYPE_UPDATE_HEADERS);

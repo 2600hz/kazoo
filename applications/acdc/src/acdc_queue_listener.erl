@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc The queue process manages two queues
 %%%   1. a private one that Agents will send member_connect_* messages
 %%%      and such
@@ -180,7 +180,7 @@ send_sync_req(Srv, Type) ->
     gen_listener:cast(Srv, {'send_sync_req', Type}).
 
 -spec config(pid()) ->
-                    {kz_term:ne_binary(), kz_term:ne_binary()}.
+          {kz_term:ne_binary(), kz_term:ne_binary()}.
 config(Srv) ->
     gen_listener:call(Srv, 'config').
 

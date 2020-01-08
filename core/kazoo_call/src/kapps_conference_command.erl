@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @end
@@ -31,8 +31,8 @@
 -export([play_macro/2]).
 
 -spec search(kapps_conference:conference()) ->
-                    {'ok', kz_json:object()} |
-                    {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 search(Conference) ->
     AppName = kapps_conference:application_name(Conference),
     AppVersion = kapps_conference:application_version(Conference),
@@ -53,8 +53,8 @@ search(Conference) ->
     end.
 
 -spec conference_search_filter(kz_json:objects(), kz_term:ne_binary()) ->
-                                      {'ok', kz_json:object()} |
-                                      {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          {'error', 'not_found'}.
 conference_search_filter([], ConferenceId) ->
     lager:info("received invalid conference search response for ~s", [ConferenceId]),
     {'error', 'not_found'};

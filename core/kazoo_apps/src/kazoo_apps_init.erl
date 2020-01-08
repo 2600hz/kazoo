@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Init to be done.
 %%% @author James Aimonetti
 %%% @end
@@ -105,7 +105,7 @@ time_hostname_resolutions(HowManyTests, InitTime) ->
                ).
 
 -spec time_hostname_resolution(any(), resolutions()) ->
-                                      resolutions().
+          resolutions().
 time_hostname_resolution(_TestNo, {Min, Max, Total, Timings}) ->
     case time_hostname_resolution() of
         Time when Time < Min ->

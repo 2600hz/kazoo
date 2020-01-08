@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc
 %%% @author Hesaam Farhang
 %%% @end
@@ -95,7 +95,7 @@ init([]) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec delete_child_after_timeout(any(), non_neg_integer()) ->
-                                        fun(() -> 'ok' | {'error', any()}).
+          fun(() -> 'ok' | {'error', any()}).
 delete_child_after_timeout(Id, Timeout) ->
     fun() ->
             timer:sleep(Timeout),

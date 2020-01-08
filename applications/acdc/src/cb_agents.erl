@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc CRUD for call queues
 %%% /agents
 %%%   GET: list all known agents and their queues
@@ -142,12 +142,12 @@ content_types_provided(Context, _, ?QUEUE_STATUS_PATH_TOKEN) -> Context.
 %%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context) ->
     summary(Context).
 
 -spec validate(cb_context:context(), path_token()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context, PathToken) ->
     validate_agent(Context, PathToken, cb_context:req_verb(Context)).
 
@@ -159,7 +159,7 @@ validate_agent(Context, Id, ?HTTP_GET) ->
     read(Id, Context).
 
 -spec validate(cb_context:context(), path_token(), path_token()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context, AgentId, PathToken) ->
     validate_agent_action(Context, AgentId, PathToken, cb_context:req_verb(Context)).
 
@@ -339,7 +339,7 @@ fetch_current_status(Context, AgentId, 'true') ->
     end.
 
 -spec fetch_all_current_statuses(cb_context:context(), kz_term:api_binary(), kz_term:api_binary()) ->
-                                        cb_context:context().
+          cb_context:context().
 fetch_all_current_statuses(Context, AgentId, Status) ->
     Now = kz_time:now_s(),
     Yday = Now - ?SECONDS_IN_DAY,
@@ -383,7 +383,7 @@ fetch_ranged_agent_stats(Context, StartRange) ->
     end.
 
 -spec fetch_ranged_agent_stats(cb_context:context(), pos_integer(), pos_integer(), boolean()) ->
-                                      cb_context:context().
+          cb_context:context().
 fetch_ranged_agent_stats(Context, From, To, 'true') ->
     lager:debug("ranged query from ~b to ~b(~b) of current stats (now ~b)", [From, To, To-From, kz_time:now_s()]),
     Req = props:filter_undefined(
@@ -415,7 +415,7 @@ fetch_stats_from_amqp(Context, Req) ->
     end.
 
 -spec format_stats(cb_context:context(), kz_json:object()) ->
-                          cb_context:context().
+          cb_context:context().
 format_stats(Context, Resp) ->
     Stats = kz_json:get_value(<<"Handled">>, Resp, [])
         ++ kz_json:get_value(<<"Abandoned">>, Resp, [])
@@ -429,7 +429,7 @@ format_stats(Context, Resp) ->
     crossbar_util:response(FormattedStats, Context).
 
 -spec format_stats_fold(kz_json:object(), kz_json:object()) ->
-                               kz_json:object().
+          kz_json:object().
 format_stats_fold(Stat, Acc) ->
     QueueId = kz_json:get_value(<<"queue_id">>, Stat),
 
@@ -456,12 +456,12 @@ format_stats_fold(Stat, Acc) ->
     end.
 
 -spec maybe_add_answered(kz_json:object(), kz_json:object()) ->
-                                [{kz_json:path(), non_neg_integer()}].
+          [{kz_json:path(), non_neg_integer()}].
 maybe_add_answered(Stat, Acc) ->
     maybe_add_answered(Stat, Acc, kz_json:get_value(<<"status">>, Stat)).
 
 -spec maybe_add_answered(kz_json:object(), kz_json:object(), kz_term:api_binary()) ->
-                                [{kz_json:path(), non_neg_integer()}].
+          [{kz_json:path(), non_neg_integer()}].
 maybe_add_answered(Stat, Acc, <<"handled">>) ->
     add_answered(Stat, Acc);
 maybe_add_answered(Stat, Acc, <<"processed">>) ->
@@ -471,7 +471,7 @@ maybe_add_answered(_, _, _S) ->
     [].
 
 -spec add_answered(kz_json:object(), kz_json:object()) ->
-                          [{kz_json:path(), non_neg_integer()},...].
+          [{kz_json:path(), non_neg_integer()},...].
 add_answered(Stat, Acc) ->
     AgentId = kz_json:get_value(<<"agent_id">>, Stat),
     QueueId = kz_json:get_value(<<"queue_id">>, Stat),
@@ -487,7 +487,7 @@ add_answered(Stat, Acc) ->
     ].
 
 -spec maybe_add_misses(kz_json:object(), kz_json:object(), kz_term:ne_binary()) ->
-                              kz_json:object().
+          kz_json:object().
 maybe_add_misses(Stat, Acc, QueueId) ->
     case kz_json:get_value(<<"misses">>, Stat, []) of
         [] -> Acc;
@@ -537,7 +537,7 @@ summary(Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
-                                    kz_json:objects().
+          kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:set_value(<<"id">>
                       ,kz_doc:id(JObj)
@@ -559,7 +559,7 @@ validate_status_change(Context) ->
 
 -define(STATUS_CHANGES, [<<"login">>, <<"logout">>, <<"pause">>, <<"resume">>, <<"end_wrapup">>]).
 -spec validate_status_change(cb_context:context(), kz_term:api_binary()) ->
-                                    cb_context:context().
+          cb_context:context().
 validate_status_change(Context, S) ->
     case lists:member(S, ?STATUS_CHANGES) of
         'true' -> validate_status_change_params(Context, S);
@@ -576,7 +576,7 @@ validate_status_change(Context, S) ->
     end.
 
 -spec check_for_status_error(cb_context:context(), kz_term:api_binary()) ->
-                                    cb_context:context().
+          cb_context:context().
 check_for_status_error(Context, S) ->
     case lists:member(S, ?STATUS_CHANGES) of
         'true' -> Context;
@@ -593,7 +593,7 @@ check_for_status_error(Context, S) ->
     end.
 
 -spec validate_status_change_params(cb_context:context(), kz_term:ne_binary()) ->
-                                           cb_context:context().
+          cb_context:context().
 validate_status_change_params(Context, <<"pause">>) ->
     Value = cb_context:req_value(Context, <<"timeout">>),
     try kz_term:to_integer(Value) of

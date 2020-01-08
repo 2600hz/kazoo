@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Handle client requests for phone_number documents using new bandwidth api
 %%% @author Karl Anderson
 %%% @author Mark Magnusson
@@ -122,7 +122,7 @@ is_number_billable(_Number) -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
-                                              {error, any()}.
+          {error, any()}.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%------------------------------------------------------------------------------
@@ -485,7 +485,7 @@ rate_center_to_json(Xml) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec verify_response(kz_types:xml_el()) -> {'ok', kz_types:xml_el()} |
-                                            {'error', any()}.
+          {'error', any()}.
 verify_response(Xml) ->
     NPAPath = "count(//TelephoneNumberDetailList/TelephoneNumberDetail)",
     TollFreePath = "count(//TelephoneNumberList/TelephoneNumber)",

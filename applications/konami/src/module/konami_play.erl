@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Play a media file
 %%% Data = {
 %%%   "id":"media_id"
@@ -18,7 +18,7 @@
 -include("konami.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'continue', kapps_call:call()}.
+          {'continue', kapps_call:call()}.
 handle(Data, Call) ->
     AccountId = kapps_call:account_id(Call),
     Path = kz_doc:id(Data),

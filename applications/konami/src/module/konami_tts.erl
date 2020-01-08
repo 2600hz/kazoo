@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Text To Speech
 %%% Data = {
 %%%   "text":"text to say"
@@ -19,7 +19,7 @@
 -include("konami.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'continue', kapps_call:call()}.
+          {'continue', kapps_call:call()}.
 handle(Data, Call) ->
     TTS = kz_json:get_value(<<"text">>, Data),
     lager:debug("tts: '~s'", [TTS]),

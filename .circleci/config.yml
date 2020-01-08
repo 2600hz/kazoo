@@ -33,7 +33,7 @@ workflows:
             - eunit_tests
             - checks
             - docs
-            - analyze
+#            - analyze
             - release
 
   build_release:
@@ -111,7 +111,7 @@ workflows:
             - eunit_tests
             - checks
             - docs
-            - analyze
+#            - analyze
             - release
 
 defaults: &defaults

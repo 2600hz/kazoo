@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
 %%% @author Roman Galeev
@@ -72,7 +72,7 @@ bindings(_Context, #{account_id := AccountId
         }.
 
 -spec fax_status_bind_options(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                     kz_term:proplist().
+          kz_term:proplist().
 fax_status_bind_options(AccountId, FaxId) ->
     [{'restrict_to', ['status']}
     ,{'account_id', AccountId}
@@ -81,7 +81,7 @@ fax_status_bind_options(AccountId, FaxId) ->
     ].
 
 -spec fax_object_bind_options(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                     kz_term:proplist().
+          kz_term:proplist().
 fax_object_bind_options(MODB, Action) ->
     [{'keys', [[{'action', Action}
                ,{'db', MODB}

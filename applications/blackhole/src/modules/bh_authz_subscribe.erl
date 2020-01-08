@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Subscribe authz module
 %%% This is a simple authz mechanism, it checks if a subscribe
 %%% action is allowed by looking at auth_account_id tree

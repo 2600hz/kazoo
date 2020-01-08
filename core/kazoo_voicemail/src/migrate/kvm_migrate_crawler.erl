@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author Hesaam Farhang
 %%% @end
@@ -100,7 +100,7 @@ update_stats(Server, AccountId, Stats) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init(any()) -> {'ok', state()} |
-                     {'stop', state()}.
+          {'stop', state()}.
 init([]) -> init('undefined');
 init(Pid) ->
     _ = process_flag('trap_exit', 'true'),
@@ -323,7 +323,7 @@ cleanup_account_timer() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_next_account(queue:queue(), workers(), boolean()) ->
-                              next_account_ret().
+          next_account_ret().
 get_next_account(Queue, Workers, IsRetPassed) ->
     case queue:out(Queue) of
         {{'value', {AccountId, _, _} = NextAccount}, Q} ->
@@ -339,7 +339,7 @@ get_next_account(Queue, Workers, IsRetPassed) ->
     end.
 
 -spec get_next(queue:queue(), [next_account()], next_account(), queue:queue(), boolean()) ->
-                      next_account_ret().
+          next_account_ret().
 get_next(_, [], {AccountId, FirstOfMonth, _LastOfMonth}, Q, 'false') ->
     PrevMonth = previous_month_timestamp(FirstOfMonth),
     case PrevMonth < kvm_util:retention_seconds(AccountId) of

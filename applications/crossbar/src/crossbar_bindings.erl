@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Store routing keys or PID bindings.
 %%% When a binding is fired, pass the payload to the PID for evaluation, accumulating
 %%% the results for the response to the running process.
@@ -155,7 +155,7 @@ filter_out_succeeded(Term) -> kz_term:is_empty(Term).
 -type bind_results() :: [bind_result()].
 
 -spec bind(kz_term:ne_binary(), atom(), atom()) ->
-                  bind_result() | bind_results().
+          bind_result() | bind_results().
 bind(Binding=?NE_BINARY, Module, Fun) ->
     kazoo_bindings:bind(Binding, Module, Fun).
 

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Provision template module.
 %%% Handle client requests for provisioner template documents
 %%%
@@ -79,12 +79,12 @@ init_db() ->
 acceptable_content_types() -> ?MIME_TYPES.
 
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
-                                    cb_context:context().
+          cb_context:context().
 content_types_provided(Context, PT1, PT2) ->
     content_types_provided_for_provisioner(Context, PT1, PT2, cb_context:req_verb(Context)).
 
 -spec content_types_provided_for_provisioner(cb_context:context(), path_token(), path_token(), http_method()) ->
-                                                    cb_context:context().
+          cb_context:context().
 content_types_provided_for_provisioner(Context, DocId, ?IMAGE_REQ, ?HTTP_GET) ->
     case kz_datamgr:open_doc(?KZ_PROVISIONER_DB, DocId) of
         {'error', _} -> Context;
@@ -187,7 +187,7 @@ validate(Context, DocId, Noun) ->
     validate_verb(Context, cb_context:req_verb(Context), DocId, Noun).
 
 -spec validate_verb(cb_context:context(), http_method(), path_token(), kz_term:ne_binary()) ->
-                           cb_context:context().
+          cb_context:context().
 validate_verb(Context, ?HTTP_GET, DocId, ?IMAGE_REQ) ->
     load_template_image(DocId, cb_context:set_account_db(Context, ?KZ_PROVISIONER_DB));
 validate_verb(Context, ?HTTP_PUT, _DocId, ?IMAGE_REQ) ->

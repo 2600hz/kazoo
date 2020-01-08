@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc storage
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -392,7 +392,7 @@ doc_id({'reseller_plan', PlanId, _AccountId}) -> PlanId;
 doc_id(Context) -> doc_id(scope(Context)).
 
 -spec maybe_check_storage_settings(cb_context:context(), kz_term:ne_binary()) ->
-                                          cb_context:context().
+          cb_context:context().
 maybe_check_storage_settings(Context, ReqVerb) when ReqVerb =:= ?HTTP_PUT
                                                     orelse ReqVerb =:= ?HTTP_POST
                                                     orelse ReqVerb =:= ?HTTP_PATCH ->
@@ -536,7 +536,7 @@ update_attachment_signature(AttId, Att, Context) ->
     cb_context:set_doc(Context, kz_json:set_value([<<"attachments">>, AttId], JObj, cb_context:doc(Context))).
 
 -spec add_datamgr_error(kz_term:ne_binary(), kz_datamgr:data_errors(), cb_context:context()) ->
-                               cb_context:context().
+          cb_context:context().
 add_datamgr_error(AttId, Error, Context) ->
     crossbar_doc:handle_datamgr_errors(Error, AttId, Context).
 
@@ -569,14 +569,14 @@ add_att_settings_validation_error(AttId, {'error', Reason, ExtendedError}, Conte
                                    ).
 
 -spec get_error_response(kz_term:proplist(), Bin) ->
-                                Bin | kz_json:object()
-                                    when Bin :: binary().
+          Bin | kz_json:object()
+              when Bin :: binary().
 get_error_response(ErrorHeaders, ErrorBody) ->
     get_error_response(ErrorHeaders, ErrorBody, props:get_value(<<"content-type">>, ErrorHeaders)).
 
 -spec get_error_response(kz_term:proplist(), Bin, kz_term:api_ne_binary()) ->
-                                Bin | kz_json:object()
-                                    when Bin :: binary().
+          Bin | kz_json:object()
+              when Bin :: binary().
 get_error_response(_Headers, ErrorBody, 'undefined') ->
     lager:debug("no error content-type returned, trying JSON decoding"),
     decode_json(ErrorBody);
@@ -587,7 +587,7 @@ get_error_response(_Headers, ErrorBody, _CT) ->
     ErrorBody.
 
 -spec decode_json(Bin) -> kz_json:object() | Bin
-                              when Bin :: binary().
+              when Bin :: binary().
 decode_json(RespBody) ->
     try kz_json:unsafe_decode(RespBody) of
         DecodedErrorBody -> DecodedErrorBody

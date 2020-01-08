@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc Diversion SIP header manipulation.
 %%% @author James Aimonetti
 %%% @end
@@ -81,7 +81,7 @@ extensions(JObj) ->
     end.
 
 -spec extensions_fold({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) ->
-                             kz_term:proplist().
+          kz_term:proplist().
 extensions_fold({K, ?SOLO_EXTENSION}, Acc) ->
     [K | Acc];
 extensions_fold({_K, _V}=Extention, Acc) ->
@@ -139,21 +139,21 @@ parse_name_addr({<<C, Header/binary>>, Acc}) ->
     parse_name_addr({Header, [C | Acc]}).
 
 -spec parse_name_addr_angle(kz_term:ne_binary(), iolist()) ->
-                                   {binary(), iolist()}.
+          {binary(), iolist()}.
 parse_name_addr_angle(<<">", Header/binary>>, Acc) ->
     {kz_binary:strip(Header), [$> | Acc]};
 parse_name_addr_angle(<<C, Header/binary>>, Acc) ->
     parse_name_addr_angle(Header, [C | Acc]).
 
 -spec parse_name_addr_double_quote(kz_term:ne_binary(), iolist()) ->
-                                          {binary(), iolist()}.
+          {binary(), iolist()}.
 parse_name_addr_double_quote(<<"\"", Header/binary>>, Acc) ->
     {Header, [$" | Acc]};
 parse_name_addr_double_quote(<<C, Header/binary>>, Acc) ->
     parse_name_addr_double_quote(Header, [C | Acc]).
 
 -spec parse_name_addr_single_quote(kz_term:ne_binary(), iolist()) ->
-                                          {binary(), iolist()}.
+          {binary(), iolist()}.
 parse_name_addr_single_quote(<<"'", Header/binary>>, Acc) ->
     {Header, [$' | Acc]};
 parse_name_addr_single_quote(<<C, Header/binary>>, Acc) ->
@@ -194,7 +194,7 @@ parse_param(Extension, Value, JObj) ->
     add_extension(Extension, maybe_unquote(Value), JObj).
 
 -spec add_extension(binary(), kz_json:object()) ->
-                           kz_json:object().
+          kz_json:object().
 add_extension(<<>>, JObj) -> JObj;
 add_extension(Extension, JObj) ->
     Extensions = kz_json:get_value(?PARAM_EXTENSION, JObj, kz_json:new()),
@@ -207,7 +207,7 @@ add_extension(Extension, JObj) ->
                      ).
 
 -spec add_extension(kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object()) ->
-                           kz_json:object().
+          kz_json:object().
 add_extension(Extension, Value, JObj) ->
     Extensions = kz_json:get_value(?PARAM_EXTENSION, JObj, kz_json:new()),
     kz_json:set_value(?PARAM_EXTENSION

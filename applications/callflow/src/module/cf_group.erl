@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
@@ -91,7 +91,7 @@ build_endpoints(JObj, Call) ->
 -type endpoints_acc() :: [{kz_term:ne_binary(), {'ok', kz_json:objects()}}].
 
 -spec build_device_endpoints(endpoints_acc(), kz_term:proplist(), kapps_call:call()) ->
-                                    endpoints_acc().
+          endpoints_acc().
 build_device_endpoints(Endpoints, [], _) -> Endpoints;
 build_device_endpoints(Endpoints, [{MemberId, Member} | Members], Call) ->
     case kz_json:get_value(<<"type">>, Member, <<"device">>) =:= <<"device">>

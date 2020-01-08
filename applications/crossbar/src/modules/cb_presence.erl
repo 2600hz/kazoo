@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -142,19 +142,19 @@ content_types_provided_for_report(Context, Report) ->
 %%------------------------------------------------------------------------------
 
 -spec validate(cb_context:context()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context) ->
     validate_thing(Context, cb_context:req_verb(Context)).
 
 -spec validate(cb_context:context(), path_token()) ->
-                      cb_context:context().
+          cb_context:context().
 validate(Context, ?MATCH_REPORT_PREFIX(Report)) ->
     load_report(Context, Report);
 validate(Context, Extension) ->
     search_detail(Context, Extension).
 
 -spec validate_thing(cb_context:context(), http_method()) ->
-                            cb_context:context().
+          cb_context:context().
 validate_thing(Context, ?HTTP_GET) ->
     search_summary(Context);
 validate_thing(Context, ?HTTP_POST) ->
@@ -339,7 +339,7 @@ post(Context, Extension) ->
     crossbar_util:response_202(<<"reset command sent for extension ", Extension/binary>>, Context).
 
 -spec post_things(cb_context:context(), kz_json:object() | kz_json:objects(), kz_term:ne_binary()) ->
-                         cb_context:context().
+          cb_context:context().
 post_things(Context, Things, <<"reset">>) ->
     _ = collect_report(Context, Things),
     send_command(Context, fun publish_presence_reset/2, Things);
@@ -349,7 +349,7 @@ post_things(Context, Things, <<"set">>) ->
 
 -type presence_command_fun() :: fun((cb_context:context(), kz_term:api_binary()) -> any()).
 -spec send_command(cb_context:context(), presence_command_fun(), kz_json:object() | kz_json:objects()) ->
-                          cb_context:context().
+          cb_context:context().
 send_command(Context, _CommandFun, []) ->
     lager:debug("nothing to send command to"),
     crossbar_util:response(<<"nothing to send command to">>, Context);

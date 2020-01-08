@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Various utilities - a veritable cornucopia.
 %%% @author James Aimonetti
 %%% @author Karl Anderson
@@ -268,7 +268,7 @@ format_resource_selectors_db(AccountId) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec format_account_id(kz_term:api_binary(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) ->
-                               kz_term:api_binary().
+          kz_term:api_binary().
 format_account_id('undefined', _Year, _Month) -> 'undefined';
 format_account_id(AccountId, Year, Month) when not is_integer(Year) ->
     format_account_id(AccountId, kz_term:to_integer(Year), Month);
@@ -303,7 +303,7 @@ format_account_mod_id(AccountId, Timestamp) when is_integer(Timestamp) ->
 %%------------------------------------------------------------------------------
 
 -spec format_account_mod_id(kz_term:api_binary(), kz_time:year() | kz_term:ne_binary(), kz_time:month() | kz_term:ne_binary()) ->
-                                   kz_term:api_binary().
+          kz_term:api_binary().
 format_account_mod_id(AccountId, Year, Month) ->
     format_account_id(AccountId, Year, Month).
 

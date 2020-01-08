@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Notify-type requests, like MWI updates, received and processed here
 %%% @author Karl Anderson
 %%% @end
@@ -254,8 +254,8 @@ send_error(Node, JObj, Err) ->
     kz_amqp_worker:cast(Payload, fun(A) -> kapi_sms:publish_targeted_delivery(ServerId, A) end).
 
 -spec format_endpoint(kz_json:object(), kz_term:proplist(), kz_json:object()) ->
-                             {'ok', kz_term:proplist()} |
-                             {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:proplist()} |
+          {'error', kz_term:ne_binary()}.
 format_endpoint(Endpoint, Props, JObj) ->
     format_endpoint(Endpoint
                    ,Props
@@ -264,8 +264,8 @@ format_endpoint(Endpoint, Props, JObj) ->
                    ).
 
 -spec format_endpoint(kz_json:object(), kz_term:proplist(), kz_json:object(), kz_term:ne_binary()) ->
-                             {'ok', kz_term:proplist()} |
-                             {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:proplist()} |
+          {'error', kz_term:ne_binary()}.
 format_endpoint(Endpoint, Props, JObj, <<"route">>) ->
     CCVs = kz_json:get_json_value(<<"Custom-Channel-Vars">>, JObj),
     case kz_json:is_true(<<"Bounce-Back">>, CCVs, 'false') of
@@ -295,8 +295,8 @@ format_endpoint(Endpoint, _Props, _JObj, <<"username">>) ->
     end.
 
 -spec format_route_endpoint(kz_json:object(), kz_term:proplist(), kz_json:object()) ->
-                                   {'ok', kz_term:proplist()} |
-                                   {'error', kz_term:ne_binary()}.
+          {'ok', kz_term:proplist()} |
+          {'error', kz_term:ne_binary()}.
 format_route_endpoint(Endpoint, _Props, _JObj) ->
     ToURI = kz_json:get_value(<<"Route">>, Endpoint),
     [#uri{user=_ToUser

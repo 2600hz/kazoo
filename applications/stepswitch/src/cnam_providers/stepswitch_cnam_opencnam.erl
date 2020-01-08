@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc CNAM lookup using OpenCNAM
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -97,7 +97,7 @@ maybe_enable_ssl("https://" ++ _, Props) ->
 maybe_enable_ssl(_Url, Props) -> Props.
 
 -spec maybe_enable_auth([{nonempty_string(), nonempty_string()}]) ->
-                               [{nonempty_string(), nonempty_string()}].
+          [{nonempty_string(), nonempty_string()}].
 maybe_enable_auth(Props) ->
     Username = kapps_config:get_string(?CNAM_CONFIG_CAT, <<"http_basic_auth_username">>, <<>>),
     Password = kapps_config:get_string(?CNAM_CONFIG_CAT, <<"http_basic_auth_password">>, <<>>),
@@ -109,7 +109,7 @@ maybe_enable_auth(Props) ->
     end.
 
 -spec basic_auth(nonempty_string(), nonempty_string()) ->
-                        {nonempty_string(), nonempty_string()}.
+          {nonempty_string(), nonempty_string()}.
 basic_auth(Username, Password) ->
     Encoded = base64:encode_to_string(Username ++ [$: | Password]),
     {"Authorization", lists:flatten(["Basic ", Encoded])}.

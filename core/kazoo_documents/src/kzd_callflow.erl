@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc Callflow document manipulation
 %%% @author James Aimonetti
 %%% @end
@@ -96,7 +96,7 @@ set_flow(Doc, Flow) ->
     kz_json:set_value(?FLOW, Flow, Doc).
 
 -spec validate(doc()) -> {'ok', doc()} |
-                         {'error', kz_json_schema:validation_errors()}.
+          {'error', kz_json_schema:validation_errors()}.
 validate(Doc) ->
     case kz_json_schema:validate(<<"callflows">>, Doc) of
         {'ok', _}= OK -> OK;

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc Some utilities to work with attachment.
 %%% @author Luis Azedo
 %%% @end
@@ -92,7 +92,7 @@ do_format_url(Fields, JObj, Args, Separator) ->
     kz_binary:join(Reversed, Separator).
 
 -spec format_url_field(kz_json:object(), kz_term:proplist(), url_field(), kz_term:ne_binaries()) ->
-                              kz_term:ne_binaries().
+          kz_term:ne_binaries().
 format_url_field(JObj, Args, #{<<"group">> := Arg}, Acc) ->
     format_url_field(JObj, Args, {'group', Arg}, Acc);
 format_url_field(JObj, Args, {'group', Arg}, Acc) ->

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -315,7 +315,7 @@ get_plan_subscription(PlanId, #request{updates=Updates
     end.
 
 -spec get_plan_subscription(kz_term:ne_binary(), request(), braintree_customer:customer()) ->
-                                   braintree_subscription:subscription().
+          braintree_subscription:subscription().
 get_plan_subscription(PlanId, Request, #bt_customer{}=Customer) ->
     try braintree_customer:get_subscription(PlanId, Customer) of
         Subscription ->

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2019, 2600Hz
+%%% @copyright (C) 2017-2020, 2600Hz
 %%% @doc Kazoo Duo multi factor authenticator.
 %%% @author Hesaam Farhang
 %%% @end
@@ -238,8 +238,8 @@ is_user_name(Maps) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec map_config(kz_term:proplist(), kz_json:object()) ->
-                        map() |
-                        {'error', kz_term:ne_binary()}.
+          map() |
+          {'error', kz_term:ne_binary()}.
 map_config(Claims, JObj) ->
     Identity = maps:from_list(
                  [{<<"user_name">>, props:get_value(<<"owner_id">>, Claims)}

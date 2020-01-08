@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @end
@@ -22,7 +22,7 @@
 -spec base_call_cost(kz_currency:units() | kz_currency:dollars()
                     ,kz_currency:units() | kz_currency:dollars()
                     ,kz_currency:units() | kz_currency:dollars()) ->
-                            kz_currency:units().
+          kz_currency:units().
 base_call_cost(RateCost, 0, RateSurcharge) ->
     base_call_cost(RateCost, 60, RateSurcharge);
 base_call_cost(RateCost, RateMin, RateSurcharge)

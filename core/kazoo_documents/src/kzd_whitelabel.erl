@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -325,8 +325,8 @@ set_twoway_trunks_price(Doc, TwowayTrunksPrice) ->
     kz_json:set_value([<<"twoway_trunks_price">>], TwowayTrunksPrice, Doc).
 
 -spec fetch(kz_term:api_binary()) ->
-                   {'ok', kz_json:object()} |
-                   {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 fetch('undefined') ->
     {'error', 'account_id_undefined'};
 fetch(Account) ->

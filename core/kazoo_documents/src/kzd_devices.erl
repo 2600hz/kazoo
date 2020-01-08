@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -875,7 +875,7 @@ set_timezone(Doc, Timezone) ->
     kz_json:set_value([<<"timezone">>], Timezone, Doc).
 
 -spec fetch(kz_term:api_ne_binary(), kz_term:api_ne_binary()) -> {'ok', doc()} |
-                                                                 {'error', any()}.
+          {'error', any()}.
 fetch(Account=?NE_BINARY, DeviceId=?NE_BINARY) ->
     AccountDb = kz_util:format_account_db(Account),
     kz_datamgr:open_cache_doc(AccountDb, DeviceId, [{'cache_failures', 'false'}]);
@@ -938,7 +938,7 @@ set_custom_sip_headers_outbound(Device, Headers) ->
     set_sip_custom_sip_headers(Device, OutboundCSH).
 
 -spec set_outbound_flags(kz_json:object(), kz_term:api_ne_binaries(), kz_term:api_ne_binaries()) ->
-                                kz_json:object().
+          kz_json:object().
 set_outbound_flags(JObj, 'undefined', DynamicFlags) ->
     set_outbound_flags(JObj, [], DynamicFlags);
 set_outbound_flags(JObj, StaticFlags, 'undefined') ->

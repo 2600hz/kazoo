@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Collector of stats
 %%% @author James Aimonetti
 %%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
@@ -478,8 +478,8 @@ call_build_match_spec(JObj) ->
     end.
 
 -spec call_build_match_spec(kz_json:object(), {call_stat(), list()}) ->
-                                   {'ok', ets:match_spec()} |
-                                   {'error', kz_json:object()}.
+          {'ok', ets:match_spec()} |
+          {'error', kz_json:object()}.
 call_build_match_spec(JObj, AccountMatch) ->
     case kz_json:foldl(fun call_match_builder_fold/3, AccountMatch, JObj) of
         {'error', _Errs}=Errors -> Errors;
@@ -576,7 +576,7 @@ average_wait_time_build_match_spec(JObj) ->
     average_wait_time_build_match_spec(Match, Window).
 
 -spec average_wait_time_build_match_spec(ets:match_spec(), kz_term:api_integer()) ->
-                                                ets:match_spec().
+          ets:match_spec().
 average_wait_time_build_match_spec(Match, 'undefined') ->
     Match;
 average_wait_time_build_match_spec([{CallStat, Conditions, Results}], Window) ->
@@ -654,7 +654,7 @@ average_wait_time_fold(Stats) ->
     end.
 
 -spec average_wait_time_fold([non_neg_integer()], {non_neg_integer(), non_neg_integer()}) ->
-                                    {non_neg_integer(), non_neg_integer()}.
+          {non_neg_integer(), non_neg_integer()}.
 average_wait_time_fold([EnteredT, AbandonedT, HandledT], {CallCount, TotalWaitTime}) ->
     WaitTime = wait_time(EnteredT, AbandonedT, HandledT),
     {CallCount + 1, TotalWaitTime + WaitTime}.

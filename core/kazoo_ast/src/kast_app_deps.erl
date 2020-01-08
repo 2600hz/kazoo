@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc Module for studying Kazoo applications dependency.
 %%% @author James Aimonetti
 %%% @end
@@ -30,14 +30,14 @@
 %%-define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
 
 -spec dot_file() -> 'ok' |
-                    {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
+          {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 dot_file() ->
     Markup = [create_dot_markup(App, remote_apps(App)) || App <- kz_ast_util:project_apps()],
     create_dot_file("kazoo_project", Markup).
 
 -spec dot_file(atom()) ->
-                      'ok' |
-                      {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
+          'ok' |
+          {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'}.
 dot_file(App) ->
     AppDeps = remote_apps(App),
     create_dot_file(App, create_dot_markup(App, AppDeps)).
@@ -480,7 +480,7 @@ add_remote_module(M, Acc) ->
     end.
 
 -spec modules_with_apps(atom(), [atom()]) ->
-                               [{atom(), atom()}].
+          [{atom(), atom()}].
 modules_with_apps(App, Modules) ->
     lists:usort([{M, AppOf}
                  || M <- Modules,

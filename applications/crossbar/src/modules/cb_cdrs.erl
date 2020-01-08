@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc CDR
 %%% Read only access to CDR docs
 %%%
@@ -123,7 +123,7 @@ to_csv({Req, Context}) ->
     {Req, to_response(Context, <<"csv">>, cb_context:req_nouns(Context))}.
 
 -spec to_response(cb_context:context(), kz_term:ne_binary(), req_nouns()) ->
-                         cb_context:context().
+          cb_context:context().
 to_response(Context, _, [{<<"cdrs">>, []}, {?KZ_ACCOUNTS_DB, _}|_]) ->
     Context;
 to_response(Context, _, [{<<"cdrs">>, []}, {<<"users">>, _}|_]) ->
@@ -628,6 +628,6 @@ load_legs(Id, Context) ->
     crossbar_util:response_bad_identifier(Id, Context).
 
 -spec normalize_leg_view_results(kz_json:object(), kz_json:objects()) ->
-                                        kz_json:objects().
+          kz_json:objects().
 normalize_leg_view_results(JObj, Acc) ->
     Acc ++ [kz_json:get_json_value(<<"doc">>, JObj)].

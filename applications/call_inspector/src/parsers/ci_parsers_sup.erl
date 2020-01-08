@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -73,8 +73,8 @@ init([]) ->
 
 -type parser() :: 'ci_parser_freeswitch' | 'ci_parser_kamailio' | 'ci_parser_hep'.
 -spec start_child(parser(), [ci_parsers_util:parser_args()]) ->
-                         {'ok', atom()} |
-                         {'error', term()}.
+          {'ok', atom()} |
+          {'error', term()}.
 start_child(Module, Args) ->
     Id = ci_parsers_util:make_name(lists:keyfind('parser_args', 1, Args)),
     ChildSpec = ?WORKER_NAME_ARGS(Module, Id, Args),

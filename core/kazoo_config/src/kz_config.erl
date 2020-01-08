@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
 %%% @end
@@ -205,7 +205,7 @@ format_sections([Section | T], ZoneFilter, Acc) ->
     end.
 
 -spec format_zone_section(kz_term:proplist(), kz_term:proplist(), atom(), kz_term:proplist()) ->
-                                 kz_term:proplist().
+          kz_term:proplist().
 format_zone_section(Section, Sections, ZoneFilter, Acc) ->
     case props:get_value(ZoneFilter, Section, 'generic') of
         'generic' ->
@@ -235,7 +235,7 @@ local_sections([Section | T], Acc) ->
 -type section_type() :: {'generic' | kz_term:ne_binary() | {'zone', atom()}, kz_term:proplist()}.
 
 -spec add_section('generics' | 'zones', section_type(), kz_term:proplist()) ->
-                         kz_term:proplist().
+          kz_term:proplist().
 add_section(Group, Value, Props) ->
     props:set_value(Group, [Value | props:get_value(Group, Props, [])], Props).
 
@@ -244,8 +244,8 @@ add_section(Group, Value, Props) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec is_local_section({kz_term:ne_binary() | atom(), any()}) -> {'false', 'generic'} |
-                                                                 {'false', 'zone'} |
-                                                                 {boolean(), kz_term:ne_binary()}.
+          {'false', 'zone'} |
+          {boolean(), kz_term:ne_binary()}.
 is_local_section({'generic', _}) ->
     {'false', 'generic'};
 is_local_section({{'zone', Zone}, _}) ->

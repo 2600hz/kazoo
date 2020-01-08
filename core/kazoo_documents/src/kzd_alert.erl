@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc Alert document
 %%% @author Peter Defebvre
 %%% @end
@@ -68,7 +68,7 @@ id(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec fetch(kz_term:api_binary()) -> {'ok', doc()} |
-                                     {'error', any()}.
+          {'error', any()}.
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
 fetch(<<_/binary>> = AlertId) ->

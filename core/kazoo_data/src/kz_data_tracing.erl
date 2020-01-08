@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -66,32 +66,32 @@
 -type state() :: #state{}.
 
 -spec trace_file() ->
-                        {'ok', trace_ref()} |
-                        {'error', trace_error()}.
+          {'ok', trace_ref()} |
+          {'error', trace_error()}.
 trace_file() ->
     trace_file([{'function', '*'}]).
 
 -spec trace_file(filters()) ->
-                        {'ok', trace_ref()} |
-                        {'error', trace_error()}.
+          {'ok', trace_ref()} |
+          {'error', trace_error()}.
 trace_file(Filters) ->
     trace_file(Filters, <<"/tmp/", (kz_binary:rand_hex(16))/binary, ".log">>).
 
 -spec trace_file(filters(), file:filename_all()) ->
-                        {'ok', trace_ref()} |
-                        {'error', trace_error()}.
+          {'ok', trace_ref()} |
+          {'error', trace_error()}.
 trace_file(Filters, Filename) ->
     trace_file(Filters, Filename, ?DEFAULT_TRACE_PROPS(?DEFAULT_TRACE_OUTPUT_FORMAT)).
 
 -spec trace_file(filters(), file:filename_all(), list()) ->
-                        {'ok', trace_ref()} |
-                        {'error', trace_error()}.
+          {'ok', trace_ref()} |
+          {'error', trace_error()}.
 trace_file(Filters, Filename, Format) ->
     trace_file(Filters, Filename, Format, 'debug').
 
 -spec trace_file(filters(), file:filename_all(), list(), atom()) ->
-                        {'ok', trace_ref()} |
-                        {'error', trace_error()}.
+          {'ok', trace_ref()} |
+          {'error', trace_error()}.
 trace_file(Filters, Filename, Format, LogLevel) ->
     gen_server:call(?MODULE
                    ,{'trace_file'
@@ -116,8 +116,8 @@ clear_all_traces() ->
     gen_server:call(?MODULE, 'clear_all_traces', 1 * ?MILLISECONDS_IN_HOUR).
 
 -spec stop_trace(trace_ref()) ->
-                        {'ok', file:filename_all()} |
-                        {'error', trace_error()}.
+          {'ok', file:filename_all()} |
+          {'error', trace_error()}.
 stop_trace(TraceRef) ->
     gen_server:call(?MODULE, {'stop_trace', TraceRef}).
 
@@ -189,8 +189,8 @@ stop_trace_file(Trace) ->
     lager:stop_trace(Trace).
 
 -spec start_trace(trace_options()) ->
-                         {'ok', trace_result()} |
-                         {'error', trace_error()}.
+          {'ok', trace_result()} |
+          {'error', trace_error()}.
 
 start_trace(#{'filters' := Filters
              ,'filename' := Filename
@@ -204,6 +204,6 @@ start_trace(#{'filters' := Filters
                     ).
 
 -spec trace_ref(Ref, trace_options(), trace_result()) ->
-                       {Ref, file:filename_all(), trace_result()}.
+          {Ref, file:filename_all(), trace_result()}.
 trace_ref(Ref, TraceOptions, TraceResult) ->
     {Ref, maps:get('filename', TraceOptions), TraceResult}.

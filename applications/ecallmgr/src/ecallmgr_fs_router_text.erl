@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Receive route(dialplan) requests from FS, request routes and respond
 %%% @author James Aimonetti
 %%% @end
@@ -171,7 +171,7 @@ expand_message_vars(Props) ->
                ).
 
 -spec expand_message_var({kz_term:ne_binary(), kz_term:ne_binary()}, kz_term:proplist()) ->
-                                kz_term:proplist().
+          kz_term:proplist().
 expand_message_var({K,V}, Ac) ->
     case props:get_value(<<"variable_", K/binary>>, Ac) of
         'undefined' -> props:set_value(<<"variable_", K/binary>>, V, Ac);

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Represent a date, and perform various manipulations on it.
 %%% @author Mark Magnusson
 %%% @author Karl Anderson
@@ -38,7 +38,7 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec from_gregorian_seconds(kz_time:gregorian_seconds(), kz_term:ne_binary()) ->
-                                    kz_time:date().
+          kz_time:date().
 from_gregorian_seconds(Seconds, <<_/binary>>=TZ) when is_integer(Seconds) ->
     {{_,_,_}, {_,_,_}} = DateTime = calendar:gregorian_seconds_to_datetime(Seconds),
     TZList = kz_term:to_list(TZ),

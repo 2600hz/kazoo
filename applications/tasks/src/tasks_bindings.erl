@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc Store routing keys/pid bindings. When a binding is fired,
 %%% pass the payload to the pid for evaluation, accumulating
 %%% the results for the response to the running process.
@@ -157,12 +157,12 @@ filter_out_succeeded(Term) -> kz_term:is_empty(Term).
                        {'error', 'exists'}.
 -type bind_results() :: [bind_result()].
 -spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom()) ->
-                  bind_result() | bind_results().
+          bind_result() | bind_results().
 bind(Bindings, Module, Fun) ->
     bind(Bindings, Module, Fun, 'undefined').
 
 -spec bind(kz_term:ne_binary() | kz_term:ne_binaries(), atom(), atom(), any()) ->
-                  bind_result() | bind_results().
+          bind_result() | bind_results().
 bind([_|_]=Bindings, Module, Fun, Payload) ->
     [bind(Binding, Module, Fun, Payload) || Binding <- Bindings];
 bind(Binding, Module, Fun, Payload) when is_binary(Binding) ->

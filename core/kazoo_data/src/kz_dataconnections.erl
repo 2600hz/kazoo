@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -106,11 +106,11 @@ get_server(Tag) ->
     end.
 
 -spec test_conn() -> {'ok', kz_json:object()} |
-                     {'error', any()}.
+          {'error', any()}.
 test_conn() -> test_conn('local').
 
 -spec test_conn(term()) -> {'ok', kz_json:object()} |
-                           {'error', any()}.
+          {'error', any()}.
 test_conn(Tag) ->
     case get_server(Tag) of
         'undefined' -> {'error', 'server_not_available'};

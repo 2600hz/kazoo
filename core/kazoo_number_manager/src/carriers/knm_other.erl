@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Handle client requests for phone_number documents
 %%% @author Karl Anderson
 %%% @author Pierre Fenoll
@@ -82,9 +82,9 @@ is_local() -> 'false'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
-                          {'ok', list()} |
-                          {'bulk', list()} |
-                          {'error', any()}.
+          {'ok', list()} |
+          {'bulk', list()} |
+          {'error', any()}.
 find_numbers(Prefix, Quantity, Options) ->
     case ?PHONEBOOK_URL(Options) of
         'undefined' -> {'error', 'not_available'};
@@ -100,7 +100,7 @@ find_numbers(Prefix, Quantity, Options) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {'ok', kz_json:object()} |
-                                              {'error', any()}.
+          {'error', any()}.
 check_numbers(Numbers) ->
     FormatedNumbers = [knm_converters:to_npan(Number) || Number <- Numbers],
     case ?PHONEBOOK_URL of
@@ -191,8 +191,8 @@ should_lookup_cnam() -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec format_check_numbers(kz_json:object()) ->
-                                  {'ok', kz_json:object()} |
-                                  {'error', 'resp_error'}.
+          {'ok', kz_json:object()} |
+          {'error', 'resp_error'}.
 format_check_numbers(Body) ->
     case kz_json:get_value(<<"status">>, Body) of
         <<"success">> ->
@@ -203,7 +203,7 @@ format_check_numbers(Body) ->
     end.
 
 -spec format_check_numbers_success(kz_json:object()) ->
-                                          {'ok', kz_json:object()}.
+          {'ok', kz_json:object()}.
 format_check_numbers_success(Body) ->
     F = fun(NumberJObj, Acc) ->
                 Number = kz_json:get_value(<<"number">>, NumberJObj),
@@ -221,8 +221,8 @@ format_check_numbers_success(Body) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_numbers(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), knm_search:options()) ->
-                         {'ok', list()} |
-                         {'error', 'not_available'}.
+          {'ok', list()} |
+          {'error', 'not_available'}.
 get_numbers(Url, Prefix, Quantity, Options) ->
     Offset = props:get_binary_value('offset', Options, <<"0">>),
     ReqBody = <<"?prefix=", Prefix/binary, "&limit=", (kz_term:to_binary(Quantity))/binary, "&offset=", Offset/binary>>,
@@ -242,8 +242,8 @@ query_for_numbers(Uri) ->
 -endif.
 
 -spec handle_number_query_results(kz_http:http_ret(), knm_search:options()) ->
-                                         {'ok', list()} |
-                                         {'error', 'not_available'}.
+          {'ok', list()} |
+          {'error', 'not_available'}.
 handle_number_query_results({'error', _Reason}, _Options) ->
     lager:error("number query failed: ~p", [_Reason]),
     {'error', 'not_available'};
@@ -254,8 +254,8 @@ handle_number_query_results({'ok', _Status, _Headers, _Body}, _Options) ->
     {'error', 'not_available'}.
 
 -spec format_numbers_resp(kz_json:object(), knm_search:options()) ->
-                                 {'ok', list()} |
-                                 {'error', 'not_available'}.
+          {'ok', list()} |
+          {'error', 'not_available'}.
 format_numbers_resp(JObj, Options) ->
     case kz_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
@@ -278,8 +278,8 @@ format_found(QID, DID, CarrierData) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_blocks(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), knm_search:options()) ->
-                        {'ok', list()} |
-                        {'error', 'not_available'}.
+          {'ok', list()} |
+          {'error', 'not_available'}.
 -ifdef(TEST).
 get_blocks(?BLOCK_PHONEBOOK_URL, _Prefix, _Quantity, Options) ->
     format_blocks_resp(?BLOCKS_RESP, Options).
@@ -310,8 +310,8 @@ get_blocks(Url, Prefix, Quantity, Options) ->
 -endif.
 
 -spec format_blocks_resp(kz_json:object(), knm_search:options()) ->
-                                {'bulk', list()} |
-                                {'error', 'not_available'}.
+          {'bulk', list()} |
+          {'error', 'not_available'}.
 format_blocks_resp(JObj, Options) ->
     case kz_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
@@ -338,7 +338,7 @@ format_block_resp_fold(Block, QID) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec format_acquire_resp(knm_number:knm_number(), kz_json:object()) ->
-                                 knm_number:knm_number().
+          knm_number:knm_number().
 format_acquire_resp(Number, Body) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
     JObj = kz_json:get_value([<<"data">>, Num], Body, kz_json:new()),
@@ -361,7 +361,7 @@ format_acquire_resp(Number, Body) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_merge_opaque(kz_json:object(), knm_number:knm_number()) ->
-                                knm_number:knm_number().
+          knm_number:knm_number().
 maybe_merge_opaque(JObj, Number) ->
     case kz_json:get_ne_value(<<"opaque">>, JObj) of
         'undefined' -> Number;
@@ -375,7 +375,7 @@ maybe_merge_opaque(JObj, Number) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_merge_locality(kz_json:object(), knm_number:knm_number()) ->
-                                  knm_number:knm_number().
+          knm_number:knm_number().
 maybe_merge_locality(JObj, Number) ->
     case kz_json:get_ne_value(<<"locality">>,  JObj) of
         'undefined' -> Number;

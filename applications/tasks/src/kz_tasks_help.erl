@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc Discover available tasks.
 %%% @author Pierre Fenoll
 %%% @end
@@ -32,7 +32,7 @@ help() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec help(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
-                                   kz_tasks:help_error().
+          kz_tasks:help_error().
 help(Category=?NE_BINARY) ->
     HelpJObj = tasks_bindings:fold(<<"tasks.help">>, [kz_json:new(), Category]),
     JObj = parse_apis(HelpJObj),
@@ -46,7 +46,7 @@ help(Category=?NE_BINARY) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec help(kz_term:ne_binary(), kz_term:ne_binary()) -> {'ok', kz_json:object()} |
-                                                        kz_tasks:help_error().
+          kz_tasks:help_error().
 help(Category=?NE_BINARY, Action=?NE_BINARY) ->
     HelpJObj = tasks_bindings:fold(<<"tasks.help">>, [kz_json:new(), Category, Action]),
     JObj = parse_apis(HelpJObj),
@@ -86,7 +86,7 @@ handle_lookup_req(JObj, _Props) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_help(kz_json:object()) -> kz_json:object() |
-                                    kz_tasks:help_error().
+          kz_tasks:help_error().
 get_help(JObj) ->
     case {kapi_tasks:category(JObj), kapi_tasks:action(JObj)} of
         {'undefined', 'undefined'} -> help();

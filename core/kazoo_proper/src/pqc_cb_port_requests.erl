@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -181,7 +181,7 @@ create_admin_user(API, AccountId, AccountName) ->
                            ).
 
 -spec create_whitelabel(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary(), boolean()) ->
-                               pqc_cb_api:response().
+          pqc_cb_api:response().
 create_whitelabel(_, _, _, 'false') ->
     <<"no whitelable for you">>;
 create_whitelabel(API, AccountId, AccountName, 'true') ->

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Handlers for various call events, acdc events, etc
 %%% @author James Aimonetti
 %%% @author Daniel Finke
@@ -126,9 +126,9 @@ login_resp(JObj, Status) ->
     end.
 
 -spec maybe_start_agent(kz_term:api_binary(), kz_term:api_binary()) ->
-                               {'ok', pid()} |
-                               {'exists', pid()} |
-                               {'error', any()}.
+          {'ok', pid()} |
+          {'exists', pid()} |
+          {'error', any()}.
 maybe_start_agent(AccountId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
         'undefined' ->

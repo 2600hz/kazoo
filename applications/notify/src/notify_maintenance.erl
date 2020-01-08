@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @author Michael Dunton
@@ -278,8 +278,8 @@ compare_template_system_config([{Key, FileTemplate}|Props], JObj) ->
     end.
 
 -spec compare_template_system_config(kz_term:api_binaries(), kz_term:api_binary(), kz_term:api_binary()) ->
-                                            'default' | 'file' |
-                                            'doc' | 'ok'.
+          'default' | 'file' |
+          'doc' | 'ok'.
 compare_template_system_config('undefined', _, _) ->
     io:format("default template is undefined~n");
 compare_template_system_config(_, 'undefined', _) ->

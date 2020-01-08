@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc Transfers caller to the extension extracted in the regex
 %%% Data = {
 %%%   "takeback_dtmf":"2" // Transferor can cancel the transfer request
@@ -1166,8 +1166,8 @@ connect(Flags, Call) ->
 
 -type dtmf_next_state() :: 'attended_wait' | 'attended_answer' | 'takeback'.
 -spec handle_transferor_dtmf(kz_json:object(), dtmf_next_state(), state()) ->
-                                    {'stop', 'normal', state()} |
-                                    {'next_state', dtmf_next_state(), state()}.
+          {'stop', 'normal', state()} |
+          {'next_state', dtmf_next_state(), state()}.
 handle_transferor_dtmf(Evt
                       ,NextState
                       ,#state{target_call=TargetCall
@@ -1354,7 +1354,7 @@ issue_transferee_event(Target, Call) ->
 %% When the A-leg is the transferor, its ecallmgr control will be down at this
 %% point so use Target's call record; otherwise use the A-leg's.
 -spec how_to_transfer(kapps_call:call(), kapps_call:call(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                             {kz_term:ne_binary(), kapps_call:call()}.
+          {kz_term:ne_binary(), kapps_call:call()}.
 how_to_transfer(OriginalCall, TargetCall, Transferor, Target, Transferee) ->
     case kapps_call:call_id(OriginalCall) of
         Transferor ->

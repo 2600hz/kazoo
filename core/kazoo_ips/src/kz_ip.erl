@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -48,7 +48,7 @@ from_json(JObj) -> JObj.
 %% @end
 %%------------------------------------------------------------------------------
 -spec create(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                    std_return().
+          std_return().
 create(IP, Zone, Host) ->
     Timestamp = kz_time:now_s(),
     JObj = kz_json:from_list(

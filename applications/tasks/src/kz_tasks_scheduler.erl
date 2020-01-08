@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc Schedule one-off tasks only once per cluster
 %%% @author Pierre Fenoll
 %%% @end
@@ -92,7 +92,7 @@ start_link() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec start(kz_tasks:id()) -> {'ok', kz_json:object()} |
-                              {'error', 'not_found' | 'already_started' | any()}.
+          {'error', 'not_found' | 'already_started' | any()}.
 start(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {'start_task', TaskId}).
 
@@ -101,18 +101,18 @@ start(TaskId=?NE_BINARY) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec stop(kz_tasks:id()) -> {'ok', kz_json:object()} |
-                             {'error', 'not_found' | 'not_running'}.
+          {'error', 'not_found' | 'not_running'}.
 stop(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {'stop_task', TaskId}).
 
 
 %% Not for public use
 -spec restart(kz_tasks:id()) -> {'ok', kz_json:object()} |
-                                {'error'
-                                ,'not_found' |
-                                 'already_started' |
-                                 any()
-                                }.
+          {'error'
+          ,'not_found' |
+           'already_started' |
+           any()
+          }.
 restart(TaskId = ?NE_BINARY) ->
     gen_server:call(?SERVER, {'restart_task', TaskId}).
 
@@ -121,7 +121,7 @@ restart(TaskId = ?NE_BINARY) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec remove(kz_tasks:id()) -> {'ok', kz_json:object()} |
-                               {'error', 'not_found' | 'task_running'}.
+          {'error', 'not_found' | 'task_running'}.
 remove(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {'remove_task', TaskId}).
 
@@ -591,7 +591,7 @@ add_task(Task=#{id := TaskId}, State=#state{tasks = Tasks}) ->
     State#state{tasks = maps:put(TaskId, Task, Tasks)}.
 
 -spec update_task(kz_tasks:task()) -> {'ok', kz_json:object()} |
-                                      {'error', any()}.
+          {'error', any()}.
 update_task(Task = #{id := TaskId}) ->
     Updates = kz_json:to_proplist(kz_tasks:to_json(Task)),
     UpdateOptions = [{'update', Updates}

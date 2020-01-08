@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
 %%% @end
@@ -55,7 +55,7 @@ maybe_dry_run(Context, CurrentJObj, ProposedJObj) ->
     end.
 
 -spec dry_run(cb_context:context(), kz_services_invoices:invoices(), boolean()) ->
-                     cb_context:context().
+          cb_context:context().
 dry_run(Context, _Quotes, 'false') ->
     lager:debug("request has no billable additions, allowing"),
     Context;
@@ -70,7 +70,7 @@ should_dry_run(Context) ->
         andalso cb_context:api_version(Context) =/= ?VERSION_1.
 
 -spec check_creditably(cb_context:context(), kz_services:services(), kz_services_invoices:invoices(), boolean() | number()) ->
-                              cb_context:context().
+          cb_context:context().
 check_creditably(Context, _Services, _Quotes, 'false') ->
     lager:debug("request has no billable additions, skipping standing check"),
     Context;

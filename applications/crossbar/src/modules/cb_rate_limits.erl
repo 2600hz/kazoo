@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc SBC Rate limits
 %%% /accounts/{account_id}/rate_limits - manip account's access lists
 %%% /accounts/{account_id}/devices/{device_id}/rate_limits - manip device's access lists
@@ -176,13 +176,13 @@ validate_delete_rate_limits(Context, ThingId) ->
     end.
 
 -spec validate_set_rate_limits(cb_context:context()) ->
-                                      cb_context:context().
+          cb_context:context().
 validate_set_rate_limits(Context) ->
     lager:debug("rate limits data is valid, setting on thing"),
     validate_set_rate_limits(Context, thing_id(Context)).
 
 -spec validate_set_rate_limits(cb_context:context(), kz_term:api_binary()) ->
-                                      cb_context:context().
+          cb_context:context().
 validate_set_rate_limits(Context, 'undefined') ->
     lager:debug("no thing found"),
     crossbar_util:response_faulty_request(Context);

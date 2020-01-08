@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Look up IP for authorization/replaying of route_req
 %%% @author James Aimonetti
 %%% @end
@@ -57,8 +57,8 @@ maybe_replay_route_req(JObj, CCVs, IP) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec lookup_account_by_ip(kz_term:ne_binary()) ->
-                                  {'ok', kz_term:proplist()} |
-                                  {'error', 'not_found'}.
+          {'ok', kz_term:proplist()} |
+          {'error', 'not_found'}.
 lookup_account_by_ip(IP) ->
     lager:debug("looking up IP: ~s in db ~s", [IP, ?KZ_SIP_DB]),
     kapps_util:get_ccvs_by_ip(IP).

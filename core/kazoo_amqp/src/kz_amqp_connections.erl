@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -66,13 +66,13 @@ start_link() ->
     gen_server:start_link({'local', ?SERVER}, ?MODULE, [], []).
 
 -spec new(kz_amqp_connection() | kz_term:text()) ->
-                 kz_amqp_connection() |
-                 {'error', any()}.
+          kz_amqp_connection() |
+          {'error', any()}.
 new(Broker) -> new(Broker, 'local').
 
 -spec new(kz_amqp_connection() | kz_term:text(), kz_term:text()) ->
-                 kz_amqp_connection() |
-                 {'error', any()}.
+          kz_amqp_connection() |
+          {'error', any()}.
 new(<<_/binary>> = Broker, Zone) ->
     case broker_connections(Broker) =:= 0 of
         'false' -> {'error', 'exists'};
@@ -82,13 +82,13 @@ new(Broker, Zone) ->
     new(kz_term:to_binary(Broker), Zone).
 
 -spec add(kz_amqp_connection() | kz_term:text()) ->
-                 kz_amqp_connection() |
-                 {'error', any()}.
+          kz_amqp_connection() |
+          {'error', any()}.
 add(Broker) -> add(Broker, 'local').
 
 -spec add(kz_amqp_connection() | kz_term:text(), kz_term:text()) ->
-                 kz_amqp_connection() |
-                 {'error', any()}.
+          kz_amqp_connection() |
+          {'error', any()}.
 add(#kz_amqp_connection{broker=Broker, tags=Tags}=Connection, Zone) ->
     case kz_amqp_connection_sup:add(Connection) of
         {'ok', Pid} ->
@@ -108,8 +108,8 @@ add(Broker, Zone) ->
     add(Broker, Zone, []).
 
 -spec add(kz_amqp_connection() | kz_term:text(), kz_term:text(), list()) ->
-                 kz_amqp_connection() |
-                 {'error', any()}.
+          kz_amqp_connection() |
+          {'error', any()}.
 add(Broker, Zone, Tags) ->
     case catch amqp_uri:parse(kz_term:to_list(Broker)) of
         {'EXIT', _R} ->
@@ -422,8 +422,8 @@ notify_watcher(Watcher) ->
     'ok'.
 
 -spec wait_for_notification(timeout()) ->
-                                   'ok' |
-                                   {'error', 'timeout'}.
+          'ok' |
+          {'error', 'timeout'}.
 wait_for_notification(Timeout) ->
     receive
         {?MODULE, 'connection_available'} -> 'ok'

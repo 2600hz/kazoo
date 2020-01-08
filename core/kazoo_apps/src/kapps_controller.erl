@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @author Karl Anderson
@@ -91,8 +91,8 @@ start_default_apps() ->
     [{App, start_app(App)} || App <- ?DEFAULT_KAPPS].
 
 -spec start_app(atom() | nonempty_string() | kz_term:ne_binary()) ->
-                       {'ok', kz_term:atoms()} |
-                       {'error', any()}.
+          {'ok', kz_term:atoms()} |
+          {'error', any()}.
 start_app(App) when is_atom(App) ->
     NowMs = kz_time:now(),
     case application:ensure_all_started(App) of
@@ -111,7 +111,7 @@ start_app(App) ->
     start_app(kz_term:to_atom(App, 'true')).
 
 -spec maybe_load_external_app(atom()) -> {'ok', kz_term:atoms()} |
-                                         {'error', any()}.
+          {'error', any()}.
 maybe_load_external_app(App) ->
     case lists:any(fun kz_term:is_true/1, kazoo_bindings:map(<<"app.fetch">>, App)) of
         'true' -> start_app(App);

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2019, 2600Hz
+%%% @copyright (C) 2017-2020, 2600Hz
 %%% @doc Google Drive for attachments.
 %%% @author Luis Azedo
 %%% @end
@@ -224,8 +224,8 @@ gdrive_format_url(Map, AttInfo) ->
     kz_att_util:format_url(Map, AttInfo, gdrive_default_fields()).
 
 -spec gdrive_post(binary(), kz_term:proplist(), binary()) ->
-                         {'ok', kz_term:ne_binary(), kz_term:proplist()} |
-                         {'error', kz_term:ne_binary(), kz_http:ret() | atom()}.
+          {'ok', kz_term:ne_binary(), kz_term:proplist()} |
+          {'error', kz_term:ne_binary(), kz_http:ret() | atom()}.
 gdrive_post(Url, Headers, Body) ->
     case kz_http:post(Url, Headers, Body) of
         {'ok', 200, ResponseHeaders, ResponseBody} ->
@@ -238,8 +238,8 @@ gdrive_post(Url, Headers, Body) ->
     end.
 
 -spec send_attachment(binary(), kz_term:binaries(), binary(), binary(), binary(), kz_term:proplist(), binary()) ->
-                             {'ok', kz_term:ne_binary(), kz_term:proplist()} |
-                             {'error', kz_term:ne_binary(), kz_http:ret() | atom()}.
+          {'ok', kz_term:ne_binary(), kz_term:proplist()} |
+          {'error', kz_term:ne_binary(), kz_http:ret() | atom()}.
 send_attachment(Authorization, Folder, TokenDocId, AName, CT, Options, Contents) ->
     JObj = kz_json:from_list(
              props:filter_empty(

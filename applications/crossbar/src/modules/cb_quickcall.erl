@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Devices module
 %%% Handle client requests for device documents
 %%%
@@ -71,7 +71,7 @@ post(Context, _Number) ->
     maybe_originate_quickcall(Context).
 
 -spec maybe_validate_quickcall(cb_context:context()) ->
-                                      cb_context:context().
+          cb_context:context().
 maybe_validate_quickcall(Context) ->
     case kz_buckets:consume_tokens(?APP_NAME
                                   ,cb_modules_util:bucket_name(Context)
@@ -83,7 +83,7 @@ maybe_validate_quickcall(Context) ->
     end.
 
 -spec maybe_validate_quickcall(cb_context:context(), crossbar_status()) ->
-                                      cb_context:context().
+          cb_context:context().
 maybe_validate_quickcall(Context, 'success') ->
     AllowAnon = kz_json:is_true(<<"allow_anonymous_quickcalls">>, cb_context:doc(Context)),
 
@@ -128,7 +128,7 @@ request_specific_extraction_funs(Context) ->
     request_specific_extraction_funs_from_nouns(Context, cb_context:req_nouns(Context)).
 
 -spec request_specific_extraction_funs_from_nouns(cb_context:context(), req_nouns()) ->
-                                                         kapps_call:exec_funs().
+          kapps_call:exec_funs().
 request_specific_extraction_funs_from_nouns(Context, ?DEVICES_QCALL_NOUNS(DeviceId, Number)) ->
     NumberURI = build_number_uri(Context, Number),
     [{fun kapps_call:set_authorizing_id/2, DeviceId}
@@ -212,7 +212,7 @@ aleg_cid(Number, Call) ->
     kapps_call:exec(Routines, Call).
 
 -spec originate_quickcall(kz_json:objects(), kapps_call:call(), cb_context:context()) ->
-                                 cb_context:context().
+          cb_context:context().
 originate_quickcall(Endpoints, Call, Context) ->
     AutoAnswer = kz_json:is_true(<<"auto_answer">>, cb_context:query_string(Context), 'true'),
     CCVs = [{<<"Account-ID">>, cb_context:account_id(Context)}
@@ -292,7 +292,7 @@ originate(Request, Context, ?HTTP_POST, CallTimeoutS) ->
     end.
 
 -spec handle_originate_resp(kz_json:object(), cb_context:context(), kz_json:objects()) ->
-                                   cb_context:context().
+          cb_context:context().
 handle_originate_resp(Request, Context, JObjs) ->
     case lists:filter(fun kapi_resource:originate_resp_v/1, JObjs) of
         [Resp] -> send_originate_resp(Request, Context, Resp);
@@ -300,7 +300,7 @@ handle_originate_resp(Request, Context, JObjs) ->
     end.
 
 -spec send_originate_resp(kz_json:object(), cb_context:context(), kz_json:object()) ->
-                                 cb_context:context().
+          cb_context:context().
 send_originate_resp(Request, Context, Response) ->
     RequestJObj = kz_json:normalize(kz_api:remove_defaults(Request)),
     ResponseJObj = kz_json:normalize(kz_api:remove_defaults(Response)),
@@ -308,7 +308,7 @@ send_originate_resp(Request, Context, Response) ->
     crossbar_util:response_202(<<"quickcall initiated">>, APIResponse, cb_context:set_resp_data(Context, APIResponse)).
 
 -spec send_error_resp(cb_context:context(), kz_json:objects()) ->
-                             cb_context:context().
+          cb_context:context().
 send_error_resp(Context, []) ->
     crossbar_util:response('error'
                           ,<<"quickcall initiation failed">>

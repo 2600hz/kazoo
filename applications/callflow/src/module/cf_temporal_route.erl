@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Controls and picks Callflows based rules.
 %%%
 %%% <h4>Data options:</h4>
@@ -72,7 +72,7 @@ handle(Data, Call) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec process_rules(temporal(), rules(), kapps_call:call()) ->
-                           'default' | binary().
+          'default' | binary().
 process_rules(Temporal
              ,[#rule{enabled='false'
                     ,id=Id

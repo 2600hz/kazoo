@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Functions shared between crossbar modules
 %%% @author James Aimonetti
 %%% @end
@@ -101,7 +101,7 @@ attachment_name(Filename, CT) ->
     lists:foldl(fun(F, A) -> F(A) end, Filename, Generators).
 
 -spec parse_media_type(kz_term:ne_binary()) -> media_values() |
-                                               {'error', 'badarg'}.
+          {'error', 'badarg'}.
 parse_media_type(MediaType) ->
     try cow_http_hd:parse_accept(MediaType)
     catch
@@ -154,7 +154,7 @@ token_cost(Context, Default, Suffix) when is_integer(Default), Default >= 0 ->
                      ,http_method()
                      ,kz_term:api_ne_binary()
                      ) ->
-                             integer() | Default.
+          integer() | Default.
 find_token_cost(N, _Default, _Suffix, _Nouns, _ReqVerb, _AccountId) when is_integer(N) ->
     lager:debug("flat token cost of ~p configured", [N]),
     N;
@@ -173,7 +173,7 @@ find_token_cost(JObj, Default, Suffix, [{Endpoint, _}|_], ReqVerb, AccountId) ->
     get_token_cost(JObj, Default, Keys).
 
 -spec get_token_cost(kz_json:object(), Default, kz_json:paths()) ->
-                            integer() | Default.
+          integer() | Default.
 get_token_cost(JObj, Default, Keys) ->
     case kz_json:get_first_defined(Keys, JObj) of
         'undefined' -> Default;
@@ -199,7 +199,7 @@ remove_plaintext_password(Context) ->
     cb_context:set_doc(Context, Doc).
 
 -spec validate_number_ownership(kz_term:ne_binaries(), cb_context:context()) ->
-                                       cb_context:context().
+          cb_context:context().
 validate_number_ownership(Numbers, Context) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}],
     #{ko := KOs} = knm_numbers:get(Numbers, Options),
@@ -213,7 +213,7 @@ validate_number_ownership(Numbers, Context) ->
     end.
 
 -spec validate_number_ownership_fold(knm_numbers:num(), knm_numbers:ko(), kz_term:ne_binaries()) ->
-                                            kz_term:ne_binaries().
+          kz_term:ne_binaries().
 validate_number_ownership_fold(_, Reason, Unauthorized) when is_atom(Reason) ->
     %% Ignoring atom reasons, i.e. 'not_found' or 'not_reconcilable'
     Unauthorized;
@@ -233,7 +233,7 @@ validate_number_ownership_fold(Number, ReasonJObj, Unauthorized) ->
 -type assignment_updates() :: [assignment_update()].
 
 -spec apply_assignment_updates(assignments_to_apply(), cb_context:context()) ->
-                                      assignment_updates().
+          assignment_updates().
 apply_assignment_updates(Updates, Context) ->
     AccountId = cb_context:account_id(Context),
     AccountUpdates = lists:foldl(fun({Num, App}, X) -> [{Num, App, AccountId} | X] end, [], Updates),
@@ -250,7 +250,7 @@ apply_assignment_updates(Updates, Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec split_port_requests({kz_term:ne_binary(), kz_term:api_binary(), kz_term:ne_binary()}, {port_req_assignments(), assignments_to_apply()}) ->
-                                 {port_req_assignments(), assignments_to_apply()}.
+          {port_req_assignments(), assignments_to_apply()}.
 split_port_requests({DID, Assign, AccountId}, {PRUpdates, NumUpdates}) ->
     Num = knm_converters:normalize(DID),
     case knm_port_request:get_portin_number(AccountId, Num) of
@@ -264,14 +264,14 @@ split_port_requests({DID, Assign, AccountId}, {PRUpdates, NumUpdates}) ->
     end.
 
 -spec assign_to_port_number(port_req_assignments()) ->
-                                   assignment_updates().
+          assignment_updates().
 assign_to_port_number(PRUpdates) ->
     [{Num, knm_port_request:assign_to_app(Num, Assign, JObj)}
      || {Num, Assign, JObj} <- PRUpdates
     ].
 
 -spec maybe_assign_to_app(assignments_to_apply(), kz_term:ne_binary()) ->
-                                 assignment_updates().
+          assignment_updates().
 maybe_assign_to_app(NumUpdates, AccountId) ->
     Options = [{'auth_by', AccountId}],
     Groups = group_by_assign_to(NumUpdates),
@@ -309,7 +309,7 @@ format_assignment_kos(KOs) ->
     maps:fold(fun format_assignment_kos_fold/3, [], KOs).
 
 -spec format_assignment_kos_fold(knm_numbers:num(), knm_numbers:ko(), assignment_updates()) ->
-                                        assignment_updates().
+          assignment_updates().
 format_assignment_kos_fold(Number, Reason, Updates) when is_atom(Reason) ->
     [{Number, {'error', Reason}} | Updates];
 format_assignment_kos_fold(Number, ReasonJObj, Updates) ->
@@ -326,7 +326,7 @@ log_assignment_update({DID, {'error', E}}) ->
     lager:debug("failed to update ~s: ~p", [DID, E]).
 
 -spec normalize_media_upload(cb_context:context(), kz_term:ne_binary(), kz_term:ne_binary(), kz_json:object(), kz_media_util:normalization_options()) ->
-                                    {cb_context:context(), kz_json:object()}.
+          {cb_context:context(), kz_json:object()}.
 normalize_media_upload(Context, FromExt, ToExt, FileJObj, NormalizeOptions) ->
     NormalizedResult = kz_media_util:normalize_media(FromExt
                                                     ,ToExt
@@ -336,7 +336,7 @@ normalize_media_upload(Context, FromExt, ToExt, FileJObj, NormalizeOptions) ->
     handle_normalized_upload(Context, FileJObj, ToExt, NormalizedResult).
 
 -spec handle_normalized_upload(cb_context:context(), kz_json:object(), kz_term:ne_binary(), kz_media_util:normalized_media()) ->
-                                      {cb_context:context(), kz_json:object()}.
+          {cb_context:context(), kz_json:object()}.
 handle_normalized_upload(Context, FileJObj, ToExt, {'ok', Contents}) ->
     lager:debug("successfully normalized to ~s", [ToExt]),
     {Major, Minor, _} = cow_mimetypes:all(<<"foo.", (ToExt)/binary>>),

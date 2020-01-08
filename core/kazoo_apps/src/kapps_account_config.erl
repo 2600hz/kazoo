@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @author James Aimonetti
@@ -100,7 +100,7 @@ to_pos_integer(Value, Default) ->
 %% @equiv get_global(Account, Category, Key, undefined)
 
 -spec get_global(api_account(), kz_term:ne_binary(), config_key()) ->
-                        kz_json:api_json_term().
+          kz_json:api_json_term().
 get_global(Account, Category, Key) ->
     get_global(Account, Category, Key, 'undefined').
 
@@ -111,7 +111,7 @@ get_global(Account, Category, Key) ->
 %%------------------------------------------------------------------------------
 
 -spec get_global(api_account(), kz_term:ne_binary(), config_key(), Default) ->
-                        kz_json:json_term() | Default.
+          kz_json:json_term() | Default.
 get_global(Account, Category, Key, Default) ->
     case load_config_from_account(account_id(Account), Category) of
         {'ok', JObj} ->
@@ -191,7 +191,7 @@ get_hierarchy(Account, Category, Key, Default) ->
 %% @equiv get_with_strategy(Strategy, Account, Category, Key, undefined)
 
 -spec get_with_strategy(kz_term:ne_binary(), api_account(), kz_term:ne_binary(), config_key()) ->
-                               kz_json:json_term().
+          kz_json:json_term().
 get_with_strategy(Strategy, Account, Category, Key) ->
     get_with_strategy(Strategy, Account, Category, Key, 'undefined').
 
@@ -226,7 +226,7 @@ get_with_strategy(Strategy, Account, Category, Key) ->
 %%------------------------------------------------------------------------------
 
 -spec get_with_strategy(kz_term:ne_binary(), api_account(), kz_term:ne_binary(), config_key(), kz_json:api_json_term()) ->
-                               kz_json:json_term().
+          kz_json:json_term().
 get_with_strategy(Strategy, Account, Category, Key, Default) ->
     ShouldMerge = is_merge_strategy(Strategy),
     case get_from_strategy_cache(Strategy, account_id(Account), Category, Key, ShouldMerge) of
@@ -243,8 +243,8 @@ get_with_strategy(Strategy, Account, Category, Key, Default) ->
     end.
 
 -spec get_from_strategy_cache(kz_term:ne_binary(), account_or_not(), config_key(), kz_term:ne_binary(), boolean()) ->
-                                     {'ok', kz_json:object()} |
-                                     {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 get_from_strategy_cache(_, 'no_account_id', _, _, _) ->
     {'error', 'no_account_id'};
 get_from_strategy_cache(Strategy, AccountId, Category, Key, 'true') ->
@@ -367,7 +367,7 @@ get_account_ancestors_or_reseller(AccountId) ->
 %%------------------------------------------------------------------------------
 
 -spec load_config_from_ancestors_fold(kz_term:ne_binaries(), kz_term:ne_binary(), kz_json:objects()) ->
-                                             kazoo_data:get_results_return().
+          kazoo_data:get_results_return().
 load_config_from_ancestors_fold([], _Category, JObjs) ->
     {'ok', JObjs};
 load_config_from_ancestors_fold([ParentId|AncestorIds], Category, JObjs) ->
@@ -440,7 +440,7 @@ set_global(Account, Category, Key, Value) ->
     set_account_or_merge_global(account_id(Account), Category, Key, Value).
 
 -spec set_account_or_merge_global(account_or_not(), kz_term:ne_binary(), config_key(), kz_json:json_term()) ->
-                                         kz_json:object().
+          kz_json:object().
 set_account_or_merge_global(no_account_id, _, Key, Value) ->
     kz_json:set_value(Key, Value, kz_json:new());
 set_account_or_merge_global(AccountId, Category, Key, Value) ->
@@ -573,7 +573,7 @@ config_origins(Doc, Acc) ->
     end.
 
 -spec strategy_cache_key(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                {?MODULE, kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
+          {?MODULE, kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
 strategy_cache_key(AccountId, Category, Strategy) ->
     {?MODULE, AccountId, Category, Strategy}.
 
@@ -679,7 +679,7 @@ migrate(Account) ->
     'ok'.
 
 -spec migrate_config_setting(kz_term:ne_binary(), migrate_setting(), migrate_setting()) ->
-                                    'ok' | {'error', any()}.
+          'ok' | {'error', any()}.
 migrate_config_setting(AccountDb, From, To) ->
     case remove_config_setting(AccountDb, From) of
         {'ok', _, []} -> 'ok';
@@ -690,7 +690,7 @@ migrate_config_setting(AccountDb, From, To) ->
     end.
 
 -spec migrate_config_setting(kz_term:ne_binary(), kz_json:object(), migrate_values(), migrate_setting()) ->
-                                    'ok' | {'error', any()}.
+          'ok' | {'error', any()}.
 migrate_config_setting(AccountDb, UpdatedFrom, Removed, To) ->
     case add_config_setting(AccountDb, To, Removed) of
         {'ok', UpdatedTo} ->
@@ -701,12 +701,12 @@ migrate_config_setting(AccountDb, UpdatedFrom, Removed, To) ->
     end.
 
 -spec add_config_setting(kz_term:ne_binary(), migrate_setting(), migrate_values()) ->
-                                'ok' | {'error', any()}.
+          'ok' | {'error', any()}.
 add_config_setting(AccountDb, {Id, Setting}, Values) ->
     add_config_setting(AccountDb, Id, Setting, Values).
 
 -spec add_config_setting(kz_term:ne_binary(), kz_term:ne_binary(), config_key(), migrate_values()) ->
-                                'ok' | {'error', any()}.
+          'ok' | {'error', any()}.
 add_config_setting(AccountDb, Id, Setting, Values) when is_binary(Id) ->
     case kz_datamgr:open_doc(AccountDb, Id) of
         {'ok', JObj} -> add_config_setting(JObj, Setting, Values);
@@ -752,14 +752,14 @@ add_config_setting(AccountDb, JObj, ToSetting, [{FromId, Node, FromSetting, Valu
     end.
 
 -spec remove_config_setting(kz_term:ne_binary(), migrate_setting()) ->
-                                   {'ok', kz_json:object(), migrate_values()} |
-                                   {'error', any()}.
+          {'ok', kz_json:object(), migrate_values()} |
+          {'error', any()}.
 remove_config_setting(AccountDb, {Id, Setting}) ->
     remove_config_setting(AccountDb, Id, Setting).
 
 -spec remove_config_setting(kz_term:ne_binary(), kz_term:ne_binary() | kz_json:object(), config_key()) ->
-                                   {'ok', kz_json:object(), migrate_values()} |
-                                   {'error', any()}.
+          {'ok', kz_json:object(), migrate_values()} |
+          {'error', any()}.
 remove_config_setting(AccountDb, Id, Setting) when is_binary(Id) ->
     case kz_datamgr:open_doc(AccountDb, Id) of
         {'ok', JObj} -> remove_config_setting(AccountDb, JObj, Setting);
@@ -774,7 +774,7 @@ remove_config_setting(AccountDb, JObj, Setting) ->
     remove_config_setting(AccountDb, Keys, JObj, []).
 
 -spec remove_config_setting(kz_term:ne_binary(), [{kz_term:ne_binary(), kz_term:ne_binary(), config_key()}], kz_json:object(), migrate_values()) ->
-                                   {'ok', kz_json:object(), migrate_values()}.
+          {'ok', kz_json:object(), migrate_values()}.
 remove_config_setting(_AccountDb, [], JObj, Removed) ->
     {'ok', JObj, Removed};
 remove_config_setting(AccountDb, [{Id, Node, Setting} | Keys], JObj, Removed) ->

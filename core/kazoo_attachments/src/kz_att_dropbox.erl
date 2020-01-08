@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2019, 2600Hz
+%%% @copyright (C) 2017-2020, 2600Hz
 %%% @doc Dropbox for attachments.
 %%% @author Luis Azedo
 %%% @end
@@ -148,8 +148,8 @@ dropbox_format_url(Map, AttInfo) ->
     kz_att_util:format_url(Map, AttInfo, dropbox_default_fields()).
 
 -spec dropbox_post(binary(), kz_term:proplist(), binary()) ->
-                          {'ok', binary(), [{binary(), binary()}]} |
-                          {'error', kz_term:ne_binary(), kz_http:ret() | atom()}.
+          {'ok', binary(), [{binary(), binary()}]} |
+          {'error', kz_term:ne_binary(), kz_http:ret() | atom()}.
 dropbox_post(Url, Headers, Body) ->
     case kz_http:post(Url, Headers, Body) of
         {'ok', 200, ResponseHeaders, ResponseBody} ->

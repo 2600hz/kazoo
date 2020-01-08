@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -289,7 +289,7 @@ read_file(Path) ->
     end.
 
 -spec write_index_file(file:filename_all(), kz_term:ne_binary(), kz_term:ne_binary() | {'ok', binary()} | {'error', any()}) ->
-                              {'ok', binary()} | {'error', any()}.
+          {'ok', binary()} | {'error', any()}.
 write_index_file(Path, Header, NewLine) when is_binary(NewLine) ->
     write_index_file(Path, NewLine, read_index_file(Path, Header, NewLine));
 write_index_file(_, _, {'error', _}=Error) ->

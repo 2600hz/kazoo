@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc Eavesdrop feature code
 %%%
 %%% <h4>Data options:</h4>
@@ -102,7 +102,7 @@ build_flow_data(_Call, Data, _AuthorizingType) ->
     kz_json:from_list(Data).
 
 -spec get_target_for_extension(kz_term:ne_binary(), kapps_call:call()) ->
-                                      target().
+          target().
 get_target_for_extension(Exten, Call) ->
     case cf_flow:lookup(Exten, kapps_call:account_id(Call)) of
         {'ok', Callflow, _} ->
@@ -111,7 +111,7 @@ get_target_for_extension(Exten, Call) ->
     end.
 
 -spec maybe_correct_target(target(), kz_term:api_binary(), kapps_call:call()) ->
-                                  boolean().
+          boolean().
 maybe_correct_target(_Target, 'undefined', _Call) ->
     'true';
 maybe_correct_target('error', _GroupId, _Call) ->

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Lookup cnam
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -54,7 +54,7 @@ start_link(_) ->
     gen_server:start_link(?SERVER, [], []).
 
 -spec render(kz_json:object(), kz_term:ne_binary()) -> {'ok', iolist()} |
-                                                       {'error', 'timeout'}.
+          {'error', 'timeout'}.
 render(JObj, Template) ->
     case catch poolboy:checkout(?STEPSWITCH_CNAM_POOL, 'false', 1000) of
         W when is_pid(W) ->

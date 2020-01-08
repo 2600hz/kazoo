@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
 %%% @end
@@ -167,7 +167,7 @@ details_groups(Details) ->
     details_groups(Details, {<<"details">>, []}).
 
 -spec details_groups(kz_term:proplist(), {kz_term:ne_binary(), kz_term:proplist()}) ->
-                            kz_term:proplist().
+          kz_term:proplist().
 details_groups([], {_, Acc}) -> Acc;
 
 details_groups([{<<"key_value_store">>, V} | KS], {Group, Acc}) ->
@@ -188,7 +188,7 @@ details_groups([KV | KS], {Group, Acc}) ->
     details_groups(KS, {Group, add_to_group(Group, KV, Acc)}).
 
 -spec add_to_group(kz_term:ne_binary(), {kz_json:path(), kz_json:json_term()}, kz_term:proplist()) ->
-                          kz_term:proplist().
+          kz_term:proplist().
 add_to_group(Group, KV, Acc) ->
     case props:get_value(Group, Acc) of
         'undefined' -> props:set_value(Group,[KV], Acc);

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
@@ -99,8 +99,8 @@ print({error, R}) ->
     no_return.
 
 -spec load_doc_from_file(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                {'ok', kz_json:object()} |
-                                data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 load_doc_from_file(Db, _FilePath) when size(Db) == 0 ->
     {'error', 'invalid_db_name'};
 load_doc_from_file(Db, FilePath) ->

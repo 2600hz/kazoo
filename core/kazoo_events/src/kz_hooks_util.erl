@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2017-2019, 2600Hz
+%%% @copyright (C) 2017-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
@@ -223,7 +223,7 @@ handle_call_event(JObj, Props) ->
     handle_call_event(JObj, AccountId, HookEvent, CallId, props:get_is_true('rr', Props)).
 
 -spec handle_call_event(kz_json:object(), kz_term:api_binary(), kz_term:ne_binary(), kz_term:ne_binary(), boolean()) ->
-                               'ok'.
+          'ok'.
 handle_call_event(JObj, 'undefined', <<"CHANNEL_CREATE">>, CallId, RR) ->
     lager:debug("event 'channel_create' had no account id"),
     case lookup_account_id(JObj) of

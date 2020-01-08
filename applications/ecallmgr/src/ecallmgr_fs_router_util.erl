@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Receive route(dialplan) requests from FS, request routes and respond
 %%% @author James Aimonetti
 %%% @end
@@ -23,13 +23,13 @@
 -type search_ret() :: 'ok' | {'ok', kz_json:object()}.
 
 -spec search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data()) ->
-                              search_ret().
+          search_ret().
 search_for_route(Section, Node, FetchId, CallId, Props) ->
     Authz = kapps_config:is_true(?APP_NAME, <<"authz_enabled">>, 'false'),
     search_for_route(Section, Node, FetchId, CallId, Props, Authz).
 
 -spec search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data(), boolean()) ->
-                              search_ret().
+          search_ret().
 search_for_route(Section, Node, FetchId, CallId, Props, 'false') ->
     do_search_for_route(Section, Node, FetchId, CallId, Props, 'undefined');
 search_for_route(Section, Node, FetchId, CallId, Props, 'true') ->
@@ -38,7 +38,7 @@ search_for_route(Section, Node, FetchId, CallId, Props, 'true') ->
     do_search_for_route(Section, Node, FetchId, CallId, Props, AuthzWorker).
 
 -spec do_search_for_route(atom(), atom(), kz_term:ne_binary(), kz_term:ne_binary(), kzd_freeswitch:data(), kz_term:api_pid_ref()) ->
-                                 search_ret().
+          search_ret().
 do_search_for_route(Section, Node, FetchId, CallId, Props, AuthzWorker) ->
     Request = route_req(CallId, FetchId, Props, Node),
     ReqResp = kz_amqp_worker:call(Request
@@ -61,7 +61,7 @@ spawn_authorize_call_fun(Node, CallId, Props) ->
     {Pid, Ref}.
 
 -spec authorize_call_fun(pid(), reference(), atom(), kz_term:ne_binary(), kzd_freeswitch:data()) ->
-                                {'authorize_reply', reference(), ecallmgr_fs_authz:authz_reply()}.
+          {'authorize_reply', reference(), ecallmgr_fs_authz:authz_reply()}.
 authorize_call_fun(Parent, Ref, Node, CallId, Props) ->
     kz_util:put_callid(CallId),
     Parent ! {'authorize_reply', Ref, ecallmgr_fs_authz:authorize(Props, CallId, Node)}.
@@ -212,7 +212,7 @@ get_body(Props) ->
     props:get_value(<<"body">>, Props).
 
 -spec get_redirected(kz_term:proplist()) ->
-                            {kz_term:api_binary(), kz_term:api_binary()}.
+          {kz_term:api_binary(), kz_term:api_binary()}.
 get_redirected(Props) ->
     case props:get_value(<<"variable_last_bridge_hangup_cause">>, Props) of
         <<"REDIRECTION_TO_NEW_DESTINATION">> ->

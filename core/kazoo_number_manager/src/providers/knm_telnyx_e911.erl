@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Handle e911 provisioning
 %%% @author Pierre Fenoll
 %%% @end
@@ -119,8 +119,8 @@ maybe_update_e911(Number, 'false') ->
     end.
 
 -spec update_e911(knm_number:knm_number(), kz_json:object()) ->
-                         {'ok', knm_number:knm_number()} |
-                         {'error', kz_term:ne_binary()}.
+          {'ok', knm_number:knm_number()} |
+          {'error', kz_term:ne_binary()}.
 update_e911(Number, AddressJObj) ->
     remove_number_address(Number),
     case create_address(Number, AddressJObj) of
@@ -129,8 +129,8 @@ update_e911(Number, AddressJObj) ->
     end.
 
 -spec create_address(knm_number:knm_number(), kz_json:object()) ->
-                            {'ok', kz_term:ne_binary()} |
-                            {'error', kz_term:ne_binary() | any()}.
+          {'ok', kz_term:ne_binary()} |
+          {'error', kz_term:ne_binary() | any()}.
 create_address(Number, AddressJObj) ->
     Body = e911_address(Number, AddressJObj),
     try knm_telnyx_util:req('post', ["e911_addresses"], Body) of
@@ -152,8 +152,8 @@ create_address(Number, AddressJObj) ->
     end.
 
 -spec assign_address(knm_number:knm_number(), kz_term:ne_binary() | 'null') ->
-                            {'ok', knm_number:knm_number()} |
-                            {'error', kz_term:ne_binary()}.
+          {'ok', knm_number:knm_number()} |
+          {'error', kz_term:ne_binary()}.
 assign_address(Number, AddressId) ->
     IsEnabling = is_binary(AddressId),
     Body = kz_json:from_list([{<<"e911_enabled">>, IsEnabling}
@@ -188,7 +188,7 @@ set_address_id(Number, AddressId) ->
     knm_number:set_phone_number(Number, NewPN).
 
 -spec remove_number(knm_number:knm_number()) -> {'ok', knm_number:knm_number()} |
-                                                {'error', kz_term:ne_binary()}.
+          {'error', kz_term:ne_binary()}.
 remove_number(Number) ->
     CarrierData = knm_phone_number:carrier_data(knm_number:phone_number(Number)),
     case kz_json:get_ne_binary_value(?ADDRESS_ID, CarrierData) of

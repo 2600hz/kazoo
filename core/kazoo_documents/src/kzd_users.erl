@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -744,8 +744,8 @@ set_voicemail_notify_callback(Doc, VoicemailNotifyCallback) ->
     kz_json:set_value([<<"voicemail">>, <<"notify">>, <<"callback">>], VoicemailNotifyCallback, Doc).
 
 -spec fetch(kz_term:api_ne_binary(), kz_term:api_ne_binary()) ->
-                   {'ok', doc()} |
-                   kz_datamgr:data_error().
+          {'ok', doc()} |
+          kz_datamgr:data_error().
 fetch('undefined', _UserId) ->
     {'error', 'invalid_db_name'};
 fetch(_Account, 'undefined') ->

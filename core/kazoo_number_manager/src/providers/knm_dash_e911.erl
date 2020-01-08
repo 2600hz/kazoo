@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Handle e911 provisioning
 %%% @author Peter Defebvre
 %%% @end
@@ -37,13 +37,13 @@
 %%------------------------------------------------------------------------------
 
 -spec save(knm_number:knm_number()) ->
-                  knm_number:knm_number().
+          knm_number:knm_number().
 save(Number) ->
     State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
 
 -spec save(knm_number:knm_number(), kz_term:api_binary()) ->
-                  knm_number:knm_number().
+          knm_number:knm_number().
 save(Number, ?NUMBER_STATE_RESERVED) ->
     maybe_update_e911(Number);
 save(Number, ?NUMBER_STATE_IN_SERVICE) ->
@@ -59,7 +59,7 @@ save(Number, _State) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) ->
-                    knm_number:knm_number().
+          knm_number:knm_number().
 delete(Number) ->
     case feature(Number) of
         'undefined' -> Number;
@@ -218,9 +218,9 @@ parse_response(Else, _) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec add_location(kz_term:ne_binary(), [xml_location()], kz_term:ne_binary()) ->
-                          {'geocoded', kz_json:object()} |
-                          {'provisioned', kz_json:object()} |
-                          {'error', binary()}.
+          {'geocoded', kz_json:object()} |
+          {'provisioned', kz_json:object()} |
+          {'error', binary()}.
 add_location(Number, Location, CallerName) ->
     Props = [{'uri', [{'uri', [kz_term:to_list(<<"tel:", (knm_converters:to_1npan(Number))/binary>>)]}
                      ,{'callername', [kz_term:to_list(CallerName)]}
@@ -291,8 +291,8 @@ remove_number(Number) ->
 -type request_props() :: [request_prop()].
 
 -spec emergency_provisioning_request(atom(), request_props()) ->
-                                            {'ok', kz_types:xml_el()} |
-                                            {'error', emergency_provisioning_error()}.
+          {'ok', kz_types:xml_el()} |
+          {'error', emergency_provisioning_error()}.
 emergency_provisioning_request(Verb, Props) ->
     URL = list_to_binary([?EMERG_URL, "/", kz_term:to_lower_binary(Verb)]),
     Body = unicode:characters_to_binary(

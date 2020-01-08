@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @author Sponsored by GTNetwork LLC, Implemented by SIPLABS LLC
@@ -112,8 +112,8 @@
 -define(FLUSH_TYPES, []).
 
 -spec call_waiting(kz_term:api_terms()) ->
-                          {'ok', iolist()} |
-                          {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 call_waiting(Props) when is_list(Props) ->
     case call_waiting_v(Props) of
         'true' -> kz_api:build_message(Props, ?CALL_REQ_HEADERS, ?WAITING_HEADERS);
@@ -129,8 +129,8 @@ call_waiting_v(JObj) ->
     call_waiting_v(kz_json:to_proplist(JObj)).
 
 -spec call_missed(kz_term:api_terms()) ->
-                         {'ok', iolist()} |
-                         {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 call_missed(Props) when is_list(Props) ->
     case call_missed_v(Props) of
         'true' -> kz_api:build_message(Props, ?CALL_REQ_HEADERS, ?MISS_HEADERS);
@@ -146,8 +146,8 @@ call_missed_v(JObj) ->
     call_missed_v(kz_json:to_proplist(JObj)).
 
 -spec call_abandoned(kz_term:api_terms()) ->
-                            {'ok', iolist()} |
-                            {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 call_abandoned(Props) when is_list(Props) ->
     case call_abandoned_v(Props) of
         'true' -> kz_api:build_message(Props, ?CALL_REQ_HEADERS, ?ABANDON_HEADERS);
@@ -163,8 +163,8 @@ call_abandoned_v(JObj) ->
     call_abandoned_v(kz_json:to_proplist(JObj)).
 
 -spec call_handled(kz_term:api_terms()) ->
-                          {'ok', iolist()} |
-                          {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 call_handled(Props) when is_list(Props) ->
     case call_handled_v(Props) of
         'true' -> kz_api:build_message(Props, ?CALL_REQ_HEADERS, ?HANDLED_HEADERS);
@@ -180,8 +180,8 @@ call_handled_v(JObj) ->
     call_handled_v(kz_json:to_proplist(JObj)).
 
 -spec call_processed(kz_term:api_terms()) ->
-                            {'ok', iolist()} |
-                            {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 call_processed(Props) when is_list(Props) ->
     case call_processed_v(Props) of
         'true' -> kz_api:build_message(Props, ?CALL_REQ_HEADERS, ?PROCESS_HEADERS);
@@ -197,8 +197,8 @@ call_processed_v(JObj) ->
     call_processed_v(kz_json:to_proplist(JObj)).
 
 -spec call_flush(kz_term:api_terms()) ->
-                        {'ok', iolist()} |
-                        {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 call_flush(Props) when is_list(Props) ->
     case call_flush_v(Props) of
         'true' -> kz_api:build_message(Props, ?CALL_REQ_HEADERS, ?FLUSH_HEADERS);
@@ -224,8 +224,8 @@ call_flush_v(JObj) ->
 -define(CURRENT_CALLS_REQ_TYPES, []).
 
 -spec current_calls_req(kz_term:api_terms()) ->
-                               {'ok', iolist()} |
-                               {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 current_calls_req(Props) when is_list(Props) ->
     case current_calls_req_v(Props) of
         'true' -> kz_api:build_message(Props, ?CURRENT_CALLS_REQ_HEADERS, ?OPTIONAL_CURRENT_CALLS_REQ_HEADERS);
@@ -248,8 +248,8 @@ current_calls_req_v(JObj) ->
 -define(CURRENT_CALLS_ERR_TYPES, []).
 
 -spec current_calls_err(kz_term:api_terms()) ->
-                               {'ok', iolist()} |
-                               {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 current_calls_err(Props) when is_list(Props) ->
     case current_calls_err_v(Props) of
         'true' -> kz_api:build_message(Props, ?CURRENT_CALLS_ERR_HEADERS, ?OPTIONAL_CURRENT_CALLS_ERR_HEADERS);
@@ -274,8 +274,8 @@ current_calls_err_v(JObj) ->
 -define(CURRENT_CALLS_RESP_TYPES, []).
 
 -spec current_calls_resp(kz_term:api_terms()) ->
-                                {'ok', iolist()} |
-                                {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 current_calls_resp(Props) when is_list(Props) ->
     case current_calls_resp_v(Props) of
         'true' -> kz_api:build_message(Props, ?CURRENT_CALLS_RESP_HEADERS, ?OPTIONAL_CURRENT_CALLS_RESP_HEADERS);
@@ -301,8 +301,8 @@ current_calls_resp_v(JObj) ->
                                      ]).
 
 -spec average_wait_time_req(kz_term:api_terms()) ->
-                                   {'ok', iolist()} |
-                                   {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 average_wait_time_req(Props) when is_list(Props) ->
     case average_wait_time_req_v(Props) of
         'true' -> kz_api:build_message(Props, ?AVERAGE_WAIT_TIME_REQ_HEADERS, ?OPTIONAL_AVERAGE_WAIT_TIME_REQ_HEADERS);
@@ -325,8 +325,8 @@ average_wait_time_req_v(JObj) ->
 -define(AVERAGE_WAIT_TIME_ERR_TYPES, [{<<"Error-Reason">>, fun is_binary/1}]).
 
 -spec average_wait_time_err(kz_term:api_terms()) ->
-                                   {'ok', iolist()} |
-                                   {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 average_wait_time_err(Props) when is_list(Props) ->
     case average_wait_time_err_v(Props) of
         'true' -> kz_api:build_message(Props, ?AVERAGE_WAIT_TIME_ERR_HEADERS, ?OPTIONAL_AVERAGE_WAIT_TIME_ERR_HEADERS);
@@ -349,8 +349,8 @@ average_wait_time_err_v(JObj) ->
 -define(AVERAGE_WAIT_TIME_RESP_TYPES, [{<<"Average-Wait-Time">>, fun is_integer/1}]).
 
 -spec average_wait_time_resp(kz_term:api_terms()) ->
-                                    {'ok', iolist()} |
-                                    {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 average_wait_time_resp(Props) when is_list(Props) ->
     case average_wait_time_resp_v(Props) of
         'true' -> kz_api:build_message(Props, ?AVERAGE_WAIT_TIME_RESP_HEADERS, ?OPTIONAL_AVERAGE_WAIT_TIME_RESP_HEADERS);
@@ -375,8 +375,8 @@ average_wait_time_resp_v(JObj) ->
 -define(STATUS_REQ_TYPES, []).
 
 -spec status_req(kz_term:api_terms()) ->
-                        {'ok', iolist()} |
-                        {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 status_req(Props) when is_list(Props) ->
     case status_req_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATUS_REQ_HEADERS, ?OPTIONAL_STATUS_REQ_HEADERS);
@@ -399,8 +399,8 @@ status_req_v(JObj) ->
 -define(STATUS_ERR_TYPES, []).
 
 -spec status_err(kz_term:api_terms()) ->
-                        {'ok', iolist()} |
-                        {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 status_err(Props) when is_list(Props) ->
     case status_err_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATUS_ERR_HEADERS, ?OPTIONAL_STATUS_ERR_HEADERS);
@@ -423,8 +423,8 @@ status_err_v(JObj) ->
 -define(STATUS_RESP_TYPES, []).
 
 -spec status_resp(kz_term:api_terms()) ->
-                         {'ok', iolist()} |
-                         {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 status_resp(Props) when is_list(Props) ->
     case status_resp_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATUS_RESP_HEADERS, ?OPTIONAL_STATUS_RESP_HEADERS);
@@ -450,8 +450,8 @@ status_resp_v(JObj) ->
 -define(STATUS_TYPES, []).
 
 -spec status_update(kz_term:api_terms()) ->
-                           {'ok', iolist()} |
-                           {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 status_update(Props) when is_list(Props) ->
     case status_update_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATUS_HEADERS, ?STATUS_OPTIONAL_HEADERS);
@@ -468,8 +468,8 @@ status_update_v(JObj) ->
     status_update_v(kz_json:to_proplist(JObj)).
 
 -spec status_ready(kz_term:api_terms()) ->
-                          {'ok', iolist()} |
-                          {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 status_ready(Props) when is_list(Props) ->
     case status_ready_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATUS_HEADERS, ?STATUS_OPTIONAL_HEADERS);
@@ -485,8 +485,8 @@ status_ready_v(JObj) ->
     status_ready_v(kz_json:to_proplist(JObj)).
 
 -spec status_logged_in(kz_term:api_terms()) ->
-                              {'ok', iolist()} |
-                              {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 status_logged_in(Props) when is_list(Props) ->
     case status_logged_in_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATUS_HEADERS, ?STATUS_OPTIONAL_HEADERS);
@@ -502,8 +502,8 @@ status_logged_in_v(JObj) ->
     status_logged_in_v(kz_json:to_proplist(JObj)).
 
 -spec status_logged_out(kz_term:api_terms()) ->
-                               {'ok', iolist()} |
-                               {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 status_logged_out(Props) when is_list(Props) ->
     case status_logged_out_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATUS_HEADERS, ?STATUS_OPTIONAL_HEADERS);
@@ -519,8 +519,8 @@ status_logged_out_v(JObj) ->
     status_logged_out_v(kz_json:to_proplist(JObj)).
 
 -spec status_pending_logged_out(kz_term:api_terms()) ->
-                                       {'ok', iolist()} |
-                                       {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 status_pending_logged_out(Props) when is_list(Props) ->
     case status_pending_logged_out_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATUS_HEADERS, ?STATUS_OPTIONAL_HEADERS);
@@ -536,8 +536,8 @@ status_pending_logged_out_v(JObj) ->
     status_pending_logged_out_v(kz_json:to_proplist(JObj)).
 
 -spec status_connecting(kz_term:api_terms()) ->
-                               {'ok', iolist()} |
-                               {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 status_connecting(Props) when is_list(Props) ->
     case status_connecting_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATUS_HEADERS, ?STATUS_OPTIONAL_HEADERS);
@@ -553,8 +553,8 @@ status_connecting_v(JObj) ->
     status_connecting_v(kz_json:to_proplist(JObj)).
 
 -spec status_connected(kz_term:api_terms()) ->
-                              {'ok', iolist()} |
-                              {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 status_connected(Props) when is_list(Props) ->
     case status_connected_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATUS_HEADERS, ?STATUS_OPTIONAL_HEADERS);
@@ -570,8 +570,8 @@ status_connected_v(JObj) ->
     status_connected_v(kz_json:to_proplist(JObj)).
 
 -spec status_wrapup(kz_term:api_terms()) ->
-                           {'ok', iolist()} |
-                           {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 status_wrapup(Props) when is_list(Props) ->
     case status_wrapup_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATUS_HEADERS, ?STATUS_OPTIONAL_HEADERS);
@@ -587,8 +587,8 @@ status_wrapup_v(JObj) ->
     status_wrapup_v(kz_json:to_proplist(JObj)).
 
 -spec status_paused(kz_term:api_terms()) ->
-                           {'ok', iolist()} |
-                           {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 status_paused(Props) when is_list(Props) ->
     case status_paused_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATUS_HEADERS, ?STATUS_OPTIONAL_HEADERS);
@@ -604,8 +604,8 @@ status_paused_v(JObj) ->
     status_paused_v(kz_json:to_proplist(JObj)).
 
 -spec status_outbound(kz_term:api_terms()) ->
-                             {'ok', iolist()} |
-                             {'error', string()}.
+          {'ok', iolist()} |
+          {'error', string()}.
 status_outbound(Props) when is_list(Props) ->
     case status_outbound_v(Props) of
         'true' -> kz_api:build_message(Props, ?STATUS_HEADERS, ?STATUS_OPTIONAL_HEADERS);

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc Handle channel move logic
 %%% @author James Aimonetti
 %%% @author Karl Anderson
@@ -34,8 +34,8 @@ move(UUID, ONode, NNode) ->
 
 %% listens for the event from FS with the XML
 -spec wait_for_teardown(kz_term:ne_binary(), atom()) ->
-                               {'ok', kzd_freeswitch:data()} |
-                               {'error', 'timeout'}.
+          {'ok', kzd_freeswitch:data()} |
+          {'error', 'timeout'}.
 wait_for_teardown(UUID, OriginalNode) ->
     receive
         ?CHANNEL_MOVE_RELEASED_MSG(OriginalNode, UUID, Evt) ->

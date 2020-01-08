@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2015-2019, 2600Hz
+%%% @copyright (C) 2015-2020, 2600Hz
 %%% @doc Generate schema for Kazoo AMQP APIs.
 %%% @author James Aimonetti
 %%% @end
@@ -120,8 +120,8 @@ process_module(KapiModule) ->
     Schemas.
 
 -spec print_dot(kz_term:ne_binary() | module(), acc()) ->
-                       acc() |
-                       {'skip', acc()}.
+          acc() |
+          {'skip', acc()}.
 print_dot(<<"kapi_fs">>, #acc{}=Acc) ->
     {'skip', Acc};
 print_dot(<<"kapi_schemas">>, #acc{}=Acc) ->

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Luis Azedo
 %%% @end
@@ -200,8 +200,8 @@ send_notify(PrinterId, JID) ->
     kz_amqp_worker:cast(Payload, fun kapi_xmpp:publish_event/1).
 
 -spec connect(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                     {'ok', xmpp_client()} |
-                     {'error', any()}.
+          {'ok', xmpp_client()} |
+          {'error', any()}.
 connect(JID, Password) ->
     Options = [{username, kapi_xmpp:jid_username(JID)}
               ,{server, kapi_xmpp:jid_server(JID)}

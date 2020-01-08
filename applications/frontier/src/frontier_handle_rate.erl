@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author SIPLABS, LLC (Maksim Krzhemenevskiy)
 %%% @end
@@ -188,7 +188,7 @@ deny_rates_for_entity(Entity, MethodList) ->
                  ).
 
 -spec construct_records(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary() | integer(), kz_term:ne_binary() | integer()) ->
-                               kz_json:objects().
+          kz_json:objects().
 construct_records(Method, Entity, RPM, RPS) ->
     {Name, Type} = case binary:split(Entity, <<"@">>) of
                        [User, _] -> {User, <<"device">>};
@@ -212,7 +212,7 @@ section_type(<<"realm">>) -> <<"account">>;
 section_type(<<"device">>) -> <<"device">>.
 
 -spec fetch_rates_from_sys_config(kz_term:ne_binary() | kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binaries()) ->
-                                         kz_json:objects().
+          kz_json:objects().
 fetch_rates_from_sys_config(_, _, []) ->
     lager:info("sysconfig: Empty request - empty response"),
     [];
@@ -275,7 +275,7 @@ check_fallbacks(Tree, MethodList, Realm) ->
     end.
 
 -spec check_fallback(kz_term:ne_binary(), atom() | kz_json:objects(), kz_term:ne_binaries(), kz_term:ne_binary()) ->
-                            atom() | kz_json:objects().
+          atom() | kz_json:objects().
 check_fallback(AccountId, 'empty', MethodList, Realm) ->
     AccountDB = kz_util:format_account_id(AccountId, 'encoded'),
     ViewOpts = [{'key', AccountId}],

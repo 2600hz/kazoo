@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2014-2019, 2600Hz
+%%% @copyright (C) 2014-2020, 2600Hz
 %%% @doc Put the call on hold
 %%% Data = {
 %%%   "moh_aleg":"media_id"
@@ -20,7 +20,7 @@
 -include("konami.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'continue', kapps_call:call()}.
+          {'continue', kapps_call:call()}.
 handle(Data, Call) ->
     AMOH = kz_json:get_value(<<"moh_aleg">>, Data),
     AMOHToPlay = kz_media_util:media_path(AMOH, kapps_call:account_id(Call)),

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Dialplan API commands.
 %%% @author James Aimonetti
 %%% @author Karl Anderson
@@ -188,8 +188,8 @@ unbridge_v(JObj) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec bridge_endpoint(kz_term:api_terms()) ->
-                             {'ok', kz_term:proplist()} |
-                             {'error', string()}.
+          {'ok', kz_term:proplist()} |
+          {'error', string()}.
 bridge_endpoint(Prop) when is_list(Prop) ->
     case bridge_endpoint_v(Prop) of
         'true' -> kz_api:build_message_specific(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS);
@@ -199,8 +199,8 @@ bridge_endpoint(JObj) ->
     bridge_endpoint(kz_json:to_proplist(JObj)).
 
 -spec bridge_endpoint_headers(kz_term:api_terms()) ->
-                                     {'ok', kz_term:proplist()} |
-                                     {'error', string()}.
+          {'ok', kz_term:proplist()} |
+          {'error', string()}.
 bridge_endpoint_headers(Prop) when is_list(Prop) ->
     kz_api:build_message_specific_headers(Prop, ?BRIDGE_REQ_ENDPOINT_HEADERS, ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS);
 bridge_endpoint_headers(JObj) ->
@@ -239,8 +239,8 @@ page_v(Prop) when is_list(Prop) ->
 page_v(JObj) -> page_v(kz_json:to_proplist(JObj)).
 
 -spec store(kz_term:api_terms()) ->
-                   {'ok', kz_term:proplist()} |
-                   {'error', string()}.
+          {'ok', kz_term:proplist()} |
+          {'error', string()}.
 store(Prop) when is_list(Prop) ->
     case store_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?STORE_REQ_HEADERS, ?OPTIONAL_STORE_REQ_HEADERS);
@@ -369,8 +369,8 @@ tones_req_tone_v(Prop) when is_list(Prop) ->
 tones_req_tone_v(JObj) -> tones_req_tone_v(kz_json:to_proplist(JObj)).
 
 -spec tones_req_tone_headers(kz_term:api_terms()) ->
-                                    {'ok', kz_term:proplist()} |
-                                    {'error', string()}.
+          {'ok', kz_term:proplist()} |
+          {'error', string()}.
 tones_req_tone_headers(Prop) when is_list(Prop) ->
     kz_api:build_message_specific_headers(Prop, ?TONES_REQ_TONE_HEADERS, ?OPTIONAL_TONES_REQ_TONE_HEADERS);
 tones_req_tone_headers(JObj) -> tones_req_tone_headers(kz_json:to_proplist(JObj)).
@@ -1233,8 +1233,8 @@ fax_detection_v(Prop) when is_list(Prop) ->
 fax_detection_v(JObj) -> fax_detection_v(kz_json:to_proplist(JObj)).
 
 -spec store_vm(kz_term:api_terms()) ->
-                      {'ok', kz_term:proplist()} |
-                      {'error', string()}.
+          {'ok', kz_term:proplist()} |
+          {'error', string()}.
 store_vm(Prop) when is_list(Prop) ->
     case store_vm_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?STORE_VM_REQ_HEADERS, ?OPTIONAL_STORE_VM_REQ_HEADERS);

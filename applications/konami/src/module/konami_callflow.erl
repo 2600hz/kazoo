@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Overlay a callflow onto the caller
 %%% data:{
 %%%   "id":"callflow_id"
@@ -17,7 +17,7 @@
 -define(LIST_BY_NUMBER, <<"callflows/listing_by_number">>).
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'stop', kapps_call:call()}.
+          {'stop', kapps_call:call()}.
 handle(Data, Call) ->
     {'ok', CallflowJObj} = callflow(Data, Call),
     Flow = kz_json:get_value(<<"flow">>, CallflowJObj),

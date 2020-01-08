@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Allow resellers directly below the master account to find
 %%% manually-added `available' numbers.
 %%%
@@ -45,7 +45,7 @@ is_local() -> 'true'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_numbers(kz_term:ne_binaries()) -> {ok, kz_json:object()} |
-                                              {error, any()}.
+          {error, any()}.
 check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%------------------------------------------------------------------------------
@@ -54,8 +54,8 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 %% @end
 %%------------------------------------------------------------------------------
 -spec find_numbers(kz_term:ne_binary(), pos_integer(), knm_search:options()) ->
-                          {'ok', knm_number:knm_numbers()} |
-                          {'error', any()}.
+          {'ok', knm_number:knm_numbers()} |
+          {'error', any()}.
 find_numbers(Prefix, Quantity, Options) ->
     case knm_carriers:account_id(Options) of
         'undefined' -> {'error', 'not_available'};
@@ -66,8 +66,8 @@ find_numbers(Prefix, Quantity, Options) ->
     end.
 
 -spec do_find_numbers(kz_term:ne_binary(), pos_integer(), non_neg_integer(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                             {'ok', knm_number:knm_numbers()} |
-                             {'error', any()}.
+          {'ok', knm_number:knm_numbers()} |
+          {'error', any()}.
 do_find_numbers(<<"+",_/binary>>=Prefix, Quantity, Offset, AccountId, QID)
   when is_integer(Quantity), Quantity > 0 ->
     Local = erlang:atom_to_binary(?MODULE, 'utf8'),
@@ -96,7 +96,7 @@ do_find_numbers(_, _, _, _, _) ->
     {'error', 'not_available'}.
 
 -spec find_more(kz_term:ne_binary(), pos_integer(), non_neg_integer(), kz_term:ne_binary(), non_neg_integer(), kz_term:ne_binary(), knm_number:knm_numbers()) ->
-                       {'ok', knm_number:knm_numbers()}.
+          {'ok', knm_number:knm_numbers()}.
 find_more(Prefix, Quantity, Offset, AccountId, NotEnough, QID, Numbers)
   when NotEnough < Quantity ->
     case do_find_numbers(Prefix, Quantity - NotEnough, Offset + NotEnough, AccountId, QID) of
@@ -134,7 +134,7 @@ acquire_number(Number) -> Number.
 %%------------------------------------------------------------------------------
 
 -spec disconnect_number(knm_number:knm_number()) ->
-                               knm_number:knm_number().
+          knm_number:knm_number().
 disconnect_number(Number) -> Number.
 
 %%------------------------------------------------------------------------------

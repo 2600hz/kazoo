@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
 %%% @end
@@ -83,7 +83,7 @@ handle_outbound_cnam(Number) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec try_update_outbound_cnam(knm_number:knm_number(), kz_term:ne_binary()) ->
-                                      knm_number:knm_number().
+          knm_number:knm_number().
 try_update_outbound_cnam(Number, NewCNAM) ->
     DID = knm_phone_number:number(knm_number:phone_number(Number)),
     case
@@ -102,7 +102,7 @@ try_update_outbound_cnam(Number, NewCNAM) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec outbound_cnam_options(kz_term:ne_binary(), kz_term:ne_binary()) ->
-                                   knm_vitelity_util:query_options().
+          knm_vitelity_util:query_options().
 outbound_cnam_options(DID, NewCNAM) ->
     [{'qs', [{'cmd', <<"lidb">>}
             ,{'did', knm_converters:to_npan(DID)}
@@ -118,7 +118,7 @@ outbound_cnam_options(DID, NewCNAM) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec process_outbound_xml_resp(knm_number:knm_number(), kz_term:ne_binary(), kz_term:text()) ->
-                                       knm_number:knm_number().
+          knm_number:knm_number().
 process_outbound_xml_resp(Number, FeatureData, XML_binary) ->
     XML = unicode:characters_to_list(XML_binary),
     try xmerl_scan:string(XML) of
@@ -138,7 +138,7 @@ process_outbound_xml_resp(Number, FeatureData, XML_binary) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec process_outbound_resp(knm_number:knm_number(), kz_term:ne_binary(), kz_types:xml_els()) ->
-                                   knm_number:knm_number().
+          knm_number:knm_number().
 process_outbound_resp(Number, FeatureData, Children) ->
     case knm_vitelity_util:xml_resp_status_msg(Children) of
         <<"ok">> -> check_outbound_response_tag(Number, FeatureData, Children);
@@ -152,7 +152,7 @@ process_outbound_resp(Number, FeatureData, Children) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec check_outbound_response_tag(knm_number:knm_number(), kz_term:ne_binary(), kz_types:xml_els()) ->
-                                         knm_number:knm_number().
+          knm_number:knm_number().
 check_outbound_response_tag(Number, NewCNAM, Children) ->
     case knm_vitelity_util:xml_resp_response_msg(Children) of
         'undefined' -> knm_errors:unspecified('resp_tag_not_found', Number);
@@ -230,7 +230,7 @@ remove_inbound_options(Number) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec add_inbound_cnam(knm_number:knm_number()) ->
-                              knm_number:knm_number().
+          knm_number:knm_number().
 add_inbound_cnam(Number) ->
     DID = knm_phone_number:number(knm_number:phone_number(Number)),
     case
@@ -264,7 +264,7 @@ inbound_options(DID) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec process_xml_resp(knm_number:knm_number(), kz_term:text()) ->
-                              knm_number:knm_number().
+          knm_number:knm_number().
 process_xml_resp(Number, XML) ->
     try xmerl_scan:string(XML) of
         {XmlEl, _} -> process_xml_content_tag(Number, XmlEl)
@@ -279,7 +279,7 @@ process_xml_resp(Number, XML) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec process_xml_content_tag(knm_number:knm_number(), kz_types:xml_el()) ->
-                                     knm_number:knm_number().
+          knm_number:knm_number().
 process_xml_content_tag(Number, #xmlElement{name='content'
                                            ,content=Children
                                            }) ->

@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Metaflows execute on top of a call
 %%% /accounts/{account_id}/metaflows - manip account metaflows
 %%% /accounts/{account_id}/users/{user_id}/metaflows - manip user's metaflows
@@ -121,13 +121,13 @@ validate_delete_metaflows(Context, Doc) ->
                                              )).
 
 -spec validate_set_metaflows(cb_context:context()) ->
-                                    cb_context:context().
+          cb_context:context().
 validate_set_metaflows(Context) ->
     lager:debug("metaflow data is valid, setting on thing"),
     validate_set_metaflows(Context, cb_context:doc(Context), thing_doc(Context)).
 
 -spec validate_set_metaflows(cb_context:context(), kz_json:object(), kz_term:api_object()) ->
-                                    cb_context:context().
+          cb_context:context().
 validate_set_metaflows(Context, Metaflows, 'undefined') ->
     lager:debug("no doc found, using account doc"),
     {'ok', AccountDoc} = kzd_accounts:fetch(cb_context:account_id(Context)),

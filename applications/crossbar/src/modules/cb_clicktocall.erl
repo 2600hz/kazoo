@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Click to call
 %%% Allow embedded HTML forms (or other ways to POST to the URL)
 %%% and create a call.
@@ -366,8 +366,8 @@ handle_response(C2CId, Context, Contact, Resp) ->
     _ = kazoo_modb:save_doc(AccountId, HistoryItem).
 
 -spec do_originate_call(kz_term:ne_binary(), cb_context:context(), kz_term:api_binary(), kz_term:proplist()) ->
-                               {'ok', kz_json:object()} |
-                               kz_datamgr:data_error().
+          {'ok', kz_json:object()} |
+          kz_datamgr:data_error().
 do_originate_call(C2CId, Context, Contact, Request) ->
     ReqId = cb_context:req_id(Context),
     kz_util:put_callid(ReqId),
@@ -386,8 +386,8 @@ match_regexps([Pattern | Rest], Number) ->
 match_regexps([], _Number) -> 'false'.
 
 -spec exec_originate(kz_term:api_terms()) ->
-                            {'success', kz_json:object()} |
-                            {'error', kz_term:ne_binary()}.
+          {'success', kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 exec_originate(Request) ->
     Resp = kz_amqp_worker:call_collect(Request
                                       ,fun kapi_resource:publish_originate_req/1
@@ -401,8 +401,8 @@ exec_originate(Request) ->
                             {'error', _} |
                             {'timeout', _}
                            ) ->
-                                   {'success', kz_json:object()} |
-                                   {'error', kz_term:ne_binary()}.
+          {'success', kz_json:object()} |
+          {'error', kz_term:ne_binary()}.
 handle_originate_resp({'ok', [Resp|_]}) ->
     AppResponse = kz_json:get_first_defined([<<"Application-Response">>
                                             ,<<"Hangup-Cause">>

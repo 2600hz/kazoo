@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -189,8 +189,8 @@ fix_rollover(Account, Year, Month) ->
     end.
 
 -spec maybe_replace_rollover(kz_term:ne_binary(), kz_time:year(), kz_time:month(), kz_currency:units()) ->
-                                    {'ok', kz_ledger:ledger()} |
-                                    {'error', any()}.
+          {'ok', kz_ledger:ledger()} |
+          {'error', any()}.
 maybe_replace_rollover(Account, Year, Month, AvailableUnits) ->
     case kz_ledgers:get_monthly_rollover(Account, Year, Month) of
         {'error', _} ->
@@ -224,7 +224,7 @@ rollover_accounts() ->
     'ok'.
 
 -spec rollover_account_fold(kz_term:ne_binary(), {pos_integer(), pos_integer()}) ->
-                                   {pos_integer(), pos_integer()}.
+          {pos_integer(), pos_integer()}.
 rollover_account_fold(Account, {Current, Total}) ->
     io:format("rollover accounts (~p/~p) '~s'~n", [Current, Total, Account]),
     _ = rollover_account(Account),

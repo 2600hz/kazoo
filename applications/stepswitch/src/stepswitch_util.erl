@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -167,16 +167,16 @@ maybe_remove_diversions(JObj) ->
 
 
 -spec get_diversions(kz_json:object()) ->
-                            'undefined' |
-                            kz_term:ne_binaries().
+          'undefined' |
+          kz_term:ne_binaries().
 get_diversions(JObj) ->
     Inception = kz_json:get_value(<<"Inception">>, JObj),
     Diversions = kz_json:get_value(<<"Diversions">>, JObj, []),
     get_diversions(Inception, Diversions).
 
 -spec get_diversions(kz_term:api_binary(), kz_term:ne_binaries()) ->
-                            'undefined' |
-                            kz_term:ne_binaries().
+          'undefined' |
+          kz_term:ne_binaries().
 get_diversions('undefined', _Diversion) -> 'undefined';
 get_diversions(_Inception, []) -> 'undefined';
 get_diversions(Inception, Diversions) ->
@@ -213,7 +213,7 @@ build_filter_fun(Name, Number) ->
     end.
 
 -spec format_endpoints(kz_json:objects(), kz_term:api_binary(), kz_term:api_binary(), kapi_offnet_resource:req(), filter_fun()) ->
-                              kz_json:objects().
+          kz_json:objects().
 format_endpoints(Endpoints, Name, Number, OffnetReq, FilterFun) ->
     SIPHeaders = get_sip_headers(OffnetReq),
     AccountId = kapi_offnet_resource:hunt_account_id(OffnetReq
@@ -243,7 +243,7 @@ set_endpoint_caller_id(Endpoint, Name, Number) ->
                          ).
 
 -spec format_endpoint(kz_json:object(), kz_term:api_binary(), filter_fun(), kapi_offnet_resource:req(), kz_json:object(), kz_term:ne_binary()) ->
-                             kz_json:object().
+          kz_json:object().
 format_endpoint(Endpoint, Number, FilterFun, OffnetReq, SIPHeaders, AccountId) ->
     FormattedEndpoint = apply_formatters(Endpoint, SIPHeaders, AccountId),
     FilteredEndpoint = kz_json:filter(FilterFun, FormattedEndpoint),
@@ -283,7 +283,7 @@ maybe_add_sip_headers(Endpoint, SIPHeaders) ->
     end.
 
 -spec maybe_endpoint_format_from(kz_json:object(), kz_term:ne_binary(), kapi_offnet_resource:req()) ->
-                                        kz_json:object().
+          kz_json:object().
 maybe_endpoint_format_from(Endpoint, Number, OffnetReq) ->
     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, Endpoint, kz_json:new()),
     case kz_json:is_true(<<"Format-From-URI">>, CCVs) of
@@ -301,7 +301,7 @@ maybe_endpoint_format_from(Endpoint, Number, OffnetReq) ->
     end.
 
 -spec endpoint_format_from(kz_json:object(), kz_term:ne_binary(), kapi_offnet_resource:req(), kz_json:object()) ->
-                                  kz_json:object().
+          kz_json:object().
 endpoint_format_from(Endpoint, Number, OffnetReq, CCVs) ->
     FromNumber = kz_json:get_ne_value(?KEY_OUTBOUND_CALLER_ID_NUMBER, Endpoint, Number),
     case get_endpoint_format_from(OffnetReq, CCVs) of
@@ -349,12 +349,12 @@ route_by() ->
     end.
 
 -spec resources_to_endpoints(stepswitch_resources:resources(), kz_term:ne_binary(), kapi_offnet_resource:req()) ->
-                                    kz_json:objects().
+          kz_json:objects().
 resources_to_endpoints(Resources, Number, OffnetJObj) ->
     resources_to_endpoints(Resources, Number, OffnetJObj, []).
 
 -spec resources_to_endpoints(stepswitch_resources:resources(), kz_term:ne_binary(), kapi_offnet_resource:req(), kz_json:objects()) ->
-                                    kz_json:objects().
+          kz_json:objects().
 resources_to_endpoints([], _Number, _OffnetJObj, Endpoints) ->
     lists:reverse(Endpoints);
 resources_to_endpoints([Resource|Resources], Number, OffnetJObj, Endpoints) ->
@@ -362,7 +362,7 @@ resources_to_endpoints([Resource|Resources], Number, OffnetJObj, Endpoints) ->
     resources_to_endpoints(Resources, Number, OffnetJObj, MoreEndpoints).
 
 -spec maybe_resource_to_endpoints(stepswitch_resources:resource(), kz_term:ne_binary(), kapi_offnet_resource:req(), kz_json:objects()) ->
-                                         kz_json:objects().
+          kz_json:objects().
 maybe_resource_to_endpoints(Resource
                            ,Number
                            ,OffnetJObj
@@ -419,7 +419,7 @@ normalize_proplist(Props) ->
     [normalize_proplist_element(Elem) || Elem <- Props].
 
 -spec normalize_proplist_element({kz_term:proplist_key(), kz_term:proplist_value()}) ->
-                                        {kz_term:proplist_key(), kz_term:proplist_value()}.
+          {kz_term:proplist_key(), kz_term:proplist_value()}.
 normalize_proplist_element({K, V}) when is_list(V) ->
     {normalize_value(K), normalize_proplist(V)};
 normalize_proplist_element({K, V}) when is_binary(V) ->

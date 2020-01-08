@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2010-2019, 2600Hz
+%%% @copyright (C) 2010-2020, 2600Hz
 %%% @doc Hang up the call
 %%% Data = {}
 %%%
@@ -15,7 +15,7 @@
 -include("konami.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'continue', kapps_call:call()}.
+          {'continue', kapps_call:call()}.
 handle(Data, Call) ->
     RequestingLeg = kz_json:get_value(<<"dtmf_leg">>, Data),
 

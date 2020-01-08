@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2018-2019, 2600Hz
+%%% @copyright (C) 2018-2020, 2600Hz
 %%% @doc
 %%% @author Sergey Safarov <s.safarov@gmail.com>, Sponsored by Audian
 %%% This Source Code Form is subject to the terms of the Mozilla Public
@@ -66,7 +66,7 @@ freeform(Content, ContentType, Locale, Options) ->
     end.
 
 -spec exec_freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                           asr_resp().
+          asr_resp().
 exec_freeform(Content, _ContentType, Locale, Options) ->
     BaseUrl = ?GOOGLE_ASR_URL,
     Headers = req_headers(),

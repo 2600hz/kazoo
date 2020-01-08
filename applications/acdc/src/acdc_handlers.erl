@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
 %%% @end
@@ -151,7 +151,7 @@ update_agent_device(Call, AgentId, <<"logout">>) ->
 update_agent_device(_, _, _) -> {'ok', 'ok'}.
 
 -spec move_agent_device(kapps_call:call(), kz_term:ne_binary(), kz_json:object()) ->
-                               {'ok', kz_json:object()}.
+          {'ok', kz_json:object()}.
 move_agent_device(Call, AgentId, Device) ->
     DeviceId = kz_doc:id(Device),
 

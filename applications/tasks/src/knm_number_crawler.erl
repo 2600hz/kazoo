@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2013-2019, 2600Hz
+%%% @copyright (C) 2013-2020, 2600Hz
 %%% @doc
 %%% @author Peter Defebvre
 %%% @end
@@ -172,7 +172,7 @@ maybe_edit(T0=#{todo := PNs}) ->
     knm_numbers:ok(ToSave, T0).
 
 -spec maybe_edit_fold(knm_phone_number:phone_number(), {knm_phone_number:phone_numbers(), knm_phone_number:phone_numbers()}) ->
-                             {knm_phone_number:phone_numbers(), knm_phone_number:phone_numbers()}.
+          {knm_phone_number:phone_numbers(), knm_phone_number:phone_numbers()}.
 maybe_edit_fold(PN, {ToRemove, ToSave}=To) ->
     case knm_phone_number:state(PN) of
         ?NUMBER_STATE_DELETED ->
@@ -185,7 +185,7 @@ maybe_edit_fold(PN, {ToRemove, ToSave}=To) ->
     end.
 
 -spec maybe_remove(knm_phone_number:phone_number(), knm_phone_number:phone_numbers(), integer()) ->
-                          knm_phone_number:phone_numbers().
+          knm_phone_number:phone_numbers().
 maybe_remove(PN, ToRemove, Expiry) ->
     case is_old_enough(PN, Expiry) of
         false -> ToRemove;
@@ -193,7 +193,7 @@ maybe_remove(PN, ToRemove, Expiry) ->
     end.
 
 -spec maybe_transition_aging(knm_phone_number:phone_number(), knm_phone_number:phone_numbers(), integer()) ->
-                                    knm_phone_number:phone_numbers().
+          knm_phone_number:phone_numbers().
 maybe_transition_aging(PN, ToSave, Expiry) ->
     case is_old_enough(PN, Expiry) of
         false -> ToSave;

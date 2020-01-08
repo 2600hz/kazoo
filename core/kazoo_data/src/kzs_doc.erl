@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc data adapter behaviour
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -28,20 +28,20 @@
 %% Document related functions --------------------------------------------------
 
 -spec open_doc(map(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) ->
-                      {'ok', kz_json:object()} |
-                      data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 open_doc(#{server := {App, Conn}}, DbName, DocId, Options) ->
     handle_opened_doc(App:open_doc(Conn, DbName, DocId, Options), Options).
 
 -spec handle_opened_doc({'ok', kz_json:object()}|data_error(), kz_term:proplist()) ->
-                               {'ok', kz_json:object()} | data_error().
+          {'ok', kz_json:object()} | data_error().
 handle_opened_doc({'error', _}=Error, _Options) -> Error;
 handle_opened_doc({'ok', Doc}, Options) ->
     handle_opened_doc(Doc, kz_doc:is_soft_deleted(Doc), props:get_is_true('deleted', Options, 'false')).
 
 -spec handle_opened_doc(kz_json:object(), boolean(), boolean()) ->
-                               {'ok', kz_json:object()} |
-                               {'error', 'not_found'}.
+          {'ok', kz_json:object()} |
+          {'error', 'not_found'}.
 handle_opened_doc(Doc, 'false',  _ReturnDeleted) -> {'ok', Doc};
 handle_opened_doc(Doc, 'true', 'true') -> {'ok', Doc};
 handle_opened_doc(Doc, 'true', 'false') ->
@@ -49,8 +49,8 @@ handle_opened_doc(Doc, 'true', 'false') ->
     {'error', 'not_found'}.
 
 -spec save_doc(map(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) ->
-                      {'ok', kz_json:object()} |
-                      data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 save_doc(#{server := {App, Conn}}, DbName, Doc, Options) ->
     {PreparedDoc, PublishDoc} = prepare_doc_for_save(DbName, Doc),
     try App:save_doc(Conn, DbName, PreparedDoc, Options) of
@@ -75,8 +75,8 @@ update_cache(DbName, DocId, JObj, 'false') ->
     end.
 
 -spec save_docs(map(), kz_term:ne_binary(), kz_json:objects(), kz_term:proplist()) ->
-                       {'ok', kz_json:objects()} |
-                       data_error().
+          {'ok', kz_json:objects()} |
+          data_error().
 save_docs(#{server := {App, Conn}}, DbName, Docs, Options) ->
     {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- Docs]),
     try App:save_docs(Conn, DbName, PreparedDocs, Options) of
@@ -90,14 +90,14 @@ save_docs(#{server := {App, Conn}}, DbName, Docs, Options) ->
     end.
 
 -spec lookup_doc_rev(map(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                            {'ok', kz_term:ne_binary()} |
-                            data_error().
+          {'ok', kz_term:ne_binary()} |
+          data_error().
 lookup_doc_rev(#{server := {App, Conn}}, DbName, DocId) ->
     App:lookup_doc_rev(Conn, DbName, DocId).
 
 -spec ensure_saved(map(), kz_term:ne_binary(), kz_json:object(), kz_term:proplist()) ->
-                          {'ok', kz_json:object()} |
-                          data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 ensure_saved(#{server := {App, Conn}}=Map, DbName, Doc, Options) ->
     {PreparedDoc, PublishDoc} = prepare_doc_for_save(DbName, Doc),
     try App:ensure_saved(Conn, DbName, PreparedDoc, Options) of
@@ -126,8 +126,8 @@ maybe_ensure_saved_others(_, _, _, _, _) -> 'ok'.
 
 
 -spec del_doc(map(), kz_term:ne_binary(), kz_json:object() | kz_term:ne_binary(), kz_term:proplist()) ->
-                     {'ok', kz_json:object()} |
-                     data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 del_doc(Server, DbName, ?NE_BINARY=DocId, Options) ->
     case open_doc(Server, DbName, DocId, Options) of
         {'error', _}=Err -> Err;
@@ -149,8 +149,8 @@ del_doc(#{server := {App, Conn}}=Server, DbName, Doc, Options) ->
     end.
 
 -spec del_docs(map(), kz_term:ne_binary(), kz_json:objects() | kz_term:ne_binaries(), kz_term:proplist()) ->
-                      {'ok', kz_json:objects()} |
-                      data_error().
+          {'ok', kz_json:objects()} |
+          data_error().
 del_docs(#{server := {App, Conn}}=Server, DbName, Docs, Options) ->
     DelDocs = [prepare_doc_for_del(Server,DbName, D) || D <- Docs],
     {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- DelDocs]),
@@ -165,7 +165,7 @@ del_docs(#{server := {App, Conn}}=Server, DbName, Docs, Options) ->
     end.
 
 -spec prepare_doc_for_del(map(), kz_term:ne_binary(), kz_json:object() | kz_term:ne_binary()) ->
-                                 kz_json:object().
+          kz_json:object().
 prepare_doc_for_del(Server, Db, ?NE_BINARY=DocId) ->
     prepare_doc_for_del(Server, Db, kz_json:from_list([{<<"_id">>, DocId}]));
 prepare_doc_for_del(Server, DbName, Doc) ->
@@ -225,15 +225,15 @@ default_copy_function('true') -> fun ensure_saved/4;
 default_copy_function('false') -> fun save_doc/4.
 
 -spec copy_doc(map(), map(), copy_doc(), kz_term:proplist()) ->
-                      {'ok', kz_json:object()} |
-                      data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 copy_doc(Src, Dst, CopySpec, Options) ->
     SaveFun = default_copy_function(props:is_defined(?COPY_DOC_OVERRIDE_PROPERTY, Options)),
     copy_doc(Src, Dst, CopySpec, SaveFun, props:delete(?COPY_DOC_OVERRIDE_PROPERTY, Options)).
 
 -spec copy_doc(map(), map(), copy_doc(), copy_function(), kz_term:proplist()) ->
-                      {'ok', kz_json:object()} |
-                      data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 copy_doc(Src, Dst, CopySpec, CopyFun, Opts) ->
     #copy_doc{source_dbname = SourceDbName
              ,source_doc_id = SourceDocId
@@ -265,8 +265,8 @@ copy_transform(Fun, SourceDoc, DestinationDoc) ->
     Fun(SourceDoc, DestinationDoc).
 
 -spec copy_attachments(map(), map(), copy_doc(), {kz_json:json_terms(), kz_json:path()}, kz_term:ne_binary()) ->
-                              {'ok', kz_json:object()} |
-                              {'error', any()}.
+          {'ok', kz_json:object()} |
+          {'error', any()}.
 copy_attachments(_Src, Dst, CopySpec, {[], []}, _) ->
     #copy_doc{dest_dbname = DestDbName
              ,dest_doc_id = DestDocId
@@ -295,8 +295,8 @@ copy_attachments(Src, Dst, CopySpec, {[JObj | JObjs], [Key | Keys]}, Rev) ->
     end.
 
 -spec move_doc(map(), map(), copy_doc(), kz_term:proplist()) ->
-                      {'ok', kz_json:object()} |
-                      data_error().
+          {'ok', kz_json:object()} |
+          data_error().
 move_doc(Src, Dst, CopySpec, Options) ->
     #copy_doc{source_dbname = SourceDbName
              ,source_doc_id = SourceDocId

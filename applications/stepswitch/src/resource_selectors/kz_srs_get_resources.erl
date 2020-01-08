@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @end
 %%%-----------------------------------------------------------------------------
@@ -10,7 +10,7 @@
 -include("stepswitch.hrl").
 
 -spec handle_req(stepswitch_resources:resources(), kz_term:ne_binary(), kapi_offnet_resource:req(), kz_term:ne_binary(), kz_term:proplist()) ->
-                        stepswitch_resources:resources().
+          stepswitch_resources:resources().
 handle_req(Resources, _Number, OffnetJObj, _DB, _Params) ->
     NewResources = case kapi_offnet_resource:hunt_account_id(OffnetJObj) of
                        'undefined' -> get_resources('undefined');

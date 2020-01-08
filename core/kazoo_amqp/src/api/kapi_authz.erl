@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2019, 2600Hz
+%%% @copyright (C) 2011-2020, 2600Hz
 %%% @doc Handles authorization requests, responses, queue bindings AMQP API.
 %%% @author James Aimonetti
 %%% @author Karl Anderson

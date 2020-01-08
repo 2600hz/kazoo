@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc
 %%% @author Sergey Korobkov
 %%% @end
@@ -96,7 +96,7 @@ account_id(_) -> 'false'.
 %%% Appliers
 
 -spec import(kz_tasks:extra_args(), kz_tasks:iterator() | state(), kz_tasks:args()) ->
-                    {kz_tasks:return(), state()} | 'stop'.
+          {kz_tasks:return(), state()} | 'stop'.
 import(#{auth_account_id := AuthBy}=ExtraArgs, 'init', Args) ->
     kz_datamgr:suppress_change_notice(),
     State = #state{db = get_selectors_db(ExtraArgs)
@@ -131,7 +131,7 @@ import(_ExtraArgs, State, _Args) ->
     'stop'.
 
 -spec delete(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) ->
-                    {kz_tasks:return(), state()} | 'stop'.
+          {kz_tasks:return(), state()} | 'stop'.
 delete(ExtraArgs, 'init', Args) ->
     kz_datamgr:suppress_change_notice(),
     State = #state{db = get_selectors_db(ExtraArgs)},
@@ -249,7 +249,7 @@ refresh_selectors_index(Db) ->
 -spec generate_selector_doc(kz_term:ne_binary(), kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()
                            ,kz_term:api_binary(), kz_term:api_binary(), kz_term:api_binary()
                            ) ->
-                                   kz_json:object().
+          kz_json:object().
 generate_selector_doc(AuthAccountId, Resource, Name, Selector, Value, Start, Stop) ->
     kz_json:from_list(
       [{<<"pvt_type">>, <<"resource_selector">>}

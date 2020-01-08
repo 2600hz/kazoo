@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Send config commands to FS
 %%% @author Edouard Swiac
 %%% @author James Aimonetti
@@ -360,7 +360,7 @@ fix_conference_profile(FSNode, Resp) ->
     kz_json:set_value(<<"Profiles">>, FixedProfiles, Resp).
 
 -spec fix_conference_profile(kz_term:ne_binary(), kz_json:object(), atom()) ->
-                                    {kz_tern:ne_binary(), kz_json:object()}.
+          {kz_tern:ne_binary(), kz_json:object()}.
 fix_conference_profile(Name, Profile, FSNode) ->
     lager:debug("fixing up conference profile ~s", [Name]),
     Routines = [fun(J) -> maybe_fix_profile_tts(J, FSNode) end

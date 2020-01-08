@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2016-2019, 2600Hz
+%%% @copyright (C) 2016-2020, 2600Hz
 %%% @doc Run tasks without CSV input file, scheduled by kz_tasks.
 %%% @author Pierre Fenoll
 %%% @end
@@ -53,7 +53,7 @@ start(TaskId, API, ExtraArgs) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec init(kz_tasks:id(), kz_json:object(), kz_tasks:extra_args()) -> {ok, state()} |
-                                                                      {error, any()}.
+          {error, any()}.
 init(TaskId, API, ExtraArgs) ->
     Header = kz_tasks_scheduler:get_output_header(API),
     case write_output_csv_header(TaskId, Header) of
@@ -114,8 +114,8 @@ new_state_after_writing(NewColumns, WrittenSucceeded, WrittenFailed
     S.
 
 -spec is_task_successful(kz_tasks:iterator(), state()) ->
-                                {boolean(), kz_tasks:columns(), non_neg_integer(), kz_tasks:iterator()} |
-                                stop.
+          {boolean(), kz_tasks:columns(), non_neg_integer(), kz_tasks:iterator()} |
+          stop.
 is_task_successful(IterValue
                   ,State=#state{api = API
                                ,extra_args = ExtraArgs

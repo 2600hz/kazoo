@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author Karl Anderson
 %%% @end
@@ -12,7 +12,7 @@
 -include("fax.hrl").
 
 -spec init(cowboy_req:req(), any()) ->
-                  {'ok', cowboy_req:req(), 'ok'}.
+          {'ok', cowboy_req:req(), 'ok'}.
 init(Req0, _Opts) ->
     kz_util:put_callid(kz_binary:rand_hex(16)),
     maybe_send_job_file(Req0, cowboy_req:path_info(Req0)).

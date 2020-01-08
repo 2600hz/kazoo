@@ -1,5 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2012-2019, 2600Hz
+%%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc Worker with a dedicated targeted queue.
 %%% Inserts Queue Name as the `Server-ID' and proxies the AMQP request
 %%% (expects responses to the request).
@@ -191,12 +191,12 @@ call(Req, PubFun) ->
     call(Req, PubFun, fun kz_term:always_true/1).
 
 -spec call(kz_term:api_terms(), publish_fun(), validate_fun()) ->
-                  request_return().
+          request_return().
 call(Req, PubFun, VFun) ->
     call(Req, PubFun, VFun, default_timeout()).
 
 -spec call(kz_term:api_terms(), publish_fun(), validate_fun(), timeout()) ->
-                  request_return().
+          request_return().
 call(Req, PubFun, VFun, Timeout) ->
     case next_worker() of
         {'error', _}=E -> E;
@@ -204,7 +204,7 @@ call(Req, PubFun, VFun, Timeout) ->
     end.
 
 -spec call(kz_term:api_terms(), publish_fun(), validate_fun(), timeout(), pid()  | atom()) ->
-                  request_return().
+          request_return().
 call(Req, PubFun, VFun, Timeout, Pool) when is_atom(Pool) ->
     case next_worker(Pool) of
         {'error', _}=E -> E;
@@ -296,12 +296,12 @@ checkin_worker(Worker, Pool) ->
     poolboy:checkin(Pool, Worker).
 
 -spec call_custom(kz_term:api_terms(), publish_fun(), validate_fun(), gen_listener:binding()) ->
-                         request_return().
+          request_return().
 call_custom(Req, PubFun, VFun, Bind) ->
     call_custom(Req, PubFun, VFun, default_timeout(), Bind).
 
 -spec call_custom(kz_term:api_terms(), publish_fun(), validate_fun(), timeout(), gen_listener:binding()) ->
-                         request_return().
+          request_return().
 call_custom(Req, PubFun, VFun, Timeout, Bind) ->
     case next_worker() of
         {'error', _}=E -> E;
@@ -309,7 +309,7 @@ call_custom(Req, PubFun, VFun, Timeout, Bind) ->
     end.
 
 -spec call_custom(kz_term:api_terms(), publish_fun(), validate_fun(), timeout(), gen_listener:binding(), pid()) ->
-                         request_return().
+          request_return().
 call_custom(Req, PubFun, VFun, Timeout, Bind, Worker) ->
     Prop = maybe_convert_to_proplist(Req),
     gen_listener:add_binding(Worker, Bind),
@@ -327,12 +327,12 @@ call_custom(Req, PubFun, VFun, Timeout, Bind, Worker) ->
     end.
 
 -spec call_collect(kz_term:api_terms(), publish_fun()) ->
-                          request_return().
+          request_return().
 call_collect(Req, PubFun) ->
     call_collect(Req, PubFun, default_timeout()).
 
 -spec call_collect(kz_term:api_terms(), publish_fun(), timeout_or_until()) ->
-                          request_return().
+          request_return().
 call_collect(Req, PubFun, UntilFun) when is_function(UntilFun) ->
     call_collect(Req, PubFun, UntilFun, default_timeout());
 call_collect(Req, PubFun, Whapp) when is_atom(Whapp); is_binary(Whapp) ->
@@ -347,7 +347,7 @@ call_collect(Req, PubFun, Timeout) ->
     call_collect(Req, PubFun, collect_until_timeout(), Timeout).
 
 -spec call_collect(kz_term:api_terms(), publish_fun(), collect_until(), timeout()) ->
-                          request_return().
+          request_return().
 call_collect(_Req, _PubFun, 'undefined', _Timeout) ->
     lager:debug("no VFun, no responses"),
     {'ok', []};
@@ -406,7 +406,7 @@ call_collect(Req, PubFun, UntilFun, Timeout)
     end.
 
 -spec call_collect(kz_term:api_terms(), publish_fun(), collect_until(), timeout(), pid()) ->
-                          request_return().
+          request_return().
 call_collect(Req, PubFun, {UntilFun, Acc}, Timeout, Worker)
   when is_function(UntilFun, 2) ->
     call_collect(Req, PubFun, UntilFun, Timeout, Acc, Worker);
@@ -469,12 +469,12 @@ collect_from_whapp(Whapp) ->
     collect_from_whapp(Whapp, 'false').
 
 -spec collect_from_whapp(kz_term:text(), boolean()) ->
-                                'undefined' | collect_until_fun().
+          'undefined' | collect_until_fun().
 collect_from_whapp(Whapp, IncludeFederated) ->
     collect_from_whapp(Whapp, IncludeFederated, 'false').
 
 -spec collect_from_whapp(kz_term:text(), boolean(), boolean()) ->
-                                'undefined' | collect_until_fun().
+          'undefined' | collect_until_fun().
 collect_from_whapp(Whapp, IncludeFederated, IsShared) ->
     Count = case {IncludeFederated, IsShared} of
                 {'true', 'true'} -> kz_nodes:whapp_zone_count(Whapp); %% Get from {0,1} whapp instance per zone
@@ -521,7 +521,7 @@ collect_or_validate_fun(VFun, Count) ->
     end.
 
 -spec send_request(kz_term:ne_binary(), kz_term:ne_binary(), publish_fun(), kz_term:proplist()) ->
-                          'ok' | {'error', any()}.
+          'ok' | {'error', any()}.
 send_request(CallId, Self, PublishFun, ReqProps)
   when is_function(PublishFun, 1) ->
     kz_util:put_callid(CallId),
