@@ -20,6 +20,7 @@
 
         ,get_global/2, get_global/3, get_global/4
         ,get_from_reseller/3, get_from_reseller/4
+        ,get_category_with_strategy/3
         ,get_with_strategy/4, get_with_strategy/5
         ,get_hierarchy/3, get_hierarchy/4
 
@@ -176,11 +177,32 @@ maybe_load_config_from_reseller(Account, Category) ->
 get_hierarchy(Account, Category, Key) ->
     get_hierarchy(Account, Category, Key, 'undefined').
 
-%% @equiv get_with_strategy(<<"hierarchy_merge">>, Account, Category, Key, Default)
+%% @equiv get_with_strategy(<<"hierarchy">>, Account, Category, Key, Default)
 
 -spec get_hierarchy(api_account(), kz_term:ne_binary(), config_key(), kz_json:api_json_term()) -> kz_json:json_term().
 get_hierarchy(Account, Category, Key, Default) ->
-    get_with_strategy(<<"hierarchy_merge">>, Account, Category, Key, Default).
+    get_with_strategy(<<"hierarchy">>, Account, Category, Key, Default).
+
+-spec get_category_with_strategy(kz_term:ne_binary(), api_account(), kz_term:ne_binary()) ->
+          {'ok', kz_json:object()} | {'error', any()}.
+get_category_with_strategy(Strategy, Account, Category) ->
+    case get_from_strategy_cache(Strategy, account_id(Account), Category) of
+        {'ok', _}=OK ->
+            OK;
+        {'error', 'no_account_id'} ->
+            {'ok', get_merged_node_category(kapps_config:get_category(Category))};
+        {'error', _}=E ->
+            E
+    end.
+
+-spec get_merged_node_category({'ok', kzd_system_configs:doc()} | {'error', any()}) ->
+          {'ok', kz_json:object()}.
+get_merged_node_category({'ok', Doc}) ->
+    Default = kz_json:get_json_value(<<"default">>, Doc, kz_json:new()),
+    Node = kz_json:get_json_value(kz_term:to_binary(node()), Doc, kz_json:new()),
+    kz_json:merge(Default, Node, #{'recursive' => 'true'});
+get_merged_node_category({'error', _}) ->
+    kz_json:new().
 
 %% @equiv get_with_strategy(Strategy, Account, Category, Key, undefined)
 
@@ -203,16 +225,18 @@ get_with_strategy(Strategy, Account, Category, Key) ->
 %%   <dd>Try to get from direct reseller, if not found get from `system_config'.
 %%   </dd>
 %%
-%%   <dt>`<<"hierarchy_merge">>'</dt>
+%%   <dt>`<<"hierarchy">>'</dt>
 %%   <dd>Get from account and parents of the account until reach to the reseller
 %%   account, then get from `system_config' and merge all results together.
 %%   </dd>
 %% </dl>
 %%
-%% There is merge edition for `global' and `reseller': `global_merge' and `reseller_merge'.
-%% These are same as their normal counterpart but they do merge the results at the end.
-%% For example in `global_merge', it returns merge result of the account config
-%% (if any) and `system_config' (if any).
+%% The former merge strategies (`global_merge', `reseller_merge', and
+%% `hierarchy_merge') have been removed in favor of always doing the merge and
+%% storing in the strategy cache. This doesn't affect the backwards-
+%% compatibility of the non-merge strategies as the result for each key will
+%% still always be the first-defined value after the `merge_recursive'. But the
+%% bonus is that the category is always cached.
 %%
 %% Merge is recursive from right to left, meaning settings in account supersedes
 %% settings from parents, reseller and system_config.
@@ -222,35 +246,29 @@ get_with_strategy(Strategy, Account, Category, Key) ->
 -spec get_with_strategy(kz_term:ne_binary(), api_account(), kz_term:ne_binary(), config_key(), kz_json:api_json_term()) ->
           kz_json:json_term().
 get_with_strategy(Strategy, Account, Category, Key, Default) ->
-    ShouldMerge = is_merge_strategy(Strategy),
-    case get_from_strategy_cache(Strategy, account_id(Account), Category, Key, ShouldMerge) of
+    case get_category_with_strategy(Strategy, Account, Category) of
         {'ok', JObj} ->
             case kz_json:get_value(Key, JObj) of
                 'undefined' -> Default;
                 Value -> Value
             end;
-        {'error', 'no_account_id'} ->
-            kapps_config:get(Category, Key, Default);
         {'error', _} ->
             _ = kapps_config:set(Category, Key, Default),
             Default
     end.
 
--spec get_from_strategy_cache(kz_term:ne_binary(), account_or_not(), config_key(), kz_term:ne_binary(), boolean()) ->
+-spec get_from_strategy_cache(kz_term:ne_binary(), account_or_not(), kz_term:ne_binary()) ->
           {'ok', kz_json:object()} |
           {'error', any()}.
-get_from_strategy_cache(_, 'no_account_id', _, _, _) ->
+get_from_strategy_cache(_, 'no_account_id', _) ->
     {'error', 'no_account_id'};
-get_from_strategy_cache(Strategy, AccountId, Category, Key, 'true') ->
-    %% Only read from cache if it is merge strategy
+get_from_strategy_cache(Strategy, AccountId, Category) ->
     case kz_cache:fetch_local(?KAPPS_CONFIG_CACHE, strategy_cache_key(AccountId, Category, Strategy)) of
         {'ok', _}=OK ->
             OK;
         {'error', _} ->
-            walk_the_walk(strategy_options(Strategy, AccountId, Category, 'true', Key))
-    end;
-get_from_strategy_cache(Strategy, AccountId, Category, Key, 'false') ->
-    walk_the_walk(strategy_options(Strategy, AccountId, Category, 'false', Key)).
+            walk_the_walk(strategy_options(Strategy, AccountId, Category))
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Get Key's value from account db document if defined, otherwise get
@@ -481,11 +499,9 @@ flush(Account, Category) ->
 
 -spec flush_all_strategies(kz_term:ne_binary(), kz_term:ne_binary()) -> ok.
 flush_all_strategies(Account, Category) ->
-    Strategies = [<<"hierarchy_merge">>
+    Strategies = [<<"hierarchy">>
                  ,<<"global">>
                  ,<<"reseller">>
-                 ,<<"global_merge">>
-                 ,<<"reseller_merge">>
                  ],
     lists:foreach(fun(Strategy) -> flush(Account, Category, Strategy) end, Strategies).
 
@@ -516,98 +532,108 @@ walk_the_walk(#{strategy_funs := []
                }) ->
     {'error', not_found};
 walk_the_walk(#{strategy_funs := []
-               ,merge := ShouldMerge
+               ,results := Results
                }=Map) ->
-    maybe_merge_results(Map, ShouldMerge);
+    Result = kz_json:merge([kz_doc:public_fields(J, 'false') || J <- Results], #{'recursive' => 'true'}),
+    store_in_strategy_cache(Map, Result);
 walk_the_walk(#{account_id := AccountId
                ,strategy_funs := [Fun|Funs]
-               ,merge := ShouldMerge
                ,category := Category
-               ,key := Key
                ,results := Results
                }=Map) ->
     case Fun(AccountId, Category) of
-        {'ok', JObj} when not ShouldMerge ->
-            %% requester does not want merge result from ancestors and system
-            %% returning the result of the first function if defined
-            case kz_json:get_value(Key, JObj) of
-                'undefined' ->
-                    %% key is not defined, continuing the walk
-                    walk_the_walk(Map#{results := [JObj|Results], strategy_funs := Funs});
-                _Value ->
-                    walk_the_walk(Map#{results := [JObj], strategy_funs := []})
-            end;
         {'ok', JObjs} when is_list(JObjs) ->
-            %% the function returns list (load from ancestor), forcing merge
-            walk_the_walk(Map#{results := lists:flatten([JObjs|Results]), strategy_funs := Funs, merge := 'true'});
+            %% the function returns list (load from ancestor)
+            walk_the_walk(Map#{results := lists:flatten([JObjs|Results]), strategy_funs := Funs});
         {'ok', JObj} ->
-            %% requester wants merge result from ancestors and system
             walk_the_walk(Map#{results := [JObj|Results], strategy_funs := Funs});
         {'error', _} ->
             walk_the_walk(Map#{strategy_funs := Funs})
     end.
 
--spec maybe_merge_results(map(), boolean()) -> {'ok', kz_json:object()}.
-maybe_merge_results(#{results := JObjs}=Map, 'true') ->
-    store_in_strategy_cache(Map, kz_json:merge_recursive([kz_doc:public_fields(J, 'false') || J <- JObjs]));
-maybe_merge_results(#{results := JObjs}, 'false') ->
-    {'ok', lists:last(JObjs)}.
-
 -spec store_in_strategy_cache(map(), kz_json:object()) -> {'ok', kz_json:object()}.
 store_in_strategy_cache(#{account_id := AccountId
                          ,strategy := Strategy
                          ,category := Category
-                         ,results := JObjs
                          }, Result) ->
     CacheKey = strategy_cache_key(AccountId, Category, Strategy),
-    Origins = lists:foldl(fun config_origins/2, [], JObjs),
+    Origins = config_origins(AccountId, Category, Strategy),
     kz_cache:store_local(?KAPPS_CONFIG_CACHE, CacheKey, Result, [{'origin', Origins}]),
     {'ok', Result}.
 
--spec config_origins(kz_json:object(), list()) -> list().
-config_origins(Doc, Acc) ->
-    case {kz_doc:account_db(Doc), kz_doc:account_id(Doc)} of
-        {'undefined', 'undefined'} -> Acc;
-        {'undefined', DocAccountId} ->
-            Db = kzs_util:format_account_db(DocAccountId),
-            [{'db', Db, kz_doc:id(Doc)}|Acc];
-        {Db, _} -> [{'db', Db, kz_doc:id(Doc)}|Acc]
+%%------------------------------------------------------------------------------
+%% @doc Cache origins depending on strategy. This must match `strategy_funs'.
+%% @end
+%%------------------------------------------------------------------------------
+-spec config_origins(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> list().
+config_origins(AccountId, Category, <<"global">>) ->
+    account_origins(AccountId, Category) ++ config_origins(AccountId, Category, <<"reseller">>);
+
+config_origins(AccountId, Category, <<"reseller">>) ->
+    ResellerOrigins = case kzd_accounts:reseller_id(AccountId) of
+                          'undefined' -> [];
+                          ResellerId ->
+                              ResellerDb = kz_util:format_account_db(ResellerId),
+                              DocId = kapps_config_util:account_doc_id(Category),
+                              [{'db', ResellerDb, DocId}] %% In case configs_* is changed in reseller account
+                      end,
+    ResellerOrigins ++ system_origins(Category);
+
+config_origins(AccountId, Category, <<"hierarchy">>) ->
+    account_origins(AccountId, Category)
+    ++ hierarchy_origins(AccountId, Category)
+    ++ system_origins(Category).
+
+account_origins(AccountId, Category) ->
+    DocId = kapps_config_util:account_doc_id(Category),
+    [{'db', kz_util:format_account_db(AccountId), DocId} %% In case configs_* is changed
+    ,{'type', <<"account">>, AccountId}                  %% In case the account's tree is changed
+    ].
+
+hierarchy_origins(AccountId, Category) ->
+    {'ok', AccountDoc} = kzd_accounts:fetch(AccountId),
+    hierarchy_origins(Category, kzd_accounts:reseller_id(AccountId), lists:reverse(kzd_accounts:tree(AccountDoc)), []).
+
+hierarchy_origins(_, _, [], Origins) -> Origins;
+hierarchy_origins(Category, ResellerId, [Parent|Ancestors], Origins) ->
+    DocId = kapps_config_util:account_doc_id(Category),
+    Origins1 = [{'db', kz_util:format_account_db(Parent), DocId} %% In case configs_* is changed in parent
+                | Origins
+               ],
+    case Parent =:= ResellerId of
+        'true' -> Origins1; %% Quit early when reaching reseller, just like `load_config_from_ancestors'
+        'false' ->
+            hierarchy_origins(Category, ResellerId, Ancestors, Origins1)
     end.
+
+system_origins(Category) ->
+    [{'db', ?KZ_CONFIG_DB, Category}].
 
 -spec strategy_cache_key(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
           {?MODULE, kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()}.
 strategy_cache_key(AccountId, Category, Strategy) ->
     {?MODULE, AccountId, Category, Strategy}.
 
--spec strategy_options(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary(), boolean(), config_key()) -> map().
-strategy_options(Strategy, AccountId, Category, ShouldMerge, Key) ->
+-spec strategy_options(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> map().
+strategy_options(Strategy, AccountId, Category) ->
     #{account_id => AccountId
      ,strategy => Strategy
      ,strategy_funs => strategy_funs(Strategy)
-     ,merge => ShouldMerge
      ,category => Category
      ,results => []
-     ,key => Key
      }.
 
--spec is_merge_strategy(kz_term:ne_binary()) -> boolean().
-is_merge_strategy(Strategy) ->
-    case kz_binary:reverse(Strategy) of
-        <<"egrem", _/binary>> -> 'true';
-        _ -> 'false'
-    end.
-
 -spec strategy_funs(kz_term:ne_binary()) -> [function()].
-strategy_funs(<<"global", _/binary>>) ->
+strategy_funs(<<"global">>) ->
     [fun load_config_from_account/2
     ,fun load_config_from_reseller/2
     ,fun load_config_from_system/2
     ];
-strategy_funs(<<"reseller", _/binary>>) ->
+strategy_funs(<<"reseller">>) ->
     [fun load_config_from_reseller/2
     ,fun load_config_from_system/2
     ];
-strategy_funs(<<"hierarchy_merge">>) ->
+strategy_funs(<<"hierarchy">>) ->
     [fun load_config_from_account/2
     ,fun load_config_from_ancestors/2
     ,fun load_config_from_system/2

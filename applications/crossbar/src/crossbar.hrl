@@ -210,6 +210,7 @@
 -define(TYPE_CHECK_OPTION_ANY, ?TYPE_CHECK_OPTION(<<"any">>)).
 
 -define(SPECIAL_EXPECTED_TYPE, [{<<"allotments">>, <<"limits">>}
+                               ,{<<"configs">>, <<"account_config">>}
                                ,{<<"connectivity">>, <<"sys_info">>}
                                ,{<<"directories">>, <<"directory">>}
                                ,{<<"faxes">>, <<"fax">>}

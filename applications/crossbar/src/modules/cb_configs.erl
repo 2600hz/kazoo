@@ -61,14 +61,16 @@ validate(Context, ConfigId) ->
 validate(Context, ?HTTP_GET, ConfigId) -> set_config_to_context(ConfigId, Context);
 
 validate(Context, ?HTTP_DELETE, ConfigId) ->
-    Doc = case kapps_config_util:load_config_from_account(cb_context:account_id(Context), ConfigId) of
-              {ok, Document} -> Document;
-              _ -> set_id(ConfigId, kz_json:new())
-          end,
-    cb_context:setters(Context,[
-                                {fun cb_context:set_doc/2, Doc}
-                               ,{fun cb_context:set_resp_status/2, success}
-                               ]);
+    Context1 = crossbar_doc:load(kapps_config_util:account_doc_id(ConfigId), Context),
+    case cb_context:resp_error_code(Context1) of
+        404 ->
+            %% Will simulate delete success if there already were no overrides in the account
+            cb_context:setters(Context,[
+                                        {fun cb_context:set_doc/2, set_id(ConfigId, kz_json:new())}
+                                       ,{fun cb_context:set_resp_status/2, success}
+                                       ]);
+        _ -> Context1
+    end;
 
 validate(Context, ?HTTP_PUT, ConfigId) ->
     validate(Context, ?HTTP_POST, ConfigId);
@@ -88,7 +90,8 @@ validate_with_parent(Context, ConfigId, Parent) ->
     Schema = kapps_config_util:account_schema_name(ConfigId),
     cb_context:validate_request_data(Schema, cb_context:set_req_data(Context, FullConfig),
                                      fun(Ctx) ->
-                                             cb_context:set_req_data(Ctx, kz_json:diff(RequestData, Parent))
+                                             ToSave = set_pvt_type(kz_json:diff(RequestData, Parent)),
+                                             cb_context:set_req_data(Ctx, ToSave)
                                      end
                                     ).
 
@@ -106,9 +109,11 @@ post(Context, ConfigId) ->
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _ConfigId) ->
-    case strip_id(cb_context:doc(Context)) of
-        ?EMPTY_JSON_OBJECT -> Context;
-        _ -> crossbar_doc:delete(Context, ?HARD_DELETE)
+    case cb_context:doc(Context) of
+        'undefined' -> Context;
+        Doc ->
+            Doc1 = set_pvt_type(Doc),
+            crossbar_doc:delete(cb_context:set_doc(Context, Doc1), ?HARD_DELETE)
     end.
 
 -spec set_config_to_context(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
@@ -122,15 +127,21 @@ set_id(ConfigId, JObj) -> kz_json:set_value(<<"id">>, kapps_config_util:account_
 -spec strip_id(kz_json:object()) -> kz_json:object().
 strip_id(JObj) -> kz_json:delete_key(<<"id">>, JObj, prune).
 
+-spec set_pvt_type(kz_json:object()) -> kz_json:object().
+set_pvt_type(JObj) -> kz_json:set_value(<<"pvt_type">>, <<"account_config">>, JObj).
+
 -spec maybe_save_or_delete(cb_context:context(), path_token()) -> cb_context:context().
 maybe_save_or_delete(Context, ConfigId) ->
-    Stored = kz_doc:private_fields(kapps_account_config:get(cb_context:account_id(Context), ConfigId)),
+    AccountId = cb_context:account_id(Context),
+    Stored = kz_doc:private_fields(kapps_account_config:get(AccountId, ConfigId)),
     UpdatedContext =
         case {cb_context:req_data(Context), kz_doc:revision(Stored)} of
             {?EMPTY_JSON_OBJECT, 'undefined'} -> Context;
             {?EMPTY_JSON_OBJECT, _} ->
                 crossbar_doc:delete(cb_context:set_doc(Context, Stored));
             {Diff, _} ->
-                crossbar_doc:save(Context, kz_json:merge(Stored, Diff), [])
+                UpdatedContext0 = crossbar_doc:save(Context, kz_json:merge(Stored, Diff), []),
+                kapps_account_config:flush(AccountId, ConfigId),
+                UpdatedContext0
         end,
     set_config_to_context(ConfigId, UpdatedContext).

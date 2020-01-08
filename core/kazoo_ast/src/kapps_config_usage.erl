@@ -242,9 +242,8 @@ config_to_schema(Source, F='get_hierarchy', [_Account, Cat, K, Default], Schemas
 config_to_schema(Source, F='get_with_strategy', [Strategy, Account, Cat, K], Schemas) ->
     config_to_schema(Source, F, [Strategy, Account, Cat, K, 'undefined'], Schemas);
 config_to_schema(Source, F='get_with_strategy', [?BINARY_MATCH([?BINARY_STRING(Strategy)]), _Account, Cat, K, Default], Schemas)
-  when Strategy =:= "hierarchy_merge";
-       Strategy =:= "global";
-       Strategy =:= "global_merge" ->
+  when Strategy =:= "hierarchy";
+       Strategy =:= "global" ->
     Document = category_to_document(Cat),
     case key_to_key_path(K) of
         'undefined' -> Schemas;

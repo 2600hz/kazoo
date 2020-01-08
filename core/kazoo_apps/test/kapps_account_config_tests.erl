@@ -173,7 +173,7 @@ test_get_with_strategy(_) ->
      ,[get_with_strategy_general()
       ,get_strategy_global()
       ,get_strategy_reseller()
-      ,get_strategy_hierarchy_merge()
+      ,get_strategy_hierarchy()
       ]
      }
     ].
@@ -242,7 +242,7 @@ get_strategy_reseller() ->
      }
     ].
 
-get_strategy_hierarchy_merge() ->
+get_strategy_hierarchy() ->
     SysRootObjKey = get_fixture_value([<<"default">>, <<"root_obj_key">>], ?KZ_CONFIG_DB, ?TEST_CAT),
     ResellerRootJObjKey = get_fixture_value(<<"root_obj_key">>, ?FIXTURE_RESELLER_ACCOUNT_ID, ?TEST_CAT),
     ParentRootObjKey = get_fixture_value(<<"root_obj_key">>, ?FIXTURE_PARENT_ACCOUNT_ID, ?TEST_CAT),
@@ -252,10 +252,10 @@ get_strategy_hierarchy_merge() ->
     SometimesEmptyValue_Reseller = kz_json:get_value([<<"obj_empty_test">>, <<"obj_empty_sometimes">>], ResellerRootJObjKey),
     SometimesEmptyValue_Sub1 = kz_json:get_value([<<"obj_empty_test">>, <<"obj_empty_sometimes">>], ParentRootObjKey),
 
-    [{"Testing get config hierarchy_merge strategy"
+    [{"Testing get config hierarchy strategy"
      ,[{"defined value in account where account is reseller itself should result in merged value of reseller and system"
        ,?_assertEqual(kz_json:merge_recursive([SysRootObjKey, ResellerRootJObjKey])
-                     ,kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?FIXTURE_RESELLER_ACCOUNT_ID, ?TEST_CAT, <<"root_obj_key">>)
+                     ,kapps_account_config:get_with_strategy(<<"hierarchy">>, ?FIXTURE_RESELLER_ACCOUNT_ID, ?TEST_CAT, <<"root_obj_key">>)
                      )
        }
       ,{"defined value in parent-account and reseller should result in merged value of parent-account, reseller and system"
