@@ -15,3 +15,4 @@
 -callback accepted_content_types() -> kz_term:ne_binaries().
 -callback freeform(binary(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> asr_resp().
 -callback commands(kz_term:ne_binary(), kz_term:ne_binaries(), kz_term:ne_binary(), kz_term:ne_binary(), kz_term:proplist()) -> provider_return().
+-callback set_api_key(kz_term:ne_binary()) -> 'ok'.

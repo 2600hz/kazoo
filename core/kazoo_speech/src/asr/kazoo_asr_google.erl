@@ -15,6 +15,7 @@
         ,accepted_content_types/0
         ,freeform/4
         ,commands/5
+        ,set_api_key/1
         ]).
 
 -include("kazoo_speech.hrl").
@@ -38,6 +39,16 @@
 -spec preferred_content_type() -> kz_term:ne_binary().
 preferred_content_type() ->
     ?GOOGLE_ASR_PREFERRED_CONTENT_TYPE.
+
+%%%-----------------------------------------------------------------------------
+%%% @doc
+%%% Set the asr key
+%%% @end
+%%%-----------------------------------------------------------------------------
+-spec set_api_key(kz_term:ne_binary()) -> 'ok'.
+set_api_key(Key) ->
+    {'ok', _} = kapps_config:set_default(?GOOGLE_CONFIG_CAT, <<"asr_api_key">>, Key),
+    'ok'.
 
 %%%-----------------------------------------------------------------------------
 %%% @doc
