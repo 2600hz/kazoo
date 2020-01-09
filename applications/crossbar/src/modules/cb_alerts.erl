@@ -312,7 +312,7 @@ do_check_port_requests([PortRequest|PortRequests], Context) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_check_port_action_required(kzd_port_requests:doc(), cb_context:context()) ->
-                                        cb_context:context().
+          cb_context:context().
 maybe_check_port_action_required(PortRequest, Context) ->
     case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"check_port_action_required">>, 'true') of
         'false' -> Context;
@@ -362,7 +362,7 @@ port_request_last_comment(Context, PortRequest) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec maybe_check_port_suspended(kzd_port_requests:doc(), cb_context:context()) ->
-                                        cb_context:context().
+          cb_context:context().
 maybe_check_port_suspended(PortRequest, Context) ->
     case kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"check_port_suspended">>, 'true') of
         'false' -> Context;
