@@ -133,8 +133,8 @@
 -export([default_helper_function/2]).
 
 -export([start_recording/1, start_recording/2
-        ,mask_recording/1
-        ,unmask_recording/1
+        ,mask_recording/1, mask_recording/2
+        ,unmask_recording/1, unmask_recording/2
         ,stop_recording/1
         ]).
 
@@ -1528,6 +1528,16 @@ stop_recording(OriginalCall) ->
 
 -spec mask_recording(call()) -> call().
 mask_recording(OriginalCall) ->
+    mask_recording(call_id(OriginalCall), OriginalCall).
+
+-spec mask_recording(kz_term:api_ne_binary(), call()) -> call().
+mask_recording(LegId, OriginalCall) ->
+    mask_recording(LegId, OriginalCall, call_id(OriginalCall)).
+
+-spec mask_recording(kz_term:api_ne_binary(), call(), kz_term:ne_binary()) -> call().
+mask_recording('undefined', OriginalCall, CallId) ->
+    mask_recording(CallId, OriginalCall, CallId);
+mask_recording(CallId, OriginalCall, CallId) ->
     case retrieve_recording(OriginalCall) of
         {'ok', {MediaName, _RecorderPid}, Call} ->
             kapps_call_command:mask_record_call([{<<"Media-Name">>, MediaName}], Call),
@@ -1537,10 +1547,24 @@ mask_recording(OriginalCall) ->
             API = props:filter_undefined([{<<"Media-Name">>, MediaName}]),
             kapps_call_command:mask_record_call(API, Call),
             Call
-    end.
+    end;
+mask_recording(LegId, OriginalCall, _CallId) ->
+    API = [{<<"Call-ID">>, LegId}],
+    kapps_call_command:mask_record_call(API, OriginalCall),
+    OriginalCall.
 
 -spec unmask_recording(call()) -> call().
 unmask_recording(OriginalCall) ->
+    unmask_recording(call_id(OriginalCall), OriginalCall).
+
+-spec unmask_recording(kz_term:api_ne_binary(), call()) -> call().
+unmask_recording(LegId, OriginalCall) ->
+    unmask_recording(LegId, OriginalCall, call_id(OriginalCall)).
+
+-spec unmask_recording(kz_term:api_ne_binary(), call(), kz_term:ne_binary()) -> call().
+unmask_recording('undefined', OriginalCall, CallId) ->
+    unmask_recording(CallId, OriginalCall, CallId);
+unmask_recording(CallId, OriginalCall, CallId) ->
     case retrieve_recording(OriginalCall) of
         {'ok', {MediaName, _RecorderPid}, Call} ->
             kapps_call_command:unmask_record_call([{<<"Media-Name">>, MediaName}], Call),
@@ -1550,7 +1574,11 @@ unmask_recording(OriginalCall) ->
             API = props:filter_undefined([{<<"Media-Name">>, MediaName}]),
             kapps_call_command:unmask_record_call(API, Call),
             Call
-    end.
+    end;
+unmask_recording(LegId, OriginalCall, _CallId) ->
+    API = [{<<"Call-ID">>, LegId}],
+    kapps_call_command:unmask_record_call(API, OriginalCall),
+    OriginalCall.
 
 -spec store_recording(kz_term:ne_binary(), pid(), call()) -> call().
 store_recording(MediaName, Pid, Call) ->
