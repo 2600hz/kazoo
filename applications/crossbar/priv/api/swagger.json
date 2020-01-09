@@ -25560,7 +25560,7 @@
                     "type": "string"
                 },
                 "dtmf_leg": {
-                    "description": "",
+                    "description": "leg to listen for DTMF",
                     "type": "string"
                 },
                 "format": {
