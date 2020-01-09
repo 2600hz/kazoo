@@ -25559,6 +25559,10 @@
                     ],
                     "type": "string"
                 },
+                "dtmf_leg": {
+                    "description": "leg to listen for DTMF",
+                    "type": "string"
+                },
                 "format": {
                     "description": "What format to store the recording",
                     "enum": [
