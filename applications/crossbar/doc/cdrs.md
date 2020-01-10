@@ -73,6 +73,20 @@ Key | Description | Type | Default | Required | Support Level
 
 ## Fetch
 
+### Prerequisites 
+When using the GET API to retrieve CDR records, the response will be paginated if there are more than 50 records. The 50 records-per-page is the default, so if you've changed your system configuration, then you may have more, but be advised, 2600hz does not recommend more than 50 records per page. 
+### Available query string parameters
+These parameters can be applied to the end of any GET CDRs API call. To add query string parameters, simply put a question mark (?) at the end of the URL followed by the parameter. Multiple parameters are strung together using the ampersand (&).
+
+
+Parameter | Description | Type | Default | Required |
+--------- | ----------- | ---- | ------- | -------- |
+created_to | Gregorian seconds to end the date range of your CDRs | integer | | `false` |
+created_from | Gregorian seconds to start the date range of your CDRs | integer | | `false` |
+page_size | Number of records to return per-page; setting this too high can cause memory issues | integer | 50 | `false` |
+start_key | You will only see this in the returned payload if there are more than 1 page of records. In the response payload, this is called "next_start_key". start_key is used to get the next page of records; only required to get page 2, 3, 4, etc | string | | `false` |
+
+
 > GET /v2/accounts/{ACCOUNT_ID}/cdrs
 
 ```shell
@@ -81,7 +95,8 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
 ```
 
-Get a time range of CDRs (using Gregorian seconds for timestamps):
+Get a time range of CDRs (using Gregorian seconds for timestamps).
+Gregorian seconds are UNIX time seconds + 62167219200:
 
 ```shell
 curl -v -X GET \
@@ -89,7 +104,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?created_from={FROM_TIMESTAMP}&created_to={TO_TIMESTAMP}
 ```
 
-Get CDRs and update datetime field to local time zone (using seconds for timeoffset from UTC time):
+Get CDRs and update datetime field to local time zone (using seconds for timeoffset from UTC time) - Timestamps must still be in Gregorian time:
 
 ```shell
 curl -v -X GET \
@@ -124,6 +139,8 @@ curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?file_name={FILE_NAME}
 ```
+
+
 
 ## Fetch a CDR's details
 
