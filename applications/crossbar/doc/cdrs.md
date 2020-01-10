@@ -73,6 +73,22 @@ Key | Description | Type | Default | Required | Support Level
 
 ## Fetch
 
+### Prerequisites
+
+By default requests are [paginated](basics.md#pagination). The default page size is 50 records though it can vary based on the system's configuration. It is recommended to fetch CDRs by page to not overload the system on particularly busy accounts.
+
+Clients should use the `next_start_key` to move to the next page on subsequent requests.
+
+### Filtering results.
+
+KAZOO provides [filters](filters.md) to filter out rows from the results. This can be helpful if you're looking for rows related to each other (like the same `presence_id`, for instance).
+
+### Timestamps
+
+KAZOO timestamps, unless otherwise noted, are in [Gregorian seconds](basics.md#timestamps). Alternative timestamp formats are generally noted by the field name (e.g. `unix_timestamp`, `rfc1036`, or `iso8601`).
+
+### Fetch request
+
 > GET /v2/accounts/{ACCOUNT_ID}/cdrs
 
 ```shell
@@ -81,7 +97,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
 ```
 
-Get a time range of CDRs (using Gregorian seconds for timestamps):
+#### Fetch CDRs within a time range
 
 ```shell
 curl -v -X GET \
@@ -89,7 +105,9 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?created_from={FROM_TIMESTAMP}&created_to={TO_TIMESTAMP}
 ```
 
-Get CDRs and update datetime field to local time zone (using seconds for timeoffset from UTC time):
+#### Convert timestamps to local timezone (vs UTC)
+
+Get CDRs and update datetime field to local time zone (using seconds for timeoffset from UTC time) - Timestamps must still be in Gregorian time:
 
 ```shell
 curl -v -X GET \
@@ -97,7 +115,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?created_from={FROM_TIMESTAMP}&created_to={TO_TIMESTAMP}&utc_offset={SECONDS_OFFSET}
 ```
 
-Get CDRs as CSV:
+#### Fetch as CSV instead of JSON
 
 ```shell
 curl -v -X GET \
@@ -106,7 +124,9 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
 ```
 
-Get CDRs as CSV and define filename:
+#### Fetch as CSV with defined filename
+
+Using request headers:
 
 ```shell
 curl -v -X GET \
@@ -116,7 +136,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
 ```
 
-or
+Alternatively on the querystring:
 
 ```shell
 curl -v -X GET \
