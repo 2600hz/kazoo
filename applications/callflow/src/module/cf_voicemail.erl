@@ -466,18 +466,28 @@ play_announcement(Box, Call) ->
     end.
 
 -spec start_composing_voicemail(mailbox(), kapps_call:call()) -> compose_return().
-start_composing_voicemail(#mailbox{media_extension=Ext}=Box, Call) ->
+start_composing_voicemail(#mailbox{interdigit_timeout=Interdigit
+                                  ,media_extension=Ext
+                                  }=Box, Call) ->
     lager:debug("playing mailbox greeting to caller"),
     _ = play_greeting_intro(Box, Call),
     _ = play_greeting(Box, Call),
     _ = play_instructions(Box, Call),
-    _NoopId = kapps_call_command:noop(Call),
-    %% timeout after 5 min for safety, so this process cant hang around forever
-    case kapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 5 * ?MILLISECONDS_IN_MINUTE) of
-        {'ok', _} ->
+    NoopId = kapps_call_command:noop(Call),
+    case kapps_call_command:collect_digits(?KEY_LENGTH
+                                          ,0
+                                          ,Interdigit
+                                          ,NoopId
+                                          ,[]
+                                          ,'true'
+                                          ,kapps_call_command:default_application_timeout()
+                                          ,Call
+                                          )
+    of
+        {'ok', <<>>} ->
             lager:info("played greeting and instructions to caller, recording new message"),
             record_voicemail(tmp_file(Ext), Box, Call);
-        {'dtmf', Digit} ->
+        {'ok', Digit} ->
             _ = kapps_call_command:b_flush(Call),
             handle_compose_dtmf(Box, Call, Digit);
         {'error', R} ->
