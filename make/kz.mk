@@ -121,7 +121,7 @@ ebin/$(PROJECT).app:
 	@mkdir -p ebin/
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $(SOURCES)
 	@sed "s/{modules,[[:space:]]*\[\]}/{modules, \[$(MODULES)\]}/" src/$(PROJECT).app.src \
-	| sed -e "s/{vsn,\([^}]*\)}/\{vsn,\"$(KZ_VERSION)\"}/g" > $@
+	| sed -e "s!{vsn,\([^}]*\)}!\{vsn,\"$(KZ_VERSION)\"}!" > $@
 
 ebin/%.beam: src/%.erl
 	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(PA) -o ebin/ $<
