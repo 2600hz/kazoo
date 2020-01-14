@@ -84,9 +84,17 @@ handle_req(JObj, 'true') ->
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
-    case teletype_util:is_notice_enabled(AccountId, JObj, id()) of
+    case is_notice_enabled(AccountId, JObj) of
         'false' -> teletype_util:notification_disabled(DataJObj, id());
         'true' -> process_req(DataJObj)
+    end.
+
+-spec is_notice_enabled(kz_term:ne_binary(), kz_json:object()) -> boolean().
+is_notice_enabled(AccountId, JObj) ->
+    case teletype_util:is_notice_enabled(AccountId, JObj, id()) of
+        'false' -> 'false';
+        'true' ->
+            teletype_util:template_system_value(id(), <<"is_enabled">>, 'false')
     end.
 
 -spec process_req(kz_json:object()) -> template_response().
