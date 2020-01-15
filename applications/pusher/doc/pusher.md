@@ -58,7 +58,7 @@ pusher doc in system_config will be created.
 sup pusher_maintenance add_apple_app  [app-id] /etc/kamailio/cert/[voip_qa].pem api.development.push.apple.com
 sup pusher_maintenance add_apple_app [app-id] /etc/kazoo/kamailio/certs/[voip_pushcert].pem
 
-sup pusher_maintenance add_google_app [app-id] [google/firebase token]
+sup pusher_maintenance add_google_app [app-id] [firebase token]
 
 
 
