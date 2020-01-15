@@ -40,6 +40,31 @@ Contact: <sip:user_1234567@192.168.1.1:61767;transport=TCP;ob>;reg-id=1;+sip.ins
 
 ### System Config
 
+* `User-Agents`: list of user agents to check for pusher properties.
+
+
+```
+ "User-Agents": {
+       "Linphone": {
+           "regex": "^Linphone",
+           "properties": {
+               "Token-App": "app-id",
+               "Token-Type": "pn-type",
+               "Token-ID": "pn-tok"
+           }
+       }
+   }
+```
+
+### Maintenance
+
+In order for the push services from Apple / Firebase to work they need to be configured with application secrets / certificates. The app used in the push message is taken from Token-App.
+
+* `sup pusher_maintenance add_firebase_app(AppId, Secret)`
+* `sup pusher_maintenance add_apple_app(AppId, CertFile)` (uses the default APNs host: api.push.apple.com)
+* `sup pusher_maintenance add_apple_app(AppId, CertFile, Host)` (uses a custom APNs host, i.e. api.development.push.apple.com)
+
+
 1. start pusher and enable pusher role in kamailio
 ../kamailio/local.cfg
 
