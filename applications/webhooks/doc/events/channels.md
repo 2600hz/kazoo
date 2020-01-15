@@ -7,7 +7,7 @@ Typically, events would be fired for new calls, when a call is answered, and whe
 * `channel_create`
 * `channel_destroy`
 
-These events are sharing common fields below though their existence and their values, especially `costum_channel_vars` and `custome_application_vars`, varies and are depend on specific call types.
+These events are sharing common fields below though their existence and their values, especially `custom_channel_vars` and `custom_application_vars`, varies and are depend on specific call types.
 
 ## Base Channel event sample
 
