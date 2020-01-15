@@ -376,21 +376,19 @@ get_endpoint_id_by_sip_username(AccountDb, Username) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_operator_callflow(kz_term:ne_binary()) -> {'ok', kz_json:object()} |
-          kz_datamgr:data_error().
+          {'error', any()}.
 get_operator_callflow(Account) -> get_operator_callflow(Account, 'undefined').
 
 -spec get_operator_callflow(kz_term:ne_binary(), kz_term:api_ne_binary()) -> {'ok', kz_json:object()} |
-          kz_datamgr:data_error().
+          {'error', any()}.
 get_operator_callflow(Account, 'undefined') -> get_operator_callflow(Account, ?OPERATOR_KEY);
 get_operator_callflow(Account, OpNum) ->
-    AccountDb = kzs_util:format_account_db(Account),
-    Options = [{'key', OpNum}
-              ,'include_docs'
-              ,'first_when_multiple'
-              ],
-    case kz_datamgr:get_single_result(AccountDb, ?LIST_BY_NUMBER, Options) of
-        {'ok', JObj} ->
-            {'ok', kz_json:get_value([<<"doc">>, <<"flow">>], JObj, kz_json:new())};
+    case cf_flow:lookup(OpNum, Account) of
+        {'ok', _, 'true'} ->
+            lager:warning("unable to find operator callflow in ~s: lookup only returned no_match", [Account]),
+            {'error', 'no_match'};
+        {'ok', JObj, _} ->
+            {'ok', kz_json:get_json_value(<<"flow">>, JObj, kz_json:new())};
         {'error', _R}=E ->
             lager:warning("unable to find operator callflow in ~s: ~p", [Account, _R]),
             E
