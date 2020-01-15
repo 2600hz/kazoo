@@ -65,10 +65,10 @@ In order for the push services from Apple / Firebase to work they need to be con
 * `sup pusher_maintenance add_apple_app(AppId, CertFile, Host)` (uses a custom APNs host, i.e. api.development.push.apple.com)
 
 
-1. start pusher and enable pusher role in kamailio
+start pusher and enable pusher role in kamailio
 ../kamailio/local.cfg
 
-2. Initialize pusher app.
+ Initialize pusher app.
 
 [root@apps001 ~]# sup kapps_controller start_app pusher
 {ok,[fcm,gcm,base64url,gun,apns,pusher]}
@@ -78,12 +78,11 @@ In order for the push services from Apple / Firebase to work they need to be con
 pusher doc in system_config will be created.
 
 
-3. Add Apple and google/firebase credentials into pusher doc using sup commands. The Apple cert needs to be in PEM (text, no encryption) format and should be located in the server.
+Add Apple and google/firebase credentials into pusher doc using sup commands. The Apple cert needs to be in PEM (text, no encryption) format and should be located in the server.
 
-sup pusher_maintenance add_apple_app  [app-id] /etc/kamailio/cert/[voip_qa].pem api.development.push.apple.com
-sup pusher_maintenance add_apple_app [app-id] /etc/kazoo/kamailio/certs/[voip_pushcert].pem
 
-sup pusher_maintenance add_google_app [app-id] [firebase token]
+
+
 
 
 
