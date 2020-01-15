@@ -2837,9 +2837,9 @@ publish_voicemail_deleted(JObj) ->
 
 -spec publish_voicemail_deleted(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
 publish_voicemail_deleted(API, ContentType) ->
-    #kapi_definition{binding = Binding
-                    ,values = Values
-                    } = voicemail_deleted_definition(),
+    Definition = voicemail_deleted_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun voicemail_deleted/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
 
