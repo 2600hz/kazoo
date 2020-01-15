@@ -50,10 +50,10 @@ Contact: <sip:user_1234567@192.168.1.1:61767;transport=TCP;ob>;reg-id=1;+sip.ins
 [root@apps001 ~]# sup kapps_controller running_apps
 [blackhole,callflow,cdr,conference,crossbar,fax,hangups,media_mgr,milliwatt,omnipresence,pivot,pusher,registrar,reorder,stepswitch,sysconf]
 
-pusher doc in system_config will be created but we will need to edit it later.
+pusher doc in system_config will be created.
 
 
-3. Add Apple and google/firebase credentials into pusher doc using sup commands. The Apple cert needs to be in PEM (text) format and should be located in the server.
+3. Add Apple and google/firebase credentials into pusher doc using sup commands. The Apple cert needs to be in PEM (text, no encryption) format and should be located in the server.
 
 sup pusher_maintenance add_apple_app  [app-id] /etc/kamailio/cert/[voip_qa].pem api.development.push.apple.com
 sup pusher_maintenance add_apple_app [app-id] /etc/kazoo/kamailio/certs/[voip_pushcert].pem
@@ -61,101 +61,7 @@ sup pusher_maintenance add_apple_app [app-id] /etc/kazoo/kamailio/certs/[voip_pu
 sup pusher_maintenance add_google_app [app-id] [google/firebase token]
 
 
-4. Manual edit of the pusher doc to add firebase and new schemas
-
-```
-
-{
-    "_id": "pusher",
-    "default": {
-        "modules": [
-            "pm_apple",
-            "pm_google",
-            "pm_firebase"
-        ],
-        "User-Agents": {
-            "Reachify": {
-                "properties": {
-                    "Token-App": "app-id",
-                    "Token-ID": "pn-tok",
-                    "Token-Type": "pn-type"
-                },
-                "regex": "^User-Agent Header.*"
-            }
-        },
-        "apple": {
-            "extra_headers": {
-            },
-            "host": "api.push.apple.com",
-            "headers": {
-            }
-        },
-        "firebase": {
-            "extra_headers": {
-            },
-            "headers": {
-                "time_to_live": 300000,
-                "delay_while_idle": false,
-                "android": {
-                    "priority": "high"
-                },
-                "priority": 10
-            }
-        },
-        "google": {
-            "extra_headers": {
-            },
-            "headers": {
-                "time_to_live": 300000,
-                "delay_while_idle": false,
-                "android": {
-                    "priority": "high"
-                },
-                "priority": 10
-            }
-        }
-    },
-    "app-id": {
-        "apple": {
-            "certificate": "-----BEGIN RSA PRIVATE KEY-----\\n-----END CERTIFICATE-----\n\n",
-            "host": "api.push.apple.com"
-        },
-        "firebase": {
-            "api_key": "key"
-        },
-        "google": {
-            "api_key": "key"
-        }
-    },
-    "app-id2": {
-        "apple": {
-            "certificate": "-----BEGIN RSA PRIVATE KEY-----\\n-----END CERTIFICATE-----\n\n",
-            "host": "api.development.push.apple.com"
-        }
-    },
-    "app-id3": {
-        "apple": {
-            "certificate": "-----BEGIN RSA PRIVATE KEY-----\\n-----END CERTIFICATE-----\n\n",
-            "host": "api.push.apple.com"
-        }
-    }
-}
-
-```
-
-sup kazoo_maintenance hotload pm_firebase
-sup kazoo_maintenance hotload pm_google
-sup kapps_config flush
-sup kapps_controller restart_app fcm
-sup kapps_controller restart_app gcm
-sup kapps_controller restart_app pusher
 
 
-### Update
 
-Use the latest RPM for pusher and new pusher-role.cfg
-
-kazoo-application-pusher-4.3-77.pr6229.37773.el7.centos.x86_64.rpm
-
-https://github.com/2600hz/kazoo-configs-kamailio/blob/4.3/kamailio/pusher-role.cfg
 
