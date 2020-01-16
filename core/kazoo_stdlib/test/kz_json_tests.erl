@@ -265,6 +265,26 @@ prop_merge_left() ->
             end
            ).
 
+prop_merge_right_recursive() ->
+    Options = #{'keep_null' => 'false'
+               ,'recursive' => 'true'
+               },
+    ?FORALL({LeftJObj, RightJObj}
+           ,{resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
+            ,resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
+            }
+           ,begin
+                MergedJObj = kz_json:merge(LeftJObj, RightJObj, Options),
+
+                ?WHENFAIL(?debugFmt("Failed to merge_right recursively (~p, ~p)~nmerge-r/3: ~p~n"
+                                   ,[LeftJObj, RightJObj, MergedJObj]
+                                   )
+                         ,are_all_properties_found(MergedJObj, RightJObj)
+                          andalso are_all_keys_found(MergedJObj, LeftJObj)
+                         )
+            end
+           ).
+
 prop_key_with_null() ->
     ?FORALL({JObj, Path}
            ,{resize(?MAX_OBJECT_DEPTH, kz_json_generators:deep_object())
@@ -377,6 +397,24 @@ is_property_found(Key, Value, Merged) ->
             log_failure(Key, Value, Missing),
             'false'
     end.
+
+%%------------------------------------------------------------------------------
+%% @doc Ensures that all keys (recursively) from `Favored' are found in
+%% `Merged'. Values need not be the same.
+%% @end
+%%------------------------------------------------------------------------------
+are_all_keys_found(Merged, Favored) ->
+    kz_json:all(fun({K, V}) -> is_key_found(K, V, Merged) end, Favored).
+
+is_key_found(Key, ?JSON_WRAPPER(_)=Value, Merged) ->
+    case kz_json:get_value(Key, Merged) of
+        ?JSON_WRAPPER(_)=MergedV -> are_all_keys_found(MergedV, Value);
+        Missing ->
+            log_failure(Key, Value, Missing),
+            'false'
+    end;
+is_key_found(Key, _, Merged) ->
+    kz_json:is_defined(Key, Merged).
 
 log_failure(Key, Value, Missing) ->
     ?debugFmt("failed to find ~p~nexpected: ~p~nfound: ~p~n", [Key, Value, Missing]).
