@@ -343,10 +343,14 @@ recursive_from_list(_Else, #{invalid_as_null := 'false'}) ->
 -type merge_fun() :: fun((key(), merge_arg_2()) -> merge_fun_result()) |
                      fun((key(), merge_arg_2(), merge_options()) -> merge_fun_result()).
 
--type merge_options() :: #{'keep_null' => boolean()}.
+-type merge_options() :: #{'keep_null' => boolean()
+                          ,'recursive' => boolean() %% Supports `merge_recursive'-like behaviour - recursively merge even on empty objects
+                          }.
 -spec merge_options() -> merge_options().
 merge_options() ->
-    #{'keep_null' => 'false'}.
+    #{'keep_null' => 'false'
+     ,'recursive' => 'false'
+     }.
 
 -spec merge(objects()) -> object().
 merge(JObjs) ->
@@ -448,7 +452,7 @@ merge_left(_K, {'right', ?JSON_WRAPPER(_)=Right}, Options) ->
     {'ok', merge(fun merge_left/3, Right, new(), Options)};
 merge_left(_K, {'right', V}, _Options) -> {'ok', V};
 
-merge_left(_K, {'both', ?EMPTY_JSON_OBJECT=Left, ?JSON_WRAPPER(_)=_Right}, _Options) ->
+merge_left(_K, {'both', ?EMPTY_JSON_OBJECT=Left, ?JSON_WRAPPER(_)=_Right}, #{'recursive' := 'false'}) ->
     {'ok', Left};
 merge_left(_K, {'both', ?JSON_WRAPPER(_)=Left, ?JSON_WRAPPER(_)=Right}, Options) ->
     {'ok', merge(fun merge_left/3, Left, Right, Options)};
@@ -474,7 +478,7 @@ merge_right(_K, {'right', ?JSON_WRAPPER(_)=Right}, Options) ->
     {'ok', merge(fun merge_right/3, new(), Right, Options)};
 merge_right(_K, {'right', V}, _Options) -> {'ok', V};
 
-merge_right(_K, {'both', ?JSON_WRAPPER(_)=_Left, ?EMPTY_JSON_OBJECT=Right}, _Options) ->
+merge_right(_K, {'both', ?JSON_WRAPPER(_)=_Left, ?EMPTY_JSON_OBJECT=Right}, #{'recursive' := 'false'}) ->
     {'ok', Right};
 merge_right(_K, {'both', ?JSON_WRAPPER(_)=Left, ?JSON_WRAPPER(_)=Right}, Options) ->
     {'ok', merge(fun merge_right/3, Left, Right, Options)};
@@ -497,6 +501,11 @@ merge_jobjs(?JSON_WRAPPER(Props1), ?JSON_WRAPPER(_)=JObj2) ->
 -spec merge_true(any(), any()) -> 'true'.
 merge_true(_, _) -> 'true'.
 
+%%------------------------------------------------------------------------------
+%% @doc Deprecated in favor of `kz_json:merge/2' with the `Options' map
+%% containing 'recursive' => 'true'.
+%% @end
+%%------------------------------------------------------------------------------
 -spec merge_recursive(objects()) -> object().
 merge_recursive(JObjs) when is_list(JObjs) ->
     merge_recursive(JObjs, fun merge_true/2).
