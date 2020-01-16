@@ -98,6 +98,7 @@ main(CommandLineArgs, Loops) ->
 -spec in_kazoo(atom(), module(), atom(), kz_term:binaries()) -> no_return().
 in_kazoo(SUPName, M, F, As) ->
     kz_log:put_callid(SUPName),
+    erlang:put('is_sup_call', true),
     lager:notice("~s: ~s ~s ~s", [?MODULE, M, F, kz_term:iolist_join($,, As)]),
     R = apply(M, F, As),
     lager:notice("~s result: ~p", [?MODULE, R]),

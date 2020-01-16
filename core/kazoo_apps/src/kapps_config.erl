@@ -444,7 +444,7 @@ get_node_value(Category, Key, Default) ->
 
 -spec get_node_value(config_category(), config_key(), Default, config_node()) -> kz_json:json_term() | Default.
 get_node_value(Category, Key, Default, Node) when not is_list(Key) ->
-    get_node_value(Category, [kz_term:to_binary(Key)], Default, Node);
+    get_node_value(Category, key(Key), Default, Node);
 get_node_value(Category, Keys, Default, Node) when not is_binary(Category) ->
     get_node_value(kz_term:to_binary(Category), Keys, Default, Node);
 get_node_value(Category, Keys, Default, Node) when not is_binary(Node) ->
@@ -477,7 +477,7 @@ get(Category, Key, Default) ->
 get(Category, Key, Default, 'undefined') ->
     get(Category, Key, Default, ?KEY_DEFAULT);
 get(Category, Key, Default, Node) when not is_list(Key) ->
-    get(Category, [kz_term:to_binary(Key)], Default, Node);
+    get(Category, key(Key), Default, Node);
 get(Category, Keys, Default, Node) when not is_binary(Category) ->
     get(kz_term:to_binary(Category), Keys, Default, Node);
 get(Category, Keys, Default, Node) when not is_binary(Node) ->
@@ -506,7 +506,7 @@ get_current(Category, Key, Default) ->
 get_current(Category, Key, Default, 'undefined') ->
     get_current(Category, Key, Default, ?KEY_DEFAULT);
 get_current(Category, Key, Default, Node) when not is_list(Key) ->
-    get_current(Category, [kz_term:to_binary(Key)], Default, Node);
+    get_current(Category, key(Key), Default, Node);
 get_current(Category, Keys, Default, Node) when not is_binary(Category) ->
     get_current(kz_term:to_binary(Category), Keys, Default, Node);
 get_current(Category, Keys, Default, Node) when not is_binary(Node) ->
@@ -662,7 +662,7 @@ update_category(_, _, 'undefined', _, _) -> 'ok';
 update_category(Category, Key, Value, 'undefined', Options) ->
     update_category(Category, Key, Value, ?KEY_DEFAULT, Options);
 update_category(Category, Key, Value, Node, Options) when not is_list(Key) ->
-    update_category(Category, [kz_term:to_binary(Key)], Value, Node, Options);
+    update_category(Category, key(Key), Value, Node, Options);
 update_category(Category, Key, Value, Node, Options) when not is_binary(Category) ->
     update_category(kz_term:to_binary(Category), Key, Value, Node, Options);
 update_category(Category, Key, Value, Node, Options) when not is_binary(Node) ->
@@ -1397,7 +1397,7 @@ fetch_current(Category, Key, Default) ->
 fetch_current(Category, Key, Default, 'undefined') ->
     fetch_current(Category, Key, Default, ?KEY_DEFAULT);
 fetch_current(Category, Key, Default, Node) when not is_list(Key) ->
-    fetch_current(Category, [kz_term:to_binary(Key)], Default, Node);
+    fetch_current(Category, key(Key), Default, Node);
 fetch_current(Category, Keys, Default, Node) when not is_binary(Category) ->
     fetch_current(kz_term:to_binary(Category), Keys, Default, Node);
 fetch_current(Category, Keys, Default, Node) when not is_binary(Node) ->
@@ -1433,3 +1433,10 @@ fetch_default_value([?KEY_DEFAULT | _Keys]=Path, Default, JObj) ->
     end;
 fetch_default_value(Keys, Default, JObj) ->
     fetch_default_value([?KEY_DEFAULT | Keys], Default, JObj).
+
+-spec key(term()) -> [binary()].
+key(Key) ->
+    case erlang:get('is_sup_call') of
+        true -> binary:split(kz_term:to_binary(Key), <<".">>, [global]);
+        _ -> [kz_term:to_binary(Key)]
+    end.
