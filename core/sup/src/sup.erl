@@ -94,6 +94,7 @@ main(CommandLineArgs, Loops) ->
 -spec in_kazoo(atom(), module(), atom(), kz_term:binaries()) -> no_return().
 in_kazoo(SUPName, M, F, As) ->
     kz_util:put_callid(SUPName),
+    erlang:put('is_sup_call', true),
     lager:notice("~s: ~s ~s ~s", [?MODULE, M, F, kz_util:iolist_join($,, As)]),
     R = apply(M, F, As),
     lager:notice("~s result: ~p", [?MODULE, R]),
@@ -201,8 +202,6 @@ parse_args(CommandLineArgs) ->
     case getopt:parse(option_spec_list(), CommandLineArgs) of
         {'ok', {Options, Args}} when is_list(Options) ->
             {'ok', Options, Args};
-        {'ok', {_, _}} ->
-            print_help();
         {'error', {_, _}} ->
             print_help()
     end.
