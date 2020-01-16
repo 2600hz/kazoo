@@ -865,7 +865,7 @@ play_messages(Messages, Count, Box, Call) ->
     play_messages(Messages, [], Count, Box, Call).
 
 -spec play_messages(kz_json:objects(), kz_json:objects(), non_neg_integer(), mailbox(), kapps_call:call()) ->
-                           'ok' | 'complete'.
+          'ok' | 'complete'.
 play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{seek_duration=SeekDuration}=Box, Call) ->
     AccountId = kapps_call:account_id(Call),
     Message = kvm_message:media_url(AccountId, H),

@@ -2440,7 +2440,7 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) ->
                                          }).
 
 -spec collect_digits(integer(), integer(), integer(), kz_term:api_binary(), list(), boolean(), kapps_call:call()) ->
-                            collect_digits_return().
+          collect_digits_return().
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, FlushOnDigit, Call) ->
     do_collect_digits(#wcc_collect_digits{max_digits=kz_term:to_integer(MaxDigits)
                                          ,timeout=kz_term:to_integer(Timeout)
@@ -2549,7 +2549,7 @@ handle_collect_digit_event(_JObj, _NoopId, _EventType) ->
     {'decrement'}.
 
 -spec maybe_flash_on_digit(boolean(), binary(), kapps_call:call()) ->
-                                  kapps_api_std_return().
+          kapps_api_std_return().
 maybe_flash_on_digit('true', <<>>, Call) -> flush(Call);
 maybe_flash_on_digit(_FlushOnDigit, _Digits, _Call) -> 'ok'.
 %%------------------------------------------------------------------------------
