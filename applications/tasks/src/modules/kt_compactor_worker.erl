@@ -306,7 +306,8 @@ min_data_met(_Data, _Min) ->
 min_ratio_met(Disk, Data, MinRatio) ->
     case (Disk - Data) / Disk * 100 of
         R when R > MinRatio ->
-            lager:debug("ratio ~.2f% is greater than min ratio: ~p%", [R, MinRatio]),
+            lager:debug("ratio ~.2f% (~p disk/~p data) is greater than min ratio: ~p%",
+                        [R, Disk, Data, MinRatio]),
             'true';
         _R ->
             lager:debug("ratio ~.2f% ((~p-~p) / ~p * 100) is under min threshold ~p%",

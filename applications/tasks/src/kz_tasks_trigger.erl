@@ -33,7 +33,6 @@
 -endif.
 
 -include("tasks.hrl").
--include("tasks/src/modules/kt_compactor.hrl").
 
 -define(SERVER, {'via', 'kz_globals', ?MODULE}).
 
@@ -67,53 +66,13 @@ status() ->
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    maybe_start_link(?COMPACT_AUTOMATICALLY).
-
-%%------------------------------------------------------------------------------
-%% @doc Only register process if auto compaction is enabled on this node. Otherwise link.
-%%
-%% If this node has auto compaction enabled than this node should register the process,
-%% otherwise it should not register the process but link to the process registered by
-%% another node.
-%% @end
-%%------------------------------------------------------------------------------
--spec maybe_start_link(boolean()) -> kz_types:startlink_ret().
-maybe_start_link('true') ->
-    do_start_link(gen_server:start_link(?SERVER, ?MODULE, [], []));
-maybe_start_link('false') ->
-    do_link(kz_globals:where_is(?MODULE)).
-
--spec do_start_link(kz_types:startlink_ret()) -> kz_types:startlink_ret().
-do_start_link({'error', {'already_started', Pid}}) ->
-    %% This node is enabled to run auto compaction job and the process looks to be
-    %% registered by another node so it needs to stop it and then try to get it registered
-    %% by this node.
-    lager:info("auto compaction enabled but the process looks to be registered by another node, killing it"),
-    case erlang:is_process_alive(Pid) of
-        'true' -> gen_server:stop(?SERVER
-                                 ,{'shutdown', 'auto_compaction_enabled_on_other_node'}
-                                 ,5
-                                 );
-        'false' -> 'ok'
-    end,
-    %% Try again.
-    maybe_start_link(?COMPACT_AUTOMATICALLY);
-do_start_link(Other) ->
-    %% This node is enabled to run auto compaction job and the process was registered by
-    %% this node.
-    lager:info("auto compaction enabled and process registered (hopefully) by this node"),
-    Other.
-
--spec do_link('undefined' | pid()) -> {'ok', pid()}.
-do_link('undefined') ->
-    lager:info("auto compaction disabled and process not registered by any other node yet, retrying"),
-    maybe_start_link(?COMPACT_AUTOMATICALLY);
-do_link(Pid) ->
-    lager:info("auto compaction disabled, linking to process registered by another node"),
-    %% This node is disabled to run auto compaction job and the process was registered
-    %% somewhere else (another node), then link to it.
-    'true' = link(Pid),
-    {'ok', Pid}.
+    case gen_server:start_link(?SERVER, ?MODULE, [], []) of
+        {'ok', Pid} ->
+            'true' = link(Pid),
+            {'ok', Pid};
+        Other ->
+            Other
+    end.
 
 %%%=============================================================================
 %%% gen_server callbacks
@@ -301,19 +260,6 @@ ref_to_id(Ref) ->
 %%------------------------------------------------------------------------------
 -spec browse_dbs_for_triggers(atom() | reference()) -> 'ok'.
 browse_dbs_for_triggers(Ref) ->
-    browse_dbs_for_triggers(Ref, ?COMPACT_AUTOMATICALLY),
-    gen_server:cast(?SERVER, {'cleanup_finished', Ref}).
-
-%%------------------------------------------------------------------------------
-%% @doc Run this function if this node is enabled to run auto compaction job.
-%%
-%% If `COMPACT_AUTOMATICALLY' macro resolves to `true' then run the job, otherwise
-%% stop the execution because there won't be any worker on this node handling the events
-%% triggered by this function.
-%% @end
-%%------------------------------------------------------------------------------
--spec browse_dbs_for_triggers(atom() | reference(), boolean()) -> 'ok'.
-browse_dbs_for_triggers(Ref, 'true') ->
     {Year, Month, _} = erlang:date(),
     MonthBin = kz_binary:pad_left(integer_to_binary(Month), 2, <<"0">>),
     CallIdSuffix = <<"-cleanup_pass_", (kz_binary:rand_hex(4))/binary>>,
@@ -335,9 +281,8 @@ browse_dbs_for_triggers(Ref, 'true') ->
     _Counter = lists:foldl(F, 1, Sorted),
     'ok' = kt_compaction_reporter:stop_tracking_job(CallId),
     kz_log:put_callid('undefined'), % Reset callid
-    lager:debug("pass completed for ~p", [Ref]);
-browse_dbs_for_triggers(_Ref, 'false') ->
-    lager:debug("auto compaction is disabled on this node, skipping").
+    lager:debug("pass completed for ~p", [Ref]),
+    gen_server:cast(?SERVER, {'cleanup_finished', Ref}).
 
 -spec cleanup_pass(kz_term:ne_binary()) -> boolean().
 cleanup_pass(Db) ->
