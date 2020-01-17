@@ -29,7 +29,7 @@
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.connectivity">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.connectivity">>, ?MODULE, 'resource_exists'),
@@ -38,7 +38,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.connectivity">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.connectivity">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.connectivity">>, ?MODULE, 'delete'),
-    ok.
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc This function determines the verbs that are appropriate for the
@@ -199,7 +199,11 @@ create(Context) ->
 
                         Doc = cb_context:doc(C1),
                         Nums = get_numbers(Doc),
-                        cb_modules_util:validate_number_ownership(Nums, C1)
+
+                        AccountDoc = cb_context:account_doc(Context),
+                        WithRealm = kzd_connectivity:set_account_auth_realm(Doc, kzd_accounts:realm(AccountDoc)),
+
+                        cb_modules_util:validate_number_ownership(Nums, cb_context:set_doc(C1, WithRealm))
                 end,
     cb_context:validate_request_data(<<"connectivity">>, Context, OnSuccess).
 
@@ -223,7 +227,11 @@ update(Id, Context) ->
 
                         Doc = cb_context:doc(C1),
                         Nums = get_numbers(Doc),
-                        cb_modules_util:validate_number_ownership(Nums, C1)
+
+                        AccountDoc = cb_context:account_doc(Context),
+                        WithRealm = kzd_connectivity:set_account_auth_realm(Doc, kzd_accounts:realm(AccountDoc)),
+
+                        cb_modules_util:validate_number_ownership(Nums, cb_context:set_doc(C1, WithRealm))
                 end,
     cb_context:validate_request_data(<<"connectivity">>, Context, OnSuccess).
 
@@ -242,7 +250,8 @@ validate_patch(Id, Context) ->
 %%------------------------------------------------------------------------------
 -spec on_successful_validation(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 on_successful_validation('undefined', Context) ->
-    cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"sys_info">>));
+    Doc = kz_doc:set_type(cb_context:doc(Context), <<"sys_info">>),
+    cb_context:set_doc(Context, Doc);
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"sys_info">>)).
 
