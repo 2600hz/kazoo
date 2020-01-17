@@ -267,9 +267,9 @@ maybe_print_compaction_history({'ok', JObjs}) ->
              ,"finished_at"
              ,"exec_time"
              ],
-    HLine = "+-----------------------+--------+-----------+---------+------------+---------------------+---------------------+--------------+",
+    HLine = "+------------------------------+--------+-----------+---------+------------+---------------------+---------------------+--------------+",
     %% Format string for printing header and values of the table including "columns".
-    FStr = "| ~.21s | ~6.6s | ~9.9s | ~7.7s | ~10.10s | ~.19s | ~.19s | ~12.12s |~n",
+    FStr = "| ~.28s | ~6.6s | ~9.9s | ~7.7s | ~10.10s | ~.19s | ~.19s | ~12.12s |~n",
     %% Print top line of table, then prints the header and then another line below.
     io:format("~s~n" ++ FStr ++ "~s~n", [HLine] ++ Header ++ [HLine]),
     lists:foreach(fun(Obj) -> print_compaction_history_row(Obj, FStr) end, JObjs),
