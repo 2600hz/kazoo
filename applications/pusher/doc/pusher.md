@@ -15,6 +15,7 @@ if the device is already registered, and the client is alive, kamailio will allo
 
 You can also use the following curl command to test apple push.
 
+```curl
 curl -v \
 -d '{"aps":{"alert":"text","sound":"default"}}' \
 -H "apns-topic:[app-id]" \
@@ -23,6 +24,7 @@ curl -v \
 --http2 \
 --cert voip_pushcert.pem \
 https://api.push.apple.com/3/device/[devicetoken]
+```
 
 #### 2. Application IDs associated with cert / token
   example: *org.myorg.myapp*.
@@ -92,7 +94,7 @@ Unregister the device, and make a call from another device that will be delivere
 The properties identify the *fields*  in the contact header where pusher looks for the value, the following properties are mandatory.
    * Token-App
    * Token-Type
-   * Token-ID"
+   * Token-ID
 
 ### Maintenance
 
