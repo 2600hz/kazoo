@@ -61,6 +61,7 @@
         ,req_data/1, set_req_data/2
         ,req_files/1, set_req_files/2, add_req_file/2
         ,req_header/2, set_req_header/3
+        ,req_header_first_defined/2
         ,req_headers/1, set_req_headers/2
         ,req_id/1, set_req_id/2
         ,req_nouns/1, set_req_nouns/2
@@ -358,6 +359,15 @@ req_headers(#cb_context{req_headers=Hs}) -> Hs.
 -spec req_header(context(), binary()) -> kz_term:api_ne_binary().
 req_header(#cb_context{req_headers=Hs}, K) -> maps:get(K, Hs, 'undefined').
 
+-spec req_header_first_defined(context(), [binary()]) -> kz_term:api_ne_binary().
+req_header_first_defined(#cb_context{}, []) ->
+    'undefined';
+req_header_first_defined(#cb_context{req_headers=Hs}=Context, [Key | Keys]) ->
+    case maps:get(Key, Hs, 'undefined') of
+        'undefined' -> req_header_first_defined(Context, Keys);
+        Value -> Value
+    end.
+
 -spec query_string(context()) -> kz_json:object().
 query_string(#cb_context{query_json=Q}) -> Q.
 
@@ -518,7 +528,7 @@ validators_fold(Context, [Setter | Setters]) ->
     NewContext = setters_fold(Setter, Context),
     case resp_status(NewContext) of
         'success' -> validators_fold(NewContext, Setters);
-        'error' -> NewContext
+        _Else -> NewContext
     end.
 
 -spec set_account_id(context(), kz_term:ne_binary()) -> context().
@@ -1036,6 +1046,8 @@ add_system_error('account_cant_create_tree', Context) ->
     build_system_error(500, 'account_cant_create_tree', <<"account creation fault">>, Context);
 add_system_error('account_has_descendants', Context) ->
     build_system_error(500, 'account_has_descendants', <<"account has descendants">>, Context);
+add_system_error('not_implemented', Context) ->
+    build_system_error(501, 'not_implemented', <<"not implemented">>, Context);
 add_system_error('faulty_request', Context) ->
     build_system_error(404, 'faulty_request', <<"faulty request">>, Context);
 

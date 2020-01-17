@@ -16,6 +16,7 @@
 -export([is_cors_preflight/1
         ,is_cors_request/1
         ,add_cors_headers/2
+        ,add_req_cors_headers/2
         ,allow_methods/3
         ,path_tokens/1
         ,parse_path_tokens/2
@@ -37,6 +38,7 @@
 
          %% Content
         ,create_resp_content/2
+        ,create_resp_body/2
         ,create_resp_file/2
         ,create_csv_resp_content/2
         ,create_binary_resp_content/2
@@ -54,6 +56,9 @@
         ,create_event_name/2
 
         ,encode_start_key/1, decode_start_key/1
+
+        ,exec_req/2
+        ,get_request_body/1
         ]).
 
 -include_lib("kernel/include/file.hrl").
@@ -85,6 +90,22 @@
 -type resp_content_return() :: {kz_term:ne_binary() | iolist() | resp_file(), cowboy_req:req()}.
 -type resp_content_fun() :: fun((cowboy_req:req(), cb_context:context()) ->  resp_content_return()).
 
+-type req_fun_1() :: fun((cowboy_req:req()) -> cowboy_req:req()).
+-type req_fun_2() :: fun((any(), cowboy_req:req()) -> cowboy_req:req()).
+-type req_fun_3() :: fun((any(), any(), cowboy_req:req()) -> cowboy_req:req()).
+-type req_fun() :: req_fun_1() | req_fun_2() | req_fun_3().
+-export_type([req_fun/0
+             ,req_fun_1/0
+             ,req_fun_2/0
+             ,req_fun_3/0
+             ,req_funs/0
+             ]).
+
+-type req_kv() :: req_fun_1() |
+                  {req_fun_2(), any()} |
+                  {req_fun_3(), any(), any()}.
+-type req_funs() :: [req_kv()].
+
 %%------------------------------------------------------------------------------
 %% @doc Attempts to determine if this is a cross origin resource preflight request
 %% @end
@@ -113,6 +134,11 @@ is_cors_request(Req, [ReqHdr|ReqHdrs]) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
+-spec add_req_cors_headers(cb_context:context(), cowboy_req:req()) ->
+          cowboy_req:req().
+add_req_cors_headers(Context, Req) ->
+    add_cors_headers(Req, Context).
+
 -spec add_cors_headers(cowboy_req:req(), cb_context:context()) ->
           cowboy_req:req().
 add_cors_headers(Req, Context) ->
@@ -228,9 +254,22 @@ get_req_data(Context, Req1, <<"application/x-base64">>, QS) ->
 get_req_data(Context, Req, <<"multipart/", C/binary>>, QS) ->
     lager:debug("multipart ~s content type when getting req data", [C]),
     maybe_extract_multipart(cb_context:set_query_string(Context, QS), Req, QS);
-get_req_data(Context, Req1, ContentType, QS) ->
-    lager:debug("file's content-type: ~p", [ContentType]),
-    extract_file(cb_context:set_query_string(Context, QS), ContentType, Req1).
+get_req_data(Context, Req, ContentType, QS) ->
+    [{Mod, Params} | _] = cb_context:req_nouns(Context),
+    Method = kz_term:to_lower_binary(cb_context:method(Context)),
+    Event = create_event_name(Context, [<<"parse_body">>, Method, Mod]),
+    Payload = [Req | Params],
+    try crossbar_bindings:map(Event, Payload) of
+        [{'ok', Body}] ->
+            set_request_data_in_context(Context, Req, Body, QS);
+        [{'error', Error}] ->
+            {'stop', Req, cb_context:add_system_error(Error, Context)};
+        _Else ->
+            lager:debug("file's content-type: ~p", [ContentType]),
+            extract_file(cb_context:set_query_string(Context, QS), ContentType, Req)
+    catch
+        _:_:_ -> extract_file(cb_context:set_query_string(Context, QS), ContentType, Req)
+    end.
 
 -spec maybe_extract_multipart(cb_context:context(), cowboy_req:req(), kz_json:object()) ->
           {cb_context:context(), cowboy_req:req()} |
@@ -591,9 +630,11 @@ req_noun_requires_envelope(_Context, []) -> 'true';
 req_noun_requires_envelope(Context, [{Mod, Params} | _]) ->
     Event = create_event_name(Context, <<"requires_envelope.", Mod/binary>>),
     Payload = [Context | Params],
-    case crossbar_bindings:pmap(Event, Payload) of
-        [Value | _] -> Value;
+    try crossbar_bindings:pmap(Event, Payload) of
+        [Value | _] when is_boolean(Value) -> Value;
         _Else -> 'true'
+    catch
+        _:_:_ -> 'true'
     end.
 
 -spec validate_request_envelope(kz_json:object()) -> 'true' | validation_errors().
@@ -1214,6 +1255,11 @@ cleanup_file(File) ->
     'ok' = file:delete(File),
     lager:debug("deleted file ~s", [File]).
 
+-spec create_resp_body(cb_context:context(), cowboy_req:req()) -> cowboy_req:req().
+create_resp_body(Context, Req0) ->
+    {Content, Req} = create_resp_content(Req0, Context),
+    cowboy_req:set_resp_body(Content, Req).
+
 %%------------------------------------------------------------------------------
 %% @doc This function will create the content for the response body.
 %% @end
@@ -1228,7 +1274,7 @@ create_resp_content(Req0, Context) ->
             case cb_context:req_value(Context, <<"jsonp">>) of
                 'undefined' ->
                     {JSON
-                    ,cowboy_req:set_resp_header(<<"content-type">>, <<"application/json">>, Req0)
+                    ,Req0
                     };
                 JsonFun when is_binary(JsonFun) ->
                     lager:debug("jsonp wrapping in ~s: ~p", [JsonFun, JSON]),
@@ -1618,6 +1664,19 @@ create_resp_envelope(Context) ->
 
 -spec do_create_resp_envelope(cb_context:context()) -> kz_json:object().
 do_create_resp_envelope(Context) ->
+    [{Mod, Params} | _] = cb_context:req_nouns(Context),
+    Verb = kz_term:to_lower_binary(cb_context:req_verb(Context)),
+    Event = create_event_name(Context, list_to_binary(["response_envelope.", Verb, ".", Mod])),
+    Payload = [Context | Params],
+    try crossbar_bindings:pmap(Event, Payload) of
+        []  -> create_default_resp_envelope(Context);
+        [JObj | _] -> JObj
+    catch
+        _:_:_ -> create_default_resp_envelope(Context)
+    end.
+
+-spec create_default_resp_envelope(cb_context:context()) -> kz_json:object().
+create_default_resp_envelope(Context) ->
     Resp = case cb_context:response(Context) of
                {'ok', RespData} ->
                    [{<<"auth_token">>, cb_context:auth_token(Context)}
@@ -1728,6 +1787,20 @@ fix_header(H, V, _) ->
 -spec stop(cowboy_req:req(), cb_context:context()) ->
           stop_return().
 stop(Req0, Context) ->
+    [{Mod, Params} | _] = cb_context:req_nouns(Context),
+    Verb = kz_term:to_lower_binary(cb_context:req_verb(Context)),
+    Event = create_event_name(Context, [<<"error">>, Verb, Mod]),
+    Payload = [{Req0, Context} | Params],
+    try crossbar_bindings:pmap(Event, Payload) of
+        []  -> default_stop(Req0, Context);
+        [{Req, Ctx} | _] -> {'stop', Req, Ctx}
+    catch
+        _:_:_ -> default_stop(Req0, Context)
+    end.
+
+-spec default_stop(cowboy_req:req(), cb_context:context()) ->
+          stop_return().
+default_stop(Req0, Context) ->
     StatusCode = cb_context:resp_error_code(Context),
     lager:info("stopping execution here with status code ~p", [StatusCode]),
 
@@ -1750,3 +1823,14 @@ create_event_name(Context, Segments) when is_list(Segments) ->
 create_event_name(Context, Name) ->
     ApiVersion = cb_context:api_version(Context),
     <<ApiVersion/binary, "_resource.", Name/binary>>.
+
+
+-spec exec_req(cowboy_req:req(), req_funs()) -> cowboy_req:req().
+exec_req(Req, []) -> Req;
+exec_req(Req, [_|_]=Funs) ->
+    lists:foldl(fun exec_req_fold/2, Req, Funs).
+
+-spec exec_req_fold(req_kv(), cowboy_req:req()) -> cowboy_req:req().
+exec_req_fold({F, V}, Req) -> F(V, Req);
+exec_req_fold({F, K, V}, Req) -> F(K, V, Req);
+exec_req_fold(F, Req) when is_function(F, 1) -> F(Req).

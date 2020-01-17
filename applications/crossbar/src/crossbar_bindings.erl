@@ -64,7 +64,9 @@
 
 -type map_results() :: [boolean() |
                         http_methods() |
-                        {boolean() | 'stop', cb_context:context()}
+                        {boolean() | 'stop', cb_context:context()} |
+                        {'ok', kz_json:object()} |
+                        {'error', atom() | binary()}
                        ].
 
 %%------------------------------------------------------------------------------
