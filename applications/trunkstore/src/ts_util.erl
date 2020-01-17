@@ -226,7 +226,7 @@ merge_account_attributes(AccountDoc, JObj) ->
 
     Props = props:filter_undefined(
               [{<<"caller_id_options">>, CIDOptions}
-              ,{<<"auth_realm">>, kzd_accounts:real(AccountDoc)}
+              ,{<<"auth_realm">>, kzd_accounts:realm(AccountDoc)}
               ]
              ),
     kz_json:set_values(Props, JObj).
