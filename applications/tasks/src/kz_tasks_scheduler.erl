@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2016-2020, 2600Hz
-%%% @doc Schedule one-off tasks only once per cluster
+%%% @doc Schedule one-off tasks
 %%% @author Pierre Fenoll
 %%%
 %%% This Source Code Form is subject to the terms of the Mozilla Public
@@ -47,7 +47,7 @@
 -include_lib("kazoo_tasks/include/task_fields.hrl").
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
--define(SERVER, {'via', 'kz_globals', ?MODULE}).
+-define(SERVER, ?MODULE).
 
 -define(WAIT_AFTER_ROW
        ,kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"wait_after_row_ms">>, 500)
@@ -86,12 +86,7 @@
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    case gen_server:start_link(?SERVER, ?MODULE, [], []) of
-        {'error', {'already_started', Pid}} ->
-            'true' = link(Pid),
-            {'ok', Pid};
-        Other -> Other
-    end.
+    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 %%------------------------------------------------------------------------------
 %% @doc
@@ -332,7 +327,7 @@ cleanup_task(API, Data) ->
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     _ = process_flag('trap_exit', 'true'),
-    lager:info("ensuring db ~s exists", [?KZ_TASKS_DB]),
+    lager:info("started ~s", [?MODULE]),
     {'ok', #state{}}.
 
 -spec handle_call(any(), kz_term:pid_ref(), state()) -> kz_types:handle_call_ret_state(state()).
@@ -638,8 +633,8 @@ task_api(Category, Action) ->
 -spec worker_module(kz_json:object()) -> module().
 worker_module(API) ->
     case kz_tasks:input_mime(API) of
-        <<"none">> -> 'kz_task_worker_noinput';
-        _TextCSV -> 'kz_task_worker'
+        <<"none">> -> 'kt_task_worker_noinput';
+        _TextCSV -> 'kt_task_worker'
     end.
 
 %%% End of Module.

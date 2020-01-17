@@ -29,6 +29,8 @@
 -define(TRIGGER_OTHER, <<"tasks.triggers.other">>).
 -define(TRIGGER_SYSTEM, <<"tasks.triggers.system">>).
 
+-define(TRIGGER_AUTO_COMPACTION, <<"tasks.triggers.cleanup_pass">>).
+
 -define(TRIGGER_ALL_DBS, [?TRIGGER_ACCOUNT
                          ,?TRIGGER_ACCOUNT_MOD
                          ,?TRIGGER_SYSTEM

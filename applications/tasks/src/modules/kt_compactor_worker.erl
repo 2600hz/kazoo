@@ -122,13 +122,13 @@ compact_shard(#compactor{shards=[Shard]}=Compactor) ->
 
     case get_db_disk_and_data(compactor_admin(Compactor), Shard) of
         'undefined' ->
-            lager:info("beginning shard compaction"),
+            lager:debug("beginning shard compaction"),
             start_compacting_shard(Compactor);
         'not_found' ->
-            lager:info("disk and data size not found, skip and return ok"),
+            lager:debug("disk and data size not found, skip and return ok"),
             'ok';
         {BeforeDisk, BeforeData} ->
-            lager:info("beginning shard compaction: ~p disk/~p data", [BeforeDisk, BeforeData]),
+            lager:debug("beginning shard compaction: ~p disk/~p data", [BeforeDisk, BeforeData]),
             start_compacting_shard(Compactor)
     end.
 
@@ -201,7 +201,7 @@ wait_for_design_compaction(AdminConn, Shard, DDs, DD, {'error', {'conn_failed', 
     'ok' = timer:sleep(?SLEEP_BETWEEN_POLL),
     wait_for_design_compaction(AdminConn, Shard, DDs, DD, kz_couch_view:design_info(AdminConn, Shard, DD));
 wait_for_design_compaction(AdminConn, Shard, DDs, _DD, {'error', 'not_found'}) ->
-    lager:info("compacting shard design docs not found"),
+    lager:debug("compacting shard design docs not found"),
     wait_for_design_compaction(AdminConn, Shard, DDs);
 wait_for_design_compaction(AdminConn, Shard, DDs, _DD, {'error', _E}) ->
     lager:warning("failed design status for '~s/~s': ~p", [Shard, _DD, _E]),
@@ -222,7 +222,7 @@ wait_for_compaction(AdminConn, Shard) ->
 
 -spec wait_for_compaction(kz_data:connection(), kz_term:ne_binary(), db_info_resp()) -> 'ok'.
 wait_for_compaction(_AdminConn, _Shard, {'error', 'db_not_found'}) ->
-    lager:info("shard '~s' wasn't found on this connection: ~p", [_Shard, _AdminConn]);
+    lager:debug("shard '~s' wasn't found on this connection: ~p", [_Shard, _AdminConn]);
 wait_for_compaction(AdminConn, Shard, {'error', 'timeout'}) ->
     lager:warning("timed out querying db status; that seems irregular!"),
     'ok' = timer:sleep(?SLEEP_BETWEEN_POLL * 2),
@@ -306,7 +306,8 @@ min_data_met(_Data, _Min) ->
 min_ratio_met(Disk, Data, MinRatio) ->
     case (Disk - Data) / Disk * 100 of
         R when R > MinRatio ->
-            lager:debug("ratio ~.2f% is greater than min ratio: ~p%", [R, MinRatio]),
+            lager:debug("ratio ~.2f% (~p disk/~p data) is greater than min ratio: ~p%",
+                        [R, Disk, Data, MinRatio]),
             'true';
         _R ->
             lager:debug("ratio ~.2f% ((~p-~p) / ~p * 100) is under min threshold ~p%",

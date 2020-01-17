@@ -1,6 +1,9 @@
 %%%-----------------------------------------------------------------------------
 %%% @copyright (C) 2020-, 2600Hz
 %%% @doc
+%%% Collect and save/store compaction job's information for jobs started via sup commands,
+%%% CSV JOBS app, or auto compaction trigger.
+%%%
 %%% This Source Code Form is subject to the terms of the Mozilla Public
 %%% License, v. 2.0. If a copy of the MPL was not distributed with this
 %%% file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -74,12 +77,7 @@
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    case gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []) of
-        {'error', {'already_started', Pid}} ->
-            'true' = link(Pid),
-            {'ok', Pid};
-        Other -> Other
-    end.
+    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 %%------------------------------------------------------------------------------
 %% @doc Start tracking a compaction job
@@ -234,6 +232,7 @@ job_info(<<JobId/binary>>) ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
+    lager:info("started ~s", [?MODULE]),
     {'ok', #{}}.
 
 %%------------------------------------------------------------------------------
@@ -255,6 +254,7 @@ handle_call(_Request, _From, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'new_job', Pid, Node, CallId, DbsAndSizes}, State) ->
+    lager:info("start collecting data for compaction job ~p", [CallId]),
     TotalDbs = length(DbsAndSizes),
     Stats = #{'id' => CallId
              ,'found_dbs' => TotalDbs
@@ -411,7 +411,7 @@ handle_info(_Info, State) ->
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("~s terminating with reason: ~p~n when state was: ~p"
-               ,[?MODULE, _Reason, _State]
+               ,[?SERVER, _Reason, _State]
                ).
 
 %%------------------------------------------------------------------------------
@@ -499,7 +499,7 @@ save_compaction_stats(#{'id' := Id
     lager:debug("saving stats after compaction job completion: ~p", [Stats]),
     {'ok', AccountId} = kapps_util:get_master_account_id(),
     {'ok', Doc} = kazoo_modb:save_doc(AccountId, kz_json:from_map(Map)),
-    lager:debug("created doc after compaction job completion: ~p", [Doc]),
+    lager:info("created doc after compaction job completion: ~p", [Doc]),
     'ok'.
 
 -spec normalize_db(kz_term:ne_binary()) -> kz_term:ne_binary().

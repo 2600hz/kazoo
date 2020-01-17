@@ -13,7 +13,7 @@
 
 %% behaviour: tasks_provider
 
--export([init/0, get_all_dbs_and_sort_by_disk/0]).
+-export([init/0]).
 
 -export([compact_all/2
         ,compact_node/3
@@ -26,6 +26,8 @@
         ,do_compact_db/1
         ]).
 
+-export([browse_dbs_for_triggers/1]).
+
 %% Triggerables
 -export([help/1, help/2, help/3
         ,output_header/1
@@ -33,6 +35,7 @@
 
 -ifdef(TEST).
 -export([sort_by_disk_size/1
+        ,build_compaction_callid/1
         ]).
 -endif.
 
@@ -78,6 +81,10 @@ init() ->
     _ = case ?COMPACT_AUTOMATICALLY of
             'false' -> lager:info("node ~s not configured to compact automatically", [node()]);
             'true' ->
+                _ = tasks_bindings:bind(?TRIGGER_AUTO_COMPACTION
+                                       ,?MODULE
+                                       ,'browse_dbs_for_triggers'
+                                       ),
                 lager:info("node ~s configured to compact automatically", [node()]),
                 %% Need to use `do_compact_db/1' instead of `compact_db/1' because the
                 %% the former uses `?HEUR_RATIO' for heuristic and the latter ignores
@@ -162,11 +169,7 @@ compact_all(Extra, 'init') ->
     {'ok', is_allowed(Extra)};
 compact_all(_Extra, 'true') ->
     %% Dbs to be compacted will be set at `do_compact_all/0'
-    Rows = track_job(<<"compact_all_", (kz_binary:rand_hex(4))/binary>>
-                    ,fun do_compact_all/0
-                    ,[]
-                    ),
-    {Rows, 'stop'};
+    {track_job(<<"compact_all">>, fun do_compact_all/0, []), 'stop'};
 compact_all(_Extra, 'false') ->
     {<<"compaction is only allowed by system administrators">>, 'stop'}.
 
@@ -177,7 +180,7 @@ compact_node(_Extra, 'false', _Args) ->
     {<<"compaction is only allowed by system administrators">>, 'stop'};
 compact_node(_Extra, 'true', #{<<"node">> := Node}=Row) ->
     %% Dbs to be compacted will be set at `do_compact_node/4'
-    Rows = track_job(<<"compact_node_", (kz_binary:rand_hex(4))/binary>>
+    Rows = track_job(<<"compact_node">>
                     ,fun do_compact_node/2
                     ,[Node, heuristic_from_flag(maps:get(<<"force">>, Row))]
                     ),
@@ -189,10 +192,9 @@ compact_db(Extra, 'init', Args) ->
 compact_db(_Extra, 'false', _Args) ->
     {<<"compaction is only allowed by system administrators">>, 'stop'};
 compact_db(_Extra, 'true', #{<<"database">> := Database}=Row) ->
-    Rows = track_job(<<"compact_db_", (kz_binary:rand_hex(4))/binary>>
+    Rows = track_job(<<"compact_db">>
                     ,fun do_compact_db/2
                     ,[Database, heuristic_from_flag(maps:get(<<"force">>, Row))]
-                    ,get_dbs_sizes([Database])
                     ),
     {Rows, 'true'}.
 
@@ -208,14 +210,13 @@ compact_db(Database) ->
 maybe_track_compact_db(Db, Heur, <<"undefined">>) ->
     %% If not callid defined yet, then this function was call directly with a db name so
     %% it creates a new callid to track this db-only compaction job.
-    CallId = <<"compact_db_", (kz_binary:rand_hex(4))/binary>>,
-    track_job(CallId, fun do_compact_db/2, [Db, Heur], get_dbs_sizes([Db]));
+    track_job(<<"compact_db">>, fun do_compact_db/2, [Db, Heur], get_dbs_sizes([Db]));
 maybe_track_compact_db(Db, Heur, <<"sup_", _/binary>> = SupId) ->
     %% If callid starts with `sup_', then this function was called via a SUP command
     %% so it creates a new callid (remove the `@' sign + anything at the right of it) to
     %% track this db-only compaction job.
-    CallId = supid_to_callid(SupId),
-    track_job(CallId, fun do_compact_db/2, [Db, Heur], get_dbs_sizes([Db]));
+    JobType = supid_to_jobtype(SupId),
+    track_job(JobType, fun do_compact_db/2, [Db, Heur], get_dbs_sizes([Db]));
 maybe_track_compact_db(Db, Heur, CallId) ->
     %% If there is already a callid defined, then do_compact_db/2 will use it for updating
     %% the corresponding compaction's job stats.
@@ -256,10 +257,9 @@ do_compact_all() ->
     case get_all_dbs_and_sort_by_disk() of
         [] -> lager:info("failed to find any dbs");
         Sorted ->
-            lager:info("sorted: ~p", [Sorted]),
+            lager:info("starting do_compact_all execution, ~p dbs found", [length(Sorted)]),
             'ok' = kt_compaction_reporter:set_job_dbs(CallId, Sorted),
-            SortedWithoutSizes = [Db || {Db, _Sizes} <- Sorted],
-            lists:foldl(fun do_compact_db_fold/2, [], SortedWithoutSizes)
+            lists:foldl(fun do_compact_db_fold/2, [], Sorted)
     end.
 
 -spec compact_node(kz_term:ne_binary()) -> 'ok'.
@@ -271,11 +271,10 @@ compact_node(Node) ->
 -spec maybe_track_compact_node(kz_term:ne_binary(), heuristic(), kz_term:ne_binary()) -> rows().
 maybe_track_compact_node(Node, Heur, <<"undefined">>) ->
     %% Dbs to be compacted will be set at `do_compact_node/4'
-    CallId = <<"compact_node_", (kz_binary:rand_hex(4))/binary>>,
-    track_job(CallId, fun do_compact_node/2, [Node, Heur]);
+    track_job(<<"compact_node">>, fun do_compact_node/2, [Node, Heur]);
 maybe_track_compact_node(Node, Heur, <<"sup_", _/binary>> = SupId) ->
     %% Triggered via SUP command
-    track_job(supid_to_callid(SupId), fun do_compact_node/2, [Node, Heur]);
+    track_job(supid_to_jobtype(SupId), fun do_compact_node/2, [Node, Heur]);
 maybe_track_compact_node(Node, Heur, _CallId) ->
     do_compact_node(Node, Heur).
 
@@ -316,8 +315,10 @@ do_compact_node(Node, Heuristic, APIConn, AdminConn) ->
 do_compact_node(Node, Heuristic, APIConn, AdminConn, Databases) ->
     CallId = kz_log:get_callid(),
     lists:foldl(fun(Database, Acc) ->
+                        lager:debug("setting current_db to ~p on compaction reporter", [Database]),
                         'ok' = kt_compaction_reporter:current_db(CallId, Database),
                         NewAcc = do_compact_node_db(Node, Heuristic, APIConn, AdminConn, Database, Acc),
+                        lager:debug("finished compacting ~p db on node ~p", [Database, Node]),
                         'ok' = kt_compaction_reporter:finished_db(CallId, Database, NewAcc),
                         NewAcc
                 end
@@ -329,6 +330,7 @@ do_compact_node(Node, Heuristic, APIConn, AdminConn, Databases) ->
 do_compact_node_db(Node, Heuristic, APIConn, AdminConn, Database, Acc) ->
     Compactor = node_compactor(Node, Heuristic, APIConn, AdminConn, Database),
     Shards = kt_compactor_worker:compactor_shards(Compactor),
+    lager:info("adding ~p found shards to compaction reporter", [length(Shards)]),
     'ok' = kt_compaction_reporter:add_found_shards(kz_log:get_callid(), length(Shards)),
     do_compact_node_db(Compactor, Acc).
 
@@ -351,13 +353,16 @@ do_compact_node_db(Compactor) ->
 
 -spec do_compact_db(kz_term:ne_binary()) -> rows().
 do_compact_db(Database) ->
+    lager:debug("about to start compacting ~p db", [Database]),
     do_compact_db(Database, ?HEUR_RATIO).
 
 -spec do_compact_db(kz_term:ne_binary(), heuristic()) -> rows().
 do_compact_db(Database, Heuristic) ->
     do_compact_db_by_nodes(Database, Heuristic).
 
--spec do_compact_db_fold(kz_term:ne_binary(), rows()) -> rows().
+-spec do_compact_db_fold(db_and_sizes() | kz_term:ne_binary(), rows()) -> rows().
+do_compact_db_fold({Db, _Sizes}, Rows) ->
+    do_compact_db_fold(Db, Rows);
 do_compact_db_fold(Database, Rows) ->
     Rows ++ do_compact_db(Database).
 
@@ -384,6 +389,7 @@ do_compact_db_by_nodes(Database, Heuristic) ->
 
 -spec do_compact_db_by_node(kz_term:ne_binary(), heuristic(), kz_term:ne_binary(), rows()) -> rows().
 do_compact_db_by_node(Node, Heuristic, Database, Acc) ->
+    lager:debug("about to start compacting ~p db on node ~p", [Database, Node]),
     #{'server' := {_App, #server{}=Conn}} = kzs_plan:plan(),
     case get_node_connections(Node, Conn) of
         {'error', _E} ->
@@ -395,6 +401,7 @@ do_compact_db_by_node(Node, Heuristic, Database, Acc) ->
 
 -spec do_compact_db_by_node(kz_term:ne_binary(), heuristic(), kz_data:connection(), kz_data:connection(), kz_term:ne_binary(), rows()) -> rows().
 do_compact_db_by_node(Node, Heuristic, APIConn, AdminConn, Database, Acc) ->
+    lager:debug("compacting ~p db on node ~p", [Database, Node]),
     case do_compact_node(Node, Heuristic, APIConn, AdminConn, [Database]) of
         [] -> Acc;
         [Row] -> [Row | Acc]
@@ -467,19 +474,22 @@ get_dbs_and_sizes() ->
 -spec get_dbs_sizes(kz_term:ne_binaries()) -> [db_and_sizes()].
 get_dbs_sizes(Dbs) ->
     #{'server' := {_App, #server{}=Conn}} = kzs_plan:plan(),
-    F = fun(Db, State) -> get_db_disk_and_data_fold(Conn, Db, State, 20) end,
+    F = fun(Db, State) ->
+                get_db_disk_and_data_fold(Conn, Db, State, ?COMPACTION_LIST_DBS_CHUNK_SIZE)
+        end,
     {DbsAndSizes, _} = lists:foldl(F, {[], 0}, Dbs),
     DbsAndSizes.
 
 -spec get_db_disk_and_data_fold(#server{}
                                ,kz_term:ne_binary()
                                ,{[db_and_sizes()], non_neg_integer()}
-                               , pos_integer()
+                               ,pos_integer()
                                ) -> {[db_and_sizes()], pos_integer()}.
 get_db_disk_and_data_fold(Conn, UnencDb, {_, Counter} = State, ChunkSize)
   when Counter rem ChunkSize =:= 0 ->
-    %% Every `ChunkSize' handled requests, sleep 100ms (give the db a rest).
-    timer:sleep(100),
+    %% Every `ChunkSize' handled requests, sleep `?COMPACTION_LIST_DBS_PAUSE'ms (give the db a rest).
+    lager:debug("~p dbs read, resting for ~p ms", [Counter, ?COMPACTION_LIST_DBS_PAUSE]),
+    timer:sleep(?COMPACTION_LIST_DBS_PAUSE),
     do_get_db_disk_and_data_fold(Conn, UnencDb, State);
 get_db_disk_and_data_fold(Conn, UnencDb, State, _ChunkSize) ->
     do_get_db_disk_and_data_fold(Conn, UnencDb, State).
@@ -514,16 +524,14 @@ sort_by_disk_size({_UnencDb1, _Else}, {_UnencDb2, {_DiskSize2, _}}) -> %% Else =
     'false'.
 
 -spec track_job(kz_term:ne_binary(), function(), [term()]) -> rows().
-track_job(CallId, Fun, Args) ->
-    track_job(CallId, Fun, Args, []).
+track_job(JobType, Fun, Args) ->
+    track_job(JobType, Fun, Args, []).
 
 -spec track_job(kz_term:ne_binary(), function(), [term()], dbs_and_sizes()) -> rows().
-track_job(_CallId, _Fun, _Args, []) ->
-    lager:info("no databases found to compact"),
-    [];
-track_job(CallId, Fun, Args, Dbs) when is_function(Fun)
-                                       andalso is_list(Args) ->
+track_job(JobType, Fun, Args, Dbs) when is_function(Fun)
+                                        andalso is_list(Args) ->
     try
+        CallId = build_compaction_callid(JobType),
         kz_log:put_callid(CallId),
         'ok' = kt_compaction_reporter:start_tracking_job(self(), node(), CallId, Dbs),
         Rows = erlang:apply(Fun, Args),
@@ -534,7 +542,94 @@ track_job(CallId, Fun, Args, Dbs) when is_function(Fun)
         'error':{'badmatch', {'error','not_found'}} -> []
     end.
 
-%% SupId = <<"sup_0351@fqdn.hostname.com">>, CallId = <<"sup_0351">>.
--spec supid_to_callid(kz_term:ne_binary()) -> kz_term:ne_binary().
-supid_to_callid(SupId) ->
+%% SupId = <<"sup_0351@fqdn.hostname.com">>, JobType = <<"sup_0351">>.
+-spec supid_to_jobtype(kz_term:ne_binary()) -> kz_term:ne_binary().
+supid_to_jobtype(SupId) ->
     hd(binary:split(SupId, <<"@">>)).
+
+%% =======================================================================================
+%% Start - Automatic Compaction Section
+%% =======================================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc Entry point for starting the automatic compaction job.
+%%
+%% This functions gets triggered by the `browse_dbs_ref' based on `browse_dbs_timer'
+%% function. By default it triggers the action 1 day after the timer starts.
+%% @end
+%%------------------------------------------------------------------------------
+-spec browse_dbs_for_triggers(atom() | reference()) -> 'ok'.
+browse_dbs_for_triggers(Ref) ->
+    CallId = build_compaction_callid(<<"cleanup_pass">>),
+    kz_log:put_callid(CallId),
+    lager:info("starting cleanup pass of databases"),
+    Dbs = maybe_list_and_sort_dbs_for_compaction(?COMPACT_AUTOMATICALLY, CallId),
+    _Counter = lists:foldl(fun trigger_db_cleanup/2, {length(Dbs), 1}, Dbs),
+    'ok' = kt_compaction_reporter:stop_tracking_job(CallId),
+    kz_log:put_callid('undefined'), % Reset callid
+    lager:info("pass completed for ~p", [Ref]),
+    gen_server:cast('kz_tasks_trigger', {'cleanup_finished', Ref}).
+
+-spec build_compaction_callid(kz_term:ne_binary()) -> kz_term:ne_binary().
+build_compaction_callid(JobTypeBin) ->
+    {Year, Month, _} = erlang:date(),
+    %% <<"YYYYMM-jobtype_xxxxxxxx">> = CallId
+    <<(integer_to_binary(Year))/binary                                  %% YYYY
+     ,(kz_binary:pad_left(integer_to_binary(Month), 2, <<"0">>))/binary %% MM
+     ,"-"
+     ,JobTypeBin/binary                                                 %% jobtype
+     ,"_"
+     ,(kz_binary:rand_hex(4))/binary                                    %% xxxxxxxx
+    >>.
+
+-spec trigger_db_cleanup(db_and_sizes() | kz_term:ne_binary()
+                        ,{pos_integer(), pos_integer()}
+                        ) -> {pos_integer(), pos_integer()}.
+trigger_db_cleanup({Db, _Sizes}, Acc) ->
+    trigger_db_cleanup(Db, Acc);
+trigger_db_cleanup(Db, {TotalDbs, Counter}) ->
+    lager:debug("triggering ~p db compaction ~p/~p (~p remaining)",
+                [Db, Counter, TotalDbs, (TotalDbs - Counter)]),
+    cleanup_pass(Db),
+    {TotalDbs, Counter + 1}.
+
+-spec maybe_list_and_sort_dbs_for_compaction(boolean(), kz_term:ne_binary()) ->
+          [kz_term:ne_binary()].
+maybe_list_and_sort_dbs_for_compaction('true', CallId) ->
+    lager:debug("auto compaction enabled, getting databases list and sorting them by disk size"),
+    Sorted = get_all_dbs_and_sort_by_disk(),
+    lager:debug("finished listing and sorting databases (~p found)", [length(Sorted)]),
+    'ok' = kt_compaction_reporter:start_tracking_job(self(), node(), CallId, Sorted),
+    Sorted;
+maybe_list_and_sort_dbs_for_compaction('false', _CallId) ->
+    lager:debug("auto compaction disabled, skip sorting dbs by size"),
+    {'ok', Dbs} = kz_datamgr:db_info(),
+    lager:debug("finished listing databases (~p found)", [length(Dbs)]),
+    Dbs.
+
+-spec cleanup_pass(kz_term:ne_binary()) -> boolean().
+cleanup_pass(Db) ->
+    _ = tasks_bindings:map(db_to_trigger(Db), Db),
+    erlang:garbage_collect(self()).
+
+-spec db_to_trigger(kz_term:ne_binary()) -> kz_term:ne_binary().
+db_to_trigger(Db) ->
+    Classifiers = [{fun kapps_util:is_account_db/1, ?TRIGGER_ACCOUNT}
+                  ,{fun kapps_util:is_account_mod/1, ?TRIGGER_ACCOUNT_MOD}
+                  ,{fun is_system_db/1, ?TRIGGER_SYSTEM}
+                  ],
+    db_to_trigger(Db, Classifiers).
+
+db_to_trigger(_Db, []) -> ?TRIGGER_OTHER;
+db_to_trigger(Db, [{Classifier, Trigger} | Classifiers]) ->
+    case Classifier(Db) of
+        'true' -> Trigger;
+        'false' -> db_to_trigger(Db, Classifiers)
+    end.
+
+-spec is_system_db(kz_term:ne_binary()) -> boolean().
+is_system_db(Db) ->
+    lists:member(Db, ?KZ_SYSTEM_DBS).
+%% =======================================================================================
+%% End - Automatic Compaction Section
+%% =======================================================================================

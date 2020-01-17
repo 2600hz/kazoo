@@ -37,6 +37,14 @@
 -define(COMPACT_AUTOMATICALLY
        ,kapps_config:get_is_true(?SYSCONFIG_COUCH, <<"compact_automatically">>, 'false')
        ).
+%% How many dbs to read between pauses.
+-define(COMPACTION_LIST_DBS_CHUNK_SIZE
+       ,kapps_config:get_integer(?CONFIG_CAT, <<"compaction_list_dbs_chunk_size">>, 20)
+       ).
+%% How long to pause before attempting to get the next chunk of dbs.
+-define(COMPACTION_LIST_DBS_PAUSE
+       ,kapps_config:get_integer(?CONFIG_CAT, <<"compaction_list_dbs_pause_ms">>, 200)
+       ).
 
 -define(ADMIN_PORT
        ,kapps_config:get_integer(?SYSCONFIG_COUCH, <<"admin_port">>, 5986)

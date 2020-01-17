@@ -31,8 +31,7 @@
                }).
 -type state() :: #state{}.
 
--define(NAME, ?MODULE).
--define(SERVER, {'via', 'kz_globals', ?NAME}).
+-define(SERVER, ?MODULE).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".notify_resend">>).
 -define(DEFAULT_TIMEOUT, 10 * ?MILLISECONDS_IN_SECOND).
@@ -100,13 +99,7 @@
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    case gen_server:start_link(?SERVER, ?MODULE, [], []) of
-        {'error', {'already_started', Pid}}
-          when is_pid(Pid)->
-            erlang:link(Pid),
-            {'ok', Pid};
-        Other -> Other
-    end.
+    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 %%%=============================================================================
 %%% gen_server callbacks
@@ -118,8 +111,8 @@ start_link() ->
 %%------------------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    kz_log:put_callid(?NAME),
-    lager:debug("~s has been started", [?NAME]),
+    kz_log:put_callid(?MODULE),
+    lager:debug("~s has been started", [?MODULE]),
     {'ok', #state{timer_ref = set_timer()}}.
 
 -spec stop() -> 'ok'.
@@ -128,9 +121,15 @@ stop() ->
 
 -spec running() -> kz_json:objects().
 running() ->
-    case kz_globals:where_is(?NAME) of
-        'undefined' -> [];
-        _ -> gen_server:call(?SERVER, 'running')
+    running(whereis(?MODULE)).
+
+-spec running(kz_term:api_pid()) -> kz_json:objects().
+running('undefined') ->
+    [];
+running(Pid) ->
+    case is_process_alive(Pid) of
+        'true' -> gen_server:call(?SERVER, 'running');
+        'false' -> []
     end.
 
 -spec trigger_timeout() -> any().
@@ -223,7 +222,7 @@ handle_info(_Info, State) ->
 %%------------------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
-    lager:debug("terminating: ~p", [_Reason]).
+    lager:debug("~s terminating: ~p", [?MODULE, _Reason]).
 
 %%------------------------------------------------------------------------------
 %% @doc Convert process state when code is changed.

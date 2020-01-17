@@ -14,7 +14,6 @@
 
 -export([start_link/0]).
 -export([status/0]).
--export([browse_dbs_for_triggers/1]).
 
 %%% gen_server callbacks
 -export([init/1
@@ -34,7 +33,7 @@
 
 -include("tasks.hrl").
 
--define(SERVER, {'via', 'kz_globals', ?MODULE}).
+-define(SERVER, ?MODULE).
 
 -record(state, {minute_ref = minute_timer() :: reference()
                ,hour_ref = hour_timer() :: reference()
@@ -66,13 +65,7 @@ status() ->
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    case gen_server:start_link(?SERVER, ?MODULE, [], []) of
-        {'error', {'already_started', Pid}} ->
-            'true' = link(Pid),
-            {'ok', Pid};
-        Other -> Other
-    end.
-
+    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 %%%=============================================================================
 %%% gen_server callbacks
@@ -116,7 +109,7 @@ handle_call(_Request, _From, State) ->
 %%------------------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> kz_types:handle_cast_ret_state(state()).
 handle_cast({'cleanup_finished', Ref}, #state{browse_dbs_ref = Ref}=State) ->
-    lager:debug("cleanup finished for ~p, starting timer", [Ref]),
+    lager:info("cleanup finished for ~p, starting timer", [Ref]),
     {'noreply', State#state{browse_dbs_ref = browse_dbs_timer()}, 'hibernate'};
 
 handle_cast(_Msg, State) ->
@@ -148,8 +141,8 @@ handle_info({'timeout', Ref, _Msg}, #state{day_ref = Ref}=State) ->
     {'noreply', State#state{day_ref = day_timer()}};
 
 handle_info({'timeout', Ref, _Msg}, #state{browse_dbs_ref = Ref}=State) ->
-    _Pid = kz_process:spawn(fun browse_dbs_for_triggers/1, [Ref]),
-    lager:debug("cleaning up in ~p(~p)", [_Pid, Ref]),
+    _ = kz_process:spawn(fun tasks_bindings:map/2, [?TRIGGER_AUTO_COMPACTION, Ref]),
+    lager:info("triggering auto compaction job with ref ~p", [Ref]),
     {'noreply', State};
 
 handle_info(_Info, State) ->
@@ -246,66 +239,5 @@ ref_to_id(Ref) ->
     Size = byte_size(Bin) - StartSize - 1,
     <<Start:StartSize/binary, Id:Size/binary, ">">> = Bin,
     Id.
-
-%% =======================================================================================
-%% Start - Automatic Compaction Section
-%% =======================================================================================
-
-%%------------------------------------------------------------------------------
-%% @doc Entry point for starting the automatic compaction job.
-%%
-%% This functions gets triggered by the `browse_dbs_ref' based on `browse_dbs_timer'
-%% function. By default it triggers the action 1 day after the timer starts.
-%% @end
-%%------------------------------------------------------------------------------
--spec browse_dbs_for_triggers(atom() | reference()) -> 'ok'.
-browse_dbs_for_triggers(Ref) ->
-    CallId = <<"cleanup_pass_", (kz_binary:rand_hex(4))/binary>>,
-    kz_log:put_callid(CallId),
-    lager:debug("starting cleanup pass of databases"),
-    lager:debug("getting databases list and sorting them by disk size"),
-    Sorted = kt_compactor:get_all_dbs_and_sort_by_disk(),
-    TotalSorted = length(Sorted),
-    lager:debug("finished listing and sorting databases (~p found)", [TotalSorted]),
-    'ok' = kt_compaction_reporter:start_tracking_job(self(), node(), CallId, Sorted),
-    F = fun({Db, _Sizes}, Counter) ->
-                lager:debug("compacting ~p ~p/~p (~p remaining)",
-                            [Db, Counter, TotalSorted, (TotalSorted - Counter)]
-                           ),
-                cleanup_pass(Db),
-                Counter + 1
-        end,
-    _Counter = lists:foldl(F, 1, Sorted),
-    'ok' = kt_compaction_reporter:stop_tracking_job(CallId),
-    kz_log:put_callid('undefined'), % Reset callid
-    lager:debug("pass completed for ~p", [Ref]),
-    gen_server:cast(?SERVER, {'cleanup_finished', Ref}).
-
--spec cleanup_pass(kz_term:ne_binary()) -> boolean().
-cleanup_pass(Db) ->
-    _ = tasks_bindings:map(db_to_trigger(Db), Db),
-    erlang:garbage_collect(self()).
-
--spec db_to_trigger(kz_term:ne_binary()) -> kz_term:ne_binary().
-db_to_trigger(Db) ->
-    Classifiers = [{fun kapps_util:is_account_db/1, ?TRIGGER_ACCOUNT}
-                  ,{fun kapps_util:is_account_mod/1, ?TRIGGER_ACCOUNT_MOD}
-                  ,{fun is_system_db/1, ?TRIGGER_SYSTEM}
-                  ],
-    db_to_trigger(Db, Classifiers).
-
-db_to_trigger(_Db, []) -> ?TRIGGER_OTHER;
-db_to_trigger(Db, [{Classifier, Trigger} | Classifiers]) ->
-    case Classifier(Db) of
-        'true' -> Trigger;
-        'false' -> db_to_trigger(Db, Classifiers)
-    end.
-
--spec is_system_db(kz_term:ne_binary()) -> boolean().
-is_system_db(Db) ->
-    lists:member(Db, ?KZ_SYSTEM_DBS).
-%% =======================================================================================
-%% End - Automatic Compaction Section
-%% =======================================================================================
 
 %%% End of Module.

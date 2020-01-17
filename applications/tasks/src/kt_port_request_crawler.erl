@@ -46,7 +46,7 @@
 %%------------------------------------------------------------------------------
 -spec start_link() -> kz_types:startlink_ret().
 start_link() ->
-    gen_server:start_link(?MODULE, [], []).
+    gen_server:start_link({'local', ?MODULE}, ?MODULE, [], []).
 
 -spec stop() -> 'ok'.
 stop() ->
