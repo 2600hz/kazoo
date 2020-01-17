@@ -7,7 +7,6 @@
 
 -export([new/0]).
 -export([account/1, account/2, set_account/2]).
--export([account_auth_realm/1, account_auth_realm/2, set_account_auth_realm/2]).
 -export([account_caller_id/1, account_caller_id/2, set_account_caller_id/2]).
 -export([account_caller_id_cid_name/1, account_caller_id_cid_name/2, set_account_caller_id_cid_name/2]).
 -export([account_caller_id_cid_number/1, account_caller_id_cid_number/2, set_account_caller_id_cid_number/2]).
@@ -41,18 +40,6 @@ account(Doc, Default) ->
 -spec set_account(doc(), kz_json:object()) -> doc().
 set_account(Doc, Account) ->
     kz_json:set_value([<<"account">>], Account, Doc).
-
--spec account_auth_realm(doc()) -> kz_term:api_ne_binary().
-account_auth_realm(Doc) ->
-    account_auth_realm(Doc, 'undefined').
-
--spec account_auth_realm(doc(), Default) -> kz_term:ne_binary() | Default.
-account_auth_realm(Doc, Default) ->
-    kz_json:get_ne_binary_value([<<"account">>, <<"auth_realm">>], Doc, Default).
-
--spec set_account_auth_realm(doc(), kz_term:ne_binary()) -> doc().
-set_account_auth_realm(Doc, AccountAuthenticationRealm) ->
-    kz_json:set_value([<<"account">>, <<"auth_realm">>], AccountAuthenticationRealm, Doc).
 
 -spec account_caller_id(doc()) -> kz_term:api_object().
 account_caller_id(Doc) ->

@@ -5106,11 +5106,6 @@
                 "account": {
                     "description": "Information that applies to the account as a whole",
                     "properties": {
-                        "auth_realm": {
-                            "description": "The realm any device in the account will use to authenticate with",
-                            "minLength": 1,
-                            "type": "string"
-                        },
                         "caller_id": {
                             "properties": {
                                 "cid_name": {
