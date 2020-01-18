@@ -10,7 +10,6 @@ Trunkstore configuration document - this is old stuff; do not recommend building
 
 Key | Description | Type | Default | Required | Support Level
 --- | ----------- | ---- | ------- | -------- | -------------
-`account.auth_realm` | The realm any device in the account will use to authenticate with | `string(1..)` |   | `false` |  
 `account.caller_id.cid_name` |   | `string(0..35)` |   | `false` |  
 `account.caller_id.cid_number` |   | `string(0..35)` |   | `false` |  
 `account.caller_id` |   | `object()` |   | `false` |  
