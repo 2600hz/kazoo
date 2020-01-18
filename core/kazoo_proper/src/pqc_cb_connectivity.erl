@@ -68,6 +68,8 @@ connectivity_url(AccountId, ConnectivityId) ->
 seq() ->
     API = pqc_cb_api:init_api(['crossbar'], ['cb_connectivity']),
     AccountId = create_account(API),
+    {'ok', AccountDoc} = kzd_accounts:fetch(AccountId),
+    AccountRealm = kzd_accounts:realm(AccountDoc),
 
     EmptySummaryResp = summary(API, AccountId),
     lager:info("empty summary resp: ~s", [EmptySummaryResp]),
@@ -86,6 +88,13 @@ seq() ->
     SummaryResp = summary(API, AccountId),
     lager:info("summary resp: ~s", [SummaryResp]),
     [ConnectivityId] = kz_json:get_list_value(<<"data">>, kz_json:decode(SummaryResp)),
+
+    Edited = kzd_connectivity:set_account_auth_realm(CreatedConnectivity, kz_binary:rand_hex(4)),
+    EditedResp = update(API, AccountId, Edited),
+    lager:info("edited resp: ~s", [EditedResp]),
+    EditedDoc = kz_json:get_json_value(<<"data">>, kz_json:decode(EditedResp)),
+    AccountRealm = kzd_connectivity:account_auth_realm(EditedDoc),
+    ConnectivityId = kz_doc:id(EditedDoc),
 
     DeleteResp = delete(API, AccountId, ConnectivityId),
     lager:info("delete resp: ~s", [DeleteResp]),
@@ -119,4 +128,8 @@ create_account(API) ->
 
 -spec new_connectivity() -> kzd_connectivity:doc().
 new_connectivity() ->
-    kz_doc:public_fields(kzd_connectivity:new()).
+    kz_doc:setters(kzd_connectivity:new()
+                  ,[{fun kzd_connectivity:set_account_auth_realm/2, kz_binary:rand_hex(4)}
+                   ,{fun kzd_connectivity:set_name/2, <<?MODULE_STRING>>}
+                   ,{fun kzd_connectivity:set_servers/2, []}
+                   ]).

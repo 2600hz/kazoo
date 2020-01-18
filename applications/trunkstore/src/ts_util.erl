@@ -181,7 +181,7 @@ lookup_user_flags('undefined', _, AccountId, DID) ->
             {'ok', kz_json:from_list(
                      [{<<"server">>, Server}
                      ,{<<"account">>,
-                       merge_account_attributes(AccountId, kz_json:get_value(<<"account">>, JObj, kz_json:new()))
+                       merge_account_attributes(AccountId, kz_json:get_json_value(<<"account">>, JObj, kz_json:new()))
                       }
                      ,{<<"call_restriction">>, kz_json:new()}
                      ])
@@ -218,7 +218,7 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
                     Restriction = kz_json:get_value(<<"call_restriction">>, AccountJObj, kz_json:new()),
                     Props = [{<<"call_restriction">>, Restriction}
                             ,{<<"account">>
-                             ,merge_account_attributes(AccountJObj, kz_json:get_value(<<"account">>, JObj, kz_json:new()))
+                             ,merge_account_attributes(AccountJObj, kz_json:get_json_value(<<"account">>, JObj, kz_json:new()))
                              }
                             ],
                     FlagsJObj = kz_json:set_values(Props, JObj),
@@ -230,16 +230,18 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
             end
     end.
 
--spec merge_account_attributes(kz_term:ne_binary() | kz_json:object(), kz_json:object()) -> kz_json:object().
-merge_account_attributes(?NE_BINARY=AccountId, JObj) ->
+-spec merge_account_attributes(kz_term:ne_binary() | kzd_accounts:doc(), kz_json:object()) -> kz_json:object().
+merge_account_attributes(<<AccountId/binary>>, JObj) ->
     case kzd_accounts:fetch(AccountId) of
         {'ok', Account} -> merge_account_attributes(Account, JObj);
         {'error', _} -> JObj
     end;
-merge_account_attributes(Account, JObj) ->
-    CidOptions = kz_json:get_ne_value(<<"caller_id_options">>, Account),
+merge_account_attributes(AccountDoc, JObj) ->
+    CIDOptions = kzd_accounts:caller_id_options(AccountDoc),
+
     Props = props:filter_undefined(
-              [{<<"caller_id_options">>, CidOptions}
+              [{<<"caller_id_options">>, CIDOptions}
+              ,{<<"auth_realm">>, kzd_accounts:realm(AccountDoc)}
               ]
              ),
     kz_json:set_values(Props, JObj).
