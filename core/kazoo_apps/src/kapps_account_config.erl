@@ -570,7 +570,7 @@ config_origins(AccountId, Category, <<"global">>) ->
     account_origins(AccountId, Category) ++ config_origins(AccountId, Category, <<"reseller">>);
 
 config_origins(AccountId, Category, <<"reseller">>) ->
-    ResellerOrigins = case kzd_accounts:reseller_id(AccountId) of
+    ResellerOrigins = case kz_services_reseller:get_id(AccountId) of
                           'undefined' -> [];
                           ResellerId ->
                               ResellerDb = kz_util:format_account_db(ResellerId),
@@ -581,8 +581,8 @@ config_origins(AccountId, Category, <<"reseller">>) ->
 
 config_origins(AccountId, Category, <<"hierarchy">>) ->
     account_origins(AccountId, Category)
-    ++ hierarchy_origins(AccountId, Category)
-    ++ system_origins(Category).
+        ++ hierarchy_origins(AccountId, Category)
+        ++ system_origins(Category).
 
 account_origins(AccountId, Category) ->
     DocId = kapps_config_util:account_doc_id(Category),
@@ -592,7 +592,7 @@ account_origins(AccountId, Category) ->
 
 hierarchy_origins(AccountId, Category) ->
     {'ok', AccountDoc} = kzd_accounts:fetch(AccountId),
-    hierarchy_origins(Category, kzd_accounts:reseller_id(AccountId), lists:reverse(kzd_accounts:tree(AccountDoc)), []).
+    hierarchy_origins(Category, kz_services_reseller:get_id(AccountId), lists:reverse(kzd_accounts:tree(AccountDoc)), []).
 
 hierarchy_origins(_, _, [], Origins) -> Origins;
 hierarchy_origins(Category, ResellerId, [Parent|Ancestors], Origins) ->

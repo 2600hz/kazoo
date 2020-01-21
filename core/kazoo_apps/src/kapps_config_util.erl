@@ -35,8 +35,7 @@ get_config(Account, Config) ->
 get_reseller_config(Account, Config) ->
     get_config(Account, Config, <<"reseller">>).
 
--spec get_config(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) ->
-                        kz_json:object().
+-spec get_config(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> kz_json:object().
 get_config(Account, Config, Strategy) ->
     JObj = maybe_new(
              kapps_account_config:get_category_with_strategy(Strategy, Account, Config)
