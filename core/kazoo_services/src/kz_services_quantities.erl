@@ -186,10 +186,11 @@ logless_category(Services, CategoryName, ItemExceptions) ->
             AccountQuantities = kz_services:account_quantities(Services),
             ManualQuantities = kz_services:manual_quantities(Services),
             CategoryQuantities =
-                kz_json:merge_recursive(
+                kz_json:merge(
                   [kz_json:get_value(CategoryName, AccountQuantities, kz_json:new())
                   ,kz_json:get_value(CategoryName, ManualQuantities, kz_json:new())
                   ]
+                 ,#{'recursive' => 'true'}
                  ),
             sum_values(kz_json:delete_keys(ItemExceptions, CategoryQuantities))
     end.

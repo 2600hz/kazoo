@@ -82,6 +82,10 @@ Sometimes it is beneficial to include the `null` atom as a value (for downstream
 
 `set_value` and `merge` can take an optional map `#{'keep_null' => 'true'}` to ensure `null` is kept in the resulting data structure.
 
+### merge_recursive/1 considered deprecated
+
+With the addition of `#{'recursive' => 'true'}` to the `merge/X` options, `merge_recursive/1` is considered deprecated. It effectively works the same as `merge(fun merge_right, JObjs, #{'recursive' => 'true'})` now.
+
 ## List-like operations
 
 JSON objects are iterable and `kz_json` has equivalents to the `lists` module for `filter/{2,3}`, `filtermap/2`, `map/2`, `fold{l,r}/3`, `foreach/2`, `all/2`, and `any/2` among others.

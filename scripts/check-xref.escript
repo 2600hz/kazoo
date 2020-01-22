@@ -55,8 +55,8 @@ xref(Pass, Paths) ->
 
 all_paths(Paths) ->
     case lists:any(fun (Path) -> is_in_path("_rel", Path) end, Paths) of
-        true -> Paths;
-        false ->
+        'true' -> Paths;
+        'false' ->
             %% ie: we are not Xref-ing an Erlang release.
             'ok' = code:add_pathsa(Paths),
             code:get_path()
@@ -72,7 +72,7 @@ add_dir(Dir) ->
         %% Note: OTP's dirs usually start with "/"
         andalso xref:add_directory(?SERVER, Dir)
     of
-        false -> ok;
+        'false' -> 'ok';
         {'ok', _Modules} -> 'ok';
         {'error', _XrefModule, Reason} ->
             show_error('add_directory', Reason)
@@ -83,83 +83,93 @@ xrefs() ->
     ,'undefined_functions'        %%
      %% ,'locals_not_used'            %% Compilation discovers this
      %% ,'exports_not_used'           %% Compilation discovers this
-     %% ,'deprecated_function_calls'  %% Concerns not kazoo
+    ,'deprecated_function_calls'  %% Concerns not kazoo
      %% ,'deprecated_functions'       %% Concerns not kazoo
      %% Want moar? http://www.erlang.org/doc/man/xref.html
     ].
 
 filter('undefined_function_calls', Results) ->
-    ToKeep = fun
-                 %% OTP Xref errors
-                 ({{eunit_test,_,_}, {_,_,_}}) -> 'false';
-        ({{cerl_to_icode,_,_}, {_,_,_}}) -> 'false';
-        ({{compile,_,_}, {_,_,_}}) -> 'false';
-        ({{dialyzer_cl,_,_}, {_,_,_}}) -> 'false';
-        ({{diameter_lib,_,_}, {_,_,_}}) -> 'false';
-        ({{hipe_beam_to_icode,_,_}, {_,_,_}}) -> 'false';
-        ({{hipe_consttab,_,_}, {_,_,_}}) -> 'false';
-        ({{hipe_icode_bincomp,_,_}, {_,_,_}}) -> 'false';
-        ({{hipe_icode_mulret,_,_}, {_,_,_}}) -> 'false';
-        ({{hipe_icode_pp,_,_}, {_,_,_}}) -> 'false';
-        ({{hipe_icode_split_arith,_,_}, {_,_,_}}) -> 'false';
-        ({{hipe_icode_type,_,_}, {_,_,_}}) -> 'false';
-        ({{hipe_main,_,_}, {_,_,_}}) -> 'false';
-        ({{hipe_x86_main,_,_}, {_,_,_}}) -> 'false';
-        ({{hipe_unified_loader,_,_}, {_,_,_}}) -> 'false';
-        ({{init,_,_}, {_,_,_}}) -> 'false';
-
-                 %% DTL modules that only exist at runtime
-        ({{_,_,_}, {sub_package_dialog,_,_}}) -> 'false';
-        ({{_,_,_}, {sub_package_message_summary,_,_}}) -> 'false';
-        ({{_,_,_}, {sub_package_presence,_,_}}) -> 'false';
-
-                 %% False positives due to RabbitMQ clashing with EVERYTHING
-        ({{_,_,_}, {cowboy,start_http,4}}) -> 'false';
-        ({{_,_,_}, {cowboy,start_https,4}}) -> 'false';
-
-                 %% Missing deps of an old-deprecated app: pusher
-        ({{_,_,_}, {qdate,to_unixtime,1}}) -> 'false';
-        ({{_,_,_}, {qdate,unixtime,0}}) -> 'false';
-
-        ({Caller, Callee}) -> ignore_xref_filter(Caller, Callee)
-                                            end,
-lists:filter(ToKeep, Results);
-filter(undefined_functions, Results) ->
-    ToKeep = fun
-                 %% OTP Xref errors
-                 ({eunit_test, nonexisting_function, 0}) -> false;
-        ({hipe, _, _}) -> false;
-        ({hipe_amd64_main, _, _}) -> false;
-        ({hipe_arm_main, _, _}) -> false;
-        ({hipe_x86_main, _, _}) -> false;
-        ({hipe_bifs, _, _}) -> false;
-        ({hipe_data_pp, _, _}) -> false;
-        ({hipe_icode2rtl, _, _}) -> false;
-        ({hipe_icode_heap_test, _, _}) -> false;
-        ({hipe_llvm_liveness, _, _}) -> false;
-        ({hipe_llvm_main, _, _}) -> false;
-        ({hipe_ppc_main, _, _}) -> false;
-        ({hipe_rtl_arch, _, _}) -> false;
-        ({hipe_rtl_cfg, _, _}) -> false;
-        ({hipe_rtl_cleanup_const, _, _}) -> false;
-        ({hipe_rtl_lcm, _, _}) -> false;
-        ({hipe_rtl_ssa, _, _}) -> false;
-        ({hipe_rtl_ssa_avail_expr, _, _}) -> false;
-        ({hipe_rtl_ssa_const_prop, _, _}) -> false;
-        ({hipe_rtl_ssapre, _, _}) -> false;
-        ({hipe_rtl_symbolic, _, _}) -> false;
-        ({hipe_sparc_main, _, _}) -> false;
-        ({hipe_tagscheme, _, _}) -> false;
-
-                 %% Missing deps of an old-deprecated app: pusher
-        ({qdate, to_unixtime, 1}) -> false;
-        ({qdate, unixtime, 0}) -> false;
-
-        (MFA) -> ignore_xref_filter(MFA)
-                                     end,
-lists:filter(ToKeep, Results);
+    ToKeep = fun undefined_function_calls_filter/1,
+    lists:filter(ToKeep, Results);
+filter('undefined_functions', Results) ->
+    ToKeep = fun undefined_functions_filter/1,
+    lists:filter(ToKeep, Results);
+filter('deprecated_function_calls', Results) ->
+    ToKeep = fun deprecated_function_calls/1,
+    lists:filter(ToKeep, Results);
 filter(_Xref, Results) ->
     Results.
+
+undefined_function_calls_filter({{eunit_test,_,_}, {_,_,_}}) -> 'false';
+undefined_function_calls_filter({{cerl_to_icode,_,_}, {_,_,_}}) -> 'false';
+undefined_function_calls_filter({{compile,_,_}, {_,_,_}}) -> 'false';
+undefined_function_calls_filter({{dialyzer_cl,_,_}, {_,_,_}}) -> 'false';
+undefined_function_calls_filter({{diameter_lib,_,_}, {_,_,_}}) -> 'false';
+undefined_function_calls_filter({{hipe_beam_to_icode,_,_}, {_,_,_}}) -> 'false';
+undefined_function_calls_filter({{hipe_consttab,_,_}, {_,_,_}}) -> 'false';
+undefined_function_calls_filter({{hipe_icode_bincomp,_,_}, {_,_,_}}) -> 'false';
+undefined_function_calls_filter({{hipe_icode_mulret,_,_}, {_,_,_}}) -> 'false';
+undefined_function_calls_filter({{hipe_icode_pp,_,_}, {_,_,_}}) -> 'false';
+undefined_function_calls_filter({{hipe_icode_split_arith,_,_}, {_,_,_}}) -> 'false';
+undefined_function_calls_filter({{hipe_icode_type,_,_}, {_,_,_}}) -> 'false';
+undefined_function_calls_filter({{hipe_main,_,_}, {_,_,_}}) -> 'false';
+undefined_function_calls_filter({{hipe_x86_main,_,_}, {_,_,_}}) -> 'false';
+undefined_function_calls_filter({{hipe_unified_loader,_,_}, {_,_,_}}) -> 'false';
+undefined_function_calls_filter({{init,_,_}, {_,_,_}}) -> 'false';
+%% DTL modules that only exist at runtime
+undefined_function_calls_filter({{_,_,_}, {sub_package_dialog,_,_}}) -> 'false';
+undefined_function_calls_filter({{_,_,_}, {sub_package_message_summary,_,_}}) -> 'false';
+undefined_function_calls_filter({{_,_,_}, {sub_package_presence,_,_}}) -> 'false';
+%% False positives due to RabbitMQ clashing with EVERYTHING
+undefined_function_calls_filter({{_,_,_}, {cowboy,start_http,4}}) -> 'false';
+undefined_function_calls_filter({{_,_,_}, {cowboy,start_https,4}}) -> 'false';
+%% Missing deps of an old-deprecated app: pusher
+undefined_function_calls_filter({{_,_,_}, {qdate,to_unixtime,1}}) -> 'false';
+undefined_function_calls_filter({{_,_,_}, {qdate,unixtime,0}}) -> 'false';
+undefined_function_calls_filter({Caller, Callee}) -> ignore_xref_filter(Caller, Callee).
+
+undefined_functions_filter({eunit_test, nonexisting_function, 0}) -> 'false';
+undefined_functions_filter({hipe, _, _}) -> 'false';
+undefined_functions_filter({hipe_amd64_main, _, _}) -> 'false';
+undefined_functions_filter({hipe_arm_main, _, _}) -> 'false';
+undefined_functions_filter({hipe_x86_main, _, _}) -> 'false';
+undefined_functions_filter({hipe_bifs, _, _}) -> 'false';
+undefined_functions_filter({hipe_data_pp, _, _}) -> 'false';
+undefined_functions_filter({hipe_icode2rtl, _, _}) -> 'false';
+undefined_functions_filter({hipe_icode_heap_test, _, _}) -> 'false';
+undefined_functions_filter({hipe_llvm_liveness, _, _}) -> 'false';
+undefined_functions_filter({hipe_llvm_main, _, _}) -> 'false';
+undefined_functions_filter({hipe_ppc_main, _, _}) -> 'false';
+undefined_functions_filter({hipe_rtl_arch, _, _}) -> 'false';
+undefined_functions_filter({hipe_rtl_cfg, _, _}) -> 'false';
+undefined_functions_filter({hipe_rtl_cleanup_const, _, _}) -> 'false';
+undefined_functions_filter({hipe_rtl_lcm, _, _}) -> 'false';
+undefined_functions_filter({hipe_rtl_ssa, _, _}) -> 'false';
+undefined_functions_filter({hipe_rtl_ssa_avail_expr, _, _}) -> 'false';
+undefined_functions_filter({hipe_rtl_ssa_const_prop, _, _}) -> 'false';
+undefined_functions_filter({hipe_rtl_ssapre, _, _}) -> 'false';
+undefined_functions_filter({hipe_rtl_symbolic, _, _}) -> 'false';
+undefined_functions_filter({hipe_sparc_main, _, _}) -> 'false';
+undefined_functions_filter({hipe_tagscheme, _, _}) -> 'false';
+%% Missing deps of an old-deprecated app: pusher
+undefined_functions_filter({qdate, to_unixtime, 1}) -> 'false';
+undefined_functions_filter({qdate, unixtime, 0}) -> 'false';
+undefined_functions_filter(MFA) -> ignore_xref_filter(MFA).
+
+deprecated_function_calls({{snmp_standard_mib, _, _}, _CalledMFA}) -> 'false';
+deprecated_function_calls({{snmp_target_mib, _, _}, _CalledMFA}) -> 'false';
+deprecated_function_calls({{snmp_user_based_sm_mib, _, _}, _CalledMFA}) -> 'false';
+deprecated_function_calls({{snmp_view_based_acm_mib, _, _}, _CalledMFA}) -> 'false';
+deprecated_function_calls({{snmpa_mpd, _, _}, _CalledMFA}) -> 'false';
+deprecated_function_calls({{snmpa_usm, _, _}, _CalledMFA}) -> 'false';
+deprecated_function_calls({{snmpc, _, _}, _CalledMFA}) -> 'false';
+deprecated_function_calls({{snmpm_mpd, _, _}, _CalledMFA}) -> 'false';
+deprecated_function_calls({{http_transport, _, _}, _CalledMFA}) -> 'false';
+deprecated_function_calls({{M, _, _}=CallerMFA, DeprecatedMFA}) ->
+    case kz_term:to_list(M) of
+        "wx" ++ _ -> 'false';
+        _ -> ignore_xref_filter(CallerMFA, DeprecatedMFA)
+    end.
 
 -spec ignore_xref_filter(mfa(), mfa()) -> boolean().
 ignore_xref_filter({CallerModule, _, _}, Callee) ->
@@ -167,9 +177,12 @@ ignore_xref_filter({CallerModule, _, _}, Callee) ->
     case props:get_value('ignore_xref', ModuleAttrs) of
         'undefined' -> 'true';
         IgnoreXref ->
-            Ignored = lists:any(fun(Ignore) -> Ignore =:= Callee end, IgnoreXref),
-            Ignored andalso add_to_ignored_undefined_function_calls(Callee),
-            not Ignored
+            case lists:any(fun(Ignore) -> Ignore =:= Callee end, IgnoreXref) of
+                'false' -> 'true';
+                'true' ->
+                    add_to_ignored_undefined_function_calls(Callee),
+                    'false'
+            end
     end.
 
 -spec ignore_xref_filter(mfa()) -> boolean().
@@ -189,6 +202,10 @@ print('undefined_functions'=Xref, Results) ->
     io:format("Xref: listing ~p\n", [Xref]),
     F = fun ({M, F, A}) -> io:format("~30.. s:~s/~p\n", [M, F, A]) end,
     lists:foreach(F, Results);
+print('deprecated_function_calls'=Xref, Results) ->
+    io:format("Xref: listing ~p\n", [Xref]),
+    lists:foldl(fun print_deprecated_function_call/2, 'undefined', lists:keysort(2, Results)),
+    'ok';
 print(Xref, Results) ->
     io:format("Xref: listing ~p\n\t~p\n", [Xref, Results]).
 
@@ -201,6 +218,23 @@ print_undefined_function_call({{M1,_,_}, _}=Call, _OldAcc) ->
     {M1, M1Path} = module_path(M1),
     io:format("~s:1: ~s has the following error(s)~n", [M1Path, M1]),
     print_undefined_function_call(Call, {M1, M1Path}).
+
+print_deprecated_function_call({{CallerM, CallerF, CallerA}
+                               ,{_DeprM, _DeprF, _DeprA}=Depr
+                               }
+                              ,Depr
+                              ) ->
+    io:format("~30.. s ~s:~p/~p~n"
+             ,["", CallerM, CallerF, CallerA]
+             ),
+    Depr;
+print_deprecated_function_call({Caller
+                               ,{DeprM, DeprF, DeprA}=Depr
+                               }
+                              ,_Acc
+                              ) ->
+    io:format("~n~30.. s ~s:~s/~b used by:~n", ["deprecated call", DeprM, DeprF, DeprA]),
+    print_deprecated_function_call({Caller, Depr}, Depr).
 
 module_path(Module) ->
     {Module

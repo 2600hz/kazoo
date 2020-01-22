@@ -117,7 +117,8 @@
              ,paginated_results/0
              ]).
 
--deprecated({'ensure_saved', '_', 'eventually'}).
+%% Will be removed in 5.1
+-deprecated({'ensure_saved', '_', 'next_version'}).
 
 -include("kz_data.hrl").
 
@@ -825,10 +826,10 @@ save_docs(_DbName, []=Docs, _Options)
 %% @doc Fetch, update and save a doc (creating if not present).
 %% @end
 %%------------------------------------------------------------------------------
--spec update_doc(database_name(), docid(), update_options()) ->
+-spec update_doc(database_name(), docid() | kz_json:object(), update_options()) ->
           {'ok', kz_json:object()} |
           data_error().
-update_doc(DbName, Id, Options) ->
+update_doc(DbName, <<Id/binary>>, Options) ->
     Database = kzs_util:to_database(DbName),
     case open_doc(Database, Id) of
         {'error', 'not_found'} ->
@@ -836,7 +837,9 @@ update_doc(DbName, Id, Options) ->
         {'error', _}=E -> E;
         {'ok', CurrentDoc} ->
             apply_updates_and_save(Database, Id, Options, CurrentDoc)
-    end.
+    end;
+update_doc(DbName, JObj, Options) ->
+    update_doc(DbName, kz_json:get_first_defined([<<"_id">>, <<"id">>], JObj), Options).
 
 -spec apply_updates_and_save(database_name(), docid(), update_options(), kz_json:object()) ->
           {'ok', kz_json:object()} |

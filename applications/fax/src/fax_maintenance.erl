@@ -106,17 +106,20 @@ maybe_migrate_private_media(AccountDb, JObj) ->
     case kz_datamgr:open_doc(AccountDb, DocId) of
         {'ok', Doc } ->
             MediaType = kz_json:get_value(<<"media_type">>, Doc),
-            migrate_private_media(AccountDb, Doc, MediaType);
+            migrate_private_media(AccountDb, DocId, MediaType);
         {'error', Error} ->
             io:format("document ~s not found in database ~s : ~p~n", [DocId, AccountDb, Error])
     end.
 
--spec migrate_private_media(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
-migrate_private_media(AccountDb, Doc, <<"tiff">>) ->
-    {'ok', _} = kz_datamgr:ensure_saved(AccountDb, kz_doc:set_type(Doc, <<"fax">>)),
+-spec migrate_private_media(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+migrate_private_media(AccountDb, DocId, <<"tiff">>) ->
+    Update = [{kz_doc:path_type(), <<"fax">>}],
+    Updates = [{'update', Update}
+              ,{'ensure_saved', 'true'}
+              ],
+    {'ok', _} = kz_datamgr:update_doc(AccountDb, DocId, Updates),
     'ok';
-migrate_private_media(_AccountDb, _JObj, _MediaType) -> 'ok'.
-
+migrate_private_media(_AccountDb, _Id, _MediaType) -> 'ok'.
 
 -spec recover_private_media(kz_term:ne_binary()) -> 'ok'.
 recover_private_media(Account) ->
@@ -136,14 +139,19 @@ recover_private_media(Account) ->
 
 -spec maybe_recover_private_media(kz_term:ne_binary(), kz_json:object()) -> 'ok'.
 maybe_recover_private_media(AccountDb, JObj) ->
-    {'ok', Doc } = kz_datamgr:open_doc(AccountDb, kz_doc:id(JObj)),
-    recover_private_media(AccountDb, Doc, kz_json:get_value(<<"media_type">>, Doc)).
+    DocId = kz_doc:id(JObj),
+    {'ok', Doc} = kz_datamgr:open_doc(AccountDb, DocId),
+    recover_private_media(AccountDb, DocId, kz_json:get_value(<<"media_type">>, Doc)).
 
--spec recover_private_media(kz_term:ne_binary(), kz_json:object(), kz_term:ne_binary()) -> 'ok'.
-recover_private_media(_AccountDb, _Doc, <<"tiff">>) ->
+-spec recover_private_media(kz_term:ne_binary(), kz_term:ne_binary(), kz_term:ne_binary()) -> 'ok'.
+recover_private_media(_AccountDb, _DocId, <<"tiff">>) ->
     'ok';
-recover_private_media(AccountDb, Doc, _MediaType) ->
-    {'ok', _ } = kz_datamgr:ensure_saved(AccountDb, kz_doc:set_type(Doc, <<"private_media">>)),
+recover_private_media(AccountDb, DocId, _MediaType) ->
+    Update = [{kz_doc:path_type(), <<"private_media">>}],
+    Updates = [{'update', Update}
+              ,{'ensure_saved', 'true'}
+              ],
+    {'ok', _ } = kz_datamgr:update_doc(AccountDb, DocId, Updates),
     'ok'.
 
 -spec migrate_faxes_to_modb(kz_term:ne_binary(),  kz_term:proplist()) -> 'ok'.

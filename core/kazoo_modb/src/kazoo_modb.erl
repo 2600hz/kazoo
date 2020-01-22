@@ -211,8 +211,8 @@ couch_save(AccountMODb, _Doc, _Options, Reason, Retry) when Retry =< 0 ->
     {'error', Reason};
 couch_save(AccountMODb, Doc, Options, _Reason, Retry) ->
     EncodedMODb = kzs_util:format_account_modb(AccountMODb, 'encoded'),
-    SaveFun = save_fun(props:get_is_true('ensure_saved', Options, 'false')),
-    case SaveFun(EncodedMODb, Doc, strip_modb_options(Options)) of
+    {SaveFun, SaveOptions} = save_fun(props:get_is_true('ensure_saved', Options, 'false'), Doc),
+    case SaveFun(EncodedMODb, Doc, strip_modb_options(Options) ++ SaveOptions) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} = NotFound ->
             ShouldCreate = props:get_is_true('create_db', Options, 'true'),
@@ -236,10 +236,15 @@ couch_save(AccountMODb, Doc, Options, _Reason, Retry) ->
         Error -> Error
     end.
 
--spec save_fun(boolean()) -> function().
-save_fun('false') -> fun kz_datamgr:save_doc/3;
-save_fun('true') -> fun kz_datamgr:ensure_saved/3.
-
+-spec save_fun(boolean(), kz_json:object()) -> {function(), kz_datamgr:update_options()}.
+save_fun('false', _Doc) -> {fun kz_datamgr:save_doc/3, []};
+save_fun('true', Doc) ->
+    Update = kz_json:to_proplist(Doc),
+    Updates = [{'update', Update}
+              ,{'ensure_saved', 'true'}
+              ,{'should_create', 'true'}
+              ],
+    {fun kz_datamgr:update_doc/3, Updates}.
 
 -spec save_docs(kz_term:text(), kz_json:objects()) ->
           {'ok', kz_json:objects()} |

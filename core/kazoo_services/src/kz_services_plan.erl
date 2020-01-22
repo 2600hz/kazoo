@@ -144,10 +144,11 @@ default_bookkeeper(#plan{default_bookkeeper=Bookkeeper}) ->
 %%------------------------------------------------------------------------------
 -spec set_default_bookkeeper(plan(), kz_json:object()) -> plan().
 set_default_bookkeeper(Plan, Bookkeeper) ->
-    JObj = kz_json:merge_recursive(
+    JObj = kz_json:merge(
              [kz_json:from_list([{<<"bookkeeper">>, Bookkeeper}])
              ,jobj(Plan)
              ]
+            ,#{'recursive' => 'true'}
             ),
     set_jobj(Plan#plan{default_bookkeeper=Bookkeeper}, JObj).
 

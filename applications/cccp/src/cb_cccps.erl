@@ -142,7 +142,7 @@ send_new_camping(JObj, AccountId) ->
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     Context2 = crossbar_doc:save(Context),
-    _ = kz_datamgr:ensure_saved(<<"cccps">>, cb_context:doc(Context2)),
+    _ = ensure_saved(Context2),
     Context2.
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
@@ -157,8 +157,18 @@ put(Context, ?AUTODIAL) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
     Context2 = crossbar_doc:save(Context),
-    _ = kz_datamgr:ensure_saved(<<"cccps">>, cb_context:doc(Context2)),
+    _ = ensure_saved(Context2),
     Context2.
+
+ensure_saved(Context) ->
+    Doc = cb_context:doc(Context),
+    Update = kz_json:to_proplist(Doc),
+    Updates = [{'update', Update}
+              ,{'ensure_saved', 'true'}
+              ,{'should_create', 'true'}
+              ],
+    _ = kz_datamgr:update_doc(<<"cccps">>, kz_doc:id(Doc), Updates),
+    'ok'.
 
 %%------------------------------------------------------------------------------
 %% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete

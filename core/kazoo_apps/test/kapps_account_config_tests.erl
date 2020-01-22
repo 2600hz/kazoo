@@ -80,22 +80,22 @@ test_get_global(#{sub_config := SubAccountConfig
                 end,
     [{"Testing get global account config"
      ,[{"exists config doc in sub-account on get_global/2 should result in account's config doc"
-       ,?_assertEqual(SubAccountConfig, kapps_account_config:get_global(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT))
+       ,?_assert(kz_json:are_equal(SubAccountConfig, kapps_account_config:get_global(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT)))
        }
       ,{"undefined account_id on get_global/2 should result in system_config config doc"
-       ,?_assertEqual(SystemConfig, kapps_account_config:get_global('undefined', ?TEST_CAT))
+       ,?_assert(kz_json:are_equal(SystemConfig, kapps_account_config:get_global('undefined', ?TEST_CAT)))
        }
       ,{"not exists sub-account config doc and exists config doc for reseller on get_global/2 should result in reseller config doc"
-       ,?_assertEqual(ResellerOnly, kapps_account_config:get_global(?FIXTURE_CHILD_ACCOUNT_ID, ?RESELLER_ONLY))
+       ,?_assert(kz_json:are_equal(ResellerOnly, kapps_account_config:get_global(?FIXTURE_CHILD_ACCOUNT_ID, ?RESELLER_ONLY)))
        }
       ,{"not exists config doc for sub-account and reseller on get_global/2 should result in system_config default value object"
-       ,?_assertEqual(SystemOnly, kapps_account_config:get_global(?FIXTURE_CHILD_ACCOUNT_ID, ?SYSTEM_ONLY))
+       ,?_assert(kz_json:are_equal(SystemOnly, kapps_account_config:get_global(?FIXTURE_CHILD_ACCOUNT_ID, ?SYSTEM_ONLY)))
        }
       ,{"not exists config doc for sub-account and reseller and an empty default system_config on get_global/2 should result in empty doc"
-       ,?_assertEqual(kz_json:new(), kapps_account_config:get_global(?FIXTURE_PARENT_ACCOUNT_ID, ?SYSTEM_EMPTY))
+       ,?_assert(kz_json:are_equal(kz_json:new(), kapps_account_config:get_global(?FIXTURE_PARENT_ACCOUNT_ID, ?SYSTEM_EMPTY)))
        }
       ,{"not exists config doc for category on get_global/2 should result in an empty object with category as id"
-       ,?_assertEqual(kz_doc:set_id(kz_json:new(), <<"no_cat_please">>), kapps_account_config:get_global(?FIXTURE_PARENT_ACCOUNT_ID, <<"no_cat_please">>))
+       ,?_assert(kz_json:are_equal(kz_doc:set_id(kz_json:new(), <<"no_cat_please">>), kapps_account_config:get_global(?FIXTURE_PARENT_ACCOUNT_ID, <<"no_cat_please">>)))
        }
       ,common_tests_for_get_global(FunToTest)
       ]
@@ -254,55 +254,64 @@ get_strategy_hierarchy_merge() ->
 
     [{"Testing get config hierarchy_merge strategy"
      ,[{"defined value in account where account is reseller itself should result in merged value of reseller and system"
-       ,?_assertEqual(kz_json:merge_recursive([SysRootObjKey, ResellerRootJObjKey])
-                     ,kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?FIXTURE_RESELLER_ACCOUNT_ID, ?TEST_CAT, <<"root_obj_key">>)
-                     )
+       ,?_assert(kz_json:are_equal(kz_json:merge([SysRootObjKey, ResellerRootJObjKey], #{'recursive' => 'true'})
+                                  ,kapps_account_config:get_with_strategy(<<"hierarchy_merge">>, ?FIXTURE_RESELLER_ACCOUNT_ID, ?TEST_CAT, <<"root_obj_key">>)
+                                  )
+                )
        }
       ,{"defined value in parent-account and reseller should result in merged value of parent-account, reseller and system"
-       ,?_assertEqual(kz_json:merge_recursive([SysRootObjKey, ResellerRootJObjKey, ParentRootObjKey])
-                     ,kapps_account_config:get_hierarchy(?FIXTURE_PARENT_ACCOUNT_ID, ?TEST_CAT, <<"root_obj_key">>)
-                     )
+       ,?_assert(kz_json:are_equal(kz_json:merge([SysRootObjKey, ResellerRootJObjKey, ParentRootObjKey], #{'recursive' => 'true'})
+                                  ,kapps_account_config:get_hierarchy(?FIXTURE_PARENT_ACCOUNT_ID, ?TEST_CAT, <<"root_obj_key">>)
+                                  )
+                )
        }
       ,{"defined value in account & system and undefined property in parent & reseller should result in merged value of account and system"
-       ,?_assertEqual(get_key_and_merge_configs(<<"sub_account+system">>, [SysRootObjKey, SubRootObjKey])
-                     ,kapps_account_config:get_hierarchy(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"sub_account+system">>])
-                     )
+       ,?_assert(kz_json:are_equal(get_key_and_merge_configs(<<"sub_account+system">>, [SysRootObjKey, SubRootObjKey])
+                                  ,kapps_account_config:get_hierarchy(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"sub_account+system">>])
+                                  )
+                )
        }
       ,{"customized account, reseller, system and empty/not_exists parent should result in merged value of all customized and system"
-       ,?_assertEqual(get_key_and_merge_configs(<<"sub+reseller+system">>, [SysRootObjKey, ResellerRootJObjKey, SubRootObjKey])
-                     ,kapps_account_config:get_hierarchy(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"sub+reseller+system">>])
-                     )
+       ,?_assert(kz_json:are_equal(get_key_and_merge_configs(<<"sub+reseller+system">>, [SysRootObjKey, ResellerRootJObjKey, SubRootObjKey])
+                                  ,kapps_account_config:get_hierarchy(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"sub+reseller+system">>])
+                                  )
+                )
        }
       ,{"customized account, parent, system and empty reseller should result in merged value of all customized and system"
-       ,?_assertEqual(get_key_and_merge_configs(<<"sub+parent+empty_reseller+system">>, [SysRootObjKey, ParentRootObjKey, SubRootObjKey])
-                     ,kapps_account_config:get_hierarchy(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"sub+parent+empty_reseller+system">>])
-                     )
+       ,?_assert(kz_json:are_equal(get_key_and_merge_configs(<<"sub+parent+empty_reseller+system">>, [SysRootObjKey, ParentRootObjKey, SubRootObjKey])
+                                  ,kapps_account_config:get_hierarchy(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"sub+parent+empty_reseller+system">>])
+                                  )
+                )
        }
       ,{"customized account, parent, system and not customized reseller should result in merged value of all customized and system"
-       ,?_assertEqual(get_key_and_merge_configs(<<"sub+parent+system">>, [SysRootObjKey, ParentRootObjKey, SubRootObjKey])
-                     ,kapps_account_config:get_hierarchy(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"sub+parent+system">>])
-                     )
+       ,?_assert(kz_json:are_equal(get_key_and_merge_configs(<<"sub+parent+system">>, [SysRootObjKey, ParentRootObjKey, SubRootObjKey])
+                                  ,kapps_account_config:get_hierarchy(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"sub+parent+system">>])
+                                  )
+                )
        }
       ,{"customized account, parents and system should result in merged value of all"
-       ,?_assertEqual(kz_json:merge_recursive([SysRootObjKey, ResellerRootJObjKey, ParentRootObjKey, SubRootObjKey])
-                     ,kapps_account_config:get_hierarchy(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, <<"root_obj_key">>)
-                     )
+       ,?_assert(kz_json:are_equal(kz_json:merge([SysRootObjKey, ResellerRootJObjKey, ParentRootObjKey, SubRootObjKey], #{'recursive' => 'true'})
+                                  ,kapps_account_config:get_hierarchy(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, <<"root_obj_key">>)
+                                  )
+                )
        }
       ,{"not customized account with undefined parent account id and no reseller should result in system_config"
-       ,?_assertEqual(SysRootObjKey, kapps_account_config:get_hierarchy(kz_binary:rand_hex(16), ?TEST_CAT, <<"root_obj_key">>))
+       ,?_assert(kz_json:are_equal(SysRootObjKey, kapps_account_config:get_hierarchy(kz_binary:rand_hex(16), ?TEST_CAT, <<"root_obj_key">>)))
        }
       ,{"check if the account set an empty jobj, the content of the hierarchy is merged into the jobj properly"
-       ,?_assertEqual(kz_json:merge_recursive([SometimesEmptyValue_System, SometimesEmptyValue_Reseller, SometimesEmptyValue_Sub1])
-                     ,kapps_account_config:get_hierarchy(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"obj_empty_test">>, <<"obj_empty_sometimes">>])
-                     )
+       ,?_assert(kz_json:are_equal(kz_json:merge([SometimesEmptyValue_System, SometimesEmptyValue_Reseller, SometimesEmptyValue_Sub1], #{'recursive' => 'true'})
+                                  ,kapps_account_config:get_hierarchy(?FIXTURE_CHILD_ACCOUNT_ID, ?TEST_CAT, [<<"root_obj_key">>, <<"obj_empty_test">>, <<"obj_empty_sometimes">>])
+                                  )
+                )
        }
       ]
      }
     ].
 
 get_key_and_merge_configs(Key, Configs) ->
-    kz_json:merge_recursive(
+    kz_json:merge(
       [kz_json:get_value(Key, Conf, kz_json:new())
        || Conf <- Configs
       ]
+     ,#{'recursive' => 'true'}
      ).

@@ -538,10 +538,18 @@ add_aggregate_device(Db, Device) ->
     _ = case kz_datamgr:lookup_doc_rev(?KZ_SIP_DB, DeviceId) of
             {'ok', Rev} ->
                 lager:debug("aggregating device ~s/~s", [Db, DeviceId]),
-                kz_datamgr:ensure_saved(?KZ_SIP_DB, kz_doc:set_revision(Device, Rev));
+                Update = [{kz_doc:path_revision(), Rev}],
+                Updates = [{'update', Update}
+                          ,{'ensure_saved', 'true'}
+                          ],
+                kz_datamgr:update_doc(?KZ_SIP_DB, DeviceId, Updates);
             {'error', 'not_found'} ->
                 lager:debug("aggregating device ~s/~s", [Db, DeviceId]),
-                kz_datamgr:ensure_saved(?KZ_SIP_DB, kz_doc:delete_revision(Device))
+                Update = [{kz_doc:path_revision(), 'null'}],
+                Updates = [{'update', Update}
+                          ,{'ensure_saved', 'true'}
+                          ],
+                kz_datamgr:update_doc(?KZ_SIP_DB, DeviceId, Updates)
         end,
     'ok'.
 

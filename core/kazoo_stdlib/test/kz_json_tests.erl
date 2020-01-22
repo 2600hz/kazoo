@@ -94,7 +94,7 @@ prop_lift_common() ->
                          ,begin
                               FlatUnique = kz_json:to_proplist(kz_json:flatten(UniqueJObj)),
                               Merged = kz_json:set_values(FlatUnique, CommonJObj),
-                              %% Merged = kz_json:merge_recursive(CommonJObj, UniqueJObj),
+
                               {CommonProperties, [UpCommon, UpUnique, UpCommon, UpUnique]} = kz_json:lift_common_properties([CommonJObj, Merged, CommonJObj, Merged]),
                               kz_json:are_equal(CommonJObj, CommonProperties)
                                   andalso kz_json:are_equal(kz_json:new(), UpCommon)
@@ -313,12 +313,11 @@ prop_merge_with_null() ->
                 WithNull = kz_json:set_value(Path, 'null', LeftJObj, #{'keep_null' => 'true'}),
                 Merged = kz_json:merge(fun kz_json:merge_left/3, WithNull, RightJObj, #{'keep_null' => 'true'}),
 
-
                 ?WHENFAIL(begin
                               ?debugFmt("merging nulls failed on ~p:~nnull: ~p~nright: ~p~nmerged: ~p~n"
                                        ,[Path, WithNull, RightJObj, Merged]
                                        ),
-                              start_debug(kz_json),
+                              start_debug('kz_json'),
                               kz_json:merge(fun kz_json:merge_left/3, WithNull, RightJObj, #{'keep_null' => 'true'}),
                               stop_debug()
                           end
@@ -333,7 +332,7 @@ start_debug(M) ->
     dbg:tracer(),
 
     dbg:tpl(M, [{'_', [], [$_]}]),
-    dbg:p(all, c).
+    dbg:p('all', 'c').
 
 stop_debug() ->
     dbg:stop_clear(),
@@ -347,7 +346,7 @@ merge_left_test_() ->
             ,{kz_json:from_list([{<<164,157,198,86>>,<<>>}
                                 ,{<<141,91,80,224,4,15,58>>,<<123,90,22,250,127,8>>}
                                 ,{<<89,32,154,252,169,163,159>>,<<12,20,213,203>>}
-                                ,{<<"ï¿½ï¿½F">>,false}
+                                ,{<<"ï¿½ï¿½F">>, 'false'}
                                 ,{<<158,113,31,162,148>>,kz_json:new()}
                                 ,{<<"ï¿½">>,kz_json:new()}
                                 ]
@@ -504,7 +503,7 @@ proper_findings_lift_1_test_() ->
 -define(D2_MERGE, ?JSON_WRAPPER([{<<"d2k1">>, 1}
                                 ,{<<"d2k2">>, 3.14}
                                 ,{<<"sub_d1">>, ?D1_MERGE}
-                                ,{<<"blip">>, ?JSON_WRAPPER([{<<"blop">>, null}])}
+                                ,{<<"blip">>, ?JSON_WRAPPER([{<<"blop">>, 'null'}])}
                                 ])).
 -define(D3, ?JSON_WRAPPER([{<<"d3k1">>, <<"d3v1">>}
                           ,{<<"d3k2">>, []}
@@ -546,7 +545,9 @@ find_test_() ->
 
 merge_recursive_overrides_test_() ->
     Key = [<<"plan">>, <<"phone_numbers">>, <<"did_us">>, <<"discounts">>, <<"cumulative">>, <<"rate">>],
+
     DefaultPred = fun(_, _) -> 'true' end,
+
     CustomPred = fun(1, 20) -> 'false';
                     (_, _) -> 'true'
                  end,
@@ -554,7 +555,9 @@ merge_recursive_overrides_test_() ->
     JObj1 = ?SP,
     JObj2 = kz_json:from_list([{<<"plan">>, ?O}]),
 
-    Merge1Arg = kz_json:merge_recursive([JObj1, JObj2]),
+    MergeOptions = #{'recursive' => 'true'},
+
+    Merge1Arg = kz_json:merge([JObj1, JObj2], MergeOptions),
 
     MergeTrue2Args = kz_json:merge_recursive([JObj1, JObj2], DefaultPred),
     MergeCustom2Args = kz_json:merge_recursive([JObj1, JObj2], CustomPred),
@@ -584,7 +587,7 @@ merge_recursive_options_test_() ->
     JObj1 = ?SP,
     JObj2 = kz_json:set_value(Key, 'null', kz_json:from_list([{<<"plan">>, ?O}]), Options),
 
-    Merge1Arg = kz_json:merge_recursive([JObj1, JObj2]),
+    Merge1Arg = kz_json:merge([JObj1, JObj2], #{'recursive' => 'true'}),
 
     Merge2Args = kz_json:merge_recursive([JObj1, JObj2], Options),
     MergeDefault2Args = kz_json:merge_recursive(JObj1, JObj2),
@@ -826,8 +829,10 @@ merge_with_null_test_() ->
 merge_recursive_test_() ->
     Base = kz_json:set_value([<<"blip">>, <<"blop">>], 42, ?D2),
     New = ?D2_MERGE,
-    JObj = kz_json:merge_recursive(Base, New),
-    JObj1 = kz_json:merge_recursive([Base, New]),
+    Options = #{'recursive' => 'true'},
+
+    JObj = kz_json:merge(Base, New, Options),
+    JObj1 = kz_json:merge([Base, New], Options),
     lists:flatmap(fun do_merge_recursive/1, [JObj, JObj1]).
 
 merge_test_() ->
@@ -1145,13 +1150,13 @@ are_all_there(Values, Keys, Vs, Ks) ->
                                   ,{<<"k4">>, [1,2,3]}
                                   ])).
 -define(PROPS_WITH_UNDEFINED, [{<<"a">>, 42}
-                              ,{<<"b">>, undefined}
+                              ,{<<"b">>, 'undefined'}
                               ]).
 
 codec_test_() ->
     [?_assertEqual(?CODEC_JOBJ, kz_json:decode(kz_json:encode(?CODEC_JOBJ)))
-    ,?_assertThrow({error,{invalid_ejson,undefined}}, kz_json:encode(undefined))
-    ,?_assertThrow({error,{invalid_ejson,undefined}}, kz_json:encode(?JSON_WRAPPER(?PROPS_WITH_UNDEFINED)))
+    ,?_assertThrow({'error',{'invalid_ejson','undefined'}}, kz_json:encode('undefined'))
+    ,?_assertThrow({'error',{'invalid_ejson','undefined'}}, kz_json:encode(?JSON_WRAPPER(?PROPS_WITH_UNDEFINED)))
     ,?_assert(kz_json:are_equal(kz_json:from_list(?PROPS_WITH_UNDEFINED)
                                ,kz_json:decode(kz_json:encode(kz_json:from_list(?PROPS_WITH_UNDEFINED)))
                                ))
@@ -1235,11 +1240,11 @@ to_map_test_() ->
 
 are_equal_test_() ->
     JObj = kz_json:from_map(kz_json:to_map(?MAP_JSON)),
-    [?_assertEqual(true, kz_json:are_equal(?MAP_JSON, JObj))
-    ,?_assertEqual(true, kz_json:are_equal(JObj, ?MAP_JSON))
-    ,?_assertEqual(true, kz_json:are_equal(undefined, undefined))
-    ,?_assertEqual(false, kz_json:are_equal(undefined, kz_json:new()))
-    ,?_assertEqual(false, kz_json:are_equal(kz_json:new(), undefined))
+    [?_assertEqual('true', kz_json:are_equal(?MAP_JSON, JObj))
+    ,?_assertEqual('true', kz_json:are_equal(JObj, ?MAP_JSON))
+    ,?_assertEqual('true', kz_json:are_equal('undefined', 'undefined'))
+    ,?_assertEqual('false', kz_json:are_equal('undefined', kz_json:new()))
+    ,?_assertEqual('false', kz_json:are_equal(kz_json:new(), 'undefined'))
     ].
 
 -define(CHARGES_SIMPLE,
@@ -1393,49 +1398,69 @@ merge_vs_merge_recursive_test_() ->
 set_value_test_() ->
     JObj = kz_json:from_list([{<<189>>,[]}]),
     Key = [<<189>>,<<0>>],
-    Value = null,
+    Value = 'null',
     JObj1 = kz_json:set_value(Key, Value, JObj),
     [{"prop_set_value error", ?_assertEqual(Value, kz_json:get_value(Key, JObj1, Value))}].
 
 -define(FROM_MAP_JSON_1,
-        kz_json:from_list([{options, kz_json:from_list([{opt1,<<"my-opt1">>}
-                                                       ,{opt2,<<"my-opt2">>}
-                                                       ])}])).
+        kz_json:from_list([{'options', kz_json:from_list([{'opt1', <<"my-opt1">>}
+                                                         ,{'opt2', <<"my-opt2">>}
+                                                         ]
+                                                        )
+                           }
+                          ]
+                         )
+       ).
 -define(FROM_MAP_JSON_2,
-        kz_json:from_list([{outer_key, kz_json:from_list([{inner_key,<<"inner_value">>}])}])).
+        kz_json:from_list([{'outer_key', kz_json:from_list([{'inner_key',<<"inner_value">>}])}])).
 
 -define(FROM_MAP_JSON_3,
-        kz_json:from_list([{outer_key, kz_json:from_list([{inner_key,<<"inner_value">>}
-                                                         ,{inner_options, kz_json:from_list([{opt1,<<"my-opt1">>}
-                                                                                            ,{opt2,<<"my-opt2">>}
-                                                                                            ])}
-                                                         ])}])).
+        kz_json:from_list([{'outer_key', kz_json:from_list([{'inner_key',<<"inner_value">>}
+                                                           ,{'inner_options', kz_json:from_list([{'opt1', <<"my-opt1">>}
+                                                                                                ,{'opt2', <<"my-opt2">>}
+                                                                                                ])}
+                                                           ])
+                           }
+                          ]
+                         )
+       ).
 -define(FROM_MAP_JSON_4_WRONG,
-        kz_json:from_list([{outer_key, kz_json:from_list([{inner_key,<<"inner_value">>}
-                                                         ,{inner_options, [{opt1,<<"my-opt1">>}
-                                                                          ,<<"anykey">>
-                                                                          ,{opt1,<<"my-opt1">>}
-                                                                          ]}
-                                                         ])}])).
+        kz_json:from_list([{'outer_key', kz_json:from_list([{'inner_key', <<"inner_value">>}
+                                                           ,{'inner_options', [{'opt1', <<"my-opt1">>}
+                                                                              ,<<"anykey">>
+                                                                              ,{'opt1', <<"my-opt1">>}
+                                                                              ]}
+                                                           ])
+                           }
+                          ]
+                         )
+       ).
 -define(FROM_MAP_JSON_4_RIGHT,
-        kz_json:from_list([{outer_key, kz_json:from_list([{inner_key,<<"inner_value">>}
-                                                         ,{inner_options, [kz_json:from_list([{opt1,<<"my-opt1">>}])
-                                                                          ,<<"anykey">>
-                                                                          ,kz_json:from_list([{opt1,<<"my-opt1">>}])
-                                                                          ]}
-                                                         ])}])).
+        kz_json:from_list([{'outer_key', kz_json:from_list([{'inner_key',<<"inner_value">>}
+                                                           ,{'inner_options', [kz_json:from_list([{'opt1', <<"my-opt1">>}])
+                                                                              ,<<"anykey">>
+                                                                              ,kz_json:from_list([{'opt1', <<"my-opt1">>}])
+                                                                              ]}
+                                                           ])
+                           }
+                          ]
+                         )
+       ).
 
--define(FROM_MAP_MAP_1, #{options => [{opt1,<<"my-opt1">>},{opt2,<<"my-opt2">>}]}).
--define(FROM_MAP_MAP_2, #{outer_key => #{inner_key => <<"inner_value">>}}).
--define(FROM_MAP_MAP_3, #{outer_key => #{inner_key => <<"inner_value">>
-                                        ,inner_options => [{opt1,<<"my-opt1">>}
-                                                          ,{opt2,<<"my-opt2">>}
-                                                          ]}}).
--define(FROM_MAP_MAP_4, #{outer_key => #{inner_key => <<"inner_value">>
-                                        ,inner_options => [{opt1,<<"my-opt1">>}
-                                                          ,<<"anykey">>
-                                                          ,{opt1,<<"my-opt1">>}
-                                                          ]}}).
+-define(FROM_MAP_MAP_1, #{'options' => [{'opt1', <<"my-opt1">>},{'opt2', <<"my-opt2">>}]}).
+-define(FROM_MAP_MAP_2, #{'outer_key' => #{'inner_key' => <<"inner_value">>}}).
+-define(FROM_MAP_MAP_3, #{'outer_key' => #{'inner_key' => <<"inner_value">>
+                                          ,'inner_options' => [{'opt1', <<"my-opt1">>}
+                                                              ,{'opt2', <<"my-opt2">>}
+                                                              ]}}).
+-define(FROM_MAP_MAP_4, #{'outer_key' => #{'inner_key' => <<"inner_value">>
+                                          ,'inner_options' => [{'opt1', <<"my-opt1">>}
+                                                              ,<<"anykey">>
+                                                              ,{'opt1', <<"my-opt1">>}
+                                                              ]
+                                          }
+                         }
+       ).
 
 from_map_test_() ->
     [{"Map with a proplist as a key's value"
@@ -1452,7 +1477,7 @@ from_map_test_() ->
      ,?_assertEqual(?FROM_MAP_JSON_4_RIGHT, kz_json:from_map(?FROM_MAP_MAP_4))
      }
     ,{"error encoding the invalid json generated in from_map with a mixed proplist inside map"
-     ,?_assertException(throw, {error,{invalid_ejson,{opt1,<<"my-opt1">>}}}, kz_json:encode(?FROM_MAP_JSON_4_WRONG))
+     ,?_assertException('throw', {'error',{'invalid_ejson',{'opt1',<<"my-opt1">>}}}, kz_json:encode(?FROM_MAP_JSON_4_WRONG))
      }
     ,{"encoding the invalid json generated in from_map with a mixed proplist inside map"
      ,?_assertEqual(kz_json:encode(?FROM_MAP_JSON_4_RIGHT), kz_json:encode(kz_json:from_map(?FROM_MAP_MAP_4)))
@@ -1493,12 +1518,14 @@ utf8_binary_values_test_() ->
      ,?_assertEqual(UTF8Recursive, kz_json:from_list_recursive(Recursive))
      }
     ,{"When encoding a NOT utf8 ready object it should fail"
-     ,?_assertException(throw, {error,{invalid_string,V}},
-                        kz_json:encode(?JSON_WRAPPER(Props)))
+     ,?_assertException('throw', {'error',{'invalid_string',V}}
+                       ,kz_json:encode(?JSON_WRAPPER(Props))
+                       )
      }
     ,{"When encoding a NOT utf8 ready object it should fail"
-     ,?_assertException(throw, {error,{invalid_string,V}},
-                        kz_json:encode(?JSON_WRAPPER([{K, ?JSON_WRAPPER(Props)}])))
+     ,?_assertException('throw', {'error',{'invalid_string',V}}
+                       ,kz_json:encode(?JSON_WRAPPER([{K, ?JSON_WRAPPER(Props)}]))
+                       )
      }
     ,{"When encoding a utf8 ready object it should work"
      ,?_assertEqual(UTF8EncJObj, kz_json:encode(UTF8JObj))

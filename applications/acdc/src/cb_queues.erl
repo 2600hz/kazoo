@@ -763,16 +763,22 @@ normalize_agents_results(JObj, Acc) ->
 %%------------------------------------------------------------------------------
 -spec activate_account_for_acdc(cb_context:context()) -> 'ok'.
 activate_account_for_acdc(Context) ->
-    case kz_datamgr:open_cache_doc(?KZ_ACDC_DB, cb_context:account_id(Context)) of
+    AccountId = cb_context:account_id(Context),
+    case kz_datamgr:open_cache_doc(?KZ_ACDC_DB, AccountId) of
         {'ok', _} -> 'ok';
         {'error', 'not_found'} ->
-            lager:debug("creating account doc ~s in acdc db", [cb_context:account_id(Context)]),
-            Doc = kz_doc:update_pvt_parameters(kz_json:from_list([{<<"_id">>, cb_context:account_id(Context)}])
-                                              ,?KZ_ACDC_DB
-                                              ,[{'account_id', cb_context:account_id(Context)}
-                                               ,{'type', <<"acdc_activation">>}
-                                               ]),
-            {'ok', _} = kz_datamgr:ensure_saved(?KZ_ACDC_DB, Doc),
+            lager:debug("creating account doc ~s in acdc db", [AccountId]),
+            Doc = kz_json:from_list([{<<"_id">>, AccountId}]),
+            Update = kz_doc:get_pvt_updates(Doc
+                                           ,?KZ_ACDC_DB
+                                           ,[{'account_id', AccountId}
+                                            ,{'type', <<"acdc_activation">>}
+                                            ]),
+            Updates = [{'update', Update}
+                      ,{'ensure_saved', 'true'}
+                      ,{'should_create', 'true'}
+                      ],
+            {'ok', _} = kz_datamgr:update_doc(?KZ_ACDC_DB, AccountId, Updates),
             'ok';
         {'error', _E} ->
             lager:debug("failed to check acdc activation doc: ~p", [_E])

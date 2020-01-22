@@ -82,6 +82,8 @@
         ,merge_right/2, merge_right/3
         ]).
 
+-deprecated({'merge_recursive', 1, 'eventually'}).
+
 -export([from_list/1
         ,from_list_recursive/1, from_list_recursive/2
         ,merge_jobjs/2
@@ -571,8 +573,8 @@ sum(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2) ->
 -type sumer() :: fun((json_term(), json_term()) -> json_term()).
 
 -spec default_sumer(json_term(), json_term()) -> json_term().
-default_sumer(Value1, undefined) -> Value1;
-default_sumer(undefined, Value2) -> Value2;
+default_sumer(Value1, 'undefined') -> Value1;
+default_sumer('undefined', Value2) -> Value2;
 default_sumer(Value1, Value2) when is_number(Value1),
                                    is_number(Value2) ->
     Value1 + Value2;

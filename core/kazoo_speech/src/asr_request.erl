@@ -238,15 +238,22 @@ maybe_transcribe(#asr_req{}=Request) ->
 %% @doc try to transcribe media
 %% @end
 %%------------------------------------------------------------------------------
-maybe_transcribe(#asr_req{account_modb=AccountDb, content_type=ContentType, media_id=MediaId}=Request, Bin) ->
-    {'ok', MediaDoc} = kz_datamgr:open_doc(AccountDb, MediaId),
+maybe_transcribe(#asr_req{account_modb=AccountDb
+                         ,content_type=ContentType
+                         ,media_id=MediaId
+                         }=Request
+                ,Bin
+                ) ->
     case kazoo_asr:freeform(Bin, ContentType) of
         {'ok', Resp} ->
             lager:info("transcription resp: ~p", [Resp]),
-            MediaDoc1 = kz_json:set_value(<<"transcription">>, Resp, MediaDoc),
-            _ = kz_datamgr:ensure_saved(AccountDb, MediaDoc1),
-            Resp0 = is_valid_transcription(kz_json:get_value(<<"result">>, Resp)
-                                          ,kz_json:get_value(<<"text">>, Resp)
+            Update = [{[<<"transcription">>], Resp}],
+            Updates = [{'update', Update}
+                      ,{'ensure_saved', 'true'}
+                      ],
+            _ = kz_datamgr:update_doc(AccountDb, MediaId, Updates),
+            Resp0 = is_valid_transcription(kz_json:get_binary_value(<<"result">>, Resp)
+                                          ,kz_json:get_binary_value(<<"text">>, Resp)
                                           ,Resp
                                           ),
             set_transcription(Request, Resp0);
@@ -516,9 +523,9 @@ is_valid(#asr_req{validated=Valid}) -> Valid.
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec is_valid_transcription(kz_term:api_binary(), binary(), kz_json:object()) -> 'undefined' | kz_term:api_object().
+-spec is_valid_transcription(kz_term:api_binary(), binary(), kz_json:object()) -> kz_term:api_object().
 is_valid_transcription(<<"success">>, ?NE_BINARY, Resp) -> Resp;
-is_valid_transcription(<<"success">>, <<"">>, Resp) ->
+is_valid_transcription(<<"success">>, <<>>, Resp) ->
     lager:info("successful but empty transcription"),
     Resp;
 is_valid_transcription(Res, Txt, _) ->

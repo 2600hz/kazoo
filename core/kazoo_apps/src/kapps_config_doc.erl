@@ -58,7 +58,7 @@ apply_default_values(Config, Node, Defaults) ->
 
     DefaultsSection = get_node(Defaults, ?DEFAULT),
 
-    Merged = kz_json:merge_recursive([DefaultsSection, DefaultSection, NodeSection]),
+    Merged = kz_json:merge([DefaultsSection, DefaultSection, NodeSection], #{'recursive' => 'true'}),
     kz_json:set_value(Node, Merged, Config).
 
 -spec apply_default_node(kzd_system_configs:doc()) -> kzd_system_configs:doc().
@@ -120,7 +120,7 @@ node_config(Id, Node) ->
     Config = config_with_default_node(Id),
     NodeConfig = get_node(Config, Node),
     DefaultConfig = get_node(Config, ?DEFAULT),
-    kz_json:merge_recursive(DefaultConfig, NodeConfig).
+    kz_json:merge([DefaultConfig, NodeConfig], #{'recursive' => 'true'}).
 
 -spec stored_config(kz_term:ne_binary(), kz_json:key() | kz_json:keys()) -> kzd_system_configs:doc().
 stored_config(Id, Node)

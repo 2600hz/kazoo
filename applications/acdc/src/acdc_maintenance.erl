@@ -278,12 +278,17 @@ maybe_migrate(AccountId) ->
         {'ok', []} -> 'ok';
         {'ok', [_|_]} ->
             io:format("account ~s has queues, adding to acdc db~n", [AccountId]),
-            Doc = kz_doc:update_pvt_parameters(kz_json:from_list([{<<"_id">>, AccountId}])
-                                              ,?KZ_ACDC_DB
-                                              ,[{'account_id', AccountId}
-                                               ,{'type', <<"acdc_activation">>}
-                                               ]),
-            _ = kz_datamgr:ensure_saved(?KZ_ACDC_DB, Doc),
+            Doc = kz_json:from_list([{<<"_id">>, AccountId}]),
+            Update = kz_doc:get_pvt_updates(Doc
+                                           ,?KZ_ACDC_DB
+                                           ,[{'account_id', AccountId}
+                                            ,{'type', <<"acdc_activation">>}
+                                            ]),
+            Updates = [{'update', Update}
+                      ,{'ensure_saved', 'true'}
+                      ,{'should_create', 'true'}
+                      ],
+            _ = kz_datamgr:update_doc(?KZ_ACDC_DB, AccountId, Updates),
             io:format("saved account ~s to db~n", [AccountId]);
         {'error', _E} ->
             io:format("failed to query queue listing for account ~s: ~p~n", [AccountId, _E])

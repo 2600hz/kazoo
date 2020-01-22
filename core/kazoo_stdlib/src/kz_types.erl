@@ -43,7 +43,7 @@
 -type startlink_err() :: {'already_started', pid()} |
                          'shutdown' |
                          any().
--type startlink_ret() :: {'ok', pid()} |
+-type startlink_ret() :: {'ok', 'undefined' | pid()} |
                          'ignore' |
                          {'error', startlink_err()}.
 -type startapp_ret() :: {'ok', pid()} |

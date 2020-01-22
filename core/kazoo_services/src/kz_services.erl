@@ -505,9 +505,7 @@ set_manual_updates(Services, Quantities, Options) ->
     case props:get_is_true('merge', Options, 'false') of
         'false' -> Services#kz_services{manual_updates=Quantities};
         'true' ->
-            UpdatedQuantities = kz_json:merge_recursive(
-                                  [manual_quantities(Services), Quantities]
-                                 ),
+            UpdatedQuantities = kz_json:merge([manual_quantities(Services), Quantities], #{'recursive' => 'true'}),
             Services#kz_services{manual_updates=UpdatedQuantities}
     end.
 

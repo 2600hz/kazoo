@@ -490,16 +490,16 @@ fetch_account_dataplan_merged(AccountJObj) ->
     SystemJObj = fetch_system_dataplan(),
     case kz_json:get_ne_binary_value(<<"pvt_plan_id">>, AccountJObj) of
         'undefined' ->
-            kz_json:merge_recursive(SystemJObj, AccountJObj);
+            kz_json:merge([SystemJObj, AccountJObj], #{'recursive' => 'true'});
         PlanId ->
             account_dataplan_merged(SystemJObj, fetch_dataplan(PlanId), AccountJObj)
     end.
 
 -spec account_dataplan_merged(kz_json:object(), kz_term:api_object(), kz_json:object()) -> kz_json:object().
 account_dataplan_merged(SystemJObj, 'undefined', AccountJObj) ->
-    kz_json:merge_recursive(SystemJObj, AccountJObj);
+    kz_json:merge([SystemJObj, AccountJObj], #{'recursive' => 'true'});
 account_dataplan_merged(SystemJObj, Dataplan, AccountJObj) ->
-    kz_json:merge_recursive([SystemJObj, Dataplan, AccountJObj]).
+    kz_json:merge([SystemJObj, Dataplan, AccountJObj], #{'recursive' => 'true'}).
 
 -spec fetch_storage_dataplan(storage_key()) -> fetch_dataplan_ret().
 fetch_storage_dataplan({AccountId, StorageId}) ->
@@ -514,7 +514,7 @@ fetch_storage_dataplan_merged(AccountId, StoragePlan) ->
                       'invalid' -> fetch_system_dataplan();
                       P -> P
                   end,
-    kz_json:merge_recursive(AccountPlan, StoragePlan).
+    kz_json:merge([AccountPlan, StoragePlan], #{'recursive' => 'true'}).
 
 -spec fetch_dataplan(storage_key()) -> kz_term:api_object().
 fetch_dataplan(Id) ->
@@ -535,7 +535,7 @@ default_dataplan() ->
 -spec default_dataplan(kz_json:object()) -> kz_json:object().
 default_dataplan(JObj) ->
     DefaultJObj = fetch_dataplan_from_file(?SYSTEM_DATAPLAN_ID),
-    SystemJObj = kz_json:merge_recursive(DefaultJObj, JObj),
+    SystemJObj = kz_json:merge([DefaultJObj, JObj], #{'recursive' => 'true'}),
     'ok' = kzs_cache:add_to_doc_cache(?KZ_DATA_DB, ?SYSTEM_DATAPLAN_ID, SystemJObj),
     SystemJObj.
 

@@ -1821,7 +1821,11 @@ handle_module_rename_doc(JObj) ->
         Bin -> 'true';
         Replaced ->
             lager:notice("found wh_ / wnm_ pattern in ~s, replacing.", [kz_doc:id(JObj)]),
-            case kz_datamgr:ensure_saved(?KZ_CONFIG_DB, kz_json:decode(Replaced)) of
+            Update = kz_json:to_proplist(kz_json:decode(Replaced)),
+            Updates = [{'update', Update}
+                      ,{'ensure_saved', 'true'}
+                      ],
+            case kz_datamgr:update_doc(?KZ_CONFIG_DB, JObj, Updates) of
                 {'ok', _NewDoc} -> 'true';
                 {'error', _Error} -> 'false'
             end
