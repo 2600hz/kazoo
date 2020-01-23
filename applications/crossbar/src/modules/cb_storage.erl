@@ -209,11 +209,15 @@ validate_storage_plan(Context, PlanId, ?HTTP_DELETE) ->
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    crossbar_doc:save(Context).
+    Return = crossbar_doc:save(Context),
+    kzs_plan:reload(cb_context:account_id(Context)),
+    Return.
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ?PLANS_TOKEN) ->
-    crossbar_doc:save(Context).
+    Return = crossbar_doc:save(Context),
+    kzs_plan:reload(cb_context:account_id(Context)),
+    Return.
 
 %%--------------------------------------------------------------------
 %% @public
