@@ -12,30 +12,28 @@
         "call_log": {
             "map": [
                 "function(doc) {",
-                "    if ( doc.pvt_type != 'call_stat' )",
-                "        return;",
-                "    emit([doc.queue_id, doc.entered_timestamp], null);",
+                "  if (doc.pvt_type != 'call_stat') return;",
+                "  emit([doc.queue_id, doc.entered_timestamp], null);",
                 "}"
             ]
         },
         "crossbar_listing": {
             "map": [
                 "function(doc) {",
-                "    if ( doc.pvt_type != 'call_stat' )",
-                "        return;",
-                "    emit(doc.entered_timestamp, {",
-                "        id: doc._id,",
-                "        entered_timestamp: doc.entered_timestamp,",
-                "        handled_timestamp: doc.handled_timestamp,",
-                "        caller_id_number: doc.caller_id_number,",
-                "        caller_id_name: doc.caller_id_name,",
-                "        entered_position: doc.entered_position,",
-                "        status: doc.status,",
-                "        agent_id: doc.agent_id,",
-                "        wait_time: doc.wait_time,",
-                "        talk_time: doc.talk_time,",
-                "        queue_id: doc.queue_id",
-                "    });",
+                "  if (doc.pvt_type != 'call_stat') return;",
+                "  emit(doc.entered_timestamp, {",
+                "    id: doc._id,",
+                "    entered_timestamp: doc.entered_timestamp,",
+                "    handled_timestamp: doc.handled_timestamp,",
+                "    caller_id_number: doc.caller_id_number,",
+                "    caller_id_name: doc.caller_id_name,",
+                "    entered_position: doc.entered_position,",
+                "    status: doc.status,",
+                "    agent_id: doc.agent_id,",
+                "    wait_time: doc.wait_time,",
+                "    talk_time: doc.talk_time,",
+                "    queue_id: doc.queue_id",
+                "  });",
                 "}"
             ]
         }

@@ -10,7 +10,11 @@
     "language": "javascript",
     "views": {
         "status": {
-            "map": "function(doc) { emit([doc.pvt_account_id, doc.pvt_state, doc._id], null); }"
+            "map": [
+                "function(doc) {",
+                "  emit([doc.pvt_account_id, doc.pvt_state, doc._id], null);",
+                "}"
+            ]
         }
     }
 }

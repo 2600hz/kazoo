@@ -10,7 +10,12 @@
     "language": "javascript",
     "views": {
         "assigned_to": {
-            "map": "function(doc) { if (!doc.pvt_assigned_to) return; emit([doc.pvt_assigned_to, doc._id], null); }"
+            "map": [
+                "function(doc) {",
+                "  if (!doc.pvt_assigned_to) return;",
+                "  emit([doc.pvt_assigned_to, doc._id], null);",
+                "}"
+            ]
         },
         "list_assigned_and_app": {
             "map": [
@@ -21,14 +26,27 @@
             ]
         },
         "module_name": {
-            "map": "function(doc) { emit(doc.pvt_module_name, 1); }",
+            "map": [
+                "function(doc) {",
+                "  emit(doc.pvt_module_name, 1);",
+                "}"
+            ],
             "reduce": "_sum"
         },
         "status": {
-            "map": "function(doc) { emit([doc.pvt_state, doc.pvt_module_name, doc._id], null); }"
+            "map": [
+                "function(doc) {",
+                "  emit([doc.pvt_state, doc.pvt_module_name, doc._id], null);",
+                "}"
+            ]
         },
         "unassigned": {
-            "map": "function(doc) { if (doc.pvt_assigned_to || doc.pvt_state == 'discovery' || doc.pvt_number_state == 'discovery') return; emit(doc._id, null); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_assigned_to || doc.pvt_state == 'discovery' || doc.pvt_number_state == 'discovery') return;",
+                "  emit(doc._id, null);",
+                "}"
+            ]
         }
     }
 }

@@ -10,10 +10,26 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'directory' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'flags': doc.flags || []}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'directory' || doc.pvt_deleted) return;",
+                "  emit(doc._id, {",
+                "    'id': doc._id,",
+                "    'name': doc.name,",
+                "    'flags': doc.flags || []",
+                "  });",
+                "}"
+            ]
         },
         "users_listing": {
-            "map": "function(doc) { if ( doc.pvt_deleted || typeof doc.directories !== 'object' ) return; for ( directory_id in doc.directories ) { emit([directory_id, doc._id], doc.directories[directory_id]); }}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || typeof doc.directories !== 'object') return;",
+                "  for (directory_id in doc.directories) {",
+                "    emit([directory_id, doc._id], doc.directories[directory_id]);",
+                "  }",
+                "}"
+            ]
         }
     }
 }

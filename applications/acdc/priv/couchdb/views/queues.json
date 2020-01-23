@@ -10,11 +10,27 @@
     "language": "javascript",
     "views": {
         "agents_listing": {
-            "map": "function(doc) { if (doc.pvt_type !== 'user' || doc.pvt_deleted || typeof doc.queues !== 'object' ) return; for ( i in doc.queues ) { emit(doc.queues[i], doc._id); }}",
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type !== 'user' || doc.pvt_deleted || typeof doc.queues !== 'object') return;",
+                "  for (i in doc.queues) {",
+                "    emit(doc.queues[i], doc._id);",
+                "  }",
+                "}"
+            ],
             "reduce": "_count"
         },
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'queue' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'strategy': doc.strategy}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'queue' || doc.pvt_deleted) return;",
+                "  emit(doc._id, {",
+                "    'id': doc._id,",
+                "    'name': doc.name,",
+                "    'strategy': doc.strategy",
+                "  });",
+                "}"
+            ]
         }
     }
 }

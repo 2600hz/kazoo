@@ -10,13 +10,46 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'fax' || doc.pvt_deleted) return; emit([doc.pvt_created, doc._id], {'id': doc._id, 'status': doc.pvt_job_status, 'to': doc.to_number, 'from': doc.from_number, 'created': doc.pvt_created}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'fax' || doc.pvt_deleted) return;",
+                "  emit([doc.pvt_created, doc._id], {",
+                "    'id': doc._id,",
+                "    'status': doc.pvt_job_status,",
+                "    'to': doc.to_number,",
+                "    'from': doc.from_number,",
+                "    'created': doc.pvt_created",
+                "  });",
+                "}"
+            ]
         },
         "list_by_faxbox": {
-            "map": "function(doc) { if (doc.pvt_type != 'fax' || doc.pvt_deleted || !doc.faxbox_id) return; emit([doc.faxbox_id, doc.pvt_created], {'id': doc._id, 'status': doc.pvt_job_status, 'to': doc.to_number, 'from': doc.from_number, 'created': doc.pvt_created}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'fax' || doc.pvt_deleted || !doc.faxbox_id) return;",
+                "  emit([doc.faxbox_id, doc.pvt_created], {",
+                "    'id': doc._id,",
+                "    'status': doc.pvt_job_status,",
+                "    'to': doc.to_number,",
+                "    'from': doc.from_number,",
+                "    'created': doc.pvt_created",
+                "  });",
+                "}"
+            ]
         },
         "list_by_ownerid": {
-            "map": "function(doc) { if (doc.pvt_type != 'fax' || doc.pvt_deleted || !doc.owner_id) return; emit([doc.owner_id, doc.pvt_created], {'id': doc._id, 'status': doc.pvt_job_status, 'to': doc.to_number, 'from': doc.from_number, 'created': doc.pvt_created}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'fax' || doc.pvt_deleted || !doc.owner_id) return;",
+                "  emit([doc.owner_id, doc.pvt_created], {",
+                "    'id': doc._id,",
+                "    'status': doc.pvt_job_status,",
+                "    'to': doc.to_number,",
+                "    'from': doc.from_number,",
+                "    'created': doc.pvt_created",
+                "  });",
+                "}"
+            ]
         }
     }
 }

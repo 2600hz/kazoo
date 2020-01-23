@@ -10,7 +10,17 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'temporal_rule' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'type': doc.type, 'flags': doc.flags || []}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'temporal_rule' || doc.pvt_deleted) return;",
+                "  emit(doc._id, {",
+                "    'id': doc._id,",
+                "    'name': doc.name,",
+                "    'type': doc.type,",
+                "    'flags': doc.flags || []",
+                "  });",
+                "}"
+            ]
         }
     }
 }

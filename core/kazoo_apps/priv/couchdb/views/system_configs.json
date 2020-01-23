@@ -10,7 +10,13 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_deleted) return; if(doc.pvt_type != 'config') return; emit(doc._id, null); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted) return;",
+                "  if (doc.pvt_type != 'config') return;",
+                "  emit(doc._id, null);",
+                "}"
+            ]
         }
     }
 }

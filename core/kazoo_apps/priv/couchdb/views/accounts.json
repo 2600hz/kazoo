@@ -10,41 +10,160 @@
     "language": "javascript",
     "views": {
         "list_by_whitelabel_domain": {
-            "map": "function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted || !doc.pvt_whitelabel_domain) return; var domain = doc.pvt_whitelabel_domain.toLowerCase(); emit(domain, {'account_id': doc.pvt_account_id, 'account_db': doc.pvt_account_db}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'account' || doc.pvt_deleted || !doc.pvt_whitelabel_domain) return;",
+                "  var domain = doc.pvt_whitelabel_domain.toLowerCase();",
+                "  emit(domain, {",
+                "    'account_id': doc.pvt_account_id,",
+                "    'account_db': doc.pvt_account_db",
+                "  });",
+                "}"
+            ]
         },
         "listing_by_api": {
-            "map": "function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc.pvt_api_key, {'account_id': doc.pvt_account_id}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'account' || doc.pvt_deleted) return;",
+                "  emit(doc.pvt_api_key, {",
+                "    'account_id': doc.pvt_account_id",
+                "  });",
+                "}"
+            ]
         },
         "listing_by_children": {
-            "map": "function(doc) {if (doc.pvt_type != 'account' || doc.pvt_deleted) return;var tree = doc.pvt_tree.slice(0),parent = tree[tree.length - 1];emit([parent, doc.name], {'id': doc.pvt_account_id,'name': doc.name,'realm': doc.realm,'descendants_count': doc.descendants_count || 0, 'flags': doc.flags || []});}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'account' || doc.pvt_deleted) return;",
+                "  var tree = doc.pvt_tree.slice(0),",
+                "    parent = tree[tree.length - 1];",
+                "  emit([parent, doc.name], {",
+                "    'id': doc.pvt_account_id,",
+                "    'name': doc.name,",
+                "    'realm': doc.realm,",
+                "    'descendants_count': doc.descendants_count || 0,",
+                "    'flags': doc.flags || []",
+                "  });",
+                "}"
+            ]
         },
         "listing_by_descendants": {
-            "map": "function(doc) {if (doc.pvt_type != 'account' || doc.pvt_deleted) return;var t = doc.pvt_tree.slice(0);for (var i in t) {emit([t[i], doc.name], {'id': doc.pvt_account_id,'name': doc.name,'realm': doc.realm,'tree': doc.pvt_tree, 'flags': doc.flags || []});}}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'account' || doc.pvt_deleted) return;",
+                "  var t = doc.pvt_tree.slice(0);",
+                "  for (var i in t) {",
+                "    emit([t[i], doc.name], {",
+                "      'id': doc.pvt_account_id,",
+                "      'name': doc.name,",
+                "      'realm': doc.realm,",
+                "      'tree': doc.pvt_tree,",
+                "      'flags': doc.flags || []",
+                "    });",
+                "  }",
+                "}"
+            ]
         },
         "listing_by_descendants_count": {
-            "map": "function(doc) {if (doc.pvt_type != 'account' || doc.pvt_deleted) return;var t = doc.pvt_tree.slice(0);for (var i in t) {emit(t[i], 1);}}",
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'account' || doc.pvt_deleted) return;",
+                "  var t = doc.pvt_tree.slice(0);",
+                "  for (var i in t) {",
+                "    emit(t[i], 1);",
+                "  }",
+                "}"
+            ],
             "reduce": "_count"
         },
         "listing_by_id": {
-            "map": "function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc.pvt_account_id); emit([doc.pvt_account_id, t], {'id': doc.pvt_account_id, 'name': doc.name, 'realm' : doc.realm, 'flags': doc.flags || []}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'account' || doc.pvt_deleted) return;",
+                "  var t = doc.pvt_tree.slice(0);",
+                "  t.push(doc.pvt_account_id);",
+                "  emit([doc.pvt_account_id, t], {",
+                "    'id': doc.pvt_account_id,",
+                "    'name': doc.name,",
+                "    'realm': doc.realm,",
+                "    'flags': doc.flags || []",
+                "  });",
+                "}"
+            ]
         },
         "listing_by_ip": {
-            "map": "function(doc) {if (doc.pvt_type != 'account' || doc.pvt_deleted || !doc.ips) return;for(var z in doc.ips) {emit(doc.ips[z].ip, {'owner_id': doc.ips[z].owner_id, 'account_id': doc.pvt_account_id});}}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'account' || doc.pvt_deleted || !doc.ips) return;",
+                "  for (var z in doc.ips) {",
+                "    emit(doc.ips[z].ip, {",
+                "      'owner_id': doc.ips[z].owner_id,",
+                "      'account_id': doc.pvt_account_id",
+                "    });",
+                "  }",
+                "}"
+            ]
         },
         "listing_by_name": {
-            "map": "function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var name = doc.name.toLowerCase(); name = name.replace(/[^a-z0-9]/g, ''); emit(name, {'account_id': doc.pvt_account_id, 'account_db': doc.pvt_account_db}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'account' || doc.pvt_deleted) return;",
+                "  var name = doc.name.toLowerCase();",
+                "  name = name.replace(/[^a-z0-9]/g, '');",
+                "  emit(name, {",
+                "    'account_id': doc.pvt_account_id,",
+                "    'account_db': doc.pvt_account_db",
+                "  });",
+                "}"
+            ]
         },
         "listing_by_parent": {
-            "map": "function(doc) {if (doc.pvt_type != 'account' || doc.pvt_deleted) return;var tree = doc.pvt_tree.slice(0);emit(doc.pvt_account_id, {'id': tree[tree.length-1], 'flags': doc.flags || []});}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'account' || doc.pvt_deleted) return;",
+                "  var tree = doc.pvt_tree.slice(0);",
+                "  emit(doc.pvt_account_id, {",
+                "    'id': tree[tree.length - 1],",
+                "    'flags': doc.flags || []",
+                "  });",
+                "}"
+            ]
         },
         "listing_by_realm": {
-            "map": "function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc.realm.toLowerCase(), {'account_id': doc.pvt_account_id, 'account_db': doc.pvt_account_db}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'account' || doc.pvt_deleted) return;",
+                "  emit(doc.realm.toLowerCase(), {",
+                "    'account_id': doc.pvt_account_id,",
+                "    'account_db': doc.pvt_account_db",
+                "  });",
+                "}"
+            ]
         },
         "listing_by_simple_id": {
-            "map": "function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc._id, {'id': doc.pvt_account_id, 'name': doc.name, 'realm' : doc.realm}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'account' || doc.pvt_deleted) return;",
+                "  emit(doc._id, {",
+                "    'id': doc.pvt_account_id,",
+                "    'name': doc.name,",
+                "    'realm': doc.realm",
+                "  });",
+                "}"
+            ]
         },
         "listing_by_sso": {
-            "map": "function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted || !doc.sso ) return; for(id in doc.sso.ids) {emit([doc.sso.provider, doc.sso.ids[id]], {'account_id': doc._id, 'account_db': doc.pvt_account_db});} }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'account' || doc.pvt_deleted || !doc.sso) return;",
+                "  for (id in doc.sso.ids) {",
+                "    emit([doc.sso.provider, doc.sso.ids[id]], {",
+                "      'account_id': doc._id,",
+                "      'account_db': doc.pvt_account_db",
+                "    });",
+                "  }",
+                "}"
+            ]
         }
     }
 }

@@ -10,10 +10,20 @@
     "language": "javascript",
     "views": {
         "attempts_by_hook_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'webhook_attempt' || doc.pvt_deleted) return; emit([doc.hook_id, doc.pvt_created], null); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'webhook_attempt' || doc.pvt_deleted) return;",
+                "  emit([doc.hook_id, doc.pvt_created], null);",
+                "}"
+            ]
         },
         "attempts_by_time_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'webhook_attempt' || doc.pvt_deleted) return; emit(doc.pvt_created, null); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'webhook_attempt' || doc.pvt_deleted) return;",
+                "  emit(doc.pvt_created, null);",
+                "}"
+            ]
         }
     }
 }

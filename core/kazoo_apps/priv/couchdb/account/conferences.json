@@ -10,10 +10,29 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'conference' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'owner_id': doc.owner_id, 'member': doc.member, 'moderator': doc.moderator, 'ui_flags': doc.ui_flags, 'conference_numbers': doc.conference_numbers, 'flags': doc.flags || []}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'conference' || doc.pvt_deleted) return;",
+                "  emit(doc._id, {",
+                "    'id': doc._id,",
+                "    'name': doc.name,",
+                "    'owner_id': doc.owner_id,",
+                "    'member': doc.member,",
+                "    'moderator': doc.moderator,",
+                "    'ui_flags': doc.ui_flags,",
+                "    'conference_numbers': doc.conference_numbers,",
+                "    'flags': doc.flags || []",
+                "  });",
+                "}"
+            ]
         },
         "listing_by_name": {
-            "map": "function(doc) { if (doc.pvt_type != 'conference' || doc.pvt_deleted) return; emit(doc.name, null);}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'conference' || doc.pvt_deleted) return;",
+                "  emit(doc.name, null);",
+                "}"
+            ]
         }
     }
 }

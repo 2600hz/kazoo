@@ -12,12 +12,16 @@
         "list_by_source": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_deleted || doc.pvt_type !== 'ledger')",
-                "    return;",
+                "  if (doc.pvt_deleted || doc.pvt_type !== 'ledger') return;",
                 "  var amount = doc.amount || 0;",
-                "  if (doc.pvt_ledger_type === 'debit')",
-                "    amount *= -1;",
-                "  var result = {'amount': amount, 'source': doc.source, 'usage': doc.usage, 'metadata': doc.metadata || {}, 'executor': doc.executor || {}};",
+                "  if (doc.pvt_ledger_type === 'debit') amount *= -1;",
+                "  var result = {",
+                "    'amount': amount,",
+                "    'source': doc.source,",
+                "    'usage': doc.usage,",
+                "    'metadata': doc.metadata || {},",
+                "    'executor': doc.executor || {}",
+                "  };",
                 "  emit([doc.source.service, doc.pvt_created, doc._id], result);",
                 "}"
             ]
@@ -25,20 +29,21 @@
         "list_by_timestamp": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_deleted || doc.pvt_type !== 'ledger')",
-                "    return;",
+                "  if (doc.pvt_deleted || doc.pvt_type !== 'ledger') return;",
                 "  var amount = doc.amount || 0;",
-                "  var usage =  doc.usage || {};",
+                "  var usage = doc.usage || {};",
                 "  var service = doc.source.service;",
-                "  if (doc.pvt_ledger_type === 'debit')",
-                "    amount *= -1;",
+                "  if (doc.pvt_ledger_type === 'debit') amount *= -1;",
                 "  var o = {};",
-                "  o[service] = {amount:amount, usage:usage};",
+                "  o[service] = {",
+                "    amount: amount,",
+                "    usage: usage",
+                "  };",
                 "  emit(doc.pvt_created, o);",
                 "}"
             ],
             "reduce": [
-                "function (keys, values, rereduce) {",
+                "function(keys, values, rereduce) {",
                 "  return values.reduce(function(reduceObj, obj) {",
                 "    for (var service in obj) {",
                 "      if (!obj.hasOwnProperty(service)) continue;",
@@ -115,11 +120,9 @@
         "total_by_source": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_deleted || doc.pvt_type !== 'ledger')",
-                "    return;",
+                "  if (doc.pvt_deleted || doc.pvt_type !== 'ledger') return;",
                 "  var amount = doc.amount || 0;",
-                "  if (doc.pvt_ledger_type === 'debit')",
-                "    amount *= -1;",
+                "  if (doc.pvt_ledger_type === 'debit') amount *= -1;",
                 "  emit([doc.source.service, doc.pvt_created], amount);",
                 "}"
             ],

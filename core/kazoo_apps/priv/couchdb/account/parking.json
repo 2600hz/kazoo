@@ -10,10 +10,20 @@
     "language": "javascript",
     "views": {
         "parked_call": {
-            "map": "function(doc) { if(doc.pvt_type != 'parked_call' || !doc.slot || doc.pvt_deleted) return; emit(doc.slot[\"Call-ID\"], null);}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'parked_call' || !doc.slot || doc.pvt_deleted) return;",
+                "  emit(doc.slot[\"Call-ID\"], null);",
+                "}"
+            ]
         },
         "parked_calls": {
-            "map": "function(doc) { if(doc.pvt_type != 'parked_call' || !doc.slot || doc.pvt_deleted) return; emit(doc._id, null);}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'parked_call' || !doc.slot || doc.pvt_deleted) return;",
+                "  emit(doc._id, null);",
+                "}"
+            ]
         }
     }
 }

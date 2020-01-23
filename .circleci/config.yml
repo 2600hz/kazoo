@@ -29,7 +29,7 @@ workflows:
 
 defaults: &defaults
   docker:
-    - image: offical2600hz/circleci:21.3.8.8
+    - image: offical2600hz/circleci:21.3.8.12
   working_directory: ~/2600hz/kazoo
   shell: /bin/bash --login
   environment:
@@ -183,7 +183,7 @@ jobs:
   release:
     <<: *defaults
     docker:
-      - image: offical2600hz/circleci:21.3.8.8
+      - image: offical2600hz/circleci:21.3.8.12
       - image: couchdb:2.3.1
       - image: 2600hz/rabbitmq
     environment:

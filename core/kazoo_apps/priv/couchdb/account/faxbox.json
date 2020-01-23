@@ -10,19 +10,60 @@
     "language": "javascript",
     "views": {
         "cloud": {
-            "map": "function(doc) { if (doc.pvt_type != 'faxbox' || doc.pvt_deleted || !doc.pvt_cloud_printer_id) return; emit(doc.pvt_cloud_printer_id, {'faxbox_id' : doc._id, 'account_id' : doc.pvt_account_id, 'cloud_printer_id': doc.pvt_cloud_printer_id, 'state': doc.pvt_cloud_state, 'xmpp_jid' : doc.pvt_cloud_xmpp_jid } ); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'faxbox' || doc.pvt_deleted || !doc.pvt_cloud_printer_id) return;",
+                "  emit(doc.pvt_cloud_printer_id, {",
+                "    'faxbox_id': doc._id,",
+                "    'account_id': doc.pvt_account_id,",
+                "    'cloud_printer_id': doc.pvt_cloud_printer_id,",
+                "    'state': doc.pvt_cloud_state,",
+                "    'xmpp_jid': doc.pvt_cloud_xmpp_jid",
+                "  });",
+                "}"
+            ]
         },
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'faxbox' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'created': doc.pvt_created, 'flags': doc.flags || []}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'faxbox' || doc.pvt_deleted) return;",
+                "  emit(doc._id, {",
+                "    'id': doc._id,",
+                "    'name': doc.name,",
+                "    'created': doc.pvt_created,",
+                "    'flags': doc.flags || []",
+                "  });",
+                "}"
+            ]
         },
         "email_address": {
-            "map": "function(doc) { if (doc.pvt_type != 'faxbox' || doc.pvt_deleted || !doc.pvt_smtp_email_address ) return; emit(doc.pvt_smtp_email_address, doc.pvt_account_id); if(doc.custom_smtp_email_address) { emit(doc.custom_smtp_email_address, doc.pvt_account_id); }; }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'faxbox' || doc.pvt_deleted || !doc.pvt_smtp_email_address) return;",
+                "  emit(doc.pvt_smtp_email_address, doc.pvt_account_id);",
+                "  if (doc.custom_smtp_email_address) {",
+                "    emit(doc.custom_smtp_email_address, doc.pvt_account_id);",
+                "  };",
+                "}"
+            ]
         },
         "email_permissions": {
-            "map": "function(doc) { if (doc.pvt_type != 'faxbox' || doc.pvt_deleted || !doc.smtp_permission_list || ! Array.isArray(doc.smtp_permission_list) ) return; doc.smtp_permission_list.forEach(function (tag){ if(tag != '') emit(tag.toLowerCase()); }); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'faxbox' || doc.pvt_deleted || !doc.smtp_permission_list || !Array.isArray(doc.smtp_permission_list)) return;",
+                "  doc.smtp_permission_list.forEach(function(tag) {",
+                "    if (tag != '') emit(tag.toLowerCase());",
+                "  });",
+                "}"
+            ]
         },
         "list_by_ownerid": {
-            "map": "function(doc) { if ( doc.pvt_type != 'faxbox' || doc.pvt_deleted || !doc.owner_id ) return;  emit(doc.owner_id); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'faxbox' || doc.pvt_deleted || !doc.owner_id) return;",
+                "  emit(doc.owner_id);",
+                "}"
+            ]
         }
     }
 }

@@ -10,7 +10,16 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'blacklist' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'flags': doc.flags || [] }); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'blacklist' || doc.pvt_deleted) return;",
+                "  emit(doc._id, {",
+                "    'id': doc._id,",
+                "    'name': doc.name,",
+                "    'flags': doc.flags || []",
+                "  });",
+                "}"
+            ]
         }
     }
 }

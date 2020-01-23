@@ -26,10 +26,20 @@
             ]
         },
         "list_by_number": {
-            "map": "function(doc) {if (doc.pvt_type != 'number' || doc.pvt_deleted) return;emit(doc._id, null);}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'number' || doc.pvt_deleted) return;",
+                "  emit(doc._id, null);",
+                "}"
+            ]
         },
         "list_reserved": {
-            "map": "function(doc) {if (doc.pvt_type != 'number' || doc.pvt_deleted || doc.pvt_state != 'reserved') return; emit(doc._id, null);}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'number' || doc.pvt_deleted || doc.pvt_state != 'reserved') return;",
+                "  emit(doc._id, null);",
+                "}"
+            ]
         }
     }
 }

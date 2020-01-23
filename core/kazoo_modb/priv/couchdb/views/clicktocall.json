@@ -10,7 +10,12 @@
     "language": "javascript",
     "views": {
         "history_listing": {
-            "map": "function(doc) { if(doc.pvt_type != 'c2c_history' || doc.pvt_deleted) return; emit([doc.pvt_clicktocall_id, doc.pvt_created], null); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'c2c_history' || doc.pvt_deleted) return;",
+                "  emit([doc.pvt_clicktocall_id, doc.pvt_created], null);",
+                "}"
+            ]
         }
     }
 }

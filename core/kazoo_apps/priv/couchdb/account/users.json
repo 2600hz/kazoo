@@ -12,7 +12,7 @@
         "creds_by_md5": {
             "map": [
                 "function(doc) {",
-                "  if(!doc.pvt_md5_auth || (doc.pvt_type != 'user' || doc.pvt_deleted || !doc.enabled)) return;",
+                "  if (!doc.pvt_md5_auth || (doc.pvt_type != 'user' || doc.pvt_deleted || !doc.enabled)) return;",
                 "  emit(doc.pvt_md5_auth, {",
                 "    'owner_id': doc._id,",
                 "    'account_id': doc.pvt_account_id",
@@ -38,7 +38,7 @@
                 "  var features = doc.features || [];",
                 "  if (doc.smartpbx)",
                 "    for (var feature in doc.smartpbx)",
-                "      if(doc.smartpbx[feature].enabled) features.push(feature);",
+                "      if (doc.smartpbx[feature].enabled) features.push(feature);",
                 "  if (doc.hotdesk && doc.hotdesk.enabled) features.push('hotdesk');",
                 "  if (doc.call_forward && doc.call_forward.enabled) features.push('call_forward');",
                 "  if (doc.call_forward && doc.call_forward.failover && !doc.call_forward.enabled) features.push('call_forward_failover');",
@@ -69,8 +69,8 @@
         "list_by_email": {
             "map": [
                 "function(doc) {",
-                "  if(doc.pvt_type != 'user' || doc.pvt_deleted) return;",
-                "  if(!doc.email || doc.email == '') return;",
+                "  if (doc.pvt_type != 'user' || doc.pvt_deleted) return;",
+                "  if (!doc.email || doc.email == '') return;",
                 "  emit(doc.email.toLowerCase(), null);",
                 "}"
             ]
@@ -78,7 +78,7 @@
         "list_by_hotdesk_id": {
             "map": [
                 "function(doc) {",
-                "  if(doc.pvt_type != 'user' || !doc.hotdesk.id || doc.pvt_deleted) return;",
+                "  if (doc.pvt_type != 'user' || !doc.hotdesk.id || doc.pvt_deleted) return;",
                 "  emit(doc.hotdesk.id, null);",
                 "}"
             ]
@@ -89,7 +89,7 @@
                 "  if (doc.pvt_type != 'user' || doc.pvt_deleted) return;",
                 "  var features = [];",
                 "  if (doc.smartpbx)",
-                "    for (var feature in doc.smartpbx) ",
+                "    for (var feature in doc.smartpbx)",
                 "      if (doc.smartpbx[feature].enabled) features.push(feature);",
                 "  if (doc.hotdesk && doc.hotdesk.enabled) features.push('hotdesk');",
                 "  if (doc.call_forward && doc.call_forward.enabled) features.push('call_forward');",
@@ -117,7 +117,7 @@
         "list_by_username": {
             "map": [
                 "function(doc) {",
-                "  if(doc.pvt_type != 'user' || !doc.username || doc.pvt_deleted) return;",
+                "  if (doc.pvt_type != 'user' || !doc.username || doc.pvt_deleted) return;",
                 "  emit(doc.username, null);",
                 "}"
             ]

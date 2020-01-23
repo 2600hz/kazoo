@@ -458,6 +458,16 @@ Python script to format JSON files (like CouchDB views, JSON schemas) and write 
 ```
 
 
+## format-couchdb-views.py
+
+Python script to make JavaScript codes in CouchDB view files beautify and multi-line so they are more readable to developers and also makes keep tracking changes in PR reviews easy.
+'make apis' runs this as part of its instructions.
+
+```shell
+./scripts/format-couchdb-views.py path/to/file.json [path/to/other/file.json,...]
+```
+
+
 ## generate-api-endpoints.escript
 
 Builds the Crossbar reference docs in 'applications/crossbar/doc/ref'. Helps detect when Crossbar endpoints have changes to their functionality that is client-facing.

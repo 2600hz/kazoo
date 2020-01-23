@@ -10,7 +10,12 @@
     "language": "javascript",
     "views": {
         "webhook_meta_listing": {
-            "map": "function(doc) { if(doc.pvt_type != 'webhook_meta' || doc.pvt_deleted) return; emit(doc.name, null);}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'webhook_meta' || doc.pvt_deleted) return;",
+                "  emit(doc.name, null);",
+                "}"
+            ]
         }
     }
 }

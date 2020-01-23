@@ -12,7 +12,7 @@
         "audit_logs_by_creation": {
             "map": [
                 "function(doc) {",
-                "  if ( doc.pvt_deleted || doc.pvt_type != 'audit_log') return;",
+                "  if (doc.pvt_deleted || doc.pvt_type != 'audit_log') return;",
                 "  emit([doc.pvt_created, doc._id], {",
                 "    'id': doc._id,",
                 "    'status': doc.status,",
@@ -35,7 +35,7 @@
                 "    var items = invoice.items || [];",
                 "    for (var index = 0; index < items.length; index++) {",
                 "      var item = items[index];",
-                "      if (item.changes && (item.changes.difference.billable || 0 ) !== 0) {",
+                "      if (item.changes && (item.changes.difference.billable || 0) !== 0) {",
                 "        var changedBillable = item.changes.difference.billable;",
                 "        emit([day, item.item], {",
                 "          'addition': changedBillable > 0 ? changedBillable : 0,",
@@ -57,7 +57,7 @@
                 "}"
             ],
             "reduce": [
-                "function (keys, values, rereduce) {",
+                "function(keys, values, rereduce) {",
                 "  return values.reduce(function(reduceObj, obj) {",
                 "    var isLateChange = (obj.last_timestamp || 0) >= (reduceObj.last_timestamp || 0);",
                 "    if (obj.sum_quantity) {",
@@ -91,7 +91,7 @@
                 "    var items = invoice.items || [];",
                 "    for (var index = 0; index < items.length; index++) {",
                 "      var item = items[index];",
-                "      if (item.changes && (item.changes.difference.billable || 0 ) !== 0) {",
+                "      if (item.changes && (item.changes.difference.billable || 0) !== 0) {",
                 "        var changedBillable = item.changes.difference.billable;",
                 "        emit([item.item, day], {",
                 "          'addition': changedBillable > 0 ? changedBillable : 0,",
@@ -113,7 +113,7 @@
                 "}"
             ],
             "reduce": [
-                "function (keys, values, rereduce) {",
+                "function(keys, values, rereduce) {",
                 "  return values.reduce(function(reduceObj, obj) {",
                 "    var isLateChange = (obj.last_timestamp || 0) >= (reduceObj.last_timestamp || 0);",
                 "    if (obj.sum_quantity) {",

@@ -13,21 +13,87 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'media' || doc.pvt_deleted) return; var l = doc.language || ''; var is_prompt = false; if(doc.prompt_id) {is_prompt = true;} emit(doc._id, {'id': doc._id, 'name': doc.name, 'media_type': doc.media_type, 'media_source': doc.media_source, 'language':l.toLowerCase(), 'is_prompt': is_prompt}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'media' || doc.pvt_deleted) return;",
+                "  var l = doc.language || '';",
+                "  var is_prompt = false;",
+                "  if (doc.prompt_id) {",
+                "    is_prompt = true;",
+                "  }",
+                "  emit(doc._id, {",
+                "    'id': doc._id,",
+                "    'name': doc.name,",
+                "    'media_type': doc.media_type,",
+                "    'media_source': doc.media_source,",
+                "    'language': l.toLowerCase(),",
+                "    'is_prompt': is_prompt",
+                "  });",
+                "}"
+            ]
         },
         "listing_by_language": {
-            "map": "function(doc) { if (doc.pvt_type != 'media' || doc.pvt_deleted) return; var l = doc.language || ''; var is_prompt = false; if(doc.prompt_id) {is_prompt = true;} emit([l.toLowerCase(), doc.prompt_id || doc.name], {'is_prompt': is_prompt}); }",
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'media' || doc.pvt_deleted) return;",
+                "  var l = doc.language || '';",
+                "  var is_prompt = false;",
+                "  if (doc.prompt_id) {",
+                "    is_prompt = true;",
+                "  }",
+                "  emit([l.toLowerCase(), doc.prompt_id || doc.name], {",
+                "    'is_prompt': is_prompt",
+                "  });",
+                "}"
+            ],
             "reduce": "_count"
         },
         "listing_by_name": {
-            "map": "function(doc) { if (doc.pvt_type != 'media' || doc.pvt_deleted) return;  var is_prompt = false; if(doc.prompt_id) {is_prompt = true;} emit(doc.name, {'id': doc._id, 'name': doc.name, 'media_type': doc.media_type, 'is_prompt': is_prompt}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'media' || doc.pvt_deleted) return;",
+                "  var is_prompt = false;",
+                "  if (doc.prompt_id) {",
+                "    is_prompt = true;",
+                "  }",
+                "  emit(doc.name, {",
+                "    'id': doc._id,",
+                "    'name': doc.name,",
+                "    'media_type': doc.media_type,",
+                "    'is_prompt': is_prompt",
+                "  });",
+                "}"
+            ]
         },
         "listing_by_prompt": {
-            "map": "function(doc) { if (doc.pvt_type != 'media' || doc.pvt_deleted || !doc.prompt_id) return; var l = doc.language || '';  var is_prompt = false; if(doc.prompt_id) {is_prompt = true;} emit([doc.prompt_id, l.toLowerCase()], {'id': doc._id, 'prompt_id': doc.prompt_id, 'langauge':l.toLowerCase(), 'is_prompt': is_prompt});}",
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'media' || doc.pvt_deleted || !doc.prompt_id) return;",
+                "  var l = doc.language || '';",
+                "  var is_prompt = false;",
+                "  if (doc.prompt_id) {",
+                "    is_prompt = true;",
+                "  }",
+                "  emit([doc.prompt_id, l.toLowerCase()], {",
+                "    'id': doc._id,",
+                "    'prompt_id': doc.prompt_id,",
+                "    'langauge': l.toLowerCase(),",
+                "    'is_prompt': is_prompt",
+                "  });",
+                "}"
+            ],
             "reduce": "_count"
         },
         "listing_private_media": {
-            "map": "function(doc) { if (doc.pvt_type != 'private_media' || doc.pvt_deleted) return; emit([doc.media_type, doc._id], {'name': doc.name, 'media_type': doc.media_type}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'private_media' || doc.pvt_deleted) return;",
+                "  emit([doc.media_type, doc._id], {",
+                "    'name': doc.name,",
+                "    'media_type': doc.media_type",
+                "  });",
+                "}"
+            ]
         }
     }
 }

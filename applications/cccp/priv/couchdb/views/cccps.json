@@ -13,13 +13,47 @@
     "language": "javascript",
     "views": {
         "cid_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'cccp' || !doc.active || !doc.cid || doc.pvt_deleted) return; emit(doc.cid, {'id': doc._id, 'account_id': doc.pvt_account_id, 'user_id':doc.user_id, 'retain_cid':doc.retain_cid}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'cccp' || !doc.active || !doc.cid || doc.pvt_deleted) return;",
+                "  emit(doc.cid, {",
+                "    'id': doc._id,",
+                "    'account_id': doc.pvt_account_id,",
+                "    'user_id': doc.user_id,",
+                "    'retain_cid': doc.retain_cid",
+                "  });",
+                "}"
+            ]
         },
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'cccp' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'account_id': doc.pvt_account_id, 'active':doc.active, 'user_id':doc.user_id, 'cid':doc.cid, 'pin':doc.pin, 'retain_cid':doc.retain_cid, 'comment':doc.comment}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'cccp' || doc.pvt_deleted) return;",
+                "  emit(doc._id, {",
+                "    'id': doc._id,",
+                "    'account_id': doc.pvt_account_id,",
+                "    'active': doc.active,",
+                "    'user_id': doc.user_id,",
+                "    'cid': doc.cid,",
+                "    'pin': doc.pin,",
+                "    'retain_cid': doc.retain_cid,",
+                "    'comment': doc.comment",
+                "  });",
+                "}"
+            ]
         },
         "pin_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'cccp' || !doc.active || !doc.pin || doc.pvt_deleted) return; emit(doc.pin, {'id': doc._id, 'account_id': doc.pvt_account_id, 'user_id':doc.user_id, 'retain_cid':doc.retain_cid}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'cccp' || !doc.active || !doc.pin || doc.pvt_deleted) return;",
+                "  emit(doc.pin, {",
+                "    'id': doc._id,",
+                "    'account_id': doc.pvt_account_id,",
+                "    'user_id': doc.user_id,",
+                "    'retain_cid': doc.retain_cid",
+                "  });",
+                "}"
+            ]
         }
     }
 }

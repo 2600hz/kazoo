@@ -9,19 +9,74 @@
     },
     "language": "javascript",
     "shows": {
-        "print_doc": "function(doc, req) { if(doc==null) return {'json': {'error' : 'empty function definition'}}; return {'json': {'doc':doc, 'call':req.query}}; }",
-        "wh": "function(doc, req) { if (req==null || req.query==null) return {'json': {'error' : 'empty callflow document'}}; if (doc == null || doc == '') return {'json': {'error' : 'empty function definition'}}; var mRc = new Function('call', doc.function_js); return {'json': mRc(req.query)}; }"
+        "print_doc": [
+            "function(doc, req) {",
+            "  if (doc == null) return {",
+            "    'json': {",
+            "      'error': 'empty function definition'",
+            "    }",
+            "  };",
+            "  return {",
+            "    'json': {",
+            "      'doc': doc,",
+            "      'call': req.query",
+            "    }",
+            "  };",
+            "}"
+        ],
+        "wh": [
+            "function(doc, req) {",
+            "  if (req == null || req.query == null) return {",
+            "    'json': {",
+            "      'error': 'empty callflow document'",
+            "    }",
+            "  };",
+            "  if (doc == null || doc == '') return {",
+            "    'json': {",
+            "      'error': 'empty function definition'",
+            "    }",
+            "  };",
+            "  var mRc = new Function('call', doc.function_js);",
+            "  return {",
+            "    'json': mRc(req.query)",
+            "  };",
+            "}"
+        ]
     },
     "views": {
         "accounts_listing": {
-            "map": "function(doc) { if (doc.pvt_type !== 'function' || doc.pvt_deleted) return; emit(doc.pvt_account_id, null); }",
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type !== 'function' || doc.pvt_deleted) return;",
+                "  emit(doc.pvt_account_id, null);",
+                "}"
+            ],
             "reduce": "_count"
         },
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type !== 'function' || doc.pvt_deleted) return; var enabled = (typeof doc.enabled === 'undefined') ? true : doc.enabled; emit([doc.pvt_account_id, doc._id], {'name':doc.name, 'function_js': doc.function_js, 'enabled':enabled, 'disable_reason':doc.pvt_disabled_message}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type !== 'function' || doc.pvt_deleted) return;",
+                "  var enabled = (typeof doc.enabled === 'undefined') ? true : doc.enabled;",
+                "  emit([doc.pvt_account_id, doc._id], {",
+                "    'name': doc.name,",
+                "    'function_js': doc.function_js,",
+                "    'enabled': enabled,",
+                "    'disable_reason': doc.pvt_disabled_message",
+                "  });",
+                "}"
+            ]
         },
         "functions_listing": {
-            "map": "function(doc) { if (doc.pvt_type !== 'function' || doc.pvt_deleted || doc.enabled === false) return; emit([doc.pvt_account_id, doc._id], {'name':doc.name, 'function_js': doc.function_js}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type !== 'function' || doc.pvt_deleted || doc.enabled === false) return;",
+                "  emit([doc.pvt_account_id, doc._id], {",
+                "    'name': doc.name,",
+                "    'function_js': doc.function_js",
+                "  });",
+                "}"
+            ]
         }
     }
 }

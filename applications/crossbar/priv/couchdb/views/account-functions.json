@@ -10,7 +10,12 @@
     "language": "javascript",
     "views": {
         "function_meta_listing": {
-            "map": "function(doc) { if(doc.pvt_type != 'function_meta' || doc.pvt_deleted) return; emit(doc.name, null);}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'function_meta' || doc.pvt_deleted) return;",
+                "  emit(doc.name, null);",
+                "}"
+            ]
         }
     }
 }

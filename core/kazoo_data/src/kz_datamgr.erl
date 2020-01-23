@@ -270,15 +270,29 @@ should_update(_, _, {'error', _}) ->
 %%------------------------------------------------------------------------------
 -spec maybe_adapt_multilines(kz_json:object()) -> kz_json:object().
 maybe_adapt_multilines(JObj) ->
-    case kz_json:get_json_value(<<"views">>, JObj) of
-        'undefined' -> JObj;
-        Views ->
-            NewViews =
-                [{View, kz_json:foldl(fun inline_js_fun/3, kz_json:new(), Pairs)}
-                 || {View, Pairs} <- kz_json:to_proplist(Views)
-                ],
-            kz_json:set_value(<<"views">>, kz_json:from_list(NewViews), JObj)
-    end.
+    kz_json:map(fun maybe_adapt_multilines/2, JObj).
+
+-spec maybe_adapt_multilines(kz_json:key(), kz_json:json_term()) ->
+          {kz_json:key(), kz_json:json_term()}.
+maybe_adapt_multilines(Key, JObj)
+  when Key =:= <<"filters">>
+       orelse Key =:= <<"lists">>
+       orelse Key =:= <<"shows">>
+       orelse Key =:= <<"updates">> ->
+    Prop = kz_json:foldl(fun inline_js_fun/3, kz_json:new(), JObj),
+    {Key, Prop};
+maybe_adapt_multilines(<<"views">> = Key, JObj) ->
+    NewViews =
+        [{View, kz_json:foldl(fun inline_js_fun/3, kz_json:new(), Pairs)}
+         || {View, Pairs} <- kz_json:to_proplist(JObj)
+        ],
+    {Key, kz_json:from_list(NewViews)};
+maybe_adapt_multilines(<<"rewrites">> = Key, Code=[<<"function", _/binary>>|_]) ->
+    {Key, iolist_to_binary(Code)};
+maybe_adapt_multilines(<<"validate_doc_update">> = Key, Code=[<<"function", _/binary>>|_]) ->
+    {Key, iolist_to_binary(Code)};
+maybe_adapt_multilines(Key, Value) ->
+    {Key, Value}.
 
 -spec inline_js_fun(kz_term:ne_binary(), kz_term:ne_binaries() | kz_json:json_term(), kz_json:object()) ->
           kz_json:object().

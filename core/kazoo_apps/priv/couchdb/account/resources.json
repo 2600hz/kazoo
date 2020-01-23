@@ -10,16 +10,53 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) {if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id,'name': doc.name,'enabled': doc.enabled,'weight_cost': doc.weight_cost,'template_name': doc.template_name,'classifiers': doc.classifiers});}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'resource' || doc.pvt_deleted) return;",
+                "  emit(doc._id, {",
+                "    'id': doc._id,",
+                "    'name': doc.name,",
+                "    'enabled': doc.enabled,",
+                "    'weight_cost': doc.weight_cost,",
+                "    'template_name': doc.template_name,",
+                "    'classifiers': doc.classifiers",
+                "  });",
+                "}"
+            ]
         },
         "listing_active_by_rules": {
-            "map": "function(doc) { if (doc.pvt_type != 'resource' || ! doc.enabled || doc.pvt_deleted) return; for (var i in doc.rules) emit([doc.weight_cost, doc.rules[i]], {'id': doc._id, 'gateways': doc.gateways, 'caller_id_options': doc.caller_id_options, 'flags':doc.flags || []}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'resource' || !doc.enabled || doc.pvt_deleted) return;",
+                "  for (var i in doc.rules) emit([doc.weight_cost, doc.rules[i]], {",
+                "    'id': doc._id,",
+                "    'gateways': doc.gateways,",
+                "    'caller_id_options': doc.caller_id_options,",
+                "    'flags': doc.flags || []",
+                "  });",
+                "}"
+            ]
         },
         "listing_by_id": {
-            "map": "function(doc) { if (doc.pvt_type != 'resource' || doc.pvt_deleted) return; emit(doc._id, doc.name); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'resource' || doc.pvt_deleted) return;",
+                "  emit(doc._id, doc.name);",
+                "}"
+            ]
         },
         "resource_templates": {
-            "map": "function(doc) { if (doc.pvt_type != 'resource_template' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'template_name': doc.template_name, 'classifiers': doc.classifiers}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'resource_template' || doc.pvt_deleted) return;",
+                "  emit(doc._id, {",
+                "    'id': doc._id,",
+                "    'name': doc.name,",
+                "    'template_name': doc.template_name,",
+                "    'classifiers': doc.classifiers",
+                "  });",
+                "}"
+            ]
         }
     }
 }

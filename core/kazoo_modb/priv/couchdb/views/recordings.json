@@ -10,10 +10,20 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'call_recording' || doc.pvt_deleted) return; emit([doc.pvt_created, doc._id], null); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'call_recording' || doc.pvt_deleted) return;",
+                "  emit([doc.pvt_created, doc._id], null);",
+                "}"
+            ]
         },
         "listing_by_user": {
-            "map": "function(doc) { if (doc.pvt_type != 'call_recording' || doc.pvt_deleted || !doc.owner_id) return; emit([doc.owner_id, doc.pvt_created, doc._id], null); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'call_recording' || doc.pvt_deleted || !doc.owner_id) return;",
+                "  emit([doc.owner_id, doc.pvt_created, doc._id], null);",
+                "}"
+            ]
         }
     }
 }

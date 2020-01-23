@@ -10,14 +10,73 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'sys_info' || doc.pvt_deleted) return; emit(doc._id, {'name': doc.name, 'servers':doc.servers}); }",
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'sys_info' || doc.pvt_deleted) return;",
+                "  emit(doc._id, {",
+                "    'name': doc.name,",
+                "    'servers': doc.servers",
+                "  });",
+                "}"
+            ],
             "reduce": "_count"
         },
         "lookup_did": {
-            "map": "function(doc) { if(doc.pvt_type != 'sys_info' || doc.pvt_deleted ) return; var realm = doc.account.auth_realm; if(doc.servers) { var srvs = Iterator(doc.servers); for (var srv in srvs) { var auth_clone = JSON.parse(JSON.stringify(srv[1].auth)); auth_clone.auth_realm = realm; if (srv[1].enabled != false && srv[1].DIDs) { var DIDs = Iterator(srv[1].DIDs); for (var DID in DIDs) { emit(DID[0], { 'callerid_server': srv[1].callerid || '', 'callerid_account': doc.callerid || '', 'e911_callerid_server': srv[1].e911_callerid || '', 'e911_callerid_account': doc.e911_callerid || '', 'auth': auth_clone, 'DID_Opts': DID[1], 'inbound_format': srv[1].inbound_format || 'npan', 'server': srv[1].options, 'account': doc.account}); } } } } }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'sys_info' || doc.pvt_deleted) return;",
+                "  var realm = doc.account.auth_realm;",
+                "  if (doc.servers) {",
+                "    var srvs = Iterator(doc.servers);",
+                "    for (var srv in srvs) {",
+                "      var auth_clone = JSON.parse(JSON.stringify(srv[1].auth));",
+                "      auth_clone.auth_realm = realm;",
+                "      if (srv[1].enabled != false && srv[1].DIDs) {",
+                "        var DIDs = Iterator(srv[1].DIDs);",
+                "        for (var DID in DIDs) {",
+                "          emit(DID[0], {",
+                "            'callerid_server': srv[1].callerid || '',",
+                "            'callerid_account': doc.callerid || '',",
+                "            'e911_callerid_server': srv[1].e911_callerid || '',",
+                "            'e911_callerid_account': doc.e911_callerid || '',",
+                "            'auth': auth_clone,",
+                "            'DID_Opts': DID[1],",
+                "            'inbound_format': srv[1].inbound_format || 'npan',",
+                "            'server': srv[1].options,",
+                "            'account': doc.account",
+                "          });",
+                "        }",
+                "      }",
+                "    }",
+                "  }",
+                "}"
+            ]
         },
         "lookup_user_flags": {
-            "map": "function(doc) { if(doc.pvt_type != 'sys_info') return; var realm = doc.account.auth_realm; if(doc.call_restriction) { var call_restriction = JSON.parse(JSON.stringify(doc.call_restriction)) }; if(doc.servers) { var acct_clone = JSON.parse(JSON.stringify(doc.account)); var srvs = Iterator(doc.servers); for (var srv in srvs) { if (srv[1].auth) { var srv_clone = JSON.parse(JSON.stringify(srv[1])); srv_clone.auth.auth_realm = realm; emit([realm.toLowerCase(), srv_clone.auth.auth_user.toLowerCase()], {\"server\": srv_clone, \"account\": acct_clone, \"call_restriction\": call_restriction}); } } }}"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'sys_info') return;",
+                "  var realm = doc.account.auth_realm;",
+                "  if (doc.call_restriction) {",
+                "    var call_restriction = JSON.parse(JSON.stringify(doc.call_restriction))",
+                "  };",
+                "  if (doc.servers) {",
+                "    var acct_clone = JSON.parse(JSON.stringify(doc.account));",
+                "    var srvs = Iterator(doc.servers);",
+                "    for (var srv in srvs) {",
+                "      if (srv[1].auth) {",
+                "        var srv_clone = JSON.parse(JSON.stringify(srv[1]));",
+                "        srv_clone.auth.auth_realm = realm;",
+                "        emit([realm.toLowerCase(), srv_clone.auth.auth_user.toLowerCase()], {",
+                "          \"server\": srv_clone,",
+                "          \"account\": acct_clone,",
+                "          \"call_restriction\": call_restriction",
+                "        });",
+                "      }",
+                "    }",
+                "  }",
+                "}"
+            ]
         }
     }
 }

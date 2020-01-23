@@ -10,7 +10,21 @@
     "language": "javascript",
     "views": {
         "smtp_log": {
-            "map": "function(doc) { if (doc.pvt_deleted || doc.pvt_type != 'notify_smtp_log') return; emit(doc.pvt_created, {'id': doc._id, 'template_id' : doc.template_id, 'from': doc.emails.from, 'to': doc.emails.to[0], 'error': doc.error, 'subject' : doc.subject, 'created': doc.pvt_created, 'receipt' : doc.receipt}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || doc.pvt_type != 'notify_smtp_log') return;",
+                "  emit(doc.pvt_created, {",
+                "    'id': doc._id,",
+                "    'template_id': doc.template_id,",
+                "    'from': doc.emails.from,",
+                "    'to': doc.emails.to[0],",
+                "    'error': doc.error,",
+                "    'subject': doc.subject,",
+                "    'created': doc.pvt_created,",
+                "    'receipt': doc.receipt",
+                "  });",
+                "}"
+            ]
         }
     }
 }

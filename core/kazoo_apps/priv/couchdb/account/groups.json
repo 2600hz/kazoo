@@ -11,7 +11,7 @@
     "views": {
         "crossbar_listing": {
             "map": [
-                "function (doc) {",
+                "function(doc) {",
                 "  if (doc.pvt_type != 'group' || doc.pvt_deleted) return;",
                 "  var features = [];",
                 "  if (doc.smartpbx) {",
@@ -24,10 +24,10 @@
                 "  if (doc.music_on_hold && doc.music_on_hold.media_id) {",
                 "    features.push('music_on_hold');",
                 "  }",
-                "  var endpoints = 0, o = doc.endpoints || {};",
+                "  var endpoints = 0,",
+                "    o = doc.endpoints || {};",
                 "  for (var p in o)",
-                "    if (o.hasOwnProperty(p))",
-                "      endpoints++;",
+                "    if (o.hasOwnProperty(p)) endpoints++;",
                 "  emit(doc._id, {",
                 "    'id': doc._id,",
                 "    'name': doc.name,",
@@ -40,7 +40,7 @@
         },
         "crossbar_listing_by_user": {
             "map": [
-                "function (doc) {",
+                "function(doc) {",
                 "  if (doc.pvt_type != 'group' || doc.pvt_deleted) return;",
                 "  var features = [];",
                 "  if (doc.smartpbx) {",
@@ -53,19 +53,18 @@
                 "  if (doc.music_on_hold && doc.music_on_hold.media_id) {",
                 "    features.push('music_on_hold');",
                 "  }",
-                "  var endpoints = 0, o = doc.endpoints || {};",
+                "  var endpoints = 0,",
+                "    o = doc.endpoints || {};",
                 "  for (var p in o)",
-                "    if (o.hasOwnProperty(p))",
-                "      endpoints++;",
+                "    if (o.hasOwnProperty(p)) endpoints++;",
                 "  for (var id in doc.endpoints)",
-                "    if (doc.endpoints[id].type === 'user')",
-                "      emit(id, {",
-                "        'id': doc._id,",
-                "        'name': doc.name,",
-                "        'features': features,",
-                "        'endpoints': endpoints,",
-                "        'flags': doc.flags || []",
-                "      });",
+                "    if (doc.endpoints[id].type === 'user') emit(id, {",
+                "      'id': doc._id,",
+                "      'name': doc.name,",
+                "      'features': features,",
+                "      'endpoints': endpoints,",
+                "      'flags': doc.flags || []",
+                "    });",
                 "}"
             ]
         }

@@ -10,19 +10,79 @@
     "language": "javascript",
     "views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'fax' || doc.pvt_deleted) return; F = doc.folder ? doc.folder : 'inbox';  emit([doc.pvt_created, doc._id], {'id': doc._id, 'folder' : F, 'status': doc.pvt_job_status, 'to': doc.to_number, 'from': doc.from_number, 'created': doc.pvt_created}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'fax' || doc.pvt_deleted) return;",
+                "  F = doc.folder ? doc.folder : 'inbox';",
+                "  emit([doc.pvt_created, doc._id], {",
+                "    'id': doc._id,",
+                "    'folder': F,",
+                "    'status': doc.pvt_job_status,",
+                "    'to': doc.to_number,",
+                "    'from': doc.from_number,",
+                "    'created': doc.pvt_created",
+                "  });",
+                "}"
+            ]
         },
         "list_by_faxbox": {
-            "map": "function(doc) { if (doc.pvt_type != 'fax' || doc.pvt_deleted || !doc.faxbox_id) return; F = doc.folder ? doc.folder : 'inbox'; emit([doc.faxbox_id, F, doc.pvt_created], {'id': doc._id, 'status': doc.pvt_job_status, 'to': doc.to_number, 'from': doc.from_number, 'created': doc.pvt_created}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'fax' || doc.pvt_deleted || !doc.faxbox_id) return;",
+                "  F = doc.folder ? doc.folder : 'inbox';",
+                "  emit([doc.faxbox_id, F, doc.pvt_created], {",
+                "    'id': doc._id,",
+                "    'status': doc.pvt_job_status,",
+                "    'to': doc.to_number,",
+                "    'from': doc.from_number,",
+                "    'created': doc.pvt_created",
+                "  });",
+                "}"
+            ]
         },
         "list_by_folder": {
-            "map": "function(doc) { if (doc.pvt_type != 'fax' || doc.pvt_deleted) return; F = doc.folder ? doc.folder : 'inbox';  emit([F, doc.pvt_created, doc._id], {'id': doc._id, 'status': doc.pvt_job_status, 'to': doc.to_number, 'from': doc.from_number, 'created': doc.pvt_created}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'fax' || doc.pvt_deleted) return;",
+                "  F = doc.folder ? doc.folder : 'inbox';",
+                "  emit([F, doc.pvt_created, doc._id], {",
+                "    'id': doc._id,",
+                "    'status': doc.pvt_job_status,",
+                "    'to': doc.to_number,",
+                "    'from': doc.from_number,",
+                "    'created': doc.pvt_created",
+                "  });",
+                "}"
+            ]
         },
         "list_by_ownerid": {
-            "map": "function(doc) { if (doc.pvt_type != 'fax' || doc.pvt_deleted || !doc.owner_id) return; F = doc.folder ? doc.folder : 'inbox'; emit([doc.owner_id, F, doc.pvt_created], {'id': doc._id, 'status': doc.pvt_job_status, 'to': doc.to_number, 'from': doc.from_number, 'created': doc.pvt_created}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'fax' || doc.pvt_deleted || !doc.owner_id) return;",
+                "  F = doc.folder ? doc.folder : 'inbox';",
+                "  emit([doc.owner_id, F, doc.pvt_created], {",
+                "    'id': doc._id,",
+                "    'status': doc.pvt_job_status,",
+                "    'to': doc.to_number,",
+                "    'from': doc.from_number,",
+                "    'created': doc.pvt_created",
+                "  });",
+                "}"
+            ]
         },
         "smtp_log": {
-            "map": "function(doc) { if (doc.pvt_deleted || doc.pvt_type != 'fax_smtp_log') return; emit(doc.pvt_created, {'id': doc._id, 'from': doc.from, 'to': doc.to, 'error': doc.errors[0], 'created': doc.pvt_created}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || doc.pvt_type != 'fax_smtp_log') return;",
+                "  emit(doc.pvt_created, {",
+                "    'id': doc._id,",
+                "    'from': doc.from,",
+                "    'to': doc.to,",
+                "    'error': doc.errors[0],",
+                "    'created': doc.pvt_created",
+                "  });",
+                "}"
+            ]
         }
     }
 }

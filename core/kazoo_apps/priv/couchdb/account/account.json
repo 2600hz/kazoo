@@ -10,13 +10,37 @@
     "language": "javascript",
     "views": {
         "listing_by_id": {
-            "map": "function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'account' || doc.pvt_deleted) return;",
+                "  emit(doc._id, {",
+                "    'id': doc._id,",
+                "    'name': doc.name",
+                "  });",
+                "}"
+            ]
         },
         "listing_by_name": {
-            "map": "function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc.name, {'id': doc._id, 'name': doc.name}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'account' || doc.pvt_deleted) return;",
+                "  emit(doc.name, {",
+                "    'id': doc._id,",
+                "    'name': doc.name",
+                "  });",
+                "}"
+            ]
         },
         "listing_by_realm": {
-            "map": "function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc.realm, {'account_id': doc._id, 'account_db': doc.pvt_account_db}); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'account' || doc.pvt_deleted) return;",
+                "  emit(doc.realm, {",
+                "    'account_id': doc._id,",
+                "    'account_db': doc.pvt_account_db",
+                "  });",
+                "}"
+            ]
         }
     }
 }

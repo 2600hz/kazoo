@@ -25,23 +25,75 @@
     "language": "javascript",
     "views": {
         "conflicts": {
-            "map": "function(doc) { if(doc._conflicts) { emit(doc._conflicts, null); } }"
+            "map": [
+                "function(doc) {",
+                "  if (doc._conflicts) {",
+                "    emit(doc._conflicts, null);",
+                "  }",
+                "}"
+            ]
         },
         "listing_by_ctime": {
-            "map": "function(doc) { if(doc.pvt_deleted) return; emit(doc.pvt_created, null); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted) return;",
+                "  emit(doc.pvt_created, null);",
+                "}"
+            ]
         },
         "listing_by_mtime": {
-            "map": "function(doc) { if(doc.pvt_deleted) return; emit(doc.pvt_modified, null); }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted) return;",
+                "  emit(doc.pvt_modified, null);",
+                "}"
+            ]
         },
         "listing_by_type": {
-            "map": "function(doc) { if(!doc.pvt_deleted) { if (doc.pvt_type == 'user') emit(doc.pvt_type, {'name': doc.first_name + ' ' + doc.last_name}); else if (doc.pvt_type == 'callflow') emit(doc.pvt_type, {'numbers': doc.numbers, 'patterns': doc.patterns}); else emit(doc.pvt_type, {'name': doc.name}); } }"
+            "map": [
+                "function(doc) {",
+                "  if (!doc.pvt_deleted) {",
+                "    if (doc.pvt_type == 'user') emit(doc.pvt_type, {",
+                "      'name': doc.first_name + ' ' + doc.last_name",
+                "    });",
+                "    else if (doc.pvt_type == 'callflow') emit(doc.pvt_type, {",
+                "      'numbers': doc.numbers,",
+                "      'patterns': doc.patterns",
+                "    });",
+                "    else emit(doc.pvt_type, {",
+                "      'name': doc.name",
+                "    });",
+                "  }",
+                "}"
+            ]
         },
         "reduced_by_type": {
-            "map": "function(doc) { if(!doc.pvt_deleted) { if (doc.pvt_type == 'user') emit(doc.pvt_type, {'name': doc.first_name + ' ' + doc.last_name}); else if (doc.pvt_type == 'callflow') emit(doc.pvt_type, {'numbers': doc.numbers, 'patterns': doc.patterns}); else emit(doc.pvt_type, {'name': doc.name}); } }",
+            "map": [
+                "function(doc) {",
+                "  if (!doc.pvt_deleted) {",
+                "    if (doc.pvt_type == 'user') emit(doc.pvt_type, {",
+                "      'name': doc.first_name + ' ' + doc.last_name",
+                "    });",
+                "    else if (doc.pvt_type == 'callflow') emit(doc.pvt_type, {",
+                "      'numbers': doc.numbers,",
+                "      'patterns': doc.patterns",
+                "    });",
+                "    else emit(doc.pvt_type, {",
+                "      'name': doc.name",
+                "    });",
+                "  }",
+                "}"
+            ],
             "reduce": "_count"
         },
         "soft_deletes": {
-            "map": "function(doc) { if(doc.pvt_deleted) { emit(doc.pvt_type, null); } }"
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted) {",
+                "    emit(doc.pvt_type, null);",
+                "  }",
+                "}"
+            ]
         }
     }
 }

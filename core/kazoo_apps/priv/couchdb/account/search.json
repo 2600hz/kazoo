@@ -13,7 +13,8 @@
             "map": [
                 "function(doc) {",
                 "  if (doc.pvt_deleted || !doc.pvt_type) return;",
-                "  var actual_name = '', name = '';",
+                "  var actual_name = '',",
+                "    name = '';",
                 "  var obj = {};",
                 "  if (doc.hasOwnProperty('first_name') || doc.hasOwnProperty('last_name')) {",
                 "    obj.first_name = (doc.first_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');",
@@ -39,7 +40,8 @@
             "map": [
                 "function(doc) {",
                 "  if (doc.pvt_deleted || !doc.pvt_type) return;",
-                "  var actual_name = '', name = '';",
+                "  var actual_name = '',",
+                "    name = '';",
                 "  var name_obj = {};",
                 "  if (doc.hasOwnProperty('first_name') || doc.hasOwnProperty('last_name')) {",
                 "    name_obj.first_name = (doc.first_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');",

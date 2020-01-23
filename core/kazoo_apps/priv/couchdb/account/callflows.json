@@ -11,35 +11,36 @@
     "views": {
         "crossbar_listing": {
             "map": [
-                "function (doc) {",
-                "    if (doc.pvt_type != 'callflow' || doc.pvt_deleted) return;",
-                "    var featurecode = (!doc.featurecode) ? false : doc.featurecode;",
-                "    var modules = [];",
-                "    if (doc.flow)",
-                "        var walkTree = (function recursiveWalkTree(flow) {",
-                "            if (flow.module && (flow.data && flow.data.skip_module !== true))",
-                "                modules.push(flow.module);",
-                "            if (flow.children) {",
-                "                var children = flow.children;",
-                "                for (var key in children) {",
-                "                    if (!children.hasOwnProperty(key)) continue;",
-                "                    recursiveWalkTree(children[key]);",
-                "                }",
-                "            }",
-                "        })(doc.flow);",
-                "    var onlyUnique = function(value, index, self) { return self.indexOf(value) === index; };",
-                "    modules = modules.filter(onlyUnique);",
-                "    emit(doc._id, {'id': doc._id",
-                "                   ,'name': doc.name",
-                "                   ,'type': doc.type",
-                "                   ,'numbers': doc.numbers",
-                "                   ,'patterns': doc.patterns",
-                "                   ,'featurecode': featurecode",
-                "                   ,'owner_id': doc.owner_id",
-                "                   ,'group_id': doc.group_id",
-                "                   ,'modules': modules",
-                "                   ,'flags': doc.flags || []",
-                "                  });",
+                "function(doc) {",
+                "  if (doc.pvt_type != 'callflow' || doc.pvt_deleted) return;",
+                "  var featurecode = (!doc.featurecode) ? false : doc.featurecode;",
+                "  var modules = [];",
+                "  if (doc.flow) var walkTree = (function recursiveWalkTree(flow) {",
+                "    if (flow.module && (flow.data && flow.data.skip_module !== true)) modules.push(flow.module);",
+                "    if (flow.children) {",
+                "      var children = flow.children;",
+                "      for (var key in children) {",
+                "        if (!children.hasOwnProperty(key)) continue;",
+                "        recursiveWalkTree(children[key]);",
+                "      }",
+                "    }",
+                "  })(doc.flow);",
+                "  var onlyUnique = function(value, index, self) {",
+                "    return self.indexOf(value) === index;",
+                "  };",
+                "  modules = modules.filter(onlyUnique);",
+                "  emit(doc._id, {",
+                "    'id': doc._id,",
+                "    'name': doc.name,",
+                "    'type': doc.type,",
+                "    'numbers': doc.numbers,",
+                "    'patterns': doc.patterns,",
+                "    'featurecode': featurecode,",
+                "    'owner_id': doc.owner_id,",
+                "    'group_id': doc.group_id,",
+                "    'modules': modules,",
+                "    'flags': doc.flags || []",
+                "  });",
                 "}"
             ]
         },
@@ -47,22 +48,30 @@
             "map": [
                 "function(doc) {",
                 "  if (doc.pvt_type != 'callflow' || doc.pvt_deleted) return;",
-                "  for (var i in doc.numbers) emit(doc.numbers[i], {'name' : doc.name || doc._id} ); }"
+                "  for (var i in doc.numbers) emit(doc.numbers[i], {",
+                "    'name': doc.name || doc._id",
+                "  });",
+                "}"
             ]
         },
         "listing_by_pattern": {
             "map": [
                 "function(doc) {",
                 "  if (doc.pvt_type != 'callflow' || doc.pvt_deleted) return;",
-                "for (var i in doc.patterns) emit(doc.patterns[i], {'name' : doc.name || doc._id}); }"
+                "  for (var i in doc.patterns) emit(doc.patterns[i], {",
+                "    'name': doc.name || doc._id",
+                "  });",
+                "}"
             ]
         },
         "msisdn": {
             "map": [
                 "function(doc) {",
-                "  if (doc.pvt_type != 'callflow' || doc.pvt_deleted || (doc.flow.module != 'user' && doc.flow.module != 'device') ) return; ",
-                "  for (var i in doc.numbers) ",
-                "    if(doc.numbers[i].charAt(0) == '+') emit([doc.flow.module, doc.flow.data.id, doc.numbers[i]  ], {'msisdn' : doc.numbers[i]}); ",
+                "  if (doc.pvt_type != 'callflow' || doc.pvt_deleted || (doc.flow.module != 'user' && doc.flow.module != 'device')) return;",
+                "  for (var i in doc.numbers)",
+                "    if (doc.numbers[i].charAt(0) == '+') emit([doc.flow.module, doc.flow.data.id, doc.numbers[i]], {",
+                "      'msisdn': doc.numbers[i]",
+                "    });",
                 "}"
             ]
         }
