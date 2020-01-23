@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/local/opt/python/libexec/bin/python
 
 import yaml, os.path, sys
 from functools import reduce
