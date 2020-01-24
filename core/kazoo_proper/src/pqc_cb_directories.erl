@@ -126,7 +126,7 @@ cleanup_system() -> 'ok'.
 directories_doc() ->
     kz_json:exec_first(
       [{fun kzd_directories:set_name/2, <<?MODULE_STRING>>}]
-      ,kzd_directories:new()
+     ,kzd_directories:new()
      ).
 
 -spec create_users(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:ne_binary()) -> [kzd_users:doc()].

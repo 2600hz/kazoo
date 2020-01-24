@@ -29,7 +29,7 @@ users_url(AccountId) ->
 user_doc() ->
     kz_json:exec_first(
       [{fun kzd_users:set_first_name/2, kz_binary:rand_hex(5)}
-       ,{fun kzd_users:set_last_name/2, kz_binary:rand_hex(5)}
+      ,{fun kzd_users:set_last_name/2, kz_binary:rand_hex(5)}
       ]
-      ,kzd_users:new()
+     ,kzd_users:new()
      ).
