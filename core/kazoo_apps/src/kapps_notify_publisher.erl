@@ -23,11 +23,12 @@
 -define(DEFAULT_TIMEOUT, 30 * ?MILLISECONDS_IN_SECOND).
 -define(TIMEOUT, kapps_config:get_pos_integer(?NOTIFY_CAT, <<"notify_publisher_timeout_ms">>, ?DEFAULT_TIMEOUT)).
 
--define(DEFAULT_PUBLISHER_ENABLED,
-        kapps_config:get_is_true(?NOTIFY_CAT, <<"notify_persist_enabled">>, true)
+-define(DEFAULT_PUBLISHER_ENABLED
+       ,kapps_config:get_is_true(?NOTIFY_CAT, <<"notify_persist_enabled">>, 'true')
        ).
--define(ACCOUNT_SHOULD_PERSIST(AccountId),
-        kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"should_persist_for_retry">>, true)
+
+-define(ACCOUNT_SHOULD_PERSIST(AccountId)
+       ,kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"should_persist_for_retry">>, 'true')
        ).
 
 -define(DEFAULT_TYPE_EXCEPTION, [<<"system_alert">>
@@ -35,15 +36,17 @@
                                 ,<<"register">>
                                 ,<<"webhook">>
                                 ]).
--define(GLOBAL_FORCE_NOTIFY_TYPE_EXCEPTION,
-        kapps_config:get_ne_binaries(?NOTIFY_CAT, <<"notify_persist_temporary_force_exceptions">>, [])
-       ).
--define(NOTIFY_TYPE_EXCEPTION(AccountId),
-        kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"notify_persist_exceptions">>, ?DEFAULT_TYPE_EXCEPTION)
+-define(GLOBAL_FORCE_NOTIFY_TYPE_EXCEPTION
+       ,kapps_config:get_ne_binaries(?NOTIFY_CAT, <<"notify_persist_temporary_force_exceptions">>, [])
        ).
 
--define(DEFAULT_RETRY_PERIOD,
-        kapps_config:get_integer(<<"tasks.notify_resend">>, <<"retry_after_fudge_s">>, 10 * ?SECONDS_IN_MINUTE)).
+-define(NOTIFY_TYPE_EXCEPTION(AccountId)
+       ,kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"notify_persist_exceptions">>, ?DEFAULT_TYPE_EXCEPTION)
+       ).
+
+-define(DEFAULT_RETRY_PERIOD
+       ,kapps_config:get_integer(<<"tasks.notify_resend">>, <<"retry_after_fudge_s">>, 10 * ?SECONDS_IN_MINUTE)
+       ).
 
 -type failure_reason() :: {kz_term:ne_binary(), kz_term:api_object()}.
 
@@ -319,12 +322,12 @@ cast_to_binary(Error) ->
 -spec notify_type(kz_amqp_worker:publish_fun() | kz_term:ne_binary()) -> kz_term:api_ne_binary().
 notify_type(<<"publish_", NotifyType/binary>>) ->
     NotifyType;
-notify_type(NotifyType) when is_binary(NotifyType) ->
+notify_type(<<NotifyType/binary>>) ->
     lager:error("unknown notification publish function ~s", [NotifyType]),
     'undefined';
 notify_type(PublishFun) ->
     case catch erlang:fun_info_mfa(PublishFun) of
-        {kapi_notifications, Fun, 1} -> notify_type(cast_to_binary(Fun));
+        {'kapi_notifications', Fun, 1} -> notify_type(cast_to_binary(Fun));
         _Other ->
             lager:error("unknown notification publish function: ~p", [_Other]),
             'undefined'

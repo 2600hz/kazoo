@@ -305,7 +305,7 @@ read(Id, Context) ->
 -spec load_directory_users(kz_term:ne_binary(), cb_context:context()) -> cb_context:context().
 load_directory_users(Id, Context) ->
     Context1 = crossbar_doc:load_view(?CB_USERS_LIST
-                                     ,[{'key', Id}]
+                                     ,[{'startkey', [Id]}]
                                      ,Context
                                      ,fun normalize_users_results/2
                                      ),
@@ -368,7 +368,7 @@ normalize_view_results(JObj, Acc) ->
 -spec normalize_users_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_users_results(JObj, Acc) ->
     [kz_json:from_list([{<<"user_id">>, kz_doc:id(JObj)}
-                       ,{<<"callflow_id">>, kz_json:get_value(<<"value">>, JObj)}
+                       ,{<<"callflow_id">>, kz_json:get_ne_binary_value(<<"value">>, JObj)}
                        ])
      | Acc
     ].
