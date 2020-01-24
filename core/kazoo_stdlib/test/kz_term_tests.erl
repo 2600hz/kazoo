@@ -77,14 +77,14 @@ prop_to_float() ->
             end).
 
 prop_to_list() ->
-    ?FORALL({'a', L, B, I, F}
+    ?FORALL({A, L, B, I, F}
            ,{atom(), list(), binary(), integer(), float()}
            ,lists:all(fun(X) -> is_list(kz_term:to_list(X)) end, [A, L, B, I, F])
            ).
 
 %%-type iolist() :: maybe_improper_list(char() | binary() | iolist(), binary() | []).
 prop_to_binary() ->
-    ?FORALL({'a', L, B, I, F, IO}
+    ?FORALL({A, L, B, I, F, IO}
            ,{atom(), list(range(0,255)), binary(), integer(), float(), iolist()}
            ,lists:all(fun(X) -> is_binary(kz_term:to_binary(X)) end, [A, L, B, I, F, IO])
            ).
