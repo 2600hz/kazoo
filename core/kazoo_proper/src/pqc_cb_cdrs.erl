@@ -66,8 +66,8 @@ paginated_summary(API, AccountId) ->
     paginated_summary(API, AccountId, 'undefined').
 
 -spec paginated_summary(pqc_cb_api:state(), kz_term:ne_binary(), kz_term:api_ne_binary()) ->
-                               {'error', binary()} |
-                               kz_json:objects().
+          {'error', binary()} |
+          kz_json:objects().
 paginated_summary(API, AccountId, OwnerId) ->
     URL = paginated_cdrs_url(AccountId, OwnerId, ?CDRS_PER_MONTH div 2),
     RequestHeaders = pqc_cb_api:request_headers(API, []),
