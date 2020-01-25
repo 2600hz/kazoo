@@ -19,6 +19,7 @@ Key | Description | Type | Default | Required | Support Level
 `format_from_uri` | When set to true requests to this resource will have a reformatted SIP From Header | `boolean()` |   | `false` |  
 `formatters` | Schema for request formatters | `object()` |   | `false` |  
 `from_uri_realm` | When formatting SIP From on outbound requests this can be used to override the realm | `string()` |   | `false` |  
+`gateway_strategy` | The strategy of choosing gateways from list: sequential or random | `string('sequential' | 'random')` |   | `false` |  
 `gateways.[].bypass_media` | The resource gateway bypass media mode | `boolean()` |   | `false` |  
 `gateways.[].caller_id_type` | The type of caller id to use | `string('internal' | 'external' | 'emergency')` |   | `false` |  
 `gateways.[].channel_selection` | Automatic selection of the channel within the span: ascending starts at 1 and moves up; descending is the opposite | `string('ascending' | 'descending')` | `ascending` | `false` |  
