@@ -154,7 +154,7 @@ base_url() ->
     kz_term:to_binary(["http://", Host, $:, integer_to_list(Port), $/]).
 
 -spec init(cowboy_req:req(), kz_term:proplist()) ->
-                  {'ok', cowboy_req:req(), 'undefined'}.
+          {'ok', cowboy_req:req(), 'undefined'}.
 init(Req, HandlerOpts) ->
     log_meta(props:get_value('log_id', HandlerOpts)),
     handle(Req, HandlerOpts).
@@ -267,8 +267,8 @@ code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
 -spec handle_call(any(), kz_term:pid_ref(), state()) ->
-                         {'noreply', state()} |
-                         {'reply', kz_json:api_json_term(), state()}.
+          {'noreply', state()} |
+          {'reply', kz_json:api_json_term(), state()}.
 handle_call({'wait_for_req', Path, TimeoutMs}
            ,From
            ,#state{requests=Requests
