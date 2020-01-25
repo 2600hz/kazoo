@@ -122,6 +122,7 @@ cleanup_accounts(AccountNames) ->
 
 -spec cleanup_accounts(pqc_cb_api:state(), kz_term:ne_binaries()) -> 'ok'.
 cleanup_accounts(API, AccountNames) ->
+    _ = kapps_config:set_default(<<"tasks">>, <<"soft_delete_pause_ms">>, 100),
     _ = [cleanup_account(API, AccountName) || AccountName <- AccountNames],
     kt_cleanup:cleanup_soft_deletes(?KZ_ACCOUNTS_DB).
 
