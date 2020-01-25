@@ -258,7 +258,8 @@ uniq_list([H|T]) -> [H | [X || X <- uniq_list(T), X =/= H]].
 %%------------------------------------------------------------------------------
 -spec to_hex(text()) -> string().
 to_hex(S) ->
-    string:to_lower(lists:flatten([io_lib:format("~2.16.0B", [H]) || H <- to_list(S)])).
+    B = to_hex_binary(S),
+    to_list(B).
 
 -spec to_hex_binary(text()) -> binary().
 to_hex_binary(S) ->
