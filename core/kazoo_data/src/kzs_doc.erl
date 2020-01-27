@@ -239,10 +239,13 @@ prepare_doc_for_del(Server, DbName, Doc) ->
       ]).
 
 %%------------------------------------------------------------------------------
-%% @doc Prepare doc for save and generate a doc smaller doc for a publish event
-%% Returns {PreparedDoc, PublishDoc} where
-%% PreparedDoc is a JObj containing all the necessary key values / correct format for the save or delete operation
-%% PublishDoc is the JObj supplied with a possible changed id value
+%% @doc Prepare / convert a doc for save or delete.
+%% If the doc has the key `id' set,it will be deleted and a new `id' will be
+%% generated.
+%% @returns {PreparedDoc, PublishDoc} where:
+%% PreparedDoc is a JObj containing all the necessary key values and in the
+%% correct format for the save or delete operation.
+%% PublishDoc is the JObj supplied with a possible changed id value.
 %% @end
 %%------------------------------------------------------------------------------
 -spec prepare_doc_for_save(kz_term:ne_binary(), kz_json:object()) -> {kz_json:object(), kz_json:object()}.

@@ -86,10 +86,11 @@ should_publish_db_changes(DbName) ->
 
 %%------------------------------------------------------------------------------
 %% @doc Publish doc event to amqp
-%% PreDbDoc - The doc before the database save or delete operation (Pre db operation)
-%% PostDbDoc - The doc returned from the database save or delete operation (Post db operation)
-%% The document event (deleted vs created vs edited) is labeled as 'deleted' if the deleted flag is set in 'PreDbDoc', 'created'
-%% if 'PreDbDoc' has no rev set and 'edited' if 'PreDbDoc' has a revision
+%% PreDbDoc - The doc before the database save or delete operation (Pre db operation).
+%% PostDbDoc - The doc returned from the database save or delete operation (Post db operation).
+%% The document event (deleted vs created vs edited) is labeled as 'deleted' if
+%% the deleted flag is set in 'PreDbDoc', 'created'.
+%% if 'PreDbDoc' has no rev set and 'edited' if 'PreDbDoc' has a revision.
 %% @end
 %%------------------------------------------------------------------------------
 -spec publish_doc(kz_term:ne_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
@@ -127,8 +128,8 @@ do_publish_db('true', DbName, Action) ->
 -endif.
 
 %%------------------------------------------------------------------------------
-%% @doc Return a predefined list of Key-Values from a Doc
-%% Keys are defined by ?PUBLISH_FIELDS
+%% @doc Return a predefined list of Key-Values from a doc.
+%% Keys are defined by `?PUBLISH_FIELDS'.
 %% @end
 %%------------------------------------------------------------------------------
 -spec publish_fields(kz_json:object()) -> kz_term:proplist().
@@ -139,9 +140,9 @@ publish_fields(Doc) ->
     ].
 
 %%------------------------------------------------------------------------------
-%% @doc Set select values defined by publish_fields/1 from PreDbDoc on PostDbDoc
-%% PreDbDoc - The doc before the database save or delete operation (Pre db operation)
-%% PostDbDoc - The doc returned from the database save or delete operation (Post db operation)
+%% @doc Set select values defined by publish_fields/1 from PreDbDoc on PostDbDoc.
+%% PreDbDoc - The doc before the database save or delete operation (Pre db operation).
+%% PostDbDoc - The doc returned from the database save or delete operation (Post db operation).
 %% @end
 %%------------------------------------------------------------------------------
 -spec publish_fields(kz_json:object(), kz_json:object()) -> kz_json:object().
