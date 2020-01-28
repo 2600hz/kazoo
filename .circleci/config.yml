@@ -21,6 +21,9 @@ workflows:
       - docs:
           requires:
             - build
+      - analyze:
+          requires:
+            - build
       - release:
           requires:
             - build
@@ -30,6 +33,7 @@ workflows:
             - eunit_tests
             - checks
             - docs
+            - analyze
             - release
 
   build_release:
@@ -80,6 +84,14 @@ workflows:
               ignore: /.*/
           requires:
             - build
+      - analyze:
+          filters:
+            tags:
+              only: /^\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
+          requires:
+            - build
       - release:
           filters:
             tags:
@@ -99,6 +111,7 @@ workflows:
             - eunit_tests
             - checks
             - docs
+            - analyze
             - release
 
 defaults: &defaults
