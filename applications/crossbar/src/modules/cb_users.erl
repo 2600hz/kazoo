@@ -522,12 +522,14 @@ updates_if_validation_passed(UserId, Context) ->
 -spec normalize_username(kz_term:api_binary(), cb_context:context()) -> cb_context:context().
 normalize_username(_UserId, Context) ->
     JObj = cb_context:req_data(Context),
+    Normalize = cb_context:fetch(Context, 'normalize_username', true),
     case kzd_users:username(JObj) of
         'undefined' -> Context;
-        Username ->
+        Username when Normalize ->
             NormalizedUsername = kz_term:to_lower_binary(Username),
             lager:debug("normalized '~s' to '~s'", [Username, NormalizedUsername]),
-            cb_context:set_req_data(Context, kzd_users:set_username(JObj, NormalizedUsername))
+            cb_context:set_req_data(Context, kzd_users:set_username(JObj, NormalizedUsername));
+        _ -> Context
     end.
 
 %%------------------------------------------------------------------------------

@@ -67,6 +67,7 @@
 -type couch_schema() :: [{couch_doc_path(), validator_rules()}].
 
 -type cb_cowboy_payload() :: {cowboy_req:req(), cb_context:context()}.
+-type cb_cowboy_req_data() :: {cowboy_req:req(), cb_context:context(), cowboy_content_type(), kz_json:object()}.
 
 -define(CSV_CONTENT_TYPES, [{<<"application">>, <<"octet-stream">>, '*'}
                            ,{<<"text">>, <<"csv">>, '*'}

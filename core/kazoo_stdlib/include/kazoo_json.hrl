@@ -42,7 +42,7 @@
 -type keys() :: [key(),...].
 
 %% Denotes a flatten version of JSON proplist, `[{full_path, value}]'.
--type flat_proplist() :: [{keys(), flat_json_term()},...].
+-type flat_proplist() :: [{keys(), flat_json_term()}].
 
 %% Denotes array in JSON.
 -type json_array() :: json_terms() | [].

@@ -311,7 +311,7 @@ is_account_admin(AuthAccountId, AuthUserId) ->
             'false'
     end.
 
--spec auth_token_type(context()) -> 'x-auth-token' | 'basic' | 'oauth' | 'unknown'.
+-spec auth_token_type(context()) -> 'x-auth-token' | 'basic' | 'bearer' | 'unknown'.
 auth_token_type(#cb_context{auth_token_type=AuthTokenType}) -> AuthTokenType.
 
 -spec auth_token(context()) -> kz_term:api_ne_binary().
@@ -555,7 +555,7 @@ set_device_id(#cb_context{}=Context, DeviceId) ->
 set_reseller_id(#cb_context{}=Context, AcctId) ->
     Context#cb_context{reseller_id=AcctId}.
 
--spec set_auth_token_type(context(), 'x-auth-token' | 'basic' | 'oauth' | 'unknown') -> context().
+-spec set_auth_token_type(context(), 'x-auth-token' | 'basic' | 'bearer' | 'unknown') -> context().
 set_auth_token_type(#cb_context{}=Context, AuthTokenType) ->
     Context#cb_context{auth_token_type=AuthTokenType}.
 

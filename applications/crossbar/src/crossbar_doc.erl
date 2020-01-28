@@ -1226,9 +1226,9 @@ add_pvt_auth(_JObj, Updates, Context) ->
 add_pvt_alphanum_name(JObj, Updates, Context) ->
     add_pvt_alphanum_name(JObj, Updates, Context, kz_json:get_value(<<"name">>, JObj), kz_doc:type(JObj)).
 
--spec add_pvt_alphanum_name(kz_json:object(), kz_json:json_proplist(), cb_context:context(), kz_term:api_binary(), kz_term:ne_binary()) ->
+-spec add_pvt_alphanum_name(kz_json:object(), kz_json:json_proplist(), cb_context:context(), kz_term:api_binary(), kz_term:api_ne_binary()) ->
           kz_json:json_proplist().
-add_pvt_alphanum_name(JObj, Updates, _Context, 'undefined', <<"user">>) ->
+add_pvt_alphanum_name(JObj, Updates, Context, 'undefined', <<"user">>) ->
     Name = case {kz_json:get_ne_binary_value(<<"first_name">>, JObj)
                 ,kz_json:get_ne_binary_value(<<"last_name">>, JObj)
                 }
@@ -1238,15 +1238,16 @@ add_pvt_alphanum_name(JObj, Updates, _Context, 'undefined', <<"user">>) ->
                {FirstName, 'undefined'} -> FirstName;
                {FirstName, LastName} -> <<FirstName/binary, LastName/binary>>
            end,
+    add_pvt_alphanum_name(JObj, Updates, Context, Name, 'undefined');
+add_pvt_alphanum_name(_JObj, Updates, _Context, 'undefined', _Type) ->
+    Updates;
+add_pvt_alphanum_name(_JObj, Updates, _Context, Name, _Type)
+  when is_binary(Name) ->
     [{<<"pvt_alphanum_name">>, cb_modules_util:normalize_alphanum_name(Name)}
      | Updates
     ];
-add_pvt_alphanum_name(_JObj, Updates, _Context, 'undefined', _Type) ->
-    Updates;
-add_pvt_alphanum_name(_JObj, Updates, _Context, Name, _Type) ->
-    [{<<"pvt_alphanum_name">>, cb_modules_util:normalize_alphanum_name(Name)}
-     | Updates
-    ].
+add_pvt_alphanum_name(_JObj, Updates, _Context, _Name, _Type) ->
+    Updates.
 
 %%------------------------------------------------------------------------------
 %% @doc

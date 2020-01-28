@@ -184,7 +184,7 @@ maybe_get_req_data(Context, Req, ?VERSION_1) ->
     ?MODULE:stop(Req, Context1);
 maybe_get_req_data(Context, Req0, _Version) ->
     {QS, Req1} = get_query_string_data(Req0),
-    get_req_data(Context, Req1, get_content_type(Req1), QS).
+    get_req_data_binding(Context, Req1, get_content_type(Req1), QS).
 
 -spec get_query_string_data(cowboy_req:req()) ->
           {kz_json:object(), cowboy_req:req()}.
@@ -208,18 +208,29 @@ get_content_type(Req) ->
         {Main, Sub, _Opts} -> <<Main/binary, "/", Sub/binary>>
     end.
 
+-spec get_req_data_binding(cb_context:context(), cowboy_req:req(), cowboy_content_type(), kz_json:object()) ->
+          {cb_context:context(), cowboy_req:req()} |
+          stop_return().
+get_req_data_binding(Context, Req, CT, QS) ->
+    [{Mod, Params} | _] = cb_context:req_nouns(Context),
+    Method = kz_term:to_lower_binary(cb_context:method(Context)),
+    Event = create_event_name(Context, [<<"request_data">>, Method, Mod]),
+    Payload = [{Req, Context, CT, QS} | Params],
+    try crossbar_bindings:map(Event, Payload) of
+        [{'ok', Ctx}] -> {Ctx, Req};
+        [{'error', Error}] -> {'stop', Req, cb_context:add_system_error(Error, Context)};
+        _Else -> get_req_data(Context, Req, CT, QS)
+    catch
+        _:_:_ -> get_req_data(Context, Req, CT, QS)
+    end.
+
 -spec get_req_data(cb_context:context(), cowboy_req:req(), cowboy_content_type(), kz_json:object()) ->
           {cb_context:context(), cowboy_req:req()} |
           stop_return().
 get_req_data(Context, Req0, 'undefined', QS) ->
     lager:debug("undefined content type when getting req data, assuming application/json"),
-    case get_request_body(Req0) of
-        {'ok', Body, Req1} ->
-            Ctx = cb_context:set_req_header(Context, <<"content-type">>, ?DEFAULT_CONTENT_TYPE),
-            try_json(Body, QS, Ctx, Req1);
-        {'error', 'max_size', Req1} ->
-            handle_max_filesize_exceeded(Context, Req1)
-    end;
+    Ctx = cb_context:set_req_header(Context, <<"content-type">>, ?DEFAULT_CONTENT_TYPE),
+    get_req_data(Ctx, Req0, <<"application/json">>, QS);
 get_req_data(Context, Req, <<"multipart/form-data">>, QS) ->
     lager:debug("multipart/form-data content type when getting req data"),
     maybe_extract_multipart(cb_context:set_query_string(Context, QS), Req, QS);
@@ -571,7 +582,7 @@ handle_max_filesize_exceeded(Context, Req1) ->
 decode_json_body(ReqBody, Req) ->
     try kz_json:unsafe_decode(ReqBody) of
         JObj ->
-            lager:debug("request has a json payload: ~s", [ReqBody]),
+            lager:debug("request has a json payload: ~ts", [ReqBody]),
             {normalize_envelope_keys(JObj), Req}
     catch
         'throw':{'invalid_json',{'error',{ErrLine, ErrMsg}}, _JSON} ->
@@ -926,7 +937,7 @@ set_auth_context(Context, Token, TokenType) ->
 
 -spec get_authorization_token_type(kz_term:ne_binary()) -> {kz_term:ne_binary(), atom()}.
 get_authorization_token_type(<<"Basic ", Token/binary>>) -> {Token, 'basic'};
-get_authorization_token_type(<<"Bearer ", Token/binary>>) -> {Token, 'oauth'};
+get_authorization_token_type(<<"Bearer ", Token/binary>>) -> {Token, 'bearer'};
 get_authorization_token_type(Token) -> {Token, 'unknown'}.
 
 %%------------------------------------------------------------------------------

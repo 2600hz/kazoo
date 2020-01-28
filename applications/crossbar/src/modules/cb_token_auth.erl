@@ -155,6 +155,8 @@ early_authenticate(Context) ->
           {'true', cb_context:context()}.
 early_authenticate(Context, 'x-auth-token') ->
     early_authenticate_token(Context, cb_context:auth_token(Context));
+early_authenticate(Context, 'bearer') ->
+    early_authenticate_token(Context, kz_auth_bearer:fetch(cb_context:auth_token(Context)));
 early_authenticate(_Context, _TokenType) -> 'false'.
 
 -spec early_authenticate_token(cb_context:context(), kz_term:api_binary()) ->
@@ -162,7 +164,7 @@ early_authenticate(_Context, _TokenType) -> 'false'.
           {'true', cb_context:context()}.
 early_authenticate_token(Context, AuthToken) when is_binary(AuthToken) ->
     validate_auth_token(Context, AuthToken);
-early_authenticate_token(_Context, 'undefined') -> 'true'.
+early_authenticate_token(_Context, 'undefined') -> 'false'.
 
 -spec check_auth_token(cb_context:context(), kz_term:api_binary(), boolean()) ->
           boolean() |

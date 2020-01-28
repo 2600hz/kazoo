@@ -11,7 +11,7 @@
 
 -export([get_public_key_from_cert/1]).
 -export([get_public_key_from_private_key/1]).
--export([gen_private_key/0]).
+-export([gen_private_key/0, gen_private_key/1]).
 -export([get_public_key/2]).
 -export([get_private_key_from_file/1]).
 -export([from_pem/1, to_pem/1]).
@@ -373,7 +373,11 @@ save_private_key(JObj, Key) ->
 
 -spec gen_private_key() -> {'ok', public_key:rsa_private_key()}.
 gen_private_key() ->
-    Key = public_key:generate_key({'rsa', ?RSA_KEY_SIZE, ?RSA_KEY_SIZE + 1}),
+    gen_private_key(?RSA_KEY_SIZE).
+
+-spec gen_private_key(integer()) -> {'ok', public_key:rsa_private_key()}.
+gen_private_key(Size) ->
+    Key = public_key:generate_key({'rsa', Size, Size + 1}),
     {'ok', Key}.
 
 %% @equiv reset_private_key(kz_auth_apps:get_auth_app(<<"kazoo">>))

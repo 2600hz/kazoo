@@ -36,6 +36,8 @@
 
 -define(CB_ACCOUNT_TOKEN_RESTRICTIONS, <<"token_restrictions">>).
 
+-define(DEFAULT_ACCEPT_HEADER, [{{<<"*">>, <<"*">>, []}, 1000, []}]).
+
 -define(CONTENT_PROVIDED, [{'to_json', ?JSON_CONTENT_TYPES}
                           ,{'to_csv', ?CSV_CONTENT_TYPES}
                           ]).
@@ -51,7 +53,6 @@
                          ,?HTTP_PATCH
                          ,?HTTP_OPTIONS
                          ]).
-
 -define(QUICKCALL_PATH_TOKEN, <<"quickcall">>).
 -define(DEVICES_QCALL_NOUNS(DeviceId, Number)
        ,[{<<"quickcall">>, [Number]}
@@ -151,7 +152,7 @@
                     ,charsets_provided = [<<"iso-8859-1">>] :: kz_term:ne_binaries() %% all charsets provided
                     ,encodings_provided = [<<"gzip;q=1.0">>,<<"identity;q=0.5">>] :: kz_term:ne_binaries() %% gzip and identity
                     ,auth_token = 'undefined' :: kz_term:api_ne_binary()
-                    ,auth_token_type = 'x-auth-token' :: 'x-auth-token' | 'basic' | 'oauth' | 'unknown'
+                    ,auth_token_type = 'x-auth-token' :: 'x-auth-token' | 'basic' | 'bearer' | 'unknown'
                     ,auth_account_id :: kz_term:api_ne_binary()
                     ,auth_doc :: kz_term:api_object()
                     ,req_verb = ?HTTP_GET :: http_method() % see ?ALLOWED_METHODS
