@@ -14,12 +14,23 @@
         ,accepted_content_types/0
         ,freeform/4
         ,commands/5
+        ,set_api_key/1
         ]).
 
 -include("kazoo_speech.hrl").
 
 -define(DEFAULT_ASR_CONTENT_TYPE, <<"application/wav">>).
 -define(SUPPORTED_CONTENT_TYPES, [<<"application/wav">>]).
+
+%%%-----------------------------------------------------------------------------
+%%% @doc
+%%% Set the asr key
+%%% @end
+%%%-----------------------------------------------------------------------------
+-spec set_api_key(kz_term:ne_binary()) -> 'ok'.
+set_api_key(Key) ->
+    {'ok', _} = kapps_config:set_default(?MOD_CONFIG_CAT, <<"asr_api_key">>, Key),
+    'ok'.
 
 %%%-----------------------------------------------------------------------------
 %%% @doc

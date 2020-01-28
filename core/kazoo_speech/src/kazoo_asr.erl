@@ -12,8 +12,10 @@
 -export([freeform/1, freeform/2, freeform/3, freeform/4
         ,commands/2, commands/3, commands/4, commands/5
         ,accepted_content_types/0
-        ,default_provider/0
+        ,default_provider/0, default_provider/1, set_default_provider/1
         ,preferred_content_type/0, preferred_content_type/1
+
+        ,provider_module/1
         ]).
 
 -include("kazoo_speech.hrl").
@@ -31,6 +33,20 @@
 -spec default_provider() -> kz_term:ne_binary().
 default_provider() ->
     kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"asr_provider">>, ?DEFAULT_ASR_PROVIDER).
+
+-spec default_provider(kapps_call:call()) -> kz_term:ne_binary().
+default_provider(Call) ->
+    Default = default_provider(),
+    kapps_account_config:get_global(kapps_call:account_id(Call)
+                                   ,?MOD_CONFIG_CAT
+                                   ,<<"asr_provider">>
+                                   ,Default
+                                   ).
+
+-spec set_default_provider(kz_term:ne_binary()) -> 'ok'.
+set_default_provider(Provider) ->
+    {'ok', _} = kapps_config:set_default(?MOD_CONFIG_CAT, <<"asr_provider">>, Provider),
+    'ok'.
 
 %%%------------------------------------------------------------------------------
 %%% @doc
@@ -127,3 +143,12 @@ commands(Bin, Commands, ContentType, Locale, Options, ASRProvider) ->
             lager:error("unknown ASR provider ~s", [ASRProvider]),
             {'error', 'unknown_provider'}
     end.
+
+%%%------------------------------------------------------------------------------
+%%% @doc
+%%% Functions called from maintanance module
+%%% @end
+%%%------------------------------------------------------------------------------
+-spec provider_module(kz_term:ne_binary()) -> atom().
+provider_module(Provider) ->
+    kz_term:to_atom(<<"kazoo_asr_", Provider/binary>>, 'true').
