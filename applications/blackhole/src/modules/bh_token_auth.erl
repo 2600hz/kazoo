@@ -41,8 +41,15 @@ init() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec authenticate(bh_context:context(), kz_json:object()) -> bh_context:context().
-authenticate(Context, _Payload) ->
+authenticate(Context, Payload) ->
     Token = bh_context:auth_token(Context),
+    authenticate(Token, Context, Payload).
+
+-spec authenticate(kz_term:api_binary(), bh_context:context(), kz_json:object()) -> bh_context:context().
+authenticate('undefined', Context, _Payload) ->
+    lager:debug("failed to authenticate with undefined token"),
+    bh_context:add_error(Context, <<"failed to authenticate with undefined token">>);
+authenticate(Token, Context, _Payload) ->
     lager:debug("trying to authenticate with token: ~s", [Token]),
     case kz_auth:validate_token(Token) of
         {'ok', JObj} ->
