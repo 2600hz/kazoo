@@ -250,12 +250,12 @@ maybe_transcribe(#asr_req{account_modb=AccountDb, content_type=ContentType, medi
                                           ,Resp
                                           ),
             set_transcription(Request, Resp0);
-        {'error', ErrorCode} ->
+        {'error', ErrorCode}=Err ->
             lager:info("error transcribing: ~p", [ErrorCode]),
-            'undefined';
-        {'error', ErrorCode, Description} ->
+            add_error(Request, Err);
+        {'error', ErrorCode, Description}=Err ->
             lager:info("error transcribing: ~p, ~p", [ErrorCode, Description]),
-            'undefined'
+            add_error(Request, Err)
     end.
 
 %%------------------------------------------------------------------------------
@@ -490,7 +490,10 @@ transcribe(Request) ->
     lists:foldl(fun transcribe_fold_fun/2, Request, Validators).
 
 -spec debit(asr_req()) -> asr_req().
-debit(#asr_req{billing_method=BillingMethod}=Request) -> BillingMethod:debit(Request).
+debit(#asr_req{error={'error', _}}=Request) -> Request;
+debit(#asr_req{error={'error', 'asr_provider_failure', _}}=Request) -> Request;
+debit(#asr_req{billing_method=BillingMethod, error='undefined'}=Request) ->
+    BillingMethod:debit(Request).
 
 %%------------------------------------------------------------------------------
 %% @doc
