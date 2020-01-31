@@ -72,6 +72,10 @@ get_method(JObj, Default) ->
            ],
     case kz_json:get_first_defined(Keys, JObj, Default) of
         <<"sip">> -> <<"sip">>;
+        %% none is set by stepswitch_bridge when the call is emergency
+        % <<"none">> -> <<"none">>;
+        % <<"kazoo">> -> <<"kazoo">>;
+        % _Else -> Default
         _Else -> <<"kazoo">>
     end.
 
@@ -144,7 +148,7 @@ should_hide_number(JObj, Default) ->
 %%------------------------------------------------------------------------------
 -spec enforce(kz_json:object()) -> kz_json:object().
 enforce(JObj) ->
-    enforce(JObj, get_method(JObj)).
+    enforce(JObj, get_default_privacy_mode()).
 
 -spec enforce(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
 enforce(JObj, DefaultMethod) ->
@@ -168,7 +172,13 @@ maybe_anonymize_name(JObj, Method) ->
     end.
 
 -spec hide_name(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
+hide_name(JObj, <<"none">>) ->
+    %% This is emergency call, don't enforce privacy
+    %% none is set by stepswitch_bridge to avoid enforcing privacy
+    JObj;
 hide_name(JObj, <<"sip">>) ->
+    %% let freeswitch deal with hiding cid
+    %% through remote-party or p-asserted-identity headers
     JObj;
 hide_name(JObj, _Method) ->
     Keys = [<<"Outbound-Caller-ID-Name">>
@@ -190,7 +200,13 @@ maybe_anonymize_number(JObj, Method) ->
     end.
 
 -spec hide_number(kz_json:object(), kz_term:ne_binary()) -> kz_json:object().
+hide_number(JObj, <<"none">>) ->
+    %% This is emergency call, don't enforce privacy
+    %% none is set by stepswitch_bridge to avoid enforcing privacy
+    JObj;
 hide_number(JObj, <<"sip">>) ->
+    %% let freeswitch deal with hiding cid
+    %% through remote-party or p-asserted-identity headers
     JObj;
 hide_number(JObj, _Method) ->
     Keys = [<<"Outbound-Caller-ID-Number">>
