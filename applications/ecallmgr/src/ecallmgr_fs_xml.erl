@@ -520,12 +520,19 @@ get_leg_vars([_|_]=Prop) ->
     ["[^^", ?BRIDGE_CHANNEL_VAR_SEPARATOR
     ,string:join([kz_term:to_list(V)
                   || V <- lists:foldr(fun kazoo_var_to_fs_var/2, [], Prop)
-                 ]
+                 ] ++ maybe_endpoint_privacy_header(Prop)
                 ,?BRIDGE_CHANNEL_VAR_SEPARATOR
                 )
     ,"]"
     ];
 get_leg_vars(JObj) -> get_leg_vars(kz_json:to_proplist(JObj)).
+
+-spec maybe_endpoint_privacy_header(kz_term:proplist()) -> kz_term:ne_binaries().
+maybe_endpoint_privacy_header(Prop) ->
+    case kz_privacy:has_flags(Prop) of
+        'true' -> [<<"sip_h_Privacy=id">>];
+        'false' -> []
+    end.
 
 -spec get_channel_vars(kz_json:object() | kz_term:proplist()) -> iolist().
 get_channel_vars(Param) ->
