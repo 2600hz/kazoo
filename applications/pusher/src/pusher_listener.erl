@@ -65,8 +65,10 @@
 -spec handle_push(kz_json:object(), kz_term:proplist()) -> 'ok'.
 handle_push(JObj, _Props) ->
     Token = kz_json:get_value(<<"Token-ID">>, JObj),
+    TokenApp = kz_json:get_ne_binary_value(<<"Token-App">>, JObj),
     TokenType = pm_module(kz_json:get_value(<<"Token-Type">>, JObj)),
     Module = kz_term:to_atom(<<"pm_",TokenType/binary>> , 'true'),
+    AppEnabled = app_enabled(TokenApp, TokenType),
     case lists:member(Module, ?MODULES)
         andalso whereis(Module)
     of
@@ -74,6 +76,8 @@ handle_push(JObj, _Props) ->
             lager:error("module ~s not available for token ~s(~s)", [Module, Token, TokenType]);
         'undefined' ->
             lager:error("module ~s not available for token ~s(~s)", [Module, Token, TokenType]);
+        _ when not AppEnabled ->
+            lager:debug("app ~s is disabled", [TokenApp]);
         Pid ->
             lager:debug("pushing for token ~s(~s) to module ~s", [Token, TokenType, Module]),
             gen_server:cast(Pid, {'push', add_timestamp_to_payload(JObj)})
@@ -253,3 +257,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%=============================================================================
 %%% Internal functions
 %%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc Returns true if the specified app is enabled under the specified token
+%% type.
+%% @end
+%%------------------------------------------------------------------------------
+-spec app_enabled(kz_term:api_ne_binary(), kz_term:api_binary()) -> boolean().
+app_enabled(App, TokenType) ->
+    kapps_config:get_boolean(?CONFIG_CAT, [TokenType, <<"enabled">>], 'true', App).
