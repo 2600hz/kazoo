@@ -55,11 +55,6 @@
             "description": "privacy method",
             "type": "string"
         },
-        "privacy_mode": {
-            "default": "kazoo",
-            "description": "Default privacy mode for anonymous calls",
-            "type": "string"
-        },
         "privacy_name": {
             "default": "anonymous",
             "description": "Default Caller ID Name should be shown for anonymous calls",
