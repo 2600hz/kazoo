@@ -100,8 +100,6 @@ The properties identify the *fields*  in the contact header where pusher looks f
 
 In order for the push services from Apple / Firebase to work they need to be configured with application secrets / certificates. The app used in the push message is taken from Token-App.
 
-* The Apple cert needs to be in PEM format (text, no private key encryption)
-
 * `sup pusher_maintenance add_firebase_app AppId Secret`
 * `sup pusher_maintenance add_apple_app AppId CertFile` (uses the default APNs host: api.push.apple.com)
 * `sup pusher_maintenance add_apple_app AppId CertFile Host` (uses a custom APNs host, i.e. api.development.push.apple.com)
@@ -114,4 +112,4 @@ In order for the push services from Apple / Firebase to work they need to be con
 4. View the _login_ keychain, and set the _Category_ on the bottom-left of the window to _Certificates_. The view should list certificates, including the one imported from Apple. It should have the private key from the certificate signing request nested beneath it.
 5. Right-click the certificate and choose _Export "${certificateName}"..._.
 6. Save as .p12 format.
-7. Execute `openssl pkcs12 -in ${CERT_NAME}.p12 -out ${CERT_NAME}.crt.pem -clcerts -nodes` to export the certificate and private key as a .pem file.
+7. Execute `openssl pkcs12 -in ${CERT_NAME}.p12 -out ${CERT_NAME}.pem -clcerts -nodes` to export the certificate and private key as a .pem file. The private key must be unencrypted, hence the `-nodes` flag.
