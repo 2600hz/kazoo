@@ -551,14 +551,14 @@ build_asserted_identity(AssertedIdentity, Props, Results) ->
             {Props
             ,[<<"sip_cid_type=none">>
              ,<<"sip_h_Privacy=id">>
-             ,<<"sip_h_P-Asserted-Identity=", AssertedIdentity/binary>>
+             ,<<"sip_h_P-Asserted-Identity='", AssertedIdentity/binary, "'">>
                   | Results
              ]
             };
         'false' ->
             {Props
             ,[<<"sip_cid_type=none">>
-             ,<<"sip_h_P-Asserted-Identity=", AssertedIdentity/binary>>
+             ,<<"sip_h_P-Asserted-Identity='", AssertedIdentity/binary, "'">>
                   | Results
              ]
             }
