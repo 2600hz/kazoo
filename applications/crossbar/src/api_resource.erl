@@ -15,6 +15,7 @@
 -behaviour(cowboy_rest).
 
 -export([init/2
+        ,context_init/2
         ,service_available/2
         ,terminate/3
         ,known_methods/2
@@ -39,6 +40,7 @@
         ,is_conflict/2
 
         ,websocket_handle/2
+        ,websocket_info/2
 
          %% Content
         ,to_json/2
@@ -160,6 +162,10 @@ rest_init(Req0, Context0, Opts) ->
 -spec websocket_handle(any(), cb_context:context()) -> {cowboy_websocket:commands(), cb_context:context(), 'hibernate'}.
 websocket_handle(Frame, State) ->
     crossbar_websocket:recv(Frame, State).
+
+-spec websocket_info(any(), cb_context:context()) -> {cowboy_websocket:commands(), cb_context:context(), 'hibernate'}.
+websocket_info(Info, State) ->
+    crossbar_websocket:info(Info, State).
 
 -spec host_url(cb_context:context(), cowboy_req:req()) -> cb_context:context().
 host_url(Context, Req) ->

@@ -56,6 +56,7 @@
         ,create_event_name/2
 
         ,encode_start_key/1, decode_start_key/1
+        ,normalize_envelope_keys/1
 
         ,exec_req/2
         ,get_request_body/1
