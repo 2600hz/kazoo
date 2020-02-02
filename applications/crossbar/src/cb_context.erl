@@ -75,6 +75,7 @@
         ,resp_status/1, set_resp_status/2
         ,start/1, set_start/2
         ,user_id/1, set_user_id/2
+        ,websocket_flag/1, set_websocket_flag/2
 
         ,pretty_print/1
         ,path_tokens/1
@@ -1207,3 +1208,10 @@ system_error(Context, Error) ->
                ]),
     _ = kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1),
     add_system_error(Error, Context).
+
+-spec websocket_flag(context()) -> boolean().
+websocket_flag(#cb_context{websocket_flag = Value}) -> Value.
+
+-spec set_websocket_flag(context(), boolean()) -> context().
+set_websocket_flag(#cb_context{}=Context, Value) ->
+    Context#cb_context{websocket_flag = Value}.

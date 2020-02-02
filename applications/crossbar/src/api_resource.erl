@@ -38,6 +38,8 @@
         ,delete_completed/2
         ,is_conflict/2
 
+        ,websocket_handle/2
+
          %% Content
         ,to_json/2
         ,to_binary/2
@@ -55,6 +57,8 @@
         ]).
 
 -include("crossbar.hrl").
+
+-define(IDLE_TIMEOUT, ?MILLISECONDS_IN_HOUR).
 
 %%%=============================================================================
 %%% Startup and shutdown of request
@@ -74,17 +78,26 @@ service_available(Req, Context) ->
     {'true', Req, Context}.
 
 -spec init(cowboy_req:req(), kz_term:proplist()) ->
+          {'cowboy_websocket', cowboy_req:req(), cb_context:context(), cowboy_websocket:opts()} |
           {'cowboy_rest', cowboy_req:req(), cb_context:context()}.
 init(Req, Opts) ->
     Context = context_init(Req, Opts),
-    lager:info("~s: ~s?~s from ~s"
-              ,[cb_context:method(Context)
-               ,cb_context:raw_path(Context)
-               ,cb_context:raw_qs(Context)
-               ,cb_context:client_ip(Context)
-               ]
-              ),
-    try_get_data(Req, Context, Opts).
+    case cb_context:websocket_flag(Context) of
+        'false' ->
+            lager:info("~s: ~s?~s from ~s"
+                      ,[cb_context:method(Context)
+                       ,cb_context:raw_path(Context)
+                       ,cb_context:raw_qs(Context)
+                       ,cb_context:client_ip(Context)
+                       ]
+                      ),
+            try_get_data(Req, Context, Opts);
+        'true' ->
+            {ConnectionIP, ConnectionPort} = cowboy_req:peer(Req),
+            ClientIP = cb_context:client_ip(Context),
+            lager:info("created websocket connection from ~s via ~s:~s", [ClientIP, kz_network_utils:iptuple_to_binary(ConnectionIP), kz_term:to_binary(ConnectionPort)]),
+            {'cowboy_websocket', Req, Context, #{idle_timeout => ?IDLE_TIMEOUT}}
+    end.
 
 -spec context_init(cowboy_req:req(), kz_term:proplist()) -> cb_context:context().
 context_init(Req, Opts) ->
@@ -111,6 +124,7 @@ context_init(Req, Opts) ->
               ,{fun cb_context:set_profile_id/2, get_profile_id(Req)}
               ,{fun cb_context:set_api_version/2, find_version(Path, Req)}
               ,{fun cb_context:set_magic_pathed/2, props:is_defined('magic_path', Opts)}
+              ,{fun cb_context:set_websocket_flag/2, is_websocket_header_exist(cowboy_req:headers(Req))}
               ,{fun cb_context:store/3, 'metrics', metrics()}
               ,{fun cb_context:set_master_account_id/2, MasterId}
               ,fun req_nouns/1
@@ -143,6 +157,10 @@ rest_init(Req0, Context0, Opts) ->
     ,Context4
     }.
 
+-spec websocket_handle(any(), cb_context:context()) -> {cowboy_websocket:commands(), cb_context:context(), 'hibernate'}.
+websocket_handle(Frame, State) ->
+    crossbar_websocket:recv(Frame, State).
+
 -spec host_url(cb_context:context(), cowboy_req:req()) -> cb_context:context().
 host_url(Context, Req) ->
     URI = kz_term:to_binary(cowboy_req:uri(Req)),
@@ -159,6 +177,12 @@ req_nouns(Context) ->
         _Else ->
             Context
     end.
+
+-spec is_websocket_header_exist(cowboy:http_headers()) -> boolean().
+is_websocket_header_exist(#{<<"connection">> := <<"Upgrade">>}) ->
+    'true';
+is_websocket_header_exist(_) ->
+    'false'.
 
 -spec get_request_id(cowboy_req:req()) -> kz_term:ne_binary().
 get_request_id(Req) ->
@@ -299,8 +323,16 @@ find_path(Req, Opts) ->
 
 -spec terminate(any(), cowboy_req:req(), cb_context:context()) -> 'ok'.
 terminate(_Reason, Req, Context) ->
-    lager:debug("session finished: ~p", [_Reason]),
-    rest_terminate(Req, Context, cb_context:method(Context)).
+    case cb_context:websocket_flag(Context) of
+        'false' ->
+            lager:debug("session finished: ~p", [_Reason]),
+            rest_terminate(Req, Context, cb_context:method(Context));
+        'true' ->
+            {ConnectionIP, ConnectionPort} = cowboy_req:peer(Req),
+            ClientIP = cb_context:client_ip(Context),
+            lager:info("disconnected websocket connection from ~s via ~s:~s", [ClientIP, kz_network_utils:iptuple_to_binary(ConnectionIP), kz_term:to_binary(ConnectionPort)]),
+            _ = api_util:finish_request(Req, Context)
+    end.
 
 -spec rest_terminate(cowboy_req:req(), cb_context:context(), http_method()) -> 'ok'.
 rest_terminate(Req, Context, ?HTTP_OPTIONS) ->

@@ -198,6 +198,7 @@
                     ,is_superduper_admin = 'undefined' :: kz_term:api_boolean()
                     ,is_account_admin = 'undefined' :: kz_term:api_boolean()
                     ,master_account_id = 'undefined' :: kz_term:api_ne_binary()
+                    ,websocket_flag = 'false' :: boolean()
                     }).
 
 -define(MAX_RANGE, kapps_config:get_pos_integer(?CONFIG_CAT
