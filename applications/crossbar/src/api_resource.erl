@@ -14,7 +14,7 @@
 -module(api_resource).
 -behaviour(cowboy_rest).
 
--export([init/2, rest_init/2
+-export([init/2
         ,service_available/2
         ,terminate/3
         ,known_methods/2
@@ -68,7 +68,7 @@
           {'true', cowboy_req:req(), cb_context:context()}.
 service_available(Req0, Opts)
   when is_list(Opts) ->
-    {'cowboy_rest', Req, Context} = rest_init(Req0, Opts),
+    {'cowboy_rest', Req, Context} = init(Req0, Opts),
     {'true', Req, Context};
 service_available(Req, Context) ->
     {'true', Req, Context}.
@@ -76,11 +76,18 @@ service_available(Req, Context) ->
 -spec init(cowboy_req:req(), kz_term:proplist()) ->
           {'cowboy_rest', cowboy_req:req(), cb_context:context()}.
 init(Req, Opts) ->
-    rest_init(Req, Opts).
+    Context = context_init(Req, Opts),
+    lager:info("~s: ~s?~s from ~s"
+              ,[cb_context:method(Context)
+               ,cb_context:raw_path(Context)
+               ,cb_context:raw_qs(Context)
+               ,cb_context:client_ip(Context)
+               ]
+              ),
+    try_get_data(Req, Context, Opts).
 
--spec rest_init(cowboy_req:req(), kz_term:proplist()) ->
-          {'cowboy_rest', cowboy_req:req(), cb_context:context()}.
-rest_init(Req, Opts) ->
+-spec context_init(cowboy_req:req(), kz_term:proplist()) -> cb_context:context().
+context_init(Req, Opts) ->
     maybe_trace(Req),
 
     Path = find_path(Req, Opts),
@@ -109,31 +116,32 @@ rest_init(Req, Opts) ->
               ,fun req_nouns/1
               ],
 
-    Context0 = cb_context:setters(cb_context:new(), Setters),
-    lager:info("~s: ~s?~s from ~s"
-              ,[cb_context:method(Context0)
-               ,Path
-               ,cb_context:raw_qs(Context0)
-               ,cb_context:client_ip(Context0)
-               ]
-              ),
+    cb_context:setters(cb_context:new(), Setters).
 
+
+-spec try_get_data(cowboy_req:req(), cb_context:context(), kz_term:proplist()) ->
+          {'cowboy_rest', cowboy_req:req(), cb_context:context()}.
+try_get_data(Req, Context0, Opts) ->
     case api_util:get_req_data(Context0, Req) of
         {'stop', Req1, Context1} ->
             lager:debug("getting request data failed, stopping"),
             {Req9, Context2} = api_util:get_auth_token(Req1, Context1),
             {'cowboy_rest', Req9, Context2};
-        {Context1, Req1} ->
-            {Req9, Context2} = api_util:get_auth_token(Req1, Context1),
-            {Req10, Context3} = api_util:get_pretty_print(Req9, Context2),
-            Event = api_util:create_event_name(Context3, <<"init">>),
-            {Context4, _} = crossbar_bindings:fold(Event, {Context3, Opts}),
-            Context5 = maybe_decode_start_key(Context4),
-            {'cowboy_rest'
-            ,cowboy_req:set_resp_header(<<"x-request-id">>, cb_context:req_id(Context5), Req10)
-            ,Context5
-            }
+        {Context1, Req1} -> rest_init(Req1, Context1, Opts)
     end.
+
+-spec rest_init(cowboy_req:req(), cb_context:context(), kz_term:proplist()) ->
+          {'cowboy_rest', cowboy_req:req(), cb_context:context()}.
+rest_init(Req0, Context0, Opts) ->
+    {Req1, Context1} = api_util:get_auth_token(Req0, Context0),
+    {Req2, Context2} = api_util:get_pretty_print(Req1, Context1),
+    Event = api_util:create_event_name(Context2, <<"init">>),
+    {Context3, _} = crossbar_bindings:fold(Event, {Context2, Opts}),
+    Context4 = maybe_decode_start_key(Context3),
+    {'cowboy_rest'
+    ,cowboy_req:set_resp_header(<<"x-request-id">>, cb_context:req_id(Context4), Req2)
+    ,Context4
+    }.
 
 -spec host_url(cb_context:context(), cowboy_req:req()) -> cb_context:context().
 host_url(Context, Req) ->
