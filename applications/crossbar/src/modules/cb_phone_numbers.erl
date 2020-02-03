@@ -507,7 +507,9 @@ normalize_port_number(JObj, Num, AuthBy) ->
 %%------------------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    Context1 = view_account_phone_numbers(Context),
+    IsAdmin = knm_phone_number:is_admin(cb_context:auth_account_id(Context)),
+    ProviderContext = knm_providers:setup_account_context(cb_context:account_id(Context), IsAdmin),
+    Context1 = view_account_phone_numbers(cb_context:store(Context, 'ctx_num', ProviderContext)),
     case cb_context:resp_status(Context1) of
         'success' -> maybe_update_locality(Context1);
         _Status -> Context1
@@ -515,12 +517,10 @@ summary(Context) ->
 
 -spec view_account_phone_numbers(cb_context:context()) -> cb_context:context().
 view_account_phone_numbers(Context) ->
-    Ctx = rename_qs_filters(Context),
-    Context1 = crossbar_doc:load_view(?CB_LIST, [], Ctx, fun normalize_view_results/2),
+    Context1 = crossbar_doc:load_view(?CB_LIST, [], rename_qs_filters(Context), fun normalize_view_results/3),
     case cb_context:resp_status(Context1) of
         'success' ->
-            IsAdmin = knm_phone_number:is_admin(cb_context:auth_account_id(Context)),
-            ListOfNumProps = [fix_available(IsAdmin, NumJObj) || NumJObj <- cb_context:resp_data(Context1)],
+            ListOfNumProps = cb_context:resp_data(Context1),
             PortNumberJObj = maybe_add_port_request_numbers(Context),
             NumbersJObj = lists:foldl(fun kz_json:merge_jobjs/2, PortNumberJObj, ListOfNumProps),
             Services = kz_services:fetch(cb_context:account_id(Context)),
@@ -532,20 +532,6 @@ view_account_phone_numbers(Context) ->
         _ ->
             Context1
     end.
-
--spec fix_available(boolean(), kz_json:object()) -> kz_json:object().
-fix_available(IsAdmin, NumJObj) ->
-    [{Num, JObj}] = kz_json:to_proplist(NumJObj),
-    IsLocal = lists:member(?FEATURE_LOCAL, kz_json:get_list_value(<<"features">>, JObj, [])),
-    Allowed = knm_providers:available_features(IsLocal
-                                              ,IsAdmin
-                                              ,kz_json:get_ne_binary_value(<<"assigned_to">>, JObj)
-                                              ,kz_json:get_ne_binary_value(<<"used_by">>, JObj)
-                                              ,kz_json:get_list_value(<<"features_allowed">>, JObj, [])
-                                              ,kz_json:get_list_value(<<"features_denied">>, JObj, [])
-                                              ),
-    NewJObj = kz_json:set_value(<<"features_available">>, Allowed, JObj),
-    kz_json:from_list([{Num, NewJObj}]).
 
 -spec should_include_ports(cb_context:context()) -> boolean().
 should_include_ports(Context) ->
@@ -584,14 +570,14 @@ rename_qs_filters(Context) ->
     NewQS = kz_json:map(Renamer, cb_context:query_string(Context)),
     cb_context:set_query_string(Context, NewQS).
 
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
+-spec normalize_view_results(cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_view_results(Context, JObj, Acc) ->
+    ProviderContext = cb_context:fetch(Context, 'ctx_num'),
     Number = kz_json:get_value(<<"key">>, JObj),
-    Properties = kz_json:get_value(<<"value">>, JObj),
-    [kz_json:from_list([{Number, Properties}])
-     | Acc
-    ].
-
+    RowObj = kz_json:get_value(<<"value">>, JObj),
+    Allowed = knm_providers:available_features(RowObj, ProviderContext),
+    NewJObj = kz_json:set_value([<<"features_available">>], Allowed, kz_doc:public_fields(RowObj)),
+    [kz_json:from_list([{Number, NewJObj}]) | Acc].
 
 -spec normalize_port_view_result(kz_json:object()) -> kz_json:object().
 normalize_port_view_result(JObj) ->

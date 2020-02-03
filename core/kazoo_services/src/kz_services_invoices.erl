@@ -100,9 +100,7 @@ do_annotate(Services, [{'undefined', ProposedInvoice}|TentativeInvoices], Invoic
     Items = kz_services_items:annotate(CurrentItems, ProposedItems),
     ActivationItems = kz_services_activation_items:create(Items),
     Setters = [{fun kz_services_invoice:set_items/2, Items}
-              ,{fun kz_services_invoice:set_activation_charges/2
-               ,kz_services_activation_items:create(ActivationItems)
-               }
+              ,{fun kz_services_invoice:set_activation_charges/2, ActivationItems}
               ],
     do_annotate(Services
                ,TentativeInvoices
@@ -112,10 +110,9 @@ do_annotate(Services, [{CurrentInvoice, ProposedInvoice}|TentativeInvoices], Inv
     CurrentItems = kz_services_invoice:items(CurrentInvoice),
     ProposedItems = kz_services_invoice:items(ProposedInvoice),
     Items = kz_services_items:annotate(CurrentItems, ProposedItems),
+    ActivationItems = kz_services_activation_items:create(Items),
     Setters = [{fun kz_services_invoice:set_items/2, Items}
-              ,{fun kz_services_invoice:set_activation_charges/2
-               ,kz_services_activation_items:create(Items)
-               }
+              ,{fun kz_services_invoice:set_activation_charges/2, ActivationItems}
               ],
     do_annotate(Services
                ,TentativeInvoices

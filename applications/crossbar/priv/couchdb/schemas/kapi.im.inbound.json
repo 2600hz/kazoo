@@ -9,6 +9,9 @@
         "Body": {
             "type": "string"
         },
+        "Charges": {
+            "type": "string"
+        },
         "Custom-SIP-Headers": {
             "type": "object"
         },

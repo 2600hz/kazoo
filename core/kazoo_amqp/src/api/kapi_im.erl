@@ -42,6 +42,7 @@
                                   ,<<"System-ID">>
                                   ,<<"Route-ID">>
                                   ,<<"Transaction-ID">>
+                                  ,<<"Charges">>
                                   ]).
 -define(INBOUND_TYPES, [{<<"To">>, fun is_binary/1}
                        ,{<<"From">>, fun is_binary/1}

@@ -41,6 +41,7 @@
         ,is_boolean/1
         ,is_ne_binary/1, is_api_ne_binary/1
         ,is_ne_binaries/1
+        ,is_ne_binary_or_binaries/1
         ,is_empty/1, is_not_empty/1
         ,is_proplist/1, is_ne_list/1
         ,is_pos_integer/1
@@ -435,6 +436,11 @@ is_ne_binaries([]) -> 'true';
 is_ne_binaries(V) when is_list(V) ->
     lists:all(fun is_ne_binary/1, V);
 is_ne_binaries(_) -> 'false'.
+
+-spec is_ne_binary_or_binaries(any()) -> boolean().
+is_ne_binary_or_binaries(V) ->
+    is_ne_binary(V)
+        orelse is_ne_binaries(V).
 
 -spec is_boolean(binary() | string() | atom()) -> boolean().
 is_boolean(<<"true">>) -> 'true';

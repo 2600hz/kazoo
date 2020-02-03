@@ -398,6 +398,7 @@ save_numbers(T) ->
     knm_pipe:pipe(T, [fun knm_providers:save/1
                      ,fun save_phone_numbers/1
                      ,fun update_services/1
+                     ,fun callbacks/1
                      ]).
 
 -spec update_services(knm_pipe:collection()) -> knm_pipe:collection().
@@ -454,17 +455,7 @@ run_services([AccountId|AccountIds], Updates, UpdatedServicesAcc) ->
 check_creditably(_Services, _Quotes, 'false') ->
     'ok';
 check_creditably(Services, Quotes, 'true') ->
-    Key = [<<"difference">>, <<"billable">>],
-    Additions = [begin
-                     Changes = kz_services_item:changes(Item),
-                     BillableQuantity = kz_json:get_integer_value(Key, Changes, 0),
-                     Rate = kz_services_item:rate(Item),
-                     BillableQuantity * Rate
-                 end
-                 || Invoice <- kz_services_invoices:billable_additions(Quotes),
-                    Item <- kz_services_invoice:items(Invoice),
-                    kz_services_item:has_billable_additions(Item)
-                ],
+    Additions = service_additions(Quotes),
     check_creditably(Services, Quotes, lists:sum(Additions));
 check_creditably(_Services, _Quotes, Amount) when Amount =< 0 ->
     'ok';
@@ -561,6 +552,54 @@ services_group_number(PhoneNumber, AssignedTo, PrevAssignedTo) ->
     ,{[PrevAssignedTo, <<"proposed">>], kz_json:new()}
     ,{[PrevAssignedTo, <<"current">>], CurrentJObj}
     ].
+
+-spec service_additions(kz_services_invoices:invoices()) -> list().
+service_additions(Quotes) ->
+    kz_services_invoices:foldl(fun service_additions_fold/2, [], kz_services_invoices:billable_additions(Quotes)).
+
+-spec service_additions_fold(kz_services_invoice:invoice(), list()) -> list().
+service_additions_fold(Invoice, Acc) ->
+    kz_services_items:foldl(fun service_addition_fold/2, Acc, kz_services_invoice:items(Invoice)).
+
+-spec service_addition_fold(kz_services_item:item(), list()) -> list().
+service_addition_fold(Item, Acc) ->
+    Key = [<<"difference">>, <<"billable">>],
+    case kz_services_item:has_billable_additions(Item) of
+        false ->
+            Acc;
+        true ->
+            Changes = kz_services_item:changes(Item),
+            BillableQuantity = kz_json:get_integer_value(Key, Changes, 0),
+            Rate = kz_services_item:rate(Item),
+            [BillableQuantity * Rate | Acc]
+    end.
+
+-endif.
+
+-spec callbacks(knm_pipe:collection()) -> knm_pipe:collection().
+-ifdef(TEST).
+%% FIXME: opaque
+callbacks(T=#{'todo' := Ns}) -> knm_pipe:set_succeeded(T, Ns).
+-else.
+%% FIXME: opaque
+callbacks(T=#{'todo' := OK, 'options' := Options}) ->
+    case knm_number_options:dry_run(Options) of
+        'true' ->
+            knm_pipe:set_succeeded(T, OK);
+        'false' ->
+            _ = kz_process:spawn(fun do_callback/2, [OK, fun knm_phone_number:on_success/1]),
+            knm_pipe:set_succeeded(T, OK)
+    end.
+
+do_callback(Numbers, FetchFun) ->
+    Fun = fun(Number) ->
+                  FunCB = fun({CB, Args}) ->
+                                  catch erlang:apply(CB, [Number | Args])
+                          end,
+                  CBs = FetchFun(Number),
+                  plists:foreach(FunCB, CBs)
+          end,
+    plists:foreach(Fun, Numbers).
 -endif.
 
 reconcile_number(T0, Options) ->

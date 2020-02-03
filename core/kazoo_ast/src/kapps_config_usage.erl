@@ -309,7 +309,8 @@ key_to_key_path(?LIST(Head, Tail)) ->
 key_to_key_path(?BINARY_MATCH(K)) ->
     try [kz_ast_util:binary_match_to_binary(K)]
     catch 'error':'function_clause' -> 'undefined'
-    end.
+    end;
+key_to_key_path(_) -> undefined.
 
 guess_type('get_list', Default) -> guess_type_by_default(Default);
 guess_type('is_true', _) -> <<"boolean">>;

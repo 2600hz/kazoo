@@ -15,7 +15,7 @@
 
 -define(IM_LEDGER, <<"im">>).
 
--type ledger_result() :: {'ok', kz_ledger:ledger()} | {'error', any()}.
+-type ledger_result() :: 'ok' | {'ok', kz_ledger:ledger()} | {'error', any()}.
 -type ledgers_result() :: {{'account' | 'reseller', kz_term:ne_binary()}, ledger_result()}.
 -type ledgers_results() :: [ledgers_result()].
 
@@ -38,6 +38,11 @@ create_ledgers(IM) ->
 -spec create_ledger(kapps_im:im(), kz_term:api_ne_binary()) -> ledger_result().
 create_ledger(IM, AccountId) ->
     Rate = kz_services_im:flat_rate(AccountId, kapps_im:type(IM), kapps_im:direction(IM)),
+    create_ledger(IM, AccountId, Rate).
+
+-spec create_ledger(kapps_im:im(), kz_term:api_ne_binary(), number()) -> ledger_result().
+create_ledger(IM, AccountId, Rate)
+  when Rate > 0 ->
     Setters =
         props:filter_empty(
           [{fun kz_ledger:set_account/2, AccountId}
@@ -52,7 +57,8 @@ create_ledger(IM, AccountId) ->
           ,{fun kz_ledger:set_dollar_amount/2, Rate}
           ]
          ),
-    kz_ledger:debit(kz_ledger:setters(Setters), AccountId).
+    kz_ledger:debit(kz_ledger:setters(Setters), AccountId);
+create_ledger(_IM, _AccountId, _Rate) -> 'ok'.
 
 -spec description(kapps_im:im()) -> kz_term:ne_binary().
 description(IM) ->

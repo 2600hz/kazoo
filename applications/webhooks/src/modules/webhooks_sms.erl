@@ -105,4 +105,5 @@ format_event(Payload, AccountId) ->
       ,{<<"to">>, kz_im:to(Payload)}
       ,{<<"body">>, kz_im:body(Payload)}
       ,{<<"origin">>, kz_im:route_type(Payload)}
+      ,{<<"charges">>, kz_im:charges(Payload)}
       ]).

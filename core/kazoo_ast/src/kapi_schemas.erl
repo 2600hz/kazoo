@@ -489,6 +489,12 @@ validator_properties({'kz_term', 'is_ne_list', 1}) ->
     kz_json:from_list([{<<"type">>, <<"array">>}
                       ,{<<"minItems">>, 1}
                       ]);
+validator_properties({'kz_term', 'is_ne_binary_or_binaries', 1}) ->
+    kz_json:from_list([{<<"type">>, [<<"string">>, <<"array">>]}
+                      ,{<<"items">>
+                       ,kz_json:from_list([{<<"type">>, <<"string">>}])
+                       }
+                      ]);
 validator_properties({'kapi_dialplan', 'b_leg_events_v', 1}) ->
     kz_json:from_list([{<<"type">>, <<"array">>}
                       ,{<<"items">>

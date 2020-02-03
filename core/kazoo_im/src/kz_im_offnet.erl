@@ -232,6 +232,7 @@ maybe_relay_request(JObj) ->
                ,fun reseller_has_im_enabled/1
                ,fun account_standing_is_acceptable/1
                ,fun reseller_standing_is_acceptable/1
+               ,fun set_rate/1
                ],
     case kz_maps:exec(Routines, Map) of
         #{account_id := AccountId, error := Error} ->
@@ -240,9 +241,12 @@ maybe_relay_request(JObj) ->
         #{error := Error} ->
             lager:warning("validation failed in external ~s request for number ~s : ~p", [kapps_im:type(IM), Number, Error]),
             'nack';
-        #{account_id := AccountId, request := Payload} ->
+        #{account_id := AccountId, request := Payload, rate := Rate} ->
             lager:info("accepted external ~s request ~s for account ~s", [kapps_im:type(IM), Number, AccountId]),
-            API = kz_json:set_value(<<"Account-ID">>, AccountId, Payload),
+            Values = [{<<"Account-ID">>, AccountId}
+                     ,{<<"Charges">>, Rate}
+                     ],
+            API = kz_json:set_values(Values, Payload),
             case kz_im_onnet:route(API) of
                 'ok' -> 'ack';
                 {'error', _Error} ->
@@ -349,6 +353,13 @@ reseller_standing_is_acceptable(#{reseller_id := ResellerId} = Map) ->
                                         )
     end;
 reseller_standing_is_acceptable(Map) -> Map.
+
+set_rate(#{account_id := AccountId
+          ,im := IM
+          } = Map) ->
+    Rate = kz_services_im:flat_rate(AccountId, kapps_im:type(IM), kapps_im:direction(IM)),
+    Map#{rate => Rate};
+set_rate(Map) -> Map.
 
 handle_confirm(#'basic.ack'{delivery_tag = Idx, multiple = 'true'}
               ,#state{confirms = #{pids := Pids} = Confirms} = State

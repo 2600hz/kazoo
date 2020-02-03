@@ -82,6 +82,9 @@
 
          %% skeleton notification
         ,skel/1, skel_v/1
+
+         %% number_feature_manual_action
+        ,number_feature_manual_action/1, number_feature_manual_action_v/1
         ]).
 
 -export([%% Account notifications
@@ -145,6 +148,9 @@
 
          %% skeleton notification
         ,publish_skel/1, publish_skel/2
+
+         %% number_feature_manual_action
+        ,publish_number_feature_manual_action/1, publish_number_feature_manual_action/2
         ]).
 
 -export_type([doc/0]).
@@ -1511,6 +1517,42 @@ cf_notification_definition() ->
     kapi_definition:setters(Setters).
 
 %%%=============================================================================
+%%% Phone Service Required Action Notifications Definitions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc Get Phone Service Required Action API definition.
+%% @end
+%%------------------------------------------------------------------------------
+-spec number_feature_manual_action_definition() -> kapi_definition:api().
+number_feature_manual_action_definition() ->
+    EventName = <<"number_feature_manual_action">>,
+    Category = <<"account">>,
+    Setters = [{fun kapi_definition:set_name/2, EventName}
+              ,{fun kapi_definition:set_friendly_name/2, <<"Number Feature Manual Action Required">>}
+              ,{fun kapi_definition:set_description/2
+               ,<<"This event is triggered when a number feature is activate/deactivated and a manual action is required">>
+               }
+              ,{fun kapi_definition:set_category/2, Category}
+              ,{fun kapi_definition:set_build_fun/2, fun number_feature_manual_action/1}
+              ,{fun kapi_definition:set_validate_fun/2, fun number_feature_manual_action_v/1}
+              ,{fun kapi_definition:set_publish_fun/2, fun publish_number_feature_manual_action/1}
+              ,{fun kapi_definition:set_binding/2, ?BINDING_STRING(Category, EventName)}
+              ,{fun kapi_definition:set_restrict_to/2, 'number_feature_manual_action_required'}
+              ,{fun kapi_definition:set_required_headers/2, [<<"Account-ID">>
+                                                            ,<<"Number">>
+                                                            ,<<"Feature">>
+                                                            ]}
+              ,{fun kapi_definition:set_optional_headers/2, ?DEFAULT_OPTIONAL_HEADERS}
+              ,{fun kapi_definition:set_values/2, ?NOTIFY_VALUES(EventName)}
+              ,{fun kapi_definition:set_types/2, [{<<"Account-ID">>, fun kz_term:is_ne_binary/1}
+                                                 ,{<<"Number">>, fun kz_term:is_ne_binary/1}
+                                                 ,{<<"Feature">>, fun kz_json:is_json_object/1}
+                                                 ]}
+              ],
+    kapi_definition:setters(Setters).
+
+%%%=============================================================================
 %%% API
 %%%=============================================================================
 
@@ -1558,6 +1600,7 @@ api_definitions() ->
     ,webhook_definition()
     ,webhook_disabled_definition()
     ,cf_notification_definition()
+    ,number_feature_manual_action_definition()
     ].
 
 %%------------------------------------------------------------------------------
@@ -1643,7 +1686,9 @@ api_definition(<<"webhook">>) ->
 api_definition(<<"webhook_disabled">>) ->
     webhook_disabled_definition();
 api_definition(<<"cf_notification">>) ->
-    cf_notification_definition().
+    cf_notification_definition();
+api_definition(<<"number_feature_manual_action">>) ->
+    number_feature_manual_action_definition().
 
 %%------------------------------------------------------------------------------
 %% @doc Bind to a queue to this API exchange and events.
@@ -2807,4 +2852,32 @@ publish_cf_notification(API, ContentType) ->
     Binding = kapi_definition:binding(Definition),
     Values = kapi_definition:values(Definition),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun cf_notification/1),
+    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+
+%%%=============================================================================
+%%% Phone Service Action Required Functions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
+%% @end
+%%------------------------------------------------------------------------------
+-spec number_feature_manual_action(kz_term:api_terms()) -> api_formatter_return().
+number_feature_manual_action(Prop) ->
+    build_message(Prop, number_feature_manual_action_definition()).
+
+-spec number_feature_manual_action_v(kz_term:api_terms()) -> boolean().
+number_feature_manual_action_v(Prop) ->
+    validate(Prop, number_feature_manual_action_definition()).
+
+-spec publish_number_feature_manual_action(kz_term:api_terms()) -> 'ok'.
+publish_number_feature_manual_action(JObj) ->
+    publish_number_feature_manual_action(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_number_feature_manual_action(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_number_feature_manual_action(API, ContentType) ->
+    Definition = number_feature_manual_action_definition(),
+    Binding = kapi_definition:binding(Definition),
+    Values = kapi_definition:values(Definition),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun number_feature_manual_action/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).

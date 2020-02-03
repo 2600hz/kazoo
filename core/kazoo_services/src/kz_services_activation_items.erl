@@ -52,11 +52,11 @@ calculate_total(ActivationItems) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec create(kz_service_items:items()) -> items().
+-spec create(kz_services_items:items()) -> items().
 create(Items) ->
-    lists:foldl(fun create_fold/2, empty(), Items).
+    kz_services_items:foldl(fun create_fold/2, empty(), Items).
 
--spec create_fold(kz_service_item:item(), items()) -> items().
+-spec create_fold(kz_services_item:item(), items()) -> items().
 create_fold(Item, Acc) ->
     case kz_services_activation_item:create(Item) of
         'undefined' -> Acc;

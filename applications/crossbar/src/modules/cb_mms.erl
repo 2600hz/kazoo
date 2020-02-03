@@ -113,11 +113,18 @@ validate_mms(Context, Id, ?HTTP_DELETE) ->
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     Payload = cb_context:doc(Context),
-    _ = case kz_im:route_type(Payload) of
-            <<"onnet">> -> kz_amqp_worker:cast(Payload, fun kapi_im:publish_inbound/1);
-            <<"offnet">> -> kz_amqp_worker:cast(Payload, fun kapi_im:publish_outbound/1)
-        end,
-    crossbar_util:response(kz_im:set_body(kz_api:remove_defaults(Payload), 'null'), Context).
+    Ctx = case kz_im:route_type(Payload) of
+              <<"onnet">> ->
+                  kz_amqp_worker:cast(Payload, fun kapi_im:publish_inbound/1),
+                  Context;
+              <<"offnet">> ->
+                  kz_amqp_worker:cast(Payload, fun kapi_im:publish_outbound/1),
+                  AccountId = cb_context:account_id(Context),
+                  Rate = kz_services_im:flat_rate(AccountId, 'mms', 'outbound'),
+                  Charges = kz_json:from_list([{<<"charges">>, Rate}]),
+                  cb_context:set_resp_envelope(Context, kz_json:merge(cb_context:resp_envelope(Context), Charges))
+          end,
+    crossbar_util:response(kz_json:normalize(kz_im:set_body(kz_api:remove_defaults(Payload), 'null')), Ctx).
 
 %%------------------------------------------------------------------------------
 %% @doc If the HTTP verb is DELETE, execute the actual action, usually a db delete
@@ -162,8 +169,10 @@ on_successful_validation(Context) ->
               ,fun body_is_mime_encoded/1
               ,fun body_from_files/1
               ,fun account_is_enabled/1
-              ,fun account_is_in_good_standing/1
               ,fun account_has_mms_enabled/1
+              ,fun account_is_in_good_standing/1
+              ,fun reseller_has_mms_enabled/1
+              ,fun reseller_is_in_good_standing/1
               ,fun create_request/1
               ,fun validate_from/1
               ],
@@ -312,6 +321,32 @@ account_has_mms_enabled(Context) ->
         'false' -> cb_context:add_system_error('account', <<"mms services not enabled for account">>, Context)
     end.
 
+-spec reseller_is_in_good_standing(cb_context:context()) -> cb_context:context().
+reseller_is_in_good_standing(Context) ->
+    case kz_services_standing:acceptable(cb_context:reseller_id(Context)) of
+        {'true', _} -> Context;
+        {'false', #{message := Msg}} ->
+            lager:warning("reseller ~s for account ~s is not in good standing => ~p"
+                         ,[cb_context:reseller_id(Context)
+                          ,cb_context:account_id(Context)
+                          ,Msg
+                          ]
+                         ),
+            cb_context:add_system_error('account', <<"service temporarily unavailable">>, Context)
+    end.
+
+-spec reseller_has_mms_enabled(cb_context:context()) -> cb_context:context().
+reseller_has_mms_enabled(Context) ->
+    case kz_services_im:is_sms_enabled(cb_context:reseller_id(Context)) of
+        'true' -> Context;
+        'false' ->
+            lager:warning("mms services not enabled for reseller ~s of account ~s"
+                         ,[cb_context:reseller_id(Context)
+                          ,cb_context:account_id(Context)
+                          ]
+                         ),
+            cb_context:add_system_error('account', <<"service temporarily unavailable">>, Context)
+    end.
 
 -spec validate_from(cb_context:context()) -> cb_context:context().
 validate_from(Context) ->

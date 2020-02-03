@@ -33,6 +33,8 @@ SOURCES = $(ITU) $(ISO3166) $(wildcard src/*.erl) $(wildcard src/*/*.erl)
 
 CLEAN_MOAR = clean-generated
 
+ERLC_OPTS += +'{lager_extra_sinks, [dev]}'
+
 all: compile
 
 compile:

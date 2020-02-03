@@ -22,6 +22,7 @@
 -export([route_type/1, route_type/2, set_route_type/2]).
 -export([message_id/1, message_id/2, set_message_id/2]).
 -export([exchange_id/1, exchange_id/2, set_exchange_id/2]).
+-export([charges/1, charges/2, set_charges/2]).
 
 -export([originator_properties/1
         ,set_originator_properties/2
@@ -217,3 +218,15 @@ subject(Payload, Default) ->
 -spec set_subject(payload(), kz_term:ne_binary()) -> payload().
 set_subject(Payload, Subject) ->
     kz_json:set_value(<<"Subject">>, Subject, Payload).
+
+-spec charges(payload()) -> kz_term:api_number().
+charges(Payload) ->
+    charges(Payload, 'undefined').
+
+-spec charges(payload(), Default) -> number() | Default.
+charges(Payload, Default) ->
+    kz_json:get_number_value(<<"Charges">>, Payload, Default).
+
+-spec set_charges(payload(), number()) -> payload().
+set_charges(Payload, Charges) ->
+    kz_json:set_value(<<"Charges">>, Charges, Payload).

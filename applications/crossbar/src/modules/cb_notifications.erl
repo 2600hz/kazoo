@@ -536,6 +536,11 @@ maybe_add_extra_data(<<"port_", _/binary>>, API) ->
     props:set_value(<<"Reason">>, kz_json:new(), API);
 maybe_add_extra_data(<<"ported">>, API) ->
     props:set_value(<<"Reason">>, kz_json:new(), API);
+maybe_add_extra_data(<<"number_feature_manual_action">>, API) ->
+    props:set_values([{<<"Number">>, <<"+15557770104">>}
+                     ,{<<"Feature">>, kz_json:new()}
+                     ]
+                    , API);
 maybe_add_extra_data(_Id, API) -> API.
 
 -spec publish_fun(kz_term:ne_binary()) -> fun((kz_term:api_terms()) -> 'ok').
@@ -609,6 +614,8 @@ publish_fun(<<"voicemail_to_email">>) ->
     fun kapi_notifications:publish_voicemail_new/1;
 publish_fun(<<"webhook_disabled">>) ->
     fun kapi_notifications:publish_webhook_disabled/1;
+publish_fun(<<"number_feature_manual_action">>) ->
+    fun kapi_notifications:publish_number_feature_manual_action/1;
 publish_fun(_Id) ->
     lager:debug("no kapi_notifications:publish_~s/1 defined", [_Id]),
     fun(_Any) -> 'ok' end.
@@ -740,9 +747,9 @@ maybe_read(Context, Id, _Acceptable, []) ->
     lager:debug("no accept headers, using json"),
     read(Context, Id).
 
--spec is_acceptable_accept(kz_term:proplist(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
+-spec is_acceptable_accept(cowboy_content_types(), kz_term:ne_binary(), kz_term:ne_binary()) -> boolean().
 is_acceptable_accept(Acceptable, Type, SubType) ->
-    lists:member({Type,SubType}, Acceptable).
+    api_util:content_type_matches({Type,SubType,'*'}, Acceptable).
 
 -type load_from() :: 'system' | 'account' | 'system_migrate'.
 

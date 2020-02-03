@@ -23,7 +23,7 @@ render_test_() ->
     ,fun setup/0
     ,fun cleanup/1
     ,fun(_ReturnOfSetup) ->
-             [?_assertEqual(36, length(?DEFAULT_MODULES))
+             [?_assertEqual(37, length(?DEFAULT_MODULES))
               %% ,test_rendering(teletype_account_zone_change)
              ,test_rendering(teletype_bill_reminder)
               %% ,test_rendering(teletype_cnam_request)
@@ -40,6 +40,7 @@ render_test_() ->
               %% ,test_rendering(teletype_missed_call)
              ,test_rendering(teletype_new_account)
              ,test_rendering(teletype_new_user)
+              %% ,test_rendering(teletype_number_feature_manual_action)
               %% ,test_rendering(teletype_password_recovery)
               %% ,test_rendering(teletype_port_cancel)
               %% ,test_rendering(teletype_port_comment)

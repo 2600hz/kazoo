@@ -28,6 +28,8 @@
                                ,<<"sip_uri">>
                                ,<<"smartphone">>
                                ,<<"softphone">>
+                               ,<<"ctu">>
+                               ,<<"application">>
                                ]
                               }
                              ,{<<"limits">>
@@ -74,6 +76,8 @@
                               ,[<<"cnam">>
                                ,<<"e911">>
                                ,<<"port">>
+                               ,<<"sms">>
+                               ,<<"mms">>
                                ]
                               }
                              ,{<<"port_request">>
