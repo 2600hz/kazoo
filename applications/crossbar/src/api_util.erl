@@ -25,6 +25,7 @@
         ,get_auth_token/2
         ,get_pretty_print/2
         ,get_content_type/1
+        ,get_query_string_data/1
         ,is_authentic/2, is_early_authentic/2
         ,is_permitted/2
         ,is_known_content_type/2
@@ -57,6 +58,7 @@
 
         ,encode_start_key/1, decode_start_key/1
         ,normalize_envelope_keys/1
+        ,set_request_data_in_context/4
 
         ,exec_req/2
         ,get_request_body/1

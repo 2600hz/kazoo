@@ -33,6 +33,14 @@ info({{_SenderPid, StreamId}, {'response', _HttpCode, #{<<"content-type">> := <<
     Response = kz_json:merge_recursive(DataJObj,HeadersJObj),
     Text = kz_json:encode(Response),
     {[{'text', Text}], State, 'hibernate'};
+info({{_SenderPid, StreamId}, {'response', _HttpCode, #{<<"content-type">> := _, <<"content-disposition">> := ContentDisposition} = RespHeaders, Data}}, State) ->
+    lager:info("converting binary responce using base64 and package to JSON for websocket request: ~s", [StreamId]),
+    [<<>>, Tail] = binary:split(ContentDisposition, <<"attachment; filename=\"">>),
+    [Filename, <<>>] = binary:split(Tail, <<"\"">>),
+    HeadersJObj = kz_json:insert_value(<<"filename">>, Filename, response_headers(RespHeaders)),
+    Response = kz_json:insert_value(<<"content">>, base64:encode(Data), HeadersJObj),
+    Text = kz_json:encode(Response),
+    {[{'text', Text}], State, 'hibernate'};
 info(Info, State) ->
     lager:info("unhandled websocket info: ~p", [Info]),
     {[], State, 'hibernate'}.
@@ -56,8 +64,22 @@ maybe_json(Data, State) ->
             %% We stop processing here. Responce we receive via websocket_info callback and then send to client
             {'stop', _ , _} = api_util:stop(Req, Context2),
             {[], State, 'hibernate'};
-        {'ok', _JObj} ->
-            {[{text, <<"{\"data\":\"responce\"}">>}], State, 'hibernate'}
+        {'ok', JObj} ->
+            Req0 = fake_req(JObj),
+            {Qs, _} = api_util:get_query_string_data(Req0),
+            Context0 = api_resource:context_init(Req0, []),
+            %% Crossbar GET requests not have body. To emulate this case we check ".data" object presense
+            {Context1, Req1} = api_util:set_request_data_in_context(Context0, Req0, crossbar_jobj(JObj), Qs),
+            {'cowboy_rest', Req2, Context2} = api_resource:rest_init(Req1, Context1, []),
+            _Rest = cowboy_rest:upgrade(Req2, #{}, 'api_resource', Context2),
+            {[], State, 'hibernate'}
+    end.
+
+-spec crossbar_jobj(kz_json:object()) -> kz_json:api_object().
+crossbar_jobj(JObj) ->
+    case kz_json:is_defined(<<"data">>, JObj) of
+        'true' -> JObj;
+        'false'-> 'undefined'
     end.
 
 -spec decode_json_body(kz_term:ne_binary()) -> {'ok', kz_json:object()} | {'error', kz_term:ne_binary()}.
@@ -128,10 +150,10 @@ get_request_id(JObj) ->
 
 -spec response_headers(map()) -> kz_term:object().
 response_headers(#{<<"access-control-expose-headers">> := KeysBinary} = Headers) ->
-    Keys = binary:split(KeysBinary, <<",">>),
-    response_headers(Keys, Headers, []);
-response_headers(_) ->
-    kz_json:new().
+    Keys = lists:sort(binary:split(KeysBinary, <<",">>)),
+    response_headers(lists:merge(Keys, well_know_resp_headers()), Headers, []);
+response_headers(#{} = Headers) ->
+    response_headers(well_know_resp_headers(), Headers, []).
 
 -spec response_headers(kz_term:ne_binaries(), map(), kz_term:proplist()) -> kz_term:object().
 response_headers([Key|Rest], #{} = Headers, Acc) ->
@@ -144,3 +166,10 @@ response_headers([Key|Rest], #{} = Headers, Acc) ->
     end;
 response_headers([], #{}, Acc) ->
     kz_json:from_list(Acc).
+
+-spec well_know_resp_headers() -> kz_term:ne_binaries().
+well_know_resp_headers() ->
+    lists:sort([<<"content-language">>
+               ,<<"content-length">>
+               ,<<"content-type">>
+               ]).

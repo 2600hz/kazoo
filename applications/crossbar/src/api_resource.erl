@@ -14,7 +14,7 @@
 -module(api_resource).
 -behaviour(cowboy_rest).
 
--export([init/2
+-export([init/2,rest_init/3
         ,context_init/2
         ,service_available/2
         ,terminate/3
