@@ -202,7 +202,7 @@ prepare_publish(JObj) ->
 
 -spec maybe_tombstone(kz_json:object()) -> kz_json:object().
 maybe_tombstone(JObj) ->
-    maybe_tombstone(JObj, kz_json:is_true(<<"_deleted">>, JObj, 'false')).
+    maybe_tombstone(JObj, kz_doc:is_deleted(JObj)).
 
 -spec maybe_tombstone(kz_json:object(), boolean()) -> kz_json:object().
 maybe_tombstone(JObj, 'true') ->
