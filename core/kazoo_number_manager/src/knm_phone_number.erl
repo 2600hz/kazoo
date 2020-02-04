@@ -193,8 +193,11 @@ fetch(T0=#{todo := Nums, options := Options}) ->
     Pairs = group_by_db(lists:usort(knm_converters:normalize(Nums))),
     F = fun (NumberDb, NormalizedNums, T) ->
                 case fetch_in(NumberDb, NormalizedNums, Options) of
+                    {'error', 'not_found'=R} ->
+                        ?LOG_INFO("bulk read failed to find nums ~s", [kz_binary:join(NormalizedNums)]),
+                        knm_numbers:ko(NormalizedNums, R, T);
                     {'error', R} ->
-                        lager:error("bulk read failed (~p): ~p", [R, NormalizedNums]),
+                        ?LOG_WARNING("bulk read failed (~p): ~p", [R, NormalizedNums]),
                         knm_numbers:ko(NormalizedNums, R, T);
                     {'ok', JObjs} when is_list(JObjs) -> bulk_fetch(T, JObjs);
                     {'ok', JObj} -> do_handle_fetch(T, JObj)
@@ -231,7 +234,7 @@ bulk_fetch_fold(JObj, T) ->
     case kz_json:get_ne_json_value(<<"doc">>, JObj) of
         'undefined' ->
             R = kz_json:get_ne_value(<<"error">>, JObj),
-            lager:warning("failed reading ~s: ~p", [Num, R]),
+            ?LOG_WARNING("failed reading ~s: ~p", [Num, R]),
             knm_numbers:ko(Num, kz_term:to_atom(R, 'true'), T);
         Doc ->
             do_handle_fetch(T, Doc)
@@ -243,12 +246,12 @@ bulk_change_fold(JObj, T, Db, PNsMap, ErrorF) ->
         orelse kz_doc:revision(JObj) =/= 'undefined'
     of
         'true' ->
-            lager:debug("successfully changed ~s in ~s", [Num, Db]),
+            ?LOG_DEBUG("successfully changed ~s in ~s", [Num, Db]),
             knm_numbers:ok(maps:get(Num, PNsMap), T);
         'false' ->
             %% Weirdest thing here is on conflict doc was actually properly saved!
             R = kz_json:get_ne_value(<<"error">>, JObj),
-            lager:warning("error changing ~s in ~s: ~s", [Num, Db, kz_json:encode(JObj)]),
+            ?LOG_WARNING("error changing ~s in ~s: ~s", [Num, Db, kz_json:encode(JObj)]),
             ErrorF(Num, kz_term:to_atom(R, 'true'), T)
     end.
 
@@ -283,7 +286,7 @@ retry_conflicts(T0, Db, PNsMap, SaveType, ErrorF) ->
     lists:foldl(F, BaseT, Conflicts).
 
 retry_conflicts_fold(Num, T, Db, PNsMap, 'save', ErrorF) ->
-    lager:error("~s conflicted, retrying", [Num]),
+    ?LOG_ERROR("~s conflicted, retrying", [Num]),
     PN = maps:get(Num, PNsMap),
     PNJObj = to_json(PN),
     case kz_datamgr:ensure_saved(Db, PNJObj) of
@@ -291,7 +294,7 @@ retry_conflicts_fold(Num, T, Db, PNsMap, 'save', ErrorF) ->
         {'error', R} -> ErrorF(Num, R, T)
     end;
 retry_conflicts_fold(Num, T, Db, PNsMap, 'delete', ErrorF) ->
-    lager:error("~s conflicted, deleting from ~s again", [Num, Db]),
+    ?LOG_ERROR("~s conflicted, deleting from ~s again", [Num, Db]),
     case kz_datamgr:del_doc(Db, Num) of
         {'ok', _Deleted} -> knm_numbers:ok(maps:get(Num, PNsMap), T);
         {'error', R} -> ErrorF(Num, R, T)
@@ -335,7 +338,7 @@ group_by_number_db_fold(PN, M) ->
 split_by_assignedto(PNs) ->
     lists:foldl(fun split_by_assignedto_fold/2, #{}, PNs).
 
--spec split_by_assignedto_fold(knm_phone_number(),#{kz_term:api_ne_binary() => [knm_phone_number()]}) ->
+-spec split_by_assignedto_fold(knm_phone_number(), #{kz_term:api_ne_binary() => [knm_phone_number()]}) ->
           #{kz_term:api_ne_binary() => [knm_phone_number()]}.
 split_by_assignedto_fold(#knm_phone_number{}=PN, MapAcc) ->
     split_by_assignedto_fold(PN, MapAcc, assigned_to(PN)).
@@ -344,11 +347,11 @@ split_by_assignedto_fold(PN, MapAcc, 'undefined') ->
     MapAcc#{'undefined' => [PN | maps:get('undefined', MapAcc, [])]};
 split_by_assignedto_fold(PN, MapAcc, AssignedTo) ->
     AccountDb = kz_util:format_account_db(AssignedTo),
-    case kz_datamgr:db_exists(AccountDb) of
-        'true' ->
-            MapAcc#{AccountDb => [PN | maps:get(AccountDb, MapAcc, [])]};
-        'false' ->
-            MapAcc#{'undefined' => [PN | maps:get('undefined', MapAcc, [])]}
+    case existing_db_key(AccountDb) of
+        'undefined' ->
+            MapAcc#{'undefined' => [PN | maps:get('undefined', MapAcc, [])]};
+        AccountDb ->
+            MapAcc#{AccountDb => [PN | maps:get(AccountDb, MapAcc, [])]}
     end.
 
 split_by_prevassignedto(PNs) ->
@@ -358,12 +361,12 @@ split_by_prev_assigned_to_fold(PN, M) ->
     split_by_prev_assigned_to_fold(PN, M, prev_assigned_to(PN), assigned_to(PN)).
 
 split_by_prev_assigned_to_fold(PN, M, 'undefined', 'undefined') ->
-    lager:debug("prev_assigned_to is empty for ~s, ignoring", [number(PN)]),
+    ?LOG_DEBUG("prev_assigned_to is empty for ~s, ignoring", [number(PN)]),
     M#{'undefined' => [PN | maps:get('undefined', M, [])]};
 split_by_prev_assigned_to_fold(PN, M, PrevAssignedTo, PrevAssignedTo) ->
-    lager:debug("~s prev_assigned_to is same as assigned_to,"
-                " not unassign-ing from prev", [number(PN)]
-               ),
+    ?LOG_DEBUG("~s prev_assigned_to is same as assigned_to,"
+               " not unassign-ing from prev", [number(PN)]
+              ),
     M#{'undefined' => [PN | maps:get('undefined', M, [])]};
 split_by_prev_assigned_to_fold(PN, M, PrevAssignedTo, _AssignedTo) ->
     Key = existing_db_key(kz_util:format_account_db(PrevAssignedTo)),
@@ -481,7 +484,7 @@ handle_fetch(JObj, Options) ->
     end.
 
 is_mdn_for_mdn_run(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}, _) ->
-    lager:debug("mdn check disabled by auth_by"),
+    ?LOG_DEBUG("mdn check disabled by auth_by"),
     'true';
 is_mdn_for_mdn_run(PN, IsMDNRun) ->
     IsMDN = ?CARRIER_MDN =:= module_name(PN),
@@ -523,7 +526,7 @@ save(T0) ->
 take_not_to_save(T0=#{todo := PNs, options := Options}) ->
     case knm_number_options:dry_run(Options) of
         'true' ->
-            lager:debug("dry_run-ing btw"),
+            ?LOG_DEBUG("dry_run-ing btw"),
             T = T0#{todo => [], ok => []},
             {T, PNs};
         'false' ->
@@ -543,9 +546,9 @@ take_not_to_save_fold(PN, {T, NotToSave}) ->
     end.
 
 log_why_not_to_save(true, _Num) ->
-    lager:debug("not dirty, skip saving ~s", [_Num]);
+    ?LOG_DEBUG("not dirty, skip saving ~s", [_Num]);
 log_why_not_to_save(false, _Num) ->
-    lager:debug("deleted, skip saving ~s", [_Num]).
+    ?LOG_DEBUG("deleted, skip saving ~s", [_Num]).
 
 %%------------------------------------------------------------------------------
 %% @doc To call only from knm_numbers:delete/2 (only for sysadmins).
@@ -555,7 +558,7 @@ log_why_not_to_save(false, _Num) ->
 delete(T=#{todo := PNs, options := Options}) ->
     case knm_number_options:dry_run(Options) of
         'true' ->
-            lager:debug("dry_run-ing btw, not deleting anything"),
+            ?LOG_DEBUG("dry_run-ing btw, not deleting anything"),
             knm_numbers:ok(PNs, T);
         'false' ->
             knm_numbers:pipe(T, [fun log_permanent_deletion/1
@@ -1009,10 +1012,10 @@ used_by(#knm_phone_number{used_by=UsedBy}) -> UsedBy.
 -spec set_used_by(knm_phone_number(), kz_term:api_ne_binary()) -> knm_phone_number().
 set_used_by(PN=#knm_phone_number{used_by = V}, V) -> PN;
 set_used_by(PN, UsedBy='undefined') ->
-    lager:debug("unassigning ~s from ~s", [number(PN), PN#knm_phone_number.used_by]),
+    ?LOG_DEBUG("unassigning ~s from ~s", [number(PN), PN#knm_phone_number.used_by]),
     ?DIRTY(PN#knm_phone_number{used_by = UsedBy});
 set_used_by(PN, UsedBy=?NE_BINARY) ->
-    lager:debug("assigning ~s to ~s from ~s", [number(PN), UsedBy, PN#knm_phone_number.used_by]),
+    ?LOG_DEBUG("assigning ~s to ~s from ~s", [number(PN), UsedBy, PN#knm_phone_number.used_by]),
     ?DIRTY(PN#knm_phone_number{used_by = UsedBy}).
 
 %%------------------------------------------------------------------------------
@@ -1053,7 +1056,7 @@ set_feature(PN0, Feature=?NE_BINARY, Data) ->
                end,
     PN = set_features(PN0, kz_json:set_value(Feature, Data, Features)),
     PN#knm_phone_number.is_dirty
-        andalso lager:debug("setting ~s feature ~s: ~s", [number(PN), Feature, kz_json:encode(Data)]),
+        andalso ?LOG_DEBUG("setting ~s feature ~s: ~s", [number(PN), Feature, kz_json:encode(Data)]),
     PN.
 
 -spec reset_features(knm_phone_number()) -> knm_phone_number().
@@ -1137,7 +1140,7 @@ set_state(PN=#knm_phone_number{state = 'undefined'}, State) ->
     PN#knm_phone_number{state = State};
 set_state(PN, State) ->
     'true' = is_state(State),
-    lager:debug("updating state from ~s to ~s", [PN#knm_phone_number.state, State]),
+    ?LOG_DEBUG("updating state from ~s to ~s", [PN#knm_phone_number.state, State]),
     ?DIRTY(PN#knm_phone_number{state = State}).
 
 -spec is_state(any()) -> boolean().
@@ -1232,7 +1235,7 @@ set_ported_in(PN=#knm_phone_number{ported_in = 'undefined'}, Ported)
   when is_boolean(Ported) ->
     PN#knm_phone_number{ported_in = Ported};
 set_ported_in(PN, Ported) when is_boolean(Ported) ->
-    lager:debug("updating ported_in from ~s to ~s", [PN#knm_phone_number.ported_in, Ported]),
+    ?LOG_DEBUG("updating ported_in from ~s to ~s", [PN#knm_phone_number.ported_in, Ported]),
     ?DIRTY(PN#knm_phone_number{ported_in = Ported}).
 
 %%------------------------------------------------------------------------------
@@ -1275,7 +1278,7 @@ set_module_name(PN0=#knm_phone_number{module_name = 'undefined', features = Feat
     set_features(PN, NewFeatures);
 
 set_module_name(PN0, Name=?NE_BINARY) ->
-    lager:debug("updating module_name from ~p to ~p", [PN0#knm_phone_number.module_name, Name]),
+    ?LOG_DEBUG("updating module_name from ~p to ~p", [PN0#knm_phone_number.module_name, Name]),
     PN = ?DIRTY(PN0#knm_phone_number{module_name = Name}),
     Features = kz_json:delete_key(?FEATURE_LOCAL, features(PN)),
     set_features(PN, Features).
@@ -1285,7 +1288,7 @@ set_module_name_local(PN0=#knm_phone_number{module_name = 'undefined'}, Name) ->
     PN = set_feature(PN0, ?FEATURE_LOCAL, local_feature(PN0)),
     PN#knm_phone_number{module_name = Name};
 set_module_name_local(PN0, Name) ->
-    lager:debug("updating module_name from ~p to ~p", [PN0#knm_phone_number.module_name, Name]),
+    ?LOG_DEBUG("updating module_name from ~p to ~p", [PN0#knm_phone_number.module_name, Name]),
     PN = set_feature(PN0, ?FEATURE_LOCAL, local_feature(PN0)),
     ?DIRTY(PN#knm_phone_number{module_name = Name}).
 
@@ -1338,10 +1341,10 @@ set_region(PN=#knm_phone_number{region = V}, V) -> PN;
 set_region(PN=#knm_phone_number{region = 'undefined'}, Region=?NE_BINARY) ->
     PN#knm_phone_number{region = Region};
 set_region(PN, Region='undefined') ->
-    lager:debug("updating region from ~s to ~s", [PN#knm_phone_number.region, Region]),
+    ?LOG_DEBUG("updating region from ~s to ~s", [PN#knm_phone_number.region, Region]),
     ?DIRTY(PN#knm_phone_number{region = Region});
 set_region(PN, Region=?NE_BINARY) ->
-    lager:debug("updating region from ~s to ~s", [PN#knm_phone_number.region, Region]),
+    ?LOG_DEBUG("updating region from ~s to ~s", [PN#knm_phone_number.region, Region]),
     ?DIRTY(PN#knm_phone_number{region = Region}).
 
 %%------------------------------------------------------------------------------
@@ -1372,7 +1375,7 @@ is_admin(_) -> 'false'.
 -else.
 is_admin(#knm_phone_number{auth_by=AuthBy}) -> is_admin(AuthBy);
 is_admin(?KNM_DEFAULT_AUTH_BY) ->
-    lager:info("bypassing auth"),
+    ?LOG_INFO("bypassing auth"),
     'true';
 is_admin(AuthBy) ->
     kzd_accounts:is_superduper_admin(AuthBy).
@@ -1546,9 +1549,11 @@ remove_denied_features(PN) ->
     RemoveFromPvt = lists:usort(lists:flatmap(fun remove_in_private/1, DeniedFeatures)),
     RemoveFromPub = lists:usort(lists:flatmap(fun remove_in_public/1, DeniedFeatures)),
     ?LOG_WARNING("removing out of sync pvt features: ~s"
-             ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPvt]))]),
+                ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPvt]))]
+                ),
     ?LOG_WARNING("removing out of sync pub features: ~s"
-             ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPub]))]),
+                ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPub]))]
+                ),
     NewPvt = kz_json:prune_keys(RemoveFromPvt, features(PN)),
     NewPub = kz_json:prune_keys(RemoveFromPub, doc(PN)),
     Updates = [{fun set_features/2, NewPvt}
@@ -1642,7 +1647,7 @@ is_authorized(#knm_phone_number{assigned_to = 'undefined'
                                ,assign_to = 'undefined'
                                ,auth_by = AuthBy
                                }) ->
-    lager:debug("assigns all 'undefined', checking if auth is super duper"),
+    ?LOG_DEBUG("assigns all 'undefined', checking if auth is super duper"),
     is_admin(AuthBy);
 is_authorized(#knm_phone_number{assigned_to = 'undefined'
                                ,assign_to = AssignTo
@@ -1775,10 +1780,10 @@ try_delete_from(SplitBy, T0, IgnoreDbNotFound) ->
                     {'ok', JObjs} ->
                         handle_bulk_change(Db, JObjs, PNs, TAcc, 'delete');
                     {'error', 'not_found'} when IgnoreDbNotFound ->
-                        lager:debug("db ~s does not exist, ignoring", [Db]),
+                        ?LOG_DEBUG("db ~s does not exist, ignoring", [Db]),
                         knm_numbers:add_oks(PNs, TAcc);
                     {'error', E} ->
-                        lager:error("failed to delete from ~s (~p): ~p", [Db, E, Nums]),
+                        ?LOG_ERROR("failed to delete from ~s (~p): ~p", [Db, E, Nums]),
                         database_error(Nums, E, TAcc)
                 end
         end,
@@ -1799,13 +1804,13 @@ save_to(SplitBy, ErrorF, T0) ->
                         handle_bulk_change(Db, JObjs, PNs, T, 'save', ErrorF);
                     {'error', 'not_found'} when IsNumberDb ->
                         Nums = [kz_doc:id(Doc) || Doc <- Docs],
-                        lager:debug("creating new number db '~s' for numbers ~p", [Db, Nums]),
+                        ?LOG_DEBUG("creating new number db '~s' for numbers ~p", [Db, Nums]),
                         'true' = kz_datamgr:db_create(Db),
                         _ = kapps_maintenance:refresh(Db),
                         FF(Db, PNs, T);
                     {'error', E} ->
                         Nums = [kz_doc:id(Doc) || Doc <- Docs],
-                        lager:error("failed to assign numbers to ~s (~p): ~p", [Db, E, Nums]),
+                        ?LOG_ERROR("failed to assign numbers to ~s (~p): ~p", [Db, E, Nums]),
                         database_error(Nums, E, T)
                 end
         end,
