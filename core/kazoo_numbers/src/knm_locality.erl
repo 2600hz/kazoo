@@ -24,7 +24,7 @@
 fetch(Numbers) when is_list(Numbers)->
     case knm_config:locality_url() of
         'undefined' ->
-            lager:error("could not get number locality url"),
+            ?LOG_WARNING("could not get number locality url"),
             {'error', 'missing_url'};
         Url ->
             Resp = fetch_req(Numbers, Url),
