@@ -859,6 +859,8 @@ prefix_filter_key(<<"key_missing">>, Key) ->
     {<<"key_missing">>, <<"metadata.", Key/binary>>};
 prefix_filter_key(<<"has_value">>, Key) ->
     {<<"has_value">>, <<"metadata.", Key/binary>>};
+prefix_filter_key(<<"value_missing">>, Key) ->
+    {<<"value_missing">>, <<"metadata.", Key/binary>>};
 prefix_filter_key(Key, Value) ->
     {Key, Value}.
 
