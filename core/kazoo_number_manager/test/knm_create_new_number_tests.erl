@@ -18,8 +18,10 @@ create_new_number_test_() ->
              }
             ],
     {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
+
     JObj = knm_number:to_public_json(N),
     PN = knm_number:phone_number(N),
+
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
@@ -40,10 +42,10 @@ create_new_number_test_() ->
      ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN))
      }
     ,{"Verify getting created field returns a number"
-     ,?_assertEqual(true, is_integer(knm_phone_number:created(PN)))
+     ,?_assert(is_integer(knm_phone_number:created(PN)))
      }
     ,{"Verify the created field is stored as a number"
-     ,?_assertEqual(true, is_integer(kz_json:get_value([<<"_read_only">>, <<"created">>], JObj)))
+     ,?_assert(is_integer(kz_json:get_value([<<"_read_only">>, <<"created">>], JObj)))
      }
     ].
 
