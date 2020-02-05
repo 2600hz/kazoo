@@ -201,7 +201,7 @@ fetch(T0=#{'todo' := Nums, 'options' := Options}) ->
     F = fun (NumberDb, NormalizedNums, T) ->
                 case fetch_in(NumberDb, NormalizedNums, Options) of
                     {'error', 'not_found'=R} ->
-                        ?LOG_INFO("bulk read failed to find numbers ~s", [kz_binary:join(NormalizedNums)]),
+                        ?LOG_INFO("bulk read failed to find numbers in ~s ~s", [NumberDb, kz_binary:join(NormalizedNums)]),
                         knm_pipe:set_failed(T, NormalizedNums, R);
                     {'error', R} ->
                         ?LOG_WARNING("bulk read failed (~p): ~p", [R, NormalizedNums]),
@@ -397,6 +397,7 @@ to_public_json(PN) ->
                      <<"knm_", Carrier/binary>> -> Carrier;
                      _ -> 'undefined'
                  end,
+
     ReadOnly =
         kz_json:from_list(
           props:filter_empty(
@@ -407,6 +408,7 @@ to_public_json(PN) ->
             ,Features
             ,{<<"features_available">>, knm_providers:available_features(PN)}
             ,{<<"carrier_module">>, ModuleName}
+            ,{<<"is_deleted">>, is_deleted(PN)}
             ])
          ),
     Values = props:filter_empty(
@@ -1285,6 +1287,16 @@ doc_from_public_fields(JObj) ->
     maybe_rename_public_features(
       sanitize_public_fields(JObj)).
 
+%% @doc only return 'true' if deleted, otherwise 'undefined', for filtering
+-spec is_deleted(record()) -> 'true' | 'undefined'.
+is_deleted(#knm_phone_number{doc=JObj}) ->
+    case kz_doc:is_deleted(JObj)
+        orelse kz_doc:is_soft_deleted(JObj)
+    of
+        'true' -> 'true';
+        'false' -> 'undefined'
+    end.
+
 %%------------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -1634,8 +1646,9 @@ handle_bulk_change(Db, JObjs, PNs, T, ErrorF, RetryF) ->
 
 handle_bulk_change_fold(JObj, T, Db, PNsMap, ErrorF) ->
     Num = kz_json:get_ne_value(<<"id">>, JObj),
+    Revision = kz_doc:revision(JObj),
     case kz_json:get_ne_value(<<"ok">>, JObj) =:= 'true'
-        orelse kz_doc:revision(JObj) =/= 'undefined'
+        orelse Revision =/= 'undefined'
     of
         'true' ->
             ?LOG_DEBUG("successfully changed ~s in ~s", [Num, Db]),
