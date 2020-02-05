@@ -105,6 +105,9 @@ maybe_consume_flat_rate(Services, Amount) ->
 %%% @end
 %%%-----------------------------------------------------------------------------
 -spec maybe_debit(asr_req()) -> asr_req().
+maybe_debit(#asr_req{amount=0}=Request) ->
+    lager:debug("billable rate is 0 skipping ledger entry"),
+    Request;
 maybe_debit(#asr_req{account_authorized='true', impact_reseller='false'}=Request) ->
     lager:debug("impact reseller is false"),
     create_ledger_entry(Request);
