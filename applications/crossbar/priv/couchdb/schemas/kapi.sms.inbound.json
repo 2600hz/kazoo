@@ -21,6 +21,9 @@
         "Caller-ID-Number": {
             "type": "string"
         },
+        "Charges": {
+            "type": "string"
+        },
         "Contact": {
             "type": "string"
         },

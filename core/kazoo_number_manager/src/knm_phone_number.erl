@@ -53,6 +53,23 @@
 -export([is_state/1]).
 -export([list_attachments/2]).
 
+-export([on_success/1
+        ,add_on_success/2
+        ,reset_on_success/1
+        ]).
+
+-type callback_fun_1() :: fun((knm_phone_number()) -> any()).
+-type callback_fun_2() :: fun((knm_phone_number(), any()) -> any()).
+-type callback_fun_3() :: fun((knm_phone_number(), any(), any()) -> any()).
+-type callback_fun_4() :: fun((knm_phone_number(), any(), any(), any()) -> any()).
+-type callback_fun() :: callback_fun_1() | callback_fun_2() | callback_fun_3() | callback_fun_4().
+-type callback() :: {callback_fun() , list()}.
+-type callbacks() :: [callback()].
+
+-export_type([callback/0
+             ,callbacks/0
+             ]).
+
 -ifdef(TEST).
 -export([set_is_dirty/2]).
 -endif.
@@ -99,6 +116,7 @@
                           ,is_dirty = 'false' :: boolean()
                           ,features_allowed :: kz_term:api_ne_binaries() %%%
                           ,features_denied :: kz_term:api_ne_binaries()  %%%
+                          ,on_success = [] :: callbacks()
                           }).
 -type knm_phone_number() :: #knm_phone_number{}.
 
@@ -113,7 +131,7 @@
 -ifdef(FUNCTION_NAME).
 -define(DIRTY(PN),
         begin
-            ?LOG_DEBUG("dirty ~s ~s/~p", [number(PN), ?FUNCTION_NAME, ?FUNCTION_ARITY]),
+            ?LOG_DEV("dirty ~s ~s/~p", [number(PN), ?FUNCTION_NAME, ?FUNCTION_ARITY]),
             (PN)#knm_phone_number{is_dirty = 'true'
                                  ,modified = kz_time:now_s()
                                  }
@@ -121,7 +139,7 @@
 -else.
 -define(DIRTY(PN),
         begin
-            ?LOG_DEBUG("dirty ~s", [number(PN)]),
+            ?LOG_DEV("dirty ~s", [number(PN)]),
             (PN)#knm_phone_number{is_dirty = 'true'
                                  ,modified = kz_time:now_s()
                                  }
@@ -499,11 +517,10 @@ xnor(true, 'true') -> 'true'.
 
 is_mdn_for_mdn_run(T0=#{todo := PNs, options := Options}) ->
     IsMDNRun = knm_number_options:mdn_run(Options),
-    Reason = error_unauthorized(),
     F = fun (PN, T) ->
                 case is_mdn_for_mdn_run(PN, IsMDNRun) of
                     'true' -> knm_numbers:ok(PN, T);
-                    'false' -> knm_numbers:ko(number(PN), Reason, T)
+                    'false' -> knm_numbers:ko(number(PN), error_unauthorized(), T)
                 end
         end,
     lists:foldl(F, T0, PNs).
@@ -593,15 +610,17 @@ to_public_json(PN) ->
                      <<"knm_", Carrier/binary>> -> Carrier;
                      _ -> 'undefined'
                  end,
+    Available = knm_providers:available_features(PN),
+    Settings = knm_providers:settings(PN, Available),
+    ReadOnlyFeatures = [{<<"available">>, Available}
+                       ,{<<"settings">>, Settings}
+                       ],
     ReadOnly =
         kz_json:from_list(
           props:filter_empty(
             [{<<"created">>, kz_doc:created(JObj)}
             ,{<<"modified">>, kz_doc:modified(JObj)}
-            ,State
-            ,UsedBy
-            ,Features
-            ,{<<"features_available">>, knm_providers:available_features(PN)}
+            ,{<<"features">>, kz_json:from_list(ReadOnlyFeatures)}
             ,{<<"carrier_module">>, ModuleName}
             ])
          ),
@@ -1178,7 +1197,7 @@ set_reserve_history(PN0=#knm_phone_number{reserve_history = 'undefined'}, Histor
         %% Since add_reserve_history/2 is exported, it has to dirty things itself.
         %% Us reverting here is the only way to work around that.
         'true' ->
-            ?LOG_DEBUG("undirty ~s", [number(PN2)]),
+            ?LOG_DEV("undirty ~s", [number(PN2)]),
             PN2#knm_phone_number{is_dirty = 'false'
                                 ,modified = PN0#knm_phone_number.modified
                                 }
@@ -1604,7 +1623,8 @@ private_to_public() ->
      ,?FEATURE_FAILOVER => FailoverPub
      ,?FEATURE_RINGBACK => RingbackPub
      ,?FEATURE_FORCE_OUTBOUND => [[?FEATURE_FORCE_OUTBOUND]]
-     ,?FEATURE_IM => [[?FEATURE_IM]]
+     ,?FEATURE_SMS => [[?FEATURE_SMS]]
+     ,?FEATURE_MMS => [[?FEATURE_MMS]]
      }.
 
 %%------------------------------------------------------------------------------
@@ -1873,3 +1893,14 @@ prepare_docs(Db, [Doc|Docs], Updated) ->
             prepare_docs(Db, Docs, [kz_doc:delete_revision(Doc)|Updated])
     end.
 -endif.
+
+-spec on_success(knm_phone_number()) -> callbacks().
+on_success(#knm_phone_number{on_success = CB}) -> CB.
+
+-spec add_on_success(knm_phone_number(), callback()) -> knm_phone_number().
+add_on_success(PN = #knm_phone_number{on_success = CB}, Callback) ->
+    PN#knm_phone_number{on_success = [Callback | CB]}.
+
+-spec reset_on_success(knm_phone_number()) -> knm_phone_number().
+reset_on_success(PN = #knm_phone_number{}) ->
+    PN#knm_phone_number{on_success = []}.

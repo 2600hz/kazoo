@@ -18,6 +18,7 @@
                 "    if (o.hasOwnProperty(p))",
                 "      features.push(p);",
                 "  emit(doc._id, {",
+                "    pvt_module_name: doc.pvt_module_name,",
                 "    state: doc.pvt_state,",
                 "    features: features,",
                 "    features_allowed: doc.pvt_features_allowed || [],",

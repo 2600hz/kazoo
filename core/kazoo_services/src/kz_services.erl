@@ -104,19 +104,19 @@
 -define(DONT_CASCADE_MASTER, kapps_config:get_is_false(?CONFIG_CAT, <<"cascade_commits_to_master_account">>, 'true')).
 
 -record(kz_services, {account_id :: kz_term:api_ne_binary()
-                     ,account_quantities = 'undefined' :: kz_json:api_object()
+                     ,account_quantities = 'undefined' :: kz_term:api_object()
                      ,account_updates = kz_json:new() :: kz_json:object()
                      ,account_current_billables = [] :: kz_services_quantities:billables()
                      ,account_proposed_billables = [] :: kz_services_quantities:billables()
                      ,audit_log = kz_json:new() :: kz_json:object()
-                     ,cascade_quantities = 'undefined' :: kz_json:api_object()
+                     ,cascade_quantities = 'undefined' :: kz_term:api_object()
                      ,cascade_updates = kz_json:new() :: kz_json:object()
                      ,cascade_current_billables = [] :: kz_json:objects()
                      ,cascade_proposed_billables = [] :: kz_json:objects()
                      ,current_services_jobj = kzd_services:new() :: kzd_services:doc()
                      ,dirty = 'false' :: boolean()
                      ,invoices = 'undefined' :: 'undefined' | kz_services_invoices:invoices()
-                     ,manual_quantities = 'undefined' :: kz_json:api_object()
+                     ,manual_quantities = 'undefined' :: kz_term:api_object()
                      ,manual_updates = kz_json:new() :: kz_json:object()
                      ,plans = 'undefined' ::  'undefined' | kz_services_plans:plans()
                      ,services_jobj = kzd_services:new() :: kzd_services:doc()
@@ -885,9 +885,9 @@ handle_fetched_doc(AccountId, Options, {'error', 'not_found'}) ->
 choose_open_doc_fun(Options, AccountId) ->
     case props:is_true('skip_cache', Options, 'false') of
         'false' ->
-            lager:debug("fetching services doc ~s (with cache)"
-                       ,[AccountId]
-                       ),
+            ?LOG_DEV("fetching services doc ~s (with cache)"
+                    ,[AccountId]
+                    ),
             fun kz_datamgr:open_cache_doc/2;
         'true' ->
             lager:debug("fetching services doc ~s (without cache)"
@@ -896,13 +896,13 @@ choose_open_doc_fun(Options, AccountId) ->
             fun kz_datamgr:open_doc/2
     end.
 
--spec create(kz_term:ne_binary()) -> kz_json:api_object().
+-spec create(kz_term:ne_binary()) -> kz_term:api_object().
 create(AccountId) ->
     lager:debug("trying to create new services doc for ~s", [AccountId]),
     create(AccountId, kzd_accounts:fetch(AccountId)).
 
 -spec create(kz_term:ne_binary(), {'error', 'not_found'} | {'ok', kzd_accounts:doc()}) ->
-                    kz_json:api_object().
+                    kz_term:api_object().
 create(_AccountId, {'error', 'not_found'}) ->
     lager:info("failed to find account database for ~s", [_AccountId]),
     'undefined';
@@ -957,11 +957,8 @@ commit_updates(Account, Current, Proposed) ->
 -spec commit_updates(kz_term:ne_binary(), billable_updates(), billable_updates(), kz_json:object()) ->
           services().
 commit_updates(Account, Current, Proposed, AuditLog) ->
-    AccountId = kz_util:format_account_id(Account),
-    FetchOptions = [{'updates', AccountId, to_billables(Current), to_billables(Proposed)}
-                   ,{'audit_log', add_audit_log_changes_account(AccountId, AuditLog)}
-                   ],
-    Services = fetch(AccountId, FetchOptions),
+    FetchOptions = fetch_options(Account, Current, Proposed, AuditLog),
+    Services = fetch(Account, FetchOptions),
 
     case should_skip_updates(Services) of
         'true' ->
@@ -970,6 +967,13 @@ commit_updates(Account, Current, Proposed, AuditLog) ->
         'false' ->
             commit_updates(Services, FetchOptions)
     end.
+
+-spec fetch_options(kz_term:ne_binary(), billable_updates(), billable_updates(), kz_json:object()) ->
+          fetch_options().
+fetch_options(Account, Current, Proposed, AuditLog) ->
+    [{'updates', Account, to_billables(Current), to_billables(Proposed)}
+    ,{'audit_log', add_audit_log_changes_account(Account, AuditLog)}
+    ].
 
 -spec to_billables(billable_updates()) -> kz_services_quantities:billables().
 to_billables('undefined') -> [];

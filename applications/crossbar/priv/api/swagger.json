@@ -17984,6 +17984,75 @@
             ],
             "type": "object"
         },
+        "kapi.notifications.number_feature_manual_action": {
+            "description": "AMQP API for notifications.number_feature_manual_action",
+            "properties": {
+                "Account-DB": {
+                    "type": "string"
+                },
+                "Account-ID": {
+                    "minLength": 1,
+                    "type": "string"
+                },
+                "Attachment-URL": {
+                    "type": "string"
+                },
+                "Bcc": {
+                    "type": "string"
+                },
+                "Cc": {
+                    "type": "string"
+                },
+                "Event-Category": {
+                    "enum": [
+                        "notification"
+                    ],
+                    "type": "string"
+                },
+                "Event-Name": {},
+                "Feature": {
+                    "type": "string"
+                },
+                "From": {
+                    "type": "string"
+                },
+                "HTML": {
+                    "type": "string"
+                },
+                "Number": {
+                    "minLength": 1,
+                    "type": "string"
+                },
+                "Preview": {
+                    "type": "boolean"
+                },
+                "Reply-To": {
+                    "type": "string"
+                },
+                "Subject": {
+                    "type": "string"
+                },
+                "Text": {
+                    "type": "string"
+                },
+                "To": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": [
+                        "string",
+                        "array"
+                    ]
+                }
+            },
+            "required": [
+                "Account-ID",
+                "Feature",
+                "Number",
+                "To"
+            ],
+            "type": "object"
+        },
         "kapi.notifications.outbound_fax": {
             "description": "AMQP API for notifications.outbound_fax",
             "properties": {
@@ -23302,6 +23371,9 @@
                     "type": "string"
                 },
                 "Caller-ID-Number": {
+                    "type": "string"
+                },
+                "Charges": {
                     "type": "string"
                 },
                 "Contact": {

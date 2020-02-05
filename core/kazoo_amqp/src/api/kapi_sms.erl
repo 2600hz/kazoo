@@ -149,6 +149,7 @@
                                   ,<<"Delivery-Result-Code">>, <<"Delivery-Failure">>, <<"Status">>
                                   ,<<"Route-Type">>, <<"System-ID">>, <<"Route-ID">>
                                   ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
+                                  ,<<"Charges">>
                                   ]).
 -define(INBOUND_TYPES, [{<<"To">>, fun is_binary/1}
                        ,{<<"From">>, fun is_binary/1}

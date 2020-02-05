@@ -425,7 +425,6 @@ check_account(PN) ->
                     ,{'ringback_media', find_early_ringback(PN)}
                     ,{'transfer_media', find_transfer_ringback(PN)}
                     ,{'force_outbound', is_force_outbound(PN)}
-                    ,{'im', feature_im(PN)}
                     ],
             {'ok', AssignedTo, Props}
     end.
@@ -466,18 +465,6 @@ feature_prepend(PhoneNumber) ->
     case kz_json:is_true(?PREPEND_ENABLED, Prepend) of
         'false' -> 'undefined';
         'true' -> kz_json:get_ne_value(?PREPEND_NAME, Prepend)
-    end.
-
-%%------------------------------------------------------------------------------
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec feature_im(knm_phone_number:knm_phone_number()) -> kz_term:api_binary().
-feature_im(PhoneNumber) ->
-    IM = knm_phone_number:feature(PhoneNumber, ?FEATURE_IM),
-    case knm_im:enabled(PhoneNumber) of
-        'false' -> 'undefined';
-        'true' -> IM
     end.
 
 %%------------------------------------------------------------------------------

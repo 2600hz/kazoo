@@ -211,11 +211,13 @@ handle_inbound(JObj, Srv, Deliver) ->
 -spec maybe_relay_request(kz_json:object()) -> 'ack' | 'nack'.
 maybe_relay_request(JObj) ->
     {Number, Inception} = doodle_util:get_inbound_destination(JObj),
+    IM = kapps_im:from_payload(JObj),
     Map = #{number => Number
            ,inception => Inception
            ,request => JObj
            ,route_id => kz_api_sms:route_id(JObj)
            ,route_type => kz_api_sms:route_type(JObj)
+           ,im => IM
            },
     Routines = [fun lookup_number/1
                ,fun number_has_sms_enabled/1
@@ -228,6 +230,7 @@ maybe_relay_request(JObj) ->
                ,fun reseller_has_sms/1
                ,fun account_standing_is_acceptable/1
                ,fun reseller_standing_is_acceptable/1
+               ,fun set_rate/1
                ],
     case kz_maps:exec(Routines, Map) of
         #{account_id := AccountId, error := Error} ->
@@ -236,9 +239,12 @@ maybe_relay_request(JObj) ->
         #{error := Error} ->
             lager:warning("validation failed in external sms request for number ~s : ~p", [Number, Error]),
             'nack';
-        #{account_id := AccountId, request := Payload} ->
+        #{account_id := AccountId, request := Payload, rate := Rate} ->
             lager:info("accepted external sms request ~s for account ~s", [Number, AccountId]),
-            API = kz_json:set_value(<<"Account-ID">>, AccountId, Payload),
+            Values = [{<<"Account-ID">>, AccountId}
+                     ,{<<"Charges">>, Rate}
+                     ],
+            API = kz_json:set_values(Values, Payload),
             case kz_im_onnet:route(API) of
                 'ok' -> 'ack';
                 {'error', _Error} ->
@@ -346,6 +352,13 @@ reseller_standing_is_acceptable(#{reseller_id := ResellerId} = Map) ->
                                         )
     end;
 reseller_standing_is_acceptable(Map) -> Map.
+
+set_rate(#{account_id := AccountId
+          ,im := IM
+          } = Map) ->
+    Rate = kz_services_im:flat_rate(AccountId, kapps_im:type(IM), kapps_im:direction(IM)),
+    Map#{rate => Rate};
+set_rate(Map) -> Map.
 
 handle_confirm(#'basic.ack'{delivery_tag = Idx, multiple = 'true'}
               ,#state{confirms = #{pids := Pids} = Confirms} = State

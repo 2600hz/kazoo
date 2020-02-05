@@ -98,4 +98,5 @@ format_event(Payload, AccountId) ->
       ,{<<"to">>, kz_api_sms:to(Payload)}
       ,{<<"body">>, kz_api_sms:body(Payload)}
       ,{<<"origin">>, kz_api_sms:route_type(Payload)}
+      ,{<<"charges">>, kz_api_sms:charges(Payload)}
       ]).

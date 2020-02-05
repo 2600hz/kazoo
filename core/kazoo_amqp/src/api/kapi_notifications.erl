@@ -75,6 +75,9 @@
 
          %% skeleton notification
         ,skel/1, skel_v/1
+
+         %% number_feature_manual_action
+        ,number_feature_manual_action/1, number_feature_manual_action_v/1
         ]).
 
 -export([%% Account notifications
@@ -135,6 +138,9 @@
 
          %% skeleton notification
         ,publish_skel/1, publish_skel/2
+
+         %% number_feature_manual_action
+        ,publish_number_feature_manual_action/1, publish_number_feature_manual_action/2
         ]).
 
 -include_lib("kz_amqp_util.hrl").
@@ -1214,6 +1220,38 @@ webhook_disabled_definition() ->
                     }.
 
 %%%=============================================================================
+%%% Phone Service Required Action Notifications Definitions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc Get Phone Service Required Action API definition.
+%% @end
+%%------------------------------------------------------------------------------
+-spec number_feature_manual_action_definition() -> kapi_definition:api().
+number_feature_manual_action_definition() ->
+    EventName = <<"number_feature_manual_action">>,
+    Category = <<"account">>,
+    #kapi_definition{name = EventName
+                    ,friendly_name = <<"Number Feature Manual Action Required">>
+                    ,description = <<"This event is triggered when a number feature is activate/deactivated and a manual action is required">>
+                    ,build_fun = fun number_feature_manual_action/1
+                    ,validate_fun = fun number_feature_manual_action_v/1
+                    ,publish_fun = fun publish_number_feature_manual_action/1
+                    ,binding = ?BINDING_STRING(Category, EventName)
+                    ,restrict_to = 'number_feature_manual_action_required'
+                    ,required_headers = [<<"Account-ID">>
+                                        ,<<"Number">>
+                                        ,<<"Feature">>
+                                        ]
+                    ,optional_headers = ?DEFAULT_OPTIONAL_HEADERS
+                    ,values = ?NOTIFY_VALUES(EventName)
+                    ,types = [{<<"Account-ID">>, fun kz_term:is_ne_binary/1}
+                             ,{<<"Number">>, fun kz_term:is_ne_binary/1}
+                             ,{<<"Feature">>, fun kz_json:is_json_object/1}
+                             ]
+                    }.
+
+%%%=============================================================================
 %%% API
 %%%=============================================================================
 
@@ -1260,6 +1298,7 @@ api_definitions() ->
     ,voicemail_saved_definition()
     ,webhook_definition()
     ,webhook_disabled_definition()
+    ,number_feature_manual_action_definition()
     ].
 
 %%------------------------------------------------------------------------------
@@ -1345,7 +1384,9 @@ api_definition(<<"voicemail_saved">>) ->
 api_definition(<<"webhook">>) ->
     webhook_definition();
 api_definition(<<"webhook_disabled">>) ->
-    webhook_disabled_definition().
+    webhook_disabled_definition();
+api_definition(<<"number_feature_manual_action">>) ->
+    number_feature_manual_action_definition().
 
 %%------------------------------------------------------------------------------
 %% @doc Bind to a queue to this API exchange and events.
@@ -2499,4 +2540,32 @@ publish_webhook_disabled(API, ContentType) ->
                     ,values = Values
                     } = webhook_disabled_definition(),
     {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun webhook_disabled/1),
+    kz_amqp_util:notifications_publish(Binding, Payload, ContentType).
+
+%%%=============================================================================
+%%% Phone Service Action Required Functions
+%%%=============================================================================
+
+%%------------------------------------------------------------------------------
+%% @doc Takes proplist, creates JSON string and publish it on AMQP.
+%% @end
+%%------------------------------------------------------------------------------
+-spec number_feature_manual_action(kz_term:api_terms()) -> api_formatter_return().
+number_feature_manual_action(Prop) ->
+    build_message(Prop, number_feature_manual_action_definition()).
+
+-spec number_feature_manual_action_v(kz_term:api_terms()) -> boolean().
+number_feature_manual_action_v(Prop) ->
+    validate(Prop, number_feature_manual_action_definition()).
+
+-spec publish_number_feature_manual_action(kz_term:api_terms()) -> 'ok'.
+publish_number_feature_manual_action(JObj) ->
+    publish_number_feature_manual_action(JObj, ?DEFAULT_CONTENT_TYPE).
+
+-spec publish_number_feature_manual_action(kz_term:api_terms(), kz_term:ne_binary()) -> 'ok'.
+publish_number_feature_manual_action(API, ContentType) ->
+    #kapi_definition{binding = Binding
+                    ,values = Values
+                    } = number_feature_manual_action_definition(),
+    {'ok', Payload} = kz_api:prepare_api_payload(API, Values, fun number_feature_manual_action/1),
     kz_amqp_util:notifications_publish(Binding, Payload, ContentType).

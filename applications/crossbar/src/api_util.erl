@@ -652,6 +652,14 @@ is_cb_module(Context, Elem) ->
 
 -spec is_cb_module(kz_term:ne_binaries()) -> boolean().
 is_cb_module([]) -> 'false';
+is_cb_module([<<"cb_device">> | Modules]) ->
+    is_cb_module(Modules);
+is_cb_module([<<"cb_limits">> | Modules]) ->
+    is_cb_module(Modules);
+is_cb_module([<<"cb_phone_numbers">> | Modules]) ->
+    is_cb_module(Modules);
+is_cb_module([<<"cb_users">> | Modules]) ->
+    is_cb_module(Modules);
 is_cb_module([Module|Modules]) ->
     'true' =:= kz_module:is_exported(Module, 'init', 0)
         orelse is_cb_module(Modules).
