@@ -186,7 +186,7 @@ seq_44832() ->
                  ,lists:seq(1, 4)
                  ),
 
-    cleanup(API),
+    _ = cleanup(API),
     ?INFO("finished double-POST check").
 
 -spec enable_and_delete_topup() -> 'ok'.
@@ -215,7 +215,7 @@ enable_and_delete_topup() ->
 
     'undefined' = kz_json:get_ne_value(<<"topup">>, kz_json:decode(Resp1)),
 
-    cleanup(API),
+    _ = cleanup(API),
     ?INFO("FINISHED ENABLE AND DISABLE TOPUP CHECKS").
 
 -spec cleanup(pqc_cb_api:state()) -> any().
@@ -236,4 +236,5 @@ topup_request(API, AccountId, RequestEnvelope) ->
 -spec cleanup() -> 'ok'.
 cleanup() ->
     API = pqc_cb_api:init_api(['crossbar'], ['cb_accounts']),
-    cleanup(API).
+    _ = cleanup(API),
+    'ok'.
