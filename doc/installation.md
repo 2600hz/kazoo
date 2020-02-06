@@ -6,13 +6,43 @@ If your development is on macOS, here are [extra steps](https://github.com/2600h
 
 ## Dependencies
 
+### Erlang
 
-### Packages Required
-
-Erlang/OTP is required for both run time and build time. Usually the official Erlang package provided by your distribution is not up-to-date, please follow [Erlang](#erlang) section to install it from source code or using other options.
+Erlang/OTP is required for both run time and build time. Usually the official Erlang package provided by distributions is not up-to-date, please follow this section to install it from source code or using other options.
 
 * Kazoo version 4.3 requires Erlang version 19 specifically 19.3.x
-* Kazoo version 5 (master) requires Erlang version 21+
+* Kazoo version 5.x is currently targets Erlang version 21 (specifically 21.3)
+* Kazoo master branch targets Erlang 21+ (specifically 21.3 but consult [`make/erlang_version`](https://github.com/2600hz/kazoo/blob/master/make/erlang_version) to be sure).
+
+#### Installing Erlang/OTP from source code
+
+We recommend to use a tool like [kerl](https://github.com/kerl/kerl) to manage Erlang/OTP installations. If you want to play around with multiple versions of Erlang while hacking on Kazoo, this is probably the best way.
+
+```shell
+    curl -O https://raw.githubusercontent.com/kerl/kerl/master/kerl
+    chmod +x kerl
+    mv kerl /usr/bin
+    kerl list releases
+    kerl build 21.3 21.3 # this takes a while
+    kerl install 21.3 /usr/local/otp-21.3
+    . /usr/local/otp-19.3/activate
+```
+
+You will probably want to add the `activate` command to your `.bashrc` or similar to make sure the proper OTP version is running.
+
+#### Installing from Erlang Solutions repository
+
+You can find OffInstall from the [Erlang Solutions](https://www.erlang-solutions.com/resources/download.html) packages. These tend to be kept up-to-date better than the default distro's packages.
+
+Most OS package managers provide pre-built binary packages. You can also download the latest stable releases [from Erlang Solutions](https://www.erlang-solutions.com/resources/download.html). Erlang Solutions provides [pre-built binary packages](https://www.erlang-solutions.com/resources/download.html) for OS X, Windows, Ubuntu, Debian, Fedora, CentOS, Raspbian and other operating systems.
+
+* For Homebrew on maxOS: `brew install erlang`
+* For Ubuntu and Debian: `apt-get install erlang`
+* For CentOS/RHEL/Fedora: `yum install erlang`
+* For FreeBSD: `pkg install erlang`
+
+
+### Packages Required
 
 #### Build time requirement
 
@@ -35,8 +65,10 @@ Erlang/OTP is required for both run time and build time. Usually the official Er
 Main functionality requirements:
 
 * CouchDB 2
+    * Please consult [CouchDB installation doc](https://docs.couchdb.org/en/stable/install/index.html)
     * **Note:** Old abandoned BigCouch can be used too but this is not recommended for new clusters
 * RabbitMQ
+    * Please consult [RabbitMQ installation doc](https://www.rabbitmq.com/download.html)
     * Recommended official 2600Hz [RabbitMQ configurations](https://github.com/2600hz/kazoo-configs-rabbitmq)
     * **Note:** Kazoo 5 (master) requires `rabbitmq_consistent_hash_exchange` plug-in to be enabled for Kazoo Fax application
 
@@ -45,11 +77,12 @@ Voice/Video and SIP functionality requirements:
 * FreeSWITCH version 1.10+
     * It is required `mod_kazoo` plug-in to be enabled
     * Official 2600Hz [FreeSWITCH configurations](https://github.com/2600hz/kazoo-configs-freeswitch) is required
+    * It is recommended to install FreeSWITCH from [2600Hz CentOS repository](https://docs.2600hz.com/sysadmin/doc/install/install_via_centos7) to ease the installation.
 * Kamailio version 5.2+
     * It is required `kazoo` module to be enabled
     * Official 2600Hz [Kamailio configurations](https://github.com/2600hz/kazoo-configs-kamailio) is required
-    * It is recommended to install Kamailio from 2600Hz [CentOS repository](https://docs.2600hz.com/sysadmin/doc/install/install_via_centos7/#setup-the-server) to ease the installation.
-    * If you're installing the official Kamailio packages, you have to change the database in 2600Hz Kamailio configurations to use `sqlite` or you're choice of database.
+    * It is recommended to install Kamailio from [2600Hz CentOS repository](https://docs.2600hz.com/sysadmin/doc/install/install_via_centos7) to ease the installation.
+    * If you're installing the official Kamailio packages instead, you have to change the database in 2600Hz Kamailio configurations to use `sqlite` or you're choice of database.
 
 
 Other packages:
@@ -65,7 +98,7 @@ Useful commands:
 * `ntpdate`, `bind-utils`, `which`, `file`, `psmisc`, `iproute`, `lsof`
 
 
-#### Installing dependencies on Debian 9+
+### Installing dependencies on Debian 9+
 
 ```shell
 ## Adding official CouchDB 2 repo
@@ -101,7 +134,7 @@ sudo locale-gen
 ```
 
 
-#### Installing dependencies on CentOS 7
+### Installing dependencies on CentOS 7
 
 ```
 ## Adding useful repos
@@ -145,38 +178,11 @@ sudo yum install \
 localedef -v -c -i en_US -f UTF-8 en_US.UTF-8
 ```
 
-### Erlang
-
-Kazoo 5.x targets Erlang 21+ (specifically 21.3 but consult [`make/erlang_version`](https://github.com/2600hz/kazoo/blob/master/make/erlang_version) to be sure). There are a couple ways to install Erlang:
-
-1.  From Source
-
-    I prefer to use a tool like [kerl](https://github.com/kerl/kerl) to manage my installations. If you want to play around with multiple versions of Erlang while hacking on Kazoo, this is probably the best way.
-
-```shell
-    curl -O https://raw.githubusercontent.com/kerl/kerl/master/kerl
-    chmod +x kerl
-    mv kerl /usr/bin
-    kerl list releases
-    kerl build 21.3 21.3 # this takes a while
-    kerl install 21.3 /usr/local/otp-21.3
-    . /usr/local/otp-19.3/activate
-```
-
-You will probably want to add the `activate` command to your `.bashrc` or similar to make sure the proper OTP version is running.
-
-2.  Erlang Solutions
-
-    Install from the [Erlang Solutions](https://www.erlang-solutions.com/resources/download.html) packages. These tend to be kept up-to-date better than the default distro's packages.
-
-
 ## Building Kazoo
-
 
 ### Short version
 
 ```shell
-cd /opt
 git clone https://github.com/2600Hz/kazoo.git
 cd kazoo
 make
@@ -214,10 +220,14 @@ If you have a custom theme, you can copy it to `doc/mkdocs/theme` and build the 
     When developing, one can `cd` into any app directory (within `applications/` or `core/`) and run:
 
     -   `make` (`make all` or `make clean`)
+    -   `make apis` to build document accessors, Crossbar API OpenAPI, JSON schemas and etc...
     -   `make xref` to look for calls to undefined functions (uses [Xref](http://www.erlang.org/doc/apps/tools/xref_chapter.html))
     -   `make dialyze` to statically type-check the app (uses [Dialyzer](http://www.erlang.org/doc/man/dialyzer.html))
+    -   `make fmt` to format Erlang source codes to the standard
+    -   `make fmt-views-all` to format JavaScript codes inside CouchDB view files
     -   `make test` runs the app / sub-apps test suite, if any.
         -   **Note:** make sure to `make clean all` after running your tests, as test BEAMs are generated in `ebin/`!
+    -   Consult `Makefile` for more Makefile targets
 
 4.  Running the tests
 
@@ -238,7 +248,7 @@ If you have a custom theme, you can copy it to `doc/mkdocs/theme` and build the 
 
 6.  Generate an Erlang development release
 
-    `make build-dev-release` will generate a development release.
+    `make build-dev-release` will generate a development release with symlinking beams files and reload them when they re-compiled to ease development
 
 7.  Start an Erlang development release
 
